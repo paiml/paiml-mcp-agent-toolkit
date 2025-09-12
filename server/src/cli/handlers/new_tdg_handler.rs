@@ -90,7 +90,7 @@ async fn write_or_print_result(result: &str, output_path: Option<PathBuf>) -> Re
         tokio::fs::write(&output_path, result).await?;
         eprintln!("📝 Results written to {}", output_path.display());
     } else {
-        println!("{}", result);
+        println!("{result}");
     }
     Ok(())
 }
@@ -347,7 +347,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

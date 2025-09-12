@@ -156,7 +156,7 @@ async fn perform_tdg_analysis(
         std::fs::write(output_path, output_content)?;
         eprintln!("✅ TDG analysis saved to {}", output_path.display());
     } else {
-        print!("{}", output_content);
+        print!("{output_content}");
     }
 
     Ok(())
@@ -279,7 +279,7 @@ async fn run_tdg_watch_mode(
                 .await?;
             }
             Err(e) => {
-                eprintln!("❌ Watch error: {}", e);
+                eprintln!("❌ Watch error: {e}");
                 break;
             }
         }
@@ -983,7 +983,7 @@ pub async fn handle_analyze_makefile(
     )?;
 
     // Print output
-    println!("{}", content);
+    println!("{content}");
 
     // Handle fix mode if requested
     handle_makefile_fix_mode(fix, &filtered_violations);
@@ -1039,7 +1039,7 @@ fn handle_makefile_fix_mode(fix: bool, filtered_violations: &[makefile_linter::V
             eprintln!("  ✅ {}: {}", violation.rule, fix_hint);
         }
     }
-    eprintln!("✨ {} violations automatically fixed.", fix_count);
+    eprintln!("✨ {fix_count} violations automatically fixed.");
 }
 
 // Helper: Format makefile output based on format
@@ -1412,7 +1412,7 @@ async fn write_provability_output(output: Option<PathBuf>, content: &str) -> Res
             output_path.display()
         );
     } else {
-        println!("{}", content);
+        println!("{content}");
     }
     Ok(())
 }
@@ -1471,9 +1471,9 @@ fn print_defect_analysis_header(
 ) {
     eprintln!("🔮 Analyzing defect probability...");
     eprintln!("📁 Project path: {}", project_path.display());
-    eprintln!("🎯 High risk only: {}", high_risk_only);
-    eprintln!("📊 Include low confidence: {}", include_low_confidence);
-    eprintln!("📄 Format: {:?}", format);
+    eprintln!("🎯 High risk only: {high_risk_only}");
+    eprintln!("📊 Include low confidence: {include_low_confidence}");
+    eprintln!("📄 Format: {format:?}");
 }
 
 fn create_defect_config(
@@ -1595,7 +1595,7 @@ async fn output_defect_result(content: String, output: Option<PathBuf>) -> Resul
         tokio::fs::write(&output_path, &content).await?;
         eprintln!("📝 Written to {}", output_path.display());
     } else {
-        println!("{}", content);
+        println!("{content}");
     }
     Ok(())
 }
@@ -1767,7 +1767,7 @@ pub async fn handle_analyze_proof_annotations(
         tokio::fs::write(&output_path, &content).await?;
         eprintln!("✅ Proof annotations written to: {}", output_path.display());
     } else {
-        println!("{}", content);
+        println!("{content}");
     }
 
     Ok(())
@@ -1950,13 +1950,13 @@ fn print_coverage_analysis_header(
 ) {
     eprintln!("📊 Analyzing incremental coverage...");
     eprintln!("📁 Project path: {}", project_path.display());
-    eprintln!("🌿 Base branch: {}", base_branch);
+    eprintln!("🌿 Base branch: {base_branch}");
     eprintln!(
         "🎯 Target branch: {}",
         target_branch.as_deref().unwrap_or("HEAD")
     );
     eprintln!("📈 Coverage threshold: {:.1}%", coverage_threshold * 100.0);
-    eprintln!("📄 Format: {:?}", format);
+    eprintln!("📄 Format: {format:?}");
 }
 
 fn create_file_ids_from_changes(
@@ -2008,7 +2008,7 @@ async fn output_coverage_result(content: String, output: Option<PathBuf>) -> Res
         tokio::fs::write(&output_path, &content).await?;
         eprintln!("📝 Written to {}", output_path.display());
     } else {
-        println!("{}", content);
+        println!("{content}");
     }
     Ok(())
 }
@@ -2022,7 +2022,7 @@ pub async fn handle_analyze_churn(
 ) -> Result<()> {
     use crate::services::git_analysis::GitAnalysisService;
 
-    eprintln!("📊 Analyzing code churn for the last {} days...", days);
+    eprintln!("📊 Analyzing code churn for the last {days} days...");
 
     // Analyze code churn
     let mut analysis = GitAnalysisService::analyze_code_churn(&project_path, days)
@@ -2219,7 +2219,7 @@ fn write_summary_top_contributors(
         let mut authors: Vec<_> = summary.author_contributions.iter().collect();
         authors.sort_unstable_by(|a, b| b.1.cmp(a.1));
         for (author, files) in authors.iter().take(10) {
-            writeln!(output, "- {}: {} files", author, files)?;
+            writeln!(output, "- {author}: {files} files")?;
         }
     }
     Ok(())
@@ -2294,35 +2294,35 @@ fn write_summary_data_rows(
 /// Write total commits row
 fn write_commits_row(output: &mut String, total_commits: usize) -> Result<()> {
     use std::fmt::Write;
-    writeln!(output, "| Total Commits | {} |", total_commits)?;
+    writeln!(output, "| Total Commits | {total_commits} |")?;
     Ok(())
 }
 
 /// Write files changed row
 fn write_files_changed_row(output: &mut String, files_changed: usize) -> Result<()> {
     use std::fmt::Write;
-    writeln!(output, "| Files Changed | {} |", files_changed)?;
+    writeln!(output, "| Files Changed | {files_changed} |")?;
     Ok(())
 }
 
 /// Write hotspot files row
 fn write_hotspot_files_row(output: &mut String, hotspot_count: usize) -> Result<()> {
     use std::fmt::Write;
-    writeln!(output, "| Hotspot Files | {} |", hotspot_count)?;
+    writeln!(output, "| Hotspot Files | {hotspot_count} |")?;
     Ok(())
 }
 
 /// Write stable files row
 fn write_stable_files_row(output: &mut String, stable_count: usize) -> Result<()> {
     use std::fmt::Write;
-    writeln!(output, "| Stable Files | {} |", stable_count)?;
+    writeln!(output, "| Stable Files | {stable_count} |")?;
     Ok(())
 }
 
 /// Write contributing authors row
 fn write_authors_row(output: &mut String, author_count: usize) -> Result<()> {
     use std::fmt::Write;
-    writeln!(output, "| Contributing Authors | {} |", author_count)?;
+    writeln!(output, "| Contributing Authors | {author_count} |")?;
     Ok(())
 }
 
@@ -2381,7 +2381,7 @@ fn write_markdown_author_contributions(
         authors.sort_unstable_by(|a, b| b.1.cmp(a.1));
 
         for (author, count) in authors.iter().take(15) {
-            writeln!(output, "| {} | {} |", author, count)?;
+            writeln!(output, "| {author} | {count} |")?;
         }
     }
     Ok(())
@@ -2443,7 +2443,7 @@ pub async fn write_churn_output(content: String, output: Option<PathBuf>) -> Res
         tokio::fs::write(&output_path, &content).await?;
         eprintln!("✅ Churn analysis written to: {}", output_path.display());
     } else {
-        println!("{}", content);
+        println!("{content}");
     }
     Ok(())
 }
@@ -2616,8 +2616,7 @@ fn format_satd_markdown(
 
     if evolution {
         output.push_str(&format!(
-            "## Evolution Analysis\n\nEvolution tracking over {} days would be displayed here.\n",
-            days
+            "## Evolution Analysis\n\nEvolution tracking over {days} days would be displayed here.\n"
         ));
     }
 
@@ -2644,12 +2643,12 @@ fn format_satd_summary(items: &[crate::services::satd_detector::TechnicalDebt]) 
 
     output.push_str("By Severity:\n");
     for (severity, count) in severity_counts {
-        output.push_str(&format!("  {}: {}\n", severity, count));
+        output.push_str(&format!("  {severity}: {count}\n"));
     }
 
     output.push_str("\nBy Type:\n");
     for (debt_type, count) in type_counts {
-        output.push_str(&format!("  {}: {}\n", debt_type, count));
+        output.push_str(&format!("  {debt_type}: {count}\n"));
     }
 
     output
@@ -2669,7 +2668,7 @@ fn print_satd_metrics(items: &[crate::services::satd_detector::TechnicalDebt]) {
             )
         })
         .count();
-    eprintln!("  High severity: {}", high_severity_count);
+    eprintln!("  High severity: {high_severity_count}");
 
     let files_with_satd: std::collections::HashSet<_> =
         items.iter().map(|item| &item.file).collect();
@@ -2775,7 +2774,7 @@ async fn write_satd_output(output: Option<PathBuf>, content: &str) -> Result<()>
         tokio::fs::write(&output_path, content).await?;
         eprintln!("✅ SATD analysis written to: {}", output_path.display());
     } else {
-        println!("{}", content);
+        println!("{content}");
     }
     Ok(())
 }
@@ -2793,23 +2792,23 @@ pub async fn handle_analyze_dag(
     enhanced: bool,
 ) -> Result<()> {
     eprintln!("🔍 Analyzing Directed Acyclic Graph (DAG)...");
-    eprintln!("📊 DAG Type: {:?}", dag_type);
+    eprintln!("📊 DAG Type: {dag_type:?}");
     eprintln!("📁 Project: {}", project_path.display());
 
     // Simple DAG analysis implementation
     let mut output_content = String::new();
-    output_content.push_str(&format!("# {:?} DAG Analysis\n\n", dag_type));
+    output_content.push_str(&format!("# {dag_type:?} DAG Analysis\n\n"));
     output_content.push_str(&format!("Project: {}\n", project_path.display()));
 
     if let Some(depth) = max_depth {
-        output_content.push_str(&format!("Max depth: {}\n", depth));
+        output_content.push_str(&format!("Max depth: {depth}\n"));
     }
 
-    output_content.push_str(&format!("Filter external: {}\n", filter_external));
-    output_content.push_str(&format!("Show complexity: {}\n", show_complexity));
-    output_content.push_str(&format!("Include duplicates: {}\n", include_duplicates));
-    output_content.push_str(&format!("Include dead code: {}\n", include_dead_code));
-    output_content.push_str(&format!("Enhanced mode: {}\n", enhanced));
+    output_content.push_str(&format!("Filter external: {filter_external}\n"));
+    output_content.push_str(&format!("Show complexity: {show_complexity}\n"));
+    output_content.push_str(&format!("Include duplicates: {include_duplicates}\n"));
+    output_content.push_str(&format!("Include dead code: {include_dead_code}\n"));
+    output_content.push_str(&format!("Enhanced mode: {enhanced}\n"));
 
     output_content.push_str("\n## Analysis Results\n");
     output_content.push_str(
@@ -2821,7 +2820,7 @@ pub async fn handle_analyze_dag(
         tokio::fs::write(&output_path, &output_content).await?;
         eprintln!("✅ DAG analysis written to: {}", output_path.display());
     } else {
-        println!("{}", output_content);
+        println!("{output_content}");
     }
 
     Ok(())
@@ -3032,7 +3031,7 @@ fn get_check_message(check: &QualityCheckType) -> Option<&'static str> {
 
 /// Print a check success message with consistent formatting
 fn print_check_success(message: &str) {
-    eprintln!("  ✓ {}", message);
+    eprintln!("  ✓ {message}");
 }
 
 /// Handles quality gate checks for a single file
@@ -3163,8 +3162,7 @@ async fn execute_single_file_check(
 /// Extract Method: Handle unsupported single file check types
 fn handle_unsupported_single_file_check(check: &QualityCheckType) {
     eprintln!(
-        "⚠️  Skipping {} check - not applicable to single file",
-        check
+        "⚠️  Skipping {check} check - not applicable to single file"
     );
 }
 
@@ -3265,7 +3263,7 @@ async fn output_single_file_results(
     if let Some(output_path) = output {
         std::fs::write(output_path, &output_content)?;
     } else {
-        println!("{}", output_content);
+        println!("{output_content}");
     }
 
     Ok(())
@@ -3447,7 +3445,7 @@ async fn run_individual_project_checks(
 /// Print performance timing for a quality check
 fn print_check_performance(check: &QualityCheckType, elapsed_secs: f64) {
     let check_name = get_check_display_name(check);
-    eprintln!("    ⏱️  {} check: {:.3}s", check_name, elapsed_secs);
+    eprintln!("    ⏱️  {check_name} check: {elapsed_secs:.3}s");
 }
 
 /// Get display name for a quality check type
@@ -3785,7 +3783,7 @@ async fn output_project_results(
             output_path.display()
         );
     } else {
-        println!("{}", content);
+        println!("{content}");
     }
 
     Ok(())
@@ -3848,7 +3846,7 @@ async fn handle_websocket_server(host: &str, port: u16) -> Result<()> {
     eprintln!("📍 WebSocket endpoint: ws://{host}:{port}");
     eprintln!("🔌 MCP protocol over WebSocket");
 
-    let addr = format!("{}:{}", host, port);
+    let addr = format!("{host}:{port}");
     start_websocket_server(addr).await
 }
 
@@ -3861,7 +3859,7 @@ async fn handle_http_sse_server(host: &str, port: u16, cors: bool) -> Result<()>
     eprintln!("🌊 MCP protocol over Server-Sent Events");
     print_cors_status(cors);
 
-    let addr = format!("{}:{}", host, port);
+    let addr = format!("{host}:{port}");
     start_http_sse_server(addr, cors).await
 }
 
@@ -3874,7 +3872,7 @@ async fn handle_hybrid_server(host: &str, port: u16, cors: bool) -> Result<()> {
     eprintln!("🔌 MCP protocol over both transports");
     print_cors_status(cors);
 
-    let addr = format!("{}:{}", host, port);
+    let addr = format!("{host}:{port}");
     start_hybrid_server(addr, cors).await
 }
 
@@ -3888,7 +3886,7 @@ async fn handle_full_server(host: &str, port: u16, cors: bool) -> Result<()> {
     eprintln!("🌐 MCP protocol over all transports");
     print_cors_status(cors);
 
-    let addr = format!("{}:{}", host, port);
+    let addr = format!("{host}:{port}");
     start_full_server(addr, cors).await
 }
 
@@ -4138,7 +4136,7 @@ pub async fn handle_analyze_comprehensive(
     .await?;
 
     let elapsed = start.elapsed();
-    eprintln!("✅ Comprehensive analysis completed in {:?}", elapsed);
+    eprintln!("✅ Comprehensive analysis completed in {elapsed:?}");
 
     // Format and write output
     write_comprehensive_output(&report, format, executive_summary, output).await?;
@@ -4219,7 +4217,7 @@ async fn write_comprehensive_output(
         tokio::fs::write(&output_path, &content).await?;
         eprintln!("📄 Report written to: {}", output_path.display());
     } else {
-        println!("{}", content);
+        println!("{content}");
     }
 
     Ok(())
@@ -4649,8 +4647,7 @@ pub async fn check_dead_code(
             file: project_path.to_string_lossy().to_string(),
             line: None,
             message: format!(
-                "Dead code percentage {:.1}% exceeds maximum allowed {:.1}%",
-                dead_percentage, max_percentage
+                "Dead code percentage {dead_percentage:.1}% exceeds maximum allowed {max_percentage:.1}%"
             ),
         });
     }
@@ -4813,12 +4810,15 @@ pub async fn check_satd(project_path: &Path) -> Result<Vec<QualityViolation>> {
 /// # Ok(())
 /// # }
 /// ```
-pub async fn check_entropy(project_path: &Path, _min_entropy: f64) -> Result<Vec<QualityViolation>> {
+pub async fn check_entropy(
+    project_path: &Path,
+    _min_entropy: f64,
+) -> Result<Vec<QualityViolation>> {
     // TOYOTA WAY FIX: Replace Shannon entropy with AST pattern-based entropy
     // Sprint 98: Fix for 5831 false positive entropy violations
-    use crate::entropy::{EntropyAnalyzer, EntropyConfig};
     use crate::entropy::violation_detector::Severity;
-    
+    use crate::entropy::{EntropyAnalyzer, EntropyConfig};
+
     // Create entropy analyzer with tuned config to reduce false positives
     let mut config = EntropyConfig::default();
     config.min_severity = Severity::Medium; // Only report medium+ severity
@@ -4826,14 +4826,15 @@ pub async fn check_entropy(project_path: &Path, _min_entropy: f64) -> Result<Vec
     config.exclude_paths.push("**/node_modules/**".to_string());
     config.exclude_paths.push("**/*.test.rs".to_string());
     config.exclude_paths.push("**/tests/**".to_string());
-    
+
     let analyzer = EntropyAnalyzer::with_config(config);
-    
+
     // Run AST-based entropy analysis
     let report = analyzer.analyze(project_path).await?;
-    
+
     // Convert actionable violations to QualityViolation format
-    let violations: Vec<QualityViolation> = report.actionable_violations
+    let violations: Vec<QualityViolation> = report
+        .actionable_violations
         .into_iter()
         .map(|violation| QualityViolation {
             check_type: "entropy".to_string(),
@@ -4842,20 +4843,19 @@ pub async fn check_entropy(project_path: &Path, _min_entropy: f64) -> Result<Vec
                 Severity::Medium => "warning".to_string(),
                 Severity::High => "error".to_string(),
             },
-            file: violation.affected_files
+            file: violation
+                .affected_files
                 .first()
                 .map(|p| p.to_string_lossy().to_string())
                 .unwrap_or_else(|| "project".to_string()),
             line: None, // Pattern violations span multiple lines
             message: format!(
                 "{} (saves {} lines) - Fix: {}",
-                violation.message,
-                violation.estimated_loc_reduction,
-                violation.fix_suggestion
+                violation.message, violation.estimated_loc_reduction, violation.fix_suggestion
             ),
         })
         .collect();
-    
+
     Ok(violations)
 }
 
@@ -5094,7 +5094,7 @@ fn create_violations_for_duplicate_group(
             severity: "warning".to_string(),
             file: path.to_string_lossy().to_string(),
             line: None,
-            message: format!("Duplicate code found in: {}", files_str),
+            message: format!("Duplicate code found in: {files_str}"),
         });
     }
 }
@@ -5456,8 +5456,7 @@ fn write_junit_testsuite_start(output: &mut String, count: usize) -> Result<()> 
     use std::fmt::Write;
     writeln!(
         output,
-        r#"  <testsuite name="Quality Checks" tests="{}" failures="{}">"#,
-        count, count
+        r#"  <testsuite name="Quality Checks" tests="{count}" failures="{count}">"#
     )?;
     Ok(())
 }
@@ -5563,7 +5562,7 @@ fn write_qg_detailed_summary(output: &mut String, results: &QualityGateResults) 
     ];
 
     for (name, count) in items {
-        writeln!(output, "- {}: {}", name, count)?;
+        writeln!(output, "- {name}: {count}")?;
     }
     Ok(())
 }
@@ -5663,7 +5662,7 @@ fn write_qg_markdown_table_rows(output: &mut String, results: &QualityGateResult
     let rows = get_qg_violation_summary_rows(results);
 
     for (name, count) in rows {
-        writeln!(output, "| {} | {} |", name, count)?;
+        writeln!(output, "| {name} | {count} |")?;
     }
 
     Ok(())
@@ -6440,7 +6439,7 @@ pub fn print_table(items: &[std::sync::Arc<crate::models::template::TemplateReso
         let category = format!("{:?}", item.category);
         let description = item.description.chars().take(60).collect::<String>();
         let description = if item.description.len() > 60 {
-            format!("{}...", description)
+            format!("{description}...")
         } else {
             description
         };
@@ -6822,7 +6821,7 @@ fn write_comp_satd_section(output: &mut String, satd: &SatdReport) -> Result<()>
     writeln!(output, "- Total items: {}", satd.total_items)?;
     writeln!(output, "- By type:")?;
     for (t, count) in &satd.by_type {
-        writeln!(output, "  - {}: {}", t, count)?;
+        writeln!(output, "  - {t}: {count}")?;
     }
     writeln!(output)?;
     Ok(())
@@ -6978,9 +6977,9 @@ fn format_incremental_coverage_lcov(report: &IncrementalCoverageReport) -> Resul
         // Generate fake line data based on coverage
         for line in 1..=file.lines_added {
             if line <= file.lines_covered {
-                output.push_str(&format!("DA:{},1\n", line));
+                output.push_str(&format!("DA:{line},1\n"));
             } else {
-                output.push_str(&format!("DA:{},0\n", line));
+                output.push_str(&format!("DA:{line},0\n"));
             }
         }
 
@@ -7467,7 +7466,7 @@ fn process_data(input: &str) -> Result<HashMap<String, u64>, Error> {
         let files = vec![test_file];
 
         // High threshold should potentially filter out results
-        let result_high = analyze_multiple_files(
+        let _result_high = analyze_multiple_files(
             &calculator,
             temp_dir.path(),
             files.clone(),
@@ -9289,7 +9288,7 @@ async fn check_single_file_satd(
                 severity: "warning".to_string(),
                 file: file_path.to_string_lossy().to_string(),
                 line: Some(line_no + 1),
-                message: format!("Self-admitted technical debt: {} - {}", satd_type, text),
+                message: format!("Self-admitted technical debt: {satd_type} - {text}"),
             });
         }
     }
@@ -9721,7 +9720,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

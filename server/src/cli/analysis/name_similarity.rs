@@ -39,7 +39,7 @@ pub async fn handle_analyze_name_similarity(
     fuzzy: bool,
     case_sensitive: bool,
 ) -> Result<()> {
-    eprintln!("🔍 Searching for names similar to '{}'...", query);
+    eprintln!("🔍 Searching for names similar to '{query}'...");
 
     // Collect all names from the project
     let names = collect_names(&project_path, &include, &exclude, scope).await?;
@@ -57,7 +57,7 @@ pub async fn handle_analyze_name_similarity(
         query: query.clone(),
         total_candidates: top_matches.len(),
         matches: top_matches,
-        search_scope: format!("{:?}", scope),
+        search_scope: format!("{scope:?}"),
     };
 
     // Format output
@@ -68,7 +68,7 @@ pub async fn handle_analyze_name_similarity(
         tokio::fs::write(&output_path, &content).await?;
         eprintln!("✅ Results written to: {}", output_path.display());
     } else {
-        println!("{}", content);
+        println!("{content}");
     }
 
     Ok(())
@@ -133,7 +133,7 @@ async fn process_entry(
     exclude: &Option<String>,
 ) -> Result<()> {
     let path = entry.path();
-    
+
     if should_skip(&path, exclude) {
         return Ok(());
     }
@@ -174,11 +174,7 @@ fn should_traverse_directory(path: &Path) -> bool {
 }
 
 /// Handle file inclusion
-fn handle_file(
-    path: PathBuf,
-    files: &mut Vec<PathBuf>,
-    include: &Option<String>,
-) -> Result<()> {
+fn handle_file(path: PathBuf, files: &mut Vec<PathBuf>, include: &Option<String>) -> Result<()> {
     if !is_code_file(&path) {
         return Ok(());
     }
@@ -551,7 +547,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

@@ -1,6 +1,6 @@
 //! Dead code detection with cross-reference analysis
 //!
-//! This module provides advanced dead code detection capabilities through multi-level 
+//! This module provides advanced dead code detection capabilities through multi-level
 //! reachability analysis, cross-language reference tracking, and dynamic dispatch resolution.
 //! It identifies unreachable code segments, unused functions, and unreferenced variables
 //! across multiple programming languages.
@@ -202,10 +202,10 @@ pub enum ReferenceType {
 /// use pmat::services::dead_code_analyzer::VTableResolver;
 ///
 /// let resolver = VTableResolver::new();
-/// 
+///
 /// // Resolve all possible targets for an interface method call
 /// let targets = resolver.resolve_dynamic_call("Drawable", "draw");
-/// 
+///
 /// // Initially empty - populated during AST analysis
 /// assert!(targets.is_empty());
 /// ```
@@ -255,8 +255,8 @@ impl VTableResolver {
 }
 
 /// Coverage data integration from external tools (llvm-cov, tarpaulin, etc.)
-/// 
-/// Integrates test coverage data to improve dead code detection accuracy by 
+///
+/// Integrates test coverage data to improve dead code detection accuracy by
 /// identifying code that is syntactically reachable but never executed in practice.
 ///
 /// # Examples
@@ -795,8 +795,8 @@ impl DeadCodeAnalyzer {
                             let callee_name = callee_qualified.split("::").last().unwrap();
                             // More specific matching: function name followed by opening parenthesis
                             // and not part of a function definition
-                            if line.contains(&format!("{}(", callee_name))
-                                && !line.contains(&format!("fn {}", callee_name))
+                            if line.contains(&format!("{callee_name}("))
+                                && !line.contains(&format!("fn {callee_name}"))
                                 && caller != *callee_qualified
                             // Don't count self-calls
                             {
@@ -1388,7 +1388,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

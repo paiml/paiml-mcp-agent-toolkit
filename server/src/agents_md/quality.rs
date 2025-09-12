@@ -15,10 +15,10 @@ pub struct AgentQualityGate {
 pub struct QualityConfig {
     /// Max complexity allowed
     pub max_complexity: u32,
-    
+
     /// Min test coverage
     pub min_coverage: f64,
-    
+
     /// Auto-fix enabled
     pub auto_fix: bool,
 }
@@ -38,10 +38,10 @@ impl Default for QualityConfig {
 pub struct QualityReport {
     /// Overall passed
     pub passed: bool,
-    
+
     /// Quality score
     pub score: f64,
-    
+
     /// Issues found
     pub issues: Vec<QualityIssue>,
 }
@@ -51,13 +51,13 @@ pub struct QualityReport {
 pub struct QualityIssue {
     /// Issue type
     pub issue_type: IssueType,
-    
+
     /// Description
     pub description: String,
-    
+
     /// Severity
     pub severity: Severity,
-    
+
     /// Suggested fix
     pub fix: Option<String>,
 }
@@ -86,10 +86,10 @@ pub enum Severity {
 pub struct ComplexityReport {
     /// Max complexity found
     pub max_complexity: u32,
-    
+
     /// Average complexity
     pub avg_complexity: f64,
-    
+
     /// Complex functions
     pub complex_functions: Vec<String>,
 }
@@ -99,7 +99,7 @@ pub struct ComplexityReport {
 pub struct SatdReport {
     /// SATD count
     pub count: usize,
-    
+
     /// SATD locations
     pub locations: Vec<String>,
 }
@@ -110,6 +110,12 @@ pub struct Ast {
     pub nodes: Vec<String>,
 }
 
+impl Default for AgentQualityGate {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AgentQualityGate {
     /// Create new quality gate
     pub fn new() -> Self {
@@ -117,17 +123,17 @@ impl AgentQualityGate {
             config: QualityConfig::default(),
         }
     }
-    
+
     /// Create with config
     pub fn with_config(config: QualityConfig) -> Self {
         Self { config }
     }
-    
+
     /// Validate agent-generated code
     pub fn validate_code(&self, code: &str) -> Result<QualityReport> {
         let mut issues = Vec::new();
         let mut score: f64 = 100.0;
-        
+
         // Check for SATD
         let satd_report = self.detect_satd(code)?;
         if satd_report.count > 0 {
@@ -139,7 +145,7 @@ impl AgentQualityGate {
             });
             score -= 20.0;
         }
-        
+
         // Check complexity (simplified)
         if code.lines().count() > 100 {
             issues.push(QualityIssue {
@@ -150,14 +156,14 @@ impl AgentQualityGate {
             });
             score -= 10.0;
         }
-        
+
         Ok(QualityReport {
             passed: issues.is_empty(),
             score: score.max(0.0),
             issues,
         })
     }
-    
+
     /// Check complexity
     pub fn check_complexity(&self, _ast: &Ast) -> Result<ComplexityReport> {
         // Simplified implementation
@@ -167,7 +173,7 @@ impl AgentQualityGate {
             complex_functions: vec![],
         })
     }
-    
+
     /// Detect SATD
     pub fn detect_satd(&self, content: &str) -> Result<SatdReport> {
         let mut locations = Vec::new();
@@ -177,7 +183,7 @@ impl AgentQualityGate {
             concat!("HA", "CK"),
             concat!("XX", "X"),
         ];
-        
+
         for (line_num, line) in content.lines().enumerate() {
             for pattern in &satd_patterns {
                 if line.contains(pattern) {
@@ -185,21 +191,21 @@ impl AgentQualityGate {
                 }
             }
         }
-        
+
         Ok(SatdReport {
             count: locations.len(),
             locations,
         })
     }
-    
+
     /// Auto-fix quality issues
     pub fn auto_fix(&self, code: &str) -> Result<String> {
         if !self.config.auto_fix {
             return Ok(code.to_string());
         }
-        
+
         let mut fixed = code.to_string();
-        
+
         // Remove SATD comments
         let satd_patterns = [
             concat!("// TO", "DO:"),
@@ -210,7 +216,7 @@ impl AgentQualityGate {
         for pattern in &satd_patterns {
             fixed = fixed.replace(pattern, "//");
         }
-        
+
         Ok(fixed)
     }
 }
@@ -230,13 +236,13 @@ mod tests {
     #[test]
     fn test_validate_clean_code() {
         let gate = AgentQualityGate::new();
-        
+
         let code = r#"
 fn clean_function() {
     println!("Clean code");
 }
 "#;
-        
+
         let report = gate.validate_code(code).unwrap();
         assert!(report.passed);
         assert_eq!(report.score, 100.0);
@@ -246,7 +252,7 @@ fn clean_function() {
     #[test]
     fn test_detect_satd() {
         let gate = AgentQualityGate::new();
-        
+
         let code = r#"
 // T-O-D-O: Fix this later
 fn test() {
@@ -254,7 +260,7 @@ fn test() {
     println!("test");
 }
 "#;
-        
+
         let report = gate.detect_satd(code).unwrap();
         assert_eq!(report.count, 2);
         assert_eq!(report.locations.len(), 2);
@@ -263,10 +269,10 @@ fn test() {
     #[test]
     fn test_auto_fix() {
         let gate = AgentQualityGate::new();
-        
+
         let code = concat!("// TO", "DO: Fix this\nfn test() {}");
         let fixed = gate.auto_fix(code).unwrap();
-        
+
         assert!(!fixed.contains(concat!("TO", "DO:")));
         assert!(fixed.contains("//\nfn test()"));
     }
@@ -275,7 +281,7 @@ fn test() {
     fn test_complexity_check() {
         let gate = AgentQualityGate::new();
         let ast = Ast { nodes: vec![] };
-        
+
         let report = gate.check_complexity(&ast).unwrap();
         assert_eq!(report.max_complexity, 5);
         assert_eq!(report.avg_complexity, 3.0);

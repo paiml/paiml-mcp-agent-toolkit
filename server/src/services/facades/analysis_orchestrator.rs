@@ -166,7 +166,7 @@ impl AnalysisOrchestrator {
                     Ok(AnalysisTaskResult::Complexity(r)) => complexity_result = Some(r),
                     Ok(AnalysisTaskResult::DeadCode(r)) => dead_code_result = Some(r),
                     Ok(AnalysisTaskResult::Satd(r)) => satd_result = Some(r),
-                    Err(e) => eprintln!("Warning: {} analysis failed: {}", task_name, e),
+                    Err(e) => eprintln!("Warning: {task_name} analysis failed: {e}"),
                 }
             }
         }
@@ -195,7 +195,7 @@ impl AnalysisOrchestrator {
 
             match self.complexity_facade.analyze_project(req).await {
                 Ok(result) => complexity_result = Some(result),
-                Err(e) => eprintln!("Warning: Complexity analysis failed: {}", e),
+                Err(e) => eprintln!("Warning: Complexity analysis failed: {e}"),
             }
         }
 
@@ -210,7 +210,7 @@ impl AnalysisOrchestrator {
 
             match self.dead_code_facade.analyze_project(req).await {
                 Ok(result) => dead_code_result = Some(result),
-                Err(e) => eprintln!("Warning: Dead code analysis failed: {}", e),
+                Err(e) => eprintln!("Warning: Dead code analysis failed: {e}"),
             }
         }
 
@@ -224,7 +224,7 @@ impl AnalysisOrchestrator {
 
             match self.satd_facade.analyze_project(req).await {
                 Ok(result) => satd_result = Some(result),
-                Err(e) => eprintln!("Warning: SATD analysis failed: {}", e),
+                Err(e) => eprintln!("Warning: SATD analysis failed: {e}"),
             }
         }
 
@@ -367,7 +367,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

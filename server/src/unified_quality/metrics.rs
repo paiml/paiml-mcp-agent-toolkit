@@ -8,22 +8,22 @@ use std::time::SystemTime;
 pub struct Metrics {
     /// Cyclomatic complexity
     pub complexity: u32,
-    
+
     /// Cognitive complexity
     pub cognitive: u32,
-    
+
     /// SATD comment count
     pub satd_count: u32,
-    
+
     /// Code coverage percentage
     pub coverage: f64,
-    
+
     /// Lines of code
     pub lines: u32,
-    
+
     /// Number of functions
     pub functions: u32,
-    
+
     /// Timestamp of measurement
     pub timestamp: SystemTime,
 }
@@ -46,42 +46,42 @@ impl Metrics {
     /// Calculate quality score (0.0 - 1.0)
     pub fn quality_score(&self) -> f64 {
         let mut score = 1.0;
-        
+
         // Penalize high complexity
         if self.complexity > 20 {
             score -= 0.3;
         } else if self.complexity > 10 {
             score -= 0.1;
         }
-        
+
         // Penalize high cognitive complexity
         if self.cognitive > 15 {
             score -= 0.2;
         } else if self.cognitive > 10 {
             score -= 0.1;
         }
-        
+
         // Penalize SATD
         if self.satd_count > 0 {
             score -= (self.satd_count as f64 * 0.05).min(0.3);
         }
-        
+
         // Penalize low coverage
         if self.coverage < 0.6 {
             score -= 0.2;
         } else if self.coverage < 0.8 {
             score -= 0.1;
         }
-        
+
         score.max(0.0)
     }
-    
+
     /// Check if metrics meet quality thresholds
     pub fn meets_thresholds(&self, thresholds: &QualityThresholds) -> bool {
-        self.complexity <= thresholds.max_complexity &&
-        self.cognitive <= thresholds.max_cognitive &&
-        self.satd_count <= thresholds.max_satd &&
-        self.coverage >= thresholds.min_coverage
+        self.complexity <= thresholds.max_complexity
+            && self.cognitive <= thresholds.max_cognitive
+            && self.satd_count <= thresholds.max_satd
+            && self.coverage >= thresholds.min_coverage
     }
 }
 
@@ -110,28 +110,28 @@ impl Default for QualityThresholds {
 pub struct ProjectMetrics {
     /// Total files analyzed
     pub total_files: usize,
-    
+
     /// Total functions analyzed
     pub total_functions: usize,
-    
+
     /// Average complexity
     pub avg_complexity: f64,
-    
+
     /// Average cognitive complexity
     pub avg_cognitive: f64,
-    
+
     /// Total SATD issues
     pub total_satd: u32,
-    
+
     /// Average coverage
     pub avg_coverage: f64,
-    
+
     /// Files violating thresholds
     pub violations: Vec<Violation>,
-    
+
     /// Overall quality score
     pub quality_score: f64,
-    
+
     /// Timestamp
     pub timestamp: SystemTime,
 }
@@ -182,7 +182,7 @@ mod tests {
             functions: 5,
             timestamp: SystemTime::now(),
         };
-        
+
         assert!(metrics.quality_score() > 0.9);
     }
 
@@ -197,7 +197,7 @@ mod tests {
             functions: 10,
             timestamp: SystemTime::now(),
         };
-        
+
         assert!(metrics.quality_score() < 0.5);
     }
 
@@ -212,7 +212,7 @@ mod tests {
             functions: 5,
             timestamp: SystemTime::now(),
         };
-        
+
         let thresholds = QualityThresholds::default();
         assert!(metrics.meets_thresholds(&thresholds));
     }

@@ -236,10 +236,10 @@ pub async fn handle_analyze_lint_hotspot(
     if !include.is_empty() || !exclude.is_empty() {
         eprintln!("🔍 Applying file filters...");
         if !include.is_empty() {
-            eprintln!("  Include patterns: {:?}", include);
+            eprintln!("  Include patterns: {include:?}");
         }
         if !exclude.is_empty() {
-            eprintln!("  Exclude patterns: {:?}", exclude);
+            eprintln!("  Exclude patterns: {exclude:?}");
         }
     }
 
@@ -424,7 +424,7 @@ async fn output_results(
     if let Some(output_path) = &params.output {
         tokio::fs::write(output_path, &output_content).await?;
     } else {
-        println!("{}", output_content);
+        println!("{output_content}");
     }
 
     Ok(())
@@ -906,7 +906,7 @@ fn generate_refactor_chain(hotspot: &LintHotspot, min_confidence: f64) -> Refact
 
         if confidence >= min_confidence {
             steps.push(RefactorStep {
-                id: format!("fix-{}", lint_code),
+                id: format!("fix-{lint_code}"),
                 lint: lint_code.clone(),
                 confidence,
                 impact: *count,
@@ -1108,7 +1108,7 @@ pub fn format_summary(
 
     output.push_str("## Top Violations\n");
     for (lint, count) in result.hotspot.top_lints.iter().take(5) {
-        output.push_str(&format!("- {}: {} occurrences\n", lint, count));
+        output.push_str(&format!("- {lint}: {count} occurrences\n"));
     }
 
     if let Some(enforcement) = &result.enforcement {
@@ -1172,7 +1172,7 @@ fn format_detailed(
             violation.message
         ));
         if let Some(suggestion) = &violation.suggestion {
-            output.push_str(&format!("  Suggestion: {}\n", suggestion));
+            output.push_str(&format!("  Suggestion: {suggestion}\n"));
         }
     }
 
@@ -1314,7 +1314,7 @@ fn check_clippy_output(output: &std::process::Output) -> Result<()> {
     {
         let stderr = String::from_utf8_lossy(&output.stderr);
         eprintln!("⚠️  Clippy exited with status: {:?}", output.status);
-        eprintln!("Stderr: {}", stderr);
+        eprintln!("Stderr: {stderr}");
     }
     Ok(())
 }
@@ -1340,7 +1340,7 @@ fn parse_clippy_json_output(
     }
 
     if std::env::var("LINT_HOTSPOT_DEBUG").is_ok() {
-        eprintln!("📊 Processed {} compiler messages", message_count);
+        eprintln!("📊 Processed {message_count} compiler messages");
         eprintln!("📁 Files with metrics: {}", file_metrics.len());
     }
 
@@ -1682,7 +1682,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

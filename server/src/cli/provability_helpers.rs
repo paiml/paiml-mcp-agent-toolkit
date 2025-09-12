@@ -69,7 +69,7 @@ pub async fn discover_project_functions(project_path: &Path) -> Result<Vec<Funct
         }
     }
 
-    eprintln!("📊 Found {} source files", file_count);
+    eprintln!("📊 Found {file_count} source files");
     Ok(function_ids)
 }
 
@@ -203,7 +203,7 @@ pub fn format_provability_summary(
 
 fn write_summary_header(output: &mut String, total_functions: usize) -> Result<()> {
     writeln!(output, "# Provability Analysis Summary\n")?;
-    writeln!(output, "Total functions analyzed: {}", total_functions)?;
+    writeln!(output, "Total functions analyzed: {total_functions}")?;
     Ok(())
 }
 
@@ -211,9 +211,9 @@ fn write_score_distribution(output: &mut String, summaries: &[ProofSummary]) -> 
     let (high_count, medium_count, low_count) = categorize_scores(summaries);
 
     writeln!(output, "\n## Score Distribution:")?;
-    writeln!(output, "- High (≥80%): {} functions", high_count)?;
-    writeln!(output, "- Medium (50-79%): {} functions", medium_count)?;
-    writeln!(output, "- Low (<50%): {} functions", low_count)?;
+    writeln!(output, "- High (≥80%): {high_count} functions")?;
+    writeln!(output, "- Medium (50-79%): {medium_count} functions")?;
+    writeln!(output, "- Low (<50%): {low_count} functions")?;
 
     Ok(())
 }
@@ -374,7 +374,7 @@ fn write_file_section(
     functions: &[(&FunctionId, &ProofSummary)],
     include_evidence: bool,
 ) -> Result<()> {
-    writeln!(output, "## {}\n", file_path)?;
+    writeln!(output, "## {file_path}\n")?;
 
     for (func_id, summary) in functions {
         write_function_details(output, func_id, summary)?;
@@ -556,7 +556,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

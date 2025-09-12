@@ -1,5 +1,5 @@
 //! Performance benchmarking and optimization for unified quality system
-//! 
+//!
 //! Provides comprehensive performance monitoring, benchmarking, and optimization
 
 use anyhow::Result;
@@ -13,13 +13,13 @@ use tokio::time::interval;
 pub struct PerformanceMonitor {
     /// Active benchmarks
     benchmarks: HashMap<String, BenchmarkSuite>,
-    
+
     /// Performance metrics storage
     metrics: PerformanceMetrics,
-    
+
     /// Optimization engine
     optimizer: PerformanceOptimizer,
-    
+
     /// Configuration
     config: PerformanceConfig,
 }
@@ -29,16 +29,16 @@ pub struct PerformanceMonitor {
 pub struct PerformanceConfig {
     /// Enable continuous monitoring
     pub continuous_monitoring: bool,
-    
+
     /// Benchmark frequency
     pub benchmark_interval: Duration,
-    
+
     /// Performance thresholds
     pub thresholds: PerformanceThresholds,
-    
+
     /// Optimization settings
     pub optimization: OptimizationConfig,
-    
+
     /// Retention settings
     pub retention: RetentionConfig,
 }
@@ -48,13 +48,13 @@ pub struct PerformanceConfig {
 pub struct PerformanceThresholds {
     /// Maximum analysis time per file (ms)
     pub max_analysis_time_ms: u64,
-    
+
     /// Maximum memory usage (MB)
     pub max_memory_mb: u64,
-    
+
     /// Maximum CPU usage percentage
     pub max_cpu_percent: f64,
-    
+
     /// Performance regression threshold (%)
     pub regression_threshold_percent: f64,
 }
@@ -62,9 +62,9 @@ pub struct PerformanceThresholds {
 impl Default for PerformanceThresholds {
     fn default() -> Self {
         Self {
-            max_analysis_time_ms: 5000, // 5 seconds
-            max_memory_mb: 1024,         // 1 GB
-            max_cpu_percent: 80.0,       // 80%
+            max_analysis_time_ms: 5000,         // 5 seconds
+            max_memory_mb: 1024,                // 1 GB
+            max_cpu_percent: 80.0,              // 80%
             regression_threshold_percent: 20.0, // 20% slower
         }
     }
@@ -75,13 +75,13 @@ impl Default for PerformanceThresholds {
 pub struct OptimizationConfig {
     /// Enable automatic optimization
     pub auto_optimize: bool,
-    
+
     /// Optimization strategies to use
     pub strategies: Vec<OptimizationStrategy>,
-    
+
     /// Minimum improvement threshold for applying optimization
     pub min_improvement_percent: f64,
-    
+
     /// Enable experimental optimizations
     pub experimental: bool,
 }
@@ -91,19 +91,19 @@ pub struct OptimizationConfig {
 pub enum OptimizationStrategy {
     /// Cache frequently analyzed files
     CacheOptimization,
-    
+
     /// Parallel processing optimization
     ParallelProcessing,
-    
+
     /// Memory pooling
     MemoryPooling,
-    
+
     /// Incremental parsing optimization
     IncrementalParsing,
-    
+
     /// I/O optimization
     IoOptimization,
-    
+
     /// AST reuse
     AstReuse,
 }
@@ -113,10 +113,10 @@ pub enum OptimizationStrategy {
 pub struct RetentionConfig {
     /// Keep detailed metrics for this duration
     pub detailed_retention: Duration,
-    
+
     /// Keep summary metrics for this duration
     pub summary_retention: Duration,
-    
+
     /// Automatic cleanup enabled
     pub auto_cleanup: bool,
 }
@@ -137,10 +137,10 @@ impl Default for RetentionConfig {
 pub struct PerformanceMetrics {
     /// Time-series data
     timeseries: HashMap<String, Vec<PerformancePoint>>,
-    
+
     /// Aggregated statistics
     statistics: PerformanceStatistics,
-    
+
     /// Baseline measurements
     baselines: HashMap<String, Baseline>,
 }
@@ -150,13 +150,13 @@ pub struct PerformanceMetrics {
 pub struct PerformancePoint {
     /// Timestamp
     pub timestamp: SystemTime,
-    
+
     /// Metric name
     pub metric: String,
-    
+
     /// Measured value
     pub value: f64,
-    
+
     /// Context metadata
     pub context: HashMap<String, String>,
 }
@@ -166,13 +166,13 @@ pub struct PerformancePoint {
 pub struct PerformanceStatistics {
     /// Analysis performance
     pub analysis: AnalysisStats,
-    
+
     /// Memory usage statistics
     pub memory: MemoryStats,
-    
+
     /// I/O performance statistics
     pub io: IoStats,
-    
+
     /// System resource usage
     pub system: SystemStats,
 }
@@ -182,13 +182,13 @@ pub struct PerformanceStatistics {
 pub struct AnalysisStats {
     /// Average analysis time per file (ms)
     pub avg_analysis_time_ms: f64,
-    
+
     /// Analysis throughput (files/second)
     pub throughput_fps: f64,
-    
+
     /// Cache hit ratio
     pub cache_hit_ratio: f64,
-    
+
     /// Parser efficiency
     pub parser_efficiency: f64,
 }
@@ -198,13 +198,13 @@ pub struct AnalysisStats {
 pub struct MemoryStats {
     /// Peak memory usage (MB)
     pub peak_memory_mb: f64,
-    
+
     /// Average memory usage (MB)
     pub avg_memory_mb: f64,
-    
+
     /// Memory growth rate (MB/hour)
     pub growth_rate_mb_per_hour: f64,
-    
+
     /// Garbage collection impact
     pub gc_impact_percent: f64,
 }
@@ -214,13 +214,13 @@ pub struct MemoryStats {
 pub struct IoStats {
     /// File read performance (MB/s)
     pub read_throughput_mbps: f64,
-    
+
     /// Average file read time (ms)
     pub avg_read_time_ms: f64,
-    
+
     /// I/O wait time percentage
     pub io_wait_percent: f64,
-    
+
     /// Cache effectiveness
     pub cache_effectiveness: f64,
 }
@@ -230,13 +230,13 @@ pub struct IoStats {
 pub struct SystemStats {
     /// CPU utilization percentage
     pub cpu_percent: f64,
-    
+
     /// Thread count
     pub thread_count: u32,
-    
+
     /// System load average
     pub load_average: f64,
-    
+
     /// Network usage (KB/s)
     pub network_kbps: f64,
 }
@@ -246,13 +246,13 @@ pub struct SystemStats {
 pub struct Baseline {
     /// Baseline identifier
     pub id: String,
-    
+
     /// Measured performance values
     pub measurements: HashMap<String, f64>,
-    
+
     /// Measurement timestamp
     pub measured_at: SystemTime,
-    
+
     /// Context information
     pub context: BaselineContext,
 }
@@ -262,10 +262,10 @@ pub struct Baseline {
 pub struct BaselineContext {
     /// System configuration
     pub system_info: SystemInfo,
-    
+
     /// Codebase characteristics
     pub codebase_info: CodebaseInfo,
-    
+
     /// Configuration used
     pub config_hash: String,
 }
@@ -275,13 +275,13 @@ pub struct BaselineContext {
 pub struct SystemInfo {
     /// CPU model
     pub cpu_model: String,
-    
+
     /// Total memory (MB)
     pub total_memory_mb: u64,
-    
+
     /// Operating system
     pub os: String,
-    
+
     /// Rust version
     pub rust_version: String,
 }
@@ -291,13 +291,13 @@ pub struct SystemInfo {
 pub struct CodebaseInfo {
     /// Total lines of code
     pub total_loc: u64,
-    
+
     /// Number of files
     pub file_count: u64,
-    
+
     /// Average complexity
     pub avg_complexity: f64,
-    
+
     /// Primary language
     pub primary_language: String,
 }
@@ -307,10 +307,10 @@ pub struct CodebaseInfo {
 pub struct BenchmarkSuite {
     /// Suite name
     pub name: String,
-    
+
     /// Individual benchmarks
     pub benchmarks: Vec<Benchmark>,
-    
+
     /// Suite configuration
     pub config: BenchmarkConfig,
 }
@@ -320,16 +320,16 @@ pub struct BenchmarkSuite {
 pub struct Benchmark {
     /// Benchmark name
     pub name: String,
-    
+
     /// Benchmark function
     pub benchmark_fn: BenchmarkFn,
-    
+
     /// Setup function
     pub setup_fn: Option<SetupFn>,
-    
+
     /// Teardown function
     pub teardown_fn: Option<TeardownFn>,
-    
+
     /// Expected performance characteristics
     pub expected: ExpectedPerformance,
 }
@@ -344,10 +344,10 @@ pub type TeardownFn = fn(BenchmarkContext) -> Result<()>;
 pub struct BenchmarkContext {
     /// Test data
     pub test_data: HashMap<String, Vec<u8>>,
-    
+
     /// Temporary directory
     pub temp_dir: PathBuf,
-    
+
     /// Configuration
     pub config: HashMap<String, String>,
 }
@@ -357,19 +357,19 @@ pub struct BenchmarkContext {
 pub struct BenchmarkResult {
     /// Execution time
     pub execution_time: Duration,
-    
+
     /// Memory used (bytes)
     pub memory_used: u64,
-    
+
     /// CPU time
     pub cpu_time: Duration,
-    
+
     /// Throughput (operations/second)
     pub throughput: f64,
-    
+
     /// Success indicator
     pub success: bool,
-    
+
     /// Additional metrics
     pub metrics: HashMap<String, f64>,
 }
@@ -379,13 +379,13 @@ pub struct BenchmarkResult {
 pub struct ExpectedPerformance {
     /// Maximum execution time
     pub max_execution_time: Duration,
-    
+
     /// Maximum memory usage
     pub max_memory_bytes: u64,
-    
+
     /// Minimum throughput
     pub min_throughput: f64,
-    
+
     /// Performance regression threshold
     pub regression_threshold: f64,
 }
@@ -395,13 +395,13 @@ pub struct ExpectedPerformance {
 pub struct BenchmarkConfig {
     /// Number of iterations
     pub iterations: u32,
-    
+
     /// Warmup iterations
     pub warmup_iterations: u32,
-    
+
     /// Timeout for each benchmark
     pub timeout: Duration,
-    
+
     /// Parallel execution
     pub parallel: bool,
 }
@@ -420,12 +420,14 @@ impl Default for BenchmarkConfig {
 /// Performance optimizer
 pub struct PerformanceOptimizer {
     /// Active optimizations
+    #[allow(dead_code)]
     optimizations: Vec<ActiveOptimization>,
-    
+
     /// Optimization history
     history: Vec<OptimizationResult>,
-    
+
     /// Configuration
+    #[allow(dead_code)]
     config: OptimizationConfig,
 }
 
@@ -434,13 +436,13 @@ pub struct PerformanceOptimizer {
 pub struct ActiveOptimization {
     /// Optimization strategy
     pub strategy: OptimizationStrategy,
-    
+
     /// Target metric
     pub target_metric: String,
-    
+
     /// Expected improvement
     pub expected_improvement: f64,
-    
+
     /// Implementation status
     pub status: OptimizationStatus,
 }
@@ -450,22 +452,22 @@ pub struct ActiveOptimization {
 pub enum OptimizationStatus {
     /// Being analyzed
     Analyzing,
-    
+
     /// Ready to implement
     Ready,
-    
+
     /// Currently implementing
     Implementing,
-    
+
     /// Testing performance impact
     Testing,
-    
+
     /// Successfully applied
     Applied,
-    
+
     /// Failed to apply
     Failed(String),
-    
+
     /// Rolled back due to issues
     RolledBack(String),
 }
@@ -475,16 +477,16 @@ pub enum OptimizationStatus {
 pub struct OptimizationResult {
     /// Applied strategy
     pub strategy: OptimizationStrategy,
-    
+
     /// Measured improvement
     pub improvement_percent: f64,
-    
+
     /// Affected metrics
     pub metrics_changed: HashMap<String, f64>,
-    
+
     /// Application timestamp
     pub applied_at: SystemTime,
-    
+
     /// Success indicator
     pub success: bool,
 }
@@ -499,54 +501,56 @@ impl PerformanceMonitor {
             config,
         }
     }
-    
+
     /// Start continuous performance monitoring
     pub async fn start_monitoring(&mut self) -> Result<()> {
         if !self.config.continuous_monitoring {
             return Ok(());
         }
-        
+
         let mut interval = interval(self.config.benchmark_interval);
-        
+
         loop {
             interval.tick().await;
-            
+
             // Collect performance metrics
             self.collect_metrics().await?;
-            
+
             // Check for performance regressions
             self.check_regressions().await?;
-            
+
             // Apply optimizations if configured
             if self.config.optimization.auto_optimize {
                 self.auto_optimize().await?;
             }
-            
+
             // Cleanup old data
             if self.config.retention.auto_cleanup {
                 self.cleanup_old_data().await?;
             }
         }
     }
-    
+
     /// Run comprehensive performance benchmark
     pub async fn run_benchmark(&mut self, suite_name: &str) -> Result<BenchmarkReport> {
-        let suite = self.benchmarks.get(suite_name)
+        let suite = self
+            .benchmarks
+            .get(suite_name)
             .ok_or_else(|| anyhow::anyhow!("Benchmark suite not found: {}", suite_name))?;
-        
+
         let mut results = Vec::new();
-        
+
         for benchmark in &suite.benchmarks {
             let result = self.run_single_benchmark(benchmark).await?;
             results.push((benchmark.name.clone(), result));
         }
-        
+
         // Calculate summary statistics
         let summary = self.calculate_summary_stats(&results);
-        
+
         // Check for regressions
         let regressions = self.detect_regressions(&results).await?;
-        
+
         let report = BenchmarkReport {
             suite_name: suite_name.to_string(),
             executed_at: SystemTime::now(),
@@ -555,22 +559,22 @@ impl PerformanceMonitor {
             regressions,
             recommendations: self.generate_recommendations(&summary),
         };
-        
+
         // Store results for trend analysis
         self.store_benchmark_results(&report).await?;
-        
+
         Ok(report)
     }
-    
+
     /// Establish performance baseline
     pub async fn establish_baseline(&mut self, baseline_id: String) -> Result<Baseline> {
         // Collect current system information
         let system_info = self.collect_system_info().await?;
         let codebase_info = self.collect_codebase_info().await?;
-        
+
         // Run comprehensive measurements
         let measurements = self.collect_baseline_measurements().await?;
-        
+
         let baseline = Baseline {
             id: baseline_id.clone(),
             measurements,
@@ -581,12 +585,12 @@ impl PerformanceMonitor {
                 config_hash: self.calculate_config_hash(),
             },
         };
-        
+
         self.metrics.baselines.insert(baseline_id, baseline.clone());
-        
+
         Ok(baseline)
     }
-    
+
     /// Apply performance optimization
     pub async fn apply_optimization(
         &mut self,
@@ -594,7 +598,7 @@ impl PerformanceMonitor {
     ) -> Result<OptimizationResult> {
         // Measure baseline performance
         let baseline = self.collect_baseline_measurements().await?;
-        
+
         // Apply optimization strategy
         match strategy {
             OptimizationStrategy::CacheOptimization => {
@@ -616,14 +620,14 @@ impl PerformanceMonitor {
                 self.optimize_ast_reuse().await?;
             }
         }
-        
+
         // Measure performance after optimization
         tokio::time::sleep(Duration::from_secs(1)).await; // Allow system to stabilize
         let optimized = self.collect_baseline_measurements().await?;
-        
+
         // Calculate improvement
         let improvement = self.calculate_improvement(&baseline, &optimized);
-        
+
         let result = OptimizationResult {
             strategy,
             improvement_percent: improvement,
@@ -631,12 +635,12 @@ impl PerformanceMonitor {
             applied_at: SystemTime::now(),
             success: improvement > self.config.optimization.min_improvement_percent,
         };
-        
+
         self.optimizer.history.push(result.clone());
-        
+
         Ok(result)
     }
-    
+
     /// Generate performance report
     pub fn generate_performance_report(&self) -> PerformanceReport {
         PerformanceReport {
@@ -648,29 +652,29 @@ impl PerformanceMonitor {
             alerts: self.generate_performance_alerts(),
         }
     }
-    
+
     // Private implementation methods
-    
+
     async fn collect_metrics(&mut self) -> Result<()> {
         // Implementation would collect various performance metrics
         Ok(())
     }
-    
+
     async fn check_regressions(&self) -> Result<()> {
         // Implementation would check for performance regressions
         Ok(())
     }
-    
+
     async fn auto_optimize(&mut self) -> Result<()> {
         // Implementation would apply automatic optimizations
         Ok(())
     }
-    
+
     async fn cleanup_old_data(&mut self) -> Result<()> {
         // Implementation would clean up old performance data
         Ok(())
     }
-    
+
     async fn run_single_benchmark(&self, _benchmark: &Benchmark) -> Result<BenchmarkResult> {
         // Implementation would run individual benchmark
         Ok(BenchmarkResult {
@@ -682,7 +686,7 @@ impl PerformanceMonitor {
             metrics: HashMap::new(),
         })
     }
-    
+
     fn calculate_summary_stats(&self, _results: &[(String, BenchmarkResult)]) -> BenchmarkSummary {
         BenchmarkSummary {
             total_benchmarks: 10,
@@ -693,19 +697,22 @@ impl PerformanceMonitor {
             avg_throughput: 100.0,
         }
     }
-    
-    async fn detect_regressions(&self, _results: &[(String, BenchmarkResult)]) -> Result<Vec<PerformanceRegression>> {
+
+    async fn detect_regressions(
+        &self,
+        _results: &[(String, BenchmarkResult)],
+    ) -> Result<Vec<PerformanceRegression>> {
         Ok(Vec::new())
     }
-    
+
     fn generate_recommendations(&self, _summary: &BenchmarkSummary) -> Vec<String> {
         vec!["Consider enabling cache optimization".to_string()]
     }
-    
+
     async fn store_benchmark_results(&mut self, _report: &BenchmarkReport) -> Result<()> {
         Ok(())
     }
-    
+
     async fn collect_system_info(&self) -> Result<SystemInfo> {
         Ok(SystemInfo {
             cpu_model: "Unknown".to_string(),
@@ -714,7 +721,7 @@ impl PerformanceMonitor {
             rust_version: "1.70.0".to_string(),
         })
     }
-    
+
     async fn collect_codebase_info(&self) -> Result<CodebaseInfo> {
         Ok(CodebaseInfo {
             total_loc: 100000,
@@ -723,7 +730,7 @@ impl PerformanceMonitor {
             primary_language: "rust".to_string(),
         })
     }
-    
+
     async fn collect_baseline_measurements(&self) -> Result<HashMap<String, f64>> {
         let mut measurements = HashMap::new();
         measurements.insert("analysis_time_ms".to_string(), 150.0);
@@ -731,25 +738,41 @@ impl PerformanceMonitor {
         measurements.insert("throughput_fps".to_string(), 50.0);
         Ok(measurements)
     }
-    
+
     fn calculate_config_hash(&self) -> String {
         // Would calculate hash of current configuration
         "config_hash_placeholder".to_string()
     }
-    
+
     // Optimization implementations
-    async fn optimize_caching(&mut self) -> Result<()> { Ok(()) }
-    async fn optimize_parallel_processing(&mut self) -> Result<()> { Ok(()) }
-    async fn optimize_memory_pooling(&mut self) -> Result<()> { Ok(()) }
-    async fn optimize_incremental_parsing(&mut self) -> Result<()> { Ok(()) }
-    async fn optimize_io(&mut self) -> Result<()> { Ok(()) }
-    async fn optimize_ast_reuse(&mut self) -> Result<()> { Ok(()) }
-    
-    fn calculate_improvement(&self, baseline: &HashMap<String, f64>, optimized: &HashMap<String, f64>) -> f64 {
+    async fn optimize_caching(&mut self) -> Result<()> {
+        Ok(())
+    }
+    async fn optimize_parallel_processing(&mut self) -> Result<()> {
+        Ok(())
+    }
+    async fn optimize_memory_pooling(&mut self) -> Result<()> {
+        Ok(())
+    }
+    async fn optimize_incremental_parsing(&mut self) -> Result<()> {
+        Ok(())
+    }
+    async fn optimize_io(&mut self) -> Result<()> {
+        Ok(())
+    }
+    async fn optimize_ast_reuse(&mut self) -> Result<()> {
+        Ok(())
+    }
+
+    fn calculate_improvement(
+        &self,
+        baseline: &HashMap<String, f64>,
+        optimized: &HashMap<String, f64>,
+    ) -> f64 {
         // Calculate average improvement across all metrics
         let mut total_improvement = 0.0;
         let mut count = 0;
-        
+
         for (key, baseline_value) in baseline {
             if let Some(optimized_value) = optimized.get(key) {
                 let improvement = (baseline_value - optimized_value) / baseline_value * 100.0;
@@ -757,34 +780,38 @@ impl PerformanceMonitor {
                 count += 1;
             }
         }
-        
+
         if count > 0 {
             total_improvement / count as f64
         } else {
             0.0
         }
     }
-    
-    fn calculate_metrics_delta(&self, baseline: &HashMap<String, f64>, optimized: &HashMap<String, f64>) -> HashMap<String, f64> {
+
+    fn calculate_metrics_delta(
+        &self,
+        baseline: &HashMap<String, f64>,
+        optimized: &HashMap<String, f64>,
+    ) -> HashMap<String, f64> {
         let mut delta = HashMap::new();
-        
+
         for (key, baseline_value) in baseline {
             if let Some(optimized_value) = optimized.get(key) {
                 delta.insert(key.clone(), optimized_value - baseline_value);
             }
         }
-        
+
         delta
     }
-    
+
     fn get_recent_benchmark_results(&self, _count: usize) -> Vec<BenchmarkReport> {
         Vec::new() // Would return recent benchmark results
     }
-    
+
     fn generate_system_recommendations(&self) -> Vec<String> {
         vec!["System appears to be performing well".to_string()]
     }
-    
+
     fn generate_performance_alerts(&self) -> Vec<PerformanceAlert> {
         Vec::new() // Would generate performance alerts
     }
@@ -826,10 +853,10 @@ pub struct PerformanceRegression {
 /// Regression severity levels
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum RegressionSeverity {
-    Minor,      // < 10% regression
-    Moderate,   // 10-25% regression
-    Severe,     // 25-50% regression
-    Critical,   // > 50% regression
+    Minor,    // < 10% regression
+    Moderate, // 10-25% regression
+    Severe,   // 25-50% regression
+    Critical, // > 50% regression
 }
 
 /// Comprehensive performance report
@@ -871,6 +898,12 @@ pub enum AlertSeverity {
     Info,
     Warning,
     Critical,
+}
+
+impl Default for PerformanceMetrics {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl PerformanceMetrics {
@@ -965,7 +998,7 @@ mod tests {
             OptimizationStrategy::IoOptimization,
             OptimizationStrategy::AstReuse,
         ];
-        
+
         assert_eq!(strategies.len(), 6);
     }
 
@@ -983,7 +1016,7 @@ mod tests {
             },
             retention: RetentionConfig::default(),
         };
-        
+
         let monitor = PerformanceMonitor::new(config);
         assert!(!monitor.config.continuous_monitoring);
     }
@@ -996,9 +1029,9 @@ mod tests {
             RegressionSeverity::Severe,
             RegressionSeverity::Critical,
         ];
-        
+
         assert_eq!(severities.len(), 4);
-        
+
         // Test serialization
         let serialized = serde_json::to_string(&severities[0]).unwrap();
         assert!(serialized.contains("Minor"));

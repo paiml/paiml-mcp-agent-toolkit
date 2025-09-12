@@ -1,14 +1,14 @@
 //! Anchored quality metrics and baseline management
 
+use chrono::{DateTime, Duration, Utc};
+use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
-use chrono::{DateTime, Utc, Duration};
-use serde::{Serialize, Deserialize};
 
 /// Multi-point baseline system for quality assessment
 #[derive(Debug, Clone)]
 pub struct QualityBaseline {
     release_anchor: Metrics,      // Last major release (immutable)
-    stable_anchor: Metrics,        // Last stable tag
+    stable_anchor: Metrics,       // Last stable tag
     rolling_window: RollingStats, // Recent 30 days
 }
 
@@ -24,7 +24,7 @@ impl QualityBaseline {
     /// Evaluate current metrics against baselines
     pub fn evaluate(&self, current: &Metrics) -> QualityAssessment {
         let mut violations = Vec::new();
-        
+
         // Hard limit: Never exceed release anchor p99
         if current.complexity_p95 > self.release_anchor.complexity_p99 {
             violations.push(Violation::ComplexityRegression {
@@ -33,7 +33,7 @@ impl QualityBaseline {
                 severity: Severity::Error,
             });
         }
-        
+
         // Soft limit: Warn if exceeding stable anchor p95
         if current.complexity_p90 > self.stable_anchor.complexity_p95 {
             violations.push(Violation::ComplexityCreep {
@@ -42,7 +42,7 @@ impl QualityBaseline {
                 severity: Severity::Warning,
             });
         }
-        
+
         // Trend detection: Alert on sustained increases
         if self.rolling_window.trend_slope() > 0.1 {
             violations.push(Violation::QualityErosion {
@@ -50,17 +50,20 @@ impl QualityBaseline {
                 severity: Severity::Warning,
             });
         }
-        
+
         // Binary size checks
         if current.binary_size > (self.release_anchor.binary_size as f64 * 1.2) as usize {
             violations.push(Violation::BinarySizeIncrease {
                 current: current.binary_size,
                 baseline: self.release_anchor.binary_size,
-                increase_percent: ((current.binary_size as f64 / self.release_anchor.binary_size as f64 - 1.0) * 100.0),
+                increase_percent: ((current.binary_size as f64
+                    / self.release_anchor.binary_size as f64
+                    - 1.0)
+                    * 100.0),
                 severity: Severity::Warning,
             });
         }
-        
+
         // Performance regression checks
         if current.init_time_ms > (self.stable_anchor.init_time_ms as f64 * 1.5) as u32 {
             violations.push(Violation::PerformanceRegression {
@@ -70,11 +73,11 @@ impl QualityBaseline {
                 severity: Severity::Error,
             });
         }
-        
+
         let health = self.calculate_health_score(current);
         let rec = self.generate_recommendation(&violations);
-        
-        QualityAssessment { 
+
+        QualityAssessment {
             violations,
             overall_health: health,
             recommendation: rec,
@@ -89,25 +92,26 @@ impl QualityBaseline {
     /// Calculate overall health score (0-100)
     fn calculate_health_score(&self, current: &Metrics) -> f64 {
         let mut score = 100.0;
-        
+
         // Complexity penalty
-        let complexity_ratio = current.complexity_p90 as f64 / self.stable_anchor.complexity_p90 as f64;
+        let complexity_ratio =
+            current.complexity_p90 as f64 / self.stable_anchor.complexity_p90 as f64;
         if complexity_ratio > 1.0 {
             score -= (complexity_ratio - 1.0) * 20.0;
         }
-        
+
         // Binary size penalty
         let size_ratio = current.binary_size as f64 / self.stable_anchor.binary_size as f64;
         if size_ratio > 1.0 {
             score -= (size_ratio - 1.0) * 15.0;
         }
-        
+
         // Performance penalty
         let perf_ratio = current.init_time_ms as f64 / self.stable_anchor.init_time_ms as f64;
         if perf_ratio > 1.0 {
             score -= (perf_ratio - 1.0) * 25.0;
         }
-        
+
         score.max(0.0)
     }
 
@@ -116,13 +120,14 @@ impl QualityBaseline {
         if violations.is_empty() {
             return "Quality metrics are within acceptable bounds.".to_string();
         }
-        
-        let critical_count = violations.iter()
+
+        let critical_count = violations
+            .iter()
             .filter(|v| matches!(v.severity(), Severity::Error))
             .count();
-        
+
         if critical_count > 0 {
-            format!("⚠️ {} critical violations detected. Immediate action required to address quality regressions.", critical_count)
+            format!("⚠️ {critical_count} critical violations detected. Immediate action required to address quality regressions.")
         } else {
             "Quality metrics show concerning trends. Consider refactoring to improve maintainability.".to_string()
         }
@@ -176,7 +181,7 @@ impl RollingStats {
 
     pub fn add_point(&mut self, metrics: Metrics) {
         self.data_points.push_back(metrics);
-        
+
         // Remove old points outside window
         let cutoff = Utc::now() - Duration::days(self.window_days as i64);
         while let Some(front) = self.data_points.front() {
@@ -193,27 +198,27 @@ impl RollingStats {
         if self.data_points.len() < 2 {
             return 0.0;
         }
-        
+
         let n = self.data_points.len() as f64;
         let mut sum_x = 0.0;
         let mut sum_y = 0.0;
         let mut sum_xy = 0.0;
         let mut sum_x2 = 0.0;
-        
+
         for (i, point) in self.data_points.iter().enumerate() {
             let x = i as f64;
             let y = point.complexity_p90 as f64;
-            
+
             sum_x += x;
             sum_y += y;
             sum_xy += x * y;
             sum_x2 += x * x;
         }
-        
+
         // Calculate slope: (n*sum_xy - sum_x*sum_y) / (n*sum_x2 - sum_x^2)
         let numerator = n * sum_xy - sum_x * sum_y;
         let denominator = n * sum_x2 - sum_x * sum_x;
-        
+
         if denominator.abs() < 0.0001 {
             0.0
         } else {
@@ -232,7 +237,8 @@ pub struct QualityAssessment {
 
 impl QualityAssessment {
     pub fn is_passing(&self) -> bool {
-        self.violations.iter()
+        self.violations
+            .iter()
             .all(|v| !matches!(v.severity(), Severity::Error))
     }
 }
@@ -271,30 +277,43 @@ pub enum Violation {
 impl Violation {
     pub fn severity(&self) -> &Severity {
         match self {
-            Self::ComplexityRegression { severity, .. } |
-            Self::ComplexityCreep { severity, .. } |
-            Self::QualityErosion { severity, .. } |
-            Self::BinarySizeIncrease { severity, .. } |
-            Self::PerformanceRegression { severity, .. } => severity,
+            Self::ComplexityRegression { severity, .. }
+            | Self::ComplexityCreep { severity, .. }
+            | Self::QualityErosion { severity, .. }
+            | Self::BinarySizeIncrease { severity, .. }
+            | Self::PerformanceRegression { severity, .. } => severity,
         }
     }
-    
+
     pub fn description(&self) -> String {
         match self {
             Self::ComplexityRegression { current, limit, .. } => {
-                format!("Complexity regression: {} exceeds limit {}", current, limit)
+                format!("Complexity regression: {current} exceeds limit {limit}")
             }
-            Self::ComplexityCreep { current, baseline, .. } => {
-                format!("Complexity creep: {} exceeds baseline {}", current, baseline)
+            Self::ComplexityCreep {
+                current, baseline, ..
+            } => {
+                format!(
+                    "Complexity creep: {current} exceeds baseline {baseline}"
+                )
             }
             Self::QualityErosion { slope, .. } => {
-                format!("Quality erosion detected with slope {:.2}", slope)
+                format!("Quality erosion detected with slope {slope:.2}")
             }
-            Self::BinarySizeIncrease { increase_percent, .. } => {
-                format!("Binary size increased by {:.1}%", increase_percent)
+            Self::BinarySizeIncrease {
+                increase_percent, ..
+            } => {
+                format!("Binary size increased by {increase_percent:.1}%")
             }
-            Self::PerformanceRegression { metric, current, baseline, .. } => {
-                format!("{} regression: {:.1}ms exceeds baseline {:.1}ms", metric, current, baseline)
+            Self::PerformanceRegression {
+                metric,
+                current,
+                baseline,
+                ..
+            } => {
+                format!(
+                    "{metric} regression: {current:.1}ms exceeds baseline {baseline:.1}ms"
+                )
             }
         }
     }
@@ -318,7 +337,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

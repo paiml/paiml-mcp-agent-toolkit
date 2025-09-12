@@ -58,7 +58,7 @@ fn detect_execution_mode() -> ExecutionMode {
 /// Initialize the enhanced tracing system based on CLI flags
 fn init_tracing(cli: &cli::EarlyCliArgs) -> Result<()> {
     let filter = create_env_filter(cli)?;
-    
+
     tracing_subscriber::registry()
         .with(filter)
         .with(
@@ -68,7 +68,7 @@ fn init_tracing(cli: &cli::EarlyCliArgs) -> Result<()> {
                 .with_file(cli.trace)
                 .with_line_number(cli.trace)
                 .compact()
-                .with_writer(std::io::stderr)
+                .with_writer(std::io::stderr),
         )
         .init();
 
@@ -98,14 +98,14 @@ fn create_cli_filter(cli: &cli::EarlyCliArgs) -> Result<EnvFilter> {
     if let Some(ref custom) = cli.trace_filter {
         return Ok(EnvFilter::try_new(custom)?);
     }
-    
+
     let filter_str = match (cli.trace, cli.debug, cli.verbose) {
         (true, _, _) => "debug,pmat=trace",
         (_, true, _) => "warn,pmat=debug",
         (_, _, true) => "warn,pmat=info",
         _ => return Ok(get_default_filter()),
     };
-    
+
     Ok(EnvFilter::new(filter_str))
 }
 
@@ -113,7 +113,6 @@ fn create_cli_filter(cli: &cli::EarlyCliArgs) -> Result<EnvFilter> {
 fn get_default_filter() -> EnvFilter {
     EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("warn"))
 }
-
 
 #[tokio::main]
 async fn main() {
@@ -132,7 +131,7 @@ async fn main() {
 
 fn categorize_error(error: &anyhow::Error) -> ExitCode {
     let error_str = error.to_string().to_lowercase();
-    
+
     match () {
         _ if is_quality_gate_error(&error_str) => ExitCode::QualityGateFailure,
         _ if is_configuration_error(&error_str) => ExitCode::ConfigurationError,
@@ -214,7 +213,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

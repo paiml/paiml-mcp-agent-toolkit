@@ -1458,7 +1458,7 @@ impl SATDDetector {
             .args([
                 "blame",
                 "-L",
-                &format!("{},{}", line, line),
+                &format!("{line},{line}"),
                 "--porcelain",
                 relative_path.to_str()?,
             ])
@@ -2919,7 +2919,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

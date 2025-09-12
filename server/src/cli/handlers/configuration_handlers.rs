@@ -191,7 +191,7 @@ async fn show_configuration(
 
         println!("📄 Raw Configuration (TOML):");
         let toml_content = toml::to_string_pretty(&config)?;
-        println!("{}", toml_content);
+        println!("{toml_content}");
 
         println!("📄 JSON Format:");
         println!("{}", serde_json::to_string_pretty(&config)?);
@@ -202,7 +202,7 @@ async fn show_configuration(
 
 /// Show specific configuration section
 fn show_configuration_section(config: &PmatConfig, section: &str) -> Result<()> {
-    println!("🔧 Configuration Section: {}", section);
+    println!("🔧 Configuration Section: {section}");
     println!("{}", "=".repeat(30 + section.len()));
     println!();
 
@@ -265,7 +265,7 @@ async fn set_configuration_values(
         let key = parts[0];
         let value = parts[1];
 
-        println!("Setting {}: {}", key, value);
+        println!("Setting {key}: {value}");
 
         config_service
             .update_config(|config| set_config_value(config, key, value))
@@ -450,7 +450,7 @@ async fn edit_configuration(config_service: &ConfigurationService) -> Result<()>
         .or_else(|_| std::env::var("VISUAL"))
         .unwrap_or_else(|_| "nano".to_string());
 
-    println!("Opening configuration in {} editor...", editor);
+    println!("Opening configuration in {editor} editor...");
     println!("Save and exit to apply changes, or exit without saving to cancel.");
     println!();
 
@@ -588,7 +588,7 @@ fn report_validation_failure(issues: &[&str]) -> Result<()> {
     println!("❌ Configuration validation failed");
     println!("   Found {} issues:", issues.len());
     for issue in issues {
-        println!("   - {}", issue);
+        println!("   - {issue}");
     }
     Err(anyhow::anyhow!("Configuration validation failed"))
 }
@@ -707,7 +707,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

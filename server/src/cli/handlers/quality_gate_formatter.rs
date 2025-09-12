@@ -199,7 +199,7 @@ fn print_specific_checks(checks: &[QualityCheckType]) {
             QualityCheckType::Coverage => "✓ Test coverage",
             _ => continue, // Skip other types
         };
-        eprintln!("  {}", check_name);
+        eprintln!("  {check_name}");
     }
 }
 
@@ -330,7 +330,7 @@ fn print_check_timing(check: &QualityCheckType, elapsed_secs: f64) {
         QualityCheckType::Provability => "Provability",
         QualityCheckType::All => "All",
     };
-    eprintln!("    ⏱️  {} check: {:.3}s", check_name, elapsed_secs);
+    eprintln!("    ⏱️  {check_name} check: {elapsed_secs:.3}s");
 }
 
 /// Toyota Way: Extract Method - Format quality gate results as JUnit XML (complexity ≤8)
@@ -728,7 +728,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

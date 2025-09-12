@@ -7,7 +7,7 @@ use serde_json::json;
 /// Test that all interfaces accept exactly the same parameters
 #[test]
 fn test_uniform_complexity_contract() {
-    let expected = AnalyzeComplexityContract {
+    let _expected = AnalyzeComplexityContract {
         base: BaseAnalysisContract {
             path: PathBuf::from("."),
             format: OutputFormat::Json,
@@ -62,7 +62,7 @@ fn test_uniform_complexity_contract() {
 #[test]
 fn test_parameter_name_consistency() {
     // These parameter names MUST be identical across all commands and interfaces
-    let standard_params = vec![
+    let _standard_params = vec![
         "path",          // NOT "project_path" or "file_path"
         "format",        // NOT "output_format"
         "output",        // NOT "output_file" or "out"

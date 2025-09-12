@@ -188,22 +188,22 @@ pub struct CacheKeyBuilder;
 impl CacheKeyBuilder {
     /// Build cache key for analysis results
     pub fn analysis_key(file_path: &str, version: &str) -> String {
-        format!("analysis:{}:{}", file_path, version)
+        format!("analysis:{file_path}:{version}")
     }
 
     /// Build cache key for refactoring plans
     pub fn refactor_plan_key(file_path: &str, config_hash: u64) -> String {
-        format!("refactor_plan:{}:{}", file_path, config_hash)
+        format!("refactor_plan:{file_path}:{config_hash}")
     }
 
     /// Build cache key for complexity metrics
     pub fn complexity_key(file_path: &str) -> String {
-        format!("complexity:{}", file_path)
+        format!("complexity:{file_path}")
     }
 
     /// Build cache key for MCP method results
     pub fn method_result_key(method: &str, params_hash: u64) -> String {
-        format!("method:{}:{}", method, params_hash)
+        format!("method:{method}:{params_hash}")
     }
 }
 
@@ -325,7 +325,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

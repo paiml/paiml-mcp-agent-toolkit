@@ -306,7 +306,7 @@ async fn output_results(
     if let Some(output_path) = output {
         tokio::fs::write(output_path, &output_content).await?;
     } else {
-        println!("{}", output_content);
+        println!("{output_content}");
     }
     Ok(())
 }
@@ -507,7 +507,7 @@ fn create_cruft_file(
         size_bytes: metadata.len(),
         modified: metadata.modified().unwrap_or(*now),
         age_days,
-        reason: format!("Matches pattern: {}", pattern),
+        reason: format!("Matches pattern: {pattern}"),
         pattern_matched: pattern.to_string(),
     }
 }
@@ -684,7 +684,7 @@ async fn handle_interactive_mode(mut result: RefactorDocsResult) -> Result<Refac
 async fn create_backup(files: &[CruftFile], backup_dir: &Path) -> Result<()> {
     // Create backup directory with timestamp
     let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S");
-    let backup_path = backup_dir.join(format!("refactor_docs_{}", timestamp));
+    let backup_path = backup_dir.join(format!("refactor_docs_{timestamp}"));
 
     tokio::fs::create_dir_all(&backup_path).await?;
 
@@ -726,11 +726,11 @@ async fn remove_files(files: &[CruftFile]) -> Result<()> {
     if !errors.is_empty() {
         eprintln!("⚠️  Errors during removal:");
         for error in errors {
-            eprintln!("  - {}", error);
+            eprintln!("  - {error}");
         }
     }
 
-    println!("🗑️  Removed {} files", removed);
+    println!("🗑️  Removed {removed} files");
     Ok(())
 }
 
@@ -804,7 +804,7 @@ fn format_summary(
     if !result.errors.is_empty() {
         output.push_str("## ⚠️ Errors\n\n");
         for error in &result.errors {
-            output.push_str(&format!("- {}\n", error));
+            output.push_str(&format!("- {error}\n"));
         }
         output.push('\n');
     }
@@ -918,7 +918,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

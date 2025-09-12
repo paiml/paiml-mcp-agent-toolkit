@@ -273,7 +273,6 @@ mod property_tests {
         }
     }
 
-
     proptest! {
         #[test]
         fn tdg_score_roundtrip_serialization(score in valid_tdg_score()) {
@@ -282,7 +281,7 @@ mod property_tests {
             prop_assert_eq!(score, deserialized);
         }
 
-        #[test] 
+        #[test]
         fn tdg_severity_matches_value(score in valid_tdg_score()) {
             match score.severity {
                 TDGSeverity::Normal => prop_assert!(score.value <= 1.5),
@@ -296,7 +295,7 @@ mod property_tests {
             prop_assert!(score.percentile >= 0.0 && score.percentile <= 100.0);
         }
 
-        #[test] 
+        #[test]
         fn tdg_confidence_in_valid_range(score in valid_tdg_score()) {
             prop_assert!(score.confidence >= 0.0 && score.confidence <= 1.0);
         }
@@ -316,7 +315,7 @@ mod property_tests {
             let severity = if value > 2.5 { TDGSeverity::Critical }
                           else if value > 1.5 { TDGSeverity::Warning }
                           else { TDGSeverity::Normal };
-            
+
             match severity {
                 TDGSeverity::Normal => prop_assert!(value <= 1.5),
                 TDGSeverity::Warning => prop_assert!(value > 1.5 && value <= 2.5),

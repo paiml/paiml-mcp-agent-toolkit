@@ -2,7 +2,7 @@
 
 use pmat::tdg::{
     Grade, InMemoryBackend, Language, SledBackend, StorageBackend, StorageBackendFactory,
-    StorageBackendType, StorageConfig, TdgScore, TieredStorageFactory, TieredStore,
+    StorageBackendType, StorageConfig, TdgScore, TieredStore,
 };
 use std::path::PathBuf;
 use tempfile::TempDir;

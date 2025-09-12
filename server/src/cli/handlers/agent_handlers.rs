@@ -234,8 +234,7 @@ async fn handle_agent_monitor(
         Ok(_) => {
             info!("Project monitoring command sent to daemon successfully");
             println!(
-                "✅ Started monitoring project '{}' at {:?}",
-                project_id, project_path
+                "✅ Started monitoring project '{project_id}' at {project_path:?}"
             );
         }
         Err(e) => {
@@ -260,7 +259,7 @@ async fn handle_agent_unmonitor(project_id: String) -> Result<()> {
     match DaemonManager::stop_monitoring(&project_id).await {
         Ok(_) => {
             info!("Stop monitoring command sent to daemon successfully");
-            println!("✅ Stopped monitoring project '{}'", project_id);
+            println!("✅ Stopped monitoring project '{project_id}'");
         }
         Err(e) => {
             error!("Failed to stop monitoring: {}", e);
@@ -354,7 +353,7 @@ async fn handle_agent_quality_gate(
             println!("✅ Quality gate completed");
             if let Some(violations) = result.violations {
                 if violations > 0 {
-                    println!("⚠️  Found {} quality violations", violations);
+                    println!("⚠️  Found {violations} quality violations");
                 }
             }
         }
@@ -462,7 +461,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

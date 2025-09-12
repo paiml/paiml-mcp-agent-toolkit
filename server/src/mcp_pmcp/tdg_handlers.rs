@@ -59,11 +59,11 @@ impl ToolHandler for TdgSystemDiagnosticsTool {
         debug!("Handling tdg_system_diagnostics with args: {}", args);
 
         let params: TdgSystemDiagnosticsArgs = serde_json::from_value(args)
-            .map_err(|e| Error::validation(format!("Invalid arguments: {}", e)))?;
+            .map_err(|e| Error::validation(format!("Invalid arguments: {e}")))?;
 
         let result = tdg_system_diagnostics(params.detailed, params.components)
             .await
-            .map_err(|e| Error::internal(format!("TDG diagnostics failed: {}", e)))?;
+            .map_err(|e| Error::internal(format!("TDG diagnostics failed: {e}")))?;
 
         Ok(result)
     }
@@ -102,11 +102,11 @@ impl ToolHandler for TdgStorageManagementTool {
         debug!("Handling tdg_storage_management with args: {}", args);
 
         let params: TdgStorageManagementArgs = serde_json::from_value(args)
-            .map_err(|e| Error::validation(format!("Invalid arguments: {}", e)))?;
+            .map_err(|e| Error::validation(format!("Invalid arguments: {e}")))?;
 
         let result = tdg_storage_management(params.action, params.options)
             .await
-            .map_err(|e| Error::internal(format!("TDG storage management failed: {}", e)))?;
+            .map_err(|e| Error::internal(format!("TDG storage management failed: {e}")))?;
 
         Ok(result)
     }
@@ -147,7 +147,7 @@ impl ToolHandler for TdgAnalyzeWithStorageTool {
         debug!("Handling tdg_analyze_with_storage with args: {}", args);
 
         let params: TdgAnalyzeWithStorageArgs = serde_json::from_value(args)
-            .map_err(|e| Error::validation(format!("Invalid arguments: {}", e)))?;
+            .map_err(|e| Error::validation(format!("Invalid arguments: {e}")))?;
 
         let paths: Vec<PathBuf> = params.paths.into_iter().map(PathBuf::from).collect();
 
@@ -159,7 +159,7 @@ impl ToolHandler for TdgAnalyzeWithStorageTool {
 
         let result = tdg_analyze_with_storage(paths, params.storage_backend, params.priority)
             .await
-            .map_err(|e| Error::internal(format!("TDG analysis failed: {}", e)))?;
+            .map_err(|e| Error::internal(format!("TDG analysis failed: {e}")))?;
 
         Ok(result)
     }
@@ -201,11 +201,11 @@ impl ToolHandler for TdgPerformanceMetricsTool {
         debug!("Handling tdg_performance_metrics with args: {}", args);
 
         let _params: TdgPerformanceMetricsArgs = serde_json::from_value(args)
-            .map_err(|e| Error::validation(format!("Invalid arguments: {}", e)))?;
+            .map_err(|e| Error::validation(format!("Invalid arguments: {e}")))?;
 
         let result = tdg_performance_metrics()
             .await
-            .map_err(|e| Error::internal(format!("TDG performance metrics failed: {}", e)))?;
+            .map_err(|e| Error::internal(format!("TDG performance metrics failed: {e}")))?;
 
         Ok(result)
     }
@@ -248,7 +248,7 @@ impl ToolHandler for TdgConfigureStorageTool {
         debug!("Handling tdg_configure_storage with args: {}", args);
 
         let params: TdgConfigureStorageArgs = serde_json::from_value(args)
-            .map_err(|e| Error::validation(format!("Invalid arguments: {}", e)))?;
+            .map_err(|e| Error::validation(format!("Invalid arguments: {e}")))?;
 
         let result = tdg_configure_storage(
             params.backend_type,
@@ -257,7 +257,7 @@ impl ToolHandler for TdgConfigureStorageTool {
             params.compression,
         )
         .await
-        .map_err(|e| Error::internal(format!("TDG storage configuration failed: {}", e)))?;
+        .map_err(|e| Error::internal(format!("TDG storage configuration failed: {e}")))?;
 
         Ok(result)
     }
@@ -306,11 +306,11 @@ impl ToolHandler for TdgHealthCheckTool {
         debug!("Handling tdg_health_check with args: {}", args);
 
         let _params: TdgHealthCheckArgs = serde_json::from_value(args)
-            .map_err(|e| Error::validation(format!("Invalid arguments: {}", e)))?;
+            .map_err(|e| Error::validation(format!("Invalid arguments: {e}")))?;
 
         let result = tdg_health_check()
             .await
-            .map_err(|e| Error::internal(format!("TDG health check failed: {}", e)))?;
+            .map_err(|e| Error::internal(format!("TDG health check failed: {e}")))?;
 
         Ok(result)
     }
@@ -363,7 +363,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

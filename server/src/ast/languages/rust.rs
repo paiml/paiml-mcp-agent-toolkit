@@ -63,7 +63,7 @@ impl LanguageStrategy for RustStrategy {
             if let Some(node) = ast.nodes.get(i as u32) {
                 if node.flags.has(NodeFlags::IMPORT) {
                     // Extract import name from metadata if available
-                    imports.push(format!("import_{}", i));
+                    imports.push(format!("import_{i}"));
                 }
             }
         }

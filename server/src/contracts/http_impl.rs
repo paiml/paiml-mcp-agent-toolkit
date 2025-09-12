@@ -54,7 +54,7 @@ async fn analyze_complexity(
 
     // Parse into contract
     let contract: AnalyzeComplexityContract = serde_json::from_value(params)
-        .map_err(|e| AppError::BadRequest(format!("Invalid parameters: {}", e)))?;
+        .map_err(|e| AppError::BadRequest(format!("Invalid parameters: {e}")))?;
 
     // Process using service
     let result = state
@@ -74,7 +74,7 @@ async fn analyze_satd(
     params = super::adapter::BackwardCompatibility::map_json_params(params);
 
     let contract: AnalyzeSatdContract = serde_json::from_value(params)
-        .map_err(|e| AppError::BadRequest(format!("Invalid parameters: {}", e)))?;
+        .map_err(|e| AppError::BadRequest(format!("Invalid parameters: {e}")))?;
 
     let result = state
         .service
@@ -93,7 +93,7 @@ async fn analyze_dead_code(
     params = super::adapter::BackwardCompatibility::map_json_params(params);
 
     let contract: AnalyzeDeadCodeContract = serde_json::from_value(params)
-        .map_err(|e| AppError::BadRequest(format!("Invalid parameters: {}", e)))?;
+        .map_err(|e| AppError::BadRequest(format!("Invalid parameters: {e}")))?;
 
     let result = state
         .service
@@ -112,7 +112,7 @@ async fn analyze_tdg(
     params = super::adapter::BackwardCompatibility::map_json_params(params);
 
     let contract: AnalyzeTdgContract = serde_json::from_value(params)
-        .map_err(|e| AppError::BadRequest(format!("Invalid parameters: {}", e)))?;
+        .map_err(|e| AppError::BadRequest(format!("Invalid parameters: {e}")))?;
 
     let result = state
         .service
@@ -131,7 +131,7 @@ async fn analyze_lint_hotspot(
     params = super::adapter::BackwardCompatibility::map_json_params(params);
 
     let contract: AnalyzeLintHotspotContract = serde_json::from_value(params)
-        .map_err(|e| AppError::BadRequest(format!("Invalid parameters: {}", e)))?;
+        .map_err(|e| AppError::BadRequest(format!("Invalid parameters: {e}")))?;
 
     let result = state
         .service
@@ -150,7 +150,7 @@ async fn quality_gate(
     params = super::adapter::BackwardCompatibility::map_json_params(params);
 
     let contract: QualityGateContract = serde_json::from_value(params)
-        .map_err(|e| AppError::BadRequest(format!("Invalid parameters: {}", e)))?;
+        .map_err(|e| AppError::BadRequest(format!("Invalid parameters: {e}")))?;
 
     let result = state
         .service
@@ -169,7 +169,7 @@ async fn refactor_auto(
     params = super::adapter::BackwardCompatibility::map_json_params(params);
 
     let contract: RefactorAutoContract = serde_json::from_value(params)
-        .map_err(|e| AppError::BadRequest(format!("Invalid parameters: {}", e)))?;
+        .map_err(|e| AppError::BadRequest(format!("Invalid parameters: {e}")))?;
 
     let result = state
         .service
@@ -504,7 +504,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

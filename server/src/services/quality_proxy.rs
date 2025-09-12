@@ -199,7 +199,7 @@ impl QualityProxyService {
                     .context("Append operation requires content")?;
 
                 if let Some(existing) = &request.old_content {
-                    Ok(format!("{}\n{}", existing, append_content))
+                    Ok(format!("{existing}\n{append_content}"))
                 } else {
                     Ok(append_content.clone())
                 }
@@ -308,7 +308,7 @@ impl QualityProxyService {
                     violations.push(QualityViolation {
                         violation_type: ViolationType::Lint,
                         severity: ViolationSeverity::Warning,
-                        location: format!("{}:{}", file_path, line),
+                        location: format!("{file_path}:{line}"),
                         message: message.clone(),
                         suggestion: Some("Fix lint issue".to_string()),
                     });
@@ -408,7 +408,7 @@ impl QualityProxyService {
                             .next()
                             .unwrap_or("item");
 
-                        new_lines.push(format!("/// {}", item_name));
+                        new_lines.push(format!("/// {item_name}"));
                         let mut step = HashMap::new();
                         step.insert("action".to_string(), serde_json::json!("add_documentation"));
                         step.insert("item".to_string(), serde_json::json!(item_name));
@@ -478,7 +478,7 @@ impl QualityProxyService {
         use std::io::Write;
 
         let mut temp_file = tempfile::Builder::new()
-            .suffix(&format!(".{}", extension))
+            .suffix(&format!(".{extension}"))
             .tempfile()?;
 
         temp_file.write_all(content.as_bytes())?;
@@ -689,7 +689,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

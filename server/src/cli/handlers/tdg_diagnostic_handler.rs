@@ -154,7 +154,7 @@ fn show_backend_details(
 ) {
     println!("\nBackend Details:");
     for (tier, stats) in backend_stats {
-        println!("{}: {:?}", tier, stats);
+        println!("{tier}: {stats:?}");
     }
 }
 
@@ -163,9 +163,9 @@ fn show_human_backend_details(
 ) {
     println!("\nBackend Details:");
     for (tier, stats) in backend_stats {
-        println!("  {}:", tier);
+        println!("  {tier}:");
         for (key, value) in stats {
-            println!("    {}: {}", key, value);
+            println!("    {key}: {value}");
         }
     }
 }
@@ -227,9 +227,9 @@ fn print_backend_statistics(
 ) {
     println!("\nBackend Statistics:");
     for (tier, backend_stats) in backend_stats {
-        println!("\n{}:", tier);
+        println!("\n{tier}:");
         for (key, value) in backend_stats {
-            println!("  {}: {}", key, value);
+            println!("  {key}: {value}");
         }
     }
 }
@@ -237,7 +237,7 @@ fn print_backend_statistics(
 /// Handle cleanup command
 fn handle_cleanup(storage: &TieredStore, max_age: u64) -> Result<()> {
     let removed = storage.cleanup_hot_cache(max_age);
-    println!("Cleaned up {} expired hot cache entries", removed);
+    println!("Cleaned up {removed} expired hot cache entries");
     Ok(())
 }
 
@@ -246,11 +246,11 @@ fn handle_migrate(backend: &str, path: Option<&PathBuf>) -> Result<()> {
     let backend_type = parse_backend_type(backend)?;
     let (warm_config, cold_config) = create_migration_configs(backend_type, path);
 
-    println!("Migrating storage to {} backend...", backend);
+    println!("Migrating storage to {backend} backend...");
     println!("⚠️  Migration requires restart to take effect");
     println!("New configuration:");
-    println!("  Warm storage: {:?}", warm_config);
-    println!("  Cold storage: {:?}", cold_config);
+    println!("  Warm storage: {warm_config:?}");
+    println!("  Cold storage: {cold_config:?}");
 
     Ok(())
 }
@@ -313,15 +313,14 @@ async fn handle_dashboard_command(
     let socket_addr = SocketAddr::new(addr, port);
 
     println!(
-        "📊 Dashboard will be available at: http://{}:{}",
-        host, port
+        "📊 Dashboard will be available at: http://{host}:{port}"
     );
     println!("🔄 Real-time metrics updates enabled");
 
     // Open browser if requested
     if open {
-        if let Err(e) = webbrowser::open(&format!("http://{}:{}", host, port)) {
-            eprintln!("⚠️  Could not open browser: {}", e);
+        if let Err(e) = webbrowser::open(&format!("http://{host}:{port}")) {
+            eprintln!("⚠️  Could not open browser: {e}");
         } else {
             println!("🌐 Opening dashboard in browser...");
         }
@@ -348,7 +347,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

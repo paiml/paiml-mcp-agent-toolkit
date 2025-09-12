@@ -78,13 +78,13 @@ pub fn calculate_simple_complexity(content: &str) -> u32 {
 
 fn count_line_complexity(line: &str) -> u32 {
     let mut line_complexity = 0u32;
-    
+
     line_complexity += count_conditional_statements(line);
     line_complexity += count_loop_statements(line);
     line_complexity += count_pattern_matching(line);
     line_complexity += count_logical_operators(line);
     line_complexity += count_exception_handling(line);
-    
+
     line_complexity
 }
 
@@ -105,8 +105,11 @@ fn count_loop_statements(line: &str) -> u32 {
 }
 
 fn count_pattern_matching(line: &str) -> u32 {
-    if line.starts_with("match ") || line.starts_with("switch ") ||
-       line.contains("=>") || line.starts_with("case ") {
+    if line.starts_with("match ")
+        || line.starts_with("switch ")
+        || line.contains("=>")
+        || line.starts_with("case ")
+    {
         1
     } else {
         0
@@ -241,7 +244,7 @@ pub fn format_summary_output(
 
     output.push_str("Defect Prediction Analysis Summary\n");
     output.push_str("=================================\n");
-    output.push_str(&format!("Files analyzed: {}\n", file_metrics_len));
+    output.push_str(&format!("Files analyzed: {file_metrics_len}\n"));
     output.push_str(&format!(
         "Predictions generated: {}\n",
         filtered_predictions.len()
@@ -355,7 +358,7 @@ pub fn format_detailed_output(
     output.push_str("================================\n");
 
     for (file_path, score) in filtered_predictions {
-        output.push_str(&format!("\n{}\n", file_path));
+        output.push_str(&format!("\n{file_path}\n"));
         output.push_str(&format!("  Risk Level: {:?}\n", score.risk_level));
         output.push_str(&format!(
             "  Probability: {:.1}%\n",
@@ -365,13 +368,13 @@ pub fn format_detailed_output(
 
         output.push_str("  Contributing Factors:\n");
         for (factor, contribution) in &score.contributing_factors {
-            output.push_str(&format!("    {}: {:.3}\n", factor, contribution));
+            output.push_str(&format!("    {factor}: {contribution:.3}\n"));
         }
 
         if include_recommendations && !score.recommendations.is_empty() {
             output.push_str("  Recommendations:\n");
             for rec in &score.recommendations {
-                output.push_str(&format!("    - {}\n", rec));
+                output.push_str(&format!("    - {rec}\n"));
             }
         }
     }
@@ -466,7 +469,7 @@ pub fn format_markdown_output(
             .contributing_factors
             .iter()
             .filter(|(_, v)| *v > 0.2)
-            .map(|(k, v)| format!("{}: {:.2}", k, v))
+            .map(|(k, v)| format!("{k}: {v:.2}"))
             .collect();
 
         output.push_str(&format!(
@@ -482,7 +485,7 @@ pub fn format_markdown_output(
         output.push_str("\n## Recommendations\n\n");
         let recommendations = generate_recommendations(filtered_predictions);
         for rec in recommendations {
-            output.push_str(&format!("{}\n", rec));
+            output.push_str(&format!("{rec}\n"));
         }
     }
 
@@ -597,7 +600,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

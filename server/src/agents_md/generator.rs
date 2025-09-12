@@ -1,5 +1,5 @@
 //! AGENTS.md Generator
-//! 
+//!
 //! Generates AGENTS.md files from PMAT analysis and project structure.
 
 use super::*;
@@ -11,7 +11,7 @@ use std::fmt::Write;
 pub struct AgentsMdGenerator {
     /// Templates for different project types
     templates: HashMap<ProjectType, Template>,
-    
+
     /// Configuration
     config: GeneratorConfig,
 }
@@ -21,16 +21,16 @@ pub struct AgentsMdGenerator {
 pub struct GeneratorConfig {
     /// Include quality rules section
     pub include_quality: bool,
-    
+
     /// Include security guidelines
     pub include_security: bool,
-    
+
     /// Include PR guidelines
     pub include_pr_guidelines: bool,
-    
+
     /// Maximum commands to include
     pub max_commands: usize,
-    
+
     /// Include examples
     pub include_examples: bool,
 }
@@ -63,7 +63,7 @@ pub enum ProjectType {
 pub struct Template {
     /// Template sections
     pub sections: Vec<TemplateSection>,
-    
+
     /// Default commands
     pub default_commands: Vec<Command>,
 }
@@ -73,10 +73,10 @@ pub struct Template {
 pub struct TemplateSection {
     /// Section title
     pub title: String,
-    
+
     /// Section content template
     pub content: String,
-    
+
     /// Variables to replace
     pub variables: Vec<String>,
 }
@@ -85,19 +85,19 @@ pub struct TemplateSection {
 pub struct PmatAnalysis {
     /// Project name
     pub project_name: String,
-    
+
     /// Project description
     pub description: String,
-    
+
     /// Project type
     pub project_type: ProjectType,
-    
+
     /// Detected commands
     pub commands: Vec<Command>,
-    
+
     /// Quality metrics
     pub quality_metrics: QualityMetrics,
-    
+
     /// Dependencies
     pub dependencies: Vec<String>,
 }
@@ -107,13 +107,13 @@ pub struct PmatAnalysis {
 pub struct QualityMetrics {
     /// Average complexity
     pub avg_complexity: f64,
-    
+
     /// Test coverage
     pub test_coverage: f64,
-    
+
     /// SATD count
     pub satd_count: usize,
-    
+
     /// Code quality grade
     pub grade: String,
 }
@@ -122,16 +122,16 @@ pub struct QualityMetrics {
 pub struct ProjectInfo {
     /// Root directory
     pub root: PathBuf,
-    
+
     /// Project name
     pub name: String,
-    
+
     /// Version
     pub version: String,
-    
+
     /// Description
     pub description: String,
-    
+
     /// README content if exists
     pub readme: Option<String>,
 }
@@ -140,12 +140,18 @@ pub struct ProjectInfo {
 pub struct Updates {
     /// New commands to add
     pub new_commands: Vec<Command>,
-    
+
     /// Updated quality rules
     pub quality_rules: Option<QualityRules>,
-    
+
     /// New sections to add
     pub new_sections: Vec<Section>,
+}
+
+impl Default for AgentsMdGenerator {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl AgentsMdGenerator {
@@ -155,22 +161,22 @@ impl AgentsMdGenerator {
             templates: HashMap::new(),
             config: GeneratorConfig::default(),
         };
-        
+
         generator.load_default_templates();
         generator
     }
-    
+
     /// Create with custom config
     pub fn with_config(config: GeneratorConfig) -> Self {
         let mut generator = Self {
             templates: HashMap::new(),
             config,
         };
-        
+
         generator.load_default_templates();
         generator
     }
-    
+
     /// Load default templates
     fn load_default_templates(&mut self) {
         // Rust template
@@ -206,60 +212,66 @@ impl AgentsMdGenerator {
                 },
             ],
         });
-        
+
         // Add other language templates
-        self.templates.insert(ProjectType::Generic, Template {
-            sections: vec![
-                TemplateSection {
+        self.templates.insert(
+            ProjectType::Generic,
+            Template {
+                sections: vec![TemplateSection {
                     title: "Project Overview".to_string(),
                     content: "{project_name}\n{description}".to_string(),
                     variables: vec!["project_name".to_string(), "description".to_string()],
-                },
-            ],
-            default_commands: vec![],
-        });
+                }],
+                default_commands: vec![],
+            },
+        );
     }
-    
+
     /// Generate from PMAT analysis
     pub fn generate_from_analysis(&self, analysis: &PmatAnalysis) -> Result<String> {
-        let template = self.templates
+        let _template = self
+            .templates
             .get(&analysis.project_type)
             .or_else(|| self.templates.get(&ProjectType::Generic))
             .context("No template found")?;
-        
+
         let mut output = String::new();
         writeln!(output, "# AGENTS.md")?;
         writeln!(output)?;
-        
+
         // Generate overview
         writeln!(output, "## Project Overview")?;
-        writeln!(output, "{}\n{}", analysis.project_name, analysis.description)?;
+        writeln!(
+            output,
+            "{}\n{}",
+            analysis.project_name, analysis.description
+        )?;
         writeln!(output)?;
-        
+
         // Generate development setup
         self.generate_dev_setup(&mut output, analysis)?;
-        
+
         // Generate testing section
         self.generate_testing(&mut output, analysis)?;
-        
+
         // Generate code style
         if self.config.include_quality {
             self.generate_code_style(&mut output, analysis)?;
         }
-        
+
         // Generate PR guidelines
         if self.config.include_pr_guidelines {
             self.generate_pr_guidelines(&mut output)?;
         }
-        
+
         // Generate security
         if self.config.include_security {
             self.generate_security(&mut output)?;
         }
-        
+
         Ok(output)
     }
-    
+
     /// Generate from project structure
     pub fn generate_from_project(&self, project: &ProjectInfo) -> Result<String> {
         // Create basic analysis from project info
@@ -276,102 +288,111 @@ impl AgentsMdGenerator {
             },
             dependencies: vec![],
         };
-        
+
         self.generate_from_analysis(&analysis)
     }
-    
+
     /// Update existing AGENTS.md
     pub fn update_existing(&self, current: &str, updates: Updates) -> Result<String> {
         let parser = super::parser::AgentsMdParser::new();
         let mut doc = parser.parse(current)?;
-        
+
         // Add new commands
         for cmd in updates.new_commands {
             if !doc.commands.iter().any(|c| c.name == cmd.name) {
                 doc.commands.push(cmd);
             }
         }
-        
+
         // Update quality rules
         if let Some(rules) = updates.quality_rules {
             doc.quality_rules = Some(rules);
         }
-        
+
         // Add new sections
         for section in updates.new_sections {
             if !doc.sections.iter().any(|s| s.title == section.title) {
                 doc.sections.push(section);
             }
         }
-        
+
         // Regenerate document
         self.format_document(&doc)
     }
-    
+
     /// Format document back to markdown
     fn format_document(&self, doc: &AgentsMdDocument) -> Result<String> {
         let mut output = String::new();
         writeln!(output, "# AGENTS.md")?;
         writeln!(output)?;
-        
+
         for section in &doc.sections {
             self.format_section(&mut output, section, 2)?;
         }
-        
+
         Ok(output)
     }
-    
+
     /// Format a section
+    #[allow(clippy::only_used_in_recursion)]
     fn format_section(&self, output: &mut String, section: &Section, level: usize) -> Result<()> {
         let heading = "#".repeat(level);
         writeln!(output, "{} {}", heading, section.title)?;
         writeln!(output, "{}", section.content)?;
         writeln!(output)?;
-        
+
         for subsection in &section.subsections {
             self.format_section(output, subsection, level + 1)?;
         }
-        
+
         Ok(())
     }
-    
+
     /// Generate development setup section
     fn generate_dev_setup(&self, output: &mut String, analysis: &PmatAnalysis) -> Result<()> {
         writeln!(output, "## Development Setup")?;
         writeln!(output, "```bash")?;
-        
+
         let commands = &analysis.commands[..analysis.commands.len().min(5)];
         for cmd in commands {
             writeln!(output, "# {}", cmd.name)?;
             writeln!(output, "{}", cmd.command)?;
             writeln!(output)?;
         }
-        
+
         writeln!(output, "```")?;
         writeln!(output)?;
         Ok(())
     }
-    
+
     /// Generate testing section
     fn generate_testing(&self, output: &mut String, analysis: &PmatAnalysis) -> Result<()> {
         writeln!(output, "## Testing Instructions")?;
         writeln!(output, "- Run tests before committing")?;
-        writeln!(output, "- Ensure {}%+ coverage maintained", analysis.quality_metrics.test_coverage as u32)?;
+        writeln!(
+            output,
+            "- Ensure {}%+ coverage maintained",
+            analysis.quality_metrics.test_coverage as u32
+        )?;
         writeln!(output, "- All functions must have complexity ≤{}", 10)?;
         writeln!(output)?;
         Ok(())
     }
-    
+
     /// Generate code style section
     fn generate_code_style(&self, output: &mut String, analysis: &PmatAnalysis) -> Result<()> {
         writeln!(output, "## Code Style")?;
         writeln!(output, "- Follow project coding standards")?;
-        writeln!(output, "- Current quality grade: {}", analysis.quality_metrics.grade)?;
+        writeln!(
+            output,
+            "- Current quality grade: {}",
+            analysis.quality_metrics.grade
+        )?;
         writeln!(output, "- Zero SATD tolerance")?;
         writeln!(output)?;
         Ok(())
     }
-    
+
     /// Generate PR guidelines
     fn generate_pr_guidelines(&self, output: &mut String) -> Result<()> {
         writeln!(output, "## PR Guidelines")?;
@@ -381,7 +402,7 @@ impl AgentsMdGenerator {
         writeln!(output)?;
         Ok(())
     }
-    
+
     /// Generate security section
     fn generate_security(&self, output: &mut String) -> Result<()> {
         writeln!(output, "## Security Considerations")?;
@@ -391,7 +412,7 @@ impl AgentsMdGenerator {
         writeln!(output)?;
         Ok(())
     }
-    
+
     /// Detect project type from directory
     fn detect_project_type(&self, path: &Path) -> Result<ProjectType> {
         if path.join("Cargo.toml").exists() {
@@ -408,11 +429,11 @@ impl AgentsMdGenerator {
             Ok(ProjectType::Generic)
         }
     }
-    
+
     /// Detect available commands
     fn detect_commands(&self, path: &Path) -> Result<Vec<Command>> {
         let mut commands = Vec::new();
-        
+
         // Check for Makefile
         if path.join("Makefile").exists() {
             commands.push(Command {
@@ -432,7 +453,7 @@ impl AgentsMdGenerator {
                 safe: true,
             });
         }
-        
+
         // Check for package.json scripts
         if path.join("package.json").exists() {
             commands.push(Command {
@@ -444,7 +465,7 @@ impl AgentsMdGenerator {
                 safe: true,
             });
         }
-        
+
         Ok(commands)
     }
 }
@@ -452,8 +473,8 @@ impl AgentsMdGenerator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::TempDir;
     use std::fs;
+    use tempfile::TempDir;
 
     #[test]
     fn test_generator_creation() {
@@ -466,21 +487,19 @@ mod tests {
     #[test]
     fn test_generate_from_analysis() {
         let generator = AgentsMdGenerator::new();
-        
+
         let analysis = PmatAnalysis {
             project_name: "Test Project".to_string(),
             description: "A test project".to_string(),
             project_type: ProjectType::Rust,
-            commands: vec![
-                Command {
-                    name: "Build".to_string(),
-                    command: "cargo build".to_string(),
-                    working_dir: None,
-                    env: vec![],
-                    timeout: Some(60),
-                    safe: true,
-                },
-            ],
+            commands: vec![Command {
+                name: "Build".to_string(),
+                command: "cargo build".to_string(),
+                working_dir: None,
+                env: vec![],
+                timeout: Some(60),
+                safe: true,
+            }],
             quality_metrics: QualityMetrics {
                 avg_complexity: 8.5,
                 test_coverage: 85.0,
@@ -489,7 +508,7 @@ mod tests {
             },
             dependencies: vec![],
         };
-        
+
         let result = generator.generate_from_analysis(&analysis).unwrap();
         assert!(result.contains("# AGENTS.md"));
         assert!(result.contains("Test Project"));
@@ -501,21 +520,27 @@ mod tests {
     fn test_detect_project_type() {
         let generator = AgentsMdGenerator::new();
         let temp = TempDir::new().unwrap();
-        
+
         // Test Rust detection
         fs::write(temp.path().join("Cargo.toml"), "[package]").unwrap();
-        assert_eq!(generator.detect_project_type(temp.path()).unwrap(), ProjectType::Rust);
-        
+        assert_eq!(
+            generator.detect_project_type(temp.path()).unwrap(),
+            ProjectType::Rust
+        );
+
         // Test JavaScript detection
         fs::remove_file(temp.path().join("Cargo.toml")).unwrap();
         fs::write(temp.path().join("package.json"), "{}").unwrap();
-        assert_eq!(generator.detect_project_type(temp.path()).unwrap(), ProjectType::JavaScript);
+        assert_eq!(
+            generator.detect_project_type(temp.path()).unwrap(),
+            ProjectType::JavaScript
+        );
     }
 
     #[test]
     fn test_update_existing() {
         let generator = AgentsMdGenerator::new();
-        
+
         let current = r#"# AGENTS.md
 
 ## Project Overview
@@ -526,18 +551,16 @@ Test Project
 cargo build
 ```
 "#;
-        
+
         let updates = Updates {
-            new_commands: vec![
-                Command {
-                    name: "Test".to_string(),
-                    command: "cargo test".to_string(),
-                    working_dir: None,
-                    env: vec![],
-                    timeout: Some(120),
-                    safe: true,
-                },
-            ],
+            new_commands: vec![Command {
+                name: "Test".to_string(),
+                command: "cargo test".to_string(),
+                working_dir: None,
+                env: vec![],
+                timeout: Some(120),
+                safe: true,
+            }],
             quality_rules: Some(QualityRules {
                 max_complexity: Some(10),
                 min_coverage: Some(80.0),
@@ -546,7 +569,7 @@ cargo build
             }),
             new_sections: vec![],
         };
-        
+
         let result = generator.update_existing(current, updates).unwrap();
         assert!(result.contains("# AGENTS.md"));
         assert!(result.contains("Project Overview"));
@@ -555,7 +578,7 @@ cargo build
     #[test]
     fn test_format_document() {
         let generator = AgentsMdGenerator::new();
-        
+
         let doc = AgentsMdDocument {
             metadata: DocumentMetadata {
                 path: PathBuf::from("AGENTS.md"),
@@ -563,19 +586,17 @@ cargo build
                 version: Some("1.0.0".to_string()),
                 project: Some("Test".to_string()),
             },
-            sections: vec![
-                Section {
-                    section_type: SectionType::Overview,
-                    title: "Project Overview".to_string(),
-                    content: "Test project".to_string(),
-                    subsections: vec![],
-                },
-            ],
+            sections: vec![Section {
+                section_type: SectionType::Overview,
+                title: "Project Overview".to_string(),
+                content: "Test project".to_string(),
+                subsections: vec![],
+            }],
             commands: vec![],
             guidelines: vec![],
             quality_rules: None,
         };
-        
+
         let result = generator.format_document(&doc).unwrap();
         assert!(result.contains("# AGENTS.md"));
         assert!(result.contains("## Project Overview"));
@@ -591,7 +612,7 @@ cargo build
             max_commands: 5,
             include_examples: false,
         };
-        
+
         let generator = AgentsMdGenerator::with_config(config);
         assert!(!generator.config.include_quality);
         assert!(!generator.config.include_security);

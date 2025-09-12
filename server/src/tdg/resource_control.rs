@@ -263,7 +263,7 @@ impl PlatformResourceController {
                     operation_id.clone(),
                     action,
                     current_usage,
-                    format!("Operation queued, estimated wait: {}ms", estimated_wait_ms),
+                    format!("Operation queued, estimated wait: {estimated_wait_ms}ms"),
                 )
                 .await;
 
@@ -496,8 +496,7 @@ impl PlatformResourceController {
         // In a full implementation, this would send cancellation signals
         // For now, we just log the emergency action
         println!(
-            "EMERGENCY: Would cancel {} low-priority operations due to resource pressure",
-            low_priority_count
+            "EMERGENCY: Would cancel {low_priority_count} low-priority operations due to resource pressure"
         );
 
         Ok(())
@@ -964,7 +963,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

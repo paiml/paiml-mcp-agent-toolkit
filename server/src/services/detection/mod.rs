@@ -408,7 +408,7 @@ mod additional_tests {
         let result = processor.detect_duplicates(vec![]).await;
 
         match result {
-            Ok(duplicates) => {
+            Ok(_duplicates) => {
                 // Should handle empty input gracefully
                 assert!(true);
             }
@@ -440,7 +440,7 @@ mod additional_tests {
         let result = processor.detect_satd(temp_dir.path()).await;
 
         match result {
-            Ok(satd_result) => {
+            Ok(_satd_result) => {
                 // Should find at least the TODO and FIXME
                 // Should find some debt items (field name may vary)
                 assert!(true);
@@ -514,7 +514,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

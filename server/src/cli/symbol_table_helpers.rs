@@ -246,13 +246,13 @@ pub fn format_symbol_table_summary(symbols: &[SymbolInfo], deep_context: &DeepCo
     output.push_str("Symbols by type:\n");
     let type_counts = count_by_type(symbols);
     for (kind, count) in type_counts {
-        output.push_str(&format!("  {}: {}\n", kind, count));
+        output.push_str(&format!("  {kind}: {count}\n"));
     }
 
     output.push_str("\nSymbols by visibility:\n");
     let vis_counts = count_by_visibility(symbols);
     for (vis, count) in vis_counts {
-        output.push_str(&format!("  {}: {}\n", vis, count));
+        output.push_str(&format!("  {vis}: {count}\n"));
     }
 
     output.push_str("\nTop 10 most referenced files:\n");
@@ -355,7 +355,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

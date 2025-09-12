@@ -67,7 +67,7 @@ pub struct TdgScore {
     pub coupling_score: f32,
     pub doc_coverage: f32,
     pub consistency_score: f32,
-    pub entropy_score: f32,  // New: Pattern entropy analysis
+    pub entropy_score: f32, // New: Pattern entropy analysis
     pub total: f32,
     pub grade: Grade,
     pub confidence: f32,
@@ -85,7 +85,7 @@ impl Default for TdgScore {
             coupling_score: 15.0,
             doc_coverage: 10.0,
             consistency_score: 10.0,
-            entropy_score: 0.0,  // New: Start with 0, calculated during analysis
+            entropy_score: 0.0, // New: Start with 0, calculated during analysis
             total: 100.0,
             grade: Grade::APLus,
             confidence: 1.0,
@@ -104,7 +104,7 @@ impl TdgScore {
             + self.coupling_score
             + self.doc_coverage
             + self.consistency_score
-            + self.entropy_score;  // Include entropy in total score
+            + self.entropy_score; // Include entropy in total score
 
         self.grade = Grade::from_score(self.total);
     }
@@ -425,12 +425,12 @@ mod tests {
         score.coupling_score = 14.0;
         score.doc_coverage = 9.0;
         score.consistency_score = 8.0;
-        score.entropy_score = 12.0;  // New: Include entropy in test
+        score.entropy_score = 12.0; // New: Include entropy in test
 
         score.calculate_total();
 
-        assert_eq!(score.total, 100.0);  // Updated total: 88.0 + 12.0 = 100.0
-        assert_eq!(score.grade, Grade::APLus);  // Updated grade: 100.0 = A+
+        assert_eq!(score.total, 100.0); // Updated total: 88.0 + 12.0 = 100.0
+        assert_eq!(score.grade, Grade::APLus); // Updated grade: 100.0 = A+
     }
 
     #[test]
@@ -470,7 +470,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

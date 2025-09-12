@@ -1,51 +1,48 @@
 //! Event system for quality monitoring
 
-use std::path::PathBuf;
-use serde::{Deserialize, Serialize};
 use crate::unified_quality::metrics::Metrics;
+use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 
 /// Quality events for notifications and tracking
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum QualityEvent {
     /// File added to monitoring
-    FileAdded {
-        path: PathBuf,
-        metrics: Metrics,
-    },
-    
+    FileAdded { path: PathBuf, metrics: Metrics },
+
     /// File removed from monitoring
     FileRemoved {
         path: PathBuf,
         last_metrics: Metrics,
     },
-    
+
     /// Metrics updated for a file
     MetricsUpdated {
         path: PathBuf,
         old_metrics: Metrics,
         new_metrics: Metrics,
     },
-    
+
     /// Quality threshold violated
     ThresholdViolated {
         path: PathBuf,
         violation: ThresholdViolation,
     },
-    
+
     /// Quality improved significantly
     QualityImproved {
         path: PathBuf,
         old_score: f64,
         new_score: f64,
     },
-    
+
     /// Quality degraded significantly
     QualityDegraded {
         path: PathBuf,
         old_score: f64,
         new_score: f64,
     },
-    
+
     /// Batch analysis completed
     BatchAnalysisComplete {
         files_analyzed: usize,
@@ -79,17 +76,21 @@ impl QualityEvent {
             QualityEvent::ThresholdViolated { .. } | QualityEvent::QualityDegraded { .. }
         )
     }
-    
+
     /// Check if event is an improvement
     pub fn is_improvement(&self) -> bool {
         matches!(self, QualityEvent::QualityImproved { .. })
     }
-    
+
     /// Get event severity
     pub fn severity(&self) -> Option<ViolationSeverity> {
         match self {
             QualityEvent::ThresholdViolated { violation, .. } => Some(violation.severity.clone()),
-            QualityEvent::QualityDegraded { old_score, new_score, .. } => {
+            QualityEvent::QualityDegraded {
+                old_score,
+                new_score,
+                ..
+            } => {
                 let delta = old_score - new_score;
                 if delta > 0.3 {
                     Some(ViolationSeverity::Critical)
@@ -107,6 +108,7 @@ impl QualityEvent {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[allow(unused_imports)]
     use std::time::SystemTime;
 
     #[test]
@@ -120,7 +122,7 @@ mod tests {
                 severity: ViolationSeverity::Error,
             },
         };
-        
+
         assert!(event.is_violation());
         assert!(!event.is_improvement());
     }
@@ -132,7 +134,7 @@ mod tests {
             old_score: 0.9,
             new_score: 0.5,
         };
-        
+
         match event.severity() {
             Some(ViolationSeverity::Critical) => (),
             _ => panic!("Expected critical severity"),

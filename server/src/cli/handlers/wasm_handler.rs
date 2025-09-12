@@ -3,16 +3,16 @@
 
 use crate::cli::WasmOutputFormat;
 use crate::wasm::{
-    analyzer::{WasmAnalyzer, AnalysisResult},
-    baseline::{QualityBaseline, QualityAssessment, Metrics},
+    analyzer::{AnalysisResult, WasmAnalyzer},
+    baseline::{Metrics, QualityAssessment, QualityBaseline},
+    profiler::AsyncProfiler,
     security::{PatternDetector, VulnerabilityMatch},
     verifier::{IncrementalVerifier, VerificationResult},
-    profiler::AsyncProfiler,
     ProfilingReport,
 };
 use anyhow::Result;
 use std::path::PathBuf;
-use tracing::{info, debug};
+use tracing::{debug, info};
 
 /// Handle WASM analysis command (Complexity: ≤10)
 pub async fn handle_analyze_wasm(
@@ -26,17 +26,18 @@ pub async fn handle_analyze_wasm(
     verbose: bool,
 ) -> Result<()> {
     info!("🔍 Analyzing WASM module: {}", wasm_file.display());
-    
+
     // Load and analyze WASM binary
     let binary = load_wasm_file(&wasm_file)?;
     let analysis_result = run_basic_analysis(&binary)?;
-    
+
     // Run optional analyses
     let verification_result = run_verification_if_requested(verify, &binary).await?;
     let security_results = run_security_scan_if_requested(security, &binary)?;
     let profiling_results = run_profiling_if_requested(profile, &binary).await?;
-    let baseline_comparison = run_baseline_comparison_if_requested(baseline, &binary, &analysis_result).await?;
-    
+    let baseline_comparison =
+        run_baseline_comparison_if_requested(baseline, &binary, &analysis_result).await?;
+
     // Format and output results
     let output_str = format_results(
         format,
@@ -47,16 +48,16 @@ pub async fn handle_analyze_wasm(
         baseline_comparison.as_ref(),
         verbose,
     )?;
-    
+
     write_output(output_str, output)?;
-    
+
     // Check for failures
     check_for_failures(
         verification_result.as_ref(),
         security_results.as_ref(),
         baseline_comparison.as_ref(),
     )?;
-    
+
     info!("✅ WASM analysis complete");
     Ok(())
 }
@@ -82,7 +83,7 @@ async fn run_verification_if_requested(
     if !verify {
         return Ok(None);
     }
-    
+
     info!("🔒 Running formal verification...");
     let verifier = IncrementalVerifier::new()?;
     Ok(Some(verifier.verify_module(binary)?))
@@ -96,15 +97,15 @@ fn run_security_scan_if_requested(
     if !security {
         return Ok(None);
     }
-    
+
     info!("🛡️ Running security vulnerability scanning...");
     let mut detector = PatternDetector::new();
-    
+
     for payload in wasmparser::Parser::new(0).parse_all(binary) {
         let payload = payload?;
         detector.scan(&payload)?;
     }
-    
+
     Ok(Some(detector.finalize()))
 }
 
@@ -116,7 +117,7 @@ async fn run_profiling_if_requested(
     if !profile {
         return Ok(None);
     }
-    
+
     info!("📊 Running performance profiling...");
     let profiler = AsyncProfiler::new();
     Ok(Some(profiler.profile_module(binary).await?))
@@ -132,12 +133,12 @@ async fn run_baseline_comparison_if_requested(
         Some(path) => path,
         None => return Ok(None),
     };
-    
+
     info!("📈 Comparing with baseline: {}", baseline_path.display());
-    
+
     let baseline_metrics = load_and_analyze_baseline(&baseline_path)?;
     let current_metrics = create_metrics_from_analysis(analysis_result);
-    
+
     let quality_baseline = QualityBaseline::new(baseline_metrics.clone(), baseline_metrics);
     Ok(Some(quality_baseline.evaluate(&current_metrics)))
 }
@@ -156,7 +157,7 @@ fn write_output(output_str: String, output: Option<PathBuf>) -> Result<()> {
         std::fs::write(&output_path, &output_str)?;
         info!("✅ Results written to: {}", output_path.display());
     } else {
-        println!("{}", output_str);
+        println!("{output_str}");
     }
     Ok(())
 }
@@ -186,12 +187,16 @@ fn check_verification_failure(verification: Option<&VerificationResult>) -> Resu
 /// Check security results for critical vulnerabilities (Complexity: 4)
 fn check_security_failures(security: Option<&Vec<VulnerabilityMatch>>) -> Result<()> {
     if let Some(security) = security {
-        let critical_count = security.iter()
+        let critical_count = security
+            .iter()
             .filter(|v| v.severity == crate::wasm::security::Severity::Critical)
             .count();
-        
+
         if critical_count > 0 {
-            anyhow::bail!("❌ Found {} critical security vulnerabilities", critical_count);
+            anyhow::bail!(
+                "❌ Found {} critical security vulnerabilities",
+                critical_count
+            );
         }
     }
     Ok(())
@@ -218,9 +223,20 @@ fn format_results(
     verbose: bool,
 ) -> Result<String> {
     match format {
-        WasmOutputFormat::Summary => format_summary(analysis, verification, security, profiling, baseline),
-        WasmOutputFormat::Json => format_json(analysis, verification, security, profiling, baseline),
-        WasmOutputFormat::Detailed => format_detailed(analysis, verification, security, profiling, baseline, verbose),
+        WasmOutputFormat::Summary => {
+            format_summary(analysis, verification, security, profiling, baseline)
+        }
+        WasmOutputFormat::Json => {
+            format_json(analysis, verification, security, profiling, baseline)
+        }
+        WasmOutputFormat::Detailed => format_detailed(
+            analysis,
+            verification,
+            security,
+            profiling,
+            baseline,
+            verbose,
+        ),
         WasmOutputFormat::Sarif => format_sarif(security.unwrap_or(&Vec::new())),
     }
 }
@@ -234,14 +250,14 @@ fn format_summary(
     baseline: Option<&QualityAssessment>,
 ) -> Result<String> {
     let mut output = String::new();
-    
+
     append_summary_header(&mut output);
     append_basic_metrics(&mut output, analysis);
     append_verification_status(&mut output, verification);
     append_security_summary(&mut output, security);
     append_profiling_summary(&mut output, profiling);
     append_baseline_summary(&mut output, baseline);
-    
+
     Ok(output)
 }
 
@@ -263,8 +279,13 @@ fn append_basic_metrics(output: &mut String, analysis: &AnalysisResult) {
 /// Append verification status (Complexity: 3)
 fn append_verification_status(output: &mut String, verification: Option<&VerificationResult>) {
     if let Some(ver) = verification {
-        output.push_str(&format!("\nVerification: {}\n", 
-            if ver.is_safe() { "✅ SAFE" } else { "❌ UNSAFE" }
+        output.push_str(&format!(
+            "\nVerification: {}\n",
+            if ver.is_safe() {
+                "✅ SAFE"
+            } else {
+                "❌ UNSAFE"
+            }
         ));
     }
 }
@@ -272,24 +293,28 @@ fn append_verification_status(output: &mut String, verification: Option<&Verific
 /// Append security summary (Complexity: 5)
 fn append_security_summary(output: &mut String, security: Option<&Vec<VulnerabilityMatch>>) {
     use crate::wasm::security::Severity;
-    
+
     if let Some(sec) = security {
         let critical = count_by_severity(sec, Severity::Critical);
         let high = count_by_severity(sec, Severity::High);
         let medium = count_by_severity(sec, Severity::Medium);
         let low = count_by_severity(sec, Severity::Low);
-        
+
         output.push_str("\nSecurity Vulnerabilities:\n");
-        output.push_str(&format!("  Critical: {}\n", critical));
-        output.push_str(&format!("  High: {}\n", high));
-        output.push_str(&format!("  Medium: {}\n", medium));
-        output.push_str(&format!("  Low: {}\n", low));
+        output.push_str(&format!("  Critical: {critical}\n"));
+        output.push_str(&format!("  High: {high}\n"));
+        output.push_str(&format!("  Medium: {medium}\n"));
+        output.push_str(&format!("  Low: {low}\n"));
     }
 }
 
 /// Count vulnerabilities by severity (Complexity: 2)
-fn count_by_severity(vulnerabilities: &[VulnerabilityMatch], severity: crate::wasm::security::Severity) -> usize {
-    vulnerabilities.iter()
+fn count_by_severity(
+    vulnerabilities: &[VulnerabilityMatch],
+    severity: crate::wasm::security::Severity,
+) -> usize {
+    vulnerabilities
+        .iter()
         .filter(|v| v.severity == severity)
         .count()
 }
@@ -298,16 +323,28 @@ fn count_by_severity(vulnerabilities: &[VulnerabilityMatch], severity: crate::wa
 fn append_profiling_summary(output: &mut String, profiling: Option<&ProfilingReport>) {
     if let Some(prof) = profiling {
         output.push_str("\nPerformance Profile:\n");
-        
-        let control_pct = calculate_percentage(prof.instruction_mix.control_flow, prof.instruction_mix.total_instructions);
-        let memory_pct = calculate_percentage(prof.instruction_mix.memory_ops, prof.instruction_mix.total_instructions);
-        let arith_pct = calculate_percentage(prof.instruction_mix.arithmetic, prof.instruction_mix.total_instructions);
-        let call_pct = calculate_percentage(prof.instruction_mix.calls, prof.instruction_mix.total_instructions);
-        
-        output.push_str(&format!("  Control Flow: {}%\n", control_pct));
-        output.push_str(&format!("  Memory Ops: {}%\n", memory_pct));
-        output.push_str(&format!("  Arithmetic: {}%\n", arith_pct));
-        output.push_str(&format!("  Function Calls: {}%\n", call_pct));
+
+        let control_pct = calculate_percentage(
+            prof.instruction_mix.control_flow,
+            prof.instruction_mix.total_instructions,
+        );
+        let memory_pct = calculate_percentage(
+            prof.instruction_mix.memory_ops,
+            prof.instruction_mix.total_instructions,
+        );
+        let arith_pct = calculate_percentage(
+            prof.instruction_mix.arithmetic,
+            prof.instruction_mix.total_instructions,
+        );
+        let call_pct = calculate_percentage(
+            prof.instruction_mix.calls,
+            prof.instruction_mix.total_instructions,
+        );
+
+        output.push_str(&format!("  Control Flow: {control_pct}%\n"));
+        output.push_str(&format!("  Memory Ops: {memory_pct}%\n"));
+        output.push_str(&format!("  Arithmetic: {arith_pct}%\n"));
+        output.push_str(&format!("  Function Calls: {call_pct}%\n"));
     }
 }
 
@@ -324,8 +361,13 @@ fn append_baseline_summary(output: &mut String, baseline: Option<&QualityAssessm
     if let Some(base) = baseline {
         output.push_str("\nQuality Assessment:\n");
         output.push_str(&format!("  Health Score: {:.1}%\n", base.overall_health));
-        output.push_str(&format!("  Status: {}\n", 
-            if base.is_passing() { "✅ PASSING" } else { "❌ FAILING" }
+        output.push_str(&format!(
+            "  Status: {}\n",
+            if base.is_passing() {
+                "✅ PASSING"
+            } else {
+                "❌ FAILING"
+            }
         ));
         output.push_str(&format!("  {}\n", base.recommendation));
     }
@@ -359,11 +401,11 @@ fn format_detailed(
     verbose: bool,
 ) -> Result<String> {
     let mut output = format_summary(analysis, verification, security, profiling, baseline)?;
-    
+
     if verbose {
         append_detailed_information(&mut output, profiling, security);
     }
-    
+
     Ok(output)
 }
 
@@ -375,7 +417,7 @@ fn append_detailed_information(
 ) {
     output.push_str("\n\nDetailed Analysis\n");
     output.push_str("=================\n\n");
-    
+
     append_detailed_profiling(output, profiling);
     append_detailed_vulnerabilities(output, security);
 }
@@ -384,12 +426,24 @@ fn append_detailed_information(
 fn append_detailed_profiling(output: &mut String, profiling: Option<&ProfilingReport>) {
     if let Some(prof) = profiling {
         output.push_str("Instruction Breakdown:\n");
-        output.push_str(&format!("  Total: {}\n", prof.instruction_mix.total_instructions));
-        output.push_str(&format!("  Control Flow: {}\n", prof.instruction_mix.control_flow));
-        output.push_str(&format!("  Memory Operations: {}\n", prof.instruction_mix.memory_ops));
-        output.push_str(&format!("  Arithmetic: {}\n", prof.instruction_mix.arithmetic));
+        output.push_str(&format!(
+            "  Total: {}\n",
+            prof.instruction_mix.total_instructions
+        ));
+        output.push_str(&format!(
+            "  Control Flow: {}\n",
+            prof.instruction_mix.control_flow
+        ));
+        output.push_str(&format!(
+            "  Memory Operations: {}\n",
+            prof.instruction_mix.memory_ops
+        ));
+        output.push_str(&format!(
+            "  Arithmetic: {}\n",
+            prof.instruction_mix.arithmetic
+        ));
         output.push_str(&format!("  Calls: {}\n", prof.instruction_mix.calls));
-        
+
         append_hot_functions(output, prof);
     }
 }
@@ -399,20 +453,27 @@ fn append_hot_functions(output: &mut String, prof: &ProfilingReport) {
     if !prof.hot_functions.is_empty() {
         output.push_str("\nHot Functions:\n");
         for func in &prof.hot_functions {
-            output.push_str(&format!("  {} - {:.1}% ({} samples)\n", 
-                func.name, func.percentage, func.samples));
+            output.push_str(&format!(
+                "  {} - {:.1}% ({} samples)\n",
+                func.name, func.percentage, func.samples
+            ));
         }
     }
 }
 
 /// Append detailed vulnerabilities (Complexity: 3)
-fn append_detailed_vulnerabilities(output: &mut String, security: Option<&Vec<VulnerabilityMatch>>) {
+fn append_detailed_vulnerabilities(
+    output: &mut String,
+    security: Option<&Vec<VulnerabilityMatch>>,
+) {
     if let Some(sec) = security {
         if !sec.is_empty() {
             output.push_str("\nVulnerability Details:\n");
             for vuln in sec {
-                output.push_str(&format!("  [{:?}] {} at offset {}\n", 
-                    vuln.severity, vuln.pattern, vuln.operator_index));
+                output.push_str(&format!(
+                    "  [{:?}] {} at offset {}\n",
+                    vuln.severity, vuln.pattern, vuln.operator_index
+                ));
             }
         }
     }
@@ -428,7 +489,7 @@ fn format_sarif(vulnerabilities: &[VulnerabilityMatch]) -> Result<String> {
 fn create_sarif_output(vulnerabilities: &[VulnerabilityMatch]) -> serde_json::Value {
     let rules = create_sarif_rules(vulnerabilities);
     let results = create_sarif_results(vulnerabilities);
-    
+
     serde_json::json!({
         "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
         "version": "2.1.0",
@@ -448,12 +509,11 @@ fn create_sarif_output(vulnerabilities: &[VulnerabilityMatch]) -> serde_json::Va
 
 /// Create SARIF rules from vulnerabilities (Complexity: 4)
 fn create_sarif_rules(vulnerabilities: &[VulnerabilityMatch]) -> Vec<serde_json::Value> {
-    let unique_patterns: std::collections::HashSet<_> = vulnerabilities
-        .iter()
-        .map(|v| &v.pattern)
-        .collect();
-    
-    unique_patterns.into_iter()
+    let unique_patterns: std::collections::HashSet<_> =
+        vulnerabilities.iter().map(|v| &v.pattern).collect();
+
+    unique_patterns
+        .into_iter()
         .map(|pattern| create_sarif_rule(pattern))
         .collect()
 }
@@ -477,21 +537,19 @@ fn create_sarif_rule(pattern: &str) -> serde_json::Value {
 
 /// Create SARIF results from vulnerabilities (Complexity: 3)
 fn create_sarif_results(vulnerabilities: &[VulnerabilityMatch]) -> Vec<serde_json::Value> {
-    vulnerabilities.iter()
-        .map(create_sarif_result)
-        .collect()
+    vulnerabilities.iter().map(create_sarif_result).collect()
 }
 
 /// Create single SARIF result (Complexity: 3)
 fn create_sarif_result(vuln: &VulnerabilityMatch) -> serde_json::Value {
     use crate::wasm::security::Severity;
-    
+
     let level = match vuln.severity {
         Severity::Critical | Severity::High => "error",
         Severity::Medium => "warning",
         Severity::Low => "note",
     };
-    
+
     serde_json::json!({
         "ruleId": vuln.pattern,
         "level": level,
@@ -520,7 +578,7 @@ fn create_metrics_from_analysis(analysis: &AnalysisResult) -> Metrics {
         complexity_p95: analysis.max_complexity,
         complexity_p99: analysis.max_complexity.saturating_add(2),
         binary_size: analysis.binary_size,
-        init_time_ms: 10, // Default estimate
+        init_time_ms: 10,                                     // Default estimate
         memory_usage_mb: (analysis.memory_pages * 64) / 1024, // Pages to MB
         function_count: analysis.function_count,
         instruction_count: analysis.instruction_count,
@@ -537,7 +595,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

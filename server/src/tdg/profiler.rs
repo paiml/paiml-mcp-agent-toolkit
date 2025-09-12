@@ -320,8 +320,7 @@ impl PerformanceProfiler {
                     impact_ms: duration,
                     occurrence_count: 1,
                     recommendation: format!(
-                        "High memory allocation detected: {:.1} MB",
-                        mem_growth
+                        "High memory allocation detected: {mem_growth:.1} MB"
                     ),
                 });
             }
@@ -456,7 +455,7 @@ mod tests {
     async fn test_bottleneck_detection() {
         let profiler = PerformanceProfiler::new(ProfilerConfig::default());
 
-        let mut profile = OperationProfile {
+        let profile = OperationProfile {
             operation_id: "slow_op".to_string(),
             operation_type: "compute".to_string(),
             start_time: Instant::now(),
@@ -514,7 +513,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

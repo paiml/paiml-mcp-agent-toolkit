@@ -151,13 +151,12 @@ pub fn format_defect_summary(predictions: &[(String, DefectScore)]) -> Result<St
         .count();
 
     writeln!(&mut output, "\n## Risk Distribution:")?;
-    writeln!(&mut output, "- 🔴 High Risk (>70%): {} files", high_risk)?;
+    writeln!(&mut output, "- 🔴 High Risk (>70%): {high_risk} files")?;
     writeln!(
         &mut output,
-        "- 🟡 Medium Risk (40-70%): {} files",
-        medium_risk
+        "- 🟡 Medium Risk (40-70%): {medium_risk} files"
     )?;
-    writeln!(&mut output, "- 🟢 Low Risk (<40%): {} files", low_risk)?;
+    writeln!(&mut output, "- 🟢 Low Risk (<40%): {low_risk} files")?;
 
     if !predictions.is_empty() {
         writeln!(&mut output, "\n## Top 10 High-Risk Files:")?;
@@ -271,7 +270,7 @@ fn write_single_prediction(
     score: &DefectScore,
     include_recommendations: bool,
 ) -> Result<()> {
-    writeln!(output, "### {}\n", file)?;
+    writeln!(output, "### {file}\n")?;
 
     write_prediction_metrics(output, score)?;
 
@@ -441,7 +440,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

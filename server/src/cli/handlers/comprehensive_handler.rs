@@ -320,7 +320,7 @@ async fn write_output(output: &Option<PathBuf>, content: &str) -> Result<()> {
             .context("Failed to write output file")?;
         info!("📝 Report written to: {}", output_path.display());
     } else {
-        println!("{}", content);
+        println!("{content}");
     }
     Ok(())
 }
@@ -500,7 +500,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

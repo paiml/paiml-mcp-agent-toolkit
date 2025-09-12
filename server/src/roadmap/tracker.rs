@@ -68,7 +68,7 @@ impl VelocityTracker {
 
     /// Load tracker from file
     pub fn load(sprint_id: &str) -> Result<Self> {
-        let path = format!("docs/execution/velocity_{}.json", sprint_id);
+        let path = format!("docs/execution/velocity_{sprint_id}.json");
         let content = std::fs::read_to_string(&path)?;
         Ok(serde_json::from_str(&content)?)
     }
@@ -250,21 +250,21 @@ impl ProgressReporter {
             .filter(|t| t.status == TaskStatus::Planned)
             .count();
 
-        report.push_str(&format!("- Completed: {}\n", completed));
-        report.push_str(&format!("- In Progress: {}\n", in_progress));
-        report.push_str(&format!("- Planned: {}\n\n", planned));
+        report.push_str(&format!("- Completed: {completed}\n"));
+        report.push_str(&format!("- In Progress: {in_progress}\n"));
+        report.push_str(&format!("- Planned: {planned}\n\n"));
 
         // Definition of Done
         report.push_str("### Definition of Done\n");
         for item in &sprint.definition_of_done {
-            report.push_str(&format!("- {}\n", item));
+            report.push_str(&format!("- {item}\n"));
         }
         report.push('\n');
 
         // Quality Gates
         report.push_str("### Quality Gates\n");
         for gate in &sprint.quality_gates {
-            report.push_str(&format!("- {}\n", gate));
+            report.push_str(&format!("- {gate}\n"));
         }
 
         Ok(report)
@@ -284,7 +284,7 @@ impl RoadmapDashboard {
             .ok_or_else(|| anyhow::anyhow!("Sprint {} not found", sprint_id))?;
 
         // Header
-        output.push_str(&format!("# Sprint {} Dashboard\n\n", sprint_id));
+        output.push_str(&format!("# Sprint {sprint_id} Dashboard\n\n"));
         output.push_str(&format!("**{}**\n\n", sprint.title));
         output.push_str(&format!(
             "Duration: {} to {}\n\n",
@@ -312,7 +312,7 @@ impl RoadmapDashboard {
             total,
             (completed as f64 / total as f64) * 100.0
         ));
-        output.push_str(&format!("- **In Progress**: {}\n", in_progress));
+        output.push_str(&format!("- **In Progress**: {in_progress}\n"));
         output.push_str(&format!(
             "- **Remaining**: {}\n\n",
             total - completed - in_progress
@@ -404,14 +404,14 @@ impl RoadmapDashboard {
         output.push_str("## Definition of Done\n\n");
         for item in &sprint.definition_of_done {
             let checked = if completed == total { "x" } else { " " };
-            output.push_str(&format!("- [{}] {}\n", checked, item));
+            output.push_str(&format!("- [{checked}] {item}\n"));
         }
         output.push('\n');
 
         // Quality Gates
         output.push_str("## Quality Gates\n\n");
         for gate in &sprint.quality_gates {
-            output.push_str(&format!("- [ ] {}\n", gate));
+            output.push_str(&format!("- [ ] {gate}\n"));
         }
 
         Ok(output)
@@ -583,7 +583,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

@@ -367,8 +367,7 @@ impl DefectReportService {
             let progress_bar = "█".repeat(bar_length);
             let empty = "░".repeat(20 - bar_length);
             md.push_str(&format!(
-                "{:<8} {}{} {} ({:.1}%)\n",
-                severity, progress_bar, empty, count, percentage
+                "{severity:<8} {progress_bar}{empty} {count} ({percentage:.1}%)\n"
             ));
         }
         md.push_str("```\n\n");
@@ -418,7 +417,7 @@ impl DefectReportService {
                     md.push_str(&format!("**{}** - {}\n\n", defect.severity, defect.message));
 
                     if let Some(fix) = &defect.fix_suggestion {
-                        md.push_str(&format!("> 💡 **Suggestion**: {}\n\n", fix));
+                        md.push_str(&format!("> 💡 **Suggestion**: {fix}\n\n"));
                     }
                 }
 
@@ -463,7 +462,7 @@ impl DefectReportService {
         txt.push_str("SEVERITY BREAKDOWN\n");
         txt.push_str("------------------\n");
         for (severity, count) in &report.summary.by_severity {
-            txt.push_str(&format!("{:<10} {}\n", severity, count));
+            txt.push_str(&format!("{severity:<10} {count}\n"));
         }
         txt.push('\n');
 
@@ -471,7 +470,7 @@ impl DefectReportService {
         txt.push_str("CATEGORY BREAKDOWN\n");
         txt.push_str("------------------\n");
         for (category, count) in &report.summary.by_category {
-            txt.push_str(&format!("{:<20} {}\n", category, count));
+            txt.push_str(&format!("{category:<20} {count}\n"));
         }
         txt.push('\n');
 
@@ -503,11 +502,11 @@ impl DefectReportService {
                 defect.line_start
             ));
             if let Some(end) = defect.line_end {
-                txt.push_str(&format!("-{}", end));
+                txt.push_str(&format!("-{end}"));
             }
             txt.push_str(&format!("\n  {}\n", defect.message));
             if let Some(fix) = &defect.fix_suggestion {
-                txt.push_str(&format!("  Fix: {}\n", fix));
+                txt.push_str(&format!("  Fix: {fix}\n"));
             }
             txt.push('\n');
         }
@@ -519,10 +518,10 @@ impl DefectReportService {
     pub fn generate_filename(&self, format: ReportFormat) -> String {
         let timestamp = Utc::now().format("%Y%m%d-%H%M%S");
         match format {
-            ReportFormat::Json => format!("defect-report-{}.json", timestamp),
-            ReportFormat::Csv => format!("defect-report-{}.csv", timestamp),
-            ReportFormat::Markdown => format!("defect-report-{}.md", timestamp),
-            ReportFormat::Text => format!("defect-report-{}.txt", timestamp),
+            ReportFormat::Json => format!("defect-report-{timestamp}.json"),
+            ReportFormat::Csv => format!("defect-report-{timestamp}.csv"),
+            ReportFormat::Markdown => format!("defect-report-{timestamp}.md"),
+            ReportFormat::Text => format!("defect-report-{timestamp}.txt"),
         }
     }
 }
@@ -616,7 +615,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

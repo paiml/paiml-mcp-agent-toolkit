@@ -87,14 +87,14 @@ impl ToolHandler for ComplexityTool {
         debug!("Handling analyze.complexity with args: {}", args);
 
         let params: ComplexityArgs = serde_json::from_value(args)
-            .map_err(|e| Error::validation(format!("Invalid arguments: {}", e)))?;
+            .map_err(|e| Error::validation(format!("Invalid arguments: {e}")))?;
 
         let paths: Vec<PathBuf> = params.paths.into_iter().map(PathBuf::from).collect();
 
         let results =
             tool_functions::analyze_complexity(&paths, params.top_files, params.threshold)
                 .await
-                .map_err(|e| Error::internal(format!("Complexity analysis failed: {}", e)))?;
+                .map_err(|e| Error::internal(format!("Complexity analysis failed: {e}")))?;
 
         Ok(results)
     }
@@ -159,13 +159,13 @@ impl ToolHandler for SatdTool {
         debug!("Handling analyze.satd with args: {}", args);
 
         let params: SatdArgs = serde_json::from_value(args)
-            .map_err(|e| Error::validation(format!("Invalid arguments: {}", e)))?;
+            .map_err(|e| Error::validation(format!("Invalid arguments: {e}")))?;
 
         let paths: Vec<PathBuf> = params.paths.into_iter().map(PathBuf::from).collect();
 
         let results = tool_functions::analyze_satd(&paths, params.include_resolved)
             .await
-            .map_err(|e| Error::internal(format!("SATD analysis failed: {}", e)))?;
+            .map_err(|e| Error::internal(format!("SATD analysis failed: {e}")))?;
 
         Ok(results)
     }
@@ -200,13 +200,13 @@ impl ToolHandler for DeadCodeTool {
         debug!("Handling analyze.dead-code with args: {}", args);
 
         let params: DeadCodeArgs = serde_json::from_value(args)
-            .map_err(|e| Error::validation(format!("Invalid arguments: {}", e)))?;
+            .map_err(|e| Error::validation(format!("Invalid arguments: {e}")))?;
 
         let paths: Vec<PathBuf> = params.paths.into_iter().map(PathBuf::from).collect();
 
         let results = tool_functions::analyze_dead_code(&paths, params.include_tests)
             .await
-            .map_err(|e| Error::internal(format!("Dead code analysis failed: {}", e)))?;
+            .map_err(|e| Error::internal(format!("Dead code analysis failed: {e}")))?;
 
         Ok(results)
     }
@@ -241,13 +241,13 @@ impl ToolHandler for LintHotspotTool {
         debug!("Handling analyze.lint-hotspot with args: {}", args);
 
         let params: LintHotspotArgs = serde_json::from_value(args)
-            .map_err(|e| Error::validation(format!("Invalid arguments: {}", e)))?;
+            .map_err(|e| Error::validation(format!("Invalid arguments: {e}")))?;
 
         let paths: Vec<PathBuf> = params.paths.into_iter().map(PathBuf::from).collect();
 
         let results = tool_functions::analyze_lint_hotspots(&paths, params.top_files)
             .await
-            .map_err(|e| Error::internal(format!("Lint hotspot analysis failed: {}", e)))?;
+            .map_err(|e| Error::internal(format!("Lint hotspot analysis failed: {e}")))?;
 
         Ok(results)
     }
@@ -284,13 +284,13 @@ impl ToolHandler for ChurnTool {
         debug!("Handling analyze.churn with args: {}", args);
 
         let params: ChurnArgs = serde_json::from_value(args)
-            .map_err(|e| Error::validation(format!("Invalid arguments: {}", e)))?;
+            .map_err(|e| Error::validation(format!("Invalid arguments: {e}")))?;
 
         let paths: Vec<PathBuf> = params.paths.into_iter().map(PathBuf::from).collect();
 
         let results = tool_functions::analyze_churn(&paths, params.days, params.top_files)
             .await
-            .map_err(|e| Error::internal(format!("Churn analysis failed: {}", e)))?;
+            .map_err(|e| Error::internal(format!("Churn analysis failed: {e}")))?;
 
         Ok(results)
     }
@@ -325,13 +325,13 @@ impl ToolHandler for CouplingTool {
         debug!("Handling analyze.coupling with args: {}", args);
 
         let params: CouplingArgs = serde_json::from_value(args)
-            .map_err(|e| Error::validation(format!("Invalid arguments: {}", e)))?;
+            .map_err(|e| Error::validation(format!("Invalid arguments: {e}")))?;
 
         let paths: Vec<PathBuf> = params.paths.into_iter().map(PathBuf::from).collect();
 
         let results = tool_functions::analyze_coupling(&paths, params.threshold)
             .await
-            .map_err(|e| Error::internal(format!("Coupling analysis failed: {}", e)))?;
+            .map_err(|e| Error::internal(format!("Coupling analysis failed: {e}")))?;
 
         Ok(results)
     }
@@ -410,7 +410,7 @@ impl ToolHandler for TdgTool {
         debug!("Handling analyze.tdg with args: {}", args);
 
         let params: TdgArgs = serde_json::from_value(args)
-            .map_err(|e| Error::validation(format!("Invalid arguments: {}", e)))?;
+            .map_err(|e| Error::validation(format!("Invalid arguments: {e}")))?;
 
         let paths: Vec<PathBuf> = params.paths.into_iter().map(PathBuf::from).collect();
 
@@ -421,7 +421,7 @@ impl ToolHandler for TdgTool {
             params.include_components,
         )
         .await
-        .map_err(|e| Error::internal(format!("TDG analysis failed: {}", e)))?;
+        .map_err(|e| Error::internal(format!("TDG analysis failed: {e}")))?;
 
         Ok(results)
     }
@@ -470,14 +470,14 @@ impl ToolHandler for TdgCompareTool {
         debug!("Handling analyze.tdg_compare with args: {}", args);
 
         let params: TdgCompareArgs = serde_json::from_value(args)
-            .map_err(|e| Error::validation(format!("Invalid arguments: {}", e)))?;
+            .map_err(|e| Error::validation(format!("Invalid arguments: {e}")))?;
 
         let path1 = PathBuf::from(params.path1);
         let path2 = PathBuf::from(params.path2);
 
         let results = tool_functions::compare_tdg(&path1, &path2)
             .await
-            .map_err(|e| Error::internal(format!("TDG comparison failed: {}", e)))?;
+            .map_err(|e| Error::internal(format!("TDG comparison failed: {e}")))?;
 
         Ok(results)
     }
@@ -494,7 +494,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

@@ -30,17 +30,17 @@ pub fn levenshtein_distance(a: &str, b: &str) -> usize {
 /// Initialize the distance matrix with base values
 fn initialize_distance_matrix(a_len: usize, b_len: usize) -> Vec<Vec<usize>> {
     let mut matrix = vec![vec![0; b_len + 1]; a_len + 1];
-    
+
     // Initialize first column (deletions from source)
     for i in 0..=a_len {
         matrix[i][0] = i;
     }
-    
+
     // Initialize first row (insertions to match target)
     for j in 0..=b_len {
         matrix[0][j] = j;
     }
-    
+
     matrix
 }
 
@@ -48,32 +48,22 @@ fn initialize_distance_matrix(a_len: usize, b_len: usize) -> Vec<Vec<usize>> {
 fn calculate_edit_distances(matrix: &mut Vec<Vec<usize>>, a: &str, b: &str) {
     let a_chars: Vec<char> = a.chars().collect();
     let b_chars: Vec<char> = b.chars().collect();
-    
+
     for i in 1..=a_chars.len() {
         for j in 1..=b_chars.len() {
-            matrix[i][j] = calculate_cell_distance(
-                matrix,
-                i,
-                j,
-                a_chars[i - 1] == b_chars[j - 1]
-            );
+            matrix[i][j] = calculate_cell_distance(matrix, i, j, a_chars[i - 1] == b_chars[j - 1]);
         }
     }
 }
 
 /// Calculate the minimum edit distance for a single cell
-fn calculate_cell_distance(
-    matrix: &[Vec<usize>],
-    i: usize,
-    j: usize,
-    chars_match: bool
-) -> usize {
+fn calculate_cell_distance(matrix: &[Vec<usize>], i: usize, j: usize, chars_match: bool) -> usize {
     let substitution_cost = if chars_match { 0 } else { 1 };
-    
+
     let deletion_cost = matrix[i - 1][j] + 1;
     let insertion_cost = matrix[i][j - 1] + 1;
     let substitution = matrix[i - 1][j - 1] + substitution_cost;
-    
+
     deletion_cost.min(insertion_cost).min(substitution)
 }
 
@@ -140,14 +130,14 @@ impl CommandSuggester {
 
         // Check exact matches in common mistakes first
         if let Some(suggestion) = self.common_mistakes.get(&input) {
-            return Some(format!("Did you mean 'pmat {}'?", suggestion));
+            return Some(format!("Did you mean 'pmat {suggestion}'?"));
         }
 
         // Handle two-argument patterns like "agent analyze"
         if failed_args.len() == 2 {
             let combined = format!("{} {}", failed_args[0], failed_args[1]);
             if let Some(suggestion) = self.common_mistakes.get(&combined) {
-                return Some(format!("Did you mean 'pmat {}'?", suggestion));
+                return Some(format!("Did you mean 'pmat {suggestion}'?"));
             }
         }
 
@@ -157,7 +147,7 @@ impl CommandSuggester {
 
             // Check if it's a subcommand that needs "analyze" prefix
             if self.analyze_subcommands.iter().any(|cmd| cmd == arg) {
-                return Some(format!("Did you mean 'pmat analyze {}'?", arg));
+                return Some(format!("Did you mean 'pmat analyze {arg}'?"));
             }
 
             // Find closest main command using Levenshtein distance
@@ -174,7 +164,7 @@ impl CommandSuggester {
             }
 
             if let Some(suggestion) = best_match {
-                return Some(format!("Did you mean 'pmat {}'?", suggestion));
+                return Some(format!("Did you mean 'pmat {suggestion}'?"));
             }
         }
 
@@ -193,7 +183,7 @@ impl CommandSuggester {
             }
 
             if let Some(suggestion) = best_match {
-                return Some(format!("Did you mean 'pmat analyze {}'?", suggestion));
+                return Some(format!("Did you mean 'pmat analyze {suggestion}'?"));
             }
         }
 
@@ -298,7 +288,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

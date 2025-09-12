@@ -4,6 +4,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
 
+use crate::entropy::EntropyAnalyzer;
 use crate::tdg::{
     config::TdgConfig, AdaptiveThresholdFactory, AdaptiveThresholdManager, AnalysisMetadata,
     ComponentScores, FileIdentity, FullTdgRecord, Grade, Language, MetricCategory,
@@ -11,7 +12,6 @@ use crate::tdg::{
     ResourceControllerFactory, SchedulerFactory, SemanticSignature, SimpleFairScheduler, TdgScore,
     TieredStorageFactory, TieredStore,
 };
-use crate::entropy::EntropyAnalyzer;
 
 /// AST-based TDG analyzer - proper implementation per specification
 pub struct TdgAnalyzerAst {
@@ -285,21 +285,21 @@ impl TdgAnalyzerAst {
             None
         }
     }
-    
+
     // GREEN Phase: Public methods for TDG dogfooding - accessing stored scores
-    
+
     /// Get a reference to the storage system for querying stored scores
     pub fn get_storage(&self) -> Option<&TieredStore> {
         self.storage.as_ref()
     }
-    
+
     /// Get stored score for a specific file
     pub async fn get_stored_score(&self, path: &Path) -> Result<Option<TdgScore>> {
         if let Some(storage) = &self.storage {
             // Calculate content hash for the file
             let source = fs::read_to_string(path)?;
             let content_hash = blake3::hash(source.as_bytes());
-            
+
             // Check hot cache first
             if let Some(hot_entry) = storage.get_hot(&content_hash) {
                 let language = Language::from_extension(path);
@@ -313,7 +313,7 @@ impl TdgAnalyzerAst {
                 };
                 return Ok(Some(score));
             }
-            
+
             // Check warm/cold storage
             if let Some(record) = storage.retrieve_full(&content_hash).await? {
                 return Ok(Some(record.score));
@@ -321,10 +321,12 @@ impl TdgAnalyzerAst {
         }
         Ok(None)
     }
-    
+
     /// Get storage statistics for monitoring
     pub fn get_storage_stats(&self) -> Option<crate::tdg::StorageStatistics> {
-        self.storage.as_ref().map(|storage| storage.get_statistics())
+        self.storage
+            .as_ref()
+            .map(|storage| storage.get_statistics())
     }
 
     /// Get adaptive threshold statistics for diagnostics
@@ -490,7 +492,7 @@ impl TdgAnalyzerAst {
 
             // Calculate consistency
             score.consistency_score = self.score_consistency_rust(&ast, tracker);
-            
+
             // Calculate entropy - pattern analysis for code quality
             score.entropy_score = self.score_entropy_analysis(source, Language::Rust, tracker);
         }
@@ -761,8 +763,8 @@ impl TdgAnalyzerAst {
         {
             use crate::services::languages::ruchy::analyze_ruchy_file_with_parser;
             // Path already imported above
-            use tempfile::NamedTempFile;
             use std::io::Write;
+            use tempfile::NamedTempFile;
 
             // Create temp file with Ruchy content for analysis
             let mut temp_file = NamedTempFile::with_suffix(".ruchy")?;
@@ -773,10 +775,9 @@ impl TdgAnalyzerAst {
             let rt = tokio::runtime::Handle::try_current()
                 .or_else(|_| tokio::runtime::Runtime::new().map(|rt| rt.handle().clone()))
                 .map_err(|e| anyhow::anyhow!("Failed to get async runtime: {}", e))?;
-            
-            let analysis_result = rt.block_on(async {
-                analyze_ruchy_file_with_parser(temp_path).await
-            });
+
+            let analysis_result =
+                rt.block_on(async { analyze_ruchy_file_with_parser(temp_path).await });
 
             match analysis_result {
                 Ok(metrics) => {
@@ -796,14 +797,16 @@ impl TdgAnalyzerAst {
                     // Count imports and dependencies for coupling
                     let import_count = self.count_ruchy_imports(source);
                     let dependency_count = self.count_ruchy_dependencies(source);
-                    score.coupling_score = self.score_coupling(import_count, dependency_count, 0, tracker);
+                    score.coupling_score =
+                        self.score_coupling(import_count, dependency_count, 0, tracker);
 
                     // Documentation coverage from comments and doc strings
                     let doc_coverage = self.calculate_ruchy_doc_coverage(source);
                     score.doc_coverage = doc_coverage;
 
                     // Duplication analysis
-                    score.duplication_ratio = self.analyze_duplication_ast(source, score.language, tracker);
+                    score.duplication_ratio =
+                        self.analyze_duplication_ast(source, score.language, tracker);
 
                     // Consistency scoring based on Ruchy naming conventions
                     score.consistency_score = self.calculate_ruchy_consistency(source);
@@ -874,10 +877,10 @@ impl TdgAnalyzerAst {
             let penalty = (excess * 0.5).min(15.0);
 
             if let Some(applied) = tracker.apply(
-                format!("high_cyclomatic_{}", cyclomatic),
+                format!("high_cyclomatic_{cyclomatic}"),
                 MetricCategory::StructuralComplexity,
                 penalty,
-                format!("High cyclomatic complexity: {}", cyclomatic),
+                format!("High cyclomatic complexity: {cyclomatic}"),
             ) {
                 points -= applied;
             }
@@ -889,10 +892,10 @@ impl TdgAnalyzerAst {
             let penalty = (excess * 0.3).min(10.0);
 
             if let Some(applied) = tracker.apply(
-                format!("high_cognitive_{}", cognitive),
+                format!("high_cognitive_{cognitive}"),
                 MetricCategory::StructuralComplexity,
                 penalty,
-                format!("High cognitive complexity: {}", cognitive),
+                format!("High cognitive complexity: {cognitive}"),
             ) {
                 points -= applied;
             }
@@ -904,10 +907,10 @@ impl TdgAnalyzerAst {
             let penalty = excess.min(5.0);
 
             if let Some(applied) = tracker.apply(
-                format!("deep_nesting_{}", nesting_depth),
+                format!("deep_nesting_{nesting_depth}"),
                 MetricCategory::StructuralComplexity,
                 penalty,
-                format!("Deep nesting: {} levels", nesting_depth),
+                format!("Deep nesting: {nesting_depth} levels"),
             ) {
                 points -= applied;
             }
@@ -918,10 +921,10 @@ impl TdgAnalyzerAst {
             let excess = ((method_length - 50) as f32 / 10.0).min(5.0);
 
             if let Some(applied) = tracker.apply(
-                format!("long_method_{}", method_length),
+                format!("long_method_{method_length}"),
                 MetricCategory::StructuralComplexity,
                 excess,
-                format!("Long method: {} lines", method_length),
+                format!("Long method: {method_length} lines"),
             ) {
                 points -= applied;
             }
@@ -944,10 +947,10 @@ impl TdgAnalyzerAst {
             let penalty = ((max_params - 5) as f32 * 0.5).min(5.0);
 
             if let Some(applied) = tracker.apply(
-                format!("many_params_{}", max_params),
+                format!("many_params_{max_params}"),
                 MetricCategory::SemanticComplexity,
                 penalty,
-                format!("Too many parameters: {}", max_params),
+                format!("Too many parameters: {max_params}"),
             ) {
                 points -= applied;
             }
@@ -958,10 +961,10 @@ impl TdgAnalyzerAst {
             let penalty = ((type_complexity - 10) as f32 * 0.3).min(5.0);
 
             if let Some(applied) = tracker.apply(
-                format!("complex_types_{}", type_complexity),
+                format!("complex_types_{type_complexity}"),
                 MetricCategory::SemanticComplexity,
                 penalty,
-                format!("Complex type usage: {}", type_complexity),
+                format!("Complex type usage: {type_complexity}"),
             ) {
                 points -= applied;
             }
@@ -972,10 +975,10 @@ impl TdgAnalyzerAst {
             let penalty = ((abstraction_levels - 3) as f32).min(5.0);
 
             if let Some(applied) = tracker.apply(
-                format!("deep_abstraction_{}", abstraction_levels),
+                format!("deep_abstraction_{abstraction_levels}"),
                 MetricCategory::SemanticComplexity,
                 penalty,
-                format!("Deep abstraction: {} levels", abstraction_levels),
+                format!("Deep abstraction: {abstraction_levels} levels"),
             ) {
                 points -= applied;
             }
@@ -1020,7 +1023,7 @@ impl TdgAnalyzerAst {
             let penalty = (duplication_ratio * 20.0).min(20.0);
 
             if let Some(applied) = tracker.apply(
-                format!("duplication_{:.2}", duplication_ratio),
+                format!("duplication_{duplication_ratio:.2}"),
                 MetricCategory::Duplication,
                 penalty,
                 format!("Code duplication: {:.1}%", duplication_ratio * 100.0),
@@ -1046,10 +1049,10 @@ impl TdgAnalyzerAst {
             let penalty = ((import_count - 20) as f32 * 0.2).min(10.0);
 
             if let Some(applied) = tracker.apply(
-                format!("many_imports_{}", import_count),
+                format!("many_imports_{import_count}"),
                 MetricCategory::Coupling,
                 penalty,
-                format!("Too many imports: {}", import_count),
+                format!("Too many imports: {import_count}"),
             ) {
                 points -= applied;
             }
@@ -1060,10 +1063,10 @@ impl TdgAnalyzerAst {
             let penalty = ((external_calls - 50) as f32 * 0.1).min(5.0);
 
             if let Some(applied) = tracker.apply(
-                format!("many_external_calls_{}", external_calls),
+                format!("many_external_calls_{external_calls}"),
                 MetricCategory::Coupling,
                 penalty,
-                format!("Too many external calls: {}", external_calls),
+                format!("Too many external calls: {external_calls}"),
             ) {
                 points -= applied;
             }
@@ -1135,15 +1138,17 @@ impl TdgAnalyzerAst {
     fn score_consistency_javascript(&self, source: &str, tracker: &mut PenaltyTracker) -> f32 {
         // Check JavaScript/TypeScript style consistency
         let mut score = 100.0f32;
-        
+
         // Semicolon consistency check
-        let lines_with_semicolons = source.lines()
+        let lines_with_semicolons = source
+            .lines()
             .filter(|line| line.trim().ends_with(';'))
             .count();
-        let total_lines = source.lines()
+        let total_lines = source
+            .lines()
             .filter(|line| !line.trim().is_empty() && !line.trim().starts_with("//"))
             .count();
-            
+
         if total_lines > 0 {
             let semicolon_ratio = lines_with_semicolons as f32 / total_lines as f32;
             if semicolon_ratio < 0.8 && semicolon_ratio > 0.2 {
@@ -1156,11 +1161,11 @@ impl TdgAnalyzerAst {
                 );
             }
         }
-        
+
         // Indentation consistency (spaces vs tabs)
         let tab_lines = source.lines().filter(|line| line.starts_with('\t')).count();
         let space_lines = source.lines().filter(|line| line.starts_with("  ")).count();
-        
+
         if tab_lines > 0 && space_lines > 0 {
             score -= 15.0;
             tracker.apply(
@@ -1170,11 +1175,11 @@ impl TdgAnalyzerAst {
                 "Mixed indentation (tabs and spaces) detected".to_string(),
             );
         }
-        
+
         // Quote consistency (single vs double quotes)
         let single_quotes = source.matches("'").count();
         let double_quotes = source.matches('"').count();
-        
+
         if single_quotes > 0 && double_quotes > 0 {
             let ratio = (single_quotes as f32) / (single_quotes + double_quotes) as f32;
             if ratio > 0.2 && ratio < 0.8 {
@@ -1187,20 +1192,25 @@ impl TdgAnalyzerAst {
                 );
             }
         }
-        
+
         score.max(0.0f32)
     }
-    
+
     /// Score entropy analysis - pattern repetition and violation detection
-    fn score_entropy_analysis(&self, source: &str, _language: Language, tracker: &mut PenaltyTracker) -> f32 {
+    fn score_entropy_analysis(
+        &self,
+        source: &str,
+        _language: Language,
+        tracker: &mut PenaltyTracker,
+    ) -> f32 {
         // Create entropy analyzer
         let _analyzer = EntropyAnalyzer::new();
-        
+
         // Create temp directory for analysis since entropy analyzer expects a project
         use std::io::Write;
         let temp_dir = std::env::temp_dir().join(format!("tdg_entropy_{}", std::process::id()));
         let temp_file = temp_dir.join("temp_file.rs");
-        
+
         let score = if std::fs::create_dir_all(&temp_dir).is_ok() {
             if let Ok(mut file) = std::fs::File::create(&temp_file) {
                 if file.write_all(source.as_bytes()).is_ok() {
@@ -1208,7 +1218,7 @@ impl TdgAnalyzerAst {
                     // Avoids runtime conflicts by using simple heuristics
                     let lines = source.lines().collect::<Vec<_>>();
                     let mut pattern_score = 100.0;
-                    
+
                     // Check for repetitive patterns in code
                     let mut line_counts = std::collections::HashMap::new();
                     for line in lines.iter() {
@@ -1217,7 +1227,7 @@ impl TdgAnalyzerAst {
                             *line_counts.entry(trimmed).or_insert(0) += 1;
                         }
                     }
-                    
+
                     // Penalty for duplicate lines
                     let duplicate_lines = line_counts.values().filter(|&&count| count > 1).count();
                     if duplicate_lines > 0 {
@@ -1227,10 +1237,10 @@ impl TdgAnalyzerAst {
                             "duplicate_code_patterns".to_string(),
                             MetricCategory::Duplication,
                             penalty,
-                            format!("Found {} duplicate code patterns", duplicate_lines),
+                            format!("Found {duplicate_lines} duplicate code patterns"),
                         );
                     }
-                    
+
                     pattern_score
                 } else {
                     15.0 // Neutral score if can't write temp file
@@ -1241,16 +1251,16 @@ impl TdgAnalyzerAst {
         } else {
             15.0 // Neutral score if can't create temp dir
         };
-        
+
         let _ = std::fs::remove_dir_all(&temp_dir);
-        
+
         score
     }
 
     #[cfg(any(feature = "c-ast", feature = "cpp-ast"))]
     fn calculate_cognitive_complexity(&self, node: &tree_sitter::Node) -> u32 {
         let mut cognitive_score = 0u32;
-        
+
         fn traverse_cognitive(node: tree_sitter::Node, nesting_level: u32, score: &mut u32) {
             match node.kind() {
                 // Base cognitive load patterns (+1)
@@ -1275,7 +1285,7 @@ impl TdgAnalyzerAst {
                 }
                 _ => {}
             }
-            
+
             // Increase nesting for control structures
             let new_nesting = if matches!(
                 node.kind(),
@@ -1285,13 +1295,13 @@ impl TdgAnalyzerAst {
             } else {
                 nesting_level
             };
-            
+
             // Traverse children
             for child in node.children(&mut node.walk()) {
                 traverse_cognitive(child, new_nesting, score);
             }
         }
-        
+
         traverse_cognitive(*node, 0, &mut cognitive_score);
         cognitive_score
     }
@@ -1737,34 +1747,34 @@ impl TdgAnalyzerAst {
     #[cfg(feature = "ruchy-ast")]
     fn calculate_ruchy_semantic_complexity(&self, source: &str) -> f32 {
         let mut complexity_score = self.config.weights.semantic_complexity;
-        
+
         // Count Ruchy-specific complex patterns
         let actor_count = source.matches("actor ").count();
         let receive_count = source.matches("receive ").count();
         let pipeline_count = source.matches("|>").count();
         let match_count = source.matches(" match ").count();
         let pattern_match_count = source.matches(" => ").count();
-        
+
         // Actor model complexity
         complexity_score += (actor_count * 2) as f32;
         complexity_score += receive_count as f32 * 1.5;
-        
+
         // Pipeline operator complexity
         complexity_score += pipeline_count as f32 * 0.5;
-        
+
         // Pattern matching complexity
         complexity_score += match_count as f32 * 1.2;
         complexity_score += pattern_match_count as f32 * 0.3;
-        
+
         complexity_score.min(self.config.weights.semantic_complexity)
     }
 
     #[cfg(feature = "ruchy-ast")]
     fn count_ruchy_imports(&self, source: &str) -> u32 {
         // Count Ruchy-style import statements
-        source.matches("import ").count() as u32 +
-        source.matches("use ").count() as u32 +
-        source.matches("extern ").count() as u32
+        source.matches("import ").count() as u32
+            + source.matches("use ").count() as u32
+            + source.matches("extern ").count() as u32
     }
 
     #[cfg(feature = "ruchy-ast")]
@@ -1772,7 +1782,7 @@ impl TdgAnalyzerAst {
         // Count actor message dependencies and external calls
         source.matches(" <- ").count() as u32 +  // Message sends
         source.matches(" <? ").count() as u32 +  // Message queries
-        source.matches("spawn ").count() as u32   // Actor spawns
+        source.matches("spawn ").count() as u32 // Actor spawns
     }
 
     #[cfg(feature = "ruchy-ast")]
@@ -1781,12 +1791,12 @@ impl TdgAnalyzerAst {
         if line_count == 0.0 {
             return self.config.weights.documentation;
         }
-        
+
         // Count documentation comments and doc strings
-        let doc_comments = source.matches("///").count() as f32 +
-                          source.matches("/**").count() as f32 +
-                          source.matches("#[doc").count() as f32;
-        
+        let doc_comments = source.matches("///").count() as f32
+            + source.matches("/**").count() as f32
+            + source.matches("#[doc").count() as f32;
+
         let coverage_ratio = (doc_comments / line_count * 20.0).min(1.0);
         coverage_ratio * self.config.weights.documentation
     }
@@ -1794,41 +1804,42 @@ impl TdgAnalyzerAst {
     #[cfg(feature = "ruchy-ast")]
     fn calculate_ruchy_consistency(&self, source: &str) -> f32 {
         let mut consistency_score = self.config.weights.consistency;
-        
+
         // Check for consistent naming patterns
         let snake_case_functions = regex::Regex::new(r"fun [a-z][a-z0-9_]*\(")
             .unwrap()
             .find_iter(source)
             .count();
-        
+
         let pascal_case_types = regex::Regex::new(r"(struct|enum|actor) [A-Z][A-Za-z0-9]*")
             .unwrap()
             .find_iter(source)
             .count();
-        
+
         let snake_case_vars = regex::Regex::new(r"let [a-z][a-z0-9_]* =")
             .unwrap()
             .find_iter(source)
             .count();
-        
+
         let total_identifiers = snake_case_functions + pascal_case_types + snake_case_vars;
-        
+
         // Reduce score for inconsistent naming
         if total_identifiers > 0 {
             let fun_upper_regex = regex::Regex::new(r"fun [A-Z]").unwrap();
             let struct_lower_regex = regex::Regex::new(r"struct [a-z]").unwrap();
             let let_upper_regex = regex::Regex::new(r"let [A-Z]").unwrap();
-            
-            let inconsistent_count = fun_upper_regex.find_iter(source).count() +
-                                   struct_lower_regex.find_iter(source).count() +
-                                   let_upper_regex.find_iter(source).count();
-            
+
+            let inconsistent_count = fun_upper_regex.find_iter(source).count()
+                + struct_lower_regex.find_iter(source).count()
+                + let_upper_regex.find_iter(source).count();
+
             if inconsistent_count > 0 {
-                let consistency_ratio = 1.0 - (inconsistent_count as f32 / total_identifiers as f32);
+                let consistency_ratio =
+                    1.0 - (inconsistent_count as f32 / total_identifiers as f32);
                 consistency_score *= consistency_ratio;
             }
         }
-        
+
         consistency_score
     }
 }
@@ -1873,7 +1884,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

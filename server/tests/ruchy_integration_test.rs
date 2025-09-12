@@ -1,5 +1,5 @@
 //! TDD Tests for Ruchy Language Integration
-//! 
+//!
 //! Following Toyota Way TDD: RED -> GREEN -> REFACTOR
 //! Tests written FIRST before implementation
 
@@ -30,13 +30,13 @@ fun hello() -> String {
     "Hello, World!"
 }
 "#;
-        
+
         let temp_file = create_temp_ruchy_file(ruchy_code).unwrap();
         let result = analyze_ruchy_file_with_parser(temp_file.path()).await;
-        
+
         assert!(result.is_ok());
         let metrics = result.unwrap();
-        
+
         // Should detect one function
         assert_eq!(metrics.functions.len(), 1);
         assert_eq!(metrics.functions[0].name, "hello");
@@ -59,13 +59,13 @@ fun classify_number(x: i32) -> String {
     }
 }
 "#;
-        
+
         let temp_file = create_temp_ruchy_file(ruchy_code).unwrap();
         let result = analyze_ruchy_file_with_parser(temp_file.path()).await;
-        
+
         assert!(result.is_ok());
         let metrics = result.unwrap();
-        
+
         // Should detect one function with increased complexity
         assert_eq!(metrics.functions.len(), 1);
         assert_eq!(metrics.functions[0].name, "classify_number");
@@ -87,13 +87,13 @@ fun match_example(x: i32) -> String {
     }
 }
 "#;
-        
+
         let temp_file = create_temp_ruchy_file(ruchy_code).unwrap();
         let result = analyze_ruchy_file_with_parser(temp_file.path()).await;
-        
+
         assert!(result.is_ok());
         let metrics = result.unwrap();
-        
+
         // Should detect match complexity correctly
         assert_eq!(metrics.functions.len(), 1);
         assert_eq!(metrics.functions[0].name, "match_example");
@@ -119,13 +119,13 @@ fun loop_example() -> i32 {
     sum
 }
 "#;
-        
+
         let temp_file = create_temp_ruchy_file(ruchy_code).unwrap();
         let result = analyze_ruchy_file_with_parser(temp_file.path()).await;
-        
+
         assert!(result.is_ok());
         let metrics = result.unwrap();
-        
+
         // Should detect nested loop complexity
         assert_eq!(metrics.functions.len(), 1);
         assert_eq!(metrics.functions[0].name, "loop_example");
@@ -155,24 +155,28 @@ fun main() {
     println(f"Result: {result}");
 }
 "#;
-        
+
         let temp_file = create_temp_ruchy_file(ruchy_code).unwrap();
         let result = analyze_ruchy_file_with_parser(temp_file.path()).await;
-        
+
         assert!(result.is_ok());
         let metrics = result.unwrap();
-        
+
         // Should detect all three functions
         assert_eq!(metrics.functions.len(), 3);
-        
+
         // Verify function names are detected correctly
         let function_names: Vec<&str> = metrics.functions.iter().map(|f| f.name.as_str()).collect();
         assert!(function_names.contains(&"add"));
         assert!(function_names.contains(&"fibonacci"));
         assert!(function_names.contains(&"main"));
-        
+
         // Verify complexity calculations
-        let fibonacci_func = metrics.functions.iter().find(|f| f.name == "fibonacci").unwrap();
+        let fibonacci_func = metrics
+            .functions
+            .iter()
+            .find(|f| f.name == "fibonacci")
+            .unwrap();
         assert!(fibonacci_func.metrics.cyclomatic >= 2); // if-else increases complexity
     }
 
@@ -196,16 +200,16 @@ actor Counter {
     }
 }
 "#;
-        
+
         let temp_file = create_temp_ruchy_file(ruchy_code).unwrap();
         let result = analyze_ruchy_file_with_parser(temp_file.path()).await;
-        
+
         assert!(result.is_ok());
         let metrics = result.unwrap();
-        
+
         // Should detect actor handlers as functions
         assert!(metrics.functions.len() >= 3); // increment, get, reset
-        
+
         // Check that actor patterns are recognized
         let handler_names: Vec<&str> = metrics.functions.iter().map(|f| f.name.as_str()).collect();
         assert!(handler_names.iter().any(|name| name.contains("increment")));
@@ -220,26 +224,29 @@ actor Counter {
 fun broken_syntax( {
     // Missing closing parenthesis and function body
 "#;
-        
+
         let temp_file = create_temp_ruchy_file(invalid_ruchy_code).unwrap();
         let result = analyze_ruchy_file_with_parser(temp_file.path()).await;
-        
+
         // Should return error for invalid syntax
         assert!(result.is_err());
         let error_msg = result.unwrap_err().to_string();
         assert!(!error_msg.is_empty());
         // Should contain parse error information
-        assert!(error_msg.to_lowercase().contains("parse") || error_msg.to_lowercase().contains("syntax"));
+        assert!(
+            error_msg.to_lowercase().contains("parse")
+                || error_msg.to_lowercase().contains("syntax")
+        );
     }
 
     #[tokio::test]
     async fn test_ruchy_parser_integration_empty_file() {
         // RED: Test should fail - testing empty file handling
         let empty_ruchy_code = "";
-        
+
         let temp_file = create_temp_ruchy_file(empty_ruchy_code).unwrap();
         let result = analyze_ruchy_file_with_parser(temp_file.path()).await;
-        
+
         // Empty file should return valid metrics with no functions
         assert!(result.is_ok());
         let metrics = result.unwrap();
@@ -260,13 +267,13 @@ fun process_data(data: [i32]) -> [i32] {
         |> sort()
 }
 "#;
-        
+
         let temp_file = create_temp_ruchy_file(ruchy_code).unwrap();
         let result = analyze_ruchy_file_with_parser(temp_file.path()).await;
-        
+
         assert!(result.is_ok());
         let metrics = result.unwrap();
-        
+
         // Should detect pipeline function correctly
         assert_eq!(metrics.functions.len(), 1);
         assert_eq!(metrics.functions[0].name, "process_data");
@@ -289,22 +296,26 @@ fun map_option<T, U>(opt: Option<T>, f: fun(T) -> U) -> Option<U> {
     }
 }
 "#;
-        
+
         let temp_file = create_temp_ruchy_file(ruchy_code).unwrap();
         let result = analyze_ruchy_file_with_parser(temp_file.path()).await;
-        
+
         assert!(result.is_ok());
         let metrics = result.unwrap();
-        
+
         // Should detect both generic functions
         assert_eq!(metrics.functions.len(), 2);
-        
+
         let function_names: Vec<&str> = metrics.functions.iter().map(|f| f.name.as_str()).collect();
         assert!(function_names.contains(&"identity"));
         assert!(function_names.contains(&"map_option"));
-        
+
         // map_option should have higher complexity due to match
-        let map_option_func = metrics.functions.iter().find(|f| f.name == "map_option").unwrap();
+        let map_option_func = metrics
+            .functions
+            .iter()
+            .find(|f| f.name == "map_option")
+            .unwrap();
         assert!(map_option_func.metrics.cyclomatic >= 2); // match arms
     }
 }
@@ -312,7 +323,7 @@ fun map_option<T, U>(opt: Option<T>, f: fun(T) -> U) -> Option<U> {
 #[cfg(not(feature = "ruchy-ast"))]
 mod ruchy_fallback_tests {
     use super::*;
-    
+
     #[tokio::test]
     async fn test_ruchy_fallback_still_works() {
         // When ruchy-ast feature is disabled, should still work with existing implementation
@@ -321,11 +332,11 @@ fun hello() -> String {
     "Hello, World!"
 }
 "#;
-        
+
         let temp_file = create_temp_ruchy_file(ruchy_code).unwrap();
         // Use the existing heuristic-based analyzer
         let result = pmat::services::languages::ruchy::analyze_ruchy_file(temp_file.path()).await;
-        
+
         assert!(result.is_ok());
         let metrics = result.unwrap();
         assert!(metrics.functions.len() >= 1); // Should detect at least one function

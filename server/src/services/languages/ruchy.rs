@@ -1211,7 +1211,7 @@ impl RuchyLexer {
     fn handle_annotation(&mut self) -> RuchyToken {
         self.advance();
         let ident = self.read_identifier();
-        RuchyToken::Annotation(format!("@{}", ident))
+        RuchyToken::Annotation(format!("@{ident}"))
     }
 
     /// Handle dot (.) tokens
@@ -1304,8 +1304,12 @@ impl RuchyAstAnalyzer {
             classes: Vec::new(),
         }
     }
-    
-    pub fn analyze_ast(&mut self, _ast: &ruchy::Expr, file_path: String) -> Result<FileComplexityMetrics> {
+
+    pub fn analyze_ast(
+        &mut self,
+        _ast: &ruchy::Expr,
+        file_path: String,
+    ) -> Result<FileComplexityMetrics> {
         // Simplified implementation for TDD GREEN phase
         // For now, assume at least one function was detected
         if self.functions.is_empty() {
@@ -1323,10 +1327,10 @@ impl RuchyAstAnalyzer {
                 },
             });
         }
-        
+
         // Calculate total file complexity
         let total_complexity = self.calculate_total_complexity();
-        
+
         Ok(FileComplexityMetrics {
             path: file_path,
             total_complexity,
@@ -1334,11 +1338,11 @@ impl RuchyAstAnalyzer {
             classes: self.classes.clone(),
         })
     }
-    
+
     fn analyze_expr(&mut self, expr: &ruchy::Expr) -> Result<()> {
         // Placeholder for future Ruchy AST analysis
         // use ruchy::{ExprKind, BinaryOp};
-        
+
         match &expr.kind {
             // For now, use a simplified approach until we understand the exact Ruchy AST structure
             _ => {
@@ -1347,10 +1351,10 @@ impl RuchyAstAnalyzer {
                 // This follows TDD - make the test pass first, then refine
             }
         }
-        
+
         Ok(())
     }
-    
+
     fn analyze_function(&mut self, name: &str, _body: &ruchy::Expr) -> Result<()> {
         // Simplified implementation for TDD GREEN phase
         // Store function metrics with basic complexity
@@ -1366,15 +1370,30 @@ impl RuchyAstAnalyzer {
                 halstead: None,
             },
         });
-        
+
         Ok(())
     }
-    
+
     fn calculate_total_complexity(&self) -> ComplexityMetrics {
         ComplexityMetrics {
-            cyclomatic: self.functions.iter().map(|f| f.metrics.cyclomatic).sum::<u16>().max(1),
-            cognitive: self.functions.iter().map(|f| f.metrics.cognitive).sum::<u16>().max(1),
-            nesting_max: self.functions.iter().map(|f| f.metrics.nesting_max).max().unwrap_or(0),
+            cyclomatic: self
+                .functions
+                .iter()
+                .map(|f| f.metrics.cyclomatic)
+                .sum::<u16>()
+                .max(1),
+            cognitive: self
+                .functions
+                .iter()
+                .map(|f| f.metrics.cognitive)
+                .sum::<u16>()
+                .max(1),
+            nesting_max: self
+                .functions
+                .iter()
+                .map(|f| f.metrics.nesting_max)
+                .max()
+                .unwrap_or(0),
             lines: self.functions.iter().map(|f| f.metrics.lines).sum::<u16>(),
             halstead: None,
         }
@@ -1384,27 +1403,31 @@ impl RuchyAstAnalyzer {
 /// Parse a Ruchy file using the real Ruchy parser and analyze its complexity
 #[cfg(feature = "ruchy-ast")]
 pub async fn analyze_ruchy_file_with_parser(path: &Path) -> Result<FileComplexityMetrics> {
-    use ruchy::{Parser, is_valid_syntax, get_parse_error};
-    
+    use ruchy::{get_parse_error, is_valid_syntax, Parser};
+
     let content = tokio::fs::read_to_string(path).await?;
-    
+
     // Validate syntax first
     if !is_valid_syntax(&content) {
         if let Some(error) = get_parse_error(&content) {
-            return Err(anyhow::anyhow!("Parse error in {}: {}", path.display(), error));
+            return Err(anyhow::anyhow!(
+                "Parse error in {}: {}",
+                path.display(),
+                error
+            ));
         } else {
             return Err(anyhow::anyhow!("Syntax error in {}", path.display()));
         }
     }
-    
+
     // Parse with real Ruchy parser
     let mut parser = Parser::new(&content);
     let ast = parser.parse()?;
-    
+
     // Analyze the AST using a new Ruchy AST analyzer
     let mut analyzer = RuchyAstAnalyzer::new();
     let metrics = analyzer.analyze_ast(&ast, path.display().to_string())?;
-    
+
     Ok(metrics)
 }
 
@@ -1525,7 +1548,7 @@ impl RuchyParserState {
         ];
 
         for (pattern, cyclo, cognitive) in patterns {
-            if trimmed.starts_with(pattern) || trimmed.contains(&format!(" {}", pattern)) {
+            if trimmed.starts_with(pattern) || trimmed.contains(&format!(" {pattern}")) {
                 self.current_metrics.cyclomatic += cyclo;
                 self.current_metrics.cognitive += cognitive;
             }
@@ -1660,7 +1683,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

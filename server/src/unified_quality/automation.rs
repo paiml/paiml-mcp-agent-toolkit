@@ -1,9 +1,9 @@
 //! Automation Layer: Conservative Automation
-//! 
+//!
 //! Phase 4 Implementation (Months 10-12)
 //! Safe, deterministic automation for simple fixes
 
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::process::Command;
@@ -14,13 +14,13 @@ use crate::unified_quality::metrics::{Violation, ViolationType};
 pub struct ConservativeAutomator {
     /// Only transformations with 100% success rate
     safe_transforms: Vec<SafeTransform>,
-    
+
     /// Git integration for safety
     git: GitSafetyNet,
-    
+
     /// Rollback capability
     rollback: RollbackManager,
-    
+
     /// Configuration
     config: AutomatorConfig,
 }
@@ -30,16 +30,16 @@ pub struct ConservativeAutomator {
 pub struct SafeTransform {
     /// Transform identifier
     pub id: String,
-    
+
     /// Transform name
     pub name: String,
-    
+
     /// Violation types this transform handles
     pub handles: Vec<ViolationType>,
-    
+
     /// Success rate (must be 1.0 for safe transforms)
     pub success_rate: f64,
-    
+
     /// Transform function
     pub transform: TransformFn,
 }
@@ -52,16 +52,16 @@ pub type TransformFn = fn(&Violation) -> Result<Fix>;
 pub struct Fix {
     /// File to fix
     pub file: PathBuf,
-    
+
     /// Fix type
     pub fix_type: FixType,
-    
+
     /// The actual change
     pub change: Change,
-    
+
     /// Verification command
     pub verify_command: Option<String>,
-    
+
     /// Branch name for the fix
     pub branch_name: String,
 }
@@ -81,10 +81,10 @@ pub enum FixType {
 pub struct Change {
     /// Original content
     pub before: String,
-    
+
     /// Fixed content
     pub after: String,
-    
+
     /// Line range affected
     pub line_range: (usize, usize),
 }
@@ -94,7 +94,7 @@ pub struct Change {
 pub struct GitSafetyNet {
     /// Working directory
     work_dir: PathBuf,
-    
+
     /// Current branch
     original_branch: Option<String>,
 }
@@ -104,7 +104,7 @@ pub struct GitSafetyNet {
 pub struct RollbackManager {
     /// Rollback points
     rollback_points: Vec<RollbackPoint>,
-    
+
     /// Maximum rollback history
     max_history: usize,
 }
@@ -113,15 +113,17 @@ pub struct RollbackManager {
 #[derive(Debug, Clone)]
 struct RollbackPoint {
     /// Timestamp
+    #[allow(dead_code)]
     timestamp: std::time::SystemTime,
-    
+
     /// Branch name
     branch: String,
-    
+
     /// Commit hash
     commit: String,
-    
+
     /// Files changed
+    #[allow(dead_code)]
     files: Vec<PathBuf>,
 }
 
@@ -130,19 +132,19 @@ struct RollbackPoint {
 pub struct AutomatorConfig {
     /// Enable automation
     pub enabled: bool,
-    
+
     /// Require human review
     pub require_review: bool,
-    
+
     /// Only apply safe transforms
     pub safe_only: bool,
-    
+
     /// Create branches for fixes
     pub create_branches: bool,
-    
+
     /// Auto-commit fixes
     pub auto_commit: bool,
-    
+
     /// Maximum files per batch
     pub max_batch_size: usize,
 }
@@ -165,13 +167,13 @@ impl Default for AutomatorConfig {
 pub struct AutomationResult {
     /// Fixes applied successfully
     pub successful: Vec<AppliedFix>,
-    
+
     /// Fixes that failed
     pub failed: Vec<FailedFix>,
-    
+
     /// Fixes requiring review
     pub pending_review: Vec<Fix>,
-    
+
     /// Branch created (if any)
     pub branch_name: Option<String>,
 }
@@ -202,13 +204,13 @@ impl ConservativeAutomator {
             config,
         }
     }
-    
+
     /// Automatically fix a violation if safe
     pub async fn auto_fix(&self, violation: &Violation) -> Result<Fix> {
         if !self.config.enabled {
             return Err(anyhow!("Automation is disabled"));
         }
-        
+
         match violation.violation_type {
             // Dead code removal is deterministic
             ViolationType::DeadCode => {
@@ -218,7 +220,7 @@ impl ConservativeAutomator {
                 }
                 Ok(fix)
             }
-            
+
             // Unused imports are safe to remove
             ViolationType::UnusedImport => {
                 let fix = self.remove_import(violation)?;
@@ -227,7 +229,7 @@ impl ConservativeAutomator {
                 }
                 Ok(fix)
             }
-            
+
             // Format violations are safe
             ViolationType::Formatting => {
                 let fix = self.run_rustfmt(violation)?;
@@ -236,12 +238,12 @@ impl ConservativeAutomator {
                 }
                 Ok(fix)
             }
-            
+
             // Everything else needs human review
-            _ => Err(anyhow!("Violation type requires human review"))
+            _ => Err(anyhow!("Violation type requires human review")),
         }
     }
-    
+
     /// Batch fix multiple violations
     pub async fn batch_fix(&self, violations: Vec<Violation>) -> Result<AutomationResult> {
         let mut result = AutomationResult {
@@ -250,14 +252,14 @@ impl ConservativeAutomator {
             pending_review: Vec::new(),
             branch_name: None,
         };
-        
+
         // Create a branch for all fixes
         if self.config.create_branches {
             let branch_name = format!("auto-fix-{}", chrono::Utc::now().timestamp());
             self.git.create_branch(&branch_name)?;
             result.branch_name = Some(branch_name);
         }
-        
+
         // Process violations in batches
         for chunk in violations.chunks(self.config.max_batch_size) {
             for violation in chunk {
@@ -289,25 +291,25 @@ impl ConservativeAutomator {
                     }
                     Err(e) => {
                         // Failed to create fix
-                        eprintln!("Failed to create fix: {}", e);
+                        eprintln!("Failed to create fix: {e}");
                     }
                 }
             }
         }
-        
+
         // Commit if configured
         if self.config.auto_commit && !result.successful.is_empty() {
             self.git.commit_fixes(&result.successful)?;
         }
-        
+
         Ok(result)
     }
-    
+
     /// Rollback the last automation
     pub fn rollback(&mut self) -> Result<()> {
         self.rollback.rollback_last()
     }
-    
+
     /// Initialize safe transforms
     fn initialize_safe_transforms() -> Vec<SafeTransform> {
         vec![
@@ -351,7 +353,7 @@ impl ConservativeAutomator {
             },
         ]
     }
-    
+
     /// Remove dead code
     fn remove_dead_code(&self, violation: &Violation) -> Result<Fix> {
         // In production, would use syn to parse and remove dead code
@@ -367,7 +369,7 @@ impl ConservativeAutomator {
             branch_name: format!("fix/dead-code-{}", chrono::Utc::now().timestamp()),
         })
     }
-    
+
     /// Remove unused import
     fn remove_import(&self, violation: &Violation) -> Result<Fix> {
         // In production, would use syn to parse and remove import
@@ -383,7 +385,7 @@ impl ConservativeAutomator {
             branch_name: format!("fix/unused-import-{}", chrono::Utc::now().timestamp()),
         })
     }
-    
+
     /// Run rustfmt
     fn run_rustfmt(&self, violation: &Violation) -> Result<Fix> {
         // In production, would actually run rustfmt
@@ -399,7 +401,7 @@ impl ConservativeAutomator {
             branch_name: format!("fix/formatting-{}", chrono::Utc::now().timestamp()),
         })
     }
-    
+
     /// Suggest a fix for manual review
     fn suggest_fix(&self, violation: &Violation) -> Result<Fix> {
         Ok(Fix {
@@ -414,22 +416,19 @@ impl ConservativeAutomator {
             branch_name: format!("fix/suggestion-{}", chrono::Utc::now().timestamp()),
         })
     }
-    
+
     /// Apply a fix to a file
     fn apply_fix(&self, fix: &Fix) -> Result<bool> {
         // In production, would actually modify the file
         // For now, just verify
         if let Some(cmd) = &fix.verify_command {
-            let output = Command::new("sh")
-                .arg("-c")
-                .arg(cmd)
-                .output()?;
+            let output = Command::new("sh").arg("-c").arg(cmd).output()?;
             Ok(output.status.success())
         } else {
             Ok(true)
         }
     }
-    
+
     /// Get list of safe transformations
     pub fn get_safe_transforms(&self) -> Vec<SafeTransform> {
         self.safe_transforms.clone()
@@ -443,24 +442,24 @@ impl GitSafetyNet {
             original_branch: None,
         }
     }
-    
+
     fn create_branch(&self, name: &str) -> Result<()> {
         Command::new("git")
             .current_dir(&self.work_dir)
-            .args(&["checkout", "-b", name])
+            .args(["checkout", "-b", name])
             .output()?;
         Ok(())
     }
-    
+
     fn create_fix_branch(&self, fix: &Fix) -> Result<()> {
         self.create_branch(&fix.branch_name)
     }
-    
+
     fn commit_fixes(&self, fixes: &[AppliedFix]) -> Result<()> {
         let message = format!("Auto-fix: {} violations", fixes.len());
         Command::new("git")
             .current_dir(&self.work_dir)
-            .args(&["commit", "-m", &message])
+            .args(["commit", "-m", &message])
             .output()?;
         Ok(())
     }
@@ -473,7 +472,8 @@ impl RollbackManager {
             max_history: 10,
         }
     }
-    
+
+    #[allow(dead_code)]
     fn add_rollback_point(&mut self, branch: String, commit: String, files: Vec<PathBuf>) {
         let point = RollbackPoint {
             timestamp: std::time::SystemTime::now(),
@@ -481,22 +481,22 @@ impl RollbackManager {
             commit,
             files,
         };
-        
+
         self.rollback_points.push(point);
-        
+
         // Keep only recent history
         if self.rollback_points.len() > self.max_history {
             self.rollback_points.remove(0);
         }
     }
-    
+
     fn rollback_last(&mut self) -> Result<()> {
         if let Some(point) = self.rollback_points.pop() {
             Command::new("git")
-                .args(&["checkout", &point.branch])
+                .args(["checkout", &point.branch])
                 .output()?;
             Command::new("git")
-                .args(&["reset", "--hard", &point.commit])
+                .args(["reset", "--hard", &point.commit])
                 .output()?;
             Ok(())
         } else {
@@ -523,7 +523,7 @@ mod tests {
             ..Default::default()
         };
         let automator = ConservativeAutomator::new(config);
-        
+
         let violation = Violation {
             file: "test.rs".to_string(),
             violation_type: ViolationType::DeadCode,
@@ -531,10 +531,10 @@ mod tests {
             value: 1.0,
             threshold: 0.0,
         };
-        
+
         let result = automator.auto_fix(&violation).await;
         assert!(result.is_ok());
-        
+
         let fix = result.unwrap();
         assert_eq!(fix.fix_type, FixType::DeadCodeRemoval);
     }

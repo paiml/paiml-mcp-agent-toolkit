@@ -35,7 +35,7 @@ impl ContractCliHandler {
         // Print deprecation warnings if any
         let warnings = super::adapter::ContractAdapter::deprecation_warnings(&cmd);
         for warning in warnings {
-            eprintln!("{}", warning);
+            eprintln!("{warning}");
         }
 
         // Process based on command type
@@ -147,7 +147,7 @@ impl ContractCliHandler {
             std::fs::write(path, output_str)?;
             println!("Results written to: {}", path.display());
         } else {
-            println!("{}", output_str);
+            println!("{output_str}");
         }
 
         Ok(())
@@ -177,7 +177,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

@@ -56,14 +56,13 @@ pub async fn handle_test(
                         let report = format!(
                             "Performance Test Report\n\
                              =======================\n\
-                             Suite: {:?}\n\
-                             Duration: {:?}\n\
-                             Iterations: {}\n\
-                             Memory Tests: {}\n\
-                             Throughput Tests: {}\n\
-                             Regression Tests: {}\n\
-                             Status: PASSED\n",
-                            suite, duration, iterations, memory, throughput, regression
+                             Suite: {suite:?}\n\
+                             Duration: {duration:?}\n\
+                             Iterations: {iterations}\n\
+                             Memory Tests: {memory}\n\
+                             Throughput Tests: {throughput}\n\
+                             Regression Tests: {regression}\n\
+                             Status: PASSED\n"
                         );
 
                         std::fs::write(&output_path, report)?;

@@ -1,24 +1,24 @@
 //! WebAssembly analysis and quality assurance module
-//! 
+//!
 //! Implements the WebAssembly Integration Specification v3 for
 //! pragmatic zero-defect validation through incremental verification.
 
 pub mod analyzer;
-pub mod verifier;
-pub mod profiler;
-pub mod security;
 pub mod baseline;
 pub mod hardware;
+pub mod profiler;
+pub mod security;
+pub mod verifier;
 
-pub use analyzer::{WasmAnalyzer, Analysis};
-pub use verifier::{IncrementalVerifier, VerificationResult};
+pub use analyzer::{Analysis, WasmAnalyzer};
+pub use baseline::{QualityAssessment, QualityBaseline, Violation};
+pub use hardware::{CacheClass, CoreClass, HardwareClass};
 pub use profiler::{AsyncProfiler, ShadowStack};
-pub use security::{PatternDetector, VulnerabilityPattern, VulnerabilityMatch};
-pub use baseline::{QualityBaseline, QualityAssessment, Violation};
-pub use hardware::{HardwareClass, CoreClass, CacheClass};
+pub use security::{PatternDetector, VulnerabilityMatch, VulnerabilityPattern};
+pub use verifier::{IncrementalVerifier, VerificationResult};
 
 use anyhow::Result;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 /// Main entry point for WASM analysis
 pub async fn analyze_wasm_module(binary: &[u8]) -> Result<Analysis> {
@@ -85,7 +85,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

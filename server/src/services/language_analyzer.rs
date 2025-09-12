@@ -328,8 +328,7 @@ impl LanguageAnalyzer {
             success: false,
             data: serde_json::json!({"error": "Analysis not supported for this language"}),
             error: Some(format!(
-                "Analysis {:?} not supported for language {:?}",
-                analysis_type, language
+                "Analysis {analysis_type:?} not supported for language {language:?}"
             )),
         }
     }
@@ -635,7 +634,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

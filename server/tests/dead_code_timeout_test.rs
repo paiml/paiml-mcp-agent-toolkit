@@ -15,7 +15,7 @@ fn test_dead_code_completes_within_timeout() {
     let (tx, rx) = mpsc::channel();
 
     // Spawn thread to run the command
-    let handle = thread::spawn(move || {
+    let _handle = thread::spawn(move || {
         let start = Instant::now();
 
         let output = Command::new(env!("CARGO_BIN_EXE_pmat"))

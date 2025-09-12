@@ -487,7 +487,7 @@ impl UnifiedEngine {
                 }
                 Command::Explain => {
                     let explanation = self.explain_current_state().await?;
-                    println!("{}", explanation);
+                    println!("{explanation}");
                 }
                 Command::Exit => {
                     let state_machine = self.state_machine.read().await;
@@ -648,7 +648,7 @@ impl UnifiedEngine {
                 line_range: None,
             },
             _ => StateInfo {
-                state_type: format!("{:?}", current_state)
+                state_type: format!("{current_state:?}")
                     .split(' ')
                     .next()
                     .unwrap_or("Unknown")
@@ -733,7 +733,7 @@ impl UnifiedEngine {
 
         Ok(StepResult {
             success: true,
-            explanation: format!("Transitioned from {} to {}", old_state, new_state),
+            explanation: format!("Transitioned from {old_state} to {new_state}"),
             metrics_changed: true,
             new_state,
         })
@@ -779,8 +779,7 @@ impl UnifiedEngine {
                 violations.len()
             )),
             State::Refactor { operation } => Ok(format!(
-                "Applying refactoring operation: {:?}. This will transform the code to improve maintainability.",
-                operation
+                "Applying refactoring operation: {operation:?}. This will transform the code to improve maintainability."
             )),
             _ => Ok("Processing current state...".to_string()),
         }
@@ -1112,7 +1111,7 @@ mod tests {
     async fn test_state_machine_transitions() {
         let targets = vec![PathBuf::from("test.rs")];
         let config = RefactorConfig::default();
-        let mut state_machine = RefactorStateMachine::new(targets.clone(), config);
+        let state_machine = RefactorStateMachine::new(targets.clone(), config);
 
         // Check initial state (using Scan as the initial state)
         assert!(matches!(state_machine.current, State::Scan { .. }));
@@ -1173,7 +1172,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

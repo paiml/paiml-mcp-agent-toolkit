@@ -131,7 +131,7 @@ async fn write_analysis_output(output_text: String, output_path: Option<PathBuf>
         tokio::fs::write(&output_path, &output_text).await?;
         eprintln!("📝 Results written to: {}", output_path.display());
     } else {
-        println!("{}", output_text);
+        println!("{output_text}");
     }
     Ok(())
 }
@@ -277,7 +277,7 @@ async fn write_wasm_analysis_output(
         tokio::fs::write(&output_path, &output_text).await?;
         eprintln!("📝 Results written to: {}", output_path.display());
     } else {
-        println!("{}", output_text);
+        println!("{output_text}");
     }
 
     Ok(())
@@ -537,7 +537,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

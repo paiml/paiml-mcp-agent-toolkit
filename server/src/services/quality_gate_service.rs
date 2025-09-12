@@ -107,7 +107,7 @@ impl QualityGateService {
         let passed = violations.is_empty();
 
         Ok(QualityCheckResult {
-            check: format!("Complexity (max: {})", max),
+            check: format!("Complexity (max: {max})"),
             passed,
             message: if passed {
                 "All functions within complexity limit".to_string()
@@ -131,7 +131,7 @@ impl QualityGateService {
         let passed = violations.len() <= tolerance as usize;
 
         Ok(QualityCheckResult {
-            check: format!("SATD (tolerance: {})", tolerance),
+            check: format!("SATD (tolerance: {tolerance})"),
             passed,
             message: if passed {
                 if violations.is_empty() {
@@ -164,12 +164,12 @@ impl QualityGateService {
         let passed = percentage <= max_percentage;
 
         Ok(QualityCheckResult {
-            check: format!("Dead Code (max: {}%)", max_percentage),
+            check: format!("Dead Code (max: {max_percentage}%)"),
             passed,
             message: if passed {
-                format!("Dead code percentage: {:.1}%", percentage)
+                format!("Dead code percentage: {percentage:.1}%")
             } else {
-                format!("Dead code {:.1}% exceeds limit", percentage)
+                format!("Dead code {percentage:.1}% exceeds limit")
             },
             violations,
         })
@@ -178,7 +178,7 @@ impl QualityGateService {
     async fn check_coverage(&self, _path: &Path, min: f64) -> Result<QualityCheckResult> {
         // Placeholder for coverage check
         Ok(QualityCheckResult {
-            check: format!("Coverage (min: {}%)", min),
+            check: format!("Coverage (min: {min}%)"),
             passed: true,
             message: "Coverage check passed".to_string(),
             violations: vec![],
@@ -318,7 +318,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

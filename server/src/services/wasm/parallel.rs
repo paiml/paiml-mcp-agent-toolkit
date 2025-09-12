@@ -133,7 +133,7 @@ impl ParallelWasmAnalyzer {
 
         // Basic analysis (simplified for compilation)
         if let Err(e) = std::fs::read_to_string(path) {
-            errors.push(format!("Failed to read file: {}", e));
+            errors.push(format!("Failed to read file: {e}"));
         }
 
         let parse_time_ms = start_time.elapsed().as_millis() as u64;
@@ -206,7 +206,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

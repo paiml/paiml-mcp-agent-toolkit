@@ -144,12 +144,12 @@ impl SimpleContractService {
     pub async fn analyze_entropy(&self, contract: AnalyzeEntropyContract) -> Result<Value> {
         contract.validate()?;
 
-        use crate::entropy::{EntropyAnalyzer, EntropyConfig};
         use crate::entropy::violation_detector::Severity;
+        use crate::entropy::{EntropyAnalyzer, EntropyConfig};
 
         // Convert contract parameters to entropy config
         let mut config = EntropyConfig::default();
-        
+
         if let Some(severity_str) = &contract.min_severity {
             config.min_severity = match severity_str.as_str() {
                 "low" => Severity::Low,
@@ -166,7 +166,7 @@ impl SimpleContractService {
 
         // Create analyzer and run analysis
         let analyzer = EntropyAnalyzer::with_config(config);
-        
+
         let analysis_path = if let Some(file_path) = &contract.file {
             file_path
         } else {
@@ -182,7 +182,11 @@ impl SimpleContractService {
         // Limit violations if requested
         let violations = if let Some(limit) = contract.top_violations {
             if limit > 0 && report.actionable_violations.len() > limit {
-                report.actionable_violations.into_iter().take(limit).collect()
+                report
+                    .actionable_violations
+                    .into_iter()
+                    .take(limit)
+                    .collect()
             } else {
                 report.actionable_violations
             }
@@ -214,7 +218,10 @@ impl SimpleContractService {
         let mut violations = Vec::new();
 
         // Check entropy violations if enabled
-        if matches!(contract.profile, QualityProfile::Strict | QualityProfile::Extreme) {
+        if matches!(
+            contract.profile,
+            QualityProfile::Strict | QualityProfile::Extreme
+        ) {
             let entropy_contract = AnalyzeEntropyContract {
                 base: contract.base.clone(),
                 min_severity: Some("medium".to_string()),
@@ -224,15 +231,22 @@ impl SimpleContractService {
 
             match self.analyze_entropy(entropy_contract).await {
                 Ok(entropy_result) => {
-                    if let Ok(entropy_response) = serde_json::from_value::<EntropyResponse>(entropy_result) {
+                    if let Ok(entropy_response) =
+                        serde_json::from_value::<EntropyResponse>(entropy_result)
+                    {
                         // Convert high-severity entropy violations to quality gate violations
                         for violation in entropy_response.violations.iter().take(5) {
-                            if matches!(violation.severity, crate::entropy::violation_detector::Severity::High) {
+                            if matches!(
+                                violation.severity,
+                                crate::entropy::violation_detector::Severity::High
+                            ) {
                                 violations.push(QualityViolation {
                                     rule: format!("entropy_{:?}", violation.pattern.pattern_type),
                                     severity: ViolationSeverity::Warning,
-                                    message: format!("High entropy pattern detected: {} ({} repetitions)", 
-                                        violation.message, violation.pattern.repetitions),
+                                    message: format!(
+                                        "High entropy pattern detected: {} ({} repetitions)",
+                                        violation.message, violation.pattern.repetitions
+                                    ),
                                     file: contract.base.path.display().to_string(),
                                     line: 1, // We don't have location info in PatternSummary yet
                                 });
@@ -473,7 +487,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

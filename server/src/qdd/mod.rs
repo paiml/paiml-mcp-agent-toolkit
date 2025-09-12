@@ -1,19 +1,19 @@
 //! Quality-Driven Development (QDD) Tool
-//! 
+//!
 //! Unified tool for creating and refactoring code with guaranteed quality standards.
 //! Implements the Toyota Way principles with TDD methodology.
 
 pub mod core;
 pub mod generator;
-pub mod refactor;
 pub mod patterns;
 pub mod profiles;
+pub mod refactor;
 
 pub use core::*;
 pub use generator::*;
-pub use refactor::*;
 pub use patterns::*;
 pub use profiles::*;
+pub use refactor::*;
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
@@ -138,7 +138,7 @@ impl QddTool {
             profile,
         }
     }
-    
+
     /// Execute QDD operation with quality guarantees
     pub async fn execute(&self, operation: QddOperation) -> Result<QddResult> {
         match operation {
@@ -148,22 +148,24 @@ impl QddTool {
             QddOperation::Migrate(spec) => self.migrate_code(spec).await,
         }
     }
-    
+
     async fn create_code(&self, spec: CreateSpec) -> Result<QddResult> {
         self.generator.create(&spec).await
     }
-    
+
     async fn refactor_code(&self, spec: RefactorSpec) -> Result<QddResult> {
         self.refactor_engine.refactor(&spec).await
     }
-    
+
     async fn enhance_code(&self, spec: EnhanceSpec) -> Result<QddResult> {
         // Enhancement: Add features while maintaining quality
         let base_code = std::fs::read_to_string(&spec.base_file)?;
-        let enhanced_code = self.generator.enhance_with_features(&base_code, &spec.features)?;
+        let enhanced_code = self
+            .generator
+            .enhance_with_features(&base_code, &spec.features)?;
         let tests = self.generator.generate_tests(&enhanced_code)?;
         let documentation = self.generator.generate_documentation(&enhanced_code)?;
-        
+
         let metrics = QualityMetrics::default();
         let quality_score = QualityScore {
             overall: metrics.calculate_score(),
@@ -171,7 +173,7 @@ impl QddTool {
             coverage: 90.0,
             tdg: 2,
         };
-        
+
         Ok(QddResult {
             code: enhanced_code,
             tests,
@@ -184,29 +186,29 @@ impl QddTool {
             },
         })
     }
-    
+
     async fn migrate_code(&self, spec: MigrateSpec) -> Result<QddResult> {
         // Migration: Transform code between patterns
         let mut migrated_code = String::new();
         let mut all_tests = String::new();
         let mut all_docs = String::new();
-        
+
         for file_path in &spec.files {
             let original_code = std::fs::read_to_string(file_path)?;
             let transformed = self.refactor_engine.migrate_pattern(
-                &original_code, 
-                &spec.from_pattern, 
-                &spec.to_pattern
+                &original_code,
+                &spec.from_pattern,
+                &spec.to_pattern,
             )?;
             migrated_code.push_str(&transformed);
-            
+
             let tests = self.generator.generate_tests(&transformed)?;
             all_tests.push_str(&tests);
-            
+
             let docs = self.generator.generate_documentation(&transformed)?;
             all_docs.push_str(&docs);
         }
-        
+
         let metrics = QualityMetrics::default();
         let quality_score = QualityScore {
             overall: metrics.calculate_score(),
@@ -214,7 +216,7 @@ impl QddTool {
             coverage: 85.0,
             tdg: 3,
         };
-        
+
         Ok(QddResult {
             code: migrated_code,
             tests: all_tests,
@@ -239,7 +241,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

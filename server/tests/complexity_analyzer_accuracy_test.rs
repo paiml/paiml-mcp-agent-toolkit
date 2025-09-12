@@ -1,5 +1,5 @@
 //! Sprint 82: Validate complexity analyzer accuracy after fix
-//! 
+//!
 //! This test ensures the cognitive complexity calculation follows
 //! SonarSource specification correctly after fixing the bug where
 //! nesting level was incorrectly added to all cognitive increments.
@@ -12,7 +12,7 @@ use tempfile::TempDir;
 async fn test_cognitive_complexity_simple_if_else_chain() {
     let temp_dir = TempDir::new().unwrap();
     let test_file = temp_dir.path().join("test.rs");
-    
+
     // Simple if-else chain: cognitive complexity should be 4
     fs::write(
         &test_file,
@@ -33,26 +33,28 @@ async fn test_cognitive_complexity_simple_if_else_chain() {
     "#,
     )
     .unwrap();
-    
+
     let analyzer = AccurateComplexityAnalyzer::new();
     let result = analyzer.analyze_file(&test_file).await.unwrap();
-    
+
     assert_eq!(result.functions.len(), 1);
     let func = &result.functions[0];
-    
+
     // Cyclomatic: 1 base + 4 decision points = 5
     assert_eq!(func.cyclomatic_complexity, 5, "Cyclomatic should be 5");
-    
+
     // Cognitive: 4 (one for each if/else if, no nesting penalty at top level)
-    assert_eq!(func.cognitive_complexity, 4, 
-        "Cognitive complexity for simple if-else chain should be 4, not 52!");
+    assert_eq!(
+        func.cognitive_complexity, 4,
+        "Cognitive complexity for simple if-else chain should be 4, not 52!"
+    );
 }
 
 #[tokio::test]
 async fn test_cognitive_complexity_nested_if() {
     let temp_dir = TempDir::new().unwrap();
     let test_file = temp_dir.path().join("test.rs");
-    
+
     // Nested if: cognitive should be 1 + (1+1) = 3
     fs::write(
         &test_file,
@@ -71,23 +73,25 @@ async fn test_cognitive_complexity_nested_if() {
     "#,
     )
     .unwrap();
-    
+
     let analyzer = AccurateComplexityAnalyzer::new();
     let result = analyzer.analyze_file(&test_file).await.unwrap();
-    
+
     assert_eq!(result.functions.len(), 1);
     let func = &result.functions[0];
-    
+
     // Cognitive: 1 (outer if) + 2 (inner if with nesting) = 3
-    assert_eq!(func.cognitive_complexity, 3, 
-        "Nested if should have cognitive complexity 3");
+    assert_eq!(
+        func.cognitive_complexity, 3,
+        "Nested if should have cognitive complexity 3"
+    );
 }
 
 #[tokio::test]
 async fn test_cognitive_complexity_loop_with_nested_if() {
     let temp_dir = TempDir::new().unwrap();
     let test_file = temp_dir.path().join("test.rs");
-    
+
     fs::write(
         &test_file,
         r#"
@@ -103,23 +107,25 @@ async fn test_cognitive_complexity_loop_with_nested_if() {
     "#,
     )
     .unwrap();
-    
+
     let analyzer = AccurateComplexityAnalyzer::new();
     let result = analyzer.analyze_file(&test_file).await.unwrap();
-    
+
     assert_eq!(result.functions.len(), 1);
     let func = &result.functions[0];
-    
+
     // Cognitive: 1 (for loop) + 2 (nested if) = 3
-    assert_eq!(func.cognitive_complexity, 3,
-        "Loop with nested if should have cognitive complexity 3");
+    assert_eq!(
+        func.cognitive_complexity, 3,
+        "Loop with nested if should have cognitive complexity 3"
+    );
 }
 
 #[tokio::test]
 async fn test_cognitive_complexity_match_with_guards() {
     let temp_dir = TempDir::new().unwrap();
     let test_file = temp_dir.path().join("test.rs");
-    
+
     fs::write(
         &test_file,
         r#"
@@ -133,23 +139,25 @@ async fn test_cognitive_complexity_match_with_guards() {
     "#,
     )
     .unwrap();
-    
+
     let analyzer = AccurateComplexityAnalyzer::new();
     let result = analyzer.analyze_file(&test_file).await.unwrap();
-    
+
     assert_eq!(result.functions.len(), 1);
     let func = &result.functions[0];
-    
+
     // Cognitive: 1 (match) + 1 (first guard) + 1 (second guard) = 3
-    assert_eq!(func.cognitive_complexity, 3,
-        "Match with 2 guards should have cognitive complexity 3");
+    assert_eq!(
+        func.cognitive_complexity, 3,
+        "Match with 2 guards should have cognitive complexity 3"
+    );
 }
 
 #[tokio::test]
 async fn test_cognitive_complexity_binary_operators() {
     let temp_dir = TempDir::new().unwrap();
     let test_file = temp_dir.path().join("test.rs");
-    
+
     fs::write(
         &test_file,
         r#"
@@ -159,23 +167,25 @@ async fn test_cognitive_complexity_binary_operators() {
     "#,
     )
     .unwrap();
-    
+
     let analyzer = AccurateComplexityAnalyzer::new();
     let result = analyzer.analyze_file(&test_file).await.unwrap();
-    
+
     assert_eq!(result.functions.len(), 1);
     let func = &result.functions[0];
-    
+
     // Cognitive: 1 (&&) + 1 (||) = 2
-    assert_eq!(func.cognitive_complexity, 2,
-        "Binary operators && and || should add 2 to cognitive complexity");
+    assert_eq!(
+        func.cognitive_complexity, 2,
+        "Binary operators && and || should add 2 to cognitive complexity"
+    );
 }
 
 #[tokio::test]
 async fn test_cognitive_complexity_deeply_nested() {
     let temp_dir = TempDir::new().unwrap();
     let test_file = temp_dir.path().join("test.rs");
-    
+
     fs::write(
         &test_file,
         r#"
@@ -199,16 +209,18 @@ async fn test_cognitive_complexity_deeply_nested() {
     "#,
     )
     .unwrap();
-    
+
     let analyzer = AccurateComplexityAnalyzer::new();
     let result = analyzer.analyze_file(&test_file).await.unwrap();
-    
+
     assert_eq!(result.functions.len(), 1);
     let func = &result.functions[0];
-    
+
     // Cognitive: 1 + 2 + 3 + 4 = 10
-    assert_eq!(func.cognitive_complexity, 10,
-        "Deeply nested structure should have cognitive complexity 10");
+    assert_eq!(
+        func.cognitive_complexity, 10,
+        "Deeply nested structure should have cognitive complexity 10"
+    );
 }
 
 #[tokio::test]
@@ -216,10 +228,10 @@ async fn test_sprint_82_regression_fix() {
     // This test documents the Sprint 82 bug fix
     // Previously, the analyzer would report 52 for a simple if-else chain
     // The bug was that add_cognitive was adding nesting_level to ALL increments
-    
+
     let temp_dir = TempDir::new().unwrap();
     let test_file = temp_dir.path().join("regression.rs");
-    
+
     let code = r###"
         // This function was incorrectly reported as having cognitive complexity 52
         fn process_line(line: &str) -> &'static str {
@@ -236,21 +248,28 @@ async fn test_sprint_82_regression_fix() {
             }
         }
     "###;
-    
+
     fs::write(&test_file, code).unwrap();
-    
+
     let analyzer = AccurateComplexityAnalyzer::new();
     let result = analyzer.analyze_file(&test_file).await.unwrap();
-    
+
     let func = &result.functions[0];
-    
+
     // Document the fix
-    assert_ne!(func.cognitive_complexity, 52, 
-        "Sprint 82 regression: Was reporting 52, should be 4");
-    assert_eq!(func.cognitive_complexity, 4,
-        "Sprint 82 fix: Correctly reports 4 for simple if-else chain");
-    
+    assert_ne!(
+        func.cognitive_complexity, 52,
+        "Sprint 82 regression: Was reporting 52, should be 4"
+    );
+    assert_eq!(
+        func.cognitive_complexity, 4,
+        "Sprint 82 fix: Correctly reports 4 for simple if-else chain"
+    );
+
     println!("✅ Sprint 82 Bug Fix Verified!");
     println!("   Previous (buggy): Cognitive = 52");
-    println!("   Current (fixed):  Cognitive = {}", func.cognitive_complexity);
+    println!(
+        "   Current (fixed):  Cognitive = {}",
+        func.cognitive_complexity
+    );
 }

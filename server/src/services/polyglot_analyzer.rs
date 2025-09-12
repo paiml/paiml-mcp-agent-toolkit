@@ -325,7 +325,7 @@ impl PolyglotAnalyzer {
         total_lines: &mut usize,
     ) {
         if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
-            let full_ext = format!(".{}", ext);
+            let full_ext = format!(".{ext}");
             if extensions.contains(&full_ext) {
                 *file_count += 1;
                 if let Ok(content) = std::fs::read_to_string(path) {
@@ -607,7 +607,7 @@ impl PolyglotAnalyzer {
 
         if js_files > 0 && ts_files > 0 {
             coupling_strength += 0.3;
-            files_involved.push(format!("{} JS + {} TS files", js_files, ts_files));
+            files_involved.push(format!("{js_files} JS + {ts_files} TS files"));
         }
 
         Ok(coupling_strength.min(1.0))
@@ -1083,7 +1083,7 @@ impl PolyglotAnalyzer {
         }
 
         if let Some(pattern) = &analysis.architecture_pattern {
-            insights.push(format!("Architecture pattern: {:?}", pattern));
+            insights.push(format!("Architecture pattern: {pattern:?}"));
         }
 
         let high_risk_points: Vec<_> = analysis
@@ -1271,7 +1271,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

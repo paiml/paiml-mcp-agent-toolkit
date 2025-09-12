@@ -214,10 +214,10 @@ enum Color { Red, Green, Blue, Yellow }
 
 fun process_color(color: Color) -> String {
     match color {
-        Color::Red => "#FF0000",
-        Color::Green => "#00FF00", 
-        Color::Blue => "#0000FF",
-        Color::Yellow => "#FFFF00",
+        Color::Red => "FF0000",
+        Color::Green => "00FF00", 
+        Color::Blue => "0000FF",
+        Color::Yellow => "FFFF00",
     }
 }
 "#;

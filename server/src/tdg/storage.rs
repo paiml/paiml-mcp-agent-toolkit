@@ -208,8 +208,6 @@ impl TieredStore {
         Ok(())
     }
 
-
-
     /// Clean up expired hot cache entries
     pub fn cleanup_hot_cache(&self, max_age_seconds: u64) -> usize {
         let now = SystemTime::now()
@@ -270,36 +268,38 @@ impl TieredStore {
         self.cold_backend.flush()?;
         Ok(())
     }
-    
+
     /// Get storage statistics for monitoring and dogfooding
     pub fn get_statistics(&self) -> StorageStatistics {
         let hot_entries = self.hot.len();
         let hot_memory_kb = (hot_entries * std::mem::size_of::<HotCacheEntry>()) / 1024;
-        
+
         // Get backend statistics (if available)
         let warm_stats = self.warm_backend.get_stats();
         let cold_stats = self.cold_backend.get_stats();
-        
-        let warm_entries = warm_stats.get("entry_count")
+
+        let warm_entries = warm_stats
+            .get("entry_count")
             .and_then(|v| v.parse::<usize>().ok())
             .unwrap_or(0);
-        let cold_entries = cold_stats.get("entry_count")
+        let cold_entries = cold_stats
+            .get("entry_count")
             .and_then(|v| v.parse::<usize>().ok())
             .unwrap_or(0);
-        
+
         let total_entries = hot_entries + warm_entries + cold_entries;
-        
+
         let mut backend_stats = HashMap::new();
         backend_stats.insert("warm".to_string(), warm_stats);
         backend_stats.insert("cold".to_string(), cold_stats);
-        
+
         StorageStatistics {
             hot_entries,
             warm_entries,
             cold_entries,
             total_entries,
             hot_memory_kb,
-            compression_ratio: 0.33, // Default compression ratio
+            compression_ratio: 0.33,          // Default compression ratio
             warm_backend: "sled".to_string(), // Default backend type
             cold_backend: "sled".to_string(), // Default backend type
             backend_stats,
@@ -583,7 +583,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

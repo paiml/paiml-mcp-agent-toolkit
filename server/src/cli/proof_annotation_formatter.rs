@@ -19,7 +19,7 @@ pub fn format_confidence_stats(
     if !confidence_counts.is_empty() {
         writeln!(output, "\n## Confidence Levels\n")?;
         for (level, count) in confidence_counts {
-            writeln!(output, "- {}: {} proofs", level, count)?;
+            writeln!(output, "- {level}: {count} proofs")?;
         }
     }
     Ok(())
@@ -47,7 +47,7 @@ pub fn format_method_stats(
     if !method_counts.is_empty() {
         writeln!(output, "\n## Verification Methods\n")?;
         for (method, count) in method_counts {
-            writeln!(output, "- {}: {} proofs", method, count)?;
+            writeln!(output, "- {method}: {count} proofs")?;
         }
     }
     Ok(())
@@ -67,7 +67,7 @@ pub fn format_property_stats(
     if !property_counts.is_empty() {
         writeln!(output, "## Properties Proven\n")?;
         for (prop, count) in property_counts {
-            writeln!(output, "- {}: {} proofs", prop, count)?;
+            writeln!(output, "- {prop}: {count} proofs")?;
         }
     }
     Ok(())
@@ -103,11 +103,11 @@ pub fn format_single_proof(
     format_proof_header(location, output)?;
     format_proof_metadata(annotation, output)?;
     format_proof_assumptions(&annotation.assumptions, output)?;
-    
+
     if include_evidence {
         format_proof_evidence(annotation, output)?;
     }
-    
+
     writeln!(output)?;
     Ok(())
 }
@@ -142,7 +142,7 @@ fn format_proof_assumptions(assumptions: &[String], output: &mut String) -> Resu
     if !assumptions.is_empty() {
         writeln!(output, "\n**Assumptions**:")?;
         for assumption in assumptions {
-            writeln!(output, "- {}", assumption)?;
+            writeln!(output, "- {assumption}")?;
         }
     }
     Ok(())
@@ -151,7 +151,7 @@ fn format_proof_assumptions(assumptions: &[String], output: &mut String) -> Resu
 fn format_proof_evidence(annotation: &ProofAnnotation, output: &mut String) -> Result<()> {
     writeln!(output, "\n**Evidence**: {:?}", annotation.evidence_type)?;
     if let Some(ref spec_id) = annotation.specification_id {
-        writeln!(output, "**Specification ID**: {}", spec_id)?;
+        writeln!(output, "**Specification ID**: {spec_id}")?;
     }
     Ok(())
 }
@@ -177,7 +177,7 @@ pub fn format_provability_summary(
         .count();
 
     writeln!(output, "## Provability Analysis Summary\n")?;
-    writeln!(output, "**Total Functions**: {}", total_functions)?;
+    writeln!(output, "**Total Functions**: {total_functions}")?;
     writeln!(
         output,
         "**High Provability (≥80%)**: {} ({:.1}%)",
@@ -273,7 +273,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

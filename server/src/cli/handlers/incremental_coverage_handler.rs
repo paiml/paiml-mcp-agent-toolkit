@@ -76,7 +76,7 @@ fn print_analysis_header(
 ) {
     eprintln!("📊 Analyzing incremental coverage...");
     eprintln!("📁 Project path: {}", project_path.display());
-    eprintln!("🌿 Base branch: {}", base_branch);
+    eprintln!("🌿 Base branch: {base_branch}");
     eprintln!(
         "🎯 Target branch: {}",
         target_branch.as_deref().unwrap_or("HEAD")
@@ -97,7 +97,7 @@ async fn output_results(
         tokio::fs::write(&output_path, &content).await?;
         eprintln!("📝 Written to {}", output_path.display());
     } else {
-        println!("{}", content);
+        println!("{content}");
     }
 
     Ok(())
@@ -162,7 +162,7 @@ fn format_detailed(result: &IncrementalCoverageResult, top_files: usize) -> Stri
         result.files_below_threshold
     ));
 
-    output.push_str(&format!("## Changed Files (Top {})\n", top_files));
+    output.push_str(&format!("## Changed Files (Top {top_files})\n"));
     for file in result.changed_files.iter().take(top_files) {
         output.push_str(&format!("\n### {}\n", file.file_path));
         output.push_str(&format!("- Status: {:?}\n", file.status));
@@ -356,7 +356,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

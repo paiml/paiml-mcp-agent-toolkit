@@ -7,7 +7,6 @@
 
 use anyhow::Result;
 use serde_json::{json, Value};
-use std::collections::HashMap;
 use std::path::PathBuf;
 use tempfile::TempDir;
 use tokio;

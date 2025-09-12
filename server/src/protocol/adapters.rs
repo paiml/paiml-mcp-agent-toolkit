@@ -321,7 +321,7 @@ fn route_to_operation(path: &str, method: &str) -> Result<Operation, ProtocolErr
             file_path: None,
             fail_on_violation: false,
         })),
-        _ => Err(ProtocolError::UnknownMethod(format!("{} {}", method, path))),
+        _ => Err(ProtocolError::UnknownMethod(format!("{method} {path}"))),
     }
 }
 
@@ -336,7 +336,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

@@ -254,8 +254,7 @@ impl DefectPredictionFacade {
             .count();
 
         let summary = format!(
-            "Analyzed {} files: {} high risk, {} medium risk, {} low risk",
-            total_files_analyzed, high_risk_files, medium_risk_files, low_risk_files
+            "Analyzed {total_files_analyzed} files: {high_risk_files} high risk, {medium_risk_files} medium risk, {low_risk_files} low risk"
         );
 
         let mut recommendations = Vec::new();
@@ -332,7 +331,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

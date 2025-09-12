@@ -207,13 +207,13 @@ impl RoadmapTodoGenerator {
 
             output.push_str("### Validation Commands\n");
             for cmd in &todo.validation_commands {
-                output.push_str(&format!("- `{}`\n", cmd));
+                output.push_str(&format!("- `{cmd}`\n"));
             }
             output.push('\n');
 
             output.push_str("### Success Criteria\n");
             for criterion in &todo.success_criteria {
-                output.push_str(&format!("- {}\n", criterion));
+                output.push_str(&format!("- {criterion}\n"));
             }
             output.push_str("\n---\n\n");
         }
@@ -353,7 +353,7 @@ impl RoadmapTodoGenerator {
         }
 
         for (task_id, task_todos) in tasks_map {
-            output.push_str(&format!("## Task {}\n\n", task_id));
+            output.push_str(&format!("## Task {task_id}\n\n"));
 
             for todo in task_todos {
                 output.push_str(&format!("### {} - {}\n\n", todo.id, todo.description));
@@ -387,20 +387,20 @@ impl RoadmapTodoGenerator {
 
                 output.push_str("**Validation Commands:**\n```bash\n");
                 for cmd in &todo.validation_commands {
-                    output.push_str(&format!("{}\n", cmd));
+                    output.push_str(&format!("{cmd}\n"));
                 }
                 output.push_str("```\n\n");
 
                 output.push_str("**Success Criteria:**\n");
                 for criterion in &todo.success_criteria {
-                    output.push_str(&format!("- [ ] {}\n", criterion));
+                    output.push_str(&format!("- [ ] {criterion}\n"));
                 }
                 output.push('\n');
 
                 if !todo.dependencies.is_empty() {
                     output.push_str("**Dependencies:**\n");
                     for dep in &todo.dependencies {
-                        output.push_str(&format!("- {}\n", dep));
+                        output.push_str(&format!("- {dep}\n"));
                     }
                     output.push('\n');
                 }
@@ -649,7 +649,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);
