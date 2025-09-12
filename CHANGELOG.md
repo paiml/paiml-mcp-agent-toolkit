@@ -7,6 +7,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.83.0] - 2025-09-12
+
+### Sprint 94 - AGENTS.md Integration 🤖
+
+**GROUNDBREAKING**: Complete implementation of AGENTS.md standard integration, bridging simple markdown-based agent guidance with PMAT's extreme quality enforcement and MCP capabilities.
+
+#### Added
+- **📝 AGENTS.md Parser**: Full markdown parsing with quality validation
+  - Extracts commands, guidelines, and quality rules from AGENTS.md files
+  - Supports all standard AGENTS.md sections (Overview, Dev Setup, Testing, etc.)
+  - Command extraction from code blocks with safety validation
+  - Quality rules integration with PMAT gates
+  
+- **🔍 Discovery System**: Auto-detect and use AGENTS.md files
+  - Find nearest AGENTS.md in project hierarchy
+  - File watching with real-time updates
+  - Caching with DashMap for performance
+  - Monorepo support with hierarchy resolution
+  
+- **⚡ Command Executor**: Safe command execution with quality gates
+  - Sandboxed environment with resource limits
+  - Command whitelisting and safety validation
+  - Risk assessment (FileSystem, Network, System, Resource)
+  - Quality gate enforcement on command output
+  
+- **🎨 AGENTS.md Generator**: Create AGENTS.md from PMAT analysis
+  - Generate from TDG analysis and project structure
+  - Language-specific templates (Rust, JS, Python, Go, Java)
+  - Update existing AGENTS.md with new findings
+  - Quality-aware generation with PMAT metrics
+  
+- **🌉 MCP-AGENTS.md Bridge**: Bidirectional protocol translation
+  - Convert AGENTS.md documents to MCP tools
+  - Convert MCP capabilities to AGENTS.md format
+  - Request/response routing between protocols
+  - Quality enforcement at protocol boundaries
+  
+- **📊 Quality Integration**: PMAT quality gates for agent operations
+  - Validate agent-generated code against standards
+  - Complexity, coverage, and SATD enforcement
+  - Auto-fix capabilities for quality issues
+  - Response quality scoring and reporting
+
+#### Technical Details
+- **Zero Configuration**: Works out-of-the-box with existing AGENTS.md files
+- **Progressive Enhancement**: Basic AGENTS.md support with advanced MCP features
+- **Backward Compatible**: No changes required to existing AGENTS.md files
+- **TDD Implementation**: 100% test coverage with property tests
+- **Quality Compliant**: All modules pass PMAT quality gates (≤10 complexity)
+
 ## [2.82.0] - 2025-09-12
 
 ### Sprint 93 - Unified Quality Enforcement System 🚀
