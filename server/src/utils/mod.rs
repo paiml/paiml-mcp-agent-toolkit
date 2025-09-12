@@ -23,6 +23,7 @@
 pub mod command_suggestions;
 pub mod file_filter;
 pub mod helpers;
+pub mod path_validator;
 pub mod pattern_helpers;
 
 #[cfg(test)]
