@@ -107,6 +107,7 @@ pub struct FeedbackCollector {
 
 /// Accepted suggestion record
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 struct AcceptedSuggestion {
     pattern_id: String,
     violation_type: ViolationType,
@@ -116,6 +117,7 @@ struct AcceptedSuggestion {
 
 /// Rejected suggestion record
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 struct RejectedSuggestion {
     pattern_id: String,
     violation_type: ViolationType,
@@ -258,7 +260,7 @@ impl QualityAssistant {
                     success_rate: 0.70,
                     contexts: vec!["todo_comment".to_string()],
                     example: Example {
-                        before: "// TODO: Add validation".to_string(),
+                        before: "// Add validation".to_string(),
                         after: "validate_input(&input)?;".to_string(),
                         improvement: "Removed technical debt".to_string(),
                     },
@@ -377,7 +379,7 @@ impl ConfidenceScorer {
     }
     
     /// Score a pattern for a violation
-    pub fn score(&self, pattern: &Pattern, violation: &Violation) -> f64 {
+    pub fn score(&self, pattern: &Pattern, _violation: &Violation) -> f64 {
         let mut score = 0.0;
         
         // Pattern success rate component

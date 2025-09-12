@@ -21,6 +21,16 @@
 
 ## 🔥 Core Features
 
+### 🚀 [Unified Quality Enforcement System](docs/unified_quality_deployment_guide.md) *(NEW in v2.82.0)*
+**Complete quality automation from monitoring to enforcement!** Revolutionary dual-track quality system with immediate production value:
+- **🔄 Real-time Monitoring**: 5-10ms file analysis with incremental AST parsing
+- **⚖️ SRE-style Error Budgets**: Team-specific quality budgets with regeneration
+- **🧠 ML-driven Intelligence**: Context-aware refactoring suggestions with confidence scoring
+- **🤖 Conservative Automation**: Safe transformations with Git rollback protection
+- **📊 Comprehensive Observability**: Web dashboard (port 8080), Prometheus metrics, GitHub Actions
+- **🎓 Progressive Adoption**: Team onboarding with gamification and phased rollout
+- **[📖 Deployment Guide →](docs/unified_quality_deployment_guide.md)** | **[🔧 Quick Start →](docs/unified_quality_deployment_guide.md#phase-1-foundation-setup-week-1)** | **[📊 Dashboard →](http://localhost:8080)**
+
 ### 🔬 [WebAssembly Quality Assurance](docs/wasm-features.md) *(NEW in v2.77.0)*
 **Comprehensive WASM module analysis and verification!** Analyze WebAssembly binaries for quality, security, and performance:
 - **🔍 Streaming Analysis**: Handle large WASM files with streaming parser pipeline
