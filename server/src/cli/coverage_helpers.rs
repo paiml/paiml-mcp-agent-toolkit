@@ -175,41 +175,61 @@ pub fn format_coverage_markdown(coverage_data: &CoverageUpdate, detailed: bool) 
     let mut output = String::new();
 
     writeln!(&mut output, "# Incremental Coverage Report\n")?;
+    
+    // Write summary section
+    write_coverage_summary(&mut output, coverage_data)?;
+    
+    // Write detailed file coverage if requested
+    if detailed {
+        write_file_details(&mut output, coverage_data)?;
+    }
 
-    // Summary
-    writeln!(&mut output, "## Summary\n")?;
+    Ok(output)
+}
+
+/// Write coverage summary section
+fn write_coverage_summary(output: &mut String, coverage_data: &CoverageUpdate) -> Result<()> {
+    writeln!(output, "## Summary\n")?;
     writeln!(
-        &mut output,
+        output,
         "- **Overall Coverage**: {:.1}%",
         coverage_data.aggregate_coverage.line_percentage
     )?;
     writeln!(
-        &mut output,
+        output,
         "- **New Code Coverage**: {:.1}% ({}/{} lines)",
         coverage_data.delta_coverage.percentage,
         coverage_data.delta_coverage.new_lines_covered,
         coverage_data.delta_coverage.new_lines_total
     )?;
+    Ok(())
+}
 
-    if detailed && !coverage_data.file_coverage.is_empty() {
-        writeln!(&mut output, "\n## File Details\n")?;
-
-        for (file_id, file_cov) in &coverage_data.file_coverage {
-            writeln!(&mut output, "### {}\n", file_id.path.display())?;
-            writeln!(
-                &mut output,
-                "- Line Coverage: {:.1}%",
-                file_cov.line_coverage
-            )?;
-            writeln!(
-                &mut output,
-                "- Branch Coverage: {:.1}%",
-                file_cov.branch_coverage
-            )?;
-        }
+/// Write detailed file coverage section
+fn write_file_details(output: &mut String, coverage_data: &CoverageUpdate) -> Result<()> {
+    if coverage_data.file_coverage.is_empty() {
+        return Ok(());
     }
+    
+    writeln!(output, "\n## File Details\n")?;
+    
+    for (file_id, file_cov) in &coverage_data.file_coverage {
+        write_single_file_coverage(output, file_id, file_cov)?;
+    }
+    
+    Ok(())
+}
 
-    Ok(output)
+/// Write coverage for a single file
+fn write_single_file_coverage(
+    output: &mut String, 
+    file_id: &crate::services::incremental_coverage_analyzer::FileId,
+    file_cov: &crate::services::incremental_coverage_analyzer::FileCoverage
+) -> Result<()> {
+    writeln!(output, "### {}\n", file_id.path.display())?;
+    writeln!(output, "- Line Coverage: {:.1}%", file_cov.line_coverage)?;
+    writeln!(output, "- Branch Coverage: {:.1}%", file_cov.branch_coverage)?;
+    Ok(())
 }
 
 /// Format coverage as LCOV
