@@ -14,7 +14,7 @@ impl HardwareClass {
     /// Create hardware class from system info
     pub fn from_system() -> Self {
         let cpu_count = num_cpus::get();
-        
+
         Self {
             cpu_family: CpuFamily::detect(),
             core_count_class: CoreClass::from_count(cpu_count),
@@ -25,31 +25,31 @@ impl HardwareClass {
     /// Calculate similarity score with another hardware class (0.0-1.0)
     pub fn similarity(&self, other: &HardwareClass) -> f64 {
         let mut score = 0.0;
-        
+
         // CPU family match is most important (50% weight)
         if self.cpu_family == other.cpu_family {
             score += 0.5;
         } else if self.cpu_family.compatible_with(&other.cpu_family) {
             score += 0.25;
         }
-        
+
         // Core count similarity (30% weight)
         let core_distance = self.core_count_class.distance(&other.core_count_class);
         score += 0.3 * (1.0 - (core_distance as f64 / 4.0).min(1.0));
-        
+
         // Cache class similarity (20% weight)
         let cache_distance = self.cache_class.distance(&other.cache_class);
         score += 0.2 * (1.0 - (cache_distance as f64 / 3.0).min(1.0));
-        
+
         score
     }
-    
+
     /// Calculate performance correction factor relative to baseline
     pub fn performance_factor(&self, baseline: &HardwareClass) -> f64 {
         // Empirically derived correction factors
         let core_factor = self.core_count_class.speedup() / baseline.core_count_class.speedup();
         let cache_factor = 1.0 + (self.cache_class.mb() - baseline.cache_class.mb()) * 0.02;
-        
+
         core_factor * cache_factor
     }
 }
@@ -88,7 +88,7 @@ impl CpuFamily {
     /// Check if two CPU families are compatible
     pub fn compatible_with(&self, other: &CpuFamily) -> bool {
         use CpuFamily::*;
-        
+
         match (self, other) {
             // Intel families are compatible
             (IntelCore, IntelXeon) | (IntelXeon, IntelCore) => true,
@@ -105,11 +105,11 @@ impl CpuFamily {
 /// Core count classification
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CoreClass {
-    Single,  // 1 core
-    Dual,    // 2 cores
-    Quad,    // 3-4 cores
-    Octa,    // 5-8 cores
-    Many,    // 9+ cores
+    Single, // 1 core
+    Dual,   // 2 cores
+    Quad,   // 3-4 cores
+    Octa,   // 5-8 cores
+    Many,   // 9+ cores
 }
 
 impl CoreClass {
@@ -127,7 +127,7 @@ impl CoreClass {
     /// Distance between core classes
     pub fn distance(&self, other: &CoreClass) -> usize {
         use CoreClass::*;
-        
+
         let self_idx: usize = match self {
             Single => 0,
             Dual => 1,
@@ -135,7 +135,7 @@ impl CoreClass {
             Octa => 3,
             Many => 4,
         };
-        
+
         let other_idx: usize = match other {
             Single => 0,
             Dual => 1,
@@ -143,7 +143,7 @@ impl CoreClass {
             Octa => 3,
             Many => 4,
         };
-        
+
         self_idx.abs_diff(other_idx)
     }
 
@@ -173,10 +173,10 @@ impl CoreClass {
 /// Cache size classification
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CacheClass {
-    Small,   // <4MB L3
-    Medium,  // 4-8MB L3
-    Large,   // 8-16MB L3
-    Huge,    // >16MB L3
+    Small,  // <4MB L3
+    Medium, // 4-8MB L3
+    Large,  // 8-16MB L3
+    Huge,   // >16MB L3
 }
 
 impl CacheClass {
@@ -190,21 +190,21 @@ impl CacheClass {
     /// Distance between cache classes
     pub fn distance(&self, other: &CacheClass) -> usize {
         use CacheClass::*;
-        
+
         let self_idx: usize = match self {
             Small => 0,
             Medium => 1,
             Large => 2,
             Huge => 3,
         };
-        
+
         let other_idx: usize = match other {
             Small => 0,
             Medium => 1,
             Large => 2,
             Huge => 3,
         };
-        
+
         self_idx.abs_diff(other_idx)
     }
 
@@ -254,7 +254,7 @@ impl HardwareProfile {
     pub fn from_system() -> Self {
         let logical_cores = num_cpus::get();
         let physical_cores = num_cpus::get_physical();
-        
+
         Self {
             class: HardwareClass::from_system(),
             cpu_name: "Unknown CPU".to_string(), // Would use actual detection
@@ -281,7 +281,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

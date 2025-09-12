@@ -132,7 +132,7 @@ impl PdmtService {
 
             let test_todo = PdmtTodo {
                 id: test_id.clone(),
-                content: format!("Write comprehensive tests for: {}", requirement),
+                content: format!("Write comprehensive tests for: {requirement}"),
                 status: TodoStatus::Pending,
                 priority: base_todo.priority.clone(),
                 estimated_hours: base_todo.estimated_hours * 0.5,
@@ -177,7 +177,7 @@ impl PdmtService {
 
             let doc_todo = PdmtTodo {
                 id: doc_id,
-                content: format!("Document and create examples for: {}", requirement),
+                content: format!("Document and create examples for: {requirement}"),
                 status: TodoStatus::Pending,
                 priority: TodoPriority::Low,
                 estimated_hours: 2.0,
@@ -227,7 +227,7 @@ impl PdmtService {
             "Create"
         };
 
-        format!("{} {}", action_verb, requirement)
+        format!("{action_verb} {requirement}")
     }
 
     /// Determine priority based on requirement keywords
@@ -401,7 +401,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

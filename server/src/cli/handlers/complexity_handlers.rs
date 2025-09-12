@@ -136,7 +136,7 @@ async fn analyze_project(
 ) -> Result<Vec<crate::services::complexity::FileComplexityMetrics>> {
     match detected_toolchain {
         Some(ref toolchain) => {
-            eprintln!("🔍 Analyzing {} project complexity...", toolchain);
+            eprintln!("🔍 Analyzing {toolchain} project complexity...");
             super::super::analysis_utilities::analyze_project_files(
                 &config.project_path,
                 Some(toolchain),
@@ -241,7 +241,7 @@ async fn format_and_write_output(
         tokio::fs::write(&output_path, &formatted_output).await?;
         eprintln!("📝 Results written to: {}", output_path.display());
     } else {
-        println!("{}", formatted_output);
+        println!("{formatted_output}");
     }
 
     Ok(())
@@ -829,7 +829,7 @@ fn watch_for_file_changes(
                 }
             }
             Err(e) => {
-                eprintln!("⚠️  Watch error: {}", e);
+                eprintln!("⚠️  Watch error: {e}");
                 break;
             }
         }
@@ -849,7 +849,7 @@ fn handle_file_change_event(event: &Event, config: &SyncAnalysisConfig) -> Resul
     eprintln!();
 
     if let Err(e) = run_complexity_analysis_sync(config.clone()) {
-        eprintln!("⚠️  Analysis error: {}", e);
+        eprintln!("⚠️  Analysis error: {e}");
     }
 
     Ok(())
@@ -942,7 +942,7 @@ async fn format_and_output_watch_results(
         tokio::fs::write(output_path, &content).await?;
         eprintln!("✅ Analysis written to: {}", output_path.display());
     } else {
-        println!("{}", content);
+        println!("{content}");
     }
 
     Ok(())
@@ -1025,7 +1025,7 @@ pub async fn handle_analyze_churn(
 ) -> Result<()> {
     use crate::services::git_analysis::GitAnalysisService;
 
-    eprintln!("📊 Analyzing code churn for the last {} days...", days);
+    eprintln!("📊 Analyzing code churn for the last {days} days...");
 
     // Create and apply file filters
     let filter = create_and_report_file_filter(include, exclude)?;
@@ -1051,10 +1051,10 @@ fn create_and_report_file_filter(
     if !include.is_empty() || !exclude.is_empty() {
         eprintln!("🔍 Applying file filters...");
         if !include.is_empty() {
-            eprintln!("  Include patterns: {:?}", include);
+            eprintln!("  Include patterns: {include:?}");
         }
         if !exclude.is_empty() {
-            eprintln!("  Exclude patterns: {:?}", exclude);
+            eprintln!("  Exclude patterns: {exclude:?}");
         }
     }
 
@@ -1127,16 +1127,16 @@ pub async fn handle_analyze_dead_code(
     exclude: Vec<String>,
 ) -> Result<()> {
     eprintln!("☠️ Analyzing dead code in project...");
-    eprintln!("⏰ Analysis timeout set to {} seconds", timeout);
+    eprintln!("⏰ Analysis timeout set to {timeout} seconds");
 
     // Apply include/exclude filters if specified
     if !include.is_empty() || !exclude.is_empty() {
         eprintln!("🔍 Applying file filters...");
         if !include.is_empty() {
-            eprintln!("  Include patterns: {:?}", include);
+            eprintln!("  Include patterns: {include:?}");
         }
         if !exclude.is_empty() {
-            eprintln!("  Exclude patterns: {:?}", exclude);
+            eprintln!("  Exclude patterns: {exclude:?}");
         }
     }
 
@@ -1173,8 +1173,7 @@ pub async fn handle_analyze_dead_code(
         let dead_code_percentage = result.summary.dead_percentage;
         if dead_code_percentage > max_percentage as f32 {
             eprintln!(
-                "\n❌ Dead code violations found: {:.1}% exceeds threshold of {:.1}%",
-                dead_code_percentage, max_percentage
+                "\n❌ Dead code violations found: {dead_code_percentage:.1}% exceeds threshold of {max_percentage:.1}%"
             );
             std::process::exit(1);
         }
@@ -1533,7 +1532,7 @@ async fn write_dead_code_output(content: String, output: Option<PathBuf>) -> Res
             eprintln!("📝 Results written to: {}", path.display());
         }
         None => {
-            println!("{}", content);
+            println!("{content}");
         }
     }
     Ok(())
@@ -1585,7 +1584,7 @@ pub async fn handle_analyze_satd(
 /// Toyota Way Helper: Print SATD analysis info
 fn print_satd_analysis_info(strict: bool, timeout: u64) {
     eprintln!("🔍 Analyzing self-admitted technical debt...");
-    eprintln!("⏰ Analysis timeout set to {} seconds", timeout);
+    eprintln!("⏰ Analysis timeout set to {timeout} seconds");
     if strict {
         eprintln!("📝 Using strict mode (only explicit SATD markers)");
     }
@@ -1707,7 +1706,7 @@ async fn write_satd_output(content: String, output: Option<PathBuf>) -> Result<(
         tokio::fs::write(&output_path, &content).await?;
         eprintln!("✅ SATD analysis written to: {}", output_path.display());
     } else {
-        println!("{}", content);
+        println!("{content}");
     }
     Ok(())
 }
@@ -1870,14 +1869,14 @@ pub fn format_satd_summary(
     if metrics && !result.summary.by_severity.is_empty() {
         writeln!(&mut output, "\n## By Severity\n").unwrap();
         for (severity, count) in &result.summary.by_severity {
-            writeln!(&mut output, "- **{}**: {}", severity, count).unwrap();
+            writeln!(&mut output, "- **{severity}**: {count}").unwrap();
         }
     }
 
     if metrics && !result.summary.by_category.is_empty() {
         writeln!(&mut output, "\n## By Category\n").unwrap();
         for (category, count) in &result.summary.by_category {
-            writeln!(&mut output, "- **{}**: {}", category, count).unwrap();
+            writeln!(&mut output, "- **{category}**: {count}").unwrap();
         }
     }
 
@@ -1931,14 +1930,14 @@ fn format_satd_markdown(
         writeln!(&mut output, "| Severity | Count |").unwrap();
         writeln!(&mut output, "|----------|-------|").unwrap();
         for (severity, count) in &result.summary.by_severity {
-            writeln!(&mut output, "| {} | {} |", severity, count).unwrap();
+            writeln!(&mut output, "| {severity} | {count} |").unwrap();
         }
 
         writeln!(&mut output, "\n### By Category\n").unwrap();
         writeln!(&mut output, "| Category | Count |").unwrap();
         writeln!(&mut output, "|----------|-------|").unwrap();
         for (category, count) in &result.summary.by_category {
-            writeln!(&mut output, "| {} | {} |", category, count).unwrap();
+            writeln!(&mut output, "| {category} | {count} |").unwrap();
         }
     }
 
@@ -2080,7 +2079,7 @@ pub async fn handle_analyze_dag(
             eprintln!("   - Or use VS Code with Mermaid extension");
         }
     } else {
-        println!("{}", mermaid_content);
+        println!("{mermaid_content}");
     }
 
     Ok(())
@@ -2206,7 +2205,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

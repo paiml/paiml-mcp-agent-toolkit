@@ -978,7 +978,7 @@ fn try_local_path(repo_spec: &str) -> Option<Result<PathBuf>> {
 fn try_github_shorthand(repo_spec: &str) -> Option<Result<PathBuf>> {
     if repo_spec.starts_with("gh:") {
         let repo_name = repo_spec.strip_prefix("gh:").unwrap();
-        let github_url = format!("https://github.com/{}", repo_name);
+        let github_url = format!("https://github.com/{repo_name}");
         Some(Ok(PathBuf::from(github_url)))
     } else {
         None
@@ -997,7 +997,7 @@ fn try_github_url(repo_spec: &str) -> Option<Result<PathBuf>> {
 /// Try to resolve owner/repo format (cognitive complexity ≤3)
 fn try_owner_repo_format(repo_spec: &str) -> Option<Result<PathBuf>> {
     if repo_spec.contains('/') && !repo_spec.contains('.') {
-        let github_url = format!("https://github.com/{}", repo_spec);
+        let github_url = format!("https://github.com/{repo_spec}");
         Some(Ok(PathBuf::from(github_url)))
     } else {
         None
@@ -1127,7 +1127,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

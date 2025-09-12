@@ -1,5 +1,5 @@
 //! Actionable Entropy Analysis Module
-//! 
+//!
 //! AST-based pattern entropy detection for identifying real code quality issues.
 //! Focuses on actionable violations with clear fixes and LOC reduction estimates.
 
@@ -7,13 +7,15 @@ use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
+pub mod entropy_calculator;
 pub mod pattern_extractor;
 pub mod violation_detector;
-pub mod entropy_calculator;
 
-pub use pattern_extractor::{AstPattern, PatternType, PatternExtractor, PatternCollection, Location};
-pub use violation_detector::{ActionableViolation, Severity, ViolationDetector, PatternSummary};
-pub use entropy_calculator::{EntropyCalculator, EntropyReport, EntropyMetrics};
+pub use entropy_calculator::{EntropyCalculator, EntropyMetrics, EntropyReport};
+pub use pattern_extractor::{
+    AstPattern, Location, PatternCollection, PatternExtractor, PatternType,
+};
+pub use violation_detector::{ActionableViolation, PatternSummary, Severity, ViolationDetector};
 
 /// Configuration for entropy analysis
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -89,14 +91,19 @@ impl EntropyAnalyzer {
     /// Analyze entropy for a project
     pub async fn analyze(&self, project_path: &Path) -> Result<EntropyReport> {
         // Step 1: Extract AST patterns from project context
-        let patterns = self.pattern_extractor.extract_patterns(project_path).await?;
-        
+        let patterns = self
+            .pattern_extractor
+            .extract_patterns(project_path)
+            .await?;
+
         // Step 2: Calculate entropy metrics
         let entropy_metrics = self.entropy_calculator.calculate(&patterns)?;
-        
+
         // Step 3: Detect actionable violations
-        let violations = self.violation_detector.detect_violations(&patterns, &entropy_metrics)?;
-        
+        let violations = self
+            .violation_detector
+            .detect_violations(&patterns, &entropy_metrics)?;
+
         // Step 4: Generate report
         Ok(EntropyReport {
             total_files_analyzed: patterns.file_count(),
@@ -136,7 +143,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

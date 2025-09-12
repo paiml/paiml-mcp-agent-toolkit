@@ -37,7 +37,7 @@ impl ToolHandler for RefactorStartTool {
         debug!("Handling refactor.start with args: {}", args);
 
         let params: RefactorStartArgs = serde_json::from_value(args)
-            .map_err(|e| PmcpError::validation(format!("Invalid arguments: {}", e)))?;
+            .map_err(|e| PmcpError::validation(format!("Invalid arguments: {e}")))?;
 
         let targets: Vec<PathBuf> = params.targets.into_iter().map(PathBuf::from).collect();
 
@@ -46,15 +46,15 @@ impl ToolHandler for RefactorStartTool {
         let mut manager = self.state_manager.lock().await;
         manager
             .start_session(targets, config)
-            .map_err(|e| PmcpError::internal(format!("Failed to start session: {}", e)))?;
+            .map_err(|e| PmcpError::internal(format!("Failed to start session: {e}")))?;
 
         let state = manager
             .get_state()
-            .map_err(|e| PmcpError::internal(format!("Failed to get state: {}", e)))?;
+            .map_err(|e| PmcpError::internal(format!("Failed to get state: {e}")))?;
         let session_id = manager.get_session_id().to_string();
 
         let state_value = serialize_state(state)
-            .map_err(|e| PmcpError::internal(format!("Failed to serialize state: {}", e)))?;
+            .map_err(|e| PmcpError::internal(format!("Failed to serialize state: {e}")))?;
 
         Ok(serde_json::to_value(RefactorStartResult {
             session_id,
@@ -81,14 +81,14 @@ impl ToolHandler for RefactorNextIterationTool {
         let mut manager = self.state_manager.lock().await;
         manager
             .advance()
-            .map_err(|e| PmcpError::internal(format!("Failed to advance: {}", e)))?;
+            .map_err(|e| PmcpError::internal(format!("Failed to advance: {e}")))?;
 
         let state = manager
             .get_state()
-            .map_err(|e| PmcpError::internal(format!("Failed to get state: {}", e)))?;
+            .map_err(|e| PmcpError::internal(format!("Failed to get state: {e}")))?;
 
         serialize_state(state)
-            .map_err(|e| PmcpError::internal(format!("Failed to serialize state: {}", e)))
+            .map_err(|e| PmcpError::internal(format!("Failed to serialize state: {e}")))
     }
 }
 
@@ -110,10 +110,10 @@ impl ToolHandler for RefactorGetStateTool {
         let manager = self.state_manager.lock().await;
         let state = manager
             .get_state()
-            .map_err(|e| PmcpError::internal(format!("Failed to get state: {}", e)))?;
+            .map_err(|e| PmcpError::internal(format!("Failed to get state: {e}")))?;
 
         serialize_state(state)
-            .map_err(|e| PmcpError::internal(format!("Failed to serialize state: {}", e)))
+            .map_err(|e| PmcpError::internal(format!("Failed to serialize state: {e}")))
     }
 }
 
@@ -135,7 +135,7 @@ impl ToolHandler for RefactorStopTool {
         let mut manager = self.state_manager.lock().await;
         manager
             .stop_session()
-            .map_err(|e| PmcpError::internal(format!("Failed to stop session: {}", e)))?;
+            .map_err(|e| PmcpError::internal(format!("Failed to stop session: {e}")))?;
 
         Ok(json!({
             "status": "stopped",
@@ -234,7 +234,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

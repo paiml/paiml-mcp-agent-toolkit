@@ -1,9 +1,9 @@
 //! Streaming WASM analysis pipeline implementation
 
-use anyhow::{Result, Context};
-use wasmparser::{Parser, Payload, Validator};
+use anyhow::{Context, Result};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use serde::{Serialize, Deserialize};
+use wasmparser::{Parser, Payload, Validator};
 
 use super::InstructionMix;
 use crate::wasm::security::{PatternDetector, VulnerabilityMatch};
@@ -35,28 +35,29 @@ impl WasmAnalyzer {
         let analysis = self.analyze_streaming(binary)?;
         Ok(AnalysisResult::from(analysis))
     }
-    
+
     /// Analyze WASM binary using streaming pipeline
     pub fn analyze_streaming(&self, binary: &[u8]) -> Result<Analysis> {
         let mut validator = Validator::new();
         let mut profiler = self.instruction_profiler.clone();
         let mut patterns = self.pattern_detector.clone();
-        
+
         // Stream through the WASM binary
         for payload in Parser::new(0).parse_all(binary) {
             let payload = payload.context("Failed to parse WASM payload")?;
-            
+
             // Validate structure
-            validator.payload(&payload)
+            validator
+                .payload(&payload)
                 .context("WASM validation failed")?;
-            
+
             // Profile instructions
             profiler.observe(&payload);
-            
+
             // Scan for vulnerabilities
             patterns.scan(&payload)?;
         }
-        
+
         Ok(Analysis {
             module_info: ModuleInfo::from_validator(validator),
             instruction_mix: profiler.finalize(),
@@ -199,13 +200,13 @@ impl SecurityAuditor {
 
     pub fn audit(&self, binary: &[u8]) -> Result<SecurityReport> {
         let mut report = SecurityReport::new();
-        
+
         // Run each security check
         for check in &self.checks {
             let result = check.verify(binary);
             report.add_check_result(check.name(), result);
         }
-        
+
         Ok(report)
     }
 }
@@ -269,11 +270,11 @@ impl SecurityCheck {
     fn verify(&self, _binary: &[u8]) -> bool {
         // Simplified verification - real implementation would check imports/exports
         match self {
-            Self::NoFilesystemAccess => true, // Check for fs imports
-            Self::NoNetworkAccess => true,    // Check for network imports
-            Self::MemoryBoundsChecked => true, // Verify all memory ops are bounds-checked
+            Self::NoFilesystemAccess => true,         // Check for fs imports
+            Self::NoNetworkAccess => true,            // Check for network imports
+            Self::MemoryBoundsChecked => true,        // Verify all memory ops are bounds-checked
             Self::NoUnvalidatedIndirectCalls => true, // Check indirect call validation
-            Self::NoIntegerOverflow => true,  // Check for overflow patterns
+            Self::NoIntegerOverflow => true,          // Check for overflow patterns
         }
     }
 }
@@ -281,26 +282,40 @@ impl SecurityCheck {
 /// Categorize WASM operators by type
 fn categorize_operator(op: &wasmparser::Operator) -> String {
     use wasmparser::Operator::*;
-    
+
     match op {
         // Control flow
-        Block { .. } | Loop { .. } | If { .. } | Else | End |
-        Br { .. } | BrIf { .. } | BrTable { .. } | Return => "control".to_string(),
-        
+        Block { .. }
+        | Loop { .. }
+        | If { .. }
+        | Else
+        | End
+        | Br { .. }
+        | BrIf { .. }
+        | BrTable { .. }
+        | Return => "control".to_string(),
+
         // Memory operations
-        I32Load { .. } | I64Load { .. } | F32Load { .. } | F64Load { .. } |
-        I32Store { .. } | I64Store { .. } | F32Store { .. } | F64Store { .. } |
-        MemoryGrow { .. } | MemorySize { .. } => "memory".to_string(),
-        
+        I32Load { .. }
+        | I64Load { .. }
+        | F32Load { .. }
+        | F64Load { .. }
+        | I32Store { .. }
+        | I64Store { .. }
+        | F32Store { .. }
+        | F64Store { .. }
+        | MemoryGrow { .. }
+        | MemorySize { .. } => "memory".to_string(),
+
         // Function calls
         Call { .. } | CallIndirect { .. } => "call".to_string(),
-        
+
         // Arithmetic and logic
-        I32Add | I32Sub | I32Mul | I32DivS | I32DivU |
-        I64Add | I64Sub | I64Mul | I64DivS | I64DivU |
-        F32Add | F32Sub | F32Mul | F32Div |
-        F64Add | F64Sub | F64Mul | F64Div => "arithmetic".to_string(),
-        
+        I32Add | I32Sub | I32Mul | I32DivS | I32DivU | I64Add | I64Sub | I64Mul | I64DivS
+        | I64DivU | F32Add | F32Sub | F32Mul | F32Div | F64Add | F64Sub | F64Mul | F64Div => {
+            "arithmetic".to_string()
+        }
+
         // Default
         _ => "other".to_string(),
     }
@@ -316,7 +331,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

@@ -81,7 +81,7 @@ pub async fn handle_analyze_graph_metrics(
         tokio::fs::write(&output_path, &content).await?;
         eprintln!("✅ Results written to: {}", output_path.display());
     } else {
-        println!("{}", content);
+        println!("{content}");
     }
 
     Ok(())
@@ -160,14 +160,17 @@ async fn collect_files_recursive(
 
     while let Some(entry) = entries.next_entry().await? {
         let path = entry.path();
-        
+
         // Early exit for excluded paths - extracted logic
         if should_exclude_path_sprint85(&path.to_string_lossy(), exclude) {
             continue;
         }
 
         // Delegate entry processing to extracted function
-        Box::pin(process_directory_entry_sprint85(path, files, include, exclude)).await?;
+        Box::pin(process_directory_entry_sprint85(
+            path, files, include, exclude,
+        ))
+        .await?;
     }
 
     Ok(())
@@ -198,13 +201,11 @@ fn should_include_path_sprint85(path_str: &str, include_pattern: &Option<String>
 /// Check if directory should be traversed - EXTRACTED FUNCTION
 /// Complexity: 5 (A+ standard)
 fn should_traverse_directory_sprint85(dir_name: &str) -> bool {
-    !dir_name.starts_with('.') && 
-    dir_name != "node_modules" && 
-    dir_name != "target"
+    !dir_name.starts_with('.') && dir_name != "node_modules" && dir_name != "target"
 }
 
 /// Process individual directory entry - EXTRACTED FUNCTION
-/// Complexity: 8 (A+ standard) 
+/// Complexity: 8 (A+ standard)
 async fn process_directory_entry_sprint85(
     path: PathBuf,
     files: &mut Vec<PathBuf>,
@@ -521,16 +522,16 @@ fn export_to_graphml(
     output: &Option<PathBuf>,
 ) -> Result<()> {
     let mut graphml = String::new();
-    
+
     // Delegate XML generation to extracted functions
     write_graphml_header(&mut graphml)?;
     write_graphml_nodes(&mut graphml, &result.nodes)?;
     write_graphml_edges(&mut graphml, graph)?;
     write_graphml_footer(&mut graphml)?;
-    
+
     // Delegate file writing to extracted function
     write_graphml_file(&graphml, output)?;
-    
+
     Ok(())
 }
 
@@ -560,10 +561,10 @@ fn write_graphml_nodes(graphml: &mut String, nodes: &[NodeMetrics]) -> Result<()
 }
 
 /// Write GraphML edges section - EXTRACTED FUNCTION
-/// Complexity: 7 (A+ standard) 
+/// Complexity: 7 (A+ standard)
 fn write_graphml_edges(graphml: &mut String, graph: &petgraph::Graph<String, ()>) -> Result<()> {
     use std::fmt::Write;
-    
+
     // Build node name mapping
     let node_names: HashMap<_, _> = graph
         .node_indices()
@@ -578,8 +579,7 @@ fn write_graphml_edges(graphml: &mut String, graph: &petgraph::Graph<String, ()>
             {
                 writeln!(
                     graphml,
-                    r#"    <edge source="{}" target="{}" />"#,
-                    source_name, target_name
+                    r#"    <edge source="{source_name}" target="{target_name}" />"#
                 )?;
             }
         }
@@ -838,7 +838,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

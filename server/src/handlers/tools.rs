@@ -170,7 +170,7 @@ async fn dispatch_analysis_tool(
     McpResponse::error(
         request_id,
         -32602,
-        format!("Unsupported analysis tool: {}", tool_name),
+        format!("Unsupported analysis tool: {tool_name}"),
     )
 }
 
@@ -225,7 +225,9 @@ async fn handle_specialized_analysis_tools(
             Some(handle_analyze_provability(request_id, Some(arguments)).await)
         }
         "analyze_lint_hotspot" => Some(handle_analyze_lint_hotspot(request_id, arguments).await),
-        "quality_driven_development" => Some(handle_quality_driven_development(request_id, arguments).await),
+        "quality_driven_development" => {
+            Some(handle_quality_driven_development(request_id, arguments).await)
+        }
         _ => None,
     }
 }
@@ -476,9 +478,9 @@ async fn generate_single_template<T: TemplateServerTrait>(
     parameters: serde_json::Map<String, serde_json::Value>,
 ) -> Result<serde_json::Value, String> {
     let variant = get_template_variant(template_type, toolchain)
-        .ok_or_else(|| format!("No variant for {} with {}", template_type, toolchain))?;
+        .ok_or_else(|| format!("No variant for {template_type} with {toolchain}"))?;
 
-    let uri = format!("template://{}/{}/{}", template_type, toolchain, variant);
+    let uri = format!("template://{template_type}/{toolchain}/{variant}");
 
     match template_service::generate_template(server, &uri, parameters).await {
         Ok(generated) => Ok(json!({
@@ -2764,7 +2766,7 @@ fn append_tdg_severity_section(output: &mut String, summary: &crate::models::tdg
     let normal_files = summary
         .total_files
         .saturating_sub(summary.critical_files + summary.warning_files);
-    output.push_str(&format!("- 🟢 Normal (<1.5): {} files\n", normal_files));
+    output.push_str(&format!("- 🟢 Normal (<1.5): {normal_files} files\n"));
 }
 
 /// Toyota Way Helper: Calculate percentage safely
@@ -3662,26 +3664,26 @@ async fn handle_quality_driven_development(
         inputs: Option<Vec<(String, String)>>,
         output_type: Option<String>,
     }
-    
+
     let args: QddArgs = match serde_json::from_value(arguments) {
         Ok(a) => a,
         Err(e) => {
             return McpResponse::error(
                 request_id,
                 -32602,
-                format!("Invalid quality_driven_development arguments: {}", e),
+                format!("Invalid quality_driven_development arguments: {e}"),
             );
         }
     };
-    
+
     info!(
         "Executing QDD operation: {} with profile: {:?}",
         args.operation_type, args.quality_profile
     );
-    
+
     // Convert file_path to PathBuf if provided
     let file_path_buf = args.file_path.as_ref().map(PathBuf::from);
-    
+
     // Call the actual QDD function
     match crate::mcp_pmcp::tool_functions::quality_driven_development(
         &args.operation_type,
@@ -3692,7 +3694,9 @@ async fn handle_quality_driven_development(
         file_path_buf.as_ref(),
         args.inputs,
         args.output_type.as_deref(),
-    ).await {
+    )
+    .await
+    {
         Ok(result) => {
             info!("QDD operation completed successfully");
             McpResponse::success(request_id, result)
@@ -3702,7 +3706,7 @@ async fn handle_quality_driven_development(
             McpResponse::error(
                 request_id,
                 -32603,
-                format!("Quality-driven development failed: {}", e),
+                format!("Quality-driven development failed: {e}"),
             )
         }
     }
@@ -3719,7 +3723,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

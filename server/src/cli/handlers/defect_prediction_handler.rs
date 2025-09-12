@@ -70,8 +70,8 @@ pub async fn handle_analyze_defect_prediction(config: DefectPredictionConfig) ->
 fn print_analysis_header(project_path: &Path, high_risk_only: bool, include_low_confidence: bool) {
     eprintln!("🔮 Analyzing defect probability...");
     eprintln!("📁 Project path: {}", project_path.display());
-    eprintln!("🎯 High risk only: {}", high_risk_only);
-    eprintln!("📊 Include low confidence: {}", include_low_confidence);
+    eprintln!("🎯 High risk only: {high_risk_only}");
+    eprintln!("📊 Include low confidence: {include_low_confidence}");
 }
 
 /// Output results in the requested format
@@ -86,7 +86,7 @@ async fn output_results(
         tokio::fs::write(&output_path, &content).await?;
         eprintln!("📝 Written to {}", output_path.display());
     } else {
-        println!("{}", content);
+        println!("{content}");
     }
 
     Ok(())
@@ -128,7 +128,7 @@ fn format_summary(result: &DefectPredictionResult) -> String {
     if !result.recommendations.is_empty() {
         output.push_str("\n## Recommendations\n");
         for rec in &result.recommendations {
-            output.push_str(&format!("- {}\n", rec));
+            output.push_str(&format!("- {rec}\n"));
         }
     }
 
@@ -185,7 +185,7 @@ fn format_detailed(result: &DefectPredictionResult) -> String {
         if !prediction.contributing_factors.is_empty() {
             output.push_str("- Contributing Factors:\n");
             for factor in &prediction.contributing_factors {
-                output.push_str(&format!("  - {}\n", factor));
+                output.push_str(&format!("  - {factor}\n"));
             }
         }
     }
@@ -339,7 +339,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

@@ -133,7 +133,7 @@ fn report_completion_and_performance(
 ) {
     if let Some(start_time) = start {
         let elapsed = start_time.elapsed();
-        eprintln!("✅ Comprehensive analysis completed in {:?}", elapsed);
+        eprintln!("✅ Comprehensive analysis completed in {elapsed:?}");
 
         if config.perf {
             print_performance_breakdown(result, elapsed.as_millis() as u64);
@@ -215,14 +215,14 @@ async fn enhance_with_additional_analyses(
 /// Print performance breakdown
 fn print_performance_breakdown(result: &ComprehensiveAnalysisResult, total_ms: u64) {
     eprintln!("\n⏱️  Performance Breakdown:");
-    eprintln!("  Total execution time: {}ms", total_ms);
+    eprintln!("  Total execution time: {total_ms}ms");
     eprintln!("  Analysis duration: {}ms", result.duration_ms);
     eprintln!("  Files analyzed: {}", result.summary.total_files);
     eprintln!("  Issues found: {}", result.summary.total_issues);
 
     if result.summary.total_files > 0 {
         let ms_per_file = total_ms as f64 / result.summary.total_files as f64;
-        eprintln!("  Average time per file: {:.2}ms", ms_per_file);
+        eprintln!("  Average time per file: {ms_per_file:.2}ms");
     }
 }
 
@@ -239,7 +239,7 @@ async fn output_results(
         tokio::fs::write(&output_path, &content).await?;
         eprintln!("📄 Report written to: {}", output_path.display());
     } else {
-        println!("{}", content);
+        println!("{content}");
     }
 
     Ok(())
@@ -319,7 +319,7 @@ fn format_executive_summary(
     if !summary.recommendations.is_empty() {
         writeln!(output, "### Key Recommendations\n")?;
         for rec in &summary.recommendations {
-            writeln!(output, "- {}", rec)?;
+            writeln!(output, "- {rec}")?;
         }
         writeln!(output)?;
     }
@@ -533,7 +533,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

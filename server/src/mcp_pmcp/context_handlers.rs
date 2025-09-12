@@ -47,7 +47,7 @@ impl ToolHandler for GitCloneTool {
         debug!("Handling git.clone with args: {}", args);
 
         let params: GitCloneArgs = serde_json::from_value(args)
-            .map_err(|e| Error::validation(format!("Invalid arguments: {}", e)))?;
+            .map_err(|e| Error::validation(format!("Invalid arguments: {e}")))?;
 
         let target_dir = params.target_dir.map(PathBuf::from);
 
@@ -58,7 +58,7 @@ impl ToolHandler for GitCloneTool {
             params.depth,
         )
         .await
-        .map_err(|e| Error::internal(format!("Git clone failed: {}", e)))?;
+        .map_err(|e| Error::internal(format!("Git clone failed: {e}")))?;
 
         Ok(json!({
             "status": "success",
@@ -95,13 +95,13 @@ impl ToolHandler for GitStatusTool {
         debug!("Handling git.status with args: {}", args);
 
         let params: GitStatusArgs = serde_json::from_value(args)
-            .map_err(|e| Error::validation(format!("Invalid arguments: {}", e)))?;
+            .map_err(|e| Error::validation(format!("Invalid arguments: {e}")))?;
 
         let path = PathBuf::from(params.path);
 
         let status = tool_functions::git_status(path.as_ref())
             .await
-            .map_err(|e| Error::internal(format!("Failed to get git status: {}", e)))?;
+            .map_err(|e| Error::internal(format!("Failed to get git status: {e}")))?;
 
         Ok(status)
     }
@@ -140,14 +140,14 @@ impl ToolHandler for ContextGenerateTool {
         debug!("Handling context.generate with args: {}", args);
 
         let params: ContextGenerateArgs = serde_json::from_value(args)
-            .map_err(|e| Error::validation(format!("Invalid arguments: {}", e)))?;
+            .map_err(|e| Error::validation(format!("Invalid arguments: {e}")))?;
 
         let paths: Vec<PathBuf> = params.paths.into_iter().map(PathBuf::from).collect();
 
         let context =
             tool_functions::generate_context(&paths, params.max_depth, params.include_dependencies)
                 .await
-                .map_err(|e| Error::internal(format!("Context generation failed: {}", e)))?;
+                .map_err(|e| Error::internal(format!("Context generation failed: {e}")))?;
 
         // Format the output based on requested format
         match params.format.as_deref() {
@@ -160,7 +160,7 @@ impl ToolHandler for ContextGenerateTool {
                 "xml": "Context in XML format (not implemented)"
             })),
             Some("json") | None => Ok(context),
-            Some(format) => Err(Error::validation(format!("Unsupported format: {}", format))),
+            Some(format) => Err(Error::validation(format!("Unsupported format: {format}"))),
         }
     }
 }
@@ -194,13 +194,13 @@ impl ToolHandler for ContextAnalyzeTool {
         debug!("Handling context.analyze with args: {}", args);
 
         let params: ContextAnalyzeArgs = serde_json::from_value(args)
-            .map_err(|e| Error::validation(format!("Invalid arguments: {}", e)))?;
+            .map_err(|e| Error::validation(format!("Invalid arguments: {e}")))?;
 
         let paths: Vec<PathBuf> = params.paths.into_iter().map(PathBuf::from).collect();
 
         let analyses = tool_functions::analyze_context(&paths, &params.analysis_types)
             .await
-            .map_err(|e| Error::internal(format!("Context analysis failed: {}", e)))?;
+            .map_err(|e| Error::internal(format!("Context analysis failed: {e}")))?;
 
         Ok(analyses)
     }
@@ -235,13 +235,13 @@ impl ToolHandler for ContextSummaryTool {
         debug!("Handling context.summary with args: {}", args);
 
         let params: ContextSummaryArgs = serde_json::from_value(args)
-            .map_err(|e| Error::validation(format!("Invalid arguments: {}", e)))?;
+            .map_err(|e| Error::validation(format!("Invalid arguments: {e}")))?;
 
         let paths: Vec<PathBuf> = params.paths.into_iter().map(PathBuf::from).collect();
 
         let summary = tool_functions::context_summary(&paths, params.level.as_deref())
             .await
-            .map_err(|e| Error::internal(format!("Context summary failed: {}", e)))?;
+            .map_err(|e| Error::internal(format!("Context summary failed: {e}")))?;
 
         Ok(summary)
     }
@@ -258,7 +258,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

@@ -685,7 +685,7 @@ async fn scan_and_analyze_files(
         .map(|entry| {
             file_count += 1;
             if file_count % 1000 == 0 {
-                eprintln!("📁 Scanning files... ({} so far)", file_count);
+                eprintln!("📁 Scanning files... ({file_count} so far)");
             }
             entry.path().to_path_buf()
         })
@@ -693,8 +693,7 @@ async fn scan_and_analyze_files(
 
     if file_count > MAX_FILES / 2 {
         eprintln!(
-            "⚠️ Large project detected: {} files. Limited to {} for performance.",
-            file_count, MAX_FILES
+            "⚠️ Large project detected: {file_count} files. Limited to {MAX_FILES} for performance."
         );
     }
 
@@ -945,12 +944,12 @@ async fn scan_and_analyze_files_persistent(
         // TDD Fix: Limit total files analyzed
         file_count += 1;
         if file_count > MAX_FILES {
-            eprintln!("⚠️ Reached file limit of {}. Stopping analysis.", MAX_FILES);
+            eprintln!("⚠️ Reached file limit of {MAX_FILES}. Stopping analysis.");
             break;
         }
 
         if file_count % 1000 == 0 {
-            eprintln!("📁 Scanning files... ({} so far)", file_count);
+            eprintln!("📁 Scanning files... ({file_count} so far)");
         }
 
         // Add timeout for individual file analysis
@@ -1873,7 +1872,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

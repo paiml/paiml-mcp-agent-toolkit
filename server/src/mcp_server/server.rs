@@ -279,7 +279,7 @@ impl McpServer {
         });
 
         stdout
-            .write_all(format!("{}\n", init_response).as_bytes())
+            .write_all(format!("{init_response}\n").as_bytes())
             .await?;
         stdout.flush().await?;
 
@@ -550,7 +550,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

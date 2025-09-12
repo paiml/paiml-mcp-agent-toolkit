@@ -42,7 +42,9 @@ impl CStrategy {
 
     #[cfg(not(feature = "c-ast"))]
     fn parse_with_tree_sitter(&self, _content: &str) -> Result<Tree> {
-        Err(anyhow::anyhow!("C AST parsing not available - compile with 'c-ast' feature"))
+        Err(anyhow::anyhow!(
+            "C AST parsing not available - compile with 'c-ast' feature"
+        ))
     }
 
     fn convert_to_dag(&self, tree: &Tree, content: &str) -> AstDag {
@@ -77,7 +79,7 @@ impl LanguageStrategy for CStrategy {
         for i in 0..ast.nodes.len() {
             if let Some(node) = ast.nodes.get(i as u32) {
                 if matches!(node.kind, AstKind::Import(_)) {
-                    imports.push(format!("import_{}", i));
+                    imports.push(format!("import_{i}"));
                 }
             }
         }

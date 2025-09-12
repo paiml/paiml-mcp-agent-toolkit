@@ -6,5 +6,5 @@
 //! - HTTP API acceptance tests (REST compliance)
 
 pub mod cli_acceptance;
-pub mod mcp_acceptance;
 pub mod http_acceptance;
+pub mod mcp_acceptance;

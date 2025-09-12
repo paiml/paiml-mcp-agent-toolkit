@@ -32,9 +32,9 @@ pub async fn get_changed_files_for_coverage(
 ) -> Result<Vec<(PathBuf, String)>> {
     eprintln!("🔍 Getting changed files...");
     eprintln!("📍 Project: {}", project_path.display());
-    eprintln!("🔄 Base branch: {}", base_branch);
+    eprintln!("🔄 Base branch: {base_branch}");
     if let Some(target) = target_branch {
-        eprintln!("🎯 Target branch: {}", target);
+        eprintln!("🎯 Target branch: {target}");
     }
 
     // Use git to get actual changed files
@@ -44,7 +44,7 @@ pub async fn get_changed_files_for_coverage(
     let output = Command::new("git")
         .arg("diff")
         .arg("--name-status")
-        .arg(format!("{}...{}", base_branch, target))
+        .arg(format!("{base_branch}...{target}"))
         .current_dir(project_path)
         .output()
         .await?;
@@ -114,18 +114,16 @@ pub fn check_coverage_threshold(coverage_data: &CoverageUpdate, threshold: f64) 
         "📈 Overall coverage: {:.1}%",
         coverage_data.aggregate_coverage.line_percentage
     );
-    eprintln!("🆕 New code coverage: {:.1}%", coverage);
+    eprintln!("🆕 New code coverage: {coverage:.1}%");
 
     if coverage < threshold {
         eprintln!(
-            "❌ Coverage threshold not met: {:.1}% < {:.1}%",
-            coverage, threshold
+            "❌ Coverage threshold not met: {coverage:.1}% < {threshold:.1}%"
         );
         anyhow::bail!("Coverage threshold not met");
     } else {
         eprintln!(
-            "✅ Coverage threshold met: {:.1}% >= {:.1}%",
-            coverage, threshold
+            "✅ Coverage threshold met: {coverage:.1}% >= {threshold:.1}%"
         );
     }
 
@@ -141,9 +139,9 @@ pub fn format_coverage_summary(
     let mut output = String::new();
 
     writeln!(&mut output, "# Incremental Coverage Summary\n")?;
-    writeln!(&mut output, "**Base Branch**: {}", base_branch)?;
+    writeln!(&mut output, "**Base Branch**: {base_branch}")?;
     if let Some(ref target) = target_branch {
-        writeln!(&mut output, "**Target Branch**: {}", target)?;
+        writeln!(&mut output, "**Target Branch**: {target}")?;
     }
 
     writeln!(
@@ -175,10 +173,10 @@ pub fn format_coverage_markdown(coverage_data: &CoverageUpdate, detailed: bool) 
     let mut output = String::new();
 
     writeln!(&mut output, "# Incremental Coverage Report\n")?;
-    
+
     // Write summary section
     write_coverage_summary(&mut output, coverage_data)?;
-    
+
     // Write detailed file coverage if requested
     if detailed {
         write_file_details(&mut output, coverage_data)?;
@@ -210,25 +208,29 @@ fn write_file_details(output: &mut String, coverage_data: &CoverageUpdate) -> Re
     if coverage_data.file_coverage.is_empty() {
         return Ok(());
     }
-    
+
     writeln!(output, "\n## File Details\n")?;
-    
+
     for (file_id, file_cov) in &coverage_data.file_coverage {
         write_single_file_coverage(output, file_id, file_cov)?;
     }
-    
+
     Ok(())
 }
 
 /// Write coverage for a single file
 fn write_single_file_coverage(
-    output: &mut String, 
+    output: &mut String,
     file_id: &crate::services::incremental_coverage_analyzer::FileId,
-    file_cov: &crate::services::incremental_coverage_analyzer::FileCoverage
+    file_cov: &crate::services::incremental_coverage_analyzer::FileCoverage,
 ) -> Result<()> {
     writeln!(output, "### {}\n", file_id.path.display())?;
     writeln!(output, "- Line Coverage: {:.1}%", file_cov.line_coverage)?;
-    writeln!(output, "- Branch Coverage: {:.1}%", file_cov.branch_coverage)?;
+    writeln!(
+        output,
+        "- Branch Coverage: {:.1}%",
+        file_cov.branch_coverage
+    )?;
     Ok(())
 }
 
@@ -246,11 +248,11 @@ pub fn format_coverage_lcov(coverage_data: &CoverageUpdate) -> Result<String> {
             (estimated_total_lines as f64 * file_cov.line_coverage / 100.0) as usize;
 
         for i in 1..=estimated_total_lines {
-            writeln!(&mut output, "DA:{},1", i)?;
+            writeln!(&mut output, "DA:{i},1")?;
         }
 
-        writeln!(&mut output, "LF:{}", estimated_total_lines)?;
-        writeln!(&mut output, "LH:{}", estimated_covered_lines)?;
+        writeln!(&mut output, "LF:{estimated_total_lines}")?;
+        writeln!(&mut output, "LH:{estimated_covered_lines}")?;
         writeln!(&mut output, "end_of_record")?;
     }
 
@@ -268,7 +270,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

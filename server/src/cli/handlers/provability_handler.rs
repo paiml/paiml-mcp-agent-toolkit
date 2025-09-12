@@ -132,7 +132,7 @@ async fn write_provability_output(content: &str, output_path: &Option<PathBuf>) 
             output_path.display()
         );
     } else {
-        println!("{}", content);
+        println!("{content}");
     }
     Ok(())
 }
@@ -148,7 +148,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

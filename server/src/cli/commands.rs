@@ -10,14 +10,14 @@ use crate::cli::{
     AnalysisType, BigOOutputFormat, ComplexityOutputFormat, ComprehensiveOutputFormat,
     ContextFormat, DagType, DeadCodeOutputFormat, DeepContextCacheStrategy, DeepContextDagType,
     DeepContextOutputFormat, DefectPredictionOutputFormat, DemoProtocol, DuplicateOutputFormat,
-    DuplicateType, EnforceOutputFormat, EntropyOutputFormat, EntropySeverity, ExplainLevel, 
-    GraphMetricType, GraphMetricsOutputFormat, IncrementalCoverageOutputFormat, 
-    LintHotspotOutputFormat, MakefileOutputFormat, NameSimilarityOutputFormat, OutputFormat, 
-    ProofAnnotationOutputFormat, PropertyTypeFilter, ProvabilityOutputFormat, QualityCheckType, 
-    QualityGateOutputFormat, QualityProfile, RefactorAutoOutputFormat, RefactorDocsOutputFormat, 
-    RefactorMode, RefactorOutputFormat, ReportOutputFormat, SatdOutputFormat, SatdSeverity, 
-    SearchScope, SymbolTableOutputFormat, SymbolTypeFilter, TdgOutputFormat, VerificationMethodFilter,
-    WasmOutputFormat,
+    DuplicateType, EnforceOutputFormat, EntropyOutputFormat, EntropySeverity, ExplainLevel,
+    GraphMetricType, GraphMetricsOutputFormat, IncrementalCoverageOutputFormat,
+    LintHotspotOutputFormat, MakefileOutputFormat, NameSimilarityOutputFormat, OutputFormat,
+    ProofAnnotationOutputFormat, PropertyTypeFilter, ProvabilityOutputFormat, QualityCheckType,
+    QualityGateOutputFormat, QualityProfile, RefactorAutoOutputFormat, RefactorDocsOutputFormat,
+    RefactorMode, RefactorOutputFormat, ReportOutputFormat, SatdOutputFormat, SatdSeverity,
+    SearchScope, SymbolTableOutputFormat, SymbolTypeFilter, TdgOutputFormat,
+    VerificationMethodFilter, WasmOutputFormat,
 };
 use crate::models::churn::ChurnOutputFormat;
 use clap::{Parser, Subcommand};
@@ -168,7 +168,7 @@ pub enum Commands {
     /// Analyze code metrics and patterns
     #[command(subcommand)]
     Analyze(AnalyzeCommands),
-    
+
     /// Quality-Driven Development (QDD) tool for creating and refactoring code with guaranteed quality
     #[command(subcommand)]
     Qdd(QddCommands),
@@ -1802,81 +1802,81 @@ pub enum QddCommands {
         /// Type of code to create
         #[arg(long, value_enum, default_value = "function")]
         code_type: QddCodeType,
-        
+
         /// Name of the code element (function, module, etc.)
         #[arg(long)]
         name: String,
-        
+
         /// Purpose/description of the code
         #[arg(long)]
         purpose: String,
-        
+
         /// Quality profile to use
         #[arg(long, value_enum, default_value = "standard")]
         profile: QddQualityProfile,
-        
+
         /// Input parameters as type:name pairs
         #[arg(long, value_parser = parse_parameter)]
         input: Vec<(String, String)>,
-        
+
         /// Output type
         #[arg(long, default_value = "()")]
         output: String,
-        
+
         /// Output file path
         #[arg(short, long)]
         output_file: Option<PathBuf>,
     },
-    
+
     /// Refactor existing code to meet quality standards  
     Refactor {
         /// File to refactor
         #[arg(short, long)]
         file: PathBuf,
-        
+
         /// Specific function to refactor (optional)
         #[arg(long)]
         function: Option<String>,
-        
+
         /// Quality profile to target
         #[arg(long, value_enum, default_value = "standard")]
         profile: QddQualityProfile,
-        
+
         /// Maximum complexity allowed
         #[arg(long)]
         max_complexity: Option<u32>,
-        
+
         /// Minimum test coverage required (%)
         #[arg(long)]
         min_coverage: Option<u32>,
-        
+
         /// Output file path (default: overwrite original)
         #[arg(short, long)]
         output: Option<PathBuf>,
-        
+
         /// Dry run - show what would be changed
         #[arg(long)]
         dry_run: bool,
     },
-    
+
     /// Validate code against quality standards
     Validate {
         /// File or directory to validate
         #[arg(short, long, default_value = ".")]
         path: PathBuf,
-        
+
         /// Quality profile to validate against
         #[arg(long, value_enum, default_value = "standard")]
         profile: QddQualityProfile,
-        
+
         /// Output format
         #[arg(long, value_enum, default_value = "summary")]
         format: QddOutputFormat,
-        
+
         /// Output file path
         #[arg(short, long)]
         output: Option<PathBuf>,
-        
+
         /// Fail on any violations
         #[arg(long)]
         strict: bool,
@@ -2338,7 +2338,7 @@ mod tests {
             path: None,
         };
         // Backup and Restore variants have been removed - test Migrate instead
-        let migrate2 = StorageCommand::Migrate {
+        let _migrate2 = StorageCommand::Migrate {
             backend: "rocksdb".to_string(),
             path: None,
         };
@@ -3292,7 +3292,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

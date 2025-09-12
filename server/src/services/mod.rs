@@ -95,13 +95,11 @@ pub mod ast_typescript;
 pub mod ast_typescript_compat; // Compatibility layer for TypeScript AST migration
 pub mod big_o_analyzer;
 #[cfg(test)]
-mod big_o_analyzer_issue54_test;
-#[cfg(test)]
 mod big_o_analyzer_property_tests;
 pub mod cache;
 pub mod canonical_query;
-pub mod clippy_fix;
 pub mod cargo_dead_code_analyzer;
+pub mod clippy_fix;
 pub mod code_intelligence;
 pub mod complexity;
 #[cfg(test)]
@@ -215,7 +213,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

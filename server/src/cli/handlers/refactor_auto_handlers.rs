@@ -383,7 +383,7 @@ async fn handle_special_modes(context: &RefactorContext) -> Result<Option<()>> {
 /// Handles GitHub issue processing and integration with FULL implementation.
 /// This function has complexity <5 and follows Toyota Way principles.
 async fn process_github_issue(url: &str, context: &RefactorContext) -> Result<()> {
-    eprintln!("🔗 GitHub issue mode: {}", url);
+    eprintln!("🔗 GitHub issue mode: {url}");
 
     // Parse GitHub URL to extract owner, repo, and issue number
     let parsed_url = parse_github_issue_url(url)?;
@@ -483,7 +483,7 @@ fn extract_target_files_from_issue(
 
     for pattern in &file_patterns {
         let re =
-            regex::Regex::new(pattern).context(format!("Invalid regex pattern: {}", pattern))?;
+            regex::Regex::new(pattern).context(format!("Invalid regex pattern: {pattern}"))?;
 
         for capture in re.find_iter(&issue_content.body) {
             let file_path_str = capture.as_str().trim_matches('`');
@@ -994,7 +994,7 @@ async fn execute_refactoring_iteration(
     context: &RefactorContext,
     iteration_number: u32,
 ) -> Result<IterationResult> {
-    eprintln!("🔄 Executing refactoring iteration #{}", iteration_number);
+    eprintln!("🔄 Executing refactoring iteration #{iteration_number}");
 
     let mut successful_requests = Vec::new();
     let mut failed_requests = Vec::new();
@@ -1029,7 +1029,7 @@ async fn execute_refactoring_iteration(
     }
 
     let iteration_duration = iteration_start.elapsed();
-    eprintln!("⏱️  Iteration completed in {:?}", iteration_duration);
+    eprintln!("⏱️  Iteration completed in {iteration_duration:?}");
 
     let quality_improvement = calculate_quality_improvement(&successful_requests).await?;
 
@@ -1526,7 +1526,7 @@ async fn output_markdown_results(
     if !final_validation.issues_found.is_empty() {
         println!("## Issues Found\n");
         for issue in &final_validation.issues_found {
-            println!("- ❌ {}", issue);
+            println!("- ❌ {issue}");
         }
     }
 
@@ -1610,7 +1610,7 @@ async fn output_text_results(
         println!("❌ ISSUES FOUND");
         println!("=====================================");
         for issue in &final_validation.issues_found {
-            println!("• {}", issue);
+            println!("• {issue}");
         }
     }
 
@@ -1814,7 +1814,7 @@ fn print_markdown_summary(refactor_request: &serde_json::Value) {
     if let Some(issues) = refactor_request["issues"].as_array() {
         for issue in issues {
             if let Some(issue_str) = issue.as_str() {
-                eprintln!("  ⚠️  {}", issue_str);
+                eprintln!("  ⚠️  {issue_str}");
             }
         }
     }
@@ -1865,7 +1865,7 @@ fn output_regular_file_results(
     match format {
         RefactorAutoOutputFormat::Json => {
             if let Ok(json_str) = serde_json::to_string_pretty(refactor_request) {
-                println!("{}", json_str);
+                println!("{json_str}");
             }
         }
         RefactorAutoOutputFormat::Summary => {
@@ -1956,7 +1956,7 @@ pub async fn handle_refactor_auto(config: RefactorAutoConfig) -> Result<()> {
 
     // Phase 3: Discover and analyze files
     prepare_source_files(&mut context).await?;
-    
+
     // Phase 4: Generate refactoring plan
     let refactoring_requests = create_refactoring_plan(&context).await?;
     if refactoring_requests.is_empty() {
@@ -1965,11 +1965,8 @@ pub async fn handle_refactor_auto(config: RefactorAutoConfig) -> Result<()> {
     }
 
     // Phase 5: Execute refactoring
-    let iteration_results = execute_refactoring_cycles(
-        refactoring_requests,
-        &context,
-        config.max_iterations,
-    ).await?;
+    let iteration_results =
+        execute_refactoring_cycles(refactoring_requests, &context, config.max_iterations).await?;
 
     // Phase 6: Finalize and report
     finalize_refactoring(&iteration_results, &context).await?;
@@ -1996,7 +1993,8 @@ async fn initialize_refactoring_context(config: &RefactorAutoConfig) -> Result<R
         config.ignore_file.clone(),
         config.github_issue_url.clone(),
         config.bug_report_path.clone(),
-    ).await
+    )
+    .await
 }
 
 /// Check if we should exit early due to special modes
@@ -2015,7 +2013,8 @@ async fn prepare_source_files(context: &mut RefactorContext) -> Result<()> {
         &context.config.project_path,
         &context.config.patterns,
         &context.ignore_patterns,
-    ).await?;
+    )
+    .await?;
 
     eprintln!(
         "📁 Discovered {} source files for analysis",
@@ -2049,7 +2048,8 @@ async fn execute_refactoring_cycles(
             context,
             iteration,
             &mut iteration_results,
-        ).await?;
+        )
+        .await?;
 
         if !result.should_continue {
             break;
@@ -2072,7 +2072,7 @@ async fn execute_single_iteration(
     let validation_result = validate_refactoring_results(&iteration_result, context).await?;
 
     if !validation_result.overall_success {
-        eprintln!("❌ Iteration {} failed validation - stopping", iteration);
+        eprintln!("❌ Iteration {iteration} failed validation - stopping");
         return Ok(IterationContinuation {
             should_continue: false,
             remaining_requests: vec![],
@@ -2083,7 +2083,7 @@ async fn execute_single_iteration(
     results.push(iteration_result);
 
     if validation_result.quality_improved {
-        eprintln!("✅ Iteration {} completed successfully", iteration);
+        eprintln!("✅ Iteration {iteration} completed successfully");
     }
 
     Ok(IterationContinuation {
@@ -2097,7 +2097,8 @@ fn filter_successful_requests(
     requests: &[RefactoringRequest],
     iteration_result: &IterationResult,
 ) -> Vec<RefactoringRequest> {
-    requests.iter()
+    requests
+        .iter()
         .filter(|req| {
             !iteration_result
                 .successful_requests
@@ -2666,7 +2667,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

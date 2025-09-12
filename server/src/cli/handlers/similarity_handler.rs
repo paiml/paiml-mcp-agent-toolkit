@@ -56,7 +56,7 @@ pub async fn handle_analyze_similarity(
         tokio::fs::write(&output_path, &output_str).await?;
         eprintln!("📄 Report written to: {}", output_path.display());
     } else {
-        println!("{}", output_str);
+        println!("{output_str}");
     }
 
     // Print performance metrics
@@ -181,7 +181,7 @@ fn filter_top_files(report: ComprehensiveReport, top_files: usize) -> Comprehens
     // For now, return the report as-is
     // In a full implementation, we'd filter by top problematic files
     if top_files > 0 {
-        eprintln!("📈 Showing top {} files with issues", top_files);
+        eprintln!("📈 Showing top {top_files} files with issues");
     }
     report
 }
@@ -206,7 +206,7 @@ fn format_summary_report(report: &ComprehensiveReport) -> Result<String> {
     let mut output = String::new();
 
     writeln!(&mut output, "# Code Similarity Analysis Summary\n")?;
-    
+
     format_summary_metrics(&mut output, &report.metrics)?;
     format_summary_clone_types(&mut output, report)?;
     format_summary_refactoring_opportunities(&mut output, &report.refactoring_opportunities)?;
@@ -216,41 +216,57 @@ fn format_summary_report(report: &ComprehensiveReport) -> Result<String> {
 
 fn format_summary_metrics(output: &mut String, metrics: &Metrics) -> Result<()> {
     use std::fmt::Write;
-    
+
     writeln!(output, "## Metrics")?;
-    writeln!(output, "- Duplication: {:.1}%", metrics.duplication_percentage)?;
+    writeln!(
+        output,
+        "- Duplication: {:.1}%",
+        metrics.duplication_percentage
+    )?;
     writeln!(output, "- Average Entropy: {:.2}", metrics.average_entropy)?;
     writeln!(output, "- Total Clones: {}", metrics.total_clones)?;
     writeln!(output)?;
-    
+
     Ok(())
 }
 
 fn format_summary_clone_types(output: &mut String, report: &ComprehensiveReport) -> Result<()> {
     use std::fmt::Write;
-    
+
     writeln!(output, "## Clone Types")?;
-    writeln!(output, "- Exact Duplicates: {}", report.exact_duplicates.len())?;
-    writeln!(output, "- Structural Similarities: {}", report.structural_similarities.len())?;
-    writeln!(output, "- Semantic Similarities: {}", report.semantic_similarities.len())?;
+    writeln!(
+        output,
+        "- Exact Duplicates: {}",
+        report.exact_duplicates.len()
+    )?;
+    writeln!(
+        output,
+        "- Structural Similarities: {}",
+        report.structural_similarities.len()
+    )?;
+    writeln!(
+        output,
+        "- Semantic Similarities: {}",
+        report.semantic_similarities.len()
+    )?;
     writeln!(output)?;
-    
+
     Ok(())
 }
 
 fn format_summary_refactoring_opportunities(
-    output: &mut String, 
-    opportunities: &[RefactoringHint]
+    output: &mut String,
+    opportunities: &[RefactoringHint],
 ) -> Result<()> {
     use std::fmt::Write;
-    
+
     if !opportunities.is_empty() {
         writeln!(output, "## Top Refactoring Opportunities")?;
         for (i, hint) in opportunities.iter().take(5).enumerate() {
             writeln!(output, "{}. {}: {}", i + 1, hint.pattern, hint.suggestion)?;
         }
     }
-    
+
     Ok(())
 }
 
@@ -488,7 +504,7 @@ fn format_single_refactoring_hint(output: &mut String, hint: &RefactoringHint) -
 
 fn print_performance_metrics(report: &ComprehensiveReport, elapsed: std::time::Duration) {
     eprintln!("\n⏱️  Performance Metrics:");
-    eprintln!("  Total time: {:?}", elapsed);
+    eprintln!("  Total time: {elapsed:?}");
     eprintln!("  Clones found: {}", report.metrics.total_clones);
     eprintln!(
         "  Analysis rate: {:.0} LOC/sec",
@@ -614,7 +630,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

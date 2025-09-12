@@ -28,10 +28,10 @@ pub mod lint_hotspot_handlers;
 pub mod lint_hotspot_property_tests;
 pub mod memory;
 pub mod name_similarity_analysis;
-pub mod qdd_handlers;
 pub mod new_tdg_handler;
 pub mod proof_annotations_handler;
 pub mod provability_handler;
+pub mod qdd_handlers;
 pub mod quality_gate_formatter;
 #[cfg(test)]
 pub mod quality_gate_property_tests;
@@ -116,7 +116,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

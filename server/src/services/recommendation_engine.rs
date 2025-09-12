@@ -329,7 +329,7 @@ impl RecommendationEngine {
     ) -> Vec<String> {
         let mut learning_path = Vec::new();
 
-        learning_path.push(format!("Start with basic {} syntax and concepts", language));
+        learning_path.push(format!("Start with basic {language} syntax and concepts"));
 
         for framework_info in detected_frameworks {
             if let Some(colon_pos) = framework_info.find(':') {
@@ -338,7 +338,7 @@ impl RecommendationEngine {
                     .next()
                     .unwrap_or("")
                     .trim();
-                learning_path.push(format!("Study {} framework patterns", framework));
+                learning_path.push(format!("Study {framework} framework patterns"));
             }
         }
 
@@ -438,7 +438,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

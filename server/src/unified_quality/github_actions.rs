@@ -1,22 +1,22 @@
 //! GitHub Actions integration for unified quality system
-//! 
+//!
 //! Provides quality gates and automation through GitHub Actions workflows
 
+use crate::unified_quality::enforcement::{Decision, DiffAnalysis, ErrorBudgetEnforcer};
+use crate::unified_quality::foundation::QualityMonitor;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
-use crate::unified_quality::foundation::QualityMonitor;
-use crate::unified_quality::enforcement::{ErrorBudgetEnforcer, Decision, DiffAnalysis};
 
 /// GitHub Actions integration for quality enforcement
 pub struct GitHubActionsIntegration {
     /// Quality monitor
     monitor: QualityMonitor,
-    
+
     /// Error budget enforcer  
     enforcer: ErrorBudgetEnforcer,
-    
+
     /// Integration configuration
     config: GitHubConfig,
 }
@@ -26,16 +26,16 @@ pub struct GitHubActionsIntegration {
 pub struct GitHubConfig {
     /// Repository owner/name
     pub repository: String,
-    
+
     /// GitHub token for API access
     pub token: String,
-    
+
     /// Quality gate thresholds
     pub quality_thresholds: QualityThresholds,
-    
+
     /// Workflow triggers
     pub triggers: WorkflowTriggers,
-    
+
     /// Comment settings
     pub comments: CommentConfig,
 }
@@ -45,13 +45,13 @@ pub struct GitHubConfig {
 pub struct QualityThresholds {
     /// Maximum allowed complexity increase
     pub max_complexity_increase: u32,
-    
+
     /// Maximum allowed SATD increase
     pub max_satd_increase: u32,
-    
+
     /// Minimum coverage requirement
     pub min_coverage: f64,
-    
+
     /// Block PR if thresholds exceeded
     pub block_on_violation: bool,
 }
@@ -72,13 +72,13 @@ impl Default for QualityThresholds {
 pub struct WorkflowTriggers {
     /// Run on pull request
     pub on_pull_request: bool,
-    
+
     /// Run on push to main
     pub on_push_main: bool,
-    
+
     /// Run on schedule
     pub on_schedule: Option<String>,
-    
+
     /// Specific branches to monitor
     pub branches: Vec<String>,
 }
@@ -99,13 +99,13 @@ impl Default for WorkflowTriggers {
 pub struct CommentConfig {
     /// Post quality summary as PR comment
     pub post_summary: bool,
-    
+
     /// Post detailed metrics
     pub post_details: bool,
-    
+
     /// Update existing comments
     pub update_existing: bool,
-    
+
     /// Comment template
     pub template: CommentTemplate,
 }
@@ -126,13 +126,13 @@ impl Default for CommentConfig {
 pub struct CommentTemplate {
     /// Header for quality reports
     pub header: String,
-    
+
     /// Success message template
     pub success_template: String,
-    
+
     /// Warning message template  
     pub warning_template: String,
-    
+
     /// Failure message template
     pub failure_template: String,
 }
@@ -153,16 +153,16 @@ impl Default for CommentTemplate {
 pub struct WorkflowResult {
     /// Overall status
     pub status: WorkflowStatus,
-    
+
     /// Quality analysis results
     pub analysis: QualityAnalysis,
-    
+
     /// Enforcement decision
     pub decision: Decision,
-    
+
     /// Generated comment (if any)
     pub comment: Option<String>,
-    
+
     /// Workflow outputs for GitHub Actions
     pub outputs: HashMap<String, String>,
 }
@@ -172,13 +172,13 @@ pub struct WorkflowResult {
 pub enum WorkflowStatus {
     /// Quality checks passed
     Success,
-    
+
     /// Quality issues found but not blocking
     Warning,
-    
+
     /// Quality checks failed - blocking merge
     Failure,
-    
+
     /// Error during execution
     Error(String),
 }
@@ -188,25 +188,25 @@ pub enum WorkflowStatus {
 pub struct QualityAnalysis {
     /// Files analyzed
     pub files_analyzed: usize,
-    
+
     /// Total complexity
     pub total_complexity: u32,
-    
+
     /// Complexity change from base
     pub complexity_change: i32,
-    
+
     /// SATD count
     pub satd_count: u32,
-    
+
     /// SATD change from base
     pub satd_change: i32,
-    
+
     /// Test coverage
     pub coverage: f64,
-    
+
     /// Coverage change from base
     pub coverage_change: f64,
-    
+
     /// Quality violations found
     pub violations: Vec<QualityViolation>,
 }
@@ -216,16 +216,16 @@ pub struct QualityAnalysis {
 pub struct QualityViolation {
     /// File path
     pub file: String,
-    
+
     /// Violation type
     pub violation_type: String,
-    
+
     /// Severity level
     pub severity: ViolationSeverity,
-    
+
     /// Description
     pub message: String,
-    
+
     /// Line number (if applicable)
     pub line: Option<u32>,
 }
@@ -252,7 +252,7 @@ impl GitHubActionsIntegration {
             config,
         }
     }
-    
+
     /// Run quality analysis for pull request
     pub async fn analyze_pull_request(
         &mut self,
@@ -265,20 +265,21 @@ impl GitHubActionsIntegration {
         let mut total_complexity = 0;
         let mut total_satd = 0;
         let mut violations = Vec::new();
-        
+
         for file in &changed_files {
             if let Some(metrics) = self.monitor.get_metrics(file) {
                 total_complexity += metrics.complexity;
                 total_satd += metrics.satd_count;
-                
+
                 // Check for violations
                 if metrics.complexity > self.config.quality_thresholds.max_complexity_increase {
                     violations.push(QualityViolation {
                         file: file.to_string_lossy().to_string(),
                         violation_type: "complexity".to_string(),
                         severity: ViolationSeverity::Error,
-                        message: format!("Complexity {} exceeds threshold {}", 
-                            metrics.complexity, 
+                        message: format!(
+                            "Complexity {} exceeds threshold {}",
+                            metrics.complexity,
                             self.config.quality_thresholds.max_complexity_increase
                         ),
                         line: None,
@@ -286,19 +287,22 @@ impl GitHubActionsIntegration {
                 }
             }
         }
-        
+
         // Create diff analysis for enforcer
         let diff = DiffAnalysis {
             complexity_change: total_complexity as i32, // Simplified - would need base comparison
             satd_change: total_satd as i32,
             coverage_change: 0.0, // Would need actual coverage analysis
-            files_changed: changed_files.iter().map(|p| p.to_string_lossy().to_string()).collect(),
+            files_changed: changed_files
+                .iter()
+                .map(|p| p.to_string_lossy().to_string())
+                .collect(),
         };
-        
+
         // Get enforcement decision
         let team_id = self.extract_team_from_repository();
         let decision = self.enforcer.check_commit(&team_id, &diff);
-        
+
         // Determine workflow status
         let status = match &decision {
             Decision::Approved => {
@@ -312,7 +316,7 @@ impl GitHubActionsIntegration {
             Decision::RequiresApproval { .. } => WorkflowStatus::Warning,
             Decision::Blocked { .. } => WorkflowStatus::Failure,
         };
-        
+
         // Create analysis summary
         let analysis = QualityAnalysis {
             files_analyzed: changed_files.len(),
@@ -324,22 +328,28 @@ impl GitHubActionsIntegration {
             coverage_change: 0.0,
             violations,
         };
-        
+
         // Generate comment if configured
         let comment = if self.config.comments.post_summary {
             Some(self.generate_comment(&status, &analysis, &decision))
         } else {
             None
         };
-        
+
         // Create workflow outputs
         let mut outputs = HashMap::new();
-        outputs.insert("status".to_string(), format!("{:?}", status));
+        outputs.insert("status".to_string(), format!("{status:?}"));
         outputs.insert("complexity".to_string(), total_complexity.to_string());
         outputs.insert("satd_count".to_string(), total_satd.to_string());
-        outputs.insert("files_analyzed".to_string(), changed_files.len().to_string());
-        outputs.insert("violations".to_string(), analysis.violations.len().to_string());
-        
+        outputs.insert(
+            "files_analyzed".to_string(),
+            changed_files.len().to_string(),
+        );
+        outputs.insert(
+            "violations".to_string(),
+            analysis.violations.len().to_string(),
+        );
+
         Ok(WorkflowResult {
             status,
             analysis,
@@ -348,13 +358,14 @@ impl GitHubActionsIntegration {
             outputs,
         })
     }
-    
+
     /// Generate GitHub Actions workflow YAML
     pub fn generate_workflow_yaml(&self) -> String {
         let triggers = &self.config.triggers;
         let thresholds = &self.config.quality_thresholds;
-        
-        format!(r#"name: Quality Gate
+
+        format!(
+            r#"name: Quality Gate
 on:
   pull_request:
     branches: [{}]
@@ -460,7 +471,7 @@ jobs:
             self.config.comments.update_existing,
         )
     }
-    
+
     /// Generate comment text based on analysis results
     fn generate_comment(
         &self,
@@ -470,65 +481,84 @@ jobs:
     ) -> String {
         let template = &self.config.comments.template;
         let mut comment = format!("{}\n\n", template.header);
-        
+
         match status {
             WorkflowStatus::Success => {
-                comment.push_str(&template.success_template
-                    .replace("{complexity}", &analysis.total_complexity.to_string())
-                    .replace("{satd_count}", &analysis.satd_count.to_string())
-                    .replace("{coverage}", &format!("{:.1}", analysis.coverage * 100.0))
+                comment.push_str(
+                    &template
+                        .success_template
+                        .replace("{complexity}", &analysis.total_complexity.to_string())
+                        .replace("{satd_count}", &analysis.satd_count.to_string())
+                        .replace("{coverage}", &format!("{:.1}", analysis.coverage * 100.0)),
                 );
             }
             WorkflowStatus::Warning => {
-                let warnings = analysis.violations.iter()
+                let warnings = analysis
+                    .violations
+                    .iter()
                     .filter(|v| matches!(v.severity, ViolationSeverity::Warning))
                     .map(|v| format!("- {}: {}", v.file, v.message))
                     .collect::<Vec<_>>()
                     .join("\n");
-                
-                comment.push_str(&template.warning_template
-                    .replace("{warnings}", &warnings)
-                    .replace("{complexity}", &analysis.total_complexity.to_string())
-                    .replace("{satd_count}", &analysis.satd_count.to_string())
-                    .replace("{coverage}", &format!("{:.1}", analysis.coverage * 100.0))
+
+                comment.push_str(
+                    &template
+                        .warning_template
+                        .replace("{warnings}", &warnings)
+                        .replace("{complexity}", &analysis.total_complexity.to_string())
+                        .replace("{satd_count}", &analysis.satd_count.to_string())
+                        .replace("{coverage}", &format!("{:.1}", analysis.coverage * 100.0)),
                 );
             }
             WorkflowStatus::Failure => {
-                let failures = analysis.violations.iter()
-                    .filter(|v| matches!(v.severity, ViolationSeverity::Error | ViolationSeverity::Critical))
+                let failures = analysis
+                    .violations
+                    .iter()
+                    .filter(|v| {
+                        matches!(
+                            v.severity,
+                            ViolationSeverity::Error | ViolationSeverity::Critical
+                        )
+                    })
                     .map(|v| format!("- {}: {}", v.file, v.message))
                     .collect::<Vec<_>>()
                     .join("\n");
-                
-                comment.push_str(&template.failure_template
-                    .replace("{failures}", &failures)
-                    .replace("{complexity}", &analysis.total_complexity.to_string())
-                    .replace("{satd_count}", &analysis.satd_count.to_string())
-                    .replace("{coverage}", &format!("{:.1}", analysis.coverage * 100.0))
+
+                comment.push_str(
+                    &template
+                        .failure_template
+                        .replace("{failures}", &failures)
+                        .replace("{complexity}", &analysis.total_complexity.to_string())
+                        .replace("{satd_count}", &analysis.satd_count.to_string())
+                        .replace("{coverage}", &format!("{:.1}", analysis.coverage * 100.0)),
                 );
             }
             WorkflowStatus::Error(e) => {
-                comment.push_str(&format!("❌ **Error during quality analysis:**\n\n{}", e));
+                comment.push_str(&format!("❌ **Error during quality analysis:**\n\n{e}"));
             }
         }
-        
+
         // Add decision details
         match decision {
             Decision::Approved => {
                 comment.push_str("\n\n✅ **Error budget status:** Approved");
             }
             Decision::Warning(msg) => {
-                comment.push_str(&format!("\n\n⚠️ **Error budget status:** Warning\n{}", msg));
+                comment.push_str(&format!("\n\n⚠️ **Error budget status:** Warning\n{msg}"));
             }
             Decision::RequiresApproval { approvers, .. } => {
-                comment.push_str(&format!("\n\n👥 **Error budget status:** Requires approval from: {}", 
-                    approvers.join(", ")));
+                comment.push_str(&format!(
+                    "\n\n👥 **Error budget status:** Requires approval from: {}",
+                    approvers.join(", ")
+                ));
             }
             Decision::Blocked { suggestion, .. } => {
-                comment.push_str(&format!("\n\n🚫 **Error budget status:** Blocked\n\n{}", suggestion));
+                comment.push_str(&format!(
+                    "\n\n🚫 **Error budget status:** Blocked\n\n{suggestion}"
+                ));
             }
         }
-        
+
         comment.push_str(&format!(
             "\n\n---\n📊 **Summary:**\n- Files analyzed: {}\n- Complexity change: {:+}\n- SATD change: {:+}\n- Coverage: {:.1}%",
             analysis.files_analyzed,
@@ -536,14 +566,17 @@ jobs:
             analysis.satd_change,
             analysis.coverage * 100.0
         ));
-        
+
         comment
     }
-    
+
     /// Extract team identifier from repository name
     fn extract_team_from_repository(&self) -> String {
         // Simple heuristic: use repository owner as team
-        self.config.repository.split('/').next()
+        self.config
+            .repository
+            .split('/')
+            .next()
             .unwrap_or("default")
             .to_string()
     }
@@ -552,8 +585,8 @@ jobs:
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::unified_quality::foundation::MonitorConfig;
     use crate::unified_quality::enforcement::EnforcerConfig;
+    use crate::unified_quality::foundation::MonitorConfig;
 
     #[test]
     fn test_github_config_default() {
@@ -592,10 +625,10 @@ mod tests {
             triggers: WorkflowTriggers::default(),
             comments: CommentConfig::default(),
         };
-        
+
         let integration = GitHubActionsIntegration::new(monitor, enforcer, config);
         let yaml = integration.generate_workflow_yaml();
-        
+
         assert!(yaml.contains("name: Quality Gate"));
         assert!(yaml.contains("pull_request:"));
         assert!(yaml.contains("pmat unified-quality analyze"));
@@ -609,7 +642,7 @@ mod tests {
             ViolationSeverity::Error,
             ViolationSeverity::Critical,
         ];
-        
+
         // Just test that all variants exist and can be created
         assert_eq!(severities.len(), 4);
     }
@@ -625,7 +658,7 @@ mod tests {
             triggers: WorkflowTriggers::default(),
             comments: CommentConfig::default(),
         };
-        
+
         let integration = GitHubActionsIntegration::new(monitor, enforcer, config);
         let team = integration.extract_team_from_repository();
         assert_eq!(team, "my-org");
@@ -639,9 +672,9 @@ mod tests {
             WorkflowStatus::Failure,
             WorkflowStatus::Error("test".to_string()),
         ];
-        
+
         assert_eq!(statuses.len(), 4);
-        
+
         // Test Debug formatting
         format!("{:?}", WorkflowStatus::Success);
         format!("{:?}", WorkflowStatus::Error("test".to_string()));

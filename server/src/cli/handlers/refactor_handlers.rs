@@ -272,12 +272,12 @@ async fn load_base_configuration(
 /// Apply command-line parameter overrides to configuration
 fn apply_command_line_overrides(config: &mut RefactorConfig, params: &ExtractedRefactorParams) {
     if let Some(prio) = &params.priority {
-        println!("🎯 Priority expression: {}", prio);
+        println!("🎯 Priority expression: {prio}");
         config.priority_expression = Some(prio.clone());
     }
 
     if let Some(commit_template) = &params.auto_commit {
-        println!("🔗 Auto-commit template: {}", commit_template);
+        println!("🔗 Auto-commit template: {commit_template}");
         config.auto_commit_template = Some(commit_template.clone());
     }
 
@@ -426,8 +426,8 @@ pub async fn handle_refactor_interactive(
     println!("🤖 Starting interactive refactor mode...");
     println!("📁 Project path: {}", project_path.display());
     println!("💾 Checkpoint: {}", checkpoint.display());
-    println!("🎯 Target complexity: {}", target_complexity);
-    println!("📝 Explanation level: {:?}", explain);
+    println!("🎯 Target complexity: {target_complexity}");
+    println!("📝 Explanation level: {explain:?}");
 
     // Load configuration
     let refactor_config = if let Some(config_path) = config {
@@ -458,7 +458,7 @@ pub async fn handle_refactor_interactive(
     let mut engine = UnifiedEngine::new(ast_engine, cache, mode, refactor_config, targets);
 
     if let Some(max_steps) = steps {
-        println!("⏱️  Maximum steps: {}", max_steps);
+        println!("⏱️  Maximum steps: {max_steps}");
     }
 
     let summary = engine.run().await?;
@@ -481,13 +481,13 @@ pub async fn handle_refactor_status(
 
     // Delegate file validation to extracted function
     validate_checkpoint_file(checkpoint.as_path())?;
-    
+
     // Delegate file reading to extracted function
     let checkpoint_data = read_checkpoint_data(&checkpoint).await?;
-    
+
     // Delegate output formatting to extracted function
     format_refactor_status(&checkpoint_data, format, &checkpoint)?;
-    
+
     Ok(())
 }
 
@@ -508,7 +508,9 @@ fn validate_checkpoint_file(checkpoint: &Path) -> anyhow::Result<()> {
 /// Read checkpoint data from file - EXTRACTED FUNCTION
 /// Complexity: 2 (A+ standard)
 async fn read_checkpoint_data(checkpoint: &PathBuf) -> anyhow::Result<String> {
-    tokio::fs::read_to_string(checkpoint).await.map_err(Into::into)
+    tokio::fs::read_to_string(checkpoint)
+        .await
+        .map_err(Into::into)
 }
 
 /// Format and display refactor status - EXTRACTED FUNCTION
@@ -537,16 +539,16 @@ fn format_as_json(checkpoint_data: &str) -> anyhow::Result<()> {
 /// Complexity: 8 (A+ standard)
 fn format_as_table(checkpoint_data: &str) -> anyhow::Result<()> {
     let state: serde_json::Value = serde_json::from_str(checkpoint_data)?;
-    
+
     // Print table header
     print_table_header();
-    
+
     // Print table data rows
     print_table_data(&state);
-    
+
     // Print table footer
     print_table_footer();
-    
+
     Ok(())
 }
 
@@ -564,7 +566,7 @@ fn print_table_data(state: &serde_json::Value) {
     if let Some(current) = state.get("current") {
         println!(
             "│ Current State   │ {:36} │",
-            format!("{:?}", current)
+            format!("{current:?}")
                 .chars()
                 .take(36)
                 .collect::<String>()
@@ -596,7 +598,7 @@ fn format_as_summary(checkpoint_data: &str, checkpoint: &Path) -> anyhow::Result
     println!("   Checkpoint: {}", checkpoint.display());
 
     if let Some(current) = state.get("current") {
-        println!("   Current state: {:?}", current);
+        println!("   Current state: {current:?}");
     }
 
     if let Some(targets) = state.get("targets") {
@@ -604,7 +606,7 @@ fn format_as_summary(checkpoint_data: &str, checkpoint: &Path) -> anyhow::Result
             println!("   Total targets: {}", targets_array.len());
         }
     }
-    
+
     Ok(())
 }
 
@@ -614,7 +616,7 @@ pub async fn handle_refactor_resume(
     explain: Option<ExplainLevel>,
 ) -> anyhow::Result<()> {
     println!("🔄 Resuming refactor from: {}", checkpoint.display());
-    println!("⏱️  Maximum steps: {}", steps);
+    println!("⏱️  Maximum steps: {steps}");
 
     if !checkpoint.exists() {
         return Err(anyhow::anyhow!(
@@ -631,14 +633,13 @@ pub async fn handle_refactor_resume(
     println!("📝 State loaded successfully");
 
     if let Some(explain_level) = explain {
-        println!("📖 Explanation level override: {:?}", explain_level);
+        println!("📖 Explanation level override: {explain_level:?}");
     }
 
     // Placeholder implementation
     println!("⚠️  Resume functionality not yet fully implemented");
     println!(
-        "   This would continue from the saved state for {} steps",
-        steps
+        "   This would continue from the saved state for {steps} steps"
     );
 
     Ok(())
@@ -737,7 +738,7 @@ async fn create_auto_commit(
         .status()?;
 
     if status.success() {
-        println!("✅ Auto-commit created: {}", message);
+        println!("✅ Auto-commit created: {message}");
     } else {
         println!("⚠️  Auto-commit failed");
     }
@@ -787,7 +788,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

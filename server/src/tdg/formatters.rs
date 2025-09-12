@@ -4,16 +4,16 @@ use std::fmt::Write;
 use crate::tdg::{Comparison, Grade, ProjectScore, TdgScore};
 
 /// Format TDG score for human-readable console output.
-/// 
+///
 /// Creates a visually appealing boxed display showing the TDG score,
 /// grade, language confidence, and detailed breakdown of score components.
-/// 
+///
 /// # Arguments
 /// * `score` - The TDG score to format
-/// 
+///
 /// # Returns
 /// A formatted string with boxed output suitable for terminal display
-/// 
+///
 /// # Example
 /// ```
 /// use pmat::tdg::{TdgScore, Grade};
@@ -133,7 +133,7 @@ pub fn format_human(score: &TdgScore) -> String {
             } else {
                 issue_line
             };
-            writeln!(output, "│  {:47} │", truncated).unwrap();
+            writeln!(output, "│  {truncated:47} │").unwrap();
         }
     }
 
@@ -177,16 +177,16 @@ pub fn format_human(score: &TdgScore) -> String {
 }
 
 /// Format TDG score as JSON output.
-/// 
+///
 /// Serializes the TDG score to a JSON string for programmatic consumption
 /// or integration with other tools and systems.
-/// 
+///
 /// # Arguments  
 /// * `score` - The TDG score to serialize
-/// 
+///
 /// # Returns
 /// A JSON string representation of the TDG score
-/// 
+///
 /// # Example
 /// ```
 /// use pmat::tdg::{TdgScore, Grade};
@@ -199,16 +199,16 @@ pub fn format_json(score: &TdgScore) -> String {
 }
 
 /// Format TDG score as Markdown output.
-/// 
-/// Creates a Markdown-formatted report suitable for documentation, 
+///
+/// Creates a Markdown-formatted report suitable for documentation,
 /// README files, or integration with documentation systems.
-/// 
+///
 /// # Arguments
 /// * `score` - The TDG score to format as Markdown
-/// 
+///
 /// # Returns  
 /// A Markdown string with formatted tables and sections
-/// 
+///
 /// # Example
 /// ```
 /// use pmat::tdg::{TdgScore, Grade};
@@ -312,16 +312,16 @@ pub fn format_markdown(score: &TdgScore) -> String {
 }
 
 /// Format comparison between two TDG scores.
-/// 
+///
 /// Creates a side-by-side comparison showing the differences between
 /// two TDG scores, highlighting improvements or regressions.
-/// 
+///
 /// # Arguments
 /// * `comparison` - The comparison data structure containing before/after scores
-/// 
+///
 /// # Returns
 /// A formatted string showing the comparison in a boxed layout
-/// 
+///
 /// # Example
 /// ```
 /// use pmat::tdg::{Comparison, TdgScore, Grade};
@@ -353,13 +353,13 @@ pub fn format_comparison(comparison: &Comparison) -> String {
         .map(|p| p.file_name().unwrap().to_string_lossy().to_string())
         .unwrap_or_else(|| "source2".to_string());
 
-    let header = format!("TDG Comparison: {} vs {}", name1, name2);
+    let header = format!("TDG Comparison: {name1} vs {name2}");
     let truncated_header = if header.len() > 45 {
         format!("{}...", header.chars().take(42).collect::<String>())
     } else {
         header
     };
-    writeln!(output, "│  {:47} │", truncated_header).unwrap();
+    writeln!(output, "│  {truncated_header:47} │").unwrap();
 
     writeln!(
         output,
@@ -463,7 +463,7 @@ pub fn format_comparison(comparison: &Comparison) -> String {
     } else {
         winner_text
     };
-    writeln!(output, "│  {:47} │", truncated_winner).unwrap();
+    writeln!(output, "│  {truncated_winner:47} │").unwrap();
 
     if !comparison.improvements.is_empty() {
         writeln!(
@@ -473,7 +473,7 @@ pub fn format_comparison(comparison: &Comparison) -> String {
         .unwrap();
         writeln!(output, "│  Key Improvements:                             │").unwrap();
         for improvement in &comparison.improvements {
-            let improvement_line = format!("  • {}", improvement);
+            let improvement_line = format!("  • {improvement}");
             let truncated = if improvement_line.len() > 45 {
                 format!(
                     "{}...",
@@ -482,7 +482,7 @@ pub fn format_comparison(comparison: &Comparison) -> String {
             } else {
                 improvement_line
             };
-            writeln!(output, "│  {:47} │", truncated).unwrap();
+            writeln!(output, "│  {truncated:47} │").unwrap();
         }
     }
 
@@ -494,7 +494,7 @@ pub fn format_comparison(comparison: &Comparison) -> String {
         .unwrap();
         writeln!(output, "│  Minor Regressions:                            │").unwrap();
         for regression in &comparison.regressions {
-            let regression_line = format!("  • {}", regression);
+            let regression_line = format!("  • {regression}");
             let truncated = if regression_line.len() > 45 {
                 format!(
                     "{}...",
@@ -503,7 +503,7 @@ pub fn format_comparison(comparison: &Comparison) -> String {
             } else {
                 regression_line
             };
-            writeln!(output, "│  {:47} │", truncated).unwrap();
+            writeln!(output, "│  {truncated:47} │").unwrap();
         }
     }
 
@@ -517,16 +517,16 @@ pub fn format_comparison(comparison: &Comparison) -> String {
 }
 
 /// Format project-level TDG score.
-/// 
+///
 /// Creates a comprehensive project-level report showing aggregate TDG scores,
 /// file counts, and overall project health metrics.
-/// 
+///
 /// # Arguments
 /// * `project` - The project score data structure
-/// 
+///
 /// # Returns
 /// A formatted string with project-level metrics and summary
-/// 
+///
 /// # Example
 /// ```
 /// use pmat::tdg::ProjectScore;
@@ -596,8 +596,7 @@ pub fn format_project(project: &ProjectScore) -> String {
         let percentage = (count as f32 / project.total_files as f32) * 100.0;
         writeln!(
             output,
-            "│  ├─ {}: {:3} files ({:4.1}%)                  │",
-            grade, count, percentage
+            "│  ├─ {grade}: {count:3} files ({percentage:4.1}%)                  │"
         )
         .unwrap();
     }
@@ -625,7 +624,7 @@ fn grade_delta(from: Grade, to: Grade) -> String {
     let delta = to_val - from_val;
 
     if delta > 0 {
-        format!("↑{}", delta)
+        format!("↑{delta}")
     } else if delta < 0 {
         format!("↓{}", delta.abs())
     } else {
@@ -754,7 +753,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

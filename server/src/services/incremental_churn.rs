@@ -163,8 +163,7 @@ impl IncrementalChurnAnalyzer {
 
         if !output.status.success() {
             return Err(TemplateError::NotFound(format!(
-                "Failed to get git log for file: {:?}",
-                file_path
+                "Failed to get git log for file: {file_path:?}"
             )));
         }
 
@@ -607,7 +606,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

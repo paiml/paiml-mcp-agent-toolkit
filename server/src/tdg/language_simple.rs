@@ -188,10 +188,10 @@ impl LanguageRules {
     pub fn ruchy_rules() -> Self {
         LanguageRules {
             language: Language::Ruchy,
-            function_style: NamingStyle::SnakeCase,      // fun hello_world() 
-            type_style: NamingStyle::PascalCase,         // struct Point, enum Color
+            function_style: NamingStyle::SnakeCase, // fun hello_world()
+            type_style: NamingStyle::PascalCase,    // struct Point, enum Color
             constant_style: NamingStyle::ScreamingSnakeCase, // const MAX_SIZE
-            variable_style: NamingStyle::SnakeCase,      // let my_variable
+            variable_style: NamingStyle::SnakeCase, // let my_variable
         }
     }
 }
@@ -270,7 +270,7 @@ mod tests {
     #[test]
     fn test_ruchy_language_rules() {
         let rules = LanguageRules::for_language(Language::Ruchy);
-        
+
         assert_eq!(rules.language, Language::Ruchy);
         assert_eq!(rules.function_style, NamingStyle::SnakeCase);
         assert_eq!(rules.type_style, NamingStyle::PascalCase);
@@ -297,7 +297,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

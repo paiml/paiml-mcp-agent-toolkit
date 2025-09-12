@@ -192,7 +192,7 @@ mod tests {
 
     #[test]
     fn test_analyzer_registry() {
-        let mut registry = AnalyzerRegistry::new();
+        let registry = AnalyzerRegistry::new();
         assert_eq!(registry.list_analyzers().len(), 0);
 
         // Registry starts empty
@@ -334,7 +334,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

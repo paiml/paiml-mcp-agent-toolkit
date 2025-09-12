@@ -61,12 +61,12 @@ impl MarkdownBuilder {
 
     fn add_metric(&mut self, label: &str, value: impl std::fmt::Display) {
         self.content
-            .push_str(&format!("- **{}**: {}\n", label, value));
+            .push_str(&format!("- **{label}**: {value}\n"));
     }
 
     fn add_percentage_metric(&mut self, label: &str, value: f64) {
         self.content
-            .push_str(&format!("- **{}**: {:.1}%\n", label, value));
+            .push_str(&format!("- **{label}**: {value:.1}%\n"));
     }
 
     fn add_newline(&mut self) {
@@ -330,7 +330,7 @@ async fn write_context_output(output: Option<PathBuf>, content: &str) -> Result<
         tokio::fs::write(&output_path, content).await?;
         eprintln!("✅ Context written to: {}", output_path.display());
     } else {
-        println!("{}", content);
+        println!("{content}");
     }
     Ok(())
 }
@@ -567,7 +567,7 @@ fn add_file_items(
             AstItem::Function { name, .. } => {
                 builder
                     .content
-                    .push_str(&format!("- **Function**: `{}`", name));
+                    .push_str(&format!("- **Function**: `{name}`"));
                 builder
                     .content
                     .push_str(&format_function_annotations(name, file, analyses));
@@ -576,23 +576,23 @@ fn add_file_items(
             AstItem::Struct { name, .. } => {
                 builder
                     .content
-                    .push_str(&format!("- **Struct**: `{}`\n", name));
+                    .push_str(&format!("- **Struct**: `{name}`\n"));
             }
             AstItem::Enum { name, .. } => {
                 builder
                     .content
-                    .push_str(&format!("- **Enum**: `{}`\n", name));
+                    .push_str(&format!("- **Enum**: `{name}`\n"));
             }
             AstItem::Trait { name, .. } => {
                 builder
                     .content
-                    .push_str(&format!("- **Trait**: `{}`\n", name));
+                    .push_str(&format!("- **Trait**: `{name}`\n"));
             }
             AstItem::Impl { trait_name, .. } => {
                 if let Some(trait_name) = trait_name {
                     builder
                         .content
-                        .push_str(&format!("- **Impl**: `{}`\n", trait_name));
+                        .push_str(&format!("- **Impl**: `{trait_name}`\n"));
                 } else {
                     builder.content.push_str("- **Impl**: (inherent)\n");
                 }
@@ -600,7 +600,7 @@ fn add_file_items(
             AstItem::Module { name, .. } => {
                 builder
                     .content
-                    .push_str(&format!("- **Module**: `{}`\n", name));
+                    .push_str(&format!("- **Module**: `{name}`\n"));
             }
             AstItem::Use { .. } => {
                 builder.content.push_str("- **Use**: statement\n");
@@ -614,9 +614,9 @@ fn add_file_items(
                 let import_desc = if !items.is_empty() {
                     format!("- **Import**: `{}` (items: {})\n", module, items.join(", "))
                 } else if let Some(alias) = alias {
-                    format!("- **Import**: `{}` as `{}`\n", module, alias)
+                    format!("- **Import**: `{module}` as `{alias}`\n")
                 } else {
-                    format!("- **Import**: `{}`\n", module)
+                    format!("- **Import**: `{module}`\n")
                 };
                 builder.content.push_str(&import_desc);
             }
@@ -659,14 +659,22 @@ fn add_complexity_annotations(
     func_name: &str,
     file: &crate::services::context::FileContext,
 ) {
-    let Some(complexity_metrics) = &file.complexity_metrics else { return };
-    let Some(func) = complexity_metrics.functions.iter().find(|f| f.name == func_name) else { return };
-    
+    let Some(complexity_metrics) = &file.complexity_metrics else {
+        return;
+    };
+    let Some(func) = complexity_metrics
+        .functions
+        .iter()
+        .find(|f| f.name == func_name)
+    else {
+        return;
+    };
+
     annotations.push_str(&format!(" [complexity: {}]", func.metrics.cyclomatic));
     annotations.push_str(&format!(" [cognitive: {}]", func.metrics.cognitive));
-    
+
     let big_o = get_big_o_complexity(func.metrics.cyclomatic.into());
-    annotations.push_str(&format!(" [big-o: {}]", big_o));
+    annotations.push_str(&format!(" [big-o: {big_o}]"));
 }
 
 fn get_big_o_complexity(cyclomatic: u32) -> &'static str {
@@ -685,9 +693,17 @@ fn add_dead_code_annotations(
     file: &crate::services::context::FileContext,
     analyses: &crate::services::deep_context::AnalysisResults,
 ) {
-    let Some(dead_code_results) = &analyses.dead_code_results else { return };
-    let Some(file_metrics) = dead_code_results.ranked_files.iter().find(|f| f.path.ends_with(&file.path)) else { return };
-    
+    let Some(dead_code_results) = &analyses.dead_code_results else {
+        return;
+    };
+    let Some(file_metrics) = dead_code_results
+        .ranked_files
+        .iter()
+        .find(|f| f.path.ends_with(&file.path))
+    else {
+        return;
+    };
+
     if is_function_dead_code(file_metrics, func_name) {
         annotations.push_str(" [dead: true]");
     }
@@ -698,8 +714,10 @@ fn is_function_dead_code(
     func_name: &str,
 ) -> bool {
     file_metrics.items.iter().any(|item| {
-        matches!(item.item_type, crate::models::dead_code::DeadCodeType::Function) 
-            && item.name == func_name
+        matches!(
+            item.item_type,
+            crate::models::dead_code::DeadCodeType::Function
+        ) && item.name == func_name
     })
 }
 
@@ -708,16 +726,18 @@ fn add_satd_annotations(
     file: &crate::services::context::FileContext,
     analyses: &crate::services::deep_context::AnalysisResults,
 ) {
-    let Some(satd_results) = &analyses.satd_results else { return };
-    
+    let Some(satd_results) = &analyses.satd_results else {
+        return;
+    };
+
     let satd_count = satd_results
         .items
         .iter()
         .filter(|item| item.file.to_string_lossy().ends_with(&file.path))
         .count();
-    
+
     if satd_count > 0 {
-        annotations.push_str(&format!(" [SATD: {}]", satd_count));
+        annotations.push_str(&format!(" [SATD: {satd_count}]"));
     }
 }
 
@@ -731,9 +751,13 @@ fn add_churn_annotations(
     file: &crate::services::context::FileContext,
     analyses: &crate::services::deep_context::AnalysisResults,
 ) {
-    let Some(churn_analysis) = &analyses.churn_analysis else { return };
-    let Some(file_metrics) = find_churn_file_metrics(churn_analysis, &file.path) else { return };
-    
+    let Some(churn_analysis) = &analyses.churn_analysis else {
+        return;
+    };
+    let Some(file_metrics) = find_churn_file_metrics(churn_analysis, &file.path) else {
+        return;
+    };
+
     if file_metrics.churn_score > 0.0 {
         annotations.push_str(&format!(" [churn: {:.2}]", file_metrics.churn_score));
     }
@@ -754,13 +778,21 @@ fn add_defect_probability_annotations(
     file: &crate::services::context::FileContext,
     analyses: &crate::services::deep_context::AnalysisResults,
 ) {
-    let Some(complexity_metrics) = &file.complexity_metrics else { return };
-    let Some(func) = complexity_metrics.functions.iter().find(|f| f.name == func_name) else { return };
-    
+    let Some(complexity_metrics) = &file.complexity_metrics else {
+        return;
+    };
+    let Some(func) = complexity_metrics
+        .functions
+        .iter()
+        .find(|f| f.name == func_name)
+    else {
+        return;
+    };
+
     let complexity_factor = (func.metrics.cyclomatic as f32 / 30.0).min(1.0);
     let churn_factor = get_churn_factor(analyses, &file.path);
     let defect_prob = (complexity_factor * 0.7 + churn_factor * 0.3).min(1.0);
-    
+
     if defect_prob > 0.1 {
         annotations.push_str(&format!(" [defect-prob: {:.0}%]", defect_prob * 100.0));
     }
@@ -895,7 +927,7 @@ fn format_file_functions(
     output.push_str(&format!("File: {}\n", file.path));
 
     for func in functions {
-        output.push_str(&format!("  Function: {}", func));
+        output.push_str(&format!("  Function: {func}"));
         add_function_metadata(output, file, func);
         add_dead_code_marker(output, file, func, deep_context);
         output.push('\n');
@@ -1144,7 +1176,7 @@ pub async fn handle_serve(
     transport: crate::cli::commands::ServeTransport,
 ) -> Result<()> {
     use crate::cli::commands::ServeTransport;
-    let addr = format!("{}:{}", host, port);
+    let addr = format!("{host}:{port}");
 
     match transport {
         ServeTransport::Http => handle_http_server(&host, port, cors).await,
@@ -1160,11 +1192,11 @@ async fn handle_http_server(host: &str, port: u16, cors: bool) -> Result<()> {
     eprintln!("✅ Server ready!");
     eprintln!("📍 Health check: http://{host}:{port}/health");
     eprintln!("📍 API base: http://{host}:{port}/api/v1");
-    
+
     if cors {
         eprintln!("🌐 CORS enabled for all origins");
     }
-    
+
     eprintln!("\n🔧 HTTP server functionality ready for implementation.");
     wait_for_shutdown().await
 }
@@ -1174,7 +1206,7 @@ async fn handle_websocket_server(addr: &str) -> Result<()> {
     eprintln!("✅ WebSocket server ready!");
     eprintln!("📍 WebSocket endpoint: ws://{addr}");
     eprintln!("🔌 MCP protocol over WebSocket");
-    
+
     start_websocket_server(addr.to_string()).await
 }
 
@@ -1184,11 +1216,11 @@ async fn handle_http_sse_server(addr: &str, host: &str, port: u16, cors: bool) -
     eprintln!("📍 SSE endpoint: http://{host}:{port}/sse");
     eprintln!("📍 Message endpoint: http://{host}:{port}/message");
     eprintln!("🌊 MCP protocol over Server-Sent Events");
-    
+
     if cors {
         eprintln!("🌐 CORS enabled for all origins");
     }
-    
+
     start_http_sse_server(addr.to_string(), cors).await
 }
 
@@ -1198,11 +1230,11 @@ async fn handle_hybrid_server(addr: &str, host: &str, port: u16, cors: bool) -> 
     eprintln!("📍 HTTP endpoint: http://{host}:{port}");
     eprintln!("📍 WebSocket endpoint: ws://{host}:{port}");
     eprintln!("🔌 MCP protocol over both transports");
-    
+
     if cors {
         eprintln!("🌐 CORS enabled for all origins");
     }
-    
+
     start_hybrid_server(addr.to_string(), cors).await
 }
 
@@ -1213,11 +1245,11 @@ async fn handle_full_server(addr: &str, host: &str, port: u16, cors: bool) -> Re
     eprintln!("📍 WebSocket endpoint: ws://{host}:{port}");
     eprintln!("📍 SSE endpoint: http://{host}:{port}/sse");
     eprintln!("🌐 MCP protocol over all transports");
-    
+
     if cors {
         eprintln!("🌐 CORS enabled for all origins");
     }
-    
+
     start_full_server(addr.to_string(), cors).await
 }
 
@@ -1295,7 +1327,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

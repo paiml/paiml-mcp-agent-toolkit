@@ -113,9 +113,9 @@ impl TaskQualityGate {
 
         let passed = output.status.success();
         let message = if passed {
-            format!("Complexity within limit (≤ {})", max)
+            format!("Complexity within limit (≤ {max})")
         } else {
-            format!("Complexity exceeds limit (> {})", max)
+            format!("Complexity exceeds limit (> {max})")
         };
 
         Ok(CheckResult {
@@ -138,9 +138,9 @@ impl TaskQualityGate {
 
         let passed = coverage >= min as f64;
         let message = if passed {
-            format!("Test coverage sufficient ({:.1}% ≥ {}%)", coverage, min)
+            format!("Test coverage sufficient ({coverage:.1}% ≥ {min}%)")
         } else {
-            format!("Test coverage insufficient ({:.1}% < {}%)", coverage, min)
+            format!("Test coverage insufficient ({coverage:.1}% < {min}%)")
         };
 
         Ok(CheckResult {
@@ -372,7 +372,7 @@ impl QualityGateEnforcer {
             };
             output.push_str(&format!("{}: {}\n", status, check.message));
             if let Some(details) = &check.details {
-                output.push_str(&format!("  Details: {}\n", details));
+                output.push_str(&format!("  Details: {details}\n"));
             }
         }
 
@@ -637,7 +637,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

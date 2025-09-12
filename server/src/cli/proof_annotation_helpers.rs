@@ -210,7 +210,6 @@ pub fn format_as_summary(
     annotations: &[(Location, ProofAnnotation)],
     elapsed: std::time::Duration,
 ) -> Result<String> {
-    
     let mut output = String::new();
 
     format_summary_header(&mut output, annotations, elapsed)?;
@@ -226,7 +225,7 @@ fn format_summary_header(
     elapsed: std::time::Duration,
 ) -> Result<()> {
     use std::fmt::Write;
-    
+
     let total_proofs = annotations.len();
     let high_confidence = annotations
         .iter()
@@ -234,7 +233,7 @@ fn format_summary_header(
         .count();
 
     writeln!(output, "Proof Annotations Summary:")?;
-    writeln!(output, "Total proofs: {}\n", total_proofs)?;
+    writeln!(output, "Total proofs: {total_proofs}\n")?;
     writeln!(
         output,
         "High confidence: {} ({:.1}%)",
@@ -246,7 +245,7 @@ fn format_summary_header(
         }
     )?;
     writeln!(output, "Analysis time: {:.2}s\n", elapsed.as_secs_f64())?;
-    
+
     Ok(())
 }
 
@@ -255,7 +254,7 @@ fn format_summary_property_counts(
     annotations: &[(Location, ProofAnnotation)],
 ) -> Result<()> {
     use std::fmt::Write;
-    
+
     let mut property_counts = std::collections::HashMap::new();
     for (_, ann) in annotations {
         let key = format!("{:?}", ann.property_proven);
@@ -265,10 +264,10 @@ fn format_summary_property_counts(
     if !property_counts.is_empty() {
         writeln!(output, "\nProofs by property type:")?;
         for (prop_type, count) in property_counts {
-            writeln!(output, "  {}: {}", prop_type, count)?;
+            writeln!(output, "  {prop_type}: {count}")?;
         }
     }
-    
+
     Ok(())
 }
 
@@ -277,11 +276,11 @@ fn format_summary_top_files(
     annotations: &[(Location, ProofAnnotation)],
 ) -> Result<()> {
     use std::fmt::Write;
-    
+
     if annotations.is_empty() {
         return Ok(());
     }
-    
+
     writeln!(output, "\n## Top Files with Proof Annotations\n")?;
 
     let mut file_counts: std::collections::HashMap<&std::path::Path, usize> =
@@ -298,15 +297,9 @@ fn format_summary_top_files(
             .file_name()
             .and_then(|n| n.to_str())
             .unwrap_or(file_path.to_str().unwrap_or("unknown"));
-        writeln!(
-            output,
-            "{}. `{}` - {} annotations",
-            i + 1,
-            filename,
-            count
-        )?;
+        writeln!(output, "{}. `{}` - {} annotations", i + 1, filename, count)?;
     }
-    
+
     Ok(())
 }
 
@@ -344,7 +337,7 @@ fn write_report_header(
         chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC")
     )?;
     writeln!(output, "**Project**: {}", project_path.display())?;
-    writeln!(output, "**Total proofs**: {}\n", total_proofs)?;
+    writeln!(output, "**Total proofs**: {total_proofs}\n")?;
 
     Ok(())
 }
@@ -445,7 +438,7 @@ fn write_annotation_assumptions(output: &mut String, ann: &ProofAnnotation) -> R
     if !ann.assumptions.is_empty() {
         writeln!(output, "\n**Assumptions**:")?;
         for assumption in &ann.assumptions {
-            writeln!(output, "- {}", assumption)?;
+            writeln!(output, "- {assumption}")?;
         }
     }
 
@@ -458,7 +451,7 @@ fn write_annotation_evidence(output: &mut String, ann: &ProofAnnotation) -> Resu
 
     writeln!(output, "\n**Evidence**: {:?}", ann.evidence_type)?;
     if let Some(ref spec_id) = ann.specification_id {
-        writeln!(output, "**Specification ID**: {}", spec_id)?;
+        writeln!(output, "**Specification ID**: {spec_id}")?;
     }
 
     Ok(())
@@ -499,7 +492,7 @@ fn write_markdown_header(
         "**Analysis Date**: {}",
         chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC")
     )?;
-    writeln!(output, "**Total Proofs**: {}\n", total_proofs)?;
+    writeln!(output, "**Total Proofs**: {total_proofs}\n")?;
 
     Ok(())
 }
@@ -518,7 +511,7 @@ fn write_summary_statistics(
     let confidence_counts = count_by_confidence(annotations);
 
     for (level, count) in &confidence_counts {
-        writeln!(output, "| {} Confidence | {} |", level, count)?;
+        writeln!(output, "| {level} Confidence | {count} |")?;
     }
 
     Ok(())
@@ -717,7 +710,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

@@ -144,7 +144,7 @@ async fn handle_show(format: &ConfigFormat) -> Result<()> {
     let config_path = std::env::current_dir()?.join("pmat.toml");
     let config_cmd = ConfigCommand::new(config_path);
     let result = config_cmd.show(format.clone()).await?;
-    println!("{}", result);
+    println!("{result}");
     Ok(())
 }
 
@@ -153,7 +153,7 @@ async fn handle_get(key: &str) -> Result<()> {
     let config_path = std::env::current_dir()?.join("pmat.toml");
     let config_cmd = ConfigCommand::new(config_path);
     let result = config_cmd.get(key).await?;
-    println!("{}", result);
+    println!("{result}");
     Ok(())
 }
 
@@ -168,7 +168,7 @@ async fn handle_validate(fix: bool) -> Result<()> {
         let config_service = configuration();
         let mut config = config_service.get_config()?;
         let mut fixed_issues = Vec::new();
-        
+
         for error in &result.errors {
             match error.as_str() {
                 msg if msg.contains("max_complexity must be > 0") => {
@@ -194,10 +194,10 @@ async fn handle_validate(fix: bool) -> Result<()> {
                 _ => {}
             }
         }
-        
+
         if !fixed_issues.is_empty() {
             println!("✅ Fixed issues: {}", fixed_issues.join(", "));
-            
+
             // Write corrected config back to file
             let config_path = std::env::current_dir()?.join("pmat.toml");
             let toml_content = toml::to_string_pretty(&config)?;
@@ -217,7 +217,7 @@ fn print_validation_result(result: &ValidationResult) -> Result<()> {
     } else {
         println!("❌ Configuration validation failed:");
         for error in &result.errors {
-            println!("  - {}", error);
+            println!("  - {error}");
         }
         return Err(anyhow::anyhow!("Configuration validation failed"));
     }
@@ -320,7 +320,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

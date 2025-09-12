@@ -139,7 +139,7 @@ pub async fn test_realistic_project_analysis() -> Result<()> {
 
     // Create multiple files to simulate realistic project
     for i in 0..10 {
-        let file_path = src_dir.join(format!("module_{}.rs", i));
+        let file_path = src_dir.join(format!("module_{i}.rs"));
         let file_code = generate_test_code(test_lines / 10);
         fs::write(&file_path, &file_code)?;
     }
@@ -171,14 +171,11 @@ pub async fn test_realistic_project_analysis() -> Result<()> {
     let min_throughput = 100_000; // 100K LOC/s
     assert!(
         actual_throughput >= min_throughput as f64,
-        "Multi-file analysis throughput: {:.0} LOC/s, expected ≥{} LOC/s",
-        actual_throughput,
-        min_throughput
+        "Multi-file analysis throughput: {actual_throughput:.0} LOC/s, expected ≥{min_throughput} LOC/s"
     );
 
     println!(
-        "✅ Multi-file analysis: {:.0} LOC/s, duration: {:?}",
-        actual_throughput, duration
+        "✅ Multi-file analysis: {actual_throughput:.0} LOC/s, duration: {duration:?}"
     );
 
     Ok(())
@@ -227,8 +224,7 @@ pub async fn test_large_file_performance() -> Result<()> {
 
     let throughput = (test_lines as f64) / duration.as_secs_f64();
     println!(
-        "✅ Large file performance: {:.0} LOC/s, duration: {:?}",
-        throughput, duration
+        "✅ Large file performance: {throughput:.0} LOC/s, duration: {duration:?}"
     );
 
     Ok(())

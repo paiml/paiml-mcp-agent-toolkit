@@ -151,7 +151,7 @@ impl CommandDispatcher {
                 // Convert QualityCheckType vec to String vec
                 let check_strings: Vec<String> = checks
                     .iter()
-                    .map(|c| format!("{:?}", c).to_lowercase())
+                    .map(|c| format!("{c:?}").to_lowercase())
                     .collect();
 
                 Self::execute_quality_gate_command(
@@ -192,7 +192,7 @@ impl CommandDispatcher {
                 // Convert AnalysisType vec to String vec
                 let analysis_strings: Vec<String> = analyses
                     .iter()
-                    .map(|a| format!("{:?}", a).to_lowercase())
+                    .map(|a| format!("{a:?}").to_lowercase())
                     .collect();
 
                 Self::execute_report_command(
@@ -811,8 +811,7 @@ impl CommandDispatcher {
     ) {
         println!("Starting Performance Testing Suite (SPECIFICATION.md Section 30)");
         println!(
-            "Suite: {:?}, Iterations: {}, Timeout: {}s",
-            suite, iterations, timeout
+            "Suite: {suite:?}, Iterations: {iterations}, Timeout: {timeout}s"
         );
     }
 
@@ -940,7 +939,7 @@ impl CommandDispatcher {
                 result
             }
             Err(_) => {
-                eprintln!("Test execution timed out after {}s", timeout);
+                eprintln!("Test execution timed out after {timeout}s");
                 anyhow::bail!("Performance tests timed out");
             }
         }
@@ -955,9 +954,9 @@ impl CommandDispatcher {
     ) {
         if perf {
             println!("\nPerformance Summary:");
-            println!("   Total execution time: {:?}", elapsed);
-            println!("   Suite: {:?}", suite);
-            println!("   Iterations: {}", iterations);
+            println!("   Total execution time: {elapsed:?}");
+            println!("   Suite: {suite:?}");
+            println!("   Iterations: {iterations}");
         }
     }
 
@@ -1238,7 +1237,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

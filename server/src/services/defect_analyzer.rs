@@ -204,10 +204,10 @@ pub enum MetricValue {
 impl std::fmt::Display for MetricValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            MetricValue::Integer(i) => write!(f, "{}", i),
-            MetricValue::Float(fl) => write!(f, "{:.2}", fl),
-            MetricValue::String(s) => write!(f, "{}", s),
-            MetricValue::Boolean(b) => write!(f, "{}", b),
+            MetricValue::Integer(i) => write!(f, "{i}"),
+            MetricValue::Float(fl) => write!(f, "{fl:.2}"),
+            MetricValue::String(s) => write!(f, "{s}"),
+            MetricValue::Boolean(b) => write!(f, "{b}"),
         }
     }
 }
@@ -377,7 +377,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

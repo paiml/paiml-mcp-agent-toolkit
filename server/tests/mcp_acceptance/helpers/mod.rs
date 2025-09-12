@@ -6,4 +6,4 @@
 pub mod mcp_test_client;
 
 /// Re-export main components for convenience
-pub use mcp_test_client::{McpTestClient, McpValidators, ToolCallResult, McpResponse, McpError};
+pub use mcp_test_client::{McpError, McpResponse, McpTestClient, McpValidators, ToolCallResult};

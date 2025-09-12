@@ -91,7 +91,7 @@ pub async fn handle_analyze_symbol_table(
         tokio::fs::write(&output_path, &content).await?;
         eprintln!("✅ Symbol table written to: {}", output_path.display());
     } else {
-        println!("{}", content);
+        println!("{content}");
     }
 
     Ok(())
@@ -165,7 +165,7 @@ async fn process_directory_entry(
     exclude: &Option<String>,
 ) -> Result<()> {
     let path = entry.path();
-    
+
     if should_skip_path(&path, exclude) {
         return Ok(());
     }
@@ -206,11 +206,7 @@ fn should_process_directory(path: &Path) -> bool {
 }
 
 /// Process a file
-fn process_file(
-    path: PathBuf,
-    files: &mut Vec<PathBuf>,
-    include: &Option<String>,
-) -> Result<()> {
+fn process_file(path: PathBuf, files: &mut Vec<PathBuf>, include: &Option<String>) -> Result<()> {
     if !is_source_file(&path) {
         return Ok(());
     }
@@ -475,7 +471,7 @@ fn format_human_output(table: SymbolTable, show_unreferenced: bool) -> Result<St
 fn write_header(output: &mut String, total_symbols: usize) -> Result<()> {
     use std::fmt::Write;
     writeln!(output, "# Symbol Table Analysis\n")?;
-    writeln!(output, "Total symbols: {}", total_symbols)?;
+    writeln!(output, "Total symbols: {total_symbols}")?;
     writeln!(output, "\n## Symbols by Type\n")?;
     Ok(())
 }
@@ -528,7 +524,7 @@ fn write_unreferenced_symbols(output: &mut String, unreferenced: &[String]) -> R
 
     writeln!(output, "## Unreferenced Symbols\n")?;
     for name in unreferenced {
-        writeln!(output, "  - {}", name)?;
+        writeln!(output, "  - {name}")?;
     }
 
     Ok(())
@@ -544,7 +540,7 @@ fn write_most_referenced(output: &mut String, most_referenced: &[(String, usize)
 
     writeln!(output, "\n## Most Referenced Symbols\n")?;
     for (name, count) in most_referenced {
-        writeln!(output, "  - {}: {} references", name, count)?;
+        writeln!(output, "  - {name}: {count} references")?;
     }
 
     Ok(())
@@ -678,7 +674,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

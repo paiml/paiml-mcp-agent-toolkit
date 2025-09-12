@@ -155,7 +155,7 @@ impl ComplexityDefectAnalyzer {
         metrics.insert("confidence".to_string(), score.confidence);
 
         Defect {
-            id: format!("CPLX-{:04}", index),
+            id: format!("CPLX-{index:04}"),
             severity,
             category: DefectCategory::Complexity,
             file_path: file_path.clone(),
@@ -282,7 +282,7 @@ impl SATDDefectAnalyzer {
         );
 
         Defect {
-            id: format!("SATD-{:04}", index),
+            id: format!("SATD-{index:04}"),
             severity,
             category: DefectCategory::TechnicalDebt,
             file_path: debt.file.clone(),
@@ -398,7 +398,7 @@ impl DeadCodeDefectAnalyzer {
         metrics.insert("confidence".to_string(), item.confidence as f64);
 
         Defect {
-            id: format!("{}-{:04}", prefix, index),
+            id: format!("{prefix}-{index:04}"),
             severity,
             category: DefectCategory::DeadCode,
             file_path: PathBuf::from(&item.file_path),
@@ -430,7 +430,7 @@ impl DeadCodeDefectAnalyzer {
         );
 
         Defect {
-            id: format!("UNREACH-{:04}", index),
+            id: format!("UNREACH-{index:04}"),
             severity: Severity::High,
             category: DefectCategory::DeadCode,
             file_path: PathBuf::from(&block.file_path),
@@ -568,7 +568,7 @@ impl DuplicationDefectAnalyzer {
         metrics.insert("group_size".to_string(), group.fragments.len() as f64);
 
         Defect {
-            id: format!("DUP-{:04}", index),
+            id: format!("DUP-{index:04}"),
             severity,
             category: DefectCategory::Duplication,
             file_path: instance.file.clone(),
@@ -687,7 +687,7 @@ impl PerformanceDefectAnalyzer {
         metrics.insert("confidence".to_string(), func.confidence as f64);
 
         Defect {
-            id: format!("PERF-{:04}", index),
+            id: format!("PERF-{index:04}"),
             severity,
             category: DefectCategory::Performance,
             file_path: func.file_path.clone(),
@@ -798,7 +798,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

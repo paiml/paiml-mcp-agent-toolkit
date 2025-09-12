@@ -184,8 +184,7 @@ impl ContractRegistry {
             migration.migrate(contract)
         } else {
             Err(ContractError::InvalidValue(format!(
-                "No migration available from {} to {} for contract {}",
-                from_version, to_version, name
+                "No migration available from {from_version} to {to_version} for contract {name}"
             )))
         }
     }
@@ -455,7 +454,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

@@ -153,7 +153,7 @@ fn build_pool_stats_output(
         let efficiency_rating = calculate_efficiency_rating(pool_stats.reuse_ratio);
 
         pool_stats_output.insert(
-            format!("{:?}", pool_type),
+            format!("{pool_type:?}"),
             PoolStatsOutput {
                 buffer_count: pool_stats.buffer_count,
                 total_size: pool_stats.total_size,
@@ -259,13 +259,13 @@ fn print_memory_stats_table(stats: &MemoryStatsOutput, detailed: bool) -> Result
 
     print_header(&bold);
     print_overall_stats(stats, &bold);
-    
+
     if detailed {
         print_pool_stats(&stats.pool_stats, &bold);
     }
-    
+
     print_recommendations(&stats.recommendations, &bold);
-    
+
     Ok(())
 }
 
@@ -280,13 +280,16 @@ fn print_overall_stats(stats: &MemoryStatsOutput, bold: &Style) {
     println!("{}:", bold.apply_to("Overall Memory Usage"));
     println!("  Total Allocated: {}", format_bytes(stats.total_allocated));
     println!("  Peak Usage:      {}", format_bytes(stats.peak_usage));
-    
+
     let pressure_color = get_pressure_color(stats.allocation_pressure);
     println!(
         "  Pressure:        {}",
         pressure_color.apply_to(format!("{:.1}%", stats.allocation_pressure * 100.0))
     );
-    println!("  String Intern:   {}", format_bytes(stats.string_intern_size));
+    println!(
+        "  String Intern:   {}",
+        format_bytes(stats.string_intern_size)
+    );
     println!();
 }
 
@@ -316,7 +319,7 @@ fn print_single_pool_stats(pool_name: &str, stats: &PoolStatsOutput, bold: &Styl
     println!("    Size:        {}", format_bytes(stats.total_size));
     println!("    Allocations: {}", stats.allocation_count);
     println!("    Reuses:      {}", stats.reuse_count);
-    
+
     let efficiency_color = get_efficiency_color(&stats.efficiency_rating);
     println!(
         "    Efficiency:  {} ({:.1}%)",
@@ -404,7 +407,7 @@ async fn handle_memory_configure(
     println!("Memory configuration:");
 
     if let Some(max_mb) = max_memory_mb {
-        println!("  Maximum memory: {} MB", max_mb);
+        println!("  Maximum memory: {max_mb} MB");
         // Note: Current implementation doesn't support runtime reconfiguration
         println!("  Note: Runtime reconfiguration not yet supported");
     }
@@ -412,7 +415,7 @@ async fn handle_memory_configure(
     if !pool_limits.is_empty() {
         println!("  Pool limits:");
         for limit_spec in pool_limits {
-            println!("    {}", limit_spec);
+            println!("    {limit_spec}");
         }
         println!("  Note: Runtime pool reconfiguration not yet supported");
     }
@@ -436,7 +439,7 @@ async fn handle_memory_pools(pool: &Option<String>, efficiency: bool) -> Result<
     println!();
 
     for (pool_type, pool_stats) in &stats.pool_stats {
-        let pool_name = format!("{:?}", pool_type);
+        let pool_name = format!("{pool_type:?}");
 
         // Filter by specific pool if requested
         if let Some(target_pool) = pool {
@@ -473,7 +476,7 @@ async fn handle_memory_pools(pool: &Option<String>, efficiency: bool) -> Result<
             } else {
                 "Poor"
             };
-            println!("  Efficiency:  {}", efficiency_rating);
+            println!("  Efficiency:  {efficiency_rating}");
         }
 
         println!();
@@ -612,7 +615,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

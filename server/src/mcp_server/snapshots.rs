@@ -59,7 +59,7 @@ impl SnapshotManager {
         // Ensure parent directory exists before writing
         if let Some(parent) = self.snapshot_path.parent() {
             fs::create_dir_all(parent)
-                .map_err(|e| format!("Failed to create snapshot directory: {}", e))?;
+                .map_err(|e| format!("Failed to create snapshot directory: {e}"))?;
         }
 
         // Use Cap'n Proto serialization with JSON fallback
@@ -67,10 +67,10 @@ impl SnapshotManager {
 
         // Use safe two-phase write: create .tmp file, then rename
         let temp_path = self.snapshot_path.with_extension("tmp");
-        fs::write(&temp_path, data).map_err(|e| format!("Failed to write snapshot: {}", e))?;
+        fs::write(&temp_path, data).map_err(|e| format!("Failed to write snapshot: {e}"))?;
 
         fs::rename(&temp_path, &self.snapshot_path)
-            .map_err(|e| format!("Failed to rename snapshot: {}", e))?;
+            .map_err(|e| format!("Failed to rename snapshot: {e}"))?;
 
         info!(
             "Saved refactor state snapshot using {}",
@@ -108,7 +108,7 @@ impl SnapshotManager {
 
         // Use Cap'n Proto deserialization with JSON fallback
         let data =
-            fs::read(&self.snapshot_path).map_err(|e| format!("Failed to read snapshot: {}", e))?;
+            fs::read(&self.snapshot_path).map_err(|e| format!("Failed to read snapshot: {e}"))?;
 
         let state = deserialize_state_from_capnp(&data)?;
 
@@ -136,7 +136,7 @@ impl SnapshotManager {
     pub fn remove_snapshot(&self) -> Result<(), String> {
         if self.snapshot_path.exists() {
             fs::remove_file(&self.snapshot_path)
-                .map_err(|e| format!("Failed to remove snapshot: {}", e))?;
+                .map_err(|e| format!("Failed to remove snapshot: {e}"))?;
             info!("Removed refactor state snapshot");
         }
         Ok(())
@@ -189,7 +189,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

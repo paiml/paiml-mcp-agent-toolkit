@@ -1,5 +1,5 @@
 //! Intelligence Layer: Pattern-Based Suggestion Engine
-//! 
+//!
 //! Phase 2 Implementation (Months 4-6)
 //! Suggestion engine using successful patterns
 
@@ -12,10 +12,10 @@ use crate::unified_quality::metrics::{Violation, ViolationType};
 pub struct QualityAssistant {
     /// Curated patterns with success rates
     pattern_db: HashMap<ViolationType, Vec<Pattern>>,
-    
+
     /// User feedback for continuous improvement
     feedback: FeedbackCollector,
-    
+
     /// Confidence scoring based on context
     scorer: ConfidenceScorer,
 }
@@ -25,22 +25,22 @@ pub struct QualityAssistant {
 pub struct Pattern {
     /// Pattern identifier
     pub id: String,
-    
+
     /// Pattern name
     pub name: String,
-    
+
     /// Pattern description
     pub description: String,
-    
+
     /// Code transformation template
     pub template: String,
-    
+
     /// Success rate from historical data
     pub success_rate: f64,
-    
+
     /// Applicable contexts
     pub contexts: Vec<String>,
-    
+
     /// Example before/after code
     pub example: Example,
 }
@@ -58,13 +58,13 @@ pub struct Example {
 pub struct Suggestion {
     /// The pattern to apply
     pub pattern: Pattern,
-    
+
     /// Confidence score (0.0 - 1.0)
     pub confidence: f64,
-    
+
     /// Preview of the change
     pub preview: String,
-    
+
     /// Estimated impact
     pub impact: Impact,
 }
@@ -74,13 +74,13 @@ pub struct Suggestion {
 pub struct Impact {
     /// Complexity reduction
     pub complexity_reduction: i32,
-    
+
     /// Lines of code change
     pub loc_change: i32,
-    
+
     /// Test coverage impact
     pub coverage_impact: f64,
-    
+
     /// Risk level
     pub risk: RiskLevel,
 }
@@ -97,10 +97,10 @@ pub enum RiskLevel {
 pub struct FeedbackCollector {
     /// Accepted suggestions
     accepted: Vec<AcceptedSuggestion>,
-    
+
     /// Rejected suggestions
     rejected: Vec<RejectedSuggestion>,
-    
+
     /// Success metrics
     metrics: FeedbackMetrics,
 }
@@ -169,6 +169,12 @@ impl Default for ScoringWeights {
     }
 }
 
+impl Default for QualityAssistant {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl QualityAssistant {
     /// Create a new quality assistant
     pub fn new() -> Self {
@@ -178,9 +184,12 @@ impl QualityAssistant {
             scorer: ConfidenceScorer::new(),
         }
     }
-    
+
     /// Suggest fixes for a violation
-    pub fn suggest(&self, violation: &crate::unified_quality::metrics::Violation) -> Vec<Suggestion> {
+    pub fn suggest(
+        &self,
+        violation: &crate::unified_quality::metrics::Violation,
+    ) -> Vec<Suggestion> {
         self.pattern_db
             .get(&violation.violation_type)
             .map(|patterns| {
@@ -201,21 +210,26 @@ impl QualityAssistant {
             })
             .unwrap_or_default()
     }
-    
+
     /// Record feedback on a suggestion
-    pub fn record_feedback(&mut self, suggestion_id: &str, accepted: bool, outcome: Option<String>) {
+    pub fn record_feedback(
+        &mut self,
+        suggestion_id: &str,
+        accepted: bool,
+        outcome: Option<String>,
+    ) {
         self.feedback.record(suggestion_id, accepted, outcome);
     }
-    
+
     /// Get suggestion success rate
     pub fn get_success_rate(&self) -> f64 {
         self.feedback.metrics.success_rate
     }
-    
+
     /// Initialize pattern database with common refactorings
     fn initialize_patterns() -> HashMap<ViolationType, Vec<Pattern>> {
         let mut patterns = HashMap::new();
-        
+
         // Complexity reduction patterns
         patterns.insert(
             ViolationType::Complexity,
@@ -248,61 +262,54 @@ impl QualityAssistant {
                 },
             ],
         );
-        
+
         // SATD removal patterns
         patterns.insert(
             ViolationType::Satd,
-            vec![
-                Pattern {
-                    id: "implement_todo".to_string(),
-                    name: "Implement TODO".to_string(),
-                    description: "Complete the TODO implementation".to_string(),
-                    template: "// Completed implementation".to_string(),
-                    success_rate: 0.70,
-                    contexts: vec!["todo_comment".to_string()],
-                    example: Example {
-                        before: "// Add validation".to_string(),
-                        after: "validate_input(&input)?;".to_string(),
-                        improvement: "Removed technical debt".to_string(),
-                    },
+            vec![Pattern {
+                id: "implement_todo".to_string(),
+                name: "Implement TODO".to_string(),
+                description: "Complete the TODO implementation".to_string(),
+                template: "// Completed implementation".to_string(),
+                success_rate: 0.70,
+                contexts: vec!["todo_comment".to_string()],
+                example: Example {
+                    before: "// Add validation".to_string(),
+                    after: "validate_input(&input)?;".to_string(),
+                    improvement: "Removed technical debt".to_string(),
                 },
-            ],
+            }],
         );
-        
+
         // Dead code removal patterns
         patterns.insert(
             ViolationType::DeadCode,
-            vec![
-                Pattern {
-                    id: "remove_dead_code".to_string(),
-                    name: "Remove Dead Code".to_string(),
-                    description: "Remove unreachable or unused code".to_string(),
-                    template: "// Code removed".to_string(),
-                    success_rate: 0.95,
-                    contexts: vec!["unused".to_string()],
-                    example: Example {
-                        before: "#[allow(dead_code)] fn unused() {}".to_string(),
-                        after: "// Removed".to_string(),
-                        improvement: "Removed 10 lines of dead code".to_string(),
-                    },
+            vec![Pattern {
+                id: "remove_dead_code".to_string(),
+                name: "Remove Dead Code".to_string(),
+                description: "Remove unreachable or unused code".to_string(),
+                template: "// Code removed".to_string(),
+                success_rate: 0.95,
+                contexts: vec!["unused".to_string()],
+                example: Example {
+                    before: "#[allow(dead_code)] fn unused() {}".to_string(),
+                    after: "// Removed".to_string(),
+                    improvement: "Removed 10 lines of dead code".to_string(),
                 },
-            ],
+            }],
         );
-        
+
         patterns
     }
-    
+
     /// Generate diff preview for a suggestion
     fn generate_diff(&self, violation: &Violation, pattern: &Pattern) -> String {
         format!(
             "--- {}\n+++ {}\n@@ -1,1 +1,1 @@\n-{}\n+{}",
-            violation.file,
-            violation.file,
-            pattern.example.before,
-            pattern.example.after
+            violation.file, violation.file, pattern.example.before, pattern.example.after
         )
     }
-    
+
     /// Estimate impact of applying a pattern
     fn estimate_impact(&self, pattern: &Pattern) -> Impact {
         Impact {
@@ -324,15 +331,18 @@ impl QualityAssistant {
             },
         }
     }
-    
+
     /// Analyze a file and generate suggestions
-    pub async fn analyze_file(&self, file_path: &std::path::Path) -> Result<Vec<Suggestion>, anyhow::Error> {
+    pub async fn analyze_file(
+        &self,
+        file_path: &std::path::Path,
+    ) -> Result<Vec<Suggestion>, anyhow::Error> {
         // Read file content and analyze for violations
         let content = std::fs::read_to_string(file_path)?;
-        
+
         // Simple violation detection for demonstration
         let mut suggestions = Vec::new();
-        
+
         // Check for TODO comments (SATD)
         if content.contains("TODO") || content.contains("FIXME") {
             let violation = crate::unified_quality::metrics::Violation {
@@ -344,16 +354,19 @@ impl QualityAssistant {
             };
             suggestions.extend(self.suggest(&violation));
         }
-        
+
         Ok(suggestions)
     }
-    
+
     /// Generate suggestions for a file (synchronous version)
-    pub fn generate_suggestions(&self, file_path: &std::path::Path) -> Result<Vec<Suggestion>, anyhow::Error> {
+    pub fn generate_suggestions(
+        &self,
+        file_path: &std::path::Path,
+    ) -> Result<Vec<Suggestion>, anyhow::Error> {
         // Synchronous version of analyze_file
         let content = std::fs::read_to_string(file_path)?;
         let mut suggestions = Vec::new();
-        
+
         // Check for various violations
         if content.contains("TODO") || content.contains("FIXME") {
             let violation = crate::unified_quality::metrics::Violation {
@@ -365,8 +378,14 @@ impl QualityAssistant {
             };
             suggestions.extend(self.suggest(&violation));
         }
-        
+
         Ok(suggestions)
+    }
+}
+
+impl Default for FeedbackCollector {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -379,13 +398,13 @@ impl FeedbackCollector {
             metrics: FeedbackMetrics::default(),
         }
     }
-    
+
     /// Record feedback
     pub fn record(&mut self, pattern_id: &str, accepted: bool, outcome: Option<String>) {
         use std::time::SystemTime;
-        
+
         self.metrics.total_suggestions += 1;
-        
+
         if accepted {
             self.metrics.accepted += 1;
             self.accepted.push(AcceptedSuggestion {
@@ -409,9 +428,15 @@ impl FeedbackCollector {
                 reason: outcome.unwrap_or_else(|| "No reason provided".to_string()),
             });
         }
-        
-        self.metrics.success_rate = 
+
+        self.metrics.success_rate =
             self.metrics.accepted as f64 / self.metrics.total_suggestions as f64;
+    }
+}
+
+impl Default for ConfidenceScorer {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -422,14 +447,14 @@ impl ConfidenceScorer {
             weights: ScoringWeights::default(),
         }
     }
-    
+
     /// Score a pattern for a violation
     pub fn score(&self, pattern: &Pattern, _violation: &Violation) -> f64 {
         let mut score = 0.0;
-        
+
         // Pattern success rate component
         score += pattern.success_rate * self.weights.pattern_success_rate;
-        
+
         // Context match component
         let context_match = if pattern.contexts.contains(&"high_complexity".to_string()) {
             1.0
@@ -437,15 +462,15 @@ impl ConfidenceScorer {
             0.5
         };
         score += context_match * self.weights.context_match;
-        
+
         // Code similarity component (simplified)
         let similarity = 0.7; // Would use actual similarity metric
         score += similarity * self.weights.code_similarity;
-        
+
         // User history component
         let user_preference = 0.8; // Would use actual user history
         score += user_preference * self.weights.user_history;
-        
+
         score.min(1.0)
     }
 }
@@ -470,7 +495,7 @@ mod tests {
             value: 25.0,
             threshold: 20.0,
         };
-        
+
         let suggestions = assistant.suggest(&violation);
         assert!(!suggestions.is_empty());
         assert!(suggestions[0].confidence > 0.6);
@@ -500,7 +525,7 @@ mod tests {
                 improvement: "".to_string(),
             },
         };
-        
+
         let violation = Violation {
             file: "test.rs".to_string(),
             violation_type: ViolationType::Complexity,
@@ -508,7 +533,7 @@ mod tests {
             value: 25.0,
             threshold: 20.0,
         };
-        
+
         let score = scorer.score(&pattern, &violation);
         assert!(score > 0.5);
         assert!(score <= 1.0);

@@ -131,7 +131,7 @@ async fn init_sprint(
     duration_days: u32,
     priority: &str,
 ) -> Result<()> {
-    println!("📋 Initializing sprint {} - {}", version, title);
+    println!("📋 Initializing sprint {version} - {title}");
 
     let mut roadmap = if roadmap_path.exists() {
         Roadmap::from_file(roadmap_path)?
@@ -172,7 +172,7 @@ async fn init_sprint(
 
     roadmap.to_file(roadmap_path)?;
 
-    println!("✅ Sprint {} initialized successfully", version);
+    println!("✅ Sprint {version} initialized successfully");
     println!("📝 Roadmap updated at: {}", roadmap_path.display());
 
     Ok(())
@@ -195,7 +195,7 @@ async fn generate_todos(
 
     let sprint = roadmap
         .get_sprint(sprint_id)
-        .context(format!("Sprint {} not found", sprint_id))?;
+        .context(format!("Sprint {sprint_id} not found"))?;
 
     let generator = generator::RoadmapTodoGenerator::new(config.quality_gates.clone());
     let todos = generator.generate_sprint_todos(sprint).await?;
@@ -229,7 +229,7 @@ async fn start_task(
     create_branch: bool,
     config: &RoadmapConfig,
 ) -> Result<()> {
-    println!("🚀 Starting task {}", task_id);
+    println!("🚀 Starting task {task_id}");
 
     let mut roadmap = Roadmap::from_file(roadmap_path)?;
 
@@ -237,7 +237,7 @@ async fn start_task(
     roadmap.update_task_status(task_id, TaskStatus::InProgress)?;
     roadmap.to_file(roadmap_path)?;
 
-    println!("✅ Task {} status updated to: 🚧 In Progress", task_id);
+    println!("✅ Task {task_id} status updated to: 🚧 In Progress");
 
     // Create git branch if requested
     if create_branch && config.git.create_branches {
@@ -246,13 +246,13 @@ async fn start_task(
             .branch_pattern
             .replace("{task_id}", &task_id.to_lowercase());
 
-        println!("🌿 Creating branch: {}", branch_name);
+        println!("🌿 Creating branch: {branch_name}");
         std::process::Command::new("git")
             .args(["checkout", "-b", &branch_name])
             .output()
             .context("Failed to create git branch")?;
 
-        println!("✅ Branch created and checked out: {}", branch_name);
+        println!("✅ Branch created and checked out: {branch_name}");
     }
 
     // Show task details
@@ -273,7 +273,7 @@ async fn complete_task(
     skip_quality_check: bool,
     config: &RoadmapConfig,
 ) -> Result<()> {
-    println!("🏁 Completing task {}", task_id);
+    println!("🏁 Completing task {task_id}");
 
     // Run quality checks unless skipped
     if !skip_quality_check && config.enforce_quality_gates {
@@ -287,7 +287,7 @@ async fn complete_task(
     roadmap.update_task_status(task_id, TaskStatus::Completed)?;
     roadmap.to_file(roadmap_path)?;
 
-    println!("✅ Task {} completed successfully", task_id);
+    println!("✅ Task {task_id} completed successfully");
 
     // Create completion commit if configured
     if config.git.require_quality_check {
@@ -297,7 +297,7 @@ async fn complete_task(
             .replace("{task_id}", task_id)
             .replace("{message}", "Complete implementation");
 
-        println!("📝 Creating commit: {}", message);
+        println!("📝 Creating commit: {message}");
         std::process::Command::new("git")
             .args(["add", "-A"])
             .output()?;
@@ -332,7 +332,7 @@ async fn show_status(
 fn show_task_status(roadmap: &Roadmap, task_id: &str, format: OutputFormat) -> Result<()> {
     let task = roadmap
         .get_task(task_id)
-        .context(format!("Task {} not found", task_id))?;
+        .context(format!("Task {task_id} not found"))?;
 
     match format {
         OutputFormat::Json => {
@@ -372,7 +372,7 @@ async fn show_sprint_status(
 
     let sprint = roadmap
         .get_sprint(sprint_id)
-        .context(format!("Sprint {} not found", sprint_id))?;
+        .context(format!("Sprint {sprint_id} not found"))?;
 
     match format {
         OutputFormat::Json => {
@@ -396,8 +396,7 @@ fn display_sprint_details(sprint: &Sprint) {
         sprint.end_date.format("%Y-%m-%d")
     );
     println!(
-        "  Progress: {}/{} completed, {} in progress",
-        completed, total, in_progress
+        "  Progress: {completed}/{total} completed, {in_progress} in progress"
     );
 
     display_sprint_tasks(sprint);
@@ -439,12 +438,12 @@ async fn validate_sprint(
     strict: bool,
     config: &RoadmapConfig,
 ) -> Result<()> {
-    println!("🔍 Validating sprint {} for release...", sprint_id);
+    println!("🔍 Validating sprint {sprint_id} for release...");
 
     let roadmap = Roadmap::from_file(roadmap_path)?;
     let sprint = roadmap
         .get_sprint(sprint_id)
-        .context(format!("Sprint {} not found", sprint_id))?;
+        .context(format!("Sprint {sprint_id} not found"))?;
 
     let mut all_passed = true;
 
@@ -468,21 +467,21 @@ async fn validate_sprint(
     // Check definition of done
     println!("\n📋 Definition of Done:");
     for item in &sprint.definition_of_done {
-        println!("  - [ ] {}", item);
+        println!("  - [ ] {item}");
     }
 
     // Check quality gates
     if config.enforce_quality_gates {
         println!("\n🔍 Quality Gates:");
         for gate in &sprint.quality_gates {
-            println!("  - [ ] {}", gate);
+            println!("  - [ ] {gate}");
         }
     }
 
     if all_passed {
-        println!("\n✅ Sprint {} is ready for release!", sprint_id);
+        println!("\n✅ Sprint {sprint_id} is ready for release!");
     } else {
-        println!("\n❌ Sprint {} is NOT ready for release", sprint_id);
+        println!("\n❌ Sprint {sprint_id} is NOT ready for release");
         if strict {
             anyhow::bail!("Sprint validation failed");
         }
@@ -492,7 +491,7 @@ async fn validate_sprint(
 }
 
 async fn quality_check(task_id: &str, config: &RoadmapConfig) -> Result<()> {
-    println!("🔍 Running quality checks for task {}...", task_id);
+    println!("🔍 Running quality checks for task {task_id}...");
 
     // Run complexity check
     let complexity_result = std::process::Command::new("pmat")
@@ -532,7 +531,7 @@ async fn quality_check(task_id: &str, config: &RoadmapConfig) -> Result<()> {
         println!("✅ Lint check passed");
     }
 
-    println!("✅ All quality checks passed for task {}", task_id);
+    println!("✅ All quality checks passed for task {task_id}");
     Ok(())
 }
 
@@ -566,17 +565,13 @@ fn handle_init(
 - [ ] Code coverage maintained
 - [ ] Zero SATD violations
 
-"#,
-        version = version,
-        title = title,
-        duration_days = duration_days,
-        priority = priority
+"#
     );
 
     std::fs::write(&roadmap_path, content)
-        .with_context(|| format!("Failed to write roadmap to {:?}", roadmap_path))?;
+        .with_context(|| format!("Failed to write roadmap to {roadmap_path:?}"))?;
 
-    println!("✅ Initialized roadmap at {:?}", roadmap_path);
+    println!("✅ Initialized roadmap at {roadmap_path:?}");
     Ok(())
 }
 
@@ -588,11 +583,11 @@ fn handle_start(task_id: String, create_branch: bool) -> Result<()> {
         anyhow::bail!("Invalid task ID format. Expected PMAT-XXXX");
     }
 
-    println!("🚀 Starting work on task: {}", task_id);
+    println!("🚀 Starting work on task: {task_id}");
 
     if create_branch {
         let branch_name = format!("feature/{}", task_id.to_lowercase());
-        println!("🌿 Creating branch: {}", branch_name);
+        println!("🌿 Creating branch: {branch_name}");
 
         // Attempt to create git branch (may fail in test environment)
         let result = std::process::Command::new("git")
@@ -612,7 +607,7 @@ fn handle_start(task_id: String, create_branch: bool) -> Result<()> {
         }
     }
 
-    println!("✅ Task {} is now active", task_id);
+    println!("✅ Task {task_id} is now active");
     Ok(())
 }
 
@@ -807,7 +802,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

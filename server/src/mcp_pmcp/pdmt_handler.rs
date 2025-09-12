@@ -205,7 +205,7 @@ impl ToolHandler for PdmtTool {
         debug!("Handling pdmt_deterministic_todos with args: {}", args);
 
         let input: PdmtInput = serde_json::from_value(args)
-            .map_err(|e| Error::validation(format!("Invalid arguments: {}", e)))?;
+            .map_err(|e| Error::validation(format!("Invalid arguments: {e}")))?;
 
         if input.requirements.is_empty() {
             return Err(Error::validation("Requirements list cannot be empty"));
@@ -248,14 +248,14 @@ impl ToolHandler for PdmtTool {
                 &input.granularity,
                 quality_config,
             )
-            .map_err(|e| Error::internal(format!("Failed to generate todos: {}", e)))?;
+            .map_err(|e| Error::internal(format!("Failed to generate todos: {e}")))?;
 
         // Run quality enforcement validation
         let quality_validation = self
             .quality_enforcer
             .enforce_quality_standards(&todo_list)
             .await
-            .map_err(|e| Error::internal(format!("Quality validation failed: {}", e)))?;
+            .map_err(|e| Error::internal(format!("Quality validation failed: {e}")))?;
 
         // Calculate summary statistics
         let total_todos = todo_list.todos.len();
@@ -267,20 +267,18 @@ impl ToolHandler for PdmtTool {
                 success: quality_validation.overall_passed,
                 message: if quality_validation.overall_passed {
                     format!(
-                        "Successfully generated {} deterministic todos with quality enforcement",
-                        total_todos
+                        "Successfully generated {total_todos} deterministic todos with quality enforcement"
                     )
                 } else {
                     format!(
-                        "Generated {} todos but quality validation failed. Review violations.",
-                        total_todos
+                        "Generated {total_todos} todos but quality validation failed. Review violations."
                     )
                 },
                 todo_list: Some(serde_json::to_value(&todo_list).map_err(|e| {
-                    Error::internal(format!("Failed to serialize todo list: {}", e))
+                    Error::internal(format!("Failed to serialize todo list: {e}"))
                 })?),
                 quality_validation: Some(serde_json::to_value(&quality_validation).map_err(
-                    |e| Error::internal(format!("Failed to serialize validation results: {}", e)),
+                    |e| Error::internal(format!("Failed to serialize validation results: {e}")),
                 )?),
                 total_todos,
                 estimated_total_hours,
@@ -299,7 +297,7 @@ impl ToolHandler for PdmtTool {
         }
 
         serde_json::to_value(output)
-            .map_err(|e| Error::internal(format!("Serialization error: {}", e)))
+            .map_err(|e| Error::internal(format!("Serialization error: {e}")))
     }
 }
 
@@ -363,7 +361,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

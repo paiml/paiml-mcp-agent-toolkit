@@ -518,7 +518,7 @@ impl GitCloner {
         if let Ok(token) = std::env::var("GITHUB_TOKEN") {
             headers.insert(
                 AUTHORIZATION,
-                HeaderValue::from_str(&format!("token {}", token))?,
+                HeaderValue::from_str(&format!("token {token}"))?,
             );
         }
 
@@ -668,7 +668,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

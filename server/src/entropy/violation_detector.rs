@@ -1,14 +1,14 @@
 //! Actionable Violation Detection
-//! 
+//!
 //! Detects actionable violations with clear fixes and LOC reduction estimates
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-use super::{EntropyConfig, PatternType};
-use super::pattern_extractor::{AstPattern, PatternCollection};
 use super::entropy_calculator::EntropyMetrics;
+use super::pattern_extractor::{AstPattern, PatternCollection};
+use super::{EntropyConfig, PatternType};
 
 /// Severity levels for violations
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -59,13 +59,13 @@ impl ViolationDetector {
 
         // Check for repetitive patterns
         self.detect_repetitive_patterns(patterns, &mut violations)?;
-        
+
         // Check for low diversity
         self.detect_low_diversity(patterns, metrics, &mut violations)?;
-        
+
         // Check for cross-file duplication
         self.detect_cross_file_duplication(patterns, &mut violations)?;
-        
+
         // Check for inconsistent patterns
         self.detect_inconsistent_patterns(patterns, &mut violations)?;
 
@@ -77,9 +77,7 @@ impl ViolationDetector {
         violations = self.deduplicate_violations(violations);
 
         // Sort by priority
-        violations.sort_by(|a, b| {
-            b.priority_score.partial_cmp(&a.priority_score).unwrap()
-        });
+        violations.sort_by(|a, b| b.priority_score.partial_cmp(&a.priority_score).unwrap());
 
         Ok(violations)
     }
@@ -94,7 +92,7 @@ impl ViolationDetector {
             if pattern.frequency > self.config.max_pattern_repetition {
                 let severity = self.calculate_repetition_severity(pattern.frequency);
                 let loc_reduction = self.estimate_loc_reduction(pattern);
-                
+
                 violations.push(ActionableViolation {
                     severity,
                     pattern: PatternSummary {
@@ -109,7 +107,9 @@ impl ViolationDetector {
                     ),
                     fix_suggestion: self.generate_fix_suggestion(pattern),
                     estimated_loc_reduction: loc_reduction,
-                    affected_files: pattern.locations.iter()
+                    affected_files: pattern
+                        .locations
+                        .iter()
                         .map(|l| l.file.clone())
                         .collect::<Vec<_>>()
                         .into_iter()
@@ -144,7 +144,8 @@ impl ViolationDetector {
                     metrics.pattern_diversity * 100.0,
                     self.config.min_pattern_diversity * 100.0
                 ),
-                fix_suggestion: "Consider extracting common patterns into reusable functions".to_string(),
+                fix_suggestion: "Consider extracting common patterns into reusable functions"
+                    .to_string(),
                 estimated_loc_reduction: (metrics.total_loc as f64 * 0.15) as usize,
                 affected_files: vec![],
                 priority_score: 5.0,
@@ -161,18 +162,16 @@ impl ViolationDetector {
     ) -> Result<()> {
         // Find patterns that appear in multiple files
         for pattern in patterns.patterns.values() {
-            let unique_files: std::collections::HashSet<_> = pattern.locations
-                .iter()
-                .map(|l| &l.file)
-                .collect();
-            
+            let unique_files: std::collections::HashSet<_> =
+                pattern.locations.iter().map(|l| &l.file).collect();
+
             if unique_files.len() > 2 {
                 let severity = if unique_files.len() > 5 {
                     Severity::High
                 } else {
                     Severity::Medium
                 };
-                
+
                 violations.push(ActionableViolation {
                     severity,
                     pattern: PatternSummary {
@@ -183,7 +182,8 @@ impl ViolationDetector {
                     },
                     message: format!(
                         "{:?} pattern duplicated across {} files",
-                        pattern.pattern_type, unique_files.len()
+                        pattern.pattern_type,
+                        unique_files.len()
                     ),
                     fix_suggestion: format!(
                         "Extract to shared module: {}",
@@ -223,7 +223,8 @@ impl ViolationDetector {
                         "Standardize {} pattern across codebase",
                         self.pattern_name(pattern.pattern_type)
                     ),
-                    estimated_loc_reduction: ((pattern.estimated_loc * pattern.frequency) as f64 * 0.3) as usize,
+                    estimated_loc_reduction: ((pattern.estimated_loc * pattern.frequency) as f64
+                        * 0.3) as usize,
                     affected_files: pattern.locations.iter().map(|l| l.file.clone()).collect(),
                     priority_score: 6.0,
                 });
@@ -249,7 +250,7 @@ impl ViolationDetector {
         let instances_to_remove = pattern.frequency.saturating_sub(1);
         let avg_size = pattern.estimated_loc;
         let reduction_factor = 0.8; // Assume 80% can be eliminated
-        
+
         ((instances_to_remove * avg_size) as f64 * reduction_factor) as usize
     }
 
@@ -257,24 +258,20 @@ impl ViolationDetector {
     fn generate_fix_suggestion(&self, pattern: &AstPattern) -> String {
         match pattern.pattern_type {
             PatternType::ErrorHandling => {
-                format!("Extract to `handle_{}_error()` function", 
-                    self.context_name(pattern))
-            },
-            PatternType::DataValidation => {
-                "Create validation trait or module".to_string()
-            },
+                format!(
+                    "Extract to `handle_{}_error()` function",
+                    self.context_name(pattern)
+                )
+            }
+            PatternType::DataValidation => "Create validation trait or module".to_string(),
             PatternType::ResourceManagement => {
                 "Implement RAII pattern or use guard types".to_string()
-            },
-            PatternType::ControlFlow => {
-                "Refactor to strategy pattern or polymorphism".to_string()
-            },
+            }
+            PatternType::ControlFlow => "Refactor to strategy pattern or polymorphism".to_string(),
             PatternType::DataTransformation => {
                 "Extract to data transformation pipeline".to_string()
-            },
-            PatternType::ApiCall => {
-                "Create API client abstraction".to_string()
-            },
+            }
+            PatternType::ApiCall => "Create API client abstraction".to_string(),
         }
     }
 
@@ -285,9 +282,9 @@ impl ViolationDetector {
             Severity::Medium => 5.0,
             Severity::Low => 1.0,
         };
-        
+
         let loc_score = (loc_reduction as f64 / 100.0).min(10.0);
-        
+
         severity_score + loc_score
     }
 
@@ -323,14 +320,17 @@ impl ViolationDetector {
     }
 
     /// Deduplicate violations to prevent the same pattern being reported multiple times
-    /// 
+    ///
     /// Issue: Same pattern can be detected by multiple methods (repetitive, cross-file, etc.)
     /// causing inflated violation counts. This deduplicates based on pattern type and core message.
-    fn deduplicate_violations(&self, violations: Vec<ActionableViolation>) -> Vec<ActionableViolation> {
+    fn deduplicate_violations(
+        &self,
+        violations: Vec<ActionableViolation>,
+    ) -> Vec<ActionableViolation> {
         use std::collections::HashMap;
-        
+
         let mut unique_violations: HashMap<String, ActionableViolation> = HashMap::new();
-        
+
         for violation in violations {
             // Create a key based on pattern type and the core pattern identifier
             let key = format!(
@@ -339,7 +339,7 @@ impl ViolationDetector {
                 violation.pattern.repetitions,
                 violation.pattern.example_code.len() // Use code length as pattern identifier
             );
-            
+
             // Keep the violation with highest severity/priority
             match unique_violations.get(&key) {
                 Some(existing) if existing.priority_score >= violation.priority_score => {
@@ -351,7 +351,7 @@ impl ViolationDetector {
                 }
             }
         }
-        
+
         unique_violations.into_values().collect()
     }
 }
@@ -370,7 +370,7 @@ mod tests {
     fn test_repetition_severity() {
         let config = EntropyConfig::default();
         let detector = ViolationDetector::new(config);
-        
+
         assert_eq!(detector.calculate_repetition_severity(3), Severity::Low);
         assert_eq!(detector.calculate_repetition_severity(7), Severity::Medium);
         assert_eq!(detector.calculate_repetition_severity(15), Severity::High);
@@ -387,7 +387,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

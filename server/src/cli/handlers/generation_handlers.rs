@@ -94,7 +94,7 @@ pub async fn handle_scaffold(
     let mut any_failed = false;
     for result in write_results {
         if let Err(e) = result {
-            eprintln!("❌ Failed to write file: {}", e);
+            eprintln!("❌ Failed to write file: {e}");
             any_failed = true;
         }
     }
@@ -264,7 +264,7 @@ fn add_features_to_builder(
         if let Ok(feature) = feature_str.parse::<AgentFeature>() {
             builder = builder.with_feature(feature);
         } else {
-            eprintln!("⚠️ Warning: Unknown feature '{}', skipping", feature_str);
+            eprintln!("⚠️ Warning: Unknown feature '{feature_str}', skipping");
         }
     }
 
@@ -283,7 +283,7 @@ fn add_quality_level_to_builder(
         "strict" => QualityLevel::Strict,
         "extreme" => QualityLevel::Extreme,
         _ => {
-            eprintln!("⚠️ Unknown quality level '{}', using 'strict'", quality);
+            eprintln!("⚠️ Unknown quality level '{quality}', using 'strict'");
             QualityLevel::Strict
         }
     };
@@ -419,12 +419,12 @@ pub async fn handle_validate_agent_template(path: PathBuf) -> Result<()> {
         }
         Err(e) => {
             eprintln!("❌ Template validation failed:");
-            eprintln!("   {}", e);
+            eprintln!("   {e}");
 
             // Print detailed errors
             let mut source = e.source();
             while let Some(err) = source {
-                eprintln!("   Caused by: {}", err);
+                eprintln!("   Caused by: {err}");
                 source = err.source();
             }
 
@@ -457,7 +457,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

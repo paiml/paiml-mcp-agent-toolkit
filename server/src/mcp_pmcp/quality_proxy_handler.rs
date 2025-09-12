@@ -183,7 +183,7 @@ impl ToolHandler for QualityProxyTool {
         debug!("Handling quality_proxy with args: {}", args);
 
         let input: QualityProxyInput = serde_json::from_value(args)
-            .map_err(|e| Error::validation(format!("Invalid arguments: {}", e)))?;
+            .map_err(|e| Error::validation(format!("Invalid arguments: {e}")))?;
 
         info!("Processing quality proxy request for {}", input.file_path);
         debug!("Proxy mode: {}, Operation: {}", input.mode, input.operation);
@@ -230,11 +230,11 @@ impl ToolHandler for QualityProxyTool {
         let response = service
             .proxy_operation(request)
             .await
-            .map_err(|e| Error::internal(format!("Failed to process request: {}", e)))?;
+            .map_err(|e| Error::internal(format!("Failed to process request: {e}")))?;
 
         // Convert response to JSON
         let result = serde_json::to_value(response)
-            .map_err(|e| Error::internal(format!("Failed to serialize response: {}", e)))?;
+            .map_err(|e| Error::internal(format!("Failed to serialize response: {e}")))?;
 
         info!("Quality proxy request completed");
         Ok(result)
@@ -272,7 +272,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

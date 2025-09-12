@@ -63,8 +63,7 @@ impl FullReportFormatter {
         let percentage = (count as f32 / total) * 100.0;
         writeln!(
             output,
-            "- {} risk files: {} ({:.1}%)",
-            level, count, percentage
+            "- {level} risk files: {count} ({percentage:.1}%)"
         )?;
         Ok(())
     }
@@ -111,7 +110,7 @@ impl FullReportFormatter {
         writeln!(output, "- **Risk Factors**:")?;
 
         for factor in &prediction.factors {
-            writeln!(output, "  - {}", factor)?;
+            writeln!(output, "  - {factor}")?;
         }
 
         writeln!(output)?;
@@ -311,7 +310,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

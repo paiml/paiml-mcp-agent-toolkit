@@ -132,7 +132,7 @@ impl GitHubClient {
         headers.insert(USER_AGENT, HeaderValue::from_static("pmat/0.1"));
 
         if let Some(ref token) = token {
-            let auth_value = format!("Bearer {}", token);
+            let auth_value = format!("Bearer {token}");
             headers.insert(AUTHORIZATION, HeaderValue::from_str(&auth_value)?);
         }
 
@@ -157,8 +157,7 @@ impl GitHubClient {
         );
 
         let api_url = format!(
-            "https://api.github.com/repos/{}/{}/issues/{}",
-            owner, repo, issue_number
+            "https://api.github.com/repos/{owner}/{repo}/issues/{issue_number}"
         );
 
         let response = self.client.get(&api_url).send().await?;
@@ -267,8 +266,8 @@ fn extract_file_paths(text: &str) -> Vec<String> {
                 // Convert module paths to file paths
                 if path_str.contains("::") {
                     let file_path = path_str.replace("::", "/");
-                    paths.insert(format!("src/{}.rs", file_path));
-                    paths.insert(format!("server/src/{}.rs", file_path));
+                    paths.insert(format!("src/{file_path}.rs"));
+                    paths.insert(format!("server/src/{file_path}.rs"));
                 } else {
                     paths.insert(path_str.to_string());
                 }
@@ -394,7 +393,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

@@ -609,7 +609,7 @@ impl TdgExporter {
         if options.include_recommendations {
             md.push_str("\n### Recommendations\n\n");
             for rec in Self::generate_recommendations(score) {
-                md.push_str(&format!("- {}\n", rec));
+                md.push_str(&format!("- {rec}\n"));
             }
         }
 
@@ -628,7 +628,7 @@ impl TdgExporter {
 
         md.push_str("## Language Distribution\n\n");
         for (lang, count) in &project.language_distribution {
-            md.push_str(&format!("- {:?}: {} files\n", lang, count));
+            md.push_str(&format!("- {lang:?}: {count} files\n"));
         }
 
         md.push_str("\n## File Scores\n\n");
@@ -675,14 +675,14 @@ impl TdgExporter {
         if !comparison.improvements.is_empty() {
             md.push_str("\n## Improvements\n\n");
             for improvement in &comparison.improvements {
-                md.push_str(&format!("- {}\n", improvement));
+                md.push_str(&format!("- {improvement}\n"));
             }
         }
 
         if !comparison.regressions.is_empty() {
             md.push_str("\n## Regressions\n\n");
             for regression in &comparison.regressions {
-                md.push_str(&format!("- {}\n", regression));
+                md.push_str(&format!("- {regression}\n"));
             }
         }
 
@@ -790,7 +790,7 @@ impl TdgExporter {
         );
 
         for rec in recommendations {
-            html.push_str(&format!("<li>{}</li>\n", rec));
+            html.push_str(&format!("<li>{rec}</li>\n"));
         }
 
         html.push_str("</ul></div>");
@@ -890,7 +890,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

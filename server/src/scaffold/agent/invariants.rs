@@ -196,7 +196,7 @@ where
 {
     fn check(&self, state: &S, _ctx: &C) -> Result<()> {
         // Verify field is not empty through debug representation
-        let state_str = format!("{:?}", state);
+        let state_str = format!("{state:?}");
         if state_str.is_empty() {
             anyhow::bail!("{} cannot be empty", self.field_name);
         }
@@ -295,7 +295,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);
