@@ -32,6 +32,7 @@ pub struct CachedSyntax {
 }
 
 /// Visitor for calculating complexity metrics
+#[allow(dead_code)]
 struct ComplexityVisitor {
     /// Current cyclomatic complexity
     complexity: u32,
