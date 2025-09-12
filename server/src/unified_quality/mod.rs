@@ -14,6 +14,12 @@ pub mod automation;
 pub mod config;
 pub mod metrics;
 pub mod events;
+pub mod enhanced_parser;
+pub mod prometheus_exporter;
+pub mod github_actions;
+pub mod onboarding;
+pub mod performance;
+pub mod integration_tests;
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};

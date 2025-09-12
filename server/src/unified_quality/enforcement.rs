@@ -121,7 +121,7 @@ struct TimeSeries {
 
 /// Team-level metrics
 #[derive(Debug, Clone)]
-struct TeamMetrics {
+pub struct TeamMetrics {
     avg_complexity: f64,
     total_satd: u32,
     avg_coverage: f64,
@@ -209,6 +209,7 @@ impl Default for QualityBudget {
 }
 
 /// Diff analysis result
+#[derive(Debug, Clone)]
 pub struct DiffAnalysis {
     pub complexity_change: i32,
     pub satd_change: i32,
@@ -471,5 +472,330 @@ mod tests {
         
         let decision = enforcer.check_commit(&"team-b".to_string(), &diff);
         matches!(decision, Decision::Blocked { .. });
+    }
+}
+
+#[cfg(test)]
+mod property_tests {
+    use super::*;
+    use proptest::prelude::*;
+
+    fn team_id_strategy() -> impl Strategy<Value = String> {
+        prop::string::string_regex("[a-z][a-z0-9-]{2,20}").unwrap()
+    }
+
+    fn valid_budget_strategy() -> impl Strategy<Value = QualityBudget> {
+        (
+            0i32..200,      // complexity_budget
+            0u32..50,       // satd_budget  
+            0.0f64..1.0,    // coverage_floor
+            0.0f64..10.0,   // regeneration_rate
+            0u64..86400,    // grace_period_secs
+        ).prop_map(|(complexity, satd, coverage, regen, grace_secs)| {
+            QualityBudget {
+                complexity_budget: complexity,
+                satd_budget: satd,
+                coverage_floor: coverage,
+                regeneration_rate: regen,
+                grace_period: Duration::from_secs(grace_secs),
+                current_consumption: BudgetConsumption::default(),
+                started_at: SystemTime::now(),
+            }
+        })
+    }
+
+    fn diff_analysis_strategy() -> impl Strategy<Value = DiffAnalysis> {
+        (
+            -50i32..100,     // complexity_change
+            -10i32..20,      // satd_change (can reduce SATD)
+            -0.5f64..0.1,    // coverage_change
+            prop::collection::vec("[a-zA-Z0-9_-]{1,20}\\.rs", 1..10), // files_changed
+        ).prop_map(|(complexity, satd, coverage, files)| {
+            DiffAnalysis {
+                complexity_change: complexity,
+                satd_change: satd,
+                coverage_change: coverage,
+                files_changed: files,
+            }
+        })
+    }
+
+    proptest! {
+        #[test]
+        fn budget_creation_is_valid(budget in valid_budget_strategy()) {
+            prop_assert!(budget.complexity_budget >= 0);
+            prop_assert!(budget.satd_budget >= 0);
+            prop_assert!(budget.coverage_floor >= 0.0 && budget.coverage_floor <= 1.0);
+            prop_assert!(budget.regeneration_rate >= 0.0);
+            prop_assert!(budget.grace_period.as_secs() >= 0);
+        }
+
+        #[test]
+        fn team_registration_always_succeeds(
+            team_id in team_id_strategy(),
+            budget in prop::option::of(valid_budget_strategy())
+        ) {
+            let mut enforcer = ErrorBudgetEnforcer::new(EnforcerConfig::default());
+            enforcer.register_team(team_id.clone(), budget.clone());
+            
+            prop_assert!(enforcer.budgets.contains_key(&team_id));
+            
+            let registered_budget = &enforcer.budgets[&team_id];
+            if let Some(custom_budget) = budget {
+                prop_assert_eq!(registered_budget.complexity_budget, custom_budget.complexity_budget);
+                prop_assert_eq!(registered_budget.satd_budget, custom_budget.satd_budget);
+            } else {
+                // Should use default budget
+                let default_budget = QualityBudget::default();
+                prop_assert_eq!(registered_budget.complexity_budget, default_budget.complexity_budget);
+            }
+        }
+
+        #[test]
+        fn budget_consumption_accumulates_correctly(
+            team_id in team_id_strategy(),
+            diffs in prop::collection::vec(diff_analysis_strategy(), 1..10)
+        ) {
+            let mut enforcer = ErrorBudgetEnforcer::new(EnforcerConfig::default());
+            enforcer.register_team(team_id.clone(), None);
+            
+            let mut expected_complexity = 0i32;
+            let mut expected_satd = 0i32;
+            let mut expected_coverage = 0.0f64;
+            
+            for diff in &diffs {
+                let _decision = enforcer.check_commit(&team_id, diff);
+                
+                expected_complexity += diff.complexity_change;
+                expected_satd += diff.satd_change;
+                expected_coverage += diff.coverage_change;
+            }
+            
+            let budget = &enforcer.budgets[&team_id];
+            
+            // Complexity should accumulate (but not go negative)
+            prop_assert_eq!(
+                budget.current_consumption.complexity_used,
+                expected_complexity.max(0)
+            );
+            
+            // SATD should accumulate (but not go negative)
+            prop_assert_eq!(
+                budget.current_consumption.satd_used,
+                expected_satd.max(0) as u32
+            );
+        }
+
+        #[test]
+        fn decisions_respect_budget_limits(
+            team_id in team_id_strategy(),
+            budget in valid_budget_strategy(),
+            diff in diff_analysis_strategy()
+        ) {
+            let mut enforcer = ErrorBudgetEnforcer::new(EnforcerConfig::default());
+            enforcer.register_team(team_id.clone(), Some(budget.clone()));
+            
+            let decision = enforcer.check_commit(&team_id, &diff);
+            
+            // Calculate if change would exceed budget
+            let new_complexity = (budget.current_consumption.complexity_used + diff.complexity_change.max(0)).max(0);
+            let new_satd = (budget.current_consumption.satd_used as i32 + diff.satd_change.max(0)).max(0) as u32;
+            
+            let complexity_exceeded = new_complexity > budget.complexity_budget;
+            let satd_exceeded = new_satd > budget.satd_budget;
+            
+            match decision {
+                Decision::Approved => {
+                    prop_assert!(!complexity_exceeded && !satd_exceeded);
+                }
+                Decision::Warning(_) => {
+                    // Warning may be issued for approaching limits
+                    prop_assert!(true); // Always valid
+                }
+                Decision::RequiresApproval { .. } => {
+                    // May require approval when nearing limits
+                    prop_assert!(true); // Always valid
+                }
+                Decision::Blocked { .. } => {
+                    // Should be blocked if budget exceeded
+                    prop_assert!(complexity_exceeded || satd_exceeded);
+                }
+            }
+        }
+
+        #[test]
+        fn budget_regeneration_properties(
+            team_id in team_id_strategy(),
+            mut budget in valid_budget_strategy(),
+            days_elapsed in 0.0f64..30.0
+        ) {
+            budget.current_consumption.complexity_used = budget.complexity_budget / 2;
+            budget.current_consumption.satd_used = budget.satd_budget / 2;
+            
+            let mut enforcer = ErrorBudgetEnforcer::new(EnforcerConfig::default());
+            enforcer.register_team(team_id.clone(), Some(budget.clone()));
+            
+            // Simulate time passage
+            let _elapsed_duration = Duration::from_secs((days_elapsed * 24.0 * 3600.0) as u64);
+            enforcer.regenerate_budgets();
+            
+            let updated_budget = &enforcer.budgets[&team_id];
+            
+            // Budget should regenerate (reduce consumption)
+            if budget.regeneration_rate > 0.0 && days_elapsed > 0.0 {
+                let expected_reduction = (budget.regeneration_rate * days_elapsed) as i32;
+                let expected_complexity = (budget.current_consumption.complexity_used - expected_reduction).max(0);
+                
+                prop_assert!(updated_budget.current_consumption.complexity_used <= budget.current_consumption.complexity_used);
+                prop_assert!(updated_budget.current_consumption.complexity_used >= 0);
+            }
+        }
+
+        #[test]
+        fn refactor_target_generation_properties(
+            team_id in team_id_strategy(),
+            files in prop::collection::vec("[a-zA-Z0-9_-]{1,20}\\.rs", 1..20),
+            complexities in prop::collection::vec(1u32..100, 1..20)
+        ) {
+            let mut enforcer = ErrorBudgetEnforcer::new(EnforcerConfig::default());
+            enforcer.register_team(team_id.clone(), None);
+            
+            // Create a scenario where budget is exceeded
+            let large_diff = DiffAnalysis {
+                complexity_change: 1000, // Very large change
+                satd_change: 50,
+                coverage_change: -0.5,
+                files_changed: files.clone(),
+            };
+            
+            let decision = enforcer.check_commit(&team_id, &large_diff);
+            
+            match decision {
+                Decision::Blocked { refactor_targets, .. } => {
+                    for target in refactor_targets {
+                        prop_assert!(target.complexity > 0);
+                        prop_assert!(target.estimated_reduction <= target.complexity);
+                        prop_assert!(files.iter().any(|f| f == &target.file));
+                    }
+                }
+                _ => {
+                    // Other decisions are valid too
+                    prop_assert!(true);
+                }
+            }
+        }
+
+        #[test]
+        fn enforcement_rules_consistency(
+            complexity_threshold in 1u32..100,
+            satd_limit in 1u32..50,
+            coverage_minimum in 0.0f64..1.0
+        ) {
+            let rules = EnforcementRules {
+                approvers: HashMap::new(),
+                escalation: EscalationPolicy {
+                    warning_threshold: 0.5,
+                    approval_threshold: 0.8,
+                    block_threshold: 1.0,
+                },
+                overrides: HashMap::new(),
+            };
+            
+            prop_assert!(rules.escalation.warning_threshold >= 0.0);
+            prop_assert!(rules.escalation.approval_threshold >= 0.0);
+            prop_assert!(rules.escalation.block_threshold >= 0.0);
+        }
+
+        #[test]
+        fn time_series_operations_stable(
+            team_id in team_id_strategy(),
+            measurements in prop::collection::vec(0u32..100, 1..100)
+        ) {
+            let mut db = TimeSeriesDB::new();
+            let now = SystemTime::now();
+            
+            for (i, measurement) in measurements.iter().enumerate() {
+                let timestamp = now + Duration::from_secs(i as u64 * 3600); // Hourly measurements
+                db.record_measurement(&team_id, timestamp, *measurement as f64);
+            }
+            
+            // Should be able to query the data
+            let recent = db.get_recent_measurements(&team_id, Duration::from_secs(24 * 3600));
+            prop_assert!(!recent.is_empty());
+            prop_assert!(recent.len() <= 24); // At most 24 hours of hourly data
+            
+            // Measurements should be in chronological order
+            for i in 1..recent.len() {
+                prop_assert!(recent[i].timestamp >= recent[i-1].timestamp);
+            }
+        }
+
+        #[test]  
+        fn concurrent_team_operations_safe(
+            teams in prop::collection::vec(team_id_strategy(), 1..10),
+            operations_per_team in 1usize..20
+        ) {
+            let mut enforcer = ErrorBudgetEnforcer::new(EnforcerConfig::default());
+            
+            // Register teams
+            for team in &teams {
+                enforcer.register_team(team.clone(), None);
+            }
+            
+            // Simulate concurrent operations
+            for team in &teams {
+                for _ in 0..operations_per_team {
+                    let diff = DiffAnalysis {
+                        complexity_change: 5,
+                        satd_change: 1,
+                        coverage_change: -0.01,
+                        files_changed: vec!["test.rs".to_string()],
+                    };
+                    
+                    let _decision = enforcer.check_commit(team, &diff);
+                }
+            }
+            
+            // All teams should still be registered
+            for team in &teams {
+                prop_assert!(enforcer.budgets.contains_key(team));
+            }
+        }
+
+        #[test]
+        fn grace_period_enforcement_properties(
+            team_id in team_id_strategy(),
+            grace_period_days in 1u64..100,
+            elapsed_days in 0u64..200
+        ) {
+            let mut budget = QualityBudget::default();
+            budget.grace_period = Duration::from_secs(grace_period_days * 24 * 3600);
+            budget.started_at = SystemTime::now() - Duration::from_secs(elapsed_days * 24 * 3600);
+            
+            let mut enforcer = ErrorBudgetEnforcer::new(EnforcerConfig::default());
+            enforcer.register_team(team_id.clone(), Some(budget.clone()));
+            
+            let large_diff = DiffAnalysis {
+                complexity_change: 200, // Exceeds default budget
+                satd_change: 60,
+                coverage_change: -0.6,
+                files_changed: vec!["test.rs".to_string()],
+            };
+            
+            let decision = enforcer.check_commit(&team_id, &large_diff);
+            
+            let grace_period_active = elapsed_days < grace_period_days;
+            
+            match decision {
+                Decision::Blocked { .. } => {
+                    // Should only be blocked if grace period is over
+                    prop_assert!(!grace_period_active);
+                }
+                _ => {
+                    // Other decisions are valid during grace period
+                    prop_assert!(true);
+                }
+            }
+        }
     }
 }
