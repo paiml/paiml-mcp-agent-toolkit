@@ -401,6 +401,26 @@ impl TimeSeriesDB {
             .or_insert_with(Vec::new)
             .push(entry);
     }
+    
+    /// Record a measurement for a team
+    pub fn record_measurement(&mut self, team: &TeamId, timestamp: SystemTime, value: f64) {
+        let metrics = TeamMetrics {
+            avg_complexity: value,
+            total_satd: 0,
+            avg_coverage: value,
+            quality_score: value,
+        };
+        
+        let entry = TimeSeries {
+            timestamp,
+            metrics,
+        };
+        
+        self.data
+            .entry(team.clone())
+            .or_insert_with(Vec::new)
+            .push(entry);
+    }
 }
 
 impl EnforcementRules {

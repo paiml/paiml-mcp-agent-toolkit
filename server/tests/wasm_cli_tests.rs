@@ -1,7 +1,8 @@
 //! TDD Tests for WASM CLI commands
 //! Following RED-GREEN-REFACTOR cycle
 
-use pmat::cli::commands::{AnalyzeCommands, Commands};
+use pmat::cli::commands::AnalyzeCommands;
+use pmat::cli::enums::WasmOutputFormat;
 use pmat::cli::handlers::wasm_handler;
 use std::path::PathBuf;
 use tempfile::tempdir;
@@ -282,13 +283,4 @@ fn create_complex_wasm() -> Vec<u8> {
         0x04, 0x00, 0x20, 0x00, 0x0b, // Function 0
         0x07, 0x00, 0x20, 0x00, 0x20, 0x01, 0x6a, 0x0b, // Function 1: add
     ]
-}
-
-// Output format enum for tests
-#[derive(Debug, Clone, Copy)]
-enum WasmOutputFormat {
-    Summary,
-    Json,
-    Detailed,
-    Sarif,
 }

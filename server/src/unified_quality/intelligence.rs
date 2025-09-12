@@ -179,7 +179,7 @@ impl QualityAssistant {
     }
     
     /// Suggest fixes for a violation
-    pub fn suggest(&self, violation: &Violation) -> Vec<Suggestion> {
+    pub fn suggest(&self, violation: &crate::unified_quality::metrics::Violation) -> Vec<Suggestion> {
         self.pattern_db
             .get(&violation.violation_type)
             .map(|patterns| {
@@ -322,6 +322,50 @@ impl QualityAssistant {
                 _ => RiskLevel::High,
             },
         }
+    }
+    
+    /// Analyze a file and generate suggestions
+    pub async fn analyze_file(&self, file_path: &std::path::Path) -> Result<Vec<Suggestion>, anyhow::Error> {
+        // Read file content and analyze for violations
+        let content = std::fs::read_to_string(file_path)?;
+        
+        // Simple violation detection for demonstration
+        let mut suggestions = Vec::new();
+        
+        // Check for TODO comments (SATD)
+        if content.contains("TODO") || content.contains("FIXME") {
+            let violation = crate::unified_quality::metrics::Violation {
+                file: file_path.to_string_lossy().to_string(),
+                violation_type: crate::unified_quality::metrics::ViolationType::Satd,
+                severity: crate::unified_quality::metrics::Severity::Medium,
+                value: 1.0,
+                threshold: 0.0,
+            };
+            suggestions.extend(self.suggest(&violation));
+        }
+        
+        Ok(suggestions)
+    }
+    
+    /// Generate suggestions for a file (synchronous version)
+    pub fn generate_suggestions(&self, file_path: &std::path::Path) -> Result<Vec<Suggestion>, anyhow::Error> {
+        // Synchronous version of analyze_file
+        let content = std::fs::read_to_string(file_path)?;
+        let mut suggestions = Vec::new();
+        
+        // Check for various violations
+        if content.contains("TODO") || content.contains("FIXME") {
+            let violation = crate::unified_quality::metrics::Violation {
+                file: file_path.to_string_lossy().to_string(),
+                violation_type: crate::unified_quality::metrics::ViolationType::Satd,
+                severity: crate::unified_quality::metrics::Severity::Medium,
+                value: 1.0,
+                threshold: 0.0,
+            };
+            suggestions.extend(self.suggest(&violation));
+        }
+        
+        Ok(suggestions)
     }
 }
 

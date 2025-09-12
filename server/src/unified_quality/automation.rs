@@ -427,6 +427,11 @@ impl ConservativeAutomator {
             Ok(true)
         }
     }
+    
+    /// Get list of safe transformations
+    pub fn get_safe_transforms(&self) -> Vec<SafeTransform> {
+        self.safe_transforms.clone()
+    }
 }
 
 impl GitSafetyNet {

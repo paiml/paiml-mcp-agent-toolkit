@@ -9,12 +9,15 @@
 //! Target: Cognitive complexity ≤10, maintain functionality
 
 use anyhow::Result;
-use pmat::{MetadataCache, ContentCache, S3Client, PublicTemplateRenderer as TemplateRenderer, PublicTemplateResource as TemplateResource, TemplateServerTrait};
+use pmat::{MetadataCache, ContentCache, S3Client, PublicTemplateRenderer as TemplateRenderer, models::template::TemplateResource, TemplateServerTrait};
+use std::sync::Arc;
+use pmat::models::template::{Toolchain, TemplateCategory};
 use std::sync::Arc;
 
 // Mock template server for testing
-#[derive(Debug)]
-struct MockTemplateServer;
+struct MockTemplateServer {
+    renderer: TemplateRenderer,
+}
 
 #[async_trait::async_trait]
 impl TemplateServerTrait for MockTemplateServer {
@@ -22,9 +25,14 @@ impl TemplateServerTrait for MockTemplateServer {
         let resource = TemplateResource {
             uri: "mock://template".to_string(),
             name: "Mock Template".to_string(),
-            description: Some("Mock template for testing".to_string()),
-            mime_type: Some("text/plain".to_string()),
-            s3_key: Some("mock-key".to_string()),
+            description: "Mock template for testing".to_string(),
+            toolchain: Toolchain::RustCli { cargo_features: vec![] },
+            category: TemplateCategory::Context,
+            parameters: vec![],
+            s3_object_key: "mock-key".to_string(),
+            content_hash: "abc123".to_string(),
+            semantic_version: semver::Version::new(1, 0, 0),
+            dependency_graph: vec![],
         };
         Ok(Arc::new(resource))
     }
@@ -38,8 +46,7 @@ impl TemplateServerTrait for MockTemplateServer {
     }
 
     fn get_renderer(&self) -> &TemplateRenderer {
-        // For testing, we'll create a minimal renderer
-        unsafe { std::mem::transmute(&()) } // This is a hack for testing only
+        &self.renderer
     }
     
     fn get_metadata_cache(&self) -> Option<&MetadataCache> {
@@ -57,10 +64,6 @@ impl TemplateServerTrait for MockTemplateServer {
     fn get_bucket_name(&self) -> Option<&str> {
         None
     }
-
-    fn get_metadata_cache(&self) -> Option<&MetadataCache> {
-        None
-    }
 }
 
 /// Test MCP server basic structure and initialization
@@ -69,16 +72,23 @@ async fn test_run_mcp_server_structure() {
     // Test that run_mcp_server can be called with mock server
     // Note: This test focuses on the refactoring structure, not full I/O testing
 
-    let mock_server = Arc::new(MockTemplateServer);
+    // Create a real renderer for testing
+    let renderer = TemplateRenderer::new().expect("Failed to create renderer");
+    let mock_server = Arc::new(MockTemplateServer {
+        renderer,
+    });
 
-    // Verify the function signature exists and can be called
-    // We can't easily test the full stdin/stdout interaction in a unit test,
-    // but we can verify the function structure and error handling patterns
-
-    // After refactoring, the main function should have ≤10 cognitive complexity
-    // Each extracted helper should have ≤5 cognitive complexity
-
-    assert!(true); // Structure validation placeholder
+    // Verify the mock server implements the trait correctly
+    let _metadata_future = mock_server.get_template_metadata("test");
+    let _content_future = mock_server.get_template_content("test");
+    let _list_future = mock_server.list_templates("test");
+    
+    // Verify accessors work
+    assert!(mock_server.get_renderer() != std::ptr::null());
+    assert!(mock_server.get_metadata_cache().is_none());
+    assert!(mock_server.get_content_cache().is_none());
+    assert!(mock_server.get_s3_client().is_none());
+    assert!(mock_server.get_bucket_name().is_none());
 }
 
 /// Test error handling patterns that will be preserved during refactoring
