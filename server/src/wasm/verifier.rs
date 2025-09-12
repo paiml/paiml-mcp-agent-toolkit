@@ -1,8 +1,8 @@
 //! Incremental formal verification for WASM modules
 
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
+use serde::{Deserialize, Serialize};
 use wasmparser::{Operator, ValType};
-use serde::{Serialize, Deserialize};
 
 /// Incremental verifier for property-based safety checks
 pub struct IncrementalVerifier {
@@ -24,10 +24,10 @@ impl IncrementalVerifier {
         // Parse module and verify each function
         let parser = wasmparser::Parser::new(0);
         let mut result = VerificationResult::Safe;
-        
+
         for payload in parser.parse_all(binary) {
             let payload = payload?;
-            
+
             if let wasmparser::Payload::CodeSectionEntry(body) = payload {
                 let func_result = self.verify_function(body)?;
                 if !func_result.is_safe() {
@@ -36,7 +36,7 @@ impl IncrementalVerifier {
                 }
             }
         }
-        
+
         Ok(result)
     }
 
@@ -44,12 +44,12 @@ impl IncrementalVerifier {
     fn verify_function(&self, body: wasmparser::FunctionBody) -> Result<VerificationResult> {
         let mut stack_types = Vec::new();
         let memory_size = 65536; // Default 1 page = 64KB
-        
+
         let reader = body.get_operators_reader()?;
-        
+
         for op in reader {
             let operator = op?;
-            
+
             match operator {
                 Operator::I32Load { memarg } => {
                     // Check static offset bounds
@@ -59,7 +59,7 @@ impl IncrementalVerifier {
                             size: memory_size,
                         });
                     }
-                    
+
                     // Verify stack has i32 for address
                     if stack_types.pop() != Some(ValType::I32) {
                         return Ok(VerificationResult::TypeError {
@@ -67,11 +67,11 @@ impl IncrementalVerifier {
                             found: None,
                         });
                     }
-                    
+
                     // Push result type
                     stack_types.push(ValType::I32);
                 }
-                
+
                 Operator::I32Store { memarg } => {
                     // Check static offset bounds
                     if memarg.offset as usize > memory_size - 4 {
@@ -80,7 +80,7 @@ impl IncrementalVerifier {
                             size: memory_size,
                         });
                     }
-                    
+
                     // Pop value and address
                     if stack_types.pop() != Some(ValType::I32) {
                         return Ok(VerificationResult::TypeError {
@@ -95,14 +95,15 @@ impl IncrementalVerifier {
                         });
                     }
                 }
-                
+
                 // Handle other operators
                 _ => {
-                    self.stack_analyzer.update_stack(&mut stack_types, &operator)?;
+                    self.stack_analyzer
+                        .update_stack(&mut stack_types, &operator)?;
                 }
             }
         }
-        
+
         Ok(VerificationResult::Safe)
     }
 }
@@ -111,8 +112,14 @@ impl IncrementalVerifier {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum VerificationResult {
     Safe,
-    OutOfBounds { offset: usize, size: usize },
-    TypeError { expected: String, found: Option<String> },
+    OutOfBounds {
+        offset: usize,
+        size: usize,
+    },
+    TypeError {
+        expected: String,
+        found: Option<String>,
+    },
     StackUnderflow,
     StackOverflow,
     InvalidIndirectCall,
@@ -185,14 +192,14 @@ impl StackAnalyzer {
 
     fn update_stack(&self, stack: &mut Vec<ValType>, op: &Operator) -> Result<()> {
         use Operator::*;
-        
+
         match op {
             // Constants push their type
             I32Const { .. } => stack.push(ValType::I32),
             I64Const { .. } => stack.push(ValType::I64),
             F32Const { .. } => stack.push(ValType::F32),
             F64Const { .. } => stack.push(ValType::F64),
-            
+
             // Binary operations
             I32Add | I32Sub | I32Mul | I32DivS | I32DivU => {
                 if stack.len() < 2 {
@@ -202,7 +209,7 @@ impl StackAnalyzer {
                 stack.pop();
                 stack.push(ValType::I32);
             }
-            
+
             I64Add | I64Sub | I64Mul | I64DivS | I64DivU => {
                 if stack.len() < 2 {
                     return Err(anyhow!("Stack underflow"));
@@ -211,7 +218,7 @@ impl StackAnalyzer {
                 stack.pop();
                 stack.push(ValType::I64);
             }
-            
+
             // Comparisons
             I32Eqz => {
                 if stack.pop() != Some(ValType::I32) {
@@ -219,7 +226,7 @@ impl StackAnalyzer {
                 }
                 stack.push(ValType::I32);
             }
-            
+
             I32Eq | I32Ne | I32LtS | I32LtU | I32GtS | I32GtU => {
                 if stack.len() < 2 {
                     return Err(anyhow!("Stack underflow"));
@@ -229,30 +236,30 @@ impl StackAnalyzer {
                 }
                 stack.push(ValType::I32);
             }
-            
+
             // Local operations
             LocalGet { local_index: _ } => {
                 // Would need local types from function signature
                 stack.push(ValType::I32); // Simplified
             }
-            
+
             LocalSet { local_index: _ } => {
                 if stack.is_empty() {
                     return Err(anyhow!("Stack underflow"));
                 }
                 stack.pop();
             }
-            
+
             Drop => {
                 if stack.is_empty() {
                     return Err(anyhow!("Stack underflow"));
                 }
                 stack.pop();
             }
-            
+
             _ => {} // Other operators
         }
-        
+
         Ok(())
     }
 }
@@ -280,14 +287,14 @@ impl DifferentialTester {
     pub fn generate_test_cases(&mut self, _module: &[u8], count: usize) -> Vec<TestCase> {
         // Generate diverse test inputs
         let mut cases = Vec::new();
-        
+
         for i in 0..count {
             cases.push(TestCase {
                 inputs: vec![i as i32, (i * 2) as i32],
                 expected_output: None,
             });
         }
-        
+
         cases
     }
 
@@ -327,7 +334,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

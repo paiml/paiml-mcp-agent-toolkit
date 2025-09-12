@@ -164,9 +164,9 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
         | AnalyzeCommands::BigO { .. } => route_specialized_analysis(cmd).await,
 
         // Language-specific commands
-        AnalyzeCommands::AssemblyScript { .. } | AnalyzeCommands::WebAssembly { .. } | AnalyzeCommands::Wasm { .. } => {
-            route_language_specific_analysis(cmd).await
-        }
+        AnalyzeCommands::AssemblyScript { .. }
+        | AnalyzeCommands::WebAssembly { .. }
+        | AnalyzeCommands::Wasm { .. } => route_language_specific_analysis(cmd).await,
 
         // System commands
         AnalyzeCommands::Makefile { .. } => route_system_analysis(cmd).await,
@@ -1006,14 +1006,7 @@ async fn route_wasm_analysis(cmd: AnalyzeCommands) -> Result<()> {
     } = cmd
     {
         super::wasm_handler::handle_analyze_wasm(
-            wasm_file,
-            format,
-            verify,
-            security,
-            profile,
-            baseline,
-            output,
-            verbose,
+            wasm_file, format, verify, security, profile, baseline, output, verbose,
         )
         .await
     } else {
@@ -1102,14 +1095,14 @@ async fn route_clippy_analysis(cmd: AnalyzeCommands) -> Result<()> {
     {
         // Call the auto_clippy_fix MCP tool function directly
         use crate::mcp_pmcp::tools::auto_clippy_fix::auto_clippy_fix;
-        
+
         let confidence_level = Some(confidence.clone());
-        let codes = if fix_codes.is_empty() { 
-            None 
-        } else { 
-            Some(fix_codes.clone()) 
+        let codes = if fix_codes.is_empty() {
+            None
+        } else {
+            Some(fix_codes.clone())
         };
-        
+
         let result = auto_clippy_fix(
             Some(project_path.to_string_lossy().to_string()),
             confidence_level,
@@ -1117,16 +1110,16 @@ async fn route_clippy_analysis(cmd: AnalyzeCommands) -> Result<()> {
             codes,
         )
         .await?;
-        
+
         if let Some(output_path) = output {
             use std::fs;
             let content = serde_json::to_string_pretty(&result)?;
             fs::write(&output_path, content)?;
             eprintln!("📁 Results written to {}", output_path.display());
         } else {
-            eprintln!("{:?}", result);
+            eprintln!("{result:?}");
         }
-        
+
         Ok(())
     } else {
         unreachable!("Expected Clippy command")
@@ -1145,9 +1138,9 @@ async fn route_entropy_analysis(cmd: AnalyzeCommands) -> Result<()> {
         include_tests,
     } = cmd
     {
-        use crate::entropy::{EntropyAnalyzer, EntropyConfig};
         use crate::cli::{EntropyOutputFormat, EntropySeverity};
         use crate::entropy::violation_detector::Severity;
+        use crate::entropy::{EntropyAnalyzer, EntropyConfig};
         use std::fs;
 
         // Convert CLI severity to entropy severity
@@ -1160,7 +1153,7 @@ async fn route_entropy_analysis(cmd: AnalyzeCommands) -> Result<()> {
         // Create entropy configuration
         let mut config = EntropyConfig::default();
         config.min_severity = min_sev;
-        
+
         // Update exclude paths if tests should be excluded
         if !include_tests {
             config.exclude_paths.push("**/*test*.rs".to_string());
@@ -1169,7 +1162,7 @@ async fn route_entropy_analysis(cmd: AnalyzeCommands) -> Result<()> {
 
         // Create analyzer and run analysis
         let analyzer = EntropyAnalyzer::with_config(config);
-        
+
         let analysis_path = if let Some(file_path) = file {
             file_path
         } else {
@@ -1181,12 +1174,18 @@ async fn route_entropy_analysis(cmd: AnalyzeCommands) -> Result<()> {
         // Generate output based on format
         let output_content = match format {
             EntropyOutputFormat::Summary => {
-                let violations = if top_violations > 0 && report.actionable_violations.len() > top_violations {
-                    report.actionable_violations.iter().take(top_violations).cloned().collect::<Vec<_>>()
-                } else {
-                    report.actionable_violations.clone()
-                };
-                
+                let violations =
+                    if top_violations > 0 && report.actionable_violations.len() > top_violations {
+                        report
+                            .actionable_violations
+                            .iter()
+                            .take(top_violations)
+                            .cloned()
+                            .collect::<Vec<_>>()
+                    } else {
+                        report.actionable_violations.clone()
+                    };
+
                 format!(
                     "Entropy Analysis Summary\n========================\n\n\
                      Files Analyzed: {}\n\
@@ -1197,16 +1196,20 @@ async fn route_entropy_analysis(cmd: AnalyzeCommands) -> Result<()> {
                     report.actionable_violations.len(),
                     report.total_loc_reduction(),
                     report.reduction_percentage(),
-                    violations.iter()
+                    violations
+                        .iter()
                         .enumerate()
                         .map(|(i, v)| format!(
                             "{}. {} (saves {} lines)\n   Fix: {}",
-                            i + 1, v.message, v.estimated_loc_reduction, v.fix_suggestion
+                            i + 1,
+                            v.message,
+                            v.estimated_loc_reduction,
+                            v.fix_suggestion
                         ))
                         .collect::<Vec<_>>()
                         .join("\n\n")
                 )
-            },
+            }
             EntropyOutputFormat::Detailed => report.format_report(),
             EntropyOutputFormat::Json => serde_json::to_string_pretty(&report)?,
             EntropyOutputFormat::Markdown => {
@@ -1221,8 +1224,14 @@ async fn route_entropy_analysis(cmd: AnalyzeCommands) -> Result<()> {
                     report.actionable_violations.len(),
                     report.total_loc_reduction(),
                     report.reduction_percentage(),
-                    report.actionable_violations.iter()
-                        .take(if top_violations == 0 { usize::MAX } else { top_violations })
+                    report
+                        .actionable_violations
+                        .iter()
+                        .take(if top_violations == 0 {
+                            usize::MAX
+                        } else {
+                            top_violations
+                        })
                         .map(|v| format!(
                             "### {} ({:?})\n\n\
                              **Pattern**: {:?} (repeated {} times)\n\
@@ -1240,14 +1249,14 @@ async fn route_entropy_analysis(cmd: AnalyzeCommands) -> Result<()> {
                         .collect::<Vec<_>>()
                         .join("\n")
                 )
-            },
+            }
         };
 
         // Output results
         if let Some(output_path) = output {
             fs::write(output_path, output_content)?;
         } else {
-            println!("{}", output_content);
+            println!("{output_content}");
         }
 
         Ok(())
@@ -1278,7 +1287,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

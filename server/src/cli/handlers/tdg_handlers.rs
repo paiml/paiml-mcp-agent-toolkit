@@ -81,7 +81,7 @@ async fn handle_compare_command(
     if let Some(output_path) = &config.output {
         fs::write(output_path, output_str)?;
     } else {
-        println!("{}", output_str);
+        println!("{output_str}");
     }
 
     Ok(())
@@ -132,7 +132,7 @@ fn write_tdg_output(output_str: &str, config: &TdgCommandConfig) -> Result<()> {
     if let Some(output_path) = &config.output {
         fs::write(output_path, output_str)?;
     } else {
-        println!("{}", output_str);
+        println!("{output_str}");
     }
     Ok(())
 }
@@ -384,7 +384,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

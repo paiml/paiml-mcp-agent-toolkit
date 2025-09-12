@@ -1,5 +1,5 @@
 //! MCP-AGENTS.md Bridge
-//! 
+//!
 //! Bidirectional bridge between AGENTS.md and MCP protocols.
 
 use super::*;
@@ -9,7 +9,7 @@ use serde_json::{json, Value as JsonValue};
 pub struct McpAgentsMdBridge {
     /// Protocol configuration
     config: BridgeConfig,
-    
+
     /// Tool registry
     tool_registry: Vec<McpTool>,
 }
@@ -19,10 +19,10 @@ pub struct McpAgentsMdBridge {
 pub struct BridgeConfig {
     /// Enable bidirectional sync
     pub bidirectional: bool,
-    
+
     /// Auto-discover AGENTS.md files
     pub auto_discover: bool,
-    
+
     /// Quality enforcement level
     pub quality_level: QualityLevel,
 }
@@ -52,16 +52,16 @@ pub enum QualityLevel {
 pub struct McpTool {
     /// Tool name
     pub name: String,
-    
+
     /// Tool description
     pub description: String,
-    
+
     /// Input schema
     pub input_schema: JsonValue,
-    
+
     /// Output schema
     pub output_schema: JsonValue,
-    
+
     /// Handler function
     pub handler: ToolHandler,
 }
@@ -86,7 +86,7 @@ pub enum Request {
 pub struct AgentsMdRequest {
     /// Request type
     pub request_type: String,
-    
+
     /// Parameters
     pub params: JsonValue,
 }
@@ -96,7 +96,7 @@ pub struct AgentsMdRequest {
 pub struct McpRequest {
     /// Method name
     pub method: String,
-    
+
     /// Parameters
     pub params: JsonValue,
 }
@@ -106,10 +106,10 @@ pub struct McpRequest {
 pub struct TranslatedRequest {
     /// Original request
     pub original: Request,
-    
+
     /// Translated format
     pub translated: Request,
-    
+
     /// Translation metadata
     pub metadata: TranslationMetadata,
 }
@@ -119,10 +119,10 @@ pub struct TranslatedRequest {
 pub struct TranslationMetadata {
     /// Translation timestamp
     pub timestamp: std::time::SystemTime,
-    
+
     /// Quality checks applied
     pub quality_checks: Vec<String>,
-    
+
     /// Warnings
     pub warnings: Vec<String>,
 }
@@ -139,10 +139,10 @@ pub enum Response {
 pub struct AgentsMdResponse {
     /// Success status
     pub success: bool,
-    
+
     /// Result data
     pub result: JsonValue,
-    
+
     /// Error if any
     pub error: Option<String>,
 }
@@ -152,7 +152,7 @@ pub struct AgentsMdResponse {
 pub struct McpResponse {
     /// Result data
     pub result: JsonValue,
-    
+
     /// Error if any
     pub error: Option<JsonValue>,
 }
@@ -162,10 +162,10 @@ pub struct McpResponse {
 pub struct UnifiedResponse {
     /// Original response
     pub original: Response,
-    
+
     /// Unified format
     pub unified: JsonValue,
-    
+
     /// Quality report
     pub quality_report: Option<QualityReport>,
 }
@@ -175,12 +175,18 @@ pub struct UnifiedResponse {
 pub struct QualityReport {
     /// Quality score
     pub score: f64,
-    
+
     /// Issues found
     pub issues: Vec<String>,
-    
+
     /// Suggestions
     pub suggestions: Vec<String>,
+}
+
+impl Default for McpAgentsMdBridge {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl McpAgentsMdBridge {
@@ -191,7 +197,7 @@ impl McpAgentsMdBridge {
             tool_registry: Vec::new(),
         }
     }
-    
+
     /// Create with config
     pub fn with_config(config: BridgeConfig) -> Self {
         Self {
@@ -199,44 +205,44 @@ impl McpAgentsMdBridge {
             tool_registry: Vec::new(),
         }
     }
-    
+
     /// Convert AGENTS.md document to MCP tools
     pub fn agents_to_mcp(&self, doc: &AgentsMdDocument) -> Vec<McpTool> {
         let mut tools = Vec::new();
-        
+
         // Convert commands to tools
         for cmd in &doc.commands {
             tools.push(self.command_to_tool(cmd));
         }
-        
+
         // Add quality gates if configured
         if self.config.quality_level != QualityLevel::None {
             tools.push(self.create_quality_tool());
         }
-        
+
         tools
     }
-    
+
     /// Convert MCP capabilities to AGENTS.md
     pub fn mcp_to_agents(&self, tools: &[McpTool]) -> String {
         let mut output = String::new();
         output.push_str("# AGENTS.md\n\n");
         output.push_str("## Available Tools\n\n");
-        
+
         for tool in tools {
             output.push_str(&format!("### {}\n", tool.name));
             output.push_str(&format!("{}\n\n", tool.description));
-            
+
             if let ToolHandler::Command(ref cmd) = tool.handler {
                 output.push_str("```bash\n");
                 output.push_str(&format!("{}\n", cmd.command));
                 output.push_str("```\n\n");
             }
         }
-        
+
         output
     }
-    
+
     /// Translate request between protocols
     pub fn translate_request(&self, req: Request) -> TranslatedRequest {
         let metadata = TranslationMetadata {
@@ -244,47 +250,41 @@ impl McpAgentsMdBridge {
             quality_checks: vec![],
             warnings: vec![],
         };
-        
+
         let translated = match req {
             Request::AgentsMd(ref agents_req) => {
                 Request::Mcp(self.agents_request_to_mcp(agents_req))
-            },
-            Request::Mcp(ref mcp_req) => {
-                Request::AgentsMd(self.mcp_request_to_agents(mcp_req))
-            },
+            }
+            Request::Mcp(ref mcp_req) => Request::AgentsMd(self.mcp_request_to_agents(mcp_req)),
         };
-        
+
         TranslatedRequest {
             original: req,
             translated,
             metadata,
         }
     }
-    
+
     /// Unify response handling
     pub fn unify_response(&self, resp: Response) -> UnifiedResponse {
         let unified = match resp {
-            Response::AgentsMd(ref agents_resp) => {
-                self.agents_response_to_unified(agents_resp)
-            },
-            Response::Mcp(ref mcp_resp) => {
-                self.mcp_response_to_unified(mcp_resp)
-            },
+            Response::AgentsMd(ref agents_resp) => self.agents_response_to_unified(agents_resp),
+            Response::Mcp(ref mcp_resp) => self.mcp_response_to_unified(mcp_resp),
         };
-        
+
         let quality_report = if self.config.quality_level != QualityLevel::None {
             Some(self.check_response_quality(&unified))
         } else {
             None
         };
-        
+
         UnifiedResponse {
             original: resp,
             unified,
             quality_report,
         }
     }
-    
+
     /// Convert command to MCP tool
     fn command_to_tool(&self, cmd: &Command) -> McpTool {
         McpTool {
@@ -310,7 +310,7 @@ impl McpAgentsMdBridge {
             handler: ToolHandler::Command(cmd.clone()),
         }
     }
-    
+
     /// Create quality gate tool
     fn create_quality_tool(&self) -> McpTool {
         McpTool {
@@ -337,7 +337,7 @@ impl McpAgentsMdBridge {
             handler: ToolHandler::Function("quality_gate".to_string()),
         }
     }
-    
+
     /// Convert AGENTS.md request to MCP
     fn agents_request_to_mcp(&self, req: &AgentsMdRequest) -> McpRequest {
         McpRequest {
@@ -345,7 +345,7 @@ impl McpAgentsMdBridge {
             params: req.params.clone(),
         }
     }
-    
+
     /// Convert MCP request to AGENTS.md
     fn mcp_request_to_agents(&self, req: &McpRequest) -> AgentsMdRequest {
         AgentsMdRequest {
@@ -353,7 +353,7 @@ impl McpAgentsMdBridge {
             params: req.params.clone(),
         }
     }
-    
+
     /// Convert AGENTS.md response to unified format
     fn agents_response_to_unified(&self, resp: &AgentsMdResponse) -> JsonValue {
         json!({
@@ -362,7 +362,7 @@ impl McpAgentsMdBridge {
             "error": resp.error,
         })
     }
-    
+
     /// Convert MCP response to unified format
     fn mcp_response_to_unified(&self, resp: &McpResponse) -> JsonValue {
         json!({
@@ -371,13 +371,13 @@ impl McpAgentsMdBridge {
             "error": resp.error,
         })
     }
-    
+
     /// Check response quality
     fn check_response_quality(&self, response: &JsonValue) -> QualityReport {
         let mut issues = Vec::new();
         let mut suggestions = Vec::new();
         let mut score: f64 = 100.0;
-        
+
         // Check for errors
         if let Some(error) = response.get("error") {
             if !error.is_null() {
@@ -385,7 +385,7 @@ impl McpAgentsMdBridge {
                 score -= 20.0;
             }
         }
-        
+
         // Check for empty results
         if let Some(result) = response.get("result") {
             if result.is_null() || (result.is_string() && result.as_str() == Some("")) {
@@ -394,19 +394,19 @@ impl McpAgentsMdBridge {
                 score -= 10.0;
             }
         }
-        
+
         QualityReport {
             score: score.max(0.0),
             issues,
             suggestions,
         }
     }
-    
+
     /// Register MCP tool
     pub fn register_tool(&mut self, tool: McpTool) {
         self.tool_registry.push(tool);
     }
-    
+
     /// Get registered tools
     pub fn get_tools(&self) -> &[McpTool] {
         &self.tool_registry
@@ -428,7 +428,7 @@ mod tests {
     #[test]
     fn test_agents_to_mcp_conversion() {
         let bridge = McpAgentsMdBridge::new();
-        
+
         let doc = AgentsMdDocument {
             metadata: DocumentMetadata {
                 path: PathBuf::from("AGENTS.md"),
@@ -437,20 +437,18 @@ mod tests {
                 project: None,
             },
             sections: vec![],
-            commands: vec![
-                Command {
-                    name: "Build".to_string(),
-                    command: "cargo build".to_string(),
-                    working_dir: None,
-                    env: vec![],
-                    timeout: Some(60),
-                    safe: true,
-                },
-            ],
+            commands: vec![Command {
+                name: "Build".to_string(),
+                command: "cargo build".to_string(),
+                working_dir: None,
+                env: vec![],
+                timeout: Some(60),
+                safe: true,
+            }],
             guidelines: vec![],
             quality_rules: None,
         };
-        
+
         let tools = bridge.agents_to_mcp(&doc);
         assert_eq!(tools.len(), 2); // Command + quality tool
         assert_eq!(tools[0].name, "Build");
@@ -460,17 +458,15 @@ mod tests {
     #[test]
     fn test_mcp_to_agents_conversion() {
         let bridge = McpAgentsMdBridge::new();
-        
-        let tools = vec![
-            McpTool {
-                name: "test_tool".to_string(),
-                description: "Test tool".to_string(),
-                input_schema: json!({}),
-                output_schema: json!({}),
-                handler: ToolHandler::Function("test".to_string()),
-            },
-        ];
-        
+
+        let tools = vec![McpTool {
+            name: "test_tool".to_string(),
+            description: "Test tool".to_string(),
+            input_schema: json!({}),
+            output_schema: json!({}),
+            handler: ToolHandler::Function("test".to_string()),
+        }];
+
         let agents_md = bridge.mcp_to_agents(&tools);
         assert!(agents_md.contains("# AGENTS.md"));
         assert!(agents_md.contains("test_tool"));
@@ -480,14 +476,14 @@ mod tests {
     #[test]
     fn test_request_translation() {
         let bridge = McpAgentsMdBridge::new();
-        
+
         let agents_req = AgentsMdRequest {
             request_type: "execute".to_string(),
             params: json!({"command": "test"}),
         };
-        
+
         let translated = bridge.translate_request(Request::AgentsMd(agents_req));
-        
+
         if let Request::Mcp(mcp_req) = translated.translated {
             assert_eq!(mcp_req.method, "execute");
             assert_eq!(mcp_req.params, json!({"command": "test"}));
@@ -499,16 +495,16 @@ mod tests {
     #[test]
     fn test_response_unification() {
         let bridge = McpAgentsMdBridge::new();
-        
+
         let agents_resp = AgentsMdResponse {
             success: true,
             result: json!({"output": "test"}),
             error: None,
         };
-        
+
         let unified = bridge.unify_response(Response::AgentsMd(agents_resp));
         assert!(unified.quality_report.is_some());
-        
+
         let report = unified.quality_report.unwrap();
         assert_eq!(report.score, 100.0);
         assert!(report.issues.is_empty());
@@ -517,23 +513,25 @@ mod tests {
     #[test]
     fn test_quality_checking() {
         let bridge = McpAgentsMdBridge::new();
-        
+
         let response = json!({
             "success": false,
             "result": "",
             "error": "Test error"
         });
-        
+
         let report = bridge.check_response_quality(&response);
         assert!(report.score < 100.0);
         assert!(!report.issues.is_empty());
-        assert!(report.issues.contains(&"Response contains error".to_string()));
+        assert!(report
+            .issues
+            .contains(&"Response contains error".to_string()));
     }
 
     #[test]
     fn test_tool_registration() {
         let mut bridge = McpAgentsMdBridge::new();
-        
+
         let tool = McpTool {
             name: "custom_tool".to_string(),
             description: "Custom tool".to_string(),
@@ -541,7 +539,7 @@ mod tests {
             output_schema: json!({}),
             handler: ToolHandler::External("external".to_string()),
         };
-        
+
         bridge.register_tool(tool);
         assert_eq!(bridge.get_tools().len(), 1);
         assert_eq!(bridge.get_tools()[0].name, "custom_tool");

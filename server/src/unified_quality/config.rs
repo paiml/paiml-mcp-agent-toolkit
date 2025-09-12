@@ -10,22 +10,22 @@ use crate::unified_quality::QualityMode;
 pub struct UnifiedConfig {
     /// Current quality mode
     pub mode: QualityMode,
-    
+
     /// Auto-progress through modes
     pub auto_progress: bool,
-    
+
     /// Days before auto-progression
     pub progress_after_days: u32,
-    
+
     /// Budget configuration
     pub budget: BudgetConfig,
-    
+
     /// Monitoring configuration
     pub monitoring: MonitoringConfig,
-    
+
     /// Automation configuration
     pub automation: AutomationConfig,
-    
+
     /// Research features (disabled by default)
     pub research: ResearchConfig,
 }
@@ -35,13 +35,13 @@ pub struct UnifiedConfig {
 pub struct BudgetConfig {
     /// Complexity points allowed
     pub complexity_points: i32,
-    
+
     /// SATD allowance
     pub satd_allowance: u32,
-    
+
     /// Coverage floor percentage
     pub coverage_floor: f64,
-    
+
     /// Daily regeneration rate
     pub regeneration_daily: f64,
 }
@@ -51,19 +51,19 @@ pub struct BudgetConfig {
 pub struct MonitoringConfig {
     /// Enable monitoring
     pub enabled: bool,
-    
+
     /// Use incremental parsing
     pub incremental: bool,
-    
+
     /// Cache ASTs for performance
     pub cache_ast: bool,
-    
+
     /// Dashboard port
     pub dashboard_port: u16,
-    
+
     /// Update interval in seconds
     pub update_interval: u64,
-    
+
     /// File patterns to watch
     pub watch_patterns: Vec<String>,
 }
@@ -73,29 +73,30 @@ pub struct MonitoringConfig {
 pub struct AutomationConfig {
     /// Enable automation
     pub enabled: bool,
-    
+
     /// Require human review
     pub require_review: bool,
-    
+
     /// Only apply safe fixes
     pub safe_only: bool,
-    
+
     /// Create branches for fixes
     pub create_branches: bool,
 }
 
 /// Research features configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default)]
 pub struct ResearchConfig {
     /// Enable property synthesis
     pub property_synthesis: bool,
-    
+
     /// Enable formal verification
     pub formal_verification: bool,
-    
+
     /// Enable ML suggestions
     pub ml_suggestions: bool,
-    
+
     /// Enable autonomous mode
     pub autonomous_mode: bool,
 }
@@ -154,16 +155,6 @@ impl Default for AutomationConfig {
     }
 }
 
-impl Default for ResearchConfig {
-    fn default() -> Self {
-        Self {
-            property_synthesis: false,
-            formal_verification: false,
-            ml_suggestions: false,
-            autonomous_mode: false,
-        }
-    }
-}
 
 impl UnifiedConfig {
     /// Load configuration from file
@@ -172,24 +163,24 @@ impl UnifiedConfig {
         let config: Self = toml::from_str(&contents)?;
         Ok(config)
     }
-    
+
     /// Save configuration to file
     pub fn to_file(&self, path: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
         let contents = toml::to_string_pretty(self)?;
         std::fs::write(path, contents)?;
         Ok(())
     }
-    
+
     /// Get default configuration path
     pub fn default_path() -> PathBuf {
         PathBuf::from(".pmat/config.toml")
     }
-    
+
     /// Check if should auto-progress
     pub fn should_progress(&self, days_in_mode: u32) -> bool {
         self.auto_progress && days_in_mode >= self.progress_after_days
     }
-    
+
     /// Get next quality mode
     pub fn next_mode(&self) -> Option<QualityMode> {
         match self.mode {
@@ -207,7 +198,7 @@ impl UnifiedConfig {
 pub struct AdoptionPlaybook {
     /// Current week in adoption process
     pub current_week: u32,
-    
+
     /// Adoption phases
     pub phases: Vec<AdoptionPhase>,
 }
@@ -217,13 +208,13 @@ pub struct AdoptionPlaybook {
 pub struct AdoptionPhase {
     /// Week range (e.g., 1-2)
     pub weeks: (u32, u32),
-    
+
     /// Phase name
     pub name: String,
-    
+
     /// Activities in this phase
     pub activities: Vec<String>,
-    
+
     /// Success criteria
     pub success_criteria: Vec<String>,
 }
@@ -314,10 +305,10 @@ mod tests {
     #[test]
     fn test_next_mode() {
         let mut config = UnifiedConfig::default();
-        
+
         config.mode = QualityMode::Observe;
         assert_eq!(config.next_mode(), Some(QualityMode::Advise));
-        
+
         config.mode = QualityMode::Extreme;
         assert_eq!(config.next_mode(), None);
     }

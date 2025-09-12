@@ -1,6 +1,8 @@
 use crate::cli::commands::{DiagnosticOutputFormat, StorageCommand, TdgCommand};
 use crate::cli::handlers::tdg_diagnostic_handler;
-use crate::qdd::{QddTool, QddOperation, CreateSpec, RefactorSpec, CodeType, Parameter, QualityProfile};
+use crate::qdd::{
+    CodeType, CreateSpec, Parameter, QddOperation, QddTool, QualityProfile, RefactorSpec,
+};
 use crate::tdg::{
     AdaptiveThresholdFactory, SchedulerFactory, StorageBackendType, StorageConfig, TdgAnalyzer,
     TieredStorageFactory,
@@ -519,7 +521,7 @@ async fn store_project_results(
                 let key = file_path.to_string_lossy().as_bytes().to_vec();
                 if let Ok(value) = serde_json::to_vec(&record) {
                     if let Err(e) = storage.put(&key, &value) {
-                        eprintln!("Warning: Failed to store TDG record: {}", e);
+                        eprintln!("Warning: Failed to store TDG record: {e}");
                     }
                 }
             }
@@ -750,7 +752,7 @@ pub async fn tdg_health_check() -> Result<Value> {
             }
         }
         Err(e) => {
-            health_issues.push(format!("Storage system unavailable: {}", e));
+            health_issues.push(format!("Storage system unavailable: {e}"));
             overall_status = "critical".to_string();
         }
     }
@@ -827,8 +829,9 @@ async fn handle_qdd_create(
     output_type: Option<&str>,
 ) -> Result<Value> {
     let code_type_enum = parse_code_type(code_type);
-    
-    let parameters = inputs.unwrap_or_default()
+
+    let parameters = inputs
+        .unwrap_or_default()
         .into_iter()
         .map(|(name, param_type)| Parameter {
             name,
@@ -836,11 +839,13 @@ async fn handle_qdd_create(
             description: None,
         })
         .collect();
-        
+
     let create_spec = CreateSpec {
         code_type: code_type_enum,
         name: name.unwrap_or("generated_code").to_string(),
-        purpose: purpose.unwrap_or("Generated code with quality standards").to_string(),
+        purpose: purpose
+            .unwrap_or("Generated code with quality standards")
+            .to_string(),
         inputs: parameters,
         outputs: Parameter {
             name: "result".to_string(),
@@ -848,7 +853,7 @@ async fn handle_qdd_create(
             description: Some("Function output".to_string()),
         },
     };
-    
+
     let operation = QddOperation::Create(create_spec);
     match qdd_tool.execute(operation).await {
         Ok(result) => Ok(json!({
@@ -880,7 +885,7 @@ async fn handle_qdd_create(
             "message": format!("QDD creation failed: {}", e),
             "result_type": "qdd_create_error",
             "error": e.to_string()
-        }))
+        })),
     }
 }
 
@@ -898,7 +903,7 @@ async fn handle_qdd_refactor(
             function_name: name.map(|s| s.to_string()),
             target_metrics: profile.thresholds.clone(),
         };
-        
+
         let operation = QddOperation::Refactor(refactor_spec);
         match qdd_tool.execute(operation).await {
             Ok(result) => Ok(json!({
@@ -925,7 +930,7 @@ async fn handle_qdd_refactor(
                 "result_type": "qdd_refactor_error",
                 "error": e.to_string(),
                 "file_path": path.display().to_string()
-            }))
+            })),
         }
     } else {
         Ok(json!({
@@ -949,31 +954,30 @@ pub async fn quality_driven_development(
 ) -> Result<Value> {
     let profile = select_quality_profile(quality_profile);
     let qdd_tool = QddTool::with_profile(profile.clone());
-    
+
     match operation_type {
-        "create" => handle_qdd_create(
-            qdd_tool,
-            quality_profile,
-            code_type,
-            name,
-            purpose,
-            inputs,
-            output_type,
-        ).await,
-        "refactor" => handle_qdd_refactor(
-            qdd_tool,
-            profile,
-            quality_profile,
-            name,
-            file_path,
-        ).await,
+        "create" => {
+            handle_qdd_create(
+                qdd_tool,
+                quality_profile,
+                code_type,
+                name,
+                purpose,
+                inputs,
+                output_type,
+            )
+            .await
+        }
+        "refactor" => {
+            handle_qdd_refactor(qdd_tool, profile, quality_profile, name, file_path).await
+        }
         _ => Ok(json!({
             "status": "failed",
             "message": format!("Unknown QDD operation: {}", operation_type),
             "result_type": "qdd_operation_error",
             "supported_operations": ["create", "refactor"],
             "error": format!("Operation '{}' not supported", operation_type)
-        }))
+        })),
     }
 }
 
@@ -988,7 +992,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

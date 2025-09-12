@@ -98,14 +98,13 @@ impl TemplateRegistry {
     /// Fetch a remote template.
     pub async fn fetch_remote(&self, name: &str) -> ScaffoldResult<Arc<dyn TemplateGenerator>> {
         let url = self.remote.get(name).ok_or_else(|| {
-            ScaffoldError::TemplateNotFound(format!("Remote template '{}'", name))
+            ScaffoldError::TemplateNotFound(format!("Remote template '{name}'"))
         })?;
 
         // Remote templates require network access which is disabled for security
         // Templates should be installed locally or use built-in templates
         Err(ScaffoldError::NetworkError(format!(
-            "Remote template '{}' requires network access. Please use a local or built-in template",
-            url
+            "Remote template '{url}' requires network access. Please use a local or built-in template"
         )))
     }
 
@@ -443,7 +442,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

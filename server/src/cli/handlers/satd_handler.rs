@@ -41,7 +41,7 @@ pub async fn handle_analyze_satd(config: SatdAnalysisConfig) -> Result<()> {
     // Delegate analysis execution to extracted function
     let result = execute_satd_analysis(&config).await?;
 
-    // Delegate result filtering to extracted function  
+    // Delegate result filtering to extracted function
     let filtered_result = apply_analysis_filters(result, &config)?;
 
     // Delegate output formatting and writing to extracted function
@@ -109,7 +109,11 @@ fn apply_analysis_filters(
     }
 
     // Apply severity and criticality filters
-    Ok(apply_filters(result, config.severity.clone(), config.critical_only))
+    Ok(apply_filters(
+        result,
+        config.severity.clone(),
+        config.critical_only,
+    ))
 }
 
 /// Format and write SATD output - EXTRACTED FUNCTION
@@ -132,7 +136,7 @@ async fn write_satd_output(
         tokio::fs::write(output_path, &content).await?;
         eprintln!("✅ SATD analysis written to: {}", output_path.display());
     } else {
-        println!("{}", content);
+        println!("{content}");
     }
 
     // Print metrics if requested
@@ -250,10 +254,10 @@ fn format_summary(result: &SatdAnalysisResult) -> String {
         .count();
 
     output.push_str("\n## Severity Distribution\n");
-    output.push_str(&format!("- Critical: {}\n", critical_count));
-    output.push_str(&format!("- High: {}\n", high_count));
-    output.push_str(&format!("- Medium: {}\n", medium_count));
-    output.push_str(&format!("- Low: {}\n", low_count));
+    output.push_str(&format!("- Critical: {critical_count}\n"));
+    output.push_str(&format!("- High: {high_count}\n"));
+    output.push_str(&format!("- Medium: {medium_count}\n"));
+    output.push_str(&format!("- Low: {low_count}\n"));
 
     if !result.violations.is_empty() {
         output.push_str("\n## Top Violations\n");
@@ -412,11 +416,11 @@ fn format_markdown(result: &SatdAnalysisResult, evolution: bool, days: u32) -> S
         })
         .count();
 
-    output.push_str(&format!("| Critical Violations | {} |\n", critical_count));
-    output.push_str(&format!("| High Violations | {} |\n\n", high_count));
+    output.push_str(&format!("| Critical Violations | {critical_count} |\n"));
+    output.push_str(&format!("| High Violations | {high_count} |\n\n"));
 
     if evolution {
-        output.push_str(&format!("## Evolution (Last {} Days)\n\n", days));
+        output.push_str(&format!("## Evolution (Last {days} Days)\n\n"));
         output.push_str("*Evolution tracking would show SATD trends over time*\n\n");
     }
 
@@ -467,8 +471,8 @@ fn print_metrics(result: &SatdAnalysisResult) {
         })
         .count();
 
-    eprintln!("  Critical violations: {}", critical_count);
-    eprintln!("  High violations: {}", high_count);
+    eprintln!("  Critical violations: {critical_count}");
+    eprintln!("  High violations: {high_count}");
 
     if !result.violations.is_empty() {
         eprintln!("\n  Top violation types:");
@@ -482,7 +486,7 @@ fn print_metrics(result: &SatdAnalysisResult) {
         sorted_types.sort_by(|a, b| b.1.cmp(a.1));
 
         for (violation_type, count) in sorted_types.iter().take(5) {
-            eprintln!("    - {}: {}", violation_type, count);
+            eprintln!("    - {violation_type}: {count}");
         }
     }
 }
@@ -523,7 +527,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

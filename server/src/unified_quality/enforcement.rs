@@ -1,5 +1,5 @@
 //! Enforcement Layer: Error Budget System
-//! 
+//!
 //! Phase 3 Implementation (Months 7-9)
 //! Flexible enforcement using SRE-style error budgets
 
@@ -12,13 +12,13 @@ use std::time::{Duration, SystemTime};
 pub struct ErrorBudgetEnforcer {
     /// Team-specific quality budgets
     budgets: HashMap<TeamId, QualityBudget>,
-    
+
     /// Historical tracking for trends
     history: TimeSeriesDB,
-    
+
     /// Progressive enforcement rules
     rules: EnforcementRules,
-    
+
     /// Configuration
     config: EnforcerConfig,
 }
@@ -31,22 +31,22 @@ pub type TeamId = String;
 pub struct QualityBudget {
     /// Complexity points above baseline
     pub complexity_budget: i32,
-    
+
     /// Temporary SATD allowance
     pub satd_budget: u32,
-    
+
     /// Coverage floor during refactoring
     pub coverage_floor: f64,
-    
+
     /// Budget regeneration rate (daily)
     pub regeneration_rate: f64,
-    
+
     /// Time until strict enforcement
     pub grace_period: Duration,
-    
+
     /// Current consumption
     pub current_consumption: BudgetConsumption,
-    
+
     /// Budget started at
     pub started_at: SystemTime,
 }
@@ -56,13 +56,13 @@ pub struct QualityBudget {
 pub struct BudgetConsumption {
     /// Complexity points consumed
     pub complexity_used: i32,
-    
+
     /// SATD issues added
     pub satd_used: u32,
-    
+
     /// Coverage reduction
     pub coverage_reduction: f64,
-    
+
     /// Last updated
     pub last_updated: Option<SystemTime>,
 }
@@ -72,16 +72,16 @@ pub struct BudgetConsumption {
 pub enum Decision {
     /// Change approved
     Approved,
-    
+
     /// Warning issued but not blocked
     Warning(String),
-    
+
     /// Requires manual approval
     RequiresApproval {
         approvers: Vec<String>,
         reason_required: bool,
     },
-    
+
     /// Change blocked
     Blocked {
         suggestion: String,
@@ -123,8 +123,11 @@ struct TimeSeries {
 /// Team-level metrics
 #[derive(Debug, Clone)]
 pub struct TeamMetrics {
+    #[allow(dead_code)]
     avg_complexity: f64,
+    #[allow(dead_code)]
     total_satd: u32,
+    #[allow(dead_code)]
     avg_coverage: f64,
     quality_score: f64,
 }
@@ -132,13 +135,14 @@ pub struct TeamMetrics {
 /// Enforcement rules configuration
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
+#[derive(Default)]
 pub struct EnforcementRules {
     /// Approvers by team
     approvers: HashMap<TeamId, Vec<String>>,
-    
+
     /// Escalation thresholds
     escalation: EscalationPolicy,
-    
+
     /// Override permissions
     overrides: HashMap<String, OverridePermission>,
 }
@@ -164,8 +168,11 @@ impl Default for EscalationPolicy {
 /// Override permission levels
 #[derive(Debug, Clone)]
 enum OverridePermission {
+    #[allow(dead_code)]
     None,
+    #[allow(dead_code)]
     Limited,
+    #[allow(dead_code)]
     Full,
 }
 
@@ -174,13 +181,13 @@ enum OverridePermission {
 pub struct EnforcerConfig {
     /// Enable budget enforcement
     pub enabled: bool,
-    
+
     /// Default budget for new teams
     pub default_budget: QualityBudget,
-    
+
     /// Budget regeneration interval
     pub regeneration_interval: Duration,
-    
+
     /// History retention period
     pub history_retention: Duration,
 }
@@ -229,34 +236,32 @@ impl ErrorBudgetEnforcer {
             config,
         }
     }
-    
+
     /// Register a team with a budget
     pub fn register_team(&mut self, team_id: TeamId, budget: Option<QualityBudget>) {
         let budget = budget.unwrap_or_else(|| self.config.default_budget.clone());
         self.budgets.insert(team_id, budget);
     }
-    
+
     /// Check if a commit is allowed
     pub fn check_commit(&self, team: &TeamId, diff: &DiffAnalysis) -> Decision {
         if !self.config.enabled {
             return Decision::Approved;
         }
-        
+
         let budget = match self.budgets.get(team) {
             Some(b) => b,
             None => return Decision::Approved, // No budget = no enforcement
         };
-        
+
         let consumption = self.calculate_consumption(budget, diff);
-        
+
         match consumption {
             c if c < self.rules.escalation.warning_threshold => Decision::Approved,
-            c if c < self.rules.escalation.approval_threshold => {
-                Decision::Warning(format!(
-                    "Approaching budget limit ({:.0}% consumed). Consider refactoring.",
-                    c * 100.0
-                ))
-            }
+            c if c < self.rules.escalation.approval_threshold => Decision::Warning(format!(
+                "Approaching budget limit ({:.0}% consumed). Consider refactoring.",
+                c * 100.0
+            )),
             c if c < self.rules.escalation.block_threshold => Decision::RequiresApproval {
                 approvers: self.rules.approvers_for(team),
                 reason_required: true,
@@ -267,22 +272,22 @@ impl ErrorBudgetEnforcer {
             },
         }
     }
-    
+
     /// Update budget consumption
     pub fn update_consumption(&mut self, team: &TeamId, diff: &DiffAnalysis) {
         if let Some(budget) = self.budgets.get_mut(team) {
             budget.current_consumption.complexity_used += diff.complexity_change;
-            budget.current_consumption.satd_used = 
+            budget.current_consumption.satd_used =
                 (budget.current_consumption.satd_used as i32 + diff.satd_change).max(0) as u32;
             budget.current_consumption.coverage_reduction += diff.coverage_change;
             budget.current_consumption.last_updated = Some(SystemTime::now());
         }
     }
-    
+
     /// Regenerate budgets (called periodically)
     pub fn regenerate_budgets(&mut self) {
         let now = SystemTime::now();
-        
+
         for budget in self.budgets.values_mut() {
             if let Some(last_updated) = budget.current_consumption.last_updated {
                 if let Ok(elapsed) = now.duration_since(last_updated) {
@@ -290,12 +295,12 @@ impl ErrorBudgetEnforcer {
                         // Regenerate budget
                         let days_elapsed = elapsed.as_secs() / (24 * 60 * 60);
                         let regeneration = (budget.regeneration_rate * days_elapsed as f64) as i32;
-                        
-                        budget.current_consumption.complexity_used = 
+
+                        budget.current_consumption.complexity_used =
                             (budget.current_consumption.complexity_used - regeneration).max(0);
-                        budget.current_consumption.satd_used = 
-                            (budget.current_consumption.satd_used.saturating_sub(5)).max(0);
-                        budget.current_consumption.coverage_reduction = 
+                        budget.current_consumption.satd_used =
+                            budget.current_consumption.satd_used.saturating_sub(5);
+                        budget.current_consumption.coverage_reduction =
                             (budget.current_consumption.coverage_reduction - 0.01).max(0.0);
                         budget.current_consumption.last_updated = Some(now);
                     }
@@ -303,7 +308,7 @@ impl ErrorBudgetEnforcer {
             }
         }
     }
-    
+
     /// Get budget status for a team
     pub fn get_budget_status(&self, team: &TeamId) -> Option<BudgetStatus> {
         self.budgets.get(team).map(|budget| {
@@ -311,39 +316,44 @@ impl ErrorBudgetEnforcer {
             BudgetStatus {
                 team: team.clone(),
                 consumption_percentage: consumption,
-                complexity_remaining: budget.complexity_budget - budget.current_consumption.complexity_used,
+                complexity_remaining: budget.complexity_budget
+                    - budget.current_consumption.complexity_used,
                 satd_remaining: budget.satd_budget - budget.current_consumption.satd_used,
                 days_until_regeneration: self.days_until_regeneration(budget),
             }
         })
     }
-    
+
     /// Calculate consumption as a percentage
     fn calculate_consumption(&self, budget: &QualityBudget, diff: &DiffAnalysis) -> f64 {
-        let complexity_ratio = ((budget.current_consumption.complexity_used + diff.complexity_change) as f64) 
+        let complexity_ratio = ((budget.current_consumption.complexity_used
+            + diff.complexity_change) as f64)
             / budget.complexity_budget as f64;
-        let satd_ratio = ((budget.current_consumption.satd_used as i32 + diff.satd_change) as f64) 
+        let satd_ratio = ((budget.current_consumption.satd_used as i32 + diff.satd_change) as f64)
             / budget.satd_budget as f64;
         let coverage_impact = if diff.coverage_change < 0.0 {
             (-diff.coverage_change) / (1.0 - budget.coverage_floor)
         } else {
             0.0
         };
-        
+
         // Weighted average
-        (complexity_ratio * 0.5 + satd_ratio * 0.3 + coverage_impact * 0.2).max(0.0).min(1.0)
+        (complexity_ratio * 0.5 + satd_ratio * 0.3 + coverage_impact * 0.2)
+            .max(0.0)
+            .min(1.0)
     }
-    
+
     /// Calculate consumption percentage for current state
     fn calculate_consumption_percentage(&self, budget: &QualityBudget) -> f64 {
-        let complexity_ratio = (budget.current_consumption.complexity_used as f64) 
-            / budget.complexity_budget as f64;
-        let satd_ratio = (budget.current_consumption.satd_used as f64) 
-            / budget.satd_budget as f64;
-        
-        ((complexity_ratio * 0.6 + satd_ratio * 0.4) * 100.0).max(0.0).min(100.0)
+        let complexity_ratio =
+            (budget.current_consumption.complexity_used as f64) / budget.complexity_budget as f64;
+        let satd_ratio = (budget.current_consumption.satd_used as f64) / budget.satd_budget as f64;
+
+        ((complexity_ratio * 0.6 + satd_ratio * 0.4) * 100.0)
+            .max(0.0)
+            .min(100.0)
     }
-    
+
     /// Calculate days until next regeneration
     fn days_until_regeneration(&self, budget: &QualityBudget) -> u32 {
         if let Some(last_updated) = budget.current_consumption.last_updated {
@@ -354,7 +364,7 @@ impl ErrorBudgetEnforcer {
         }
         0
     }
-    
+
     /// Suggest refactoring targets
     fn suggest_refactor_targets(&self, _team: &TeamId) -> Vec<RefactorTarget> {
         // Would integrate with complexity analysis
@@ -391,19 +401,16 @@ impl TimeSeriesDB {
             data: HashMap::new(),
         }
     }
-    
+
     pub fn record(&mut self, team: TeamId, metrics: TeamMetrics) {
         let entry = TimeSeries {
             timestamp: SystemTime::now(),
             metrics,
         };
-        
-        self.data
-            .entry(team)
-            .or_insert_with(Vec::new)
-            .push(entry);
+
+        self.data.entry(team).or_default().push(entry);
     }
-    
+
     /// Record a measurement for a team
     pub fn record_measurement(&mut self, team: &TeamId, timestamp: SystemTime, value: f64) {
         let metrics = TeamMetrics {
@@ -412,23 +419,20 @@ impl TimeSeriesDB {
             avg_coverage: value,
             quality_score: value,
         };
-        
-        let entry = TimeSeries {
-            timestamp,
-            metrics,
-        };
-        
+
+        let entry = TimeSeries { timestamp, metrics };
+
         self.data
             .entry(team.clone())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(entry);
     }
-    
+
     /// Get recent measurements for a team
     pub fn get_recent_measurements(&self, team: &TeamId, duration: Duration) -> Vec<f64> {
         let now = SystemTime::now();
         let cutoff = now.checked_sub(duration).unwrap_or(SystemTime::UNIX_EPOCH);
-        
+
         self.data
             .get(team)
             .map(|entries| {
@@ -451,15 +455,6 @@ impl EnforcementRules {
     }
 }
 
-impl Default for EnforcementRules {
-    fn default() -> Self {
-        Self {
-            approvers: HashMap::new(),
-            escalation: EscalationPolicy::default(),
-            overrides: HashMap::new(),
-        }
-    }
-}
 
 #[cfg(test)]
 mod tests {
@@ -483,14 +478,14 @@ mod tests {
     fn test_budget_consumption_calculation() {
         let mut enforcer = ErrorBudgetEnforcer::new(EnforcerConfig::default());
         enforcer.register_team("team-a".to_string(), None);
-        
+
         let diff = DiffAnalysis {
             complexity_change: 10,
             satd_change: 2,
             coverage_change: -0.02,
             files_changed: vec!["test.rs".to_string()],
         };
-        
+
         let decision = enforcer.check_commit(&"team-a".to_string(), &diff);
         matches!(decision, Decision::Approved);
     }
@@ -501,14 +496,14 @@ mod tests {
         let mut budget = QualityBudget::default();
         budget.current_consumption.complexity_used = 95;
         enforcer.register_team("team-b".to_string(), Some(budget));
-        
+
         let diff = DiffAnalysis {
             complexity_change: 20,
             satd_change: 0,
             coverage_change: 0.0,
             files_changed: vec!["test.rs".to_string()],
         };
-        
+
         let decision = enforcer.check_commit(&"team-b".to_string(), &diff);
         matches!(decision, Decision::Blocked { .. });
     }
@@ -525,38 +520,38 @@ mod property_tests {
 
     fn valid_budget_strategy() -> impl Strategy<Value = QualityBudget> {
         (
-            0i32..200,      // complexity_budget
-            0u32..50,       // satd_budget  
-            0.0f64..1.0,    // coverage_floor
-            0.0f64..10.0,   // regeneration_rate
-            0u64..86400,    // grace_period_secs
-        ).prop_map(|(complexity, satd, coverage, regen, grace_secs)| {
-            QualityBudget {
-                complexity_budget: complexity,
-                satd_budget: satd,
-                coverage_floor: coverage,
-                regeneration_rate: regen,
-                grace_period: Duration::from_secs(grace_secs),
-                current_consumption: BudgetConsumption::default(),
-                started_at: SystemTime::now(),
-            }
-        })
+            0i32..200,    // complexity_budget
+            0u32..50,     // satd_budget
+            0.0f64..1.0,  // coverage_floor
+            0.0f64..10.0, // regeneration_rate
+            0u64..86400,  // grace_period_secs
+        )
+            .prop_map(
+                |(complexity, satd, coverage, regen, grace_secs)| QualityBudget {
+                    complexity_budget: complexity,
+                    satd_budget: satd,
+                    coverage_floor: coverage,
+                    regeneration_rate: regen,
+                    grace_period: Duration::from_secs(grace_secs),
+                    current_consumption: BudgetConsumption::default(),
+                    started_at: SystemTime::now(),
+                },
+            )
     }
 
     fn diff_analysis_strategy() -> impl Strategy<Value = DiffAnalysis> {
         (
-            -50i32..100,     // complexity_change
-            -10i32..20,      // satd_change (can reduce SATD)
-            -0.5f64..0.1,    // coverage_change
+            -50i32..100,                                              // complexity_change
+            -10i32..20,   // satd_change (can reduce SATD)
+            -0.5f64..0.1, // coverage_change
             prop::collection::vec("[a-zA-Z0-9_-]{1,20}\\.rs", 1..10), // files_changed
-        ).prop_map(|(complexity, satd, coverage, files)| {
-            DiffAnalysis {
+        )
+            .prop_map(|(complexity, satd, coverage, files)| DiffAnalysis {
                 complexity_change: complexity,
                 satd_change: satd,
                 coverage_change: coverage,
                 files_changed: files,
-            }
-        })
+            })
     }
 
     proptest! {
@@ -576,9 +571,9 @@ mod property_tests {
         ) {
             let mut enforcer = ErrorBudgetEnforcer::new(EnforcerConfig::default());
             enforcer.register_team(team_id.clone(), budget.clone());
-            
+
             prop_assert!(enforcer.budgets.contains_key(&team_id));
-            
+
             let registered_budget = &enforcer.budgets[&team_id];
             if let Some(custom_budget) = budget {
                 prop_assert_eq!(registered_budget.complexity_budget, custom_budget.complexity_budget);
@@ -597,27 +592,27 @@ mod property_tests {
         ) {
             let mut enforcer = ErrorBudgetEnforcer::new(EnforcerConfig::default());
             enforcer.register_team(team_id.clone(), None);
-            
+
             let mut expected_complexity = 0i32;
             let mut expected_satd = 0i32;
             let mut expected_coverage = 0.0f64;
-            
+
             for diff in &diffs {
                 let _decision = enforcer.check_commit(&team_id, diff);
-                
+
                 expected_complexity += diff.complexity_change;
                 expected_satd += diff.satd_change;
                 expected_coverage += diff.coverage_change;
             }
-            
+
             let budget = &enforcer.budgets[&team_id];
-            
+
             // Complexity should accumulate (but not go negative)
             prop_assert_eq!(
                 budget.current_consumption.complexity_used,
                 expected_complexity.max(0)
             );
-            
+
             // SATD should accumulate (but not go negative)
             prop_assert_eq!(
                 budget.current_consumption.satd_used,
@@ -633,16 +628,16 @@ mod property_tests {
         ) {
             let mut enforcer = ErrorBudgetEnforcer::new(EnforcerConfig::default());
             enforcer.register_team(team_id.clone(), Some(budget.clone()));
-            
+
             let decision = enforcer.check_commit(&team_id, &diff);
-            
+
             // Calculate if change would exceed budget
             let new_complexity = (budget.current_consumption.complexity_used + diff.complexity_change.max(0)).max(0);
             let new_satd = (budget.current_consumption.satd_used as i32 + diff.satd_change.max(0)).max(0) as u32;
-            
+
             let complexity_exceeded = new_complexity > budget.complexity_budget;
             let satd_exceeded = new_satd > budget.satd_budget;
-            
+
             match decision {
                 Decision::Approved => {
                     prop_assert!(!complexity_exceeded && !satd_exceeded);
@@ -670,21 +665,21 @@ mod property_tests {
         ) {
             budget.current_consumption.complexity_used = budget.complexity_budget / 2;
             budget.current_consumption.satd_used = budget.satd_budget / 2;
-            
+
             let mut enforcer = ErrorBudgetEnforcer::new(EnforcerConfig::default());
             enforcer.register_team(team_id.clone(), Some(budget.clone()));
-            
+
             // Simulate time passage
             let _elapsed_duration = Duration::from_secs((days_elapsed * 24.0 * 3600.0) as u64);
             enforcer.regenerate_budgets();
-            
+
             let updated_budget = &enforcer.budgets[&team_id];
-            
+
             // Budget should regenerate (reduce consumption)
             if budget.regeneration_rate > 0.0 && days_elapsed > 0.0 {
                 let expected_reduction = (budget.regeneration_rate * days_elapsed) as i32;
                 let expected_complexity = (budget.current_consumption.complexity_used - expected_reduction).max(0);
-                
+
                 prop_assert!(updated_budget.current_consumption.complexity_used <= budget.current_consumption.complexity_used);
                 prop_assert!(updated_budget.current_consumption.complexity_used >= 0);
             }
@@ -698,7 +693,7 @@ mod property_tests {
         ) {
             let mut enforcer = ErrorBudgetEnforcer::new(EnforcerConfig::default());
             enforcer.register_team(team_id.clone(), None);
-            
+
             // Create a scenario where budget is exceeded
             let large_diff = DiffAnalysis {
                 complexity_change: 1000, // Very large change
@@ -706,9 +701,9 @@ mod property_tests {
                 coverage_change: -0.5,
                 files_changed: files.clone(),
             };
-            
+
             let decision = enforcer.check_commit(&team_id, &large_diff);
-            
+
             match decision {
                 Decision::Blocked { refactor_targets, .. } => {
                     for target in refactor_targets {
@@ -739,7 +734,7 @@ mod property_tests {
                 },
                 overrides: HashMap::new(),
             };
-            
+
             prop_assert!(rules.escalation.warning_threshold >= 0.0);
             prop_assert!(rules.escalation.approval_threshold >= 0.0);
             prop_assert!(rules.escalation.block_threshold >= 0.0);
@@ -752,34 +747,34 @@ mod property_tests {
         ) {
             let mut db = TimeSeriesDB::new();
             let now = SystemTime::now();
-            
+
             for (i, measurement) in measurements.iter().enumerate() {
                 let timestamp = now + Duration::from_secs(i as u64 * 3600); // Hourly measurements
                 db.record_measurement(&team_id, timestamp, *measurement as f64);
             }
-            
+
             // Should be able to query the data
             let recent = db.get_recent_measurements(&team_id, Duration::from_secs(24 * 3600));
             prop_assert!(!recent.is_empty());
             prop_assert!(recent.len() <= 24); // At most 24 hours of hourly data
-            
+
             // We should have gotten some measurements back
             // The actual values don't matter for this test, just that they exist
             prop_assert!(recent.len() <= measurements.len());
         }
 
-        #[test]  
+        #[test]
         fn concurrent_team_operations_safe(
             teams in prop::collection::vec(team_id_strategy(), 1..10),
             operations_per_team in 1usize..20
         ) {
             let mut enforcer = ErrorBudgetEnforcer::new(EnforcerConfig::default());
-            
+
             // Register teams
             for team in &teams {
                 enforcer.register_team(team.clone(), None);
             }
-            
+
             // Simulate concurrent operations
             for team in &teams {
                 for _ in 0..operations_per_team {
@@ -789,11 +784,11 @@ mod property_tests {
                         coverage_change: -0.01,
                         files_changed: vec!["test.rs".to_string()],
                     };
-                    
+
                     let _decision = enforcer.check_commit(team, &diff);
                 }
             }
-            
+
             // All teams should still be registered
             for team in &teams {
                 prop_assert!(enforcer.budgets.contains_key(team));
@@ -809,21 +804,21 @@ mod property_tests {
             let mut budget = QualityBudget::default();
             budget.grace_period = Duration::from_secs(grace_period_days * 24 * 3600);
             budget.started_at = SystemTime::now() - Duration::from_secs(elapsed_days * 24 * 3600);
-            
+
             let mut enforcer = ErrorBudgetEnforcer::new(EnforcerConfig::default());
             enforcer.register_team(team_id.clone(), Some(budget.clone()));
-            
+
             let large_diff = DiffAnalysis {
                 complexity_change: 200, // Exceeds default budget
                 satd_change: 60,
                 coverage_change: -0.6,
                 files_changed: vec!["test.rs".to_string()],
             };
-            
+
             let decision = enforcer.check_commit(&team_id, &large_diff);
-            
+
             let grace_period_active = elapsed_days < grace_period_days;
-            
+
             match decision {
                 Decision::Blocked { .. } => {
                     // Should only be blocked if grace period is over

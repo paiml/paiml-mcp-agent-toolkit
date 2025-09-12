@@ -18,10 +18,10 @@ mod tests;
 pub mod uniform_cli_commands;
 pub mod versioning;
 
+use crate::utils::path_validator::PathValidator;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use thiserror::Error;
-use crate::utils::path_validator::PathValidator;
 
 #[derive(Debug, Error)]
 pub enum ContractError {
@@ -367,10 +367,12 @@ impl ContractValidation for AnalyzeEntropyContract {
         // Validate severity level if provided
         if let Some(severity) = &self.min_severity {
             match severity.as_str() {
-                "low" | "medium" | "high" => {},
-                _ => return Err(ContractError::InvalidValue(
-                    "min_severity must be 'low', 'medium', or 'high'".into()
-                )),
+                "low" | "medium" | "high" => {}
+                _ => {
+                    return Err(ContractError::InvalidValue(
+                        "min_severity must be 'low', 'medium', or 'high'".into(),
+                    ))
+                }
             }
         }
 
@@ -434,7 +436,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

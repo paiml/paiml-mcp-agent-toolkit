@@ -13,6 +13,7 @@ use std::path::PathBuf;
 // Re-export test module
 #[cfg(test)]
 mod tests {
+    #[allow(unused_imports)]
     pub use super::super::similarity_tests::*;
 }
 
@@ -364,7 +365,7 @@ impl SimilarityDetector {
         for mat in ident_pattern.find_iter(text) {
             if !self.is_keyword(mat.as_str()) {
                 counter += 1;
-                result = result.replace(mat.as_str(), &format!("VAR{}", counter));
+                result = result.replace(mat.as_str(), &format!("VAR{counter}"));
             }
         }
 
@@ -420,7 +421,7 @@ impl SimilarityDetector {
                 let tokens = self.count_tokens(content);
 
                 blocks.push(SimilarBlock {
-                    id: format!("{:x}", hash),
+                    id: format!("{hash:x}"),
                     locations: locations
                         .iter()
                         .map(|(path, start, end, _)| Location {
@@ -776,7 +777,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

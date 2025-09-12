@@ -101,18 +101,18 @@ pub mod ast; // Unified AST module for all language parsing
 pub mod cli;
 pub mod contracts; // Uniform contracts across ALL interfaces (CLI, MCP, HTTP)
 pub mod demo;
+pub mod entropy; // Actionable entropy analysis
 pub mod handlers;
 pub mod mcp_pmcp; // Now always available with pmcp 1.0
 pub mod mcp_server;
 pub mod models;
 pub mod protocol; // Unified protocol design per SPECIFICATION.md Section 3
+pub mod qdd; // Quality-Driven Development tool
 pub mod roadmap; // Roadmap-driven development with quality gates
 pub mod scaffold;
 pub mod services;
 pub mod stateless_server;
 pub mod tdg; // Technical Debt Grading system
-pub mod qdd; // Quality-Driven Development tool
-pub mod entropy; // Actionable entropy analysis
 pub mod test_performance; // Performance testing per SPECIFICATION.md Section 30
                           // #[cfg(test)]
                           // pub mod testing;
@@ -187,8 +187,8 @@ pub type MetadataCache = Arc<RwLock<LruCache<String, Arc<TemplateResource>>>>;
 pub type ContentCache = Arc<RwLock<LruCache<String, Arc<str>>>>;
 
 // Re-exports for test compatibility
-pub use crate::services::renderer::TemplateRenderer as PublicTemplateRenderer;
 pub use crate::models::template::TemplateResource as PublicTemplateResource;
+pub use crate::services::renderer::TemplateRenderer as PublicTemplateRenderer;
 
 /// Placeholder S3 client for template storage operations.
 ///
@@ -626,7 +626,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

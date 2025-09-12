@@ -29,19 +29,32 @@ pub async fn handle_analyze_defect_prediction(
     print_analysis_header(&project_path, confidence_threshold, high_risk_only);
 
     let config = create_defect_prediction_config(
-        confidence_threshold, min_lines, include_low_confidence,
-        high_risk_only, include_recommendations, include, exclude
+        confidence_threshold,
+        min_lines,
+        include_low_confidence,
+        high_risk_only,
+        include_recommendations,
+        include,
+        exclude,
     );
 
     let files = discover_and_validate_files(&project_path, &config).await?;
     let predictions = calculate_defect_predictions(&files)?;
     let filtered_predictions = filter_and_sort_predictions(
-        predictions, high_risk_only, include_low_confidence, 
-        confidence_threshold, top_files
+        predictions,
+        high_risk_only,
+        include_low_confidence,
+        confidence_threshold,
+        top_files,
     );
 
     let elapsed = start_time.elapsed();
-    let content = format_defect_output(format, &filtered_predictions, elapsed, include_recommendations)?;
+    let content = format_defect_output(
+        format,
+        &filtered_predictions,
+        elapsed,
+        include_recommendations,
+    )?;
     output_results(content, output, perf, elapsed).await?;
 
     Ok(())
@@ -52,19 +65,19 @@ pub async fn handle_analyze_defect_prediction(
 fn print_analysis_header(project_path: &Path, confidence_threshold: f32, high_risk_only: bool) {
     eprintln!("🔮 Analyzing defect probability using ML-based analysis...");
     eprintln!("📁 Project path: {}", project_path.display());
-    eprintln!("🎯 Confidence threshold: {}", confidence_threshold);
-    eprintln!("📊 High risk only: {}", high_risk_only);
+    eprintln!("🎯 Confidence threshold: {confidence_threshold}");
+    eprintln!("📊 High risk only: {high_risk_only}");
 }
 
 /// Toyota Way: Extract Method - Create configuration object
 fn create_defect_prediction_config(
     confidence_threshold: f32,
-    min_lines: usize, 
+    min_lines: usize,
     include_low_confidence: bool,
     high_risk_only: bool,
     include_recommendations: bool,
     include: Option<String>,
-    exclude: Option<String>
+    exclude: Option<String>,
 ) -> DefectPredictionConfig {
     DefectPredictionConfig {
         confidence_threshold,
@@ -79,27 +92,27 @@ fn create_defect_prediction_config(
 
 /// Toyota Way: Extract Method - Discover and validate files for analysis
 async fn discover_and_validate_files(
-    project_path: &Path, 
-    config: &DefectPredictionConfig
+    project_path: &Path,
+    config: &DefectPredictionConfig,
 ) -> Result<Vec<(std::path::PathBuf, String, usize)>> {
     let files = discover_files_for_defect_analysis(project_path, config).await?;
     eprintln!("📂 Found {} files matching criteria", files.len());
-    
+
     if files.is_empty() {
         eprintln!("⚠️  No files found matching the criteria");
         return Err(anyhow::anyhow!("No files found matching criteria"));
     }
-    
+
     Ok(files)
 }
 
 /// Toyota Way: Extract Method - Calculate defect predictions using ML service
 fn calculate_defect_predictions(
-    files: &[(std::path::PathBuf, String, usize)]
+    files: &[(std::path::PathBuf, String, usize)],
 ) -> Result<Vec<(String, DefectScore)>> {
     let file_metrics = collect_file_metrics(files);
     let calculator = DefectProbabilityCalculator::new();
-    
+
     Ok(file_metrics
         .into_iter()
         .map(|metrics| {
@@ -115,31 +128,31 @@ fn filter_and_sort_predictions(
     high_risk_only: bool,
     include_low_confidence: bool,
     confidence_threshold: f32,
-    top_files: usize
+    top_files: usize,
 ) -> Vec<(String, DefectScore)> {
     if high_risk_only {
         predictions.retain(|(_, score)| score.probability > 0.7);
     }
-    
+
     if !include_low_confidence {
         predictions.retain(|(_, score)| score.confidence > confidence_threshold);
     }
-    
+
     predictions.sort_by(|a, b| b.1.probability.partial_cmp(&a.1.probability).unwrap());
-    
+
     if top_files > 0 && predictions.len() > top_files {
         predictions.truncate(top_files);
     }
-    
+
     predictions
 }
 
 /// Toyota Way: Extract Method - Format defect output based on format type
 fn format_defect_output(
     format: DefectPredictionOutputFormat,
-    predictions: &[(String, DefectScore)], 
+    predictions: &[(String, DefectScore)],
     elapsed: std::time::Duration,
-    include_recommendations: bool
+    include_recommendations: bool,
 ) -> Result<String> {
     match format {
         DefectPredictionOutputFormat::Summary => format_defect_summary(predictions, elapsed),
@@ -156,22 +169,22 @@ fn format_defect_output(
 async fn output_results(
     content: String,
     output: Option<PathBuf>,
-    perf: bool, 
-    elapsed: std::time::Duration
+    perf: bool,
+    elapsed: std::time::Duration,
 ) -> Result<()> {
     if perf {
-        eprintln!("⏱️  Analysis completed in {:.2?}", elapsed);
+        eprintln!("⏱️  Analysis completed in {elapsed:.2?}");
     }
-    
+
     eprintln!("✅ Defect prediction complete");
-    
+
     if let Some(output_path) = output {
         tokio::fs::write(&output_path, &content).await?;
         eprintln!("📝 Written to {}", output_path.display());
     } else {
-        println!("{}", content);
+        println!("{content}");
     }
-    
+
     Ok(())
 }
 
@@ -181,12 +194,12 @@ fn format_defect_summary(
     elapsed: std::time::Duration,
 ) -> Result<String> {
     let mut output = String::new();
-    
+
     write_summary_header(&mut output)?;
     write_risk_distribution(&mut output, predictions)?;
     write_top_risk_files(&mut output, predictions)?;
     write_summary_footer(&mut output, elapsed)?;
-    
+
     Ok(output)
 }
 
@@ -200,39 +213,55 @@ fn write_summary_header(output: &mut String) -> Result<()> {
 }
 
 /// Toyota Way: Extract Method - Calculate and write risk distribution
-fn write_risk_distribution(output: &mut String, predictions: &[(String, DefectScore)]) -> Result<()> {
+fn write_risk_distribution(
+    output: &mut String,
+    predictions: &[(String, DefectScore)],
+) -> Result<()> {
     use std::fmt::Write;
-    
+
     let risk_stats = calculate_risk_statistics(predictions);
-    
+
     writeln!(output, "📊 Risk Distribution:")?;
     writeln!(output, "  🔴 High risk:   {} files", risk_stats.high_risk)?;
     writeln!(output, "  🟡 Medium risk: {} files", risk_stats.medium_risk)?;
     writeln!(output, "  🟢 Low risk:    {} files", risk_stats.low_risk)?;
     writeln!(output)?;
-    
+
     Ok(())
 }
 
 /// Toyota Way: Extract Method - Risk statistics calculation
 struct RiskStatistics {
     high_risk: usize,
-    medium_risk: usize, 
+    medium_risk: usize,
     low_risk: usize,
 }
 
 fn calculate_risk_statistics(predictions: &[(String, DefectScore)]) -> RiskStatistics {
-    let high_risk = predictions.iter().filter(|(_, s)| s.probability > 0.7).count();
-    let medium_risk = predictions.iter().filter(|(_, s)| s.probability > 0.3 && s.probability <= 0.7).count();
-    let low_risk = predictions.iter().filter(|(_, s)| s.probability <= 0.3).count();
-    
-    RiskStatistics { high_risk, medium_risk, low_risk }
+    let high_risk = predictions
+        .iter()
+        .filter(|(_, s)| s.probability > 0.7)
+        .count();
+    let medium_risk = predictions
+        .iter()
+        .filter(|(_, s)| s.probability > 0.3 && s.probability <= 0.7)
+        .count();
+    let low_risk = predictions
+        .iter()
+        .filter(|(_, s)| s.probability <= 0.3)
+        .count();
+
+    RiskStatistics {
+        high_risk,
+        medium_risk,
+        low_risk,
+    }
 }
 
 /// Toyota Way: Extract Method - Write top risk files section
 fn write_top_risk_files(output: &mut String, predictions: &[(String, DefectScore)]) -> Result<()> {
     use std::fmt::Write;
-    
+
     if !predictions.is_empty() {
         writeln!(output, "🎯 Top Risk Files:")?;
         for (file, score) in predictions.iter().take(10) {
@@ -247,7 +276,7 @@ fn write_top_risk_files(output: &mut String, predictions: &[(String, DefectScore
             )?;
         }
     }
-    
+
     Ok(())
 }
 
@@ -264,7 +293,7 @@ fn get_risk_icon(risk_level: &crate::services::defect_probability::RiskLevel) ->
 fn write_summary_footer(output: &mut String, elapsed: std::time::Duration) -> Result<()> {
     use std::fmt::Write;
     writeln!(output)?;
-    writeln!(output, "⏱️  Analysis time: {:.2?}", elapsed)?;
+    writeln!(output, "⏱️  Analysis time: {elapsed:.2?}")?;
     Ok(())
 }
 
@@ -333,7 +362,7 @@ fn write_file_details(
 ) -> Result<()> {
     use std::fmt::Write;
 
-    writeln!(output, "📄 File: {}", file)?;
+    writeln!(output, "📄 File: {file}")?;
     write_risk_level(output, score)?;
     write_confidence_level(output, score)?;
     write_contributing_factors(output, score)?;
@@ -402,7 +431,7 @@ fn write_recommendations(output: &mut String, score: &DefectScore) -> Result<()>
 
     writeln!(output, "   Recommendations:")?;
     for rec in &score.recommendations {
-        writeln!(output, "     • {}", rec)?;
+        writeln!(output, "     • {rec}")?;
     }
     Ok(())
 }
@@ -410,7 +439,7 @@ fn write_recommendations(output: &mut String, score: &DefectScore) -> Result<()>
 /// Write analysis footer with timing
 fn write_analysis_footer(output: &mut String, elapsed: std::time::Duration) -> Result<()> {
     use std::fmt::Write;
-    writeln!(output, "⏱️  Analysis time: {:.2?}", elapsed)?;
+    writeln!(output, "⏱️  Analysis time: {elapsed:.2?}")?;
     Ok(())
 }
 
@@ -509,7 +538,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

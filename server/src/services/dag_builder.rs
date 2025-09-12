@@ -306,7 +306,7 @@ impl DagBuilder {
 
                     // Also create edges for specific imported items
                     for item in items {
-                        let full_path = format!("{}.{}", module, item);
+                        let full_path = format!("{module}.{item}");
                         if let Some(target_id) = self.resolve_import_path(&full_path) {
                             self.add_edge(Edge {
                                 from: file_module_id.clone(),
@@ -681,7 +681,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

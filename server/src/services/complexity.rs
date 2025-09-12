@@ -201,10 +201,10 @@ impl ComplexityMetrics {
     /// ```
     pub fn complexity_score(&self) -> f64 {
         // Weighted combination of complexity metrics
-        (self.cyclomatic as f64 * 1.0) +
-        (self.cognitive as f64 * 1.2) +
-        (self.nesting_max as f64 * 2.0) +
-        (self.lines as f64 * 0.1)
+        (self.cyclomatic as f64 * 1.0)
+            + (self.cognitive as f64 * 1.2)
+            + (self.nesting_max as f64 * 2.0)
+            + (self.lines as f64 * 0.1)
     }
 }
 
@@ -277,10 +277,15 @@ impl HalsteadMetrics {
     /// assert_eq!(metrics.operands_unique, 6);
     /// assert_eq!(metrics.volume, 0.0); // Not calculated yet
     /// ```
-    pub fn new(operators_unique: u32, operands_unique: u32, operators_total: u32, operands_total: u32) -> Self {
+    pub fn new(
+        operators_unique: u32,
+        operands_unique: u32,
+        operators_total: u32,
+        operands_total: u32,
+    ) -> Self {
         Self {
             operators_unique,
-            operands_unique, 
+            operands_unique,
             operators_total,
             operands_total,
             volume: 0.0,
@@ -303,7 +308,7 @@ impl HalsteadMetrics {
     ///
     /// let base = HalsteadMetrics::new(10, 8, 25, 20);
     /// let calculated = base.calculate_derived();
-    /// 
+    ///
     /// assert!(calculated.volume > 0.0);
     /// assert!(calculated.difficulty > 0.0);
     /// assert!(calculated.effort > 0.0);
@@ -326,8 +331,8 @@ impl HalsteadMetrics {
 
         // D = (n1/2) * (N2/n2) - Program Difficulty
         if self.operands_unique > 0 {
-            self.difficulty = (self.operators_unique as f64 / 2.0) * 
-                             (self.operands_total as f64 / self.operands_unique as f64);
+            self.difficulty = (self.operators_unique as f64 / 2.0)
+                * (self.operands_total as f64 / self.operands_unique as f64);
         }
 
         // E = V * D - Programming Effort
@@ -337,7 +342,7 @@ impl HalsteadMetrics {
         self.time = self.effort / 18.0;
 
         // B = E^(2/3) / 3000 - Delivered bugs estimate
-        self.bugs = self.effort.powf(2.0/3.0) / 3000.0;
+        self.bugs = self.effort.powf(2.0 / 3.0) / 3000.0;
 
         self
     }
@@ -2355,7 +2360,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

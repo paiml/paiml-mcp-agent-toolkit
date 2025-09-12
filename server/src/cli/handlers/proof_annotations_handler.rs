@@ -4,11 +4,11 @@
 
 use crate::cli::proof_annotation_helpers::*;
 use crate::cli::{ProofAnnotationOutputFormat, PropertyTypeFilter, VerificationMethodFilter};
+use crate::models::unified_ast::{Location, ProofAnnotation};
+use crate::services::proof_annotator::ProofAnnotator;
 use anyhow::Result;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
-use crate::models::unified_ast::{Location, ProofAnnotation};
-use crate::services::proof_annotator::ProofAnnotator;
 
 /// Refactored handler for proof annotations analysis.
 #[allow(clippy::too_many_arguments)]
@@ -44,12 +44,12 @@ pub async fn handle_analyze_proof_annotations(
 
     // Format output using helpers
     let content = format_proof_annotations(
-        format, 
-        &annotations, 
-        elapsed, 
-        &annotator, 
-        &project_path, 
-        include_evidence
+        format,
+        &annotations,
+        elapsed,
+        &annotator,
+        &project_path,
+        include_evidence,
     )?;
 
     // Write output
@@ -57,7 +57,7 @@ pub async fn handle_analyze_proof_annotations(
         tokio::fs::write(&output_path, &content).await?;
         eprintln!("✅ Proof annotations written to: {}", output_path.display());
     } else {
-        println!("{}", content);
+        println!("{content}");
     }
 
     Ok(())
@@ -96,7 +96,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

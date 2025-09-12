@@ -48,7 +48,7 @@ pub async fn analyze_typescript_file_with_complexity_and_classifier(
     let mut function_metrics = Vec::new();
     for (i, _node) in functions.iter().enumerate() {
         function_metrics.push(FunctionComplexity {
-            name: format!("function_{}", i),
+            name: format!("function_{i}"),
             line_start: (i * 10) as u32,
             line_end: ((i + 1) * 10) as u32,
             metrics: ComplexityMetrics {
@@ -66,7 +66,7 @@ pub async fn analyze_typescript_file_with_complexity_and_classifier(
     let mut class_metrics = Vec::new();
     for (i, _node) in types.iter().enumerate() {
         class_metrics.push(ClassComplexity {
-            name: format!("class_{}", i),
+            name: format!("class_{i}"),
             line_start: ((functions.len() + i) * 10) as u32,
             line_end: ((functions.len() + i + 1) * 10) as u32,
             methods: Vec::new(),
@@ -130,7 +130,7 @@ pub async fn analyze_typescript_file_with_classifier(
     // Add functions as items
     for (i, _node) in functions.iter().enumerate() {
         items.push(AstItem::Function {
-            name: format!("function_{}", i),
+            name: format!("function_{i}"),
             visibility: "public".to_string(),
             is_async: false,
             line: i * 10,
@@ -140,7 +140,7 @@ pub async fn analyze_typescript_file_with_classifier(
     // Add classes and interfaces as items (using Struct variant)
     for (i, _node) in types.iter().enumerate() {
         items.push(AstItem::Struct {
-            name: format!("class_{}", i),
+            name: format!("class_{i}"),
             visibility: "public".to_string(),
             fields_count: 0,
             derives: vec![],
@@ -187,7 +187,7 @@ pub async fn analyze_javascript_file_with_complexity_and_classifier(
     let mut function_metrics = Vec::new();
     for (i, _node) in functions.iter().enumerate() {
         function_metrics.push(FunctionComplexity {
-            name: format!("function_{}", i),
+            name: format!("function_{i}"),
             line_start: (i * 10) as u32,
             line_end: ((i + 1) * 10) as u32,
             metrics: ComplexityMetrics {
@@ -250,7 +250,7 @@ pub async fn analyze_javascript_file_with_classifier(
     // Add functions as items
     for (i, _node) in functions.iter().enumerate() {
         items.push(AstItem::Function {
-            name: format!("function_{}", i),
+            name: format!("function_{i}"),
             visibility: "".to_string(), // JavaScript doesn't have visibility modifiers
             is_async: false,
             line: i * 10,
@@ -260,7 +260,7 @@ pub async fn analyze_javascript_file_with_classifier(
     // Add classes as items (using Struct variant)
     for (i, _node) in types.iter().enumerate() {
         items.push(AstItem::Struct {
-            name: format!("class_{}", i),
+            name: format!("class_{i}"),
             visibility: "".to_string(),
             fields_count: 0,
             derives: vec![],
@@ -287,7 +287,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

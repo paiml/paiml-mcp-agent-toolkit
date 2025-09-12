@@ -772,7 +772,7 @@ pub mod handlers {
         let result = detector
             .analyze_project(project_path, !params.exclude_tests.unwrap_or(true))
             .await
-            .map_err(|e| AppError::Analysis(format!("SATD analysis failed: {}", e)))?;
+            .map_err(|e| AppError::Analysis(format!("SATD analysis failed: {e}")))?;
 
         // Group items by file
         let mut files_map: std::collections::HashMap<
@@ -802,7 +802,7 @@ pub mod handlers {
                 .summary
                 .by_category
                 .into_iter()
-                .map(|(k, v)| (format!("{:?}", k), v))
+                .map(|(k, v)| (format!("{k:?}"), v))
                 .collect(),
             files: files_map
                 .into_iter()
@@ -841,7 +841,7 @@ pub mod handlers {
 
         // Create a temporary file to capture output
         let temp_file = tempfile::NamedTempFile::new()
-            .map_err(|e| AppError::Analysis(format!("Failed to create temporary file: {}", e)))?;
+            .map_err(|e| AppError::Analysis(format!("Failed to create temporary file: {e}")))?;
         let output_path = temp_file.path().to_path_buf();
 
         // Run lint hotspot analysis using the CLI handler with JSON output
@@ -862,14 +862,14 @@ pub mod handlers {
             Vec::new(), // exclude
         )
         .await
-        .map_err(|e| AppError::Analysis(format!("Lint hotspot analysis failed: {}", e)))?;
+        .map_err(|e| AppError::Analysis(format!("Lint hotspot analysis failed: {e}")))?;
 
         // Read and parse the JSON output
         let json_output = tokio::fs::read_to_string(&output_path)
             .await
-            .map_err(|e| AppError::Analysis(format!("Failed to read output file: {}", e)))?;
+            .map_err(|e| AppError::Analysis(format!("Failed to read output file: {e}")))?;
         let lint_data: serde_json::Value = serde_json::from_str(&json_output)
-            .map_err(|e| AppError::Analysis(format!("Failed to parse JSON output: {}", e)))?;
+            .map_err(|e| AppError::Analysis(format!("Failed to parse JSON output: {e}")))?;
 
         // Extract data from JSON
         let hotspots_data = lint_data["hotspots"].as_array().unwrap_or(&vec![]).clone();
@@ -1721,7 +1721,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

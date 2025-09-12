@@ -1,37 +1,37 @@
 //! Foundation Layer: Real-time Monitoring Engine
-//! 
+//!
 //! Phase 1 Implementation (Months 1-3)
 //! Practical monitoring using proven technologies
 
 use anyhow::Result;
+use crossbeam_channel;
 use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
+use parking_lot::RwLock as ParkingLotRwLock;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 use tracing::info;
-use crossbeam_channel;
-use parking_lot::RwLock as ParkingLotRwLock;
 
-use crate::unified_quality::metrics::Metrics;
-use crate::unified_quality::events::QualityEvent;
 use crate::unified_quality::enhanced_parser::EnhancedParser;
+use crate::unified_quality::events::QualityEvent;
+use crate::unified_quality::metrics::Metrics;
 
 /// Practical monitoring using proven technologies
 pub struct QualityMonitor {
     /// FSEvents/inotify for cross-platform file watching
     watcher: Arc<ParkingLotRwLock<Option<RecommendedWatcher>>>,
-    
+
     /// Tree-sitter for incremental parsing (5-10ms latency)
     parser: Arc<std::sync::Mutex<EnhancedParser>>,
-    
+
     /// Lock-free metrics storage
     metrics: Arc<dashmap::DashMap<PathBuf, Metrics>>,
-    
+
     /// Crossbeam channel for bounded memory usage
     events: crossbeam_channel::Sender<QualityEvent>,
-    
+
     /// Configuration
     config: MonitorConfig,
 }
@@ -41,22 +41,22 @@ pub struct QualityMonitor {
 pub struct MonitorConfig {
     /// Update interval for periodic checks
     pub update_interval: Duration,
-    
+
     /// Complexity threshold for alerts
     pub complexity_threshold: u32,
-    
+
     /// File patterns to watch
     pub watch_patterns: Vec<String>,
-    
+
     /// Debounce interval to avoid excessive notifications
     pub debounce_interval: Duration,
-    
+
     /// Maximum number of files to analyze per batch
     pub max_batch_size: usize,
-    
+
     /// Enable incremental parsing
     pub incremental_parsing: bool,
-    
+
     /// Cache AST for performance
     pub cache_ast: bool,
 }
@@ -80,7 +80,6 @@ impl Default for MonitorConfig {
     }
 }
 
-
 /// File change event
 #[derive(Debug, Clone)]
 pub struct FileChange {
@@ -94,7 +93,7 @@ impl QualityMonitor {
     /// Create a new quality monitor
     pub fn new(config: MonitorConfig) -> Result<Self> {
         let (tx, _rx) = crossbeam_channel::bounded(1000);
-        
+
         Ok(Self {
             watcher: Arc::new(ParkingLotRwLock::new(None)),
             parser: Arc::new(std::sync::Mutex::new(EnhancedParser::new())),
@@ -103,17 +102,17 @@ impl QualityMonitor {
             config,
         })
     }
-    
+
     /// Start monitoring a directory
     pub async fn start_monitoring(&mut self, path: PathBuf) -> Result<()> {
         info!("Starting quality monitoring for: {:?}", path);
-        
+
         // Create file system watcher
         let events = self.events.clone();
         let metrics = self.metrics.clone();
         let parser = self.parser.clone();
         let config = self.config.clone();
-        
+
         let mut watcher = RecommendedWatcher::new(
             move |result: notify::Result<Event>| {
                 if let Ok(event) = result {
@@ -122,34 +121,34 @@ impl QualityMonitor {
             },
             Config::default(),
         )?;
-        
+
         // Start watching the directory
         watcher.watch(&path, RecursiveMode::Recursive)?;
-        
+
         // Store watcher
         {
             let mut guard = self.watcher.write();
             *guard = Some(watcher);
         }
-        
+
         // Perform initial analysis
         self.analyze_directory(&path).await?;
-        
+
         Ok(())
     }
-    
+
     /// Analyze incremental changes with O(log n) complexity
     pub fn analyze_incremental(&self, change: FileChange) -> Result<Metrics> {
         // Use real tree-sitter incremental parsing
         let mut parser = self.parser.lock().unwrap();
         parser.parse_incremental(&change.path, &change.content)
     }
-    
+
     /// Get current metrics for a file
     pub fn get_metrics(&self, path: &Path) -> Option<Metrics> {
         self.metrics.get(path).map(|entry| entry.clone())
     }
-    
+
     /// Get all metrics
     pub fn get_all_metrics(&self) -> HashMap<PathBuf, Metrics> {
         self.metrics
@@ -157,13 +156,13 @@ impl QualityMonitor {
             .map(|entry| (entry.key().clone(), entry.value().clone()))
             .collect()
     }
-    
+
     /// Subscribe to quality events
     pub fn subscribe(&self) -> crossbeam_channel::Receiver<QualityEvent> {
         let (_tx, rx) = crossbeam_channel::bounded(100);
         rx
     }
-    
+
     /// Handle file system events
     fn handle_fs_event(
         event: Event,
@@ -183,11 +182,14 @@ impl QualityMonitor {
                                 old_tree: None,
                                 timestamp: SystemTime::now(),
                             };
-                            
+
                             if let Ok(mut parser_lock) = parser.lock() {
-                                if let Ok(new_metrics) = parser_lock.parse_incremental(&path, &content) {
-                                    let old_metrics = metrics.insert(path.clone(), new_metrics.clone());
-                                    
+                                if let Ok(new_metrics) =
+                                    parser_lock.parse_incremental(&path, &content)
+                                {
+                                    let old_metrics =
+                                        metrics.insert(path.clone(), new_metrics.clone());
+
                                     let event = if let Some(old) = old_metrics {
                                         QualityEvent::MetricsUpdated {
                                             path: path.clone(),
@@ -200,7 +202,7 @@ impl QualityMonitor {
                                             metrics: new_metrics,
                                         }
                                     };
-                                    
+
                                     let _ = events.try_send(event);
                                 }
                             }
@@ -221,7 +223,7 @@ impl QualityMonitor {
             _ => {}
         }
     }
-    
+
     /// Check if file should be analyzed
     fn should_analyze(path: &Path, patterns: &[String]) -> bool {
         let path_str = path.to_string_lossy();
@@ -234,13 +236,13 @@ impl QualityMonitor {
             }
         })
     }
-    
+
     /// Analyze entire directory
     async fn analyze_directory(&self, path: &Path) -> Result<()> {
         use walkdir::WalkDir;
-        
+
         let mut batch = Vec::new();
-        
+
         for entry in WalkDir::new(path)
             .follow_links(true)
             .into_iter()
@@ -249,25 +251,25 @@ impl QualityMonitor {
             let path = entry.path();
             if path.is_file() && Self::should_analyze(path, &self.config.watch_patterns) {
                 batch.push(path.to_path_buf());
-                
+
                 if batch.len() >= self.config.max_batch_size {
                     self.analyze_batch(&batch).await?;
                     batch.clear();
                 }
             }
         }
-        
+
         if !batch.is_empty() {
             self.analyze_batch(&batch).await?;
         }
-        
+
         Ok(())
     }
-    
+
     /// Analyze a batch of files
     async fn analyze_batch(&self, paths: &[PathBuf]) -> Result<()> {
         // use rayon::prelude::*; // Currently unused
-        
+
         let results: Vec<_> = paths
             .iter()
             .filter_map(|path| {
@@ -280,17 +282,16 @@ impl QualityMonitor {
                 })
             })
             .collect();
-        
+
         for (path, result) in results {
             if let Ok(metrics) = result {
                 self.metrics.insert(path, metrics);
             }
         }
-        
+
         Ok(())
     }
 }
-
 
 // Re-export dashmap for metrics storage
 pub use dashmap::DashMap;
@@ -310,17 +311,17 @@ mod tests {
     #[test]
     fn test_should_analyze() {
         let patterns = vec!["**/*.rs".to_string(), "**/*.py".to_string()];
-        
+
         assert!(QualityMonitor::should_analyze(
             Path::new("src/main.rs"),
             &patterns
         ));
-        
+
         assert!(QualityMonitor::should_analyze(
             Path::new("test.py"),
             &patterns
         ));
-        
+
         assert!(!QualityMonitor::should_analyze(
             Path::new("README.md"),
             &patterns
@@ -332,7 +333,7 @@ mod tests {
         let mut parser = EnhancedParser::new();
         let path = PathBuf::from("test.rs");
         let code = "fn main() { if true { } }";
-        
+
         let metrics = parser.parse_incremental(&path, code).unwrap();
         assert!(metrics.complexity > 0);
         assert!(metrics.functions > 0);
@@ -369,7 +370,7 @@ mod property_tests {
                 incremental_parsing: true,
                 cache_ast: true,
             };
-            
+
             prop_assert!(config.complexity_threshold > 0);
             prop_assert!(config.max_batch_size > 0);
             prop_assert!(config.update_interval.as_secs() > 0);
@@ -384,10 +385,10 @@ mod property_tests {
             let patterns = vec![format!("**/*.{}", extension)];
             let test_file = format!("{}.{}", filename, extension);
             let path = Path::new(&test_file);
-            
+
             let matches = QualityMonitor::should_analyze(path, &patterns);
             prop_assert!(matches == true);
-            
+
             // Test non-matching extension
             let wrong_file = format!("{}.txt", filename);
             let wrong_path = Path::new(&wrong_file);
@@ -409,10 +410,10 @@ mod property_tests {
                 incremental_parsing: true,
                 cache_ast: true,
             };
-            
+
             let monitor_result = QualityMonitor::new(config);
             prop_assert!(monitor_result.is_ok());
-            
+
             let monitor = monitor_result.unwrap();
             prop_assert_eq!(monitor.metrics.len(), 0);
         }
@@ -424,14 +425,14 @@ mod property_tests {
         ) {
             let path_str = path_components.join("/") + ".rs";
             let path = PathBuf::from(path_str);
-            
+
             let file_change = FileChange {
                 path: path.clone(),
                 content: content.clone(),
                 old_tree: None,
                 timestamp: SystemTime::now(),
             };
-            
+
             prop_assert_eq!(file_change.path, path);
             prop_assert_eq!(file_change.content, content);
             prop_assert!(file_change.old_tree.is_none());
@@ -451,12 +452,12 @@ mod property_tests {
                 incremental_parsing: true,
                 cache_ast: true,
             };
-            
+
             // Properties about batch processing
             let expected_batches = (file_count as f64 / batch_size as f64).ceil() as usize;
             prop_assert!(expected_batches >= 1);
             prop_assert!(expected_batches <= file_count);
-            
+
             // Config should maintain batch size limits
             prop_assert_eq!(config.max_batch_size, batch_size);
         }
@@ -468,19 +469,19 @@ mod property_tests {
         ) {
             let patterns = vec![
                 format!("**/*.{}", file_extension),
-                format!("*.{}", file_extension), 
+                format!("*.{}", file_extension),
                 file_extension.clone()
             ];
-            
+
             let test_pattern = &patterns[pattern_type];
             let test_file = format!("test.{}", file_extension);
             let path = Path::new(&test_file);
-            
+
             let matches = QualityMonitor::should_analyze(path, &[test_pattern.clone()]);
-            
+
             match pattern_type {
                 0 => prop_assert!(matches), // **/*.ext should match
-                1 => prop_assert!(matches), // *.ext should match  
+                1 => prop_assert!(matches), // *.ext should match
                 2 => prop_assert!(matches), // ext should match (contains)
                 _ => unreachable!(),
             }
@@ -497,7 +498,7 @@ mod property_tests {
                 let avg = sum as f64 / complexity_values.len() as f64;
                 let max = *complexity_values.iter().max().unwrap();
                 let min = *complexity_values.iter().min().unwrap();
-                
+
                 prop_assert!(avg >= min as f64);
                 prop_assert!(avg <= max as f64);
                 prop_assert!(sum >= max);
@@ -513,11 +514,11 @@ mod property_tests {
             // Properties of concurrent operations
             prop_assert!(thread_count > 0);
             prop_assert!(operation_count > 0);
-            
+
             let total_operations = thread_count * operation_count;
             prop_assert!(total_operations >= thread_count);
             prop_assert!(total_operations >= operation_count);
-            
+
             // DashMap should handle concurrent access
             let metrics: Arc<dashmap::DashMap<PathBuf, Metrics>> = Arc::new(dashmap::DashMap::new());
             prop_assert_eq!(metrics.len(), 0);

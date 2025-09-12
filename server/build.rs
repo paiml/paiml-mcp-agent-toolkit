@@ -307,8 +307,7 @@ fn print_compression_stats(template_count: usize, total_original: usize, total_c
     let reduction_percent = (1.0 - total_compressed as f64 / total_original as f64) * 100.0;
 
     println!(
-        "cargo:warning=Compressed {} templates ({} -> {} bytes, {:.1}% reduction)",
-        template_count, total_original, total_compressed, reduction_percent
+        "cargo:warning=Compressed {template_count} templates ({total_original} -> {total_compressed} bytes, {reduction_percent:.1}% reduction)"
     );
 }
 
@@ -567,7 +566,7 @@ fn compile_capnp_schema() {
                 Err(e) => {
                     // Don't fail the build if Cap'n Proto compilation fails
                     // The code will fall back to JSON serialization
-                    println!("cargo:warning=Failed to compile Cap'n Proto schema: {}. Using JSON fallback.", e);
+                    println!("cargo:warning=Failed to compile Cap'n Proto schema: {e}. Using JSON fallback.");
                 }
             }
         } else {
@@ -720,19 +719,18 @@ fn generate_tool_registry(out_dir: &str) {
 
     for (name, desc, keywords) in &tools {
         registry_code.push_str(&format!(
-            "    m.insert(\"{}\", ToolMeta {{\n\
-                 name: \"{}\",\n\
-                 description: \"{}\",\n\
-                 keywords: &{:?},\n\
-             }});\n",
-            name, name, desc, keywords
+            "    m.insert(\"{name}\", ToolMeta {{\n\
+                 name: \"{name}\",\n\
+                 description: \"{desc}\",\n\
+                 keywords: &{keywords:?},\n\
+             }});\n"
         ));
     }
 
     registry_code.push_str("    m\n});\n");
 
     if let Err(e) = fs::write(&dest_path, registry_code) {
-        println!("cargo:warning=Failed to write tool registry: {}", e);
+        println!("cargo:warning=Failed to write tool registry: {e}");
     }
 }
 
@@ -930,15 +928,14 @@ fn generate_alias_table(out_dir: &str) {
 
     for (tool, tool_aliases) in &aliases {
         alias_code.push_str(&format!(
-            "    m.insert(\"{}\", vec!{:?});\n",
-            tool, tool_aliases
+            "    m.insert(\"{tool}\", vec!{tool_aliases:?});\n"
         ));
     }
 
     alias_code.push_str("    m\n});\n");
 
     if let Err(e) = fs::write(&dest_path, alias_code) {
-        println!("cargo:warning=Failed to write alias table: {}", e);
+        println!("cargo:warning=Failed to write alias table: {e}");
     }
 }
 
@@ -1015,6 +1012,6 @@ impl TrigramIndex {
 "#;
 
     if let Err(e) = fs::write(&dest_path, trigram_code) {
-        println!("cargo:warning=Failed to write trigram index: {}", e);
+        println!("cargo:warning=Failed to write trigram index: {e}");
     }
 }

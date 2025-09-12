@@ -215,7 +215,7 @@ pub fn output_results(config: OutputConfig) -> Result<()> {
     if let Some(output_path) = config.output {
         std::fs::write(output_path, output_content)?;
     } else {
-        println!("{}", output_content);
+        println!("{output_content}");
     }
 
     Ok(())
@@ -233,7 +233,7 @@ fn format_summary_output(
     output.push_str("Name Similarity Analysis\n");
     output.push_str("======================\n");
     output.push_str(&format!("Query: '{query}'\n"));
-    output.push_str(&format!("Total identifiers: {}\n", all_names_len));
+    output.push_str(&format!("Total identifiers: {all_names_len}\n"));
     output.push_str(&format!("Matches found: {}\n", similarities.len()));
 
     if !similarities.is_empty() {
@@ -256,7 +256,7 @@ fn format_summary_output(
             "  Analysis time: {:.2}s\n",
             analysis_time.as_secs_f64()
         ));
-        output.push_str(&format!("  Files analyzed: {}\n", analyzed_files_len));
+        output.push_str(&format!("  Files analyzed: {analyzed_files_len}\n"));
     }
 
     output
@@ -305,7 +305,7 @@ fn format_markdown_output(
     let mut output = String::new();
     output.push_str("# Name Similarity Analysis\n\n");
     output.push_str(&format!("**Query**: `{query}`\n\n"));
-    output.push_str(&format!("**Total identifiers**: {}\n\n", all_names_len));
+    output.push_str(&format!("**Total identifiers**: {all_names_len}\n\n"));
     output.push_str(&format!("**Matches found**: {}\n\n", similarities.len()));
 
     if !similarities.is_empty() {
@@ -671,7 +671,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

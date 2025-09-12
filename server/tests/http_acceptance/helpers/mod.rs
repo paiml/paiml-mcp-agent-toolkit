@@ -6,4 +6,4 @@
 pub mod http_test_client;
 
 /// Re-export main components for convenience
-pub use http_test_client::{HttpTestClient, HttpValidators, HttpTestResult, HttpResponse};
+pub use http_test_client::{HttpResponse, HttpTestClient, HttpTestResult, HttpValidators};

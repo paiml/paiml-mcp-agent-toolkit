@@ -434,7 +434,7 @@ impl ClaudeCodeAgentMcpServer {
         target_path: &str,
         quality_result: &QualityGateOutput,
     ) -> String {
-        let mut result_text = format!("🏁 Quality Gate Results for {}\n\n", target_path);
+        let mut result_text = format!("🏁 Quality Gate Results for {target_path}\n\n");
 
         let all_passed = quality_result.results.iter().all(|r| r.passed);
         result_text.push_str(&format!(
@@ -503,7 +503,7 @@ impl ClaudeCodeAgentMcpServer {
     }
 
     fn format_complexity_analysis_results(&self, file_path: &str) -> String {
-        let mut result_text = format!("🧮 Complexity Analysis for {}\n\n", file_path);
+        let mut result_text = format!("🧮 Complexity Analysis for {file_path}\n\n");
 
         result_text.push_str("📊 Summary:\n");
         result_text.push_str("• Files analyzed: 1\n");
@@ -892,7 +892,7 @@ impl ClaudeCodeAgentMcpServer {
                 })
             }
             "markdown" => {
-                let mut text = format!("# Quality Gates Report\n\n**Target**: {}\n", target_path);
+                let mut text = format!("# Quality Gates Report\n\n**Target**: {target_path}\n");
                 text.push_str(&format!(
                     "**Status**: {} {}\n",
                     if all_passed { "✅" } else { "❌" },
@@ -928,7 +928,7 @@ impl ClaudeCodeAgentMcpServer {
                 })
             }
             _ => {
-                let mut text = format!("🎯 Quality Gates Report for {}\n\n", target_path);
+                let mut text = format!("🎯 Quality Gates Report for {target_path}\n\n");
                 text.push_str(&format!(
                     "Status: {} {}\n",
                     if all_passed { "✅" } else { "❌" },
@@ -1111,7 +1111,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

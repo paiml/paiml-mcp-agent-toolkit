@@ -180,7 +180,7 @@ impl MarkdownFormatter {
         ];
 
         for (metric, value) in metrics {
-            output.push_str(&format!("| {} | {} |\n", metric, value));
+            output.push_str(&format!("| {metric} | {value} |\n"));
         }
     }
 
@@ -319,7 +319,7 @@ pub fn format_and_output_dead_code(
     if let Some(path) = output_path {
         std::fs::write(path, formatted)?;
     } else {
-        print!("{}", formatted);
+        print!("{formatted}");
     }
 
     Ok(())
@@ -410,7 +410,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

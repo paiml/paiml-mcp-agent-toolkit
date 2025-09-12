@@ -97,10 +97,10 @@ impl TdgAnalyzer {
             let penalty = (excess * 0.5).min(15.0);
 
             if let Some(applied) = tracker.apply(
-                format!("high_cyclomatic_{}", cyclomatic),
+                format!("high_cyclomatic_{cyclomatic}"),
                 MetricCategory::StructuralComplexity,
                 penalty,
-                format!("High cyclomatic complexity: {}", cyclomatic),
+                format!("High cyclomatic complexity: {cyclomatic}"),
             ) {
                 points -= applied;
             }
@@ -119,10 +119,10 @@ impl TdgAnalyzer {
                 .min(10.0);
 
             if let Some(applied) = tracker.apply(
-                format!("deep_nesting_{}", nesting_depth),
+                format!("deep_nesting_{nesting_depth}"),
                 MetricCategory::SemanticComplexity,
                 penalty,
-                format!("Deep nesting: {} levels", nesting_depth),
+                format!("Deep nesting: {nesting_depth} levels"),
             ) {
                 points -= applied;
             }
@@ -139,7 +139,7 @@ impl TdgAnalyzer {
             let penalty = (duplication_ratio * 20.0).min(20.0);
 
             if let Some(applied) = tracker.apply(
-                format!("duplication_{:.2}", duplication_ratio),
+                format!("duplication_{duplication_ratio:.2}"),
                 MetricCategory::Duplication,
                 penalty,
                 format!("Code duplication: {:.1}%", duplication_ratio * 100.0),
@@ -451,7 +451,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

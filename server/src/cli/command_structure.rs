@@ -113,7 +113,7 @@ impl CommandExecutor {
             Commands::Analyze(analyze_cmd) => {
                 self.registry.analyze_handlers.execute(analyze_cmd).await
             }
-            
+
             Commands::Qdd(qdd_cmd) => {
                 use crate::cli::handlers::qdd_handlers;
                 qdd_handlers::handle_qdd_command(qdd_cmd).await
@@ -628,7 +628,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

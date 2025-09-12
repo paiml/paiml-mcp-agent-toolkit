@@ -371,7 +371,7 @@ fn format_sprint(sprint: &Sprint, is_current: bool, is_completed: bool) -> Resul
         output.push_str("\n### Definition of Done\n");
         for item in &sprint.definition_of_done {
             let checked = if is_completed { "x" } else { " " };
-            output.push_str(&format!("- [{}] {}\n", checked, item));
+            output.push_str(&format!("- [{checked}] {item}\n"));
         }
     }
 
@@ -446,17 +446,20 @@ mod tests {
         // Let's manually count:
         // - Base function entry: 0
         // - First if: +1 (condition)
-        // - else if: +1 (condition) 
+        // - else if: +1 (condition)
         // - else if: +1 (condition)
         // - else if: +1 (condition)
         // - else: +0 (no additional complexity)
         // Total ACTUAL cognitive complexity: 4
-        
+
         // The function has 4 conditional branches (if-else chain)
         // Cognitive complexity should be 4, NOT 52
-        
+
         // This proves the analyzer is INCORRECTLY reporting complexity
-        assert!(true, "Analyzer reports 52 but actual cognitive complexity is 4");
+        assert!(
+            true,
+            "Analyzer reports 52 but actual cognitive complexity is 4"
+        );
     }
 
     #[test]
@@ -468,7 +471,7 @@ mod tests {
         // 4. +1 for each && or || in condition
         // 5. +1 for each break/continue with label
         // 6. Nesting adds +1 for each level
-        
+
         // process_sprint_line has:
         // - 4 if/else if branches: +4
         // - No loops: +0
@@ -476,9 +479,13 @@ mod tests {
         // - No complex boolean conditions: +0
         // - No nesting multiplier: +0
         // TOTAL: 4
-        
-        assert_eq!(4, 4, "Verified: process_sprint_line has cognitive complexity 4, not 52");
+
+        assert_eq!(
+            4, 4,
+            "Verified: process_sprint_line has cognitive complexity 4, not 52"
+        );
     }
+    #[allow(unused_imports)]
     use super::*;
 
     const SAMPLE_ROADMAP: &str = r#"
@@ -618,7 +625,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

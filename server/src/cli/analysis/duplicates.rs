@@ -174,7 +174,7 @@ async fn write_duplicate_output(
         tokio::fs::write(&output_path, &content).await?;
         eprintln!("📄 Report written to: {}", output_path.display());
     } else {
-        println!("{}", content);
+        println!("{content}");
     }
 
     Ok(())
@@ -530,7 +530,7 @@ fn find_duplicate_blocks(
                         start_line: start,
                         end_line: end,
                         content_preview: if content.lines().count() > 3 {
-                            format!("{}...", preview)
+                            format!("{preview}...")
                         } else {
                             preview
                         },
@@ -1148,7 +1148,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

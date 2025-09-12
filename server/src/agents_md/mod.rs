@@ -1,16 +1,16 @@
 //! AGENTS.md Integration Module
-//! 
+//!
 //! Implements the AGENTS.md standard for AI agent guidance with PMAT quality enforcement.
 //! Provides bidirectional bridge between AGENTS.md and MCP protocols.
 
-pub mod parser;
+pub mod bridge;
 pub mod discovery;
 pub mod executor;
 pub mod generator;
-pub mod bridge;
 pub mod manifest;
-pub mod router;
+pub mod parser;
 pub mod quality;
+pub mod router;
 
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
@@ -20,16 +20,16 @@ use std::path::{Path, PathBuf};
 pub struct AgentsMdDocument {
     /// Document metadata
     pub metadata: DocumentMetadata,
-    
+
     /// Parsed sections
     pub sections: Vec<Section>,
-    
+
     /// Extracted commands
     pub commands: Vec<Command>,
-    
+
     /// Project guidelines
     pub guidelines: Vec<Guideline>,
-    
+
     /// Quality rules if specified
     pub quality_rules: Option<QualityRules>,
 }
@@ -39,13 +39,13 @@ pub struct AgentsMdDocument {
 pub struct DocumentMetadata {
     /// File path
     pub path: PathBuf,
-    
+
     /// Last modified time
     pub modified: std::time::SystemTime,
-    
+
     /// Document version if specified
     pub version: Option<String>,
-    
+
     /// Project name if specified
     pub project: Option<String>,
 }
@@ -55,13 +55,13 @@ pub struct DocumentMetadata {
 pub struct Section {
     /// Section type
     pub section_type: SectionType,
-    
+
     /// Section title
     pub title: String,
-    
+
     /// Section content
     pub content: String,
-    
+
     /// Nested subsections
     pub subsections: Vec<Section>,
 }
@@ -83,19 +83,19 @@ pub enum SectionType {
 pub struct Command {
     /// Command name/description
     pub name: String,
-    
+
     /// Actual command to execute
     pub command: String,
-    
+
     /// Expected working directory
     pub working_dir: Option<PathBuf>,
-    
+
     /// Environment variables
     pub env: Vec<(String, String)>,
-    
+
     /// Timeout in seconds
     pub timeout: Option<u64>,
-    
+
     /// Whether command is safe to execute
     pub safe: bool,
 }
@@ -105,10 +105,10 @@ pub struct Command {
 pub struct Guideline {
     /// Guideline category
     pub category: String,
-    
+
     /// Guideline text
     pub text: String,
-    
+
     /// Priority level
     pub priority: Priority,
 }
@@ -127,13 +127,13 @@ pub enum Priority {
 pub struct QualityRules {
     /// Maximum complexity allowed
     pub max_complexity: Option<u32>,
-    
+
     /// Minimum test coverage
     pub min_coverage: Option<f64>,
-    
+
     /// SATD tolerance
     pub satd_allowed: bool,
-    
+
     /// Custom quality checks
     pub custom_checks: Vec<String>,
 }
@@ -143,10 +143,10 @@ pub struct QualityRules {
 pub struct AgentCapabilities {
     /// Supported operations
     pub operations: Vec<Operation>,
-    
+
     /// Available tools
     pub tools: Vec<Tool>,
-    
+
     /// Quality requirements
     pub quality_requirements: QualityRequirements,
 }
@@ -156,13 +156,13 @@ pub struct AgentCapabilities {
 pub struct Operation {
     /// Operation name
     pub name: String,
-    
+
     /// Description
     pub description: String,
-    
+
     /// Input schema
     pub input_schema: serde_json::Value,
-    
+
     /// Output schema
     pub output_schema: serde_json::Value,
 }
@@ -172,10 +172,10 @@ pub struct Operation {
 pub struct Tool {
     /// Tool name
     pub name: String,
-    
+
     /// Tool type
     pub tool_type: ToolType,
-    
+
     /// Configuration
     pub config: serde_json::Value,
 }
@@ -195,13 +195,13 @@ pub enum ToolType {
 pub struct QualityRequirements {
     /// Enforce quality gates
     pub enforce_gates: bool,
-    
+
     /// Maximum allowed complexity
     pub max_complexity: u32,
-    
+
     /// Minimum test coverage
     pub min_coverage: f64,
-    
+
     /// Auto-fix issues
     pub auto_fix: bool,
 }

@@ -125,7 +125,7 @@ pub async fn run(server: Arc<StatelessTemplateServer>) -> anyhow::Result<()> {
     let cli = match parse_with_suggestions() {
         Ok(cli) => cli,
         Err(suggestion_msg) => {
-            eprintln!("{}", suggestion_msg);
+            eprintln!("{suggestion_msg}");
             std::process::exit(2); // Exit with "misuse" code for command errors
         }
     };
@@ -156,12 +156,12 @@ fn parse_with_suggestions() -> Result<Cli, String> {
             match clap_error.kind() {
                 ErrorKind::DisplayHelp => {
                     // Print the help message to stdout
-                    print!("{}", clap_error);
+                    print!("{clap_error}");
                     std::process::exit(0);
                 }
                 ErrorKind::DisplayVersion => {
                     // Print the version to stdout
-                    print!("{}", clap_error);
+                    print!("{clap_error}");
                     std::process::exit(0);
                 }
                 _ => {
@@ -172,14 +172,13 @@ fn parse_with_suggestions() -> Result<Cli, String> {
                     // Get suggestion based on the failed arguments
                     if let Some(suggestion) = suggester.suggest_command(&args) {
                         let error_msg = format!(
-                            "error: unrecognized subcommand\n\n{}\n\nFor more information, try 'pmat --help'",
-                            suggestion
+                            "error: unrecognized subcommand\n\n{suggestion}\n\nFor more information, try 'pmat --help'"
                         );
                         Err(error_msg)
                     } else {
                         // If no suggestion, show the original clap error with examples
                         let examples = CommandSuggester::get_help_examples();
-                        let error_msg = format!("{}{}", clap_error, examples);
+                        let error_msg = format!("{clap_error}{examples}");
                         Err(error_msg)
                     }
                 }
@@ -713,7 +712,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

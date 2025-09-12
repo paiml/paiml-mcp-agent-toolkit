@@ -1281,7 +1281,7 @@ impl DeepContextAnalyzer {
         // Big-O complexity
         if let Some(ref big_o) = annotations.big_o_complexity {
             let emoji = self.get_big_o_emoji(big_o);
-            result.push(format!("{}{}", emoji, big_o));
+            result.push(format!("{emoji}{big_o}"));
         }
 
         // Churn score
@@ -1314,9 +1314,9 @@ impl DeepContextAnalyzer {
     /// Add cognitive complexity indicator
     fn add_cognitive_complexity_indicator(&self, result: &mut Vec<String>, complexity: u16) {
         if complexity > 30 {
-            result.push(format!("🧠{}", complexity));
+            result.push(format!("🧠{complexity}"));
         } else if complexity > 15 {
-            result.push(format!("🧪{}", complexity));
+            result.push(format!("🧪{complexity}"));
         }
     }
 
@@ -1334,11 +1334,11 @@ impl DeepContextAnalyzer {
     /// Add churn indicator
     fn add_churn_indicator(&self, result: &mut Vec<String>, churn: f32) {
         if churn > 0.8 {
-            result.push(format!("🔥{:.1}", churn)); // High churn - hot file
+            result.push(format!("🔥{churn:.1}")); // High churn - hot file
         } else if churn > 0.5 {
-            result.push(format!("🌡️{:.1}", churn)); // Medium churn
+            result.push(format!("🌡️{churn:.1}")); // Medium churn
         } else if churn > 0.2 {
-            result.push(format!("🌊{:.1}", churn)); // Low churn
+            result.push(format!("🌊{churn:.1}")); // Low churn
         }
     }
 
@@ -1352,7 +1352,7 @@ impl DeepContextAnalyzer {
             "O(n²)" => "🟠",      // Quadratic memory - warning
             _ => "💔",            // High memory usage - critical
         };
-        result.push(format!("{}{}", emoji, mem_complexity));
+        result.push(format!("{emoji}{mem_complexity}"));
     }
 
     /// Add duplication indicator
@@ -1532,7 +1532,7 @@ impl DeepContextAnalyzer {
 
     fn format_import_path(&self, module: &str, items: &[String], alias: &Option<String>) -> String {
         if let Some(alias) = alias {
-            format!("{} as {}", module, alias)
+            format!("{module} as {alias}")
         } else if !items.is_empty() {
             format!("{} ({})", module, items.join(", "))
         } else {
@@ -2191,7 +2191,7 @@ impl DeepContextAnalyzer {
         title: &str,
     ) -> anyhow::Result<()> {
         use std::fmt::Write;
-        writeln!(output, "### {} {} {}", emoji, number, title)?;
+        writeln!(output, "### {emoji} {number} {title}")?;
         Ok(())
     }
 
@@ -2543,10 +2543,9 @@ impl DeepContextAnalyzer {
                 function
                     .as_ref()
                     .map(|func_name| PrioritizedRecommendation {
-                        title: format!("Refactor high-complexity function: {}", func_name),
+                        title: format!("Refactor high-complexity function: {func_name}"),
                         description: format!(
-                            "{} (complexity: {}, threshold: {})",
-                            message, value, threshold
+                            "{message} (complexity: {value}, threshold: {threshold})"
                         ),
                         priority: self.determine_complexity_priority(*value),
                         estimated_effort: Duration::from_secs(3600), // 1 hour estimate
@@ -5374,7 +5373,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

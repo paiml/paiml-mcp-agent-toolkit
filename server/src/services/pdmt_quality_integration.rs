@@ -179,8 +179,7 @@ impl PdmtQualityEnforcer {
             ))
         } else {
             Ok(ValidationOutcome::success(format!(
-                "Coverage requirement {}% meets standards",
-                coverage_req
+                "Coverage requirement {coverage_req}% meets standards"
             )))
         }
     }
@@ -264,8 +263,7 @@ impl PdmtQualityEnforcer {
 
         if violations.is_empty() {
             Ok(ValidationOutcome::success(format!(
-                "Quality proxy validation passed in {:?} mode",
-                proxy_mode
+                "Quality proxy validation passed in {proxy_mode:?} mode"
             )))
         } else {
             Ok(ValidationOutcome::failure(
@@ -401,7 +399,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

@@ -6,4 +6,4 @@
 pub mod cli_test_runner;
 
 /// Re-export main components for convenience
-pub use cli_test_runner::{CliTestRunner, TestValidators, OutputFormat, TestResult};
+pub use cli_test_runner::{CliTestRunner, OutputFormat, TestResult, TestValidators};

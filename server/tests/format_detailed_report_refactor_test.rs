@@ -3,7 +3,7 @@
 
 use anyhow::Result;
 use pmat::services::similarity::{
-    ComprehensiveReport, EntropyReport, Metrics, RefactoringHint, SimilarBlock,
+    ComprehensiveReport, Metrics, SimilarBlock,
 };
 
 // Mock function signature for testing refactored structure

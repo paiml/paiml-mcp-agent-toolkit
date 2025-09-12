@@ -512,13 +512,13 @@ fn print_installed_status(status: &HookStatus) {
     );
 
     if let Some(last_updated) = &status.last_updated {
-        println!("  Last updated: {}", last_updated);
+        println!("  Last updated: {last_updated}");
     }
 
     if let Some(preview) = &status.hook_content_preview {
         println!("\n  Hook preview:");
         for line in preview.lines() {
-            println!("    {}", line);
+            println!("    {line}");
         }
     }
 }
@@ -554,7 +554,7 @@ fn print_verification_issues(result: &HookVerificationResult) {
     if !result.issues.is_empty() {
         println!("  Issues found:");
         for issue in &result.issues {
-            println!("    ⚠️ {}", issue);
+            println!("    ⚠️ {issue}");
         }
     }
 }
@@ -564,7 +564,7 @@ fn print_verification_fixes(result: &HookVerificationResult) {
     if !result.fixes_applied.is_empty() {
         println!("  Fixes applied:");
         for fix_msg in &result.fixes_applied {
-            println!("    🔧 {}", fix_msg);
+            println!("    🔧 {fix_msg}");
         }
     }
 }
@@ -634,7 +634,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

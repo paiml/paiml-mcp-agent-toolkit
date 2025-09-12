@@ -9,9 +9,11 @@
 //! Target: Cognitive complexity ≤10, maintain functionality
 
 use anyhow::Result;
-use pmat::{MetadataCache, ContentCache, S3Client, PublicTemplateRenderer as TemplateRenderer, models::template::TemplateResource, TemplateServerTrait};
-use std::sync::Arc;
-use pmat::models::template::{Toolchain, TemplateCategory};
+use pmat::models::template::{TemplateCategory, Toolchain};
+use pmat::{
+    models::template::TemplateResource, ContentCache, MetadataCache,
+    PublicTemplateRenderer as TemplateRenderer, S3Client, TemplateServerTrait,
+};
 use std::sync::Arc;
 
 // Mock template server for testing
@@ -26,7 +28,9 @@ impl TemplateServerTrait for MockTemplateServer {
             uri: "mock://template".to_string(),
             name: "Mock Template".to_string(),
             description: "Mock template for testing".to_string(),
-            toolchain: Toolchain::RustCli { cargo_features: vec![] },
+            toolchain: Toolchain::RustCli {
+                cargo_features: vec![],
+            },
             category: TemplateCategory::Context,
             parameters: vec![],
             s3_object_key: "mock-key".to_string(),
@@ -48,19 +52,19 @@ impl TemplateServerTrait for MockTemplateServer {
     fn get_renderer(&self) -> &TemplateRenderer {
         &self.renderer
     }
-    
+
     fn get_metadata_cache(&self) -> Option<&MetadataCache> {
         None
     }
-    
+
     fn get_content_cache(&self) -> Option<&ContentCache> {
         None
     }
-    
+
     fn get_s3_client(&self) -> Option<&S3Client> {
         None
     }
-    
+
     fn get_bucket_name(&self) -> Option<&str> {
         None
     }
@@ -74,17 +78,15 @@ async fn test_run_mcp_server_structure() {
 
     // Create a real renderer for testing
     let renderer = TemplateRenderer::new().expect("Failed to create renderer");
-    let mock_server = Arc::new(MockTemplateServer {
-        renderer,
-    });
+    let mock_server = Arc::new(MockTemplateServer { renderer });
 
     // Verify the mock server implements the trait correctly
     let _metadata_future = mock_server.get_template_metadata("test");
     let _content_future = mock_server.get_template_content("test");
     let _list_future = mock_server.list_templates("test");
-    
+
     // Verify accessors work
-    assert!(mock_server.get_renderer() != std::ptr::null());
+    assert!(mock_server.get_renderer() as *const _ != std::ptr::null());
     assert!(mock_server.get_metadata_cache().is_none());
     assert!(mock_server.get_content_cache().is_none());
     assert!(mock_server.get_s3_client().is_none());

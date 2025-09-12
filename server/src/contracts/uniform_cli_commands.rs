@@ -450,7 +450,7 @@ impl UniformCommandHandler {
 
     fn output_result(&self, result: serde_json::Value) -> anyhow::Result<()> {
         match result {
-            serde_json::Value::String(s) => println!("{}", s),
+            serde_json::Value::String(s) => println!("{s}"),
             other => println!("{}", serde_json::to_string_pretty(&other)?),
         }
         Ok(())
@@ -470,7 +470,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

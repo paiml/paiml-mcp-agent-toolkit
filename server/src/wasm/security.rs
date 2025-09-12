@@ -1,9 +1,9 @@
 //! Pattern-based security analysis for WASM bytecode
 
 use anyhow::Result;
-use wasmparser::{Operator, Payload};
+use serde::{Deserialize, Serialize};
 use std::ops::Range;
-use serde::{Serialize, Deserialize};
+use wasmparser::{Operator, Payload};
 
 /// Pattern detector for vulnerability scanning
 #[derive(Debug, Clone)]
@@ -32,69 +32,46 @@ impl PatternDetector {
             // Integer overflow in loop counter
             VulnerabilityPattern {
                 name: "potential-integer-overflow",
-                opcodes: vec![
-                    OpcodePattern::Sequence(vec![
-                        OperatorMatcher::I32Add,
-                        OperatorMatcher::BrIf,
-                    ]),
-                ],
+                opcodes: vec![OpcodePattern::Sequence(vec![
+                    OperatorMatcher::I32Add,
+                    OperatorMatcher::BrIf,
+                ])],
                 severity: Severity::Medium,
             },
-            
             // Potential timing side-channel
             VulnerabilityPattern {
                 name: "timing-side-channel",
-                opcodes: vec![
-                    OpcodePattern::Within {
-                        distance: 5,
-                        operators: vec![
-                            OperatorMatcher::I32Load,
-                            OperatorMatcher::BrIf,
-                        ],
-                    },
-                ],
+                opcodes: vec![OpcodePattern::Within {
+                    distance: 5,
+                    operators: vec![OperatorMatcher::I32Load, OperatorMatcher::BrIf],
+                }],
                 severity: Severity::Low,
             },
-            
             // Unvalidated indirect call
             VulnerabilityPattern {
                 name: "unvalidated-indirect-call",
-                opcodes: vec![
-                    OpcodePattern::NotPrecededBy {
-                        target: OperatorMatcher::CallIndirect,
-                        guards: vec![
-                            OperatorMatcher::I32RemU,
-                            OperatorMatcher::I32And,
-                        ],
-                    },
-                ],
+                opcodes: vec![OpcodePattern::NotPrecededBy {
+                    target: OperatorMatcher::CallIndirect,
+                    guards: vec![OperatorMatcher::I32RemU, OperatorMatcher::I32And],
+                }],
                 severity: Severity::High,
             },
-            
             // Unchecked memory growth
             VulnerabilityPattern {
                 name: "unchecked-memory-growth",
-                opcodes: vec![
-                    OpcodePattern::NotPrecededBy {
-                        target: OperatorMatcher::MemoryGrow,
-                        guards: vec![
-                            OperatorMatcher::I32LtU,
-                            OperatorMatcher::BrIf,
-                        ],
-                    },
-                ],
+                opcodes: vec![OpcodePattern::NotPrecededBy {
+                    target: OperatorMatcher::MemoryGrow,
+                    guards: vec![OperatorMatcher::I32LtU, OperatorMatcher::BrIf],
+                }],
                 severity: Severity::Medium,
             },
-            
             // Potential buffer overflow
             VulnerabilityPattern {
                 name: "potential-buffer-overflow",
-                opcodes: vec![
-                    OpcodePattern::Sequence(vec![
-                        OperatorMatcher::I32Add,
-                        OperatorMatcher::I32Store,
-                    ]),
-                ],
+                opcodes: vec![OpcodePattern::Sequence(vec![
+                    OperatorMatcher::I32Add,
+                    OperatorMatcher::I32Store,
+                ])],
                 severity: Severity::High,
             },
         ]
@@ -105,7 +82,7 @@ impl PatternDetector {
         if let Payload::CodeSectionEntry(body) = payload {
             let reader = body.get_operators_reader()?;
             let operators: Vec<_> = reader.into_iter().collect::<Result<Vec<_>, _>>()?;
-            
+
             // Check each pattern against the operators
             for pattern in &self.patterns {
                 if let Some(location) = pattern.matches(&operators) {
@@ -152,13 +129,13 @@ impl VulnerabilityPattern {
 pub enum OpcodePattern {
     /// Exact sequence of operators
     Sequence(Vec<OperatorMatcher>),
-    
+
     /// Operators within specified distance
     Within {
         distance: usize,
         operators: Vec<OperatorMatcher>,
     },
-    
+
     /// Target not preceded by guards
     NotPrecededBy {
         target: OperatorMatcher,
@@ -182,8 +159,11 @@ impl OpcodePattern {
                 }
                 None
             }
-            
-            OpcodePattern::Within { distance, operators: op_list } => {
+
+            OpcodePattern::Within {
+                distance,
+                operators: op_list,
+            } => {
                 // Find operators within distance
                 for i in 0..operators.len() {
                     if op_list[0].matches(&operators[i]) {
@@ -197,7 +177,7 @@ impl OpcodePattern {
                 }
                 None
             }
-            
+
             OpcodePattern::NotPrecededBy { target, guards } => {
                 // Find target not preceded by guards
                 for i in 0..operators.len() {
@@ -260,7 +240,7 @@ impl OperatorMatcher {
     fn matches(&self, op: &Operator) -> bool {
         use Operator::*;
         use OperatorMatcher as M;
-        
+
         match (self, op) {
             (M::I32Add, I32Add) => true,
             (M::I32Sub, I32Sub) => true,
@@ -334,7 +314,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

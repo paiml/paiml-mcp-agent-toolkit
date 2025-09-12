@@ -159,7 +159,7 @@ impl<S: Service> LifecycleWrapper<S> {
 
         HealthStatus {
             state,
-            message: format!("Service in {:?} state", state),
+            message: format!("Service in {state:?} state"),
             last_check: std::time::SystemTime::now(),
             uptime_seconds: uptime,
             metrics,
@@ -441,7 +441,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

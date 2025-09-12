@@ -107,7 +107,7 @@ async fn show_system_telemetry() -> Result<()> {
     if !system_data.services.is_empty() {
         println!("🔧 Service Breakdown:");
         for (service_name, service_data) in system_data.services.iter() {
-            println!("  📦 {}", service_name);
+            println!("  📦 {service_name}");
             println!(
                 "    Operations: {} (Success: {}, Failed: {})",
                 service_data.total_operations,
@@ -129,7 +129,7 @@ async fn show_system_telemetry() -> Result<()> {
                 let mut ops: Vec<_> = service_data.operation_counts.iter().collect();
                 ops.sort_by(|a, b| b.1.cmp(a.1));
                 for (op, count) in ops.iter().take(3) {
-                    println!("      - {}: {} times", op, count);
+                    println!("      - {op}: {count} times");
                 }
             }
             println!();
@@ -151,7 +151,7 @@ async fn show_service_telemetry(service_name: &str) -> Result<()> {
 
     match telemetry_service.get_service_telemetry(service_name).await {
         Some(service_data) => {
-            println!("🔍 Service Telemetry: {}", service_name);
+            println!("🔍 Service Telemetry: {service_name}");
             println!("{}", "=".repeat(50));
             println!();
 
@@ -184,7 +184,7 @@ async fn show_service_telemetry(service_name: &str) -> Result<()> {
 
                 for (operation, count) in operations {
                     let percentage = (*count as f64 / service_data.total_operations as f64) * 100.0;
-                    println!("  - {}: {} ({:.1}%)", operation, count, percentage);
+                    println!("  - {operation}: {count} ({percentage:.1}%)");
                 }
             }
 
@@ -193,7 +193,7 @@ async fn show_service_telemetry(service_name: &str) -> Result<()> {
             println!("{}", serde_json::to_string_pretty(&service_data)?);
         }
         None => {
-            println!("❌ No telemetry data found for service: {}", service_name);
+            println!("❌ No telemetry data found for service: {service_name}");
             println!("💡 Available services can be seen with: pmat telemetry --system");
         }
     }
@@ -227,7 +227,7 @@ async fn show_system_overview() -> Result<()> {
     if !system_data.services.is_empty() {
         println!("🔧 Active Services: {}", system_data.services.len());
         for service_name in system_data.services.keys() {
-            println!("  - {}", service_name);
+            println!("  - {service_name}");
         }
         println!();
 
@@ -372,7 +372,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

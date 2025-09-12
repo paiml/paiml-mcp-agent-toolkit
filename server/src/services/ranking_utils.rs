@@ -136,7 +136,7 @@ fn result_to_defect(result: &AnalysisResult, index: usize) -> Defect {
     }
 
     Defect {
-        id: format!("RANK-{:04}", index),
+        id: format!("RANK-{index:04}"),
         severity,
         category: DefectCategory::Complexity, // Default category for ranking
         file_path: result.file_path.clone(),
@@ -401,7 +401,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

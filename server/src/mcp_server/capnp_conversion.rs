@@ -24,7 +24,7 @@ use crate::models::refactor::RefactorStateMachine;
 pub fn serialize_state_to_capnp(state: &RefactorStateMachine) -> Result<Vec<u8>, String> {
     // JSON serialization is used as the primary format for cross-platform compatibility
     // This approach provides consistent serialization across all environments
-    serde_json::to_vec(state).map_err(|e| format!("Serialization error: {}", e))
+    serde_json::to_vec(state).map_err(|e| format!("Serialization error: {e}"))
 }
 
 /// Deserializes a RefactorStateMachine from binary format (currently JSON)
@@ -49,7 +49,7 @@ pub fn serialize_state_to_capnp(state: &RefactorStateMachine) -> Result<Vec<u8>,
 pub fn deserialize_state_from_capnp(data: &[u8]) -> Result<RefactorStateMachine, String> {
     // JSON deserialization ensures compatibility with the serialization format
     // This maintains consistency with the serialize_state_to_capnp function
-    serde_json::from_slice(data).map_err(|e| format!("Deserialization error: {}", e))
+    serde_json::from_slice(data).map_err(|e| format!("Deserialization error: {e}"))
 }
 
 // Helper functions for testing and development
@@ -125,7 +125,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

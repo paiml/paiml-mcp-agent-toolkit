@@ -121,7 +121,7 @@ pub async fn analyze_rust_file_with_classifier(
     // Add functions as items
     for (i, _node) in functions.iter().enumerate() {
         items.push(AstItem::Function {
-            name: format!("function_{}", i),
+            name: format!("function_{i}"),
             visibility: "pub".to_string(),
             is_async: false,
             line: i * 10,
@@ -131,7 +131,7 @@ pub async fn analyze_rust_file_with_classifier(
     // Add types as items
     for (i, _node) in types.iter().enumerate() {
         items.push(AstItem::Struct {
-            name: format!("type_{}", i),
+            name: format!("type_{i}"),
             visibility: "pub".to_string(),
             fields_count: 0,
             derives: vec![], // Empty derives for now
@@ -158,7 +158,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

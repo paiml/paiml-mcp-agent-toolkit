@@ -278,18 +278,18 @@ async fn run_main_enforcement_loop(
     config: EnforcementConfig,
 ) -> Result<()> {
     let start_time = Instant::now();
-    
+
     // Delegate entire loop logic to extracted function - COMPLEXITY NOW ≤10
     let loop_result = execute_main_loop(project_path, profile, &config, start_time).await?;
-    
+
     finalize_enforcement_run(
-        loop_result.final_score, 
-        loop_result.final_iteration, 
-        start_time.elapsed(), 
-        &config, 
-        loop_result.final_state
+        loop_result.final_score,
+        loop_result.final_iteration,
+        start_time.elapsed(),
+        &config,
+        loop_result.final_state,
     );
-    
+
     Ok(())
 }
 
@@ -351,9 +351,9 @@ fn should_stop_for_target_improvement(
 /// Print enforcement summary
 fn print_enforcement_summary(current_score: f64, iteration: u32, duration: Duration) {
     eprintln!("\n🏁 Enforcement Complete");
-    eprintln!("📊 Final Score: {:.2}/1.00", current_score);
-    eprintln!("🔄 Iterations: {}", iteration);
-    eprintln!("⏱️  Duration: {:?}", duration);
+    eprintln!("📊 Final Score: {current_score:.2}/1.00");
+    eprintln!("🔄 Iterations: {iteration}");
+    eprintln!("⏱️  Duration: {duration:?}");
 }
 
 /// Handle CI mode exit
@@ -379,24 +379,44 @@ async fn run_enforcement_step(
     // Route to extracted state handlers - COMPLEXITY REDUCED FROM 62 TO ≤10
     match current_state {
         EnforcementState::Analyzing => {
-            handle_analyzing_state(project_path, profile, single_file_mode, dry_run, specific_file).await
+            handle_analyzing_state(
+                project_path,
+                profile,
+                single_file_mode,
+                dry_run,
+                specific_file,
+            )
+            .await
         }
-        
+
         EnforcementState::Violating => {
-            handle_violating_enforcement_state_proxy(project_path, profile, single_file_mode, dry_run, specific_file, apply_suggestions).await
+            handle_violating_enforcement_state_proxy(
+                project_path,
+                profile,
+                single_file_mode,
+                dry_run,
+                specific_file,
+                apply_suggestions,
+            )
+            .await
         }
-        
-        EnforcementState::Refactoring => {
-            handle_refactoring_enforcement_state(0.7, specific_file)
-        }
-        
+
+        EnforcementState::Refactoring => handle_refactoring_enforcement_state(0.7, specific_file),
+
         EnforcementState::Validating => {
-            handle_validating_enforcement_state(project_path, profile, single_file_mode, dry_run, specific_file, include_pattern, exclude_pattern).await
+            handle_validating_enforcement_state(
+                project_path,
+                profile,
+                single_file_mode,
+                dry_run,
+                specific_file,
+                include_pattern,
+                exclude_pattern,
+            )
+            .await
         }
-        
-        EnforcementState::Complete => {
-            handle_complete_state()
-        }
+
+        EnforcementState::Complete => handle_complete_state(),
     }
 }
 
@@ -442,7 +462,8 @@ async fn list_all_violations(
     all_violations.extend(dead_code_violations);
 
     eprintln!("  🔍 Analyzing code duplication...");
-    let duplication_violations = run_duplication_analysis(project_path_buf.as_path(), profile).await?;
+    let duplication_violations =
+        run_duplication_analysis(project_path_buf.as_path(), profile).await?;
     all_violations.extend(duplication_violations);
 
     eprintln!("  🔍 Checking test coverage...");
@@ -453,7 +474,7 @@ async fn list_all_violations(
 
     // Use extracted formatting function
     let formatted_output = format_violations_output(&all_violations, profile, format)?;
-    println!("{}", formatted_output);
+    println!("{formatted_output}");
 
     Ok(())
 }
@@ -498,7 +519,7 @@ async fn validate_current_state(
         next_action: if passes {
             "none".to_string()
         } else {
-            format!("fix_{}_violations", violations_count)
+            format!("fix_{violations_count}_violations")
         },
         progress: EnforcementProgress {
             files_completed: 0,
@@ -537,7 +558,7 @@ fn output_result(
             println!("State: {:?}", result.state);
             println!("Score: {:.2}/{:.2}", result.score, result.target);
             if let Some(file) = &result.current_file {
-                println!("Current File: {}", file);
+                println!("Current File: {file}");
             }
             println!("Violations: {}", result.violations.len());
         }
@@ -606,7 +627,7 @@ fn print_progress_bar(result: &EnforcementResult) {
     print!("Overall Score: {:.2}/1.00 ", result.score);
     print!("{}", "█".repeat(filled));
     print!("{}", "░".repeat(empty));
-    println!(" {}%", percentage);
+    println!(" {percentage}%");
     println!();
 }
 
@@ -621,30 +642,30 @@ pub async fn handle_analyzing_state(
     specific_file: Option<&PathBuf>,
 ) -> Result<EnforcementResult> {
     let mut violations = Vec::new();
-    
+
     // Run all analyses in sequence
     let complexity_violations = run_complexity_analysis(project_path, profile).await?;
     let satd_violations = run_satd_analysis(project_path, profile).await?;
     let tdg_violations = run_tdg_analysis(project_path, profile).await?;
-    
+
     violations.extend(complexity_violations);
-    violations.extend(satd_violations);  
+    violations.extend(satd_violations);
     violations.extend(tdg_violations);
-    
+
     // Calculate composite score
     let complexity_score = 0.8; // Would calculate from actual results
     let satd_score = if profile.satd_allowed == 0 { 1.0 } else { 0.5 };
     let tdg_score = 0.7; // Would calculate from actual TDG
     let coverage_score = 0.65; // Would parse from coverage tool
     let total_score = (complexity_score + satd_score + tdg_score + coverage_score) / 4.0;
-    
+
     // Determine next state
     let next_state = if violations.is_empty() {
         EnforcementState::Complete
     } else {
         EnforcementState::Violating
     };
-    
+
     Ok(EnforcementResult {
         state: next_state,
         score: total_score,
@@ -709,7 +730,7 @@ pub fn handle_refactoring_state(
     specific_file: Option<&PathBuf>,
 ) -> Result<EnforcementResult> {
     eprintln!("🔧 Applying automated refactoring...");
-    
+
     Ok(EnforcementResult {
         state: EnforcementState::Validating,
         score: total_score + 0.1, // Assume some improvement
@@ -749,9 +770,9 @@ pub async fn run_complexity_analysis(
 ) -> Result<Vec<QualityViolation>> {
     use crate::cli::handlers::complexity_handlers::handle_analyze_complexity;
     use crate::cli::ComplexityOutputFormat;
-    
+
     let mut violations = Vec::new();
-    
+
     match handle_analyze_complexity(
         project_path.to_path_buf(),
         None,   // file
@@ -775,15 +796,17 @@ pub async fn run_complexity_analysis(
             violations.push(QualityViolation {
                 violation_type: "complexity".to_string(),
                 severity: "high".to_string(),
-                location: "server/src/cli/handlers/enforce_handlers.rs:run_enforcement_step".to_string(),
+                location: "server/src/cli/handlers/enforce_handlers.rs:run_enforcement_step"
+                    .to_string(),
                 current: 62.0,
                 target: profile.complexity_max as f64,
-                suggestion: "Extract method pattern - split match statement into handler functions".to_string(),
+                suggestion: "Extract method pattern - split match statement into handler functions"
+                    .to_string(),
             });
         }
         Err(_) => {} // Ignore failures in analysis
     }
-    
+
     Ok(violations)
 }
 
@@ -794,9 +817,9 @@ pub async fn run_satd_analysis(
 ) -> Result<Vec<QualityViolation>> {
     use crate::cli::handlers::complexity_handlers::handle_analyze_satd;
     use crate::cli::SatdOutputFormat;
-    
+
     let violations = Vec::new();
-    
+
     match handle_analyze_satd(
         project_path.to_path_buf(),
         SatdOutputFormat::Json,
@@ -822,7 +845,7 @@ pub async fn run_satd_analysis(
         }
         Err(_) => {} // Ignore failures in analysis
     }
-    
+
     Ok(violations)
 }
 
@@ -833,9 +856,9 @@ pub async fn run_tdg_analysis(
 ) -> Result<Vec<QualityViolation>> {
     use crate::cli::handlers::advanced_analysis_handlers::handle_analyze_tdg;
     use crate::cli::TdgOutputFormat;
-    
+
     let mut violations = Vec::new();
-    
+
     match handle_analyze_tdg(
         project_path.to_path_buf(),
         Some(profile.tdg_max), // threshold
@@ -857,12 +880,13 @@ pub async fn run_tdg_analysis(
                 location: "server/src/cli/handlers/enforce_handlers.rs".to_string(),
                 current: 2.3,
                 target: profile.tdg_max,
-                suggestion: "Refactor high-complexity functions to reduce technical debt".to_string(),
+                suggestion: "Refactor high-complexity functions to reduce technical debt"
+                    .to_string(),
             });
         }
         Err(_) => {} // Ignore failures in analysis
     }
-    
+
     Ok(violations)
 }
 
@@ -873,9 +897,9 @@ pub async fn run_dead_code_analysis(
 ) -> Result<Vec<QualityViolation>> {
     use crate::cli::handlers::complexity_handlers::handle_analyze_dead_code;
     use crate::cli::DeadCodeOutputFormat;
-    
+
     let mut violations = Vec::new();
-    
+
     match handle_analyze_dead_code(
         project_path.to_path_buf(),
         DeadCodeOutputFormat::Json,
@@ -905,7 +929,7 @@ pub async fn run_dead_code_analysis(
         }
         Err(_) => {} // Ignore failures in analysis
     }
-    
+
     Ok(violations)
 }
 
@@ -918,9 +942,9 @@ pub async fn run_duplication_analysis(
         handle_analyze_duplicates, DuplicateAnalysisConfig,
     };
     use crate::cli::{DuplicateOutputFormat, DuplicateType};
-    
+
     let mut violations = Vec::new();
-    
+
     let dup_config = DuplicateAnalysisConfig {
         project_path: project_path.to_path_buf(),
         detection_type: DuplicateType::Exact,
@@ -934,7 +958,7 @@ pub async fn run_duplication_analysis(
         output: None,
         top_files: 0, // 0 = all files
     };
-    
+
     match handle_analyze_duplicates(dup_config).await {
         Ok(_) => {
             if profile.duplication_max_lines == 0 {
@@ -950,7 +974,7 @@ pub async fn run_duplication_analysis(
         }
         Err(_) => {} // Ignore failures in analysis
     }
-    
+
     Ok(violations)
 }
 
@@ -960,11 +984,11 @@ pub async fn run_coverage_analysis(
     profile: &QualityProfile,
 ) -> Result<Vec<QualityViolation>> {
     let mut violations = Vec::new();
-    
+
     // NOTE: Would use external tool like tarpaulin
     // For now, simulate coverage check
     let coverage = 65.0; // Simulated coverage
-    
+
     if coverage < profile.coverage_min {
         violations.push(QualityViolation {
             violation_type: "coverage".to_string(),
@@ -978,7 +1002,7 @@ pub async fn run_coverage_analysis(
             ),
         });
     }
-    
+
     Ok(violations)
 }
 
@@ -1013,7 +1037,7 @@ pub fn format_violations_output(
             // Simple text format
             let mut output = String::new();
             output.push_str(&format!("Found {} violations:\n\n", violations.len()));
-            
+
             for violation in violations {
                 output.push_str(&format!(
                     "{} [{}]: {} (current: {}, target: {})\n  -> {}\n\n",
@@ -1025,7 +1049,7 @@ pub fn format_violations_output(
                     violation.suggestion
                 ));
             }
-            
+
             Ok(output)
         }
     }
@@ -1055,12 +1079,13 @@ pub async fn handle_enforcement_iteration(
     config: &EnforcementConfig,
     iteration: u32,
 ) -> Result<EnforcementIterationResult> {
-    eprintln!("\n🔄 Iteration {}", iteration);
+    eprintln!("\n🔄 Iteration {iteration}");
 
-    let result = execute_enforcement_iteration(project_path, profile, current_state, config).await?;
-    
+    let result =
+        execute_enforcement_iteration(project_path, profile, current_state, config).await?;
+
     output_result(&result, config.format, config.show_progress)?;
-    
+
     Ok(EnforcementIterationResult {
         iteration,
         state: result.state,
@@ -1074,11 +1099,7 @@ pub fn check_improvement_targets(
     result_score: f64,
     current_score: f64,
 ) -> bool {
-    if should_stop_for_target_improvement(
-        config.target_improvement,
-        result_score,
-        current_score,
-    ) {
+    if should_stop_for_target_improvement(config.target_improvement, result_score, current_score) {
         eprintln!("✅ Target improvement achieved");
         true
     } else {
@@ -1111,17 +1132,18 @@ pub async fn execute_main_loop(
 
     while should_continue_enforcement(current_state, iteration, config, start_time) {
         let loop_result = handle_enforcement_iteration(
-            project_path, 
-            profile, 
-            current_state, 
-            config, 
-            iteration + 1
-        ).await?;
-        
+            project_path,
+            profile,
+            current_state,
+            config,
+            iteration + 1,
+        )
+        .await?;
+
         iteration = loop_result.iteration;
         current_state = loop_result.state;
         current_score = loop_result.score;
-        
+
         if check_improvement_targets(config, loop_result.score, current_score) {
             break;
         }
@@ -1148,8 +1170,21 @@ pub async fn handle_violating_enforcement_state_proxy(
     apply_suggestions: bool,
 ) -> Result<EnforcementResult> {
     // Get violations from previous analyzing state
-    let analyzing_result = handle_analyzing_state(project_path, profile, single_file_mode, dry_run, specific_file).await?;
-    handle_violating_state(analyzing_result.violations, analyzing_result.score, apply_suggestions, dry_run, specific_file)
+    let analyzing_result = handle_analyzing_state(
+        project_path,
+        profile,
+        single_file_mode,
+        dry_run,
+        specific_file,
+    )
+    .await?;
+    handle_violating_state(
+        analyzing_result.violations,
+        analyzing_result.score,
+        apply_suggestions,
+        dry_run,
+        specific_file,
+    )
 }
 
 /// Handle refactoring state for enforcement - extracted from run_enforcement_step (complexity: ≤10)
@@ -1171,15 +1206,22 @@ pub async fn handle_validating_enforcement_state(
     _exclude_pattern: Option<&String>,
 ) -> Result<EnforcementResult> {
     // Re-run analysis to validate improvements
-    let mut result = handle_analyzing_state(project_path, profile, single_file_mode, dry_run, specific_file).await?;
-    
+    let mut result = handle_analyzing_state(
+        project_path,
+        profile,
+        single_file_mode,
+        dry_run,
+        specific_file,
+    )
+    .await?;
+
     // Override state based on validation results
     if result.violations.is_empty() {
         result.state = EnforcementState::Complete;
     } else {
         result.state = EnforcementState::Violating;
     }
-    
+
     Ok(result)
 }
 
@@ -1191,7 +1233,14 @@ pub async fn handle_analyzing_enforcement_state(
     dry_run: bool,
     specific_file: Option<&PathBuf>,
 ) -> Result<EnforcementResult> {
-    handle_analyzing_state(project_path, profile, single_file_mode, dry_run, specific_file).await
+    handle_analyzing_state(
+        project_path,
+        profile,
+        single_file_mode,
+        dry_run,
+        specific_file,
+    )
+    .await
 }
 
 /// Handle complete state for enforcement - alias for clarity (complexity: ≤10)
@@ -1251,7 +1300,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

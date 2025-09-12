@@ -46,7 +46,7 @@ pub async fn analyze_c_file_with_complexity_and_classifier(
     let mut function_metrics = Vec::new();
     for (i, _node) in functions.iter().enumerate() {
         function_metrics.push(FunctionComplexity {
-            name: format!("function_{}", i),
+            name: format!("function_{i}"),
             line_start: (i * 10) as u32,
             line_end: ((i + 1) * 10) as u32,
             metrics: ComplexityMetrics {
@@ -109,7 +109,7 @@ pub async fn analyze_c_file_with_classifier(
     // Add functions as items
     for (i, _node) in functions.iter().enumerate() {
         items.push(AstItem::Function {
-            name: format!("function_{}", i),
+            name: format!("function_{i}"),
             visibility: "".to_string(), // C doesn't have visibility modifiers
             is_async: false,            // C doesn't have async
             line: i * 10,
@@ -119,7 +119,7 @@ pub async fn analyze_c_file_with_classifier(
     // Add structs/typedefs as items
     for (i, _node) in types.iter().enumerate() {
         items.push(AstItem::Struct {
-            name: format!("struct_{}", i),
+            name: format!("struct_{i}"),
             visibility: "".to_string(),
             fields_count: 0,
             derives: vec![], // C doesn't have derives
@@ -146,7 +146,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);
