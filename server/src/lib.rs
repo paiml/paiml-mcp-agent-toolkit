@@ -96,6 +96,7 @@
 //! ```
 
 pub mod agent; // Claude Code Agent Mode implementation
+pub mod agents_md; // AGENTS.md integration for AI agent guidance
 pub mod ast; // Unified AST module for all language parsing
 pub mod cli;
 pub mod contracts; // Uniform contracts across ALL interfaces (CLI, MCP, HTTP)
