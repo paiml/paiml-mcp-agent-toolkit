@@ -4813,30 +4813,49 @@ pub async fn check_satd(project_path: &Path) -> Result<Vec<QualityViolation>> {
 /// # Ok(())
 /// # }
 /// ```
-pub async fn check_entropy(project_path: &Path, min_entropy: f64) -> Result<Vec<QualityViolation>> {
-    use walkdir::WalkDir;
-
-    let mut violations = Vec::new();
-    let mut entropy_stats = EntropyStats::new();
-
-    for entry in WalkDir::new(project_path) {
-        let entry = entry?;
-        let path = entry.path();
-
-        if should_process_file_for_entropy(path) {
-            if let Ok(content) = tokio::fs::read_to_string(path).await {
-                process_file_entropy(
-                    &content,
-                    path,
-                    min_entropy,
-                    &mut violations,
-                    &mut entropy_stats,
-                );
-            }
-        }
-    }
-
-    check_project_average_entropy(project_path, min_entropy, &entropy_stats, &mut violations);
+pub async fn check_entropy(project_path: &Path, _min_entropy: f64) -> Result<Vec<QualityViolation>> {
+    // TOYOTA WAY FIX: Replace Shannon entropy with AST pattern-based entropy
+    // Sprint 98: Fix for 5831 false positive entropy violations
+    use crate::entropy::{EntropyAnalyzer, EntropyConfig};
+    use crate::entropy::violation_detector::Severity;
+    
+    // Create entropy analyzer with tuned config to reduce false positives
+    let mut config = EntropyConfig::default();
+    config.min_severity = Severity::Medium; // Only report medium+ severity
+    config.exclude_paths.push("**/target/**".to_string());
+    config.exclude_paths.push("**/node_modules/**".to_string());
+    config.exclude_paths.push("**/*.test.rs".to_string());
+    config.exclude_paths.push("**/tests/**".to_string());
+    
+    let analyzer = EntropyAnalyzer::with_config(config);
+    
+    // Run AST-based entropy analysis
+    let report = analyzer.analyze(project_path).await?;
+    
+    // Convert actionable violations to QualityViolation format
+    let violations: Vec<QualityViolation> = report.actionable_violations
+        .into_iter()
+        .map(|violation| QualityViolation {
+            check_type: "entropy".to_string(),
+            severity: match violation.severity {
+                Severity::Low => "info".to_string(),
+                Severity::Medium => "warning".to_string(),
+                Severity::High => "error".to_string(),
+            },
+            file: violation.affected_files
+                .first()
+                .map(|p| p.to_string_lossy().to_string())
+                .unwrap_or_else(|| "project".to_string()),
+            line: None, // Pattern violations span multiple lines
+            message: format!(
+                "{} (saves {} lines) - Fix: {}",
+                violation.message,
+                violation.estimated_loc_reduction,
+                violation.fix_suggestion
+            ),
+        })
+        .collect();
+    
     Ok(violations)
 }
 
