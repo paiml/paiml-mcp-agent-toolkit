@@ -21,6 +21,7 @@ pub mod versioning;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use thiserror::Error;
+use crate::utils::path_validator::PathValidator;
 
 #[derive(Debug, Error)]
 pub enum ContractError {
@@ -272,9 +273,8 @@ pub trait ContractValidation {
 
 impl ContractValidation for BaseAnalysisContract {
     fn validate(&self) -> Result<(), ContractError> {
-        if !self.path.exists() {
-            return Err(ContractError::PathNotFound(self.path.clone()));
-        }
+        PathValidator::ensure_exists(&self.path)
+            .map_err(|_| ContractError::PathNotFound(self.path.clone()))?;
 
         if self.timeout == 0 {
             return Err(ContractError::InvalidTimeout);
@@ -383,9 +383,8 @@ impl ContractValidation for AnalyzeEntropyContract {
 
         // Validate file path if provided
         if let Some(file) = &self.file {
-            if !file.exists() {
-                return Err(ContractError::PathNotFound(file.clone()));
-            }
+            PathValidator::ensure_exists(file)
+                .map_err(|_| ContractError::PathNotFound(file.clone()))?;
         }
 
         Ok(())
@@ -397,9 +396,8 @@ impl ContractValidation for QualityGateContract {
         self.base.validate()?;
 
         if let Some(file) = &self.file {
-            if !file.exists() {
-                return Err(ContractError::PathNotFound(file.clone()));
-            }
+            PathValidator::ensure_exists(file)
+                .map_err(|_| ContractError::PathNotFound(file.clone()))?;
         }
 
         Ok(())
@@ -408,15 +406,8 @@ impl ContractValidation for QualityGateContract {
 
 impl ContractValidation for RefactorAutoContract {
     fn validate(&self) -> Result<(), ContractError> {
-        if !self.file.exists() {
-            return Err(ContractError::PathNotFound(self.file.clone()));
-        }
-
-        if !self.file.is_file() {
-            return Err(ContractError::InvalidValue(
-                "refactor requires a file, not a directory".into(),
-            ));
-        }
+        PathValidator::ensure_file(&self.file)
+            .map_err(|_| ContractError::PathNotFound(self.file.clone()))?;
 
         if self.timeout == 0 {
             return Err(ContractError::InvalidTimeout);

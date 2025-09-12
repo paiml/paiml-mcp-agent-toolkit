@@ -5,6 +5,7 @@ use crate::tdg::{
     AdaptiveThresholdFactory, SchedulerFactory, StorageBackendType, StorageConfig, TdgAnalyzer,
     TieredStorageFactory,
 };
+use crate::utils::path_validator::PathValidator;
 use anyhow::Result;
 use serde_json::{json, Value};
 use std::collections::HashMap;
@@ -226,7 +227,7 @@ pub async fn analyze_tdg(
     if paths.len() == 1 {
         let path = &paths[0];
 
-        if path.is_dir() {
+        if PathValidator::ensure_directory(path).is_ok() {
             // Directory analysis
             let project_score = analyzer.analyze_project(path).await?;
             Ok(json!({
@@ -256,7 +257,7 @@ pub async fn analyze_tdg(
         let mut all_scores = Vec::new();
 
         for path in paths {
-            if path.is_dir() {
+            if PathValidator::ensure_directory(path).is_ok() {
                 let project_score = analyzer.analyze_project(path).await?;
                 all_scores.extend(project_score.files);
             } else {
@@ -496,7 +497,7 @@ async fn analyze_single_path(
     path: &Path,
     analyzer: &TdgAnalyzer,
 ) -> Result<crate::tdg::ProjectScore> {
-    if path.is_dir() {
+    if PathValidator::ensure_directory(path).is_ok() {
         analyzer.analyze_project(path).await
     } else {
         analyzer.analyze_file(path).await.map(|score| {
