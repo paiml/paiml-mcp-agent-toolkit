@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 2cf1d96cd3249522ce075734eeaab5b71a086921ad5919b2e8dc11295dd5e4ea # shrinks to score = TDGScore { value: 0.0, components: TDGComponents { complexity: 0.0, churn: 0.0, coupling: 0.0, domain_risk: 1.9414614826892453, duplication: 0.0 }, severity: Normal, percentile: 0.0, confidence: 0.0 }
