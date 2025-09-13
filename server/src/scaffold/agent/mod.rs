@@ -40,6 +40,7 @@ use std::path::Path;
 /// ```no_run
 /// use pmat::scaffold::agent::{scaffold_agent, AgentContext, AgentTemplate, QualityLevel};
 /// use std::collections::HashSet;
+/// use std::path::Path;
 ///
 /// # async fn example() -> anyhow::Result<()> {
 /// let context = AgentContext {

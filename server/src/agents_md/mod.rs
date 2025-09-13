@@ -116,10 +116,10 @@ pub struct Guideline {
 /// Priority levels
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Priority {
-    Critical,
-    High,
-    Medium,
     Low,
+    Medium,
+    High,
+    Critical,
 }
 
 /// Quality rules extracted from AGENTS.md
