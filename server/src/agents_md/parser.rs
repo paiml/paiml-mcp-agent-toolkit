@@ -154,6 +154,8 @@ impl AgentsMdParser {
         let mut in_code_block = false;
         let mut code_block_content = String::new();
         let mut code_block_lang = String::new();
+        let mut in_list = false;
+        let mut list_item_content = String::new();
 
         for event in parser {
             match event {
@@ -170,6 +172,9 @@ impl AgentsMdParser {
                 Event::Text(text) => {
                     if in_code_block {
                         code_block_content.push_str(&text);
+                    } else if in_list {
+                        // Capture list item text
+                        list_item_content.push_str(&text);
                     } else if current_heading_level > 0 {
                         // Start new section
                         if let Some(section) = current_section.take() {
@@ -244,6 +249,24 @@ impl AgentsMdParser {
                         code_block_lang.clear();
                     }
                 }
+                Event::Start(Tag::List(_)) => {
+                    in_list = true;
+                }
+                Event::End(TagEnd::List(_)) => {
+                    in_list = false;
+                }
+                Event::Start(Tag::Item) => {
+                    list_item_content.clear();
+                }
+                Event::End(TagEnd::Item) => {
+                    if let Some(ref mut section) = current_section {
+                        // Add list item with bullet point prefix
+                        section.content.push_str("- ");
+                        section.content.push_str(&list_item_content);
+                        section.content.push('\n');
+                    }
+                    list_item_content.clear();
+                }
                 _ => {}
             }
         }
@@ -251,6 +274,11 @@ impl AgentsMdParser {
         // Add final section
         if let Some(section) = current_section {
             document.sections.push(section);
+        }
+
+        // Extract guidelines from all sections
+        for section in &document.sections {
+            self.extract_guidelines(&section.content, &section.section_type, &mut document.guidelines);
         }
 
         // Extract quality rules
@@ -473,7 +501,11 @@ impl AgentsMdParser {
 
             // Check SATD policy
             if content.contains("satd") || content.contains("technical debt") {
-                rules.satd_allowed = content.contains("allow") || content.contains("permitted");
+                // Check if it's explicitly allowed (but not "not allowed" or "disallowed")
+                rules.satd_allowed = (content.contains("allow") || content.contains("permitted")) 
+                    && !content.contains("not allow") 
+                    && !content.contains("disallow")
+                    && !content.contains("is not");
                 found_rules = true;
             }
         }
@@ -534,7 +566,7 @@ Run `cargo test` to execute tests.
         assert!(result.is_ok());
 
         let doc = result.unwrap();
-        assert_eq!(doc.sections.len(), 3);
+        assert_eq!(doc.sections.len(), 4); // Including the AGENTS.md header section
 
         // Check section types
         assert!(doc

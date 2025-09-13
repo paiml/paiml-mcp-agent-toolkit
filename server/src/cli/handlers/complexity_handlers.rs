@@ -285,6 +285,7 @@ async fn format_and_write_output(
 ///     false,                          // watch
 ///     5,                              // top_files = 5 hotspots
 ///     false,                          // fail_on_violation
+///     60,                             // timeout (seconds)
 /// ).await?;
 ///
 /// // AI agent would parse JSON output to extract file paths:
@@ -309,6 +310,7 @@ async fn format_and_write_output(
 ///     false,                          // watch
 ///     0,                              // top_files (show all)
 ///     false,                          // fail_on_violation
+///     60,                             // timeout (seconds)
 /// ).await?;
 /// # Ok(())
 /// # }
@@ -341,6 +343,7 @@ async fn format_and_write_output(
 ///     false,                          // watch
 ///     0,                              // top_files (analyze all provided)
 ///     false,                          // fail_on_violation
+///     60,                             // timeout (seconds)
 /// ).await?;
 ///
 /// // AI agent would then:
@@ -374,6 +377,7 @@ async fn format_and_write_output(
 ///     false,                          // watch
 ///     10,                             // top_files
 ///     false,                          // fail_on_violation
+///     60,                             // timeout (seconds)
 /// ).await?;
 ///
 /// // Expected behavior:
@@ -404,6 +408,7 @@ async fn format_and_write_output(
 ///     false,                          // watch
 ///     5,                              // top_files - applied AFTER filtering
 ///     false,                          // fail_on_violation
+///     60,                             // timeout (seconds)
 /// ).await?;
 ///
 /// // Expected behavior:
