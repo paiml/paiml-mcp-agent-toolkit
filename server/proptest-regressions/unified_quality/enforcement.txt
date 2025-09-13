@@ -1,0 +1,8 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc d4167def514b0d981507ce867bc3637741607067dc285ea2f38da25fca31be54 # shrinks to team_id = "aaa", diffs = [DiffAnalysis { complexity_change: 1, satd_change: 0, coverage_change: 0.0, files_changed: ["A.rs"] }]
+cc 959c8189165806b6d1e6aa168a470c6cde8f2761b66013c58a41d50e3c77d495 # shrinks to team_id = "aa0", budget = QualityBudget { complexity_budget: 0, satd_budget: 0, coverage_floor: 0.0, regeneration_rate: 0.0, grace_period: 0ns, current_consumption: BudgetConsumption { complexity_used: 0, satd_used: 0, coverage_reduction: 0.0, last_updated: None }, started_at: SystemTime { tv_sec: 1757750839, tv_nsec: 241490201 } }, diff = DiffAnalysis { complexity_change: 0, satd_change: 1, coverage_change: 0.0, files_changed: ["0.rs"] }
