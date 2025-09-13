@@ -182,6 +182,9 @@ impl AgentQualityGate {
             concat!("FIX", "ME"),
             concat!("HA", "CK"),
             concat!("XX", "X"),
+            "T-O-D-O",
+            "F-I-X-M-E",
+            "H-A-C-K",
         ];
 
         for (line_num, line) in content.lines().enumerate() {
@@ -206,16 +209,34 @@ impl AgentQualityGate {
 
         let mut fixed = code.to_string();
 
-        // Remove SATD comments
+        // Remove SATD comments - replace entire line content after pattern
         let satd_patterns = [
             concat!("// TO", "DO:"),
             concat!("// FIX", "ME:"),
             concat!("// HA", "CK:"),
             concat!("// XX", "X:"),
+            concat!("// TO", "DO"),
+            concat!("// FIX", "ME"),
+            concat!("// HA", "CK"),
+            "// T-O-D-O:",
+            "// F-I-X-M-E:",
+            "// H-A-C-K:",
         ];
-        for pattern in &satd_patterns {
-            fixed = fixed.replace(pattern, "//");
+        
+        // Process line by line to handle SATD removal properly
+        let mut result_lines = Vec::new();
+        for line in fixed.lines() {
+            let mut modified_line = line.to_string();
+            for pattern in &satd_patterns {
+                if let Some(pos) = modified_line.find(pattern) {
+                    // Keep the comment marker but remove the SATD pattern and everything after it on that line
+                    modified_line = modified_line[..pos].to_string() + "//";
+                    break;
+                }
+            }
+            result_lines.push(modified_line);
         }
+        fixed = result_lines.join("\n");
 
         Ok(fixed)
     }
