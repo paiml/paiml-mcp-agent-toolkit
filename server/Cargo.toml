@@ -15,22 +15,22 @@ exclude = ["*.log", "temp_*", "*.profraw", ".pmat-cache", "proptest-regressions"
 
 [dependencies]
 # Async runtime
-tokio = { version = "1.45", features = ["rt-multi-thread", "macros", "net", "io-util", "io-std", "fs", "sync", "signal", "process"] }
+tokio = { version = "1.47", features = ["rt-multi-thread", "macros", "net", "io-util", "io-std", "fs", "sync", "signal", "process"] }
 tokio-util = "0.7"
 async-trait = "0.1"
 
 # Text similarity
 levenshtein = "1.0"
 
-# Serialization
-serde = { version = "1.0", default-features = false, features = ["derive", "std"] }
+# Serialization (pinned to avoid swc_common issue with serde::__private)
+serde = { version = "=1.0.219", default-features = false, features = ["derive", "std"] }
 serde_json = { version = "1.0", default-features = false, features = ["std"] }
 
 # Template engine
 handlebars = { version = "6.3", default-features = false, features = ["string_helpers"] }
 
 # MCP SDK - now core dependency for MCP server functionality
-pmcp = { version = "1.4.1", features = ["full", "validation"] }
+pmcp = { version = "1.4.2", features = ["full", "validation"] }
 
 # Caching
 lru = { version = "0.14", features = ["hashbrown"] }
@@ -94,12 +94,12 @@ glob = "0.3"
 toml = "0.8"
 crossbeam-channel = "0.5"
 # For TypeScript/JavaScript parsing (conditional) - use compatible versions
-swc_ecma_parser = { version = "0.145", optional = true }
-swc_common = { version = "0.33", optional = true }
-swc_ecma_ast = { version = "0.114", optional = true }
-swc_ecma_visit = { version = "0.100", optional = true }
+swc_ecma_parser = { version = "24.0", optional = true }
+swc_common = { version = "14.0", optional = true }
+swc_ecma_ast = { version = "15.0", optional = true }
+swc_ecma_visit = { version = "15.0", optional = true }
 # For Python parsing (conditional)
-rustpython-parser = { version = "0.4", optional = true }
+rustpython-parser = { version = "0.4.0", optional = true }
 # For C/C++ parsing (conditional)
 tree-sitter = { version = "0.22", optional = true }
 tree-sitter-c = { version = "0.21", optional = true }
@@ -183,7 +183,7 @@ quickcheck = "1.0"
 quickcheck_macros = "1.0"
 assert_cmd = "2.0"
 predicates = "3.1"
-scraper = "0.23"
+scraper = "0.24"
 serial_test = "3.2"
 
 [build-dependencies]
