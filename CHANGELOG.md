@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.87.1] - 2025-09-16
+
+### Fixed
+- **Dependency Compatibility**: Major dependency updates to resolve cargo install failures
+  - Upgraded swc packages from 0.x to 14.x/24.x series (breaking API changes fixed)
+  - Updated tokio to 1.47 for latest async runtime improvements
+  - Updated pmcp to 1.4.2 for MCP enhancements
+  - Updated tree-sitter packages to 0.22/0.21/0.22 for parser improvements
+  - Pinned serde to 1.0.219 to avoid swc_common::__private compatibility issue
+
+### Changed
+- **API Updates**: Migrated to new swc API patterns
+  - TsConfig/EsConfig → TsSyntax/EsSyntax
+  - FileName now requires .into() for proper wrapping
+  - Removed explicit visitor recursion calls (automatic in swc 15.x)
+
 ## [2.87.0] - 2025-01-13
 
 ### 🛠️ Sprint 101 - Test Suite Restoration & Quality Improvements
