@@ -9,7 +9,7 @@ use swc_common::{FileName, SourceMap};
 #[cfg(feature = "typescript-ast")]
 use swc_ecma_ast::{Decl, Module, ModuleDecl, ModuleItem, Stmt};
 #[cfg(feature = "typescript-ast")]
-use swc_ecma_parser::{lexer::Lexer, EsConfig, Parser, StringInput, Syntax, TsConfig};
+use swc_ecma_parser::{lexer::Lexer, Parser, StringInput, Syntax};
 
 use super::LanguageStrategy;
 use crate::ast::core::{
@@ -34,14 +34,31 @@ impl TypeScriptStrategy {
     fn parse_module(&self, content: &str, filename: &str) -> Result<Module> {
         let source_map = SourceMap::default();
         let source_file =
-            source_map.new_source_file(FileName::Custom(filename.to_string()), content.to_string());
+            source_map.new_source_file(FileName::Custom(filename.to_string()).into(), content.to_string());
 
-        let lexer = Lexer::new(
-            Syntax::Typescript(TsConfig {
-                tsx: filename.ends_with(".tsx"),
+        // In swc 24.x, Syntax::Typescript takes a direct config
+        let syntax = if filename.ends_with(".tsx") {
+            Syntax::Typescript(swc_ecma_parser::TsSyntax {
+                tsx: true,
                 decorators: true,
                 ..Default::default()
-            }),
+            })
+        } else if filename.ends_with(".ts") {
+            Syntax::Typescript(swc_ecma_parser::TsSyntax {
+                tsx: false,
+                decorators: true,
+                ..Default::default()
+            })
+        } else {
+            // JavaScript
+            Syntax::Es(swc_ecma_parser::EsSyntax {
+                decorators: true,
+                ..Default::default()
+            })
+        };
+
+        let lexer = Lexer::new(
+            syntax,
             Default::default(),
             StringInput::from(&*source_file),
             None,
@@ -150,10 +167,10 @@ impl JavaScriptStrategy {
     fn parse_module(&self, content: &str, filename: &str) -> Result<Module> {
         let source_map = SourceMap::default();
         let source_file =
-            source_map.new_source_file(FileName::Custom(filename.to_string()), content.to_string());
+            source_map.new_source_file(FileName::Custom(filename.to_string()).into(), content.to_string());
 
         let lexer = Lexer::new(
-            Syntax::Es(EsConfig {
+            Syntax::Es(swc_ecma_parser::EsSyntax {
                 jsx: filename.ends_with(".jsx"),
                 decorators: true,
                 ..Default::default()

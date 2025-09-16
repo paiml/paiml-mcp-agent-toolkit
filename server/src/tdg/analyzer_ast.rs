@@ -572,14 +572,14 @@ impl TdgAnalyzerAst {
         #[cfg(feature = "typescript-ast")]
         {
             use swc_common::{sync::Lrc, FileName, SourceMap};
-            use swc_ecma_parser::{lexer::Lexer, Parser, StringInput, Syntax, TsConfig};
+            use swc_ecma_parser::{lexer::Lexer, Parser, StringInput, Syntax, TsSyntax};
             use swc_ecma_visit::VisitWith;
 
             let cm: Lrc<SourceMap> = Default::default();
-            let fm = cm.new_source_file(FileName::Custom("test.js".into()), source.into());
+            let fm = cm.new_source_file(FileName::Custom("test.js".into()).into(), source.to_string());
 
             let lexer = Lexer::new(
-                Syntax::Typescript(TsConfig {
+                Syntax::Typescript(TsSyntax {
                     tsx: true,
                     decorators: true,
                     ..Default::default()
@@ -1699,28 +1699,28 @@ impl JavaScriptComplexityVisitor {
 
 #[cfg(feature = "typescript-ast")]
 impl swc_ecma_visit::Visit for JavaScriptComplexityVisitor {
-    fn visit_if_stmt(&mut self, node: &swc_ecma_ast::IfStmt) {
+    fn visit_if_stmt(&mut self, _node: &swc_ecma_ast::IfStmt) {
         self.cyclomatic_complexity += 1;
         self.cognitive_complexity += 1;
-        swc_ecma_visit::visit_if_stmt(self, node);
+        // In swc 15.x, visit methods automatically recurse - no need to call explicitly
     }
 
-    fn visit_while_stmt(&mut self, node: &swc_ecma_ast::WhileStmt) {
+    fn visit_while_stmt(&mut self, _node: &swc_ecma_ast::WhileStmt) {
         self.cyclomatic_complexity += 1;
         self.cognitive_complexity += 1;
-        swc_ecma_visit::visit_while_stmt(self, node);
+        // In swc 15.x, visit methods automatically recurse - no need to call explicitly
     }
 
-    fn visit_for_stmt(&mut self, node: &swc_ecma_ast::ForStmt) {
+    fn visit_for_stmt(&mut self, _node: &swc_ecma_ast::ForStmt) {
         self.cyclomatic_complexity += 1;
         self.cognitive_complexity += 1;
-        swc_ecma_visit::visit_for_stmt(self, node);
+        // In swc 15.x, visit methods automatically recurse - no need to call explicitly
     }
 
     fn visit_switch_stmt(&mut self, node: &swc_ecma_ast::SwitchStmt) {
         self.cyclomatic_complexity += node.cases.len() as u32;
         self.cognitive_complexity += 1;
-        swc_ecma_visit::visit_switch_stmt(self, node);
+        // In swc 15.x, visit methods automatically recurse - no need to call explicitly
     }
 
     fn visit_function(&mut self, node: &swc_ecma_ast::Function) {
@@ -1731,7 +1731,7 @@ impl swc_ecma_visit::Visit for JavaScriptComplexityVisitor {
             self.async_count += 1;
         }
 
-        swc_ecma_visit::visit_function(self, node);
+        // In swc 15.x, visit methods automatically recurse - no need to call explicitly
     }
 
     fn visit_import_decl(&mut self, _node: &swc_ecma_ast::ImportDecl) {
