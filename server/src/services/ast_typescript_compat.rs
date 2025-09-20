@@ -17,6 +17,18 @@ use crate::services::file_classifier::FileClassifier;
 use crate::ast::languages::typescript::{JavaScriptStrategy, TypeScriptStrategy};
 use crate::ast::languages::LanguageStrategy;
 
+// Import enhanced visitor for real AST extraction
+#[cfg(feature = "typescript-ast")]
+use crate::services::enhanced_typescript_visitor::EnhancedTypeScriptVisitor;
+#[cfg(feature = "typescript-ast")]
+use swc_common::{FileName, SourceMap};
+#[cfg(feature = "typescript-ast")]
+use swc_ecma_ast::Module;
+#[cfg(feature = "typescript-ast")]
+use swc_ecma_parser::{lexer::Lexer, Parser, StringInput, Syntax, TsSyntax};
+#[cfg(feature = "typescript-ast")]
+use std::sync::Arc;
+
 /// Analyze a TypeScript file and return complexity metrics (compatibility function)
 pub async fn analyze_typescript_file_with_complexity(
     path: &Path,
@@ -127,25 +139,54 @@ pub async fn analyze_typescript_file_with_classifier(
     // Convert to old format
     let mut items = Vec::new();
 
-    // Add functions as items
-    for (i, _node) in functions.iter().enumerate() {
-        items.push(AstItem::Function {
-            name: format!("function_{i}"),
-            visibility: "public".to_string(),
-            is_async: false,
-            line: i * 10,
-        });
+    // Use enhanced visitor to get real names instead of placeholders
+    #[cfg(feature = "typescript-ast")]
+    {
+        // Parse TypeScript/JavaScript with SWC to get real AST
+        if let Ok(module) = parse_typescript_content(&content, path) {
+            let visitor = EnhancedTypeScriptVisitor::new(path);
+            items = visitor.extract_items(&module);
+        } else {
+            // Fallback to old placeholder method if parsing fails
+            for (i, _node) in functions.iter().enumerate() {
+                items.push(AstItem::Function {
+                    name: format!("function_{i}"),
+                    visibility: "public".to_string(),
+                    is_async: false,
+                    line: i * 10,
+                });
+            }
+            for (i, _node) in types.iter().enumerate() {
+                items.push(AstItem::Struct {
+                    name: format!("class_{i}"),
+                    visibility: "public".to_string(),
+                    fields_count: 0,
+                    derives: vec![],
+                    line: (functions.len() + i) * 10,
+                });
+            }
+        }
     }
-
-    // Add classes and interfaces as items (using Struct variant)
-    for (i, _node) in types.iter().enumerate() {
-        items.push(AstItem::Struct {
-            name: format!("class_{i}"),
-            visibility: "public".to_string(),
-            fields_count: 0,
-            derives: vec![],
-            line: (functions.len() + i) * 10,
-        });
+    #[cfg(not(feature = "typescript-ast"))]
+    {
+        // Feature disabled, use placeholders
+        for (i, _node) in functions.iter().enumerate() {
+            items.push(AstItem::Function {
+                name: format!("function_{i}"),
+                visibility: "public".to_string(),
+                is_async: false,
+                line: i * 10,
+            });
+        }
+        for (i, _node) in types.iter().enumerate() {
+            items.push(AstItem::Struct {
+                name: format!("class_{i}"),
+                visibility: "public".to_string(),
+                fields_count: 0,
+                derives: vec![],
+                line: (functions.len() + i) * 10,
+            });
+        }
     }
 
     Ok(FileContext {
@@ -247,25 +288,54 @@ pub async fn analyze_javascript_file_with_classifier(
     // Convert to old format
     let mut items = Vec::new();
 
-    // Add functions as items
-    for (i, _node) in functions.iter().enumerate() {
-        items.push(AstItem::Function {
-            name: format!("function_{i}"),
-            visibility: "".to_string(), // JavaScript doesn't have visibility modifiers
-            is_async: false,
-            line: i * 10,
-        });
+    // Use enhanced visitor to get real names for JavaScript too
+    #[cfg(feature = "typescript-ast")]
+    {
+        // Parse JavaScript with SWC to get real AST
+        if let Ok(module) = parse_typescript_content(&content, path) {
+            let visitor = EnhancedTypeScriptVisitor::new(path);
+            items = visitor.extract_items(&module);
+        } else {
+            // Fallback to old placeholder method if parsing fails
+            for (i, _node) in functions.iter().enumerate() {
+                items.push(AstItem::Function {
+                    name: format!("function_{i}"),
+                    visibility: "".to_string(),
+                    is_async: false,
+                    line: i * 10,
+                });
+            }
+            for (i, _node) in types.iter().enumerate() {
+                items.push(AstItem::Struct {
+                    name: format!("class_{i}"),
+                    visibility: "".to_string(),
+                    fields_count: 0,
+                    derives: vec![],
+                    line: (functions.len() + i) * 10,
+                });
+            }
+        }
     }
-
-    // Add classes as items (using Struct variant)
-    for (i, _node) in types.iter().enumerate() {
-        items.push(AstItem::Struct {
-            name: format!("class_{i}"),
-            visibility: "".to_string(),
-            fields_count: 0,
-            derives: vec![],
-            line: (functions.len() + i) * 10,
-        });
+    #[cfg(not(feature = "typescript-ast"))]
+    {
+        // Feature disabled, use placeholders
+        for (i, _node) in functions.iter().enumerate() {
+            items.push(AstItem::Function {
+                name: format!("function_{i}"),
+                visibility: "".to_string(),
+                is_async: false,
+                line: i * 10,
+            });
+        }
+        for (i, _node) in types.iter().enumerate() {
+            items.push(AstItem::Struct {
+                name: format!("class_{i}"),
+                visibility: "".to_string(),
+                fields_count: 0,
+                derives: vec![],
+                line: (functions.len() + i) * 10,
+            });
+        }
     }
 
     Ok(FileContext {
@@ -274,6 +344,55 @@ pub async fn analyze_javascript_file_with_classifier(
         items,
         complexity_metrics: None,
     })
+}
+
+/// Helper function to parse TypeScript/JavaScript content with SWC
+#[cfg(feature = "typescript-ast")]
+fn parse_typescript_content(content: &str, path: &Path) -> Result<Module, anyhow::Error> {
+    let source_map = Arc::new(SourceMap::default());
+    let source_file = source_map.new_source_file(
+        FileName::Custom(path.display().to_string()).into(),
+        content.to_string(),
+    );
+
+    let syntax = if path.extension().and_then(|s| s.to_str()) == Some("tsx") {
+        Syntax::Typescript(TsSyntax {
+            tsx: true,
+            decorators: true,
+            dts: false,
+            no_early_errors: true,
+            disallow_ambiguous_jsx_like: true,
+        })
+    } else if path.extension().and_then(|s| s.to_str()) == Some("jsx") {
+        Syntax::Es(swc_ecma_parser::EsSyntax {
+            jsx: true,
+            ..Default::default()
+        })
+    } else if path.extension().and_then(|s| s.to_str()).map(|s| s == "js" || s == "mjs") == Some(true) {
+        Syntax::Es(swc_ecma_parser::EsSyntax {
+            jsx: false,
+            ..Default::default()
+        })
+    } else {
+        // Default to TypeScript
+        Syntax::Typescript(TsSyntax {
+            tsx: false,
+            decorators: true,
+            dts: false,
+            no_early_errors: true,
+            disallow_ambiguous_jsx_like: true,
+        })
+    };
+
+    let lexer = Lexer::new(
+        syntax,
+        Default::default(),
+        StringInput::from(&*source_file),
+        None,
+    );
+
+    let mut parser = Parser::new_from(lexer);
+    parser.parse_module().map_err(|e| anyhow::anyhow!("Parse error: {:?}", e))
 }
 
 #[cfg(test)]

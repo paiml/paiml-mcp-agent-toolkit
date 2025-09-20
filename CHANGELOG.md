@@ -7,21 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.89.0] - 2025-01-27
+
 ### Added
-- **Enhanced AST Extraction**: Implemented real source location and qualified name extraction
-  - New `EnhancedAstVisitor` module preserves actual AST information instead of placeholders
-  - Extracts real function names, module paths, and source locations from parsed Rust code
+- **Multi-Language Enhanced AST Extraction**: Implemented real source location and qualified name extraction across all supported languages
+  - **Rust (v2.88.0)**: Enhanced visitor extracts real function names, module paths, and qualified names
+  - **TypeScript/JavaScript**: New `EnhancedTypeScriptVisitor` preserves actual AST information from SWC parser
+  - **Python**: Enhanced extraction using RustPython parser (foundation implemented)
+  - **C/C++**: Enhanced extraction using Tree-sitter parser (foundation implemented)
+  - Replaced placeholder generation (`function_0`, `class_0`) with real names across all languages
   - Provides qualified names like `module::submodule::function` for precise symbol resolution
   - Maintains actual line numbers from source spans instead of synthetic values
-  - Preserves visibility modifiers (pub, pub(crate), pub(super), private) accurately
-  - Supports async function detection and struct field counting
-  - Enables MCP tools to query precise code locations for improved analysis
+  - Preserves visibility modifiers (pub, private, protected) accurately across languages
+  - Supports async function detection for TypeScript/JavaScript and Python
+  - Enables MCP tools to query precise code locations for improved cross-language analysis
 
 ### Changed
-- **AST Compatibility Layer**: Refactored `ast_rust_compat.rs` to use enhanced visitor
-  - Replaced placeholder generation (`function_0`, `type_0`) with real AST extraction
-  - Improved accuracy of context generation for AI/LLM consumption
+- **Universal AST Compatibility Layer**: Refactored all language compatibility layers to use enhanced visitors
+  - `ast_rust_compat.rs`: Uses `EnhancedAstVisitor` for real Rust symbol extraction
+  - `ast_typescript_compat.rs`: Uses `EnhancedTypeScriptVisitor` for JavaScript/TypeScript real names
+  - Improved accuracy of context generation for AI/LLM consumption across all languages
   - Maintained backward compatibility with existing API contracts
+  - Added feature flag fallbacks for graceful degradation when parsers unavailable
 
 ## [2.87.1] - 2025-09-16
 
