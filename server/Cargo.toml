@@ -156,7 +156,7 @@ pulldown-cmark = "0.13"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 
 # Prometheus metrics
-prometheus = "0.13"
+prometheus = "0.14"
 warp = "0.3"
 
 # Progress bars
