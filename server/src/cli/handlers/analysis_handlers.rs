@@ -1152,7 +1152,7 @@ async fn route_entropy_analysis(cmd: AnalyzeCommands) -> Result<()> {
         };
 
         // Create entropy configuration
-        let config = EntropyConfig {
+        let mut config = EntropyConfig {
             min_severity: min_sev,
             ..Default::default()
         };

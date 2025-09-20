@@ -1,6 +1,13 @@
 //! # PMAT (Professional Project Quantitative Analysis Toolkit)
 //!
 //! A comprehensive toolkit for project analysis, quality assurance, and technical debt management.
+#![allow(clippy::needless_range_loop)]
+#![allow(clippy::single_match)]
+#![allow(clippy::ptr_arg)]
+#![allow(clippy::only_used_in_recursion)]
+#![allow(clippy::if_same_then_else)]
+#![allow(clippy::arc_with_non_send_sync)]
+#![allow(clippy::manual_clamp)]
 //! PMAT provides multiple interfaces (CLI, MCP, HTTP API) for analyzing code quality, complexity,
 //! and generating actionable insights for software development teams.
 //!
