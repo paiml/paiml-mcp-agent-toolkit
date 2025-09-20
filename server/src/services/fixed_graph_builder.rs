@@ -2,7 +2,7 @@
 //!
 //! This module creates optimally-sized dependency graphs that respect rendering
 //! limitations while preserving the most important structural information.
-//! It uses PageRank algorithm to identify critical nodes and ensures generated
+//! It uses `PageRank` algorithm to identify critical nodes and ensures generated
 //! graphs are both informative and renderable.
 //!
 //! # Problem Solved
@@ -10,14 +10,14 @@
 //! Large codebases can have thousands of dependencies, making visualization
 //! impossible. This builder:
 //! - Limits graph size to renderable limits (e.g., Mermaid's 500 edge limit)
-//! - Selects the most important nodes using PageRank scores
+//! - Selects the most important nodes using `PageRank` scores
 //! - Preserves critical structural relationships
 //! - Groups related nodes for better organization
 //!
 //! # Algorithm
 //!
-//! 1. **PageRank Calculation**: Identify important nodes by connectivity
-//! 2. **Node Selection**: Choose top N nodes by PageRank score
+//! 1. **`PageRank` Calculation**: Identify important nodes by connectivity
+//! 2. **Node Selection**: Choose top N nodes by `PageRank` score
 //! 3. **Edge Filtering**: Keep only edges between selected nodes
 //! 4. **Grouping**: Optionally group by module or directory
 //! 5. **Simplification**: Remove redundant edges and merge similar nodes
@@ -103,6 +103,7 @@ pub struct FixedGraphBuilder {
 }
 
 impl FixedGraphBuilder {
+    #[must_use] 
     pub fn new(config: GraphConfig) -> Self {
         Self {
             max_nodes: config.max_nodes,
@@ -128,6 +129,7 @@ impl FixedGraphBuilder {
     ///     .with_max_nodes(50);
     /// // Builder will now limit to 50 nodes instead of 100
     /// ```
+    #[must_use] 
     pub fn with_max_nodes(mut self, max_nodes: usize) -> Self {
         self.max_nodes = max_nodes;
         self
@@ -150,6 +152,7 @@ impl FixedGraphBuilder {
     ///     .with_max_edges(200);
     /// // Builder will now limit to 200 edges instead of 500
     /// ```
+    #[must_use] 
     pub fn with_max_edges(mut self, max_edges: usize) -> Self {
         self.max_edges = max_edges;
         self
@@ -191,7 +194,7 @@ impl FixedGraphBuilder {
                 // For src/services/foo.rs -> services
                 // For src/models/bar.rs -> models
                 if let Some(module) = parts.get(1) {
-                    return module.to_string();
+                    return (*module).to_string();
                 }
             }
         }
@@ -206,7 +209,7 @@ impl FixedGraphBuilder {
         }
     }
 
-    /// Calculate PageRank scores for nodes
+    /// Calculate `PageRank` scores for nodes
     fn calculate_pagerank(
         &self,
         graph: &DependencyGraph,
@@ -267,7 +270,7 @@ impl FixedGraphBuilder {
         group_scores
     }
 
-    /// Select top nodes based on PageRank scores
+    /// Select top nodes based on `PageRank` scores
     fn select_top_nodes(
         &self,
         scores: HashMap<String, f64>,
@@ -318,7 +321,7 @@ impl FixedGraphBuilder {
                     id: node_id.clone(),
                     display_name: semantic_name.clone(),
                     node_type: node.node_type.clone(),
-                    complexity: node.complexity as u64,
+                    complexity: u64::from(node.complexity),
                 };
 
                 nodes.insert(semantic_name, fixed_node);

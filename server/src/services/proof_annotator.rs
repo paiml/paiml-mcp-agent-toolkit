@@ -79,6 +79,7 @@ pub struct ProofCache {
 }
 
 impl ProofCache {
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             cache: std::collections::HashMap::new(),
@@ -86,6 +87,7 @@ impl ProofCache {
         }
     }
 
+    #[must_use] 
     pub fn get(&self, key: &str) -> Option<&Vec<ProofAnnotation>> {
         self.cache.get(key)
     }
@@ -94,6 +96,7 @@ impl ProofCache {
         self.cache.insert(key, annotations);
     }
 
+    #[must_use] 
     pub fn is_file_cached(&self, path: &Path) -> bool {
         if let Ok(metadata) = std::fs::metadata(path) {
             if let Ok(modified) = metadata.modified() {
@@ -118,6 +121,7 @@ impl ProofCache {
         self.file_times.clear();
     }
 
+    #[must_use] 
     pub fn size(&self) -> usize {
         self.cache.len()
     }
@@ -131,6 +135,7 @@ pub struct ProofAnnotator {
 }
 
 impl ProofAnnotator {
+    #[must_use] 
     pub fn new(symbol_table: Arc<SymbolTable>) -> Self {
         Self {
             sources: Vec::new(),
@@ -198,7 +203,7 @@ impl ProofAnnotator {
         let proof_map = self.merge_with_conflict_resolution(all_results);
 
         let elapsed = start.elapsed();
-        let total_annotations = proof_map.values().map(|v| v.len()).sum::<usize>();
+        let total_annotations = proof_map.values().map(std::vec::Vec::len).sum::<usize>();
 
         info!(
             "Proof collection completed in {}ms: {} annotations from {} sources",
@@ -245,13 +250,13 @@ impl ProofAnnotator {
                             let existing_score = (
                                 existing[idx].confidence_level as u32,
                                 method_rank(&existing[idx].method),
-                                existing[idx].assumptions.is_empty() as u32,
+                                u32::from(existing[idx].assumptions.is_empty()),
                             );
 
                             let new_score = (
                                 annotation.confidence_level as u32,
                                 method_rank(&annotation.method),
-                                annotation.assumptions.is_empty() as u32,
+                                u32::from(annotation.assumptions.is_empty()),
                             );
 
                             if new_score > existing_score {
@@ -280,6 +285,7 @@ impl ProofAnnotator {
     }
 
     /// Get cache statistics
+    #[must_use] 
     pub fn cache_stats(&self) -> CacheStats {
         let cache = self.cache.read();
         CacheStats {
@@ -319,6 +325,7 @@ pub struct MockProofSource {
 }
 
 impl MockProofSource {
+    #[must_use] 
     pub fn new(name: String, delay_ms: u64, annotation_count: usize) -> Self {
         Self {
             name,

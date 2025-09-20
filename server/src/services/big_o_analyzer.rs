@@ -124,6 +124,7 @@ impl BigOAnalyzer {
     /// let analyzer = BigOAnalyzer::new();
     /// // Analyzer is ready to analyze code complexity
     /// ```
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             pattern_matcher: ComplexityPatternMatcher::new(),
@@ -273,7 +274,7 @@ impl BigOAnalyzer {
         for entry in WalkDir::new(&config.project_path)
             .follow_links(false)
             .into_iter()
-            .filter_map(|e| e.ok())
+            .filter_map(std::result::Result::ok)
             .filter(|e| e.file_type().is_file())
         {
             let path = entry.path();
@@ -595,6 +596,7 @@ impl BigOAnalyzer {
     }
 
     /// Format report as Markdown
+    #[must_use] 
     pub fn format_as_markdown(&self, report: &BigOAnalysisReport) -> String {
         let mut md = String::with_capacity(1024);
 

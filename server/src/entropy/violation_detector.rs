@@ -45,6 +45,7 @@ pub struct ViolationDetector {
 }
 
 impl ViolationDetector {
+    #[must_use] 
     pub fn new(config: EntropyConfig) -> Self {
         Self { config }
     }
@@ -313,7 +314,7 @@ impl ViolationDetector {
     }
 
     /// Extract context name from pattern
-    fn context_name(&self, _pattern: &AstPattern) -> &str {
+    fn context_name(&self, _pattern: &AstPattern) -> &'static str {
         // Extract meaningful name from pattern
         // Simplified - would analyze actual AST
         "context"

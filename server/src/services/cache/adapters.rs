@@ -10,19 +10,21 @@ use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-/// Adapter to make ContentCache implement UnifiedCache
+/// Adapter to make `ContentCache` implement `UnifiedCache`
 #[derive(Clone)]
 pub struct ContentCacheAdapter<T: CacheStrategy> {
     inner: Arc<RwLock<ContentCache<T>>>,
 }
 
 impl<T: CacheStrategy> ContentCacheAdapter<T> {
+    #[must_use] 
     pub fn new(cache: ContentCache<T>) -> Self {
         Self {
             inner: Arc::new(RwLock::new(cache)),
         }
     }
 
+    #[must_use] 
     pub fn is_empty(&self) -> bool {
         self.inner.read().len() == 0
     }
@@ -69,13 +71,14 @@ where
     }
 }
 
-/// Adapter to make PersistentCache implement UnifiedCache
+/// Adapter to make `PersistentCache` implement `UnifiedCache`
 #[derive(Clone)]
 pub struct PersistentCacheAdapter<T: CacheStrategy> {
     inner: Arc<RwLock<PersistentCache<T>>>,
 }
 
 impl<T: CacheStrategy> PersistentCacheAdapter<T> {
+    #[must_use] 
     pub fn new(cache: PersistentCache<T>) -> Self {
         Self {
             inner: Arc::new(RwLock::new(cache)),

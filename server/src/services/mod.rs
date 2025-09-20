@@ -7,33 +7,33 @@
 //! # Service Architecture (Per SPECIFICATION.md Section 2)
 //!
 //! Services now implement a unified `Service` trait for consistency and composability.
-//! - **service_base**: Core Service trait and ServiceRegistry
-//! - **analysis_service**: Unified analysis service
-//! - **quality_gate_service**: Quality enforcement service
+//! - **`service_base`**: Core Service trait and `ServiceRegistry`
+//! - **`analysis_service`**: Unified analysis service
+//! - **`quality_gate_service`**: Quality enforcement service
 //!
 //! # Service Categories
 //!
 //! ## Analysis Services
 //! - **analyzer**: Unified analyzer framework (Toyota Way consolidation)
 //! - **complexity**: Cyclomatic complexity analysis
-//! - **satd_detector**: Self-Admitted Technical Debt detection
-//! - **dead_code_detector**: Unused code identification
-//! - **duplicate_detector**: Code duplication analysis
-//! - **big_o_analyzer**: Algorithmic complexity analysis
-//! - **coupling_analyzer**: Module coupling metrics
+//! - **`satd_detector`**: Self-Admitted Technical Debt detection
+//! - **`dead_code_detector`**: Unused code identification
+//! - **`duplicate_detector`**: Code duplication analysis
+//! - **`big_o_analyzer`**: Algorithmic complexity analysis
+//! - **`coupling_analyzer`**: Module coupling metrics
 //!
 //! ## AST Services
-//! - **ast_rust**: Rust AST analysis
-//! - **ast_typescript**: TypeScript/JavaScript analysis
-//! - **ast_python**: Python code analysis
-//! - **ast_c/ast_cpp**: C/C++ analysis
-//! - **ast_kotlin**: Kotlin analysis
+//! - **`ast_rust`**: Rust AST analysis
+//! - **`ast_typescript`**: TypeScript/JavaScript analysis
+//! - **`ast_python`**: Python code analysis
+//! - **`ast_c/ast_cpp`**: C/C++ analysis
+//! - **`ast_kotlin`**: Kotlin analysis
 //!
 //! ## Core Services
-//! - **context_generator**: AI-ready context generation
-//! - **refactor_engine**: Automated refactoring
-//! - **quality_gate**: Code quality enforcement
-//! - **template_engine**: Code generation templates
+//! - **`context_generator`**: AI-ready context generation
+//! - **`refactor_engine`**: Automated refactoring
+//! - **`quality_gate`**: Code quality enforcement
+//! - **`template_engine`**: Code generation templates
 //!
 //! # Example
 //!

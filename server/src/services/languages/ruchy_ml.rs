@@ -26,6 +26,7 @@ impl Default for RuchyMlAstExtractor {
 #[cfg(feature = "ruchy-ast")]
 impl RuchyMlAstExtractor {
     /// Create a new Ruchy ML AST extractor
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             items: Vec::new(),
@@ -70,7 +71,7 @@ impl RuchyMlAstExtractor {
             self.extract_module_from_line(trimmed, line_number)?;
         }
         // ML-style function definitions: let name(params) = expr
-        else if trimmed.starts_with("let ") && trimmed.contains("(") {
+        else if trimmed.starts_with("let ") && trimmed.contains('(') {
             self.extract_function_from_line(trimmed, line_number)?;
         }
         // Type definitions
@@ -90,7 +91,7 @@ impl RuchyMlAstExtractor {
             self.pattern_complexity += 1;
         }
         // Match arms
-        else if trimmed.starts_with("|") && trimmed.contains("->") {
+        else if trimmed.starts_with('|') && trimmed.contains("->") {
             self.pattern_complexity += 1;
         }
         // Proof tactics
@@ -159,9 +160,7 @@ impl RuchyMlAstExtractor {
             // Handle: type Name = ... or type Name<T> = ...
             let name = parts[1]
                 .split('<').next()
-                .and_then(|s| s.split('=').next())
-                .map(|s| s.trim().to_string())
-                .unwrap_or_else(|| parts[1].to_string());
+                .and_then(|s| s.split('=').next()).map_or_else(|| parts[1].to_string(), |s| s.trim().to_string());
 
             let qualified_name = self.qualify_name(&name);
 
@@ -225,7 +224,7 @@ impl RuchyMlAstExtractor {
     fn qualify_name(&self, name: &str) -> String {
         if let Some(ref module) = self.current_module {
             if !name.contains("::") {
-                return format!("{}::{}", module, name);
+                return format!("{module}::{name}");
             }
         }
         name.to_string()
@@ -245,7 +244,7 @@ impl RuchyMlAstExtractor {
             let trimmed = line.trim();
             if trimmed.starts_with("match ") {
                 self.pattern_complexity += 1;
-            } else if trimmed.starts_with("|") && trimmed.contains("->") {
+            } else if trimmed.starts_with('|') && trimmed.contains("->") {
                 // Match arm
                 self.pattern_complexity += 1;
             } else if trimmed.contains("if ") && trimmed.contains("->") {
@@ -258,6 +257,7 @@ impl RuchyMlAstExtractor {
     }
 
     /// Get total complexity
+    #[must_use] 
     pub fn get_total_complexity(&self) -> u32 {
         self.complexity + self.actor_complexity + self.pattern_complexity + self.proof_complexity
     }

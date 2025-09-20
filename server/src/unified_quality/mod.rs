@@ -46,6 +46,7 @@ pub enum QualityMode {
 
 impl QualityMode {
     /// Teams progress through modes as they mature
+    #[must_use] 
     pub fn recommended_progression() -> Vec<(Self, Duration)> {
         vec![
             (Self::Observe, Duration::from_secs(14 * 24 * 60 * 60)),
@@ -89,7 +90,7 @@ pub struct ResearchSystem {
 
 /// Property synthesis trait (research track)
 pub trait PropertySynthesizer: Send + Sync {
-    /// Generate QuickCheck properties from function signatures
+    /// Generate `QuickCheck` properties from function signatures
     fn synthesize_properties(&self, func: &str) -> Vec<String>;
 
     /// Infer invariants from execution traces

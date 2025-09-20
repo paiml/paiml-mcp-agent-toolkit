@@ -344,6 +344,7 @@ pub struct GamificationConfig {
 
 impl TeamOnboarding {
     /// Create new onboarding system
+    #[must_use] 
     pub fn new(config: OnboardingConfig) -> Self {
         Self {
             sessions: HashMap::new(),
@@ -384,7 +385,7 @@ impl TeamOnboarding {
         let session = self
             .sessions
             .get(team_id)
-            .ok_or_else(|| anyhow::anyhow!("Team not found: {}", team_id))?;
+            .ok_or_else(|| anyhow::anyhow!("Team not found: {team_id}"))?;
 
         let phase_tutorials = self
             .tutorials
@@ -429,7 +430,7 @@ impl TeamOnboarding {
             let session = self
                 .sessions
                 .get(team_id)
-                .ok_or_else(|| anyhow::anyhow!("Team not found: {}", team_id))?;
+                .ok_or_else(|| anyhow::anyhow!("Team not found: {team_id}"))?;
             !session.completed_tutorials.contains(&tutorial_id)
         };
 
@@ -439,7 +440,7 @@ impl TeamOnboarding {
                 let session = self
                     .sessions
                     .get(team_id)
-                    .ok_or_else(|| anyhow::anyhow!("Team not found: {}", team_id))?;
+                    .ok_or_else(|| anyhow::anyhow!("Team not found: {team_id}"))?;
                 // Create temporary session with updated values for score calculation
                 let mut temp_session = session.clone();
                 temp_session.progress.tutorials_completed += 1;
@@ -450,7 +451,7 @@ impl TeamOnboarding {
             let session = self
                 .sessions
                 .get_mut(team_id)
-                .ok_or_else(|| anyhow::anyhow!("Team not found: {}", team_id))?;
+                .ok_or_else(|| anyhow::anyhow!("Team not found: {team_id}"))?;
 
             session.completed_tutorials.push(tutorial_id);
             session.progress.tutorials_completed += 1;
@@ -494,10 +495,10 @@ impl TeamOnboarding {
         let session = self
             .sessions
             .get(team_id)
-            .ok_or_else(|| anyhow::anyhow!("Team not found: {}", team_id))?;
+            .ok_or_else(|| anyhow::anyhow!("Team not found: {team_id}"))?;
 
-        let completion_percentage = (session.progress.tutorials_completed as f64
-            / session.progress.tutorials_total as f64)
+        let completion_percentage = (f64::from(session.progress.tutorials_completed)
+            / f64::from(session.progress.tutorials_total))
             * 100.0;
 
         let current_phase_progress = self.calculate_phase_progress(session);
@@ -568,10 +569,10 @@ impl TeamOnboarding {
     /// Calculate engagement score
     fn calculate_engagement_score(&self, session: &OnboardingSession) -> f64 {
         let tutorial_ratio =
-            session.progress.tutorials_completed as f64 / session.progress.tutorials_total as f64;
+            f64::from(session.progress.tutorials_completed) / f64::from(session.progress.tutorials_total);
 
-        let exercise_bonus = (session.progress.exercises_completed as f64 * 0.1).min(0.3);
-        let improvement_bonus = (session.progress.quality_improvements as f64 * 0.05).min(0.2);
+        let exercise_bonus = (f64::from(session.progress.exercises_completed) * 0.1).min(0.3);
+        let improvement_bonus = (f64::from(session.progress.quality_improvements) * 0.05).min(0.2);
 
         ((tutorial_ratio + exercise_bonus + improvement_bonus) * 100.0).min(100.0)
     }
@@ -683,6 +684,7 @@ impl Default for TutorialLibrary {
 
 impl TutorialLibrary {
     /// Create new tutorial library with built-in content
+    #[must_use] 
     pub fn new() -> Self {
         let mut tutorials = HashMap::new();
 
@@ -752,11 +754,13 @@ impl TutorialLibrary {
     }
 
     /// Get tutorials for a specific phase
+    #[must_use] 
     pub fn get_tutorials_for_phase(&self, phase: &OnboardingPhase) -> Vec<Tutorial> {
         self.tutorials.get(phase).cloned().unwrap_or_default()
     }
 
     /// Count total tutorials
+    #[must_use] 
     pub fn count_tutorials(&self) -> u32 {
         self.tutorials.values().map(|v| v.len() as u32).sum()
     }

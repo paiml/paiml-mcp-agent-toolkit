@@ -1,7 +1,7 @@
 //! WebAssembly parser traits and interfaces
 //!
 //! This module defines the core traits for WebAssembly parsing and analysis.
-//! Follows the existing LanguageParser pattern while adding WASM-specific capabilities.
+//! Follows the existing `LanguageParser` pattern while adding WASM-specific capabilities.
 use anyhow::Result;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -38,7 +38,7 @@ pub trait LanguageParser: Send + Sync {
 }
 
 /// Core `trait` for WebAssembly-aware parsers
-/// Extends the base LanguageParser with WASM-specific analysis capabilities
+/// Extends the base `LanguageParser` with WASM-specific analysis capabilities
 #[async_trait]
 pub trait WasmAwareParser: LanguageParser {
     /// Extract WebAssembly-specific metrics from the `AST`

@@ -27,6 +27,7 @@ impl Default for TypeScriptStrategy {
 }
 
 impl TypeScriptStrategy {
+    #[must_use] 
     pub fn new() -> Self {
         Self
     }
@@ -67,7 +68,7 @@ impl TypeScriptStrategy {
         let mut parser = Parser::new_from(lexer);
         parser
             .parse_module()
-            .map_err(|e| anyhow::anyhow!("TypeScript parse error: {:?}", e))
+            .map_err(|e| anyhow::anyhow!("TypeScript parse error: {e:?}"))
     }
 
     fn convert_to_dag(&self, module: &Module, language: Language) -> AstDag {
@@ -87,8 +88,7 @@ impl LanguageStrategy for TypeScriptStrategy {
     fn can_parse(&self, path: &Path) -> bool {
         path.extension()
             .and_then(|ext| ext.to_str())
-            .map(|ext| matches!(ext, "ts" | "tsx"))
-            .unwrap_or(false)
+            .is_some_and(|ext| matches!(ext, "ts" | "tsx"))
     }
 
     async fn parse_file(&self, path: &Path, content: &str) -> Result<AstDag> {
@@ -160,6 +160,7 @@ impl Default for JavaScriptStrategy {
 }
 
 impl JavaScriptStrategy {
+    #[must_use] 
     pub fn new() -> Self {
         Self
     }
@@ -183,7 +184,7 @@ impl JavaScriptStrategy {
         let mut parser = Parser::new_from(lexer);
         parser
             .parse_module()
-            .map_err(|e| anyhow::anyhow!("JavaScript parse error: {:?}", e))
+            .map_err(|e| anyhow::anyhow!("JavaScript parse error: {e:?}"))
     }
 }
 
@@ -196,8 +197,7 @@ impl LanguageStrategy for JavaScriptStrategy {
     fn can_parse(&self, path: &Path) -> bool {
         path.extension()
             .and_then(|ext| ext.to_str())
-            .map(|ext| matches!(ext, "js" | "jsx" | "mjs"))
-            .unwrap_or(false)
+            .is_some_and(|ext| matches!(ext, "js" | "jsx" | "mjs"))
     }
 
     async fn parse_file(&self, path: &Path, content: &str) -> Result<AstDag> {

@@ -118,6 +118,7 @@ struct ArchitectureIndicators {
 }
 
 impl PolyglotAnalyzer {
+    #[must_use] 
     pub fn new() -> Self {
         let mut analyzer = Self {
             language_patterns: HashMap::new(),
@@ -340,7 +341,7 @@ impl PolyglotAnalyzer {
         framework_map
             .iter()
             .filter(|(search_term, _)| content.contains(search_term))
-            .map(|(_, name)| name.to_string())
+            .map(|(_, name)| (*name).to_string())
             .collect()
     }
 
@@ -519,10 +520,8 @@ impl PolyglotAnalyzer {
                 self.analyze_js_ts_integration(project_path, &mut files_involved)
                     .await?
             }
-            ("javascript", "python")
-            | ("python", "javascript")
-            | ("typescript", "python")
-            | ("python", "typescript") => {
+            ("javascript" | "typescript", "python") |
+("python", "javascript" | "typescript") => {
                 // Look for API boundaries and shared data formats
                 self.analyze_api_integration(project_path, &mut files_involved)
                     .await?
@@ -630,7 +629,7 @@ impl PolyglotAnalyzer {
         ] {
             if project_path.join(api_file).exists() {
                 coupling_strength += 0.5;
-                files_involved.push(api_file.to_string());
+                files_involved.push((*api_file).to_string());
             }
         }
 
@@ -638,7 +637,7 @@ impl PolyglotAnalyzer {
         for schema_file in &["schema.json", "types.json", "models.json"] {
             if project_path.join(schema_file).exists() {
                 coupling_strength += 0.3;
-                files_involved.push(schema_file.to_string());
+                files_involved.push((*schema_file).to_string());
             }
         }
 
@@ -672,8 +671,8 @@ impl PolyglotAnalyzer {
                     for (i, &lang1) in languages_in_make.iter().enumerate() {
                         for &lang2 in languages_in_make.iter().skip(i + 1) {
                             dependencies.push(CrossLanguageDependency {
-                                from_language: lang1.to_string(),
-                                to_language: lang2.to_string(),
+                                from_language: lang1.clone(),
+                                to_language: lang2.clone(),
                                 dependency_type: DependencyType::BuildSystem,
                                 coupling_strength: 0.6,
                                 files_involved: vec!["Makefile".to_string()],
@@ -702,11 +701,11 @@ impl PolyglotAnalyzer {
                     for (i, &lang1) in languages.iter().enumerate() {
                         for &lang2 in languages.iter().skip(i + 1) {
                             dependencies.push(CrossLanguageDependency {
-                                from_language: lang1.to_string(),
-                                to_language: lang2.to_string(),
+                                from_language: lang1.clone(),
+                                to_language: lang2.clone(),
                                 dependency_type: DependencyType::ConfigurationFile,
                                 coupling_strength: 0.4,
-                                files_involved: vec![config_file.to_string()],
+                                files_involved: vec![(*config_file).to_string()],
                             });
                         }
                     }
@@ -759,14 +758,8 @@ impl PolyglotAnalyzer {
     fn has_potential_integration(&self, lang1: &str, lang2: &str) -> bool {
         matches!(
             (lang1, lang2),
-            ("rust", "python")
-                | ("python", "rust")
-                | ("typescript", "rust")
-                | ("rust", "typescript")
-                | ("javascript", "python")
-                | ("python", "javascript")
-                | ("typescript", "javascript")
-                | ("javascript", "typescript")
+            ("rust" | "javascript", "python" | "typescript") |
+("python" | "typescript", "rust" | "javascript")
         )
     }
 
@@ -1059,6 +1052,7 @@ impl PolyglotAnalyzer {
         score.clamp(0.0, 1.0)
     }
 
+    #[must_use] 
     pub fn generate_polyglot_insights(&self, analysis: &PolyglotAnalysis) -> Vec<String> {
         let mut insights = Vec::new();
 

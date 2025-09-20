@@ -51,6 +51,7 @@ pub struct FileComplexityDetail {
 
 impl SimpleDeepContext {
     /// Create new simple deep context analyzer
+    #[must_use] 
     pub fn new() -> Self {
         Self
     }
@@ -150,7 +151,7 @@ impl SimpleDeepContext {
         for entry in WalkDir::new(&abs_project_path)
             .follow_links(false)
             .into_iter()
-            .filter_map(|e| e.ok())
+            .filter_map(std::result::Result::ok)
             .filter(|e| e.file_type().is_file())
         {
             let path = entry.path();
@@ -172,7 +173,10 @@ impl SimpleDeepContext {
             if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
                 if source_extensions.contains(&ext) {
                     // Apply include patterns if specified
-                    if !config.include_patterns.is_empty() {
+                    if config.include_patterns.is_empty() {
+                        // No include patterns specified, include all files with valid extensions
+                        files.push(path.to_path_buf());
+                    } else {
                         let path_str = path.to_string_lossy();
                         let matches_include = config.include_patterns.iter().any(|pattern| {
                             // Simple pattern matching - check if filename contains the pattern
@@ -185,9 +189,6 @@ impl SimpleDeepContext {
                         if matches_include {
                             files.push(path.to_path_buf());
                         }
-                    } else {
-                        // No include patterns specified, include all files with valid extensions
-                        files.push(path.to_path_buf());
                     }
                 }
             }
@@ -301,9 +302,9 @@ impl SimpleDeepContext {
                             .count();
 
                         let total_cyclomatic: u32 =
-                            functions.iter().map(|f| f.metrics.cyclomatic as u32).sum();
+                            functions.iter().map(|f| u32::from(f.metrics.cyclomatic)).sum();
 
-                        let avg_complexity = total_cyclomatic as f64 / function_count as f64;
+                        let avg_complexity = f64::from(total_cyclomatic) / function_count as f64;
 
                         (function_count, high_complexity_functions, avg_complexity)
                     }
@@ -399,53 +400,50 @@ impl SimpleDeepContext {
 
     /// Find the end of a function body
     fn find_function_end(&self, content: &str, extension: &str) -> Option<usize> {
-        match extension {
-            "py" => {
-                // Python: find next line with same or lower indentation
-                let lines: Vec<&str> = content.lines().collect();
-                if lines.is_empty() {
-                    return None;
+        if extension == "py" {
+            // Python: find next line with same or lower indentation
+            let lines: Vec<&str> = content.lines().collect();
+            if lines.is_empty() {
+                return None;
+            }
+
+            let first_indent = lines[0].len() - lines[0].trim_start().len();
+            for (i, line) in lines.iter().enumerate().skip(1) {
+                if !line.trim().is_empty() {
+                    let indent = line.len() - line.trim_start().len();
+                    if indent <= first_indent {
+                        return Some(lines[..i].join("\n").len());
+                    }
+                }
+            }
+            Some(content.len())
+        } else {
+            // For C-like languages, count braces
+            let mut brace_count = 0;
+            let mut in_string = false;
+            let mut escape = false;
+
+            for (i, ch) in content.chars().enumerate() {
+                if escape {
+                    escape = false;
+                    continue;
                 }
 
-                let first_indent = lines[0].len() - lines[0].trim_start().len();
-                for (i, line) in lines.iter().enumerate().skip(1) {
-                    if !line.trim().is_empty() {
-                        let indent = line.len() - line.trim_start().len();
-                        if indent <= first_indent {
-                            return Some(lines[..i].join("\n").len());
+                match ch {
+                    '\\' => escape = true,
+                    '"' if !in_string => in_string = true,
+                    '"' if in_string => in_string = false,
+                    '{' if !in_string => brace_count += 1,
+                    '}' if !in_string => {
+                        brace_count -= 1;
+                        if brace_count == 0 {
+                            return Some(i + 1);
                         }
                     }
+                    _ => {}
                 }
-                Some(content.len())
             }
-            _ => {
-                // For C-like languages, count braces
-                let mut brace_count = 0;
-                let mut in_string = false;
-                let mut escape = false;
-
-                for (i, ch) in content.chars().enumerate() {
-                    if escape {
-                        escape = false;
-                        continue;
-                    }
-
-                    match ch {
-                        '\\' => escape = true,
-                        '"' if !in_string => in_string = true,
-                        '"' if in_string => in_string = false,
-                        '{' if !in_string => brace_count += 1,
-                        '}' if !in_string => {
-                            brace_count -= 1;
-                            if brace_count == 0 {
-                                return Some(i + 1);
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-                None
-            }
+            None
         }
     }
 
@@ -576,6 +574,7 @@ impl SimpleDeepContext {
     /// assert!(output.contains("## Top Files by Complexity"));
     /// assert!(output.contains("1. `main.rs` - 5.5 avg complexity"));
     /// ```
+    #[must_use] 
     pub fn format_as_markdown(&self, report: &SimpleAnalysisReport, top_files: usize) -> String {
         let mut markdown = String::new();
 
@@ -617,9 +616,7 @@ impl SimpleDeepContext {
                 let filename = file_detail
                     .file_path
                     .file_name()
-                    .and_then(|n| n.to_str())
-                    .map(|s| s.to_string())
-                    .unwrap_or_else(|| file_detail.file_path.to_string_lossy().to_string());
+                    .and_then(|n| n.to_str()).map_or_else(|| file_detail.file_path.to_string_lossy().to_string(), std::string::ToString::to_string);
                 markdown.push_str(&format!(
                     "{}. `{}` - {:.1} avg complexity ({} functions, {} high complexity)\n",
                     i + 1,

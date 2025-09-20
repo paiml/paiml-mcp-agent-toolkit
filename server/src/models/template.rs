@@ -44,6 +44,7 @@ impl Toolchain {
     /// };
     /// assert_eq!(deno.priority(), 2);
     /// ```
+    #[must_use] 
     pub fn priority(&self) -> u8 {
         match self {
             Toolchain::RustCli { .. } => 1,
@@ -69,6 +70,7 @@ impl Toolchain {
     /// };
     /// assert_eq!(python.as_str(), "python-uv");
     /// ```
+    #[must_use] 
     pub fn as_str(&self) -> &'static str {
         match self {
             Toolchain::RustCli { .. } => "rust",

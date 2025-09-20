@@ -250,7 +250,7 @@ impl TdgAnalyzerAst {
                 scheduler
                     .schedule_commit(path.to_path_buf())
                     .await
-                    .map_err(|e| anyhow::anyhow!("Scheduling failed: {}", e))?,
+                    .map_err(|e| anyhow::anyhow!("Scheduling failed: {e}"))?,
             )
         } else {
             None
@@ -267,7 +267,7 @@ impl TdgAnalyzerAst {
                 scheduler
                     .schedule_background(path.to_path_buf())
                     .await
-                    .map_err(|e| anyhow::anyhow!("Scheduling failed: {}", e))?,
+                    .map_err(|e| anyhow::anyhow!("Scheduling failed: {e}"))?,
             )
         } else {
             None
@@ -289,6 +289,7 @@ impl TdgAnalyzerAst {
     // GREEN Phase: Public methods for TDG dogfooding - accessing stored scores
 
     /// Get a reference to the storage system for querying stored scores
+    #[must_use] 
     pub fn get_storage(&self) -> Option<&TieredStore> {
         self.storage.as_ref()
     }
@@ -323,10 +324,11 @@ impl TdgAnalyzerAst {
     }
 
     /// Get storage statistics for monitoring
+    #[must_use] 
     pub fn get_storage_stats(&self) -> Option<crate::tdg::StorageStatistics> {
         self.storage
             .as_ref()
-            .map(|storage| storage.get_statistics())
+            .map(super::storage::TieredStore::get_statistics)
     }
 
     /// Get adaptive threshold statistics for diagnostics
@@ -415,7 +417,7 @@ impl TdgAnalyzerAst {
             Language::Rust => self.analyze_rust_ast(source, &mut score, &mut tracker)?,
             Language::Python => self.analyze_python_ast(source, &mut score, &mut tracker)?,
             Language::JavaScript | Language::TypeScript => {
-                self.analyze_javascript_ast(source, &mut score, &mut tracker)?
+                self.analyze_javascript_ast(source, &mut score, &mut tracker)?;
             }
             Language::Go => self.analyze_go_ast(source, &mut score, &mut tracker)?,
             Language::Java => self.analyze_java_ast(source, &mut score, &mut tracker)?,
@@ -515,7 +517,7 @@ impl TdgAnalyzerAst {
             use rustpython_parser::{parse, Mode};
 
             let ast = parse(source, Mode::Module, "<string>")
-                .map_err(|e| anyhow::anyhow!("Python parse error: {:?}", e))?;
+                .map_err(|e| anyhow::anyhow!("Python parse error: {e:?}"))?;
 
             let mut visitor = PythonComplexityVisitor::new();
             visitor.analyze_module(ast);
@@ -685,13 +687,13 @@ impl TdgAnalyzerAst {
 
             parser
                 .set_language(&language)
-                .map_err(|e| anyhow::anyhow!("Failed to set language: {:?}", e))?;
+                .map_err(|e| anyhow::anyhow!("Failed to set language: {e:?}"))?;
 
             if let Some(tree) = parser.parse(source, None) {
                 let root_node = tree.root_node();
 
                 // Count control flow statements for cyclomatic complexity
-                let query_str = r#"
+                let query_str = r"
                     (if_statement) @if
                     (while_statement) @while
                     (for_statement) @for
@@ -699,10 +701,10 @@ impl TdgAnalyzerAst {
                     (switch_statement) @switch
                     (case_statement) @case
                     (conditional_expression) @ternary
-                "#;
+                ";
 
                 let query = Query::new(&language, query_str)
-                    .map_err(|e| anyhow::anyhow!("Query error: {:?}", e))?;
+                    .map_err(|e| anyhow::anyhow!("Query error: {e:?}"))?;
 
                 let mut cursor = QueryCursor::new();
                 let matches = cursor.matches(&query, root_node, source.as_bytes());
@@ -718,7 +720,7 @@ impl TdgAnalyzerAst {
 
                 // Count includes for coupling
                 let include_query = Query::new(&language, "(preproc_include) @include")
-                    .map_err(|e| anyhow::anyhow!("Query error: {:?}", e))?;
+                    .map_err(|e| anyhow::anyhow!("Query error: {e:?}"))?;
 
                 let mut cursor = QueryCursor::new();
                 let include_matches = cursor.matches(&include_query, root_node, source.as_bytes());
@@ -728,7 +730,7 @@ impl TdgAnalyzerAst {
 
                 // Basic documentation coverage
                 let comment_query = Query::new(&language, "(comment) @comment")
-                    .map_err(|e| anyhow::anyhow!("Query error: {:?}", e))?;
+                    .map_err(|e| anyhow::anyhow!("Query error: {e:?}"))?;
 
                 let mut cursor = QueryCursor::new();
                 let comment_matches = cursor.matches(&comment_query, root_node, source.as_bytes());
@@ -774,7 +776,7 @@ impl TdgAnalyzerAst {
             // Use blocking approach since we're in a sync context
             let rt = tokio::runtime::Handle::try_current()
                 .or_else(|_| tokio::runtime::Runtime::new().map(|rt| rt.handle().clone()))
-                .map_err(|e| anyhow::anyhow!("Failed to get async runtime: {}", e))?;
+                .map_err(|e| anyhow::anyhow!("Failed to get async runtime: {e}"))?;
 
             let analysis_result =
                 rt.block_on(async { analyze_ruchy_file_with_parser(temp_path).await });
@@ -999,7 +1001,7 @@ impl TdgAnalyzerAst {
 
         let lines: Vec<&str> = source
             .lines()
-            .map(|l| l.trim())
+            .map(str::trim)
             .filter(|l| !l.is_empty() && !l.starts_with("//") && !l.starts_with("/*"))
             .collect();
 
@@ -1177,7 +1179,7 @@ impl TdgAnalyzerAst {
         }
 
         // Quote consistency (single vs double quotes)
-        let single_quotes = source.matches("'").count();
+        let single_quotes = source.matches('\'').count();
         let double_quotes = source.matches('"').count();
 
         if single_quotes > 0 && double_quotes > 0 {
@@ -1221,7 +1223,7 @@ impl TdgAnalyzerAst {
 
                     // Check for repetitive patterns in code
                     let mut line_counts = std::collections::HashMap::new();
-                    for line in lines.iter() {
+                    for line in &lines {
                         let trimmed = line.trim();
                         if !trimmed.is_empty() && !trimmed.starts_with("//") {
                             *line_counts.entry(trimmed).or_insert(0) += 1;
@@ -1637,15 +1639,12 @@ impl PythonComplexityVisitor {
     fn analyze_module(&mut self, module: rustpython_parser::ast::Mod) {
         // Python AST analysis implementation for complexity and structure metrics
         // Simplified implementation to fix compilation issues
-        match module {
-            rustpython_parser::ast::Mod::Module(_) => {
-                // Basic complexity estimation for Python modules
-                self.cyclomatic_complexity += 5; // Base complexity for Python module
-                self.max_nesting_depth = 2; // Typical nesting depth
-            }
-            _ => {
-                // Handle other module types (interactive, expression, etc.)
-            }
+        if let rustpython_parser::ast::Mod::Module(_) = module {
+            // Basic complexity estimation for Python modules
+            self.cyclomatic_complexity += 5; // Base complexity for Python module
+            self.max_nesting_depth = 2; // Typical nesting depth
+        } else {
+            // Handle other module types (interactive, expression, etc.)
         }
     }
 

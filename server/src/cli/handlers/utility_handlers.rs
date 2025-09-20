@@ -3,10 +3,10 @@
 //! This module contains utility command implementations extracted from
 //! the main CLI module to reduce complexity.
 
-use crate::cli::*;
-use crate::models::template::*;
+use crate::cli::{OutputFormat, ContextFormat};
+use crate::models::template::TemplateResource;
 use crate::services::context::AstItem;
-use crate::services::template_service::*;
+use crate::services::template_service::{list_templates, search_templates};
 use crate::stateless_server::StatelessTemplateServer;
 use anyhow::Result;
 use std::path::{Path, PathBuf};
@@ -26,12 +26,12 @@ pub async fn handle_list(
         OutputFormat::Table => super::super::analysis_utilities::print_table(&templates),
         OutputFormat::Json => {
             let templates_deref: Vec<&TemplateResource> =
-                templates.iter().map(|t| t.as_ref()).collect();
+                templates.iter().map(std::convert::AsRef::as_ref).collect();
             println!("{}", serde_json::to_string_pretty(&templates_deref)?);
         }
         OutputFormat::Yaml => {
             let templates_deref: Vec<&TemplateResource> =
-                templates.iter().map(|t| t.as_ref()).collect();
+                templates.iter().map(std::convert::AsRef::as_ref).collect();
             println!("{}", serde_yaml::to_string(&templates_deref)?);
         }
     }
@@ -137,29 +137,26 @@ pub async fn handle_context(
 
 /// Detect toolchain or use provided one
 fn detect_or_use_toolchain(toolchain: Option<String>, project_path: &Path) -> Result<String> {
-    match toolchain {
-        Some(t) => Ok(t),
-        None => {
-            eprintln!("🔍 Auto-detecting project language...");
+    if let Some(t) = toolchain { Ok(t) } else {
+        eprintln!("🔍 Auto-detecting project language...");
 
-            // First try with confidence
-            if let Some((lang, confidence)) =
-                super::super::detect_primary_language_with_confidence(project_path)
-            {
-                eprintln!("✅ Detected: {lang} (confidence: {confidence:.1}%)");
-                return Ok(lang);
-            }
-
-            // Fall back to simple detection
-            if let Some(lang) = super::super::detect_primary_language(project_path) {
-                eprintln!("✅ Detected: {lang}");
-                return Ok(lang);
-            }
-
-            // Default to rust if no language detected
-            eprintln!("⚠️  Could not detect language, defaulting to Rust");
-            Ok("rust".to_string())
+        // First try with confidence
+        if let Some((lang, confidence)) =
+            super::super::detect_primary_language_with_confidence(project_path)
+        {
+            eprintln!("✅ Detected: {lang} (confidence: {confidence:.1}%)");
+            return Ok(lang);
         }
+
+        // Fall back to simple detection
+        if let Some(lang) = super::super::detect_primary_language(project_path) {
+            eprintln!("✅ Detected: {lang}");
+            return Ok(lang);
+        }
+
+        // Default to rust if no language detected
+        eprintln!("⚠️  Could not detect language, defaulting to Rust");
+        Ok("rust".to_string())
     }
 }
 
@@ -436,9 +433,9 @@ fn format_json_output(
                         if let Some(complexity_metrics) = &file.complexity_metrics {
                             if let Some(func) = complexity_metrics.functions.iter()
                                 .find(|f| &f.name == name) {
-                                let complexity_factor = (func.metrics.cyclomatic as f32 / 30.0).min(1.0);
+                                let complexity_factor = (f32::from(func.metrics.cyclomatic) / 30.0).min(1.0);
                                 let churn_factor = metadata.get("code_churn")
-                                    .and_then(|v| v.as_f64())
+                                    .and_then(serde_json::Value::as_f64)
                                     .unwrap_or(0.0) as f32;
                                 let defect_prob = (complexity_factor * 0.7 + churn_factor * 0.3).min(1.0);
                                 metadata["defect_probability"] = (defect_prob * 100.0).round().into();
@@ -789,7 +786,7 @@ fn add_defect_probability_annotations(
         return;
     };
 
-    let complexity_factor = (func.metrics.cyclomatic as f32 / 30.0).min(1.0);
+    let complexity_factor = (f32::from(func.metrics.cyclomatic) / 30.0).min(1.0);
     let churn_factor = get_churn_factor(analyses, &file.path);
     let defect_prob = (complexity_factor * 0.7 + churn_factor * 0.3).min(1.0);
 
@@ -806,8 +803,7 @@ fn get_churn_factor(
         .churn_analysis
         .as_ref()
         .and_then(|ca| find_churn_file_metrics(ca, file_path))
-        .map(|f| f.churn_score)
-        .unwrap_or(0.0)
+        .map_or(0.0, |f| f.churn_score)
 }
 
 /// Format as SARIF output
@@ -845,8 +841,7 @@ fn format_sarif_output(
                         "language": file.language,
                         "astItems": file.items.len(),
                         "complexity": file.complexity_metrics.as_ref()
-                            .map(|m| m.total_complexity.cyclomatic)
-                            .unwrap_or(0),
+                            .map_or(0, |m| m.total_complexity.cyclomatic),
                     })
                 }).collect::<Vec<_>>(),
                 "qualityScorecard": deep_context.quality_scorecard,

@@ -1,7 +1,7 @@
-//! Compatibility shim for ast_python module during migration to new AST architecture
+//! Compatibility shim for `ast_python` module during migration to new AST architecture
 //!
 //! This module provides backward compatibility for services still using the old Python AST API.
-//! It will be removed once all services are migrated to the new ast:: module.
+//! It will be removed once all services are migrated to the new `ast::` module.
 
 use anyhow::Result;
 use std::path::Path;
@@ -21,12 +21,12 @@ use crate::services::enhanced_python_visitor::EnhancedPythonVisitor;
 #[cfg(feature = "python-ast")]
 use rustpython_parser::{ast::ModModule, Parse};
 
-/// Parse Python content using RustPython parser
+/// Parse Python content using `RustPython` parser
 #[cfg(feature = "python-ast")]
 fn parse_python_content(content: &str, path: &Path) -> Result<ModModule, TemplateError> {
     let filename = path.display().to_string();
     ModModule::parse(content, &filename)
-        .map_err(|e| TemplateError::InvalidUtf8(format!("Python parse error: {}", e)))
+        .map_err(|e| TemplateError::InvalidUtf8(format!("Python parse error: {e}")))
 }
 
 /// Analyze a Python file and return complexity metrics (compatibility function)
@@ -142,7 +142,7 @@ pub async fn analyze_python_file_with_classifier(
     for (i, _node) in functions.iter().enumerate() {
         items.push(AstItem::Function {
             name: format!("function_{i}"),
-            visibility: "".to_string(), // Python doesn't have visibility modifiers
+            visibility: String::new(), // Python doesn't have visibility modifiers
             is_async: false,            // Could check node flags for async
             line: i * 10,
         });
@@ -152,7 +152,7 @@ pub async fn analyze_python_file_with_classifier(
     for (i, _node) in types.iter().enumerate() {
         items.push(AstItem::Struct {
             name: format!("class_{i}"),
-            visibility: "".to_string(),
+            visibility: String::new(),
             fields_count: 0,
             derives: vec![],
             line: (functions.len() + i) * 10,

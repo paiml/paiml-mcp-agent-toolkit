@@ -19,24 +19,26 @@ pub enum Language {
 }
 
 impl Language {
+    #[must_use] 
     pub fn from_extension(path: &Path) -> Self {
         match path.extension().and_then(|s| s.to_str()) {
             Some("rs") => Language::Rust,
             Some("py") => Language::Python,
-            Some("js") | Some("jsx") => Language::JavaScript,
-            Some("ts") | Some("tsx") => Language::TypeScript,
+            Some("js" | "jsx") => Language::JavaScript,
+            Some("ts" | "tsx") => Language::TypeScript,
             Some("go") => Language::Go,
             Some("java") => Language::Java,
-            Some("c") | Some("h") => Language::C,
-            Some("cpp") | Some("cc") | Some("cxx") | Some("hpp") => Language::Cpp,
+            Some("c" | "h") => Language::C,
+            Some("cpp" | "cc" | "cxx" | "hpp") => Language::Cpp,
             Some("rb") => Language::Ruby,
             Some("swift") => Language::Swift,
-            Some("kt") | Some("kts") => Language::Kotlin,
-            Some("ruchy") | Some("rh") => Language::Ruchy,
+            Some("kt" | "kts") => Language::Kotlin,
+            Some("ruchy" | "rh") => Language::Ruchy,
             _ => Language::Unknown,
         }
     }
 
+    #[must_use] 
     pub fn confidence(&self) -> f32 {
         match self {
             Language::Rust => 1.0,
@@ -86,6 +88,7 @@ pub enum NamingStyle {
 }
 
 impl NamingStyle {
+    #[must_use] 
     pub fn matches(&self, name: &str) -> bool {
         match self {
             NamingStyle::SnakeCase => name
@@ -123,6 +126,7 @@ pub struct LanguageRules {
 }
 
 impl LanguageRules {
+    #[must_use] 
     pub fn for_language(language: Language) -> Self {
         match language {
             Language::Rust => Self::rust_rules(),
@@ -135,6 +139,7 @@ impl LanguageRules {
         }
     }
 
+    #[must_use] 
     pub fn rust_rules() -> Self {
         LanguageRules {
             language: Language::Rust,
@@ -145,6 +150,7 @@ impl LanguageRules {
         }
     }
 
+    #[must_use] 
     pub fn python_rules() -> Self {
         LanguageRules {
             language: Language::Python,
@@ -155,6 +161,7 @@ impl LanguageRules {
         }
     }
 
+    #[must_use] 
     pub fn javascript_rules() -> Self {
         LanguageRules {
             language: Language::JavaScript,
@@ -165,6 +172,7 @@ impl LanguageRules {
         }
     }
 
+    #[must_use] 
     pub fn typescript_rules() -> Self {
         LanguageRules {
             language: Language::TypeScript,
@@ -175,6 +183,7 @@ impl LanguageRules {
         }
     }
 
+    #[must_use] 
     pub fn go_rules() -> Self {
         LanguageRules {
             language: Language::Go,
@@ -185,6 +194,7 @@ impl LanguageRules {
         }
     }
 
+    #[must_use] 
     pub fn ruchy_rules() -> Self {
         LanguageRules {
             language: Language::Ruchy,

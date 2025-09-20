@@ -55,6 +55,7 @@ pub struct ComplexityFacade {
 
 impl ComplexityFacade {
     /// Create a new complexity facade
+    #[must_use] 
     pub fn new(registry: Arc<ServiceRegistry>) -> Self {
         Self { registry }
     }
@@ -94,7 +95,7 @@ impl ComplexityFacade {
     ) -> Result<ComplexityAnalysisResult> {
         let request = ComplexityAnalysisRequest {
             path: path.as_ref().to_path_buf(),
-            language: language.map(|s| s.to_string()),
+            language: language.map(std::string::ToString::to_string),
             include_tests: true,
             max_complexity_threshold: Some(20),
             output_format: ComplexityOutputFormat::Detailed,
@@ -104,6 +105,7 @@ impl ComplexityFacade {
     }
 
     /// Get complexity thresholds for different languages
+    #[must_use] 
     pub fn get_language_thresholds(&self, language: &str) -> ComplexityThresholds {
         match language {
             "rust" => ComplexityThresholds {
@@ -130,6 +132,7 @@ impl ComplexityFacade {
     }
 
     /// Check if complexity violations exceed thresholds
+    #[must_use] 
     pub fn validate_complexity(
         &self,
         result: &ComplexityAnalysisResult,

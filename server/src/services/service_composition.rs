@@ -77,7 +77,7 @@ where
         self.metrics.clone()
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "SimpleCompositeService"
     }
 }
@@ -89,6 +89,7 @@ pub struct ServiceComposer {
 
 impl ServiceComposer {
     /// Create a new service composer
+    #[must_use] 
     pub fn new(registry: Arc<super::service_base::ServiceRegistry>) -> Self {
         Self { registry }
     }
@@ -103,6 +104,7 @@ impl ServiceComposer {
     }
 
     /// Get the service registry
+    #[must_use] 
     pub fn registry(&self) -> &super::service_base::ServiceRegistry {
         &self.registry
     }

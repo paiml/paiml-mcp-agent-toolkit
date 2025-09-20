@@ -180,7 +180,7 @@ pub struct AstSummary {
     pub imports: usize,
 }
 
-/// Dead code analysis structure expected by quality_gates
+/// Dead code analysis structure expected by `quality_gates`
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DeadCodeAnalysis {
     pub summary: DeadCodeSummary,
@@ -188,7 +188,7 @@ pub struct DeadCodeAnalysis {
     pub warnings: Vec<String>,
 }
 
-/// Dead code summary structure expected by quality_gates
+/// Dead code summary structure expected by `quality_gates`
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DeadCodeSummary {
     pub total_functions: usize,
@@ -198,7 +198,7 @@ pub struct DeadCodeSummary {
     pub dead_percentage: f64,
 }
 
-/// Complexity metrics structure expected by quality_gates
+/// Complexity metrics structure expected by `quality_gates`
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ComplexityMetricsForQA {
     pub files: Vec<FileComplexityMetricsForQA>,
@@ -647,7 +647,7 @@ pub struct DeepContextAnalyzer {
 }
 
 impl DeepContextAnalyzer {
-    /// Creates a new DeepContextAnalyzer with the given configuration
+    /// Creates a new `DeepContextAnalyzer` with the given configuration
     ///
     /// # Examples
     ///
@@ -658,6 +658,7 @@ impl DeepContextAnalyzer {
     /// let analyzer = DeepContextAnalyzer::new(config);
     /// // Analyzer is ready to perform deep context analysis
     /// ```
+    #[must_use] 
     pub fn new(config: DeepContextConfig) -> Self {
         Self { config }
     }
@@ -969,7 +970,7 @@ impl DeepContextAnalyzer {
     /// Format as JSON output for machine consumption and API responses
     pub fn format_as_json(&self, context: &DeepContext) -> anyhow::Result<String> {
         serde_json::to_string_pretty(context)
-            .map_err(|e| anyhow::anyhow!("Failed to serialize to JSON: {}", e))
+            .map_err(|e| anyhow::anyhow!("Failed to serialize to JSON: {e}"))
     }
 
     /// Format as SARIF (Static Analysis Results Interchange Format) for tool integration
@@ -1008,10 +1009,10 @@ impl DeepContextAnalyzer {
         });
 
         serde_json::to_string_pretty(&sarif)
-            .map_err(|e| anyhow::anyhow!("Failed to serialize to SARIF: {}", e))
+            .map_err(|e| anyhow::anyhow!("Failed to serialize to SARIF: {e}"))
     }
 
-    /// Add complexity violations to SARIF results from AnalysisResults
+    /// Add complexity violations to SARIF results from `AnalysisResults`
     fn add_complexity_sarif_items_from_analyses(
         &self,
         analyses: &AnalysisResults,
@@ -1084,7 +1085,7 @@ impl DeepContextAnalyzer {
         }
     }
 
-    /// Add SATD items to SARIF results from AnalysisResults
+    /// Add SATD items to SARIF results from `AnalysisResults`
     fn add_satd_sarif_items_from_analyses(
         &self,
         analyses: &AnalysisResults,
@@ -1119,7 +1120,7 @@ impl DeepContextAnalyzer {
         }
     }
 
-    /// Add dead code items to SARIF results from AnalysisResults
+    /// Add dead code items to SARIF results from `AnalysisResults`
     fn add_dead_code_sarif_items_from_analyses(
         &self,
         analyses: &AnalysisResults,
@@ -2927,10 +2928,9 @@ impl DeepContextAnalyzer {
                 debug!("Parallel analysis collection completed successfully");
                 Ok(results)
             }
-            Ok(Err(e)) => Err(anyhow::anyhow!("Analysis result aggregation failed: {}", e)),
+            Ok(Err(e)) => Err(anyhow::anyhow!("Analysis result aggregation failed: {e}")),
             Err(_) => Err(anyhow::anyhow!(
-                "Analysis collection timed out after {:?}",
-                timeout
+                "Analysis collection timed out after {timeout:?}"
             )),
         }
     }
@@ -3087,8 +3087,7 @@ impl DeepContextAnalyzer {
                                 || f.relative_path == file_path
                                 || file_path.ends_with(&f.relative_path)
                         })
-                        .map(|f| f.churn_score)
-                        .unwrap_or(0.0)
+                        .map_or(0.0, |f| f.churn_score)
                 } else {
                     0.0
                 };
@@ -3098,7 +3097,7 @@ impl DeepContextAnalyzer {
                     value: 1.5, // Default value - could be computed from components
                     components: crate::models::tdg::TDGComponents {
                         complexity: 1.0,
-                        churn: churn_score as f64,
+                        churn: f64::from(churn_score),
                         coupling: 0.5,
                         domain_risk: 0.5,
                         duplication: 0.5,
@@ -3421,7 +3420,7 @@ impl DeepContextAnalyzer {
         Ok(verification_report)
     }
 
-    /// Create a DeepContextResult that's compatible with quality_gates expectations
+    /// Create a `DeepContextResult` that's compatible with `quality_gates` expectations
     /// Convert complexity report to QA format
     fn convert_complexity_report_to_qa(&self, report: &ComplexityReport) -> ComplexityMetricsForQA {
         ComplexityMetricsForQA {
@@ -3435,15 +3434,15 @@ impl DeepContextAnalyzer {
                         .iter()
                         .map(|func| FunctionComplexityForQA {
                             name: func.name.clone(),
-                            cyclomatic: func.metrics.cyclomatic as u32,
-                            cognitive: func.metrics.cognitive as u32,
-                            nesting_depth: func.metrics.nesting_max as u32,
+                            cyclomatic: u32::from(func.metrics.cyclomatic),
+                            cognitive: u32::from(func.metrics.cognitive),
+                            nesting_depth: u32::from(func.metrics.nesting_max),
                             start_line: func.line_start as usize,
                             end_line: func.line_end as usize,
                         })
                         .collect(),
-                    total_cyclomatic: f.total_complexity.cyclomatic as u32,
-                    total_cognitive: f.total_complexity.cognitive as u32,
+                    total_cyclomatic: u32::from(f.total_complexity.cyclomatic),
+                    total_cognitive: u32::from(f.total_complexity.cognitive),
                     total_lines: f.total_complexity.lines as usize,
                 })
                 .collect(),
@@ -3475,7 +3474,9 @@ impl DeepContextAnalyzer {
             }
         }
 
-        if !files_with_lines.is_empty() {
+        if files_with_lines.is_empty() {
+            None
+        } else {
             Some(ComplexityMetricsForQA {
                 files: files_with_lines,
                 summary: ComplexitySummaryForQA {
@@ -3483,8 +3484,6 @@ impl DeepContextAnalyzer {
                     total_functions: 0,
                 },
             })
-        } else {
-            None
         }
     }
 
@@ -3537,14 +3536,13 @@ impl DeepContextAnalyzer {
                 .analyses
                 .complexity_report
                 .as_ref()
-                .map(|report| {
+                .map_or(0, |report| {
                     report
                         .files
                         .iter()
                         .map(|f| f.functions.len())
                         .sum::<usize>()
-                })
-                .unwrap_or(0);
+                });
 
             Some(DeadCodeAnalysis {
                 summary: DeadCodeSummary {
@@ -3556,7 +3554,7 @@ impl DeepContextAnalyzer {
                         .map(|f| f.total_lines)
                         .sum(),
                     total_dead_lines: dead_code.summary.total_dead_lines,
-                    dead_percentage: dead_code.summary.dead_percentage as f64,
+                    dead_percentage: f64::from(dead_code.summary.dead_percentage),
                 },
                 dead_functions: vec![], // Not needed for QA verification
                 warnings: vec![],
@@ -3569,7 +3567,9 @@ impl DeepContextAnalyzer {
         let file_paths = self.collect_file_paths(&context.file_tree.root);
 
         // Create AST summaries
-        let ast_summaries = if !context.analyses.ast_contexts.is_empty() {
+        let ast_summaries = if context.analyses.ast_contexts.is_empty() {
+            None
+        } else {
             Some(
                 context
                     .analyses
@@ -3610,8 +3610,6 @@ impl DeepContextAnalyzer {
                     })
                     .collect(),
             )
-        } else {
-            None
         };
 
         // Create language statistics
@@ -4115,13 +4113,13 @@ async fn analyze_churn(path: &std::path::Path, days: u32) -> anyhow::Result<Code
     use crate::services::git_analysis::GitAnalysisService;
 
     GitAnalysisService::analyze_code_churn(path, days)
-        .map_err(|e| anyhow::anyhow!("Failed to analyze code churn: {}", e))
+        .map_err(|e| anyhow::anyhow!("Failed to analyze code churn: {e}"))
 }
 
 async fn analyze_dead_code(
     path: &std::path::Path,
 ) -> anyhow::Result<crate::models::dead_code::DeadCodeRankingResult> {
-    use crate::models::dead_code::*;
+    use crate::models::dead_code::{DeadCodeRankingResult, DeadCodeSummary, DeadCodeAnalysisConfig};
     use crate::services::file_discovery::ProjectFileDiscovery;
 
     // Phase 1: Discover files for analysis without async AST parsing

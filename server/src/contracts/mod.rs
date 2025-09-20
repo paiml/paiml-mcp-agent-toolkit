@@ -68,7 +68,7 @@ pub enum SatdSeverity {
 /// This ensures consistency across all interfaces
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct BaseAnalysisContract {
-    /// Path to analyze - ALWAYS named 'path', never 'project_path' or 'file'
+    /// Path to analyze - ALWAYS named 'path', never '`project_path`' or 'file'
     pub path: PathBuf,
 
     /// Output format - ALWAYS available, ALWAYS same enum

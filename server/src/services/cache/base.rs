@@ -51,10 +51,12 @@ impl<V> CacheEntry<V> {
         *self.last_accessed.lock() = Instant::now();
     }
 
+    #[must_use] 
     pub fn age(&self) -> Duration {
         self.created.elapsed()
     }
 
+    #[must_use] 
     pub fn last_accessed_duration(&self) -> Duration {
         self.last_accessed.lock().elapsed()
     }
@@ -70,6 +72,7 @@ pub struct CacheStats {
 }
 
 impl CacheStats {
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             hits: Arc::new(AtomicU64::new(0)),
@@ -99,6 +102,7 @@ impl CacheStats {
         self.total_bytes.fetch_sub(bytes, Ordering::Relaxed);
     }
 
+    #[must_use] 
     pub fn hit_rate(&self) -> f64 {
         let hits = self.hits.load(Ordering::Relaxed) as f64;
         let total = hits + self.misses.load(Ordering::Relaxed) as f64;
@@ -109,10 +113,12 @@ impl CacheStats {
         }
     }
 
+    #[must_use] 
     pub fn total_requests(&self) -> u64 {
         self.hits.load(Ordering::Relaxed) + self.misses.load(Ordering::Relaxed)
     }
 
+    #[must_use] 
     pub fn memory_usage(&self) -> usize {
         self.total_bytes.load(Ordering::Relaxed)
     }

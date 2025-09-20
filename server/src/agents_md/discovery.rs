@@ -2,7 +2,7 @@
 //!
 //! Discovers and monitors AGENTS.md files in project hierarchies with caching.
 
-use super::*;
+use super::AgentsMdDocument;
 use crate::utils::path_validator::PathValidator;
 use anyhow::Result;
 use dashmap::DashMap;
@@ -117,11 +117,13 @@ impl Default for AgentsMdDiscovery {
 
 impl AgentsMdDiscovery {
     /// Create new discovery system
+    #[must_use] 
     pub fn new() -> Self {
         Self::with_config(DiscoveryConfig::default())
     }
 
     /// Create with custom configuration
+    #[must_use] 
     pub fn with_config(config: DiscoveryConfig) -> Self {
         Self {
             cache: Arc::new(DashMap::new()),
@@ -131,6 +133,7 @@ impl AgentsMdDiscovery {
     }
 
     /// Find nearest AGENTS.md file from path
+    #[must_use] 
     pub fn find_nearest(&self, path: &Path) -> Option<PathBuf> {
         // Check cache first
         if let Some(cached) = self.get_from_cache(path) {
@@ -165,6 +168,7 @@ impl AgentsMdDiscovery {
     }
 
     /// Discover all AGENTS.md files in project
+    #[must_use] 
     pub fn discover_all(&self, root: &Path) -> Vec<AgentsMdFile> {
         let mut files = Vec::new();
         self.discover_recursive(root, 0, &mut files);
@@ -176,6 +180,7 @@ impl AgentsMdDiscovery {
     }
 
     /// Build hierarchy for monorepo
+    #[must_use] 
     pub fn build_hierarchy(&self, files: Vec<AgentsMdFile>) -> AgentsMdHierarchy {
         if files.is_empty() {
             return AgentsMdHierarchy {

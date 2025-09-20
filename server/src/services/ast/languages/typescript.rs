@@ -21,6 +21,7 @@ impl Default for TypeScriptStrategy {
 }
 
 impl TypeScriptStrategy {
+    #[must_use] 
     pub fn new() -> Self {
         Self
     }
@@ -34,7 +35,7 @@ impl AstStrategy for TypeScriptStrategy {
         // Convert TemplateError to anyhow::Error
         let context = crate::services::ast_typescript::analyze_typescript_file(file_path)
             .await
-            .map_err(|e| anyhow::anyhow!("TypeScript analysis failed: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("TypeScript analysis failed: {e}"))?;
         Ok(context)
     }
 

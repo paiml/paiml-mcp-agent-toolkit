@@ -1,7 +1,7 @@
 //! WebAssembly language support implementation
 //!
 //! This module provides comprehensive WebAssembly analysis capabilities including:
-//! - AssemblyScript (.as, .ts with AS context)
+//! - `AssemblyScript` (.as, .ts with AS context)
 //! - WebAssembly Text Format (.wat)
 //! - WebAssembly Binary Format (.wasm)
 //!

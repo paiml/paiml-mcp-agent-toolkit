@@ -20,6 +20,7 @@ pub struct CSharpAstVisitor {
 #[cfg(feature = "csharp-ast")]
 impl CSharpAstVisitor {
     /// Creates a new C# AST visitor
+    #[must_use] 
     pub fn new(file_path: &Path) -> Self {
         Self {
             items: Vec::new(),
@@ -120,9 +121,9 @@ impl CSharpAstVisitor {
             let trimmed = line.trim();
 
             // Start counting after we see the class declaration
-            if trimmed.contains(&format!("class {}", class_name)) {
+            if trimmed.contains(&format!("class {class_name}")) {
                 in_class = true;
-                if trimmed.contains("{") {
+                if trimmed.contains('{') {
                     brace_count += 1;
                 }
                 continue;
@@ -139,7 +140,7 @@ impl CSharpAstVisitor {
                 }
 
                 // Count method declarations and properties
-                if ((trimmed.contains("(") && trimmed.contains(")")) || trimmed.contains(" => ")) &&
+                if ((trimmed.contains('(') && trimmed.contains(')')) || trimmed.contains(" => ")) &&
                    (trimmed.contains("public") || trimmed.contains("private") || trimmed.contains("protected")) &&
                    !trimmed.contains("class") && !trimmed.contains("interface") {
                     count += 1;
@@ -172,10 +173,10 @@ impl CSharpAstVisitor {
     /// Helper to extract method name from line (complexity ≤10)
     fn extract_method_name_from_line(&self, line: &str) -> Option<String> {
         // Handle regular methods
-        if line.contains("(") && line.contains(")") && !line.contains("class") && !line.contains("interface") {
+        if line.contains('(') && line.contains(')') && !line.contains("class") && !line.contains("interface") {
             let parts: Vec<&str> = line.split_whitespace().collect();
             for (i, part) in parts.iter().enumerate() {
-                if part.contains("(") && i > 0 {
+                if part.contains('(') && i > 0 {
                     let method_name = part.split('(').next()?;
                     if !method_name.is_empty() && method_name.chars().all(|c| c.is_alphanumeric() || c == '_') {
                         return Some(method_name.to_string());
@@ -188,7 +189,7 @@ impl CSharpAstVisitor {
             let parts: Vec<&str> = line.split_whitespace().collect();
             for (i, part) in parts.iter().enumerate() {
                 if i + 1 < parts.len() && parts[i + 1] == "=>" {
-                    return Some(part.to_string());
+                    return Some((*part).to_string());
                 }
             }
         }
@@ -267,6 +268,7 @@ impl Default for CSharpComplexityAnalyzer {
 
 impl CSharpComplexityAnalyzer {
     /// Creates a new C# complexity analyzer
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             cyclomatic_complexity: 0,

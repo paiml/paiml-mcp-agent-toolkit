@@ -38,6 +38,7 @@ pub enum ReportFormat {
 
 impl DefectReportService {
     /// Create a new defect report service
+    #[must_use] 
     pub fn new() -> Self {
         let cpus = num_cpus::get();
         Self {
@@ -227,6 +228,7 @@ impl DefectReportService {
     }
 
     /// Compute summary statistics
+    #[must_use] 
     pub fn compute_summary(&self, defects: &[Defect]) -> DefectSummary {
         let mut by_severity = BTreeMap::new();
         let mut by_category = BTreeMap::new();
@@ -316,12 +318,12 @@ impl DefectReportService {
                 &defect
                     .metrics
                     .get("cyclomatic")
-                    .map(|v| v.to_string())
+                    .map(std::string::ToString::to_string)
                     .unwrap_or_default(),
                 &defect
                     .metrics
                     .get("cognitive")
-                    .map(|v| v.to_string())
+                    .map(std::string::ToString::to_string)
                     .unwrap_or_default(),
             ])?;
         }
@@ -515,6 +517,7 @@ impl DefectReportService {
     }
 
     /// Generate filename with timestamp
+    #[must_use] 
     pub fn generate_filename(&self, format: ReportFormat) -> String {
         let timestamp = Utc::now().format("%Y%m%d-%H%M%S");
         match format {

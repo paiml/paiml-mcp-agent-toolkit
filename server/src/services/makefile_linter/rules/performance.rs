@@ -1,8 +1,8 @@
-use super::*;
-use crate::services::makefile_linter::ast::*;
+use super::{Violation, MakefileRule, Severity};
+use crate::services::makefile_linter::ast::{MakefileAst, MakefileNodeKind, NodeData, AssignmentOp};
 use std::collections::{HashMap, HashSet};
 
-/// RecursiveExpansion rule - warns about expensive recursive variable expansions
+/// `RecursiveExpansion` rule - warns about expensive recursive variable expansions
 pub struct RecursiveExpansionRule {
     expensive_functions: Vec<String>,
 }

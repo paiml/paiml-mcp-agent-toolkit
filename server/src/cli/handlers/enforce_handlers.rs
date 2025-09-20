@@ -342,7 +342,7 @@ fn should_stop_for_target_improvement(
     current_score: f64,
 ) -> bool {
     if let Some(target_delta) = target_improvement {
-        result_score >= current_score + target_delta as f64
+        result_score >= current_score + f64::from(target_delta)
     } else {
         false
     }
@@ -633,7 +633,7 @@ fn print_progress_bar(result: &EnforcementResult) {
 
 // ========== SPRINT 82 REFACTORED FUNCTIONS (≤10 COMPLEXITY EACH) ==========
 
-/// Handle analyzing state - extracted from run_enforcement_step (complexity: ≤10)
+/// Handle analyzing state - extracted from `run_enforcement_step` (complexity: ≤10)
 pub async fn handle_analyzing_state(
     project_path: &PathBuf,
     profile: &QualityProfile,
@@ -685,7 +685,7 @@ pub async fn handle_analyzing_state(
     })
 }
 
-/// Handle violating state - extracted from run_enforcement_step (complexity: ≤10)
+/// Handle violating state - extracted from `run_enforcement_step` (complexity: ≤10)
 pub fn handle_violating_state(
     violations: Vec<QualityViolation>,
     total_score: f64,
@@ -724,7 +724,7 @@ pub fn handle_violating_state(
     }
 }
 
-/// Handle refactoring state - extracted from run_enforcement_step (complexity: ≤10)
+/// Handle refactoring state - extracted from `run_enforcement_step` (complexity: ≤10)
 pub fn handle_refactoring_state(
     total_score: f64,
     specific_file: Option<&PathBuf>,
@@ -746,7 +746,7 @@ pub fn handle_refactoring_state(
     })
 }
 
-/// Handle complete state - extracted from run_enforcement_step (complexity: ≤10)
+/// Handle complete state - extracted from `run_enforcement_step` (complexity: ≤10)
 pub fn handle_complete_state() -> Result<EnforcementResult> {
     Ok(EnforcementResult {
         state: EnforcementState::Complete,
@@ -763,7 +763,7 @@ pub fn handle_complete_state() -> Result<EnforcementResult> {
     })
 }
 
-/// Run complexity analysis - extracted from list_all_violations (complexity: ≤10)
+/// Run complexity analysis - extracted from `list_all_violations` (complexity: ≤10)
 pub async fn run_complexity_analysis(
     project_path: &Path,
     profile: &QualityProfile,
@@ -790,7 +790,7 @@ pub async fn run_complexity_analysis(
     )
     .await
     {
-        Ok(_) => {
+        Ok(()) => {
             // NOTE: Would parse JSON output and extract violations
             // For now, add sample violation based on known complexity issues
             violations.push(QualityViolation {
@@ -799,7 +799,7 @@ pub async fn run_complexity_analysis(
                 location: "server/src/cli/handlers/enforce_handlers.rs:run_enforcement_step"
                     .to_string(),
                 current: 62.0,
-                target: profile.complexity_max as f64,
+                target: f64::from(profile.complexity_max),
                 suggestion: "Extract method pattern - split match statement into handler functions"
                     .to_string(),
             });
@@ -810,7 +810,7 @@ pub async fn run_complexity_analysis(
     Ok(violations)
 }
 
-/// Run SATD analysis - extracted from list_all_violations (complexity: ≤10)
+/// Run SATD analysis - extracted from `list_all_violations` (complexity: ≤10)
 pub async fn run_satd_analysis(
     project_path: &Path,
     profile: &QualityProfile,
@@ -837,7 +837,7 @@ pub async fn run_satd_analysis(
     )
     .await
     {
-        Ok(_) => {
+        Ok(()) => {
             if profile.satd_allowed == 0 {
                 // NOTE: Would parse JSON and check for SATD violations
                 // For now, we know project maintains zero SATD
@@ -849,7 +849,7 @@ pub async fn run_satd_analysis(
     Ok(violations)
 }
 
-/// Run TDG analysis - extracted from list_all_violations (complexity: ≤10)
+/// Run TDG analysis - extracted from `list_all_violations` (complexity: ≤10)
 pub async fn run_tdg_analysis(
     project_path: &Path,
     profile: &QualityProfile,
@@ -871,7 +871,7 @@ pub async fn run_tdg_analysis(
     )
     .await
     {
-        Ok(_) => {
+        Ok(()) => {
             // NOTE: Would parse JSON and check TDG scores
             // Adding sample violation for demonstration
             violations.push(QualityViolation {
@@ -890,7 +890,7 @@ pub async fn run_tdg_analysis(
     Ok(violations)
 }
 
-/// Run dead code analysis - extracted from list_all_violations (complexity: ≤10)
+/// Run dead code analysis - extracted from `list_all_violations` (complexity: ≤10)
 pub async fn run_dead_code_analysis(
     project_path: &Path,
     _profile: &QualityProfile,
@@ -916,7 +916,7 @@ pub async fn run_dead_code_analysis(
     )
     .await
     {
-        Ok(_) => {
+        Ok(()) => {
             // NOTE: Would parse JSON and extract dead code violations
             violations.push(QualityViolation {
                 violation_type: "dead_code".to_string(),
@@ -933,7 +933,7 @@ pub async fn run_dead_code_analysis(
     Ok(violations)
 }
 
-/// Run duplication analysis - extracted from list_all_violations (complexity: ≤10)
+/// Run duplication analysis - extracted from `list_all_violations` (complexity: ≤10)
 pub async fn run_duplication_analysis(
     project_path: &Path,
     profile: &QualityProfile,
@@ -960,7 +960,7 @@ pub async fn run_duplication_analysis(
     };
 
     match handle_analyze_duplicates(dup_config).await {
-        Ok(_) => {
+        Ok(()) => {
             if profile.duplication_max_lines == 0 {
                 violations.push(QualityViolation {
                     violation_type: "duplication".to_string(),
@@ -978,7 +978,7 @@ pub async fn run_duplication_analysis(
     Ok(violations)
 }
 
-/// Run coverage analysis - extracted from list_all_violations (complexity: ≤10)
+/// Run coverage analysis - extracted from `list_all_violations` (complexity: ≤10)
 pub async fn run_coverage_analysis(
     _project_path: &Path,
     profile: &QualityProfile,
@@ -1006,52 +1006,49 @@ pub async fn run_coverage_analysis(
     Ok(violations)
 }
 
-/// Format violations output - extracted from list_all_violations (complexity: ≤10)
+/// Format violations output - extracted from `list_all_violations` (complexity: ≤10)
 pub fn format_violations_output(
     violations: &[QualityViolation],
     profile: &QualityProfile,
     format: EnforceOutputFormat,
 ) -> Result<String> {
-    match format {
-        EnforceOutputFormat::Json => {
-            let json_output = serde_json::json!({
-                "profile": profile.clone(),
-                "violations": violations,
-                "summary": {
-                    "total": violations.len(),
-                    "by_severity": {
-                        "high": violations.iter().filter(|v| v.severity == "high").count(),
-                        "medium": violations.iter().filter(|v| v.severity == "medium").count(),
-                        "low": violations.iter().filter(|v| v.severity == "low").count(),
-                    },
-                    "by_type": {
-                        "complexity": violations.iter().filter(|v| v.violation_type == "complexity").count(),
-                        "satd": violations.iter().filter(|v| v.violation_type == "satd").count(),
-                        "tdg": violations.iter().filter(|v| v.violation_type == "tdg").count(),
-                    }
+    if format == EnforceOutputFormat::Json {
+        let json_output = serde_json::json!({
+            "profile": profile.clone(),
+            "violations": violations,
+            "summary": {
+                "total": violations.len(),
+                "by_severity": {
+                    "high": violations.iter().filter(|v| v.severity == "high").count(),
+                    "medium": violations.iter().filter(|v| v.severity == "medium").count(),
+                    "low": violations.iter().filter(|v| v.severity == "low").count(),
+                },
+                "by_type": {
+                    "complexity": violations.iter().filter(|v| v.violation_type == "complexity").count(),
+                    "satd": violations.iter().filter(|v| v.violation_type == "satd").count(),
+                    "tdg": violations.iter().filter(|v| v.violation_type == "tdg").count(),
                 }
-            });
-            Ok(serde_json::to_string_pretty(&json_output)?)
-        }
-        _ => {
-            // Simple text format
-            let mut output = String::new();
-            output.push_str(&format!("Found {} violations:\n\n", violations.len()));
-
-            for violation in violations {
-                output.push_str(&format!(
-                    "{} [{}]: {} (current: {}, target: {})\n  -> {}\n\n",
-                    violation.violation_type.to_uppercase(),
-                    violation.severity,
-                    violation.location,
-                    violation.current,
-                    violation.target,
-                    violation.suggestion
-                ));
             }
+        });
+        Ok(serde_json::to_string_pretty(&json_output)?)
+    } else {
+        // Simple text format
+        let mut output = String::new();
+        output.push_str(&format!("Found {} violations:\n\n", violations.len()));
 
-            Ok(output)
+        for violation in violations {
+            output.push_str(&format!(
+                "{} [{}]: {} (current: {}, target: {})\n  -> {}\n\n",
+                violation.violation_type.to_uppercase(),
+                violation.severity,
+                violation.location,
+                violation.current,
+                violation.target,
+                violation.suggestion
+            ));
         }
+
+        Ok(output)
     }
 }
 
@@ -1071,7 +1068,7 @@ pub struct EnforcementLoopResult {
     pub final_score: f64,
 }
 
-/// Handle single enforcement iteration - extracted from run_main_enforcement_loop (complexity: ≤10)
+/// Handle single enforcement iteration - extracted from `run_main_enforcement_loop` (complexity: ≤10)
 pub async fn handle_enforcement_iteration(
     project_path: &PathBuf,
     profile: &QualityProfile,
@@ -1093,7 +1090,8 @@ pub async fn handle_enforcement_iteration(
     })
 }
 
-/// Check improvement targets - extracted from run_main_enforcement_loop (complexity: ≤10)
+/// Check improvement targets - extracted from `run_main_enforcement_loop` (complexity: ≤10)
+#[must_use] 
 pub fn check_improvement_targets(
     config: &EnforcementConfig,
     result_score: f64,
@@ -1107,7 +1105,7 @@ pub fn check_improvement_targets(
     }
 }
 
-/// Finalize enforcement run - extracted from run_main_enforcement_loop (complexity: ≤10)
+/// Finalize enforcement run - extracted from `run_main_enforcement_loop` (complexity: ≤10)
 pub fn finalize_enforcement_run(
     current_score: f64,
     iteration: u32,
@@ -1119,7 +1117,7 @@ pub fn finalize_enforcement_run(
     handle_ci_mode_exit(config.ci_mode, current_state);
 }
 
-/// Execute main enforcement loop - extracted from run_main_enforcement_loop (complexity: ≤10)
+/// Execute main enforcement loop - extracted from `run_main_enforcement_loop` (complexity: ≤10)
 pub async fn execute_main_loop(
     project_path: &PathBuf,
     profile: &QualityProfile,
@@ -1160,7 +1158,7 @@ pub async fn execute_main_loop(
 
 // ========== SPRINT 84 REFACTORED FUNCTIONS (A+ STANDARD ≤10 COMPLEXITY EACH) ==========
 
-/// Handle violating state proxy - extracted from run_enforcement_step (complexity: ≤10)
+/// Handle violating state proxy - extracted from `run_enforcement_step` (complexity: ≤10)
 pub async fn handle_violating_enforcement_state_proxy(
     project_path: &PathBuf,
     profile: &QualityProfile,
@@ -1187,7 +1185,7 @@ pub async fn handle_violating_enforcement_state_proxy(
     )
 }
 
-/// Handle refactoring state for enforcement - extracted from run_enforcement_step (complexity: ≤10)
+/// Handle refactoring state for enforcement - extracted from `run_enforcement_step` (complexity: ≤10)
 pub fn handle_refactoring_enforcement_state(
     base_score: f64,
     specific_file: Option<&PathBuf>,
@@ -1195,7 +1193,7 @@ pub fn handle_refactoring_enforcement_state(
     handle_refactoring_state(base_score, specific_file)
 }
 
-/// Handle validating state for enforcement - extracted from run_enforcement_step (complexity: ≤10)
+/// Handle validating state for enforcement - extracted from `run_enforcement_step` (complexity: ≤10)
 pub async fn handle_validating_enforcement_state(
     project_path: &PathBuf,
     profile: &QualityProfile,

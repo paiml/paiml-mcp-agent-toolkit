@@ -65,6 +65,7 @@ pub async fn discover_source_files_for_defect_analysis(
 }
 
 /// Calculate simple complexity metric from source code
+#[must_use] 
 pub fn calculate_simple_complexity(content: &str) -> u32 {
     let mut complexity = 1u32;
 
@@ -89,50 +90,29 @@ fn count_line_complexity(line: &str) -> u32 {
 }
 
 fn count_conditional_statements(line: &str) -> u32 {
-    if line.starts_with("if ") || line.starts_with("else if") {
-        1
-    } else {
-        0
-    }
+    u32::from(line.starts_with("if ") || line.starts_with("else if"))
 }
 
 fn count_loop_statements(line: &str) -> u32 {
-    if line.starts_with("for ") || line.starts_with("while ") {
-        1
-    } else {
-        0
-    }
+    u32::from(line.starts_with("for ") || line.starts_with("while "))
 }
 
 fn count_pattern_matching(line: &str) -> u32 {
-    if line.starts_with("match ")
+    u32::from(line.starts_with("match ")
         || line.starts_with("switch ")
-        || line.contains("=>")
-        || line.starts_with("case ")
-    {
-        1
-    } else {
-        0
-    }
+        || line.contains("=>") || line.starts_with("case "))
 }
 
 fn count_logical_operators(line: &str) -> u32 {
-    if line.contains("&&") || line.contains("||") {
-        1
-    } else {
-        0
-    }
+    u32::from(line.contains("&&") || line.contains("||"))
 }
 
 fn count_exception_handling(line: &str) -> u32 {
-    if line.starts_with("catch") || line.starts_with("except") {
-        1
-    } else {
-        0
-    }
+    u32::from(line.starts_with("catch") || line.starts_with("except"))
 }
 
 /// Calculate simple churn score based on file content
+#[must_use] 
 pub fn calculate_simple_churn_score(content: &str, lines_of_code: usize) -> f32 {
     // Simple heuristic based on comments and file size
     let todo_count = content.matches("TODO").count() + content.matches("FIXME").count();
@@ -140,7 +120,7 @@ pub fn calculate_simple_churn_score(content: &str, lines_of_code: usize) -> f32 
         .lines()
         .filter(|line| {
             let trimmed = line.trim();
-            trimmed.starts_with("//") || trimmed.starts_with("/*") || trimmed.starts_with("#")
+            trimmed.starts_with("//") || trimmed.starts_with("/*") || trimmed.starts_with('#')
         })
         .count();
 
@@ -152,6 +132,7 @@ pub fn calculate_simple_churn_score(content: &str, lines_of_code: usize) -> f32 
 }
 
 /// Collect metrics for all files
+#[must_use] 
 pub fn collect_file_metrics(analyzed_files: &[(PathBuf, String, usize)]) -> Vec<FileMetrics> {
     let mut file_metrics = Vec::new();
 
@@ -188,6 +169,7 @@ pub fn collect_file_metrics(analyzed_files: &[(PathBuf, String, usize)]) -> Vec<
 }
 
 /// Filter predictions based on configuration
+#[must_use] 
 pub fn filter_predictions(
     predictions: Vec<(String, DefectScore)>,
     config: &DefectPredictionConfig,
@@ -215,6 +197,7 @@ pub struct RiskDistribution {
     pub low_risk_count: usize,
 }
 
+#[must_use] 
 pub fn calculate_risk_distribution(predictions: &[(String, DefectScore)]) -> RiskDistribution {
     RiskDistribution {
         high_risk_count: predictions
@@ -233,6 +216,7 @@ pub fn calculate_risk_distribution(predictions: &[(String, DefectScore)]) -> Ris
 }
 
 /// Format summary output
+#[must_use] 
 pub fn format_summary_output(
     file_metrics_len: usize,
     filtered_predictions: &[(String, DefectScore)],
@@ -299,6 +283,7 @@ pub fn format_summary_output(
 
 /// Generate recommendations for high-risk files
 #[allow(dead_code)]
+#[must_use] 
 pub fn generate_recommendations(predictions: &[(String, DefectScore)]) -> Vec<String> {
     let mut recommendations = Vec::new();
 
@@ -348,6 +333,7 @@ pub fn generate_recommendations(predictions: &[(String, DefectScore)]) -> Vec<St
 }
 
 /// Format detailed output
+#[must_use] 
 pub fn format_detailed_output(
     filtered_predictions: &[(String, DefectScore)],
     include_recommendations: bool,
@@ -424,6 +410,7 @@ pub fn format_json_output(
 
 /// Format markdown output
 #[allow(dead_code)]
+#[must_use] 
 pub fn format_markdown_output(
     filtered_predictions: &[(String, DefectScore)],
     include_recommendations: bool,
@@ -493,6 +480,7 @@ pub fn format_markdown_output(
 }
 
 /// Format CSV output
+#[must_use] 
 pub fn format_csv_output(filtered_predictions: &[(String, DefectScore)]) -> String {
     let mut output = String::new();
 
@@ -509,23 +497,19 @@ pub fn format_csv_output(filtered_predictions: &[(String, DefectScore)]) -> Stri
             factors
                 .iter()
                 .find(|(k, _)| k == "churn")
-                .map(|(_, v)| *v)
-                .unwrap_or(0.0),
+                .map_or(0.0, |(_, v)| *v),
             factors
                 .iter()
                 .find(|(k, _)| k == "complexity")
-                .map(|(_, v)| *v)
-                .unwrap_or(0.0),
+                .map_or(0.0, |(_, v)| *v),
             factors
                 .iter()
                 .find(|(k, _)| k == "duplication")
-                .map(|(_, v)| *v)
-                .unwrap_or(0.0),
+                .map_or(0.0, |(_, v)| *v),
             factors
                 .iter()
                 .find(|(k, _)| k == "coupling")
-                .map(|(_, v)| *v)
-                .unwrap_or(0.0)
+                .map_or(0.0, |(_, v)| *v)
         ));
     }
 

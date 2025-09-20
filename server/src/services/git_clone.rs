@@ -122,6 +122,7 @@ pub struct GitCloner {
 }
 
 impl GitCloner {
+    #[must_use] 
     pub fn new(cache_dir: PathBuf) -> Self {
         Self {
             cache_dir,
@@ -136,11 +137,13 @@ impl GitCloner {
         }
     }
 
+    #[must_use] 
     pub fn with_timeout(mut self, timeout: Duration) -> Self {
         self.timeout = timeout;
         self
     }
 
+    #[must_use] 
     pub fn with_max_size(mut self, max_size_bytes: u64) -> Self {
         self.max_size_bytes = max_size_bytes;
         self
@@ -211,7 +214,7 @@ impl GitCloner {
         let result = tokio::select! {
             result = clone_future => {
                 match result {
-                    Ok(Ok(_)) => Ok(ClonedRepo {
+                    Ok(Ok(())) => Ok(ClonedRepo {
                         path: target_path.clone(),
                         url: url.to_string(),
                         cached: false,
@@ -220,7 +223,7 @@ impl GitCloner {
                     Err(e) => Err(CloneError::GitError(git2::Error::from_str(&e.to_string()))),
                 }
             }
-            _ = tokio::time::sleep(self.timeout) => {
+            () = tokio::time::sleep(self.timeout) => {
                 Err(CloneError::Timeout)
             }
         };
@@ -416,11 +419,12 @@ impl GitCloner {
             name.chars().all(|c| c.is_ascii_alphanumeric())
         } else {
             let chars: Vec<char> = name.chars().collect();
-            chars.first().is_some_and(|c| c.is_ascii_alphanumeric())
-                && chars.last().is_some_and(|c| c.is_ascii_alphanumeric())
+            chars.first().is_some_and(char::is_ascii_alphanumeric)
+                && chars.last().is_some_and(char::is_ascii_alphanumeric)
         }
     }
 
+    #[must_use] 
     pub fn compute_cache_key(&self, url: &str) -> String {
         // Create a cache key from the URL
         // In production, you might want to use a hash

@@ -2,7 +2,7 @@
 //!
 //! Parses markdown files following the AGENTS.md specification with quality validation.
 
-use super::*;
+use super::{SectionType, AgentsMdDocument, DocumentMetadata, PathBuf, Section, Command, Guideline, Priority, QualityRules};
 use anyhow::Result;
 use pulldown_cmark::{Event, HeadingLevel, Parser as MarkdownParser, Tag, TagEnd};
 use regex::Regex;
@@ -103,11 +103,13 @@ impl Default for AgentsMdParser {
 
 impl AgentsMdParser {
     /// Create new parser with default rules
+    #[must_use] 
     pub fn new() -> Self {
         Self::with_rules(ValidationRules::default())
     }
 
     /// Create parser with custom rules
+    #[must_use] 
     pub fn with_rules(rules: ValidationRules) -> Self {
         Self {
             validation_rules: rules,
@@ -224,8 +226,7 @@ impl AgentsMdParser {
                                             "Command from {}",
                                             current_section
                                                 .as_ref()
-                                                .map(|s| &s.title)
-                                                .unwrap_or(&"Unknown".to_string())
+                                                .map_or(&"Unknown".to_string(), |s| &s.title)
                                         ),
                                         command: line.trim().to_string(),
                                         working_dir: None,
@@ -355,6 +356,7 @@ impl AgentsMdParser {
     }
 
     /// Extract sections by type
+    #[must_use] 
     pub fn extract_sections(&self, doc: &AgentsMdDocument) -> HashMap<SectionType, Section> {
         let mut map = HashMap::new();
         for section in &doc.sections {

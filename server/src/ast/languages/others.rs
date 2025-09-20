@@ -14,6 +14,7 @@ pub struct PlaceholderStrategy {
 }
 
 impl PlaceholderStrategy {
+    #[must_use] 
     pub fn kotlin() -> Self {
         Self {
             language: Language::Kotlin,
@@ -21,6 +22,7 @@ impl PlaceholderStrategy {
         }
     }
 
+    #[must_use] 
     pub fn makefile() -> Self {
         Self {
             language: Language::Makefile,
@@ -28,6 +30,7 @@ impl PlaceholderStrategy {
         }
     }
 
+    #[must_use] 
     pub fn shell() -> Self {
         Self {
             language: Language::Shell,

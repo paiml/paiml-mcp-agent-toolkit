@@ -17,6 +17,7 @@ impl Default for UnifiedAstEngine {
 }
 
 impl UnifiedAstEngine {
+    #[must_use] 
     pub fn new() -> Self {
         Self
     }

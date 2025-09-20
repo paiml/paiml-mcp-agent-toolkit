@@ -7,7 +7,7 @@
 //!
 //! # Complexity Metrics
 //!
-//! - **Cyclomatic Complexity**: Measures independent paths through code (McCabe)
+//! - **Cyclomatic Complexity**: Measures independent paths through code (`McCabe`)
 //! - **Cognitive Complexity**: Measures how difficult code is to understand (Sonar)
 //! - **Essential Complexity**: Measures irreducible complexity after simplification
 //! - **Halstead Metrics**: Software science metrics based on operators and operands
@@ -74,26 +74,30 @@ pub struct HalsteadMetrics {
 
 impl HalsteadMetrics {
     /// Calculate derived Halstead metrics
+    #[must_use] 
     pub fn volume(&self) -> f64 {
-        let n = (self.n1 + self.n2) as f64;
+        let n = f64::from(self.n1 + self.n2);
         #[allow(non_snake_case)]
-        let N = (self.N1 + self.N2) as f64;
+        let N = f64::from(self.N1 + self.N2);
         N * n.log2()
     }
 
+    #[must_use] 
     pub fn difficulty(&self) -> f64 {
         if self.n2 == 0 {
             return 0.0;
         }
-        (self.n1 as f64 / 2.0) * (self.N2 as f64 / self.n2 as f64)
+        (f64::from(self.n1) / 2.0) * (f64::from(self.N2) / f64::from(self.n2))
     }
 
+    #[must_use] 
     pub fn effort(&self) -> f64 {
         self.volume() * self.difficulty()
     }
 }
 
 impl VerifiedComplexityAnalyzer {
+    #[must_use] 
     pub fn new() -> Self {
         Self { nesting_level: 0 }
     }
@@ -137,7 +141,7 @@ impl VerifiedComplexityAnalyzer {
         }
     }
 
-    /// Calculate cyclomatic complexity (McCabe)
+    /// Calculate cyclomatic complexity (`McCabe`)
     fn calculate_cyclomatic(&self, node: &UnifiedAstNode) -> u32 {
         let mut complexity = 1; // Base complexity
 
@@ -149,8 +153,8 @@ impl VerifiedComplexityAnalyzer {
     fn visit_cyclomatic(&self, node: &UnifiedAstNode, complexity: &mut u32) {
         match &node.kind {
             AstKind::Statement(StmtKind::If) => *complexity += 1,
-            AstKind::Statement(StmtKind::While) | AstKind::Statement(StmtKind::For) => {
-                *complexity += 1
+            AstKind::Statement(StmtKind::While | StmtKind::For) => {
+                *complexity += 1;
             }
             AstKind::Statement(StmtKind::Switch) => {
                 // Each case adds to complexity
@@ -181,7 +185,7 @@ impl VerifiedComplexityAnalyzer {
             AstKind::Statement(StmtKind::If) => {
                 weight += 1 + self.nesting_level;
             }
-            AstKind::Statement(StmtKind::While) | AstKind::Statement(StmtKind::For) => {
+            AstKind::Statement(StmtKind::While | StmtKind::For) => {
                 weight += 1 + self.nesting_level;
             }
             AstKind::Statement(StmtKind::Switch) => {
@@ -209,12 +213,8 @@ impl VerifiedComplexityAnalyzer {
         // Track nesting for children
         let increases_nesting = matches!(
             &node.kind,
-            AstKind::Statement(StmtKind::If)
-                | AstKind::Statement(StmtKind::While)
-                | AstKind::Statement(StmtKind::For)
-                | AstKind::Statement(StmtKind::Switch)
-                | AstKind::Statement(StmtKind::Try)
-                | AstKind::Function(_)
+            AstKind::Statement(StmtKind::If | StmtKind::While | StmtKind::For |
+StmtKind::Switch | StmtKind::Try) | AstKind::Function(_)
         );
 
         if increases_nesting {
@@ -316,6 +316,7 @@ impl VerifiedComplexityAnalyzer {
     }
 
     /// Helper to iterate children - placeholder for actual implementation
+    #[must_use] 
     pub fn children(&self, _node: &UnifiedAstNode) -> Vec<&UnifiedAstNode> {
         // In actual implementation, would follow first_child/next_sibling links
         vec![]

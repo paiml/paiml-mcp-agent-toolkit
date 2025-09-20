@@ -19,6 +19,7 @@ impl Default for CStrategy {
 }
 
 impl CStrategy {
+    #[must_use] 
     pub fn new() -> Self {
         Self
     }

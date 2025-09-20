@@ -1,6 +1,6 @@
 //! Roadmap markdown parser and serializer
 
-use super::*;
+use super::{Roadmap, Sprint, Priority, Task, Complexity, TaskStatus, DateTime};
 use anyhow::Result;
 use chrono::{NaiveDate, Utc};
 use regex::Regex;

@@ -105,6 +105,7 @@ pub enum DetectorSpecificConfig {
 }
 
 impl DetectionRegistry {
+    #[must_use] 
     pub fn new() -> Self {
         let mut registry = Self {
             detectors: std::collections::HashMap::new(),
@@ -140,6 +141,7 @@ impl DetectionRegistry {
         self.detectors.insert(name.to_string(), detector);
     }
 
+    #[must_use] 
     pub fn get_detector(
         &self,
         name: &str,
@@ -155,8 +157,9 @@ impl DetectionRegistry {
         self.detectors.get(name).cloned()
     }
 
+    #[must_use] 
     pub fn list_detectors(&self) -> Vec<&str> {
-        self.detectors.keys().map(|s| s.as_str()).collect()
+        self.detectors.keys().map(std::string::String::as_str).collect()
     }
 
     /// Run detection using the specified detector
@@ -169,7 +172,7 @@ impl DetectionRegistry {
         if let Some(detector) = self.get_detector(detector_name) {
             detector.detect(input, config).await
         } else {
-            Err(anyhow::anyhow!("Unknown detector: {}", detector_name))
+            Err(anyhow::anyhow!("Unknown detector: {detector_name}"))
         }
     }
 }
@@ -199,6 +202,7 @@ pub struct UnifiedDetectionProcessor {
 }
 
 impl UnifiedDetectionProcessor {
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             registry: DetectionRegistry::new(),
@@ -257,6 +261,7 @@ impl UnifiedDetectionProcessor {
         }
     }
 
+    #[must_use] 
     pub fn available_detectors(&self) -> Vec<&str> {
         self.registry.list_detectors()
     }

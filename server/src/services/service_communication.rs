@@ -66,6 +66,7 @@ impl<T: Clone + Send> Default for PubSubService<T> {
 
 impl<T: Clone + Send> PubSubService<T> {
     /// Create a new pub-sub service
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             subscribers: Arc::new(RwLock::new(HashMap::new())),
@@ -104,7 +105,7 @@ impl<T: Clone + Send> PubSubService<T> {
     /// Get the number of subscribers for a topic
     pub async fn subscriber_count(&self, topic: &str) -> usize {
         let subs = self.subscribers.read().await;
-        subs.get(topic).map(|v| v.len()).unwrap_or(0)
+        subs.get(topic).map_or(0, std::vec::Vec::len)
     }
 }
 
@@ -136,6 +137,7 @@ impl Default for RouterService {
 
 impl RouterService {
     /// Create a new router service
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             routes: Arc::new(RwLock::new(HashMap::new())),
@@ -196,6 +198,7 @@ impl RouterService {
     }
 
     /// Get metrics for this router
+    #[must_use] 
     pub fn metrics(&self) -> &ServiceMetrics {
         &self.metrics
     }

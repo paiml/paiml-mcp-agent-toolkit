@@ -118,6 +118,7 @@ impl Default for ClippyFixEngine {
 
 impl ClippyFixEngine {
     /// Create new engine (complexity: 2)
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             cache: HashMap::new(),
@@ -152,6 +153,7 @@ impl ClippyFixEngine {
     }
 
     /// Calculate confidence for a diagnostic (complexity: 4)
+    #[must_use] 
     pub fn calculate_confidence(&self, diagnostic: &ClippyDiagnostic) -> ConfidenceLevel {
         self.confidence_rules
             .get(&diagnostic.code)
@@ -283,6 +285,7 @@ impl ClippyFixEngine {
     }
 
     /// Filter by confidence level (complexity: 3)
+    #[must_use] 
     pub fn filter_by_confidence(
         &self,
         diagnostics: Vec<(ClippyDiagnostic, ConfidenceLevel)>,
@@ -295,6 +298,7 @@ impl ClippyFixEngine {
     }
 
     /// Generate comprehensive report (complexity: 5)
+    #[must_use] 
     pub fn generate_report(&self, results: Vec<FixResult>) -> FixReport {
         let total = results.len();
         let successful = results.iter().filter(|r| r.success).count();

@@ -122,6 +122,7 @@ impl Default for LanguageAnalyzer {
 
 impl LanguageAnalyzer {
     /// Create a new language analyzer
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             language_registry: LanguageRegistry::new(),
@@ -166,11 +167,13 @@ impl LanguageAnalyzer {
     }
 
     /// Get supported languages
+    #[must_use] 
     pub fn supported_languages(&self) -> &[Language] {
         self.language_registry.supported_languages()
     }
 
     /// Check if language supports specific analysis type
+    #[must_use] 
     pub fn supports_analysis(&self, language: Language, analysis_type: &AnalysisType) -> bool {
         match analysis_type {
             AnalysisType::Complexity => language.supports_complexity(),
@@ -274,7 +277,7 @@ impl LanguageAnalyzer {
 
     /// Check if line is C-style comment
     fn is_c_style_comment(&self, line: &str) -> bool {
-        line.starts_with("//") || line.starts_with("/*") || line.starts_with("*")
+        line.starts_with("//") || line.starts_with("/*") || line.starts_with('*')
     }
 
     /// Perform language-specific analyses
@@ -470,7 +473,7 @@ impl LanguageAnalyzer {
 
     /// Analyze code style
     async fn analyze_style(&self, content: &str, language: Language) -> AnalysisResult {
-        let line_lengths: Vec<usize> = content.lines().map(|line| line.len()).collect();
+        let line_lengths: Vec<usize> = content.lines().map(str::len).collect();
         let avg_line_length = if line_lengths.is_empty() {
             0.0
         } else {

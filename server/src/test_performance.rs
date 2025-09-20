@@ -170,7 +170,7 @@ pub async fn test_realistic_project_analysis() -> Result<()> {
     // More lenient threshold for multi-file analysis due to I/O overhead
     let min_throughput = 100_000; // 100K LOC/s
     assert!(
-        actual_throughput >= min_throughput as f64,
+        actual_throughput >= f64::from(min_throughput),
         "Multi-file analysis throughput: {actual_throughput:.0} LOC/s, expected ≥{min_throughput} LOC/s"
     );
 
@@ -348,6 +348,7 @@ pub async fn test_performance_regression_detection() -> Result<()> {
 }
 
 /// Approximate memory usage in MB (platform-specific)
+#[must_use] 
 pub fn get_memory_usage_mb() -> u64 {
     #[cfg(target_os = "linux")]
     {

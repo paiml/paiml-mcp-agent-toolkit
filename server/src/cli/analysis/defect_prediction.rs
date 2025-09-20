@@ -515,8 +515,7 @@ fn format_defect_csv(predictions: &[(String, DefectScore)]) -> Result<String> {
         let (top_factor, top_weight) = score
             .contributing_factors
             .first()
-            .map(|(f, w)| (f.as_str(), *w))
-            .unwrap_or(("", 0.0));
+            .map_or(("", 0.0), |(f, w)| (f.as_str(), *w));
 
         csv.push_str(&format!(
             "{},{:.3},{:.3},{:?},{},{:.3}\n",

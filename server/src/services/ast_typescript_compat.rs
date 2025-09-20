@@ -1,7 +1,7 @@
-//! Compatibility shim for ast_typescript module during migration to new AST architecture
+//! Compatibility shim for `ast_typescript` module during migration to new AST architecture
 //!
 //! This module provides backward compatibility for services still using the old TypeScript AST API.
-//! It will be removed once all services are migrated to the new ast:: module.
+//! It will be removed once all services are migrated to the new `ast::` module.
 
 use anyhow::Result;
 use std::path::Path;
@@ -300,7 +300,7 @@ pub async fn analyze_javascript_file_with_classifier(
             for (i, _node) in functions.iter().enumerate() {
                 items.push(AstItem::Function {
                     name: format!("function_{i}"),
-                    visibility: "".to_string(),
+                    visibility: String::new(),
                     is_async: false,
                     line: i * 10,
                 });
@@ -308,7 +308,7 @@ pub async fn analyze_javascript_file_with_classifier(
             for (i, _node) in types.iter().enumerate() {
                 items.push(AstItem::Struct {
                     name: format!("class_{i}"),
-                    visibility: "".to_string(),
+                    visibility: String::new(),
                     fields_count: 0,
                     derives: vec![],
                     line: (functions.len() + i) * 10,
@@ -368,7 +368,7 @@ fn parse_typescript_content(content: &str, path: &Path) -> Result<Module, anyhow
             jsx: true,
             ..Default::default()
         })
-    } else if path.extension().and_then(|s| s.to_str()).map(|s| s == "js" || s == "mjs") == Some(true) {
+    } else if path.extension().and_then(|s| s.to_str()).is_some_and(|s| s == "js" || s == "mjs") {
         Syntax::Es(swc_ecma_parser::EsSyntax {
             jsx: false,
             ..Default::default()
@@ -392,7 +392,7 @@ fn parse_typescript_content(content: &str, path: &Path) -> Result<Module, anyhow
     );
 
     let mut parser = Parser::new_from(lexer);
-    parser.parse_module().map_err(|e| anyhow::anyhow!("Parse error: {:?}", e))
+    parser.parse_module().map_err(|e| anyhow::anyhow!("Parse error: {e:?}"))
 }
 
 #[cfg(test)]

@@ -135,6 +135,7 @@ impl McpServer {
     /// - VS Code with MCP extension
     /// - Custom MCP clients
     /// - CI/CD pipeline integrations
+    #[must_use] 
     pub fn new() -> Self {
         let cache_config = CacheConfig {
             max_entries: 5000,

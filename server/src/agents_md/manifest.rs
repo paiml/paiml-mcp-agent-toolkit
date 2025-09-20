@@ -2,7 +2,7 @@
 //!
 //! Manages agent capabilities and registration.
 
-use super::*;
+use super::QualityRequirements;
 use serde_json::Value as JsonValue;
 
 /// Agent manifest manager
@@ -63,6 +63,7 @@ impl Default for ManifestManager {
 
 impl ManifestManager {
     /// Create new manager
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             manifests: Vec::new(),
@@ -75,11 +76,13 @@ impl ManifestManager {
     }
 
     /// Get all manifests
+    #[must_use] 
     pub fn get_manifests(&self) -> &[AgentManifest] {
         &self.manifests
     }
 
     /// Find manifest by name
+    #[must_use] 
     pub fn find_by_name(&self, name: &str) -> Option<&AgentManifest> {
         self.manifests.iter().find(|m| m.name == name)
     }

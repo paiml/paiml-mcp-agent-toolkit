@@ -55,6 +55,7 @@ pub struct DeadCodeFacade {
 
 impl DeadCodeFacade {
     /// Create a new dead code facade
+    #[must_use] 
     pub fn new(registry: Arc<ServiceRegistry>) -> Self {
         Self { registry }
     }

@@ -106,7 +106,7 @@ async fn show_system_telemetry() -> Result<()> {
     // Service breakdown
     if !system_data.services.is_empty() {
         println!("🔧 Service Breakdown:");
-        for (service_name, service_data) in system_data.services.iter() {
+        for (service_name, service_data) in &system_data.services {
             println!("  📦 {service_name}");
             println!(
                 "    Operations: {} (Success: {}, Failed: {})",
@@ -149,53 +149,50 @@ async fn show_service_telemetry(service_name: &str) -> Result<()> {
 
     let telemetry_service = telemetry();
 
-    match telemetry_service.get_service_telemetry(service_name).await {
-        Some(service_data) => {
-            println!("🔍 Service Telemetry: {service_name}");
-            println!("{}", "=".repeat(50));
-            println!();
+    if let Some(service_data) = telemetry_service.get_service_telemetry(service_name).await {
+        println!("🔍 Service Telemetry: {service_name}");
+        println!("{}", "=".repeat(50));
+        println!();
 
-            println!("📊 Performance Metrics:");
-            println!("  Total Operations: {}", service_data.total_operations);
-            println!(
-                "  Successful: {} ({:.2}%)",
-                service_data.successful_operations,
-                service_data.success_rate * 100.0
-            );
-            println!("  Failed: {}", service_data.failed_operations);
-            println!("  Average Duration: {} ms", service_data.avg_duration_ms);
-            println!("  Total Duration: {} ms", service_data.total_duration_ms);
-            println!("  Items Processed: {}", service_data.total_items_processed);
+        println!("📊 Performance Metrics:");
+        println!("  Total Operations: {}", service_data.total_operations);
+        println!(
+            "  Successful: {} ({:.2}%)",
+            service_data.successful_operations,
+            service_data.success_rate * 100.0
+        );
+        println!("  Failed: {}", service_data.failed_operations);
+        println!("  Average Duration: {} ms", service_data.avg_duration_ms);
+        println!("  Total Duration: {} ms", service_data.total_duration_ms);
+        println!("  Items Processed: {}", service_data.total_items_processed);
 
-            if service_data.peak_memory_bytes > 0 {
-                println!("  Peak Memory: {} bytes", service_data.peak_memory_bytes);
-            }
-
-            println!(
-                "  Last Operation: {} (timestamp)",
-                service_data.last_operation_at
-            );
-            println!();
-
-            if !service_data.operation_counts.is_empty() {
-                println!("🔧 Operation Breakdown:");
-                let mut operations: Vec<_> = service_data.operation_counts.iter().collect();
-                operations.sort_by(|a, b| b.1.cmp(a.1));
-
-                for (operation, count) in operations {
-                    let percentage = (*count as f64 / service_data.total_operations as f64) * 100.0;
-                    println!("  - {operation}: {count} ({percentage:.1}%)");
-                }
-            }
-
-            println!();
-            println!("📄 Raw Data (JSON):");
-            println!("{}", serde_json::to_string_pretty(&service_data)?);
+        if service_data.peak_memory_bytes > 0 {
+            println!("  Peak Memory: {} bytes", service_data.peak_memory_bytes);
         }
-        None => {
-            println!("❌ No telemetry data found for service: {service_name}");
-            println!("💡 Available services can be seen with: pmat telemetry --system");
+
+        println!(
+            "  Last Operation: {} (timestamp)",
+            service_data.last_operation_at
+        );
+        println!();
+
+        if !service_data.operation_counts.is_empty() {
+            println!("🔧 Operation Breakdown:");
+            let mut operations: Vec<_> = service_data.operation_counts.iter().collect();
+            operations.sort_by(|a, b| b.1.cmp(a.1));
+
+            for (operation, count) in operations {
+                let percentage = (*count as f64 / service_data.total_operations as f64) * 100.0;
+                println!("  - {operation}: {count} ({percentage:.1}%)");
+            }
         }
+
+        println!();
+        println!("📄 Raw Data (JSON):");
+        println!("{}", serde_json::to_string_pretty(&service_data)?);
+    } else {
+        println!("❌ No telemetry data found for service: {service_name}");
+        println!("💡 Available services can be seen with: pmat telemetry --system");
     }
 
     Ok(())
@@ -224,7 +221,10 @@ async fn show_system_overview() -> Result<()> {
     );
     println!();
 
-    if !system_data.services.is_empty() {
+    if system_data.services.is_empty() {
+        println!("📊 No service telemetry data available yet");
+        println!("💡 Use --test-event to generate sample telemetry data");
+    } else {
         println!("🔧 Active Services: {}", system_data.services.len());
         for service_name in system_data.services.keys() {
             println!("  - {service_name}");
@@ -232,9 +232,6 @@ async fn show_system_overview() -> Result<()> {
         println!();
 
         println!("💡 Use --system for detailed metrics or --service <name> for service details");
-    } else {
-        println!("📊 No service telemetry data available yet");
-        println!("💡 Use --test-event to generate sample telemetry data");
     }
 
     Ok(())

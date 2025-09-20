@@ -71,6 +71,7 @@ pub struct ParallelWasmAnalyzer {
 
 impl ParallelWasmAnalyzer {
     /// Create a new parallel analyzer
+    #[must_use] 
     pub fn new(config: ParallelConfig) -> Self {
         Self {
             _config: config,
@@ -87,7 +88,7 @@ impl ParallelWasmAnalyzer {
         let files: Vec<PathBuf> = WalkDir::new(dir_path)
             .max_depth(self._config.max_depth)
             .into_iter()
-            .filter_map(|entry| entry.ok())
+            .filter_map(std::result::Result::ok)
             .filter(|entry| entry.file_type().is_file())
             .map(|entry| entry.path().to_path_buf())
             .filter(|path| self.is_relevant_file(path))

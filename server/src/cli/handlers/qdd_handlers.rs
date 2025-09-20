@@ -160,23 +160,20 @@ fn display_create_results(profile: QddQualityProfile, result: &QddResult) {
 
 /// Output generated code to file or stdout
 fn output_generated_code(output_file: Option<PathBuf>, result: &QddResult) -> Result<()> {
-    match output_file {
-        Some(output_path) => {
-            let full_content = format!(
-                "{}\n\n{}\n\n{}",
-                result.code, result.tests, result.documentation
-            );
-            std::fs::write(&output_path, full_content)?;
-            println!("💾 Generated code written to: {}", output_path.display());
-        }
-        None => {
-            println!("📝 Generated Code:");
-            println!("{}", result.code);
-            println!("\n🧪 Generated Tests:");
-            println!("{}", result.tests);
-            println!("\n📚 Generated Documentation:");
-            println!("{}", result.documentation);
-        }
+    if let Some(output_path) = output_file {
+        let full_content = format!(
+            "{}\n\n{}\n\n{}",
+            result.code, result.tests, result.documentation
+        );
+        std::fs::write(&output_path, full_content)?;
+        println!("💾 Generated code written to: {}", output_path.display());
+    } else {
+        println!("📝 Generated Code:");
+        println!("{}", result.code);
+        println!("\n🧪 Generated Tests:");
+        println!("{}", result.tests);
+        println!("\n📚 Generated Documentation:");
+        println!("{}", result.documentation);
     }
     Ok(())
 }

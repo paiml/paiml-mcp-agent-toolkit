@@ -6,7 +6,7 @@
 //!
 //! ## Key Features
 //!
-//! - **McCabe Cyclomatic Complexity**: Measures the number of linearly independent paths
+//! - **`McCabe` Cyclomatic Complexity**: Measures the number of linearly independent paths
 //! - **Cognitive Complexity**: Sonar method for measuring how hard code is to understand  
 //! - **Nesting Depth**: Maximum depth of nested control structures
 //! - **Halstead Metrics**: Software science metrics for program complexity
@@ -57,7 +57,7 @@ use std::path::Path;
 /// ```
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, Default)]
 pub struct ComplexityMetrics {
-    /// McCabe cyclomatic complexity - counts decision points + 1
+    /// `McCabe` cyclomatic complexity - counts decision points + 1
     pub cyclomatic: u16,
     /// Cognitive complexity (Sonar method) - measures understandability
     pub cognitive: u16,
@@ -77,7 +77,7 @@ impl ComplexityMetrics {
     ///
     /// # Arguments
     ///
-    /// * `cyclomatic` - McCabe cyclomatic complexity (decision points + 1)
+    /// * `cyclomatic` - `McCabe` cyclomatic complexity (decision points + 1)
     /// * `cognitive` - Cognitive complexity (Sonar method)
     /// * `nesting_max` - Maximum nesting depth
     /// * `lines` - Logical lines of code
@@ -94,6 +94,7 @@ impl ComplexityMetrics {
     /// assert_eq!(metrics.lines, 25);
     /// assert!(metrics.halstead.is_none());
     /// ```
+    #[must_use] 
     pub fn new(cyclomatic: u16, cognitive: u16, nesting_max: u8, lines: u16) -> Self {
         Self {
             cyclomatic,
@@ -111,7 +112,7 @@ impl ComplexityMetrics {
     ///
     /// # Arguments
     ///
-    /// * `cyclomatic` - McCabe cyclomatic complexity
+    /// * `cyclomatic` - `McCabe` cyclomatic complexity
     /// * `cognitive` - Cognitive complexity  
     /// * `nesting_max` - Maximum nesting depth
     /// * `lines` - Logical lines of code
@@ -128,6 +129,7 @@ impl ComplexityMetrics {
     /// assert!(metrics.halstead.is_some());
     /// assert_eq!(metrics.halstead.unwrap().operators_unique, 8);
     /// ```
+    #[must_use] 
     pub fn with_halstead(
         cyclomatic: u16,
         cognitive: u16,
@@ -160,6 +162,7 @@ impl ComplexityMetrics {
     /// let complex = ComplexityMetrics::new(12, 15, 4, 50);
     /// assert!(!complex.is_simple());
     /// ```
+    #[must_use] 
     pub fn is_simple(&self) -> bool {
         self.cyclomatic <= 5 && self.cognitive <= 7
     }
@@ -180,6 +183,7 @@ impl ComplexityMetrics {
     /// let complex = ComplexityMetrics::new(15, 20, 5, 100);
     /// assert!(complex.needs_refactoring());
     /// ```
+    #[must_use] 
     pub fn needs_refactoring(&self) -> bool {
         self.cyclomatic > 10 || self.cognitive > 15
     }
@@ -199,12 +203,13 @@ impl ComplexityMetrics {
     ///
     /// assert!(complex.complexity_score() > simple.complexity_score());
     /// ```
+    #[must_use] 
     pub fn complexity_score(&self) -> f64 {
         // Weighted combination of complexity metrics
-        (self.cyclomatic as f64 * 1.0)
-            + (self.cognitive as f64 * 1.2)
-            + (self.nesting_max as f64 * 2.0)
-            + (self.lines as f64 * 0.1)
+        (f64::from(self.cyclomatic) * 1.0)
+            + (f64::from(self.cognitive) * 1.2)
+            + (f64::from(self.nesting_max) * 2.0)
+            + (f64::from(self.lines) * 0.1)
     }
 }
 
@@ -277,6 +282,7 @@ impl HalsteadMetrics {
     /// assert_eq!(metrics.operands_unique, 6);
     /// assert_eq!(metrics.volume, 0.0); // Not calculated yet
     /// ```
+    #[must_use] 
     pub fn new(
         operators_unique: u32,
         operands_unique: u32,
@@ -315,6 +321,7 @@ impl HalsteadMetrics {
     /// assert!(calculated.time > 0.0);
     /// assert!(calculated.bugs >= 0.0);
     /// ```
+    #[must_use] 
     pub fn calculate_derived(mut self) -> Self {
         // Prevent division by zero
         if self.operators_unique == 0 || self.operands_unique == 0 {
@@ -326,13 +333,13 @@ impl HalsteadMetrics {
 
         // V = N * log2(n) - Program Volume
         if unique > 0 {
-            self.volume = total as f64 * (unique as f64).log2();
+            self.volume = f64::from(total) * f64::from(unique).log2();
         }
 
         // D = (n1/2) * (N2/n2) - Program Difficulty
         if self.operands_unique > 0 {
-            self.difficulty = (self.operators_unique as f64 / 2.0)
-                * (self.operands_total as f64 / self.operands_unique as f64);
+            self.difficulty = (f64::from(self.operators_unique) / 2.0)
+                * (f64::from(self.operands_total) / f64::from(self.operands_unique));
         }
 
         // E = V * D - Programming Effort
@@ -479,9 +486,10 @@ impl<'a> ComplexityVisitor<'a> {
 
     /// Calculate cognitive complexity increment based on node type and nesting
     #[inline(always)]
+    #[must_use] 
     pub fn calculate_cognitive_increment(&self, is_nesting_construct: bool) -> u16 {
         if is_nesting_construct {
-            1 + self.nesting_level.saturating_sub(1) as u16
+            1 + u16::from(self.nesting_level.saturating_sub(1))
         } else {
             1
         }
@@ -519,6 +527,7 @@ impl<'a> ComplexityVisitor<'a> {
 /// assert!(key.starts_with("cx:"));
 /// assert!(key.len() > 10);
 /// ```
+#[must_use] 
 pub fn compute_complexity_cache_key(path: &Path, content: &[u8]) -> String {
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
@@ -552,6 +561,7 @@ pub struct CyclomaticComplexityRule {
 }
 
 impl CyclomaticComplexityRule {
+    #[must_use] 
     pub fn new(thresholds: &ComplexityThresholds) -> Self {
         Self {
             warn_threshold: thresholds.cyclomatic_warn,
@@ -607,6 +617,7 @@ pub struct CognitiveComplexityRule {
 }
 
 impl CognitiveComplexityRule {
+    #[must_use] 
     pub fn new(thresholds: &ComplexityThresholds) -> Self {
         Self {
             warn_threshold: thresholds.cognitive_warn,
@@ -690,6 +701,7 @@ impl ComplexityRule for CognitiveComplexityRule {
 /// let report = aggregate_results(vec![file]);
 /// assert_eq!(report.files.len(), 1);
 /// ```
+#[must_use] 
 pub fn aggregate_results(file_metrics: Vec<FileComplexityMetrics>) -> ComplexityReport {
     aggregate_results_with_thresholds(file_metrics, None, None)
 }
@@ -741,6 +753,7 @@ pub fn aggregate_results(file_metrics: Vec<FileComplexityMetrics>) -> Complexity
 /// let report2 = aggregate_results_with_thresholds(vec![file], Some(35), Some(35));
 /// assert_eq!(report2.violations.len(), 0);
 /// ```
+#[must_use] 
 pub fn aggregate_results_with_thresholds(
     file_metrics: Vec<FileComplexityMetrics>,
     max_cyclomatic: Option<u16>,
@@ -987,9 +1000,9 @@ fn calculate_median(values: &[u16]) -> f32 {
 
     let mid = values.len() / 2;
     if values.len() % 2 == 0 {
-        (values[mid - 1] + values[mid]) as f32 / 2.0
+        f32::from(values[mid - 1] + values[mid]) / 2.0
     } else {
-        values[mid] as f32
+        f32::from(values[mid])
     }
 }
 
@@ -1007,10 +1020,10 @@ fn calculate_technical_debt(violations: &[Violation]) -> f32 {
         .map(|v| match v {
             Violation::Error {
                 value, threshold, ..
-            } => (value - threshold) as f32 * 30.0,
+            } => f32::from(value - threshold) * 30.0,
             Violation::Warning {
                 value, threshold, ..
-            } => (value - threshold) as f32 * 15.0,
+            } => f32::from(value - threshold) * 15.0,
         })
         .sum();
     debt_minutes / 60.0
@@ -1084,6 +1097,7 @@ fn build_complexity_report(
 /// assert!(summary.contains("main.rs")); // First file (higher complexity)
 /// assert!(summary.contains("lib.rs"));  // Second file
 /// ```
+#[must_use] 
 pub fn format_complexity_summary(report: &ComplexityReport) -> String {
     let mut output = String::new();
 
@@ -1164,7 +1178,7 @@ pub fn format_complexity_summary(report: &ComplexityReport) -> String {
             .iter()
             .map(|f| {
                 let total_score =
-                    f.total_complexity.cyclomatic as f64 + f.total_complexity.cognitive as f64;
+                    f64::from(f.total_complexity.cyclomatic) + f64::from(f.total_complexity.cognitive);
                 (f, total_score)
             })
             .collect();
@@ -1196,7 +1210,7 @@ pub fn format_complexity_summary(report: &ComplexityReport) -> String {
                 .functions
                 .iter()
                 .map(|f| {
-                    let total = f.metrics.cyclomatic as f64 + f.metrics.cognitive as f64;
+                    let total = f64::from(f.metrics.cyclomatic) + f64::from(f.metrics.cognitive);
                     (f, total)
                 })
                 .collect();
@@ -1238,6 +1252,7 @@ pub fn format_complexity_summary(report: &ComplexityReport) -> String {
 }
 
 /// Format full complexity report for CLI output
+#[must_use] 
 pub fn format_complexity_report(report: &ComplexityReport) -> String {
     let mut output = format_complexity_summary(report);
 

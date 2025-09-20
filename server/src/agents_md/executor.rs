@@ -2,7 +2,7 @@
 //!
 //! Safely executes commands from AGENTS.md with quality gate enforcement.
 
-use super::*;
+use super::{PathBuf, Command};
 use anyhow::Result;
 use std::process::Stdio;
 use std::time::Duration;
@@ -279,7 +279,7 @@ impl AgentsMdExecutor {
                     timed_out: false,
                 })
             }
-            Ok(Err(e)) => Err(anyhow::anyhow!("Command execution failed: {}", e)),
+            Ok(Err(e)) => Err(anyhow::anyhow!("Command execution failed: {e}")),
             Err(_) => Ok(CommandOutput {
                 exit_code: -1,
                 stdout: String::new(),

@@ -42,7 +42,7 @@ impl<V> PersistentCacheEntry<V> {
 
     fn into_cache_entry(self) -> CacheEntry<V> {
         let age = self.age();
-        let created = Instant::now() - age;
+        let created = Instant::now().checked_sub(age).unwrap();
 
         CacheEntry {
             value: Arc::new(self.value),
@@ -343,11 +343,13 @@ where
     }
 
     /// Get cache statistics
+    #[must_use] 
     pub fn len(&self) -> usize {
         self.memory_cache.read().len()
     }
 
     /// Check if cache is empty
+    #[must_use] 
     pub fn is_empty(&self) -> bool {
         self.memory_cache.read().is_empty()
     }

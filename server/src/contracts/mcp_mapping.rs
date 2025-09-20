@@ -1,7 +1,7 @@
 //! Maps MCP tool parameters to uniform contracts
 //! This ensures MCP uses the exact same contracts as CLI and HTTP
 
-use super::*;
+use super::{ContractValidation, AnalyzeComplexityContract, AnalyzeSatdContract, AnalyzeDeadCodeContract, AnalyzeTdgContract, AnalyzeLintHotspotContract, QualityGateContract, RefactorAutoContract, BaseAnalysisContract, OutputFormat, SatdSeverity, QualityProfile};
 use anyhow::Result;
 use serde_json::Value;
 use std::path::PathBuf;
@@ -16,7 +16,7 @@ pub fn map_mcp_tool(tool_name: &str, params: Value) -> Result<Box<dyn ContractVa
         "analyze_lint_hotspot" => map_lint_hotspot_contract(&params),
         "quality_gate" => map_quality_gate_contract(&params),
         "refactor_auto" => map_refactor_auto_contract(&params),
-        _ => anyhow::bail!("Unknown MCP tool: {}", tool_name),
+        _ => anyhow::bail!("Unknown MCP tool: {tool_name}"),
     }
 }
 

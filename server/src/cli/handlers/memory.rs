@@ -47,7 +47,7 @@ pub enum MemoryCommand {
         /// Maximum total memory usage in MB
         #[arg(long)]
         max_memory_mb: Option<usize>,
-        /// Pool-specific limits (format: pool:size_mb)
+        /// Pool-specific limits (format: `pool:size_mb`)
         #[arg(long, value_delimiter = ',')]
         pool_limits: Vec<String>,
         /// Enable memory tracking

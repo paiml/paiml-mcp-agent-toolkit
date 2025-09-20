@@ -19,6 +19,7 @@ impl Default for RustStrategy {
 }
 
 impl RustStrategy {
+    #[must_use] 
     pub fn new() -> Self {
         Self
     }
@@ -31,7 +32,7 @@ impl AstStrategy for RustStrategy {
         // Convert TemplateError to anyhow::Error
         let context = crate::services::ast_rust::analyze_rust_file(file_path)
             .await
-            .map_err(|e| anyhow::anyhow!("Rust analysis failed: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Rust analysis failed: {e}"))?;
         Ok(context)
     }
 

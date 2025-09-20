@@ -3,7 +3,7 @@
 //! This module contains all complexity-related command implementations
 //! extracted from the main CLI module to reduce cognitive complexity.
 
-use crate::cli::*;
+use crate::cli::{ComplexityOutputFormat, DeadCodeOutputFormat, SatdOutputFormat, SatdSeverity, DagType};
 use anyhow::{Context, Result};
 use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use std::path::{Path, PathBuf};
@@ -134,30 +134,27 @@ async fn analyze_project(
     detected_toolchain: Option<String>,
     config: &ComplexityConfig,
 ) -> Result<Vec<crate::services::complexity::FileComplexityMetrics>> {
-    match detected_toolchain {
-        Some(ref toolchain) => {
-            eprintln!("🔍 Analyzing {toolchain} project complexity...");
-            super::super::analysis_utilities::analyze_project_files(
-                &config.project_path,
-                Some(toolchain),
-                &config.include,
-                config.max_cyclomatic,
-                config.max_cognitive,
-            )
-            .await
-        }
-        None => {
-            // No specific toolchain detected - analyze all supported file types
-            eprintln!("🔍 Analyzing project complexity (multi-language)...");
-            super::super::analysis_utilities::analyze_project_files(
-                &config.project_path,
-                None, // This will trigger analysis of all supported languages
-                &config.include,
-                config.max_cyclomatic,
-                config.max_cognitive,
-            )
-            .await
-        }
+    if let Some(ref toolchain) = detected_toolchain {
+        eprintln!("🔍 Analyzing {toolchain} project complexity...");
+        super::super::analysis_utilities::analyze_project_files(
+            &config.project_path,
+            Some(toolchain),
+            &config.include,
+            config.max_cyclomatic,
+            config.max_cognitive,
+        )
+        .await
+    } else {
+        // No specific toolchain detected - analyze all supported file types
+        eprintln!("🔍 Analyzing project complexity (multi-language)...");
+        super::super::analysis_utilities::analyze_project_files(
+            &config.project_path,
+            None, // This will trigger analysis of all supported languages
+            &config.include,
+            config.max_cyclomatic,
+            config.max_cognitive,
+        )
+        .await
     }
 }
 
@@ -174,11 +171,9 @@ fn apply_complexity_filters(
         file_metrics.retain(|file| {
             file.functions.iter().any(|func| {
                 let exceeds_cyclomatic = max_cyclomatic
-                    .map(|threshold| func.metrics.cyclomatic > threshold)
-                    .unwrap_or(false);
+                    .is_some_and(|threshold| func.metrics.cyclomatic > threshold);
                 let exceeds_cognitive = max_cognitive
-                    .map(|threshold| func.metrics.cognitive > threshold)
-                    .unwrap_or(false);
+                    .is_some_and(|threshold| func.metrics.cognitive > threshold);
                 exceeds_cyclomatic || exceeds_cognitive
             })
         });
@@ -197,9 +192,9 @@ fn apply_top_files_limit(
         // Sort files by complexity (descending)
         file_metrics.sort_by(|a, b| {
             let a_complexity =
-                a.total_complexity.cyclomatic as f64 + a.total_complexity.cognitive as f64;
+                f64::from(a.total_complexity.cyclomatic) + f64::from(a.total_complexity.cognitive);
             let b_complexity =
-                b.total_complexity.cyclomatic as f64 + b.total_complexity.cognitive as f64;
+                f64::from(b.total_complexity.cyclomatic) + f64::from(b.total_complexity.cognitive);
             b_complexity
                 .partial_cmp(&a_complexity)
                 .unwrap_or(std::cmp::Ordering::Equal)
@@ -225,7 +220,7 @@ async fn format_and_write_output(
         ComplexityOutputFormat::Summary => Ok(format_complexity_summary(summary)),
         ComplexityOutputFormat::Full => Ok(format_complexity_report(summary)),
         ComplexityOutputFormat::Sarif => format_as_sarif(summary)
-            .map_err(|e| anyhow::anyhow!("SARIF serialization failed: {}", e)),
+            .map_err(|e| anyhow::anyhow!("SARIF serialization failed: {e}")),
         ComplexityOutputFormat::Json => {
             let json_output = serde_json::json!({
                 "summary": summary,
@@ -233,7 +228,7 @@ async fn format_and_write_output(
                 "top_files_limit": if top_files > 0 { Some(top_files) } else { None },
             });
             serde_json::to_string_pretty(&json_output)
-                .map_err(|e| anyhow::anyhow!("JSON serialization failed: {}", e))
+                .map_err(|e| anyhow::anyhow!("JSON serialization failed: {e}"))
         }
     }?;
 
@@ -911,10 +906,10 @@ fn should_include_file(path_str: &str, include_patterns: &[String]) -> bool {
 
 /// Get the paths that changed from an event
 fn get_changed_paths(event: &Event) -> Option<&Vec<PathBuf>> {
-    if !event.paths.is_empty() {
-        Some(&event.paths)
-    } else {
+    if event.paths.is_empty() {
         None
+    } else {
+        Some(&event.paths)
     }
 }
 
@@ -1037,7 +1032,7 @@ pub async fn handle_analyze_churn(
 
     // Analyze code churn
     let mut analysis = GitAnalysisService::analyze_code_churn(&project_path, days)
-        .map_err(|e| anyhow::anyhow!("Churn analysis failed: {}", e))?;
+        .map_err(|e| anyhow::anyhow!("Churn analysis failed: {e}"))?;
 
     // Apply filtering and limits
     apply_churn_filters(&mut analysis, &filter, top_files);
@@ -1160,7 +1155,7 @@ pub async fn handle_analyze_dead_code(
         .await
     })
     .await
-    .map_err(|_| anyhow::anyhow!("Dead code analysis timed out after {} seconds", timeout))??;
+    .map_err(|_| anyhow::anyhow!("Dead code analysis timed out after {timeout} seconds"))??;
 
     eprintln!(
         "📊 Analysis complete: {} files analyzed, {} with dead code",
@@ -1617,7 +1612,7 @@ async fn run_satd_analysis(
         detector.analyze_project(path, include_tests).await
     })
     .await
-    .map_err(|_| anyhow::anyhow!("SATD analysis timed out after {} seconds", timeout))??;
+    .map_err(|_| anyhow::anyhow!("SATD analysis timed out after {timeout} seconds"))??;
 
     Ok(result)
 }
@@ -1844,6 +1839,7 @@ fn generate_satd_sarif(
 /// assert!(summary.contains("- 1 SATD items"));
 /// assert!(summary.contains("- 1 SATD items"));
 /// ```
+#[must_use] 
 pub fn format_satd_summary(
     result: &crate::services::satd_detector::SATDAnalysisResult,
     metrics: bool,
@@ -2064,7 +2060,7 @@ pub async fn handle_analyze_dag(
         use crate::services::fixed_graph_builder::{GraphConfig, GroupingStrategy};
         let config = GraphConfig {
             max_nodes: target_nodes.unwrap_or(100),
-            max_edges: target_nodes.map(|n| n * 4).unwrap_or(400),
+            max_edges: target_nodes.map_or(400, |n| n * 4),
             grouping: GroupingStrategy::Module,
         };
         generator.generate_with_config(&enriched_graph, &config)

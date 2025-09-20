@@ -21,6 +21,7 @@ pub struct KotlinAstVisitor {
 #[cfg(feature = "kotlin-ast")]
 impl KotlinAstVisitor {
     /// Creates a new Kotlin AST visitor
+    #[must_use] 
     pub fn new(file_path: &Path) -> Self {
         Self {
             items: Vec::new(),
@@ -120,9 +121,9 @@ impl KotlinAstVisitor {
         for line in lines {
             let trimmed = line.trim();
 
-            if trimmed.contains(&format!("class {}", class_name)) {
+            if trimmed.contains(&format!("class {class_name}")) {
                 in_class = true;
-                if trimmed.contains("{") {
+                if trimmed.contains('{') {
                     brace_count += 1;
                 }
                 continue;
@@ -167,7 +168,7 @@ impl KotlinAstVisitor {
 
     /// Helper to extract function name from line (complexity ≤10)
     fn extract_function_name_from_line(&self, line: &str) -> Option<String> {
-        if line.contains("fun ") && line.contains("(") && !line.contains("class") {
+        if line.contains("fun ") && line.contains('(') && !line.contains("class") {
             let parts: Vec<&str> = line.split_whitespace().collect();
             for (i, part) in parts.iter().enumerate() {
                 if *part == "fun" && i + 1 < parts.len() {
@@ -265,6 +266,7 @@ impl Default for KotlinComplexityAnalyzer {
 
 impl KotlinComplexityAnalyzer {
     /// Creates a new Kotlin complexity analyzer
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             cyclomatic_complexity: 0,

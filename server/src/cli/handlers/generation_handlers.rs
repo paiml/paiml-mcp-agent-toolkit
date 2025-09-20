@@ -4,7 +4,7 @@
 //! project scaffolding, and template validation operations.
 
 // use crate::cli::*; // Currently unused
-use crate::services::template_service::*;
+use crate::services::template_service::{generate_template, scaffold_project, validate_template};
 use crate::stateless_server::StatelessTemplateServer;
 use anyhow::Result;
 use serde_json::Value;
@@ -414,7 +414,7 @@ pub async fn handle_validate_agent_template(path: PathBuf) -> Result<()> {
     eprintln!("🔍 Validating template: {}", path.display());
 
     match registry.validate_template_file(&path) {
-        Ok(_) => {
+        Ok(()) => {
             eprintln!("✅ Template is valid!");
         }
         Err(e) => {

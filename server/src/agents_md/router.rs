@@ -94,6 +94,7 @@ impl Default for AgentRouter {
 
 impl AgentRouter {
     /// Create new router
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             handlers: Arc::new(RwLock::new(Vec::new())),
@@ -124,6 +125,7 @@ impl AgentRouter {
     }
 
     /// Load balance requests
+    #[must_use] 
     pub fn balance_load(&self, requests: Vec<AgentRequest>) -> Vec<RouteDecision> {
         requests
             .into_iter()
@@ -146,6 +148,7 @@ impl Default for CircuitBreaker {
 
 impl CircuitBreaker {
     /// Create new circuit breaker
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             failure_threshold: 5,

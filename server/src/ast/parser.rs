@@ -36,16 +36,19 @@ pub struct UnifiedParser {
 }
 
 impl UnifiedParser {
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             config: ParserConfig::default(),
         }
     }
 
+    #[must_use] 
     pub fn with_config(config: ParserConfig) -> Self {
         Self { config }
     }
 
+    #[must_use] 
     pub fn capabilities(&self) -> ParserCapabilities {
         ParserCapabilities {
             languages: vec![Language::Rust, Language::Python, Language::TypeScript],

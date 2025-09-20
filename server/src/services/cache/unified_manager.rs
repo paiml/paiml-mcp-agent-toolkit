@@ -1,16 +1,16 @@
-//! Compatibility stub for UnifiedCacheManager
+//! Compatibility stub for `UnifiedCacheManager`
 //!
-//! This module provides a compatibility wrapper around SessionCacheManager
+//! This module provides a compatibility wrapper around `SessionCacheManager`
 //! to fix compilation errors after the unified cache module was removed.
 
 use super::config::CacheConfig;
 use super::manager::SessionCacheManager;
 use anyhow::Result;
 
-/// Stub for UnifiedCacheConfig - redirects to CacheConfig
+/// Stub for `UnifiedCacheConfig` - redirects to `CacheConfig`
 pub type UnifiedCacheConfig = CacheConfig;
 
-/// Stub for UnifiedCacheManager - wraps SessionCacheManager
+/// Stub for `UnifiedCacheManager` - wraps `SessionCacheManager`
 pub struct UnifiedCacheManager {
     inner: SessionCacheManager,
 }
@@ -28,7 +28,7 @@ impl UnifiedCacheManager {
     }
 }
 
-/// Stub for UnifiedCacheDiagnostics (if needed)
+/// Stub for `UnifiedCacheDiagnostics` (if needed)
 pub type UnifiedCacheDiagnostics = super::diagnostics::CacheDiagnostics;
 
 #[cfg(test)]

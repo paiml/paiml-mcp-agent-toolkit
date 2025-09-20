@@ -58,6 +58,7 @@ pub struct MakefileCompressor {
 }
 
 impl MakefileCompressor {
+    #[must_use] 
     pub fn new() -> Self {
         let mut critical_targets = HashSet::new();
         critical_targets.insert("all");
@@ -168,7 +169,7 @@ impl MakefileCompressor {
                     .nth(1)
                     .map(|d| {
                         d.split_whitespace()
-                            .map(|s| s.to_string())
+                            .map(std::string::ToString::to_string)
                             .collect::<Vec<_>>()
                     })
                     .unwrap_or_default();
@@ -221,7 +222,7 @@ impl MakefileCompressor {
             if !clean.starts_with("echo ")
                 && !clean.starts_with("mkdir ")
                 && !clean.starts_with("rm ")
-                && !clean.starts_with(":")
+                && !clean.starts_with(':')
                 && !clean.is_empty()
             {
                 // Truncate very long commands
@@ -321,7 +322,7 @@ impl MakefileCompressor {
                 if lower.contains(&format!("command -v {cmd}"))
                     || lower.contains(&format!("which {cmd}"))
                 {
-                    deps.insert(cmd.to_string());
+                    deps.insert((*cmd).to_string());
                 }
             }
         }
@@ -398,7 +399,7 @@ fn get_valid_package(parts: &[&str], position: usize) -> Option<String> {
     parts
         .get(position)
         .filter(|pkg| !pkg.starts_with('-') && !pkg.is_empty())
-        .map(|pkg| pkg.to_string())
+        .map(|pkg| (*pkg).to_string())
 }
 
 #[cfg(test)]

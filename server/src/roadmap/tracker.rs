@@ -1,6 +1,6 @@
 //! Progress tracking and velocity metrics for roadmap
 
-use super::*;
+use super::{DateTime, Utc, Complexity, Task, Sprint, TaskStatus, Roadmap};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -44,6 +44,7 @@ pub struct BurndownPoint {
 }
 
 impl VelocityTracker {
+    #[must_use] 
     pub fn new(sprint_id: &str) -> Self {
         Self {
             sprint_id: sprint_id.to_string(),
@@ -55,7 +56,7 @@ impl VelocityTracker {
         }
     }
 
-    /// Add a completed task (overloaded for CompletedTask)
+    /// Add a completed task (overloaded for `CompletedTask`)
     pub fn add_completed_task(&mut self, task: CompletedTask) {
         self.quality_scores.push(QualityScore {
             task_id: task.task_id.clone(),
@@ -129,6 +130,7 @@ impl VelocityTracker {
     }
 
     /// Get average quality score
+    #[must_use] 
     pub fn average_quality_score(&self) -> f64 {
         if self.quality_scores.is_empty() {
             return 0.0;
@@ -139,6 +141,7 @@ impl VelocityTracker {
     }
 
     /// Get velocity (tasks per day)
+    #[must_use] 
     pub fn velocity(&self) -> f64 {
         let days_elapsed = (Utc::now() - self.started_at).num_days() as f64;
         if days_elapsed <= 0.0 {
@@ -149,6 +152,7 @@ impl VelocityTracker {
     }
 
     /// Calculate velocity
+    #[must_use] 
     pub fn calculate_velocity(&self) -> f64 {
         self.velocity()
     }
@@ -172,11 +176,13 @@ impl VelocityTracker {
     }
 
     /// Get average quality score
+    #[must_use] 
     pub fn get_average_quality(&self) -> f64 {
         self.average_quality_score()
     }
 
     /// Get cycle time statistics
+    #[must_use] 
     pub fn get_cycle_time_stats(&self) -> CycleTimeStats {
         let mut min_cycle_time = Duration::from_secs(u64::MAX);
         let mut max_cycle_time = Duration::from_secs(0);
@@ -281,7 +287,7 @@ impl RoadmapDashboard {
 
         let sprint = roadmap
             .get_sprint(sprint_id)
-            .ok_or_else(|| anyhow::anyhow!("Sprint {} not found", sprint_id))?;
+            .ok_or_else(|| anyhow::anyhow!("Sprint {sprint_id} not found"))?;
 
         // Header
         output.push_str(&format!("# Sprint {sprint_id} Dashboard\n\n"));

@@ -107,7 +107,7 @@ pub struct TDGCalculator {
 }
 
 impl TDGCalculator {
-    /// Creates a new TDGCalculator with default configuration
+    /// Creates a new `TDGCalculator` with default configuration
     ///
     /// # Examples
     ///
@@ -117,10 +117,12 @@ impl TDGCalculator {
     /// let calculator = TDGCalculator::new();
     /// // Calculator ready to compute Technical Debt Gradient scores
     /// ```
+    #[must_use] 
     pub fn new() -> Self {
         Self::with_config(TDGConfig::default())
     }
 
+    #[must_use] 
     pub fn with_config(config: TDGConfig) -> Self {
         Self {
             config,
@@ -310,12 +312,12 @@ impl TDGCalculator {
 
         // Calculate mean
         let sum: u32 = complexities.iter().sum();
-        let mean = sum as f64 / complexities.len() as f64;
+        let mean = f64::from(sum) / complexities.len() as f64;
 
         // Calculate variance
         let squared_diff_sum: f64 = complexities
             .iter()
-            .map(|&c| (c as f64 - mean).powi(2))
+            .map(|&c| (f64::from(c) - mean).powi(2))
             .sum();
         let variance = squared_diff_sum / complexities.len() as f64;
 
@@ -325,13 +327,13 @@ impl TDGCalculator {
 
         let mut gini_sum = 0.0;
         for (i, &value) in sorted.iter().enumerate() {
-            gini_sum += (2.0 * (i + 1) as f64 - sorted.len() as f64 - 1.0) * value as f64;
+            gini_sum += (2.0 * (i + 1) as f64 - sorted.len() as f64 - 1.0) * f64::from(value);
         }
-        let gini = gini_sum / (sorted.len() as f64 * sum as f64);
+        let gini = gini_sum / (sorted.len() as f64 * f64::from(sum));
 
         // Calculate 90th percentile
         let percentile_idx = ((sorted.len() as f64 * 0.9) as usize).min(sorted.len() - 1);
-        let percentile_90 = sorted[percentile_idx] as f64;
+        let percentile_90 = f64::from(sorted[percentile_idx]);
 
         ComplexityVariance {
             mean,
@@ -605,8 +607,8 @@ impl TDGCalculator {
         let content = tokio::fs::read_to_string(path).await?;
         let lines: Vec<&str> = content
             .lines()
-            .map(|l| l.trim())
-            .filter(|l| !l.is_empty() && !l.starts_with("//") && !l.starts_with("#"))
+            .map(str::trim)
+            .filter(|l| !l.is_empty() && !l.starts_with("//") && !l.starts_with('#'))
             .collect();
 
         if lines.len() < 10 {
@@ -921,6 +923,7 @@ impl TDGCalculator {
     }
 
     /// Generate TDG distribution for visualization
+    #[must_use] 
     pub fn calculate_distribution(&self, scores: &[TDGScore]) -> TDGDistribution {
         let bucket_size = 0.5;
         let max_value = 5.0;

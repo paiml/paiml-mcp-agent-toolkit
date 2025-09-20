@@ -237,8 +237,7 @@ fn show_configuration_section(config: &PmatConfig, section: &str) -> Result<()> 
         }
         _ => {
             return Err(anyhow::anyhow!(
-                "Unknown section '{}'. Available: system, quality, analysis, performance, mcp, roadmap, telemetry",
-                section
+                "Unknown section '{section}'. Available: system, quality, analysis, performance, mcp, roadmap, telemetry"
             ));
         }
     }
@@ -257,8 +256,7 @@ async fn set_configuration_values(
         let parts: Vec<&str> = set_value.splitn(2, '=').collect();
         if parts.len() != 2 {
             return Err(anyhow::anyhow!(
-                "Invalid format '{}'. Use key=value",
-                set_value
+                "Invalid format '{set_value}'. Use key=value"
             ));
         }
 
@@ -281,8 +279,7 @@ fn set_config_value(config: &mut PmatConfig, key: &str, value: &str) -> Result<(
     let parts: Vec<&str> = key.split('.').collect();
     if parts.len() != 2 {
         return Err(anyhow::anyhow!(
-            "Key must be in format 'section.field', got '{}'",
-            key
+            "Key must be in format 'section.field', got '{key}'"
         ));
     }
 
@@ -297,7 +294,7 @@ fn set_config_value(config: &mut PmatConfig, key: &str, value: &str) -> Result<(
         "mcp" => set_mcp_value(&mut config.mcp, field, value),
         "roadmap" => set_roadmap_value(&mut config.roadmap, field, value),
         "telemetry" => set_telemetry_value(&mut config.telemetry, field, value),
-        _ => Err(anyhow::anyhow!("Unknown section '{}'", section)),
+        _ => Err(anyhow::anyhow!("Unknown section '{section}'")),
     }
 }
 
@@ -313,7 +310,7 @@ fn set_system_value(
         "debug" => system.debug = value.parse()?,
         "default_toolchain" => system.default_toolchain = value.to_string(),
         "max_concurrent_operations" => system.max_concurrent_operations = value.parse()?,
-        _ => return Err(anyhow::anyhow!("Unknown system field '{}'", field)),
+        _ => return Err(anyhow::anyhow!("Unknown system field '{field}'")),
     }
     Ok(())
 }
@@ -332,7 +329,7 @@ fn set_quality_value(
         "require_docs" => quality.require_docs = value.parse()?,
         "lint_compliance" => quality.lint_compliance = value.parse()?,
         "fail_on_violation" => quality.fail_on_violation = value.parse()?,
-        _ => return Err(anyhow::anyhow!("Unknown quality field '{}'", field)),
+        _ => return Err(anyhow::anyhow!("Unknown quality field '{field}'")),
     }
     Ok(())
 }
@@ -350,7 +347,7 @@ fn set_analysis_value(
         "parallel" => analysis.parallel = value.parse()?,
         "thread_count" => analysis.thread_count = value.parse()?,
         "timeout_seconds" => analysis.timeout_seconds = value.parse()?,
-        _ => return Err(anyhow::anyhow!("Unknown analysis field '{}'", field)),
+        _ => return Err(anyhow::anyhow!("Unknown analysis field '{field}'")),
     }
     Ok(())
 }
@@ -369,10 +366,10 @@ fn set_performance_value(
         "timeout_ms" => performance.timeout_ms = value.parse()?,
         "target_startup_latency_ms" => performance.target_startup_latency_ms = value.parse()?,
         "target_throughput_loc_per_sec" => {
-            performance.target_throughput_loc_per_sec = value.parse()?
+            performance.target_throughput_loc_per_sec = value.parse()?;
         }
         "target_memory_mb" => performance.target_memory_mb = value.parse()?,
-        _ => return Err(anyhow::anyhow!("Unknown performance field '{}'", field)),
+        _ => return Err(anyhow::anyhow!("Unknown performance field '{field}'")),
     }
     Ok(())
 }
@@ -390,7 +387,7 @@ fn set_mcp_value(
         "request_timeout_seconds" => mcp.request_timeout_seconds = value.parse()?,
         "max_request_size" => mcp.max_request_size = value.parse()?,
         "log_requests" => mcp.log_requests = value.parse()?,
-        _ => return Err(anyhow::anyhow!("Unknown mcp field '{}'", field)),
+        _ => return Err(anyhow::anyhow!("Unknown mcp field '{field}'")),
     }
     Ok(())
 }
@@ -408,7 +405,7 @@ fn set_roadmap_value(
         "task_id_pattern" => roadmap.task_id_pattern = value.to_string(),
         "velocity_tracking" => roadmap.velocity_tracking = value.parse()?,
         "burndown_charts" => roadmap.burndown_charts = value.parse()?,
-        _ => return Err(anyhow::anyhow!("Unknown roadmap field '{}'", field)),
+        _ => return Err(anyhow::anyhow!("Unknown roadmap field '{field}'")),
     }
     Ok(())
 }
@@ -426,7 +423,7 @@ fn set_telemetry_value(
         "enable_aggregation" => telemetry.enable_aggregation = value.parse()?,
         "enable_export" => telemetry.enable_export = value.parse()?,
         "export_format" => telemetry.export_format = value.to_string(),
-        _ => return Err(anyhow::anyhow!("Unknown telemetry field '{}'", field)),
+        _ => return Err(anyhow::anyhow!("Unknown telemetry field '{field}'")),
     }
     Ok(())
 }

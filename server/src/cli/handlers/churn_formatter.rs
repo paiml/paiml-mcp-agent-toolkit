@@ -158,6 +158,7 @@ fn write_author_contributions(
 
 /// Toyota Way: Extract Method - Check if path is source file (complexity ≤8)
 /// Determines if a path represents a source code file
+#[must_use] 
 pub fn is_source_file(path: &Path) -> bool {
     // Check if it has a source code extension
     if !has_source_extension(path) {
@@ -223,7 +224,7 @@ fn is_test_path(path: &Path) -> bool {
 fn is_test_filename(path: &Path) -> bool {
     path.file_name()
         .and_then(|name| name.to_str())
-        .map(|fname| {
+        .is_some_and(|fname| {
             fname.ends_with("_test.rs")
                 || fname.ends_with("_tests.rs")
                 || fname.starts_with("test_")
@@ -233,7 +234,6 @@ fn is_test_filename(path: &Path) -> bool {
                 || fname.ends_with("_test.py")
                 || fname.ends_with("Test.java")
         })
-        .unwrap_or(false)
 }
 
 #[cfg(test)]

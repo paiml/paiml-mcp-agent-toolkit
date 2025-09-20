@@ -4,7 +4,7 @@ use super::{Analyzer, ProjectAnalyzer};
 use anyhow::Result;
 use async_trait::async_trait;
 
-/// Big-O complexity analyzer strategy using the existing big_o_analyzer
+/// Big-O complexity analyzer strategy using the existing `big_o_analyzer`
 pub struct BigOAnalyzer {
     analyzer: crate::services::big_o_analyzer::BigOAnalyzer,
 }
@@ -16,6 +16,7 @@ impl Default for BigOAnalyzer {
 }
 
 impl BigOAnalyzer {
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             analyzer: crate::services::big_o_analyzer::BigOAnalyzer::new(),

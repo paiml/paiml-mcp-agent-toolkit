@@ -165,7 +165,7 @@ impl GitHubClient {
         if !response.status().is_success() {
             let status = response.status();
             let body = response.text().await.unwrap_or_default();
-            return Err(anyhow!("GitHub API error {}: {}", status, body));
+            return Err(anyhow!("GitHub API error {status}: {body}"));
         }
 
         let issue: GitHubIssue = response.json().await?;
@@ -183,7 +183,7 @@ impl GitHubClient {
 
         let captures = re
             .captures(url)
-            .ok_or_else(|| anyhow!("Invalid GitHub issue URL: {}", url))?;
+            .ok_or_else(|| anyhow!("Invalid GitHub issue URL: {url}"))?;
 
         let owner = captures[1].to_string();
         let repo = captures[2].to_string();
@@ -216,6 +216,7 @@ impl GitHubClient {
 /// assert!(parsed.file_paths.contains(&"src/main.rs".to_string()));
 /// assert!(!parsed.keywords.is_empty());
 /// ```
+#[must_use] 
 pub fn parse_issue(issue: GitHubIssue) -> ParsedIssue {
     let mut file_paths = Vec::new();
     let mut keywords = HashMap::new();
@@ -294,7 +295,7 @@ fn extract_keywords(text: &str, keywords: &mut HashMap<String, f32>) {
                 let adjusted_weight = weight * (1.0 + (count - 1.0) * 0.2).min(2.0);
 
                 // Update category weight
-                let entry = keywords.entry(category.to_string()).or_insert(0.0);
+                let entry = keywords.entry((*category).to_string()).or_insert(0.0);
                 *entry = (*entry + adjusted_weight).min(weight * 2.0);
 
                 debug!(

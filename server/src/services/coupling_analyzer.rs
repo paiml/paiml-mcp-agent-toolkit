@@ -91,6 +91,7 @@ pub struct ProjectCouplingMetrics {
 
 impl CouplingAnalyzer {
     /// Create a new coupling analyzer
+    #[must_use] 
     pub fn new() -> Self {
         Self
     }

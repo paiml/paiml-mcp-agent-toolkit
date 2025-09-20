@@ -1,8 +1,8 @@
-use super::*;
-use crate::services::makefile_linter::ast::*;
+use super::{MakefileRule, Violation, Severity};
+use crate::services::makefile_linter::ast::{MakefileAst, NodeData, SourceSpan, MakefileNodeKind, AssignmentOp};
 use std::collections::HashSet;
 
-/// MinPhony rule - ensures required targets are declared as .PHONY
+/// `MinPhony` rule - ensures required targets are declared as .PHONY
 pub struct MinPhonyRule {
     required_targets: Vec<String>,
     check_exists: bool,
@@ -58,7 +58,7 @@ impl MakefileRule for MinPhonyRule {
     }
 }
 
-/// PhonyDeclared rule - warns about targets that should be .PHONY
+/// `PhonyDeclared` rule - warns about targets that should be .PHONY
 pub struct PhonyDeclaredRule {
     ignore_suffixes: Vec<String>,
 }
@@ -132,7 +132,7 @@ impl MakefileRule for PhonyDeclaredRule {
     }
 }
 
-/// MaxBodyLength rule - checks recipe complexity
+/// `MaxBodyLength` rule - checks recipe complexity
 pub struct MaxBodyLengthRule {
     max_lines: usize,
     count_logical: bool,
@@ -194,7 +194,7 @@ impl MakefileRule for MaxBodyLengthRule {
     }
 }
 
-/// TimestampExpanded rule - warns about timestamp issues
+/// `TimestampExpanded` rule - warns about timestamp issues
 pub struct TimestampExpandedRule;
 
 impl Default for TimestampExpandedRule {
@@ -242,7 +242,7 @@ impl MakefileRule for TimestampExpandedRule {
     }
 }
 
-/// UndefinedVariable rule - warns about potentially undefined variables
+/// `UndefinedVariable` rule - warns about potentially undefined variables
 pub struct UndefinedVariableRule;
 
 impl Default for UndefinedVariableRule {
@@ -267,7 +267,7 @@ impl MakefileRule for UndefinedVariableRule {
 
         // Add common built-in variables
         for builtin in &["CC", "CXX", "CFLAGS", "LDFLAGS", "MAKE", "SHELL", "PWD"] {
-            defined_vars.insert(builtin.to_string());
+            defined_vars.insert((*builtin).to_string());
         }
 
         // Check for undefined variable usage
@@ -421,7 +421,7 @@ impl<'a> VariableScanner<'a> {
     }
 }
 
-impl<'a> Iterator for VariableScanner<'a> {
+impl Iterator for VariableScanner<'_> {
     type Item = VariableRef;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -448,10 +448,9 @@ impl<'a> Iterator for VariableScanner<'a> {
 
             if let Some(ref_) = var_ref {
                 return Some(ref_);
-            } else {
-                // Skip this dollar sign and continue
-                self.position = dollar_pos + 1;
             }
+            // Skip this dollar sign and continue
+            self.position = dollar_pos + 1;
         }
     }
 }
@@ -513,7 +512,7 @@ fn should_check_variable(var_ref: &VariableRef) -> bool {
     }
 
     // Skip single letter variables that are likely loop variables
-    if var_ref.name.len() == 1 && var_ref.name.chars().all(|c| c.is_lowercase()) {
+    if var_ref.name.len() == 1 && var_ref.name.chars().all(char::is_lowercase) {
         return false;
     }
 

@@ -158,12 +158,12 @@ impl QualityMetricsRegistry {
 
     /// Record file metrics
     pub fn record_file_metrics(&self, _path: &PathBuf, metrics: &Metrics) {
-        self.complexity_gauge.set(metrics.complexity as f64);
-        self.cognitive_gauge.set(metrics.cognitive as f64);
-        self.satd_counter.inc_by(metrics.satd_count as u64);
+        self.complexity_gauge.set(f64::from(metrics.complexity));
+        self.cognitive_gauge.set(f64::from(metrics.cognitive));
+        self.satd_counter.inc_by(u64::from(metrics.satd_count));
         self.coverage_gauge.set(metrics.coverage);
-        self.lines_gauge.set(metrics.lines as i64);
-        self.functions_gauge.set(metrics.functions as i64);
+        self.lines_gauge.set(i64::from(metrics.lines));
+        self.functions_gauge.set(i64::from(metrics.functions));
         self.files_analyzed_counter.inc();
     }
 
@@ -216,6 +216,7 @@ impl QualityMetricsRegistry {
     }
 
     /// Get metrics registry for custom metrics
+    #[must_use] 
     pub fn registry(&self) -> &Registry {
         &self.registry
     }
@@ -337,8 +338,8 @@ impl PrometheusExporter {
         let mut total_functions = 0;
 
         for (path, file_metrics) in &all_metrics {
-            total_complexity += file_metrics.complexity as f64;
-            total_cognitive += file_metrics.cognitive as f64;
+            total_complexity += f64::from(file_metrics.complexity);
+            total_cognitive += f64::from(file_metrics.cognitive);
             _total_satd += file_metrics.satd_count;
             total_coverage += file_metrics.coverage;
             total_lines += file_metrics.lines;
@@ -354,8 +355,8 @@ impl PrometheusExporter {
             metrics.complexity_gauge.set(total_complexity / file_count);
             metrics.cognitive_gauge.set(total_cognitive / file_count);
             metrics.coverage_gauge.set(total_coverage / file_count);
-            metrics.lines_gauge.set(total_lines as i64);
-            metrics.functions_gauge.set(total_functions as i64);
+            metrics.lines_gauge.set(i64::from(total_lines));
+            metrics.functions_gauge.set(i64::from(total_functions));
         }
 
         // Calculate and update error budget (example: based on complexity)
@@ -371,6 +372,7 @@ impl PrometheusExporter {
     }
 
     /// Get metrics registry for custom metrics
+    #[must_use] 
     pub fn metrics(&self) -> &Arc<QualityMetricsRegistry> {
         &self.metrics
     }

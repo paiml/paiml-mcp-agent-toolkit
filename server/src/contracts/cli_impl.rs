@@ -1,7 +1,7 @@
 //! CLI implementation using uniform contracts
 //! This provides a contract-based CLI executor that uses the uniform contract system
 
-use super::*;
+use super::{AnalyzeComplexityContract, AnalyzeSatdContract, AnalyzeDeadCodeContract, AnalyzeTdgContract, AnalyzeLintHotspotContract, ContractValidation};
 use crate::cli::{commands::AnalyzeCommands, Commands};
 use anyhow::Result;
 use std::sync::Arc;
@@ -20,13 +20,10 @@ impl ContractCliHandler {
 
     /// Process CLI commands using uniform contracts
     pub async fn handle_command(&self, cmd: Commands) -> Result<()> {
-        match cmd {
-            Commands::Analyze(analyze_cmd) => self.handle_analyze_command(analyze_cmd).await,
-            _ => {
-                // Execute command without contracts
-                println!("🚧 Executing command in standard mode");
-                Ok(())
-            }
+        if let Commands::Analyze(analyze_cmd) = cmd { self.handle_analyze_command(analyze_cmd).await } else {
+            // Execute command without contracts
+            println!("🚧 Executing command in standard mode");
+            Ok(())
         }
     }
 

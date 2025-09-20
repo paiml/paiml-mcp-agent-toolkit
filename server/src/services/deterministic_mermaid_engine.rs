@@ -12,7 +12,7 @@ use std::fmt::Write;
 
 /// Deterministic Mermaid engine with PageRank-based layout
 pub struct DeterministicMermaidEngine {
-    /// Number of PageRank iterations for stable results
+    /// Number of `PageRank` iterations for stable results
     pagerank_iterations: usize,
     /// Quantization factor to avoid floating-point drift
     quantization_factor: u32,
@@ -25,6 +25,7 @@ impl Default for DeterministicMermaidEngine {
 }
 
 impl DeterministicMermaidEngine {
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             pagerank_iterations: 100,
@@ -33,6 +34,7 @@ impl DeterministicMermaidEngine {
     }
 
     /// Generate deterministic codebase modules Mermaid diagram
+    #[must_use] 
     pub fn generate_codebase_modules_mmd(
         &self,
         graph: &StableGraph<ModuleNode, EdgeType>,
@@ -94,6 +96,7 @@ impl DeterministicMermaidEngine {
     }
 
     /// Generate service interaction diagram with complexity-based styling
+    #[must_use] 
     pub fn generate_service_interactions_mmd(
         &self,
         graph: &StableGraph<ModuleNode, EdgeType>,
@@ -181,7 +184,7 @@ impl DeterministicMermaidEngine {
         mermaid
     }
 
-    /// Compute PageRank scores for graph nodes
+    /// Compute `PageRank` scores for graph nodes
     fn compute_pagerank(
         &self,
         graph: &StableGraph<ModuleNode, EdgeType>,
@@ -223,7 +226,7 @@ impl DeterministicMermaidEngine {
         for _ in 0..iterations {
             let mut new_scores = BTreeMap::new();
 
-            for &node in graph.node_indices().collect::<Vec<_>>().iter() {
+            for &node in &graph.node_indices().collect::<Vec<_>>() {
                 let mut score = (1.0 - damping) / node_count as f32;
 
                 if let Some(incoming_nodes) = incoming.get(&node) {
@@ -299,6 +302,7 @@ impl DeterministicMermaidEngine {
     }
 
     /// Sanitize ID for Mermaid compatibility
+    #[must_use] 
     pub fn sanitize_id(&self, id: &str) -> String {
         // Replace common multi-character patterns
         let sanitized = id.replace("::", "_").replace(['/', '.', '-', ' '], "_");
@@ -326,6 +330,7 @@ impl DeterministicMermaidEngine {
     }
 
     /// Escape label for Mermaid compatibility
+    #[must_use] 
     pub fn escape_mermaid_label(&self, label: &str) -> String {
         // For maximum compatibility, use simple character replacements
         label

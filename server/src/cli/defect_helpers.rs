@@ -275,7 +275,7 @@ fn write_single_prediction(
     write_prediction_metrics(output, score)?;
 
     if include_recommendations {
-        write_recommendations(output, score.probability as f64)?;
+        write_recommendations(output, f64::from(score.probability))?;
     }
 
     writeln!(output)?;
@@ -287,12 +287,12 @@ fn write_prediction_metrics(output: &mut String, score: &DefectScore) -> Result<
     writeln!(
         output,
         "- **Probability**: {:.1}%",
-        score.probability as f64 * 100.0
+        f64::from(score.probability) * 100.0
     )?;
     writeln!(
         output,
         "- **Confidence**: {:.1}%",
-        score.confidence as f64 * 100.0
+        f64::from(score.confidence) * 100.0
     )?;
     writeln!(
         output,

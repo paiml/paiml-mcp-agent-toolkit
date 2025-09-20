@@ -150,17 +150,17 @@ impl DashboardState {
         metrics.storage_stats = StorageMetrics {
             total_entries: storage_stats.total_entries as u64,
             cache_hit_ratio: 0.85, // Estimated - hot entries / total entries
-            compression_ratio: storage_stats.compression_ratio as f64,
+            compression_ratio: f64::from(storage_stats.compression_ratio),
             backend_type: storage_stats.warm_backend.clone(),
             storage_size_mb: storage_stats.hot_memory_kb as f64 / 1024.0, // Convert KB to MB
         };
 
         metrics.performance_stats = PerformanceMetrics {
-            avg_analysis_time_ms: performance.avg_analysis_duration_ms as f64,
+            avg_analysis_time_ms: f64::from(performance.avg_analysis_duration_ms),
             active_operations: scheduler_stats.total_active_operations as u32,
             queue_depth: scheduler_stats.avg_wait_time_ms as u32 / 10, // Approximation
-            cpu_usage_percent: (performance.avg_cpu_utilization * 100.0) as f64,
-            memory_usage_mb: performance.avg_memory_usage_mb as f64,
+            cpu_usage_percent: f64::from(performance.avg_cpu_utilization * 100.0),
+            memory_usage_mb: f64::from(performance.avg_memory_usage_mb),
         };
 
         // Basic health assessment

@@ -207,9 +207,7 @@ impl TdgExporter {
         for score in &project.files {
             let path = score
                 .file_path
-                .as_ref()
-                .map(|p| p.display().to_string())
-                .unwrap_or_else(|| "unknown".to_string());
+                .as_ref().map_or_else(|| "unknown".to_string(), |p| p.display().to_string());
 
             csv.push_str(&format!(
                 "{},{:.2},{},{:.2},{:.2},{:.2},{:.2},{:.2},{:.2},{:?}\n",
@@ -384,9 +382,7 @@ impl TdgExporter {
                 "locations": [{
                     "physicalLocation": {
                         "artifactLocation": {
-                            "uri": score.file_path.as_ref()
-                                .map(|p| p.display().to_string())
-                                .unwrap_or_else(|| "unknown".to_string())
+                            "uri": score.file_path.as_ref().map_or_else(|| "unknown".to_string(), |p| p.display().to_string())
                         }
                     }
                 }],
@@ -408,9 +404,7 @@ impl TdgExporter {
                 "locations": [{
                     "physicalLocation": {
                         "artifactLocation": {
-                            "uri": score.file_path.as_ref()
-                                .map(|p| p.display().to_string())
-                                .unwrap_or_else(|| "unknown".to_string())
+                            "uri": score.file_path.as_ref().map_or_else(|| "unknown".to_string(), |p| p.display().to_string())
                         }
                     }
                 }],
@@ -428,9 +422,7 @@ impl TdgExporter {
                 "locations": [{
                     "physicalLocation": {
                         "artifactLocation": {
-                            "uri": score.file_path.as_ref()
-                                .map(|p| p.display().to_string())
-                                .unwrap_or_else(|| "unknown".to_string())
+                            "uri": score.file_path.as_ref().map_or_else(|| "unknown".to_string(), |p| p.display().to_string())
                         }
                     }
                 }],
@@ -524,9 +516,7 @@ impl TdgExporter {
             grade_color,
             score
                 .file_path
-                .as_ref()
-                .map(|p| p.display().to_string())
-                .unwrap_or_else(|| "Analysis Results".to_string()),
+                .as_ref().map_or_else(|| "Analysis Results".to_string(), |p| p.display().to_string()),
             score.total,
             score.grade,
             score.total,
@@ -638,9 +628,7 @@ impl TdgExporter {
         for score in &project.files {
             let path = score
                 .file_path
-                .as_ref()
-                .map(|p| p.display().to_string())
-                .unwrap_or_else(|| "unknown".to_string());
+                .as_ref().map_or_else(|| "unknown".to_string(), |p| p.display().to_string());
             md.push_str(&format!(
                 "| {} | {:.1} | {} |\n",
                 path, score.total, score.grade

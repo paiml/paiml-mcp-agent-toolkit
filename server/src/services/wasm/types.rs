@@ -8,7 +8,7 @@ use std::collections::HashMap;
 /// WebAssembly language variants
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum WebAssemblyVariant {
-    /// AssemblyScript - TypeScript-like syntax compiling to WASM
+    /// `AssemblyScript` - TypeScript-like syntax compiling to WASM
     AssemblyScript,
     /// WebAssembly Text Format - Human-readable WASM
     Wat,
@@ -131,7 +131,7 @@ pub struct MemoryAnalysis {
 /// Memory allocation pattern detection
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AllocationPattern {
-    /// Pattern name (e.g., "linear_growth", "exponential_growth")
+    /// Pattern name (e.g., "`linear_growth`", "`exponential_growth`")
     pub pattern_type: String,
 
     /// `Location` in source

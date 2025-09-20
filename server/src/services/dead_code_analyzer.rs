@@ -8,10 +8,10 @@
 //! # Architecture
 //!
 //! The dead code analyzer consists of several key components:
-//! - **HierarchicalBitSet**: Efficient bitmap-based reachability tracking using Roaring bitmaps
-//! - **CrossLangReferenceGraph**: Graph structure for tracking references across languages
-//! - **VTableResolver**: Dynamic dispatch resolution for object-oriented languages
-//! - **DeadCodeAnalyzer**: Main analysis engine that orchestrates the detection process
+//! - **`HierarchicalBitSet`**: Efficient bitmap-based reachability tracking using Roaring bitmaps
+//! - **`CrossLangReferenceGraph`**: Graph structure for tracking references across languages
+//! - **`VTableResolver`**: Dynamic dispatch resolution for object-oriented languages
+//! - **`DeadCodeAnalyzer`**: Main analysis engine that orchestrates the detection process
 //!
 //! # Analysis Process
 //!
@@ -70,6 +70,7 @@ pub struct HierarchicalBitSet {
 }
 
 impl HierarchicalBitSet {
+    #[must_use] 
     pub fn new(capacity: usize) -> Self {
         Self {
             levels: vec![roaring::RoaringBitmap::new()],
@@ -104,6 +105,7 @@ impl HierarchicalBitSet {
     /// bitset.set(10);
     /// assert!(bitset.is_set(10));
     /// ```
+    #[must_use] 
     pub fn is_set(&self, index: u32) -> bool {
         self.levels[0].contains(index)
     }
@@ -129,6 +131,7 @@ impl HierarchicalBitSet {
     /// bitset.set(30);
     /// assert_eq!(bitset.count_set(), 3);
     /// ```
+    #[must_use] 
     pub fn count_set(&self) -> usize {
         self.levels[0].len() as usize
     }
@@ -230,6 +233,7 @@ impl Default for VTableResolver {
 }
 
 impl VTableResolver {
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             vtables: HashMap::new(),
@@ -237,6 +241,7 @@ impl VTableResolver {
         }
     }
 
+    #[must_use] 
     pub fn resolve_dynamic_call(&self, interface: &str, method: &str) -> Vec<NodeKey> {
         let mut targets = Vec::new();
 
@@ -405,6 +410,7 @@ impl DeadCodeAnalyzer {
     /// let analyzer = DeadCodeAnalyzer::new(1000);
     /// // Analyzer is ready to analyze up to 1000 nodes
     /// ```
+    #[must_use] 
     pub fn new(total_nodes: usize) -> Self {
         Self {
             reachability: Arc::new(RwLock::new(HierarchicalBitSet::new(total_nodes))),
@@ -437,6 +443,7 @@ impl DeadCodeAnalyzer {
     ///
     /// let analyzer = DeadCodeAnalyzer::new(100).with_coverage(coverage);
     /// ```
+    #[must_use] 
     pub fn with_coverage(mut self, coverage: CoverageData) -> Self {
         self.coverage_map = Some(Arc::new(coverage));
         self
@@ -559,7 +566,7 @@ impl DeadCodeAnalyzer {
     #[target_feature(enable = "avx2")]
     /// # Safety
     /// This function requires AVX2 instruction set support.
-    /// It must only be called on x86_64 processors with AVX2 capability.
+    /// It must only be called on `x86_64` processors with AVX2 capability.
     unsafe fn mark_reachable_vectorized_avx2(&mut self) {
         // use std::arch::x86_64::*;
 
@@ -1035,7 +1042,7 @@ impl DeadCodeAnalyzer {
         }
 
         // Calculate total lines and percentages for each file
-        for (file_path, metrics) in file_map.iter_mut() {
+        for (file_path, metrics) in &mut file_map {
             // Try to get total lines from the project context or read from file
             if let Some(file_info) = project_context.files.iter().find(|f| f.path == *file_path) {
                 // Estimate total lines from file info (we don't have content, so we'll estimate)
@@ -1180,6 +1187,7 @@ impl DeadCodeAnalyzer {
 }
 
 impl CrossLangReferenceGraph {
+    #[must_use] 
     pub fn edges_for_chunk(&self, _chunk: &[u8]) -> Vec<ReferenceEdge> {
         // TRACKED: Implement efficient edge lookup for chunks
         Vec::new()

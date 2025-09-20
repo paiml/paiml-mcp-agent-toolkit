@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::fmt::Write;
 use std::path::Path;
 
-/// Parse function specification string into FunctionId
+/// Parse function specification string into `FunctionId`
 pub fn parse_function_spec(spec: &str, project_path: &Path) -> Result<FunctionId> {
     // Parse function specification in format: path/to/file.rs:function_name
     // or just function_name (search all files)
@@ -83,6 +83,7 @@ fn extract_function_name(line: &str) -> Option<String> {
 }
 
 /// Filter function summaries based on confidence
+#[must_use] 
 pub fn filter_summaries(
     summaries: &[ProofSummary],
     high_confidence_only: bool,

@@ -3,7 +3,7 @@
 //! This module provides handlers for generating comprehensive analysis reports
 //! that consolidate multiple analysis outputs.
 
-use crate::cli::*;
+use crate::cli::{ReportOutputFormat, AnalysisType};
 use crate::models::defect_report::DefectReport;
 use crate::services::defect_report_service::{DefectReportService, ReportFormat};
 use anyhow::Result;
@@ -21,9 +21,9 @@ use tracing::info;
 ///
 /// * `project_path` - Root directory of the project to analyze and report on
 /// * `output_format` - Primary output format for the report
-/// * `text` - Force plain text output format (overrides output_format)
-/// * `markdown` - Force Markdown output format (overrides output_format)
-/// * `csv` - Force CSV output format (overrides output_format)
+/// * `text` - Force plain text output format (overrides `output_format`)
+/// * `markdown` - Force Markdown output format (overrides `output_format`)
+/// * `csv` - Force CSV output format (overrides `output_format`)
 /// * `include_visualizations` - Include charts and graphs in the report
 /// * `include_executive_summary` - Include high-level executive summary
 /// * `include_recommendations` - Include actionable improvement recommendations

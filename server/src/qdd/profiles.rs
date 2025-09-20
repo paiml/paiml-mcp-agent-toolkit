@@ -1,13 +1,14 @@
 //! Quality profiles for different development standards
 //! Toyota Way: Define clear standards and enforce them consistently
 
-use super::core::*;
+use super::core::{QualityProfile, QualityThresholds, DesignPatterns, QualityRule, Severity, QualityMetrics};
 
 /// Collection of predefined quality profiles
 pub struct QualityProfiles;
 
 impl QualityProfiles {
     /// Get all available profile names
+    #[must_use] 
     pub fn available_profiles() -> Vec<&'static str> {
         vec![
             "extreme",
@@ -20,6 +21,7 @@ impl QualityProfiles {
     }
 
     /// Create profile by name
+    #[must_use] 
     pub fn by_name(name: &str) -> Option<QualityProfile> {
         match name {
             "extreme" => Some(QualityProfile::extreme()),
@@ -34,6 +36,7 @@ impl QualityProfiles {
 
     /// Enterprise-grade quality profile
     /// Strict but realistic for large teams
+    #[must_use] 
     pub fn enterprise() -> QualityProfile {
         QualityProfile {
             name: "enterprise".to_string(),
@@ -79,6 +82,7 @@ impl QualityProfiles {
 
     /// Startup-friendly profile
     /// Balanced for rapid development with quality
+    #[must_use] 
     pub fn startup() -> QualityProfile {
         QualityProfile {
             name: "startup".to_string(),
@@ -118,6 +122,7 @@ impl QualityProfiles {
 
     /// Legacy code maintenance profile
     /// Pragmatic approach for improving existing codebases
+    #[must_use] 
     pub fn legacy() -> QualityProfile {
         QualityProfile {
             name: "legacy".to_string(),
@@ -142,7 +147,7 @@ impl QualityProfiles {
                 name: "gradual_improvement".to_string(),
                 description: "Improve code incrementally".to_string(),
                 severity: Severity::Info,
-                pattern: r"".to_string(), // No specific pattern
+                pattern: String::new(), // No specific pattern
             }],
         }
     }
@@ -153,6 +158,7 @@ pub struct ProfileValidator;
 
 impl ProfileValidator {
     /// Validate if a profile is appropriate for the codebase
+    #[must_use] 
     pub fn validate_profile_for_codebase(
         profile: &QualityProfile,
         codebase_metrics: &QualityMetrics,
@@ -191,10 +197,10 @@ impl ProfileValidator {
         }
 
         let is_valid = issues.is_empty();
-        let recommended_profile = if !is_valid {
-            Some(Self::recommend_profile(codebase_metrics))
-        } else {
+        let recommended_profile = if is_valid {
             None
+        } else {
+            Some(Self::recommend_profile(codebase_metrics))
         };
 
         ProfileValidation {
@@ -235,6 +241,7 @@ pub struct ProfileComparator;
 
 impl ProfileComparator {
     /// Compare two profiles and show differences
+    #[must_use] 
     pub fn compare(profile1: &QualityProfile, profile2: &QualityProfile) -> ProfileComparison {
         let mut differences = Vec::new();
 

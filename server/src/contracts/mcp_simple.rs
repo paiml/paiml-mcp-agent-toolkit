@@ -2,7 +2,7 @@
 //! This version doesn't depend on pmcp crate
 
 use super::simple_service::SimpleContractService;
-use super::*;
+use super::{AnalyzeComplexityContract, AnalyzeSatdContract, AnalyzeDeadCodeContract, AnalyzeTdgContract, AnalyzeLintHotspotContract, QualityGateContract, AnalyzeEntropyContract, RefactorAutoContract};
 use anyhow::Result;
 use serde_json::{json, Value};
 use std::sync::Arc;
@@ -33,7 +33,7 @@ impl SimpleMcpHandler {
             "analyze_entropy" => self.handle_analyze_entropy(params).await,
             "quality_gate" => self.handle_quality_gate(params).await,
             "refactor_auto" => self.handle_refactor_auto(params).await,
-            _ => Err(anyhow::anyhow!("Unknown tool: {}", name)),
+            _ => Err(anyhow::anyhow!("Unknown tool: {name}")),
         }
     }
 
@@ -78,6 +78,7 @@ impl SimpleMcpHandler {
     }
 
     /// Get tool definitions for MCP discovery
+    #[must_use] 
     pub fn get_tool_definitions(&self) -> Value {
         json!({
             "tools": [

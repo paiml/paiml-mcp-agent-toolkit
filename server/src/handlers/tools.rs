@@ -685,9 +685,7 @@ fn parse_code_churn_args(
 fn extract_churn_parameters(args: &AnalyzeCodeChurnArgs) -> (PathBuf, u32, ChurnOutputFormat) {
     let project_path = args
         .project_path
-        .as_ref()
-        .map(PathBuf::from)
-        .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
+        .as_ref().map_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")), PathBuf::from);
 
     let period_days = args.period_days.unwrap_or(30);
 
@@ -778,6 +776,7 @@ fn build_churn_response(
 /// assert!(summary.contains("Period: 30 days"));
 /// assert!(summary.contains("Total commits: 150"));
 /// ```
+#[must_use] 
 pub fn format_churn_summary(analysis: &crate::models::churn::CodeChurnAnalysis) -> String {
     let mut output = String::with_capacity(1024);
 
@@ -839,6 +838,7 @@ pub fn format_churn_summary(analysis: &crate::models::churn::CodeChurnAnalysis) 
 /// assert!(markdown.contains("# Code Churn Analysis Report"));
 /// assert!(markdown.contains("**Period:** 7 days"));
 /// ```
+#[must_use] 
 pub fn format_churn_as_markdown(analysis: &crate::models::churn::CodeChurnAnalysis) -> String {
     let mut output = String::with_capacity(1024);
 
@@ -925,6 +925,7 @@ pub fn format_churn_as_markdown(analysis: &crate::models::churn::CodeChurnAnalys
 /// assert!(csv.starts_with("file_path,commits,additions,deletions,churn_score,unique_authors,last_modified"));
 /// assert!(csv.contains("src/main.rs,5,100,50,0.750,0"));
 /// ```
+#[must_use] 
 pub fn format_churn_as_csv(analysis: &crate::models::churn::CodeChurnAnalysis) -> String {
     let mut output = String::with_capacity(1024);
 
@@ -1012,7 +1013,7 @@ async fn perform_complexity_analysis(
     context: &ComplexityAnalysisContext,
     args: &AnalyzeComplexityArgs,
 ) -> (crate::services::complexity::ComplexityReport, usize) {
-    use crate::services::complexity::*;
+    use crate::services::complexity::aggregate_results;
 
     let (file_metrics, file_count) =
         analyze_project_files(&context.project_path, &context.toolchain, args).await;
@@ -1105,9 +1106,7 @@ async fn handle_analyze_complexity(
 }
 
 fn resolve_project_path_complexity(project_path_arg: Option<String>) -> PathBuf {
-    project_path_arg
-        .map(PathBuf::from)
-        .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")))
+    project_path_arg.map_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")), PathBuf::from)
 }
 
 fn detect_toolchain(toolchain_arg: &Option<String>, project_path: &Path) -> String {
@@ -1191,7 +1190,7 @@ fn should_analyze_file(path: &Path, toolchain: &str) -> bool {
         "rust" => path.extension().and_then(|s| s.to_str()) == Some("rs"),
         "deno" => matches!(
             path.extension().and_then(|s| s.to_str()),
-            Some("ts") | Some("tsx") | Some("js") | Some("jsx")
+            Some("ts" | "tsx" | "js" | "jsx")
         ),
         "python-uv" => path.extension().and_then(|s| s.to_str()) == Some("py"),
         _ => false,
@@ -1270,7 +1269,7 @@ fn format_complexity_output(
     report: &crate::services::complexity::ComplexityReport,
     args: &AnalyzeComplexityArgs,
 ) -> String {
-    use crate::services::complexity::*;
+    use crate::services::complexity::{format_complexity_report, format_as_sarif, format_complexity_summary};
 
     let format = args.format.as_deref().unwrap_or("summary");
     match format {
@@ -1291,54 +1290,51 @@ fn format_complexity_rankings(
     use crate::services::ranking::{ComplexityRanker, FileRanker};
 
     let format = args.format.as_deref().unwrap_or("summary");
-    match format {
-        "json" => {
-            let ranker = ComplexityRanker::default();
-            let rankings_json = serde_json::json!({
-                "analysis_type": ranker.ranking_type(),
-                "timestamp": chrono::Utc::now().to_rfc3339(),
-                "top_files": {
-                    "requested": rankings.len(),
-                    "returned": rankings.len()
-                },
-                "rankings": rankings.iter().enumerate().map(|(i, (file, score))| {
-                    serde_json::json!({
-                        "rank": i + 1,
-                        "file": file,
-                        "metrics": {
-                            "functions": score.function_count,
-                            "max_cyclomatic": score.cyclomatic_max,
-                            "avg_cognitive": score.cognitive_avg,
-                            "halstead_effort": score.halstead_effort,
-                            "total_score": score.total_score
-                        }
-                    })
-                }).collect::<Vec<_>>()
-            });
-            serde_json::to_string_pretty(&rankings_json).unwrap_or_default()
-        }
-        _ => {
-            // Table format (default)
-            let mut output = String::with_capacity(1024);
-            output.push_str(&format!("## Top {} Complexity Files\n\n", rankings.len()));
-            output.push_str("| Rank | File                               | Functions | Max Cyclomatic | Avg Cognitive | Halstead | Score |\n");
-            output.push_str("|------|------------------------------------|-----------|--------------  |---------------|----------|-------|\n");
+    if format == "json" {
+        let ranker = ComplexityRanker::default();
+        let rankings_json = serde_json::json!({
+            "analysis_type": ranker.ranking_type(),
+            "timestamp": chrono::Utc::now().to_rfc3339(),
+            "top_files": {
+                "requested": rankings.len(),
+                "returned": rankings.len()
+            },
+            "rankings": rankings.iter().enumerate().map(|(i, (file, score))| {
+                serde_json::json!({
+                    "rank": i + 1,
+                    "file": file,
+                    "metrics": {
+                        "functions": score.function_count,
+                        "max_cyclomatic": score.cyclomatic_max,
+                        "avg_cognitive": score.cognitive_avg,
+                        "halstead_effort": score.halstead_effort,
+                        "total_score": score.total_score
+                    }
+                })
+            }).collect::<Vec<_>>()
+        });
+        serde_json::to_string_pretty(&rankings_json).unwrap_or_default()
+    } else {
+        // Table format (default)
+        let mut output = String::with_capacity(1024);
+        output.push_str(&format!("## Top {} Complexity Files\n\n", rankings.len()));
+        output.push_str("| Rank | File                               | Functions | Max Cyclomatic | Avg Cognitive | Halstead | Score |\n");
+        output.push_str("|------|------------------------------------|-----------|--------------  |---------------|----------|-------|\n");
 
-            for (i, (file, score)) in rankings.iter().enumerate() {
-                output.push_str(&format!(
-                    "| {:>4} | {:<50} | {:>9} | {:>14} | {:>13.1} | {:>11.1} | {:>11.1} |\n",
-                    i + 1,
-                    file,
-                    score.function_count,
-                    score.cyclomatic_max,
-                    score.cognitive_avg,
-                    score.halstead_effort,
-                    score.total_score
-                ));
-            }
-            output.push('\n');
-            output
+        for (i, (file, score)) in rankings.iter().enumerate() {
+            output.push_str(&format!(
+                "| {:>4} | {:<50} | {:>9} | {:>14} | {:>13.1} | {:>11.1} | {:>11.1} |\n",
+                i + 1,
+                file,
+                score.function_count,
+                score.cyclomatic_max,
+                score.cognitive_avg,
+                score.halstead_effort,
+                score.total_score
+            ));
         }
+        output.push('\n');
+        output
     }
 }
 
@@ -1386,9 +1382,7 @@ async fn execute_dag_analysis(args: &AnalyzeDagArgs) -> anyhow::Result<serde_jso
 
 fn resolve_project_path(project_path: &Option<String>) -> PathBuf {
     project_path
-        .as_ref()
-        .map(PathBuf::from)
-        .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")))
+        .as_ref().map_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")), PathBuf::from)
 }
 
 fn build_dag_graph(
@@ -1516,9 +1510,7 @@ fn parse_generate_context_args(
 
     let project_path = args
         .project_path
-        .as_ref()
-        .map(PathBuf::from)
-        .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
+        .as_ref().map_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")), PathBuf::from);
 
     Ok((args, project_path))
 }
@@ -1583,16 +1575,13 @@ async fn format_context_content(
     format: &str,
     deep_context: &crate::services::deep_context::DeepContext,
 ) -> String {
-    match format {
-        "json" => serde_json::to_string_pretty(deep_context).unwrap_or_default(),
-        _ => {
-            use crate::services::deep_context::{DeepContextAnalyzer, DeepContextConfig};
-            let analyzer = DeepContextAnalyzer::new(DeepContextConfig::default());
-            analyzer
-                .format_as_comprehensive_markdown(deep_context)
-                .await
-                .unwrap_or_else(|_| "Error formatting deep context".to_string())
-        }
+    if format == "json" { serde_json::to_string_pretty(deep_context).unwrap_or_default() } else {
+        use crate::services::deep_context::{DeepContextAnalyzer, DeepContextConfig};
+        let analyzer = DeepContextAnalyzer::new(DeepContextConfig::default());
+        analyzer
+            .format_as_comprehensive_markdown(deep_context)
+            .await
+            .unwrap_or_else(|_| "Error formatting deep context".to_string())
     }
 }
 
@@ -1775,7 +1764,7 @@ async fn handle_analyze_system_architecture(
     let context = match build_architecture_analysis_context(&project_path, &deep_context) {
         Ok(ctx) => ctx,
         Err(e) => {
-            return McpResponse::error(request_id, -32000, e.to_string());
+            return McpResponse::error(request_id, -32000, e.clone());
         }
     };
 
@@ -1791,9 +1780,7 @@ fn parse_architecture_analysis_args(
 
     let project_path = args
         .project_path
-        .as_ref()
-        .map(PathBuf::from)
-        .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
+        .as_ref().map_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")), PathBuf::from);
 
     Ok((args, project_path))
 }
@@ -1871,8 +1858,7 @@ fn execute_architecture_query_and_respond(
                     "analysis_time_ms": result.metadata.analysis_time_ms,
                     "complexity_hotspots": deep_context.analyses.complexity_report
                         .as_ref()
-                        .map(|r| r.hotspots.len())
-                        .unwrap_or(0),
+                        .map_or(0, |r| r.hotspots.len()),
                 }
             });
 
@@ -1930,10 +1916,10 @@ fn calculate_duplicate_ratio(lines: &[&str]) -> f32 {
         }
     }
 
-    if !lines.is_empty() {
-        duplicate_lines as f32 / lines.len() as f32
-    } else {
+    if lines.is_empty() {
         0.0
+    } else {
+        duplicate_lines as f32 / lines.len() as f32
     }
 }
 
@@ -2039,9 +2025,7 @@ fn parse_defect_probability_args(
 
     let project_path = args
         .project_path
-        .as_ref()
-        .map(PathBuf::from)
-        .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
+        .as_ref().map_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")), PathBuf::from);
 
     Ok((args, project_path))
 }
@@ -2206,9 +2190,7 @@ fn parse_dead_code_args(
 
     let project_path = args
         .project_path
-        .as_ref()
-        .map(PathBuf::from)
-        .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
+        .as_ref().map_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")), PathBuf::from);
 
     Ok((args, project_path))
 }
@@ -2627,9 +2609,7 @@ fn parse_tdg_args(arguments: serde_json::Value) -> Result<AnalyzeTdgArgs, serde_
 /// Toyota Way Helper: Extract TDG project path
 fn extract_tdg_project_path(args: &AnalyzeTdgArgs) -> PathBuf {
     args.project_path
-        .as_ref()
-        .map(PathBuf::from)
-        .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")))
+        .as_ref().map_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")), PathBuf::from)
 }
 
 /// Toyota Way Helper: Run TDG analysis and format response
@@ -2826,9 +2806,7 @@ fn parse_deep_context_args(arguments: serde_json::Value) -> Result<AnalyzeDeepCo
 }
 
 fn resolve_deep_context_project_path(project_path: Option<String>) -> PathBuf {
-    project_path
-        .map(PathBuf::from)
-        .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")))
+    project_path.map_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")), PathBuf::from)
 }
 
 fn default_project_path() -> String {
@@ -2979,7 +2957,7 @@ fn format_deep_context_as_sarif(_context: &crate::services::deep_context::DeepCo
 
 /// Toyota Way: Extract Method - Format deep context analysis as markdown (complexity ≤8)
 fn format_deep_context_as_markdown(context: &crate::services::deep_context::DeepContext) -> String {
-    use crate::cli::formatting_helpers::*;
+    use crate::cli::formatting_helpers::{format_executive_summary, format_quality_scorecard, format_defect_summary, format_recommendations};
 
     let mut output = String::with_capacity(1024);
     output.push_str("# Deep Context Analysis\n\n");
@@ -3004,7 +2982,7 @@ fn format_essential_metadata(
     output: &mut String,
     context: &crate::services::deep_context::DeepContext,
 ) {
-    use crate::cli::formatting_helpers::*;
+    use crate::cli::formatting_helpers::{format_project_overview, format_build_info};
 
     if context.project_overview.is_some() || context.build_info.is_some() {
         output.push_str("\n## Essential Project Metadata\n\n");

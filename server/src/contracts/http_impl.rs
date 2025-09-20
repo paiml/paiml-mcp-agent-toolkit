@@ -2,7 +2,7 @@
 //! This ensures HTTP endpoints use exactly the same contracts as CLI and MCP
 
 use super::service::ContractService;
-use super::*;
+use super::{AnalyzeComplexityContract, AnalyzeSatdContract, AnalyzeDeadCodeContract, AnalyzeTdgContract, AnalyzeLintHotspotContract, QualityGateContract, RefactorAutoContract};
 use anyhow::Result;
 use axum::{
     extract::{Json, State},
@@ -190,12 +190,12 @@ async fn health_check() -> Json<Value> {
     }))
 }
 
-/// OpenAPI specification endpoint
+/// `OpenAPI` specification endpoint
 async fn openapi_spec() -> Json<Value> {
     Json(generate_openapi_spec())
 }
 
-/// Generate OpenAPI specification with uniform contracts
+/// Generate `OpenAPI` specification with uniform contracts
 fn generate_openapi_spec() -> Value {
     json!({
         "openapi": "3.0.0",

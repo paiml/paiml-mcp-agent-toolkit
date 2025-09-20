@@ -61,6 +61,7 @@ impl Default for EnhancedParser {
 
 impl EnhancedParser {
     /// Create a new enhanced parser
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             cache: Arc::new(dashmap::DashMap::new()),
@@ -89,7 +90,7 @@ impl EnhancedParser {
     fn parse_and_analyze(&mut self, path: &PathBuf, content: &str) -> Result<Metrics> {
         // Parse using syn
         let syntax: File =
-            syn::parse_str(content).map_err(|e| anyhow!("Failed to parse Rust code: {}", e))?;
+            syn::parse_str(content).map_err(|e| anyhow!("Failed to parse Rust code: {e}"))?;
 
         // Calculate metrics using visitor pattern
         let mut visitor = ComplexityVisitor::new(content.to_string());
@@ -131,6 +132,7 @@ impl EnhancedParser {
     }
 
     /// Get cached metrics if available
+    #[must_use] 
     pub fn get_cached_metrics(&self, path: &PathBuf) -> Option<Metrics> {
         self.cache.get(path)?.metrics.clone()
     }
@@ -146,6 +148,7 @@ impl EnhancedParser {
     }
 
     /// Get cache statistics
+    #[must_use] 
     pub fn cache_stats(&self) -> CacheStats {
         CacheStats {
             total_entries: self.cache.len(),

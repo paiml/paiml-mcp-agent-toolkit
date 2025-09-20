@@ -121,11 +121,10 @@ pub fn check_coverage_threshold(coverage_data: &CoverageUpdate, threshold: f64) 
             "❌ Coverage threshold not met: {coverage:.1}% < {threshold:.1}%"
         );
         anyhow::bail!("Coverage threshold not met");
-    } else {
-        eprintln!(
-            "✅ Coverage threshold met: {coverage:.1}% >= {threshold:.1}%"
-        );
     }
+    eprintln!(
+        "✅ Coverage threshold met: {coverage:.1}% >= {threshold:.1}%"
+    );
 
     Ok(())
 }
@@ -245,7 +244,7 @@ pub fn format_coverage_lcov(coverage_data: &CoverageUpdate) -> Result<String> {
         // Using line coverage percentage to estimate
         let estimated_total_lines = 100; // Placeholder
         let estimated_covered_lines =
-            (estimated_total_lines as f64 * file_cov.line_coverage / 100.0) as usize;
+            (f64::from(estimated_total_lines) * file_cov.line_coverage / 100.0) as usize;
 
         for i in 1..=estimated_total_lines {
             writeln!(&mut output, "DA:{i},1")?;

@@ -78,7 +78,7 @@ fn build_config(
     max_tokens: usize,
 ) -> SimilarityConfig {
     let mut config = SimilarityConfig {
-        similarity_threshold: threshold as f64,
+        similarity_threshold: f64::from(threshold),
         min_lines,
         min_tokens: max_tokens,
         ..Default::default()
@@ -135,20 +135,8 @@ fn is_source_file(path: &std::path::Path) -> bool {
     if let Some(ext) = path.extension() {
         matches!(
             ext.to_str(),
-            Some("rs")
-                | Some("ts")
-                | Some("tsx")
-                | Some("js")
-                | Some("jsx")
-                | Some("py")
-                | Some("c")
-                | Some("cpp")
-                | Some("cc")
-                | Some("h")
-                | Some("hpp")
-                | Some("kt")
-                | Some("java")
-                | Some("go")
+            Some("rs" | "ts" | "tsx" | "js" | "jsx" | "py" | "c" | "cpp" | "cc" | "h" |
+"hpp" | "kt" | "java" | "go")
         )
     } else {
         false

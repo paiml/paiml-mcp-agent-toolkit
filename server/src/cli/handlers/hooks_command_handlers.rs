@@ -18,6 +18,7 @@ pub struct HooksCommand {
 
 impl HooksCommand {
     /// Create new hooks command with specified directories
+    #[must_use] 
     pub fn new(hooks_dir: PathBuf, _config_path: PathBuf) -> Self {
         Self { hooks_dir }
     }

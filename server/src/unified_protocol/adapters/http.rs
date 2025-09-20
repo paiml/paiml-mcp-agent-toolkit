@@ -23,7 +23,7 @@ use crate::unified_protocol::{
 /// # Features
 ///
 /// - **High Performance**: Built on Hyper for optimal throughput and latency
-/// - **Protocol Unification**: Converts HTTP requests to UnifiedRequest format
+/// - **Protocol Unification**: Converts HTTP requests to `UnifiedRequest` format
 /// - **Async/Await Support**: Full async processing with Tokio integration
 /// - **Header Management**: Comprehensive HTTP header handling
 /// - **Error Handling**: Graceful error handling with detailed error context
@@ -88,6 +88,7 @@ impl HttpAdapter {
     /// // Verify protocol type
     /// assert_eq!(adapter.protocol(), pmat::unified_protocol::Protocol::Http);
     /// ```
+    #[must_use] 
     pub fn new(bind_addr: SocketAddr) -> Self {
         Self {
             listener: None,
@@ -195,7 +196,7 @@ impl ProtocolAdapter for HttpAdapter {
             .headers
             .get("user-agent")
             .and_then(|h| h.to_str().ok())
-            .map(|s| s.to_string());
+            .map(std::string::ToString::to_string);
 
         let http_context = HttpContext {
             remote_addr: Some(remote_addr.to_string()),
@@ -220,7 +221,7 @@ impl ProtocolAdapter for HttpAdapter {
 
         // Copy headers
         let mut final_request = unified_request;
-        for (name, value) in parts.headers.iter() {
+        for (name, value) in &parts.headers {
             if let Ok(value_str) = value.to_str() {
                 final_request = final_request.with_header(name.as_str(), value_str);
             }
@@ -242,7 +243,7 @@ impl ProtocolAdapter for HttpAdapter {
         let mut http_response = Response::builder().status(response.status);
 
         // Copy headers
-        for (name, value) in response.headers.iter() {
+        for (name, value) in &response.headers {
             http_response = http_response.header(name, value);
         }
 
@@ -286,7 +287,7 @@ impl ProtocolAdapter for HttpStreamAdapter {
     async fn encode(&self, response: UnifiedResponse) -> Result<Self::Output, ProtocolError> {
         let mut http_response = Response::builder().status(response.status);
 
-        for (name, value) in response.headers.iter() {
+        for (name, value) in &response.headers {
             http_response = http_response.header(name, value);
         }
 
@@ -374,6 +375,7 @@ pub struct HttpServer {
 }
 
 impl HttpServer {
+    #[must_use] 
     pub fn new(bind_addr: SocketAddr, service: Box<dyn HttpServiceHandler>) -> Self {
         Self {
             adapter: HttpAdapter::new(bind_addr),
@@ -515,7 +517,7 @@ where
 
 /// Builder for creating HTTP responses with common patterns and content types.
 ///
-/// This utility provides a fluent API for creating UnifiedResponse objects with
+/// This utility provides a fluent API for creating `UnifiedResponse` objects with
 /// common HTTP status codes, content types, and body formats. Essential for
 /// maintaining consistent REST API responses across the application.
 ///
@@ -623,6 +625,7 @@ impl HttpResponseBuilder {
     /// let response = HttpResponseBuilder::ok();
     /// assert_eq!(response.status, StatusCode::OK);
     /// ```
+    #[must_use] 
     pub fn ok() -> UnifiedResponse {
         UnifiedResponse::new(StatusCode::OK)
     }
@@ -642,6 +645,7 @@ impl HttpResponseBuilder {
     /// let response = HttpResponseBuilder::not_found();
     /// assert_eq!(response.status, StatusCode::NOT_FOUND);
     /// ```
+    #[must_use] 
     pub fn not_found() -> UnifiedResponse {
         UnifiedResponse::new(StatusCode::NOT_FOUND)
     }
@@ -661,6 +665,7 @@ impl HttpResponseBuilder {
     /// let response = HttpResponseBuilder::internal_error();
     /// assert_eq!(response.status, StatusCode::INTERNAL_SERVER_ERROR);
     /// ```
+    #[must_use] 
     pub fn internal_error() -> UnifiedResponse {
         UnifiedResponse::new(StatusCode::INTERNAL_SERVER_ERROR)
     }
@@ -740,6 +745,7 @@ impl HttpResponseBuilder {
     ///     "[INFO] Server started successfully\n[DEBUG] Listening on port 3000"
     /// );
     /// ```
+    #[must_use] 
     pub fn text(content: &str) -> UnifiedResponse {
         UnifiedResponse::ok()
             .with_body(Body::from(content.to_string()))
@@ -783,6 +789,7 @@ impl HttpResponseBuilder {
     ///     </html>
     /// "#);
     /// ```
+    #[must_use] 
     pub fn html(content: &str) -> UnifiedResponse {
         UnifiedResponse::ok()
             .with_body(Body::from(content.to_string()))
