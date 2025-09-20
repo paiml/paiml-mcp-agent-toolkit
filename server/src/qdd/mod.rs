@@ -166,7 +166,7 @@ impl QddTool {
         let tests = self.generator.generate_tests(&enhanced_code)?;
         let documentation = self.generator.generate_documentation(&enhanced_code)?;
 
-        let metrics = QualityMetrics::default();
+        let metrics = QualityMetrics::new();
         let quality_score = QualityScore {
             overall: metrics.calculate_score(),
             complexity: 5,
@@ -209,7 +209,7 @@ impl QddTool {
             all_docs.push_str(&docs);
         }
 
-        let metrics = QualityMetrics::default();
+        let metrics = QualityMetrics::new();
         let quality_score = QualityScore {
             overall: metrics.calculate_score(),
             complexity: 8,

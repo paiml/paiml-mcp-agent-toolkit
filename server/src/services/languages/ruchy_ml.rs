@@ -85,12 +85,8 @@ impl RuchyMlAstExtractor {
         else if trimmed.starts_with("theorem ") {
             self.extract_theorem_from_line(trimmed, line_number)?;
         }
-        // Pattern matching for complexity
-        else if trimmed.starts_with("match ") {
-            self.pattern_complexity += 1;
-        }
-        // Match arms
-        else if trimmed.starts_with("|") && trimmed.contains("->") {
+        // Pattern matching for complexity (including match and match arms)
+        else if trimmed.starts_with("match ") || (trimmed.starts_with("|") && trimmed.contains("->")) {
             self.pattern_complexity += 1;
         }
         // Proof tactics

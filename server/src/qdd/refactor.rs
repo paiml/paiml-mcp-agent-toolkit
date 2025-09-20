@@ -77,7 +77,7 @@ impl QualityRefactoringEngine {
             rollback_plan.checkpoints.push(Checkpoint {
                 step: format!("iteration_{iteration}"),
                 code: refactored.clone(),
-                quality_metrics: QualityMetrics::default(), // Would be real metrics
+                quality_metrics: QualityMetrics::new(), // Would be real metrics
             });
 
             current_code = refactored;
@@ -242,7 +242,7 @@ impl QualityRefactoringEngine {
             }
             ("synchronous", "async") => {
                 result = result.replace("fn ", "async fn ");
-                result = result.replace("-> Result<", "-> Result<");
+                // No need to replace "-> Result<" with itself
                 result.push_str("\n// Migrated to async pattern");
             }
             _ => {

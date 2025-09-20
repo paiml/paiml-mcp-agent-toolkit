@@ -45,6 +45,10 @@ pub async fn handle_tdg_diagnostics(command: &TdgCommand, base_path: &PathBuf) -
         TdgCommand::Hooks(hooks_cmd) => {
             super::hooks_command_handlers::handle_hooks_command(hooks_cmd).await
         }
+        TdgCommand::Enhanced { .. } => {
+            // Enhanced scoring is handled in the main TDG handler
+            Err(anyhow::anyhow!("Enhanced command not supported in diagnostic handler"))
+        }
     }
 }
 

@@ -678,7 +678,7 @@ mod property_tests {
             // Budget should regenerate (reduce consumption)
             if budget.regeneration_rate > 0.0 && days_elapsed > 0.0 {
                 let expected_reduction = (budget.regeneration_rate * days_elapsed) as i32;
-                let expected_complexity = (budget.current_consumption.complexity_used - expected_reduction).max(0);
+                let _expected_complexity = (budget.current_consumption.complexity_used - expected_reduction).max(0);
 
                 prop_assert!(updated_budget.current_consumption.complexity_used <= budget.current_consumption.complexity_used);
                 prop_assert!(updated_budget.current_consumption.complexity_used >= 0);
@@ -689,7 +689,7 @@ mod property_tests {
         fn refactor_target_generation_properties(
             team_id in team_id_strategy(),
             files in prop::collection::vec("[a-zA-Z0-9_-]{1,20}\\.rs", 1..20),
-            complexities in prop::collection::vec(1u32..100, 1..20)
+            _complexities in prop::collection::vec(1u32..100, 1..20)
         ) {
             let mut enforcer = ErrorBudgetEnforcer::new(EnforcerConfig::default());
             enforcer.register_team(team_id.clone(), None);
@@ -721,9 +721,9 @@ mod property_tests {
 
         #[test]
         fn enforcement_rules_consistency(
-            complexity_threshold in 1u32..100,
-            satd_limit in 1u32..50,
-            coverage_minimum in 0.0f64..1.0
+            _complexity_threshold in 1u32..100,
+            _satd_limit in 1u32..50,
+            _coverage_minimum in 0.0f64..1.0
         ) {
             let rules = EnforcementRules {
                 approvers: HashMap::new(),

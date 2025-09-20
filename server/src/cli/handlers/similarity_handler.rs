@@ -13,6 +13,7 @@ use crate::services::similarity::{
 };
 
 /// Handle similarity analysis command with entropy detection
+#[allow(clippy::too_many_arguments)]
 pub async fn handle_analyze_similarity(
     project_path: PathBuf,
     detection_type: crate::cli::DuplicateType,

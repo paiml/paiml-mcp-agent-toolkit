@@ -5166,7 +5166,7 @@ mod tests {
         // TDD: Phase 6 (Recommendations) should be extractable
         let config = DeepContextConfig::default();
         let analyzer = DeepContextAnalyzer::new(config);
-        let deep_context = DeepContext::default();
+        let _deep_context = DeepContext::default();
         let defect_summary = DefectSummary {
             total_defects: 0,
             by_severity: FxHashMap::default(),

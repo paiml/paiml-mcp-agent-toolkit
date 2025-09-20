@@ -634,6 +634,33 @@ pub enum TdgCommand {
     /// Pre-commit hook management (core feature)
     #[command(subcommand)]
     Hooks(HooksCommands),
+
+    /// Enhanced TDG scoring with churn analysis
+    Enhanced {
+        /// File or directory to analyze with enhanced scoring
+        #[arg(default_value = ".")]
+        path: PathBuf,
+
+        /// Include churn analysis from git history
+        #[arg(long)]
+        with_churn: bool,
+
+        /// Days of git history to analyze for churn
+        #[arg(long, default_value = "180")]
+        churn_days: u32,
+
+        /// Output format for enhanced score
+        #[arg(long, value_enum, default_value = "table")]
+        format: TdgOutputFormat,
+
+        /// Show confidence intervals
+        #[arg(long)]
+        confidence: bool,
+
+        /// Minimum grade threshold (fail if below)
+        #[arg(long)]
+        min_grade: Option<String>,
+    },
 }
 
 /// Analyze subcommands

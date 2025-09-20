@@ -1,6 +1,7 @@
 use crate::cli::commands::TdgCommand;
 use crate::cli::TdgOutputFormat;
-use crate::tdg::{Grade, TdgAnalyzer, TdgConfig};
+use crate::tdg::{Grade, TdgAnalyzer, TdgConfig, TdgEnhancedCalculator, BaseMetrics, ChurnComponent, ChurnRisk};
+use crate::tdg::churn_analysis::{ChurnAnalysisEngine, ChurnRiskLevel};
 use anyhow::{anyhow, Result};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -64,6 +65,9 @@ async fn handle_tdg_subcommand(
         }
         TdgCommand::Hooks(hooks_cmd) => {
             super::hooks_command_handlers::handle_hooks_command(&hooks_cmd).await
+        }
+        TdgCommand::Enhanced { path, with_churn, churn_days, format, confidence, min_grade } => {
+            handle_enhanced_command(&path, with_churn, churn_days, format, confidence, &min_grade).await
         }
     }
 }
@@ -370,6 +374,306 @@ fn parse_grade(grade_str: &str) -> Result<Grade> {
             "Invalid grade: {}. Valid grades are: A+, A, A-, B+, B, B-, C+, C, C-, D, F",
             grade_str
         )),
+    }
+}
+
+/// Handle enhanced TDG scoring with churn analysis (cognitive complexity ≤10)
+async fn handle_enhanced_command(
+    path: &Path,
+    with_churn: bool,
+    churn_days: u32,
+    format: TdgOutputFormat,
+    show_confidence: bool,
+    min_grade: &Option<String>,
+) -> Result<()> {
+    // Create enhanced score calculator
+    let calculator = TdgEnhancedCalculator::new();
+
+    // Analyze the file/directory to get base metrics
+    let tdg_config = TdgConfig::default();
+    let analyzer = TdgAnalyzer::with_storage(tdg_config)?;
+
+    let tdg_score = if path.is_dir() {
+        analyzer.analyze_project(path).await?.average()
+    } else {
+        analyzer.analyze_file(path).await?
+    };
+
+    // Convert TdgScore to BaseMetrics (normalized to [0,1])
+    let base_metrics = BaseMetrics {
+        structural_complexity: tdg_score.structural_complexity / 25.0,
+        semantic_complexity: tdg_score.semantic_complexity / 20.0,
+        duplication_ratio: tdg_score.duplication_ratio / 20.0,
+        coupling_metrics: tdg_score.coupling_score / 15.0,
+        documentation_coverage: tdg_score.doc_coverage / 10.0,
+        consistency_score: tdg_score.consistency_score / 10.0,
+    };
+
+    // Optional churn analysis
+    let churn_component = if with_churn {
+        match analyze_churn_metrics(path, churn_days).await {
+            Ok(churn) => Some(churn),
+            Err(e) => {
+                eprintln!("Warning: Churn analysis failed: {}", e);
+                eprintln!("Continuing with base metrics only...");
+                None
+            }
+        }
+    } else {
+        None
+    };
+
+    // Calculate enhanced score
+    let enhanced_score = calculator.calculate_score(base_metrics, churn_component);
+
+    // Validate minimum grade if specified
+    if let Some(min_grade_str) = min_grade {
+        validate_enhanced_grade(&enhanced_score, min_grade_str)?;
+    }
+
+    // Format and output results
+    let output = format_enhanced_score(&enhanced_score, format, show_confidence)?;
+    println!("{}", output);
+
+    Ok(())
+}
+
+/// Analyze churn metrics for enhanced scoring (cognitive complexity ≤8)
+async fn analyze_churn_metrics(path: &Path, _days: u32) -> Result<ChurnComponent> {
+    let engine = ChurnAnalysisEngine::default();
+    let churn_metrics = engine.analyze_file_churn(&path.display().to_string()).await?;
+
+    // Convert ChurnRiskLevel to ChurnRisk
+    let risk_level = match churn_metrics.risk_level {
+        ChurnRiskLevel::VeryLow => ChurnRisk::VeryLow,
+        ChurnRiskLevel::Low => ChurnRisk::Low,
+        ChurnRiskLevel::Moderate => ChurnRisk::Moderate,
+        ChurnRiskLevel::High => ChurnRisk::High,
+        ChurnRiskLevel::Critical => ChurnRisk::Critical,
+    };
+
+    Ok(ChurnComponent {
+        relative_churn: churn_metrics.relative_churn as f32,
+        churn_frequency: churn_metrics.commit_frequency as f32,
+        churn_recency: churn_metrics.recency_weighted_churn as f32,
+        author_churn: churn_metrics.author_count as f32,
+        ownership_concentration: churn_metrics.ownership_concentration as f32,
+        risk_level,
+    })
+}
+
+/// Validate enhanced grade meets minimum threshold (cognitive complexity ≤3)
+fn validate_enhanced_grade(
+    enhanced_score: &crate::tdg::EnhancedTdgScore,
+    min_grade_str: &str,
+) -> Result<()> {
+    use crate::tdg::EnhancedGrade;
+
+    let min_grade = match min_grade_str.to_uppercase().as_str() {
+        "A+" => EnhancedGrade::APlus,
+        "A" => EnhancedGrade::A,
+        "A-" => EnhancedGrade::AMinus,
+        "B+" => EnhancedGrade::BPlus,
+        "B" => EnhancedGrade::B,
+        "B-" => EnhancedGrade::BMinus,
+        "C+" => EnhancedGrade::CPlus,
+        "C" => EnhancedGrade::C,
+        "C-" => EnhancedGrade::CMinus,
+        "D" => EnhancedGrade::D,
+        "F" => EnhancedGrade::F,
+        _ => return Err(anyhow!("Invalid grade: {}", min_grade_str)),
+    };
+
+    if enhanced_score.grade < min_grade {
+        return Err(anyhow!(
+            "Enhanced score grade {} is below minimum threshold {}",
+            format_enhanced_grade(&enhanced_score.grade),
+            min_grade_str
+        ));
+    }
+
+    Ok(())
+}
+
+/// Format enhanced score for output (cognitive complexity ≤10)
+fn format_enhanced_score(
+    enhanced_score: &crate::tdg::EnhancedTdgScore,
+    format: TdgOutputFormat,
+    show_confidence: bool,
+) -> Result<String> {
+    match format {
+        TdgOutputFormat::Json => {
+            Ok(serde_json::to_string_pretty(enhanced_score)?)
+        }
+        TdgOutputFormat::Markdown => {
+            format_enhanced_markdown(enhanced_score, show_confidence)
+        }
+        TdgOutputFormat::Sarif => {
+            // For SARIF, use JSON format for now
+            Ok(serde_json::to_string_pretty(enhanced_score)?)
+        }
+        TdgOutputFormat::Table => {
+            format_enhanced_table(enhanced_score, show_confidence)
+        }
+    }
+}
+
+/// Format enhanced score as table (cognitive complexity ≤8)
+fn format_enhanced_table(
+    enhanced_score: &crate::tdg::EnhancedTdgScore,
+    show_confidence: bool,
+) -> Result<String> {
+    let mut output = String::new();
+
+    // Header
+    output.push_str("╭─────────────────────────────────────────────────╮\n");
+    output.push_str("│  Enhanced TDG Score Report                     │\n");
+    output.push_str("├─────────────────────────────────────────────────┤\n");
+
+    // Overall score
+    output.push_str(&format!(
+        "│  Final Score: {:.1}/100 ({})                    │\n",
+        enhanced_score.final_score,
+        format_enhanced_grade(&enhanced_score.grade)
+    ));
+
+    // Base metrics breakdown
+    output.push_str("│                                                 │\n");
+    output.push_str("│  📊 Base Metrics:                               │\n");
+    output.push_str(&format!(
+        "│  ├─ Structural:     {:.3}                       │\n",
+        enhanced_score.base_metrics.structural_complexity
+    ));
+    output.push_str(&format!(
+        "│  ├─ Semantic:       {:.3}                       │\n",
+        enhanced_score.base_metrics.semantic_complexity
+    ));
+    output.push_str(&format!(
+        "│  ├─ Duplication:    {:.3}                       │\n",
+        enhanced_score.base_metrics.duplication_ratio
+    ));
+    output.push_str(&format!(
+        "│  ├─ Coupling:       {:.3}                       │\n",
+        enhanced_score.base_metrics.coupling_metrics
+    ));
+    output.push_str(&format!(
+        "│  ├─ Documentation:  {:.3}                       │\n",
+        enhanced_score.base_metrics.documentation_coverage
+    ));
+    output.push_str(&format!(
+        "│  └─ Consistency:    {:.3}                       │\n",
+        enhanced_score.base_metrics.consistency_score
+    ));
+
+    // Churn component if available
+    if let Some(churn) = &enhanced_score.churn_component {
+        output.push_str("│                                                 │\n");
+        output.push_str("│  🔄 Churn Analysis:                             │\n");
+        output.push_str(&format!(
+            "│  ├─ Relative Churn: {:.3}                       │\n",
+            churn.relative_churn
+        ));
+        output.push_str(&format!(
+            "│  ├─ Frequency:      {:.1} commits/month        │\n",
+            churn.churn_frequency
+        ));
+        output.push_str(&format!(
+            "│  ├─ Recency:        {:.3}                       │\n",
+            churn.churn_recency
+        ));
+        output.push_str(&format!(
+            "│  ├─ Authors:        {:.0}                       │\n",
+            churn.author_churn
+        ));
+        output.push_str(&format!(
+            "│  ├─ Ownership:      {:.3}                       │\n",
+            churn.ownership_concentration
+        ));
+        output.push_str(&format!(
+            "│  └─ Risk Level:     {:?}                       │\n",
+            churn.risk_level
+        ));
+    }
+
+    // Confidence interval if requested
+    if show_confidence {
+        output.push_str("│                                                 │\n");
+        output.push_str("│  📈 Confidence Interval (95%):                  │\n");
+        output.push_str(&format!(
+            "│  └─ [{:.1}, {:.1}]                             │\n",
+            enhanced_score.confidence_interval.0,
+            enhanced_score.confidence_interval.1
+        ));
+    }
+
+    output.push_str("╰─────────────────────────────────────────────────╯\n");
+    Ok(output)
+}
+
+
+/// Format enhanced score as Markdown (cognitive complexity ≤6)
+fn format_enhanced_markdown(
+    enhanced_score: &crate::tdg::EnhancedTdgScore,
+    show_confidence: bool,
+) -> Result<String> {
+    let mut output = String::new();
+
+    output.push_str("# Enhanced TDG Score Report\n\n");
+    output.push_str(&format!(
+        "**Final Score:** {:.1}/100 ({})\n\n",
+        enhanced_score.final_score,
+        format_enhanced_grade(&enhanced_score.grade)
+    ));
+
+    output.push_str("## Base Metrics\n\n");
+    output.push_str("| Metric | Value |\n");
+    output.push_str("|--------|-------|\n");
+    output.push_str(&format!("| Structural Complexity | {:.3} |\n", enhanced_score.base_metrics.structural_complexity));
+    output.push_str(&format!("| Semantic Complexity | {:.3} |\n", enhanced_score.base_metrics.semantic_complexity));
+    output.push_str(&format!("| Duplication Ratio | {:.3} |\n", enhanced_score.base_metrics.duplication_ratio));
+    output.push_str(&format!("| Coupling Metrics | {:.3} |\n", enhanced_score.base_metrics.coupling_metrics));
+    output.push_str(&format!("| Documentation Coverage | {:.3} |\n", enhanced_score.base_metrics.documentation_coverage));
+    output.push_str(&format!("| Consistency Score | {:.3} |\n", enhanced_score.base_metrics.consistency_score));
+
+    if let Some(churn) = &enhanced_score.churn_component {
+        output.push_str("\n## Churn Analysis\n\n");
+        output.push_str("| Metric | Value |\n");
+        output.push_str("|--------|-------|\n");
+        output.push_str(&format!("| Relative Churn | {:.3} |\n", churn.relative_churn));
+        output.push_str(&format!("| Frequency | {:.1} commits/month |\n", churn.churn_frequency));
+        output.push_str(&format!("| Recency | {:.3} |\n", churn.churn_recency));
+        output.push_str(&format!("| Authors | {:.0} |\n", churn.author_churn));
+        output.push_str(&format!("| Ownership Concentration | {:.3} |\n", churn.ownership_concentration));
+        output.push_str(&format!("| Risk Level | {:?} |\n", churn.risk_level));
+    }
+
+    if show_confidence {
+        output.push_str("\n## Confidence Interval (95%)\n\n");
+        output.push_str(&format!(
+            "[{:.1}, {:.1}]\n",
+            enhanced_score.confidence_interval.0,
+            enhanced_score.confidence_interval.1
+        ));
+    }
+
+    Ok(output)
+}
+
+/// Format enhanced grade for display (cognitive complexity ≤1)
+fn format_enhanced_grade(grade: &crate::tdg::EnhancedGrade) -> String {
+    use crate::tdg::EnhancedGrade;
+    match grade {
+        EnhancedGrade::APlus => "A+".to_string(),
+        EnhancedGrade::A => "A".to_string(),
+        EnhancedGrade::AMinus => "A-".to_string(),
+        EnhancedGrade::BPlus => "B+".to_string(),
+        EnhancedGrade::B => "B".to_string(),
+        EnhancedGrade::BMinus => "B-".to_string(),
+        EnhancedGrade::CPlus => "C+".to_string(),
+        EnhancedGrade::C => "C".to_string(),
+        EnhancedGrade::CMinus => "C-".to_string(),
+        EnhancedGrade::D => "D".to_string(),
+        EnhancedGrade::F => "F".to_string(),
     }
 }
 

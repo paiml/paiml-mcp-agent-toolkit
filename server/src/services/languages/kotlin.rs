@@ -80,7 +80,7 @@ impl KotlinAstVisitor {
             let trimmed = line.trim();
             if let Some(class_name) = self.extract_class_name_from_line(trimmed) {
                 let qualified_name = self.get_qualified_name(&class_name);
-                let visibility = if trimmed.contains("public") { "public" } else { "public" };
+                let visibility = "public"; // Default visibility in Kotlin
                 let fields_count = self.count_class_members(source, &class_name);
 
                 self.items.push(AstItem::Struct {
@@ -200,7 +200,7 @@ impl KotlinAstVisitor {
             let trimmed = line.trim();
             if let Some(interface_name) = self.extract_interface_name_from_line(trimmed) {
                 let qualified_name = self.get_qualified_name(&interface_name);
-                let visibility = if trimmed.contains("public") { "public" } else { "public" };
+                let visibility = "public"; // Default visibility in Kotlin
 
                 self.items.push(AstItem::Trait {
                     name: qualified_name,

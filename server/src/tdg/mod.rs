@@ -5,6 +5,8 @@ use std::path::PathBuf;
 pub mod adaptive;
 pub mod alerts;
 pub mod analyzer_ast;
+pub mod churn_analysis;
+pub mod enhanced_score;
 pub mod analyzer_simple;
 pub mod config;
 pub mod diagnostics;
@@ -57,6 +59,11 @@ pub use web_dashboard::{
     create_dashboard_router, start_dashboard_server, DashboardState,
     HealthStatus as DashboardHealthStatus, PerformanceMetrics as DashboardPerformanceMetrics,
     StorageMetrics, SystemMetrics,
+};
+pub use enhanced_score::{
+    BaseMetrics, ChurnComponent, ChurnRisk, EnhancedTdgScore,
+    NormalizationFunctions, TdgEnhancedCalculator, Grade as EnhancedGrade,
+    calculate_confidence_interval,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

@@ -45,7 +45,7 @@ impl QualityCodeGenerator {
         rollback_plan.checkpoints.push(Checkpoint {
             step: "initial_generation".to_string(),
             code: code.clone(),
-            quality_metrics: QualityMetrics::default(),
+            quality_metrics: QualityMetrics::new(),
         });
 
         // 2. Apply quality patterns if needed
@@ -54,7 +54,7 @@ impl QualityCodeGenerator {
             rollback_plan.checkpoints.push(Checkpoint {
                 step: "decomposition".to_string(),
                 code: code.clone(),
-                quality_metrics: QualityMetrics::default(),
+                quality_metrics: QualityMetrics::new(),
             });
         }
 

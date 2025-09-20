@@ -251,7 +251,7 @@ fn clear_enforcement_cache(cache_dir: &Option<PathBuf>) {
 async fn handle_special_modes(
     list_violations: bool,
     validate_only: bool,
-    project_path: &PathBuf,
+    project_path: &Path,
     profile: &QualityProfile,
     format: EnforceOutputFormat,
     ci_mode: bool,
@@ -273,7 +273,7 @@ async fn handle_special_modes(
 
 /// Run the main enforcement loop - DEEPLY REFACTORED (complexity: ≤10)
 async fn run_main_enforcement_loop(
-    project_path: &PathBuf,
+    project_path: &Path,
     profile: &QualityProfile,
     config: EnforcementConfig,
 ) -> Result<()> {
@@ -316,7 +316,7 @@ fn should_continue_enforcement(
 
 /// Execute a single enforcement iteration
 async fn execute_enforcement_iteration(
-    project_path: &PathBuf,
+    project_path: &Path,
     profile: &QualityProfile,
     current_state: EnforcementState,
     config: &EnforcementConfig,
@@ -366,7 +366,7 @@ fn handle_ci_mode_exit(ci_mode: bool, current_state: EnforcementState) {
 /// Run a single enforcement step - REFACTORED (complexity: ≤10)
 #[allow(clippy::too_many_arguments)]
 async fn run_enforcement_step(
-    project_path: &PathBuf,
+    project_path: &Path,
     profile: &QualityProfile,
     current_state: EnforcementState,
     single_file_mode: bool,
@@ -481,7 +481,7 @@ async fn list_all_violations(
 
 /// Validate current state without making changes
 async fn validate_current_state(
-    project_path: &PathBuf,
+    project_path: &Path,
     profile: &QualityProfile,
     format: EnforceOutputFormat,
     ci_mode: bool,
@@ -635,7 +635,7 @@ fn print_progress_bar(result: &EnforcementResult) {
 
 /// Handle analyzing state - extracted from run_enforcement_step (complexity: ≤10)
 pub async fn handle_analyzing_state(
-    project_path: &PathBuf,
+    project_path: &Path,
     profile: &QualityProfile,
     single_file_mode: bool,
     _dry_run: bool,
@@ -773,7 +773,7 @@ pub async fn run_complexity_analysis(
 
     let mut violations = Vec::new();
 
-    match handle_analyze_complexity(
+    if (handle_analyze_complexity(
         project_path.to_path_buf(),
         None,   // file
         vec![], // files
@@ -788,24 +788,21 @@ pub async fn run_complexity_analysis(
         false,                        // fail_on_violation
         60,                           // timeout
     )
-    .await
-    {
-        Ok(_) => {
-            // NOTE: Would parse JSON output and extract violations
-            // For now, add sample violation based on known complexity issues
-            violations.push(QualityViolation {
-                violation_type: "complexity".to_string(),
-                severity: "high".to_string(),
-                location: "server/src/cli/handlers/enforce_handlers.rs:run_enforcement_step"
-                    .to_string(),
-                current: 62.0,
-                target: profile.complexity_max as f64,
-                suggestion: "Extract method pattern - split match statement into handler functions"
-                    .to_string(),
-            });
-        }
-        Err(_) => {} // Ignore failures in analysis
+    .await).is_ok() {
+        // NOTE: Would parse JSON output and extract violations
+        // For now, add sample violation based on known complexity issues
+        violations.push(QualityViolation {
+            violation_type: "complexity".to_string(),
+            severity: "high".to_string(),
+            location: "server/src/cli/handlers/enforce_handlers.rs:run_enforcement_step"
+                .to_string(),
+            current: 62.0,
+            target: profile.complexity_max as f64,
+            suggestion: "Extract method pattern - split match statement into handler functions"
+                .to_string(),
+        });
     }
+    // Ignore failures in analysis
 
     Ok(violations)
 }
@@ -820,7 +817,7 @@ pub async fn run_satd_analysis(
 
     let violations = Vec::new();
 
-    match handle_analyze_satd(
+    if (handle_analyze_satd(
         project_path.to_path_buf(),
         SatdOutputFormat::Json,
         None,  // severity filter
@@ -835,16 +832,12 @@ pub async fn run_satd_analysis(
         false, // fail_on_violation
         60,    // timeout
     )
-    .await
-    {
-        Ok(_) => {
-            if profile.satd_allowed == 0 {
-                // NOTE: Would parse JSON and check for SATD violations
-                // For now, we know project maintains zero SATD
-            }
+    .await).is_ok()
+        && profile.satd_allowed == 0 {
+            // NOTE: Would parse JSON and check for SATD violations
+            // For now, we know project maintains zero SATD
         }
-        Err(_) => {} // Ignore failures in analysis
-    }
+    // Ignore failures in analysis
 
     Ok(violations)
 }
@@ -859,7 +852,7 @@ pub async fn run_tdg_analysis(
 
     let mut violations = Vec::new();
 
-    match handle_analyze_tdg(
+    if (handle_analyze_tdg(
         project_path.to_path_buf(),
         Some(profile.tdg_max), // threshold
         Some(10),              // top
@@ -869,23 +862,20 @@ pub async fn run_tdg_analysis(
         false, // critical_only
         false, // verbose
     )
-    .await
-    {
-        Ok(_) => {
-            // NOTE: Would parse JSON and check TDG scores
-            // Adding sample violation for demonstration
-            violations.push(QualityViolation {
-                violation_type: "tdg".to_string(),
-                severity: "medium".to_string(),
-                location: "server/src/cli/handlers/enforce_handlers.rs".to_string(),
-                current: 2.3,
-                target: profile.tdg_max,
-                suggestion: "Refactor high-complexity functions to reduce technical debt"
-                    .to_string(),
-            });
-        }
-        Err(_) => {} // Ignore failures in analysis
+    .await).is_ok() {
+        // NOTE: Would parse JSON and check TDG scores
+        // Adding sample violation for demonstration
+        violations.push(QualityViolation {
+            violation_type: "tdg".to_string(),
+            severity: "medium".to_string(),
+            location: "server/src/cli/handlers/enforce_handlers.rs".to_string(),
+            current: 2.3,
+            target: profile.tdg_max,
+            suggestion: "Refactor high-complexity functions to reduce technical debt"
+                .to_string(),
+        });
     }
+    // Ignore failures in analysis
 
     Ok(violations)
 }
@@ -900,7 +890,7 @@ pub async fn run_dead_code_analysis(
 
     let mut violations = Vec::new();
 
-    match handle_analyze_dead_code(
+    if (handle_analyze_dead_code(
         project_path.to_path_buf(),
         DeadCodeOutputFormat::Json,
         Some(10),   // top_files
@@ -914,21 +904,18 @@ pub async fn run_dead_code_analysis(
         Vec::new(), // include
         Vec::new(), // exclude
     )
-    .await
-    {
-        Ok(_) => {
-            // NOTE: Would parse JSON and extract dead code violations
-            violations.push(QualityViolation {
-                violation_type: "dead_code".to_string(),
-                severity: "low".to_string(),
-                location: "server/src/services/ast_typescript_dispatch.rs:9".to_string(),
-                current: 1.0,
-                target: 0.0,
-                suggestion: "Remove dead code attributes and unused functions".to_string(),
-            });
-        }
-        Err(_) => {} // Ignore failures in analysis
+    .await).is_ok() {
+        // NOTE: Would parse JSON and extract dead code violations
+        violations.push(QualityViolation {
+            violation_type: "dead_code".to_string(),
+            severity: "low".to_string(),
+            location: "server/src/services/ast_typescript_dispatch.rs:9".to_string(),
+            current: 1.0,
+            target: 0.0,
+            suggestion: "Remove dead code attributes and unused functions".to_string(),
+        });
     }
+    // Ignore failures in analysis
 
     Ok(violations)
 }
@@ -959,21 +946,18 @@ pub async fn run_duplication_analysis(
         top_files: 0, // 0 = all files
     };
 
-    match handle_analyze_duplicates(dup_config).await {
-        Ok(_) => {
-            if profile.duplication_max_lines == 0 {
-                violations.push(QualityViolation {
-                    violation_type: "duplication".to_string(),
-                    severity: "low".to_string(),
-                    location: "multiple files".to_string(),
-                    current: 15.0,
-                    target: 0.0,
-                    suggestion: "Extract common code into shared utilities".to_string(),
-                });
-            }
+    if (handle_analyze_duplicates(dup_config).await).is_ok()
+        && profile.duplication_max_lines == 0 {
+            violations.push(QualityViolation {
+                violation_type: "duplication".to_string(),
+                severity: "low".to_string(),
+                location: "multiple files".to_string(),
+                current: 15.0,
+                target: 0.0,
+                suggestion: "Extract common code into shared utilities".to_string(),
+            });
         }
-        Err(_) => {} // Ignore failures in analysis
-    }
+    // Ignore failures in analysis
 
     Ok(violations)
 }
@@ -1073,7 +1057,7 @@ pub struct EnforcementLoopResult {
 
 /// Handle single enforcement iteration - extracted from run_main_enforcement_loop (complexity: ≤10)
 pub async fn handle_enforcement_iteration(
-    project_path: &PathBuf,
+    project_path: &Path,
     profile: &QualityProfile,
     current_state: EnforcementState,
     config: &EnforcementConfig,
@@ -1121,7 +1105,7 @@ pub fn finalize_enforcement_run(
 
 /// Execute main enforcement loop - extracted from run_main_enforcement_loop (complexity: ≤10)
 pub async fn execute_main_loop(
-    project_path: &PathBuf,
+    project_path: &Path,
     profile: &QualityProfile,
     config: &EnforcementConfig,
     start_time: Instant,
@@ -1162,7 +1146,7 @@ pub async fn execute_main_loop(
 
 /// Handle violating state proxy - extracted from run_enforcement_step (complexity: ≤10)
 pub async fn handle_violating_enforcement_state_proxy(
-    project_path: &PathBuf,
+    project_path: &Path,
     profile: &QualityProfile,
     single_file_mode: bool,
     dry_run: bool,
@@ -1197,7 +1181,7 @@ pub fn handle_refactoring_enforcement_state(
 
 /// Handle validating state for enforcement - extracted from run_enforcement_step (complexity: ≤10)
 pub async fn handle_validating_enforcement_state(
-    project_path: &PathBuf,
+    project_path: &Path,
     profile: &QualityProfile,
     single_file_mode: bool,
     dry_run: bool,
@@ -1227,7 +1211,7 @@ pub async fn handle_validating_enforcement_state(
 
 /// Handle analyzing state for enforcement - alias for clarity (complexity: ≤10)
 pub async fn handle_analyzing_enforcement_state(
-    project_path: &PathBuf,
+    project_path: &Path,
     profile: &QualityProfile,
     single_file_mode: bool,
     dry_run: bool,

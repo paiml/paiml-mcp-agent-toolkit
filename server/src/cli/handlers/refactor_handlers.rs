@@ -518,12 +518,12 @@ async fn read_checkpoint_data(checkpoint: &PathBuf) -> anyhow::Result<String> {
 fn format_refactor_status(
     checkpoint_data: &str,
     format: RefactorOutputFormat,
-    checkpoint: &PathBuf,
+    checkpoint: &Path,
 ) -> anyhow::Result<()> {
     match format {
         RefactorOutputFormat::Json => format_as_json(checkpoint_data),
         RefactorOutputFormat::Table => format_as_table(checkpoint_data),
-        RefactorOutputFormat::Summary => format_as_summary(checkpoint_data, checkpoint.as_path()),
+        RefactorOutputFormat::Summary => format_as_summary(checkpoint_data, checkpoint),
     }
 }
 

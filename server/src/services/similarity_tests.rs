@@ -321,7 +321,7 @@ mod entropy_analysis_tests {
 
         let files = vec![("file.rs".into(), code.to_string())];
 
-        let report = detector.analyze_entropy(&files);
+        let _report = detector.analyze_entropy(&files);
         let opportunities = detector.find_refactoring_opportunities(&files);
 
         assert!(!opportunities.is_empty());

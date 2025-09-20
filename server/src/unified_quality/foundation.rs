@@ -489,7 +489,7 @@ mod property_tests {
 
         #[test]
         fn metrics_aggregation_properties(
-            file_count in 1usize..50,
+            _file_count in 1usize..50,
             complexity_values in prop::collection::vec(1u32..30, 1..50)
         ) {
             // Properties of metrics aggregation

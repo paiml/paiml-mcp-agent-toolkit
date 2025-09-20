@@ -476,7 +476,7 @@ mod property_tests {
         #[test]
         fn cache_consistency(
             name in valid_rust_identifier(),
-            content_variations in prop::collection::vec(valid_rust_identifier(), 1..10)
+            _content_variations in prop::collection::vec(valid_rust_identifier(), 1..10)
         ) {
             let mut parser = EnhancedParser::new();
             let path = PathBuf::from("cache_test.rs");

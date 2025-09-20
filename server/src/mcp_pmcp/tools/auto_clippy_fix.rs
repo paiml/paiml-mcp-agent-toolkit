@@ -111,13 +111,7 @@ fn filter_diagnostics(
 
 /// Check if confidence meets minimum (complexity: 3)
 fn confidence_meets_minimum(actual: ConfidenceLevel, minimum: ConfidenceLevel) -> bool {
-    match (actual, minimum) {
-        (ConfidenceLevel::High, _) => true,
-        (ConfidenceLevel::Medium, ConfidenceLevel::Low) => true,
-        (ConfidenceLevel::Medium, ConfidenceLevel::Medium) => true,
-        (ConfidenceLevel::Low, ConfidenceLevel::Low) => true,
-        _ => false,
-    }
+    matches!((actual, minimum), (ConfidenceLevel::High, _) | (ConfidenceLevel::Medium, ConfidenceLevel::Low) | (ConfidenceLevel::Medium, ConfidenceLevel::Medium) | (ConfidenceLevel::Low, ConfidenceLevel::Low))
 }
 
 /// Simulate fixes without applying (complexity: 4)

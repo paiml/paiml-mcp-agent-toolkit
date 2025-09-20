@@ -1040,6 +1040,7 @@ async fn route_makefile_analysis(cmd: AnalyzeCommands) -> Result<()> {
 }
 
 /// Route complexity command (cognitive complexity ≤5)
+#[allow(clippy::too_many_arguments)]
 async fn route_complexity_command(
     path: PathBuf,
     project_path: Option<PathBuf>,
@@ -1151,8 +1152,10 @@ async fn route_entropy_analysis(cmd: AnalyzeCommands) -> Result<()> {
         };
 
         // Create entropy configuration
-        let mut config = EntropyConfig::default();
-        config.min_severity = min_sev;
+        let mut config = EntropyConfig {
+            min_severity: min_sev,
+            ..Default::default()
+        };
 
         // Update exclude paths if tests should be excluded
         if !include_tests {

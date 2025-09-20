@@ -789,6 +789,7 @@ fn create_file_watcher(
 }
 
 /// Create synchronous analysis configuration
+#[allow(clippy::too_many_arguments)]
 fn create_sync_config<'a>(
     path: &'a Path,
     toolchain: Option<&'a str>,

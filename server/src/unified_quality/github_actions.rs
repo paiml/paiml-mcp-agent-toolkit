@@ -676,7 +676,7 @@ mod tests {
         assert_eq!(statuses.len(), 4);
 
         // Test Debug formatting
-        format!("{:?}", WorkflowStatus::Success);
-        format!("{:?}", WorkflowStatus::Error("test".to_string()));
+        let _ = format!("{:?}", WorkflowStatus::Success);
+        let _ = format!("{:?}", WorkflowStatus::Error("test".to_string()));
     }
 }

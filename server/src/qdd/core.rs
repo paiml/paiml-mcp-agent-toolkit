@@ -178,7 +178,7 @@ pub struct QualityMetrics {
 
 impl QualityMetrics {
     /// Create default metrics (all zeros/false)
-    pub fn default() -> Self {
+    pub fn new() -> Self {
         Self {
             complexity: 0,
             cognitive_complexity: 0,
@@ -235,7 +235,7 @@ mod tests {
 
     #[test]
     fn test_quality_metrics_default() {
-        let metrics = QualityMetrics::default();
+        let metrics = QualityMetrics::new();
         assert_eq!(metrics.complexity, 0);
         assert_eq!(metrics.coverage, 0);
         assert_eq!(metrics.tdg, 0);
