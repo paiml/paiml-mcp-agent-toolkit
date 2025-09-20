@@ -157,7 +157,108 @@ async fn handle_get(key: &str) -> Result<()> {
     Ok(())
 }
 
-/// Handle config validate command
+/// Configuration fix information for extracted error handling
+#[derive(Debug, Clone)]
+struct ConfigFixInfo {
+    field_name: String,
+    _new_value: String,
+    description: String,
+}
+
+/// Extract configuration error handler (complexity ≤10)
+/// Returns fix information for known config errors, None for unknown errors
+fn extract_config_error_handler(error_msg: &str) -> Option<ConfigFixInfo> {
+    if error_msg.contains("max_complexity must be > 0") {
+        return Some(ConfigFixInfo {
+            field_name: "quality.max_complexity".to_string(),
+            _new_value: "20".to_string(),
+            description: "Set max_complexity to 20".to_string(),
+        });
+    }
+
+    if error_msg.contains("min_coverage must be between 0 and 100") {
+        return Some(ConfigFixInfo {
+            field_name: "quality.min_coverage".to_string(),
+            _new_value: "clamp(0.0, 100.0)".to_string(),
+            description: "Clamped min_coverage to valid range".to_string(),
+        });
+    }
+
+    if error_msg.contains("project_name cannot be empty") {
+        return Some(ConfigFixInfo {
+            field_name: "system.project_name".to_string(),
+            _new_value: "pmat-project".to_string(),
+            description: "Set default project name".to_string(),
+        });
+    }
+
+    if error_msg.contains("max_concurrent_operations must be > 0") {
+        return Some(ConfigFixInfo {
+            field_name: "system.max_concurrent_operations".to_string(),
+            _new_value: "4".to_string(),
+            description: "Set max_concurrent_operations to 4".to_string(),
+        });
+    }
+
+    None
+}
+
+/// Apply configuration fixes (complexity ≤10)
+/// Returns list of successful fix descriptions
+async fn apply_config_fixes(errors: &[String], config: &mut PmatConfig) -> Result<Vec<String>> {
+    let mut fixed_issues = Vec::new();
+
+    for error in errors {
+        if let Some(fix_info) = extract_config_error_handler(error) {
+            apply_single_fix(&fix_info, config);
+            fixed_issues.push(fix_info.description);
+        }
+    }
+
+    Ok(fixed_issues)
+}
+
+/// Apply a single configuration fix (complexity ≤10)
+fn apply_single_fix(fix_info: &ConfigFixInfo, config: &mut PmatConfig) {
+    match fix_info.field_name.as_str() {
+        "quality.max_complexity" => {
+            config.quality.max_complexity = 20;
+        }
+        "quality.min_coverage" => {
+            config.quality.min_coverage = config.quality.min_coverage.clamp(0.0, 100.0);
+        }
+        "system.project_name" => {
+            if config.system.project_name.is_empty() {
+                config.system.project_name = "pmat-project".to_string();
+            }
+        }
+        "system.max_concurrent_operations" => {
+            if config.system.max_concurrent_operations == 0 {
+                config.system.max_concurrent_operations = 4;
+            }
+        }
+        _ => {} // Unknown fix - skip
+    }
+}
+
+/// Save configuration changes to file (complexity ≤10)
+/// Updates the config file with applied fixes
+async fn save_config_changes(config: &PmatConfig, fixed_issues: &[String]) -> Result<()> {
+    if fixed_issues.is_empty() {
+        return Ok(());
+    }
+
+    println!("✅ Fixed issues: {}", fixed_issues.join(", "));
+
+    let config_path = std::env::current_dir()?.join("pmat.toml");
+    let toml_content = toml::to_string_pretty(config)?;
+    std::fs::write(&config_path, toml_content)?;
+    println!("📝 Updated configuration file: {}", config_path.display());
+
+    Ok(())
+}
+
+/// Handle config validate command (refactored with complexity ≤10)
 async fn handle_validate(fix: bool) -> Result<()> {
     let config_path = std::env::current_dir()?.join("pmat.toml");
     let config_cmd = ConfigCommand::new(config_path);
@@ -167,43 +268,9 @@ async fn handle_validate(fix: bool) -> Result<()> {
         println!("🔧 Auto-fix enabled, attempting to fix configuration issues...");
         let config_service = configuration();
         let mut config = config_service.get_config()?;
-        let mut fixed_issues = Vec::new();
 
-        for error in &result.errors {
-            match error.as_str() {
-                msg if msg.contains("max_complexity must be > 0") => {
-                    config.quality.max_complexity = 20;
-                    fixed_issues.push("Set max_complexity to 20");
-                }
-                msg if msg.contains("min_coverage must be between 0 and 100") => {
-                    config.quality.min_coverage = config.quality.min_coverage.clamp(0.0, 100.0);
-                    fixed_issues.push("Clamped min_coverage to valid range");
-                }
-                msg if msg.contains("project_name cannot be empty") => {
-                    if config.system.project_name.is_empty() {
-                        config.system.project_name = "pmat-project".to_string();
-                        fixed_issues.push("Set default project name");
-                    }
-                }
-                msg if msg.contains("max_concurrent_operations must be > 0") => {
-                    if config.system.max_concurrent_operations == 0 {
-                        config.system.max_concurrent_operations = 4;
-                        fixed_issues.push("Set max_concurrent_operations to 4");
-                    }
-                }
-                _ => {}
-            }
-        }
-
-        if !fixed_issues.is_empty() {
-            println!("✅ Fixed issues: {}", fixed_issues.join(", "));
-
-            // Write corrected config back to file
-            let config_path = std::env::current_dir()?.join("pmat.toml");
-            let toml_content = toml::to_string_pretty(&config)?;
-            std::fs::write(&config_path, toml_content)?;
-            println!("📝 Updated configuration file: {}", config_path.display());
-        }
+        let fixed_issues = apply_config_fixes(&result.errors, &mut config).await?;
+        save_config_changes(&config, &fixed_issues).await?;
     }
 
     print_validation_result(&result)?;
