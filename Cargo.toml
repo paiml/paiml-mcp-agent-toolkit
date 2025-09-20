@@ -31,12 +31,12 @@ tag-prefix = "v"
 publish = false
 # Pre-release replacements
 pre-release-replacements = [
-  {file="README.md", search="pmat = \"[0-9]+\\.[0-9]+\\.[0-9]+\"", replace="pmat = \"{{version}}\""},
+  {file="README.md", search="pmat = \"[0-9]+\\.[0-9]+\"", replace="pmat = \"{{version}}\""},
   {file="README.md", search="v[0-9]+\\.[0-9]+\\.[0-9]+ Release", replace="v{{version}} Release"},
   {file="CHANGELOG.md", search="## \\[Unreleased\\]", replace="## [Unreleased]\n\n## [{{version}}] - {{date}}"},
 ]
-# Pre-release hook to run tests
-pre-release-hook = ["make", "pre-release-checks"]
+# Pre-release hook to run tests (disabled - no Makefile)
+# pre-release-hook = ["make", "pre-release-checks"]
 
 # Config for 'dist'
 [workspace.metadata.dist]
