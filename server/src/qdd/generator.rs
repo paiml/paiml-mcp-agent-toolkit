@@ -1,7 +1,7 @@
 //! Quality code generation engine
 //! Toyota Way: Build quality in from the start
 
-use super::{QualityProfile, CreateSpec, QddResult, CodeType, RollbackPlan, Checkpoint, QualityMetrics, DesignPattern, QualityScore};
+use super::{QualityProfile, CreateSpec, QddResult, CodeType, RollbackPlan, Checkpoint, QualityMetrics, QualityScore};
 use anyhow::{anyhow, Result};
 
 /// Quality-focused code generator

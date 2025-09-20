@@ -243,7 +243,7 @@ impl QualityRefactoringEngine {
             }
             ("synchronous", "async") => {
                 result = result.replace("fn ", "async fn ");
-                result = result.replace("-> Result<", "-> Result<");
+                // Already returns Result, no replacement needed
                 result.push_str("\n// Migrated to async pattern");
             }
             _ => {
