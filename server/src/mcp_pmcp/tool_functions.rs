@@ -941,6 +941,7 @@ async fn handle_qdd_refactor(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn quality_driven_development(
     operation_type: &str,
     quality_profile: Option<&str>,

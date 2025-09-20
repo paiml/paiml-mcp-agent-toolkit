@@ -482,7 +482,7 @@ impl AnalysisService for DefaultAnalysisService {
 
 /// Handler modules containing the actual endpoint implementations
 pub mod handlers {
-    use super::{anyhow, Extension, Query, Arc, AppState, ListTemplatesQuery, Json, TemplateList, AppError, TemplateService, Path, TemplateInfo, GenerateParams, GeneratedTemplate, ComplexityParams, ComplexityAnalysis, AnalysisService, ComplexityQueryParams, ChurnParams, ChurnAnalysis, DagParams, DagAnalysis, ContextParams, ProjectContext, DeadCodeParams, DeadCodeAnalysis, Value, ServiceExt, MakefileLintParams, MakefileLintAnalysis, MakefileLintViolation, ProvabilityParams, ProvabilityAnalysis, ProvabilitySummary, SatdParams, SatdAnalysis, SatdFile, SatdItem, LintHotspotParams, LintHotspotAnalysis, LintHotspot, set_protocol_context, Protocol, IntoResponse};
+    use super::{anyhow, Extension, Query, Arc, AppState, ListTemplatesQuery, Json, TemplateList, AppError, Path, TemplateInfo, GenerateParams, GeneratedTemplate, ComplexityParams, ComplexityAnalysis, ComplexityQueryParams, ChurnParams, ChurnAnalysis, DagParams, DagAnalysis, ContextParams, ProjectContext, DeadCodeParams, DeadCodeAnalysis, Value, MakefileLintParams, MakefileLintAnalysis, MakefileLintViolation, ProvabilityParams, ProvabilityAnalysis, ProvabilitySummary, SatdParams, SatdAnalysis, SatdFile, SatdItem, LintHotspotParams, LintHotspotAnalysis, LintHotspot, set_protocol_context, Protocol, IntoResponse};
 
     /// List available templates
     pub async fn list_templates(

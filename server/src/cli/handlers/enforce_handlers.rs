@@ -635,7 +635,7 @@ fn print_progress_bar(result: &EnforcementResult) {
 
 /// Handle analyzing state - extracted from `run_enforcement_step` (complexity: ≤10)
 pub async fn handle_analyzing_state(
-    project_path: &PathBuf,
+    project_path: &Path,
     profile: &QualityProfile,
     single_file_mode: bool,
     _dry_run: bool,
