@@ -129,6 +129,7 @@ pub mod duplicate_detector;
 #[cfg(test)]
 mod duplicate_detector_property_tests;
 pub mod embedded_templates;
+pub mod enhanced_ast_visitor;
 pub mod enhanced_reporting;
 pub mod file_classifier;
 #[cfg(test)]

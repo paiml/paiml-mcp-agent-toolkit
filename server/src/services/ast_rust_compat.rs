@@ -9,12 +9,11 @@ use std::path::Path;
 use crate::models::error::TemplateError;
 use crate::services::accurate_complexity_analyzer::AccurateComplexityAnalyzer;
 use crate::services::complexity::{ComplexityMetrics, FileComplexityMetrics, FunctionComplexity};
-use crate::services::context::{AstItem, FileContext};
+use crate::services::context::FileContext;
 use crate::services::file_classifier::FileClassifier;
 
-// Import the new AST module
-use crate::ast::languages::rust::RustStrategy;
-use crate::ast::languages::LanguageStrategy;
+// Import the enhanced visitor for real AST extraction
+use crate::services::enhanced_ast_visitor::EnhancedAstVisitor;
 
 /// Analyze a Rust file and return complexity metrics (compatibility function)
 pub async fn analyze_rust_file_with_complexity(
@@ -103,41 +102,13 @@ pub async fn analyze_rust_file_with_classifier(
         .await
         .map_err(TemplateError::Io)?;
 
-    // Use the new AST module to parse
-    let strategy = RustStrategy::new();
-    let ast = strategy
-        .parse_file(path, &content)
-        .await
+    // Parse the Rust code with syn
+    let syntax_tree = syn::parse_file(&content)
         .map_err(|e| TemplateError::InvalidUtf8(e.to_string()))?;
 
-    // Extract information using the new API
-    let functions = strategy.extract_functions(&ast);
-    let types = strategy.extract_types(&ast);
-    let _imports = strategy.extract_imports(&ast);
-
-    // Convert to old format
-    let mut items = Vec::new();
-
-    // Add functions as items
-    for (i, _node) in functions.iter().enumerate() {
-        items.push(AstItem::Function {
-            name: format!("function_{i}"),
-            visibility: "pub".to_string(),
-            is_async: false,
-            line: i * 10,
-        });
-    }
-
-    // Add types as items
-    for (i, _node) in types.iter().enumerate() {
-        items.push(AstItem::Struct {
-            name: format!("type_{i}"),
-            visibility: "pub".to_string(),
-            fields_count: 0,
-            derives: vec![], // Empty derives for now
-            line: (functions.len() + i) * 10,
-        });
-    }
+    // Use enhanced visitor to extract real AST information
+    let visitor = EnhancedAstVisitor::new(path);
+    let items = visitor.extract_items(&syntax_tree);
 
     Ok(FileContext {
         path: path.display().to_string(),
