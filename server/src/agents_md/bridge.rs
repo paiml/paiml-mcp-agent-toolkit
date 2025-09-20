@@ -423,6 +423,8 @@ impl McpAgentsMdBridge {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::agents_md::DocumentMetadata;
+    use std::path::PathBuf;
 
     #[test]
     fn test_bridge_creation() {

@@ -653,6 +653,7 @@ impl DocGenerator {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::qdd::Parameter;
 
     #[tokio::test]
     async fn test_create_simple_function() {

@@ -9285,19 +9285,22 @@ fn another_simple(y: i32) -> i32 {
 
         // Test with all options disabled (minimal execution path)
         let rt = tokio::runtime::Runtime::new().unwrap();
+        let config = ComprehensiveAnalysisConfig::new(
+            false, // include_complexity
+            false, // include_tdg
+            false, // include_dead_code
+            false, // include_defects
+            false, // include_duplicates
+            &None, // include
+            &None, // exclude
+            0.5,   // confidence_threshold
+            10,    // min_lines
+        );
         let result = rt.block_on(async {
             run_comprehensive_analyses(
                 &mut report,
                 &project_path,
-                false, // include_complexity
-                false, // include_tdg
-                false, // include_dead_code
-                false, // include_defects
-                false, // include_duplicates
-                &None, // include
-                &None, // exclude
-                0.5,   // confidence_threshold
-                10,    // min_lines
+                &config,
             )
             .await
         });
