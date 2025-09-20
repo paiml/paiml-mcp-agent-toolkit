@@ -1152,8 +1152,10 @@ async fn route_entropy_analysis(cmd: AnalyzeCommands) -> Result<()> {
         };
 
         // Create entropy configuration
-        let mut config = EntropyConfig::default();
-        config.min_severity = min_sev;
+        let config = EntropyConfig {
+            min_severity: min_sev,
+            ..Default::default()
+        };
 
         // Update exclude paths if tests should be excluded
         if !include_tests {

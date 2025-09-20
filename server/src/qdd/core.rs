@@ -168,7 +168,7 @@ impl QualityProfile {
 }
 
 /// Quality metrics for code analysis
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct QualityMetrics {
     pub complexity: u32,
     pub cognitive_complexity: u32,
@@ -181,21 +181,6 @@ pub struct QualityMetrics {
 }
 
 impl QualityMetrics {
-    /// Create default metrics (all zeros/false)
-    #[must_use] 
-    pub fn default() -> Self {
-        Self {
-            complexity: 0,
-            cognitive_complexity: 0,
-            coverage: 0,
-            tdg: 0,
-            satd_count: 0,
-            dead_code_percentage: 0,
-            has_doctests: false,
-            has_property_tests: false,
-        }
-    }
-
     /// Calculate overall quality score (0-100)
     #[must_use] 
     pub fn calculate_score(&self) -> f64 {

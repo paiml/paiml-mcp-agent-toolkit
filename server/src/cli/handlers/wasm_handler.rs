@@ -15,6 +15,7 @@ use std::path::PathBuf;
 use tracing::{debug, info};
 
 /// Handle WASM analysis command (Complexity: ≤10)
+#[allow(clippy::too_many_arguments)]
 pub async fn handle_analyze_wasm(
     wasm_file: PathBuf,
     format: WasmOutputFormat,
