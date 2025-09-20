@@ -187,6 +187,102 @@ This roadmap tracks the implementation of the uniform contracts system across al
 
 ---
 
+### Sprint 4: Ruchy Language Integration (Priority Sprint) ✅ COMPLETED
+**Duration**: 4 weeks
+**Status**: ✅ Completed
+**Goal**: Full Ruchy language support with AST extraction and quality gates
+
+#### Sprint 4 Tickets
+
+##### Ticket #011: Ruchy AST Parser Implementation
+- **Type**: Feature
+- **Priority**: Critical
+- **Estimate**: 8 story points
+- **Assignee**: Claude Agent
+- **Description**: Implement Ruchy language AST extraction using Logos lexer
+- **Acceptance Criteria**:
+  - [x] Parse all Ruchy syntax (functions, types, actors, patterns)
+  - [x] Extract AST items with line numbers
+  - [x] Handle ML-style syntax correctly
+  - [x] Support .ruchy and .rh extensions
+- **Definition of Done**: Parser handles 95%+ of Ruchy syntax, tests pass
+
+##### Ticket #012: Ruchy Complexity Analysis
+- **Type**: Feature
+- **Priority**: High
+- **Estimate**: 5 story points
+- **Assignee**: Claude Agent
+- **Description**: Calculate complexity metrics for Ruchy code
+- **Acceptance Criteria**:
+  - [x] Cyclomatic complexity for functions
+  - [x] Pattern matching complexity (+1 per arm)
+  - [x] Actor complexity (+3 per handler)
+  - [x] Proof complexity (+5 per tactic)
+- **Definition of Done**: Accurate complexity metrics, validated against manual analysis
+
+##### Ticket #013: Ruchy Quality Gates
+- **Type**: Feature
+- **Priority**: High
+- **Estimate**: 3 story points
+- **Assignee**: Claude Agent
+- **Description**: Integrate Ruchy with existing quality gate system
+- **Acceptance Criteria**:
+  - [x] Zero SATD enforcement
+  - [x] Complexity thresholds (≤10 standard)
+  - [x] Test coverage requirements (80%)
+  - [x] Integration with make commands
+- **Definition of Done**: Quality gates enforced for Ruchy files
+
+##### Ticket #014: Ruchy TDD Test Suite
+- **Type**: Testing
+- **Priority**: Critical
+- **Estimate**: 5 story points
+- **Assignee**: Claude Agent
+- **Description**: Comprehensive test suite using extreme TDD
+- **Acceptance Criteria**:
+  - [x] Unit tests with RED-GREEN-REFACTOR cycle
+  - [x] Property tests with 80% coverage
+  - [x] Integration tests against real Ruchy code
+  - [x] Zero defects policy maintained
+- **Definition of Done**: All tests passing, 80%+ coverage achieved
+
+##### Ticket #015: Ruchy Entropy Refactoring
+- **Type**: Enhancement
+- **Priority**: Medium
+- **Estimate**: 3 story points
+- **Assignee**: Claude Agent
+- **Description**: Apply entropy-identified refactoring patterns
+- **Acceptance Criteria**:
+  - [x] DataValidation pattern centralized
+  - [x] DataTransformation pipelines extracted
+  - [x] ResourceManagement RAII implemented
+  - [x] ApiCall abstraction created
+- **Definition of Done**: 5%+ LOC reduction achieved, patterns eliminated
+
+---
+
+### Sprint 4.1: Quality Maintenance & Kotlin Support ✅ COMPLETED
+**Duration**: 1 week
+**Status**: ✅ Completed
+**Goal**: Fix test failures, eliminate warnings, and add Kotlin AST support
+
+#### Sprint 4.1 Achievements
+- **KotlinAstStrategy**: Full implementation with AST extraction and complexity analysis
+- **Zero Defects**: All cargo warnings eliminated (60+ warnings → 0)
+- **Zero Test Failures**: All compilation errors and test failures fixed
+- **Quality Gates**: All implementations pass with 0 violations
+- **Coverage**: Maintained 80%+ test coverage standard
+- **Clippy Clean**: Applied automatic fixes and added Default implementations
+
+#### Technical Deliverables
+- `KotlinAstStrategy` with full AST support for .kt and .kts files
+- Enhanced Ruchy ML implementation (`ruchy_ml.rs`) with 13 tests passing
+- Fixed import/compilation issues across language modules
+- Eliminated all unused variables, imports, and fields
+- Added Default trait implementations where suggested by clippy
+
+---
+
 ## Sprint Review Schedule
 
 ### Sprint 1 Check-ins

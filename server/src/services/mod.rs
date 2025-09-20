@@ -78,9 +78,8 @@ pub mod ast_c_compat; // Compatibility layer for C AST migration
 pub mod ast_cpp;
 #[cfg(feature = "cpp-ast")]
 pub mod ast_cpp_compat; // Compatibility layer for C++ AST migration
-                        // kotlin-ast feature is disabled
-                        // #[cfg(feature = "kotlin-ast")]
-                        // pub mod ast_kotlin;
+#[cfg(feature = "kotlin-ast")]
+pub mod ast_kotlin;
 pub mod accurate_complexity_analyzer;
 #[cfg(feature = "python-ast")]
 pub mod ast_python;

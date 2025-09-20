@@ -1295,6 +1295,12 @@ pub struct RuchyAstAnalyzer {
 }
 
 #[cfg(feature = "ruchy-ast")]
+impl Default for RuchyAstAnalyzer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RuchyAstAnalyzer {
     pub fn new() -> Self {
         Self {
@@ -1343,13 +1349,10 @@ impl RuchyAstAnalyzer {
         // Placeholder for future Ruchy AST analysis
         // use ruchy::{ExprKind, BinaryOp};
 
-        match &expr.kind {
-            // For now, use a simplified approach until we understand the exact Ruchy AST structure
-            _ => {
-                // Placeholder: For now, we'll implement basic heuristics
-                // In future iterations, we'll properly match on specific ExprKind variants
-                // This follows TDD - make the test pass first, then refine
-            }
+        {
+            // Placeholder: For now, we'll implement basic heuristics
+            // In future iterations, we'll properly match on specific ExprKind variants
+            // This follows TDD - make the test pass first, then refine
         }
 
         Ok(())

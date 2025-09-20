@@ -92,7 +92,7 @@ impl Visit for EnhancedTypeScriptVisitor {
     }
 
     fn visit_fn_decl(&mut self, func_decl: &FnDecl) {
-        let name = self.get_qualified_name(&func_decl.ident.sym.to_string());
+        let name = self.get_qualified_name(func_decl.ident.sym.as_ref());
         let is_async = func_decl.function.is_async;
         let line = self.get_line(func_decl.span());
 
@@ -172,7 +172,7 @@ impl Visit for EnhancedTypeScriptVisitor {
     }
 
     fn visit_ts_interface_decl(&mut self, interface: &TsInterfaceDecl) {
-        let name = self.get_qualified_name(&interface.id.sym.to_string());
+        let name = self.get_qualified_name(interface.id.sym.as_ref());
         let line = self.get_line(interface.span());
         let _members_count = interface.body.body.len();
 
@@ -186,7 +186,7 @@ impl Visit for EnhancedTypeScriptVisitor {
     }
 
     fn visit_ts_enum_decl(&mut self, enum_decl: &TsEnumDecl) {
-        let name = self.get_qualified_name(&enum_decl.id.sym.to_string());
+        let name = self.get_qualified_name(enum_decl.id.sym.as_ref());
         let line = self.get_line(enum_decl.span());
         let variants_count = enum_decl.members.len();
 
@@ -248,7 +248,7 @@ impl Visit for EnhancedTypeScriptVisitor {
                 match init.as_ref() {
                     Expr::Fn(fn_expr) => {
                         if let Pat::Ident(ident) = &declarator.name {
-                            let name = self.get_qualified_name(&ident.id.sym.to_string());
+                            let name = self.get_qualified_name(ident.id.sym.as_ref());
                             let is_async = fn_expr.function.is_async;
                             let line = self.get_line(var_decl.span());
 
@@ -262,7 +262,7 @@ impl Visit for EnhancedTypeScriptVisitor {
                     }
                     Expr::Arrow(arrow) => {
                         if let Pat::Ident(ident) = &declarator.name {
-                            let name = self.get_qualified_name(&ident.id.sym.to_string());
+                            let name = self.get_qualified_name(ident.id.sym.as_ref());
                             let is_async = arrow.is_async;
                             let line = self.get_line(var_decl.span());
 
