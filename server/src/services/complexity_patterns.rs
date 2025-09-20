@@ -48,6 +48,7 @@ pub enum PatternType {
 
 impl ComplexityPatternMatcher {
     /// Create a new pattern matcher with built-in patterns
+    #[must_use] 
     pub fn new() -> Self {
         let mut patterns = HashMap::new();
 
@@ -249,6 +250,7 @@ impl ComplexityPatternMatcher {
 
     /// Analyze recursive patterns
     #[inline]
+    #[must_use] 
     pub fn analyze_recursion(&self, ast: &UnifiedAstNode) -> Option<RecurrenceRelation> {
         if !self.is_recursive_function(ast) {
             return None;
@@ -293,6 +295,7 @@ impl ComplexityPatternMatcher {
 
     #[inline]
     /// Analyze loop complexity
+    #[must_use] 
     pub fn analyze_loop_complexity(&self, ast: &UnifiedAstNode) -> ComplexityBound {
         let loop_depth = self.count_loop_depth(ast);
 
@@ -312,6 +315,7 @@ impl ComplexityPatternMatcher {
     }
 
     /// Get all registered patterns
+    #[must_use] 
     pub fn patterns(&self) -> &HashMap<String, ComplexityPattern> {
         &self.patterns
     }
@@ -334,6 +338,7 @@ pub struct ComplexityAnalysisResult {
 }
 
 impl ComplexityAnalysisResult {
+    #[must_use] 
     pub fn new(time: ComplexityBound, space: ComplexityBound) -> Self {
         Self {
             time_complexity: time,
@@ -344,11 +349,13 @@ impl ComplexityAnalysisResult {
         }
     }
 
+    #[must_use] 
     pub fn with_pattern(mut self, pattern_name: String) -> Self {
         self.matched_patterns.push(pattern_name);
         self
     }
 
+    #[must_use] 
     pub fn with_note(mut self, note: String) -> Self {
         self.notes.push(note);
         self

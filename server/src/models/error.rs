@@ -57,6 +57,7 @@ pub enum AnalysisError {
 }
 
 impl TemplateError {
+    #[must_use] 
     pub fn to_mcp_code(&self) -> i32 {
         match self {
             TemplateError::TemplateNotFound { .. } => -32001,
@@ -209,6 +210,7 @@ pub enum PmatError {
 
 impl PmatError {
     /// Convert to MCP JSON-RPC error code using categorized mapping
+    #[must_use] 
     pub fn to_mcp_code(&self) -> i32 {
         // Delegate to specialized handlers for better maintainability
         match self {
@@ -222,7 +224,7 @@ impl PmatError {
 
     /// Map error to code based on error category (reduces CC complexity)
     fn get_error_code_by_category(&self) -> i32 {
-        use PmatError::*;
+        use PmatError::{FileNotFound, DirectoryNotFound, PermissionDenied, Io, ParseError, SyntaxError, AnalysisError, AstError, SimdError, VectorizedError, AlignmentError, ModelError, FeatureExtractionError, TrainingDataError, ConfigError, ValidationError, FormatError, RenderError, NetworkError, ProtocolError, SerializationError, CacheError, DatabaseError, StorageFullError, ResourceExhausted, TimeoutError, AllocationError, GitError, RepositoryError, QualityGateError, VerificationError, ProofError, Analysis, Json, Other};
 
         match self {
             // File and I/O errors (-32001 to -32010)
@@ -281,7 +283,7 @@ impl PmatError {
 
     /// File and I/O error codes
     fn get_io_error_code(&self) -> i32 {
-        use PmatError::*;
+        use PmatError::{FileNotFound, DirectoryNotFound, PermissionDenied, Io};
         match self {
             FileNotFound { .. } => -32001,
             DirectoryNotFound { .. } => -32002,
@@ -293,7 +295,7 @@ impl PmatError {
 
     /// Parsing and analysis error codes
     fn get_parsing_error_code(&self) -> i32 {
-        use PmatError::*;
+        use PmatError::{ParseError, SyntaxError, AnalysisError, AstError};
         match self {
             ParseError { .. } => -32004,
             SyntaxError { .. } => -32005,
@@ -305,7 +307,7 @@ impl PmatError {
 
     /// SIMD and vectorized operation error codes
     fn get_simd_error_code(&self) -> i32 {
-        use PmatError::*;
+        use PmatError::{SimdError, VectorizedError, AlignmentError};
         match self {
             SimdError { .. } => -32008,
             VectorizedError { .. } => -32009,
@@ -316,7 +318,7 @@ impl PmatError {
 
     /// Machine learning error codes
     fn get_ml_error_code(&self) -> i32 {
-        use PmatError::*;
+        use PmatError::{ModelError, FeatureExtractionError, TrainingDataError};
         match self {
             ModelError { .. } => -32011,
             FeatureExtractionError { .. } => -32012,
@@ -327,7 +329,7 @@ impl PmatError {
 
     /// Configuration and validation error codes
     fn get_config_error_code(&self) -> i32 {
-        use PmatError::*;
+        use PmatError::{ConfigError, ValidationError, FormatError};
         match self {
             ConfigError { .. } => -32014,
             ValidationError { .. } => -32015,
@@ -338,7 +340,7 @@ impl PmatError {
 
     /// Network and protocol error codes  
     fn get_network_error_code(&self) -> i32 {
-        use PmatError::*;
+        use PmatError::{RenderError, NetworkError, ProtocolError, SerializationError};
         match self {
             RenderError { .. } => -32018,
             NetworkError { .. } => -32019,
@@ -350,7 +352,7 @@ impl PmatError {
 
     /// Storage and cache error codes
     fn get_storage_error_code(&self) -> i32 {
-        use PmatError::*;
+        use PmatError::{CacheError, DatabaseError, StorageFullError, ResourceExhausted, TimeoutError, AllocationError};
         match self {
             CacheError { .. } => -32022,
             DatabaseError { .. } => -32023,
@@ -364,7 +366,7 @@ impl PmatError {
 
     /// Git/VCS and quality gate error codes
     fn get_vcs_error_code(&self) -> i32 {
-        use PmatError::*;
+        use PmatError::{GitError, RepositoryError, QualityGateError, VerificationError, ProofError};
         match self {
             GitError { .. } => -32028,
             RepositoryError { .. } => -32029,
@@ -376,6 +378,7 @@ impl PmatError {
     }
 
     /// Check if this is a recoverable error
+    #[must_use] 
     pub fn is_recoverable(&self) -> bool {
         matches!(
             self,
@@ -387,6 +390,7 @@ impl PmatError {
     }
 
     /// Check if this error should trigger a retry
+    #[must_use] 
     pub fn should_retry(&self) -> bool {
         matches!(
             self,
@@ -397,6 +401,7 @@ impl PmatError {
     }
 
     /// Get error severity level
+    #[must_use] 
     pub fn severity(&self) -> ErrorSeverity {
         match self {
             PmatError::FileNotFound { .. }

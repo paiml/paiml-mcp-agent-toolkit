@@ -13,12 +13,12 @@
 //!
 //! # Pattern Types Analyzed
 //!
-//! 1. **ErrorHandling**: try/catch blocks, Result handling → Extract error handler functions
-//! 2. **DataValidation**: Input validation patterns → Create validation traits/modules  
-//! 3. **ResourceManagement**: RAII patterns, lifecycle management → Implement guards
-//! 4. **ControlFlow**: Complex if/else chains → Strategy patterns/polymorphism
-//! 5. **DataTransformation**: map/filter/reduce chains → Data pipelines
-//! 6. **ApiCall**: HTTP/RPC call patterns → API client abstractions
+//! 1. **`ErrorHandling`**: try/catch blocks, Result handling → Extract error handler functions
+//! 2. **`DataValidation`**: Input validation patterns → Create validation traits/modules  
+//! 3. **`ResourceManagement`**: RAII patterns, lifecycle management → Implement guards
+//! 4. **`ControlFlow`**: Complex if/else chains → Strategy patterns/polymorphism
+//! 5. **`DataTransformation`**: map/filter/reduce chains → Data pipelines
+//! 6. **`ApiCall`**: HTTP/RPC call patterns → API client abstractions
 //!
 //! # Example Usage
 //!
@@ -190,6 +190,7 @@ impl EntropyReport {
     /// // With no actionable violations, LOC reduction should be 0
     /// assert_eq!(report.total_loc_reduction(), 0);
     /// ```
+    #[must_use] 
     pub fn total_loc_reduction(&self) -> usize {
         self.actionable_violations
             .iter()
@@ -236,6 +237,7 @@ impl EntropyReport {
     /// // With no violations, reduction percentage should be 0
     /// assert_eq!(report.reduction_percentage(), 0.0);
     /// ```
+    #[must_use] 
     pub fn reduction_percentage(&self) -> f64 {
         if self.entropy_metrics.total_loc > 0 {
             (self.total_loc_reduction() as f64 / self.entropy_metrics.total_loc as f64) * 100.0
@@ -245,6 +247,7 @@ impl EntropyReport {
     }
 
     /// Format as human-readable report
+    #[must_use] 
     pub fn format_report(&self) -> String {
         let mut report = String::new();
 
@@ -313,6 +316,7 @@ pub struct EntropyCalculator {
 }
 
 impl EntropyCalculator {
+    #[must_use] 
     pub fn new(config: EntropyConfig) -> Self {
         Self { config }
     }
@@ -399,7 +403,7 @@ impl EntropyCalculator {
             let mut entropy = 0.0;
 
             for count in pattern_counts.values() {
-                let p = *count as f64 / total;
+                let p = f64::from(*count) / total;
                 if p > 0.0 {
                     entropy -= p * p.log2();
                 }
@@ -452,7 +456,7 @@ impl EntropyCalculator {
             let mut entropy = 0.0;
 
             for count in pattern_counts.values() {
-                let p = *count as f64 / total;
+                let p = f64::from(*count) / total;
                 if p > 0.0 {
                     entropy -= p * p.log2();
                 }

@@ -342,17 +342,20 @@ impl Language {
     }
 
     /// Get file extensions associated with this language (Toyota Way: ≤3 complexity)
+    #[must_use] 
     pub fn extensions(&self) -> &'static [&'static str] {
         LANGUAGE_INFO[(*self).to_index()].extensions
     }
 
     /// Get human-readable name for this language (Toyota Way: ≤3 complexity)  
+    #[must_use] 
     pub fn name(&self) -> &'static str {
         LANGUAGE_INFO[(*self).to_index()].name
     }
 
     /// Original extensions method - REPLACED with data-driven approach
     #[allow(dead_code)]
+    #[must_use] 
     pub fn extensions_old(&self) -> &'static [&'static str] {
         match self {
             // Systems Programming
@@ -437,6 +440,7 @@ impl Language {
     }
 
     /// Detect language from file extension
+    #[must_use] 
     pub fn from_extension(ext: &str) -> Self {
         let ext = ext.to_lowercase();
 
@@ -507,6 +511,7 @@ impl Language {
     }
 
     /// Detect language from file path
+    #[must_use] 
     pub fn from_path(path: &Path) -> Self {
         // Handle special cases by filename
         if let Some(filename) = path.file_name().and_then(|n| n.to_str()) {
@@ -534,6 +539,7 @@ impl Language {
     }
 
     /// Check if language has full AST parsing support
+    #[must_use] 
     pub fn has_ast_support(&self) -> bool {
         match self {
             // Languages with full AST support (existing implementations)
@@ -569,6 +575,7 @@ impl Language {
     }
 
     /// Check if language supports complexity analysis
+    #[must_use] 
     pub fn supports_complexity(&self) -> bool {
         match self {
             // Programming languages that have control flow
@@ -630,6 +637,7 @@ impl Default for LanguageRegistry {
 
 impl LanguageRegistry {
     /// Create a new language registry with all supported languages
+    #[must_use] 
     pub fn new() -> Self {
         let supported_languages = vec![
             // Systems Programming (5)
@@ -706,21 +714,25 @@ impl LanguageRegistry {
     }
 
     /// Get all supported languages
+    #[must_use] 
     pub fn supported_languages(&self) -> &[Language] {
         &self.supported_languages
     }
 
     /// Get language count
+    #[must_use] 
     pub fn language_count(&self) -> usize {
         self.supported_languages.len()
     }
 
     /// Detect language from file path
+    #[must_use] 
     pub fn detect_language(&self, path: &Path) -> Language {
         Language::from_path(path)
     }
 
     /// Get languages that support AST analysis
+    #[must_use] 
     pub fn ast_supported_languages(&self) -> Vec<Language> {
         self.supported_languages
             .iter()
@@ -730,6 +742,7 @@ impl LanguageRegistry {
     }
 
     /// Get languages that support complexity analysis
+    #[must_use] 
     pub fn complexity_supported_languages(&self) -> Vec<Language> {
         self.supported_languages
             .iter()

@@ -14,7 +14,7 @@
 //!
 //! # Supported Files
 //!
-//! - **Makefiles**: Makefile, makefile, GNUmakefile
+//! - **Makefiles**: Makefile, makefile, `GNUmakefile`
 //! - **README**: README.md, README.txt, README.rst, README, readme.md
 //! - **Extensible**: Easy to add new file type patterns
 //!
@@ -61,6 +61,7 @@ pub struct ProjectMetaDetector {
 }
 
 impl ProjectMetaDetector {
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             patterns: vec![
@@ -91,7 +92,7 @@ impl ProjectMetaDetector {
         for entry in WalkDir::new(project_root)
             .max_depth(2)
             .into_iter()
-            .filter_map(|e| e.ok())
+            .filter_map(std::result::Result::ok)
         {
             if !entry.file_type().is_file() {
                 continue;

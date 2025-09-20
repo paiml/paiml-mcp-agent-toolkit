@@ -1,6 +1,6 @@
 //! Operation handlers for the unified protocol
 
-use super::*;
+use super::{Operation, Value, UnifiedResponse, ResponseMetadata, Uuid, ComplexityParams, ErrorInfo, SatdParams, DeadCodeParams, ContextParams, QualityGateParams, QualityProxyParams, RefactorStartParams, RefactorNextParams, RefactorStopParams, ProjectParams, AgentParams, PdmtParams};
 
 /// Executes an operation and returns a unified response
 pub async fn execute_operation(operation: Operation, _params: Value) -> UnifiedResponse {
@@ -237,8 +237,7 @@ fn generate_todos_from_requirement(requirement: &str, seed: u64, granularity: &s
             todos.retain(|todo| {
                 todo.get("priority")
                     .and_then(|p| p.as_str())
-                    .map(|p| p == "high")
-                    .unwrap_or(false)
+                    .is_some_and(|p| p == "high")
             });
         }
         _ => {} // medium granularity - keep as is

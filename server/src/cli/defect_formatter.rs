@@ -229,6 +229,7 @@ pub struct DefectFormatterFactory;
 
 impl DefectFormatterFactory {
     /// Create a formatter for the given output format
+    #[must_use] 
     pub fn create(format: &str) -> Box<dyn DefectReportFormatter> {
         match format {
             "sarif" => Box::new(SarifFormatter),

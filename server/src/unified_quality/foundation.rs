@@ -145,11 +145,13 @@ impl QualityMonitor {
     }
 
     /// Get current metrics for a file
+    #[must_use] 
     pub fn get_metrics(&self, path: &Path) -> Option<Metrics> {
         self.metrics.get(path).map(|entry| entry.clone())
     }
 
     /// Get all metrics
+    #[must_use] 
     pub fn get_all_metrics(&self) -> HashMap<PathBuf, Metrics> {
         self.metrics
             .iter()
@@ -158,6 +160,7 @@ impl QualityMonitor {
     }
 
     /// Subscribe to quality events
+    #[must_use] 
     pub fn subscribe(&self) -> crossbeam_channel::Receiver<QualityEvent> {
         let (_tx, rx) = crossbeam_channel::bounded(100);
         rx
@@ -246,7 +249,7 @@ impl QualityMonitor {
         for entry in WalkDir::new(path)
             .follow_links(true)
             .into_iter()
-            .filter_map(|e| e.ok())
+            .filter_map(std::result::Result::ok)
         {
             let path = entry.path();
             if path.is_file() && Self::should_analyze(path, &self.config.watch_patterns) {

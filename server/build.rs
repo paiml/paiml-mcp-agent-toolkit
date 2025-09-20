@@ -246,11 +246,11 @@ fn compress_templates() {
 
 /// Validate templates directory exists (cognitive complexity ≤2)
 fn validate_templates_directory(templates_dir: &Path) -> bool {
-    if !templates_dir.exists() {
+    if templates_dir.exists() {
+        true
+    } else {
         println!("cargo:warning=Templates directory not found, skipping compression");
         false
-    } else {
-        true
     }
 }
 
@@ -560,7 +560,7 @@ fn compile_capnp_schema() {
                 .output_path(&out_dir)
                 .run()
             {
-                Ok(_) => {
+                Ok(()) => {
                     println!("cargo:warning=Successfully compiled Cap'n Proto schema");
                 }
                 Err(e) => {

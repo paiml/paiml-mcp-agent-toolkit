@@ -1,8 +1,8 @@
-//! High-performance duplicate code detection using LSH and MinHash
+//! High-performance duplicate code detection using LSH and `MinHash`
 //!
 //! This module implements the duplicate code detection system as specified
 //! in the dupe-code-redux-spec.md using locality-sensitive hashing (LSH),
-//! MinHash signatures, and cross-language normalization.
+//! `MinHash` signatures, and cross-language normalization.
 
 use anyhow::Result;
 use blake3::Hasher;
@@ -56,6 +56,7 @@ pub struct Token {
 }
 
 impl Token {
+    #[must_use] 
     pub fn new(kind: TokenKind) -> Self {
         let text = match &kind {
             TokenKind::Identifier(s) => s.clone(),
@@ -69,18 +70,20 @@ impl Token {
         Self { kind, text }
     }
 
+    #[must_use] 
     pub fn hash(&self) -> u64 {
         xxh64(self.text.as_bytes(), 0)
     }
 }
 
-/// MinHash signature for similarity estimation
+/// `MinHash` signature for similarity estimation
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MinHashSignature {
     pub values: Vec<u64>,
 }
 
 impl MinHashSignature {
+    #[must_use] 
     pub fn jaccard_similarity(&self, other: &MinHashSignature) -> f64 {
         let matches = self
             .values
@@ -204,6 +207,7 @@ pub struct UniversalFeatureExtractor {
 }
 
 impl UniversalFeatureExtractor {
+    #[must_use] 
     pub fn new(config: DuplicateDetectionConfig) -> Self {
         Self {
             config,
@@ -739,20 +743,22 @@ impl UniversalFeatureExtractor {
     }
 }
 
-/// MinHash generator for similarity estimation
+/// `MinHash` generator for similarity estimation
 pub struct MinHashGenerator {
     num_hashes: usize,
     seeds: Vec<u64>,
 }
 
 impl MinHashGenerator {
+    #[must_use] 
     pub fn new(num_hashes: usize) -> Self {
         let seeds = (0..num_hashes).map(|i| i as u64).collect();
 
         Self { num_hashes, seeds }
     }
 
-    /// Compute MinHash signature from shingles
+    /// Compute `MinHash` signature from shingles
+    #[must_use] 
     pub fn compute_signature(&self, shingles: &[u64]) -> MinHashSignature {
         let mut signature = vec![u64::MAX; self.num_hashes];
 
@@ -767,6 +773,7 @@ impl MinHashGenerator {
     }
 
     /// Generate k-shingles from tokens
+    #[must_use] 
     pub fn generate_shingles(&self, tokens: &[Token], k: usize) -> Vec<u64> {
         if tokens.len() < k {
             return vec![];
@@ -800,6 +807,7 @@ pub struct DuplicateDetectionEngine {
 }
 
 impl DuplicateDetectionEngine {
+    #[must_use] 
     pub fn new(config: DuplicateDetectionConfig) -> Self {
         let minhash_generator = MinHashGenerator::new(config.num_hash_functions);
         let feature_extractor = UniversalFeatureExtractor::new(config.clone());
@@ -946,18 +954,18 @@ impl DuplicateDetectionEngine {
     /// Check if line starts a function
     fn is_function_start(&self, line: &str, lang: Language) -> bool {
         match lang {
-            Language::Rust => line.contains("fn ") && line.contains("("),
+            Language::Rust => line.contains("fn ") && line.contains('('),
             Language::TypeScript | Language::JavaScript => {
                 line.contains("function ")
                     || line.contains("=> {")
-                    || (line.contains("(") && line.contains(") {"))
+                    || (line.contains('(') && line.contains(") {"))
             }
-            Language::Python => line.starts_with("def ") && line.contains("("),
+            Language::Python => line.starts_with("def ") && line.contains('('),
             Language::C | Language::Cpp => {
                 // C/C++ function detection (simplified)
-                line.contains("(") && (line.contains(") {") || line.ends_with("{"))
+                line.contains('(') && (line.contains(") {") || line.ends_with('{'))
             }
-            Language::Kotlin => line.contains("fun ") && line.contains("("),
+            Language::Kotlin => line.contains("fun ") && line.contains('('),
         }
     }
 
@@ -974,8 +982,8 @@ impl DuplicateDetectionEngine {
                 // Python function ends when we reach another def or class at the same level
                 line.starts_with("def ")
                     || line.starts_with("class ")
-                    || (!line.starts_with(" ")
-                        && !line.starts_with("\t")
+                    || (!line.starts_with(' ')
+                        && !line.starts_with('\t')
                         && !line.trim().is_empty())
             }
         }
@@ -1059,7 +1067,7 @@ impl DuplicateDetectionEngine {
         let mut representative: HashMap<FragmentId, FragmentId> = HashMap::new();
 
         // Initialize each fragment as its own group
-        for fragment in self.fragments.iter() {
+        for fragment in &self.fragments {
             let id = *fragment.key();
             representative.insert(id, id);
             groups.insert(id, vec![id]);

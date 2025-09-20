@@ -21,6 +21,7 @@ pub struct InteractiveScaffolder {
 
 impl InteractiveScaffolder {
     /// Create a new interactive scaffolder.
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             term: Term::stdout(),
@@ -83,7 +84,7 @@ impl InteractiveScaffolder {
                         Err("Name cannot be empty")
                     } else if !input.chars().all(|c| c.is_alphanumeric() || c == '_') {
                         Err("Name must be alphanumeric with underscores only")
-                    } else if input.chars().next().is_some_and(|c| c.is_numeric()) {
+                    } else if input.chars().next().is_some_and(char::is_numeric) {
                         Err("Name cannot start with a number")
                     } else {
                         Ok(())

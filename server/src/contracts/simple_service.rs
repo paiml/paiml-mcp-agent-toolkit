@@ -1,7 +1,7 @@
 //! Simplified service layer that compiles and demonstrates uniform contracts
 //! This is a minimal implementation to show the contract system working
 
-use super::*;
+use super::{AnalyzeComplexityContract, ContractValidation, AnalyzeSatdContract, SatdSeverity, AnalyzeDeadCodeContract, AnalyzeTdgContract, AnalyzeLintHotspotContract, AnalyzeEntropyContract, QualityGateContract, QualityProfile, RefactorAutoContract, BaseAnalysisContract, OutputFormat};
 use anyhow::Result;
 use serde_json::Value;
 
@@ -272,8 +272,7 @@ impl SimpleContractService {
 
         if contract.fail_on_violation && !passed {
             return Err(anyhow::anyhow!(
-                "Quality gate failed with {} violations",
-                violation_count
+                "Quality gate failed with {violation_count} violations"
             ));
         }
 

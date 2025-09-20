@@ -2,7 +2,7 @@ use crate::services::cache::{
     config::CacheConfig,
     diagnostics::{CacheDiagnostics, CacheEffectiveness, CacheStatsSnapshot},
     persistent::PersistentCache,
-    strategies::*,
+    strategies::AstCacheStrategy,
 };
 use crate::services::context::FileContext;
 use anyhow::Result;
@@ -90,6 +90,7 @@ impl PersistentCacheManager {
     }
 
     /// Get cache diagnostics
+    #[must_use] 
     pub fn get_diagnostics(&self) -> CacheDiagnostics {
         let uptime = self.created.elapsed();
         let ast_size = self.ast_cache.stats.memory_usage();
@@ -125,7 +126,7 @@ impl PersistentCacheManager {
             0.0
         };
 
-        let memory_efficiency = 1.0 - memory_pressure as f64;
+        let memory_efficiency = 1.0 - f64::from(memory_pressure);
 
         // Estimate time saved (simplified calculation)
         let time_saved_ms = total_hits * 100; // Assume 100ms saved per cache hit

@@ -5,7 +5,8 @@
 
 use anyhow::{anyhow, Result};
 
-/// Convert optional string patterns to vector format for FileFilter
+/// Convert optional string patterns to vector format for `FileFilter`
+#[must_use] 
 pub fn normalize_patterns(
     include: &Option<String>,
     exclude: &Option<String>,
@@ -24,6 +25,7 @@ pub fn normalize_patterns(
 }
 
 /// Convert vector patterns to handle comma-separated values
+#[must_use] 
 pub fn expand_patterns(patterns: &[String]) -> Vec<String> {
     patterns
         .iter()
@@ -43,13 +45,14 @@ pub fn validate_patterns(patterns: &[String]) -> Result<()> {
     use globset::Glob;
 
     for pattern in patterns {
-        Glob::new(pattern).map_err(|e| anyhow!("Invalid glob pattern '{}': {}", pattern, e))?;
+        Glob::new(pattern).map_err(|e| anyhow!("Invalid glob pattern '{pattern}': {e}"))?;
     }
 
     Ok(())
 }
 
 /// Get default exclude patterns for common file types
+#[must_use] 
 pub fn default_exclude_patterns() -> Vec<String> {
     vec![
         "target/**".to_string(),
@@ -62,6 +65,7 @@ pub fn default_exclude_patterns() -> Vec<String> {
 }
 
 /// Get common include patterns for code files
+#[must_use] 
 pub fn common_code_patterns() -> Vec<String> {
     vec![
         "**/*.rs".to_string(),

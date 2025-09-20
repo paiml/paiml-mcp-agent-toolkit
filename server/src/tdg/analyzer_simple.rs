@@ -191,7 +191,7 @@ impl TdgAnalyzer {
                     Language::Rust => trimmed.starts_with("///") || trimmed.starts_with("//!"),
                     Language::Python => trimmed.starts_with("\"\"\"") || trimmed.starts_with("'''"),
                     Language::JavaScript | Language::TypeScript => {
-                        trimmed.starts_with("/**") || trimmed.starts_with("*")
+                        trimmed.starts_with("/**") || trimmed.starts_with('*')
                     }
                     _ => trimmed.starts_with("//") || trimmed.starts_with("/*"),
                 }
@@ -286,7 +286,7 @@ impl TdgAnalyzer {
     fn estimate_duplication_ratio(&self, source: &str) -> f32 {
         let lines: Vec<&str> = source
             .lines()
-            .map(|l| l.trim())
+            .map(str::trim)
             .filter(|l| !l.is_empty() && !l.starts_with("//") && !l.starts_with("/*"))
             .collect();
 

@@ -185,6 +185,7 @@ pub struct PdmtTool {
 }
 
 impl PdmtTool {
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             service: PdmtService::new(),
@@ -284,15 +285,15 @@ impl ToolHandler for PdmtTool {
                 estimated_total_hours,
             };
 
-        if !quality_validation.overall_passed {
-            error!(
-                "Quality validation failed with {} recommendations",
-                quality_validation.recommendations.len()
-            );
-        } else {
+        if quality_validation.overall_passed {
             info!(
                 "Successfully generated {} todos totaling {} hours",
                 total_todos, estimated_total_hours
+            );
+        } else {
+            error!(
+                "Quality validation failed with {} recommendations",
+                quality_validation.recommendations.len()
             );
         }
 

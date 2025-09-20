@@ -134,7 +134,7 @@ use crate::services::renderer::TemplateRenderer;
 /// Shared cache for template metadata with LRU eviction policy.
 ///
 /// This cache stores parsed template metadata to avoid repeated parsing operations.
-/// Uses Arc<RwLock<>> for thread-safe access across async contexts.
+/// Uses Arc<`RwLock`<>> for thread-safe access across async contexts.
 ///
 /// # Examples
 ///

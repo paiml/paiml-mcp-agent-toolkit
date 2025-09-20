@@ -311,7 +311,7 @@ async fn discover_source_files(
     for entry in WalkDir::new(project_path)
         .follow_links(false)
         .into_iter()
-        .filter_map(|e| e.ok())
+        .filter_map(std::result::Result::ok)
         .filter(|e| e.file_type().is_file())
     {
         let path = entry.path();
@@ -649,7 +649,7 @@ async fn analyze_project_complexity(source_files: &[PathBuf]) -> Result<Complexi
     for file in source_files {
         let file_metrics = analyze_file_complexity(file).await?;
         total_functions += file_metrics.functions_with_high_complexity;
-        total_complexity_sum += file_metrics.max_complexity as f64;
+        total_complexity_sum += f64::from(file_metrics.max_complexity);
 
         // Create complexity violations for high-complexity functions
         if file_metrics.max_complexity > 10 {
@@ -1180,7 +1180,7 @@ async fn validate_project_compilation(project_path: &Path) -> Result<Compilation
     Ok(CompilationResult {
         success,
         error_message,
-        warnings_count: if success { 0 } else { 1 },
+        warnings_count: u32::from(!success),
     })
 }
 
@@ -1235,7 +1235,7 @@ async fn calculate_quality_improvement(
         violations_fixed,
         satd_resolved,
         coverage_increased,
-        overall_score: (complexity_reduced + violations_fixed + satd_resolved) as f64
+        overall_score: f64::from(complexity_reduced + violations_fixed + satd_resolved)
             + coverage_increased,
     })
 }
@@ -1925,7 +1925,7 @@ pub enum FixStrategy {
     ApplySuggestion(String),
 }
 
-/// COMPLETELY REFACTORED handle_refactor_auto function
+/// COMPLETELY REFACTORED `handle_refactor_auto` function
 ///
 /// This function has been refactored from 801 lines with complexity 136
 /// down to <50 lines with complexity <10 following Toyota Way principles.
@@ -2000,7 +2000,7 @@ async fn initialize_refactoring_context(config: &RefactorAutoConfig) -> Result<R
 /// Check if we should exit early due to special modes
 async fn should_exit_early(context: &RefactorContext) -> Result<bool> {
     #[allow(clippy::redundant_pattern_matching)]
-    if let Some(_) = handle_special_modes(context).await? {
+    if let Some(()) = handle_special_modes(context).await? {
         return Ok(true);
     }
     Ok(false)

@@ -58,7 +58,7 @@ impl GitAnalysisService {
             )));
         }
 
-        let since_date = Utc::now() - Duration::days(period_days as i64);
+        let since_date = Utc::now() - Duration::days(i64::from(period_days));
         let since_str = since_date.format("%Y-%m-%d").to_string();
 
         info!("Analyzing code churn for last {} days", period_days);

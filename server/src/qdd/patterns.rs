@@ -72,11 +72,11 @@ impl DesignPattern for SingleResponsibilityPattern {
         violations
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "Single Responsibility Principle"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "A function should have only one reason to change"
     }
 }
@@ -113,11 +113,11 @@ impl DesignPattern for DryPattern {
         violations
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "Don't Repeat Yourself"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Every piece of knowledge must have a single, unambiguous representation"
     }
 }
@@ -170,11 +170,11 @@ impl DesignPattern for KissPattern {
         violations
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "Keep It Simple Stupid"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Simple solutions are better than complex ones"
     }
 }
@@ -221,11 +221,11 @@ impl DesignPattern for YagniPattern {
         violations
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "You Aren't Gonna Need It"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Don't add functionality until it's actually needed"
     }
 }
@@ -271,11 +271,11 @@ impl DesignPattern for DependencyInjectionPattern {
         violations
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "Dependency Injection"
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Inject dependencies rather than hard-coding them"
     }
 }

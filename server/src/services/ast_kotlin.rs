@@ -31,10 +31,12 @@ impl Default for KotlinAstParser {
 }
 
 impl KotlinAstParser {
+    #[must_use] 
     pub fn new() -> Self {
         Self::with_limits(MAX_RECURSION_DEPTH, MAX_PARSING_TIME)
     }
 
+    #[must_use] 
     pub fn with_limits(max_depth: usize, timeout: Duration) -> Self {
         let mut parser = Parser::new();
         parser
@@ -82,7 +84,7 @@ impl KotlinAstParser {
 
         // Visit the root node to start parsing
         if let Err(e) = self.visit_node(&mut ctx, root) {
-            return Err(anyhow::anyhow!("Error during AST traversal: {}", e));
+            return Err(anyhow::anyhow!("Error during AST traversal: {e}"));
         }
 
         Ok(dag)

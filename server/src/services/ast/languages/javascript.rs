@@ -19,6 +19,7 @@ impl Default for JavaScriptStrategy {
 }
 
 impl JavaScriptStrategy {
+    #[must_use] 
     pub fn new() -> Self {
         Self
     }
@@ -32,7 +33,7 @@ impl AstStrategy for JavaScriptStrategy {
         // Convert TemplateError to anyhow::Error
         let context = crate::services::ast_typescript::analyze_javascript_file(file_path)
             .await
-            .map_err(|e| anyhow::anyhow!("JavaScript analysis failed: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("JavaScript analysis failed: {e}"))?;
         Ok(context)
     }
 

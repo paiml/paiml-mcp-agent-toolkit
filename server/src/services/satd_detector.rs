@@ -120,6 +120,7 @@ impl Severity {
     /// assert_eq!(Severity::High.escalate(), Severity::Critical);
     /// assert_eq!(Severity::Critical.escalate(), Severity::Critical); // Already at max
     /// ```
+    #[must_use] 
     pub fn escalate(self) -> Self {
         match self {
             Severity::Low => Severity::Medium,
@@ -141,6 +142,7 @@ impl Severity {
     /// assert_eq!(Severity::Medium.reduce(), Severity::Low);
     /// assert_eq!(Severity::Low.reduce(), Severity::Low); // Already at min
     /// ```
+    #[must_use] 
     pub fn reduce(self) -> Self {
         match self {
             Severity::Critical => Severity::High,
@@ -219,6 +221,7 @@ impl Default for DebtClassifier {
 }
 
 impl DebtClassifier {
+    #[must_use] 
     pub fn new() -> Self {
         // Default mode includes all patterns
         let patterns = vec![
@@ -299,6 +302,7 @@ impl DebtClassifier {
         }
     }
 
+    #[must_use] 
     pub fn new_strict() -> Self {
         // Strict mode only includes explicit SATD markers
         let patterns = vec![
@@ -366,13 +370,14 @@ impl DebtClassifier {
     /// let result = classifier.classify_comment("This is a regular comment");
     /// assert_eq!(result, None);
     /// ```
+    #[must_use] 
     pub fn classify_comment(&self, text: &str) -> Option<(DebtCategory, Severity)> {
         let matches = self.compiled_patterns.matches(text);
 
         matches.iter().next()?;
 
         // Find the first matching pattern
-        for match_idx in matches.iter() {
+        for match_idx in &matches {
             if let Some(pattern) = self.patterns.get(match_idx) {
                 return Some((pattern.category, pattern.severity));
             }
@@ -382,6 +387,7 @@ impl DebtClassifier {
     }
 
     /// Adjust severity based on context
+    #[must_use] 
     pub fn adjust_severity(&self, base_severity: Severity, context: &AstContext) -> Severity {
         match context.node_type {
             // Critical paths escalate severity
@@ -402,10 +408,12 @@ impl Default for SATDDetector {
 }
 
 impl SATDDetector {
+    #[must_use] 
     pub fn new() -> Self {
         Self::with_config(false)
     }
 
+    #[must_use] 
     pub fn new_strict() -> Self {
         Self::with_config(true)
     }
@@ -1105,9 +1113,9 @@ impl SATDDetector {
         trimmed.contains(r#""TODO"#)
             || trimmed.contains(r#""FIXME"#)
             || trimmed.contains(r#""HACK"#)
-            || trimmed.contains(r#"'TODO'"#)
-            || trimmed.contains(r#"'FIXME'"#)
-            || trimmed.contains(r#"'HACK'"#)
+            || trimmed.contains(r"'TODO'")
+            || trimmed.contains(r"'FIXME'")
+            || trimmed.contains(r"'HACK'")
     }
 
     fn is_raw_string_literal(&self, trimmed: &str) -> bool {
@@ -1137,7 +1145,7 @@ impl SATDDetector {
     }
 
     fn is_url_or_path(&self, trimmed: &str) -> bool {
-        (trimmed.contains("http") || trimmed.contains("/") || trimmed.contains("\\"))
+        (trimmed.contains("http") || trimmed.contains('/') || trimmed.contains('\\'))
             && (trimmed.contains("TODO") || trimmed.contains("FIXME"))
     }
 
@@ -1152,8 +1160,8 @@ impl SATDDetector {
                 || trimmed.contains("issues")
                 || trimmed.contains("concerns")
                 || trimmed.starts_with("//")
-                || trimmed.starts_with("*")
-                || trimmed.starts_with("/"))
+                || trimmed.starts_with('*')
+                || trimmed.starts_with('/'))
     }
 
     fn is_pattern_definition(&self, trimmed: &str) -> bool {
@@ -1161,14 +1169,14 @@ impl SATDDetector {
         trimmed.contains("let valid_patterns")
             || trimmed.contains("let patterns")
             || trimmed.contains("vec![\"")
-            || (trimmed.contains("\"TODO\"") && trimmed.contains("["))
+            || (trimmed.contains("\"TODO\"") && trimmed.contains('['))
             || (trimmed.contains("FIXME") && trimmed.contains("regex"))
     }
 
     fn is_enum_or_struct_field(&self, trimmed: &str) -> bool {
         // Enum variants or struct fields that mention SATD concepts
         (trimmed.contains("Security") || trimmed.contains("Design") || trimmed.contains("Defect"))
-            && (trimmed.contains(",") || trimmed.contains("=") || trimmed.contains("::"))
+            && (trimmed.contains(',') || trimmed.contains('=') || trimmed.contains("::"))
     }
 
     fn is_functional_description(&self, trimmed: &str) -> bool {
@@ -1221,12 +1229,12 @@ impl SATDDetector {
             || trimmed.contains("SATD")
             || trimmed.contains("Self-Admitted");
         let is_comment =
-            trimmed.starts_with("//") || trimmed.starts_with("*") || trimmed.starts_with("/");
+            trimmed.starts_with("//") || trimmed.starts_with('*') || trimmed.starts_with('/');
         mentions_td_concepts && is_comment
     }
 
     fn is_api_documentation(&self, trimmed: &str) -> bool {
-        let is_doc_marker = trimmed.starts_with("*")
+        let is_doc_marker = trimmed.starts_with('*')
             || trimmed.contains("@param")
             || trimmed.contains("@return")
             || trimmed.contains("Example:")
@@ -1340,6 +1348,7 @@ impl SATDDetector {
     }
 
     /// Generate project-wide SATD metrics
+    #[must_use] 
     pub fn generate_metrics(&self, debts: &[TechnicalDebt], total_loc: u64) -> SATDMetrics {
         let debt_density = if total_loc > 0 {
             (debts.len() as f64 / total_loc as f64) * 1000.0
@@ -1363,7 +1372,7 @@ impl SATDDetector {
         }
 
         // Calculate average severity for each category
-        for (category_name, metrics) in by_category.iter_mut() {
+        for (category_name, metrics) in &mut by_category {
             let category_debts: Vec<_> = debts
                 .iter()
                 .filter(|d| d.category.to_string() == *category_name)
@@ -1380,7 +1389,7 @@ impl SATDDetector {
                     })
                     .sum();
 
-                metrics.avg_severity = severity_sum as f64 / category_debts.len() as f64;
+                metrics.avg_severity = f64::from(severity_sum) / category_debts.len() as f64;
             }
         }
 
@@ -1419,7 +1428,7 @@ impl SATDDetector {
         }
 
         Ok(if valid_debt_count > 0 {
-            total_age_days / valid_debt_count as f64
+            total_age_days / f64::from(valid_debt_count)
         } else {
             0.0
         })
@@ -1443,7 +1452,7 @@ impl SATDDetector {
         file_path
             .strip_prefix(project_root)
             .ok()
-            .map(|p| p.to_path_buf())
+            .map(std::path::Path::to_path_buf)
     }
 
     async fn run_git_blame(

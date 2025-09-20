@@ -1,6 +1,6 @@
 //! Base service architecture per SPECIFICATION.md Section 2
 //!
-//! This module provides the foundational Service trait and ServiceRegistry
+//! This module provides the foundational Service trait and `ServiceRegistry`
 //! for unified service architecture across PMAT.
 
 use anyhow::Result;
@@ -52,6 +52,7 @@ impl ServiceMetrics {
         self.last_request_time = Some(Instant::now());
     }
 
+    #[must_use] 
     pub fn success_rate(&self) -> f64 {
         if self.request_count == 0 {
             return 0.0;
@@ -94,6 +95,7 @@ pub struct ServiceRegistry {
 }
 
 impl ServiceRegistry {
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             services: DashMap::new(),
@@ -112,6 +114,7 @@ impl ServiceRegistry {
     }
 
     /// Get a service from the registry
+    #[must_use] 
     pub fn get<S>(&self) -> Option<Arc<S>>
     where
         S: Service + 'static,
@@ -123,6 +126,7 @@ impl ServiceRegistry {
     }
 
     /// Get metrics for a service
+    #[must_use] 
     pub fn get_metrics<S>(&self) -> Option<ServiceMetrics>
     where
         S: Service + 'static,
@@ -143,6 +147,7 @@ impl ServiceRegistry {
     }
 
     /// List all registered service names
+    #[must_use] 
     pub fn list_services(&self) -> Vec<String> {
         self.services
             .iter()
@@ -182,13 +187,13 @@ where
 
     async fn process(&self, input: Self::Input) -> Result<Self::Output, Self::Error> {
         // Process through first service
-        let intermediate = self.first.process(input).await.map_err(|e| e.into())?;
+        let intermediate = self.first.process(input).await.map_err(std::convert::Into::into)?;
 
         // Adapt output to input for second service
         let adapted = (self.adapter)(intermediate);
 
         // Process through second service
-        let output = self.second.process(adapted).await.map_err(|e| e.into())?;
+        let output = self.second.process(adapted).await.map_err(std::convert::Into::into)?;
 
         Ok(output)
     }
@@ -197,7 +202,7 @@ where
         self.first.validate_input(input)
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "CompositeService"
     }
 }

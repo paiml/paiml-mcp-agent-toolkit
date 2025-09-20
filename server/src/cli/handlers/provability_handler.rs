@@ -65,7 +65,7 @@ pub async fn handle_analyze_provability(config: ProvabilityConfig) -> Result<()>
 async fn resolve_function_targets(
     config: &ProvabilityConfig,
 ) -> Result<Vec<crate::services::lightweight_provability_analyzer::FunctionId>> {
-    use crate::cli::provability_helpers::*;
+    use crate::cli::provability_helpers::{discover_project_functions, parse_function_spec};
 
     if config.functions.is_empty() {
         discover_project_functions(&config.project_path).await
@@ -104,7 +104,7 @@ fn format_provability_output(
     summaries: &[ProofSummary],
     config: &ProvabilityConfig,
 ) -> Result<String> {
-    use crate::cli::provability_helpers::*;
+    use crate::cli::provability_helpers::{format_provability_json, format_provability_summary, format_provability_detailed, format_provability_sarif};
 
     match config.format {
         ProvabilityOutputFormat::Json => {

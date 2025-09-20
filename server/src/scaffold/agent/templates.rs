@@ -214,22 +214,22 @@ async fn main() -> Result<()> {{
 }}
 "#,
         ctx.name,
-        if ctx.quality_level != QualityLevel::Standard {
-            "mod quality;"
-        } else {
+        if ctx.quality_level == QualityLevel::Standard {
             ""
+        } else {
+            "mod quality;"
         },
         ctx.name
     )
 }
 
 fn generate_mcp_mod() -> String {
-    r#"//! MCP server implementation.
+    r"//! MCP server implementation.
 
 pub mod server;
 pub mod tools;
 pub mod transport;
-"#
+"
     .to_string()
 }
 
@@ -307,7 +307,7 @@ pub fn register_tools(server: &Server, agent: AgentCore) -> Result<()> {
 }
 
 fn generate_mcp_transport() -> String {
-    r#"//! Transport layer for MCP server.
+    r"//! Transport layer for MCP server.
 
 use anyhow::Result;
 use pmcp::transport::{StdioTransport, Transport};
@@ -316,16 +316,16 @@ use pmcp::transport::{StdioTransport, Transport};
 pub async fn create_transport() -> Result<Box<dyn Transport>> {
     Ok(Box::new(StdioTransport::new()))
 }
-"#
+"
     .to_string()
 }
 
 fn generate_agent_mod() -> String {
-    r#"//! Agent implementation.
+    r"//! Agent implementation.
 
 pub mod core;
 pub mod handlers;
-"#
+"
     .to_string()
 }
 
@@ -390,16 +390,16 @@ pub async fn handle_request(request: Value) -> Result<Value> {
 }
 
 fn generate_quality_mod() -> String {
-    r#"//! Quality enforcement module.
+    r"//! Quality enforcement module.
 
 pub mod invariants;
 pub mod validators;
-"#
+"
     .to_string()
 }
 
 fn generate_invariants() -> String {
-    r#"//! Runtime invariants for quality enforcement.
+    r"//! Runtime invariants for quality enforcement.
 
 use anyhow::Result;
 
@@ -408,12 +408,12 @@ pub fn check_invariants() -> Result<()> {
     // Add invariant checks here
     Ok(())
 }
-"#
+"
     .to_string()
 }
 
 fn generate_validators() -> String {
-    r#"//! Input and output validators.
+    r"//! Input and output validators.
 
 use anyhow::Result;
 use serde_json::Value;
@@ -429,13 +429,13 @@ pub fn validate_output(output: &Value) -> Result<()> {
     // Add validation logic here
     Ok(())
 }
-"#
+"
     .to_string()
 }
 
 fn generate_integration_tests(ctx: &AgentContext) -> String {
     format!(
-        r#"//! Integration tests for {}.
+        r"//! Integration tests for {}.
 
 #[tokio::test]
 async fn test_agent_startup() {{
@@ -446,13 +446,13 @@ async fn test_agent_startup() {{
 async fn test_tool_invocation() {{
     // Test tool invocation
 }}
-"#,
+",
         ctx.name
     )
 }
 
 fn generate_deterministic_tests() -> String {
-    r#"//! Determinism verification tests.
+    r"//! Determinism verification tests.
 
 use proptest::prelude::*;
 
@@ -462,7 +462,7 @@ proptest! {
         // Verify deterministic behavior
     }
 }
-"#
+"
     .to_string()
 }
 
@@ -514,7 +514,7 @@ scan_comments = true
 
 fn generate_readme(ctx: &AgentContext) -> String {
     format!(
-        r#"# {}
+        r"# {}
 
 MCP Agent Server generated with PMAT.
 
@@ -535,7 +535,7 @@ cargo test --test integration
 ## Quality
 
 This agent follows {} quality standards.
-"#,
+",
         ctx.name,
         match ctx.quality_level {
             QualityLevel::Standard => "standard",
@@ -589,18 +589,18 @@ async fn main() -> Result<()> {{
 }
 
 fn generate_state_machine_mod() -> String {
-    r#"//! State machine implementation.
+    r"//! State machine implementation.
 
 pub mod state;
 pub mod transitions;
 pub mod invariants;
-"#
+"
     .to_string()
 }
 
 fn generate_state_definitions(ctx: &AgentContext) -> String {
     format!(
-        r#"//! State definitions for {}.
+        r"//! State definitions for {}.
 
 use serde::{{Deserialize, Serialize}};
 
@@ -619,13 +619,13 @@ pub enum Event {{
     Finish,
     Fail(String),
 }}
-"#,
+",
         ctx.name
     )
 }
 
 fn generate_transitions() -> String {
-    r#"//! State transition logic.
+    r"//! State transition logic.
 
 use anyhow::Result;
 use super::state::{State, Event};
@@ -639,7 +639,7 @@ pub fn transition(state: &State, event: &Event) -> Result<State> {
         _ => Ok(state.clone()),
     }
 }
-"#
+"
     .to_string()
 }
 
@@ -663,7 +663,7 @@ pub fn check_invariants(state: &State) -> Result<()> {
 }
 
 fn generate_state_tests() -> String {
-    r#"//! State transition tests.
+    r"//! State transition tests.
 
 #[test]
 fn test_valid_transitions() {
@@ -674,18 +674,18 @@ fn test_valid_transitions() {
 fn test_invalid_transitions() {
     // Test invalid state transitions
 }
-"#
+"
     .to_string()
 }
 
 fn generate_invariant_tests() -> String {
-    r#"//! Invariant tests.
+    r"//! Invariant tests.
 
 #[test]
 fn test_state_invariants() {
     // Test state invariants
 }
-"#
+"
     .to_string()
 }
 

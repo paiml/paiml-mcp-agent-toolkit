@@ -1,6 +1,6 @@
 //! High-level caching for parsed file results
 //!
-//! This module provides caching for FileContext and FileComplexityMetrics
+//! This module provides caching for `FileContext` and `FileComplexityMetrics`
 //! to avoid re-parsing the same files multiple times.
 
 use crate::services::complexity::FileComplexityMetrics;
@@ -60,6 +60,7 @@ pub struct ParsedFileCache {
 
 impl ParsedFileCache {
     /// Create a new parsed file cache
+    #[must_use] 
     pub fn new(max_entries: usize, ttl: Duration) -> Self {
         Self {
             cache: Arc::new(DashMap::new()),
@@ -68,7 +69,7 @@ impl ParsedFileCache {
         }
     }
 
-    /// Get or compute FileContext with memoization
+    /// Get or compute `FileContext` with memoization
     pub async fn get_or_compute_context<F, Fut>(
         &self,
         path: &Path,
@@ -107,7 +108,7 @@ impl ParsedFileCache {
         Ok(context)
     }
 
-    /// Get or compute FileComplexityMetrics with memoization
+    /// Get or compute `FileComplexityMetrics` with memoization
     pub async fn get_or_compute_complexity<F, Fut>(
         &self,
         path: &Path,
@@ -152,6 +153,7 @@ impl ParsedFileCache {
     }
 
     /// Get cache statistics
+    #[must_use] 
     pub fn stats(&self) -> CacheStats {
         let total_entries = self.cache.len();
         let (context_count, complexity_count) =
@@ -232,9 +234,9 @@ impl ParsedFileCache {
 pub struct CacheStats {
     /// Total number of entries in cache
     pub total_entries: usize,
-    /// Number of FileContext entries
+    /// Number of `FileContext` entries
     pub context_entries: usize,
-    /// Number of FileComplexityMetrics entries
+    /// Number of `FileComplexityMetrics` entries
     pub complexity_entries: usize,
     /// Maximum allowed entries
     pub max_entries: usize,

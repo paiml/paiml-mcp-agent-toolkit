@@ -118,6 +118,7 @@ impl Default for AgentQualityGate {
 
 impl AgentQualityGate {
     /// Create new quality gate
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             config: QualityConfig::default(),
@@ -125,6 +126,7 @@ impl AgentQualityGate {
     }
 
     /// Create with config
+    #[must_use] 
     pub fn with_config(config: QualityConfig) -> Self {
         Self { config }
     }

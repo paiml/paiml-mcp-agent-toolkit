@@ -48,6 +48,7 @@ pub enum AlertSeverity {
 }
 
 impl AlertSeverity {
+    #[must_use] 
     pub fn priority(&self) -> u8 {
         match self {
             AlertSeverity::Info => 1,
@@ -199,6 +200,7 @@ pub struct AlertStatistics {
 }
 
 impl AlertManager {
+    #[must_use] 
     pub fn new(config: AlertManagerConfig) -> Self {
         let (tx, rx) = mpsc::unbounded_channel();
 
@@ -530,6 +532,7 @@ pub struct AlertConfiguration {
 }
 
 // Default alert rules for TDG system
+#[must_use] 
 pub fn default_tdg_alert_rules() -> Vec<AlertRule> {
     vec![
         AlertRule {

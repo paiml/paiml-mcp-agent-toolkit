@@ -1,7 +1,7 @@
 //! Uniform CLI commands that use the contracts system
 //! These are the FUTURE commands that will replace the inconsistent ones
 
-use super::*;
+use super::{OutputFormat, SatdSeverity, AnalyzeComplexityContract, BaseAnalysisContract, AnalyzeSatdContract, AnalyzeDeadCodeContract, AnalyzeTdgContract, AnalyzeLintHotspotContract};
 use clap::{Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
 
@@ -326,7 +326,7 @@ impl From<UniformSatdArgs> for AnalyzeSatdContract {
                 include_tests: args.include_tests,
                 timeout: args.timeout,
             },
-            severity: args.severity.map(|s| s.into()),
+            severity: args.severity.map(std::convert::Into::into),
             critical_only: args.critical_only,
             strict: args.strict,
             fail_on_violation: args.fail_on_violation,

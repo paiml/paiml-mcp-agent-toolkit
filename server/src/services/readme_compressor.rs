@@ -57,6 +57,7 @@ pub struct ReadmeCompressor {
 }
 
 impl ReadmeCompressor {
+    #[must_use] 
     pub fn new() -> Self {
         let mut section_importance = HashMap::new();
 
@@ -343,7 +344,7 @@ impl ReadmeCompressor {
         // Try to break at sentence boundary
         let truncated = &text[..max_len];
         if let Some(pos) = truncated.rfind(". ") {
-            return text[..pos + 1].to_string(); // Include the period
+            return text[..=pos].to_string(); // Include the period
         }
 
         // Fall back to word boundary

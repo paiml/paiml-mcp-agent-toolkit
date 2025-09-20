@@ -8,8 +8,8 @@
 //! # Architecture
 //!
 //! The ranking system consists of:
-//! - **FileRanker Trait**: Defines how to compute and format rankings
-//! - **RankingEngine**: Generic engine that applies rankers with caching
+//! - **`FileRanker` Trait**: Defines how to compute and format rankings
+//! - **`RankingEngine`**: Generic engine that applies rankers with caching
 //! - **Built-in Rankers**: Complexity, TDG, churn, and composite rankers
 //! - **Parallel Processing**: Uses Rayon for efficient multi-core ranking
 //!
@@ -71,7 +71,7 @@ pub trait FileRanker: Send + Sync {
     fn ranking_type(&self) -> &'static str;
 }
 
-/// Generic ranking engine that can work with any FileRanker
+/// Generic ranking engine that can work with any `FileRanker`
 pub struct RankingEngine<R: FileRanker> {
     ranker: R,
     cache: Arc<RwLock<HashMap<String, R::Metric>>>,
@@ -297,6 +297,7 @@ impl PartialOrd for DuplicationScore {
 /// assert_eq!(ranked[0], 2); // Index of highest score (0.9)
 /// assert_eq!(ranked[1], 0); // Index of second highest (0.8)
 /// ```
+#[must_use] 
 pub fn rank_files_vectorized(scores: &[f32], limit: usize) -> Vec<usize> {
     let mut indices: Vec<usize> = (0..scores.len()).collect();
 
@@ -335,6 +336,7 @@ impl Default for ComplexityRanker {
 }
 
 impl ComplexityRanker {
+    #[must_use] 
     pub fn new(cyclomatic_weight: f64, cognitive_weight: f64, function_count_weight: f64) -> Self {
         Self {
             cyclomatic_weight,
@@ -364,25 +366,25 @@ impl ComplexityRanker {
         // Calculate max cyclomatic complexity
         let cyclomatic_max = all_functions
             .iter()
-            .map(|f| f.metrics.cyclomatic as u32)
+            .map(|f| u32::from(f.metrics.cyclomatic))
             .max()
             .unwrap_or(0);
 
         // Calculate average cognitive complexity
         let cognitive_total: u32 = all_functions
             .iter()
-            .map(|f| f.metrics.cognitive as u32)
+            .map(|f| u32::from(f.metrics.cognitive))
             .sum();
-        let cognitive_avg = cognitive_total as f64 / function_count as f64;
+        let cognitive_avg = f64::from(cognitive_total) / function_count as f64;
 
         // Mock halstead effort (would need proper calculation)
-        let halstead_effort = all_functions
+        let halstead_effort = f64::from(all_functions
             .iter()
-            .map(|f| f.metrics.lines as u32 * 10) // Simple approximation
-            .sum::<u32>() as f64;
+            .map(|f| u32::from(f.metrics.lines) * 10) // Simple approximation
+            .sum::<u32>());
 
         // Calculate composite score
-        let normalized_cyclomatic = (cyclomatic_max as f64).min(50.0) / 50.0; // Normalize to 0-1
+        let normalized_cyclomatic = f64::from(cyclomatic_max).min(50.0) / 50.0; // Normalize to 0-1
         let normalized_cognitive = cognitive_avg.min(100.0) / 100.0; // Normalize to 0-1
         let normalized_function_count = (function_count as f64).min(100.0) / 100.0; // Normalize to 0-1
 
@@ -483,6 +485,7 @@ impl FileRanker for ComplexityRanker {
 }
 
 /// Create a complexity ranker from file metrics (more accurate)
+#[must_use] 
 pub fn rank_files_by_complexity(
     file_metrics: &[FileComplexityMetrics],
     limit: usize,

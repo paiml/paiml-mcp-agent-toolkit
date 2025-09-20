@@ -45,7 +45,7 @@ fn parse_confidence_level(level: &Option<String>) -> Result<ConfidenceLevel> {
         Some("medium") => Ok(ConfidenceLevel::Medium),
         Some("low") => Ok(ConfidenceLevel::Low),
         None => Ok(ConfidenceLevel::High), // Default to safe fixes
-        Some(other) => Err(anyhow::anyhow!("Invalid confidence level: {}", other)),
+        Some(other) => Err(anyhow::anyhow!("Invalid confidence level: {other}")),
     }
 }
 

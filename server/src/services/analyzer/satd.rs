@@ -16,12 +16,14 @@ pub struct SATDAnalyzer {
 }
 
 impl SATDAnalyzer {
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             inner: SATDDetector::new(),
         }
     }
 
+    #[must_use] 
     pub fn new_with_strict_mode(strict: bool) -> Self {
         if strict {
             Self {
@@ -74,7 +76,7 @@ impl Analyzer for SATDAnalyzer {
         self.inner
             .analyze_project(&input.project_path, config.include_tests)
             .await
-            .map_err(|e| anyhow::anyhow!("SATD analysis failed: {}", e))
+            .map_err(|e| anyhow::anyhow!("SATD analysis failed: {e}"))
     }
 
     fn name(&self) -> &'static str {
@@ -94,15 +96,15 @@ impl ProjectAnalyzer for SATDAnalyzer {
 }
 
 impl AnalyzerInfo for SATDAnalyzer {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "satd"
     }
 
-    fn version(&self) -> &str {
+    fn version(&self) -> &'static str {
         env!("CARGO_PKG_VERSION")
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Analyzes code for Self-Admitted Technical Debt (SATD) in comments and documentation"
     }
 }
@@ -111,14 +113,17 @@ impl AnalyzerInfo for SATDAnalyzer {
 pub struct SATDAnalyzerFactory;
 
 impl SATDAnalyzerFactory {
+    #[must_use] 
     pub fn create() -> SATDAnalyzer {
         SATDAnalyzer::new()
     }
 
+    #[must_use] 
     pub fn create_strict() -> SATDAnalyzer {
         SATDAnalyzer::new_with_strict_mode(true)
     }
 
+    #[must_use] 
     pub fn create_critical_only() -> SATDAnalyzer {
         // Create analyzer with strict mode for critical issues
         SATDAnalyzer::new_with_strict_mode(true)

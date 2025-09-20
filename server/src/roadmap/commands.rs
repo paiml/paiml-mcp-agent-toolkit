@@ -1,6 +1,6 @@
 //! CLI commands for roadmap management
 
-use super::*;
+use super::{RoadmapConfig, Path, Roadmap, HashMap, Sprint, Utc, Priority, generator, TaskStatus, Task};
 use crate::cli::OutputFormat;
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
@@ -148,7 +148,7 @@ async fn init_sprint(
         version: version.to_string(),
         title: title.to_string(),
         start_date: Utc::now(),
-        end_date: Utc::now() + chrono::Duration::days(duration_days as i64),
+        end_date: Utc::now() + chrono::Duration::days(i64::from(duration_days)),
         priority: Priority::from_str(priority).unwrap_or(Priority::P0),
         tasks: Vec::new(),
         definition_of_done: vec![
@@ -454,14 +454,14 @@ async fn validate_sprint(
         .filter(|t| t.status != TaskStatus::Completed)
         .collect();
 
-    if !incomplete_tasks.is_empty() {
+    if incomplete_tasks.is_empty() {
+        println!("✅ All tasks completed");
+    } else {
         println!("❌ Incomplete tasks:");
         for task in incomplete_tasks {
             println!("    {} - {}", task.id, task.description);
         }
         all_passed = false;
-    } else {
-        println!("✅ All tasks completed");
     }
 
     // Check definition of done
@@ -546,11 +546,11 @@ fn handle_init(
 ) -> Result<()> {
     // Validate priority
     Priority::from_str(&priority)
-        .map_err(|_| anyhow::anyhow!("Invalid priority format. Use P0, P1, or P2"))?;
+        .map_err(|()| anyhow::anyhow!("Invalid priority format. Use P0, P1, or P2"))?;
 
     // Create basic roadmap structure
     let content = format!(
-        r#"# Roadmap
+        r"# Roadmap
 
 ## Current Sprint: {version} {title}
 - **Duration**: {duration_days} days
@@ -565,7 +565,7 @@ fn handle_init(
 - [ ] Code coverage maintained
 - [ ] Zero SATD violations
 
-"#
+"
     );
 
     std::fs::write(&roadmap_path, content)

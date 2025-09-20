@@ -18,7 +18,7 @@ use uuid::Uuid;
 /// Telemetry service input for recording events and metrics
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TelemetryInput {
-    /// Event type (e.g., "complexity_analysis", "refactor_operation")
+    /// Event type (e.g., "`complexity_analysis`", "`refactor_operation`")
     pub event_type: String,
     /// Service name generating the event
     pub service_name: String,
@@ -381,6 +381,7 @@ lazy_static::lazy_static! {
 }
 
 /// Get the global telemetry service instance - THE ONE way to access telemetry
+#[must_use] 
 pub fn telemetry() -> Arc<TelemetryService> {
     TELEMETRY.clone()
 }

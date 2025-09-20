@@ -8,10 +8,10 @@ use anyhow::Result;
 use async_trait::async_trait;
 use std::sync::Arc;
 
-/// Stub type - redirects to standard CacheConfig  
+/// Stub type - redirects to standard `CacheConfig`  
 pub type UnifiedCacheConfig = CacheConfig;
 
-/// Stub trait for UnifiedCache
+/// Stub trait for `UnifiedCache`
 #[async_trait]
 pub trait UnifiedCache: Send + Sync {
     type Key;
@@ -47,6 +47,7 @@ pub struct VectorizedCacheKey {
 }
 
 impl VectorizedCacheKey {
+    #[must_use] 
     pub fn from_bytes(bytes: &[u8]) -> Self {
         let hash = blake3::hash(bytes);
         let hash_bytes = hash.as_bytes();
@@ -78,6 +79,7 @@ impl VectorizedCacheKey {
         }
     }
 
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             data: Vec::new(),

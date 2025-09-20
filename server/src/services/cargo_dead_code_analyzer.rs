@@ -80,18 +80,21 @@ impl CargoDeadCodeAnalyzer {
     }
 
     /// Include test code in analysis
+    #[must_use] 
     pub fn include_tests(mut self) -> Self {
         self.exclude_tests = false;
         self
     }
 
     /// Include example code in analysis
+    #[must_use] 
     pub fn include_examples(mut self) -> Self {
         self.exclude_examples = false;
         self
     }
 
     /// Include benchmark code in analysis
+    #[must_use] 
     pub fn include_benches(mut self) -> Self {
         self.exclude_benches = false;
         self
@@ -211,7 +214,7 @@ impl CargoDeadCodeAnalyzer {
             ("type alias `", "` is never used", DeadCodeKind::TypeAlias),
         ];
 
-        for (prefix, suffix, kind) in patterns.iter() {
+        for (prefix, suffix, kind) in &patterns {
             if let Some(start) = message.find(prefix) {
                 let name_start = start + prefix.len();
                 if let Some(end) = message[name_start..].find(suffix) {
@@ -297,7 +300,7 @@ impl CargoDeadCodeAnalyzer {
         // Count lines in all Rust files
         for entry in walkdir::WalkDir::new(&self.project_path)
             .into_iter()
-            .filter_map(|e| e.ok())
+            .filter_map(std::result::Result::ok)
         {
             let path = entry.path();
 

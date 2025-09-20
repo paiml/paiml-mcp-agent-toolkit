@@ -91,11 +91,13 @@ impl Project {
     /// let project = Project::new(Path::new("/home/user/myproject")).unwrap();
     /// assert_eq!(project.root(), Path::new("/home/user/myproject"));
     /// ```
+    #[must_use] 
     pub fn root(&self) -> &Path {
         &self.root
     }
 
     /// Get all source files in the project
+    #[must_use] 
     pub fn source_files(&self) -> Vec<PathBuf> {
         self.file_discovery
             .discover_files()

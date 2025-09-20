@@ -34,6 +34,7 @@ pub struct RecommendationEngine {
 }
 
 impl RecommendationEngine {
+    #[must_use] 
     pub fn new() -> Self {
         let mut engine = Self {
             framework_signatures: HashMap::new(),
@@ -262,6 +263,7 @@ impl RecommendationEngine {
         Ok(confidence / total_checks)
     }
 
+    #[must_use] 
     pub fn get_recommendations(
         &self,
         detected_language: &str,
@@ -295,6 +297,7 @@ impl RecommendationEngine {
         }
     }
 
+    #[must_use] 
     pub fn get_framework_specific_recommendations(
         &self,
         framework: &str,
@@ -322,6 +325,7 @@ impl RecommendationEngine {
         recommendations
     }
 
+    #[must_use] 
     pub fn generate_learning_path(
         &self,
         language: &str,

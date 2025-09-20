@@ -85,6 +85,7 @@ pub enum PenaltyCurve {
 }
 
 impl PenaltyCurve {
+    #[must_use] 
     pub fn apply(&self, value: f32, base: f32) -> f32 {
         match self {
             PenaltyCurve::Linear => value * base,

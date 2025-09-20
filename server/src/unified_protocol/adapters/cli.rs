@@ -19,6 +19,7 @@ use crate::unified_protocol::{
 pub struct CliAdapter;
 
 impl CliAdapter {
+    #[must_use] 
     pub fn new() -> Self {
         Self
     }
@@ -385,7 +386,7 @@ impl CliAdapter {
     }
 
     /// Toyota Way Extract Method: Advanced analysis commands dispatch
-    /// Handles comprehensive analysis: deep context, comprehensive, defect prediction, duplicates, BigO
+    /// Handles comprehensive analysis: deep context, comprehensive, defect prediction, duplicates, `BigO`
     fn dispatch_advanced_analysis(
         analyze_cmd: &AnalyzeCommands,
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
@@ -1545,7 +1546,7 @@ impl ProtocolAdapter for CliAdapter {
             args: input.raw_args.clone(),
         };
 
-        let mut unified_request = UnifiedRequest::new(method, path.to_string())
+        let mut unified_request = UnifiedRequest::new(method, path.clone())
             .with_body(Body::from(serde_json::to_vec(&body)?))
             .with_header("content-type", "application/json")
             .with_extension("protocol", Protocol::Cli)
@@ -1620,6 +1621,7 @@ pub struct CliInput {
 }
 
 impl CliInput {
+    #[must_use] 
     pub fn new(command: Commands, command_name: String, raw_args: Vec<String>) -> Self {
         Self {
             command,
@@ -1707,6 +1709,7 @@ impl CliInput {
         }
     }
 
+    #[must_use] 
     pub fn from_commands(command: Commands) -> Self {
         // Toyota Way Extract Method: Get command name using categorized dispatch
         let command_name = Self::get_command_name_by_category(&command);
@@ -1850,7 +1853,7 @@ impl CliInput {
 enum AnalyzeCommandCategory {
     /// Core analysis commands (basic metrics): churn, complexity, dead code, SATD, TDG, lint hotspots
     Basic,
-    /// Advanced analysis commands (comprehensive): deep context, comprehensive, defect prediction, duplicates, BigO
+    /// Advanced analysis commands (comprehensive): deep context, comprehensive, defect prediction, duplicates, `BigO`
     Advanced,
     /// Graph and structural analysis: DAG, graph metrics, symbol table, name similarity
     Structural,
@@ -1943,6 +1946,7 @@ impl CliOutput {
     }
 
     /// Get the exit code without exiting
+    #[must_use] 
     pub fn exit_code(&self) -> i32 {
         match self {
             CliOutput::Success { exit_code, .. } => *exit_code,
@@ -1951,6 +1955,7 @@ impl CliOutput {
     }
 
     /// Get the content/message
+    #[must_use] 
     pub fn content(&self) -> &str {
         match self {
             CliOutput::Success { content, .. } => content,
@@ -2146,6 +2151,7 @@ pub struct CliRunner {
 }
 
 impl CliRunner {
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             adapter: CliAdapter::new(),

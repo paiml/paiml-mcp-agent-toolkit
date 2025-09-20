@@ -56,6 +56,7 @@ pub enum CliDemoError {
 }
 
 impl CliDemoAdapter {
+    #[must_use] 
     pub fn new() -> Self {
         Self
     }
@@ -153,9 +154,7 @@ impl CliDemoAdapter {
 
         CliApiTrace {
             command_line,
-            working_directory: std::env::current_dir()
-                .map(|p| p.to_string_lossy().to_string())
-                .unwrap_or_else(|_| "unknown".to_string()),
+            working_directory: std::env::current_dir().map_or_else(|_| "unknown".to_string(), |p| p.to_string_lossy().to_string()),
             environment: vec![
                 (
                     "RUST_LOG".to_string(),
@@ -197,7 +196,7 @@ impl DemoProtocol for CliDemoAdapter {
 
         let show_api = value
             .get("show_api")
-            .and_then(|v| v.as_bool())
+            .and_then(serde_json::Value::as_bool)
             .unwrap_or(false);
 
         Ok(CliRequest {
@@ -320,7 +319,7 @@ impl From<Value> for CliRequest {
 
         let show_api = value
             .get("show_api")
-            .and_then(|v| v.as_bool())
+            .and_then(serde_json::Value::as_bool)
             .unwrap_or(false);
 
         CliRequest {

@@ -3,7 +3,7 @@
 //! This module provides handlers for algorithmic complexity analysis
 //! using pattern matching and heuristic approaches.
 
-use crate::cli::*;
+use crate::cli::{BigOOutputFormat, Path};
 use crate::services::big_o_analyzer::{BigOAnalysisConfig, BigOAnalyzer};
 use anyhow::Result;
 use std::path::PathBuf;
@@ -291,6 +291,7 @@ fn print_analysis_summary(
 /// assert!(output.contains("Top Files by Complexity"));
 /// assert!(output.contains("utils.rs"));
 /// ```
+#[must_use] 
 pub fn format_big_o_summary(
     report: &crate::services::big_o_analyzer::BigOAnalysisReport,
 ) -> String {

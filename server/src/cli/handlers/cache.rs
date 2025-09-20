@@ -90,7 +90,7 @@ async fn handle_cache_stats(detailed: bool, format: &str, history: bool) -> Resu
                 println!("Historical Data: Not available in this implementation");
             }
         }
-        _ => return Err(anyhow::anyhow!("Unknown format: {}", format)),
+        _ => return Err(anyhow::anyhow!("Unknown format: {format}")),
     }
 
     Ok(())

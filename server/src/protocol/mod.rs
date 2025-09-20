@@ -183,6 +183,7 @@ pub struct PdmtParams {
 }
 
 impl RequestContext {
+    #[must_use] 
     pub fn new(protocol: &str) -> Self {
         Self {
             request_id: Uuid::new_v4().to_string(),
@@ -192,6 +193,7 @@ impl RequestContext {
         }
     }
 
+    #[must_use] 
     pub fn from_json_rpc(request: &JsonRpcRequest) -> Self {
         Self {
             request_id: request.id.to_string(),
@@ -201,6 +203,7 @@ impl RequestContext {
         }
     }
 
+    #[must_use] 
     pub fn from_http(request: &HttpRequest) -> Self {
         Self {
             request_id: request

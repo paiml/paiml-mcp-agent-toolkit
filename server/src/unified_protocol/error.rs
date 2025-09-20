@@ -55,6 +55,7 @@ pub enum AppError {
 
 impl AppError {
     /// Get the appropriate HTTP status code for this error
+    #[must_use] 
     pub fn status_code(&self) -> StatusCode {
         match self {
             AppError::NotFound(_) => StatusCode::NOT_FOUND,
@@ -74,6 +75,7 @@ impl AppError {
     }
 
     /// Get the MCP error code for this error
+    #[must_use] 
     pub fn mcp_error_code(&self) -> i32 {
         match self {
             AppError::NotFound(_) => -32001,
@@ -93,6 +95,7 @@ impl AppError {
     }
 
     /// Get a categorized error type string
+    #[must_use] 
     pub fn error_type(&self) -> &'static str {
         match self {
             AppError::NotFound(_) => "NOT_FOUND",
@@ -222,7 +225,7 @@ pub struct CliErrorResponse {
 fn extract_protocol_from_context() -> Option<Protocol> {
     // In a real implementation, this would extract from request extensions
     // For now, we'll use a thread-local or similar mechanism
-    CURRENT_PROTOCOL.with(|p| p.get())
+    CURRENT_PROTOCOL.with(std::cell::Cell::get)
 }
 
 thread_local! {

@@ -20,6 +20,7 @@ pub struct JavaAstVisitor {
 #[cfg(feature = "java-ast")]
 impl JavaAstVisitor {
     /// Creates a new Java AST visitor
+    #[must_use] 
     pub fn new(file_path: &Path) -> Self {
         Self {
             items: Vec::new(),
@@ -105,9 +106,9 @@ impl JavaAstVisitor {
             let trimmed = line.trim();
 
             // Start counting after we see the class declaration
-            if trimmed.contains(&format!("class {}", class_name)) {
+            if trimmed.contains(&format!("class {class_name}")) {
                 in_class = true;
-                if trimmed.contains("{") {
+                if trimmed.contains('{') {
                     brace_count += 1;
                 }
                 continue;
@@ -124,7 +125,7 @@ impl JavaAstVisitor {
                 }
 
                 // Count method declarations (but not constructor calls)
-                if trimmed.contains("(") && trimmed.contains(")") &&
+                if trimmed.contains('(') && trimmed.contains(')') &&
                    (trimmed.contains("public") || trimmed.contains("private") || trimmed.contains("protected")) &&
                    !trimmed.contains("class") {
                     count += 1;
@@ -136,7 +137,7 @@ impl JavaAstVisitor {
 
     /// Helper to extract class name from line (complexity ≤10)
     fn extract_class_name_from_line(&self, line: &str) -> Option<String> {
-        if line.contains("class ") && line.contains("{") {
+        if line.contains("class ") && line.contains('{') {
             let parts: Vec<&str> = line.split_whitespace().collect();
             for (i, part) in parts.iter().enumerate() {
                 if *part == "class" && i + 1 < parts.len() {
@@ -170,10 +171,10 @@ impl JavaAstVisitor {
 
     /// Helper to extract method name from line (complexity ≤10)
     fn extract_method_name_from_line(&self, line: &str) -> Option<String> {
-        if line.contains("(") && line.contains(")") && !line.contains("class") {
+        if line.contains('(') && line.contains(')') && !line.contains("class") {
             let parts: Vec<&str> = line.split_whitespace().collect();
             for (i, part) in parts.iter().enumerate() {
-                if part.contains("(") && i > 0 {
+                if part.contains('(') && i > 0 {
                     let method_name = part.split('(').next()?;
                     if !method_name.is_empty() && method_name.chars().all(|c| c.is_alphanumeric() || c == '_') {
                         return Some(method_name.to_string());
@@ -218,7 +219,7 @@ impl JavaAstVisitor {
 
     /// Helper to extract interface name from line (complexity ≤10)
     fn extract_interface_name_from_line(&self, line: &str) -> Option<String> {
-        if line.contains("interface ") && line.contains("{") {
+        if line.contains("interface ") && line.contains('{') {
             let parts: Vec<&str> = line.split_whitespace().collect();
             for (i, part) in parts.iter().enumerate() {
                 if *part == "interface" && i + 1 < parts.len() {
@@ -256,6 +257,7 @@ impl Default for JavaComplexityAnalyzer {
 
 impl JavaComplexityAnalyzer {
     /// Creates a new Java complexity analyzer
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             cyclomatic_complexity: 0,

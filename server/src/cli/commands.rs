@@ -1136,7 +1136,7 @@ pub enum AnalyzeCommands {
         top_files: usize,
     },
 
-    /// Detect duplicate code using vectorized MinHash and AST embeddings
+    /// Detect duplicate code using vectorized `MinHash` and AST embeddings
     Duplicates {
         /// Project path to analyze (defaults to current directory)
         #[arg(long, short = 'p', default_value = ".")]
@@ -1328,23 +1328,23 @@ pub enum AnalyzeCommands {
         #[arg(long, value_delimiter = ',', default_value = "all")]
         metrics: Vec<GraphMetricType>,
 
-        /// Personalized PageRank seed nodes (file paths or function names)
+        /// Personalized `PageRank` seed nodes (file paths or function names)
         #[arg(long, value_delimiter = ',')]
         pagerank_seeds: Vec<String>,
 
-        /// PageRank damping factor (0.0-1.0)
+        /// `PageRank` damping factor (0.0-1.0)
         #[arg(long, default_value = "0.85")]
         damping_factor: f32,
 
-        /// Maximum iterations for PageRank convergence
+        /// Maximum iterations for `PageRank` convergence
         #[arg(long, default_value = "100")]
         max_iterations: usize,
 
-        /// Convergence threshold for PageRank
+        /// Convergence threshold for `PageRank`
         #[arg(long, default_value = "0.001")]
         convergence_threshold: f64,
 
-        /// Export graph as GraphML format
+        /// Export graph as `GraphML` format
         #[arg(long)]
         export_graphml: bool,
 
@@ -1615,7 +1615,7 @@ pub enum AnalyzeCommands {
         top_files: usize,
     },
 
-    /// Analyze AssemblyScript code
+    /// Analyze `AssemblyScript` code
     AssemblyScript {
         /// Project path to analyze (defaults to current directory)
         #[arg(long, short = 'p', default_value = ".")]
@@ -2038,7 +2038,7 @@ pub enum RefactorCommands {
         #[arg(long, default_value = "10")]
         batch_size: usize,
 
-        /// Priority sorting expression (e.g., "complexity * defect_probability")
+        /// Priority sorting expression (e.g., "complexity * `defect_probability`")
         #[arg(long)]
         priority: Option<String>,
 
@@ -2174,7 +2174,7 @@ pub enum RefactorCommands {
         #[arg(long, short = 't')]
         test: Option<PathBuf>,
 
-        /// Test name pattern to fix (e.g., "test_mixed_language_project_context")
+        /// Test name pattern to fix (e.g., "`test_mixed_language_project_context`")
         #[arg(long)]
         test_name: Option<String>,
 
@@ -3218,7 +3218,7 @@ pub enum ConfigCommands {
 
     /// Get specific configuration value
     Get {
-        /// Configuration key path (e.g., hooks.quality_gates.max_cyclomatic_complexity)
+        /// Configuration key path (e.g., `hooks.quality_gates.max_cyclomatic_complexity`)
         key: String,
     },
 

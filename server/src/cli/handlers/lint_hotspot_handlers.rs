@@ -203,7 +203,7 @@ struct DiagnosticText {
 /// # Exit Status
 ///
 /// The command exits with status code 1 in the following cases:
-/// - Quality gate fails (defect density exceeds max_density threshold)
+/// - Quality gate fails (defect density exceeds `max_density` threshold)
 /// - When `--enforce` flag is set AND there are any violations
 ///
 /// # Example
@@ -637,8 +637,7 @@ fn extract_lint_name(diagnostic: &DiagnosticMessage) -> String {
 fn is_machine_applicable(span: &DiagnosticSpan) -> bool {
     span.suggestion_applicability
         .as_ref()
-        .map(|a| a == "machine-applicable" || a == "maybe-incorrect")
-        .unwrap_or(false)
+        .is_some_and(|a| a == "machine-applicable" || a == "maybe-incorrect")
 }
 
 fn update_severity_distribution(severity_dist: &mut SeverityDistribution, level: &str) {
@@ -754,8 +753,7 @@ fn process_diagnostic(
         // Skip non-Rust files (config files, etc.)
         if !file_path
             .extension()
-            .map(|ext| ext == "rs")
-            .unwrap_or(false)
+            .is_some_and(|ext| ext == "rs")
         {
             return;
         }
@@ -773,9 +771,7 @@ fn process_diagnostic(
         // Count by lint code
         let lint_name = diagnostic
             .code
-            .as_ref()
-            .map(|c| c.code.clone())
-            .unwrap_or_else(|| "unknown".to_string());
+            .as_ref().map_or_else(|| "unknown".to_string(), |c| c.code.clone());
 
         *metrics.violations.entry(lint_name.clone()).or_default() += 1;
 
@@ -793,8 +789,7 @@ fn process_diagnostic(
             machine_applicable: span
                 .suggestion_applicability
                 .as_ref()
-                .map(|a| a == "MachineApplicable")
-                .unwrap_or(false),
+                .is_some_and(|a| a == "MachineApplicable"),
         };
 
         metrics.detailed_violations.push(violation);
@@ -1430,7 +1425,7 @@ fn log_file_not_found_debug(
     }
 }
 
-/// Build final LintHotspotResult from file metrics (cognitive complexity ≤8)
+/// Build final `LintHotspotResult` from file metrics (cognitive complexity ≤8)
 fn build_lint_hotspot_result(
     file_metrics: HashMap<PathBuf, FileMetrics>,
 ) -> Result<LintHotspotResult> {

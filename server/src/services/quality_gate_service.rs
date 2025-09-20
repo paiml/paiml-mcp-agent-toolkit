@@ -83,6 +83,7 @@ pub struct QualityGateService {
 }
 
 impl QualityGateService {
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             metrics: Arc::new(RwLock::new(ServiceMetrics::default())),
@@ -296,7 +297,7 @@ impl Service for QualityGateService {
         self.metrics.blocking_read().clone()
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "QualityGateService"
     }
 }

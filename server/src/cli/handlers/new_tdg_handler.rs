@@ -166,9 +166,7 @@ fn create_sarif_output(project: &crate::tdg::ProjectScore) -> serde_json::Value 
                 "locations": [{
                     "physicalLocation": {
                         "artifactLocation": {
-                            "uri": score.file_path.as_ref()
-                                .map(|p| p.display().to_string())
-                                .unwrap_or_else(|| "unknown".to_string())
+                            "uri": score.file_path.as_ref().map_or_else(|| "unknown".to_string(), |p| p.display().to_string())
                         }
                     }
                 }],
@@ -248,9 +246,7 @@ fn create_file_sarif_output(score: &crate::tdg::TdgScore) -> serde_json::Value {
             "locations": [{
                 "physicalLocation": {
                     "artifactLocation": {
-                        "uri": score.file_path.as_ref()
-                            .map(|p| p.display().to_string())
-                            .unwrap_or_else(|| "unknown".to_string())
+                        "uri": score.file_path.as_ref().map_or_else(|| "unknown".to_string(), |p| p.display().to_string())
                     }
                 }
             }],

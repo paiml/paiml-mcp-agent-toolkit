@@ -83,6 +83,7 @@ pub struct SourceSpan {
 }
 
 impl SourceSpan {
+    #[must_use] 
     pub fn new(start: usize, end: usize, line: usize, column: usize) -> Self {
         Self {
             start,
@@ -92,6 +93,7 @@ impl SourceSpan {
         }
     }
 
+    #[must_use] 
     pub fn file_level() -> Self {
         Self {
             start: 0,
@@ -119,6 +121,7 @@ impl Default for MakefileAst {
 }
 
 impl MakefileAst {
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             nodes: Vec::new(),
@@ -133,6 +136,7 @@ impl MakefileAst {
         idx
     }
 
+    #[must_use] 
     pub fn find_rules_by_target(&self, target: &str) -> Vec<usize> {
         self.nodes
             .iter()
@@ -150,6 +154,7 @@ impl MakefileAst {
             .collect()
     }
 
+    #[must_use] 
     pub fn get_phony_targets(&self) -> Vec<String> {
         let phony_rules = self.find_rules_by_target(".PHONY");
         let mut targets = Vec::new();
@@ -165,6 +170,7 @@ impl MakefileAst {
         targets
     }
 
+    #[must_use] 
     pub fn count_targets(&self) -> usize {
         self.nodes
             .iter()
@@ -172,10 +178,12 @@ impl MakefileAst {
             .count()
     }
 
+    #[must_use] 
     pub fn count_phony_targets(&self) -> usize {
         self.get_phony_targets().len()
     }
 
+    #[must_use] 
     pub fn has_pattern_rules(&self) -> bool {
         self.nodes.iter().any(|n| {
             if let NodeData::Rule { is_pattern, .. } = &n.data {
@@ -186,6 +194,7 @@ impl MakefileAst {
         })
     }
 
+    #[must_use] 
     pub fn uses_automatic_variables(&self) -> bool {
         self.nodes.iter().any(|n| match &n.data {
             NodeData::Recipe { lines } => lines.iter().any(|line| {
@@ -206,6 +215,7 @@ impl MakefileAst {
         })
     }
 
+    #[must_use] 
     pub fn get_variables(&self) -> Vec<(&String, &AssignmentOp, &String)> {
         self.nodes
             .iter()

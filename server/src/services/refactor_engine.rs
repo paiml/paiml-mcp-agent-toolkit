@@ -194,6 +194,7 @@ impl<T> RingBuffer<T> {
     /// assert_eq!(buffer.len(), 0);
     /// assert!(buffer.is_empty());
     /// ```
+    #[must_use] 
     pub fn new(capacity: usize) -> Self {
         Self {
             buffer: VecDeque::with_capacity(capacity),
@@ -254,10 +255,12 @@ impl<T> RingBuffer<T> {
         self.buffer.drain(..).collect()
     }
 
+    #[must_use] 
     pub fn len(&self) -> usize {
         self.buffer.len()
     }
 
+    #[must_use] 
     pub fn is_empty(&self) -> bool {
         self.buffer.is_empty()
     }
@@ -315,6 +318,7 @@ impl UnifiedEngine {
     ///
     /// // Engine is ready for analysis and refactoring
     /// ```
+    #[must_use] 
     pub fn new(
         ast_engine: Arc<UnifiedAstEngine>,
         cache: Arc<UnifiedCacheManager>,
@@ -493,9 +497,8 @@ impl UnifiedEngine {
                     let state_machine = self.state_machine.read().await;
                     if let State::Complete { summary } = &state_machine.current {
                         return Ok(summary.clone());
-                    } else {
-                        return Ok(Summary::default());
                     }
+                    return Ok(Summary::default());
                 }
             }
         }
@@ -540,34 +543,31 @@ impl UnifiedEngine {
             let current_state = state_machine.current.clone();
             drop(state_machine);
 
-            match &current_state {
-                State::Complete { .. } => {
-                    return Ok(Summary {
-                        files_processed: total_processed,
-                        refactors_applied: total_refactors,
-                        complexity_reduction: total_complexity_reduction,
-                        satd_removed: total_satd_removed,
-                        total_time: start_time.elapsed(),
-                    });
+            if let State::Complete { .. } = &current_state {
+                return Ok(Summary {
+                    files_processed: total_processed,
+                    refactors_applied: total_refactors,
+                    complexity_reduction: total_complexity_reduction,
+                    satd_removed: total_satd_removed,
+                    total_time: start_time.elapsed(),
+                });
+            } else {
+                // Advance state machine
+                let mut state_machine = self.state_machine.write().await;
+                state_machine.advance().map_err(EngineError::StateMachine)?;
+
+                // Track metrics
+                if matches!(current_state, State::Refactor { .. }) {
+                    total_refactors += 1;
                 }
-                _ => {
-                    // Advance state machine
-                    let mut state_machine = self.state_machine.write().await;
-                    state_machine.advance().map_err(EngineError::StateMachine)?;
+                if matches!(current_state, State::Analyze { .. }) {
+                    total_processed += 1;
+                }
 
-                    // Track metrics
-                    if matches!(current_state, State::Refactor { .. }) {
-                        total_refactors += 1;
-                    }
-                    if matches!(current_state, State::Analyze { .. }) {
-                        total_processed += 1;
-                    }
-
-                    // Save checkpoint periodically
-                    if total_processed % 10 == 0 {
-                        drop(state_machine);
-                        self.save_checkpoint_to(&checkpoint_dir).await?;
-                    }
+                // Save checkpoint periodically
+                if total_processed % 10 == 0 {
+                    drop(state_machine);
+                    self.save_checkpoint_to(&checkpoint_dir).await?;
                 }
             }
         }
@@ -804,7 +804,7 @@ impl UnifiedEngine {
                         let estimated_cyclomatic =
                             (if_count + for_count + while_count + match_count + function_count)
                                 .min(100) as u16;
-                        let estimated_cognitive = (estimated_cyclomatic as f32 * 1.3) as u16;
+                        let estimated_cognitive = (f32::from(estimated_cyclomatic) * 1.3) as u16;
 
                         // Count SATD markers
                         let todo_count = content.matches("TODO").count();
@@ -849,7 +849,7 @@ impl UnifiedEngine {
 
         Ok(ComplexityInfo {
             complexity: [cyclomatic, cognitive],
-            tdg: (cyclomatic as f32 / 10.0).min(3.0),
+            tdg: (f32::from(cyclomatic) / 10.0).min(3.0),
             satd: satd_count,
         })
     }
@@ -889,7 +889,7 @@ impl UnifiedEngine {
 /// # Error Recovery
 ///
 /// The engine implements different recovery strategies based on error type:
-/// - **StateMachine errors**: Rollback to last checkpoint
+/// - **`StateMachine` errors**: Rollback to last checkpoint
 /// - **IO errors**: Retry with exponential backoff
 /// - **Serialization errors**: Graceful degradation to simplified format
 /// - **Analysis errors**: Skip problematic files and continue

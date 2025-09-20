@@ -101,7 +101,7 @@ impl NodeFlags {
     pub const CONSTEXPR: u8 = 0b00010000; // constexpr
     pub const NOEXCEPT: u8 = 0b00100000; // noexcept
 
-    /// Creates a new NodeFlags instance with no flags set
+    /// Creates a new `NodeFlags` instance with no flags set
     ///
     /// # Examples
     /// ```rust
@@ -111,6 +111,7 @@ impl NodeFlags {
     /// assert!(!flags.has(NodeFlags::ASYNC));
     /// assert!(!flags.has(NodeFlags::EXPORTED));
     /// ```
+    #[must_use] 
     pub fn new() -> Self {
         Self(0)
     }
@@ -168,6 +169,7 @@ impl NodeFlags {
     /// // Check multiple flags (returns true if ANY are set)
     /// assert!(flags.has(NodeFlags::ASYNC | NodeFlags::EXPORTED));
     /// ```
+    #[must_use] 
     pub fn has(&self, flag: u8) -> bool {
         self.0 & flag != 0
     }
@@ -446,6 +448,7 @@ impl Location {
     /// assert_eq!(location.span.end.0, 150);
     /// assert_eq!(location.span.len(), 50);
     /// ```
+    #[must_use] 
     pub fn new(file_path: PathBuf, start: u32, end: u32) -> Self {
         Self {
             file_path,
@@ -476,6 +479,7 @@ impl Location {
     /// assert!(!inner.contains(&outer));
     /// assert!(!outer.contains(&separate)); // Different files
     /// ```
+    #[must_use] 
     pub fn contains(&self, other: &Location) -> bool {
         self.file_path == other.file_path
             && self.span.start <= other.span.start
@@ -504,6 +508,7 @@ impl Location {
     /// assert!(!loc1.overlaps(&loc3));
     /// assert!(!loc1.overlaps(&loc4));
     /// ```
+    #[must_use] 
     pub fn overlaps(&self, other: &Location) -> bool {
         self.file_path == other.file_path
             && self.span.start < other.span.end
@@ -512,6 +517,7 @@ impl Location {
 }
 
 impl Span {
+    #[must_use] 
     pub fn new(start: u32, end: u32) -> Self {
         Self {
             start: BytePos(start),
@@ -519,25 +525,29 @@ impl Span {
         }
     }
 
+    #[must_use] 
     pub fn len(&self) -> u32 {
         self.end.0 - self.start.0
     }
 
+    #[must_use] 
     pub fn is_empty(&self) -> bool {
         self.start.0 >= self.end.0
     }
 
+    #[must_use] 
     pub fn contains(&self, pos: BytePos) -> bool {
         self.start <= pos && pos < self.end
     }
 }
 
 impl BytePos {
+    #[must_use] 
     pub fn to_usize(self) -> usize {
         self.0 as usize
     }
 
-    /// Creates a BytePos from a usize position
+    /// Creates a `BytePos` from a usize position
     ///
     /// # Examples
     ///
@@ -547,6 +557,7 @@ impl BytePos {
     /// let pos = BytePos::from_usize(42);
     /// assert_eq!(pos.to_usize(), 42);
     /// ```
+    #[must_use] 
     pub fn from_usize(pos: usize) -> Self {
         Self(pos as u32)
     }
@@ -583,6 +594,7 @@ impl QualifiedName {
     /// assert!(qname.disambiguator.is_none());
     /// assert_eq!(qname.to_qualified_string(), "std::collections::HashMap");
     /// ```
+    #[must_use] 
     pub fn new(module_path: Vec<String>, name: String) -> Self {
         Self {
             module_path,
@@ -591,6 +603,7 @@ impl QualifiedName {
         }
     }
 
+    #[must_use] 
     pub fn with_disambiguator(mut self, disambiguator: u32) -> Self {
         self.disambiguator = Some(disambiguator);
         self
@@ -598,7 +611,7 @@ impl QualifiedName {
 
     /// Creates a qualified name from a string representation.
     ///
-    /// Parses strings in the format "module::submodule::Name" where
+    /// Parses strings in the format "`module::submodule::Name`" where
     /// "::" separates module components from the final name.
     ///
     /// # Examples
@@ -625,14 +638,14 @@ impl QualifiedName {
         }
 
         let parts: Vec<&str> = qualified_str.split("::").collect();
-        let name = parts.last().unwrap().to_string();
+        let name = (*parts.last().unwrap()).to_string();
         if name.is_empty() {
             return Err("Empty qualified name");
         }
 
         let module_path = parts[..parts.len() - 1]
             .iter()
-            .map(|s| s.to_string())
+            .map(|s| (*s).to_string())
             .collect();
 
         Ok(Self {
@@ -644,7 +657,7 @@ impl QualifiedName {
 
     /// Converts the qualified name back to its string representation.
     ///
-    /// Creates a string in the format "module::submodule::Name", with
+    /// Creates a string in the format "`module::submodule::Name`", with
     /// optional disambiguator suffix "#N" for overloaded names.
     ///
     /// # Examples
@@ -666,6 +679,7 @@ impl QualifiedName {
     /// let simple = QualifiedName::new(vec![], "main".to_string());
     /// assert_eq!(simple.to_qualified_string(), "main");
     /// ```
+    #[must_use] 
     pub fn to_qualified_string(&self) -> String {
         let mut result = self.module_path.join("::");
         if !result.is_empty() {
@@ -809,6 +823,7 @@ impl UnifiedAstNode {
     /// assert!(class_node.is_type_definition());
     /// assert!(!class_node.is_function());
     /// ```
+    #[must_use] 
     pub fn new(kind: AstKind, lang: Language) -> Self {
         Self {
             kind,
@@ -856,6 +871,7 @@ impl UnifiedAstNode {
     /// );
     /// assert!(!class.is_function());
     /// ```
+    #[must_use] 
     pub fn is_function(&self) -> bool {
         matches!(self.kind, AstKind::Function(_))
     }
@@ -903,6 +919,7 @@ impl UnifiedAstNode {
     /// );
     /// assert!(!function.is_type_definition());
     /// ```
+    #[must_use] 
     pub fn is_type_definition(&self) -> bool {
         matches!(
             self.kind,
@@ -911,13 +928,14 @@ impl UnifiedAstNode {
     }
 
     /// Get the complexity score for this node
+    #[must_use] 
     pub fn complexity(&self) -> u32 {
         unsafe { (self.metadata.complexity & 0xFFFFFFFF) as u32 }
     }
 
     /// Set the complexity score for this node
     pub fn set_complexity(&mut self, complexity: u32) {
-        self.metadata.complexity = complexity as u64;
+        self.metadata.complexity = u64::from(complexity);
     }
 
     /// Adds a formal verification proof annotation to this node.
@@ -971,11 +989,13 @@ impl UnifiedAstNode {
     }
 
     /// Get all proof annotations for this node
+    #[must_use] 
     pub fn proof_annotations(&self) -> &[ProofAnnotation] {
         self.proof_annotations.as_deref().unwrap_or(&[])
     }
 
     /// Check if this node has proof annotations
+    #[must_use] 
     pub fn has_proof_annotations(&self) -> bool {
         self.proof_annotations
             .as_ref()
@@ -983,6 +1003,7 @@ impl UnifiedAstNode {
     }
 
     /// Get location for this node (requires file path context)
+    #[must_use] 
     pub fn location(&self, file_path: &Path) -> Location {
         Location {
             file_path: file_path.to_path_buf(),
@@ -1022,6 +1043,7 @@ pub struct ColumnStore<T> {
 }
 
 impl<T: Clone> ColumnStore<T> {
+    #[must_use] 
     pub fn new(capacity: usize) -> Self {
         Self {
             data: Vec::with_capacity(capacity),
@@ -1035,6 +1057,7 @@ impl<T: Clone> ColumnStore<T> {
         key
     }
 
+    #[must_use] 
     pub fn get(&self, key: NodeKey) -> Option<&T> {
         self.data.get(key as usize)
     }
@@ -1047,10 +1070,12 @@ impl<T: Clone> ColumnStore<T> {
         self.data.iter()
     }
 
+    #[must_use] 
     pub fn len(&self) -> usize {
         self.data.len()
     }
 
+    #[must_use] 
     pub fn is_empty(&self) -> bool {
         self.data.is_empty()
     }
@@ -1118,6 +1143,7 @@ impl AstDag {
     /// assert_eq!(dag.generation(), 1);
     /// assert!(dag.dirty_nodes().any(|k| k == key));
     /// ```
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             nodes: ColumnStore::new(10000), // Initial capacity

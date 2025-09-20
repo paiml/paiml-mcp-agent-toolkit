@@ -149,7 +149,7 @@ pub async fn git_clone(
     _depth: Option<u32>,
 ) -> Result<PathBuf> {
     // Return the path where it would be cloned
-    Ok(target_dir.map(|p| p.to_path_buf()).unwrap_or_else(|| {
+    Ok(target_dir.map(std::path::Path::to_path_buf).unwrap_or_else(|| {
         // Extract repo name from URL
         let repo_name = url
             .split('/')
@@ -324,14 +324,14 @@ pub async fn tdg_system_diagnostics(
 
     // Execute diagnostics
     match tdg_diagnostic_handler::handle_tdg_diagnostics(&command, &base_path).await {
-        Ok(_) => Ok(json!({
+        Ok(()) => Ok(json!({
             "status": "completed",
             "message": "TDG system diagnostics completed",
             "result_type": "diagnostics",
             "components_checked": if show_all {
                 vec!["storage", "scheduler", "adaptive", "resources"]
             } else {
-                components.iter().map(|s| s.as_str()).collect::<Vec<&str>>()
+                components.iter().map(std::string::String::as_str).collect::<Vec<&str>>()
             },
             "detailed": detailed
         })),
@@ -354,13 +354,13 @@ pub async fn tdg_storage_management(
         "stats" => StorageCommand::Stats {
             detailed: options
                 .get("detailed")
-                .and_then(|v| v.as_bool())
+                .and_then(serde_json::Value::as_bool)
                 .unwrap_or(false),
         },
         "cleanup" => StorageCommand::Cleanup {
             max_age: options
                 .get("max_age")
-                .and_then(|v| v.as_u64())
+                .and_then(serde_json::Value::as_u64)
                 .unwrap_or(3600),
         },
         "flush" => StorageCommand::Flush,
@@ -389,7 +389,7 @@ pub async fn tdg_storage_management(
     };
 
     match tdg_diagnostic_handler::handle_tdg_diagnostics(&command, &base_path).await {
-        Ok(_) => Ok(json!({
+        Ok(()) => Ok(json!({
             "status": "completed",
             "message": format!("Storage {} completed successfully", action),
             "result_type": "storage_management",
@@ -440,8 +440,7 @@ fn create_storage_backend(
             return Err(anyhow::anyhow!("RocksDB backend not yet implemented"));
         }
         Some(backend) => Err(anyhow::anyhow!(
-            "Unsupported storage backend: {}. Supported: sled, inmemory, rocksdb",
-            backend
+            "Unsupported storage backend: {backend}. Supported: sled, inmemory, rocksdb"
         )),
     }
 }
@@ -576,7 +575,7 @@ fn create_semantic_signature(hash: &blake3::Hash) -> crate::tdg::SemanticSignatu
     crate::tdg::SemanticSignature {
         ast_structure_hash: hash.as_bytes()[0..8]
             .iter()
-            .fold(0u64, |acc, &b| acc.wrapping_mul(256) + b as u64),
+            .fold(0u64, |acc, &b| acc.wrapping_mul(256) + u64::from(b)),
         identifier_pattern: "mcp_analysis".to_string(),
         control_flow_pattern: "function_call".to_string(),
         import_dependencies: Vec::new(),
@@ -900,7 +899,7 @@ async fn handle_qdd_refactor(
     if let Some(path) = file_path {
         let refactor_spec = RefactorSpec {
             file_path: path.clone(),
-            function_name: name.map(|s| s.to_string()),
+            function_name: name.map(std::string::ToString::to_string),
             target_metrics: profile.thresholds.clone(),
         };
 

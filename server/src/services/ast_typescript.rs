@@ -27,6 +27,7 @@ impl Default for TypeScriptParser {
 }
 
 impl TypeScriptParser {
+    #[must_use] 
     pub fn new() -> Self {
         Self {}
     }

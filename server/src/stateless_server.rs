@@ -22,31 +22,31 @@ impl StatelessTemplateServer {
         // Parse URI and fetch from embedded templates
         let parts: Vec<&str> = uri
             .strip_prefix("template://")
-            .ok_or_else(|| anyhow::anyhow!("Invalid URI: {}", uri))?
+            .ok_or_else(|| anyhow::anyhow!("Invalid URI: {uri}"))?
             .split('/')
             .collect();
 
         if parts.len() != 3 {
-            return Err(anyhow::anyhow!("Invalid URI format: {}", uri));
+            return Err(anyhow::anyhow!("Invalid URI format: {uri}"));
         }
 
         // Fetch from embedded templates
         crate::services::embedded_templates::get_template_metadata(uri)
             .await
-            .map_err(|e| anyhow::anyhow!("Failed to get template metadata: {}", e))
+            .map_err(|e| anyhow::anyhow!("Failed to get template metadata: {e}"))
     }
 
     pub async fn get_template_content(&self, uri: &str) -> Result<Arc<str>> {
         // Fetch from embedded templates
         crate::services::embedded_templates::get_template_content(uri)
             .await
-            .map_err(|e| anyhow::anyhow!("Failed to get template content: {}", e))
+            .map_err(|e| anyhow::anyhow!("Failed to get template content: {e}"))
     }
 
     pub async fn list_templates(&self, prefix: &str) -> Result<Vec<Arc<TemplateResource>>> {
         crate::services::embedded_templates::list_templates(prefix)
             .await
-            .map_err(|e| anyhow::anyhow!("Failed to list templates: {}", e))
+            .map_err(|e| anyhow::anyhow!("Failed to list templates: {e}"))
     }
 }
 

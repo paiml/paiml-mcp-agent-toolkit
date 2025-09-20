@@ -10,8 +10,8 @@
 //! # Integration Strategy
 //!
 //! The integration follows a phased approach:
-//! 1. **Drop-in Replacements**: MemoryVec, MemoryString for common cases
-//! 2. **Service Extensions**: MemoryAware trait for service-level optimization
+//! 1. **Drop-in Replacements**: `MemoryVec`, `MemoryString` for common cases
+//! 2. **Service Extensions**: `MemoryAware` trait for service-level optimization
 //! 3. **Cache Integration**: Memory-aware cache strategies
 //! 4. **AST Optimization**: Pool-based AST node allocation
 //!
@@ -109,6 +109,7 @@ impl<T> MemoryVec<T> {
     }
 
     /// Get memory usage estimate
+    #[must_use] 
     pub fn memory_usage(&self) -> usize {
         self.data.capacity() * std::mem::size_of::<T>()
     }
@@ -164,16 +165,19 @@ impl MemoryString {
     }
 
     /// Get the string content
+    #[must_use] 
     pub fn as_str(&self) -> &str {
         &self.content
     }
 
     /// Check if this string shares memory with another
+    #[must_use] 
     pub fn shares_memory_with(&self, other: &MemoryString) -> bool {
         Arc::ptr_eq(&self.content, &other.content)
     }
 
     /// Get memory statistics for this string
+    #[must_use] 
     pub fn memory_stats(&self) -> super::memory_manager::MemoryStats {
         self.memory_manager.stats()
     }
@@ -269,6 +273,7 @@ impl InternedStringSet {
     }
 
     /// Check if string exists
+    #[must_use] 
     pub fn contains(&self, s: &str) -> bool {
         // Note: This requires interning the string to check, which is not ideal
         // In practice, you'd store the interned version when inserting
@@ -281,10 +286,11 @@ impl InternedStringSet {
 
     /// Get all strings
     pub fn iter(&self) -> impl Iterator<Item = &str> {
-        self.strings.iter().map(|s| s.as_ref())
+        self.strings.iter().map(std::convert::AsRef::as_ref)
     }
 
     /// Get memory usage
+    #[must_use] 
     pub fn memory_usage(&self) -> usize {
         // Rough estimate - doesn't account for interning savings
         self.strings.len() * std::mem::size_of::<Arc<str>>()
@@ -342,6 +348,7 @@ where
     }
 
     /// Get cache statistics
+    #[must_use] 
     pub fn stats(&self) -> CacheStats {
         CacheStats {
             item_count: self.cache.len(),
@@ -352,6 +359,7 @@ where
     }
 
     /// Get the memory pool type used by this cache
+    #[must_use] 
     pub fn pool_type(&self) -> PoolType {
         self.pool_type
     }
@@ -367,7 +375,7 @@ pub struct CacheStats {
 
 /// Utility functions for memory optimization
 pub mod utils {
-    use super::*;
+    use super::{Result, MemoryVec, PoolType, global_memory_manager};
 
     /// Create a memory-optimized vector for identifiers
     pub fn create_identifier_vec() -> Result<MemoryVec<String>> {

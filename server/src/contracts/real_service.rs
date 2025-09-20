@@ -2,7 +2,7 @@
 //! This will be fully integrated once the API interfaces are stable
 
 use super::simple_service::SimpleContractService;
-use super::*;
+use super::{AnalyzeComplexityContract, AnalyzeSatdContract, AnalyzeDeadCodeContract, AnalyzeTdgContract, AnalyzeLintHotspotContract, QualityGateContract, RefactorAutoContract};
 use anyhow::Result;
 use serde_json::Value;
 use std::sync::Arc;

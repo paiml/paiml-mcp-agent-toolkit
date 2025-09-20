@@ -2,8 +2,8 @@
 ///
 /// Supports multiple backend implementations:
 /// - Sled: Embedded database with good performance (default)
-/// - RocksDB: Facebook's embedded database with excellent performance
-/// - InMemory: Fast testing and development backend
+/// - `RocksDB`: Facebook's embedded database with excellent performance
+/// - `InMemory`: Fast testing and development backend
 use anyhow::Result;
 use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
@@ -92,7 +92,7 @@ impl StorageBackend for SledBackend {
     fn iter(&self) -> Result<StorageIterator<'_>> {
         Ok(Box::new(self.tree.iter().map(|res| {
             res.map(|(k, v)| (k.to_vec(), v.to_vec()))
-                .map_err(|e| anyhow::anyhow!("Iteration error: {}", e))
+                .map_err(|e| anyhow::anyhow!("Iteration error: {e}"))
         })))
     }
 
@@ -131,6 +131,7 @@ pub struct InMemoryBackend {
 }
 
 impl InMemoryBackend {
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             data: Arc::new(DashMap::new()),
@@ -325,6 +326,7 @@ impl StorageBackendFactory {
     }
 
     /// Create in-memory backend for testing
+    #[must_use] 
     pub fn create_in_memory() -> Box<dyn StorageBackend> {
         Box::new(InMemoryBackend::new())
     }

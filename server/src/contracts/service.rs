@@ -2,7 +2,7 @@
 //! This is the SINGLE implementation that CLI, MCP, and HTTP all use
 
 use super::simple_service::SimpleContractService;
-use super::*;
+use super::{AnalyzeComplexityContract, AnalyzeSatdContract, AnalyzeDeadCodeContract, AnalyzeTdgContract, AnalyzeLintHotspotContract, AnalyzeEntropyContract, QualityGateContract, RefactorAutoContract};
 use anyhow::Result;
 use serde_json::Value;
 use std::sync::Arc;

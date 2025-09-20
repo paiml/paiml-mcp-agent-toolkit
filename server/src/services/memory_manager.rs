@@ -126,6 +126,7 @@ impl PooledBuffer {
     }
 
     /// Get the buffer data
+    #[must_use] 
     pub fn as_slice(&self) -> &[u8] {
         &self.data
     }
@@ -136,6 +137,7 @@ impl PooledBuffer {
     }
 
     /// Get buffer capacity
+    #[must_use] 
     pub fn capacity(&self) -> usize {
         self.data.capacity()
     }
@@ -250,10 +252,9 @@ impl MemoryPool {
                 buffer.resize(min_size, 0);
                 *self.reuse_count.lock() += 1;
                 return buffer;
-            } else {
-                // Buffer too small, account for its removal
-                *total_size -= buffer.capacity();
             }
+            // Buffer too small, account for its removal
+            *total_size -= buffer.capacity();
         }
 
         // Allocate new buffer
@@ -394,7 +395,7 @@ impl MemoryManager {
                     self.track_allocation(buffer.capacity());
                     Ok(PooledBuffer::new(buffer, pool_type, Arc::clone(self)))
                 } else {
-                    Err(anyhow!("Pool type {:?} not configured", pool_type))
+                    Err(anyhow!("Pool type {pool_type:?} not configured"))
                 }
             }
             AllocationStrategy::Direct => {

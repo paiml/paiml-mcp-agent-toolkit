@@ -23,6 +23,7 @@ impl Default for CStrategy {
 }
 
 impl CStrategy {
+    #[must_use] 
     pub fn new() -> Self {
         Self
     }
@@ -33,7 +34,7 @@ impl CStrategy {
         let language = tree_sitter_c::language();
         parser
             .set_language(&language)
-            .map_err(|e| anyhow::anyhow!("Failed to set C language: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to set C language: {e}"))?;
 
         parser
             .parse(content, None)
@@ -65,8 +66,7 @@ impl LanguageStrategy for CStrategy {
     fn can_parse(&self, path: &Path) -> bool {
         path.extension()
             .and_then(|ext| ext.to_str())
-            .map(|ext| matches!(ext, "c" | "h"))
-            .unwrap_or(false)
+            .is_some_and(|ext| matches!(ext, "c" | "h"))
     }
 
     async fn parse_file(&self, _path: &Path, content: &str) -> Result<AstDag> {
@@ -137,6 +137,7 @@ impl Default for CppStrategy {
 }
 
 impl CppStrategy {
+    #[must_use] 
     pub fn new() -> Self {
         Self
     }
@@ -146,7 +147,7 @@ impl CppStrategy {
         let language = tree_sitter_cpp::language();
         parser
             .set_language(&language)
-            .map_err(|e| anyhow::anyhow!("Failed to set C++ language: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to set C++ language: {e}"))?;
 
         parser
             .parse(content, None)
@@ -171,8 +172,7 @@ impl LanguageStrategy for CppStrategy {
     fn can_parse(&self, path: &Path) -> bool {
         path.extension()
             .and_then(|ext| ext.to_str())
-            .map(|ext| matches!(ext, "cpp" | "cc" | "cxx" | "hpp" | "hh" | "hxx"))
-            .unwrap_or(false)
+            .is_some_and(|ext| matches!(ext, "cpp" | "cc" | "cxx" | "hpp" | "hh" | "hxx"))
     }
 
     async fn parse_file(&self, _path: &Path, content: &str) -> Result<AstDag> {

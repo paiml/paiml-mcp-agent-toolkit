@@ -21,6 +21,7 @@ pub struct TemplateRegistry {
 
 impl TemplateRegistry {
     /// Create a new template registry with built-in templates.
+    #[must_use] 
     pub fn new() -> Self {
         let mut builtin = HashMap::new();
 
@@ -77,6 +78,7 @@ impl TemplateRegistry {
     }
 
     /// List all available template names.
+    #[must_use] 
     pub fn list_available(&self) -> Vec<String> {
         let mut templates: Vec<String> = self.builtin.keys().cloned().collect();
         templates.extend(self.custom.keys().cloned());
@@ -149,6 +151,7 @@ impl TemplateRegistry {
     }
 
     /// Check if a template exists.
+    #[must_use] 
     pub fn has_template(&self, name: &str) -> bool {
         self.builtin.contains_key(name)
             || self.custom.contains_key(name)
@@ -156,6 +159,7 @@ impl TemplateRegistry {
     }
 
     /// Get template metadata.
+    #[must_use] 
     pub fn get_template_info(&self, name: &str) -> Option<TemplateInfo> {
         self.builtin.get(name).map(|gen| TemplateInfo {
             name: gen.name().to_string(),

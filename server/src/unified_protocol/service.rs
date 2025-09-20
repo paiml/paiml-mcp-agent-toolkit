@@ -150,7 +150,7 @@ impl UnifiedService {
             .method(&request.method)
             .uri(&request.path)
             .body(request.body)
-            .map_err(|e| AppError::Internal(anyhow::anyhow!("Failed to build request: {}", e)))?;
+            .map_err(|e| AppError::Internal(anyhow::anyhow!("Failed to build request: {e}")))?;
 
         // Process through router
         let response = self
@@ -158,7 +158,7 @@ impl UnifiedService {
             .clone()
             .oneshot(axum_request)
             .await
-            .map_err(|e| AppError::Internal(anyhow::anyhow!("Router error: {}", e)))?;
+            .map_err(|e| AppError::Internal(anyhow::anyhow!("Router error: {e}")))?;
 
         // Convert back to unified response
         let (parts, body) = response.into_parts();
@@ -482,7 +482,7 @@ impl AnalysisService for DefaultAnalysisService {
 
 /// Handler modules containing the actual endpoint implementations
 pub mod handlers {
-    use super::*;
+    use super::{anyhow, Extension, Query, Arc, AppState, ListTemplatesQuery, Json, TemplateList, AppError, TemplateService, Path, TemplateInfo, GenerateParams, GeneratedTemplate, ComplexityParams, ComplexityAnalysis, AnalysisService, ComplexityQueryParams, ChurnParams, ChurnAnalysis, DagParams, DagAnalysis, ContextParams, ProjectContext, DeadCodeParams, DeadCodeAnalysis, Value, ServiceExt, MakefileLintParams, MakefileLintAnalysis, MakefileLintViolation, ProvabilityParams, ProvabilityAnalysis, ProvabilitySummary, SatdParams, SatdAnalysis, SatdFile, SatdItem, LintHotspotParams, LintHotspotAnalysis, LintHotspot, set_protocol_context, Protocol, IntoResponse};
 
     /// List available templates
     pub async fn list_templates(
@@ -599,12 +599,12 @@ pub mod handlers {
         // Parse basic config parameters
         let period_days = params
             .get("period_days")
-            .and_then(|v| v.as_u64())
+            .and_then(serde_json::Value::as_u64)
             .unwrap_or(30) as u32;
 
         let parallel = params
             .get("parallel")
-            .and_then(|v| v.as_u64())
+            .and_then(serde_json::Value::as_u64)
             .map(|v| v as usize);
 
         // Build configuration
@@ -673,7 +673,7 @@ pub mod handlers {
         let makefile_path = Path::new(&params.path);
         let lint_result = makefile_linter::lint_makefile(makefile_path)
             .await
-            .map_err(|e| AppError::Internal(anyhow::anyhow!("Makefile linting failed: {}", e)))?;
+            .map_err(|e| AppError::Internal(anyhow::anyhow!("Makefile linting failed: {e}")))?;
 
         let analysis = MakefileLintAnalysis {
             path: params.path,

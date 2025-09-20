@@ -34,6 +34,7 @@ pub struct WasmComplexityAnalyzer {
 
 impl WasmComplexityAnalyzer {
     /// Create a new complexity analyzer
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             _max_complexity: 100,
@@ -67,7 +68,7 @@ impl WasmComplexityAnalyzer {
             cognitive: cyclomatic,
             memory_pressure: cyclomatic as f32 * 0.1,
             hot_path_score: cyclomatic as f32,
-            estimated_gas: cyclomatic as f64 * 1000.0,
+            estimated_gas: f64::from(cyclomatic) * 1000.0,
             indirect_call_overhead: 1.0,
             max_loop_depth: max_depth,
         }

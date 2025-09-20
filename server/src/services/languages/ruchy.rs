@@ -139,7 +139,7 @@ pub enum RuchyToken {
 
 // Static maps for O(1) keyword and token lookups
 static KEYWORD_MAP: Lazy<HashMap<&'static str, RuchyToken>> = Lazy::new(|| {
-    use RuchyToken::*;
+    use RuchyToken::{Fun, If, Else, While, For, Match, Return, Let, Const, Var, Class, Struct, Enum, Trait, Impl, Actor, Async, Await, Spawn, Send, Receive, Break, Continue, In, As, Pub, Mod, Use, Where, Type, Import, From, Export, True, False};
     let mut map = HashMap::new();
     map.insert("fun", Fun);
     map.insert("if", If);
@@ -180,7 +180,7 @@ static KEYWORD_MAP: Lazy<HashMap<&'static str, RuchyToken>> = Lazy::new(|| {
 });
 
 static SINGLE_CHAR_TOKEN_MAP: Lazy<HashMap<char, RuchyToken>> = Lazy::new(|| {
-    use RuchyToken::*;
+    use RuchyToken::{Plus, Star, LeftParen, RightParen, LeftBrace, RightBrace, LeftBracket, RightBracket, Semicolon, Comma, Question, Tilde, Caret, Percent, Hash};
     let mut map = HashMap::new();
     map.insert('+', Plus);
     map.insert('*', Star);
@@ -392,6 +392,7 @@ pub struct DeadlockWarning {
 }
 
 impl RuchyComplexityAnalyzer {
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             current_complexity: ComplexityMetrics::default(),
@@ -443,12 +444,12 @@ impl RuchyComplexityAnalyzer {
         let operators_total = self.operator_count;
         let operands_total = self.operand_count;
 
-        let n = (operators_unique + operands_unique) as f64;
-        let n_total = (operators_total + operands_total) as f64;
+        let n = f64::from(operators_unique + operands_unique);
+        let n_total = f64::from(operators_total + operands_total);
 
         let volume = if n > 0.0 { n_total * n.log2() } else { 0.0 };
         let difficulty = if operands_unique > 0 {
-            (operators_unique as f64 / 2.0) * (operands_total as f64 / operands_unique as f64)
+            (f64::from(operators_unique) / 2.0) * (f64::from(operands_total) / f64::from(operands_unique))
         } else {
             0.0
         };
@@ -470,6 +471,7 @@ impl RuchyComplexityAnalyzer {
     }
 
     /// Get dead code analysis results
+    #[must_use] 
     pub fn get_dead_code(&self) -> RuchyDeadCode {
         let unused_functions: Vec<String> = self
             .defined_functions
@@ -533,11 +535,13 @@ impl RuchyComplexityAnalyzer {
     }
 
     /// Get import dependencies
+    #[must_use] 
     pub fn get_imports(&self) -> &[RuchyImport] {
         &self.imports
     }
 
     /// Get exported items
+    #[must_use] 
     pub fn get_exports(&self) -> Vec<String> {
         self.exports.iter().cloned().collect()
     }
@@ -562,6 +566,7 @@ impl RuchyComplexityAnalyzer {
     }
 
     /// Get actor analysis results
+    #[must_use] 
     pub fn get_actor_analysis(&self) -> RuchyActorAnalysis {
         let potential_deadlocks = self.detect_potential_deadlocks();
 
@@ -697,7 +702,7 @@ impl RuchyComplexityAnalyzer {
         else_branch: Option<&RuchyAst>,
     ) {
         self.current_complexity.cyclomatic += 1;
-        self.current_complexity.cognitive += 1 + self.nesting_level as u16;
+        self.current_complexity.cognitive += 1 + u16::from(self.nesting_level);
         self.track_operator("if");
 
         self.nesting_level += 1;
@@ -718,7 +723,7 @@ impl RuchyComplexityAnalyzer {
     /// Analyze while loop complexity
     fn analyze_while(&mut self, condition: &RuchyAst, body: &RuchyAst) {
         self.current_complexity.cyclomatic += 1;
-        self.current_complexity.cognitive += 1 + self.nesting_level as u16;
+        self.current_complexity.cognitive += 1 + u16::from(self.nesting_level);
 
         self.nesting_level += 1;
         self.current_complexity.nesting_max =
@@ -733,7 +738,7 @@ impl RuchyComplexityAnalyzer {
     /// Analyze for loop complexity
     fn analyze_for(&mut self, body: &RuchyAst) {
         self.current_complexity.cyclomatic += 1;
-        self.current_complexity.cognitive += 1 + self.nesting_level as u16;
+        self.current_complexity.cognitive += 1 + u16::from(self.nesting_level);
 
         self.nesting_level += 1;
         self.current_complexity.nesting_max =
@@ -748,7 +753,7 @@ impl RuchyComplexityAnalyzer {
     fn analyze_match(&mut self, expr: &RuchyAst, arms: &[(RuchyAst, RuchyAst)]) {
         let arm_count = arms.len() as u16;
         self.current_complexity.cyclomatic += arm_count;
-        self.current_complexity.cognitive += (arm_count * 2) + self.nesting_level as u16;
+        self.current_complexity.cognitive += (arm_count * 2) + u16::from(self.nesting_level);
 
         self.track_operator("match");
 
@@ -945,6 +950,7 @@ pub struct RuchyLexer {
 }
 
 impl RuchyLexer {
+    #[must_use] 
     pub fn new(input: String) -> Self {
         let lexer = Self {
             input: input.clone(),
@@ -1013,7 +1019,7 @@ impl RuchyLexer {
             if ch.is_numeric() {
                 num_str.push(ch);
                 self.advance();
-            } else if ch == '.' && !is_float && self.peek().is_some_and(|c| c.is_numeric()) {
+            } else if ch == '.' && !is_float && self.peek().is_some_and(char::is_numeric) {
                 is_float = true;
                 num_str.push(ch);
                 self.advance();
@@ -1302,6 +1308,7 @@ impl Default for RuchyAstAnalyzer {
 }
 
 impl RuchyAstAnalyzer {
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             _current_complexity: ComplexityMetrics::default(),
@@ -1418,9 +1425,8 @@ pub async fn analyze_ruchy_file_with_parser(path: &Path) -> Result<FileComplexit
                 path.display(),
                 error
             ));
-        } else {
-            return Err(anyhow::anyhow!("Syntax error in {}", path.display()));
         }
+        return Err(anyhow::anyhow!("Syntax error in {}", path.display()));
     }
 
     // Parse with real Ruchy parser

@@ -19,6 +19,7 @@ impl Default for PythonStrategy {
 }
 
 impl PythonStrategy {
+    #[must_use] 
     pub fn new() -> Self {
         Self
     }
@@ -32,7 +33,7 @@ impl AstStrategy for PythonStrategy {
         // Convert TemplateError to anyhow::Error
         let context = crate::services::ast_python::analyze_python_file(file_path)
             .await
-            .map_err(|e| anyhow::anyhow!("Python analysis failed: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Python analysis failed: {e}"))?;
         Ok(context)
     }
 

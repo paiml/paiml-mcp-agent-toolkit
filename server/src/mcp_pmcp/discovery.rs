@@ -18,6 +18,7 @@ pub struct DiscoveryService {
 
 impl DiscoveryService {
     /// Create new discovery service with zero-copy initialization
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             trigram_index: TrigramIndex,
@@ -67,18 +68,19 @@ impl DiscoveryService {
         TOOL_REGISTRY
             .iter()
             .map(|(name, meta)| ToolInfo {
-                name: name.to_string(),
+                name: (*name).to_string(),
                 description: meta.description.to_string(),
-                keywords: meta.keywords.iter().map(|s| s.to_string()).collect(),
+                keywords: meta.keywords.iter().map(|s| (*s).to_string()).collect(),
                 aliases: ALIAS_TABLE
                     .get(name)
-                    .map(|aliases| aliases.iter().map(|s| s.to_string()).collect())
+                    .map(|aliases| aliases.iter().map(|s| (*s).to_string()).collect())
                     .unwrap_or_default(),
             })
             .collect()
     }
 
     /// Disambiguate between multiple tool matches using static priority rules
+    #[must_use] 
     pub fn disambiguate<'a>(&self, candidates: Vec<&'a str>, context: Option<&Context>) -> &'a str {
         if candidates.is_empty() {
             return "";
@@ -161,6 +163,7 @@ pub struct DiscoveryMetrics {
 }
 
 impl DiscoveryMetrics {
+    #[must_use] 
     pub fn success_rate(&self) -> f64 {
         if self.total_queries == 0 {
             return 0.0;

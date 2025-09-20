@@ -286,7 +286,7 @@ impl EnhancedReportingService {
 
         // Deduct points for various issues
         if let Some(complexity) = &results.complexity_analysis {
-            let avg_complexity = complexity.total_cyclomatic as f64 / complexity.functions as f64;
+            let avg_complexity = f64::from(complexity.total_cyclomatic) / complexity.functions as f64;
             if avg_complexity > 10.0 {
                 score -= (avg_complexity - 10.0).min(20.0);
             }
@@ -410,7 +410,7 @@ impl EnhancedReportingService {
         metrics.insert(
             "total_cyclomatic".to_string(),
             MetricValue {
-                value: complexity.total_cyclomatic as f64,
+                value: f64::from(complexity.total_cyclomatic),
                 unit: "CC".to_string(),
                 trend: Trend::Unknown,
                 threshold: Some(100.0),
@@ -420,7 +420,7 @@ impl EnhancedReportingService {
         metrics.insert(
             "average_cyclomatic".to_string(),
             MetricValue {
-                value: complexity.total_cyclomatic as f64 / complexity.functions as f64,
+                value: f64::from(complexity.total_cyclomatic) / complexity.functions as f64,
                 unit: "CC/function".to_string(),
                 trend: Trend::Unknown,
                 threshold: Some(10.0),
@@ -760,9 +760,7 @@ impl EnhancedReportingService {
 
                 for (name, metric) in &section.metrics {
                     let threshold = metric
-                        .threshold
-                        .map(|t| format!("{t:.1}"))
-                        .unwrap_or_else(|| "N/A".to_string());
+                        .threshold.map_or_else(|| "N/A".to_string(), |t| format!("{t:.1}"));
 
                     md.push_str(&format!(
                         "| {} | {:.1} {} | {} | {:?} |\n",

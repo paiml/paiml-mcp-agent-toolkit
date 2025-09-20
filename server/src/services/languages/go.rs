@@ -20,6 +20,7 @@ pub struct GoAstVisitor {
 #[cfg(feature = "go-ast")]
 impl GoAstVisitor {
     /// Creates a new Go AST visitor
+    #[must_use] 
     pub fn new(file_path: &Path) -> Self {
         Self {
             items: Vec::new(),
@@ -178,6 +179,7 @@ impl Default for GoComplexityAnalyzer {
 
 impl GoComplexityAnalyzer {
     /// Creates a new Go complexity analyzer
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             cyclomatic_complexity: 0,

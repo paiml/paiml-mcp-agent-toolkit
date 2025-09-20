@@ -64,6 +64,7 @@ struct Component {
 }
 
 impl DemoRunner {
+    #[must_use] 
     pub fn new(server: Arc<StatelessTemplateServer>) -> Self {
         Self {
             server,
@@ -131,9 +132,9 @@ impl DemoRunner {
                     CloneError::Timeout => {
                         Err(anyhow!("Repository clone timed out after 2 minutes"))
                     }
-                    CloneError::InvalidUrl(msg) => Err(anyhow!("Invalid GitHub URL: {}", msg)),
-                    CloneError::GitError(e) => Err(anyhow!("Git error: {}", e)),
-                    _ => Err(anyhow!("Failed to clone repository: {}", e)),
+                    CloneError::InvalidUrl(msg) => Err(anyhow!("Invalid GitHub URL: {msg}")),
+                    CloneError::GitError(e) => Err(anyhow!("Git error: {e}")),
+                    _ => Err(anyhow!("Failed to clone repository: {e}")),
                 }
             }
         }
@@ -161,9 +162,9 @@ impl DemoRunner {
                 label: "File Parser".to_string(),
                 color: "#FFFFFF".to_string(),
                 connections: vec![
-                    ("C".to_string(), "".to_string()),
-                    ("D".to_string(), "".to_string()),
-                    ("E".to_string(), "".to_string()),
+                    ("C".to_string(), String::new()),
+                    ("D".to_string(), String::new()),
+                    ("E".to_string(), String::new()),
                 ],
             },
         );
@@ -725,6 +726,7 @@ impl DemoRunner {
 }
 
 impl DemoReport {
+    #[must_use] 
     pub fn render(&self, mode: ExecutionMode) -> String {
         match mode {
             ExecutionMode::Cli => self.render_cli(),
@@ -878,7 +880,7 @@ impl DemoReport {
                         writeln!(
                             output,
                             "      High-risk files: {}, Avg probability: {:.2}",
-                            high_risk.as_array().map(|a| a.len()).unwrap_or(0),
+                            high_risk.as_array().map_or(0, std::vec::Vec::len),
                             avg_prob.as_f64().unwrap_or(0.0)
                         )
                         .unwrap();
@@ -961,7 +963,7 @@ fn resolve_repo_spec(repo_spec: &str) -> Result<PathBuf> {
     }
 
     // Fall back to treating as local path
-    Err(anyhow!("Repository not found: {}", repo_spec))
+    Err(anyhow!("Repository not found: {repo_spec}"))
 }
 
 /// Try to resolve as local path (cognitive complexity ≤2)
@@ -1008,14 +1010,14 @@ fn get_canonical_path(hint: Option<PathBuf>) -> Result<PathBuf> {
     match hint {
         Some(p) => {
             if !p.exists() {
-                return Err(anyhow!("Path does not exist: {:?}", p));
+                return Err(anyhow!("Path does not exist: {p:?}"));
             }
             p.canonicalize()
-                .map_err(|e| anyhow!("Failed to canonicalize path {:?}: {}", p, e))
+                .map_err(|e| anyhow!("Failed to canonicalize path {p:?}: {e}"))
         }
         None => env::current_dir()
             .and_then(|p| p.canonicalize())
-            .map_err(|e| anyhow!("Failed to get current directory: {}", e)),
+            .map_err(|e| anyhow!("Failed to get current directory: {e}")),
     }
 }
 
@@ -1063,7 +1065,7 @@ fn read_repository_path_from_user() -> Result<PathBuf> {
     let mut input = String::with_capacity(1024);
     io::stdin()
         .read_line(&mut input)
-        .map_err(|e| anyhow!("Failed to read user input: {}", e))?;
+        .map_err(|e| anyhow!("Failed to read user input: {e}"))?;
 
     let trimmed = input.trim();
     if trimmed.is_empty() {
@@ -1072,17 +1074,17 @@ fn read_repository_path_from_user() -> Result<PathBuf> {
 
     let path = PathBuf::from(trimmed);
     if !path.exists() {
-        return Err(anyhow!("Specified path does not exist: {:?}", path));
+        return Err(anyhow!("Specified path does not exist: {path:?}"));
     }
 
     let canonical = path
         .canonicalize()
-        .map_err(|e| anyhow!("Failed to canonicalize user path: {}", e))?;
+        .map_err(|e| anyhow!("Failed to canonicalize user path: {e}"))?;
 
     if canonical.join(".git").is_dir() {
         Ok(canonical)
     } else {
-        Err(anyhow!("No .git directory found at: {:?}", canonical))
+        Err(anyhow!("No .git directory found at: {canonical:?}"))
     }
 }
 
@@ -1096,8 +1098,7 @@ pub fn detect_repository(hint: Option<PathBuf>) -> Result<PathBuf> {
     // Non-interactive failure for test environments
     if !is_interactive_environment() {
         return Err(anyhow!(
-            "No git repository found in {:?} or its parent directories",
-            candidate
+            "No git repository found in {candidate:?} or its parent directories"
         ));
     }
 

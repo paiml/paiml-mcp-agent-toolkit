@@ -30,6 +30,7 @@ pub struct WasmBinaryAnalyzer {
 
 impl WasmBinaryAnalyzer {
     /// Create a new WebAssembly binary analyzer
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             max_file_size: 10 * 1024 * 1024, // 10MB
@@ -54,7 +55,7 @@ impl WasmBinaryAnalyzer {
             function_count: count_occurrences(&content, &[0x01]), // Type section
             import_count: count_occurrences(&content, &[0x02]),   // Import section
             export_count: count_occurrences(&content, &[0x07]),   // Export section
-            linear_memory_pages: if content.len() > 1000 { 1 } else { 0 },
+            linear_memory_pages: u32::from(content.len() > 1000),
             ..Default::default()
         };
 
@@ -94,7 +95,7 @@ impl WasmBinaryAnalyzer {
                 let byte = data[pos];
                 pos += 1;
 
-                size |= ((byte & 0x7F) as u64) << shift;
+                size |= u64::from(byte & 0x7F) << shift;
                 if byte & 0x80 == 0 {
                     break;
                 }
@@ -146,6 +147,7 @@ impl Default for WasmBinaryAnalyzer {
 /// // Single byte pattern
 /// assert_eq!(count_occurrences(b"aaa", b"a"), 3);
 /// ```
+#[must_use] 
 pub fn count_occurrences(haystack: &[u8], needle: &[u8]) -> u32 {
     let mut count = 0;
     let mut pos = 0;

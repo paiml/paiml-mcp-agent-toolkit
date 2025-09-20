@@ -58,6 +58,7 @@ pub fn format_single_file_output(
 /// # Returns
 ///
 /// Formatted markdown string with quality gate report
+#[must_use] 
 pub fn format_single_file_summary(
     file_path: &Path,
     results: &QualityGateResults,
@@ -333,7 +334,7 @@ fn print_check_timing(check: &QualityCheckType, elapsed_secs: f64) {
     eprintln!("    ⏱️  {check_name} check: {elapsed_secs:.3}s");
 }
 
-/// Toyota Way: Extract Method - Format quality gate results as JUnit XML (complexity ≤8)
+/// Toyota Way: Extract Method - Format quality gate results as `JUnit` XML (complexity ≤8)
 /// Creates JUnit-compatible XML output for CI/CD integration
 pub fn format_qg_as_junit(violations: &[QualityViolation]) -> Result<String> {
     use std::fmt::Write;
@@ -360,7 +361,7 @@ pub fn format_qg_as_junit(violations: &[QualityViolation]) -> Result<String> {
     Ok(output)
 }
 
-/// Toyota Way: Extract Method - Write single JUnit test case (complexity ≤3)
+/// Toyota Way: Extract Method - Write single `JUnit` test case (complexity ≤3)
 fn write_junit_test_case(
     output: &mut String,
     violation: &QualityViolation,
@@ -418,12 +419,12 @@ fn format_project_summary(results: &QualityGateResults, violations: &[QualityVio
         results.total_violations
     ));
 
-    if !violations.is_empty() {
+    if violations.is_empty() {
+        output.push_str("No violations found.\n");
+    } else {
         output.push_str("## Violations by Type\n\n");
         let grouped = group_violations_by_type(violations);
         output.push_str(&format_violations_markdown(&grouped));
-    } else {
-        output.push_str("No violations found.\n");
     }
 
     output

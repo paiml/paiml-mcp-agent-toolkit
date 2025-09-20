@@ -74,11 +74,13 @@ impl Default for EntropyAnalyzer {
 
 impl EntropyAnalyzer {
     /// Create new analyzer with default config
+    #[must_use] 
     pub fn new() -> Self {
         Self::with_config(EntropyConfig::default())
     }
 
     /// Create analyzer with custom config
+    #[must_use] 
     pub fn with_config(config: EntropyConfig) -> Self {
         Self {
             config: config.clone(),

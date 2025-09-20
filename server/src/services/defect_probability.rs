@@ -112,16 +112,19 @@ pub enum RiskLevel {
 }
 
 impl DefectProbabilityCalculator {
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             weights: DefectWeights::default(),
         }
     }
 
+    #[must_use] 
     pub fn with_weights(weights: DefectWeights) -> Self {
         Self { weights }
     }
 
+    #[must_use] 
     pub fn calculate(&self, metrics: &FileMetrics) -> DefectScore {
         // Normalize to [0, 1] using empirical CDFs
         let churn_norm = self.normalize_churn(metrics.churn_score);
@@ -172,6 +175,7 @@ impl DefectProbabilityCalculator {
         }
     }
 
+    #[must_use] 
     pub fn calculate_batch(&self, metrics: &[FileMetrics]) -> Vec<(String, DefectScore)> {
         metrics
             .iter()
@@ -359,6 +363,7 @@ pub struct ProjectDefectAnalysis {
 }
 
 impl ProjectDefectAnalysis {
+    #[must_use] 
     pub fn from_scores(scores: Vec<(String, DefectScore)>) -> Self {
         let mut file_scores = HashMap::new();
         let mut high_risk_files = Vec::new();
@@ -386,14 +391,14 @@ impl ProjectDefectAnalysis {
 
         // Sort risk files by probability (highest first)
         high_risk_files.sort_by(|a, b| {
-            let a_prob = file_scores.get(a).map(|s| s.probability).unwrap_or(0.0);
-            let b_prob = file_scores.get(b).map(|s| s.probability).unwrap_or(0.0);
+            let a_prob = file_scores.get(a).map_or(0.0, |s| s.probability);
+            let b_prob = file_scores.get(b).map_or(0.0, |s| s.probability);
             b_prob.partial_cmp(&a_prob).unwrap()
         });
 
         medium_risk_files.sort_by(|a, b| {
-            let a_prob = file_scores.get(a).map(|s| s.probability).unwrap_or(0.0);
-            let b_prob = file_scores.get(b).map(|s| s.probability).unwrap_or(0.0);
+            let a_prob = file_scores.get(a).map_or(0.0, |s| s.probability);
+            let b_prob = file_scores.get(b).map_or(0.0, |s| s.probability);
             b_prob.partial_cmp(&a_prob).unwrap()
         });
 
@@ -406,6 +411,7 @@ impl ProjectDefectAnalysis {
         }
     }
 
+    #[must_use] 
     pub fn get_top_risk_files(&self, limit: usize) -> Vec<(&String, &DefectScore)> {
         let mut all_files: Vec<_> = self.file_scores.iter().collect();
         all_files.sort_by(|a, b| b.1.probability.partial_cmp(&a.1.probability).unwrap());

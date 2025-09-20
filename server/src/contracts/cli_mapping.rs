@@ -1,7 +1,7 @@
 //! Maps CLI arguments to uniform contracts
 //! This ensures CLI uses the exact same contracts as MCP and HTTP
 
-use super::*;
+use super::ContractValidation;
 use crate::cli::commands::AnalyzeCommands;
 use anyhow::Result;
 

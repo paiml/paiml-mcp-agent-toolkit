@@ -16,6 +16,7 @@ impl Default for AnalyzerPool {
 }
 
 impl AnalyzerPool {
+    #[must_use] 
     pub fn new() -> Self {
         Self
     }
@@ -30,6 +31,7 @@ impl Default for RustAnalyzer {
 }
 
 impl RustAnalyzer {
+    #[must_use] 
     pub fn new() -> Self {
         Self
     }

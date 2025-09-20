@@ -200,14 +200,7 @@ fn should_include_file(path: &Path, include: &Option<String>) -> bool {
 fn is_code_file(path: &Path) -> bool {
     matches!(
         path.extension().and_then(|s| s.to_str()),
-        Some("rs")
-            | Some("js")
-            | Some("ts")
-            | Some("py")
-            | Some("java")
-            | Some("cpp")
-            | Some("c")
-            | Some("go")
+        Some("rs" | "js" | "ts" | "py" | "java" | "cpp" | "c" | "go")
     )
 }
 
@@ -263,7 +256,7 @@ fn extract_names(
                         name_match.as_str().to_string(),
                         file.to_string(),
                         line_no + 1,
-                        kind.to_string(),
+                        (*kind).to_string(),
                     ));
                 }
             }

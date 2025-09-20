@@ -6,6 +6,7 @@ use std::fmt::Write;
 use std::path::Path;
 
 /// Filter TDG hotspots based on criteria
+#[must_use] 
 pub fn filter_tdg_hotspots(
     mut hotspots: Vec<TDGHotspot>,
     threshold: f64,

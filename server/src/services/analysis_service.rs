@@ -153,6 +153,7 @@ pub struct AnalysisService {
 }
 
 impl AnalysisService {
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             metrics: Arc::new(RwLock::new(ServiceMetrics::default())),
@@ -181,7 +182,7 @@ impl AnalysisService {
             .satd_detector
             .analyze_project(path, true)
             .await
-            .map_err(|e| anyhow::anyhow!("SATD analysis failed: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("SATD analysis failed: {e}"))?;
 
         // Convert TechnicalDebt to SatdViolation
         let violations: Vec<SatdViolation> = results
@@ -349,7 +350,7 @@ impl Service for AnalysisService {
         self.metrics.blocking_read().clone()
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "AnalysisService"
     }
 }

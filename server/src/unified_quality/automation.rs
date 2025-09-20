@@ -196,6 +196,7 @@ pub struct FailedFix {
 
 impl ConservativeAutomator {
     /// Create a new conservative automator
+    #[must_use] 
     pub fn new(config: AutomatorConfig) -> Self {
         Self {
             safe_transforms: Self::initialize_safe_transforms(),
@@ -324,7 +325,7 @@ impl ConservativeAutomator {
                         fix_type: FixType::DeadCodeRemoval,
                         change: Change {
                             before: "#[allow(dead_code)] fn unused() {}".to_string(),
-                            after: "".to_string(),
+                            after: String::new(),
                             line_range: (1, 1),
                         },
                         verify_command: Some("cargo check".to_string()),
@@ -343,7 +344,7 @@ impl ConservativeAutomator {
                         fix_type: FixType::UnusedImportRemoval,
                         change: Change {
                             before: "use std::collections::HashMap;".to_string(),
-                            after: "".to_string(),
+                            after: String::new(),
                             line_range: (1, 1),
                         },
                         verify_command: Some("cargo check".to_string()),
@@ -362,7 +363,7 @@ impl ConservativeAutomator {
             fix_type: FixType::DeadCodeRemoval,
             change: Change {
                 before: "dead code".to_string(),
-                after: "".to_string(),
+                after: String::new(),
                 line_range: (1, 10),
             },
             verify_command: Some("cargo check".to_string()),
@@ -378,7 +379,7 @@ impl ConservativeAutomator {
             fix_type: FixType::UnusedImportRemoval,
             change: Change {
                 before: "use unused;".to_string(),
-                after: "".to_string(),
+                after: String::new(),
                 line_range: (1, 1),
             },
             verify_command: Some("cargo check".to_string()),
@@ -430,6 +431,7 @@ impl ConservativeAutomator {
     }
 
     /// Get list of safe transformations
+    #[must_use] 
     pub fn get_safe_transforms(&self) -> Vec<SafeTransform> {
         self.safe_transforms.clone()
     }

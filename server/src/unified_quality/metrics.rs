@@ -44,6 +44,7 @@ impl Default for Metrics {
 
 impl Metrics {
     /// Calculate quality score (0.0 - 1.0)
+    #[must_use] 
     pub fn quality_score(&self) -> f64 {
         let mut score = 1.0;
 
@@ -63,7 +64,7 @@ impl Metrics {
 
         // Penalize SATD
         if self.satd_count > 0 {
-            score -= (self.satd_count as f64 * 0.05).min(0.3);
+            score -= (f64::from(self.satd_count) * 0.05).min(0.3);
         }
 
         // Penalize low coverage
@@ -77,6 +78,7 @@ impl Metrics {
     }
 
     /// Check if metrics meet quality thresholds
+    #[must_use] 
     pub fn meets_thresholds(&self, thresholds: &QualityThresholds) -> bool {
         self.complexity <= thresholds.max_complexity
             && self.cognitive <= thresholds.max_cognitive

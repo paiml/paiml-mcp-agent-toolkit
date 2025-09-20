@@ -10,7 +10,7 @@ use std::time::{Duration, UNIX_EPOCH};
 
 /// AST cache strategy for file analysis results with file modification tracking.
 ///
-/// This strategy caches parsed AST data and FileContext information, automatically
+/// This strategy caches parsed AST data and `FileContext` information, automatically
 /// invalidating entries when the source files are modified. Uses file modification
 /// times (mtime) for cache validation.
 ///
@@ -69,8 +69,7 @@ impl CacheStrategy for AstCacheStrategy {
             .ok()
             .and_then(|m| m.modified().ok())
             .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
-            .map(|d| d.as_secs())
-            .unwrap_or(0);
+            .map_or(0, |d| d.as_secs());
 
         format!("ast:{}:{}", path.display(), mtime)
     }
@@ -86,8 +85,7 @@ impl CacheStrategy for AstCacheStrategy {
             .ok()
             .and_then(|m| m.modified().ok())
             .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
-            .map(|d| d.as_secs())
-            .unwrap_or(0);
+            .map_or(0, |d| d.as_secs());
 
         // The cached FileContext should be for the same file
         // Compare the path to ensure we're validating the right entry
@@ -481,8 +479,7 @@ impl CacheStrategy for GitStatsCacheStrategy {
     fn validate(&self, repo: &PathBuf, cached: &GitStats) -> bool {
         // Check if HEAD is still the same
         self.get_git_head(repo)
-            .map(|head| head == cached.head_commit)
-            .unwrap_or(false)
+            .is_some_and(|head| head == cached.head_commit)
     }
 
     fn ttl(&self) -> Option<Duration> {

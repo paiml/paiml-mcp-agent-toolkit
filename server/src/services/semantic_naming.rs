@@ -56,7 +56,8 @@ pub struct SemanticNamer {
 }
 
 impl SemanticNamer {
-    /// Create a new SemanticNamer with default language patterns
+    /// Create a new `SemanticNamer` with default language patterns
+    #[must_use] 
     pub fn new() -> Self {
         let mut patterns = FxHashMap::default();
         patterns.insert("rust".to_string(), "::");
@@ -71,6 +72,7 @@ impl SemanticNamer {
     }
 
     /// Get a semantic name for a node based on its available fields
+    #[must_use] 
     pub fn get_semantic_name(&self, id: &str, node: &NodeInfo) -> String {
         // Priority 1: Use label if not empty and meaningful
         if !node.label.is_empty() && node.label != id {
@@ -154,6 +156,7 @@ impl SemanticNamer {
     /// assert_eq!(SemanticNamer::detect_language("ts"), "typescript");
     /// assert_eq!(SemanticNamer::detect_language("xyz"), "unknown");
     /// ```
+    #[must_use] 
     pub fn detect_language(extension: &str) -> &'static str {
         match extension {
             "rs" => "rust",
