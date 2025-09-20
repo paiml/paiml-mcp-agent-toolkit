@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.90.0] - 2025-01-27
+
+### Added
+- **Enhanced Python AST Extraction**: Implemented real source location and qualified name extraction for Python files
+  - **New EnhancedPythonVisitor**: Extracts actual function and class names from Python AST using RustPython parser
+  - **Qualified Name Resolution**: Provides precise qualified names like `ComplexityReducer::find_complex_functions`
+  - **Class Context Preservation**: Maintains class hierarchy for nested methods and functions
+  - **Async Function Detection**: Accurately detects async functions and methods in Python code
+  - **Real Line Numbers**: Preserves actual source line numbers instead of synthetic values
+  - **Complete Test Coverage**: Comprehensive unit tests and property tests for all Python AST functionality
+
+### Changed
+- **Python AST Compatibility Layer**: Enhanced `ast_python_compat.rs` to use real AST extraction when `python-ast` feature is enabled
+  - Replaced placeholder generation (`function_0`, `class_0`) with actual symbol names from Python source
+  - Added graceful fallback to legacy approach when parsing fails or feature is disabled
+  - Improved accuracy of context generation for AI/LLM consumption of Python code
+  - Maintained backward compatibility with existing API contracts
+
+### Fixed
+- **Python Placeholder Generation**: Eliminated all placeholder names in Python AST extraction
+  - **Before**: `function_0`, `function_1`, `class_0` (useless for MCP querying)
+  - **After**: `ComplexityReducer::__init__`, `ComplexityReducer::find_complex_functions` (precise qualified names)
+  - Enables effective MCP tool queries for Python codebases
+  - Significantly improves cross-language analysis capabilities
+
 ## [2.89.0] - 2025-01-27
 
 ### Added

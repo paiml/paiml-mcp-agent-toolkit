@@ -131,6 +131,7 @@ mod duplicate_detector_property_tests;
 pub mod embedded_templates;
 pub mod enhanced_ast_visitor;
 pub mod enhanced_typescript_visitor;
+pub mod enhanced_python_visitor;
 pub mod enhanced_reporting;
 pub mod file_classifier;
 #[cfg(test)]

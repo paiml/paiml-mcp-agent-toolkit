@@ -313,7 +313,7 @@ mod tests {
             let source_map = Arc::new(SourceMap::default());
             let source_file = source_map.new_source_file(
                 FileName::Custom("test.ts".into()).into(),
-                code,
+                code.to_string(),
             );
 
             let lexer = Lexer::new(
@@ -538,7 +538,7 @@ mod tests {
             let source_map = Arc::new(SourceMap::default());
             let source_file = source_map.new_source_file(
                 FileName::Custom("test.ts".into()).into(),
-                code,
+                code.to_string(),
             );
 
             let lexer = Lexer::new(
