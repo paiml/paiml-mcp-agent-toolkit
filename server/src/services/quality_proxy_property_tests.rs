@@ -292,8 +292,12 @@ pub fn {}({}: i32) -> i32 {{
 
             let response = rt.block_on(service.proxy_operation(request)).unwrap();
 
-            // Auto-fix should either fix the issue or reject if it can't
+            // Auto-fix should either:
+            // 1. Accept if the original code already passes quality checks
+            // 2. Modify and fix the issues (returning Modified status)
+            // 3. Reject if it can't fix the issues
             prop_assert!(
+                matches!(response.status, ProxyStatus::Accepted) ||
                 matches!(response.status, ProxyStatus::Modified) ||
                 matches!(response.status, ProxyStatus::Rejected)
             );
