@@ -1288,8 +1288,8 @@ impl RuchyLexer {
 /// Real Ruchy AST analyzer that works with the official Ruchy parser
 #[cfg(feature = "ruchy-ast")]
 pub struct RuchyAstAnalyzer {
-    current_complexity: ComplexityMetrics,
-    nesting_level: u8,
+    _current_complexity: ComplexityMetrics,
+    _nesting_level: u8,
     functions: Vec<FunctionComplexity>,
     classes: Vec<crate::services::complexity::ClassComplexity>,
 }
@@ -1298,8 +1298,8 @@ pub struct RuchyAstAnalyzer {
 impl RuchyAstAnalyzer {
     pub fn new() -> Self {
         Self {
-            current_complexity: ComplexityMetrics::default(),
-            nesting_level: 0,
+            _current_complexity: ComplexityMetrics::default(),
+            _nesting_level: 0,
             functions: Vec::new(),
             classes: Vec::new(),
         }
@@ -1339,7 +1339,7 @@ impl RuchyAstAnalyzer {
         })
     }
 
-    fn analyze_expr(&mut self, expr: &ruchy::Expr) -> Result<()> {
+    fn _analyze_expr(&mut self, expr: &ruchy::Expr) -> Result<()> {
         // Placeholder for future Ruchy AST analysis
         // use ruchy::{ExprKind, BinaryOp};
 
@@ -1355,7 +1355,7 @@ impl RuchyAstAnalyzer {
         Ok(())
     }
 
-    fn analyze_function(&mut self, name: &str, _body: &ruchy::Expr) -> Result<()> {
+    fn _analyze_function(&mut self, name: &str, _body: &ruchy::Expr) -> Result<()> {
         // Simplified implementation for TDD GREEN phase
         // Store function metrics with basic complexity
         self.functions.push(FunctionComplexity {
