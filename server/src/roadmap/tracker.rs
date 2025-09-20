@@ -427,6 +427,7 @@ impl RoadmapDashboard {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::roadmap::Priority;
     use chrono::{TimeZone, Utc};
 
     #[test]

@@ -475,6 +475,7 @@ impl AgentsMdGenerator {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::agents_md::{DocumentMetadata, SectionType};
     use std::fs;
     use tempfile::TempDir;
 
