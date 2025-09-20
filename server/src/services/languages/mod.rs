@@ -4,6 +4,13 @@
 //! for multiple programming languages.
 
 pub mod ruchy;
+pub mod ruchy_ml;
+pub mod go;
+pub mod wasm;
+pub mod bash;
+pub mod java;
+pub mod csharp;
+pub mod kotlin;
 
 use std::path::Path;
 
@@ -17,6 +24,7 @@ pub enum Language {
     TypeScript,
     Go,
     Java,
+    Kotlin,
     CSharp,
     Cpp,
     Unknown,
@@ -35,6 +43,7 @@ impl Language {
                 "ts" | "tsx" => Language::TypeScript,
                 "go" => Language::Go,
                 "java" => Language::Java,
+                "kt" | "kts" => Language::Kotlin,
                 "cs" => Language::CSharp,
                 "cpp" | "cc" | "cxx" | "c++" => Language::Cpp,
                 "c" => Language::Cpp,
@@ -53,6 +62,7 @@ impl Language {
             Language::TypeScript => "TypeScript",
             Language::Go => "Go",
             Language::Java => "Java",
+            Language::Kotlin => "Kotlin",
             Language::CSharp => "C#",
             Language::Cpp => "C++",
             Language::Unknown => "Unknown",
@@ -69,6 +79,7 @@ impl Language {
             Language::TypeScript => &["ts", "tsx"],
             Language::Go => &["go"],
             Language::Java => &["java"],
+            Language::Kotlin => &["kt", "kts"],
             Language::CSharp => &["cs"],
             Language::Cpp => &["cpp", "cc", "cxx", "c++", "c"],
             Language::Unknown => &[],
@@ -112,6 +123,18 @@ mod tests {
             Language::Go
         );
         assert_eq!(
+            Language::from_extension(&PathBuf::from("test.java")),
+            Language::Java
+        );
+        assert_eq!(
+            Language::from_extension(&PathBuf::from("test.kt")),
+            Language::Kotlin
+        );
+        assert_eq!(
+            Language::from_extension(&PathBuf::from("test.cs")),
+            Language::CSharp
+        );
+        assert_eq!(
             Language::from_extension(&PathBuf::from("test.unknown")),
             Language::Unknown
         );
@@ -122,6 +145,9 @@ mod tests {
         assert_eq!(Language::Ruchy.name(), "Ruchy");
         assert_eq!(Language::Rust.name(), "Rust");
         assert_eq!(Language::Python.name(), "Python");
+        assert_eq!(Language::Java.name(), "Java");
+        assert_eq!(Language::Kotlin.name(), "Kotlin");
+        assert_eq!(Language::CSharp.name(), "C#");
     }
 
     #[test]
@@ -130,6 +156,10 @@ mod tests {
         assert!(Language::Ruchy.extensions().contains(&"rh"));
         assert!(Language::Rust.extensions().contains(&"rs"));
         assert!(Language::Python.extensions().contains(&"py"));
+        assert!(Language::Java.extensions().contains(&"java"));
+        assert!(Language::Kotlin.extensions().contains(&"kt"));
+        assert!(Language::Kotlin.extensions().contains(&"kts"));
+        assert!(Language::CSharp.extensions().contains(&"cs"));
     }
 }
 

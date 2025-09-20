@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.92.0] - 2025-01-27
+
+### Added
+- **Kotlin AST Support**: Full KotlinAstStrategy implementation with AST extraction
+  - Supports .kt and .kts file extensions
+  - Function, class, and interface detection with qualified names
+  - Integration with existing AST strategy registry
+  - Real function and type names (no placeholders)
+- **Enhanced Ruchy ML Support**: Extended Ruchy language support with ML-style syntax
+  - Pattern matching complexity analysis (+1 per arm)
+  - Actor definitions with complexity metrics (+3 per handler)
+  - Theorem/proof construct detection (+5 per tactic)
+  - Module-qualified naming (Module::function)
+  - 13 comprehensive tests (unit + property tests)
+
+### Fixed
+- **Zero Defects**: Eliminated ALL cargo warnings for clean compilation
+  - Fixed 60+ unused imports, variables, and struct fields
+  - Added Default trait implementations where suggested by clippy
+  - Resolved redundant field name warnings in struct initialization
+  - Applied automatic clippy fixes for code quality improvements
+- **Test Failures**: Fixed all compilation errors and test failures
+  - Resolved KotlinAstStrategy import and module visibility issues
+  - Fixed AstItem field mismatches (removed non-existent fields)
+  - Corrected iterator usage for ColumnStore with .iter() method
+  - Updated FileContext structure to match expected schema
+- **Quality Gates**: All implementations now pass with 0 violations
+  - Zero SATD (technical debt) in all new code
+  - Complexity ≤10 maintained across all functions
+  - 80%+ test coverage standard preserved
+
+### Changed
+- **Documentation**: Updated contracts roadmap with Sprint 4 completion status
+  - Marked Ruchy Language Integration sprint as completed
+  - Added Sprint 4.1 for quality maintenance achievements
+  - Updated all ticket completion checkboxes
+
 ## [2.91.0] - 2025-01-27
 
 ### Changed

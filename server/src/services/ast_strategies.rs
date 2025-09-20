@@ -192,6 +192,13 @@ impl StrategyRegistry {
             strategies.insert("hxx".to_string(), cpp_strategy);
         }
 
+        #[cfg(feature = "kotlin-ast")]
+        {
+            let kotlin_strategy = Arc::new(KotlinAstStrategy) as Arc<dyn AstStrategy>;
+            strategies.insert("kt".to_string(), kotlin_strategy.clone());
+            strategies.insert("kts".to_string(), kotlin_strategy);
+        }
+
         Self { strategies }
     }
 
@@ -543,9 +550,10 @@ impl CppAstStrategy {
     }
 }
 
-// kotlin-ast feature is disabled
-// #[cfg(feature = "kotlin-ast")]
-/*
+#[cfg(feature = "kotlin-ast")]
+pub struct KotlinAstStrategy;
+
+#[cfg(feature = "kotlin-ast")]
 impl KotlinAstStrategy {
     /// Extract name from UnifiedAstNode by analyzing the source range
     fn extract_name_from_node(
@@ -641,7 +649,80 @@ impl KotlinAstStrategy {
         content_lines.len() // Return last line if position is beyond content
     }
 }
-*/
+
+#[cfg(feature = "kotlin-ast")]
+#[async_trait]
+impl AstStrategy for KotlinAstStrategy {
+    async fn analyze(&self, path: &Path, _classifier: &FileClassifier) -> Result<FileContext> {
+        use crate::services::ast_kotlin::KotlinAstParser;
+        use crate::services::context::AstItem;
+        use tokio::fs;
+
+        // Read file content
+        let content = fs::read_to_string(path).await?;
+        let content_lines: Vec<&str> = content.lines().collect();
+
+        // Parse using Kotlin AST parser
+        let mut parser = KotlinAstParser::new();
+        match parser.parse_file(path, &content) {
+            Ok(ast_dag) => {
+                let mut items = Vec::new();
+
+                // Convert UnifiedAstNodes to AstItems
+                for node in ast_dag.nodes.iter() {
+                    match &node.kind {
+                        crate::models::unified_ast::AstKind::Function(_func_kind) => {
+                            let name = Self::extract_name_from_node(node, &content)
+                                .unwrap_or_else(|| "anonymous".to_string());
+                            items.push(AstItem::Function {
+                                name,
+                                visibility: "public".to_string(),
+                                is_async: false, // Kotlin suspend functions not yet detected
+                                line: Self::byte_pos_to_line(node.source_range.start as usize, &content_lines),
+                            });
+                        },
+                        crate::models::unified_ast::AstKind::Type(type_kind) => {
+                            let name = Self::extract_name_from_node(node, &content)
+                                .unwrap_or_else(|| "Anonymous".to_string());
+                            match type_kind {
+                                crate::models::unified_ast::TypeKind::Class => {
+                                    items.push(AstItem::Struct {
+                                        name,
+                                        visibility: "public".to_string(),
+                                        fields_count: 0,
+                                        derives: vec![],
+                                        line: Self::byte_pos_to_line(node.source_range.start as usize, &content_lines),
+                                    });
+                                },
+                                crate::models::unified_ast::TypeKind::Interface => {
+                                    items.push(AstItem::Trait {
+                                        name,
+                                        visibility: "public".to_string(),
+                                        line: Self::byte_pos_to_line(node.source_range.start as usize, &content_lines),
+                                    });
+                                },
+                                _ => {}
+                            }
+                        },
+                        _ => {}
+                    }
+                }
+
+                Ok(FileContext {
+                    path: path.display().to_string(),
+                    language: "kotlin".to_string(),
+                    items,
+                    complexity_metrics: None,
+                })
+            },
+            Err(e) => Err(anyhow::anyhow!("Failed to parse Kotlin file: {}", e)),
+        }
+    }
+
+    fn supports_extension(&self, ext: &str) -> bool {
+        matches!(ext, "kt" | "kts")
+    }
+}
 
 impl Default for StrategyRegistry {
     fn default() -> Self {

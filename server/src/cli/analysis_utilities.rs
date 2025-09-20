@@ -4147,9 +4147,48 @@ pub async fn handle_analyze_comprehensive(
 // Helper functions for handle_analyze_comprehensive
 // Toyota Way Extract Method: Reduce complexity by separating analysis execution from output formatting
 
-/// Executes all requested comprehensive analyses and populates the report
+/// Configuration for comprehensive analysis (complexity ≤10)
+#[derive(Debug, Clone)]
+struct ComprehensiveAnalysisConfig {
+    include_complexity: bool,
+    include_tdg: bool,
+    include_dead_code: bool,
+    include_defects: bool,
+    include_duplicates: bool,
+    include_patterns: Option<String>,
+    exclude_patterns: Option<String>,
+    confidence_threshold: f32,
+    min_lines: usize,
+}
+
+impl ComprehensiveAnalysisConfig {
+    fn new(
+        include_complexity: bool,
+        include_tdg: bool,
+        include_dead_code: bool,
+        include_defects: bool,
+        include_duplicates: bool,
+        include: &Option<String>,
+        exclude: &Option<String>,
+        confidence_threshold: f32,
+        min_lines: usize,
+    ) -> Self {
+        Self {
+            include_complexity,
+            include_tdg,
+            include_dead_code,
+            include_defects,
+            include_duplicates,
+            include_patterns: include.clone(),
+            exclude_patterns: exclude.clone(),
+            confidence_threshold,
+            min_lines,
+        }
+    }
+}
+
+/// Executes all requested comprehensive analyses and populates the report (refactored for complexity ≤10)
 /// Toyota Way: Extract Method - reduce complexity by extracting analysis orchestration logic
-#[allow(clippy::too_many_arguments)]
 async fn run_comprehensive_analyses(
     report: &mut ComprehensiveReport,
     project_path: &Path,
@@ -4163,41 +4202,112 @@ async fn run_comprehensive_analyses(
     confidence_threshold: f32,
     min_lines: usize,
 ) -> Result<()> {
-    // Run complexity analysis if requested
-    if include_complexity {
-        eprintln!("📊 Analyzing complexity...");
-        report.complexity = Some(run_complexity_analysis(project_path, include, exclude).await?);
-    }
+    let config = ComprehensiveAnalysisConfig::new(
+        include_complexity,
+        include_tdg,
+        include_dead_code,
+        include_defects,
+        include_duplicates,
+        include,
+        exclude,
+        confidence_threshold,
+        min_lines,
+    );
 
+    run_comprehensive_analyses_with_config(report, project_path, &config).await
+}
+
+/// Run comprehensive analyses with configuration struct (complexity ≤10)
+async fn run_comprehensive_analyses_with_config(
+    report: &mut ComprehensiveReport,
+    project_path: &Path,
+    config: &ComprehensiveAnalysisConfig,
+) -> Result<()> {
     // Run SATD analysis (always run)
     eprintln!("🔍 Analyzing technical debt...");
-    report.satd = Some(run_satd_analysis(project_path, include, exclude).await?);
+    report.satd = Some(run_satd_analysis(project_path, &config.include_patterns, &config.exclude_patterns).await?);
 
-    // Run TDG analysis if requested
-    if include_tdg {
+    run_optional_analyses(report, project_path, config).await?;
+
+    Ok(())
+}
+
+/// Run optional analysis components (complexity ≤10)
+async fn run_optional_analyses(
+    report: &mut ComprehensiveReport,
+    project_path: &Path,
+    config: &ComprehensiveAnalysisConfig,
+) -> Result<()> {
+    run_complexity_if_requested(report, project_path, config).await?;
+    run_tdg_if_requested(report, project_path, config).await?;
+    run_dead_code_if_requested(report, project_path, config).await?;
+    run_defects_if_requested(report, project_path, config).await?;
+    run_duplicates_if_requested(report, project_path, config).await?;
+    Ok(())
+}
+
+/// Run complexity analysis if requested (complexity ≤10)
+async fn run_complexity_if_requested(
+    report: &mut ComprehensiveReport,
+    project_path: &Path,
+    config: &ComprehensiveAnalysisConfig,
+) -> Result<()> {
+    if config.include_complexity {
+        eprintln!("📊 Analyzing complexity...");
+        report.complexity = Some(run_complexity_analysis(project_path, &config.include_patterns, &config.exclude_patterns).await?);
+    }
+    Ok(())
+}
+
+/// Run TDG analysis if requested (complexity ≤10)
+async fn run_tdg_if_requested(
+    report: &mut ComprehensiveReport,
+    project_path: &Path,
+    config: &ComprehensiveAnalysisConfig,
+) -> Result<()> {
+    if config.include_tdg {
         eprintln!("📈 Analyzing technical debt gradient...");
         report.tdg = Some(create_tdg_report(project_path).await?);
     }
+    Ok(())
+}
 
-    // Run dead code analysis if requested
-    if include_dead_code {
+/// Run dead code analysis if requested (complexity ≤10)
+async fn run_dead_code_if_requested(
+    report: &mut ComprehensiveReport,
+    project_path: &Path,
+    config: &ComprehensiveAnalysisConfig,
+) -> Result<()> {
+    if config.include_dead_code {
         eprintln!("💀 Analyzing dead code...");
-        report.dead_code = Some(run_dead_code_analysis(project_path, include, exclude).await?);
+        report.dead_code = Some(run_dead_code_analysis(project_path, &config.include_patterns, &config.exclude_patterns).await?);
     }
+    Ok(())
+}
 
-    // Run defect prediction if requested
-    if include_defects {
+/// Run defect prediction if requested (complexity ≤10)
+async fn run_defects_if_requested(
+    report: &mut ComprehensiveReport,
+    project_path: &Path,
+    config: &ComprehensiveAnalysisConfig,
+) -> Result<()> {
+    if config.include_defects {
         eprintln!("🐛 Predicting defects...");
-        report.defects =
-            Some(run_defect_prediction(project_path, confidence_threshold, min_lines).await?);
+        report.defects = Some(run_defect_prediction(project_path, config.confidence_threshold, config.min_lines).await?);
     }
+    Ok(())
+}
 
-    // Run duplicate detection if requested
-    if include_duplicates {
+/// Run duplicate detection if requested (complexity ≤10)
+async fn run_duplicates_if_requested(
+    report: &mut ComprehensiveReport,
+    project_path: &Path,
+    config: &ComprehensiveAnalysisConfig,
+) -> Result<()> {
+    if config.include_duplicates {
         eprintln!("👥 Detecting duplicates...");
-        report.duplicates = Some(run_duplicate_detection(project_path, include, exclude).await?);
+        report.duplicates = Some(run_duplicate_detection(project_path, &config.include_patterns, &config.exclude_patterns).await?);
     }
-
     Ok(())
 }
 

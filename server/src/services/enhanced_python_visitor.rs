@@ -92,7 +92,7 @@ impl EnhancedPythonVisitor {
 
     /// Visits function definition
     fn visit_function_def(&mut self, func: &rustpython_parser::ast::StmtFunctionDef) {
-        let name = self.get_qualified_name(&func.name.to_string());
+        let name = self.get_qualified_name(func.name.as_ref());
         let line = self.get_line(&Stmt::FunctionDef(func.clone()));
         let is_async = self.is_async_function(&func.decorator_list);
 
@@ -111,7 +111,7 @@ impl EnhancedPythonVisitor {
 
     /// Visits async function definition
     fn visit_async_function_def(&mut self, func: &rustpython_parser::ast::StmtAsyncFunctionDef) {
-        let name = self.get_qualified_name(&func.name.to_string());
+        let name = self.get_qualified_name(func.name.as_ref());
         let line = self.get_line(&Stmt::AsyncFunctionDef(func.clone()));
 
         self.items.push(AstItem::Function {
@@ -129,7 +129,7 @@ impl EnhancedPythonVisitor {
 
     /// Visits class definition
     fn visit_class_def(&mut self, class: &rustpython_parser::ast::StmtClassDef) {
-        let name = self.get_qualified_name(&class.name.to_string());
+        let name = self.get_qualified_name(class.name.as_ref());
         let line = self.get_line(&Stmt::ClassDef(class.clone()));
 
         // Count methods (functions within the class)
