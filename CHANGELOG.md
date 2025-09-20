@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.91.0] - 2025-01-27
+
+### Changed
+- **Default Feature Set**: Enabled ALL language features by default for complete AST extraction
+  - **Before**: `default = ["most-languages", "demo"]` (missing Ruchy and some features)
+  - **After**: `default = ["all-languages", "demo"]` (includes ALL supported languages)
+  - **Impact**: Users now get real AST extraction for ALL languages without manual feature flags
+  - **Languages Included**: Rust, TypeScript/JavaScript, Python, C/C++, Ruchy (all with real names)
+  - **No More Placeholders**: No more `function_0` placeholders by default - real names for everyone
+
+### Fixed
+- **Installation Experience**: Eliminated confusion where users had to manually enable `python-ast` feature
+  - All enhanced AST visitors (Rust, TypeScript/JavaScript, Python) now work out-of-the-box
+  - No more feature discovery issues for new users
+  - Consistent experience across all supported programming languages
+- **Zero Defects**: Fixed all compiler warnings for clean compilation
+  - Resolved dead code warnings in Ruchy AST analyzer
+  - Achieved zero-warning compilation standard across all features
+
 ## [2.90.0] - 2025-01-27
 
 ### Added
