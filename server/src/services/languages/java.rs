@@ -254,12 +254,6 @@ impl Default for JavaComplexityAnalyzer {
     }
 }
 
-impl Default for JavaComplexityAnalyzer {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl JavaComplexityAnalyzer {
     /// Creates a new Java complexity analyzer
     pub fn new() -> Self {
