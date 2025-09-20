@@ -19,7 +19,7 @@
 
 **Zero-configuration AI context generation system** with extreme quality enforcement and Toyota Way standards. Analyze any codebase instantly through CLI, MCP, or HTTP interfaces. Built by [Pragmatic AI Labs](https://paiml.com).
 
-> **🎯 v2.13.0 Release**: **Technical Debt Grading (TDG) System!** Complete code quality scoring with 6 orthogonal metrics:
+> **🎯 v2.88.0 Release**: **Technical Debt Grading (TDG) System!** Complete code quality scoring with 6 orthogonal metrics:
 > - **📊 Comprehensive Scoring**: Structural complexity, semantic complexity, code duplication, coupling analysis
 > - **📚 Documentation Coverage**: Language-specific documentation pattern detection and scoring
 > - **🎨 Consistency Analysis**: Naming conventions, indentation patterns, and code style consistency
@@ -259,7 +259,7 @@ make examples
 ### Library Usage
 ```toml
 [dependencies]
-pmat = "2.12"
+pmat = "2.88.0"
 ```
 
 ```rust
