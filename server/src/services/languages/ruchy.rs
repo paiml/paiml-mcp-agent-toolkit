@@ -1345,7 +1345,7 @@ impl RuchyAstAnalyzer {
         })
     }
 
-    fn _analyze_expr(&mut self, expr: &ruchy::Expr) -> Result<()> {
+    fn _analyze_expr(&mut self, _expr: &ruchy::Expr) -> Result<()> {
         // Placeholder for future Ruchy AST analysis
         // use ruchy::{ExprKind, BinaryOp};
 
