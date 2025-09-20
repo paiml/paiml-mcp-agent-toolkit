@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Enhanced AST Extraction**: Implemented real source location and qualified name extraction
+  - New `EnhancedAstVisitor` module preserves actual AST information instead of placeholders
+  - Extracts real function names, module paths, and source locations from parsed Rust code
+  - Provides qualified names like `module::submodule::function` for precise symbol resolution
+  - Maintains actual line numbers from source spans instead of synthetic values
+  - Preserves visibility modifiers (pub, pub(crate), pub(super), private) accurately
+  - Supports async function detection and struct field counting
+  - Enables MCP tools to query precise code locations for improved analysis
+
+### Changed
+- **AST Compatibility Layer**: Refactored `ast_rust_compat.rs` to use enhanced visitor
+  - Replaced placeholder generation (`function_0`, `type_0`) with real AST extraction
+  - Improved accuracy of context generation for AI/LLM consumption
+  - Maintained backward compatibility with existing API contracts
+
 ## [2.87.1] - 2025-09-16
 
 ### Fixed
