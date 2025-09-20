@@ -109,7 +109,7 @@ tree-sitter-java = { version = "0.21", optional = true }
 tree-sitter-c-sharp = { version = "0.21", optional = true }
 tree-sitter-kotlin = { version = "0.3", optional = true }
 # For Ruchy language support
-ruchy = { version = "1.89.0", optional = true }
+ruchy = { version = "3.31", optional = true }
 logos = { version = "0.14", optional = true }
 # For Kotlin parsing (conditional) - DISABLED due to tree-sitter version conflict
 # tree-sitter-kotlin = { version = "0.3.8", optional = true }
