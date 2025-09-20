@@ -497,7 +497,7 @@ fn should_include_score(
     true
 }
 
-/// Apply sorting and top_files limit to results
+/// Apply sorting and `top_files` limit to results
 fn apply_results_filtering(
     mut results: Vec<(crate::models::tdg::TDGScore, PathBuf)>,
     top_files: usize,
@@ -642,16 +642,8 @@ fn format_tdg_single_file_output(
 
     let summary = TDGSummary {
         total_files: 1,
-        critical_files: if matches!(score.severity, TDGSeverity::Critical) {
-            1
-        } else {
-            0
-        },
-        warning_files: if matches!(score.severity, TDGSeverity::Warning) {
-            1
-        } else {
-            0
-        },
+        critical_files: usize::from(matches!(score.severity, TDGSeverity::Critical)),
+        warning_files: usize::from(matches!(score.severity, TDGSeverity::Warning)),
         average_tdg: score.value,
         p95_tdg: score.value,
         p99_tdg: score.value,
@@ -966,7 +958,7 @@ pub async fn handle_analyze_makefile(
     // Run the linter
     let lint_result = makefile_linter::lint_makefile(&path)
         .await
-        .map_err(|e| anyhow::anyhow!("Makefile linting failed: {}", e))?;
+        .map_err(|e| anyhow::anyhow!("Makefile linting failed: {e}"))?;
 
     print_makefile_analysis_summary(&lint_result);
 
@@ -1358,7 +1350,7 @@ async fn get_function_ids(
     project_path: &Path,
     functions: &[String],
 ) -> Result<Vec<crate::services::lightweight_provability_analyzer::FunctionId>> {
-    use crate::cli::provability_helpers::*;
+    use crate::cli::provability_helpers::{discover_project_functions, parse_function_spec};
 
     if functions.is_empty() {
         discover_project_functions(project_path).await
@@ -1387,7 +1379,7 @@ fn format_provability_output(
     include_evidence: bool,
     top_files: usize,
 ) -> Result<String> {
-    use crate::cli::provability_helpers::*;
+    use crate::cli::provability_helpers::{format_provability_json, format_provability_summary, format_provability_detailed, format_provability_sarif};
 
     match format {
         ProvabilityOutputFormat::Json => {
@@ -1578,7 +1570,7 @@ fn format_defect_report(
     report: &DefectPredictionReport,
     format: DefectPredictionOutputFormat,
 ) -> Result<String> {
-    use DefectPredictionOutputFormat::*;
+    use DefectPredictionOutputFormat::{Summary, Json, Detailed, Sarif, Csv};
     match format {
         Summary => format_defect_summary(report, 10),
         Json => serde_json::to_string_pretty(report).map_err(Into::into),
@@ -1727,7 +1719,7 @@ pub async fn handle_analyze_proof_annotations(
     _perf: bool,
     clear_cache: bool,
 ) -> Result<()> {
-    use crate::cli::proof_annotation_helpers::*;
+    use crate::cli::proof_annotation_helpers::{setup_proof_annotator, ProofAnnotationFilter, collect_and_filter_annotations, format_as_json, format_as_summary, format_as_full, format_as_markdown, format_as_sarif};
     use std::time::Instant;
 
     eprintln!("🔍 Collecting proof annotations from project...");
@@ -1810,7 +1802,7 @@ pub async fn handle_analyze_proof_annotations(
 /// - **Rust**: cargo-llvm-cov, tarpaulin, grcov
 /// - **JavaScript/TypeScript**: nyc, jest coverage, c8
 /// - **Python**: coverage.py, pytest-cov
-/// - **Java**: JaCoCo, Cobertura
+/// - **Java**: `JaCoCo`, Cobertura
 /// - **C/C++**: gcov, lcov
 ///
 /// # Examples
@@ -1989,7 +1981,7 @@ fn format_coverage_report(
     format: IncrementalCoverageOutputFormat,
     top_files: usize,
 ) -> Result<String> {
-    use IncrementalCoverageOutputFormat::*;
+    use IncrementalCoverageOutputFormat::{Summary, Detailed, Json, Markdown, Lcov, Delta, Sarif};
     match format {
         Summary => format_incremental_coverage_summary(report, top_files),
         Detailed => format_incremental_coverage_detailed(report, top_files),
@@ -2026,7 +2018,7 @@ pub async fn handle_analyze_churn(
 
     // Analyze code churn
     let mut analysis = GitAnalysisService::analyze_code_churn(&project_path, days)
-        .map_err(|e| anyhow::anyhow!("Churn analysis failed: {}", e))?;
+        .map_err(|e| anyhow::anyhow!("Churn analysis failed: {e}"))?;
 
     eprintln!("✅ Analyzed {} files with changes", analysis.files.len());
 
@@ -3516,7 +3508,7 @@ async fn execute_specific_quality_check(
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
 ) -> Result<()> {
-    use QualityCheckType::*;
+    use QualityCheckType::{Complexity, DeadCode, Satd, Entropy, Security, Duplicates, Coverage, Sections, Provability, All};
 
     match check {
         Complexity => {
@@ -4120,9 +4112,7 @@ pub async fn handle_analyze_comprehensive(
     let mut report = ComprehensiveReport::default();
 
     // Execute all requested analyses
-    run_comprehensive_analyses(
-        &mut report,
-        &project_path,
+    let config = ComprehensiveAnalysisConfig::new(
         include_complexity,
         include_tdg,
         include_dead_code,
@@ -4132,8 +4122,8 @@ pub async fn handle_analyze_comprehensive(
         &exclude,
         _confidence_threshold,
         _min_lines,
-    )
-    .await?;
+    );
+    run_comprehensive_analyses(&mut report, &project_path, &config).await?;
 
     let elapsed = start.elapsed();
     eprintln!("✅ Comprehensive analysis completed in {elapsed:?}");
@@ -4162,6 +4152,7 @@ struct ComprehensiveAnalysisConfig {
 }
 
 impl ComprehensiveAnalysisConfig {
+    #[allow(clippy::too_many_arguments)]
     fn new(
         include_complexity: bool,
         include_tdg: bool,
@@ -4192,29 +4183,10 @@ impl ComprehensiveAnalysisConfig {
 async fn run_comprehensive_analyses(
     report: &mut ComprehensiveReport,
     project_path: &Path,
-    include_complexity: bool,
-    include_tdg: bool,
-    include_dead_code: bool,
-    include_defects: bool,
-    include_duplicates: bool,
-    include: &Option<String>,
-    exclude: &Option<String>,
-    confidence_threshold: f32,
-    min_lines: usize,
+    config: &ComprehensiveAnalysisConfig,
 ) -> Result<()> {
-    let config = ComprehensiveAnalysisConfig::new(
-        include_complexity,
-        include_tdg,
-        include_dead_code,
-        include_defects,
-        include_duplicates,
-        include,
-        exclude,
-        confidence_threshold,
-        min_lines,
-    );
 
-    run_comprehensive_analyses_with_config(report, project_path, &config).await
+    run_comprehensive_analyses_with_config(report, project_path, config).await
 }
 
 /// Run comprehensive analyses with configuration struct (complexity ≤10)
@@ -4628,7 +4600,7 @@ pub async fn check_complexity(
     Ok(violations)
 }
 
-/// Process a single complexity violation into QualityViolation format
+/// Process a single complexity violation into `QualityViolation` format
 fn process_complexity_violation(
     violation: &crate::services::complexity::Violation,
     violations: &mut Vec<QualityViolation>,
@@ -4748,7 +4720,7 @@ pub async fn check_dead_code(
     let result = analyzer.analyze_with_ranking(project_path, config).await?;
 
     // Check if dead code percentage exceeds threshold
-    let dead_percentage = result.summary.dead_percentage as f64;
+    let dead_percentage = f64::from(result.summary.dead_percentage);
 
     if dead_percentage > max_percentage {
         violations.push(QualityViolation {
@@ -4930,8 +4902,10 @@ pub async fn check_entropy(
     use crate::entropy::{EntropyAnalyzer, EntropyConfig};
 
     // Create entropy analyzer with tuned config to reduce false positives
-    let mut config = EntropyConfig::default();
-    config.min_severity = Severity::Medium; // Only report medium+ severity
+    let mut config = EntropyConfig {
+        min_severity: Severity::Medium, // Only report medium+ severity
+        ..Default::default()
+    };
     config.exclude_paths.push("**/target/**".to_string());
     config.exclude_paths.push("**/node_modules/**".to_string());
     config.exclude_paths.push("**/*.test.rs".to_string());
@@ -4955,9 +4929,7 @@ pub async fn check_entropy(
             },
             file: violation
                 .affected_files
-                .first()
-                .map(|p| p.to_string_lossy().to_string())
-                .unwrap_or_else(|| "project".to_string()),
+                .first().map_or_else(|| "project".to_string(), |p| p.to_string_lossy().to_string()),
             line: None, // Pattern violations span multiple lines
             message: format!(
                 "{} (saves {} lines) - Fix: {}",
@@ -5231,7 +5203,7 @@ fn normalize_code_content(content: &str) -> String {
             let trimmed = line.trim();
             !trimmed.is_empty() && !trimmed.starts_with("//") && !trimmed.starts_with("/*")
         })
-        .map(|line| line.trim())
+        .map(str::trim)
         .collect::<Vec<_>>()
         .join("\n")
 }
@@ -5318,7 +5290,7 @@ async fn check_provability(
 
 /// Calculate the provability score for a project
 ///
-/// This function uses the LightweightProvabilityAnalyzer to assess how well
+/// This function uses the `LightweightProvabilityAnalyzer` to assess how well
 /// functions in the project can be formally verified. Higher scores indicate
 /// code that is more amenable to formal verification.
 ///
@@ -5546,7 +5518,7 @@ fn write_qg_violations_list(output: &mut String, violations: &[QualityViolation]
 }
 
 // Helper: Format as JUnit XML
-/// Toyota Way: Extract Method - Format quality gate as JUnit XML (complexity ≤8)
+/// Toyota Way: Extract Method - Format quality gate as `JUnit` XML (complexity ≤8)
 fn format_qg_as_junit(violations: &[QualityViolation]) -> Result<String> {
     let mut output = String::new();
 
@@ -5558,7 +5530,7 @@ fn format_qg_as_junit(violations: &[QualityViolation]) -> Result<String> {
     Ok(output)
 }
 
-/// Toyota Way: Extract Method - Write JUnit XML header (complexity ≤3)
+/// Toyota Way: Extract Method - Write `JUnit` XML header (complexity ≤3)
 fn write_junit_header(output: &mut String) -> Result<()> {
     use std::fmt::Write;
     writeln!(output, r#"<?xml version="1.0" encoding="UTF-8"?>"#)?;
@@ -5566,7 +5538,7 @@ fn write_junit_header(output: &mut String) -> Result<()> {
     Ok(())
 }
 
-/// Toyota Way: Extract Method - Write JUnit testsuite start (complexity ≤3)
+/// Toyota Way: Extract Method - Write `JUnit` testsuite start (complexity ≤3)
 fn write_junit_testsuite_start(output: &mut String, count: usize) -> Result<()> {
     use std::fmt::Write;
     writeln!(
@@ -5576,7 +5548,7 @@ fn write_junit_testsuite_start(output: &mut String, count: usize) -> Result<()> 
     Ok(())
 }
 
-/// Toyota Way: Extract Method - Write JUnit testcases (complexity ≤5)
+/// Toyota Way: Extract Method - Write `JUnit` testcases (complexity ≤5)
 fn write_junit_testcases(output: &mut String, violations: &[QualityViolation]) -> Result<()> {
     for v in violations {
         write_single_junit_testcase(output, v)?;
@@ -5584,7 +5556,7 @@ fn write_junit_testcases(output: &mut String, violations: &[QualityViolation]) -
     Ok(())
 }
 
-/// Toyota Way: Extract Method - Write single JUnit testcase (complexity ≤5)
+/// Toyota Way: Extract Method - Write single `JUnit` testcase (complexity ≤5)
 fn write_single_junit_testcase(output: &mut String, v: &QualityViolation) -> Result<()> {
     use std::fmt::Write;
     writeln!(
@@ -5601,7 +5573,7 @@ fn write_single_junit_testcase(output: &mut String, v: &QualityViolation) -> Res
     Ok(())
 }
 
-/// Toyota Way: Extract Method - Write JUnit XML footer (complexity ≤3)
+/// Toyota Way: Extract Method - Write `JUnit` XML footer (complexity ≤3)
 fn write_junit_footer(output: &mut String) -> Result<()> {
     use std::fmt::Write;
     writeln!(output, r"  </testsuite>")?;
@@ -5823,10 +5795,12 @@ fn get_qg_violation_summary_rows(results: &QualityGateResults) -> [(&'static str
 }
 
 // Helper functions
+#[must_use] 
 pub fn detect_toolchain(path: &Path) -> Option<String> {
     super::detect_primary_language(path)
 }
 
+#[must_use] 
 pub fn build_complexity_thresholds(
     max_cyclomatic: Option<u16>,
     max_cognitive: Option<u16>,
@@ -5897,7 +5871,7 @@ pub async fn analyze_project_files(
     let files_to_analyze: Vec<_> = WalkDir::new(project_path)
         .follow_links(false)
         .into_iter()
-        .filter_map(|e| e.ok())
+        .filter_map(std::result::Result::ok)
         .filter(|e| e.file_type().is_file())
         .map(|e| e.path().to_owned())
         .filter(|path| should_analyze_file(path, project_path, &extensions, include))
@@ -5954,11 +5928,12 @@ pub async fn analyze_project_files(
 /// let default_extensions = get_file_extensions(None);
 /// assert_eq!(default_extensions, vec!["rs"]);
 /// ```
+#[must_use] 
 pub fn get_file_extensions(toolchain: Option<&str>) -> Vec<&'static str> {
     match toolchain {
         Some("rust") => vec!["rs"],
-        Some("deno") | Some("typescript") => vec!["ts", "tsx", "js", "jsx"],
-        Some("python-uv") | Some("python") => vec!["py"],
+        Some("deno" | "typescript") => vec!["ts", "tsx", "js", "jsx"],
+        Some("python-uv" | "python") => vec!["py"],
         Some(_) => vec!["rs"], // unknown toolchain defaults to rust
         None => {
             // Issue #42 fix: When no toolchain detected, analyze ALL supported languages
@@ -5986,6 +5961,7 @@ pub fn get_file_extensions(toolchain: Option<&str>) -> Vec<&'static str> {
 /// # Returns
 ///
 /// `true` if the file should be analyzed, `false` otherwise
+#[must_use] 
 pub fn should_analyze_file(
     path: &Path,
     project_path: &Path,
@@ -6038,7 +6014,7 @@ fn is_excluded_path(path: &Path) -> bool {
 /// Check if path contains excluded directories
 fn is_excluded_directory(path_str: &str) -> bool {
     // Normalize path for consistent matching
-    let normalized = path_str.replace("\\", "/");
+    let normalized = path_str.replace('\\', "/");
 
     // Directory name patterns to exclude (gitignore-style)
     let excluded_dir_names = [
@@ -6128,6 +6104,7 @@ fn is_excluded_directory(path_str: &str) -> bool {
 }
 
 /// Check if filename indicates a test file
+#[must_use] 
 pub fn is_excluded_filename(filename: &str) -> bool {
     is_test_file(filename)
         || is_example_or_demo_file(filename)
@@ -6214,6 +6191,7 @@ async fn analyze_file_complexity_async(
     crate::cli::language_analyzer::analyze_file_complexity(path, content).await
 }
 
+#[must_use] 
 pub fn add_top_files_ranking(
     files: Vec<crate::services::complexity::FileComplexityMetrics>,
     top_files: usize,
@@ -6234,6 +6212,7 @@ pub fn format_dead_code_output(
 }
 
 // Name similarity helpers
+#[must_use] 
 pub fn extract_identifiers(content: &str) -> Vec<super::NameInfo> {
     let mut identifiers = Vec::new();
     let mut seen = HashSet::new();
@@ -6314,6 +6293,7 @@ fn extract_identifiers_for_pattern(
 /// assert_eq!(calculate_string_similarity("", ""), 1.0);
 /// assert!(calculate_string_similarity("hello", "xyz") < 0.5);
 /// ```
+#[must_use] 
 pub fn calculate_string_similarity(s1: &str, s2: &str) -> f32 {
     // Normalized Levenshtein distance for basic string similarity
     if s1.is_empty() && s2.is_empty() {
@@ -6379,6 +6359,7 @@ fn get_ngrams(s: &str, n: usize) -> HashSet<String> {
 /// assert_eq!(calculate_edit_distance("hello", "hello"), 0);
 /// assert_eq!(calculate_edit_distance("", "abc"), 3);
 /// ```
+#[must_use] 
 pub fn calculate_edit_distance(s1: &str, s2: &str) -> usize {
     // Levenshtein distance implementation
     let len1 = s1.chars().count();
@@ -6408,11 +6389,7 @@ pub fn calculate_edit_distance(s1: &str, s2: &str) -> usize {
     // Fill the matrix
     for i in 1..=len1 {
         for j in 1..=len2 {
-            let cost = if s1_chars[i - 1] == s2_chars[j - 1] {
-                0
-            } else {
-                1
-            };
+            let cost = usize::from(s1_chars[i - 1] != s2_chars[j - 1]);
 
             matrix[i][j] = std::cmp::min(
                 std::cmp::min(
@@ -6427,6 +6404,7 @@ pub fn calculate_edit_distance(s1: &str, s2: &str) -> usize {
     matrix[len1][len2]
 }
 
+#[must_use] 
 pub fn calculate_soundex(s: &str) -> String {
     // Soundex phonetic algorithm implementation
     if s.is_empty() {
@@ -6487,6 +6465,7 @@ fn soundex_code(ch: char) -> char {
 }
 
 // Helper function for params conversion
+#[must_use] 
 pub fn params_to_json(
     params: Vec<(String, serde_json::Value)>,
 ) -> serde_json::Map<String, serde_json::Value> {
@@ -6637,11 +6616,11 @@ async fn run_complexity_analysis(
                             .unwrap_or(&"<anonymous>".to_string())
                             .clone(),
                         file: file.clone(),
-                        complexity: *value as u32,
+                        complexity: u32::from(*value),
                     });
                 }
-                complexities.push(*value as u32);
-                total_complexity += *value as u32;
+                complexities.push(u32::from(*value));
+                total_complexity += u32::from(*value);
             }
         }
     }
@@ -6651,7 +6630,7 @@ async fn run_complexity_analysis(
     functions.truncate(10);
 
     // Calculate p99
-    complexities.sort();
+    complexities.sort_unstable();
     let p99_idx = (f64::from(complexities.len() as u32) * 0.99) as usize;
     let p99 = complexities.get(p99_idx).copied().unwrap_or(0);
 

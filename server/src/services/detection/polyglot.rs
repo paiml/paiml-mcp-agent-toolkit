@@ -19,6 +19,7 @@ impl Default for PolyglotDetector {
 }
 
 impl PolyglotDetector {
+    #[must_use] 
     pub fn new() -> Self {
         Self
     }

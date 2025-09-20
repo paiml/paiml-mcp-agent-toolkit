@@ -22,12 +22,13 @@ impl Default for RustStrategy {
 }
 
 impl RustStrategy {
+    #[must_use] 
     pub fn new() -> Self {
         Self {}
     }
 
     fn parse_syn_file(&self, content: &str) -> Result<SynFile> {
-        syn::parse_file(content).map_err(|e| anyhow::anyhow!("Rust parse error: {}", e))
+        syn::parse_file(content).map_err(|e| anyhow::anyhow!("Rust parse error: {e}"))
     }
 
     fn convert_to_dag(&self, syn_file: &SynFile) -> AstDag {
@@ -47,8 +48,7 @@ impl LanguageStrategy for RustStrategy {
     fn can_parse(&self, path: &Path) -> bool {
         path.extension()
             .and_then(|ext| ext.to_str())
-            .map(|ext| ext == "rs")
-            .unwrap_or(false)
+            .is_some_and(|ext| ext == "rs")
     }
 
     async fn parse_file(&self, _path: &Path, content: &str) -> Result<AstDag> {
@@ -140,7 +140,7 @@ impl<'a> RustAstVisitor<'a> {
     }
 }
 
-impl<'a> Visit<'_> for RustAstVisitor<'a> {
+impl Visit<'_> for RustAstVisitor<'_> {
     fn visit_item_fn(&mut self, node: &ItemFn) {
         let mut ast_node =
             UnifiedAstNode::new(AstKind::Function(FunctionKind::Regular), Language::Rust);

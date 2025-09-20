@@ -4,10 +4,10 @@
 //! the main CLI module from 145 functions and 10,304 lines to a manageable size.
 //!
 //! Architecture:
-//! - CommandExecutor: Main command execution orchestrator
-//! - CommandRegistry: Registry of all available commands  
-//! - CommandGroup: Logical grouping of related commands
-//! - ModularHandlers: Individual command implementation modules
+//! - `CommandExecutor`: Main command execution orchestrator
+//! - `CommandRegistry`: Registry of all available commands  
+//! - `CommandGroup`: Logical grouping of related commands
+//! - `ModularHandlers`: Individual command implementation modules
 
 use crate::cli::commands::ScaffoldCommands;
 use crate::cli::{AnalyzeCommands, Commands};
@@ -44,6 +44,7 @@ pub struct DemoCommandGroup;
 
 impl CommandExecutor {
     /// Create new command executor with server instance
+    #[must_use] 
     pub fn new(server: Arc<StatelessTemplateServer>) -> Self {
         Self {
             server,
@@ -590,6 +591,7 @@ pub struct CommandExecutorFactory;
 
 impl CommandExecutorFactory {
     /// Create a new command executor instance
+    #[must_use] 
     pub fn create(server: Arc<StatelessTemplateServer>) -> CommandExecutor {
         CommandExecutor::new(server)
     }

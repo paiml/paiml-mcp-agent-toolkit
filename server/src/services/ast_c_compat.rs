@@ -1,7 +1,7 @@
-//! Compatibility shim for ast_c module during migration to new AST architecture
+//! Compatibility shim for `ast_c` module during migration to new AST architecture
 //!
 //! This module provides backward compatibility for services still using the old C AST API.
-//! It will be removed once all services are migrated to the new ast:: module.
+//! It will be removed once all services are migrated to the new `ast::` module.
 
 use anyhow::Result;
 use std::path::Path;
@@ -110,7 +110,7 @@ pub async fn analyze_c_file_with_classifier(
     for (i, _node) in functions.iter().enumerate() {
         items.push(AstItem::Function {
             name: format!("function_{i}"),
-            visibility: "".to_string(), // C doesn't have visibility modifiers
+            visibility: String::new(), // C doesn't have visibility modifiers
             is_async: false,            // C doesn't have async
             line: i * 10,
         });
@@ -120,7 +120,7 @@ pub async fn analyze_c_file_with_classifier(
     for (i, _node) in types.iter().enumerate() {
         items.push(AstItem::Struct {
             name: format!("struct_{i}"),
-            visibility: "".to_string(),
+            visibility: String::new(),
             fields_count: 0,
             derives: vec![], // C doesn't have derives
             line: (functions.len() + i) * 10,

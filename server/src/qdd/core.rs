@@ -54,6 +54,7 @@ pub enum Severity {
 
 impl QualityProfile {
     /// Create extreme quality profile (≤5 complexity, 90% coverage)
+    #[must_use] 
     pub fn extreme() -> Self {
         Self {
             name: "extreme".to_string(),
@@ -79,6 +80,7 @@ impl QualityProfile {
     }
 
     /// Create standard quality profile (≤10 complexity, 80% coverage)
+    #[must_use] 
     pub fn standard() -> Self {
         Self {
             name: "standard".to_string(),
@@ -104,6 +106,7 @@ impl QualityProfile {
     }
 
     /// Create relaxed quality profile (≤20 complexity, 60% coverage)
+    #[must_use] 
     pub fn relaxed() -> Self {
         Self {
             name: "relaxed".to_string(),
@@ -155,6 +158,7 @@ impl QualityProfile {
     }
 
     /// Check if quality metrics meet this profile's thresholds
+    #[must_use] 
     pub fn meets_thresholds(&self, metrics: &QualityMetrics) -> bool {
         metrics.complexity <= self.thresholds.max_complexity
             && metrics.cognitive_complexity <= self.thresholds.max_cognitive
@@ -178,6 +182,7 @@ pub struct QualityMetrics {
 
 impl QualityMetrics {
     /// Create default metrics (all zeros/false)
+    #[must_use] 
     pub fn default() -> Self {
         Self {
             complexity: 0,
@@ -192,10 +197,11 @@ impl QualityMetrics {
     }
 
     /// Calculate overall quality score (0-100)
+    #[must_use] 
     pub fn calculate_score(&self) -> f64 {
-        let complexity_score = (20_u32.saturating_sub(self.complexity) as f64 / 20.0) * 25.0;
-        let coverage_score = (self.coverage as f64 / 100.0) * 25.0;
-        let tdg_score = (10_u32.saturating_sub(self.tdg) as f64 / 10.0) * 25.0;
+        let complexity_score = (f64::from(20_u32.saturating_sub(self.complexity)) / 20.0) * 25.0;
+        let coverage_score = (f64::from(self.coverage) / 100.0) * 25.0;
+        let tdg_score = (f64::from(10_u32.saturating_sub(self.tdg)) / 10.0) * 25.0;
         let defect_score = if self.satd_count == 0 { 25.0 } else { 0.0 };
 
         complexity_score + coverage_score + tdg_score + defect_score

@@ -6,6 +6,7 @@
 use std::collections::HashMap;
 
 /// Calculate Levenshtein distance between two strings
+#[must_use] 
 pub fn levenshtein_distance(a: &str, b: &str) -> usize {
     let a_len = a.len();
     let b_len = b.len();
@@ -58,7 +59,7 @@ fn calculate_edit_distances(matrix: &mut Vec<Vec<usize>>, a: &str, b: &str) {
 
 /// Calculate the minimum edit distance for a single cell
 fn calculate_cell_distance(matrix: &[Vec<usize>], i: usize, j: usize, chars_match: bool) -> usize {
-    let substitution_cost = if chars_match { 0 } else { 1 };
+    let substitution_cost = usize::from(!chars_match);
 
     let deletion_cost = matrix[i - 1][j] + 1;
     let insertion_cost = matrix[i][j - 1] + 1;
@@ -75,6 +76,7 @@ pub struct CommandSuggester {
 }
 
 impl CommandSuggester {
+    #[must_use] 
     pub fn new() -> Self {
         let main_commands = vec![
             "analyze".to_string(),
@@ -121,6 +123,7 @@ impl CommandSuggester {
     }
 
     /// Get command suggestions for a failed command
+    #[must_use] 
     pub fn suggest_command(&self, failed_args: &[String]) -> Option<String> {
         if failed_args.is_empty() {
             return None;
@@ -191,6 +194,7 @@ impl CommandSuggester {
     }
 
     /// Get help text with working examples
+    #[must_use] 
     pub fn get_help_examples() -> String {
         let examples = vec![
             "# Analyze code complexity",

@@ -25,7 +25,7 @@ use std::path::PathBuf;
 /// # API Stability Contract
 ///
 /// This router maintains the CLI API contract by:
-/// - Ensuring all AnalyzeCommands variants are handled
+/// - Ensuring all `AnalyzeCommands` variants are handled
 /// - Providing consistent parameter forwarding to handlers
 /// - Maintaining backward compatibility for existing commands
 /// - Preventing API drift through comprehensive parameter mapping
@@ -132,7 +132,7 @@ use std::path::PathBuf;
 /// - Memory: Minimal overhead, parameters moved to handlers
 /// - Concurrency: Handlers may implement parallel processing internally
 pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
-    use cli::*;
+    use cli::AnalyzeCommands;
 
     match cmd {
         // Core analysis commands
@@ -624,7 +624,7 @@ async fn route_duplicates_analysis(cmd: AnalyzeCommands) -> Result<()> {
         let config = super::duplication_analysis::DuplicateAnalysisConfig {
             project_path,
             detection_type,
-            threshold: threshold as f64,
+            threshold: f64::from(threshold),
             min_lines,
             max_tokens,
             format,
@@ -777,7 +777,7 @@ async fn route_name_similarity_analysis(cmd: AnalyzeCommands) -> Result<()> {
             top_k,
             phonetic,
             scope,
-            threshold as f64,
+            f64::from(threshold),
             format,
             include,
             exclude,
@@ -931,7 +931,7 @@ async fn route_big_o_analysis(cmd: AnalyzeCommands) -> Result<()> {
     }
 }
 
-/// Route AssemblyScript analysis command
+/// Route `AssemblyScript` analysis command
 async fn route_assemblyscript_analysis(cmd: AnalyzeCommands) -> Result<()> {
     if let AnalyzeCommands::AssemblyScript {
         project_path,
@@ -1040,6 +1040,7 @@ async fn route_makefile_analysis(cmd: AnalyzeCommands) -> Result<()> {
 }
 
 /// Route complexity command (cognitive complexity ≤5)
+#[allow(clippy::too_many_arguments)]
 async fn route_complexity_command(
     path: PathBuf,
     project_path: Option<PathBuf>,

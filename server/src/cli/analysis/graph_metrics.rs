@@ -188,7 +188,7 @@ fn should_exclude_path_sprint85(path_str: &str, exclude_pattern: &Option<String>
     }
 }
 
-/// Check if path should be included - EXTRACTED FUNCTION  
+/// Check if path should be included - EXTRACTED FUNCTION\
 /// Complexity: 3 (A+ standard)
 fn should_include_path_sprint85(path_str: &str, include_pattern: &Option<String>) -> bool {
     if let Some(incl) = include_pattern {
@@ -383,7 +383,7 @@ fn calculate_betweenness(
 
     let n = graph.node_count();
     if n > 2 {
-        count as f64 / ((n - 1) * (n - 2)) as f64
+        f64::from(count) / ((n - 1) * (n - 2)) as f64
     } else {
         0.0
     }
@@ -424,7 +424,7 @@ fn calculate_closeness(
     let total_distance: i32 = distances.values().sum();
 
     if total_distance > 0 {
-        (graph.node_count() - 1) as f64 / total_distance as f64
+        (graph.node_count() - 1) as f64 / f64::from(total_distance)
     } else {
         0.0
     }
@@ -450,20 +450,20 @@ fn calculate_pagerank(
 
     // Power iteration
     for _ in 0..max_iter {
-        let mut new_pagerank = vec![(1.0 - damping as f64) / n as f64; n];
+        let mut new_pagerank = vec![(1.0 - f64::from(damping)) / n as f64; n];
 
         for (i, node) in graph.node_indices().enumerate() {
             let out_edges = graph.edges(node).count();
             if out_edges > 0 {
-                let contrib = damping as f64 * pagerank[i] / out_edges as f64;
+                let contrib = f64::from(damping) * pagerank[i] / out_edges as f64;
                 for edge_ref in graph.edges(node) {
                     let target_idx = edge_ref.target();
                     new_pagerank[target_idx.index()] += contrib;
                 }
             } else {
                 // Distribute to all nodes
-                let contrib = damping as f64 * pagerank[i] / n as f64;
-                for pr in new_pagerank.iter_mut() {
+                let contrib = f64::from(damping) * pagerank[i] / n as f64;
+                for pr in &mut new_pagerank {
                     *pr += contrib;
                 }
             }
@@ -537,7 +537,7 @@ fn export_to_graphml(
 
 // Sprint 89 GREEN Phase: NEW EXTRACTED FUNCTIONS (A+ ≤10 complexity each)
 
-/// Write GraphML XML header - EXTRACTED FUNCTION
+/// Write `GraphML` XML header - EXTRACTED FUNCTION
 /// Complexity: 3 (A+ standard)
 fn write_graphml_header(graphml: &mut String) -> Result<()> {
     use std::fmt::Write;
@@ -550,7 +550,7 @@ fn write_graphml_header(graphml: &mut String) -> Result<()> {
     Ok(())
 }
 
-/// Write GraphML nodes section - EXTRACTED FUNCTION  
+/// Write `GraphML` nodes section - EXTRACTED FUNCTION\
 /// Complexity: 4 (A+ standard)
 fn write_graphml_nodes(graphml: &mut String, nodes: &[NodeMetrics]) -> Result<()> {
     use std::fmt::Write;
@@ -560,7 +560,7 @@ fn write_graphml_nodes(graphml: &mut String, nodes: &[NodeMetrics]) -> Result<()
     Ok(())
 }
 
-/// Write GraphML edges section - EXTRACTED FUNCTION
+/// Write `GraphML` edges section - EXTRACTED FUNCTION
 /// Complexity: 7 (A+ standard)
 fn write_graphml_edges(graphml: &mut String, graph: &petgraph::Graph<String, ()>) -> Result<()> {
     use std::fmt::Write;
@@ -587,7 +587,7 @@ fn write_graphml_edges(graphml: &mut String, graph: &petgraph::Graph<String, ()>
     Ok(())
 }
 
-/// Write GraphML XML footer - EXTRACTED FUNCTION
+/// Write `GraphML` XML footer - EXTRACTED FUNCTION
 /// Complexity: 2 (A+ standard)
 fn write_graphml_footer(graphml: &mut String) -> Result<()> {
     use std::fmt::Write;
@@ -596,7 +596,7 @@ fn write_graphml_footer(graphml: &mut String) -> Result<()> {
     Ok(())
 }
 
-/// Write GraphML to file - EXTRACTED FUNCTION
+/// Write `GraphML` to file - EXTRACTED FUNCTION
 /// Complexity: 4 (A+ standard)
 fn write_graphml_file(graphml: &str, output: &Option<PathBuf>) -> Result<()> {
     if let Some(path) = output {

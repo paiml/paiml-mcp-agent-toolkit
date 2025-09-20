@@ -262,8 +262,7 @@ fn parse_backend_type(backend: &str) -> Result<StorageBackendType> {
         "rocksdb" => Ok(StorageBackendType::RocksDb),
         "inmemory" => Ok(StorageBackendType::InMemory),
         _ => Err(anyhow::anyhow!(
-            "Unknown backend type: {}. Valid options: sled, rocksdb, inmemory",
-            backend
+            "Unknown backend type: {backend}. Valid options: sled, rocksdb, inmemory"
         )),
     }
 }
@@ -331,7 +330,7 @@ async fn handle_dashboard_command(
     // Start the dashboard server (this will block)
     start_dashboard_server(socket_addr)
         .await
-        .map_err(|e| anyhow::anyhow!("Dashboard server error: {}", e))?;
+        .map_err(|e| anyhow::anyhow!("Dashboard server error: {e}"))?;
 
     Ok(())
 }

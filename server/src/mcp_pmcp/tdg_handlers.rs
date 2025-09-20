@@ -42,6 +42,7 @@ struct TdgSystemDiagnosticsArgs {
 pub struct TdgSystemDiagnosticsTool;
 
 impl TdgSystemDiagnosticsTool {
+    #[must_use] 
     pub fn new() -> Self {
         Self
     }
@@ -85,6 +86,7 @@ struct TdgStorageManagementArgs {
 pub struct TdgStorageManagementTool;
 
 impl TdgStorageManagementTool {
+    #[must_use] 
     pub fn new() -> Self {
         Self
     }
@@ -130,6 +132,7 @@ struct TdgAnalyzeWithStorageArgs {
 pub struct TdgAnalyzeWithStorageTool;
 
 impl TdgAnalyzeWithStorageTool {
+    #[must_use] 
     pub fn new() -> Self {
         Self
     }
@@ -184,6 +187,7 @@ struct TdgPerformanceMetricsArgs {
 pub struct TdgPerformanceMetricsTool;
 
 impl TdgPerformanceMetricsTool {
+    #[must_use] 
     pub fn new() -> Self {
         Self
     }
@@ -227,10 +231,11 @@ struct TdgConfigureStorageArgs {
 /// Tool handler for TDG storage configuration.
 ///
 /// Configures and validates TDG storage backends with support for
-/// Sled, RocksDB, and in-memory backends.
+/// Sled, `RocksDB`, and in-memory backends.
 pub struct TdgConfigureStorageTool;
 
 impl TdgConfigureStorageTool {
+    #[must_use] 
     pub fn new() -> Self {
         Self
     }
@@ -289,6 +294,7 @@ fn default_true() -> bool {
 pub struct TdgHealthCheckTool;
 
 impl TdgHealthCheckTool {
+    #[must_use] 
     pub fn new() -> Self {
         Self
     }

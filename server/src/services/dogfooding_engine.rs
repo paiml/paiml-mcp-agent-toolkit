@@ -58,6 +58,7 @@ pub struct DagMetrics {
 }
 
 impl DogfoodingEngine {
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             ast_engine: UnifiedAstEngine::new(),
@@ -198,7 +199,7 @@ impl DogfoodingEngine {
             .map(|ctx| ctx.max_complexity)
             .collect();
         let total_files = complexities.len();
-        let avg_complexity: f64 = complexities.iter().sum::<u32>() as f64 / total_files as f64;
+        let avg_complexity: f64 = f64::from(complexities.iter().sum::<u32>()) / total_files as f64;
         let median_complexity = if total_files > 0 {
             complexities[total_files / 2]
         } else {
@@ -263,7 +264,7 @@ impl DogfoodingEngine {
                 path: file.path.clone(),
                 change_count: file.commit_count,
                 complexity_score: (file.churn_score * 10.0) as u32, // Rough estimate
-                risk_score: file.churn_score as f64,
+                risk_score: f64::from(file.churn_score),
             })
             .collect();
 
@@ -341,9 +342,7 @@ impl DogfoodingEngine {
         info.push_str(&format!("- **PID**: {}\n", std::process::id()));
         info.push_str(&format!(
             "- **Executable**: {}\n",
-            std::env::current_exe()
-                .map(|p| p.display().to_string())
-                .unwrap_or_else(|_| "unknown".to_string())
+            std::env::current_exe().map_or_else(|_| "unknown".to_string(), |p| p.display().to_string())
         ));
 
         // Performance characteristics
@@ -439,7 +438,7 @@ impl DogfoodingEngine {
                 // Count rules as functions - simple heuristic for line count
                 let functions = makefile_ast
                     .lines()
-                    .filter(|line| line.contains(":") && !line.starts_with("#"))
+                    .filter(|line| line.contains(':') && !line.starts_with('#'))
                     .count();
                 let max_complexity = functions.min(10) as u32; // Simple heuristic
 

@@ -14,6 +14,7 @@ pub struct ConfigCommand {}
 
 impl ConfigCommand {
     /// Create new config command with specified config file
+    #[must_use] 
     pub fn new(_config_path: PathBuf) -> Self {
         Self {}
     }
@@ -116,7 +117,7 @@ impl ConfigCommand {
                 Ok(config.quality.min_coverage.to_string())
             }
             ["hooks", "documentation", "task_id_pattern"] => Ok("PMAT-[0-9]{4}".to_string()),
-            _ => Err(anyhow::anyhow!("Configuration key '{}' not found", key)),
+            _ => Err(anyhow::anyhow!("Configuration key '{key}' not found")),
         }
     }
 }

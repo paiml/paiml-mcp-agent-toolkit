@@ -17,12 +17,14 @@ pub struct DeadCodeAnalyzer {
 }
 
 impl DeadCodeAnalyzer {
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             inner: OriginalAnalyzer::new(Self::DEFAULT_CAPACITY),
         }
     }
 
+    #[must_use] 
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
             inner: OriginalAnalyzer::new(capacity),
@@ -151,15 +153,15 @@ impl ProjectAnalyzer for DeadCodeAnalyzer {
 }
 
 impl AnalyzerInfo for DeadCodeAnalyzer {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "dead_code"
     }
 
-    fn version(&self) -> &str {
+    fn version(&self) -> &'static str {
         env!("CARGO_PKG_VERSION")
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Analyzes code for unreachable and unused code patterns"
     }
 }
@@ -168,10 +170,12 @@ impl AnalyzerInfo for DeadCodeAnalyzer {
 pub struct DeadCodeAnalyzerFactory;
 
 impl DeadCodeAnalyzerFactory {
+    #[must_use] 
     pub fn create() -> DeadCodeAnalyzer {
         DeadCodeAnalyzer::new()
     }
 
+    #[must_use] 
     pub fn create_with_capacity(capacity: usize) -> DeadCodeAnalyzer {
         DeadCodeAnalyzer::with_capacity(capacity)
     }

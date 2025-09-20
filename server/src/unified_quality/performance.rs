@@ -493,6 +493,7 @@ pub struct OptimizationResult {
 
 impl PerformanceMonitor {
     /// Create new performance monitor
+    #[must_use] 
     pub fn new(config: PerformanceConfig) -> Self {
         Self {
             benchmarks: HashMap::new(),
@@ -536,7 +537,7 @@ impl PerformanceMonitor {
         let suite = self
             .benchmarks
             .get(suite_name)
-            .ok_or_else(|| anyhow::anyhow!("Benchmark suite not found: {}", suite_name))?;
+            .ok_or_else(|| anyhow::anyhow!("Benchmark suite not found: {suite_name}"))?;
 
         let mut results = Vec::new();
 
@@ -642,6 +643,7 @@ impl PerformanceMonitor {
     }
 
     /// Generate performance report
+    #[must_use] 
     pub fn generate_performance_report(&self) -> PerformanceReport {
         PerformanceReport {
             generated_at: SystemTime::now(),
@@ -782,7 +784,7 @@ impl PerformanceMonitor {
         }
 
         if count > 0 {
-            total_improvement / count as f64
+            total_improvement / f64::from(count)
         } else {
             0.0
         }
@@ -908,6 +910,7 @@ impl Default for PerformanceMetrics {
 
 impl PerformanceMetrics {
     /// Create new performance metrics
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             timeseries: HashMap::new(),
@@ -919,6 +922,7 @@ impl PerformanceMetrics {
 
 impl PerformanceOptimizer {
     /// Create new performance optimizer
+    #[must_use] 
     pub fn new(config: OptimizationConfig) -> Self {
         Self {
             optimizations: Vec::new(),

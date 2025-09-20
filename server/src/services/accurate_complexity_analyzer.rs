@@ -1,8 +1,8 @@
 //! Accurate Complexity Analyzer using AST-based analysis
 //!
 //! Sprint 63: Implements industry-standard complexity calculations
-//! - Cyclomatic Complexity: Based on McCabe (1976) - decision points
-//! - Cognitive Complexity: Based on SonarSource specification
+//! - Cyclomatic Complexity: Based on `McCabe` (1976) - decision points
+//! - Cognitive Complexity: Based on `SonarSource` specification
 //! - Supports test exclusion and annotation suppression
 
 use anyhow::Result;
@@ -23,6 +23,7 @@ impl Default for AccurateComplexityAnalyzer {
 }
 
 impl AccurateComplexityAnalyzer {
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             exclude_tests: false,
@@ -30,11 +31,13 @@ impl AccurateComplexityAnalyzer {
         }
     }
 
+    #[must_use] 
     pub fn exclude_tests(mut self, exclude: bool) -> Self {
         self.exclude_tests = exclude;
         self
     }
 
+    #[must_use] 
     pub fn respect_annotations(mut self, respect: bool) -> Self {
         self.respect_annotations = respect;
         self
@@ -67,8 +70,8 @@ impl AccurateComplexityAnalyzer {
 
         for entry in WalkDir::new(path)
             .into_iter()
-            .filter_map(|e| e.ok())
-            .filter(|e| e.path().extension().map(|ext| ext == "rs").unwrap_or(false))
+            .filter_map(std::result::Result::ok)
+            .filter(|e| e.path().extension().is_some_and(|ext| ext == "rs"))
         {
             let file_path = entry.path();
 

@@ -19,7 +19,7 @@ use tracing::debug;
 ///
 /// # Returns
 ///
-/// * `Ok(Value)` - JSON response with session_id and serialized initial state
+/// * `Ok(Value)` - JSON response with `session_id` and serialized initial state
 /// * `Err(Box<dyn std::error::Error>)` - Parse errors, state manager errors, or serialization failures
 ///
 /// # JSON Parameters
@@ -290,7 +290,7 @@ pub async fn handle_refactor_stop(
 /// Parses target file paths from JSON parameters.
 ///
 /// Extracts the "targets" array from request parameters and converts each string
-/// path to a PathBuf. Validates that targets are present and correctly formatted.
+/// path to a `PathBuf`. Validates that targets are present and correctly formatted.
 ///
 /// # Parameters
 ///
@@ -339,13 +339,13 @@ fn parse_targets(params: &Value) -> Result<Vec<PathBuf>, Box<dyn std::error::Err
         .map(|v| v.as_str().map(PathBuf::from).ok_or("Invalid target path"))
         .collect();
 
-    paths.map_err(|e| e.into())
+    paths.map_err(std::convert::Into::into)
 }
 
 /// Parses refactoring configuration from JSON parameters with fallback defaults.
 ///
 /// Extracts the optional "config" object from request parameters and builds a
-/// RefactorConfig, falling back to default values for missing fields.
+/// `RefactorConfig`, falling back to default values for missing fields.
 /// All configuration fields are optional.
 ///
 /// # Parameters
@@ -416,22 +416,22 @@ fn parse_config(params: &Value) -> Result<RefactorConfig, Box<dyn std::error::Er
 
     // Override with provided parameters
     if let Some(cfg) = params.get("config") {
-        if let Some(target_complexity) = cfg.get("target_complexity").and_then(|v| v.as_u64()) {
+        if let Some(target_complexity) = cfg.get("target_complexity").and_then(serde_json::Value::as_u64) {
             config.target_complexity = target_complexity as u16;
         }
-        if let Some(remove_satd) = cfg.get("remove_satd").and_then(|v| v.as_bool()) {
+        if let Some(remove_satd) = cfg.get("remove_satd").and_then(serde_json::Value::as_bool) {
             config.remove_satd = remove_satd;
         }
-        if let Some(max_function_lines) = cfg.get("max_function_lines").and_then(|v| v.as_u64()) {
+        if let Some(max_function_lines) = cfg.get("max_function_lines").and_then(serde_json::Value::as_u64) {
             config.max_function_lines = max_function_lines as u32;
         }
-        if let Some(parallel_workers) = cfg.get("parallel_workers").and_then(|v| v.as_u64()) {
+        if let Some(parallel_workers) = cfg.get("parallel_workers").and_then(serde_json::Value::as_u64) {
             config.parallel_workers = parallel_workers as usize;
         }
-        if let Some(memory_limit_mb) = cfg.get("memory_limit_mb").and_then(|v| v.as_u64()) {
+        if let Some(memory_limit_mb) = cfg.get("memory_limit_mb").and_then(serde_json::Value::as_u64) {
             config.memory_limit_mb = memory_limit_mb as usize;
         }
-        if let Some(batch_size) = cfg.get("batch_size").and_then(|v| v.as_u64()) {
+        if let Some(batch_size) = cfg.get("batch_size").and_then(serde_json::Value::as_u64) {
             config.batch_size = batch_size as usize;
         }
     }
@@ -439,7 +439,7 @@ fn parse_config(params: &Value) -> Result<RefactorConfig, Box<dyn std::error::Er
     Ok(config)
 }
 
-/// Serializes a RefactorStateMachine to JSON for MCP client consumption.
+/// Serializes a `RefactorStateMachine` to JSON for MCP client consumption.
 ///
 /// Converts the internal state machine representation to a JSON format suitable
 /// for transmission over the MCP protocol. Handles serialization errors gracefully.

@@ -6,20 +6,20 @@
 //! # Models Overview
 //!
 //! - **churn**: Code churn metrics and repository activity analysis
-//! - **complexity_bound**: Complexity metrics and bounds for code analysis
+//! - **`complexity_bound`**: Complexity metrics and bounds for code analysis
 //! - **dag**: Directed Acyclic Graph structures for dependency analysis
-//! - **dead_code**: Dead code detection and representation
-//! - **deep_context_config**: Configuration for deep context analysis
-//! - **defect_report**: Defect reporting structures (SATD, lint issues)
+//! - **`dead_code`**: Dead code detection and representation
+//! - **`deep_context_config`**: Configuration for deep context analysis
+//! - **`defect_report`**: Defect reporting structures (SATD, lint issues)
 //! - **error**: Error types and handling
 //! - **mcp**: Model Context Protocol specific structures
 //! - **pdmt**: PDMT integration for deterministic todo generation with quality enforcement
-//! - **project_meta**: Project metadata and configuration
-//! - **quality_gate**: Quality gate results and violations
+//! - **`project_meta`**: Project metadata and configuration
+//! - **`quality_gate`**: Quality gate results and violations
 //! - **refactor**: Refactoring state machine and operations
 //! - **tdg**: Task Dependency Graph for workflow analysis
 //! - **template**: Template structures for code generation
-//! - **unified_ast**: Unified AST representation across languages
+//! - **`unified_ast`**: Unified AST representation across languages
 //!
 //! # Example
 //!

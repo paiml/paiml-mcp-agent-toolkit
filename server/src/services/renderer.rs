@@ -14,9 +14,9 @@
 //!
 //! # Built-in Helpers
 //!
-//! - `{{snake_case value}}` - Converts to snake_case
+//! - `{{snake_case value}}` - Converts to `snake_case`
 //! - `{{kebab_case value}}` - Converts to kebab-case
-//! - `{{pascal_case value}}` - Converts to PascalCase
+//! - `{{pascal_case value}}` - Converts to `PascalCase`
 //! - `{{current_year}}` - Inserts current year
 //! - `{{current_date}}` - Inserts current date
 //!

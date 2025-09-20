@@ -1,7 +1,7 @@
-//! WebAssembly and AssemblyScript analysis handlers
+//! WebAssembly and `AssemblyScript` analysis handlers
 //!
 //! This module contains handlers for WebAssembly binary/text format and
-//! AssemblyScript source code analysis.
+//! `AssemblyScript` source code analysis.
 
 use crate::cli::ComplexityOutputFormat;
 use crate::models::unified_ast::AstDag;
@@ -13,7 +13,7 @@ use anyhow::Result;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
-/// Handle AssemblyScript analysis
+/// Handle `AssemblyScript` analysis
 #[allow(clippy::too_many_arguments)]
 pub async fn handle_analyze_assemblyscript(
     project_path: PathBuf,
@@ -283,13 +283,13 @@ async fn write_wasm_analysis_output(
     Ok(())
 }
 
-/// Collect AssemblyScript files (.as, .ts with AS context)
+/// Collect `AssemblyScript` files (.as, .ts with AS context)
 fn collect_assemblyscript_files(project_path: &Path) -> Result<Vec<PathBuf>> {
     let mut files = Vec::new();
 
     for entry in WalkDir::new(project_path)
         .into_iter()
-        .filter_map(|e| e.ok())
+        .filter_map(std::result::Result::ok)
         .filter(|e| e.file_type().is_file())
     {
         process_assemblyscript_entry(entry.path(), &mut files);
@@ -298,7 +298,7 @@ fn collect_assemblyscript_files(project_path: &Path) -> Result<Vec<PathBuf>> {
     Ok(files)
 }
 
-/// Process a single file entry for AssemblyScript
+/// Process a single file entry for `AssemblyScript`
 fn process_assemblyscript_entry(path: &Path, files: &mut Vec<PathBuf>) {
     let ext = match path.extension().and_then(|s| s.to_str()) {
         Some(ext) => ext,
@@ -312,19 +312,19 @@ fn process_assemblyscript_entry(path: &Path, files: &mut Vec<PathBuf>) {
     }
 }
 
-/// Add an AssemblyScript file to the collection
+/// Add an `AssemblyScript` file to the collection
 fn add_assemblyscript_file(path: &Path, files: &mut Vec<PathBuf>) {
     files.push(path.to_path_buf());
 }
 
-/// Check if TypeScript file is actually AssemblyScript and add if so
+/// Check if TypeScript file is actually `AssemblyScript` and add if so
 fn check_and_add_typescript_file(path: &Path, files: &mut Vec<PathBuf>) {
     if is_assemblyscript_typescript(path) {
         files.push(path.to_path_buf());
     }
 }
 
-/// Check if a TypeScript file contains AssemblyScript markers
+/// Check if a TypeScript file contains `AssemblyScript` markers
 fn is_assemblyscript_typescript(path: &Path) -> bool {
     let content = match std::fs::read_to_string(path) {
         Ok(content) => content,
@@ -334,7 +334,7 @@ fn is_assemblyscript_typescript(path: &Path) -> bool {
     contains_assemblyscript_markers(&content)
 }
 
-/// Check if content contains AssemblyScript markers
+/// Check if content contains `AssemblyScript` markers
 fn contains_assemblyscript_markers(content: &str) -> bool {
     content.contains("@global")
         || content.contains("@inline")
@@ -353,7 +353,7 @@ fn collect_wasm_files(
 
     for entry in WalkDir::new(project_path)
         .into_iter()
-        .filter_map(|e| e.ok())
+        .filter_map(std::result::Result::ok)
         .filter(|e| e.file_type().is_file())
     {
         let path = entry.path();
@@ -369,62 +369,59 @@ fn collect_wasm_files(
     Ok(files)
 }
 
-/// Format AssemblyScript analysis results
+/// Format `AssemblyScript` analysis results
 fn format_assemblyscript_results(
     results: &[(PathBuf, WasmComplexity)],
     format: &ComplexityOutputFormat,
     perf: bool,
     elapsed: std::time::Duration,
 ) -> Result<String> {
-    match format {
-        ComplexityOutputFormat::Json => {
-            let output = serde_json::json!({
-                "analysis_type": "assemblyscript",
-                "files_analyzed": results.len(),
-                "results": results.iter().map(|(path, complexity)| {
-                    serde_json::json!({
-                        "file": path.display().to_string(),
-                        "complexity": complexity
-                    })
-                }).collect::<Vec<_>>(),
-                "performance": if perf {
-                    Some(serde_json::json!({
-                        "total_time_ms": elapsed.as_millis(),
-                        "avg_time_per_file_ms": elapsed.as_millis() / (results.len() as u128).max(1)
-                    }))
-                } else { None }
-            });
-            Ok(serde_json::to_string_pretty(&output)?)
-        }
-        _ => {
-            let mut output = String::from("# AssemblyScript Analysis Report\n\n");
-            output.push_str(&format!("📁 **Files analyzed**: {}\n", results.len()));
-            output.push_str(&format!(
-                "⏱️  **Analysis time**: {:.2}s\n\n",
-                elapsed.as_secs_f64()
-            ));
+    if format == &ComplexityOutputFormat::Json {
+        let output = serde_json::json!({
+            "analysis_type": "assemblyscript",
+            "files_analyzed": results.len(),
+            "results": results.iter().map(|(path, complexity)| {
+                serde_json::json!({
+                    "file": path.display().to_string(),
+                    "complexity": complexity
+                })
+            }).collect::<Vec<_>>(),
+            "performance": if perf {
+                Some(serde_json::json!({
+                    "total_time_ms": elapsed.as_millis(),
+                    "avg_time_per_file_ms": elapsed.as_millis() / (results.len() as u128).max(1)
+                }))
+            } else { None }
+        });
+        Ok(serde_json::to_string_pretty(&output)?)
+    } else {
+        let mut output = String::from("# AssemblyScript Analysis Report\n\n");
+        output.push_str(&format!("📁 **Files analyzed**: {}\n", results.len()));
+        output.push_str(&format!(
+            "⏱️  **Analysis time**: {:.2}s\n\n",
+            elapsed.as_secs_f64()
+        ));
 
-            if !results.is_empty() {
-                output.push_str("## Results\n\n");
-                for (path, complexity) in results {
-                    output.push_str(&format!("### {}\n", path.display()));
-                    output.push_str(&format!(
-                        "- **Cyclomatic complexity**: {}\n",
-                        complexity.cyclomatic
-                    ));
-                    output.push_str(&format!(
-                        "- **Cognitive complexity**: {}\n",
-                        complexity.cognitive
-                    ));
-                    output.push_str(&format!(
-                        "- **Memory pressure**: {:.2}\n\n",
-                        complexity.memory_pressure
-                    ));
-                }
+        if !results.is_empty() {
+            output.push_str("## Results\n\n");
+            for (path, complexity) in results {
+                output.push_str(&format!("### {}\n", path.display()));
+                output.push_str(&format!(
+                    "- **Cyclomatic complexity**: {}\n",
+                    complexity.cyclomatic
+                ));
+                output.push_str(&format!(
+                    "- **Cognitive complexity**: {}\n",
+                    complexity.cognitive
+                ));
+                output.push_str(&format!(
+                    "- **Memory pressure**: {:.2}\n\n",
+                    complexity.memory_pressure
+                ));
             }
-
-            Ok(output)
         }
+
+        Ok(output)
     }
 }
 
@@ -435,50 +432,47 @@ fn format_webassembly_results(
     perf: bool,
     elapsed: std::time::Duration,
 ) -> Result<String> {
-    match format {
-        ComplexityOutputFormat::Json => {
-            let output = serde_json::json!({
-                "analysis_type": "webassembly",
-                "files_analyzed": results.len(),
-                "results": results.iter().map(|(path, metrics)| {
-                    serde_json::json!({
-                        "file": path.display().to_string(),
-                        "metrics": metrics
-                    })
-                }).collect::<Vec<_>>(),
-                "performance": if perf {
-                    Some(serde_json::json!({
-                        "total_time_ms": elapsed.as_millis(),
-                        "avg_time_per_file_ms": elapsed.as_millis() / (results.len() as u128).max(1)
-                    }))
-                } else { None }
-            });
-            Ok(serde_json::to_string_pretty(&output)?)
-        }
-        _ => {
-            let mut output = String::from("# WebAssembly Analysis Report\n\n");
-            output.push_str(&format!("📁 **Files analyzed**: {}\n", results.len()));
-            output.push_str(&format!(
-                "⏱️  **Analysis time**: {:.2}s\n\n",
-                elapsed.as_secs_f64()
-            ));
+    if format == &ComplexityOutputFormat::Json {
+        let output = serde_json::json!({
+            "analysis_type": "webassembly",
+            "files_analyzed": results.len(),
+            "results": results.iter().map(|(path, metrics)| {
+                serde_json::json!({
+                    "file": path.display().to_string(),
+                    "metrics": metrics
+                })
+            }).collect::<Vec<_>>(),
+            "performance": if perf {
+                Some(serde_json::json!({
+                    "total_time_ms": elapsed.as_millis(),
+                    "avg_time_per_file_ms": elapsed.as_millis() / (results.len() as u128).max(1)
+                }))
+            } else { None }
+        });
+        Ok(serde_json::to_string_pretty(&output)?)
+    } else {
+        let mut output = String::from("# WebAssembly Analysis Report\n\n");
+        output.push_str(&format!("📁 **Files analyzed**: {}\n", results.len()));
+        output.push_str(&format!(
+            "⏱️  **Analysis time**: {:.2}s\n\n",
+            elapsed.as_secs_f64()
+        ));
 
-            if !results.is_empty() {
-                output.push_str("## Results\n\n");
-                for (path, metrics) in results {
-                    output.push_str(&format!("### {}\n", path.display()));
-                    output.push_str(&format!("- **Functions**: {}\n", metrics.function_count));
-                    output.push_str(&format!("- **Imports**: {}\n", metrics.import_count));
-                    output.push_str(&format!("- **Exports**: {}\n", metrics.export_count));
-                    output.push_str(&format!(
-                        "- **Memory pages**: {}\n\n",
-                        metrics.linear_memory_pages
-                    ));
-                }
+        if !results.is_empty() {
+            output.push_str("## Results\n\n");
+            for (path, metrics) in results {
+                output.push_str(&format!("### {}\n", path.display()));
+                output.push_str(&format!("- **Functions**: {}\n", metrics.function_count));
+                output.push_str(&format!("- **Imports**: {}\n", metrics.import_count));
+                output.push_str(&format!("- **Exports**: {}\n", metrics.export_count));
+                output.push_str(&format!(
+                    "- **Memory pages**: {}\n\n",
+                    metrics.linear_memory_pages
+                ));
             }
-
-            Ok(output)
         }
+
+        Ok(output)
     }
 }
 

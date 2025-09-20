@@ -11,6 +11,7 @@ pub struct SnapshotManager {
 }
 
 impl SnapshotManager {
+    #[must_use] 
     pub fn new() -> Self {
         Self::with_path(".pmat-cache")
     }

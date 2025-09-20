@@ -24,24 +24,24 @@ impl FileFilter {
         validate_patterns(&expanded_include)?;
         validate_patterns(&expanded_exclude)?;
 
-        let include_set = if !expanded_include.is_empty() {
+        let include_set = if expanded_include.is_empty() {
+            None
+        } else {
             let mut builder = GlobSetBuilder::new();
             for pattern in expanded_include {
                 builder.add(Glob::new(&pattern)?);
             }
             Some(builder.build()?)
-        } else {
-            None
         };
 
-        let exclude_set = if !expanded_exclude.is_empty() {
+        let exclude_set = if expanded_exclude.is_empty() {
+            None
+        } else {
             let mut builder = GlobSetBuilder::new();
             for pattern in expanded_exclude {
                 builder.add(Glob::new(&pattern)?);
             }
             Some(builder.build()?)
-        } else {
-            None
         };
 
         Ok(Self {
@@ -58,6 +58,7 @@ impl FileFilter {
     }
 
     /// Check if a file path should be included based on the filters
+    #[must_use] 
     pub fn should_include(&self, path: &Path) -> bool {
         // If exclude patterns are specified and the path matches, exclude it
         if let Some(ref exclude_set) = self.exclude_set {
@@ -76,6 +77,7 @@ impl FileFilter {
     }
 
     /// Filter a list of paths based on include/exclude patterns
+    #[must_use] 
     pub fn filter_paths(&self, paths: Vec<PathBuf>) -> Vec<PathBuf> {
         paths
             .into_iter()
@@ -84,6 +86,7 @@ impl FileFilter {
     }
 
     /// Check if any filters are active
+    #[must_use] 
     pub fn has_filters(&self) -> bool {
         self.include_set.is_some() || self.exclude_set.is_some()
     }

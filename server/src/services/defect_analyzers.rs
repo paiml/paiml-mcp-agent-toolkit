@@ -7,12 +7,12 @@
 //!
 //! # Analyzer Types
 //!
-//! - **ComplexityDefectAnalyzer**: Detects overly complex code using TDG metrics
-//! - **DeadCodeDefectAnalyzer**: Identifies unreachable and unused code
-//! - **DuplicateDefectAnalyzer**: Finds duplicated code blocks and patterns
-//! - **PerformanceDefectAnalyzer**: Detects performance anti-patterns
-//! - **SecurityDefectAnalyzer**: Identifies potential security vulnerabilities
-//! - **TechnicalDebtAnalyzer**: Tracks self-admitted technical debt (SATD)
+//! - **`ComplexityDefectAnalyzer`**: Detects overly complex code using TDG metrics
+//! - **`DeadCodeDefectAnalyzer`**: Identifies unreachable and unused code
+//! - **`DuplicateDefectAnalyzer`**: Finds duplicated code blocks and patterns
+//! - **`PerformanceDefectAnalyzer`**: Detects performance anti-patterns
+//! - **`SecurityDefectAnalyzer`**: Identifies potential security vulnerabilities
+//! - **`TechnicalDebtAnalyzer`**: Tracks self-admitted technical debt (SATD)
 //!
 //! # Severity Mapping
 //!
@@ -73,7 +73,7 @@ async fn discover_source_files(path: &Path) -> Result<Vec<PathBuf>> {
     for entry in WalkDir::new(path)
         .follow_links(false)
         .into_iter()
-        .filter_map(|e| e.ok())
+        .filter_map(std::result::Result::ok)
         .filter(|e| e.file_type().is_file())
     {
         let path = entry.path();
@@ -224,6 +224,7 @@ pub struct SATDDefectAnalyzer {
 }
 
 impl SATDDefectAnalyzer {
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             detector: crate::services::satd_detector::SATDDetector::new(),
@@ -314,6 +315,7 @@ impl SATDDefectAnalyzer {
 pub struct DeadCodeDefectAnalyzer;
 
 impl DeadCodeDefectAnalyzer {
+    #[must_use] 
     pub fn new() -> Self {
         Self {}
     }
@@ -355,14 +357,14 @@ impl DefectAnalyzer for DeadCodeDefectAnalyzer {
 
         // Convert dead functions
         for (index, item) in report.dead_functions.iter().enumerate() {
-            if item.confidence as f64 >= config.min_confidence {
+            if f64::from(item.confidence) >= config.min_confidence {
                 defects.push(self.dead_code_item_to_defect(item, "DEAD-FN", index + 1));
             }
         }
 
         // Convert dead classes
         for (index, item) in report.dead_classes.iter().enumerate() {
-            if item.confidence as f64 >= config.min_confidence {
+            if f64::from(item.confidence) >= config.min_confidence {
                 defects.push(self.dead_code_item_to_defect(item, "DEAD-CLS", index + 1));
             }
         }
@@ -395,7 +397,7 @@ impl DeadCodeDefectAnalyzer {
         };
 
         let mut metrics = HashMap::new();
-        metrics.insert("confidence".to_string(), item.confidence as f64);
+        metrics.insert("confidence".to_string(), f64::from(item.confidence));
 
         Defect {
             id: format!("{prefix}-{index:04}"),
@@ -426,7 +428,7 @@ impl DeadCodeDefectAnalyzer {
         let mut metrics = HashMap::new();
         metrics.insert(
             "lines".to_string(),
-            (block.end_line - block.start_line + 1) as f64,
+            f64::from(block.end_line - block.start_line + 1),
         );
 
         Defect {
@@ -456,6 +458,7 @@ pub struct DuplicationDefectAnalyzer {
 }
 
 impl DuplicationDefectAnalyzer {
+    #[must_use] 
     pub fn new() -> Self {
         let config = crate::services::duplicate_detector::DuplicateDetectionConfig::default();
         Self {
@@ -539,7 +542,7 @@ impl DuplicationDefectAnalyzer {
             Some("js") => Language::JavaScript,
             Some("py") => Language::Python,
             Some("c") => Language::C,
-            Some("cpp") | Some("cc") => Language::Cpp,
+            Some("cpp" | "cc") => Language::Cpp,
             Some("kt") => Language::Kotlin,
             _ => Language::Rust, // Default
         }
@@ -598,6 +601,7 @@ pub struct PerformanceDefectAnalyzer {
 }
 
 impl PerformanceDefectAnalyzer {
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             analyzer: crate::services::big_o_analyzer::BigOAnalyzer::new(),
@@ -678,13 +682,13 @@ impl PerformanceDefectAnalyzer {
         let mut metrics = HashMap::new();
         metrics.insert(
             "time_complexity_class".to_string(),
-            func.time_complexity.class as u8 as f64,
+            f64::from(func.time_complexity.class as u8),
         );
         metrics.insert(
             "space_complexity_class".to_string(),
-            func.space_complexity.class as u8 as f64,
+            f64::from(func.space_complexity.class as u8),
         );
-        metrics.insert("confidence".to_string(), func.confidence as f64);
+        metrics.insert("confidence".to_string(), f64::from(func.confidence));
 
         Defect {
             id: format!("PERF-{index:04}"),
@@ -737,6 +741,7 @@ impl PerformanceDefectAnalyzer {
 pub struct ArchitectureDefectAnalyzer;
 
 impl ArchitectureDefectAnalyzer {
+    #[must_use] 
     pub fn new() -> Self {
         Self {}
     }

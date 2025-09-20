@@ -120,6 +120,7 @@ pub enum HttpDemoError {
 }
 
 impl HttpDemoAdapter {
+    #[must_use] 
     pub fn new() -> Self {
         Self
     }
@@ -429,7 +430,7 @@ impl DemoProtocol for HttpDemoAdapter {
         let remote_addr = value
             .get("remote_addr")
             .and_then(|v| v.as_str())
-            .map(|s| s.to_string());
+            .map(std::string::ToString::to_string);
 
         Ok(HttpRequest {
             method,
@@ -599,7 +600,7 @@ impl From<Value> for HttpRequest {
             remote_addr: value
                 .get("remote_addr")
                 .and_then(|v| v.as_str())
-                .map(|s| s.to_string()),
+                .map(std::string::ToString::to_string),
         }
     }
 }

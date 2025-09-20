@@ -178,7 +178,7 @@ fn check_for_failures(
 fn check_verification_failure(verification: Option<&VerificationResult>) -> Result<()> {
     if let Some(verification) = verification {
         if !verification.is_safe() {
-            anyhow::bail!("❌ Verification failed: {:?}", verification);
+            anyhow::bail!("❌ Verification failed: {verification:?}");
         }
     }
     Ok(())
@@ -194,8 +194,7 @@ fn check_security_failures(security: Option<&Vec<VulnerabilityMatch>>) -> Result
 
         if critical_count > 0 {
             anyhow::bail!(
-                "❌ Found {} critical security vulnerabilities",
-                critical_count
+                "❌ Found {critical_count} critical security vulnerabilities"
             );
         }
     }

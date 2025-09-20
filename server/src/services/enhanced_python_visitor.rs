@@ -23,6 +23,7 @@ pub struct EnhancedPythonVisitor {
 #[cfg(feature = "python-ast")]
 impl EnhancedPythonVisitor {
     /// Creates a new enhanced Python visitor
+    #[must_use] 
     pub fn new(file_path: &Path) -> Self {
         Self {
             items: Vec::new(),
@@ -33,6 +34,7 @@ impl EnhancedPythonVisitor {
     }
 
     /// Extracts AST items from a Python module
+    #[must_use] 
     pub fn extract_items(mut self, module: &ModModule) -> Vec<AstItem> {
         self.visit_module(module);
         self.items

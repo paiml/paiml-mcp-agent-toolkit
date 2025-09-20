@@ -320,10 +320,10 @@ fn aggregate_component_metrics(
 
         for node in &component.nodes {
             if let Some(node_metrics) = complexity_map.get(node) {
-                total_complexity += node_metrics.cyclomatic as f64;
+                total_complexity += f64::from(node_metrics.cyclomatic);
                 total_loc += node_metrics.lines as usize;
                 function_count += 1;
-                max_complexity = max_complexity.max(node_metrics.cyclomatic as f64);
+                max_complexity = max_complexity.max(f64::from(node_metrics.cyclomatic));
             }
         }
 

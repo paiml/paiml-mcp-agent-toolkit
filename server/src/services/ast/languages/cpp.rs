@@ -19,6 +19,7 @@ impl Default for CppStrategy {
 }
 
 impl CppStrategy {
+    #[must_use] 
     pub fn new() -> Self {
         Self
     }

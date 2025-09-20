@@ -15,6 +15,7 @@ impl Default for DefectAnalyzer {
 }
 
 impl DefectAnalyzer {
+    #[must_use] 
     pub fn new() -> Self {
         Self
     }

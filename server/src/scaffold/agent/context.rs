@@ -67,12 +67,14 @@ impl AgentContextBuilder {
     }
 
     /// Add a feature to the agent.
+    #[must_use] 
     pub fn with_feature(mut self, feature: AgentFeature) -> Self {
         self.context.features.insert(feature);
         self
     }
 
     /// Parse and add a feature from a string.
+    #[must_use] 
     pub fn with_feature_str(mut self, feature_str: &str) -> Self {
         if let Ok(feature) = feature_str.parse::<AgentFeature>() {
             self.context.features.insert(feature);
@@ -81,18 +83,21 @@ impl AgentContextBuilder {
     }
 
     /// Set the quality level.
+    #[must_use] 
     pub fn with_quality_level(mut self, level: QualityLevel) -> Self {
         self.context.quality_level = level;
         self
     }
 
     /// Set the deterministic core specification.
+    #[must_use] 
     pub fn with_deterministic_core(mut self, core: CoreSpec) -> Self {
         self.context.deterministic_core = Some(core);
         self
     }
 
     /// Set the probabilistic wrapper specification.
+    #[must_use] 
     pub fn with_probabilistic_wrapper(mut self, wrapper: WrapperSpec) -> Self {
         self.context.probabilistic_wrapper = Some(wrapper);
         self
@@ -111,7 +116,7 @@ impl AgentContextBuilder {
             bail!("Agent name must be alphanumeric with underscores only");
         }
 
-        if ctx.name.chars().next().is_some_and(|c| c.is_numeric()) {
+        if ctx.name.chars().next().is_some_and(char::is_numeric) {
             bail!("Agent name cannot start with a number");
         }
 
@@ -141,6 +146,7 @@ impl AgentContextBuilder {
 /// assert_eq!(context.name, "my_agent");
 /// assert_eq!(context.quality_level, QualityLevel::Extreme);
 /// ```
+#[must_use] 
 pub fn create_agent_context(name: &str, template: &str) -> AgentContextBuilder {
     AgentContextBuilder::new(name, template)
 }

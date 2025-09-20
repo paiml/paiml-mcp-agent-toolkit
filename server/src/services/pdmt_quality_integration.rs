@@ -13,6 +13,7 @@ pub struct PdmtQualityEnforcer {
 }
 
 impl PdmtQualityEnforcer {
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             _quality_proxy: QualityProxyService::new(),
@@ -186,14 +187,14 @@ impl PdmtQualityEnforcer {
 
     /// Validate doctest requirements
     fn validate_doctest_requirements(&self, todo: &PdmtTodo) -> Result<ValidationOutcome> {
-        if !todo.quality_gates.doctest_requirement {
+        if todo.quality_gates.doctest_requirement {
+            Ok(ValidationOutcome::success(
+                "Doctest requirement enabled".to_string(),
+            ))
+        } else {
             Ok(ValidationOutcome::failure(
                 "Doctests are mandatory".to_string(),
                 vec!["Doctest requirement must be enabled".to_string()],
-            ))
-        } else {
-            Ok(ValidationOutcome::success(
-                "Doctest requirement enabled".to_string(),
             ))
         }
     }

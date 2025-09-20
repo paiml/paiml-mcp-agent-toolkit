@@ -1,6 +1,6 @@
-//! AssemblyScript parser implementation
+//! `AssemblyScript` parser implementation
 //!
-//! This module provides AssemblyScript parsing using tree-sitter with
+//! This module provides `AssemblyScript` parsing using tree-sitter with
 //! memory safety guarantees and iterative parsing to prevent stack overflow.
 
 use anyhow::Result;
@@ -15,14 +15,14 @@ const _MAX_PARSING_TIME: Duration = Duration::from_secs(30);
 const _MAX_NODES: usize = 100_000;
 const MAX_FILE_SIZE: usize = 10 * 1_024 * 1_024; // 10MB
 
-/// AssemblyScript parser with tree-sitter backend
+/// `AssemblyScript` parser with tree-sitter backend
 pub struct AssemblyScriptParser {
     _max_depth: usize,
     _timeout: Duration,
 }
 
 impl AssemblyScriptParser {
-    /// Create a new AssemblyScript parser without timeout parameter
+    /// Create a new `AssemblyScript` parser without timeout parameter
     pub fn new() -> Result<Self> {
         Ok(Self {
             _max_depth: 100,
@@ -30,7 +30,8 @@ impl AssemblyScriptParser {
         })
     }
 
-    /// Create a new AssemblyScript parser with custom timeout
+    /// Create a new `AssemblyScript` parser with custom timeout
+    #[must_use] 
     pub fn new_with_timeout(timeout: Duration) -> Self {
         Self {
             _max_depth: 100,
@@ -38,7 +39,7 @@ impl AssemblyScriptParser {
         }
     }
 
-    /// Parse an AssemblyScript file
+    /// Parse an `AssemblyScript` file
     pub async fn parse_file(&mut self, _file_path: &Path, content: &str) -> Result<AstDag> {
         // Check file size limit
         if content.len() > MAX_FILE_SIZE {
@@ -52,7 +53,7 @@ impl AssemblyScriptParser {
         Ok(dag)
     }
 
-    /// Analyze complexity of AssemblyScript code
+    /// Analyze complexity of `AssemblyScript` code
     pub fn analyze_complexity(&self, content: &str) -> Result<WasmComplexity> {
         // Basic complexity analysis
         let line_count = content.lines().count();

@@ -122,6 +122,7 @@ pub struct EnvironmentSnapshot {
 }
 
 impl EnvironmentSnapshot {
+    #[must_use] 
     pub fn capture() -> Self {
         Self {
             os: std::env::consts::OS.to_string(),
@@ -154,7 +155,7 @@ impl FeatureTest for RustAstTest {
     async fn execute(&self) -> Result<serde_json::Value> {
         use syn::parse_file;
 
-        const TEST_CODE: &str = r#"
+        const TEST_CODE: &str = r"
             pub fn fibonacci(n: u32) -> u32 {
                 match n {
                     0 => 0,
@@ -162,7 +163,7 @@ impl FeatureTest for RustAstTest {
                     _ => fibonacci(n - 1) + fibonacci(n - 2),
                 }
             }
-        "#;
+        ";
 
         let start = Instant::now();
         let ast = parse_file(TEST_CODE)?;
@@ -170,7 +171,7 @@ impl FeatureTest for RustAstTest {
 
         // Verify expected structure
         let items_count = ast.items.len();
-        anyhow::ensure!(items_count == 1, "Expected 1 item, got {}", items_count);
+        anyhow::ensure!(items_count == 1, "Expected 1 item, got {items_count}");
 
         Ok(json!({
             "parsed_items": items_count,
@@ -190,12 +191,12 @@ impl FeatureTest for TypeScriptAstTest {
     async fn execute(&self) -> Result<serde_json::Value> {
         // Test TypeScript parsing capability
 
-        const TEST_CODE: &str = r#"
+        const TEST_CODE: &str = r"
             export function factorial(n: number): number {
                 if (n <= 1) return 1;
                 return n * factorial(n - 1);
             }
-        "#;
+        ";
 
         let start = Instant::now();
         // Just verify TypeScript can be processed
@@ -220,7 +221,7 @@ impl FeatureTest for PythonAstTest {
     async fn execute(&self) -> Result<serde_json::Value> {
         // Test Python parsing capability
 
-        const TEST_CODE: &str = r#"
+        const TEST_CODE: &str = r"
 def quicksort(arr):
     if len(arr) <= 1:
         return arr
@@ -229,7 +230,7 @@ def quicksort(arr):
     middle = [x for x in arr if x == pivot]
     right = [x for x in arr if x > pivot]
     return quicksort(left) + middle + quicksort(right)
-        "#;
+        ";
 
         let start = Instant::now();
         // Just verify Python can be processed
@@ -284,10 +285,10 @@ impl FeatureTest for MermaidGeneratorTest {
 
     async fn execute(&self) -> Result<serde_json::Value> {
         // Test basic mermaid generation capability
-        let test_mermaid = r#"graph TD
+        let test_mermaid = r"graph TD
     A[Main] --> B[Library]
     B --> C[Utils]
-"#;
+";
 
         // Verify we can process mermaid syntax
         anyhow::ensure!(test_mermaid.contains("graph TD"), "Missing graph directive");
@@ -393,6 +394,7 @@ impl Default for SelfDiagnostic {
 }
 
 impl SelfDiagnostic {
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             tests: vec![

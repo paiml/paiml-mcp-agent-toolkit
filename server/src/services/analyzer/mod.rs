@@ -112,6 +112,7 @@ pub trait AnalyzerInfo {
 }
 
 impl AnalyzerRegistry {
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             analyzers: std::collections::HashMap::new(),
@@ -126,12 +127,14 @@ impl AnalyzerRegistry {
             .insert(analyzer.name().to_string(), Box::new(analyzer));
     }
 
+    #[must_use] 
     pub fn get_info(&self, name: &str) -> Option<&dyn AnalyzerInfo> {
-        self.analyzers.get(name).map(|a| a.as_ref())
+        self.analyzers.get(name).map(std::convert::AsRef::as_ref)
     }
 
+    #[must_use] 
     pub fn list_analyzers(&self) -> Vec<&str> {
-        self.analyzers.keys().map(|s| s.as_str()).collect()
+        self.analyzers.keys().map(std::string::String::as_str).collect()
     }
 }
 

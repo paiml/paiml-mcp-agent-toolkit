@@ -20,6 +20,7 @@ pub struct ComplexityAnalyzer {
 }
 
 impl ComplexityAnalyzer {
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             inner: OriginalAnalyzer::new(),
@@ -109,7 +110,7 @@ async fn find_source_files(root: &Path, extensions: &[String]) -> Result<Vec<Pat
     for entry in WalkDir::new(&root)
         .follow_links(true)
         .into_iter()
-        .filter_map(|e| e.ok())
+        .filter_map(std::result::Result::ok)
     {
         let path = entry.path();
         if !path.is_file() {
@@ -156,8 +157,8 @@ fn process_function_metrics(
     max_cyclomatic: &mut u32,
     max_cognitive: &mut u32,
 ) {
-    let cyclo = func.metrics.cyclomatic as u32;
-    let cogn = func.metrics.cognitive as u32;
+    let cyclo = u32::from(func.metrics.cyclomatic);
+    let cogn = u32::from(func.metrics.cognitive);
 
     if cyclo > 20 || cogn > 15 {
         *high_complexity_functions += 1;
@@ -172,7 +173,7 @@ fn process_function_metrics(
 /// Calculate average metrics
 fn calculate_averages(total: u32, count: usize) -> f64 {
     if count > 0 {
-        total as f64 / count as f64
+        f64::from(total) / count as f64
     } else {
         0.0
     }
@@ -223,7 +224,7 @@ impl Analyzer for ComplexityAnalyzer {
                     metrics
                         .functions
                         .iter()
-                        .map(|f| f.metrics.cyclomatic as f64)
+                        .map(|f| f64::from(f.metrics.cyclomatic))
                         .sum::<f64>()
                         / metrics.functions.len() as f64
                 };
@@ -282,15 +283,15 @@ impl ProjectAnalyzer for ComplexityAnalyzer {
 }
 
 impl AnalyzerInfo for ComplexityAnalyzer {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "complexity"
     }
 
-    fn version(&self) -> &str {
+    fn version(&self) -> &'static str {
         env!("CARGO_PKG_VERSION")
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Analyzes code complexity using cyclomatic, cognitive, and Halstead metrics"
     }
 }
@@ -299,10 +300,12 @@ impl AnalyzerInfo for ComplexityAnalyzer {
 pub struct ComplexityAnalyzerFactory;
 
 impl ComplexityAnalyzerFactory {
+    #[must_use] 
     pub fn create() -> ComplexityAnalyzer {
         ComplexityAnalyzer::new()
     }
 
+    #[must_use] 
     pub fn create_with_thresholds(_max_cyclomatic: u32, _max_cognitive: u32) -> ComplexityAnalyzer {
         // Create analyzer with specified threshold values
         // The thresholds are used during analysis to determine violations

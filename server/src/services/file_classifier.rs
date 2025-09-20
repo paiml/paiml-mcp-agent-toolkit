@@ -139,7 +139,7 @@ impl Default for FileClassifier {
             vendor_patterns: VENDOR_RULES
                 .path_patterns
                 .iter()
-                .map(|s| s.to_string())
+                .map(|s| (*s).to_string())
                 .collect(),
             skip_vendor: true,
         }
@@ -165,11 +165,13 @@ pub enum SkipReason {
 }
 
 impl FileClassifier {
+    #[must_use] 
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Check if a file should be parsed, with option to include large files
+    #[must_use] 
     pub fn should_parse_with_options(
         &self,
         path: &Path,
@@ -225,6 +227,7 @@ impl FileClassifier {
         ParseDecision::Parse
     }
 
+    #[must_use] 
     pub fn should_parse(&self, path: &Path, content: &[u8]) -> ParseDecision {
         self.should_parse_with_options(path, content, false)
     }
@@ -311,7 +314,7 @@ fn calculate_shannon_entropy(data: &[u8]) -> f64 {
 
     for &count in &frequencies {
         if count > 0 {
-            let p = count as f64 / len;
+            let p = f64::from(count) / len;
             entropy -= p * p.log2();
         }
     }
@@ -338,6 +341,7 @@ pub struct DebugEvent {
 }
 
 impl DebugReporter {
+    #[must_use] 
     pub fn new(output_path: Option<std::path::PathBuf>) -> Self {
         Self {
             start_time: Instant::now(),

@@ -471,16 +471,13 @@ async fn run_web_demo(
 
     let files_analyzed = complexity_result
         .as_ref()
-        .map(|c| c.files.len())
-        .unwrap_or(demo_report.steps.len() * 10); // Better fallback based on actual analysis
+        .map_or(demo_report.steps.len() * 10, |c| c.files.len()); // Better fallback based on actual analysis
     let avg_complexity = complexity_result
         .as_ref()
-        .map(|c| c.summary.median_cyclomatic as f64)
-        .unwrap_or(2.5); // More realistic fallback
+        .map_or(2.5, |c| f64::from(c.summary.median_cyclomatic)); // More realistic fallback
     let tech_debt_hours = complexity_result
         .as_ref()
-        .map(|c| c.summary.technical_debt_hours as u32)
-        .unwrap_or((files_analyzed / 10) as u32); // Estimate based on file count
+        .map_or((files_analyzed / 10) as u32, |c| c.summary.technical_debt_hours as u32); // Estimate based on file count
 
     // Get actual complexity hotspots instead of churn
     let hotspots = complexity_result
@@ -492,8 +489,8 @@ async fn run_web_demo(
                 .flat_map(|file| {
                     file.functions.iter().map(move |func| Hotspot {
                         file: format!("{}::{}", file.path, func.name),
-                        complexity: func.metrics.cyclomatic as u32,
-                        churn_score: func.metrics.cognitive as u32, // Use cognitive as churn score for display
+                        complexity: u32::from(func.metrics.cyclomatic),
+                        churn_score: u32::from(func.metrics.cognitive), // Use cognitive as churn score for display
                     })
                 })
                 .collect();
@@ -563,7 +560,7 @@ async fn analyze_context(
 ) -> Result<crate::services::context::ProjectContext> {
     crate::services::context::analyze_project(repo_path, "rust")
         .await
-        .map_err(|e| anyhow::anyhow!("Error analyzing project: {}", e))
+        .map_err(|e| anyhow::anyhow!("Error analyzing project: {e}"))
 }
 
 async fn analyze_complexity(
@@ -578,7 +575,7 @@ async fn analyze_complexity(
     for entry in WalkDir::new(repo_path)
         .follow_links(false)
         .into_iter()
-        .filter_map(|e| e.ok())
+        .filter_map(std::result::Result::ok)
     {
         let path = entry.path();
         if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("rs") {
@@ -596,7 +593,7 @@ async fn analyze_dag(repo_path: &std::path::Path) -> Result<crate::models::dag::
 
     let context = crate::services::context::analyze_project(repo_path, "rust")
         .await
-        .map_err(|e| anyhow::anyhow!("Error analyzing project: {}", e))?;
+        .map_err(|e| anyhow::anyhow!("Error analyzing project: {e}"))?;
     let graph = DagBuilder::build_from_project(&context);
 
     Ok(graph)
@@ -607,7 +604,7 @@ async fn analyze_churn(
     repo_path: &std::path::Path,
 ) -> Result<crate::models::churn::CodeChurnAnalysis> {
     crate::services::git_analysis::GitAnalysisService::analyze_code_churn(repo_path, 30)
-        .map_err(|e| anyhow::anyhow!("Error analyzing churn: {}", e))
+        .map_err(|e| anyhow::anyhow!("Error analyzing churn: {e}"))
 }
 
 #[allow(dead_code)]
@@ -644,7 +641,7 @@ async fn analyze_system_architecture(
     let query = SystemArchitectureQuery;
     query
         .execute(&context)
-        .map_err(|e| anyhow::anyhow!("Error analyzing architecture: {}", e))
+        .map_err(|e| anyhow::anyhow!("Error analyzing architecture: {e}"))
 }
 
 #[allow(dead_code)]
@@ -679,7 +676,7 @@ async fn analyze_defect_probability(
     for entry in WalkDir::new(repo_path)
         .follow_links(false)
         .into_iter()
-        .filter_map(|e| e.ok())
+        .filter_map(std::result::Result::ok)
     {
         let path = entry.path();
         if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("rs") {
@@ -701,12 +698,12 @@ async fn analyze_defect_probability(
                 let total_complexity: f32 = file_complexity
                     .functions
                     .iter()
-                    .map(|f| f.metrics.cyclomatic as f32)
+                    .map(|f| f32::from(f.metrics.cyclomatic))
                     .sum();
-                let avg_complexity = if !file_complexity.functions.is_empty() {
-                    total_complexity / file_complexity.functions.len() as f32
-                } else {
+                let avg_complexity = if file_complexity.functions.is_empty() {
                     1.0
+                } else {
+                    total_complexity / file_complexity.functions.len() as f32
                 };
 
                 let max_cyclomatic = file_complexity
@@ -737,8 +734,8 @@ async fn analyze_defect_probability(
                     afferent_coupling: 0.0, // TRACKED: Implement coupling analysis
                     efferent_coupling: 0.0,
                     lines_of_code: total_loc,
-                    cyclomatic_complexity: max_cyclomatic as u32,
-                    cognitive_complexity: max_cognitive as u32,
+                    cyclomatic_complexity: u32::from(max_cyclomatic),
+                    cognitive_complexity: u32::from(max_cognitive),
                 };
 
                 file_metrics.push(metrics);

@@ -101,6 +101,7 @@ impl Default for CurrentThresholds {
 
 impl AdaptiveThresholdManager {
     /// Create new adaptive threshold manager
+    #[must_use] 
     pub fn new(config: AdaptiveConfig) -> Self {
         Self {
             config,
@@ -171,12 +172,11 @@ impl AdaptiveThresholdManager {
                     cache_factor: 1.0,
                     permit_factor: 1.0 + self.config.adjustment_sensitivity,
                 }));
-            } else {
-                // Reduce compression for speed
-                return Ok(Some(ThresholdAdjustment::LessCompression {
-                    compression_level: 1,
-                }));
             }
+            // Reduce compression for speed
+            return Ok(Some(ThresholdAdjustment::LessCompression {
+                compression_level: 1,
+            }));
         }
 
         // Resource usage too high
@@ -189,12 +189,11 @@ impl AdaptiveThresholdManager {
                     cache_factor: 1.0 - self.config.adjustment_sensitivity,
                     permit_factor: 1.0,
                 }));
-            } else {
-                // Increase compression to save memory
-                return Ok(Some(ThresholdAdjustment::MoreCompression {
-                    compression_level: 6,
-                }));
             }
+            // Increase compression to save memory
+            return Ok(Some(ThresholdAdjustment::MoreCompression {
+                compression_level: 6,
+            }));
         }
 
         // Performance is excellent - maintain current settings
@@ -421,6 +420,7 @@ impl Default for PerformanceStatistics {
 
 impl PerformanceStatistics {
     /// Format statistics for diagnostic display
+    #[must_use] 
     pub fn format_diagnostic(&self) -> String {
         let trend_indicator = match self.performance_trend {
             PerformanceTrend::Improving => "📈 IMPROVING",
@@ -453,11 +453,13 @@ pub struct AdaptiveThresholdFactory;
 
 impl AdaptiveThresholdFactory {
     /// Create manager with default configuration
+    #[must_use] 
     pub fn create_default() -> AdaptiveThresholdManager {
         AdaptiveThresholdManager::new(AdaptiveConfig::default())
     }
 
     /// Create manager optimized for development (fast feedback)
+    #[must_use] 
     pub fn create_dev_optimized() -> AdaptiveThresholdManager {
         let config = AdaptiveConfig {
             target_analysis_time_ms: 50, // Faster target for dev
@@ -469,6 +471,7 @@ impl AdaptiveThresholdFactory {
     }
 
     /// Create manager optimized for production (stable)
+    #[must_use] 
     pub fn create_prod_optimized() -> AdaptiveThresholdManager {
         let config = AdaptiveConfig {
             target_analysis_time_ms: 200, // More conservative target

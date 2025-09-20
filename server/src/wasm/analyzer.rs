@@ -142,6 +142,7 @@ impl Default for InstructionProfiler {
 }
 
 impl InstructionProfiler {
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             instruction_counts: HashMap::new(),
@@ -162,6 +163,7 @@ impl InstructionProfiler {
         }
     }
 
+    #[must_use] 
     pub fn finalize(&self) -> InstructionMix {
         InstructionMix {
             total_instructions: self.total_instructions,
@@ -186,6 +188,7 @@ impl Default for SecurityAuditor {
 }
 
 impl SecurityAuditor {
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             checks: vec![
@@ -227,6 +230,7 @@ impl Default for SecurityReport {
 }
 
 impl SecurityReport {
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             passed_checks: Vec::new(),
@@ -281,7 +285,7 @@ impl SecurityCheck {
 
 /// Categorize WASM operators by type
 fn categorize_operator(op: &wasmparser::Operator) -> String {
-    use wasmparser::Operator::*;
+    use wasmparser::Operator::{Block, Loop, If, Else, End, Br, BrIf, BrTable, Return, I32Load, I64Load, F32Load, F64Load, I32Store, I64Store, F32Store, F64Store, MemoryGrow, MemorySize, Call, CallIndirect, I32Add, I32Sub, I32Mul, I32DivS, I32DivU, I64Add, I64Sub, I64Mul, I64DivS, I64DivU, F32Add, F32Sub, F32Mul, F32Div, F64Add, F64Sub, F64Mul, F64Div};
 
     match op {
         // Control flow

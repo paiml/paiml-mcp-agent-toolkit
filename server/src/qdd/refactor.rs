@@ -1,7 +1,7 @@
 //! Quality refactoring engine
 //! Toyota Way: Continuous improvement through systematic refactoring
 
-use super::*;
+use super::{QualityProfile, RefactorSpec, QddResult, RollbackPlan, Checkpoint, QualityMetrics, QualityScore};
 use anyhow::{anyhow, Result};
 use std::fs;
 
@@ -23,6 +23,7 @@ pub struct QualityRefactoringEngine {
 
 impl QualityRefactoringEngine {
     /// Create refactoring engine with quality profile
+    #[must_use] 
     pub fn new(profile: QualityProfile) -> Self {
         Self {
             analyzer: CodeAnalyzer::new(profile.clone()),
@@ -70,7 +71,7 @@ impl QualityRefactoringEngine {
             // 5. Validate improvement
             let new_analysis = self.analyzer.analyze(&refactored)?;
             if !self.is_improvement(&analysis, &new_analysis)? {
-                return Err(anyhow!("No improvement possible for target: {:?}", target));
+                return Err(anyhow!("No improvement possible for target: {target:?}"));
             }
 
             // 6. Save checkpoint
@@ -122,7 +123,7 @@ impl QualityRefactoringEngine {
     fn meets_quality_standards(&self, analysis: &CodeAnalysis) -> Result<bool> {
         Ok(
             analysis.complexity <= self.profile.thresholds.max_complexity
-                && analysis.coverage >= self.profile.thresholds.min_coverage as f64
+                && analysis.coverage >= f64::from(self.profile.thresholds.min_coverage)
                 && analysis.tdg <= self.profile.thresholds.max_tdg
                 && (!self.profile.thresholds.zero_satd || analysis.satd_count == 0),
         )
@@ -135,7 +136,7 @@ impl QualityRefactoringEngine {
             Ok(RefactoringTarget::Complexity("main_function".to_string()))
         } else if self.profile.thresholds.zero_satd && analysis.satd_count > 0 {
             Ok(RefactoringTarget::Satd("satd_comment_detected".to_string()))
-        } else if analysis.coverage < self.profile.thresholds.min_coverage as f64 {
+        } else if analysis.coverage < f64::from(self.profile.thresholds.min_coverage) {
             Ok(RefactoringTarget::Coverage("uncovered_code".to_string()))
         } else if analysis.tdg > self.profile.thresholds.max_tdg {
             Ok(RefactoringTarget::Tdg("technical_debt".to_string()))
@@ -260,6 +261,7 @@ impl QualityRefactoringEngine {
 pub struct CodeAnalyzer {}
 
 impl CodeAnalyzer {
+    #[must_use] 
     pub fn new(_profile: QualityProfile) -> Self {
         Self {}
     }
@@ -308,9 +310,9 @@ impl CodeAnalyzer {
     }
 
     fn calculate_quality_score(&self, code: &str) -> f64 {
-        let complexity = self.calculate_complexity(code) as f64;
+        let complexity = f64::from(self.calculate_complexity(code));
         let coverage = self.estimate_coverage(code);
-        let tdg = self.calculate_tdg(code) as f64;
+        let tdg = f64::from(self.calculate_tdg(code));
 
         let complexity_score = (20.0 - complexity).max(0.0) / 20.0 * 40.0;
         let coverage_score = coverage * 0.4;
@@ -344,6 +346,7 @@ impl Default for PatternEngine {
 }
 
 impl PatternEngine {
+    #[must_use] 
     pub fn new() -> Self {
         let mut patterns = std::collections::HashMap::new();
         patterns.insert(
@@ -362,7 +365,7 @@ impl PatternEngine {
         match pattern_name {
             "single_responsibility" => self.apply_single_responsibility(code),
             "dependency_injection" => self.apply_dependency_injection(code),
-            _ => Err(anyhow!("Unknown pattern: {}", pattern_name)),
+            _ => Err(anyhow!("Unknown pattern: {pattern_name}")),
         }
     }
 

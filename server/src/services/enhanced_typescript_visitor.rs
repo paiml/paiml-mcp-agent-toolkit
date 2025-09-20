@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 #[cfg(feature = "typescript-ast")]
 use swc_common::{Span, Spanned};
 #[cfg(feature = "typescript-ast")]
-use swc_ecma_ast::*;
+use swc_ecma_ast::{Module, Function, FnDecl, ClassDecl, ClassMember, MethodProp, PropName, Constructor, TsInterfaceDecl, TsEnumDecl, ImportDecl, NamedExport, ModuleDecl, VarDecl, Expr, Pat};
 #[cfg(feature = "typescript-ast")]
 use swc_ecma_visit::{Visit, VisitWith};
 
@@ -28,6 +28,7 @@ pub struct EnhancedTypeScriptVisitor {
 #[cfg(feature = "typescript-ast")]
 impl EnhancedTypeScriptVisitor {
     /// Creates a new enhanced visitor for a given file
+    #[must_use] 
     pub fn new(file_path: &Path) -> Self {
         Self {
             items: Vec::new(),
@@ -38,6 +39,7 @@ impl EnhancedTypeScriptVisitor {
     }
 
     /// Extracts all AST items with real source information
+    #[must_use] 
     pub fn extract_items(mut self, module: &Module) -> Vec<AstItem> {
         self.visit_module(module);
         self.items

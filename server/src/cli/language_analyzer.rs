@@ -20,6 +20,7 @@ pub enum Language {
 
 impl Language {
     /// Detect language from file extension
+    #[must_use] 
     pub fn from_path(path: &Path) -> Self {
         match path.extension().and_then(|e| e.to_str()) {
             Some("rs") => Language::Rust,
@@ -399,15 +400,12 @@ async fn try_ast_analysis(path: &Path, language: Language) -> Option<FileComplex
         return None;
     }
 
-    match crate::services::ast_rust::analyze_rust_file_with_complexity(path).await {
-        Ok(metrics) => Some(metrics),
-        Err(_) => {
-            eprintln!(
-                "Warning: AST analysis failed for {}, using heuristic fallback",
-                path.display()
-            );
-            None
-        }
+    if let Ok(metrics) = crate::services::ast_rust::analyze_rust_file_with_complexity(path).await { Some(metrics) } else {
+        eprintln!(
+            "Warning: AST analysis failed for {}, using heuristic fallback",
+            path.display()
+        );
+        None
     }
 }
 
@@ -416,12 +414,9 @@ fn analyze_with_heuristics(
     content: &str,
     language: Language,
 ) -> Result<FileComplexityMetrics> {
-    match language {
-        Language::Unknown => Ok(create_empty_metrics(path, content)),
-        _ => {
-            let analyzer = create_analyzer(language);
-            analyze_functions_with_analyzer(path, content, &*analyzer)
-        }
+    if language == Language::Unknown { Ok(create_empty_metrics(path, content)) } else {
+        let analyzer = create_analyzer(language);
+        analyze_functions_with_analyzer(path, content, &*analyzer)
     }
 }
 

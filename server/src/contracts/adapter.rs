@@ -3,7 +3,7 @@
 //! This module provides backward compatibility by translating legacy parameter formats
 //! to the current uniform contract system, ensuring seamless operation during API evolution.
 
-use super::*;
+use super::{ContractValidation, AnalyzeComplexityContract, BaseAnalysisContract, OutputFormat, AnalyzeSatdContract, AnalyzeDeadCodeContract, AnalyzeTdgContract, AnalyzeLintHotspotContract};
 use crate::cli::commands::AnalyzeCommands;
 use anyhow::Result;
 use std::path::{Path, PathBuf};
@@ -62,6 +62,7 @@ struct LintHotspotMapParams<'a> {
 
 impl ContractAdapter {
     /// Generate deprecation warnings for inconsistent parameters
+    #[must_use] 
     pub fn deprecation_warnings(cmd: &AnalyzeCommands) -> Vec<String> {
         let mut warnings = Vec::new();
 
@@ -214,8 +215,8 @@ impl ContractAdapter {
                 include_tests: false,
                 timeout: *params.timeout,
             },
-            max_cyclomatic: params.max_cyclomatic.map(|v| v as u32),
-            max_cognitive: params.max_cognitive.map(|v| v as u32),
+            max_cyclomatic: params.max_cyclomatic.map(u32::from),
+            max_cognitive: params.max_cognitive.map(u32::from),
             max_halstead: None,
         };
 
@@ -318,6 +319,7 @@ pub struct BackwardCompatibility;
 
 impl BackwardCompatibility {
     /// Map old parameter names to new ones in JSON
+    #[must_use] 
     pub fn map_json_params(mut params: serde_json::Value) -> serde_json::Value {
         if let Some(obj) = params.as_object_mut() {
             Self::map_project_path_to_path(obj);

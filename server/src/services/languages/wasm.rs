@@ -20,6 +20,7 @@ pub struct WasmModuleAnalyzer {
 
 impl WasmModuleAnalyzer {
     /// Creates a new WASM module analyzer
+    #[must_use] 
     pub fn new(file_path: &Path) -> Self {
         Self {
             items: Vec::new(),
@@ -50,7 +51,7 @@ impl WasmModuleAnalyzer {
                 Ok(Payload::FunctionSection(_)) => {
                     self.function_count = i + 1;
                     self.items.push(AstItem::Function {
-                        name: self.get_qualified_name(&format!("function_{}", i)),
+                        name: self.get_qualified_name(&format!("function_{i}")),
                         visibility: "export".to_string(),
                         is_async: false,
                         line: 1,
@@ -108,8 +109,8 @@ impl WasmModuleAnalyzer {
 
     /// Extracts function name from WAT line (complexity ≤10)
     fn extract_wat_function_name(&self, line: &str) -> String {
-        if let Some(start) = line.find("$") {
-            if let Some(end) = line[start..].find(" ") {
+        if let Some(start) = line.find('$') {
+            if let Some(end) = line[start..].find(' ') {
                 line[start+1..start+end].to_string()
             } else {
                 format!("function_{}", self.function_count)
@@ -144,6 +145,7 @@ impl Default for WasmStackAnalyzer {
 
 impl WasmStackAnalyzer {
     /// Creates a new WASM stack analyzer
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             max_stack_depth: 0,
@@ -213,6 +215,7 @@ impl Default for WasmValidator {
 
 impl WasmValidator {
     /// Creates a new WASM validator
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             validation_errors: Vec::new(),
@@ -263,11 +266,13 @@ impl WasmValidator {
     }
 
     /// Gets validation errors
+    #[must_use] 
     pub fn get_validation_errors(&self) -> &[String] {
         &self.validation_errors
     }
 
     /// Gets security warnings
+    #[must_use] 
     pub fn get_security_warnings(&self) -> &[String] {
         &self.security_warnings
     }

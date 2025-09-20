@@ -65,6 +65,7 @@ pub struct IncrementalCoverageFacade {
 
 impl IncrementalCoverageFacade {
     /// Create a new incremental coverage facade
+    #[must_use] 
     pub fn new(registry: Arc<ServiceRegistry>) -> Self {
         Self { registry }
     }
@@ -161,10 +162,10 @@ impl IncrementalCoverageFacade {
             .filter(|f| f.coverage_after > 0.0)
             .count();
 
-        let avg_coverage = if !coverage_data.is_empty() {
-            coverage_data.iter().map(|f| f.coverage_after).sum::<f64>() / coverage_data.len() as f64
-        } else {
+        let avg_coverage = if coverage_data.is_empty() {
             0.0
+        } else {
+            coverage_data.iter().map(|f| f.coverage_after).sum::<f64>() / coverage_data.len() as f64
         };
 
         let files_above_threshold = coverage_data

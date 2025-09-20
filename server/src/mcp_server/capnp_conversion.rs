@@ -3,7 +3,7 @@ use crate::models::refactor::RefactorStateMachine;
 // Note: This module provides Cap'n Proto conversion functions
 // The actual capnp generated code would be included when capnp is available
 
-/// Serializes a RefactorStateMachine to binary format (currently JSON)
+/// Serializes a `RefactorStateMachine` to binary format (currently JSON)
 ///
 /// # Examples
 ///
@@ -27,7 +27,7 @@ pub fn serialize_state_to_capnp(state: &RefactorStateMachine) -> Result<Vec<u8>,
     serde_json::to_vec(state).map_err(|e| format!("Serialization error: {e}"))
 }
 
-/// Deserializes a RefactorStateMachine from binary format (currently JSON)
+/// Deserializes a `RefactorStateMachine` from binary format (currently JSON)
 ///
 /// # Examples
 ///
@@ -63,6 +63,7 @@ pub fn deserialize_state_from_capnp(data: &[u8]) -> Result<RefactorStateMachine,
 /// let available = is_capnp_available();
 /// assert!(!available); // Currently always returns false
 /// ```
+#[must_use] 
 pub fn is_capnp_available() -> bool {
     // JSON format is the standard serialization method for this module
     false
@@ -78,6 +79,7 @@ pub fn is_capnp_available() -> bool {
 /// let format = get_serialization_format();
 /// assert_eq!(format, "JSON");
 /// ```
+#[must_use] 
 pub fn get_serialization_format() -> &'static str {
     if is_capnp_available() {
         "Cap'n Proto"

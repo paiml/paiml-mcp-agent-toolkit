@@ -130,6 +130,7 @@ pub enum DaemonStatus {
 
 impl AgentDaemon {
     /// Create new daemon instance
+    #[must_use] 
     pub fn new(config: DaemonConfig) -> Self {
         Self {
             config,

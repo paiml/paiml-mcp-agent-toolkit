@@ -177,6 +177,7 @@ impl Default for QualityAssistant {
 
 impl QualityAssistant {
     /// Create a new quality assistant
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             pattern_db: Self::initialize_patterns(),
@@ -186,6 +187,7 @@ impl QualityAssistant {
     }
 
     /// Suggest fixes for a violation
+    #[must_use] 
     pub fn suggest(
         &self,
         violation: &crate::unified_quality::metrics::Violation,
@@ -222,6 +224,7 @@ impl QualityAssistant {
     }
 
     /// Get suggestion success rate
+    #[must_use] 
     pub fn get_success_rate(&self) -> f64 {
         self.feedback.metrics.success_rate
     }
@@ -391,6 +394,7 @@ impl Default for FeedbackCollector {
 
 impl FeedbackCollector {
     /// Create a new feedback collector
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             accepted: Vec::new(),
@@ -442,6 +446,7 @@ impl Default for ConfidenceScorer {
 
 impl ConfidenceScorer {
     /// Create a new confidence scorer
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             weights: ScoringWeights::default(),
@@ -449,6 +454,7 @@ impl ConfidenceScorer {
     }
 
     /// Score a pattern for a violation
+    #[must_use] 
     pub fn score(&self, pattern: &Pattern, _violation: &Violation) -> f64 {
         let mut score = 0.0;
 

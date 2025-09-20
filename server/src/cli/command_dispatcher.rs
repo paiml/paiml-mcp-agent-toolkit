@@ -202,7 +202,7 @@ impl CommandDispatcher {
                     include_executive_summary,
                     include_recommendations,
                     analysis_strings,
-                    Some(confidence_threshold as f64 / 100.0),
+                    Some(f64::from(confidence_threshold) / 100.0),
                     output,
                     perf,
                     text,
@@ -341,7 +341,7 @@ impl CommandDispatcher {
         crate::demo::run_demo(demo_args, server).await
     }
 
-    /// Convert CLI DemoProtocol to demo module Protocol
+    /// Convert CLI `DemoProtocol` to demo module Protocol
     fn convert_demo_protocol(protocol: DemoProtocol, cli: bool) -> crate::demo::Protocol {
         if cli {
             crate::demo::Protocol::Cli
@@ -390,7 +390,7 @@ impl CommandDispatcher {
             web: !cli,
             target_nodes: target_nodes.unwrap_or(1000),
             centrality_threshold: centrality_threshold.unwrap_or(0.5),
-            merge_threshold: merge_threshold.map(|t| t as usize).unwrap_or(100),
+            merge_threshold: merge_threshold.map_or(100, |t| t as usize),
             debug,
             debug_output,
             skip_vendor: skip_vendor && !no_skip_vendor,
@@ -821,7 +821,7 @@ impl CommandDispatcher {
         config: crate::test_performance::PerformanceTestConfig,
     ) -> anyhow::Result<()> {
         use crate::cli::commands::TestSuite;
-        use crate::test_performance::*;
+        use crate::test_performance::run_performance_test_suite;
 
         match suite {
             TestSuite::Performance | TestSuite::All => run_performance_test_suite(config).await,
@@ -939,17 +939,14 @@ impl CommandDispatcher {
     ) -> anyhow::Result<()> {
         let timeout_duration = std::time::Duration::from_secs(timeout);
 
-        match tokio::time::timeout(timeout_duration, test_future).await {
-            Ok(result) => {
-                let elapsed = start.elapsed();
-                Self::print_performance_summary_if_requested(perf, elapsed, suite, iterations);
-                Self::write_test_results_if_requested(output, suite, elapsed, iterations, &result)?;
-                result
-            }
-            Err(_) => {
-                eprintln!("Test execution timed out after {timeout}s");
-                anyhow::bail!("Performance tests timed out");
-            }
+        if let Ok(result) = tokio::time::timeout(timeout_duration, test_future).await {
+            let elapsed = start.elapsed();
+            Self::print_performance_summary_if_requested(perf, elapsed, suite, iterations);
+            Self::write_test_results_if_requested(output, suite, elapsed, iterations, &result)?;
+            result
+        } else {
+            eprintln!("Test execution timed out after {timeout}s");
+            anyhow::bail!("Performance tests timed out");
         }
     }
 

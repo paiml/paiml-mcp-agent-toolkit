@@ -90,6 +90,7 @@ pub struct QAVerification {
 }
 
 impl QAVerification {
+    #[must_use] 
     pub fn new() -> Self {
         let mut checks: Vec<(&'static str, QualityCheck)> = vec![];
 
@@ -107,14 +108,12 @@ impl QAVerification {
         checks.push(("dead_code_sanity", Box::new(|result| {
             // First try to get lines from complexity metrics
             let total_lines = result.complexity_metrics.as_ref()
-                .map(|m| m.files.iter().map(|f| f.total_lines).sum::<usize>())
-                .unwrap_or(0);
+                .map_or(0, |m| m.files.iter().map(|f| f.total_lines).sum::<usize>());
 
             // If no complexity metrics, try to get from dead code analysis
             let total_lines = if total_lines == 0 {
                 result.dead_code_analysis.as_ref()
-                    .map(|d| d.summary.total_lines)
-                    .unwrap_or(0)
+                    .map_or(0, |d| d.summary.total_lines)
             } else {
                 total_lines
             };
@@ -135,8 +134,7 @@ impl QAVerification {
             }
 
             let dead_lines = result.dead_code_analysis.as_ref()
-                .map(|d| d.summary.total_dead_lines)
-                .unwrap_or(0);
+                .map_or(0, |d| d.summary.total_dead_lines);
 
             let ratio = dead_lines as f64 / total_lines as f64;
 
@@ -147,13 +145,11 @@ impl QAVerification {
 
                 let has_typescript = result.language_stats.as_ref()
                     .and_then(|stats| stats.get("TypeScript"))
-                    .map(|&count| count > 0)
-                    .unwrap_or(false);
+                    .is_some_and(|&count| count > 0);
 
                 let has_python = result.language_stats.as_ref()
                     .and_then(|stats| stats.get("Python"))
-                    .map(|&count| count > 0)
-                    .unwrap_or(false);
+                    .is_some_and(|&count| count > 0);
 
                 if has_ffi_or_wasm {
                     Err("Zero dead code with FFI/WASM code present - likely false negative".into())
@@ -187,7 +183,7 @@ impl QAVerification {
                 }
 
                 // Calculate coefficient of variation
-                let mean = functions.iter().map(|f| f.cyclomatic as f64).sum::<f64>()
+                let mean = functions.iter().map(|f| f64::from(f.cyclomatic)).sum::<f64>()
                     / functions.len() as f64;
 
                 if mean == 0.0 {
@@ -196,7 +192,7 @@ impl QAVerification {
 
                 let variance = functions
                     .iter()
-                    .map(|f| (f.cyclomatic as f64 - mean).powi(2))
+                    .map(|f| (f64::from(f.cyclomatic) - mean).powi(2))
                     .sum::<f64>()
                     / functions.len() as f64;
                 let cv = (variance.sqrt() / mean) * 100.0;
@@ -247,8 +243,7 @@ impl QAVerification {
                 let ast_files = result
                     .ast_summaries
                     .as_ref()
-                    .map(|summaries| summaries.len())
-                    .unwrap_or(0);
+                    .map_or(0, std::vec::Vec::len);
 
                 if total_files == 0 {
                     return Err("No files found in project".into());
@@ -291,18 +286,19 @@ impl QAVerification {
                     empty_sections.push("churn_analysis");
                 }
 
-                if !empty_sections.is_empty() {
+                if empty_sections.is_empty() {
+                    Ok(())
+                } else {
                     Err(format!(
                         "Empty sections found: {}",
                         empty_sections.join(", ")
                     ))
-                } else {
-                    Ok(())
                 }
             }),
         ));
     }
 
+    #[must_use] 
     pub fn verify(
         &self,
         result: &DeepContextResult,
@@ -313,6 +309,7 @@ impl QAVerification {
             .collect()
     }
 
+    #[must_use] 
     pub fn generate_verification_report(&self, result: &DeepContextResult) -> QAVerificationResult {
         let verification_results = self.verify(result);
 
@@ -320,14 +317,12 @@ impl QAVerification {
         let total_lines = result
             .complexity_metrics
             .as_ref()
-            .map(|m| m.files.iter().map(|f| f.total_lines).sum::<usize>())
-            .unwrap_or(0);
+            .map_or(0, |m| m.files.iter().map(|f| f.total_lines).sum::<usize>());
 
         let dead_lines = result
             .dead_code_analysis
             .as_ref()
-            .map(|d| d.summary.total_dead_lines)
-            .unwrap_or(0);
+            .map_or(0, |d| d.summary.total_dead_lines);
 
         let dead_ratio = if total_lines > 0 {
             dead_lines as f64 / total_lines as f64
@@ -342,14 +337,16 @@ impl QAVerification {
             .map(|m| m.files.iter().flat_map(|f| &f.functions).collect())
             .unwrap_or_default();
 
-        let (entropy, cv, p99) = if !functions.is_empty() {
+        let (entropy, cv, p99) = if functions.is_empty() {
+            (0.0, 0.0, 0)
+        } else {
             let entropy = calculate_complexity_entropy(&functions);
 
             let mean =
-                functions.iter().map(|f| f.cyclomatic as f64).sum::<f64>() / functions.len() as f64;
+                functions.iter().map(|f| f64::from(f.cyclomatic)).sum::<f64>() / functions.len() as f64;
             let variance = functions
                 .iter()
-                .map(|f| (f.cyclomatic as f64 - mean).powi(2))
+                .map(|f| (f64::from(f.cyclomatic) - mean).powi(2))
                 .sum::<f64>()
                 / functions.len() as f64;
             let cv = if mean > 0.0 {
@@ -366,25 +363,21 @@ impl QAVerification {
                 .unwrap_or(0);
 
             (entropy, cv, p99)
-        } else {
-            (0.0, 0.0, 0)
         };
 
         // Determine statuses
         let dead_code_status = match verification_results.get("dead_code_sanity") {
-            Some(Ok(_)) => VerificationStatus::Pass,
+            Some(Ok(())) => VerificationStatus::Pass,
             Some(Err(msg)) if msg.contains("Mixed language") => VerificationStatus::Partial,
             _ => VerificationStatus::Fail,
         };
 
         let complexity_status = if verification_results
             .get("complexity_distribution")
-            .map(|r| r.is_ok())
-            .unwrap_or(false)
+            .is_some_and(std::result::Result::is_ok)
             && verification_results
                 .get("complexity_entropy")
-                .map(|r| r.is_ok())
-                .unwrap_or(false)
+                .is_some_and(std::result::Result::is_ok)
         {
             VerificationStatus::Pass
         } else {
@@ -412,7 +405,7 @@ impl QAVerification {
                 actual: dead_ratio,
                 notes: verification_results
                     .get("dead_code_sanity")
-                    .and_then(|r| r.as_ref().err().map(|s| s.to_string())),
+                    .and_then(|r| r.as_ref().err().cloned()),
             },
             complexity: ComplexityVerification {
                 status: complexity_status,
@@ -442,7 +435,7 @@ fn calculate_complexity_entropy(functions: &[&FunctionComplexityForQA]) -> f64 {
     freq_map
         .values()
         .map(|&count| {
-            let p = count as f64 / total;
+            let p = f64::from(count) / total;
             -p * p.log2()
         })
         .sum()

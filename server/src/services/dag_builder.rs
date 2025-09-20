@@ -19,7 +19,7 @@
 //! - **Inherits**: Class/trait inheritance
 //! - **Implements**: Interface implementations
 //! - **Uses**: Type usage relationships
-//! - **DataFlow**: Data dependencies between components
+//! - **`DataFlow`**: Data dependencies between components
 //!
 //! # Example
 //!
@@ -60,6 +60,7 @@ pub struct DagBuilder {
 }
 
 impl DagBuilder {
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             graph: DependencyGraph::new(),
@@ -69,6 +70,7 @@ impl DagBuilder {
         }
     }
 
+    #[must_use] 
     pub fn build_from_project(project: &ProjectContext) -> DependencyGraph {
         let mut builder = Self::new();
 
@@ -128,6 +130,7 @@ impl DagBuilder {
         self.graph
     }
 
+    #[must_use] 
     pub fn build_from_project_with_limit(
         project: &ProjectContext,
         max_nodes: usize,
@@ -153,7 +156,7 @@ impl DagBuilder {
             .map(|m| {
                 m.functions
                     .iter()
-                    .map(|f| (f.name.as_str(), f.metrics.cognitive as u32))
+                    .map(|f| (f.name.as_str(), u32::from(f.metrics.cognitive)))
                     .collect()
             })
             .unwrap_or_default();
@@ -164,7 +167,7 @@ impl DagBuilder {
             .map(|m| {
                 m.classes
                     .iter()
-                    .map(|c| (c.name.as_str(), c.metrics.cognitive as u32))
+                    .map(|c| (c.name.as_str(), u32::from(c.metrics.cognitive)))
                     .collect()
             })
             .unwrap_or_default();
@@ -268,8 +271,7 @@ impl DagBuilder {
             complexity: file
                 .complexity_metrics
                 .as_ref()
-                .map(|m| m.total_complexity.cognitive as u32)
-                .unwrap_or(1),
+                .map_or(1, |m| u32::from(m.total_complexity.cognitive)),
             metadata: FxHashMap::default(),
         };
         self.add_node(self.enrich_node(node));
@@ -407,7 +409,7 @@ impl DagBuilder {
     fn normalize_path(&self, path: &str) -> String {
         // Convert file path to a module-like identifier
         path.trim_start_matches("./")
-            .trim_start_matches("/")
+            .trim_start_matches('/')
             .trim_end_matches(".rs")
             .trim_end_matches(".ts")
             .trim_end_matches(".py")
@@ -428,7 +430,7 @@ impl DagBuilder {
         // Use the semantic namer's path_to_module logic indirectly
         let clean_path = path
             .trim_start_matches("./")
-            .trim_start_matches("/")
+            .trim_start_matches('/')
             .trim_start_matches("src/")
             .trim_start_matches("lib/")
             .trim_start_matches("app/");
@@ -508,6 +510,7 @@ impl Default for DagBuilder {
 /// let filtered = filter_call_edges(graph);
 /// // All edges in filtered graph will be EdgeType::Calls
 /// ```
+#[must_use] 
 pub fn filter_call_edges(graph: DependencyGraph) -> DependencyGraph {
     graph.filter_by_edge_type(EdgeType::Calls)
 }
@@ -524,6 +527,7 @@ pub fn filter_call_edges(graph: DependencyGraph) -> DependencyGraph {
 /// let filtered = filter_import_edges(graph);
 /// // All edges in filtered graph will be EdgeType::Imports
 /// ```
+#[must_use] 
 pub fn filter_import_edges(graph: DependencyGraph) -> DependencyGraph {
     graph.filter_by_edge_type(EdgeType::Imports)
 }
@@ -540,11 +544,12 @@ pub fn filter_import_edges(graph: DependencyGraph) -> DependencyGraph {
 /// let filtered = filter_inheritance_edges(graph);
 /// // All edges in filtered graph will be EdgeType::Inherits
 /// ```
+#[must_use] 
 pub fn filter_inheritance_edges(graph: DependencyGraph) -> DependencyGraph {
     graph.filter_by_edge_type(EdgeType::Inherits)
 }
 
-/// Add PageRank scores to all nodes in the graph
+/// Add `PageRank` scores to all nodes in the graph
 ///
 /// # Examples
 ///
@@ -556,6 +561,7 @@ pub fn filter_inheritance_edges(graph: DependencyGraph) -> DependencyGraph {
 /// let scored_graph = add_pagerank_scores(&graph);
 /// // Graph nodes now have PageRank scores in metadata
 /// ```
+#[must_use] 
 pub fn add_pagerank_scores(graph: &DependencyGraph) -> DependencyGraph {
     if graph.nodes.is_empty() {
         return graph.clone();
@@ -596,7 +602,8 @@ pub fn add_pagerank_scores(graph: &DependencyGraph) -> DependencyGraph {
     new_graph
 }
 
-/// Prune graph using PageRank algorithm to keep only the most important nodes
+/// Prune graph using `PageRank` algorithm to keep only the most important nodes
+#[must_use] 
 pub fn prune_graph_pagerank(graph: &DependencyGraph, max_nodes: usize) -> DependencyGraph {
     if graph.nodes.len() <= max_nodes {
         return graph.clone();

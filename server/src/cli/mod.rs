@@ -95,6 +95,7 @@ pub struct EarlyCliArgs {
 /// // The function always returns valid EarlyCliArgs
 /// // Values depend on actual command line arguments
 /// ```
+#[must_use] 
 pub fn parse_early_for_tracing() -> EarlyCliArgs {
     let args: Vec<String> = std::env::args().collect();
 
@@ -212,13 +213,12 @@ fn has_ruchy_files(path: &Path) -> bool {
     WalkDir::new(path)
         .max_depth(3)
         .into_iter()
-        .filter_map(|e| e.ok())
+        .filter_map(std::result::Result::ok)
         .any(|e| {
             e.path()
                 .extension()
                 .and_then(|ext| ext.to_str())
-                .map(|ext| ext == "ruchy" || ext == "rh")
-                .unwrap_or(false)
+                .is_some_and(|ext| ext == "ruchy" || ext == "rh")
         })
 }
 
@@ -234,7 +234,7 @@ fn detect_by_project_files(path: &Path) -> Option<String> {
 
     for (file, lang) in MARKERS {
         if path.join(file).exists() {
-            return Some(lang.to_string());
+            return Some((*lang).to_string());
         }
     }
 
@@ -293,6 +293,7 @@ fn detect_by_file_extensions(path: &Path) -> Option<String> {
         .map(|(lang, _)| lang.to_string())
 }
 
+#[must_use] 
 pub fn detect_primary_language(path: &Path) -> Option<String> {
     // Check for Ruchy files first
     if has_ruchy_files(path) {
@@ -321,7 +322,7 @@ fn detect_with_confidence_by_markers(path: &Path) -> Option<(String, f64)> {
 
     for (file, lang) in CONFIDENT_MARKERS {
         if path.join(file).exists() {
-            return Some((lang.to_string(), 100.0));
+            return Some(((*lang).to_string(), 100.0));
         }
     }
 
@@ -378,11 +379,12 @@ fn count_files_by_extension(path: &Path) -> Option<(String, f64)> {
         .into_iter()
         .max_by_key(|&(_, count)| count)
         .map(|(lang, count)| {
-            let confidence = (count as f64 / total_files as f64) * 100.0;
+            let confidence = (f64::from(count) / f64::from(total_files)) * 100.0;
             (lang.to_string(), confidence)
         })
 }
 
+#[must_use] 
 pub fn detect_primary_language_with_confidence(path: &Path) -> Option<(String, f64)> {
     // Try project markers first
     if let Some(result) = detect_with_confidence_by_markers(path) {
@@ -393,6 +395,7 @@ pub fn detect_primary_language_with_confidence(path: &Path) -> Option<(String, f
     count_files_by_extension(path)
 }
 
+#[must_use] 
 pub fn apply_satd_filters(
     items: Vec<crate::models::tdg::SatdItem>,
     severity: Option<SatdSeverity>,
@@ -487,6 +490,7 @@ pub fn build_deep_context_config(
 /// let model_type = convert_dag_type(cli_type);
 /// assert!(matches!(model_type, DagType::CallGraph));
 /// ```
+#[must_use] 
 pub fn convert_dag_type(dag_type: DeepContextDagType) -> crate::models::dag::DagType {
     match dag_type {
         DeepContextDagType::CallGraph => crate::models::dag::DagType::CallGraph,
@@ -509,6 +513,7 @@ pub fn convert_dag_type(dag_type: DeepContextDagType) -> crate::models::dag::Dag
 /// // Currently returns the same strategy
 /// assert_eq!(converted, DeepContextCacheStrategy::Normal);
 /// ```
+#[must_use] 
 pub fn convert_cache_strategy(strategy: DeepContextCacheStrategy) -> DeepContextCacheStrategy {
     // Return the strategy unchanged as it's already in the correct format
     strategy
@@ -531,7 +536,7 @@ pub fn parse_analysis_filters(
     Ok((include_analysis, exclude_analysis))
 }
 
-/// Parses a string into an AnalysisType enum
+/// Parses a string into an `AnalysisType` enum
 ///
 /// # Examples
 ///
@@ -551,7 +556,7 @@ pub fn parse_analysis_type(s: &str) -> anyhow::Result<AnalysisType> {
         "technical-debt" | "tdg" => Ok(AnalysisType::TechnicalDebt),
         "big-o" | "bigo" => Ok(AnalysisType::BigO),
         "all" => Ok(AnalysisType::All),
-        _ => anyhow::bail!("Unknown analysis type: {}", s),
+        _ => anyhow::bail!("Unknown analysis type: {s}"),
     }
 }
 

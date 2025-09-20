@@ -59,6 +59,7 @@ pub struct AnalysisOrchestrator {
 
 impl AnalysisOrchestrator {
     /// Create a new analysis orchestrator
+    #[must_use] 
     pub fn new(registry: Arc<ServiceRegistry>) -> Self {
         let complexity_facade = ComplexityFacade::new(Arc::clone(&registry));
         let dead_code_facade = DeadCodeFacade::new(Arc::clone(&registry));
@@ -240,24 +241,23 @@ impl AnalysisOrchestrator {
     ) -> Result<ComprehensiveAnalysisResult> {
         // Calculate summary statistics
         let total_files = [
-            complexity.as_ref().map(|r| r.total_files).unwrap_or(0),
-            dead_code.as_ref().map(|r| r.total_files).unwrap_or(0),
-            satd.as_ref().map(|r| r.total_files).unwrap_or(0),
+            complexity.as_ref().map_or(0, |r| r.total_files),
+            dead_code.as_ref().map_or(0, |r| r.total_files),
+            satd.as_ref().map_or(0, |r| r.total_files),
         ]
         .iter()
         .max()
         .copied()
         .unwrap_or(0);
 
-        let total_issues = complexity.as_ref().map(|r| r.violations.len()).unwrap_or(0)
-            + dead_code.as_ref().map(|r| r.dead_items.len()).unwrap_or(0)
-            + satd.as_ref().map(|r| r.violations.len()).unwrap_or(0);
+        let total_issues = complexity.as_ref().map_or(0, |r| r.violations.len())
+            + dead_code.as_ref().map_or(0, |r| r.dead_items.len())
+            + satd.as_ref().map_or(0, |r| r.violations.len());
 
         let critical_issues = complexity
             .as_ref()
-            .map(|r| r.violations.iter().filter(|v| v.complexity > 25).count())
-            .unwrap_or(0)
-            + satd.as_ref().map(|r| r.violations.len()).unwrap_or(0); // All SATD considered critical
+            .map_or(0, |r| r.violations.iter().filter(|v| v.complexity > 25).count())
+            + satd.as_ref().map_or(0, |r| r.violations.len()); // All SATD considered critical
 
         // Calculate quality score (0-100)
         let quality_score = if total_issues == 0 {

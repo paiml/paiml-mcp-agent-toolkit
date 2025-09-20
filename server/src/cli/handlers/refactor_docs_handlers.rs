@@ -3,7 +3,7 @@
 //! AI-assisted documentation cleanup that identifies and removes:
 //! - Temporary files (fix-*.sh, test-*.md, etc.)
 //! - Outdated status files (*_STATUS.md, *_PROGRESS.md)
-//! - Build artifacts (*.mmd, optimization_state.json)
+//! - Build artifacts (*.mmd, `optimization_state.json`)
 //! - Custom patterns defined by the user
 //!
 //! Follows Zero Tolerance Quality Standards from CLAUDE.md:
@@ -259,7 +259,7 @@ async fn handle_backup_processing(
     backup_dir: &Path,
 ) -> Result<()> {
     if should_create_backup(backup, dry_run, &result.cruft_files, auto_remove) {
-        create_backup(&result.cruft_files, backup_dir).await?
+        create_backup(&result.cruft_files, backup_dir).await?;
     }
     Ok(())
 }
@@ -282,7 +282,7 @@ async fn handle_file_removal_processing(
     format: RefactorDocsOutputFormat,
 ) -> Result<()> {
     if should_remove_files(dry_run, auto_remove, format) {
-        remove_files(&result.cruft_files).await?
+        remove_files(&result.cruft_files).await?;
     }
     Ok(())
 }
@@ -492,7 +492,7 @@ fn calculate_age_days(metadata: &fs::Metadata, now: &SystemTime) -> u32 {
     }
 }
 
-/// Create a CruftFile from metadata and classification
+/// Create a `CruftFile` from metadata and classification
 fn create_cruft_file(
     file_path: &Path,
     metadata: &fs::Metadata,
@@ -714,7 +714,7 @@ async fn remove_files(files: &[CruftFile]) -> Result<()> {
 
     for file in files {
         match tokio::fs::remove_file(&file.path).await {
-            Ok(_) => {
+            Ok(()) => {
                 removed += 1;
             }
             Err(e) => {

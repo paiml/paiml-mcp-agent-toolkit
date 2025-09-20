@@ -171,6 +171,7 @@ pub struct JsonExporter {
 }
 
 impl JsonExporter {
+    #[must_use] 
     pub fn new(pretty: bool) -> Self {
         Self { pretty }
     }
@@ -264,6 +265,7 @@ pub struct ExportService {
 }
 
 impl ExportService {
+    #[must_use] 
     pub fn new() -> Self {
         let mut exporters: std::collections::HashMap<String, Box<dyn Exporter>> =
             std::collections::HashMap::new();
@@ -278,7 +280,7 @@ impl ExportService {
     pub fn export(&self, format: &str, report: &ExportReport) -> Result<String> {
         self.exporters
             .get(format)
-            .ok_or_else(|| anyhow::anyhow!("Unsupported export format: {}", format))?
+            .ok_or_else(|| anyhow::anyhow!("Unsupported export format: {format}"))?
             .export(report)
     }
 
@@ -288,8 +290,9 @@ impl ExportService {
         Ok(())
     }
 
+    #[must_use] 
     pub fn supported_formats(&self) -> Vec<&str> {
-        self.exporters.keys().map(|s| s.as_str()).collect()
+        self.exporters.keys().map(std::string::String::as_str).collect()
     }
 }
 
@@ -300,6 +303,7 @@ impl Default for ExportService {
 }
 
 // Helper to create ExportReport from analysis results
+#[must_use] 
 pub fn create_export_report(
     repo_name: &str,
     dag: &DependencyGraph,
@@ -326,6 +330,7 @@ pub fn create_export_report(
 
 // Full helper to create comprehensive ExportReport
 #[allow(clippy::too_many_arguments)]
+#[must_use] 
 pub fn create_full_export_report(
     repo_name: &str,
     dag: &DependencyGraph,
@@ -348,8 +353,8 @@ pub fn create_full_export_report(
             .flat_map(|file| {
                 file.functions.iter().map(move |func| Hotspot {
                     file: format!("{}::{}", file.path, func.name),
-                    complexity: func.metrics.cyclomatic as u32,
-                    churn_score: func.metrics.cognitive as u32,
+                    complexity: u32::from(func.metrics.cyclomatic),
+                    churn_score: u32::from(func.metrics.cognitive),
                 })
             })
             .collect();
@@ -357,7 +362,7 @@ pub fn create_full_export_report(
         ComplexityAnalysis {
             hotspots,
             total_files: c.files.len(),
-            average_complexity: c.summary.median_cyclomatic as f64,
+            average_complexity: f64::from(c.summary.median_cyclomatic),
             technical_debt_hours: c.summary.technical_debt_hours as u32,
         }
     } else {
@@ -404,7 +409,7 @@ pub fn create_full_export_report(
         summary: ProjectSummary {
             total_nodes: dag.nodes.len(),
             total_edges: dag.edges.len(),
-            analyzed_files: complexity.map(|c| c.files.len()).unwrap_or(0),
+            analyzed_files: complexity.map_or(0, |c| c.files.len()),
             analysis_time_ms,
         },
     }

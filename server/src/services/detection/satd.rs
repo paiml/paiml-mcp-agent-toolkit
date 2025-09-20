@@ -19,6 +19,7 @@ impl Default for SATDDetector {
 }
 
 impl SATDDetector {
+    #[must_use] 
     pub fn new() -> Self {
         Self
     }
@@ -82,7 +83,7 @@ impl SATDDetector {
         let content = std::fs::read_to_string(file_path)?;
         let debt_items = detector
             .extract_from_content(&content, file_path)
-            .map_err(|e| anyhow::anyhow!("SATD analysis failed: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("SATD analysis failed: {e}"))?;
 
         self.create_analysis_result(vec![debt_items], 1)
     }
@@ -130,7 +131,7 @@ impl SATDDetector {
         let temp_path = std::path::Path::new("<content>");
         let debt_items = detector
             .extract_from_content(content, temp_path)
-            .map_err(|e| anyhow::anyhow!("SATD analysis failed: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("SATD analysis failed: {e}"))?;
 
         self.create_analysis_result(vec![debt_items], 1)
     }

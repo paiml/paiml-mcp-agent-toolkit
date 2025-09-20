@@ -205,6 +205,7 @@ pub fn format_provability_summary(
 }
 
 /// Generate SARIF rules for proof annotations
+#[must_use] 
 pub fn generate_proof_sarif_rules() -> Vec<serde_json::Value> {
     vec![
         serde_json::json!({

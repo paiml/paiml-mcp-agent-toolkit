@@ -123,6 +123,7 @@ impl PathValidator {
     }
 
     /// Check if path is a valid source file (with common extensions)
+    #[must_use] 
     pub fn is_source_file(path: &Path) -> bool {
         if !path.is_file() {
             return false;
@@ -130,13 +131,12 @@ impl PathValidator {
 
         path.extension()
             .and_then(|ext| ext.to_str())
-            .map(|ext| {
+            .is_some_and(|ext| {
                 matches!(
                     ext,
                     "rs" | "py" | "js" | "ts" | "go" | "c" | "cpp" | "h" | "hpp"
                 )
             })
-            .unwrap_or(false)
     }
 
     /// Validate path exists and return appropriate error for anyhow

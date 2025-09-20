@@ -1,4 +1,4 @@
-use super::ast::*;
+use super::ast::{MakefileAst, MakefileNode, MakefileNodeKind, SourceSpan, NodeData, AssignmentOp, RecipePrefixes, RecipeLine};
 
 #[derive(Debug)]
 pub struct MakefileParser<'src> {
@@ -18,6 +18,7 @@ pub enum ParseError {
 }
 
 impl<'src> MakefileParser<'src> {
+    #[must_use] 
     pub fn new(input: &'src str) -> Self {
         Self {
             input,
@@ -366,7 +367,7 @@ impl<'src> MakefileParser<'src> {
     fn parse_targets(&self, input: &str) -> Result<Vec<String>, ParseError> {
         input
             .split_whitespace()
-            .map(|s| s.to_string())
+            .map(std::string::ToString::to_string)
             .collect::<Vec<_>>()
             .into_iter()
             .map(Ok)
@@ -388,7 +389,7 @@ impl<'src> MakefileParser<'src> {
         if !prereq_str.trim().is_empty() {
             prereqs = prereq_str
                 .split_whitespace()
-                .map(|s| s.to_string())
+                .map(std::string::ToString::to_string)
                 .collect();
         }
 

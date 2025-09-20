@@ -32,10 +32,11 @@ pub enum Language {
 
 impl Language {
     /// Detect language from file extension
+    #[must_use] 
     pub fn from_extension(path: &Path) -> Self {
         path.extension()
             .and_then(|ext| ext.to_str())
-            .map(|ext| match ext.to_lowercase().as_str() {
+            .map_or(Language::Unknown, |ext| match ext.to_lowercase().as_str() {
                 "rs" => Language::Rust,
                 "ruchy" | "rh" => Language::Ruchy,
                 "py" => Language::Python,
@@ -49,10 +50,10 @@ impl Language {
                 "c" => Language::Cpp,
                 _ => Language::Unknown,
             })
-            .unwrap_or(Language::Unknown)
     }
 
     /// Get the language name as a string
+    #[must_use] 
     pub fn name(&self) -> &'static str {
         match self {
             Language::Rust => "Rust",
@@ -70,6 +71,7 @@ impl Language {
     }
 
     /// Get file extensions for this language
+    #[must_use] 
     pub fn extensions(&self) -> &'static [&'static str] {
         match self {
             Language::Rust => &["rs"],

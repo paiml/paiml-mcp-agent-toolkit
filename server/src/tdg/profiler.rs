@@ -130,6 +130,7 @@ impl Default for ProfilerConfig {
 }
 
 impl PerformanceProfiler {
+    #[must_use] 
     pub fn new(config: ProfilerConfig) -> Self {
         Self {
             active_profiles: Arc::new(RwLock::new(HashMap::new())),
@@ -350,13 +351,13 @@ impl PerformanceProfiler {
         let memory_samples = self.memory_samples.read().await;
 
         let total_operations = completed.len() + active.len();
-        let avg_duration = if !completed.is_empty() {
-            completed.iter().filter_map(|p| p.duration_ms).sum::<f64>() / completed.len() as f64
-        } else {
+        let avg_duration = if completed.is_empty() {
             0.0
+        } else {
+            completed.iter().filter_map(|p| p.duration_ms).sum::<f64>() / completed.len() as f64
         };
 
-        let memory_usage = memory_samples.last().map(|s| s.heap_used_mb).unwrap_or(0.0);
+        let memory_usage = memory_samples.last().map_or(0.0, |s| s.heap_used_mb);
 
         ProfilingSummary {
             total_operations,

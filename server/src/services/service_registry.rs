@@ -74,6 +74,7 @@ pub struct ServiceRegistry {
 
 impl ServiceRegistry {
     /// Create a new service registry
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             services: Arc::new(RwLock::new(HashMap::new())),
@@ -121,6 +122,7 @@ impl ServiceRegistry {
     }
 
     /// Check if a service is registered
+    #[must_use] 
     pub fn has<T: Service + 'static>(&self) -> bool {
         let type_id = TypeId::of::<T>();
         let services = self.services.read().unwrap();
@@ -128,6 +130,7 @@ impl ServiceRegistry {
     }
 
     /// Get all registered service names for debugging
+    #[must_use] 
     pub fn list_services(&self) -> Vec<&'static str> {
         let names = self.service_names.read().unwrap();
         names.values().copied().collect()
@@ -161,6 +164,7 @@ pub struct ServiceRegistryBuilder {
 
 impl ServiceRegistryBuilder {
     /// Create a new builder
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             registry: ServiceRegistry::new(),
@@ -174,6 +178,7 @@ impl ServiceRegistryBuilder {
     }
 
     /// Build the final service registry
+    #[must_use] 
     pub fn build(self) -> ServiceRegistry {
         self.registry
     }

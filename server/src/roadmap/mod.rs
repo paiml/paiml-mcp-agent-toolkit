@@ -35,6 +35,7 @@ pub enum TaskStatus {
 }
 
 impl TaskStatus {
+    #[must_use] 
     pub fn to_emoji(&self) -> &'static str {
         match self {
             Self::Planned => "📋",
@@ -45,6 +46,7 @@ impl TaskStatus {
         }
     }
 
+    #[must_use] 
     pub fn from_emoji(emoji: &str) -> Option<Self> {
         match emoji {
             "📋" => Some(Self::Planned),
@@ -79,6 +81,7 @@ impl std::str::FromStr for Complexity {
 }
 
 impl Complexity {
+    #[must_use] 
     pub fn to_string(&self) -> &str {
         match self {
             Self::Low => "low",
@@ -126,6 +129,7 @@ pub struct Task {
 
 impl Task {
     /// Generate a deterministic seed from the task ID
+    #[must_use] 
     pub fn seed(&self) -> u64 {
         // Extract number from PMAT-XXXX format
         if let Some(captures) = Regex::new(r"PMAT-(\d+)").unwrap().captures(&self.id) {
@@ -176,11 +180,13 @@ impl Roadmap {
     }
 
     /// Get a specific sprint
+    #[must_use] 
     pub fn get_sprint(&self, sprint_id: &str) -> Option<&Sprint> {
         self.sprints.get(sprint_id)
     }
 
     /// Get a specific task across all sprints
+    #[must_use] 
     pub fn get_task(&self, task_id: &str) -> Option<&Task> {
         for sprint in self.sprints.values() {
             if let Some(task) = sprint.tasks.iter().find(|t| t.id == task_id) {
@@ -218,7 +224,7 @@ impl Roadmap {
             return Ok(());
         }
 
-        anyhow::bail!("Task {} not found in roadmap", task_id)
+        anyhow::bail!("Task {task_id} not found in roadmap")
     }
 }
 

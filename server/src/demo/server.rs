@@ -184,6 +184,7 @@ impl LocalDemoServer {
         anyhow::bail!("Demo mode not available. Build with --features demo")
     }
 
+    #[must_use] 
     pub fn port(&self) -> u16 {
         self.port
     }
@@ -602,7 +603,7 @@ pub(crate) fn serve_hotspots_table(state: &Arc<RwLock<DemoState>>) -> Response<B
             file.functions.iter().map(move |func| HotspotEntry {
                 rank: 0, // Will be set after sorting
                 function: func.name.clone(),
-                complexity: func.metrics.cyclomatic as u32,
+                complexity: u32::from(func.metrics.cyclomatic),
                 loc: func.metrics.lines as usize,
                 path: file.path.clone(),
             })
@@ -705,7 +706,7 @@ pub(crate) fn serve_dag_mermaid(state: &Arc<RwLock<DemoState>>) -> Response<Byte
         };
 
         diagram = format!(
-            r#"graph TD
+            r"graph TD
     A[DemoRunner] -->|uses| B[StatelessTemplateServer]
     A -->|generates| C[DemoReport]
     A -->|creates| D[System Diagram]
@@ -728,7 +729,7 @@ pub(crate) fn serve_dag_mermaid(state: &Arc<RwLock<DemoState>>) -> Response<Byte
     style E fill:#FFD700
     style H fill:#FFA500
     style K fill:#87CEEB
-    style N fill:#DDA0DD"#
+    style N fill:#DDA0DD"
         );
     }
 
@@ -749,7 +750,7 @@ pub(crate) fn serve_system_diagram_mermaid(state: &Arc<RwLock<DemoState>>) -> Re
         diagram.clone()
     } else {
         // Fallback to hardcoded diagram if no dynamic one available
-        r#"graph TD
+        r"graph TD
     A[AST Context Analysis] -->|uses| B[File Parser]
     B --> C[Rust AST]
     B --> D[TypeScript AST]
@@ -771,7 +772,7 @@ pub(crate) fn serve_system_diagram_mermaid(state: &Arc<RwLock<DemoState>>) -> Re
     style F fill:#FFD700
     style G fill:#FFA500
     style H fill:#FF6347
-    style J fill:#87CEEB"#
+    style J fill:#87CEEB"
             .to_string()
     };
 
@@ -912,13 +913,13 @@ pub(crate) fn serve_analysis_data(state: &Arc<RwLock<DemoState>>) -> Response<By
         let total_complexity: u32 = file
             .functions
             .iter()
-            .map(|f| f.metrics.cognitive as u32)
+            .map(|f| u32::from(f.metrics.cognitive))
             .sum();
 
         let max_complexity = file
             .functions
             .iter()
-            .map(|f| f.metrics.cognitive as u32)
+            .map(|f| u32::from(f.metrics.cognitive))
             .max()
             .unwrap_or(0);
 
@@ -936,12 +937,12 @@ pub(crate) fn serve_analysis_data(state: &Arc<RwLock<DemoState>>) -> Response<By
             .iter()
             .find(|f| f.relative_path == file.path);
 
-        let commit_count = churn_data.map(|c| c.commit_count).unwrap_or(0);
-        let churn_score = churn_data.map(|c| c.churn_score).unwrap_or(0.0);
+        let commit_count = churn_data.map_or(0, |c| c.commit_count);
+        let churn_score = churn_data.map_or(0.0, |c| c.churn_score);
 
         // Calculate TDG score instead of defect probability
-        let cognitive_normalized = (max_complexity as f64 / 20.0).min(3.0);
-        let churn_normalized = (churn_score as f64 / 10.0).min(3.0);
+        let cognitive_normalized = (f64::from(max_complexity) / 20.0).min(3.0);
+        let churn_normalized = (f64::from(churn_score) / 10.0).min(3.0);
         let tdg_value = (cognitive_normalized * 0.3 + churn_normalized * 0.3 + 0.4).min(3.0);
         let tdg_severity = match tdg_value {
             v if v > 2.5 => "Critical",
@@ -1037,6 +1038,7 @@ fn calculate_avg_degree(graph: &DependencyGraph) -> f64 {
 // Helper implementation moved here
 impl DemoContent {
     #[allow(clippy::too_many_arguments)]
+    #[must_use] 
     pub fn from_analysis_results(
         dag: &DependencyGraph,
         files_analyzed: usize,

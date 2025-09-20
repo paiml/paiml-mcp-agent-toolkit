@@ -24,6 +24,7 @@ impl Default for PythonStrategy {
 }
 
 impl PythonStrategy {
+    #[must_use] 
     pub fn new() -> Self {
         Self {}
     }
@@ -45,14 +46,13 @@ impl LanguageStrategy for PythonStrategy {
     fn can_parse(&self, path: &Path) -> bool {
         path.extension()
             .and_then(|ext| ext.to_str())
-            .map(|ext| ext == "py" || ext == "pyi")
-            .unwrap_or(false)
+            .is_some_and(|ext| ext == "py" || ext == "pyi")
     }
 
     async fn parse_file(&self, path: &Path, content: &str) -> Result<AstDag> {
         let filename = path.display().to_string();
         let module = ast::ModModule::parse(content, &filename)
-            .map_err(|e| anyhow::anyhow!("Python parse error: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Python parse error: {e}"))?;
 
         Ok(self.convert_to_dag(&module))
     }

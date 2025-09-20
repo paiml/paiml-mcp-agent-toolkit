@@ -30,6 +30,7 @@ struct GitCloneArgs {
 pub struct GitCloneTool;
 
 impl GitCloneTool {
+    #[must_use] 
     pub fn new() -> Self {
         Self
     }
@@ -78,6 +79,7 @@ struct GitStatusArgs {
 pub struct GitStatusTool;
 
 impl GitStatusTool {
+    #[must_use] 
     pub fn new() -> Self {
         Self
     }
@@ -123,6 +125,7 @@ struct ContextGenerateArgs {
 pub struct ContextGenerateTool;
 
 impl ContextGenerateTool {
+    #[must_use] 
     pub fn new() -> Self {
         Self
     }
@@ -177,6 +180,7 @@ struct ContextAnalyzeArgs {
 pub struct ContextAnalyzeTool;
 
 impl ContextAnalyzeTool {
+    #[must_use] 
     pub fn new() -> Self {
         Self
     }
@@ -218,6 +222,7 @@ struct ContextSummaryArgs {
 pub struct ContextSummaryTool;
 
 impl ContextSummaryTool {
+    #[must_use] 
     pub fn new() -> Self {
         Self
     }

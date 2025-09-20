@@ -288,51 +288,48 @@ fn format_comparison(
     comparison: crate::tdg::Comparison,
     format: TdgOutputFormat,
 ) -> Result<String> {
-    match format {
-        TdgOutputFormat::Table => {
-            let mut output = String::new();
-            output.push_str("╭─────────────────────────────────────────────────╮\n");
-            output.push_str("│  TDG Comparison                                 │\n");
-            output.push_str("├─────────────────────────────────────────────────┤\n");
-            output.push_str(&format!(
-                "│  Source 1: {:.1} ({})                           │\n",
-                comparison.source1.total,
-                format_grade(comparison.source1.grade)
-            ));
-            output.push_str(&format!(
-                "│  Source 2: {:.1} ({})                           │\n",
-                comparison.source2.total,
-                format_grade(comparison.source2.grade)
-            ));
-            output.push_str(&format!(
-                "│  Difference: {:+.1}                             │\n",
-                comparison.delta
-            ));
+    if format == TdgOutputFormat::Table {
+        let mut output = String::new();
+        output.push_str("╭─────────────────────────────────────────────────╮\n");
+        output.push_str("│  TDG Comparison                                 │\n");
+        output.push_str("├─────────────────────────────────────────────────┤\n");
+        output.push_str(&format!(
+            "│  Source 1: {:.1} ({})                           │\n",
+            comparison.source1.total,
+            format_grade(comparison.source1.grade)
+        ));
+        output.push_str(&format!(
+            "│  Source 2: {:.1} ({})                           │\n",
+            comparison.source2.total,
+            format_grade(comparison.source2.grade)
+        ));
+        output.push_str(&format!(
+            "│  Difference: {:+.1}                             │\n",
+            comparison.delta
+        ));
 
-            output.push_str(&format!(
-                "│  Winner: {}                                      │\n",
-                comparison.winner
-            ));
+        output.push_str(&format!(
+            "│  Winner: {}                                      │\n",
+            comparison.winner
+        ));
 
-            output.push_str("╰─────────────────────────────────────────────────╯\n");
-            Ok(output)
-        }
-        _ => {
-            // For other formats, output as JSON
-            let json_value = serde_json::json!({
-                "source1": {
-                    "total": comparison.source1.total,
-                    "grade": format_grade(comparison.source1.grade),
-                },
-                "source2": {
-                    "total": comparison.source2.total,
-                    "grade": format_grade(comparison.source2.grade),
-                },
-                "difference": comparison.delta,
-                "winner": comparison.winner
-            });
-            Ok(serde_json::to_string_pretty(&json_value)?)
-        }
+        output.push_str("╰─────────────────────────────────────────────────╯\n");
+        Ok(output)
+    } else {
+        // For other formats, output as JSON
+        let json_value = serde_json::json!({
+            "source1": {
+                "total": comparison.source1.total,
+                "grade": format_grade(comparison.source1.grade),
+            },
+            "source2": {
+                "total": comparison.source2.total,
+                "grade": format_grade(comparison.source2.grade),
+            },
+            "difference": comparison.delta,
+            "winner": comparison.winner
+        });
+        Ok(serde_json::to_string_pretty(&json_value)?)
     }
 }
 
@@ -367,8 +364,7 @@ fn parse_grade(grade_str: &str) -> Result<Grade> {
         "D" => Ok(Grade::D),
         "F" => Ok(Grade::F),
         _ => Err(anyhow!(
-            "Invalid grade: {}. Valid grades are: A+, A, A-, B+, B, B-, C+, C, C-, D, F",
-            grade_str
+            "Invalid grade: {grade_str}. Valid grades are: A+, A, A-, B+, B, B-, C+, C, C-, D, F"
         )),
     }
 }

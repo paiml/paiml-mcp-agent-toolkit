@@ -366,7 +366,7 @@ impl RustBorrowChecker {
         for entry in WalkDir::new(project_root)
             .follow_links(true)
             .into_iter()
-            .filter_map(|e| e.ok())
+            .filter_map(std::result::Result::ok)
         {
             let path = entry.path();
             if Self::is_rust_file(path) {

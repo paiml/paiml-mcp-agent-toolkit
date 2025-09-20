@@ -210,6 +210,7 @@ impl Default for OrchestratorConfig {
 
 impl CacheOrchestrator {
     /// Create a new cache orchestrator
+    #[must_use] 
     pub fn new(config: OrchestratorConfig) -> Self {
         Self {
             workload_profile: RwLock::new(WorkloadProfile::default()),
@@ -493,11 +494,11 @@ impl CacheOrchestrator {
 
         if count > 0 {
             Ok(PerformanceMetrics {
-                hit_rate: total_hit_rate / count as f64,
+                hit_rate: total_hit_rate / f64::from(count),
                 avg_latency: total_latency / count as u32,
                 memory_utilization: 0.0, // Would be calculated from actual usage
                 throughput: total_throughput,
-                effectiveness_score: total_hit_rate / count as f64, // Simplified
+                effectiveness_score: total_hit_rate / f64::from(count), // Simplified
             })
         } else {
             Ok(PerformanceMetrics::default())

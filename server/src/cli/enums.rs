@@ -397,7 +397,7 @@ pub enum GraphMetricType {
     Betweenness,
     /// Closeness centrality
     Closeness,
-    /// PageRank scores
+    /// `PageRank` scores
     PageRank,
     /// Clustering coefficient
     Clustering,
@@ -441,7 +441,7 @@ pub enum GraphMetricsOutputFormat {
     Json,
     /// CSV format for spreadsheet import
     Csv,
-    /// GraphML export format
+    /// `GraphML` export format
     GraphML,
     /// Markdown report format
     Markdown,
@@ -1052,6 +1052,7 @@ pub enum QualityCheckType {
 
 impl QualityCheckType {
     /// Returns the default checks to run
+    #[must_use] 
     pub fn default_checks() -> Vec<Self> {
         vec![
             QualityCheckType::Complexity,

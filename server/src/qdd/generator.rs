@@ -1,7 +1,7 @@
 //! Quality code generation engine
 //! Toyota Way: Build quality in from the start
 
-use super::*;
+use super::{QualityProfile, CreateSpec, QddResult, CodeType, RollbackPlan, Checkpoint, QualityMetrics, DesignPattern, QualityScore};
 use anyhow::{anyhow, Result};
 
 /// Quality-focused code generator
@@ -14,6 +14,7 @@ pub struct QualityCodeGenerator {
 
 impl QualityCodeGenerator {
     /// Create generator with quality profile
+    #[must_use] 
     pub fn new(profile: QualityProfile) -> Self {
         Self {
             ast_builder: AstBuilder::new(profile.clone()),
@@ -88,7 +89,7 @@ impl QualityCodeGenerator {
     async fn create_module(&self, spec: &CreateSpec) -> Result<QddResult> {
         // Module creation: generate a complete module with documentation
         let code = format!(
-            r#"//! {}
+            r"//! {}
 //!
 //! This module provides core functionality.
 
@@ -100,7 +101,7 @@ pub mod {} {{
         Ok(())
     }}
 }}
-"#,
+",
             spec.purpose, spec.name
         );
 
@@ -115,7 +116,7 @@ pub mod {} {{
             quality_score: QualityScore {
                 overall: metrics.calculate_score(),
                 complexity: metrics.complexity,
-                coverage: metrics.coverage as f64,
+                coverage: f64::from(metrics.coverage),
                 tdg: metrics.tdg,
             },
             metrics,
@@ -129,7 +130,7 @@ pub mod {} {{
     async fn create_service(&self, spec: &CreateSpec) -> Result<QddResult> {
         // Service creation: generate service with proper structure
         let code = format!(
-            r#"//! {}
+            r"//! {}
 //!
 //! Service implementation with quality standards.
 
@@ -153,7 +154,7 @@ impl {}Service {{
         Ok(())
     }}
 }}
-"#,
+",
             spec.purpose, spec.name, spec.name
         );
 
@@ -168,7 +169,7 @@ impl {}Service {{
             quality_score: QualityScore {
                 overall: metrics.calculate_score(),
                 complexity: metrics.complexity,
-                coverage: metrics.coverage as f64,
+                coverage: f64::from(metrics.coverage),
                 tdg: metrics.tdg,
             },
             metrics,
@@ -264,7 +265,7 @@ mod {} {{
         let tdg = if complexity <= 5 { 1 } else { complexity / 2 };
 
         Ok(QualityScore {
-            overall: 100.0 - (complexity as f64 * 2.0),
+            overall: 100.0 - (f64::from(complexity) * 2.0),
             complexity,
             coverage,
             tdg,
@@ -310,12 +311,12 @@ mod {} {{
     /// Generate code for a specific feature
     fn generate_feature_code(&self, feature: &str) -> Result<String> {
         Ok(format!(
-            r#"
+            r"
 pub fn {}(&self) -> Result<()> {{
     // Implementation for {}
     Ok(())
 }}
-"#,
+",
             feature.to_lowercase().replace(' ', "_"),
             feature
         ))
@@ -328,6 +329,7 @@ pub struct AstBuilder {
 }
 
 impl AstBuilder {
+    #[must_use] 
     pub fn new(profile: QualityProfile) -> Self {
         Self { profile }
     }
@@ -415,6 +417,7 @@ pub struct TestGenerator {
 }
 
 impl TestGenerator {
+    #[must_use] 
     pub fn new(profile: QualityProfile) -> Self {
         Self { profile }
     }
@@ -540,6 +543,7 @@ pub struct DocGenerator {
 }
 
 impl DocGenerator {
+    #[must_use] 
     pub fn new(profile: QualityProfile) -> Self {
         Self { profile }
     }
@@ -580,7 +584,7 @@ impl DocGenerator {
             if i > 0 {
                 docs.push_str(", ");
             }
-            docs.push_str(&self.generate_example_value(&param.param_type).to_string());
+            docs.push_str(&self.generate_example_value(&param.param_type).clone());
         }
 
         docs.push_str(");\n");

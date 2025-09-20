@@ -163,12 +163,12 @@ async fn handle_agent_stop(_pid_file: Option<PathBuf>, _force: bool, _timeout: u
 
     // Implement daemon communication and graceful shutdown
     match DaemonManager::shutdown().await {
-        Ok(_) => {
+        Ok(()) => {
             info!("Agent daemon shut down successfully");
         }
         Err(e) => {
             error!("Failed to shut down daemon: {}", e);
-            return Err(anyhow::anyhow!("Failed to shut down daemon: {}", e));
+            return Err(anyhow::anyhow!("Failed to shut down daemon: {e}"));
         }
     }
     Ok(())
@@ -231,7 +231,7 @@ async fn handle_agent_monitor(
 
     // Send command to running daemon to start monitoring
     match DaemonManager::start_monitoring(&project_path, &project_id).await {
-        Ok(_) => {
+        Ok(()) => {
             info!("Project monitoring command sent to daemon successfully");
             println!(
                 "✅ Started monitoring project '{project_id}' at {project_path:?}"
@@ -239,7 +239,7 @@ async fn handle_agent_monitor(
         }
         Err(e) => {
             error!("Failed to start monitoring: {}", e);
-            return Err(anyhow::anyhow!("Failed to start monitoring: {}", e));
+            return Err(anyhow::anyhow!("Failed to start monitoring: {e}"));
         }
     }
     Ok(())
@@ -257,13 +257,13 @@ async fn handle_agent_unmonitor(project_id: String) -> Result<()> {
 
     // Send command to running daemon to stop monitoring
     match DaemonManager::stop_monitoring(&project_id).await {
-        Ok(_) => {
+        Ok(()) => {
             info!("Stop monitoring command sent to daemon successfully");
             println!("✅ Stopped monitoring project '{project_id}'");
         }
         Err(e) => {
             error!("Failed to stop monitoring: {}", e);
-            return Err(anyhow::anyhow!("Failed to stop monitoring: {}", e));
+            return Err(anyhow::anyhow!("Failed to stop monitoring: {e}"));
         }
     }
     Ok(())
@@ -320,13 +320,13 @@ async fn handle_agent_reload(
 
     // Send reload command to running daemon
     match DaemonManager::reload_config(config_path.as_ref()).await {
-        Ok(_) => {
+        Ok(()) => {
             info!("Configuration reload command sent to daemon successfully");
             println!("✅ Configuration reloaded successfully");
         }
         Err(e) => {
             error!("Failed to reload configuration: {}", e);
-            return Err(anyhow::anyhow!("Failed to reload configuration: {}", e));
+            return Err(anyhow::anyhow!("Failed to reload configuration: {e}"));
         }
     }
     Ok(())
@@ -359,7 +359,7 @@ async fn handle_agent_quality_gate(
         }
         Err(e) => {
             error!("Failed to run quality gate: {}", e);
-            return Err(anyhow::anyhow!("Failed to run quality gate: {}", e));
+            return Err(anyhow::anyhow!("Failed to run quality gate: {e}"));
         }
     }
     Ok(())
@@ -400,13 +400,13 @@ async fn handle_agent_mcp_server(config_path: Option<PathBuf>, debug: bool) -> R
 /// Load daemon configuration from file
 async fn load_daemon_config(config_path: &PathBuf) -> Result<DaemonConfig> {
     if !config_path.exists() {
-        return Err(anyhow!("Configuration file not found: {:?}", config_path));
+        return Err(anyhow!("Configuration file not found: {config_path:?}"));
     }
 
     let config_content = fs::read_to_string(config_path).await?;
     let config: DaemonConfig = toml::from_str(&config_content)
         .or_else(|_| serde_json::from_str(&config_content))
-        .map_err(|e| anyhow!("Failed to parse configuration file: {}", e))?;
+        .map_err(|e| anyhow!("Failed to parse configuration file: {e}"))?;
 
     Ok(config)
 }

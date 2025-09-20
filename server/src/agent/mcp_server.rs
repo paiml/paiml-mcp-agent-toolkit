@@ -161,6 +161,7 @@ pub enum QualityMonitorCommand {
 
 impl ClaudeCodeAgentMcpServer {
     /// Create new MCP server instance
+    #[must_use] 
     pub fn new(config: AgentConfig) -> Self {
         Self {
             config,
@@ -394,7 +395,7 @@ impl ClaudeCodeAgentMcpServer {
             "run_quality_gates" => self.handle_run_quality_gates(arguments).await,
             "analyze_complexity" => self.handle_analyze_complexity(arguments).await,
             "health_check" => self.handle_health_check().await,
-            _ => Err(anyhow::anyhow!("Unknown tool: {}", tool_name)),
+            _ => Err(anyhow::anyhow!("Unknown tool: {tool_name}")),
         }
     }
 
@@ -686,8 +687,7 @@ impl ClaudeCodeAgentMcpServer {
         let path = PathBuf::from(project_path);
         if !path.exists() {
             return Err(anyhow::anyhow!(
-                "Project path does not exist: {}",
-                project_path
+                "Project path does not exist: {project_path}"
             ));
         }
 
@@ -708,7 +708,7 @@ impl ClaudeCodeAgentMcpServer {
 
         let complexity_threshold = params["complexity_threshold"]
             .as_u64()
-            .unwrap_or(self.config.complexity_threshold as u64)
+            .unwrap_or(u64::from(self.config.complexity_threshold))
             as u32;
 
         info!(
@@ -822,8 +822,7 @@ impl ClaudeCodeAgentMcpServer {
             }))
         } else {
             Err(anyhow::anyhow!(
-                "Project '{}' is not being monitored",
-                project_id
+                "Project '{project_id}' is not being monitored"
             ))
         }
     }

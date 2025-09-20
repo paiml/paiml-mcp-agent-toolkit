@@ -259,6 +259,7 @@ pub enum QualityTrend {
 
 impl QualityMonitorEngine {
     /// Create new quality monitor
+    #[must_use] 
     pub fn new(config: QualityMonitorConfig) -> Self {
         Self {
             config,
@@ -623,7 +624,7 @@ impl QualityMonitorEngine {
         // Simple complexity estimation based on control flow keywords
         let complexity = Self::estimate_complexity(&content);
         let avg_complexity = if function_count > 0 {
-            complexity as f64 / function_count as f64
+            f64::from(complexity) / function_count as f64
         } else {
             0.0
         };
@@ -763,10 +764,10 @@ impl QualityMonitorEngine {
             .map(|f| f.quality_score)
             .collect();
 
-        let quality_score = if !quality_scores.is_empty() {
-            quality_scores.iter().sum::<f64>() / quality_scores.len() as f64
-        } else {
+        let quality_score = if quality_scores.is_empty() {
             0.0
+        } else {
+            quality_scores.iter().sum::<f64>() / quality_scores.len() as f64
         };
 
         // Update complexity distribution

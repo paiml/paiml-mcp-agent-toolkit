@@ -138,6 +138,7 @@ pub struct SimilarityDetector {
 }
 
 impl SimilarityDetector {
+    #[must_use] 
     pub fn new(config: SimilarityConfig) -> Self {
         Self {
             winnower: Winnowing::new(config.window_size, config.k_gram_size),
@@ -148,6 +149,7 @@ impl SimilarityDetector {
     }
 
     /// Detect exact duplicates
+    #[must_use] 
     pub fn detect_exact_duplicates(&self, files: &[(PathBuf, String)]) -> Vec<SimilarBlock> {
         let mut hash_map: HashMap<u64, Vec<(PathBuf, usize, usize, String)>> = HashMap::new();
 
@@ -169,6 +171,7 @@ impl SimilarityDetector {
     }
 
     /// Detect structural similarity using AST normalization
+    #[must_use] 
     pub fn detect_structural_similarity(
         &self,
         files: &[(PathBuf, String)],
@@ -188,6 +191,7 @@ impl SimilarityDetector {
     }
 
     /// Detect semantic similarity using token analysis
+    #[must_use] 
     pub fn detect_semantic_similarity(
         &self,
         files: &[(PathBuf, String)],
@@ -208,6 +212,7 @@ impl SimilarityDetector {
     }
 
     /// Analyze entropy of code blocks
+    #[must_use] 
     pub fn analyze_entropy(&self, files: &[(PathBuf, String)]) -> EntropyReport {
         let mut all_entropies = Vec::new();
         let mut high_entropy = Vec::new();
@@ -245,10 +250,10 @@ impl SimilarityDetector {
             }
         }
 
-        let avg_entropy = if !all_entropies.is_empty() {
-            all_entropies.iter().sum::<f64>() / all_entropies.len() as f64
-        } else {
+        let avg_entropy = if all_entropies.is_empty() {
             0.0
+        } else {
+            all_entropies.iter().sum::<f64>() / all_entropies.len() as f64
         };
 
         let recommendations = self.generate_recommendations(&high_entropy, &low_entropy);
@@ -262,6 +267,7 @@ impl SimilarityDetector {
     }
 
     /// Find refactoring opportunities
+    #[must_use] 
     pub fn find_refactoring_opportunities(
         &self,
         files: &[(PathBuf, String)],
@@ -296,6 +302,7 @@ impl SimilarityDetector {
     }
 
     /// Perform comprehensive analysis
+    #[must_use] 
     pub fn comprehensive_analysis(&self, files: &[(PathBuf, String)]) -> ComprehensiveReport {
         let exact = self.detect_exact_duplicates(files);
         let structural = self.detect_structural_similarity(files, self.config.similarity_threshold);
@@ -326,6 +333,7 @@ impl SimilarityDetector {
     }
 
     /// Calculate Shannon entropy
+    #[must_use] 
     pub fn calculate_entropy(&self, text: &str) -> f64 {
         self.entropy_calculator.calculate(text)
     }
@@ -614,6 +622,7 @@ pub struct Winnowing {
 }
 
 impl Winnowing {
+    #[must_use] 
     pub fn new(window_size: usize, k_gram_size: usize) -> Self {
         Self {
             window_size,
@@ -621,11 +630,13 @@ impl Winnowing {
         }
     }
 
+    #[must_use] 
     pub fn fingerprint(&self, text: &str) -> Vec<u64> {
         let k_grams = self.extract_k_grams(text);
         self.select_fingerprints(&k_grams)
     }
 
+    #[must_use] 
     pub fn similarity(&self, fp1: &[u64], fp2: &[u64]) -> f64 {
         let set1: HashSet<_> = fp1.iter().collect();
         let set2: HashSet<_> = fp2.iter().collect();
@@ -640,6 +651,7 @@ impl Winnowing {
         }
     }
 
+    #[must_use] 
     pub fn find_matches(&self, text_fp: &[u64], sub_fp: &[u64]) -> Vec<usize> {
         let mut matches = Vec::new();
         let sub_set: HashSet<_> = sub_fp.iter().collect();
@@ -700,7 +712,7 @@ impl TokenAnalyzer {
     }
 
     fn tokenize(&self, text: &str) -> Vec<String> {
-        text.split_whitespace().map(|s| s.to_lowercase()).collect()
+        text.split_whitespace().map(str::to_lowercase).collect()
     }
 
     fn to_vector(&self, tokens: &[String]) -> TokenVector {
@@ -756,7 +768,7 @@ impl EntropyCalculator {
 
         let mut entropy = 0.0;
         for count in char_counts.values() {
-            let probability = *count as f64 / total;
+            let probability = f64::from(*count) / total;
             if probability > 0.0 {
                 entropy -= probability * probability.log2();
             }

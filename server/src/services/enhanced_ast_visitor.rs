@@ -20,6 +20,7 @@ pub struct EnhancedAstVisitor {
 
 impl EnhancedAstVisitor {
     /// Creates a new enhanced visitor for a given file
+    #[must_use] 
     pub fn new(file_path: &Path) -> Self {
         Self {
             items: Vec::new(),
@@ -29,6 +30,7 @@ impl EnhancedAstVisitor {
     }
 
     /// Extracts all AST items with real source information
+    #[must_use] 
     pub fn extract_items(mut self, syntax_tree: &syn::File) -> Vec<AstItem> {
         self.visit_file(syntax_tree);
         self.items
@@ -59,7 +61,7 @@ impl EnhancedAstVisitor {
         // We'll use a heuristic based on the span's debug representation
         // For production, we'd integrate with proc_macro2's unstable features
         // or use a source map approach
-        let debug_str = format!("{:?}", span);
+        let debug_str = format!("{span:?}");
 
         // Extract line number from debug representation if available
         // Format is typically "Span { start: Loc { line: X, ... }, ... }"

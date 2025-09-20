@@ -355,14 +355,14 @@ pub async fn search_templates<T: TemplateServerTrait>(
                 }
             }
 
-            if !matches.is_empty() {
+            if matches.is_empty() {
+                None
+            } else {
                 Some(SearchResult {
                     template: (*template).clone(),
                     relevance,
                     matches,
                 })
-            } else {
-                None
             }
         })
         .collect();
@@ -410,18 +410,15 @@ async fn get_template_metadata<T: TemplateServerTrait>(
 fn extract_params_map(
     parameters: &serde_json::Value,
 ) -> Result<&Map<String, serde_json::Value>, ValidationResult> {
-    match parameters {
-        serde_json::Value::Object(map) => Ok(map),
-        _ => {
-            let error = ValidationError {
-                field: "parameters".to_string(),
-                message: "Parameters must be an object".to_string(),
-            };
-            Err(ValidationResult {
-                valid: false,
-                errors: vec![error],
-            })
-        }
+    if let serde_json::Value::Object(map) = parameters { Ok(map) } else {
+        let error = ValidationError {
+            field: "parameters".to_string(),
+            message: "Parameters must be an object".to_string(),
+        };
+        Err(ValidationResult {
+            valid: false,
+            errors: vec![error],
+        })
     }
 }
 

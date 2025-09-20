@@ -19,6 +19,7 @@ pub struct BashScriptAnalyzer {
 
 impl BashScriptAnalyzer {
     /// Creates a new Bash script analyzer
+    #[must_use] 
     pub fn new(file_path: &Path) -> Self {
         Self {
             items: Vec::new(),
@@ -73,7 +74,7 @@ impl BashScriptAnalyzer {
         for line in source.lines() {
             let trimmed = line.trim();
 
-            if trimmed.contains("=") && !trimmed.starts_with("#") {
+            if trimmed.contains('=') && !trimmed.starts_with('#') {
                 let parts: Vec<&str> = trimmed.split('=').collect();
                 if parts.len() >= 2 {
                     self.variable_count += 1;
@@ -88,10 +89,10 @@ impl BashScriptAnalyzer {
         for (line_num, line) in source.lines().enumerate() {
             let trimmed = line.trim();
 
-            if !trimmed.is_empty() && !trimmed.starts_with("#") && !trimmed.starts_with("#!/") {
+            if !trimmed.is_empty() && !trimmed.starts_with('#') && !trimmed.starts_with("#!/") {
                 // Treat basic commands as functions for AST structure
                 if let Some(cmd) = trimmed.split_whitespace().next() {
-                    if !cmd.contains("=") && !cmd.ends_with("{") { // Not assignments or function defs
+                    if !cmd.contains('=') && !cmd.ends_with('{') { // Not assignments or function defs
                         let qualified_name = self.get_qualified_name(cmd);
                         self.items.push(AstItem::Function {
                             name: qualified_name,
@@ -102,7 +103,7 @@ impl BashScriptAnalyzer {
                     }
                 }
 
-                if trimmed.contains("|") {
+                if trimmed.contains('|') {
                     self.command_count += 2; // Count pipeline as multiple commands
                 } else {
                     self.command_count += 1;
@@ -168,6 +169,7 @@ impl Default for BashComplexityAnalyzer {
 
 impl BashComplexityAnalyzer {
     /// Creates a new Bash complexity analyzer
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             cyclomatic_complexity: 0,
@@ -229,6 +231,7 @@ impl Default for ShellSafetyAnalyzer {
 
 impl ShellSafetyAnalyzer {
     /// Creates a new shell safety analyzer
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             safety_violations: Vec::new(),
@@ -295,11 +298,13 @@ impl ShellSafetyAnalyzer {
     }
 
     /// Gets safety violations
+    #[must_use] 
     pub fn get_safety_violations(&self) -> &[String] {
         &self.safety_violations
     }
 
     /// Gets best practice warnings
+    #[must_use] 
     pub fn get_best_practice_warnings(&self) -> &[String] {
         &self.best_practice_warnings
     }
@@ -319,6 +324,7 @@ impl Default for ShellCommandParser {
 
 impl ShellCommandParser {
     /// Creates a new shell command parser
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             commands: Vec::new(),
@@ -329,7 +335,7 @@ impl ShellCommandParser {
     /// Parses shell command line into tokens (complexity ≤10)
     pub fn parse_command_line(&mut self, line: &str) -> Result<Vec<String>, String> {
         let tokens: Vec<String> = line.split_whitespace()
-            .map(|s| s.to_string())
+            .map(std::string::ToString::to_string)
             .collect();
 
         self.commands.extend(tokens.clone());
@@ -340,7 +346,7 @@ impl ShellCommandParser {
     pub fn extract_variable_assignments(&mut self, line: &str) -> Result<Vec<(String, String)>, String> {
         let mut assignments = Vec::new();
 
-        if line.contains("=") && !line.trim().starts_with("#") {
+        if line.contains('=') && !line.trim().starts_with('#') {
             let parts: Vec<&str> = line.split('=').collect();
             if parts.len() >= 2 {
                 let var_name = parts[0].trim().to_string();
@@ -354,11 +360,13 @@ impl ShellCommandParser {
     }
 
     /// Gets parsed commands
+    #[must_use] 
     pub fn get_commands(&self) -> &[String] {
         &self.commands
     }
 
     /// Gets extracted variables
+    #[must_use] 
     pub fn get_variables(&self) -> &[String] {
         &self.variables
     }

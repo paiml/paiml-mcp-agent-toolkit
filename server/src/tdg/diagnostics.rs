@@ -140,6 +140,7 @@ struct PerformanceSample {
 }
 
 impl DiagnosticTool {
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             start_time: Instant::now(),
@@ -216,7 +217,7 @@ impl DiagnosticTool {
             } else {
                 0.0
             },
-            compression_ratio: stats.compression_ratio as f64,
+            compression_ratio: f64::from(stats.compression_ratio),
             storage_size_mb: stats.hot_memory_kb as f64 / 1024.0,
             last_archival: None,        // Would need to track this
             deduplication_savings: 0.0, // Would need to calculate
@@ -256,7 +257,7 @@ impl DiagnosticTool {
 
         Ok(AdaptiveDiagnostics {
             current_cache_size: thresholds.hot_cache_size,
-            current_compression_level: thresholds.compression_level as u32,
+            current_compression_level: u32::from(thresholds.compression_level),
             high_priority_permits: thresholds.high_priority_permits,
             low_priority_permits: thresholds.low_priority_permits,
             performance_trend: if stats.avg_analysis_duration_ms > 100.0 {
@@ -266,8 +267,8 @@ impl DiagnosticTool {
             }
             .to_string(),
             adjustments_made: stats.total_samples,
-            avg_analysis_time_ms: stats.avg_analysis_duration_ms as f64,
-            optimization_effectiveness: stats.avg_cache_hit_ratio as f64,
+            avg_analysis_time_ms: f64::from(stats.avg_analysis_duration_ms),
+            optimization_effectiveness: f64::from(stats.avg_cache_hit_ratio),
         })
     }
 
@@ -408,11 +409,12 @@ impl DiagnosticTool {
     }
 
     /// Format diagnostics for display
+    #[must_use] 
     pub fn format_diagnostics(diag: &SystemDiagnostics) -> String {
         let local_time: DateTime<Local> = diag.timestamp.into();
 
         format!(
-            r#"
+            r"
 ╔══════════════════════════════════════════════════════════════════╗
 ║          TRANSACTIONAL HASHED TDG SYSTEM DIAGNOSTICS            ║
 ╚══════════════════════════════════════════════════════════════════╝
@@ -455,7 +457,7 @@ impl DiagnosticTool {
 ├─ Throughput: {:.1} MB/s
 └─ Error Rate: {:.2}%
 
-════════════════════════════════════════════════════════════════════"#,
+════════════════════════════════════════════════════════════════════",
             local_time.format("%Y-%m-%d %H:%M:%S"),
             diag.uptime,
             diag.health,

@@ -1,7 +1,7 @@
-//! Compatibility shim for ast_rust module during migration to new AST architecture
+//! Compatibility shim for `ast_rust` module during migration to new AST architecture
 //!
 //! This module provides backward compatibility for services still using the old AST API.
-//! It will be removed once all services are migrated to the new ast:: module.
+//! It will be removed once all services are migrated to the new `ast::` module.
 
 use anyhow::Result;
 use std::path::Path;
@@ -61,16 +61,16 @@ pub async fn analyze_rust_file_with_complexity_and_classifier(
     }
 
     // Calculate average complexity for the file
-    let avg_cyclomatic = if !function_metrics.is_empty() {
-        total_cyclomatic / function_metrics.len() as u32
-    } else {
+    let avg_cyclomatic = if function_metrics.is_empty() {
         1
+    } else {
+        total_cyclomatic / function_metrics.len() as u32
     };
 
-    let avg_cognitive = if !function_metrics.is_empty() {
-        total_cognitive / function_metrics.len() as u32
-    } else {
+    let avg_cognitive = if function_metrics.is_empty() {
         0
+    } else {
+        total_cognitive / function_metrics.len() as u32
     };
 
     Ok(FileComplexityMetrics {

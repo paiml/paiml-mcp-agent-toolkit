@@ -116,6 +116,7 @@ pub enum McpDemoError {
 }
 
 impl McpDemoError {
+    #[must_use] 
     pub fn to_mcp_error(&self) -> McpError {
         match self {
             McpDemoError::InvalidJsonRpc(_) => McpError {
@@ -148,6 +149,7 @@ impl McpDemoError {
 }
 
 impl McpDemoAdapter {
+    #[must_use] 
     pub fn new() -> Self {
         Self
     }

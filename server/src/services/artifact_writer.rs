@@ -311,6 +311,7 @@ impl ArtifactWriter {
     }
 
     /// Get artifact statistics
+    #[must_use] 
     pub fn get_statistics(&self) -> ArtifactStatistics {
         let mut stats = ArtifactStatistics {
             total_artifacts: self.manifest.len(),
@@ -347,7 +348,7 @@ impl ArtifactWriter {
         &mut self,
         max_age_days: u32,
     ) -> Result<CleanupReport, TemplateError> {
-        let cutoff = Utc::now() - chrono::Duration::days(max_age_days as i64);
+        let cutoff = Utc::now() - chrono::Duration::days(i64::from(max_age_days));
         let mut removed = Vec::new();
         let mut failed = Vec::new();
 

@@ -55,6 +55,7 @@ impl Default for PatternCollection {
 }
 
 impl PatternCollection {
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             patterns: HashMap::new(),
@@ -63,10 +64,12 @@ impl PatternCollection {
         }
     }
 
+    #[must_use] 
     pub fn file_count(&self) -> usize {
         self.total_files
     }
 
+    #[must_use] 
     pub fn summary(&self) -> super::violation_detector::PatternSummary {
         // For now, return a summary based on the most common pattern
         let most_common = self
@@ -97,6 +100,7 @@ impl PatternCollection {
         self.patterns.insert(hash.clone(), pattern);
     }
 
+    #[must_use] 
     pub fn get_patterns_for_file(&self, file: &Path) -> Vec<&AstPattern> {
         self.file_patterns
             .get(file)
@@ -111,6 +115,7 @@ pub struct PatternExtractor {
 }
 
 impl PatternExtractor {
+    #[must_use] 
     pub fn new(config: EntropyConfig) -> Self {
         Self { config }
     }
@@ -191,7 +196,7 @@ impl PatternExtractor {
         for entry in WalkDir::new(project_path)
             .follow_links(false)
             .into_iter()
-            .filter_map(|e| e.ok())
+            .filter_map(std::result::Result::ok)
         {
             let path = entry.path();
 
@@ -575,14 +580,12 @@ impl PatternExtractor {
                 let start_char = content
                     .char_indices()
                     .find(|(i, _)| *i >= start)
-                    .map(|(i, _)| i)
-                    .unwrap_or(start);
+                    .map_or(start, |(i, _)| i);
                 let end_char = content
                     .char_indices()
                     .rev()
                     .find(|(i, _)| *i <= end)
-                    .map(|(i, c)| i + c.len_utf8())
-                    .unwrap_or(end);
+                    .map_or(end, |(i, c)| i + c.len_utf8());
 
                 content[start_char..end_char].to_string()
             })
@@ -601,7 +604,7 @@ impl PatternExtractor {
         }
 
         if comparisons > 0 {
-            1.0 - (total_similarity / comparisons as f64) // Higher variation = less similarity
+            1.0 - (total_similarity / f64::from(comparisons)) // Higher variation = less similarity
         } else {
             0.0
         }

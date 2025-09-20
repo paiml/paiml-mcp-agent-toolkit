@@ -8,11 +8,11 @@
 //! # Architecture
 //!
 //! The module uses a strategy pattern with language-specific implementations:
-//! - **RustStrategy**: Uses `syn` for accurate Rust AST parsing
-//! - **TypeScriptStrategy**: Uses `swc` for JS/TS parsing
-//! - **PythonStrategy**: Uses regex-based parsing for Python
+//! - **`RustStrategy`**: Uses `syn` for accurate Rust AST parsing
+//! - **`TypeScriptStrategy`**: Uses `swc` for JS/TS parsing
+//! - **`PythonStrategy`**: Uses regex-based parsing for Python
 //! - **C/C++ Strategy**: Uses tree-sitter for C/C++ parsing
-//! - **KotlinStrategy**: Uses tree-sitter for Kotlin parsing
+//! - **`KotlinStrategy`**: Uses tree-sitter for Kotlin parsing
 //!
 //! # Features
 //!
@@ -80,7 +80,7 @@ impl AstStrategy for RustAstStrategy {
     async fn analyze(&self, path: &Path, classifier: &FileClassifier) -> Result<FileContext> {
         crate::services::ast_rust::analyze_rust_file_with_classifier(path, Some(classifier))
             .await
-            .map_err(|e| anyhow::anyhow!("Rust AST analysis error: {}", e))
+            .map_err(|e| anyhow::anyhow!("Rust AST analysis error: {e}"))
     }
 
     fn supports_extension(&self, ext: &str) -> bool {
@@ -101,7 +101,7 @@ impl AstStrategy for TypeScriptAstStrategy {
             Some(classifier),
         )
         .await
-        .map_err(|e| anyhow::anyhow!("TypeScript AST analysis error: {}", e))
+        .map_err(|e| anyhow::anyhow!("TypeScript AST analysis error: {e}"))
     }
 
     fn supports_extension(&self, ext: &str) -> bool {
@@ -122,7 +122,7 @@ impl AstStrategy for JavaScriptAstStrategy {
             Some(classifier),
         )
         .await
-        .map_err(|e| anyhow::anyhow!("JavaScript AST analysis error: {}", e))
+        .map_err(|e| anyhow::anyhow!("JavaScript AST analysis error: {e}"))
     }
 
     fn supports_extension(&self, ext: &str) -> bool {
@@ -140,7 +140,7 @@ impl AstStrategy for PythonAstStrategy {
     async fn analyze(&self, path: &Path, classifier: &FileClassifier) -> Result<FileContext> {
         crate::services::ast_python::analyze_python_file_with_classifier(path, Some(classifier))
             .await
-            .map_err(|e| anyhow::anyhow!("Python AST analysis error: {}", e))
+            .map_err(|e| anyhow::anyhow!("Python AST analysis error: {e}"))
     }
 
     fn supports_extension(&self, ext: &str) -> bool {
@@ -154,6 +154,7 @@ pub struct StrategyRegistry {
 }
 
 impl StrategyRegistry {
+    #[must_use] 
     pub fn new() -> Self {
         let mut strategies: FxHashMap<String, Arc<dyn AstStrategy>> = FxHashMap::default();
 
@@ -202,6 +203,7 @@ impl StrategyRegistry {
         Self { strategies }
     }
 
+    #[must_use] 
     pub fn get_strategy(&self, extension: &str) -> Option<Arc<dyn AstStrategy>> {
         self.strategies.get(extension).cloned()
     }
@@ -303,7 +305,7 @@ impl AstStrategy for CAstStrategy {
 
 #[cfg(feature = "c-ast")]
 impl CAstStrategy {
-    /// Extract name from UnifiedAstNode by analyzing the source range
+    /// Extract name from `UnifiedAstNode` by analyzing the source range
     fn extract_name_from_node(
         node: &crate::models::unified_ast::UnifiedAstNode,
         content: &str,
@@ -472,7 +474,7 @@ impl AstStrategy for CppAstStrategy {
 
 #[cfg(feature = "c-ast")]
 impl CppAstStrategy {
-    /// Extract name from UnifiedAstNode by analyzing the source range
+    /// Extract name from `UnifiedAstNode` by analyzing the source range
     fn extract_name_from_node(
         node: &crate::models::unified_ast::UnifiedAstNode,
         content: &str,
@@ -555,7 +557,7 @@ pub struct KotlinAstStrategy;
 
 #[cfg(feature = "kotlin-ast")]
 impl KotlinAstStrategy {
-    /// Extract name from UnifiedAstNode by analyzing the source range
+    /// Extract name from `UnifiedAstNode` by analyzing the source range
     fn extract_name_from_node(
         node: &crate::models::unified_ast::UnifiedAstNode,
         content: &str,
@@ -588,7 +590,7 @@ impl KotlinAstStrategy {
             if let Some(paren_pos) = after_fun.find('(') {
                 let name_part = &after_fun[..paren_pos];
                 // Take the first word as the function name
-                return name_part.split_whitespace().next().map(|s| s.to_string());
+                return name_part.split_whitespace().next().map(std::string::ToString::to_string);
             }
         }
         None
@@ -715,7 +717,7 @@ impl AstStrategy for KotlinAstStrategy {
                     complexity_metrics: None,
                 })
             },
-            Err(e) => Err(anyhow::anyhow!("Failed to parse Kotlin file: {}", e)),
+            Err(e) => Err(anyhow::anyhow!("Failed to parse Kotlin file: {e}")),
         }
     }
 

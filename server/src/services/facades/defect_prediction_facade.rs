@@ -73,6 +73,7 @@ pub struct DefectPredictionFacade {
 
 impl DefectPredictionFacade {
     /// Create a new defect prediction facade
+    #[must_use] 
     pub fn new(registry: Arc<ServiceRegistry>) -> Self {
         Self { registry }
     }
@@ -125,7 +126,7 @@ impl DefectPredictionFacade {
         for entry in WalkDir::new(&request.project_path)
             .follow_links(false)
             .into_iter()
-            .filter_map(|e| e.ok())
+            .filter_map(std::result::Result::ok)
         {
             let path = entry.path();
             if path.is_file() {
@@ -148,13 +149,7 @@ impl DefectPredictionFacade {
                 if let Some(ext) = path.extension() {
                     if matches!(
                         ext.to_str(),
-                        Some("rs")
-                            | Some("py")
-                            | Some("js")
-                            | Some("ts")
-                            | Some("cpp")
-                            | Some("c")
-                            | Some("java")
+                        Some("rs" | "py" | "js" | "ts" | "cpp" | "c" | "java")
                     ) {
                         files.push(path.to_path_buf());
                     }
