@@ -15,6 +15,20 @@ use crate::services::file_classifier::FileClassifier;
 use crate::ast::languages::python::PythonStrategy;
 use crate::ast::languages::LanguageStrategy;
 
+// Import enhanced Python visitor for real name extraction
+#[cfg(feature = "python-ast")]
+use crate::services::enhanced_python_visitor::EnhancedPythonVisitor;
+#[cfg(feature = "python-ast")]
+use rustpython_parser::{ast::ModModule, Parse};
+
+/// Parse Python content using RustPython parser
+#[cfg(feature = "python-ast")]
+fn parse_python_content(content: &str, path: &Path) -> Result<ModModule, TemplateError> {
+    let filename = path.display().to_string();
+    ModModule::parse(content, &filename)
+        .map_err(|e| TemplateError::InvalidUtf8(format!("Python parse error: {}", e)))
+}
+
 /// Analyze a Python file and return complexity metrics (compatibility function)
 pub async fn analyze_python_file_with_complexity(
     path: &Path,
@@ -93,7 +107,23 @@ pub async fn analyze_python_file_with_classifier(
         .await
         .map_err(TemplateError::Io)?;
 
-    // Use the new AST module to parse
+    // Use enhanced Python visitor for real AST extraction
+    #[cfg(feature = "python-ast")]
+    {
+        if let Ok(module) = parse_python_content(&content, path) {
+            let visitor = EnhancedPythonVisitor::new(path);
+            let items = visitor.extract_items(&module);
+
+            return Ok(FileContext {
+                path: path.display().to_string(),
+                language: "python".to_string(),
+                items,
+                complexity_metrics: None,
+            });
+        }
+    }
+
+    // Fallback to legacy approach when python-ast feature is disabled or parsing fails
     let strategy = PythonStrategy::new();
     let ast = strategy
         .parse_file(path, &content)
@@ -105,7 +135,7 @@ pub async fn analyze_python_file_with_classifier(
     let types = strategy.extract_types(&ast);
     let _imports = strategy.extract_imports(&ast);
 
-    // Convert to old format
+    // Convert to old format (as fallback)
     let mut items = Vec::new();
 
     // Add functions as items
