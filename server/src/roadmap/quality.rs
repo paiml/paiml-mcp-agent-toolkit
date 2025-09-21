@@ -132,7 +132,7 @@ impl TaskQualityGate {
     async fn check_coverage(&self, min: u8) -> Result<CheckResult> {
         // Run coverage check
         let output = std::process::Command::new("cargo")
-            .args(["tarpaulin", "--print-summary"])
+            .args(["llvm-cov", "report", "--summary-only"])
             .output()?;
 
         // Parse coverage percentage from output

@@ -12,7 +12,7 @@
 This specification defines a systematic, heuristic-driven approach to achieving 80% doctest coverage across the `pmat` codebase while maintaining our Zero Tolerance Quality Standards. The approach leverages pmat's own analysis capabilities to identify high-value targets and verify improvements, implementing a feedback loop that ensures each contribution adds measurable value.
 
 ### Key Metrics
-- **Current State**: ~45% doctest coverage (estimated from `cargo tarpaulin` runs)
+- **Current State**: ~45% doctest coverage (estimated from `cargo llvm-cov` runs)
 - **Target State**: ≥80% sustained doctest coverage
 - **Quality Gate**: Zero regression in cyclomatic complexity (<20 per function)
 - **Performance Impact**: <1% increase in `cargo test --doc` execution time
@@ -48,7 +48,7 @@ impl DoctestCoverageAnalyzer {
 ### 2.2 Integration Points
 
 1. **AST Analysis**: Leverages existing `syn` and `tree-sitter` parsers
-2. **Coverage Tracking**: Integrates with `cargo-tarpaulin` for baseline metrics
+2. **Coverage Tracking**: Integrates with `cargo llvm-cov` for baseline metrics
 3. **Quality Gates**: Hooks into `pmat quality-gate` for automated verification
 4. **CI/CD Pipeline**: GitHub Actions workflow for continuous monitoring
 
@@ -356,7 +356,7 @@ jobs:
       
       - name: Calculate Doctest Coverage
         run: |
-          cargo tarpaulin --doc --out Json > coverage.json
+          cargo llvm-cov test --doc --lcov --output-path coverage.json
           
       - name: Verify Coverage Improvement
         run: |

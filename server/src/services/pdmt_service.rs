@@ -145,7 +145,7 @@ impl PdmtService {
                     property_tests: "cargo test --features property-tests".to_string(),
                     examples: vec![],
                     coverage_check: format!(
-                        "cargo tarpaulin --min {}",
+                        "cargo llvm-cov --fail-under-lines {}",
                         quality_config.coverage_threshold
                     ),
                     quality_proxy: "pmat quality-gate --file".to_string(),
@@ -264,7 +264,7 @@ impl PdmtService {
             doctests: "cargo test --doc".to_string(),
             property_tests: "cargo test --features property-tests".to_string(),
             examples: vec!["cargo run --example demo".to_string()],
-            coverage_check: "cargo tarpaulin --min 80".to_string(),
+            coverage_check: "cargo llvm-cov --fail-under-lines 80".to_string(),
             quality_proxy: "pmat quality-gate --file".to_string(),
         }
     }

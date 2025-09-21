@@ -57,7 +57,7 @@ function getCoverageMetrics(): Promise<number> {
   try {
     // This is a placeholder - actual coverage command depends on setup
     console.log("📊 Measuring code coverage...");
-    // const output = await runCommand(["cargo", "tarpaulin", "--print-summary"]);
+    // const output = await runCommand(["cargo", "llvm-cov", "report", "--summary-only"]);
     // Parse coverage percentage from output
     return Promise.resolve(0); // Placeholder
   } catch {
