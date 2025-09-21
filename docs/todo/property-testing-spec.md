@@ -205,13 +205,13 @@ property-coverage:
     - uses: actions/checkout@v3
     - name: Run property tests with coverage
       run: |
-        cargo tarpaulin --features property-tests \
+        cargo llvm-cov test --features property-tests \
           --timeout 1200 \
-          --run-types Tests \
-          --packages paiml-mcp-agent-toolkit
+          --package paiml-mcp-agent-toolkit \
+          --lcov --output-path coverage.info
     - name: Enforce coverage threshold
       run: |
-        coverage=$(cargo tarpaulin --print-summary | grep 'Coverage' | awk '{print $2}' | sed 's/%//')
+        coverage=$(cargo llvm-cov report --summary-only | grep 'TOTAL' | awk '{print $4}' | sed 's/%//')
         if (( $(echo "$coverage < 95" | bc -l) )); then
           echo "Coverage $coverage% below 95% threshold"
           exit 1

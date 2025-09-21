@@ -1799,7 +1799,7 @@ pub async fn handle_analyze_proof_annotations(
 ///
 /// # Supported Coverage Tools
 ///
-/// - **Rust**: cargo-llvm-cov, tarpaulin, grcov
+/// - **Rust**: cargo-llvm-cov, grcov
 /// - **JavaScript/TypeScript**: nyc, jest coverage, c8
 /// - **Python**: coverage.py, pytest-cov
 /// - **Java**: `JaCoCo`, Cobertura

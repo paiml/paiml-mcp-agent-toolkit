@@ -259,7 +259,7 @@ impl VTableResolver {
     }
 }
 
-/// Coverage data integration from external tools (llvm-cov, tarpaulin, etc.)
+/// Coverage data integration from external tools (llvm-cov, grcov, etc.)
 ///
 /// Integrates test coverage data to improve dead code detection accuracy by
 /// identifying code that is syntactically reachable but never executed in practice.

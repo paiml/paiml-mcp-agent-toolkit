@@ -55,9 +55,7 @@ jobs:
         path: target
         key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
     
-    - name: Install tarpaulin
-      run: |
-        cargo install cargo-tarpaulin --version 0.27.3 --locked
+    # Removed tarpaulin - using cargo-llvm-cov only
     
     - name: Install cargo-llvm-cov
       run: |
@@ -66,25 +64,18 @@ jobs:
     - name: Run property tests with coverage
       run: |
         cd server
-        cargo tarpaulin \
+        cargo llvm-cov \
+          --lcov \
+          --output-path coverage/lcov.info \
           --features quickcheck \
-          --timeout 1200 \
-          --run-types Tests \
-          --packages pmat \
-          --exclude-files "**/tests/*" \
-          --exclude-files "**/benches/*" \
-          --exclude-files "**/build.rs" \
-          --print-summary \
-          --print-immediate \
-          --out Xml \
-          --output-dir coverage \
+          --package pmat \
           -- --test-threads 1
       continue-on-error: true
     
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4
       with:
-        file: ./server/coverage/cobertura.xml
+        file: ./server/coverage/lcov.info
         flags: property-tests
         name: property-test-coverage
     

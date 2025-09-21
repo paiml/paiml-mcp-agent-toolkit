@@ -714,14 +714,13 @@ async fn analyze_project_satd(source_files: &[PathBuf]) -> Result<SatdAnalysis> 
 ///
 /// This function has complexity <3 and follows Toyota Way principles.
 async fn analyze_project_coverage(project_path: &Path) -> Result<CoverageAnalysis> {
-    // Use cargo tarpaulin or similar to get coverage metrics
+    // Use cargo llvm-cov to get coverage metrics
     let coverage_output = tokio::process::Command::new("cargo")
         .args([
-            "tarpaulin",
-            "--output-dir",
-            "target/coverage",
-            "--out",
-            "json",
+            "llvm-cov",
+            "--json",
+            "--output-path",
+            "target/coverage/coverage.json",
         ])
         .current_dir(project_path)
         .output()
@@ -733,7 +732,7 @@ async fn analyze_project_coverage(project_path: &Path) -> Result<CoverageAnalysi
             parse_coverage_from_output(&output.stdout).unwrap_or(0.0)
         }
         _ => {
-            eprintln!("⚠️  Coverage analysis unavailable (cargo tarpaulin not found or failed)");
+            eprintln!("⚠️  Coverage analysis unavailable (cargo llvm-cov not found or failed)");
             0.0
         }
     };
@@ -745,7 +744,7 @@ async fn analyze_project_coverage(project_path: &Path) -> Result<CoverageAnalysi
     })
 }
 
-/// Parse coverage percentage from tarpaulin JSON output
+/// Parse coverage percentage from llvm-cov JSON output
 fn parse_coverage_from_output(output: &[u8]) -> Option<f64> {
     let output_str = String::from_utf8_lossy(output);
     // Simple regex to extract coverage percentage (case-insensitive)
