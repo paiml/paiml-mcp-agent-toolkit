@@ -92,6 +92,10 @@ pub struct GraphMatrices {
     pub laplacian: CsrMatrix<f64>,
     /// Out-degree vector
     pub out_degrees: Vec<f64>,
+    /// Number of nodes in the graph
+    pub node_count: usize,
+    /// Edge list for efficient iteration (from, to, weight)
+    pub edges: Vec<(usize, usize, f64)>,
 }
 
 impl EdgeData {
@@ -115,12 +119,15 @@ impl From<&DependencyGraph> for GraphMatrices {
         let n = graph.node_count();
         let mut coo = CooMatrix::new(n, n);
         let mut out_degrees = vec![0.0; n];
+        let mut edges = Vec::new();
 
         // Build adjacency matrix with edge weights
         for edge in graph.edge_references() {
             let weight = edge.weight().to_numeric_weight();
             let source = edge.source().index();
             let target = edge.target().index();
+
+            edges.push((source, target, weight));
 
             coo.push(source, target, weight);
             out_degrees[source] += weight;
@@ -139,6 +146,8 @@ impl From<&DependencyGraph> for GraphMatrices {
             transition,
             laplacian,
             out_degrees,
+            node_count: n,
+            edges,
         }
     }
 }
