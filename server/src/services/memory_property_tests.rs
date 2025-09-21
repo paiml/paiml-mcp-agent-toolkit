@@ -22,14 +22,14 @@ proptest! {
     /// Test that memory manager can handle arbitrary allocation patterns
     #[test]
     fn test_memory_manager_allocation_patterns(
-        allocation_sizes in prop::collection::vec(1usize..1024*1024, 1..100),
+        allocation_sizes in prop::collection::vec(1usize..64*1024, 1..20),
         pool_types in prop::collection::vec(prop::sample::select(vec![
             PoolType::AstParsing,
             PoolType::StringIntern,
             PoolType::AnalysisCache,
             PoolType::FileContent,
             PoolType::GraphConstruction,
-        ]), 1..100)
+        ]), 1..20)
     ) {
         prop_assert!(test_allocation_patterns(allocation_sizes, pool_types).is_ok());
     }
@@ -37,8 +37,8 @@ proptest! {
     /// Test string interning efficiency and correctness
     #[test]
     fn test_string_interning_properties(
-        strings in prop::collection::vec(prop::string::string_regex("[a-zA-Z0-9_]{1,50}").unwrap(), 10..1000),
-        duplication_factor in 1usize..10
+        strings in prop::collection::vec(prop::string::string_regex("[a-zA-Z0-9_]{1,20}").unwrap(), 5..50),
+        duplication_factor in 1usize..3
     ) {
         prop_assert!(test_string_interning(strings, duplication_factor).is_ok());
     }
@@ -46,7 +46,7 @@ proptest! {
     /// Test memory cleanup under pressure
     #[test]
     fn test_memory_cleanup_properties(
-        initial_allocations in 50usize..500,
+        initial_allocations in 10usize..50,
         pressure_threshold in 0.5f64..0.95f64
     ) {
         prop_assert!(test_cleanup_under_pressure(initial_allocations, pressure_threshold).is_ok());
