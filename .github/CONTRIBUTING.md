@@ -183,10 +183,14 @@ git clone https://github.com/YOUR_USERNAME/paiml-mcp-agent-toolkit.git
 cd paiml-mcp-agent-toolkit
 ```
 
-### 2. Create a Feature Branch
+### 2. Work on Master Branch
+
+**IMPORTANT: All development work must be done on the `master` branch only.**
 
 ```bash
-git checkout -b feature/your-feature-name
+# Ensure you're on master
+git checkout master
+git pull origin master
 ```
 
 ### 3. Make Changes
@@ -222,10 +226,10 @@ git commit -m "docs: update workspace structure documentation"
 ### 6. Push and Create PR
 
 ```bash
-git push origin feature/your-feature-name
+git push origin master
 ```
 
-Then create a Pull Request on GitHub.
+Then create a Pull Request on GitHub targeting the `master` branch.
 
 ## 🐛 Reporting Issues
 
