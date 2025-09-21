@@ -133,10 +133,21 @@ pub async fn analyze_python_file_with_classifier(
     // Extract information using the new API
     let functions = strategy.extract_functions(&ast);
     let types = strategy.extract_types(&ast);
-    let _imports = strategy.extract_imports(&ast);
+    let imports = strategy.extract_imports(&ast);
+
 
     // Convert to old format (as fallback)
     let mut items = Vec::new();
+
+    // Add imports as items
+    for (i, _node) in imports.iter().enumerate() {
+        items.push(AstItem::Import {
+            module: format!("module_{i}"),
+            items: vec![],
+            alias: None,
+            line: i * 2, // Imports typically near top of file
+        });
+    }
 
     // Add functions as items
     for (i, _node) in functions.iter().enumerate() {
@@ -144,7 +155,7 @@ pub async fn analyze_python_file_with_classifier(
             name: format!("function_{i}"),
             visibility: String::new(), // Python doesn't have visibility modifiers
             is_async: false,            // Could check node flags for async
-            line: i * 10,
+            line: i * 10 + 20, // Offset after imports
         });
     }
 
@@ -155,7 +166,7 @@ pub async fn analyze_python_file_with_classifier(
             visibility: String::new(),
             fields_count: 0,
             derives: vec![],
-            line: (functions.len() + i) * 10,
+            line: (functions.len() + i) * 10 + 50, // Offset after functions
         });
     }
 

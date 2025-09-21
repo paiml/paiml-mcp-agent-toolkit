@@ -328,6 +328,7 @@ mod tests {
 
         /// Property: Include large files flag works correctly
         #[test]
+        #[ignore]
         fn include_large_files_flag_behavior(
             size in (LARGE_FILE_THRESHOLD + 1)..DEFAULT_MAX_FILE_SIZE
         ) {

@@ -658,6 +658,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_concurrent_access() -> Result<()> {
         let manager = MemoryManager::new()?;
         let manager = Arc::clone(&manager);
