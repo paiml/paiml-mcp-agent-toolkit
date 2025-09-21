@@ -6,14 +6,6 @@ mod tests {
     use std::path::Path;
     use tempfile::NamedTempFile;
 
-    // Reduced property test configuration to prevent hanging
-    proptest! {
-        #![proptest_config(ProptestConfig {
-            cases: 32, // Reduced from default 256
-            failure_persistence: None,
-            .. ProptestConfig::default()
-        })]
-
     // Strategy for generating valid SATD markers
     prop_compose! {
         fn arb_satd_marker()
