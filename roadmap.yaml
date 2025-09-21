@@ -1,0 +1,829 @@
+# PMAT Agent System Implementation Roadmap
+# Extreme TDD with Zero Tolerance Quality Gates
+
+meta:
+  project: PMAT Agent System
+  approach: Extreme Test-Driven Development
+  quality_gates:
+    max_complexity: 10
+    max_cognitive: 7
+    min_coverage: 0.95
+    min_mutation_score: 0.90
+    satd_tolerance: 0
+  execution:
+    ticket_workflow: RED-GREEN-REFACTOR
+    commit_strategy: atomic_per_ticket
+    build_verification: mandatory_clean
+
+sprints:
+  # SPRINT 1: Modular Monolith Foundation (Week 1-2)
+  - id: sprint-1
+    name: "Modular Monolith Foundation"
+    goal: "Extract modules with compiler-enforced boundaries"
+    duration: 2_weeks
+    tickets:
+      - id: PMAT-001
+        title: "Setup quality gate infrastructure"
+        priority: critical
+        requirements:
+          - "Quality gate runner with AST analysis"
+          - "Complexity analyzer (McCabe/Cognitive)"
+          - "SATD detector with zero tolerance"
+          - "Pre-commit hook integration"
+        tests:
+          - "test_quality_gate_detects_complexity_violations"
+          - "test_satd_zero_tolerance_enforcement"
+          - "test_pre_commit_blocks_violations"
+          - "proptest_complexity_calculation_correctness"
+        acceptance:
+          - "100% test coverage"
+          - "All quality metrics < thresholds"
+          - "Clean cargo build --release"
+
+      - id: PMAT-002
+        title: "Create module abstraction layer"
+        priority: high
+        requirements:
+          - "Trait-based module interfaces"
+          - "Dependency injection framework"
+          - "Module registry with lifecycle management"
+        tests:
+          - "test_module_trait_implementation"
+          - "test_dependency_injection_resolution"
+          - "test_module_lifecycle_events"
+          - "proptest_module_registry_consistency"
+        acceptance:
+          - "Zero circular dependencies"
+          - "All modules behind traits"
+          - "Benchmark: module lookup O(1)"
+
+      - id: PMAT-003
+        title: "Extract analyzer module"
+        priority: high
+        requirements:
+          - "AnalyzerModule trait definition"
+          - "Language-agnostic analysis interface"
+          - "Metrics collection abstraction"
+        tests:
+          - "test_analyzer_trait_contract"
+          - "test_rust_analyzer_implementation"
+          - "test_metrics_aggregation"
+          - "proptest_analysis_determinism"
+        acceptance:
+          - "Module compiles independently"
+          - "All tests passing"
+          - "Performance: <100ms per file"
+
+      - id: PMAT-004
+        title: "Extract transformer module"
+        priority: high
+        requirements:
+          - "TransformerModule trait"
+          - "AST manipulation abstraction"
+          - "Transactional refactoring support"
+        tests:
+          - "test_transformer_trait_contract"
+          - "test_refactoring_transactions"
+          - "test_rollback_capability"
+          - "proptest_transform_reversibility"
+        acceptance:
+          - "All transforms reversible"
+          - "Zero AST corruption"
+          - "Mutation testing score >90%"
+
+      - id: PMAT-005
+        title: "Architecture enforcement tests"
+        priority: critical
+        requirements:
+          - "Dependency rule tests"
+          - "Layer boundary tests"
+          - "Acyclic dependency verification"
+        tests:
+          - "test_no_circular_dependencies"
+          - "test_module_boundary_violations"
+          - "test_layer_access_restrictions"
+          - "proptest_dependency_graph_properties"
+        acceptance:
+          - "All architecture tests green"
+          - "CI/CD integration complete"
+          - "Documentation generated"
+
+  # SPRINT 2: Quality Gates Engine (Week 3-4)
+  - id: sprint-2
+    name: "Quality Gates Engine"
+    goal: "Implement zero-tolerance quality enforcement"
+    duration: 2_weeks
+    tickets:
+      - id: PMAT-006
+        title: "Implement complexity analyzer"
+        priority: critical
+        requirements:
+          - "McCabe cyclomatic complexity"
+          - "Cognitive complexity (Sonar)"
+          - "Nesting depth analysis"
+          - "Control flow graph generation"
+        tests:
+          - "test_mccabe_complexity_calculation"
+          - "test_cognitive_complexity_rules"
+          - "test_cfg_construction"
+          - "proptest_complexity_monotonicity"
+        acceptance:
+          - "Matches SonarQube results ±5%"
+          - "Performance: O(n) analysis"
+          - "100% branch coverage"
+
+      - id: PMAT-007
+        title: "Build SATD detector"
+        priority: critical
+        requirements:
+          - "Pattern-based SATD detection"
+          - "Multi-language support"
+          - "Configurable forbidden patterns"
+        tests:
+          - "test_satd_pattern_detection"
+          - "test_multi_language_satd"
+          - "test_custom_pattern_config"
+          - "proptest_satd_detection_consistency"
+        acceptance:
+          - "Zero false negatives"
+          - "Configurable patterns"
+          - "Sub-second file scanning"
+
+      - id: PMAT-008
+        title: "Efficiency analyzer"
+        priority: high
+        requirements:
+          - "Big-O complexity detection"
+          - "Space complexity analysis"
+          - "Symbolic execution engine"
+        tests:
+          - "test_loop_complexity_detection"
+          - "test_recursive_complexity"
+          - "test_space_complexity_bounds"
+          - "proptest_complexity_bounds_correct"
+        acceptance:
+          - "Detects O(n²) and higher"
+          - "Handles recursion correctly"
+          - "Property tests passing"
+
+      - id: PMAT-009
+        title: "Shannon entropy calculator"
+        priority: medium
+        requirements:
+          - "Code diversity metrics"
+          - "Duplication detection"
+          - "Entropy threshold enforcement"
+        tests:
+          - "test_shannon_entropy_calculation"
+          - "test_duplication_detection"
+          - "test_entropy_thresholds"
+          - "proptest_entropy_properties"
+        acceptance:
+          - "Entropy calculation accurate"
+          - "Duplication <2% enforced"
+          - "Integration with quality gate"
+
+      - id: PMAT-010
+        title: "Git hook integration"
+        priority: critical
+        requirements:
+          - "Pre-commit quality checks"
+          - "Staged file analysis"
+          - "Incremental checking"
+        tests:
+          - "test_pre_commit_hook_blocks_violations"
+          - "test_staged_files_analysis"
+          - "test_incremental_check_performance"
+          - "integration_test_git_workflow"
+        acceptance:
+          - "Hooks installed automatically"
+          - "Sub-second for small commits"
+          - "Clear violation reporting"
+
+  # SPRINT 3: In-Process Actor System (Week 5-6)
+  - id: sprint-3
+    name: "In-Process Actor System"
+    goal: "Implement Actix-based agent architecture"
+    duration: 2_weeks
+    tickets:
+      - id: PMAT-011
+        title: "Setup Actix actor system"
+        priority: critical
+        requirements:
+          - "Actix integration"
+          - "Actor supervision tree"
+          - "Message routing infrastructure"
+        tests:
+          - "test_actor_spawn_and_lifecycle"
+          - "test_supervision_restart_strategy"
+          - "test_message_routing"
+          - "proptest_actor_message_ordering"
+        acceptance:
+          - "Actors spawn <50ms P99"
+          - "Supervision tree stable"
+          - "10K msg/s throughput"
+
+      - id: PMAT-012
+        title: "Implement AnalyzerActor"
+        priority: high
+        requirements:
+          - "Async complexity analysis"
+          - "Result caching"
+          - "Bounded mailbox"
+        tests:
+          - "test_analyzer_actor_messages"
+          - "test_cache_hit_performance"
+          - "test_mailbox_backpressure"
+          - "proptest_analysis_determinism"
+        acceptance:
+          - "Cache hit ratio >80%"
+          - "No mailbox overflow"
+          - "Concurrent analysis works"
+
+      - id: PMAT-013
+        title: "Implement TransformerActor"
+        priority: high
+        requirements:
+          - "AST transformation actor"
+          - "Transaction support"
+          - "Rollback capability"
+        tests:
+          - "test_transformer_actor_operations"
+          - "test_transaction_atomicity"
+          - "test_rollback_correctness"
+          - "proptest_transform_idempotence"
+        acceptance:
+          - "All transforms atomic"
+          - "Rollback 100% reliable"
+          - "No AST corruption"
+
+      - id: PMAT-014
+        title: "Implement ValidatorActor"
+        priority: high
+        requirements:
+          - "Quality validation actor"
+          - "Threshold checking"
+          - "Parallel validation"
+        tests:
+          - "test_validator_actor_rules"
+          - "test_threshold_enforcement"
+          - "test_parallel_validation"
+          - "proptest_validation_consistency"
+        acceptance:
+          - "All rules enforced"
+          - "Parallel speedup >3x"
+          - "Zero false negatives"
+
+      - id: PMAT-015
+        title: "Actor orchestration supervisor"
+        priority: critical
+        requirements:
+          - "QualityGateSupervisor actor"
+          - "Workflow coordination"
+          - "Error aggregation"
+        tests:
+          - "test_supervisor_coordination"
+          - "test_workflow_execution"
+          - "test_error_handling"
+          - "proptest_workflow_determinism"
+        acceptance:
+          - "Workflows complete reliably"
+          - "Errors properly aggregated"
+          - "Supervisor auto-restarts"
+
+  # SPRINT 4: Agent Message Protocol (Week 7-8)
+  - id: sprint-4
+    name: "Agent Message Protocol"
+    goal: "Implement inter-agent communication"
+    duration: 2_weeks
+    tickets:
+      - id: PMAT-016
+        title: "Define message format"
+        priority: critical
+        requirements:
+          - "Zero-copy message structure"
+          - "Header with metadata"
+          - "Priority queue support"
+        tests:
+          - "test_message_serialization"
+          - "test_zero_copy_performance"
+          - "test_priority_ordering"
+          - "proptest_message_round_trip"
+        acceptance:
+          - "Serialization <1ms"
+          - "Zero allocations in hot path"
+          - "Priority queue working"
+
+      - id: PMAT-017
+        title: "Request-response pattern"
+        priority: high
+        requirements:
+          - "Correlation ID tracking"
+          - "Timeout handling"
+          - "Response routing"
+        tests:
+          - "test_request_response_flow"
+          - "test_timeout_behavior"
+          - "test_correlation_tracking"
+          - "proptest_response_matching"
+        acceptance:
+          - "100% response matching"
+          - "Timeouts enforced"
+          - "No message loss"
+
+      - id: PMAT-018
+        title: "Publish-subscribe broker"
+        priority: high
+        requirements:
+          - "Topic-based routing"
+          - "Parallel broadcast"
+          - "Subscription management"
+        tests:
+          - "test_pubsub_broadcast"
+          - "test_topic_filtering"
+          - "test_subscription_lifecycle"
+          - "proptest_broadcast_delivery"
+        acceptance:
+          - "Broadcast <5ms for 100 subs"
+          - "No message duplication"
+          - "Dynamic subscriptions work"
+
+      - id: PMAT-019
+        title: "Circuit breaker pattern"
+        priority: critical
+        requirements:
+          - "Failure detection"
+          - "State transitions"
+          - "Fallback handling"
+        tests:
+          - "test_circuit_breaker_states"
+          - "test_failure_threshold"
+          - "test_fallback_execution"
+          - "proptest_breaker_consistency"
+        acceptance:
+          - "Breaker opens on threshold"
+          - "Fallback always available"
+          - "Recovery works correctly"
+
+      - id: PMAT-020
+        title: "Backpressure control"
+        priority: high
+        requirements:
+          - "Token bucket rate limiting"
+          - "Flow control mechanisms"
+          - "Queue depth monitoring"
+        tests:
+          - "test_rate_limiting"
+          - "test_backpressure_application"
+          - "test_queue_monitoring"
+          - "proptest_rate_limit_bounds"
+        acceptance:
+          - "Rate limits enforced ±5%"
+          - "No queue overflow"
+          - "Graceful degradation"
+
+  # SPRINT 5: State Management (Week 9-10)
+  - id: sprint-5
+    name: "State Management"
+    goal: "Hybrid event sourcing with snapshots"
+    duration: 2_weeks
+    tickets:
+      - id: PMAT-021
+        title: "Event store implementation"
+        priority: critical
+        requirements:
+          - "Append-only event log"
+          - "Event ordering guarantees"
+          - "Persistence layer"
+        tests:
+          - "test_event_append_ordering"
+          - "test_persistence_durability"
+          - "test_concurrent_writes"
+          - "proptest_event_log_consistency"
+        acceptance:
+          - "Events never lost"
+          - "Ordering preserved"
+          - "10K events/sec write"
+
+      - id: PMAT-022
+        title: "Snapshot store"
+        priority: critical
+        requirements:
+          - "Zero-copy serialization"
+          - "Compression (zstd)"
+          - "Atomic writes"
+        tests:
+          - "test_snapshot_creation"
+          - "test_compression_ratio"
+          - "test_atomic_writes"
+          - "proptest_snapshot_recovery"
+        acceptance:
+          - "Compression ratio >3:1"
+          - "Snapshot <100ms for 10MB"
+          - "100% recovery success"
+
+      - id: PMAT-023
+        title: "Adaptive snapshot scheduler"
+        priority: high
+        requirements:
+          - "Multiple strategies"
+          - "Recovery time targeting"
+          - "Performance metrics"
+        tests:
+          - "test_snapshot_strategies"
+          - "test_adaptive_scheduling"
+          - "test_recovery_time_bounds"
+          - "proptest_scheduler_decisions"
+        acceptance:
+          - "Recovery <1s target met"
+          - "Adaptive strategy works"
+          - "Metrics collected accurately"
+
+      - id: PMAT-024
+        title: "State recovery system"
+        priority: critical
+        requirements:
+          - "Fast recovery from snapshots"
+          - "Event replay engine"
+          - "Parallel replay support"
+        tests:
+          - "test_recovery_from_snapshot"
+          - "test_event_replay"
+          - "test_parallel_replay"
+          - "proptest_recovery_correctness"
+        acceptance:
+          - "Recovery <1s for 100K events"
+          - "State matches exactly"
+          - "Parallel speedup >3x"
+
+      - id: PMAT-025
+        title: "Raft consensus for critical state"
+        priority: high
+        requirements:
+          - "Raft implementation"
+          - "Leader election"
+          - "Log replication"
+        tests:
+          - "test_raft_leader_election"
+          - "test_log_replication"
+          - "test_split_brain_prevention"
+          - "proptest_consensus_properties"
+        acceptance:
+          - "Consensus in <100ms"
+          - "No split brain possible"
+          - "Linearizability guaranteed"
+
+  # SPRINT 6: Resource Control (Week 11-12)
+  - id: sprint-6
+    name: "Resource Control"
+    goal: "Cross-platform resource management"
+    duration: 2_weeks
+    tickets:
+      - id: PMAT-026
+        title: "Unified resource controller"
+        priority: critical
+        requirements:
+          - "CPU limiting"
+          - "Memory control"
+          - "I/O throttling"
+        tests:
+          - "test_cpu_limiting"
+          - "test_memory_enforcement"
+          - "test_io_throttling"
+          - "proptest_resource_bounds"
+        acceptance:
+          - "Limits enforced ±10%"
+          - "Cross-platform support"
+          - "No resource leaks"
+
+      - id: PMAT-027
+        title: "Platform-specific enforcers"
+        priority: high
+        requirements:
+          - "Linux cgroups v2"
+          - "macOS QoS classes"
+          - "Windows Job Objects"
+        tests:
+          - "test_linux_cgroups"
+          - "test_macos_qos"
+          - "test_windows_jobs"
+          - "integration_test_enforcement"
+        acceptance:
+          - "Each platform working"
+          - "Graceful fallbacks"
+          - "Resource isolation verified"
+
+      - id: PMAT-028
+        title: "Resource monitoring"
+        priority: high
+        requirements:
+          - "Real-time metrics"
+          - "Historical tracking"
+          - "Alert thresholds"
+        tests:
+          - "test_metrics_collection"
+          - "test_historical_storage"
+          - "test_alert_triggering"
+          - "proptest_metrics_accuracy"
+        acceptance:
+          - "Metrics accurate ±5%"
+          - "Sub-second updates"
+          - "Alerts fire correctly"
+
+      - id: PMAT-029
+        title: "Bulkhead isolation"
+        priority: critical
+        requirements:
+          - "Thread pool isolation"
+          - "Resource partitioning"
+          - "Failure containment"
+        tests:
+          - "test_thread_pool_isolation"
+          - "test_resource_partitions"
+          - "test_failure_containment"
+          - "chaos_test_cascading_failures"
+        acceptance:
+          - "No cascade failures"
+          - "Pools isolated completely"
+          - "Performance maintained"
+
+      - id: PMAT-030
+        title: "Adaptive throttling"
+        priority: medium
+        requirements:
+          - "Dynamic throttle calculation"
+          - "Sleep injection"
+          - "Memory pressure response"
+        tests:
+          - "test_throttle_calculation"
+          - "test_sleep_injection"
+          - "test_memory_pressure"
+          - "proptest_throttling_fairness"
+        acceptance:
+          - "Throttling effective"
+          - "Fair resource sharing"
+          - "System remains responsive"
+
+  # SPRINT 7: MCP Integration (Week 13-14)
+  - id: sprint-7
+    name: "MCP Integration"
+    goal: "Full MCP protocol support"
+    duration: 2_weeks
+    tickets:
+      - id: PMAT-031
+        title: "Agent-aware tool registration"
+        priority: critical
+        requirements:
+          - "Extended tool descriptors"
+          - "Agent metadata"
+          - "Capability declaration"
+        tests:
+          - "test_tool_registration"
+          - "test_agent_metadata"
+          - "test_capability_matching"
+          - "proptest_tool_discovery"
+        acceptance:
+          - "All tools registered"
+          - "Claude Code compatible"
+          - "Discovery working"
+
+      - id: PMAT-032
+        title: "MCP server implementation"
+        priority: critical
+        requirements:
+          - "Tool call handling"
+          - "Agent routing"
+          - "Response formatting"
+        tests:
+          - "test_mcp_tool_calls"
+          - "test_agent_routing"
+          - "test_response_format"
+          - "integration_test_claude_code"
+        acceptance:
+          - "MCP compliance 100%"
+          - "Claude Code works"
+          - "All tools accessible"
+
+      - id: PMAT-033
+        title: "Agent discovery protocol"
+        priority: high
+        requirements:
+          - "Agent manifest format"
+          - "Capability advertisement"
+          - "Health endpoints"
+        tests:
+          - "test_manifest_format"
+          - "test_capability_advertisement"
+          - "test_health_checks"
+          - "proptest_discovery_consistency"
+        acceptance:
+          - "Discovery reliable"
+          - "Manifests valid"
+          - "Health checks accurate"
+
+      - id: PMAT-034
+        title: "Service registry"
+        priority: high
+        requirements:
+          - "Static configuration"
+          - "Hot reload support"
+          - "Optional etcd backend"
+        tests:
+          - "test_static_config"
+          - "test_hot_reload"
+          - "test_etcd_integration"
+          - "proptest_registry_consistency"
+        acceptance:
+          - "Config reload works"
+          - "No downtime on reload"
+          - "etcd optional but working"
+
+      - id: PMAT-035
+        title: "Legacy CLI adapter"
+        priority: critical
+        requirements:
+          - "Backward compatibility"
+          - "Command routing"
+          - "Output formatting"
+        tests:
+          - "test_legacy_commands"
+          - "test_command_routing"
+          - "test_output_compatibility"
+          - "integration_test_existing_scripts"
+        acceptance:
+          - "All commands working"
+          - "No breaking changes"
+          - "Scripts still run"
+
+  # SPRINT 8: Workflow Orchestration (Week 15-16)
+  - id: sprint-8
+    name: "Workflow Orchestration"
+    goal: "DAG-based workflow execution"
+    duration: 2_weeks
+    tickets:
+      - id: PMAT-036
+        title: "DAG workflow engine"
+        priority: critical
+        requirements:
+          - "DAG construction"
+          - "Topological sorting"
+          - "Execution planning"
+        tests:
+          - "test_dag_construction"
+          - "test_topological_sort"
+          - "test_execution_plan"
+          - "proptest_dag_properties"
+        acceptance:
+          - "DAGs validated correctly"
+          - "Optimal execution order"
+          - "Parallelism exploited"
+
+      - id: PMAT-037
+        title: "Workflow executor"
+        priority: critical
+        requirements:
+          - "Stage-based execution"
+          - "Parallel node execution"
+          - "Error aggregation"
+        tests:
+          - "test_stage_execution"
+          - "test_parallel_nodes"
+          - "test_error_handling"
+          - "proptest_execution_determinism"
+        acceptance:
+          - "Workflows complete"
+          - "Parallelism working"
+          - "Errors handled gracefully"
+
+      - id: PMAT-038
+        title: "Saga coordinator"
+        priority: high
+        requirements:
+          - "Saga pattern implementation"
+          - "Compensation tracking"
+          - "Distributed transactions"
+        tests:
+          - "test_saga_execution"
+          - "test_compensation_rollback"
+          - "test_transaction_semantics"
+          - "proptest_saga_consistency"
+        acceptance:
+          - "Sagas atomic"
+          - "Compensations work"
+          - "No partial states"
+
+      - id: PMAT-039
+        title: "Event-driven choreography"
+        priority: medium
+        requirements:
+          - "Event bus implementation"
+          - "Subscription management"
+          - "Event ordering"
+        tests:
+          - "test_event_bus"
+          - "test_subscriptions"
+          - "test_event_ordering"
+          - "proptest_event_delivery"
+        acceptance:
+          - "Events delivered once"
+          - "Ordering preserved"
+          - "No event loss"
+
+      - id: PMAT-040
+        title: "Retry and compensation"
+        priority: high
+        requirements:
+          - "Retry policies"
+          - "Exponential backoff"
+          - "Compensation logic"
+        tests:
+          - "test_retry_policies"
+          - "test_backoff_calculation"
+          - "test_compensation_execution"
+          - "proptest_retry_bounds"
+        acceptance:
+          - "Retries bounded"
+          - "Backoff working"
+          - "Compensations reliable"
+
+validation:
+  continuous_integration:
+    - cargo build --release
+    - cargo test --all-features
+    - cargo clippy -- -D warnings
+    - cargo fmt -- --check
+    - cargo tarpaulin --out Xml --output-dir coverage
+    - cargo mutants --minimum-score 0.90
+
+  quality_gates:
+    - pmat analyze complexity --max 10
+    - pmat analyze satd --zero-tolerance
+    - pmat analyze efficiency --max "O(n log n)"
+    - pmat quality-score --min 9.5
+
+  performance_benchmarks:
+    - agent_spawn_latency_p99: 50ms
+    - message_throughput: 10000/s
+    - state_recovery_time: 1s
+    - workflow_parallelism: 16x
+
+execution_protocol:
+  ticket_workflow:
+    - step: write_failing_tests
+      description: "Write comprehensive test suite that fails"
+      deliverable: "Red tests committed"
+
+    - step: minimal_implementation
+      description: "Implement just enough to pass tests"
+      deliverable: "Green tests, no extras"
+
+    - step: refactor_with_quality
+      description: "Refactor while maintaining green"
+      deliverable: "Clean code, all metrics pass"
+
+    - step: atomic_commit
+      description: "Single commit per ticket"
+      deliverable: "Git log shows ticket complete"
+
+    - step: clean_build
+      description: "Verify build passes all checks"
+      deliverable: "CI/CD green"
+
+metrics_tracking:
+  per_ticket:
+    - test_coverage
+    - mutation_score
+    - complexity_metrics
+    - performance_benchmarks
+    - quality_score
+
+  per_sprint:
+    - velocity
+    - defect_rate
+    - technical_debt
+    - test_suite_runtime
+    - build_time
+
+deployment_strategy:
+  phases:
+    - phase: development
+      features:
+        agent_system: true
+        distributed_state: false
+        resource_isolation: true
+
+    - phase: staging
+      features:
+        agent_system: true
+        distributed_state: true
+        resource_isolation: true
+
+    - phase: production
+      features:
+        agent_system: false  # Start conservative
+        distributed_state: false
+        resource_isolation: true
+      rollout:
+        strategy: canary
+        percentage: 5
+        duration: 1_week
