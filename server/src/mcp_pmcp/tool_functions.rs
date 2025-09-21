@@ -436,7 +436,7 @@ fn create_storage_backend(
         }
         #[cfg(feature = "rocksdb-backend")]
         Some("rocksdb") => {
-            let temp_path = std::env::temp_dir().join("tdg-mcp-rocksdb");
+            let _temp_path = std::env::temp_dir().join("tdg-mcp-rocksdb");
             return Err(anyhow::anyhow!("RocksDB backend not yet implemented"));
         }
         Some(backend) => Err(anyhow::anyhow!(
