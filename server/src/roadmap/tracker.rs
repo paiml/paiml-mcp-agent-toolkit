@@ -467,6 +467,9 @@ mod tests {
     fn test_calculate_velocity() {
         let mut tracker = VelocityTracker::new("test-sprint");
 
+        // Set start time to 2 days ago to ensure velocity calculation works
+        tracker.started_at = Utc::now() - chrono::Duration::days(2);
+
         // Add some completed tasks
         let task1 = CompletedTask {
             task_id: "TASK-001".to_string(),
