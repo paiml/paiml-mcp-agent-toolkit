@@ -1,6 +1,9 @@
 pub mod gate;
 pub mod analyzers;
 pub mod complexity;
+pub mod complexity_enhanced;
 pub mod satd;
 pub mod efficiency;
+pub mod efficiency_enhanced;
 pub mod entropy;
+pub mod git_hooks;
