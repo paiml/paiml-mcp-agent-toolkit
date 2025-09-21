@@ -609,11 +609,11 @@ mod tests {
             metric: "test_metric".to_string(),
             condition: AlertCondition::GreaterThan,
             threshold: 50.0,
-            duration: Duration::from_secs(10),
+            duration: Duration::from_millis(5),
             severity: AlertSeverity::Warning,
             enabled: true,
             notification_channels: vec![],
-            cooldown_period: Duration::from_secs(60),
+            cooldown_period: Duration::from_millis(100),
             metadata: HashMap::new(),
         };
 
@@ -641,11 +641,11 @@ mod tests {
             metric: "test_metric".to_string(),
             condition: AlertCondition::GreaterThan,
             threshold: 10.0,
-            duration: Duration::from_secs(5),
+            duration: Duration::from_millis(10),
             severity: AlertSeverity::Error,
             enabled: true,
             notification_channels: vec![],
-            cooldown_period: Duration::from_secs(30),
+            cooldown_period: Duration::from_millis(100),
             metadata: HashMap::new(),
         };
 
@@ -687,11 +687,11 @@ mod tests {
             metric: "test_metric".to_string(),
             condition: AlertCondition::GreaterThan,
             threshold: 30.0,
-            duration: Duration::from_secs(1),
+            duration: Duration::from_millis(1),
             severity: AlertSeverity::Warning,
             enabled: true,
             notification_channels: vec![],
-            cooldown_period: Duration::from_secs(10),
+            cooldown_period: Duration::from_millis(50),
             metadata: HashMap::new(),
         };
 
