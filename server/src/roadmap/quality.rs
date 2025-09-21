@@ -424,7 +424,10 @@ fn extract_coverage_from_output(output: &str) -> Option<u8> {
         let rest = &output[idx + 9..].trim();
         if let Some(percent_pos) = rest.find('%') {
             let num_str = &rest[..percent_pos].trim();
-            return num_str.parse().ok();
+            // Parse as f64 first to handle decimals, then truncate to u8
+            if let Ok(val) = num_str.parse::<f64>() {
+                return Some(val as u8);
+            }
         }
     }
 
@@ -432,7 +435,10 @@ fn extract_coverage_from_output(output: &str) -> Option<u8> {
         let rest = &output[idx + 8..].trim();
         if let Some(percent_pos) = rest.find('%') {
             let num_str = &rest[..percent_pos].trim();
-            return num_str.parse().ok();
+            // Parse as f64 first to handle decimals, then truncate to u8
+            if let Ok(val) = num_str.parse::<f64>() {
+                return Some(val as u8);
+            }
         }
     }
 
