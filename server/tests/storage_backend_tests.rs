@@ -189,7 +189,7 @@ fn test_backend_clear() {
 #[cfg(feature = "rocksdb-backend")]
 #[test]
 fn test_rocksdb_backend() {
-    use pmat::tdg::RocksDbBackend;
+    use pmat::tdg::storage_backend::RocksDbBackend;
 
     let temp_dir = TempDir::new().unwrap();
     let backend = RocksDbBackend::new(temp_dir.path()).unwrap();
