@@ -4,5 +4,6 @@
 mod types_tests;
 mod builder_tests;
 mod pagerank_tests;
+mod community_tests;
 mod properties;
 mod deterministic;
