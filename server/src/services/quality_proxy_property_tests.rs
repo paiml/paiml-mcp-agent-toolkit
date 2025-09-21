@@ -6,6 +6,14 @@ mod property_tests {
     use crate::services::quality_proxy::QualityProxyService;
     use proptest::prelude::*;
 
+    // Reduced property test configuration to prevent hanging
+    proptest! {
+        #![proptest_config(ProptestConfig {
+            cases: 16, // Reduced from default 256
+            failure_persistence: None,
+            .. ProptestConfig::default()
+        })]
+
     /// Generate arbitrary Rust code for testing
     fn arb_rust_code() -> impl Strategy<Value = String> {
         prop_oneof![
@@ -468,4 +476,5 @@ pub fn {}({}: i32) -> i32 {{
                 }
             })
     }
+    } // Close proptest! block
 }

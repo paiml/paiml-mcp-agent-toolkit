@@ -712,7 +712,7 @@ mod tests {
     use tokio::time::sleep;
 
     #[tokio::test]
-    #[ignore = "Test hangs - needs investigation"]
+    #[ignore = "Test hangs during compilation - tdg module conflicts"]
     async fn test_resource_controller_creation() {
         let controller = PlatformResourceController::new(ResourceLimits::default());
         let usage = controller.get_current_usage().await;
