@@ -460,34 +460,6 @@ main() {
 main "$@"
 "#;
 
-    const BASH_SCRIPT_WITH_PIPELINES: &str = r#"#!/bin/bash
-
-# Script demonstrating complex pipelines
-analyze_logs() {
-    local log_file="$1"
-
-    # Complex pipeline with multiple commands
-    cat "$log_file" | \
-        grep -E "(ERROR|WARN)" | \
-        sort | \
-        uniq -c | \
-        sort -nr | \
-        head -10 | \
-        awk '{print $2 ": " $1 " occurrences"}'
-
-    # Another pipeline with conditional processing
-    if ps aux | grep -v grep | grep -q "my_process"; then
-        echo "Process is running"
-    else
-        echo "Process is not running"
-    fi
-}
-
-# Pipeline with variable assignment
-export JAVA_OPTS="-Xmx1024m -Xms512m"
-java_processes=$(ps aux | grep java | wc -l)
-echo "Found $java_processes Java processes"
-"#;
 
     #[test]
     fn test_simple_bash_script_analysis() {

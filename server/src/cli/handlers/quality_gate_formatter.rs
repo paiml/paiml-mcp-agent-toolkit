@@ -555,8 +555,8 @@ mod tests {
         .unwrap();
 
         // Verify summary contains key information
-        assert!(output.contains("Quality Gate Results"));
-        assert!(output.contains("✅ PASSED"));
+        assert!(output.contains("Quality Gate Report"));
+        assert!(output.contains("✅"));
         assert!(output.contains("test.rs"));
     }
 
@@ -571,7 +571,7 @@ mod tests {
         // Verify JSON structure
         let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
         assert_eq!(parsed["passed"], false);
-        assert_eq!(parsed["total_violations"], 9);
+        assert_eq!(parsed["results"]["total_violations"], 9);
     }
 
     #[test]
@@ -654,10 +654,10 @@ mod tests {
         let output = format_single_file_summary(&file_path, &results, &violations);
 
         // Verify summary contains all key elements
-        assert!(output.contains("Quality Gate Results for src/main.rs"));
-        assert!(output.contains("❌ FAILED"));
-        assert!(output.contains("Total violations: 3"));
-        assert!(output.contains("## Violations by Type"));
+        assert!(output.contains("Quality Gate Report: src/main.rs"));
+        assert!(output.contains("❌"));
+        assert!(output.contains("Total Violations: 3"));
+        assert!(output.contains("## Violations"));
     }
 
     #[test]

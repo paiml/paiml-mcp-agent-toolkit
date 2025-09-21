@@ -204,7 +204,7 @@ async fn test_tdg_storage_statistics_accuracy() {
         .get_storage_stats()
         .expect("Should have storage stats");
     assert_eq!(stats.total_entries, 3, "Should have 3 stored scores");
-    assert!(stats.hot_entries >= 0, "Hot cache should be tracked");
+    // hot_entries is always >= 0 for unsigned types
     assert!(
         stats.compression_ratio > 0.0,
         "Compression ratio should be calculated"

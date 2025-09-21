@@ -317,7 +317,7 @@ mod tests {
                     let file_path = temp_dir.path().join(&key);
                     std::fs::write(&file_path, &content).unwrap();
 
-                    let file_context = crate::services::context::FileContext {
+                    let _file_context = crate::services::context::FileContext {
                         path: file_path.to_string_lossy().to_string(),
                         language: "rust".to_string(),
                         items: vec![],

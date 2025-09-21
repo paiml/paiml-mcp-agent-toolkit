@@ -378,8 +378,8 @@ mod tests {
         let result = analyzer.analyze_project(temp_dir.path()).await.unwrap();
 
         assert_eq!(result.project_path, temp_dir.path());
-        // Basic structure validation - actual complexity analysis would be implemented later
-        assert!(result.file_metrics.is_empty()); // Placeholder implementation
+        // Should have analyzed at least one file
+        assert!(!result.file_metrics.is_empty());
     }
 }
 

@@ -607,7 +607,8 @@ pub fn greet(name: &str) -> String {
             file_path: "test.rs".to_string(),
             content: Some(
                 r#"fn process() {
-    // Test comment for SATD detection (example removed)
+    // TODO: This needs to be implemented properly
+    // FIXME: Critical bug here
     unimplemented!()
 }"#
                 .to_string(),

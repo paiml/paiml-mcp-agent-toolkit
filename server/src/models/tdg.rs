@@ -279,7 +279,17 @@ mod property_tests {
         fn tdg_score_roundtrip_serialization(score in valid_tdg_score()) {
             let json = serde_json::to_string(&score)?;
             let deserialized: TDGScore = serde_json::from_str(&json)?;
-            prop_assert_eq!(score, deserialized);
+            // Use approximate equality for floating point values
+            const EPSILON: f64 = 1e-10;
+            prop_assert!((score.value - deserialized.value).abs() < EPSILON);
+            prop_assert!((score.components.complexity - deserialized.components.complexity).abs() < EPSILON);
+            prop_assert!((score.components.churn - deserialized.components.churn).abs() < EPSILON);
+            prop_assert!((score.components.coupling - deserialized.components.coupling).abs() < EPSILON);
+            prop_assert!((score.components.domain_risk - deserialized.components.domain_risk).abs() < EPSILON);
+            prop_assert!((score.components.duplication - deserialized.components.duplication).abs() < EPSILON);
+            prop_assert_eq!(score.severity, deserialized.severity);
+            prop_assert!((score.percentile - deserialized.percentile).abs() < EPSILON);
+            prop_assert!((score.confidence - deserialized.confidence).abs() < EPSILON);
         }
 
         #[test]
