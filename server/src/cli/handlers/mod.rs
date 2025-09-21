@@ -21,6 +21,8 @@ pub mod duplication_analysis;
 pub mod enforce_handlers;
 pub mod enhanced_reporting_handlers;
 pub mod generation_handlers;
+#[cfg(test)]
+pub mod graph_context_integration_tests;
 pub mod hooks_command_handlers;
 pub mod incremental_coverage_handler;
 pub mod lint_hotspot_handlers;
