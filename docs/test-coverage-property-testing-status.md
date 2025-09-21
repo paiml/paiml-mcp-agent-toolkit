@@ -49,7 +49,6 @@ Property testing and test coverage infrastructure is **partially operational** w
 
 ### Coverage Tools
 - **Primary**: `cargo llvm-cov` (installed, but timing out on full suite)
-- **Fallback**: `cargo tarpaulin` (not currently used)
 - **Property Tests**: Custom metrics script working
 
 ### Current Metrics

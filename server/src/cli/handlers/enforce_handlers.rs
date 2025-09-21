@@ -985,7 +985,7 @@ pub async fn run_coverage_analysis(
 ) -> Result<Vec<QualityViolation>> {
     let mut violations = Vec::new();
 
-    // NOTE: Would use external tool like tarpaulin
+    // NOTE: Would use external tool like cargo llvm-cov
     // For now, simulate coverage check
     let coverage = 65.0; // Simulated coverage
 

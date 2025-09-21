@@ -55,7 +55,7 @@
     "coverage": {
       "percentage": null,
       "target": 80.0,
-      "measurement_method": "cargo tarpaulin --workspace",
+      "measurement_method": "cargo llvm-cov --workspace",
       "status": "comprehensive_coverage_achieved"
     },
     "complexity": {
