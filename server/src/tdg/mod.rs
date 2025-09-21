@@ -37,13 +37,13 @@ pub use diagnostics::{
 pub use formatters::{format_human, format_json, format_markdown};
 pub use language_simple::{Language, LanguageRules};
 pub use resource_control::{
-    OperationPriority, PlatformResourceController, ResourceAction, ResourceAllocation,
-    ResourceControllerFactory, ResourceEnforcementStats, ResourceLimits, ResourcePressure,
-    ResourceUsage,
+    OperationType as ResourceOperationType, OperationPriority, PlatformResourceController,
+    ResourceAction, ResourceAllocation, ResourceControllerFactory, ResourceEnforcementStats,
+    ResourceLimits, ResourcePressure, ResourceUsage,
 };
 pub use scheduler::{
-    OperationType, ScheduleError, ScheduleGuard, SchedulePermit, SchedulerFactory,
-    SchedulingStatistics, SimpleFairScheduler,
+    OperationType as SchedulerOperationType, ScheduleError, ScheduleGuard, SchedulePermit,
+    SchedulerFactory, SchedulingStatistics, SimpleFairScheduler,
 };
 pub use storage::{
     AnalysisMetadata, ComponentScores, FileIdentity, FullTdgRecord, HotCacheEntry,
