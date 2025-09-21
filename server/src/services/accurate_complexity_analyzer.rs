@@ -97,7 +97,7 @@ impl AccurateComplexityAnalyzer {
         let name = func.sig.ident.to_string();
         let suppressed = self.respect_annotations && self.has_suppress_annotation(&func.attrs);
 
-        let mut visitor = ComplexityVisitor::new();
+        let mut visitor = ComplexityVisitor::new().with_function_name(name.clone());
         visitor.visit_item_fn(func);
 
         FunctionMetrics {
@@ -144,6 +144,7 @@ struct ComplexityVisitor {
     cyclomatic: u32,
     cognitive: u32,
     nesting_level: u32,
+    function_name: Option<String>,
 }
 
 impl ComplexityVisitor {
@@ -152,7 +153,13 @@ impl ComplexityVisitor {
             cyclomatic: 1, // Base complexity
             cognitive: 0,
             nesting_level: 0,
+            function_name: None,
         }
+    }
+
+    fn with_function_name(mut self, name: String) -> Self {
+        self.function_name = Some(name);
+        self
     }
 
     fn add_cyclomatic(&mut self, amount: u32) {
@@ -169,13 +176,33 @@ impl<'ast> Visit<'ast> for ComplexityVisitor {
     fn visit_expr(&mut self, expr: &'ast Expr) {
         match expr {
             // Control flow that adds to cyclomatic complexity
-            Expr::If(_if_expr) => {
+            Expr::If(if_expr) => {
                 self.add_cyclomatic(1);
-                // For Sprint 82 fix: Just add 1 for cognitive complexity
-                // Don't use nesting incorrectly
                 self.add_cognitive(1);
-                // Still visit children
-                syn::visit::visit_expr(self, expr);
+
+                // Visit the condition and then block
+                self.visit_expr(&if_expr.cond);
+                self.nesting_level += 1;
+                for stmt in &if_expr.then_branch.stmts {
+                    self.visit_stmt(stmt);
+                }
+                self.nesting_level -= 1;
+
+                // Handle else clause - don't add extra complexity for else-if chains
+                if let Some((_, else_expr)) = &if_expr.else_branch {
+                    match else_expr.as_ref() {
+                        Expr::If(_) => {
+                            // This is an else-if, visit it without adding extra complexity
+                            self.visit_expr(else_expr);
+                        }
+                        _ => {
+                            // This is a plain else block
+                            self.nesting_level += 1;
+                            self.visit_expr(else_expr);
+                            self.nesting_level -= 1;
+                        }
+                    }
+                }
             }
             Expr::Match(match_expr) => {
                 // Match adds 1, plus 1 for each arm with a guard
@@ -232,9 +259,19 @@ impl<'ast> Visit<'ast> for ComplexityVisitor {
                 syn::visit::visit_expr(self, expr);
             }
             // Recursion detection (simplified - checks for function calls with same name)
-            Expr::Call(_call) => {
-                // Toyota Way Root Cause Fix: Only add cognitive complexity for actual recursion
-                // Don't add complexity for all function calls
+            Expr::Call(call) => {
+                // Check if this is a recursive call
+                if let Expr::Path(path) = call.func.as_ref() {
+                    if let Some(segment) = path.path.segments.last() {
+                        let called_function = segment.ident.to_string();
+                        if let Some(ref current_function) = self.function_name {
+                            if called_function == *current_function {
+                                // This is a recursive call - add cognitive complexity
+                                self.add_cognitive(1);
+                            }
+                        }
+                    }
+                }
                 syn::visit::visit_expr(self, expr);
             }
             _ => syn::visit::visit_expr(self, expr),

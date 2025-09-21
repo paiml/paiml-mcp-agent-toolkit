@@ -157,6 +157,25 @@ impl BigOAnalyzer {
         trimmed.contains("binary_search") || trimmed.contains("binarySearch")
     }
 
+    fn detect_rust_iterator_patterns(function_body: &str) -> bool {
+        let linear_patterns = [
+            ".iter()",
+            ".into_iter()",
+            ".sum()",
+            ".collect()",
+            ".map(",
+            ".filter(",
+            ".fold(",
+            ".reduce(",
+            ".for_each(",
+            ".find(",
+            ".any(",
+            ".all(",
+        ];
+
+        linear_patterns.iter().any(|pattern| function_body.contains(pattern))
+    }
+
     fn calculate_loop_depth(lines: &[&str], loop_keywords: &[&str]) -> usize {
         let mut loop_depth = 0;
         let mut max_loop_depth = 0;
@@ -356,6 +375,7 @@ impl BigOAnalyzer {
                     lang,
                 );
 
+
                 if complexity.confidence >= config.confidence_threshold {
                     functions.push(FunctionComplexity {
                         file_path: file_path.clone(),
@@ -389,6 +409,15 @@ impl BigOAnalyzer {
         // Calculate loop depth
         let max_loop_depth = Self::calculate_loop_depth(&lines, &loop_keywords);
 
+        // Check for iterator patterns in Rust (these are linear operations)
+        let mut has_iterator_pattern = false;
+        if language == "rust" {
+            has_iterator_pattern = Self::detect_rust_iterator_patterns(function_body);
+            if has_iterator_pattern {
+                notes.push("Iterator pattern detected (linear)".to_string());
+            }
+        }
+
         // Check for patterns
         let mut has_recursion = false;
         let mut has_sorting = false;
@@ -411,6 +440,11 @@ impl BigOAnalyzer {
 
         // Determine time complexity
         let mut time_complexity = Self::determine_time_complexity(max_loop_depth, has_recursion);
+
+        // Adjust for iterator patterns - these are linear operations
+        if has_iterator_pattern && (time_complexity.class == BigOClass::Constant || time_complexity.class == BigOClass::Unknown) {
+            time_complexity = ComplexityBound::linear().with_confidence(75);
+        }
 
         // Adjust for sorting operations
         if has_sorting

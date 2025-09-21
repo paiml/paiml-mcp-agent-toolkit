@@ -4,11 +4,11 @@ mod tests {
     use proptest::prelude::*;
     use std::path::PathBuf;
 
-    // Strategy for generating file paths
+    // Strategy for generating file paths (avoiding vendor patterns)
     prop_compose! {
         fn arb_file_path()
             (
-                segments in prop::collection::vec("[a-zA-Z0-9_.-]+", 1..5),
+                segments in prop::collection::vec("[a-zA-Z0-9_]+", 1..3),
                 extension in prop::option::of("[a-zA-Z0-9]+")
             )
             -> PathBuf
@@ -17,6 +17,10 @@ mod tests {
             if let Some(ext) = extension {
                 path.push('.');
                 path.push_str(&ext);
+            }
+            // Ensure path doesn't accidentally match vendor patterns
+            if path.contains("min") || path.contains("vendor") || path.contains("node_modules") {
+                return PathBuf::from("src/safe_test_file.rs");
             }
             PathBuf::from(path)
         }
@@ -228,7 +232,6 @@ mod tests {
         /// Property: Binary content is detected and skipped
         #[test]
         fn binary_content_detected(
-            path in arb_file_path(),
             binary_ratio in 0.4f64..1.0
         ) {
             let classifier = FileClassifier::default();
@@ -244,7 +247,9 @@ mod tests {
                 }
             }
 
-            let decision = classifier.should_parse(&path, &content);
+            // Use a safe path that won't trigger vendor detection
+            let safe_path = PathBuf::from("src/test_file.dat");
+            let decision = classifier.should_parse(&safe_path, &content);
 
             // Should be skipped as binary
             prop_assert!(matches!(decision, ParseDecision::Skip(SkipReason::BinaryContent)));
@@ -253,7 +258,6 @@ mod tests {
         /// Property: Files with null bytes are binary
         #[test]
         fn null_bytes_mean_binary(
-            path in arb_file_path(),
             prefix in prop::collection::vec(32u8..127, 0..100),
             suffix in prop::collection::vec(32u8..127, 0..100),
         ) {
@@ -262,14 +266,15 @@ mod tests {
             content.push(0); // Add null byte
             content.extend(suffix);
 
-            let decision = classifier.should_parse(&path, &content);
+            // Use a safe path that won't trigger vendor detection
+            let safe_path = PathBuf::from("src/test_file.dat");
+            let decision = classifier.should_parse(&safe_path, &content);
             prop_assert_eq!(decision, ParseDecision::Skip(SkipReason::BinaryContent));
         }
 
         /// Property: Lines over max length trigger skip
         #[test]
         fn long_lines_trigger_skip(
-            path in arb_file_path(),
             line_length in 11000usize..20000,
         ) {
             let classifier = FileClassifier::default();
@@ -280,7 +285,9 @@ mod tests {
             content.push_str(&"a".repeat(line_length));
             content.push_str("\nanother normal line");
 
-            let decision = classifier.should_parse(&path, content.as_bytes());
+            // Use a safe path that won't trigger vendor detection
+            let safe_path = PathBuf::from("src/test_file.js");
+            let decision = classifier.should_parse(&safe_path, content.as_bytes());
             prop_assert_eq!(decision, ParseDecision::Skip(SkipReason::LineTooLong));
         }
 
@@ -300,14 +307,15 @@ mod tests {
         /// Property: High entropy content is detected as minified
         #[test]
         fn high_entropy_detected_as_minified(
-            path in arb_file_path(),
             minified_content in arb_minified_content()
         ) {
             let classifier = FileClassifier::default();
 
             // Only test if content isn't too large or empty
             if !minified_content.is_empty() && minified_content.len() < LARGE_FILE_THRESHOLD {
-                let decision = classifier.should_parse(&path, &minified_content);
+                // Use a safe path that won't trigger vendor detection
+                let safe_path = PathBuf::from("src/test_file.js");
+                let decision = classifier.should_parse(&safe_path, &minified_content);
 
                 // Should be skipped as minified or for line length
                 prop_assert!(matches!(
@@ -321,12 +329,10 @@ mod tests {
         /// Property: Include large files flag works correctly
         #[test]
         fn include_large_files_flag_behavior(
-            segments in prop::collection::vec("[a-zA-Z0-9_-]+", 1..3),
             size in (LARGE_FILE_THRESHOLD + 1)..DEFAULT_MAX_FILE_SIZE
         ) {
             // Create a safe path that won't trigger vendor/build artifact detection
-            let filename = format!("{}.rs", segments.join("_"));
-            let path = PathBuf::from(format!("src/{}", filename));
+            let path = PathBuf::from("src/large_test_file.rs");
 
             let classifier = FileClassifier::default();
             let mut content = String::new();
