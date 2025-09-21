@@ -1085,13 +1085,18 @@ mod tests {
     /// Test execute_report_command (extracted method test)
     #[tokio::test]
     async fn test_execute_report_command() {
-        // OutputFormat already imported
-        use std::path::PathBuf;
+        // Toyota Way Root Cause Fix: Use temporary directory to avoid hanging on large codebase
+        use tempfile::TempDir;
+        use std::fs;
+
+        let temp_dir = TempDir::new().unwrap();
+        let test_file = temp_dir.path().join("test.rs");
+        fs::write(&test_file, "fn simple() -> i32 { 42 }").unwrap();
 
         let analyses = vec![String::from("complexity")];
 
         let result = CommandDispatcher::execute_report_command(
-            Some(PathBuf::from(".")),
+            Some(temp_dir.path().to_path_buf()),
             OutputFormat::Table,
             false,
             false,

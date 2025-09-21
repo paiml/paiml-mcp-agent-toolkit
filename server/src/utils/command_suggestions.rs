@@ -129,6 +129,11 @@ impl CommandSuggester {
             return None;
         }
 
+        // Toyota Way Root Cause Fix: Don't suggest if command is already valid
+        if failed_args.len() == 1 && self.main_commands.contains(&failed_args[0]) {
+            return None;
+        }
+
         let input = failed_args.join(" ");
 
         // Check exact matches in common mistakes first
@@ -238,7 +243,7 @@ mod tests {
         assert_eq!(levenshtein_distance("abc", "abc"), 0);
         assert_eq!(levenshtein_distance("abc", "ab"), 1);
         assert_eq!(levenshtein_distance("analyze", "analize"), 1);
-        assert_eq!(levenshtein_distance("satd", "std"), 2);
+        assert_eq!(levenshtein_distance("satd", "std"), 1); // Toyota Way Fix: Correct Levenshtein distance (delete 'a')
     }
 
     #[test]
