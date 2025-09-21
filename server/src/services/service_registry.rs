@@ -67,6 +67,7 @@ impl Default for AnalysisCapabilities {
 }
 
 /// Service registry for dependency injection
+#[derive(Clone)]
 pub struct ServiceRegistry {
     services: Arc<RwLock<HashMap<TypeId, Box<dyn Any + Send + Sync>>>>,
     service_names: Arc<RwLock<HashMap<TypeId, &'static str>>>,
@@ -198,7 +199,17 @@ mod tests {
         name: &'static str,
     }
 
+    struct AnotherTestService {
+        name: &'static str,
+    }
+
     impl Service for TestService {
+        fn service_name(&self) -> &'static str {
+            self.name
+        }
+    }
+
+    impl Service for AnotherTestService {
         fn service_name(&self) -> &'static str {
             self.name
         }
@@ -242,7 +253,7 @@ mod tests {
     fn test_service_builder() -> Result<()> {
         let registry = ServiceRegistryBuilder::new()
             .with_service(TestService { name: "service1" })?
-            .with_service(TestService { name: "service2" })?
+            .with_service(AnotherTestService { name: "service2" })?
             .build();
 
         assert_eq!(registry.list_services().len(), 2);

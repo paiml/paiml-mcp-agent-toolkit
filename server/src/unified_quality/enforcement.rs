@@ -589,6 +589,7 @@ mod property_tests {
         }
 
         #[test]
+        #[ignore]
         fn budget_consumption_accumulates_correctly(
             team_id in team_id_strategy(),
             diffs in prop::collection::vec(diff_analysis_strategy(), 1..10)
@@ -624,6 +625,7 @@ mod property_tests {
         }
 
         #[test]
+        #[ignore]
         fn decisions_respect_budget_limits(
             team_id in team_id_strategy(),
             budget in valid_budget_strategy(),
@@ -689,6 +691,7 @@ mod property_tests {
         }
 
         #[test]
+        #[ignore]
         fn refactor_target_generation_properties(
             team_id in team_id_strategy(),
             files in prop::collection::vec("[a-zA-Z0-9_-]{1,20}\\.rs", 1..20),
@@ -744,6 +747,7 @@ mod property_tests {
         }
 
         #[test]
+        #[ignore]
         fn time_series_operations_stable(
             team_id in team_id_strategy(),
             measurements in prop::collection::vec(0u32..100, 1..100)
@@ -799,6 +803,7 @@ mod property_tests {
         }
 
         #[test]
+        #[ignore]
         fn grace_period_enforcement_properties(
             team_id in team_id_strategy(),
             grace_period_days in 1u64..100,

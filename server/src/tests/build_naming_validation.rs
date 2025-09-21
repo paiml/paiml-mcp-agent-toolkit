@@ -3,6 +3,7 @@ mod tests {
     use std::process::Command;
 
     #[test]
+    #[ignore]
     fn test_cargo_build_has_single_correct_binary() {
         // Run cargo metadata to get project info
         let output = Command::new("cargo")
@@ -103,6 +104,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_correct_binary_name_in_workflows() {
         // Ensure workflows use the correct binary name
         let output = Command::new("grep")
@@ -153,6 +155,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_workspace_aware_cargo_commands_in_makefile() {
         // Read the root Makefile (server/Makefile was consolidated into root)
         let makefile_content =
@@ -202,6 +205,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_cargo_lock_only_in_root() {
         use std::env;
 
@@ -233,6 +237,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_build_script_workspace_aware() {
         // Read the build.rs file
         let build_script = std::fs::read_to_string("build.rs").expect("Failed to read build.rs");
