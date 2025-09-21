@@ -176,7 +176,9 @@ mod agent_tests {
             version = "1.0.0"
             name = "test"
             complexity_threshold = 20
-            
+            watch_patterns = ["**/*.rs"]
+            update_interval = 30
+
             [daemon]
             working_directory = "/tmp"
         "#;
