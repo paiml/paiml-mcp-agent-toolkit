@@ -288,10 +288,15 @@ fn internal_helper() {
             report.analyzed_functions
         );
 
+
         // Also verify the distribution is reasonable
         assert!(
             report.complexity_distribution.linear > 0,
-            "Should have found at least some O(n) functions"
+            "Should have found at least some O(n) functions. Distribution: constant={}, linear={}, quadratic={}, unknown={}",
+            report.complexity_distribution.constant,
+            report.complexity_distribution.linear,
+            report.complexity_distribution.quadratic,
+            report.complexity_distribution.unknown
         );
 
         // Verify we're getting reasonable numbers
