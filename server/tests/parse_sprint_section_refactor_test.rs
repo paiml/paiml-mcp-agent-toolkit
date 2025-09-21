@@ -167,8 +167,11 @@ impl MockCaptures {
     }
 }
 
+#[allow(dead_code)]
 struct MockParsers {
+    #[allow(dead_code)]
     task_regex: String,
+    #[allow(dead_code)]
     done_regex: String,
 }
 
@@ -203,9 +206,12 @@ struct MockTask {
 }
 
 #[derive(Debug, PartialEq)]
+#[allow(dead_code)]
 enum MockPriority {
     P0,
+    #[allow(dead_code)]
     P1,
+    #[allow(dead_code)]
     P2,
 }
 
