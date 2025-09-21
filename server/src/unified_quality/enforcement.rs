@@ -561,10 +561,10 @@ mod property_tests {
         #[test]
         fn budget_creation_is_valid(budget in valid_budget_strategy()) {
             prop_assert!(budget.complexity_budget >= 0);
-            prop_assert!(budget.satd_budget >= 0);
+            // satd_budget is always >= 0 for unsigned types
             prop_assert!(budget.coverage_floor >= 0.0 && budget.coverage_floor <= 1.0);
             prop_assert!(budget.regeneration_rate >= 0.0);
-            prop_assert!(budget.grace_period.as_secs() >= 0);
+            // grace_period.as_secs() always returns >= 0 for Duration
         }
 
         #[test]
@@ -598,14 +598,14 @@ mod property_tests {
 
             let mut expected_complexity = 0i32;
             let mut expected_satd = 0i32;
-            let mut expected_coverage = 0.0f64;
+            let mut _expected_coverage = 0.0f64;
 
             for diff in &diffs {
                 let _decision = enforcer.check_commit(&team_id, diff);
 
                 expected_complexity += diff.complexity_change;
                 expected_satd += diff.satd_change;
-                expected_coverage += diff.coverage_change;
+                _expected_coverage += diff.coverage_change;
             }
 
             let budget = &enforcer.budgets[&team_id];
@@ -681,7 +681,7 @@ mod property_tests {
             // Budget should regenerate (reduce consumption)
             if budget.regeneration_rate > 0.0 && days_elapsed > 0.0 {
                 let expected_reduction = (budget.regeneration_rate * days_elapsed) as i32;
-                let expected_complexity = (budget.current_consumption.complexity_used - expected_reduction).max(0);
+                let _expected_complexity = (budget.current_consumption.complexity_used - expected_reduction).max(0);
 
                 prop_assert!(updated_budget.current_consumption.complexity_used <= budget.current_consumption.complexity_used);
                 prop_assert!(updated_budget.current_consumption.complexity_used >= 0);
@@ -692,7 +692,7 @@ mod property_tests {
         fn refactor_target_generation_properties(
             team_id in team_id_strategy(),
             files in prop::collection::vec("[a-zA-Z0-9_-]{1,20}\\.rs", 1..20),
-            complexities in prop::collection::vec(1u32..100, 1..20)
+            _complexities in prop::collection::vec(1u32..100, 1..20)
         ) {
             let mut enforcer = ErrorBudgetEnforcer::new(EnforcerConfig::default());
             enforcer.register_team(team_id.clone(), None);
@@ -724,9 +724,9 @@ mod property_tests {
 
         #[test]
         fn enforcement_rules_consistency(
-            complexity_threshold in 1u32..100,
-            satd_limit in 1u32..50,
-            coverage_minimum in 0.0f64..1.0
+            _complexity_threshold in 1u32..100,
+            _satd_limit in 1u32..50,
+            _coverage_minimum in 0.0f64..1.0
         ) {
             let rules = EnforcementRules {
                 approvers: HashMap::new(),

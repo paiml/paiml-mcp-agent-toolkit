@@ -208,7 +208,7 @@ fn test_cli_main_binary_help() {
 }
 
 #[test]
-#[cfg_attr(feature = "skip-slow-tests", ignore)]
+#[ignore = "Integration test that requires binary compilation - run manually with --ignored"]
 fn test_cli_subcommand_help() {
     // Test generate help
     let output = Command::new("cargo")

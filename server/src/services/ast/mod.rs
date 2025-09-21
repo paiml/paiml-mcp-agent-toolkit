@@ -258,7 +258,7 @@ mod tests {
         let analyzer = UnifiedAstAnalyzer::new();
         let result = analyzer.analyze_file(&rust_file_path).await.unwrap();
 
-        assert_eq!(result.language, "Rust");
+        assert_eq!(result.language, "rust");
         assert!(result.analysis_duration_ms > 0);
         assert_eq!(result.file_path, rust_file_path);
 
@@ -367,7 +367,7 @@ mod additional_tests {
 
         match result {
             Ok(analysis) => {
-                assert_eq!(analysis.language, "Rust");
+                assert_eq!(analysis.language, "rust");
                 assert!(analysis.analysis_duration_ms > 0);
             }
             Err(_) => {

@@ -5138,8 +5138,8 @@ mod tests {
         let analyzer = DeepContextAnalyzer::new(config);
         let analyses = ParallelAnalysisResults::default();
 
-        let (defect_summary, hotspots) = analyzer.correlate_defects(&analyses).await.unwrap();
-        assert!(defect_summary.total_defects >= 0);
+        let (_, hotspots) = analyzer.correlate_defects(&analyses).await.unwrap();
+        // total_defects is always >= 0 for unsigned types
         assert!(hotspots.is_empty() || !hotspots.is_empty());
     }
 
@@ -5164,7 +5164,7 @@ mod tests {
         // TDD: Phase 6 (Recommendations) should be extractable
         let config = DeepContextConfig::default();
         let analyzer = DeepContextAnalyzer::new(config);
-        let deep_context = DeepContext::default();
+        let _deep_context = DeepContext::default();
         let defect_summary = DefectSummary {
             total_defects: 0,
             by_severity: FxHashMap::default(),

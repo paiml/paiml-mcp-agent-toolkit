@@ -87,7 +87,7 @@ fn test_satd_typo_suggests_correct_command() {
     // TDD Test: Common misspellings of SATD should suggest correct command
     let test_cases = vec![("std", "satd"), ("stad", "satd"), ("sadt", "satd")];
 
-    for (typo, correct) in test_cases {
+    for (typo, _correct) in test_cases {
         let output = Command::new(PMAT_BINARY)
             .args(["analyze", typo])
             .output()

@@ -110,13 +110,13 @@ impl HooksCommand {
     }
 
     /// Install or update pre-commit hooks
-    async fn install(&self, force: bool, backup: bool) -> Result<HookInstallResult> {
+    async fn install(&self, _force: bool, _backup: bool) -> Result<HookInstallResult> {
         // TO BE IMPLEMENTED - this should make test fail (RED phase)
         todo!("Implement hooks install command")
     }
 
     /// Uninstall PMAT-managed hooks
-    async fn uninstall(&self, restore_backup: bool) -> Result<HookUninstallResult> {
+    async fn uninstall(&self, _restore_backup: bool) -> Result<HookUninstallResult> {
         // TO BE IMPLEMENTED - this should make test fail (RED phase)
         todo!("Implement hooks uninstall command")
     }
@@ -128,7 +128,7 @@ impl HooksCommand {
     }
 
     /// Verify hooks work with current configuration
-    async fn verify(&self, fix: bool) -> Result<HookVerificationResult> {
+    async fn verify(&self, _fix: bool) -> Result<HookVerificationResult> {
         // TO BE IMPLEMENTED - this should make test fail (RED phase)
         todo!("Implement hooks verify command")
     }

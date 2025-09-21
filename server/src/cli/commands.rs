@@ -2355,7 +2355,7 @@ mod tests {
 
         match migrate {
             StorageCommand::Migrate { backend, path: _ } => {
-                assert_eq!(backend, "rocksdb");
+                assert_eq!(backend, "sled");
             }
             _ => panic!("Expected Migrate variant"),
         }

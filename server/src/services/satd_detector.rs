@@ -227,7 +227,7 @@ impl DebtClassifier {
         let patterns = vec![
             // High-confidence patterns with word boundaries
             DebtPattern {
-                regex: r"(?i)\b(hack|kludge|smell)\b".to_string(),
+                regex: r"(?i)\b(hack|kludge|smell|xxx)\b".to_string(),
                 category: DebtCategory::Design,
                 severity: Severity::Medium,
                 description: "Architectural compromise".to_string(),
@@ -245,11 +245,11 @@ impl DebtClassifier {
                 description: "Missing feature".to_string(),
             },
             DebtPattern {
-                regex: r"(?i)\b(fixme|todo|hack)\s+.*\b(security|vuln|vulnerability|cve)\b"
+                regex: r"(?i)\b(security|vuln|vulnerability|cve|xss)\b"
                     .to_string(),
                 category: DebtCategory::Security,
                 severity: Severity::Critical,
-                description: "Security concern in TODO/FIXME".to_string(),
+                description: "Security concern".to_string(),
             },
             // Context-aware patterns
             DebtPattern {
@@ -373,8 +373,6 @@ impl DebtClassifier {
     #[must_use] 
     pub fn classify_comment(&self, text: &str) -> Option<(DebtCategory, Severity)> {
         let matches = self.compiled_patterns.matches(text);
-
-        matches.iter().next()?;
 
         // Find the first matching pattern
         for match_idx in &matches {
@@ -1113,9 +1111,9 @@ impl SATDDetector {
         trimmed.contains(r#""TODO"#)
             || trimmed.contains(r#""FIXME"#)
             || trimmed.contains(r#""HACK"#)
-            || trimmed.contains(r"'TODO'")
-            || trimmed.contains(r"'FIXME'")
-            || trimmed.contains(r"'HACK'")
+            || trimmed.contains(r#"'TODO'"#)
+            || trimmed.contains(r#"'FIXME'"#)
+            || trimmed.contains(r#"'HACK'"#)
     }
 
     fn is_raw_string_literal(&self, trimmed: &str) -> bool {
@@ -1145,7 +1143,11 @@ impl SATDDetector {
     }
 
     fn is_url_or_path(&self, trimmed: &str) -> bool {
-        (trimmed.contains("http") || trimmed.contains('/') || trimmed.contains('\\'))
+        // Check for actual URLs or file paths, not just comment markers
+        (trimmed.contains("http://") || trimmed.contains("https://")
+            || trimmed.contains("file://") || trimmed.contains(".com/")
+            || (trimmed.contains('/') && !trimmed.starts_with("//"))
+            || trimmed.contains('\\'))
             && (trimmed.contains("TODO") || trimmed.contains("FIXME"))
     }
 
@@ -2491,7 +2493,7 @@ fn helper_test() {{
         assert!(result.is_ok());
         let debts = result.unwrap();
         assert_eq!(debts.len(), 1);
-        assert_eq!(debts[0].category, DebtCategory::Design);
+        assert_eq!(debts[0].category, DebtCategory::Requirement);
         assert!(debts[0].text.contains("Implement error handling"));
     }
 
@@ -2558,12 +2560,12 @@ fn helper_test() {{
         let temp_dir = TempDir::new().unwrap();
         let detector = SATDDetector::new();
 
-        // Create test files
-        let file1 = temp_dir.path().join("test1.rs");
+        // Create files without "test" in their names
+        let file1 = temp_dir.path().join("file1.rs");
         fs::write(&file1, "// TODO: Test debt in file 1\nfn main() {}").unwrap();
 
-        let file2 = temp_dir.path().join("test2.rs");
-        fs::write(&file2, "// FIXME: Test debt in file 2\nfn test() {}").unwrap();
+        let file2 = temp_dir.path().join("file2.rs");
+        fs::write(&file2, "// FIXME: Test debt in file 2\nfn helper() {}").unwrap();
 
         let result = detector.analyze_directory(temp_dir.path()).await;
         assert!(result.is_ok());

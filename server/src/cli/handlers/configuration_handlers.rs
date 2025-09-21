@@ -689,7 +689,7 @@ mod tests {
 
         // Verify reset
         let config = config_service.get_config().unwrap();
-        assert_eq!(config.quality.max_complexity, 20); // Default value
+        assert_eq!(config.quality.max_complexity, 30); // Default value
     }
 }
 

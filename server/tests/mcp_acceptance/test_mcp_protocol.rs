@@ -306,9 +306,9 @@ async fn test_transport_compliance() -> Result<()> {
     // Tools list might be large, test handling
     if let Some(ref result) = tools_response.result {
         if let Some(tools) = result.get("tools") {
-            if let Some(tools_array) = tools.as_array() {
+            if let Some(_tools_array) = tools.as_array() {
                 // Should handle multiple tools without issue
-                assert!(tools_array.len() >= 0, "Tools array should be valid");
+                // Tools array length is always valid for Vec
             }
         }
     }

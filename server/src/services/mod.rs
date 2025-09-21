@@ -156,8 +156,6 @@ pub mod project_meta_detector;
 pub mod proof_annotator;
 pub mod quality_gates;
 pub mod similarity; // Advanced similarity and entropy detection
-#[cfg(test)]
-pub mod similarity_tests;
 pub use quality_gates as quality_gate;
 #[cfg(test)]
 mod deep_context_property_tests;

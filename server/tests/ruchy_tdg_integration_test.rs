@@ -49,7 +49,7 @@ mod ruchy_tdg_integration_tests {
 
     #[cfg(feature = "ruchy-ast")]
     #[tokio::test]
-    async fn test_ruchy_tdg_analysis_integration() {
+    async fn test_ruchy_tdg_analysis_integration() -> anyhow::Result<()> {
         // RED: Test that TDG analysis works with Ruchy files
         use std::io::Write;
         use tempfile::NamedTempFile;
@@ -90,6 +90,8 @@ fun main() {
             score.structural_complexity > 0.0,
             "Should detect function complexity"
         );
+
+        Ok(())
     }
 
     #[test]
@@ -125,7 +127,7 @@ fun main() {
 
     #[cfg(feature = "ruchy-ast")]
     #[tokio::test]
-    async fn test_ruchy_actor_model_complexity() {
+    async fn test_ruchy_actor_model_complexity() -> anyhow::Result<()> {
         // RED: Test that actor model patterns are analyzed correctly
         use std::io::Write;
         use tempfile::NamedTempFile;
@@ -178,11 +180,13 @@ fun main() {
             score.coupling_score > 0.0,
             "Actor message passing should affect coupling score"
         );
+
+        Ok(())
     }
 
     #[cfg(feature = "ruchy-ast")]
     #[tokio::test]
-    async fn test_ruchy_pipeline_operator_complexity() {
+    async fn test_ruchy_pipeline_operator_complexity() -> anyhow::Result<()> {
         // RED: Test that pipeline operators are handled in complexity analysis
         use std::io::Write;
         use tempfile::NamedTempFile;
@@ -225,6 +229,8 @@ fun main() {
             score.total >= 60.0,
             "Well-written pipeline code should score reasonably well"
         );
+
+        Ok(())
     }
 }
 

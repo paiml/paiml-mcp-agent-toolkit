@@ -148,10 +148,7 @@ mod unified_detection_integration_tests {
                     "✅ SATD detection completed: {} files analyzed",
                     report.total_files_analyzed
                 );
-                assert!(
-                    report.total_files_analyzed >= 0,
-                    "Should have valid file count"
-                );
+                // total_files_analyzed is always >= 0 for unsigned types
             }
             Err(e) => {
                 println!("⚠️  SATD detection failed gracefully: {}", e);
@@ -421,10 +418,7 @@ mod unified_detection_integration_tests {
 
         if let Ok(satd_result) = processor.detect_satd(temp_dir.path()).await {
             // Property: Files analyzed should be >= 0
-            assert!(
-                satd_result.total_files_analyzed >= 0,
-                "Files analyzed should be non-negative"
-            );
+            // total_files_analyzed is always >= 0 for unsigned types
 
             // Property: Files with debt should be <= total files
             assert!(
