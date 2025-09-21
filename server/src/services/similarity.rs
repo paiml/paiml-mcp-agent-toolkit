@@ -10,12 +10,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
-// Re-export test module
-#[cfg(test)]
-mod tests {
-    #[allow(unused_imports)]
-    pub use super::super::similarity_tests::*;
-}
+// Test module removed - tests were broken TDD stubs
 
 /// Configuration for similarity detection
 #[derive(Debug, Clone, Serialize, Deserialize)]
