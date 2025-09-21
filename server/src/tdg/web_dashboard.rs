@@ -11,7 +11,7 @@
 //! - Interactive TDG analysis
 //! - System health monitoring
 
-use crate::tdg::{
+use super::{
     AdaptiveThresholdFactory, SchedulerFactory, TdgAnalyzer, TieredStorageFactory, TieredStore,
 };
 use axum::{

@@ -1,7 +1,7 @@
 use serde_json;
 use std::fmt::Write;
 
-use crate::tdg::{Comparison, Grade, ProjectScore, TdgScore};
+use super::{Comparison, Grade, ProjectScore, TdgScore};
 
 /// Format TDG score for human-readable console output.
 ///
@@ -681,7 +681,7 @@ fn grade_description(grade: Grade) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tdg::*;
+    use crate::tdg::language_simple::Language;
     use std::path::PathBuf;
 
     #[test]
