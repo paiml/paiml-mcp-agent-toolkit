@@ -2,10 +2,9 @@ use anyhow::Result;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use crate::tdg::{
-    config::TdgConfig, language_simple::Language, Comparison, MetricCategory, PenaltyTracker,
-    ProjectScore, TdgScore,
-};
+use super::config::TdgConfig;
+use super::language_simple::Language;
+use crate::tdg::{Comparison, MetricCategory, PenaltyTracker, ProjectScore, TdgScore};
 
 pub struct TdgAnalyzer {
     config: TdgConfig,
