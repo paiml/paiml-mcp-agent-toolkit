@@ -4492,6 +4492,7 @@ dependencies = [
  "clap",
  "console",
  "cpp_demangle",
+ "crc32fast",
  "criterion",
  "crossbeam",
  "crossbeam-channel",
