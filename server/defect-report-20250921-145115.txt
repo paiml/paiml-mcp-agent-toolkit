@@ -1,0 +1,16 @@
+CODE QUALITY REPORT
+===================
+
+Generated: 2025-09-21 14:51:15 UTC
+Project: /tmp/.tmpFhOC9N
+Total Defects: 0
+Files Analyzed: 0
+
+SEVERITY BREAKDOWN
+------------------
+
+CATEGORY BREAKDOWN
+------------------
+
+DEFECTS
+-------

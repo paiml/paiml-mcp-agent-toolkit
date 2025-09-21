@@ -178,6 +178,7 @@ mod agent_tests {
             complexity_threshold = 20
             watch_patterns = ["**/*.rs"]
             update_interval = 30
+            max_projects = 10
 
             [daemon]
             working_directory = "/tmp"

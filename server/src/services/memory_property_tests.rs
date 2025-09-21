@@ -280,7 +280,7 @@ fn test_pool_efficiency(buffer_sizes: Vec<usize>, reuse_probability: f64) -> Res
                     // in some edge cases. This is a known issue with the current tracking implementation.
                     // We'll just check that both values are reasonable.
                     assert!(pool_stats.allocation_count > 0);
-                    assert!(pool_stats.reuse_count >= 0);
+                    // reuse_count is unsigned, so always >= 0
                 }
             }
         }
