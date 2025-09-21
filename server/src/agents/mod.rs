@@ -5,6 +5,7 @@ pub mod transformer_actor;
 pub mod validator_actor;
 pub mod supervisor;
 pub mod messages;
+pub mod messaging;
 
 use actix::prelude::*;
 use async_trait::async_trait;
