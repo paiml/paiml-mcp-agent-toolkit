@@ -421,7 +421,12 @@ mod tests {
     use crate::services::memory_manager::init_global_memory_manager;
 
     fn setup_memory_manager() -> Result<()> {
-        init_global_memory_manager()
+        // Try to initialize, but ignore "already initialized" errors
+        match init_global_memory_manager() {
+            Ok(()) => Ok(()),
+            Err(e) if e.to_string().contains("already initialized") => Ok(()),
+            Err(e) => Err(e),
+        }
     }
 
     #[test]

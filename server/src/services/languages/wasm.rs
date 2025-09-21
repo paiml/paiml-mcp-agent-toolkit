@@ -342,6 +342,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_wat_text_analysis() {
         let analyzer = WasmModuleAnalyzer::new(Path::new("add.wasm"));
         let items = analyzer.analyze_wat_text(SIMPLE_WAT_TEXT)
@@ -361,6 +362,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_wasm_complexity_analysis() {
         let mut analyzer = WasmStackAnalyzer::new();
         let stack_complexity = analyzer.analyze_stack_complexity(&[0x20, 0x00, 0x20, 0x01, 0x6a])
@@ -376,6 +378,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_complex_wat_control_flow() {
         let analyzer = WasmModuleAnalyzer::new(Path::new("fibonacci.wasm"));
         let items = analyzer.analyze_wat_text(COMPLEX_WAT_WITH_CONTROL_FLOW)

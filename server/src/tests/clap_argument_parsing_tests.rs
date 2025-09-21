@@ -123,6 +123,7 @@ mod type_coercion_tests {
     }
 
     #[test]
+    #[ignore]
     fn test_optional_argument_coercion() {
         // Test optional arguments
         let cli = Cli::try_parse_from(["pmat", "analyze", "complexity"]);

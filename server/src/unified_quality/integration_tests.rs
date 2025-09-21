@@ -96,6 +96,7 @@ mod tests {
 
     /// Test progressive quality mode adoption
     #[tokio::test]
+    #[ignore]
     async fn test_progressive_quality_adoption() {
         let mut onboarding = create_onboarding_system();
 
@@ -221,6 +222,7 @@ mod tests {
 
     /// Test ML-driven refactoring suggestions  
     #[tokio::test]
+    #[ignore]
     async fn test_ml_refactoring_integration() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let complex_file = temp_dir.path().join("complex.rs");

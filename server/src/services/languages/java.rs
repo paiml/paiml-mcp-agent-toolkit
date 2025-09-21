@@ -475,7 +475,7 @@ mod property_tests {
         fn test_java_visitor_handles_any_valid_package_name(
             package_name in "[a-zA-Z_][a-zA-Z0-9_]*\\.[a-zA-Z_][a-zA-Z0-9_]*"
         ) {
-            let source = format!("package {};\\n\\npublic class TestClass {{}}", package_name);
+            let source = format!("package {};\n\npublic class TestClass {{}}", package_name);
             let visitor = JavaAstVisitor::new(Path::new("test.java"));
 
             if let Ok(items) = visitor.analyze_java_source(&source) {
@@ -495,11 +495,11 @@ mod property_tests {
         fn test_java_complexity_analyzer_bounds(
             method_count in 1usize..10
         ) {
-            let mut source = String::from("package test;\\n\\npublic class Test {\\n");
+            let mut source = String::from("package test;\n\npublic class Test {\n");
             for i in 0..method_count {
-                source.push_str(&format!("public void method{}() {{}}\\n", i));
+                source.push_str(&format!("public void method{}() {{}}\n", i));
             }
-            source.push_str("}\\n");
+            source.push_str("}\n");
 
             let visitor = JavaAstVisitor::new(Path::new("test.java"));
             if let Ok(items) = visitor.analyze_java_source(&source) {
@@ -524,15 +524,15 @@ mod property_tests {
         fn test_java_complexity_stays_bounded(
             depth in 1u32..5
         ) {
-            let mut source = String::from("package test;\\n\\npublic class Test {\\npublic void complexMethod() {\\n");
+            let mut source = String::from("package test;\n\npublic class Test {\npublic void complexMethod() {\n");
             for _ in 0..depth {
-                source.push_str("if (true) {\\n");
+                source.push_str("if (true) {\n");
             }
-            source.push_str("return;\\n");
+            source.push_str("return;\n");
             for _ in 0..depth {
-                source.push_str("}\\n");
+                source.push_str("}\n");
             }
-            source.push_str("}\\n}\\n");
+            source.push_str("}\n}\n");
 
             let mut analyzer = JavaComplexityAnalyzer::new();
             if let Ok((cyclomatic, cognitive)) = analyzer.analyze_complexity(&source) {

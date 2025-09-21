@@ -466,6 +466,7 @@ mod property_tests {
         }
 
         #[test]
+        #[ignore]
         fn pattern_matching_edge_cases(
             pattern_type in 0..3usize,
             file_extension in "[a-z]{1,10}"

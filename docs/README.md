@@ -98,4 +98,4 @@ All documentation follows these principles:
 
 ---
 
-*Last Updated: 2025-08-21 | Version: 2.6.1*
+*Last Updated: 2025-01-21 | Version: 2.94.0*
