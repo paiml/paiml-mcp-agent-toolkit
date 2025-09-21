@@ -1,5 +1,5 @@
-use crate::tdg::storage_backend::{StorageBackend, StorageBackendFactory, StorageConfig};
-use crate::tdg::TdgScore;
+use super::storage_backend::{StorageBackend, StorageBackendFactory, StorageConfig};
+use super::TdgScore;
 use anyhow::{anyhow, Result};
 use blake3::Hash as Blake3Hash;
 use dashmap::DashMap;
