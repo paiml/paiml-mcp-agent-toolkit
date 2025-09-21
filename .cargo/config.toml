@@ -2,6 +2,11 @@
 # Allow cargo to use optimal parallelism (remove the job limit)
 # jobs = 2  # Commented out to use default parallelism
 
+[target.x86_64-unknown-linux-gnu]
+# Override global mold linker config to use gcc as linker for this project
+linker = "gcc"
+rustflags = []
+
 [profile.test]
 # Optimize for speed during test compilation
 opt-level = 0
