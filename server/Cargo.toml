@@ -15,9 +15,39 @@ exclude = ["*.log", "temp_*", "*.profraw", ".pmat-cache", "proptest-regressions"
 
 [dependencies]
 # Async runtime
-tokio = { version = "1.47", features = ["rt-multi-thread", "macros", "net", "io-util", "io-std", "fs", "sync", "signal", "process"] }
+tokio = { version = "1.47", features = ["rt-multi-thread", "macros", "net", "io-util", "io-std", "fs", "sync", "signal", "process", "time"] }
 tokio-util = "0.7"
 async-trait = "0.1"
+
+# Actor framework
+actix = "0.13"
+actix-rt = "2.10"
+
+# State management
+rkyv = { version = "0.7", features = ["validation", "alloc"] }
+zstd = "0.13"
+memmap2 = "0.9"
+# crdt = "0.5" # Too old, will implement our own
+
+# Consensus
+async-raft = "0.6"
+
+# Message passing
+# bytes = "1.10" # Already defined below
+crossbeam = "0.8"
+arc-swap = "1.7"
+
+# Resource management
+sysinfo = "0.32"
+libc = "0.2"
+num-traits = "0.2"
+
+# Property testing
+proptest = "1.6"
+bolero = { version = "0.12", optional = true }
+
+# Formal verification
+kani-verifier = { version = "0.56", optional = true }
 
 # Text similarity
 levenshtein = "1.0"
@@ -190,6 +220,8 @@ assert_cmd = "2.0"
 predicates = "3.1"
 scraper = "0.24"
 serial_test = "3.2"
+futures-test = "0.3"
+actix-test = "0.1"
 
 [build-dependencies]
 ureq = "3.0"
