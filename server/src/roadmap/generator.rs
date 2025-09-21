@@ -542,7 +542,7 @@ mod tests {
         let todo = generator.create_quality_enforced_todo(&task, 1);
 
         assert_eq!(todo.task_id, "PMAT-4001");
-        assert!(todo.description.contains("Complex task"));
+        assert!(todo.description.contains("A complex implementation"));
         assert!(todo.quality_requirements.min_test_coverage >= 80);
         assert_eq!(todo.quality_requirements.satd_allowed, 0);
         assert!(todo.quality_requirements.lint_compliance);

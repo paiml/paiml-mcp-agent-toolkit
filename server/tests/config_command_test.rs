@@ -69,13 +69,13 @@ impl ConfigCommand {
     }
 
     /// Show complete configuration in specified format
-    async fn show(&self, format: ConfigFormat) -> Result<String> {
+    async fn show(&self, _format: ConfigFormat) -> Result<String> {
         // TO BE IMPLEMENTED - this should make test fail (RED phase)
         todo!("Implement config show command")
     }
 
     /// Get specific configuration value by key path
-    async fn get(&self, key: &str) -> Result<String> {
+    async fn get(&self, _key: &str) -> Result<String> {
         // TO BE IMPLEMENTED - this should make test fail (RED phase)
         todo!("Implement config get command")
     }

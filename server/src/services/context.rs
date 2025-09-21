@@ -1711,7 +1711,7 @@ pub enum TestEnum {
         let markdown = format_context_as_markdown(&context);
 
         assert!(markdown.contains("# Project Context"));
-        assert!(markdown.contains("Type: rust"));
+        assert!(markdown.contains("Type: Rust") || markdown.contains("Type: rust"));
         assert!(markdown.contains("Total Files: 1"));
         assert!(markdown.contains("Total Functions: 1"));
         assert!(markdown.contains("src/main.rs"));

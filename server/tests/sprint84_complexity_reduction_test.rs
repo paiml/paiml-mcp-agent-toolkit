@@ -3,7 +3,7 @@
 // NOTE: This test is temporarily disabled as it tests private internal APIs
 // that have been refactored. The functionality is tested through public APIs.
 
-#![cfg(skip_internal_tests)]
+#![cfg(feature = "internal_tests")]
 
 use anyhow::Result;
 use pmat::cli::handlers::enforce_handlers::*;

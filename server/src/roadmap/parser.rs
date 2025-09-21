@@ -594,9 +594,9 @@ mod tests {
 - PMAT-5678 | Another task | Medium | Planning | 4h |
 "#;
 
-        let roadmap = parse_roadmap(content_with_backlog).unwrap();
+        parse_roadmap(content_with_backlog).unwrap();
         // Should handle backlog parsing
-        assert!(roadmap.backlog.len() >= 0); // May not parse correctly due to table format
+        // Check that backlog parsing works (len() is always >= 0 for Vec)
     }
 
     #[test]

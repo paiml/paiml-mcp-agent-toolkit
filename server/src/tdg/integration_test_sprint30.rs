@@ -292,10 +292,7 @@ mod sprint30_integration_tests {
         println!("Scheduler stats: {}", stats.format_diagnostic());
 
         // Both operations should be tracked
-        assert!(
-            stats.total_active_operations >= 0,
-            "Should have tracked operations"
-        );
+        // total_active_operations is always >= 0 for unsigned types
 
         // Clean up
         drop(commit_guard);

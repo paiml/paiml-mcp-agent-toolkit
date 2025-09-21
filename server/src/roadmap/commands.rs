@@ -745,9 +745,7 @@ mod tests {
             "roadmap",
             "complete",
             "PMAT-1001",
-            "--format",
-            "json",
-            "--skip-quality-checks",
+            "--skip-quality-check",
         ]);
 
         assert!(cmd.is_ok());
