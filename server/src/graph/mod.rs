@@ -2,6 +2,7 @@
 // Following extreme TDD with zero SATD tolerance
 
 pub mod types;
+pub mod symbol_table;
 pub mod builder;
 pub mod pagerank;
 pub mod community;

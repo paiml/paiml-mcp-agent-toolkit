@@ -3,8 +3,6 @@
 
 #[cfg(test)]
 mod tests {
-    use super::super::super::*;
-
     #[test]
     #[ignore] // Will enable when implementing builder
     fn test_build_from_small_workspace() {
