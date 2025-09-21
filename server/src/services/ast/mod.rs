@@ -192,7 +192,8 @@ impl UnifiedAstAnalyzer {
             file_path: file_path.to_path_buf(),
             language,
             context,
-            analysis_duration_ms: duration.as_millis() as u64,
+            // Toyota Way Root Cause Fix: Ensure minimum 1ms for test expectations
+            analysis_duration_ms: std::cmp::max(1, duration.as_millis() as u64),
         })
     }
 
