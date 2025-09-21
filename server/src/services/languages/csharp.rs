@@ -515,11 +515,11 @@ mod property_tests {
         fn test_csharp_complexity_analyzer_bounds(
             method_count in 1usize..10
         ) {
-            let mut source = String::from("namespace Test { public class Test {\\n");
+            let mut source = String::from("namespace Test { public class Test {\n");
             for i in 0..method_count {
-                source.push_str(&format!("public void Method{}() {{}}\\n", i));
+                source.push_str(&format!("public void Method{}() {{}}\n", i));
             }
-            source.push_str("} }\\n");
+            source.push_str("} }\n");
 
             let visitor = CSharpAstVisitor::new(Path::new("test.cs"));
             if let Ok(items) = visitor.analyze_csharp_source(&source) {
@@ -544,15 +544,15 @@ mod property_tests {
         fn test_csharp_complexity_stays_bounded(
             depth in 1u32..5
         ) {
-            let mut source = String::from("namespace Test { public class Test { public void ComplexMethod() {\\n");
+            let mut source = String::from("namespace Test { public class Test { public void ComplexMethod() {\n");
             for _ in 0..depth {
-                source.push_str("if (true) {\\n");
+                source.push_str("if (true) {\n");
             }
-            source.push_str("return;\\n");
+            source.push_str("return;\n");
             for _ in 0..depth {
-                source.push_str("}\\n");
+                source.push_str("}\n");
             }
-            source.push_str("} } }\\n");
+            source.push_str("} } }\n");
 
             let mut analyzer = CSharpComplexityAnalyzer::new();
             if let Ok((cyclomatic, cognitive)) = analyzer.analyze_complexity(&source) {

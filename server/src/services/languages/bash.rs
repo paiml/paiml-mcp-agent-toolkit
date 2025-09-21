@@ -349,7 +349,14 @@ impl ShellCommandParser {
         if line.contains('=') && !line.trim().starts_with('#') {
             let parts: Vec<&str> = line.split('=').collect();
             if parts.len() >= 2 {
-                let var_name = parts[0].trim().to_string();
+                let mut var_part = parts[0].trim();
+
+                // Handle export keyword: "export VAR=value" -> "VAR"
+                if var_part.starts_with("export ") {
+                    var_part = &var_part[7..]; // Remove "export "
+                }
+
+                let var_name = var_part.trim().to_string();
                 let var_value = parts[1].trim().to_string();
                 assignments.push((var_name.clone(), var_value));
                 self.variables.push(var_name);

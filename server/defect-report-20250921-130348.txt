@@ -1,0 +1,16 @@
+CODE QUALITY REPORT
+===================
+
+Generated: 2025-09-21 13:03:48 UTC
+Project: /tmp/.tmpSTS8gX
+Total Defects: 0
+Files Analyzed: 0
+
+SEVERITY BREAKDOWN
+------------------
+
+CATEGORY BREAKDOWN
+------------------
+
+DEFECTS
+-------
