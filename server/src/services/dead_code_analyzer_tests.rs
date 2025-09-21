@@ -293,8 +293,11 @@ name = "test_library"
     #[derive(Debug, Clone, PartialEq)]
     enum DeadCodeKind {
         Function,
+        #[allow(dead_code)] // Used in test scenarios
         Struct,
+        #[allow(dead_code)] // Used in test scenarios
         Enum,
+        #[allow(dead_code)] // Used in test scenarios
         Variable,
     }
 
@@ -416,6 +419,7 @@ name = "test_library"
     struct DeadCodeAnalysisReport {
         dead_functions: Vec<String>,
         percentage: f64,
+        #[allow(dead_code)] // Used for test reporting
         total_dead_items: usize,
     }
 }
