@@ -289,7 +289,7 @@ impl TdgAnalyzerAst {
     // GREEN Phase: Public methods for TDG dogfooding - accessing stored scores
 
     /// Get a reference to the storage system for querying stored scores
-    #[must_use] 
+    #[must_use]
     pub fn get_storage(&self) -> Option<&TieredStore> {
         self.storage.as_ref()
     }
@@ -324,7 +324,7 @@ impl TdgAnalyzerAst {
     }
 
     /// Get storage statistics for monitoring
-    #[must_use] 
+    #[must_use]
     pub fn get_storage_stats(&self) -> Option<crate::tdg::StorageStatistics> {
         self.storage
             .as_ref()
@@ -578,7 +578,10 @@ impl TdgAnalyzerAst {
             use swc_ecma_visit::VisitWith;
 
             let cm: Lrc<SourceMap> = Default::default();
-            let fm = cm.new_source_file(FileName::Custom("test.js".into()).into(), source.to_string());
+            let fm = cm.new_source_file(
+                FileName::Custom("test.js".into()).into(),
+                source.to_string(),
+            );
 
             let lexer = Lexer::new(
                 Syntax::Typescript(TsSyntax {

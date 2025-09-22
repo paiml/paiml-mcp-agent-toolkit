@@ -28,7 +28,7 @@ pub struct RollingWindow<T: Clone> {
 }
 
 impl<T: Clone> RollingWindow<T> {
-    #[must_use] 
+    #[must_use]
     pub fn new(window_size: Duration, max_points: usize) -> Self {
         Self {
             window_size,
@@ -63,12 +63,12 @@ impl<T: Clone> RollingWindow<T> {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn get_window(&self) -> Vec<DataPoint<T>> {
         self.data.iter().cloned().collect()
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.data.is_empty()
     }
@@ -188,7 +188,7 @@ impl Default for MetricsAggregator {
 }
 
 impl MetricsAggregator {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             storage_metrics: Arc::new(RwLock::new(RollingWindow::new(

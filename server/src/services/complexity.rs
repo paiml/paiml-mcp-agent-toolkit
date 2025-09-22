@@ -94,7 +94,7 @@ impl ComplexityMetrics {
     /// assert_eq!(metrics.lines, 25);
     /// assert!(metrics.halstead.is_none());
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn new(cyclomatic: u16, cognitive: u16, nesting_max: u8, lines: u16) -> Self {
         Self {
             cyclomatic,
@@ -129,7 +129,7 @@ impl ComplexityMetrics {
     /// assert!(metrics.halstead.is_some());
     /// assert_eq!(metrics.halstead.unwrap().operators_unique, 8);
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn with_halstead(
         cyclomatic: u16,
         cognitive: u16,
@@ -162,7 +162,7 @@ impl ComplexityMetrics {
     /// let complex = ComplexityMetrics::new(12, 15, 4, 50);
     /// assert!(!complex.is_simple());
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn is_simple(&self) -> bool {
         self.cyclomatic <= 5 && self.cognitive <= 7
     }
@@ -183,7 +183,7 @@ impl ComplexityMetrics {
     /// let complex = ComplexityMetrics::new(15, 20, 5, 100);
     /// assert!(complex.needs_refactoring());
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn needs_refactoring(&self) -> bool {
         self.cyclomatic > 10 || self.cognitive > 15
     }
@@ -203,7 +203,7 @@ impl ComplexityMetrics {
     ///
     /// assert!(complex.complexity_score() > simple.complexity_score());
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn complexity_score(&self) -> f64 {
         // Weighted combination of complexity metrics
         (f64::from(self.cyclomatic) * 1.0)
@@ -282,7 +282,7 @@ impl HalsteadMetrics {
     /// assert_eq!(metrics.operands_unique, 6);
     /// assert_eq!(metrics.volume, 0.0); // Not calculated yet
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn new(
         operators_unique: u32,
         operands_unique: u32,
@@ -321,7 +321,7 @@ impl HalsteadMetrics {
     /// assert!(calculated.time > 0.0);
     /// assert!(calculated.bugs >= 0.0);
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn calculate_derived(mut self) -> Self {
         // Prevent division by zero
         if self.operators_unique == 0 || self.operands_unique == 0 {
@@ -486,7 +486,7 @@ impl<'a> ComplexityVisitor<'a> {
 
     /// Calculate cognitive complexity increment based on node type and nesting
     #[inline(always)]
-    #[must_use] 
+    #[must_use]
     pub fn calculate_cognitive_increment(&self, is_nesting_construct: bool) -> u16 {
         if is_nesting_construct {
             1 + u16::from(self.nesting_level.saturating_sub(1))
@@ -527,7 +527,7 @@ impl<'a> ComplexityVisitor<'a> {
 /// assert!(key.starts_with("cx:"));
 /// assert!(key.len() > 10);
 /// ```
-#[must_use] 
+#[must_use]
 pub fn compute_complexity_cache_key(path: &Path, content: &[u8]) -> String {
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
@@ -561,7 +561,7 @@ pub struct CyclomaticComplexityRule {
 }
 
 impl CyclomaticComplexityRule {
-    #[must_use] 
+    #[must_use]
     pub fn new(thresholds: &ComplexityThresholds) -> Self {
         Self {
             warn_threshold: thresholds.cyclomatic_warn,
@@ -617,7 +617,7 @@ pub struct CognitiveComplexityRule {
 }
 
 impl CognitiveComplexityRule {
-    #[must_use] 
+    #[must_use]
     pub fn new(thresholds: &ComplexityThresholds) -> Self {
         Self {
             warn_threshold: thresholds.cognitive_warn,
@@ -701,7 +701,7 @@ impl ComplexityRule for CognitiveComplexityRule {
 /// let report = aggregate_results(vec![file]);
 /// assert_eq!(report.files.len(), 1);
 /// ```
-#[must_use] 
+#[must_use]
 pub fn aggregate_results(file_metrics: Vec<FileComplexityMetrics>) -> ComplexityReport {
     aggregate_results_with_thresholds(file_metrics, None, None)
 }
@@ -753,7 +753,7 @@ pub fn aggregate_results(file_metrics: Vec<FileComplexityMetrics>) -> Complexity
 /// let report2 = aggregate_results_with_thresholds(vec![file], Some(35), Some(35));
 /// assert_eq!(report2.violations.len(), 0);
 /// ```
-#[must_use] 
+#[must_use]
 pub fn aggregate_results_with_thresholds(
     file_metrics: Vec<FileComplexityMetrics>,
     max_cyclomatic: Option<u16>,
@@ -1097,7 +1097,7 @@ fn build_complexity_report(
 /// assert!(summary.contains("main.rs")); // First file (higher complexity)
 /// assert!(summary.contains("lib.rs"));  // Second file
 /// ```
-#[must_use] 
+#[must_use]
 pub fn format_complexity_summary(report: &ComplexityReport) -> String {
     let mut output = String::new();
 
@@ -1177,8 +1177,8 @@ pub fn format_complexity_summary(report: &ComplexityReport) -> String {
             .files
             .iter()
             .map(|f| {
-                let total_score =
-                    f64::from(f.total_complexity.cyclomatic) + f64::from(f.total_complexity.cognitive);
+                let total_score = f64::from(f.total_complexity.cyclomatic)
+                    + f64::from(f.total_complexity.cognitive);
                 (f, total_score)
             })
             .collect();
@@ -1252,7 +1252,7 @@ pub fn format_complexity_summary(report: &ComplexityReport) -> String {
 }
 
 /// Format full complexity report for CLI output
-#[must_use] 
+#[must_use]
 pub fn format_complexity_report(report: &ComplexityReport) -> String {
     let mut output = format_complexity_summary(report);
 

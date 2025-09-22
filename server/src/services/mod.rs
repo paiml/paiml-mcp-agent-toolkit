@@ -69,6 +69,7 @@ pub mod service_composition;
 pub mod service_lifecycle;
 pub mod service_registry;
 
+pub mod accurate_complexity_analyzer;
 pub mod artifact_writer;
 #[cfg(feature = "c-ast")]
 pub mod ast_c;
@@ -80,7 +81,6 @@ pub mod ast_cpp;
 pub mod ast_cpp_compat; // Compatibility layer for C++ AST migration
 #[cfg(feature = "kotlin-ast")]
 pub mod ast_kotlin;
-pub mod accurate_complexity_analyzer;
 #[cfg(feature = "python-ast")]
 pub mod ast_python;
 #[cfg(feature = "python-ast")]
@@ -129,9 +129,9 @@ pub mod duplicate_detector;
 mod duplicate_detector_property_tests;
 pub mod embedded_templates;
 pub mod enhanced_ast_visitor;
-pub mod enhanced_typescript_visitor;
 pub mod enhanced_python_visitor;
 pub mod enhanced_reporting;
+pub mod enhanced_typescript_visitor;
 pub mod file_classifier;
 #[cfg(test)]
 mod file_classifier_property_tests;

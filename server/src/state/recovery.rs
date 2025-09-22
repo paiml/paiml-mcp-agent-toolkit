@@ -1,6 +1,6 @@
 use super::*;
 use crate::state::event_store::{EventStore, EventStoreConfig};
-use crate::state::snapshot_store::{SnapshotStore, SnapshotConfig};
+use crate::state::snapshot_store::{SnapshotConfig, SnapshotStore};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -19,18 +19,20 @@ impl<S: AgentState> RecoveryManager<S> {
         snapshot_path: &str,
     ) -> Result<Self, RecoveryError> {
         let event_store = Arc::new(
-            EventStore::new(event_store_config).await
-                .map_err(|e| RecoveryError::EventStoreError(e.to_string()))?
-        );
-        
-        let snapshot_store = Arc::new(
-            SnapshotStore::new(snapshot_path, snapshot_config).await
-                .map_err(|e| RecoveryError::SnapshotError(e.to_string()))?
+            EventStore::new(event_store_config)
+                .await
+                .map_err(|e| RecoveryError::EventStoreError(e.to_string()))?,
         );
 
-        let snapshot_scheduler = Arc::new(
-            AdaptiveSnapshotScheduler::new(SnapshotSchedulerConfig::default())
+        let snapshot_store = Arc::new(
+            SnapshotStore::new(snapshot_path, snapshot_config)
+                .await
+                .map_err(|e| RecoveryError::SnapshotError(e.to_string()))?,
         );
+
+        let snapshot_scheduler = Arc::new(AdaptiveSnapshotScheduler::new(
+            SnapshotSchedulerConfig::default(),
+        ));
 
         Ok(Self {
             event_store,
@@ -50,13 +52,16 @@ impl<S: AgentState> RecoveryManager<S> {
         // Find latest snapshot
         let (mut state, starting_event_id) = if let Some(ref pk) = partition_key {
             // Partition-specific recovery
-            if let Some(snapshot) = self.snapshot_store
+            if let Some(snapshot) = self
+                .snapshot_store
                 .find_partition_snapshots(pk)
                 .into_iter()
-                .max_by_key(|s| s.event_id) {
-                
-                let restored = self.snapshot_store
-                    .load_snapshot::<S>(&snapshot.id).await
+                .max_by_key(|s| s.event_id)
+            {
+                let restored = self
+                    .snapshot_store
+                    .load_snapshot::<S>(&snapshot.id)
+                    .await
                     .map_err(|e| RecoveryError::SnapshotError(e.to_string()))?;
                 (restored, snapshot.event_id)
             } else {
@@ -65,8 +70,10 @@ impl<S: AgentState> RecoveryManager<S> {
         } else {
             // Global recovery
             if let Some(snapshot) = self.snapshot_store.find_latest_snapshot() {
-                let restored = self.snapshot_store
-                    .load_snapshot::<S>(&snapshot.id).await
+                let restored = self
+                    .snapshot_store
+                    .load_snapshot::<S>(&snapshot.id)
+                    .await
                     .map_err(|e| RecoveryError::SnapshotError(e.to_string()))?;
                 (restored, snapshot.event_id)
             } else {
@@ -76,7 +83,8 @@ impl<S: AgentState> RecoveryManager<S> {
 
         // Replay events since snapshot
         let events = if let Some(pk) = partition_key {
-            self.event_store.get_partition_events(&pk, Some(starting_event_id))
+            self.event_store
+                .get_partition_events(&pk, Some(starting_event_id))
         } else {
             self.event_store.get_events_since(starting_event_id, None)
         };
@@ -101,36 +109,37 @@ impl<S: AgentState> RecoveryManager<S> {
         partition_key: Option<String>,
     ) -> Result<SnapshotId, RecoveryError> {
         let event_id = state.last_event_id();
-        
-        let snapshot_id = self.snapshot_store
+
+        let snapshot_id = self
+            .snapshot_store
             .save_snapshot(state, event_id, partition_key.clone())
             .await
             .map_err(|e| RecoveryError::SnapshotError(e.to_string()))?;
 
         // Update scheduler metrics
-        self.snapshot_scheduler.record_snapshot(
-            state.events_since_snapshot(),
-            state.time_since_snapshot(),
-        );
+        self.snapshot_scheduler
+            .record_snapshot(state.events_since_snapshot(), state.time_since_snapshot());
 
         Ok(snapshot_id)
     }
 
     pub async fn should_snapshot(&self, state: &S) -> bool {
-        self.snapshot_scheduler.should_snapshot(
-            state.events_since_snapshot(),
-            state.time_since_snapshot(),
-        )
+        self.snapshot_scheduler
+            .should_snapshot(state.events_since_snapshot(), state.time_since_snapshot())
     }
 
     pub async fn compact_events(&self) -> Result<(), RecoveryError> {
-        self.event_store.compact().await
+        self.event_store
+            .compact()
+            .await
             .map_err(|e| RecoveryError::EventStoreError(e.to_string()))?;
         Ok(())
     }
 
     pub async fn cleanup_old_snapshots(&self) -> Result<usize, RecoveryError> {
-        self.snapshot_store.cleanup_orphaned_files().await
+        self.snapshot_store
+            .cleanup_orphaned_files()
+            .await
             .map_err(|e| RecoveryError::SnapshotError(e.to_string()))
     }
 
@@ -196,20 +205,20 @@ impl AdaptiveSnapshotScheduler {
 
     pub fn should_snapshot(&self, events_since: usize, time_since: Duration) -> bool {
         let config = self.config.read();
-        
+
         // Check absolute thresholds
         if events_since >= config.max_events {
             return true;
         }
-        
+
         if time_since >= config.max_time_between_snapshots {
             return true;
         }
-        
+
         if events_since < config.min_events {
             return false;
         }
-        
+
         if time_since < config.min_time_between_snapshots {
             return false;
         }
@@ -219,33 +228,32 @@ impl AdaptiveSnapshotScheduler {
             self.adaptive_decision(events_since, time_since)
         } else {
             // Simple threshold-based decision
-            events_since >= config.min_events * 10 ||
-            time_since >= config.min_time_between_snapshots * 10
+            events_since >= config.min_events * 10
+                || time_since >= config.min_time_between_snapshots * 10
         }
     }
 
     fn adaptive_decision(&self, events_since: usize, time_since: Duration) -> bool {
         let metrics = self.metrics.read();
-        
+
         if metrics.recovery_times.is_empty() {
             // No history, use conservative approach
             return events_since >= 10_000 || time_since >= Duration::from_secs(600);
         }
 
         // Estimate recovery time based on historical data
-        let avg_recovery_time = metrics.recovery_times.iter()
-            .sum::<Duration>() / metrics.recovery_times.len() as u32;
-        
+        let avg_recovery_time =
+            metrics.recovery_times.iter().sum::<Duration>() / metrics.recovery_times.len() as u32;
+
         let config = self.config.read();
-        
+
         // If recovery is taking too long, snapshot more frequently
         if avg_recovery_time > config.recovery_time_target {
-            events_since >= config.min_events || 
-            time_since >= config.min_time_between_snapshots
+            events_since >= config.min_events || time_since >= config.min_time_between_snapshots
         } else {
             // Recovery is fast, can wait longer between snapshots
-            events_since >= config.min_events * 2 ||
-            time_since >= config.min_time_between_snapshots * 2
+            events_since >= config.min_events * 2
+                || time_since >= config.min_time_between_snapshots * 2
         }
     }
 
@@ -260,7 +268,7 @@ impl AdaptiveSnapshotScheduler {
         let mut metrics = self.metrics.write();
         metrics.last_recovery_time = Some(recovery_time);
         metrics.recovery_times.push(recovery_time);
-        
+
         // Keep only last 10 recovery times
         if metrics.recovery_times.len() > 10 {
             metrics.recovery_times.remove(0);
@@ -274,16 +282,16 @@ impl AdaptiveSnapshotScheduler {
 
     fn adapt_configuration(&self, recovery_time: Duration) {
         let mut config = self.config.write();
-        
+
         if recovery_time > config.recovery_time_target * 2 {
             // Recovery too slow, snapshot more frequently
             config.min_events = (config.min_events / 2).max(100);
-            config.min_time_between_snapshots = 
+            config.min_time_between_snapshots =
                 (config.min_time_between_snapshots / 2).max(Duration::from_secs(30));
         } else if recovery_time < config.recovery_time_target / 2 {
             // Recovery very fast, can reduce snapshot frequency
             config.min_events = (config.min_events * 3 / 2).min(50_000);
-            config.min_time_between_snapshots = 
+            config.min_time_between_snapshots =
                 (config.min_time_between_snapshots * 3 / 2).min(Duration::from_secs(1800));
         }
     }
@@ -295,7 +303,7 @@ impl AdaptiveSnapshotScheduler {
     pub fn get_metrics(&self) -> SnapshotSchedulerMetrics {
         let metrics = self.metrics.read();
         let config = self.config.read();
-        
+
         SnapshotSchedulerMetrics {
             total_snapshots: metrics.total_snapshots,
             avg_events_between: if metrics.total_snapshots > 0 {
@@ -356,7 +364,7 @@ impl<S: AgentState> ParallelRecovery<S> {
         base_path: &str,
     ) -> Result<Self, RecoveryError> {
         let mut managers = Vec::with_capacity(num_partitions);
-        
+
         for i in 0..num_partitions {
             let snapshot_path = format!("{}/partition_{}", base_path, i);
             let manager = Arc::new(
@@ -364,7 +372,8 @@ impl<S: AgentState> ParallelRecovery<S> {
                     event_config.clone(),
                     snapshot_config.clone(),
                     &snapshot_path,
-                ).await?
+                )
+                .await?,
             );
             managers.push(manager);
         }
@@ -377,15 +386,15 @@ impl<S: AgentState> ParallelRecovery<S> {
         initial_state_factory: impl Fn() -> S + Send + Sync,
     ) -> Result<Vec<RestoredState<S>>, RecoveryError> {
         use futures::future::try_join_all;
-        
-        let futures: Vec<_> = self.managers.iter()
+
+        let futures: Vec<_> = self
+            .managers
+            .iter()
             .enumerate()
             .map(|(i, manager)| {
                 let initial = initial_state_factory();
                 let partition_key = format!("partition_{}", i);
-                async move {
-                    manager.recover_state(initial, Some(partition_key)).await
-                }
+                async move { manager.recover_state(initial, Some(partition_key)).await }
             })
             .collect();
 
@@ -398,13 +407,14 @@ impl<S: AgentState> ParallelRecovery<S> {
     ) -> Result<S, RecoveryError> {
         if states.is_empty() {
             return Err(RecoveryError::RecoveryFailed(
-                "No partitions to merge".to_string()
+                "No partitions to merge".to_string(),
             ));
         }
 
-        let mut merged = states.into_iter().next().unwrap().state;
-        
-        for restored in states {
+        let mut states_iter = states.into_iter();
+        let mut merged = states_iter.next().unwrap().state;
+
+        for restored in states_iter {
             merged.merge_partition(restored.state);
         }
 
@@ -421,36 +431,33 @@ mod tests {
     async fn test_recovery_manager() {
         let temp_dir = TempDir::new().unwrap();
         let path = temp_dir.path().to_str().unwrap();
-        
+
         let event_config = EventStoreConfig {
             persistence_enabled: false,
             ..Default::default()
         };
-        
-        let manager = RecoveryManager::<ExampleState>::new(
-            event_config,
-            SnapshotConfig::default(),
-            path,
-        ).await.unwrap();
-        
+
+        let manager =
+            RecoveryManager::<ExampleState>::new(event_config, SnapshotConfig::default(), path)
+                .await
+                .unwrap();
+
         let initial = ExampleState::default();
         let restored = manager.recover_state(initial, None).await.unwrap();
-        
+
         assert_eq!(restored.events_to_replay, 0);
     }
 
     #[test]
     fn test_adaptive_scheduler() {
-        let scheduler = AdaptiveSnapshotScheduler::new(
-            SnapshotSchedulerConfig::default()
-        );
-        
+        let scheduler = AdaptiveSnapshotScheduler::new(SnapshotSchedulerConfig::default());
+
         // Should not snapshot with few events
         assert!(!scheduler.should_snapshot(100, Duration::from_secs(10)));
-        
+
         // Should snapshot with many events
         assert!(scheduler.should_snapshot(100_001, Duration::from_secs(10)));
-        
+
         // Should snapshot after long time
         assert!(scheduler.should_snapshot(100, Duration::from_secs(3601)));
     }
@@ -462,18 +469,18 @@ mod tests {
             recovery_time_target: Duration::from_secs(5),
             ..Default::default()
         };
-        
+
         let scheduler = AdaptiveSnapshotScheduler::new(config);
-        
+
         // Record slow recovery
         scheduler.record_recovery(Duration::from_secs(15));
-        
+
         let new_config = scheduler.get_config();
         assert!(new_config.min_events < 1000); // Should reduce threshold
-        
+
         // Record fast recovery
         scheduler.record_recovery(Duration::from_secs(1));
-        
+
         let new_config = scheduler.get_config();
         assert!(new_config.min_events > 500); // Should increase threshold
     }
@@ -482,25 +489,24 @@ mod tests {
     async fn test_parallel_recovery() {
         let temp_dir = TempDir::new().unwrap();
         let path = temp_dir.path().to_str().unwrap();
-        
+
         let event_config = EventStoreConfig {
             persistence_enabled: false,
             ..Default::default()
         };
-        
-        let parallel = ParallelRecovery::<ExampleState>::new(
-            4,
-            event_config,
-            SnapshotConfig::default(),
-            path,
-        ).await.unwrap();
-        
-        let states = parallel.recover_all_partitions(
-            || ExampleState::default()
-        ).await.unwrap();
-        
+
+        let parallel =
+            ParallelRecovery::<ExampleState>::new(4, event_config, SnapshotConfig::default(), path)
+                .await
+                .unwrap();
+
+        let states = parallel
+            .recover_all_partitions(|| ExampleState::default())
+            .await
+            .unwrap();
+
         assert_eq!(states.len(), 4);
-        
+
         let merged = parallel.merge_partitions(states).await.unwrap();
         assert_eq!(merged.last_event_id, 0);
     }

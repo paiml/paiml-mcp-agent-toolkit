@@ -57,7 +57,7 @@ pub struct ReadmeCompressor {
 }
 
 impl ReadmeCompressor {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         let mut section_importance = HashMap::new();
 

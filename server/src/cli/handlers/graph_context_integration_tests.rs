@@ -5,7 +5,7 @@
 #[cfg(test)]
 mod tests {
     use super::super::super::*;
-    use crate::graph::{GraphContextAnnotator, ContextAnnotation, DependencyGraphBuilder};
+    use crate::graph::{ContextAnnotation, DependencyGraphBuilder, GraphContextAnnotator};
     use anyhow::Result;
     use std::path::PathBuf;
     use tempfile::TempDir;
@@ -24,18 +24,31 @@ mod tests {
             project_path,
             Some(output_path.clone()),
             true, // enable_graph_analysis
-        ).await;
+        )
+        .await;
 
         // Assert: Command succeeds and uses graph analysis
-        assert!(result.is_ok(), "Context command should succeed with graph analysis");
+        assert!(
+            result.is_ok(),
+            "Context command should succeed with graph analysis"
+        );
 
         // Verify output file contains graph metrics
         assert!(output_path.exists(), "Output file should be created");
 
         let content = std::fs::read_to_string(&output_path)?;
-        assert!(content.contains("# Graph Context Analysis"), "Should contain graph analysis header");
-        assert!(content.contains("## File Importance Rankings"), "Should contain PageRank rankings");
-        assert!(content.contains("## Community Clusters"), "Should contain community detection results");
+        assert!(
+            content.contains("# Graph Context Analysis"),
+            "Should contain graph analysis header"
+        );
+        assert!(
+            content.contains("## File Importance Rankings"),
+            "Should contain PageRank rankings"
+        );
+        assert!(
+            content.contains("## Community Clusters"),
+            "Should contain community detection results"
+        );
 
         Ok(())
     }
@@ -53,7 +66,8 @@ mod tests {
             temp_dir.path().to_path_buf(),
             Some(output_path.clone()),
             true, // full analysis
-        ).await;
+        )
+        .await;
 
         // Assert: Deep context includes graph-derived insights
         assert!(result.is_ok(), "Deep context command should succeed");
@@ -61,10 +75,22 @@ mod tests {
         let content = std::fs::read_to_string(&output_path)?;
 
         // Verify graph-specific sections
-        assert!(content.contains("## Dependency Graph Analysis"), "Should include dependency analysis");
-        assert!(content.contains("PageRank Score:"), "Should include PageRank scores");
-        assert!(content.contains("Community ID:"), "Should include community assignments");
-        assert!(content.contains("Related Files:"), "Should include related file suggestions");
+        assert!(
+            content.contains("## Dependency Graph Analysis"),
+            "Should include dependency analysis"
+        );
+        assert!(
+            content.contains("PageRank Score:"),
+            "Should include PageRank scores"
+        );
+        assert!(
+            content.contains("Community ID:"),
+            "Should include community assignments"
+        );
+        assert!(
+            content.contains("Related Files:"),
+            "Should include related file suggestions"
+        );
 
         Ok(())
     }
@@ -84,8 +110,12 @@ mod tests {
 
         // Verify all annotations have complexity classification
         for annotation in &annotations {
-            assert!(["Low", "Medium", "High", "Very High"].contains(&annotation.complexity_rank.as_str()),
-                   "Complexity rank should be valid: {}", annotation.complexity_rank);
+            assert!(
+                ["Low", "Medium", "High", "Very High"]
+                    .contains(&annotation.complexity_rank.as_str()),
+                "Complexity rank should be valid: {}",
+                annotation.complexity_rank
+            );
         }
 
         Ok(())
@@ -112,8 +142,10 @@ mod tests {
             .map(|a| a.importance_score)
             .fold(0.0, f64::max);
 
-        assert_eq!(hub_annotation.importance_score, max_score,
-                  "Hub file should have highest PageRank score");
+        assert_eq!(
+            hub_annotation.importance_score, max_score,
+            "Hub file should have highest PageRank score"
+        );
 
         Ok(())
     }
@@ -141,8 +173,12 @@ mod tests {
 
         if !module_a_files.is_empty() {
             let first_community = module_a_files[0].community_id;
-            assert!(module_a_files.iter().all(|f| f.community_id == first_community),
-                   "Module A files should be in same community");
+            assert!(
+                module_a_files
+                    .iter()
+                    .all(|f| f.community_id == first_community),
+                "Module A files should be in same community"
+            );
         }
 
         Ok(())
@@ -156,23 +192,21 @@ mod tests {
         let temp_dir = create_test_workspace().await?;
 
         // Act: Execute context command
-        let result = execute_context_command_with_graph(
-            temp_dir.path().to_path_buf(),
-            None,
-            true,
-        ).await;
+        let result =
+            execute_context_command_with_graph(temp_dir.path().to_path_buf(), None, true).await;
 
         // Assert: All quality standards maintained
         assert!(result.is_ok(), "Should maintain error handling standards");
 
         // Verify no panics or unwraps in error paths
-        let error_result = execute_context_command_with_graph(
-            PathBuf::from("/nonexistent/path"),
-            None,
-            true,
-        ).await;
+        let error_result =
+            execute_context_command_with_graph(PathBuf::from("/nonexistent/path"), None, true)
+                .await;
 
-        assert!(error_result.is_err(), "Should properly handle invalid paths");
+        assert!(
+            error_result.is_err(),
+            "Should properly handle invalid paths"
+        );
 
         Ok(())
     }
@@ -187,13 +221,13 @@ mod tests {
         // Create main.rs with dependencies
         std::fs::write(
             temp_dir.path().join("main.rs"),
-            "use utils::helper;\nfn main() { helper(); }"
+            "use utils::helper;\nfn main() { helper(); }",
         )?;
 
         // Create utils.rs
         std::fs::write(
             temp_dir.path().join("utils.rs"),
-            "pub fn helper() { println!(\"Hello\"); }"
+            "pub fn helper() { println!(\"Hello\"); }",
         )?;
 
         Ok(temp_dir)
@@ -211,19 +245,19 @@ mod tests {
         // Create main.rs
         std::fs::write(
             temp_dir.path().join("src/main.rs"),
-            "use crate::modules::{auth, db};\nfn main() { auth::login(); db::connect(); }"
+            "use crate::modules::{auth, db};\nfn main() { auth::login(); db::connect(); }",
         )?;
 
         // Create auth module
         std::fs::write(
             temp_dir.path().join("src/modules/auth.rs"),
-            "use super::db;\npub fn login() { db::validate_user(); }"
+            "use super::db;\npub fn login() { db::validate_user(); }",
         )?;
 
         // Create db module
         std::fs::write(
             temp_dir.path().join("src/modules/db.rs"),
-            "pub fn connect() {}\npub fn validate_user() {}"
+            "pub fn connect() {}\npub fn validate_user() {}",
         )?;
 
         Ok(temp_dir)
@@ -237,7 +271,7 @@ mod tests {
         // Simple file (low complexity)
         std::fs::write(
             temp_dir.path().join("simple.rs"),
-            "pub fn add(a: i32, b: i32) -> i32 { a + b }"
+            "pub fn add(a: i32, b: i32) -> i32 { a + b }",
         )?;
 
         // Complex file (high complexity - nested loops and conditions)
@@ -275,7 +309,7 @@ pub fn complex_function(data: &[i32]) -> Vec<i32> {
         // Hub file - imported by many others
         std::fs::write(
             temp_dir.path().join("hub.rs"),
-            "pub fn core_function() {}\npub struct CoreStruct;"
+            "pub fn core_function() {}\npub struct CoreStruct;",
         )?;
 
         // Spoke files - all depend on hub
@@ -301,21 +335,21 @@ pub fn complex_function(data: &[i32]) -> Vec<i32> {
         // Module A files (tightly coupled)
         std::fs::write(
             temp_dir.path().join("module_a/core.rs"),
-            "use super::utils;\npub fn process() { utils::helper(); }"
+            "use super::utils;\npub fn process() { utils::helper(); }",
         )?;
         std::fs::write(
             temp_dir.path().join("module_a/utils.rs"),
-            "pub fn helper() {}"
+            "pub fn helper() {}",
         )?;
 
         // Module B files (tightly coupled)
         std::fs::write(
             temp_dir.path().join("module_b/service.rs"),
-            "use super::client;\npub fn serve() { client::connect(); }"
+            "use super::client;\npub fn serve() { client::connect(); }",
         )?;
         std::fs::write(
             temp_dir.path().join("module_b/client.rs"),
-            "pub fn connect() {}"
+            "pub fn connect() {}",
         )?;
 
         // Main file (uses both modules)
@@ -395,7 +429,9 @@ pub fn complex_function(data: &[i32]) -> Vec<i32> {
 
     /// Generate graph annotations for workspace
     /// COMPLEXITY: 6
-    async fn generate_graph_annotations(workspace_path: &std::path::Path) -> Result<Vec<ContextAnnotation>> {
+    async fn generate_graph_annotations(
+        workspace_path: &std::path::Path,
+    ) -> Result<Vec<ContextAnnotation>> {
         use crate::graph::{DependencyGraphBuilder, GraphContextAnnotator};
 
         let builder = DependencyGraphBuilder::from_workspace(workspace_path)?;
@@ -417,8 +453,7 @@ pub fn complex_function(data: &[i32]) -> Vec<i32> {
         for annotation in annotations.iter().take(10) {
             content.push_str(&format!(
                 "- {} (PageRank: {:.3})\n",
-                annotation.file_path,
-                annotation.importance_score
+                annotation.file_path, annotation.importance_score
             ));
         }
 
@@ -436,11 +471,11 @@ pub fn complex_function(data: &[i32]) -> Vec<i32> {
         content.push_str("## Dependency Graph Analysis\n\n");
 
         for annotation in annotations {
+            content.push_str(&format!("### {}\n\n", annotation.file_path));
             content.push_str(&format!(
-                "### {}\n\n",
-                annotation.file_path
+                "- PageRank Score: {:.3}\n",
+                annotation.importance_score
             ));
-            content.push_str(&format!("- PageRank Score: {:.3}\n", annotation.importance_score));
             content.push_str(&format!("- Community ID: {}\n", annotation.community_id));
             content.push_str(&format!("- Complexity: {}\n", annotation.complexity_rank));
 

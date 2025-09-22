@@ -59,7 +59,7 @@ pub struct AnalysisOrchestrator {
 
 impl AnalysisOrchestrator {
     /// Create a new analysis orchestrator
-    #[must_use] 
+    #[must_use]
     pub fn new(registry: Arc<ServiceRegistry>) -> Self {
         let complexity_facade = ComplexityFacade::new(Arc::clone(&registry));
         let dead_code_facade = DeadCodeFacade::new(Arc::clone(&registry));
@@ -254,10 +254,9 @@ impl AnalysisOrchestrator {
             + dead_code.as_ref().map_or(0, |r| r.dead_items.len())
             + satd.as_ref().map_or(0, |r| r.violations.len());
 
-        let critical_issues = complexity
-            .as_ref()
-            .map_or(0, |r| r.violations.iter().filter(|v| v.complexity > 25).count())
-            + satd.as_ref().map_or(0, |r| r.violations.len()); // All SATD considered critical
+        let critical_issues = complexity.as_ref().map_or(0, |r| {
+            r.violations.iter().filter(|v| v.complexity > 25).count()
+        }) + satd.as_ref().map_or(0, |r| r.violations.len()); // All SATD considered critical
 
         // Calculate quality score (0-100)
         let quality_score = if total_issues == 0 {

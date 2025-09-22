@@ -16,7 +16,7 @@ impl Default for BigOAnalyzer {
 }
 
 impl BigOAnalyzer {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             analyzer: crate::services::big_o_analyzer::BigOAnalyzer::new(),

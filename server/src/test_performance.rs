@@ -115,9 +115,10 @@ pub async fn test_single_threaded_throughput() -> Result<()> {
 
     // Performance may vary in test environment
     if actual_throughput < targets.loc_per_sec_st as f64 * 0.8 {
-        eprintln!("Warning: Single-threaded throughput: {:.0} LOC/s, expected ≥{} LOC/s",
-            actual_throughput,
-            targets.loc_per_sec_st);
+        eprintln!(
+            "Warning: Single-threaded throughput: {:.0} LOC/s, expected ≥{} LOC/s",
+            actual_throughput, targets.loc_per_sec_st
+        );
     }
 
     println!(
@@ -173,9 +174,7 @@ pub async fn test_realistic_project_analysis() -> Result<()> {
         eprintln!("Warning: Multi-file analysis throughput: {actual_throughput:.0} LOC/s, expected ≥{min_throughput} LOC/s");
     }
 
-    println!(
-        "✅ Multi-file analysis: {actual_throughput:.0} LOC/s, duration: {duration:?}"
-    );
+    println!("✅ Multi-file analysis: {actual_throughput:.0} LOC/s, duration: {duration:?}");
 
     Ok(())
 }
@@ -215,15 +214,15 @@ pub async fn test_large_file_performance() -> Result<()> {
     // Large files should still be processed reasonably quickly
     let max_duration_secs = 30; // More lenient for test environments
     if duration.as_secs() > max_duration_secs {
-        eprintln!("Warning: Large file analysis took {}s, expected ≤{}s for 100K LOC",
+        eprintln!(
+            "Warning: Large file analysis took {}s, expected ≤{}s for 100K LOC",
             duration.as_secs(),
-            max_duration_secs);
+            max_duration_secs
+        );
     }
 
     let throughput = (test_lines as f64) / duration.as_secs_f64();
-    println!(
-        "✅ Large file performance: {throughput:.0} LOC/s, duration: {duration:?}"
-    );
+    println!("✅ Large file performance: {throughput:.0} LOC/s, duration: {duration:?}");
 
     Ok(())
 }
@@ -346,7 +345,7 @@ pub async fn test_performance_regression_detection() -> Result<()> {
 }
 
 /// Approximate memory usage in MB (platform-specific)
-#[must_use] 
+#[must_use]
 pub fn get_memory_usage_mb() -> u64 {
     #[cfg(target_os = "linux")]
     {

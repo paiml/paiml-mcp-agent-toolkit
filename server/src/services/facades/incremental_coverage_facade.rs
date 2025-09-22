@@ -65,7 +65,7 @@ pub struct IncrementalCoverageFacade {
 
 impl IncrementalCoverageFacade {
     /// Create a new incremental coverage facade
-    #[must_use] 
+    #[must_use]
     pub fn new(registry: Arc<ServiceRegistry>) -> Self {
         Self { registry }
     }

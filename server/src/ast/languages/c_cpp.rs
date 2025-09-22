@@ -23,7 +23,7 @@ impl Default for CStrategy {
 }
 
 impl CStrategy {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self
     }
@@ -137,7 +137,7 @@ impl Default for CppStrategy {
 }
 
 impl CppStrategy {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self
     }

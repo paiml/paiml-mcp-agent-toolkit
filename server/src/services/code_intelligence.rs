@@ -75,7 +75,7 @@ impl AnalysisRequest {
     /// different_request.project_path = "/different/path".to_string();
     /// assert_ne!(key1, different_request.cache_key());
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn cache_key(&self) -> String {
         use sha2::{Digest, Sha256};
         let mut hasher = Sha256::new();
@@ -174,7 +174,7 @@ impl UnifiedCache {
     /// assert!(cache.get("any_key").await.is_none());
     /// # });
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn new(capacity: usize) -> Self {
         Self {
             cache: Arc::new(RwLock::new(lru::LruCache::new(
@@ -323,7 +323,7 @@ impl CodeIntelligence {
     /// assert_eq!(generation, 0); // No analysis runs yet
     /// # });
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         let dag = Arc::new(RwLock::new(AstDag::new()));
 
@@ -489,10 +489,9 @@ impl CodeIntelligence {
                         node.first_child = crate::models::unified_ast::INVALID_NODE_KEY;
                         node.next_sibling = crate::models::unified_ast::INVALID_NODE_KEY;
                         node.source_range = (*line as u32)..(*line as u32 + 1);
-                        node.semantic_hash = name
-                            .as_bytes()
-                            .iter()
-                            .fold(0u64, |acc, &b| acc.wrapping_mul(31).wrapping_add(u64::from(b)));
+                        node.semantic_hash = name.as_bytes().iter().fold(0u64, |acc, &b| {
+                            acc.wrapping_mul(31).wrapping_add(u64::from(b))
+                        });
                         node.structural_hash = 0x12345678;
                         node
                     }
@@ -510,10 +509,9 @@ impl CodeIntelligence {
                         node.first_child = crate::models::unified_ast::INVALID_NODE_KEY;
                         node.next_sibling = crate::models::unified_ast::INVALID_NODE_KEY;
                         node.source_range = (*line as u32)..(*line as u32 + 1);
-                        node.semantic_hash = name
-                            .as_bytes()
-                            .iter()
-                            .fold(0u64, |acc, &b| acc.wrapping_mul(31).wrapping_add(u64::from(b)));
+                        node.semantic_hash = name.as_bytes().iter().fold(0u64, |acc, &b| {
+                            acc.wrapping_mul(31).wrapping_add(u64::from(b))
+                        });
                         node.structural_hash = 0x87654321;
                         node.name_vector = *fields_count as u64;
                         node.metadata = NodeMetadata {
@@ -530,10 +528,9 @@ impl CodeIntelligence {
                         node.first_child = crate::models::unified_ast::INVALID_NODE_KEY;
                         node.next_sibling = crate::models::unified_ast::INVALID_NODE_KEY;
                         node.source_range = (*line as u32)..(*line as u32 + 1);
-                        node.semantic_hash = name
-                            .as_bytes()
-                            .iter()
-                            .fold(0u64, |acc, &b| acc.wrapping_mul(31).wrapping_add(u64::from(b)));
+                        node.semantic_hash = name.as_bytes().iter().fold(0u64, |acc, &b| {
+                            acc.wrapping_mul(31).wrapping_add(u64::from(b))
+                        });
                         node.structural_hash = 0x13579BDF;
                         node
                     }
@@ -546,10 +543,9 @@ impl CodeIntelligence {
                         node.first_child = crate::models::unified_ast::INVALID_NODE_KEY;
                         node.next_sibling = crate::models::unified_ast::INVALID_NODE_KEY;
                         node.source_range = (*line as u32)..(*line as u32 + 1);
-                        node.semantic_hash = name
-                            .as_bytes()
-                            .iter()
-                            .fold(0u64, |acc, &b| acc.wrapping_mul(31).wrapping_add(u64::from(b)));
+                        node.semantic_hash = name.as_bytes().iter().fold(0u64, |acc, &b| {
+                            acc.wrapping_mul(31).wrapping_add(u64::from(b))
+                        });
                         node.structural_hash = 0x24681ACE;
                         node
                     }
@@ -567,10 +563,9 @@ impl CodeIntelligence {
                         node.first_child = crate::models::unified_ast::INVALID_NODE_KEY;
                         node.next_sibling = crate::models::unified_ast::INVALID_NODE_KEY;
                         node.source_range = (*line as u32)..(*line as u32 + 1);
-                        node.semantic_hash = name
-                            .as_bytes()
-                            .iter()
-                            .fold(0u64, |acc, &b| acc.wrapping_mul(31).wrapping_add(u64::from(b)));
+                        node.semantic_hash = name.as_bytes().iter().fold(0u64, |acc, &b| {
+                            acc.wrapping_mul(31).wrapping_add(u64::from(b))
+                        });
                         node.structural_hash = 0x97531BDF;
                         node.name_vector = *variants_count as u64;
                         node.metadata = NodeMetadata {

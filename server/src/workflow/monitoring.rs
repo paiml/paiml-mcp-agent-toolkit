@@ -1,7 +1,7 @@
 use super::*;
-use std::sync::Arc;
 use parking_lot::RwLock;
 use std::collections::HashMap;
+use std::sync::Arc;
 
 // Default workflow monitor implementation
 pub struct DefaultWorkflowMonitor {
@@ -20,18 +20,21 @@ impl DefaultWorkflowMonitor {
 impl WorkflowMonitor for DefaultWorkflowMonitor {
     async fn on_workflow_started(&self, workflow_id: Uuid, execution_id: Uuid) {
         let mut metrics = self.metrics.write();
-        metrics.insert(execution_id, WorkflowMetrics {
+        metrics.insert(
             execution_id,
-            workflow_id,
-            state: WorkflowState::Running,
-            total_steps: 0,
-            completed_steps: 0,
-            failed_steps: 0,
-            skipped_steps: 0,
-            elapsed_time: Duration::from_secs(0),
-            average_step_time: None,
-            retry_count: 0,
-        });
+            WorkflowMetrics {
+                execution_id,
+                workflow_id,
+                state: WorkflowState::Running,
+                total_steps: 0,
+                completed_steps: 0,
+                failed_steps: 0,
+                skipped_steps: 0,
+                elapsed_time: Duration::from_secs(0),
+                average_step_time: None,
+                retry_count: 0,
+            },
+        );
     }
 
     async fn on_workflow_completed(&self, _workflow_id: Uuid, execution_id: Uuid, _result: &Value) {
@@ -40,7 +43,12 @@ impl WorkflowMonitor for DefaultWorkflowMonitor {
         }
     }
 
-    async fn on_workflow_failed(&self, _workflow_id: Uuid, execution_id: Uuid, _error: &WorkflowError) {
+    async fn on_workflow_failed(
+        &self,
+        _workflow_id: Uuid,
+        execution_id: Uuid,
+        _error: &WorkflowError,
+    ) {
         if let Some(metric) = self.metrics.write().get_mut(&execution_id) {
             metric.state = WorkflowState::Failed;
         }
@@ -65,17 +73,21 @@ impl WorkflowMonitor for DefaultWorkflowMonitor {
     }
 
     async fn get_metrics(&self, execution_id: Uuid) -> WorkflowMetrics {
-        self.metrics.read().get(&execution_id).cloned().unwrap_or(WorkflowMetrics {
-            execution_id,
-            workflow_id: Uuid::new_v4(),
-            state: WorkflowState::Created,
-            total_steps: 0,
-            completed_steps: 0,
-            failed_steps: 0,
-            skipped_steps: 0,
-            elapsed_time: Duration::from_secs(0),
-            average_step_time: None,
-            retry_count: 0,
-        })
+        self.metrics
+            .read()
+            .get(&execution_id)
+            .cloned()
+            .unwrap_or(WorkflowMetrics {
+                execution_id,
+                workflow_id: Uuid::new_v4(),
+                state: WorkflowState::Created,
+                total_steps: 0,
+                completed_steps: 0,
+                failed_steps: 0,
+                skipped_steps: 0,
+                elapsed_time: Duration::from_secs(0),
+                average_step_time: None,
+                retry_count: 0,
+            })
     }
 }

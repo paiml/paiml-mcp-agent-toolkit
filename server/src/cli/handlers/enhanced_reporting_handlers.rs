@@ -3,7 +3,7 @@
 //! This module provides handlers for generating comprehensive analysis reports
 //! that consolidate multiple analysis outputs.
 
-use crate::cli::{ReportOutputFormat, AnalysisType};
+use crate::cli::{AnalysisType, ReportOutputFormat};
 use crate::models::defect_report::DefectReport;
 use crate::services::defect_report_service::{DefectReportService, ReportFormat};
 use anyhow::Result;

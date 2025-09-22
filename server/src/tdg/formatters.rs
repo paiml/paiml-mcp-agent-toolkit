@@ -21,7 +21,7 @@ use super::{Comparison, Grade, ProjectScore, TdgScore};
 /// let output = format_human(&score);
 /// assert!(output.contains("85.5/100 (A)"));
 /// ```
-#[must_use] 
+#[must_use]
 pub fn format_human(score: &TdgScore) -> String {
     let mut output = String::new();
 
@@ -195,7 +195,7 @@ pub fn format_human(score: &TdgScore) -> String {
 /// let json = format_json(&score);
 /// assert!(json.contains("85.5"));
 /// ```
-#[must_use] 
+#[must_use]
 pub fn format_json(score: &TdgScore) -> String {
     serde_json::to_string_pretty(score).unwrap_or_else(|_| "{}".to_string())
 }
@@ -218,7 +218,7 @@ pub fn format_json(score: &TdgScore) -> String {
 /// let md = format_markdown(&score);
 /// assert!(md.contains("## TDG Score"));
 /// ```
-#[must_use] 
+#[must_use]
 pub fn format_markdown(score: &TdgScore) -> String {
     let mut output = String::new();
 
@@ -334,7 +334,7 @@ pub fn format_markdown(score: &TdgScore) -> String {
 /// let output = format_comparison(&comparison);
 /// assert!(output.contains("improvement"));
 /// ```
-#[must_use] 
+#[must_use]
 pub fn format_comparison(comparison: &Comparison) -> String {
     let mut output = String::new();
 
@@ -344,14 +344,14 @@ pub fn format_comparison(comparison: &Comparison) -> String {
     )
     .unwrap();
 
-    let name1 = comparison
-        .source1
-        .file_path
-        .as_ref().map_or_else(|| "source1".to_string(), |p| p.file_name().unwrap().to_string_lossy().to_string());
-    let name2 = comparison
-        .source2
-        .file_path
-        .as_ref().map_or_else(|| "source2".to_string(), |p| p.file_name().unwrap().to_string_lossy().to_string());
+    let name1 = comparison.source1.file_path.as_ref().map_or_else(
+        || "source1".to_string(),
+        |p| p.file_name().unwrap().to_string_lossy().to_string(),
+    );
+    let name2 = comparison.source2.file_path.as_ref().map_or_else(
+        || "source2".to_string(),
+        |p| p.file_name().unwrap().to_string_lossy().to_string(),
+    );
 
     let header = format!("TDG Comparison: {name1} vs {name2}");
     let truncated_header = if header.len() > 45 {
@@ -534,7 +534,7 @@ pub fn format_comparison(comparison: &Comparison) -> String {
 /// let output = format_project(&project);
 /// assert!(output.contains("Project Score"));
 /// ```
-#[must_use] 
+#[must_use]
 pub fn format_project(project: &ProjectScore) -> String {
     let mut output = String::new();
 

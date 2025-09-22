@@ -343,7 +343,6 @@ async fn test_tdg_storage_consistency_invariants() {
 
 #[cfg(test)]
 mod tdg_storage_integration {
-    
 
     /// Integration test for complete TDG storage workflow
     #[tokio::test]

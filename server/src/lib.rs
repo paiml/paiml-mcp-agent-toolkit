@@ -105,10 +105,6 @@
 pub mod agent; // Claude Code Agent Mode implementation
 pub mod agents; // Agent system with Actix actors
 pub mod agents_md; // AGENTS.md integration for AI agent guidance
-pub mod state; // State management with event sourcing
-pub mod resources; // Resource control and limits
-pub mod mcp_integration; // MCP protocol integration
-pub mod workflow; // Workflow orchestration engine
 pub mod ast; // Unified AST module for all language parsing
 pub mod cli;
 pub mod contracts; // Uniform contracts across ALL interfaces (CLI, MCP, HTTP)
@@ -116,6 +112,7 @@ pub mod demo;
 pub mod entropy; // Actionable entropy analysis
 pub mod graph; // Graph-theoretic analysis for dependency networks
 pub mod handlers;
+pub mod mcp_integration; // MCP protocol integration
 pub mod mcp_pmcp; // Now always available with pmcp 1.0
 pub mod mcp_server;
 pub mod models;
@@ -123,14 +120,17 @@ pub mod modules; // Modular monolith architecture
 pub mod protocol; // Unified protocol design per SPECIFICATION.md Section 3
 pub mod qdd; // Quality-Driven Development tool
 pub mod quality; // Quality gates and enforcement
+pub mod resources; // Resource control and limits
 pub mod roadmap; // Roadmap-driven development with quality gates
 pub mod scaffold;
 pub mod services;
+pub mod state; // State management with event sourcing
 pub mod stateless_server;
 pub mod tdg; // Technical Debt Grading system
-pub mod test_performance; // Performance testing per SPECIFICATION.md Section 30
-                          // #[cfg(test)]
-                          // pub mod testing;
+pub mod test_performance;
+pub mod workflow; // Workflow orchestration engine // Performance testing per SPECIFICATION.md Section 30
+                                                   // #[cfg(test)]
+                                                   // pub mod testing;
 pub mod unified_protocol;
 pub mod unified_quality; // Unified Quality Enforcement System
 pub mod utils;

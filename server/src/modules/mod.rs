@@ -2,9 +2,9 @@
 // Each module has a public trait interface and private implementation
 
 pub mod analyzer;
+pub mod orchestrator;
 pub mod transformer;
 pub mod validator;
-pub mod orchestrator;
 
 use async_trait::async_trait;
 use std::sync::Arc;
@@ -51,7 +51,8 @@ impl ModuleRegistry {
     where
         T: std::any::Any + Send + Sync + 'static,
     {
-        self.modules.insert(name, module as Arc<dyn std::any::Any + Send + Sync>);
+        self.modules
+            .insert(name, module as Arc<dyn std::any::Any + Send + Sync>);
     }
 
     pub fn get<T>(&self, name: &str) -> Option<Arc<T>>

@@ -20,7 +20,7 @@ pub struct ComplexityAnalyzer {
 }
 
 impl ComplexityAnalyzer {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             inner: OriginalAnalyzer::new(),
@@ -300,12 +300,12 @@ impl AnalyzerInfo for ComplexityAnalyzer {
 pub struct ComplexityAnalyzerFactory;
 
 impl ComplexityAnalyzerFactory {
-    #[must_use] 
+    #[must_use]
     pub fn create() -> ComplexityAnalyzer {
         ComplexityAnalyzer::new()
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn create_with_thresholds(_max_cyclomatic: u32, _max_cognitive: u32) -> ComplexityAnalyzer {
         // Create analyzer with specified threshold values
         // The thresholds are used during analysis to determine violations

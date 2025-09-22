@@ -2,7 +2,7 @@
 //!
 //! Safely executes commands from AGENTS.md with quality gate enforcement.
 
-use super::{PathBuf, Command};
+use super::{Command, PathBuf};
 use anyhow::Result;
 use std::process::Stdio;
 use std::time::Duration;

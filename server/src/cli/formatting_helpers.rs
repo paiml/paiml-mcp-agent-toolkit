@@ -3,7 +3,7 @@ use crate::services::deep_context::DeepContext;
 use std::fmt::Write;
 
 /// Format executive summary section
-#[must_use] 
+#[must_use]
 pub fn format_executive_summary(context: &DeepContext) -> String {
     let mut output = String::new();
 
@@ -25,7 +25,7 @@ pub fn format_executive_summary(context: &DeepContext) -> String {
 }
 
 /// Format quality scorecard section
-#[must_use] 
+#[must_use]
 pub fn format_quality_scorecard(context: &DeepContext) -> String {
     let mut output = String::new();
 
@@ -57,7 +57,7 @@ pub fn format_quality_scorecard(context: &DeepContext) -> String {
 }
 
 /// Format project overview from README
-#[must_use] 
+#[must_use]
 pub fn format_project_overview(overview: &ProjectOverview) -> String {
     let mut output = String::new();
 
@@ -86,7 +86,7 @@ pub fn format_project_overview(overview: &ProjectOverview) -> String {
 }
 
 /// Format build info from Makefile
-#[must_use] 
+#[must_use]
 pub fn format_build_info(build_info: &BuildInfo) -> String {
     let mut output = String::new();
 
@@ -113,7 +113,7 @@ pub fn format_build_info(build_info: &BuildInfo) -> String {
 }
 
 /// Format defect summary section
-#[must_use] 
+#[must_use]
 pub fn format_defect_summary(context: &DeepContext) -> String {
     let mut output = String::new();
 
@@ -151,7 +151,7 @@ pub fn format_defect_summary(context: &DeepContext) -> String {
 }
 
 /// Format recommendations section
-#[must_use] 
+#[must_use]
 pub fn format_recommendations(context: &DeepContext) -> String {
     let mut output = String::new();
 

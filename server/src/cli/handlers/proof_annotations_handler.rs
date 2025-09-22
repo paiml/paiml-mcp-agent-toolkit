@@ -2,7 +2,10 @@
 //!
 //! Refactored handler for formal proof annotation analysis.
 
-use crate::cli::proof_annotation_helpers::{setup_proof_annotator, ProofAnnotationFilter, collect_and_filter_annotations, format_as_json, format_as_summary, format_as_full, format_as_markdown, format_as_sarif};
+use crate::cli::proof_annotation_helpers::{
+    collect_and_filter_annotations, format_as_full, format_as_json, format_as_markdown,
+    format_as_sarif, format_as_summary, setup_proof_annotator, ProofAnnotationFilter,
+};
 use crate::cli::{ProofAnnotationOutputFormat, PropertyTypeFilter, VerificationMethodFilter};
 use crate::models::unified_ast::{Location, ProofAnnotation};
 use crate::services::proof_annotator::ProofAnnotator;

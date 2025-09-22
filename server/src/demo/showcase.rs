@@ -59,7 +59,7 @@ pub struct ShowcaseGallery {
 }
 
 impl ShowcaseGallery {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         let mut gallery = Self {
             repositories: HashMap::new(),
@@ -359,12 +359,12 @@ impl ShowcaseGallery {
         self.categories.entry(category).or_default().push(name);
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn get_all_repositories(&self) -> Vec<&ShowcaseRepository> {
         self.repositories.values().collect()
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn get_repositories_by_category(
         &self,
         category: &RepositoryCategory,
@@ -379,7 +379,7 @@ impl ShowcaseGallery {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn get_repositories_by_complexity(
         &self,
         tier: &ComplexityTier,
@@ -390,7 +390,7 @@ impl ShowcaseGallery {
             .collect()
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn get_repositories_by_language(&self, language: &str) -> Vec<&ShowcaseRepository> {
         let lang_lower = language.to_lowercase();
         self.repositories
@@ -405,17 +405,17 @@ impl ShowcaseGallery {
             .collect()
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn get_repository_by_name(&self, name: &str) -> Option<&ShowcaseRepository> {
         self.repositories.get(name)
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn get_categories(&self) -> Vec<&RepositoryCategory> {
         self.categories.keys().collect()
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn get_quick_start_recommendations(&self) -> Vec<&ShowcaseRepository> {
         // Return beginner and intermediate repositories for quick starts
         self.repositories
@@ -430,7 +430,7 @@ impl ShowcaseGallery {
             .collect()
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn get_featured_repositories(&self) -> Vec<&ShowcaseRepository> {
         // Return a curated selection of featured repositories
         let featured_names = vec!["Tokio", "Django", "React", "VS Code"];
@@ -440,7 +440,7 @@ impl ShowcaseGallery {
             .collect()
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn generate_showcase_summary(&self) -> ShowcaseSummary {
         let total_repositories = self.repositories.len();
         let languages: std::collections::HashSet<String> = self

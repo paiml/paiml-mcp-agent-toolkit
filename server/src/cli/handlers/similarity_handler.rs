@@ -136,8 +136,21 @@ fn is_source_file(path: &std::path::Path) -> bool {
     if let Some(ext) = path.extension() {
         matches!(
             ext.to_str(),
-            Some("rs" | "ts" | "tsx" | "js" | "jsx" | "py" | "c" | "cpp" | "cc" | "h" |
-"hpp" | "kt" | "java" | "go")
+            Some(
+                "rs" | "ts"
+                    | "tsx"
+                    | "js"
+                    | "jsx"
+                    | "py"
+                    | "c"
+                    | "cpp"
+                    | "cc"
+                    | "h"
+                    | "hpp"
+                    | "kt"
+                    | "java"
+                    | "go"
+            )
         )
     } else {
         false

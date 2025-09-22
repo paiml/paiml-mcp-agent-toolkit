@@ -1,9 +1,9 @@
-use actix::prelude::*;
 use super::analyzer_actor::AnalyzerActor;
+use super::messages::{AnalyzeMessage, TransformMessage, ValidateMessage};
 use super::transformer_actor::TransformerActor;
 use super::validator_actor::ValidatorActor;
-use super::{AgentResponse, AgentError};
-use super::messages::{AnalyzeMessage, TransformMessage, ValidateMessage};
+use super::{AgentError, AgentResponse};
+use actix::prelude::*;
 
 pub struct QualityGateSupervisor {
     analyzer: Addr<AnalyzerActor>,
@@ -62,12 +62,18 @@ impl Handler<ValidateCode> for QualityGateSupervisor {
                 priority: super::Priority::Normal,
             };
 
-            let analyze_result = analyzer.send(analyze_msg).await
+            let analyze_result = analyzer
+                .send(analyze_msg)
+                .await
                 .map_err(|e| AgentError::CommunicationFailed(e.to_string()))?;
 
             let metrics = match analyze_result? {
                 AgentResponse::Analyzed(m) => m,
-                _ => return Err(AgentError::ProcessingFailed("Unexpected response".to_string())),
+                _ => {
+                    return Err(AgentError::ProcessingFailed(
+                        "Unexpected response".to_string(),
+                    ))
+                }
             };
 
             // Step 2: Validate metrics
@@ -77,12 +83,18 @@ impl Handler<ValidateCode> for QualityGateSupervisor {
                 priority: super::Priority::Normal,
             };
 
-            let validate_result = validator.send(validate_msg).await
+            let validate_result = validator
+                .send(validate_msg)
+                .await
                 .map_err(|e| AgentError::CommunicationFailed(e.to_string()))?;
 
             let validation = match validate_result? {
                 AgentResponse::Validated(v) => v,
-                _ => return Err(AgentError::ProcessingFailed("Unexpected response".to_string())),
+                _ => {
+                    return Err(AgentError::ProcessingFailed(
+                        "Unexpected response".to_string(),
+                    ))
+                }
             };
 
             Ok(ValidationResult {

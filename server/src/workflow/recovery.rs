@@ -15,11 +15,11 @@ impl RecoveryManager {
             ErrorStrategy::Rollback => {
                 // Implement rollback logic
                 Ok(())
-            },
+            }
             ErrorStrategy::Compensate => {
                 // Implement compensation logic
                 Ok(())
-            },
+            }
         }
     }
 }

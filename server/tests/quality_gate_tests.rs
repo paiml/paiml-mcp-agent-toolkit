@@ -1,13 +1,13 @@
-use pmat::quality::gate::{QualityGateRunner, QualityThresholds, QualityReport, QualityViolation};
-use pmat::quality::analyzers::{ComplexityAnalyzer, SatdDetector, EfficiencyAnalyzer};
+use pmat::quality::analyzers::{ComplexityAnalyzer, EfficiencyAnalyzer, SatdDetector};
+use pmat::quality::gate::{QualityGateRunner, QualityReport, QualityThresholds, QualityViolation};
 use proptest::prelude::*;
 use std::path::Path;
 
 #[cfg(test)]
 mod quality_gate_tests {
     use super::*;
-    use tempfile::TempDir;
     use std::fs;
+    use tempfile::TempDir;
 
     #[test]
     fn test_quality_gate_detects_complexity_violations() {
@@ -84,7 +84,9 @@ mod quality_gate_tests {
         assert!(result.is_err());
 
         match result.unwrap_err() {
-            QualityViolation::SatdDetected { count, patterns, .. } => {
+            QualityViolation::SatdDetected {
+                count, patterns, ..
+            } => {
                 assert_eq!(count, 3);
                 assert!(patterns.contains(&"TODO".to_string()));
                 assert!(patterns.contains(&"FIXME".to_string()));
@@ -117,7 +119,10 @@ mod quality_gate_tests {
 
         let hook_result = pre_commit_hook_validate(&file_path);
         assert!(hook_result.is_err());
-        assert!(hook_result.unwrap_err().to_string().contains("quality violations"));
+        assert!(hook_result
+            .unwrap_err()
+            .to_string()
+            .contains("quality violations"));
     }
 
     proptest! {

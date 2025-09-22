@@ -110,7 +110,7 @@ impl std::str::FromStr for QualityLevel {
 
 impl QualityLevel {
     /// Get the maximum cyclomatic complexity for this level.
-    #[must_use] 
+    #[must_use]
     pub fn max_complexity(&self) -> u32 {
         match self {
             Self::Standard => 20,
@@ -120,7 +120,7 @@ impl QualityLevel {
     }
 
     /// Get the maximum cognitive complexity for this level.
-    #[must_use] 
+    #[must_use]
     pub fn max_cognitive_complexity(&self) -> u32 {
         match self {
             Self::Standard => 15,
@@ -130,7 +130,7 @@ impl QualityLevel {
     }
 
     /// Get the maximum nesting depth for this level.
-    #[must_use] 
+    #[must_use]
     pub fn max_nesting(&self) -> u32 {
         match self {
             Self::Standard => 5,
@@ -140,7 +140,7 @@ impl QualityLevel {
     }
 
     /// Get the minimum line coverage percentage for this level.
-    #[must_use] 
+    #[must_use]
     pub fn min_line_coverage(&self) -> f64 {
         match self {
             Self::Standard => 70.0,
@@ -150,7 +150,7 @@ impl QualityLevel {
     }
 
     /// Get the minimum branch coverage percentage for this level.
-    #[must_use] 
+    #[must_use]
     pub fn min_branch_coverage(&self) -> f64 {
         match self {
             Self::Standard => 60.0,
@@ -160,7 +160,7 @@ impl QualityLevel {
     }
 
     /// Get the minimum function coverage percentage for this level.
-    #[must_use] 
+    #[must_use]
     pub fn min_function_coverage(&self) -> f64 {
         match self {
             Self::Standard => 80.0,

@@ -2,9 +2,7 @@
 //! Autonomous all-night refactoring - complexity 48 → ≤8
 
 use anyhow::Result;
-use pmat::services::similarity::{
-    ComprehensiveReport, Metrics, SimilarBlock,
-};
+use pmat::services::similarity::{ComprehensiveReport, Metrics, SimilarBlock};
 
 // Mock function signature for testing refactored structure
 fn format_detailed_report_mock(report: &ComprehensiveReport) -> Result<String> {

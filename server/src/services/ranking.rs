@@ -297,7 +297,7 @@ impl PartialOrd for DuplicationScore {
 /// assert_eq!(ranked[0], 2); // Index of highest score (0.9)
 /// assert_eq!(ranked[1], 0); // Index of second highest (0.8)
 /// ```
-#[must_use] 
+#[must_use]
 pub fn rank_files_vectorized(scores: &[f32], limit: usize) -> Vec<usize> {
     let mut indices: Vec<usize> = (0..scores.len()).collect();
 
@@ -336,7 +336,7 @@ impl Default for ComplexityRanker {
 }
 
 impl ComplexityRanker {
-    #[must_use] 
+    #[must_use]
     pub fn new(cyclomatic_weight: f64, cognitive_weight: f64, function_count_weight: f64) -> Self {
         Self {
             cyclomatic_weight,
@@ -378,10 +378,12 @@ impl ComplexityRanker {
         let cognitive_avg = f64::from(cognitive_total) / function_count as f64;
 
         // Mock halstead effort (would need proper calculation)
-        let halstead_effort = f64::from(all_functions
-            .iter()
-            .map(|f| u32::from(f.metrics.lines) * 10) // Simple approximation
-            .sum::<u32>());
+        let halstead_effort = f64::from(
+            all_functions
+                .iter()
+                .map(|f| u32::from(f.metrics.lines) * 10) // Simple approximation
+                .sum::<u32>(),
+        );
 
         // Calculate composite score
         let normalized_cyclomatic = f64::from(cyclomatic_max).min(50.0) / 50.0; // Normalize to 0-1
@@ -485,7 +487,7 @@ impl FileRanker for ComplexityRanker {
 }
 
 /// Create a complexity ranker from file metrics (more accurate)
-#[must_use] 
+#[must_use]
 pub fn rank_files_by_complexity(
     file_metrics: &[FileComplexityMetrics],
     limit: usize,

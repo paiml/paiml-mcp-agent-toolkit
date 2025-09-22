@@ -1,6 +1,10 @@
 //! Operation handlers for the unified protocol
 
-use super::{Operation, Value, UnifiedResponse, ResponseMetadata, Uuid, ComplexityParams, ErrorInfo, SatdParams, DeadCodeParams, ContextParams, QualityGateParams, QualityProxyParams, RefactorStartParams, RefactorNextParams, RefactorStopParams, ProjectParams, AgentParams, PdmtParams};
+use super::{
+    AgentParams, ComplexityParams, ContextParams, DeadCodeParams, ErrorInfo, Operation, PdmtParams,
+    ProjectParams, QualityGateParams, QualityProxyParams, RefactorNextParams, RefactorStartParams,
+    RefactorStopParams, ResponseMetadata, SatdParams, UnifiedResponse, Uuid, Value,
+};
 
 /// Executes an operation and returns a unified response
 pub async fn execute_operation(operation: Operation, _params: Value) -> UnifiedResponse {

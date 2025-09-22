@@ -751,10 +751,7 @@ fn process_diagnostic(
         }
 
         // Skip non-Rust files (config files, etc.)
-        if !file_path
-            .extension()
-            .is_some_and(|ext| ext == "rs")
-        {
+        if !file_path.extension().is_some_and(|ext| ext == "rs") {
             return;
         }
 
@@ -771,7 +768,8 @@ fn process_diagnostic(
         // Count by lint code
         let lint_name = diagnostic
             .code
-            .as_ref().map_or_else(|| "unknown".to_string(), |c| c.code.clone());
+            .as_ref()
+            .map_or_else(|| "unknown".to_string(), |c| c.code.clone());
 
         *metrics.violations.entry(lint_name.clone()).or_default() += 1;
 

@@ -343,13 +343,13 @@ where
     }
 
     /// Get cache statistics
-    #[must_use] 
+    #[must_use]
     pub fn len(&self) -> usize {
         self.memory_cache.read().len()
     }
 
     /// Check if cache is empty
-    #[must_use] 
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.memory_cache.read().is_empty()
     }

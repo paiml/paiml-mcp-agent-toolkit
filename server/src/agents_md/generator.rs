@@ -2,7 +2,7 @@
 //!
 //! Generates AGENTS.md files from PMAT analysis and project structure.
 
-use super::{Command, PathBuf, QualityRules, Section, AgentsMdDocument, Path};
+use super::{AgentsMdDocument, Command, Path, PathBuf, QualityRules, Section};
 use anyhow::{Context, Result};
 use std::collections::HashMap;
 use std::fmt::Write;
@@ -156,7 +156,7 @@ impl Default for AgentsMdGenerator {
 
 impl AgentsMdGenerator {
     /// Create new generator
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         let mut generator = Self {
             templates: HashMap::new(),
@@ -168,7 +168,7 @@ impl AgentsMdGenerator {
     }
 
     /// Create with custom config
-    #[must_use] 
+    #[must_use]
     pub fn with_config(config: GeneratorConfig) -> Self {
         let mut generator = Self {
             templates: HashMap::new(),

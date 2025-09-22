@@ -21,7 +21,7 @@ pub struct InteractiveScaffolder {
 
 impl InteractiveScaffolder {
     /// Create a new interactive scaffolder.
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             term: Term::stdout(),

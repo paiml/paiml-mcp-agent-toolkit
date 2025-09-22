@@ -57,7 +57,7 @@ pub struct CacheDiagnosticReport {
 }
 
 impl CacheDiagnosticReport {
-    #[must_use] 
+    #[must_use]
     pub fn new(diagnostics: CacheDiagnostics) -> Self {
         let mut warnings = Vec::new();
         let mut recommendations = Vec::new();
@@ -97,7 +97,7 @@ impl CacheDiagnosticReport {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn is_healthy(&self) -> bool {
         self.warnings.is_empty()
     }
@@ -132,7 +132,7 @@ impl CacheDiagnosticReport {
 /// assert!(metrics.contains("cache_hits_total"));
 /// assert!(metrics.contains("cache_memory_bytes"));
 /// ```
-#[must_use] 
+#[must_use]
 pub fn format_prometheus_metrics(diagnostics: &CacheDiagnostics) -> String {
     let mut output = String::new();
 

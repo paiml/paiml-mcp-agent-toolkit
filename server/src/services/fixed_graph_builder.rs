@@ -103,7 +103,7 @@ pub struct FixedGraphBuilder {
 }
 
 impl FixedGraphBuilder {
-    #[must_use] 
+    #[must_use]
     pub fn new(config: GraphConfig) -> Self {
         Self {
             max_nodes: config.max_nodes,
@@ -129,7 +129,7 @@ impl FixedGraphBuilder {
     ///     .with_max_nodes(50);
     /// // Builder will now limit to 50 nodes instead of 100
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn with_max_nodes(mut self, max_nodes: usize) -> Self {
         self.max_nodes = max_nodes;
         self
@@ -152,7 +152,7 @@ impl FixedGraphBuilder {
     ///     .with_max_edges(200);
     /// // Builder will now limit to 200 edges instead of 500
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn with_max_edges(mut self, max_edges: usize) -> Self {
         self.max_edges = max_edges;
         self

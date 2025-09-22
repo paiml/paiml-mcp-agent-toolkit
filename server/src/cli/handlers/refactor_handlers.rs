@@ -380,7 +380,9 @@ async fn execute_with_timeout(
 
     let result = tokio::time::timeout(limit, engine.run()).await;
 
-    if let Ok(summary) = result { summary.map_err(anyhow::Error::from) } else {
+    if let Ok(summary) = result {
+        summary.map_err(anyhow::Error::from)
+    } else {
         println!("⏰ Runtime limit reached, saving checkpoint...");
         engine.save_checkpoint().await?;
         std::process::exit(0);
@@ -563,10 +565,7 @@ fn print_table_data(state: &serde_json::Value) {
     if let Some(current) = state.get("current") {
         println!(
             "│ Current State   │ {:36} │",
-            format!("{current:?}")
-                .chars()
-                .take(36)
-                .collect::<String>()
+            format!("{current:?}").chars().take(36).collect::<String>()
         );
     }
 
@@ -635,9 +634,7 @@ pub async fn handle_refactor_resume(
 
     // Placeholder implementation
     println!("⚠️  Resume functionality not yet fully implemented");
-    println!(
-        "   This would continue from the saved state for {steps} steps"
-    );
+    println!("   This would continue from the saved state for {steps} steps");
 
     Ok(())
 }
@@ -658,22 +655,37 @@ async fn load_refactor_config_json(config_path: &Path) -> anyhow::Result<Refacto
     let mut refactor_config = RefactorConfig::default();
 
     if let Some(rules) = config.get("rules") {
-        if let Some(target_complexity) = rules.get("target_complexity").and_then(serde_json::Value::as_u64) {
+        if let Some(target_complexity) = rules
+            .get("target_complexity")
+            .and_then(serde_json::Value::as_u64)
+        {
             refactor_config.target_complexity = target_complexity as u16;
         }
-        if let Some(max_function_lines) = rules.get("max_function_lines").and_then(serde_json::Value::as_u64) {
+        if let Some(max_function_lines) = rules
+            .get("max_function_lines")
+            .and_then(serde_json::Value::as_u64)
+        {
             refactor_config.max_function_lines = max_function_lines as u32;
         }
-        if let Some(remove_satd) = rules.get("remove_satd").and_then(serde_json::Value::as_bool) {
+        if let Some(remove_satd) = rules
+            .get("remove_satd")
+            .and_then(serde_json::Value::as_bool)
+        {
             refactor_config.remove_satd = remove_satd;
         }
     }
 
-    if let Some(parallel) = config.get("parallel_workers").and_then(serde_json::Value::as_u64) {
+    if let Some(parallel) = config
+        .get("parallel_workers")
+        .and_then(serde_json::Value::as_u64)
+    {
         refactor_config.parallel_workers = parallel as usize;
     }
 
-    if let Some(memory) = config.get("memory_limit_mb").and_then(serde_json::Value::as_u64) {
+    if let Some(memory) = config
+        .get("memory_limit_mb")
+        .and_then(serde_json::Value::as_u64)
+    {
         refactor_config.memory_limit_mb = memory as usize;
     }
 

@@ -42,7 +42,7 @@ impl BigOClass {
     /// assert_eq!(BigOClass::Linear.notation(), "O(n)");
     /// assert_eq!(BigOClass::Quadratic.notation(), "O(n²)");
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn notation(&self) -> &'static str {
         match self {
             Self::Constant => "O(1)",
@@ -68,7 +68,7 @@ impl BigOClass {
     /// assert!(BigOClass::Linear.is_better_than(&BigOClass::Quadratic));
     /// assert!(!BigOClass::Quadratic.is_better_than(&BigOClass::Linear));
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn is_better_than(&self, other: &Self) -> bool {
         (*self as u8) < (*other as u8)
     }
@@ -84,7 +84,7 @@ impl BigOClass {
     /// assert_eq!(BigOClass::Linear.growth_factor(100.0), 100.0);
     /// assert_eq!(BigOClass::Quadratic.growth_factor(10.0), 100.0);
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn growth_factor(&self, n: f64) -> f64 {
         match self {
             Self::Constant => 1.0,
@@ -156,7 +156,7 @@ impl ComplexityFlags {
     pub const PROVEN: u8 = 0b01000000;
     pub const RECURSIVE: u8 = 0b10000000;
 
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self(0)
     }
@@ -174,7 +174,7 @@ impl ComplexityFlags {
     /// assert!(flags.has(ComplexityFlags::WORST_CASE));
     /// assert!(flags.has(ComplexityFlags::PROVEN));
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn with(mut self, flag: u8) -> Self {
         self.0 |= flag;
         self
@@ -191,7 +191,7 @@ impl ComplexityFlags {
     /// assert!(flags.has(ComplexityFlags::AMORTIZED));
     /// assert!(!flags.has(ComplexityFlags::WORST_CASE));
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn has(&self, flag: u8) -> bool {
         self.0 & flag != 0
     }
@@ -211,7 +211,7 @@ impl ComplexityFlags {
     ///     .with(ComplexityFlags::AVERAGE_CASE);
     /// assert!(!avg_case.is_worst_case());
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn is_worst_case(&self) -> bool {
         self.has(Self::WORST_CASE)
     }
@@ -231,7 +231,7 @@ impl ComplexityFlags {
     ///     .with(ComplexityFlags::EMPIRICAL);
     /// assert!(!empirical.is_proven());
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn is_proven(&self) -> bool {
         self.has(Self::PROVEN)
     }
@@ -257,7 +257,7 @@ pub struct ComplexityBound {
 
 impl ComplexityBound {
     /// Create a new complexity bound
-    #[must_use] 
+    #[must_use]
     pub fn new(class: BigOClass, coefficient: u16, input_var: InputVariable) -> Self {
         Self {
             class,
@@ -281,7 +281,7 @@ impl ComplexityBound {
     /// assert_eq!(bound.confidence, 100);
     /// assert_eq!(bound.notation(), "O(1)");
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn constant() -> Self {
         Self::new(BigOClass::Constant, 1, InputVariable::N)
             .with_confidence(100)
@@ -299,7 +299,7 @@ impl ComplexityBound {
     /// assert_eq!(bound.class, BigOClass::Linear);
     /// assert_eq!(bound.notation(), "O(n)");
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn linear() -> Self {
         Self::new(BigOClass::Linear, 1, InputVariable::N)
     }
@@ -315,7 +315,7 @@ impl ComplexityBound {
     /// assert_eq!(bound.class, BigOClass::Quadratic);
     /// assert_eq!(bound.notation(), "O(n²)");
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn quadratic() -> Self {
         Self::new(BigOClass::Quadratic, 1, InputVariable::N)
     }
@@ -331,7 +331,7 @@ impl ComplexityBound {
     /// assert_eq!(bound.class, BigOClass::Logarithmic);
     /// assert_eq!(bound.notation(), "O(log n)");
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn logarithmic() -> Self {
         Self::new(BigOClass::Logarithmic, 1, InputVariable::N)
     }
@@ -347,7 +347,7 @@ impl ComplexityBound {
     /// assert_eq!(bound.class, BigOClass::Linearithmic);
     /// assert_eq!(bound.notation(), "O(n log n)");
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn linearithmic() -> Self {
         Self::new(BigOClass::Linearithmic, 1, InputVariable::N)
     }
@@ -366,7 +366,7 @@ impl ComplexityBound {
     /// assert_eq!(cubic.class, BigOClass::Cubic);
     /// assert_eq!(cubic.coefficient, 2);
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn polynomial(exponent: u32, coefficient: u16) -> Self {
         let class = match exponent {
             0 => BigOClass::Constant,
@@ -379,7 +379,7 @@ impl ComplexityBound {
     }
 
     /// Create a polynomial-logarithmic bound
-    #[must_use] 
+    #[must_use]
     pub fn polynomial_log(degree: u32, log_power: u32) -> Self {
         match (degree, log_power) {
             (1, 1) => Self::linearithmic(),
@@ -399,7 +399,7 @@ impl ComplexityBound {
     /// assert_eq!(unknown.confidence, 0);
     /// assert_eq!(unknown.notation(), "O(?)");
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn unknown() -> Self {
         Self::new(BigOClass::Unknown, 0, InputVariable::N).with_confidence(0)
     }
@@ -420,7 +420,7 @@ impl ComplexityBound {
     ///     .with_confidence(150);
     /// assert_eq!(clamped.confidence, 100);
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn with_confidence(mut self, confidence: u8) -> Self {
         self.confidence = confidence.min(100);
         self
@@ -438,7 +438,7 @@ impl ComplexityBound {
     /// assert!(bound.flags.has(ComplexityFlags::PROVEN));
     /// assert!(bound.flags.has(ComplexityFlags::TIGHT_BOUND));
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn with_flags(mut self, flags: u8) -> Self {
         self.flags = self.flags.with(flags);
         self
@@ -457,7 +457,7 @@ impl ComplexityBound {
     /// let complex = ComplexityBound::new(BigOClass::Linear, 5, InputVariable::N);
     /// assert_eq!(complex.notation(), "5·O(n)");
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn notation(&self) -> String {
         if self.coefficient <= 1 {
             format!("{}", self.class)
@@ -479,7 +479,7 @@ impl ComplexityBound {
     /// let quadratic = ComplexityBound::quadratic();
     /// assert_eq!(quadratic.estimate_operations(10.0), 100.0);
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn estimate_operations(&self, n: f64) -> f64 {
         f64::from(self.coefficient) * self.class.growth_factor(n)
     }
@@ -500,7 +500,7 @@ impl ComplexityBound {
     /// let slow = ComplexityBound::new(BigOClass::Linear, 5, InputVariable::N);
     /// assert!(fast.is_better_than(&slow));
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn is_better_than(&self, other: &Self) -> bool {
         if self.class == other.class {
             self.coefficient < other.coefficient
@@ -539,7 +539,7 @@ pub struct CacheComplexity {
 }
 
 impl CacheComplexity {
-    #[must_use] 
+    #[must_use]
     pub fn new(hit_ratio: u8, miss_penalty: u8, working_set: BigOClass) -> Self {
         Self {
             hit_ratio: hit_ratio.min(100),
@@ -580,7 +580,7 @@ pub struct RecursiveCall {
 
 impl RecurrenceRelation {
     /// Attempt to solve using the Master Theorem
-    #[must_use] 
+    #[must_use]
     pub fn solve_master_theorem(&self) -> Option<ComplexityBound> {
         // Check if recurrence fits Master Theorem form: T(n) = aT(n/b) + f(n)
         if self.recursive_calls.len() != 1 {

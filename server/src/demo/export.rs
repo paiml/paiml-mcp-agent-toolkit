@@ -171,7 +171,7 @@ pub struct JsonExporter {
 }
 
 impl JsonExporter {
-    #[must_use] 
+    #[must_use]
     pub fn new(pretty: bool) -> Self {
         Self { pretty }
     }
@@ -265,7 +265,7 @@ pub struct ExportService {
 }
 
 impl ExportService {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         let mut exporters: std::collections::HashMap<String, Box<dyn Exporter>> =
             std::collections::HashMap::new();
@@ -290,9 +290,12 @@ impl ExportService {
         Ok(())
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn supported_formats(&self) -> Vec<&str> {
-        self.exporters.keys().map(std::string::String::as_str).collect()
+        self.exporters
+            .keys()
+            .map(std::string::String::as_str)
+            .collect()
     }
 }
 
@@ -303,7 +306,7 @@ impl Default for ExportService {
 }
 
 // Helper to create ExportReport from analysis results
-#[must_use] 
+#[must_use]
 pub fn create_export_report(
     repo_name: &str,
     dag: &DependencyGraph,
@@ -330,7 +333,7 @@ pub fn create_export_report(
 
 // Full helper to create comprehensive ExportReport
 #[allow(clippy::too_many_arguments)]
-#[must_use] 
+#[must_use]
 pub fn create_full_export_report(
     repo_name: &str,
     dag: &DependencyGraph,

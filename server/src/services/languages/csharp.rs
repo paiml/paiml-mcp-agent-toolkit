@@ -20,7 +20,7 @@ pub struct CSharpAstVisitor {
 #[cfg(feature = "csharp-ast")]
 impl CSharpAstVisitor {
     /// Creates a new C# AST visitor
-    #[must_use] 
+    #[must_use]
     pub fn new(file_path: &Path) -> Self {
         Self {
             items: Vec::new(),
@@ -80,7 +80,11 @@ impl CSharpAstVisitor {
             let trimmed = line.trim();
             if let Some(class_name) = self.extract_class_name_from_line(trimmed) {
                 let qualified_name = self.get_qualified_name(&class_name);
-                let visibility = if trimmed.contains("public") { "public" } else { "internal" };
+                let visibility = if trimmed.contains("public") {
+                    "public"
+                } else {
+                    "internal"
+                };
                 let fields_count = self.count_class_members(source, &class_name);
 
                 self.items.push(AstItem::Struct {
@@ -140,9 +144,13 @@ impl CSharpAstVisitor {
                 }
 
                 // Count method declarations and properties
-                if ((trimmed.contains('(') && trimmed.contains(')')) || trimmed.contains(" => ")) &&
-                   (trimmed.contains("public") || trimmed.contains("private") || trimmed.contains("protected")) &&
-                   !trimmed.contains("class") && !trimmed.contains("interface") {
+                if ((trimmed.contains('(') && trimmed.contains(')')) || trimmed.contains(" => "))
+                    && (trimmed.contains("public")
+                        || trimmed.contains("private")
+                        || trimmed.contains("protected"))
+                    && !trimmed.contains("class")
+                    && !trimmed.contains("interface")
+                {
                     count += 1;
                 }
             }
@@ -173,12 +181,18 @@ impl CSharpAstVisitor {
     /// Helper to extract method name from line (complexity ≤10)
     fn extract_method_name_from_line(&self, line: &str) -> Option<String> {
         // Handle regular methods
-        if line.contains('(') && line.contains(')') && !line.contains("class") && !line.contains("interface") {
+        if line.contains('(')
+            && line.contains(')')
+            && !line.contains("class")
+            && !line.contains("interface")
+        {
             let parts: Vec<&str> = line.split_whitespace().collect();
             for (i, part) in parts.iter().enumerate() {
                 if part.contains('(') && i > 0 {
                     let method_name = part.split('(').next()?;
-                    if !method_name.is_empty() && method_name.chars().all(|c| c.is_alphanumeric() || c == '_') {
+                    if !method_name.is_empty()
+                        && method_name.chars().all(|c| c.is_alphanumeric() || c == '_')
+                    {
                         return Some(method_name.to_string());
                     }
                 }
@@ -216,7 +230,11 @@ impl CSharpAstVisitor {
             let trimmed = line.trim();
             if let Some(interface_name) = self.extract_interface_name_from_line(trimmed) {
                 let qualified_name = self.get_qualified_name(&interface_name);
-                let visibility = if trimmed.contains("public") { "public" } else { "internal" };
+                let visibility = if trimmed.contains("public") {
+                    "public"
+                } else {
+                    "internal"
+                };
 
                 self.items.push(AstItem::Trait {
                     name: qualified_name,
@@ -268,7 +286,7 @@ impl Default for CSharpComplexityAnalyzer {
 
 impl CSharpComplexityAnalyzer {
     /// Creates a new C# complexity analyzer
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             cyclomatic_complexity: 0,
@@ -292,7 +310,11 @@ impl CSharpComplexityAnalyzer {
 
     /// Helper to analyze complexity for a single line (complexity ≤10)
     fn analyze_complexity_for_line(&mut self, line: &str) {
-        if line.contains("if ") || line.contains("while ") || line.contains("for ") || line.contains("foreach ") {
+        if line.contains("if ")
+            || line.contains("while ")
+            || line.contains("for ")
+            || line.contains("foreach ")
+        {
             self.cyclomatic_complexity += 1;
             self.cognitive_complexity += 1;
         }
@@ -382,18 +404,27 @@ namespace Example.Shapes
     #[test]
     fn test_simple_csharp_class_analysis() {
         let visitor = CSharpAstVisitor::new(Path::new("HelloWorld.cs"));
-        let items = visitor.analyze_csharp_source(SIMPLE_CSHARP_CLASS).expect("Should parse C# class");
+        let items = visitor
+            .analyze_csharp_source(SIMPLE_CSHARP_CLASS)
+            .expect("Should parse C# class");
 
         assert!(!items.is_empty(), "Should extract at least one AST item");
 
-        let class_items: Vec<_> = items.iter()
+        let class_items: Vec<_> = items
+            .iter()
             .filter(|item| matches!(item, AstItem::Struct { .. }))
             .collect();
 
         assert_eq!(class_items.len(), 1, "Should extract exactly one class");
 
-        if let AstItem::Struct { name, visibility, .. } = &class_items[0] {
-            assert_eq!(name, "Example::HelloWorld", "Should have qualified class name");
+        if let AstItem::Struct {
+            name, visibility, ..
+        } = &class_items[0]
+        {
+            assert_eq!(
+                name, "Example::HelloWorld",
+                "Should have qualified class name"
+            );
             assert_eq!(visibility, "public", "C# classes have public visibility");
         } else {
             panic!("Expected class item");
@@ -403,60 +434,99 @@ namespace Example.Shapes
     #[test]
     fn test_csharp_class_with_methods_analysis() {
         let visitor = CSharpAstVisitor::new(Path::new("Calculator.cs"));
-        let items = visitor.analyze_csharp_source(CSHARP_CLASS_WITH_METHODS).expect("Should parse C# class");
+        let items = visitor
+            .analyze_csharp_source(CSHARP_CLASS_WITH_METHODS)
+            .expect("Should parse C# class");
 
         assert!(items.len() >= 4, "Should extract class and methods");
 
-        let class_items: Vec<_> = items.iter()
+        let class_items: Vec<_> = items
+            .iter()
             .filter(|item| matches!(item, AstItem::Struct { .. }))
             .collect();
 
         assert_eq!(class_items.len(), 1, "Should extract exactly one class");
 
-        if let AstItem::Struct { name, fields_count, .. } = &class_items[0] {
-            assert_eq!(name, "Example.Calculator::Calculator", "Should have qualified class name");
-            assert_eq!(*fields_count, 3, "Should count methods and properties as fields for C# classes");
+        if let AstItem::Struct {
+            name, fields_count, ..
+        } = &class_items[0]
+        {
+            assert_eq!(
+                name, "Example.Calculator::Calculator",
+                "Should have qualified class name"
+            );
+            assert_eq!(
+                *fields_count, 3,
+                "Should count methods and properties as fields for C# classes"
+            );
         }
 
-        let method_items: Vec<_> = items.iter()
+        let method_items: Vec<_> = items
+            .iter()
             .filter(|item| matches!(item, AstItem::Function { .. }))
             .collect();
 
-        assert_eq!(method_items.len(), 3, "Should extract all three methods/properties");
+        assert_eq!(
+            method_items.len(),
+            3,
+            "Should extract all three methods/properties"
+        );
     }
 
     #[test]
     fn test_csharp_interface_analysis() {
         let visitor = CSharpAstVisitor::new(Path::new("IShape.cs"));
-        let items = visitor.analyze_csharp_source(CSHARP_INTERFACE_DEFINITION).expect("Should parse C# interface");
+        let items = visitor
+            .analyze_csharp_source(CSHARP_INTERFACE_DEFINITION)
+            .expect("Should parse C# interface");
 
-        let interface_items: Vec<_> = items.iter()
+        let interface_items: Vec<_> = items
+            .iter()
             .filter(|item| matches!(item, AstItem::Trait { .. }))
             .collect();
 
-        assert_eq!(interface_items.len(), 1, "Should extract exactly one interface");
+        assert_eq!(
+            interface_items.len(),
+            1,
+            "Should extract exactly one interface"
+        );
 
         if let AstItem::Trait { name, .. } = &interface_items[0] {
-            assert_eq!(name, "Example.Shapes::IShape", "Should have qualified interface name");
+            assert_eq!(
+                name, "Example.Shapes::IShape",
+                "Should have qualified interface name"
+            );
         }
     }
 
     #[test]
     fn test_csharp_complexity_analysis() {
         let mut analyzer = CSharpComplexityAnalyzer::new();
-        let (cyclomatic, cognitive) = analyzer.analyze_complexity(SIMPLE_CSHARP_CLASS)
+        let (cyclomatic, cognitive) = analyzer
+            .analyze_complexity(SIMPLE_CSHARP_CLASS)
             .expect("Should analyze C# complexity");
 
-        assert!(cyclomatic >= 1, "Should have at least cyclomatic complexity of 1");
-        assert!(cognitive >= 1, "Should have at least cognitive complexity of 1");
-        assert!(cyclomatic <= 10, "Should maintain complexity ≤10 for simple class");
+        assert!(
+            cyclomatic >= 1,
+            "Should have at least cyclomatic complexity of 1"
+        );
+        assert!(
+            cognitive >= 1,
+            "Should have at least cognitive complexity of 1"
+        );
+        assert!(
+            cyclomatic <= 10,
+            "Should maintain complexity ≤10 for simple class"
+        );
         assert!(cognitive <= 10, "Should maintain cognitive complexity ≤10");
     }
 
     #[test]
     fn test_csharp_namespace_name_extraction() {
         let visitor = CSharpAstVisitor::new(Path::new("test.cs"));
-        let items = visitor.analyze_csharp_source(SIMPLE_CSHARP_CLASS).expect("Should parse C# source");
+        let items = visitor
+            .analyze_csharp_source(SIMPLE_CSHARP_CLASS)
+            .expect("Should parse C# source");
 
         // Check that namespace name is included in qualified names
         let has_example_namespace = items.iter().any(|item| match item {
@@ -464,13 +534,18 @@ namespace Example.Shapes
             _ => false,
         });
 
-        assert!(has_example_namespace, "Should include namespace name in qualified names");
+        assert!(
+            has_example_namespace,
+            "Should include namespace name in qualified names"
+        );
     }
 
     #[test]
     fn test_empty_csharp_source() {
         let visitor = CSharpAstVisitor::new(Path::new("empty.cs"));
-        let items = visitor.analyze_csharp_source("").expect("Should handle empty source");
+        let items = visitor
+            .analyze_csharp_source("")
+            .expect("Should handle empty source");
 
         assert!(items.is_empty(), "Empty source should produce no AST items");
     }

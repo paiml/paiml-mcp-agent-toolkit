@@ -1,7 +1,7 @@
+use std::collections::HashMap;
 use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use std::collections::HashMap;
 use tokio::time::timeout;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -21,10 +21,10 @@ pub struct CircuitBreaker {
 
 #[derive(Clone)]
 pub struct CircuitBreakerConfig {
-    pub failure_threshold: u32,      // Failures before opening
-    pub success_threshold: u32,      // Successes to close from half-open
-    pub timeout_duration: Duration,  // Time before half-open
-    pub fallback_timeout: Duration,  // Max time for fallback
+    pub failure_threshold: u32,     // Failures before opening
+    pub success_threshold: u32,     // Successes to close from half-open
+    pub timeout_duration: Duration, // Time before half-open
+    pub fallback_timeout: Duration, // Max time for fallback
 }
 
 impl Default for CircuitBreakerConfig {

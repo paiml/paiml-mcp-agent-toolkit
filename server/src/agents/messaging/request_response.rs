@@ -1,9 +1,9 @@
 use super::*;
 use actix::prelude::*;
-use tokio::sync::oneshot;
+use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::sync::Arc;
-use parking_lot::RwLock;
+use tokio::sync::oneshot;
 
 pub struct RequestResponseBroker {
     pending_requests: Arc<RwLock<HashMap<Uuid, oneshot::Sender<AgentMessage>>>>,
@@ -81,10 +81,11 @@ impl Actor for RequestResponseActor {
 }
 
 impl Handler<AgentMessage> for RequestResponseActor {
-    type Result = ();
+    type Result = Result<crate::agents::AgentResponse, crate::agents::AgentError>;
 
-    fn handle(&mut self, msg: AgentMessage, _ctx: &mut Context<Self>) {
+    fn handle(&mut self, msg: AgentMessage, _ctx: &mut Context<Self>) -> Self::Result {
         self.broker.handle_response(msg);
+        Ok(crate::agents::AgentResponse::Success(serde_json::json!({})))
     }
 }
 
@@ -146,18 +147,15 @@ mod tests {
 
             let response = AgentMessage::new(to, from, "response")
                 .unwrap()
-                .with_correlation(Uuid::new_v4());  // Would need actual correlation ID
+                .with_correlation(Uuid::new_v4()); // Would need actual correlation ID
 
             broker_handle.handle_response(response);
         });
 
         // Test timeout
-        let result = broker_clone.request(
-            from,
-            to,
-            "test",
-            Duration::from_millis(5),
-        ).await;
+        let result = broker_clone
+            .request(from, to, "test", Duration::from_millis(5))
+            .await;
 
         assert!(matches!(result, Err(RequestError::Timeout)));
     }

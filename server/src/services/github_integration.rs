@@ -156,9 +156,7 @@ impl GitHubClient {
             owner, repo, issue_number
         );
 
-        let api_url = format!(
-            "https://api.github.com/repos/{owner}/{repo}/issues/{issue_number}"
-        );
+        let api_url = format!("https://api.github.com/repos/{owner}/{repo}/issues/{issue_number}");
 
         let response = self.client.get(&api_url).send().await?;
 
@@ -216,7 +214,7 @@ impl GitHubClient {
 /// assert!(parsed.file_paths.contains(&"src/main.rs".to_string()));
 /// assert!(!parsed.keywords.is_empty());
 /// ```
-#[must_use] 
+#[must_use]
 pub fn parse_issue(issue: GitHubIssue) -> ParsedIssue {
     let mut file_paths = Vec::new();
     let mut keywords = HashMap::new();

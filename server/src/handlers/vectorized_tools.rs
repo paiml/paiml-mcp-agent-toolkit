@@ -31,7 +31,7 @@ pub const VECTORIZED_TOOLS: &[&str] = &[
 /// assert!(is_vectorized_tool("analyze_big_o_vectorized"));
 /// assert!(!is_vectorized_tool("unknown_tool"));
 /// ```
-#[must_use] 
+#[must_use]
 pub fn is_vectorized_tool(tool_name: &str) -> bool {
     VECTORIZED_TOOLS.contains(&tool_name)
 }
@@ -595,7 +595,7 @@ async fn handle_enhanced_report(request_id: Value, args: Option<Value>) -> McpRe
 /// assert!(tools.len() >= 7);
 /// assert!(tools[0]["name"].as_str().unwrap().contains("vectorized"));
 /// ```
-#[must_use] 
+#[must_use]
 pub fn get_vectorized_tools_info() -> Vec<serde_json::Value> {
     vec![
         json!({

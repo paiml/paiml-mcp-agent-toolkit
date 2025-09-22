@@ -59,7 +59,10 @@ pub struct SimpleScorer;
 
 impl FileScorer for SimpleScorer {
     fn compute_score(&self, defects: &[Defect]) -> f64 {
-        defects.iter().map(super::super::models::defect_report::Defect::severity_weight).sum()
+        defects
+            .iter()
+            .map(super::super::models::defect_report::Defect::severity_weight)
+            .sum()
     }
 }
 
@@ -87,7 +90,7 @@ impl FileRankingEngine {
     /// let scorer = Box::new(SimpleScorer);
     /// let engine = FileRankingEngine::new(scorer);
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn new(scorer: Box<dyn FileScorer + Send + Sync>) -> Self {
         Self {
             scorer,
@@ -96,7 +99,7 @@ impl FileRankingEngine {
     }
 
     /// Rank files by their defect scores
-    #[must_use] 
+    #[must_use]
     pub fn rank_files(&self, defects: Vec<Defect>, limit: usize) -> Vec<RankedFile> {
         use rayon::prelude::*;
         use std::cmp::Ordering;

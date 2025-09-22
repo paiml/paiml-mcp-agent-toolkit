@@ -17,14 +17,14 @@ pub struct ContentCacheAdapter<T: CacheStrategy> {
 }
 
 impl<T: CacheStrategy> ContentCacheAdapter<T> {
-    #[must_use] 
+    #[must_use]
     pub fn new(cache: ContentCache<T>) -> Self {
         Self {
             inner: Arc::new(RwLock::new(cache)),
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.inner.read().len() == 0
     }
@@ -78,7 +78,7 @@ pub struct PersistentCacheAdapter<T: CacheStrategy> {
 }
 
 impl<T: CacheStrategy> PersistentCacheAdapter<T> {
-    #[must_use] 
+    #[must_use]
     pub fn new(cache: PersistentCache<T>) -> Self {
         Self {
             inner: Arc::new(RwLock::new(cache)),

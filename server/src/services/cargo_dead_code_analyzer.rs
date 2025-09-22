@@ -80,21 +80,21 @@ impl CargoDeadCodeAnalyzer {
     }
 
     /// Include test code in analysis
-    #[must_use] 
+    #[must_use]
     pub fn include_tests(mut self) -> Self {
         self.exclude_tests = false;
         self
     }
 
     /// Include example code in analysis
-    #[must_use] 
+    #[must_use]
     pub fn include_examples(mut self) -> Self {
         self.exclude_examples = false;
         self
     }
 
     /// Include benchmark code in analysis
-    #[must_use] 
+    #[must_use]
     pub fn include_benches(mut self) -> Self {
         self.exclude_benches = false;
         self

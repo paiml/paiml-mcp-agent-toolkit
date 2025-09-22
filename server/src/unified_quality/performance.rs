@@ -493,7 +493,7 @@ pub struct OptimizationResult {
 
 impl PerformanceMonitor {
     /// Create new performance monitor
-    #[must_use] 
+    #[must_use]
     pub fn new(config: PerformanceConfig) -> Self {
         Self {
             benchmarks: HashMap::new(),
@@ -643,7 +643,7 @@ impl PerformanceMonitor {
     }
 
     /// Generate performance report
-    #[must_use] 
+    #[must_use]
     pub fn generate_performance_report(&self) -> PerformanceReport {
         PerformanceReport {
             generated_at: SystemTime::now(),
@@ -910,7 +910,7 @@ impl Default for PerformanceMetrics {
 
 impl PerformanceMetrics {
     /// Create new performance metrics
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             timeseries: HashMap::new(),
@@ -922,7 +922,7 @@ impl PerformanceMetrics {
 
 impl PerformanceOptimizer {
     /// Create new performance optimizer
-    #[must_use] 
+    #[must_use]
     pub fn new(config: OptimizationConfig) -> Self {
         Self {
             optimizations: Vec::new(),

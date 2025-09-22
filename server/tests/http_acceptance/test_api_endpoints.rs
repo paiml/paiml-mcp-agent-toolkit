@@ -3,9 +3,7 @@
 //! Tests for all HTTP API endpoints following the http-api-acceptance-testing.md specification.
 //! Ensures 100% coverage of HTTP API functionality with proper REST compliance.
 
-use crate::http_acceptance::helpers::http_test_client::{
-    HttpTestClient, HttpValidators,
-};
+use crate::http_acceptance::helpers::http_test_client::{HttpTestClient, HttpValidators};
 use anyhow::Result;
 use serde_json::json;
 use std::time::Duration;

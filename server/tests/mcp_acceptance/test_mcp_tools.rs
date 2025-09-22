@@ -3,9 +3,7 @@
 //! Tests for all MCP tools following the mcp-acceptance-testing.md specification.
 //! Ensures 100% coverage of MCP tool functionality with proper JSON-RPC 2.0 compliance.
 
-use crate::mcp_acceptance::helpers::mcp_test_client::{
-    McpTestClient, McpValidators,
-};
+use crate::mcp_acceptance::helpers::mcp_test_client::{McpTestClient, McpValidators};
 use anyhow::Result;
 use serde_json::json;
 use std::time::Duration;

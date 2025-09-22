@@ -68,7 +68,7 @@ impl From<f64> for TDGSeverity {
 }
 
 impl TDGSeverity {
-    #[must_use] 
+    #[must_use]
     pub fn as_str(&self) -> &'static str {
         match self {
             TDGSeverity::Normal => "normal",

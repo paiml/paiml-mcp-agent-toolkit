@@ -68,7 +68,7 @@ pub struct HotCacheEntry {
 }
 
 impl HotCacheEntry {
-    #[must_use] 
+    #[must_use]
     pub fn from_record(record: &FullTdgRecord) -> Self {
         let mut hash_bytes = [0u8; 32];
         hash_bytes.copy_from_slice(record.identity.content_hash.as_bytes());
@@ -131,7 +131,7 @@ impl TieredStore {
     }
 
     /// Create in-memory tiered storage for testing
-    #[must_use] 
+    #[must_use]
     pub fn in_memory() -> Self {
         Self {
             hot: Arc::new(DashMap::new()),
@@ -163,7 +163,7 @@ impl TieredStore {
     }
 
     /// Retrieve hot cache entry (fastest access)
-    #[must_use] 
+    #[must_use]
     pub fn get_hot(&self, hash: &Blake3Hash) -> Option<HotCacheEntry> {
         self.hot.get(hash).map(|entry| *entry.value())
     }
@@ -212,7 +212,7 @@ impl TieredStore {
     }
 
     /// Clean up expired hot cache entries
-    #[must_use] 
+    #[must_use]
     pub fn cleanup_hot_cache(&self, max_age_seconds: u64) -> usize {
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -274,7 +274,7 @@ impl TieredStore {
     }
 
     /// Get storage statistics for monitoring and dogfooding
-    #[must_use] 
+    #[must_use]
     pub fn get_statistics(&self) -> StorageStatistics {
         let hot_entries = self.hot.len();
         let hot_memory_kb = (hot_entries * std::mem::size_of::<HotCacheEntry>()) / 1024;
@@ -328,7 +328,7 @@ pub struct StorageStatistics {
 
 impl StorageStatistics {
     /// Format statistics for diagnostic display
-    #[must_use] 
+    #[must_use]
     pub fn format_diagnostic(&self) -> String {
         format!(
             "Storage Tiers:\n\
@@ -365,7 +365,7 @@ impl TieredStorageFactory {
     }
 
     /// Create in-memory storage for testing
-    #[must_use] 
+    #[must_use]
     pub fn create_in_memory() -> TieredStore {
         TieredStore::in_memory()
     }
