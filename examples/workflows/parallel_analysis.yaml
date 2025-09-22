@@ -1,0 +1,61 @@
+name: parallel_analysis_workflow
+version: 1.0.0
+description: Parallel analysis of multiple code files
+error_strategy: continue
+timeout: 5m
+
+steps:
+  # Step 1: Parallel analysis of multiple files
+  - id: parallel_analysis
+    name: Analyze Multiple Files
+    type: parallel
+    steps:
+      - id: analyze_main
+        name: Analyze Main Module
+        type: action
+        agent: analyzer
+        operation: analyze
+        params:
+          file: src/main.rs
+          language: rust
+      
+      - id: analyze_lib
+        name: Analyze Library
+        type: action
+        agent: analyzer
+        operation: analyze
+        params:
+          file: src/lib.rs
+          language: rust
+      
+      - id: analyze_tests
+        name: Analyze Tests
+        type: action
+        agent: analyzer
+        operation: analyze
+        params:
+          file: tests/integration.rs
+          language: rust
+  
+  # Step 2: Aggregate results
+  - id: aggregate
+    name: Aggregate Analysis Results
+    type: action
+    agent: orchestrator
+    operation: aggregate
+    params:
+      sources:
+        - steps.parallel_analysis.analyze_main
+        - steps.parallel_analysis.analyze_lib
+        - steps.parallel_analysis.analyze_tests
+      aggregation: average
+  
+  # Step 3: Generate consolidated report
+  - id: report
+    name: Generate Report
+    type: action
+    agent: orchestrator
+    operation: generate_report
+    params:
+      title: "Multi-File Analysis Report"
+      data: steps.aggregate.output

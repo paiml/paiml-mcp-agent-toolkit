@@ -1,0 +1,97 @@
+name: quality_check_workflow
+version: 1.0.0
+description: Comprehensive code quality check with automatic remediation
+error_strategy: continue
+timeout: 10m
+
+steps:
+  # Step 1: Initial code analysis
+  - id: initial_analysis
+    name: Initial Code Analysis
+    type: action
+    agent: analyzer
+    operation: analyze
+    params:
+      language: rust
+      metrics:
+        - complexity
+        - satd
+        - entropy
+        - duplication
+    retry:
+      max_attempts: 3
+      backoff:
+        type: exponential
+        initial: 1s
+        multiplier: 2
+        max: 10s
+
+  # Step 2: Quality gate check
+  - id: quality_gate
+    name: Quality Gate Check
+    type: conditional
+    condition: "steps.initial_analysis.output.complexity.cyclomatic > 10 || steps.initial_analysis.output.satd.count > 0"
+    if_true:
+      id: needs_refactoring
+      name: Refactoring Required
+      type: sequence
+      steps:
+        # Sub-step 1: Apply transformations
+        - id: refactor
+          name: Apply Refactoring
+          type: action
+          agent: transformer
+          operation: refactor
+          params:
+            strategy: reduce_complexity
+            target_complexity: 8
+            preserve_behavior: true
+        
+        # Sub-step 2: Re-analyze
+        - id: reanalyze
+          name: Re-analyze After Refactoring
+          type: action
+          agent: analyzer
+          operation: analyze
+          params:
+            language: rust
+            metrics:
+              - complexity
+              - satd
+    if_false:
+      id: passed
+      name: Quality Gate Passed
+      type: action
+      agent: validator
+      operation: validate
+      params:
+        rules:
+          - no_unused_variables
+          - no_dead_code
+          - consistent_naming
+
+  # Step 3: Final validation
+  - id: final_validation
+    name: Final Validation
+    type: action
+    agent: validator
+    operation: validate
+    condition:
+      expression: "steps.quality_gate.status == 'completed'"
+      skip_on_false: false
+    params:
+      strict: true
+      rules:
+        - all
+    on_error: skip
+
+  # Step 4: Generate report
+  - id: generate_report
+    name: Generate Quality Report
+    type: action
+    agent: orchestrator
+    operation: generate_report
+    params:
+      format: html
+      include_metrics: true
+      include_suggestions: true

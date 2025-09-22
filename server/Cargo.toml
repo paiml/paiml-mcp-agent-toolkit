@@ -13,6 +13,10 @@ keywords = ["mcp", "code-analysis", "refactoring", "quality", "ai"]
 categories = ["command-line-utilities", "development-tools", "development-tools::testing"]
 exclude = ["*.log", "temp_*", "*.profraw", ".pmat-cache", "proptest-regressions"]
 
+[[bin]]
+name = "pmat-agent"
+path = "src/bin/pmat-agent.rs"
+
 [dependencies]
 # Async runtime
 tokio = { version = "1.47", features = ["rt-multi-thread", "macros", "net", "io-util", "io-std", "fs", "sync", "signal", "process", "time"] }
@@ -225,6 +229,7 @@ scraper = "0.24"
 serial_test = "3.2"
 futures-test = "0.3"
 actix-test = "0.1"
+env_logger = "0.11.8"
 
 [build-dependencies]
 ureq = "3.0"
