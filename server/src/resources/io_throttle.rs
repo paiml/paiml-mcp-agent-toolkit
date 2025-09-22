@@ -2,12 +2,12 @@ use super::*;
 
 // Disk I/O throttle
 pub struct IoThrottle {
-    limits: DiskIoLimits,
+    _limits: DiskIoLimits,
 }
 
 impl IoThrottle {
     pub fn new(limits: DiskIoLimits) -> Result<Self, ResourceError> {
-        Ok(Self { limits })
+        Ok(Self { _limits: limits })
     }
 }
 

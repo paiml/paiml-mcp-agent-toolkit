@@ -92,7 +92,7 @@ impl EventStore {
             let mut partitions = self.partitions.write();
             partitions
                 .entry(event.partition_key.clone())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(event_id);
         }
 
@@ -126,7 +126,7 @@ impl EventStore {
                 events_map.insert(event_id, event.clone());
                 partitions
                     .entry(event.partition_key.clone())
-                    .or_insert_with(Vec::new)
+                    .or_default()
                     .push(event_id);
 
                 ids.push(event_id);
@@ -199,7 +199,8 @@ impl EventStore {
 
         // Create new compacted file
         let persistence = self.persistence.as_ref().unwrap();
-        persistence.compact(&*self.events.read()).await?;
+        let events = { self.events.read().clone() };
+        persistence.compact(&events).await?;
 
         let events_after = self.events.read().len();
         let duration = start_time.elapsed();
@@ -225,7 +226,7 @@ impl EventStore {
 
                 partitions
                     .entry(event.partition_key.clone())
-                    .or_insert_with(Vec::new)
+                    .or_default()
                     .push(event.id);
 
                 events.insert(event.id, event);
@@ -245,7 +246,7 @@ impl EventStore {
             total_events: events.len(),
             total_partitions: partitions.len(),
             next_event_id: *self.next_event_id.read(),
-            memory_usage_bytes: estimate_memory_usage(&*events),
+            memory_usage_bytes: estimate_memory_usage(&events),
         }
     }
 }
@@ -272,6 +273,7 @@ impl PersistenceLayer {
         })
     }
 
+    #[allow(clippy::await_holding_lock)]
     async fn append_event(&self, event: &StateEvent) -> Result<(), EventStoreError> {
         let serialized =
             serialize(event).map_err(|e| EventStoreError::SerializationError(e.to_string()))?;
@@ -300,6 +302,7 @@ impl PersistenceLayer {
         Ok(())
     }
 
+    #[allow(clippy::await_holding_lock)]
     async fn append_batch(&self, events: &[StateEvent]) -> Result<(), EventStoreError> {
         let mut buffer = Vec::new();
 
@@ -327,6 +330,7 @@ impl PersistenceLayer {
         Ok(())
     }
 
+    #[allow(clippy::await_holding_lock)]
     async fn load_all(&self) -> Result<Vec<StateEvent>, EventStoreError> {
         let mut file = self.log_file.write();
         file.seek(std::io::SeekFrom::Start(0))

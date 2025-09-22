@@ -2,7 +2,7 @@ use super::*;
 
 // Step implementations
 pub struct StepRegistry {
-    steps: std::collections::HashMap<String, Box<dyn StepHandler>>,
+    _steps: std::collections::HashMap<String, Box<dyn StepHandler>>,
 }
 
 pub trait StepHandler: Send + Sync {

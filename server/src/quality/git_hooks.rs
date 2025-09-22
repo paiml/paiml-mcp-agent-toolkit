@@ -1,4 +1,4 @@
-use crate::quality::gate::{QualityGateRunner, QualityThresholds};
+use crate::quality::gate::QualityGateRunner;
 use anyhow::{Context, Result};
 use std::collections::HashMap;
 use std::fs;
@@ -210,7 +210,7 @@ echo "✅ All pre-push checks passed!"
 
     pub fn validate_staged_files(&self) -> Result<Vec<QualityReport>> {
         let output = Command::new("git")
-            .args(&["diff", "--cached", "--name-only", "--diff-filter=ACM"])
+            .args(["diff", "--cached", "--name-only", "--diff-filter=ACM"])
             .output()
             .context("Failed to get staged files")?;
 
@@ -221,7 +221,7 @@ echo "✅ All pre-push checks passed!"
             if file_path.ends_with(".rs") {
                 let path = Path::new(file_path);
                 match self.quality_runner.validate_module(path) {
-                    Ok(report) => reports.push(QualityReport {
+                    Ok(_report) => reports.push(QualityReport {
                         file: file_path.to_string(),
                         passed: true,
                         violations: Vec::new(),
@@ -270,9 +270,15 @@ pub struct IncrementalChecker {
 
 #[derive(Debug, Clone)]
 struct FileChecksum {
-    hash: String,
+    _hash: String,
     last_checked: std::time::SystemTime,
-    passed: bool,
+    _passed: bool,
+}
+
+impl Default for IncrementalChecker {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl IncrementalChecker {
@@ -302,9 +308,9 @@ impl IncrementalChecker {
         self.cache.insert(
             file_path.to_str().unwrap_or("").to_string(),
             FileChecksum {
-                hash,
+                _hash: hash,
                 last_checked: std::time::SystemTime::now(),
-                passed,
+                _passed: passed,
             },
         );
 

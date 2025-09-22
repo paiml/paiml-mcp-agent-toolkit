@@ -2,12 +2,12 @@ use super::*;
 
 // Network bandwidth throttle
 pub struct NetworkThrottle {
-    limits: NetworkLimits,
+    _limits: NetworkLimits,
 }
 
 impl NetworkThrottle {
     pub fn new(limits: NetworkLimits) -> Result<Self, ResourceError> {
-        Ok(Self { limits })
+        Ok(Self { _limits: limits })
     }
 }
 

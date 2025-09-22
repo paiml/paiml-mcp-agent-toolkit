@@ -4,6 +4,12 @@ use std::collections::HashMap;
 // Code analysis prompt
 pub struct CodeAnalysisPrompt;
 
+impl Default for CodeAnalysisPrompt {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CodeAnalysisPrompt {
     pub fn new() -> Self {
         Self
@@ -61,6 +67,12 @@ impl McpPrompt for CodeAnalysisPrompt {
 // Refactoring prompt
 pub struct RefactoringPrompt;
 
+impl Default for RefactoringPrompt {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RefactoringPrompt {
     pub fn new() -> Self {
         Self
@@ -103,6 +115,12 @@ impl McpPrompt for RefactoringPrompt {
 
 // Quality assessment prompt
 pub struct QualityAssessmentPrompt;
+
+impl Default for QualityAssessmentPrompt {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl QualityAssessmentPrompt {
     pub fn new() -> Self {

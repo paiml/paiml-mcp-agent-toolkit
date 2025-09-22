@@ -249,7 +249,7 @@ pub enum ResourceError {
 
 // Resource pool for sharing resources across agents
 pub struct ResourcePool {
-    total_limits: ResourceLimits,
+    _total_limits: ResourceLimits,
     allocated: Arc<RwLock<Vec<(uuid::Uuid, ResourceLimits)>>>,
     available: Arc<RwLock<ResourceLimits>>,
 }
@@ -258,7 +258,7 @@ impl ResourcePool {
     pub fn new(total_limits: ResourceLimits) -> Self {
         Self {
             available: Arc::new(RwLock::new(total_limits.clone())),
-            total_limits,
+            _total_limits: total_limits,
             allocated: Arc::new(RwLock::new(Vec::new())),
         }
     }

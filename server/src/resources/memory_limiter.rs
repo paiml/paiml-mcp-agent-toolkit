@@ -3,7 +3,9 @@ use parking_lot::RwLock;
 use std::alloc::{GlobalAlloc, Layout, System};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
-use sysinfo::{System as SysInfo, Process};
+
+type PressureCallbacks = Arc<RwLock<Vec<Box<dyn Fn(f32) + Send + Sync>>>>;
+use sysinfo::System as SysInfo;
 
 // Memory limiter with custom allocator
 pub struct MemoryLimiter {
@@ -311,7 +313,7 @@ unsafe impl GlobalAlloc for LimitedAllocator {
 // Memory pressure monitor
 pub struct MemoryMonitor {
     limiter: Arc<MemoryLimiter>,
-    pressure_callbacks: Arc<RwLock<Vec<Box<dyn Fn(f32) + Send + Sync>>>>,
+    pressure_callbacks: PressureCallbacks,
 }
 
 impl MemoryMonitor {

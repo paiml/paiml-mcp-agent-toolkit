@@ -2,19 +2,25 @@ use std::collections::HashMap;
 use syn::{self, visit::Visit};
 
 pub struct ComplexityAnalyzer {
-    current_complexity: u32,
-    cognitive_complexity: u32,
-    nesting_depth: u32,
-    max_nesting: u32,
+    _current_complexity: u32,
+    _cognitive_complexity: u32,
+    _nesting_depth: u32,
+    _max_nesting: u32,
+}
+
+impl Default for ComplexityAnalyzer {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ComplexityAnalyzer {
     pub fn new() -> Self {
         Self {
-            current_complexity: 1, // Base complexity
-            cognitive_complexity: 0,
-            nesting_depth: 0,
-            max_nesting: 0,
+            _current_complexity: 1, // Base complexity
+            _cognitive_complexity: 0,
+            _nesting_depth: 0,
+            _max_nesting: 0,
         }
     }
 

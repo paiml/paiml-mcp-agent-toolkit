@@ -1,5 +1,8 @@
 use clap::{Parser, Subcommand};
+use pmat::agents::analyzer_actor::AnalyzerActor;
 use pmat::agents::registry::AgentRegistry;
+use pmat::agents::transformer_actor::TransformerActor;
+use pmat::agents::validator_actor::ValidatorActor;
 use pmat::mcp_integration::server::{McpServer, ServerConfig};
 use pmat::workflow::dsl::DslCompiler;
 use pmat::workflow::{DefaultWorkflowExecutor, WorkflowBuilder, WorkflowContext};
@@ -360,14 +363,14 @@ async fn run_quality_gate(
     fail_on_violation: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     use pmat::quality::complexity::ComplexityAnalyzer;
-    use pmat::quality::gate::{QualityGate, QualityThresholds};
+    use pmat::quality::gate::{QualityGateRunner, QualityThresholds};
     use pmat::quality::satd::SatdDetector;
 
     println!("🚦 Running quality gates on: {}", path);
 
     let code = fs::read_to_string(&path).await?;
 
-    let gate = QualityGate::new(
+    let gate = QualityGateRunner::new(
         vec![
             Box::new(ComplexityAnalyzer::default()),
             Box::new(SatdDetector::new()),

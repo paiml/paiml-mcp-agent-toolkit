@@ -103,14 +103,14 @@ impl Default for QualityMetrics {
 }
 
 pub struct QualityGateRunner {
-    analyzers: Vec<Box<dyn QualityAnalyzer>>,
+    _analyzers: Vec<Box<dyn QualityAnalyzer>>,
     thresholds: QualityThresholds,
 }
 
 impl QualityGateRunner {
     pub fn new(thresholds: QualityThresholds) -> Self {
         Self {
-            analyzers: vec![
+            _analyzers: vec![
                 // TODO: Fix analyzer trait implementations
                 // Box::new(ComplexityAnalyzer::new()),
                 // Box::new(SatdDetector::new()),

@@ -1,4 +1,4 @@
-use super::{AgentClass, AgentId, AgentSpec};
+use super::{AgentId, AgentSpec};
 use dashmap::DashMap;
 use std::sync::Arc;
 
@@ -7,8 +7,14 @@ pub struct AgentRegistry {
 }
 
 struct AgentEntry {
-    spec: AgentSpec,
+    _spec: AgentSpec,
     // Will add actor address later
+}
+
+impl Default for AgentRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl AgentRegistry {
@@ -20,13 +26,13 @@ impl AgentRegistry {
 
     pub async fn spawn_agent(&self, spec: AgentSpec) -> Result<AgentId, super::AgentError> {
         let id = spec.id;
-        let entry = AgentEntry { spec };
+        let entry = AgentEntry { _spec: spec };
 
         self.agents.insert(id, entry);
         Ok(id)
     }
 
-    pub async fn get_agent(&self, name: &str) -> Option<AgentId> {
+    pub async fn get_agent(&self, _name: &str) -> Option<AgentId> {
         // TODO: Implement proper agent lookup by name
         // For now, return a dummy agent ID
         None

@@ -7,7 +7,7 @@ impl RecoveryManager {
     pub async fn handle_error(
         error: &WorkflowError,
         strategy: &ErrorStrategy,
-        context: &WorkflowContext,
+        _context: &WorkflowContext,
     ) -> Result<(), WorkflowError> {
         match strategy {
             ErrorStrategy::FailFast => Err(error.clone()),

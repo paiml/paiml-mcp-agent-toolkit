@@ -7,7 +7,7 @@ use parking_lot::RwLock;
 use sha2::{Digest, Sha256};
 use std::io::{Read, Write};
 use std::sync::Arc;
-use tokio::fs::{create_dir_all, File, OpenOptions};
+use tokio::fs::{create_dir_all, OpenOptions};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 // Snapshot storage with compression and integrity checks
@@ -66,6 +66,7 @@ impl SnapshotStore {
         Ok(store)
     }
 
+    #[allow(clippy::await_holding_lock)]
     pub async fn save_snapshot<S: AgentState>(
         &self,
         state: &S,
@@ -163,7 +164,7 @@ impl SnapshotStore {
                 .iter()
                 .find(|s| s.id == *snapshot_id)
                 .cloned()
-                .ok_or_else(|| SnapshotError::SnapshotNotFound(*snapshot_id))?
+                .ok_or(SnapshotError::SnapshotNotFound(*snapshot_id))?
         };
 
         // Read compressed data

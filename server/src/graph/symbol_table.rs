@@ -43,13 +43,13 @@ impl SymbolTable {
         // Add to main symbol map
         self.symbols
             .entry(name.clone())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(entry.clone());
 
         // Add to file symbol map
         self.file_symbols
             .entry(entry.file_path.clone())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(name);
 
         // Update module map

@@ -20,6 +20,12 @@ pub struct PubSubBroker {
     subscribers: Arc<DashMap<Uuid, Recipient<AgentMessage>>>,
 }
 
+impl Default for PubSubBroker {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PubSubBroker {
     pub fn new() -> Self {
         Self {
@@ -35,7 +41,7 @@ impl PubSubBroker {
         // Add to topic
         self.topics
             .entry(topic)
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(agent_id);
     }
 
@@ -105,6 +111,12 @@ pub enum PubSubError {
 // Wildcard subscription support
 pub struct WildcardMatcher {
     patterns: Vec<(String, Uuid)>,
+}
+
+impl Default for WildcardMatcher {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl WildcardMatcher {

@@ -1,6 +1,5 @@
 use super::{AgentError, AgentResponse, Priority};
 use actix::prelude::*;
-use serde::{Deserialize, Serialize};
 
 #[derive(Message, Clone, Debug)]
 #[rtype(result = "Result<AgentResponse, AgentError>")]

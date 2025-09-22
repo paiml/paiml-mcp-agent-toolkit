@@ -3,17 +3,11 @@ use super::{AgentError, AgentResponse};
 use crate::modules::transformer::{TransformerImpl, TransformerModule};
 use actix::prelude::*;
 
+#[derive(Default)]
 pub struct TransformerActor {
     transformer: TransformerImpl,
 }
 
-impl Default for TransformerActor {
-    fn default() -> Self {
-        Self {
-            transformer: TransformerImpl::new(),
-        }
-    }
-}
 
 impl Actor for TransformerActor {
     type Context = Context<Self>;

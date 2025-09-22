@@ -2,12 +2,12 @@ use super::*;
 
 // GPU resource scheduler
 pub struct GpuScheduler {
-    limits: GpuLimits,
+    _limits: GpuLimits,
 }
 
 impl GpuScheduler {
     pub fn new(limits: GpuLimits) -> Result<Self, ResourceError> {
-        Ok(Self { limits })
+        Ok(Self { _limits: limits })
     }
 }
 

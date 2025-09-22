@@ -37,7 +37,7 @@ impl<'de> Deserialize<'de> for AgentMessage {
     where
         D: serde::Deserializer<'de>,
     {
-        use serde::de::{self, MapAccess, SeqAccess, Visitor};
+        use serde::de::{self, MapAccess, Visitor};
 
         struct AgentMessageVisitor;
 
@@ -155,6 +155,12 @@ impl AgentMessage {
 pub struct MessageRouter {
     routes: dashmap::DashMap<Uuid, Recipient<AgentMessage>>,
     priority_queue: crossbeam::queue::SegQueue<(Priority, AgentMessage)>,
+}
+
+impl Default for MessageRouter {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl MessageRouter {

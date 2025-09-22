@@ -57,6 +57,12 @@ pub struct ValidatorImpl {
     strict_mode: bool,
 }
 
+impl Default for ValidatorImpl {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ValidatorImpl {
     pub fn new() -> Self {
         Self {

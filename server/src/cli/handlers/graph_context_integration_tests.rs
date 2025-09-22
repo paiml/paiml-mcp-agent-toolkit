@@ -4,8 +4,7 @@
 
 #[cfg(test)]
 mod tests {
-    use super::super::super::*;
-    use crate::graph::{ContextAnnotation, DependencyGraphBuilder, GraphContextAnnotator};
+    use crate::graph::{ContextAnnotation, GraphContextAnnotator};
     use anyhow::Result;
     use std::path::PathBuf;
     use tempfile::TempDir;

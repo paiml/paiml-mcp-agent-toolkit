@@ -6,6 +6,9 @@ pub mod monitoring;
 pub mod recovery;
 pub mod steps;
 
+// Re-export main types
+pub use executor::DefaultWorkflowExecutor;
+
 use async_trait::async_trait;
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};

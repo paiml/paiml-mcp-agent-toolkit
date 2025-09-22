@@ -20,6 +20,12 @@ pub struct SatdDetector {
     patterns: Vec<(&'static str, Regex)>,
 }
 
+impl Default for SatdDetector {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SatdDetector {
     pub fn new() -> Self {
         Self {
