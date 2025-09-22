@@ -31,8 +31,12 @@ impl McpPrompt for CodeAnalysisPrompt {
         }
     }
 
-    async fn get(&self, arguments: Option<HashMap<String, String>>) -> Result<Vec<PromptMessage>, McpError> {
-        let lang = arguments.as_ref()
+    async fn get(
+        &self,
+        arguments: Option<HashMap<String, String>>,
+    ) -> Result<Vec<PromptMessage>, McpError> {
+        let lang = arguments
+            .as_ref()
             .and_then(|args| args.get("language"))
             .cloned()
             .unwrap_or_else(|| "unknown".to_string());
@@ -69,30 +73,31 @@ impl McpPrompt for RefactoringPrompt {
         PromptMetadata {
             name: "refactoring".to_string(),
             description: Some("Guide code refactoring".to_string()),
-            arguments: Some(vec![
-                PromptArgument {
-                    name: "pattern".to_string(),
-                    description: Some("Refactoring pattern to apply".to_string()),
-                    required: Some(true),
-                },
-            ]),
+            arguments: Some(vec![PromptArgument {
+                name: "pattern".to_string(),
+                description: Some("Refactoring pattern to apply".to_string()),
+                required: Some(true),
+            }]),
         }
     }
 
-    async fn get(&self, arguments: Option<HashMap<String, String>>) -> Result<Vec<PromptMessage>, McpError> {
-        let pattern = arguments.as_ref()
+    async fn get(
+        &self,
+        arguments: Option<HashMap<String, String>>,
+    ) -> Result<Vec<PromptMessage>, McpError> {
+        let pattern = arguments
+            .as_ref()
             .and_then(|args| args.get("pattern"))
             .cloned()
             .unwrap_or_else(|| "general".to_string());
 
-        Ok(vec![
-            PromptMessage {
-                role: "system".to_string(),
-                content: PromptContent::Text(
-                    format!("You are a refactoring expert. Apply the {} pattern to improve code quality.", pattern)
-                ),
-            },
-        ])
+        Ok(vec![PromptMessage {
+            role: "system".to_string(),
+            content: PromptContent::Text(format!(
+                "You are a refactoring expert. Apply the {} pattern to improve code quality.",
+                pattern
+            )),
+        }])
     }
 }
 
@@ -115,7 +120,10 @@ impl McpPrompt for QualityAssessmentPrompt {
         }
     }
 
-    async fn get(&self, _arguments: Option<HashMap<String, String>>) -> Result<Vec<PromptMessage>, McpError> {
+    async fn get(
+        &self,
+        _arguments: Option<HashMap<String, String>>,
+    ) -> Result<Vec<PromptMessage>, McpError> {
         Ok(vec![
             PromptMessage {
                 role: "system".to_string(),

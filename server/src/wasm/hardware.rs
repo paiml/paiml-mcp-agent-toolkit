@@ -12,7 +12,7 @@ pub struct HardwareClass {
 
 impl HardwareClass {
     /// Create hardware class from system info
-    #[must_use] 
+    #[must_use]
     pub fn from_system() -> Self {
         let cpu_count = num_cpus::get();
 
@@ -24,7 +24,7 @@ impl HardwareClass {
     }
 
     /// Calculate similarity score with another hardware class (0.0-1.0)
-    #[must_use] 
+    #[must_use]
     pub fn similarity(&self, other: &HardwareClass) -> f64 {
         let mut score = 0.0;
 
@@ -47,7 +47,7 @@ impl HardwareClass {
     }
 
     /// Calculate performance correction factor relative to baseline
-    #[must_use] 
+    #[must_use]
     pub fn performance_factor(&self, baseline: &HardwareClass) -> f64 {
         // Empirically derived correction factors
         let core_factor = self.core_count_class.speedup() / baseline.core_count_class.speedup();
@@ -71,7 +71,7 @@ pub enum CpuFamily {
 
 impl CpuFamily {
     /// Detect CPU family from system
-    #[must_use] 
+    #[must_use]
     pub fn detect() -> Self {
         // This would use actual CPU detection in production
         // Simplified for now
@@ -90,9 +90,9 @@ impl CpuFamily {
     }
 
     /// Check if two CPU families are compatible
-    #[must_use] 
+    #[must_use]
     pub fn compatible_with(&self, other: &CpuFamily) -> bool {
-        use CpuFamily::{IntelCore, IntelXeon, AmdRyzen, AmdEpyc, AppleSilicon, ArmCortex};
+        use CpuFamily::{AmdEpyc, AmdRyzen, AppleSilicon, ArmCortex, IntelCore, IntelXeon};
 
         match (self, other) {
             // Intel families are compatible
@@ -119,7 +119,7 @@ pub enum CoreClass {
 
 impl CoreClass {
     /// Create from actual core count
-    #[must_use] 
+    #[must_use]
     pub fn from_count(count: usize) -> Self {
         match count {
             1 => Self::Single,
@@ -131,9 +131,9 @@ impl CoreClass {
     }
 
     /// Distance between core classes
-    #[must_use] 
+    #[must_use]
     pub fn distance(&self, other: &CoreClass) -> usize {
-        use CoreClass::{Single, Dual, Quad, Octa, Many};
+        use CoreClass::{Dual, Many, Octa, Quad, Single};
 
         let self_idx: usize = match self {
             Single => 0,
@@ -155,7 +155,7 @@ impl CoreClass {
     }
 
     /// Expected speedup factor for parallel workloads
-    #[must_use] 
+    #[must_use]
     pub fn speedup(&self) -> f64 {
         match self {
             Self::Single => 1.0,
@@ -167,7 +167,7 @@ impl CoreClass {
     }
 
     /// Representative core count
-    #[must_use] 
+    #[must_use]
     pub fn representative_count(&self) -> usize {
         match self {
             Self::Single => 1,
@@ -190,7 +190,7 @@ pub enum CacheClass {
 
 impl CacheClass {
     /// Detect cache class from system
-    #[must_use] 
+    #[must_use]
     pub fn detect() -> Self {
         // This would use actual cache detection in production
         // Simplified for now
@@ -198,9 +198,9 @@ impl CacheClass {
     }
 
     /// Distance between cache classes
-    #[must_use] 
+    #[must_use]
     pub fn distance(&self, other: &CacheClass) -> usize {
-        use CacheClass::{Small, Medium, Large, Huge};
+        use CacheClass::{Huge, Large, Medium, Small};
 
         let self_idx: usize = match self {
             Small => 0,
@@ -220,7 +220,7 @@ impl CacheClass {
     }
 
     /// Representative cache size in MB
-    #[must_use] 
+    #[must_use]
     pub fn mb(&self) -> f64 {
         match self {
             Self::Small => 2.0,
@@ -263,7 +263,7 @@ pub struct CacheSizes {
 
 impl HardwareProfile {
     /// Create profile from current system
-    #[must_use] 
+    #[must_use]
     pub fn from_system() -> Self {
         let logical_cores = num_cpus::get();
         let physical_cores = num_cpus::get_physical();

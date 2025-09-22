@@ -97,10 +97,9 @@ impl GraphContextAnnotator {
 
         // Add edges (combine bidirectional edges)
         for edge in graph.edge_references() {
-            if let (Some(&source), Some(&target)) = (
-                node_map.get(&edge.source()),
-                node_map.get(&edge.target())
-            ) {
+            if let (Some(&source), Some(&target)) =
+                (node_map.get(&edge.source()), node_map.get(&edge.target()))
+            {
                 let weight = edge.weight().to_numeric_weight();
                 undirected.add_edge(source, target, weight);
             }
@@ -111,7 +110,11 @@ impl GraphContextAnnotator {
 
     /// Find related files through graph connections
     /// Complexity: 6
-    fn find_related_files(&self, graph: &DependencyGraph, node: petgraph::graph::NodeIndex) -> Vec<String> {
+    fn find_related_files(
+        &self,
+        graph: &DependencyGraph,
+        node: petgraph::graph::NodeIndex,
+    ) -> Vec<String> {
         let mut related = Vec::new();
 
         // Get neighbors (both incoming and outgoing)
@@ -156,7 +159,10 @@ impl GraphContextAnnotator {
 
     /// Get community clusters for analysis grouping
     /// Complexity: 5
-    pub fn get_community_clusters(&self, annotations: &[ContextAnnotation]) -> HashMap<usize, Vec<String>> {
+    pub fn get_community_clusters(
+        &self,
+        annotations: &[ContextAnnotation],
+    ) -> HashMap<usize, Vec<String>> {
         let mut clusters = HashMap::new();
 
         for annotation in annotations {

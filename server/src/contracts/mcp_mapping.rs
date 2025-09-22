@@ -1,7 +1,11 @@
 //! Maps MCP tool parameters to uniform contracts
 //! This ensures MCP uses the exact same contracts as CLI and HTTP
 
-use super::{ContractValidation, AnalyzeComplexityContract, AnalyzeSatdContract, AnalyzeDeadCodeContract, AnalyzeTdgContract, AnalyzeLintHotspotContract, QualityGateContract, RefactorAutoContract, BaseAnalysisContract, OutputFormat, SatdSeverity, QualityProfile};
+use super::{
+    AnalyzeComplexityContract, AnalyzeDeadCodeContract, AnalyzeLintHotspotContract,
+    AnalyzeSatdContract, AnalyzeTdgContract, BaseAnalysisContract, ContractValidation,
+    OutputFormat, QualityGateContract, QualityProfile, RefactorAutoContract, SatdSeverity,
+};
 use anyhow::Result;
 use serde_json::Value;
 use std::path::PathBuf;

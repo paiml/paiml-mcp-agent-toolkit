@@ -39,7 +39,7 @@ pub use diagnostics::{
 pub use formatters::{format_human, format_json, format_markdown};
 pub use language_simple::{Language, LanguageRules};
 pub use resource_control::{
-    OperationType as ResourceOperationType, OperationPriority, PlatformResourceController,
+    OperationPriority, OperationType as ResourceOperationType, PlatformResourceController,
     ResourceAction, ResourceAllocation, ResourceControllerFactory, ResourceEnforcementStats,
     ResourceLimits, ResourcePressure, ResourceUsage,
 };
@@ -139,7 +139,7 @@ pub enum Grade {
 }
 
 impl Grade {
-    #[must_use] 
+    #[must_use]
     pub fn from_score(score: f32) -> Self {
         match score {
             s if s >= 95.0 => Grade::APLus,
@@ -203,7 +203,7 @@ pub struct ProjectScore {
 }
 
 impl ProjectScore {
-    #[must_use] 
+    #[must_use]
     pub fn aggregate(scores: Vec<TdgScore>) -> Self {
         let total_files = scores.len();
         let average_score = if total_files > 0 {
@@ -226,7 +226,7 @@ impl ProjectScore {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn average(&self) -> TdgScore {
         if self.files.is_empty() {
             return TdgScore::default();
@@ -271,7 +271,7 @@ pub struct Comparison {
 }
 
 impl Comparison {
-    #[must_use] 
+    #[must_use]
     pub fn new(source1: TdgScore, source2: TdgScore) -> Self {
         let delta = source2.total - source1.total;
         let improvement_percentage = if source1.total > 0.0 {
@@ -283,11 +283,13 @@ impl Comparison {
         let winner = if source2.total > source1.total {
             source2
                 .file_path
-                .as_ref().map_or_else(|| "source2".to_string(), |p| p.display().to_string())
+                .as_ref()
+                .map_or_else(|| "source2".to_string(), |p| p.display().to_string())
         } else {
             source1
                 .file_path
-                .as_ref().map_or_else(|| "source1".to_string(), |p| p.display().to_string())
+                .as_ref()
+                .map_or_else(|| "source1".to_string(), |p| p.display().to_string())
         };
 
         let mut improvements = Vec::new();
@@ -364,7 +366,7 @@ impl Default for PenaltyTracker {
 }
 
 impl PenaltyTracker {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             applied: HashMap::new(),
@@ -395,7 +397,7 @@ impl PenaltyTracker {
         Some(amount)
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn get_attributions(&self) -> Vec<PenaltyAttribution> {
         self.applied.values().cloned().collect()
     }

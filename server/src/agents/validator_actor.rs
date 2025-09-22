@@ -1,7 +1,7 @@
-use actix::prelude::*;
 use super::messages::ValidateMessage;
-use super::{AgentResponse, AgentError};
-use crate::modules::validator::{ValidatorModule, ValidatorImpl};
+use super::{AgentError, AgentResponse};
+use crate::modules::validator::{ValidatorImpl, ValidatorModule};
+use actix::prelude::*;
 
 pub struct ValidatorActor {
     validator: ValidatorImpl,
@@ -32,7 +32,7 @@ impl Handler<ValidateMessage> for ValidatorActor {
                 let result = validator.validate(&metrics, &thresholds).await;
                 Ok(AgentResponse::Validated(result))
             }
-            .into_actor(self)
+            .into_actor(self),
         )
     }
 }

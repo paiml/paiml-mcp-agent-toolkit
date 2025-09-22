@@ -2,7 +2,10 @@
 //!
 //! Parses markdown files following the AGENTS.md specification with quality validation.
 
-use super::{SectionType, AgentsMdDocument, DocumentMetadata, PathBuf, Section, Command, Guideline, Priority, QualityRules};
+use super::{
+    AgentsMdDocument, Command, DocumentMetadata, Guideline, PathBuf, Priority, QualityRules,
+    Section, SectionType,
+};
 use anyhow::Result;
 use pulldown_cmark::{Event, HeadingLevel, Parser as MarkdownParser, Tag, TagEnd};
 use regex::Regex;
@@ -103,13 +106,13 @@ impl Default for AgentsMdParser {
 
 impl AgentsMdParser {
     /// Create new parser with default rules
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self::with_rules(ValidationRules::default())
     }
 
     /// Create parser with custom rules
-    #[must_use] 
+    #[must_use]
     pub fn with_rules(rules: ValidationRules) -> Self {
         Self {
             validation_rules: rules,
@@ -279,7 +282,11 @@ impl AgentsMdParser {
 
         // Extract guidelines from all sections
         for section in &document.sections {
-            self.extract_guidelines(&section.content, &section.section_type, &mut document.guidelines);
+            self.extract_guidelines(
+                &section.content,
+                &section.section_type,
+                &mut document.guidelines,
+            );
         }
 
         // Extract quality rules
@@ -305,28 +312,28 @@ impl AgentsMdParser {
                 .sections
                 .iter()
                 .any(|s| matches!(s.section_type, SectionType::Overview))
-            {
-                report.errors.push(ValidationError {
-                    message: "Missing required Overview section".to_string(),
-                    line: None,
-                    section: None,
-                });
-                report.valid = false;
-            }
+        {
+            report.errors.push(ValidationError {
+                message: "Missing required Overview section".to_string(),
+                line: None,
+                section: None,
+            });
+            report.valid = false;
+        }
 
         if self.validation_rules.require_testing
             && !doc
                 .sections
                 .iter()
                 .any(|s| matches!(s.section_type, SectionType::Testing))
-            {
-                report.errors.push(ValidationError {
-                    message: "Missing required Testing section".to_string(),
-                    line: None,
-                    section: None,
-                });
-                report.valid = false;
-            }
+        {
+            report.errors.push(ValidationError {
+                message: "Missing required Testing section".to_string(),
+                line: None,
+                section: None,
+            });
+            report.valid = false;
+        }
 
         // Check for unsafe commands
         for command in &doc.commands {
@@ -356,7 +363,7 @@ impl AgentsMdParser {
     }
 
     /// Extract sections by type
-    #[must_use] 
+    #[must_use]
     pub fn extract_sections(&self, doc: &AgentsMdDocument) -> HashMap<SectionType, Section> {
         let mut map = HashMap::new();
         for section in &doc.sections {
@@ -482,8 +489,7 @@ impl AgentsMdParser {
 
             // Look for complexity limits
             if content.contains("complexity") {
-                if let Some(captures) = complexity_regex.captures(content)
-                {
+                if let Some(captures) = complexity_regex.captures(content) {
                     if let Some(num) = captures.get(1) {
                         rules.max_complexity = num.as_str().parse().ok();
                         found_rules = true;
@@ -504,8 +510,8 @@ impl AgentsMdParser {
             // Check SATD policy
             if content.contains("satd") || content.contains("technical debt") {
                 // Check if it's explicitly allowed (but not "not allowed" or "disallowed")
-                rules.satd_allowed = (content.contains("allow") || content.contains("permitted")) 
-                    && !content.contains("not allow") 
+                rules.satd_allowed = (content.contains("allow") || content.contains("permitted"))
+                    && !content.contains("not allow")
                     && !content.contains("disallow")
                     && !content.contains("is not");
                 found_rules = true;

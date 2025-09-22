@@ -485,8 +485,7 @@ fn extract_target_files_from_issue(
     let full_content = format!("{}\n{}", issue_content.title, issue_content.body);
 
     for pattern in &file_patterns {
-        let re =
-            regex::Regex::new(pattern).context(format!("Invalid regex pattern: {pattern}"))?;
+        let re = regex::Regex::new(pattern).context(format!("Invalid regex pattern: {pattern}"))?;
 
         for capture in re.find_iter(&full_content) {
             let file_path_str = capture.as_str().trim_matches('`');

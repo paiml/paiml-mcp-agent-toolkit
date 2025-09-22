@@ -90,7 +90,7 @@ impl PersistentCacheManager {
     }
 
     /// Get cache diagnostics
-    #[must_use] 
+    #[must_use]
     pub fn get_diagnostics(&self) -> CacheDiagnostics {
         let uptime = self.created.elapsed();
         let ast_size = self.ast_cache.stats.memory_usage();

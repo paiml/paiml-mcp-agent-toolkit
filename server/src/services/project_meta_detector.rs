@@ -61,7 +61,7 @@ pub struct ProjectMetaDetector {
 }
 
 impl ProjectMetaDetector {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             patterns: vec![

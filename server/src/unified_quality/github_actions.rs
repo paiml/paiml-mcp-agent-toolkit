@@ -241,7 +241,7 @@ pub enum ViolationSeverity {
 
 impl GitHubActionsIntegration {
     /// Create new GitHub Actions integration
-    #[must_use] 
+    #[must_use]
     pub fn new(
         monitor: QualityMonitor,
         enforcer: ErrorBudgetEnforcer,
@@ -361,7 +361,7 @@ impl GitHubActionsIntegration {
     }
 
     /// Generate GitHub Actions workflow YAML
-    #[must_use] 
+    #[must_use]
     pub fn generate_workflow_yaml(&self) -> String {
         let triggers = &self.config.triggers;
         let thresholds = &self.config.quality_thresholds;

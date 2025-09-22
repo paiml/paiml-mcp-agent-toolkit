@@ -416,19 +416,31 @@ fn parse_config(params: &Value) -> Result<RefactorConfig, Box<dyn std::error::Er
 
     // Override with provided parameters
     if let Some(cfg) = params.get("config") {
-        if let Some(target_complexity) = cfg.get("target_complexity").and_then(serde_json::Value::as_u64) {
+        if let Some(target_complexity) = cfg
+            .get("target_complexity")
+            .and_then(serde_json::Value::as_u64)
+        {
             config.target_complexity = target_complexity as u16;
         }
         if let Some(remove_satd) = cfg.get("remove_satd").and_then(serde_json::Value::as_bool) {
             config.remove_satd = remove_satd;
         }
-        if let Some(max_function_lines) = cfg.get("max_function_lines").and_then(serde_json::Value::as_u64) {
+        if let Some(max_function_lines) = cfg
+            .get("max_function_lines")
+            .and_then(serde_json::Value::as_u64)
+        {
             config.max_function_lines = max_function_lines as u32;
         }
-        if let Some(parallel_workers) = cfg.get("parallel_workers").and_then(serde_json::Value::as_u64) {
+        if let Some(parallel_workers) = cfg
+            .get("parallel_workers")
+            .and_then(serde_json::Value::as_u64)
+        {
             config.parallel_workers = parallel_workers as usize;
         }
-        if let Some(memory_limit_mb) = cfg.get("memory_limit_mb").and_then(serde_json::Value::as_u64) {
+        if let Some(memory_limit_mb) = cfg
+            .get("memory_limit_mb")
+            .and_then(serde_json::Value::as_u64)
+        {
             config.memory_limit_mb = memory_limit_mb as usize;
         }
         if let Some(batch_size) = cfg.get("batch_size").and_then(serde_json::Value::as_u64) {

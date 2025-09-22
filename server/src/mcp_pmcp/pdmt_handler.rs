@@ -185,7 +185,7 @@ pub struct PdmtTool {
 }
 
 impl PdmtTool {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             service: PdmtService::new(),
@@ -263,27 +263,27 @@ impl ToolHandler for PdmtTool {
         let estimated_total_hours: f32 = todo_list.todos.iter().map(|t| t.estimated_hours).sum();
 
         // Prepare output
-        let output =
-            PdmtOutput {
-                success: quality_validation.overall_passed,
-                message: if quality_validation.overall_passed {
-                    format!(
+        let output = PdmtOutput {
+            success: quality_validation.overall_passed,
+            message: if quality_validation.overall_passed {
+                format!(
                         "Successfully generated {total_todos} deterministic todos with quality enforcement"
                     )
-                } else {
-                    format!(
+            } else {
+                format!(
                         "Generated {total_todos} todos but quality validation failed. Review violations."
                     )
-                },
-                todo_list: Some(serde_json::to_value(&todo_list).map_err(|e| {
-                    Error::internal(format!("Failed to serialize todo list: {e}"))
-                })?),
-                quality_validation: Some(serde_json::to_value(&quality_validation).map_err(
-                    |e| Error::internal(format!("Failed to serialize validation results: {e}")),
-                )?),
-                total_todos,
-                estimated_total_hours,
-            };
+            },
+            todo_list: Some(
+                serde_json::to_value(&todo_list)
+                    .map_err(|e| Error::internal(format!("Failed to serialize todo list: {e}")))?,
+            ),
+            quality_validation: Some(serde_json::to_value(&quality_validation).map_err(|e| {
+                Error::internal(format!("Failed to serialize validation results: {e}"))
+            })?),
+            total_todos,
+            estimated_total_hours,
+        };
 
         if quality_validation.overall_passed {
             info!(

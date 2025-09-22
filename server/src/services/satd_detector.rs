@@ -120,7 +120,7 @@ impl Severity {
     /// assert_eq!(Severity::High.escalate(), Severity::Critical);
     /// assert_eq!(Severity::Critical.escalate(), Severity::Critical); // Already at max
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn escalate(self) -> Self {
         match self {
             Severity::Low => Severity::Medium,
@@ -142,7 +142,7 @@ impl Severity {
     /// assert_eq!(Severity::Medium.reduce(), Severity::Low);
     /// assert_eq!(Severity::Low.reduce(), Severity::Low); // Already at min
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn reduce(self) -> Self {
         match self {
             Severity::Critical => Severity::High,
@@ -221,7 +221,7 @@ impl Default for DebtClassifier {
 }
 
 impl DebtClassifier {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         // Default mode includes all patterns
         let patterns = vec![
@@ -245,8 +245,7 @@ impl DebtClassifier {
                 description: "Missing feature".to_string(),
             },
             DebtPattern {
-                regex: r"(?i)\b(security|vuln|vulnerability|cve|xss)\b"
-                    .to_string(),
+                regex: r"(?i)\b(security|vuln|vulnerability|cve|xss)\b".to_string(),
                 category: DebtCategory::Security,
                 severity: Severity::Critical,
                 description: "Security concern".to_string(),
@@ -302,7 +301,7 @@ impl DebtClassifier {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn new_strict() -> Self {
         // Strict mode only includes explicit SATD markers
         let patterns = vec![
@@ -370,7 +369,7 @@ impl DebtClassifier {
     /// let result = classifier.classify_comment("This is a regular comment");
     /// assert_eq!(result, None);
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn classify_comment(&self, text: &str) -> Option<(DebtCategory, Severity)> {
         let matches = self.compiled_patterns.matches(text);
 
@@ -385,7 +384,7 @@ impl DebtClassifier {
     }
 
     /// Adjust severity based on context
-    #[must_use] 
+    #[must_use]
     pub fn adjust_severity(&self, base_severity: Severity, context: &AstContext) -> Severity {
         match context.node_type {
             // Critical paths escalate severity
@@ -406,12 +405,12 @@ impl Default for SATDDetector {
 }
 
 impl SATDDetector {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self::with_config(false)
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn new_strict() -> Self {
         Self::with_config(true)
     }
@@ -1144,8 +1143,10 @@ impl SATDDetector {
 
     fn is_url_or_path(&self, trimmed: &str) -> bool {
         // Check for actual URLs or file paths, not just comment markers
-        (trimmed.contains("http://") || trimmed.contains("https://")
-            || trimmed.contains("file://") || trimmed.contains(".com/")
+        (trimmed.contains("http://")
+            || trimmed.contains("https://")
+            || trimmed.contains("file://")
+            || trimmed.contains(".com/")
             || (trimmed.contains('/') && !trimmed.starts_with("//"))
             || trimmed.contains('\\'))
             && (trimmed.contains("TODO") || trimmed.contains("FIXME"))
@@ -1350,7 +1351,7 @@ impl SATDDetector {
     }
 
     /// Generate project-wide SATD metrics
-    #[must_use] 
+    #[must_use]
     pub fn generate_metrics(&self, debts: &[TechnicalDebt], total_loc: u64) -> SATDMetrics {
         let debt_density = if total_loc > 0 {
             (debts.len() as f64 / total_loc as f64) * 1000.0

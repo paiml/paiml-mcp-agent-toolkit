@@ -12,7 +12,7 @@ pub struct WatParser {
 
 impl WatParser {
     /// Create a new WAT parser
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             max_file_size: 10 * 1024 * 1024, // 10MB

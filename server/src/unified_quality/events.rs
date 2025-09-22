@@ -70,7 +70,7 @@ pub enum ViolationSeverity {
 
 impl QualityEvent {
     /// Check if event is a violation
-    #[must_use] 
+    #[must_use]
     pub fn is_violation(&self) -> bool {
         matches!(
             self,
@@ -79,13 +79,13 @@ impl QualityEvent {
     }
 
     /// Check if event is an improvement
-    #[must_use] 
+    #[must_use]
     pub fn is_improvement(&self) -> bool {
         matches!(self, QualityEvent::QualityImproved { .. })
     }
 
     /// Get event severity
-    #[must_use] 
+    #[must_use]
     pub fn severity(&self) -> Option<ViolationSeverity> {
         match self {
             QualityEvent::ThresholdViolated { violation, .. } => Some(violation.severity.clone()),

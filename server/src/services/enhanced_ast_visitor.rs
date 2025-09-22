@@ -20,7 +20,7 @@ pub struct EnhancedAstVisitor {
 
 impl EnhancedAstVisitor {
     /// Creates a new enhanced visitor for a given file
-    #[must_use] 
+    #[must_use]
     pub fn new(file_path: &Path) -> Self {
         Self {
             items: Vec::new(),
@@ -30,7 +30,7 @@ impl EnhancedAstVisitor {
     }
 
     /// Extracts all AST items with real source information
-    #[must_use] 
+    #[must_use]
     pub fn extract_items(mut self, syntax_tree: &syn::File) -> Vec<AstItem> {
         self.visit_file(syntax_tree);
         self.items
@@ -167,9 +167,10 @@ impl<'ast> Visit<'ast> for EnhancedAstVisitor {
 
     fn visit_item_impl(&mut self, node: &'ast ItemImpl) {
         let type_name = quote::quote!(#node.self_ty).to_string();
-        let trait_name = node.trait_.as_ref().map(|(_, path, _)| {
-            quote::quote!(#path).to_string()
-        });
+        let trait_name = node
+            .trait_
+            .as_ref()
+            .map(|(_, path, _)| quote::quote!(#path).to_string());
         let line = self.get_line(node.span());
 
         self.items.push(AstItem::Impl {
@@ -202,10 +203,7 @@ impl<'ast> Visit<'ast> for EnhancedAstVisitor {
         let path = quote::quote!(#node.tree).to_string();
         let line = self.get_line(node.span());
 
-        self.items.push(AstItem::Use {
-            path,
-            line,
-        });
+        self.items.push(AstItem::Use { path, line });
 
         syn::visit::visit_item_use(self, node);
     }
@@ -232,7 +230,12 @@ mod tests {
 
         // Verify real names are extracted
         match &items[0] {
-            AstItem::Function { name, visibility, is_async, .. } => {
+            AstItem::Function {
+                name,
+                visibility,
+                is_async,
+                ..
+            } => {
                 assert_eq!(name, "calculate_complexity");
                 assert_eq!(visibility, "pub");
                 assert!(!is_async);
@@ -241,7 +244,12 @@ mod tests {
         }
 
         match &items[1] {
-            AstItem::Function { name, visibility, is_async, .. } => {
+            AstItem::Function {
+                name,
+                visibility,
+                is_async,
+                ..
+            } => {
                 assert_eq!(name, "process_data");
                 assert_eq!(visibility, "private");
                 assert!(is_async);
@@ -296,7 +304,12 @@ mod tests {
 
         assert_eq!(items.len(), 1);
         match &items[0] {
-            AstItem::Struct { name, visibility, fields_count, .. } => {
+            AstItem::Struct {
+                name,
+                visibility,
+                fields_count,
+                ..
+            } => {
                 assert_eq!(name, "Configuration");
                 assert_eq!(visibility, "pub");
                 assert_eq!(*fields_count, 3);
@@ -327,7 +340,10 @@ mod tests {
             })
             .collect();
 
-        assert_eq!(visibilities, vec!["pub", "pub(crate)", "pub(super)", "private"]);
+        assert_eq!(
+            visibilities,
+            vec!["pub", "pub(crate)", "pub(super)", "private"]
+        );
     }
 }
 

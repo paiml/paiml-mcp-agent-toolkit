@@ -344,7 +344,7 @@ pub struct GamificationConfig {
 
 impl TeamOnboarding {
     /// Create new onboarding system
-    #[must_use] 
+    #[must_use]
     pub fn new(config: OnboardingConfig) -> Self {
         Self {
             sessions: HashMap::new(),
@@ -568,8 +568,8 @@ impl TeamOnboarding {
 
     /// Calculate engagement score
     fn calculate_engagement_score(&self, session: &OnboardingSession) -> f64 {
-        let tutorial_ratio =
-            f64::from(session.progress.tutorials_completed) / f64::from(session.progress.tutorials_total);
+        let tutorial_ratio = f64::from(session.progress.tutorials_completed)
+            / f64::from(session.progress.tutorials_total);
 
         let exercise_bonus = (f64::from(session.progress.exercises_completed) * 0.1).min(0.3);
         let improvement_bonus = (f64::from(session.progress.quality_improvements) * 0.05).min(0.2);
@@ -684,7 +684,7 @@ impl Default for TutorialLibrary {
 
 impl TutorialLibrary {
     /// Create new tutorial library with built-in content
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         let mut tutorials = HashMap::new();
 
@@ -754,13 +754,13 @@ impl TutorialLibrary {
     }
 
     /// Get tutorials for a specific phase
-    #[must_use] 
+    #[must_use]
     pub fn get_tutorials_for_phase(&self, phase: &OnboardingPhase) -> Vec<Tutorial> {
         self.tutorials.get(phase).cloned().unwrap_or_default()
     }
 
     /// Count total tutorials
-    #[must_use] 
+    #[must_use]
     pub fn count_tutorials(&self) -> u32 {
         self.tutorials.values().map(|v| v.len() as u32).sum()
     }

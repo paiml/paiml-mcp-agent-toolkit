@@ -206,7 +206,7 @@ impl BoxedError {
     }
 
     /// Create a `BoxedError` from a boxed error
-    #[must_use] 
+    #[must_use]
     pub fn from_box(err: Box<dyn std::error::Error + Send + Sync>) -> Self {
         BoxedError(err)
     }
@@ -220,13 +220,13 @@ impl Default for DemoEngine {
 
 impl DemoEngine {
     /// Create a new demo engine with default configuration
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Create a new demo engine with custom configuration
-    #[must_use] 
+    #[must_use]
     pub fn with_config(config: DemoConfig) -> Self {
         Self {
             context_cache: Arc::new(RwLock::new(ContextCache::new(config.clone()))),
@@ -249,7 +249,7 @@ impl DemoEngine {
     }
 
     /// Get list of registered protocols
-    #[must_use] 
+    #[must_use]
     pub fn list_protocols(&self) -> Vec<String> {
         self.protocols.keys().cloned().collect()
     }
@@ -350,7 +350,7 @@ impl DemoEngine {
 }
 
 impl ContextCache {
-    #[must_use] 
+    #[must_use]
     pub fn new(config: DemoConfig) -> Self {
         Self {
             entries: HashMap::new(),
@@ -358,7 +358,7 @@ impl ContextCache {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn get(&self, key: &str) -> Option<&AnalysisResult> {
         self.entries.get(key).map(|entry| &entry.result)
     }
@@ -392,7 +392,7 @@ impl ContextCache {
 }
 
 impl TraceStore {
-    #[must_use] 
+    #[must_use]
     pub fn new(max_traces: usize) -> Self {
         Self {
             traces: RwLock::new(HashMap::new()),

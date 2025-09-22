@@ -26,7 +26,7 @@ impl<T, I, O> ServiceAdapter<T, I, O> {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn inner(&self) -> &T {
         &self.inner
     }
@@ -62,7 +62,7 @@ macro_rules! impl_service_adapter {
 
 /// Example: `ComplexityService` adapter
 pub mod complexity_adapter {
-    use super::{Serialize, Deserialize, Service, ServiceAdapter, Result, ServiceMetrics};
+    use super::{Deserialize, Result, Serialize, Service, ServiceAdapter, ServiceMetrics};
     use crate::services::complexity::{ComplexityMetrics, ComplexityThresholds};
     use std::path::PathBuf;
 
@@ -80,7 +80,7 @@ pub mod complexity_adapter {
     pub type ComplexityServiceAdapter = ServiceAdapter<(), ComplexityInput, ComplexityOutput>;
 
     impl ComplexityServiceAdapter {
-        #[must_use] 
+        #[must_use]
         pub fn new_complexity_service() -> Self {
             ServiceAdapter::new(())
         }
@@ -103,7 +103,7 @@ pub mod complexity_adapter {
 
 /// Example: `RefactorService` adapter  
 pub mod refactor_adapter {
-    use super::{Serialize, Deserialize, ServiceAdapter, Result, Service, ServiceMetrics};
+    use super::{Deserialize, Result, Serialize, Service, ServiceAdapter, ServiceMetrics};
     use std::path::PathBuf;
 
     #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -138,7 +138,7 @@ pub mod refactor_adapter {
     pub type RefactorServiceAdapter = ServiceAdapter<(), RefactorInput, RefactorOutput>;
 
     impl RefactorServiceAdapter {
-        #[must_use] 
+        #[must_use]
         pub fn new_refactor_service() -> Self {
             ServiceAdapter::new(())
         }
@@ -167,7 +167,7 @@ pub struct ServiceRegistryBuilder {
 }
 
 impl ServiceRegistryBuilder {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             registry: super::service_base::ServiceRegistry::new(),
@@ -175,7 +175,7 @@ impl ServiceRegistryBuilder {
     }
 
     /// Register an analysis service
-    #[must_use] 
+    #[must_use]
     pub fn with_analysis_service(self) -> Self {
         let service = super::analysis_service::AnalysisService::new();
         self.registry.register(service);
@@ -183,7 +183,7 @@ impl ServiceRegistryBuilder {
     }
 
     /// Register a quality gate service
-    #[must_use] 
+    #[must_use]
     pub fn with_quality_gate_service(self) -> Self {
         let service = super::quality_gate_service::QualityGateService::new();
         self.registry.register(service);
@@ -191,7 +191,7 @@ impl ServiceRegistryBuilder {
     }
 
     /// Register a complexity service adapter
-    #[must_use] 
+    #[must_use]
     pub fn with_complexity_service(self) -> Self {
         let service = complexity_adapter::ComplexityServiceAdapter::new_complexity_service();
         self.registry.register(service);
@@ -199,7 +199,7 @@ impl ServiceRegistryBuilder {
     }
 
     /// Register a refactor service adapter
-    #[must_use] 
+    #[must_use]
     pub fn with_refactor_service(self) -> Self {
         let service = refactor_adapter::RefactorServiceAdapter::new_refactor_service();
         self.registry.register(service);
@@ -207,7 +207,7 @@ impl ServiceRegistryBuilder {
     }
 
     /// Build the registry
-    #[must_use] 
+    #[must_use]
     pub fn build(self) -> super::service_base::ServiceRegistry {
         self.registry
     }

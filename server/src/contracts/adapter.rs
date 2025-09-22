@@ -3,7 +3,11 @@
 //! This module provides backward compatibility by translating legacy parameter formats
 //! to the current uniform contract system, ensuring seamless operation during API evolution.
 
-use super::{ContractValidation, AnalyzeComplexityContract, BaseAnalysisContract, OutputFormat, AnalyzeSatdContract, AnalyzeDeadCodeContract, AnalyzeTdgContract, AnalyzeLintHotspotContract};
+use super::{
+    AnalyzeComplexityContract, AnalyzeDeadCodeContract, AnalyzeLintHotspotContract,
+    AnalyzeSatdContract, AnalyzeTdgContract, BaseAnalysisContract, ContractValidation,
+    OutputFormat,
+};
 use crate::cli::commands::AnalyzeCommands;
 use anyhow::Result;
 use std::path::{Path, PathBuf};
@@ -62,7 +66,7 @@ struct LintHotspotMapParams<'a> {
 
 impl ContractAdapter {
     /// Generate deprecation warnings for inconsistent parameters
-    #[must_use] 
+    #[must_use]
     pub fn deprecation_warnings(cmd: &AnalyzeCommands) -> Vec<String> {
         let mut warnings = Vec::new();
 
@@ -319,7 +323,7 @@ pub struct BackwardCompatibility;
 
 impl BackwardCompatibility {
     /// Map old parameter names to new ones in JSON
-    #[must_use] 
+    #[must_use]
     pub fn map_json_params(mut params: serde_json::Value) -> serde_json::Value {
         if let Some(obj) = params.as_object_mut() {
             Self::map_project_path_to_path(obj);

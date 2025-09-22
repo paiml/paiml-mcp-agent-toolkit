@@ -55,7 +55,7 @@ pub enum AppError {
 
 impl AppError {
     /// Get the appropriate HTTP status code for this error
-    #[must_use] 
+    #[must_use]
     pub fn status_code(&self) -> StatusCode {
         match self {
             AppError::NotFound(_) => StatusCode::NOT_FOUND,
@@ -75,7 +75,7 @@ impl AppError {
     }
 
     /// Get the MCP error code for this error
-    #[must_use] 
+    #[must_use]
     pub fn mcp_error_code(&self) -> i32 {
         match self {
             AppError::NotFound(_) => -32001,
@@ -95,7 +95,7 @@ impl AppError {
     }
 
     /// Get a categorized error type string
-    #[must_use] 
+    #[must_use]
     pub fn error_type(&self) -> &'static str {
         match self {
             AppError::NotFound(_) => "NOT_FOUND",

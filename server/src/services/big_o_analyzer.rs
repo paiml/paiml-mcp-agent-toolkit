@@ -124,7 +124,7 @@ impl BigOAnalyzer {
     /// let analyzer = BigOAnalyzer::new();
     /// // Analyzer is ready to analyze code complexity
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             pattern_matcher: ComplexityPatternMatcher::new(),
@@ -173,7 +173,9 @@ impl BigOAnalyzer {
             ".all(",
         ];
 
-        linear_patterns.iter().any(|pattern| function_body.contains(pattern))
+        linear_patterns
+            .iter()
+            .any(|pattern| function_body.contains(pattern))
     }
 
     fn calculate_loop_depth(lines: &[&str], loop_keywords: &[&str]) -> usize {
@@ -375,7 +377,6 @@ impl BigOAnalyzer {
                     lang,
                 );
 
-
                 if complexity.confidence >= config.confidence_threshold {
                     functions.push(FunctionComplexity {
                         file_path: file_path.clone(),
@@ -442,7 +443,10 @@ impl BigOAnalyzer {
         let mut time_complexity = Self::determine_time_complexity(max_loop_depth, has_recursion);
 
         // Adjust for iterator patterns - these are linear operations
-        if has_iterator_pattern && (time_complexity.class == BigOClass::Constant || time_complexity.class == BigOClass::Unknown) {
+        if has_iterator_pattern
+            && (time_complexity.class == BigOClass::Constant
+                || time_complexity.class == BigOClass::Unknown)
+        {
             time_complexity = ComplexityBound::linear().with_confidence(75);
         }
 
@@ -630,7 +634,7 @@ impl BigOAnalyzer {
     }
 
     /// Format report as Markdown
-    #[must_use] 
+    #[must_use]
     pub fn format_as_markdown(&self, report: &BigOAnalysisReport) -> String {
         let mut md = String::with_capacity(1024);
 

@@ -48,7 +48,7 @@ pub struct LanguageRegistry {
 
 impl LanguageRegistry {
     /// Create a new registry with all default strategies
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         let strategies: Vec<Arc<dyn LanguageStrategy>> = vec![
             Arc::new(rust::RustStrategy::new()),
@@ -68,13 +68,13 @@ impl LanguageRegistry {
     }
 
     /// Find a strategy for the given file
-    #[must_use] 
+    #[must_use]
     pub fn find_strategy(&self, path: &Path) -> Option<Arc<dyn LanguageStrategy>> {
         self.strategies.iter().find(|s| s.can_parse(path)).cloned()
     }
 
     /// Get strategy for a specific language
-    #[must_use] 
+    #[must_use]
     pub fn get_strategy(&self, language: Language) -> Option<Arc<dyn LanguageStrategy>> {
         self.strategies
             .iter()

@@ -10,7 +10,7 @@ pub struct StrategySelector;
 
 impl StrategySelector {
     /// Get the best strategy for a given file extension
-    #[must_use] 
+    #[must_use]
     pub fn select_for_extension(extension: &str) -> Option<Arc<dyn AstStrategy>> {
         match extension {
             "rs" => Some(Arc::new(super::languages::rust::RustStrategy::new())),
@@ -41,7 +41,7 @@ impl StrategySelector {
     }
 
     /// Get all supported extensions
-    #[must_use] 
+    #[must_use]
     pub fn supported_extensions() -> Vec<&'static str> {
         let mut extensions = vec!["rs"]; // Rust is always supported
 

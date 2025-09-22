@@ -683,9 +683,10 @@ fn parse_code_churn_args(
 
 /// Toyota Way Helper: Extract churn analysis parameters
 fn extract_churn_parameters(args: &AnalyzeCodeChurnArgs) -> (PathBuf, u32, ChurnOutputFormat) {
-    let project_path = args
-        .project_path
-        .as_ref().map_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")), PathBuf::from);
+    let project_path = args.project_path.as_ref().map_or_else(
+        || std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
+        PathBuf::from,
+    );
 
     let period_days = args.period_days.unwrap_or(30);
 
@@ -776,7 +777,7 @@ fn build_churn_response(
 /// assert!(summary.contains("Period: 30 days"));
 /// assert!(summary.contains("Total commits: 150"));
 /// ```
-#[must_use] 
+#[must_use]
 pub fn format_churn_summary(analysis: &crate::models::churn::CodeChurnAnalysis) -> String {
     let mut output = String::with_capacity(1024);
 
@@ -838,7 +839,7 @@ pub fn format_churn_summary(analysis: &crate::models::churn::CodeChurnAnalysis) 
 /// assert!(markdown.contains("# Code Churn Analysis Report"));
 /// assert!(markdown.contains("**Period:** 7 days"));
 /// ```
-#[must_use] 
+#[must_use]
 pub fn format_churn_as_markdown(analysis: &crate::models::churn::CodeChurnAnalysis) -> String {
     let mut output = String::with_capacity(1024);
 
@@ -925,7 +926,7 @@ pub fn format_churn_as_markdown(analysis: &crate::models::churn::CodeChurnAnalys
 /// assert!(csv.starts_with("file_path,commits,additions,deletions,churn_score,unique_authors,last_modified"));
 /// assert!(csv.contains("src/main.rs,5,100,50,0.750,0"));
 /// ```
-#[must_use] 
+#[must_use]
 pub fn format_churn_as_csv(analysis: &crate::models::churn::CodeChurnAnalysis) -> String {
     let mut output = String::with_capacity(1024);
 
@@ -1106,7 +1107,10 @@ async fn handle_analyze_complexity(
 }
 
 fn resolve_project_path_complexity(project_path_arg: Option<String>) -> PathBuf {
-    project_path_arg.map_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")), PathBuf::from)
+    project_path_arg.map_or_else(
+        || std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
+        PathBuf::from,
+    )
 }
 
 fn detect_toolchain(toolchain_arg: &Option<String>, project_path: &Path) -> String {
@@ -1269,7 +1273,9 @@ fn format_complexity_output(
     report: &crate::services::complexity::ComplexityReport,
     args: &AnalyzeComplexityArgs,
 ) -> String {
-    use crate::services::complexity::{format_complexity_report, format_as_sarif, format_complexity_summary};
+    use crate::services::complexity::{
+        format_as_sarif, format_complexity_report, format_complexity_summary,
+    };
 
     let format = args.format.as_deref().unwrap_or("summary");
     match format {
@@ -1381,8 +1387,10 @@ async fn execute_dag_analysis(args: &AnalyzeDagArgs) -> anyhow::Result<serde_jso
 }
 
 fn resolve_project_path(project_path: &Option<String>) -> PathBuf {
-    project_path
-        .as_ref().map_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")), PathBuf::from)
+    project_path.as_ref().map_or_else(
+        || std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
+        PathBuf::from,
+    )
 }
 
 fn build_dag_graph(
@@ -1508,9 +1516,10 @@ fn parse_generate_context_args(
 ) -> Result<(GenerateContextArgs, PathBuf), Box<dyn std::error::Error>> {
     let args: GenerateContextArgs = serde_json::from_value(arguments)?;
 
-    let project_path = args
-        .project_path
-        .as_ref().map_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")), PathBuf::from);
+    let project_path = args.project_path.as_ref().map_or_else(
+        || std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
+        PathBuf::from,
+    );
 
     Ok((args, project_path))
 }
@@ -1575,7 +1584,9 @@ async fn format_context_content(
     format: &str,
     deep_context: &crate::services::deep_context::DeepContext,
 ) -> String {
-    if format == "json" { serde_json::to_string_pretty(deep_context).unwrap_or_default() } else {
+    if format == "json" {
+        serde_json::to_string_pretty(deep_context).unwrap_or_default()
+    } else {
         use crate::services::deep_context::{DeepContextAnalyzer, DeepContextConfig};
         let analyzer = DeepContextAnalyzer::new(DeepContextConfig::default());
         analyzer
@@ -1778,9 +1789,10 @@ fn parse_architecture_analysis_args(
 ) -> Result<(AnalyzeSystemArchitectureArgs, PathBuf), Box<dyn std::error::Error>> {
     let args: AnalyzeSystemArchitectureArgs = serde_json::from_value(arguments)?;
 
-    let project_path = args
-        .project_path
-        .as_ref().map_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")), PathBuf::from);
+    let project_path = args.project_path.as_ref().map_or_else(
+        || std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
+        PathBuf::from,
+    );
 
     Ok((args, project_path))
 }
@@ -2023,9 +2035,10 @@ fn parse_defect_probability_args(
 ) -> Result<(AnalyzeDefectProbabilityArgs, PathBuf), Box<dyn std::error::Error>> {
     let args: AnalyzeDefectProbabilityArgs = serde_json::from_value(arguments)?;
 
-    let project_path = args
-        .project_path
-        .as_ref().map_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")), PathBuf::from);
+    let project_path = args.project_path.as_ref().map_or_else(
+        || std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
+        PathBuf::from,
+    );
 
     Ok((args, project_path))
 }
@@ -2188,9 +2201,10 @@ fn parse_dead_code_args(
 ) -> Result<(AnalyzeDeadCodeArgs, PathBuf), Box<dyn std::error::Error>> {
     let args: AnalyzeDeadCodeArgs = serde_json::from_value(arguments)?;
 
-    let project_path = args
-        .project_path
-        .as_ref().map_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")), PathBuf::from);
+    let project_path = args.project_path.as_ref().map_or_else(
+        || std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
+        PathBuf::from,
+    );
 
     Ok((args, project_path))
 }
@@ -2608,8 +2622,10 @@ fn parse_tdg_args(arguments: serde_json::Value) -> Result<AnalyzeTdgArgs, serde_
 
 /// Toyota Way Helper: Extract TDG project path
 fn extract_tdg_project_path(args: &AnalyzeTdgArgs) -> PathBuf {
-    args.project_path
-        .as_ref().map_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")), PathBuf::from)
+    args.project_path.as_ref().map_or_else(
+        || std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
+        PathBuf::from,
+    )
 }
 
 /// Toyota Way Helper: Run TDG analysis and format response
@@ -2806,7 +2822,10 @@ fn parse_deep_context_args(arguments: serde_json::Value) -> Result<AnalyzeDeepCo
 }
 
 fn resolve_deep_context_project_path(project_path: Option<String>) -> PathBuf {
-    project_path.map_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")), PathBuf::from)
+    project_path.map_or_else(
+        || std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
+        PathBuf::from,
+    )
 }
 
 fn default_project_path() -> String {
@@ -2957,7 +2976,10 @@ fn format_deep_context_as_sarif(_context: &crate::services::deep_context::DeepCo
 
 /// Toyota Way: Extract Method - Format deep context analysis as markdown (complexity ≤8)
 fn format_deep_context_as_markdown(context: &crate::services::deep_context::DeepContext) -> String {
-    use crate::cli::formatting_helpers::{format_executive_summary, format_quality_scorecard, format_defect_summary, format_recommendations};
+    use crate::cli::formatting_helpers::{
+        format_defect_summary, format_executive_summary, format_quality_scorecard,
+        format_recommendations,
+    };
 
     let mut output = String::with_capacity(1024);
     output.push_str("# Deep Context Analysis\n\n");
@@ -2982,7 +3004,7 @@ fn format_essential_metadata(
     output: &mut String,
     context: &crate::services::deep_context::DeepContext,
 ) {
-    use crate::cli::formatting_helpers::{format_project_overview, format_build_info};
+    use crate::cli::formatting_helpers::{format_build_info, format_project_overview};
 
     if context.project_overview.is_some() || context.build_info.is_some() {
         output.push_str("\n## Essential Project Metadata\n\n");

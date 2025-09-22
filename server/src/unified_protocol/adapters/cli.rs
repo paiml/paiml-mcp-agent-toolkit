@@ -19,7 +19,7 @@ use crate::unified_protocol::{
 pub struct CliAdapter;
 
 impl CliAdapter {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self
     }
@@ -1621,7 +1621,7 @@ pub struct CliInput {
 }
 
 impl CliInput {
-    #[must_use] 
+    #[must_use]
     pub fn new(command: Commands, command_name: String, raw_args: Vec<String>) -> Self {
         Self {
             command,
@@ -1709,7 +1709,7 @@ impl CliInput {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn from_commands(command: Commands) -> Self {
         // Toyota Way Extract Method: Get command name using categorized dispatch
         let command_name = Self::get_command_name_by_category(&command);
@@ -1946,7 +1946,7 @@ impl CliOutput {
     }
 
     /// Get the exit code without exiting
-    #[must_use] 
+    #[must_use]
     pub fn exit_code(&self) -> i32 {
         match self {
             CliOutput::Success { exit_code, .. } => *exit_code,
@@ -1955,7 +1955,7 @@ impl CliOutput {
     }
 
     /// Get the content/message
-    #[must_use] 
+    #[must_use]
     pub fn content(&self) -> &str {
         match self {
             CliOutput::Success { content, .. } => content,
@@ -2151,7 +2151,7 @@ pub struct CliRunner {
 }
 
 impl CliRunner {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             adapter: CliAdapter::new(),
@@ -2770,7 +2770,10 @@ mod tests {
         // The test name suggests it should be unsupported, but it's actually implemented
         if result.is_err() {
             // If it errors for some reason, just verify it's a ProtocolError
-            assert!(matches!(result.unwrap_err(), ProtocolError::UnsupportedProtocol(_) | ProtocolError::InvalidFormat(_)));
+            assert!(matches!(
+                result.unwrap_err(),
+                ProtocolError::UnsupportedProtocol(_) | ProtocolError::InvalidFormat(_)
+            ));
         }
     }
 

@@ -18,7 +18,7 @@ pub struct DiscoveryService {
 
 impl DiscoveryService {
     /// Create new discovery service with zero-copy initialization
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             trigram_index: TrigramIndex,
@@ -80,7 +80,7 @@ impl DiscoveryService {
     }
 
     /// Disambiguate between multiple tool matches using static priority rules
-    #[must_use] 
+    #[must_use]
     pub fn disambiguate<'a>(&self, candidates: Vec<&'a str>, context: Option<&Context>) -> &'a str {
         if candidates.is_empty() {
             return "";
@@ -163,7 +163,7 @@ pub struct DiscoveryMetrics {
 }
 
 impl DiscoveryMetrics {
-    #[must_use] 
+    #[must_use]
     pub fn success_rate(&self) -> f64 {
         if self.total_queries == 0 {
             return 0.0;
@@ -203,7 +203,7 @@ mod tests {
         let service = DiscoveryService::new();
         // Test with keywords that should match through aliases or partial matches
         assert_eq!(
-            service.resolve_tool("complexity"),  // Should match through alias
+            service.resolve_tool("complexity"), // Should match through alias
             Some("analyze_complexity")
         );
         assert_eq!(service.resolve_tool("refactor"), Some("refactor.start"));

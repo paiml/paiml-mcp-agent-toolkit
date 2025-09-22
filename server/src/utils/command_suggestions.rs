@@ -6,7 +6,7 @@
 use std::collections::HashMap;
 
 /// Calculate Levenshtein distance between two strings
-#[must_use] 
+#[must_use]
 pub fn levenshtein_distance(a: &str, b: &str) -> usize {
     let a_len = a.len();
     let b_len = b.len();
@@ -76,7 +76,7 @@ pub struct CommandSuggester {
 }
 
 impl CommandSuggester {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         let main_commands = vec![
             "analyze".to_string(),
@@ -123,7 +123,7 @@ impl CommandSuggester {
     }
 
     /// Get command suggestions for a failed command
-    #[must_use] 
+    #[must_use]
     pub fn suggest_command(&self, failed_args: &[String]) -> Option<String> {
         if failed_args.is_empty() {
             return None;
@@ -199,7 +199,7 @@ impl CommandSuggester {
     }
 
     /// Get help text with working examples
-    #[must_use] 
+    #[must_use]
     pub fn get_help_examples() -> String {
         let examples = vec![
             "# Analyze code complexity",

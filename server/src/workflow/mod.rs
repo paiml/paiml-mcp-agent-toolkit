@@ -1,19 +1,19 @@
 // Workflow orchestration engine
+pub mod conditions;
 pub mod dsl;
 pub mod executor;
-pub mod steps;
-pub mod conditions;
-pub mod recovery;
 pub mod monitoring;
+pub mod recovery;
+pub mod steps;
 
+use async_trait::async_trait;
+use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::Arc;
-use parking_lot::RwLock;
-use async_trait::async_trait;
-use uuid::Uuid;
 use std::time::{Duration, Instant};
+use uuid::Uuid;
 
 // Workflow definition
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -50,13 +50,9 @@ pub enum StepType {
         params: Value,
     },
     #[serde(rename = "parallel")]
-    Parallel {
-        steps: Vec<WorkflowStep>,
-    },
+    Parallel { steps: Vec<WorkflowStep> },
     #[serde(rename = "sequence")]
-    Sequence {
-        steps: Vec<WorkflowStep>,
-    },
+    Sequence { steps: Vec<WorkflowStep> },
     #[serde(rename = "conditional")]
     Conditional {
         condition: String,
@@ -70,14 +66,9 @@ pub enum StepType {
         max_iterations: Option<usize>,
     },
     #[serde(rename = "wait")]
-    Wait {
-        duration: Duration,
-    },
+    Wait { duration: Duration },
     #[serde(rename = "subworkflow")]
-    SubWorkflow {
-        workflow_id: Uuid,
-        params: Value,
-    },
+    SubWorkflow { workflow_id: Uuid, params: Value },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -95,9 +86,18 @@ pub struct RetryPolicy {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum BackoffStrategy {
-    Fixed { delay: Duration },
-    Exponential { initial: Duration, multiplier: f32, max: Duration },
-    Linear { initial: Duration, increment: Duration },
+    Fixed {
+        delay: Duration,
+    },
+    Exponential {
+        initial: Duration,
+        multiplier: f32,
+        max: Duration,
+    },
+    Linear {
+        initial: Duration,
+        increment: Duration,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -134,7 +134,9 @@ pub struct StepResult {
     pub status: StepStatus,
     pub output: Option<Value>,
     pub error: Option<String>,
+    #[serde(skip, default = "Instant::now")]
     pub started_at: Instant,
+    #[serde(skip)]
     pub completed_at: Option<Instant>,
     pub attempts: usize,
 }
@@ -160,7 +162,10 @@ pub enum WorkflowState {
 }
 
 impl WorkflowContext {
-    pub fn new(workflow_id: Uuid, agent_registry: Arc<crate::agents::registry::AgentRegistry>) -> Self {
+    pub fn new(
+        workflow_id: Uuid,
+        agent_registry: Arc<crate::agents::registry::AgentRegistry>,
+    ) -> Self {
         Self {
             workflow_id,
             execution_id: Uuid::new_v4(),
@@ -204,8 +209,16 @@ impl WorkflowContext {
 // Workflow executor trait
 #[async_trait]
 pub trait WorkflowExecutor: Send + Sync {
-    async fn execute(&self, workflow: &Workflow, context: &WorkflowContext) -> Result<Value, WorkflowError>;
-    async fn execute_step(&self, step: &WorkflowStep, context: &WorkflowContext) -> Result<Value, WorkflowError>;
+    async fn execute(
+        &self,
+        workflow: &Workflow,
+        context: &WorkflowContext,
+    ) -> Result<Value, WorkflowError>;
+    async fn execute_step(
+        &self,
+        step: &WorkflowStep,
+        context: &WorkflowContext,
+    ) -> Result<Value, WorkflowError>;
     async fn pause(&self, execution_id: Uuid) -> Result<(), WorkflowError>;
     async fn resume(&self, execution_id: Uuid) -> Result<(), WorkflowError>;
     async fn cancel(&self, execution_id: Uuid) -> Result<(), WorkflowError>;
@@ -226,7 +239,12 @@ pub trait WorkflowRepository: Send + Sync {
 pub trait WorkflowMonitor: Send + Sync {
     async fn on_workflow_started(&self, workflow_id: Uuid, execution_id: Uuid);
     async fn on_workflow_completed(&self, workflow_id: Uuid, execution_id: Uuid, result: &Value);
-    async fn on_workflow_failed(&self, workflow_id: Uuid, execution_id: Uuid, error: &WorkflowError);
+    async fn on_workflow_failed(
+        &self,
+        workflow_id: Uuid,
+        execution_id: Uuid,
+        error: &WorkflowError,
+    );
     async fn on_step_started(&self, execution_id: Uuid, step_id: &str);
     async fn on_step_completed(&self, execution_id: Uuid, step_id: &str, result: &Value);
     async fn on_step_failed(&self, execution_id: Uuid, step_id: &str, error: &str);
@@ -247,7 +265,7 @@ pub struct WorkflowMetrics {
     pub retry_count: usize,
 }
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, Clone, thiserror::Error)]
 pub enum WorkflowError {
     #[error("Workflow not found: {0}")]
     NotFound(Uuid),
@@ -333,7 +351,12 @@ pub struct StepBuilder {
 }
 
 impl StepBuilder {
-    pub fn action(id: impl Into<String>, name: impl Into<String>, agent: impl Into<String>, operation: impl Into<String>) -> Self {
+    pub fn action(
+        id: impl Into<String>,
+        name: impl Into<String>,
+        agent: impl Into<String>,
+        operation: impl Into<String>,
+    ) -> Self {
         Self {
             step: WorkflowStep {
                 id: id.into(),
@@ -352,9 +375,9 @@ impl StepBuilder {
         }
     }
 
-    pub fn params(mut self, params: Value) -> Self {
-        if let StepType::Action { ref mut params as p, .. } = self.step.step_type {
-            *p = params;
+    pub fn params(mut self, new_params: Value) -> Self {
+        if let StepType::Action { params, .. } = &mut self.step.step_type {
+            *params = new_params;
         }
         self
     }
@@ -415,11 +438,14 @@ mod tests {
         let step = StepBuilder::action("step1", "Analyze", "analyzer", "analyze")
             .params(serde_json::json!({"language": "rust"}))
             .condition("result.score > 0.8", true)
-            .retry(3, BackoffStrategy::Exponential {
-                initial: Duration::from_secs(1),
-                multiplier: 2.0,
-                max: Duration::from_secs(10),
-            })
+            .retry(
+                3,
+                BackoffStrategy::Exponential {
+                    initial: Duration::from_secs(1),
+                    multiplier: 2.0,
+                    max: Duration::from_secs(10),
+                },
+            )
             .timeout(Duration::from_secs(30))
             .build();
 

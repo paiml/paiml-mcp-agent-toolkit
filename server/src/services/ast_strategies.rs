@@ -154,7 +154,7 @@ pub struct StrategyRegistry {
 }
 
 impl StrategyRegistry {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         let mut strategies: FxHashMap<String, Arc<dyn AstStrategy>> = FxHashMap::default();
 
@@ -203,7 +203,7 @@ impl StrategyRegistry {
         Self { strategies }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn get_strategy(&self, extension: &str) -> Option<Arc<dyn AstStrategy>> {
         self.strategies.get(extension).cloned()
     }
@@ -590,7 +590,10 @@ impl KotlinAstStrategy {
             if let Some(paren_pos) = after_fun.find('(') {
                 let name_part = &after_fun[..paren_pos];
                 // Take the first word as the function name
-                return name_part.split_whitespace().next().map(std::string::ToString::to_string);
+                return name_part
+                    .split_whitespace()
+                    .next()
+                    .map(std::string::ToString::to_string);
             }
         }
         None
@@ -680,9 +683,12 @@ impl AstStrategy for KotlinAstStrategy {
                                 name,
                                 visibility: "public".to_string(),
                                 is_async: false, // Kotlin suspend functions not yet detected
-                                line: Self::byte_pos_to_line(node.source_range.start as usize, &content_lines),
+                                line: Self::byte_pos_to_line(
+                                    node.source_range.start as usize,
+                                    &content_lines,
+                                ),
                             });
-                        },
+                        }
                         crate::models::unified_ast::AstKind::Type(type_kind) => {
                             let name = Self::extract_name_from_node(node, &content)
                                 .unwrap_or_else(|| "Anonymous".to_string());
@@ -693,19 +699,25 @@ impl AstStrategy for KotlinAstStrategy {
                                         visibility: "public".to_string(),
                                         fields_count: 0,
                                         derives: vec![],
-                                        line: Self::byte_pos_to_line(node.source_range.start as usize, &content_lines),
+                                        line: Self::byte_pos_to_line(
+                                            node.source_range.start as usize,
+                                            &content_lines,
+                                        ),
                                     });
-                                },
+                                }
                                 crate::models::unified_ast::TypeKind::Interface => {
                                     items.push(AstItem::Trait {
                                         name,
                                         visibility: "public".to_string(),
-                                        line: Self::byte_pos_to_line(node.source_range.start as usize, &content_lines),
+                                        line: Self::byte_pos_to_line(
+                                            node.source_range.start as usize,
+                                            &content_lines,
+                                        ),
                                     });
-                                },
+                                }
                                 _ => {}
                             }
-                        },
+                        }
                         _ => {}
                     }
                 }
@@ -716,7 +728,7 @@ impl AstStrategy for KotlinAstStrategy {
                     items,
                     complexity_metrics: None,
                 })
-            },
+            }
             Err(e) => Err(anyhow::anyhow!("Failed to parse Kotlin file: {e}")),
         }
     }

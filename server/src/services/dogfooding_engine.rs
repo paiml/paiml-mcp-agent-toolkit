@@ -58,7 +58,7 @@ pub struct DagMetrics {
 }
 
 impl DogfoodingEngine {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             ast_engine: UnifiedAstEngine::new(),
@@ -342,7 +342,8 @@ impl DogfoodingEngine {
         info.push_str(&format!("- **PID**: {}\n", std::process::id()));
         info.push_str(&format!(
             "- **Executable**: {}\n",
-            std::env::current_exe().map_or_else(|_| "unknown".to_string(), |p| p.display().to_string())
+            std::env::current_exe()
+                .map_or_else(|_| "unknown".to_string(), |p| p.display().to_string())
         ));
 
         // Performance characteristics

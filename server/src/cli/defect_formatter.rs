@@ -61,10 +61,7 @@ impl FullReportFormatter {
         total: f32,
     ) -> Result<()> {
         let percentage = (count as f32 / total) * 100.0;
-        writeln!(
-            output,
-            "- {level} risk files: {count} ({percentage:.1}%)"
-        )?;
+        writeln!(output, "- {level} risk files: {count} ({percentage:.1}%)")?;
         Ok(())
     }
 
@@ -229,7 +226,7 @@ pub struct DefectFormatterFactory;
 
 impl DefectFormatterFactory {
     /// Create a formatter for the given output format
-    #[must_use] 
+    #[must_use]
     pub fn create(format: &str) -> Box<dyn DefectReportFormatter> {
         match format {
             "sarif" => Box::new(SarifFormatter),

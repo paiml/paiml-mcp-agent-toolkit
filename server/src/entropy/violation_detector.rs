@@ -45,7 +45,7 @@ pub struct ViolationDetector {
 }
 
 impl ViolationDetector {
-    #[must_use] 
+    #[must_use]
     pub fn new(config: EntropyConfig) -> Self {
         Self { config }
     }

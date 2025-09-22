@@ -131,7 +131,7 @@ pub struct QddTool {
 
 impl QddTool {
     /// Create new QDD tool with specified quality profile
-    #[must_use] 
+    #[must_use]
     pub fn with_profile(profile: QualityProfile) -> Self {
         Self {
             generator: QualityCodeGenerator::new(profile.clone()),

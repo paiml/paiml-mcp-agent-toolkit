@@ -95,7 +95,6 @@ mod dead_code_analyzer_tests {
         let analyzer = CargoBasedDeadCodeAnalyzer::new();
         let report = analyzer.analyze(project_path).unwrap();
 
-
         // The percentage is calculated as (dead_items * 3 lines) / total_lines
         // With 1 dead function (≈3 lines) out of ≈13 total lines, we get ~23%
         // This is reasonable for a small test file with 1 unused function
@@ -129,7 +128,6 @@ mod dead_code_analyzer_tests {
 
         let analyzer = CargoBasedDeadCodeAnalyzer::new();
         let report = analyzer.analyze(project_path).unwrap();
-
 
         // Only internal_helper should be marked as dead, not public_api
         assert_eq!(report.dead_functions.len(), 1);

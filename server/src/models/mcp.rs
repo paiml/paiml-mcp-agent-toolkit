@@ -45,7 +45,7 @@ impl McpResponse {
     /// assert!(response.result.is_some());
     /// assert!(response.error.is_none());
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn success(id: Value, result: Value) -> Self {
         Self {
             jsonrpc: "2.0".to_string(),
@@ -73,7 +73,7 @@ impl McpResponse {
     /// assert!(response.error.is_some());
     /// assert_eq!(response.error.unwrap().code, -32601);
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn error(id: Value, code: i32, message: String) -> Self {
         Self {
             jsonrpc: "2.0".to_string(),

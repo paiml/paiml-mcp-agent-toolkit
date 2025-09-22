@@ -194,7 +194,7 @@ impl<T> RingBuffer<T> {
     /// assert_eq!(buffer.len(), 0);
     /// assert!(buffer.is_empty());
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn new(capacity: usize) -> Self {
         Self {
             buffer: VecDeque::with_capacity(capacity),
@@ -255,12 +255,12 @@ impl<T> RingBuffer<T> {
         self.buffer.drain(..).collect()
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn len(&self) -> usize {
         self.buffer.len()
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.buffer.is_empty()
     }
@@ -318,7 +318,7 @@ impl UnifiedEngine {
     ///
     /// // Engine is ready for analysis and refactoring
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn new(
         ast_engine: Arc<UnifiedAstEngine>,
         cache: Arc<UnifiedCacheManager>,

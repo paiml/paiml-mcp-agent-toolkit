@@ -274,7 +274,7 @@ pub enum AstItem {
 }
 
 impl AstItem {
-    #[must_use] 
+    #[must_use]
     pub fn display_name(&self) -> &str {
         match self {
             AstItem::Function { name, .. } => name,
@@ -378,14 +378,16 @@ impl<'ast> Visit<'ast> for RustVisitor {
             type_path
                 .path
                 .segments
-                .last().map_or_else(|| "Unknown".to_string(), |s| s.ident.to_string())
+                .last()
+                .map_or_else(|| "Unknown".to_string(), |s| s.ident.to_string())
         } else {
             "Unknown".to_string()
         };
 
         let trait_name = node.trait_.as_ref().map(|(_, path, _)| {
             path.segments
-                .last().map_or_else(|| "Unknown".to_string(), |s| s.ident.to_string())
+                .last()
+                .map_or_else(|| "Unknown".to_string(), |s| s.ident.to_string())
         });
 
         self.items.push(AstItem::Impl {
@@ -998,7 +1000,7 @@ async fn analyze_file_by_toolchain_persistent(
     }
 }
 
-#[must_use] 
+#[must_use]
 pub fn format_context_as_markdown(context: &ProjectContext) -> String {
     let mut output = String::new();
 
@@ -1212,7 +1214,7 @@ fn format_footer(output: &mut String) {
 }
 
 /// Format a comprehensive `DeepContext` as markdown with quality metrics
-#[must_use] 
+#[must_use]
 pub fn format_deep_context_as_markdown(context: &DeepContext) -> String {
     let mut output = String::new();
 

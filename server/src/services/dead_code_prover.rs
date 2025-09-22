@@ -90,7 +90,7 @@ pub struct ReachabilityAnalyzer {
 }
 
 impl ReachabilityAnalyzer {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             entry_points: HashSet::new(),
@@ -172,7 +172,7 @@ pub struct FFIReferenceTracker {
 }
 
 impl FFIReferenceTracker {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             no_mangle_symbols: HashSet::new(),
@@ -291,7 +291,7 @@ impl FFIReferenceTracker {
     }
 
     /// Check if a symbol is externally visible
-    #[must_use] 
+    #[must_use]
     pub fn is_externally_visible(&self, symbol: &SymbolId) -> bool {
         self.no_mangle_symbols.contains(symbol)
             || self.export_name_symbols.contains_key(symbol)
@@ -301,7 +301,7 @@ impl FFIReferenceTracker {
     }
 
     /// Get count of detected FFI exports for testing
-    #[must_use] 
+    #[must_use]
     pub fn ffi_export_count(&self) -> usize {
         self.no_mangle_symbols.len()
             + self.export_name_symbols.len()
@@ -322,7 +322,7 @@ pub struct DynamicDispatchAnalyzer {
 }
 
 impl DynamicDispatchAnalyzer {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             trait_impls: HashMap::new(),
@@ -332,7 +332,7 @@ impl DynamicDispatchAnalyzer {
     }
 
     /// Find trait object usage for a symbol
-    #[must_use] 
+    #[must_use]
     pub fn find_trait_object_usage(&self, symbol: &SymbolId) -> Option<Usage> {
         // Check if symbol implements trait used in dyn Trait
         for (trait_name, impls) in &self.trait_impls {
@@ -399,7 +399,7 @@ pub struct DeadCodeProver {
 }
 
 impl DeadCodeProver {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             reachability: ReachabilityAnalyzer::new(),
@@ -409,7 +409,7 @@ impl DeadCodeProver {
     }
 
     /// Get access to FFI tracker for testing
-    #[must_use] 
+    #[must_use]
     pub fn ffi_tracker(&self) -> &FFIReferenceTracker {
         &self.ffi_tracker
     }
@@ -505,7 +505,7 @@ impl DeadCodeProver {
     }
 
     /// Generate comprehensive dead code report
-    #[must_use] 
+    #[must_use]
     pub fn generate_report(&self, proofs: &[DeadCodeProof]) -> DeadCodeReport {
         let mut dead_functions = Vec::new();
 
@@ -520,7 +520,8 @@ impl DeadCodeProver {
                     confidence: proof.confidence as f32,
                     reason: proof
                         .evidence
-                        .first().map_or_else(|| "Unknown".to_string(), |e| e.description.clone()),
+                        .first()
+                        .map_or_else(|| "Unknown".to_string(), |e| e.description.clone()),
                 });
             }
         }

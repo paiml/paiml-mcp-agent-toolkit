@@ -311,7 +311,7 @@ impl ArtifactWriter {
     }
 
     /// Get artifact statistics
-    #[must_use] 
+    #[must_use]
     pub fn get_statistics(&self) -> ArtifactStatistics {
         let mut stats = ArtifactStatistics {
             total_artifacts: self.manifest.len(),

@@ -44,7 +44,7 @@ pub struct QualityProxyService {
 
 impl QualityProxyService {
     /// Creates a new quality proxy service.
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             satd_detector: SATDDetector::new(),
@@ -247,12 +247,14 @@ impl QualityProxyService {
                 );
 
                 // Find max complexity from hotspots
-                let max_comp = u32::from(report
-                    .hotspots
-                    .iter()
-                    .map(|h| h.complexity)
-                    .max()
-                    .unwrap_or(0));
+                let max_comp = u32::from(
+                    report
+                        .hotspots
+                        .iter()
+                        .map(|h| h.complexity)
+                        .max()
+                        .unwrap_or(0),
+                );
 
                 if max_comp > config.max_complexity {
                     if let Some(hotspot) = report.hotspots.first() {

@@ -17,7 +17,7 @@ pub struct PdmtTodo {
 }
 
 impl PdmtTodo {
-    #[must_use] 
+    #[must_use]
     pub fn new(content: String, priority: TodoPriority) -> Self {
         Self {
             id: Uuid::new_v4().to_string(),
@@ -38,7 +38,7 @@ impl PdmtTodo {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn get_primary_file_path(&self) -> String {
         self.implementation_specs
             .primary_files
@@ -201,7 +201,7 @@ pub struct ValidationOutcome {
 }
 
 impl ValidationOutcome {
-    #[must_use] 
+    #[must_use]
     pub fn success(message: String) -> Self {
         Self {
             passed: true,
@@ -210,7 +210,7 @@ impl ValidationOutcome {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn failure(message: String, violations: Vec<String>) -> Self {
         Self {
             passed: false,

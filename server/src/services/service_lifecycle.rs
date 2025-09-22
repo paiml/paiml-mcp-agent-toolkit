@@ -263,7 +263,7 @@ impl Default for ServiceSupervisor {
 
 impl ServiceSupervisor {
     /// Create a new service supervisor
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             services: Arc::new(RwLock::new(Vec::new())),

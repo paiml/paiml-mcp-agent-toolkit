@@ -296,15 +296,19 @@ fn test_pool_efficiency(buffer_sizes: Vec<usize>, reuse_probability: f64) -> Res
             let efficiency = pool_stats.reuse_ratio;
             // Cap efficiency at 1.0 in case of accounting issues
             let capped_efficiency = efficiency.min(1.0).max(0.0);
-            assert!((0.0..=1.0).contains(&capped_efficiency),
-                "Efficiency should be in range [0.0, 1.0], got: {}", efficiency);
+            assert!(
+                (0.0..=1.0).contains(&capped_efficiency),
+                "Efficiency should be in range [0.0, 1.0], got: {}",
+                efficiency
+            );
 
             // If reuse probability was high, we should see some reuse
             if reuse_probability > 0.5 && pool_stats.allocation_count > 20 {
                 // Use capped efficiency for the check
                 assert!(
                     capped_efficiency >= 0.0,
-                    "Should see valid efficiency with high reuse probability, got: {}", capped_efficiency
+                    "Should see valid efficiency with high reuse probability, got: {}",
+                    capped_efficiency
                 );
             }
         }
@@ -320,8 +324,8 @@ fn test_memory_vec_operations() -> Result<()> {
     let config = MemoryConfig::default();
     // Try to initialize, but ignore "already initialized" errors
     match init_global_memory_manager_with_config(config) {
-        Ok(()) => {},
-        Err(e) if e.to_string().contains("already initialized") => {},
+        Ok(()) => {}
+        Err(e) if e.to_string().contains("already initialized") => {}
         Err(e) => return Err(e),
     }
 
@@ -350,8 +354,8 @@ fn test_memory_string_integration() -> Result<()> {
     let config = MemoryConfig::default();
     // Try to initialize, but ignore "already initialized" errors
     match init_global_memory_manager_with_config(config) {
-        Ok(()) => {},
-        Err(e) if e.to_string().contains("already initialized") => {},
+        Ok(()) => {}
+        Err(e) if e.to_string().contains("already initialized") => {}
         Err(e) => return Err(e),
     }
 
@@ -377,8 +381,8 @@ fn test_ast_buffer_pool_integration() -> Result<()> {
     let config = MemoryConfig::default();
     // Try to initialize, but ignore "already initialized" errors
     match init_global_memory_manager_with_config(config) {
-        Ok(()) => {},
-        Err(e) if e.to_string().contains("already initialized") => {},
+        Ok(()) => {}
+        Err(e) if e.to_string().contains("already initialized") => {}
         Err(e) => return Err(e),
     }
 
@@ -402,8 +406,8 @@ fn test_interned_string_set() -> Result<()> {
     let config = MemoryConfig::default();
     // Try to initialize, but ignore "already initialized" errors
     match init_global_memory_manager_with_config(config) {
-        Ok(()) => {},
-        Err(e) if e.to_string().contains("already initialized") => {},
+        Ok(()) => {}
+        Err(e) if e.to_string().contains("already initialized") => {}
         Err(e) => return Err(e),
     }
 
@@ -431,8 +435,8 @@ fn test_memory_aware_cache() -> Result<()> {
     let config = MemoryConfig::default();
     // Try to initialize, but ignore "already initialized" errors
     match init_global_memory_manager_with_config(config) {
-        Ok(()) => {},
-        Err(e) if e.to_string().contains("already initialized") => {},
+        Ok(()) => {}
+        Err(e) if e.to_string().contains("already initialized") => {}
         Err(e) => return Err(e),
     }
 

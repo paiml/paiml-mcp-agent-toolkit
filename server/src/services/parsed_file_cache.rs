@@ -60,7 +60,7 @@ pub struct ParsedFileCache {
 
 impl ParsedFileCache {
     /// Create a new parsed file cache
-    #[must_use] 
+    #[must_use]
     pub fn new(max_entries: usize, ttl: Duration) -> Self {
         Self {
             cache: Arc::new(DashMap::new()),
@@ -153,7 +153,7 @@ impl ParsedFileCache {
     }
 
     /// Get cache statistics
-    #[must_use] 
+    #[must_use]
     pub fn stats(&self) -> CacheStats {
         let total_entries = self.cache.len();
         let (context_count, complexity_count) =

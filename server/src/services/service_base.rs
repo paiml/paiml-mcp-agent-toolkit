@@ -52,7 +52,7 @@ impl ServiceMetrics {
         self.last_request_time = Some(Instant::now());
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn success_rate(&self) -> f64 {
         if self.request_count == 0 {
             return 0.0;
@@ -95,7 +95,7 @@ pub struct ServiceRegistry {
 }
 
 impl ServiceRegistry {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             services: DashMap::new(),
@@ -114,7 +114,7 @@ impl ServiceRegistry {
     }
 
     /// Get a service from the registry
-    #[must_use] 
+    #[must_use]
     pub fn get<S>(&self) -> Option<Arc<S>>
     where
         S: Service + 'static,
@@ -126,7 +126,7 @@ impl ServiceRegistry {
     }
 
     /// Get metrics for a service
-    #[must_use] 
+    #[must_use]
     pub fn get_metrics<S>(&self) -> Option<ServiceMetrics>
     where
         S: Service + 'static,
@@ -147,7 +147,7 @@ impl ServiceRegistry {
     }
 
     /// List all registered service names
-    #[must_use] 
+    #[must_use]
     pub fn list_services(&self) -> Vec<String> {
         self.services
             .iter()
@@ -187,13 +187,21 @@ where
 
     async fn process(&self, input: Self::Input) -> Result<Self::Output, Self::Error> {
         // Process through first service
-        let intermediate = self.first.process(input).await.map_err(std::convert::Into::into)?;
+        let intermediate = self
+            .first
+            .process(input)
+            .await
+            .map_err(std::convert::Into::into)?;
 
         // Adapt output to input for second service
         let adapted = (self.adapter)(intermediate);
 
         // Process through second service
-        let output = self.second.process(adapted).await.map_err(std::convert::Into::into)?;
+        let output = self
+            .second
+            .process(adapted)
+            .await
+            .map_err(std::convert::Into::into)?;
 
         Ok(output)
     }

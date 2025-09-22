@@ -6,7 +6,10 @@ use crate::services::cache::{
     config::CacheConfig,
     content_cache::ContentCache,
     diagnostics::{CacheDiagnostics, CacheEffectiveness, CacheStatsSnapshot},
-    strategies::{AstCacheStrategy, TemplateCacheStrategy, DagCacheStrategy, ChurnCacheStrategy, GitStatsCacheStrategy, GitStats},
+    strategies::{
+        AstCacheStrategy, ChurnCacheStrategy, DagCacheStrategy, GitStats, GitStatsCacheStrategy,
+        TemplateCacheStrategy,
+    },
 };
 use crate::services::context::FileContext;
 use anyhow::Result;
@@ -32,7 +35,7 @@ pub struct SessionCacheManager {
 }
 
 impl SessionCacheManager {
-    #[must_use] 
+    #[must_use]
     pub fn new(config: CacheConfig) -> Self {
         Self {
             ast_cache: Arc::new(RwLock::new(ContentCache::new(AstCacheStrategy))),
@@ -166,14 +169,14 @@ impl SessionCacheManager {
     }
 
     /// Calculate memory pressure (0.0 to 1.0)
-    #[must_use] 
+    #[must_use]
     pub fn memory_pressure(&self) -> f32 {
         let total_bytes = self.get_total_cache_size();
         total_bytes as f32 / self.config.max_memory_bytes() as f32
     }
 
     /// Get total cache size in bytes
-    #[must_use] 
+    #[must_use]
     pub fn get_total_cache_size(&self) -> usize {
         let ast_size = self.ast_cache.read().stats.memory_usage();
         let template_size = self.template_cache.read().stats.memory_usage();
@@ -246,7 +249,7 @@ impl SessionCacheManager {
     }
 
     /// Get cache diagnostics
-    #[must_use] 
+    #[must_use]
     pub fn get_diagnostics(&self) -> CacheDiagnostics {
         let ast_cache = self.ast_cache.read();
         let template_cache = self.template_cache.read();

@@ -355,7 +355,6 @@ async fn test_complexity_targets_achieved() {
 
 #[cfg(test)]
 mod entropy_reduction_validation {
-    
 
     /// Sprint 85 complete - entropy reduction achieved
     #[tokio::test]

@@ -21,7 +21,7 @@ pub struct TemplateRegistry {
 
 impl TemplateRegistry {
     /// Create a new template registry with built-in templates.
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         let mut builtin = HashMap::new();
 
@@ -78,7 +78,7 @@ impl TemplateRegistry {
     }
 
     /// List all available template names.
-    #[must_use] 
+    #[must_use]
     pub fn list_available(&self) -> Vec<String> {
         let mut templates: Vec<String> = self.builtin.keys().cloned().collect();
         templates.extend(self.custom.keys().cloned());
@@ -99,9 +99,10 @@ impl TemplateRegistry {
 
     /// Fetch a remote template.
     pub async fn fetch_remote(&self, name: &str) -> ScaffoldResult<Arc<dyn TemplateGenerator>> {
-        let url = self.remote.get(name).ok_or_else(|| {
-            ScaffoldError::TemplateNotFound(format!("Remote template '{name}'"))
-        })?;
+        let url = self
+            .remote
+            .get(name)
+            .ok_or_else(|| ScaffoldError::TemplateNotFound(format!("Remote template '{name}'")))?;
 
         // Remote templates require network access which is disabled for security
         // Templates should be installed locally or use built-in templates
@@ -151,7 +152,7 @@ impl TemplateRegistry {
     }
 
     /// Check if a template exists.
-    #[must_use] 
+    #[must_use]
     pub fn has_template(&self, name: &str) -> bool {
         self.builtin.contains_key(name)
             || self.custom.contains_key(name)
@@ -159,7 +160,7 @@ impl TemplateRegistry {
     }
 
     /// Get template metadata.
-    #[must_use] 
+    #[must_use]
     pub fn get_template_info(&self, name: &str) -> Option<TemplateInfo> {
         self.builtin.get(name).map(|gen| TemplateInfo {
             name: gen.name().to_string(),
