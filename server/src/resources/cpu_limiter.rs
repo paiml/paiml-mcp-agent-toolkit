@@ -3,7 +3,7 @@ use parking_lot::RwLock;
 use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
-use sysinfo::{System, Process, Cpu};
+use sysinfo::System;
 
 // CPU resource limiter using cgroups v2 and affinity
 pub struct CpuLimiter {
@@ -11,7 +11,7 @@ pub struct CpuLimiter {
     system: Arc<RwLock<System>>,
     pid: u32,
     original_affinity: Option<Vec<usize>>,
-    monitor_handle: Option<thread::JoinHandle<()>>,
+    _monitor_handle: Option<thread::JoinHandle<()>>,
     shutdown: Arc<RwLock<bool>>,
 }
 
@@ -27,7 +27,7 @@ impl CpuLimiter {
             system: Arc::new(RwLock::new(system)),
             pid,
             original_affinity: Self::get_current_affinity()?,
-            monitor_handle: None,
+            _monitor_handle: None,
             shutdown: Arc::new(RwLock::new(false)),
         };
 
@@ -101,7 +101,7 @@ impl CpuLimiter {
                 }
 
                 let mut cores = Vec::new();
-                for i in 0..CPU_SETSIZE as usize {
+                for i in 0..CPU_SETSIZE {
                     if CPU_ISSET(i, &set) {
                         cores.push(i);
                     }
@@ -241,13 +241,14 @@ impl CpuLimiter {
         Ok(())
     }
 
+    #[allow(dead_code)]
     fn start_monitor(&mut self) {
         let limits = self.limits.clone();
         let system = self.system.clone();
         let pid = self.pid;
         let shutdown = self.shutdown.clone();
 
-        self.monitor_handle = Some(thread::spawn(move || {
+        self._monitor_handle = Some(thread::spawn(move || {
             let mut last_check = Instant::now();
 
             loop {

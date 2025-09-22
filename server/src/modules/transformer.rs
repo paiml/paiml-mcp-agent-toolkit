@@ -85,6 +85,12 @@ pub struct TransformerImpl {
     analyzer: Option<Arc<dyn AnalyzerModule>>,
 }
 
+impl Default for TransformerImpl {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TransformerImpl {
     pub fn new() -> Self {
         Self {

@@ -163,6 +163,12 @@ pub trait McpTool: Send + Sync {
     async fn execute(&self, params: Value) -> Result<Value, McpError>;
 }
 
+impl Default for ToolRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ToolRegistry {
     pub fn new() -> Self {
         Self {
@@ -220,6 +226,12 @@ pub trait McpResource: Send + Sync {
     fn template(&self) -> ResourceTemplate;
     async fn read(&self, uri: &str) -> Result<ResourceContent, McpError>;
     fn subscribe(&self, uri: &str) -> Option<tokio::sync::watch::Receiver<ResourceContent>>;
+}
+
+impl Default for ResourceRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ResourceRegistry {
@@ -310,6 +322,12 @@ pub trait McpPrompt: Send + Sync {
     ) -> Result<Vec<PromptMessage>, McpError>;
 }
 
+impl Default for PromptRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PromptRegistry {
     pub fn new() -> Self {
         Self {
@@ -390,7 +408,7 @@ impl McpSession {
         }
     }
 
-    async fn handle_initialize(&self, params: Option<Value>) -> Result<Value, McpError> {
+    async fn handle_initialize(&self, _params: Option<Value>) -> Result<Value, McpError> {
         Ok(serde_json::json!({
             "protocolVersion": MCP_VERSION,
             "capabilities": self.context.capabilities,
@@ -559,7 +577,7 @@ impl McpSession {
 
     async fn handle_completion(&self, params: Option<Value>) -> Result<Value, McpError> {
         // Integrate with agent system for completions
-        let params = params.ok_or_else(|| McpError {
+        let _params = params.ok_or_else(|| McpError {
             code: error_codes::INVALID_PARAMS,
             message: "Missing parameters".to_string(),
             data: None,
@@ -589,19 +607,19 @@ mod tests {
 
     #[test]
     fn test_tool_registry() {
-        let mut registry = ToolRegistry::new();
+        let registry = ToolRegistry::new();
         assert_eq!(registry.list().len(), 0);
     }
 
     #[test]
     fn test_resource_registry() {
-        let mut registry = ResourceRegistry::new();
+        let registry = ResourceRegistry::new();
         assert_eq!(registry.list().len(), 0);
     }
 
     #[test]
     fn test_prompt_registry() {
-        let mut registry = PromptRegistry::new();
+        let registry = PromptRegistry::new();
         assert_eq!(registry.list().len(), 0);
     }
 }

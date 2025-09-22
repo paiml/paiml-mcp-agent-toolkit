@@ -45,7 +45,7 @@ mod tests {
         assert_eq!(communities.len(), 6);
 
         // Count unique communities
-        let mut unique_communities: std::collections::HashSet<_> = communities.iter().collect();
+        let unique_communities: std::collections::HashSet<_> = communities.iter().collect();
 
         // Should detect reasonable number of communities
         assert!(unique_communities.len() >= 1);

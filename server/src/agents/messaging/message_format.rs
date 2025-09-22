@@ -1,11 +1,7 @@
-use super::*;
-use super::{AgentMessage, MessageHeader, Priority};
-use crate::agents::{AgentError, AgentResponse};
-use actix::prelude::*;
+use super::{AgentMessage, MessageHeader};
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
-use uuid::Uuid;
 
 // Message metadata for extended functionality
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -42,8 +38,8 @@ impl MessageExtensions for AgentMessage {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_millis() as u64;
-        let created = self.header.timestamp as u64 * 1000;
-        let ttl = self.header.ttl_ms as u64;
+        let created = self.header.timestamp * 1000;
+        let ttl = u64::from(self.header.ttl_ms);
         now - created > ttl
     }
 
@@ -169,6 +165,10 @@ impl MessageBatch {
         self.messages.len()
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.messages.is_empty()
+    }
+
     pub fn size(&self) -> usize {
         self.total_size
     }
@@ -234,6 +234,7 @@ pub enum BatchError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use uuid::Uuid;
 
     #[test]
     fn test_binary_protocol() {

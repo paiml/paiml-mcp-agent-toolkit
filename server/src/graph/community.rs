@@ -151,10 +151,10 @@ impl LouvainDetector {
         }
 
         // Modularity gain formula
-        let gain = edge_weight_to_community
-            - self.resolution * (node_degree * community_weight) / total_weight;
+        
 
-        gain
+        edge_weight_to_community
+            - self.resolution * (node_degree * community_weight) / total_weight
     }
 
     /// Calculate modularity of community assignment

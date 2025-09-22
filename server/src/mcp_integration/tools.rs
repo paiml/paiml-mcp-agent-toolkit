@@ -5,12 +5,12 @@ use std::sync::Arc;
 
 // Analyze tool - invokes analyzer agent
 pub struct AnalyzeTool {
-    registry: Arc<AgentRegistry>,
+    _registry: Arc<AgentRegistry>,
 }
 
 impl AnalyzeTool {
     pub fn new(registry: Arc<AgentRegistry>) -> Self {
-        Self { registry }
+        Self { _registry: registry }
     }
 }
 
@@ -43,13 +43,13 @@ impl McpTool for AnalyzeTool {
     }
 
     async fn execute(&self, params: Value) -> Result<Value, McpError> {
-        let code = params["code"].as_str().ok_or_else(|| McpError {
+        let _code = params["code"].as_str().ok_or_else(|| McpError {
             code: error_codes::INVALID_PARAMS,
             message: "Missing code parameter".to_string(),
             data: None,
         })?;
 
-        let language = params["language"].as_str().ok_or_else(|| McpError {
+        let _language = params["language"].as_str().ok_or_else(|| McpError {
             code: error_codes::INVALID_PARAMS,
             message: "Missing language parameter".to_string(),
             data: None,
@@ -71,12 +71,12 @@ impl McpTool for AnalyzeTool {
 
 // Transform tool - invokes transformer agent
 pub struct TransformTool {
-    registry: Arc<AgentRegistry>,
+    _registry: Arc<AgentRegistry>,
 }
 
 impl TransformTool {
     pub fn new(registry: Arc<AgentRegistry>) -> Self {
-        Self { registry }
+        Self { _registry: registry }
     }
 }
 
@@ -113,13 +113,13 @@ impl McpTool for TransformTool {
     }
 
     async fn execute(&self, params: Value) -> Result<Value, McpError> {
-        let code = params["code"].as_str().ok_or_else(|| McpError {
+        let _code = params["code"].as_str().ok_or_else(|| McpError {
             code: error_codes::INVALID_PARAMS,
             message: "Missing code parameter".to_string(),
             data: None,
         })?;
 
-        let transformation = params["transformation"].as_str().ok_or_else(|| McpError {
+        let _transformation = params["transformation"].as_str().ok_or_else(|| McpError {
             code: error_codes::INVALID_PARAMS,
             message: "Missing transformation parameter".to_string(),
             data: None,
@@ -162,12 +162,12 @@ impl McpTool for TransformTool {
 
 // Validate tool - invokes validator agent
 pub struct ValidateTool {
-    registry: Arc<AgentRegistry>,
+    _registry: Arc<AgentRegistry>,
 }
 
 impl ValidateTool {
     pub fn new(registry: Arc<AgentRegistry>) -> Self {
-        Self { registry }
+        Self { _registry: registry }
     }
 }
 
@@ -204,7 +204,7 @@ impl McpTool for ValidateTool {
     }
 
     async fn execute(&self, params: Value) -> Result<Value, McpError> {
-        let code = params["code"].as_str().ok_or_else(|| McpError {
+        let _code = params["code"].as_str().ok_or_else(|| McpError {
             code: error_codes::INVALID_PARAMS,
             message: "Missing code parameter".to_string(),
             data: None,
@@ -226,12 +226,12 @@ impl McpTool for ValidateTool {
 
 // Orchestrate tool - invokes orchestrator for complex workflows
 pub struct OrchestrateTool {
-    registry: Arc<AgentRegistry>,
+    _registry: Arc<AgentRegistry>,
 }
 
 impl OrchestrateTool {
     pub fn new(registry: Arc<AgentRegistry>) -> Self {
-        Self { registry }
+        Self { _registry: registry }
     }
 }
 
@@ -272,8 +272,8 @@ impl McpTool for OrchestrateTool {
     }
 
     async fn execute(&self, params: Value) -> Result<Value, McpError> {
-        let workflow = params["workflow"].clone();
-        let input = params["input"].clone();
+        let _workflow = params["workflow"].clone();
+        let _input = params["input"].clone();
 
         // TODO: Create orchestration request when ModuleRequest is defined
         // let request = ModuleRequest::Orchestrate {
@@ -291,12 +291,12 @@ impl McpTool for OrchestrateTool {
 
 // Quality gate tool
 pub struct QualityGateTool {
-    registry: Arc<AgentRegistry>,
+    _registry: Arc<AgentRegistry>,
 }
 
 impl QualityGateTool {
     pub fn new(registry: Arc<AgentRegistry>) -> Self {
-        Self { registry }
+        Self { _registry: registry }
     }
 }
 
@@ -338,7 +338,7 @@ impl McpTool for QualityGateTool {
             data: None,
         })?;
 
-        let language = params["language"].as_str().ok_or_else(|| McpError {
+        let _language = params["language"].as_str().ok_or_else(|| McpError {
             code: error_codes::INVALID_PARAMS,
             message: "Missing language parameter".to_string(),
             data: None,
@@ -355,7 +355,6 @@ impl McpTool for QualityGateTool {
 
         // Run quality gates through supervisor
         use crate::quality::complexity::ComplexityAnalyzer;
-        use crate::quality::gate::QualityGateRunner;
         use crate::quality::satd::SatdDetector;
 
         let mut results = json!({});

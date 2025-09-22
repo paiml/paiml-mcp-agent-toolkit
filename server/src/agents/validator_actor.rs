@@ -3,17 +3,11 @@ use super::{AgentError, AgentResponse};
 use crate::modules::validator::{ValidatorImpl, ValidatorModule};
 use actix::prelude::*;
 
+#[derive(Default)]
 pub struct ValidatorActor {
     validator: ValidatorImpl,
 }
 
-impl Default for ValidatorActor {
-    fn default() -> Self {
-        Self {
-            validator: ValidatorImpl::new(),
-        }
-    }
-}
 
 impl Actor for ValidatorActor {
     type Context = Context<Self>;

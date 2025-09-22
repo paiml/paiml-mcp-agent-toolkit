@@ -120,6 +120,12 @@ pub enum WorkflowStep {
     Custom(String),
 }
 
+impl Default for WorkflowBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl WorkflowBuilder {
     pub fn new() -> Self {
         Self { steps: Vec::new() }

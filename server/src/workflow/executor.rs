@@ -26,9 +26,9 @@ impl DefaultWorkflowExecutor {
     async fn execute_action(
         &self,
         agent: &str,
-        operation: &str,
-        params: &Value,
-        context: &WorkflowContext,
+        _operation: &str,
+        _params: &Value,
+        _context: &WorkflowContext,
     ) -> Result<Value, WorkflowError> {
         // Get the agent
         let _agent = self
@@ -56,7 +56,7 @@ impl DefaultWorkflowExecutor {
 
         // Collect results and errors
         let mut outputs = vec![];
-        for (i, result) in results.into_iter().enumerate() {
+        for result in results.into_iter() {
             match result {
                 Ok(output) => outputs.push(output),
                 Err(e) => {
@@ -209,7 +209,7 @@ impl DefaultWorkflowExecutor {
                 Ok(serde_json::json!({ "waited": duration.as_secs() }))
             }
             StepType::SubWorkflow {
-                workflow_id,
+                workflow_id: _workflow_id,
                 params,
             } => {
                 // Would recursively execute sub-workflow

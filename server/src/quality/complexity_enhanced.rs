@@ -1,12 +1,12 @@
 use petgraph::algo::kosaraju_scc;
 use petgraph::graph::{DiGraph, NodeIndex};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use syn::{self, visit::Visit, File, Item};
 
 pub struct ControlFlowGraph {
     graph: DiGraph<CfgNode, CfgEdge>,
-    entry: NodeIndex,
-    exit: NodeIndex,
+    _entry: NodeIndex,
+    _exit: NodeIndex,
 }
 
 #[derive(Debug, Clone)]
@@ -35,7 +35,7 @@ impl ControlFlowGraph {
         let mut builder = CfgBuilder {
             graph,
             current: entry,
-            exit,
+            _exit: exit,
             break_targets: Vec::new(),
             continue_targets: Vec::new(),
         };
@@ -47,8 +47,8 @@ impl ControlFlowGraph {
 
         ControlFlowGraph {
             graph: builder.graph,
-            entry,
-            exit,
+            _entry: entry,
+            _exit: exit,
         }
     }
 
@@ -78,7 +78,7 @@ impl ControlFlowGraph {
 struct CfgBuilder {
     graph: DiGraph<CfgNode, CfgEdge>,
     current: NodeIndex,
-    exit: NodeIndex,
+    _exit: NodeIndex,
     break_targets: Vec<NodeIndex>,
     continue_targets: Vec<NodeIndex>,
 }
@@ -92,7 +92,7 @@ impl<'ast> Visit<'ast> for CfgBuilder {
         let then_branch = self.graph.add_node(CfgNode::Branch("then".to_string()));
         self.graph.add_edge(condition, then_branch, CfgEdge::True);
 
-        let old_current = self.current;
+        let _old_current = self.current;
         self.current = then_branch;
         syn::visit::visit_block(self, &node.then_branch);
         let then_exit = self.current;
@@ -211,19 +211,19 @@ impl ComplexityAnalyzer {
 
         let n1 = operators.len();
         let n2 = operands.len();
-        let N1: usize = operators.values().sum();
-        let N2: usize = operands.values().sum();
+        let n1_total: usize = operators.values().sum();
+        let n2_total: usize = operands.values().sum();
 
         let vocabulary = n1 + n2;
-        let length = N1 + N2;
+        let length = n1_total + n2_total;
         let volume = if vocabulary > 0 {
             length as f64 * (vocabulary as f64).log2()
         } else {
             0.0
         };
 
-        let difficulty = if n2 > 0 && N2 > 0 {
-            (n1 as f64 / 2.0) * (N2 as f64 / n2 as f64)
+        let difficulty = if n2 > 0 && n2_total > 0 {
+            (n1 as f64 / 2.0) * (n2_total as f64 / n2 as f64)
         } else {
             0.0
         };

@@ -94,7 +94,7 @@ impl<S: AgentState> RecoveryManager<S> {
             state.apply_event(event);
         }
 
-        let recovery_time = start_time.elapsed();
+        let _recovery_time = start_time.elapsed();
 
         Ok(RestoredState {
             state,

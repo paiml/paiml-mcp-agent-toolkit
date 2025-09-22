@@ -25,13 +25,13 @@ mod internal {
     use syn;
 
     pub(super) struct AnalyzerCore {
-        cache: lru::LruCache<String, Arc<Metrics>>,
+        _cache: lru::LruCache<String, Arc<Metrics>>,
     }
 
     impl AnalyzerCore {
         pub fn new() -> Self {
             Self {
-                cache: lru::LruCache::new(std::num::NonZeroUsize::new(100).unwrap()),
+                _cache: lru::LruCache::new(std::num::NonZeroUsize::new(100).unwrap()),
             }
         }
 
@@ -62,6 +62,12 @@ mod internal {
 #[derive(Clone)]
 pub struct AnalyzerImpl {
     core: Arc<parking_lot::Mutex<internal::AnalyzerCore>>,
+}
+
+impl Default for AnalyzerImpl {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl AnalyzerImpl {

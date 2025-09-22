@@ -8,6 +8,12 @@ pub struct DefaultWorkflowMonitor {
     metrics: Arc<RwLock<HashMap<Uuid, WorkflowMetrics>>>,
 }
 
+impl Default for DefaultWorkflowMonitor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DefaultWorkflowMonitor {
     pub fn new() -> Self {
         Self {

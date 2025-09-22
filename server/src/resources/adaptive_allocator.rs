@@ -40,7 +40,7 @@ struct ResourceHistory {
 struct ResourceSample {
     timestamp: Instant,
     usage: ResourceUsage,
-    limits: ResourceLimits,
+    _limits: ResourceLimits,
     performance_score: f32,
 }
 
@@ -71,7 +71,7 @@ impl AdaptiveAllocator {
     pub fn record_usage(
         &self,
         usage: ResourceUsage,
-        limits: ResourceLimits,
+        _limits: ResourceLimits,
         performance_score: f32,
     ) {
         let mut history = self.history.write();
@@ -79,7 +79,7 @@ impl AdaptiveAllocator {
         history.samples.push_back(ResourceSample {
             timestamp: Instant::now(),
             usage,
-            limits,
+            _limits,
             performance_score,
         });
 
