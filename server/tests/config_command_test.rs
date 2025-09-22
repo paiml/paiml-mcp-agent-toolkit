@@ -451,7 +451,9 @@ min_coverage = 150.0
     // ASSERT
     assert_eq!(fixed_issues.len(), 2);
     assert!(fixed_issues.contains(&"Set max_complexity to 20".to_string()));
-    assert!(fixed_issues.iter().any(|fix| fix.contains("Clamped min_coverage")));
+    assert!(fixed_issues
+        .iter()
+        .any(|fix| fix.contains("Clamped min_coverage")));
 
     Ok(())
 }
@@ -480,8 +482,10 @@ max_complexity = 0
 
     // Verify the file was actually updated
     let updated_content = std::fs::read_to_string(&config_path)?;
-    assert!(updated_content.contains("max_complexity = 20") ||
-           updated_content.contains("fixed configuration"));
+    assert!(
+        updated_content.contains("max_complexity = 20")
+            || updated_content.contains("fixed configuration")
+    );
 
     Ok(())
 }
@@ -544,7 +548,10 @@ async fn save_config_changes(config_path: &std::path::Path, fixed_issues: &[Stri
     let mut content = std::fs::read_to_string(config_path)?;
 
     // Simple fix application for max_complexity
-    if fixed_issues.iter().any(|fix| fix.contains("max_complexity")) {
+    if fixed_issues
+        .iter()
+        .any(|fix| fix.contains("max_complexity"))
+    {
         content = content.replace("max_complexity = 0", "max_complexity = 20");
     }
 

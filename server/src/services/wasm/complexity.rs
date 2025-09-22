@@ -34,7 +34,7 @@ pub struct WasmComplexityAnalyzer {
 
 impl WasmComplexityAnalyzer {
     /// Create a new complexity analyzer
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             _max_complexity: 100,

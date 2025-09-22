@@ -2,7 +2,10 @@
 //! This ensures HTTP endpoints use exactly the same contracts as CLI and MCP
 
 use super::service::ContractService;
-use super::{AnalyzeComplexityContract, AnalyzeSatdContract, AnalyzeDeadCodeContract, AnalyzeTdgContract, AnalyzeLintHotspotContract, QualityGateContract, RefactorAutoContract};
+use super::{
+    AnalyzeComplexityContract, AnalyzeDeadCodeContract, AnalyzeLintHotspotContract,
+    AnalyzeSatdContract, AnalyzeTdgContract, QualityGateContract, RefactorAutoContract,
+};
 use anyhow::Result;
 use axum::{
     extract::{Json, State},

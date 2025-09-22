@@ -11,7 +11,10 @@ use std::path::{Path, PathBuf};
 #[cfg(feature = "typescript-ast")]
 use swc_common::{Span, Spanned};
 #[cfg(feature = "typescript-ast")]
-use swc_ecma_ast::{Module, Function, FnDecl, ClassDecl, ClassMember, MethodProp, PropName, Constructor, TsInterfaceDecl, TsEnumDecl, ImportDecl, NamedExport, ModuleDecl, VarDecl, Expr, Pat};
+use swc_ecma_ast::{
+    ClassDecl, ClassMember, Constructor, Expr, FnDecl, Function, ImportDecl, MethodProp, Module,
+    ModuleDecl, NamedExport, Pat, PropName, TsEnumDecl, TsInterfaceDecl, VarDecl,
+};
 #[cfg(feature = "typescript-ast")]
 use swc_ecma_visit::{Visit, VisitWith};
 
@@ -28,7 +31,7 @@ pub struct EnhancedTypeScriptVisitor {
 #[cfg(feature = "typescript-ast")]
 impl EnhancedTypeScriptVisitor {
     /// Creates a new enhanced visitor for a given file
-    #[must_use] 
+    #[must_use]
     pub fn new(file_path: &Path) -> Self {
         Self {
             items: Vec::new(),
@@ -39,7 +42,7 @@ impl EnhancedTypeScriptVisitor {
     }
 
     /// Extracts all AST items with real source information
-    #[must_use] 
+    #[must_use]
     pub fn extract_items(mut self, module: &Module) -> Vec<AstItem> {
         self.visit_module(module);
         self.items
@@ -206,10 +209,7 @@ impl Visit for EnhancedTypeScriptVisitor {
         let path = import.src.value.to_string();
         let line = self.get_line(import.span());
 
-        self.items.push(AstItem::Use {
-            path,
-            line,
-        });
+        self.items.push(AstItem::Use { path, line });
 
         import.visit_children_with(self);
     }
@@ -219,10 +219,7 @@ impl Visit for EnhancedTypeScriptVisitor {
             let path = format!("export from {}", src.value);
             let line = self.get_line(export.span());
 
-            self.items.push(AstItem::Use {
-                path,
-                line,
-            });
+            self.items.push(AstItem::Use { path, line });
         }
 
         export.visit_children_with(self);
@@ -307,16 +304,14 @@ mod tests {
     #[cfg(feature = "typescript-ast")]
     mod typescript_tests {
         use super::*;
+        use std::sync::Arc;
         use swc_common::{FileName, SourceMap};
         use swc_ecma_parser::{lexer::Lexer, Parser, StringInput, Syntax, TsSyntax};
-        use std::sync::Arc;
 
         fn parse_typescript(code: &str) -> Module {
             let source_map = Arc::new(SourceMap::default());
-            let source_file = source_map.new_source_file(
-                FileName::Custom("test.ts".into()).into(),
-                code.to_string(),
-            );
+            let source_file = source_map
+                .new_source_file(FileName::Custom("test.ts".into()).into(), code.to_string());
 
             let lexer = Lexer::new(
                 Syntax::Typescript(TsSyntax {
@@ -388,9 +383,9 @@ mod tests {
             let items = visitor.extract_items(&module);
 
             // Find the class
-            let class_item = items.iter().find(|item| {
-                matches!(item, AstItem::Struct { name, .. } if name == "DataProcessor")
-            });
+            let class_item = items.iter().find(
+                |item| matches!(item, AstItem::Struct { name, .. } if name == "DataProcessor"),
+            );
             assert!(class_item.is_some());
 
             // Find class methods
@@ -408,7 +403,13 @@ mod tests {
             // This is a known limitation of the current TypeScript parsing implementation
             assert!(method_names.contains(&"DataProcessor::constructor".to_string()));
             assert_eq!(method_names.len(), 3); // constructor + 2 anonymous methods
-            assert_eq!(method_names.iter().filter(|n| n.contains("anonymous")).count(), 2);
+            assert_eq!(
+                method_names
+                    .iter()
+                    .filter(|n| n.contains("anonymous"))
+                    .count(),
+                2
+            );
         }
 
         /// Test enhanced visitor handles interfaces
@@ -425,9 +426,9 @@ mod tests {
             let visitor = EnhancedTypeScriptVisitor::new(Path::new("test.ts"));
             let items = visitor.extract_items(&module);
 
-            let interface_item = items.iter().find(|item| {
-                matches!(item, AstItem::Trait { name, .. } if name == "Processor")
-            });
+            let interface_item = items
+                .iter()
+                .find(|item| matches!(item, AstItem::Trait { name, .. } if name == "Processor"));
             assert!(interface_item.is_some());
         }
 
@@ -535,15 +536,13 @@ mod tests {
 
         #[cfg(feature = "typescript-ast")]
         fn try_parse_typescript(code: &str) -> Result<Module, ()> {
+            use std::sync::Arc;
             use swc_common::{FileName, SourceMap};
             use swc_ecma_parser::{lexer::Lexer, Parser, StringInput, Syntax, TsSyntax};
-            use std::sync::Arc;
 
             let source_map = Arc::new(SourceMap::default());
-            let source_file = source_map.new_source_file(
-                FileName::Custom("test.ts".into()).into(),
-                code.to_string(),
-            );
+            let source_file = source_map
+                .new_source_file(FileName::Custom("test.ts".into()).into(), code.to_string());
 
             let lexer = Lexer::new(
                 Syntax::Typescript(TsSyntax {

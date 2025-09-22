@@ -37,7 +37,7 @@ pub struct SymbolInfo {
 /// assert_eq!(kind, "function");
 /// assert_eq!(line, 1);
 /// ```
-#[must_use] 
+#[must_use]
 pub fn extract_symbol_from_ast_item(
     item: &AstItem,
 ) -> Option<(String, &'static str, usize, String, bool)> {
@@ -116,7 +116,7 @@ pub fn extract_symbol_from_ast_item(
 /// // Function doesn't pass classes filter
 /// assert!(!passes_type_filter("function", &Some(SymbolTypeFilter::Classes)));
 /// ```
-#[must_use] 
+#[must_use]
 pub fn passes_type_filter(kind: &str, filter: &Option<super::SymbolTypeFilter>) -> bool {
     match filter {
         Some(super::SymbolTypeFilter::Functions) => kind == "function",
@@ -139,7 +139,7 @@ pub fn passes_type_filter(kind: &str, filter: &Option<super::SymbolTypeFilter>) 
 /// assert!(!passes_query_filter("goodbye", &Some("hello".to_string())));
 /// assert!(passes_query_filter("anything", &None));
 /// ```
-#[must_use] 
+#[must_use]
 pub fn passes_query_filter(name: &str, query: &Option<String>) -> bool {
     match query {
         Some(q) => name.to_lowercase().contains(&q.to_lowercase()),
@@ -148,7 +148,7 @@ pub fn passes_query_filter(name: &str, query: &Option<String>) -> bool {
 }
 
 /// Extract all symbols from deep context
-#[must_use] 
+#[must_use]
 pub fn extract_symbols_from_context(
     deep_context: &DeepContext,
     filter: &Option<super::SymbolTypeFilter>,
@@ -217,7 +217,7 @@ pub fn extract_symbols_from_context(
 /// assert_eq!(counts.get("function"), Some(&1));
 /// assert_eq!(counts.get("struct"), Some(&1));
 /// ```
-#[must_use] 
+#[must_use]
 pub fn count_by_type(symbols: &[SymbolInfo]) -> std::collections::HashMap<String, usize> {
     let mut counts = std::collections::HashMap::with_capacity(64);
     for symbol in symbols {
@@ -227,7 +227,7 @@ pub fn count_by_type(symbols: &[SymbolInfo]) -> std::collections::HashMap<String
 }
 
 /// Count symbols by visibility
-#[must_use] 
+#[must_use]
 pub fn count_by_visibility(symbols: &[SymbolInfo]) -> std::collections::HashMap<String, usize> {
     let mut counts = std::collections::HashMap::with_capacity(64);
     for symbol in symbols {
@@ -237,7 +237,7 @@ pub fn count_by_visibility(symbols: &[SymbolInfo]) -> std::collections::HashMap<
 }
 
 /// Format symbol table summary
-#[must_use] 
+#[must_use]
 pub fn format_symbol_table_summary(symbols: &[SymbolInfo], deep_context: &DeepContext) -> String {
     let mut output = String::with_capacity(1024);
 
@@ -283,7 +283,7 @@ pub fn format_symbol_table_summary(symbols: &[SymbolInfo], deep_context: &DeepCo
 }
 
 /// Format symbol table detailed output
-#[must_use] 
+#[must_use]
 pub fn format_symbol_table_detailed(symbols: &[SymbolInfo]) -> String {
     let mut output = String::with_capacity(1024);
 
@@ -321,7 +321,7 @@ pub fn format_symbol_table_detailed(symbols: &[SymbolInfo]) -> String {
 }
 
 /// Format symbol table as CSV
-#[must_use] 
+#[must_use]
 pub fn format_symbol_table_csv(symbols: &[SymbolInfo]) -> String {
     let mut output = String::with_capacity(1024);
 

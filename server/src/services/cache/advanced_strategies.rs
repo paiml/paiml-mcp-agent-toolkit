@@ -287,7 +287,7 @@ where
     V: Clone + Send + Sync + 'static,
 {
     /// Create a new adaptive cache
-    #[must_use] 
+    #[must_use]
     pub fn new(config: AdvancedCacheConfig) -> Self {
         let mut tier_stats = FxHashMap::default();
         tier_stats.insert(CacheTier::L1, TierStats::default());
@@ -414,7 +414,7 @@ where
     }
 
     /// Get comprehensive cache statistics
-    #[must_use] 
+    #[must_use]
     pub fn get_stats(&self) -> AdaptiveCacheStats {
         let _stats = self.stats.read();
         // Manual clone since we removed Clone derive due to atomics
@@ -790,7 +790,7 @@ impl<K> CachePredictor<K>
 where
     K: Clone + Eq + std::hash::Hash,
 {
-    #[must_use] 
+    #[must_use]
     pub fn new(confidence_threshold: f64) -> Self {
         Self {
             access_history: RwLock::new(VecDeque::new()),

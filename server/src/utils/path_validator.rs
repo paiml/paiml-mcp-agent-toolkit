@@ -123,7 +123,7 @@ impl PathValidator {
     }
 
     /// Check if path is a valid source file (with common extensions)
-    #[must_use] 
+    #[must_use]
     pub fn is_source_file(path: &Path) -> bool {
         if !path.is_file() {
             return false;

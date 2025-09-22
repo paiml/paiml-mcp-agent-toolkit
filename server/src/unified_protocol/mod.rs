@@ -62,7 +62,7 @@ pub struct UnifiedRequest {
 }
 
 impl UnifiedRequest {
-    #[must_use] 
+    #[must_use]
     pub fn new(method: Method, path: String) -> Self {
         Self {
             method,
@@ -74,13 +74,13 @@ impl UnifiedRequest {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn with_body(mut self, body: Body) -> Self {
         self.body = body;
         self
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn with_header(mut self, key: &str, value: &str) -> Self {
         if let (Ok(name), Ok(val)) = (
             key.parse::<http::HeaderName>(),
@@ -98,7 +98,7 @@ impl UnifiedRequest {
         self
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn get_extension<T: for<'de> Deserialize<'de>>(&self, key: &str) -> Option<T> {
         self.extensions
             .get(key)
@@ -116,7 +116,7 @@ pub struct UnifiedResponse {
 }
 
 impl UnifiedResponse {
-    #[must_use] 
+    #[must_use]
     pub fn new(status: StatusCode) -> Self {
         Self {
             status,
@@ -126,12 +126,12 @@ impl UnifiedResponse {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn ok() -> Self {
         Self::new(StatusCode::OK)
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn with_body(mut self, body: Body) -> Self {
         self.body = body;
         self
@@ -144,7 +144,7 @@ impl UnifiedResponse {
             .with_header("content-type", "application/json"))
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn with_header(mut self, key: &str, value: &str) -> Self {
         if let (Ok(name), Ok(val)) = (
             key.parse::<http::HeaderName>(),
@@ -216,7 +216,7 @@ pub struct AdapterRegistry {
 }
 
 impl AdapterRegistry {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -233,7 +233,7 @@ impl AdapterRegistry {
         self
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn get(
         &self,
         protocol: Protocol,

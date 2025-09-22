@@ -47,7 +47,7 @@ pub struct VectorizedCacheKey {
 }
 
 impl VectorizedCacheKey {
-    #[must_use] 
+    #[must_use]
     pub fn from_bytes(bytes: &[u8]) -> Self {
         let hash = blake3::hash(bytes);
         let hash_bytes = hash.as_bytes();
@@ -79,7 +79,7 @@ impl VectorizedCacheKey {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             data: Vec::new(),

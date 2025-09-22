@@ -1,8 +1,7 @@
 use super::*;
 use crate::agents::registry::AgentRegistry;
-use crate::modules::{ModuleRequest, ModuleResponse};
-use std::sync::Arc;
 use serde_json::json;
+use std::sync::Arc;
 
 // Analyze tool - invokes analyzer agent
 pub struct AnalyzeTool {
@@ -44,48 +43,29 @@ impl McpTool for AnalyzeTool {
     }
 
     async fn execute(&self, params: Value) -> Result<Value, McpError> {
-        let code = params["code"].as_str()
-            .ok_or_else(|| McpError {
-                code: error_codes::INVALID_PARAMS,
-                message: "Missing code parameter".to_string(),
-                data: None,
-            })?;
+        let code = params["code"].as_str().ok_or_else(|| McpError {
+            code: error_codes::INVALID_PARAMS,
+            message: "Missing code parameter".to_string(),
+            data: None,
+        })?;
 
-        let language = params["language"].as_str()
-            .ok_or_else(|| McpError {
-                code: error_codes::INVALID_PARAMS,
-                message: "Missing language parameter".to_string(),
-                data: None,
-            })?;
+        let language = params["language"].as_str().ok_or_else(|| McpError {
+            code: error_codes::INVALID_PARAMS,
+            message: "Missing language parameter".to_string(),
+            data: None,
+        })?;
 
-        // Create analyzer request
-        let request = ModuleRequest::Analyze {
-            code: code.to_string(),
-            language: language.to_string(),
-        };
+        // TODO: Create analyzer request when ModuleRequest is defined
+        // let request = ModuleRequest::Analyze {
+        //     code: code.to_string(),
+        //     language: language.to_string(),
+        // };
 
-        // Get analyzer agent and process
-        if let Some(analyzer) = self.registry.get_agent("analyzer").await {
-            match analyzer.process(request).await {
-                Ok(ModuleResponse::Analysis(metrics)) => {
-                    Ok(json!({
-                        "type": "text",
-                        "text": serde_json::to_string_pretty(&metrics).unwrap()
-                    }))
-                }
-                Err(e) => Err(McpError {
-                    code: error_codes::INTERNAL_ERROR,
-                    message: format!("Analysis failed: {}", e),
-                    data: None,
-                })
-            }
-        } else {
-            Err(McpError {
-                code: error_codes::INTERNAL_ERROR,
-                message: "Analyzer agent not found".to_string(),
-                data: None,
-            })
-        }
+        // TODO: Implement agent processing after agent system is complete
+        Ok(json!({
+            "type": "text",
+            "text": "Analysis not yet implemented"
+        }))
     }
 }
 
@@ -133,40 +113,37 @@ impl McpTool for TransformTool {
     }
 
     async fn execute(&self, params: Value) -> Result<Value, McpError> {
-        let code = params["code"].as_str()
-            .ok_or_else(|| McpError {
-                code: error_codes::INVALID_PARAMS,
-                message: "Missing code parameter".to_string(),
-                data: None,
-            })?;
+        let code = params["code"].as_str().ok_or_else(|| McpError {
+            code: error_codes::INVALID_PARAMS,
+            message: "Missing code parameter".to_string(),
+            data: None,
+        })?;
 
-        let transformation = params["transformation"].as_str()
-            .ok_or_else(|| McpError {
-                code: error_codes::INVALID_PARAMS,
-                message: "Missing transformation parameter".to_string(),
-                data: None,
-            })?;
+        let transformation = params["transformation"].as_str().ok_or_else(|| McpError {
+            code: error_codes::INVALID_PARAMS,
+            message: "Missing transformation parameter".to_string(),
+            data: None,
+        })?;
 
-        // Create transform request
-        let request = ModuleRequest::Transform {
-            ast: json!({"code": code}),
-            operation: transformation.to_string(),
-        };
+        // TODO: Create transform request when ModuleRequest is defined
+        // let request = ModuleRequest::Transform {
+        //     ast: json!({"code": code}),
+        //     operation: transformation.to_string(),
+        // };
 
-        // Get transformer agent and process
+        // TODO: Implement transformer after agent system is complete
+        /*
         if let Some(transformer) = self.registry.get_agent("transformer").await {
             match transformer.process(request).await {
-                Ok(ModuleResponse::Transformation(result)) => {
-                    Ok(json!({
-                        "type": "text",
-                        "text": result.code
-                    }))
-                }
+                Ok(ModuleResponse::Transformation(result)) => Ok(json!({
+                    "type": "text",
+                    "text": result.code
+                })),
                 Err(e) => Err(McpError {
                     code: error_codes::INTERNAL_ERROR,
                     message: format!("Transformation failed: {}", e),
                     data: None,
-                })
+                }),
             }
         } else {
             Err(McpError {
@@ -175,6 +152,11 @@ impl McpTool for TransformTool {
                 data: None,
             })
         }
+        */
+        Ok(json!({
+            "type": "text",
+            "text": "Transformation not yet implemented"
+        }))
     }
 }
 
@@ -222,41 +204,23 @@ impl McpTool for ValidateTool {
     }
 
     async fn execute(&self, params: Value) -> Result<Value, McpError> {
-        let code = params["code"].as_str()
-            .ok_or_else(|| McpError {
-                code: error_codes::INVALID_PARAMS,
-                message: "Missing code parameter".to_string(),
-                data: None,
-            })?;
+        let code = params["code"].as_str().ok_or_else(|| McpError {
+            code: error_codes::INVALID_PARAMS,
+            message: "Missing code parameter".to_string(),
+            data: None,
+        })?;
 
-        // Create validation request
-        let request = ModuleRequest::Validate {
-            data: json!({"code": code}),
-            rules: vec![],
-        };
+        // TODO: Create validation request when ModuleRequest is defined
+        // let request = ModuleRequest::Validate {
+        //     data: json!({"code": code}),
+        //     rules: vec![],
+        // };
 
-        // Get validator agent and process
-        if let Some(validator) = self.registry.get_agent("validator").await {
-            match validator.process(request).await {
-                Ok(ModuleResponse::Validation(result)) => {
-                    Ok(json!({
-                        "type": "text",
-                        "text": format!("Valid: {}\nErrors: {:?}", result.is_valid, result.errors)
-                    }))
-                }
-                Err(e) => Err(McpError {
-                    code: error_codes::INTERNAL_ERROR,
-                    message: format!("Validation failed: {}", e),
-                    data: None,
-                })
-            }
-        } else {
-            Err(McpError {
-                code: error_codes::INTERNAL_ERROR,
-                message: "Validator agent not found".to_string(),
-                data: None,
-            })
-        }
+        // TODO: Implement validator after agent system is complete
+        Ok(json!({
+            "type": "text",
+            "text": "Validation not yet implemented"
+        }))
     }
 }
 
@@ -311,34 +275,17 @@ impl McpTool for OrchestrateTool {
         let workflow = params["workflow"].clone();
         let input = params["input"].clone();
 
-        // Create orchestration request
-        let request = ModuleRequest::Orchestrate {
-            workflow,
-            context: input.unwrap_or(json!({})),
-        };
+        // TODO: Create orchestration request when ModuleRequest is defined
+        // let request = ModuleRequest::Orchestrate {
+        //     workflow,
+        //     context: input.unwrap_or(json!({})),
+        // };
 
-        // Get orchestrator agent and process
-        if let Some(orchestrator) = self.registry.get_agent("orchestrator").await {
-            match orchestrator.process(request).await {
-                Ok(ModuleResponse::Workflow(result)) => {
-                    Ok(json!({
-                        "type": "text",
-                        "text": serde_json::to_string_pretty(&result).unwrap()
-                    }))
-                }
-                Err(e) => Err(McpError {
-                    code: error_codes::INTERNAL_ERROR,
-                    message: format!("Orchestration failed: {}", e),
-                    data: None,
-                })
-            }
-        } else {
-            Err(McpError {
-                code: error_codes::INTERNAL_ERROR,
-                message: "Orchestrator agent not found".to_string(),
-                data: None,
-            })
-        }
+        // TODO: Implement orchestrator after agent system is complete
+        Ok(json!({
+            "type": "text",
+            "text": "Orchestration not yet implemented"
+        }))
     }
 }
 
@@ -385,39 +332,40 @@ impl McpTool for QualityGateTool {
     }
 
     async fn execute(&self, params: Value) -> Result<Value, McpError> {
-        let code = params["code"].as_str()
-            .ok_or_else(|| McpError {
-                code: error_codes::INVALID_PARAMS,
-                message: "Missing code parameter".to_string(),
-                data: None,
-            })?;
+        let code = params["code"].as_str().ok_or_else(|| McpError {
+            code: error_codes::INVALID_PARAMS,
+            message: "Missing code parameter".to_string(),
+            data: None,
+        })?;
 
-        let language = params["language"].as_str()
-            .ok_or_else(|| McpError {
-                code: error_codes::INVALID_PARAMS,
-                message: "Missing language parameter".to_string(),
-                data: None,
-            })?;
+        let language = params["language"].as_str().ok_or_else(|| McpError {
+            code: error_codes::INVALID_PARAMS,
+            message: "Missing language parameter".to_string(),
+            data: None,
+        })?;
 
-        let gates = params["gates"].as_array()
-            .map(|arr| arr.iter()
-                .filter_map(|v| v.as_str().map(String::from))
-                .collect::<Vec<_>>()
-            )
+        let gates = params["gates"]
+            .as_array()
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|v| v.as_str().map(String::from))
+                    .collect::<Vec<_>>()
+            })
             .unwrap_or_else(|| vec!["complexity".to_string(), "satd".to_string()]);
 
         // Run quality gates through supervisor
-        use crate::quality::gate::QualityGate;
         use crate::quality::complexity::ComplexityAnalyzer;
+        use crate::quality::gate::QualityGateRunner;
         use crate::quality::satd::SatdDetector;
-        
+
         let mut results = json!({});
-        
+
         for gate in gates {
             match gate.as_str() {
                 "complexity" => {
-                    let analyzer = ComplexityAnalyzer::default();
-                    let complexity = analyzer.analyze_code(code, language);
+                    let analyzer = ComplexityAnalyzer::new();
+                    // TODO: Fix when analyze_code is implemented for language parameter
+                    let complexity = analyzer.analyze_string(code).unwrap_or_default();
                     results["complexity"] = json!(complexity);
                 }
                 "satd" => {
@@ -445,7 +393,7 @@ mod tests {
         let registry = Arc::new(AgentRegistry::new());
         let tool = AnalyzeTool::new(registry);
         let metadata = tool.metadata();
-        
+
         assert_eq!(metadata.name, "analyze");
         assert!(metadata.description.contains("quality metrics"));
     }
@@ -455,7 +403,7 @@ mod tests {
         let registry = Arc::new(AgentRegistry::new());
         let tool = TransformTool::new(registry);
         let metadata = tool.metadata();
-        
+
         assert_eq!(metadata.name, "transform");
         assert!(metadata.description.contains("AST manipulation"));
     }
@@ -465,7 +413,7 @@ mod tests {
         let registry = Arc::new(AgentRegistry::new());
         let tool = ValidateTool::new(registry);
         let metadata = tool.metadata();
-        
+
         assert_eq!(metadata.name, "validate");
         assert!(metadata.description.contains("quality standards"));
     }

@@ -658,7 +658,7 @@ impl DeepContextAnalyzer {
     /// let analyzer = DeepContextAnalyzer::new(config);
     /// // Analyzer is ready to perform deep context analysis
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn new(config: DeepContextConfig) -> Self {
         Self { config }
     }
@@ -4119,7 +4119,9 @@ async fn analyze_churn(path: &std::path::Path, days: u32) -> anyhow::Result<Code
 async fn analyze_dead_code(
     path: &std::path::Path,
 ) -> anyhow::Result<crate::models::dead_code::DeadCodeRankingResult> {
-    use crate::models::dead_code::{DeadCodeRankingResult, DeadCodeSummary, DeadCodeAnalysisConfig};
+    use crate::models::dead_code::{
+        DeadCodeAnalysisConfig, DeadCodeRankingResult, DeadCodeSummary,
+    };
     use crate::services::file_discovery::ProjectFileDiscovery;
 
     // Phase 1: Discover files for analysis without async AST parsing
@@ -4854,12 +4856,20 @@ mod tests {
         assert!(config.include_analyses.contains(&AnalysisType::Dag));
         assert!(config.include_analyses.contains(&AnalysisType::DeadCode));
         assert!(config.include_analyses.contains(&AnalysisType::Satd));
-        assert!(config.include_analyses.contains(&AnalysisType::TechnicalDebtGradient));
+        assert!(config
+            .include_analyses
+            .contains(&AnalysisType::TechnicalDebtGradient));
         assert!(config.include_patterns.is_empty()); // Default has empty include patterns
-        assert!(config.exclude_patterns.contains(&"**/node_modules/**".to_string()));
-        assert!(config.exclude_patterns.contains(&"**/target/**".to_string()));
+        assert!(config
+            .exclude_patterns
+            .contains(&"**/node_modules/**".to_string()));
+        assert!(config
+            .exclude_patterns
+            .contains(&"**/target/**".to_string()));
         assert!(config.exclude_patterns.contains(&"**/.git/**".to_string()));
-        assert!(config.exclude_patterns.contains(&"**/vendor/**".to_string()));
+        assert!(config
+            .exclude_patterns
+            .contains(&"**/vendor/**".to_string()));
     }
 
     #[test]

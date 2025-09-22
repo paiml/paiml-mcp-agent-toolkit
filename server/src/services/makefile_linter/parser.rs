@@ -1,4 +1,7 @@
-use super::ast::{MakefileAst, MakefileNode, MakefileNodeKind, SourceSpan, NodeData, AssignmentOp, RecipePrefixes, RecipeLine};
+use super::ast::{
+    AssignmentOp, MakefileAst, MakefileNode, MakefileNodeKind, NodeData, RecipeLine,
+    RecipePrefixes, SourceSpan,
+};
 
 #[derive(Debug)]
 pub struct MakefileParser<'src> {
@@ -18,7 +21,7 @@ pub enum ParseError {
 }
 
 impl<'src> MakefileParser<'src> {
-    #[must_use] 
+    #[must_use]
     pub fn new(input: &'src str) -> Self {
         Self {
             input,

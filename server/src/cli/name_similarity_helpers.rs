@@ -69,7 +69,7 @@ pub fn discover_source_files(
 }
 
 /// Extract all identifiers from analyzed files
-#[must_use] 
+#[must_use]
 pub fn extract_all_identifiers(
     analyzed_files: &[(PathBuf, String)],
     _scope: &SearchScope,
@@ -83,7 +83,7 @@ pub fn extract_all_identifiers(
 }
 
 /// Calculate similarity scores for all names
-#[must_use] 
+#[must_use]
 pub fn calculate_similarities(
     all_names: &[NameInfo],
     query: &str,
@@ -153,7 +153,7 @@ fn calculate_combined_similarity(query: &str, name: &str, fuzzy: bool, phonetic:
 }
 
 /// Build results JSON with optional performance metrics
-#[must_use] 
+#[must_use]
 pub fn build_results_json(config: JsonResultsConfig) -> Value {
     let mut results = serde_json::json!({
         "query": config.query,

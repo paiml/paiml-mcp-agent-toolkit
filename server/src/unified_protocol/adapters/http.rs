@@ -88,7 +88,7 @@ impl HttpAdapter {
     /// // Verify protocol type
     /// assert_eq!(adapter.protocol(), pmat::unified_protocol::Protocol::Http);
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn new(bind_addr: SocketAddr) -> Self {
         Self {
             listener: None,
@@ -375,7 +375,7 @@ pub struct HttpServer {
 }
 
 impl HttpServer {
-    #[must_use] 
+    #[must_use]
     pub fn new(bind_addr: SocketAddr, service: Box<dyn HttpServiceHandler>) -> Self {
         Self {
             adapter: HttpAdapter::new(bind_addr),
@@ -625,7 +625,7 @@ impl HttpResponseBuilder {
     /// let response = HttpResponseBuilder::ok();
     /// assert_eq!(response.status, StatusCode::OK);
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn ok() -> UnifiedResponse {
         UnifiedResponse::new(StatusCode::OK)
     }
@@ -645,7 +645,7 @@ impl HttpResponseBuilder {
     /// let response = HttpResponseBuilder::not_found();
     /// assert_eq!(response.status, StatusCode::NOT_FOUND);
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn not_found() -> UnifiedResponse {
         UnifiedResponse::new(StatusCode::NOT_FOUND)
     }
@@ -665,7 +665,7 @@ impl HttpResponseBuilder {
     /// let response = HttpResponseBuilder::internal_error();
     /// assert_eq!(response.status, StatusCode::INTERNAL_SERVER_ERROR);
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn internal_error() -> UnifiedResponse {
         UnifiedResponse::new(StatusCode::INTERNAL_SERVER_ERROR)
     }
@@ -745,7 +745,7 @@ impl HttpResponseBuilder {
     ///     "[INFO] Server started successfully\n[DEBUG] Listening on port 3000"
     /// );
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn text(content: &str) -> UnifiedResponse {
         UnifiedResponse::ok()
             .with_body(Body::from(content.to_string()))
@@ -789,7 +789,7 @@ impl HttpResponseBuilder {
     ///     </html>
     /// "#);
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn html(content: &str) -> UnifiedResponse {
         UnifiedResponse::ok()
             .with_body(Body::from(content.to_string()))

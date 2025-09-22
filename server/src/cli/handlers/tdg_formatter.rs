@@ -13,7 +13,7 @@
 /// # Returns
 ///
 /// Formatted markdown string
-#[must_use] 
+#[must_use]
 pub fn format_markdown_output(
     summary: &crate::models::tdg::TDGSummary,
     include_components: bool,

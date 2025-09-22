@@ -259,7 +259,7 @@ pub enum QualityTrend {
 
 impl QualityMonitorEngine {
     /// Create new quality monitor
-    #[must_use] 
+    #[must_use]
     pub fn new(config: QualityMonitorConfig) -> Self {
         Self {
             config,

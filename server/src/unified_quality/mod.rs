@@ -46,7 +46,7 @@ pub enum QualityMode {
 
 impl QualityMode {
     /// Teams progress through modes as they mature
-    #[must_use] 
+    #[must_use]
     pub fn recommended_progression() -> Vec<(Self, Duration)> {
         vec![
             (Self::Observe, Duration::from_secs(14 * 24 * 60 * 60)),

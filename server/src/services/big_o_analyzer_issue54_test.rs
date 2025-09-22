@@ -288,7 +288,6 @@ fn internal_helper() {
             report.analyzed_functions
         );
 
-
         // Also verify the distribution is reasonable
         assert!(
             report.complexity_distribution.linear > 0,

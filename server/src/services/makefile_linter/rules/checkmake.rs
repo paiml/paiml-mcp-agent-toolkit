@@ -1,5 +1,7 @@
-use super::{MakefileRule, Violation, Severity};
-use crate::services::makefile_linter::ast::{MakefileAst, NodeData, SourceSpan, MakefileNodeKind, AssignmentOp};
+use super::{MakefileRule, Severity, Violation};
+use crate::services::makefile_linter::ast::{
+    AssignmentOp, MakefileAst, MakefileNodeKind, NodeData, SourceSpan,
+};
 use std::collections::HashSet;
 
 /// `MinPhony` rule - ensures required targets are declared as .PHONY

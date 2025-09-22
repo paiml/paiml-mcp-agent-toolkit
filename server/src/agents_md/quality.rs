@@ -118,7 +118,7 @@ impl Default for AgentQualityGate {
 
 impl AgentQualityGate {
     /// Create new quality gate
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             config: QualityConfig::default(),
@@ -126,7 +126,7 @@ impl AgentQualityGate {
     }
 
     /// Create with config
-    #[must_use] 
+    #[must_use]
     pub fn with_config(config: QualityConfig) -> Self {
         Self { config }
     }
@@ -224,7 +224,7 @@ impl AgentQualityGate {
             "// F-I-X-M-E:",
             "// H-A-C-K:",
         ];
-        
+
         // Process line by line to handle SATD removal properly
         let mut result_lines = Vec::new();
         for line in fixed.lines() {

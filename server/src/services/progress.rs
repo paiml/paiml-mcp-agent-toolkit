@@ -16,7 +16,7 @@ pub struct ProgressTracker {
 
 impl ProgressTracker {
     /// Create a new progress tracker
-    #[must_use] 
+    #[must_use]
     pub fn new(enable_progress: bool) -> Self {
         Self {
             multi: Arc::new(MultiProgress::new()),
@@ -35,7 +35,7 @@ impl ProgressTracker {
     /// let spinner = progress.create_spinner("Processing...");
     /// assert!(spinner.is_hidden());
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn create_spinner(&self, message: &str) -> ProgressBar {
         if !self.enable_progress {
             return ProgressBar::hidden();
@@ -54,7 +54,7 @@ impl ProgressTracker {
     }
 
     /// Create a progress bar for file processing
-    #[must_use] 
+    #[must_use]
     pub fn create_file_progress(&self, total_files: u64, message: &str) -> ProgressBar {
         if !self.enable_progress {
             return ProgressBar::hidden();
@@ -74,7 +74,7 @@ impl ProgressTracker {
     }
 
     /// Create a bytes progress bar
-    #[must_use] 
+    #[must_use]
     pub fn create_bytes_progress(&self, total_bytes: u64, message: &str) -> ProgressBar {
         if !self.enable_progress {
             return ProgressBar::hidden();
@@ -101,7 +101,7 @@ impl ProgressTracker {
     }
 
     /// Create a sub-progress for parallel operations
-    #[must_use] 
+    #[must_use]
     pub fn create_sub_progress(&self, message: &str, total: u64) -> ProgressBar {
         if !self.enable_progress {
             return ProgressBar::hidden();
@@ -135,7 +135,7 @@ pub struct FileClassificationReporter {
 
 impl FileClassificationReporter {
     /// Create a new file classification reporter
-    #[must_use] 
+    #[must_use]
     pub fn new(tracker: ProgressTracker) -> Self {
         Self {
             tracker,

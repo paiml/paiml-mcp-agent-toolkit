@@ -83,7 +83,7 @@ pub struct QualityGateService {
 }
 
 impl QualityGateService {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             metrics: Arc::new(RwLock::new(ServiceMetrics::default())),

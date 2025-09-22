@@ -248,7 +248,7 @@ pub trait ConfigWatcher {
 
 impl ConfigurationService {
     /// Create a new configuration service
-    #[must_use] 
+    #[must_use]
     pub fn new(config_path: Option<PathBuf>) -> Self {
         let default_path = config_path.unwrap_or_else(|| {
             std::env::current_dir()
@@ -405,7 +405,7 @@ impl ConfigurationService {
     }
 
     /// Create default configuration
-    #[must_use] 
+    #[must_use]
     pub fn default_config() -> PmatConfig {
         PmatConfig {
             system: SystemConfig {
@@ -566,7 +566,7 @@ lazy_static::lazy_static! {
 }
 
 /// Get the global configuration service instance - THE ONE way to access configuration
-#[must_use] 
+#[must_use]
 pub fn configuration() -> Arc<ConfigurationService> {
     CONFIGURATION.clone()
 }

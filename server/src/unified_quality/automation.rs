@@ -196,7 +196,7 @@ pub struct FailedFix {
 
 impl ConservativeAutomator {
     /// Create a new conservative automator
-    #[must_use] 
+    #[must_use]
     pub fn new(config: AutomatorConfig) -> Self {
         Self {
             safe_transforms: Self::initialize_safe_transforms(),
@@ -431,7 +431,7 @@ impl ConservativeAutomator {
     }
 
     /// Get list of safe transformations
-    #[must_use] 
+    #[must_use]
     pub fn get_safe_transforms(&self) -> Vec<SafeTransform> {
         self.safe_transforms.clone()
     }

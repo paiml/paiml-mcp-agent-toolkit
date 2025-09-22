@@ -3,7 +3,7 @@
 //! This module contains handlers for demo mode and quality gate operations
 //! extracted from the main CLI module to reduce complexity.
 
-use crate::cli::{OutputFormat, DemoProtocol, QualityGateOutputFormat, QualityCheckType};
+use crate::cli::{DemoProtocol, OutputFormat, QualityCheckType, QualityGateOutputFormat};
 use crate::stateless_server::StatelessTemplateServer;
 use anyhow::Result;
 use std::path::PathBuf;

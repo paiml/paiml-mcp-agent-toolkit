@@ -20,7 +20,7 @@ struct QualityGateArgs {
 pub struct QualityGateTool;
 
 impl QualityGateTool {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self
     }
@@ -73,7 +73,7 @@ struct QualityGateSummaryArgs {
 pub struct QualityGateSummaryTool;
 
 impl QualityGateSummaryTool {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self
     }
@@ -123,7 +123,7 @@ struct QualityGateBaselineArgs {
 pub struct QualityGateBaselineTool;
 
 impl QualityGateBaselineTool {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self
     }
@@ -165,7 +165,7 @@ struct QualityGateCompareArgs {
 pub struct QualityGateCompareTool;
 
 impl QualityGateCompareTool {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self
     }

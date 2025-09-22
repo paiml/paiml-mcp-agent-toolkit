@@ -1,7 +1,7 @@
-use super::{ModuleError, PmatModule};
 use super::analyzer::AnalyzerModule;
 use super::transformer::TransformerModule;
-use super::validator::{ValidatorModule, Thresholds, ValidationResult};
+use super::validator::{Thresholds, ValidationResult, ValidatorModule};
+use super::{ModuleError, PmatModule};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -67,7 +67,10 @@ impl OrchestratorModule for OrchestratorImpl {
         let final_metrics = self.analyzer.analyze(&transform_result.transformed).await?;
 
         // Step 4: Validate final result
-        let validation = self.validator.validate(&final_metrics, &self.thresholds).await;
+        let validation = self
+            .validator
+            .validate(&final_metrics, &self.thresholds)
+            .await;
 
         // Determine if transformation improved the code
         let improved = final_metrics.complexity < original_metrics.complexity;
@@ -193,10 +196,10 @@ pub enum StepResult {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::analyzer::AnalyzerImpl;
     use super::super::transformer::TransformerImpl;
     use super::super::validator::ValidatorImpl;
+    use super::*;
 
     #[tokio::test]
     async fn test_orchestrator() {
@@ -204,11 +207,8 @@ mod tests {
         let transformer = Arc::new(TransformerImpl::new()) as Arc<dyn TransformerModule>;
         let validator = Arc::new(ValidatorImpl::new()) as Arc<dyn ValidatorModule>;
 
-        let orchestrator = OrchestratorImpl::new(
-            analyzer.clone(),
-            transformer.clone(),
-            validator.clone(),
-        );
+        let orchestrator =
+            OrchestratorImpl::new(analyzer.clone(), transformer.clone(), validator.clone());
 
         let code = "fn test() { println!(\"test\"); }";
         let result = orchestrator.analyze_and_validate(code).await.unwrap();

@@ -139,7 +139,11 @@ pub enum RuchyToken {
 
 // Static maps for O(1) keyword and token lookups
 static KEYWORD_MAP: Lazy<HashMap<&'static str, RuchyToken>> = Lazy::new(|| {
-    use RuchyToken::{Fun, If, Else, While, For, Match, Return, Let, Const, Var, Class, Struct, Enum, Trait, Impl, Actor, Async, Await, Spawn, Send, Receive, Break, Continue, In, As, Pub, Mod, Use, Where, Type, Import, From, Export, True, False};
+    use RuchyToken::{
+        Actor, As, Async, Await, Break, Class, Const, Continue, Else, Enum, Export, False, For,
+        From, Fun, If, Impl, Import, In, Let, Match, Mod, Pub, Receive, Return, Send, Spawn,
+        Struct, Trait, True, Type, Use, Var, Where, While,
+    };
     let mut map = HashMap::new();
     map.insert("fun", Fun);
     map.insert("if", If);
@@ -180,7 +184,10 @@ static KEYWORD_MAP: Lazy<HashMap<&'static str, RuchyToken>> = Lazy::new(|| {
 });
 
 static SINGLE_CHAR_TOKEN_MAP: Lazy<HashMap<char, RuchyToken>> = Lazy::new(|| {
-    use RuchyToken::{Plus, Star, LeftParen, RightParen, LeftBrace, RightBrace, LeftBracket, RightBracket, Semicolon, Comma, Question, Tilde, Caret, Percent, Hash};
+    use RuchyToken::{
+        Caret, Comma, Hash, LeftBrace, LeftBracket, LeftParen, Percent, Plus, Question, RightBrace,
+        RightBracket, RightParen, Semicolon, Star, Tilde,
+    };
     let mut map = HashMap::new();
     map.insert('+', Plus);
     map.insert('*', Star);
@@ -392,7 +399,7 @@ pub struct DeadlockWarning {
 }
 
 impl RuchyComplexityAnalyzer {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             current_complexity: ComplexityMetrics::default(),
@@ -449,7 +456,8 @@ impl RuchyComplexityAnalyzer {
 
         let volume = if n > 0.0 { n_total * n.log2() } else { 0.0 };
         let difficulty = if operands_unique > 0 {
-            (f64::from(operators_unique) / 2.0) * (f64::from(operands_total) / f64::from(operands_unique))
+            (f64::from(operators_unique) / 2.0)
+                * (f64::from(operands_total) / f64::from(operands_unique))
         } else {
             0.0
         };
@@ -471,7 +479,7 @@ impl RuchyComplexityAnalyzer {
     }
 
     /// Get dead code analysis results
-    #[must_use] 
+    #[must_use]
     pub fn get_dead_code(&self) -> RuchyDeadCode {
         let unused_functions: Vec<String> = self
             .defined_functions
@@ -535,13 +543,13 @@ impl RuchyComplexityAnalyzer {
     }
 
     /// Get import dependencies
-    #[must_use] 
+    #[must_use]
     pub fn get_imports(&self) -> &[RuchyImport] {
         &self.imports
     }
 
     /// Get exported items
-    #[must_use] 
+    #[must_use]
     pub fn get_exports(&self) -> Vec<String> {
         self.exports.iter().cloned().collect()
     }
@@ -566,7 +574,7 @@ impl RuchyComplexityAnalyzer {
     }
 
     /// Get actor analysis results
-    #[must_use] 
+    #[must_use]
     pub fn get_actor_analysis(&self) -> RuchyActorAnalysis {
         let potential_deadlocks = self.detect_potential_deadlocks();
 
@@ -950,7 +958,7 @@ pub struct RuchyLexer {
 }
 
 impl RuchyLexer {
-    #[must_use] 
+    #[must_use]
     pub fn new(input: String) -> Self {
         let lexer = Self {
             input: input.clone(),
@@ -1308,7 +1316,7 @@ impl Default for RuchyAstAnalyzer {
 }
 
 impl RuchyAstAnalyzer {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             _current_complexity: ComplexityMetrics::default(),

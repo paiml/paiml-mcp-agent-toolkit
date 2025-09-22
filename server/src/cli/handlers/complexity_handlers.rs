@@ -3,7 +3,9 @@
 //! This module contains all complexity-related command implementations
 //! extracted from the main CLI module to reduce cognitive complexity.
 
-use crate::cli::{ComplexityOutputFormat, DeadCodeOutputFormat, SatdOutputFormat, SatdSeverity, DagType};
+use crate::cli::{
+    ComplexityOutputFormat, DagType, DeadCodeOutputFormat, SatdOutputFormat, SatdSeverity,
+};
 use anyhow::{Context, Result};
 use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use std::path::{Path, PathBuf};
@@ -170,10 +172,10 @@ fn apply_complexity_filters(
     if max_cyclomatic.is_some() || max_cognitive.is_some() {
         file_metrics.retain(|file| {
             file.functions.iter().any(|func| {
-                let exceeds_cyclomatic = max_cyclomatic
-                    .is_some_and(|threshold| func.metrics.cyclomatic > threshold);
-                let exceeds_cognitive = max_cognitive
-                    .is_some_and(|threshold| func.metrics.cognitive > threshold);
+                let exceeds_cyclomatic =
+                    max_cyclomatic.is_some_and(|threshold| func.metrics.cyclomatic > threshold);
+                let exceeds_cognitive =
+                    max_cognitive.is_some_and(|threshold| func.metrics.cognitive > threshold);
                 exceeds_cyclomatic || exceeds_cognitive
             })
         });
@@ -219,8 +221,9 @@ async fn format_and_write_output(
     let formatted_output = match format {
         ComplexityOutputFormat::Summary => Ok(format_complexity_summary(summary)),
         ComplexityOutputFormat::Full => Ok(format_complexity_report(summary)),
-        ComplexityOutputFormat::Sarif => format_as_sarif(summary)
-            .map_err(|e| anyhow::anyhow!("SARIF serialization failed: {e}")),
+        ComplexityOutputFormat::Sarif => {
+            format_as_sarif(summary).map_err(|e| anyhow::anyhow!("SARIF serialization failed: {e}"))
+        }
         ComplexityOutputFormat::Json => {
             let json_output = serde_json::json!({
                 "summary": summary,
@@ -1840,7 +1843,7 @@ fn generate_satd_sarif(
 /// assert!(summary.contains("- 1 SATD items"));
 /// assert!(summary.contains("- 1 SATD items"));
 /// ```
-#[must_use] 
+#[must_use]
 pub fn format_satd_summary(
     result: &crate::services::satd_detector::SATDAnalysisResult,
     metrics: bool,

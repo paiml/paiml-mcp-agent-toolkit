@@ -91,7 +91,7 @@ impl PmcpServer {
     /// // Server is ready to be run with server.run().await
     /// # }
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             state_manager: Arc::new(Mutex::new(StateManager::new())),

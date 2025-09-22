@@ -143,7 +143,7 @@ impl DeepContextConfig {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn detect_entry_points(&self) -> Vec<String> {
         let mut entry_points = Vec::new();
 

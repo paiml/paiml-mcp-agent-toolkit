@@ -120,7 +120,7 @@ pub enum HttpDemoError {
 }
 
 impl HttpDemoAdapter {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self
     }

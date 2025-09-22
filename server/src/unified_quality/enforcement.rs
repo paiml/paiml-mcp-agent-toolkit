@@ -134,8 +134,7 @@ pub struct TeamMetrics {
 
 /// Enforcement rules configuration
 #[allow(dead_code)]
-#[derive(Debug, Clone)]
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 pub struct EnforcementRules {
     /// Approvers by team
     approvers: HashMap<TeamId, Vec<String>>,
@@ -228,7 +227,7 @@ pub struct DiffAnalysis {
 
 impl ErrorBudgetEnforcer {
     /// Create a new error budget enforcer
-    #[must_use] 
+    #[must_use]
     pub fn new(config: EnforcerConfig) -> Self {
         Self {
             budgets: HashMap::new(),
@@ -245,7 +244,7 @@ impl ErrorBudgetEnforcer {
     }
 
     /// Check if a commit is allowed
-    #[must_use] 
+    #[must_use]
     pub fn check_commit(&self, team: &TeamId, diff: &DiffAnalysis) -> Decision {
         if !self.config.enabled {
             return Decision::Approved;
@@ -312,7 +311,7 @@ impl ErrorBudgetEnforcer {
     }
 
     /// Get budget status for a team
-    #[must_use] 
+    #[must_use]
     pub fn get_budget_status(&self, team: &TeamId) -> Option<BudgetStatus> {
         self.budgets.get(team).map(|budget| {
             let consumption = self.calculate_consumption_percentage(budget);
@@ -329,8 +328,9 @@ impl ErrorBudgetEnforcer {
 
     /// Calculate consumption as a percentage
     fn calculate_consumption(&self, budget: &QualityBudget, diff: &DiffAnalysis) -> f64 {
-        let complexity_ratio = f64::from(budget.current_consumption.complexity_used + diff.complexity_change)
-            / f64::from(budget.complexity_budget);
+        let complexity_ratio =
+            f64::from(budget.current_consumption.complexity_used + diff.complexity_change)
+                / f64::from(budget.complexity_budget);
         let satd_ratio = f64::from(budget.current_consumption.satd_used as i32 + diff.satd_change)
             / f64::from(budget.satd_budget);
         let coverage_impact = if diff.coverage_change < 0.0 {
@@ -347,9 +347,10 @@ impl ErrorBudgetEnforcer {
 
     /// Calculate consumption percentage for current state
     fn calculate_consumption_percentage(&self, budget: &QualityBudget) -> f64 {
-        let complexity_ratio =
-            f64::from(budget.current_consumption.complexity_used) / f64::from(budget.complexity_budget);
-        let satd_ratio = f64::from(budget.current_consumption.satd_used) / f64::from(budget.satd_budget);
+        let complexity_ratio = f64::from(budget.current_consumption.complexity_used)
+            / f64::from(budget.complexity_budget);
+        let satd_ratio =
+            f64::from(budget.current_consumption.satd_used) / f64::from(budget.satd_budget);
 
         ((complexity_ratio * 0.6 + satd_ratio * 0.4) * 100.0)
             .max(0.0)
@@ -424,14 +425,11 @@ impl TimeSeriesDB {
 
         let entry = TimeSeries { timestamp, metrics };
 
-        self.data
-            .entry(team.clone())
-            .or_default()
-            .push(entry);
+        self.data.entry(team.clone()).or_default().push(entry);
     }
 
     /// Get recent measurements for a team
-    #[must_use] 
+    #[must_use]
     pub fn get_recent_measurements(&self, team: &TeamId, duration: Duration) -> Vec<f64> {
         let now = SystemTime::now();
         let cutoff = now.checked_sub(duration).unwrap_or(SystemTime::UNIX_EPOCH);
@@ -457,7 +455,6 @@ impl EnforcementRules {
             .unwrap_or_else(|| vec!["tech-lead".to_string()])
     }
 }
-
 
 #[cfg(test)]
 mod tests {

@@ -135,7 +135,6 @@ pub async fn analyze_python_file_with_classifier(
     let types = strategy.extract_types(&ast);
     let imports = strategy.extract_imports(&ast);
 
-
     // Convert to old format (as fallback)
     let mut items = Vec::new();
 
@@ -154,8 +153,8 @@ pub async fn analyze_python_file_with_classifier(
         items.push(AstItem::Function {
             name: format!("function_{i}"),
             visibility: String::new(), // Python doesn't have visibility modifiers
-            is_async: false,            // Could check node flags for async
-            line: i * 10 + 20, // Offset after imports
+            is_async: false,           // Could check node flags for async
+            line: i * 10 + 20,         // Offset after imports
         });
     }
 

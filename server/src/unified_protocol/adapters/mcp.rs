@@ -17,12 +17,12 @@ pub struct McpAdapter {
 }
 
 impl McpAdapter {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self { stdin: None }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn with_stdin(stdin: Stdin) -> Self {
         Self {
             stdin: Some(AsyncBufReader::new(stdin)),
@@ -156,7 +156,7 @@ pub struct JsonRpcRequest {
 }
 
 impl JsonRpcRequest {
-    #[must_use] 
+    #[must_use]
     pub fn new(method: String, params: Option<Value>, id: Option<Value>) -> Self {
         Self {
             jsonrpc: "2.0".to_string(),
@@ -166,12 +166,12 @@ impl JsonRpcRequest {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn notification(method: String, params: Option<Value>) -> Self {
         Self::new(method, params, None)
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn request(method: String, params: Option<Value>, id: Value) -> Self {
         Self::new(method, params, Some(id))
     }
@@ -190,7 +190,7 @@ pub struct JsonRpcResponse {
 }
 
 impl JsonRpcResponse {
-    #[must_use] 
+    #[must_use]
     pub fn success(result: Value, id: Option<Value>) -> Self {
         Self {
             jsonrpc: "2.0".to_string(),
@@ -200,7 +200,7 @@ impl JsonRpcResponse {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn error(error: JsonRpcError, id: Option<Value>) -> Self {
         Self {
             jsonrpc: "2.0".to_string(),
@@ -228,7 +228,7 @@ impl JsonRpcError {
     pub const INVALID_PARAMS: i32 = -32602;
     pub const INTERNAL_ERROR: i32 = -32603;
 
-    #[must_use] 
+    #[must_use]
     pub fn parse_error() -> Self {
         Self {
             code: Self::PARSE_ERROR,
@@ -237,7 +237,7 @@ impl JsonRpcError {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn invalid_request() -> Self {
         Self {
             code: Self::INVALID_REQUEST,
@@ -246,7 +246,7 @@ impl JsonRpcError {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn method_not_found(method: &str) -> Self {
         Self {
             code: Self::METHOD_NOT_FOUND,
@@ -255,7 +255,7 @@ impl JsonRpcError {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn invalid_params(message: &str) -> Self {
         Self {
             code: Self::INVALID_PARAMS,
@@ -264,7 +264,7 @@ impl JsonRpcError {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn internal_error(message: &str) -> Self {
         Self {
             code: Self::INTERNAL_ERROR,
@@ -280,7 +280,7 @@ pub struct McpReader {
 }
 
 impl McpReader {
-    #[must_use] 
+    #[must_use]
     pub fn new(stdin: Stdin) -> Self {
         Self {
             reader: AsyncBufReader::new(stdin),

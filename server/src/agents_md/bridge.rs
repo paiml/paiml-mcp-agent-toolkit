@@ -2,7 +2,7 @@
 //!
 //! Bidirectional bridge between AGENTS.md and MCP protocols.
 
-use super::{Command, AgentsMdDocument};
+use super::{AgentsMdDocument, Command};
 use serde_json::{json, Value as JsonValue};
 
 /// MCP-AGENTS.md protocol bridge
@@ -191,7 +191,7 @@ impl Default for McpAgentsMdBridge {
 
 impl McpAgentsMdBridge {
     /// Create new bridge
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             config: BridgeConfig::default(),
@@ -200,7 +200,7 @@ impl McpAgentsMdBridge {
     }
 
     /// Create with config
-    #[must_use] 
+    #[must_use]
     pub fn with_config(config: BridgeConfig) -> Self {
         Self {
             config,
@@ -209,7 +209,7 @@ impl McpAgentsMdBridge {
     }
 
     /// Convert AGENTS.md document to MCP tools
-    #[must_use] 
+    #[must_use]
     pub fn agents_to_mcp(&self, doc: &AgentsMdDocument) -> Vec<McpTool> {
         let mut tools = Vec::new();
 
@@ -227,7 +227,7 @@ impl McpAgentsMdBridge {
     }
 
     /// Convert MCP capabilities to AGENTS.md
-    #[must_use] 
+    #[must_use]
     pub fn mcp_to_agents(&self, tools: &[McpTool]) -> String {
         let mut output = String::new();
         output.push_str("# AGENTS.md\n\n");
@@ -248,7 +248,7 @@ impl McpAgentsMdBridge {
     }
 
     /// Translate request between protocols
-    #[must_use] 
+    #[must_use]
     pub fn translate_request(&self, req: Request) -> TranslatedRequest {
         let metadata = TranslationMetadata {
             timestamp: std::time::SystemTime::now(),
@@ -271,7 +271,7 @@ impl McpAgentsMdBridge {
     }
 
     /// Unify response handling
-    #[must_use] 
+    #[must_use]
     pub fn unify_response(&self, resp: Response) -> UnifiedResponse {
         let unified = match resp {
             Response::AgentsMd(ref agents_resp) => self.agents_response_to_unified(agents_resp),
@@ -414,7 +414,7 @@ impl McpAgentsMdBridge {
     }
 
     /// Get registered tools
-    #[must_use] 
+    #[must_use]
     pub fn get_tools(&self) -> &[McpTool] {
         &self.tool_registry
     }

@@ -126,7 +126,7 @@ impl PooledBuffer {
     }
 
     /// Get the buffer data
-    #[must_use] 
+    #[must_use]
     pub fn as_slice(&self) -> &[u8] {
         &self.data
     }
@@ -137,7 +137,7 @@ impl PooledBuffer {
     }
 
     /// Get buffer capacity
-    #[must_use] 
+    #[must_use]
     pub fn capacity(&self) -> usize {
         self.data.capacity()
     }

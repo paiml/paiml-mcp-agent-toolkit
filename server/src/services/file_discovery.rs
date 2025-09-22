@@ -153,7 +153,7 @@ pub struct ProjectFileDiscovery {
 }
 
 impl ProjectFileDiscovery {
-    #[must_use] 
+    #[must_use]
     pub fn new(root: PathBuf) -> Self {
         Self {
             root,
@@ -162,13 +162,13 @@ impl ProjectFileDiscovery {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn with_config(mut self, config: FileDiscoveryConfig) -> Self {
         self.config = config;
         self
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn with_classifier(mut self, classifier: Arc<FileClassifier>) -> Self {
         self.classifier = classifier;
         self
@@ -424,10 +424,7 @@ impl ProjectFileDiscovery {
 
             if let Some(ext) = file.extension() {
                 let ext_str = ext.to_string_lossy().to_lowercase();
-                *stats
-                    .files_by_extension
-                    .entry(ext_str.clone())
-                    .or_insert(0) += 1;
+                *stats.files_by_extension.entry(ext_str.clone()).or_insert(0) += 1;
             }
 
             // Categorize by directory
@@ -453,7 +450,7 @@ impl ProjectFileDiscovery {
     }
 
     /// Categorize a file for deep context analysis
-    #[must_use] 
+    #[must_use]
     pub fn categorize_file(path: &Path) -> FileCategory {
         let file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
@@ -530,14 +527,14 @@ pub struct ExternalRepoFilter {
 }
 
 impl ExternalRepoFilter {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             patterns: EXTERNAL_REPO_PATTERNS.clone(),
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn is_external_dependency(&self, entry: &DirEntry) -> bool {
         let path_str = entry.path().to_string_lossy();
         self.patterns.is_match(&path_str)

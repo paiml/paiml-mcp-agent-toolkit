@@ -810,9 +810,7 @@ impl CommandDispatcher {
         timeout: u64,
     ) {
         println!("Starting Performance Testing Suite (SPECIFICATION.md Section 30)");
-        println!(
-            "Suite: {suite:?}, Iterations: {iterations}, Timeout: {timeout}s"
-        );
+        println!("Suite: {suite:?}, Iterations: {iterations}, Timeout: {timeout}s");
     }
 
     /// Execute the specific test suite (Toyota Way Extract Method)
@@ -1086,8 +1084,8 @@ mod tests {
     #[tokio::test]
     async fn test_execute_report_command() {
         // Toyota Way Root Cause Fix: Use temporary directory to avoid hanging on large codebase
-        use tempfile::TempDir;
         use std::fs;
+        use tempfile::TempDir;
 
         let temp_dir = TempDir::new().unwrap();
         let test_file = temp_dir.path().join("test.rs");
@@ -1132,7 +1130,6 @@ mod tests {
         // Config show command should succeed
         assert!(result.is_ok());
     }
-
 
     /// Test create_test_config (Toyota Way Extract Method test)
     #[test]

@@ -58,7 +58,7 @@ impl FileFilter {
     }
 
     /// Check if a file path should be included based on the filters
-    #[must_use] 
+    #[must_use]
     pub fn should_include(&self, path: &Path) -> bool {
         // If exclude patterns are specified and the path matches, exclude it
         if let Some(ref exclude_set) = self.exclude_set {
@@ -77,7 +77,7 @@ impl FileFilter {
     }
 
     /// Filter a list of paths based on include/exclude patterns
-    #[must_use] 
+    #[must_use]
     pub fn filter_paths(&self, paths: Vec<PathBuf>) -> Vec<PathBuf> {
         paths
             .into_iter()
@@ -86,7 +86,7 @@ impl FileFilter {
     }
 
     /// Check if any filters are active
-    #[must_use] 
+    #[must_use]
     pub fn has_filters(&self) -> bool {
         self.include_set.is_some() || self.exclude_set.is_some()
     }

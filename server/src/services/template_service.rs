@@ -410,7 +410,9 @@ async fn get_template_metadata<T: TemplateServerTrait>(
 fn extract_params_map(
     parameters: &serde_json::Value,
 ) -> Result<&Map<String, serde_json::Value>, ValidationResult> {
-    if let serde_json::Value::Object(map) = parameters { Ok(map) } else {
+    if let serde_json::Value::Object(map) = parameters {
+        Ok(map)
+    } else {
         let error = ValidationError {
             field: "parameters".to_string(),
             message: "Parameters must be an object".to_string(),

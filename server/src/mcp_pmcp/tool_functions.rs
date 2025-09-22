@@ -149,15 +149,17 @@ pub async fn git_clone(
     _depth: Option<u32>,
 ) -> Result<PathBuf> {
     // Return the path where it would be cloned
-    Ok(target_dir.map(std::path::Path::to_path_buf).unwrap_or_else(|| {
-        // Extract repo name from URL
-        let repo_name = url
-            .split('/')
-            .next_back()
-            .unwrap_or("repo")
-            .trim_end_matches(".git");
-        PathBuf::from(repo_name)
-    }))
+    Ok(target_dir
+        .map(std::path::Path::to_path_buf)
+        .unwrap_or_else(|| {
+            // Extract repo name from URL
+            let repo_name = url
+                .split('/')
+                .next_back()
+                .unwrap_or("repo")
+                .trim_end_matches(".git");
+            PathBuf::from(repo_name)
+        }))
 }
 
 pub async fn git_status(_path: &Path) -> Result<Value> {

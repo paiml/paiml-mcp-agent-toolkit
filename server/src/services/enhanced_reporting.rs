@@ -286,7 +286,8 @@ impl EnhancedReportingService {
 
         // Deduct points for various issues
         if let Some(complexity) = &results.complexity_analysis {
-            let avg_complexity = f64::from(complexity.total_cyclomatic) / complexity.functions as f64;
+            let avg_complexity =
+                f64::from(complexity.total_cyclomatic) / complexity.functions as f64;
             if avg_complexity > 10.0 {
                 score -= (avg_complexity - 10.0).min(20.0);
             }
@@ -760,7 +761,8 @@ impl EnhancedReportingService {
 
                 for (name, metric) in &section.metrics {
                     let threshold = metric
-                        .threshold.map_or_else(|| "N/A".to_string(), |t| format!("{t:.1}"));
+                        .threshold
+                        .map_or_else(|| "N/A".to_string(), |t| format!("{t:.1}"));
 
                     md.push_str(&format!(
                         "| {} | {:.1} {} | {} | {:?} |\n",

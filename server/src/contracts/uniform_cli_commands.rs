@@ -1,7 +1,10 @@
 //! Uniform CLI commands that use the contracts system
 //! These are the FUTURE commands that will replace the inconsistent ones
 
-use super::{OutputFormat, SatdSeverity, AnalyzeComplexityContract, BaseAnalysisContract, AnalyzeSatdContract, AnalyzeDeadCodeContract, AnalyzeTdgContract, AnalyzeLintHotspotContract};
+use super::{
+    AnalyzeComplexityContract, AnalyzeDeadCodeContract, AnalyzeLintHotspotContract,
+    AnalyzeSatdContract, AnalyzeTdgContract, BaseAnalysisContract, OutputFormat, SatdSeverity,
+};
 use clap::{Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
 

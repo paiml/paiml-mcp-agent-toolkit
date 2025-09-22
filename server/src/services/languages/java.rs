@@ -20,7 +20,7 @@ pub struct JavaAstVisitor {
 #[cfg(feature = "java-ast")]
 impl JavaAstVisitor {
     /// Creates a new Java AST visitor
-    #[must_use] 
+    #[must_use]
     pub fn new(file_path: &Path) -> Self {
         Self {
             items: Vec::new(),
@@ -64,7 +64,7 @@ impl JavaAstVisitor {
         for line in lines {
             let trimmed = line.trim();
             if trimmed.starts_with("package ") && trimmed.ends_with(';') {
-                let package_part = &trimmed[8..trimmed.len()-1];
+                let package_part = &trimmed[8..trimmed.len() - 1];
                 self.package_name = package_part.trim().to_string();
                 return Ok(());
             }
@@ -79,7 +79,11 @@ impl JavaAstVisitor {
             let trimmed = line.trim();
             if let Some(class_name) = self.extract_class_name_from_line(trimmed) {
                 let qualified_name = self.get_qualified_name(&class_name);
-                let visibility = if trimmed.contains("public") { "public" } else { "package" };
+                let visibility = if trimmed.contains("public") {
+                    "public"
+                } else {
+                    "package"
+                };
                 let fields_count = self.count_class_members(source, &class_name);
 
                 self.items.push(AstItem::Struct {
@@ -125,9 +129,13 @@ impl JavaAstVisitor {
                 }
 
                 // Count method declarations (but not constructor calls)
-                if trimmed.contains('(') && trimmed.contains(')') &&
-                   (trimmed.contains("public") || trimmed.contains("private") || trimmed.contains("protected")) &&
-                   !trimmed.contains("class") {
+                if trimmed.contains('(')
+                    && trimmed.contains(')')
+                    && (trimmed.contains("public")
+                        || trimmed.contains("private")
+                        || trimmed.contains("protected"))
+                    && !trimmed.contains("class")
+                {
                     count += 1;
                 }
             }
@@ -176,7 +184,9 @@ impl JavaAstVisitor {
             for (i, part) in parts.iter().enumerate() {
                 if part.contains('(') && i > 0 {
                     let method_name = part.split('(').next()?;
-                    if !method_name.is_empty() && method_name.chars().all(|c| c.is_alphanumeric() || c == '_') {
+                    if !method_name.is_empty()
+                        && method_name.chars().all(|c| c.is_alphanumeric() || c == '_')
+                    {
                         return Some(method_name.to_string());
                     }
                 }
@@ -205,7 +215,11 @@ impl JavaAstVisitor {
             let trimmed = line.trim();
             if let Some(interface_name) = self.extract_interface_name_from_line(trimmed) {
                 let qualified_name = self.get_qualified_name(&interface_name);
-                let visibility = if trimmed.contains("public") { "public" } else { "package" };
+                let visibility = if trimmed.contains("public") {
+                    "public"
+                } else {
+                    "package"
+                };
 
                 self.items.push(AstItem::Trait {
                     name: qualified_name,
@@ -257,7 +271,7 @@ impl Default for JavaComplexityAnalyzer {
 
 impl JavaComplexityAnalyzer {
     /// Creates a new Java complexity analyzer
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             cyclomatic_complexity: 0,
@@ -362,18 +376,27 @@ public class Circle implements Shape {
     #[test]
     fn test_simple_java_class_analysis() {
         let visitor = JavaAstVisitor::new(Path::new("HelloWorld.java"));
-        let items = visitor.analyze_java_source(SIMPLE_JAVA_CLASS).expect("Should parse Java class");
+        let items = visitor
+            .analyze_java_source(SIMPLE_JAVA_CLASS)
+            .expect("Should parse Java class");
 
         assert!(!items.is_empty(), "Should extract at least one AST item");
 
-        let class_items: Vec<_> = items.iter()
+        let class_items: Vec<_> = items
+            .iter()
             .filter(|item| matches!(item, AstItem::Struct { .. }))
             .collect();
 
         assert_eq!(class_items.len(), 1, "Should extract exactly one class");
 
-        if let AstItem::Struct { name, visibility, .. } = &class_items[0] {
-            assert_eq!(name, "com.example::HelloWorld", "Should have qualified class name");
+        if let AstItem::Struct {
+            name, visibility, ..
+        } = &class_items[0]
+        {
+            assert_eq!(
+                name, "com.example::HelloWorld",
+                "Should have qualified class name"
+            );
             assert_eq!(visibility, "public", "Java classes have public visibility");
         } else {
             panic!("Expected class item");
@@ -383,22 +406,35 @@ public class Circle implements Shape {
     #[test]
     fn test_java_class_with_methods_analysis() {
         let visitor = JavaAstVisitor::new(Path::new("Calculator.java"));
-        let items = visitor.analyze_java_source(JAVA_CLASS_WITH_METHODS).expect("Should parse Java class");
+        let items = visitor
+            .analyze_java_source(JAVA_CLASS_WITH_METHODS)
+            .expect("Should parse Java class");
 
         assert!(items.len() >= 4, "Should extract class and methods");
 
-        let class_items: Vec<_> = items.iter()
+        let class_items: Vec<_> = items
+            .iter()
             .filter(|item| matches!(item, AstItem::Struct { .. }))
             .collect();
 
         assert_eq!(class_items.len(), 1, "Should extract exactly one class");
 
-        if let AstItem::Struct { name, fields_count, .. } = &class_items[0] {
-            assert_eq!(name, "com.example.calculator::Calculator", "Should have qualified class name");
-            assert_eq!(*fields_count, 3, "Should count methods as fields for Java classes");
+        if let AstItem::Struct {
+            name, fields_count, ..
+        } = &class_items[0]
+        {
+            assert_eq!(
+                name, "com.example.calculator::Calculator",
+                "Should have qualified class name"
+            );
+            assert_eq!(
+                *fields_count, 3,
+                "Should count methods as fields for Java classes"
+            );
         }
 
-        let method_items: Vec<_> = items.iter()
+        let method_items: Vec<_> = items
+            .iter()
             .filter(|item| matches!(item, AstItem::Function { .. }))
             .collect();
 
@@ -408,35 +444,57 @@ public class Circle implements Shape {
     #[test]
     fn test_java_interface_analysis() {
         let visitor = JavaAstVisitor::new(Path::new("Shape.java"));
-        let items = visitor.analyze_java_source(JAVA_INTERFACE_DEFINITION).expect("Should parse Java interface");
+        let items = visitor
+            .analyze_java_source(JAVA_INTERFACE_DEFINITION)
+            .expect("Should parse Java interface");
 
-        let interface_items: Vec<_> = items.iter()
+        let interface_items: Vec<_> = items
+            .iter()
             .filter(|item| matches!(item, AstItem::Trait { .. }))
             .collect();
 
-        assert_eq!(interface_items.len(), 1, "Should extract exactly one interface");
+        assert_eq!(
+            interface_items.len(),
+            1,
+            "Should extract exactly one interface"
+        );
 
         if let AstItem::Trait { name, .. } = &interface_items[0] {
-            assert_eq!(name, "com.example.shapes::Shape", "Should have qualified interface name");
+            assert_eq!(
+                name, "com.example.shapes::Shape",
+                "Should have qualified interface name"
+            );
         }
     }
 
     #[test]
     fn test_java_complexity_analysis() {
         let mut analyzer = JavaComplexityAnalyzer::new();
-        let (cyclomatic, cognitive) = analyzer.analyze_complexity(SIMPLE_JAVA_CLASS)
+        let (cyclomatic, cognitive) = analyzer
+            .analyze_complexity(SIMPLE_JAVA_CLASS)
             .expect("Should analyze Java complexity");
 
-        assert!(cyclomatic >= 1, "Should have at least cyclomatic complexity of 1");
-        assert!(cognitive >= 1, "Should have at least cognitive complexity of 1");
-        assert!(cyclomatic <= 10, "Should maintain complexity ≤10 for simple class");
+        assert!(
+            cyclomatic >= 1,
+            "Should have at least cyclomatic complexity of 1"
+        );
+        assert!(
+            cognitive >= 1,
+            "Should have at least cognitive complexity of 1"
+        );
+        assert!(
+            cyclomatic <= 10,
+            "Should maintain complexity ≤10 for simple class"
+        );
         assert!(cognitive <= 10, "Should maintain cognitive complexity ≤10");
     }
 
     #[test]
     fn test_java_package_name_extraction() {
         let visitor = JavaAstVisitor::new(Path::new("test.java"));
-        let items = visitor.analyze_java_source(SIMPLE_JAVA_CLASS).expect("Should parse Java source");
+        let items = visitor
+            .analyze_java_source(SIMPLE_JAVA_CLASS)
+            .expect("Should parse Java source");
 
         // Check that package name is included in qualified names
         let has_example_package = items.iter().any(|item| match item {
@@ -444,13 +502,18 @@ public class Circle implements Shape {
             _ => false,
         });
 
-        assert!(has_example_package, "Should include package name in qualified names");
+        assert!(
+            has_example_package,
+            "Should include package name in qualified names"
+        );
     }
 
     #[test]
     fn test_empty_java_source() {
         let visitor = JavaAstVisitor::new(Path::new("empty.java"));
-        let items = visitor.analyze_java_source("").expect("Should handle empty source");
+        let items = visitor
+            .analyze_java_source("")
+            .expect("Should handle empty source");
 
         assert!(items.is_empty(), "Empty source should produce no AST items");
     }
@@ -460,7 +523,10 @@ public class Circle implements Shape {
         let visitor = JavaAstVisitor::new(Path::new("invalid.java"));
         let result = visitor.analyze_java_source("invalid java syntax {{{ !!!");
 
-        assert!(result.is_err(), "Should return error for invalid Java syntax");
+        assert!(
+            result.is_err(),
+            "Should return error for invalid Java syntax"
+        );
     }
 }
 

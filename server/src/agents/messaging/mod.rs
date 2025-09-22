@@ -1,21 +1,21 @@
 // Zero-copy message passing protocol
-pub mod message_format;
-pub mod request_response;
-pub mod pubsub;
-pub mod circuit_breaker;
 pub mod backpressure;
+pub mod circuit_breaker;
+pub mod message_format;
+pub mod pubsub;
+pub mod request_response;
 
 use actix::prelude::*;
 use bytes::Bytes;
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use uuid::Uuid;
 
 #[derive(Debug, Clone, Message)]
 #[rtype(result = "Result<crate::agents::AgentResponse, crate::agents::AgentError>")]
 pub struct AgentMessage {
     pub header: MessageHeader,
-    pub payload: Bytes,  // Zero-copy payload
+    pub payload: Bytes, // Zero-copy payload
 }
 
 // Custom Serialize/Deserialize for AgentMessage due to Bytes
@@ -86,7 +86,7 @@ pub struct MessageHeader {
     pub id: Uuid,
     pub from: Uuid,
     pub to: Uuid,
-    pub timestamp: u64,  // Unix timestamp in nanos
+    pub timestamp: u64, // Unix timestamp in nanos
     pub correlation_id: Option<Uuid>,
     pub priority: Priority,
     pub ttl_ms: u32,
@@ -115,7 +115,7 @@ impl AgentMessage {
                     .as_nanos() as u64,
                 correlation_id: None,
                 priority: Priority::Normal,
-                ttl_ms: 5000,  // 5 second default TTL
+                ttl_ms: 5000, // 5 second default TTL
             },
             payload: Bytes::from(payload_bytes),
         })
@@ -176,7 +176,8 @@ impl MessageRouter {
         }
 
         // Add to priority queue
-        self.priority_queue.push((message.header.priority, message.clone()));
+        self.priority_queue
+            .push((message.header.priority, message.clone()));
 
         // Process queue by priority
         self.process_queue()

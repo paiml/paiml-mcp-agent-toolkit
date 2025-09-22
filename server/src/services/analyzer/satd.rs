@@ -16,14 +16,14 @@ pub struct SATDAnalyzer {
 }
 
 impl SATDAnalyzer {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             inner: SATDDetector::new(),
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn new_with_strict_mode(strict: bool) -> Self {
         if strict {
             Self {
@@ -113,17 +113,17 @@ impl AnalyzerInfo for SATDAnalyzer {
 pub struct SATDAnalyzerFactory;
 
 impl SATDAnalyzerFactory {
-    #[must_use] 
+    #[must_use]
     pub fn create() -> SATDAnalyzer {
         SATDAnalyzer::new()
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn create_strict() -> SATDAnalyzer {
         SATDAnalyzer::new_with_strict_mode(true)
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn create_critical_only() -> SATDAnalyzer {
         // Create analyzer with strict mode for critical issues
         SATDAnalyzer::new_with_strict_mode(true)
@@ -200,8 +200,11 @@ mod tests {
             assert!(result.files_with_debt > 0);
 
             // If we found debt, verify it contains expected patterns
-            let debt_texts: Vec<&str> = result.items.iter().map(|item| item.text.as_str()).collect();
-            assert!(debt_texts.iter().any(|text| text.contains("TODO") || text.contains("FIXME") || text.contains("HACK")));
+            let debt_texts: Vec<&str> =
+                result.items.iter().map(|item| item.text.as_str()).collect();
+            assert!(debt_texts.iter().any(|text| text.contains("TODO")
+                || text.contains("FIXME")
+                || text.contains("HACK")));
         }
     }
 

@@ -56,7 +56,7 @@ pub struct Token {
 }
 
 impl Token {
-    #[must_use] 
+    #[must_use]
     pub fn new(kind: TokenKind) -> Self {
         let text = match &kind {
             TokenKind::Identifier(s) => s.clone(),
@@ -70,7 +70,7 @@ impl Token {
         Self { kind, text }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn hash(&self) -> u64 {
         xxh64(self.text.as_bytes(), 0)
     }
@@ -83,7 +83,7 @@ pub struct MinHashSignature {
 }
 
 impl MinHashSignature {
-    #[must_use] 
+    #[must_use]
     pub fn jaccard_similarity(&self, other: &MinHashSignature) -> f64 {
         let matches = self
             .values
@@ -207,7 +207,7 @@ pub struct UniversalFeatureExtractor {
 }
 
 impl UniversalFeatureExtractor {
-    #[must_use] 
+    #[must_use]
     pub fn new(config: DuplicateDetectionConfig) -> Self {
         Self {
             config,
@@ -750,7 +750,7 @@ pub struct MinHashGenerator {
 }
 
 impl MinHashGenerator {
-    #[must_use] 
+    #[must_use]
     pub fn new(num_hashes: usize) -> Self {
         let seeds = (0..num_hashes).map(|i| i as u64).collect();
 
@@ -758,7 +758,7 @@ impl MinHashGenerator {
     }
 
     /// Compute `MinHash` signature from shingles
-    #[must_use] 
+    #[must_use]
     pub fn compute_signature(&self, shingles: &[u64]) -> MinHashSignature {
         let mut signature = vec![u64::MAX; self.num_hashes];
 
@@ -773,7 +773,7 @@ impl MinHashGenerator {
     }
 
     /// Generate k-shingles from tokens
-    #[must_use] 
+    #[must_use]
     pub fn generate_shingles(&self, tokens: &[Token], k: usize) -> Vec<u64> {
         if tokens.len() < k {
             return vec![];
@@ -807,7 +807,7 @@ pub struct DuplicateDetectionEngine {
 }
 
 impl DuplicateDetectionEngine {
-    #[must_use] 
+    #[must_use]
     pub fn new(config: DuplicateDetectionConfig) -> Self {
         let minhash_generator = MinHashGenerator::new(config.num_hash_functions);
         let feature_extractor = UniversalFeatureExtractor::new(config.clone());

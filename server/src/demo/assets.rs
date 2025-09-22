@@ -107,7 +107,7 @@ pub fn get_asset(_path: &str) -> Option<&'static EmbeddedAsset> {
 }
 
 /// Decompress an asset if needed
-#[must_use] 
+#[must_use]
 pub fn decompress_asset(asset: &EmbeddedAsset) -> std::borrow::Cow<'static, [u8]> {
     match asset.encoding {
         AssetEncoding::Identity => std::borrow::Cow::Borrowed(asset.content),
@@ -126,7 +126,7 @@ pub fn decompress_asset(asset: &EmbeddedAsset) -> std::borrow::Cow<'static, [u8]
 }
 
 /// Get asset hash for cache busting
-#[must_use] 
+#[must_use]
 pub fn get_asset_hash() -> &'static str {
     option_env!("ASSET_HASH").unwrap_or("development")
 }

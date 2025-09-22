@@ -25,7 +25,7 @@ impl Default for DeterministicMermaidEngine {
 }
 
 impl DeterministicMermaidEngine {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             pagerank_iterations: 100,
@@ -34,7 +34,7 @@ impl DeterministicMermaidEngine {
     }
 
     /// Generate deterministic codebase modules Mermaid diagram
-    #[must_use] 
+    #[must_use]
     pub fn generate_codebase_modules_mmd(
         &self,
         graph: &StableGraph<ModuleNode, EdgeType>,
@@ -96,7 +96,7 @@ impl DeterministicMermaidEngine {
     }
 
     /// Generate service interaction diagram with complexity-based styling
-    #[must_use] 
+    #[must_use]
     pub fn generate_service_interactions_mmd(
         &self,
         graph: &StableGraph<ModuleNode, EdgeType>,
@@ -302,7 +302,7 @@ impl DeterministicMermaidEngine {
     }
 
     /// Sanitize ID for Mermaid compatibility
-    #[must_use] 
+    #[must_use]
     pub fn sanitize_id(&self, id: &str) -> String {
         // Replace common multi-character patterns
         let sanitized = id.replace("::", "_").replace(['/', '.', '-', ' '], "_");
@@ -330,7 +330,7 @@ impl DeterministicMermaidEngine {
     }
 
     /// Escape label for Mermaid compatibility
-    #[must_use] 
+    #[must_use]
     pub fn escape_mermaid_label(&self, label: &str) -> String {
         // For maximum compatibility, use simple character replacements
         label

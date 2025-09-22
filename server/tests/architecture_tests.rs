@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod architecture_tests {
     use std::collections::{HashMap, HashSet};
-    use std::path::{Path, PathBuf};
     use std::fs;
+    use std::path::{Path, PathBuf};
 
     #[test]
     fn test_no_circular_dependencies() {
@@ -31,10 +31,22 @@ mod architecture_tests {
     fn test_layer_access_restrictions() {
         // Define architectural layers
         let layers = vec![
-            Layer { name: "agents", level: 0 },
-            Layer { name: "modules", level: 1 },
-            Layer { name: "quality", level: 2 },
-            Layer { name: "services", level: 3 },
+            Layer {
+                name: "agents",
+                level: 0,
+            },
+            Layer {
+                name: "modules",
+                level: 1,
+            },
+            Layer {
+                name: "quality",
+                level: 2,
+            },
+            Layer {
+                name: "services",
+                level: 3,
+            },
         ];
 
         let violations = check_layer_violations(&layers);
@@ -50,10 +62,7 @@ mod architecture_tests {
     fn test_dependency_graph_acyclic() {
         let graph = build_dependency_graph();
 
-        assert!(
-            is_dag(&graph),
-            "Dependency graph is not acyclic (DAG)"
-        );
+        assert!(is_dag(&graph), "Dependency graph is not acyclic (DAG)");
     }
 
     #[test]
@@ -66,7 +75,8 @@ mod architecture_tests {
                 assert!(
                     is_public_interface(dep),
                     "Module {} depends on private implementation of {}",
-                    module, dep
+                    module,
+                    dep
                 );
             }
         }
@@ -147,7 +157,10 @@ mod architecture_tests {
     }
 
     fn extract_dependency(line: &str) -> Option<String> {
-        let line = line.trim_start().strip_prefix("use ")?.trim_end_matches(';');
+        let line = line
+            .trim_start()
+            .strip_prefix("use ")?
+            .trim_end_matches(';');
 
         // Handle various import patterns
         if let Some(idx) = line.find("::") {
@@ -215,7 +228,8 @@ mod architecture_tests {
             if let Ok(content) = fs::read_to_string(module_path) {
                 // Check for public struct fields (should be private)
                 if content.contains("pub struct") && !content.contains("pub trait") {
-                    let has_private_fields = content.lines()
+                    let has_private_fields = content
+                        .lines()
                         .any(|line| line.trim().starts_with("pub ") && line.contains(':'));
 
                     if has_private_fields {
@@ -354,9 +368,9 @@ mod architecture_tests {
 #[test]
 fn test_quality_gates_integration() {
     use pmat::quality::gate::{QualityGateRunner, QualityThresholds};
+    use std::fs;
     use std::path::Path;
     use tempfile::TempDir;
-    use std::fs;
 
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("test.rs");
