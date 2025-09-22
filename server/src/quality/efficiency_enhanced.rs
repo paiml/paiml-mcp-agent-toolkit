@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fmt::{Display, Formatter};
 use syn::{self, visit::Visit, Expr, Stmt};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -13,19 +14,22 @@ pub enum Complexity {
     OFactorial, // O(n!) - Factorial
 }
 
-impl Complexity {
-    pub fn to_string(&self) -> String {
+impl Display for Complexity {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Complexity::O1 => "O(1)".to_string(),
-            Complexity::OLogN => "O(log n)".to_string(),
-            Complexity::ON => "O(n)".to_string(),
-            Complexity::ONLogN => "O(n log n)".to_string(),
-            Complexity::ON2 => "O(n^2)".to_string(),
-            Complexity::ON3 => "O(n^3)".to_string(),
-            Complexity::OExp => "O(2^n)".to_string(),
-            Complexity::OFactorial => "O(n!)".to_string(),
+            Complexity::O1 => write!(f, "O(1)"),
+            Complexity::OLogN => write!(f, "O(log n)"),
+            Complexity::ON => write!(f, "O(n)"),
+            Complexity::ONLogN => write!(f, "O(n log n)"),
+            Complexity::ON2 => write!(f, "O(n^2)"),
+            Complexity::ON3 => write!(f, "O(n^3)"),
+            Complexity::OExp => write!(f, "O(2^n)"),
+            Complexity::OFactorial => write!(f, "O(n!)"),
         }
     }
+}
+
+impl Complexity {
 
     pub fn combine(&self, other: &Complexity) -> Complexity {
         // When combining complexities (e.g., nested loops), multiply
@@ -55,6 +59,12 @@ pub struct SymbolicExecutor {
     recursive_depth: usize,
     function_complexities: HashMap<String, Complexity>,
     current_path_complexity: Complexity,
+}
+
+impl Default for SymbolicExecutor {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl SymbolicExecutor {
@@ -181,8 +191,8 @@ impl SymbolicExecutor {
 
     fn is_dynamic_programming(&self, func: &syn::ItemFn) -> bool {
         // Check for memoization patterns
-        let mut has_cache = false;
-        let mut has_recursion = false;
+        let has_cache = false;
+        let mut _has_recursion = false;
 
         for stmt in &func.block.stmts {
             if let Stmt::Local(local) = stmt {
@@ -272,7 +282,7 @@ impl<'ast> Visit<'ast> for RecursionDetector {
     fn visit_expr_call(&mut self, node: &'ast syn::ExprCall) {
         if let Expr::Path(path) = &*node.func {
             if let Some(ident) = path.path.get_ident() {
-                if ident.to_string() == self.function_name {
+                if *ident == self.function_name {
                     self.is_recursive = true;
                 }
             }
@@ -300,15 +310,22 @@ pub struct SpaceComplexityAnalyzer {
 #[derive(Debug, Clone)]
 struct Allocation {
     size: AllocationSize,
-    location: String,
+    _location: String,
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 enum AllocationSize {
     Constant(usize),
     Linear,
     Quadratic,
     Dynamic,
+}
+
+impl Default for SpaceComplexityAnalyzer {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl SpaceComplexityAnalyzer {
@@ -350,7 +367,7 @@ impl<'ast> Visit<'ast> for SpaceComplexityAnalyzer {
             // TODO: Implement proper allocation detection without quote macro
             self.allocations.push(Allocation {
                 size: AllocationSize::Dynamic,
-                location: "local".to_string(),
+                _location: "local".to_string(),
             });
         }
 

@@ -18,6 +18,12 @@ pub struct DependencyGraphBuilder {
     processed_hashes: FxHashMap<PathBuf, u64>,
 }
 
+impl Default for DependencyGraphBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DependencyGraphBuilder {
     /// Create new builder
     /// Complexity: 1
@@ -89,12 +95,9 @@ impl DependencyGraphBuilder {
     /// Check if file is a source file we can analyze
     /// Complexity: 3
     fn is_source_file(path: &Path) -> bool {
-        match path.extension().and_then(|s| s.to_str()) {
-            Some("rs") | Some("py") | Some("js") | Some("jsx") | Some("ts") | Some("tsx")
+        matches!(path.extension().and_then(|s| s.to_str()), Some("rs") | Some("py") | Some("js") | Some("jsx") | Some("ts") | Some("tsx")
             | Some("go") | Some("java") | Some("c") | Some("cpp") | Some("cc") | Some("h")
-            | Some("hpp") => true,
-            _ => false,
-        }
+            | Some("hpp"))
     }
 
     /// Build symbol table for a file
@@ -388,15 +391,13 @@ impl DependencyGraphBuilder {
     /// Complexity: 2 each
     fn extract_function_name(line: &str) -> Option<&str> {
         line.split_whitespace()
-            .skip_while(|&w| w == "pub" || w == "fn")
-            .next()
+            .find(|&w| w != "pub" && w != "fn")
             .and_then(|s| s.split('(').next())
     }
 
     fn extract_type_name<'a>(line: &'a str, keyword: &str) -> Option<&'a str> {
         line.split_whitespace()
-            .skip_while(|&w| w == "pub" || w == keyword)
-            .next()
+            .find(|&w| w != "pub" && w != keyword)
             .and_then(|s| s.split('{').next())
             .and_then(|s| s.split('<').next())
     }
@@ -416,8 +417,7 @@ impl DependencyGraphBuilder {
 
     fn extract_ts_name(line: &str) -> Option<&str> {
         line.split_whitespace()
-            .skip_while(|&w| w == "export" || w == "const" || w == "function")
-            .next()
+            .find(|&w| w != "export" && w != "const" && w != "function")
             .and_then(|s| s.split('(').next())
             .and_then(|s| s.split('=').next())
             .map(|s| s.trim())
@@ -425,8 +425,7 @@ impl DependencyGraphBuilder {
 
     fn extract_ts_class_name(line: &str) -> Option<&str> {
         line.split_whitespace()
-            .skip_while(|&w| w == "export" || w == "class")
-            .next()
+            .find(|&w| w != "export" && w != "class")
             .and_then(|s| s.split('{').next())
             .map(|s| s.trim())
     }

@@ -1,7 +1,5 @@
 use super::*;
-use pest::Parser;
 use pest_derive::Parser;
-use std::str::FromStr;
 
 // Workflow DSL parser
 #[derive(Parser)]

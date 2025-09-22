@@ -4,12 +4,12 @@ use std::sync::Arc;
 
 // Agent state resource
 pub struct AgentStateResource {
-    registry: Arc<AgentRegistry>,
+    _registry: Arc<AgentRegistry>,
 }
 
 impl AgentStateResource {
     pub fn new(registry: Arc<AgentRegistry>) -> Self {
-        Self { registry }
+        Self { _registry: registry }
     }
 }
 
@@ -41,12 +41,12 @@ impl McpResource for AgentStateResource {
 
 // Metrics resource
 pub struct MetricsResource {
-    registry: Arc<AgentRegistry>,
+    _registry: Arc<AgentRegistry>,
 }
 
 impl MetricsResource {
     pub fn new(registry: Arc<AgentRegistry>) -> Self {
-        Self { registry }
+        Self { _registry: registry }
     }
 }
 
@@ -78,6 +78,12 @@ impl McpResource for MetricsResource {
 
 // Quality report resource
 pub struct QualityReportResource;
+
+impl Default for QualityReportResource {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl QualityReportResource {
     pub fn new() -> Self {

@@ -1,5 +1,5 @@
 use super::analyzer_actor::AnalyzerActor;
-use super::messages::{AnalyzeMessage, TransformMessage, ValidateMessage};
+use super::messages::{AnalyzeMessage, ValidateMessage};
 use super::transformer_actor::TransformerActor;
 use super::validator_actor::ValidatorActor;
 use super::{AgentError, AgentResponse};
@@ -7,7 +7,7 @@ use actix::prelude::*;
 
 pub struct QualityGateSupervisor {
     analyzer: Addr<AnalyzerActor>,
-    transformer: Addr<TransformerActor>,
+    _transformer: Addr<TransformerActor>,
     validator: Addr<ValidatorActor>,
 }
 
@@ -19,7 +19,7 @@ impl QualityGateSupervisor {
     ) -> Self {
         Self {
             analyzer,
-            transformer,
+            _transformer: transformer,
             validator,
         }
     }

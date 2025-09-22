@@ -73,7 +73,7 @@ impl RateLimiter {
 
 // Adaptive backpressure controller
 pub struct BackpressureController {
-    max_queue_size: usize,
+    _max_queue_size: usize,
     current_queue_size: AtomicU64,
     semaphore: Arc<Semaphore>,
     metrics: Arc<parking_lot::RwLock<BackpressureMetrics>>,
@@ -91,14 +91,14 @@ pub struct BackpressureMetrics {
 impl BackpressureController {
     pub fn new(max_queue_size: usize) -> Self {
         Self {
-            max_queue_size,
+            _max_queue_size: max_queue_size,
             current_queue_size: AtomicU64::new(0),
             semaphore: Arc::new(Semaphore::new(max_queue_size)),
             metrics: Arc::new(parking_lot::RwLock::new(BackpressureMetrics::default())),
         }
     }
 
-    pub async fn acquire_permit(&self) -> Result<BackpressurePermit, BackpressureError> {
+    pub async fn acquire_permit(&self) -> Result<BackpressurePermit<'_>, BackpressureError> {
         let permit = self
             .semaphore
             .clone()
@@ -120,7 +120,7 @@ impl BackpressureController {
         })
     }
 
-    pub fn try_acquire_permit(&self) -> Result<BackpressurePermit, BackpressureError> {
+    pub fn try_acquire_permit(&self) -> Result<BackpressurePermit<'_>, BackpressureError> {
         let permit = self.semaphore.clone().try_acquire_owned().map_err(|_| {
             self.metrics.write().rejected_count += 1;
             BackpressureError::QueueFull
@@ -184,7 +184,7 @@ pub enum BackpressureError {
 
 // Adaptive rate controller that adjusts based on system load
 pub struct AdaptiveRateController {
-    base_rate: u32,
+    _base_rate: u32,
     current_rate: AtomicU32,
     min_rate: u32,
     max_rate: u32,
@@ -232,7 +232,7 @@ impl AdaptiveRateController {
         let rate_limiter = RateLimiter::new(base_rate * 10, base_rate);
 
         Self {
-            base_rate,
+            _base_rate: base_rate,
             current_rate: AtomicU32::new(base_rate),
             min_rate,
             max_rate,
@@ -268,7 +268,15 @@ impl AdaptiveRateController {
     }
 
     pub async fn acquire(&self) {
-        self.rate_limiter.read().acquire(1).await
+        loop {
+            {
+                let guard = self.rate_limiter.read();
+                if guard.try_acquire(1) {
+                    return;
+                }
+            }
+            tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+        }
     }
 
     pub fn get_current_rate(&self) -> u32 {
@@ -369,8 +377,8 @@ mod tests {
 
         // Acquire permits
         let permit1 = controller.try_acquire_permit().unwrap();
-        let permit2 = controller.try_acquire_permit().unwrap();
-        let permit3 = controller.try_acquire_permit().unwrap();
+        let _permit2 = controller.try_acquire_permit().unwrap();
+        let _permit3 = controller.try_acquire_permit().unwrap();
 
         // Should be full
         assert!(matches!(

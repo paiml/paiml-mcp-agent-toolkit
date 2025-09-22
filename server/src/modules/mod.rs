@@ -40,6 +40,12 @@ pub struct ModuleRegistry {
     modules: dashmap::DashMap<String, Arc<dyn std::any::Any + Send + Sync>>,
 }
 
+impl Default for ModuleRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ModuleRegistry {
     pub fn new() -> Self {
         Self {

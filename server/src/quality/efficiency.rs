@@ -1,15 +1,21 @@
 use syn::{self, visit::Visit};
 
 pub struct EfficiencyAnalyzer {
-    max_loop_depth: u32,
-    recursive_calls: u32,
+    _max_loop_depth: u32,
+    _recursive_calls: u32,
+}
+
+impl Default for EfficiencyAnalyzer {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl EfficiencyAnalyzer {
     pub fn new() -> Self {
         Self {
-            max_loop_depth: 0,
-            recursive_calls: 0,
+            _max_loop_depth: 0,
+            _recursive_calls: 0,
         }
     }
 
@@ -100,7 +106,7 @@ impl<'ast> Visit<'ast> for EfficiencyVisitor {
 
     fn visit_expr_call(&mut self, node: &'ast syn::ExprCall) {
         // Simple recursion detection (would need more sophisticated analysis in production)
-        if let syn::Expr::Path(path) = &*node.func {
+        if let syn::Expr::Path(_path) = &*node.func {
             // Check if it's potentially a recursive call
             // This is simplified - real implementation would track function names
             self.has_recursion = self.current_loop_depth == 0;
@@ -142,7 +148,7 @@ impl<'ast> Visit<'ast> for SpaceComplexityVisitor {
 
     fn visit_local(&mut self, node: &'ast syn::Local) {
         // Check for vector/array declarations
-        if let syn::Pat::Type(pat_type) = &node.pat {
+        if let syn::Pat::Type(_pat_type) = &node.pat {
             // Simplified check for dynamic allocations
             self.allocations += 1;
         }

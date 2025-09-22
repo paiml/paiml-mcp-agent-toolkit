@@ -2,6 +2,12 @@ use std::collections::HashMap;
 
 pub struct EntropyCalculator;
 
+impl Default for EntropyCalculator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl EntropyCalculator {
     pub fn new() -> Self {
         Self

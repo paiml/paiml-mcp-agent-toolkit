@@ -341,7 +341,7 @@ mod tests {
         assert!(result.is_ok());
 
         // Verify data is reset
-        let system_data = telemetry().get_system_telemetry().await.unwrap();
+        let _system_data = telemetry().get_system_telemetry().await.unwrap();
         // Note: Assertion disabled due to test flakiness in parallel test environment
         // assert_eq!(system_data.system_metrics.total_operations, 0);
     }
