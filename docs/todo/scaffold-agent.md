@@ -1003,7 +1003,7 @@ exclude_patterns = ["tests/*", "benches/*", "examples/*"]
 #[cfg(test)]
 mod coverage_tests {
     use super::*;
-    use cargo_tarpaulin::config::Config;
+    use cargo_llvm_cov::Config;
     
     #[test]
     fn verify_coverage_thresholds() {

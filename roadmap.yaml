@@ -752,7 +752,7 @@ validation:
     - cargo test --all-features
     - cargo clippy -- -D warnings
     - cargo fmt -- --check
-    - cargo tarpaulin --out Xml --output-dir coverage
+    - cargo llvm-cov --lcov --output-path coverage/lcov.info
     - cargo mutants --minimum-score 0.90
 
   quality_gates:
