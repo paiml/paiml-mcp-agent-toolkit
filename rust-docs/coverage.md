@@ -188,7 +188,7 @@ mod tests {
 
 ## Coverage Tools
 
-### Tarpaulin Configuration
+### LLVM Coverage Configuration
 ```toml
 [default]
 exclude-files = ["*/tests/*", "*/benches/*"]

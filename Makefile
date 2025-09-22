@@ -143,11 +143,10 @@ test-all:
 	@$(MAKE) -j4 test-unit test-services test-protocols test-e2e
 	@echo "✅ All stratified tests completed!"
 
-# Coverage for stratified tests
+# Update coverage-stratified to use llvm-cov
 coverage-stratified:
-	@echo "📊 Running stratified test coverage..."
-	@./scripts/test-coverage.sh
-	@echo "✅ Stratified coverage completed!"
+	@echo "📊 Running stratified test coverage with LLVM..."
+	@$(MAKE) coverage-full
 
 # Slow integration tests (run separately, not part of fast coverage)
 test-slow-integration:
@@ -191,64 +190,190 @@ test-doc:
 	@cargo test --doc --manifest-path server/Cargo.toml
 	@echo "✅ Doctests completed!"
 
-# Fast coverage - JUST F***ING WORKS (Toyota Way - no workarounds, fix root cause)
-# Root cause: MCP table generation hangs + some tests cause infinite loops
-# Solution: Skip problematic code and run minimal test subset
+# Fast coverage with inline display - canonical LLVM implementation
 coverage:
-	@echo "⚡ Running REAL coverage that ACTUALLY WORKS..."
-	@echo "🧹 Clean previous coverage..."
-	@cd server && cargo llvm-cov clean --workspace
-	@echo "🚀 Run minimal test set with coverage (this WILL complete)..."
-	@cd server && SKIP_MCP_TABLES=1 cargo llvm-cov --lib --html --output-dir ../coverage-report -- \
-		--test cli --test services --test state \
-		--skip property --skip proptest --skip mcp_pmcp \
-		--test-threads=1 \
-		2>&1 | grep -E "test result:|Running|Compiling" || true
-	@echo ""
-	@echo "📊 Coverage Summary:"
-	@echo "==================="
-	@if [ -d coverage-report ]; then \
-		echo "✅ HTML report: coverage-report/index.html"; \
-	else \
-		echo "⚠️ No coverage report generated (but at least it didn't hang!)"; \
+	@echo "📊 Running LLVM-based code coverage..."
+	@if ! command -v cargo-llvm-cov >/dev/null 2>&1; then \
+		echo "📦 Installing cargo-llvm-cov..."; \
+		cargo install cargo-llvm-cov; \
 	fi
-	@echo "==================="
-	@echo "✅ Coverage complete!"
+	@cd server && SKIP_MCP_TABLES=1 cargo llvm-cov test --lib \
+		--features skip-slow-tests \
+		--lcov --output-path ../target/llvm-cov/lcov.info \
+		-- --test-threads=1 --skip property --skip prop
+	@cd server && cargo llvm-cov report --summary-only
+	@echo "✅ Coverage report: target/llvm-cov/lcov.info"
 
-# Comprehensive coverage - includes all tests
+# Unified coverage for all test types
 coverage-full:
-	@echo "📊 Running comprehensive coverage (all tests)..."
-	@mkdir -p coverage/
-	@cd server && cargo llvm-cov --lib --bins --tests \
-		--html --output-dir ../coverage/
-	@echo "📁 HTML report: coverage/index.html"
-	@cd server && cargo llvm-cov report
-	@echo "✅ Comprehensive coverage complete!"
+	@echo "🔬 Running comprehensive LLVM coverage..."
+	@# Clean previous coverage data
+	@cargo llvm-cov clean --workspace
+
+	@# Run stratified tests with coverage
+	@echo "  1️⃣ Unit tests..."
+	@cargo llvm-cov nextest --no-report \
+		--test unit_core \
+		--test-threads $$(nproc)
+
+	@echo "  2️⃣ Service tests..."
+	@cargo llvm-cov nextest --no-report \
+		--test services_integration \
+		--features integration-tests
+
+	@echo "  3️⃣ Protocol tests..."
+	@cargo llvm-cov nextest --no-report \
+		--test protocol_adapters \
+		--features integration-tests
+
+	@echo "  4️⃣ Property tests..."
+	@cargo llvm-cov test --no-report \
+		--lib -- property_tests prop_
+
+	@echo "  5️⃣ Doc tests (if nightly)..."
+	@if rustc --version | grep -q nightly; then \
+		cargo llvm-cov --no-report --doc; \
+	fi
+
+	@# Generate unified report
+	@cargo llvm-cov report --lcov --output-path target/llvm-cov/full.lcov
+	@cargo llvm-cov report --html --output-dir target/llvm-cov/html
+	@cargo llvm-cov report --summary-only
+
+	@echo "✅ Full coverage report generated:"
+	@echo "   📄 LCOV: target/llvm-cov/full.lcov"
+	@echo "   🌐 HTML: target/llvm-cov/html/index.html"
 
 # Show existing coverage report (instant)
-coverage-report:
-	@echo "📊 Showing existing coverage report..."
-	@if [ -d "target/llvm-cov-target" ]; then \
-		cd server && cargo llvm-cov report --summary-only | grep -E "TOTAL|%|---" || echo "No coverage data found. Run 'make coverage' first."; \
+coverage-report: coverage-all-formats
+
+# Backward compatibility alias
+coverage-stdout: coverage
+
+# Coverage with nextest (leverages existing fast test infrastructure)
+coverage-nextest:
+	@echo "⚡ Running coverage with cargo-nextest..."
+	@cargo llvm-cov nextest --workspace \
+		--features skip-slow-tests \
+		--profile fast \
+		--lcov --output-path target/llvm-cov/nextest.lcov
+	@echo "✅ Nextest coverage completed"
+
+# Quick coverage with immediate feedback
+coverage-quick:
+	@cargo llvm-cov nextest --open
+
+# Coverage for changed files only (CI optimization)
+coverage-diff:
+	@echo "🔍 Running coverage on changed files..."
+	@CHANGED_FILES=$$(git diff --name-only HEAD~1 HEAD | grep '\.rs$$' | xargs); \
+	if [ -n "$$CHANGED_FILES" ]; then \
+		cargo llvm-cov test --no-report -- --include $$CHANGED_FILES; \
+		cargo llvm-cov report --summary-only; \
 	else \
-		echo "⚠️  No coverage data found. Run 'make coverage' first."; \
+		echo "No Rust files changed"; \
 	fi
 
-# Fast coverage to stdout - MUST complete under 2 minutes
-coverage-stdout:
-	@echo "📊 Running fast coverage to stdout (under 2 minutes)..."
-	@echo "🚀 Running unit tests with LLVM coverage..."
-	@start_time=$$(date +%s); \
-	cd server && SKIP_SLOW_TESTS=1 cargo llvm-cov test --lib --features skip-slow-tests --summary-only 2>&1 | grep -E "test result:|passed|failed|TOTAL|%" || true; \
-	end_time=$$(date +%s); \
-	duration=$$((end_time - start_time)); \
-	echo ""; \
-	echo "⏱️  Test execution time: $$duration seconds"; \
-	if [ $$duration -lt 120 ]; then \
-		echo "✅ Fast coverage completed in under 2 minutes!"; \
-	else \
-		echo "⚠️  Tests took longer than 2 minutes ($$duration seconds)"; \
-	fi
+# Coverage with threshold enforcement
+coverage-gate:
+	@echo "🚦 Running coverage quality gate..."
+	@cargo llvm-cov --workspace --summary-only --fail-under-lines 80
+	@echo "✅ Coverage threshold met (>80%)"
+
+# Optimized parallel coverage
+coverage-parallel:
+	@echo "🚀 Running parallel coverage collection..."
+	@export CARGO_BUILD_JOBS=$$(nproc); \
+	export CARGO_TEST_THREADS=$$(nproc); \
+	cargo llvm-cov nextest \
+		--workspace \
+		--jobs $$(nproc) \
+		--test-threads nextest \
+		--lcov --output-path target/llvm-cov/parallel.lcov
+
+# Incremental coverage without rebuilding
+coverage-incremental:
+	@echo "♻️ Running incremental coverage..."
+	@# Set environment for coverage without rebuilding
+	@source <(cargo llvm-cov show-env --export-prefix)
+	@# Run additional tests without clearing previous data
+	@cargo test --test new_tests
+	@# Generate report from accumulated data
+	@cargo llvm-cov report --lcov
+
+# Generate all coverage formats
+coverage-all-formats:
+	@echo "📊 Generating all coverage formats..."
+	@cargo llvm-cov clean --workspace
+	@cargo llvm-cov nextest --no-report --workspace
+	@mkdir -p target/coverage-reports
+
+	@# LCOV for CI tools
+	@cargo llvm-cov report --lcov \
+		--output-path target/coverage-reports/coverage.lcov
+
+	@# JSON for programmatic processing
+	@cargo llvm-cov report --json \
+		--output-path target/coverage-reports/coverage.json
+
+	@# Cobertura for Jenkins/Azure DevOps
+	@cargo llvm-cov report --cobertura \
+		--output-path target/coverage-reports/coverage.xml
+
+	@# HTML for human review
+	@cargo llvm-cov report --html \
+		--output-dir target/coverage-reports/html
+
+	@# Codecov compatible
+	@cargo llvm-cov report --codecov \
+		--output-path target/coverage-reports/codecov.json
+
+	@echo "✅ All formats generated in target/coverage-reports/"
+
+# CI-optimized coverage
+coverage-ci:
+	@echo "🔧 Running CI coverage pipeline..."
+	@cargo llvm-cov nextest \
+		--all-features \
+		--workspace \
+		--lcov --output-path lcov.info \
+		--codecov --output-path codecov.json
+	@echo "##vso[task.setvariable variable=coverage]$$(cargo llvm-cov report --summary-only | grep TOTAL | awk '{print $$10}')"
+	@echo "✅ Coverage artifacts ready for upload"
+
+# Branch coverage (requires nightly)
+coverage-branch:
+	@echo "🌳 Running branch coverage (nightly only)..."
+	@cargo +nightly llvm-cov \
+		--branch \
+		--workspace \
+		--html --output-dir target/llvm-cov/branch-html
+
+# Coverage for external test harnesses
+coverage-external:
+	@echo "🔌 Setting up external binary coverage..."
+	@source <(cargo llvm-cov show-env --export-prefix)
+	@cargo llvm-cov clean --workspace
+	@cargo build --workspace
+	@# Run external test harness
+	@./scripts/integration-test-harness.sh
+	@cargo llvm-cov report --lcov
+
+# Debug coverage issues
+coverage-debug:
+	@echo "🔍 Debug information:"
+	@echo "  Rust version: $$(rustc --version)"
+	@echo "  LLVM version: $$(rustc --print=cfg | grep llvm)"
+	@echo "  cargo-llvm-cov: $$(cargo llvm-cov --version)"
+	@echo "  llvm-tools: $$(ls $$HOME/.rustup/toolchains/*/lib/rustlib/*/bin/llvm-* 2>/dev/null | head -1)"
+	@cargo llvm-cov show-env
+
+# Verify coverage setup
+coverage-verify:
+	@echo "✔️ Verifying coverage setup..."
+	@command -v cargo-llvm-cov >/dev/null || (echo "❌ cargo-llvm-cov not found" && exit 1)
+	@rustup component list | grep -q "llvm-tools" || (echo "❌ llvm-tools-preview not installed" && exit 1)
+	@echo "✅ Coverage tools properly configured"
 
 # Run security audit on all projects
 audit:
@@ -560,17 +685,16 @@ coverage-scripts:
 		echo "✓ No TypeScript script tests found"; \
 	fi
 
+# Clean all coverage artifacts
+clean-coverage: coverage-clean
+
 # Clean coverage data and profraw files
-clean-coverage:
-	@echo "🧹 Cleaning coverage artifacts and profraw files..."
-	@find . -name "*.profraw" -type f -delete 2>/dev/null || true
-	@find . -name "*.profdata" -type f -delete 2>/dev/null || true
-	@rm -rf target/llvm-cov-target 2>/dev/null || true
-	@rm -rf target/llvm-cov-target 2>/dev/null || true
-	@rm -rf coverage/ 2>/dev/null || true
-	@rm -rf .coverage coverage_profile coverage_deno 2>/dev/null || true
-	@cargo clean -p pmat --manifest-path server/Cargo.toml 2>/dev/null || true
-	@echo "✅ Coverage cleanup complete! Ready for fresh coverage run."
+coverage-clean:
+	@echo "🧹 Cleaning coverage artifacts..."
+	@cargo llvm-cov clean --workspace
+	@rm -rf target/llvm-cov target/llvm-cov-target
+	@rm -f *.profraw *.profdata
+	@echo "✅ Coverage artifacts cleaned"
 
 # Validate documentation naming consistency
 validate-docs:

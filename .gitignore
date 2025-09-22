@@ -127,6 +127,10 @@ deep_context_*.md
 coverage_demo/
 coverage_profile/
 coverage_deno/
+target/llvm-cov*
+target/llvm-cov-target/
+*.profraw
+*.profdata
 
 # Temporary installation testing
 test-install/
