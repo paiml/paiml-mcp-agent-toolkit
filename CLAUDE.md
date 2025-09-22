@@ -1,5 +1,14 @@
 # Claude Code Configuration
 
+## Coverage Tool Policy
+
+**IMPORTANT: We do NOT use cargo-tarpaulin for code coverage.**
+
+- Use `cargo llvm-cov` exclusively for coverage reporting
+- Never install or suggest cargo-tarpaulin
+- All coverage targets should use cargo llvm-cov commands
+- If you see tarpaulin references in the codebase, remove them
+
 ## Branch Policy
 
 **IMPORTANT: All development work must be done on the `master` branch only.**

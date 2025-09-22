@@ -1,5 +1,15 @@
 # PMAT Agent System Roadmap
 
+## 🚨 URGENT ISSUE: Coverage System Broken
+**Critical**: The coverage measurement system is fundamentally broken and preventing quality assessment.
+- `make coverage` now executes but generates **NO actual coverage data**
+- Root causes identified:
+  - MCP table generation hangs during coverage builds
+  - Some test suites cause infinite loops
+  - Coverage profiling (.profraw) files not being generated
+- Temporary workarounds applied but real coverage measurement still broken
+- **This blocks all quality gates and CI/CD pipelines**
+
 ## Current Status: Sprint 7 of 8 (87.5% Complete)
 
 ### ✅ Completed Sprints (6 of 8)
@@ -29,21 +39,23 @@
 | Metric | Status | Target | Current |
 |--------|--------|---------|---------|
 | **Build** | ✅ | Pass | Passing |
-| **Tests** | ✅ | Pass | 3,459 available |
+| **Tests** | ⚠️ | Pass | 3,353 pass, 6 fixed |
 | **SATD** | ❌ | 0 | 249 |
-| **Coverage** | ❓ | 95% | Unknown |
+| **Coverage** | 🔥 | 95% | **BROKEN - 0%** |
 | **Warnings** | ⚠️ | 0 | 83 |
 
 ## Timeline to Production
 
-### Week 1 (Current)
+### Week 1 (Current) - BLOCKED BY COVERAGE
 - [x] Fix compilation errors (DONE)
 - [x] Establish build system (DONE)
+- [x] Fix 6 failing tests (DONE)
+- [ ] **FIX COVERAGE SYSTEM (URGENT)**
 - [ ] Reduce SATD to <100
 - [ ] Complete Sprint 7
 
 ### Week 2
-- [ ] Fix test coverage measurement
+- [ ] Implement real coverage measurement
 - [ ] Complete Sprint 8 core features
 - [ ] Achieve 80% test coverage
 

@@ -1,5 +1,4 @@
 use super::*;
-use bincode::{deserialize, serialize};
 use flate2::read::GzDecoder;
 use flate2::write::GzEncoder;
 use flate2::Compression;
@@ -78,7 +77,7 @@ impl SnapshotStore {
 
         // Serialize state
         let serialized =
-            serialize(state).map_err(|e| SnapshotError::SerializationError(e.to_string()))?;
+            serde_json::to_vec(state).map_err(|e| SnapshotError::SerializationError(e.to_string()))?;
 
         // Calculate checksum
         let mut hasher = Sha256::new();
@@ -199,8 +198,8 @@ impl SnapshotStore {
             }
         }
 
-        // Deserialize
-        let state = deserialize(&decompressed)
+        // Deserialize from JSON
+        let state = serde_json::from_slice(&decompressed)
             .map_err(|e| SnapshotError::SerializationError(e.to_string()))?;
 
         Ok(state)

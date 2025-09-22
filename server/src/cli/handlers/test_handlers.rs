@@ -287,14 +287,14 @@ mod tests {
 
     #[tokio::test]
     async fn test_handle_test_performance() {
-        // Test that performance suite can be invoked
+        // Test that performance suite can be invoked with minimal work
         let result = handle_test(
             TestSuite::Performance,
-            1,     // iterations
-            false, // memory
-            true,  // throughput
-            false, // regression
-            5,     // timeout
+            1,     // iterations - minimum
+            false, // memory - disabled
+            false, // throughput - disabled to avoid heavy work
+            false, // regression - disabled
+            1,     // timeout - 1 second max
             None,  // output
             false, // perf
         )

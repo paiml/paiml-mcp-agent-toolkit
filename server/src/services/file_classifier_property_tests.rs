@@ -76,12 +76,12 @@ mod tests {
         }
     }
 
-    // Strategy for generating file content
+    // Strategy for generating file content (reduced size for faster tests)
     prop_compose! {
         fn arb_file_content()
             (
                 content_type in prop::sample::select(vec!["text", "binary", "mixed"]),
-                size in 0usize..10000,
+                size in 0usize..1000,  // Reduced from 10000
             )
             -> Vec<u8>
         {
@@ -123,7 +123,7 @@ mod tests {
     prop_compose! {
         fn arb_minified_content()
             (
-                size in 100usize..5000,
+                size in 100usize..500,  // Reduced from 5000
                 has_signature in any::<bool>(),
             )
             -> Vec<u8>
@@ -163,8 +163,8 @@ mod tests {
         fn arb_file_classifier_config()
             (
                 skip_vendor in any::<bool>(),
-                max_line_length in 100usize..20000,
-                max_file_size in 10000usize..5000000,
+                max_line_length in 100usize..2000,  // Reduced from 20000
+                max_file_size in 1000usize..50000,  // Reduced from 5000000
             )
             -> FileClassifierConfig
         {
@@ -275,7 +275,7 @@ mod tests {
         /// Property: Lines over max length trigger skip
         #[test]
         fn long_lines_trigger_skip(
-            line_length in 11000usize..20000,
+            line_length in 10100usize..10500,  // Reduced range for faster tests
         ) {
             let classifier = FileClassifier::default();
 

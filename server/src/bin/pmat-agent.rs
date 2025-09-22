@@ -5,7 +5,7 @@ use pmat::agents::transformer_actor::TransformerActor;
 use pmat::agents::validator_actor::ValidatorActor;
 use pmat::mcp_integration::server::{McpServer, ServerConfig};
 use pmat::workflow::dsl::DslCompiler;
-use pmat::workflow::{DefaultWorkflowExecutor, WorkflowBuilder, WorkflowContext};
+use pmat::workflow::{DefaultWorkflowExecutor, WorkflowContext, WorkflowExecutor};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::fs;
@@ -105,8 +105,8 @@ enum Commands {
 
 #[actix_rt::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Initialize logging
-    env_logger::init();
+    // Initialize logging - use tracing instead of env_logger
+    tracing_subscriber::fmt::init();
 
     let cli = Cli::parse();
 
@@ -158,17 +158,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 async fn initialize_agents(
     registry: &Arc<AgentRegistry>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    use pmat::agents::*;
+    use pmat::agents::orchestrator_actor::OrchestratorActor;
 
     // Register core agents
     registry
-        .register("analyzer", Arc::new(AnalyzerActor::new()))
+        .register("analyzer", Arc::new(AnalyzerActor::default()))
         .await;
     registry
-        .register("transformer", Arc::new(TransformerActor::new()))
+        .register("transformer", Arc::new(TransformerActor::default()))
         .await;
     registry
-        .register("validator", Arc::new(ValidatorActor::new()))
+        .register("validator", Arc::new(ValidatorActor::default()))
         .await;
     registry
         .register("orchestrator", Arc::new(OrchestratorActor::new()))
@@ -290,14 +290,14 @@ async fn validate_workflow(file: String) -> Result<(), Box<dyn std::error::Error
 }
 
 async fn analyze_code(
-    registry: Arc<AgentRegistry>,
+    _registry: Arc<AgentRegistry>,
     path: String,
     language: String,
     output: String,
 ) -> Result<(), Box<dyn std::error::Error>> {
     use pmat::quality::complexity::ComplexityAnalyzer;
     use pmat::quality::entropy::EntropyCalculator;
-    use pmat::quality::satd::SatdDetector;
+    use pmat::quality::satd_item::SatdDetectorWithItems;
 
     println!("🔬 Analyzing: {}", path);
 
@@ -305,13 +305,13 @@ async fn analyze_code(
 
     // Run analyzers
     let analyzer = ComplexityAnalyzer::default();
-    let complexity = analyzer.analyze_code(&code, &language);
+    let complexity = analyzer.analyze_string(&code).unwrap_or_default();
 
-    let detector = SatdDetector::new();
+    let detector = SatdDetectorWithItems::new();
     let satd_items = detector.detect(&code);
 
     let calculator = EntropyCalculator::new();
-    let entropy = calculator.calculate(code.as_bytes());
+    let entropy = calculator.calculate(&code);
 
     match output.as_str() {
         "json" => {
@@ -355,7 +355,7 @@ async fn analyze_code(
 }
 
 async fn run_quality_gate(
-    registry: Arc<AgentRegistry>,
+    _registry: Arc<AgentRegistry>,
     path: String,
     language: String,
     max_complexity: u32,
@@ -363,8 +363,8 @@ async fn run_quality_gate(
     fail_on_violation: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     use pmat::quality::complexity::ComplexityAnalyzer;
-    use pmat::quality::gate::{QualityGateRunner, QualityThresholds};
-    use pmat::quality::satd::SatdDetector;
+    use pmat::quality::gate_runner::{QualityGateRunner, QualityThresholds};
+    use pmat::quality::satd_item::SatdDetectorWithItems;
 
     println!("🚦 Running quality gates on: {}", path);
 
@@ -373,7 +373,7 @@ async fn run_quality_gate(
     let gate = QualityGateRunner::new(
         vec![
             Box::new(ComplexityAnalyzer::default()),
-            Box::new(SatdDetector::new()),
+            Box::new(SatdDetectorWithItems::new()),
         ],
         QualityThresholds {
             max_complexity,
