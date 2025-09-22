@@ -2,13 +2,13 @@
 // Complexity: All functions ≤ 10
 // SATD: Zero tolerance
 
+use super::symbol_table::{SymbolEntry, SymbolTable};
 use super::*;
-use super::symbol_table::{SymbolTable, SymbolEntry};
 use anyhow::Result;
-use std::path::{Path, PathBuf};
-use std::fs;
-use rustc_hash::FxHashMap;
 use petgraph::graph::NodeIndex;
+use rustc_hash::FxHashMap;
+use std::fs;
+use std::path::{Path, PathBuf};
 
 pub struct DependencyGraphBuilder {
     graph: DependencyGraph,
@@ -74,7 +74,8 @@ impl DependencyGraphBuilder {
             if path.is_dir() {
                 // Skip common non-source directories
                 let dir_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
-                if !dir_name.starts_with('.') && dir_name != "target" && dir_name != "node_modules" {
+                if !dir_name.starts_with('.') && dir_name != "target" && dir_name != "node_modules"
+                {
                     self.collect_files_recursive(&path, files)?;
                 }
             } else if Self::is_source_file(&path) {
@@ -89,9 +90,9 @@ impl DependencyGraphBuilder {
     /// Complexity: 3
     fn is_source_file(path: &Path) -> bool {
         match path.extension().and_then(|s| s.to_str()) {
-            Some("rs") | Some("py") | Some("js") | Some("jsx") |
-            Some("ts") | Some("tsx") | Some("go") | Some("java") |
-            Some("c") | Some("cpp") | Some("cc") | Some("h") | Some("hpp") => true,
+            Some("rs") | Some("py") | Some("js") | Some("jsx") | Some("ts") | Some("tsx")
+            | Some("go") | Some("java") | Some("c") | Some("cpp") | Some("cc") | Some("h")
+            | Some("hpp") => true,
             _ => false,
         }
     }
@@ -147,7 +148,9 @@ impl DependencyGraphBuilder {
         let node_data = NodeData {
             path: path.to_path_buf(),
             module: self.path_to_module(path),
-            symbols: self.symbol_table.get_file_symbols(path)
+            symbols: self
+                .symbol_table
+                .get_file_symbols(path)
                 .iter()
                 .map(|e| e.symbol.clone())
                 .collect(),
@@ -364,7 +367,8 @@ impl DependencyGraphBuilder {
             let trimmed = line.trim();
             if trimmed.starts_with("import ") {
                 if let Some(end) = trimmed.rfind(" from ") {
-                    let module = trimmed[end + 6..].trim_matches(|c| c == '\'' || c == '"' || c == ';');
+                    let module =
+                        trimmed[end + 6..].trim_matches(|c| c == '\'' || c == '"' || c == ';');
                     imports.push(module.to_string());
                 }
             } else if trimmed.starts_with("const ") && trimmed.contains(" = require(") {
@@ -502,8 +506,12 @@ mod tests {
         assert!(DependencyGraphBuilder::is_source_file(Path::new("test.rs")));
         assert!(DependencyGraphBuilder::is_source_file(Path::new("test.py")));
         assert!(DependencyGraphBuilder::is_source_file(Path::new("test.ts")));
-        assert!(!DependencyGraphBuilder::is_source_file(Path::new("test.txt")));
-        assert!(!DependencyGraphBuilder::is_source_file(Path::new("README.md")));
+        assert!(!DependencyGraphBuilder::is_source_file(Path::new(
+            "test.txt"
+        )));
+        assert!(!DependencyGraphBuilder::is_source_file(Path::new(
+            "README.md"
+        )));
     }
 
     #[test]

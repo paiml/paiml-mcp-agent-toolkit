@@ -291,7 +291,7 @@ fn print_analysis_summary(
 /// assert!(output.contains("Top Files by Complexity"));
 /// assert!(output.contains("utils.rs"));
 /// ```
-#[must_use] 
+#[must_use]
 pub fn format_big_o_summary(
     report: &crate::services::big_o_analyzer::BigOAnalysisReport,
 ) -> String {

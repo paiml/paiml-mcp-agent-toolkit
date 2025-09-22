@@ -210,7 +210,7 @@ impl Default for OrchestratorConfig {
 
 impl CacheOrchestrator {
     /// Create a new cache orchestrator
-    #[must_use] 
+    #[must_use]
     pub fn new(config: OrchestratorConfig) -> Self {
         Self {
             workload_profile: RwLock::new(WorkloadProfile::default()),

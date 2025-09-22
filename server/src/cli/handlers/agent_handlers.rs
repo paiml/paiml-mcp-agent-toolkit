@@ -233,9 +233,7 @@ async fn handle_agent_monitor(
     match DaemonManager::start_monitoring(&project_path, &project_id).await {
         Ok(()) => {
             info!("Project monitoring command sent to daemon successfully");
-            println!(
-                "✅ Started monitoring project '{project_id}' at {project_path:?}"
-            );
+            println!("✅ Started monitoring project '{project_id}' at {project_path:?}");
         }
         Err(e) => {
             error!("Failed to start monitoring: {}", e);

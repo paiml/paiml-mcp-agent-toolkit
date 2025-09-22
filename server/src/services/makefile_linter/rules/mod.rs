@@ -1,7 +1,7 @@
 pub mod checkmake;
 pub mod performance;
 
-use super::ast::{SourceSpan, MakefileAst};
+use super::ast::{MakefileAst, SourceSpan};
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, serde::Serialize, serde::Deserialize)]
@@ -29,14 +29,14 @@ pub struct LintResult {
 }
 
 impl LintResult {
-    #[must_use] 
+    #[must_use]
     pub fn has_errors(&self) -> bool {
         self.violations
             .iter()
             .any(|v| v.severity == Severity::Error)
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn error_count(&self) -> usize {
         self.violations
             .iter()
@@ -44,7 +44,7 @@ impl LintResult {
             .count()
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn max_severity(&self) -> Option<&Severity> {
         self.violations
             .iter()
@@ -82,7 +82,7 @@ pub struct RuleRegistry {
 }
 
 impl RuleRegistry {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         let mut registry = Self::default();
 
@@ -102,7 +102,7 @@ impl RuleRegistry {
         self.rules.push(rule);
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn check_all(&self, ast: &MakefileAst) -> Vec<Violation> {
         let mut violations = Vec::new();
 

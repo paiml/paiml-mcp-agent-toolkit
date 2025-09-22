@@ -64,7 +64,7 @@ fn value_type_name(value: &Value) -> &'static str {
 }
 
 /// Environment variable expansion for CLI defaults
-#[must_use] 
+#[must_use]
 pub fn expand_env_vars(template: &str) -> String {
     // Simple ${VAR} expansion
     let re = regex::Regex::new(r"\$\{([^}]+)\}").unwrap();

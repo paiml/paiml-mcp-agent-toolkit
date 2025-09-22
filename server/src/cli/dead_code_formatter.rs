@@ -297,7 +297,7 @@ pub struct DeadCodeFormatterFactory;
 
 impl DeadCodeFormatterFactory {
     /// Create a formatter for the given output format
-    #[must_use] 
+    #[must_use]
     pub fn create(format: crate::cli::DeadCodeOutputFormat) -> Box<dyn DeadCodeFormatter> {
         match format {
             crate::cli::DeadCodeOutputFormat::Summary => Box::new(SummaryFormatter),

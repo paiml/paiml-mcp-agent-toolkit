@@ -58,7 +58,7 @@ pub struct MakefileCompressor {
 }
 
 impl MakefileCompressor {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         let mut critical_targets = HashSet::new();
         critical_targets.insert("all");

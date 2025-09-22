@@ -3,10 +3,10 @@
 //! This module provides WASM-specific analysis capabilities using wasmparser
 //! for bytecode analysis and complexity metrics extraction from WASM modules.
 
-use wasmparser::{Parser, Payload};
 #[cfg(feature = "wasm-ast")]
 use crate::services::context::AstItem;
 use std::path::{Path, PathBuf};
+use wasmparser::{Parser, Payload};
 
 /// WASM module analyzer that extracts WASM-specific information
 pub struct WasmModuleAnalyzer {
@@ -20,12 +20,13 @@ pub struct WasmModuleAnalyzer {
 
 impl WasmModuleAnalyzer {
     /// Creates a new WASM module analyzer
-    #[must_use] 
+    #[must_use]
     pub fn new(file_path: &Path) -> Self {
         Self {
             items: Vec::new(),
             _file_path: file_path.to_path_buf(),
-            module_name: file_path.file_stem()
+            module_name: file_path
+                .file_stem()
                 .and_then(|s| s.to_str())
                 .unwrap_or("unknown")
                 .to_string(),
@@ -111,7 +112,7 @@ impl WasmModuleAnalyzer {
     fn extract_wat_function_name(&self, line: &str) -> String {
         if let Some(start) = line.find('$') {
             if let Some(end) = line[start..].find(' ') {
-                line[start+1..start+end].to_string()
+                line[start + 1..start + end].to_string()
             } else {
                 format!("function_{}", self.function_count)
             }
@@ -145,7 +146,7 @@ impl Default for WasmStackAnalyzer {
 
 impl WasmStackAnalyzer {
     /// Creates a new WASM stack analyzer
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             max_stack_depth: 0,
@@ -163,12 +164,14 @@ impl WasmStackAnalyzer {
             match byte {
                 0x41 => self.current_depth += 1, // i32.const
                 0x42 => self.current_depth += 1, // i64.const
-                0x6a => {                         // i32.add
+                0x6a => {
+                    // i32.add
                     if self.current_depth >= 2 {
                         self.current_depth -= 1;
                     }
                 }
-                0x1a => {                         // drop
+                0x1a => {
+                    // drop
                     if self.current_depth > 0 {
                         self.current_depth -= 1;
                     }
@@ -215,7 +218,7 @@ impl Default for WasmValidator {
 
 impl WasmValidator {
     /// Creates a new WASM validator
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             validation_errors: Vec::new(),
@@ -231,14 +234,16 @@ impl WasmValidator {
         }
 
         if &wasm_bytes[0..4] != b"\0asm" {
-            self.validation_errors.push("Invalid magic number".to_string());
+            self.validation_errors
+                .push("Invalid magic number".to_string());
             return Ok(false);
         }
 
         let parser = Parser::new(0);
         for payload in parser.parse_all(wasm_bytes) {
             if payload.is_err() {
-                self.validation_errors.push("Parse error in module".to_string());
+                self.validation_errors
+                    .push("Parse error in module".to_string());
                 return Ok(false);
             }
         }
@@ -266,13 +271,13 @@ impl WasmValidator {
     }
 
     /// Gets validation errors
-    #[must_use] 
+    #[must_use]
     pub fn get_validation_errors(&self) -> &[String] {
         &self.validation_errors
     }
 
     /// Gets security warnings
-    #[must_use] 
+    #[must_use]
     pub fn get_security_warnings(&self) -> &[String] {
         &self.security_warnings
     }
@@ -289,7 +294,7 @@ mod tests {
         0x01, 0x00, 0x00, 0x00, // Version
         0x01, 0x07, 0x01, 0x60, 0x02, 0x7f, 0x7f, 0x01, 0x7f, // Type section
         0x03, 0x02, 0x01, 0x00, // Function section
-        0x0a, 0x09, 0x01, 0x07, 0x00, 0x20, 0x00, 0x20, 0x01, 0x6a, 0x0b // Code section
+        0x0a, 0x09, 0x01, 0x07, 0x00, 0x20, 0x00, 0x20, 0x01, 0x6a, 0x0b, // Code section
     ];
 
     const SIMPLE_WAT_TEXT: &str = r#"
@@ -323,20 +328,41 @@ mod tests {
     #[test]
     fn test_simple_wasm_binary_analysis() {
         let analyzer = WasmModuleAnalyzer::new(Path::new("simple.wasm"));
-        let items = analyzer.analyze_wasm_binary(SIMPLE_WASM_BINARY)
+        let items = analyzer
+            .analyze_wasm_binary(SIMPLE_WASM_BINARY)
             .expect("Should parse simple WASM binary");
 
-        assert!(!items.is_empty(), "Should extract at least one AST item from WASM");
+        assert!(
+            !items.is_empty(),
+            "Should extract at least one AST item from WASM"
+        );
 
-        let function_items: Vec<_> = items.iter()
+        let function_items: Vec<_> = items
+            .iter()
             .filter(|item| matches!(item, AstItem::Function { .. }))
             .collect();
 
-        assert_eq!(function_items.len(), 1, "Should extract exactly one function");
+        assert_eq!(
+            function_items.len(),
+            1,
+            "Should extract exactly one function"
+        );
 
-        if let AstItem::Function { name, visibility, is_async, .. } = &function_items[0] {
-            assert!(name.contains("simple"), "Should include module name in function name");
-            assert_eq!(visibility, "export", "WASM exported functions have export visibility");
+        if let AstItem::Function {
+            name,
+            visibility,
+            is_async,
+            ..
+        } = &function_items[0]
+        {
+            assert!(
+                name.contains("simple"),
+                "Should include module name in function name"
+            );
+            assert_eq!(
+                visibility, "export",
+                "WASM exported functions have export visibility"
+            );
             assert!(!is_async, "WASM functions are not async");
         }
     }
@@ -345,19 +371,24 @@ mod tests {
     #[ignore]
     fn test_wat_text_analysis() {
         let analyzer = WasmModuleAnalyzer::new(Path::new("add.wasm"));
-        let items = analyzer.analyze_wat_text(SIMPLE_WAT_TEXT)
+        let items = analyzer
+            .analyze_wat_text(SIMPLE_WAT_TEXT)
             .expect("Should parse WAT text format");
 
         assert!(!items.is_empty(), "Should extract AST items from WAT text");
 
-        let function_items: Vec<_> = items.iter()
+        let function_items: Vec<_> = items
+            .iter()
             .filter(|item| matches!(item, AstItem::Function { .. }))
             .collect();
 
         assert_eq!(function_items.len(), 1, "Should extract the add function");
 
         if let AstItem::Function { name, .. } = &function_items[0] {
-            assert!(name.contains("add"), "Should extract function name from WAT");
+            assert!(
+                name.contains("add"),
+                "Should extract function name from WAT"
+            );
         }
     }
 
@@ -365,26 +396,39 @@ mod tests {
     #[ignore]
     fn test_wasm_complexity_analysis() {
         let mut analyzer = WasmStackAnalyzer::new();
-        let stack_complexity = analyzer.analyze_stack_complexity(&[0x20, 0x00, 0x20, 0x01, 0x6a])
+        let stack_complexity = analyzer
+            .analyze_stack_complexity(&[0x20, 0x00, 0x20, 0x01, 0x6a])
             .expect("Should analyze WASM stack complexity");
 
-        assert!(stack_complexity >= 1, "Should have at least complexity of 1");
-        assert!(stack_complexity <= 10, "Should maintain complexity ≤10 for simple WASM");
+        assert!(
+            stack_complexity >= 1,
+            "Should have at least complexity of 1"
+        );
+        assert!(
+            stack_complexity <= 10,
+            "Should maintain complexity ≤10 for simple WASM"
+        );
 
-        let control_flow_complexity = analyzer.analyze_control_flow_complexity(&[0x04, 0x40, 0x0b])
+        let control_flow_complexity = analyzer
+            .analyze_control_flow_complexity(&[0x04, 0x40, 0x0b])
             .expect("Should analyze control flow complexity");
 
-        assert!(control_flow_complexity >= 1, "Should have control flow complexity");
+        assert!(
+            control_flow_complexity >= 1,
+            "Should have control flow complexity"
+        );
     }
 
     #[test]
     #[ignore]
     fn test_complex_wat_control_flow() {
         let analyzer = WasmModuleAnalyzer::new(Path::new("fibonacci.wasm"));
-        let items = analyzer.analyze_wat_text(COMPLEX_WAT_WITH_CONTROL_FLOW)
+        let items = analyzer
+            .analyze_wat_text(COMPLEX_WAT_WITH_CONTROL_FLOW)
             .expect("Should parse complex WAT with control flow");
 
-        let function_items: Vec<_> = items.iter()
+        let function_items: Vec<_> = items
+            .iter()
             .filter(|item| matches!(item, AstItem::Function { .. }))
             .collect();
 
@@ -392,7 +436,10 @@ mod tests {
 
         // Should detect higher complexity due to recursive calls and conditionals
         if let AstItem::Function { name, line, .. } = &function_items[0] {
-            assert!(name.contains("fibonacci"), "Should extract fibonacci function name");
+            assert!(
+                name.contains("fibonacci"),
+                "Should extract fibonacci function name"
+            );
             assert!(*line >= 1, "Should have valid line number");
         }
     }
@@ -400,21 +447,29 @@ mod tests {
     #[test]
     fn test_wasm_module_validation() {
         let mut validator = WasmValidator::new();
-        let is_valid = validator.validate_wasm_module(SIMPLE_WASM_BINARY)
+        let is_valid = validator
+            .validate_wasm_module(SIMPLE_WASM_BINARY)
             .expect("Should validate WASM module");
 
         assert!(is_valid, "Simple WASM binary should be valid");
-        assert!(validator.get_validation_errors().is_empty(), "Should have no validation errors");
+        assert!(
+            validator.get_validation_errors().is_empty(),
+            "Should have no validation errors"
+        );
     }
 
     #[test]
     fn test_wasm_security_analysis() {
         let mut validator = WasmValidator::new();
-        let security_warnings = validator.analyze_security(SIMPLE_WASM_BINARY)
+        let security_warnings = validator
+            .analyze_security(SIMPLE_WASM_BINARY)
             .expect("Should perform security analysis");
 
         // Simple add function should have minimal security concerns
-        assert!(security_warnings.len() <= 2, "Simple WASM should have few security warnings");
+        assert!(
+            security_warnings.len() <= 2,
+            "Simple WASM should have few security warnings"
+        );
     }
 
     #[test]
@@ -423,7 +478,10 @@ mod tests {
         let invalid_bytes = &[0xFF, 0xFF, 0xFF, 0xFF]; // Invalid WASM magic
         let result = analyzer.analyze_wasm_binary(invalid_bytes);
 
-        assert!(result.is_err(), "Should return error for invalid WASM binary");
+        assert!(
+            result.is_err(),
+            "Should return error for invalid WASM binary"
+        );
     }
 
     #[test]
@@ -433,16 +491,22 @@ mod tests {
             0x00, 0x61, 0x73, 0x6d, // WASM magic
             0x01, 0x00, 0x00, 0x00, // Version
         ];
-        let items = analyzer.analyze_wasm_binary(minimal_wasm)
+        let items = analyzer
+            .analyze_wasm_binary(minimal_wasm)
             .expect("Should handle minimal WASM module");
 
-        assert!(items.is_empty(), "Empty WASM module should produce no function items");
+        assert!(
+            items.is_empty(),
+            "Empty WASM module should produce no function items"
+        );
     }
 
     #[test]
     fn test_wasm_import_export_extraction() {
         let analyzer = WasmModuleAnalyzer::new(Path::new("with_imports.wasm"));
-        let items = analyzer.analyze_wat_text(r#"
+        let items = analyzer
+            .analyze_wat_text(
+                r#"
 (module
   (import "env" "log" (func $log (param i32)))
   (func $main (result i32)
@@ -452,14 +516,20 @@ mod tests {
   )
   (export "main" (func $main))
 )
-"#).expect("Should parse WASM with imports/exports");
+"#,
+            )
+            .expect("Should parse WASM with imports/exports");
 
-        let function_items: Vec<_> = items.iter()
+        let function_items: Vec<_> = items
+            .iter()
             .filter(|item| matches!(item, AstItem::Function { .. }))
             .collect();
 
         // Should extract both imported and local functions
-        assert!(function_items.len() >= 1, "Should extract at least the main function");
+        assert!(
+            function_items.len() >= 1,
+            "Should extract at least the main function"
+        );
     }
 }
 

@@ -1,11 +1,11 @@
 // Agent system with Actix actors
-pub mod registry;
 pub mod analyzer_actor;
-pub mod transformer_actor;
-pub mod validator_actor;
-pub mod supervisor;
 pub mod messages;
 pub mod messaging;
+pub mod registry;
+pub mod supervisor;
+pub mod transformer_actor;
+pub mod validator_actor;
 
 use actix::prelude::*;
 use async_trait::async_trait;
@@ -95,8 +95,10 @@ pub struct AgentSpec {
 // Removed AgentHandle for now - will implement properly with specific actor types
 
 // System initialization
-pub fn init_agent_system() -> actix_rt::System {
-    actix_rt::System::new()
+// Note: actix::System::new() returns SystemRunner, not System
+pub fn init_agent_system() {
+    // TODO: Properly implement agent system initialization
+    // actix::System::new() returns SystemRunner which auto-runs
 }
 
 #[cfg(test)]

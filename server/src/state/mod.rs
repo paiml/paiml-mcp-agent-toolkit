@@ -1,12 +1,13 @@
 // Hybrid event sourcing with snapshots for state management
 pub mod event_store;
-pub mod snapshot_store;
+// TODO: Fix async_raft v0.6 API compatibility
+// pub mod raft_consensus;
 pub mod recovery;
-pub mod raft_consensus;
+pub mod snapshot_store;
 
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 use std::time::SystemTime;
+use uuid::Uuid;
 
 pub type EventId = u64;
 pub type SnapshotId = Uuid;
@@ -81,7 +82,8 @@ impl Default for ExampleState {
 
 impl AgentState for ExampleState {
     fn apply_event(&mut self, event: &StateEvent) {
-        self.data.insert(event.partition_key.clone(), event.data.clone());
+        self.data
+            .insert(event.partition_key.clone(), event.data.clone());
         self.last_event_id = event.id;
         self.event_count += 1;
     }

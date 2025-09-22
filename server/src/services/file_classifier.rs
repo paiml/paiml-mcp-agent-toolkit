@@ -165,13 +165,13 @@ pub enum SkipReason {
 }
 
 impl FileClassifier {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Check if a file should be parsed, with option to include large files
-    #[must_use] 
+    #[must_use]
     pub fn should_parse_with_options(
         &self,
         path: &Path,
@@ -227,7 +227,7 @@ impl FileClassifier {
         ParseDecision::Parse
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn should_parse(&self, path: &Path, content: &[u8]) -> ParseDecision {
         self.should_parse_with_options(path, content, false)
     }
@@ -341,7 +341,7 @@ pub struct DebugEvent {
 }
 
 impl DebugReporter {
-    #[must_use] 
+    #[must_use]
     pub fn new(output_path: Option<std::path::PathBuf>) -> Self {
         Self {
             start_time: Instant::now(),

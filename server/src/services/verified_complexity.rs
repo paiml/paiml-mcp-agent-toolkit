@@ -74,7 +74,7 @@ pub struct HalsteadMetrics {
 
 impl HalsteadMetrics {
     /// Calculate derived Halstead metrics
-    #[must_use] 
+    #[must_use]
     pub fn volume(&self) -> f64 {
         let n = f64::from(self.n1 + self.n2);
         #[allow(non_snake_case)]
@@ -82,7 +82,7 @@ impl HalsteadMetrics {
         N * n.log2()
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn difficulty(&self) -> f64 {
         if self.n2 == 0 {
             return 0.0;
@@ -90,14 +90,14 @@ impl HalsteadMetrics {
         (f64::from(self.n1) / 2.0) * (f64::from(self.N2) / f64::from(self.n2))
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn effort(&self) -> f64 {
         self.volume() * self.difficulty()
     }
 }
 
 impl VerifiedComplexityAnalyzer {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self { nesting_level: 0 }
     }
@@ -213,8 +213,9 @@ impl VerifiedComplexityAnalyzer {
         // Track nesting for children
         let increases_nesting = matches!(
             &node.kind,
-            AstKind::Statement(StmtKind::If | StmtKind::While | StmtKind::For |
-StmtKind::Switch | StmtKind::Try) | AstKind::Function(_)
+            AstKind::Statement(
+                StmtKind::If | StmtKind::While | StmtKind::For | StmtKind::Switch | StmtKind::Try
+            ) | AstKind::Function(_)
         );
 
         if increases_nesting {
@@ -316,7 +317,7 @@ StmtKind::Switch | StmtKind::Try) | AstKind::Function(_)
     }
 
     /// Helper to iterate children - placeholder for actual implementation
-    #[must_use] 
+    #[must_use]
     pub fn children(&self, _node: &UnifiedAstNode) -> Vec<&UnifiedAstNode> {
         // In actual implementation, would follow first_child/next_sibling links
         vec![]

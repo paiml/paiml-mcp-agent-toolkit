@@ -60,7 +60,7 @@ pub struct DagBuilder {
 }
 
 impl DagBuilder {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             graph: DependencyGraph::new(),
@@ -70,7 +70,7 @@ impl DagBuilder {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn build_from_project(project: &ProjectContext) -> DependencyGraph {
         let mut builder = Self::new();
 
@@ -130,7 +130,7 @@ impl DagBuilder {
         self.graph
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn build_from_project_with_limit(
         project: &ProjectContext,
         max_nodes: usize,
@@ -510,7 +510,7 @@ impl Default for DagBuilder {
 /// let filtered = filter_call_edges(graph);
 /// // All edges in filtered graph will be EdgeType::Calls
 /// ```
-#[must_use] 
+#[must_use]
 pub fn filter_call_edges(graph: DependencyGraph) -> DependencyGraph {
     graph.filter_by_edge_type(EdgeType::Calls)
 }
@@ -527,7 +527,7 @@ pub fn filter_call_edges(graph: DependencyGraph) -> DependencyGraph {
 /// let filtered = filter_import_edges(graph);
 /// // All edges in filtered graph will be EdgeType::Imports
 /// ```
-#[must_use] 
+#[must_use]
 pub fn filter_import_edges(graph: DependencyGraph) -> DependencyGraph {
     graph.filter_by_edge_type(EdgeType::Imports)
 }
@@ -544,7 +544,7 @@ pub fn filter_import_edges(graph: DependencyGraph) -> DependencyGraph {
 /// let filtered = filter_inheritance_edges(graph);
 /// // All edges in filtered graph will be EdgeType::Inherits
 /// ```
-#[must_use] 
+#[must_use]
 pub fn filter_inheritance_edges(graph: DependencyGraph) -> DependencyGraph {
     graph.filter_by_edge_type(EdgeType::Inherits)
 }
@@ -561,7 +561,7 @@ pub fn filter_inheritance_edges(graph: DependencyGraph) -> DependencyGraph {
 /// let scored_graph = add_pagerank_scores(&graph);
 /// // Graph nodes now have PageRank scores in metadata
 /// ```
-#[must_use] 
+#[must_use]
 pub fn add_pagerank_scores(graph: &DependencyGraph) -> DependencyGraph {
     if graph.nodes.is_empty() {
         return graph.clone();
@@ -603,7 +603,7 @@ pub fn add_pagerank_scores(graph: &DependencyGraph) -> DependencyGraph {
 }
 
 /// Prune graph using `PageRank` algorithm to keep only the most important nodes
-#[must_use] 
+#[must_use]
 pub fn prune_graph_pagerank(graph: &DependencyGraph, max_nodes: usize) -> DependencyGraph {
     if graph.nodes.len() <= max_nodes {
         return graph.clone();

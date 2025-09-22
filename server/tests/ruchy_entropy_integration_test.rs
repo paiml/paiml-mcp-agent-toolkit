@@ -1,12 +1,11 @@
 //! TDD Tests for Ruchy Entropy Analysis Integration
-//! 
+//!
 //! Testing Ruchy-specific pattern detection in entropy analysis
 
 #[cfg(all(test, feature = "ruchy-ast"))]
 mod ruchy_entropy_integration_tests {
-    
-    
-    #[test] 
+
+    #[test]
     fn test_ruchy_actor_pattern_detection() {
         // RED: This should fail because Ruchy actor patterns are not yet detected
         let ruchy_code = r#"
@@ -40,18 +39,18 @@ actor Logger {
     }
 }
 "#;
-        
+
         // Should detect repeated actor pattern
         let actor_count = ruchy_code.matches("actor ").count();
         let receive_count = ruchy_code.matches("receive ").count();
-        
+
         assert_eq!(actor_count, 2);
         assert_eq!(receive_count, 5);
-        
+
         // This pattern should be detected as repetitive actor message handling
         // with variation scores calculated based on different message types
     }
-    
+
     #[test]
     fn test_ruchy_pipeline_pattern_detection() {
         // RED: Test pipeline operator pattern detection
@@ -80,20 +79,20 @@ fun process_users(users: [User]) -> [User] {
         |> sort_by(|u| u.name)
 }
 "#;
-        
+
         // Should detect repeated pipeline pattern
         let pipeline_count = pipeline_code.matches("|>").count();
         let filter_count = pipeline_code.matches("|> filter").count();
         let map_count = pipeline_code.matches("|> map").count();
-        
+
         assert_eq!(pipeline_count, 12); // 4 operations * 3 functions
-        assert_eq!(filter_count, 6); // 2 filters * 3 functions  
+        assert_eq!(filter_count, 6); // 2 filters * 3 functions
         assert_eq!(map_count, 3); // 1 map * 3 functions
-        
+
         // This pattern should be detected as repetitive data transformation
         // with high similarity scores between the three functions
     }
-    
+
     #[test]
     fn test_ruchy_error_handling_pattern_detection() {
         // RED: Test Ruchy-specific error handling patterns
@@ -122,19 +121,19 @@ fun validate_order(data: OrderData) -> Result<Order, ValidationError> {
     }
 }
 "#;
-        
+
         // Should detect repeated validation pattern
         let result_count = error_handling_code.matches("Result<").count();
         let match_count = error_handling_code.matches("match ").count();
         let err_count = error_handling_code.matches("Err(").count();
-        
+
         assert_eq!(result_count, 3);
         assert_eq!(match_count, 3);
         assert_eq!(err_count, 6); // 2 errors * 3 functions
-        
+
         // This pattern should be detected as repetitive validation with high similarity
     }
-    
+
     #[test]
     fn test_ruchy_message_passing_pattern_detection() {
         // RED: Test actor message passing patterns
@@ -170,21 +169,21 @@ fun handle_admin_requests() {
     logger <- log(f"Final count: {final_count}");
 }
 "#;
-        
+
         // Should detect repeated message passing patterns
         let spawn_count = message_passing_code.matches("spawn ").count();
         let send_count = message_passing_code.matches(" <- ").count();
         let query_count = message_passing_code.matches(" <? ").count();
         let log_count = message_passing_code.matches("log(").count();
-        
+
         assert_eq!(spawn_count, 4); // 2 actors * 2 functions
         assert_eq!(send_count, 8); // Various send operations
         assert_eq!(query_count, 4); // Query operations
         assert_eq!(log_count, 8); // Log messages
-        
+
         // This pattern should be detected as repetitive actor orchestration
     }
-    
+
     #[test]
     fn test_ruchy_pattern_matching_variation_detection() {
         // RED: Test pattern matching with variations
@@ -221,27 +220,27 @@ fun process_color(color: Color) -> String {
     }
 }
 "#;
-        
+
         // Should detect repeated enum matching pattern with different variations
         let enum_count = pattern_matching_code.matches("enum ").count();
         let match_count = pattern_matching_code.matches("match ").count();
         let arrow_count = pattern_matching_code.matches(" => ").count();
-        
+
         assert_eq!(enum_count, 3);
         assert_eq!(match_count, 3);
         assert_eq!(arrow_count, 11); // Total match arms across all functions
-        
+
         // This pattern should be detected with medium variation score
         // (same structure, different enum types and return values)
     }
-    
+
     #[cfg(feature = "ruchy-ast")]
     #[tokio::test]
     async fn test_ruchy_entropy_analysis_integration() {
         // RED: Test full entropy analysis integration for Ruchy files
-        use tempfile::NamedTempFile;
         use std::io::Write;
-        
+        use tempfile::NamedTempFile;
+
         let complex_ruchy_code = r#"
 // Repetitive actor patterns (should be detected)
 actor UserManager {
@@ -296,46 +295,53 @@ fun main() {
     println("Processed {} users and {} products", users.len(), products.len());
 }
 "#;
-        
+
         let mut temp_file = NamedTempFile::with_suffix(".ruchy").unwrap();
         temp_file.write_all(complex_ruchy_code.as_bytes()).unwrap();
-        
+
         // Should be able to analyze Ruchy entropy patterns
         let result = pmat::entropy::PatternExtractor::new(pmat::entropy::EntropyConfig::default())
             .extract_patterns(temp_file.path())
             .await;
-            
-        assert!(result.is_ok(), "Entropy analysis should work with Ruchy files");
-        
+
+        assert!(
+            result.is_ok(),
+            "Entropy analysis should work with Ruchy files"
+        );
+
         let patterns = result.unwrap();
-        
+
         // Should detect multiple repetitive patterns
         assert!(patterns.file_count() > 0);
-        
+
         // Should detect at least some high-frequency patterns
         let summary = patterns.summary();
         assert!(summary.repetitions > 1, "Should detect repetitive patterns");
-        
+
         // Should have reasonable variation scores
         assert!(summary.variation_score >= 0.0 && summary.variation_score <= 1.0);
     }
-    
+
     #[test]
     fn test_ruchy_entropy_pattern_types() {
         // RED: Test that all Ruchy pattern types are supported
-        use pmat::entropy::{PatternType, EntropyConfig};
-        
+        use pmat::entropy::{EntropyConfig, PatternType};
+
         let config = EntropyConfig::default();
-        
+
         // Should support all standard pattern types for Ruchy analysis
         assert!(config.pattern_types.contains(&PatternType::ErrorHandling));
         assert!(config.pattern_types.contains(&PatternType::DataValidation));
-        assert!(config.pattern_types.contains(&PatternType::ResourceManagement));
+        assert!(config
+            .pattern_types
+            .contains(&PatternType::ResourceManagement));
         assert!(config.pattern_types.contains(&PatternType::ControlFlow));
-        assert!(config.pattern_types.contains(&PatternType::DataTransformation));
+        assert!(config
+            .pattern_types
+            .contains(&PatternType::DataTransformation));
         assert!(config.pattern_types.contains(&PatternType::ApiCall));
     }
-    
+
     #[cfg(not(feature = "ruchy-ast"))]
     #[test]
     fn test_ruchy_entropy_fallback() {
@@ -349,11 +355,11 @@ fun goodbye() -> String {
     "Goodbye, World!"  
 }
 "#;
-        
+
         // Should at least detect basic function patterns even without AST
         let fun_count = basic_ruchy_code.matches("fun ").count();
         assert_eq!(fun_count, 2);
-        
+
         // Should be able to perform basic entropy analysis
         assert!(!basic_ruchy_code.is_empty());
     }

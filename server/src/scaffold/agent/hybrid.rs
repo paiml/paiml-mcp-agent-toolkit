@@ -26,7 +26,7 @@ pub struct CoreSpec {
 
 impl CoreSpec {
     /// Create a new core specification.
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             verification_method: VerificationMethod::PropertyTests,
@@ -36,21 +36,21 @@ impl CoreSpec {
     }
 
     /// Set the verification method.
-    #[must_use] 
+    #[must_use]
     pub fn verification_method(mut self, method: VerificationMethod) -> Self {
         self.verification_method = method;
         self
     }
 
     /// Set the maximum complexity.
-    #[must_use] 
+    #[must_use]
     pub fn max_complexity(mut self, complexity: u32) -> Self {
         self.max_complexity = complexity;
         self
     }
 
     /// Add an invariant.
-    #[must_use] 
+    #[must_use]
     pub fn add_invariant(mut self, invariant: Invariant) -> Self {
         self.invariants.push(invariant);
         self
@@ -76,7 +76,7 @@ pub struct WrapperSpec {
 
 impl WrapperSpec {
     /// Create a new wrapper specification.
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             model_type: ModelType::GPT4,
@@ -86,21 +86,21 @@ impl WrapperSpec {
     }
 
     /// Set the model type.
-    #[must_use] 
+    #[must_use]
     pub fn model_type(mut self, model: ModelType) -> Self {
         self.model_type = model;
         self
     }
 
     /// Set the fallback strategy.
-    #[must_use] 
+    #[must_use]
     pub fn fallback_strategy(mut self, strategy: FallbackStrategy) -> Self {
         self.fallback_strategy = strategy;
         self
     }
 
     /// Set the confidence threshold.
-    #[must_use] 
+    #[must_use]
     pub fn confidence_threshold(mut self, threshold: f64) -> Self {
         self.confidence_threshold = threshold;
         self
@@ -222,7 +222,7 @@ impl Invariant {
     }
 
     /// Set the severity.
-    #[must_use] 
+    #[must_use]
     pub fn with_severity(mut self, severity: InvariantSeverity) -> Self {
         self.severity = severity;
         self
@@ -241,7 +241,7 @@ pub enum InvariantSeverity {
 }
 
 /// Validate complexity for a given quality level.
-#[must_use] 
+#[must_use]
 pub fn validate_complexity_for_quality(
     spec: &CoreSpec,
     quality: crate::scaffold::QualityLevel,

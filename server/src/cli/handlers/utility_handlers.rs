@@ -3,7 +3,7 @@
 //! This module contains utility command implementations extracted from
 //! the main CLI module to reduce complexity.
 
-use crate::cli::{OutputFormat, ContextFormat};
+use crate::cli::{ContextFormat, OutputFormat};
 use crate::models::template::TemplateResource;
 use crate::services::context::AstItem;
 use crate::services::template_service::{list_templates, search_templates};
@@ -60,8 +60,7 @@ impl MarkdownBuilder {
     }
 
     fn add_metric(&mut self, label: &str, value: impl std::fmt::Display) {
-        self.content
-            .push_str(&format!("- **{label}**: {value}\n"));
+        self.content.push_str(&format!("- **{label}**: {value}\n"));
     }
 
     fn add_percentage_metric(&mut self, label: &str, value: f64) {
@@ -145,7 +144,9 @@ pub async fn handle_context(
 
 /// Detect toolchain or use provided one
 fn detect_or_use_toolchain(toolchain: Option<String>, project_path: &Path) -> Result<String> {
-    if let Some(t) = toolchain { Ok(t) } else {
+    if let Some(t) = toolchain {
+        Ok(t)
+    } else {
         eprintln!("🔍 Auto-detecting project language...");
 
         // First try with confidence
@@ -584,9 +585,7 @@ fn add_file_items(
                     .push_str(&format!("- **Struct**: `{name}`\n"));
             }
             AstItem::Enum { name, .. } => {
-                builder
-                    .content
-                    .push_str(&format!("- **Enum**: `{name}`\n"));
+                builder.content.push_str(&format!("- **Enum**: `{name}`\n"));
             }
             AstItem::Trait { name, .. } => {
                 builder
@@ -1310,7 +1309,9 @@ pub async fn handle_diagnose(args: crate::cli::diagnose::DiagnoseArgs) -> Result
 
 /// Generate graph context analysis for workspace
 /// COMPLEXITY: 6 (following pmat quality standards)
-async fn generate_graph_context_analysis(project_path: &Path) -> Result<Vec<crate::graph::ContextAnnotation>> {
+async fn generate_graph_context_analysis(
+    project_path: &Path,
+) -> Result<Vec<crate::graph::ContextAnnotation>> {
     use crate::graph::{DependencyGraphBuilder, GraphContextAnnotator};
 
     let builder = DependencyGraphBuilder::from_workspace(project_path)?;
@@ -1352,7 +1353,10 @@ fn format_context_output_with_graph(
 
 /// Generate graph analysis section for output
 /// COMPLEXITY: 7
-fn generate_graph_section(annotations: &[crate::graph::ContextAnnotation], format: ContextFormat) -> String {
+fn generate_graph_section(
+    annotations: &[crate::graph::ContextAnnotation],
+    format: ContextFormat,
+) -> String {
     let mut content = String::new();
 
     match format {
@@ -1377,7 +1381,11 @@ fn generate_graph_section(annotations: &[crate::graph::ContextAnnotation], forma
                 let clusters = annotator.get_community_clusters(annotations);
 
                 for (community_id, files) in clusters {
-                    content.push_str(&format!("**Community {}**: {} files\n", community_id, files.len()));
+                    content.push_str(&format!(
+                        "**Community {}**: {} files\n",
+                        community_id,
+                        files.len()
+                    ));
                     for file in files.iter().take(5) {
                         content.push_str(&format!("  - {}\n", file));
                     }
@@ -1394,12 +1402,19 @@ fn generate_graph_section(annotations: &[crate::graph::ContextAnnotation], forma
             content.push_str(&format!(
                 "\n\"graph_analysis\": {{\"file_count\": {}, \"community_count\": {}}}\n",
                 annotations.len(),
-                annotations.iter().map(|a| a.community_id).collect::<std::collections::HashSet<_>>().len()
+                annotations
+                    .iter()
+                    .map(|a| a.community_id)
+                    .collect::<std::collections::HashSet<_>>()
+                    .len()
             ));
         }
         ContextFormat::Sarif | ContextFormat::LlmOptimized => {
             // For other formats, add minimal graph info
-            content.push_str(&format!("Graph analysis: {} files analyzed", annotations.len()));
+            content.push_str(&format!(
+                "Graph analysis: {} files analyzed",
+                annotations.len()
+            ));
         }
     }
 

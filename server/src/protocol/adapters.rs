@@ -1,6 +1,10 @@
 //! Protocol adapter implementations for MCP, HTTP, and CLI
 
-use super::{Serialize, Deserialize, ProtocolAdapter, JsonRpcRequest, JsonRpcResponse, UnifiedRequest, ProtocolError, Operation, RequestContext, UnifiedResponse, HttpRequest, Value, ComplexityParams, SatdParams, DeadCodeParams, QualityGateParams};
+use super::{
+    ComplexityParams, DeadCodeParams, Deserialize, HttpRequest, JsonRpcRequest, JsonRpcResponse,
+    Operation, ProtocolAdapter, ProtocolError, QualityGateParams, RequestContext, SatdParams,
+    Serialize, UnifiedRequest, UnifiedResponse, Value,
+};
 use async_trait::async_trait;
 use std::collections::HashMap;
 

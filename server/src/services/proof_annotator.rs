@@ -79,7 +79,7 @@ pub struct ProofCache {
 }
 
 impl ProofCache {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             cache: std::collections::HashMap::new(),
@@ -87,7 +87,7 @@ impl ProofCache {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn get(&self, key: &str) -> Option<&Vec<ProofAnnotation>> {
         self.cache.get(key)
     }
@@ -96,7 +96,7 @@ impl ProofCache {
         self.cache.insert(key, annotations);
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn is_file_cached(&self, path: &Path) -> bool {
         if let Ok(metadata) = std::fs::metadata(path) {
             if let Ok(modified) = metadata.modified() {
@@ -121,7 +121,7 @@ impl ProofCache {
         self.file_times.clear();
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn size(&self) -> usize {
         self.cache.len()
     }
@@ -135,7 +135,7 @@ pub struct ProofAnnotator {
 }
 
 impl ProofAnnotator {
-    #[must_use] 
+    #[must_use]
     pub fn new(symbol_table: Arc<SymbolTable>) -> Self {
         Self {
             sources: Vec::new(),
@@ -285,7 +285,7 @@ impl ProofAnnotator {
     }
 
     /// Get cache statistics
-    #[must_use] 
+    #[must_use]
     pub fn cache_stats(&self) -> CacheStats {
         let cache = self.cache.read();
         CacheStats {
@@ -325,7 +325,7 @@ pub struct MockProofSource {
 }
 
 impl MockProofSource {
-    #[must_use] 
+    #[must_use]
     pub fn new(name: String, delay_ms: u64, annotation_count: usize) -> Self {
         Self {
             name,

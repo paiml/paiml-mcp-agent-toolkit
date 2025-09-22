@@ -23,7 +23,7 @@ impl Default for AccurateComplexityAnalyzer {
 }
 
 impl AccurateComplexityAnalyzer {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             exclude_tests: false,
@@ -31,13 +31,13 @@ impl AccurateComplexityAnalyzer {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn exclude_tests(mut self, exclude: bool) -> Self {
         self.exclude_tests = exclude;
         self
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn respect_annotations(mut self, respect: bool) -> Self {
         self.respect_annotations = respect;
         self

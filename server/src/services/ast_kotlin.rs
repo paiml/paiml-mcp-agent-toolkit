@@ -31,12 +31,12 @@ impl Default for KotlinAstParser {
 }
 
 impl KotlinAstParser {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self::with_limits(MAX_RECURSION_DEPTH, MAX_PARSING_TIME)
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn with_limits(max_depth: usize, timeout: Duration) -> Self {
         let mut parser = Parser::new();
         parser
@@ -407,7 +407,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);

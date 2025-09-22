@@ -1,17 +1,21 @@
 use super::*;
-use async_raft::{Config as RaftConfig, Raft, RaftMetrics, RaftNetwork, RaftStorage};
 use async_raft::raft::{Entry, EntryPayload, MembershipConfig};
+use async_raft::{AppData, AppDataResponse, Config as RaftConfig, Raft, RaftMetrics, RaftNetwork, RaftStorage};
 use async_trait::async_trait;
-use serde::{Serialize, Deserialize};
-use std::sync::Arc;
 use parking_lot::RwLock;
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
-use tokio::sync::mpsc;
 use std::net::SocketAddr;
+use std::sync::Arc;
+use tokio::sync::mpsc;
+use uuid::Uuid;
 
 // Raft consensus for critical state synchronization
 pub type NodeId = u64;
-pub type RaftInstance = Raft<ClientRequest, ClientResponse, RaftNetwork, RaftStorage>;
+
+// Forward declarations for the Raft instance type
+// We'll define this after the concrete types are declared
+pub type RaftInstance<S> = Raft<ClientRequest, ClientResponse, ConsensusNetwork, ConsensusStorage<S>>;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClientRequest {
@@ -19,11 +23,17 @@ pub struct ClientRequest {
     pub operation: StateOperation,
 }
 
+// Implement AppData marker trait
+impl AppData for ClientRequest {}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClientResponse {
     pub success: bool,
     pub result: Option<serde_json::Value>,
 }
+
+// Implement AppDataResponse marker trait
+impl AppDataResponse for ClientResponse {}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum StateOperation {
@@ -75,7 +85,7 @@ impl<S: AgentState> ConsensusStorage<S> {
                             success: true,
                             result: Some(serde_json::json!({"applied": true})),
                         }
-                    },
+                    }
                     StateOperation::Snapshot(data) => {
                         if let Ok(new_state) = bincode::deserialize::<S>(data) {
                             *self.state_machine.write() = new_state;
@@ -86,10 +96,12 @@ impl<S: AgentState> ConsensusStorage<S> {
                         } else {
                             ClientResponse {
                                 success: false,
-                                result: Some(serde_json::json!({"error": "Failed to deserialize snapshot"})),
+                                result: Some(
+                                    serde_json::json!({"error": "Failed to deserialize snapshot"}),
+                                ),
                             }
                         }
-                    },
+                    }
                     StateOperation::Query(query) => {
                         // Read-only query
                         let state = self.state_machine.read();
@@ -100,16 +112,16 @@ impl<S: AgentState> ConsensusStorage<S> {
                                 "last_event_id": state.last_event_id(),
                             })),
                         }
-                    },
+                    }
                 }
-            },
+            }
             EntryPayload::ConfigChange(membership) => {
                 *self.membership.write() = membership.clone();
                 ClientResponse {
                     success: true,
                     result: Some(serde_json::json!({"membership_updated": true})),
                 }
-            },
+            }
             _ => ClientResponse {
                 success: false,
                 result: None,
@@ -131,7 +143,7 @@ impl<S: AgentState> RaftStorage<ClientRequest, ClientResponse> for ConsensusStor
         let membership = self.membership.read().clone();
         let mut last_log_index = 0;
         let mut last_log_term = 0;
-        
+
         if let Some(last_entry) = self.log.read().iter().rev().next() {
             last_log_index = *last_entry.0;
             last_log_term = last_entry.1.term;
@@ -155,15 +167,23 @@ impl<S: AgentState> RaftStorage<ClientRequest, ClientResponse> for ConsensusStor
         })
     }
 
-    async fn save_hard_state(&self, hs: &async_raft::storage::HardState) -> Result<(), std::io::Error> {
+    async fn save_hard_state(
+        &self,
+        hs: &async_raft::storage::HardState,
+    ) -> Result<(), std::io::Error> {
         *self.current_term.write() = hs.current_term;
         *self.voted_for.write() = hs.voted_for;
         Ok(())
     }
 
-    async fn get_log_entries(&self, start: u64, stop: u64) -> Result<Vec<Entry<ClientRequest>>, std::io::Error> {
+    async fn get_log_entries(
+        &self,
+        start: u64,
+        stop: u64,
+    ) -> Result<Vec<Entry<ClientRequest>>, std::io::Error> {
         let log = self.log.read();
-        let entries: Vec<_> = log.range(start..stop)
+        let entries: Vec<_> = log
+            .range(start..stop)
             .map(|(_, entry)| entry.clone())
             .collect();
         Ok(entries)
@@ -176,19 +196,25 @@ impl<S: AgentState> RaftStorage<ClientRequest, ClientResponse> for ConsensusStor
         } else {
             log.range(start..).map(|(k, _)| *k).collect()
         };
-        
+
         for key in keys_to_remove {
             log.remove(&key);
         }
         Ok(())
     }
 
-    async fn append_entry_to_log(&self, entry: &Entry<ClientRequest>) -> Result<(), std::io::Error> {
+    async fn append_entry_to_log(
+        &self,
+        entry: &Entry<ClientRequest>,
+    ) -> Result<(), std::io::Error> {
         self.log.write().insert(entry.index, entry.clone());
         Ok(())
     }
 
-    async fn replicate_to_log(&self, entries: &[Entry<ClientRequest>]) -> Result<(), std::io::Error> {
+    async fn replicate_to_log(
+        &self,
+        entries: &[Entry<ClientRequest>],
+    ) -> Result<(), std::io::Error> {
         let mut log = self.log.write();
         for entry in entries {
             log.insert(entry.index, entry.clone());
@@ -212,7 +238,10 @@ impl<S: AgentState> RaftStorage<ClientRequest, ClientResponse> for ConsensusStor
         }
     }
 
-    async fn replicate_to_state_machine(&self, entries: &[(&u64, &ClientRequest)]) -> Result<(), std::io::Error> {
+    async fn replicate_to_state_machine(
+        &self,
+        entries: &[(&u64, &ClientRequest)],
+    ) -> Result<(), std::io::Error> {
         for (index, _data) in entries {
             if let Some(entry) = self.log.read().get(index) {
                 self.apply_entry(entry).await;
@@ -225,36 +254,54 @@ impl<S: AgentState> RaftStorage<ClientRequest, ClientResponse> for ConsensusStor
         let state = self.state_machine.read();
         let snapshot_data = bincode::serialize(&*state)
             .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
-        
-        let last_log_index = self.log.read().iter().rev().next()
+
+        let last_log_index = self
+            .log
+            .read()
+            .iter()
+            .rev()
+            .next()
             .map(|(idx, _)| *idx)
             .unwrap_or(0);
-        
+
         let snapshot = RaftSnapshot {
             index: last_log_index,
             term: *self.current_term.read(),
             membership: self.membership.read().clone(),
             state: snapshot_data.clone(),
         };
-        
+
         *self.snapshot.write() = Some(snapshot);
-        
+
         Ok(snapshot_data)
     }
 
-    async fn create_snapshot(&self) -> Result<(async_raft::storage::CurrentSnapshotData<Self::Snapshot>, MembershipConfig), std::io::Error> {
+    async fn create_snapshot(
+        &self,
+    ) -> Result<
+        (
+            async_raft::storage::CurrentSnapshotData<Self::Snapshot>,
+            MembershipConfig,
+        ),
+        std::io::Error,
+    > {
         let snapshot_bytes = self.do_log_compaction().await?;
-        let last_applied_log = self.log.read().iter().rev().next()
+        let last_applied_log = self
+            .log
+            .read()
+            .iter()
+            .rev()
+            .next()
             .map(|(idx, _)| *idx)
             .unwrap_or(0);
-        
+
         let snapshot_data = async_raft::storage::CurrentSnapshotData {
             index: last_applied_log,
             term: *self.current_term.read(),
             membership: self.membership.read().clone(),
             snapshot: snapshot_bytes,
         };
-        
+
         Ok((snapshot_data, self.membership.read().clone()))
     }
 
@@ -270,12 +317,12 @@ impl<S: AgentState> RaftStorage<ClientRequest, ClientResponse> for ConsensusStor
         if let Ok(new_state) = bincode::deserialize::<S>(&snapshot) {
             *self.state_machine.write() = new_state;
         }
-        
+
         // Delete old log entries
         if let Some(through) = delete_through {
             self.delete_logs_from(0, Some(through + 1)).await?;
         }
-        
+
         // Save snapshot metadata
         let snapshot = RaftSnapshot {
             index,
@@ -284,11 +331,13 @@ impl<S: AgentState> RaftStorage<ClientRequest, ClientResponse> for ConsensusStor
             state: snapshot,
         };
         *self.snapshot.write() = Some(snapshot);
-        
+
         Ok(())
     }
 
-    async fn get_current_snapshot(&self) -> Result<Option<async_raft::storage::CurrentSnapshotData<Vec<u8>>>, std::io::Error> {
+    async fn get_current_snapshot(
+        &self,
+    ) -> Result<Option<async_raft::storage::CurrentSnapshotData<Vec<u8>>>, std::io::Error> {
         if let Some(snapshot) = &*self.snapshot.read() {
             Ok(Some(async_raft::storage::CurrentSnapshotData {
                 index: snapshot.index,
@@ -331,7 +380,7 @@ impl RaftNetwork<ClientRequest> for ConsensusNetwork {
         &self,
         target: NodeId,
         rpc: async_raft::raft::AppendEntriesRequest<ClientRequest>,
-    ) -> Result<async_raft::raft::AppendEntriesResponse, async_raft::error::RPCError> {
+    ) -> Result<async_raft::raft::AppendEntriesResponse, async_raft::error::RaftError> {
         // In production, this would make an actual network call
         // For now, return a mock response
         Ok(async_raft::raft::AppendEntriesResponse {
@@ -345,7 +394,7 @@ impl RaftNetwork<ClientRequest> for ConsensusNetwork {
         &self,
         target: NodeId,
         rpc: async_raft::raft::InstallSnapshotRequest,
-    ) -> Result<async_raft::raft::InstallSnapshotResponse, async_raft::error::RPCError> {
+    ) -> Result<async_raft::raft::InstallSnapshotResponse, async_raft::error::RaftError> {
         // In production, this would make an actual network call
         Ok(async_raft::raft::InstallSnapshotResponse { term: rpc.term })
     }
@@ -354,7 +403,7 @@ impl RaftNetwork<ClientRequest> for ConsensusNetwork {
         &self,
         target: NodeId,
         rpc: async_raft::raft::VoteRequest,
-    ) -> Result<async_raft::raft::VoteResponse, async_raft::error::RPCError> {
+    ) -> Result<async_raft::raft::VoteResponse, async_raft::error::RaftError> {
         // In production, this would make an actual network call
         Ok(async_raft::raft::VoteResponse {
             term: rpc.term,
@@ -366,7 +415,7 @@ impl RaftNetwork<ClientRequest> for ConsensusNetwork {
 // Consensus manager coordinating Raft operations
 pub struct ConsensusManager<S: AgentState> {
     node_id: NodeId,
-    raft: Arc<RaftInstance>,
+    raft: Arc<RaftInstance<S>>,
     storage: Arc<ConsensusStorage<S>>,
     network: Arc<ConsensusNetwork>,
     metrics_rx: mpsc::UnboundedReceiver<RaftMetrics>,
@@ -380,13 +429,8 @@ impl<S: AgentState> ConsensusManager<S> {
     ) -> Result<Self, ConsensusError> {
         let storage = Arc::new(ConsensusStorage::new(node_id, initial_state));
         let network = Arc::new(ConsensusNetwork::new(node_id));
-        
-        let (raft, metrics_rx) = Raft::new(
-            node_id,
-            config,
-            network.clone(),
-            storage.clone(),
-        );
+
+        let (raft, metrics_rx) = Raft::new(node_id, config, network.clone(), storage.clone());
 
         Ok(Self {
             node_id,
@@ -406,7 +450,9 @@ impl<S: AgentState> ConsensusManager<S> {
             operation: StateOperation::Apply(event),
         };
 
-        self.raft.client_write(request).await
+        self.raft
+            .client_write(request)
+            .await
             .map_err(|e| ConsensusError::RaftError(e.to_string()))
     }
 
@@ -416,7 +462,9 @@ impl<S: AgentState> ConsensusManager<S> {
             operation: StateOperation::Query(query),
         };
 
-        self.raft.client_read().await
+        self.raft
+            .client_read()
+            .await
             .map_err(|e| ConsensusError::RaftError(e.to_string()))?;
 
         // For read queries, we can directly read from state machine if we're the leader
@@ -475,7 +523,7 @@ mod tests {
     #[actix_rt::test]
     async fn test_consensus_storage() {
         let storage = ConsensusStorage::<ExampleState>::new(1, ExampleState::default());
-        
+
         let entry = Entry {
             term: 1,
             index: 1,
@@ -484,9 +532,9 @@ mod tests {
                 operation: StateOperation::Query("test".to_string()),
             }),
         };
-        
+
         storage.append_entry_to_log(&entry).await.unwrap();
-        
+
         let entries = storage.get_log_entries(1, 2).await.unwrap();
         assert_eq!(entries.len(), 1);
     }
@@ -499,13 +547,11 @@ mod tests {
             election_timeout_max: 600,
             ..Default::default()
         };
-        
-        let manager = ConsensusManager::<ExampleState>::new(
-            1,
-            ExampleState::default(),
-            config,
-        ).await.unwrap();
-        
+
+        let manager = ConsensusManager::<ExampleState>::new(1, ExampleState::default(), config)
+            .await
+            .unwrap();
+
         assert_eq!(manager.node_id, 1);
     }
 
@@ -513,10 +559,10 @@ mod tests {
     fn test_network_peer_management() {
         let network = ConsensusNetwork::new(1);
         let addr: SocketAddr = "127.0.0.1:8080".parse().unwrap();
-        
+
         network.add_peer(2, addr);
         assert_eq!(network.peers.read().len(), 1);
-        
+
         network.remove_peer(2);
         assert_eq!(network.peers.read().len(), 0);
     }

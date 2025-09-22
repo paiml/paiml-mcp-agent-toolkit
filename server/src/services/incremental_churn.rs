@@ -30,7 +30,7 @@ pub struct IncrementalChurnAnalyzer {
 }
 
 impl IncrementalChurnAnalyzer {
-    #[must_use] 
+    #[must_use]
     pub fn new(project_root: PathBuf) -> Self {
         Self {
             cache: Arc::new(DashMap::new()),
@@ -355,7 +355,7 @@ impl IncrementalChurnAnalyzer {
     }
 
     /// Get cache statistics
-    #[must_use] 
+    #[must_use]
     pub fn cache_stats(&self) -> (usize, usize) {
         let cache_size = self.cache.len();
         let cache_memory = cache_size * std::mem::size_of::<(PathBuf, ChurnCacheEntry)>();

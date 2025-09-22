@@ -477,7 +477,9 @@ async fn run_web_demo(
         .map_or(2.5, |c| f64::from(c.summary.median_cyclomatic)); // More realistic fallback
     let tech_debt_hours = complexity_result
         .as_ref()
-        .map_or((files_analyzed / 10) as u32, |c| c.summary.technical_debt_hours as u32); // Estimate based on file count
+        .map_or((files_analyzed / 10) as u32, |c| {
+            c.summary.technical_debt_hours as u32
+        }); // Estimate based on file count
 
     // Get actual complexity hotspots instead of churn
     let hotspots = complexity_result

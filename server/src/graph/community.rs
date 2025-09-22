@@ -62,7 +62,11 @@ impl LouvainDetector {
 
             for node_idx in 0..n {
                 let best_community = self.find_best_community(
-                    graph, node_idx, &communities, &node_weights, total_weight
+                    graph,
+                    node_idx,
+                    &communities,
+                    &node_weights,
+                    total_weight,
                 );
 
                 if best_community != communities[node_idx] {
@@ -97,7 +101,9 @@ impl LouvainDetector {
             for edge in graph.edges(node) {
                 let neighbor_idx = edge.target().index();
                 let neighbor_community = communities[neighbor_idx];
-                *neighbor_communities.entry(neighbor_community).or_insert(0.0) += edge.weight();
+                *neighbor_communities
+                    .entry(neighbor_community)
+                    .or_insert(0.0) += edge.weight();
             }
         }
 
@@ -105,7 +111,12 @@ impl LouvainDetector {
         for (&community, &edge_weight) in &neighbor_communities {
             if community != current_community {
                 let gain = self.calculate_modularity_gain(
-                    node_idx, community, edge_weight, communities, node_weights, total_weight
+                    node_idx,
+                    community,
+                    edge_weight,
+                    communities,
+                    node_weights,
+                    total_weight,
                 );
 
                 if gain > best_gain {
@@ -140,8 +151,8 @@ impl LouvainDetector {
         }
 
         // Modularity gain formula
-        let gain = edge_weight_to_community - self.resolution *
-            (node_degree * community_weight) / total_weight;
+        let gain = edge_weight_to_community
+            - self.resolution * (node_degree * community_weight) / total_weight;
 
         gain
     }

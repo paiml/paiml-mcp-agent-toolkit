@@ -140,7 +140,7 @@ struct PerformanceSample {
 }
 
 impl DiagnosticTool {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             start_time: Instant::now(),
@@ -409,7 +409,7 @@ impl DiagnosticTool {
     }
 
     /// Format diagnostics for display
-    #[must_use] 
+    #[must_use]
     pub fn format_diagnostics(diag: &SystemDiagnostics) -> String {
         let local_time: DateTime<Local> = diag.timestamp.into();
 

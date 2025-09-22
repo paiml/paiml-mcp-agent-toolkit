@@ -1,14 +1,14 @@
 // Resource control and scheduling system
-pub mod cpu_limiter;
-pub mod memory_limiter;
-pub mod gpu_scheduler;
-pub mod network_throttle;
-pub mod io_throttle;
 pub mod adaptive_allocator;
+pub mod cpu_limiter;
+pub mod gpu_scheduler;
+pub mod io_throttle;
+pub mod memory_limiter;
+pub mod network_throttle;
 
-use std::sync::Arc;
 use parking_lot::RwLock;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 use std::time::Duration;
 
 // Resource limits configuration
@@ -23,8 +23,8 @@ pub struct ResourceLimits {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CpuLimits {
-    pub cores: f32,           // Fractional cores (e.g., 1.5)
-    pub max_percent: f32,     // Max CPU percentage
+    pub cores: f32,               // Fractional cores (e.g., 1.5)
+    pub max_percent: f32,         // Max CPU percentage
     pub scheduling_priority: i32, // Nice value (-20 to 19)
 }
 
@@ -126,9 +126,9 @@ pub struct ResourceManager {
 impl ResourceManager {
     pub fn new(limits: ResourceLimits) -> Result<Self, ResourceError> {
         use cpu_limiter::CpuLimiter;
+        use io_throttle::IoThrottle;
         use memory_limiter::MemoryLimiter;
         use network_throttle::NetworkThrottle;
-        use io_throttle::IoThrottle;
 
         let cpu_controller = Arc::new(CpuLimiter::new(limits.cpu.clone())?);
         let memory_controller = Arc::new(MemoryLimiter::new(limits.memory.clone())?);
@@ -158,7 +158,7 @@ impl ResourceManager {
         self.memory_controller.apply_limits(&new_limits)?;
         self.network_controller.apply_limits(&new_limits)?;
         self.io_controller.apply_limits(&new_limits)?;
-        
+
         if let Some(gpu) = &self.gpu_controller {
             gpu.apply_limits(&new_limits)?;
         }
@@ -194,10 +194,11 @@ impl ResourceManager {
         // Store in history
         let mut history = self.usage_history.write();
         history.push(usage.clone());
-        
+
         // Keep only last 1000 samples
-        if history.len() > 1000 {
-            history.drain(0..history.len() - 1000);
+        let history_len = history.len();
+        if history_len > 1000 {
+            history.drain(0..history_len - 1000);
         }
 
         Ok(usage)
@@ -206,8 +207,9 @@ impl ResourceManager {
     pub fn get_usage_history(&self, duration: Duration) -> Vec<ResourceUsage> {
         let history = self.usage_history.read();
         let cutoff = std::time::SystemTime::now() - duration;
-        
-        history.iter()
+
+        history
+            .iter()
             .filter(|u| u.timestamp >= cutoff)
             .cloned()
             .collect()
@@ -218,7 +220,7 @@ impl ResourceManager {
         self.memory_controller.release()?;
         self.network_controller.release()?;
         self.io_controller.release()?;
-        
+
         if let Some(gpu) = &self.gpu_controller {
             gpu.release()?;
         }
@@ -261,42 +263,56 @@ impl ResourcePool {
         }
     }
 
-    pub fn request(&self, agent_id: uuid::Uuid, requested: ResourceLimits) -> Result<ResourceLimits, ResourceError> {
+    pub fn request(
+        &self,
+        agent_id: uuid::Uuid,
+        requested: ResourceLimits,
+    ) -> Result<ResourceLimits, ResourceError> {
         let mut available = self.available.write();
-        
+
         // Check if resources are available
         if requested.cpu.cores > available.cpu.cores {
-            return Err(ResourceError::NotAvailable("Insufficient CPU cores".to_string()));
+            return Err(ResourceError::NotAvailable(
+                "Insufficient CPU cores".to_string(),
+            ));
         }
         if requested.memory.max_bytes > available.memory.max_bytes {
-            return Err(ResourceError::NotAvailable("Insufficient memory".to_string()));
+            return Err(ResourceError::NotAvailable(
+                "Insufficient memory".to_string(),
+            ));
         }
 
         // Allocate resources
         available.cpu.cores -= requested.cpu.cores;
         available.memory.max_bytes -= requested.memory.max_bytes;
-        available.network.ingress_bytes_per_sec -= requested.network.ingress_bytes_per_sec.min(available.network.ingress_bytes_per_sec);
-        available.network.egress_bytes_per_sec -= requested.network.egress_bytes_per_sec.min(available.network.egress_bytes_per_sec);
+        available.network.ingress_bytes_per_sec -= requested
+            .network
+            .ingress_bytes_per_sec
+            .min(available.network.ingress_bytes_per_sec);
+        available.network.egress_bytes_per_sec -= requested
+            .network
+            .egress_bytes_per_sec
+            .min(available.network.egress_bytes_per_sec);
 
         self.allocated.write().push((agent_id, requested.clone()));
-        
+
         Ok(requested)
     }
 
     pub fn release(&self, agent_id: uuid::Uuid) -> Result<(), ResourceError> {
         let mut allocated = self.allocated.write();
         let mut available = self.available.write();
-        
+
         if let Some(pos) = allocated.iter().position(|(id, _)| *id == agent_id) {
             let (_, limits) = allocated.remove(pos);
-            
+
             // Return resources to pool
             available.cpu.cores += limits.cpu.cores;
             available.memory.max_bytes += limits.memory.max_bytes;
             available.network.ingress_bytes_per_sec += limits.network.ingress_bytes_per_sec;
             available.network.egress_bytes_per_sec += limits.network.egress_bytes_per_sec;
         }
-        
+
         Ok(())
     }
 
@@ -325,18 +341,18 @@ mod tests {
     fn test_resource_pool() {
         let total = ResourceLimits::default();
         let pool = ResourcePool::new(total);
-        
+
         let agent1 = uuid::Uuid::new_v4();
         let mut requested = ResourceLimits::default();
         requested.cpu.cores = 0.5;
         requested.memory.max_bytes = 512 * 1024 * 1024;
-        
+
         let allocated = pool.request(agent1, requested).unwrap();
         assert_eq!(allocated.cpu.cores, 0.5);
-        
+
         let available = pool.get_available();
         assert_eq!(available.cpu.cores, 0.5);
-        
+
         pool.release(agent1).unwrap();
         let available = pool.get_available();
         assert_eq!(available.cpu.cores, 1.0);

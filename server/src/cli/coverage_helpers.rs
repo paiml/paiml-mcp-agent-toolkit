@@ -117,14 +117,10 @@ pub fn check_coverage_threshold(coverage_data: &CoverageUpdate, threshold: f64) 
     eprintln!("🆕 New code coverage: {coverage:.1}%");
 
     if coverage < threshold {
-        eprintln!(
-            "❌ Coverage threshold not met: {coverage:.1}% < {threshold:.1}%"
-        );
+        eprintln!("❌ Coverage threshold not met: {coverage:.1}% < {threshold:.1}%");
         anyhow::bail!("Coverage threshold not met");
     }
-    eprintln!(
-        "✅ Coverage threshold met: {coverage:.1}% >= {threshold:.1}%"
-    );
+    eprintln!("✅ Coverage threshold met: {coverage:.1}% >= {threshold:.1}%");
 
     Ok(())
 }

@@ -181,7 +181,7 @@ macro_rules! step {
         .params(serde_json::json!({ $($key: $value),* }))
         .build()
     }};
-    
+
     (wait: $duration:expr) => {{
         $crate::workflow::WorkflowStep {
             id: format!("wait_{}", uuid::Uuid::new_v4()),
@@ -263,9 +263,7 @@ mod tests {
     #[test]
     fn test_fluent_dsl() {
         let workflow = FluentWorkflow::define("test_workflow")
-            .then(step!(action: "analyzer", "analyze", {
-                language: "rust"
-            }))
+            .then(step!(action: "analyzer", "analyze", {}))
             .then(step!(wait: Duration::from_secs(5)))
             .then(step!(action: "validator", "validate", {}))
             .on_error(ErrorStrategy::Continue)
@@ -285,8 +283,8 @@ mod tests {
         let workflow = FluentWorkflow::define("conditional_workflow")
             .then(analyze_step)
             .when("result.score > 0.8")
-                .do_this(transform_step)
-                .otherwise(validate_step)
+            .do_this(transform_step)
+            .otherwise(validate_step)
             .build();
 
         assert_eq!(workflow.steps.len(), 2);
@@ -296,7 +294,7 @@ mod tests {
     fn test_yaml_dsl_compilation() {
         let result = DslCompiler::compile(WORKFLOW_DSL_EXAMPLE);
         assert!(result.is_ok());
-        
+
         let workflow = result.unwrap();
         assert_eq!(workflow.name, "quality_check_workflow");
         assert_eq!(workflow.version, "1.0.0");
@@ -305,7 +303,7 @@ mod tests {
     #[test]
     fn test_workflow_macro() {
         let wf = workflow!("macro_workflow" => {
-            step!(action: "analyzer", "analyze", { language: "rust" }),
+            step!(action: "analyzer", "analyze", {}),
             step!(wait: Duration::from_secs(2)),
             step!(action: "validator", "validate", {}),
         });

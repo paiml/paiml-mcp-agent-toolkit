@@ -1,7 +1,7 @@
-use actix::prelude::*;
 use super::messages::TransformMessage;
-use super::{AgentResponse, AgentError};
-use crate::modules::transformer::{TransformerModule, TransformerImpl};
+use super::{AgentError, AgentResponse};
+use crate::modules::transformer::{TransformerImpl, TransformerModule};
+use actix::prelude::*;
 
 pub struct TransformerActor {
     transformer: TransformerImpl,
@@ -28,11 +28,13 @@ impl Handler<TransformMessage> for TransformerActor {
 
         Box::pin(
             async move {
-                let result = transformer.transform(&code).await
+                let result = transformer
+                    .transform(&code)
+                    .await
                     .map_err(|e| AgentError::ProcessingFailed(e.to_string()))?;
                 Ok(AgentResponse::Transformed(result))
             }
-            .into_actor(self)
+            .into_actor(self),
         )
     }
 }

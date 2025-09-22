@@ -64,13 +64,13 @@ pub struct SimpleFairScheduler {
 
 impl SimpleFairScheduler {
     /// Create new scheduler with default configuration
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self::with_limits(10, 2)
     }
 
     /// Create scheduler with custom limits
-    #[must_use] 
+    #[must_use]
     pub fn with_limits(high_permits: usize, low_permits: usize) -> Self {
         let high = Arc::new(Semaphore::new(high_permits));
         let low = Arc::new(Semaphore::new(low_permits));
@@ -236,7 +236,7 @@ pub struct SchedulingStatistics {
 
 impl SchedulingStatistics {
     /// Format statistics for diagnostic display
-    #[must_use] 
+    #[must_use]
     pub fn format_diagnostic(&self) -> String {
         let status = if self.total_active_operations == 0 {
             "IDLE"
@@ -271,19 +271,19 @@ pub struct SchedulerFactory;
 
 impl SchedulerFactory {
     /// Create scheduler with balanced configuration
-    #[must_use] 
+    #[must_use]
     pub fn create_balanced() -> SimpleFairScheduler {
         SimpleFairScheduler::with_limits(10, 2)
     }
 
     /// Create scheduler optimized for commits
-    #[must_use] 
+    #[must_use]
     pub fn create_commit_optimized() -> SimpleFairScheduler {
         SimpleFairScheduler::with_limits(20, 1)
     }
 
     /// Create scheduler optimized for background processing
-    #[must_use] 
+    #[must_use]
     pub fn create_background_optimized() -> SimpleFairScheduler {
         SimpleFairScheduler::with_limits(5, 8)
     }

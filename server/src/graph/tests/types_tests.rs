@@ -2,22 +2,20 @@
 // Writing tests FIRST before implementation
 
 use super::super::*;
-use std::path::PathBuf;
 use serde_json;
+use std::path::PathBuf;
 
 #[test]
 fn test_node_data_creation() {
     let node = NodeData {
         path: PathBuf::from("src/main.rs"),
         module: "main".to_string(),
-        symbols: vec![
-            Symbol {
-                name: "main".to_string(),
-                kind: SymbolKind::Function,
-                visibility: Visibility::Public,
-                line: 10,
-            }
-        ],
+        symbols: vec![Symbol {
+            name: "main".to_string(),
+            kind: SymbolKind::Function,
+            visibility: Visibility::Public,
+            line: 10,
+        }],
         loc: 100,
         complexity: 5.0,
         ast_hash: 0x1234567890ABCDEF,

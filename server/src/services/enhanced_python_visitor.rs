@@ -7,9 +7,9 @@
 #[cfg(feature = "python-ast")]
 use crate::services::context::AstItem;
 #[cfg(feature = "python-ast")]
-use std::path::{Path, PathBuf};
+use rustpython_parser::ast::{Expr, ModModule, Stmt};
 #[cfg(feature = "python-ast")]
-use rustpython_parser::ast::{Stmt, Expr, ModModule};
+use std::path::{Path, PathBuf};
 
 /// Enhanced Python AST visitor that preserves real source information
 #[cfg(feature = "python-ast")]
@@ -23,7 +23,7 @@ pub struct EnhancedPythonVisitor {
 #[cfg(feature = "python-ast")]
 impl EnhancedPythonVisitor {
     /// Creates a new enhanced Python visitor
-    #[must_use] 
+    #[must_use]
     pub fn new(file_path: &Path) -> Self {
         Self {
             items: Vec::new(),
@@ -34,7 +34,7 @@ impl EnhancedPythonVisitor {
     }
 
     /// Extracts AST items from a Python module
-    #[must_use] 
+    #[must_use]
     pub fn extract_items(mut self, module: &ModModule) -> Vec<AstItem> {
         self.visit_module(module);
         self.items
@@ -135,7 +135,9 @@ impl EnhancedPythonVisitor {
         let line = self.get_line(&Stmt::ClassDef(class.clone()));
 
         // Count methods (functions within the class)
-        let fields_count = class.body.iter()
+        let fields_count = class
+            .body
+            .iter()
             .filter(|stmt| matches!(stmt, Stmt::FunctionDef(_) | Stmt::AsyncFunctionDef(_)))
             .count();
 
@@ -200,8 +202,7 @@ mod tests {
     use std::path::Path;
 
     fn parse_python(code: &str) -> ModModule {
-        ModModule::parse(code, "test.py")
-            .expect("Failed to parse Python code")
+        ModModule::parse(code, "test.py").expect("Failed to parse Python code")
     }
 
     #[test]
@@ -259,7 +260,10 @@ class Calculator:
         assert_eq!(items.len(), 3); // 1 class + 2 methods
 
         // Check class
-        if let AstItem::Struct { name, fields_count, .. } = &items[0] {
+        if let AstItem::Struct {
+            name, fields_count, ..
+        } = &items[0]
+        {
             assert_eq!(name, "Calculator");
             assert_eq!(*fields_count, 2); // 2 methods
         } else {
@@ -328,11 +332,14 @@ class Database:
         assert_eq!(items.len(), 4);
 
         // Check qualified names for nested class methods
-        let names: Vec<String> = items.iter().map(|item| match item {
-            AstItem::Function { name, .. } => name.clone(),
-            AstItem::Struct { name, .. } => name.clone(),
-            _ => "unknown".to_string(),
-        }).collect();
+        let names: Vec<String> = items
+            .iter()
+            .map(|item| match item {
+                AstItem::Function { name, .. } => name.clone(),
+                AstItem::Struct { name, .. } => name.clone(),
+                _ => "unknown".to_string(),
+            })
+            .collect();
 
         assert!(names.contains(&"Database".to_string()));
         assert!(names.contains(&"Database::Connection".to_string()));

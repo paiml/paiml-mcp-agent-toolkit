@@ -55,7 +55,7 @@ pub struct ComplexityFacade {
 
 impl ComplexityFacade {
     /// Create a new complexity facade
-    #[must_use] 
+    #[must_use]
     pub fn new(registry: Arc<ServiceRegistry>) -> Self {
         Self { registry }
     }
@@ -105,7 +105,7 @@ impl ComplexityFacade {
     }
 
     /// Get complexity thresholds for different languages
-    #[must_use] 
+    #[must_use]
     pub fn get_language_thresholds(&self, language: &str) -> ComplexityThresholds {
         match language {
             "rust" => ComplexityThresholds {
@@ -132,7 +132,7 @@ impl ComplexityFacade {
     }
 
     /// Check if complexity violations exceed thresholds
-    #[must_use] 
+    #[must_use]
     pub fn validate_complexity(
         &self,
         result: &ComplexityAnalysisResult,

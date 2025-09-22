@@ -15,7 +15,7 @@ impl ResourceController for NetworkThrottle {
     fn apply_limits(&self, _limits: &ResourceLimits) -> Result<(), ResourceError> {
         Ok(())
     }
-    
+
     fn get_usage(&self) -> Result<ResourceUsage, ResourceError> {
         Ok(ResourceUsage {
             cpu_percent: 0.0,
@@ -29,7 +29,7 @@ impl ResourceController for NetworkThrottle {
             timestamp: std::time::SystemTime::now(),
         })
     }
-    
+
     fn release(&self) -> Result<(), ResourceError> {
         Ok(())
     }

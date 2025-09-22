@@ -216,7 +216,7 @@ impl QualityMetricsRegistry {
     }
 
     /// Get metrics registry for custom metrics
-    #[must_use] 
+    #[must_use]
     pub fn registry(&self) -> &Registry {
         &self.registry
     }
@@ -372,7 +372,7 @@ impl PrometheusExporter {
     }
 
     /// Get metrics registry for custom metrics
-    #[must_use] 
+    #[must_use]
     pub fn metrics(&self) -> &Arc<QualityMetricsRegistry> {
         &self.metrics
     }

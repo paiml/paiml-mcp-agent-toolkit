@@ -70,7 +70,7 @@ pub struct ComplexityTool;
 
 impl ComplexityTool {
     /// Creates a new complexity analysis tool handler.
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self
     }
@@ -143,7 +143,7 @@ pub struct SatdTool;
 
 impl SatdTool {
     /// Creates a new SATD analysis tool handler.
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self
     }
@@ -185,7 +185,7 @@ struct DeadCodeArgs {
 pub struct DeadCodeTool;
 
 impl DeadCodeTool {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self
     }
@@ -227,7 +227,7 @@ struct LintHotspotArgs {
 pub struct LintHotspotTool;
 
 impl LintHotspotTool {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self
     }
@@ -271,7 +271,7 @@ struct ChurnArgs {
 pub struct ChurnTool;
 
 impl ChurnTool {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self
     }
@@ -313,7 +313,7 @@ struct CouplingArgs {
 pub struct CouplingTool;
 
 impl CouplingTool {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self
     }
@@ -399,7 +399,7 @@ pub struct TdgTool;
 
 impl TdgTool {
     /// Creates a new TDG analysis tool handler.
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self
     }
@@ -460,7 +460,7 @@ pub struct TdgCompareTool;
 
 impl TdgCompareTool {
     /// Creates a new TDG comparison tool handler.
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self
     }

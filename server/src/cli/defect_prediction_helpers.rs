@@ -65,7 +65,7 @@ pub async fn discover_source_files_for_defect_analysis(
 }
 
 /// Calculate simple complexity metric from source code
-#[must_use] 
+#[must_use]
 pub fn calculate_simple_complexity(content: &str) -> u32 {
     let mut complexity = 1u32;
 
@@ -98,9 +98,12 @@ fn count_loop_statements(line: &str) -> u32 {
 }
 
 fn count_pattern_matching(line: &str) -> u32 {
-    u32::from(line.starts_with("match ")
-        || line.starts_with("switch ")
-        || line.contains("=>") || line.starts_with("case "))
+    u32::from(
+        line.starts_with("match ")
+            || line.starts_with("switch ")
+            || line.contains("=>")
+            || line.starts_with("case "),
+    )
 }
 
 fn count_logical_operators(line: &str) -> u32 {
@@ -112,7 +115,7 @@ fn count_exception_handling(line: &str) -> u32 {
 }
 
 /// Calculate simple churn score based on file content
-#[must_use] 
+#[must_use]
 pub fn calculate_simple_churn_score(content: &str, lines_of_code: usize) -> f32 {
     // Simple heuristic based on comments and file size
     let todo_count = content.matches("TODO").count() + content.matches("FIXME").count();
@@ -132,7 +135,7 @@ pub fn calculate_simple_churn_score(content: &str, lines_of_code: usize) -> f32 
 }
 
 /// Collect metrics for all files
-#[must_use] 
+#[must_use]
 pub fn collect_file_metrics(analyzed_files: &[(PathBuf, String, usize)]) -> Vec<FileMetrics> {
     let mut file_metrics = Vec::new();
 
@@ -169,7 +172,7 @@ pub fn collect_file_metrics(analyzed_files: &[(PathBuf, String, usize)]) -> Vec<
 }
 
 /// Filter predictions based on configuration
-#[must_use] 
+#[must_use]
 pub fn filter_predictions(
     predictions: Vec<(String, DefectScore)>,
     config: &DefectPredictionConfig,
@@ -197,7 +200,7 @@ pub struct RiskDistribution {
     pub low_risk_count: usize,
 }
 
-#[must_use] 
+#[must_use]
 pub fn calculate_risk_distribution(predictions: &[(String, DefectScore)]) -> RiskDistribution {
     RiskDistribution {
         high_risk_count: predictions
@@ -216,7 +219,7 @@ pub fn calculate_risk_distribution(predictions: &[(String, DefectScore)]) -> Ris
 }
 
 /// Format summary output
-#[must_use] 
+#[must_use]
 pub fn format_summary_output(
     file_metrics_len: usize,
     filtered_predictions: &[(String, DefectScore)],
@@ -283,7 +286,7 @@ pub fn format_summary_output(
 
 /// Generate recommendations for high-risk files
 #[allow(dead_code)]
-#[must_use] 
+#[must_use]
 pub fn generate_recommendations(predictions: &[(String, DefectScore)]) -> Vec<String> {
     let mut recommendations = Vec::new();
 
@@ -333,7 +336,7 @@ pub fn generate_recommendations(predictions: &[(String, DefectScore)]) -> Vec<St
 }
 
 /// Format detailed output
-#[must_use] 
+#[must_use]
 pub fn format_detailed_output(
     filtered_predictions: &[(String, DefectScore)],
     include_recommendations: bool,
@@ -410,7 +413,7 @@ pub fn format_json_output(
 
 /// Format markdown output
 #[allow(dead_code)]
-#[must_use] 
+#[must_use]
 pub fn format_markdown_output(
     filtered_predictions: &[(String, DefectScore)],
     include_recommendations: bool,
@@ -480,7 +483,7 @@ pub fn format_markdown_output(
 }
 
 /// Format CSV output
-#[must_use] 
+#[must_use]
 pub fn format_csv_output(filtered_predictions: &[(String, DefectScore)]) -> String {
     let mut output = String::new();
 

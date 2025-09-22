@@ -44,7 +44,7 @@ impl Default for Metrics {
 
 impl Metrics {
     /// Calculate quality score (0.0 - 1.0)
-    #[must_use] 
+    #[must_use]
     pub fn quality_score(&self) -> f64 {
         let mut score = 1.0;
 
@@ -78,7 +78,7 @@ impl Metrics {
     }
 
     /// Check if metrics meet quality thresholds
-    #[must_use] 
+    #[must_use]
     pub fn meets_thresholds(&self, thresholds: &QualityThresholds) -> bool {
         self.complexity <= thresholds.max_complexity
             && self.cognitive <= thresholds.max_cognitive

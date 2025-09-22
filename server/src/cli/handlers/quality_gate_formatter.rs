@@ -58,7 +58,7 @@ pub fn format_single_file_output(
 /// # Returns
 ///
 /// Formatted markdown string with quality gate report
-#[must_use] 
+#[must_use]
 pub fn format_single_file_summary(
     file_path: &Path,
     results: &QualityGateResults,

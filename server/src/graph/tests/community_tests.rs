@@ -53,7 +53,11 @@ mod tests {
 
         // Calculate modularity to verify community quality
         let modularity = detector.calculate_modularity(&graph, &communities);
-        assert!(modularity >= 0.0, "Modularity {} should be >= 0.0", modularity);
+        assert!(
+            modularity >= 0.0,
+            "Modularity {} should be >= 0.0",
+            modularity
+        );
     }
 
     #[test]
@@ -66,7 +70,7 @@ mod tests {
             .collect();
 
         for i in 0..nodes.len() {
-            for j in i+1..nodes.len() {
+            for j in i + 1..nodes.len() {
                 graph.add_edge(nodes[i], nodes[j], 1.0);
             }
         }
@@ -136,7 +140,15 @@ mod tests {
         let modularity = detector.calculate_modularity(&graph, &communities);
 
         // Modularity should be reasonable
-        assert!(modularity >= 0.0, "Modularity {} should be >= 0.0", modularity);
-        assert!(modularity <= 1.0, "Modularity {} should be <= 1.0", modularity);
+        assert!(
+            modularity >= 0.0,
+            "Modularity {} should be >= 0.0",
+            modularity
+        );
+        assert!(
+            modularity <= 1.0,
+            "Modularity {} should be <= 1.0",
+            modularity
+        );
     }
 }

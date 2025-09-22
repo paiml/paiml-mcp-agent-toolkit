@@ -188,7 +188,7 @@ impl ConfigManager {
         self.config.read().await.clone()
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn subscribe(&self) -> broadcast::Receiver<DisplayConfig> {
         self.update_tx.subscribe()
     }

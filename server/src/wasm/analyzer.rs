@@ -142,7 +142,7 @@ impl Default for InstructionProfiler {
 }
 
 impl InstructionProfiler {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             instruction_counts: HashMap::new(),
@@ -163,7 +163,7 @@ impl InstructionProfiler {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn finalize(&self) -> InstructionMix {
         InstructionMix {
             total_instructions: self.total_instructions,
@@ -188,7 +188,7 @@ impl Default for SecurityAuditor {
 }
 
 impl SecurityAuditor {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             checks: vec![
@@ -230,7 +230,7 @@ impl Default for SecurityReport {
 }
 
 impl SecurityReport {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             passed_checks: Vec::new(),
@@ -285,7 +285,12 @@ impl SecurityCheck {
 
 /// Categorize WASM operators by type
 fn categorize_operator(op: &wasmparser::Operator) -> String {
-    use wasmparser::Operator::{Block, Loop, If, Else, End, Br, BrIf, BrTable, Return, I32Load, I64Load, F32Load, F64Load, I32Store, I64Store, F32Store, F64Store, MemoryGrow, MemorySize, Call, CallIndirect, I32Add, I32Sub, I32Mul, I32DivS, I32DivU, I64Add, I64Sub, I64Mul, I64DivS, I64DivU, F32Add, F32Sub, F32Mul, F32Div, F64Add, F64Sub, F64Mul, F64Div};
+    use wasmparser::Operator::{
+        Block, Br, BrIf, BrTable, Call, CallIndirect, Else, End, F32Add, F32Div, F32Load, F32Mul,
+        F32Store, F32Sub, F64Add, F64Div, F64Load, F64Mul, F64Store, F64Sub, I32Add, I32DivS,
+        I32DivU, I32Load, I32Mul, I32Store, I32Sub, I64Add, I64DivS, I64DivU, I64Load, I64Mul,
+        I64Store, I64Sub, If, Loop, MemoryGrow, MemorySize, Return,
+    };
 
     match op {
         // Control flow

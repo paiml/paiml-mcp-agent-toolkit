@@ -158,7 +158,7 @@ fn write_author_contributions(
 
 /// Toyota Way: Extract Method - Check if path is source file (complexity ≤8)
 /// Determines if a path represents a source code file
-#[must_use] 
+#[must_use]
 pub fn is_source_file(path: &Path) -> bool {
     // Check if it has a source code extension
     if !has_source_extension(path) {

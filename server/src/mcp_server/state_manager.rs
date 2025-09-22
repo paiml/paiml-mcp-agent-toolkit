@@ -93,7 +93,7 @@ impl StateManager {
     /// let session_id = manager.get_session_id();
     /// assert!(session_id.starts_with("refactor-session-"));
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             state: None,
@@ -102,7 +102,7 @@ impl StateManager {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn with_temp_dir(temp_dir: &Path) -> Self {
         Self {
             state: None,
@@ -289,7 +289,7 @@ impl StateManager {
         self.state.as_ref().ok_or("No active session".to_string())
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn get_session_id(&self) -> &str {
         &self.session_id
     }

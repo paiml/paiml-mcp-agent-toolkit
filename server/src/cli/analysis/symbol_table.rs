@@ -232,8 +232,7 @@ fn should_include_file(path: &Path, include: &Option<String>) -> bool {
 fn is_source_file(path: &Path) -> bool {
     matches!(
         path.extension().and_then(|s| s.to_str()),
-        Some("rs" | "js" | "ts" | "py" | "java" | "cpp" | "c" | "h" | "hpp" | "go" |
-"rb")
+        Some("rs" | "js" | "ts" | "py" | "java" | "cpp" | "c" | "h" | "hpp" | "go" | "rb")
     )
 }
 

@@ -48,7 +48,11 @@ mod tests {
 
         // PageRank values must sum to 1.0
         let sum: f64 = ranks.iter().sum();
-        assert!((sum - 1.0).abs() < 1e-6, "PageRank sum = {}, expected 1.0", sum);
+        assert!(
+            (sum - 1.0).abs() < 1e-6,
+            "PageRank sum = {}, expected 1.0",
+            sum
+        );
     }
 
     #[test]
@@ -69,7 +73,8 @@ mod tests {
         for i in 0..ranks.len() {
             assert!(
                 (ranks[i] - ranks2[i]).abs() < 1e-7,
-                "PageRank not converged at node {}", i
+                "PageRank not converged at node {}",
+                i
             );
         }
     }
@@ -86,7 +91,8 @@ mod tests {
             assert!(
                 ranks[0] > ranks[i],
                 "Hub PageRank {} should be > spoke PageRank {}",
-                ranks[0], ranks[i]
+                ranks[0],
+                ranks[i]
             );
         }
 
@@ -95,7 +101,8 @@ mod tests {
             assert!(
                 (ranks[1] - ranks[i]).abs() < 1e-9,
                 "Spoke PageRanks should be equal: {} vs {}",
-                ranks[1], ranks[i]
+                ranks[1],
+                ranks[i]
             );
         }
     }
@@ -128,7 +135,9 @@ mod tests {
         for rank in ranks {
             assert!(
                 (rank - expected).abs() < 1e-6,
-                "Expected {}, got {}", expected, rank
+                "Expected {}, got {}",
+                expected,
+                rank
             );
         }
     }
@@ -180,7 +189,8 @@ mod tests {
         let hub_diff = (ranks_low[0] - ranks_high[0]).abs();
         assert!(
             hub_diff > 1e-4,
-            "Damping factor should affect hub PageRank: diff={}", hub_diff
+            "Damping factor should affect hub PageRank: diff={}",
+            hub_diff
         );
 
         // Both should still sum to 1
@@ -220,14 +230,22 @@ mod tests {
         let n2 = graph.add_node(NodeData::test_node(2));
 
         // n0 has strong connection to n1, weak to n2
-        graph.add_edge(n0, n1, EdgeData::Import {
-            weight: 5.0,
-            visibility: Visibility::Public,
-        });
-        graph.add_edge(n0, n2, EdgeData::Import {
-            weight: 0.5,
-            visibility: Visibility::Public,
-        });
+        graph.add_edge(
+            n0,
+            n1,
+            EdgeData::Import {
+                weight: 5.0,
+                visibility: Visibility::Public,
+            },
+        );
+        graph.add_edge(
+            n0,
+            n2,
+            EdgeData::Import {
+                weight: 0.5,
+                visibility: Visibility::Public,
+            },
+        );
 
         // n1 and n2 point back to n0
         graph.add_edge(n1, n0, EdgeData::test_edge(1.0));

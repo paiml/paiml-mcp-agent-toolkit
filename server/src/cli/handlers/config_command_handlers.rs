@@ -14,7 +14,7 @@ pub struct ConfigCommand {}
 
 impl ConfigCommand {
     /// Create new config command with specified config file
-    #[must_use] 
+    #[must_use]
     pub fn new(_config_path: PathBuf) -> Self {
         Self {}
     }

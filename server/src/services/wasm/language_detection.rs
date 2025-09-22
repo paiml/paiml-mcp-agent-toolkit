@@ -7,13 +7,13 @@ pub struct WasmLanguageDetector;
 
 impl WasmLanguageDetector {
     /// Create a new language detector
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self
     }
 
     /// Detect if content is `AssemblyScript`
-    #[must_use] 
+    #[must_use]
     pub fn is_assemblyscript(&self, content: &str) -> bool {
         // Check for AssemblyScript-specific keywords and patterns
         content.contains("@global")
@@ -26,14 +26,14 @@ impl WasmLanguageDetector {
     }
 
     /// Detect if content is WebAssembly Text Format
-    #[must_use] 
+    #[must_use]
     pub fn is_wat(&self, content: &str) -> bool {
         content.trim_start().starts_with('(')
             && (content.contains("module") || content.contains("func"))
     }
 
     /// Detect if binary data is WebAssembly
-    #[must_use] 
+    #[must_use]
     pub fn is_wasm_binary(&self, data: &[u8]) -> bool {
         data.len() >= 8 && &data[0..4] == b"\0asm"
     }

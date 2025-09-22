@@ -85,8 +85,7 @@ pub struct AutomationConfig {
 }
 
 /// Research features configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ResearchConfig {
     /// Enable property synthesis
     pub property_synthesis: bool,
@@ -155,7 +154,6 @@ impl Default for AutomationConfig {
     }
 }
 
-
 impl UnifiedConfig {
     /// Load configuration from file
     pub fn from_file(path: &PathBuf) -> Result<Self, Box<dyn std::error::Error>> {
@@ -172,19 +170,19 @@ impl UnifiedConfig {
     }
 
     /// Get default configuration path
-    #[must_use] 
+    #[must_use]
     pub fn default_path() -> PathBuf {
         PathBuf::from(".pmat/config.toml")
     }
 
     /// Check if should auto-progress
-    #[must_use] 
+    #[must_use]
     pub fn should_progress(&self, days_in_mode: u32) -> bool {
         self.auto_progress && days_in_mode >= self.progress_after_days
     }
 
     /// Get next quality mode
-    #[must_use] 
+    #[must_use]
     pub fn next_mode(&self) -> Option<QualityMode> {
         match self.mode {
             QualityMode::Observe => Some(QualityMode::Advise),

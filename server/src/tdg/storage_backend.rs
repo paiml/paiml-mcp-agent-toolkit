@@ -131,7 +131,7 @@ pub struct InMemoryBackend {
 }
 
 impl InMemoryBackend {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             data: Arc::new(DashMap::new()),
@@ -326,7 +326,7 @@ impl StorageBackendFactory {
     }
 
     /// Create in-memory backend for testing
-    #[must_use] 
+    #[must_use]
     pub fn create_in_memory() -> Box<dyn StorageBackend> {
         Box::new(InMemoryBackend::new())
     }

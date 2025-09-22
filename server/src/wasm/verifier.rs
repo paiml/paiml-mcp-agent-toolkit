@@ -127,7 +127,7 @@ pub enum VerificationResult {
 }
 
 impl VerificationResult {
-    #[must_use] 
+    #[must_use]
     pub fn is_safe(&self) -> bool {
         matches!(self, VerificationResult::Safe)
     }
@@ -192,7 +192,11 @@ impl StackAnalyzer {
     }
 
     fn update_stack(&self, stack: &mut Vec<ValType>, op: &Operator) -> Result<()> {
-        use Operator::{I32Const, I64Const, F32Const, F64Const, I32Add, I32Sub, I32Mul, I32DivS, I32DivU, I64Add, I64Sub, I64Mul, I64DivS, I64DivU, I32Eqz, I32Eq, I32Ne, I32LtS, I32LtU, I32GtS, I32GtU, LocalGet, LocalSet, Drop};
+        use Operator::{
+            Drop, F32Const, F64Const, I32Add, I32Const, I32DivS, I32DivU, I32Eq, I32Eqz, I32GtS,
+            I32GtU, I32LtS, I32LtU, I32Mul, I32Ne, I32Sub, I64Add, I64Const, I64DivS, I64DivU,
+            I64Mul, I64Sub, LocalGet, LocalSet,
+        };
 
         match op {
             // Constants push their type
@@ -278,7 +282,7 @@ impl Default for DifferentialTester {
 }
 
 impl DifferentialTester {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             test_cases: Vec::new(),
@@ -301,7 +305,7 @@ impl DifferentialTester {
     }
 
     /// Run differential testing between runtimes
-    #[must_use] 
+    #[must_use]
     pub fn differential_test(&self, _module: &[u8]) -> DifferentialResult {
         // This would compare execution across wasmtime, wasmer, etc.
         // Simplified for now
