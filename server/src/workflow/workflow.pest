@@ -1,0 +1,63 @@
+// Workflow DSL Grammar
+
+workflow = { SOI ~ "workflow" ~ name ~ "{" ~ statement* ~ "}" ~ EOI }
+
+name = @{ identifier }
+
+statement = {
+    step_def
+    | parallel_def
+    | conditional_def
+    | loop_def
+    | assignment
+}
+
+step_def = { "step" ~ identifier ~ "{" ~ step_body ~ "}" }
+step_body = { step_property* }
+step_property = {
+    "agent" ~ ":" ~ string
+    | "operation" ~ ":" ~ string
+    | "params" ~ ":" ~ json_value
+}
+
+parallel_def = { "parallel" ~ "{" ~ statement* ~ "}" }
+
+conditional_def = { "if" ~ expression ~ "{" ~ statement* ~ "}" ~ else_clause? }
+else_clause = { "else" ~ "{" ~ statement* ~ "}" }
+
+loop_def = { "while" ~ expression ~ "{" ~ statement* ~ "}" }
+
+assignment = { identifier ~ "=" ~ expression }
+
+expression = { comparison | term }
+comparison = { term ~ comparison_op ~ term }
+comparison_op = { ">=" | "<=" | "==" | "!=" | ">" | "<" }
+
+term = {
+    number
+    | string
+    | identifier
+    | path
+}
+
+path = @{ identifier ~ ("." ~ identifier)* }
+identifier = @{ ASCII_ALPHA ~ (ASCII_ALPHANUMERIC | "_")* }
+string = ${ "\"" ~ inner ~ "\"" }
+inner = @{ char* }
+char = {
+    !("\"" | "\\") ~ ANY
+    | "\\" ~ ("\"" | "\\" | "/" | "b" | "f" | "n" | "r" | "t")
+    | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
+}
+
+number = @{ "-"? ~ ASCII_DIGIT+ ~ ("." ~ ASCII_DIGIT+)? }
+
+json_value = { object | array | string | number | boolean | null }
+object = { "{" ~ pair ~ ("," ~ pair)* ~ "}" | "{" ~ "}" }
+pair = { string ~ ":" ~ json_value }
+array = { "[" ~ json_value ~ ("," ~ json_value)* ~ "]" | "[" ~ "]" }
+boolean = { "true" | "false" }
+null = { "null" }
+
+WHITESPACE = _{ " " | "\t" | "\n" | "\r" }
+COMMENT = _{ "//" ~ (!"\n" ~ ANY)* }

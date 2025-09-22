@@ -107,6 +107,8 @@ pub mod agents; // Agent system with Actix actors
 pub mod agents_md; // AGENTS.md integration for AI agent guidance
 pub mod state; // State management with event sourcing
 pub mod resources; // Resource control and limits
+pub mod mcp_integration; // MCP protocol integration
+pub mod workflow; // Workflow orchestration engine
 pub mod ast; // Unified AST module for all language parsing
 pub mod cli;
 pub mod contracts; // Uniform contracts across ALL interfaces (CLI, MCP, HTTP)

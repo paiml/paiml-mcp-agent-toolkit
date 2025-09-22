@@ -206,6 +206,8 @@ rocksdb = { version = "0.24", optional = true, default-features = false, feature
 wasmparser = "0.239.0"
 shell-words = "1.1.0"
 crc32fast = "1.5.0"
+pest = "2.8.2"
+pest_derive = { version = "2.8.2", features = ["default"] }
 
 [dev-dependencies]
 mockall = "0.13"
