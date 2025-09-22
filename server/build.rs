@@ -40,7 +40,15 @@ fn main() {
     compile_capnp_schema();
 
     // Generate MCP discovery optimization tables
-    generate_mcp_discovery_tables();
+    // Skip during coverage builds to prevent hangs
+    if env::var("CARGO_LLVM_COV").is_err() && env::var("SKIP_MCP_TABLES").is_err() {
+        generate_mcp_discovery_tables();
+    } else {
+        println!("cargo:warning=Skipping MCP discovery table generation (coverage build or SKIP_MCP_TABLES set)");
+        // Generate stub files to allow compilation
+        let out_dir = env::var("OUT_DIR").expect("OUT_DIR must be set");
+        generate_stub_files(&out_dir);
+    }
 }
 
 /// Check if we're in a cargo publish context
@@ -1013,5 +1021,68 @@ impl TrigramIndex {
 
     if let Err(e) = fs::write(&dest_path, trigram_code) {
         println!("cargo:warning=Failed to write trigram index: {e}");
+    }
+}
+
+/// Generate stub files for coverage builds to avoid compilation errors
+fn generate_stub_files(out_dir: &str) {
+    // Generate minimal stub for tool_registry.rs
+    let tool_registry = r#"
+// Stub tool registry for coverage builds
+use std::collections::HashMap;
+
+pub struct ToolMeta {
+    pub name: &'static str,
+    pub description: &'static str,
+    pub keywords: &'static [&'static str],
+}
+
+pub static TOOL_REGISTRY: once_cell::sync::Lazy<HashMap<&'static str, ToolMeta>> =
+    once_cell::sync::Lazy::new(|| HashMap::new());
+"#;
+
+    let dest = Path::new(out_dir).join("tool_registry.rs");
+    if let Err(e) = fs::write(&dest, tool_registry) {
+        println!("cargo:warning=Failed to write tool registry stub: {e}");
+    }
+
+    // Generate minimal stub for alias_table.rs
+    let alias_table = r#"
+// Stub alias table for coverage builds
+pub static ALIAS_TABLE: once_cell::sync::Lazy<std::collections::HashMap<&'static str, Vec<&'static str>>> =
+    once_cell::sync::Lazy::new(|| std::collections::HashMap::new());
+"#;
+
+    let dest = Path::new(out_dir).join("alias_table.rs");
+    if let Err(e) = fs::write(&dest, alias_table) {
+        println!("cargo:warning=Failed to write alias table stub: {e}");
+    }
+
+    // Generate minimal stub for trigram_index.rs
+    let trigram_index = r#"
+// Stub trigram index for coverage builds
+pub struct TrigramIndex;
+
+impl TrigramIndex {
+    pub fn search(&self, _query: &str, _threshold: f32) -> Vec<(&'static str, f32)> {
+        Vec::new()
+    }
+
+    pub fn find_best_match(&self, _query: &str, _candidates: &[(&'static str, &str)]) -> Option<(&'static str, f32)> {
+        None
+    }
+
+    pub fn similarity_score(&self, _s1: &str, _s2: &str) -> f32 {
+        0.0
+    }
+}
+
+pub static TRIGRAM_INDEX: once_cell::sync::Lazy<std::collections::HashMap<&'static str, Vec<&'static str>>> =
+    once_cell::sync::Lazy::new(|| std::collections::HashMap::new());
+"#;
+
+    let dest = Path::new(out_dir).join("trigram_index.rs");
+    if let Err(e) = fs::write(&dest, trigram_index) {
+        println!("cargo:warning=Failed to write trigram index stub: {e}");
     }
 }

@@ -98,9 +98,9 @@ impl CircuitBreaker {
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
-            .as_secs();
+            .as_millis() as u64;
 
-        now - last_failure > self.config.timeout_duration.as_secs()
+        now - last_failure > self.config.timeout_duration.as_millis() as u64
     }
 
     fn on_success(&self) {
@@ -119,7 +119,10 @@ impl CircuitBreaker {
             CircuitState::Closed => {
                 self.failure_count.store(0, Ordering::SeqCst);
             }
-            _ => {}
+            CircuitState::Open => {
+                // In Open state, we shouldn't be calling on_success
+                // This is a logic error - do nothing
+            }
         }
     }
 
@@ -127,7 +130,7 @@ impl CircuitBreaker {
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
-            .as_secs();
+            .as_millis() as u64;
 
         self.last_failure_time.store(now, Ordering::SeqCst);
 

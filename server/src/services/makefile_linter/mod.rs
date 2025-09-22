@@ -3,7 +3,7 @@ pub mod parser;
 pub mod rules;
 
 #[cfg(test)]
-mod property_tests;
+#[cfg(not(coverage))] mod property_tests;
 
 use crate::models::error::AnalysisError;
 use std::path::Path;

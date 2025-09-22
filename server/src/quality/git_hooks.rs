@@ -183,8 +183,8 @@ cargo fmt -- --check || {
 }
 
 # Verify coverage
-if command -v cargo-tarpaulin &> /dev/null; then
-    COVERAGE=$(cargo tarpaulin --print-summary | grep "Coverage" | grep -oE "[0-9]+\.[0-9]+")
+if command -v cargo-llvm-cov &> /dev/null; then
+    COVERAGE=$(cargo llvm-cov report --summary-only | grep "TOTAL" | awk '{print $10}' | sed 's/%//')
     if (( $(echo "$COVERAGE < 95.0" | bc -l) )); then
         echo "❌ Coverage $COVERAGE% is below 95%"
         exit 1
@@ -350,8 +350,9 @@ jobs:
 
       - name: Coverage Check
         run: |
-          cargo install cargo-tarpaulin
-          cargo tarpaulin --out Xml --output-dir coverage
+          cargo install cargo-llvm-cov
+          cargo llvm-cov test --no-report
+          cargo llvm-cov report --lcov --output-path coverage/lcov.info
 
       - name: Upload Coverage
         uses: codecov/codecov-action@v3

@@ -14,10 +14,15 @@ codegen-units = 256  # Maximize parallelism
 incremental = true   # Enable incremental compilation for faster rebuilds
 
 [env]
-# Remove test parallelism limit to use all cores
-# RUST_TEST_THREADS = "2"  # Commented out to use default parallelism
+# Limit test parallelism to prevent memory exhaustion
+RUST_TEST_THREADS = "1"  # Single thread to avoid stack allocation failures
 # Increase stack size for tests to prevent stack overflow in CLI parsing
-RUST_MIN_STACK = "8388608"
+RUST_MIN_STACK = "8388608"  # 8MB stack (reduced from 16MB)
+# LLVM Coverage settings
+CARGO_INCREMENTAL = "0"
+LLVM_PROFILE_FILE = "llvm-cov-target/%p-%m.profraw"
+# Disable panic abort handler that allocates alternative stacks
+RUST_BACKTRACE = "0"
 
 # This profile is used by `cargo nextest run --profile fast`
 [profile.fast]

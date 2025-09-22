@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 pub struct AgentRegistry {
     agents: Arc<DashMap<AgentId, AgentEntry>>,
+    agents_by_name: Arc<DashMap<String, Arc<dyn std::any::Any + Send + Sync>>>,
 }
 
 struct AgentEntry {
@@ -21,6 +22,7 @@ impl AgentRegistry {
     pub fn new() -> Self {
         Self {
             agents: Arc::new(DashMap::new()),
+            agents_by_name: Arc::new(DashMap::new()),
         }
     }
 
@@ -36,5 +38,13 @@ impl AgentRegistry {
         // TODO: Implement proper agent lookup by name
         // For now, return a dummy agent ID
         None
+    }
+
+    pub async fn register(&self, name: &str, agent: Arc<dyn std::any::Any + Send + Sync>) {
+        self.agents_by_name.insert(name.to_string(), agent);
+    }
+
+    pub async fn list_agents(&self) -> Vec<String> {
+        self.agents_by_name.iter().map(|entry| entry.key().clone()).collect()
     }
 }

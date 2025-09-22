@@ -2,6 +2,7 @@
 pub mod analyzer_actor;
 pub mod messages;
 pub mod messaging;
+pub mod orchestrator_actor;
 pub mod registry;
 pub mod supervisor;
 pub mod transformer_actor;

@@ -5,5 +5,7 @@ pub mod efficiency;
 pub mod efficiency_enhanced;
 pub mod entropy;
 pub mod gate;
+pub mod gate_runner;
 pub mod git_hooks;
 pub mod satd;
+pub mod satd_item;

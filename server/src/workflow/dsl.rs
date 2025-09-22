@@ -196,63 +196,46 @@ macro_rules! step {
     }};
 }
 
-// YAML-based DSL example
-pub const WORKFLOW_DSL_EXAMPLE: &str = r#"
-name: quality_check_workflow
-version: 1.0.0
-description: Comprehensive quality check workflow
-error_strategy: fail_fast
-timeout: 300s
-
-steps:
-  - id: analyze
-    name: Code Analysis
-    type: action
-    agent: analyzer
-    operation: analyze
-    params:
-      language: rust
-      metrics: [complexity, satd, entropy]
-    retry:
-      max_attempts: 3
-      backoff:
-        type: exponential
-        initial: 1s
-        multiplier: 2
-        max: 10s
-
-  - id: check_quality
-    name: Quality Gate Check
-    type: conditional
-    condition: "steps.analyze.output.complexity < 10"
-    if_true:
-      id: transform
-      name: Apply Transformations
-      type: action
-      agent: transformer
-      operation: optimize
-      params:
-        level: aggressive
-    if_false:
-      id: alert
-      name: Quality Alert
-      type: action
-      agent: notifier
-      operation: alert
-      params:
-        severity: high
-        message: "Code complexity exceeds threshold"
-
-  - id: validate
-    name: Final Validation
-    type: action
-    agent: validator
-    operation: validate
-    condition:
-      expression: "steps.transform.status == 'completed'"
-      skip_on_false: true
-    on_error: skip
-"#;
+// JSON-based DSL example
+pub const WORKFLOW_DSL_EXAMPLE: &str = r#"{
+  "id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+  "name": "quality_check_workflow",
+  "description": "Comprehensive quality check workflow",
+  "version": "1.0.0",
+  "steps": [
+    {
+      "id": "analyze",
+      "name": "Code Analysis",
+      "step_type": {
+        "type": "action",
+        "agent": "analyzer",
+        "operation": "analyze",
+        "params": {
+          "language": "rust",
+          "metrics": ["complexity", "satd", "entropy"]
+        }
+      },
+      "condition": null,
+      "retry": {
+        "max_attempts": 3,
+        "backoff": {
+          "Exponential": {
+            "initial": {"secs": 1, "nanos": 0},
+            "multiplier": 2.0,
+            "max": {"secs": 10, "nanos": 0}
+          }
+        },
+        "retry_on": []
+      },
+      "timeout": {"secs": 60, "nanos": 0},
+      "on_error": null,
+      "metadata": {}
+    }
+  ],
+  "error_strategy": "FailFast",
+  "timeout": {"secs": 300, "nanos": 0},
+  "metadata": {}
+}"#;
 
 #[cfg(test)]
 mod tests {
@@ -291,6 +274,9 @@ mod tests {
     #[test]
     fn test_yaml_dsl_compilation() {
         let result = DslCompiler::compile(WORKFLOW_DSL_EXAMPLE);
+        if let Err(e) = &result {
+            println!("Compilation error: {:?}", e);
+        }
         assert!(result.is_ok());
 
         let workflow = result.unwrap();

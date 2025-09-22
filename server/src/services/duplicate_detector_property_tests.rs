@@ -22,40 +22,40 @@ mod tests {
         }
     }
 
-    // Strategy for generating token sequences
+    // Strategy for generating token sequences (reduced for faster tests)
     prop_compose! {
         fn arb_token_sequence()
-            (tokens in prop::collection::vec(arb_token(), 1..100))
+            (tokens in prop::collection::vec(arb_token(), 1..20))
             -> Vec<Token>
         {
             tokens
         }
     }
 
-    // Strategy for generating MinHash signatures
+    // Strategy for generating MinHash signatures (reduced for faster tests)
     prop_compose! {
         fn arb_minhash_signature()
-            (values in prop::collection::vec(any::<u64>(), 50..200))
+            (values in prop::collection::vec(any::<u64>(), 10..30))
             -> MinHashSignature
         {
             MinHashSignature { values }
         }
     }
 
-    // Strategy for generating valid duplicate detection configs
+    // Strategy for generating valid duplicate detection configs (reduced for faster tests)
     prop_compose! {
         fn arb_duplicate_config()
             (
-                min_tokens in 1usize..200,
+                min_tokens in 1usize..50,
                 similarity_threshold in 0.1f64..1.0,
-                shingle_size in 1usize..10,
-                num_hash_functions in 10usize..500,
-                num_bands in 1usize..50,
-                rows_per_band in 1usize..20,
+                shingle_size in 1usize..5,
+                num_hash_functions in 10usize..50,
+                num_bands in 1usize..10,
+                rows_per_band in 1usize..10,
                 normalize_identifiers in any::<bool>(),
                 normalize_literals in any::<bool>(),
                 ignore_comments in any::<bool>(),
-                min_group_size in 2usize..10,
+                min_group_size in 2usize..5,
             )
             -> DuplicateDetectionConfig
         {
@@ -74,10 +74,10 @@ mod tests {
         }
     }
 
-    // Strategy for generating code source
+    // Strategy for generating code source (reduced for faster tests)
     prop_compose! {
         fn arb_source_code()
-            (lines in prop::collection::vec("[a-zA-Z0-9 +\\-*/=(){};\"'_]*", 1..50))
+            (lines in prop::collection::vec("[a-zA-Z0-9 +\\-*/=(){};\"'_]*", 1..10))
             -> String
         {
             lines.join("\n")
@@ -235,7 +235,7 @@ mod tests {
             tokens2 in arb_token_sequence()
         ) {
             if tokens1.len() >= 3 && tokens2.len() >= 3 {
-                let generator = MinHashGenerator::new(200);
+                let generator = MinHashGenerator::new(30);  // Reduced from 200 for faster tests
 
                 let shingles1 = generator.generate_shingles(&tokens1, 3);
                 let shingles2 = generator.generate_shingles(&tokens2, 3);

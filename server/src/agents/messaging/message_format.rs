@@ -75,24 +75,28 @@ impl BinaryProtocol {
         Ok(buf.freeze())
     }
 
-    pub fn decode(mut data: Bytes) -> Result<AgentMessage, ProtocolError> {
+    pub fn decode(data: Bytes) -> Result<AgentMessage, ProtocolError> {
         if data.len() < 5 {
             return Err(ProtocolError::InvalidMessage(
                 "Message too short".to_string(),
             ));
         }
 
+        // Calculate checksum first (before consuming any bytes)
+        let content_len = data.len() - 4;
+        let content = data.slice(0..content_len);
+        let mut checksum_bytes = data.slice(content_len..);
+        let expected_checksum = checksum_bytes.get_u32();
+        let actual_checksum = crc32fast::hash(&content[..]);
+
+        // Now parse the content
+        let mut data = content;
+
         // Version
         let version = data.get_u8();
         if version != 1 {
             return Err(ProtocolError::UnsupportedVersion(version));
         }
-
-        // Verify checksum
-        let content_len = data.len() - 4;
-        let content = data.slice(0..content_len);
-        let expected_checksum = data.slice(content_len..).get_u32();
-        let actual_checksum = crc32fast::hash(&content[..]);
 
         if expected_checksum != actual_checksum {
             return Err(ProtocolError::ChecksumMismatch {
