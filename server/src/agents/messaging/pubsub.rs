@@ -179,12 +179,9 @@ impl EventStore {
         let mut events = self.events.write();
 
         events.push(StoredEvent {
-            event,
+            event: event.clone(),
             topic,
-            timestamp: SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_secs(),
+            timestamp: event.timestamp, // Use the event's own timestamp
         });
 
         // Trim if exceeds max

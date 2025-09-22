@@ -114,6 +114,37 @@ impl Request for AnalyzeRequest {
     type Response = AnalyzeResponse;
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TransformRequest {
+    pub code: String,
+    pub transform_type: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TransformResponse {
+    pub transformed_code: String,
+}
+
+impl Request for TransformRequest {
+    type Response = TransformResponse;
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ValidateRequest {
+    pub code: String,
+    pub rules: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ValidateResponse {
+    pub valid: bool,
+    pub errors: Vec<String>,
+}
+
+impl Request for ValidateRequest {
+    type Response = ValidateResponse;
+}
+
 // Typed request handler
 pub async fn typed_request<R: Request>(
     broker: &RequestResponseBroker,
