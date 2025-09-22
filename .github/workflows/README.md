@@ -66,7 +66,7 @@ This staged approach prevents wasting CI resources when basic checks are failing
   - **Triggers**: Push/PR on Rust changes, Manual dispatch
   - **Jobs**:
     - Comprehensive property test execution
-    - Coverage analysis with tarpaulin
+    - Coverage analysis with cargo-llvm-cov
     - Platform matrix testing (Linux, macOS, Windows)
     - QuickCheck fuzzing for PRs
 

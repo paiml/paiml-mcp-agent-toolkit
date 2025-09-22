@@ -18,9 +18,9 @@ incremental = true   # Enable incremental compilation for faster rebuilds
 RUST_TEST_THREADS = "1"  # Single thread to avoid stack allocation failures
 # Increase stack size for tests to prevent stack overflow in CLI parsing
 RUST_MIN_STACK = "8388608"  # 8MB stack (reduced from 16MB)
-# LLVM Coverage settings
-CARGO_INCREMENTAL = "0"
-LLVM_PROFILE_FILE = "llvm-cov-target/%p-%m.profraw"
+# Optimize coverage collection
+CARGO_LLVM_COV_TARGET_DIR = { value = "target/llvm-cov-target", relative = true }
+RUSTFLAGS = { value = "-C link-dead-code", force = true }
 # Disable panic abort handler that allocates alternative stacks
 RUST_BACKTRACE = "0"
 
