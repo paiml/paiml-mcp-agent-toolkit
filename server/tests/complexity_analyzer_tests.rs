@@ -205,7 +205,11 @@ mod complexity_analyzer_tests {
         let elapsed = start.elapsed();
 
         assert!(result.is_ok());
-        assert!(elapsed.as_millis() < 100, "Analysis took too long: {:?}", elapsed);
+        assert!(
+            elapsed.as_millis() < 100,
+            "Analysis took too long: {:?}",
+            elapsed
+        );
     }
 
     fn generate_code(num_ifs: usize, num_loops: usize, num_matches: usize) -> String {

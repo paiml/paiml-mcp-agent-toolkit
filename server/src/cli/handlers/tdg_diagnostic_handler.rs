@@ -311,9 +311,7 @@ async fn handle_dashboard_command(
     let addr: IpAddr = host.parse()?;
     let socket_addr = SocketAddr::new(addr, port);
 
-    println!(
-        "📊 Dashboard will be available at: http://{host}:{port}"
-    );
+    println!("📊 Dashboard will be available at: http://{host}:{port}");
     println!("🔄 Real-time metrics updates enabled");
 
     // Open browser if requested

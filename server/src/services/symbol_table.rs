@@ -25,7 +25,7 @@ impl Default for SymbolTable {
 }
 
 impl SymbolTable {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             symbols: DashMap::new(),
@@ -52,7 +52,7 @@ impl SymbolTable {
     }
 
     /// Resolve a relative location to a canonical location
-    #[must_use] 
+    #[must_use]
     pub fn resolve_relative(&self, rel: &RelativeLocation, file: &Path) -> Option<Location> {
         match rel {
             RelativeLocation::Function { name, module } => {
@@ -74,7 +74,7 @@ impl SymbolTable {
     }
 
     /// Get symbol at a specific location
-    #[must_use] 
+    #[must_use]
     pub fn symbol_at_location(&self, location: &Location) -> Option<QualifiedName> {
         if let Some(spans) = self.span_index.get(&location.file_path) {
             // Binary search for the position
@@ -96,7 +96,7 @@ impl SymbolTable {
     }
 
     /// Find all symbols within a span using binary search for efficiency
-    #[must_use] 
+    #[must_use]
     pub fn symbols_in_span(&self, location: &Location) -> Vec<QualifiedName> {
         if let Some(spans) = self.span_index.get(&location.file_path) {
             // Binary search to find the first symbol that could be in our span
@@ -124,13 +124,13 @@ impl SymbolTable {
     }
 
     /// Get the location of a qualified name
-    #[must_use] 
+    #[must_use]
     pub fn get_location(&self, qualified_name: &QualifiedName) -> Option<Location> {
         self.symbols.get(qualified_name).map(|entry| entry.clone())
     }
 
     /// Get all symbols in the table
-    #[must_use] 
+    #[must_use]
     pub fn all_symbols(&self) -> Vec<(QualifiedName, Location)> {
         self.symbols
             .iter()
@@ -145,13 +145,13 @@ impl SymbolTable {
     }
 
     /// Get symbol count
-    #[must_use] 
+    #[must_use]
     pub fn len(&self) -> usize {
         self.symbols.len()
     }
 
     /// Check if the symbol table is empty
-    #[must_use] 
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.symbols.is_empty()
     }
@@ -173,7 +173,10 @@ impl SymbolTable {
 
     /// Parse explicitly provided module path
     fn parse_explicit_module(&self, module: &str) -> Vec<String> {
-        module.split("::").map(std::string::ToString::to_string).collect()
+        module
+            .split("::")
+            .map(std::string::ToString::to_string)
+            .collect()
     }
 
     /// Infer module path from file system structure
@@ -227,7 +230,7 @@ pub struct SymbolTableBuilder {
 }
 
 impl SymbolTableBuilder {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             table: Arc::new(SymbolTable::new()),
@@ -238,7 +241,7 @@ impl SymbolTableBuilder {
         self.table.insert(qualified_name, location);
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn build(self) -> Arc<SymbolTable> {
         self.table
     }

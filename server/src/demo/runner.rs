@@ -64,7 +64,7 @@ struct Component {
 }
 
 impl DemoRunner {
-    #[must_use] 
+    #[must_use]
     pub fn new(server: Arc<StatelessTemplateServer>) -> Self {
         Self {
             server,
@@ -726,7 +726,7 @@ impl DemoRunner {
 }
 
 impl DemoReport {
-    #[must_use] 
+    #[must_use]
     pub fn render(&self, mode: ExecutionMode) -> String {
         match mode {
             ExecutionMode::Cli => self.render_cli(),

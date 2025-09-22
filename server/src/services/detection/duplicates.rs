@@ -19,7 +19,7 @@ impl Default for DuplicateDetector {
 }
 
 impl DuplicateDetector {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self
     }

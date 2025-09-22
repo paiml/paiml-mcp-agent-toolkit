@@ -194,9 +194,7 @@ fn check_security_failures(security: Option<&Vec<VulnerabilityMatch>>) -> Result
             .count();
 
         if critical_count > 0 {
-            anyhow::bail!(
-                "❌ Found {critical_count} critical security vulnerabilities"
-            );
+            anyhow::bail!("❌ Found {critical_count} critical security vulnerabilities");
         }
     }
     Ok(())

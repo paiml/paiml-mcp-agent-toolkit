@@ -19,7 +19,7 @@ impl Default for PatternDetector {
 }
 
 impl PatternDetector {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             patterns: Self::default_patterns(),
@@ -100,7 +100,7 @@ impl PatternDetector {
     }
 
     /// Get all found vulnerabilities
-    #[must_use] 
+    #[must_use]
     pub fn finalize(&self) -> Vec<VulnerabilityMatch> {
         self.found.clone()
     }
@@ -240,7 +240,11 @@ pub enum OperatorMatcher {
 impl OperatorMatcher {
     /// Check if operator matches pattern
     fn matches(&self, op: &Operator) -> bool {
-        use Operator::{I32Add, I32Sub, I32Mul, I32DivS, I32DivU, I32RemU, I32And, I32Or, I32Xor, I32Eqz, I32Eq, I32Ne, I32LtS, I32LtU, I32GtS, I32GtU, I32Load, I32Store, I64Load, I64Store, BrIf, Br, Call, CallIndirect, MemoryGrow, MemorySize};
+        use Operator::{
+            Br, BrIf, Call, CallIndirect, I32Add, I32And, I32DivS, I32DivU, I32Eq, I32Eqz, I32GtS,
+            I32GtU, I32Load, I32LtS, I32LtU, I32Mul, I32Ne, I32Or, I32RemU, I32Store, I32Sub,
+            I32Xor, I64Load, I64Store, MemoryGrow, MemorySize,
+        };
         use OperatorMatcher as M;
 
         #[allow(clippy::match_like_matches_macro)]
@@ -297,7 +301,7 @@ pub struct VulnerabilityMatch {
 
 impl VulnerabilityMatch {
     /// Get risk score (0-100)
-    #[must_use] 
+    #[must_use]
     pub fn risk_score(&self) -> u32 {
         match self.severity {
             Severity::Low => 25,

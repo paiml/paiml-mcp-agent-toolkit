@@ -26,7 +26,7 @@ impl Default for RuchyMlAstExtractor {
 #[cfg(feature = "ruchy-ast")]
 impl RuchyMlAstExtractor {
     /// Create a new Ruchy ML AST extractor
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             items: Vec::new(),
@@ -159,8 +159,10 @@ impl RuchyMlAstExtractor {
         if parts.len() >= 2 {
             // Handle: type Name = ... or type Name<T> = ...
             let name = parts[1]
-                .split('<').next()
-                .and_then(|s| s.split('=').next()).map_or_else(|| parts[1].to_string(), |s| s.trim().to_string());
+                .split('<')
+                .next()
+                .and_then(|s| s.split('=').next())
+                .map_or_else(|| parts[1].to_string(), |s| s.trim().to_string());
 
             let qualified_name = self.qualify_name(&name);
 
@@ -257,7 +259,7 @@ impl RuchyMlAstExtractor {
     }
 
     /// Get total complexity
-    #[must_use] 
+    #[must_use]
     pub fn get_total_complexity(&self) -> u32 {
         self.complexity + self.actor_complexity + self.pattern_complexity + self.proof_complexity
     }

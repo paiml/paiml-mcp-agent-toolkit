@@ -118,7 +118,7 @@ struct ArchitectureIndicators {
 }
 
 impl PolyglotAnalyzer {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         let mut analyzer = Self {
             language_patterns: HashMap::new(),
@@ -520,8 +520,7 @@ impl PolyglotAnalyzer {
                 self.analyze_js_ts_integration(project_path, &mut files_involved)
                     .await?
             }
-            ("javascript" | "typescript", "python") |
-("python", "javascript" | "typescript") => {
+            ("javascript" | "typescript", "python") | ("python", "javascript" | "typescript") => {
                 // Look for API boundaries and shared data formats
                 self.analyze_api_integration(project_path, &mut files_involved)
                     .await?
@@ -758,8 +757,8 @@ impl PolyglotAnalyzer {
     fn has_potential_integration(&self, lang1: &str, lang2: &str) -> bool {
         matches!(
             (lang1, lang2),
-            ("rust" | "javascript", "python" | "typescript") |
-("python" | "typescript", "rust" | "javascript")
+            ("rust" | "javascript", "python" | "typescript")
+                | ("python" | "typescript", "rust" | "javascript")
         )
     }
 
@@ -1052,7 +1051,7 @@ impl PolyglotAnalyzer {
         score.clamp(0.0, 1.0)
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn generate_polyglot_insights(&self, analysis: &PolyglotAnalysis) -> Vec<String> {
         let mut insights = Vec::new();
 

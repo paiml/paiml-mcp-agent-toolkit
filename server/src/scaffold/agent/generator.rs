@@ -41,7 +41,7 @@ pub struct GeneratedFiles {
 
 impl GeneratedFiles {
     /// Create a new empty collection of generated files.
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             files: HashMap::new(),
@@ -124,13 +124,13 @@ impl GeneratedFiles {
     }
 
     /// Check if a file exists in the collection.
-    #[must_use] 
+    #[must_use]
     pub fn contains_file(&self, path: &Path) -> bool {
         self.files.contains_key(path)
     }
 
     /// Get the number of files in the collection.
-    #[must_use] 
+    #[must_use]
     pub fn file_count(&self) -> usize {
         self.files.len()
     }
@@ -162,7 +162,7 @@ pub enum FileContent {
 
 impl FileContent {
     /// Get the content as a string, if possible.
-    #[must_use] 
+    #[must_use]
     pub fn as_str(&self) -> Option<&str> {
         match self {
             Self::Text(s) | Self::Template(s) => Some(s),
@@ -171,7 +171,7 @@ impl FileContent {
     }
 
     /// Get the content as bytes.
-    #[must_use] 
+    #[must_use]
     pub fn as_bytes(&self) -> &[u8] {
         match self {
             Self::Text(s) | Self::Template(s) => s.as_bytes(),

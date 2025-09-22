@@ -99,7 +99,7 @@ impl FileDeadCodeMetrics {
     }
 
     /// Create a new `FileDeadCodeMetrics` instance
-    #[must_use] 
+    #[must_use]
     pub fn new(path: String) -> Self {
         Self {
             path,
@@ -149,7 +149,7 @@ impl FileDeadCodeMetrics {
 
 impl DeadCodeSummary {
     /// Create a new summary from file metrics
-    #[must_use] 
+    #[must_use]
     pub fn from_files(files: &[FileDeadCodeMetrics]) -> Self {
         let total_files_analyzed = files.len();
         let files_with_dead_code = files.iter().filter(|f| f.dead_lines > 0).count();

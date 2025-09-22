@@ -1,5 +1,5 @@
-use super::{ModuleError, PmatModule};
 use super::analyzer::AnalyzerModule;
+use super::{ModuleError, PmatModule};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;

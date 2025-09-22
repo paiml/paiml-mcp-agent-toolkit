@@ -55,7 +55,7 @@ impl Default for PatternCollection {
 }
 
 impl PatternCollection {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             patterns: HashMap::new(),
@@ -64,12 +64,12 @@ impl PatternCollection {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn file_count(&self) -> usize {
         self.total_files
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn summary(&self) -> super::violation_detector::PatternSummary {
         // For now, return a summary based on the most common pattern
         let most_common = self
@@ -100,7 +100,7 @@ impl PatternCollection {
         self.patterns.insert(hash.clone(), pattern);
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn get_patterns_for_file(&self, file: &Path) -> Vec<&AstPattern> {
         self.file_patterns
             .get(file)
@@ -115,7 +115,7 @@ pub struct PatternExtractor {
 }
 
 impl PatternExtractor {
-    #[must_use] 
+    #[must_use]
     pub fn new(config: EntropyConfig) -> Self {
         Self { config }
     }

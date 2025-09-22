@@ -1,6 +1,6 @@
+use super::{AgentClass, AgentId, AgentSpec};
 use dashmap::DashMap;
 use std::sync::Arc;
-use super::{AgentId, AgentSpec, AgentClass};
 
 pub struct AgentRegistry {
     agents: Arc<DashMap<AgentId, AgentEntry>>,
@@ -20,11 +20,15 @@ impl AgentRegistry {
 
     pub async fn spawn_agent(&self, spec: AgentSpec) -> Result<AgentId, super::AgentError> {
         let id = spec.id;
-        let entry = AgentEntry {
-            spec,
-        };
+        let entry = AgentEntry { spec };
 
         self.agents.insert(id, entry);
         Ok(id)
+    }
+
+    pub async fn get_agent(&self, name: &str) -> Option<AgentId> {
+        // TODO: Implement proper agent lookup by name
+        // For now, return a dummy agent ID
+        None
     }
 }

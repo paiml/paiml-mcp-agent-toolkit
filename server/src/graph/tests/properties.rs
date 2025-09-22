@@ -4,33 +4,32 @@
 #[cfg(test)]
 mod tests {
     use super::super::super::*;
-    use crate::graph::symbol_table::{SymbolTable, SymbolEntry};
+    use crate::graph::symbol_table::{SymbolEntry, SymbolTable};
     use petgraph::graph::DiGraph;
     use proptest::prelude::*;
 
     /// Strategy for generating random graphs
     fn arbitrary_graph() -> impl Strategy<Value = DependencyGraph> {
         (1..20usize, 0..100usize).prop_flat_map(|(nodes, edges)| {
-            prop::collection::vec(any::<bool>(), edges)
-                .prop_map(move |edge_mask| {
-                    let mut graph = DiGraph::new();
+            prop::collection::vec(any::<bool>(), edges).prop_map(move |edge_mask| {
+                let mut graph = DiGraph::new();
 
-                    // Add nodes
-                    let node_indices: Vec<_> = (0..nodes)
-                        .map(|i| graph.add_node(NodeData::test_node(i)))
-                        .collect();
+                // Add nodes
+                let node_indices: Vec<_> = (0..nodes)
+                    .map(|i| graph.add_node(NodeData::test_node(i)))
+                    .collect();
 
-                    // Add edges based on mask
-                    for (i, &should_add) in edge_mask.iter().enumerate().take(edges) {
-                        if should_add && !node_indices.is_empty() {
-                            let from = node_indices[i % node_indices.len()];
-                            let to = node_indices[(i + 1) % node_indices.len()];
-                            graph.add_edge(from, to, EdgeData::test_edge(1.0));
-                        }
+                // Add edges based on mask
+                for (i, &should_add) in edge_mask.iter().enumerate().take(edges) {
+                    if should_add && !node_indices.is_empty() {
+                        let from = node_indices[i % node_indices.len()];
+                        let to = node_indices[(i + 1) % node_indices.len()];
+                        graph.add_edge(from, to, EdgeData::test_edge(1.0));
                     }
+                }
 
-                    graph
-                })
+                graph
+            })
         })
     }
 

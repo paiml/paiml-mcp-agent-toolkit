@@ -71,7 +71,7 @@ pub struct ParallelWasmAnalyzer {
 
 impl ParallelWasmAnalyzer {
     /// Create a new parallel analyzer
-    #[must_use] 
+    #[must_use]
     pub fn new(config: ParallelConfig) -> Self {
         Self {
             _config: config,

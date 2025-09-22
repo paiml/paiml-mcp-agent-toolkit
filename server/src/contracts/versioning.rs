@@ -1,7 +1,7 @@
 //! Contract versioning support for backward compatibility and evolution
 //! This ensures contracts can evolve while maintaining compatibility
 
-use super::{ContractError, AnalyzeComplexityContract, BaseAnalysisContract, AnalyzeSatdContract};
+use super::{AnalyzeComplexityContract, AnalyzeSatdContract, BaseAnalysisContract, ContractError};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -14,7 +14,7 @@ pub struct ContractVersion {
 }
 
 impl ContractVersion {
-    #[must_use] 
+    #[must_use]
     pub fn new(major: u32, minor: u32, patch: u32) -> Self {
         Self {
             major,
@@ -23,19 +23,19 @@ impl ContractVersion {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn current() -> Self {
         Self::new(1, 0, 0) // Current contract version
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn is_compatible(&self, other: &Self) -> bool {
         // Same major version = compatible
         // Higher minor version = backward compatible
         self.major == other.major && self.minor >= other.minor
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn requires_migration(&self, other: &Self) -> bool {
         self.major != other.major
     }
@@ -66,7 +66,7 @@ pub struct ContractMetadata {
 }
 
 impl ContractMetadata {
-    #[must_use] 
+    #[must_use]
     pub fn new(created_by: &str) -> Self {
         Self {
             created_at: std::time::SystemTime::now()
@@ -80,13 +80,13 @@ impl ContractMetadata {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn with_description(mut self, description: &str) -> Self {
         self.description = Some(description.to_string());
         self
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn deprecated(mut self, migration_notes: &str) -> Self {
         self.deprecated = true;
         self.migration_notes = Some(migration_notes.to_string());
@@ -107,7 +107,7 @@ impl Default for ContractRegistry {
 }
 
 impl ContractRegistry {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             contracts: HashMap::new(),
@@ -140,7 +140,7 @@ impl ContractRegistry {
     }
 
     /// Get the latest version of a contract
-    #[must_use] 
+    #[must_use]
     pub fn get_latest(&self, name: &str) -> Option<&VersionedContract<serde_json::Value>> {
         self.contracts
             .get(name)?
@@ -149,7 +149,7 @@ impl ContractRegistry {
     }
 
     /// Get a specific version of a contract
-    #[must_use] 
+    #[must_use]
     pub fn get_version(
         &self,
         name: &str,
@@ -162,7 +162,7 @@ impl ContractRegistry {
     }
 
     /// Get all versions of a contract
-    #[must_use] 
+    #[must_use]
     pub fn get_all_versions(
         &self,
         name: &str,
@@ -201,7 +201,7 @@ impl ContractRegistry {
     }
 
     /// Check if a contract version is deprecated
-    #[must_use] 
+    #[must_use]
     pub fn is_deprecated(&self, name: &str, version: &ContractVersion) -> bool {
         if let Some(contract) = self.get_version(name, version) {
             contract.metadata.deprecated
@@ -211,7 +211,7 @@ impl ContractRegistry {
     }
 
     /// Get deprecation info for a contract version
-    #[must_use] 
+    #[must_use]
     pub fn get_deprecation_info(&self, name: &str, version: &ContractVersion) -> Option<String> {
         if let Some(contract) = self.get_version(name, version) {
             if contract.metadata.deprecated {
@@ -260,14 +260,14 @@ impl Default for ParameterRenameMapping {
 }
 
 impl ParameterRenameMapping {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             mappings: HashMap::new(),
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn add_mapping(mut self, old_name: &str, new_name: &str) -> Self {
         self.mappings
             .insert(old_name.to_string(), new_name.to_string());
@@ -275,13 +275,13 @@ impl ParameterRenameMapping {
     }
 
     /// Standard migration for `project_path` -> path
-    #[must_use] 
+    #[must_use]
     pub fn project_path_to_path() -> Self {
         Self::new().add_mapping("project_path", "path")
     }
 
     /// Standard migration for file -> files array
-    #[must_use] 
+    #[must_use]
     pub fn file_to_files() -> Box<dyn ContractMigration> {
         Box::new(FileToFilesMigration)
     }

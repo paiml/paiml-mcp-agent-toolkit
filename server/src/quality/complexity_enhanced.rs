@@ -1,7 +1,7 @@
-use syn::{self, visit::Visit, File, Item};
-use std::collections::{HashMap, HashSet};
-use petgraph::graph::{DiGraph, NodeIndex};
 use petgraph::algo::kosaraju_scc;
+use petgraph::graph::{DiGraph, NodeIndex};
+use std::collections::{HashMap, HashSet};
+use syn::{self, visit::Visit, File, Item};
 
 pub struct ControlFlowGraph {
     graph: DiGraph<CfgNode, CfgEdge>,
@@ -41,7 +41,9 @@ impl ControlFlowGraph {
         };
 
         builder.visit_file(ast);
-        builder.graph.add_edge(builder.current, exit, CfgEdge::Sequential);
+        builder
+            .graph
+            .add_edge(builder.current, exit, CfgEdge::Sequential);
 
         ControlFlowGraph {
             graph: builder.graph,
@@ -84,7 +86,8 @@ struct CfgBuilder {
 impl<'ast> Visit<'ast> for CfgBuilder {
     fn visit_expr_if(&mut self, node: &'ast syn::ExprIf) {
         let condition = self.graph.add_node(CfgNode::Condition("if".to_string()));
-        self.graph.add_edge(self.current, condition, CfgEdge::Sequential);
+        self.graph
+            .add_edge(self.current, condition, CfgEdge::Sequential);
 
         let then_branch = self.graph.add_node(CfgNode::Branch("then".to_string()));
         self.graph.add_edge(condition, then_branch, CfgEdge::True);
@@ -102,7 +105,8 @@ impl<'ast> Visit<'ast> for CfgBuilder {
 
             self.current = else_node;
             syn::visit::visit_expr(self, else_branch);
-            self.graph.add_edge(self.current, merge, CfgEdge::Sequential);
+            self.graph
+                .add_edge(self.current, merge, CfgEdge::Sequential);
         } else {
             self.graph.add_edge(condition, merge, CfgEdge::False);
         }
@@ -113,9 +117,12 @@ impl<'ast> Visit<'ast> for CfgBuilder {
 
     fn visit_expr_loop(&mut self, node: &'ast syn::ExprLoop) {
         let loop_entry = self.graph.add_node(CfgNode::Statement("loop".to_string()));
-        self.graph.add_edge(self.current, loop_entry, CfgEdge::Sequential);
+        self.graph
+            .add_edge(self.current, loop_entry, CfgEdge::Sequential);
 
-        let loop_exit = self.graph.add_node(CfgNode::Statement("loop_exit".to_string()));
+        let loop_exit = self
+            .graph
+            .add_node(CfgNode::Statement("loop_exit".to_string()));
         self.break_targets.push(loop_exit);
         self.continue_targets.push(loop_entry);
 
@@ -147,11 +154,11 @@ pub struct FunctionMetrics {
 
 #[derive(Debug, Clone)]
 pub struct HalsteadMetrics {
-    pub vocabulary: usize,  // n = n1 + n2
-    pub length: usize,      // N = N1 + N2
-    pub volume: f64,        // V = N * log2(n)
-    pub difficulty: f64,    // D = (n1/2) * (N2/n2)
-    pub effort: f64,        // E = D * V
+    pub vocabulary: usize, // n = n1 + n2
+    pub length: usize,     // N = N1 + N2
+    pub volume: f64,       // V = N * log2(n)
+    pub difficulty: f64,   // D = (n1/2) * (N2/n2)
+    pub effort: f64,       // E = D * V
 }
 
 use super::complexity::ComplexityAnalyzer;
@@ -265,9 +272,38 @@ fn tokenize(code: &str) -> Vec<String> {
 fn is_operator(token: &str) -> bool {
     matches!(
         token,
-        "+" | "-" | "*" | "/" | "%" | "=" | "==" | "!=" | "<" | ">" | "<=" | ">=" |
-        "&&" | "||" | "!" | "&" | "|" | "^" | "<<" | ">>" | "+=" | "-=" | "*=" | "/=" |
-        "if" | "else" | "match" | "for" | "while" | "loop" | "break" | "continue" | "return"
+        "+" | "-"
+            | "*"
+            | "/"
+            | "%"
+            | "="
+            | "=="
+            | "!="
+            | "<"
+            | ">"
+            | "<="
+            | ">="
+            | "&&"
+            | "||"
+            | "!"
+            | "&"
+            | "|"
+            | "^"
+            | "<<"
+            | ">>"
+            | "+="
+            | "-="
+            | "*="
+            | "/="
+            | "if"
+            | "else"
+            | "match"
+            | "for"
+            | "while"
+            | "loop"
+            | "break"
+            | "continue"
+            | "return"
     )
 }
 

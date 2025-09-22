@@ -77,7 +77,8 @@ async fn test_handle_violating_enforcement_state_extraction() -> Result<()> {
         None,  // specific_file
         None,  // include_pattern
         None,  // exclude_pattern
-    ).await?;
+    )
+    .await?;
 
     assert!(matches!(result.state, EnforcementState::Violating));
     assert_eq!(result.next_action, "manual_intervention_required");

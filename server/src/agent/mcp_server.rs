@@ -161,7 +161,7 @@ pub enum QualityMonitorCommand {
 
 impl ClaudeCodeAgentMcpServer {
     /// Create new MCP server instance
-    #[must_use] 
+    #[must_use]
     pub fn new(config: AgentConfig) -> Self {
         Self {
             config,

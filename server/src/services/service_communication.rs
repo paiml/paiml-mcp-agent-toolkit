@@ -66,7 +66,7 @@ impl<T: Clone + Send> Default for PubSubService<T> {
 
 impl<T: Clone + Send> PubSubService<T> {
     /// Create a new pub-sub service
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             subscribers: Arc::new(RwLock::new(HashMap::new())),
@@ -137,7 +137,7 @@ impl Default for RouterService {
 
 impl RouterService {
     /// Create a new router service
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             routes: Arc::new(RwLock::new(HashMap::new())),
@@ -198,7 +198,7 @@ impl RouterService {
     }
 
     /// Get metrics for this router
-    #[must_use] 
+    #[must_use]
     pub fn metrics(&self) -> &ServiceMetrics {
         &self.metrics
     }

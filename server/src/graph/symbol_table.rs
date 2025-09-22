@@ -93,11 +93,9 @@ impl SymbolTable {
                 names
                     .iter()
                     .filter_map(|name| {
-                        self.symbols.get(name).and_then(|entries| {
-                            entries
-                                .iter()
-                                .find(|e| e.file_path == path)
-                        })
+                        self.symbols
+                            .get(name)
+                            .and_then(|entries| entries.iter().find(|e| e.file_path == path))
                     })
                     .collect()
             })

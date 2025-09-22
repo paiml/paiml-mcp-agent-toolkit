@@ -3,9 +3,9 @@
 //! This module provides Bash-specific analysis capabilities using lexical analysis
 //! and partial AST extraction for shell scripts within static analysis constraints.
 
-use std::path::{Path, PathBuf};
 #[cfg(feature = "shell-ast")]
 use crate::services::context::AstItem;
+use std::path::{Path, PathBuf};
 
 /// Bash script analyzer that extracts shell-specific information
 pub struct BashScriptAnalyzer {
@@ -19,12 +19,13 @@ pub struct BashScriptAnalyzer {
 
 impl BashScriptAnalyzer {
     /// Creates a new Bash script analyzer
-    #[must_use] 
+    #[must_use]
     pub fn new(file_path: &Path) -> Self {
         Self {
             items: Vec::new(),
             _file_path: file_path.to_path_buf(),
-            script_name: file_path.file_stem()
+            script_name: file_path
+                .file_stem()
                 .and_then(|s| s.to_str())
                 .unwrap_or("unknown")
                 .to_string(),
@@ -92,7 +93,8 @@ impl BashScriptAnalyzer {
             if !trimmed.is_empty() && !trimmed.starts_with('#') && !trimmed.starts_with("#!/") {
                 // Treat basic commands as functions for AST structure
                 if let Some(cmd) = trimmed.split_whitespace().next() {
-                    if !cmd.contains('=') && !cmd.ends_with('{') { // Not assignments or function defs
+                    if !cmd.contains('=') && !cmd.ends_with('{') {
+                        // Not assignments or function defs
                         let qualified_name = self.get_qualified_name(cmd);
                         self.items.push(AstItem::Function {
                             name: qualified_name,
@@ -118,8 +120,11 @@ impl BashScriptAnalyzer {
         for line in source.lines() {
             let trimmed = line.trim();
 
-            if trimmed.starts_with("if ") || trimmed.starts_with("while ") ||
-               trimmed.starts_with("for ") || trimmed.starts_with("case ") {
+            if trimmed.starts_with("if ")
+                || trimmed.starts_with("while ")
+                || trimmed.starts_with("for ")
+                || trimmed.starts_with("case ")
+            {
                 // Control flow statements found - could extract more details
                 // For now, just noting their presence
             }
@@ -169,7 +174,7 @@ impl Default for BashComplexityAnalyzer {
 
 impl BashComplexityAnalyzer {
     /// Creates a new Bash complexity analyzer
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             cyclomatic_complexity: 0,
@@ -186,9 +191,12 @@ impl BashComplexityAnalyzer {
         for line in source.lines() {
             let trimmed = line.trim();
 
-            if trimmed.starts_with("if ") || trimmed.starts_with("while ") ||
-               trimmed.starts_with("for ") || trimmed.starts_with("case ") ||
-               trimmed.starts_with("elif ") {
+            if trimmed.starts_with("if ")
+                || trimmed.starts_with("while ")
+                || trimmed.starts_with("for ")
+                || trimmed.starts_with("case ")
+                || trimmed.starts_with("elif ")
+            {
                 self.cyclomatic_complexity += 1;
                 self.cognitive_complexity += 1;
             }
@@ -231,7 +239,7 @@ impl Default for ShellSafetyAnalyzer {
 
 impl ShellSafetyAnalyzer {
     /// Creates a new shell safety analyzer
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             safety_violations: Vec::new(),
@@ -298,13 +306,13 @@ impl ShellSafetyAnalyzer {
     }
 
     /// Gets safety violations
-    #[must_use] 
+    #[must_use]
     pub fn get_safety_violations(&self) -> &[String] {
         &self.safety_violations
     }
 
     /// Gets best practice warnings
-    #[must_use] 
+    #[must_use]
     pub fn get_best_practice_warnings(&self) -> &[String] {
         &self.best_practice_warnings
     }
@@ -324,7 +332,7 @@ impl Default for ShellCommandParser {
 
 impl ShellCommandParser {
     /// Creates a new shell command parser
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             commands: Vec::new(),
@@ -334,7 +342,8 @@ impl ShellCommandParser {
 
     /// Parses shell command line into tokens (complexity ≤10)
     pub fn parse_command_line(&mut self, line: &str) -> Result<Vec<String>, String> {
-        let tokens: Vec<String> = line.split_whitespace()
+        let tokens: Vec<String> = line
+            .split_whitespace()
             .map(std::string::ToString::to_string)
             .collect();
 
@@ -343,7 +352,10 @@ impl ShellCommandParser {
     }
 
     /// Extracts variable assignments (complexity ≤10)
-    pub fn extract_variable_assignments(&mut self, line: &str) -> Result<Vec<(String, String)>, String> {
+    pub fn extract_variable_assignments(
+        &mut self,
+        line: &str,
+    ) -> Result<Vec<(String, String)>, String> {
         let mut assignments = Vec::new();
 
         if line.contains('=') && !line.trim().starts_with('#') {
@@ -367,13 +379,13 @@ impl ShellCommandParser {
     }
 
     /// Gets parsed commands
-    #[must_use] 
+    #[must_use]
     pub fn get_commands(&self) -> &[String] {
         &self.commands
     }
 
     /// Gets extracted variables
-    #[must_use] 
+    #[must_use]
     pub fn get_variables(&self) -> &[String] {
         &self.variables
     }
@@ -467,53 +479,78 @@ main() {
 main "$@"
 "#;
 
-
     #[test]
     fn test_simple_bash_script_analysis() {
         let analyzer = BashScriptAnalyzer::new(Path::new("simple.sh"));
-        let items = analyzer.analyze_bash_script(SIMPLE_BASH_SCRIPT)
+        let items = analyzer
+            .analyze_bash_script(SIMPLE_BASH_SCRIPT)
             .expect("Should parse simple Bash script");
 
         assert!(!items.is_empty(), "Should extract at least one AST item");
 
         // Should detect script structure (commands, variables, etc.)
-        let has_commands = items.iter().any(|item| matches!(item, AstItem::Function { .. }));
-        assert!(has_commands || items.len() >= 1, "Should detect script structure");
+        let has_commands = items
+            .iter()
+            .any(|item| matches!(item, AstItem::Function { .. }));
+        assert!(
+            has_commands || items.len() >= 1,
+            "Should detect script structure"
+        );
     }
 
     #[test]
     fn test_bash_functions_analysis() {
         let analyzer = BashScriptAnalyzer::new(Path::new("functions.sh"));
-        let items = analyzer.analyze_bash_script(BASH_SCRIPT_WITH_FUNCTIONS)
+        let items = analyzer
+            .analyze_bash_script(BASH_SCRIPT_WITH_FUNCTIONS)
             .expect("Should parse Bash script with functions");
 
-        let function_items: Vec<_> = items.iter()
+        let function_items: Vec<_> = items
+            .iter()
             .filter(|item| matches!(item, AstItem::Function { .. }))
             .collect();
 
-        assert!(function_items.len() >= 2, "Should extract both add_numbers and file_exists functions");
+        assert!(
+            function_items.len() >= 2,
+            "Should extract both add_numbers and file_exists functions"
+        );
 
         // Check function names
-        let function_names: Vec<_> = function_items.iter()
+        let function_names: Vec<_> = function_items
+            .iter()
             .filter_map(|item| match item {
                 AstItem::Function { name, .. } => Some(name.as_str()),
                 _ => None,
             })
             .collect();
 
-        assert!(function_names.iter().any(|&name| name.contains("add_numbers")));
-        assert!(function_names.iter().any(|&name| name.contains("file_exists")));
+        assert!(function_names
+            .iter()
+            .any(|&name| name.contains("add_numbers")));
+        assert!(function_names
+            .iter()
+            .any(|&name| name.contains("file_exists")));
     }
 
     #[test]
     fn test_bash_complexity_analysis() {
         let mut analyzer = BashComplexityAnalyzer::new();
-        let (cyclomatic, cognitive) = analyzer.analyze_complexity(COMPLEX_BASH_SCRIPT)
+        let (cyclomatic, cognitive) = analyzer
+            .analyze_complexity(COMPLEX_BASH_SCRIPT)
             .expect("Should analyze Bash complexity");
 
-        assert!(cyclomatic >= 5, "Complex script should have significant cyclomatic complexity");
-        assert!(cognitive >= 5, "Complex script should have significant cognitive complexity");
-        assert!(cyclomatic <= 50, "Complexity should be reasonable for analysis");
+        assert!(
+            cyclomatic >= 5,
+            "Complex script should have significant cyclomatic complexity"
+        );
+        assert!(
+            cognitive >= 5,
+            "Complex script should have significant cognitive complexity"
+        );
+        assert!(
+            cyclomatic <= 50,
+            "Complexity should be reasonable for analysis"
+        );
         assert!(cognitive <= 50, "Cognitive complexity should be reasonable");
     }
 
@@ -521,10 +558,14 @@ main "$@"
     fn test_bash_pipeline_complexity() {
         let mut analyzer = BashComplexityAnalyzer::new();
         let pipeline = "cat file.txt | grep pattern | sort | uniq -c | sort -nr | head -10";
-        let complexity = analyzer.analyze_pipeline_complexity(pipeline)
+        let complexity = analyzer
+            .analyze_pipeline_complexity(pipeline)
             .expect("Should analyze pipeline complexity");
 
-        assert!(complexity >= 6, "Pipeline with 6 commands should have complexity ≥6");
+        assert!(
+            complexity >= 6,
+            "Pipeline with 6 commands should have complexity ≥6"
+        );
         assert!(complexity <= 15, "Pipeline complexity should be bounded");
     }
 
@@ -537,20 +578,28 @@ rm -rf $dangerous_var
 eval "$user_input"
 "#;
 
-        let violations = safety_analyzer.analyze_safety(unsafe_script)
+        let violations = safety_analyzer
+            .analyze_safety(unsafe_script)
             .expect("Should analyze shell safety");
 
-        assert!(!violations.is_empty(), "Should detect safety violations in unsafe script");
+        assert!(
+            !violations.is_empty(),
+            "Should detect safety violations in unsafe script"
+        );
     }
 
     #[test]
     fn test_shell_command_parsing() {
         let mut parser = ShellCommandParser::new();
         let command_line = r#"echo "hello world" | grep hello"#;
-        let tokens = parser.parse_command_line(command_line)
+        let tokens = parser
+            .parse_command_line(command_line)
             .expect("Should parse shell command");
 
-        assert!(!tokens.is_empty(), "Should extract tokens from command line");
+        assert!(
+            !tokens.is_empty(),
+            "Should extract tokens from command line"
+        );
         assert!(tokens.iter().any(|token| token.contains("echo")));
         assert!(tokens.iter().any(|token| token.contains("grep")));
     }
@@ -559,7 +608,8 @@ eval "$user_input"
     fn test_variable_extraction() {
         let mut parser = ShellCommandParser::new();
         let line = "export PATH=/usr/local/bin:$PATH";
-        let assignments = parser.extract_variable_assignments(line)
+        let assignments = parser
+            .extract_variable_assignments(line)
             .expect("Should extract variable assignments");
 
         assert!(!assignments.is_empty(), "Should extract PATH assignment");
@@ -569,7 +619,8 @@ eval "$user_input"
     #[test]
     fn test_empty_bash_script() {
         let analyzer = BashScriptAnalyzer::new(Path::new("empty.sh"));
-        let items = analyzer.analyze_bash_script("")
+        let items = analyzer
+            .analyze_bash_script("")
             .expect("Should handle empty script");
 
         assert!(items.is_empty(), "Empty script should produce no AST items");
@@ -581,7 +632,10 @@ eval "$user_input"
         let result = analyzer.analyze_bash_script("invalid bash syntax {{{ !!!");
 
         // Should either handle gracefully or return error
-        assert!(result.is_ok() || result.is_err(), "Should handle invalid syntax gracefully");
+        assert!(
+            result.is_ok() || result.is_err(),
+            "Should handle invalid syntax gracefully"
+        );
     }
 
     #[test]
@@ -600,11 +654,15 @@ if [[ ! -f "$config_file" ]]; then
 fi
 "#;
 
-        let warnings = safety_analyzer.validate_best_practices(good_script)
+        let warnings = safety_analyzer
+            .validate_best_practices(good_script)
             .expect("Should validate best practices");
 
         // Good script should have minimal warnings
-        assert!(warnings.len() <= 2, "Well-written script should have few best practice warnings");
+        assert!(
+            warnings.len() <= 2,
+            "Well-written script should have few best practice warnings"
+        );
     }
 }
 

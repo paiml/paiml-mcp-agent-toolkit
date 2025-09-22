@@ -1,7 +1,9 @@
 //! Quality refactoring engine
 //! Toyota Way: Continuous improvement through systematic refactoring
 
-use super::{QualityProfile, RefactorSpec, QddResult, RollbackPlan, Checkpoint, QualityMetrics, QualityScore};
+use super::{
+    Checkpoint, QddResult, QualityMetrics, QualityProfile, QualityScore, RefactorSpec, RollbackPlan,
+};
 use anyhow::{anyhow, Result};
 use std::fs;
 
@@ -23,7 +25,7 @@ pub struct QualityRefactoringEngine {
 
 impl QualityRefactoringEngine {
     /// Create refactoring engine with quality profile
-    #[must_use] 
+    #[must_use]
     pub fn new(profile: QualityProfile) -> Self {
         Self {
             analyzer: CodeAnalyzer::new(profile.clone()),
@@ -261,7 +263,7 @@ impl QualityRefactoringEngine {
 pub struct CodeAnalyzer {}
 
 impl CodeAnalyzer {
-    #[must_use] 
+    #[must_use]
     pub fn new(_profile: QualityProfile) -> Self {
         Self {}
     }
@@ -346,7 +348,7 @@ impl Default for PatternEngine {
 }
 
 impl PatternEngine {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         let mut patterns = std::collections::HashMap::new();
         patterns.insert(

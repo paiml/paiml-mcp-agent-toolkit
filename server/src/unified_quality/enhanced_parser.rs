@@ -61,7 +61,7 @@ impl Default for EnhancedParser {
 
 impl EnhancedParser {
     /// Create a new enhanced parser
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             cache: Arc::new(dashmap::DashMap::new()),
@@ -132,7 +132,7 @@ impl EnhancedParser {
     }
 
     /// Get cached metrics if available
-    #[must_use] 
+    #[must_use]
     pub fn get_cached_metrics(&self, path: &PathBuf) -> Option<Metrics> {
         self.cache.get(path)?.metrics.clone()
     }
@@ -148,7 +148,7 @@ impl EnhancedParser {
     }
 
     /// Get cache statistics
-    #[must_use] 
+    #[must_use]
     pub fn cache_stats(&self) -> CacheStats {
         CacheStats {
             total_entries: self.cache.len(),

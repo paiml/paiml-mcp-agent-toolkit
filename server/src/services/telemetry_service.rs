@@ -381,7 +381,7 @@ lazy_static::lazy_static! {
 }
 
 /// Get the global telemetry service instance - THE ONE way to access telemetry
-#[must_use] 
+#[must_use]
 pub fn telemetry() -> Arc<TelemetryService> {
     TELEMETRY.clone()
 }

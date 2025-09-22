@@ -16,7 +16,7 @@ pub struct ProofAnnotationFilter {
 }
 
 /// Apply all filters to a proof annotation
-#[must_use] 
+#[must_use]
 pub fn filter_annotation(annotation: &ProofAnnotation, filter: &ProofAnnotationFilter) -> bool {
     filter_by_confidence(annotation, filter.high_confidence_only)
         && filter_by_property_type(annotation, &filter.property_type)
@@ -131,7 +131,7 @@ pub fn format_as_json(
 }
 
 /// Setup proof annotator with mock sources
-#[must_use] 
+#[must_use]
 pub fn setup_proof_annotator(clear_cache: bool) -> ProofAnnotator {
     use crate::services::{proof_annotator::MockProofSource, symbol_table::SymbolTable};
 

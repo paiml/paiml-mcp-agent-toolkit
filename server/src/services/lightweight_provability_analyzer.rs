@@ -164,7 +164,7 @@ impl PropertyDomain {
     /// let domain = PropertyDomain::top();
     /// // All properties are initially unknown
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn top() -> Self {
         Self {
             nullability: NullabilityLattice::Top,
@@ -177,7 +177,7 @@ impl PropertyDomain {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn join(&self, other: &Self) -> Self {
         Self {
             nullability: self.nullability.join(&other.nullability),
@@ -187,7 +187,7 @@ impl PropertyDomain {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn widen(&self, other: &Self) -> Self {
         Self {
             nullability: self.nullability.join(&other.nullability),
@@ -197,7 +197,7 @@ impl PropertyDomain {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn is_equal(&self, other: &Self) -> bool {
         self.nullability == other.nullability
             && self.bounds.is_equal(&other.bounds)
@@ -207,9 +207,9 @@ impl PropertyDomain {
 }
 
 impl NullabilityLattice {
-    #[must_use] 
+    #[must_use]
     pub fn join(&self, other: &Self) -> Self {
-        use NullabilityLattice::{Bottom, Top, NotNull, Null, MaybeNull};
+        use NullabilityLattice::{Bottom, MaybeNull, NotNull, Null, Top};
         match (self, other) {
             (Bottom, x) | (x, Bottom) => x.clone(),
             (Top, _) | (_, Top) => Top,
@@ -222,7 +222,7 @@ impl NullabilityLattice {
 }
 
 impl IntervalLattice {
-    #[must_use] 
+    #[must_use]
     pub fn widen(&self, other: &Self) -> Self {
         let lower = match (self.lower, other.lower) {
             (Some(a), Some(b)) if a > b => None, // Widening to -∞
@@ -237,16 +237,16 @@ impl IntervalLattice {
         Self { lower, upper }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn is_equal(&self, other: &Self) -> bool {
         self.lower == other.lower && self.upper == other.upper
     }
 }
 
 impl AliasLattice {
-    #[must_use] 
+    #[must_use]
     pub fn join(&self, other: &Self) -> Self {
-        use AliasLattice::{Bottom, Top, NoAlias, MustAlias, MayAlias};
+        use AliasLattice::{Bottom, MayAlias, MustAlias, NoAlias, Top};
         match (self, other) {
             (Bottom, x) | (x, Bottom) => x.clone(),
             (Top, _) | (_, Top) => Top,
@@ -258,9 +258,9 @@ impl AliasLattice {
 }
 
 impl PurityLattice {
-    #[must_use] 
+    #[must_use]
     pub fn meet(&self, other: &Self) -> Self {
-        use PurityLattice::{Bottom, WriteGlobal, WriteLocal, ReadOnly, Pure, Top};
+        use PurityLattice::{Bottom, Pure, ReadOnly, Top, WriteGlobal, WriteLocal};
         match (self, other) {
             (Bottom, _) | (_, Bottom) => Bottom,
             (WriteGlobal, _) | (_, WriteGlobal) => WriteGlobal,
@@ -283,7 +283,7 @@ impl LightweightProvabilityAnalyzer {
     /// let analyzer = LightweightProvabilityAnalyzer::new();
     /// // Analyzer is ready with default configuration
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             abstract_interpreter: AbstractInterpreter { analysis_depth: 10 },
@@ -458,7 +458,7 @@ impl LightweightProvabilityAnalyzer {
     /// let factor = analyzer.calculate_provability_factor(&summary);
     /// assert!(factor >= 0.0 && factor <= 5.0);
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn calculate_provability_factor(&self, summary: &ProofSummary) -> f64 {
         // Convert provability score (0-1) to factor (0-5) for TDG
         // Higher provability = lower TDG score

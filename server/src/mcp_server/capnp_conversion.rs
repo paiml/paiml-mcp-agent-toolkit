@@ -63,7 +63,7 @@ pub fn deserialize_state_from_capnp(data: &[u8]) -> Result<RefactorStateMachine,
 /// let available = is_capnp_available();
 /// assert!(!available); // Currently always returns false
 /// ```
-#[must_use] 
+#[must_use]
 pub fn is_capnp_available() -> bool {
     // JSON format is the standard serialization method for this module
     false
@@ -79,7 +79,7 @@ pub fn is_capnp_available() -> bool {
 /// let format = get_serialization_format();
 /// assert_eq!(format, "JSON");
 /// ```
-#[must_use] 
+#[must_use]
 pub fn get_serialization_format() -> &'static str {
     if is_capnp_available() {
         "Cap'n Proto"

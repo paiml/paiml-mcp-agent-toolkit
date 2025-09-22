@@ -19,7 +19,7 @@ impl Default for RustStrategy {
 }
 
 impl RustStrategy {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self
     }

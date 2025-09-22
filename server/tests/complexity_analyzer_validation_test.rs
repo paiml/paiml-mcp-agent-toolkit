@@ -5,7 +5,6 @@
 //! The analyzer was incorrectly adding nesting level to ALL cognitive increments
 //! instead of only to control flow structures that increase nesting
 
-
 #[test]
 fn test_cognitive_complexity_calculation_accuracy() {
     // Test case: process_sprint_line function

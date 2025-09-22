@@ -1,11 +1,11 @@
 use super::*;
+use bincode::{deserialize, serialize};
+use crc32fast::Hasher;
+use parking_lot::RwLock;
 use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
-use parking_lot::RwLock;
 use tokio::fs::{File, OpenOptions};
-use tokio::io::{AsyncWriteExt, AsyncReadExt, AsyncSeekExt};
-use bincode::{serialize, deserialize};
-use crc32fast::Hasher;
+use tokio::io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt};
 
 // Append-only event log with strong ordering guarantees
 pub struct EventStore {
@@ -104,7 +104,10 @@ impl EventStore {
         Ok(event_id)
     }
 
-    pub async fn append_batch(&self, events: Vec<StateEvent>) -> Result<Vec<EventId>, EventStoreError> {
+    pub async fn append_batch(
+        &self,
+        events: Vec<StateEvent>,
+    ) -> Result<Vec<EventId>, EventStoreError> {
         let mut ids = Vec::with_capacity(events.len());
         let mut persisted_events = Vec::with_capacity(events.len());
 
@@ -151,7 +154,7 @@ impl EventStore {
     pub fn get_events_since(&self, event_id: EventId, limit: Option<usize>) -> Vec<StateEvent> {
         let events = self.events.read();
         let iter = events.range((event_id + 1)..);
-        
+
         if let Some(limit) = limit {
             iter.take(limit).map(|(_, e)| e.clone()).collect()
         } else {
@@ -159,7 +162,11 @@ impl EventStore {
         }
     }
 
-    pub fn get_partition_events(&self, partition_key: &str, since: Option<EventId>) -> Vec<StateEvent> {
+    pub fn get_partition_events(
+        &self,
+        partition_key: &str,
+        since: Option<EventId>,
+    ) -> Vec<StateEvent> {
         let partitions = self.partitions.read();
         let events = self.events.read();
 
@@ -208,19 +215,19 @@ impl EventStore {
     async fn recover_from_disk(&mut self) -> Result<(), EventStoreError> {
         if let Some(persistence) = &self.persistence {
             let recovered = persistence.load_all().await?;
-            
+
             let mut events = self.events.write();
             let mut partitions = self.partitions.write();
             let mut max_id = 0;
 
             for event in recovered {
                 max_id = max_id.max(event.id);
-                
+
                 partitions
                     .entry(event.partition_key.clone())
                     .or_insert_with(Vec::new)
                     .push(event.id);
-                
+
                 events.insert(event.id, event);
             }
 
@@ -266,24 +273,28 @@ impl PersistenceLayer {
     }
 
     async fn append_event(&self, event: &StateEvent) -> Result<(), EventStoreError> {
-        let serialized = serialize(event)
-            .map_err(|e| EventStoreError::SerializationError(e.to_string()))?;
-        
+        let serialized =
+            serialize(event).map_err(|e| EventStoreError::SerializationError(e.to_string()))?;
+
         let mut hasher = Hasher::new();
         hasher.update(&serialized);
         let checksum = hasher.finalize();
 
         let mut file = self.log_file.write();
-        
+
         // Write length, checksum, and data
-        file.write_all(&(serialized.len() as u32).to_le_bytes()).await
+        file.write_all(&(serialized.len() as u32).to_le_bytes())
+            .await
             .map_err(|e| EventStoreError::PersistenceError(e.to_string()))?;
-        file.write_all(&checksum.to_le_bytes()).await
+        file.write_all(&checksum.to_le_bytes())
+            .await
             .map_err(|e| EventStoreError::PersistenceError(e.to_string()))?;
-        file.write_all(&serialized).await
+        file.write_all(&serialized)
+            .await
             .map_err(|e| EventStoreError::PersistenceError(e.to_string()))?;
-        
-        file.flush().await
+
+        file.flush()
+            .await
             .map_err(|e| EventStoreError::PersistenceError(e.to_string()))?;
 
         Ok(())
@@ -291,11 +302,11 @@ impl PersistenceLayer {
 
     async fn append_batch(&self, events: &[StateEvent]) -> Result<(), EventStoreError> {
         let mut buffer = Vec::new();
-        
+
         for event in events {
-            let serialized = serialize(event)
-                .map_err(|e| EventStoreError::SerializationError(e.to_string()))?;
-            
+            let serialized =
+                serialize(event).map_err(|e| EventStoreError::SerializationError(e.to_string()))?;
+
             let mut hasher = Hasher::new();
             hasher.update(&serialized);
             let checksum = hasher.finalize();
@@ -306,9 +317,11 @@ impl PersistenceLayer {
         }
 
         let mut file = self.log_file.write();
-        file.write_all(&buffer).await
+        file.write_all(&buffer)
+            .await
             .map_err(|e| EventStoreError::PersistenceError(e.to_string()))?;
-        file.flush().await
+        file.flush()
+            .await
             .map_err(|e| EventStoreError::PersistenceError(e.to_string()))?;
 
         Ok(())
@@ -316,7 +329,8 @@ impl PersistenceLayer {
 
     async fn load_all(&self) -> Result<Vec<StateEvent>, EventStoreError> {
         let mut file = self.log_file.write();
-        file.seek(std::io::SeekFrom::Start(0)).await
+        file.seek(std::io::SeekFrom::Start(0))
+            .await
             .map_err(|e| EventStoreError::PersistenceError(e.to_string()))?;
 
         let mut events = Vec::new();
@@ -326,20 +340,22 @@ impl PersistenceLayer {
         loop {
             // Read length
             match file.read_exact(&mut length_buf).await {
-                Ok(_) => {},
+                Ok(_) => {}
                 Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => break,
                 Err(e) => return Err(EventStoreError::PersistenceError(e.to_string())),
             }
             let length = u32::from_le_bytes(length_buf) as usize;
 
             // Read checksum
-            file.read_exact(&mut checksum_buf).await
+            file.read_exact(&mut checksum_buf)
+                .await
                 .map_err(|e| EventStoreError::PersistenceError(e.to_string()))?;
             let expected_checksum = u32::from_le_bytes(checksum_buf);
 
             // Read data
             let mut data = vec![0u8; length];
-            file.read_exact(&mut data).await
+            file.read_exact(&mut data)
+                .await
                 .map_err(|e| EventStoreError::PersistenceError(e.to_string()))?;
 
             // Verify checksum
@@ -348,9 +364,10 @@ impl PersistenceLayer {
             let actual_checksum = hasher.finalize();
 
             if expected_checksum != actual_checksum {
-                return Err(EventStoreError::CorruptedData(
-                    format!("Checksum mismatch: expected {}, got {}", expected_checksum, actual_checksum)
-                ));
+                return Err(EventStoreError::CorruptedData(format!(
+                    "Checksum mismatch: expected {}, got {}",
+                    expected_checksum, actual_checksum
+                )));
             }
 
             // Deserialize event
@@ -364,7 +381,7 @@ impl PersistenceLayer {
 
     async fn compact(&self, events: &BTreeMap<EventId, StateEvent>) -> Result<(), EventStoreError> {
         let temp_path = format!("{}.compact", self.file_path);
-        
+
         let mut temp_file = OpenOptions::new()
             .create(true)
             .write(true)
@@ -375,27 +392,36 @@ impl PersistenceLayer {
 
         // Write all events to new file
         for event in events.values() {
-            let serialized = serialize(event)
-                .map_err(|e| EventStoreError::SerializationError(e.to_string()))?;
-            
+            let serialized =
+                serialize(event).map_err(|e| EventStoreError::SerializationError(e.to_string()))?;
+
             let mut hasher = Hasher::new();
             hasher.update(&serialized);
             let checksum = hasher.finalize();
 
-            temp_file.write_all(&(serialized.len() as u32).to_le_bytes()).await
+            temp_file
+                .write_all(&(serialized.len() as u32).to_le_bytes())
+                .await
                 .map_err(|e| EventStoreError::PersistenceError(e.to_string()))?;
-            temp_file.write_all(&checksum.to_le_bytes()).await
+            temp_file
+                .write_all(&checksum.to_le_bytes())
+                .await
                 .map_err(|e| EventStoreError::PersistenceError(e.to_string()))?;
-            temp_file.write_all(&serialized).await
+            temp_file
+                .write_all(&serialized)
+                .await
                 .map_err(|e| EventStoreError::PersistenceError(e.to_string()))?;
         }
 
-        temp_file.flush().await
+        temp_file
+            .flush()
+            .await
             .map_err(|e| EventStoreError::PersistenceError(e.to_string()))?;
         drop(temp_file);
 
         // Atomic rename
-        tokio::fs::rename(&temp_path, &self.file_path).await
+        tokio::fs::rename(&temp_path, &self.file_path)
+            .await
             .map_err(|e| EventStoreError::PersistenceError(e.to_string()))?;
 
         Ok(())

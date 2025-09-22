@@ -3,14 +3,14 @@
 //! This module provides language detection and analysis capabilities
 //! for multiple programming languages.
 
+pub mod bash;
+pub mod csharp;
+pub mod go;
+pub mod java;
+pub mod kotlin;
 pub mod ruchy;
 pub mod ruchy_ml;
-pub mod go;
 pub mod wasm;
-pub mod bash;
-pub mod java;
-pub mod csharp;
-pub mod kotlin;
 
 use std::path::Path;
 
@@ -32,7 +32,7 @@ pub enum Language {
 
 impl Language {
     /// Detect language from file extension
-    #[must_use] 
+    #[must_use]
     pub fn from_extension(path: &Path) -> Self {
         path.extension()
             .and_then(|ext| ext.to_str())
@@ -53,7 +53,7 @@ impl Language {
     }
 
     /// Get the language name as a string
-    #[must_use] 
+    #[must_use]
     pub fn name(&self) -> &'static str {
         match self {
             Language::Rust => "Rust",
@@ -71,7 +71,7 @@ impl Language {
     }
 
     /// Get file extensions for this language
-    #[must_use] 
+    #[must_use]
     pub fn extensions(&self) -> &'static [&'static str] {
         match self {
             Language::Rust => &["rs"],

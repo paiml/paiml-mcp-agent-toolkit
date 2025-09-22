@@ -1379,7 +1379,10 @@ fn format_provability_output(
     include_evidence: bool,
     top_files: usize,
 ) -> Result<String> {
-    use crate::cli::provability_helpers::{format_provability_json, format_provability_summary, format_provability_detailed, format_provability_sarif};
+    use crate::cli::provability_helpers::{
+        format_provability_detailed, format_provability_json, format_provability_sarif,
+        format_provability_summary,
+    };
 
     match format {
         ProvabilityOutputFormat::Json => {
@@ -1570,7 +1573,7 @@ fn format_defect_report(
     report: &DefectPredictionReport,
     format: DefectPredictionOutputFormat,
 ) -> Result<String> {
-    use DefectPredictionOutputFormat::{Summary, Json, Detailed, Sarif, Csv};
+    use DefectPredictionOutputFormat::{Csv, Detailed, Json, Sarif, Summary};
     match format {
         Summary => format_defect_summary(report, 10),
         Json => serde_json::to_string_pretty(report).map_err(Into::into),
@@ -1719,7 +1722,10 @@ pub async fn handle_analyze_proof_annotations(
     _perf: bool,
     clear_cache: bool,
 ) -> Result<()> {
-    use crate::cli::proof_annotation_helpers::{setup_proof_annotator, ProofAnnotationFilter, collect_and_filter_annotations, format_as_json, format_as_summary, format_as_full, format_as_markdown, format_as_sarif};
+    use crate::cli::proof_annotation_helpers::{
+        collect_and_filter_annotations, format_as_full, format_as_json, format_as_markdown,
+        format_as_sarif, format_as_summary, setup_proof_annotator, ProofAnnotationFilter,
+    };
     use std::time::Instant;
 
     eprintln!("🔍 Collecting proof annotations from project...");
@@ -1981,7 +1987,7 @@ fn format_coverage_report(
     format: IncrementalCoverageOutputFormat,
     top_files: usize,
 ) -> Result<String> {
-    use IncrementalCoverageOutputFormat::{Summary, Detailed, Json, Markdown, Lcov, Delta, Sarif};
+    use IncrementalCoverageOutputFormat::{Delta, Detailed, Json, Lcov, Markdown, Sarif, Summary};
     match format {
         Summary => format_incremental_coverage_summary(report, top_files),
         Detailed => format_incremental_coverage_detailed(report, top_files),
@@ -3153,9 +3159,7 @@ async fn execute_single_file_check(
 
 /// Extract Method: Handle unsupported single file check types
 fn handle_unsupported_single_file_check(check: &QualityCheckType) {
-    eprintln!(
-        "⚠️  Skipping {check} check - not applicable to single file"
-    );
+    eprintln!("⚠️  Skipping {check} check - not applicable to single file");
 }
 
 /// Runs all single file checks
@@ -3508,7 +3512,10 @@ async fn execute_specific_quality_check(
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
 ) -> Result<()> {
-    use QualityCheckType::{Complexity, DeadCode, Satd, Entropy, Security, Duplicates, Coverage, Sections, Provability, All};
+    use QualityCheckType::{
+        All, Complexity, Coverage, DeadCode, Duplicates, Entropy, Provability, Satd, Sections,
+        Security,
+    };
 
     match check {
         Complexity => {
@@ -4185,7 +4192,6 @@ async fn run_comprehensive_analyses(
     project_path: &Path,
     config: &ComprehensiveAnalysisConfig,
 ) -> Result<()> {
-
     run_comprehensive_analyses_with_config(report, project_path, config).await
 }
 
@@ -4197,7 +4203,14 @@ async fn run_comprehensive_analyses_with_config(
 ) -> Result<()> {
     // Run SATD analysis (always run)
     eprintln!("🔍 Analyzing technical debt...");
-    report.satd = Some(run_satd_analysis(project_path, &config.include_patterns, &config.exclude_patterns).await?);
+    report.satd = Some(
+        run_satd_analysis(
+            project_path,
+            &config.include_patterns,
+            &config.exclude_patterns,
+        )
+        .await?,
+    );
 
     run_optional_analyses(report, project_path, config).await?;
 
@@ -4226,7 +4239,14 @@ async fn run_complexity_if_requested(
 ) -> Result<()> {
     if config.include_complexity {
         eprintln!("📊 Analyzing complexity...");
-        report.complexity = Some(run_complexity_analysis(project_path, &config.include_patterns, &config.exclude_patterns).await?);
+        report.complexity = Some(
+            run_complexity_analysis(
+                project_path,
+                &config.include_patterns,
+                &config.exclude_patterns,
+            )
+            .await?,
+        );
     }
     Ok(())
 }
@@ -4252,7 +4272,14 @@ async fn run_dead_code_if_requested(
 ) -> Result<()> {
     if config.include_dead_code {
         eprintln!("💀 Analyzing dead code...");
-        report.dead_code = Some(run_dead_code_analysis(project_path, &config.include_patterns, &config.exclude_patterns).await?);
+        report.dead_code = Some(
+            run_dead_code_analysis(
+                project_path,
+                &config.include_patterns,
+                &config.exclude_patterns,
+            )
+            .await?,
+        );
     }
     Ok(())
 }
@@ -4265,7 +4292,10 @@ async fn run_defects_if_requested(
 ) -> Result<()> {
     if config.include_defects {
         eprintln!("🐛 Predicting defects...");
-        report.defects = Some(run_defect_prediction(project_path, config.confidence_threshold, config.min_lines).await?);
+        report.defects = Some(
+            run_defect_prediction(project_path, config.confidence_threshold, config.min_lines)
+                .await?,
+        );
     }
     Ok(())
 }
@@ -4278,7 +4308,14 @@ async fn run_duplicates_if_requested(
 ) -> Result<()> {
     if config.include_duplicates {
         eprintln!("👥 Detecting duplicates...");
-        report.duplicates = Some(run_duplicate_detection(project_path, &config.include_patterns, &config.exclude_patterns).await?);
+        report.duplicates = Some(
+            run_duplicate_detection(
+                project_path,
+                &config.include_patterns,
+                &config.exclude_patterns,
+            )
+            .await?,
+        );
     }
     Ok(())
 }
@@ -4927,9 +4964,10 @@ pub async fn check_entropy(
                 Severity::Medium => "warning".to_string(),
                 Severity::High => "error".to_string(),
             },
-            file: violation
-                .affected_files
-                .first().map_or_else(|| "project".to_string(), |p| p.to_string_lossy().to_string()),
+            file: violation.affected_files.first().map_or_else(
+                || "project".to_string(),
+                |p| p.to_string_lossy().to_string(),
+            ),
             line: None, // Pattern violations span multiple lines
             message: format!(
                 "{} (saves {} lines) - Fix: {}",
@@ -5120,7 +5158,7 @@ async fn collect_file_hashes(
             let hash_result = tokio::task::block_in_place(|| {
                 tokio::runtime::Handle::current().block_on(process_file_for_hash(path))
             });
-            
+
             if let Some(hash) = hash_result {
                 file_hashes
                     .entry(hash)
@@ -5795,12 +5833,12 @@ fn get_qg_violation_summary_rows(results: &QualityGateResults) -> [(&'static str
 }
 
 // Helper functions
-#[must_use] 
+#[must_use]
 pub fn detect_toolchain(path: &Path) -> Option<String> {
     super::detect_primary_language(path)
 }
 
-#[must_use] 
+#[must_use]
 pub fn build_complexity_thresholds(
     max_cyclomatic: Option<u16>,
     max_cognitive: Option<u16>,
@@ -5928,7 +5966,7 @@ pub async fn analyze_project_files(
 /// let default_extensions = get_file_extensions(None);
 /// assert_eq!(default_extensions, vec!["rs"]);
 /// ```
-#[must_use] 
+#[must_use]
 pub fn get_file_extensions(toolchain: Option<&str>) -> Vec<&'static str> {
     match toolchain {
         Some("rust") => vec!["rs"],
@@ -5961,7 +5999,7 @@ pub fn get_file_extensions(toolchain: Option<&str>) -> Vec<&'static str> {
 /// # Returns
 ///
 /// `true` if the file should be analyzed, `false` otherwise
-#[must_use] 
+#[must_use]
 pub fn should_analyze_file(
     path: &Path,
     project_path: &Path,
@@ -6104,7 +6142,7 @@ fn is_excluded_directory(path_str: &str) -> bool {
 }
 
 /// Check if filename indicates a test file
-#[must_use] 
+#[must_use]
 pub fn is_excluded_filename(filename: &str) -> bool {
     is_test_file(filename)
         || is_example_or_demo_file(filename)
@@ -6191,7 +6229,7 @@ async fn analyze_file_complexity_async(
     crate::cli::language_analyzer::analyze_file_complexity(path, content).await
 }
 
-#[must_use] 
+#[must_use]
 pub fn add_top_files_ranking(
     files: Vec<crate::services::complexity::FileComplexityMetrics>,
     top_files: usize,
@@ -6212,7 +6250,7 @@ pub fn format_dead_code_output(
 }
 
 // Name similarity helpers
-#[must_use] 
+#[must_use]
 pub fn extract_identifiers(content: &str) -> Vec<super::NameInfo> {
     let mut identifiers = Vec::new();
     let mut seen = HashSet::new();
@@ -6293,7 +6331,7 @@ fn extract_identifiers_for_pattern(
 /// assert_eq!(calculate_string_similarity("", ""), 1.0);
 /// assert!(calculate_string_similarity("hello", "xyz") < 0.5);
 /// ```
-#[must_use] 
+#[must_use]
 pub fn calculate_string_similarity(s1: &str, s2: &str) -> f32 {
     // Normalized Levenshtein distance for basic string similarity
     if s1.is_empty() && s2.is_empty() {
@@ -6359,7 +6397,7 @@ fn get_ngrams(s: &str, n: usize) -> HashSet<String> {
 /// assert_eq!(calculate_edit_distance("hello", "hello"), 0);
 /// assert_eq!(calculate_edit_distance("", "abc"), 3);
 /// ```
-#[must_use] 
+#[must_use]
 pub fn calculate_edit_distance(s1: &str, s2: &str) -> usize {
     // Levenshtein distance implementation
     let len1 = s1.chars().count();
@@ -6404,7 +6442,7 @@ pub fn calculate_edit_distance(s1: &str, s2: &str) -> usize {
     matrix[len1][len2]
 }
 
-#[must_use] 
+#[must_use]
 pub fn calculate_soundex(s: &str) -> String {
     // Soundex phonetic algorithm implementation
     if s.is_empty() {
@@ -6465,7 +6503,7 @@ fn soundex_code(ch: char) -> char {
 }
 
 // Helper function for params conversion
-#[must_use] 
+#[must_use]
 pub fn params_to_json(
     params: Vec<(String, serde_json::Value)>,
 ) -> serde_json::Map<String, serde_json::Value> {
@@ -7356,11 +7394,11 @@ mod tests {
     #[tokio::test]
     async fn test_check_satd_comprehensive() -> anyhow::Result<()> {
         let temp_dir = TempDir::new()?;
-        
+
         // Create src directory
         let src_dir = temp_dir.path().join("src");
         tokio::fs::create_dir_all(&src_dir).await?;
-        
+
         let test_file = src_dir.join("test.rs");
         tokio::fs::write(
             &test_file,
@@ -7378,12 +7416,12 @@ fn test() {
         .await?;
 
         let violations = check_satd(temp_dir.path()).await?;
-        
+
         eprintln!("Found {} SATD violations:", violations.len());
         for v in &violations {
             eprintln!("  - {}: {}", v.severity, v.message);
         }
-        
+
         // The check_satd function has issues finding violations in test environment
         // This is a known limitation of the test infrastructure
         if violations.is_empty() {
@@ -7402,18 +7440,24 @@ fn test() {
             ("BUG", messages.iter().any(|m| m.contains("BUG"))),
             ("REFACTOR", messages.iter().any(|m| m.contains("REFACTOR"))),
         ];
-        
-        let detected_count = detected_patterns.iter().filter(|(_, detected)| *detected).count();
+
+        let detected_count = detected_patterns
+            .iter()
+            .filter(|(_, detected)| *detected)
+            .count();
         eprintln!("Detected {}/6 SATD patterns", detected_count);
-        
+
         // If we have violations, ensure they're valid SATD violations
         assert!(violations.iter().all(|v| v.check_type == "satd"));
-        
+
         // Ensure at least some common patterns are detected if we have violations
         if violations.len() >= 2 {
             let has_todo = messages.iter().any(|m| m.contains("TODO"));
             let has_fixme = messages.iter().any(|m| m.contains("FIXME"));
-            assert!(has_todo || has_fixme, "At least TODO or FIXME should be detected");
+            assert!(
+                has_todo || has_fixme,
+                "At least TODO or FIXME should be detected"
+            );
         }
 
         Ok(())
@@ -7437,11 +7481,11 @@ fn test() {
     #[tokio::test]
     async fn test_check_satd_case_insensitive() -> anyhow::Result<()> {
         let temp_dir = TempDir::new()?;
-        
+
         // Create src directory
         let src_dir = temp_dir.path().join("src");
         tokio::fs::create_dir_all(&src_dir).await?;
-        
+
         let test_file = src_dir.join("case.rs");
         tokio::fs::write(
             &test_file,
@@ -7450,15 +7494,19 @@ fn test() {
         .await?;
 
         let violations = check_satd(temp_dir.path()).await?;
-        
+
         eprintln!("Found {} SATD violations:", violations.len());
         for v in &violations {
             eprintln!("  - {}: {}", v.severity, v.message);
         }
-        
+
         // The SATD detector may have specific rules about case sensitivity
         // Adjust expectation based on actual behavior
-        assert!(violations.len() >= 2, "Expected at least 2 SATD violations, got {}", violations.len());
+        assert!(
+            violations.len() >= 2,
+            "Expected at least 2 SATD violations, got {}",
+            violations.len()
+        );
         assert!(violations.iter().all(|v| v.check_type == "satd"));
 
         Ok(())
@@ -7468,7 +7516,7 @@ fn test() {
     #[tokio::test]
     async fn test_check_entropy_comprehensive() -> anyhow::Result<()> {
         let temp_dir = TempDir::new()?;
-        
+
         // Create src directory to ensure files are found
         let src_dir = temp_dir.path().join("src");
         tokio::fs::create_dir_all(&src_dir).await?;
@@ -7533,13 +7581,13 @@ fn process_data(input: &str) -> Result<HashMap<String, u64>, Error> {
         match check_entropy(temp_dir.path(), 0.5).await {
             Ok(violations) => {
                 eprintln!("Found {} entropy violations", violations.len());
-                
+
                 // Should detect low entropy file
                 let low_entropy_violations: Vec<_> = violations
                     .iter()
                     .filter(|v| v.file.contains("low.rs"))
                     .collect();
-                
+
                 if low_entropy_violations.is_empty() {
                     eprintln!("Warning: No entropy violations found for repetitive code");
                     eprintln!("This is a known issue with the entropy analyzer");
@@ -7562,13 +7610,15 @@ fn process_data(input: &str) -> Result<HashMap<String, u64>, Error> {
     #[tokio::test]
     async fn test_check_entropy_thresholds() -> anyhow::Result<()> {
         let temp_dir = TempDir::new()?;
-        
+
         // Create src directory
         let src_dir = temp_dir.path().join("src");
         tokio::fs::create_dir_all(&src_dir).await?;
-        
+
         let test_file = src_dir.join("test.rs");
-        tokio::fs::write(&test_file, r#"
+        tokio::fs::write(
+            &test_file,
+            r#"
 fn repetitive_function() {
     if condition {
         do_something();
@@ -7579,17 +7629,22 @@ fn another_repetitive_function() {
         do_something();
     }
 }
-"#).await?;
+"#,
+        )
+        .await?;
 
         eprintln!("Created test file: {}", test_file.display());
 
         // Note: check_entropy ignores the threshold parameter and uses hardcoded config
         // We test that the function doesn't crash with different thresholds
-        match (check_entropy(temp_dir.path(), 0.1).await, check_entropy(temp_dir.path(), 0.9).await) {
+        match (
+            check_entropy(temp_dir.path(), 0.1).await,
+            check_entropy(temp_dir.path(), 0.9).await,
+        ) {
             (Ok(low_threshold), Ok(high_threshold)) => {
                 eprintln!("Low threshold violations: {}", low_threshold.len());
                 eprintln!("High threshold violations: {}", high_threshold.len());
-                
+
                 // The function ignores thresholds so both results should be equal
                 // (or both empty due to analyzer issues)
                 assert_eq!(low_threshold.len(), high_threshold.len());
@@ -7607,7 +7662,7 @@ fn another_repetitive_function() {
     #[tokio::test]
     async fn test_check_entropy_project_average() -> anyhow::Result<()> {
         let temp_dir = TempDir::new()?;
-        
+
         // Create src directory
         let src_dir = temp_dir.path().join("src");
         tokio::fs::create_dir_all(&src_dir).await?;
@@ -7615,8 +7670,10 @@ fn another_repetitive_function() {
         // Multiple low entropy files with repetitive patterns
         for i in 0..3 {
             let file = src_dir.join(format!("low{}.rs", i));
-            tokio::fs::write(&file, format!(
-                r#"
+            tokio::fs::write(
+                &file,
+                format!(
+                    r#"
 fn process{}() {{
     if condition {{
         do_something();
@@ -7632,7 +7689,11 @@ fn process{}b() {{
         do_something();
     }}
 }}
-"#, i, i, i)).await?;
+"#,
+                    i, i, i
+                ),
+            )
+            .await?;
         }
 
         eprintln!("Created {} test files in {}", 3, src_dir.display());
@@ -7641,13 +7702,13 @@ fn process{}b() {{
         match check_entropy(temp_dir.path(), 0.8).await {
             Ok(violations) => {
                 eprintln!("Found {} entropy violations", violations.len());
-                
+
                 // Should have individual file violations plus project average violation
                 let project_violations: Vec<_> = violations
                     .iter()
                     .filter(|v| v.message.contains("Project average"))
                     .collect();
-                
+
                 if project_violations.is_empty() {
                     eprintln!("Warning: No project average violations found");
                     eprintln!("This is a known issue with the entropy analyzer");
@@ -8586,7 +8647,10 @@ fn another_simple(y: i32) -> i32 {
 
         // Skip assertion if no violations found - known issue with test infrastructure
         if violations.is_empty() {
-            eprintln!("Warning: check_complexity didn't find violations with threshold {}", threshold);
+            eprintln!(
+                "Warning: check_complexity didn't find violations with threshold {}",
+                threshold
+            );
             eprintln!("This is a known issue with the test infrastructure");
             return; // Skip assertion
         }
@@ -8610,7 +8674,7 @@ fn another_simple(y: i32) -> i32 {
                 }
             }
         }
-        
+
         // Our complex_function should trigger violations
         let violations = check_complexity(project_path, 5).await.unwrap();
         // Print debug info
@@ -8618,7 +8682,7 @@ fn another_simple(y: i32) -> i32 {
         for v in &violations {
             eprintln!("  - {} ({}): {}", v.check_type, v.severity, v.message);
         }
-        
+
         // For now, just skip this validation since check_complexity doesn't work as expected
         // The function ignores the threshold parameter and may not find test files correctly
         if violations.is_empty() {
@@ -8626,7 +8690,7 @@ fn another_simple(y: i32) -> i32 {
             eprintln!("This is a known issue with the test infrastructure");
             return; // Skip assertion
         }
-        
+
         assert_eq!(violations[0].check_type, "complexity");
     }
 
@@ -9247,12 +9311,7 @@ fn another_simple(y: i32) -> i32 {
             10,    // min_lines
         );
         let result = rt.block_on(async {
-            run_comprehensive_analyses(
-                &mut report,
-                &project_path,
-                &config,
-            )
-            .await
+            run_comprehensive_analyses(&mut report, &project_path, &config).await
         });
 
         // Should succeed with minimal configuration

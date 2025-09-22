@@ -196,7 +196,7 @@ pub struct AnalysisResultBuilder {
 }
 
 impl AnalysisResultBuilder {
-    #[must_use] 
+    #[must_use]
     pub fn new(file_path: PathBuf) -> Self {
         let absolute_path = file_path.clone();
         Self {
@@ -213,14 +213,14 @@ impl AnalysisResultBuilder {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn with_line_range(mut self, start: u32, end: Option<u32>) -> Self {
         self.line_start = start;
         self.line_end = end;
         self
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn with_column_range(mut self, start: u32, end: Option<u32>) -> Self {
         self.column_start = start;
         self.column_end = end;
@@ -253,7 +253,7 @@ impl AnalysisResultBuilder {
         self
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn build(self) -> AnalysisResult {
         AnalysisResult {
             file_path: self.file_path,
@@ -303,7 +303,7 @@ impl AnalysisResultBuilder {
 /// assert!(table.contains("RANK"));
 /// assert!(table.contains("src/main.rs"));
 /// ```
-#[must_use] 
+#[must_use]
 pub fn format_ranked_files_table(ranked_files: &[RankedFile]) -> String {
     let mut output = String::new();
 

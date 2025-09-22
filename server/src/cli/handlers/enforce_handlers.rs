@@ -1091,7 +1091,7 @@ pub async fn handle_enforcement_iteration(
 }
 
 /// Check improvement targets - extracted from `run_main_enforcement_loop` (complexity: ≤10)
-#[must_use] 
+#[must_use]
 pub fn check_improvement_targets(
     config: &EnforcementConfig,
     result_score: f64,

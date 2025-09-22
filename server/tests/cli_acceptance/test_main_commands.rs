@@ -3,9 +3,7 @@
 //! Tests for top-level pmat CLI commands following the cli-acceptance-testing.md specification.
 //! Ensures 100% coverage of main commands with proper error handling and performance validation.
 
-use crate::cli_acceptance::helpers::cli_test_runner::{
-    CliTestRunner, TestValidators,
-};
+use crate::cli_acceptance::helpers::cli_test_runner::{CliTestRunner, TestValidators};
 use anyhow::Result;
 use std::time::Duration;
 

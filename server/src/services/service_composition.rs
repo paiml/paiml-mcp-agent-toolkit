@@ -89,7 +89,7 @@ pub struct ServiceComposer {
 
 impl ServiceComposer {
     /// Create a new service composer
-    #[must_use] 
+    #[must_use]
     pub fn new(registry: Arc<super::service_base::ServiceRegistry>) -> Self {
         Self { registry }
     }
@@ -104,7 +104,7 @@ impl ServiceComposer {
     }
 
     /// Get the service registry
-    #[must_use] 
+    #[must_use]
     pub fn registry(&self) -> &super::service_base::ServiceRegistry {
         &self.registry
     }

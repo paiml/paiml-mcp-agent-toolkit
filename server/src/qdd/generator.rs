@@ -1,7 +1,10 @@
 //! Quality code generation engine
 //! Toyota Way: Build quality in from the start
 
-use super::{QualityProfile, CreateSpec, QddResult, CodeType, RollbackPlan, Checkpoint, QualityMetrics, QualityScore};
+use super::{
+    Checkpoint, CodeType, CreateSpec, QddResult, QualityMetrics, QualityProfile, QualityScore,
+    RollbackPlan,
+};
 use anyhow::{anyhow, Result};
 
 /// Quality-focused code generator
@@ -14,7 +17,7 @@ pub struct QualityCodeGenerator {
 
 impl QualityCodeGenerator {
     /// Create generator with quality profile
-    #[must_use] 
+    #[must_use]
     pub fn new(profile: QualityProfile) -> Self {
         Self {
             ast_builder: AstBuilder::new(profile.clone()),
@@ -329,7 +332,7 @@ pub struct AstBuilder {
 }
 
 impl AstBuilder {
-    #[must_use] 
+    #[must_use]
     pub fn new(profile: QualityProfile) -> Self {
         Self { profile }
     }
@@ -417,7 +420,7 @@ pub struct TestGenerator {
 }
 
 impl TestGenerator {
-    #[must_use] 
+    #[must_use]
     pub fn new(profile: QualityProfile) -> Self {
         Self { profile }
     }
@@ -543,7 +546,7 @@ pub struct DocGenerator {
 }
 
 impl DocGenerator {
-    #[must_use] 
+    #[must_use]
     pub fn new(profile: QualityProfile) -> Self {
         Self { profile }
     }

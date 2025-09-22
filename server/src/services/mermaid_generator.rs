@@ -79,7 +79,7 @@ impl MermaidGenerator {
     /// let generator = MermaidGenerator::new(options);
     /// // Generator ready to create Mermaid diagrams
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn new(options: MermaidOptions) -> Self {
         Self {
             options,
@@ -87,7 +87,7 @@ impl MermaidGenerator {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn generate(&self, graph: &DependencyGraph) -> String {
         // Use the deterministic fixed graph builder
         let config = GraphConfig {
@@ -98,7 +98,7 @@ impl MermaidGenerator {
         self.generate_with_config(graph, &config)
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn generate_with_config(&self, graph: &DependencyGraph, config: &GraphConfig) -> String {
         // Build fixed-size graph with PageRank selection
         let builder = FixedGraphBuilder::new(config.clone());
@@ -219,7 +219,7 @@ impl MermaidGenerator {
     }
 
     #[inline]
-    #[must_use] 
+    #[must_use]
     pub fn escape_mermaid_label(&self, label: &str) -> String {
         // For IntelliJ compatibility, use simple character replacements instead of HTML entities
         label
@@ -264,7 +264,7 @@ impl MermaidGenerator {
     /// assert_eq!(generator.get_edge_arrow(&EdgeType::Calls), "-->");
     /// assert_eq!(generator.get_edge_arrow(&EdgeType::Imports), "-.->");
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn get_edge_arrow(&self, edge_type: &EdgeType) -> &'static str {
         match edge_type {
             EdgeType::Calls => "-->",
@@ -306,7 +306,7 @@ impl MermaidGenerator {
     /// assert_eq!(generator.get_complexity_color(10), "#FFA500"); // Orange
     /// assert_eq!(generator.get_complexity_color(15), "#FF6347"); // Tomato
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn get_complexity_color(&self, complexity: u32) -> &'static str {
         match complexity {
             1..=3 => "#90EE90",  // Light green for low complexity
@@ -326,7 +326,7 @@ impl MermaidGenerator {
     }
 
     #[inline]
-    #[must_use] 
+    #[must_use]
     pub fn sanitize_id(&self, id: &str) -> String {
         // First replace common multi-character patterns
         let sanitized = id.replace("::", "_").replace(['/', '.', '-', ' '], "_");

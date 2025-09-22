@@ -90,7 +90,7 @@ pub struct QAVerification {
 }
 
 impl QAVerification {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         let mut checks: Vec<(&'static str, QualityCheck)> = vec![];
 
@@ -183,7 +183,10 @@ impl QAVerification {
                 }
 
                 // Calculate coefficient of variation
-                let mean = functions.iter().map(|f| f64::from(f.cyclomatic)).sum::<f64>()
+                let mean = functions
+                    .iter()
+                    .map(|f| f64::from(f.cyclomatic))
+                    .sum::<f64>()
                     / functions.len() as f64;
 
                 if mean == 0.0 {
@@ -240,10 +243,7 @@ impl QAVerification {
             "ast_coverage",
             Box::new(|result| {
                 let total_files = result.file_tree.len();
-                let ast_files = result
-                    .ast_summaries
-                    .as_ref()
-                    .map_or(0, std::vec::Vec::len);
+                let ast_files = result.ast_summaries.as_ref().map_or(0, std::vec::Vec::len);
 
                 if total_files == 0 {
                     return Err("No files found in project".into());
@@ -298,7 +298,7 @@ impl QAVerification {
         ));
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn verify(
         &self,
         result: &DeepContextResult,
@@ -309,7 +309,7 @@ impl QAVerification {
             .collect()
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn generate_verification_report(&self, result: &DeepContextResult) -> QAVerificationResult {
         let verification_results = self.verify(result);
 
@@ -342,8 +342,11 @@ impl QAVerification {
         } else {
             let entropy = calculate_complexity_entropy(&functions);
 
-            let mean =
-                functions.iter().map(|f| f64::from(f.cyclomatic)).sum::<f64>() / functions.len() as f64;
+            let mean = functions
+                .iter()
+                .map(|f| f64::from(f.cyclomatic))
+                .sum::<f64>()
+                / functions.len() as f64;
             let variance = functions
                 .iter()
                 .map(|f| (f64::from(f.cyclomatic) - mean).powi(2))

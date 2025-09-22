@@ -49,12 +49,12 @@ pub struct ParallelGitExecutor {
 }
 
 impl ParallelGitExecutor {
-    #[must_use] 
+    #[must_use]
     pub fn new(project_root: PathBuf) -> Self {
         Self::with_config(project_root, ParallelGitConfig::default())
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn with_config(project_root: PathBuf, config: ParallelGitConfig) -> Self {
         let semaphore = Arc::new(Semaphore::new(config.max_concurrent_operations));
         let cache = Arc::new(RwLock::new(rustc_hash::FxHashMap::default()));
@@ -176,7 +176,8 @@ impl ParallelGitExecutor {
             .map(|args| {
                 let executor = self.clone();
                 async move {
-                    let args_refs: Vec<&str> = args.iter().map(std::string::String::as_str).collect();
+                    let args_refs: Vec<&str> =
+                        args.iter().map(std::string::String::as_str).collect();
                     executor.execute_command(args_refs).await
                 }
             })

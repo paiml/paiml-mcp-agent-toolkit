@@ -1,16 +1,16 @@
 // MCP (Model Context Protocol) integration for agent system
+pub mod prompts;
+pub mod resources;
 pub mod server;
 pub mod tools;
-pub mod resources;
-pub mod prompts;
 pub mod transport;
 
+use async_trait::async_trait;
+use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::Arc;
-use parking_lot::RwLock;
-use async_trait::async_trait;
 use uuid::Uuid;
 
 // MCP protocol version
@@ -94,6 +94,14 @@ pub struct McpError {
     pub data: Option<Value>,
 }
 
+impl std::fmt::Display for McpError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "MCP Error {}: {}", self.code, self.message)
+    }
+}
+
+impl std::error::Error for McpError {}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct McpNotification {
     pub method: String,
@@ -130,7 +138,7 @@ impl Default for ServerInfo {
     fn default() -> Self {
         Self {
             name: "PMAT Agent Server".to_string(),
-            version: env!"CARGO_PKG_VERSION").to_string(),
+            version: env!("CARGO_PKG_VERSION").to_string(),
             protocol_version: MCP_VERSION.to_string(),
         }
     }
@@ -224,8 +232,10 @@ impl ResourceRegistry {
 
     pub fn register(&mut self, resource: Arc<dyn McpResource>) {
         let template = resource.template();
-        self.resources.insert(template.uri_template.clone(), resource);
-        self.templates.insert(template.uri_template.clone(), template);
+        self.resources
+            .insert(template.uri_template.clone(), resource);
+        self.templates
+            .insert(template.uri_template.clone(), template);
     }
 
     pub fn list(&self) -> Vec<ResourceTemplate> {
@@ -294,7 +304,10 @@ pub enum ContentPart {
 #[async_trait]
 pub trait McpPrompt: Send + Sync {
     fn metadata(&self) -> PromptMetadata;
-    async fn get(&self, arguments: Option<HashMap<String, String>>) -> Result<Vec<PromptMessage>, McpError>;
+    async fn get(
+        &self,
+        arguments: Option<HashMap<String, String>>,
+    ) -> Result<Vec<PromptMessage>, McpError>;
 }
 
 impl PromptRegistry {
@@ -363,10 +376,17 @@ impl McpSession {
             }),
         };
 
-        McpResponse {
-            id: request.id,
-            result: result.ok(),
-            error: result.err(),
+        match result {
+            Ok(value) => McpResponse {
+                id: request.id,
+                result: Some(value),
+                error: None,
+            },
+            Err(err) => McpResponse {
+                id: request.id,
+                result: None,
+                error: Some(err),
+            },
         }
     }
 
@@ -398,11 +418,16 @@ impl McpSession {
 
         let tool_params = params["arguments"].clone();
 
-        let tool = self.context.tools.read().get(name).ok_or_else(|| McpError {
-            code: error_codes::INVALID_PARAMS,
-            message: format!("Tool not found: {}", name),
-            data: None,
-        })?;
+        let tool = self
+            .context
+            .tools
+            .read()
+            .get(name)
+            .ok_or_else(|| McpError {
+                code: error_codes::INVALID_PARAMS,
+                message: format!("Tool not found: {}", name),
+                data: None,
+            })?;
 
         let result = tool.execute(tool_params).await?;
         Ok(serde_json::json!({ "content": [result] }))
@@ -426,7 +451,11 @@ impl McpSession {
             data: None,
         })?;
 
-        let resource = self.context.resources.read().find_matching(uri)
+        let resource = self
+            .context
+            .resources
+            .read()
+            .find_matching(uri)
             .ok_or_else(|| McpError {
                 code: error_codes::INVALID_PARAMS,
                 message: format!("Resource not found for URI: {}", uri),
@@ -450,7 +479,11 @@ impl McpSession {
             data: None,
         })?;
 
-        let resource = self.context.resources.read().find_matching(uri)
+        let resource = self
+            .context
+            .resources
+            .read()
+            .find_matching(uri)
             .ok_or_else(|| McpError {
                 code: error_codes::INVALID_PARAMS,
                 message: format!("Resource not found for URI: {}", uri),
@@ -460,7 +493,7 @@ impl McpSession {
         if let Some(mut receiver) = resource.subscribe(uri) {
             let uri_clone = uri.to_string();
             let transport = self.transport.clone();
-            
+
             let handle = tokio::spawn(async move {
                 while receiver.changed().await.is_ok() {
                     let content = receiver.borrow().clone();
@@ -471,13 +504,15 @@ impl McpSession {
                             "contents": [content],
                         })),
                     };
-                    
+
                     let message = McpMessage::JsonRpc(JsonRpcMessage::Notification(notification));
                     let _ = transport.send(message).await;
                 }
             });
 
-            self.active_subscriptions.write().insert(uri.to_string(), handle);
+            self.active_subscriptions
+                .write()
+                .insert(uri.to_string(), handle);
         }
 
         Ok(serde_json::json!({}))
@@ -507,11 +542,16 @@ impl McpSession {
                 .collect()
         });
 
-        let prompt = self.context.prompts.read().get(name).ok_or_else(|| McpError {
-            code: error_codes::INVALID_PARAMS,
-            message: format!("Prompt not found: {}", name),
-            data: None,
-        })?;
+        let prompt = self
+            .context
+            .prompts
+            .read()
+            .get(name)
+            .ok_or_else(|| McpError {
+                code: error_codes::INVALID_PARAMS,
+                message: format!("Prompt not found: {}", name),
+                data: None,
+            })?;
 
         let messages = prompt.get(arguments).await?;
         Ok(serde_json::json!({ "messages": messages }))

@@ -1,6 +1,6 @@
 //! PDMT todo generation from roadmap tasks
 
-use super::{TaskStatus, Priority, QualityGateConfig, Sprint, Complexity, Task, HashMap};
+use super::{Complexity, HashMap, Priority, QualityGateConfig, Sprint, Task, TaskStatus};
 use crate::models::pdmt::{PdmtQualityConfig, PdmtTodo};
 use crate::services::pdmt_service::PdmtService;
 use anyhow::Result;
@@ -65,7 +65,7 @@ pub struct RoadmapTodoGenerator {
 
 impl RoadmapTodoGenerator {
     /// Create new generator with quality configuration
-    #[must_use] 
+    #[must_use]
     pub fn new(quality_config: QualityGateConfig) -> Self {
         Self {
             pdmt_service: PdmtService::new(),
@@ -136,7 +136,7 @@ impl RoadmapTodoGenerator {
     }
 
     /// Create quality-enforced todo from task
-    #[must_use] 
+    #[must_use]
     pub fn create_quality_enforced_todo(
         &self,
         task: &RoadmapTask,
@@ -156,7 +156,7 @@ impl RoadmapTodoGenerator {
     }
 
     /// Generate validation commands for task
-    #[must_use] 
+    #[must_use]
     pub fn generate_validation_commands(&self, task: &RoadmapTask) -> Vec<String> {
         let mut commands = vec![
             "cargo test".to_string(),
@@ -176,7 +176,7 @@ impl RoadmapTodoGenerator {
     }
 
     /// Generate success criteria for task
-    #[must_use] 
+    #[must_use]
     pub fn generate_success_criteria(&self, task: &RoadmapTask) -> Vec<String> {
         let mut criteria = vec![
             "All tests pass".to_string(),
@@ -198,7 +198,7 @@ impl RoadmapTodoGenerator {
     }
 
     /// Format todos as markdown
-    #[must_use] 
+    #[must_use]
     pub fn format_todos_as_markdown(&self, todos: &[QualityEnforcedTodo]) -> String {
         let mut output = String::new();
         output.push_str("# Quality-Enforced Todo List\n\n");
@@ -342,7 +342,7 @@ impl RoadmapTodoGenerator {
     }
 
     /// Export todos to markdown format
-    #[must_use] 
+    #[must_use]
     pub fn export_todos_markdown(&self, todos: &[QualityEnforcedTodo]) -> String {
         let mut output = String::new();
 

@@ -224,7 +224,7 @@ pub struct SATDDefectAnalyzer {
 }
 
 impl SATDDefectAnalyzer {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             detector: crate::services::satd_detector::SATDDetector::new(),
@@ -315,7 +315,7 @@ impl SATDDefectAnalyzer {
 pub struct DeadCodeDefectAnalyzer;
 
 impl DeadCodeDefectAnalyzer {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {}
     }
@@ -458,7 +458,7 @@ pub struct DuplicationDefectAnalyzer {
 }
 
 impl DuplicationDefectAnalyzer {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         let config = crate::services::duplicate_detector::DuplicateDetectionConfig::default();
         Self {
@@ -601,7 +601,7 @@ pub struct PerformanceDefectAnalyzer {
 }
 
 impl PerformanceDefectAnalyzer {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             analyzer: crate::services::big_o_analyzer::BigOAnalyzer::new(),
@@ -741,7 +741,7 @@ impl PerformanceDefectAnalyzer {
 pub struct ArchitectureDefectAnalyzer;
 
 impl ArchitectureDefectAnalyzer {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {}
     }
