@@ -66,7 +66,7 @@ pub struct InvariantChecker<S, C> {
 
 impl<S: AgentState, C: AgentContext> InvariantChecker<S, C> {
     /// Create a new invariant checker.
-    #[must_use] 
+    #[must_use]
     pub fn new(invariants: Vec<Box<dyn Invariant<S, C>>>) -> Self {
         Self {
             invariants,
@@ -75,7 +75,7 @@ impl<S: AgentState, C: AgentContext> InvariantChecker<S, C> {
     }
 
     /// Create a new invariant checker with a custom violation handler.
-    #[must_use] 
+    #[must_use]
     pub fn with_handler(
         invariants: Vec<Box<dyn Invariant<S, C>>>,
         handler: ViolationHandler,
@@ -114,7 +114,7 @@ impl<S: AgentState, C: AgentContext> InvariantChecker<S, C> {
     }
 
     /// Get the number of invariants.
-    #[must_use] 
+    #[must_use]
     pub fn invariant_count(&self) -> usize {
         self.invariants.len()
     }
@@ -129,13 +129,13 @@ pub struct ViolationHandler {
 
 impl ViolationHandler {
     /// Create a new violation handler with the given default action.
-    #[must_use] 
+    #[must_use]
     pub fn new(default_action: ViolationAction) -> Self {
         Self { default_action }
     }
 
     /// Handle a violation.
-    #[must_use] 
+    #[must_use]
     pub fn handle(&self, _violation: &InvariantViolation) -> ViolationAction {
         self.default_action.clone()
     }

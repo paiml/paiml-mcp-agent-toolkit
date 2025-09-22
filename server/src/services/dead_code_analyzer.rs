@@ -70,7 +70,7 @@ pub struct HierarchicalBitSet {
 }
 
 impl HierarchicalBitSet {
-    #[must_use] 
+    #[must_use]
     pub fn new(capacity: usize) -> Self {
         Self {
             levels: vec![roaring::RoaringBitmap::new()],
@@ -105,7 +105,7 @@ impl HierarchicalBitSet {
     /// bitset.set(10);
     /// assert!(bitset.is_set(10));
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn is_set(&self, index: u32) -> bool {
         self.levels[0].contains(index)
     }
@@ -131,7 +131,7 @@ impl HierarchicalBitSet {
     /// bitset.set(30);
     /// assert_eq!(bitset.count_set(), 3);
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn count_set(&self) -> usize {
         self.levels[0].len() as usize
     }
@@ -233,7 +233,7 @@ impl Default for VTableResolver {
 }
 
 impl VTableResolver {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             vtables: HashMap::new(),
@@ -241,7 +241,7 @@ impl VTableResolver {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn resolve_dynamic_call(&self, interface: &str, method: &str) -> Vec<NodeKey> {
         let mut targets = Vec::new();
 
@@ -410,7 +410,7 @@ impl DeadCodeAnalyzer {
     /// let analyzer = DeadCodeAnalyzer::new(1000);
     /// // Analyzer is ready to analyze up to 1000 nodes
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn new(total_nodes: usize) -> Self {
         Self {
             reachability: Arc::new(RwLock::new(HierarchicalBitSet::new(total_nodes))),
@@ -443,7 +443,7 @@ impl DeadCodeAnalyzer {
     ///
     /// let analyzer = DeadCodeAnalyzer::new(100).with_coverage(coverage);
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn with_coverage(mut self, coverage: CoverageData) -> Self {
         self.coverage_map = Some(Arc::new(coverage));
         self
@@ -1187,7 +1187,7 @@ impl DeadCodeAnalyzer {
 }
 
 impl CrossLangReferenceGraph {
-    #[must_use] 
+    #[must_use]
     pub fn edges_for_chunk(&self, _chunk: &[u8]) -> Vec<ReferenceEdge> {
         // TRACKED: Implement efficient edge lookup for chunks
         Vec::new()

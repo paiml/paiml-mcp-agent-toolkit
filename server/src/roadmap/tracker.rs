@@ -1,6 +1,6 @@
 //! Progress tracking and velocity metrics for roadmap
 
-use super::{DateTime, Utc, Complexity, Task, Sprint, TaskStatus, Roadmap};
+use super::{Complexity, DateTime, Roadmap, Sprint, Task, TaskStatus, Utc};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -44,7 +44,7 @@ pub struct BurndownPoint {
 }
 
 impl VelocityTracker {
-    #[must_use] 
+    #[must_use]
     pub fn new(sprint_id: &str) -> Self {
         Self {
             sprint_id: sprint_id.to_string(),
@@ -130,7 +130,7 @@ impl VelocityTracker {
     }
 
     /// Get average quality score
-    #[must_use] 
+    #[must_use]
     pub fn average_quality_score(&self) -> f64 {
         if self.quality_scores.is_empty() {
             return 0.0;
@@ -141,7 +141,7 @@ impl VelocityTracker {
     }
 
     /// Get velocity (tasks per day)
-    #[must_use] 
+    #[must_use]
     pub fn velocity(&self) -> f64 {
         let days_elapsed = (Utc::now() - self.started_at).num_days() as f64;
         if days_elapsed <= 0.0 {
@@ -152,7 +152,7 @@ impl VelocityTracker {
     }
 
     /// Calculate velocity
-    #[must_use] 
+    #[must_use]
     pub fn calculate_velocity(&self) -> f64 {
         self.velocity()
     }
@@ -176,13 +176,13 @@ impl VelocityTracker {
     }
 
     /// Get average quality score
-    #[must_use] 
+    #[must_use]
     pub fn get_average_quality(&self) -> f64 {
         self.average_quality_score()
     }
 
     /// Get cycle time statistics
-    #[must_use] 
+    #[must_use]
     pub fn get_cycle_time_stats(&self) -> CycleTimeStats {
         let mut min_cycle_time = Duration::from_secs(u64::MAX);
         let mut max_cycle_time = Duration::from_secs(0);

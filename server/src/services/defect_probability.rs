@@ -112,19 +112,19 @@ pub enum RiskLevel {
 }
 
 impl DefectProbabilityCalculator {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             weights: DefectWeights::default(),
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn with_weights(weights: DefectWeights) -> Self {
         Self { weights }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn calculate(&self, metrics: &FileMetrics) -> DefectScore {
         // Normalize to [0, 1] using empirical CDFs
         let churn_norm = self.normalize_churn(metrics.churn_score);
@@ -175,7 +175,7 @@ impl DefectProbabilityCalculator {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn calculate_batch(&self, metrics: &[FileMetrics]) -> Vec<(String, DefectScore)> {
         metrics
             .iter()
@@ -363,7 +363,7 @@ pub struct ProjectDefectAnalysis {
 }
 
 impl ProjectDefectAnalysis {
-    #[must_use] 
+    #[must_use]
     pub fn from_scores(scores: Vec<(String, DefectScore)>) -> Self {
         let mut file_scores = HashMap::new();
         let mut high_risk_files = Vec::new();
@@ -411,7 +411,7 @@ impl ProjectDefectAnalysis {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn get_top_risk_files(&self, limit: usize) -> Vec<(&String, &DefectScore)> {
         let mut all_files: Vec<_> = self.file_scores.iter().collect();
         all_files.sort_by(|a, b| b.1.probability.partial_cmp(&a.1.probability).unwrap());

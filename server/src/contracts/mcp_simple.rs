@@ -2,7 +2,11 @@
 //! This version doesn't depend on pmcp crate
 
 use super::simple_service::SimpleContractService;
-use super::{AnalyzeComplexityContract, AnalyzeSatdContract, AnalyzeDeadCodeContract, AnalyzeTdgContract, AnalyzeLintHotspotContract, QualityGateContract, AnalyzeEntropyContract, RefactorAutoContract};
+use super::{
+    AnalyzeComplexityContract, AnalyzeDeadCodeContract, AnalyzeEntropyContract,
+    AnalyzeLintHotspotContract, AnalyzeSatdContract, AnalyzeTdgContract, QualityGateContract,
+    RefactorAutoContract,
+};
 use anyhow::Result;
 use serde_json::{json, Value};
 use std::sync::Arc;
@@ -78,7 +82,7 @@ impl SimpleMcpHandler {
     }
 
     /// Get tool definitions for MCP discovery
-    #[must_use] 
+    #[must_use]
     pub fn get_tool_definitions(&self) -> Value {
         json!({
             "tools": [

@@ -1,6 +1,6 @@
-use regex::Regex;
-use once_cell::sync::Lazy;
 use super::gate::SatdResult;
+use once_cell::sync::Lazy;
+use regex::Regex;
 
 static SATD_PATTERNS: Lazy<Vec<(&str, Regex)>> = Lazy::new(|| {
     vec![

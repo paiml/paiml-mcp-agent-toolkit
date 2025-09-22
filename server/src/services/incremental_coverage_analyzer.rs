@@ -227,9 +227,7 @@ impl IncrementalCoverageAnalyzer {
         // Parse based on file extension
         let ast = match path.extension().and_then(|s| s.to_str()) {
             Some("rs") => self.parse_rust_file(&content)?,
-            Some("ts" | "tsx" | "js" | "jsx") => {
-                self.parse_typescript_file(&content)?
-            }
+            Some("ts" | "tsx" | "js" | "jsx") => self.parse_typescript_file(&content)?,
             Some("py") => self.parse_python_file(&content)?,
             _ => AstNode {
                 functions: vec![],

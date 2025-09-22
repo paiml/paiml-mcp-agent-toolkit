@@ -7,7 +7,7 @@ use tokio::sync::Semaphore;
 pub struct RateLimiter {
     capacity: u32,
     tokens: AtomicU32,
-    refill_rate: u32,  // Tokens per second
+    refill_rate: u32, // Tokens per second
     last_refill: parking_lot::Mutex<Instant>,
 }
 
@@ -27,7 +27,7 @@ impl RateLimiter {
         let mut current = self.tokens.load(Ordering::Relaxed);
         loop {
             if current < tokens {
-                return false;  // Would exceed rate limit
+                return false; // Would exceed rate limit
             }
 
             match self.tokens.compare_exchange_weak(
@@ -99,7 +99,8 @@ impl BackpressureController {
     }
 
     pub async fn acquire_permit(&self) -> Result<BackpressurePermit, BackpressureError> {
-        let permit = self.semaphore
+        let permit = self
+            .semaphore
             .clone()
             .try_acquire_owned()
             .map_err(|_| BackpressureError::QueueFull)?;
@@ -120,13 +121,10 @@ impl BackpressureController {
     }
 
     pub fn try_acquire_permit(&self) -> Result<BackpressurePermit, BackpressureError> {
-        let permit = self.semaphore
-            .clone()
-            .try_acquire_owned()
-            .map_err(|_| {
-                self.metrics.write().rejected_count += 1;
-                BackpressureError::QueueFull
-            })?;
+        let permit = self.semaphore.clone().try_acquire_owned().map_err(|_| {
+            self.metrics.write().rejected_count += 1;
+            BackpressureError::QueueFull
+        })?;
 
         let queue_size = self.current_queue_size.fetch_add(1, Ordering::SeqCst) + 1;
 
@@ -283,8 +281,20 @@ pub struct Bulkhead {
     name: String,
     max_concurrent: usize,
     semaphore: Arc<Semaphore>,
-    active_count: AtomicU32,
-    rejected_count: AtomicU64,
+    active_count: Arc<AtomicU32>,
+    rejected_count: Arc<AtomicU64>,
+}
+
+impl Clone for Bulkhead {
+    fn clone(&self) -> Self {
+        Self {
+            name: self.name.clone(),
+            max_concurrent: self.max_concurrent,
+            semaphore: self.semaphore.clone(),
+            active_count: self.active_count.clone(),
+            rejected_count: self.rejected_count.clone(),
+        }
+    }
 }
 
 impl Bulkhead {
@@ -293,8 +303,8 @@ impl Bulkhead {
             name,
             max_concurrent,
             semaphore: Arc::new(Semaphore::new(max_concurrent)),
-            active_count: AtomicU32::new(0),
-            rejected_count: AtomicU64::new(0),
+            active_count: Arc::new(AtomicU32::new(0)),
+            rejected_count: Arc::new(AtomicU64::new(0)),
         }
     }
 
@@ -302,13 +312,10 @@ impl Bulkhead {
     where
         F: std::future::Future<Output = T>,
     {
-        let permit = self.semaphore
-            .clone()
-            .try_acquire_owned()
-            .map_err(|_| {
-                self.rejected_count.fetch_add(1, Ordering::Relaxed);
-                BackpressureError::QueueFull
-            })?;
+        let permit = self.semaphore.clone().try_acquire_owned().map_err(|_| {
+            self.rejected_count.fetch_add(1, Ordering::Relaxed);
+            BackpressureError::QueueFull
+        })?;
 
         self.active_count.fetch_add(1, Ordering::Relaxed);
 
@@ -401,20 +408,24 @@ mod tests {
         let handle1 = tokio::spawn({
             let bulkhead = bulkhead.clone();
             async move {
-                bulkhead.execute(async {
-                    tokio::time::sleep(Duration::from_millis(100)).await;
-                    1
-                }).await
+                bulkhead
+                    .execute(async {
+                        tokio::time::sleep(Duration::from_millis(100)).await;
+                        1
+                    })
+                    .await
             }
         });
 
         let handle2 = tokio::spawn({
             let bulkhead = bulkhead.clone();
             async move {
-                bulkhead.execute(async {
-                    tokio::time::sleep(Duration::from_millis(100)).await;
-                    2
-                }).await
+                bulkhead
+                    .execute(async {
+                        tokio::time::sleep(Duration::from_millis(100)).await;
+                        2
+                    })
+                    .await
             }
         });
 

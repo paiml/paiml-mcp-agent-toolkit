@@ -1,14 +1,16 @@
 //! Quality profiles for different development standards
 //! Toyota Way: Define clear standards and enforce them consistently
 
-use super::core::{QualityProfile, QualityThresholds, DesignPatterns, QualityRule, Severity, QualityMetrics};
+use super::core::{
+    DesignPatterns, QualityMetrics, QualityProfile, QualityRule, QualityThresholds, Severity,
+};
 
 /// Collection of predefined quality profiles
 pub struct QualityProfiles;
 
 impl QualityProfiles {
     /// Get all available profile names
-    #[must_use] 
+    #[must_use]
     pub fn available_profiles() -> Vec<&'static str> {
         vec![
             "extreme",
@@ -21,7 +23,7 @@ impl QualityProfiles {
     }
 
     /// Create profile by name
-    #[must_use] 
+    #[must_use]
     pub fn by_name(name: &str) -> Option<QualityProfile> {
         match name {
             "extreme" => Some(QualityProfile::extreme()),
@@ -36,7 +38,7 @@ impl QualityProfiles {
 
     /// Enterprise-grade quality profile
     /// Strict but realistic for large teams
-    #[must_use] 
+    #[must_use]
     pub fn enterprise() -> QualityProfile {
         QualityProfile {
             name: "enterprise".to_string(),
@@ -82,7 +84,7 @@ impl QualityProfiles {
 
     /// Startup-friendly profile
     /// Balanced for rapid development with quality
-    #[must_use] 
+    #[must_use]
     pub fn startup() -> QualityProfile {
         QualityProfile {
             name: "startup".to_string(),
@@ -122,7 +124,7 @@ impl QualityProfiles {
 
     /// Legacy code maintenance profile
     /// Pragmatic approach for improving existing codebases
-    #[must_use] 
+    #[must_use]
     pub fn legacy() -> QualityProfile {
         QualityProfile {
             name: "legacy".to_string(),
@@ -158,7 +160,7 @@ pub struct ProfileValidator;
 
 impl ProfileValidator {
     /// Validate if a profile is appropriate for the codebase
-    #[must_use] 
+    #[must_use]
     pub fn validate_profile_for_codebase(
         profile: &QualityProfile,
         codebase_metrics: &QualityMetrics,
@@ -241,7 +243,7 @@ pub struct ProfileComparator;
 
 impl ProfileComparator {
     /// Compare two profiles and show differences
-    #[must_use] 
+    #[must_use]
     pub fn compare(profile1: &QualityProfile, profile2: &QualityProfile) -> ProfileComparison {
         let mut differences = Vec::new();
 

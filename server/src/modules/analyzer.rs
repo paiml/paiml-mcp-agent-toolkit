@@ -75,8 +75,8 @@ impl AnalyzerImpl {
 #[async_trait]
 impl AnalyzerModule for AnalyzerImpl {
     async fn analyze(&self, input: &str) -> Result<Metrics, ModuleError> {
-        let ast = syn::parse_file(input)
-            .map_err(|e| ModuleError::ExecutionFailed(e.to_string()))?;
+        let ast =
+            syn::parse_file(input).map_err(|e| ModuleError::ExecutionFailed(e.to_string()))?;
 
         let metrics = self.core.lock().analyze_ast(&ast);
         Ok(metrics)

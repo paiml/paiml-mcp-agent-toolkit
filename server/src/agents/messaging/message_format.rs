@@ -1,11 +1,11 @@
 use super::*;
-use crate::agents::{AgentResponse, AgentError};
 use super::{AgentMessage, MessageHeader, Priority};
-use bytes::{Bytes, BytesMut, BufMut, Buf};
-use serde::{Serialize, Deserialize};
+use crate::agents::{AgentError, AgentResponse};
+use actix::prelude::*;
+use bytes::{Buf, BufMut, Bytes, BytesMut};
+use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
 use uuid::Uuid;
-use actix::prelude::*;
 
 // Message metadata for extended functionality
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -81,7 +81,9 @@ impl BinaryProtocol {
 
     pub fn decode(mut data: Bytes) -> Result<AgentMessage, ProtocolError> {
         if data.len() < 5 {
-            return Err(ProtocolError::InvalidMessage("Message too short".to_string()));
+            return Err(ProtocolError::InvalidMessage(
+                "Message too short".to_string(),
+            ));
         }
 
         // Version
@@ -113,10 +115,7 @@ impl BinaryProtocol {
         let payload_len = data.get_u32() as usize;
         let payload = data.copy_to_bytes(payload_len);
 
-        Ok(AgentMessage {
-            header,
-            payload,
-        })
+        Ok(AgentMessage { header, payload })
     }
 }
 
@@ -152,11 +151,11 @@ impl MessageBatch {
 
     pub fn add(&mut self, msg: AgentMessage) -> Result<(), BatchError> {
         let msg_size = msg.size_bytes();
-        
+
         if self.total_size + msg_size > self.max_size {
             return Err(BatchError::BatchFull);
         }
-        
+
         self.total_size += msg_size;
         self.messages.push(msg);
         Ok(())
@@ -186,38 +185,40 @@ impl MessageBatch {
 
     pub fn encode(&self) -> Result<Bytes, ProtocolError> {
         let mut buf = BytesMut::with_capacity(self.total_size + 100);
-        
+
         // Batch header
         buf.put_u32(self.messages.len() as u32);
         buf.put_u32(self.total_size as u32);
-        
+
         // Encode each message
         for msg in &self.messages {
             let encoded = BinaryProtocol::encode(msg)?;
             buf.put_u32(encoded.len() as u32);
             buf.put_slice(&encoded);
         }
-        
+
         Ok(buf.freeze())
     }
 
     pub fn decode(mut data: Bytes) -> Result<Vec<AgentMessage>, ProtocolError> {
         if data.len() < 8 {
-            return Err(ProtocolError::InvalidMessage("Batch header too short".to_string()));
+            return Err(ProtocolError::InvalidMessage(
+                "Batch header too short".to_string(),
+            ));
         }
-        
+
         let count = data.get_u32() as usize;
         let _total_size = data.get_u32();
-        
+
         let mut messages = Vec::with_capacity(count);
-        
+
         for _ in 0..count {
             let msg_len = data.get_u32() as usize;
             let msg_bytes = data.copy_to_bytes(msg_len);
             let msg = BinaryProtocol::decode(msg_bytes)?;
             messages.push(msg);
         }
-        
+
         Ok(messages)
     }
 }

@@ -153,7 +153,7 @@ pub struct AnalysisService {
 }
 
 impl AnalysisService {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             metrics: Arc::new(RwLock::new(ServiceMetrics::default())),

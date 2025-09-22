@@ -14,7 +14,7 @@ pub struct PdmtService {
 }
 
 impl PdmtService {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             deterministic_seed: 42, // Fixed seed for determinism

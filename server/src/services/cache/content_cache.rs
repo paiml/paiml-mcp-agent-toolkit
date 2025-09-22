@@ -132,13 +132,13 @@ impl<T: CacheStrategy> ContentCache<T> {
     }
 
     /// Get the number of entries in the cache
-    #[must_use] 
+    #[must_use]
     pub fn len(&self) -> usize {
         self.cache.read().len()
     }
 
     /// Check if the cache is empty
-    #[must_use] 
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.cache.read().is_empty()
     }
@@ -151,7 +151,7 @@ impl<T: CacheStrategy> ContentCache<T> {
     }
 
     /// Get cache metrics
-    #[must_use] 
+    #[must_use]
     pub fn metrics(&self) -> CacheMetrics {
         let cache = self.cache.read();
 
@@ -168,7 +168,7 @@ impl<T: CacheStrategy> ContentCache<T> {
     }
 
     /// Get hot entries (most frequently accessed)
-    #[must_use] 
+    #[must_use]
     pub fn hot_entries(&self, limit: usize) -> Vec<(String, u32)> {
         let cache = self.cache.read();
 
@@ -219,7 +219,7 @@ pub struct CacheMetrics {
 }
 
 impl CacheMetrics {
-    #[must_use] 
+    #[must_use]
     pub fn memory_mb(&self) -> f64 {
         self.memory_bytes as f64 / (1024.0 * 1024.0)
     }

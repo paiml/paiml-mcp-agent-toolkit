@@ -73,7 +73,7 @@ pub struct DefectPredictionFacade {
 
 impl DefectPredictionFacade {
     /// Create a new defect prediction facade
-    #[must_use] 
+    #[must_use]
     pub fn new(registry: Arc<ServiceRegistry>) -> Self {
         Self { registry }
     }

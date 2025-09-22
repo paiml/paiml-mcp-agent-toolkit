@@ -17,14 +17,14 @@ pub struct DeadCodeAnalyzer {
 }
 
 impl DeadCodeAnalyzer {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             inner: OriginalAnalyzer::new(Self::DEFAULT_CAPACITY),
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
             inner: OriginalAnalyzer::new(capacity),
@@ -170,12 +170,12 @@ impl AnalyzerInfo for DeadCodeAnalyzer {
 pub struct DeadCodeAnalyzerFactory;
 
 impl DeadCodeAnalyzerFactory {
-    #[must_use] 
+    #[must_use]
     pub fn create() -> DeadCodeAnalyzer {
         DeadCodeAnalyzer::new()
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn create_with_capacity(capacity: usize) -> DeadCodeAnalyzer {
         DeadCodeAnalyzer::with_capacity(capacity)
     }

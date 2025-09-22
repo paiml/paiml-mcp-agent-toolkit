@@ -1,5 +1,5 @@
-use syn::{self, visit::Visit};
 use std::collections::HashMap;
+use syn::{self, visit::Visit};
 
 pub struct ComplexityAnalyzer {
     current_complexity: u32,
@@ -64,6 +64,7 @@ impl ComplexityAnalyzer {
     }
 }
 
+#[derive(Debug, Default, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ComplexityMetrics {
     pub cyclomatic: u32,
     pub cognitive: u32,

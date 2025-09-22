@@ -49,7 +49,7 @@ pub struct AstRegistry {
 }
 
 impl AstRegistry {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         let mut registry = Self {
             strategies: std::collections::HashMap::new(),
@@ -93,14 +93,17 @@ impl AstRegistry {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn get_strategy(&self, extension: &str) -> Option<Arc<dyn AstStrategy>> {
         self.strategies.get(extension).cloned()
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn list_supported_extensions(&self) -> Vec<&str> {
-        self.strategies.keys().map(std::string::String::as_str).collect()
+        self.strategies
+            .keys()
+            .map(std::string::String::as_str)
+            .collect()
     }
 
     /// Analyze a file using the appropriate strategy
@@ -169,7 +172,7 @@ pub struct UnifiedAstAnalyzer {
 }
 
 impl UnifiedAstAnalyzer {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             registry: AstRegistry::new(),
@@ -197,7 +200,7 @@ impl UnifiedAstAnalyzer {
         })
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn supported_languages(&self) -> Vec<&str> {
         self.registry.list_supported_extensions()
     }

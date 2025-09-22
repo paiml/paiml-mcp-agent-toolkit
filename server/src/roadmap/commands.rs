@@ -1,6 +1,8 @@
 //! CLI commands for roadmap management
 
-use super::{RoadmapConfig, Path, Roadmap, HashMap, Sprint, Utc, Priority, generator, TaskStatus, Task};
+use super::{
+    generator, HashMap, Path, Priority, Roadmap, RoadmapConfig, Sprint, Task, TaskStatus, Utc,
+};
 use crate::cli::OutputFormat;
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
@@ -395,9 +397,7 @@ fn display_sprint_details(sprint: &Sprint) {
         sprint.start_date.format("%Y-%m-%d"),
         sprint.end_date.format("%Y-%m-%d")
     );
-    println!(
-        "  Progress: {completed}/{total} completed, {in_progress} in progress"
-    );
+    println!("  Progress: {completed}/{total} completed, {in_progress} in progress");
 
     display_sprint_tasks(sprint);
 }

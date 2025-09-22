@@ -9,13 +9,13 @@ pub struct MemoryPool {
 
 impl MemoryPool {
     /// Create a new memory pool
-    #[must_use] 
+    #[must_use]
     pub fn new(max_size: usize) -> Self {
         Self { max_size }
     }
 
     /// Get maximum pool size
-    #[must_use] 
+    #[must_use]
     pub fn max_size(&self) -> usize {
         self.max_size
     }

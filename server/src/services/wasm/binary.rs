@@ -30,7 +30,7 @@ pub struct WasmBinaryAnalyzer {
 
 impl WasmBinaryAnalyzer {
     /// Create a new WebAssembly binary analyzer
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             max_file_size: 10 * 1024 * 1024, // 10MB
@@ -147,7 +147,7 @@ impl Default for WasmBinaryAnalyzer {
 /// // Single byte pattern
 /// assert_eq!(count_occurrences(b"aaa", b"a"), 3);
 /// ```
-#[must_use] 
+#[must_use]
 pub fn count_occurrences(haystack: &[u8], needle: &[u8]) -> u32 {
     let mut count = 0;
     let mut pos = 0;

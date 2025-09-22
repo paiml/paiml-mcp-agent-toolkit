@@ -51,7 +51,7 @@ pub struct FileComplexityDetail {
 
 impl SimpleDeepContext {
     /// Create new simple deep context analyzer
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self
     }
@@ -301,8 +301,10 @@ impl SimpleDeepContext {
                             .filter(|f| f.metrics.cyclomatic > 10)
                             .count();
 
-                        let total_cyclomatic: u32 =
-                            functions.iter().map(|f| u32::from(f.metrics.cyclomatic)).sum();
+                        let total_cyclomatic: u32 = functions
+                            .iter()
+                            .map(|f| u32::from(f.metrics.cyclomatic))
+                            .sum();
 
                         let avg_complexity = f64::from(total_cyclomatic) / function_count as f64;
 
@@ -574,7 +576,7 @@ impl SimpleDeepContext {
     /// assert!(output.contains("## Top Files by Complexity"));
     /// assert!(output.contains("1. `main.rs` - 5.5 avg complexity"));
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn format_as_markdown(&self, report: &SimpleAnalysisReport, top_files: usize) -> String {
         let mut markdown = String::new();
 
@@ -616,7 +618,11 @@ impl SimpleDeepContext {
                 let filename = file_detail
                     .file_path
                     .file_name()
-                    .and_then(|n| n.to_str()).map_or_else(|| file_detail.file_path.to_string_lossy().to_string(), std::string::ToString::to_string);
+                    .and_then(|n| n.to_str())
+                    .map_or_else(
+                        || file_detail.file_path.to_string_lossy().to_string(),
+                        std::string::ToString::to_string,
+                    );
                 markdown.push_str(&format!(
                     "{}. `{}` - {:.1} avg complexity ({} functions, {} high complexity)\n",
                     i + 1,

@@ -83,7 +83,7 @@ fn extract_function_name(line: &str) -> Option<String> {
 }
 
 /// Filter function summaries based on confidence
-#[must_use] 
+#[must_use]
 pub fn filter_summaries(
     summaries: &[ProofSummary],
     high_confidence_only: bool,

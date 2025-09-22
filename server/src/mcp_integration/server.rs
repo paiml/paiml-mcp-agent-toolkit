@@ -1,8 +1,8 @@
 use super::*;
 use crate::agents::registry::AgentRegistry;
 use std::sync::Arc;
-use tokio::net::{TcpListener, UnixListener};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+use tokio::net::{TcpListener, UnixListener};
 
 // MCP server implementation
 pub struct McpServer {
@@ -87,93 +87,105 @@ impl McpServer {
     pub async fn register_defaults(&self) -> Result<(), Box<dyn std::error::Error>> {
         // Register default tools
         self.register_agent_tools().await?;
-        
+
         // Register default resources
         self.register_agent_resources().await?;
-        
+
         // Register default prompts
         self.register_agent_prompts().await?;
-        
+
         Ok(())
     }
 
     async fn register_agent_tools(&self) -> Result<(), Box<dyn std::error::Error>> {
         use crate::mcp_integration::tools::*;
-        
+
         let mut tools = self.context.tools.write();
-        
+
         // Register analyze tool
-        tools.register(Arc::new(AnalyzeTool::new(self.context.agent_registry.clone())));
-        
+        tools.register(Arc::new(AnalyzeTool::new(
+            self.context.agent_registry.clone(),
+        )));
+
         // Register transform tool
-        tools.register(Arc::new(TransformTool::new(self.context.agent_registry.clone())));
-        
+        tools.register(Arc::new(TransformTool::new(
+            self.context.agent_registry.clone(),
+        )));
+
         // Register validate tool
-        tools.register(Arc::new(ValidateTool::new(self.context.agent_registry.clone())));
-        
+        tools.register(Arc::new(ValidateTool::new(
+            self.context.agent_registry.clone(),
+        )));
+
         // Register orchestrate tool
-        tools.register(Arc::new(OrchestrateTool::new(self.context.agent_registry.clone())));
-        
+        tools.register(Arc::new(OrchestrateTool::new(
+            self.context.agent_registry.clone(),
+        )));
+
         Ok(())
     }
 
     async fn register_agent_resources(&self) -> Result<(), Box<dyn std::error::Error>> {
         use crate::mcp_integration::resources::*;
-        
+
         let mut resources = self.context.resources.write();
-        
+
         // Register agent state resource
-        resources.register(Arc::new(AgentStateResource::new(self.context.agent_registry.clone())));
-        
+        resources.register(Arc::new(AgentStateResource::new(
+            self.context.agent_registry.clone(),
+        )));
+
         // Register metrics resource
-        resources.register(Arc::new(MetricsResource::new(self.context.agent_registry.clone())));
-        
+        resources.register(Arc::new(MetricsResource::new(
+            self.context.agent_registry.clone(),
+        )));
+
         // Register quality report resource
         resources.register(Arc::new(QualityReportResource::new()));
-        
+
         Ok(())
     }
 
     async fn register_agent_prompts(&self) -> Result<(), Box<dyn std::error::Error>> {
         use crate::mcp_integration::prompts::*;
-        
+
         let mut prompts = self.context.prompts.write();
-        
+
         // Register code analysis prompt
         prompts.register(Arc::new(CodeAnalysisPrompt::new()));
-        
+
         // Register refactoring prompt
         prompts.register(Arc::new(RefactoringPrompt::new()));
-        
+
         // Register quality assessment prompt
         prompts.register(Arc::new(QualityAssessmentPrompt::new()));
-        
+
         Ok(())
     }
 
     pub async fn run_tcp(&self) -> Result<(), Box<dyn std::error::Error>> {
         let listener = TcpListener::bind(&self.config.bind_address).await?;
         println!("MCP Server listening on {}", self.config.bind_address);
-        
+
         let semaphore = Arc::new(tokio::sync::Semaphore::new(self.config.max_connections));
-        
+
         loop {
             tokio::select! {
                 accept = listener.accept() => {
                     let (stream, addr) = accept?;
-                    
+
                     let permit = semaphore.clone().acquire_owned().await?;
                     let context = self.context.clone();
                     let config = self.config.clone();
-                    
+
                     tokio::spawn(async move {
                         let transport = Arc::new(TcpTransport::new(stream));
                         let session = McpSession::new(context, transport.clone());
-                        
+
                         if let Err(e) = handle_session(session, config).await {
                             eprintln!("Session error from {}: {}", addr, e);
                         }
-                        
+
                         drop(permit);
                     });
                 }
@@ -183,39 +195,42 @@ impl McpServer {
                 }
             }
         }
-        
+
         Ok(())
     }
 
     pub async fn run_unix(&self) -> Result<(), Box<dyn std::error::Error>> {
-        let socket_path = self.config.unix_socket.as_ref()
+        let socket_path = self
+            .config
+            .unix_socket
+            .as_ref()
             .ok_or("Unix socket path not configured")?;
-        
+
         // Remove existing socket file
         let _ = std::fs::remove_file(socket_path);
-        
+
         let listener = UnixListener::bind(socket_path)?;
         println!("MCP Server listening on Unix socket: {}", socket_path);
-        
+
         let semaphore = Arc::new(tokio::sync::Semaphore::new(self.config.max_connections));
-        
+
         loop {
             tokio::select! {
                 accept = listener.accept() => {
                     let (stream, _) = accept?;
-                    
+
                     let permit = semaphore.clone().acquire_owned().await?;
                     let context = self.context.clone();
                     let config = self.config.clone();
-                    
+
                     tokio::spawn(async move {
                         let transport = Arc::new(UnixTransport::new(stream));
                         let session = McpSession::new(context, transport.clone());
-                        
+
                         if let Err(e) = handle_session(session, config).await {
                             eprintln!("Session error: {}", e);
                         }
-                        
+
                         drop(permit);
                     });
                 }
@@ -225,14 +240,14 @@ impl McpServer {
                 }
             }
         }
-        
+
         Ok(())
     }
 
     pub async fn run_stdio(&self) -> Result<(), Box<dyn std::error::Error>> {
         let transport = Arc::new(StdioTransport::new());
         let session = McpSession::new(self.context.clone(), transport);
-        
+
         handle_session(session, self.config.clone()).await
     }
 
@@ -246,19 +261,28 @@ async fn handle_session(
     config: ServerConfig,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let transport = session.transport.clone();
-    
+
     loop {
         tokio::select! {
             message = transport.receive() => {
                 let message = message?;
-                
+
                 match message {
                     McpMessage::JsonRpc(JsonRpcMessage::Request(request)) => {
-                        let response = tokio::time::timeout(
+                        let response = match tokio::time::timeout(
                             config.request_timeout,
                             session.handle_request(request)
-                        ).await??;
-                        
+                        ).await {
+                            Ok(response) => response,
+                            Err(_) => {
+                                return Err(Box::new(McpError {
+                                    code: -32002,
+                                    message: "Request timed out".to_string(),
+                                    data: None,
+                                }));
+                            }
+                        };
+
                         let message = McpMessage::JsonRpc(JsonRpcMessage::Response(response));
                         transport.send(message).await?;
                     }
@@ -297,33 +321,32 @@ impl TcpTransport {
 #[async_trait]
 impl McpTransport for TcpTransport {
     async fn send(&self, message: McpMessage) -> Result<(), McpError> {
-        let json = serde_json::to_string(&message)
-            .map_err(|e| McpError {
-                code: error_codes::INTERNAL_ERROR,
-                message: format!("Failed to serialize message: {}", e),
-                data: None,
-            })?;
-        
+        let json = serde_json::to_string(&message).map_err(|e| McpError {
+            code: error_codes::INTERNAL_ERROR,
+            message: format!("Failed to serialize message: {}", e),
+            data: None,
+        })?;
+
         let mut stream = self.stream.lock().await;
-        stream.write_all(json.as_bytes()).await
+        stream
+            .write_all(json.as_bytes())
+            .await
             .map_err(|e| McpError {
                 code: error_codes::INTERNAL_ERROR,
                 message: format!("Failed to send message: {}", e),
                 data: None,
             })?;
-        stream.write_all(b"\n").await
-            .map_err(|e| McpError {
-                code: error_codes::INTERNAL_ERROR,
-                message: format!("Failed to send newline: {}", e),
-                data: None,
-            })?;
-        stream.flush().await
-            .map_err(|e| McpError {
-                code: error_codes::INTERNAL_ERROR,
-                message: format!("Failed to flush stream: {}", e),
-                data: None,
-            })?;
-        
+        stream.write_all(b"\n").await.map_err(|e| McpError {
+            code: error_codes::INTERNAL_ERROR,
+            message: format!("Failed to send newline: {}", e),
+            data: None,
+        })?;
+        stream.flush().await.map_err(|e| McpError {
+            code: error_codes::INTERNAL_ERROR,
+            message: format!("Failed to flush stream: {}", e),
+            data: None,
+        })?;
+
         Ok(())
     }
 
@@ -331,14 +354,13 @@ impl McpTransport for TcpTransport {
         let mut stream = self.stream.lock().await;
         let mut reader = BufReader::new(&mut *stream);
         let mut line = String::new();
-        
-        reader.read_line(&mut line).await
-            .map_err(|e| McpError {
-                code: error_codes::INTERNAL_ERROR,
-                message: format!("Failed to read message: {}", e),
-                data: None,
-            })?;
-        
+
+        reader.read_line(&mut line).await.map_err(|e| McpError {
+            code: error_codes::INTERNAL_ERROR,
+            message: format!("Failed to read message: {}", e),
+            data: None,
+        })?;
+
         if line.is_empty() {
             return Err(McpError {
                 code: error_codes::INTERNAL_ERROR,
@@ -346,23 +368,21 @@ impl McpTransport for TcpTransport {
                 data: None,
             });
         }
-        
-        serde_json::from_str(&line)
-            .map_err(|e| McpError {
-                code: error_codes::PARSE_ERROR,
-                message: format!("Failed to parse message: {}", e),
-                data: None,
-            })
+
+        serde_json::from_str(&line).map_err(|e| McpError {
+            code: error_codes::PARSE_ERROR,
+            message: format!("Failed to parse message: {}", e),
+            data: None,
+        })
     }
 
     async fn close(&self) -> Result<(), McpError> {
         let mut stream = self.stream.lock().await;
-        stream.shutdown().await
-            .map_err(|e| McpError {
-                code: error_codes::INTERNAL_ERROR,
-                message: format!("Failed to close connection: {}", e),
-                data: None,
-            })
+        stream.shutdown().await.map_err(|e| McpError {
+            code: error_codes::INTERNAL_ERROR,
+            message: format!("Failed to close connection: {}", e),
+            data: None,
+        })
     }
 }
 
@@ -382,33 +402,32 @@ impl UnixTransport {
 #[async_trait]
 impl McpTransport for UnixTransport {
     async fn send(&self, message: McpMessage) -> Result<(), McpError> {
-        let json = serde_json::to_string(&message)
-            .map_err(|e| McpError {
-                code: error_codes::INTERNAL_ERROR,
-                message: format!("Failed to serialize message: {}", e),
-                data: None,
-            })?;
-        
+        let json = serde_json::to_string(&message).map_err(|e| McpError {
+            code: error_codes::INTERNAL_ERROR,
+            message: format!("Failed to serialize message: {}", e),
+            data: None,
+        })?;
+
         let mut stream = self.stream.lock().await;
-        stream.write_all(json.as_bytes()).await
+        stream
+            .write_all(json.as_bytes())
+            .await
             .map_err(|e| McpError {
                 code: error_codes::INTERNAL_ERROR,
                 message: format!("Failed to send message: {}", e),
                 data: None,
             })?;
-        stream.write_all(b"\n").await
-            .map_err(|e| McpError {
-                code: error_codes::INTERNAL_ERROR,
-                message: format!("Failed to send newline: {}", e),
-                data: None,
-            })?;
-        stream.flush().await
-            .map_err(|e| McpError {
-                code: error_codes::INTERNAL_ERROR,
-                message: format!("Failed to flush stream: {}", e),
-                data: None,
-            })?;
-        
+        stream.write_all(b"\n").await.map_err(|e| McpError {
+            code: error_codes::INTERNAL_ERROR,
+            message: format!("Failed to send newline: {}", e),
+            data: None,
+        })?;
+        stream.flush().await.map_err(|e| McpError {
+            code: error_codes::INTERNAL_ERROR,
+            message: format!("Failed to flush stream: {}", e),
+            data: None,
+        })?;
+
         Ok(())
     }
 
@@ -416,14 +435,13 @@ impl McpTransport for UnixTransport {
         let mut stream = self.stream.lock().await;
         let mut reader = BufReader::new(&mut *stream);
         let mut line = String::new();
-        
-        reader.read_line(&mut line).await
-            .map_err(|e| McpError {
-                code: error_codes::INTERNAL_ERROR,
-                message: format!("Failed to read message: {}", e),
-                data: None,
-            })?;
-        
+
+        reader.read_line(&mut line).await.map_err(|e| McpError {
+            code: error_codes::INTERNAL_ERROR,
+            message: format!("Failed to read message: {}", e),
+            data: None,
+        })?;
+
         if line.is_empty() {
             return Err(McpError {
                 code: error_codes::INTERNAL_ERROR,
@@ -431,23 +449,21 @@ impl McpTransport for UnixTransport {
                 data: None,
             });
         }
-        
-        serde_json::from_str(&line)
-            .map_err(|e| McpError {
-                code: error_codes::PARSE_ERROR,
-                message: format!("Failed to parse message: {}", e),
-                data: None,
-            })
+
+        serde_json::from_str(&line).map_err(|e| McpError {
+            code: error_codes::PARSE_ERROR,
+            message: format!("Failed to parse message: {}", e),
+            data: None,
+        })
     }
 
     async fn close(&self) -> Result<(), McpError> {
         let mut stream = self.stream.lock().await;
-        stream.shutdown().await
-            .map_err(|e| McpError {
-                code: error_codes::INTERNAL_ERROR,
-                message: format!("Failed to close connection: {}", e),
-                data: None,
-            })
+        stream.shutdown().await.map_err(|e| McpError {
+            code: error_codes::INTERNAL_ERROR,
+            message: format!("Failed to close connection: {}", e),
+            data: None,
+        })
     }
 }
 
@@ -463,31 +479,29 @@ impl StdioTransport {
 #[async_trait]
 impl McpTransport for StdioTransport {
     async fn send(&self, message: McpMessage) -> Result<(), McpError> {
-        let json = serde_json::to_string(&message)
-            .map_err(|e| McpError {
-                code: error_codes::INTERNAL_ERROR,
-                message: format!("Failed to serialize message: {}", e),
-                data: None,
-            })?;
-        
+        let json = serde_json::to_string(&message).map_err(|e| McpError {
+            code: error_codes::INTERNAL_ERROR,
+            message: format!("Failed to serialize message: {}", e),
+            data: None,
+        })?;
+
         println!("{}", json);
         Ok(())
     }
 
     async fn receive(&self) -> Result<McpMessage, McpError> {
         use tokio::io::{self, AsyncBufReadExt};
-        
+
         let stdin = io::stdin();
         let mut reader = io::BufReader::new(stdin);
         let mut line = String::new();
-        
-        reader.read_line(&mut line).await
-            .map_err(|e| McpError {
-                code: error_codes::INTERNAL_ERROR,
-                message: format!("Failed to read message: {}", e),
-                data: None,
-            })?;
-        
+
+        reader.read_line(&mut line).await.map_err(|e| McpError {
+            code: error_codes::INTERNAL_ERROR,
+            message: format!("Failed to read message: {}", e),
+            data: None,
+        })?;
+
         if line.is_empty() {
             return Err(McpError {
                 code: error_codes::INTERNAL_ERROR,
@@ -495,13 +509,12 @@ impl McpTransport for StdioTransport {
                 data: None,
             });
         }
-        
-        serde_json::from_str(&line)
-            .map_err(|e| McpError {
-                code: error_codes::PARSE_ERROR,
-                message: format!("Failed to parse message: {}", e),
-                data: None,
-            })
+
+        serde_json::from_str(&line).map_err(|e| McpError {
+            code: error_codes::PARSE_ERROR,
+            message: format!("Failed to parse message: {}", e),
+            data: None,
+        })
     }
 
     async fn close(&self) -> Result<(), McpError> {
@@ -523,10 +536,10 @@ mod tests {
     #[actix_rt::test]
     async fn test_mcp_server_creation() {
         use crate::agents::registry::AgentRegistry;
-        
+
         let registry = Arc::new(AgentRegistry::new());
         let config = ServerConfig::default();
-        
+
         let server = McpServer::new(registry, config).unwrap();
         assert_eq!(server.context.server_info.protocol_version, MCP_VERSION);
     }

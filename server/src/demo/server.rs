@@ -184,7 +184,7 @@ impl LocalDemoServer {
         anyhow::bail!("Demo mode not available. Build with --features demo")
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn port(&self) -> u16 {
         self.port
     }
@@ -1038,7 +1038,7 @@ fn calculate_avg_degree(graph: &DependencyGraph) -> f64 {
 // Helper implementation moved here
 impl DemoContent {
     #[allow(clippy::too_many_arguments)]
-    #[must_use] 
+    #[must_use]
     pub fn from_analysis_results(
         dag: &DependencyGraph,
         files_analyzed: usize,

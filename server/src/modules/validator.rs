@@ -1,5 +1,5 @@
-use super::{ModuleError, PmatModule};
 use super::analyzer::{AnalyzerModule, Metrics};
+use super::{ModuleError, PmatModule};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -81,8 +81,15 @@ impl ValidatorImpl {
         if metrics.complexity > thresholds.max_complexity {
             violations.push(Violation {
                 rule: "complexity".to_string(),
-                severity: if self.strict_mode { Severity::Error } else { Severity::Warning },
-                message: format!("Complexity {} exceeds maximum {}", metrics.complexity, thresholds.max_complexity),
+                severity: if self.strict_mode {
+                    Severity::Error
+                } else {
+                    Severity::Warning
+                },
+                message: format!(
+                    "Complexity {} exceeds maximum {}",
+                    metrics.complexity, thresholds.max_complexity
+                ),
                 location: None,
             });
         }
@@ -91,7 +98,10 @@ impl ValidatorImpl {
             violations.push(Violation {
                 rule: "functions".to_string(),
                 severity: Severity::Warning,
-                message: format!("Function count {} exceeds maximum {}", metrics.functions, thresholds.max_functions),
+                message: format!(
+                    "Function count {} exceeds maximum {}",
+                    metrics.functions, thresholds.max_functions
+                ),
                 location: None,
             });
         }
@@ -100,7 +110,10 @@ impl ValidatorImpl {
             violations.push(Violation {
                 rule: "lines".to_string(),
                 severity: Severity::Info,
-                message: format!("Line count {} exceeds maximum {}", metrics.lines_of_code, thresholds.max_lines),
+                message: format!(
+                    "Line count {} exceeds maximum {}",
+                    metrics.lines_of_code, thresholds.max_lines
+                ),
                 location: None,
             });
         }

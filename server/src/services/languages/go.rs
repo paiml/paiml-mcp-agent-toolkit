@@ -20,7 +20,7 @@ pub struct GoAstVisitor {
 #[cfg(feature = "go-ast")]
 impl GoAstVisitor {
     /// Creates a new Go AST visitor
-    #[must_use] 
+    #[must_use]
     pub fn new(file_path: &Path) -> Self {
         Self {
             items: Vec::new(),
@@ -179,7 +179,7 @@ impl Default for GoComplexityAnalyzer {
 
 impl GoComplexityAnalyzer {
     /// Creates a new Go complexity analyzer
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             cyclomatic_complexity: 0,
@@ -195,8 +195,11 @@ impl GoComplexityAnalyzer {
         for line in source.lines() {
             let trimmed = line.trim();
 
-            if trimmed.contains("if ") || trimmed.contains("for ") ||
-               trimmed.contains("switch ") || trimmed.contains("case ") {
+            if trimmed.contains("if ")
+                || trimmed.contains("for ")
+                || trimmed.contains("switch ")
+                || trimmed.contains("case ")
+            {
                 self.cyclomatic_complexity += 1;
                 self.cognitive_complexity += 1;
             }
@@ -263,18 +266,34 @@ func (c Circle) Perimeter() float64 {
     #[test]
     fn test_simple_go_function_analysis() {
         let visitor = GoAstVisitor::new(Path::new("test.go"));
-        let items = visitor.analyze_go_source(SIMPLE_GO_FUNCTION).expect("Should parse Go function");
+        let items = visitor
+            .analyze_go_source(SIMPLE_GO_FUNCTION)
+            .expect("Should parse Go function");
 
         assert!(!items.is_empty(), "Should extract at least one AST item");
 
-        let function_items: Vec<_> = items.iter()
+        let function_items: Vec<_> = items
+            .iter()
             .filter(|item| matches!(item, AstItem::Function { .. }))
             .collect();
 
-        assert_eq!(function_items.len(), 1, "Should extract exactly one function");
+        assert_eq!(
+            function_items.len(),
+            1,
+            "Should extract exactly one function"
+        );
 
-        if let AstItem::Function { name, visibility, is_async, .. } = &items[0] {
-            assert_eq!(name, "main::helloWorld", "Should have qualified function name");
+        if let AstItem::Function {
+            name,
+            visibility,
+            is_async,
+            ..
+        } = &items[0]
+        {
+            assert_eq!(
+                name, "main::helloWorld",
+                "Should have qualified function name"
+            );
             assert_eq!(visibility, "public", "Go functions are public by default");
             assert!(!is_async, "Regular Go functions are not async");
         } else {
@@ -285,22 +304,35 @@ func (c Circle) Perimeter() float64 {
     #[test]
     fn test_go_struct_with_methods_analysis() {
         let visitor = GoAstVisitor::new(Path::new("calculator.go"));
-        let items = visitor.analyze_go_source(GO_STRUCT_WITH_METHODS).expect("Should parse Go struct");
+        let items = visitor
+            .analyze_go_source(GO_STRUCT_WITH_METHODS)
+            .expect("Should parse Go struct");
 
         assert!(items.len() >= 3, "Should extract struct and methods");
 
-        let struct_items: Vec<_> = items.iter()
+        let struct_items: Vec<_> = items
+            .iter()
             .filter(|item| matches!(item, AstItem::Struct { .. }))
             .collect();
 
         assert_eq!(struct_items.len(), 1, "Should extract exactly one struct");
 
-        if let AstItem::Struct { name, fields_count, .. } = &struct_items[0] {
-            assert_eq!(name, "calculator::Calculator", "Should have qualified struct name");
-            assert_eq!(*fields_count, 2, "Should count methods as fields for Go structs");
+        if let AstItem::Struct {
+            name, fields_count, ..
+        } = &struct_items[0]
+        {
+            assert_eq!(
+                name, "calculator::Calculator",
+                "Should have qualified struct name"
+            );
+            assert_eq!(
+                *fields_count, 2,
+                "Should count methods as fields for Go structs"
+            );
         }
 
-        let method_items: Vec<_> = items.iter()
+        let method_items: Vec<_> = items
+            .iter()
             .filter(|item| matches!(item, AstItem::Function { .. }))
             .collect();
 
@@ -310,35 +342,57 @@ func (c Circle) Perimeter() float64 {
     #[test]
     fn test_go_interface_analysis() {
         let visitor = GoAstVisitor::new(Path::new("shapes.go"));
-        let items = visitor.analyze_go_source(GO_INTERFACE_DEFINITION).expect("Should parse Go interface");
+        let items = visitor
+            .analyze_go_source(GO_INTERFACE_DEFINITION)
+            .expect("Should parse Go interface");
 
-        let interface_items: Vec<_> = items.iter()
+        let interface_items: Vec<_> = items
+            .iter()
             .filter(|item| matches!(item, AstItem::Trait { .. }))
             .collect();
 
-        assert_eq!(interface_items.len(), 1, "Should extract exactly one interface");
+        assert_eq!(
+            interface_items.len(),
+            1,
+            "Should extract exactly one interface"
+        );
 
         if let AstItem::Trait { name, .. } = &interface_items[0] {
-            assert_eq!(name, "shapes::Shape", "Should have qualified interface name");
+            assert_eq!(
+                name, "shapes::Shape",
+                "Should have qualified interface name"
+            );
         }
     }
 
     #[test]
     fn test_go_complexity_analysis() {
         let mut analyzer = GoComplexityAnalyzer::new();
-        let (cyclomatic, cognitive) = analyzer.analyze_complexity(SIMPLE_GO_FUNCTION)
+        let (cyclomatic, cognitive) = analyzer
+            .analyze_complexity(SIMPLE_GO_FUNCTION)
             .expect("Should analyze Go complexity");
 
-        assert!(cyclomatic >= 1, "Should have at least cyclomatic complexity of 1");
-        assert!(cognitive >= 1, "Should have at least cognitive complexity of 1");
-        assert!(cyclomatic <= 10, "Should maintain complexity ≤10 for simple function");
+        assert!(
+            cyclomatic >= 1,
+            "Should have at least cyclomatic complexity of 1"
+        );
+        assert!(
+            cognitive >= 1,
+            "Should have at least cognitive complexity of 1"
+        );
+        assert!(
+            cyclomatic <= 10,
+            "Should maintain complexity ≤10 for simple function"
+        );
         assert!(cognitive <= 10, "Should maintain cognitive complexity ≤10");
     }
 
     #[test]
     fn test_go_package_name_extraction() {
         let visitor = GoAstVisitor::new(Path::new("test.go"));
-        let items = visitor.analyze_go_source(SIMPLE_GO_FUNCTION).expect("Should parse Go source");
+        let items = visitor
+            .analyze_go_source(SIMPLE_GO_FUNCTION)
+            .expect("Should parse Go source");
 
         // Check that package name is included in qualified names
         let has_main_package = items.iter().any(|item| match item {
@@ -346,13 +400,18 @@ func (c Circle) Perimeter() float64 {
             _ => false,
         });
 
-        assert!(has_main_package, "Should include package name in qualified names");
+        assert!(
+            has_main_package,
+            "Should include package name in qualified names"
+        );
     }
 
     #[test]
     fn test_empty_go_source() {
         let visitor = GoAstVisitor::new(Path::new("empty.go"));
-        let items = visitor.analyze_go_source("").expect("Should handle empty source");
+        let items = visitor
+            .analyze_go_source("")
+            .expect("Should handle empty source");
 
         assert!(items.is_empty(), "Empty source should produce no AST items");
     }
@@ -365,7 +424,10 @@ func (c Circle) Perimeter() float64 {
         // The Go visitor uses pattern matching, not full parsing,
         // so invalid syntax returns Ok with empty results rather than an error
         assert!(result.is_ok(), "Should handle invalid syntax gracefully");
-        assert!(result.unwrap().is_empty(), "Invalid syntax should produce no AST items");
+        assert!(
+            result.unwrap().is_empty(),
+            "Invalid syntax should produce no AST items"
+        );
     }
 }
 

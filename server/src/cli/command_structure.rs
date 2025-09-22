@@ -44,7 +44,7 @@ pub struct DemoCommandGroup;
 
 impl CommandExecutor {
     /// Create new command executor with server instance
-    #[must_use] 
+    #[must_use]
     pub fn new(server: Arc<StatelessTemplateServer>) -> Self {
         Self {
             server,
@@ -591,7 +591,7 @@ pub struct CommandExecutorFactory;
 
 impl CommandExecutorFactory {
     /// Create a new command executor instance
-    #[must_use] 
+    #[must_use]
     pub fn create(server: Arc<StatelessTemplateServer>) -> CommandExecutor {
         CommandExecutor::new(server)
     }

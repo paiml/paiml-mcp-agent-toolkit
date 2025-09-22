@@ -190,7 +190,7 @@ impl EntropyReport {
     /// // With no actionable violations, LOC reduction should be 0
     /// assert_eq!(report.total_loc_reduction(), 0);
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn total_loc_reduction(&self) -> usize {
         self.actionable_violations
             .iter()
@@ -237,7 +237,7 @@ impl EntropyReport {
     /// // With no violations, reduction percentage should be 0
     /// assert_eq!(report.reduction_percentage(), 0.0);
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn reduction_percentage(&self) -> f64 {
         if self.entropy_metrics.total_loc > 0 {
             (self.total_loc_reduction() as f64 / self.entropy_metrics.total_loc as f64) * 100.0
@@ -247,7 +247,7 @@ impl EntropyReport {
     }
 
     /// Format as human-readable report
-    #[must_use] 
+    #[must_use]
     pub fn format_report(&self) -> String {
         let mut report = String::new();
 
@@ -316,7 +316,7 @@ pub struct EntropyCalculator {
 }
 
 impl EntropyCalculator {
-    #[must_use] 
+    #[must_use]
     pub fn new(config: EntropyConfig) -> Self {
         Self { config }
     }

@@ -13,7 +13,7 @@ pub struct QualityBaseline {
 }
 
 impl QualityBaseline {
-    #[must_use] 
+    #[must_use]
     pub fn new(release_metrics: Metrics, stable_metrics: Metrics) -> Self {
         Self {
             release_anchor: release_metrics,
@@ -23,7 +23,7 @@ impl QualityBaseline {
     }
 
     /// Evaluate current metrics against baselines
-    #[must_use] 
+    #[must_use]
     pub fn evaluate(&self, current: &Metrics) -> QualityAssessment {
         let mut violations = Vec::new();
 
@@ -109,7 +109,8 @@ impl QualityBaseline {
         }
 
         // Performance penalty
-        let perf_ratio = f64::from(current.init_time_ms) / f64::from(self.stable_anchor.init_time_ms);
+        let perf_ratio =
+            f64::from(current.init_time_ms) / f64::from(self.stable_anchor.init_time_ms);
         if perf_ratio > 1.0 {
             score -= (perf_ratio - 1.0) * 25.0;
         }
@@ -174,7 +175,7 @@ pub struct RollingStats {
 }
 
 impl RollingStats {
-    #[must_use] 
+    #[must_use]
     pub fn new(window_days: usize) -> Self {
         Self {
             window_days,
@@ -197,7 +198,7 @@ impl RollingStats {
     }
 
     /// Calculate trend slope using linear regression
-    #[must_use] 
+    #[must_use]
     pub fn trend_slope(&self) -> f64 {
         if self.data_points.len() < 2 {
             return 0.0;
@@ -240,7 +241,7 @@ pub struct QualityAssessment {
 }
 
 impl QualityAssessment {
-    #[must_use] 
+    #[must_use]
     pub fn is_passing(&self) -> bool {
         self.violations
             .iter()
@@ -280,7 +281,7 @@ pub enum Violation {
 }
 
 impl Violation {
-    #[must_use] 
+    #[must_use]
     pub fn severity(&self) -> &Severity {
         match self {
             Self::ComplexityRegression { severity, .. }
@@ -291,7 +292,7 @@ impl Violation {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn description(&self) -> String {
         match self {
             Self::ComplexityRegression { current, limit, .. } => {
@@ -300,9 +301,7 @@ impl Violation {
             Self::ComplexityCreep {
                 current, baseline, ..
             } => {
-                format!(
-                    "Complexity creep: {current} exceeds baseline {baseline}"
-                )
+                format!("Complexity creep: {current} exceeds baseline {baseline}")
             }
             Self::QualityErosion { slope, .. } => {
                 format!("Quality erosion detected with slope {slope:.2}")
@@ -318,9 +317,7 @@ impl Violation {
                 baseline,
                 ..
             } => {
-                format!(
-                    "{metric} regression: {current:.1}ms exceeds baseline {baseline:.1}ms"
-                )
+                format!("{metric} regression: {current:.1}ms exceeds baseline {baseline:.1}ms")
             }
         }
     }

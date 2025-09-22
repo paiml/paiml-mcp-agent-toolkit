@@ -1,8 +1,8 @@
+use super::messages::AnalyzeMessage;
+use super::{AgentError, AgentResponse};
+use crate::modules::analyzer::{AnalyzerImpl, AnalyzerModule, Metrics};
 use actix::prelude::*;
 use std::collections::HashMap;
-use super::messages::AnalyzeMessage;
-use super::{AgentResponse, AgentError};
-use crate::modules::analyzer::{AnalyzerModule, AnalyzerImpl, Metrics};
 
 pub struct AnalyzerActor {
     analyzer: AnalyzerImpl,
@@ -42,7 +42,9 @@ impl Handler<AnalyzeMessage> for AnalyzerActor {
 
         Box::pin(
             async move {
-                let metrics = analyzer.analyze(&code).await
+                let metrics = analyzer
+                    .analyze(&code)
+                    .await
                     .map_err(|e| AgentError::ProcessingFailed(e.to_string()))?;
                 Ok(metrics)
             }
@@ -54,12 +56,14 @@ impl Handler<AnalyzeMessage> for AnalyzerActor {
                         if actor.complexity_cache.len() >= actor.max_cache_size {
                             actor.complexity_cache.clear();
                         }
-                        actor.complexity_cache.insert(msg.code.clone(), metrics.clone());
+                        actor
+                            .complexity_cache
+                            .insert(msg.code.clone(), metrics.clone());
                         Ok(AgentResponse::Analyzed(metrics))
                     }
-                    Err(e) => Err(e)
+                    Err(e) => Err(e),
                 }
-            })
+            }),
         )
     }
 }

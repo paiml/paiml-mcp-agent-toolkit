@@ -31,7 +31,7 @@ impl AssemblyScriptParser {
     }
 
     /// Create a new `AssemblyScript` parser with custom timeout
-    #[must_use] 
+    #[must_use]
     pub fn new_with_timeout(timeout: Duration) -> Self {
         Self {
             _max_depth: 100,

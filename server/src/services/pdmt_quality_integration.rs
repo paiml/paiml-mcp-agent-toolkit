@@ -13,7 +13,7 @@ pub struct PdmtQualityEnforcer {
 }
 
 impl PdmtQualityEnforcer {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             _quality_proxy: QualityProxyService::new(),

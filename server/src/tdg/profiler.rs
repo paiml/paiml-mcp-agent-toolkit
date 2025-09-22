@@ -130,7 +130,7 @@ impl Default for ProfilerConfig {
 }
 
 impl PerformanceProfiler {
-    #[must_use] 
+    #[must_use]
     pub fn new(config: ProfilerConfig) -> Self {
         Self {
             active_profiles: Arc::new(RwLock::new(HashMap::new())),
@@ -320,9 +320,7 @@ impl PerformanceProfiler {
                     },
                     impact_ms: duration,
                     occurrence_count: 1,
-                    recommendation: format!(
-                        "High memory allocation detected: {mem_growth:.1} MB"
-                    ),
+                    recommendation: format!("High memory allocation detected: {mem_growth:.1} MB"),
                 });
             }
         }

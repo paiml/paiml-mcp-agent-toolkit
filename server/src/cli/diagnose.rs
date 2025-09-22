@@ -122,7 +122,7 @@ pub struct EnvironmentSnapshot {
 }
 
 impl EnvironmentSnapshot {
-    #[must_use] 
+    #[must_use]
     pub fn capture() -> Self {
         Self {
             os: std::env::consts::OS.to_string(),
@@ -394,7 +394,7 @@ impl Default for SelfDiagnostic {
 }
 
 impl SelfDiagnostic {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             tests: vec![

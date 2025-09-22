@@ -111,7 +111,7 @@ pub async fn analyze_c_file_with_classifier(
         items.push(AstItem::Function {
             name: format!("function_{i}"),
             visibility: String::new(), // C doesn't have visibility modifiers
-            is_async: false,            // C doesn't have async
+            is_async: false,           // C doesn't have async
             line: i * 10,
         });
     }

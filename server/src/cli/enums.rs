@@ -1052,7 +1052,7 @@ pub enum QualityCheckType {
 
 impl QualityCheckType {
     /// Returns the default checks to run
-    #[must_use] 
+    #[must_use]
     pub fn default_checks() -> Vec<Self> {
         vec![
             QualityCheckType::Complexity,

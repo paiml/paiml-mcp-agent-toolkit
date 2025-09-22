@@ -104,7 +104,10 @@ fn format_provability_output(
     summaries: &[ProofSummary],
     config: &ProvabilityConfig,
 ) -> Result<String> {
-    use crate::cli::provability_helpers::{format_provability_json, format_provability_summary, format_provability_detailed, format_provability_sarif};
+    use crate::cli::provability_helpers::{
+        format_provability_detailed, format_provability_json, format_provability_sarif,
+        format_provability_summary,
+    };
 
     match config.format {
         ProvabilityOutputFormat::Json => {

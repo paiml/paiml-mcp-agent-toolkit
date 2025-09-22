@@ -46,7 +46,7 @@ pub enum EdgeType {
 }
 
 impl DependencyGraph {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             nodes: FxHashMap::default(),
@@ -80,13 +80,13 @@ impl DependencyGraph {
     }
 
     /// Get the number of nodes in the graph
-    #[must_use] 
+    #[must_use]
     pub fn node_count(&self) -> usize {
         self.nodes.len()
     }
 
     /// Get the number of edges in the graph  
-    #[must_use] 
+    #[must_use]
     pub fn edge_count(&self) -> usize {
         self.edges.len()
     }
@@ -138,7 +138,7 @@ impl DependencyGraph {
     /// assert_eq!(calls_only.edges.len(), 1);
     /// assert_eq!(calls_only.edges[0].edge_type, EdgeType::Calls);
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn filter_by_edge_type(&self, edge_type: EdgeType) -> Self {
         let filtered_edges: Vec<Edge> = self
             .edges

@@ -1,5 +1,7 @@
-use super::{Violation, MakefileRule, Severity};
-use crate::services::makefile_linter::ast::{MakefileAst, MakefileNodeKind, NodeData, AssignmentOp};
+use super::{MakefileRule, Severity, Violation};
+use crate::services::makefile_linter::ast::{
+    AssignmentOp, MakefileAst, MakefileNodeKind, NodeData,
+};
 use std::collections::{HashMap, HashSet};
 
 /// `RecursiveExpansion` rule - warns about expensive recursive variable expansions

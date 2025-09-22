@@ -2,11 +2,11 @@
 // Complexity: All functions ≤ 10
 // SATD: Zero tolerance
 
-use std::path::PathBuf;
-use serde::{Deserialize, Serialize};
+use nalgebra_sparse::{CooMatrix, CsrMatrix};
 use petgraph::graph::{DiGraph, UnGraph};
 use petgraph::visit::EdgeRef;
-use nalgebra_sparse::{CsrMatrix, CooMatrix};
+use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 
 /// Core node data structure for dependency graph
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -51,11 +51,25 @@ pub enum Visibility {
 /// Edge types representing different dependency relationships
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum EdgeData {
-    Import { weight: f64, visibility: Visibility },
-    FunctionCall { count: usize, async_call: bool },
-    TypeDependency { strength: f64, kind: TypeKind },
-    DataFlow { confidence: f64, direction: FlowDirection },
-    Inheritance { depth: usize },
+    Import {
+        weight: f64,
+        visibility: Visibility,
+    },
+    FunctionCall {
+        count: usize,
+        async_call: bool,
+    },
+    TypeDependency {
+        strength: f64,
+        kind: TypeKind,
+    },
+    DataFlow {
+        confidence: f64,
+        direction: FlowDirection,
+    },
+    Inheritance {
+        depth: usize,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

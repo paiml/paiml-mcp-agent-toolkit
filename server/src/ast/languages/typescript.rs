@@ -27,15 +27,17 @@ impl Default for TypeScriptStrategy {
 }
 
 impl TypeScriptStrategy {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self
     }
 
     fn parse_module(&self, content: &str, filename: &str) -> Result<Module> {
         let source_map = SourceMap::default();
-        let source_file =
-            source_map.new_source_file(FileName::Custom(filename.to_string()).into(), content.to_string());
+        let source_file = source_map.new_source_file(
+            FileName::Custom(filename.to_string()).into(),
+            content.to_string(),
+        );
 
         // In swc 24.x, Syntax::Typescript takes a direct config
         let syntax = if filename.ends_with(".tsx") {
@@ -160,15 +162,17 @@ impl Default for JavaScriptStrategy {
 }
 
 impl JavaScriptStrategy {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self
     }
 
     fn parse_module(&self, content: &str, filename: &str) -> Result<Module> {
         let source_map = SourceMap::default();
-        let source_file =
-            source_map.new_source_file(FileName::Custom(filename.to_string()).into(), content.to_string());
+        let source_file = source_map.new_source_file(
+            FileName::Custom(filename.to_string()).into(),
+            content.to_string(),
+        );
 
         let lexer = Lexer::new(
             Syntax::Es(swc_ecma_parser::EsSyntax {

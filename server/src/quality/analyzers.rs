@@ -1,7 +1,7 @@
 pub use super::complexity::ComplexityAnalyzer;
-pub use super::satd::SatdDetector;
 pub use super::efficiency::EfficiencyAnalyzer;
 pub use super::entropy::EntropyCalculator;
+pub use super::satd::SatdDetector;
 
 use super::gate::QualityMetrics;
 

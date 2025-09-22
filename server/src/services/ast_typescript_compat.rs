@@ -21,13 +21,13 @@ use crate::ast::languages::LanguageStrategy;
 #[cfg(feature = "typescript-ast")]
 use crate::services::enhanced_typescript_visitor::EnhancedTypeScriptVisitor;
 #[cfg(feature = "typescript-ast")]
+use std::sync::Arc;
+#[cfg(feature = "typescript-ast")]
 use swc_common::{FileName, SourceMap};
 #[cfg(feature = "typescript-ast")]
 use swc_ecma_ast::Module;
 #[cfg(feature = "typescript-ast")]
 use swc_ecma_parser::{lexer::Lexer, Parser, StringInput, Syntax, TsSyntax};
-#[cfg(feature = "typescript-ast")]
-use std::sync::Arc;
 
 /// Analyze a TypeScript file and return complexity metrics (compatibility function)
 pub async fn analyze_typescript_file_with_complexity(
@@ -368,7 +368,11 @@ fn parse_typescript_content(content: &str, path: &Path) -> Result<Module, anyhow
             jsx: true,
             ..Default::default()
         })
-    } else if path.extension().and_then(|s| s.to_str()).is_some_and(|s| s == "js" || s == "mjs") {
+    } else if path
+        .extension()
+        .and_then(|s| s.to_str())
+        .is_some_and(|s| s == "js" || s == "mjs")
+    {
         Syntax::Es(swc_ecma_parser::EsSyntax {
             jsx: false,
             ..Default::default()
@@ -392,7 +396,9 @@ fn parse_typescript_content(content: &str, path: &Path) -> Result<Module, anyhow
     );
 
     let mut parser = Parser::new_from(lexer);
-    parser.parse_module().map_err(|e| anyhow::anyhow!("Parse error: {e:?}"))
+    parser
+        .parse_module()
+        .map_err(|e| anyhow::anyhow!("Parse error: {e:?}"))
 }
 
 #[cfg(test)]

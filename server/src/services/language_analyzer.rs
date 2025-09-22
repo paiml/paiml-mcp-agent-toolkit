@@ -122,7 +122,7 @@ impl Default for LanguageAnalyzer {
 
 impl LanguageAnalyzer {
     /// Create a new language analyzer
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             language_registry: LanguageRegistry::new(),
@@ -167,13 +167,13 @@ impl LanguageAnalyzer {
     }
 
     /// Get supported languages
-    #[must_use] 
+    #[must_use]
     pub fn supported_languages(&self) -> &[Language] {
         self.language_registry.supported_languages()
     }
 
     /// Check if language supports specific analysis type
-    #[must_use] 
+    #[must_use]
     pub fn supports_analysis(&self, language: Language, analysis_type: &AnalysisType) -> bool {
         match analysis_type {
             AnalysisType::Complexity => language.supports_complexity(),

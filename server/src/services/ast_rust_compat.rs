@@ -103,8 +103,8 @@ pub async fn analyze_rust_file_with_classifier(
         .map_err(TemplateError::Io)?;
 
     // Parse the Rust code with syn
-    let syntax_tree = syn::parse_file(&content)
-        .map_err(|e| TemplateError::InvalidUtf8(e.to_string()))?;
+    let syntax_tree =
+        syn::parse_file(&content).map_err(|e| TemplateError::InvalidUtf8(e.to_string()))?;
 
     // Use enhanced visitor to extract real AST information
     let visitor = EnhancedAstVisitor::new(path);

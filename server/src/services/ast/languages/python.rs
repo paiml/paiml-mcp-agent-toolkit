@@ -19,7 +19,7 @@ impl Default for PythonStrategy {
 }
 
 impl PythonStrategy {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self
     }

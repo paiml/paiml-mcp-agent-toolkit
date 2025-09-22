@@ -46,7 +46,7 @@ pub struct WasmSecurityValidator;
 
 impl WasmSecurityValidator {
     /// Create a new security validator
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self
     }

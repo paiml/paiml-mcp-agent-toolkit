@@ -1,10 +1,10 @@
-use std::path::{Path, PathBuf};
-use std::process::Command;
+use crate::quality::gate::{QualityGateRunner, QualityThresholds};
+use anyhow::{Context, Result};
+use std::collections::HashMap;
 use std::fs;
 use std::io::Write;
-use std::collections::HashMap;
-use anyhow::{Result, Context};
-use crate::quality::gate::{QualityGateRunner, QualityThresholds};
+use std::path::{Path, PathBuf};
+use std::process::Command;
 
 pub struct GitHookManager {
     repo_path: PathBuf,
@@ -23,8 +23,7 @@ impl GitHookManager {
         let hooks_dir = self.repo_path.join(".git/hooks");
 
         if !hooks_dir.exists() {
-            fs::create_dir_all(&hooks_dir)
-                .context("Failed to create hooks directory")?;
+            fs::create_dir_all(&hooks_dir).context("Failed to create hooks directory")?;
         }
 
         // Install pre-commit hook
@@ -88,8 +87,7 @@ fi
 echo "✅ All quality gates passed!"
 "#;
 
-        let mut file = fs::File::create(&hook_path)
-            .context("Failed to create pre-commit hook")?;
+        let mut file = fs::File::create(&hook_path).context("Failed to create pre-commit hook")?;
 
         file.write_all(hook_content.as_bytes())
             .context("Failed to write pre-commit hook")?;
@@ -296,7 +294,7 @@ impl IncrementalChecker {
     }
 
     pub fn update_cache(&mut self, file_path: &Path, passed: bool) -> Result<()> {
-        use sha2::{Sha256, Digest};
+        use sha2::{Digest, Sha256};
 
         let content = fs::read_to_string(file_path)?;
         let hash = format!("{:x}", Sha256::digest(content.as_bytes()));
@@ -353,7 +351,8 @@ jobs:
         uses: codecov/codecov-action@v3
         with:
           files: ./coverage/cobertura.xml
-"#.to_string()
+"#
+    .to_string()
 }
 
 #[cfg(test)]

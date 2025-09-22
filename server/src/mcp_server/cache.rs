@@ -48,7 +48,7 @@ pub struct CacheMetrics {
 
 impl CacheMetrics {
     /// Calculate cache hit ratio
-    #[must_use] 
+    #[must_use]
     pub fn hit_ratio(&self) -> f64 {
         if self.total_requests == 0 {
             0.0
@@ -76,13 +76,13 @@ impl Default for McpCache {
 
 impl McpCache {
     /// Create a new cache with default configuration
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self::with_config(CacheConfig::default())
     }
 
     /// Create a new cache with custom configuration
-    #[must_use] 
+    #[must_use]
     pub fn with_config(config: CacheConfig) -> Self {
         Self {
             entries: Arc::new(RwLock::new(HashMap::new())),
@@ -190,25 +190,25 @@ pub struct CacheKeyBuilder;
 
 impl CacheKeyBuilder {
     /// Build cache key for analysis results
-    #[must_use] 
+    #[must_use]
     pub fn analysis_key(file_path: &str, version: &str) -> String {
         format!("analysis:{file_path}:{version}")
     }
 
     /// Build cache key for refactoring plans
-    #[must_use] 
+    #[must_use]
     pub fn refactor_plan_key(file_path: &str, config_hash: u64) -> String {
         format!("refactor_plan:{file_path}:{config_hash}")
     }
 
     /// Build cache key for complexity metrics
-    #[must_use] 
+    #[must_use]
     pub fn complexity_key(file_path: &str) -> String {
         format!("complexity:{file_path}")
     }
 
     /// Build cache key for MCP method results
-    #[must_use] 
+    #[must_use]
     pub fn method_result_key(method: &str, params_hash: u64) -> String {
         format!("method:{method}:{params_hash}")
     }

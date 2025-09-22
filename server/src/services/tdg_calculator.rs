@@ -117,12 +117,12 @@ impl TDGCalculator {
     /// let calculator = TDGCalculator::new();
     /// // Calculator ready to compute Technical Debt Gradient scores
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self::with_config(TDGConfig::default())
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn with_config(config: TDGConfig) -> Self {
         Self {
             config,
@@ -923,7 +923,7 @@ impl TDGCalculator {
     }
 
     /// Generate TDG distribution for visualization
-    #[must_use] 
+    #[must_use]
     pub fn calculate_distribution(&self, scores: &[TDGScore]) -> TDGDistribution {
         let bucket_size = 0.5;
         let max_value = 5.0;

@@ -274,7 +274,7 @@ impl Default for RefactorStrategies {
 }
 
 impl RefactorStateMachine {
-    #[must_use] 
+    #[must_use]
     pub fn new(targets: Vec<PathBuf>, config: RefactorConfig) -> Self {
         let initial_state = if targets.is_empty() {
             State::Complete {
@@ -316,10 +316,12 @@ impl RefactorStateMachine {
             },
             State::Plan { violations } => {
                 if violations.is_empty() {
-                    self.next_target()
-                        .map_or(State::Complete {
+                    self.next_target().map_or(
+                        State::Complete {
                             summary: Summary::default(),
-                        }, |t| State::Analyze { current: t })
+                        },
+                        |t| State::Analyze { current: t },
+                    )
                 } else {
                     State::Refactor {
                         operation: violations[0].suggested_fix.clone().unwrap_or(
@@ -341,11 +343,12 @@ impl RefactorStateMachine {
             State::Emit { .. } => State::Checkpoint {
                 reason: "cycle_complete".to_string(),
             },
-            State::Checkpoint { .. } => self
-                .next_target()
-                .map_or(State::Complete {
+            State::Checkpoint { .. } => self.next_target().map_or(
+                State::Complete {
                     summary: Summary::default(),
-                }, |t| State::Analyze { current: t }),
+                },
+                |t| State::Analyze { current: t },
+            ),
             State::Complete { .. } => {
                 return Ok(&self.current);
             }
@@ -463,7 +466,7 @@ impl Default for Summary {
 }
 
 impl Violation {
-    #[must_use] 
+    #[must_use]
     pub fn to_op(&self) -> RefactorOp {
         self.suggested_fix
             .clone()

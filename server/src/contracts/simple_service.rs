@@ -1,7 +1,12 @@
 //! Simplified service layer that compiles and demonstrates uniform contracts
 //! This is a minimal implementation to show the contract system working
 
-use super::{AnalyzeComplexityContract, ContractValidation, AnalyzeSatdContract, SatdSeverity, AnalyzeDeadCodeContract, AnalyzeTdgContract, AnalyzeLintHotspotContract, AnalyzeEntropyContract, QualityGateContract, QualityProfile, RefactorAutoContract, BaseAnalysisContract, OutputFormat};
+use super::{
+    AnalyzeComplexityContract, AnalyzeDeadCodeContract, AnalyzeEntropyContract,
+    AnalyzeLintHotspotContract, AnalyzeSatdContract, AnalyzeTdgContract, BaseAnalysisContract,
+    ContractValidation, OutputFormat, QualityGateContract, QualityProfile, RefactorAutoContract,
+    SatdSeverity,
+};
 use anyhow::Result;
 use serde_json::Value;
 
