@@ -177,6 +177,13 @@ make sprint-close
 - **PDMT Integration**: Deterministic todo generation with embedded quality requirements
 - **Refactoring Engine**: State machine-based code transformation with ACID snapshots
 
+### 🏗️ Agent System (Enterprise)
+- **Distributed Architecture**: Actix actor system with zero-copy messaging and Raft consensus
+- **Sub-Agent Types**: AnalyzerActor, TransformerActor, ValidatorActor, OrchestratorActor
+- **Workflow Engine**: DSL-based automation with step dependencies and parallel execution
+- **Resource Management**: CPU/Memory/GPU/Network/IO control with enterprise-grade fault tolerance
+- **MCP Integration**: Full Model Context Protocol server with multiple transport modes
+
 ### Integration Protocols
 - **MCP Protocol**: 18 tools via unified pmcp SDK 1.2.0 server (includes TDG analysis tools)
 - **HTTP API**: RESTful with Server-Sent Events streaming
@@ -187,6 +194,7 @@ make sprint-close
 ### Core Documentation
 - **[Complete Specification](docs/SPECIFICATION.md)** - Unified source of truth (36 sections)
 - **[TDG Guide](docs/TDG_GUIDE.md)** - **NEW!** Technical Debt Grading system documentation
+- **[Agent Architecture](docs/AGENT_ARCHITECTURE.md)** - **NEW!** Sub-agent system and distributed computing capabilities
 - **[API Reference](docs/api-guide.md)** - Service APIs and integration patterns
 - **[CLI Reference](docs/cli-reference.md)** - Complete command documentation
 
