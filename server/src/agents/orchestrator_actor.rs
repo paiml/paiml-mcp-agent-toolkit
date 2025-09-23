@@ -39,6 +39,12 @@ impl AgentState for OrchestratorState {
     }
 }
 
+impl Default for OrchestratorActor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl OrchestratorActor {
     pub fn new() -> Self {
         Self {
