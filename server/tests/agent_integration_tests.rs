@@ -182,18 +182,18 @@ mod agent_tests {
             max_projects = 10
 
             [quality_monitor]
-            update_interval = "5s"
+            update_interval = { secs = 5, nanos = 0 }
             complexity_threshold = 20
             watch_patterns = ["**/*.rs"]
-            debounce_interval = "500ms"
+            debounce_interval = { secs = 0, nanos = 500000000 }
             max_batch_size = 50
 
             [daemon]
             working_directory = "/tmp"
-            health_check_interval = "30s"
+            health_check_interval = { secs = 30, nanos = 0 }
             max_memory_mb = 500
             auto_restart = true
-            shutdown_timeout = "10s"
+            shutdown_timeout = { secs = 10, nanos = 0 }
         "#;
 
         let config: DaemonConfig = toml::from_str(dev_config).unwrap();
