@@ -167,8 +167,9 @@ impl ComplexityVisitor {
     }
 
     fn add_cognitive(&mut self, base: u32) {
-        // Add base cognitive complexity
-        self.cognitive += base;
+        // Add base cognitive complexity plus nesting penalty
+        // According to SonarSource spec, nesting adds extra cognitive load
+        self.cognitive += base + self.nesting_level;
     }
 }
 
@@ -209,24 +210,63 @@ impl<'ast> Visit<'ast> for ComplexityVisitor {
                 self.add_cyclomatic(1);
                 self.add_cognitive(1);
 
+                // Visit scrutinee
+                self.visit_expr(&match_expr.expr);
+
+                // Process guards first (they are not nested)
                 for arm in &match_expr.arms {
-                    if arm.guard.is_some() {
+                    if let Some((_, guard)) = &arm.guard {
                         self.add_cyclomatic(1);
                         self.add_cognitive(1);
+                        self.visit_expr(guard);
                     }
                 }
 
-                syn::visit::visit_expr(self, expr);
+                // Then visit arm bodies with increased nesting
+                self.nesting_level += 1;
+                for arm in &match_expr.arms {
+                    self.visit_expr(&arm.body);
+                }
+                self.nesting_level -= 1;
             }
-            Expr::While(_) | Expr::ForLoop(_) => {
+            Expr::While(while_expr) => {
                 self.add_cyclomatic(1);
                 self.add_cognitive(1);
-                syn::visit::visit_expr(self, expr);
+
+                // Visit condition
+                self.visit_expr(&while_expr.cond);
+
+                // Visit body with increased nesting
+                self.nesting_level += 1;
+                for stmt in &while_expr.body.stmts {
+                    self.visit_stmt(stmt);
+                }
+                self.nesting_level -= 1;
             }
-            Expr::Loop(_) => {
+            Expr::ForLoop(for_expr) => {
                 self.add_cyclomatic(1);
                 self.add_cognitive(1);
-                syn::visit::visit_expr(self, expr);
+
+                // Visit iterator
+                self.visit_expr(&for_expr.expr);
+
+                // Visit body with increased nesting
+                self.nesting_level += 1;
+                for stmt in &for_expr.body.stmts {
+                    self.visit_stmt(stmt);
+                }
+                self.nesting_level -= 1;
+            }
+            Expr::Loop(loop_expr) => {
+                self.add_cyclomatic(1);
+                self.add_cognitive(1);
+
+                // Visit body with increased nesting
+                self.nesting_level += 1;
+                for stmt in &loop_expr.body.stmts {
+                    self.visit_stmt(stmt);
+                }
+                self.nesting_level -= 1;
             }
             // Binary operators that create branches
             Expr::Binary(bin) => {

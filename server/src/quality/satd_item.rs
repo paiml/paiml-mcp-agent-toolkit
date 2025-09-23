@@ -9,6 +9,12 @@ pub struct SatdItem {
 
 pub struct SatdDetectorWithItems;
 
+impl Default for SatdDetectorWithItems {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SatdDetectorWithItems {
     pub fn new() -> Self {
         Self
