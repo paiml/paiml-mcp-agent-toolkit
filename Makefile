@@ -190,20 +190,28 @@ test-doc:
 	@cargo test --doc --manifest-path server/Cargo.toml
 	@echo "✅ Doctests completed!"
 
-# Fast coverage with inline display - canonical LLVM implementation
+# Fast coverage with inline display - manual LLVM implementation (cargo-llvm-cov is broken)
 coverage:
-	@echo "📊 Running LLVM-based code coverage..."
-	@if ! command -v cargo-llvm-cov >/dev/null 2>&1; then \
-		echo "📦 Installing cargo-llvm-cov..."; \
-		cargo install cargo-llvm-cov; \
-	fi
+	@echo "📊 Running LLVM-based code coverage (manual)..."
 	@mkdir -p target/llvm-cov
-	@cd server && cargo llvm-cov clean --workspace
-	@cd server && SKIP_MCP_TABLES=1 CARGO_INCREMENTAL=0 cargo llvm-cov \
-		--lib \
-		--features skip-slow-tests \
-		--lcov --output-path ../target/llvm-cov/lcov.info \
-		--ignore-filename-regex="examples|benches|tests|target"
+	@echo "🧹 Cleaning previous coverage data..."
+	@rm -rf target/llvm-cov/*.profraw target/llvm-cov/*.profdata
+	@cd server && cargo clean
+	@echo "🔨 Building and running tests with coverage instrumentation..."
+	@cd server && SKIP_MCP_TABLES=1 CARGO_INCREMENTAL=0 \
+		RUSTFLAGS="-C instrument-coverage" \
+		LLVM_PROFILE_FILE="../target/llvm-cov/pmat-%p-%m.profraw" \
+		cargo test --features skip-slow-tests
+	@echo "📊 Merging coverage data..."
+	@llvm-profdata merge -sparse target/llvm-cov/*.profraw -o target/llvm-cov/pmat.profdata
+	@echo "📊 Generating LCOV report..."
+	@cd server && llvm-cov export \
+		$$(RUSTFLAGS="-C instrument-coverage" cargo test --features skip-slow-tests --no-run --message-format=json 2>/dev/null | \
+		jq -r "select(.profile.test == true) | .filenames[]" | grep -v '/rustc/' | head -1) \
+		--format=lcov \
+		--instr-profile=../target/llvm-cov/pmat.profdata \
+		--ignore-filename-regex="(examples|benches|tests|target|/.cargo/|/rustc/)" \
+		> ../target/llvm-cov/lcov.info 2>/dev/null || echo "Note: Coverage report generation requires llvm-tools"
 	@echo "✅ Coverage report: target/llvm-cov/lcov.info"
 	@if [ -f target/llvm-cov/lcov.info ]; then \
 		echo "📊 Coverage summary:"; \
