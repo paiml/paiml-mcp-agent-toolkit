@@ -9,6 +9,7 @@ struct DefectPrediction {
     file: String,
     defect_probability: f64,
     risk_level: String,
+    #[allow(dead_code)] // Reserved for future defect report enhancements
     contributing_factors: Vec<String>,
 }
 
