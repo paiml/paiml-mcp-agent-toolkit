@@ -30,7 +30,25 @@ use std::path::PathBuf;
     name = "pmat",
     about = "Professional project quantitative scaffolding and analysis toolkit",
     version,
-    long_about = None
+    long_about = None,
+    after_help = "EXAMPLES:
+# Analyze code complexity
+pmat analyze complexity --project-path .
+
+# Find technical debt
+pmat analyze satd --path .
+
+# Find dead code
+pmat analyze dead-code --path .
+
+# Generate project context
+pmat context
+
+# Run quality gates
+pmat quality-gate --strict
+
+# Start agent daemon
+pmat agent start"
 )]
 #[cfg_attr(test, derive(Debug))]
 pub struct Cli {
