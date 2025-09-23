@@ -9,8 +9,11 @@ use tokio::fs;
 
 /// Test data for file collection scenarios
 struct FileCollectionTestData {
+    #[allow(dead_code)] // temp_dir must be kept alive to prevent cleanup
     temp_dir: TempDir,
+    #[allow(dead_code)] // May be used for future test verification
     source_files: Vec<PathBuf>,
+    #[allow(dead_code)] // May be used for future test verification
     directories: Vec<PathBuf>,
     expected_collected: Vec<PathBuf>,
 }

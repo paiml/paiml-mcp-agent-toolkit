@@ -13,6 +13,7 @@ use tokio;
 
 /// Test fixture for config command testing
 struct ConfigTestFixture {
+    #[allow(dead_code)] // temp_dir must be kept alive to prevent cleanup
     temp_dir: TempDir,
     config_path: PathBuf,
 }
@@ -59,6 +60,7 @@ task_id_pattern = "PMAT-[0-9]{4}"
 
 /// Configuration command interface (to be implemented)
 struct ConfigCommand {
+    #[allow(dead_code)] // Will be used when todo!() methods are implemented
     config_path: PathBuf,
 }
 
