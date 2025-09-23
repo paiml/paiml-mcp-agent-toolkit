@@ -197,12 +197,18 @@ coverage:
 		echo "📦 Installing cargo-llvm-cov..."; \
 		cargo install cargo-llvm-cov; \
 	fi
-	@cd server && SKIP_MCP_TABLES=1 cargo llvm-cov test --lib \
+	@mkdir -p target/llvm-cov
+	@cd server && cargo llvm-cov clean --workspace
+	@cd server && SKIP_MCP_TABLES=1 CARGO_INCREMENTAL=0 cargo llvm-cov \
+		--lib \
 		--features skip-slow-tests \
 		--lcov --output-path ../target/llvm-cov/lcov.info \
-		-- --test-threads=1 --skip property --skip prop
-	@cd server && cargo llvm-cov report --summary-only
+		--ignore-filename-regex="examples|benches|tests|target"
 	@echo "✅ Coverage report: target/llvm-cov/lcov.info"
+	@if [ -f target/llvm-cov/lcov.info ]; then \
+		echo "📊 Coverage summary:"; \
+		grep -E "LF:|LH:" target/llvm-cov/lcov.info | head -2 || echo "Coverage data generated"; \
+	fi
 
 # Unified coverage for all test types
 coverage-full:

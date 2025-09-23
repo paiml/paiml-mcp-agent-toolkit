@@ -1,4 +1,4 @@
-use pmat::quality::complexity::{ComplexityAnalyzer, ComplexityMetrics};
+use pmat::quality::complexity::ComplexityAnalyzer;
 use pmat::quality::complexity_enhanced::ControlFlowGraph;
 use proptest::prelude::*;
 
