@@ -1,8 +1,8 @@
 # PAIML MCP Agent Toolkit (pmat)
 
-[![Crates.io](https://img.shields.io/crates/v/pmat.svg)](https://crates.io/crates/pmat)
+[![Crates.io](https://img.shields.io/badge/crates.io-coming%20soon-lightgray)](https://crates.io)
 [![npm](https://img.shields.io/npm/v/pmat-agent.svg)](https://www.npmjs.com/package/pmat-agent)
-[![Docker](https://img.shields.io/docker/v/paiml/pmat?label=docker)](https://hub.docker.com/r/paiml/pmat)
+[![Docker](https://img.shields.io/badge/docker-coming%20soon-lightgray)](https://hub.docker.com)
 [![Homebrew](https://img.shields.io/badge/homebrew-ready-blue)](https://github.com/paiml/paiml-mcp-agent-toolkit/tree/master/homebrew)
 [![AUR](https://img.shields.io/badge/AUR-ready-orange)](https://github.com/paiml/paiml-mcp-agent-toolkit/tree/master/aur)
 [![Chocolatey](https://img.shields.io/badge/chocolatey-ready-blue)](https://github.com/paiml/paiml-mcp-agent-toolkit/tree/master/chocolatey)
@@ -14,7 +14,7 @@
 
 [![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-green)](https://modelcontextprotocol.io)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Downloads](https://img.shields.io/crates/d/pmat)](https://crates.io/crates/pmat)
+[![Downloads](https://img.shields.io/badge/downloads-coming%20soon-lightgray)](https://crates.io)
 [![Rust 1.80+](https://img.shields.io/badge/rust-1.80+-orange.svg)](https://www.rust-lang.org)
 
 **Zero-configuration AI context generation system** with extreme quality enforcement and Toyota Way standards. Analyze any codebase instantly through CLI, MCP, or HTTP interfaces. Built by [Pragmatic AI Labs](https://paiml.com).
@@ -437,10 +437,10 @@ All contributions must meet:
 - Full test coverage
 - Documentation updates
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
+Contribution guidelines coming soon.
 
 ## 📋 License
 
-Licensed under the MIT License. See [LICENSE](LICENSE) for details.
+Licensed under the MIT License.
 
 Built with ❤️ by [Pragmatic AI Labs](https://paiml.com)
