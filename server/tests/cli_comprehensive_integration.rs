@@ -318,7 +318,7 @@ fn test_analyze_churn_json_output() {
             // Verify JSON structure
             let json: Value = serde_json::from_slice(&output.stdout).unwrap();
             assert!(json.is_object());
-            assert!(json["analysis_period"].is_object());
+            assert!(json["period_days"].is_number());
             assert!(json["files"].is_array());
         }
     }
@@ -334,7 +334,7 @@ fn test_analyze_churn_csv_output() {
     if let Ok(output) = result {
         if output.status.success() {
             let csv = String::from_utf8_lossy(&output.stdout);
-            assert!(csv.contains("file_path,commits,additions,deletions,churn_score"));
+            assert!(csv.contains("file_path,relative_path,commit_count,unique_authors,additions,deletions,churn_score"));
         }
     }
 }
