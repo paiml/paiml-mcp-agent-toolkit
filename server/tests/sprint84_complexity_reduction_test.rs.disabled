@@ -3,7 +3,7 @@
 // NOTE: This test is temporarily disabled as it tests private internal APIs
 // that have been refactored. The functionality is tested through public APIs.
 
-#![cfg(feature = "internal_tests_disabled")]
+#![cfg(test)]
 #![allow(dead_code, unused_imports)]
 
 // NOTE: This entire test file is disabled as it tests private internal APIs

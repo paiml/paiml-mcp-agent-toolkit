@@ -13,7 +13,9 @@ use tokio;
 
 /// Test fixture for hooks command testing
 struct HooksTestFixture {
+    #[allow(dead_code)]
     temp_dir: TempDir,
+    #[allow(dead_code)]
     git_dir: PathBuf,
     hooks_dir: PathBuf,
     config_path: PathBuf,
@@ -96,7 +98,9 @@ task_id_pattern = "PMAT-[0-9]{4}"
 
 /// Hooks command interface (to be implemented)
 struct HooksCommand {
+    #[allow(dead_code)]
     hooks_dir: PathBuf,
+    #[allow(dead_code)]
     config_path: PathBuf,
 }
 

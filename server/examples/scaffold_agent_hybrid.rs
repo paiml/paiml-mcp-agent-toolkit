@@ -11,7 +11,6 @@ use pmat::scaffold::agent::{
     AgentContextBuilder, CoreSpec, FallbackStrategy, ModelType, QualityLevel, VerificationMethod,
     WrapperSpec,
 };
-use pmat::scaffold::agent::hybrid::{Invariant, InvariantSeverity};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -208,6 +207,7 @@ async fn create_fallback_agent() -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use pmat::scaffold::agent::hybrid::{Invariant, InvariantSeverity};
 
     #[test]
     fn test_hybrid_examples() {

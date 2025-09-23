@@ -19,7 +19,9 @@ use tempfile::TempDir;
 struct CommandResult {
     command: String,
     args: Vec<String>,
+    #[allow(dead_code)]
     success: bool,
+    #[allow(dead_code)]
     stdout: String,
     stderr: String,
     exit_code: i32,
@@ -43,6 +45,7 @@ struct CommandSpec {
 /// The main test harness
 struct CliTestHarness {
     binary_path: PathBuf,
+    #[allow(dead_code)]
     test_dir: TempDir,
     results: Vec<CommandResult>,
 }
