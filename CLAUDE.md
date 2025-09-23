@@ -9,14 +9,6 @@
 - All coverage targets should use cargo llvm-cov commands
 - If you see tarpaulin references in the codebase, remove them
 
-## Branch Policy
-
-**IMPORTANT: All development work must be done on the `master` branch only.**
-
-- Do not create or use feature branches
-- All commits should be made directly to master
-- All pull requests should target master branch
-- If working on fixes or features, work directly on master
 
 ## Test Coverage
 
