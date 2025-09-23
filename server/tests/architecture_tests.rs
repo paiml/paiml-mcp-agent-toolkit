@@ -2,7 +2,7 @@
 mod architecture_tests {
     use std::collections::{HashMap, HashSet};
     use std::fs;
-    use std::path::{Path, PathBuf};
+    use std::path::Path;
 
     #[test]
     fn test_no_circular_dependencies() {
@@ -367,9 +367,9 @@ mod architecture_tests {
 // Integration test for quality gates
 #[test]
 fn test_quality_gates_integration() {
-    use pmat::quality::gate::{QualityGateRunner, QualityThresholds};
+    use pmat::quality::gate::QualityGateRunner;
     use std::fs;
-    use std::path::Path;
+    
     use tempfile::TempDir;
 
     let temp_dir = TempDir::new().unwrap();
