@@ -6,14 +6,18 @@ use anyhow::Result;
 // Mock types for testing
 #[derive(Debug)]
 struct SymbolTableAnalysis {
+    #[allow(dead_code)] // Reserved for future symbol table implementation
     symbols: Vec<Symbol>,
     total_symbols: usize,
 }
 
 #[derive(Debug)]
 struct Symbol {
+    #[allow(dead_code)] // Reserved for future symbol table implementation
     name: String,
+    #[allow(dead_code)] // Reserved for future symbol table implementation
     kind: String,
+    #[allow(dead_code)] // Reserved for future symbol table implementation
     location: String,
 }
 
