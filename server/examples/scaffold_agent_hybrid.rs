@@ -11,6 +11,7 @@ use pmat::scaffold::agent::{
     AgentContextBuilder, CoreSpec, FallbackStrategy, ModelType, QualityLevel, VerificationMethod,
     WrapperSpec,
 };
+use pmat::scaffold::agent::hybrid::{Invariant, InvariantSeverity};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -214,7 +215,11 @@ mod tests {
         let core = CoreSpec {
             verification_method: VerificationMethod::PropertyTests,
             max_complexity: 10,
-            invariants: vec!["test".to_string()],
+            invariants: vec![Invariant {
+                name: "test".to_string(),
+                description: "Test invariant".to_string(),
+                severity: InvariantSeverity::Error,
+            }],
         };
 
         assert_eq!(core.max_complexity, 10);

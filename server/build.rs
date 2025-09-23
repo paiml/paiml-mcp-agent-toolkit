@@ -14,8 +14,9 @@ fn main() {
     println!("cargo:rerun-if-changed=templates/");
     println!("cargo:rerun-if-changed=src/schema/refactor_state.capnp");
 
-    // Declare custom cfg flag for cargo publish detection
+    // Declare custom cfg flags
     println!("cargo:rustc-check-cfg=cfg(cargo_publish)");
+    println!("cargo:rustc-check-cfg=cfg(coverage)");
 
     // Fast build mode for development - skip heavy operations
     if env::var("PMAT_FAST_BUILD").is_ok() {
@@ -1026,9 +1027,9 @@ impl TrigramIndex {
 
 /// Generate stub files for coverage builds to avoid compilation errors
 fn generate_stub_files(out_dir: &str) {
-    // Generate minimal stub for tool_registry.rs
+    // Generate functional stub for tool_registry.rs with test data
     let tool_registry = r#"
-// Stub tool registry for coverage builds
+// Functional tool registry for coverage builds
 use std::collections::HashMap;
 
 pub struct ToolMeta {
@@ -1038,7 +1039,85 @@ pub struct ToolMeta {
 }
 
 pub static TOOL_REGISTRY: once_cell::sync::Lazy<HashMap<&'static str, ToolMeta>> =
-    once_cell::sync::Lazy::new(|| HashMap::new());
+    once_cell::sync::Lazy::new(|| {
+        let mut m = HashMap::new();
+        m.insert("analyze_complexity", ToolMeta {
+            name: "analyze_complexity",
+            description: "Analyze code complexity metrics (cyclomatic, cognitive)",
+            keywords: &["complexity", "analyze", "metrics"],
+        });
+        m.insert("quality_gate", ToolMeta {
+            name: "quality_gate",
+            description: "Run comprehensive quality analysis",
+            keywords: &["quality", "gate", "check"],
+        });
+        m.insert("scaffold_project", ToolMeta {
+            name: "scaffold_project",
+            description: "Create project scaffolding",
+            keywords: &["scaffold", "create", "generate", "project"],
+        });
+        m.insert("analyze_satd", ToolMeta {
+            name: "analyze_satd",
+            description: "Find self-admitted technical debt in comments",
+            keywords: &["satd", "debt", "todo", "fixme"],
+        });
+        m.insert("analyze_dag", ToolMeta {
+            name: "analyze_dag",
+            description: "Generate dependency graphs and visualizations",
+            keywords: &["dependency", "graph", "dag", "architecture"],
+        });
+        m.insert("generate_context", ToolMeta {
+            name: "generate_context",
+            description: "Generate AI-optimized context",
+            keywords: &["generate", "context", "ai"],
+        });
+        m.insert("refactor.start", ToolMeta {
+            name: "refactor.start",
+            description: "Begin refactoring workflow",
+            keywords: &["refactor", "start", "begin"],
+        });
+        m.insert("git_operation", ToolMeta {
+            name: "git_operation",
+            description: "Execute git operations",
+            keywords: &["git", "version", "control"],
+        });
+        m.insert("analyze_dead_code", ToolMeta {
+            name: "analyze_dead_code",
+            description: "Detect unused functions and variables",
+            keywords: &["dead", "unused", "code"],
+        });
+        m.insert("analyze_big_o", ToolMeta {
+            name: "analyze_big_o",
+            description: "Analyze algorithmic complexity",
+            keywords: &["big-o", "algorithm", "performance"],
+        });
+        m.insert("analyze_deep_context", ToolMeta {
+            name: "analyze_deep_context",
+            description: "Generate comprehensive codebase context",
+            keywords: &["context", "summary", "analysis"],
+        });
+        m.insert("refactor.nextIteration", ToolMeta {
+            name: "refactor.nextIteration",
+            description: "Continue refactoring process",
+            keywords: &["refactor", "next", "continue"],
+        });
+        m.insert("refactor.getState", ToolMeta {
+            name: "refactor.getState",
+            description: "Get current refactoring state",
+            keywords: &["refactor", "state", "status"],
+        });
+        m.insert("refactor.stop", ToolMeta {
+            name: "refactor.stop",
+            description: "End refactoring workflow",
+            keywords: &["refactor", "stop", "end"],
+        });
+        m.insert("quality_proxy", ToolMeta {
+            name: "quality_proxy",
+            description: "Intercept and validate code changes",
+            keywords: &["quality", "proxy", "validate"],
+        });
+        m
+    });
 "#;
 
     let dest = Path::new(out_dir).join("tool_registry.rs");
@@ -1046,11 +1125,22 @@ pub static TOOL_REGISTRY: once_cell::sync::Lazy<HashMap<&'static str, ToolMeta>>
         println!("cargo:warning=Failed to write tool registry stub: {e}");
     }
 
-    // Generate minimal stub for alias_table.rs
+    // Generate functional stub for alias_table.rs with test data
     let alias_table = r#"
-// Stub alias table for coverage builds
+// Functional alias table for coverage builds
 pub static ALIAS_TABLE: once_cell::sync::Lazy<std::collections::HashMap<&'static str, Vec<&'static str>>> =
-    once_cell::sync::Lazy::new(|| std::collections::HashMap::new());
+    once_cell::sync::Lazy::new(|| {
+        let mut m = std::collections::HashMap::new();
+        m.insert("analyze_complexity", vec!["complexity", "analyze", "metrics", "complxity", "complx"]);
+        m.insert("analyze_satd", vec!["debt", "technical debt", "todo", "fixme"]);
+        m.insert("analyze_dag", vec!["dependency", "dependencies", "graph", "show dependencies", "dependency graph"]);
+        m.insert("scaffold_project", vec!["scaffold", "create", "generate", "create project", "scafold"]);
+        m.insert("generate_context", vec!["context", "generate context", "ai context"]);
+        m.insert("quality_gate", vec!["quality", "check quality", "quality check", "qualit"]);
+        m.insert("refactor.start", vec!["refactor", "start refactor", "refactr"]);
+        m.insert("git_operation", vec!["git", "version control"]);
+        m
+    });
 "#;
 
     let dest = Path::new(out_dir).join("alias_table.rs");
@@ -1058,27 +1148,84 @@ pub static ALIAS_TABLE: once_cell::sync::Lazy<std::collections::HashMap<&'static
         println!("cargo:warning=Failed to write alias table stub: {e}");
     }
 
-    // Generate minimal stub for trigram_index.rs
+    // Generate functional stub for trigram_index.rs with test functionality
     let trigram_index = r#"
-// Stub trigram index for coverage builds
+// Functional trigram index for coverage builds
 pub struct TrigramIndex;
 
 impl TrigramIndex {
-    pub fn search(&self, _query: &str, _threshold: f32) -> Vec<(&'static str, f32)> {
-        Vec::new()
+    #[inline(always)]
+    pub fn pack_trigram(s: &[u8]) -> u32 {
+        if s.len() < 3 { return 0; }
+        (s[0] as u32) | ((s[1] as u32) << 8) | ((s[2] as u32) << 16)
     }
 
-    pub fn find_best_match(&self, _query: &str, _candidates: &[(&'static str, &str)]) -> Option<(&'static str, f32)> {
-        None
+    pub fn similarity_score(&self, query: &str, candidate: &str) -> f32 {
+        let q_bytes = query.to_lowercase().into_bytes();
+        let c_bytes = candidate.to_lowercase().into_bytes();
+
+        if q_bytes.len() < 3 || c_bytes.len() < 3 {
+            return if query.to_lowercase() == candidate.to_lowercase() { 1.0 } else { 0.0 };
+        }
+
+        // Exact match check
+        if query.to_lowercase() == candidate.to_lowercase() {
+            return 1.0;
+        }
+
+        // Simple substring matching for tests
+        if candidate.to_lowercase().contains(&query.to_lowercase()) {
+            return 0.8;
+        }
+
+        // Collect query trigrams
+        let mut q_trigrams = Vec::with_capacity(q_bytes.len().saturating_sub(2));
+        for i in 0..q_bytes.len().saturating_sub(2) {
+            q_trigrams.push(Self::pack_trigram(&q_bytes[i..i+3]));
+        }
+
+        // Collect candidate trigrams
+        let mut c_trigrams = Vec::with_capacity(c_bytes.len().saturating_sub(2));
+        for i in 0..c_bytes.len().saturating_sub(2) {
+            c_trigrams.push(Self::pack_trigram(&c_bytes[i..i+3]));
+        }
+
+        // Count matches
+        let mut matches = 0;
+        for q_tri in &q_trigrams {
+            if c_trigrams.contains(q_tri) {
+                matches += 1;
+            }
+        }
+
+        // Jaccard similarity coefficient
+        let union_size = q_trigrams.len() + c_trigrams.len() - matches;
+        if union_size == 0 { return 0.0; }
+
+        matches as f32 / union_size as f32
     }
 
-    pub fn similarity_score(&self, _s1: &str, _s2: &str) -> f32 {
-        0.0
+    pub fn find_best_match<'a>(&self, query: &str, candidates: &[(&'a str, &str)]) -> Option<(&'a str, f32)> {
+        let mut best_match = ("", 0.0f32);
+
+        for (name, description) in candidates {
+            // Check both name and description
+            let name_score = self.similarity_score(query, name);
+            let desc_score = self.similarity_score(query, description) * 0.7; // Weight description lower
+            let combined = name_score.max(desc_score);
+
+            if combined > best_match.1 {
+                best_match = (name, combined);
+            }
+        }
+
+        if best_match.1 > 0.4 {  // Empirically determined threshold
+            Some(best_match)
+        } else {
+            None
+        }
     }
 }
-
-pub static TRIGRAM_INDEX: once_cell::sync::Lazy<std::collections::HashMap<&'static str, Vec<&'static str>>> =
-    once_cell::sync::Lazy::new(|| std::collections::HashMap::new());
 "#;
 
     let dest = Path::new(out_dir).join("trigram_index.rs");

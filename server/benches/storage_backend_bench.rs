@@ -388,6 +388,7 @@ fn create_test_record(path: &str, score: f32, grade: Grade) -> FullTdgRecord {
             coupling_score: score * 0.15,
             doc_coverage: score * 0.10,
             consistency_score: score * 0.10,
+            entropy_score: score * 0.05,
             total: score,
             grade,
             confidence: 0.95,

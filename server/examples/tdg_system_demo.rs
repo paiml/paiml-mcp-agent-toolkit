@@ -23,7 +23,7 @@ async fn demo_storage_backends() -> Result<()> {
     println!("------------------");
 
     let temp_dir = tempfile::TempDir::new()?;
-    let storage = TieredStorageFactory::create_at_path(temp_dir.path())?;
+    let _storage = TieredStorageFactory::create_at_path(temp_dir.path())?;
 
     println!("✓ Tiered storage created successfully");
     println!("✓ Storage backend configured\n");
@@ -36,7 +36,7 @@ async fn demo_scheduling() -> Result<()> {
     println!("2. Fair Scheduling");
     println!("-----------------");
 
-    let scheduler = Arc::new(SchedulerFactory::create_balanced());
+    let _scheduler = Arc::new(SchedulerFactory::create_balanced());
     println!("✓ Fair scheduler created successfully");
     println!("✓ Scheduler ready for operations\n");
 
