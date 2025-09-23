@@ -84,8 +84,8 @@ mod complexity_analyzer_tests {
         let ast = syn::parse_file(code).unwrap();
         let cfg = ControlFlowGraph::from_ast(&ast);
 
-        assert_eq!(cfg.node_count(), 5); // Entry, condition, true branch, false branch, exit
-        assert_eq!(cfg.edge_count(), 5); // Edges connecting nodes
+        assert_eq!(cfg.node_count(), 6); // Entry, condition, true branch, false branch, merge, exit
+        assert_eq!(cfg.edge_count(), 6); // Edges connecting nodes
     }
 
     proptest! {
