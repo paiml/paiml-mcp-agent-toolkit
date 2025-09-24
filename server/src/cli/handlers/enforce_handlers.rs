@@ -913,6 +913,7 @@ pub async fn run_dead_code_analysis(
         60,         // timeout
         Vec::new(), // include
         Vec::new(), // exclude
+        8,          // max_depth
     )
     .await
     {
