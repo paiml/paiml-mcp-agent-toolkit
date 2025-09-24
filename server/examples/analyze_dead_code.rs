@@ -31,6 +31,7 @@ async fn main() -> Result<()> {
         60,       // Timeout in seconds
         vec![],   // Include patterns
         vec![],   // Exclude patterns
+        8,        // Max depth
     )
     .await;
 
@@ -56,6 +57,7 @@ async fn main() -> Result<()> {
         60,                         // Timeout in seconds
         vec![],                     // Include patterns
         vec![],                     // Exclude patterns
+        8,                          // Max depth
     )
     .await;
 
@@ -88,6 +90,7 @@ async fn main() -> Result<()> {
         60,     // Timeout in seconds
         vec![], // Include patterns
         vec![], // Exclude patterns
+        8,      // Max depth
     )
     .await;
 
@@ -114,6 +117,7 @@ async fn main() -> Result<()> {
         60,     // Timeout in seconds
         vec![], // Include patterns
         vec![], // Exclude patterns
+        8,      // Max depth
     )
     .await;
 
