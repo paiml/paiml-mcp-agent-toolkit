@@ -109,32 +109,20 @@ pub async fn handle_context(
     include_large_files: bool,
     skip_expensive_metrics: bool,
 ) -> Result<()> {
-    // Auto-detect toolchain if not specified
-    let detected_toolchain = detect_or_use_toolchain(toolchain, &project_path)?;
+    // Use the new AdvancedUnifiedContextBuilder for comprehensive analysis
+    use crate::cli::handlers::unified_context_advanced::AdvancedUnifiedContextBuilder;
 
-    // Create analyzer and perform analysis
-    let deep_context =
-        analyze_project(&project_path, include_large_files, skip_expensive_metrics).await?;
+    // Build complete context with all advanced annotations
+    let mut builder = AdvancedUnifiedContextBuilder::new(&project_path);
 
-    // Perform graph analysis (new integration)
-    let graph_annotations = if !skip_expensive_metrics {
-        generate_graph_context_analysis(&project_path).await.ok()
-    } else {
-        None
-    };
+    // Disable expensive metrics if requested
+    if skip_expensive_metrics {
+        builder.enable_provability = false;
+        builder.enable_graph_metrics = false;
+    }
 
-    // Build project context
-    let project_context = build_project_context(detected_toolchain.clone(), &deep_context)?;
-
-    // Generate output
-    let output_content = format_context_output_with_graph(
-        &project_context,
-        &deep_context,
-        &detected_toolchain,
-        &project_path,
-        format,
-        graph_annotations.as_ref(),
-    )?;
+    // Generate the unified context with all annotations
+    let output_content = builder.build_complete_context().await?;
 
     // Write output
     write_context_output(output, &output_content).await?;
@@ -229,6 +217,31 @@ async fn analyze_project(
 }
 
 /// Build project context from deep context analysis
+/// Build project context from working SimpleDeepContext (unified approach)
+fn build_project_context_from_simple(
+    detected_toolchain: String,
+    analysis_report: &crate::services::simple_deep_context::SimpleAnalysisReport,
+) -> Result<crate::services::context::ProjectContext> {
+    use crate::services::context::{ProjectContext, ProjectSummary};
+
+    let project_context = ProjectContext {
+        project_type: detected_toolchain.clone(),
+        files: vec![], // Simple context doesn't use file-based approach
+        summary: ProjectSummary {
+            total_files: analysis_report.file_count,
+            total_functions: analysis_report.complexity_metrics.total_functions, // This is the working count!
+            total_structs: 0, // Simple context focuses on functions
+            total_enums: 0,
+            total_traits: 0,
+            total_impls: 0,
+            dependencies: vec![],
+        },
+    };
+
+    Ok(project_context)
+}
+
+/// Legacy function - kept for compatibility but will be removed in unification
 fn build_project_context(
     detected_toolchain: String,
     deep_context: &crate::services::deep_context::DeepContext,
@@ -257,8 +270,19 @@ fn build_project_context(
         .map(|enhanced_ctx| process_file_context(enhanced_ctx, &deep_context.analyses))
         .collect();
 
-    // Update summary statistics
-    update_project_summary(&mut project_context);
+    // Update summary statistics (use complexity report if available, like deep-context does)
+    if let Some(complexity_report) = &deep_context.analyses.complexity_report {
+        project_context.summary.total_functions = complexity_report
+            .files
+            .iter()
+            .map(|f| f.functions.len())
+            .sum();
+        // Update other stats from complexity report
+        project_context.summary.total_files = complexity_report.files.len();
+    } else {
+        // Fallback to AST-based counting if no complexity report
+        update_project_summary(&mut project_context);
+    }
 
     Ok(project_context)
 }
@@ -282,6 +306,174 @@ fn process_file_context(
     }
 
     file_ctx
+}
+
+/// Simplified context output formatting (unified approach)
+fn format_context_output_simple(
+    project_context: &crate::services::context::ProjectContext,
+    detected_toolchain: &str,
+    project_path: &Path,
+    format: ContextFormat,
+    _graph_annotations: Option<&Vec<crate::graph::ContextAnnotation>>,
+) -> Result<String> {
+    // Extract metrics directly from project context
+    let total_functions = project_context.summary.total_functions;
+    let total_structs = project_context.summary.total_structs;
+    let total_enums = project_context.summary.total_enums;
+    let total_traits = project_context.summary.total_traits;
+
+    let output = match format {
+        ContextFormat::Markdown => {
+            let mut md = String::new();
+            md.push_str(&format!("# Project Context\n\n## Project Structure\n\n"));
+            md.push_str(&format!("- **Language**: {}\n", detected_toolchain));
+            md.push_str(&format!("- **Total Files**: {}\n", project_context.summary.total_files));
+            md.push_str(&format!("- **Total Functions**: {}\n", total_functions));
+            md.push_str(&format!("- **Total Structs**: {}\n", total_structs));
+            md.push_str(&format!("- **Total Enums**: {}\n", total_enums));
+            md.push_str(&format!("- **Total Traits**: {}\n\n", total_traits));
+
+            // Add file-level details if available
+            if !project_context.files.is_empty() {
+                md.push_str("## Key Components\n\n");
+                for file in &project_context.files {
+                    md.push_str(&format!("### File: {}\n", file.path));
+                    let functions: Vec<&str> = file.items.iter()
+                        .filter_map(|item| match item {
+                            crate::services::context::AstItem::Function { name, .. } => Some(name.as_str()),
+                            _ => None
+                        })
+                        .collect();
+
+                    if !functions.is_empty() {
+                        md.push_str("**Functions:**\n");
+                        for func in functions {
+                            md.push_str(&format!("- `{}`\n", func));
+                        }
+                    }
+                    md.push_str("\n");
+                }
+            }
+            md
+        },
+        ContextFormat::LlmOptimized => {
+            let mut output = String::new();
+
+            // Header and Summary
+            output.push_str(&format!(
+                "Project: {} ({})\n\nSummary:\n- Files: {}\n- Functions: {}\n- Types: {} structs, {} enums, {} traits\n\n",
+                project_path.file_name().unwrap_or_default().to_string_lossy(),
+                detected_toolchain,
+                project_context.summary.total_files,
+                total_functions,
+                total_structs,
+                total_enums,
+                total_traits
+            ));
+
+            // Key Components section with file breakdown
+            if total_functions > 0 {
+                output.push_str("Key Components:\n\n");
+
+                // Show per-file function counts if we have them from build_project_context_from_simple
+                // This data comes from analysis_report.file_complexity_details
+                output.push_str(&format!("Analysis detected {} functions across {} files:\n\n",
+                    total_functions, project_context.summary.total_files));
+
+                // Note: Individual function names require full AST parsing
+                output.push_str("(Individual function names require --format deep for detailed AST analysis)\n\n");
+            }
+
+            // Quality Insights section
+            if total_functions > 20 {
+                output.push_str("Quality Insights:\n");
+                output.push_str(&format!("- Large codebase with {} functions across {} files\n",
+                    total_functions, project_context.summary.total_files));
+
+                if project_context.summary.total_files > 0 {
+                    let avg_functions = total_functions as f64 / project_context.summary.total_files as f64;
+                    output.push_str(&format!("- Average {:.1} functions per file\n", avg_functions));
+
+                    if avg_functions > 10.0 {
+                        output.push_str("- Consider splitting large files for better maintainability\n");
+                    }
+                }
+                output.push('\n');
+            }
+
+            // Recommendations section
+            output.push_str("Recommendations:\n");
+            if total_functions == 0 {
+                output.push_str("- No functions detected - ensure language is properly supported\n");
+            } else if total_functions > 50 {
+                output.push_str("- Consider modularizing the codebase for better organization\n");
+            }
+
+            if project_context.files.is_empty() {
+                output.push_str("- Enable detailed AST analysis for function-level insights\n");
+            }
+
+            output
+        },
+        ContextFormat::Json => {
+            let mut json_output = serde_json::json!({
+                "project_type": detected_toolchain,
+                "summary": {
+                    "total_files": project_context.summary.total_files,
+                    "total_functions": total_functions,
+                    "total_structs": total_structs,
+                    "total_enums": total_enums,
+                    "total_traits": total_traits,
+                }
+            });
+
+            // Add file details if available
+            if !project_context.files.is_empty() {
+                let files_json: Vec<_> = project_context.files.iter().map(|file| {
+                    let functions: Vec<_> = file.items.iter()
+                        .filter_map(|item| match item {
+                            crate::services::context::AstItem::Function { name, .. } => Some(name.clone()),
+                            _ => None
+                        })
+                        .collect();
+
+                    serde_json::json!({
+                        "path": file.path,
+                        "functions": functions,
+                        "function_count": functions.len()
+                    })
+                }).collect();
+
+                json_output["files"] = serde_json::json!(files_json);
+            }
+
+            serde_json::to_string_pretty(&json_output)?
+        },
+        ContextFormat::Sarif => {
+            // Enhanced SARIF format with annotations
+            serde_json::to_string_pretty(&serde_json::json!({
+                "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+                "version": "2.1.0",
+                "runs": [{
+                    "tool": {
+                        "driver": {
+                            "name": "pmat-context",
+                            "version": "2.98.0",
+                            "informationUri": "https://github.com/paiml/paiml-mcp-agent-toolkit"
+                        }
+                    },
+                    "results": [],
+                    "properties": {
+                        "total_functions": total_functions,
+                        "total_files": project_context.summary.total_files,
+                        "language": detected_toolchain
+                    }
+                }]
+            }))?
+        },
+    };
+
+    Ok(output)
 }
 
 /// Update project summary statistics
