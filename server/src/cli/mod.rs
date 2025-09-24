@@ -328,12 +328,13 @@ fn detect_with_confidence_by_markers(path: &Path) -> Option<(String, f64)> {
 
     // Special JS/TS handling
     if path.join("package.json").exists() {
-        let confidence = if path.join("deno.json").exists() || path.join("deno.jsonc").exists() {
-            100.0
+        if path.join("deno.json").exists() || path.join("deno.jsonc").exists() {
+            return Some(("deno".to_string(), 100.0));
         } else {
-            90.0
-        };
-        return Some(("deno".to_string(), confidence));
+            // Check if it's TypeScript or JavaScript based on file extensions
+            let (lang, _) = count_files_by_extension(path)?;
+            return Some((lang, 90.0));
+        }
     }
 
     None
@@ -357,7 +358,8 @@ fn count_files_by_extension(path: &Path) -> Option<(String, f64)> {
             if let Some(ext) = entry.path().extension().and_then(|e| e.to_str()) {
                 let lang = match ext {
                     "rs" => Some("rust"),
-                    "ts" | "tsx" | "js" | "jsx" => Some("deno"),
+                    "ts" | "tsx" => Some("typescript"),
+                    "js" | "jsx" => Some("javascript"),
                     "py" => Some("python-uv"),
                     "kt" | "kts" => Some("kotlin"),
                     _ => None,
@@ -394,6 +396,10 @@ pub fn detect_primary_language_with_confidence(path: &Path) -> Option<(String, f
     // Fall back to file counting
     count_files_by_extension(path)
 }
+
+// Import tests in test configuration
+#[cfg(test)]
+mod language_detection_tests;
 
 #[must_use]
 pub fn apply_satd_filters(
