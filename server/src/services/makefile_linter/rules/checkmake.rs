@@ -457,34 +457,67 @@ impl Iterator for VariableScanner<'_> {
     }
 }
 
-/// Extract variable name from a reference that might contain modifiers
-fn extract_var_name(var_content: &str) -> String {
-    // Handle default value syntax ${VAR:-default}
+/// Extracts variable name from default value syntax ${VAR:-default}
+fn extract_from_default_value(var_content: &str) -> Option<String> {
     if var_content.contains(":-") {
         if let Some(pos) = var_content.find(":-") {
-            return var_content[..pos].trim().to_string();
+            return Some(var_content[..pos].trim().to_string());
         }
     }
+    None
+}
 
-    // Handle alternative value syntax ${VAR:+alt}
+/// Extracts variable name from alternative value syntax ${VAR:+alt}
+fn extract_from_alternative_value(var_content: &str) -> Option<String> {
     if var_content.contains(":+") {
         if let Some(pos) = var_content.find(":+") {
-            return var_content[..pos].trim().to_string();
+            return Some(var_content[..pos].trim().to_string());
         }
     }
+    None
+}
 
-    // Handle pattern substitution like $(VAR:old=new)
+/// Extracts variable name from pattern substitution like $(VAR:old=new)
+fn extract_from_pattern_substitution(var_content: &str) -> Option<String> {
     if let Some(colon_pos) = var_content.find(':') {
         // But not if it's part of a shell command with spaces
         let before_colon = &var_content[..colon_pos];
-        if !before_colon.contains(' ') && !before_colon.contains('|') && !before_colon.contains('{')
-        {
-            return before_colon.trim().to_string();
+        if !contains_shell_indicators(before_colon) {
+            return Some(before_colon.trim().to_string());
         }
+    }
+    None
+}
+
+/// Checks if text contains shell command indicators
+fn contains_shell_indicators(text: &str) -> bool {
+    text.contains(' ') || text.contains('|') || text.contains('{')
+}
+
+/// Checks if content contains shell operators that should skip validation
+fn contains_shell_operators(var_content: &str) -> bool {
+    var_content.contains('|') || var_content.contains('>') || var_content.contains('<')
+}
+
+/// Extract variable name from a reference that might contain modifiers
+fn extract_var_name(var_content: &str) -> String {
+    // Handle default value syntax ${VAR:-default}
+    if let Some(var_name) = extract_from_default_value(var_content) {
+        return var_name;
+    }
+
+    // Handle alternative value syntax ${VAR:+alt}
+    if let Some(var_name) = extract_from_alternative_value(var_content) {
+        return var_name;
+    }
+
+    // Handle pattern substitution like $(VAR:old=new)
+    if let Some(var_name) = extract_from_pattern_substitution(var_content) {
+        return var_name;
     }
 
     // If it contains shell operators, it's likely a command not a variable
-    if var_content.contains('|') || var_content.contains('>') || var_content.contains('<') {
+    if contains_shell_operators(var_content) {
         return String::new(); // Return empty to skip validation
     }
 
@@ -779,6 +812,127 @@ mod tests {
         assert!(is_function_call("patsubst %.c,%.o,$(SRCS)"));
         assert!(!is_function_call("CC"));
         assert!(!is_function_call("VARIABLE_NAME"));
+    }
+
+    #[test]
+    fn test_extract_var_name_basic() {
+        // Test basic variable name extraction
+        assert_eq!(extract_var_name("VAR"), "VAR");
+        assert_eq!(extract_var_name("MY_VAR"), "MY_VAR");
+        assert_eq!(extract_var_name(" VAR "), "VAR");
+        assert_eq!(extract_var_name("CC"), "CC");
+    }
+
+    #[test]
+    fn test_extract_var_name_default_value_syntax() {
+        // Test default value syntax ${VAR:-default}
+        assert_eq!(extract_var_name("VAR:-default"), "VAR");
+        assert_eq!(extract_var_name("MY_VAR:-/usr/bin"), "MY_VAR");
+        assert_eq!(extract_var_name(" VAR :-value"), "VAR");
+        assert_eq!(extract_var_name("PATH:-/usr/bin:/bin"), "PATH");
+        // Edge case: multiple :- in the string
+        assert_eq!(extract_var_name("VAR:-default:-other"), "VAR");
+    }
+
+    #[test]
+    fn test_extract_var_name_alternative_value_syntax() {
+        // Test alternative value syntax ${VAR:+alt}
+        assert_eq!(extract_var_name("VAR:+alternative"), "VAR");
+        assert_eq!(extract_var_name("MY_VAR:+/tmp"), "MY_VAR");
+        assert_eq!(extract_var_name(" VAR :+value"), "VAR");
+        assert_eq!(extract_var_name("DEBUG:+--debug"), "DEBUG");
+        // Edge case: multiple :+ in the string
+        assert_eq!(extract_var_name("VAR:+alt:+other"), "VAR");
+    }
+
+    #[test]
+    fn test_extract_var_name_pattern_substitution() {
+        // Test pattern substitution like $(VAR:old=new)
+        assert_eq!(extract_var_name("SRCS:.c=.o"), "SRCS");
+        assert_eq!(extract_var_name("FILES:%.txt=%.bak"), "FILES");
+        assert_eq!(extract_var_name("VAR:old=new"), "VAR");
+        assert_eq!(extract_var_name(" VAR :.c=.o"), "VAR :.c=.o");
+
+        // Should NOT extract from shell commands with spaces/pipes/braces
+        assert_eq!(extract_var_name("shell ls:test"), "shell ls:test");
+        assert_eq!(extract_var_name("cmd | grep:pattern"), "");
+        assert_eq!(extract_var_name("shell {cmd:arg}"), "shell {cmd:arg}");
+    }
+
+    #[test]
+    fn test_extract_var_name_shell_operators() {
+        // Test shell operators - should return empty string to skip validation
+        assert_eq!(extract_var_name("shell date | cut -d:"), "");
+        assert_eq!(extract_var_name("cat file > output"), "");
+        assert_eq!(extract_var_name("cmd < input"), "");
+        assert_eq!(extract_var_name("ls | grep pattern"), "");
+        assert_eq!(extract_var_name("echo hello > file"), "");
+        assert_eq!(extract_var_name("cat < file | sort"), "");
+    }
+
+    #[test]
+    fn test_extract_var_name_edge_cases() {
+        // Test empty and whitespace
+        assert_eq!(extract_var_name(""), "");
+        assert_eq!(extract_var_name("   "), "");
+
+        // Test complex combinations
+        assert_eq!(extract_var_name("VAR:-default:+alt"), "VAR");
+        assert_eq!(extract_var_name("VAR:+alt:-default"), "VAR:+alt");
+
+        // Test colon without valid substitution patterns
+        assert_eq!(extract_var_name("file:line:col"), "file");
+        assert_eq!(extract_var_name("url:http://example.com"), "url");
+
+        // Test variables with numbers and underscores
+        assert_eq!(extract_var_name("VAR_123"), "VAR_123");
+        assert_eq!(extract_var_name("PREFIX_VAR_SUFFIX"), "PREFIX_VAR_SUFFIX");
+
+        // Test shell command detection edge cases
+        assert_eq!(extract_var_name("PATH"), "PATH");
+        assert_eq!(extract_var_name("PATH:something"), "PATH");
+    }
+
+    #[test]
+    fn test_extract_var_name_precedence() {
+        // Test precedence - :- should be checked before :
+        assert_eq!(extract_var_name("VAR:-def:old=new"), "VAR");
+
+        // Test precedence - :+ should be checked before :
+        assert_eq!(extract_var_name("VAR:+alt:old=new"), "VAR");
+
+        // Test that pattern substitution works when no :- or :+
+        assert_eq!(extract_var_name("VAR:old=new"), "VAR");
+    }
+
+    #[test]
+    fn test_helper_functions() {
+        // Test extract_from_default_value
+        assert_eq!(extract_from_default_value("VAR:-default"), Some("VAR".to_string()));
+        assert_eq!(extract_from_default_value("VAR"), None);
+        assert_eq!(extract_from_default_value("VAR:+alt"), None);
+
+        // Test extract_from_alternative_value
+        assert_eq!(extract_from_alternative_value("VAR:+alt"), Some("VAR".to_string()));
+        assert_eq!(extract_from_alternative_value("VAR"), None);
+        assert_eq!(extract_from_alternative_value("VAR:-def"), None);
+
+        // Test extract_from_pattern_substitution
+        assert_eq!(extract_from_pattern_substitution("VAR:old=new"), Some("VAR".to_string()));
+        assert_eq!(extract_from_pattern_substitution("VAR"), None);
+        assert_eq!(extract_from_pattern_substitution("cmd with spaces:arg"), None);
+
+        // Test contains_shell_indicators
+        assert!(contains_shell_indicators("cmd with spaces"));
+        assert!(contains_shell_indicators("cmd|pipe"));
+        assert!(contains_shell_indicators("cmd{brace}"));
+        assert!(!contains_shell_indicators("VAR"));
+
+        // Test contains_shell_operators
+        assert!(contains_shell_operators("cmd|pipe"));
+        assert!(contains_shell_operators("cmd>output"));
+        assert!(contains_shell_operators("cmd<input"));
+        assert!(!contains_shell_operators("VAR:value"));
     }
 }
 
