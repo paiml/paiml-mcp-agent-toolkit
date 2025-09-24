@@ -1,5 +1,6 @@
 pub mod checkmake;
 pub mod performance;
+pub mod security;
 
 use super::ast::{MakefileAst, SourceSpan};
 use std::path::PathBuf;
@@ -94,6 +95,12 @@ impl RuleRegistry {
         registry.register(Box::new(checkmake::UndefinedVariableRule));
         registry.register(Box::new(performance::RecursiveExpansionRule::default()));
         registry.register(Box::new(checkmake::PortabilityRule));
+
+        // Register security rules (high priority)
+        registry.register(Box::new(security::ShellInjectionRule));
+        registry.register(Box::new(security::SensitiveDataRule));
+        registry.register(Box::new(security::UnsafeCommandRule));
+        registry.register(Box::new(security::PrivilegeEscalationRule));
 
         registry
     }
