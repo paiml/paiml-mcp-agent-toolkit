@@ -2590,6 +2590,7 @@ mod tests {
             timeout: 60,
             include: vec![],
             exclude: vec![],
+            max_depth: 8,
         });
 
         let input = CliInput::from_commands(command);
