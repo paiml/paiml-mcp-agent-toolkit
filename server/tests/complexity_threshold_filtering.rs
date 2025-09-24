@@ -52,98 +52,109 @@ fn medium_function(x: i32) -> i32 {
             )
         }
         11..=15 => {
-            // Higher complexity function (complexity ~14)
-            String::from(
+            // Function with exact complexity values (14 or 15)
+            let extra_conditions = if complexity == 15 { 2 } else { 1 };
+            let mut code = String::from(
                 r#"
-fn high_function(x: i32) -> i32 {
-    if x > 0 {
-        if x > 10 {
-            if x > 20 {
-                if x > 30 {
-                    x * 4
-                } else {
-                    x * 3
-                }
-            } else {
-                x * 2
+fn high_function(x: i32, y: i32) -> i32 {
+    // Base complexity: 1 (function entry)
+    let mut result = 0;
+
+    // Add conditions to reach target complexity
+    if x > 0 {           // +1 = 2
+        result += 1;
+        if x > 10 {      // +1 = 3
+            result += 2;
+            if x > 20 {  // +1 = 4
+                result += 3;
             }
-        } else if x > 5 {
-            x + 10
-        } else {
-            x + 1
         }
-    } else if x < 0 {
-        if x < -10 {
-            if x < -20 {
-                -x * 3
-            } else {
-                -x * 2
-            }
-        } else {
-            -x
+        if x > 30 {      // +1 = 5
+            result += 4;
         }
-    } else {
-        match x {
-            0 => 0,
-            _ => unreachable!(),
+    } else if x < 0 {    // +1 = 6
+        result -= 1;
+        if x < -10 {     // +1 = 7
+            result -= 2;
         }
+    } else {             // else is not a branch
+        result = 0;
     }
-}
-"#,
-            )
+
+    // Add more branches to reach target
+    if y > 0 {           // +1 = 8
+        result += y;
+        if y > 10 {      // +1 = 9
+            result *= 2;
+        }
+    } else if y < 0 {    // +1 = 10
+        result -= y;
+    }
+
+    // Add match to increase complexity
+    match result % 3 {   // +2 (for 2 non-default cases) = 12
+        0 => result * 2,
+        1 => result + 1,
+        _ => result,
+    }
+"#);
+
+            // Add extra conditions if needed for complexity 15
+            if extra_conditions == 2 {
+                code.push_str(r#"
+
+    // Extra conditions for complexity 15
+    if result > 100 {    // +1 = 13
+        result / 2
+    } else if result < -100 {  // +1 = 14
+        result * -1
+    } else if result == 0 {    // +1 = 15
+        1
+    } else {
+        result
+    }"#);
+            } else {
+                code.push_str(r#"
+
+    // Extra condition for complexity 14
+    if result > 100 {    // +1 = 13
+        result / 2
+    } else if result < -100 {  // +1 = 14
+        result * -1
+    } else {
+        result
+    }"#);
+            }
+
+            code.push_str("\n}\n");
+            code
         }
         16..=20 => {
-            // Very high complexity function (complexity ~16)
-            String::from(
+            // Function with exact complexity (16-20)
+            // Cyclomatic complexity = 1 + number of decision points
+            // Each if adds 1, each else-if adds 1
+            let target = complexity;
+            let mut code = String::from(
                 r#"
-fn very_high_function(x: i32) -> i32 {
-    if x > 0 {
-        if x > 10 {
-            if x > 20 {
-                if x > 30 {
-                    if x > 40 {
-                        x * 5
-                    } else {
-                        x * 4
-                    }
-                } else {
-                    x * 3
-                }
-            } else {
-                x * 2
+fn very_high_function(x: i32, y: i32, z: i32) -> i32 {
+    let mut result = 0;
+"#);
+
+            // Add independent if statements - each adds 1 to complexity
+            // We need target-1 decision points since base complexity is 1
+            for i in 1..target {
+                code.push_str(&format!(r#"
+    if x > {} {{
+        result += {};
+    }}"#, i * 10, i));
             }
-        } else if x > 5 {
-            if x > 7 {
-                x + 20
-            } else {
-                x + 10
-            }
-        } else {
-            x + 1
-        }
-    } else if x < 0 {
-        if x < -10 {
-            if x < -20 {
-                if x < -30 {
-                    -x * 4
-                } else {
-                    -x * 3
-                }
-            } else {
-                -x * 2
-            }
-        } else {
-            -x
-        }
-    } else {
-        match x {
-            0 => 0,
-            _ => unreachable!(),
-        }
-    }
+
+            code.push_str(r#"
+
+    result
 }
-"#,
-            )
+"#);
+            code
         }
         21..=25 => {
             // Extremely high complexity function (complexity ~25)
