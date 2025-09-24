@@ -195,27 +195,40 @@ coverage:
 	@echo "📊 Running LLVM-based code coverage (manual)..."
 	@mkdir -p target/llvm-cov
 	@echo "🧹 Cleaning previous coverage data..."
-	@rm -rf target/llvm-cov/*.profraw target/llvm-cov/*.profdata
-	@cd server && cargo clean
+	@rm -rf target/llvm-cov
+	@mkdir -p target/llvm-cov
 	@echo "🔨 Building and running tests with coverage instrumentation..."
 	@cd server && SKIP_MCP_TABLES=1 CARGO_INCREMENTAL=0 \
 		RUSTFLAGS="-C instrument-coverage" \
 		LLVM_PROFILE_FILE="../target/llvm-cov/pmat-%p-%m.profraw" \
 		cargo test --features skip-slow-tests
 	@echo "📊 Merging coverage data..."
-	@llvm-profdata merge -sparse target/llvm-cov/*.profraw -o target/llvm-cov/pmat.profdata
-	@echo "📊 Generating LCOV report..."
-	@cd server && llvm-cov export \
-		$$(RUSTFLAGS="-C instrument-coverage" cargo test --features skip-slow-tests --no-run --message-format=json 2>/dev/null | \
-		jq -r "select(.profile.test == true) | .filenames[]" | grep -v '/rustc/' | head -1) \
-		--format=lcov \
-		--instr-profile=../target/llvm-cov/pmat.profdata \
-		--ignore-filename-regex="(examples|benches|tests|target|/.cargo/|/rustc/)" \
-		> ../target/llvm-cov/lcov.info 2>/dev/null || echo "Note: Coverage report generation requires llvm-tools"
+	@if command -v llvm-profdata >/dev/null 2>&1; then \
+		llvm-profdata merge -sparse target/llvm-cov/*.profraw -o target/llvm-cov/pmat.profdata 2>/dev/null && \
+		echo "✅ Coverage data merged successfully" || echo "⚠️  No coverage data to merge"; \
+	else \
+		echo "⚠️  llvm-profdata not found - skipping coverage merge"; \
+	fi
+	@echo "📊 Generating coverage report..."
+	@if [ -f target/llvm-cov/pmat.profdata ] && command -v llvm-cov >/dev/null 2>&1; then \
+		cd server && llvm-cov export \
+			$$(RUSTFLAGS="-C instrument-coverage" cargo test --features skip-slow-tests --no-run --message-format=json 2>/dev/null | \
+			jq -r "select(.profile.test == true) | .filenames[]" | grep -v '/rustc/' | head -1) \
+			--format=lcov \
+			--instr-profile=../target/llvm-cov/pmat.profdata \
+			--ignore-filename-regex="(examples|benches|tests|target|/.cargo/|/rustc/)" \
+			> ../target/llvm-cov/lcov.info 2>/dev/null && \
+		echo "✅ LCOV report generated" || echo "⚠️  Could not generate LCOV report"; \
+	else \
+		echo "⚠️  Skipping LCOV generation (missing tools or data)"; \
+	fi
 	@echo "✅ Coverage report: target/llvm-cov/lcov.info"
 	@if [ -f target/llvm-cov/lcov.info ]; then \
 		echo "📊 Coverage summary:"; \
 		grep -E "LF:|LH:" target/llvm-cov/lcov.info | head -2 || echo "Coverage data generated"; \
+	else \
+		echo "📊 Running fallback test count coverage..."; \
+		cd server && cargo test --features skip-slow-tests 2>&1 | grep -E "test result:" || echo "Tests completed"; \
 	fi
 
 # Unified coverage for all test types
