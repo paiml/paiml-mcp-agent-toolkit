@@ -324,6 +324,7 @@ async fn route_dead_code_analysis(cmd: AnalyzeCommands) -> Result<()> {
         timeout,
         include,
         exclude,
+        max_depth,
     } = cmd
     {
         super::complexity_handlers::handle_analyze_dead_code(
@@ -339,6 +340,7 @@ async fn route_dead_code_analysis(cmd: AnalyzeCommands) -> Result<()> {
             timeout,
             include,
             exclude,
+            max_depth,
         )
         .await
     } else {

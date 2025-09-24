@@ -1129,6 +1129,7 @@ pub async fn handle_analyze_dead_code(
     timeout: u64,
     include: Vec<String>,
     exclude: Vec<String>,
+    max_depth: usize,
 ) -> Result<()> {
     eprintln!("☠️ Analyzing dead code in project...");
     eprintln!("⏰ Analysis timeout set to {timeout} seconds");
@@ -1155,6 +1156,7 @@ pub async fn handle_analyze_dead_code(
             top_files,
             include,
             exclude,
+            max_depth,
         )
         .await
     })
@@ -1195,6 +1197,7 @@ async fn run_dead_code_analysis_with_filters(
     top_files: Option<usize>,
     include: Vec<String>,
     exclude: Vec<String>,
+    max_depth: usize,
 ) -> Result<crate::models::dead_code::DeadCodeResult> {
     use crate::models::dead_code::DeadCodeAnalysisConfig;
     use crate::services::cargo_dead_code_analyzer::CargoDeadCodeAnalyzer;
@@ -1205,9 +1208,9 @@ async fn run_dead_code_analysis_with_filters(
 
     // Use the accurate cargo-based analyzer instead of the heuristic one
     let cargo_analyzer = if include_tests {
-        CargoDeadCodeAnalyzer::new(path).include_tests()
+        CargoDeadCodeAnalyzer::new(path).include_tests().with_max_depth(max_depth)
     } else {
-        CargoDeadCodeAnalyzer::new(path)
+        CargoDeadCodeAnalyzer::new(path).with_max_depth(max_depth)
     };
 
     // Run cargo-based analysis for accurate results

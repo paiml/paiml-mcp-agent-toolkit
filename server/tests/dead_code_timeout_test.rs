@@ -106,7 +106,7 @@ fn test_dead_code_handles_single_file() {
         .args([
             "analyze",
             "dead-code",
-            "--file",
+            "--path",
             temp_file.path().to_str().unwrap(),
         ])
         .output()

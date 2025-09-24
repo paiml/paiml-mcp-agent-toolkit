@@ -293,6 +293,7 @@ impl CliAdapter {
                 timeout: _,
                 include: _,
                 exclude: _,
+                max_depth: _,
             } => Self::decode_analyze_dead_code(
                 path,
                 format,
