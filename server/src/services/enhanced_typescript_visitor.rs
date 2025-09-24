@@ -13,7 +13,8 @@ use swc_common::{Span, Spanned};
 #[cfg(feature = "typescript-ast")]
 use swc_ecma_ast::{
     ClassDecl, ClassMember, Constructor, Expr, FnDecl, Function, ImportDecl, MethodProp, Module,
-    ModuleDecl, NamedExport, Pat, PropName, TsEnumDecl, TsInterfaceDecl, VarDecl,
+    ModuleDecl, NamedExport, Pat, PropName, TsEnumDecl, TsInterfaceDecl, VarDecl, ClassMethod,
+    ReturnStmt, ObjectLit, PropOrSpread, Prop, KeyValueProp, MethodKind,
 };
 #[cfg(feature = "typescript-ast")]
 use swc_ecma_visit::{Visit, VisitWith};
@@ -75,6 +76,60 @@ impl EnhancedTypeScriptVisitor {
     /// Checks if function is async
     fn is_async_function(&self, func: &Function) -> bool {
         func.is_async
+    }
+
+    /// Extracts methods from object literals (complexity ≤10)
+    fn extract_object_methods(&mut self, obj_lit: &ObjectLit, object_name: &str) {
+        for prop_or_spread in &obj_lit.props {
+            if let PropOrSpread::Prop(prop) = prop_or_spread {
+                match prop.as_ref() {
+                    Prop::KeyValue(KeyValueProp { key, value }) => {
+                        let method_name = match key {
+                            PropName::Ident(ident) => ident.sym.to_string(),
+                            PropName::Str(s) => s.value.to_string(),
+                            _ => continue,
+                        };
+
+                        let qualified_name = format!("{}::{}", object_name, method_name);
+                        let (is_async, line) = match value.as_ref() {
+                            Expr::Fn(fn_expr) => {
+                                (fn_expr.function.is_async, self.get_line(fn_expr.function.span))
+                            }
+                            Expr::Arrow(arrow) => {
+                                (arrow.is_async, self.get_line(arrow.span))
+                            }
+                            _ => continue,
+                        };
+
+                        self.items.push(AstItem::Function {
+                            name: qualified_name,
+                            visibility: "public".to_string(),
+                            is_async,
+                            line,
+                        });
+                    }
+                    Prop::Method(method_prop) => {
+                        let method_name = match &method_prop.key {
+                            PropName::Ident(ident) => ident.sym.to_string(),
+                            PropName::Str(s) => s.value.to_string(),
+                            _ => continue,
+                        };
+
+                        let qualified_name = format!("{}::{}", object_name, method_name);
+                        let is_async = method_prop.function.is_async;
+                        let line = self.get_line(method_prop.function.span);
+
+                        self.items.push(AstItem::Function {
+                            name: qualified_name,
+                            visibility: "public".to_string(),
+                            is_async,
+                            line,
+                        });
+                    }
+                    _ => {}
+                }
+            }
+        }
     }
 }
 
@@ -176,6 +231,29 @@ impl Visit for EnhancedTypeScriptVisitor {
         constructor.visit_children_with(self);
     }
 
+    fn visit_class_method(&mut self, method: &ClassMethod) {
+        let method_name = match &method.key {
+            PropName::Ident(ident) => ident.sym.to_string(),
+            PropName::Str(s) => s.value.to_string(),
+            PropName::Num(n) => n.value.to_string(),
+            PropName::Computed(_) => "computed".to_string(),
+            PropName::BigInt(b) => b.value.to_string(),
+        };
+
+        let qualified_name = self.get_qualified_name(&method_name);
+        let is_async = method.function.is_async;
+        let line = self.get_line(method.span());
+
+        self.items.push(AstItem::Function {
+            name: qualified_name,
+            visibility: if method.is_static { "static" } else { "public" }.to_string(),
+            is_async,
+            line,
+        });
+
+        method.visit_children_with(self);
+    }
+
     fn visit_ts_interface_decl(&mut self, interface: &TsInterfaceDecl) {
         let name = self.get_qualified_name(interface.id.sym.as_ref());
         let line = self.get_line(interface.span());
@@ -271,6 +349,13 @@ impl Visit for EnhancedTypeScriptVisitor {
                                 is_async,
                                 line,
                             });
+                        }
+                    }
+                    Expr::Object(obj_lit) => {
+                        // Handle object literal with methods (like { get: async (endpoint) => {...} })
+                        if let Pat::Ident(ident) = &declarator.name {
+                            let object_name = ident.id.sym.as_ref();
+                            self.extract_object_methods(obj_lit, object_name);
                         }
                     }
                     _ => {}

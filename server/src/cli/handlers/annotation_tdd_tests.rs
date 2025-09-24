@@ -162,7 +162,7 @@ function leakyFunction() {
 
         // Create files with various quality issues
         fs::write(temp_dir.path().join("long.js"),
-            &"function veryLong() {\n".to_string() + &"console.log('line');\n".repeat(200) + "}").unwrap();
+            &format!("function veryLong() {{\n{}}}", "console.log('line');\n".repeat(200) + "}")).unwrap();
 
         fs::write(temp_dir.path().join("duplicate.js"),
             "function copy1() { return 42; }\nfunction copy2() { return 42; }\nfunction copy3() { return 42; }").unwrap();
@@ -348,6 +348,7 @@ mod refactor_phase_quality {
                     high_complexity_functions: 0,
                     avg_complexity: 1.0,
                     complexity_score: 1.0,
+                    function_names: vec![format!("function{}", i)],
                 });
             }
 
@@ -391,6 +392,7 @@ mod refactor_phase_quality {
                     high_complexity_functions: 0,
                     avg_complexity: 1.0,
                     complexity_score: 1.0,
+                    function_names: vec![format!("function_{}", name)],
                 });
             }
 
@@ -445,6 +447,7 @@ mod refactor_phase_quality {
                     high_complexity_functions: high_complexity_count as usize,
                     avg_complexity: if has_high_complexity { 15.0 } else { 3.0 },
                     complexity_score: if has_high_complexity { 15.0 } else { 3.0 },
+                    function_names: vec!["testFunction".to_string()],
                 }],
             };
 
