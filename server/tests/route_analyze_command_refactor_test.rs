@@ -62,6 +62,7 @@ async fn test_route_analyze_command_variants() {
         timeout: 60,
         include: vec![],
         exclude: vec![],
+        max_depth: 8,
     };
 
     let result = route_analyze_command(dead_code_cmd).await;
