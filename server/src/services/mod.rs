@@ -132,6 +132,10 @@ pub mod enhanced_ast_visitor;
 pub mod enhanced_python_visitor;
 pub mod enhanced_reporting;
 pub mod enhanced_typescript_visitor;
+#[cfg(test)]
+pub mod enhanced_naming_tests;
+#[cfg(test)]
+pub mod real_world_enhanced_naming_test;
 pub mod file_classifier;
 #[cfg(test)]
 mod file_classifier_property_tests;

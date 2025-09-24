@@ -46,60 +46,81 @@ pub async fn analyze_typescript_file_with_complexity_and_classifier(
         .await
         .map_err(TemplateError::Io)?;
 
-    // Use the new AST module to parse
-    let strategy = TypeScriptStrategy::new();
-    let ast = strategy
-        .parse_file(path, &content)
-        .await
-        .map_err(|e| TemplateError::InvalidUtf8(e.to_string()))?;
-
-    // Extract functions using the new API
-    let functions = strategy.extract_functions(&ast);
-
-    // Convert to old format
+    // Use enhanced visitor for accurate function extraction
+    #[cfg(feature = "typescript-ast")]
     let mut function_metrics = Vec::new();
-    for (i, _node) in functions.iter().enumerate() {
-        function_metrics.push(FunctionComplexity {
-            name: format!("function_{i}"),
-            line_start: (i * 10) as u32,
-            line_end: ((i + 1) * 10) as u32,
-            metrics: ComplexityMetrics {
-                cyclomatic: 1, // Placeholder
-                cognitive: 1,  // Placeholder
-                nesting_max: 0,
-                lines: 10,
-                halstead: None,
-            },
-        });
+    #[cfg(feature = "typescript-ast")]
+    {
+        // Parse TypeScript/JavaScript with SWC to get real AST
+        if let Ok(module) = parse_typescript_content(&content, path) {
+            let visitor = EnhancedTypeScriptVisitor::new(path);
+            let items = visitor.extract_items(&module);
+
+            // Count functions from the items
+            for item in &items {
+                if let AstItem::Function { name, .. } = item {
+                    function_metrics.push(FunctionComplexity {
+                        name: name.clone(),
+                        line_start: 1, // Placeholder
+                        line_end: 10,  // Placeholder
+                        metrics: ComplexityMetrics {
+                            cyclomatic: 1, // Placeholder
+                            cognitive: 1,  // Placeholder
+                            nesting_max: 0,
+                            lines: 10,
+                            halstead: None,
+                        },
+                    });
+                }
+            }
+        }
     }
 
-    // Extract classes
-    let types = strategy.extract_types(&ast);
+    #[cfg(not(feature = "typescript-ast"))]
+    let function_metrics = Vec::new();
+
+    // Extract classes using enhanced visitor as well
+    #[cfg(feature = "typescript-ast")]
     let mut class_metrics = Vec::new();
-    for (i, _node) in types.iter().enumerate() {
-        class_metrics.push(ClassComplexity {
-            name: format!("class_{i}"),
-            line_start: ((functions.len() + i) * 10) as u32,
-            line_end: ((functions.len() + i + 1) * 10) as u32,
-            methods: Vec::new(),
-            metrics: ComplexityMetrics {
-                cyclomatic: 1,
-                cognitive: 1,
-                nesting_max: 0,
-                lines: 10,
-                halstead: None,
-            },
-        });
+    #[cfg(feature = "typescript-ast")]
+    {
+        if let Ok(module) = parse_typescript_content(&content, path) {
+            let visitor = EnhancedTypeScriptVisitor::new(path);
+            let items = visitor.extract_items(&module);
+
+            // Count classes from the items
+            for item in &items {
+                if let AstItem::Struct { name, .. } = item {
+                    class_metrics.push(ClassComplexity {
+                        name: name.clone(),
+                        line_start: 1, // Placeholder
+                        line_end: 10,  // Placeholder
+                        methods: Vec::new(),
+                        metrics: ComplexityMetrics {
+                            cyclomatic: 1,
+                            cognitive: 1,
+                            nesting_max: 0,
+                            lines: 10,
+                            halstead: None,
+                        },
+                    });
+                }
+            }
+        }
     }
 
-    // Calculate total complexity
-    let (cyclomatic, cognitive) = strategy.calculate_complexity(&ast);
+    #[cfg(not(feature = "typescript-ast"))]
+    let class_metrics = Vec::new();
+
+    // Calculate total complexity (simplified)
+    let cyclomatic = std::cmp::max(1, function_metrics.len()) as u16;
+    let cognitive = function_metrics.len() as u16;
 
     Ok(FileComplexityMetrics {
         path: path.display().to_string(),
         total_complexity: ComplexityMetrics {
-            cyclomatic: cyclomatic as u16,
-            cognitive: cognitive as u16,
+            cyclomatic,
+            cognitive,
             nesting_max: 2,
             lines: 100,
             halstead: None,

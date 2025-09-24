@@ -336,6 +336,10 @@ path = "examples/scaffold_agent_course_project.rs"
 name = "similarity_demo"
 path = "examples/similarity_demo.rs"
 
+[[example]]
+name = "context_analysis_demo"
+path = "examples/context_analysis_demo.rs"
+
 # Profile configuration moved to workspace root
 
 [package.metadata.docs.rs]
