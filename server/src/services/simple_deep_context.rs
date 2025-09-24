@@ -47,6 +47,7 @@ pub struct FileComplexityDetail {
     pub high_complexity_functions: usize,
     pub avg_complexity: f64,
     pub complexity_score: f64, // Weighted score for ranking
+    pub function_names: Vec<String>, // Individual function names extracted from AST
 }
 
 impl SimpleDeepContext {
@@ -108,6 +109,9 @@ impl SimpleDeepContext {
         // Phase 1: File discovery
         let source_files = self.discover_source_files(&config).await?;
         info!("📁 Discovered {} source files", source_files.len());
+        for file in &source_files {
+            info!("📄 File: {}", file.display());
+        }
 
         // Phase 2: Basic analysis
         let (complexity_metrics, file_complexity_details) =
@@ -134,7 +138,7 @@ impl SimpleDeepContext {
     async fn discover_source_files(&self, config: &SimpleAnalysisConfig) -> Result<Vec<PathBuf>> {
         use walkdir::WalkDir;
 
-        let source_extensions = ["rs", "js", "ts", "jsx", "tsx", "py", "cpp", "c", "h"];
+        let source_extensions = ["rs", "js", "ts", "jsx", "tsx", "py", "cpp", "c", "h", "wasm", "wat", "rb", "ruchy", "go", "java", "cs", "kt", "sh", "bash"];
         let exclude_dirs = ["target", "node_modules", ".git", "build", "dist"];
 
         let mut files = Vec::new();
@@ -155,6 +159,7 @@ impl SimpleDeepContext {
             .filter(|e| e.file_type().is_file())
         {
             let path = entry.path();
+            info!("🔍 Found file: {}", path.display());
 
             // Check exclusions
             let should_exclude = path.components().any(|comp| {
@@ -166,12 +171,15 @@ impl SimpleDeepContext {
             });
 
             if should_exclude {
+                info!("🚫 Excluding file: {}", path.display());
                 continue;
             }
 
             // Check extensions
             if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+                info!("🔍 File {} has extension: {}", path.display(), ext);
                 if source_extensions.contains(&ext) {
+                    info!("✅ Extension {} is valid", ext);
                     // Apply include patterns if specified
                     if config.include_patterns.is_empty() {
                         // No include patterns specified, include all files with valid extensions
@@ -241,6 +249,7 @@ impl SimpleDeepContext {
                 high_complexity_functions: metrics.high_complexity_functions,
                 avg_complexity: metrics.avg_complexity,
                 complexity_score,
+                function_names: metrics.function_names.clone(),
             });
         }
 
@@ -285,6 +294,7 @@ impl SimpleDeepContext {
 
         // Detect the file type based on extension
         let extension = file_path.extension().and_then(|e| e.to_str()).unwrap_or("");
+        info!("🔍 Analyzing file: {} with extension: {}", file_path.display(), extension);
 
         let (function_count, high_complexity_functions, avg_complexity) = if extension == "rs" {
             // Use proper AST complexity analysis for Rust files
@@ -316,8 +326,212 @@ impl SimpleDeepContext {
                     (0, 0, 0.0)
                 }
             }
+        } else if matches!(extension, "ts" | "tsx" | "js" | "jsx") {
+            info!("🚀 Using enhanced TypeScript/JavaScript AST analysis for {}", file_path.display());
+            // Use enhanced TypeScript/JavaScript AST analysis
+            use tokio::fs;
+
+            match fs::read_to_string(file_path).await {
+                Ok(content) => {
+                    #[cfg(feature = "typescript-ast")]
+                    {
+                        use crate::services::enhanced_typescript_visitor::EnhancedTypeScriptVisitor;
+                        use std::sync::Arc;
+                        use swc_common::{FileName, SourceMap};
+                        use swc_ecma_parser::{lexer::Lexer, Parser, StringInput, Syntax, TsSyntax};
+
+                        // Parse TypeScript/JavaScript with SWC to get real AST
+                        let source_map = Arc::new(SourceMap::default());
+                        let source_file = source_map.new_source_file(
+                            FileName::Custom(file_path.display().to_string()).into(),
+                            content.clone(),
+                        );
+
+                        let syntax = if extension == "tsx" {
+                            Syntax::Typescript(TsSyntax {
+                                tsx: true,
+                                decorators: true,
+                                dts: false,
+                                no_early_errors: true,
+                                disallow_ambiguous_jsx_like: true,
+                            })
+                        } else if extension == "jsx" {
+                            Syntax::Es(swc_ecma_parser::EsSyntax {
+                                jsx: true,
+                                ..Default::default()
+                            })
+                        } else if extension == "ts" {
+                            Syntax::Typescript(TsSyntax {
+                                tsx: false,
+                                decorators: true,
+                                dts: false,
+                                no_early_errors: true,
+                                disallow_ambiguous_jsx_like: true,
+                            })
+                        } else {
+                            Syntax::Es(Default::default())
+                        };
+
+                        let lexer = Lexer::new(
+                            syntax,
+                            Default::default(),
+                            StringInput::new(&content, Default::default(), Default::default()),
+                            None,
+                        );
+
+                        let mut parser = Parser::new_from(lexer);
+
+                        match parser.parse_module() {
+                            Ok(module) => {
+                                info!("🎯 Successfully parsed TypeScript module for {}", file_path.display());
+                                let visitor = EnhancedTypeScriptVisitor::new(file_path);
+                                let items = visitor.extract_items(&module);
+
+                                info!("🔍 Extracted {} AST items from module", items.len());
+                                for (i, item) in items.iter().enumerate() {
+                                    match item {
+                                        crate::services::context::AstItem::Function { name, .. } => {
+                                            info!("  🔧 Function {}: {}", i, name);
+                                        }
+                                        crate::services::context::AstItem::Struct { name, .. } => {
+                                            info!("  🏗️ Struct {}: {}", i, name);
+                                        }
+                                        crate::services::context::AstItem::Import { module, .. } => {
+                                            info!("  📦 Import {}: {}", i, module);
+                                        }
+                                        _ => {
+                                            info!("  ❓ Other item {}: {:?}", i, item);
+                                        }
+                                    }
+                                }
+
+                                // Count functions from the items
+                                let function_count = items.iter().filter(|item| matches!(item, crate::services::context::AstItem::Function { .. })).count();
+                                info!("📊 Found {} functions total", function_count);
+
+                                if function_count == 0 {
+                                    (0, 0, 0.0)
+                                } else {
+                                    // Simple complexity heuristic for TypeScript/JavaScript
+                                    let high_complexity_functions = function_count / 4; // Assume 25% are high complexity
+                                    let avg_complexity = 2.5; // Simple average for now
+                                    (function_count, high_complexity_functions, avg_complexity)
+                                }
+                            }
+                            Err(err) => {
+                                info!("❌ Failed to parse TypeScript module for {}: {:?}", file_path.display(), err);
+                                (0, 0, 0.0)
+                            },
+                        }
+                    }
+                    #[cfg(not(feature = "typescript-ast"))]
+                    {
+                        // Fallback to heuristic analysis if typescript-ast feature is not enabled
+                        match self
+                            .analyze_file_complexity_heuristic(file_path, extension)
+                            .await
+                        {
+                            Ok((count, high, avg)) => (count, high, avg),
+                            Err(_) => (0, 0, 0.0),
+                        }
+                    }
+                }
+                Err(_) => (0, 0, 0.0),
+            }
+        } else if matches!(extension, "wasm" | "wat") {
+            info!("🚀 Using WASM AST analysis for {}", file_path.display());
+            // Use WASM analysis
+            use tokio::fs;
+
+            // Try to read as text first, then as binary for WASM files
+            let content = if extension == "wasm" {
+                // Binary WASM - read as bytes then convert
+                match fs::read(file_path).await {
+                    Ok(bytes) => String::from_utf8_lossy(&bytes).into_owned(),
+                    Err(_) => {
+                        return Ok(FileComplexityMetrics {
+                            function_count: 0,
+                            high_complexity_functions: 0,
+                            avg_complexity: 0.0,
+                            function_names: vec![],
+                        });
+                    }
+                }
+            } else {
+                // WAT text file
+                match fs::read_to_string(file_path).await {
+                    Ok(text) => text,
+                    Err(_) => {
+                        return Ok(FileComplexityMetrics {
+                            function_count: 0,
+                            high_complexity_functions: 0,
+                            avg_complexity: 0.0,
+                            function_names: vec![],
+                        });
+                    }
+                }
+            };
+
+            {
+                    #[cfg(feature = "wasm-ast")]
+                    {
+                        use crate::services::languages::wasm::WasmModuleAnalyzer;
+
+                        let analyzer = WasmModuleAnalyzer::new(file_path);
+                        let items = if extension == "wasm" {
+                            // Binary WASM file
+                            match std::fs::read(file_path) {
+                                Ok(wasm_bytes) => analyzer.analyze_wasm_binary(&wasm_bytes),
+                                Err(_) => Err("Failed to read WASM binary".to_string()),
+                            }
+                        } else {
+                            // WAT text file
+                            analyzer.analyze_wat_text(&content)
+                        };
+
+                        match items {
+                            Ok(ast_items) => {
+                                let function_count = ast_items.iter().filter(|item| matches!(item, crate::services::context::AstItem::Function { .. })).count();
+                                info!("📊 Found {} WASM functions", function_count);
+                                if function_count == 0 {
+                                    (0, 0, 0.0)
+                                } else {
+                                    // Simple complexity for WASM
+                                    let high_complexity_functions = function_count / 5; // Assume 20% are high complexity
+                                    let avg_complexity = 3.0; // WASM tends to be more complex
+                                    (function_count, high_complexity_functions, avg_complexity)
+                                }
+                            }
+                            Err(err) => {
+                                info!("❌ Failed to analyze WASM file {}: {}", file_path.display(), err);
+                                (0, 0, 0.0)
+                            }
+                        }
+                    }
+                    #[cfg(not(feature = "wasm-ast"))]
+                    {
+                        // Fallback to heuristic analysis if wasm-ast feature is not enabled
+                        match self
+                            .analyze_file_complexity_heuristic(file_path, extension)
+                            .await
+                        {
+                            Ok((count, high, avg)) => (count, high, avg),
+                            Err(_) => (0, 0, 0.0),
+                        }
+                    }
+            }
+        } else if matches!(extension, "rb" | "ruchy") {
+            info!("🚀 Using Ruby/Ruchy heuristic analysis for {}", file_path.display());
+            // For Ruby files, use enhanced heuristic analysis until full AST support is added
+            match self
+                .analyze_file_complexity_heuristic(file_path, extension)
+                .await
+            {
+                Ok((count, high, avg)) => (count, high, avg),
+                Err(_) => (0, 0, 0.0),
+            }
         } else {
-            // For non-Rust files, use heuristic-based analysis
+            // For other non-Rust files, use heuristic-based analysis
             // This provides basic metrics until full AST support is added for each language
             match self
                 .analyze_file_complexity_heuristic(file_path, extension)
@@ -328,10 +542,12 @@ impl SimpleDeepContext {
             }
         };
 
+        // For now, return empty function names - TODO: Extract from AST
         Ok(FileComplexityMetrics {
             function_count,
             high_complexity_functions,
             avg_complexity,
+            function_names: vec![],
         })
     }
 
@@ -649,6 +865,7 @@ struct FileComplexityMetrics {
     function_count: usize,
     high_complexity_functions: usize,
     avg_complexity: f64,
+    function_names: Vec<String>,
 }
 
 impl Default for SimpleDeepContext {

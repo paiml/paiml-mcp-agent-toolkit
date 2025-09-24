@@ -40,6 +40,14 @@ pub mod quality_gate_property_tests;
 pub mod refactor_auto_handlers;
 #[cfg(test)]
 pub mod refactor_auto_property_tests;
+#[cfg(test)]
+pub mod unified_context_property_tests;
+#[cfg(test)]
+pub mod annotation_tdd_tests;
+#[cfg(test)]
+pub mod unified_context_advanced_tests;
+pub mod unified_context_advanced;
+pub mod unified_context_builder;
 pub mod refactor_docs_handlers;
 pub mod refactor_handlers;
 pub mod satd_handler;
