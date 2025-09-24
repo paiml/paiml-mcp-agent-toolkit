@@ -854,6 +854,10 @@ pub enum AnalyzeCommands {
         /// Exclude file patterns (e.g., "tests/**", "target/**")
         #[arg(long)]
         exclude: Vec<String>,
+
+        /// Maximum directory traversal depth (default: 8 levels)
+        #[arg(long, default_value = "8")]
+        max_depth: usize,
     },
 
     /// Analyze Self-Admitted Technical Debt (SATD) in comments

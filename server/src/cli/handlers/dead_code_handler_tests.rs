@@ -32,6 +32,7 @@ mod cli_dead_code_handler_tests {
             false,
             100.0,
             60,
+            8, // max_depth
         ).await;
         
         assert!(result.is_ok(), "Handler should succeed");
@@ -105,6 +106,7 @@ mod cli_dead_code_handler_tests {
             false,
             100.0,
             60,
+            8, // max_depth
         ).await;
         assert!(json_result.is_ok());
         
@@ -120,6 +122,7 @@ mod cli_dead_code_handler_tests {
             false,
             100.0,
             60,
+            8, // max_depth
         ).await;
         assert!(human_result.is_ok());
     }
@@ -144,6 +147,7 @@ mod cli_dead_code_handler_tests {
             false,
             100.0,
             1, // 1 second timeout
+            8, // max_depth
         ).await;
         
         // Should complete or timeout gracefully
@@ -280,11 +284,12 @@ async fn handle_analyze_dead_code_with_cargo(
     _fail_on_violation: bool,
     _max_percentage: f64,
     _timeout: u64,
+    max_depth: usize,
 ) -> Result<(), anyhow::Error> {
     use crate::services::cargo_dead_code_analyzer::CargoDeadCodeAnalyzer;
     
     // Use the cargo-based analyzer
-    let analyzer = CargoDeadCodeAnalyzer::new(&path);
+    let analyzer = CargoDeadCodeAnalyzer::new(&path).with_max_depth(max_depth);
     let report = analyzer.analyze().await?;
     
     // For now, just check that it works
