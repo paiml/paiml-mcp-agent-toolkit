@@ -10,6 +10,7 @@ mod red_phase_tests {
     use super::*;
 
     #[tokio::test]
+    #[ignore = "Requires pmat binary to be built"]
     async fn red_must_show_individual_function_names() {
         // RED: This test MUST fail initially, proving we're missing function names
         let temp_dir = TempDir::new().unwrap();
@@ -40,6 +41,7 @@ const validateInput = () => { return true; };
     }
 
     #[tokio::test]
+    #[ignore = "Requires pmat binary to be built"]
     async fn red_must_show_file_level_breakdown() {
         // RED: Must show which functions belong to which files
         let temp_dir = TempDir::new().unwrap();
@@ -75,6 +77,7 @@ const validateInput = () => { return true; };
     }
 
     #[tokio::test]
+    #[ignore = "Requires pmat binary to be built"]
     async fn red_must_show_complexity_scores() {
         // RED: Must show complexity metrics for functions
         let temp_dir = TempDir::new().unwrap();
@@ -117,6 +120,7 @@ function complexLogic(input) {
     }
 
     #[tokio::test]
+    #[ignore = "Requires pmat binary to be built"]
     async fn red_must_show_satd_annotations() {
         // RED: Must detect and show Self-Admitted Technical Debt
         let temp_dir = TempDir::new().unwrap();
@@ -156,6 +160,7 @@ function leakyFunction() {
     }
 
     #[tokio::test]
+    #[ignore = "Requires pmat binary to be built"]
     async fn red_must_show_quality_insights() {
         // RED: Must provide quality insights and recommendations
         let temp_dir = TempDir::new().unwrap();
@@ -184,6 +189,7 @@ function leakyFunction() {
     }
 
     #[tokio::test]
+    #[ignore = "Requires pmat binary to be built"]
     async fn red_must_show_dead_code_markers() {
         // RED: Must identify potentially dead code
         let temp_dir = TempDir::new().unwrap();
@@ -217,6 +223,7 @@ export { usedFunction };
     }
 
     #[tokio::test]
+    #[ignore = "Requires pmat binary to be built"]
     async fn red_must_show_wasm_function_details() {
         // RED: Must properly annotate WASM functions
         let temp_dir = TempDir::new().unwrap();

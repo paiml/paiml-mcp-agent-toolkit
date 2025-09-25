@@ -619,6 +619,8 @@ mod tests {
     #[path = "../tests/cli_property_tests.rs"]
     mod cli_property_tests;
 
+    mod extreme_tdd_deep_context_quality_fixes;
+
     #[path = "../tests/ast_regression_test.rs"]
     mod ast_regression_test;
 
@@ -627,6 +629,11 @@ mod tests {
 
     #[path = "../tests/complexity_distribution_verification.rs"]
     mod complexity_distribution_verification;
+
+    #[path = "../tests/extreme_tdd_smart_bounds.rs"]
+    mod extreme_tdd_smart_bounds;
+    #[path = "../tests/extreme_tdd_concurrency_fix.rs"]
+    mod extreme_tdd_concurrency_fix;
 }
 
 #[cfg(test)]
