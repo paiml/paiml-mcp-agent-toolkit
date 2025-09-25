@@ -243,7 +243,8 @@ fn detect_by_project_files(path: &Path) -> Option<String> {
         if path.join("deno.json").exists() || path.join("deno.jsonc").exists() {
             return Some("deno".to_string());
         }
-        return Some("deno".to_string());
+        // Don't assume deno - let file extension counting determine JS/TS
+        return None;
     }
 
     None
@@ -260,7 +261,8 @@ fn should_exclude_dir(name: &str) -> bool {
 fn count_extension(ext: &str, lang_counts: &mut std::collections::HashMap<&'static str, usize>) {
     match ext {
         "rs" => *lang_counts.entry("rust").or_insert(0) += 1,
-        "ts" | "tsx" | "js" | "jsx" => *lang_counts.entry("deno").or_insert(0) += 1,
+        "ts" | "tsx" => *lang_counts.entry("typescript").or_insert(0) += 1,
+        "js" | "jsx" => *lang_counts.entry("javascript").or_insert(0) += 1,
         "py" => *lang_counts.entry("python-uv").or_insert(0) += 1,
         "kt" | "kts" => *lang_counts.entry("kotlin").or_insert(0) += 1,
         "sh" | "bash" => *lang_counts.entry("bash").or_insert(0) += 1,
@@ -277,6 +279,10 @@ fn detect_by_file_extensions(path: &Path) -> Option<String> {
         .into_iter()
         .filter_entry(|e| {
             let file_name = e.file_name().to_str().unwrap_or("");
+            // Don't exclude the root directory, even if it starts with a dot
+            if e.depth() == 0 {
+                return true;
+            }
             !should_exclude_dir(file_name)
         })
         .flatten()
@@ -351,6 +357,10 @@ fn count_files_by_extension(path: &Path) -> Option<(String, f64)> {
         .into_iter()
         .filter_entry(|e| {
             let file_name = e.file_name().to_str().unwrap_or("");
+            // Don't exclude the root directory, even if it starts with a dot
+            if e.depth() == 0 {
+                return true;
+            }
             !should_exclude_dir(file_name)
         })
         .flatten()

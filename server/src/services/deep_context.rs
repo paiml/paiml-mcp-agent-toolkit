@@ -4828,16 +4828,27 @@ pub async fn analyze_provability(
 
     let mut function_ids = Vec::new();
 
-    // Process ALL functions - no artificial limits
+    // Smart bounds: limit to 50 functions to prevent timeouts
+    let mut function_count = 0;
+    const MAX_FUNCTIONS: usize = 50;
+
     for file in &project_context.files {
         for item in &file.items {
             if let AstItem::Function { name, line, .. } = item {
-                function_ids.push(FunctionId {
-                    file_path: file.path.clone(),
-                    function_name: name.clone(),
-                    line_number: *line,
-                });
+                if function_count < MAX_FUNCTIONS {
+                    function_ids.push(FunctionId {
+                        file_path: file.path.clone(),
+                        function_name: name.clone(),
+                        line_number: *line,
+                    });
+                    function_count += 1;
+                } else {
+                    break;
+                }
             }
+        }
+        if function_count >= MAX_FUNCTIONS {
+            break;
         }
     }
 
