@@ -165,3 +165,11 @@ nonexistent-*
 
 # Archive directory
 archive/
+
+# Additional cleanup patterns
+defect-report-*.txt
+quality_report_*.md
+.pmat-cache/
+proptest-regressions/
+*.profraw
+*.profdata
