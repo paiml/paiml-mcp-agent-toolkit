@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 5aa79858fd333b724b0be5cd852d3dc5365785f586ffc47782cc6fffd1cbdc54 # shrinks to (ext, expected_lang) = ("ts", "typescript")
