@@ -114,7 +114,7 @@ pub async fn handle_context(
     // Detect or use provided toolchain
     let toolchain = detect_or_use_toolchain(toolchain, &project_path)?;
 
-    // Configure deep context analysis with all the rich annotations
+    // Configure deep context analysis with stack-safe limits
     let config = DeepContextConfig {
         include_analyses: if skip_expensive_metrics {
             vec![
@@ -124,25 +124,38 @@ pub async fn handle_context(
                 AnalysisType::Satd,
             ]
         } else {
+            // Limit to essential analyses to prevent stack overflow
             vec![
                 AnalysisType::Ast,
                 AnalysisType::Complexity,
-                AnalysisType::Churn,
-                AnalysisType::TechnicalDebtGradient,
                 AnalysisType::DeadCode,
                 AnalysisType::Satd,
-                AnalysisType::Provability,
-                AnalysisType::BigO,
             ]
         },
-        period_days: 30,
+        period_days: 7, // Shorter period to reduce data volume
         dag_type: DagType::CallGraph,
-        complexity_thresholds: None,
-        max_depth: Some(5),
-        include_patterns: vec![],
-        exclude_patterns: vec![],
+        complexity_thresholds: Some(crate::services::deep_context::ComplexityThresholds {
+            max_cyclomatic: 20,
+            max_cognitive: 25,
+        }),
+        max_depth: Some(3), // Limit recursion depth to prevent stack overflow
+        include_patterns: vec![
+            "**/*.rs".to_string(),
+            "**/*.ts".to_string(),
+            "**/*.js".to_string(),
+            "**/*.py".to_string(),
+            "**/*.java".to_string(),
+        ],
+        exclude_patterns: vec![
+            "**/target/**".to_string(),
+            "**/node_modules/**".to_string(),
+            "**/build/**".to_string(),
+            "**/dist/**".to_string(),
+            "**/.git/**".to_string(),
+            "**/fuzz/**".to_string(),
+        ],
         cache_strategy: CacheStrategy::Normal,
-        parallel: 4,
+        parallel: 2, // Reduce parallelism to prevent resource exhaustion
         file_classifier_config: None,
     };
 
