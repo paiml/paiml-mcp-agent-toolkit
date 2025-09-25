@@ -109,25 +109,191 @@ pub async fn handle_context(
     include_large_files: bool,
     skip_expensive_metrics: bool,
 ) -> Result<()> {
-    // Use the new AdvancedUnifiedContextBuilder for comprehensive analysis
-    use crate::cli::handlers::unified_context_advanced::AdvancedUnifiedContextBuilder;
+    use crate::services::deep_context::{DeepContextAnalyzer, DeepContextConfig, AnalysisType, CacheStrategy, DagType};
 
-    // Build complete context with all advanced annotations
-    let mut builder = AdvancedUnifiedContextBuilder::new(&project_path);
+    // Detect or use provided toolchain
+    let toolchain = detect_or_use_toolchain(toolchain, &project_path)?;
 
-    // Disable expensive metrics if requested
-    if skip_expensive_metrics {
-        builder.enable_provability = false;
-        builder.enable_graph_metrics = false;
-    }
+    // Configure deep context analysis with all the rich annotations
+    let config = DeepContextConfig {
+        include_analyses: if skip_expensive_metrics {
+            vec![
+                AnalysisType::Ast,
+                AnalysisType::Complexity,
+                AnalysisType::DeadCode,
+                AnalysisType::Satd,
+            ]
+        } else {
+            vec![
+                AnalysisType::Ast,
+                AnalysisType::Complexity,
+                AnalysisType::Churn,
+                AnalysisType::TechnicalDebtGradient,
+                AnalysisType::DeadCode,
+                AnalysisType::Satd,
+                AnalysisType::Provability,
+                AnalysisType::BigO,
+            ]
+        },
+        period_days: 30,
+        dag_type: DagType::CallGraph,
+        complexity_thresholds: None,
+        max_depth: Some(5),
+        include_patterns: vec![],
+        exclude_patterns: vec![],
+        cache_strategy: CacheStrategy::Normal,
+        parallel: 4,
+        file_classifier_config: None,
+    };
 
-    // Generate the unified context with all annotations
-    let output_content = builder.build_complete_context().await?;
+    // Run the deep context analysis
+    let analyzer = DeepContextAnalyzer::new(config);
+    let context = analyzer.analyze_project(&project_path).await?;
+
+    // Generate enhanced annotated AST output
+    let output_content = generate_enhanced_ast_context(
+        &toolchain,
+        &project_path,
+        &context,
+        format,
+        include_large_files,
+    ).await?;
 
     // Write output
     write_context_output(output, &output_content).await?;
 
     Ok(())
+}
+
+/// Generate enhanced AST context with rich annotations
+async fn generate_enhanced_ast_context(
+    toolchain: &str,
+    project_path: &Path,
+    context: &crate::services::deep_context::DeepContext,
+    _format: ContextFormat,
+    _include_large_files: bool,
+) -> Result<String> {
+
+    let mut builder = MarkdownBuilder::new();
+
+    // Add header
+    builder.content.push_str("# Enhanced Annotated AST Context\n\n");
+    builder.content.push_str(&format!("**Language**: {}\n", toolchain));
+    builder.content.push_str(&format!("**Project Path**: {}\n\n", project_path.display()));
+
+    // Add project-level metrics summary
+    if let Some(complexity_report) = &context.analyses.complexity_report {
+        builder.content.push_str("## Project Metrics\n\n");
+        builder.content.push_str(&format!("- **Total Files**: {}\n", complexity_report.files.len()));
+        builder.content.push_str(&format!("- **Total Functions**: {}\n", complexity_report.summary.total_functions));
+        builder.content.push_str(&format!("- **Median Cyclomatic**: {:.2}\n", complexity_report.summary.median_cyclomatic));
+        builder.content.push_str(&format!("- **Median Cognitive**: {:.2}\n\n", complexity_report.summary.median_cognitive));
+    }
+
+    // Add quality scorecard
+    builder.content.push_str("## Quality Scorecard\n\n");
+    builder.content.push_str(&format!("- **Overall Health**: {:.1}%\n", context.quality_scorecard.overall_health * 100.0));
+    builder.content.push_str(&format!("- **Maintainability Index**: {:.1}\n", context.quality_scorecard.maintainability_index));
+    builder.content.push_str(&format!("- **Complexity Score**: {:.1}\n", context.quality_scorecard.complexity_score));
+    if let Some(coverage) = context.quality_scorecard.test_coverage {
+        builder.content.push_str(&format!("- **Test Coverage**: {:.1}%\n", coverage * 100.0));
+    } else {
+        builder.content.push_str("- **Test Coverage**: N/A\n");
+    }
+    builder.content.push_str("\n");
+
+    // Add file-level AST with annotations
+    builder.content.push_str("## Files\n\n");
+
+    // Use ast_contexts from analyses
+    for enhanced_context in &context.analyses.ast_contexts {
+        add_simple_file_section(&mut builder, &enhanced_context.base, &context.analyses);
+    }
+
+    Ok(builder.content)
+}
+
+/// Add simple file section with annotated AST
+fn add_simple_file_section(
+    builder: &mut MarkdownBuilder,
+    file: &crate::services::context::FileContext,
+    analyses: &crate::services::deep_context::AnalysisResults,
+) {
+    // File header
+    builder.content.push_str(&format!("### {}\n\n", file.path));
+
+    // File-level metrics from analyses
+    if let Some(file_metrics) = analyses.complexity_report.as_ref()
+        .and_then(|report| report.files.iter().find(|f| file.path.ends_with(&f.path))) {
+        builder.content.push_str(&format!("**File Complexity**: {} | **Functions**: {}\n\n",
+            file_metrics.total_complexity.cyclomatic, file_metrics.functions.len()));
+    }
+
+    // Add AST items with rich annotations
+    if !file.items.is_empty() {
+        for item in &file.items {
+            match item {
+                crate::services::context::AstItem::Function { name, .. } => {
+                    builder.content.push_str(&format!("- **Function**: `{}`", name));
+                    builder.content.push_str(&get_simple_function_annotations(name, file, analyses));
+                    builder.content.push_str("\n");
+                },
+                crate::services::context::AstItem::Struct { name, fields_count, .. } => {
+                    builder.content.push_str(&format!("- **Struct**: `{}` [fields: {}]\n", name, fields_count));
+                },
+                crate::services::context::AstItem::Trait { name, .. } => {
+                    builder.content.push_str(&format!("- **Trait**: `{}`\n", name));
+                },
+                crate::services::context::AstItem::Enum { name, variants_count, .. } => {
+                    builder.content.push_str(&format!("- **Enum**: `{}` [variants: {}]\n", name, variants_count));
+                },
+                crate::services::context::AstItem::Impl { type_name, trait_name, .. } => {
+                    if let Some(trait_name) = trait_name {
+                        builder.content.push_str(&format!("- **Impl**: `{}` for `{}`\n", trait_name, type_name));
+                    } else {
+                        builder.content.push_str(&format!("- **Impl**: `{}`\n", type_name));
+                    }
+                },
+                _ => {
+                    // Handle other types of AST items if needed
+                }
+            }
+        }
+    }
+
+    builder.content.push_str("\n");
+}
+
+/// Get simple function annotations with basic metrics
+fn get_simple_function_annotations(
+    func_name: &str,
+    file: &crate::services::context::FileContext,
+    analyses: &crate::services::deep_context::AnalysisResults,
+) -> String {
+    let mut annotations = String::new();
+
+    // Complexity metrics from analyses
+    if let Some(complexity_report) = &analyses.complexity_report {
+        if let Some(file_metrics) = complexity_report.files.iter()
+            .find(|f| file.path.ends_with(&f.path)) {
+            if let Some(func_complexity) = file_metrics.functions.iter().find(|f| f.name == func_name) {
+                annotations.push_str(&format!(" [complexity: {}]", func_complexity.metrics.cyclomatic));
+                annotations.push_str(&format!(" [cognitive: {}]", func_complexity.metrics.cognitive));
+
+                // Big-O complexity estimation
+                let big_o = match func_complexity.metrics.cyclomatic {
+                    1..=3 => "O(1)",
+                    4..=7 => "O(n)",
+                    8..=15 => "O(n log n)",
+                    16..=25 => "O(n²)",
+                    _ => "O(?)",
+                };
+                annotations.push_str(&format!(" [big-o: {big_o}]"));
+            }
+        }
+    }
+
+    annotations
 }
 
 /// Detect toolchain or use provided one

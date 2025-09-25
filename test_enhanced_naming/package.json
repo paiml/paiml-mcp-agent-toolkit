@@ -1,0 +1,9 @@
+{
+  "name": "test-enhanced-naming",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "typescript": "^5.0.0",
+    "react": "^18.0.0"
+  }
+}
