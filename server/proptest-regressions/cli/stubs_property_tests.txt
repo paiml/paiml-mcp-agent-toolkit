@@ -1,7 +1,0 @@
-# Seeds for failure cases proptest has generated in the past. It is
-# automatically read and these particular cases re-run before any
-# novel cases are generated.
-#
-# It is recommended to check this file in to source control so that
-# everyone who runs the test benefits from these saved cases.
-cc 27c86964d77604d7dcf31d220f1763c442ce865cae2bd98e78aab4c5ada61e25 # shrinks to min_entropy = 0.8779811021785459

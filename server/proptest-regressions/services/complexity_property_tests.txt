@@ -1,9 +1,0 @@
-# Seeds for failure cases proptest has generated in the past. It is
-# automatically read and these particular cases re-run before any
-# novel cases are generated.
-#
-# It is recommended to check this file in to source control so that
-# everyone who runs the test benefits from these saved cases.
-cc c8b0172a24efa0d46cff2c058dd537f331263b28e5000df57fdd8fe8782c6056 # shrinks to class_name = "A", line_start = 82, line_end = 100, class_metrics = ComplexityMetrics { cyclomatic: 0, cognitive: 0, nesting_max: 0, lines: 0 }, method_count = 4
-cc 11fafb5465118830822cc044a30f36b9e2e0c03c211a72aefa341673f579cc0b # shrinks to cyclomatic_complexity = 30, cognitive_complexity = 0, custom_cyclomatic_threshold = 30, custom_cognitive_threshold = 1
-cc 666cb6538c4fed9019351a7391536f49bcba82098671c0c3fb2f7365c6025c93 # shrinks to cyclomatic_complexity = 0, cognitive_complexity = 16

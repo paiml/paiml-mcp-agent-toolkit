@@ -1,8 +1,0 @@
-# Seeds for failure cases proptest has generated in the past. It is
-# automatically read and these particular cases re-run before any
-# novel cases are generated.
-#
-# It is recommended to check this file in to source control so that
-# everyone who runs the test benefits from these saved cases.
-cc f3087f20663ced0aeeaad1e3c08900b7a23372b5ab0bb0bd09cab7bd8bc70555 # shrinks to buffer_sizes = [64, 64, 64, 64, 64, 64, 64, 64, 64, 64], reuse_probability = 0.1
-cc e5583f475b9483890ac43fd4e92b1cc5946dc8b8ddb9a1cc3dc2bdc7d74bacd6 # shrinks to buffer_sizes = [64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 75, 6874, 3074, 5720, 3808, 669, 6573, 6312, 5290, 6072], reuse_probability = 0.33124593357752125
