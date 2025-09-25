@@ -76,7 +76,7 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::path::PathBuf;
 use std::time::Duration;
-use tracing::{debug, info};
+use tracing::{debug, info, warn};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DeepContextConfig {
@@ -623,6 +623,26 @@ impl Default for DeepContextConfig {
             parallel: num_cpus::get(),
             file_classifier_config: None,
         }
+    }
+}
+
+impl DeepContextConfig {
+    /// Create configuration with auto-scaling concurrency based on system capabilities
+    pub fn with_auto_scaling() -> Self {
+        let mut config = Self::default();
+
+        // Auto-scale concurrency based on system capabilities
+        let logical_cores = num_cpus::get();
+        let physical_cores = num_cpus::get_physical();
+
+        // Optimal parallelism: Use physical cores + 1 for I/O bound tasks
+        // Cap at logical cores to avoid over-subscription
+        config.parallel = std::cmp::min(physical_cores + 1, logical_cores);
+
+        // Ensure minimum of 2 for parallel processing
+        config.parallel = std::cmp::max(2, config.parallel);
+
+        config
     }
 }
 
@@ -2767,13 +2787,10 @@ impl DeepContextAnalyzer {
         let analysis_count = self.config.include_analyses.len() as u64;
         let analysis_progress = progress.create_sub_progress("Running analyses", analysis_count);
 
-        // Step 2: Collect and process results with timeout
-        // Increased timeout to handle projects with many files or large files
-        let collection_timeout = std::time::Duration::from_secs(300); // 5 minutes
+        // Step 2: Collect and process results - NO TIMEOUT!
         let results = self
             .collect_analysis_results_with_progress(
                 &mut join_set,
-                collection_timeout,
                 &analysis_progress,
             )
             .await?;
@@ -2918,21 +2935,12 @@ impl DeepContextAnalyzer {
     async fn collect_analysis_results_with_progress(
         &self,
         join_set: &mut tokio::task::JoinSet<AnalysisResult>,
-        timeout: std::time::Duration,
         progress: &indicatif::ProgressBar,
     ) -> anyhow::Result<ParallelAnalysisResults> {
-        let collection_future = self.process_analysis_results_with_progress(join_set, progress);
-
-        match tokio::time::timeout(timeout, collection_future).await {
-            Ok(Ok(results)) => {
-                debug!("Parallel analysis collection completed successfully");
-                Ok(results)
-            }
-            Ok(Err(e)) => Err(anyhow::anyhow!("Analysis result aggregation failed: {e}")),
-            Err(_) => Err(anyhow::anyhow!(
-                "Analysis collection timed out after {timeout:?}"
-            )),
-        }
+        // Direct collection without timeout - let it complete naturally
+        let results = self.process_analysis_results_with_progress(join_set, progress).await?;
+        debug!("Parallel analysis collection completed successfully");
+        Ok(results)
     }
 
     /// Process all analysis results concurrently with progress
@@ -3881,6 +3889,7 @@ pub async fn analyze_file_by_language(
         "python" => analyze_python_language(file_path).await,
         "c" | "cpp" => analyze_c_language(file_path).await,
         "kotlin" => analyze_kotlin_language(file_path).await,
+        "bash" => analyze_bash_language(file_path).await,
         _ => Ok(Vec::new()),
     }
 }
@@ -3923,6 +3932,16 @@ pub async fn analyze_kotlin_language(
     Ok(items)
 }
 
+/// Toyota Way Single Responsibility: Handle Bash script file analysis
+pub async fn analyze_bash_language(
+    file_path: &std::path::Path,
+) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
+    tracing::debug!("Analyzing Bash script file: {}", file_path.display());
+    let items = analyze_bash_file(file_path).await?;
+    tracing::debug!("Bash analysis returned {} items", items.len());
+    Ok(items)
+}
+
 /// Detect programming language from file extension
 fn detect_language(path: &std::path::Path) -> String {
     if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
@@ -3934,6 +3953,7 @@ fn detect_language(path: &std::path::Path) -> String {
             "c" | "h" => "c".to_string(),
             "cpp" | "cc" | "cxx" | "hpp" | "hxx" => "cpp".to_string(),
             "kt" | "kts" => "kotlin".to_string(),
+            "sh" | "bash" => "bash".to_string(),
             _ => "unknown".to_string(),
         }
     } else {
@@ -4031,6 +4051,25 @@ async fn analyze_kotlin_file(
     Ok(Vec::new())
 }
 
+/// Simple Bash script file analysis
+async fn analyze_bash_file(
+    file_path: &Path,
+) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
+    use crate::services::languages::bash::BashScriptAnalyzer;
+    use std::fs;
+
+    match fs::read_to_string(file_path) {
+        Ok(source) => {
+            let analyzer = BashScriptAnalyzer::new(file_path);
+            match analyzer.analyze_bash_script(&source) {
+                Ok(items) => Ok(items),
+                Err(_) => Ok(Vec::new()), // Return empty vec on parse error
+            }
+        }
+        Err(_) => Ok(Vec::new()), // Return empty vec on file read error
+    }
+}
+
 async fn analyze_complexity(path: &std::path::Path) -> anyhow::Result<ComplexityReport> {
     use crate::services::complexity::aggregate_results;
 
@@ -4109,11 +4148,45 @@ async fn analyze_single_file_complexity(
     }
 }
 
-async fn analyze_churn(path: &std::path::Path, days: u32) -> anyhow::Result<CodeChurnAnalysis> {
+pub async fn analyze_churn(path: &std::path::Path, days: u32) -> anyhow::Result<CodeChurnAnalysis> {
     use crate::services::git_analysis::GitAnalysisService;
+    use std::time::{Duration, Instant};
 
-    GitAnalysisService::analyze_code_churn(path, days)
-        .map_err(|e| anyhow::anyhow!("Failed to analyze code churn: {e}"))
+    info!("Starting churn analysis for path: {:?}", path);
+    let start = Instant::now();
+
+    // Smart bounds: timeout after 3 seconds for churn analysis
+    let timeout = Duration::from_secs(3);
+
+    match tokio::time::timeout(timeout, async {
+        GitAnalysisService::analyze_code_churn(path, days)
+            .map_err(|e| anyhow::anyhow!("Failed to analyze code churn: {e}"))
+    }).await {
+        Ok(result) => {
+            info!("Churn analysis completed in {:?}", start.elapsed());
+            result
+        }
+        Err(_) => {
+            warn!("Churn analysis timed out after {:?}", timeout);
+            // Return empty churn analysis instead of failing
+            use chrono::Utc;
+            use crate::models::churn::ChurnSummary;
+
+            Ok(CodeChurnAnalysis {
+                generated_at: Utc::now(),
+                period_days: days,
+                repository_root: path.to_path_buf(),
+                files: Vec::new(),
+                summary: ChurnSummary {
+                    total_commits: 0,
+                    total_files_changed: 0,
+                    hotspot_files: Vec::new(),
+                    stable_files: Vec::new(),
+                    author_contributions: std::collections::HashMap::new(),
+                },
+            })
+        }
+    }
 }
 
 async fn analyze_dead_code(
@@ -4699,22 +4772,63 @@ async fn analyze_satd(path: &std::path::Path) -> anyhow::Result<SATDAnalysisResu
     Ok(result)
 }
 
-async fn analyze_provability(
+pub async fn analyze_provability(
     path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::lightweight_provability_analyzer::ProofSummary>> {
     use crate::services::context::{analyze_project, AstItem};
     use crate::services::lightweight_provability_analyzer::{
         FunctionId, LightweightProvabilityAnalyzer,
     };
+    use std::time::{Duration, Instant};
 
     info!("Starting provability analysis for path: {:?}", path);
 
     let analyzer = LightweightProvabilityAnalyzer::new();
 
+    // No timeouts - use proper concurrency instead
+    let start = Instant::now();
+
+    // Detect the primary language of the project
+    use crate::services::file_discovery::ProjectFileDiscovery;
+    let discovery = ProjectFileDiscovery::new(path.to_path_buf());
+    let files = discovery.discover_files().unwrap_or_default();
+
+    // Count file extensions to determine primary language
+    let mut rust_count = 0;
+    let mut python_count = 0;
+    let mut ruby_count = 0;
+
+    for file in &files {
+        if let Some(ext) = file.extension().and_then(|e| e.to_str()) {
+            match ext {
+                "rs" => rust_count += 1,
+                "py" => python_count += 1,
+                "rb" => ruby_count += 1,
+                _ => {}
+            }
+        }
+    }
+
+    let language = if rust_count >= python_count && rust_count >= ruby_count {
+        "rust"
+    } else if python_count >= ruby_count {
+        "python"
+    } else {
+        "ruby"
+    };
+
     // Discover functions from the project using AST analysis
-    let project_context = analyze_project(path, "rust").await?;
+    let project_context = match analyze_project(path, language).await {
+        Ok(context) => context,
+        Err(e) => {
+            warn!("AST analysis failed for provability: {:?}", e);
+            return Ok(vec![]);
+        }
+    };
+
     let mut function_ids = Vec::new();
 
+    // Process ALL functions - no artificial limits
     for file in &project_context.files {
         for item in &file.items {
             if let AstItem::Function { name, line, .. } = item {
@@ -4736,7 +4850,10 @@ async fn analyze_provability(
         });
     }
 
+    // Analyze all functions with proper parallel processing
     let summaries = analyzer.analyze_incrementally(&function_ids).await;
+
+    info!("Provability analysis completed for {} functions in {:?}", summaries.len(), start.elapsed());
     Ok(summaries)
 }
 
@@ -4747,12 +4864,58 @@ async fn analyze_dag(path: &std::path::Path, dag_type: DagType) -> anyhow::Resul
             filter_call_edges, filter_import_edges, filter_inheritance_edges, DagBuilder,
         },
     };
+    use std::time::{Duration, Instant};
 
-    // Analyze the project to get AST information
-    let project_context = analyze_project(path, "rust").await?;
+    info!("Starting DAG analysis for path: {:?}", path);
+    let start = Instant::now();
 
-    // Build the dependency graph with PageRank pruning if needed
-    let graph = DagBuilder::build_from_project_with_limit(&project_context, 400);
+    // No timeout - efficient DAG analysis
+
+    // Detect the primary language of the project
+    use crate::services::file_discovery::ProjectFileDiscovery;
+    let discovery = ProjectFileDiscovery::new(path.to_path_buf());
+    let files = discovery.discover_files().unwrap_or_default();
+
+    // Count file extensions to determine primary language
+    let mut rust_count = 0;
+    let mut python_count = 0;
+    let mut ruby_count = 0;
+    let mut ts_count = 0;
+    let mut js_count = 0;
+
+    for file in &files {
+        if let Some(ext) = file.extension().and_then(|e| e.to_str()) {
+            match ext {
+                "rs" => rust_count += 1,
+                "py" => python_count += 1,
+                "rb" => ruby_count += 1,
+                "ts" | "tsx" => ts_count += 1,
+                "js" | "jsx" => js_count += 1,
+                _ => {}
+            }
+        }
+    }
+
+    let language = if rust_count >= python_count && rust_count >= ruby_count && rust_count >= ts_count && rust_count >= js_count {
+        "rust"
+    } else if python_count >= ruby_count && python_count >= ts_count && python_count >= js_count {
+        "python"
+    } else if ruby_count >= ts_count && ruby_count >= js_count {
+        "ruby"
+    } else if ts_count >= js_count {
+        "typescript"
+    } else {
+        "javascript"
+    };
+
+    // Analyze the project to get AST information - NO TIMEOUT!
+    let project_context = analyze_project(path, language).await.map_err(|e| {
+        warn!("AST analysis failed for DAG: {:?}", e);
+        anyhow::anyhow!("AST analysis failed: {}", e)
+    })?;
+
+    // Smart bounds: limit graph size to 200 nodes (was 400)
+    let graph = DagBuilder::build_from_project_with_limit(&project_context, 200);
 
     // Apply filters based on DAG type
     let filtered_graph = match dag_type {

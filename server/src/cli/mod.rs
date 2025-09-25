@@ -263,6 +263,7 @@ fn count_extension(ext: &str, lang_counts: &mut std::collections::HashMap<&'stat
         "ts" | "tsx" | "js" | "jsx" => *lang_counts.entry("deno").or_insert(0) += 1,
         "py" => *lang_counts.entry("python-uv").or_insert(0) += 1,
         "kt" | "kts" => *lang_counts.entry("kotlin").or_insert(0) += 1,
+        "sh" | "bash" => *lang_counts.entry("bash").or_insert(0) += 1,
         _ => {}
     }
 }
@@ -362,6 +363,7 @@ fn count_files_by_extension(path: &Path) -> Option<(String, f64)> {
                     "js" | "jsx" => Some("javascript"),
                     "py" => Some("python-uv"),
                     "kt" | "kts" => Some("kotlin"),
+                    "sh" | "bash" => Some("bash"),
                     _ => None,
                 };
 
