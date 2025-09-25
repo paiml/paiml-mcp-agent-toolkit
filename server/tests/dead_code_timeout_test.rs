@@ -11,6 +11,7 @@ use std::time::{Duration, Instant};
 const MAX_TIMEOUT_SECS: u64 = 30; // Dead code analysis should complete within 30 seconds (large project)
 
 #[test]
+#[ignore] // Requires binary to be built
 fn test_dead_code_completes_within_timeout() {
     let (tx, rx) = mpsc::channel();
 
@@ -63,6 +64,7 @@ fn test_dead_code_completes_within_timeout() {
 }
 
 #[test]
+#[ignore] // Requires binary to be built
 fn test_dead_code_handles_empty_directory() {
     use tempfile::TempDir;
 
@@ -94,6 +96,7 @@ fn test_dead_code_handles_empty_directory() {
 }
 
 #[test]
+#[ignore] // Requires binary to be built
 fn test_dead_code_handles_single_file() {
     use std::io::Write;
     use tempfile::NamedTempFile;

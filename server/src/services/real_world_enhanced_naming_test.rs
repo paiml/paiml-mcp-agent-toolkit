@@ -37,6 +37,7 @@ mod real_world_tests {
         }
 
         /// Test: Real-world TypeScript React file should extract meaningful names
+        #[ignore = "Real-world test requires external file"]
         #[test]
         fn test_real_world_typescript_react_file_analysis() {
             let typescript_react_code = std::fs::read_to_string("/tmp/test-enhanced-naming.tsx")

@@ -1,0 +1,37 @@
+🔍 Auto-detecting project language...
+✅ Detected: rust (confidence: 100.0%)
+📁 Scanning files... (1000 so far)
+📁 Scanning files... (2000 so far)
+📁 Scanning files... (3000 so far)
+📁 Scanning files... (4000 so far)
+📁 Scanning files... (5000 so far)
+📁 Scanning files... (6000 so far)
+📁 Scanning files... (7000 so far)
+📁 Scanning files... (8000 so far)
+📁 Scanning files... (9000 so far)
+📁 Scanning files... (10000 so far)
+⚠️ Large project detected: 10000 files. Limited to 10000 for performance.
+✅ Context written to: artifacts/profiling/deep_context_profile.md
+	Command being timed: "./target/release/pmat context --output artifacts/profiling/deep_context_profile.md"
+	User time (seconds): 5.96
+	System time (seconds): 1.42
+	Percent of CPU this job got: 429%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:01.72
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 857108
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 331363
+	Voluntary context switches: 20679
+	Involuntary context switches: 3649
+	Swaps: 0
+	File system inputs: 3392
+	File system outputs: 7688
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

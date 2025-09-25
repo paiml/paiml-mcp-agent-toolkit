@@ -21,7 +21,7 @@
 #
 # This design eliminates confusion and ensures consistent behavior across all environments.
 
-.PHONY: all validate format lint lint-main check test test-doc test-fast coverage build release clean clean-tmp install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts test-scripts lint-makefile fix validate-docs ci-status validate-naming context setup audit docs run-mcp run-mcp-test test-actions install-act check-act deps-validate dogfood dogfood-ci update-rust-docs size-report size-track size-check size-compare test-all-interfaces test-feature-all-interfaces test-interface-consistency benchmark-all-interfaces load-test-interfaces context-json context-sarif context-llm context-legacy context-benchmark analyze-top-files analyze-composite analyze-health-dashboard profile-binary-performance analyze-memory-usage analyze-scaling kaizen test-slow-integration test-safe coverage-stdout test-dogfood test-critical-scripts coverage-scripts clean-coverage test-workflow-dag test-workflow-dag-verbose context-root context-simple context-json-root context-benchmark-legacy local-install server-build-binary server-build-docker server-run-mcp server-run-mcp-test server-benchmark server-test server-test-all server-outdated server-tokei build-target cargo-doc cargo-geiger update-deps update-deps-aggressive update-deps-security upgrade-deps audit-fix benchmark coverage-summary outdated test-all-features clippy-strict server-build-release create-release test-curl-install cargo-rustdoc install-dev-tools tokei quickstart context-fast clear-swap config-swap overnight-improve overnight-monitor overnight-swap-cron test-unit test-services test-protocols test-e2e test-performance test-property test-property-slow test-all coverage-stratified coverage-full coverage-report crate-release crate-docs dev commit sprint-close setup-quality quality-gate-full help-toyota-way
+.PHONY: all validate format lint lint-main check test test-doc test-fast coverage build release clean clean-tmp install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts test-scripts lint-makefile fix validate-docs ci-status validate-naming context setup audit docs run-mcp run-mcp-test test-actions install-act check-act deps-validate dogfood dogfood-ci update-rust-docs size-report size-track size-check size-compare test-all-interfaces test-feature-all-interfaces test-interface-consistency benchmark-all-interfaces load-test-interfaces context-json context-sarif context-llm context-legacy context-benchmark analyze-top-files analyze-composite analyze-health-dashboard profile-binary-performance profile-deep-context analyze-memory-usage analyze-scaling kaizen test-slow-integration test-safe coverage-stdout test-dogfood test-critical-scripts coverage-scripts clean-coverage test-workflow-dag test-workflow-dag-verbose context-root context-simple context-json-root context-benchmark-legacy local-install server-build-binary server-build-docker server-run-mcp server-run-mcp-test server-benchmark server-test server-test-all server-outdated server-tokei build-target cargo-doc cargo-geiger update-deps update-deps-aggressive update-deps-security upgrade-deps audit-fix benchmark coverage-summary outdated test-all-features clippy-strict server-build-release create-release test-curl-install cargo-rustdoc install-dev-tools tokei quickstart context-fast clear-swap config-swap overnight-improve overnight-monitor overnight-swap-cron test-unit test-services test-protocols test-e2e test-performance test-property test-property-slow test-all coverage-stratified coverage-full coverage-report crate-release crate-docs dev commit sprint-close setup-quality quality-gate-full help-toyota-way
 
 # Define sub-projects
 # NOTE: client project will be added when implemented
@@ -1478,6 +1478,7 @@ help:
 	@echo "  analyze-composite       - Composite analysis combining multiple ranking factors"
 	@echo "  analyze-health-dashboard - Comprehensive project health dashboard"
 	@echo "  profile-binary-performance - Profile binary performance across operations"
+	@echo "  profile-deep-context    - Profile deep context creation with detailed timing and annotation analysis"
 	@echo "  analyze-memory-usage    - Analyze binary memory usage patterns"
 	@echo "  analyze-scaling         - Test binary scaling with different project sizes"
 	@echo "  analyze-satd            - Self-admitted technical debt analysis"
@@ -1738,6 +1739,50 @@ profile-binary-performance: release
 	@rm -f /tmp/context_perf.json
 	@echo ""
 	@echo "✅ Performance profiling complete! Reports in artifacts/profiling/"
+
+# Profile deep context creation with detailed timing and memory analysis
+profile-deep-context: release
+	@echo "🔍 Profiling deep context creation with detailed analysis..."
+	@mkdir -p artifacts/profiling
+	@echo ""
+	@echo "📊 Deep Context Performance Profile:"
+	@echo "====================================="
+	@if command -v /usr/bin/time >/dev/null 2>&1; then \
+		echo "⏱️  Timing with memory analysis:"; \
+		/usr/bin/time -v ./target/release/pmat context --output artifacts/profiling/deep_context_profile.md 2> artifacts/profiling/deep-context-timing.txt; \
+		echo ""; \
+		echo "📈 Memory Usage Summary:"; \
+		grep -E "(Maximum resident|User time|System time|Percent of CPU|Page faults)" artifacts/profiling/deep-context-timing.txt || echo "Time command not available"; \
+	else \
+		echo "⏱️  Basic timing:"; \
+		time ./target/release/pmat context --output artifacts/profiling/deep_context_profile.md; \
+	fi
+	@echo ""
+	@echo "📊 Output Analysis:"
+	@if [ -f artifacts/profiling/deep_context_profile.md ]; then \
+		echo "✅ Generated: artifacts/profiling/deep_context_profile.md"; \
+		echo "📏 File size: $$(ls -lh artifacts/profiling/deep_context_profile.md | awk '{print $$5}')"; \
+		echo "📝 Line count: $$(wc -l < artifacts/profiling/deep_context_profile.md) lines"; \
+		echo "📋 Word count: $$(wc -w < artifacts/profiling/deep_context_profile.md) words"; \
+		echo ""; \
+		echo "🔍 Content Analysis:"; \
+		grep -c "\[complexity:" artifacts/profiling/deep_context_profile.md > /tmp/complexity_count 2>/dev/null || echo "0" > /tmp/complexity_count; \
+		grep -c "\[cognitive:" artifacts/profiling/deep_context_profile.md > /tmp/cognitive_count 2>/dev/null || echo "0" > /tmp/cognitive_count; \
+		grep -c "\[big-o:" artifacts/profiling/deep_context_profile.md > /tmp/bigo_count 2>/dev/null || echo "0" > /tmp/bigo_count; \
+		grep -c "\[provability:" artifacts/profiling/deep_context_profile.md > /tmp/provability_count 2>/dev/null || echo "0" > /tmp/provability_count; \
+		grep -c "\[churn:" artifacts/profiling/deep_context_profile.md > /tmp/churn_count 2>/dev/null || echo "0" > /tmp/churn_count; \
+		echo "  - Complexity annotations: $$(cat /tmp/complexity_count)"; \
+		echo "  - Cognitive annotations: $$(cat /tmp/cognitive_count)"; \
+		echo "  - Big-O annotations: $$(cat /tmp/bigo_count)"; \
+		echo "  - Provability annotations: $$(cat /tmp/provability_count)"; \
+		echo "  - Churn annotations: $$(cat /tmp/churn_count)"; \
+		rm -f /tmp/*_count; \
+	else \
+		echo "❌ Failed to generate deep_context_profile.md"; \
+	fi
+	@echo ""
+	@echo "📂 Profiling artifacts saved in artifacts/profiling/"
+	@echo "✅ Deep context profiling complete!"
 
 # Memory usage analysis
 analyze-memory-usage: release

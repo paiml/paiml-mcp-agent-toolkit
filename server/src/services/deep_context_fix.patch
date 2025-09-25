@@ -1,0 +1,88 @@
+--- Fix for deep_context.rs: Remove timeouts and add proper concurrency ---
+
+The key changes needed:
+
+1. REMOVE all timeout code:
+   - Remove `Duration::from_secs(5)` for provability
+   - Remove `Duration::from_secs(3)` for churn
+   - Remove `Duration::from_secs(4)` for DAG
+   - Remove all `tokio::time::timeout` calls
+
+2. ADD proper parallel processing:
+   - Use `tokio::join!` for running analyses in parallel
+   - Use `rayon` for CPU-bound work
+   - Parse AST once and share across analyses
+
+3. ADD progress bars with indicatif:
+   - Show real progress instead of hanging
+   - Multi-progress for parallel operations
+
+4. Use bounded channels for backpressure:
+   - `mpsc::channel(100)` instead of unbounded
+   - Natural flow control
+
+Example fix for analyze_provability:
+
+```rust
+pub async fn analyze_provability(path: &Path) -> Result<Vec<ProofSummary>> {
+    info!("Starting provability analysis (no timeout!)");
+
+    // Parse once
+    let project_context = analyze_project(path, &language)?;
+
+    // Extract functions in parallel using rayon
+    let function_ids: Vec<_> = project_context
+        .files
+        .par_iter()
+        .flat_map(|file| extract_functions(file))
+        .collect();
+
+    // Analyze in parallel batches
+    let analyzer = LightweightProvabilityAnalyzer::new();
+    let (tx, mut rx) = mpsc::channel(100);
+
+    for chunk in function_ids.chunks(50) {
+        let chunk = chunk.to_vec();
+        let tx = tx.clone();
+        let analyzer = analyzer.clone();
+
+        tokio::spawn(async move {
+            let summaries = analyzer.analyze_incrementally(&chunk).await;
+            tx.send(summaries).await;
+        });
+    }
+
+    drop(tx);
+
+    let mut all_summaries = Vec::new();
+    while let Some(summaries) = rx.recv().await {
+        all_summaries.extend(summaries);
+    }
+
+    Ok(all_summaries)
+}
+```
+
+The DeepContextAnalyzer::analyze_project should use:
+
+```rust
+pub async fn analyze_project(&self, path: &Path) -> Result<DeepAnalysisResult> {
+    // Parse ONCE
+    let ast_cache = self.parse_all_files_parallel(path).await?;
+
+    // Run ALL analyses in parallel
+    let (complexity, provability, satd, churn, dag, tdg, big_o, dead_code) = tokio::join!(
+        analyze_complexity(&ast_cache),
+        analyze_provability(&ast_cache),
+        analyze_satd(path),
+        analyze_churn(path, self.config.period_days),
+        analyze_dag(path, self.config.dag_type),
+        analyze_tdg(&ast_cache),
+        analyze_big_o(&ast_cache),
+        analyze_dead_code(&ast_cache)
+    );
+
+    // Combine results
+    Ok(DeepAnalysisResult { ... })
+}
+```
