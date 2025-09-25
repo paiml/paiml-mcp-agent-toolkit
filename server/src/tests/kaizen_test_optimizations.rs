@@ -237,6 +237,7 @@ pub mod property_testing {
             cases: 20,             // Reduced from default 256 for speed
             max_shrink_iters: 100, // Reduced from 1024
             timeout: 1000,         // 1 second timeout
+            fork: false,           // Disable forking to prevent spawn errors
             ..ProptestConfig::default()
         }
     }

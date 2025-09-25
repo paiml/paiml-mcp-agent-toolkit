@@ -526,7 +526,6 @@ fn write_response_to_stdout<W: std::io::Write>(
 
 #[cfg(test)]
 mod tests {
-
     #[path = "../tests/template_rendering.rs"]
     mod template_rendering;
 

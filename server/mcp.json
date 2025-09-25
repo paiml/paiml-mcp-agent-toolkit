@@ -25,6 +25,40 @@
           },
           "required": ["resource_uri", "parameters"]
         }
+      },
+      "generate_unified_context": {
+        "description": "Generate comprehensive unified context with advanced code analysis annotations",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "project_path": {
+              "type": "string",
+              "description": "Path to the project to analyze (defaults to current directory)",
+              "default": "."
+            },
+            "output_file": {
+              "type": "string",
+              "description": "Output file path (optional, prints to stdout if not specified)"
+            },
+            "format": {
+              "type": "string",
+              "enum": ["markdown", "json", "sarif", "llm-optimized"],
+              "description": "Output format",
+              "default": "markdown"
+            },
+            "skip_expensive_metrics": {
+              "type": "boolean",
+              "description": "Skip expensive metrics for faster execution",
+              "default": false
+            },
+            "include_large_files": {
+              "type": "boolean",
+              "description": "Include large files (>500KB) that are normally skipped",
+              "default": false
+            }
+          },
+          "required": []
+        }
       }
     },
     "resources": {
