@@ -35,7 +35,7 @@ impl MakefileRule for ShellInjectionRule {
                         violations.push(Violation {
                             rule: self.id().to_string(),
                             severity: self.default_severity(),
-                            span: node.span.clone(),
+                            span: node.span,
                             message: format!(
                                 "Potential shell injection: unquoted variable in command '{}'",
                                 truncate_command(&line.text)
@@ -87,7 +87,7 @@ impl MakefileRule for SensitiveDataRule {
                         violations.push(Violation {
                             rule: self.id().to_string(),
                             severity: self.default_severity(),
-                            span: node.span.clone(),
+                            span: node.span,
                             message: format!(
                                 "Hardcoded {} detected in variable '{}'",
                                 secret_type, name
@@ -105,7 +105,7 @@ impl MakefileRule for SensitiveDataRule {
                             violations.push(Violation {
                                 rule: self.id().to_string(),
                                 severity: self.default_severity(),
-                                span: node.span.clone(),
+                                span: node.span,
                                 message: format!(
                                     "Hardcoded {} in command: '{}'",
                                     secret_type,
@@ -150,7 +150,7 @@ impl MakefileRule for UnsafeCommandRule {
                         violations.push(Violation {
                             rule: self.id().to_string(),
                             severity,
-                            span: node.span.clone(),
+                            span: node.span,
                             message: format!(
                                 "Unsafe command pattern detected: {}",
                                 pattern
@@ -189,7 +189,7 @@ impl MakefileRule for PrivilegeEscalationRule {
                         violations.push(Violation {
                             rule: self.id().to_string(),
                             severity: self.default_severity(),
-                            span: node.span.clone(),
+                            span: node.span,
                             message: format!(
                                 "Potential privilege escalation: {}",
                                 issue
@@ -311,11 +311,10 @@ fn detect_unsafe_command(command: &str) -> Option<(&'static str, Severity)> {
     let cmd_trimmed = command.trim();
 
     // Critical: rm -rf /
-    if cmd_trimmed.contains("rm ") && cmd_trimmed.contains("-rf /") {
-        if cmd_trimmed.contains("-rf /") || cmd_trimmed.contains("-rf /*") {
+    if cmd_trimmed.contains("rm ") && cmd_trimmed.contains("-rf /")
+        && (cmd_trimmed.contains("-rf /") || cmd_trimmed.contains("-rf /*")) {
             return Some(("rm -rf / - extremely dangerous", Severity::Error));
         }
-    }
 
     // High: curl | bash pattern
     if (cmd_trimmed.contains("curl") || cmd_trimmed.contains("wget"))

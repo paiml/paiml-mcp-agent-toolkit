@@ -205,7 +205,7 @@ async fn generate_enhanced_ast_context(
         // Basic fallback metrics
         builder.content.push_str("- **Total Files**: 0\n");
         builder.content.push_str("- **Total Functions**: 0\n");
-        builder.content.push_str("\n");
+        builder.content.push('\n');
     }
 
     // Add quality scorecard
@@ -222,7 +222,7 @@ async fn generate_enhanced_ast_context(
     } else {
         builder.content.push_str("- **Test Coverage**: N/A\n");
     }
-    builder.content.push_str("\n");
+    builder.content.push('\n');
 
     // Add file-level AST with annotations
     builder.content.push_str("## Files\n\n");
@@ -289,7 +289,7 @@ fn add_simple_file_section(
                 crate::services::context::AstItem::Function { name, .. } => {
                     builder.content.push_str(&format!("- **Function**: `{}`", name));
                     builder.content.push_str(&get_simple_function_annotations(name, file, analyses));
-                    builder.content.push_str("\n");
+                    builder.content.push('\n');
                 },
                 crate::services::context::AstItem::Struct { name, fields_count, .. } => {
                     builder.content.push_str(&format!("- **Struct**: `{}` [fields: {}]\n", name, fields_count));
@@ -314,7 +314,7 @@ fn add_simple_file_section(
         }
     }
 
-    builder.content.push_str("\n");
+    builder.content.push('\n');
 }
 
 /// Get simple function annotations with basic metrics
@@ -632,7 +632,7 @@ fn format_context_output_simple(
     let output = match format {
         ContextFormat::Markdown => {
             let mut md = String::new();
-            md.push_str(&format!("# Project Context\n\n## Project Structure\n\n"));
+            md.push_str(&"# Project Context\n\n## Project Structure\n\n".to_string());
             md.push_str(&format!("- **Language**: {}\n", detected_toolchain));
             md.push_str(&format!("- **Total Files**: {}\n", project_context.summary.total_files));
             md.push_str(&format!("- **Total Functions**: {}\n", total_functions));
@@ -658,7 +658,7 @@ fn format_context_output_simple(
                             md.push_str(&format!("- `{}`\n", func));
                         }
                     }
-                    md.push_str("\n");
+                    md.push('\n');
                 }
             }
             md

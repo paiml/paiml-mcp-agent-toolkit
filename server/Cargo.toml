@@ -125,7 +125,7 @@ proc-macro2 = { version = "1.0", optional = true }
 walkdir = "2.5"
 ignore = "0.4"
 glob = "0.3"
-toml = "0.8"
+toml = "0.8.23"
 crossbeam-channel = "0.5"
 # For TypeScript/JavaScript parsing (conditional) - use compatible versions
 swc_ecma_parser = { version = "24.0", optional = true }
