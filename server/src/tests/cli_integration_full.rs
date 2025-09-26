@@ -177,8 +177,7 @@ mod tests {
         let project_path = PathBuf::from(".");
         let result = GitAnalysisService::analyze_code_churn(&project_path, 30);
 
-        if result.is_ok() {
-            let analysis = result.unwrap();
+        if let Ok(analysis) = result {
 
             // Test different output formats
             let summary = format_churn_summary(&analysis);

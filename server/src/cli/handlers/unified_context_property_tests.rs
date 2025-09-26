@@ -260,9 +260,9 @@ mod property_tests {
                 };
 
                 match analyzer.analyze(config).await {
-                    Ok(result) => {
-                        // Property: function count should always be non-negative
-                        TestResult::from_bool(result.complexity_metrics.total_functions >= 0)
+                    Ok(_result) => {
+                        // Property: function count should always be non-negative (usize is always >= 0)
+                        TestResult::passed()
                     },
                     Err(_) => TestResult::passed(), // Errors acceptable for invalid input
                 }

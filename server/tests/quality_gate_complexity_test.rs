@@ -111,13 +111,13 @@ fn complex_function(x: i32, y: i32, z: i32) -> i32 {
     if !binary_path.exists() {
         // Build the binary if it doesn't exist
         std::process::Command::new("cargo")
-            .args(&["build", "--bin", "pmat"])
+            .args(["build", "--bin", "pmat"])
             .output()
             .expect("Failed to build pmat");
     }
 
     let output = std::process::Command::new(binary_path)
-        .args(&[
+        .args([
             "quality-gate",
             "--file",
             test_file.to_str().unwrap(),
@@ -180,7 +180,7 @@ fn simple3(x: bool) -> i32 {
         .join("pmat");
 
     let output = std::process::Command::new(binary_path)
-        .args(&[
+        .args([
             "quality-gate",
             "--file",
             test_file.to_str().unwrap(),

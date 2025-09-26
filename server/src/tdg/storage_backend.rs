@@ -268,7 +268,7 @@ impl StorageBackend for RocksDbBackend {
         let size = self
             .db
             .property_int_value("rocksdb.live-sst-files-size")?
-            .unwrap_or(0) as u64;
+            .unwrap_or(0);
         Ok(size)
     }
 

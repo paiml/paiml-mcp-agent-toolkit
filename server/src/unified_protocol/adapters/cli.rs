@@ -2438,7 +2438,7 @@ mod tests {
 
     #[test]
     fn test_cli_adapter_default() {
-        let _ = CliAdapter::default();
+        let _ = CliAdapter;
         // Verify default creation works
         // size_of_val always returns >= 0 for any type
     }
@@ -2770,10 +2770,10 @@ mod tests {
         // Diagnose is now supported as a System command
         // Just verify it can be decoded without panicking
         // The test name suggests it should be unsupported, but it's actually implemented
-        if result.is_err() {
+        if let Err(error) = result {
             // If it errors for some reason, just verify it's a ProtocolError
             assert!(matches!(
-                result.unwrap_err(),
+                error,
                 ProtocolError::UnsupportedProtocol(_) | ProtocolError::InvalidFormat(_)
             ));
         }

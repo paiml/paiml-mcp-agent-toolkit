@@ -994,7 +994,7 @@ mod tests {
 
     #[test]
     fn test_optimization_strategies() {
-        let strategies = vec![
+        let strategies = [
             OptimizationStrategy::CacheOptimization,
             OptimizationStrategy::ParallelProcessing,
             OptimizationStrategy::MemoryPooling,
@@ -1027,7 +1027,7 @@ mod tests {
 
     #[test]
     fn test_regression_severity_levels() {
-        let severities = vec![
+        let severities = [
             RegressionSeverity::Minor,
             RegressionSeverity::Moderate,
             RegressionSeverity::Severe,

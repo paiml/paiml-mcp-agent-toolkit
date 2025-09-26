@@ -1150,13 +1150,15 @@ pub async fn handle_analyze_dead_code(
     let result = tokio::time::timeout(timeout_duration, async {
         run_dead_code_analysis_with_filters(
             &path,
-            include_unreachable,
-            include_tests,
-            min_dead_lines,
-            top_files,
-            include,
-            exclude,
-            max_depth,
+            DeadCodeAnalysisFilters {
+                include_unreachable,
+                include_tests,
+                min_dead_lines,
+                top_files,
+                include,
+                exclude,
+                max_depth,
+            },
         )
         .await
     })
@@ -1188,9 +1190,9 @@ pub async fn handle_analyze_dead_code(
     Ok(())
 }
 
-/// Run dead code analysis with include/exclude filters
-async fn run_dead_code_analysis_with_filters(
-    path: &Path,
+/// Configuration for dead code analysis
+#[allow(clippy::too_many_arguments)]
+struct DeadCodeAnalysisFilters {
     include_unreachable: bool,
     include_tests: bool,
     min_dead_lines: usize,
@@ -1198,19 +1200,25 @@ async fn run_dead_code_analysis_with_filters(
     include: Vec<String>,
     exclude: Vec<String>,
     max_depth: usize,
+}
+
+/// Run dead code analysis with include/exclude filters
+async fn run_dead_code_analysis_with_filters(
+    path: &Path,
+    filters: DeadCodeAnalysisFilters,
 ) -> Result<crate::models::dead_code::DeadCodeResult> {
     use crate::models::dead_code::DeadCodeAnalysisConfig;
     use crate::services::cargo_dead_code_analyzer::CargoDeadCodeAnalyzer;
     use crate::utils::file_filter::FileFilter;
 
     // Create file filter
-    let filter = FileFilter::new(include, exclude)?;
+    let filter = FileFilter::new(filters.include, filters.exclude)?;
 
     // Use the accurate cargo-based analyzer instead of the heuristic one
-    let cargo_analyzer = if include_tests {
-        CargoDeadCodeAnalyzer::new(path).include_tests().with_max_depth(max_depth)
+    let cargo_analyzer = if filters.include_tests {
+        CargoDeadCodeAnalyzer::new(path).include_tests().with_max_depth(filters.max_depth)
     } else {
-        CargoDeadCodeAnalyzer::new(path).with_max_depth(max_depth)
+        CargoDeadCodeAnalyzer::new(path).with_max_depth(filters.max_depth)
     };
 
     // Run cargo-based analysis for accurate results
@@ -1218,9 +1226,9 @@ async fn run_dead_code_analysis_with_filters(
 
     // Create config for the result
     let config = DeadCodeAnalysisConfig {
-        include_unreachable,
-        include_tests,
-        min_dead_lines,
+        include_unreachable: filters.include_unreachable,
+        include_tests: filters.include_tests,
+        min_dead_lines: filters.min_dead_lines,
     };
 
     // Convert cargo report to ranking format for compatibility
@@ -1228,7 +1236,7 @@ async fn run_dead_code_analysis_with_filters(
     let mut analysis_result = create_dead_code_ranking_result(
         accurate_report,
         files_with_dead_code_count,
-        min_dead_lines,
+        filters.min_dead_lines,
         config,
     );
 
@@ -1249,7 +1257,7 @@ async fn run_dead_code_analysis_with_filters(
     }
 
     // Apply top_files limit if specified
-    if let Some(limit) = top_files {
+    if let Some(limit) = filters.top_files {
         if limit > 0 && analysis_result.ranked_files.len() > limit {
             analysis_result.ranked_files.truncate(limit);
         }

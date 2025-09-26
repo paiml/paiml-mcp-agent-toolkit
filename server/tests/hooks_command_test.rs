@@ -9,7 +9,6 @@ use anyhow::Result;
 use std::fs;
 use std::path::PathBuf;
 use tempfile::TempDir;
-use tokio;
 
 /// Test fixture for hooks command testing
 struct HooksTestFixture {
@@ -203,9 +202,9 @@ async fn test_hooks_install_basic() -> Result<()> {
     let result = hooks_cmd.install(false, true).await?;
 
     // ASSERT
-    assert_eq!(result.success, true);
-    assert_eq!(result.hook_created, true);
-    assert_eq!(result.backup_created, false); // No existing hook to backup
+    assert!(result.success);
+    assert!(result.hook_created);
+    assert!(!result.backup_created); // No existing hook to backup
 
     // Hook file should exist and be executable
     let hook_path = fixture.pre_commit_hook();
@@ -232,9 +231,9 @@ async fn test_hooks_install_with_existing_hook() -> Result<()> {
     let result = hooks_cmd.install(false, true).await?;
 
     // ASSERT
-    assert_eq!(result.success, true);
-    assert_eq!(result.hook_created, true);
-    assert_eq!(result.backup_created, true);
+    assert!(result.success);
+    assert!(result.hook_created);
+    assert!(result.backup_created);
 
     // Backup should exist
     let backup_path = fixture.hooks_dir().join("pre-commit.pmat-backup");
@@ -258,9 +257,9 @@ async fn test_hooks_install_force_overwrite() -> Result<()> {
     let result = hooks_cmd.install(true, false).await?;
 
     // ASSERT
-    assert_eq!(result.success, true);
-    assert_eq!(result.hook_created, true);
-    assert_eq!(result.backup_created, false); // Force install without backup
+    assert!(result.success);
+    assert!(result.hook_created);
+    assert!(!result.backup_created); // Force install without backup
 
     // Hook should be replaced
     let hook_content = std::fs::read_to_string(&fixture.pre_commit_hook())?;
@@ -283,9 +282,9 @@ async fn test_hooks_uninstall_basic() -> Result<()> {
     let result = hooks_cmd.uninstall(false).await?;
 
     // ASSERT
-    assert_eq!(result.success, true);
-    assert_eq!(result.hook_removed, true);
-    assert_eq!(result.backup_restored, false);
+    assert!(result.success);
+    assert!(result.hook_removed);
+    assert!(!result.backup_restored);
 
     // Hook should be removed
     assert!(!fixture.pre_commit_hook().exists());
@@ -308,9 +307,9 @@ async fn test_hooks_uninstall_with_backup_restore() -> Result<()> {
     let result = hooks_cmd.uninstall(true).await?;
 
     // ASSERT
-    assert_eq!(result.success, true);
-    assert_eq!(result.hook_removed, true);
-    assert_eq!(result.backup_restored, true);
+    assert!(result.success);
+    assert!(result.hook_removed);
+    assert!(result.backup_restored);
 
     // Original hook should be restored
     let hook_content = std::fs::read_to_string(&fixture.pre_commit_hook())?;
@@ -330,9 +329,9 @@ async fn test_hooks_status_not_installed() -> Result<()> {
     let result = hooks_cmd.status().await?;
 
     // ASSERT
-    assert_eq!(result.installed, false);
-    assert_eq!(result.is_pmat_managed, false);
-    assert_eq!(result.config_up_to_date, false);
+    assert!(!result.installed);
+    assert!(!result.is_pmat_managed);
+    assert!(!result.config_up_to_date);
     assert_eq!(result.last_updated, None);
     assert_eq!(result.hook_content_preview, None);
 
@@ -352,9 +351,9 @@ async fn test_hooks_status_installed() -> Result<()> {
     let result = hooks_cmd.status().await?;
 
     // ASSERT
-    assert_eq!(result.installed, true);
-    assert_eq!(result.is_pmat_managed, true);
-    assert_eq!(result.config_up_to_date, true);
+    assert!(result.installed);
+    assert!(result.is_pmat_managed);
+    assert!(result.config_up_to_date);
     assert!(result.last_updated.is_some());
     assert!(result.hook_content_preview.is_some());
 
@@ -377,7 +376,7 @@ async fn test_hooks_verify_valid() -> Result<()> {
     let result = hooks_cmd.verify(false).await?;
 
     // ASSERT
-    assert_eq!(result.is_valid, true);
+    assert!(result.is_valid);
     assert!(result.issues.is_empty());
     assert!(result.fixes_applied.is_empty());
 
@@ -400,7 +399,7 @@ async fn test_hooks_verify_with_fix() -> Result<()> {
     let result = hooks_cmd.verify(true).await?;
 
     // ASSERT
-    assert_eq!(result.is_valid, true); // Should be valid after fix
+    assert!(result.is_valid); // Should be valid after fix
     assert!(!result.issues.is_empty()); // Should have detected issues
     assert!(!result.fixes_applied.is_empty()); // Should have applied fixes
 
@@ -437,9 +436,9 @@ max_cognitive_complexity = 20
     let result = hooks_cmd.refresh().await?;
 
     // ASSERT
-    assert_eq!(result.success, true);
-    assert_eq!(result.hook_updated, true);
-    assert_eq!(result.config_changes_detected, true);
+    assert!(result.success);
+    assert!(result.hook_updated);
+    assert!(result.config_changes_detected);
 
     Ok(())
 }
@@ -487,9 +486,9 @@ async fn test_hooks_idempotent_install() -> Result<()> {
     let result3 = hooks_cmd.install(false, true).await?;
 
     // ASSERT
-    assert_eq!(result1.success, true);
-    assert_eq!(result2.success, true);
-    assert_eq!(result3.success, true);
+    assert!(result1.success);
+    assert!(result2.success);
+    assert!(result3.success);
 
     // Hook content should be identical
     let hook_content = std::fs::read_to_string(&fixture.pre_commit_hook())?;

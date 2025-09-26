@@ -884,7 +884,7 @@ mod tests {
 
     #[test]
     fn test_learning_styles() {
-        let styles = vec![
+        let styles = [
             LearningStyle::Practical,
             LearningStyle::Theoretical,
             LearningStyle::Balanced,

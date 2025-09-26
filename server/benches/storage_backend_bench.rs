@@ -3,13 +3,14 @@
 //! These benchmarks compare the performance of different storage backends
 //! under various workload patterns.
 
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use pmat::tdg::{
     AnalysisMetadata, ComponentScores, FileIdentity, FullTdgRecord, Grade, InMemoryBackend,
-    Language, SemanticSignature, SledBackend, StorageBackend, StorageBackendFactory,
-    StorageBackendType, StorageConfig, TdgScore, TieredStorageFactory, TieredStore,
+    Language, SemanticSignature, SledBackend, StorageBackend,
+    TdgScore, TieredStorageFactory, TieredStore,
 };
 use std::collections::HashMap;
+use std::hint::black_box;
 use std::path::PathBuf;
 use std::time::SystemTime;
 use tempfile::TempDir;
@@ -39,7 +40,8 @@ fn bench_put_operations(c: &mut Criterion) {
             b.iter(|| {
                 let backend = InMemoryBackend::new();
                 for (key, value) in data {
-                    black_box(backend.put(key, value).unwrap());
+                    backend.put(key, value).unwrap();
+                    black_box(());
                 }
             });
         });
@@ -53,7 +55,8 @@ fn bench_put_operations(c: &mut Criterion) {
                 },
                 |(backend, _temp_dir)| {
                     for (key, value) in data {
-                        black_box(backend.put(key, value).unwrap());
+                        backend.put(key, value).unwrap();
+                    black_box(());
                     }
                     backend.flush().unwrap();
                 },
@@ -162,7 +165,8 @@ fn bench_mixed_workload(c: &mut Criterion) {
             for op in &ops {
                 match op {
                     Operation::Put(key, value) => {
-                        black_box(backend.put(key, value).unwrap());
+                        backend.put(key, value).unwrap();
+                    black_box(());
                     }
                     Operation::Get(key) => {
                         black_box(backend.get(key).unwrap());
@@ -194,7 +198,8 @@ fn bench_mixed_workload(c: &mut Criterion) {
                 for op in &ops {
                     match op {
                         Operation::Put(key, value) => {
-                            black_box(backend.put(key, value).unwrap());
+                            backend.put(key, value).unwrap();
+                    black_box(());
                         }
                         Operation::Get(key) => {
                             black_box(backend.get(key).unwrap());
@@ -235,7 +240,8 @@ fn bench_tiered_store(c: &mut Criterion) {
 
                 // Store all records
                 for record in &records {
-                    black_box(storage.store(record.clone()).await.unwrap());
+                    storage.store(record.clone()).await.unwrap();
+                    black_box(());
                 }
 
                 // Retrieve all records
@@ -262,7 +268,8 @@ fn bench_tiered_store(c: &mut Criterion) {
 
                     // Store all records
                     for record in &records {
-                        black_box(storage.store(record.clone()).await.unwrap());
+                        storage.store(record.clone()).await.unwrap();
+                    black_box(());
                     }
 
                     // Retrieve all records
@@ -341,7 +348,8 @@ fn bench_compression_efficiency(c: &mut Criterion) {
                     let storage = TieredStorageFactory::create_at_path(temp_dir.path()).unwrap();
 
                     for record in &records {
-                        black_box(storage.store(record.clone()).await.unwrap());
+                        storage.store(record.clone()).await.unwrap();
+                    black_box(());
                     }
 
                     // Force flush to ensure compression is applied

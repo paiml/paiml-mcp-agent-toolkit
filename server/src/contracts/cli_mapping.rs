@@ -19,7 +19,7 @@ mod tests {
     fn test_cli_to_contract_mapping() {
         // Test that CLI arguments map correctly to contracts
         // This ensures the uniform contract requirement is met
-        assert!(true); // Placeholder test
+        // Placeholder test - CLI arguments map correctly to contracts
     }
 }
 

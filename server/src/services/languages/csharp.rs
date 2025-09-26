@@ -575,7 +575,7 @@ mod property_tests {
 
             if let Ok(items) = visitor.analyze_csharp_source(&source) {
                 // Should extract namespace and class
-                prop_assert!(items.len() >= 1);
+                prop_assert!(!items.is_empty());
 
                 // Check that namespace name is included in qualified names
                 let has_namespace_prefix = items.iter().any(|item| match item {

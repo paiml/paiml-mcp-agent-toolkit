@@ -498,7 +498,7 @@ mod tests {
             .await
             .unwrap();
 
-        let files = collect_assemblyscript_files(&temp_dir.path().to_path_buf()).unwrap();
+        let files = collect_assemblyscript_files(temp_dir.path()).unwrap();
         assert_eq!(files.len(), 2);
     }
 
@@ -515,7 +515,7 @@ mod tests {
         tokio::fs::write(&wat_file, "(module)").await.unwrap();
         tokio::fs::write(&other_file, "not wasm").await.unwrap();
 
-        let files = collect_wasm_files(&temp_dir.path().to_path_buf(), true, true).unwrap();
+        let files = collect_wasm_files(temp_dir.path(), true, true).unwrap();
         assert_eq!(files.len(), 2);
     }
 }

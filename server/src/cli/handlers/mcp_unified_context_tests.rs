@@ -35,7 +35,7 @@ export { calculateTotal, processData };
         // Run pmat context in MCP mode
         let pmat_path = std::env::current_dir().unwrap().join("target/debug/pmat");
         let output = Command::new(&pmat_path)
-            .args(&[
+            .args([
                 "context",
                 "--mode", "mcp",
                 "--project-path", temp_dir.path().to_str().unwrap(),
@@ -144,7 +144,7 @@ function bubbleSort(arr) {
         // Generate context in CLI mode
         let pmat_path = std::env::current_dir().unwrap().join("target/debug/pmat");
         let cli_result = Command::new(&pmat_path)
-            .args(&[
+            .args([
                 "context",
                 "--project-path", temp_dir.path().to_str().unwrap(),
                 "--output", cli_output.to_str().unwrap()
@@ -155,7 +155,7 @@ function bubbleSort(arr) {
 
         // Generate context in MCP mode
         let mcp_result = Command::new(&pmat_path)
-            .args(&[
+            .args([
                 "context",
                 "--mode", "mcp",
                 "--project-path", temp_dir.path().to_str().unwrap(),
@@ -208,7 +208,7 @@ function bubbleSort(arr) {
         // Use pmat-agent to orchestrate analysis
         let agent_path = std::env::current_dir().unwrap().join("target/debug/pmat-agent");
         let output = Command::new(&agent_path)
-            .args(&["analyze", temp_dir.path().to_str().unwrap()])
+            .args(["analyze", temp_dir.path().to_str().unwrap()])
             .output()
             .await
             .expect("Failed to run pmat-agent");
@@ -253,7 +253,7 @@ function validate{}(input) {{
         let start = std::time::Instant::now();
         let pmat_path = std::env::current_dir().unwrap().join("target/debug/pmat");
         let result = Command::new(&pmat_path)
-            .args(&[
+            .args([
                 "context",
                 "--mode", "mcp",
                 "--project-path", temp_dir.path().to_str().unwrap(),
@@ -309,7 +309,7 @@ class DataProcessor:
         // Test that agent can execute unified context workflow
         let agent_path = std::env::current_dir().unwrap().join("target/debug/pmat-agent");
         let workflow_result = Command::new(&agent_path)
-            .args(&["execute", "unified-context", "--project", temp_dir.path().to_str().unwrap()])
+            .args(["execute", "unified-context", "--project", temp_dir.path().to_str().unwrap()])
             .output()
             .await;
 
@@ -356,7 +356,7 @@ function unused() {
         // Run quality gate analysis
         let agent_path = std::env::current_dir().unwrap().join("target/debug/pmat-agent");
         let quality_result = Command::new(&agent_path)
-            .args(&["quality-gate", temp_dir.path().to_str().unwrap()])
+            .args(["quality-gate", temp_dir.path().to_str().unwrap()])
             .output()
             .await;
 
@@ -434,7 +434,7 @@ mod extreme_tdd_verification {
 
         let pmat_path = std::env::current_dir().unwrap().join("target/debug/pmat");
         let output = Command::new(&pmat_path)
-            .args(&["context", "--project-path", temp_dir.path().to_str().unwrap()])
+            .args(["context", "--project-path", temp_dir.path().to_str().unwrap()])
             .output()
             .await
             .expect("Failed to run pmat context");
@@ -461,7 +461,7 @@ mod extreme_tdd_verification {
 
             let pmat_path = std::env::current_dir().unwrap().join("target/debug/pmat");
             let lang_output = Command::new(&pmat_path)
-                .args(&["context", "--project-path", lang_dir.path().to_str().unwrap()])
+                .args(["context", "--project-path", lang_dir.path().to_str().unwrap()])
                 .output()
                 .await
                 .expect(&format!("Failed to analyze {}", filename));

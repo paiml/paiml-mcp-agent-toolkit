@@ -209,7 +209,7 @@ impl TestValidators {
             serde_json::from_str(&result.stdout_text).context("Output is not valid JSON")?;
 
         for field in expected_fields {
-            if !json.get(field).is_some() {
+            if json.get(field).is_none() {
                 anyhow::bail!("Missing expected field '{}' in JSON output", field);
             }
         }

@@ -278,11 +278,10 @@ mod architecture_tests {
         let mut rec_stack = HashSet::new();
 
         for node in graph.keys() {
-            if !visited.contains(node) {
-                if has_cycle_dfs(node, graph, &mut visited, &mut rec_stack) {
+            if !visited.contains(node)
+                && has_cycle_dfs(node, graph, &mut visited, &mut rec_stack) {
                     return false;
                 }
-            }
         }
 
         true

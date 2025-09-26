@@ -628,7 +628,7 @@ mod new_tests {
     #[test]
     fn test_serialization_roundtrip() {
         let original = TDGScore {
-            value: 3.14,
+            value: std::f64::consts::PI,
             components: TDGComponents {
                 complexity: 1.1,
                 churn: 2.2,

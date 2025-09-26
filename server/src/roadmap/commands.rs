@@ -620,7 +620,7 @@ mod tests {
     #[test]
     fn test_roadmap_command_parsing() {
         // Test CLI parsing for RoadmapCommand
-        let cmd = RoadmapCommand::try_parse_from(&[
+        let cmd = RoadmapCommand::try_parse_from([
             "roadmap",
             "init",
             "--version",
@@ -692,7 +692,7 @@ mod tests {
 
     #[test]
     fn test_todos_subcommand_parsing() {
-        let cmd = RoadmapCommand::try_parse_from(&[
+        let cmd = RoadmapCommand::try_parse_from([
             "roadmap",
             "todos",
             "--sprint",
@@ -722,7 +722,7 @@ mod tests {
     #[test]
     fn test_start_subcommand_parsing() {
         let cmd =
-            RoadmapCommand::try_parse_from(&["roadmap", "start", "PMAT-1001", "--create-branch"]);
+            RoadmapCommand::try_parse_from(["roadmap", "start", "PMAT-1001", "--create-branch"]);
 
         assert!(cmd.is_ok());
         if let Ok(parsed) = cmd {
@@ -741,7 +741,7 @@ mod tests {
 
     #[test]
     fn test_complete_subcommand_parsing() {
-        let cmd = RoadmapCommand::try_parse_from(&[
+        let cmd = RoadmapCommand::try_parse_from([
             "roadmap",
             "complete",
             "PMAT-1001",

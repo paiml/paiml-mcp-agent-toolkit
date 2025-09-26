@@ -439,7 +439,7 @@ mod tests {
         use std::collections::HashMap;
 
         // Create test defects for different files
-        let defects = vec![
+        let defects = [
             Defect {
                 id: "1".to_string(),
                 category: DefectCategory::Complexity,

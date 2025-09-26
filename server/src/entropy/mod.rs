@@ -131,7 +131,7 @@ mod tests {
     #[tokio::test]
     async fn test_analyzer_creation() {
         let analyzer = EntropyAnalyzer::new();
-        assert!(analyzer.config.pattern_types.len() > 0);
+        assert!(!analyzer.config.pattern_types.is_empty());
     }
 }
 #[cfg(test)]

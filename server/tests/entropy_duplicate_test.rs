@@ -60,9 +60,11 @@ fn process_e() {
     .unwrap();
 
     // Configure analyzer
-    let mut config = EntropyConfig::default();
-    config.min_severity = Severity::Low;
-    config.max_pattern_repetition = 3; // Should trigger on 5 repetitions
+    let config = EntropyConfig {
+        min_severity: Severity::Low,
+        max_pattern_repetition: 3, // Should trigger on 5 repetitions
+        ..EntropyConfig::default()
+    };
 
     let analyzer = EntropyAnalyzer::with_config(config);
 
@@ -174,9 +176,11 @@ fn validate_4(input: &str) -> bool {
     )
     .unwrap();
 
-    let mut config = EntropyConfig::default();
-    config.min_severity = Severity::Low;
-    config.max_pattern_repetition = 3;
+    let config = EntropyConfig {
+        min_severity: Severity::Low,
+        max_pattern_repetition: 3,
+        ..EntropyConfig::default()
+    };
 
     let analyzer = EntropyAnalyzer::with_config(config);
     let report = analyzer

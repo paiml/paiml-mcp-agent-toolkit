@@ -405,7 +405,7 @@ mod tests {
 
         // Rate should have changed
         let new_rate = controller.get_current_rate();
-        assert!(new_rate >= 10 && new_rate <= 1000);
+        assert!((10..=1000).contains(&new_rate));
     }
 
     #[actix_rt::test]

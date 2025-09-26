@@ -704,8 +704,8 @@ mod tests {
 
         // Verify quality metrics
         assert!(result.quality_score.overall > 80.0);
-        assert!(result.metrics.complexity > 0 || result.metrics.complexity == 0);
-        assert!(result.metrics.has_doctests || !result.metrics.has_doctests);
+        // Complexity is always non-negative for u32
+        // Doctest flag is valid in either state
     }
 
     #[test]

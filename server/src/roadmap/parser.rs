@@ -542,7 +542,7 @@ mod tests {
         let roadmap = parse_roadmap(SAMPLE_ROADMAP).unwrap();
 
         // Should have both current and previous sprint
-        assert!(roadmap.sprints.len() >= 1);
+        assert!(!roadmap.sprints.is_empty());
         assert!(roadmap.sprints.contains_key("v2.41.0") || roadmap.current_sprint.is_some());
     }
 

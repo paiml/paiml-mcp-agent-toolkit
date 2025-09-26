@@ -41,7 +41,7 @@ fn function_10() -> i32 { 10 }
 
     // ACT: Should complete within 10 seconds with smart bounds
     let result = tokio::time::timeout(Duration::from_secs(10), async {
-        crate::services::deep_context::analyze_provability(&temp_dir.path()).await
+        crate::services::deep_context::analyze_provability(temp_dir.path()).await
     }).await;
 
     // ASSERT: Should not timeout and should succeed
@@ -73,7 +73,7 @@ fn example() -> i32 {
 
     // ACT: Should complete within 10 seconds
     let result = tokio::time::timeout(Duration::from_secs(10), async {
-        crate::services::deep_context::analyze_churn(&temp_dir.path(), 30).await
+        crate::services::deep_context::analyze_churn(temp_dir.path(), 30).await
     }).await;
 
     // ASSERT: Should not timeout and should fail gracefully (no git repo)

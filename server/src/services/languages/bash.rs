@@ -493,7 +493,7 @@ main "$@"
             .iter()
             .any(|item| matches!(item, AstItem::Function { .. }));
         assert!(
-            has_commands || items.len() >= 1,
+            has_commands || !items.is_empty(),
             "Should detect script structure"
         );
     }
