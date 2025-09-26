@@ -1,5 +1,7 @@
 // UnifiedContextBuilder - Integrates all advanced annotations into unified context output
 // use crate::services::simple_deep_context::SimpleDeepContext;
+#![allow(dead_code)]
+
 use crate::services::context::ProjectContext;
 use std::path::{Path, PathBuf};
 use std::collections::HashMap;
@@ -7,6 +9,7 @@ use std::collections::HashMap;
 pub struct UnifiedContextBuilder {
     output: String,
     project_path: PathBuf,
+    #[allow(dead_code)]
     annotations: HashMap<String, String>,
 }
 
@@ -302,7 +305,7 @@ impl UnifiedContextBuilder {
     }
 
     // Add recommendations (existing functionality)
-    pub fn add_recommendations(&mut self, context: &ProjectContext) -> &mut Self {
+    pub fn add_recommendations(&mut self, _context: &ProjectContext) -> &mut Self {
         self.output.push_str("## Recommendations\n\n");
 
         // Generate recommendations based on all analyses
@@ -486,6 +489,7 @@ struct SatdComment {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 enum Error {
     NotImplemented,
     AnalysisFailed(String),
