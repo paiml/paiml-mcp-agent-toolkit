@@ -30,6 +30,9 @@ The following tests have been marked as `#[ignore]` to achieve stable coverage m
 - `tdg::web_dashboard::tests::test_metrics_update`
 - `tdg::web_dashboard::tests::test_router_creation`
 
+### Binary Integration Tests (1 test)
+- `tests::bin_integration::test_binary_version_flag` - Compilation timeout in CI
+
 ### End-to-End Tests (4 tests)
 - `tests::ast_e2e::ast_python_tests::test_analyze_python_file_comprehensive`
 - `tests::ast_e2e::ast_python_tests::test_python_import_parsing`
