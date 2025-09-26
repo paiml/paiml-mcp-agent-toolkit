@@ -122,7 +122,7 @@ impl AdvancedUnifiedContextBuilder {
         self.output.push_str(&format!("- **Total Structs**: {}\n", context.summary.total_structs));
         self.output.push_str(&format!("- **Total Enums**: {}\n", context.summary.total_enums));
         self.output.push_str(&format!("- **Total Traits**: {}\n", context.summary.total_traits));
-        self.output.push_str("\n");
+        self.output.push('\n');
     }
 
     fn add_key_components(&mut self, context: &ProjectContext) {
@@ -141,7 +141,7 @@ impl AdvancedUnifiedContextBuilder {
                     if function_count > 0 {
                         self.output.push_str(&format!("- Functions: {}\n", function_count));
                     }
-                    self.output.push_str("\n");
+                    self.output.push('\n');
                 }
             }
         }
@@ -158,7 +158,7 @@ impl AdvancedUnifiedContextBuilder {
                     for (function, complexity) in analysis {
                         self.output.push_str(&format!("- `{}`: {}\n", function, complexity));
                     }
-                    self.output.push_str("\n");
+                    self.output.push('\n');
                 }
             }
             Err(e) => {
@@ -185,7 +185,7 @@ impl AdvancedUnifiedContextBuilder {
                         self.output.push_str(&format!("- {}\n", item));
                     }
                 }
-                self.output.push_str("\n");
+                self.output.push('\n');
             }
             Err(e) => {
                 warn!("Entropy analysis failed: {}", e);
@@ -218,7 +218,7 @@ impl AdvancedUnifiedContextBuilder {
 
                 self.output.push_str(&format!("\n### Verification Status: {}\n",
                     if provability_data.verified { "✓ Verified" } else { "⚠ Unverified" }));
-                self.output.push_str("\n");
+                self.output.push('\n');
             }
             Err(e) => {
                 warn!("Provability analysis failed: {}", e);
@@ -250,7 +250,7 @@ impl AdvancedUnifiedContextBuilder {
                         self.output.push_str(&format!("- {}\n", path));
                     }
                 }
-                self.output.push_str("\n");
+                self.output.push('\n');
             }
             Err(e) => {
                 warn!("Graph metrics analysis failed: {}", e);
@@ -288,7 +288,7 @@ impl AdvancedUnifiedContextBuilder {
                         self.output.push_str(&format!("{}. {}\n", i + 1, priority));
                     }
                 }
-                self.output.push_str("\n");
+                self.output.push('\n');
             }
             Err(e) => {
                 warn!("TDG analysis failed: {}", e);
@@ -332,7 +332,7 @@ impl AdvancedUnifiedContextBuilder {
                         }
                     }
                 }
-                self.output.push_str("\n");
+                self.output.push('\n');
             }
             Err(e) => {
                 warn!("Dead code analysis failed: {}", e);
@@ -381,7 +381,7 @@ impl AdvancedUnifiedContextBuilder {
                 self.output.push_str(&format!("- **Code Debt**: {}\n", satd_data.code_debt));
                 self.output.push_str(&format!("- **Test Debt**: {}\n", satd_data.test_debt));
                 self.output.push_str(&format!("- **Documentation Debt**: {}\n", satd_data.doc_debt));
-                self.output.push_str("\n");
+                self.output.push('\n');
             }
             Err(e) => {
                 warn!("SATD analysis failed: {}", e);
@@ -425,7 +425,7 @@ impl AdvancedUnifiedContextBuilder {
             }
         }
 
-        self.output.push_str("\n");
+        self.output.push('\n');
     }
 
     fn add_recommendations(&mut self, context: &ProjectContext) {
@@ -464,7 +464,7 @@ impl AdvancedUnifiedContextBuilder {
             self.output.push_str(&format!("- {}\n", rec));
         }
 
-        self.output.push_str("\n");
+        self.output.push('\n');
     }
 
     // Analysis execution methods

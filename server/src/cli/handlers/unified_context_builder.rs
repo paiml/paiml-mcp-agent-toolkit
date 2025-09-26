@@ -32,7 +32,7 @@ impl UnifiedContextBuilder {
         self.output.push_str(&format!("- **Total Structs**: {}\n", context.summary.total_structs));
         self.output.push_str(&format!("- **Total Enums**: {}\n", context.summary.total_enums));
         self.output.push_str(&format!("- **Total Traits**: {}\n", context.summary.total_traits));
-        self.output.push_str("\n");
+        self.output.push('\n');
         self
     }
 
@@ -48,7 +48,7 @@ impl UnifiedContextBuilder {
 
         // Skip file-level details for now as the structure is different
         // This would need to be populated from actual analysis
-        self.output.push_str("\n");
+        self.output.push('\n');
         self
     }
 
@@ -66,7 +66,7 @@ impl UnifiedContextBuilder {
         } else {
             self.output.push_str("*Big-O analysis not available*\n");
         }
-        self.output.push_str("\n");
+        self.output.push('\n');
         self
     }
 
@@ -91,7 +91,7 @@ impl UnifiedContextBuilder {
         } else {
             self.output.push_str("*Entropy analysis not available*\n");
         }
-        self.output.push_str("\n");
+        self.output.push('\n');
         self
     }
 
@@ -124,7 +124,7 @@ impl UnifiedContextBuilder {
         } else {
             self.output.push_str("*Provability analysis not available*\n");
         }
-        self.output.push_str("\n");
+        self.output.push('\n');
         self
     }
 
@@ -155,7 +155,7 @@ impl UnifiedContextBuilder {
         } else {
             self.output.push_str("*Graph metrics not available*\n");
         }
-        self.output.push_str("\n");
+        self.output.push('\n');
         self
     }
 
@@ -186,7 +186,7 @@ impl UnifiedContextBuilder {
         } else {
             self.output.push_str("*TDG analysis not available*\n");
         }
-        self.output.push_str("\n");
+        self.output.push('\n');
         self
     }
 
@@ -232,7 +232,7 @@ impl UnifiedContextBuilder {
         } else {
             self.output.push_str("*Dead code analysis not available*\n");
         }
-        self.output.push_str("\n");
+        self.output.push('\n');
         self
     }
 
@@ -281,7 +281,7 @@ impl UnifiedContextBuilder {
         } else {
             self.output.push_str("*SATD analysis not available*\n");
         }
-        self.output.push_str("\n");
+        self.output.push('\n');
         self
     }
 
@@ -300,7 +300,7 @@ impl UnifiedContextBuilder {
         }
 
         // Add more insights based on analysis results
-        self.output.push_str("\n");
+        self.output.push('\n');
         self
     }
 
@@ -314,7 +314,7 @@ impl UnifiedContextBuilder {
         self.output.push_str("- Review and address identified technical debt\n");
         self.output.push_str("- Refactor high-complexity functions\n");
 
-        self.output.push_str("\n");
+        self.output.push('\n');
         self
     }
 
@@ -338,7 +338,7 @@ impl UnifiedContextBuilder {
         self.output.push_str("- **Total Structs**: 1\n");
         self.output.push_str("- **Total Enums**: 1\n");
         self.output.push_str("- **Total Traits**: 1\n");
-        self.output.push_str("\n");
+        self.output.push('\n');
         self
     }
 
@@ -347,7 +347,7 @@ impl UnifiedContextBuilder {
         self.output.push_str("- `function_name`: O(n)\n");
         self.output.push_str("- `sort_function`: O(n log n)\n");
         self.output.push_str("- `nested_loops`: O(n²)\n");
-        self.output.push_str("\n");
+        self.output.push('\n');
         self
     }
 
@@ -359,7 +359,7 @@ impl UnifiedContextBuilder {
         self.output.push_str("- Actionable Improvements:\n");
         self.output.push_str("  - Reduce duplication in utility functions\n");
         self.output.push_str("  - Extract common patterns\n");
-        self.output.push_str("\n");
+        self.output.push('\n');
         self
     }
 
@@ -373,7 +373,7 @@ impl UnifiedContextBuilder {
         self.output.push_str("- main.rs:45 (Score: 3.20)\n");
         self.output.push_str("\n### Refactoring Priority:\n");
         self.output.push_str("1. Simplify complex function in utils.rs\n");
-        self.output.push_str("\n");
+        self.output.push('\n');
         self
     }
 }
