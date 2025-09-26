@@ -390,7 +390,7 @@ mod property_tests {
             let path = Path::new(&test_file);
 
             let matches = QualityMonitor::should_analyze(path, &patterns);
-            prop_assert!(matches == true);
+            prop_assert!(matches);
 
             // Test non-matching extension
             let wrong_file = format!("{}.txt", filename);
@@ -471,7 +471,7 @@ mod property_tests {
             pattern_type in 0..3usize,
             file_extension in "[a-z]{1,10}"
         ) {
-            let patterns = vec![
+            let patterns = [
                 format!("**/*.{}", file_extension),
                 format!("*.{}", file_extension),
                 file_extension.clone()
@@ -481,7 +481,7 @@ mod property_tests {
             let test_file = format!("test.{}", file_extension);
             let path = Path::new(&test_file);
 
-            let matches = QualityMonitor::should_analyze(path, &[test_pattern.clone()]);
+            let matches = QualityMonitor::should_analyze(path, std::slice::from_ref(test_pattern));
 
             match pattern_type {
                 0 => prop_assert!(matches), // **/*.ext should match

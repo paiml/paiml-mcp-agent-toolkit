@@ -147,7 +147,7 @@ mod real_world_tests {
             // - visit_var_decl: ≤10 cyclomatic, ≤25 cognitive
 
             println!("✅ Enhanced naming implementation maintains complexity limits");
-            assert!(true, "Complexity limits are enforced by build-time analysis");
+            // Complexity limits are enforced by build-time analysis
         }
     }
 }

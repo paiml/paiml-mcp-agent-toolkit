@@ -525,7 +525,7 @@ mod property_tests {
             let path = PathBuf::from("satd_test.rs");
 
             // Add known SATD comments
-            let satd_comments = vec!["TODO", "FIXME", "HACK", "XXX", "BUG"];
+            let satd_comments = ["TODO", "FIXME", "HACK", "XXX", "BUG"];
             let mut enhanced_code = base_code;
 
             for i in 0..satd_count {

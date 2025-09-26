@@ -638,7 +638,7 @@ mod tests {
 
     #[test]
     fn test_violation_severity_ordering() {
-        let severities = vec![
+        let severities = [
             ViolationSeverity::Info,
             ViolationSeverity::Warning,
             ViolationSeverity::Error,
@@ -668,7 +668,7 @@ mod tests {
 
     #[test]
     fn test_workflow_status_variants() {
-        let statuses = vec![
+        let statuses = [
             WorkflowStatus::Success,
             WorkflowStatus::Warning,
             WorkflowStatus::Failure,

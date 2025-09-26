@@ -48,7 +48,7 @@ mod tests {
         let unique_communities: std::collections::HashSet<_> = communities.iter().collect();
 
         // Should detect reasonable number of communities
-        assert!(unique_communities.len() >= 1);
+        assert!(!unique_communities.is_empty());
         assert!(unique_communities.len() <= 6);
 
         // Calculate modularity to verify community quality
@@ -83,7 +83,7 @@ mod tests {
 
         // For complete graph, modularity optimization may create multiple communities
         // Just verify we get a reasonable result
-        assert!(unique_communities.len() >= 1);
+        assert!(!unique_communities.is_empty());
         assert!(unique_communities.len() <= 5);
     }
 

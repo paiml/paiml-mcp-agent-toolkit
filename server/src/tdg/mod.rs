@@ -424,14 +424,16 @@ mod tests {
 
     #[test]
     fn test_tdg_score_calculate_total() {
-        let mut score = TdgScore::default();
-        score.structural_complexity = 20.0;
-        score.semantic_complexity = 18.0;
-        score.duplication_ratio = 19.0;
-        score.coupling_score = 14.0;
-        score.doc_coverage = 9.0;
-        score.consistency_score = 8.0;
-        score.entropy_score = 12.0; // New: Include entropy in test
+        let mut score = TdgScore {
+            structural_complexity: 20.0,
+            semantic_complexity: 18.0,
+            duplication_ratio: 19.0,
+            coupling_score: 14.0,
+            doc_coverage: 9.0,
+            consistency_score: 8.0,
+            entropy_score: 12.0, // New: Include entropy in test
+            ..TdgScore::default()
+        };
 
         score.calculate_total();
 

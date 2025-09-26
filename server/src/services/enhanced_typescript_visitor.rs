@@ -719,7 +719,7 @@ mod tests {
         }
 
         fn generate_typescript_code(seed: u64) -> String {
-            let templates = vec![
+            let templates = [
                 "function func{}() { return {}; }",
                 "const func{} = () => {};",
                 "class Class{} { method() {} }",
@@ -732,7 +732,7 @@ mod tests {
 
         fn is_valid_typescript(code: &str) -> bool {
             // Basic validation - not empty, has valid characters
-            !code.is_empty() && code.chars().all(|c| c.is_ascii())
+            !code.is_empty() && code.is_ascii()
         }
 
         #[cfg(feature = "typescript-ast")]

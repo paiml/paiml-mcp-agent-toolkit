@@ -11,6 +11,7 @@ use proptest::prelude::*;
 
 /// Test fixture for creating temporary project structures
 struct ProjectFixture {
+    #[allow(dead_code)]
     temp_dir: TempDir,
     path: PathBuf,
 }
@@ -193,7 +194,6 @@ version = "0.1.0""#);
 
 #[cfg(test)]
 mod integration_tests {
-    use super::*;
 
     /// Integration test: Verify cross-command consistency
     /// This test ensures that different analysis commands produce consistent results

@@ -806,9 +806,11 @@ mod property_tests {
             grace_period_days in 1u64..100,
             elapsed_days in 0u64..200
         ) {
-            let mut budget = QualityBudget::default();
-            budget.grace_period = Duration::from_secs(grace_period_days * 24 * 3600);
-            budget.started_at = SystemTime::now() - Duration::from_secs(elapsed_days * 24 * 3600);
+            let budget = QualityBudget {
+                grace_period: Duration::from_secs(grace_period_days * 24 * 3600),
+                started_at: SystemTime::now() - Duration::from_secs(elapsed_days * 24 * 3600),
+                ..QualityBudget::default()
+            };
 
             let mut enforcer = ErrorBudgetEnforcer::new(EnforcerConfig::default());
             enforcer.register_team(team_id.clone(), Some(budget.clone()));

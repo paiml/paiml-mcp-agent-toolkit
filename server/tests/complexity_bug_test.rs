@@ -31,7 +31,7 @@ fn complex_function(x: i32) -> i32 {
 
     // Run complexity analysis on the file
     let output = std::process::Command::new("../target/debug/pmat")
-        .args(&[
+        .args([
             "analyze",
             "complexity",
             "--file",
@@ -92,7 +92,7 @@ fn test_empty_file_has_zero_complexity() {
     fs::write(&test_file, content).unwrap();
 
     let output = std::process::Command::new("../target/debug/pmat")
-        .args(&[
+        .args([
             "analyze",
             "complexity",
             "--file",
@@ -154,7 +154,7 @@ fn helper_function() {
 
     // Test on this file
     let output = std::process::Command::new("../target/debug/pmat")
-        .args(&[
+        .args([
             "analyze",
             "complexity",
             "--file",

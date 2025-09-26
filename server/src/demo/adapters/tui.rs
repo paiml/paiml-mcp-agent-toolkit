@@ -42,8 +42,9 @@ enum ControlFlow {
 }
 
 #[cfg(feature = "tui")]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 enum PanelId {
+    #[default]
     FileTree,
     Analysis,
     Dag,
@@ -72,12 +73,6 @@ struct TuiState {
     progress: f32,
 }
 
-#[cfg(feature = "tui")]
-impl Default for PanelId {
-    fn default() -> Self {
-        Self::FileTree
-    }
-}
 
 #[cfg(feature = "tui")]
 impl TuiState {

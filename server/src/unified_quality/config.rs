@@ -305,9 +305,10 @@ mod tests {
 
     #[test]
     fn test_next_mode() {
-        let mut config = UnifiedConfig::default();
-
-        config.mode = QualityMode::Observe;
+        let mut config = UnifiedConfig {
+            mode: QualityMode::Observe,
+            ..UnifiedConfig::default()
+        };
         assert_eq!(config.next_mode(), Some(QualityMode::Advise));
 
         config.mode = QualityMode::Extreme;

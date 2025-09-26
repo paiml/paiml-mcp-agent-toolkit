@@ -7219,7 +7219,7 @@ fn format_incremental_coverage_sarif(report: &IncrementalCoverageReport) -> Resu
 /// ```
 /// // This function formats incremental coverage reports
 /// // See the examples/ directory for usage demonstrations
-/// assert!(true); // Basic doctest to verify function is available
+/// // Basic doctest to verify function is available
 /// ```
 pub fn format_incremental_coverage_summary(
     report: &IncrementalCoverageReport,
@@ -8227,7 +8227,7 @@ fn another_simple(y: i32) -> i32 {
         print_single_check(&QualityCheckType::Coverage);
 
         // Should complete without panicking
-        assert!(true);
+        // Test passes if we reach this point without panicking
     }
 
     /// Test print_single_check with All type (should be handled by wildcard)
@@ -8239,7 +8239,7 @@ fn another_simple(y: i32) -> i32 {
         print_single_check(&QualityCheckType::All);
 
         // Should complete without panicking
-        assert!(true);
+        // Test passes if we reach this point without panicking
     }
 
     #[tokio::test]
@@ -8668,10 +8668,8 @@ fn another_simple(y: i32) -> i32 {
         eprintln!("Project path: {}", project_path.display());
         if let Ok(entries) = std::fs::read_dir(project_path.join("src")) {
             eprintln!("Files in src/:");
-            for entry in entries {
-                if let Ok(entry) = entry {
-                    eprintln!("  - {}", entry.path().display());
-                }
+            for entry in entries.flatten() {
+                eprintln!("  - {}", entry.path().display());
             }
         }
 
@@ -10152,7 +10150,7 @@ mod property_tests {
         #[test]
         fn basic_property_stability(_input in ".*") {
             // Basic property test for coverage
-            prop_assert!(true);
+            // Property test passes if we reach this point
         }
 
         #[test]

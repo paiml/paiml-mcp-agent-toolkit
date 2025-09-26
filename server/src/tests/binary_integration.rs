@@ -49,7 +49,7 @@ mod binary_integration_tests {
     #[test]
     fn test_binary_list_templates() {
         let output = Command::new(get_binary_path())
-            .args(&["list", "templates"])
+            .args(["list", "templates"])
             .output()
             .expect("Failed to execute binary");
 
@@ -74,7 +74,7 @@ mod binary_integration_tests {
         ).unwrap();
 
         let output = Command::new(get_binary_path())
-            .args(&["analyze", "complexity", test_dir.path().to_str().unwrap()])
+            .args(["analyze", "complexity", test_dir.path().to_str().unwrap()])
             .output()
             .expect("Failed to execute binary");
 
@@ -114,7 +114,7 @@ mod binary_integration_tests {
         let output = Command::new(get_binary_path())
             .env("RUST_LOG", "debug")
             .env("PMAT_THREADS", "2")
-            .args(&["list", "templates"])
+            .args(["list", "templates"])
             .output()
             .expect("Failed to execute binary");
 
@@ -130,11 +130,11 @@ mod binary_integration_tests {
         ).unwrap();
 
         let output = Command::new(get_binary_path())
-            .args(&[
-                "analyze", 
-                "complexity", 
+            .args([
+                "analyze",
+                "complexity",
                 test_dir.path().to_str().unwrap(),
-                "--output", 
+                "--output",
                 "json"
             ])
             .output()
@@ -168,7 +168,7 @@ mod binary_integration_tests {
         ).unwrap();
 
         let output = Command::new(get_binary_path())
-            .args(&["analyze", "dag", test_dir.path().to_str().unwrap()])
+            .args(["analyze", "dag", test_dir.path().to_str().unwrap()])
             .output()
             .expect("Failed to execute binary");
 
@@ -181,7 +181,7 @@ mod binary_integration_tests {
         let output_file = test_dir.path().join(".gitignore");
 
         let output = Command::new(get_binary_path())
-            .args(&[
+            .args([
                 "generate",
                 "gitignore",
                 "rust/cli",
@@ -207,7 +207,7 @@ mod binary_integration_tests {
         ).unwrap();
 
         let output = Command::new(get_binary_path())
-            .args(&["context", test_dir.path().to_str().unwrap()])
+            .args(["context", test_dir.path().to_str().unwrap()])
             .output()
             .expect("Failed to execute binary");
 
@@ -219,7 +219,7 @@ mod binary_integration_tests {
     #[test]
     fn test_binary_diagnose_command() {
         let output = Command::new(get_binary_path())
-            .args(&["diagnose", "."])
+            .args(["diagnose", "."])
             .output()
             .expect("Failed to execute binary");
 
@@ -233,7 +233,7 @@ mod binary_integration_tests {
     fn test_binary_error_handling() {
         // Test with non-existent directory
         let output = Command::new(get_binary_path())
-            .args(&["analyze", "complexity", "/non/existent/path"])
+            .args(["analyze", "complexity", "/non/existent/path"])
             .output()
             .expect("Failed to execute binary");
 
@@ -247,7 +247,7 @@ mod binary_integration_tests {
         let handles: Vec<_> = (0..3).map(|i| {
             thread::spawn(move || {
                 let output = Command::new(get_binary_path())
-                    .args(&["list", "templates", "--output", "json"])
+                    .args(["list", "templates", "--output", "json"])
                     .output()
                     .expect("Failed to execute binary");
                 

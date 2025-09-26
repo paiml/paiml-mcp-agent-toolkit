@@ -686,12 +686,14 @@ mod tests {
 
     #[test]
     fn test_format_human() {
-        let mut score = TdgScore::default();
-        score.total = 85.5;
-        score.grade = Grade::AMinus;
-        score.language = Language::Rust;
-        score.confidence = 1.0;
-        score.file_path = Some(PathBuf::from("src/test.rs"));
+        let score = TdgScore {
+            total: 85.5,
+            grade: Grade::AMinus,
+            language: Language::Rust,
+            confidence: 1.0,
+            file_path: Some(PathBuf::from("src/test.rs")),
+            ..TdgScore::default()
+        };
 
         let output = format_human(&score);
 
@@ -715,9 +717,11 @@ mod tests {
 
     #[test]
     fn test_format_markdown() {
-        let mut score = TdgScore::default();
-        score.total = 75.0;
-        score.grade = Grade::B;
+        let score = TdgScore {
+            total: 75.0,
+            grade: Grade::B,
+            ..TdgScore::default()
+        };
 
         let output = format_markdown(&score);
 

@@ -1,7 +1,6 @@
 use anyhow::Result;
 use pmat::tdg::{AdaptiveThresholdFactory, ResourceLimits, SchedulerFactory, TieredStorageFactory};
 use std::sync::Arc;
-use tempfile;
 
 #[tokio::main]
 async fn main() -> Result<()> {

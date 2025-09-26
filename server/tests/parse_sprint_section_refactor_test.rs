@@ -72,7 +72,7 @@ fn test_parse_sprint_section_comprehensive() {
 #[test]
 fn test_parse_sprint_section_edge_cases() {
     // Test with minimal input
-    let minimal_lines = vec![
+    let minimal_lines = [
         "## Current Sprint: Sprint 80 - Minimal Test",
         "## Next Sprint: Sprint 81",
     ];

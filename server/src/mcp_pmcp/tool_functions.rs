@@ -439,7 +439,7 @@ fn create_storage_backend(
         #[cfg(feature = "rocksdb-backend")]
         Some("rocksdb") => {
             let _temp_path = std::env::temp_dir().join("tdg-mcp-rocksdb");
-            return Err(anyhow::anyhow!("RocksDB backend not yet implemented"));
+            Err(anyhow::anyhow!("RocksDB backend not yet implemented"))
         }
         Some(backend) => Err(anyhow::anyhow!(
             "Unsupported storage backend: {backend}. Supported: sled, inmemory, rocksdb"
