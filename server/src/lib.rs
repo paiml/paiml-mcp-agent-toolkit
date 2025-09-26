@@ -634,6 +634,8 @@ mod tests {
     mod extreme_tdd_smart_bounds;
     #[path = "../tests/extreme_tdd_concurrency_fix.rs"]
     mod extreme_tdd_concurrency_fix;
+    #[path = "../tests/extreme_tdd_language_support.rs"]
+    mod extreme_tdd_language_support;
 }
 
 #[cfg(test)]
