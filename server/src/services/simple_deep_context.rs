@@ -537,6 +537,175 @@ impl SimpleDeepContext {
                 Ok((count, high, avg)) => (count, high, avg),
                 Err(_) => (0, 0, 0.0),
             }
+        } else if extension == "go" {
+            info!("🚀 Using Go AST analysis for {}", file_path.display());
+            // Use Go AST analysis
+            use tokio::fs;
+            match fs::read_to_string(file_path).await {
+                Ok(content) => {
+                    #[cfg(feature = "go-ast")]
+                    {
+                        use crate::services::languages::go::{GoAstVisitor, GoComplexityAnalyzer};
+                        use crate::services::context::AstItem;
+
+                        let visitor = GoAstVisitor::new(file_path);
+                        match visitor.analyze_go_source(&content) {
+                            Ok(items) => {
+                                // Count functions
+                                let functions: Vec<_> = items.iter()
+                                    .filter(|item| matches!(item, AstItem::Function { .. }))
+                                    .collect();
+
+                                let function_count = functions.len();
+
+                                if function_count == 0 {
+                                    (0, 0, 0.0)
+                                } else {
+                                    // Analyze complexity
+                                    let mut analyzer = GoComplexityAnalyzer::new();
+                                    let (cyclomatic, _cognitive) = analyzer.analyze_complexity(&content).unwrap_or((1, 1));
+
+                                    // Estimate high complexity functions
+                                    let high_complexity_functions = if cyclomatic > 10 { 1 } else { 0 };
+                                    let avg_complexity = cyclomatic as f64 / function_count.max(1) as f64;
+
+                                    (function_count, high_complexity_functions, avg_complexity)
+                                }
+                            },
+                            Err(_) => {
+                                // Fall back to heuristic analysis for Go
+                                match self.analyze_file_complexity_heuristic(file_path, extension).await {
+                                    Ok((count, high, avg)) => (count, high, avg),
+                                    Err(_) => (0, 0, 0.0),
+                                }
+                            }
+                        }
+                    }
+
+                    #[cfg(not(feature = "go-ast"))]
+                    {
+                        // Fall back to heuristic analysis when Go AST feature is not enabled
+                        match self.analyze_file_complexity_heuristic(file_path, extension).await {
+                            Ok((count, high, avg)) => (count, high, avg),
+                            Err(_) => (0, 0, 0.0),
+                        }
+                    }
+                }
+                Err(_) => (0, 0, 0.0),
+            }
+        } else if extension == "cs" {
+            info!("🚀 Using C# AST analysis for {}", file_path.display());
+            // Use C# AST analysis
+            use tokio::fs;
+
+            match fs::read_to_string(file_path).await {
+                Ok(content) => {
+                    #[cfg(feature = "csharp-ast")]
+                    {
+                        use crate::services::languages::csharp::{CSharpAstVisitor, CSharpComplexityAnalyzer};
+                        use crate::services::context::AstItem;
+
+                        let visitor = CSharpAstVisitor::new(file_path);
+                        match visitor.analyze_csharp_source(&content) {
+                            Ok(items) => {
+                                // Count functions (methods)
+                                let functions: Vec<_> = items.iter()
+                                    .filter(|item| matches!(item, AstItem::Function { .. }))
+                                    .collect();
+
+                                let function_count = functions.len();
+
+                                if function_count == 0 {
+                                    (0, 0, 0.0)
+                                } else {
+                                    // Analyze complexity
+                                    let mut analyzer = CSharpComplexityAnalyzer::new();
+                                    let (cyclomatic, _cognitive) = analyzer.analyze_complexity(&content).unwrap_or((1, 1));
+
+                                    // Estimate high complexity functions
+                                    let high_complexity_functions = if cyclomatic > 10 { 1 } else { 0 };
+                                    let avg_complexity = cyclomatic as f64 / function_count.max(1) as f64;
+
+                                    (function_count, high_complexity_functions, avg_complexity)
+                                }
+                            },
+                            Err(_) => {
+                                // Fall back to heuristic analysis for C#
+                                match self.analyze_file_complexity_heuristic(file_path, extension).await {
+                                    Ok((count, high, avg)) => (count, high, avg),
+                                    Err(_) => (0, 0, 0.0),
+                                }
+                            }
+                        }
+                    }
+
+                    #[cfg(not(feature = "csharp-ast"))]
+                    {
+                        // Fall back to heuristic analysis when C# AST feature is not enabled
+                        match self.analyze_file_complexity_heuristic(file_path, extension).await {
+                            Ok((count, high, avg)) => (count, high, avg),
+                            Err(_) => (0, 0, 0.0),
+                        }
+                    }
+                }
+                Err(_) => (0, 0, 0.0),
+            }
+        } else if extension == "kt" {
+            info!("🚀 Using Kotlin AST analysis for {}", file_path.display());
+            // Use Kotlin AST analysis
+            use tokio::fs;
+            match fs::read_to_string(file_path).await {
+                Ok(content) => {
+                    #[cfg(feature = "kotlin-ast")]
+                    {
+                        use crate::services::languages::kotlin::{KotlinAstVisitor, KotlinComplexityAnalyzer};
+                        use crate::services::context::AstItem;
+
+                        let visitor = KotlinAstVisitor::new(file_path);
+                        match visitor.analyze_kotlin_source(&content) {
+                            Ok(items) => {
+                                // Count functions
+                                let functions: Vec<_> = items.iter()
+                                    .filter(|item| matches!(item, AstItem::Function { .. }))
+                                    .collect();
+
+                                let function_count = functions.len();
+
+                                if function_count == 0 {
+                                    (0, 0, 0.0)
+                                } else {
+                                    // Analyze complexity
+                                    let mut analyzer = KotlinComplexityAnalyzer::new();
+                                    let (cyclomatic, _cognitive) = analyzer.analyze_complexity(&content).unwrap_or((1, 1));
+
+                                    // Estimate high complexity functions
+                                    let high_complexity_functions = if cyclomatic > 10 { 1 } else { 0 };
+                                    let avg_complexity = cyclomatic as f64 / function_count.max(1) as f64;
+
+                                    (function_count, high_complexity_functions, avg_complexity)
+                                }
+                            },
+                            Err(_) => {
+                                // Fall back to heuristic analysis for Kotlin
+                                match self.analyze_file_complexity_heuristic(file_path, extension).await {
+                                    Ok((count, high, avg)) => (count, high, avg),
+                                    Err(_) => (0, 0, 0.0),
+                                }
+                            }
+                        }
+                    }
+
+                    #[cfg(not(feature = "kotlin-ast"))]
+                    {
+                        // Fall back to heuristic analysis when Kotlin AST feature is not enabled
+                        match self.analyze_file_complexity_heuristic(file_path, extension).await {
+                            Ok((count, high, avg)) => (count, high, avg),
+                            Err(_) => (0, 0, 0.0),
+                        }
+                    }
+                }
+                Err(_) => (0, 0, 0.0),
+            }
         } else {
             // For other non-Rust files, use heuristic-based analysis
             // This provides basic metrics until full AST support is added for each language
@@ -598,6 +767,105 @@ impl SimpleDeepContext {
             }
             #[cfg(not(feature = "wasm-ast"))]
             vec![]
+        } else if extension == "go" {
+            // For Go files, extract function names from AST
+            #[cfg(feature = "go-ast")]
+            {
+                use tokio::fs;
+                use crate::services::languages::go::GoAstVisitor;
+                use crate::services::context::AstItem;
+
+                match fs::read_to_string(file_path).await {
+                    Ok(content) => {
+                        let visitor = GoAstVisitor::new(file_path);
+                        match visitor.analyze_go_source(&content) {
+                            Ok(items) => {
+                                items.iter()
+                                    .filter_map(|item| match item {
+                                        AstItem::Function { name, .. } => Some(name.clone()),
+                                        _ => None,
+                                    })
+                                    .collect()
+                            }
+                            Err(_) => {
+                                // Fallback to regex extraction
+                                self.extract_function_names_heuristic(file_path, extension).await.unwrap_or_default()
+                            }
+                        }
+                    }
+                    Err(_) => vec![],
+                }
+            }
+            #[cfg(not(feature = "go-ast"))]
+            {
+                self.extract_function_names_heuristic(file_path, extension).await.unwrap_or_default()
+            }
+        } else if extension == "cs" {
+            // For C# files, extract function names from AST
+            #[cfg(feature = "csharp-ast")]
+            {
+                use tokio::fs;
+                use crate::services::languages::csharp::CSharpAstVisitor;
+                use crate::services::context::AstItem;
+
+                match fs::read_to_string(file_path).await {
+                    Ok(content) => {
+                        let visitor = CSharpAstVisitor::new(file_path);
+                        match visitor.analyze_csharp_source(&content) {
+                            Ok(items) => {
+                                items.iter()
+                                    .filter_map(|item| match item {
+                                        AstItem::Function { name, .. } => Some(name.clone()),
+                                        _ => None,
+                                    })
+                                    .collect()
+                            }
+                            Err(_) => {
+                                // Fallback to regex extraction
+                                self.extract_function_names_heuristic(file_path, extension).await.unwrap_or_default()
+                            }
+                        }
+                    }
+                    Err(_) => vec![],
+                }
+            }
+            #[cfg(not(feature = "csharp-ast"))]
+            {
+                self.extract_function_names_heuristic(file_path, extension).await.unwrap_or_default()
+            }
+        } else if extension == "kt" {
+            // For Kotlin files, extract function names from AST
+            #[cfg(feature = "kotlin-ast")]
+            {
+                use tokio::fs;
+                use crate::services::languages::kotlin::KotlinAstVisitor;
+                use crate::services::context::AstItem;
+
+                match fs::read_to_string(file_path).await {
+                    Ok(content) => {
+                        let visitor = KotlinAstVisitor::new(file_path);
+                        match visitor.analyze_kotlin_source(&content) {
+                            Ok(items) => {
+                                items.iter()
+                                    .filter_map(|item| match item {
+                                        AstItem::Function { name, .. } => Some(name.clone()),
+                                        _ => None,
+                                    })
+                                    .collect()
+                            }
+                            Err(_) => {
+                                // Fallback to regex extraction
+                                self.extract_function_names_heuristic(file_path, extension).await.unwrap_or_default()
+                            }
+                        }
+                    }
+                    Err(_) => vec![],
+                }
+            }
+            #[cfg(not(feature = "kotlin-ast"))]
+            {
+                self.extract_function_names_heuristic(file_path, extension).await.unwrap_or_default()
+            }
         } else {
             // For other languages, extract function names using regex patterns
             self.extract_function_names_heuristic(file_path, extension).await.unwrap_or_default()
@@ -730,6 +998,30 @@ impl SimpleDeepContext {
                     }
                 }
             },
+            "kt" => {
+                // Kotlin: fun function_name
+                if let Ok(re) = regex::Regex::new(r"(?m)^\s*(?:suspend\s+)?fun\s+(\w+)\s*\(") {
+                    for cap in re.captures_iter(&content) {
+                        if let Some(name) = cap.get(1) {
+                            function_names.push(name.as_str().to_string());
+                        }
+                    }
+                }
+            },
+            "cs" => {
+                // C#: public/private/protected/internal modifier + return_type + method_name
+                if let Ok(re) = regex::Regex::new(r"(?:public|private|protected|internal)?\s*(?:static|async)?\s*\w+\s+(\w+)\s*\([^)]*\)") {
+                    for cap in re.captures_iter(&content) {
+                        if let Some(name) = cap.get(1) {
+                            let name_str = name.as_str();
+                            // Filter out known keywords
+                            if !["if", "while", "for", "foreach", "switch"].contains(&name_str) {
+                                function_names.push(name_str.to_string());
+                            }
+                        }
+                    }
+                }
+            },
             _ => {
                 // For unknown extensions, return empty list
             }
@@ -760,6 +1052,8 @@ impl SimpleDeepContext {
             "java" => vec![r"(public|private|protected)\s+\w+\s+\w+\s*\("],
             "go" => vec![r"(?m)^func\s+(\(\w+\s+\*?\w+\)\s+)?\w+\s*\("],
             "c" | "cpp" | "cc" | "cxx" => vec![r"(?m)^\w+\s+\w+\s*\([^)]*\)\s*\{"],
+            "cs" => vec![r"(public|private|protected|internal)?\s*(static|async)?\s*\w+\s+\w+\s*\("],
+            "kt" => vec![r"(?m)^\s*(?:suspend\s+)?fun\s+\w+\s*\("],
             _ => vec![],
         };
 
