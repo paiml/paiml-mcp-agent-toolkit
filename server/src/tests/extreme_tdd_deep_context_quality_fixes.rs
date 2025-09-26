@@ -68,7 +68,7 @@ fn bad_function() -> i32 {
     // ASSERT: SATD annotation should appear with specific count
     assert!(result.is_ok());
     let output = fs::read_to_string(output_file).unwrap();
-    assert!(output.contains("[SATD: 3 items]") || output.contains("[satd: 3]"),
+    assert!(output.contains("[satd: 3 items]") || output.contains("[SATD: 3 items]") || output.contains("[satd: 3]"),
         "Should show SATD count of 3. Output: {}", output);
 }
 

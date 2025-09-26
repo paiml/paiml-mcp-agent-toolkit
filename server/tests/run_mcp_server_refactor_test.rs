@@ -86,7 +86,7 @@ async fn test_run_mcp_server_structure() {
     let _list_future = mock_server.list_templates("test");
 
     // Verify accessors work
-    assert!(!(mock_server.get_renderer() as *const _).is_null());
+    assert!(!std::ptr::addr_of!(*mock_server.get_renderer()).is_null());
     assert!(mock_server.get_metadata_cache().is_none());
     assert!(mock_server.get_content_cache().is_none());
     assert!(mock_server.get_s3_client().is_none());
