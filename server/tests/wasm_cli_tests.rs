@@ -39,7 +39,7 @@ fn test_wasm_handler_basic_analysis() {
     // Create minimal valid WASM file
     std::fs::write(
         &wasm_path,
-        &[
+        [
             0x00, 0x61, 0x73, 0x6d, // Magic number
             0x01, 0x00, 0x00, 0x00, // Version 1
         ],

@@ -603,6 +603,6 @@ mod property_tests {
         let _size = std::mem::size_of_val(&metrics);
 
         // Memory safety verification - no panics or issues
-        assert!(true);
+        // Memory safety verification - no panics or issues in above calculations
     }
 }

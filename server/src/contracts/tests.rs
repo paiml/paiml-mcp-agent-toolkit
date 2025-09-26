@@ -62,7 +62,7 @@ fn test_uniform_complexity_contract() {
 #[test]
 fn test_parameter_name_consistency() {
     // These parameter names MUST be identical across all commands and interfaces
-    let _standard_params = vec![
+    let _standard_params = [
         "path",          // NOT "project_path" or "file_path"
         "format",        // NOT "output_format"
         "output",        // NOT "output_file" or "out"
@@ -107,7 +107,7 @@ fn test_base_parameters_required() {
         "quality_gate",
     ];
 
-    for command in commands {
+    for _command in commands {
         // Every analysis command MUST have these base parameters
         let required_params = vec![
             "path",
@@ -119,13 +119,10 @@ fn test_base_parameters_required() {
         ];
 
         // This would be validated against actual command definitions
-        for param in required_params {
+        for _param in required_params {
             // In real implementation, check that the command schema includes this param
-            assert!(
-                true,
-                "Command '{}' must have parameter '{}'",
-                command, param
-            );
+            // In real implementation, verify that command has the required parameter
+            // Command '{}' must have parameter '{}'
         }
     }
 }

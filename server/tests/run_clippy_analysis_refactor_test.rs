@@ -6,10 +6,10 @@ use std::path::Path;
 use tempfile::tempdir;
 
 /// Mock the run_clippy_analysis function signature for testing
-async fn run_clippy_analysis_mock(project_path: &Path, clippy_flags: &str) -> Result<()> {
+async fn run_clippy_analysis_mock(_project_path: &Path, clippy_flags: &str) -> Result<()> {
     // Test structure preservation
     let _flags: Vec<&str> = clippy_flags.split_whitespace().collect();
-    assert!(project_path.exists() || true); // Allow mock paths
+    // Mock implementation does nothing but validate function signature
     Ok(())
 }
 

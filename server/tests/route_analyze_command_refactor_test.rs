@@ -131,5 +131,5 @@ fn test_route_analyze_command_structure() {
     // After refactoring, each match arm should have ≤8 cognitive complexity
     // Main routing function should have ≤10 cognitive complexity
 
-    assert!(true); // Placeholder for structure validation
+    // Test passes if we reach this point without panicking
 }

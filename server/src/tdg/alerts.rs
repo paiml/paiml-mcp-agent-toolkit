@@ -652,8 +652,10 @@ mod tests {
     #[tokio::test]
     async fn test_auto_resolve() {
         // Toyota Way Root Cause Fix: Test configuration without complex operations
-        let mut config = AlertManagerConfig::default();
-        config.enable_auto_resolve = true;
+        let config = AlertManagerConfig {
+            enable_auto_resolve: true,
+            ..AlertManagerConfig::default()
+        };
 
         let manager = AlertManager::new(config);
 

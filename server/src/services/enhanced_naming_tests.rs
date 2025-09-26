@@ -548,14 +548,14 @@ mod enhanced_javascript_naming_tests {
 
         // This test should initially FAIL - we expect JSDoc extraction to be implemented
         // When properly implemented, function items should include JSDoc information
-        let _expected_jsdoc_info = vec![
+        let _expected_jsdoc_info = [
             ("calculateTotal", "Calculates the total price including tax"),
             ("authenticate", "Authenticates a user with email and password"),
         ];
 
         // TODO: Implement JSDoc parsing in EnhancedTypeScriptVisitor
         // For now, this test serves as a specification for the feature
-        assert!(false, "JSDoc extraction not yet implemented - this test defines the requirement");
+        panic!("JSDoc extraction not yet implemented - this test defines the requirement");
     }
 }
 
@@ -1370,7 +1370,6 @@ mod enhanced_wasm_naming_tests {
 
 #[cfg(test)]
 mod enhanced_naming_integration_tests {
-    use crate::services::context::AstItem;
 
     /// Test: Integration test combining JavaScript, TypeScript, and WASM naming
     #[ignore = "Multi-language integration not yet implemented"]
@@ -1378,7 +1377,7 @@ mod enhanced_naming_integration_tests {
     fn test_multi_language_enhanced_naming_integration() {
         // This test defines the expected behavior when analyzing projects with multiple languages
 
-        let _expected_javascript_names = vec![
+        let _expected_javascript_names = [
             "UserProfile",           // React component
             "ProductCard",          // Arrow function component
             "fetchUserData",        // Async function
@@ -1386,7 +1385,7 @@ mod enhanced_naming_integration_tests {
             "createApiClient",      // Factory function
         ];
 
-        let _expected_typescript_names = vec![
+        let _expected_typescript_names = [
             "fetchUser",            // Typed async function
             "createRepository",     // Generic function
             "DataService",         // Generic class
@@ -1394,7 +1393,7 @@ mod enhanced_naming_integration_tests {
             "getAllUsers",         // Decorated method
         ];
 
-        let _expected_wasm_names = vec![
+        let _expected_wasm_names = [
             "add",                 // Export name from WAT
             "multiply",            // Export name from WAT
             "fibonacci",           // Complex function name
@@ -1411,7 +1410,7 @@ mod enhanced_naming_integration_tests {
         // 5. Maintain qualified names with module context
 
         // TODO: Implement the integration once individual language enhancements are complete
-        assert!(false, "Integration test not yet implemented - defines requirements");
+        panic!("Integration test not yet implemented - defines requirements");
     }
 
     /// Test: Deep context markdown output should include enhanced names
@@ -1420,7 +1419,7 @@ mod enhanced_naming_integration_tests {
     fn test_deep_context_markdown_enhanced_names() {
         // This test defines how enhanced names should appear in deep_context.md output
 
-        let _expected_markdown_patterns = vec![
+        let _expected_markdown_patterns = [
             "React Component: `UserProfile` (with props: UserProfileProps)",
             "Async Function: `fetchUserData(userId: string): Promise<ApiResponse<User>>`",
             "WASM Export: `fibonacci(n: i32): i32` (recursive function)",
@@ -1436,7 +1435,7 @@ mod enhanced_naming_integration_tests {
         // 5. Semantic descriptions (e.g., "recursive", "async callback")
 
         // TODO: Implement enhanced markdown formatting once naming extraction is complete
-        assert!(false, "Deep context markdown enhancement not yet implemented");
+        panic!("Deep context markdown enhancement not yet implemented");
     }
 }
 
@@ -1446,6 +1445,7 @@ mod test_utilities {
     use crate::services::context::AstItem;
 
     /// Creates a mock AstItem for testing purposes
+    #[allow(dead_code)]
     pub fn create_mock_function(name: &str, is_async: bool, line: usize) -> AstItem {
         AstItem::Function {
             name: name.to_string(),
@@ -1456,6 +1456,7 @@ mod test_utilities {
     }
 
     /// Creates a mock class/struct for testing
+    #[allow(dead_code)]
     pub fn create_mock_class(name: &str, fields_count: usize, line: usize) -> AstItem {
         AstItem::Struct {
             name: name.to_string(),
@@ -1467,6 +1468,7 @@ mod test_utilities {
     }
 
     /// Validates that function names follow enhanced naming conventions
+    #[allow(dead_code)]
     pub fn validate_enhanced_function_names(names: &[String]) -> Vec<String> {
         let mut issues = Vec::new();
 
@@ -1493,6 +1495,7 @@ mod test_utilities {
     }
 
     /// Validates WASM function names are descriptive
+    #[allow(dead_code)]
     pub fn validate_wasm_function_names(names: &[String], module_name: &str) -> Vec<String> {
         let mut issues = Vec::new();
 

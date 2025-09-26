@@ -5,7 +5,6 @@ use anyhow::Result;
 use pmat::cli::handlers::wasm_handlers::handle_analyze_webassembly;
 use pmat::cli::ComplexityOutputFormat;
 use tempfile::tempdir;
-use tokio;
 
 #[tokio::test]
 async fn test_webassembly_handler_structure() -> Result<()> {
@@ -33,7 +32,7 @@ async fn test_webassembly_handler_structure() -> Result<()> {
     )
     .await;
 
-    assert!(true, "Function structure maintained");
+    // Function structure maintained and test passed
     Ok(())
 }
 
@@ -59,7 +58,7 @@ async fn test_security_and_complexity_flags() -> Result<()> {
     )
     .await;
 
-    assert!(true, "Security and complexity analysis works");
+    // Security and complexity analysis works as expected
     Ok(())
 }
 
@@ -82,6 +81,6 @@ async fn test_output_file_handling() -> Result<()> {
     )
     .await;
 
-    assert!(true, "Output file handling works");
+    // Output file handling works as expected
     Ok(())
 }

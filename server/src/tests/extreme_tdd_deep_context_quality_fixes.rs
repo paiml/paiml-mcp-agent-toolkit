@@ -88,13 +88,13 @@ async fn test_churn_annotations_appear() {
         .unwrap();
 
     std::process::Command::new("git")
-        .args(&["add", "."])
+        .args(["add", "."])
         .current_dir(temp_dir.path())
         .output()
         .unwrap();
 
     std::process::Command::new("git")
-        .args(&["commit", "-m", "initial"])
+        .args(["commit", "-m", "initial"])
         .current_dir(temp_dir.path())
         .output()
         .unwrap();
@@ -149,7 +149,7 @@ async fn test_overall_health_is_normalized_tdg_score() {
     let health_value = extract_percentage(health_line)
         .expect("Could not extract percentage from health line");
 
-    assert!(health_value >= 0.0 && health_value <= 100.0,
+    assert!((0.0..=100.0).contains(&health_value),
         "Overall Health should be 0-100, got: {}%. Line: {}", health_value, health_line);
 }
 
@@ -179,7 +179,7 @@ async fn test_coverage_is_meaningful_or_absent() {
     if let Some(coverage_line) = output.lines().find(|line| line.contains("Test Coverage")) {
         let coverage_value = extract_percentage(coverage_line);
         if let Some(value) = coverage_value {
-            assert!(value >= 0.0 && value <= 100.0,
+            assert!((0.0..=100.0).contains(&value),
                 "Test Coverage should be 0-100% if present, got: {}%. Line: {}",
                 value, coverage_line);
         }
@@ -243,7 +243,7 @@ async fn test_auto_scaling_concurrency() {
 
     // ARRANGE: Create config with auto-scaling
     let config = DeepContextConfig::with_auto_scaling();
-    let analyzer = DeepContextAnalyzer::new(config.clone());
+    let _analyzer = DeepContextAnalyzer::new(config.clone());
 
     // ASSERT: Should use more than 1 core on multi-core systems
     let logical_cores = num_cpus::get();

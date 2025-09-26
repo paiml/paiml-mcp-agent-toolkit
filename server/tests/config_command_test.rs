@@ -9,7 +9,6 @@ use anyhow::Result;
 use serde_json::{json, Value};
 use std::path::PathBuf;
 use tempfile::TempDir;
-use tokio;
 
 /// Test fixture for config command testing
 struct ConfigTestFixture {
@@ -418,7 +417,7 @@ async fn test_config_validate_valid_config() -> Result<()> {
     let result = config_cmd.validate().await?;
 
     // ASSERT
-    assert_eq!(result.is_valid, true);
+    assert!(result.is_valid);
     assert!(result.errors.is_empty());
 
     Ok(())
@@ -448,7 +447,7 @@ task_id_pattern = "[invalid regex"
     let result = config_cmd.validate().await?;
 
     // ASSERT
-    assert_eq!(result.is_valid, false);
+    assert!(!result.is_valid);
     assert!(!result.errors.is_empty());
 
     Ok(())
@@ -548,7 +547,7 @@ max_complexity = 0  # Invalid: must be > 0
 "#;
     std::fs::write(&config_path, invalid_config)?;
 
-    let errors = vec!["max_complexity must be > 0".to_string()];
+    let errors = ["max_complexity must be > 0".to_string()];
 
     // ACT
     let result = extract_config_error_handler(&errors[0]);
@@ -568,7 +567,7 @@ async fn test_extract_config_error_handler_min_coverage() -> Result<()> {
     // Test the extracted config error handler for min_coverage validation
 
     // ARRANGE
-    let errors = vec!["min_coverage must be between 0 and 100".to_string()];
+    let errors = ["min_coverage must be between 0 and 100".to_string()];
 
     // ACT
     let result = extract_config_error_handler(&errors[0]);

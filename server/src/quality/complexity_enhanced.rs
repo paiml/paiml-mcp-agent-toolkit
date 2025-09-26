@@ -362,6 +362,6 @@ mod tests {
     #[test]
     fn test_maintainability_index() {
         let mi = calculate_maintainability_index(100.0, 5, 50);
-        assert!(mi >= 0.0 && mi <= 100.0);
+        assert!((0.0..=100.0).contains(&mi));
     }
 }

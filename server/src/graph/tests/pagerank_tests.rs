@@ -60,9 +60,11 @@ mod tests {
         let graph = create_star_graph();
         let matrices = GraphMatrices::from(&graph);
 
-        let mut pr = PageRankComputer::default();
-        pr.tolerance = 1e-8; // Strict tolerance
-        pr.max_iterations = 1000;
+        let pr = PageRankComputer {
+            tolerance: 1e-8, // Strict tolerance
+            max_iterations: 1000,
+            ..Default::default()
+        };
 
         let ranks = pr.compute(&matrices);
 

@@ -10,7 +10,7 @@ fn format_detailed_report_mock(report: &ComprehensiveReport) -> Result<String> {
 
     // Test structure preservation
     output.push_str("# Comprehensive Code Similarity Report\n\n");
-    output.push_str(&format!("## Overall Metrics\n"));
+    output.push_str("## Overall Metrics\n");
     output.push_str(&format!(
         "- Duplication Percentage: {:.1}%\n",
         report.metrics.duplication_percentage
@@ -81,7 +81,7 @@ fn create_test_report() -> ComprehensiveReport {
         refactoring_opportunities: vec![],
         metrics: Metrics {
             duplication_percentage: 25.5,
-            average_entropy: 3.14,
+            average_entropy: std::f64::consts::PI,
             total_clones: 42,
         },
     }

@@ -527,7 +527,7 @@ mod tests {
 
         // Should extract both imported and local functions
         assert!(
-            function_items.len() >= 1,
+            !function_items.is_empty(),
             "Should extract at least the main function"
         );
     }

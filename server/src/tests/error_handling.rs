@@ -147,6 +147,7 @@ mod error_handling_tests {
 
     #[test]
     fn test_multiple_error_types() {
+        #[allow(clippy::useless_vec)]
         let errors = vec![
             TemplateError::InvalidUri {
                 uri: "test".to_string(),

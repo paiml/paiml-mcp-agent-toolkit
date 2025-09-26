@@ -12,8 +12,10 @@ mod quality_gate_tests {
     #[test]
     fn test_quality_gate_detects_complexity_violations() {
         // RED: Test for excessive complexity detection
-        let mut thresholds = QualityThresholds::default();
-        thresholds.min_entropy = 2.0; // Reduce entropy requirement to focus on complexity
+        let thresholds = QualityThresholds {
+            min_entropy: 2.0, // Reduce entropy requirement to focus on complexity
+            ..Default::default()
+        };
         let runner = QualityGateRunner::new(thresholds);
 
         let code = r#"
@@ -141,7 +143,7 @@ mod quality_gate_tests {
         let hook_result = pre_commit_hook_validate(&file_path);
         assert!(hook_result.is_err());
         // Accept any error as validation failure - the specific message may vary
-        assert!(hook_result.unwrap_err().to_string().len() > 0);
+        assert!(!hook_result.unwrap_err().to_string().is_empty());
     }
 
     proptest! {

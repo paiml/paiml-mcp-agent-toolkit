@@ -25,7 +25,7 @@ const validateInput = () => { return true; };
 
         // Run pmat context and capture output
         let output = std::process::Command::new("./target/debug/pmat")
-            .args(&["context", "--project-path", temp_dir.path().to_str().unwrap(), "--format", "llm-optimized"])
+            .args(["context", "--project-path", temp_dir.path().to_str().unwrap(), "--format", "llm-optimized"])
             .output()
             .expect("Failed to run pmat");
 
@@ -52,7 +52,7 @@ const validateInput = () => { return true; };
             "function formatDate() {} function parseJSON() {}").unwrap();
 
         let output = std::process::Command::new("./target/debug/pmat")
-            .args(&["context", "--project-path", temp_dir.path().to_str().unwrap(), "--format", "llm-optimized"])
+            .args(["context", "--project-path", temp_dir.path().to_str().unwrap(), "--format", "llm-optimized"])
             .output()
             .expect("Failed to run pmat");
 
@@ -105,7 +105,7 @@ function complexLogic(input) {
         fs::write(temp_dir.path().join("complex.js"), complex_function).unwrap();
 
         let output = std::process::Command::new("./target/debug/pmat")
-            .args(&["context", "--project-path", temp_dir.path().to_str().unwrap(), "--format", "llm-optimized"])
+            .args(["context", "--project-path", temp_dir.path().to_str().unwrap(), "--format", "llm-optimized"])
             .output()
             .expect("Failed to run pmat");
 
@@ -144,7 +144,7 @@ function leakyFunction() {
         fs::write(temp_dir.path().join("debt.js"), code_with_debt).unwrap();
 
         let output = std::process::Command::new("./target/debug/pmat")
-            .args(&["context", "--project-path", temp_dir.path().to_str().unwrap(), "--format", "llm-optimized"])
+            .args(["context", "--project-path", temp_dir.path().to_str().unwrap(), "--format", "llm-optimized"])
             .output()
             .expect("Failed to run pmat");
 
@@ -167,13 +167,13 @@ function leakyFunction() {
 
         // Create files with various quality issues
         fs::write(temp_dir.path().join("long.js"),
-            &format!("function veryLong() {{\n{}}}", "console.log('line');\n".repeat(200) + "}")).unwrap();
+            format!("function veryLong() {{\n{}}}", "console.log('line');\n".repeat(200) + "}")).unwrap();
 
         fs::write(temp_dir.path().join("duplicate.js"),
             "function copy1() { return 42; }\nfunction copy2() { return 42; }\nfunction copy3() { return 42; }").unwrap();
 
         let output = std::process::Command::new("./target/debug/pmat")
-            .args(&["context", "--project-path", temp_dir.path().to_str().unwrap(), "--format", "llm-optimized"])
+            .args(["context", "--project-path", temp_dir.path().to_str().unwrap(), "--format", "llm-optimized"])
             .output()
             .expect("Failed to run pmat");
 
@@ -210,7 +210,7 @@ export { usedFunction };
         fs::write(temp_dir.path().join("mixed.js"), code_with_dead).unwrap();
 
         let output = std::process::Command::new("./target/debug/pmat")
-            .args(&["context", "--project-path", temp_dir.path().to_str().unwrap(), "--format", "llm-optimized"])
+            .args(["context", "--project-path", temp_dir.path().to_str().unwrap(), "--format", "llm-optimized"])
             .output()
             .expect("Failed to run pmat");
 
@@ -255,7 +255,7 @@ export { usedFunction };
         fs::write(temp_dir.path().join("math.wat"), wasm_content).unwrap();
 
         let output = std::process::Command::new("./target/debug/pmat")
-            .args(&["context", "--project-path", temp_dir.path().to_str().unwrap(), "--format", "llm-optimized"])
+            .args(["context", "--project-path", temp_dir.path().to_str().unwrap(), "--format", "llm-optimized"])
             .output()
             .expect("Failed to run pmat");
 
@@ -273,9 +273,6 @@ export { usedFunction };
 
 #[cfg(test)]
 mod green_phase_implementation {
-    use super::*;
-    use crate::services::simple_deep_context::{SimpleDeepContext, SimpleAnalysisConfig};
-    use crate::services::context::{ProjectContext, ProjectSummary};
 
     // Helper to create enhanced format output
     pub fn format_context_with_annotations(
@@ -292,7 +289,7 @@ mod green_phase_implementation {
         output.push_str("Summary:\n");
         output.push_str(&format!("- Files: {}\n", analysis_report.file_count));
         output.push_str(&format!("- Functions: {}\n", analysis_report.complexity_metrics.total_functions));
-        output.push_str("\n");
+        output.push('\n');
 
         // Key Components - File breakdown with functions
         output.push_str("Key Components:\n\n");
@@ -363,7 +360,7 @@ mod refactor_phase_quality {
                 file_count: file_count as usize,
                 analysis_duration: std::time::Duration::from_secs(1),
                 complexity_metrics: crate::services::simple_deep_context::ComplexityMetrics {
-                    total_functions: total_functions,
+                    total_functions,
                     high_complexity_count: 0,
                     avg_complexity: 1.0,
                 },

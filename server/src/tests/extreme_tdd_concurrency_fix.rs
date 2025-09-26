@@ -94,7 +94,7 @@ async fn test_parallel_analysis_execution() {
 /// RED TEST: Must parse AST only once and share across analyses
 #[test]
 fn test_ast_parsing_shared_not_duplicated() {
-    use crate::services::deep_context::{DeepContextAnalyzer, DeepContextConfig, AnalysisType, CacheStrategy, DagType};
+    use crate::services::deep_context::{DeepContextConfig, AnalysisType, CacheStrategy, DagType};
 
     // ARRANGE: Create config with multiple analysis types
     let config = DeepContextConfig {

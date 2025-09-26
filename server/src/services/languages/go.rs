@@ -447,7 +447,7 @@ mod property_tests {
 
             if let Ok(items) = visitor.analyze_go_source(&source) {
                 // Should extract package and function
-                prop_assert!(items.len() >= 1);
+                prop_assert!(!items.is_empty());
 
                 // Check that package name is included in qualified names
                 let has_package_prefix = items.iter().any(|item| match item {

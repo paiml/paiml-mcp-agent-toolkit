@@ -475,7 +475,7 @@ mod additional_tests {
         match result {
             Ok(polyglot_analysis) => {
                 // Should detect multiple languages
-                assert!(polyglot_analysis.languages.len() >= 1);
+                assert!(!polyglot_analysis.languages.is_empty());
             }
             Err(_) => {
                 // Graceful failure is acceptable

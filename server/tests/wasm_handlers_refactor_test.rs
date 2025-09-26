@@ -5,7 +5,6 @@ use anyhow::Result;
 use pmat::cli::handlers::wasm_handlers::handle_analyze_assemblyscript;
 use pmat::cli::ComplexityOutputFormat;
 use tempfile::tempdir;
-use tokio;
 
 /// Test AssemblyScript handler structure is preserved during refactor
 #[tokio::test]
@@ -35,7 +34,7 @@ async fn test_assemblyscript_handler_structure() -> Result<()> {
     .await;
 
     // Function structure test - accepts all parameters without panic
-    assert!(true, "Function structure maintained during refactor");
+    // Test passes if we reach this point without panicking
     Ok(())
 }
 
@@ -72,6 +71,6 @@ async fn test_parameter_variations() -> Result<()> {
     )
     .await;
 
-    assert!(true, "Parameter variations handled during refactor");
+    // Test passes if we reach this point without panicking
     Ok(())
 }

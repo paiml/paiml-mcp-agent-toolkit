@@ -501,7 +501,7 @@ mod tests {
                 .unwrap();
 
         let states = parallel
-            .recover_all_partitions(|| ExampleState::default())
+            .recover_all_partitions(ExampleState::default)
             .await
             .unwrap();
 

@@ -65,7 +65,7 @@ fn complex_function(x: i32, y: i32, z: i32) -> i32 {
 
     // Run quality-gate
     let quality_output = std::process::Command::new(&binary_path)
-        .args(&[
+        .args([
             "quality-gate",
             "--file",
             test_file.to_str().unwrap(),
@@ -132,7 +132,7 @@ fn unused_function() -> i32 {
 
     // Run quality-gate with complexity check
     let complexity_output = std::process::Command::new(&binary_path)
-        .args(&[
+        .args([
             "quality-gate",
             "--file",
             test_file.to_str().unwrap(),
@@ -162,7 +162,7 @@ fn unused_function() -> i32 {
 
     // Run quality-gate with SATD check
     let satd_output = std::process::Command::new(&binary_path)
-        .args(&[
+        .args([
             "quality-gate",
             "--file",
             test_file.to_str().unwrap(),
@@ -222,7 +222,7 @@ fn simple_function(x: i32) -> i32 {
 
     // Test with threshold 5 (should pass - equal to threshold)
     let output_5 = std::process::Command::new(&binary_path)
-        .args(&[
+        .args([
             "quality-gate",
             "--file",
             test_file.to_str().unwrap(),
@@ -243,7 +243,7 @@ fn simple_function(x: i32) -> i32 {
 
     // Test with threshold 4 (should fail - below threshold)
     let output_4 = std::process::Command::new(&binary_path)
-        .args(&[
+        .args([
             "quality-gate",
             "--file",
             test_file.to_str().unwrap(),
@@ -278,7 +278,7 @@ fn get_pmat_binary_path() -> PathBuf {
         // Build the binary if it doesn't exist from workspace root
         std::process::Command::new("cargo")
             .current_dir(&workspace_root)
-            .args(&["build", "--bin", "pmat", "-p", "pmat"])
+            .args(["build", "--bin", "pmat", "-p", "pmat"])
             .output()
             .expect("Failed to build pmat");
     }

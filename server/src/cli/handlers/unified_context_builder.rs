@@ -5,6 +5,7 @@
 use crate::services::context::ProjectContext;
 use std::path::{Path, PathBuf};
 use std::collections::HashMap;
+use std::fmt::{Display, Formatter};
 
 pub struct UnifiedContextBuilder {
     output: String,
@@ -323,10 +324,6 @@ impl UnifiedContextBuilder {
         self.output
     }
 
-    // Convert to string for tests
-    pub fn to_string(&self) -> String {
-        self.output.clone()
-    }
 
     // Synchronous test-friendly methods
     pub fn add_basic_structure(&mut self) -> &mut Self {
@@ -375,6 +372,12 @@ impl UnifiedContextBuilder {
         self.output.push_str("1. Simplify complex function in utils.rs\n");
         self.output.push('\n');
         self
+    }
+}
+
+impl Display for UnifiedContextBuilder {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.output)
     }
 }
 

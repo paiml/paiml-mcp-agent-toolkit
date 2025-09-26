@@ -7,7 +7,6 @@ use pmat::cli::handlers::enhanced_reporting_handlers::handle_generate_report;
 use pmat::cli::{AnalysisType, ReportOutputFormat};
 use std::path::PathBuf;
 use tempfile::tempdir;
-use tokio;
 
 /// Test configuration structure is preserved during refactor
 #[tokio::test]
@@ -33,7 +32,6 @@ async fn test_enhanced_reporting_config_structure() -> Result<()> {
     .await;
 
     // Function structure test - accepts all parameters without panic
-    assert!(true, "Function structure maintained during refactor");
     Ok(())
 }
 
@@ -94,7 +92,6 @@ async fn test_format_determination_patterns() -> Result<()> {
     )
     .await;
 
-    assert!(true, "Format determination logic maintained");
     Ok(())
 }
 
@@ -121,9 +118,8 @@ async fn test_error_patterns() -> Result<()> {
     .await;
 
     // Should handle invalid paths gracefully (may fail, but shouldn't panic)
-    match result {
-        Ok(_) => assert!(true, "Handled invalid path gracefully"),
-        Err(_) => assert!(true, "Error handling maintained during refactor"),
+    if let Ok(_) = result {
+        // Success case handled
     }
 
     Ok(())
@@ -163,6 +159,5 @@ async fn test_handle_generate_report_structure() -> Result<()> {
     // 5. Output formatting
     // 6. Output writing
     // 7. Summary generation
-    assert!(true, "Main workflow structure preserved during refactor");
     Ok(())
 }

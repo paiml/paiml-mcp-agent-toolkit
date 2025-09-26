@@ -172,7 +172,7 @@ mod universal_demo_tests {
             NodeType::Directory => node
                 .children
                 .iter()
-                .map(|child| count_files_in_tree(child))
+                .map(count_files_in_tree)
                 .sum(),
         }
     }
