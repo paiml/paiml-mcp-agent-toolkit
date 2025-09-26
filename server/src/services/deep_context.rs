@@ -4779,7 +4779,7 @@ pub async fn analyze_provability(
     use crate::services::lightweight_provability_analyzer::{
         FunctionId, LightweightProvabilityAnalyzer,
     };
-    use std::time::{Duration, Instant};
+    use std::time::Instant;
 
     info!("Starting provability analysis for path: {:?}", path);
 
@@ -4875,10 +4875,10 @@ async fn analyze_dag(path: &std::path::Path, dag_type: DagType) -> anyhow::Resul
             filter_call_edges, filter_import_edges, filter_inheritance_edges, DagBuilder,
         },
     };
-    use std::time::{Duration, Instant};
+    use std::time::Instant;
 
     info!("Starting DAG analysis for path: {:?}", path);
-    let start = Instant::now();
+    let _start = Instant::now();
 
     // No timeout - efficient DAG analysis
 

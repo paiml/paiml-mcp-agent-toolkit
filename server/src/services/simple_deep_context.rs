@@ -349,7 +349,7 @@ impl SimpleDeepContext {
 
                         // Parse TypeScript/JavaScript with SWC to get real AST
                         let source_map = Arc::new(SourceMap::default());
-                        let source_file = source_map.new_source_file(
+                        let _source_file = source_map.new_source_file(
                             FileName::Custom(file_path.display().to_string()).into(),
                             content.clone(),
                         );
