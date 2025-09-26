@@ -14,7 +14,7 @@ use swc_common::{Span, Spanned};
 use swc_ecma_ast::{
     ClassDecl, ClassMember, Constructor, Expr, FnDecl, Function, ImportDecl, MethodProp, Module,
     ModuleDecl, NamedExport, Pat, PropName, TsEnumDecl, TsInterfaceDecl, VarDecl, ClassMethod,
-    ReturnStmt, ObjectLit, PropOrSpread, Prop, KeyValueProp, Ident, Stmt, ExportDefaultDecl,
+    ReturnStmt, ObjectLit, PropOrSpread, Prop, KeyValueProp, Stmt, ExportDefaultDecl,
     DefaultDecl, ExportDecl,
 };
 #[cfg(feature = "typescript-ast")]
