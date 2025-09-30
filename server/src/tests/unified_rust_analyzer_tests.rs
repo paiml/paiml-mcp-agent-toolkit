@@ -145,26 +145,23 @@ mod property_tests {
         ) {
             use crate::services::unified_rust_analyzer::UnifiedRustAnalyzer;
 
+            let mut source = String::new();
+            for i in 0..function_count {
+                source.push_str(&format!(
+                    "fn func_{}() {{ println!(\"test\"); }}\n",
+                    i
+                ));
+            }
+
+            let temp_file = create_temp_rust_file(&source);
+            let analyzer = UnifiedRustAnalyzer::new(temp_file.path().to_path_buf());
+
             let runtime = tokio::runtime::Runtime::new().unwrap();
-            runtime.block_on(async {
-                let mut source = String::new();
-                for i in 0..function_count {
-                    source.push_str(&format!(
-                        "fn func_{}() {{ println!(\"test\"); }}\n",
-                        i
-                    ));
-                }
+            let result = runtime.block_on(analyzer.analyze());
 
-                let temp_file = create_temp_rust_file(&source);
-                let analyzer = UnifiedRustAnalyzer::new(temp_file.path().to_path_buf());
-                let result = analyzer.analyze().await;
-
-                prop_assert!(result.is_ok(), "Must handle any valid Rust");
-                let analysis = result.unwrap();
-                prop_assert_eq!(analysis.ast_items.len(), function_count);
-            });
-
-            Ok(())
+            prop_assert!(result.is_ok(), "Must handle any valid Rust");
+            let analysis = result.unwrap();
+            prop_assert_eq!(analysis.ast_items.len(), function_count);
         }
     }
 }

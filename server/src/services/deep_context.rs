@@ -68,15 +68,41 @@ use crate::services::{
     quality_gates::{QAVerification, QAVerificationResult},
     satd_detector::SATDAnalysisResult,
     tdg_calculator::TDGCalculator,
+    unified_rust_analyzer::UnifiedRustAnalyzer,
+    unified_typescript_analyzer::UnifiedTypeScriptAnalyzer,
+    unified_python_analyzer::UnifiedPythonAnalyzer,
+    unified_go_analyzer::UnifiedGoAnalyzer,
 };
 use chrono::{DateTime, Utc};
 use rayon::prelude::*;
 use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
+use std::cell::RefCell;
 use std::path::Path;
 use std::path::PathBuf;
 use std::time::Duration;
 use tracing::{debug, info, warn};
+
+// Thread-local cache for unified Rust analysis results
+// Stores complexity metrics extracted during AST analysis to avoid double parsing
+thread_local! {
+    static RUST_UNIFIED_CACHE: RefCell<FxHashMap<PathBuf, FileComplexityMetrics>> = RefCell::new(FxHashMap::default());
+}
+
+// Thread-local cache for unified TypeScript/JavaScript analysis results
+thread_local! {
+    static TYPESCRIPT_UNIFIED_CACHE: RefCell<FxHashMap<PathBuf, FileComplexityMetrics>> = RefCell::new(FxHashMap::default());
+}
+
+// Thread-local cache for unified Python analysis results
+thread_local! {
+    static PYTHON_UNIFIED_CACHE: RefCell<FxHashMap<PathBuf, FileComplexityMetrics>> = RefCell::new(FxHashMap::default());
+}
+
+// Thread-local cache for unified Go analysis results
+thread_local! {
+    static GO_UNIFIED_CACHE: RefCell<FxHashMap<PathBuf, FileComplexityMetrics>> = RefCell::new(FxHashMap::default());
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DeepContextConfig {
@@ -3919,31 +3945,84 @@ pub async fn analyze_file_by_language(
 }
 
 /// Toyota Way Single Responsibility: Handle Rust file analysis
+/// OPTIMIZATION: Uses UnifiedRustAnalyzer to parse file once and extract both AST and complexity
 pub async fn analyze_rust_language(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
-    analyze_rust_file(file_path).await
+    // Use unified analyzer for single-pass parsing
+    let analyzer = UnifiedRustAnalyzer::new(file_path.to_path_buf());
+    let analysis = analyzer.analyze().await
+        .map_err(|e| anyhow::anyhow!("Unified Rust analysis failed: {}", e))?;
+
+    // Store complexity metrics in thread-local cache for later retrieval
+    RUST_UNIFIED_CACHE.with(|cache| {
+        cache.borrow_mut().insert(file_path.to_path_buf(), analysis.file_metrics.clone());
+    });
+
+    Ok(analysis.ast_items)
 }
 
 /// Toyota Way Single Responsibility: Handle TypeScript/JavaScript file analysis
+/// OPTIMIZATION: Uses UnifiedTypeScriptAnalyzer to parse file once and extract both AST and complexity
 pub async fn analyze_typescript_language(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
-    analyze_typescript_file(file_path).await
+    // Use unified analyzer for single-pass parsing
+    let analyzer = UnifiedTypeScriptAnalyzer::new(file_path.to_path_buf());
+    let analysis = analyzer.analyze().await
+        .map_err(|e| anyhow::anyhow!("Unified TypeScript analysis failed: {}", e))?;
+
+    // Store complexity metrics in thread-local cache for later retrieval
+    TYPESCRIPT_UNIFIED_CACHE.with(|cache| {
+        cache.borrow_mut().insert(file_path.to_path_buf(), analysis.file_metrics.clone());
+    });
+
+    Ok(analysis.ast_items)
 }
 
 /// Toyota Way Single Responsibility: Handle Python file analysis
+/// OPTIMIZATION: Uses UnifiedPythonAnalyzer to parse file once and extract both AST and complexity
 pub async fn analyze_python_language(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
-    analyze_python_file(file_path).await
+    // Use unified analyzer for single-pass parsing
+    let analyzer = UnifiedPythonAnalyzer::new(file_path.to_path_buf());
+    let analysis = analyzer.analyze().await
+        .map_err(|e| anyhow::anyhow!("Unified Python analysis failed: {}", e))?;
+
+    // Store complexity metrics in thread-local cache for later retrieval
+    PYTHON_UNIFIED_CACHE.with(|cache| {
+        cache.borrow_mut().insert(file_path.to_path_buf(), analysis.file_metrics.clone());
+    });
+
+    Ok(analysis.ast_items)
 }
 
 /// Toyota Way Single Responsibility: Handle Go file analysis
+/// TICKET-3004: Now uses unified parser to eliminate double parsing
 pub async fn analyze_go_language(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
-    analyze_go_file(file_path).await
+    #[cfg(feature = "go-ast")]
+    {
+        // Use unified analyzer for single parse pass
+        let analyzer = UnifiedGoAnalyzer::new(file_path.to_path_buf());
+        match analyzer.analyze().await {
+            Ok(analysis) => {
+                // Store complexity metrics in thread-local cache
+                GO_UNIFIED_CACHE.with(|cache| {
+                    cache.borrow_mut().insert(file_path.to_path_buf(), analysis.file_metrics.clone());
+                });
+                Ok(analysis.ast_items)
+            }
+            Err(_) => {
+                // Fall back to old analyzer on error
+                analyze_go_file(file_path).await
+            }
+        }
+    }
+    #[cfg(not(feature = "go-ast"))]
+    Ok(Vec::new())
 }
 
 /// Toyota Way Single Responsibility: Handle C/C++ file analysis
@@ -4435,22 +4514,89 @@ async fn analyze_single_file_complexity(
 ) -> Option<crate::services::complexity::FileComplexityMetrics> {
     #[cfg(feature = "python-ast")]
     use crate::services::ast_python::analyze_python_file_with_complexity;
-    use crate::services::ast_rust::analyze_rust_file_with_complexity;
-    #[cfg(feature = "typescript-ast")]
-    use crate::services::ast_typescript::analyze_typescript_file_with_complexity;
 
     let ext = file_path.extension()?.to_str()?;
 
     match ext {
-        "rs" => analyze_rust_file_with_complexity(file_path).await.ok(),
-        #[cfg(feature = "typescript-ast")]
-        "ts" | "js" | "jsx" | "tsx" => analyze_typescript_file_with_complexity(file_path)
-            .await
-            .ok(),
-        #[cfg(feature = "python-ast")]
-        "py" => analyze_python_file_with_complexity(file_path, None)
-            .await
-            .ok(),
+        "rs" => {
+            // OPTIMIZATION: Check unified cache first (from analyze_rust_language)
+            // This avoids the second parse that analyze_rust_file_with_complexity would do
+            let cached = RUST_UNIFIED_CACHE.with(|cache| {
+                cache.borrow().get(file_path).cloned()
+            });
+
+            if let Some(metrics) = cached {
+                Some(metrics)
+            } else {
+                // Fallback to old path if not in cache (shouldn't happen in normal flow)
+                use crate::services::ast_rust::analyze_rust_file_with_complexity;
+                analyze_rust_file_with_complexity(file_path).await.ok()
+            }
+        }
+        "ts" | "js" | "jsx" | "tsx" => {
+            // OPTIMIZATION: Check TypeScript unified cache first (from analyze_typescript_language)
+            // This avoids the second parse that analyze_typescript_file_with_complexity would do
+            let cached = TYPESCRIPT_UNIFIED_CACHE.with(|cache| {
+                cache.borrow().get(file_path).cloned()
+            });
+
+            if let Some(metrics) = cached {
+                Some(metrics)
+            } else {
+                // Fallback to old path if not in cache (shouldn't happen in normal flow)
+                #[cfg(feature = "typescript-ast")]
+                {
+                    use crate::services::ast_typescript::analyze_typescript_file_with_complexity;
+                    analyze_typescript_file_with_complexity(file_path).await.ok()
+                }
+                #[cfg(not(feature = "typescript-ast"))]
+                None
+            }
+        }
+        "py" => {
+            // OPTIMIZATION: Check Python unified cache first (from analyze_python_language)
+            // This avoids the second parse that analyze_python_file_with_complexity would do
+            let cached = PYTHON_UNIFIED_CACHE.with(|cache| {
+                cache.borrow().get(file_path).cloned()
+            });
+
+            if let Some(metrics) = cached {
+                Some(metrics)
+            } else {
+                // Fallback to old path if not in cache (shouldn't happen in normal flow)
+                #[cfg(feature = "python-ast")]
+                {
+                    use crate::services::ast_python::analyze_python_file_with_complexity;
+                    analyze_python_file_with_complexity(file_path, None).await.ok()
+                }
+                #[cfg(not(feature = "python-ast"))]
+                None
+            }
+        }
+        "go" => {
+            // OPTIMIZATION: Check Go unified cache first (from analyze_go_language)
+            // This avoids the second parse - TICKET-3004
+            let cached = GO_UNIFIED_CACHE.with(|cache| {
+                cache.borrow().get(file_path).cloned()
+            });
+
+            if let Some(metrics) = cached {
+                Some(metrics)
+            } else {
+                // Fallback: analyze with unified analyzer if not in cache
+                #[cfg(feature = "go-ast")]
+                {
+                    let analyzer = UnifiedGoAnalyzer::new(file_path.to_path_buf());
+                    if let Ok(analysis) = tokio::runtime::Handle::current().block_on(analyzer.analyze()) {
+                        Some(analysis.file_metrics)
+                    } else {
+                        None
+                    }
+                }
+                #[cfg(not(feature = "go-ast"))]
+                None
+            }
+        }
         _ => None,
     }
 }
