@@ -209,6 +209,33 @@ impl GoComplexityAnalyzer {
     }
 }
 
+/// Public async function to analyze a Go file and return FileContext
+/// This matches the API pattern used by TypeScript analyzer
+#[cfg(feature = "go-ast")]
+pub async fn analyze_go_file(path: &Path) -> Result<crate::services::context::FileContext, crate::models::error::TemplateError> {
+    use crate::services::context::FileContext;
+    use crate::models::error::TemplateError;
+
+    // Read the file content
+    let content = tokio::fs::read_to_string(path)
+        .await
+        .map_err(TemplateError::Io)?;
+
+    // Create visitor and analyze
+    let visitor = GoAstVisitor::new(path);
+    let items = visitor
+        .analyze_go_source(&content)
+        .map_err(|e| TemplateError::InvalidUtf8(e))?;
+
+    // Return FileContext
+    Ok(FileContext {
+        path: path.display().to_string(),
+        language: "go".to_string(),
+        items,
+        complexity_metrics: None,
+    })
+}
+
 #[cfg(all(test, feature = "go-ast"))]
 mod tests {
     use super::*;
