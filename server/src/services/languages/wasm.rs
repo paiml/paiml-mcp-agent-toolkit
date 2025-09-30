@@ -602,8 +602,9 @@ mod property_tests {
             for _ in 0..control_flow_depth {
                 instructions.extend_from_slice(&[0x04, 0x40]); // if block
             }
+            #[allow(clippy::same_item_push)]
             for _ in 0..control_flow_depth {
-                instructions.push(0x0b); // end
+                instructions.push(0x0b); // end - intentionally pushing same opcode
             }
 
             if let Ok(complexity) = analyzer.analyze_control_flow_complexity(&instructions) {

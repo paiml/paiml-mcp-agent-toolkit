@@ -4,7 +4,7 @@
 //! These tests verify accurate dead code detection using cargo/rustc integration
 
 #[cfg(test)]
-mod dead_code_analyzer_tests {
+mod tests {
     use std::fs;
     use std::path::Path;
     use std::process::Command;

@@ -61,8 +61,7 @@ private:
 "#;
         let result = parser.parse_file(Path::new("test.cpp"), content);
         // C++ parsing may fail in test environment
-        if result.is_ok() {
-            let dag = result.unwrap();
+        if let Ok(dag) = result {
             assert!(!dag.nodes.is_empty());
         }
     }

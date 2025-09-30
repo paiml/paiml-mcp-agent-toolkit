@@ -173,16 +173,17 @@ mod red_phase_tests {
     /// Even with extreme penalty deductions, score should stay in range
     #[test]
     fn red_test_extreme_complexity_stays_in_bounds() {
-        let mut score = TdgScore::default();
-
         // Simulate extreme penalty scenario where all components go negative
-        score.structural_complexity = -10.0;  // Penalties exceeded starting value
-        score.semantic_complexity = -5.0;
-        score.duplication_ratio = -8.0;
-        score.coupling_score = -3.0;
-        score.doc_coverage = -2.0;
-        score.consistency_score = -4.0;
-        score.entropy_score = -1.0;
+        let mut score = TdgScore {
+            structural_complexity: -10.0,  // Penalties exceeded starting value
+            semantic_complexity: -5.0,
+            duplication_ratio: -8.0,
+            coupling_score: -3.0,
+            doc_coverage: -2.0,
+            consistency_score: -4.0,
+            entropy_score: -1.0,
+            ..Default::default()
+        };
 
         score.calculate_total();
 
@@ -204,15 +205,16 @@ mod red_phase_tests {
     /// Entropy should have proportional weight, not dominate the score
     #[test]
     fn red_test_entropy_weight_is_balanced() {
-        let mut score = TdgScore::default();
-
         // Set all non-entropy components to perfect
-        score.structural_complexity = 25.0;
-        score.semantic_complexity = 20.0;
-        score.duplication_ratio = 20.0;
-        score.coupling_score = 15.0;
-        score.doc_coverage = 10.0;
-        score.consistency_score = 10.0;
+        let mut score = TdgScore {
+            structural_complexity: 25.0,
+            semantic_complexity: 20.0,
+            duplication_ratio: 20.0,
+            coupling_score: 15.0,
+            doc_coverage: 10.0,
+            consistency_score: 10.0,
+            ..Default::default()
+        };
 
         // Test with max entropy
         score.entropy_score = 100.0; // Unreasonably high
@@ -255,13 +257,15 @@ mod property_tests {
             consistency in -50.0f32..150.0,
             entropy in -50.0f32..150.0,
         ) {
-            let mut score = TdgScore::default();
-            score.structural_complexity = structural;
-            score.semantic_complexity = semantic;
-            score.duplication_ratio = duplication;
-            score.coupling_score = coupling;
-            score.doc_coverage = doc;
-            score.consistency_score = consistency;
+            let mut score = TdgScore {
+                structural_complexity: structural,
+                semantic_complexity: semantic,
+                duplication_ratio: duplication,
+                coupling_score: coupling,
+                doc_coverage: doc,
+                consistency_score: consistency,
+                ..Default::default()
+            };
             score.entropy_score = entropy;
 
             score.calculate_total();
@@ -283,13 +287,15 @@ mod property_tests {
             doc in 0.0f32..15.0,
             consistency in 0.0f32..15.0,
         ) {
-            let mut score = TdgScore::default();
-            score.structural_complexity = structural;
-            score.semantic_complexity = semantic;
-            score.duplication_ratio = duplication;
-            score.coupling_score = coupling;
-            score.doc_coverage = doc;
-            score.consistency_score = consistency;
+            let mut score = TdgScore {
+                structural_complexity: structural,
+                semantic_complexity: semantic,
+                duplication_ratio: duplication,
+                coupling_score: coupling,
+                doc_coverage: doc,
+                consistency_score: consistency,
+                ..Default::default()
+            };
             score.entropy_score = 0.0;
 
             score.calculate_total();
