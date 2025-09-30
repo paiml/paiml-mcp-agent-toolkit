@@ -5950,7 +5950,7 @@ mod tests {
         let config = DeepContextConfig::default();
         let analyzer = DeepContextAnalyzer::new(config);
 
-        let mut analyses = ParallelAnalysisResults {
+        let analyses = ParallelAnalysisResults {
             complexity_report: Some(crate::services::complexity::ComplexityReport {
                 summary: Default::default(),
                 violations: vec![crate::services::complexity::Violation::Error {
@@ -6014,7 +6014,7 @@ mod tests {
         let config = DeepContextConfig::default();
         let analyzer = DeepContextAnalyzer::new(config);
 
-        let mut analyses = ParallelAnalysisResults {
+        let analyses = ParallelAnalysisResults {
             satd_results: Some(crate::services::satd_detector::SATDAnalysisResult {
                 items: vec![],
                 summary: crate::services::satd_detector::SATDSummary {
