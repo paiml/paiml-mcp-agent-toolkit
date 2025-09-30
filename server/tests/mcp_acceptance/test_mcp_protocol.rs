@@ -146,7 +146,8 @@ async fn test_error_response_format() -> Result<()> {
                 // Error codes should follow JSON-RPC 2.0 standard
                 let valid_error_codes = [-32700, -32600, -32601, -32602, -32603];
                 let is_standard_error = valid_error_codes.contains(&error.code);
-                let is_application_error = error.code >= -32000 && error.code <= -32099;
+                // Application error range: -32000 to -32099 (negative numbers, so -32099 < -32000)
+                let is_application_error = error.code <= -32000 && error.code >= -32099;
 
                 assert!(
                     is_standard_error || is_application_error,
