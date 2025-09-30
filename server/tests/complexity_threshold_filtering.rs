@@ -97,11 +97,13 @@ fn high_function(x: i32, y: i32) -> i32 {
         1 => result + 1,
         _ => result,
     }
-"#);
+"#,
+            );
 
             // Add extra conditions if needed for complexity 15
             if extra_conditions == 2 {
-                code.push_str(r#"
+                code.push_str(
+                    r#"
 
     // Extra conditions for complexity 15
     if result > 100 {    // +1 = 13
@@ -112,9 +114,11 @@ fn high_function(x: i32, y: i32) -> i32 {
         1
     } else {
         result
-    }"#);
+    }"#,
+                );
             } else {
-                code.push_str(r#"
+                code.push_str(
+                    r#"
 
     // Extra condition for complexity 14
     if result > 100 {    // +1 = 13
@@ -123,7 +127,8 @@ fn high_function(x: i32, y: i32) -> i32 {
         result * -1
     } else {
         result
-    }"#);
+    }"#,
+                );
             }
 
             code.push_str("\n}\n");
@@ -138,22 +143,29 @@ fn high_function(x: i32, y: i32) -> i32 {
                 r#"
 fn very_high_function(x: i32, y: i32, z: i32) -> i32 {
     let mut result = 0;
-"#);
+"#,
+            );
 
             // Add independent if statements - each adds 1 to complexity
             // We need target-1 decision points since base complexity is 1
             for i in 1..target {
-                code.push_str(&format!(r#"
+                code.push_str(&format!(
+                    r#"
     if x > {} {{
         result += {};
-    }}"#, i * 10, i));
+    }}"#,
+                    i * 10,
+                    i
+                ));
             }
 
-            code.push_str(r#"
+            code.push_str(
+                r#"
 
     result
 }
-"#);
+"#,
+            );
             code
         }
         21..=25 => {

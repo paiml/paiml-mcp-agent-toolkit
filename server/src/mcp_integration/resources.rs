@@ -9,7 +9,9 @@ pub struct AgentStateResource {
 
 impl AgentStateResource {
     pub fn new(registry: Arc<AgentRegistry>) -> Self {
-        Self { _registry: registry }
+        Self {
+            _registry: registry,
+        }
     }
 }
 
@@ -46,7 +48,9 @@ pub struct MetricsResource {
 
 impl MetricsResource {
     pub fn new(registry: Arc<AgentRegistry>) -> Self {
-        Self { _registry: registry }
+        Self {
+            _registry: registry,
+        }
     }
 }
 

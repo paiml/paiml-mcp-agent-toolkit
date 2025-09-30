@@ -1,8 +1,8 @@
 //! EXTREME TDD: Language Support Integration for Deep Context
 //! RED-GREEN-REFACTOR implementation of TICKET-2001 through TICKET-2005
 
-use tempfile::TempDir;
 use std::fs;
+use tempfile::TempDir;
 
 /// TICKET-2001: RED TEST - C# support in deep_context pipeline
 #[tokio::test]
@@ -10,7 +10,9 @@ async fn test_csharp_deep_context_analysis() {
     // ARRANGE: Create C# file with known complexity
     let temp_dir = TempDir::new().unwrap();
     let csharp_file = temp_dir.path().join("Program.cs");
-    fs::write(&csharp_file, r#"
+    fs::write(
+        &csharp_file,
+        r#"
 using System;
 
 namespace TestApp
@@ -42,10 +44,12 @@ namespace TestApp
         }
     }
 }
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     // ACT: Analyze using simple deep context
-    use crate::services::simple_deep_context::{SimpleDeepContext, SimpleAnalysisConfig};
+    use crate::services::simple_deep_context::{SimpleAnalysisConfig, SimpleDeepContext};
 
     let analyzer = SimpleDeepContext::new();
     let config = SimpleAnalysisConfig {
@@ -60,29 +64,48 @@ namespace TestApp
 
     // ASSERT: Should detect C# functions and provide complexity analysis
     assert!(report.file_count > 0, "Should find C# files");
-    assert!(report.complexity_metrics.total_functions >= 2,
-        "Should detect at least 2 C# functions (Main and CalculateScore)");
-    assert!(report.complexity_metrics.avg_complexity > 1.0,
-        "Should calculate meaningful complexity for C# code");
+    assert!(
+        report.complexity_metrics.total_functions >= 2,
+        "Should detect at least 2 C# functions (Main and CalculateScore)"
+    );
+    assert!(
+        report.complexity_metrics.avg_complexity > 1.0,
+        "Should calculate meaningful complexity for C# code"
+    );
 
     // Verify specific file analysis
-    let csharp_details = report.file_complexity_details.iter()
+    let csharp_details = report
+        .file_complexity_details
+        .iter()
         .find(|d| d.file_path.file_name().unwrap() == "Program.cs")
         .expect("Should find Program.cs in analysis results");
 
     // Debug output
-    eprintln!("C# details: function_count={}, function_names={:?}",
-             csharp_details.function_count, csharp_details.function_names);
+    eprintln!(
+        "C# details: function_count={}, function_names={:?}",
+        csharp_details.function_count, csharp_details.function_names
+    );
 
-    assert!(csharp_details.function_count >= 2, "Should detect C# methods");
+    assert!(
+        csharp_details.function_count >= 2,
+        "Should detect C# methods"
+    );
 
     // Check if function names contain Main and CalculateScore (with or without namespace)
-    let has_main = csharp_details.function_names.iter().any(|n| n.contains("Main"));
-    let has_calculate = csharp_details.function_names.iter().any(|n| n.contains("CalculateScore"));
+    let has_main = csharp_details
+        .function_names
+        .iter()
+        .any(|n| n.contains("Main"));
+    let has_calculate = csharp_details
+        .function_names
+        .iter()
+        .any(|n| n.contains("CalculateScore"));
 
-    assert!(has_main && has_calculate,
-           "Should extract C# function names Main and CalculateScore: found {:?}",
-           csharp_details.function_names);
+    assert!(
+        has_main && has_calculate,
+        "Should extract C# function names Main and CalculateScore: found {:?}",
+        csharp_details.function_names
+    );
 }
 
 /// TICKET-2002: RED TEST - Go support in deep_context pipeline
@@ -91,7 +114,9 @@ async fn test_go_deep_context_analysis() {
     // ARRANGE: Create Go file with known complexity
     let temp_dir = TempDir::new().unwrap();
     let go_file = temp_dir.path().join("main.go");
-    fs::write(&go_file, r#"
+    fs::write(
+        &go_file,
+        r#"
 package main
 
 import "fmt"
@@ -122,10 +147,12 @@ func ProcessData(data []int, operation string) int {
 
     return result
 }
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     // ACT: Analyze using simple deep context
-    use crate::services::simple_deep_context::{SimpleDeepContext, SimpleAnalysisConfig};
+    use crate::services::simple_deep_context::{SimpleAnalysisConfig, SimpleDeepContext};
 
     let analyzer = SimpleDeepContext::new();
     let config = SimpleAnalysisConfig {
@@ -140,17 +167,26 @@ func ProcessData(data []int, operation string) int {
 
     // ASSERT: Should detect Go functions and provide complexity analysis
     assert!(report.file_count > 0, "Should find Go files");
-    assert!(report.complexity_metrics.total_functions >= 2,
-        "Should detect at least 2 Go functions");
-    assert!(report.complexity_metrics.avg_complexity > 1.0,
-        "Should calculate meaningful complexity for Go code");
+    assert!(
+        report.complexity_metrics.total_functions >= 2,
+        "Should detect at least 2 Go functions"
+    );
+    assert!(
+        report.complexity_metrics.avg_complexity > 1.0,
+        "Should calculate meaningful complexity for Go code"
+    );
 
     // Verify function name extraction
-    let go_details = report.file_complexity_details.iter()
+    let go_details = report
+        .file_complexity_details
+        .iter()
         .find(|d| d.file_path.file_name().unwrap() == "main.go")
         .expect("Should find main.go in analysis results");
 
-    assert!(go_details.function_names.len() >= 2, "Should extract Go function names");
+    assert!(
+        go_details.function_names.len() >= 2,
+        "Should extract Go function names"
+    );
 }
 
 /// TICKET-2003: RED TEST - Java support in deep_context pipeline
@@ -159,7 +195,9 @@ async fn test_java_deep_context_analysis() {
     // ARRANGE: Create Java file with known complexity
     let temp_dir = TempDir::new().unwrap();
     let java_file = temp_dir.path().join("Calculator.java");
-    fs::write(&java_file, r#"
+    fs::write(
+        &java_file,
+        r#"
 public class Calculator {
 
     // Simple method - complexity 1
@@ -198,10 +236,12 @@ public class Calculator {
         }
     }
 }
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     // ACT: Analyze using simple deep context
-    use crate::services::simple_deep_context::{SimpleDeepContext, SimpleAnalysisConfig};
+    use crate::services::simple_deep_context::{SimpleAnalysisConfig, SimpleDeepContext};
 
     let analyzer = SimpleDeepContext::new();
     let config = SimpleAnalysisConfig {
@@ -216,10 +256,14 @@ public class Calculator {
 
     // ASSERT: Should detect Java methods and provide complexity analysis
     assert!(report.file_count > 0, "Should find Java files");
-    assert!(report.complexity_metrics.total_functions >= 2,
-        "Should detect at least 2 Java methods");
-    assert!(report.complexity_metrics.avg_complexity > 1.0,
-        "Should calculate meaningful complexity for Java code");
+    assert!(
+        report.complexity_metrics.total_functions >= 2,
+        "Should detect at least 2 Java methods"
+    );
+    assert!(
+        report.complexity_metrics.avg_complexity > 1.0,
+        "Should calculate meaningful complexity for Java code"
+    );
 }
 
 /// TICKET-2004: RED TEST - Kotlin support in deep_context pipeline
@@ -228,7 +272,9 @@ async fn test_kotlin_deep_context_analysis() {
     // ARRANGE: Create Kotlin file with known complexity
     let temp_dir = TempDir::new().unwrap();
     let kotlin_file = temp_dir.path().join("Main.kt");
-    fs::write(&kotlin_file, r#"
+    fs::write(
+        &kotlin_file,
+        r#"
 fun main() {
     println("Hello, Kotlin!")
 }
@@ -258,10 +304,12 @@ fun processNumbers(numbers: List<Int>, operation: String): Int {
 }
 
 data class Result(val value: Int, val valid: Boolean)
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     // ACT: Analyze using simple deep context
-    use crate::services::simple_deep_context::{SimpleDeepContext, SimpleAnalysisConfig};
+    use crate::services::simple_deep_context::{SimpleAnalysisConfig, SimpleDeepContext};
 
     let analyzer = SimpleDeepContext::new();
     let config = SimpleAnalysisConfig {
@@ -276,10 +324,14 @@ data class Result(val value: Int, val valid: Boolean)
 
     // ASSERT: Should detect Kotlin functions and provide complexity analysis
     assert!(report.file_count > 0, "Should find Kotlin files");
-    assert!(report.complexity_metrics.total_functions >= 2,
-        "Should detect at least 2 Kotlin functions");
-    assert!(report.complexity_metrics.avg_complexity > 1.0,
-        "Should calculate meaningful complexity for Kotlin code");
+    assert!(
+        report.complexity_metrics.total_functions >= 2,
+        "Should detect at least 2 Kotlin functions"
+    );
+    assert!(
+        report.complexity_metrics.avg_complexity > 1.0,
+        "Should calculate meaningful complexity for Kotlin code"
+    );
 }
 
 /// TICKET-2005: RED TEST - Ruby support in deep_context pipeline
@@ -288,7 +340,9 @@ async fn test_ruby_deep_context_analysis() {
     // ARRANGE: Create Ruby file with known complexity
     let temp_dir = TempDir::new().unwrap();
     let ruby_file = temp_dir.path().join("calculator.rb");
-    fs::write(&ruby_file, r#"
+    fs::write(
+        &ruby_file,
+        r#"
 # Simple method - complexity 1
 def greet(name)
   puts "Hello, " + name + "!"
@@ -326,10 +380,12 @@ class Student
     puts @name + " is studying"
   end
 end
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     // ACT: Analyze using simple deep context
-    use crate::services::simple_deep_context::{SimpleDeepContext, SimpleAnalysisConfig};
+    use crate::services::simple_deep_context::{SimpleAnalysisConfig, SimpleDeepContext};
 
     let analyzer = SimpleDeepContext::new();
     let config = SimpleAnalysisConfig {
@@ -344,8 +400,12 @@ end
 
     // ASSERT: Should detect Ruby methods and provide complexity analysis
     assert!(report.file_count > 0, "Should find Ruby files");
-    assert!(report.complexity_metrics.total_functions >= 3,
-        "Should detect at least 3 Ruby methods");
-    assert!(report.complexity_metrics.avg_complexity > 1.0,
-        "Should calculate meaningful complexity for Ruby code");
+    assert!(
+        report.complexity_metrics.total_functions >= 3,
+        "Should detect at least 3 Ruby methods"
+    );
+    assert!(
+        report.complexity_metrics.avg_complexity > 1.0,
+        "Should calculate meaningful complexity for Ruby code"
+    );
 }

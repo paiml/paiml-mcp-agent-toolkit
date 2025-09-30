@@ -11,8 +11,8 @@ mod real_world_tests {
         use super::*;
         use std::sync::Arc;
         use swc_common::{FileName, SourceMap};
-        use swc_ecma_parser::{lexer::Lexer, Parser, StringInput, Syntax, TsSyntax};
         use swc_ecma_ast::Module;
+        use swc_ecma_parser::{lexer::Lexer, Parser, StringInput, Syntax, TsSyntax};
 
         fn parse_typescript(code: &str) -> Module {
             let source_map = Arc::new(SourceMap::default());
@@ -52,10 +52,15 @@ mod real_world_tests {
             let functions: Vec<String> = items
                 .iter()
                 .filter_map(|item| match item {
-                    AstItem::Function { name, is_async, visibility, .. } => {
+                    AstItem::Function {
+                        name,
+                        is_async,
+                        visibility,
+                        ..
+                    } => {
                         let async_marker = if *is_async { " (async)" } else { "" };
                         Some(format!("{} [{}]{}", name, visibility, async_marker))
-                    },
+                    }
                     _ => None,
                 })
                 .collect();
@@ -71,9 +76,9 @@ mod real_world_tests {
             let classes: Vec<String> = items
                 .iter()
                 .filter_map(|item| match item {
-                    AstItem::Struct { name, fields_count, .. } => {
-                        Some(format!("{} ({} members)", name, fields_count))
-                    },
+                    AstItem::Struct {
+                        name, fields_count, ..
+                    } => Some(format!("{} ({} members)", name, fields_count)),
                     _ => None,
                 })
                 .collect();
@@ -92,40 +97,74 @@ mod real_world_tests {
             println!("Imports extracted: {:?}", imports);
 
             // Validate enhanced naming worked correctly
-            assert!(functions.iter().any(|f| f.contains("UserProfile")),
-                "Should extract React component name");
-            assert!(functions.iter().any(|f| f.contains("handleEdit")),
-                "Should extract callback handler name");
-            assert!(functions.iter().any(|f| f.contains("handleDelete") && f.contains("async")),
-                "Should extract async callback and mark as async");
-            assert!(functions.iter().any(|f| f.contains("createApiClient")),
-                "Should extract factory function name");
-            assert!(functions.iter().any(|f| f.contains("client::get")),
-                "Should extract object method from factory");
-            assert!(functions.iter().any(|f| f.contains("client::post")),
-                "Should extract object method from factory");
+            assert!(
+                functions.iter().any(|f| f.contains("UserProfile")),
+                "Should extract React component name"
+            );
+            assert!(
+                functions.iter().any(|f| f.contains("handleEdit")),
+                "Should extract callback handler name"
+            );
+            assert!(
+                functions
+                    .iter()
+                    .any(|f| f.contains("handleDelete") && f.contains("async")),
+                "Should extract async callback and mark as async"
+            );
+            assert!(
+                functions.iter().any(|f| f.contains("createApiClient")),
+                "Should extract factory function name"
+            );
+            assert!(
+                functions.iter().any(|f| f.contains("client::get")),
+                "Should extract object method from factory"
+            );
+            assert!(
+                functions.iter().any(|f| f.contains("client::post")),
+                "Should extract object method from factory"
+            );
 
             // Should find the ProductService class
-            assert!(classes.iter().any(|c| c.contains("ProductService")),
-                "Should extract ProductService class");
+            assert!(
+                classes.iter().any(|c| c.contains("ProductService")),
+                "Should extract ProductService class"
+            );
 
             // Should find class methods
-            assert!(functions.iter().any(|f| f.contains("ProductService::getAllProducts")),
-                "Should extract class method with qualified name");
-            assert!(functions.iter().any(|f| f.contains("ProductService::createProduct")),
-                "Should extract async class method");
-            assert!(functions.iter().any(|f| f.contains("ProductService::updateProduct")),
-                "Should extract async class method");
+            assert!(
+                functions
+                    .iter()
+                    .any(|f| f.contains("ProductService::getAllProducts")),
+                "Should extract class method with qualified name"
+            );
+            assert!(
+                functions
+                    .iter()
+                    .any(|f| f.contains("ProductService::createProduct")),
+                "Should extract async class method"
+            );
+            assert!(
+                functions
+                    .iter()
+                    .any(|f| f.contains("ProductService::updateProduct")),
+                "Should extract async class method"
+            );
 
             // Should find interfaces
-            assert!(interfaces.contains(&"UserProfileProps".to_string()),
-                "Should extract UserProfileProps interface");
-            assert!(interfaces.contains(&"Product".to_string()),
-                "Should extract Product interface");
+            assert!(
+                interfaces.contains(&"UserProfileProps".to_string()),
+                "Should extract UserProfileProps interface"
+            );
+            assert!(
+                interfaces.contains(&"Product".to_string()),
+                "Should extract Product interface"
+            );
 
             // Should track imports
-            assert!(imports.iter().any(|i| i.contains("react")),
-                "Should track React import");
+            assert!(
+                imports.iter().any(|i| i.contains("react")),
+                "Should track React import"
+            );
 
             println!("✅ All enhanced naming validations passed!");
         }

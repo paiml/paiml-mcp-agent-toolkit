@@ -467,7 +467,11 @@ async fn test_security_compliance() -> Result<()> {
 
     if result.success {
         // Check for security headers (these might not be present in dev mode)
-        if result.response.headers.contains_key("x-content-type-options") {
+        if result
+            .response
+            .headers
+            .contains_key("x-content-type-options")
+        {
             HttpValidators::assert_security_headers(&result)?;
         }
 

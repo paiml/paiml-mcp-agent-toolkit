@@ -3,9 +3,9 @@
 //! These tests are written FIRST (RED phase) and must ALL FAIL initially.
 //! Once implementation is complete, they must ALL PASS.
 
+use std::io::Write;
 use std::path::PathBuf;
 use tempfile::NamedTempFile;
-use std::io::Write;
 
 // Helper to create temporary Go files for testing
 fn create_temp_go_file(content: &str) -> NamedTempFile {
@@ -29,13 +29,15 @@ fn red_test_unified_go_analyzer_can_be_created() {
 async fn red_test_unified_go_parses_only_once() {
     use crate::services::unified_go_analyzer::UnifiedGoAnalyzer;
 
-    let temp_file = create_temp_go_file(r#"
+    let temp_file = create_temp_go_file(
+        r#"
 package main
 
 func add(a, b int) int {
     return a + b
 }
-    "#);
+    "#,
+    );
 
     let analyzer = UnifiedGoAnalyzer::new(temp_file.path().to_path_buf());
     let result = analyzer.analyze().await;
@@ -53,7 +55,8 @@ func add(a, b int) int {
 async fn red_test_unified_go_returns_both_ast_and_complexity() {
     use crate::services::unified_go_analyzer::UnifiedGoAnalyzer;
 
-    let temp_file = create_temp_go_file(r#"
+    let temp_file = create_temp_go_file(
+        r#"
 package main
 
 import "fmt"
@@ -61,17 +64,24 @@ import "fmt"
 func greet(name string) {
     fmt.Printf("Hello %s\n", name)
 }
-    "#);
+    "#,
+    );
 
     let analyzer = UnifiedGoAnalyzer::new(temp_file.path().to_path_buf());
     let result = analyzer.analyze().await.expect("Should parse successfully");
 
     // Must have AST items
     assert!(!result.ast_items.is_empty(), "Must extract AST items");
-    assert!(!result.ast_items.is_empty(), "Should find at least 1 function");
+    assert!(
+        !result.ast_items.is_empty(),
+        "Should find at least 1 function"
+    );
 
     // Must have complexity metrics (GREEN phase may overcount - that's OK)
-    assert!(!result.file_metrics.functions.is_empty(), "Must extract complexity");
+    assert!(
+        !result.file_metrics.functions.is_empty(),
+        "Must extract complexity"
+    );
 }
 
 /// Test 4: AST Items Extracted
@@ -79,7 +89,8 @@ func greet(name string) {
 async fn red_test_unified_go_ast_extraction() {
     use crate::services::unified_go_analyzer::UnifiedGoAnalyzer;
 
-    let temp_file = create_temp_go_file(r#"
+    let temp_file = create_temp_go_file(
+        r#"
 package main
 
 func multiply(x, y int) int {
@@ -94,13 +105,17 @@ type Point struct {
 func (p *Point) Distance() float64 {
     return math.Sqrt(float64(p.X*p.X + p.Y*p.Y))
 }
-    "#);
+    "#,
+    );
 
     let analyzer = UnifiedGoAnalyzer::new(temp_file.path().to_path_buf());
     let result = analyzer.analyze().await.unwrap();
 
     // Should find function, struct, and method
-    assert!(result.ast_items.len() >= 3, "Should find at least 3 items (function + struct + method)");
+    assert!(
+        result.ast_items.len() >= 3,
+        "Should find at least 3 items (function + struct + method)"
+    );
 }
 
 /// Test 5: Handles Parse Errors Gracefully
@@ -108,9 +123,11 @@ func (p *Point) Distance() float64 {
 async fn red_test_unified_go_handles_invalid_syntax() {
     use crate::services::unified_go_analyzer::UnifiedGoAnalyzer;
 
-    let temp_file = create_temp_go_file(r#"
+    let temp_file = create_temp_go_file(
+        r#"
 broken syntax here {{{ !!!
-    "#);
+    "#,
+    );
 
     let analyzer = UnifiedGoAnalyzer::new(temp_file.path().to_path_buf());
     let result = analyzer.analyze().await;
@@ -118,7 +135,10 @@ broken syntax here {{{ !!!
     // GREEN PHASE: The Go visitor uses pattern matching, not full parsing,
     // so invalid syntax returns Ok with empty results rather than an error.
     // This is acceptable for GREEN phase - REFACTOR phase can add stricter validation.
-    assert!(result.is_ok(), "Go analyzer handles invalid syntax gracefully");
+    assert!(
+        result.is_ok(),
+        "Go analyzer handles invalid syntax gracefully"
+    );
     let _analysis = result.unwrap();
     // May or may not find items depending on pattern matching - just ensure no panic
 }
@@ -164,7 +184,9 @@ async fn red_test_unified_go_on_real_file() {
     use crate::services::unified_go_analyzer::UnifiedGoAnalyzer;
 
     let real_file = PathBuf::from("/home/noah/src/agentic-ai/go-actors/simple.go");
-    if !real_file.exists() { return; }
+    if !real_file.exists() {
+        return;
+    }
 
     let analyzer = UnifiedGoAnalyzer::new(real_file);
     let result = analyzer.analyze().await;
@@ -179,7 +201,8 @@ async fn red_test_unified_go_on_real_file() {
 async fn red_test_unified_go_handles_multiple_constructs() {
     use crate::services::unified_go_analyzer::UnifiedGoAnalyzer;
 
-    let temp_file = create_temp_go_file(r#"
+    let temp_file = create_temp_go_file(
+        r#"
 package main
 
 // Function
@@ -205,7 +228,8 @@ func asyncFunc() {
         fmt.Println("goroutine")
     }()
 }
-    "#);
+    "#,
+    );
 
     let analyzer = UnifiedGoAnalyzer::new(temp_file.path().to_path_buf());
     let result = analyzer.analyze().await.expect("Should parse successfully");
@@ -226,8 +250,16 @@ async fn red_test_unified_go_handles_empty_file() {
 
     assert!(result.is_ok(), "Empty file should parse successfully");
     let analysis = result.unwrap();
-    assert_eq!(analysis.ast_items.len(), 0, "Empty file should have 0 items");
-    assert_eq!(analysis.file_metrics.functions.len(), 0, "Empty file should have 0 functions");
+    assert_eq!(
+        analysis.ast_items.len(),
+        0,
+        "Empty file should have 0 items"
+    );
+    assert_eq!(
+        analysis.file_metrics.functions.len(),
+        0,
+        "Empty file should have 0 functions"
+    );
 }
 
 /// Test 10: Comment-Only File
@@ -235,17 +267,26 @@ async fn red_test_unified_go_handles_empty_file() {
 async fn red_test_unified_go_handles_comment_only_file() {
     use crate::services::unified_go_analyzer::UnifiedGoAnalyzer;
 
-    let temp_file = create_temp_go_file(r#"
+    let temp_file = create_temp_go_file(
+        r#"
 package main
 
 // This is just a comment
 /* And a block comment */
-    "#);
+    "#,
+    );
 
     let analyzer = UnifiedGoAnalyzer::new(temp_file.path().to_path_buf());
     let result = analyzer.analyze().await;
 
-    assert!(result.is_ok(), "Comment-only file should parse successfully");
+    assert!(
+        result.is_ok(),
+        "Comment-only file should parse successfully"
+    );
     let analysis = result.unwrap();
-    assert_eq!(analysis.ast_items.len(), 0, "Comment-only file should have 0 items");
+    assert_eq!(
+        analysis.ast_items.len(),
+        0,
+        "Comment-only file should have 0 items"
+    );
 }

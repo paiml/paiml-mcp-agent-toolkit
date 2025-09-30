@@ -3,9 +3,9 @@
 //! These tests are written FIRST (RED phase) and must ALL FAIL initially.
 //! Once implementation is complete, they must ALL PASS.
 
+use std::io::Write;
 use std::path::PathBuf;
 use tempfile::NamedTempFile;
-use std::io::Write;
 
 // Helper to create temporary shell files for testing
 fn create_temp_shell_file(content: &str) -> NamedTempFile {
@@ -29,14 +29,16 @@ fn red_test_unified_bash_analyzer_can_be_created() {
 async fn red_test_unified_bash_parses_only_once() {
     use crate::services::unified_bash_analyzer::UnifiedBashAnalyzer;
 
-    let temp_file = create_temp_shell_file(r#"#!/bin/bash
+    let temp_file = create_temp_shell_file(
+        r#"#!/bin/bash
 
 function greet() {
     echo "Hello, $1"
 }
 
 greet "World"
-    "#);
+    "#,
+    );
 
     let analyzer = UnifiedBashAnalyzer::new(temp_file.path().to_path_buf());
     let result = analyzer.analyze().await;
@@ -54,24 +56,32 @@ greet "World"
 async fn red_test_unified_bash_returns_both_ast_and_complexity() {
     use crate::services::unified_bash_analyzer::UnifiedBashAnalyzer;
 
-    let temp_file = create_temp_shell_file(r#"#!/bin/bash
+    let temp_file = create_temp_shell_file(
+        r#"#!/bin/bash
 
 function add() {
     echo $(($1 + $2))
 }
 
 add 3 5
-    "#);
+    "#,
+    );
 
     let analyzer = UnifiedBashAnalyzer::new(temp_file.path().to_path_buf());
     let result = analyzer.analyze().await.expect("Should parse successfully");
 
     // Must have AST items
     assert!(!result.ast_items.is_empty(), "Must extract AST items");
-    assert!(!result.ast_items.is_empty(), "Should find at least 1 function");
+    assert!(
+        !result.ast_items.is_empty(),
+        "Should find at least 1 function"
+    );
 
     // Must have complexity metrics
-    assert!(!result.file_metrics.functions.is_empty(), "Must extract complexity");
+    assert!(
+        !result.file_metrics.functions.is_empty(),
+        "Must extract complexity"
+    );
 }
 
 /// Test 4: AST Items Extracted
@@ -79,7 +89,8 @@ add 3 5
 async fn red_test_unified_bash_ast_extraction() {
     use crate::services::unified_bash_analyzer::UnifiedBashAnalyzer;
 
-    let temp_file = create_temp_shell_file(r#"#!/bin/bash
+    let temp_file = create_temp_shell_file(
+        r#"#!/bin/bash
 
 multiply() {
     echo $(($1 * $2))
@@ -88,13 +99,17 @@ multiply() {
 divide() {
     echo $(($1 / $2))
 }
-    "#);
+    "#,
+    );
 
     let analyzer = UnifiedBashAnalyzer::new(temp_file.path().to_path_buf());
     let result = analyzer.analyze().await.unwrap();
 
     // Should find 2 functions
-    assert!(result.ast_items.len() >= 2, "Should find at least 2 functions");
+    assert!(
+        result.ast_items.len() >= 2,
+        "Should find at least 2 functions"
+    );
 }
 
 /// Test 5: Handles Invalid Syntax Gracefully
@@ -102,15 +117,20 @@ divide() {
 async fn red_test_unified_bash_handles_invalid_syntax() {
     use crate::services::unified_bash_analyzer::UnifiedBashAnalyzer;
 
-    let temp_file = create_temp_shell_file(r#"
+    let temp_file = create_temp_shell_file(
+        r#"
 broken shell syntax {{{ !!!
-    "#);
+    "#,
+    );
 
     let analyzer = UnifiedBashAnalyzer::new(temp_file.path().to_path_buf());
     let result = analyzer.analyze().await;
 
     // GREEN PHASE: Pattern-based extraction handles invalid syntax gracefully
-    assert!(result.is_ok(), "Shell analyzer handles invalid syntax gracefully");
+    assert!(
+        result.is_ok(),
+        "Shell analyzer handles invalid syntax gracefully"
+    );
 }
 
 /// Test 6: Complexity Increases with Control Flow
@@ -118,11 +138,14 @@ broken shell syntax {{{ !!!
 async fn red_test_bash_complexity_reflects_control_flow() {
     use crate::services::unified_bash_analyzer::UnifiedBashAnalyzer;
 
-    let simple_script = create_temp_shell_file(r#"#!/bin/bash
+    let simple_script = create_temp_shell_file(
+        r#"#!/bin/bash
 echo "simple"
-    "#);
+    "#,
+    );
 
-    let complex_script = create_temp_shell_file(r#"#!/bin/bash
+    let complex_script = create_temp_shell_file(
+        r#"#!/bin/bash
 
 if [ "$1" = "test" ]; then
     echo "test mode"
@@ -133,21 +156,31 @@ fi
 for i in {1..5}; do
     echo $i
 done
-    "#);
+    "#,
+    );
 
     let simple_analyzer = UnifiedBashAnalyzer::new(simple_script.path().to_path_buf());
     let complex_analyzer = UnifiedBashAnalyzer::new(complex_script.path().to_path_buf());
 
-    let simple_result = simple_analyzer.analyze().await.expect("Should parse simple");
-    let complex_result = complex_analyzer.analyze().await.expect("Should parse complex");
+    let simple_result = simple_analyzer
+        .analyze()
+        .await
+        .expect("Should parse simple");
+    let complex_result = complex_analyzer
+        .analyze()
+        .await
+        .expect("Should parse complex");
 
     let simple_complexity = simple_result.file_metrics.total_complexity.cyclomatic;
     let complex_complexity = complex_result.file_metrics.total_complexity.cyclomatic;
 
     // Complex script with if/else and loop should have higher complexity
-    assert!(complex_complexity > simple_complexity,
-            "Complex script should have higher complexity: {} > {}",
-            complex_complexity, simple_complexity);
+    assert!(
+        complex_complexity > simple_complexity,
+        "Complex script should have higher complexity: {} > {}",
+        complex_complexity,
+        simple_complexity
+    );
 }
 
 /// Test 7: Property-Based Test - Various Function Counts
@@ -196,7 +229,11 @@ async fn red_test_unified_bash_handles_empty_script() {
 
     assert!(result.is_ok(), "Empty script should parse successfully");
     let analysis = result.unwrap();
-    assert_eq!(analysis.ast_items.len(), 0, "Empty script should have 0 items");
+    assert_eq!(
+        analysis.ast_items.len(),
+        0,
+        "Empty script should have 0 items"
+    );
 }
 
 /// Test 9: Pipeline Complexity
@@ -204,17 +241,21 @@ async fn red_test_unified_bash_handles_empty_script() {
 async fn red_test_bash_pipeline_increases_complexity() {
     use crate::services::unified_bash_analyzer::UnifiedBashAnalyzer;
 
-    let temp_file = create_temp_shell_file(r#"#!/bin/bash
+    let temp_file = create_temp_shell_file(
+        r#"#!/bin/bash
 
 cat file.txt | grep "pattern" | sort | uniq | wc -l
-    "#);
+    "#,
+    );
 
     let analyzer = UnifiedBashAnalyzer::new(temp_file.path().to_path_buf());
     let result = analyzer.analyze().await.expect("Should parse pipeline");
 
     // Pipeline with multiple commands should increase complexity
-    assert!(result.file_metrics.total_complexity.cyclomatic >= 2,
-            "Pipeline should increase complexity");
+    assert!(
+        result.file_metrics.total_complexity.cyclomatic >= 2,
+        "Pipeline should increase complexity"
+    );
 }
 
 /// Test 10: Multiple Control Flow Constructs
@@ -222,7 +263,8 @@ cat file.txt | grep "pattern" | sort | uniq | wc -l
 async fn red_test_bash_multiple_control_flow() {
     use crate::services::unified_bash_analyzer::UnifiedBashAnalyzer;
 
-    let temp_file = create_temp_shell_file(r#"#!/bin/bash
+    let temp_file = create_temp_shell_file(
+        r#"#!/bin/bash
 
 function complex_logic() {
     if [ "$1" = "start" ]; then
@@ -234,12 +276,18 @@ function complex_logic() {
         done
     fi
 }
-    "#);
+    "#,
+    );
 
     let analyzer = UnifiedBashAnalyzer::new(temp_file.path().to_path_buf());
-    let result = analyzer.analyze().await.expect("Should parse nested control flow");
+    let result = analyzer
+        .analyze()
+        .await
+        .expect("Should parse nested control flow");
 
     // Nested if/while statements should significantly increase complexity
-    assert!(result.file_metrics.total_complexity.cyclomatic >= 4,
-            "Nested control flow should have complexity >= 4");
+    assert!(
+        result.file_metrics.total_complexity.cyclomatic >= 4,
+        "Nested control flow should have complexity >= 4"
+    );
 }

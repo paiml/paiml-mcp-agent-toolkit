@@ -44,14 +44,16 @@ mod integration_tests {
         // This test ensures we have test coverage for all major MCP tool categories
         // as defined in the MCP acceptance testing specification
 
-        let covered_tool_categories = ["Template Management",
+        let covered_tool_categories = [
+            "Template Management",
             "Analysis Tools",
             "Quality Assurance",
             "Refactoring Tools",
             "Reporting Tools",
             "Context Management",
             "Vectorized Tools",
-            "PDMT Tools"];
+            "PDMT Tools",
+        ];
 
         let expected_tools = vec![
             "pmat_generate_template",

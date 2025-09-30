@@ -151,10 +151,7 @@ impl MakefileRule for UnsafeCommandRule {
                             rule: self.id().to_string(),
                             severity,
                             span: node.span,
-                            message: format!(
-                                "Unsafe command pattern detected: {}",
-                                pattern
-                            ),
+                            message: format!("Unsafe command pattern detected: {}", pattern),
                             fix_hint: Some(suggest_safe_alternative(pattern)),
                         });
                     }
@@ -190,10 +187,7 @@ impl MakefileRule for PrivilegeEscalationRule {
                             rule: self.id().to_string(),
                             severity: self.default_severity(),
                             span: node.span,
-                            message: format!(
-                                "Potential privilege escalation: {}",
-                                issue
-                            ),
+                            message: format!("Potential privilege escalation: {}", issue),
                             fix_hint: Some(
                                 "Review privilege requirements and use least privilege principle"
                                     .to_string(),
@@ -227,9 +221,7 @@ fn contains_shell_injection(command: &str) -> bool {
 
     // Check for dangerous patterns
     let dangerous_commands = ["rm", "find", "curl", "wget", "tar", "install"];
-    let has_dangerous = dangerous_commands
-        .iter()
-        .any(|&cmd| command.contains(cmd));
+    let has_dangerous = dangerous_commands.iter().any(|&cmd| command.contains(cmd));
 
     if has_dangerous && regex.is_match(command) {
         // Check if it's not already quoted
@@ -243,9 +235,7 @@ fn quote_variables(command: &str) -> String {
     static VAR_REGEX: OnceLock<Regex> = OnceLock::new();
     let regex = VAR_REGEX.get_or_init(|| Regex::new(r#"\$\(([^)]+)\)"#).unwrap());
 
-    regex
-        .replace_all(command, "\"$($1)\"")
-        .to_string()
+    regex.replace_all(command, "\"$($1)\"").to_string()
 }
 
 fn detect_secret(name: &str, value: &str) -> Option<String> {
@@ -311,10 +301,12 @@ fn detect_unsafe_command(command: &str) -> Option<(&'static str, Severity)> {
     let cmd_trimmed = command.trim();
 
     // Critical: rm -rf /
-    if cmd_trimmed.contains("rm ") && cmd_trimmed.contains("-rf /")
-        && (cmd_trimmed.contains("-rf /") || cmd_trimmed.contains("-rf /*")) {
-            return Some(("rm -rf / - extremely dangerous", Severity::Error));
-        }
+    if cmd_trimmed.contains("rm ")
+        && cmd_trimmed.contains("-rf /")
+        && (cmd_trimmed.contains("-rf /") || cmd_trimmed.contains("-rf /*"))
+    {
+        return Some(("rm -rf / - extremely dangerous", Severity::Error));
+    }
 
     // High: curl | bash pattern
     if (cmd_trimmed.contains("curl") || cmd_trimmed.contains("wget"))
@@ -372,14 +364,14 @@ fn truncate_command(command: &str) -> &str {
 
 fn suggest_safe_alternative(pattern: &str) -> String {
     match pattern {
-        "rm -rf / - extremely dangerous" => {
-            "Use specific paths and add safety checks".to_string()
-        }
+        "rm -rf / - extremely dangerous" => "Use specific paths and add safety checks".to_string(),
         "downloading and piping to shell" => {
             "Download file first, verify checksum, then execute".to_string()
         }
         "eval with variable input" => "Avoid eval; use direct command execution".to_string(),
-        "chmod 777 - overly permissive" => "Use more restrictive permissions (e.g., 755 or 644)".to_string(),
+        "chmod 777 - overly permissive" => {
+            "Use more restrictive permissions (e.g., 755 or 644)".to_string()
+        }
         _ => "Review command for security implications".to_string(),
     }
 }

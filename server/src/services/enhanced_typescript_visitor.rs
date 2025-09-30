@@ -12,10 +12,10 @@ use std::path::{Path, PathBuf};
 use swc_common::{Span, Spanned};
 #[cfg(feature = "typescript-ast")]
 use swc_ecma_ast::{
-    ClassDecl, ClassMember, Constructor, Expr, FnDecl, Function, ImportDecl, MethodProp, Module,
-    ModuleDecl, NamedExport, Pat, PropName, TsEnumDecl, TsInterfaceDecl, VarDecl, ClassMethod,
-    ReturnStmt, ObjectLit, PropOrSpread, Prop, KeyValueProp, Stmt, ExportDefaultDecl,
-    DefaultDecl, ExportDecl,
+    ClassDecl, ClassMember, ClassMethod, Constructor, DefaultDecl, ExportDecl, ExportDefaultDecl,
+    Expr, FnDecl, Function, ImportDecl, KeyValueProp, MethodProp, Module, ModuleDecl, NamedExport,
+    ObjectLit, Pat, Prop, PropName, PropOrSpread, ReturnStmt, Stmt, TsEnumDecl, TsInterfaceDecl,
+    VarDecl,
 };
 #[cfg(feature = "typescript-ast")]
 use swc_ecma_visit::{Visit, VisitWith};
@@ -127,12 +127,11 @@ impl EnhancedTypeScriptVisitor {
 
                         let qualified_name = format!("{}::{}", object_name, method_name);
                         let (is_async, line) = match value.as_ref() {
-                            Expr::Fn(fn_expr) => {
-                                (fn_expr.function.is_async, self.get_line(fn_expr.function.span))
-                            }
-                            Expr::Arrow(arrow) => {
-                                (arrow.is_async, self.get_line(arrow.span))
-                            }
+                            Expr::Fn(fn_expr) => (
+                                fn_expr.function.is_async,
+                                self.get_line(fn_expr.function.span),
+                            ),
+                            Expr::Arrow(arrow) => (arrow.is_async, self.get_line(arrow.span)),
                             _ => continue,
                         };
 
@@ -437,7 +436,9 @@ impl Visit for EnhancedTypeScriptVisitor {
                     let mut method_count = 0;
                     for member in &class_expr.class.body {
                         match member {
-                            ClassMember::Method(_) | ClassMember::Constructor(_) => method_count += 1,
+                            ClassMember::Method(_) | ClassMember::Constructor(_) => {
+                                method_count += 1
+                            }
                             _ => {}
                         }
                     }
@@ -601,16 +602,28 @@ mod tests {
                 .collect();
 
             // Enhanced TypeScript visitor should extract actual method names
-            assert!(method_names.contains(&"DataProcessor::constructor".to_string()),
-                "Should extract constructor");
-            assert!(method_names.contains(&"DataProcessor::process".to_string()),
-                "Should extract async process method name");
-            assert!(method_names.contains(&"DataProcessor::validateInput".to_string()),
-                "Should extract private method name");
+            assert!(
+                method_names.contains(&"DataProcessor::constructor".to_string()),
+                "Should extract constructor"
+            );
+            assert!(
+                method_names.contains(&"DataProcessor::process".to_string()),
+                "Should extract async process method name"
+            );
+            assert!(
+                method_names.contains(&"DataProcessor::validateInput".to_string()),
+                "Should extract private method name"
+            );
 
             // Filter out duplicates caused by visiting both class methods and functions
-            let unique_methods: std::collections::HashSet<String> = method_names.into_iter().collect();
-            assert_eq!(unique_methods.len(), 3, "Should have exactly 3 unique methods, got: {:?}", unique_methods);
+            let unique_methods: std::collections::HashSet<String> =
+                method_names.into_iter().collect();
+            assert_eq!(
+                unique_methods.len(),
+                3,
+                "Should have exactly 3 unique methods, got: {:?}",
+                unique_methods
+            );
         }
 
         /// Test enhanced visitor handles interfaces

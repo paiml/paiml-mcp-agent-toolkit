@@ -171,7 +171,7 @@ mod unified_analyzer_integration_tests {
 
         // Results should be consistent (both succeed or both fail)
         match (result1, result2) {
-            (Ok(_), Ok(_)) => {} // Consistent success
+            (Ok(_), Ok(_)) => {}   // Consistent success
             (Err(_), Err(_)) => {} // Consistent failure
             _ => panic!("Inconsistent results between runs"),
         }

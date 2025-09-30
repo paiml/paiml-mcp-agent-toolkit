@@ -37,11 +37,11 @@ use crate::services::context::AstItem;
 use crate::services::enhanced_typescript_visitor::EnhancedTypeScriptVisitor;
 
 #[cfg(feature = "typescript-ast")]
+use swc_common::{sync::Lrc, FileName, SourceMap};
+#[cfg(feature = "typescript-ast")]
 use swc_ecma_ast::Module;
 #[cfg(feature = "typescript-ast")]
 use swc_ecma_parser::{lexer::Lexer, Parser, StringInput, Syntax, TsSyntax};
-#[cfg(feature = "typescript-ast")]
-use swc_common::{FileName, SourceMap, sync::Lrc};
 
 /// Unified analyzer that parses TypeScript/JavaScript once, extracts twice
 pub struct UnifiedTypeScriptAnalyzer {
@@ -132,15 +132,16 @@ impl UnifiedTypeScriptAnalyzer {
     #[cfg(feature = "typescript-ast")]
     fn parse_typescript(&self, content: &str) -> Result<Module, AnalysisError> {
         let source_map = Lrc::new(SourceMap::default());
-        let source_file = source_map
-            .new_source_file(
-                Lrc::new(FileName::Custom(self.file_path.display().to_string())),
-                content.to_owned(),
-            );
+        let source_file = source_map.new_source_file(
+            Lrc::new(FileName::Custom(self.file_path.display().to_string())),
+            content.to_owned(),
+        );
 
         let lexer = Lexer::new(
             Syntax::Typescript(TsSyntax {
-                tsx: self.file_path.extension()
+                tsx: self
+                    .file_path
+                    .extension()
                     .and_then(|e| e.to_str())
                     .map(|e| e == "tsx")
                     .unwrap_or(false),
@@ -193,7 +194,8 @@ impl UnifiedTypeScriptAnalyzer {
         ).unwrap();
 
         for cap in function_pattern.captures_iter(content) {
-            let name = cap.get(1)
+            let name = cap
+                .get(1)
                 .or_else(|| cap.get(2))
                 .or_else(|| cap.get(3))
                 .or_else(|| cap.get(4))
@@ -218,9 +220,7 @@ impl UnifiedTypeScriptAnalyzer {
         }
 
         // Calculate file-level metrics
-        let total_cyclomatic: u32 = functions.iter()
-            .map(|f| f.metrics.cyclomatic as u32)
-            .sum();
+        let total_cyclomatic: u32 = functions.iter().map(|f| f.metrics.cyclomatic as u32).sum();
 
         let avg_cyclomatic = if functions.is_empty() {
             1
@@ -249,8 +249,8 @@ impl UnifiedTypeScriptAnalyzer {
 
         // Count control flow keywords
         let keywords = [
-            "if", "else if", "for", "while", "switch", "case",
-            "catch", "&&", "||", "?", // Ternary and logical operators
+            "if", "else if", "for", "while", "switch", "case", "catch", "&&", "||",
+            "?", // Ternary and logical operators
         ];
 
         for keyword in &keywords {

@@ -52,13 +52,15 @@ mod integration_tests {
         // This test ensures we have test coverage for all major HTTP endpoint categories
         // as defined in the HTTP API acceptance testing specification
 
-        let covered_endpoint_categories = ["Dashboard/UI",
+        let covered_endpoint_categories = [
+            "Dashboard/UI",
             "Core API v1 (Legacy)",
             "Enhanced API v1 (Current)",
             "POST Operations",
             "WebSocket",
             "CORS/Options",
-            "Error Handling"];
+            "Error Handling",
+        ];
 
         let expected_endpoints = vec![
             "/",

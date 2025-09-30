@@ -19,7 +19,9 @@ mod red_phase_tests {
         let temp_dir = TempDir::new().unwrap();
         let go_file = temp_dir.path().join("test.go");
 
-        fs::write(&go_file, r#"
+        fs::write(
+            &go_file,
+            r#"
 package main
 
 import "fmt"
@@ -41,7 +43,9 @@ func main() {
     result := ProcessMessage(msg)
     fmt.Println(result)
 }
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
         // Run context generation
         use crate::services::context::analyze_project;
@@ -52,11 +56,16 @@ func main() {
         assert!(go_file_found, "Go file must be discovered and analyzed");
 
         // Find the Go file context
-        let go_context = context.files.iter().find(|f| f.path.contains("test.go"))
+        let go_context = context
+            .files
+            .iter()
+            .find(|f| f.path.contains("test.go"))
             .expect("Must find Go file in context");
 
         // MUST contain Go function names in the items
-        let functions: Vec<String> = go_context.items.iter()
+        let functions: Vec<String> = go_context
+            .items
+            .iter()
             .filter_map(|item| {
                 if let crate::services::context::AstItem::Function { name, .. } = item {
                     Some(name.clone())
@@ -69,14 +78,22 @@ func main() {
         let has_process_message = functions.iter().any(|f| f.contains("ProcessMessage"));
         let has_main = functions.iter().any(|f| f.contains("main"));
 
-        assert!(has_process_message,
-            "Go function 'ProcessMessage' must be extracted, found functions: {:?}", functions);
-        assert!(has_main,
-            "Go function 'main' must be extracted, found functions: {:?}", functions);
+        assert!(
+            has_process_message,
+            "Go function 'ProcessMessage' must be extracted, found functions: {:?}",
+            functions
+        );
+        assert!(
+            has_main,
+            "Go function 'main' must be extracted, found functions: {:?}",
+            functions
+        );
 
         // MUST NOT be empty
-        assert!(!functions.is_empty(),
-            "Go file must have functions extracted");
+        assert!(
+            !functions.is_empty(),
+            "Go file must have functions extracted"
+        );
     }
 
     /// RED TEST: TypeScript files MUST be analyzed correctly (not as Rust)
@@ -89,7 +106,9 @@ func main() {
         let temp_dir = TempDir::new().unwrap();
         let ts_file = temp_dir.path().join("test.ts");
 
-        fs::write(&ts_file, r#"
+        fs::write(
+            &ts_file,
+            r#"
 export interface Message {
     type: "ping" | "pong";
     value: number;
@@ -114,7 +133,9 @@ class MessageProcessor {
 export function createProcessor(): MessageProcessor {
     return new MessageProcessor();
 }
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
         // Run context generation
         use crate::services::context::analyze_project;
@@ -122,18 +143,30 @@ export function createProcessor(): MessageProcessor {
 
         // TypeScript file MUST be in the context
         let ts_file_found = context.files.iter().any(|f| f.path.contains("test.ts"));
-        assert!(ts_file_found, "TypeScript file must be discovered and analyzed");
+        assert!(
+            ts_file_found,
+            "TypeScript file must be discovered and analyzed"
+        );
 
         // Find the TypeScript file context
-        let ts_context = context.files.iter().find(|f| f.path.contains("test.ts"))
+        let ts_context = context
+            .files
+            .iter()
+            .find(|f| f.path.contains("test.ts"))
             .expect("Must find TypeScript file in context");
 
         // Language MUST be detected as typescript/javascript, NOT rust
-        assert_ne!(ts_context.language.to_lowercase(), "rust",
-            "TypeScript file must NOT be detected as Rust, got: {}", ts_context.language);
+        assert_ne!(
+            ts_context.language.to_lowercase(),
+            "rust",
+            "TypeScript file must NOT be detected as Rust, got: {}",
+            ts_context.language
+        );
 
         // MUST contain TypeScript function/method names in the items
-        let functions: Vec<String> = ts_context.items.iter()
+        let functions: Vec<String> = ts_context
+            .items
+            .iter()
             .filter_map(|item| {
                 if let crate::services::context::AstItem::Function { name, .. } = item {
                     Some(name.clone())
@@ -143,11 +176,16 @@ export function createProcessor(): MessageProcessor {
             })
             .collect();
 
-        let has_process = functions.iter().any(|f| f.contains("process") || f.contains("MessageProcessor"));
+        let has_process = functions
+            .iter()
+            .any(|f| f.contains("process") || f.contains("MessageProcessor"));
         let has_create_processor = functions.iter().any(|f| f.contains("createProcessor"));
 
-        assert!(has_process || has_create_processor || !functions.is_empty(),
-            "TypeScript methods/functions must be extracted, found functions: {:?}", functions);
+        assert!(
+            has_process || has_create_processor || !functions.is_empty(),
+            "TypeScript methods/functions must be extracted, found functions: {:?}",
+            functions
+        );
     }
 
     /// RED TEST: JavaScript files MUST show function analysis
@@ -156,7 +194,9 @@ export function createProcessor(): MessageProcessor {
         let temp_dir = TempDir::new().unwrap();
         let js_file = temp_dir.path().join("test.js");
 
-        fs::write(&js_file, r#"
+        fs::write(
+            &js_file,
+            r#"
 function calculateSum(a, b) {
     if (a < 0 || b < 0) {
         throw new Error("Negative numbers not allowed");
@@ -177,7 +217,9 @@ class Calculator {
 }
 
 module.exports = { Calculator, calculateSum };
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
         use crate::services::context::analyze_project;
         let context = analyze_project(temp_dir.path(), "stable").await.unwrap();
@@ -185,17 +227,25 @@ module.exports = { Calculator, calculateSum };
         let js_file_found = context.files.iter().any(|f| f.path.contains("test.js"));
         assert!(js_file_found, "JavaScript file must be discovered");
 
-        let js_context = context.files.iter().find(|f| f.path.contains("test.js"))
+        let js_context = context
+            .files
+            .iter()
+            .find(|f| f.path.contains("test.js"))
             .expect("Must find JavaScript file in context");
 
         // Should have some functions extracted
-        let function_count = js_context.items.iter()
+        let function_count = js_context
+            .items
+            .iter()
             .filter(|item| matches!(item, crate::services::context::AstItem::Function { .. }))
             .count();
 
-        assert!(function_count > 0 || js_context.language.to_lowercase().contains("javascript"),
+        assert!(
+            function_count > 0 || js_context.language.to_lowercase().contains("javascript"),
             "JavaScript file must be analyzed, found {} functions with language: {}",
-            function_count, js_context.language);
+            function_count,
+            js_context.language
+        );
     }
 
     /// RED TEST: Multi-language project MUST analyze all languages
@@ -204,42 +254,63 @@ module.exports = { Calculator, calculateSum };
         let temp_dir = TempDir::new().unwrap();
 
         // Create Rust file
-        fs::write(temp_dir.path().join("lib.rs"), r#"
+        fs::write(
+            temp_dir.path().join("lib.rs"),
+            r#"
 pub fn rust_func(x: i32) -> i32 {
     x * 2
 }
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
         // Create Go file
-        fs::write(temp_dir.path().join("main.go"), r#"
+        fs::write(
+            temp_dir.path().join("main.go"),
+            r#"
 package main
 
 func GoFunc(x int) int {
     return x * 2
 }
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
         // Create TypeScript file
-        fs::write(temp_dir.path().join("app.ts"), r#"
+        fs::write(
+            temp_dir.path().join("app.ts"),
+            r#"
 export function tsFunc(x: number): number {
     return x * 2;
 }
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
         use crate::services::context::analyze_project;
         let context = analyze_project(temp_dir.path(), "stable").await.unwrap();
 
         // ALL files must be discovered
-        assert!(context.files.iter().any(|f| f.path.contains("lib.rs")),
-            "Rust file must be discovered");
-        assert!(context.files.iter().any(|f| f.path.contains("main.go")),
-            "Go file must be discovered");
-        assert!(context.files.iter().any(|f| f.path.contains("app.ts")),
-            "TypeScript file must be discovered");
+        assert!(
+            context.files.iter().any(|f| f.path.contains("lib.rs")),
+            "Rust file must be discovered"
+        );
+        assert!(
+            context.files.iter().any(|f| f.path.contains("main.go")),
+            "Go file must be discovered"
+        );
+        assert!(
+            context.files.iter().any(|f| f.path.contains("app.ts")),
+            "TypeScript file must be discovered"
+        );
 
         // At minimum, files should be present even if analysis is incomplete
-        assert!(context.files.len() >= 3,
-            "Should have at least 3 files, got {}", context.files.len());
+        assert!(
+            context.files.len() >= 3,
+            "Should have at least 3 files, got {}",
+            context.files.len()
+        );
     }
 
     /// RED TEST: Language detection must correctly identify file types
@@ -251,18 +322,30 @@ export function tsFunc(x: number): number {
 
         // Test Go detection
         let go_lang = registry.detect_language(&PathBuf::from("test.go"));
-        assert_eq!(go_lang.name().to_lowercase(), "go",
-            "Go files must be detected as 'go', got '{}'", go_lang.name());
+        assert_eq!(
+            go_lang.name().to_lowercase(),
+            "go",
+            "Go files must be detected as 'go', got '{}'",
+            go_lang.name()
+        );
 
         // Test TypeScript detection
         let ts_lang = registry.detect_language(&PathBuf::from("test.ts"));
-        assert_eq!(ts_lang.name().to_lowercase(), "typescript",
-            "TypeScript files must be detected as 'typescript', got '{}'", ts_lang.name());
+        assert_eq!(
+            ts_lang.name().to_lowercase(),
+            "typescript",
+            "TypeScript files must be detected as 'typescript', got '{}'",
+            ts_lang.name()
+        );
 
         // Test JavaScript detection
         let js_lang = registry.detect_language(&PathBuf::from("test.js"));
-        assert_eq!(js_lang.name().to_lowercase(), "javascript",
-            "JavaScript files must be detected as 'javascript', got '{}'", js_lang.name());
+        assert_eq!(
+            js_lang.name().to_lowercase(),
+            "javascript",
+            "JavaScript files must be detected as 'javascript', got '{}'",
+            js_lang.name()
+        );
     }
 }
 
@@ -277,7 +360,9 @@ mod integration_tests {
         let temp_dir = TempDir::new().unwrap();
         let go_file = temp_dir.path().join("complex.go");
 
-        fs::write(&go_file, r#"
+        fs::write(
+            &go_file,
+            r#"
 package main
 
 func ComplexFunc(x, y, z int) int {
@@ -292,7 +377,9 @@ func ComplexFunc(x, y, z int) int {
     }
     return 0
 }
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
         use crate::services::context::analyze_project;
         let context = analyze_project(temp_dir.path(), "stable").await.unwrap();
@@ -307,7 +394,9 @@ func ComplexFunc(x, y, z int) int {
         let temp_dir = TempDir::new().unwrap();
         let ts_file = temp_dir.path().join("complex.ts");
 
-        fs::write(&ts_file, r#"
+        fs::write(
+            &ts_file,
+            r#"
 class Complex {
     method(x: number, y: number): number {
         if (x > 0) {
@@ -319,7 +408,9 @@ class Complex {
         return 0;
     }
 }
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
         use crate::services::context::analyze_project;
         let context = analyze_project(temp_dir.path(), "stable").await.unwrap();

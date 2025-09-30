@@ -1,9 +1,9 @@
 //! EXTREME TDD: Fix Root Cause with Proper Concurrency
 //! Goal: Sub-second performance with ALL annotations using world-class architecture
 
-use tempfile::TempDir;
 use std::fs;
 use std::time::{Duration, Instant};
+use tempfile::TempDir;
 
 /// RED TEST: Context generation must complete in sub-second for small projects
 #[tokio::test]
@@ -12,7 +12,10 @@ async fn test_sub_second_performance_small_project() {
     let temp_dir = TempDir::new().unwrap();
     for i in 0..10 {
         let test_file = temp_dir.path().join(format!("file_{}.rs", i));
-        fs::write(&test_file, format!(r#"
+        fs::write(
+            &test_file,
+            format!(
+                r#"
 // TODO: Optimize this function
 fn function_{}(x: i32) -> i32 {{
     if x > 0 {{ x * 2 }} else {{ 0 }}
@@ -23,7 +26,11 @@ struct Data{} {{ value: i32 }}
 impl Data{} {{
     fn process(&self) -> i32 {{ self.value * 2 }}
 }}
-"#, i, i, i)).unwrap();
+"#,
+                i, i, i
+            ),
+        )
+        .unwrap();
     }
 
     // ACT: Time the context generation
@@ -37,25 +44,51 @@ impl Data{} {{
         crate::cli::ContextFormat::Markdown,
         false,
         false, // Full analysis with all annotations
-    ).await;
+    )
+    .await;
 
     let duration = start.elapsed();
 
     // ASSERT: Must complete in under 1 second
-    assert!(result.is_ok(), "Context generation failed: {:?}", result.err());
-    assert!(duration < Duration::from_secs(1),
-        "Must complete in under 1 second, took: {:?}", duration);
+    assert!(
+        result.is_ok(),
+        "Context generation failed: {:?}",
+        result.err()
+    );
+    assert!(
+        duration < Duration::from_secs(1),
+        "Must complete in under 1 second, took: {:?}",
+        duration
+    );
 
     // ASSERT: Must have ALL annotations
     let output = fs::read_to_string(output_file).unwrap();
-    assert!(output.contains("[complexity:"), "Missing complexity annotation");
-    assert!(output.contains("[cognitive:"), "Missing cognitive annotation");
+    assert!(
+        output.contains("[complexity:"),
+        "Missing complexity annotation"
+    );
+    assert!(
+        output.contains("[cognitive:"),
+        "Missing cognitive annotation"
+    );
     assert!(output.contains("[big-o:"), "Missing Big-O annotation");
-    assert!(output.contains("[provability:"), "Missing provability annotation");
+    assert!(
+        output.contains("[provability:"),
+        "Missing provability annotation"
+    );
     assert!(output.contains("[churn:"), "Missing churn annotation");
-    assert!(output.contains("[satd:") || output.contains("TODO"), "Missing SATD detection");
-    assert!(output.contains("[pagerank:") || output.contains("Graph"), "Missing graph metrics");
-    assert!(output.contains("[tdg:") || output.contains("Technical Debt"), "Missing TDG score");
+    assert!(
+        output.contains("[satd:") || output.contains("TODO"),
+        "Missing SATD detection"
+    );
+    assert!(
+        output.contains("[pagerank:") || output.contains("Graph"),
+        "Missing graph metrics"
+    );
+    assert!(
+        output.contains("[tdg:") || output.contains("Technical Debt"),
+        "Missing TDG score"
+    );
 }
 
 /// RED TEST: Must use parallel processing for all analyses
@@ -80,21 +113,25 @@ async fn test_parallel_analysis_execution() {
         crate::cli::ContextFormat::Markdown,
         false,
         false,
-    ).await;
+    )
+    .await;
 
     let duration = start.elapsed();
 
     // ASSERT: Parallel execution should be much faster than sequential
     // 50 files sequentially would take >5 seconds, parallel should be <2 seconds
     assert!(result.is_ok());
-    assert!(duration < Duration::from_secs(2),
-        "Not using parallel execution, took: {:?}", duration);
+    assert!(
+        duration < Duration::from_secs(2),
+        "Not using parallel execution, took: {:?}",
+        duration
+    );
 }
 
 /// RED TEST: Must parse AST only once and share across analyses
 #[test]
 fn test_ast_parsing_shared_not_duplicated() {
-    use crate::services::deep_context::{DeepContextConfig, AnalysisType, CacheStrategy, DagType};
+    use crate::services::deep_context::{AnalysisType, CacheStrategy, DagType, DeepContextConfig};
 
     // ARRANGE: Create config with multiple analysis types
     let config = DeepContextConfig {
@@ -118,8 +155,15 @@ fn test_ast_parsing_shared_not_duplicated() {
 
     // ASSERT: Config should enable proper parallelism
     assert!(config.parallel >= 2, "Must use parallel processing");
-    assert!(config.max_depth.is_none(), "Must not have artificial depth limits");
-    assert_eq!(config.include_analyses.len(), 5, "Must include all analysis types");
+    assert!(
+        config.max_depth.is_none(),
+        "Must not have artificial depth limits"
+    );
+    assert_eq!(
+        config.include_analyses.len(),
+        5,
+        "Must include all analysis types"
+    );
 }
 
 /// RED TEST: Must have progress bars for user feedback
@@ -148,7 +192,8 @@ async fn test_progress_bars_for_long_operations() {
         crate::cli::ContextFormat::Markdown,
         false,
         false,
-    ).await;
+    )
+    .await;
 
     // ASSERT: Should complete successfully with progress indication
     assert!(result.is_ok(), "Should handle 100 files with progress bars");
@@ -171,15 +216,20 @@ async fn test_bounded_channels_prevent_memory_explosion() {
     let analyzer = DeepContextAnalyzer::new(config);
     let start_memory = get_current_memory_usage();
 
-    let result = analyzer.analyze_project(&temp_dir.path().to_path_buf()).await;
+    let result = analyzer
+        .analyze_project(&temp_dir.path().to_path_buf())
+        .await;
 
     let end_memory = get_current_memory_usage();
 
     // ASSERT: Memory usage should be bounded
     assert!(result.is_ok());
     let memory_growth = end_memory - start_memory;
-    assert!(memory_growth < 100_000_000, // Less than 100MB growth
-        "Memory explosion detected: {} bytes", memory_growth);
+    assert!(
+        memory_growth < 100_000_000, // Less than 100MB growth
+        "Memory explosion detected: {} bytes",
+        memory_growth
+    );
 }
 
 /// RED TEST: All annotations must be present without timeouts
@@ -189,7 +239,9 @@ async fn test_all_annotations_present_no_timeouts() {
     let temp_dir = TempDir::new().unwrap();
 
     // Create files with various complexities
-    fs::write(temp_dir.path().join("complex.rs"), r#"
+    fs::write(
+        temp_dir.path().join("complex.rs"),
+        r#"
 // TODO: Refactor this complex function
 // FIXME: Performance issue
 fn complex_function(data: Vec<i32>) -> i32 {
@@ -218,7 +270,9 @@ impl DataProcessor {
     fn new() -> Self { Self { cache: vec![] } }
     fn process(&self) -> i32 { self.cache.iter().sum() }
 }
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     // ACT: Generate context without any timeouts
     let start = Instant::now();
@@ -231,13 +285,18 @@ impl DataProcessor {
         crate::cli::ContextFormat::Markdown,
         false,
         false,
-    ).await;
+    )
+    .await;
 
     let duration = start.elapsed();
 
     // ASSERT: Should complete quickly with all annotations
     assert!(result.is_ok());
-    assert!(duration < Duration::from_secs(3), "Too slow: {:?}", duration);
+    assert!(
+        duration < Duration::from_secs(3),
+        "Too slow: {:?}",
+        duration
+    );
 
     let output = fs::read_to_string(output_file).unwrap();
 
@@ -246,11 +305,20 @@ impl DataProcessor {
     assert!(output.contains("[cognitive:"), "Missing cognitive");
     assert!(output.contains("[big-o:"), "Missing Big-O");
     assert!(output.contains("[provability:"), "Missing provability");
-    assert!(output.contains("TODO") || output.contains("FIXME"), "Missing SATD");
+    assert!(
+        output.contains("TODO") || output.contains("FIXME"),
+        "Missing SATD"
+    );
 
     // Should have proper function analysis
-    assert!(output.contains("complex_function"), "Missing complex function");
-    assert!(output.contains("simple_function"), "Missing simple function");
+    assert!(
+        output.contains("complex_function"),
+        "Missing complex function"
+    );
+    assert!(
+        output.contains("simple_function"),
+        "Missing simple function"
+    );
     assert!(output.contains("DataProcessor"), "Missing struct");
 }
 

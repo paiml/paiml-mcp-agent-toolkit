@@ -908,19 +908,31 @@ mod tests {
     #[test]
     fn test_helper_functions() {
         // Test extract_from_default_value
-        assert_eq!(extract_from_default_value("VAR:-default"), Some("VAR".to_string()));
+        assert_eq!(
+            extract_from_default_value("VAR:-default"),
+            Some("VAR".to_string())
+        );
         assert_eq!(extract_from_default_value("VAR"), None);
         assert_eq!(extract_from_default_value("VAR:+alt"), None);
 
         // Test extract_from_alternative_value
-        assert_eq!(extract_from_alternative_value("VAR:+alt"), Some("VAR".to_string()));
+        assert_eq!(
+            extract_from_alternative_value("VAR:+alt"),
+            Some("VAR".to_string())
+        );
         assert_eq!(extract_from_alternative_value("VAR"), None);
         assert_eq!(extract_from_alternative_value("VAR:-def"), None);
 
         // Test extract_from_pattern_substitution
-        assert_eq!(extract_from_pattern_substitution("VAR:old=new"), Some("VAR".to_string()));
+        assert_eq!(
+            extract_from_pattern_substitution("VAR:old=new"),
+            Some("VAR".to_string())
+        );
         assert_eq!(extract_from_pattern_substitution("VAR"), None);
-        assert_eq!(extract_from_pattern_substitution("cmd with spaces:arg"), None);
+        assert_eq!(
+            extract_from_pattern_substitution("cmd with spaces:arg"),
+            None
+        );
 
         // Test contains_shell_indicators
         assert!(contains_shell_indicators("cmd with spaces"));

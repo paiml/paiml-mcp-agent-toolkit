@@ -212,9 +212,11 @@ impl GoComplexityAnalyzer {
 /// Public async function to analyze a Go file and return FileContext
 /// This matches the API pattern used by TypeScript analyzer
 #[cfg(feature = "go-ast")]
-pub async fn analyze_go_file(path: &Path) -> Result<crate::services::context::FileContext, crate::models::error::TemplateError> {
-    use crate::services::context::FileContext;
+pub async fn analyze_go_file(
+    path: &Path,
+) -> Result<crate::services::context::FileContext, crate::models::error::TemplateError> {
     use crate::models::error::TemplateError;
+    use crate::services::context::FileContext;
 
     // Read the file content
     let content = tokio::fs::read_to_string(path)

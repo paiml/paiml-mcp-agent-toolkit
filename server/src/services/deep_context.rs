@@ -68,12 +68,12 @@ use crate::services::{
     quality_gates::{QAVerification, QAVerificationResult},
     satd_detector::SATDAnalysisResult,
     tdg_calculator::TDGCalculator,
+    unified_bash_analyzer::UnifiedBashAnalyzer,
+    unified_go_analyzer::UnifiedGoAnalyzer,
+    unified_python_analyzer::UnifiedPythonAnalyzer,
     unified_rust_analyzer::UnifiedRustAnalyzer,
     unified_typescript_analyzer::UnifiedTypeScriptAnalyzer,
-    unified_python_analyzer::UnifiedPythonAnalyzer,
-    unified_go_analyzer::UnifiedGoAnalyzer,
     unified_wasm_analyzer::UnifiedWasmAnalyzer,
-    unified_bash_analyzer::UnifiedBashAnalyzer,
 };
 use chrono::{DateTime, Utc};
 use rayon::prelude::*;
@@ -2827,10 +2827,7 @@ impl DeepContextAnalyzer {
 
         // Step 2: Collect and process results - NO TIMEOUT!
         let results = self
-            .collect_analysis_results_with_progress(
-                &mut join_set,
-                &analysis_progress,
-            )
+            .collect_analysis_results_with_progress(&mut join_set, &analysis_progress)
             .await?;
 
         analysis_progress.finish_with_message("Analyses complete");
@@ -2976,7 +2973,9 @@ impl DeepContextAnalyzer {
         progress: &indicatif::ProgressBar,
     ) -> anyhow::Result<ParallelAnalysisResults> {
         // Direct collection without timeout - let it complete naturally
-        let results = self.process_analysis_results_with_progress(join_set, progress).await?;
+        let results = self
+            .process_analysis_results_with_progress(join_set, progress)
+            .await?;
         debug!("Parallel analysis collection completed successfully");
         Ok(results)
     }
@@ -3963,12 +3962,16 @@ pub async fn analyze_rust_language(
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
     // Use unified analyzer for single-pass parsing
     let analyzer = UnifiedRustAnalyzer::new(file_path.to_path_buf());
-    let analysis = analyzer.analyze().await
+    let analysis = analyzer
+        .analyze()
+        .await
         .map_err(|e| anyhow::anyhow!("Unified Rust analysis failed: {}", e))?;
 
     // Store complexity metrics in thread-local cache for later retrieval
     RUST_UNIFIED_CACHE.with(|cache| {
-        cache.borrow_mut().insert(file_path.to_path_buf(), analysis.file_metrics.clone());
+        cache
+            .borrow_mut()
+            .insert(file_path.to_path_buf(), analysis.file_metrics.clone());
     });
 
     Ok(analysis.ast_items)
@@ -3981,12 +3984,16 @@ pub async fn analyze_typescript_language(
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
     // Use unified analyzer for single-pass parsing
     let analyzer = UnifiedTypeScriptAnalyzer::new(file_path.to_path_buf());
-    let analysis = analyzer.analyze().await
+    let analysis = analyzer
+        .analyze()
+        .await
         .map_err(|e| anyhow::anyhow!("Unified TypeScript analysis failed: {}", e))?;
 
     // Store complexity metrics in thread-local cache for later retrieval
     TYPESCRIPT_UNIFIED_CACHE.with(|cache| {
-        cache.borrow_mut().insert(file_path.to_path_buf(), analysis.file_metrics.clone());
+        cache
+            .borrow_mut()
+            .insert(file_path.to_path_buf(), analysis.file_metrics.clone());
     });
 
     Ok(analysis.ast_items)
@@ -3999,12 +4006,16 @@ pub async fn analyze_python_language(
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
     // Use unified analyzer for single-pass parsing
     let analyzer = UnifiedPythonAnalyzer::new(file_path.to_path_buf());
-    let analysis = analyzer.analyze().await
+    let analysis = analyzer
+        .analyze()
+        .await
         .map_err(|e| anyhow::anyhow!("Unified Python analysis failed: {}", e))?;
 
     // Store complexity metrics in thread-local cache for later retrieval
     PYTHON_UNIFIED_CACHE.with(|cache| {
-        cache.borrow_mut().insert(file_path.to_path_buf(), analysis.file_metrics.clone());
+        cache
+            .borrow_mut()
+            .insert(file_path.to_path_buf(), analysis.file_metrics.clone());
     });
 
     Ok(analysis.ast_items)
@@ -4023,7 +4034,9 @@ pub async fn analyze_go_language(
             Ok(analysis) => {
                 // Store complexity metrics in thread-local cache
                 GO_UNIFIED_CACHE.with(|cache| {
-                    cache.borrow_mut().insert(file_path.to_path_buf(), analysis.file_metrics.clone());
+                    cache
+                        .borrow_mut()
+                        .insert(file_path.to_path_buf(), analysis.file_metrics.clone());
                 });
                 Ok(analysis.ast_items)
             }
@@ -4067,7 +4080,9 @@ pub async fn analyze_bash_language(
         Ok(analysis) => {
             // Store complexity metrics in thread-local cache
             BASH_UNIFIED_CACHE.with(|cache| {
-                cache.borrow_mut().insert(file_path.to_path_buf(), analysis.file_metrics.clone());
+                cache
+                    .borrow_mut()
+                    .insert(file_path.to_path_buf(), analysis.file_metrics.clone());
             });
             tracing::debug!("Bash analysis returned {} items", analysis.ast_items.len());
             Ok(analysis.ast_items)
@@ -4150,7 +4165,9 @@ pub async fn analyze_wasm_language(
             Ok(analysis) => {
                 // Store complexity metrics in thread-local cache
                 WASM_UNIFIED_CACHE.with(|cache| {
-                    cache.borrow_mut().insert(file_path.to_path_buf(), analysis.file_metrics.clone());
+                    cache
+                        .borrow_mut()
+                        .insert(file_path.to_path_buf(), analysis.file_metrics.clone());
                 });
                 Ok(analysis.ast_items)
             }
@@ -4552,9 +4569,7 @@ async fn analyze_files_complexity(
     use futures::stream::{self, StreamExt};
 
     stream::iter(source_files)
-        .map(|file_path| async move {
-            analyze_single_file_complexity(&file_path).await
-        })
+        .map(|file_path| async move { analyze_single_file_complexity(&file_path).await })
         .buffer_unordered(num_cpus::get()) // Process multiple files concurrently
         .filter_map(|opt| async move { opt })
         .collect::<Vec<_>>()
@@ -4564,17 +4579,13 @@ async fn analyze_files_complexity(
 async fn analyze_single_file_complexity(
     file_path: &std::path::Path,
 ) -> Option<crate::services::complexity::FileComplexityMetrics> {
-    
-
     let ext = file_path.extension()?.to_str()?;
 
     match ext {
         "rs" => {
             // OPTIMIZATION: Check unified cache first (from analyze_rust_language)
             // This avoids the second parse that analyze_rust_file_with_complexity would do
-            let cached = RUST_UNIFIED_CACHE.with(|cache| {
-                cache.borrow().get(file_path).cloned()
-            });
+            let cached = RUST_UNIFIED_CACHE.with(|cache| cache.borrow().get(file_path).cloned());
 
             if let Some(metrics) = cached {
                 Some(metrics)
@@ -4587,9 +4598,8 @@ async fn analyze_single_file_complexity(
         "ts" | "js" | "jsx" | "tsx" => {
             // OPTIMIZATION: Check TypeScript unified cache first (from analyze_typescript_language)
             // This avoids the second parse that analyze_typescript_file_with_complexity would do
-            let cached = TYPESCRIPT_UNIFIED_CACHE.with(|cache| {
-                cache.borrow().get(file_path).cloned()
-            });
+            let cached =
+                TYPESCRIPT_UNIFIED_CACHE.with(|cache| cache.borrow().get(file_path).cloned());
 
             if let Some(metrics) = cached {
                 Some(metrics)
@@ -4598,7 +4608,9 @@ async fn analyze_single_file_complexity(
                 #[cfg(feature = "typescript-ast")]
                 {
                     use crate::services::ast_typescript::analyze_typescript_file_with_complexity;
-                    analyze_typescript_file_with_complexity(file_path).await.ok()
+                    analyze_typescript_file_with_complexity(file_path)
+                        .await
+                        .ok()
                 }
                 #[cfg(not(feature = "typescript-ast"))]
                 None
@@ -4607,9 +4619,7 @@ async fn analyze_single_file_complexity(
         "py" => {
             // OPTIMIZATION: Check Python unified cache first (from analyze_python_language)
             // This avoids the second parse that analyze_python_file_with_complexity would do
-            let cached = PYTHON_UNIFIED_CACHE.with(|cache| {
-                cache.borrow().get(file_path).cloned()
-            });
+            let cached = PYTHON_UNIFIED_CACHE.with(|cache| cache.borrow().get(file_path).cloned());
 
             if let Some(metrics) = cached {
                 Some(metrics)
@@ -4618,7 +4628,9 @@ async fn analyze_single_file_complexity(
                 #[cfg(feature = "python-ast")]
                 {
                     use crate::services::ast_python::analyze_python_file_with_complexity;
-                    analyze_python_file_with_complexity(file_path, None).await.ok()
+                    analyze_python_file_with_complexity(file_path, None)
+                        .await
+                        .ok()
                 }
                 #[cfg(not(feature = "python-ast"))]
                 None
@@ -4627,23 +4639,17 @@ async fn analyze_single_file_complexity(
         "go" => {
             // OPTIMIZATION: Check Go unified cache first (from analyze_go_language)
             // This avoids the second parse - TICKET-3004
-            GO_UNIFIED_CACHE.with(|cache| {
-                cache.borrow().get(file_path).cloned()
-            })
+            GO_UNIFIED_CACHE.with(|cache| cache.borrow().get(file_path).cloned())
         }
         "wat" | "wasm" => {
             // OPTIMIZATION: Check WASM unified cache first (from analyze_wasm_language)
             // This avoids the second parse - TICKET-3005
-            WASM_UNIFIED_CACHE.with(|cache| {
-                cache.borrow().get(file_path).cloned()
-            })
+            WASM_UNIFIED_CACHE.with(|cache| cache.borrow().get(file_path).cloned())
         }
         "sh" | "bash" => {
             // OPTIMIZATION: Check Bash unified cache first (from analyze_bash_language)
             // This avoids the second parse - TICKET-3006
-            BASH_UNIFIED_CACHE.with(|cache| {
-                cache.borrow().get(file_path).cloned()
-            })
+            BASH_UNIFIED_CACHE.with(|cache| cache.borrow().get(file_path).cloned())
         }
         _ => None,
     }
@@ -4662,7 +4668,9 @@ pub async fn analyze_churn(path: &std::path::Path, days: u32) -> anyhow::Result<
     match tokio::time::timeout(timeout, async {
         GitAnalysisService::analyze_code_churn(path, days)
             .map_err(|e| anyhow::anyhow!("Failed to analyze code churn: {e}"))
-    }).await {
+    })
+    .await
+    {
         Ok(result) => {
             info!("Churn analysis completed in {:?}", start.elapsed());
             result
@@ -4670,8 +4678,8 @@ pub async fn analyze_churn(path: &std::path::Path, days: u32) -> anyhow::Result<
         Err(_) => {
             warn!("Churn analysis timed out after {:?}", timeout);
             // Return empty churn analysis instead of failing
-            use chrono::Utc;
             use crate::models::churn::ChurnSummary;
+            use chrono::Utc;
 
             Ok(CodeChurnAnalysis {
                 generated_at: Utc::now(),
@@ -5365,7 +5373,11 @@ pub async fn analyze_provability(
     // Analyze all functions with proper parallel processing
     let summaries = analyzer.analyze_incrementally(&function_ids).await;
 
-    info!("Provability analysis completed for {} functions in {:?}", summaries.len(), start.elapsed());
+    info!(
+        "Provability analysis completed for {} functions in {:?}",
+        summaries.len(),
+        start.elapsed()
+    );
     Ok(summaries)
 }
 
@@ -5408,7 +5420,11 @@ async fn analyze_dag(path: &std::path::Path, dag_type: DagType) -> anyhow::Resul
         }
     }
 
-    let language = if rust_count >= python_count && rust_count >= ruby_count && rust_count >= ts_count && rust_count >= js_count {
+    let language = if rust_count >= python_count
+        && rust_count >= ruby_count
+        && rust_count >= ts_count
+        && rust_count >= js_count
+    {
         "rust"
     } else if python_count >= ruby_count && python_count >= ts_count && python_count >= js_count {
         "python"

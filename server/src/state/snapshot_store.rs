@@ -76,8 +76,8 @@ impl SnapshotStore {
         let timestamp = SystemTime::now();
 
         // Serialize state
-        let serialized =
-            serde_json::to_vec(state).map_err(|e| SnapshotError::SerializationError(e.to_string()))?;
+        let serialized = serde_json::to_vec(state)
+            .map_err(|e| SnapshotError::SerializationError(e.to_string()))?;
 
         // Calculate checksum
         let mut hasher = Sha256::new();
