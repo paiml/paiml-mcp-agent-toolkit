@@ -154,7 +154,7 @@ pub async fn handle_context(
             "**/fuzz/**".to_string(),
         ],
         cache_strategy: CacheStrategy::Normal,
-        parallel: 2, // Smart bounds - limit parallelism to prevent resource exhaustion
+        parallel: num_cpus::get(), // Use all available CPUs like cargo test does
         file_classifier_config: None,
     };
 
