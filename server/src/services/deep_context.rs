@@ -4417,15 +4417,17 @@ fn discover_source_files_for_complexity(
 async fn analyze_files_complexity(
     source_files: Vec<std::path::PathBuf>,
 ) -> Vec<crate::services::complexity::FileComplexityMetrics> {
-    let mut file_metrics = Vec::new();
+    // Parallelize complexity analysis using futures for better performance
+    use futures::stream::{self, StreamExt};
 
-    for file_path in source_files {
-        if let Some(metrics) = analyze_single_file_complexity(&file_path).await {
-            file_metrics.push(metrics);
-        }
-    }
-
-    file_metrics
+    stream::iter(source_files)
+        .map(|file_path| async move {
+            analyze_single_file_complexity(&file_path).await
+        })
+        .buffer_unordered(num_cpus::get()) // Process multiple files concurrently
+        .filter_map(|opt| async move { opt })
+        .collect::<Vec<_>>()
+        .await
 }
 
 async fn analyze_single_file_complexity(
