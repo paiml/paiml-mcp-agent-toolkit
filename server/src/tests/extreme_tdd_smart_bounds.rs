@@ -2,9 +2,9 @@
 //! Goal: Add intelligent bounds to expensive analyses to prevent infinite loops/timeouts
 //! while keeping all analysis types enabled
 
-use tempfile::TempDir;
 use std::fs;
 use std::time::Duration;
+use tempfile::TempDir;
 
 /// RED TEST: Provability analysis should complete within timeout with bounds
 #[tokio::test]
@@ -13,7 +13,9 @@ async fn test_provability_analysis_bounded() {
     let temp_dir = TempDir::new().unwrap();
     let test_file = temp_dir.path().join("bounded.rs");
 
-    fs::write(&test_file, r#"
+    fs::write(
+        &test_file,
+        r#"
 fn simple_function() -> i32 {
     42
 }
@@ -37,23 +39,37 @@ fn function_7() -> i32 { 7 }
 fn function_8() -> i32 { 8 }
 fn function_9() -> i32 { 9 }
 fn function_10() -> i32 { 10 }
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     // ACT: Should complete within 10 seconds with smart bounds
     let result = tokio::time::timeout(Duration::from_secs(10), async {
         crate::services::deep_context::analyze_provability(temp_dir.path()).await
-    }).await;
+    })
+    .await;
 
     // ASSERT: Should not timeout and should succeed
     assert!(result.is_ok(), "Provability analysis should not timeout");
     let analysis_result = result.unwrap();
-    assert!(analysis_result.is_ok(), "Provability analysis should succeed: {:?}", analysis_result.err());
+    assert!(
+        analysis_result.is_ok(),
+        "Provability analysis should succeed: {:?}",
+        analysis_result.err()
+    );
 
     let summaries = analysis_result.unwrap();
-    assert!(!summaries.is_empty(), "Should generate provability summaries");
+    assert!(
+        !summaries.is_empty(),
+        "Should generate provability summaries"
+    );
 
     // Should have reasonable number of functions (not unlimited)
-    assert!(summaries.len() <= 50, "Should respect function bounds, found: {}", summaries.len());
+    assert!(
+        summaries.len() <= 50,
+        "Should respect function bounds, found: {}",
+        summaries.len()
+    );
 }
 
 /// RED TEST: Churn analysis should complete within timeout with bounds
@@ -63,30 +79,41 @@ async fn test_churn_analysis_bounded() {
     let temp_dir = TempDir::new().unwrap();
     let test_file = temp_dir.path().join("churn.rs");
 
-    fs::write(&test_file, r#"
+    fs::write(
+        &test_file,
+        r#"
 fn example() -> i32 {
     // Some code to analyze for churn
     let result = 42;
     result
 }
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     // ACT: Should complete within 10 seconds
     let result = tokio::time::timeout(Duration::from_secs(10), async {
         crate::services::deep_context::analyze_churn(temp_dir.path(), 30).await
-    }).await;
+    })
+    .await;
 
     // ASSERT: Should not timeout and should fail gracefully (no git repo)
     assert!(result.is_ok(), "Churn analysis should not timeout");
     let analysis_result = result.unwrap();
     // Smart bounds: churn analysis should fail quickly when no git repo exists
-    assert!(analysis_result.is_err(), "Churn analysis should fail gracefully when no git repo exists");
+    assert!(
+        analysis_result.is_err(),
+        "Churn analysis should fail gracefully when no git repo exists"
+    );
 
     // Verify it's the expected "no git repository" error
     let error_msg = analysis_result.err().unwrap();
     let error_str = error_msg.to_string();
-    assert!(error_str.contains("No git repository found"),
-           "Should be a 'no git repository' error, got: {}", error_str);
+    assert!(
+        error_str.contains("No git repository found"),
+        "Should be a 'no git repository' error, got: {}",
+        error_str
+    );
 }
 
 /// RED TEST: Context generation with all analyses should complete within bounds
@@ -98,7 +125,8 @@ async fn test_full_analysis_smart_bounds() {
     // Create multiple files with moderate complexity
     for i in 0..10 {
         let test_file = temp_dir.path().join(format!("file_{}.rs", i));
-        let code = format!(r#"
+        let code = format!(
+            r#"
 // TODO: Optimize this function
 fn function_{}(x: i32) -> i32 {{
     let mut result = 0;
@@ -120,7 +148,9 @@ impl Struct{} {{
     fn new() -> Self {{ Self {{ value: {} }} }}
     fn process(&self) -> i32 {{ self.value * 2 }}
 }}
-"#, i, i, i, i);
+"#,
+            i, i, i, i
+        );
         fs::write(&test_file, code).unwrap();
     }
 
@@ -134,27 +164,42 @@ impl Struct{} {{
             crate::cli::ContextFormat::Markdown,
             false, // include_large_files
             false, // skip_expensive_metrics = FALSE (full analysis)
-        ).await
-    }).await;
+        )
+        .await
+    })
+    .await;
 
     // ASSERT: Should not timeout and should succeed
     assert!(result.is_ok(), "Full analysis should not timeout");
     let generation_result = result.unwrap();
-    assert!(generation_result.is_ok(), "Full analysis should succeed: {:?}", generation_result.err());
+    assert!(
+        generation_result.is_ok(),
+        "Full analysis should succeed: {:?}",
+        generation_result.err()
+    );
 
     let output = fs::read_to_string(temp_dir.path().join("context.md")).unwrap();
 
     // Should contain all required annotations but within bounds
-    assert!(output.contains("Project Context"), "Should contain project context header");
-    assert!(output.contains("complexity:"), "Should contain complexity annotations");
-    assert!(output.contains("Function"), "Should contain function annotations");
+    assert!(
+        output.contains("Project Context"),
+        "Should contain project context header"
+    );
+    assert!(
+        output.contains("complexity:"),
+        "Should contain complexity annotations"
+    );
+    assert!(
+        output.contains("Function"),
+        "Should contain function annotations"
+    );
     assert!(output.contains("TODO"), "Should detect SATD comments");
 }
 
 /// RED TEST: DeepContextConfig should have smart bounds configured
 #[test]
 fn test_deep_context_config_smart_bounds() {
-    use crate::services::deep_context::{AnalysisType, DeepContextConfig, CacheStrategy, DagType};
+    use crate::services::deep_context::{AnalysisType, CacheStrategy, DagType, DeepContextConfig};
 
     // ARRANGE: Create config with smart bounds for full analysis
     let config = DeepContextConfig {
@@ -186,13 +231,23 @@ fn test_deep_context_config_smart_bounds() {
     };
 
     // ASSERT: Should have smart bounds
-    assert!(config.max_depth.unwrap_or(0) >= 5, "Should have reasonable max depth");
-    assert!(config.max_depth.unwrap_or(0) <= 15, "Should bound max depth");
+    assert!(
+        config.max_depth.unwrap_or(0) >= 5,
+        "Should have reasonable max depth"
+    );
+    assert!(
+        config.max_depth.unwrap_or(0) <= 15,
+        "Should bound max depth"
+    );
     assert!(config.parallel >= 2, "Should allow parallelism");
     assert!(config.parallel <= 8, "Should bound parallelism");
     assert!(config.period_days >= 7, "Should have reasonable period");
     assert!(config.period_days <= 90, "Should bound period");
 
     // All analysis types should be enabled
-    assert_eq!(config.include_analyses.len(), 8, "Should include all 8 analysis types");
+    assert_eq!(
+        config.include_analyses.len(),
+        8,
+        "Should include all 8 analysis types"
+    );
 }

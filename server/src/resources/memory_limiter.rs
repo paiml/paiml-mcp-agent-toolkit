@@ -366,8 +366,8 @@ mod tests {
     fn test_memory_limiter_creation() {
         let limits = MemoryLimits {
             max_bytes: 1024 * 1024, // 1MB for testing
-            max_heap_bytes: None,    // Don't set heap limit in tests
-            max_stack_bytes: None,   // Don't set stack limit in tests
+            max_heap_bytes: None,   // Don't set heap limit in tests
+            max_stack_bytes: None,  // Don't set stack limit in tests
             swap_limit_bytes: None,
         };
 

@@ -14,8 +14,8 @@ mod enhanced_javascript_naming_tests {
         use super::*;
         use std::sync::Arc;
         use swc_common::{FileName, SourceMap};
-        use swc_ecma_parser::{lexer::Lexer, Parser, StringInput, Syntax, EsSyntax};
         use swc_ecma_ast::Module;
+        use swc_ecma_parser::{lexer::Lexer, EsSyntax, Parser, StringInput, Syntax};
 
         fn parse_javascript(code: &str) -> Module {
             let source_map = Arc::new(SourceMap::default());
@@ -100,12 +100,21 @@ mod enhanced_javascript_naming_tests {
             println!("DEBUG: Extracted function names: {:?}", function_names);
 
             // EXPECTATION: Should extract descriptive React component names
-            assert!(function_names.contains(&"UserProfile".to_string()),
-                "Should extract React function component name, got: {:?}", function_names);
-            assert!(function_names.contains(&"ProductCard".to_string()),
-                "Should extract arrow function component name, got: {:?}", function_names);
-            assert!(function_names.contains(&"ShoppingCart".to_string()),
-                "Should extract hook-using component name, got: {:?}", function_names);
+            assert!(
+                function_names.contains(&"UserProfile".to_string()),
+                "Should extract React function component name, got: {:?}",
+                function_names
+            );
+            assert!(
+                function_names.contains(&"ProductCard".to_string()),
+                "Should extract arrow function component name, got: {:?}",
+                function_names
+            );
+            assert!(
+                function_names.contains(&"ShoppingCart".to_string()),
+                "Should extract hook-using component name, got: {:?}",
+                function_names
+            );
 
             // Should also find the class and its methods
             let class_items: Vec<String> = items
@@ -116,14 +125,20 @@ mod enhanced_javascript_naming_tests {
                 })
                 .collect();
 
-            assert!(class_items.contains(&"Dashboard".to_string()),
-                "Should extract React class component name");
+            assert!(
+                class_items.contains(&"Dashboard".to_string()),
+                "Should extract React class component name"
+            );
 
             // Constructor and render method should be found
-            assert!(function_names.iter().any(|n| n.contains("constructor")),
-                "Should find constructor method");
-            assert!(function_names.iter().any(|n| n.contains("render")),
-                "Should find render method");
+            assert!(
+                function_names.iter().any(|n| n.contains("constructor")),
+                "Should find constructor method"
+            );
+            assert!(
+                function_names.iter().any(|n| n.contains("render")),
+                "Should find render method"
+            );
         }
 
         /// Test: Async functions and Promise patterns should be clearly identified
@@ -186,25 +201,38 @@ mod enhanced_javascript_naming_tests {
                 .collect();
 
             // EXPECTATION: Should identify all async functions
-            assert!(async_functions.contains(&"fetchUserData".to_string()),
-                "Should extract async function declaration name");
-            assert!(async_functions.contains(&"processPayment".to_string()),
-                "Should extract async arrow function name");
-            assert!(async_functions.iter().any(|n| n.contains("authenticate")),
-                "Should find async method in class");
-            assert!(async_functions.iter().any(|n| n.contains("getData")),
-                "Should find async method in class");
+            assert!(
+                async_functions.contains(&"fetchUserData".to_string()),
+                "Should extract async function declaration name"
+            );
+            assert!(
+                async_functions.contains(&"processPayment".to_string()),
+                "Should extract async arrow function name"
+            );
+            assert!(
+                async_functions.iter().any(|n| n.contains("authenticate")),
+                "Should find async method in class"
+            );
+            assert!(
+                async_functions.iter().any(|n| n.contains("getData")),
+                "Should find async method in class"
+            );
 
             // Should also identify Promise-based function (not async but returns Promise)
             let promise_functions: Vec<String> = items
                 .iter()
                 .filter_map(|item| match item {
-                    AstItem::Function { name, .. } if name.contains("uploadFile") => Some(name.clone()),
+                    AstItem::Function { name, .. } if name.contains("uploadFile") => {
+                        Some(name.clone())
+                    }
                     _ => None,
                 })
                 .collect();
 
-            assert!(!promise_functions.is_empty(), "Should find Promise-based function");
+            assert!(
+                !promise_functions.is_empty(),
+                "Should find Promise-based function"
+            );
         }
 
         /// Test: Higher-order functions and closures should preserve meaningful names
@@ -279,27 +307,46 @@ mod enhanced_javascript_naming_tests {
                 .collect();
 
             // DEBUG: Print what we actually extracted
-            println!("DEBUG: Higher-order functions extracted: {:?}", function_names);
+            println!(
+                "DEBUG: Higher-order functions extracted: {:?}",
+                function_names
+            );
 
             // EXPECTATION: Should extract meaningful names for higher-order functions
-            assert!(function_names.contains(&"createValidator".to_string()),
-                "Should extract higher-order function name");
-            assert!(function_names.contains(&"createApiClient".to_string()),
-                "Should extract function factory name");
-            assert!(function_names.contains(&"createClickHandler".to_string()),
-                "Should extract event handler creator name");
-            assert!(function_names.contains(&"processItems".to_string()),
-                "Should extract callback processor name");
+            assert!(
+                function_names.contains(&"createValidator".to_string()),
+                "Should extract higher-order function name"
+            );
+            assert!(
+                function_names.contains(&"createApiClient".to_string()),
+                "Should extract function factory name"
+            );
+            assert!(
+                function_names.contains(&"createClickHandler".to_string()),
+                "Should extract event handler creator name"
+            );
+            assert!(
+                function_names.contains(&"processItems".to_string()),
+                "Should extract callback processor name"
+            );
 
             // Should also extract nested function names where possible
-            assert!(function_names.iter().any(|n| n.contains("validateInput")),
-                "Should extract nested function name from closure");
-            assert!(function_names.iter().any(|n| n.contains("handleClick")),
-                "Should extract named event handler from closure");
+            assert!(
+                function_names.iter().any(|n| n.contains("validateInput")),
+                "Should extract nested function name from closure"
+            );
+            assert!(
+                function_names.iter().any(|n| n.contains("handleClick")),
+                "Should extract named event handler from closure"
+            );
 
             // Should find object method definitions
-            assert!(function_names.iter().any(|n| n.contains("get") || n.contains("post")),
-                "Should find object method definitions in factory");
+            assert!(
+                function_names
+                    .iter()
+                    .any(|n| n.contains("get") || n.contains("post")),
+                "Should find object method definitions in factory"
+            );
         }
 
         /// Test: Module exports and imports should be tracked with aliases
@@ -363,10 +410,14 @@ mod enhanced_javascript_naming_tests {
                 .collect();
 
             // EXPECTATION: Should extract exported function names
-            assert!(export_functions.contains(&"calculateTax".to_string()),
-                "Should extract named export function");
-            assert!(export_functions.contains(&"formatCurrency".to_string()),
-                "Should extract named export arrow function");
+            assert!(
+                export_functions.contains(&"calculateTax".to_string()),
+                "Should extract named export function"
+            );
+            assert!(
+                export_functions.contains(&"formatCurrency".to_string()),
+                "Should extract named export arrow function"
+            );
 
             // Should find the class and its methods
             let class_items: Vec<String> = items
@@ -377,16 +428,26 @@ mod enhanced_javascript_naming_tests {
                 })
                 .collect();
 
-            assert!(class_items.contains(&"PaymentProcessor".to_string()),
-                "Should extract default export class name");
+            assert!(
+                class_items.contains(&"PaymentProcessor".to_string()),
+                "Should extract default export class name"
+            );
 
             // Should track imports
-            assert!(import_items.iter().any(|path| path.contains("react")),
-                "Should track React import");
-            assert!(import_items.iter().any(|path| path.contains("lodash")),
-                "Should track lodash import");
-            assert!(import_items.iter().any(|path| path.contains("./api/client")),
-                "Should track local module import");
+            assert!(
+                import_items.iter().any(|path| path.contains("react")),
+                "Should track React import"
+            );
+            assert!(
+                import_items.iter().any(|path| path.contains("lodash")),
+                "Should track lodash import"
+            );
+            assert!(
+                import_items
+                    .iter()
+                    .any(|path| path.contains("./api/client")),
+                "Should track local module import"
+            );
         }
 
         /// Test: ES6+ features should be handled properly
@@ -470,14 +531,22 @@ mod enhanced_javascript_naming_tests {
                 .collect();
 
             // EXPECTATION: Should handle ES6+ features properly
-            assert!(function_names.contains(&"processUser".to_string()),
-                "Should extract function with destructured parameters");
-            assert!(function_names.contains(&"createQuery".to_string()),
-                "Should extract function returning tagged template function");
-            assert!(function_names.contains(&"generateIds".to_string()),
-                "Should extract generator function name");
-            assert!(function_names.contains(&"fetchPages".to_string()),
-                "Should extract async generator function name");
+            assert!(
+                function_names.contains(&"processUser".to_string()),
+                "Should extract function with destructured parameters"
+            );
+            assert!(
+                function_names.contains(&"createQuery".to_string()),
+                "Should extract function returning tagged template function"
+            );
+            assert!(
+                function_names.contains(&"generateIds".to_string()),
+                "Should extract generator function name"
+            );
+            assert!(
+                function_names.contains(&"fetchPages".to_string()),
+                "Should extract async generator function name"
+            );
 
             // Should find class and its methods
             let class_items: Vec<String> = items
@@ -488,16 +557,28 @@ mod enhanced_javascript_naming_tests {
                 })
                 .collect();
 
-            assert!(class_items.contains(&"DataCache".to_string()),
-                "Should extract class with private fields");
+            assert!(
+                class_items.contains(&"DataCache".to_string()),
+                "Should extract class with private fields"
+            );
 
             // Should find static and instance methods
-            assert!(function_names.iter().any(|n| n.contains("getInstance")),
-                "Should find static method");
-            assert!(function_names.iter().any(|n| n.contains("get") && n.contains("DataCache")),
-                "Should find instance method with class context");
-            assert!(function_names.iter().any(|n| n.contains("set") && n.contains("DataCache")),
-                "Should find instance method with class context");
+            assert!(
+                function_names.iter().any(|n| n.contains("getInstance")),
+                "Should find static method"
+            );
+            assert!(
+                function_names
+                    .iter()
+                    .any(|n| n.contains("get") && n.contains("DataCache")),
+                "Should find instance method with class context"
+            );
+            assert!(
+                function_names
+                    .iter()
+                    .any(|n| n.contains("set") && n.contains("DataCache")),
+                "Should find instance method with class context"
+            );
         }
     }
 
@@ -550,7 +631,10 @@ mod enhanced_javascript_naming_tests {
         // When properly implemented, function items should include JSDoc information
         let _expected_jsdoc_info = [
             ("calculateTotal", "Calculates the total price including tax"),
-            ("authenticate", "Authenticates a user with email and password"),
+            (
+                "authenticate",
+                "Authenticates a user with email and password",
+            ),
         ];
 
         // TODO: Implement JSDoc parsing in EnhancedTypeScriptVisitor
@@ -570,8 +654,8 @@ mod enhanced_typescript_naming_tests {
         use super::*;
         use std::sync::Arc;
         use swc_common::{FileName, SourceMap};
-        use swc_ecma_parser::{lexer::Lexer, Parser, StringInput, Syntax, TsSyntax};
         use swc_ecma_ast::Module;
+        use swc_ecma_parser::{lexer::Lexer, Parser, StringInput, Syntax, TsSyntax};
 
         fn parse_typescript(code: &str) -> Module {
             let source_map = Arc::new(SourceMap::default());
@@ -680,18 +764,28 @@ mod enhanced_typescript_naming_tests {
                 .collect();
 
             // EXPECTATION: Should extract TypeScript interfaces and types
-            assert!(interfaces.contains(&"User".to_string()),
-                "Should extract User interface");
-            assert!(interfaces.contains(&"ApiResponse".to_string()),
-                "Should extract generic ApiResponse interface");
+            assert!(
+                interfaces.contains(&"User".to_string()),
+                "Should extract User interface"
+            );
+            assert!(
+                interfaces.contains(&"ApiResponse".to_string()),
+                "Should extract generic ApiResponse interface"
+            );
 
             // EXPECTATION: Should extract functions with type information preserved
-            assert!(functions.contains(&"fetchUser".to_string()),
-                "Should extract async typed function");
-            assert!(functions.contains(&"createRepository".to_string()),
-                "Should extract generic function");
-            assert!(functions.contains(&"processPayment".to_string()),
-                "Should extract function with union types");
+            assert!(
+                functions.contains(&"fetchUser".to_string()),
+                "Should extract async typed function"
+            );
+            assert!(
+                functions.contains(&"createRepository".to_string()),
+                "Should extract generic function"
+            );
+            assert!(
+                functions.contains(&"processPayment".to_string()),
+                "Should extract function with union types"
+            );
 
             // Should find generic class and its methods
             let classes: Vec<String> = items
@@ -702,14 +796,24 @@ mod enhanced_typescript_naming_tests {
                 })
                 .collect();
 
-            assert!(classes.contains(&"DataService".to_string()),
-                "Should extract generic class");
+            assert!(
+                classes.contains(&"DataService".to_string()),
+                "Should extract generic class"
+            );
 
             // Should find typed methods
-            assert!(functions.iter().any(|n| n.contains("get") && n.contains("DataService")),
-                "Should find generic method with constraints");
-            assert!(functions.iter().any(|n| n.contains("update") && n.contains("DataService")),
-                "Should find method with Partial type");
+            assert!(
+                functions
+                    .iter()
+                    .any(|n| n.contains("get") && n.contains("DataService")),
+                "Should find generic method with constraints"
+            );
+            assert!(
+                functions
+                    .iter()
+                    .any(|n| n.contains("update") && n.contains("DataService")),
+                "Should find method with Partial type"
+            );
         }
 
         /// Test: React TypeScript components with props interfaces
@@ -825,26 +929,48 @@ mod enhanced_typescript_naming_tests {
                 .collect();
 
             // EXPECTATION: Should extract React component prop interfaces
-            assert!(interfaces.contains(&"UserProfileProps".to_string()),
-                "Should extract props interface");
-            assert!(interfaces.contains(&"ProductCardProps".to_string()),
-                "Should extract props interface");
+            assert!(
+                interfaces.contains(&"UserProfileProps".to_string()),
+                "Should extract props interface"
+            );
+            assert!(
+                interfaces.contains(&"ProductCardProps".to_string()),
+                "Should extract props interface"
+            );
 
             // EXPECTATION: Should extract React components with meaningful names
-            assert!(functions.contains(&"UserProfile".to_string()),
-                "Should extract typed React functional component");
-            assert!(functions.contains(&"ProductCard".to_string()),
-                "Should extract typed React functional component with hooks");
-            assert!(functions.contains(&"withAuth".to_string()),
-                "Should extract higher-order component");
+            assert!(
+                functions.contains(&"UserProfile".to_string()),
+                "Should extract typed React functional component"
+            );
+            assert!(
+                functions.contains(&"ProductCard".to_string()),
+                "Should extract typed React functional component with hooks"
+            );
+            assert!(
+                functions.contains(&"withAuth".to_string()),
+                "Should extract higher-order component"
+            );
 
             // Should extract nested event handlers with context
-            assert!(functions.iter().any(|n| n.contains("handleEdit") || n.contains("UserProfile")),
-                "Should extract event handler with component context");
-            assert!(functions.iter().any(|n| n.contains("handleDelete") || n.contains("UserProfile")),
-                "Should extract async event handler");
-            assert!(functions.iter().any(|n| n.contains("handleAddToCart") || n.contains("ProductCard")),
-                "Should extract callback handler");
+            assert!(
+                functions
+                    .iter()
+                    .any(|n| n.contains("handleEdit") || n.contains("UserProfile")),
+                "Should extract event handler with component context"
+            );
+            assert!(
+                functions
+                    .iter()
+                    .any(|n| n.contains("handleDelete") || n.contains("UserProfile")),
+                "Should extract async event handler"
+            );
+            assert!(
+                functions
+                    .iter()
+                    .any(|n| n.contains("handleAddToCart") || n.contains("ProductCard")),
+                "Should extract callback handler"
+            );
         }
 
         /// Test: TypeScript decorators and metadata
@@ -942,32 +1068,62 @@ mod enhanced_typescript_naming_tests {
                 .collect();
 
             // EXPECTATION: Should extract decorator functions
-            assert!(functions.contains(&"Controller".to_string()),
-                "Should extract class decorator function");
-            assert!(functions.contains(&"Get".to_string()),
-                "Should extract method decorator function");
-            assert!(functions.contains(&"Post".to_string()),
-                "Should extract method decorator function");
+            assert!(
+                functions.contains(&"Controller".to_string()),
+                "Should extract class decorator function"
+            );
+            assert!(
+                functions.contains(&"Get".to_string()),
+                "Should extract method decorator function"
+            );
+            assert!(
+                functions.contains(&"Post".to_string()),
+                "Should extract method decorator function"
+            );
 
             // EXPECTATION: Should extract decorated classes
-            assert!(classes.contains(&"UserController".to_string()),
-                "Should extract decorated controller class");
-            assert!(classes.contains(&"UserService".to_string()),
-                "Should extract decorated service class");
+            assert!(
+                classes.contains(&"UserController".to_string()),
+                "Should extract decorated controller class"
+            );
+            assert!(
+                classes.contains(&"UserService".to_string()),
+                "Should extract decorated service class"
+            );
 
             // Should extract decorated methods with controller context
-            assert!(functions.iter().any(|n| n.contains("getAllUsers") && n.contains("UserController")),
-                "Should extract decorated controller method");
-            assert!(functions.iter().any(|n| n.contains("getUserById") && n.contains("UserController")),
-                "Should extract decorated controller method");
-            assert!(functions.iter().any(|n| n.contains("createUser") && n.contains("UserController")),
-                "Should extract decorated controller method");
+            assert!(
+                functions
+                    .iter()
+                    .any(|n| n.contains("getAllUsers") && n.contains("UserController")),
+                "Should extract decorated controller method"
+            );
+            assert!(
+                functions
+                    .iter()
+                    .any(|n| n.contains("getUserById") && n.contains("UserController")),
+                "Should extract decorated controller method"
+            );
+            assert!(
+                functions
+                    .iter()
+                    .any(|n| n.contains("createUser") && n.contains("UserController")),
+                "Should extract decorated controller method"
+            );
 
             // Should extract service methods
-            assert!(functions.iter().any(|n| n.contains("findAll") && n.contains("UserService")),
-                "Should extract service method");
-            assert!(functions.iter().any(|n| n.contains("create") && n.contains("UserService")),
-                "Should extract service method");
+            assert!(
+                functions
+                    .iter()
+                    .any(|n| n.contains("findAll") && n.contains("UserService")),
+                "Should extract service method"
+            );
+            assert!(
+                functions
+                    .iter()
+                    .any(|n| n.contains("create") && n.contains("UserService")),
+                "Should extract service method"
+            );
         }
     }
 }
@@ -1034,16 +1190,31 @@ mod enhanced_wasm_naming_tests {
             .collect();
 
         // EXPECTATION: Should extract meaningful export names instead of generic names
-        assert!(function_names.iter().any(|name| name.contains("add")),
-            "Should extract 'add' function name from export, got: {:?}", function_names);
-        assert!(function_names.iter().any(|name| name.contains("multiply")),
-            "Should extract 'multiply' function name from export, got: {:?}", function_names);
-        assert!(function_names.iter().any(|name| name.contains("fibonacci")),
-            "Should extract 'fibonacci' function name from export, got: {:?}", function_names);
+        assert!(
+            function_names.iter().any(|name| name.contains("add")),
+            "Should extract 'add' function name from export, got: {:?}",
+            function_names
+        );
+        assert!(
+            function_names.iter().any(|name| name.contains("multiply")),
+            "Should extract 'multiply' function name from export, got: {:?}",
+            function_names
+        );
+        assert!(
+            function_names.iter().any(|name| name.contains("fibonacci")),
+            "Should extract 'fibonacci' function name from export, got: {:?}",
+            function_names
+        );
 
         // Should NOT contain generic function_N names when export names are available
-        assert!(!function_names.iter().any(|name| name.starts_with("function_") && name.chars().last().unwrap().is_ascii_digit()),
-            "Should not use generic function_N names when export names available, got: {:?}", function_names);
+        assert!(
+            !function_names
+                .iter()
+                .any(|name| name.starts_with("function_")
+                    && name.chars().last().unwrap().is_ascii_digit()),
+            "Should not use generic function_N names when export names available, got: {:?}",
+            function_names
+        );
     }
 
     /// Test: WASM import functions should be tracked with module context
@@ -1092,12 +1263,24 @@ mod enhanced_wasm_naming_tests {
             .collect();
 
         // EXPECTATION: Should extract exported functions that use imports
-        assert!(function_names.iter().any(|name| name.contains("log_message")),
-            "Should extract function that uses import");
-        assert!(function_names.iter().any(|name| name.contains("get_random_number")),
-            "Should extract function that calls imported JS function");
-        assert!(function_names.iter().any(|name| name.contains("write_to_stdout")),
-            "Should extract function that uses WASI import");
+        assert!(
+            function_names
+                .iter()
+                .any(|name| name.contains("log_message")),
+            "Should extract function that uses import"
+        );
+        assert!(
+            function_names
+                .iter()
+                .any(|name| name.contains("get_random_number")),
+            "Should extract function that calls imported JS function"
+        );
+        assert!(
+            function_names
+                .iter()
+                .any(|name| name.contains("write_to_stdout")),
+            "Should extract function that uses WASI import"
+        );
 
         // TODO: Import tracking is not yet implemented - this test defines the requirement
         // When implemented, should also track import statements:
@@ -1267,19 +1450,32 @@ mod enhanced_wasm_naming_tests {
             .collect();
 
         // EXPECTATION: Should extract all function names including internal and exported
-        assert!(function_names.iter().any(|name| name.contains("add")),
-            "Should extract arithmetic function name");
-        assert!(function_names.iter().any(|name| name.contains("apply_operation")),
-            "Should extract higher-order function name");
-        assert!(function_names.iter().any(|name| name.contains("factorial")),
-            "Should extract recursive function name");
-        assert!(function_names.iter().any(|name| name.contains("sum_array")),
-            "Should extract memory processing function name");
+        assert!(
+            function_names.iter().any(|name| name.contains("add")),
+            "Should extract arithmetic function name"
+        );
+        assert!(
+            function_names
+                .iter()
+                .any(|name| name.contains("apply_operation")),
+            "Should extract higher-order function name"
+        );
+        assert!(
+            function_names.iter().any(|name| name.contains("factorial")),
+            "Should extract recursive function name"
+        );
+        assert!(
+            function_names.iter().any(|name| name.contains("sum_array")),
+            "Should extract memory processing function name"
+        );
 
         // Should have reasonable number of functions (not just exports)
-        assert!(function_names.len() >= 6,
+        assert!(
+            function_names.len() >= 6,
             "Should extract both internal and exported functions, got {} functions: {:?}",
-            function_names.len(), function_names);
+            function_names.len(),
+            function_names
+        );
     }
 
     /// Test: WASM binary analysis should extract function information
@@ -1290,12 +1486,9 @@ mod enhanced_wasm_naming_tests {
             0x00, 0x61, 0x73, 0x6d, // Magic number
             0x01, 0x00, 0x00, 0x00, // Version
             // Type section
-            0x01, 0x07, 0x01, 0x60, 0x02, 0x7f, 0x7f, 0x01, 0x7f,
-            // Function section
-            0x03, 0x02, 0x01, 0x00,
-            // Export section
-            0x07, 0x07, 0x01, 0x03, 0x61, 0x64, 0x64, 0x00, 0x00,
-            // Code section
+            0x01, 0x07, 0x01, 0x60, 0x02, 0x7f, 0x7f, 0x01, 0x7f, // Function section
+            0x03, 0x02, 0x01, 0x00, // Export section
+            0x07, 0x07, 0x01, 0x03, 0x61, 0x64, 0x64, 0x00, 0x00, // Code section
             0x0a, 0x09, 0x01, 0x07, 0x00, 0x20, 0x00, 0x20, 0x01, 0x6a, 0x0b,
         ];
 
@@ -1313,8 +1506,10 @@ mod enhanced_wasm_naming_tests {
             .collect();
 
         // EXPECTATION: Should extract function from binary (currently limited)
-        assert!(!function_names.is_empty(),
-            "Should extract at least one function from WASM binary");
+        assert!(
+            !function_names.is_empty(),
+            "Should extract at least one function from WASM binary"
+        );
 
         // Note: This test currently expects the basic implementation
         // Enhanced implementation should extract export names from binary sections
@@ -1356,8 +1551,12 @@ mod enhanced_wasm_naming_tests {
                     .collect();
 
                 // Should extract names where possible despite validation issues
-                assert!(function_names.iter().any(|name| name.contains("valid_function")),
-                    "Should extract valid function names even with module issues");
+                assert!(
+                    function_names
+                        .iter()
+                        .any(|name| name.contains("valid_function")),
+                    "Should extract valid function names even with module issues"
+                );
             }
             Err(_) => {
                 // Parsing might fail, which is acceptable for malformed WAT
@@ -1378,27 +1577,27 @@ mod enhanced_naming_integration_tests {
         // This test defines the expected behavior when analyzing projects with multiple languages
 
         let _expected_javascript_names = [
-            "UserProfile",           // React component
-            "ProductCard",          // Arrow function component
-            "fetchUserData",        // Async function
-            "processPayment",       // Async arrow function
-            "createApiClient",      // Factory function
+            "UserProfile",     // React component
+            "ProductCard",     // Arrow function component
+            "fetchUserData",   // Async function
+            "processPayment",  // Async arrow function
+            "createApiClient", // Factory function
         ];
 
         let _expected_typescript_names = [
-            "fetchUser",            // Typed async function
-            "createRepository",     // Generic function
-            "DataService",         // Generic class
-            "UserController",      // Decorated class
-            "getAllUsers",         // Decorated method
+            "fetchUser",        // Typed async function
+            "createRepository", // Generic function
+            "DataService",      // Generic class
+            "UserController",   // Decorated class
+            "getAllUsers",      // Decorated method
         ];
 
         let _expected_wasm_names = [
-            "add",                 // Export name from WAT
-            "multiply",            // Export name from WAT
-            "fibonacci",           // Complex function name
-            "apply_operation",     // Higher-order function
-            "sum_array",          // Memory processing function
+            "add",             // Export name from WAT
+            "multiply",        // Export name from WAT
+            "fibonacci",       // Complex function name
+            "apply_operation", // Higher-order function
+            "sum_array",       // Memory processing function
         ];
 
         // This test serves as a specification for the integration

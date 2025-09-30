@@ -169,11 +169,7 @@ mod universal_demo_tests {
 
         match node.node_type {
             NodeType::File => 1,
-            NodeType::Directory => node
-                .children
-                .iter()
-                .map(count_files_in_tree)
-                .sum(),
+            NodeType::Directory => node.children.iter().map(count_files_in_tree).sum(),
         }
     }
 

@@ -106,6 +106,7 @@ pub mod agent; // Claude Code Agent Mode implementation
 pub mod agents; // Agent system with Actix actors
 pub mod agents_md; // AGENTS.md integration for AI agent guidance
 pub mod ast; // Unified AST module for all language parsing
+pub mod claude_integration; // Claude Agent SDK integration with EXTREME TDD
 pub mod cli;
 pub mod contracts; // Uniform contracts across ALL interfaces (CLI, MCP, HTTP)
 pub mod demo;
@@ -129,8 +130,8 @@ pub mod stateless_server;
 pub mod tdg; // Technical Debt Grading system
 pub mod test_performance;
 pub mod workflow; // Workflow orchestration engine // Performance testing per SPECIFICATION.md Section 30
-                                                   // #[cfg(test)]
-                                                   // pub mod testing;
+                  // #[cfg(test)]
+                  // pub mod testing;
 pub mod unified_protocol;
 pub mod unified_quality; // Unified Quality Enforcement System
 pub mod utils;
@@ -630,12 +631,12 @@ mod tests {
     #[path = "../tests/complexity_distribution_verification.rs"]
     mod complexity_distribution_verification;
 
-    #[path = "../tests/extreme_tdd_smart_bounds.rs"]
-    mod extreme_tdd_smart_bounds;
     #[path = "../tests/extreme_tdd_concurrency_fix.rs"]
     mod extreme_tdd_concurrency_fix;
     #[path = "../tests/extreme_tdd_language_support.rs"]
     mod extreme_tdd_language_support;
+    #[path = "../tests/extreme_tdd_smart_bounds.rs"]
+    mod extreme_tdd_smart_bounds;
 
     #[path = "../tests/multi_language_deep_context_tests.rs"]
     mod multi_language_deep_context_tests;

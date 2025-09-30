@@ -3,9 +3,9 @@
 //! These tests are written FIRST (RED phase) and must ALL FAIL initially.
 //! Once implementation is complete, they must ALL PASS.
 
+use std::io::Write;
 use std::path::PathBuf;
 use tempfile::NamedTempFile;
-use std::io::Write;
 
 // Helper to create temporary TypeScript files for testing
 fn create_temp_ts_file(content: &str) -> NamedTempFile {
@@ -31,11 +31,13 @@ fn red_test_unified_typescript_analyzer_can_be_created() {
 async fn red_test_unified_typescript_parses_only_once() {
     use crate::services::unified_typescript_analyzer::UnifiedTypeScriptAnalyzer;
 
-    let temp_file = create_temp_ts_file(r#"
+    let temp_file = create_temp_ts_file(
+        r#"
         function add(a: number, b: number): number {
             return a + b;
         }
-    "#);
+    "#,
+    );
 
     let analyzer = UnifiedTypeScriptAnalyzer::new(temp_file.path().to_path_buf());
     let result = analyzer.analyze().await;
@@ -54,21 +56,29 @@ async fn red_test_unified_typescript_parses_only_once() {
 async fn red_test_unified_typescript_returns_both_ast_and_complexity() {
     use crate::services::unified_typescript_analyzer::UnifiedTypeScriptAnalyzer;
 
-    let temp_file = create_temp_ts_file(r#"
+    let temp_file = create_temp_ts_file(
+        r#"
         function greet(name: string): void {
             console.log(`Hello ${name}`);
         }
-    "#);
+    "#,
+    );
 
     let analyzer = UnifiedTypeScriptAnalyzer::new(temp_file.path().to_path_buf());
     let result = analyzer.analyze().await.expect("Should parse successfully");
 
     // Must have AST items
     assert!(!result.ast_items.is_empty(), "Must extract AST items");
-    assert!(!result.ast_items.is_empty(), "Should find at least 1 function");
+    assert!(
+        !result.ast_items.is_empty(),
+        "Should find at least 1 function"
+    );
 
     // Must have complexity metrics (GREEN phase may overcount - that's OK)
-    assert!(!result.file_metrics.functions.is_empty(), "Must extract complexity");
+    assert!(
+        !result.file_metrics.functions.is_empty(),
+        "Must extract complexity"
+    );
 }
 
 /// Test 4: AST Items Match EnhancedTypeScriptVisitor
@@ -77,7 +87,8 @@ async fn red_test_unified_typescript_returns_both_ast_and_complexity() {
 async fn red_test_unified_typescript_ast_matches_enhanced_visitor() {
     use crate::services::unified_typescript_analyzer::UnifiedTypeScriptAnalyzer;
 
-    let temp_file = create_temp_ts_file(r#"
+    let temp_file = create_temp_ts_file(
+        r#"
         export function multiply(x: number, y: number): number {
             return x * y;
         }
@@ -86,7 +97,8 @@ async fn red_test_unified_typescript_ast_matches_enhanced_visitor() {
             x: number;
             y: number;
         }
-    "#);
+    "#,
+    );
 
     // NEW WAY: UnifiedTypeScriptAnalyzer
     let analyzer = UnifiedTypeScriptAnalyzer::new(temp_file.path().to_path_buf());
@@ -94,7 +106,10 @@ async fn red_test_unified_typescript_ast_matches_enhanced_visitor() {
     let new_items = result.ast_items;
 
     // Should find both function and interface
-    assert!(new_items.len() >= 2, "Should find at least 2 items (function + interface)");
+    assert!(
+        new_items.len() >= 2,
+        "Should find at least 2 items (function + interface)"
+    );
 }
 
 /// Test 5: Handles Parse Errors Gracefully
@@ -103,9 +118,11 @@ async fn red_test_unified_typescript_ast_matches_enhanced_visitor() {
 async fn red_test_unified_typescript_handles_invalid_syntax() {
     use crate::services::unified_typescript_analyzer::UnifiedTypeScriptAnalyzer;
 
-    let temp_file = create_temp_ts_file(r#"
+    let temp_file = create_temp_ts_file(
+        r#"
         function broken syntax here {{{
-    "#);
+    "#,
+    );
 
     let analyzer = UnifiedTypeScriptAnalyzer::new(temp_file.path().to_path_buf());
     let result = analyzer.analyze().await;
@@ -114,8 +131,11 @@ async fn red_test_unified_typescript_handles_invalid_syntax() {
 
     let err = result.unwrap_err();
     let err_msg = err.to_string();
-    assert!(err_msg.contains("parse") || err_msg.contains("syntax"),
-            "Error should mention parsing: {}", err_msg);
+    assert!(
+        err_msg.contains("parse") || err_msg.contains("syntax"),
+        "Error should mention parsing: {}",
+        err_msg
+    );
 }
 
 /// Test 6: Property-Based Test - Various File Sizes
@@ -175,8 +195,16 @@ async fn red_test_unified_typescript_on_real_file() {
     let analysis = result.unwrap();
 
     // simple.ts has classes, interfaces, and functions
-    assert!(analysis.ast_items.len() > 3, "Should find many items, found: {}", analysis.ast_items.len());
-    assert!(analysis.file_metrics.functions.len() > 3, "Should analyze many functions, found: {}", analysis.file_metrics.functions.len());
+    assert!(
+        analysis.ast_items.len() > 3,
+        "Should find many items, found: {}",
+        analysis.ast_items.len()
+    );
+    assert!(
+        analysis.file_metrics.functions.len() > 3,
+        "Should analyze many functions, found: {}",
+        analysis.file_metrics.functions.len()
+    );
 }
 
 /// Test 8: Multiple Function Types
@@ -185,7 +213,8 @@ async fn red_test_unified_typescript_on_real_file() {
 async fn red_test_unified_typescript_handles_multiple_function_types() {
     use crate::services::unified_typescript_analyzer::UnifiedTypeScriptAnalyzer;
 
-    let temp_file = create_temp_ts_file(r#"
+    let temp_file = create_temp_ts_file(
+        r#"
         // Regular function
         function regularFunc(): void {}
 
@@ -204,13 +233,17 @@ async fn red_test_unified_typescript_handles_multiple_function_types() {
         interface MyInterface {
             prop: string;
         }
-    "#);
+    "#,
+    );
 
     let analyzer = UnifiedTypeScriptAnalyzer::new(temp_file.path().to_path_buf());
     let result = analyzer.analyze().await.expect("Should parse successfully");
 
     // Should find all constructs
-    assert!(result.ast_items.len() >= 5, "Should find at least 5 items (functions, class, interface)");
+    assert!(
+        result.ast_items.len() >= 5,
+        "Should find at least 5 items (functions, class, interface)"
+    );
 }
 
 /// Test 9: Empty File
@@ -226,8 +259,16 @@ async fn red_test_unified_typescript_handles_empty_file() {
 
     assert!(result.is_ok(), "Empty file should parse successfully");
     let analysis = result.unwrap();
-    assert_eq!(analysis.ast_items.len(), 0, "Empty file should have 0 items");
-    assert_eq!(analysis.file_metrics.functions.len(), 0, "Empty file should have 0 functions");
+    assert_eq!(
+        analysis.ast_items.len(),
+        0,
+        "Empty file should have 0 items"
+    );
+    assert_eq!(
+        analysis.file_metrics.functions.len(),
+        0,
+        "Empty file should have 0 functions"
+    );
 }
 
 /// Test 10: File With Only Comments
@@ -236,16 +277,25 @@ async fn red_test_unified_typescript_handles_empty_file() {
 async fn red_test_unified_typescript_handles_comment_only_file() {
     use crate::services::unified_typescript_analyzer::UnifiedTypeScriptAnalyzer;
 
-    let temp_file = create_temp_ts_file(r#"
+    let temp_file = create_temp_ts_file(
+        r#"
         // This is just a comment
         /* And a block comment */
         /** JSDoc comment */
-    "#);
+    "#,
+    );
 
     let analyzer = UnifiedTypeScriptAnalyzer::new(temp_file.path().to_path_buf());
     let result = analyzer.analyze().await;
 
-    assert!(result.is_ok(), "Comment-only file should parse successfully");
+    assert!(
+        result.is_ok(),
+        "Comment-only file should parse successfully"
+    );
     let analysis = result.unwrap();
-    assert_eq!(analysis.ast_items.len(), 0, "Comment-only file should have 0 items");
+    assert_eq!(
+        analysis.ast_items.len(),
+        0,
+        "Comment-only file should have 0 items"
+    );
 }

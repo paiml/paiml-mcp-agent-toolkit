@@ -5,7 +5,7 @@
 
 #[cfg(test)]
 mod red_phase_tests {
-    use crate::tdg::{TdgScore, Grade};
+    use crate::tdg::{Grade, TdgScore};
 
     /// RED TEST: TDG total score MUST always be in 0-100 range
     ///
@@ -175,7 +175,7 @@ mod red_phase_tests {
     fn red_test_extreme_complexity_stays_in_bounds() {
         // Simulate extreme penalty scenario where all components go negative
         let mut score = TdgScore {
-            structural_complexity: -10.0,  // Penalties exceeded starting value
+            structural_complexity: -10.0, // Penalties exceeded starting value
             semantic_complexity: -5.0,
             duplication_ratio: -8.0,
             coupling_score: -3.0,
@@ -242,8 +242,8 @@ mod red_phase_tests {
 
 #[cfg(test)]
 mod property_tests {
-    use proptest::prelude::*;
     use crate::tdg::TdgScore;
+    use proptest::prelude::*;
 
     proptest! {
         /// Property: Any combination of component values must produce total in 0-100

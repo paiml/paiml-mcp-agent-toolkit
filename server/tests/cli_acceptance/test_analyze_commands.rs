@@ -450,8 +450,7 @@ async fn test_analyze_format_options() -> Result<()> {
     TestValidators::assert_output_format(&result, OutputFormat::Json)?;
 
     // Test CSV format (where supported)
-    let result =
-        runner.run_command(["analyze", "complexity", "src/main.rs", "--format", "csv"])?;
+    let result = runner.run_command(["analyze", "complexity", "src/main.rs", "--format", "csv"])?;
     TestValidators::assert_performance(&result, Duration::from_secs(10))?;
     if result.exit_code == 0 {
         TestValidators::assert_output_format(&result, OutputFormat::Csv)?;

@@ -124,7 +124,9 @@ impl UnifiedBashAnalyzer {
             let trimmed = line.trim();
 
             // Function start patterns: "function name()" or "name()"
-            if (trimmed.contains("function ") || trimmed.ends_with("() {") || trimmed.contains("() {"))
+            if (trimmed.contains("function ")
+                || trimmed.ends_with("() {")
+                || trimmed.contains("() {"))
                 && !trimmed.starts_with('#')
             {
                 if let Some(func_name) = self.extract_function_name(trimmed) {
@@ -191,9 +193,7 @@ impl UnifiedBashAnalyzer {
         let total_cyclomatic: u32 = if functions.is_empty() {
             script_complexity
         } else {
-            functions.iter()
-                .map(|f| f.metrics.cyclomatic as u32)
-                .sum()
+            functions.iter().map(|f| f.metrics.cyclomatic as u32).sum()
         };
 
         let avg_cyclomatic = if functions.is_empty() {

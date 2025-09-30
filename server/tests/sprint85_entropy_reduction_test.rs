@@ -301,12 +301,13 @@ async fn collect_files_recursive_new(
         if path.is_dir() && should_traverse_directory(&path.file_name().unwrap().to_string_lossy())
         {
             Box::pin(collect_files_recursive_new(&path, files, include, exclude)).await?;
-        } else if path.is_file() && is_source_file_new(&path)
+        } else if path.is_file()
+            && is_source_file_new(&path)
             && should_include_path(&path.to_string_lossy(), include)
-                && !should_exclude_path(&path.to_string_lossy(), exclude)
-            {
-                files.push(path);
-            }
+            && !should_exclude_path(&path.to_string_lossy(), exclude)
+        {
+            files.push(path);
+        }
     }
     Ok(())
 }
@@ -337,9 +338,7 @@ fn should_traverse_directory(dir_name: &str) -> bool {
 fn is_source_file_new(path: &Path) -> bool {
     path.extension()
         .and_then(|ext| ext.to_str())
-        .is_some_and(|ext| {
-            matches!(ext, "rs" | "js" | "ts" | "py" | "java" | "cpp" | "c" | "h")
-        })
+        .is_some_and(|ext| matches!(ext, "rs" | "js" | "ts" | "py" | "java" | "cpp" | "c" | "h"))
 }
 
 // Complexity validation tests - Sprint 85 complete

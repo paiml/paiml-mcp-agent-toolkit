@@ -166,9 +166,7 @@ impl UnifiedWasmAnalyzer {
         }
 
         // Calculate file-level metrics
-        let total_cyclomatic: u32 = functions.iter()
-            .map(|f| f.metrics.cyclomatic as u32)
-            .sum();
+        let total_cyclomatic: u32 = functions.iter().map(|f| f.metrics.cyclomatic as u32).sum();
 
         let avg_cyclomatic = if functions.is_empty() {
             1

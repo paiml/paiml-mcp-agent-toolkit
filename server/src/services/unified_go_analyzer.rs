@@ -117,12 +117,12 @@ impl UnifiedGoAnalyzer {
         let lines = content.lines().count();
 
         // Simple function detection (GREEN phase - basic regex)
-        let function_pattern = regex::Regex::new(
-            r"(?m)^func\s+(?:\([^)]+\)\s+)?(\w+)\s*\("
-        ).unwrap();
+        let function_pattern =
+            regex::Regex::new(r"(?m)^func\s+(?:\([^)]+\)\s+)?(\w+)\s*\(").unwrap();
 
         for cap in function_pattern.captures_iter(content) {
-            let name = cap.get(1)
+            let name = cap
+                .get(1)
                 .map(|m| m.as_str().to_string())
                 .unwrap_or_else(|| "anonymous".to_string());
 
@@ -144,9 +144,7 @@ impl UnifiedGoAnalyzer {
         }
 
         // Calculate file-level metrics
-        let total_cyclomatic: u32 = functions.iter()
-            .map(|f| f.metrics.cyclomatic as u32)
-            .sum();
+        let total_cyclomatic: u32 = functions.iter().map(|f| f.metrics.cyclomatic as u32).sum();
 
         let avg_cyclomatic = if functions.is_empty() {
             1
@@ -175,8 +173,7 @@ impl UnifiedGoAnalyzer {
 
         // Count control flow keywords
         let keywords = [
-            "if ", "else if", "for ", "switch ", "case ",
-            "&&", "||", // Logical operators
+            "if ", "else if", "for ", "switch ", "case ", "&&", "||",      // Logical operators
             "select ", // Go channel select
         ];
 

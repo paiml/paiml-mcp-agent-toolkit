@@ -178,7 +178,6 @@ mod tests {
         let result = GitAnalysisService::analyze_code_churn(&project_path, 30);
 
         if let Ok(analysis) = result {
-
             // Test different output formats
             let summary = format_churn_summary(&analysis);
             assert!(summary.contains("Code Churn Analysis"));

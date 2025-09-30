@@ -89,7 +89,7 @@ fn test_wasm_security_scanning() {
     });
 
     match result {
-        Ok(_) => {},
+        Ok(_) => {}
         Err(e) => panic!("Security scanning failed with error: {}", e),
     }
     // In real implementation, we'd parse JSON and check for vulnerabilities
@@ -143,7 +143,7 @@ fn test_wasm_profiling() {
     });
 
     match result {
-        Ok(_) => {},
+        Ok(_) => {}
         Err(e) => panic!("Profiling failed with error: {}", e),
     }
 }
@@ -173,7 +173,7 @@ fn test_wasm_baseline_comparison() {
     });
 
     match result {
-        Ok(_) => {},
+        Ok(_) => {}
         Err(e) => panic!("Baseline comparison failed with error: {}", e),
     }
 }

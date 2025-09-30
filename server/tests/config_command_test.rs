@@ -75,15 +75,14 @@ impl ConfigCommand {
         let content = std::fs::read_to_string(&self.config_path)
             .map_err(|e| anyhow::anyhow!("Failed to read config file: {}", e))?;
 
-        let toml_value: toml::Value = toml::from_str(&content)
-            .map_err(|e| anyhow::anyhow!("Failed to parse TOML: {}", e))?;
+        let toml_value: toml::Value =
+            toml::from_str(&content).map_err(|e| anyhow::anyhow!("Failed to parse TOML: {}", e))?;
 
         match format {
             ConfigFormat::Json => {
                 // Convert TOML to JSON
-                let json_value: serde_json::Value = serde_json::from_str(
-                    &serde_json::to_string(&toml_value)?
-                )?;
+                let json_value: serde_json::Value =
+                    serde_json::from_str(&serde_json::to_string(&toml_value)?)?;
                 Ok(serde_json::to_string_pretty(&json_value)?)
             }
             ConfigFormat::Toml => {
@@ -103,8 +102,8 @@ impl ConfigCommand {
         let content = std::fs::read_to_string(&self.config_path)
             .map_err(|e| anyhow::anyhow!("Failed to read config file: {}", e))?;
 
-        let toml_value: toml::Value = toml::from_str(&content)
-            .map_err(|e| anyhow::anyhow!("Failed to parse TOML: {}", e))?;
+        let toml_value: toml::Value =
+            toml::from_str(&content).map_err(|e| anyhow::anyhow!("Failed to parse TOML: {}", e))?;
 
         // Navigate to the requested key using dot notation
         self.get_nested_value(&toml_value, key)
@@ -119,11 +118,16 @@ impl ConfigCommand {
         for key in &keys {
             match current {
                 toml::Value::Table(table) => {
-                    current = table.get(*key)
-                        .ok_or_else(|| anyhow::anyhow!("Key '{}' not found in path '{}'", key, key_path))?;
+                    current = table.get(*key).ok_or_else(|| {
+                        anyhow::anyhow!("Key '{}' not found in path '{}'", key, key_path)
+                    })?;
                 }
                 _ => {
-                    return Err(anyhow::anyhow!("Cannot navigate further in path '{}' at key '{}'", key_path, key));
+                    return Err(anyhow::anyhow!(
+                        "Cannot navigate further in path '{}' at key '{}'",
+                        key_path,
+                        key
+                    ));
                 }
             }
         }
@@ -145,9 +149,10 @@ impl ConfigCommand {
                 // For arrays, return a simplified representation (not needed for current tests)
                 Ok(format!("Array with {} elements", arr.len()))
             }
-            toml::Value::Table(_) => {
-                Err(anyhow::anyhow!("Path '{}' points to a table, not a value", key_path))
-            }
+            toml::Value::Table(_) => Err(anyhow::anyhow!(
+                "Path '{}' points to a table, not a value",
+                key_path
+            )),
             toml::Value::Datetime(dt) => Ok(dt.to_string()),
         }
     }
@@ -191,7 +196,12 @@ impl ConfigCommand {
     }
 
     /// Validate configuration structure and values
-    fn validate_config_structure(&self, toml_value: &toml::Value, errors: &mut Vec<String>, _warnings: &mut Vec<String>) -> Result<()> {
+    fn validate_config_structure(
+        &self,
+        toml_value: &toml::Value,
+        errors: &mut Vec<String>,
+        _warnings: &mut Vec<String>,
+    ) -> Result<()> {
         if let toml::Value::Table(root_table) = toml_value {
             // Check for required sections
             if let Some(hooks_table) = root_table.get("hooks").and_then(|v| v.as_table()) {
@@ -201,8 +211,10 @@ impl ConfigCommand {
                 }
 
                 // Validate documentation section
-                if let Some(doc_table) = hooks_table.get("documentation").and_then(|v| v.as_table()) {
-                    if let Some(pattern) = doc_table.get("task_id_pattern").and_then(|v| v.as_str()) {
+                if let Some(doc_table) = hooks_table.get("documentation").and_then(|v| v.as_table())
+                {
+                    if let Some(pattern) = doc_table.get("task_id_pattern").and_then(|v| v.as_str())
+                    {
                         // Simple regex validation - check for unclosed brackets
                         if pattern.contains("[") && !pattern.contains("]") {
                             errors.push("Invalid task_id_pattern: unclosed bracket".to_string());
@@ -230,25 +242,44 @@ impl ConfigCommand {
                 if let Some(enabled) = hooks_table.get("enabled").and_then(|v| v.as_bool()) {
                     env_vars.push(format!("PMAT_HOOKS_ENABLED={}", enabled));
                 }
-                if let Some(auto_install) = hooks_table.get("auto_install").and_then(|v| v.as_bool()) {
+                if let Some(auto_install) =
+                    hooks_table.get("auto_install").and_then(|v| v.as_bool())
+                {
                     env_vars.push(format!("PMAT_HOOKS_AUTO_INSTALL={}", auto_install));
                 }
 
                 // Quality gates - use simplified names to match test expectations
-                if let Some(quality_gates) = hooks_table.get("quality_gates").and_then(|v| v.as_table()) {
-                    if let Some(max_cyclomatic) = quality_gates.get("max_cyclomatic_complexity").and_then(|v| v.as_integer()) {
+                if let Some(quality_gates) =
+                    hooks_table.get("quality_gates").and_then(|v| v.as_table())
+                {
+                    if let Some(max_cyclomatic) = quality_gates
+                        .get("max_cyclomatic_complexity")
+                        .and_then(|v| v.as_integer())
+                    {
                         env_vars.push(format!("PMAT_MAX_CYCLOMATIC_COMPLEXITY={}", max_cyclomatic));
                     }
-                    if let Some(max_cognitive) = quality_gates.get("max_cognitive_complexity").and_then(|v| v.as_integer()) {
+                    if let Some(max_cognitive) = quality_gates
+                        .get("max_cognitive_complexity")
+                        .and_then(|v| v.as_integer())
+                    {
                         env_vars.push(format!("PMAT_MAX_COGNITIVE_COMPLEXITY={}", max_cognitive));
                     }
-                    if let Some(max_satd) = quality_gates.get("max_satd_comments").and_then(|v| v.as_integer()) {
+                    if let Some(max_satd) = quality_gates
+                        .get("max_satd_comments")
+                        .and_then(|v| v.as_integer())
+                    {
                         env_vars.push(format!("PMAT_MAX_SATD_COMMENTS={}", max_satd));
                     }
-                    if let Some(min_coverage) = quality_gates.get("min_test_coverage").and_then(|v| v.as_float()) {
+                    if let Some(min_coverage) = quality_gates
+                        .get("min_test_coverage")
+                        .and_then(|v| v.as_float())
+                    {
                         env_vars.push(format!("PMAT_MIN_TEST_COVERAGE={}", min_coverage as i64));
                     }
-                    if let Some(max_clippy) = quality_gates.get("max_clippy_warnings").and_then(|v| v.as_integer()) {
+                    if let Some(max_clippy) = quality_gates
+                        .get("max_clippy_warnings")
+                        .and_then(|v| v.as_integer())
+                    {
                         env_vars.push(format!("PMAT_MAX_CLIPPY_WARNINGS={}", max_clippy));
                     }
                 }

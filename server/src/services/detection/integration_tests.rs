@@ -14,11 +14,7 @@ mod unified_detection_integration_tests {
 
     /// Type alias for boxed detector trait objects
     type BoxedDetector = Box<
-        dyn Detector<
-            Input = DetectionInput,
-            Output = DetectionOutput,
-            Config = DetectionConfig,
-        >,
+        dyn Detector<Input = DetectionInput, Output = DetectionOutput, Config = DetectionConfig>,
     >;
 
     /// Test that all unified detectors can be created successfully
