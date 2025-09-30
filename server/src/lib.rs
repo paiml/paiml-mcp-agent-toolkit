@@ -655,6 +655,14 @@ mod tests {
     // TICKET-3004: Unified Go Analyzer (EXTREME TDD - RED Phase)
     #[path = "../tests/unified_go_analyzer_tests.rs"]
     mod unified_go_analyzer_tests;
+
+    // TICKET-3005: Unified WebAssembly Analyzer (EXTREME TDD - RED Phase)
+    #[path = "../tests/unified_wasm_analyzer_tests.rs"]
+    mod unified_wasm_analyzer_tests;
+
+    // TICKET-3006: Unified Bash/Shell Analyzer (EXTREME TDD - RED Phase)
+    #[path = "../tests/unified_bash_analyzer_tests.rs"]
+    mod unified_bash_analyzer_tests;
 }
 
 #[cfg(test)]
