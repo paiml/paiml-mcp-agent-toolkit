@@ -20,6 +20,12 @@ pub mod storage;
 pub mod storage_backend;
 pub mod web_dashboard;
 
+#[cfg(test)]
+mod normalization_tests;
+
+#[cfg(test)]
+mod complexity_entropy_integration_tests;
+
 // Temporarily disable integration test to fix circular dependency
 // #[cfg(test)]
 // mod integration_test_sprint30;
@@ -100,13 +106,40 @@ impl Default for TdgScore {
 
 impl TdgScore {
     pub fn calculate_total(&mut self) {
-        self.total = self.structural_complexity
+        // Clamp individual components to their expected weight ranges
+        // This ensures components can never exceed their designated contribution
+        self.structural_complexity = self.structural_complexity.clamp(0.0, 25.0);
+        self.semantic_complexity = self.semantic_complexity.clamp(0.0, 20.0);
+        self.duplication_ratio = self.duplication_ratio.clamp(0.0, 20.0);
+        self.coupling_score = self.coupling_score.clamp(0.0, 15.0);
+        self.doc_coverage = self.doc_coverage.clamp(0.0, 10.0);
+        self.consistency_score = self.consistency_score.clamp(0.0, 10.0);
+
+        // Entropy score should have a reasonable weight (max ~10 points)
+        // to balance with other metrics without dominating
+        self.entropy_score = self.entropy_score.clamp(0.0, 10.0);
+
+        // Sum all clamped components
+        let raw_total = self.structural_complexity
             + self.semantic_complexity
             + self.duplication_ratio
             + self.coupling_score
             + self.doc_coverage
             + self.consistency_score
-            + self.entropy_score; // Include entropy in total score
+            + self.entropy_score;
+
+        // The total is already in 0-110 range after clamping individual components
+        // Since the original weights sum to 100, and entropy adds up to 10 more,
+        // we need to normalize back to 0-100 scale
+        // Strategy: If raw_total <= 100, use it as-is for backward compatibility
+        //           If raw_total > 100, scale it proportionally
+        if raw_total <= 100.0 {
+            self.total = raw_total.clamp(0.0, 100.0);
+        } else {
+            // Scale down proportionally when entropy pushes total above 100
+            const THEORETICAL_MAX: f32 = 110.0; // 25+20+20+15+10+10+10
+            self.total = (raw_total / THEORETICAL_MAX * 100.0).clamp(0.0, 100.0);
+        }
 
         self.grade = Grade::from_score(self.total);
     }
@@ -431,14 +464,15 @@ mod tests {
             coupling_score: 14.0,
             doc_coverage: 9.0,
             consistency_score: 8.0,
-            entropy_score: 12.0, // New: Include entropy in test
+            entropy_score: 12.0, // Will be clamped to 10.0 by calculate_total()
             ..TdgScore::default()
         };
 
         score.calculate_total();
 
-        assert_eq!(score.total, 100.0); // Updated total: 88.0 + 12.0 = 100.0
-        assert_eq!(score.grade, Grade::APLus); // Updated grade: 100.0 = A+
+        // After clamping: 20+18+19+14+9+8+10(clamped) = 98.0
+        assert_eq!(score.total, 98.0);
+        assert_eq!(score.grade, Grade::APLus); // 98.0 >= 95.0 = A+
     }
 
     #[test]

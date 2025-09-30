@@ -1216,13 +1216,13 @@ impl TdgAnalyzerAst {
         let temp_dir = std::env::temp_dir().join(format!("tdg_entropy_{}", std::process::id()));
         let temp_file = temp_dir.join("temp_file.rs");
 
-        let score = if std::fs::create_dir_all(&temp_dir).is_ok() {
+        let raw_score = if std::fs::create_dir_all(&temp_dir).is_ok() {
             if let Ok(mut file) = std::fs::File::create(&temp_file) {
                 if file.write_all(source.as_bytes()).is_ok() {
                     // Simplified entropy scoring based on basic patterns
                     // Avoids runtime conflicts by using simple heuristics
                     let lines = source.lines().collect::<Vec<_>>();
-                    let mut pattern_score = 100.0;
+                    let mut pattern_score = 10.0; // Start at max entropy score (0-10 range)
 
                     // Check for repetitive patterns in code
                     let mut line_counts = std::collections::HashMap::new();
@@ -1233,10 +1233,10 @@ impl TdgAnalyzerAst {
                         }
                     }
 
-                    // Penalty for duplicate lines
+                    // Penalty for duplicate lines (scaled to 0-10 range)
                     let duplicate_lines = line_counts.values().filter(|&&count| count > 1).count();
                     if duplicate_lines > 0 {
-                        let penalty = (duplicate_lines as f32 * 5.0).min(30.0);
+                        let penalty = (duplicate_lines as f32 * 0.5).min(5.0); // Max 5 point penalty
                         pattern_score -= penalty;
                         tracker.apply(
                             "duplicate_code_patterns".to_string(),
@@ -1246,20 +1246,21 @@ impl TdgAnalyzerAst {
                         );
                     }
 
-                    pattern_score
+                    pattern_score.max(0.0) // Ensure non-negative
                 } else {
-                    15.0 // Neutral score if can't write temp file
+                    5.0 // Neutral score if can't write temp file (middle of 0-10 range)
                 }
             } else {
-                15.0 // Neutral score if can't create temp file
+                5.0 // Neutral score if can't create temp file
             }
         } else {
-            15.0 // Neutral score if can't create temp dir
+            5.0 // Neutral score if can't create temp dir
         };
 
         let _ = std::fs::remove_dir_all(&temp_dir);
 
-        score
+        // Clamp to 0-10 range to match entropy_score weight limit
+        raw_score.clamp(0.0, 10.0)
     }
 
     #[cfg(any(feature = "c-ast", feature = "cpp-ast"))]
