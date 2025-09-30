@@ -639,6 +639,10 @@ mod tests {
 
     #[path = "../tests/multi_language_deep_context_tests.rs"]
     mod multi_language_deep_context_tests;
+
+    // TICKET-3001: Unified Rust Analyzer (EXTREME TDD - RED Phase)
+    #[path = "../tests/unified_rust_analyzer_tests.rs"]
+    mod unified_rust_analyzer_tests;
 }
 
 #[cfg(test)]
