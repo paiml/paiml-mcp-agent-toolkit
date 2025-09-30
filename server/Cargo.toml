@@ -142,7 +142,13 @@ tree-sitter-go = { version = "0.21", optional = true }
 tree-sitter-java = { version = "0.21", optional = true }
 tree-sitter-c-sharp = { version = "0.21", optional = true }
 tree-sitter-kotlin = { version = "0.3", optional = true }
-# For Ruchy language support
+tree-sitter-swift = { version = "0.7", optional = true }
+tree-sitter-ruby = { version = "0.23", optional = true }
+tree-sitter-erlang = { version = "0.7", optional = true }
+tree-sitter-elixir = { version = "0.3", optional = true }
+tree-sitter-haskell = { version = "0.23", optional = true }
+tree-sitter-ocaml = { version = "0.23", optional = true }
+# For Ruchy language support (Ruby alternative parser)
 ruchy = { version = "3.31", optional = true }
 logos = { version = "0.14", optional = true }
 # For Kotlin parsing (conditional) - DISABLED due to tree-sitter version conflict
@@ -241,14 +247,20 @@ capnpc = "0.20"
 
 [features]
 default = ["all-languages", "demo"]
-all-languages = ["rust-ast", "typescript-ast", "python-ast", "c-ast", "cpp-ast", "ruchy-ast", "go-ast", "wasm-ast", "shell-ast", "java-ast", "csharp-ast", "kotlin-ast"]
-most-languages = ["rust-ast", "typescript-ast", "python-ast", "c-ast", "cpp-ast", "java-ast", "csharp-ast", "kotlin-ast"]
+all-languages = ["rust-ast", "typescript-ast", "python-ast", "c-ast", "cpp-ast", "ruchy-ast", "go-ast", "wasm-ast", "shell-ast", "java-ast", "csharp-ast", "kotlin-ast", "swift-ast", "ruby-ast", "erlang-ast", "elixir-ast", "haskell-ast", "ocaml-ast"]
+most-languages = ["rust-ast", "typescript-ast", "python-ast", "c-ast", "cpp-ast", "java-ast", "csharp-ast", "kotlin-ast", "swift-ast", "ruby-ast"]
 rust-only = ["rust-ast"]
 ruchy-ast = ["ruchy", "logos"]
 go-ast = ["tree-sitter", "tree-sitter-go"]
 java-ast = ["tree-sitter", "tree-sitter-java"]
 csharp-ast = ["tree-sitter", "tree-sitter-c-sharp"]
 kotlin-ast = ["tree-sitter", "tree-sitter-kotlin"]
+swift-ast = ["tree-sitter", "tree-sitter-swift"]
+ruby-ast = ["tree-sitter", "tree-sitter-ruby"]
+erlang-ast = ["tree-sitter", "tree-sitter-erlang"]
+elixir-ast = ["tree-sitter", "tree-sitter-elixir"]
+haskell-ast = ["tree-sitter", "tree-sitter-haskell"]
+ocaml-ast = ["tree-sitter", "tree-sitter-ocaml"]
 wasm-ast = []
 shell-ast = []
 skip-slow-tests = []
