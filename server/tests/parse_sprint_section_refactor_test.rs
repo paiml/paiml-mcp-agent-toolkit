@@ -93,13 +93,11 @@ fn test_parse_sprint_section_edge_cases() {
 /// Test malformed input handling
 #[test]
 fn test_parse_sprint_section_malformed_input() {
-    let malformed_lines = vec![
-        "## Current Sprint: Sprint 99 - Malformed Test",
+    let malformed_lines = ["## Current Sprint: Sprint 99 - Malformed Test",
         "**InvalidDuration**: Not a real duration",
         "**InvalidPriority**: Not a real priority",
         "| Malformed | Table |",
-        "- [ Invalid checkbox format",
-    ];
+        "- [ Invalid checkbox format"];
     let lines: Vec<&str> = malformed_lines.iter().map(|s| s.as_ref()).collect();
     let mock_captures = create_mock_captures("99", "Malformed Test");
     let mock_parsers = create_mock_parsers();

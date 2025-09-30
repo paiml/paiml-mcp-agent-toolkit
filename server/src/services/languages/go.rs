@@ -225,7 +225,7 @@ pub async fn analyze_go_file(path: &Path) -> Result<crate::services::context::Fi
     let visitor = GoAstVisitor::new(path);
     let items = visitor
         .analyze_go_source(&content)
-        .map_err(|e| TemplateError::InvalidUtf8(e))?;
+        .map_err(TemplateError::InvalidUtf8)?;
 
     // Return FileContext
     Ok(FileContext {

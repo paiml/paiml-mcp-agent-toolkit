@@ -61,13 +61,11 @@ fn test_provability_config_structure() {
 /// Test different output formats
 #[test]
 fn test_provability_output_formats() {
-    let formats = vec![
-        ProvabilityOutputFormat::Json,
+    let formats = [ProvabilityOutputFormat::Json,
         ProvabilityOutputFormat::Summary,
         ProvabilityOutputFormat::Full,
         ProvabilityOutputFormat::Sarif,
-        ProvabilityOutputFormat::Markdown,
-    ];
+        ProvabilityOutputFormat::Markdown];
 
     // Ensure all formats are handled
     assert_eq!(formats.len(), 5);
@@ -85,5 +83,4 @@ fn test_provability_error_patterns() {
 
     // After refactoring, error handling should be distributed across helper functions
     // Each helper should have cognitive complexity ≤8
-    assert!(true);
 }

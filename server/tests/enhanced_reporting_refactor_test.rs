@@ -118,7 +118,7 @@ async fn test_error_patterns() -> Result<()> {
     .await;
 
     // Should handle invalid paths gracefully (may fail, but shouldn't panic)
-    if let Ok(_) = result {
+    if result.is_ok() {
         // Success case handled
     }
 

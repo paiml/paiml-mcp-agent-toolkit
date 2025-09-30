@@ -341,7 +341,7 @@ impl HttpValidators {
     pub fn assert_json_structure(result: &HttpTestResult, expected_fields: &[&str]) -> Result<()> {
         if let Some(ref json) = result.response.json {
             for field in expected_fields {
-                if !json.get(field).is_some() {
+                if json.get(field).is_none() {
                     anyhow::bail!("Missing expected JSON field '{}'", field);
                 }
             }
@@ -376,12 +376,7 @@ impl HttpValidators {
         ];
 
         for header in &cors_headers {
-            if result
-                .response
-                .headers
-                .get(&header.to_lowercase())
-                .is_none()
-            {
+            if !result.response.headers.contains_key(&header.to_lowercase()) {
                 anyhow::bail!("Missing CORS header '{}'", header);
             }
         }

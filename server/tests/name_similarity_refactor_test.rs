@@ -46,7 +46,6 @@ fn test_name_similarity_format_structure() -> Result<()> {
     );
 
     // Function structure test - accepts all parameters without panic
-    assert!(true, "Function structure maintained during refactor");
     Ok(())
 }
 

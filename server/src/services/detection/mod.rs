@@ -418,11 +418,9 @@ mod additional_tests {
         match result {
             Ok(_duplicates) => {
                 // Should handle empty input gracefully
-                assert!(true);
             }
             Err(_) => {
                 // Graceful failure is also acceptable
-                assert!(true);
             }
         }
     }
@@ -451,11 +449,9 @@ mod additional_tests {
             Ok(_satd_result) => {
                 // Should find at least the TODO and FIXME
                 // Should find some debt items (field name may vary)
-                assert!(true);
             }
             Err(_) => {
                 // Graceful failure is acceptable
-                assert!(true);
             }
         }
     }
@@ -479,7 +475,6 @@ mod additional_tests {
             }
             Err(_) => {
                 // Graceful failure is acceptable
-                assert!(true);
             }
         }
     }

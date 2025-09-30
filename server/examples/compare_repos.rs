@@ -29,7 +29,7 @@ async fn analyze_repo(url: &str) -> Result<RepoMetrics> {
     info!("Analyzing: {}", url);
 
     // Extract repo name from URL
-    let name = url.split('/').last().unwrap_or("unknown").to_string();
+    let name = url.split('/').next_back().unwrap_or("unknown").to_string();
 
     // Clone and analyze
     let repo_path = resolve_repository_async(None, Some(url.to_string()), None).await?;

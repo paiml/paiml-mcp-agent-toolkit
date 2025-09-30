@@ -7,7 +7,6 @@ use pmat::cli::commands::TdgCommand;
 use pmat::cli::handlers::tdg_handlers::{handle_tdg_command, TdgCommandConfig};
 use pmat::cli::TdgOutputFormat;
 use tempfile::tempdir;
-use tokio;
 
 /// Test configuration structure is preserved during refactor
 #[tokio::test]
@@ -34,7 +33,6 @@ async fn test_tdg_command_config_structure() -> Result<()> {
     let _result = handle_tdg_command(config).await;
 
     // Function structure test - accepts all parameters without panic
-    assert!(true, "Function structure maintained during refactor");
     Ok(())
 }
 
@@ -67,7 +65,7 @@ async fn test_subcommand_patterns() -> Result<()> {
 
     let _compare_result = handle_tdg_command(compare_config).await;
 
-    assert!(true, "Subcommand handling maintained during refactor");
+    // Subcommand handling maintained during refactor
     Ok(())
 }
 
@@ -96,7 +94,6 @@ async fn test_grade_checking_patterns() -> Result<()> {
     let _result = handle_tdg_command(config_with_grade).await;
 
     // Should handle grade checking gracefully (may fail grade, but shouldn't panic)
-    assert!(true, "Grade checking logic maintained during refactor");
     Ok(())
 }
 
@@ -138,10 +135,7 @@ async fn test_output_formatting_patterns() -> Result<()> {
 
     let _components_result = handle_tdg_command(components_config).await;
 
-    assert!(
-        true,
-        "Output formatting patterns maintained during refactor"
-    );
+    // Output formatting patterns maintained during refactor
     Ok(())
 }
 
@@ -176,6 +170,6 @@ async fn test_handle_tdg_command_structure() -> Result<()> {
     // 5. Grade checking (if specified)
     // 6. Output formatting
     // 7. Output writing
-    assert!(true, "Main workflow structure preserved during refactor");
+    // Main workflow structure preserved during refactor
     Ok(())
 }

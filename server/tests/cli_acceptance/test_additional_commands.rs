@@ -17,17 +17,17 @@ async fn test_refactor_command() -> Result<()> {
     std::env::set_current_dir(&project_path)?;
 
     // Test refactor help
-    let result = runner.run_success(&["refactor", "--help"])?;
+    let result = runner.run_success(["refactor", "--help"])?;
     TestValidators::assert_performance(&result, Duration::from_secs(2))?;
     assert!(result.stdout_text.contains("Refactor code"));
 
     // Test refactor auto subcommand help
-    let result = runner.run_success(&["refactor", "auto", "--help"])?;
+    let result = runner.run_success(["refactor", "auto", "--help"])?;
     TestValidators::assert_performance(&result, Duration::from_secs(2))?;
     assert!(result.stdout_text.contains("Automatic refactoring"));
 
     // Test refactor auto on a file
-    let result = runner.run_success(&["refactor", "auto", "--file", "src/main.rs"])?;
+    let result = runner.run_success(["refactor", "auto", "--file", "src/main.rs"])?;
     TestValidators::assert_performance(&result, Duration::from_secs(30))?;
 
     Ok(())
@@ -41,16 +41,16 @@ async fn test_quality_gate_command() -> Result<()> {
     std::env::set_current_dir(&project_path)?;
 
     // Test quality-gate help
-    let result = runner.run_success(&["quality-gate", "--help"])?;
+    let result = runner.run_success(["quality-gate", "--help"])?;
     TestValidators::assert_performance(&result, Duration::from_secs(2))?;
     assert!(result.stdout_text.contains("Quality gate"));
 
     // Test quality gate on a file
-    let result = runner.run_success(&["quality-gate", "--file", "src/main.rs"])?;
+    let result = runner.run_success(["quality-gate", "--file", "src/main.rs"])?;
     TestValidators::assert_performance(&result, Duration::from_secs(20))?;
 
     // Test quality gate with profile
-    let result = runner.run_success(&[
+    let result = runner.run_success([
         "quality-gate",
         "--file",
         "src/main.rs",
@@ -70,25 +70,25 @@ async fn test_tdg_command() -> Result<()> {
     std::env::set_current_dir(&project_path)?;
 
     // Test tdg help
-    let result = runner.run_success(&["tdg", "--help"])?;
+    let result = runner.run_success(["tdg", "--help"])?;
     TestValidators::assert_performance(&result, Duration::from_secs(2))?;
     assert!(result.stdout_text.contains("Technical Debt Grading"));
 
     // Test basic TDG analysis
-    let result = runner.run_success(&["tdg", "src/main.rs"])?;
+    let result = runner.run_success(["tdg", "src/main.rs"])?;
     TestValidators::assert_performance(&result, Duration::from_secs(15))?;
 
     // Test TDG with components
-    let result = runner.run_success(&["tdg", "src/main.rs", "--include-components"])?;
+    let result = runner.run_success(["tdg", "src/main.rs", "--include-components"])?;
     TestValidators::assert_performance(&result, Duration::from_secs(15))?;
 
     // Test TDG dashboard help
-    let result = runner.run_success(&["tdg", "dashboard", "--help"])?;
+    let result = runner.run_success(["tdg", "dashboard", "--help"])?;
     TestValidators::assert_performance(&result, Duration::from_secs(2))?;
     assert!(result.stdout_text.contains("dashboard"));
 
     // Test TDG storage help
-    let result = runner.run_success(&["tdg", "storage", "--help"])?;
+    let result = runner.run_success(["tdg", "storage", "--help"])?;
     TestValidators::assert_performance(&result, Duration::from_secs(2))?;
     assert!(result.stdout_text.contains("storage"));
 
@@ -103,22 +103,22 @@ async fn test_qdd_command() -> Result<()> {
     std::env::set_current_dir(&project_path)?;
 
     // Test qdd help
-    let result = runner.run_success(&["qdd", "--help"])?;
+    let result = runner.run_success(["qdd", "--help"])?;
     TestValidators::assert_performance(&result, Duration::from_secs(2))?;
     assert!(result.stdout_text.contains("Quality-Driven Development"));
 
     // Test qdd create help
-    let result = runner.run_success(&["qdd", "create", "--help"])?;
+    let result = runner.run_success(["qdd", "create", "--help"])?;
     TestValidators::assert_performance(&result, Duration::from_secs(2))?;
     assert!(result.stdout_text.contains("Create"));
 
     // Test qdd validate help
-    let result = runner.run_success(&["qdd", "validate", "--help"])?;
+    let result = runner.run_success(["qdd", "validate", "--help"])?;
     TestValidators::assert_performance(&result, Duration::from_secs(2))?;
     assert!(result.stdout_text.contains("Validate"));
 
     // Test qdd refactor help
-    let result = runner.run_success(&["qdd", "refactor", "--help"])?;
+    let result = runner.run_success(["qdd", "refactor", "--help"])?;
     TestValidators::assert_performance(&result, Duration::from_secs(2))?;
     assert!(result.stdout_text.contains("Refactor"));
 
@@ -133,16 +133,16 @@ async fn test_report_command() -> Result<()> {
     std::env::set_current_dir(&project_path)?;
 
     // Test report help
-    let result = runner.run_success(&["report", "--help"])?;
+    let result = runner.run_success(["report", "--help"])?;
     TestValidators::assert_performance(&result, Duration::from_secs(2))?;
     assert!(result.stdout_text.contains("Generate reports"));
 
     // Test basic report generation
-    let result = runner.run_success(&["report", "src/"])?;
+    let result = runner.run_success(["report", "src/"])?;
     TestValidators::assert_performance(&result, Duration::from_secs(30))?;
 
     // Test report with format
-    let result = runner.run_success(&["report", "src/", "--format", "json"])?;
+    let result = runner.run_success(["report", "src/", "--format", "json"])?;
     TestValidators::assert_performance(&result, Duration::from_secs(30))?;
     TestValidators::assert_output_format(&result, OutputFormat::Json)?;
 
@@ -155,7 +155,7 @@ async fn test_serve_command() -> Result<()> {
     let runner = CliTestRunner::new()?;
 
     // Test serve help
-    let result = runner.run_success(&["serve", "--help"])?;
+    let result = runner.run_success(["serve", "--help"])?;
     TestValidators::assert_performance(&result, Duration::from_secs(2))?;
     assert!(result.stdout_text.contains("Start server"));
 
@@ -172,12 +172,12 @@ async fn test_context_command() -> Result<()> {
     std::env::set_current_dir(&project_path)?;
 
     // Test context help
-    let result = runner.run_success(&["context", "--help"])?;
+    let result = runner.run_success(["context", "--help"])?;
     TestValidators::assert_performance(&result, Duration::from_secs(2))?;
     assert!(result.stdout_text.contains("Context"));
 
     // Test context generation
-    let result = runner.run_success(&["context", "src/main.rs"])?;
+    let result = runner.run_success(["context", "src/main.rs"])?;
     TestValidators::assert_performance(&result, Duration::from_secs(20))?;
 
     Ok(())
@@ -189,7 +189,7 @@ async fn test_demo_command() -> Result<()> {
     let runner = CliTestRunner::new()?;
 
     // Test demo help
-    let result = runner.run_success(&["demo", "--help"])?;
+    let result = runner.run_success(["demo", "--help"])?;
     TestValidators::assert_performance(&result, Duration::from_secs(2))?;
     assert!(result.stdout_text.contains("Demo"));
 
@@ -206,12 +206,12 @@ async fn test_enforce_command() -> Result<()> {
     std::env::set_current_dir(&project_path)?;
 
     // Test enforce help
-    let result = runner.run_success(&["enforce", "--help"])?;
+    let result = runner.run_success(["enforce", "--help"])?;
     TestValidators::assert_performance(&result, Duration::from_secs(2))?;
     assert!(result.stdout_text.contains("Enforce"));
 
     // Test enforce complexity
-    let result = runner.run_success(&["enforce", "complexity", "src/main.rs"])?;
+    let result = runner.run_success(["enforce", "complexity", "src/main.rs"])?;
     TestValidators::assert_performance(&result, Duration::from_secs(15))?;
 
     Ok(())
@@ -225,12 +225,12 @@ async fn test_roadmap_command() -> Result<()> {
     std::env::set_current_dir(&project_path)?;
 
     // Test roadmap help
-    let result = runner.run_success(&["roadmap", "--help"])?;
+    let result = runner.run_success(["roadmap", "--help"])?;
     TestValidators::assert_performance(&result, Duration::from_secs(2))?;
     assert!(result.stdout_text.contains("Roadmap"));
 
     // Test roadmap generation
-    let result = runner.run_success(&["roadmap", "generate"])?;
+    let result = runner.run_success(["roadmap", "generate"])?;
     TestValidators::assert_performance(&result, Duration::from_secs(30))?;
 
     Ok(())
@@ -244,12 +244,12 @@ async fn test_test_command() -> Result<()> {
     std::env::set_current_dir(&project_path)?;
 
     // Test test help
-    let result = runner.run_success(&["test", "--help"])?;
+    let result = runner.run_success(["test", "--help"])?;
     TestValidators::assert_performance(&result, Duration::from_secs(2))?;
     assert!(result.stdout_text.contains("Test"));
 
     // Test test execution (may fail if no tests, but should handle gracefully)
-    let result = runner.run_command(&["test", "."])?;
+    let result = runner.run_command(["test", "."])?;
     TestValidators::assert_performance(&result, Duration::from_secs(60))?;
 
     Ok(())
@@ -261,12 +261,12 @@ async fn test_memory_command() -> Result<()> {
     let runner = CliTestRunner::new()?;
 
     // Test memory help
-    let result = runner.run_success(&["memory", "--help"])?;
+    let result = runner.run_success(["memory", "--help"])?;
     TestValidators::assert_performance(&result, Duration::from_secs(2))?;
     assert!(result.stdout_text.contains("Memory"));
 
     // Test memory analysis
-    let result = runner.run_success(&["memory", "status"])?;
+    let result = runner.run_success(["memory", "status"])?;
     TestValidators::assert_performance(&result, Duration::from_secs(5))?;
 
     Ok(())
@@ -278,16 +278,16 @@ async fn test_cache_command() -> Result<()> {
     let runner = CliTestRunner::new()?;
 
     // Test cache help
-    let result = runner.run_success(&["cache", "--help"])?;
+    let result = runner.run_success(["cache", "--help"])?;
     TestValidators::assert_performance(&result, Duration::from_secs(2))?;
     assert!(result.stdout_text.contains("Cache"));
 
     // Test cache status
-    let result = runner.run_success(&["cache", "status"])?;
+    let result = runner.run_success(["cache", "status"])?;
     TestValidators::assert_performance(&result, Duration::from_secs(5))?;
 
     // Test cache clear
-    let result = runner.run_success(&["cache", "clear"])?;
+    let result = runner.run_success(["cache", "clear"])?;
     TestValidators::assert_performance(&result, Duration::from_secs(5))?;
 
     Ok(())
@@ -299,12 +299,12 @@ async fn test_telemetry_command() -> Result<()> {
     let runner = CliTestRunner::new()?;
 
     // Test telemetry help
-    let result = runner.run_success(&["telemetry", "--help"])?;
+    let result = runner.run_success(["telemetry", "--help"])?;
     TestValidators::assert_performance(&result, Duration::from_secs(2))?;
     assert!(result.stdout_text.contains("Telemetry"));
 
     // Test telemetry status
-    let result = runner.run_success(&["telemetry", "status"])?;
+    let result = runner.run_success(["telemetry", "status"])?;
     TestValidators::assert_performance(&result, Duration::from_secs(5))?;
 
     Ok(())
@@ -316,12 +316,12 @@ async fn test_config_command() -> Result<()> {
     let runner = CliTestRunner::new()?;
 
     // Test config help
-    let result = runner.run_success(&["config", "--help"])?;
+    let result = runner.run_success(["config", "--help"])?;
     TestValidators::assert_performance(&result, Duration::from_secs(2))?;
     assert!(result.stdout_text.contains("Configuration"));
 
     // Test config show
-    let result = runner.run_success(&["config", "show"])?;
+    let result = runner.run_success(["config", "show"])?;
     TestValidators::assert_performance(&result, Duration::from_secs(5))?;
 
     Ok(())
@@ -333,12 +333,12 @@ async fn test_agent_command() -> Result<()> {
     let runner = CliTestRunner::new()?;
 
     // Test agent help
-    let result = runner.run_success(&["agent", "--help"])?;
+    let result = runner.run_success(["agent", "--help"])?;
     TestValidators::assert_performance(&result, Duration::from_secs(2))?;
     assert!(result.stdout_text.contains("Agent"));
 
     // Test agent start help
-    let result = runner.run_success(&["agent", "start", "--help"])?;
+    let result = runner.run_success(["agent", "start", "--help"])?;
     TestValidators::assert_performance(&result, Duration::from_secs(2))?;
     assert!(result.stdout_text.contains("start"));
 
@@ -351,12 +351,12 @@ async fn test_mcp_command() -> Result<()> {
     let runner = CliTestRunner::new()?;
 
     // Test mcp help
-    let result = runner.run_success(&["mcp", "--help"])?;
+    let result = runner.run_success(["mcp", "--help"])?;
     TestValidators::assert_performance(&result, Duration::from_secs(2))?;
     assert!(result.stdout_text.contains("MCP"));
 
     // Test mcp serve help
-    let result = runner.run_success(&["mcp", "serve", "--help"])?;
+    let result = runner.run_success(["mcp", "serve", "--help"])?;
     TestValidators::assert_performance(&result, Duration::from_secs(2))?;
     assert!(result.stdout_text.contains("serve"));
 
@@ -369,12 +369,12 @@ async fn test_pdmt_todos_command() -> Result<()> {
     let runner = CliTestRunner::new()?;
 
     // Test pdmt-todos help
-    let result = runner.run_success(&["pdmt-todos", "--help"])?;
+    let result = runner.run_success(["pdmt-todos", "--help"])?;
     TestValidators::assert_performance(&result, Duration::from_secs(2))?;
     assert!(result.stdout_text.contains("PDMT"));
 
     // Test pdmt-todos with simple requirement
-    let result = runner.run_success(&[
+    let result = runner.run_success([
         "pdmt-todos",
         "Test requirement",
         "--granularity",
@@ -395,19 +395,19 @@ async fn test_command_flag_combinations() -> Result<()> {
     std::env::set_current_dir(&project_path)?;
 
     // Test verbose flag with various commands
-    let result = runner.run_success(&["analyze", "complexity", "src/main.rs", "--verbose"])?;
+    let result = runner.run_success(["analyze", "complexity", "src/main.rs", "--verbose"])?;
     TestValidators::assert_performance(&result, Duration::from_secs(15))?;
 
     // Test debug flag
-    let result = runner.run_success(&["analyze", "complexity", "src/main.rs", "--debug"])?;
+    let result = runner.run_success(["analyze", "complexity", "src/main.rs", "--debug"])?;
     TestValidators::assert_performance(&result, Duration::from_secs(15))?;
 
     // Test mode flag
-    let result = runner.run_success(&["analyze", "complexity", "src/main.rs", "--mode", "cli"])?;
+    let result = runner.run_success(["analyze", "complexity", "src/main.rs", "--mode", "cli"])?;
     TestValidators::assert_performance(&result, Duration::from_secs(15))?;
 
     // Test format flag combinations
-    let result = runner.run_success(&[
+    let result = runner.run_success([
         "analyze",
         "complexity",
         "src/main.rs",
@@ -527,16 +527,16 @@ mod integration_tests {
         std::env::set_current_dir(&project_path)?;
 
         // Run a complete analysis workflow
-        let result = runner.run_success(&["analyze", "complexity", "src/main.rs"])?;
+        let result = runner.run_success(["analyze", "complexity", "src/main.rs"])?;
         assert!(result.exit_code == 0);
 
-        let result = runner.run_success(&["tdg", "src/main.rs"])?;
+        let result = runner.run_success(["tdg", "src/main.rs"])?;
         assert!(result.exit_code == 0);
 
-        let result = runner.run_success(&["quality-gate", "--file", "src/main.rs"])?;
+        let result = runner.run_success(["quality-gate", "--file", "src/main.rs"])?;
         assert!(result.exit_code == 0);
 
-        let result = runner.run_success(&["report", "src/"])?;
+        let result = runner.run_success(["report", "src/"])?;
         assert!(result.exit_code == 0);
 
         Ok(())

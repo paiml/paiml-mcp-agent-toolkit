@@ -5,9 +5,9 @@
 
 #[cfg(test)]
 mod integration_tests {
-    use crate::tdg::{TdgScore, Grade, TdgConfig};
+    use crate::tdg::{TdgScore, Grade};
     use crate::tdg::analyzer_ast::TdgAnalyzerAst;
-    use std::path::PathBuf;
+    
 
     /// Test that complexity and entropy both contribute to TDG score
     #[tokio::test]
@@ -258,7 +258,7 @@ fn func5() -> i32 { return 42; }
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;
-    use crate::tdg::{TdgScore, Language};
+    use crate::tdg::Language;
     use crate::tdg::analyzer_ast::TdgAnalyzerAst;
 
     proptest! {

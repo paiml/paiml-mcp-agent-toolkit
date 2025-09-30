@@ -68,7 +68,7 @@ func greet(name string) {
 
     // Must have AST items
     assert!(!result.ast_items.is_empty(), "Must extract AST items");
-    assert!(result.ast_items.len() >= 1, "Should find at least 1 function");
+    assert!(!result.ast_items.is_empty(), "Should find at least 1 function");
 
     // Must have complexity metrics (GREEN phase may overcount - that's OK)
     assert!(!result.file_metrics.functions.is_empty(), "Must extract complexity");
@@ -119,7 +119,7 @@ broken syntax here {{{ !!!
     // so invalid syntax returns Ok with empty results rather than an error.
     // This is acceptable for GREEN phase - REFACTOR phase can add stricter validation.
     assert!(result.is_ok(), "Go analyzer handles invalid syntax gracefully");
-    let analysis = result.unwrap();
+    let _analysis = result.unwrap();
     // May or may not find items depending on pattern matching - just ensure no panic
 }
 
@@ -153,7 +153,7 @@ mod property_tests {
             prop_assert!(result.is_ok(), "Must handle any valid Go");
             let analysis = result.unwrap();
             // GREEN phase may find more or fewer items due to simple pattern matching
-            prop_assert!(analysis.ast_items.len() >= 1, "Should find at least some items");
+            prop_assert!(!analysis.ast_items.is_empty(), "Should find at least some items");
         }
     }
 }

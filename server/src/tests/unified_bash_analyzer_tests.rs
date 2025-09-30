@@ -68,7 +68,7 @@ add 3 5
 
     // Must have AST items
     assert!(!result.ast_items.is_empty(), "Must extract AST items");
-    assert!(result.ast_items.len() >= 1, "Should find at least 1 function");
+    assert!(!result.ast_items.is_empty(), "Should find at least 1 function");
 
     // Must have complexity metrics
     assert!(!result.file_metrics.functions.is_empty(), "Must extract complexity");
@@ -179,7 +179,7 @@ mod property_tests {
 
             prop_assert!(result.is_ok(), "Must handle any valid shell script");
             let analysis = result.unwrap();
-            prop_assert!(analysis.ast_items.len() >= 1, "Should find functions");
+            prop_assert!(!analysis.ast_items.is_empty(), "Should find functions");
         }
     }
 }

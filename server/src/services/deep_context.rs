@@ -4208,6 +4208,7 @@ fn detect_language(path: &std::path::Path) -> String {
 }
 
 /// Simple Rust file analysis
+#[allow(dead_code)]
 async fn analyze_rust_file(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
@@ -4220,6 +4221,7 @@ async fn analyze_rust_file(
 }
 
 /// Simple TypeScript/JavaScript file analysis
+#[allow(dead_code)]
 async fn analyze_typescript_file(
     _file_path: &Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
@@ -4237,6 +4239,7 @@ async fn analyze_typescript_file(
 }
 
 /// Simple Python file analysis
+#[allow(dead_code)]
 async fn analyze_python_file(
     _file_path: &Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
@@ -4561,8 +4564,7 @@ async fn analyze_files_complexity(
 async fn analyze_single_file_complexity(
     file_path: &std::path::Path,
 ) -> Option<crate::services::complexity::FileComplexityMetrics> {
-    #[cfg(feature = "python-ast")]
-    use crate::services::ast_python::analyze_python_file_with_complexity;
+    
 
     let ext = file_path.extension()?.to_str()?;
 
@@ -5948,21 +5950,23 @@ mod tests {
         let config = DeepContextConfig::default();
         let analyzer = DeepContextAnalyzer::new(config);
 
-        let mut analyses = ParallelAnalysisResults::default();
-        analyses.complexity_report = Some(crate::services::complexity::ComplexityReport {
-            summary: Default::default(),
-            violations: vec![crate::services::complexity::Violation::Error {
-                rule: "complexity".to_string(),
-                message: "Function too complex".to_string(),
-                value: 30,
-                threshold: 20,
-                file: "test.rs".to_string(),
-                line: 10,
-                function: Some("complex_fn".to_string()),
-            }],
-            hotspots: vec![],
-            files: vec![],
-        });
+        let mut analyses = ParallelAnalysisResults {
+            complexity_report: Some(crate::services::complexity::ComplexityReport {
+                summary: Default::default(),
+                violations: vec![crate::services::complexity::Violation::Error {
+                    rule: "complexity".to_string(),
+                    message: "Function too complex".to_string(),
+                    value: 30,
+                    threshold: 20,
+                    file: "test.rs".to_string(),
+                    line: 10,
+                    function: Some("complex_fn".to_string()),
+                }],
+                hotspots: vec![],
+                files: vec![],
+            }),
+            ..Default::default()
+        };
 
         let defect_summary = DefectSummary::default();
         let recommendations = analyzer
@@ -6010,20 +6014,22 @@ mod tests {
         let config = DeepContextConfig::default();
         let analyzer = DeepContextAnalyzer::new(config);
 
-        let mut analyses = ParallelAnalysisResults::default();
-        analyses.satd_results = Some(crate::services::satd_detector::SATDAnalysisResult {
-            items: vec![],
-            summary: crate::services::satd_detector::SATDSummary {
-                total_items: 5,
-                by_severity: Default::default(),
-                by_category: Default::default(),
-                files_with_satd: 3,
-                avg_age_days: 30.0,
-            },
-            total_files_analyzed: 10,
-            files_with_debt: 3,
-            analysis_timestamp: chrono::Utc::now(),
-        });
+        let mut analyses = ParallelAnalysisResults {
+            satd_results: Some(crate::services::satd_detector::SATDAnalysisResult {
+                items: vec![],
+                summary: crate::services::satd_detector::SATDSummary {
+                    total_items: 5,
+                    by_severity: Default::default(),
+                    by_category: Default::default(),
+                    files_with_satd: 3,
+                    avg_age_days: 30.0,
+                },
+                total_files_analyzed: 10,
+                files_with_debt: 3,
+                analysis_timestamp: chrono::Utc::now(),
+            }),
+            ..Default::default()
+        };
 
         let defect_summary = DefectSummary::default();
         let recommendations = analyzer

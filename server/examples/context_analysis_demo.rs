@@ -96,7 +96,7 @@ async function fetchUserDetails(id: number): Promise<any> {
     println!("Running: cargo run -- context --project-path {} --format llm-optimized", temp_dir.path().display());
 
     let output = Command::new("cargo")
-        .args(&["run", "--", "context", "--project-path", temp_dir.path().to_str().unwrap(), "--format", "llm-optimized"])
+        .args(["run", "--", "context", "--project-path", temp_dir.path().to_str().unwrap(), "--format", "llm-optimized"])
         .output()
         .expect("Failed to run cargo command");
 
@@ -203,7 +203,7 @@ function formatOrderResponse(processedOrder) {
     println!("Running: cargo run -- context --project-path {} --format llm-optimized", temp_dir.path().display());
 
     let output = Command::new("cargo")
-        .args(&["run", "--", "context", "--project-path", temp_dir.path().to_str().unwrap(), "--format", "llm-optimized"])
+        .args(["run", "--", "context", "--project-path", temp_dir.path().to_str().unwrap(), "--format", "llm-optimized"])
         .output()
         .expect("Failed to run cargo command");
 
@@ -358,7 +358,7 @@ fn test_wasm_context() {
     println!("Running: cargo run -- context --project-path {} --format llm-optimized", temp_dir.path().display());
 
     let output = Command::new("cargo")
-        .args(&["run", "--", "context", "--project-path", temp_dir.path().to_str().unwrap(), "--format", "llm-optimized"])
+        .args(["run", "--", "context", "--project-path", temp_dir.path().to_str().unwrap(), "--format", "llm-optimized"])
         .output()
         .expect("Failed to run cargo command");
 
@@ -499,7 +499,7 @@ export const debounce = <T extends (...args: any[]) => void>(
     println!("Running: cargo run -- context --project-path {} --format llm-optimized", temp_dir.path().display());
 
     let output = Command::new("cargo")
-        .args(&["run", "--", "context", "--project-path", temp_dir.path().to_str().unwrap(), "--format", "llm-optimized"])
+        .args(["run", "--", "context", "--project-path", temp_dir.path().to_str().unwrap(), "--format", "llm-optimized"])
         .output()
         .expect("Failed to run cargo command");
 
@@ -542,7 +542,7 @@ fn test_comprehensive_language_test() {
     println!("Running: cargo run -- context --project-path comprehensive_language_test --format llm-optimized");
 
     let output = Command::new("cargo")
-        .args(&["run", "--", "context", "--project-path", "comprehensive_language_test", "--format", "llm-optimized"])
+        .args(["run", "--", "context", "--project-path", "comprehensive_language_test", "--format", "llm-optimized"])
         .output()
         .expect("Failed to run cargo command");
 

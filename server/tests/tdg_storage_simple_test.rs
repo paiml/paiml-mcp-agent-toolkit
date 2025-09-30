@@ -17,7 +17,7 @@ fn test_tdg_stores_scores_after_analysis() {
 
     // Act - Run TDG analysis (using the CLI for now)
     let output = std::process::Command::new("cargo")
-        .args(&[
+        .args([
             "run",
             "--package",
             "pmat",
@@ -35,7 +35,7 @@ fn test_tdg_stores_scores_after_analysis() {
 
     // Now check if the score was stored
     let storage_output = std::process::Command::new("cargo")
-        .args(&[
+        .args([
             "run",
             "--package",
             "pmat",
@@ -64,7 +64,7 @@ fn test_tdg_storage_is_empty_initially() {
     // This test should PASS - verifying our storage starts empty
 
     let output = std::process::Command::new("cargo")
-        .args(&[
+        .args([
             "run",
             "--package",
             "pmat",
@@ -102,7 +102,7 @@ fn test_tdg_should_track_multiple_file_scores() {
 
         // Run TDG analysis
         let output = std::process::Command::new("cargo")
-            .args(&[
+            .args([
                 "run",
                 "--package",
                 "pmat",
@@ -124,7 +124,7 @@ fn test_tdg_should_track_multiple_file_scores() {
 
     // Check storage stats
     let storage_output = std::process::Command::new("cargo")
-        .args(&[
+        .args([
             "run",
             "--package",
             "pmat",
@@ -162,8 +162,5 @@ fn test_tdg_dogfooding_requirement() {
     // 4. Cache optimization
 
     // This is a documentation test that always fails in RED phase
-    assert!(
-        false,
-        "TDG dogfooding not implemented: File scores are not being stored"
-    );
+    panic!("TDG dogfooding not implemented: File scores are not being stored");
 }

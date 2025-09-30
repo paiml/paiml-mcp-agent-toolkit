@@ -56,13 +56,11 @@ async fn test_concurrent_requests() -> Result<()> {
     }
 
     // Test concurrent access to different endpoints
-    let endpoints = vec![
-        "/api/summary",
+    let endpoints = ["/api/summary",
         "/api/metrics",
         "/api/hotspots",
         "/api/dag",
-        "/api/analysis",
-    ];
+        "/api/analysis"];
 
     let start_time = Instant::now();
 
@@ -79,13 +77,11 @@ async fn test_concurrent_requests() -> Result<()> {
 
     // Validate results
     let mut successful_requests = 0;
-    for result in results {
-        if let Ok(http_result) = result {
-            if http_result.success {
-                successful_requests += 1;
-                // Each request should still meet individual performance requirements
-                HttpValidators::assert_performance(&http_result, Duration::from_secs(30))?;
-            }
+    for http_result in results.into_iter().flatten() {
+        if http_result.success {
+            successful_requests += 1;
+            // Each request should still meet individual performance requirements
+            HttpValidators::assert_performance(&http_result, Duration::from_secs(30))?;
         }
     }
 
@@ -223,12 +219,10 @@ async fn test_memory_usage_stability() -> Result<()> {
         let batch_results = join_all(batch_futures).await;
 
         // Validate batch results
-        for result in batch_results {
-            if let Ok(http_result) = result {
-                // Responses should not degrade over time
-                if http_result.success {
-                    HttpValidators::assert_performance(&http_result, Duration::from_secs(30))?;
-                }
+        for http_result in batch_results.into_iter().flatten() {
+            // Responses should not degrade over time
+            if http_result.success {
+                HttpValidators::assert_performance(&http_result, Duration::from_secs(30))?;
             }
         }
 
