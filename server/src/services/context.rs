@@ -758,11 +758,8 @@ async fn analyze_file_by_toolchain(
         // Go files
         #[cfg(feature = "go-ast")]
         "go" => {
-            eprintln!("DEBUG: Analyzing Go file: {:?}", path);
             use crate::services::languages::go;
-            let result = go::analyze_go_file(path).await;
-            eprintln!("DEBUG: Go analysis result: {:?}", result.as_ref().map(|fc| fc.items.len()));
-            result.ok()
+            go::analyze_go_file(path).await.ok()
         }
 
         // NOTE: Languages below need analyze_*_file() implementations
@@ -1101,11 +1098,8 @@ async fn analyze_file_by_toolchain_persistent(
         // Go files
         #[cfg(feature = "go-ast")]
         "go" => {
-            eprintln!("DEBUG: Analyzing Go file: {:?}", path);
             use crate::services::languages::go;
-            let result = go::analyze_go_file(path).await;
-            eprintln!("DEBUG: Go analysis result: {:?}", result.as_ref().map(|fc| fc.items.len()));
-            result.ok()
+            go::analyze_go_file(path).await.ok()
         }
 
         // NOTE: Languages below need analyze_*_file() implementations
