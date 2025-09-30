@@ -184,6 +184,8 @@ pub mod unified_rust_analyzer; // TICKET-3001: Single-pass AST+Complexity analyz
 pub mod unified_typescript_analyzer; // TICKET-3002: Single-pass TypeScript/JavaScript analyzer
 pub mod unified_python_analyzer; // TICKET-3003: Single-pass Python analyzer
 pub mod unified_go_analyzer; // TICKET-3004: Single-pass Go analyzer
+pub mod unified_wasm_analyzer; // TICKET-3005: Single-pass WebAssembly analyzer
+pub mod unified_bash_analyzer; // TICKET-3006: Single-pass Bash/Shell analyzer
 pub mod verified_complexity;
 pub mod wasm;
 

@@ -72,6 +72,8 @@ use crate::services::{
     unified_typescript_analyzer::UnifiedTypeScriptAnalyzer,
     unified_python_analyzer::UnifiedPythonAnalyzer,
     unified_go_analyzer::UnifiedGoAnalyzer,
+    unified_wasm_analyzer::UnifiedWasmAnalyzer,
+    unified_bash_analyzer::UnifiedBashAnalyzer,
 };
 use chrono::{DateTime, Utc};
 use rayon::prelude::*;
@@ -102,6 +104,16 @@ thread_local! {
 // Thread-local cache for unified Go analysis results
 thread_local! {
     static GO_UNIFIED_CACHE: RefCell<FxHashMap<PathBuf, FileComplexityMetrics>> = RefCell::new(FxHashMap::default());
+}
+
+// Thread-local cache for unified WebAssembly analysis results
+thread_local! {
+    static WASM_UNIFIED_CACHE: RefCell<FxHashMap<PathBuf, FileComplexityMetrics>> = RefCell::new(FxHashMap::default());
+}
+
+// Thread-local cache for unified Bash/Shell analysis results
+thread_local! {
+    static BASH_UNIFIED_CACHE: RefCell<FxHashMap<PathBuf, FileComplexityMetrics>> = RefCell::new(FxHashMap::default());
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -4043,13 +4055,30 @@ pub async fn analyze_kotlin_language(
 }
 
 /// Toyota Way Single Responsibility: Handle Bash script file analysis
+/// TICKET-3006: Now uses unified parser to eliminate double parsing
 pub async fn analyze_bash_language(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
     tracing::debug!("Analyzing Bash script file: {}", file_path.display());
-    let items = analyze_bash_file(file_path).await?;
-    tracing::debug!("Bash analysis returned {} items", items.len());
-    Ok(items)
+
+    // Use unified analyzer for single parse pass
+    let analyzer = UnifiedBashAnalyzer::new(file_path.to_path_buf());
+    match analyzer.analyze().await {
+        Ok(analysis) => {
+            // Store complexity metrics in thread-local cache
+            BASH_UNIFIED_CACHE.with(|cache| {
+                cache.borrow_mut().insert(file_path.to_path_buf(), analysis.file_metrics.clone());
+            });
+            tracing::debug!("Bash analysis returned {} items", analysis.ast_items.len());
+            Ok(analysis.ast_items)
+        }
+        Err(_) => {
+            // Fall back to old analyzer on error
+            let items = analyze_bash_file(file_path).await?;
+            tracing::debug!("Bash analysis returned {} items", items.len());
+            Ok(items)
+        }
+    }
 }
 
 /// Toyota Way Single Responsibility: Handle Java file analysis
@@ -4109,10 +4138,30 @@ pub async fn analyze_ocaml_language(
 }
 
 /// Toyota Way Single Responsibility: Handle WebAssembly file analysis
+/// TICKET-3005: Now uses unified parser to eliminate double parsing
 pub async fn analyze_wasm_language(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
-    analyze_wasm_file(file_path).await
+    #[cfg(feature = "wasm-ast")]
+    {
+        // Use unified analyzer for single parse pass
+        let analyzer = UnifiedWasmAnalyzer::new(file_path.to_path_buf());
+        match analyzer.analyze().await {
+            Ok(analysis) => {
+                // Store complexity metrics in thread-local cache
+                WASM_UNIFIED_CACHE.with(|cache| {
+                    cache.borrow_mut().insert(file_path.to_path_buf(), analysis.file_metrics.clone());
+                });
+                Ok(analysis.ast_items)
+            }
+            Err(_) => {
+                // Fall back to old analyzer on error
+                analyze_wasm_file(file_path).await
+            }
+        }
+    }
+    #[cfg(not(feature = "wasm-ast"))]
+    Ok(Vec::new())
 }
 
 /// Detect programming language from file extension
@@ -4595,6 +4644,49 @@ async fn analyze_single_file_complexity(
                 }
                 #[cfg(not(feature = "go-ast"))]
                 None
+            }
+        }
+        "wat" | "wasm" => {
+            // OPTIMIZATION: Check WASM unified cache first (from analyze_wasm_language)
+            // This avoids the second parse - TICKET-3005
+            let cached = WASM_UNIFIED_CACHE.with(|cache| {
+                cache.borrow().get(file_path).cloned()
+            });
+
+            if let Some(metrics) = cached {
+                Some(metrics)
+            } else {
+                // Fallback: analyze with unified analyzer if not in cache
+                #[cfg(feature = "wasm-ast")]
+                {
+                    let analyzer = UnifiedWasmAnalyzer::new(file_path.to_path_buf());
+                    if let Ok(analysis) = tokio::runtime::Handle::current().block_on(analyzer.analyze()) {
+                        Some(analysis.file_metrics)
+                    } else {
+                        None
+                    }
+                }
+                #[cfg(not(feature = "wasm-ast"))]
+                None
+            }
+        }
+        "sh" | "bash" => {
+            // OPTIMIZATION: Check Bash unified cache first (from analyze_bash_language)
+            // This avoids the second parse - TICKET-3006
+            let cached = BASH_UNIFIED_CACHE.with(|cache| {
+                cache.borrow().get(file_path).cloned()
+            });
+
+            if let Some(metrics) = cached {
+                Some(metrics)
+            } else {
+                // Fallback: analyze with unified analyzer if not in cache
+                let analyzer = UnifiedBashAnalyzer::new(file_path.to_path_buf());
+                if let Ok(analysis) = tokio::runtime::Handle::current().block_on(analyzer.analyze()) {
+                    Some(analysis.file_metrics)
+                } else {
+                    None
+                }
             }
         }
         _ => None,
