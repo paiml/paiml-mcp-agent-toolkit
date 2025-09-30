@@ -139,12 +139,11 @@ impl UnifiedPythonAnalyzer {
         let lines = content.lines().count();
 
         // Simple function detection (GREEN phase - basic regex)
-        let function_pattern = regex::Regex::new(
-            r"(?m)^(?:async\s+)?def\s+(\w+)\s*\("
-        ).unwrap();
+        let function_pattern = regex::Regex::new(r"(?m)^(?:async\s+)?def\s+(\w+)\s*\(").unwrap();
 
         for cap in function_pattern.captures_iter(content) {
-            let name = cap.get(1)
+            let name = cap
+                .get(1)
                 .map(|m| m.as_str().to_string())
                 .unwrap_or_else(|| "anonymous".to_string());
 
@@ -166,9 +165,7 @@ impl UnifiedPythonAnalyzer {
         }
 
         // Calculate file-level metrics
-        let total_cyclomatic: u32 = functions.iter()
-            .map(|f| f.metrics.cyclomatic as u32)
-            .sum();
+        let total_cyclomatic: u32 = functions.iter().map(|f| f.metrics.cyclomatic as u32).sum();
 
         let avg_cyclomatic = if functions.is_empty() {
             1
@@ -197,8 +194,8 @@ impl UnifiedPythonAnalyzer {
 
         // Count control flow keywords
         let keywords = [
-            "if ", "elif ", "for ", "while ", "try:", "except",
-            "and ", "or ", // Logical operators
+            "if ", "elif ", "for ", "while ", "try:", "except", "and ",
+            "or ", // Logical operators
         ];
 
         for keyword in &keywords {

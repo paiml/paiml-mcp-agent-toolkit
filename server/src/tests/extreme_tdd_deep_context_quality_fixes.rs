@@ -1,8 +1,8 @@
 //! EXTREME TDD: Deep Context Quality Fixes
 //! Implements user-requested improvements with failing tests first (RED-GREEN-REFACTOR)
 
-use tempfile::TempDir;
 use std::fs;
+use tempfile::TempDir;
 
 /// RED TEST: SATD should only appear when technical debt is detected
 #[tokio::test]
@@ -10,7 +10,9 @@ async fn test_satd_only_appears_when_debt_found() {
     // ARRANGE: Create file with NO technical debt
     let temp_dir = TempDir::new().unwrap();
     let clean_file = temp_dir.path().join("clean.rs");
-    fs::write(&clean_file, r#"
+    fs::write(
+        &clean_file,
+        r#"
 fn add_numbers(a: i32, b: i32) -> i32 {
     a + b
 }
@@ -18,7 +20,9 @@ fn add_numbers(a: i32, b: i32) -> i32 {
 fn multiply(x: i32, y: i32) -> i32 {
     x * y
 }
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     // ACT: Generate context for clean file
     let output_file = temp_dir.path().join("context.md");
@@ -29,14 +33,21 @@ fn multiply(x: i32, y: i32) -> i32 {
         crate::cli::ContextFormat::Markdown,
         false,
         false,
-    ).await;
+    )
+    .await;
 
     // ASSERT: SATD annotation should NOT appear for clean code
     assert!(result.is_ok());
     let output = fs::read_to_string(output_file).unwrap();
-    assert!(!output.contains("[SATD:"),
+    assert!(
+        !output.contains("[SATD:"),
         "Clean code should not have SATD annotations. Found in output: {}",
-        output.lines().filter(|line| line.contains("SATD")).collect::<Vec<_>>().join("\n"));
+        output
+            .lines()
+            .filter(|line| line.contains("SATD"))
+            .collect::<Vec<_>>()
+            .join("\n")
+    );
 }
 
 /// RED TEST: SATD should appear with count when technical debt exists
@@ -45,14 +56,18 @@ async fn test_satd_appears_with_count_when_debt_exists() {
     // ARRANGE: Create file WITH technical debt
     let temp_dir = TempDir::new().unwrap();
     let debt_file = temp_dir.path().join("debt.rs");
-    fs::write(&debt_file, r#"
+    fs::write(
+        &debt_file,
+        r#"
 // TODO: Optimize this algorithm
 // FIXME: Handle edge cases properly
 fn bad_function() -> i32 {
     // HACK: This is a temporary solution
     42
 }
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     // ACT: Generate context for file with debt
     let output_file = temp_dir.path().join("context.md");
@@ -63,13 +78,19 @@ fn bad_function() -> i32 {
         crate::cli::ContextFormat::Markdown,
         false,
         false,
-    ).await;
+    )
+    .await;
 
     // ASSERT: SATD annotation should appear with specific count
     assert!(result.is_ok());
     let output = fs::read_to_string(output_file).unwrap();
-    assert!(output.contains("[satd: 3 items]") || output.contains("[SATD: 3 items]") || output.contains("[satd: 3]"),
-        "Should show SATD count of 3. Output: {}", output);
+    assert!(
+        output.contains("[satd: 3 items]")
+            || output.contains("[SATD: 3 items]")
+            || output.contains("[satd: 3]"),
+        "Should show SATD count of 3. Output: {}",
+        output
+    );
 }
 
 /// RED TEST: Churn annotations must appear when git history exists
@@ -108,13 +129,16 @@ async fn test_churn_annotations_appear() {
         crate::cli::ContextFormat::Markdown,
         false,
         false,
-    ).await;
+    )
+    .await;
 
     // ASSERT: Churn annotations must be present
     assert!(result.is_ok());
     let output = fs::read_to_string(output_file).unwrap();
-    assert!(output.contains("[churn:") || output.contains("[CHURN:"),
-        "Churn annotations missing from output");
+    assert!(
+        output.contains("[churn:") || output.contains("[CHURN:"),
+        "Churn annotations missing from output"
+    );
 }
 
 /// RED TEST: Overall Health should be normalized 0-100 TDG score, not meaningless percentage
@@ -134,23 +158,29 @@ async fn test_overall_health_is_normalized_tdg_score() {
         crate::cli::ContextFormat::Markdown,
         false,
         false,
-    ).await;
+    )
+    .await;
 
     // ASSERT: Overall Health should be 0-100 range, not thousands of percent
     assert!(result.is_ok());
     let output = fs::read_to_string(output_file).unwrap();
 
     // Find Overall Health line
-    let health_line = output.lines()
+    let health_line = output
+        .lines()
         .find(|line| line.contains("Overall Health"))
         .expect("Overall Health line not found");
 
     // Extract percentage value
-    let health_value = extract_percentage(health_line)
-        .expect("Could not extract percentage from health line");
+    let health_value =
+        extract_percentage(health_line).expect("Could not extract percentage from health line");
 
-    assert!((0.0..=100.0).contains(&health_value),
-        "Overall Health should be 0-100, got: {}%. Line: {}", health_value, health_line);
+    assert!(
+        (0.0..=100.0).contains(&health_value),
+        "Overall Health should be 0-100, got: {}%. Line: {}",
+        health_value,
+        health_line
+    );
 }
 
 /// RED TEST: Test Coverage should be meaningful percentage or absent, not >100%
@@ -170,7 +200,8 @@ async fn test_coverage_is_meaningful_or_absent() {
         crate::cli::ContextFormat::Markdown,
         false,
         false,
-    ).await;
+    )
+    .await;
 
     // ASSERT: Test Coverage should be realistic or absent
     assert!(result.is_ok());
@@ -179,9 +210,12 @@ async fn test_coverage_is_meaningful_or_absent() {
     if let Some(coverage_line) = output.lines().find(|line| line.contains("Test Coverage")) {
         let coverage_value = extract_percentage(coverage_line);
         if let Some(value) = coverage_value {
-            assert!((0.0..=100.0).contains(&value),
+            assert!(
+                (0.0..=100.0).contains(&value),
                 "Test Coverage should be 0-100% if present, got: {}%. Line: {}",
-                value, coverage_line);
+                value,
+                coverage_line
+            );
         }
     }
     // If Test Coverage line is absent, that's acceptable
@@ -199,7 +233,9 @@ async fn test_pagerank_only_for_highly_connected() {
 
     // High connectivity file (should show PageRank)
     let connected_file = temp_dir.path().join("connected.rs");
-    fs::write(&connected_file, r#"
+    fs::write(
+        &connected_file,
+        r#"
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
@@ -207,7 +243,9 @@ use std::path::Path;
 pub fn highly_connected() -> Vec<String> {
     vec![]
 }
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     // ACT: Generate context
     let output_file = temp_dir.path().join("context.md");
@@ -218,21 +256,25 @@ pub fn highly_connected() -> Vec<String> {
         crate::cli::ContextFormat::Markdown,
         false,
         false,
-    ).await;
+    )
+    .await;
 
     // ASSERT: PageRank should be selective, not appear for every file
     assert!(result.is_ok());
     let output = fs::read_to_string(output_file).unwrap();
 
     // Should not have PageRank for every single function
-    let pagerank_count = output.matches("[pagerank:").count() + output.matches("[PageRank:").count();
+    let pagerank_count =
+        output.matches("[pagerank:").count() + output.matches("[PageRank:").count();
     let total_functions = output.matches("**Function**").count();
 
     if pagerank_count > 0 {
         let pagerank_ratio = pagerank_count as f64 / total_functions as f64;
-        assert!(pagerank_ratio < 0.3, // Less than 30% of functions should have PageRank
+        assert!(
+            pagerank_ratio < 0.3, // Less than 30% of functions should have PageRank
             "PageRank should be selective, not appear for every function. Ratio: {:.1}%",
-            pagerank_ratio * 100.0);
+            pagerank_ratio * 100.0
+        );
     }
 }
 
@@ -248,14 +290,20 @@ async fn test_auto_scaling_concurrency() {
     // ASSERT: Should use more than 1 core on multi-core systems
     let logical_cores = num_cpus::get();
     if logical_cores > 1 {
-        assert!(config.parallel > 1,
+        assert!(
+            config.parallel > 1,
             "Auto-scaling should use multiple cores. Detected {} cores, using {} threads",
-            logical_cores, config.parallel);
+            logical_cores,
+            config.parallel
+        );
 
         // Should use reasonable scaling (not more than logical cores + 1)
-        assert!(config.parallel <= logical_cores + 1,
+        assert!(
+            config.parallel <= logical_cores + 1,
             "Should not exceed logical cores + 1. Got {} for {} cores",
-            config.parallel, logical_cores);
+            config.parallel,
+            logical_cores
+        );
     }
 }
 
@@ -265,7 +313,9 @@ async fn test_shell_script_analysis() {
     // ARRANGE: Create shell script with various constructs
     let temp_dir = TempDir::new().unwrap();
     let shell_script = temp_dir.path().join("script.sh");
-    fs::write(&shell_script, r#"#!/bin/bash
+    fs::write(
+        &shell_script,
+        r#"#!/bin/bash
 set -euo pipefail
 
 # Function definition
@@ -289,7 +339,9 @@ main() {
 }
 
 main "$@"
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     // ACT: Generate context including shell script
     let output_file = temp_dir.path().join("context.md");
@@ -300,24 +352,36 @@ main "$@"
         crate::cli::ContextFormat::Markdown,
         false,
         false,
-    ).await;
+    )
+    .await;
 
     // ASSERT: Shell script should be analyzed with appropriate metrics
     assert!(result.is_ok());
     let output = fs::read_to_string(output_file).unwrap();
 
-    assert!(output.contains("script.sh"), "Shell script should be included in analysis");
+    assert!(
+        output.contains("script.sh"),
+        "Shell script should be included in analysis"
+    );
 
     // Should detect shell functions
-    assert!(output.contains("process_files") || output.contains("main"),
-        "Shell functions should be detected");
+    assert!(
+        output.contains("process_files") || output.contains("main"),
+        "Shell functions should be detected"
+    );
 
     // Should have appropriate complexity metrics for shell
     let script_section = extract_file_section(&output, "script.sh");
     if let Some(section) = script_section {
         // Should have some form of analysis - either complexity annotations or functions detected
-        assert!(section.contains("[complexity:") || section.contains("Functions:") || section.contains("process_files") || section.contains("main"),
-            "Shell script should have complexity analysis or function detection. Section: {}", section);
+        assert!(
+            section.contains("[complexity:")
+                || section.contains("Functions:")
+                || section.contains("process_files")
+                || section.contains("main"),
+            "Shell script should have complexity analysis or function detection. Section: {}",
+            section
+        );
     }
 }
 

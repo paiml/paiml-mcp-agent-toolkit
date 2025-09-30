@@ -3,9 +3,9 @@
 //! These tests are written FIRST (RED phase) and must ALL FAIL initially.
 //! Once implementation is complete, they must ALL PASS.
 
+use std::io::Write;
 use std::path::PathBuf;
 use tempfile::NamedTempFile;
-use std::io::Write;
 
 // Helper to create temporary Python files for testing
 fn create_temp_py_file(content: &str) -> NamedTempFile {
@@ -29,10 +29,12 @@ fn red_test_unified_python_analyzer_can_be_created() {
 async fn red_test_unified_python_parses_only_once() {
     use crate::services::unified_python_analyzer::UnifiedPythonAnalyzer;
 
-    let temp_file = create_temp_py_file(r#"
+    let temp_file = create_temp_py_file(
+        r#"
 def add(a, b):
     return a + b
-    "#);
+    "#,
+    );
 
     let analyzer = UnifiedPythonAnalyzer::new(temp_file.path().to_path_buf());
     let result = analyzer.analyze().await;
@@ -50,20 +52,28 @@ def add(a, b):
 async fn red_test_unified_python_returns_both_ast_and_complexity() {
     use crate::services::unified_python_analyzer::UnifiedPythonAnalyzer;
 
-    let temp_file = create_temp_py_file(r#"
+    let temp_file = create_temp_py_file(
+        r#"
 def greet(name):
     print(f'Hello {name}')
-    "#);
+    "#,
+    );
 
     let analyzer = UnifiedPythonAnalyzer::new(temp_file.path().to_path_buf());
     let result = analyzer.analyze().await.expect("Should parse successfully");
 
     // Must have AST items
     assert!(!result.ast_items.is_empty(), "Must extract AST items");
-    assert!(!result.ast_items.is_empty(), "Should find at least 1 function");
+    assert!(
+        !result.ast_items.is_empty(),
+        "Should find at least 1 function"
+    );
 
     // Must have complexity metrics (GREEN phase may overcount - that's OK)
-    assert!(!result.file_metrics.functions.is_empty(), "Must extract complexity");
+    assert!(
+        !result.file_metrics.functions.is_empty(),
+        "Must extract complexity"
+    );
 }
 
 /// Test 4: AST Items Extracted
@@ -71,7 +81,8 @@ def greet(name):
 async fn red_test_unified_python_ast_extraction() {
     use crate::services::unified_python_analyzer::UnifiedPythonAnalyzer;
 
-    let temp_file = create_temp_py_file(r#"
+    let temp_file = create_temp_py_file(
+        r#"
 def multiply(x, y):
     return x * y
 
@@ -79,13 +90,17 @@ class Point:
     def __init__(self, x, y):
         self.x = x
         self.y = y
-    "#);
+    "#,
+    );
 
     let analyzer = UnifiedPythonAnalyzer::new(temp_file.path().to_path_buf());
     let result = analyzer.analyze().await.unwrap();
 
     // Should find function and class
-    assert!(result.ast_items.len() >= 2, "Should find at least 2 items (function + class)");
+    assert!(
+        result.ast_items.len() >= 2,
+        "Should find at least 2 items (function + class)"
+    );
 }
 
 /// Test 5: Handles Parse Errors Gracefully
@@ -93,9 +108,11 @@ class Point:
 async fn red_test_unified_python_handles_invalid_syntax() {
     use crate::services::unified_python_analyzer::UnifiedPythonAnalyzer;
 
-    let temp_file = create_temp_py_file(r#"
+    let temp_file = create_temp_py_file(
+        r#"
 def broken syntax here {{{
-    "#);
+    "#,
+    );
 
     let analyzer = UnifiedPythonAnalyzer::new(temp_file.path().to_path_buf());
     let result = analyzer.analyze().await;
@@ -104,8 +121,11 @@ def broken syntax here {{{
 
     let err = result.unwrap_err();
     let err_msg = err.to_string();
-    assert!(err_msg.contains("parse") || err_msg.contains("syntax"),
-            "Error should mention parsing: {}", err_msg);
+    assert!(
+        err_msg.contains("parse") || err_msg.contains("syntax"),
+        "Error should mention parsing: {}",
+        err_msg
+    );
 }
 
 /// Test 6: Property-Based Test - Various File Sizes
@@ -148,7 +168,8 @@ mod property_tests {
 async fn red_test_unified_python_handles_multiple_function_types() {
     use crate::services::unified_python_analyzer::UnifiedPythonAnalyzer;
 
-    let temp_file = create_temp_py_file(r#"
+    let temp_file = create_temp_py_file(
+        r#"
 # Regular function
 def regular():
     pass
@@ -165,7 +186,8 @@ class MyClass:
     @staticmethod
     def static_method():
         pass
-    "#);
+    "#,
+    );
 
     let analyzer = UnifiedPythonAnalyzer::new(temp_file.path().to_path_buf());
     let result = analyzer.analyze().await.expect("Should parse successfully");
@@ -179,7 +201,8 @@ class MyClass:
 async fn red_test_unified_python_handles_complex_control_flow() {
     use crate::services::unified_python_analyzer::UnifiedPythonAnalyzer;
 
-    let temp_file = create_temp_py_file(r#"
+    let temp_file = create_temp_py_file(
+        r#"
 def complex_function(items):
     # List comprehension
     squared = [x**2 for x in items if x > 0]
@@ -197,13 +220,17 @@ def complex_function(items):
         result = None
 
     return result
-    "#);
+    "#,
+    );
 
     let analyzer = UnifiedPythonAnalyzer::new(temp_file.path().to_path_buf());
     let result = analyzer.analyze().await.expect("Should parse successfully");
 
     // Should detect higher complexity due to nested structures
-    assert!(!result.file_metrics.functions.is_empty(), "Should analyze function");
+    assert!(
+        !result.file_metrics.functions.is_empty(),
+        "Should analyze function"
+    );
 }
 
 /// Test 9: Empty File
@@ -218,8 +245,16 @@ async fn red_test_unified_python_handles_empty_file() {
 
     assert!(result.is_ok(), "Empty file should parse successfully");
     let analysis = result.unwrap();
-    assert_eq!(analysis.ast_items.len(), 0, "Empty file should have 0 items");
-    assert_eq!(analysis.file_metrics.functions.len(), 0, "Empty file should have 0 functions");
+    assert_eq!(
+        analysis.ast_items.len(),
+        0,
+        "Empty file should have 0 items"
+    );
+    assert_eq!(
+        analysis.file_metrics.functions.len(),
+        0,
+        "Empty file should have 0 functions"
+    );
 }
 
 /// Test 10: Comment-Only File
@@ -227,17 +262,26 @@ async fn red_test_unified_python_handles_empty_file() {
 async fn red_test_unified_python_handles_comment_only_file() {
     use crate::services::unified_python_analyzer::UnifiedPythonAnalyzer;
 
-    let temp_file = create_temp_py_file(r#"
+    let temp_file = create_temp_py_file(
+        r#"
 # This is just a comment
 """
 And a docstring
 """
-    "#);
+    "#,
+    );
 
     let analyzer = UnifiedPythonAnalyzer::new(temp_file.path().to_path_buf());
     let result = analyzer.analyze().await;
 
-    assert!(result.is_ok(), "Comment-only file should parse successfully");
+    assert!(
+        result.is_ok(),
+        "Comment-only file should parse successfully"
+    );
     let analysis = result.unwrap();
-    assert_eq!(analysis.ast_items.len(), 0, "Comment-only file should have 0 items");
+    assert_eq!(
+        analysis.ast_items.len(),
+        0,
+        "Comment-only file should have 0 items"
+    );
 }

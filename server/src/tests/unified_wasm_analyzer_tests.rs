@@ -3,9 +3,9 @@
 //! These tests are written FIRST (RED phase) and must ALL FAIL initially.
 //! Once implementation is complete, they must ALL PASS.
 
+use std::io::Write;
 use std::path::PathBuf;
 use tempfile::NamedTempFile;
-use std::io::Write;
 
 // Helper to create temporary WASM files for testing
 fn create_temp_wat_file(content: &str) -> NamedTempFile {
@@ -29,7 +29,8 @@ fn red_test_unified_wasm_analyzer_can_be_created() {
 async fn red_test_unified_wasm_parses_only_once() {
     use crate::services::unified_wasm_analyzer::UnifiedWasmAnalyzer;
 
-    let temp_file = create_temp_wat_file(r#"
+    let temp_file = create_temp_wat_file(
+        r#"
 (module
   (func $add (param $a i32) (param $b i32) (result i32)
     local.get $a
@@ -38,7 +39,8 @@ async fn red_test_unified_wasm_parses_only_once() {
   )
   (export "add" (func $add))
 )
-    "#);
+    "#,
+    );
 
     let analyzer = UnifiedWasmAnalyzer::new(temp_file.path().to_path_buf());
     let result = analyzer.analyze().await;
@@ -56,7 +58,8 @@ async fn red_test_unified_wasm_parses_only_once() {
 async fn red_test_unified_wasm_returns_both_ast_and_complexity() {
     use crate::services::unified_wasm_analyzer::UnifiedWasmAnalyzer;
 
-    let temp_file = create_temp_wat_file(r#"
+    let temp_file = create_temp_wat_file(
+        r#"
 (module
   (func $multiply (param $x i32) (param $y i32) (result i32)
     local.get $x
@@ -65,17 +68,24 @@ async fn red_test_unified_wasm_returns_both_ast_and_complexity() {
   )
   (export "multiply" (func $multiply))
 )
-    "#);
+    "#,
+    );
 
     let analyzer = UnifiedWasmAnalyzer::new(temp_file.path().to_path_buf());
     let result = analyzer.analyze().await.expect("Should parse successfully");
 
     // Must have AST items
     assert!(!result.ast_items.is_empty(), "Must extract AST items");
-    assert!(!result.ast_items.is_empty(), "Should find at least 1 function");
+    assert!(
+        !result.ast_items.is_empty(),
+        "Should find at least 1 function"
+    );
 
     // Must have complexity metrics
-    assert!(!result.file_metrics.functions.is_empty(), "Must extract complexity");
+    assert!(
+        !result.file_metrics.functions.is_empty(),
+        "Must extract complexity"
+    );
 }
 
 /// Test 4: AST Items Extracted
@@ -83,7 +93,8 @@ async fn red_test_unified_wasm_returns_both_ast_and_complexity() {
 async fn red_test_unified_wasm_ast_extraction() {
     use crate::services::unified_wasm_analyzer::UnifiedWasmAnalyzer;
 
-    let temp_file = create_temp_wat_file(r#"
+    let temp_file = create_temp_wat_file(
+        r#"
 (module
   (func $add (param i32) (param i32) (result i32)
     local.get 0
@@ -98,13 +109,17 @@ async fn red_test_unified_wasm_ast_extraction() {
   (export "add" (func $add))
   (export "sub" (func $sub))
 )
-    "#);
+    "#,
+    );
 
     let analyzer = UnifiedWasmAnalyzer::new(temp_file.path().to_path_buf());
     let result = analyzer.analyze().await.unwrap();
 
     // Should find 2 functions
-    assert!(result.ast_items.len() >= 2, "Should find at least 2 functions");
+    assert!(
+        result.ast_items.len() >= 2,
+        "Should find at least 2 functions"
+    );
 }
 
 /// Test 5: Handles Invalid Syntax Gracefully
@@ -112,16 +127,21 @@ async fn red_test_unified_wasm_ast_extraction() {
 async fn red_test_unified_wasm_handles_invalid_syntax() {
     use crate::services::unified_wasm_analyzer::UnifiedWasmAnalyzer;
 
-    let temp_file = create_temp_wat_file(r#"
+    let temp_file = create_temp_wat_file(
+        r#"
 broken wasm syntax here {{{
-    "#);
+    "#,
+    );
 
     let analyzer = UnifiedWasmAnalyzer::new(temp_file.path().to_path_buf());
     let result = analyzer.analyze().await;
 
     // GREEN PHASE: Pattern-based extraction may handle invalid syntax gracefully
     // This is acceptable for GREEN phase
-    assert!(result.is_ok(), "WASM analyzer handles invalid syntax gracefully");
+    assert!(
+        result.is_ok(),
+        "WASM analyzer handles invalid syntax gracefully"
+    );
 }
 
 /// Test 6: Complexity Increases with Control Flow
@@ -129,15 +149,18 @@ broken wasm syntax here {{{
 async fn red_test_wasm_complexity_reflects_control_flow() {
     use crate::services::unified_wasm_analyzer::UnifiedWasmAnalyzer;
 
-    let simple_func = create_temp_wat_file(r#"
+    let simple_func = create_temp_wat_file(
+        r#"
 (module
   (func $simple (param i32) (result i32)
     local.get 0
   )
 )
-    "#);
+    "#,
+    );
 
-    let complex_func = create_temp_wat_file(r#"
+    let complex_func = create_temp_wat_file(
+        r#"
 (module
   (func $complex (param i32) (result i32)
     local.get 0
@@ -148,21 +171,31 @@ async fn red_test_wasm_complexity_reflects_control_flow() {
     end
   )
 )
-    "#);
+    "#,
+    );
 
     let simple_analyzer = UnifiedWasmAnalyzer::new(simple_func.path().to_path_buf());
     let complex_analyzer = UnifiedWasmAnalyzer::new(complex_func.path().to_path_buf());
 
-    let simple_result = simple_analyzer.analyze().await.expect("Should parse simple");
-    let complex_result = complex_analyzer.analyze().await.expect("Should parse complex");
+    let simple_result = simple_analyzer
+        .analyze()
+        .await
+        .expect("Should parse simple");
+    let complex_result = complex_analyzer
+        .analyze()
+        .await
+        .expect("Should parse complex");
 
     let simple_complexity = simple_result.file_metrics.total_complexity.cyclomatic;
     let complex_complexity = complex_result.file_metrics.total_complexity.cyclomatic;
 
     // Complex function with if/else should have higher complexity
-    assert!(complex_complexity >= simple_complexity,
-            "Complex function should have higher complexity: {} >= {}",
-            complex_complexity, simple_complexity);
+    assert!(
+        complex_complexity >= simple_complexity,
+        "Complex function should have higher complexity: {} >= {}",
+        complex_complexity,
+        simple_complexity
+    );
 }
 
 /// Test 7: Property-Based Test - Various Function Counts
@@ -212,7 +245,11 @@ async fn red_test_unified_wasm_handles_empty_module() {
 
     assert!(result.is_ok(), "Empty module should parse successfully");
     let analysis = result.unwrap();
-    assert_eq!(analysis.ast_items.len(), 0, "Empty module should have 0 items");
+    assert_eq!(
+        analysis.ast_items.len(),
+        0,
+        "Empty module should have 0 items"
+    );
 }
 
 /// Test 9: Loop Complexity
@@ -220,7 +257,8 @@ async fn red_test_unified_wasm_handles_empty_module() {
 async fn red_test_wasm_loop_increases_complexity() {
     use crate::services::unified_wasm_analyzer::UnifiedWasmAnalyzer;
 
-    let temp_file = create_temp_wat_file(r#"
+    let temp_file = create_temp_wat_file(
+        r#"
 (module
   (func $loop_func (param i32) (result i32)
     (local $i i32)
@@ -238,14 +276,17 @@ async fn red_test_wasm_loop_increases_complexity() {
     local.get $i
   )
 )
-    "#);
+    "#,
+    );
 
     let analyzer = UnifiedWasmAnalyzer::new(temp_file.path().to_path_buf());
     let result = analyzer.analyze().await.expect("Should parse loop");
 
     // Loop should increase complexity
-    assert!(result.file_metrics.total_complexity.cyclomatic >= 2,
-            "Loop should increase complexity");
+    assert!(
+        result.file_metrics.total_complexity.cyclomatic >= 2,
+        "Loop should increase complexity"
+    );
 }
 
 /// Test 10: Multiple Control Flow Constructs
@@ -253,7 +294,8 @@ async fn red_test_wasm_loop_increases_complexity() {
 async fn red_test_wasm_multiple_control_flow() {
     use crate::services::unified_wasm_analyzer::UnifiedWasmAnalyzer;
 
-    let temp_file = create_temp_wat_file(r#"
+    let temp_file = create_temp_wat_file(
+        r#"
 (module
   (func $complex_control (param i32) (result i32)
     local.get 0
@@ -271,12 +313,18 @@ async fn red_test_wasm_multiple_control_flow() {
     end
   )
 )
-    "#);
+    "#,
+    );
 
     let analyzer = UnifiedWasmAnalyzer::new(temp_file.path().to_path_buf());
-    let result = analyzer.analyze().await.expect("Should parse nested control flow");
+    let result = analyzer
+        .analyze()
+        .await
+        .expect("Should parse nested control flow");
 
     // Nested if statements should significantly increase complexity
-    assert!(result.file_metrics.total_complexity.cyclomatic >= 3,
-            "Nested control flow should have complexity >= 3");
+    assert!(
+        result.file_metrics.total_complexity.cyclomatic >= 3,
+        "Nested control flow should have complexity >= 3"
+    );
 }

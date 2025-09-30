@@ -129,13 +129,11 @@ pub mod duplicate_detector;
 mod duplicate_detector_property_tests;
 pub mod embedded_templates;
 pub mod enhanced_ast_visitor;
+#[cfg(test)]
+pub mod enhanced_naming_tests;
 pub mod enhanced_python_visitor;
 pub mod enhanced_reporting;
 pub mod enhanced_typescript_visitor;
-#[cfg(test)]
-pub mod enhanced_naming_tests;
-#[cfg(test)]
-pub mod real_world_enhanced_naming_test;
 pub mod file_classifier;
 #[cfg(test)]
 mod file_classifier_property_tests;
@@ -159,6 +157,8 @@ pub mod project_analyzer;
 pub mod project_meta_detector;
 pub mod proof_annotator;
 pub mod quality_gates;
+#[cfg(test)]
+pub mod real_world_enhanced_naming_test;
 pub mod similarity; // Advanced similarity and entropy detection
 pub use quality_gates as quality_gate;
 #[cfg(test)]
@@ -179,13 +179,13 @@ pub mod symbol_table;
 pub mod tdg_calculator;
 pub mod template_service;
 pub mod unified_ast_engine; // Stub for backward compatibility
+pub mod unified_bash_analyzer; // TICKET-3006: Single-pass Bash/Shell analyzer
+pub mod unified_go_analyzer; // TICKET-3004: Single-pass Go analyzer
+pub mod unified_python_analyzer; // TICKET-3003: Single-pass Python analyzer
 pub mod unified_refactor_analyzer; // Stub for backward compatibility
 pub mod unified_rust_analyzer; // TICKET-3001: Single-pass AST+Complexity analyzer
 pub mod unified_typescript_analyzer; // TICKET-3002: Single-pass TypeScript/JavaScript analyzer
-pub mod unified_python_analyzer; // TICKET-3003: Single-pass Python analyzer
-pub mod unified_go_analyzer; // TICKET-3004: Single-pass Go analyzer
 pub mod unified_wasm_analyzer; // TICKET-3005: Single-pass WebAssembly analyzer
-pub mod unified_bash_analyzer; // TICKET-3006: Single-pass Bash/Shell analyzer
 pub mod verified_complexity;
 pub mod wasm;
 

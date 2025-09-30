@@ -10,7 +10,9 @@ pub struct AnalyzeTool {
 
 impl AnalyzeTool {
     pub fn new(registry: Arc<AgentRegistry>) -> Self {
-        Self { _registry: registry }
+        Self {
+            _registry: registry,
+        }
     }
 }
 
@@ -76,7 +78,9 @@ pub struct TransformTool {
 
 impl TransformTool {
     pub fn new(registry: Arc<AgentRegistry>) -> Self {
-        Self { _registry: registry }
+        Self {
+            _registry: registry,
+        }
     }
 }
 
@@ -167,7 +171,9 @@ pub struct ValidateTool {
 
 impl ValidateTool {
     pub fn new(registry: Arc<AgentRegistry>) -> Self {
-        Self { _registry: registry }
+        Self {
+            _registry: registry,
+        }
     }
 }
 
@@ -231,7 +237,9 @@ pub struct OrchestrateTool {
 
 impl OrchestrateTool {
     pub fn new(registry: Arc<AgentRegistry>) -> Self {
-        Self { _registry: registry }
+        Self {
+            _registry: registry,
+        }
     }
 }
 
@@ -296,7 +304,9 @@ pub struct QualityGateTool {
 
 impl QualityGateTool {
     pub fn new(registry: Arc<AgentRegistry>) -> Self {
-        Self { _registry: registry }
+        Self {
+            _registry: registry,
+        }
     }
 }
 

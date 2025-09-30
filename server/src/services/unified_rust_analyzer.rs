@@ -102,8 +102,8 @@ impl UnifiedRustAnalyzer {
             .map_err(AnalysisError::Io)?;
 
         // 2. Parse ONCE with syn
-        let syntax_tree = syn::parse_file(&content)
-            .map_err(|e| AnalysisError::Parse(e.to_string()))?;
+        let syntax_tree =
+            syn::parse_file(&content).map_err(|e| AnalysisError::Parse(e.to_string()))?;
 
         // 3. Extract AST items using existing EnhancedAstVisitor
         let ast_items = self.extract_ast_items(&syntax_tree);
@@ -169,7 +169,7 @@ impl UnifiedRustAnalyzer {
                         cyclomatic: cyclomatic as u16,
                         cognitive: cognitive as u16,
                         nesting_max: 0, // Will be calculated in REFACTOR
-                        lines: 10, // Rough estimate for GREEN phase
+                        lines: 10,      // Rough estimate for GREEN phase
                         halstead: None,
                     },
                 });
@@ -243,7 +243,9 @@ impl UnifiedRustAnalyzer {
         visitor.visit_file(syntax_tree);
 
         // Calculate file-level metrics
-        let total_cyclomatic: u32 = visitor.functions.iter()
+        let total_cyclomatic: u32 = visitor
+            .functions
+            .iter()
             .map(|f| f.metrics.cyclomatic as u32)
             .sum();
 

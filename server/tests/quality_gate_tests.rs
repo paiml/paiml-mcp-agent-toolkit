@@ -1,5 +1,5 @@
 use pmat::quality::analyzers::{ComplexityAnalyzer, EfficiencyAnalyzer};
-use pmat::quality::gate::{QualityGateRunner, QualityViolation, QualityThresholds};
+use pmat::quality::gate::{QualityGateRunner, QualityThresholds, QualityViolation};
 use proptest::prelude::*;
 use std::path::Path;
 

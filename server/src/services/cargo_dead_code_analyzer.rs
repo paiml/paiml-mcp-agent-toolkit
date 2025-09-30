@@ -139,8 +139,7 @@ impl CargoDeadCodeAnalyzer {
     /// Run cargo check and capture JSON output with timeout
     fn run_cargo_check(&self) -> Result<String> {
         // For testing and CI environments, return minimal successful output quickly
-        if std::env::var("CARGO_TEST_DEAD_CODE_FAST").is_ok() ||
-           std::env::var("CI").is_ok() {
+        if std::env::var("CARGO_TEST_DEAD_CODE_FAST").is_ok() || std::env::var("CI").is_ok() {
             // Return minimal JSON that represents successful analysis with no dead code
             return Ok(r#"{"reason":"build-finished","success":true}"#.to_string());
         }

@@ -61,11 +61,13 @@ fn test_provability_config_structure() {
 /// Test different output formats
 #[test]
 fn test_provability_output_formats() {
-    let formats = [ProvabilityOutputFormat::Json,
+    let formats = [
+        ProvabilityOutputFormat::Json,
         ProvabilityOutputFormat::Summary,
         ProvabilityOutputFormat::Full,
         ProvabilityOutputFormat::Sarif,
-        ProvabilityOutputFormat::Markdown];
+        ProvabilityOutputFormat::Markdown,
+    ];
 
     // Ensure all formats are handled
     assert_eq!(formats.len(), 5);

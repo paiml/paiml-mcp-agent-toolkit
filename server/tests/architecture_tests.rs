@@ -278,10 +278,9 @@ mod architecture_tests {
         let mut rec_stack = HashSet::new();
 
         for node in graph.keys() {
-            if !visited.contains(node)
-                && has_cycle_dfs(node, graph, &mut visited, &mut rec_stack) {
-                    return false;
-                }
+            if !visited.contains(node) && has_cycle_dfs(node, graph, &mut visited, &mut rec_stack) {
+                return false;
+            }
         }
 
         true
@@ -368,7 +367,7 @@ mod architecture_tests {
 fn test_quality_gates_integration() {
     use pmat::quality::gate::QualityGateRunner;
     use std::fs;
-    
+
     use tempfile::TempDir;
 
     let temp_dir = TempDir::new().unwrap();

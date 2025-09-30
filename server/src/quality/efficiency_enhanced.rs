@@ -30,7 +30,6 @@ impl Display for Complexity {
 }
 
 impl Complexity {
-
     pub fn combine(&self, other: &Complexity) -> Complexity {
         // When combining complexities (e.g., nested loops), multiply
         use Complexity::*;
@@ -220,7 +219,8 @@ impl<'ast> Visit<'ast> for SymbolicExecutor {
 
         // Update path complexity
         if self.loop_depths.len() == 1 {
-            self.current_path_complexity = self.current_path_complexity.clone().max(loop_complexity);
+            self.current_path_complexity =
+                self.current_path_complexity.clone().max(loop_complexity);
         } else {
             // Nested loops multiply complexity
             let nested = self

@@ -56,11 +56,13 @@ async fn test_concurrent_requests() -> Result<()> {
     }
 
     // Test concurrent access to different endpoints
-    let endpoints = ["/api/summary",
+    let endpoints = [
+        "/api/summary",
         "/api/metrics",
         "/api/hotspots",
         "/api/dag",
-        "/api/analysis"];
+        "/api/analysis",
+    ];
 
     let start_time = Instant::now();
 

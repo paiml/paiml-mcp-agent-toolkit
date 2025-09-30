@@ -105,9 +105,15 @@ impl CommandSuggester {
         common_mistakes.insert("agent analyze".to_string(), "analyze".to_string());
         common_mistakes.insert("analize".to_string(), "analyze".to_string());
         common_mistakes.insert("analyse".to_string(), "analyze".to_string());
-        common_mistakes.insert("analize complexity".to_string(), "analyze complexity".to_string());
+        common_mistakes.insert(
+            "analize complexity".to_string(),
+            "analyze complexity".to_string(),
+        );
         common_mistakes.insert("analize satd".to_string(), "analyze satd".to_string());
-        common_mistakes.insert("analize dead-code".to_string(), "analyze dead-code".to_string());
+        common_mistakes.insert(
+            "analize dead-code".to_string(),
+            "analyze dead-code".to_string(),
+        );
         common_mistakes.insert("complexity".to_string(), "analyze complexity".to_string());
         common_mistakes.insert("satd".to_string(), "analyze satd".to_string());
         common_mistakes.insert("dead-code".to_string(), "analyze dead-code".to_string());

@@ -3,9 +3,9 @@
 //! These tests are written FIRST (RED phase) and must ALL FAIL initially.
 //! Once implementation is complete, they must ALL PASS.
 
+use std::io::Write;
 use std::path::PathBuf;
 use tempfile::NamedTempFile;
-use std::io::Write;
 
 // Helper to create temporary Rust files for testing
 fn create_temp_rust_file(content: &str) -> NamedTempFile {
@@ -31,11 +31,13 @@ fn red_test_unified_analyzer_can_be_created() {
 async fn red_test_unified_analyzer_parses_only_once() {
     use crate::services::unified_rust_analyzer::UnifiedRustAnalyzer;
 
-    let temp_file = create_temp_rust_file(r#"
+    let temp_file = create_temp_rust_file(
+        r#"
         fn main() {
             println!("Hello, world!");
         }
-    "#);
+    "#,
+    );
 
     let analyzer = UnifiedRustAnalyzer::new(temp_file.path().to_path_buf());
     let result = analyzer.analyze().await;
@@ -54,11 +56,13 @@ async fn red_test_unified_analyzer_parses_only_once() {
 async fn red_test_unified_analyzer_returns_both_ast_and_complexity() {
     use crate::services::unified_rust_analyzer::UnifiedRustAnalyzer;
 
-    let temp_file = create_temp_rust_file(r#"
+    let temp_file = create_temp_rust_file(
+        r#"
         fn add(a: i32, b: i32) -> i32 {
             a + b
         }
-    "#);
+    "#,
+    );
 
     let analyzer = UnifiedRustAnalyzer::new(temp_file.path().to_path_buf());
     let result = analyzer.analyze().await.expect("Should parse successfully");
@@ -68,18 +72,26 @@ async fn red_test_unified_analyzer_returns_both_ast_and_complexity() {
     assert_eq!(result.ast_items.len(), 1, "Should find 1 function");
 
     // Must have complexity metrics
-    assert!(!result.file_metrics.functions.is_empty(), "Must extract complexity");
-    assert_eq!(result.file_metrics.functions.len(), 1, "Should analyze 1 function");
+    assert!(
+        !result.file_metrics.functions.is_empty(),
+        "Must extract complexity"
+    );
+    assert_eq!(
+        result.file_metrics.functions.len(),
+        1,
+        "Should analyze 1 function"
+    );
 }
 
 /// Test 4: AST Items Match EnhancedAstVisitor
 /// Expected: ❌ FAIL - Output won't match yet
 #[tokio::test]
 async fn red_test_unified_ast_matches_enhanced_visitor() {
-    use crate::services::unified_rust_analyzer::UnifiedRustAnalyzer;
     use crate::services::enhanced_ast_visitor::EnhancedAstVisitor;
+    use crate::services::unified_rust_analyzer::UnifiedRustAnalyzer;
 
-    let temp_file = create_temp_rust_file(r#"
+    let temp_file = create_temp_rust_file(
+        r#"
         pub fn multiply(x: i32, y: i32) -> i32 {
             x * y
         }
@@ -88,7 +100,8 @@ async fn red_test_unified_ast_matches_enhanced_visitor() {
             x: i32,
             y: i32,
         }
-    "#);
+    "#,
+    );
 
     // OLD WAY: EnhancedAstVisitor
     let content = std::fs::read_to_string(temp_file.path()).unwrap();
@@ -116,9 +129,11 @@ async fn red_test_unified_ast_matches_enhanced_visitor() {
 async fn red_test_unified_analyzer_handles_invalid_syntax() {
     use crate::services::unified_rust_analyzer::UnifiedRustAnalyzer;
 
-    let temp_file = create_temp_rust_file(r#"
+    let temp_file = create_temp_rust_file(
+        r#"
         fn broken syntax here {{{
-    "#);
+    "#,
+    );
 
     let analyzer = UnifiedRustAnalyzer::new(temp_file.path().to_path_buf());
     let result = analyzer.analyze().await;
@@ -127,8 +142,11 @@ async fn red_test_unified_analyzer_handles_invalid_syntax() {
 
     let err = result.unwrap_err();
     let err_msg = err.to_string();
-    assert!(err_msg.contains("parse") || err_msg.contains("syntax"),
-            "Error should mention parsing: {}", err_msg);
+    assert!(
+        err_msg.contains("parse") || err_msg.contains("syntax"),
+        "Error should mention parsing: {}",
+        err_msg
+    );
 }
 
 /// Test 6: Property-Based Test - Various File Sizes
@@ -187,8 +205,16 @@ async fn red_test_unified_analyzer_on_real_file() {
     let analysis = result.unwrap();
 
     // Context.rs has many functions
-    assert!(analysis.ast_items.len() > 10, "Should find many items, found: {}", analysis.ast_items.len());
-    assert!(analysis.file_metrics.functions.len() > 10, "Should analyze many functions, found: {}", analysis.file_metrics.functions.len());
+    assert!(
+        analysis.ast_items.len() > 10,
+        "Should find many items, found: {}",
+        analysis.ast_items.len()
+    );
+    assert!(
+        analysis.file_metrics.functions.len() > 10,
+        "Should analyze many functions, found: {}",
+        analysis.file_metrics.functions.len()
+    );
 }
 
 /// Test 8: Multiple Function Types
@@ -197,7 +223,8 @@ async fn red_test_unified_analyzer_on_real_file() {
 async fn red_test_unified_analyzer_handles_multiple_function_types() {
     use crate::services::unified_rust_analyzer::UnifiedRustAnalyzer;
 
-    let temp_file = create_temp_rust_file(r#"
+    let temp_file = create_temp_rust_file(
+        r#"
         // Regular function
         fn regular_function() {}
 
@@ -214,13 +241,17 @@ async fn red_test_unified_analyzer_handles_multiple_function_types() {
         trait MyTrait {
             fn trait_method(&self);
         }
-    "#);
+    "#,
+    );
 
     let analyzer = UnifiedRustAnalyzer::new(temp_file.path().to_path_buf());
     let result = analyzer.analyze().await.expect("Should parse successfully");
 
     // Should find all function types
-    assert!(result.ast_items.len() >= 4, "Should find at least 4 items (functions, struct, trait)");
+    assert!(
+        result.ast_items.len() >= 4,
+        "Should find at least 4 items (functions, struct, trait)"
+    );
 }
 
 /// Test 9: Empty File
@@ -236,8 +267,16 @@ async fn red_test_unified_analyzer_handles_empty_file() {
 
     assert!(result.is_ok(), "Empty file should parse successfully");
     let analysis = result.unwrap();
-    assert_eq!(analysis.ast_items.len(), 0, "Empty file should have 0 items");
-    assert_eq!(analysis.file_metrics.functions.len(), 0, "Empty file should have 0 functions");
+    assert_eq!(
+        analysis.ast_items.len(),
+        0,
+        "Empty file should have 0 items"
+    );
+    assert_eq!(
+        analysis.file_metrics.functions.len(),
+        0,
+        "Empty file should have 0 functions"
+    );
 }
 
 /// Test 10: File With Only Comments
@@ -246,16 +285,25 @@ async fn red_test_unified_analyzer_handles_empty_file() {
 async fn red_test_unified_analyzer_handles_comment_only_file() {
     use crate::services::unified_rust_analyzer::UnifiedRustAnalyzer;
 
-    let temp_file = create_temp_rust_file(r#"
+    let temp_file = create_temp_rust_file(
+        r#"
         // This is just a comment
         /* And a block comment */
         //! Doc comment
-    "#);
+    "#,
+    );
 
     let analyzer = UnifiedRustAnalyzer::new(temp_file.path().to_path_buf());
     let result = analyzer.analyze().await;
 
-    assert!(result.is_ok(), "Comment-only file should parse successfully");
+    assert!(
+        result.is_ok(),
+        "Comment-only file should parse successfully"
+    );
     let analysis = result.unwrap();
-    assert_eq!(analysis.ast_items.len(), 0, "Comment-only file should have 0 items");
+    assert_eq!(
+        analysis.ast_items.len(),
+        0,
+        "Comment-only file should have 0 items"
+    );
 }
