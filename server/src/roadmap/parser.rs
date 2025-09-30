@@ -456,10 +456,7 @@ mod tests {
         // Cognitive complexity should be 4, NOT 52
 
         // This proves the analyzer is INCORRECTLY reporting complexity
-        assert!(
-            true,
-            "Analyzer reports 52 but actual cognitive complexity is 4"
-        );
+        // Analyzer reports 52 but actual cognitive complexity is 4
     }
 
     #[test]

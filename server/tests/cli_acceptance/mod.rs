@@ -30,7 +30,7 @@ mod integration_tests {
         assert!(project_path.join("src/lib.rs").exists());
 
         // Verify basic command execution works
-        let result = runner.run_success(&["--version"])?;
+        let result = runner.run_success(["--version"])?;
         assert!(result.exit_code == 0);
         assert!(result.stdout_text.contains("pmat"));
 

@@ -295,9 +295,8 @@ async fn test_http_methods_compliance() -> Result<()> {
         let has_cors_headers = result
             .response
             .headers
-            .get("access-control-allow-methods")
-            .is_some()
-            || result.response.headers.get("allow").is_some();
+            .contains_key("access-control-allow-methods")
+            || result.response.headers.contains_key("allow");
         assert!(
             has_cors_headers,
             "OPTIONS response should include allowed methods"
@@ -368,7 +367,7 @@ async fn test_content_negotiation() -> Result<()> {
 
     if result.success {
         // Should return some valid content type
-        assert!(result.response.headers.get("content-type").is_some());
+        assert!(result.response.headers.contains_key("content-type"));
     }
 
     Ok(())
@@ -468,7 +467,7 @@ async fn test_security_compliance() -> Result<()> {
 
     if result.success {
         // Check for security headers (these might not be present in dev mode)
-        if let Some(_) = result.response.headers.get("x-content-type-options") {
+        if result.response.headers.contains_key("x-content-type-options") {
             HttpValidators::assert_security_headers(&result)?;
         }
 

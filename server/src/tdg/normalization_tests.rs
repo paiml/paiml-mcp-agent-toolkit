@@ -97,16 +97,17 @@ mod red_phase_tests {
     /// Individual components should never exceed their designated weight
     #[test]
     fn red_test_components_must_respect_weight_limits() {
-        let mut score = TdgScore::default();
-
         // Try to set components beyond their limits
-        score.structural_complexity = 50.0; // Max should be ~25
-        score.semantic_complexity = 40.0;   // Max should be ~20
-        score.duplication_ratio = 40.0;     // Max should be ~20
-        score.coupling_score = 30.0;        // Max should be ~15
-        score.doc_coverage = 20.0;          // Max should be ~10
-        score.consistency_score = 20.0;     // Max should be ~10
-        score.entropy_score = 100.0;        // Should have a reasonable limit
+        let mut score = TdgScore {
+            structural_complexity: 50.0, // Max should be ~25
+            semantic_complexity: 40.0,   // Max should be ~20
+            duplication_ratio: 40.0,     // Max should be ~20
+            coupling_score: 30.0,        // Max should be ~15
+            doc_coverage: 20.0,          // Max should be ~10
+            consistency_score: 20.0,     // Max should be ~10
+            entropy_score: 100.0,        // Should have a reasonable limit
+            ..Default::default()
+        };
 
         score.calculate_total();
 

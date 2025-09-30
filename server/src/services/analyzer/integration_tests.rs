@@ -23,7 +23,6 @@ mod unified_analyzer_integration_tests {
         let _satd = SATDAnalyzer::new();
 
         // If we get here, all analyzers were created successfully
-        assert!(true, "All unified analyzers created successfully");
     }
 
     /// Test that all analyzers have proper metadata
@@ -108,7 +107,7 @@ mod unified_analyzer_integration_tests {
         let big_o = BigOAnalyzer::new();
         let result = big_o.analyze_project(temp_dir.path()).await;
         match result {
-            Ok(_) => assert!(true, "BigO analysis completed successfully"),
+            Ok(_) => {} // BigO analysis completed successfully
             Err(e) => println!("BigO analysis failed gracefully: {}", e),
         }
 
@@ -116,7 +115,7 @@ mod unified_analyzer_integration_tests {
         let complexity = ComplexityAnalyzer::new();
         let result = complexity.analyze_project(temp_dir.path()).await;
         match result {
-            Ok(_) => assert!(true, "Complexity analysis completed successfully"),
+            Ok(_) => {} // Complexity analysis completed successfully
             Err(e) => println!("Complexity analysis failed gracefully: {}", e),
         }
 
@@ -124,7 +123,7 @@ mod unified_analyzer_integration_tests {
         let dead_code = DeadCodeAnalyzer::new();
         let result = dead_code.analyze_project(temp_dir.path()).await;
         match result {
-            Ok(_) => assert!(true, "DeadCode analysis completed successfully"),
+            Ok(_) => {} // DeadCode analysis completed successfully
             Err(e) => println!("DeadCode analysis failed gracefully: {}", e),
         }
 
@@ -132,7 +131,7 @@ mod unified_analyzer_integration_tests {
         let defect = DefectAnalyzer::new();
         let result = defect.analyze_project(temp_dir.path()).await;
         match result {
-            Ok(_) => assert!(true, "Defect analysis completed successfully"),
+            Ok(_) => {} // Defect analysis completed successfully
             Err(e) => println!("Defect analysis failed gracefully: {}", e),
         }
 
@@ -140,7 +139,7 @@ mod unified_analyzer_integration_tests {
         let satd = SATDAnalyzer::new();
         let result = satd.analyze_project(temp_dir.path()).await;
         match result {
-            Ok(_) => assert!(true, "SATD analysis completed successfully"),
+            Ok(_) => {} // SATD analysis completed successfully
             Err(e) => println!("SATD analysis failed gracefully: {}", e),
         }
     }
@@ -172,8 +171,8 @@ mod unified_analyzer_integration_tests {
 
         // Results should be consistent (both succeed or both fail)
         match (result1, result2) {
-            (Ok(_), Ok(_)) => assert!(true, "Consistent success"),
-            (Err(_), Err(_)) => assert!(true, "Consistent failure"),
+            (Ok(_), Ok(_)) => {} // Consistent success
+            (Err(_), Err(_)) => {} // Consistent failure
             _ => panic!("Inconsistent results between runs"),
         }
     }
@@ -190,7 +189,7 @@ mod unified_analyzer_integration_tests {
         let big_o = BigOAnalyzer::new();
         let result = big_o.analyze_project(temp_dir.path()).await;
         match result {
-            Ok(_) => assert!(true, "BigO handled empty project"),
+            Ok(_) => {} // BigO handled empty project
             Err(e) => println!("BigO failed gracefully on empty project: {}", e),
         }
 
@@ -198,7 +197,7 @@ mod unified_analyzer_integration_tests {
         let complexity = ComplexityAnalyzer::new();
         let result = complexity.analyze_project(temp_dir.path()).await;
         match result {
-            Ok(_) => assert!(true, "Complexity handled empty project"),
+            Ok(_) => {} // Complexity handled empty project
             Err(e) => println!("Complexity failed gracefully on empty project: {}", e),
         }
 
@@ -206,7 +205,7 @@ mod unified_analyzer_integration_tests {
         let dead_code = DeadCodeAnalyzer::new();
         let result = dead_code.analyze_project(temp_dir.path()).await;
         match result {
-            Ok(_) => assert!(true, "DeadCode handled empty project"),
+            Ok(_) => {} // DeadCode handled empty project
             Err(e) => println!("DeadCode failed gracefully on empty project: {}", e),
         }
 
@@ -214,7 +213,7 @@ mod unified_analyzer_integration_tests {
         let defect = DefectAnalyzer::new();
         let result = defect.analyze_project(temp_dir.path()).await;
         match result {
-            Ok(_) => assert!(true, "Defect handled empty project"),
+            Ok(_) => {} // Defect handled empty project
             Err(e) => println!("Defect failed gracefully on empty project: {}", e),
         }
 
@@ -222,7 +221,7 @@ mod unified_analyzer_integration_tests {
         let satd = SATDAnalyzer::new();
         let result = satd.analyze_project(temp_dir.path()).await;
         match result {
-            Ok(_) => assert!(true, "SATD handled empty project"),
+            Ok(_) => {} // SATD handled empty project
             Err(e) => println!("SATD failed gracefully on empty project: {}", e),
         }
     }
@@ -269,7 +268,7 @@ mod unified_analyzer_integration_tests {
             // For complexity analysis, we expect deterministic results
             // This is a property test - if the analyzer is working correctly,
             // multiple runs should produce identical results
-            assert!(true, "Deterministic results property verified");
+            // Deterministic results property verified
         }
     }
 

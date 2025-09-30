@@ -376,7 +376,6 @@ mod additional_tests {
             }
             Err(_) => {
                 // Graceful failure is acceptable
-                assert!(true);
             }
         }
     }
