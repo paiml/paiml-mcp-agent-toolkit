@@ -3884,12 +3884,36 @@ pub async fn analyze_file_by_language(
     language: &str,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
     match language {
+        // Core languages with full AST analysis
         "rust" => analyze_rust_language(file_path).await,
         "typescript" | "javascript" => analyze_typescript_language(file_path).await,
         "python" => analyze_python_language(file_path).await,
+        "go" => analyze_go_language(file_path).await,
         "c" | "cpp" => analyze_c_language(file_path).await,
+
+        // JVM languages
+        "java" => analyze_java_language(file_path).await,
         "kotlin" => analyze_kotlin_language(file_path).await,
+
+        // .NET languages
+        "csharp" => analyze_csharp_language(file_path).await,
+
+        // Scripting languages
         "bash" => analyze_bash_language(file_path).await,
+        "ruby" => analyze_ruby_language(file_path).await,
+
+        // Functional languages
+        "elixir" => analyze_elixir_language(file_path).await,
+        "erlang" => analyze_erlang_language(file_path).await,
+        "haskell" => analyze_haskell_language(file_path).await,
+        "ocaml" => analyze_ocaml_language(file_path).await,
+
+        // Apple ecosystem
+        "swift" => analyze_swift_language(file_path).await,
+
+        // WebAssembly
+        "wasm" => analyze_wasm_language(file_path).await,
+
         _ => Ok(Vec::new()),
     }
 }
@@ -3913,6 +3937,13 @@ pub async fn analyze_python_language(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
     analyze_python_file(file_path).await
+}
+
+/// Toyota Way Single Responsibility: Handle Go file analysis
+pub async fn analyze_go_language(
+    file_path: &std::path::Path,
+) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
+    analyze_go_file(file_path).await
 }
 
 /// Toyota Way Single Responsibility: Handle C/C++ file analysis
@@ -3942,18 +3973,105 @@ pub async fn analyze_bash_language(
     Ok(items)
 }
 
+/// Toyota Way Single Responsibility: Handle Java file analysis
+pub async fn analyze_java_language(
+    file_path: &std::path::Path,
+) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
+    analyze_java_file(file_path).await
+}
+
+/// Toyota Way Single Responsibility: Handle C# file analysis
+pub async fn analyze_csharp_language(
+    file_path: &std::path::Path,
+) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
+    analyze_csharp_file(file_path).await
+}
+
+/// Toyota Way Single Responsibility: Handle Ruby file analysis
+pub async fn analyze_ruby_language(
+    file_path: &std::path::Path,
+) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
+    analyze_ruby_file(file_path).await
+}
+
+/// Toyota Way Single Responsibility: Handle Swift file analysis
+pub async fn analyze_swift_language(
+    file_path: &std::path::Path,
+) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
+    analyze_swift_file(file_path).await
+}
+
+/// Toyota Way Single Responsibility: Handle Elixir file analysis
+pub async fn analyze_elixir_language(
+    file_path: &std::path::Path,
+) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
+    analyze_elixir_file(file_path).await
+}
+
+/// Toyota Way Single Responsibility: Handle Erlang file analysis
+pub async fn analyze_erlang_language(
+    file_path: &std::path::Path,
+) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
+    analyze_erlang_file(file_path).await
+}
+
+/// Toyota Way Single Responsibility: Handle Haskell file analysis
+pub async fn analyze_haskell_language(
+    file_path: &std::path::Path,
+) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
+    analyze_haskell_file(file_path).await
+}
+
+/// Toyota Way Single Responsibility: Handle OCaml file analysis
+pub async fn analyze_ocaml_language(
+    file_path: &std::path::Path,
+) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
+    analyze_ocaml_file(file_path).await
+}
+
+/// Toyota Way Single Responsibility: Handle WebAssembly file analysis
+pub async fn analyze_wasm_language(
+    file_path: &std::path::Path,
+) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
+    analyze_wasm_file(file_path).await
+}
+
 /// Detect programming language from file extension
 fn detect_language(path: &std::path::Path) -> String {
     if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
         match ext {
+            // Core languages with full support
             "rs" => "rust".to_string(),
             "ts" | "tsx" => "typescript".to_string(),
-            "js" | "jsx" => "javascript".to_string(),
-            "py" => "python".to_string(),
+            "js" | "jsx" | "mjs" | "cjs" => "javascript".to_string(),
+            "py" | "pyi" => "python".to_string(),
+            "go" => "go".to_string(),
             "c" | "h" => "c".to_string(),
             "cpp" | "cc" | "cxx" | "hpp" | "hxx" => "cpp".to_string(),
+
+            // JVM languages
+            "java" => "java".to_string(),
             "kt" | "kts" => "kotlin".to_string(),
+
+            // .NET languages
+            "cs" => "csharp".to_string(),
+
+            // Scripting languages
             "sh" | "bash" => "bash".to_string(),
+            "rb" => "ruby".to_string(),
+
+            // Functional languages
+            "ex" | "exs" => "elixir".to_string(),
+            "erl" | "hrl" => "erlang".to_string(),
+            "hs" | "lhs" => "haskell".to_string(),
+            "ml" | "mli" => "ocaml".to_string(),
+
+            // Apple ecosystem
+            "swift" => "swift".to_string(),
+
+            // WebAssembly
+            "wat" | "wasm" => "wasm".to_string(),
+
             _ => "unknown".to_string(),
         }
     } else {
@@ -4004,6 +4122,23 @@ async fn analyze_python_file(
         }
     }
     #[cfg(not(feature = "python-ast"))]
+    Ok(Vec::new())
+}
+
+/// Simple Go file analysis
+async fn analyze_go_file(
+    _file_path: &Path,
+) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
+    #[cfg(feature = "go-ast")]
+    {
+        use crate::services::languages::go;
+
+        match go::analyze_go_file(_file_path).await {
+            Ok(file_context) => Ok(file_context.items),
+            Err(_) => Ok(Vec::new()), // Return empty vec on parse error
+        }
+    }
+    #[cfg(not(feature = "go-ast"))]
     Ok(Vec::new())
 }
 
@@ -4068,6 +4203,176 @@ async fn analyze_bash_file(
         }
         Err(_) => Ok(Vec::new()), // Return empty vec on file read error
     }
+}
+
+/// Simple Java file analysis
+async fn analyze_java_file(
+    _file_path: &Path,
+) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
+    #[cfg(feature = "java-ast")]
+    {
+        use crate::services::languages::java::JavaAstVisitor;
+        use tokio::fs;
+
+        match fs::read_to_string(_file_path).await {
+            Ok(source) => {
+                let visitor = JavaAstVisitor::new(_file_path);
+                match visitor.analyze_java_source(&source) {
+                    Ok(items) => Ok(items),
+                    Err(_) => Ok(Vec::new()),
+                }
+            }
+            Err(_) => Ok(Vec::new()),
+        }
+    }
+    #[cfg(not(feature = "java-ast"))]
+    Ok(Vec::new())
+}
+
+/// Simple C# file analysis
+async fn analyze_csharp_file(
+    _file_path: &Path,
+) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
+    #[cfg(feature = "csharp-ast")]
+    {
+        use crate::services::languages::csharp::CSharpAstVisitor;
+        use tokio::fs;
+
+        match fs::read_to_string(_file_path).await {
+            Ok(source) => {
+                let visitor = CSharpAstVisitor::new(_file_path);
+                match visitor.analyze_csharp_source(&source) {
+                    Ok(items) => Ok(items),
+                    Err(_) => Ok(Vec::new()),
+                }
+            }
+            Err(_) => Ok(Vec::new()),
+        }
+    }
+    #[cfg(not(feature = "csharp-ast"))]
+    Ok(Vec::new())
+}
+
+/// Simple Ruby file analysis (tree-sitter)
+async fn analyze_ruby_file(
+    _file_path: &Path,
+) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
+    #[cfg(feature = "ruby-ast")]
+    {
+        // TODO: Implement tree-sitter Ruby analyzer
+        // For now, fall back to ruchy if available
+        Ok(Vec::new())
+    }
+    #[cfg(not(feature = "ruby-ast"))]
+    {
+        // Fall back to ruchy parser
+        #[cfg(feature = "ruchy-ast")]
+        {
+            use crate::services::languages::ruchy::RuchyAnalyzer;
+            use std::fs;
+
+            match fs::read_to_string(_file_path) {
+                Ok(source) => {
+                    let analyzer = RuchyAnalyzer::new(_file_path);
+                    match analyzer.analyze_ruby_source(&source) {
+                        Ok(items) => Ok(items),
+                        Err(_) => Ok(Vec::new()),
+                    }
+                }
+                Err(_) => Ok(Vec::new()),
+            }
+        }
+        #[cfg(not(feature = "ruchy-ast"))]
+        Ok(Vec::new())
+    }
+}
+
+/// Simple Swift file analysis
+async fn analyze_swift_file(
+    _file_path: &Path,
+) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
+    #[cfg(feature = "swift-ast")]
+    {
+        // TODO: Implement Swift tree-sitter analyzer
+        Ok(Vec::new())
+    }
+    #[cfg(not(feature = "swift-ast"))]
+    Ok(Vec::new())
+}
+
+/// Simple Elixir file analysis
+async fn analyze_elixir_file(
+    _file_path: &Path,
+) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
+    #[cfg(feature = "elixir-ast")]
+    {
+        // TODO: Implement Elixir tree-sitter analyzer
+        Ok(Vec::new())
+    }
+    #[cfg(not(feature = "elixir-ast"))]
+    Ok(Vec::new())
+}
+
+/// Simple Erlang file analysis
+async fn analyze_erlang_file(
+    _file_path: &Path,
+) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
+    #[cfg(feature = "erlang-ast")]
+    {
+        // TODO: Implement Erlang tree-sitter analyzer
+        Ok(Vec::new())
+    }
+    #[cfg(not(feature = "erlang-ast"))]
+    Ok(Vec::new())
+}
+
+/// Simple Haskell file analysis
+async fn analyze_haskell_file(
+    _file_path: &Path,
+) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
+    #[cfg(feature = "haskell-ast")]
+    {
+        // TODO: Implement Haskell tree-sitter analyzer
+        Ok(Vec::new())
+    }
+    #[cfg(not(feature = "haskell-ast"))]
+    Ok(Vec::new())
+}
+
+/// Simple OCaml file analysis
+async fn analyze_ocaml_file(
+    _file_path: &Path,
+) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
+    #[cfg(feature = "ocaml-ast")]
+    {
+        // TODO: Implement OCaml tree-sitter analyzer
+        Ok(Vec::new())
+    }
+    #[cfg(not(feature = "ocaml-ast"))]
+    Ok(Vec::new())
+}
+
+/// Simple WebAssembly file analysis
+async fn analyze_wasm_file(
+    _file_path: &Path,
+) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
+    #[cfg(feature = "wasm-ast")]
+    {
+        use crate::services::languages::wasm::WasmModuleAnalyzer;
+
+        match tokio::fs::read_to_string(_file_path).await {
+            Ok(source) => {
+                let analyzer = WasmModuleAnalyzer::new(_file_path);
+                match analyzer.analyze_wat_text(&source) {
+                    Ok(items) => Ok(items),
+                    Err(_) => Ok(Vec::new()),
+                }
+            }
+            Err(_) => Ok(Vec::new()),
+        }
+    }
+    #[cfg(not(feature = "wasm-ast"))]
+    Ok(Vec::new())
 }
 
 async fn analyze_complexity(path: &std::path::Path) -> anyhow::Result<ComplexityReport> {

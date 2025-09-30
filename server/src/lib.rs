@@ -636,6 +636,9 @@ mod tests {
     mod extreme_tdd_concurrency_fix;
     #[path = "../tests/extreme_tdd_language_support.rs"]
     mod extreme_tdd_language_support;
+
+    #[path = "../tests/multi_language_deep_context_tests.rs"]
+    mod multi_language_deep_context_tests;
 }
 
 #[cfg(test)]
