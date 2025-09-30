@@ -4625,69 +4625,23 @@ async fn analyze_single_file_complexity(
         "go" => {
             // OPTIMIZATION: Check Go unified cache first (from analyze_go_language)
             // This avoids the second parse - TICKET-3004
-            let cached = GO_UNIFIED_CACHE.with(|cache| {
+            GO_UNIFIED_CACHE.with(|cache| {
                 cache.borrow().get(file_path).cloned()
-            });
-
-            if let Some(metrics) = cached {
-                Some(metrics)
-            } else {
-                // Fallback: analyze with unified analyzer if not in cache
-                #[cfg(feature = "go-ast")]
-                {
-                    let analyzer = UnifiedGoAnalyzer::new(file_path.to_path_buf());
-                    if let Ok(analysis) = tokio::runtime::Handle::current().block_on(analyzer.analyze()) {
-                        Some(analysis.file_metrics)
-                    } else {
-                        None
-                    }
-                }
-                #[cfg(not(feature = "go-ast"))]
-                None
-            }
+            })
         }
         "wat" | "wasm" => {
             // OPTIMIZATION: Check WASM unified cache first (from analyze_wasm_language)
             // This avoids the second parse - TICKET-3005
-            let cached = WASM_UNIFIED_CACHE.with(|cache| {
+            WASM_UNIFIED_CACHE.with(|cache| {
                 cache.borrow().get(file_path).cloned()
-            });
-
-            if let Some(metrics) = cached {
-                Some(metrics)
-            } else {
-                // Fallback: analyze with unified analyzer if not in cache
-                #[cfg(feature = "wasm-ast")]
-                {
-                    let analyzer = UnifiedWasmAnalyzer::new(file_path.to_path_buf());
-                    if let Ok(analysis) = tokio::runtime::Handle::current().block_on(analyzer.analyze()) {
-                        Some(analysis.file_metrics)
-                    } else {
-                        None
-                    }
-                }
-                #[cfg(not(feature = "wasm-ast"))]
-                None
-            }
+            })
         }
         "sh" | "bash" => {
             // OPTIMIZATION: Check Bash unified cache first (from analyze_bash_language)
             // This avoids the second parse - TICKET-3006
-            let cached = BASH_UNIFIED_CACHE.with(|cache| {
+            BASH_UNIFIED_CACHE.with(|cache| {
                 cache.borrow().get(file_path).cloned()
-            });
-
-            if let Some(metrics) = cached {
-                Some(metrics)
-            } else {
-                // Fallback: analyze with unified analyzer if not in cache
-                let analyzer = UnifiedBashAnalyzer::new(file_path.to_path_buf());
-                if let Ok(analysis) = tokio::runtime::Handle::current().block_on(analyzer.analyze()) {
-                    Some(analysis.file_metrics)
-                } else {
-                    None
-                }
-            }
+            })
         }
         _ => None,
     }
