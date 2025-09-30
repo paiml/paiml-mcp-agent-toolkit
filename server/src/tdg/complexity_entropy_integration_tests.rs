@@ -69,16 +69,17 @@ fn complex(x: i32, y: i32, z: i32) -> i32 {
     /// Test that entropy score is properly weighted
     #[test]
     fn test_entropy_weight_contribution() {
-        let mut score = TdgScore::default();
-
         // Set all components to max except entropy
-        score.structural_complexity = 25.0;
-        score.semantic_complexity = 20.0;
-        score.duplication_ratio = 20.0;
-        score.coupling_score = 15.0;
-        score.doc_coverage = 10.0;
-        score.consistency_score = 10.0;
-        score.entropy_score = 0.0; // Min entropy
+        let mut score = TdgScore {
+            structural_complexity: 25.0,
+            semantic_complexity: 20.0,
+            duplication_ratio: 20.0,
+            coupling_score: 15.0,
+            doc_coverage: 10.0,
+            consistency_score: 10.0,
+            entropy_score: 0.0, // Min entropy
+            ..Default::default()
+        };
         score.calculate_total();
 
         let total_without_entropy = score.total;
@@ -199,16 +200,17 @@ fn func5() -> i32 { return 42; }
     /// Test that all components stay within their designated ranges
     #[test]
     fn test_all_components_within_range() {
-        let mut score = TdgScore::default();
-
         // Set extreme values
-        score.structural_complexity = 100.0;
-        score.semantic_complexity = 100.0;
-        score.duplication_ratio = 100.0;
-        score.coupling_score = 100.0;
-        score.doc_coverage = 100.0;
-        score.consistency_score = 100.0;
-        score.entropy_score = 100.0;
+        let mut score = TdgScore {
+            structural_complexity: 100.0,
+            semantic_complexity: 100.0,
+            duplication_ratio: 100.0,
+            coupling_score: 100.0,
+            doc_coverage: 100.0,
+            consistency_score: 100.0,
+            entropy_score: 100.0,
+            ..Default::default()
+        };
 
         score.calculate_total();
 
@@ -226,7 +228,7 @@ fn func5() -> i32 { return 42; }
     /// Test grade calculation with mixed complexity and entropy
     #[test]
     fn test_grade_calculation_with_entropy() {
-        let test_cases = vec![
+        let test_cases = [
             // (struct, sem, dup, coup, doc, cons, entropy, expected_grade)
             // Note: With normalization, max components sum to 100 before entropy,
             // and adding entropy scales it down slightly
@@ -238,14 +240,16 @@ fn func5() -> i32 { return 42; }
         ];
 
         for (i, (s, sem, d, c, doc, cons, ent, expected)) in test_cases.iter().enumerate() {
-            let mut score = TdgScore::default();
-            score.structural_complexity = *s;
-            score.semantic_complexity = *sem;
-            score.duplication_ratio = *d;
-            score.coupling_score = *c;
-            score.doc_coverage = *doc;
-            score.consistency_score = *cons;
-            score.entropy_score = *ent;
+            let mut score = TdgScore {
+                structural_complexity: *s,
+                semantic_complexity: *sem,
+                duplication_ratio: *d,
+                coupling_score: *c,
+                doc_coverage: *doc,
+                consistency_score: *cons,
+                entropy_score: *ent,
+                ..Default::default()
+            };
             score.calculate_total();
 
             assert_eq!(score.grade, *expected,

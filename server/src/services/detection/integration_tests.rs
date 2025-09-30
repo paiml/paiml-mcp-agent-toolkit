@@ -12,6 +12,15 @@ mod unified_detection_integration_tests {
     use std::fs;
     use tempfile::TempDir;
 
+    /// Type alias for boxed detector trait objects
+    type BoxedDetector = Box<
+        dyn Detector<
+            Input = DetectionInput,
+            Output = DetectionOutput,
+            Config = DetectionConfig,
+        >,
+    >;
+
     /// Test that all unified detectors can be created successfully
     #[test]
     fn test_all_detectors_creation() {
@@ -26,16 +35,7 @@ mod unified_detection_integration_tests {
     /// Test detector capabilities and metadata
     #[test]
     fn test_detector_capabilities() {
-        let detectors: Vec<(
-            &str,
-            Box<
-                dyn Detector<
-                    Input = DetectionInput,
-                    Output = DetectionOutput,
-                    Config = DetectionConfig,
-                >,
-            >,
-        )> = vec![
+        let detectors: Vec<(&str, BoxedDetector)> = vec![
             ("duplicates", Box::new(DuplicateDetector::new())),
             ("satd", Box::new(SATDDetector::new())),
             ("polyglot", Box::new(PolyglotDetector::new())),
@@ -49,14 +49,9 @@ mod unified_detection_integration_tests {
             let caps = detector.capabilities();
 
             // Capabilities should have reasonable values
-            assert!(
-                caps.supports_batch || !caps.supports_batch, // Boolean should be valid
-                "Batch support capability should be defined"
-            );
-            assert!(
-                caps.language_agnostic || !caps.language_agnostic, // Boolean should be valid
-                "Language agnostic capability should be defined"
-            );
+            // Capabilities should be defined (boolean fields always valid)
+            let _ = caps.supports_batch;
+            let _ = caps.language_agnostic;
         }
     }
 
@@ -353,7 +348,7 @@ mod unified_detection_integration_tests {
 
         // Test duplicate detection
         let rust_files = vec![rust_dir.join("main.rs")];
-        if let Ok(_) = processor.detect_duplicates(rust_files).await {
+        if processor.detect_duplicates(rust_files).await.is_ok() {
             successful_detections += 1;
             println!("✅ Duplicate detection successful");
         } else {
