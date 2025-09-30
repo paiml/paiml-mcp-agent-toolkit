@@ -643,6 +643,18 @@ mod tests {
     // TICKET-3001: Unified Rust Analyzer (EXTREME TDD - RED Phase)
     #[path = "../tests/unified_rust_analyzer_tests.rs"]
     mod unified_rust_analyzer_tests;
+
+    // TICKET-3002: Unified TypeScript Analyzer (EXTREME TDD - RED Phase)
+    #[path = "../tests/unified_typescript_analyzer_tests.rs"]
+    mod unified_typescript_analyzer_tests;
+
+    // TICKET-3003: Unified Python Analyzer (EXTREME TDD - RED Phase)
+    #[path = "../tests/unified_python_analyzer_tests.rs"]
+    mod unified_python_analyzer_tests;
+
+    // TICKET-3004: Unified Go Analyzer (EXTREME TDD - RED Phase)
+    #[path = "../tests/unified_go_analyzer_tests.rs"]
+    mod unified_go_analyzer_tests;
 }
 
 #[cfg(test)]

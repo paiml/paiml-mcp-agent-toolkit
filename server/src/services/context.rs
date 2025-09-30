@@ -81,6 +81,7 @@ pub struct FileContext {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(tag = "type")]
+#[derive(PartialEq)]
 pub enum AstItem {
     Function {
         name: String,
