@@ -20,7 +20,7 @@ mod unified_detection_integration_tests {
         let _polyglot = PolyglotDetector::new();
         let _processor = UnifiedDetectionProcessor::new();
 
-        assert!(true, "All unified detectors created successfully");
+        // All unified detectors created successfully
     }
 
     /// Test detector capabilities and metadata
@@ -240,10 +240,10 @@ mod unified_detection_integration_tests {
                     r1.total_files_analyzed, r2.total_files_analyzed,
                     "File count should be consistent"
                 );
-                assert!(true, "Consistent successful results");
+                // Consistent successful results
             }
             (Err(_), Err(_)) => {
-                assert!(true, "Consistent error results");
+                // Consistent error results
             }
             _ => panic!("Inconsistent results between detection runs"),
         }

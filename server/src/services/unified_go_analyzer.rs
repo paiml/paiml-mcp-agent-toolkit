@@ -88,7 +88,7 @@ impl UnifiedGoAnalyzer {
         let visitor = GoAstVisitor::new(&self.file_path);
         let ast_items = visitor
             .analyze_go_source(&content)
-            .map_err(|e| AnalysisError::Analysis(e))?;
+            .map_err(AnalysisError::Analysis)?;
 
         // 3. Extract complexity metrics (minimal implementation for GREEN phase)
         let file_metrics = self.extract_complexity_metrics(&content);

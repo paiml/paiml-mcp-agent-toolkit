@@ -262,7 +262,7 @@ async fn test_hooks_install_force_overwrite() -> Result<()> {
     assert!(!result.backup_created); // Force install without backup
 
     // Hook should be replaced
-    let hook_content = std::fs::read_to_string(&fixture.pre_commit_hook())?;
+    let hook_content = std::fs::read_to_string(fixture.pre_commit_hook())?;
     assert!(hook_content.contains("PMAT"));
     assert!(!hook_content.contains("existing hook"));
 
@@ -312,7 +312,7 @@ async fn test_hooks_uninstall_with_backup_restore() -> Result<()> {
     assert!(result.backup_restored);
 
     // Original hook should be restored
-    let hook_content = std::fs::read_to_string(&fixture.pre_commit_hook())?;
+    let hook_content = std::fs::read_to_string(fixture.pre_commit_hook())?;
     assert!(hook_content.contains("original hook"));
     assert!(!hook_content.contains("PMAT"));
 
@@ -393,7 +393,7 @@ async fn test_hooks_verify_with_fix() -> Result<()> {
     let _ = hooks_cmd.install(false, true).await?;
 
     // Corrupt the hook to test fix
-    std::fs::write(&fixture.pre_commit_hook(), "#!/bin/bash\necho 'corrupted'")?;
+    std::fs::write(fixture.pre_commit_hook(), "#!/bin/bash\necho 'corrupted'")?;
 
     // ACT
     let result = hooks_cmd.verify(true).await?;
@@ -404,7 +404,7 @@ async fn test_hooks_verify_with_fix() -> Result<()> {
     assert!(!result.fixes_applied.is_empty()); // Should have applied fixes
 
     // Hook should be fixed
-    let hook_content = std::fs::read_to_string(&fixture.pre_commit_hook())?;
+    let hook_content = std::fs::read_to_string(fixture.pre_commit_hook())?;
     assert!(hook_content.contains("PMAT"));
     assert!(!hook_content.contains("corrupted"));
 
@@ -453,7 +453,7 @@ async fn test_hooks_template_generation() -> Result<()> {
     let _ = hooks_cmd.install(false, true).await?;
 
     // ASSERT
-    let hook_content = std::fs::read_to_string(&fixture.pre_commit_hook())?;
+    let hook_content = std::fs::read_to_string(fixture.pre_commit_hook())?;
 
     // Should contain configuration values from pmat.toml
     assert!(hook_content.contains("30")); // max_cyclomatic_complexity
@@ -491,7 +491,7 @@ async fn test_hooks_idempotent_install() -> Result<()> {
     assert!(result3.success);
 
     // Hook content should be identical
-    let hook_content = std::fs::read_to_string(&fixture.pre_commit_hook())?;
+    let hook_content = std::fs::read_to_string(fixture.pre_commit_hook())?;
     assert!(hook_content.contains("PMAT"));
 
     Ok(())
@@ -511,7 +511,7 @@ async fn test_hooks_integration_with_config() -> Result<()> {
 
     // Install with initial config
     let _ = hooks_cmd.install(false, true).await?;
-    let initial_content = std::fs::read_to_string(&fixture.pre_commit_hook())?;
+    let initial_content = std::fs::read_to_string(fixture.pre_commit_hook())?;
 
     // Change config
     let updated_config = r#"
@@ -526,7 +526,7 @@ max_cognitive_complexity = 30
 
     // ACT
     let _ = hooks_cmd.refresh().await?;
-    let updated_content = std::fs::read_to_string(&fixture.pre_commit_hook())?;
+    let updated_content = std::fs::read_to_string(fixture.pre_commit_hook())?;
 
     // ASSERT
     assert_ne!(initial_content, updated_content);

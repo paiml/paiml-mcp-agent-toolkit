@@ -177,12 +177,13 @@ mod tests {
 
     #[test]
     fn test_quality_gate_results_with_violations() {
-        let mut results = QualityGateResults::default();
-
-        results.passed = false;
-        results.total_violations = 3;
-        results.complexity_violations = 2;
-        results.satd_violations = 1;
+        let mut results = QualityGateResults {
+            passed: false,
+            total_violations: 3,
+            complexity_violations: 2,
+            satd_violations: 1,
+            ..Default::default()
+        };
 
         results.violations.push(QualityViolation {
             file: "main.rs".to_string(),

@@ -203,7 +203,7 @@ impl McpTestClient {
                 let mut response_line = String::new();
                 reader.read_line(&mut response_line)?;
 
-                let response: McpResponse = serde_json::from_str(&response_line.trim())?;
+                let response: McpResponse = serde_json::from_str(response_line.trim())?;
                 return Ok(response);
             }
         }
@@ -344,7 +344,7 @@ impl McpValidators {
     pub fn assert_response_fields(response: &McpResponse, expected_fields: &[&str]) -> Result<()> {
         if let Some(ref result) = response.result {
             for field in expected_fields {
-                if !result.get(field).is_some() {
+                if result.get(field).is_none() {
                     anyhow::bail!("Missing expected field '{}' in response", field);
                 }
             }
@@ -402,7 +402,7 @@ impl McpValidators {
         if let Some(ref result) = response.result {
             if let Some(capabilities) = result.get("capabilities") {
                 for capability in expected_capabilities {
-                    if !capabilities.get(capability).is_some() {
+                    if capabilities.get(capability).is_none() {
                         anyhow::bail!("Missing expected capability '{}'", capability);
                     }
                 }

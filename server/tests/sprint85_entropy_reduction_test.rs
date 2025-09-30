@@ -301,13 +301,12 @@ async fn collect_files_recursive_new(
         if path.is_dir() && should_traverse_directory(&path.file_name().unwrap().to_string_lossy())
         {
             Box::pin(collect_files_recursive_new(&path, files, include, exclude)).await?;
-        } else if path.is_file() && is_source_file_new(&path) {
-            if should_include_path(&path.to_string_lossy(), include)
+        } else if path.is_file() && is_source_file_new(&path)
+            && should_include_path(&path.to_string_lossy(), include)
                 && !should_exclude_path(&path.to_string_lossy(), exclude)
             {
                 files.push(path);
             }
-        }
     }
     Ok(())
 }
@@ -316,7 +315,7 @@ async fn collect_files_recursive_new(
 fn should_exclude_path(path_str: &str, exclude_pattern: &Option<String>) -> bool {
     exclude_pattern
         .as_ref()
-        .map_or(false, |pattern| path_str.contains(pattern))
+        .is_some_and(|pattern| path_str.contains(pattern))
 }
 
 /// Test helper: Check if path should be included  
@@ -338,7 +337,7 @@ fn should_traverse_directory(dir_name: &str) -> bool {
 fn is_source_file_new(path: &Path) -> bool {
     path.extension()
         .and_then(|ext| ext.to_str())
-        .map_or(false, |ext| {
+        .is_some_and(|ext| {
             matches!(ext, "rs" | "js" | "ts" | "py" | "java" | "cpp" | "c" | "h")
         })
 }
@@ -353,7 +352,7 @@ async fn test_complexity_targets_achieved() {
     // - should_include_path: ≤3 complexity ✅
     // - should_traverse_directory: ≤5 complexity ✅
     // - is_source_file_new: ≤3 complexity ✅
-    assert!(true, "Sprint 85 complexity reduction targets achieved");
+    // Sprint 85 complexity reduction targets achieved
 }
 
 #[cfg(test)]
@@ -364,6 +363,6 @@ mod entropy_reduction_validation {
     async fn test_entropy_reduction_achieved() {
         // Sprint 85 successfully reduced entropy through Extract Method pattern
         // Measurable reduction achieved via function decomposition
-        assert!(true, "Sprint 85 entropy reduction achieved");
+        // Sprint 85 entropy reduction achieved
     }
 }

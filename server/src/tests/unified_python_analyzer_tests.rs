@@ -60,7 +60,7 @@ def greet(name):
 
     // Must have AST items
     assert!(!result.ast_items.is_empty(), "Must extract AST items");
-    assert!(result.ast_items.len() >= 1, "Should find at least 1 function");
+    assert!(!result.ast_items.is_empty(), "Should find at least 1 function");
 
     // Must have complexity metrics (GREEN phase may overcount - that's OK)
     assert!(!result.file_metrics.functions.is_empty(), "Must extract complexity");
@@ -138,7 +138,7 @@ mod property_tests {
             prop_assert!(result.is_ok(), "Must handle any valid Python");
             let analysis = result.unwrap();
             // GREEN phase may find more or fewer items due to simple pattern matching
-            prop_assert!(analysis.ast_items.len() >= 1, "Should find at least some items");
+            prop_assert!(!analysis.ast_items.is_empty(), "Should find at least some items");
         }
     }
 }
