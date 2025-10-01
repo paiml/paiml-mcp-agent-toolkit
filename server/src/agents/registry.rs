@@ -45,6 +45,9 @@ impl AgentRegistry {
     }
 
     pub async fn list_agents(&self) -> Vec<String> {
-        self.agents_by_name.iter().map(|entry| entry.key().clone()).collect()
+        self.agents_by_name
+            .iter()
+            .map(|entry| entry.key().clone())
+            .collect()
     }
 }

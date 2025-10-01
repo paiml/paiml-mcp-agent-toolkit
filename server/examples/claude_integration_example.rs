@@ -2,8 +2,7 @@
 // Demonstrates basic usage, caching, feature flags, and observability
 
 use pmat::claude_integration::{
-    BridgeConfig, ClaudeBridge, FeatureFlags, FeatureFlagsBuilder, MetricsCollector,
-    RolloutStrategy,
+    BridgeConfig, ClaudeBridge, FeatureFlagsBuilder, MetricsCollector, RolloutStrategy,
 };
 use std::time::Duration;
 

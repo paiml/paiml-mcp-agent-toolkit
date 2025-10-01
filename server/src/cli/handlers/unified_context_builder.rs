@@ -3,9 +3,9 @@
 #![allow(dead_code)]
 
 use crate::services::context::ProjectContext;
-use std::path::{Path, PathBuf};
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
+use std::path::{Path, PathBuf};
 
 pub struct UnifiedContextBuilder {
     output: String,
@@ -27,16 +27,31 @@ impl UnifiedContextBuilder {
     pub fn add_basic_structure_with_context(&mut self, context: &ProjectContext) -> &mut Self {
         self.output.push_str("# Project Context\n\n");
         self.output.push_str("## Project Structure\n\n");
-        self.output.push_str(&format!("- **Language**: {}\n", &context.project_type));
-        self.output.push_str(&format!("- **Total Files**: {}\n", context.summary.total_files));
-        self.output.push_str(&format!("- **Total Functions**: {}\n", context.summary.total_functions));
-        self.output.push_str(&format!("- **Total Structs**: {}\n", context.summary.total_structs));
-        self.output.push_str(&format!("- **Total Enums**: {}\n", context.summary.total_enums));
-        self.output.push_str(&format!("- **Total Traits**: {}\n", context.summary.total_traits));
+        self.output
+            .push_str(&format!("- **Language**: {}\n", &context.project_type));
+        self.output.push_str(&format!(
+            "- **Total Files**: {}\n",
+            context.summary.total_files
+        ));
+        self.output.push_str(&format!(
+            "- **Total Functions**: {}\n",
+            context.summary.total_functions
+        ));
+        self.output.push_str(&format!(
+            "- **Total Structs**: {}\n",
+            context.summary.total_structs
+        ));
+        self.output.push_str(&format!(
+            "- **Total Enums**: {}\n",
+            context.summary.total_enums
+        ));
+        self.output.push_str(&format!(
+            "- **Total Traits**: {}\n",
+            context.summary.total_traits
+        ));
         self.output.push('\n');
         self
     }
-
 
     // Add key components with function names
     pub fn add_key_components(&mut self, context: &ProjectContext) -> &mut Self {
@@ -62,7 +77,8 @@ impl UnifiedContextBuilder {
 
         if let Ok(analysis) = big_o_result {
             for (function, complexity) in analysis.complexities {
-                self.output.push_str(&format!("- `{}`: {}\n", function, complexity));
+                self.output
+                    .push_str(&format!("- `{}`: {}\n", function, complexity));
             }
         } else {
             self.output.push_str("*Big-O analysis not available*\n");
@@ -79,9 +95,18 @@ impl UnifiedContextBuilder {
         let entropy_result = run_entropy_analysis(&self.project_path).await;
 
         if let Ok(analysis) = entropy_result {
-            self.output.push_str(&format!("- Pattern Entropy: {:.3}\n", analysis.pattern_entropy));
-            self.output.push_str(&format!("- Code Duplication: {:.1}%\n", analysis.duplication_percentage));
-            self.output.push_str(&format!("- Structural Entropy: {:.3}\n", analysis.structural_entropy));
+            self.output.push_str(&format!(
+                "- Pattern Entropy: {:.3}\n",
+                analysis.pattern_entropy
+            ));
+            self.output.push_str(&format!(
+                "- Code Duplication: {:.1}%\n",
+                analysis.duplication_percentage
+            ));
+            self.output.push_str(&format!(
+                "- Structural Entropy: {:.3}\n",
+                analysis.structural_entropy
+            ));
 
             if !analysis.actionable_improvements.is_empty() {
                 self.output.push_str("- Actionable Improvements:\n");
@@ -119,11 +144,15 @@ impl UnifiedContextBuilder {
                 self.output.push_str(&format!("- {}\n", postcondition));
             }
 
-            self.output.push_str("\n### Abstract Interpretation Results\n");
-            self.output.push_str(&format!("- Sound: {}\n", analysis.is_sound));
-            self.output.push_str(&format!("- Complete: {}\n", analysis.is_complete));
+            self.output
+                .push_str("\n### Abstract Interpretation Results\n");
+            self.output
+                .push_str(&format!("- Sound: {}\n", analysis.is_sound));
+            self.output
+                .push_str(&format!("- Complete: {}\n", analysis.is_complete));
         } else {
-            self.output.push_str("*Provability analysis not available*\n");
+            self.output
+                .push_str("*Provability analysis not available*\n");
         }
         self.output.push('\n');
         self
@@ -138,14 +167,26 @@ impl UnifiedContextBuilder {
 
         if let Ok(analysis) = graph_result {
             self.output.push_str("### Centrality Measures\n");
-            self.output.push_str(&format!("- Betweenness Centrality: {:.3}\n", analysis.betweenness));
-            self.output.push_str(&format!("- Closeness Centrality: {:.3}\n", analysis.closeness));
-            self.output.push_str(&format!("- Degree Centrality: {:.3}\n", analysis.degree));
+            self.output.push_str(&format!(
+                "- Betweenness Centrality: {:.3}\n",
+                analysis.betweenness
+            ));
+            self.output.push_str(&format!(
+                "- Closeness Centrality: {:.3}\n",
+                analysis.closeness
+            ));
+            self.output
+                .push_str(&format!("- Degree Centrality: {:.3}\n", analysis.degree));
 
             self.output.push_str("\n### Dependency Graph\n");
-            self.output.push_str(&format!("- Nodes: {}\n", analysis.node_count));
-            self.output.push_str(&format!("- Edges: {}\n", analysis.edge_count));
-            self.output.push_str(&format!("- Cyclomatic Complexity: {}\n", analysis.cyclomatic));
+            self.output
+                .push_str(&format!("- Nodes: {}\n", analysis.node_count));
+            self.output
+                .push_str(&format!("- Edges: {}\n", analysis.edge_count));
+            self.output.push_str(&format!(
+                "- Cyclomatic Complexity: {}\n",
+                analysis.cyclomatic
+            ));
 
             if !analysis.critical_paths.is_empty() {
                 self.output.push_str("\n### Critical Paths\n");
@@ -168,16 +209,23 @@ impl UnifiedContextBuilder {
         let tdg_result = run_tdg_analysis(&self.project_path).await;
 
         if let Ok(analysis) = tdg_result {
-            self.output.push_str(&format!("### Overall TDG Score: {:.2}\n\n", analysis.overall_score));
+            self.output.push_str(&format!(
+                "### Overall TDG Score: {:.2}\n\n",
+                analysis.overall_score
+            ));
 
             self.output.push_str("### File-level TDG:\n");
             for (file, score) in &analysis.file_scores {
-                self.output.push_str(&format!("- `{}`: {:.2}\n", file, score));
+                self.output
+                    .push_str(&format!("- `{}`: {:.2}\n", file, score));
             }
 
             self.output.push_str("\n### Debt Hotspots:\n");
             for hotspot in &analysis.hotspots {
-                self.output.push_str(&format!("- {} (Score: {:.2})\n", hotspot.location, hotspot.score));
+                self.output.push_str(&format!(
+                    "- {} (Score: {:.2})\n",
+                    hotspot.location, hotspot.score
+                ));
             }
 
             self.output.push_str("\n### Refactoring Priority:\n");
@@ -239,46 +287,65 @@ impl UnifiedContextBuilder {
 
     // Add SATD analysis
     pub async fn add_satd_analysis(&mut self) -> &mut Self {
-        self.output.push_str("## Self-Admitted Technical Debt (SATD)\n\n");
+        self.output
+            .push_str("## Self-Admitted Technical Debt (SATD)\n\n");
 
         // Run SATD analysis
         let satd_result = run_satd_analysis(&self.project_path).await;
 
         if let Ok(analysis) = satd_result {
-            let total_satd = analysis.todos.len() + analysis.fixmes.len() +
-                           analysis.hacks.len() + analysis.tech_debt.len();
+            let total_satd = analysis.todos.len()
+                + analysis.fixmes.len()
+                + analysis.hacks.len()
+                + analysis.tech_debt.len();
 
-            self.output.push_str(&format!("### Total SATD Comments: {}\n\n", total_satd));
+            self.output
+                .push_str(&format!("### Total SATD Comments: {}\n\n", total_satd));
 
             if !analysis.todos.is_empty() {
-                self.output.push_str(&format!("### TODO Comments: {}\n", analysis.todos.len()));
+                self.output
+                    .push_str(&format!("### TODO Comments: {}\n", analysis.todos.len()));
                 for (_i, todo) in analysis.todos.iter().enumerate().take(5) {
-                    self.output.push_str(&format!("- {}: {}\n", todo.location, todo.comment));
+                    self.output
+                        .push_str(&format!("- {}: {}\n", todo.location, todo.comment));
                 }
                 if analysis.todos.len() > 5 {
-                    self.output.push_str(&format!("- ... and {} more\n", analysis.todos.len() - 5));
+                    self.output
+                        .push_str(&format!("- ... and {} more\n", analysis.todos.len() - 5));
                 }
             }
 
             if !analysis.fixmes.is_empty() {
-                self.output.push_str(&format!("\n### FIXME Comments: {}\n", analysis.fixmes.len()));
+                self.output.push_str(&format!(
+                    "\n### FIXME Comments: {}\n",
+                    analysis.fixmes.len()
+                ));
                 for (_i, fixme) in analysis.fixmes.iter().enumerate().take(5) {
-                    self.output.push_str(&format!("- {}: {}\n", fixme.location, fixme.comment));
+                    self.output
+                        .push_str(&format!("- {}: {}\n", fixme.location, fixme.comment));
                 }
             }
 
             if !analysis.hacks.is_empty() {
-                self.output.push_str(&format!("\n### HACK Comments: {}\n", analysis.hacks.len()));
+                self.output
+                    .push_str(&format!("\n### HACK Comments: {}\n", analysis.hacks.len()));
                 for hack in analysis.hacks.iter().take(3) {
-                    self.output.push_str(&format!("- {}: {}\n", hack.location, hack.comment));
+                    self.output
+                        .push_str(&format!("- {}: {}\n", hack.location, hack.comment));
                 }
             }
 
             self.output.push_str("\n### Debt Categories:\n");
-            self.output.push_str(&format!("- Design Debt: {}\n", analysis.design_debt_count));
-            self.output.push_str(&format!("- Code Debt: {}\n", analysis.code_debt_count));
-            self.output.push_str(&format!("- Test Debt: {}\n", analysis.test_debt_count));
-            self.output.push_str(&format!("- Documentation Debt: {}\n", analysis.doc_debt_count));
+            self.output
+                .push_str(&format!("- Design Debt: {}\n", analysis.design_debt_count));
+            self.output
+                .push_str(&format!("- Code Debt: {}\n", analysis.code_debt_count));
+            self.output
+                .push_str(&format!("- Test Debt: {}\n", analysis.test_debt_count));
+            self.output.push_str(&format!(
+                "- Documentation Debt: {}\n",
+                analysis.doc_debt_count
+            ));
         } else {
             self.output.push_str("*SATD analysis not available*\n");
         }
@@ -294,10 +361,14 @@ impl UnifiedContextBuilder {
         let total_files = context.summary.total_files;
 
         if total_functions > 20 {
-            self.output.push_str(&format!("- Large codebase with {} functions across {} files\n",
-                total_functions, total_files));
-            self.output.push_str(&format!("- Average {:.1} functions per file\n",
-                total_functions as f64 / total_files.max(1) as f64));
+            self.output.push_str(&format!(
+                "- Large codebase with {} functions across {} files\n",
+                total_functions, total_files
+            ));
+            self.output.push_str(&format!(
+                "- Average {:.1} functions per file\n",
+                total_functions as f64 / total_files.max(1) as f64
+            ));
         }
 
         // Add more insights based on analysis results
@@ -310,10 +381,14 @@ impl UnifiedContextBuilder {
         self.output.push_str("## Recommendations\n\n");
 
         // Generate recommendations based on all analyses
-        self.output.push_str("- Consider modularizing the codebase for better organization\n");
-        self.output.push_str("- Enable detailed AST analysis for function-level insights\n");
-        self.output.push_str("- Review and address identified technical debt\n");
-        self.output.push_str("- Refactor high-complexity functions\n");
+        self.output
+            .push_str("- Consider modularizing the codebase for better organization\n");
+        self.output
+            .push_str("- Enable detailed AST analysis for function-level insights\n");
+        self.output
+            .push_str("- Review and address identified technical debt\n");
+        self.output
+            .push_str("- Refactor high-complexity functions\n");
 
         self.output.push('\n');
         self
@@ -323,7 +398,6 @@ impl UnifiedContextBuilder {
     pub fn build(self) -> String {
         self.output
     }
-
 
     // Synchronous test-friendly methods
     pub fn add_basic_structure(&mut self) -> &mut Self {
@@ -354,7 +428,8 @@ impl UnifiedContextBuilder {
         self.output.push_str("- Code Duplication: 15.0%\n");
         self.output.push_str("- Structural Entropy: 0.650\n");
         self.output.push_str("- Actionable Improvements:\n");
-        self.output.push_str("  - Reduce duplication in utility functions\n");
+        self.output
+            .push_str("  - Reduce duplication in utility functions\n");
         self.output.push_str("  - Extract common patterns\n");
         self.output.push('\n');
         self
@@ -369,7 +444,8 @@ impl UnifiedContextBuilder {
         self.output.push_str("\n### Debt Hotspots:\n");
         self.output.push_str("- main.rs:45 (Score: 3.20)\n");
         self.output.push_str("\n### Refactoring Priority:\n");
-        self.output.push_str("1. Simplify complex function in utils.rs\n");
+        self.output
+            .push_str("1. Simplify complex function in utils.rs\n");
         self.output.push('\n');
         self
     }
@@ -468,10 +544,10 @@ struct DeadCodeAnalysis {
 
 impl DeadCodeAnalysis {
     fn is_empty(&self) -> bool {
-        self.unreachable_functions.is_empty() &&
-        self.unused_variables.is_empty() &&
-        self.unused_imports.is_empty() &&
-        self.dead_branches.is_empty()
+        self.unreachable_functions.is_empty()
+            && self.unused_variables.is_empty()
+            && self.unused_imports.is_empty()
+            && self.dead_branches.is_empty()
     }
 }
 

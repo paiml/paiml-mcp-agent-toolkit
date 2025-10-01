@@ -1,6 +1,6 @@
-use tempfile::TempDir;
+use crate::services::simple_deep_context::{SimpleAnalysisConfig, SimpleDeepContext};
 use std::fs;
-use crate::services::simple_deep_context::{SimpleDeepContext, SimpleAnalysisConfig};
+use tempfile::TempDir;
 
 #[cfg(test)]
 mod extreme_tdd_tests {
@@ -29,9 +29,11 @@ mod extreme_tdd_tests {
         // Function extraction working correctly now
 
         // This MUST show at least 1 function
-        assert!(analysis_result.complexity_metrics.total_functions >= 1,
-                "Unified context failed to extract functions! Found: {}",
-                analysis_result.complexity_metrics.total_functions);
+        assert!(
+            analysis_result.complexity_metrics.total_functions >= 1,
+            "Unified context failed to extract functions! Found: {}",
+            analysis_result.complexity_metrics.total_functions
+        );
     }
 
     #[tokio::test]
@@ -43,7 +45,11 @@ mod extreme_tdd_tests {
         fs::write(temp_dir.path().join("test.rs"), "fn rust_func() {}").unwrap();
         fs::write(temp_dir.path().join("test.ts"), "function tsFunc() {}").unwrap();
         fs::write(temp_dir.path().join("test.js"), "function jsFunc() {}").unwrap();
-        fs::write(temp_dir.path().join("test.py"), "def python_func():\n    pass").unwrap();
+        fs::write(
+            temp_dir.path().join("test.py"),
+            "def python_func():\n    pass",
+        )
+        .unwrap();
 
         let analyzer = SimpleDeepContext::new();
         let config = SimpleAnalysisConfig {
@@ -64,8 +70,14 @@ mod extreme_tdd_tests {
         // Multi-language support working correctly now
 
         // Should detect multiple files and functions
-        assert!(analysis_result.file_count >= 4, "Should detect all language files");
-        assert!(analysis_result.complexity_metrics.total_functions >= 4, "Should detect functions in all languages");
+        assert!(
+            analysis_result.file_count >= 4,
+            "Should detect all language files"
+        );
+        assert!(
+            analysis_result.complexity_metrics.total_functions >= 4,
+            "Should detect functions in all languages"
+        );
     }
 
     #[tokio::test]
@@ -89,10 +101,14 @@ mod extreme_tdd_tests {
         let result2 = analyzer.analyze(config).await.unwrap();
 
         // Results should be identical
-        assert_eq!(result1.file_count, result2.file_count,
-                  "File count should be consistent across runs");
-        assert_eq!(result1.complexity_metrics.total_functions, result2.complexity_metrics.total_functions,
-                  "Function count should be consistent across runs");
+        assert_eq!(
+            result1.file_count, result2.file_count,
+            "File count should be consistent across runs"
+        );
+        assert_eq!(
+            result1.complexity_metrics.total_functions, result2.complexity_metrics.total_functions,
+            "Function count should be consistent across runs"
+        );
     }
 
     #[tokio::test]
@@ -124,7 +140,10 @@ mod extreme_tdd_tests {
 
         // Should detect WASM functions
         assert!(analysis_result.file_count >= 1, "Should detect WASM file");
-        assert!(analysis_result.complexity_metrics.total_functions >= 1, "Should detect WASM functions");
+        assert!(
+            analysis_result.complexity_metrics.total_functions >= 1,
+            "Should detect WASM functions"
+        );
     }
 
     #[tokio::test]
@@ -220,9 +239,11 @@ class UserManager {
         let analysis_result = analyzer.analyze(config).await.unwrap();
 
         // Should detect TypeScript functions
-        assert!(analysis_result.complexity_metrics.total_functions >= 2,
-                "Should detect TypeScript functions: processUser, updateUser. Found: {}",
-                analysis_result.complexity_metrics.total_functions);
+        assert!(
+            analysis_result.complexity_metrics.total_functions >= 2,
+            "Should detect TypeScript functions: processUser, updateUser. Found: {}",
+            analysis_result.complexity_metrics.total_functions
+        );
     }
 }
 
@@ -263,7 +284,7 @@ mod property_tests {
                     Ok(_result) => {
                         // Property: function count should always be non-negative (usize is always >= 0)
                         TestResult::passed()
-                    },
+                    }
                     Err(_) => TestResult::passed(), // Errors acceptable for invalid input
                 }
             })
@@ -286,7 +307,10 @@ mod property_tests {
                     Err(_) => return TestResult::failed(),
                 };
 
-                let content = format!("function {}() {{ return 42; }}", valid_function.replace(|c: char| !c.is_alphanumeric(), "_"));
+                let content = format!(
+                    "function {}() {{ return 42; }}",
+                    valid_function.replace(|c: char| !c.is_alphanumeric(), "_")
+                );
                 let file_path = temp_dir.path().join("test.ts");
                 if fs::write(&file_path, &content).is_err() {
                     return TestResult::failed();
@@ -301,11 +325,17 @@ mod property_tests {
                     enable_verbose: false,
                 };
 
-                match (analyzer.analyze(config.clone()).await, analyzer.analyze(config).await) {
+                match (
+                    analyzer.analyze(config.clone()).await,
+                    analyzer.analyze(config).await,
+                ) {
                     (Ok(result1), Ok(result2)) => {
                         // Property: analysis should be deterministic
-                        TestResult::from_bool(result1.complexity_metrics.total_functions == result2.complexity_metrics.total_functions)
-                    },
+                        TestResult::from_bool(
+                            result1.complexity_metrics.total_functions
+                                == result2.complexity_metrics.total_functions,
+                        )
+                    }
                     _ => TestResult::passed(), // Errors are acceptable
                 }
             })

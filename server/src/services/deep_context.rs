@@ -3904,6 +3904,17 @@ fn log_analysis_completion(analysis_start: std::time::Instant, file_count: usize
 pub async fn analyze_single_file(file_path: &std::path::Path) -> anyhow::Result<FileContext> {
     let path_str = file_path.to_string_lossy().to_string();
     let language = detect_language(file_path);
+
+    // Defensive programming: Check if file exists before analyzing
+    if !file_path.exists() {
+        return Ok(FileContext {
+            path: path_str,
+            language,
+            items: Vec::new(),
+            complexity_metrics: None,
+        });
+    }
+
     let items = analyze_file_by_language(file_path, &language).await?;
 
     Ok(FileContext {

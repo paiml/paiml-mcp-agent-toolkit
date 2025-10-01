@@ -1,8 +1,8 @@
 // Unified Context with Advanced Annotations - Extreme TDD Implementation
-use crate::services::context::{ProjectContext, ProjectSummary, AstItem};
-use std::path::{Path, PathBuf};
-use std::collections::HashMap;
+use crate::services::context::{AstItem, ProjectContext, ProjectSummary};
 use anyhow::Result;
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 use tracing::{info, warn};
 
 /// Advanced context builder that integrates all analysis types
@@ -35,7 +35,10 @@ impl AdvancedUnifiedContextBuilder {
 
     /// Build the complete unified context with all annotations
     pub async fn build_complete_context(&mut self) -> Result<String> {
-        info!("Building unified context with advanced annotations for {:?}", self.project_path);
+        info!(
+            "Building unified context with advanced annotations for {:?}",
+            self.project_path
+        );
 
         // Step 1: Get basic context using SimpleDeepContext
         let basic_context = self.get_basic_context().await?;
@@ -80,7 +83,7 @@ impl AdvancedUnifiedContextBuilder {
     }
 
     async fn get_basic_context(&self) -> Result<ProjectContext> {
-        use crate::services::simple_deep_context::{SimpleDeepContext, SimpleAnalysisConfig};
+        use crate::services::simple_deep_context::{SimpleAnalysisConfig, SimpleDeepContext};
 
         let analyzer = SimpleDeepContext::new();
         let config = SimpleAnalysisConfig {
@@ -96,7 +99,7 @@ impl AdvancedUnifiedContextBuilder {
         // Convert SimpleDeepContext report to ProjectContext
         Ok(ProjectContext {
             project_type: "rust".to_string(), // Default to rust
-            files: vec![], // Would need to be populated from analysis_report
+            files: vec![],                    // Would need to be populated from analysis_report
             summary: ProjectSummary {
                 total_files: analysis_report.file_count,
                 total_functions: analysis_report.complexity_metrics.total_functions,
@@ -111,17 +114,34 @@ impl AdvancedUnifiedContextBuilder {
 
     fn add_project_header(&mut self, context: &ProjectContext) {
         self.output.push_str("# Project Context\n\n");
-        self.output.push_str(&format!("Project: {}\n", self.project_path.display()));
-        self.output.push_str(&format!("Language: {}\n\n", &context.project_type));
+        self.output
+            .push_str(&format!("Project: {}\n", self.project_path.display()));
+        self.output
+            .push_str(&format!("Language: {}\n\n", &context.project_type));
     }
 
     fn add_project_structure(&mut self, context: &ProjectContext) {
         self.output.push_str("## Project Structure\n\n");
-        self.output.push_str(&format!("- **Total Files**: {}\n", context.summary.total_files));
-        self.output.push_str(&format!("- **Total Functions**: {}\n", context.summary.total_functions));
-        self.output.push_str(&format!("- **Total Structs**: {}\n", context.summary.total_structs));
-        self.output.push_str(&format!("- **Total Enums**: {}\n", context.summary.total_enums));
-        self.output.push_str(&format!("- **Total Traits**: {}\n", context.summary.total_traits));
+        self.output.push_str(&format!(
+            "- **Total Files**: {}\n",
+            context.summary.total_files
+        ));
+        self.output.push_str(&format!(
+            "- **Total Functions**: {}\n",
+            context.summary.total_functions
+        ));
+        self.output.push_str(&format!(
+            "- **Total Structs**: {}\n",
+            context.summary.total_structs
+        ));
+        self.output.push_str(&format!(
+            "- **Total Enums**: {}\n",
+            context.summary.total_enums
+        ));
+        self.output.push_str(&format!(
+            "- **Total Traits**: {}\n",
+            context.summary.total_traits
+        ));
         self.output.push('\n');
     }
 
@@ -131,15 +151,30 @@ impl AdvancedUnifiedContextBuilder {
         for file in &context.files {
             if let Some(complexity) = &file.complexity_metrics {
                 if !complexity.functions.is_empty() {
-                    self.output.push_str(&format!("### File: `{}`\n", file.path));
-                    self.output.push_str(&format!("- Cyclomatic: {}\n", complexity.total_complexity.cyclomatic));
-                    self.output.push_str(&format!("- Cognitive: {}\n", complexity.total_complexity.cognitive));
-                    self.output.push_str(&format!("- Function Count: {}\n", complexity.functions.len()));
+                    self.output
+                        .push_str(&format!("### File: `{}`\n", file.path));
+                    self.output.push_str(&format!(
+                        "- Cyclomatic: {}\n",
+                        complexity.total_complexity.cyclomatic
+                    ));
+                    self.output.push_str(&format!(
+                        "- Cognitive: {}\n",
+                        complexity.total_complexity.cognitive
+                    ));
+                    self.output.push_str(&format!(
+                        "- Function Count: {}\n",
+                        complexity.functions.len()
+                    ));
 
                     // Function names would be extracted from AST items
-                    let function_count = file.items.iter().filter(|i| matches!(i, AstItem::Function { .. })).count();
+                    let function_count = file
+                        .items
+                        .iter()
+                        .filter(|i| matches!(i, AstItem::Function { .. }))
+                        .count();
                     if function_count > 0 {
-                        self.output.push_str(&format!("- Functions: {}\n", function_count));
+                        self.output
+                            .push_str(&format!("- Functions: {}\n", function_count));
                     }
                     self.output.push('\n');
                 }
@@ -153,10 +188,12 @@ impl AdvancedUnifiedContextBuilder {
         match self.run_big_o_analysis().await {
             Ok(analysis) => {
                 if analysis.is_empty() {
-                    self.output.push_str("*No complexity patterns detected*\n\n");
+                    self.output
+                        .push_str("*No complexity patterns detected*\n\n");
                 } else {
                     for (function, complexity) in analysis {
-                        self.output.push_str(&format!("- `{}`: {}\n", function, complexity));
+                        self.output
+                            .push_str(&format!("- `{}`: {}\n", function, complexity));
                     }
                     self.output.push('\n');
                 }
@@ -175,9 +212,18 @@ impl AdvancedUnifiedContextBuilder {
 
         match self.run_entropy_analysis().await {
             Ok(entropy_data) => {
-                self.output.push_str(&format!("- **Pattern Entropy**: {:.3}\n", entropy_data.pattern_entropy));
-                self.output.push_str(&format!("- **Code Duplication**: {:.1}%\n", entropy_data.duplication_percentage));
-                self.output.push_str(&format!("- **Structural Entropy**: {:.3}\n", entropy_data.structural_entropy));
+                self.output.push_str(&format!(
+                    "- **Pattern Entropy**: {:.3}\n",
+                    entropy_data.pattern_entropy
+                ));
+                self.output.push_str(&format!(
+                    "- **Code Duplication**: {:.1}%\n",
+                    entropy_data.duplication_percentage
+                ));
+                self.output.push_str(&format!(
+                    "- **Structural Entropy**: {:.3}\n",
+                    entropy_data.structural_entropy
+                ));
 
                 if !entropy_data.actionable_items.is_empty() {
                     self.output.push_str("\n### Actionable Improvements:\n");
@@ -216,13 +262,20 @@ impl AdvancedUnifiedContextBuilder {
                     self.output.push_str(&format!("- {}\n", post));
                 }
 
-                self.output.push_str(&format!("\n### Verification Status: {}\n",
-                    if provability_data.verified { "✓ Verified" } else { "⚠ Unverified" }));
+                self.output.push_str(&format!(
+                    "\n### Verification Status: {}\n",
+                    if provability_data.verified {
+                        "✓ Verified"
+                    } else {
+                        "⚠ Unverified"
+                    }
+                ));
                 self.output.push('\n');
             }
             Err(e) => {
                 warn!("Provability analysis failed: {}", e);
-                self.output.push_str("*Provability analysis unavailable*\n\n");
+                self.output
+                    .push_str("*Provability analysis unavailable*\n\n");
             }
         }
 
@@ -235,14 +288,26 @@ impl AdvancedUnifiedContextBuilder {
         match self.run_graph_metrics_analysis().await {
             Ok(graph_data) => {
                 self.output.push_str("### Centrality Measures\n");
-                self.output.push_str(&format!("- **Betweenness Centrality**: {:.3}\n", graph_data.betweenness));
-                self.output.push_str(&format!("- **Closeness Centrality**: {:.3}\n", graph_data.closeness));
-                self.output.push_str(&format!("- **Degree Centrality**: {:.3}\n", graph_data.degree));
+                self.output.push_str(&format!(
+                    "- **Betweenness Centrality**: {:.3}\n",
+                    graph_data.betweenness
+                ));
+                self.output.push_str(&format!(
+                    "- **Closeness Centrality**: {:.3}\n",
+                    graph_data.closeness
+                ));
+                self.output.push_str(&format!(
+                    "- **Degree Centrality**: {:.3}\n",
+                    graph_data.degree
+                ));
 
                 self.output.push_str("\n### Graph Structure\n");
-                self.output.push_str(&format!("- **Nodes**: {}\n", graph_data.node_count));
-                self.output.push_str(&format!("- **Edges**: {}\n", graph_data.edge_count));
-                self.output.push_str(&format!("- **Density**: {:.3}\n", graph_data.density));
+                self.output
+                    .push_str(&format!("- **Nodes**: {}\n", graph_data.node_count));
+                self.output
+                    .push_str(&format!("- **Edges**: {}\n", graph_data.edge_count));
+                self.output
+                    .push_str(&format!("- **Density**: {:.3}\n", graph_data.density));
 
                 if !graph_data.critical_paths.is_empty() {
                     self.output.push_str("\n### Critical Paths\n");
@@ -266,19 +331,26 @@ impl AdvancedUnifiedContextBuilder {
 
         match self.run_tdg_analysis().await {
             Ok(tdg_data) => {
-                self.output.push_str(&format!("### Overall TDG Score: {:.2}\n\n", tdg_data.overall_score));
+                self.output.push_str(&format!(
+                    "### Overall TDG Score: {:.2}\n\n",
+                    tdg_data.overall_score
+                ));
 
                 if !tdg_data.file_scores.is_empty() {
                     self.output.push_str("### File-level TDG Scores\n");
                     for (file, score) in &tdg_data.file_scores {
-                        self.output.push_str(&format!("- `{}`: {:.2}\n", file, score));
+                        self.output
+                            .push_str(&format!("- `{}`: {:.2}\n", file, score));
                     }
                 }
 
                 if !tdg_data.hotspots.is_empty() {
                     self.output.push_str("\n### Debt Hotspots\n");
                     for hotspot in &tdg_data.hotspots {
-                        self.output.push_str(&format!("- {} (Score: {:.2})\n", hotspot.location, hotspot.score));
+                        self.output.push_str(&format!(
+                            "- {} (Score: {:.2})\n",
+                            hotspot.location, hotspot.score
+                        ));
                     }
                 }
 
@@ -309,7 +381,8 @@ impl AdvancedUnifiedContextBuilder {
                 if total_dead == 0 {
                     self.output.push_str("✓ No dead code detected\n\n");
                 } else {
-                    self.output.push_str(&format!("⚠ Total dead code items: {}\n\n", total_dead));
+                    self.output
+                        .push_str(&format!("⚠ Total dead code items: {}\n\n", total_dead));
 
                     if !dead_code_data.unreachable_functions.is_empty() {
                         self.output.push_str("### Unreachable Functions\n");
@@ -344,43 +417,62 @@ impl AdvancedUnifiedContextBuilder {
     }
 
     async fn add_satd_analysis(&mut self) -> Result<()> {
-        self.output.push_str("## Self-Admitted Technical Debt (SATD)\n\n");
+        self.output
+            .push_str("## Self-Admitted Technical Debt (SATD)\n\n");
 
         match self.run_satd_analysis().await {
             Ok(satd_data) => {
                 let total_satd = satd_data.total_satd_count();
 
-                self.output.push_str(&format!("### Total SATD Comments: {}\n\n", total_satd));
+                self.output
+                    .push_str(&format!("### Total SATD Comments: {}\n\n", total_satd));
 
                 if !satd_data.todos.is_empty() {
-                    self.output.push_str(&format!("### TODO Comments ({})\n", satd_data.todos.len()));
+                    self.output
+                        .push_str(&format!("### TODO Comments ({})\n", satd_data.todos.len()));
                     for todo in satd_data.todos.iter().take(5) {
-                        self.output.push_str(&format!("- {}: {}\n", todo.location, todo.comment));
+                        self.output
+                            .push_str(&format!("- {}: {}\n", todo.location, todo.comment));
                     }
                     if satd_data.todos.len() > 5 {
-                        self.output.push_str(&format!("- ... and {} more\n", satd_data.todos.len() - 5));
+                        self.output
+                            .push_str(&format!("- ... and {} more\n", satd_data.todos.len() - 5));
                     }
                 }
 
                 if !satd_data.fixmes.is_empty() {
-                    self.output.push_str(&format!("\n### FIXME Comments ({})\n", satd_data.fixmes.len()));
+                    self.output.push_str(&format!(
+                        "\n### FIXME Comments ({})\n",
+                        satd_data.fixmes.len()
+                    ));
                     for fixme in satd_data.fixmes.iter().take(3) {
-                        self.output.push_str(&format!("- {}: {}\n", fixme.location, fixme.comment));
+                        self.output
+                            .push_str(&format!("- {}: {}\n", fixme.location, fixme.comment));
                     }
                 }
 
                 if !satd_data.hacks.is_empty() {
-                    self.output.push_str(&format!("\n### HACK Comments ({})\n", satd_data.hacks.len()));
+                    self.output.push_str(&format!(
+                        "\n### HACK Comments ({})\n",
+                        satd_data.hacks.len()
+                    ));
                     for hack in satd_data.hacks.iter().take(3) {
-                        self.output.push_str(&format!("- {}: {}\n", hack.location, hack.comment));
+                        self.output
+                            .push_str(&format!("- {}: {}\n", hack.location, hack.comment));
                     }
                 }
 
                 self.output.push_str("\n### Debt Categories\n");
-                self.output.push_str(&format!("- **Design Debt**: {}\n", satd_data.design_debt));
-                self.output.push_str(&format!("- **Code Debt**: {}\n", satd_data.code_debt));
-                self.output.push_str(&format!("- **Test Debt**: {}\n", satd_data.test_debt));
-                self.output.push_str(&format!("- **Documentation Debt**: {}\n", satd_data.doc_debt));
+                self.output
+                    .push_str(&format!("- **Design Debt**: {}\n", satd_data.design_debt));
+                self.output
+                    .push_str(&format!("- **Code Debt**: {}\n", satd_data.code_debt));
+                self.output
+                    .push_str(&format!("- **Test Debt**: {}\n", satd_data.test_debt));
+                self.output.push_str(&format!(
+                    "- **Documentation Debt**: {}\n",
+                    satd_data.doc_debt
+                ));
                 self.output.push('\n');
             }
             Err(e) => {
@@ -401,12 +493,18 @@ impl AdvancedUnifiedContextBuilder {
         if total_functions > 0 {
             let avg_functions_per_file = total_functions as f64 / total_files.max(1) as f64;
 
-            self.output.push_str(&format!("- **Codebase Size**: {} functions across {} files\n",
-                total_functions, total_files));
-            self.output.push_str(&format!("- **Average Functions per File**: {:.1}\n", avg_functions_per_file));
+            self.output.push_str(&format!(
+                "- **Codebase Size**: {} functions across {} files\n",
+                total_functions, total_files
+            ));
+            self.output.push_str(&format!(
+                "- **Average Functions per File**: {:.1}\n",
+                avg_functions_per_file
+            ));
 
             if avg_functions_per_file > 10.0 {
-                self.output.push_str("- ⚠ High function density - consider modularization\n");
+                self.output
+                    .push_str("- ⚠ High function density - consider modularization\n");
             }
 
             // Calculate complexity insights
@@ -414,14 +512,17 @@ impl AdvancedUnifiedContextBuilder {
             for file in &context.files {
                 if let Some(complexity) = &file.complexity_metrics {
                     // Count based on cyclomatic complexity threshold
-                if complexity.total_complexity.cyclomatic > 10 {
-                    high_complexity_count += 1;
-                }
+                    if complexity.total_complexity.cyclomatic > 10 {
+                        high_complexity_count += 1;
+                    }
                 }
             }
 
             if high_complexity_count > 0 {
-                self.output.push_str(&format!("- ⚠ High complexity functions: {}\n", high_complexity_count));
+                self.output.push_str(&format!(
+                    "- ⚠ High complexity functions: {}\n",
+                    high_complexity_count
+                ));
             }
         }
 
@@ -435,7 +536,8 @@ impl AdvancedUnifiedContextBuilder {
 
         // Based on function count
         if context.summary.total_functions > 100 {
-            recommendations.push("Consider breaking down large modules into smaller, focused components");
+            recommendations
+                .push("Consider breaking down large modules into smaller, focused components");
         }
 
         // Based on complexity
@@ -451,7 +553,8 @@ impl AdvancedUnifiedContextBuilder {
         if file_count > 0 {
             let avg_complexity = total_complexity as f64 / file_count as f64;
             if avg_complexity > 10.0 {
-                recommendations.push("High average complexity detected - refactor complex functions");
+                recommendations
+                    .push("High average complexity detected - refactor complex functions");
             }
         }
 
@@ -584,9 +687,7 @@ struct DeadCodeData {
 
 impl DeadCodeData {
     fn total_dead_items(&self) -> usize {
-        self.unreachable_functions.len() +
-        self.unused_variables.len() +
-        self.unused_imports.len()
+        self.unreachable_functions.len() + self.unused_variables.len() + self.unused_imports.len()
     }
 }
 
@@ -615,8 +716,8 @@ struct SatdComment {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::TempDir;
     use std::fs;
+    use tempfile::TempDir;
 
     #[tokio::test]
     async fn test_unified_context_includes_all_sections() {
@@ -676,12 +777,19 @@ mod tests {
     fn test_satd_total_calculation() {
         let satd = SatdData {
             todos: vec![
-                SatdComment { location: "file1".to_string(), comment: "TODO: fix".to_string() },
-                SatdComment { location: "file2".to_string(), comment: "TODO: improve".to_string() },
+                SatdComment {
+                    location: "file1".to_string(),
+                    comment: "TODO: fix".to_string(),
+                },
+                SatdComment {
+                    location: "file2".to_string(),
+                    comment: "TODO: improve".to_string(),
+                },
             ],
-            fixmes: vec![
-                SatdComment { location: "file3".to_string(), comment: "FIXME: bug".to_string() },
-            ],
+            fixmes: vec![SatdComment {
+                location: "file3".to_string(),
+                comment: "FIXME: bug".to_string(),
+            }],
             hacks: vec![],
             design_debt: 0,
             code_debt: 0,

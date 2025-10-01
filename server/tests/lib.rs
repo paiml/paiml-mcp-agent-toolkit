@@ -5,6 +5,9 @@
 //! - MCP acceptance tests (protocol compliance)
 //! - HTTP API acceptance tests (REST compliance)
 
+#[cfg(not(feature = "skip-slow-tests"))]
 pub mod cli_acceptance;
+#[cfg(not(feature = "skip-slow-tests"))]
 pub mod http_acceptance;
+#[cfg(not(feature = "skip-slow-tests"))]
 pub mod mcp_acceptance;

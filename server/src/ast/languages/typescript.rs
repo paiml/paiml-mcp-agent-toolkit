@@ -321,12 +321,18 @@ impl<'a> TypeScriptAstVisitor<'a> {
                 for member in &c.class.body {
                     match member {
                         swc_ecma_ast::ClassMember::Method(_method) => {
-                            let mut method_node = UnifiedAstNode::new(AstKind::Function(FunctionKind::Regular), self.language);
+                            let mut method_node = UnifiedAstNode::new(
+                                AstKind::Function(FunctionKind::Regular),
+                                self.language,
+                            );
                             method_node.parent = key;
                             self.dag.add_node(method_node);
                         }
                         swc_ecma_ast::ClassMember::Constructor(_) => {
-                            let mut ctor_node = UnifiedAstNode::new(AstKind::Function(FunctionKind::Regular), self.language);
+                            let mut ctor_node = UnifiedAstNode::new(
+                                AstKind::Function(FunctionKind::Regular),
+                                self.language,
+                            );
                             ctor_node.parent = key;
                             self.dag.add_node(ctor_node);
                         }
@@ -359,14 +365,16 @@ impl<'a> TypeScriptAstVisitor<'a> {
     fn visit_expr(&mut self, expr: &swc_ecma_ast::Expr) {
         match expr {
             swc_ecma_ast::Expr::Fn(fn_expr) => {
-                let mut node = UnifiedAstNode::new(AstKind::Function(FunctionKind::Regular), self.language);
+                let mut node =
+                    UnifiedAstNode::new(AstKind::Function(FunctionKind::Regular), self.language);
                 if fn_expr.function.is_async {
                     node.flags.set(NodeFlags::ASYNC);
                 }
                 self.dag.add_node(node);
             }
             swc_ecma_ast::Expr::Arrow(arrow_fn) => {
-                let mut node = UnifiedAstNode::new(AstKind::Function(FunctionKind::Regular), self.language);
+                let mut node =
+                    UnifiedAstNode::new(AstKind::Function(FunctionKind::Regular), self.language);
                 if arrow_fn.is_async {
                     node.flags.set(NodeFlags::ASYNC);
                 }
@@ -378,7 +386,10 @@ impl<'a> TypeScriptAstVisitor<'a> {
                     if let swc_ecma_ast::PropOrSpread::Prop(prop) = prop_or_spread {
                         match prop.as_ref() {
                             swc_ecma_ast::Prop::Method(_method_prop) => {
-                                let node = UnifiedAstNode::new(AstKind::Function(FunctionKind::Regular), self.language);
+                                let node = UnifiedAstNode::new(
+                                    AstKind::Function(FunctionKind::Regular),
+                                    self.language,
+                                );
                                 self.dag.add_node(node);
                             }
                             swc_ecma_ast::Prop::KeyValue(kv_prop) => {

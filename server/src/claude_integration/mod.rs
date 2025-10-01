@@ -14,7 +14,7 @@ pub mod transport;
 pub use bridge::{BridgeConfig, BridgeRequest, BridgeResponse, ClaudeBridge};
 pub use cache::{AnalysisResult, CacheMetrics, TwoTierCache};
 pub use error::{BridgeError, BridgeResult, ErrorCode};
-pub use feature_flags::{FeatureFlags, RolloutStrategy};
+pub use feature_flags::{FeatureFlags, FeatureFlagsBuilder, RolloutStrategy};
 pub use observability::{BridgeMetrics, MetricsCollector};
 pub use pool::ResilientConnectionPool;
 pub use sandbox::BridgeSandbox;
