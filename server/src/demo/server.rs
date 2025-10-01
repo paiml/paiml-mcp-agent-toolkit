@@ -304,7 +304,6 @@ pub(crate) fn serve_dashboard(state: &Arc<RwLock<DemoState>>) -> Response<Bytes>
             &format!("{:.2}", results.avg_complexity),
         )
         .replace("{p90_complexity}", &p90_complexity.to_string())
-        .replace("{tech_debt_hours}", &results.tech_debt_hours.to_string())
         .replace("{time_context}", "100")
         .replace("{time_complexity}", "150")
         .replace("{time_dag}", "200")

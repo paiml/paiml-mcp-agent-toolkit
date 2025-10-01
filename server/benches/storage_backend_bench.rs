@@ -6,8 +6,8 @@
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use pmat::tdg::{
     AnalysisMetadata, ComponentScores, FileIdentity, FullTdgRecord, Grade, InMemoryBackend,
-    Language, SemanticSignature, SledBackend, StorageBackend,
-    TdgScore, TieredStorageFactory, TieredStore,
+    Language, SemanticSignature, SledBackend, StorageBackend, TdgScore, TieredStorageFactory,
+    TieredStore,
 };
 use std::collections::HashMap;
 use std::hint::black_box;
@@ -56,7 +56,7 @@ fn bench_put_operations(c: &mut Criterion) {
                 |(backend, _temp_dir)| {
                     for (key, value) in data {
                         backend.put(key, value).unwrap();
-                    black_box(());
+                        black_box(());
                     }
                     backend.flush().unwrap();
                 },
@@ -166,7 +166,7 @@ fn bench_mixed_workload(c: &mut Criterion) {
                 match op {
                     Operation::Put(key, value) => {
                         backend.put(key, value).unwrap();
-                    black_box(());
+                        black_box(());
                     }
                     Operation::Get(key) => {
                         black_box(backend.get(key).unwrap());
@@ -199,7 +199,7 @@ fn bench_mixed_workload(c: &mut Criterion) {
                     match op {
                         Operation::Put(key, value) => {
                             backend.put(key, value).unwrap();
-                    black_box(());
+                            black_box(());
                         }
                         Operation::Get(key) => {
                             black_box(backend.get(key).unwrap());
@@ -269,7 +269,7 @@ fn bench_tiered_store(c: &mut Criterion) {
                     // Store all records
                     for record in &records {
                         storage.store(record.clone()).await.unwrap();
-                    black_box(());
+                        black_box(());
                     }
 
                     // Retrieve all records
@@ -349,7 +349,7 @@ fn bench_compression_efficiency(c: &mut Criterion) {
 
                     for record in &records {
                         storage.store(record.clone()).await.unwrap();
-                    black_box(());
+                        black_box(());
                     }
 
                     // Force flush to ensure compression is applied

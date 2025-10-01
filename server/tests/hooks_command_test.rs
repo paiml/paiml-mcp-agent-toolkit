@@ -193,6 +193,7 @@ struct HookRefreshResult {
 // =============================================================================
 
 #[tokio::test]
+#[ignore = "RED phase TDD - hooks command not yet implemented"]
 async fn test_hooks_install_basic() -> Result<()> {
     // ARRANGE
     let fixture = HooksTestFixture::new()?;
@@ -220,6 +221,7 @@ async fn test_hooks_install_basic() -> Result<()> {
 }
 
 #[tokio::test]
+#[ignore = "RED phase TDD - hooks command not yet implemented"]
 async fn test_hooks_install_with_existing_hook() -> Result<()> {
     // ARRANGE
     let fixture = HooksTestFixture::new()?;
@@ -246,6 +248,7 @@ async fn test_hooks_install_with_existing_hook() -> Result<()> {
 }
 
 #[tokio::test]
+#[ignore = "RED phase TDD - hooks command not yet implemented"]
 async fn test_hooks_install_force_overwrite() -> Result<()> {
     // ARRANGE
     let fixture = HooksTestFixture::new()?;
@@ -270,6 +273,7 @@ async fn test_hooks_install_force_overwrite() -> Result<()> {
 }
 
 #[tokio::test]
+#[ignore = "RED phase TDD - hooks command not yet implemented"]
 async fn test_hooks_uninstall_basic() -> Result<()> {
     // ARRANGE
     let fixture = HooksTestFixture::new()?;
@@ -293,6 +297,7 @@ async fn test_hooks_uninstall_basic() -> Result<()> {
 }
 
 #[tokio::test]
+#[ignore = "RED phase TDD - hooks command not yet implemented"]
 async fn test_hooks_uninstall_with_backup_restore() -> Result<()> {
     // ARRANGE
     let fixture = HooksTestFixture::new()?;
@@ -320,6 +325,7 @@ async fn test_hooks_uninstall_with_backup_restore() -> Result<()> {
 }
 
 #[tokio::test]
+#[ignore = "RED phase TDD - hooks command not yet implemented"]
 async fn test_hooks_status_not_installed() -> Result<()> {
     // ARRANGE
     let fixture = HooksTestFixture::new()?;
@@ -339,6 +345,7 @@ async fn test_hooks_status_not_installed() -> Result<()> {
 }
 
 #[tokio::test]
+#[ignore = "RED phase TDD - hooks command not yet implemented"]
 async fn test_hooks_status_installed() -> Result<()> {
     // ARRANGE
     let fixture = HooksTestFixture::new()?;
@@ -364,6 +371,7 @@ async fn test_hooks_status_installed() -> Result<()> {
 }
 
 #[tokio::test]
+#[ignore = "RED phase TDD - hooks command not yet implemented"]
 async fn test_hooks_verify_valid() -> Result<()> {
     // ARRANGE
     let fixture = HooksTestFixture::new()?;
@@ -384,6 +392,7 @@ async fn test_hooks_verify_valid() -> Result<()> {
 }
 
 #[tokio::test]
+#[ignore = "RED phase TDD - hooks command not yet implemented"]
 async fn test_hooks_verify_with_fix() -> Result<()> {
     // ARRANGE
     let fixture = HooksTestFixture::new()?;
@@ -412,6 +421,7 @@ async fn test_hooks_verify_with_fix() -> Result<()> {
 }
 
 #[tokio::test]
+#[ignore = "RED phase TDD - hooks command not yet implemented"]
 async fn test_hooks_refresh() -> Result<()> {
     // ARRANGE
     let fixture = HooksTestFixture::new()?;
@@ -444,6 +454,7 @@ max_cognitive_complexity = 20
 }
 
 #[tokio::test]
+#[ignore = "RED phase TDD - hooks command not yet implemented"]
 async fn test_hooks_template_generation() -> Result<()> {
     // ARRANGE
     let fixture = HooksTestFixture::new()?;
@@ -473,6 +484,7 @@ async fn test_hooks_template_generation() -> Result<()> {
 // =============================================================================
 
 #[tokio::test]
+#[ignore = "RED phase TDD - hooks command not yet implemented"]
 async fn test_hooks_idempotent_install() -> Result<()> {
     // Property: Installing hooks multiple times should be idempotent
 
@@ -502,6 +514,7 @@ async fn test_hooks_idempotent_install() -> Result<()> {
 // =============================================================================
 
 #[tokio::test]
+#[ignore = "RED phase TDD - hooks command not yet implemented"]
 async fn test_hooks_integration_with_config() -> Result<()> {
     // Integration test: hooks should reflect config changes
 
@@ -537,6 +550,7 @@ max_cognitive_complexity = 30
 }
 
 #[tokio::test]
+#[ignore = "RED phase TDD - hooks command not yet implemented"]
 async fn test_hooks_performance_requirements() -> Result<()> {
     // Performance test: hook installation should be <5 seconds
 

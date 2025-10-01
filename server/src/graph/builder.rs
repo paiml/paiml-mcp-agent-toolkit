@@ -95,9 +95,22 @@ impl DependencyGraphBuilder {
     /// Check if file is a source file we can analyze
     /// Complexity: 3
     fn is_source_file(path: &Path) -> bool {
-        matches!(path.extension().and_then(|s| s.to_str()), Some("rs") | Some("py") | Some("js") | Some("jsx") | Some("ts") | Some("tsx")
-            | Some("go") | Some("java") | Some("c") | Some("cpp") | Some("cc") | Some("h")
-            | Some("hpp"))
+        matches!(
+            path.extension().and_then(|s| s.to_str()),
+            Some("rs")
+                | Some("py")
+                | Some("js")
+                | Some("jsx")
+                | Some("ts")
+                | Some("tsx")
+                | Some("go")
+                | Some("java")
+                | Some("c")
+                | Some("cpp")
+                | Some("cc")
+                | Some("h")
+                | Some("hpp")
+        )
     }
 
     /// Build symbol table for a file

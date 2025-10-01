@@ -110,7 +110,9 @@ pub async fn handle_context(
     include_large_files: bool,
     skip_expensive_metrics: bool,
 ) -> Result<()> {
-    use crate::services::deep_context::{DeepContextAnalyzer, DeepContextConfig, AnalysisType, CacheStrategy, DagType};
+    use crate::services::deep_context::{
+        AnalysisType, CacheStrategy, DagType, DeepContextAnalyzer, DeepContextConfig,
+    };
 
     // Detect or use provided toolchain
     let toolchain = detect_or_use_toolchain(toolchain, &project_path)?;
@@ -143,7 +145,7 @@ pub async fn handle_context(
             max_cyclomatic: 20,
             max_cognitive: 25,
         }),
-        max_depth: Some(5), // Smart bounds - limit depth for performance
+        max_depth: Some(5),       // Smart bounds - limit depth for performance
         include_patterns: vec![], // Remove overly restrictive patterns - let file classifier handle it
         exclude_patterns: vec![
             "**/target/**".to_string(),
@@ -169,7 +171,8 @@ pub async fn handle_context(
         &context,
         format,
         include_large_files,
-    ).await?;
+    )
+    .await?;
 
     // Write output
     write_context_output(output, &output_content).await?;
@@ -185,23 +188,38 @@ async fn generate_enhanced_ast_context(
     _format: ContextFormat,
     _include_large_files: bool,
 ) -> Result<String> {
-
     let mut builder = MarkdownBuilder::new();
 
     // Add header
     builder.content.push_str("# Project Context\n\n");
-    builder.content.push_str(&format!("**Language**: {}\n", toolchain));
-    builder.content.push_str(&format!("**Project Path**: {}\n\n", project_path.display()));
+    builder
+        .content
+        .push_str(&format!("**Language**: {}\n", toolchain));
+    builder
+        .content
+        .push_str(&format!("**Project Path**: {}\n\n", project_path.display()));
 
     // Add project structure section
     builder.content.push_str("## Project Structure\n\n");
 
     // Add project-level metrics summary
     if let Some(complexity_report) = &context.analyses.complexity_report {
-        builder.content.push_str(&format!("- **Total Files**: {}\n", complexity_report.files.len()));
-        builder.content.push_str(&format!("- **Total Functions**: {}\n", complexity_report.summary.total_functions));
-        builder.content.push_str(&format!("- **Median Cyclomatic**: {:.2}\n", complexity_report.summary.median_cyclomatic));
-        builder.content.push_str(&format!("- **Median Cognitive**: {:.2}\n\n", complexity_report.summary.median_cognitive));
+        builder.content.push_str(&format!(
+            "- **Total Files**: {}\n",
+            complexity_report.files.len()
+        ));
+        builder.content.push_str(&format!(
+            "- **Total Functions**: {}\n",
+            complexity_report.summary.total_functions
+        ));
+        builder.content.push_str(&format!(
+            "- **Median Cyclomatic**: {:.2}\n",
+            complexity_report.summary.median_cyclomatic
+        ));
+        builder.content.push_str(&format!(
+            "- **Median Cognitive**: {:.2}\n\n",
+            complexity_report.summary.median_cognitive
+        ));
     } else {
         // Basic fallback metrics
         builder.content.push_str("- **Total Files**: 0\n");
@@ -212,14 +230,27 @@ async fn generate_enhanced_ast_context(
     // Add quality scorecard
     builder.content.push_str("## Quality Scorecard\n\n");
     // Normalize Overall Health as TDG score (0-100 range)
-    let tdg_score = (context.quality_scorecard.overall_health).min(100.0).max(0.0);
-    builder.content.push_str(&format!("- **Overall Health**: {:.1}%\n", tdg_score));
-    builder.content.push_str(&format!("- **Maintainability Index**: {:.1}\n", context.quality_scorecard.maintainability_index));
-    builder.content.push_str(&format!("- **Complexity Score**: {:.1}\n", context.quality_scorecard.complexity_score));
+    let tdg_score = (context.quality_scorecard.overall_health)
+        .min(100.0)
+        .max(0.0);
+    builder
+        .content
+        .push_str(&format!("- **Overall Health**: {:.1}%\n", tdg_score));
+    builder.content.push_str(&format!(
+        "- **Maintainability Index**: {:.1}\n",
+        context.quality_scorecard.maintainability_index
+    ));
+    builder.content.push_str(&format!(
+        "- **Complexity Score**: {:.1}\n",
+        context.quality_scorecard.complexity_score
+    ));
     if let Some(coverage) = context.quality_scorecard.test_coverage {
         // Normalize test coverage to 0-100 range (remove meaningless percentages)
         let normalized_coverage = coverage.min(100.0).max(0.0);
-        builder.content.push_str(&format!("- **Test Coverage**: {:.1}%\n", normalized_coverage));
+        builder.content.push_str(&format!(
+            "- **Test Coverage**: {:.1}%\n",
+            normalized_coverage
+        ));
     } else {
         builder.content.push_str("- **Test Coverage**: N/A\n");
     }
@@ -235,34 +266,58 @@ async fn generate_enhanced_ast_context(
 
     // Add additional sections that tests expect
     builder.content.push_str("## Key Components\n\n");
-    builder.content.push_str("Key architectural components identified in the codebase.\n\n");
+    builder
+        .content
+        .push_str("Key architectural components identified in the codebase.\n\n");
 
     builder.content.push_str("## Big-O Complexity Analysis\n\n");
-    builder.content.push_str("Complexity analysis results integrated in function annotations above.\n\n");
+    builder
+        .content
+        .push_str("Complexity analysis results integrated in function annotations above.\n\n");
 
     builder.content.push_str("## Entropy Analysis\n\n");
-    builder.content.push_str("Code entropy and organization metrics.\n\n");
+    builder
+        .content
+        .push_str("Code entropy and organization metrics.\n\n");
 
     builder.content.push_str("## Provability Analysis\n\n");
-    builder.content.push_str("Formal verification and provability insights.\n\n");
+    builder
+        .content
+        .push_str("Formal verification and provability insights.\n\n");
 
     builder.content.push_str("## Graph Metrics\n\n");
-    builder.content.push_str("Dependency graph and PageRank analysis.\n\n");
+    builder
+        .content
+        .push_str("Dependency graph and PageRank analysis.\n\n");
 
-    builder.content.push_str("## Technical Debt Gradient (TDG)\n\n");
-    builder.content.push_str("Technical debt progression and accumulation patterns.\n\n");
+    builder
+        .content
+        .push_str("## Technical Debt Gradient (TDG)\n\n");
+    builder
+        .content
+        .push_str("Technical debt progression and accumulation patterns.\n\n");
 
     builder.content.push_str("## Dead Code Analysis\n\n");
-    builder.content.push_str("Unused code detection and removal recommendations.\n\n");
+    builder
+        .content
+        .push_str("Unused code detection and removal recommendations.\n\n");
 
-    builder.content.push_str("## Self-Admitted Technical Debt (SATD)\n\n");
-    builder.content.push_str("TODO, FIXME, and HACK comments indicating technical debt.\n\n");
+    builder
+        .content
+        .push_str("## Self-Admitted Technical Debt (SATD)\n\n");
+    builder
+        .content
+        .push_str("TODO, FIXME, and HACK comments indicating technical debt.\n\n");
 
     builder.content.push_str("## Quality Insights\n\n");
-    builder.content.push_str("Overall code quality assessment and trends.\n\n");
+    builder
+        .content
+        .push_str("Overall code quality assessment and trends.\n\n");
 
     builder.content.push_str("## Recommendations\n\n");
-    builder.content.push_str("Actionable suggestions for code improvement.\n\n");
+    builder
+        .content
+        .push_str("Actionable suggestions for code improvement.\n\n");
 
     Ok(builder.content)
 }
@@ -277,10 +332,16 @@ fn add_simple_file_section(
     builder.content.push_str(&format!("### {}\n\n", file.path));
 
     // File-level metrics from analyses
-    if let Some(file_metrics) = analyses.complexity_report.as_ref()
-        .and_then(|report| report.files.iter().find(|f| file.path.ends_with(&f.path))) {
-        builder.content.push_str(&format!("**File Complexity**: {} | **Functions**: {}\n\n",
-            file_metrics.total_complexity.cyclomatic, file_metrics.functions.len()));
+    if let Some(file_metrics) = analyses
+        .complexity_report
+        .as_ref()
+        .and_then(|report| report.files.iter().find(|f| file.path.ends_with(&f.path)))
+    {
+        builder.content.push_str(&format!(
+            "**File Complexity**: {} | **Functions**: {}\n\n",
+            file_metrics.total_complexity.cyclomatic,
+            file_metrics.functions.len()
+        ));
     }
 
     // Add AST items with rich annotations
@@ -288,26 +349,53 @@ fn add_simple_file_section(
         for item in &file.items {
             match item {
                 crate::services::context::AstItem::Function { name, .. } => {
-                    builder.content.push_str(&format!("- **Function**: `{}`", name));
-                    builder.content.push_str(&get_simple_function_annotations(name, file, analyses));
+                    builder
+                        .content
+                        .push_str(&format!("- **Function**: `{}`", name));
+                    builder
+                        .content
+                        .push_str(&get_simple_function_annotations(name, file, analyses));
                     builder.content.push('\n');
-                },
-                crate::services::context::AstItem::Struct { name, fields_count, .. } => {
-                    builder.content.push_str(&format!("- **Struct**: `{}` [fields: {}]\n", name, fields_count));
-                },
+                }
+                crate::services::context::AstItem::Struct {
+                    name, fields_count, ..
+                } => {
+                    builder.content.push_str(&format!(
+                        "- **Struct**: `{}` [fields: {}]\n",
+                        name, fields_count
+                    ));
+                }
                 crate::services::context::AstItem::Trait { name, .. } => {
-                    builder.content.push_str(&format!("- **Trait**: `{}`\n", name));
-                },
-                crate::services::context::AstItem::Enum { name, variants_count, .. } => {
-                    builder.content.push_str(&format!("- **Enum**: `{}` [variants: {}]\n", name, variants_count));
-                },
-                crate::services::context::AstItem::Impl { type_name, trait_name, .. } => {
+                    builder
+                        .content
+                        .push_str(&format!("- **Trait**: `{}`\n", name));
+                }
+                crate::services::context::AstItem::Enum {
+                    name,
+                    variants_count,
+                    ..
+                } => {
+                    builder.content.push_str(&format!(
+                        "- **Enum**: `{}` [variants: {}]\n",
+                        name, variants_count
+                    ));
+                }
+                crate::services::context::AstItem::Impl {
+                    type_name,
+                    trait_name,
+                    ..
+                } => {
                     if let Some(trait_name) = trait_name {
-                        builder.content.push_str(&format!("- **Impl**: `{}` for `{}`\n", trait_name, type_name));
+                        builder.content.push_str(&format!(
+                            "- **Impl**: `{}` for `{}`\n",
+                            trait_name, type_name
+                        ));
                     } else {
-                        builder.content.push_str(&format!("- **Impl**: `{}`\n", type_name));
+                        builder
+                            .content
+                            .push_str(&format!("- **Impl**: `{}`\n", type_name));
                     }
-                },
+                }
                 _ => {
                     // Handle other types of AST items if needed
                 }
@@ -329,11 +417,22 @@ fn get_simple_function_annotations(
     // Complexity metrics from analyses (with fallbacks)
     let mut complexity_added = false;
     if let Some(complexity_report) = &analyses.complexity_report {
-        if let Some(file_metrics) = complexity_report.files.iter()
-            .find(|f| file.path.ends_with(&f.path)) {
-            if let Some(func_complexity) = file_metrics.functions.iter().find(|f| f.name == func_name) {
-                annotations.push_str(&format!(" [complexity: {}]", func_complexity.metrics.cyclomatic));
-                annotations.push_str(&format!(" [cognitive: {}]", func_complexity.metrics.cognitive));
+        if let Some(file_metrics) = complexity_report
+            .files
+            .iter()
+            .find(|f| file.path.ends_with(&f.path))
+        {
+            if let Some(func_complexity) =
+                file_metrics.functions.iter().find(|f| f.name == func_name)
+            {
+                annotations.push_str(&format!(
+                    " [complexity: {}]",
+                    func_complexity.metrics.cyclomatic
+                ));
+                annotations.push_str(&format!(
+                    " [cognitive: {}]",
+                    func_complexity.metrics.cognitive
+                ));
 
                 // Big-O complexity estimation
                 let big_o = match func_complexity.metrics.cyclomatic {
@@ -360,9 +459,8 @@ fn get_simple_function_annotations(
     if let Some(provability) = &analyses.provability_results {
         // ProofSummary has provability_score field (not confidence_score)
         if !provability.is_empty() {
-            let avg_score = provability.iter()
-                .map(|p| p.provability_score)
-                .sum::<f64>() / provability.len() as f64;
+            let avg_score = provability.iter().map(|p| p.provability_score).sum::<f64>()
+                / provability.len() as f64;
             annotations.push_str(&format!(" [provability: {:.0}%]", avg_score * 100.0));
         } else {
             annotations.push_str(" [provability: 75%]");
@@ -376,7 +474,9 @@ fn get_simple_function_annotations(
     let mut satd_added = false;
     if let Some(satd) = &analyses.satd_results {
         // Only show SATD annotation if there are actual debt items for this file
-        let satd_count = satd.items.iter()
+        let satd_count = satd
+            .items
+            .iter()
             .filter(|item| file.path.contains(&*item.file.to_string_lossy()))
             .count();
 
@@ -396,9 +496,11 @@ fn get_simple_function_annotations(
     // and have meaningful connectivity (not isolated nodes)
     if let Some(dag) = &analyses.dependency_graph {
         // Check if this function is in the dependency graph
-        if let Some((node_id, _node_info)) = dag.nodes.iter()
-            .find(|(id, _)| id.contains(func_name) || id.contains(&file.path)) {
-
+        if let Some((node_id, _node_info)) = dag
+            .nodes
+            .iter()
+            .find(|(id, _)| id.contains(func_name) || id.contains(&file.path))
+        {
             // Count connections (both incoming and outgoing)
             let incoming = dag.edges.iter().filter(|e| e.to == *node_id).count();
             let outgoing = dag.edges.iter().filter(|e| e.from == *node_id).count();
@@ -410,13 +512,13 @@ fn get_simple_function_annotations(
                 // Calculate PageRank-like score based on connectivity
                 // More incoming connections = higher importance
                 let pagerank_value = match (incoming, outgoing) {
-                    (0, _) => 0.0, // No incoming links = low importance
-                    (1, 0) => 0.25, // Only one incoming, no outgoing
-                    (1, _) => 0.35, // One incoming, some outgoing
-                    (2..=3, _) => 0.50, // Moderate incoming links
-                    (4..=6, _) => 0.65, // Good connectivity
+                    (0, _) => 0.0,       // No incoming links = low importance
+                    (1, 0) => 0.25,      // Only one incoming, no outgoing
+                    (1, _) => 0.35,      // One incoming, some outgoing
+                    (2..=3, _) => 0.50,  // Moderate incoming links
+                    (4..=6, _) => 0.65,  // Good connectivity
                     (7..=10, _) => 0.75, // High connectivity
-                    _ => 0.85, // Very high connectivity (hub node)
+                    _ => 0.85,           // Very high connectivity (hub node)
                 };
 
                 // Only show if PageRank is above threshold (meaningful connectivity)
@@ -433,8 +535,11 @@ fn get_simple_function_annotations(
     let mut churn_added = false;
     if let Some(churn) = &analyses.churn_analysis {
         // Find churn metrics for this file
-        if let Some(file_churn) = churn.files.iter()
-            .find(|f| file.path.contains(&f.relative_path)) {
+        if let Some(file_churn) = churn
+            .files
+            .iter()
+            .find(|f| file.path.contains(&f.relative_path))
+        {
             // Always show churn if there are commits (as requested by user)
             if file_churn.commit_count > 10 {
                 annotations.push_str(&format!(" [churn: high({})]", file_churn.commit_count));
@@ -661,7 +766,10 @@ fn format_context_output_simple(
             let mut md = String::new();
             md.push_str("# Project Context\n\n## Project Structure\n\n");
             md.push_str(&format!("- **Language**: {}\n", detected_toolchain));
-            md.push_str(&format!("- **Total Files**: {}\n", project_context.summary.total_files));
+            md.push_str(&format!(
+                "- **Total Files**: {}\n",
+                project_context.summary.total_files
+            ));
             md.push_str(&format!("- **Total Functions**: {}\n", total_functions));
             md.push_str(&format!("- **Total Structs**: {}\n", total_structs));
             md.push_str(&format!("- **Total Enums**: {}\n", total_enums));
@@ -672,10 +780,14 @@ fn format_context_output_simple(
                 md.push_str("## Key Components\n\n");
                 for file in &project_context.files {
                     md.push_str(&format!("### File: {}\n", file.path));
-                    let functions: Vec<&str> = file.items.iter()
+                    let functions: Vec<&str> = file
+                        .items
+                        .iter()
                         .filter_map(|item| match item {
-                            crate::services::context::AstItem::Function { name, .. } => Some(name.as_str()),
-                            _ => None
+                            crate::services::context::AstItem::Function { name, .. } => {
+                                Some(name.as_str())
+                            }
+                            _ => None,
                         })
                         .collect();
 
@@ -689,7 +801,7 @@ fn format_context_output_simple(
                 }
             }
             md
-        },
+        }
         ContextFormat::LlmOptimized => {
             let mut output = String::new();
 
@@ -711,8 +823,10 @@ fn format_context_output_simple(
 
                 // Show per-file function counts if we have them from build_project_context_from_simple
                 // This data comes from analysis_report.file_complexity_details
-                output.push_str(&format!("Analysis detected {} functions across {} files:\n\n",
-                    total_functions, project_context.summary.total_files));
+                output.push_str(&format!(
+                    "Analysis detected {} functions across {} files:\n\n",
+                    total_functions, project_context.summary.total_files
+                ));
 
                 // Note: Individual function names require full AST parsing
                 output.push_str("(Individual function names require --format deep for detailed AST analysis)\n\n");
@@ -721,15 +835,23 @@ fn format_context_output_simple(
             // Quality Insights section
             if total_functions > 20 {
                 output.push_str("Quality Insights:\n");
-                output.push_str(&format!("- Large codebase with {} functions across {} files\n",
-                    total_functions, project_context.summary.total_files));
+                output.push_str(&format!(
+                    "- Large codebase with {} functions across {} files\n",
+                    total_functions, project_context.summary.total_files
+                ));
 
                 if project_context.summary.total_files > 0 {
-                    let avg_functions = total_functions as f64 / project_context.summary.total_files as f64;
-                    output.push_str(&format!("- Average {:.1} functions per file\n", avg_functions));
+                    let avg_functions =
+                        total_functions as f64 / project_context.summary.total_files as f64;
+                    output.push_str(&format!(
+                        "- Average {:.1} functions per file\n",
+                        avg_functions
+                    ));
 
                     if avg_functions > 10.0 {
-                        output.push_str("- Consider splitting large files for better maintainability\n");
+                        output.push_str(
+                            "- Consider splitting large files for better maintainability\n",
+                        );
                     }
                 }
                 output.push('\n');
@@ -738,7 +860,8 @@ fn format_context_output_simple(
             // Recommendations section
             output.push_str("Recommendations:\n");
             if total_functions == 0 {
-                output.push_str("- No functions detected - ensure language is properly supported\n");
+                output
+                    .push_str("- No functions detected - ensure language is properly supported\n");
             } else if total_functions > 50 {
                 output.push_str("- Consider modularizing the codebase for better organization\n");
             }
@@ -748,7 +871,7 @@ fn format_context_output_simple(
             }
 
             output
-        },
+        }
         ContextFormat::Json => {
             let mut json_output = serde_json::json!({
                 "project_type": detected_toolchain,
@@ -763,26 +886,34 @@ fn format_context_output_simple(
 
             // Add file details if available
             if !project_context.files.is_empty() {
-                let files_json: Vec<_> = project_context.files.iter().map(|file| {
-                    let functions: Vec<_> = file.items.iter()
-                        .filter_map(|item| match item {
-                            crate::services::context::AstItem::Function { name, .. } => Some(name.clone()),
-                            _ => None
-                        })
-                        .collect();
+                let files_json: Vec<_> = project_context
+                    .files
+                    .iter()
+                    .map(|file| {
+                        let functions: Vec<_> = file
+                            .items
+                            .iter()
+                            .filter_map(|item| match item {
+                                crate::services::context::AstItem::Function { name, .. } => {
+                                    Some(name.clone())
+                                }
+                                _ => None,
+                            })
+                            .collect();
 
-                    serde_json::json!({
-                        "path": file.path,
-                        "functions": functions,
-                        "function_count": functions.len()
+                        serde_json::json!({
+                            "path": file.path,
+                            "functions": functions,
+                            "function_count": functions.len()
+                        })
                     })
-                }).collect();
+                    .collect();
 
                 json_output["files"] = serde_json::json!(files_json);
             }
 
             serde_json::to_string_pretty(&json_output)?
-        },
+        }
         ContextFormat::Sarif => {
             // Enhanced SARIF format with annotations
             serde_json::to_string_pretty(&serde_json::json!({
@@ -804,7 +935,7 @@ fn format_context_output_simple(
                     }
                 }]
             }))?
-        },
+        }
     };
 
     Ok(output)

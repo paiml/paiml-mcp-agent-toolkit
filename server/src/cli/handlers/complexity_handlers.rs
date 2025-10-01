@@ -1216,7 +1216,9 @@ async fn run_dead_code_analysis_with_filters(
 
     // Use the accurate cargo-based analyzer instead of the heuristic one
     let cargo_analyzer = if filters.include_tests {
-        CargoDeadCodeAnalyzer::new(path).include_tests().with_max_depth(filters.max_depth)
+        CargoDeadCodeAnalyzer::new(path)
+            .include_tests()
+            .with_max_depth(filters.max_depth)
     } else {
         CargoDeadCodeAnalyzer::new(path).with_max_depth(filters.max_depth)
     };
