@@ -4,10 +4,10 @@
 //! languages and formats, demonstrating the enhanced naming and multi-language
 //! support implemented in the unified context handler.
 
-use std::process::Command;
 use std::fs;
-use tempfile::TempDir;
 use std::path::Path;
+use std::process::Command;
+use tempfile::TempDir;
 
 fn main() {
     println!("🚀 PMAT Context Analysis Demo");
@@ -93,10 +93,21 @@ async function fetchUserDetails(id: number): Promise<any> {
     let ts_file = temp_dir.path().join("user_service.ts");
     fs::write(&ts_file, ts_content).expect("Failed to write TypeScript file");
 
-    println!("Running: cargo run -- context --project-path {} --format llm-optimized", temp_dir.path().display());
+    println!(
+        "Running: cargo run -- context --project-path {} --format llm-optimized",
+        temp_dir.path().display()
+    );
 
     let output = Command::new("cargo")
-        .args(["run", "--", "context", "--project-path", temp_dir.path().to_str().unwrap(), "--format", "llm-optimized"])
+        .args([
+            "run",
+            "--",
+            "context",
+            "--project-path",
+            temp_dir.path().to_str().unwrap(),
+            "--format",
+            "llm-optimized",
+        ])
         .output()
         .expect("Failed to run cargo command");
 
@@ -115,10 +126,16 @@ async function fetchUserDetails(id: number): Promise<any> {
         // Check if we detected the expected functions
         let function_count = extract_function_count(&stdout);
         if function_count >= 7 {
-            println!("   🎯 Successfully detected {} TypeScript functions!", function_count);
+            println!(
+                "   🎯 Successfully detected {} TypeScript functions!",
+                function_count
+            );
             println!("   Expected: calculateUserScore, processUserData, createUser, validateUserRole, fetchUserById, formatUserName, fetchUserDetails");
         } else {
-            println!("   ⚠️  Only detected {} functions, expected at least 7", function_count);
+            println!(
+                "   ⚠️  Only detected {} functions, expected at least 7",
+                function_count
+            );
         }
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -200,10 +217,21 @@ function formatOrderResponse(processedOrder) {
     let js_file = temp_dir.path().join("shopping_cart.js");
     fs::write(&js_file, js_content).expect("Failed to write JavaScript file");
 
-    println!("Running: cargo run -- context --project-path {} --format llm-optimized", temp_dir.path().display());
+    println!(
+        "Running: cargo run -- context --project-path {} --format llm-optimized",
+        temp_dir.path().display()
+    );
 
     let output = Command::new("cargo")
-        .args(["run", "--", "context", "--project-path", temp_dir.path().to_str().unwrap(), "--format", "llm-optimized"])
+        .args([
+            "run",
+            "--",
+            "context",
+            "--project-path",
+            temp_dir.path().to_str().unwrap(),
+            "--format",
+            "llm-optimized",
+        ])
         .output()
         .expect("Failed to run cargo command");
 
@@ -217,10 +245,16 @@ function formatOrderResponse(processedOrder) {
 
         let function_count = extract_function_count(&stdout);
         if function_count >= 10 {
-            println!("   🎯 Successfully detected {} JavaScript functions!", function_count);
+            println!(
+                "   🎯 Successfully detected {} JavaScript functions!",
+                function_count
+            );
             println!("   Expected: calculateTotalPrice, processOrderData, addItem, removeItem, updateTotal, createEmptyCart, formatOrderId, validateOrderItems, calculateShipping, validateOrder, formatOrderResponse");
         } else {
-            println!("   ⚠️  Only detected {} functions, expected at least 10", function_count);
+            println!(
+                "   ⚠️  Only detected {} functions, expected at least 10",
+                function_count
+            );
         }
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -355,10 +389,21 @@ fn test_wasm_context() {
     let wasm_file = temp_dir.path().join("math_operations.wat");
     fs::write(&wasm_file, wasm_content).expect("Failed to write WASM file");
 
-    println!("Running: cargo run -- context --project-path {} --format llm-optimized", temp_dir.path().display());
+    println!(
+        "Running: cargo run -- context --project-path {} --format llm-optimized",
+        temp_dir.path().display()
+    );
 
     let output = Command::new("cargo")
-        .args(["run", "--", "context", "--project-path", temp_dir.path().to_str().unwrap(), "--format", "llm-optimized"])
+        .args([
+            "run",
+            "--",
+            "context",
+            "--project-path",
+            temp_dir.path().to_str().unwrap(),
+            "--format",
+            "llm-optimized",
+        ])
         .output()
         .expect("Failed to run cargo command");
 
@@ -372,10 +417,16 @@ fn test_wasm_context() {
 
         let function_count = extract_function_count(&stdout);
         if function_count >= 5 {
-            println!("   🎯 Successfully detected {} WASM functions!", function_count);
+            println!(
+                "   🎯 Successfully detected {} WASM functions!",
+                function_count
+            );
             println!("   Expected: add, multiply, fibonacci, factorial, power");
         } else {
-            println!("   ⚠️  Only detected {} functions, expected at least 5", function_count);
+            println!(
+                "   ⚠️  Only detected {} functions, expected at least 5",
+                function_count
+            );
         }
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -496,10 +547,21 @@ export const debounce = <T extends (...args: any[]) => void>(
     let simple_ts_file = temp_dir.path().join("utils.ts");
     fs::write(&simple_ts_file, simple_ts_content).expect("Failed to write simple TypeScript file");
 
-    println!("Running: cargo run -- context --project-path {} --format llm-optimized", temp_dir.path().display());
+    println!(
+        "Running: cargo run -- context --project-path {} --format llm-optimized",
+        temp_dir.path().display()
+    );
 
     let output = Command::new("cargo")
-        .args(["run", "--", "context", "--project-path", temp_dir.path().to_str().unwrap(), "--format", "llm-optimized"])
+        .args([
+            "run",
+            "--",
+            "context",
+            "--project-path",
+            temp_dir.path().to_str().unwrap(),
+            "--format",
+            "llm-optimized",
+        ])
         .output()
         .expect("Failed to run cargo command");
 
@@ -507,7 +569,10 @@ export const debounce = <T extends (...args: any[]) => void>(
         let stdout = String::from_utf8_lossy(&output.stdout);
         println!("✅ Multi-language analysis successful!");
 
-        if let Some(language_line) = stdout.lines().find(|line| line.starts_with("Project:") && line.contains("(")) {
+        if let Some(language_line) = stdout
+            .lines()
+            .find(|line| line.starts_with("Project:") && line.contains("("))
+        {
             println!("   {}", language_line);
         }
         if let Some(files_line) = stdout.lines().find(|line| line.contains("Files:")) {
@@ -519,10 +584,16 @@ export const debounce = <T extends (...args: any[]) => void>(
 
         let function_count = extract_function_count(&stdout);
         if function_count >= 10 {
-            println!("   🎯 Successfully detected {} functions across multiple languages!", function_count);
+            println!(
+                "   🎯 Successfully detected {} functions across multiple languages!",
+                function_count
+            );
             println!("   Expected functions from Rust, Python, and TypeScript files");
         } else {
-            println!("   ⚠️  Only detected {} functions, expected at least 10", function_count);
+            println!(
+                "   ⚠️  Only detected {} functions, expected at least 10",
+                function_count
+            );
         }
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -542,7 +613,15 @@ fn test_comprehensive_language_test() {
     println!("Running: cargo run -- context --project-path comprehensive_language_test --format llm-optimized");
 
     let output = Command::new("cargo")
-        .args(["run", "--", "context", "--project-path", "comprehensive_language_test", "--format", "llm-optimized"])
+        .args([
+            "run",
+            "--",
+            "context",
+            "--project-path",
+            "comprehensive_language_test",
+            "--format",
+            "llm-optimized",
+        ])
         .output()
         .expect("Failed to run cargo command");
 
@@ -550,7 +629,10 @@ fn test_comprehensive_language_test() {
         let stdout = String::from_utf8_lossy(&output.stdout);
         println!("✅ Comprehensive language test analysis successful!");
 
-        if let Some(language_line) = stdout.lines().find(|line| line.starts_with("Project:") && line.contains("(")) {
+        if let Some(language_line) = stdout
+            .lines()
+            .find(|line| line.starts_with("Project:") && line.contains("("))
+        {
             println!("   {}", language_line);
         }
         if let Some(files_line) = stdout.lines().find(|line| line.contains("Files:")) {
@@ -561,11 +643,16 @@ fn test_comprehensive_language_test() {
         }
 
         let function_count = extract_function_count(&stdout);
-        println!("   🎯 Detected {} functions in comprehensive test suite", function_count);
+        println!(
+            "   🎯 Detected {} functions in comprehensive test suite",
+            function_count
+        );
 
         // Check if we're detecting the expected high number of functions
         if function_count >= 50 {
-            println!("   🚀 Excellent! High function count indicates comprehensive language detection");
+            println!(
+                "   🚀 Excellent! High function count indicates comprehensive language detection"
+            );
         } else if function_count >= 20 {
             println!("   ✅ Good function detection across multiple languages");
         } else {

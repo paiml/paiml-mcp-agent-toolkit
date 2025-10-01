@@ -8,7 +8,6 @@ pub struct TransformerActor {
     transformer: TransformerImpl,
 }
 
-
 impl Actor for TransformerActor {
     type Context = Context<Self>;
 }

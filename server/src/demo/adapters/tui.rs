@@ -73,7 +73,6 @@ struct TuiState {
     progress: f32,
 }
 
-
 #[cfg(feature = "tui")]
 impl TuiState {
     fn cycle_panel(&mut self) {

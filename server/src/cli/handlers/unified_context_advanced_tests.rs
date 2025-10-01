@@ -5,7 +5,7 @@
 #[cfg(test)]
 fn generate_unified_context(_project_name: &str) -> String {
     // Simulate generating a unified context
-"# Project Context\n\n## Project Structure\n\n## Key Components\n- Main application entry point\n- Data processing modules\n- Configuration management\n\n## Big-O Complexity Analysis\n- `function_name`: O(n)\n- `sort_function`: O(n log n)\n- `nested_loops`: O(n²)\n\n## Entropy Analysis\n- Pattern Entropy: 0.750\n- Code Duplication: 15.0%\n- Structural Entropy: 0.650\n- Actionable Improvements:\n  - Reduce duplication\n\n## Provability Analysis\n### Invariants\n- Loop invariants maintained\n### Pre-conditions\n- Input validation required\n### Post-conditions\n- Output bounds verified\n### Abstract Interpretation Results\n- Sound: true\n- Complete: false\n\n## Graph Metrics\n### Centrality Measures\n- Betweenness Centrality: 0.750\n- Closeness Centrality: 0.850\n- Degree Centrality: 0.650\n### Dependency Graph\n- Nodes: 50\n- Edges: 75\n### Call Graph Analysis\n- Cyclomatic: 15\n\n## Technical Debt Gradient (TDG)\n### Overall TDG Score: 3.25\n### File-level TDG:\n- `main.rs`: 2.50\n### Function-level TDG:\n- `calculate_metrics`: 3.20\n### Debt Hotspots:\n- main.rs:45 (Score: 3.20)\n### Refactoring Priority:\n1. Simplify complex function\n\n## Dead Code Analysis\n### Unreachable Functions:\n- `unused_helper`\n### Unused Variables:\n- `temp_var`\n### Unused Imports:\n- `std::collections::BTreeMap`\n### Dead Branches:\n- Line 123: unreachable branch\n\n## Self-Admitted Technical Debt (SATD)\n### TODO Comments:\n- main.rs:45: TODO: Refactor this function\n### FIXME Comments:\n- utils.rs:20: FIXME: Handle edge case\n### HACK Comments:\n- lib.rs:10: HACK: Workaround for compiler issue\n### Technical Debt Comments:\n- Various debt comments found\n### Debt Categories:\n- Design Debt: 3\n- Code Debt: 5\n- Test Debt: 2\n- Documentation Debt: 1\n\n## Quality Insights\n- Code quality assessment\n\n## Recommendations\n- Consider modularizing the codebase\n- Review technical debt\n\n### Function: `calculate_metrics`\n  - Complexity: O(n)\n  - Cyclomatic: 5\n  - TDG Score: 3.2\n  - Dead Code: No\n  - SATD: 2 TODOs\n\n### File: `main.rs`\n  - Functions: 10\n  - Average Complexity: O(n)\n  - Total TDG: 15.3\n  - Dead Functions: 2\n  - SATD Count: 5".to_string()
+    "# Project Context\n\n## Project Structure\n\n## Key Components\n- Main application entry point\n- Data processing modules\n- Configuration management\n\n## Big-O Complexity Analysis\n- `function_name`: O(n)\n- `sort_function`: O(n log n)\n- `nested_loops`: O(n²)\n\n## Entropy Analysis\n- Pattern Entropy: 0.750\n- Code Duplication: 15.0%\n- Structural Entropy: 0.650\n- Actionable Improvements:\n  - Reduce duplication\n\n## Provability Analysis\n### Invariants\n- Loop invariants maintained\n### Pre-conditions\n- Input validation required\n### Post-conditions\n- Output bounds verified\n### Abstract Interpretation Results\n- Sound: true\n- Complete: false\n\n## Graph Metrics\n### Centrality Measures\n- Betweenness Centrality: 0.750\n- Closeness Centrality: 0.850\n- Degree Centrality: 0.650\n### Dependency Graph\n- Nodes: 50\n- Edges: 75\n### Call Graph Analysis\n- Cyclomatic: 15\n\n## Technical Debt Gradient (TDG)\n### Overall TDG Score: 3.25\n### File-level TDG:\n- `main.rs`: 2.50\n### Function-level TDG:\n- `calculate_metrics`: 3.20\n### Debt Hotspots:\n- main.rs:45 (Score: 3.20)\n### Refactoring Priority:\n1. Simplify complex function\n\n## Dead Code Analysis\n### Unreachable Functions:\n- `unused_helper`\n### Unused Variables:\n- `temp_var`\n### Unused Imports:\n- `std::collections::BTreeMap`\n### Dead Branches:\n- Line 123: unreachable branch\n\n## Self-Admitted Technical Debt (SATD)\n### TODO Comments:\n- main.rs:45: TODO: Refactor this function\n### FIXME Comments:\n- utils.rs:20: FIXME: Handle edge case\n### HACK Comments:\n- lib.rs:10: HACK: Workaround for compiler issue\n### Technical Debt Comments:\n- Various debt comments found\n### Debt Categories:\n- Design Debt: 3\n- Code Debt: 5\n- Test Debt: 2\n- Documentation Debt: 1\n\n## Quality Insights\n- Code quality assessment\n\n## Recommendations\n- Consider modularizing the codebase\n- Review technical debt\n\n### Function: `calculate_metrics`\n  - Complexity: O(n)\n  - Cyclomatic: 5\n  - TDG Score: 3.2\n  - Dead Code: No\n  - SATD: 2 TODOs\n\n### File: `main.rs`\n  - Functions: 10\n  - Average Complexity: O(n)\n  - Total TDG: 15.3\n  - Dead Functions: 2\n  - SATD Count: 5".to_string()
 }
 
 #[cfg(test)]
@@ -30,16 +30,24 @@ fn generate_context_with_n_files(n: u32) -> String {
 
 #[cfg(test)]
 fn generate_context_with_entropy(entropy: f64) -> String {
-    format!("# Project Context\n\n## Entropy Analysis\n- Entropy: {:.2}\n", entropy)
+    format!(
+        "# Project Context\n\n## Entropy Analysis\n- Entropy: {:.2}\n",
+        entropy
+    )
 }
 
 #[cfg(test)]
 fn generate_context_with_graph_nodes(nodes: u32) -> String {
-    format!("# Project Context\n\n## Graph Metrics\n- Nodes: {}\n", nodes)
+    format!(
+        "# Project Context\n\n## Graph Metrics\n- Nodes: {}\n",
+        nodes
+    )
 }
 
 #[cfg(test)]
-async fn generate_unified_context_async(path: &std::path::Path) -> Result<String, Box<dyn std::error::Error>> {
+async fn generate_unified_context_async(
+    path: &std::path::Path,
+) -> Result<String, Box<dyn std::error::Error>> {
     // Simulate async context generation
     Ok(generate_unified_context(&path.to_string_lossy()))
 }
@@ -178,7 +186,7 @@ mod advanced_annotation_tests {
             "## Dead Code Analysis",
             "## Self-Admitted Technical Debt (SATD)",
             "## Quality Insights",
-            "## Recommendations"
+            "## Recommendations",
         ];
 
         for section in expected_sections {

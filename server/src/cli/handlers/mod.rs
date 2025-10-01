@@ -7,6 +7,8 @@ pub mod advanced_analysis_handlers;
 pub mod agent_handlers;
 pub mod analysis;
 pub mod analysis_handlers;
+#[cfg(test)]
+pub mod annotation_tdd_tests;
 pub mod big_o_handlers;
 pub mod cache;
 pub mod churn_formatter;
@@ -40,14 +42,6 @@ pub mod quality_gate_property_tests;
 pub mod refactor_auto_handlers;
 #[cfg(test)]
 pub mod refactor_auto_property_tests;
-#[cfg(test)]
-pub mod unified_context_property_tests;
-#[cfg(test)]
-pub mod annotation_tdd_tests;
-#[cfg(test)]
-pub mod unified_context_advanced_tests;
-pub mod unified_context_advanced;
-pub mod unified_context_builder;
 pub mod refactor_docs_handlers;
 pub mod refactor_handlers;
 pub mod satd_handler;
@@ -57,6 +51,12 @@ pub mod tdg_formatter;
 pub mod tdg_handlers;
 pub mod telemetry_handlers;
 pub mod test_handlers;
+pub mod unified_context_advanced;
+#[cfg(test)]
+pub mod unified_context_advanced_tests;
+pub mod unified_context_builder;
+#[cfg(test)]
+pub mod unified_context_property_tests;
 pub mod utility_handlers;
 pub mod wasm_handler;
 pub mod wasm_handlers;

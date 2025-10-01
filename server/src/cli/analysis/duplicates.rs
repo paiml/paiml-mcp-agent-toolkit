@@ -890,8 +890,12 @@ fn format_csv_output(report: &DuplicateReport) -> Result<String> {
             let loc2 = &block.locations[1];
             csv.push_str(&format!(
                 "exact,{},{},{},{},{},{}\n",
-                loc1.file, loc1.start_line, loc1.end_line,
-                loc2.file, loc2.start_line, loc2.end_line
+                loc1.file,
+                loc1.start_line,
+                loc1.end_line,
+                loc2.file,
+                loc2.start_line,
+                loc2.end_line
             ));
         }
     }

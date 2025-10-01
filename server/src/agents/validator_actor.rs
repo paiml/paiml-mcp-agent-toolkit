@@ -8,7 +8,6 @@ pub struct ValidatorActor {
     validator: ValidatorImpl,
 }
 
-
 impl Actor for ValidatorActor {
     type Context = Context<Self>;
 }

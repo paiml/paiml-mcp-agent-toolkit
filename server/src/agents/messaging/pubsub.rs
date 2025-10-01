@@ -39,10 +39,7 @@ impl PubSubBroker {
         self.subscribers.insert(agent_id, recipient);
 
         // Add to topic
-        self.topics
-            .entry(topic)
-            .or_default()
-            .push(agent_id);
+        self.topics.entry(topic).or_default().push(agent_id);
     }
 
     pub fn unsubscribe(&self, agent_id: Uuid, topic: &Topic) {
