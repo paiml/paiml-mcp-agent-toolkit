@@ -26,6 +26,7 @@ Welcome to the PMAT (Pragmatic AI MCP Agent Toolkit) documentation.
 #### Features
 - **[features/](./features/)** - Feature documentation
   - [README.md](./features/README.md) - Feature overview
+  - [claude-agent-sdk-guide.md](./claude-agent-sdk-guide.md) - Claude Agent SDK Integration Guide
   - Individual feature guides for each major capability
 
 #### User Guides
