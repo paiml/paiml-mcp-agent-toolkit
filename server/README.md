@@ -112,6 +112,9 @@ pmat analyze complexity --top-files 10
 # Find technical debt
 pmat analyze satd
 
+# Validate documentation links - NEW!
+pmat validate-docs
+
 # Run quality gates
 pmat quality-gate --strict
 
@@ -157,6 +160,7 @@ make sprint-close
 ## 🎯 Core Capabilities
 
 ### Analysis Engine
+- **Documentation Link Validator**: **NEW!** Validate markdown links (internal & external) with HTTP retry logic
 - **Technical Debt Grading (TDG)**: 6-metric orthogonal code quality scoring with A+ through F grading
 - **Complexity Analysis**: McCabe cyclomatic & cognitive complexity with AST precision
 - **Dead Code Detection**: Graph-based reachability analysis across 30+ languages
