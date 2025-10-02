@@ -122,6 +122,7 @@ pub mod defect_analyzers;
 pub mod defect_report_service;
 // pub mod deep_context_orchestrator; // TRACKED: Fix AST node compatibility
 pub mod defect_probability;
+pub mod doc_validator;
 pub mod deterministic_mermaid_engine;
 pub mod dogfooding_engine;
 pub mod duplicate_detector;
