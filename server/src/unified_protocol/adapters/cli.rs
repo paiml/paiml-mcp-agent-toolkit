@@ -108,7 +108,8 @@ impl CliAdapter {
             | Commands::Telemetry { .. }
             | Commands::Config { .. }
             | Commands::Agent { .. }
-            | Commands::Tdg { .. } => Self::cli_only_command_error(),
+            | Commands::Tdg { .. }
+            | Commands::ValidateDocs(_) => Self::cli_only_command_error(),
         }
     }
 
@@ -1757,7 +1758,7 @@ impl CliInput {
     fn get_command_category(command: &Commands) -> CommandCategory {
         match command {
             Commands::Generate { .. } | Commands::Scaffold { .. } => CommandCategory::Generation,
-            Commands::QualityGate { .. } | Commands::Report { .. } => CommandCategory::Analysis,
+            Commands::QualityGate { .. } | Commands::Report { .. } | Commands::ValidateDocs(_) => CommandCategory::Analysis,
             Commands::Serve { .. }
             | Commands::Cache { .. }
             | Commands::Memory { .. }

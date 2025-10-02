@@ -262,6 +262,9 @@ pub enum Commands {
         max_line_length: Option<usize>,
     },
 
+    /// Validate documentation links
+    ValidateDocs(crate::cli::handlers::ValidateDocsCmd),
+
     /// Run quality gate checks on the codebase
     QualityGate {
         /// Project path to analyze (defaults to current directory)
