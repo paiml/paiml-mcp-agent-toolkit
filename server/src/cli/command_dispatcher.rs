@@ -129,6 +129,13 @@ impl CommandDispatcher {
                 )
                 .await
             }
+            Commands::ValidateDocs(cmd) => {
+                let exit_code = cmd.execute().await?;
+                if exit_code != std::process::ExitCode::SUCCESS {
+                    std::process::exit(1);
+                }
+                Ok(())
+            }
             Commands::QualityGate {
                 project_path,
                 file,
