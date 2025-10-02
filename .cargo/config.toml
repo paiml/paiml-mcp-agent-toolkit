@@ -23,6 +23,8 @@ CARGO_LLVM_COV_TARGET_DIR = { value = "target/llvm-cov-target", relative = true 
 RUSTFLAGS = { value = "-C link-dead-code", force = true }
 # Disable panic abort handler that allocates alternative stacks
 RUST_BACKTRACE = "0"
+# Set LIBCLANG_PATH for tree-sitter/clang-sys dependency
+LIBCLANG_PATH = "/usr/lib/llvm-18/lib"
 
 # This profile is used by `cargo nextest run --profile fast`
 [profile.fast]
@@ -33,3 +35,26 @@ strip = "none"
 lto = "off"
 codegen-units = 256
 incremental = true
+
+# Coverage profile (per COVERAGE.md specification)
+# CRITICAL: incremental = false prevents stale coverage data
+[profile.coverage]
+inherits = "test"
+opt-level = 0
+incremental = false
+codegen-units = 1
+
+# Coverage aliases (per COVERAGE.md specification)
+# Note: Excludes c-ast/cpp-ast features to avoid clang-sys dependency issues
+[alias]
+# Single-phase coverage (simple, works for most cases)
+cov = "llvm-cov --workspace --features skip-slow-tests --html --open --ignore-filename-regex='tests?\\.rs'"
+cov-ci = "llvm-cov --workspace --features skip-slow-tests --lcov --output-path lcov.info --ignore-filename-regex='tests?\\.rs'"
+cov-summary = "llvm-cov --workspace --features skip-slow-tests --summary-only --ignore-filename-regex='tests?\\.rs'"
+
+# Two-phase coverage (production pattern - allows combining multiple test runs)
+cov-no-report = "llvm-cov --workspace --features skip-slow-tests --no-report --ignore-filename-regex='tests?\\.rs'"
+cov-report = "llvm-cov report"
+cov-report-html = "llvm-cov report --html"
+cov-report-lcov = "llvm-cov report --lcov --output-path lcov.info"
+cov-clean = "llvm-cov clean --workspace"
