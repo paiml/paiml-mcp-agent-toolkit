@@ -34,12 +34,13 @@ SCRIPTS_DIR = scripts
 all: format build
 
 # Validate everything passes across all projects
-validate: check lint test-fast validate-docs validate-naming test-workflow-dag test-actions deps-validate validate-contracts
+validate: check lint test-fast validate-docs validate-doc-links validate-naming test-workflow-dag test-actions deps-validate validate-contracts
 	@echo "✅ All projects validated! All checks passed:"
 	@echo "  ✓ Type checking (cargo check + deno check)"
 	@echo "  ✓ Linting (cargo clippy + deno lint)"
 	@echo "  ✓ Fast testing (cargo nextest)"
 	@echo "  ✓ Documentation naming consistency"
+	@echo "  ✓ Documentation link validation"
 	@echo "  ✓ Project naming conventions"
 	@echo "  ✓ GitHub Actions workflow DAG (no version mismatches)"
 	@echo "  ✓ GitHub Actions workflows validated"
@@ -662,6 +663,12 @@ coverage-clean:
 validate-docs:
 	@echo "📖 Validating documentation naming consistency..."
 	@deno run --allow-read --allow-env $(SCRIPTS_DIR)/validate-docs.ts
+
+# Validate documentation links (internal and external)
+validate-doc-links:
+	@echo "🔗 Validating documentation links..."
+	@cargo run --bin pmat -- validate-docs --root docs --fail-on-error
+	@echo "✅ All documentation links valid!"
 
 # Test GitHub Actions workflow DAG for version mismatches
 test-workflow-dag:

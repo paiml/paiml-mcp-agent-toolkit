@@ -113,22 +113,28 @@ jobs:
     needs: build-and-test
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
-      
+
       - name: Install cargo-nextest
         uses: taiki-e/install-action@cargo-nextest
-      
+
       - name: Download binary artifact
         uses: actions/download-artifact@v4
         with:
           name: pmat-linux
           path: target/debug/
-      
+
       - name: Make binary executable
         run: chmod +x target/debug/pmat
-      
+
+      - name: Validate documentation links
+        run: |
+          echo "🔗 Validating documentation links..."
+          ./target/debug/pmat validate-docs --root docs --fail-on-error
+        timeout-minutes: 3
+
       - name: Run documentation sync tests
         run: |
           echo "📚 Running documentation synchronization tests..."
