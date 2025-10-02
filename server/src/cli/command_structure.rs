@@ -359,6 +359,13 @@ impl CommandExecutor {
                 };
                 super::handlers::handle_tdg_command(tdg_config).await
             }
+            Commands::ValidateDocs(cmd) => {
+                let exit_code = cmd.execute().await?;
+                if exit_code != std::process::ExitCode::SUCCESS {
+                    std::process::exit(1);
+                }
+                Ok(())
+            }
         }
     }
 }

@@ -19,6 +19,7 @@ pub mod config_command_handlers;
 pub mod configuration_handlers;
 pub mod defect_prediction_handler;
 pub mod demo_handlers;
+pub mod doc_validate_handlers;
 pub mod duplication_analysis;
 pub mod enforce_handlers;
 pub mod enhanced_reporting_handlers;
@@ -76,6 +77,7 @@ pub use config_command_handlers::handle_config_command;
 pub use configuration_handlers::handle_configuration;
 pub use defect_prediction_handler::handle_analyze_defect_prediction;
 pub use demo_handlers::{handle_demo, handle_quality_gate};
+pub use doc_validate_handlers::ValidateDocsCmd;
 pub use duplication_analysis::handle_analyze_duplicates;
 pub use enforce_handlers::route_enforce_command;
 pub use generation_handlers::{
