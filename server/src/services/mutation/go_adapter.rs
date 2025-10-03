@@ -9,7 +9,7 @@ use async_trait::async_trait;
 use std::path::Path;
 
 #[cfg(feature = "go-ast")]
-use tree_sitter::{Parser, Language};
+use tree_sitter::Parser;
 
 /// Go language adapter
 pub struct GoAdapter;
@@ -34,7 +34,7 @@ impl LanguageAdapter for GoAdapter {
     async fn parse(&self, source: &str) -> Result<String> {
         // Create tree-sitter parser for Go
         let mut parser = Parser::new();
-        let language = unsafe { tree_sitter_go::language() };
+        let language = tree_sitter_go::language();
         parser.set_language(&language)
             .map_err(|e| anyhow::anyhow!("Failed to set Go language: {}", e))?;
 

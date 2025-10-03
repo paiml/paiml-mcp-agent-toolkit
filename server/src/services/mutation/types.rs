@@ -61,6 +61,18 @@ pub enum MutationOperatorType {
     /// Variable Replacement
     VariableReplacement,
 
+    /// Conditional Return Operator (early returns)
+    ConditionalReturn,
+
+    /// Boundary Value Operator (off-by-one)
+    BoundaryValue,
+
+    /// Exception Handler Removal
+    ExceptionHandlerRemoval,
+
+    /// Return Value Replacement (alternative naming)
+    ReturnValueReplacement,
+
     /// None (for testing)
     None,
 }
