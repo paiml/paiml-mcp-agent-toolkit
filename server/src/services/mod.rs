@@ -194,6 +194,9 @@ pub mod deep_wasm;
 #[cfg(feature = "deep-wasm")]
 pub mod rust_wasm_analyzer;
 
+// Mutation testing engine (Phase 1 foundation)
+pub mod mutation;
+
 #[cfg(test)]
 mod satd_property_tests;
 

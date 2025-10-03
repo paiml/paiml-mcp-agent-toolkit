@@ -14,10 +14,14 @@ use std::path::Path;
 /// Deep WASM analysis service
 pub struct DeepWasmService {
     wasm_inspector: WasmInspector,
+    #[allow(dead_code)] // Phase 2: Used for DWARF v5 parsing
     dwarf_parser: DwarfParser,
+    #[allow(dead_code)] // Phase 2: Used for source map correlation
     source_map_handler: SourceMapHandler,
+    #[allow(dead_code)] // Phase 2: Used for source-to-WASM mapping
     correlation_engine: CorrelationEngine,
     quality_gates: WasmQualityGates,
+    #[allow(dead_code)] // Phase 2: Enhanced reporting with correlation
     report_generator: ReportGenerator,
 }
 
