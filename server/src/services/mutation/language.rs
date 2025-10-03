@@ -75,6 +75,12 @@ impl LanguageRegistry {
         self.register(Arc::new(GoAdapter::new()));
     }
 
+    /// Register C/C++ adapter
+    pub fn register_cpp(&mut self) {
+        use crate::services::mutation::CppAdapter;
+        self.register(Arc::new(CppAdapter::new()));
+    }
+
     /// Detect language from file path
     pub fn detect_language(&self, path: &Path) -> Option<Arc<dyn LanguageAdapter>> {
         let extension = path.extension()?.to_str()?;
