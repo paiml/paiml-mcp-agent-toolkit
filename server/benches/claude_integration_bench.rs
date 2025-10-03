@@ -31,14 +31,16 @@ fn benchmark_cache_performance(c: &mut Criterion) {
                 .await;
         });
 
-        b.to_async(&rt).iter(|| async {
-            let result = cache
-                .get_with_loader("test_key", || async {
-                    // This should never be called due to cache hit
-                    AnalysisResult::default()
-                })
-                .await;
-            black_box(result);
+        b.iter(|| {
+            rt.block_on(async {
+                let result = cache
+                    .get_with_loader("test_key", || async {
+                        // This should never be called due to cache hit
+                        AnalysisResult::default()
+                    })
+                    .await;
+                black_box(result);
+            })
         });
     });
 
@@ -48,12 +50,12 @@ fn benchmark_cache_performance(c: &mut Criterion) {
         let cache = Arc::new(TwoTierCache::new());
         let mut counter = 0u64;
 
-        b.to_async(&rt).iter(|| {
+        b.iter(|| {
             let cache = Arc::clone(&cache);
             let key = format!("unique_key_{}", counter);
             counter += 1;
 
-            async move {
+            rt.block_on(async move {
                 let result = cache
                     .get_with_loader(&key, || async {
                         // Simulate analysis work
@@ -66,7 +68,7 @@ fn benchmark_cache_performance(c: &mut Criterion) {
                     })
                     .await;
                 black_box(result);
-            }
+            })
         });
     });
 
@@ -87,9 +89,9 @@ fn benchmark_cache_performance(c: &mut Criterion) {
                 }
             });
 
-            b.to_async(&rt).iter(|| {
+            b.iter(|| {
                 let cache = Arc::clone(&cache);
-                async move {
+                rt.block_on(async move {
                     // Access random key (Zipfian-like pattern)
                     let key_idx = (size / 10).max(1); // Access hot keys
                     let result = cache
@@ -98,7 +100,7 @@ fn benchmark_cache_performance(c: &mut Criterion) {
                         })
                         .await;
                     black_box(result);
-                }
+                })
             });
         });
     }
@@ -140,9 +142,9 @@ fn benchmark_concurrent_access(c: &mut Criterion) {
                 let rt = tokio::runtime::Runtime::new().unwrap();
                 let cache = Arc::new(TwoTierCache::new());
 
-                b.to_async(&rt).iter(|| {
+                b.iter(|| {
                     let cache = Arc::clone(&cache);
-                    async move {
+                    rt.block_on(async move {
                         let mut handles = Vec::new();
 
                         for i in 0..threads {
@@ -160,7 +162,7 @@ fn benchmark_concurrent_access(c: &mut Criterion) {
                         for handle in handles {
                             handle.await.unwrap();
                         }
-                    }
+                    })
                 });
             },
         );
