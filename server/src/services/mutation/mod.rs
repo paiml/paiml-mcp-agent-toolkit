@@ -26,6 +26,9 @@ mod go_adapter_tests;
 #[cfg(test)]
 mod cpp_adapter_tests;
 
+#[cfg(test)]
+mod advanced_operators_tests;
+
 pub use types::*;
 pub use operators::*;
 pub use language::*;

@@ -34,7 +34,7 @@ impl LanguageAdapter for CppAdapter {
     async fn parse(&self, source: &str) -> Result<String> {
         // Create tree-sitter parser for C++
         let mut parser = Parser::new();
-        let language = unsafe { tree_sitter_cpp::language() };
+        let language = tree_sitter_cpp::language();
         parser.set_language(&language)
             .map_err(|e| anyhow::anyhow!("Failed to set C++ language: {}", e))?;
 
