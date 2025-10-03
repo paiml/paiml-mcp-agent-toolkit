@@ -5,10 +5,14 @@ pub mod dsl;
 pub mod executor;
 pub mod monitoring;
 pub mod recovery;
+pub mod repository;
 pub mod steps;
 
 // Re-export main types
+pub use dag::{DagAnalysis, DagEngine, DagNode};
 pub use executor::DefaultWorkflowExecutor;
+pub use monitoring::DefaultWorkflowMonitor;
+pub use repository::InMemoryWorkflowRepository;
 
 use async_trait::async_trait;
 use parking_lot::RwLock;
