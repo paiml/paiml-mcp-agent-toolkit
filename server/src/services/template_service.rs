@@ -233,35 +233,55 @@ fn validate_parameters(
     provided: &Map<String, serde_json::Value>,
 ) -> Result<(), TemplateError> {
     for spec in specs {
-        if spec.required && !provided.contains_key(&spec.name) {
-            return Err(TemplateError::ValidationError {
-                parameter: spec.name.clone(),
-                reason: "required parameter missing".to_string(),
-            });
-        }
+        check_required_parameter(spec, provided)?;
+        validate_parameter_value(spec, provided)?;
+    }
+    Ok(())
+}
 
-        if let Some(value) = provided.get(&spec.name) {
-            // Add validation logic based on param_type
-            if let Some(pattern) = &spec.validation_pattern {
-                // Validate against regex pattern
-                let regex =
-                    regex::Regex::new(pattern).map_err(|_| TemplateError::ValidationError {
-                        parameter: spec.name.clone(),
-                        reason: "invalid validation pattern".to_string(),
-                    })?;
+fn check_required_parameter(
+    spec: &crate::models::template::ParameterSpec,
+    provided: &Map<String, serde_json::Value>,
+) -> Result<(), TemplateError> {
+    if spec.required && !provided.contains_key(&spec.name) {
+        return Err(TemplateError::ValidationError {
+            parameter: spec.name.clone(),
+            reason: "required parameter missing".to_string(),
+        });
+    }
+    Ok(())
+}
 
-                if let Some(str_value) = value.as_str() {
-                    if !regex.is_match(str_value) {
-                        return Err(TemplateError::ValidationError {
-                            parameter: spec.name.clone(),
-                            reason: format!("value does not match pattern: {pattern}"),
-                        });
-                    }
-                }
-            }
+fn validate_parameter_value(
+    spec: &crate::models::template::ParameterSpec,
+    provided: &Map<String, serde_json::Value>,
+) -> Result<(), TemplateError> {
+    if let Some(value) = provided.get(&spec.name) {
+        if let Some(pattern) = &spec.validation_pattern {
+            validate_pattern_match(spec, pattern, value)?;
         }
     }
+    Ok(())
+}
 
+fn validate_pattern_match(
+    spec: &crate::models::template::ParameterSpec,
+    pattern: &str,
+    value: &serde_json::Value,
+) -> Result<(), TemplateError> {
+    let regex = regex::Regex::new(pattern).map_err(|_| TemplateError::ValidationError {
+        parameter: spec.name.clone(),
+        reason: "invalid validation pattern".to_string(),
+    })?;
+
+    if let Some(str_value) = value.as_str() {
+        if !regex.is_match(str_value) {
+            return Err(TemplateError::ValidationError {
+                parameter: spec.name.clone(),
+                reason: format!("value does not match pattern: {pattern}"),
+            });
+        }
+    }
     Ok(())
 }
 
@@ -336,7 +356,7 @@ pub async fn search_templates<T: TemplateServerTrait>(
 
 fn compute_template_relevance(template: Arc<crate::models::template::TemplateResource>, query_lower: &str) -> Option<SearchResult> {
     let mut matches = Vec::new();
-    let mut relevance = 0.0;
+    let mut relevance = 0.0_f32;
 
     check_name_match(&template.name, query_lower, &mut matches, &mut relevance);
     check_description_match(&template.description, query_lower, &mut matches, &mut relevance);
@@ -353,21 +373,21 @@ fn compute_template_relevance(template: Arc<crate::models::template::TemplateRes
     }
 }
 
-fn check_name_match(name: &str, query: &str, matches: &mut Vec<String>, relevance: &mut f64) {
+fn check_name_match(name: &str, query: &str, matches: &mut Vec<String>, relevance: &mut f32) {
     if name.to_lowercase().contains(query) {
         matches.push(format!("name: {}", name));
         *relevance += if name.to_lowercase() == query { 10.0 } else { 5.0 };
     }
 }
 
-fn check_description_match(desc: &str, query: &str, matches: &mut Vec<String>, relevance: &mut f64) {
+fn check_description_match(desc: &str, query: &str, matches: &mut Vec<String>, relevance: &mut f32) {
     if desc.to_lowercase().contains(query) {
         matches.push("description".to_string());
         *relevance += 3.0;
     }
 }
 
-fn check_parameter_matches(params: &[crate::models::template::ParameterSpec], query: &str, matches: &mut Vec<String>, relevance: &mut f64) {
+fn check_parameter_matches(params: &[crate::models::template::ParameterSpec], query: &str, matches: &mut Vec<String>, relevance: &mut f32) {
     for param in params {
         if param.name.to_lowercase().contains(query) {
             matches.push(format!("parameter: {}", param.name));
