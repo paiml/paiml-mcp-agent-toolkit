@@ -327,50 +327,53 @@ pub async fn search_templates<T: TemplateServerTrait>(
 
     let mut results: Vec<SearchResult> = templates
         .into_iter()
-        .filter_map(|template| {
-            let mut matches = Vec::new();
-            let mut relevance = 0.0;
-
-            // Check name
-            if template.name.to_lowercase().contains(&query_lower) {
-                matches.push(format!("name: {}", template.name));
-                relevance += if template.name.to_lowercase() == query_lower {
-                    10.0
-                } else {
-                    5.0
-                };
-            }
-
-            // Check description
-            if template.description.to_lowercase().contains(&query_lower) {
-                matches.push("description".to_string());
-                relevance += 3.0;
-            }
-
-            // Check parameter names
-            for param in &template.parameters {
-                if param.name.to_lowercase().contains(&query_lower) {
-                    matches.push(format!("parameter: {}", param.name));
-                    relevance += 1.0;
-                }
-            }
-
-            if matches.is_empty() {
-                None
-            } else {
-                Some(SearchResult {
-                    template: (*template).clone(),
-                    relevance,
-                    matches,
-                })
-            }
-        })
+        .filter_map(|template| compute_template_relevance(template, &query_lower))
         .collect();
 
-    // Sort by relevance (highest first)
     results.sort_by(|a, b| b.relevance.partial_cmp(&a.relevance).unwrap());
-
     Ok(results)
+}
+
+fn compute_template_relevance(template: Arc<crate::models::template::TemplateResource>, query_lower: &str) -> Option<SearchResult> {
+    let mut matches = Vec::new();
+    let mut relevance = 0.0;
+
+    check_name_match(&template.name, query_lower, &mut matches, &mut relevance);
+    check_description_match(&template.description, query_lower, &mut matches, &mut relevance);
+    check_parameter_matches(&template.parameters, query_lower, &mut matches, &mut relevance);
+
+    if matches.is_empty() {
+        None
+    } else {
+        Some(SearchResult {
+            template: (*template).clone(),
+            relevance,
+            matches,
+        })
+    }
+}
+
+fn check_name_match(name: &str, query: &str, matches: &mut Vec<String>, relevance: &mut f64) {
+    if name.to_lowercase().contains(query) {
+        matches.push(format!("name: {}", name));
+        *relevance += if name.to_lowercase() == query { 10.0 } else { 5.0 };
+    }
+}
+
+fn check_description_match(desc: &str, query: &str, matches: &mut Vec<String>, relevance: &mut f64) {
+    if desc.to_lowercase().contains(query) {
+        matches.push("description".to_string());
+        *relevance += 3.0;
+    }
+}
+
+fn check_parameter_matches(params: &[crate::models::template::ParameterSpec], query: &str, matches: &mut Vec<String>, relevance: &mut f64) {
+    for param in params {
+        if param.name.to_lowercase().contains(query) {
+            matches.push(format!("parameter: {}", param.name));
+            *relevance += 1.0;
+        }
+    }
 }
 
 pub async fn validate_template<T: TemplateServerTrait>(
