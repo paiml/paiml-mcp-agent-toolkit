@@ -1,7 +1,9 @@
 use super::*;
 use crate::agents::analyzer_actor::AnalyzerActor;
-use crate::agents::messages::AnalyzeMessage;
+use crate::agents::messages::{AnalyzeMessage, TransformMessage, ValidateMessage};
 use crate::agents::registry::AgentRegistry;
+use crate::agents::transformer_actor::TransformerActor;
+use crate::agents::validator_actor::ValidatorActor;
 use crate::agents::Priority;
 use actix::prelude::*;
 use serde_json::json;
@@ -132,12 +134,21 @@ impl McpTool for AnalyzeTool {
 // Transform tool - invokes transformer agent
 pub struct TransformTool {
     _registry: Arc<AgentRegistry>,
+    transformer: Option<Addr<TransformerActor>>,
 }
 
 impl TransformTool {
     pub fn new(registry: Arc<AgentRegistry>) -> Self {
         Self {
             _registry: registry,
+            transformer: None,
+        }
+    }
+
+    pub fn new_with_actor(registry: Arc<AgentRegistry>, transformer: Addr<TransformerActor>) -> Self {
+        Self {
+            _registry: registry,
+            transformer: Some(transformer),
         }
     }
 }
@@ -175,7 +186,7 @@ impl McpTool for TransformTool {
     }
 
     async fn execute(&self, params: Value) -> Result<Value, McpError> {
-        let _code = params["code"].as_str().ok_or_else(|| McpError {
+        let code = params["code"].as_str().ok_or_else(|| McpError {
             code: error_codes::INVALID_PARAMS,
             message: "Missing code parameter".to_string(),
             data: None,
@@ -187,50 +198,99 @@ impl McpTool for TransformTool {
             data: None,
         })?;
 
-        // TODO: Create transform request when ModuleRequest is defined
-        // let request = ModuleRequest::Transform {
-        //     ast: json!({"code": code}),
-        //     operation: transformation.to_string(),
-        // };
+        // Get transformer actor
+        let transformer = self.transformer.as_ref().ok_or_else(|| McpError {
+            code: error_codes::INTERNAL_ERROR,
+            message: "Transformer actor not initialized".to_string(),
+            data: None,
+        })?;
 
-        // TODO: Implement transformer after agent system is complete
-        /*
-        if let Some(transformer) = self.registry.get_agent("transformer").await {
-            match transformer.process(request).await {
-                Ok(ModuleResponse::Transformation(result)) => Ok(json!({
-                    "type": "text",
-                    "text": result.code
-                })),
-                Err(e) => Err(McpError {
-                    code: error_codes::INTERNAL_ERROR,
-                    message: format!("Transformation failed: {}", e),
-                    data: None,
-                }),
-            }
-        } else {
-            Err(McpError {
-                code: error_codes::INTERNAL_ERROR,
-                message: "Transformer agent not found".to_string(),
-                data: None,
+        // Create message with priority
+        let priority = params["priority"]
+            .as_str()
+            .and_then(|p| match p {
+                "critical" => Some(Priority::Critical),
+                "high" => Some(Priority::High),
+                "low" => Some(Priority::Low),
+                _ => Some(Priority::Normal),
             })
+            .unwrap_or(Priority::Normal);
+
+        // Extract rules (optional)
+        let rules = params["rules"]
+            .as_array()
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|v| v.as_str().map(String::from))
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
+
+        let message = TransformMessage {
+            code: code.to_string(),
+            rules,
+            priority,
+        };
+
+        // Send message to transformer actor
+        let response = transformer
+            .send(message)
+            .await
+            .map_err(|e| McpError {
+                code: error_codes::INTERNAL_ERROR,
+                message: format!("Actor communication failed: {}", e),
+                data: None,
+            })?
+            .map_err(|e| McpError {
+                code: error_codes::INTERNAL_ERROR,
+                message: format!("Transformation failed: {}", e),
+                data: None,
+            })?;
+
+        // Convert AgentResponse to MCP format
+        match response {
+            crate::agents::AgentResponse::Transformed(result) => Ok(json!({
+                "type": "text",
+                "text": format!(
+                    "Transformation Results:\n\nTransformed Code:\n{}\n\nChanges: {}\n",
+                    result.transformed,
+                    result.changes.len()
+                )
+            })),
+            _ => Err(McpError {
+                code: error_codes::INTERNAL_ERROR,
+                message: "Unexpected response type".to_string(),
+                data: None,
+            }),
         }
-        */
-        Ok(json!({
-            "type": "text",
-            "text": "Transformation not yet implemented"
-        }))
     }
 }
 
 // Validate tool - invokes validator agent
 pub struct ValidateTool {
     _registry: Arc<AgentRegistry>,
+    analyzer: Option<Addr<AnalyzerActor>>,
+    validator: Option<Addr<ValidatorActor>>,
 }
 
 impl ValidateTool {
     pub fn new(registry: Arc<AgentRegistry>) -> Self {
         Self {
             _registry: registry,
+            analyzer: None,
+            validator: None,
+        }
+    }
+
+    pub fn new_with_actors(
+        registry: Arc<AgentRegistry>,
+        analyzer: Addr<AnalyzerActor>,
+        validator: Addr<ValidatorActor>,
+    ) -> Self {
+        Self {
+            _registry: registry,
+            analyzer: Some(analyzer),
+            validator: Some(validator),
         }
     }
 }
@@ -268,23 +328,96 @@ impl McpTool for ValidateTool {
     }
 
     async fn execute(&self, params: Value) -> Result<Value, McpError> {
-        let _code = params["code"].as_str().ok_or_else(|| McpError {
+        let code = params["code"].as_str().ok_or_else(|| McpError {
             code: error_codes::INVALID_PARAMS,
             message: "Missing code parameter".to_string(),
             data: None,
         })?;
 
-        // TODO: Create validation request when ModuleRequest is defined
-        // let request = ModuleRequest::Validate {
-        //     data: json!({"code": code}),
-        //     rules: vec![],
-        // };
+        // Get analyzer and validator actors
+        let analyzer = self.analyzer.as_ref().ok_or_else(|| McpError {
+            code: error_codes::INTERNAL_ERROR,
+            message: "Analyzer actor not initialized".to_string(),
+            data: None,
+        })?;
 
-        // TODO: Implement validator after agent system is complete
-        Ok(json!({
-            "type": "text",
-            "text": "Validation not yet implemented"
-        }))
+        let validator = self.validator.as_ref().ok_or_else(|| McpError {
+            code: error_codes::INTERNAL_ERROR,
+            message: "Validator actor not initialized".to_string(),
+            data: None,
+        })?;
+
+        // Step 1: Analyze code to get metrics
+        let analyze_msg = AnalyzeMessage {
+            code: code.to_string(),
+            priority: Priority::Normal,
+        };
+
+        let analyze_response = analyzer
+            .send(analyze_msg)
+            .await
+            .map_err(|e| McpError {
+                code: error_codes::INTERNAL_ERROR,
+                message: format!("Actor communication failed: {}", e),
+                data: None,
+            })?
+            .map_err(|e| McpError {
+                code: error_codes::INTERNAL_ERROR,
+                message: format!("Analysis failed: {}", e),
+                data: None,
+            })?;
+
+        let metrics = match analyze_response {
+            crate::agents::AgentResponse::Analyzed(m) => m,
+            _ => {
+                return Err(McpError {
+                    code: error_codes::INTERNAL_ERROR,
+                    message: "Unexpected response type from analyzer".to_string(),
+                    data: None,
+                })
+            }
+        };
+
+        // Step 2: Validate metrics with thresholds
+        let thresholds = crate::modules::validator::Thresholds::default();
+
+        let validate_msg = ValidateMessage {
+            metrics: metrics.clone(),
+            thresholds,
+            priority: Priority::Normal,
+        };
+
+        let validate_response = validator
+            .send(validate_msg)
+            .await
+            .map_err(|e| McpError {
+                code: error_codes::INTERNAL_ERROR,
+                message: format!("Actor communication failed: {}", e),
+                data: None,
+            })?
+            .map_err(|e| McpError {
+                code: error_codes::INTERNAL_ERROR,
+                message: format!("Validation failed: {}", e),
+                data: None,
+            })?;
+
+        // Convert AgentResponse to MCP format
+        match validate_response {
+            crate::agents::AgentResponse::Validated(result) => Ok(json!({
+                "type": "text",
+                "text": format!(
+                    "Validation Results:\n\nPassed: {}\nComplexity: {}\nViolations: {}\n",
+                    result.passed,
+                    metrics.complexity,
+                    result.violations.len()
+                )
+            })),
+            _ => Err(McpError {
+                code: error_codes::INTERNAL_ERROR,
+                message: "Unexpected response type from validator".to_string(),
+                data: None,
+            }),
+        }
     }
 }
 
@@ -341,16 +474,17 @@ impl McpTool for OrchestrateTool {
         let _workflow = params["workflow"].clone();
         let _input = params["input"].clone();
 
-        // TODO: Create orchestration request when ModuleRequest is defined
-        // let request = ModuleRequest::Orchestrate {
-        //     workflow,
-        //     context: input.unwrap_or(json!({})),
-        // };
+        // Orchestration is handled by the WorkflowRepository and WorkflowExecutor
+        // This tool provides a simplified MCP interface to workflow execution
+        // Full workflow orchestration requires:
+        // 1. WorkflowBuilder to create workflow definitions
+        // 2. WorkflowRepository to store workflows
+        // 3. WorkflowExecutor to execute workflows with DagEngine
+        // 4. Integration with agent registry for step execution
 
-        // TODO: Implement orchestrator after agent system is complete
         Ok(json!({
             "type": "text",
-            "text": "Orchestration not yet implemented"
+            "text": "Orchestration via WorkflowRepository - use workflow/execute endpoint"
         }))
     }
 }
