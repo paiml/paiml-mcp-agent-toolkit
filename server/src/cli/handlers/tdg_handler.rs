@@ -196,49 +196,56 @@ async fn analyze_multiple_files(
     eprintln!("📄 Analyzing TDG for {} files...", files.len());
 
     let mut results = Vec::new();
-
     for file_path in files {
-        let full_path = if file_path.is_absolute() {
-            file_path
-        } else {
-            project_path.join(&file_path)
-        };
-
-        if !full_path.exists() {
-            eprintln!("⚠️  Skipping missing file: {}", full_path.display());
-            continue;
-        }
-
-        match calculator.calculate_file(&full_path).await {
-            Ok(score) => {
-                // Apply filters
-                if critical_only && score.value <= 2.5 {
-                    continue;
-                }
-                if score.value < threshold {
-                    continue;
-                }
-                results.push((score, full_path));
-            }
-            Err(e) => {
-                eprintln!("⚠️  Error analyzing {}: {}", full_path.display(), e);
-            }
+        if let Some(result) = analyze_single_file(calculator, project_path, file_path, threshold, critical_only).await {
+            results.push(result);
         }
     }
 
-    // Sort by TDG score descending (using unstable for performance)
     results.sort_unstable_by(|a, b| b.0.value.partial_cmp(&a.0.value).unwrap());
-
-    // Apply top_files limit
     if top_files > 0 && results.len() > top_files {
         results.truncate(top_files);
     }
 
-    // Create synthetic summary
     let summary = create_summary_from_file_results(&results);
-
-    // Format output
     format_output_from_summary(&summary, format, include_components, verbose)
+}
+
+async fn analyze_single_file(
+    calculator: &TDGCalculator,
+    project_path: &PathBuf,
+    file_path: PathBuf,
+    threshold: f64,
+    critical_only: bool,
+) -> Option<(crate::models::tdg::TDGScore, PathBuf)> {
+    let full_path = if file_path.is_absolute() {
+        file_path
+    } else {
+        project_path.join(&file_path)
+    };
+
+    if !full_path.exists() {
+        eprintln!("⚠️  Skipping missing file: {}", full_path.display());
+        return None;
+    }
+
+    match calculator.calculate_file(&full_path).await {
+        Ok(score) if should_include_score(&score, threshold, critical_only) => {
+            Some((score, full_path))
+        }
+        Ok(_) => None,
+        Err(e) => {
+            eprintln!("⚠️  Error analyzing {}: {}", full_path.display(), e);
+            None
+        }
+    }
+}
+
+fn should_include_score(score: &crate::models::tdg::TDGScore, threshold: f64, critical_only: bool) -> bool {
+    if critical_only && score.value <= 2.5 {
+        return false;
+    }
+    score.value >= threshold
 }
 
 /// Analyze entire project and return formatted output
@@ -505,7 +512,36 @@ fn format_markdown_output(summary: &TDGSummary, include_components: bool) -> Str
 }
 
 fn format_sarif_output(summary: &TDGSummary) -> String {
-    let sarif = serde_json::json!({
+    let results: Vec<_> = summary.hotspots.iter().map(create_sarif_result).collect();
+    let sarif = build_sarif_document(results);
+    serde_json::to_string_pretty(&sarif).unwrap_or_else(|_| "{}".to_string())
+}
+
+fn create_sarif_result(hotspot: &crate::models::tdg::TDGHotspot) -> serde_json::Value {
+    serde_json::json!({
+        "ruleId": "TDG001",
+        "level": if hotspot.tdg_score > 2.5 { "error" } else { "warning" },
+        "message": {
+            "text": format!("TDG score {:.2} - Primary factor: {}",
+                hotspot.tdg_score, hotspot.primary_factor)
+        },
+        "locations": [{
+            "physicalLocation": {
+                "artifactLocation": {
+                    "uri": hotspot.path.clone()
+                }
+            }
+        }],
+        "properties": {
+            "tdg_score": hotspot.tdg_score,
+            "primary_factor": &hotspot.primary_factor,
+            "estimated_hours": hotspot.estimated_hours
+        }
+    })
+}
+
+fn build_sarif_document(results: Vec<serde_json::Value>) -> serde_json::Value {
+    serde_json::json!({
         "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
         "version": "2.1.0",
         "runs": [{
@@ -529,32 +565,9 @@ fn format_sarif_output(summary: &TDGSummary) -> String {
                     }]
                 }
             },
-            "results": summary.hotspots.iter().map(|hotspot| {
-                serde_json::json!({
-                    "ruleId": "TDG001",
-                    "level": if hotspot.tdg_score > 2.5 { "error" } else { "warning" },
-                    "message": {
-                        "text": format!("TDG score {:.2} - Primary factor: {}", 
-                            hotspot.tdg_score, hotspot.primary_factor)
-                    },
-                    "locations": [{
-                        "physicalLocation": {
-                            "artifactLocation": {
-                                "uri": hotspot.path.clone()
-                            }
-                        }
-                    }],
-                    "properties": {
-                        "tdg_score": hotspot.tdg_score,
-                        "primary_factor": &hotspot.primary_factor,
-                        "estimated_hours": hotspot.estimated_hours
-                    }
-                })
-            }).collect::<Vec<_>>()
+            "results": results
         }]
-    });
-    
-    serde_json::to_string_pretty(&sarif).unwrap_or_else(|_| "{}".to_string())
+    })
 }
 
 // Helper functions
