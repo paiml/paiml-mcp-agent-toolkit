@@ -3,7 +3,7 @@
 //! Extends the Rust analyzer to detect WASM-specific constructs.
 //! Implements DWASM-004: Track #[wasm_bindgen], extern "C", #[no_mangle], and memory patterns.
 
-use syn::{Attribute, FnArg, ForeignItem, Item, ItemFn, Pat, Type};
+use syn::{Attribute, FnArg, ForeignItem, Item, ItemFn, Type};
 
 /// WASM boundary function information
 #[derive(Debug, Clone)]

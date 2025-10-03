@@ -93,9 +93,68 @@ pmat analyze deep-wasm -p src/ --focus interop      # JS interop
 ```
 
 ### Roadmap
-- **Phase 1 (Complete)**: WASM parsing, DWARF framework, source maps, quality gates, CLI, MCP tools, Rust analyzer
-- **Phase 2**: Source-to-WASM correlation, type flow analysis, optimization comparison, issue detection
+- **Phase 1 (Complete)**: WASM parsing, DWARF framework (gimli integration deferred), source maps, quality gates, CLI, MCP tools, Rust analyzer
+  - Note: Full DWARF v5 parsing deferred to Phase 2 due to gimli API complexity
+  - Note: Correlation engine framework implemented, full bidirectional mapping deferred to Phase 2
+- **Phase 2**: DWARF v5 parsing (DWASM-002), source-to-WASM correlation (DWASM-010), type flow analysis, optimization comparison, issue detection
 - **Phase 3**: Execution tracing, performance profiling, Chrome DevTools integration, Ruchy deadlock detection
+
+### Added - Mutation Testing Engine (Phase 1 Foundation)
+- **AST-Based Mutation Testing**: Language-agnostic mutation testing framework for test suite quality evaluation
+  - Core mutation types: `Mutant`, `MutationResult`, `MutationScore`, `WeakSpot`
+  - `MutationOperator` trait with 4 foundational operators:
+    - AOR (Arithmetic Operator Replacement): `+ → -`, `* → /`, etc.
+    - ROR (Relational Operator Replacement): `< → <=`, `== → !=`, etc.
+    - COR (Conditional Operator Replacement): `&& → ||`
+    - UOR (Unary Operator Replacement): `! → identity`, `- → +`
+  - `LanguageAdapter` trait for extensible language support
+  - `LanguageRegistry` for runtime adapter management
+  - `MutationEngine` with AST visitor pattern for mutant generation
+  - `MutationScorer` with weak spot detection and test improvement suggestions
+  - Rust adapter using syn crate (first language implementation)
+  - Mutation score calculation: `killed / (total - equivalent - compile_errors)`
+  - Kill probability estimation per operator (50%-90% range)
+  - Hash-based mutant deduplication (SHA256)
+  - TDD test suite with >90% coverage
+
+### Technical Details - Mutation Testing
+- New service module: `server/src/services/mutation/` (7 files)
+  - Module root: `mod.rs` - Public API exports
+  - Core types: `types.rs` - Mutant, MutationScore, WeakSpot, status enums
+  - Operators: `operators.rs` - 4 mutation operator implementations
+  - Language system: `language.rs` - LanguageAdapter trait and registry
+  - Rust adapter: `rust_adapter.rs` - syn-based Rust mutation support
+  - Engine: `engine.rs` - AST visitor and mutant generation
+  - Scoring: `scoring.rs` - Result analysis and weak spot detection
+- Dependencies: syn 2.x (AST parsing), quote (code generation), sha2 (hashing)
+- Test coverage: 16+ unit tests across all modules
+
+### Specification
+- **Document**: `docs/specifications/mutant-fuzz-ast-testing.md` (v1.1, peer-reviewed)
+- **Total Scope**: 5 phases, 67-84 days
+- **Quality Standard**: Toyota Way (zero-defect, >90% coverage)
+
+### Roadmap - Mutation Testing (Phases 2-5 Deferred)
+- **Phase 1 (Complete)**: Foundation with 4 operators, Rust adapter, scoring system
+- **Phase 2 (Deferred)**: Multi-language support (TypeScript, Python, Go, C/C++) - See #56
+- **Phase 3 (Deferred)**: Advanced operators (CRO, SDO, RVR, VRO, BVO, EHR) - See #57
+- **Phase 4 (Deferred)**: Fuzzing integration & ML optimization - See #58
+- **Phase 5 (Deferred)**: Production hardening & enterprise features - See #59
+- **Master Roadmap**: See #60 for complete implementation plan
+
+### Deferral Rationale
+Phases 2-5 deferred to focus on:
+1. Stabilizing Phase 1 foundation
+2. Gathering real-world mutation testing metrics
+3. Validating operator effectiveness on PMAT codebase
+4. Ensuring Toyota Way quality standards before expansion
+
+### GitHub Issues Created
+- #56: Multi-Language Adapter Support (Phase 2)
+- #57: Advanced Mutation Operators (Phase 3)
+- #58: Fuzzing Integration & ML Optimization (Phase 4)
+- #59: Production Hardening & Enterprise Features (Phase 5)
+- #60: Master Roadmap - AST-Based Mutation Testing Engine
 
 ### Fixed
 - **validate-docs archive exclusion**: Fixed `validate-docs` command scanning archive directories by default
