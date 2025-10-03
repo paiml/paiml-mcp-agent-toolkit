@@ -1,17 +1,30 @@
 use super::*;
+use crate::agents::analyzer_actor::AnalyzerActor;
+use crate::agents::messages::AnalyzeMessage;
 use crate::agents::registry::AgentRegistry;
+use crate::agents::Priority;
+use actix::prelude::*;
 use serde_json::json;
 use std::sync::Arc;
 
 // Analyze tool - invokes analyzer agent
 pub struct AnalyzeTool {
     _registry: Arc<AgentRegistry>,
+    analyzer: Option<Addr<AnalyzerActor>>,
 }
 
 impl AnalyzeTool {
     pub fn new(registry: Arc<AgentRegistry>) -> Self {
         Self {
             _registry: registry,
+            analyzer: None,
+        }
+    }
+
+    pub fn new_with_actor(registry: Arc<AgentRegistry>, analyzer: Addr<AnalyzerActor>) -> Self {
+        Self {
+            _registry: registry,
+            analyzer: Some(analyzer),
         }
     }
 }
@@ -45,7 +58,7 @@ impl McpTool for AnalyzeTool {
     }
 
     async fn execute(&self, params: Value) -> Result<Value, McpError> {
-        let _code = params["code"].as_str().ok_or_else(|| McpError {
+        let code = params["code"].as_str().ok_or_else(|| McpError {
             code: error_codes::INVALID_PARAMS,
             message: "Missing code parameter".to_string(),
             data: None,
@@ -57,17 +70,62 @@ impl McpTool for AnalyzeTool {
             data: None,
         })?;
 
-        // TODO: Create analyzer request when ModuleRequest is defined
-        // let request = ModuleRequest::Analyze {
-        //     code: code.to_string(),
-        //     language: language.to_string(),
-        // };
+        // Get analyzer actor
+        let analyzer = self.analyzer.as_ref().ok_or_else(|| McpError {
+            code: error_codes::INTERNAL_ERROR,
+            message: "Analyzer actor not initialized".to_string(),
+            data: None,
+        })?;
 
-        // TODO: Implement agent processing after agent system is complete
-        Ok(json!({
-            "type": "text",
-            "text": "Analysis not yet implemented"
-        }))
+        // Create message with priority
+        let priority = params["priority"]
+            .as_str()
+            .and_then(|p| match p {
+                "critical" => Some(Priority::Critical),
+                "high" => Some(Priority::High),
+                "low" => Some(Priority::Low),
+                _ => Some(Priority::Normal),
+            })
+            .unwrap_or(Priority::Normal);
+
+        let message = AnalyzeMessage {
+            code: code.to_string(),
+            priority,
+        };
+
+        // Send message to analyzer actor
+        let response = analyzer
+            .send(message)
+            .await
+            .map_err(|e| McpError {
+                code: error_codes::INTERNAL_ERROR,
+                message: format!("Actor communication failed: {}", e),
+                data: None,
+            })?
+            .map_err(|e| McpError {
+                code: error_codes::INTERNAL_ERROR,
+                message: format!("Analysis failed: {}", e),
+                data: None,
+            })?;
+
+        // Convert AgentResponse to MCP format
+        match response {
+            crate::agents::AgentResponse::Analyzed(metrics) => Ok(json!({
+                "type": "text",
+                "text": format!("Analysis Results:\n\nComplexity: {}\nLines: {}\nFunctions: {}\nClasses: {}\nImports: {}\n",
+                    metrics.complexity,
+                    metrics.lines_of_code,
+                    metrics.functions,
+                    metrics.classes,
+                    metrics.imports
+                )
+            })),
+            _ => Err(McpError {
+                code: error_codes::INTERNAL_ERROR,
+                message: "Unexpected response type".to_string(),
+                data: None,
+            }),
+        }
     }
 }
 
