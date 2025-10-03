@@ -8,6 +8,9 @@ pub mod supervisor;
 pub mod transformer_actor;
 pub mod validator_actor;
 
+#[cfg(test)]
+mod registry_tests;
+
 use actix::prelude::*;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -78,6 +81,7 @@ pub enum Priority {
     Low = 3,
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub enum AgentClass {
     Analyzer,
     Transformer,
@@ -86,6 +90,7 @@ pub enum AgentClass {
     Monitor,
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct AgentSpec {
     pub id: AgentId,
     pub class: AgentClass,
