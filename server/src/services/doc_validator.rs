@@ -444,7 +444,7 @@ impl DocValidator {
             .into_iter()
             .filter_entry(|e| !self.should_exclude(e.path()))
             .filter_map(|e| e.ok())
-            .filter(|e| e.path().extension().map_or(false, |ext| ext == "md"))
+            .filter(|e| e.path().extension().is_some_and(|ext| ext == "md"))
         {
             file_count += 1;
             let content = tokio::fs::read_to_string(entry.path())

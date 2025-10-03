@@ -57,7 +57,7 @@ impl DeepWasmService {
         // Parse DWARF debug information if provided
         let dwarf_entries = if let Some(ref dwarf_path) = request.dwarf_path {
             let dwarf_data = fs::read(dwarf_path)
-                .map_err(|e| crate::services::deep_wasm::DeepWasmError::Io(e))?;
+                .map_err(crate::services::deep_wasm::DeepWasmError::Io)?;
             self.dwarf_parser.parse_dwarf_sections(&dwarf_data, None, None)?
         } else {
             vec![]
@@ -114,7 +114,7 @@ impl DeepWasmService {
 
         // Read source file
         let source_code = fs::read_to_string(source_path)
-            .map_err(|e| DeepWasmError::Io(e))?;
+            .map_err(DeepWasmError::Io)?;
 
         // Count lines of code
         let lines_of_code = source_code.lines().count();

@@ -80,7 +80,7 @@ impl ReportGenerator {
                     mapping.confidence * 100.0
                 ));
             }
-            output.push_str("\n");
+            output.push('\n');
 
             // Summary statistics
             let avg_confidence = report.correlations.iter()
