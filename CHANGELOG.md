@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.110.0] - 2025-10-03
+
 ### Added
 - **Deep WASM Pipeline Inspection (Phase 1)**: Multi-layer bidirectional tracing for Rust/Ruchy → WebAssembly → JavaScript → HTML pipeline
   - WASM binary parser with zero-copy analysis using wasmparser (DWASM-001)
@@ -94,6 +96,27 @@ pmat analyze deep-wasm -p src/ --focus interop      # JS interop
 - **Phase 1 (Complete)**: WASM parsing, DWARF framework, source maps, quality gates, CLI, MCP tools, Rust analyzer
 - **Phase 2**: Source-to-WASM correlation, type flow analysis, optimization comparison, issue detection
 - **Phase 3**: Execution tracing, performance profiling, Chrome DevTools integration, Ruchy deadlock detection
+
+### Fixed
+- **validate-docs archive exclusion**: Fixed `validate-docs` command scanning archive directories by default
+  - Added default exclusion patterns: `archive`, `node_modules`, `.git`, `target`
+  - Changed from post-walk filtering to `WalkDir::filter_entry()` for performance (skips dirs early)
+  - Previously walked 52+ archive files then discarded; now skips `archive/` entirely at directory level
+  - Added test case verifying archive directories are excluded
+- **validate-docs CLI --exclude merging**: Fixed `--exclude` option replacing defaults instead of merging
+  - Before: `--exclude vendor` only excluded "vendor" (lost defaults)
+  - After: `--exclude vendor` excludes defaults + "vendor" (additive)
+  - CLI excludes now properly merge with default exclusion patterns
+  - Updated tests to verify merge behavior
+
+### Improved
+- **Code Quality - Complexity Refactoring**: Eliminated all cognitive complexity violations
+  - Reduced violations from 9 to 0 (100% improvement)
+  - `template_service.rs`: Split `validate_parameters` into 3 focused helpers (complexity: 32→~10)
+  - `similarity_tools.rs`: Split `is_source_file` into 3 extraction functions (complexity: 32→~5)
+  - Reduced nesting from 4-5 levels to 1-2 levels per function
+  - Fixed f64/f32 type mismatch in relevance scoring
+  - All functions now under cognitive complexity threshold of 25
 
 ## [2.109.0] - 2025-10-02
 
