@@ -2,6 +2,7 @@
 pub mod prompts;
 pub mod resources;
 pub mod server;
+pub mod service_registry;
 pub mod tools;
 #[cfg(feature = "deep-wasm")]
 pub mod deep_wasm_tools;
