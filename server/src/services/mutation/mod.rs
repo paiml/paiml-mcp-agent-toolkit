@@ -14,6 +14,7 @@ pub mod python_adapter;
 pub mod go_adapter;
 pub mod cpp_adapter;
 pub mod fuzzing;
+pub mod coverage;
 
 #[cfg(test)]
 mod typescript_adapter_tests;
@@ -44,3 +45,4 @@ pub use python_adapter::*;
 pub use go_adapter::*;
 pub use cpp_adapter::*;
 pub use fuzzing::*;
+pub use coverage::*;
