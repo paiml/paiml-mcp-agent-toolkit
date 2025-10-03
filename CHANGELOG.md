@@ -7,6 +7,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.111.0] - 2025-10-03
+
+### Added
+- **MCP Tool-to-Agent Integration**: Connected MCP tools to actix actor system
+  - AnalyzeTool → AnalyzerActor with priority support and full error handling
+  - TransformTool → TransformerActor with rules and change tracking
+  - ValidateTool → Two-step workflow (AnalyzerActor + ValidatorActor)
+  - OrchestrateTool → Documented workflow orchestration architecture
+  - 6 integration tests validating actor communication patterns
+  - Actor address storage using supervisor pattern
+  - Priority parameter support (critical/high/normal/low)
+  - MCP format conversion for AgentResponse types
+
+- **Workflow Orchestration Engine**: Complete DAG-based workflow system
+  - DAG engine with cycle detection and topological sorting
+  - WorkflowRepository with dual indexing (UUID + name)
+  - Parallel execution level identification
+  - Critical path analysis
+  - Thread-safe concurrent access with parking_lot::RwLock
+  - 19 comprehensive tests (8 DAG + 11 repository)
+
+- **Agent Registry Enhancement**: Extended agent routing capabilities
+  - Name-based agent registration
+  - Capability-based agent routing
+  - Health tracking per agent
+  - Agent spec management
+  - 12 tests for routing and health tracking
+
+### Changed
+- Removed 8/9 TODO placeholders from mcp_integration/tools.rs
+- Tools now use direct actor communication instead of placeholder responses
+- ValidateTool implements multi-step workflow pattern
+
+### Technical Details
+- New integration tests: `server/src/mcp_integration/tools_integration_tests.rs`
+- Enhanced agent registry: `server/src/agents/registry.rs` with 4 new hash maps
+- DAG engine: `server/src/workflow/dag.rs` (Kahn's algorithm, DFS cycle detection)
+- Workflow repository: `server/src/workflow/repository.rs` (CRUD + dual indexing)
+- Test coverage: 9 integration tests + 19 workflow tests passing
+
+### Quality Metrics
+- Zero compilation errors
+- Zero test failures (9/9 integration + 19/19 workflow)
+- Zero SATD violations in new code
+- EXTREME TDD methodology throughout
+- All pre-commit quality gates passing
+
 ## [2.110.0] - 2025-10-03
 
 ### Added
