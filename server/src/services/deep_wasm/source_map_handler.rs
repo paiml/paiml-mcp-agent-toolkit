@@ -39,6 +39,12 @@ impl SourceMapHandler {
 
         entries
     }
+
+    /// Convenience method to load and parse source map in one step
+    pub fn parse_source_map<P: AsRef<Path>>(&self, path: P) -> DeepWasmResult<Vec<SourceMapEntry>> {
+        let source_map = self.load_from_file(path)?;
+        Ok(self.parse_mappings(&source_map))
+    }
 }
 
 impl Default for SourceMapHandler {
