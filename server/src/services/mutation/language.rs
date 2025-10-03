@@ -57,6 +57,12 @@ impl LanguageRegistry {
         self.adapters.insert(adapter.name().to_string(), adapter);
     }
 
+    /// Register TypeScript/JavaScript adapter
+    pub fn register_typescript(&mut self) {
+        use crate::services::mutation::TypeScriptAdapter;
+        self.register(Arc::new(TypeScriptAdapter::new()));
+    }
+
     /// Detect language from file path
     pub fn detect_language(&self, path: &Path) -> Option<Arc<dyn LanguageAdapter>> {
         let extension = path.extension()?.to_str()?;

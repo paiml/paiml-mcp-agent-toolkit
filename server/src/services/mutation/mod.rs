@@ -9,6 +9,10 @@ pub mod language;
 pub mod engine;
 pub mod scoring;
 pub mod rust_adapter;
+pub mod typescript_adapter;
+
+#[cfg(test)]
+mod typescript_adapter_tests;
 
 pub use types::*;
 pub use operators::*;
@@ -16,3 +20,4 @@ pub use language::*;
 pub use engine::*;
 pub use scoring::*;
 pub use rust_adapter::*;
+pub use typescript_adapter::*;
