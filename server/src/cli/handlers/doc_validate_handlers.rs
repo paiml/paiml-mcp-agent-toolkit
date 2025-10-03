@@ -96,13 +96,22 @@ impl ValidateDocsCmd {
     }
 
     fn build_config(&self) -> ValidatorConfig {
+        // Start with default excludes, then add CLI-provided ones
+        let mut exclude_patterns = vec![
+            "archive".to_string(),
+            "node_modules".to_string(),
+            ".git".to_string(),
+            "target".to_string(),
+        ];
+        exclude_patterns.extend(self.exclude.clone());
+
         ValidatorConfig {
             root_dir: self.root.clone().unwrap_or_else(|| PathBuf::from(".")),
             http_timeout_ms: self.timeout * 1000,
             max_retries: self.max_retries,
             retry_delay_ms: 1000,
             max_concurrent_requests: self.max_concurrent,
-            exclude_patterns: self.exclude.clone(),
+            exclude_patterns,
             follow_redirects: true,
             user_agent: format!("pmat-doc-validator/{}", env!("CARGO_PKG_VERSION")),
         }
@@ -295,7 +304,7 @@ mod tests {
             max_concurrent: 20,
             timeout: 60,
             max_retries: 5,
-            exclude: vec!["node_modules".to_string()],
+            exclude: vec!["custom_exclude".to_string()],
             verbose: false,
         };
 
@@ -304,6 +313,38 @@ mod tests {
         assert_eq!(config.http_timeout_ms, 60000);
         assert_eq!(config.max_retries, 5);
         assert_eq!(config.max_concurrent_requests, 20);
-        assert_eq!(config.exclude_patterns, vec!["node_modules"]);
+
+        // Should have defaults + CLI excludes
+        assert!(config.exclude_patterns.contains(&"archive".to_string()));
+        assert!(config.exclude_patterns.contains(&"node_modules".to_string()));
+        assert!(config.exclude_patterns.contains(&".git".to_string()));
+        assert!(config.exclude_patterns.contains(&"target".to_string()));
+        assert!(config.exclude_patterns.contains(&"custom_exclude".to_string()));
+        assert_eq!(config.exclude_patterns.len(), 5);
+    }
+
+    #[test]
+    fn test_build_config_without_custom_excludes() {
+        let cmd = ValidateDocsCmd {
+            root: Some(PathBuf::from("docs")),
+            config: None,
+            fail_on_error: true,
+            output: OutputFormat::Text,
+            max_concurrent: 10,
+            timeout: 30,
+            max_retries: 3,
+            exclude: vec![], // No custom excludes
+            verbose: false,
+        };
+
+        let config = cmd.build_config();
+
+        // Should still have defaults
+        assert_eq!(config.exclude_patterns, vec![
+            "archive".to_string(),
+            "node_modules".to_string(),
+            ".git".to_string(),
+            "target".to_string(),
+        ]);
     }
 }
