@@ -1,0 +1,23 @@
+// Simple Ruchy test file for deep-wasm analysis
+
+fun fibonacci(n: i32) -> i32 {
+    if n <= 1 {
+        n
+    } else {
+        fibonacci(n - 1) + fibonacci(n - 2)
+    }
+}
+
+fun factorial(n: i32) -> i32 {
+    if n <= 1 {
+        1
+    } else {
+        n * factorial(n - 1)
+    }
+}
+
+async fun fetch_data(url: String) -> Result<String, Error> {
+    // Async function example
+    let response = http_get(url).await?;
+    Ok(response.body)
+}
