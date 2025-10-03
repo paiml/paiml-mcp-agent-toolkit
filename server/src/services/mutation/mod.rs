@@ -15,6 +15,8 @@ pub mod go_adapter;
 pub mod cpp_adapter;
 pub mod fuzzing;
 pub mod coverage;
+pub mod ml_predictor;
+pub mod equivalent_detector;
 
 #[cfg(test)]
 mod typescript_adapter_tests;
@@ -34,6 +36,15 @@ mod advanced_operators_tests;
 #[cfg(test)]
 mod fuzzing_integration_tests;
 
+#[cfg(test)]
+mod ml_predictor_tests;
+
+#[cfg(test)]
+mod equivalent_detector_tests;
+
+#[cfg(test)]
+mod ml_integration_tests;
+
 pub use types::*;
 pub use operators::*;
 pub use language::*;
@@ -46,3 +57,5 @@ pub use go_adapter::*;
 pub use cpp_adapter::*;
 pub use fuzzing::*;
 pub use coverage::*;
+pub use ml_predictor::*;
+pub use equivalent_detector::*;
