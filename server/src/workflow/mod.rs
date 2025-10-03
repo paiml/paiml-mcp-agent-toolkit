@@ -1,5 +1,6 @@
 // Workflow orchestration engine
 pub mod conditions;
+pub mod dag;
 pub mod dsl;
 pub mod executor;
 pub mod monitoring;
