@@ -309,9 +309,8 @@ mod tests {
 
         // Should either parse successfully or fail gracefully
         match result {
-            Ok(entries) => {
-                // May have 0 entries (no DIEs) or parsed something
-                assert!(entries.len() >= 0);
+            Ok(_entries) => {
+                // May have 0 entries (no DIEs) or parsed something - success is sufficient
             }
             Err(e) => {
                 // Should be an Analysis error (missing abbreviations, etc.)
