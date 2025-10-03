@@ -8,6 +8,9 @@ pub mod tools;
 pub mod deep_wasm_tools;
 pub mod transport;
 
+#[cfg(test)]
+mod tools_integration_tests;
+
 use async_trait::async_trait;
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
