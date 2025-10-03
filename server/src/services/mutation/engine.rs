@@ -57,6 +57,12 @@ impl MutationEngine {
         Self { adapter, config }
     }
 
+    /// Create default mutation engine with Rust adapter
+    pub fn default_rust() -> Self {
+        use super::RustAdapter;
+        Self::new(Arc::new(RustAdapter::new()), MutationConfig::default())
+    }
+
     /// Generate mutants from source file
     pub async fn generate_mutants_from_file(&self, source_file: &Path) -> Result<Vec<Mutant>> {
         let source = tokio::fs::read_to_string(source_file)
@@ -183,6 +189,12 @@ impl MutationEngine {
             .context("Failed to write temp mutant")?;
 
         Ok(temp_file)
+    }
+}
+
+impl Default for MutationEngine {
+    fn default() -> Self {
+        Self::default_rust()
     }
 }
 

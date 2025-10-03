@@ -13,6 +13,7 @@ pub mod typescript_adapter;
 pub mod python_adapter;
 pub mod go_adapter;
 pub mod cpp_adapter;
+pub mod fuzzing;
 
 #[cfg(test)]
 mod typescript_adapter_tests;
@@ -29,6 +30,9 @@ mod cpp_adapter_tests;
 #[cfg(test)]
 mod advanced_operators_tests;
 
+#[cfg(test)]
+mod fuzzing_integration_tests;
+
 pub use types::*;
 pub use operators::*;
 pub use language::*;
@@ -39,3 +43,4 @@ pub use typescript_adapter::*;
 pub use python_adapter::*;
 pub use go_adapter::*;
 pub use cpp_adapter::*;
+pub use fuzzing::*;
