@@ -4,7 +4,7 @@
 
 use crate::services::deep_wasm::{
     CorrelationEngine, DeepWasmAnalysisRequest, DeepWasmReport, DeepWasmResult, DwarfParser,
-    PipelineOverview, ReportGenerator, SourceMapHandler, SourceMetrics,
+    PipelineOverview, SourceMapHandler, SourceMetrics,
     WasmInspector, WasmModuleAnalysis, WasmQualityGates,
 };
 use crate::services::rust_wasm_analyzer;
@@ -14,15 +14,10 @@ use std::path::Path;
 /// Deep WASM analysis service
 pub struct DeepWasmService {
     wasm_inspector: WasmInspector,
-    #[allow(dead_code)] // Phase 2: Used for DWARF v5 parsing
     dwarf_parser: DwarfParser,
-    #[allow(dead_code)] // Phase 2: Used for source map correlation
     source_map_handler: SourceMapHandler,
-    #[allow(dead_code)] // Phase 2: Used for source-to-WASM mapping
     correlation_engine: CorrelationEngine,
     quality_gates: WasmQualityGates,
-    #[allow(dead_code)] // Phase 2: Enhanced reporting with correlation
-    report_generator: ReportGenerator,
 }
 
 impl DeepWasmService {
@@ -33,7 +28,6 @@ impl DeepWasmService {
             source_map_handler: SourceMapHandler::new(),
             correlation_engine: CorrelationEngine::new(),
             quality_gates: WasmQualityGates::new(),
-            report_generator: ReportGenerator::new(),
         }
     }
 
@@ -60,6 +54,29 @@ impl DeepWasmService {
         // Analyze source code for WASM constructs (Rust only for Phase 1)
         let source_metrics = self.analyze_source_code(&request.source_path)?;
 
+        // Parse DWARF debug information if provided
+        let dwarf_entries = if let Some(ref dwarf_path) = request.dwarf_path {
+            let dwarf_data = fs::read(dwarf_path)
+                .map_err(|e| crate::services::deep_wasm::DeepWasmError::Io(e))?;
+            self.dwarf_parser.parse_dwarf_sections(&dwarf_data, None, None)?
+        } else {
+            vec![]
+        };
+
+        // Parse source map if provided
+        let source_map_entries = if let Some(ref source_map_path) = request.source_map_path {
+            self.source_map_handler.parse_source_map(source_map_path)?
+        } else {
+            vec![]
+        };
+
+        // Create source-to-WASM correlations
+        let correlations = if !dwarf_entries.is_empty() || !source_map_entries.is_empty() {
+            self.correlation_engine.correlate(&dwarf_entries, &source_map_entries)?
+        } else {
+            vec![]
+        };
+
         let quality_results = self.quality_gates.evaluate(&wasm_analysis)?;
 
         Ok(DeepWasmReport {
@@ -76,11 +93,15 @@ impl DeepWasmService {
                 source_version: String::new(),
                 target: "wasm32-unknown-unknown".to_string(),
                 optimization_level: String::new(),
-                debug_symbols: None,
+                debug_symbols: Some(if dwarf_entries.is_empty() {
+                    "none".to_string()
+                } else {
+                    format!("{} DWARF entries", dwarf_entries.len())
+                }),
             },
             source_metrics,
             wasm_module_analysis: wasm_analysis,
-            correlations: vec![],
+            correlations,
             type_flows: vec![],
             hotspots: vec![],
             quality_gate_results: quality_results,
@@ -166,7 +187,7 @@ mod tests {
     async fn test_analyze_minimal_request() {
         let service = DeepWasmService::new();
         let request = DeepWasmAnalysisRequest {
-            source_path: PathBuf::from("test.rs"),
+            source_path: PathBuf::from("tests/fixtures/test.rs"),
             wasm_path: None,
             dwarf_path: None,
             source_map_path: None,

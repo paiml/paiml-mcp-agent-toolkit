@@ -55,6 +55,73 @@ impl ReportGenerator {
             report.wasm_module_analysis.exported_functions
         ));
 
+        output.push_str("## Source-to-WASM Correlations\n\n");
+        if report.correlations.is_empty() {
+            output.push_str("No correlations available (DWARF/source map data not provided)\n\n");
+        } else {
+            output.push_str(&format!("Found {} source-to-WASM mappings:\n\n", report.correlations.len()));
+
+            // Show top 10 highest confidence mappings
+            let top_mappings = report.correlations.iter().take(10);
+            output.push_str("### Top Confidence Mappings\n\n");
+            output.push_str("| Source | Line:Col | WASM Fn | Confidence |\n");
+            output.push_str("|--------|----------|---------|------------|\n");
+
+            for mapping in top_mappings {
+                let source_file = mapping.source_file.file_name()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or("unknown");
+                output.push_str(&format!(
+                    "| {} | {}:{} | {} | {:.0}% |\n",
+                    source_file,
+                    mapping.source_location.line,
+                    mapping.source_location.column,
+                    mapping.wasm_function_idx,
+                    mapping.confidence * 100.0
+                ));
+            }
+            output.push_str("\n");
+
+            // Summary statistics
+            let avg_confidence = report.correlations.iter()
+                .map(|m| m.confidence)
+                .sum::<f64>() / report.correlations.len() as f64;
+
+            let high_confidence = report.correlations.iter()
+                .filter(|m| m.confidence >= 0.9)
+                .count();
+
+            let medium_confidence = report.correlations.iter()
+                .filter(|m| m.confidence >= 0.7 && m.confidence < 0.9)
+                .count();
+
+            let low_confidence = report.correlations.iter()
+                .filter(|m| m.confidence < 0.7)
+                .count();
+
+            output.push_str("### Correlation Statistics\n\n");
+            output.push_str(&format!("- Average Confidence: {:.1}%\n", avg_confidence * 100.0));
+            output.push_str(&format!("- High Confidence (≥90%): {} mappings\n", high_confidence));
+            output.push_str(&format!("- Medium Confidence (70-90%): {} mappings\n", medium_confidence));
+            output.push_str(&format!("- Low Confidence (<70%): {} mappings\n\n", low_confidence));
+
+            // DWARF vs Source Map breakdown
+            let dwarf_count = report.correlations.iter()
+                .filter(|m| m.dwarf_die.is_some())
+                .count();
+            let source_map_count = report.correlations.iter()
+                .filter(|m| m.source_map_entry.is_some())
+                .count();
+            let both_count = report.correlations.iter()
+                .filter(|m| m.dwarf_die.is_some() && m.source_map_entry.is_some())
+                .count();
+
+            output.push_str("### Data Sources\n\n");
+            output.push_str(&format!("- DWARF entries: {} mappings\n", dwarf_count));
+            output.push_str(&format!("- Source map entries: {} mappings\n", source_map_count));
+            output.push_str(&format!("- Both DWARF + Source Map: {} mappings\n\n", both_count));
+        }
+
         output.push_str("## Quality Gates\n\n");
         if report.quality_gate_results.passed {
             output.push_str("✅ All quality gates passed\n");
