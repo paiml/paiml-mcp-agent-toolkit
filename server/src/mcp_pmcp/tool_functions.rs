@@ -218,74 +218,75 @@ pub async fn analyze_tdg(
 ) -> Result<Value> {
     use crate::tdg::TdgAnalyzer;
 
+    if paths.is_empty() {
+        return Err(anyhow::anyhow!("At least one path must be provided"));
+    }
+
     let analyzer = TdgAnalyzer::new()?;
     let _threshold = threshold.unwrap_or(1.5);
     let _top_files = top_files.unwrap_or(10);
     let _include_components = include_components.unwrap_or(false);
 
-    if paths.is_empty() {
-        return Err(anyhow::anyhow!("At least one path must be provided"));
-    }
-
-    // Handle single file vs multiple files/directories
     if paths.len() == 1 {
-        let path = &paths[0];
-
-        if PathValidator::ensure_directory(path).is_ok() {
-            // Directory analysis
-            let project_score = analyzer.analyze_project(path).await?;
-            Ok(json!({
-                "status": "completed",
-                "message": "TDG project analysis completed",
-                "result_type": "project",
-                "results": {
-                    "average_score": project_score.average_score,
-                    "average_grade": project_score.average_grade,
-                    "total_files": project_score.total_files,
-                    "language_distribution": project_score.language_distribution,
-                    "files": project_score.files
-                }
-            }))
-        } else {
-            // Single file analysis
-            let score = analyzer.analyze_file(path).await?;
-            Ok(json!({
-                "status": "completed",
-                "message": "TDG file analysis completed",
-                "result_type": "file",
-                "results": score
-            }))
-        }
+        analyze_single_tdg_path(&analyzer, &paths[0]).await
     } else {
-        // Multiple files/directories analysis
-        let mut all_scores = Vec::new();
+        analyze_multiple_tdg_paths(&analyzer, paths).await
+    }
+}
 
-        for path in paths {
-            if PathValidator::ensure_directory(path).is_ok() {
-                let project_score = analyzer.analyze_project(path).await?;
-                all_scores.extend(project_score.files);
-            } else {
-                let score = analyzer.analyze_file(path).await?;
-                all_scores.push(score);
-            }
-        }
-
-        use crate::tdg::ProjectScore;
-        let aggregated = ProjectScore::aggregate(all_scores);
-
+async fn analyze_single_tdg_path(analyzer: &crate::tdg::TdgAnalyzer, path: &Path) -> Result<Value> {
+    if PathValidator::ensure_directory(path).is_ok() {
+        let project_score = analyzer.analyze_project(path).await?;
         Ok(json!({
             "status": "completed",
-            "message": "TDG multi-path analysis completed",
-            "result_type": "multi_path",
+            "message": "TDG project analysis completed",
+            "result_type": "project",
             "results": {
-                "average_score": aggregated.average_score,
-                "average_grade": aggregated.average_grade,
-                "total_files": aggregated.total_files,
-                "language_distribution": aggregated.language_distribution,
-                "files": aggregated.files
+                "average_score": project_score.average_score,
+                "average_grade": project_score.average_grade,
+                "total_files": project_score.total_files,
+                "language_distribution": project_score.language_distribution,
+                "files": project_score.files
             }
         }))
+    } else {
+        let score = analyzer.analyze_file(path).await?;
+        Ok(json!({
+            "status": "completed",
+            "message": "TDG file analysis completed",
+            "result_type": "file",
+            "results": score
+        }))
     }
+}
+
+async fn analyze_multiple_tdg_paths(analyzer: &crate::tdg::TdgAnalyzer, paths: &[PathBuf]) -> Result<Value> {
+    use crate::tdg::ProjectScore;
+    let mut all_scores = Vec::new();
+
+    for path in paths {
+        if PathValidator::ensure_directory(path).is_ok() {
+            let project_score = analyzer.analyze_project(path).await?;
+            all_scores.extend(project_score.files);
+        } else {
+            let score = analyzer.analyze_file(path).await?;
+            all_scores.push(score);
+        }
+    }
+
+    let aggregated = ProjectScore::aggregate(all_scores);
+    Ok(json!({
+        "status": "completed",
+        "message": "TDG multi-path analysis completed",
+        "result_type": "multi_path",
+        "results": {
+            "average_score": aggregated.average_score,
+            "average_grade": aggregated.average_grade,
+            "total_files": aggregated.total_files,
+            "language_distribution": aggregated.language_distribution,
+            "files": aggregated.files
+        }
+    }))
 }
 
 /// Compare TDG scores between two files or directories

@@ -168,6 +168,10 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
         | AnalyzeCommands::WebAssembly { .. }
         | AnalyzeCommands::Wasm { .. } => route_language_specific_analysis(cmd).await,
 
+        // Deep WASM analysis (feature-gated)
+        #[cfg(feature = "deep-wasm")]
+        AnalyzeCommands::DeepWasm { .. } => route_deep_wasm_analysis(cmd).await,
+
         // System commands
         AnalyzeCommands::Makefile { .. } => route_system_analysis(cmd).await,
     }
@@ -1013,6 +1017,46 @@ async fn route_wasm_analysis(cmd: AnalyzeCommands) -> Result<()> {
         .await
     } else {
         unreachable!("Expected Wasm command")
+    }
+}
+
+/// Route Deep WASM analysis command
+#[cfg(feature = "deep-wasm")]
+async fn route_deep_wasm_analysis(cmd: AnalyzeCommands) -> Result<()> {
+    if let AnalyzeCommands::DeepWasm {
+        source_path,
+        wasm_file,
+        dwarf_file,
+        source_map,
+        language,
+        focus,
+        format,
+        output,
+        strict,
+        include_mir,
+        include_llvm_ir,
+        track_memory,
+        detect_deadlocks,
+    } = cmd
+    {
+        super::deep_wasm_handlers::handle_deep_wasm(
+            source_path,
+            wasm_file,
+            dwarf_file,
+            source_map,
+            language,
+            focus,
+            format,
+            output,
+            strict,
+            include_mir,
+            include_llvm_ir,
+            track_memory,
+            detect_deadlocks,
+        )
+        .await
+    } else {
+        unreachable!("Expected DeepWasm command")
     }
 }
 

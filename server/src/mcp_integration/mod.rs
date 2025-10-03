@@ -3,6 +3,8 @@ pub mod prompts;
 pub mod resources;
 pub mod server;
 pub mod tools;
+#[cfg(feature = "deep-wasm")]
+pub mod deep_wasm_tools;
 pub mod transport;
 
 use async_trait::async_trait;
