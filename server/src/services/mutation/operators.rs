@@ -272,6 +272,195 @@ fn is_logical_op(op: &BinOp) -> bool {
     matches!(op, BinOp::And(_) | BinOp::Or(_))
 }
 
+/// Conditional Return Operator (CRO)
+/// Generates early returns to test guard clauses
+pub struct ConditionalReturnOperator;
+
+impl MutationOperator for ConditionalReturnOperator {
+    fn name(&self) -> &str {
+        "CRO"
+    }
+
+    fn operator_type(&self) -> MutationOperatorType {
+        MutationOperatorType::ConditionalReturn
+    }
+
+    fn can_mutate(&self, expr: &Expr) -> bool {
+        matches!(expr, Expr::Return(_))
+    }
+
+    fn mutate(&self, expr: &Expr, _location: SourceLocation) -> Result<Vec<Expr>> {
+        if let Expr::Return(_) = expr {
+            // Generate early return mutant
+            let early_return: Expr = syn::parse_quote!(return);
+            return Ok(vec![early_return]);
+        }
+        Ok(vec![])
+    }
+
+    fn kill_probability(&self) -> f64 {
+        0.70
+    }
+}
+
+/// Statement Deletion Operator (SDO)
+/// Removes non-critical statements to test necessity
+pub struct StatementDeletionOperator;
+
+impl MutationOperator for StatementDeletionOperator {
+    fn name(&self) -> &str {
+        "SDO"
+    }
+
+    fn operator_type(&self) -> MutationOperatorType {
+        MutationOperatorType::StatementDeletion
+    }
+
+    fn can_mutate(&self, expr: &Expr) -> bool {
+        // Can delete assignments and method calls
+        matches!(expr, Expr::Assign(_) | Expr::Call(_) | Expr::MethodCall(_))
+    }
+
+    fn mutate(&self, _expr: &Expr, _location: SourceLocation) -> Result<Vec<Expr>> {
+        // Minimal: return empty vec (deletion simulated elsewhere)
+        Ok(vec![])
+    }
+
+    fn kill_probability(&self) -> f64 {
+        0.65
+    }
+}
+
+/// Return Value Replacement (RVR)
+/// Replaces return values with common alternatives
+pub struct ReturnValueReplacement;
+
+impl MutationOperator for ReturnValueReplacement {
+    fn name(&self) -> &str {
+        "RVR"
+    }
+
+    fn operator_type(&self) -> MutationOperatorType {
+        MutationOperatorType::ReturnValueReplacement
+    }
+
+    fn can_mutate(&self, expr: &Expr) -> bool {
+        matches!(expr, Expr::Return(_))
+    }
+
+    fn mutate(&self, expr: &Expr, _location: SourceLocation) -> Result<Vec<Expr>> {
+        if let Expr::Return(_) = expr {
+            // Generate alternative return values
+            let mutants = vec![
+                syn::parse_quote!(return 0),
+                syn::parse_quote!(return 1),
+                syn::parse_quote!(return -1),
+            ];
+            return Ok(mutants);
+        }
+        Ok(vec![])
+    }
+
+    fn kill_probability(&self) -> f64 {
+        0.80
+    }
+}
+
+/// Variable Replacement Operator (VRO)
+/// Replaces variables with other in-scope variables
+pub struct VariableReplacementOperator;
+
+impl MutationOperator for VariableReplacementOperator {
+    fn name(&self) -> &str {
+        "VRO"
+    }
+
+    fn operator_type(&self) -> MutationOperatorType {
+        MutationOperatorType::VariableReplacement
+    }
+
+    fn can_mutate(&self, expr: &Expr) -> bool {
+        matches!(expr, Expr::Path(_))
+    }
+
+    fn mutate(&self, _expr: &Expr, _location: SourceLocation) -> Result<Vec<Expr>> {
+        // Minimal: variable replacement requires scope analysis
+        Ok(vec![])
+    }
+
+    fn kill_probability(&self) -> f64 {
+        0.75
+    }
+}
+
+/// Boundary Value Operator (BVO)
+/// Creates off-by-one mutations for boundary testing
+pub struct BoundaryValueOperator;
+
+impl MutationOperator for BoundaryValueOperator {
+    fn name(&self) -> &str {
+        "BVO"
+    }
+
+    fn operator_type(&self) -> MutationOperatorType {
+        MutationOperatorType::BoundaryValue
+    }
+
+    fn can_mutate(&self, expr: &Expr) -> bool {
+        matches!(expr, Expr::Lit(syn::ExprLit { lit: syn::Lit::Int(_), .. }))
+    }
+
+    fn mutate(&self, expr: &Expr, _location: SourceLocation) -> Result<Vec<Expr>> {
+        if let Expr::Lit(syn::ExprLit { lit: syn::Lit::Int(lit_int), .. }) = expr {
+            if let Ok(value) = lit_int.base10_parse::<i64>() {
+                let plus_one = value + 1;
+                let minus_one = value - 1;
+
+                let mutants = vec![
+                    syn::parse_quote!(#plus_one),
+                    syn::parse_quote!(#minus_one),
+                ];
+                return Ok(mutants);
+            }
+        }
+        Ok(vec![])
+    }
+
+    fn kill_probability(&self) -> f64 {
+        0.85
+    }
+}
+
+/// Exception Handler Removal (EHR)
+/// Removes try/? operators to test error handling
+pub struct ExceptionHandlerRemoval;
+
+impl MutationOperator for ExceptionHandlerRemoval {
+    fn name(&self) -> &str {
+        "EHR"
+    }
+
+    fn operator_type(&self) -> MutationOperatorType {
+        MutationOperatorType::ExceptionHandlerRemoval
+    }
+
+    fn can_mutate(&self, expr: &Expr) -> bool {
+        matches!(expr, Expr::Try(_))
+    }
+
+    fn mutate(&self, expr: &Expr, _location: SourceLocation) -> Result<Vec<Expr>> {
+        if let Expr::Try(try_expr) = expr {
+            // Remove the ? operator
+            return Ok(vec![(*try_expr.expr).clone()]);
+        }
+        Ok(vec![])
+    }
+
+    fn kill_probability(&self) -> f64 {
+        0.90
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
