@@ -196,22 +196,33 @@ async fn collect_project_files(project_path: &PathBuf) -> Result<Vec<(PathBuf, S
 }
 
 fn is_source_file(path: &std::path::Path) -> bool {
-    // Skip hidden directories and common build directories
+    !has_excluded_directory(path) && has_source_extension(path)
+}
+
+fn has_excluded_directory(path: &std::path::Path) -> bool {
     for component in path.components() {
         if let std::path::Component::Normal(name) = component {
-            if let Some(name_str) = name.to_str() {
-                if name_str.starts_with('.') || 
-                   name_str == "target" || 
-                   name_str == "node_modules" ||
-                   name_str == "dist" ||
-                   name_str == "build" {
-                    return false;
-                }
+            if is_excluded_directory_name(name) {
+                return true;
             }
         }
     }
-    
-    // Check file extension
+    false
+}
+
+fn is_excluded_directory_name(name: &std::ffi::OsStr) -> bool {
+    if let Some(name_str) = name.to_str() {
+        name_str.starts_with('.') ||
+        name_str == "target" ||
+        name_str == "node_modules" ||
+        name_str == "dist" ||
+        name_str == "build"
+    } else {
+        false
+    }
+}
+
+fn has_source_extension(path: &std::path::Path) -> bool {
     if let Some(ext) = path.extension() {
         matches!(
             ext.to_str(),
