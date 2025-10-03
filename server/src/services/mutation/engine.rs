@@ -46,6 +46,7 @@ pub enum MutationStrategy {
 }
 
 /// Mutation engine
+#[derive(Clone)]
 pub struct MutationEngine {
     adapter: Arc<dyn LanguageAdapter>,
     config: MutationConfig,
