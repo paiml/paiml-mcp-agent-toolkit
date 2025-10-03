@@ -165,40 +165,210 @@ impl FuzzMutationStrategy {
     }
 
     /// Fuzz a single mutant
-    pub async fn fuzz_mutant(&self, _mutant: &Mutant) -> Result<FuzzResult> {
-        // Minimal GREEN implementation
+    pub async fn fuzz_mutant(&self, mutant: &Mutant) -> Result<FuzzResult> {
+        use std::panic;
+        use std::time::Instant;
+        use tokio::time::timeout;
+
+        let mut crashes = Vec::new();
+        let mut hangs = Vec::new();
+
+        // Generate inputs based on strategy
+        let inputs = match self.fuzz_config.input_generator {
+            InputGeneratorType::Random => self.generate_inputs(self.fuzz_config.iterations),
+            InputGeneratorType::GrammarBased => {
+                self.generate_grammar_based_inputs(self.fuzz_config.iterations, "generic")
+            }
+            InputGeneratorType::MutationBased => {
+                // Start with random, mutate them
+                self.generate_inputs(self.fuzz_config.iterations)
+            }
+            InputGeneratorType::CoverageGuided => {
+                // For now, use random (full impl would track coverage)
+                self.generate_inputs(self.fuzz_config.iterations)
+            }
+        };
+
+        // Test each input
+        for (idx, input) in inputs.iter().enumerate() {
+            let _start = Instant::now(); // Reserved for coverage tracking
+
+            // Execute with timeout to detect hangs
+            let result = timeout(
+                self.fuzz_config.iteration_timeout,
+                tokio::task::spawn_blocking({
+                    let mutant_source = mutant.mutated_source.clone();
+                    let input = input.clone();
+                    move || {
+                        // Try to execute mutated code with input
+                        // For Phase 1, we simulate execution
+                        // Real implementation would compile and run
+                        panic::catch_unwind(|| {
+                            execute_mutant_with_input(&mutant_source, &input)
+                        })
+                    }
+                }),
+            )
+            .await;
+
+            match result {
+                Ok(Ok(Ok(_))) => {
+                    // Execution succeeded
+                }
+                Ok(Ok(Err(_))) => {
+                    // Panic detected = crash
+                    if self.fuzz_config.crash_detection {
+                        crashes.push(format!("crash_at_input_{}", idx));
+                    }
+                }
+                Ok(Err(_)) => {
+                    // Task join error (shouldn't happen)
+                }
+                Err(_) => {
+                    // Timeout = hang
+                    hangs.push(input.clone());
+                }
+            }
+
+            // Early exit if we've found crashes and hangs
+            if !crashes.is_empty() && !hangs.is_empty() {
+                break;
+            }
+        }
+
         Ok(FuzzResult {
-            crashes: vec![],
-            hangs: vec![],
-            coverage_increase: 0.0,
+            crashes,
+            hangs,
+            coverage_increase: 0.0, // Coverage tracking in next REFACTOR phase
         })
     }
 
     /// Execute fuzzing from source code
-    pub async fn execute_from_source(&self, _source: &str) -> Result<FuzzMutationReport> {
-        // Minimal GREEN implementation
+    pub async fn execute_from_source(&self, source: &str) -> Result<FuzzMutationReport> {
+        use std::time::Instant;
+
+        let start = Instant::now();
+
+        // Generate mutants from source
+        let mutants = self
+            .mutation_engine
+            .generate_mutants_from_source(std::path::Path::new("fuzz_target.rs"), source)
+            .await?;
+
+        let total_mutants = mutants.len();
+        let mut results = Vec::new();
+        let mut mutants_with_crashes = 0;
+        let mut mutants_with_hangs = 0;
+
+        // Fuzz each mutant
+        for mutant in mutants {
+            let fuzz_result = self.fuzz_mutant(&mutant).await?;
+
+            if fuzz_result.has_crashes() {
+                mutants_with_crashes += 1;
+            }
+            if fuzz_result.has_hangs() {
+                mutants_with_hangs += 1;
+            }
+
+            results.push((mutant, fuzz_result));
+        }
+
+        let execution_time = start.elapsed();
+
         Ok(FuzzMutationReport {
-            total_mutants: 0,
-            mutants_with_crashes: 0,
-            mutants_with_hangs: 0,
-            execution_time: Duration::from_secs(0),
-            results: vec![],
+            total_mutants,
+            mutants_with_crashes,
+            mutants_with_hangs,
+            execution_time,
+            results,
         })
     }
 
     /// Execute fuzzing in parallel
     pub async fn execute_from_source_parallel(
         &self,
-        _source: &str,
-        _workers: usize,
+        source: &str,
+        workers: usize,
     ) -> Result<FuzzMutationReport> {
-        // Minimal GREEN implementation
+        use std::sync::Arc;
+        use std::time::Instant;
+        use tokio::sync::Semaphore;
+
+        let start = Instant::now();
+
+        // Generate mutants from source
+        let mutants = self
+            .mutation_engine
+            .generate_mutants_from_source(std::path::Path::new("fuzz_target.rs"), source)
+            .await?;
+
+        let total_mutants = mutants.len();
+
+        // Use semaphore to limit concurrent fuzzing
+        let semaphore = Arc::new(Semaphore::new(workers));
+        let mut tasks = Vec::new();
+
+        for mutant in mutants {
+            let sem = semaphore.clone();
+            let config = self.fuzz_config.clone();
+            let engine = self.mutation_engine.clone(); // Clone for thread safety
+
+            let task = tokio::spawn(async move {
+                let _permit = sem.acquire().await.unwrap();
+
+                // Create temporary strategy for this mutant
+                let strategy = FuzzMutationStrategy::new(engine, config);
+                let fuzz_result = strategy.fuzz_mutant(&mutant).await.unwrap();
+
+                (mutant, fuzz_result)
+            });
+
+            tasks.push(task);
+        }
+
+        // Collect results
+        let mut results = Vec::new();
+        let mut mutants_with_crashes = 0;
+        let mut mutants_with_hangs = 0;
+
+        for task in tasks {
+            let (mutant, fuzz_result) = task.await?;
+
+            if fuzz_result.has_crashes() {
+                mutants_with_crashes += 1;
+            }
+            if fuzz_result.has_hangs() {
+                mutants_with_hangs += 1;
+            }
+
+            results.push((mutant, fuzz_result));
+        }
+
+        let execution_time = start.elapsed();
+
         Ok(FuzzMutationReport {
-            total_mutants: 0,
-            mutants_with_crashes: 0,
-            mutants_with_hangs: 0,
-            execution_time: Duration::from_secs(0),
-            results: vec![],
+            total_mutants,
+            mutants_with_crashes,
+            mutants_with_hangs,
+            execution_time,
+            results,
         })
     }
+}
+
+/// Execute mutant code with given input (simulated for Phase 1)
+/// Real implementation would compile mutant and execute with input
+fn execute_mutant_with_input(_mutant_source: &str, input: &[u8]) -> Result<()> {
+    // Phase 1: Simulate execution
+    // This would be replaced with actual compilation + execution
+
+    // Simulate crash on certain patterns
+    if input.len() > 100 {
+        // Simulate out-of-bounds access crash
+        anyhow::bail!("Simulated crash: buffer overflow");
+    }
+
+    // Simulate success
+    Ok(())
 }
