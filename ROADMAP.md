@@ -1,8 +1,35 @@
 # PMAT Agent System Roadmap
 
-## 🎯 CURRENT STATUS: v2.111.0 - MCP Integration + Workflow Orchestration COMPLETE!
+## 🎯 CURRENT STATUS: v2.112.0 - Deep WASM Phase 2 + TDG Fix COMPLETE!
 
-### ✅ Latest Achievements (v2.111.0 - October 3, 2025)
+### ✅ Latest Achievements (v2.112.0 - October 3, 2025)
+
+**Deep WASM Phase 2 - DWARF Correlation - COMPLETE**
+- ✅ DWARF v5 line program parsing with validation (DWARF v2-v5 support)
+- ✅ Enhanced correlation engine with bidirectional mapping
+- ✅ `correlate_with_line_programs()` - Line data integration
+- ✅ `calculate_confidence()` - Multi-signal scoring (perfect match: 1.0)
+- ✅ `lookup_source_location()` - WASM address → source location
+- ✅ `lookup_wasm_addresses()` - Source line → WASM addresses
+- ✅ Graceful error handling for malformed/synthetic DWARF data
+- ✅ 20 new Phase 2 tests (9 parser + 11 correlation)
+- ✅ 72 total deep_wasm tests passing (up from 52)
+
+**TDG Structural Complexity Fix - Per-Function Analysis**
+- ✅ Fixed Issue #62: TDG now analyzes per-function complexity
+- ✅ Extracts individual functions from AST (not file-level)
+- ✅ Toyota Way compliance: <10 complexity per function
+- ✅ Decomposition bonus: >10 functions with avg <8 = +5 points
+- ✅ Penalizes only when >30% of functions exceed limit
+- ✅ 3 new tests (function extraction, per-function scoring, Toyota Way)
+- ✅ Refactored code with many small functions now scores highly
+
+**Test Coverage**
+- ✅ 23 new tests (20 DWARF + 3 TDG)
+- ✅ 100% passing rate
+- ✅ Zero defects maintained
+
+### ✅ Previous Achievements (v2.111.0 - October 3, 2025)
 
 **MCP Tool-to-Agent Integration - COMPLETE**
 - ✅ AnalyzeTool → AnalyzerActor (6 integration tests)
@@ -65,15 +92,17 @@
 - ✅ All quality gates passing
 - ✅ Toyota Way compliance maintained
 
-## Current Status: v2.111.0 Released | Sprints 1-9 Complete (90%)
+## Current Status: v2.112.0 Released | Deep WASM Phase 2 + TDG Fix Complete
 
 ### Sprint Status Overview
 - ✅ Sprints 1-6: Foundation Complete (100%)
 - ✅ Sprint 7: Unified Context Enhancement (100%)
-- ✅ Sprint 8: MCP Integration (100%) ← **Just Completed!**
-- ✅ Sprint 9: Workflow Orchestration (100%) ← **Just Completed!**
+- ✅ Sprint 8: MCP Integration (100%)
+- ✅ Sprint 9: Workflow Orchestration (100%)
 - ✅ Sprints 10-15: Multi-Language & Performance (100%)
-- ⏳ Remaining: Workflow Executor implementation, Deep WASM Phase 2
+- ✅ Deep WASM Phase 2: DWARF Correlation (100%) ← **Just Completed!**
+- ✅ TDG Improvement: Per-Function Analysis (100%) ← **Just Completed!**
+- ⏳ Remaining: Workflow Executor implementation
 
 ## 🎯 Next Priority Options (4 Choices)
 
@@ -119,38 +148,31 @@
 
 ---
 
-### Option 2: Deep WASM Phase 2 - DWARF Correlation (7-10 days)
-**Status**: Ready to start (no blockers)
-**Impact**: Complete bidirectional source ↔ WASM mapping with debug info
+### Option 2: Deep WASM Ruchy Language Support (3-5 days)
+**Status**: Ready to start - Issue #61
+**Impact**: Extend Deep WASM analysis to Ruchy language (Rust dialect)
 
 **Work Required**:
-1. **DWARF v5 Parser** (3-4 days)
-   - Parse .debug_info for DIE (Debug Information Entries)
-   - Extract function names from DW_TAG_subprogram
-   - Build line number tables from .debug_line
-   - Resolve string references from .debug_str
-   - Handle inline functions and optimization
+1. **Ruchy WASM Analyzer** (2-3 days)
+   - Integrate with existing Ruchy parser
+   - Detect Ruchy→WASM boundary functions
+   - Map Ruchy-specific patterns to WASM constructs
+   - Handle Ruchy calling conventions
 
-2. **Correlation Engine Enhancement** (2-3 days)
-   - Create bidirectional mappings (source ↔ WASM offsets)
-   - Combine DWARF + source maps + WASM inspector data
-   - Confidence scoring for each mapping
-   - Handle optimized/inlined code
+2. **Quality Gates for Ruchy** (1 day)
+   - Ruchy-specific quality thresholds
+   - Type flow analysis for Ruchy
+   - WASM optimization detection
 
-3. **Report & MCP Updates** (1-2 days)
-   - Enhanced reports with source-to-WASM correlation
-   - New MCP tools for DWARF queries
-   - Visualization of correlation data
+3. **Testing & Documentation** (1 day)
+   - Test with Ruchy→WASM builds
+   - Update CLI and MCP tools
+   - Documentation updates
 
-4. **Comprehensive Testing** (1-2 days)
-   - Test with real Rust→WASM builds
-   - Verify DWARF parsing accuracy
-   - Validate correlation mappings
-
-**Files**: `dwarf_parser.rs`, `correlation_engine.rs`, `report_generator.rs`
-**Value**: Completes Deep WASM vision, enables precise debugging
-**Dependencies**: Phase 1 complete ✅, gimli already in Cargo.toml ✅
-**Estimated ROI**: High - Critical for WASM debugging workflows
+**Files**: `deep_wasm/ruchy_analyzer.rs`, integration with existing parsers
+**Value**: Enables WASM analysis for Ruchy projects
+**Dependencies**: Deep WASM Phase 1 & 2 complete ✅
+**Estimated ROI**: Medium - Completes language coverage for WASM
 
 ---
 
