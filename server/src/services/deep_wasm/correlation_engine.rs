@@ -69,7 +69,7 @@ impl CorrelationEngine {
             let mut map: HashMap<String, Vec<&SourceMapEntry>> = HashMap::new();
             for entry in source_map_entries {
                 map.entry(entry.source.clone())
-                    .or_insert_with(Vec::new)
+                    .or_default()
                     .push(entry);
             }
             map

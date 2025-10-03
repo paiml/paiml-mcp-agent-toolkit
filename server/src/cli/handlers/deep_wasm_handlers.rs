@@ -70,10 +70,12 @@ pub async fn handle_deep_wasm(
     // Apply strict mode if requested
     if strict {
         use crate::services::deep_wasm::WasmQualityGates;
-        let mut gates = WasmQualityGates::default();
-        gates.max_module_size = 5_242_880; // Stricter 5MB limit
-        gates.max_wasm_complexity = 15; // Stricter complexity limit
-        gates.min_source_map_coverage = 0.99; // Stricter coverage
+        let gates = WasmQualityGates {
+            max_module_size: 5_242_880, // Stricter 5MB limit
+            max_wasm_complexity: 15, // Stricter complexity limit
+            min_source_map_coverage: 0.99, // Stricter coverage
+            ..Default::default()
+        };
         service = service.with_quality_gates(gates);
     }
 
