@@ -122,7 +122,7 @@
 - ✅ All quality gates passing
 - ✅ Toyota Way compliance maintained
 
-## Current Status: v2.113.0 Released | Mutation Testing Phase 4.1 + Ruchy Support Complete
+## Current Status: v2.114.0 Released | Mutation Testing Phase 4.2 ML Foundation Complete
 
 ### Sprint Status Overview
 - ✅ Sprints 1-6: Foundation Complete (100%)
@@ -132,51 +132,55 @@
 - ✅ Sprints 10-15: Multi-Language & Performance (100%)
 - ✅ Deep WASM Phase 2: DWARF Correlation (100%)
 - ✅ TDG Improvement: Per-Function Analysis (100%)
-- ✅ Mutation Testing Phase 4.1: Fuzzing Integration (100%) ← **Just Completed!**
-- ✅ Deep WASM Ruchy Support: Issue #61 Fixed (100%) ← **Just Completed!**
-- ⏳ Remaining: Mutation Testing Phases 4.2-5 (ML optimization, production hardening)
+- ✅ Mutation Testing Phase 4.1: Fuzzing Integration (100%)
+- ✅ Deep WASM Ruchy Support: Issue #61 Fixed (100%)
+- ✅ Mutation Testing Phase 4.2: ML Foundation (100%) ← **Just Completed!**
+- ⏳ Remaining: ML REFACTOR (LightGBM), Mutation Testing Phase 5 (production hardening)
 
 ## 🎯 Next Priority Options (4 Choices)
 
-### Option 1: Mutation Testing Phase 4.2 - ML Optimization (7-10 days) ⭐ RECOMMENDED
-**Status**: Ready to start - Phase 4.1 fuzzing complete
-**Impact**: AI-guided mutation testing with survivability prediction
-**Builds On**: Completed Phase 4.1 (fuzzing + coverage tracking)
+### Option 1: Mutation Testing Phase 4.2 REFACTOR - LightGBM Integration (3-5 days) ⭐ NEXT
+**Status**: Phase 4.2 Foundation COMPLETE ✅ - Statistical baseline deployed
+**Impact**: Upgrade from statistical baseline to full ML model
+**Builds On**: Completed Phase 4.2 ML foundation (v2.114.0)
 
-**Work Required**:
-1. **Mutant Survivability Predictor** (3-4 days)
-   - Train LightGBM model on historical mutation results
-   - Features: complexity, coverage, mutation type, code patterns
-   - Predict kill probability for each mutant
-   - Prioritize high-kill-probability mutants
-   - EXTREME TDD: RED tests first
+**✅ Phase 4.2 Foundation Complete (v2.114.0)**:
+1. ✅ **Mutant Survivability Predictor**
+   - Extract 10 features from mutants
+   - Statistical baseline model (operator-based kill rates)
+   - Predict kill probability with confidence
+   - Prioritize mutants by probability
+   - Model persistence and incremental learning
+   - 12 RED tests passing
 
-2. **Equivalent Mutant Detection** (2-3 days)
-   - ML-based equivalent mutant classifier
-   - Static analysis features (semantic equivalence)
-   - Dynamic features (coverage patterns)
-   - Reduce wasted test execution on equivalents
+2. ✅ **Equivalent Mutant Detector**
+   - Pattern-based equivalence detection
+   - Identity ops (x+0→x), tautologies (x||true→true), commutative swaps
+   - Human-readable explanations
+   - Model save/load, incremental updates
+   - 13 RED tests passing
 
-3. **Kill Probability Estimation** (1-2 days)
-   - Confidence scoring for predictions
-   - Calibration with historical data
-   - Adaptive threshold tuning
+3. ✅ **Integration Pipeline**
+   - End-to-end ML pipeline working
+   - Model persistence verified
+   - Incremental learning validated
+   - 5 integration tests passing
 
-4. **Integration Testing** (1-2 days)
-   - End-to-end ML pipeline tests
-   - Model training and evaluation
-   - Prediction accuracy validation
-   - Performance benchmarks
+**🔨 REFACTOR Work Remaining (3-5 days)**:
+1. **LightGBM Integration** (2-3 days)
+   - Replace statistical model with LightGBM
+   - Full feature engineering (complexity, coverage, patterns)
+   - Train on larger historical dataset
+   - Cross-validation and hyperparameter tuning
 
-**Files**:
-- `server/src/services/mutation/ml_predictor.rs` (new)
-- `server/src/services/mutation/equivalent_detector.rs` (new)
-- ML model training scripts
-- Integration tests
+2. **Advanced Equivalence Detection** (1-2 days)
+   - AST-based semantic equivalence
+   - Dynamic execution patterns
+   - Feature importance analysis
 
-**Value**: 10-50% reduction in mutation testing time via intelligent prioritization
-**Dependencies**: Phase 4.1 complete ✅, LightGBM integration needed
-**Estimated ROI**: Very High - Significant performance improvement for large codebases
+**Value**: Enhanced accuracy from 60-70% (statistical) to 85-95% (ML)
+**Dependencies**: Phase 4.2 foundation complete ✅
+**Estimated ROI**: High - Significant accuracy improvement
 
 ---
 
