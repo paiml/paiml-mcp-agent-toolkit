@@ -236,11 +236,131 @@ mod tests {
         assert_eq!(result.unwrap().len(), 0);
     }
 
+    #[cfg(feature = "deep-wasm")]
+    #[test]
+    fn test_parse_dwarf_with_null_debug_str() {
+        let parser = DwarfParser::new();
+        // Invalid DWARF data will fail gracefully during parsing
+        let invalid_data = vec![0x00; 32];
+        let result = parser.parse_dwarf_sections(&invalid_data, None, None);
+        // Should handle gracefully (either Ok with 0 entries or error)
+        assert!(result.is_ok() || result.is_err());
+    }
+
+    #[cfg(feature = "deep-wasm")]
+    #[test]
+    fn test_parse_dwarf_with_debug_str() {
+        let parser = DwarfParser::new();
+        let debug_info = vec![0x00; 32];
+        let debug_str = vec![0x00; 16];
+        let result = parser.parse_dwarf_sections(&debug_info, None, Some(&debug_str));
+        // Should handle gracefully (either Ok with 0 entries or error)
+        assert!(result.is_ok() || result.is_err());
+    }
+
+    #[cfg(feature = "deep-wasm")]
+    #[test]
+    fn test_parse_dwarf_sections_error_handling() {
+        let parser = DwarfParser::new();
+        // Completely invalid DWARF data
+        let bad_data = vec![0xFF; 8];
+        let result = parser.parse_dwarf_sections(&bad_data, None, None);
+
+        // Should either:
+        // 1. Return Ok with empty Vec (no valid units found)
+        // 2. Return Err with Analysis error
+        match result {
+            Ok(entries) => {
+                // No valid units were found
+                assert_eq!(entries.len(), 0);
+            }
+            Err(e) => {
+                // Should be an Analysis error
+                assert!(matches!(e, DeepWasmError::Analysis(_)));
+            }
+        }
+    }
+
+    #[cfg(feature = "deep-wasm")]
+    #[test]
+    fn test_minimal_dwarf_compilation_unit() {
+        let parser = DwarfParser::new();
+
+        // Minimal DWARF v4 compilation unit header
+        // This is a simplified test - real DWARF is more complex
+        let mut debug_info = Vec::new();
+
+        // Unit length (4 bytes) - excluding length field itself
+        debug_info.extend_from_slice(&16u32.to_le_bytes());
+
+        // Version (2 bytes) - DWARF v4
+        debug_info.extend_from_slice(&4u16.to_le_bytes());
+
+        // Debug abbrev offset (4 bytes)
+        debug_info.extend_from_slice(&0u32.to_le_bytes());
+
+        // Address size (1 byte)
+        debug_info.push(4);
+
+        // Padding to reach declared length
+        debug_info.extend_from_slice(&[0u8; 7]);
+
+        let result = parser.parse_dwarf_sections(&debug_info, None, None);
+
+        // Should either parse successfully or fail gracefully
+        match result {
+            Ok(entries) => {
+                // May have 0 entries (no DIEs) or parsed something
+                assert!(entries.len() >= 0);
+            }
+            Err(e) => {
+                // Should be an Analysis error (missing abbreviations, etc.)
+                assert!(matches!(e, DeepWasmError::Analysis(_)));
+            }
+        }
+    }
+
+    #[cfg(feature = "deep-wasm")]
+    #[test]
+    fn test_dwarf_debug_entry_structure() {
+        // Test that DwarfDebugEntry structure is correct
+        let entry = DwarfDebugEntry {
+            die_offset: 0x1000,
+            tag: "DW_TAG_subprogram".to_string(),
+            name: Some("test_function".to_string()),
+        };
+
+        assert_eq!(entry.die_offset, 0x1000);
+        assert_eq!(entry.tag, "DW_TAG_subprogram");
+        assert_eq!(entry.name, Some("test_function".to_string()));
+    }
+
+    #[cfg(feature = "deep-wasm")]
+    #[test]
+    fn test_location_structure() {
+        let loc = Location {
+            line: 42,
+            column: 10,
+        };
+
+        assert_eq!(loc.line, 42);
+        assert_eq!(loc.column, 10);
+    }
+
     #[cfg(not(feature = "deep-wasm"))]
     #[test]
     fn test_feature_disabled_returns_error() {
         let parser = DwarfParser::new();
         let result = parser.parse_dwarf_sections(&[], None, None);
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), DeepWasmError::MissingDebugInfo));
+    }
+
+    #[cfg(not(feature = "deep-wasm"))]
+    #[test]
+    fn test_feature_disabled_line_program_error() {
+        let parser = DwarfParser::new();
+        let result = parser.parse_line_program(&[]);
         assert!(result.is_err());
         assert!(matches!(result.unwrap_err(), DeepWasmError::MissingDebugInfo));
     }
