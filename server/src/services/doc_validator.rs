@@ -52,7 +52,12 @@ impl Default for ValidatorConfig {
             max_retries: 3,
             retry_delay_ms: 1000,
             max_concurrent_requests: 10,
-            exclude_patterns: vec![],
+            exclude_patterns: vec![
+                "archive".to_string(),
+                "node_modules".to_string(),
+                ".git".to_string(),
+                "target".to_string(),
+            ],
             follow_redirects: true,
             user_agent: format!("pmat-doc-validator/{}", env!("CARGO_PKG_VERSION")),
         }
@@ -434,16 +439,13 @@ impl DocValidator {
         let mut all_links = Vec::new();
         let mut file_count = 0;
 
-        // Find all markdown files
+        // Find all markdown files, skipping excluded directories
         for entry in WalkDir::new(root)
             .into_iter()
+            .filter_entry(|e| !self.should_exclude(e.path()))
             .filter_map(|e| e.ok())
             .filter(|e| e.path().extension().map_or(false, |ext| ext == "md"))
         {
-            if self.should_exclude(entry.path()) {
-                continue;
-            }
-
             file_count += 1;
             let content = tokio::fs::read_to_string(entry.path())
                 .await
@@ -671,6 +673,34 @@ mod unit_tests {
 
         assert_eq!(summary.total_files, 10);
         assert_eq!(summary.valid_links, 10);
+    }
+
+    #[tokio::test]
+    async fn test_archive_directory_excluded_by_default() {
+        let temp_dir = tempfile::tempdir().unwrap();
+
+        // Create regular docs
+        std::fs::write(temp_dir.path().join("readme.md"), "[link](./test.md)").unwrap();
+        std::fs::write(temp_dir.path().join("test.md"), "content").unwrap();
+
+        // Create archive directory with broken links (should be excluded)
+        let archive_dir = temp_dir.path().join("archive");
+        std::fs::create_dir(&archive_dir).unwrap();
+        std::fs::write(
+            archive_dir.join("old.md"),
+            "[broken](./nonexistent.md)",
+        ).unwrap();
+
+        let validator = DocValidator::default();
+        let summary = validator
+            .validate_directory(temp_dir.path())
+            .await
+            .unwrap();
+
+        // Should only scan 2 files (readme.md and test.md), excluding archive/old.md
+        assert_eq!(summary.total_files, 2);
+        assert_eq!(summary.valid_links, 1);
+        assert_eq!(summary.broken_links, 0); // archive's broken link should be excluded
     }
 }
 
