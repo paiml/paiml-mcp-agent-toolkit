@@ -1229,6 +1229,72 @@ impl fmt::Display for WasmOutputFormat {
     }
 }
 
+/// Deep WASM source language
+#[derive(Clone, Debug, ValueEnum, PartialEq)]
+pub enum DeepWasmLanguage {
+    /// Rust language
+    Rust,
+    /// Ruchy language
+    Ruchy,
+}
+
+impl fmt::Display for DeepWasmLanguage {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            DeepWasmLanguage::Rust => write!(f, "rust"),
+            DeepWasmLanguage::Ruchy => write!(f, "ruchy"),
+        }
+    }
+}
+
+/// Deep WASM analysis focus
+#[derive(Clone, Debug, ValueEnum, PartialEq)]
+pub enum DeepWasmFocus {
+    /// Full pipeline analysis
+    Full,
+    /// Source code only
+    Source,
+    /// Compilation pipeline
+    Compilation,
+    /// Runtime behavior
+    Runtime,
+    /// JavaScript interop
+    Interop,
+}
+
+impl fmt::Display for DeepWasmFocus {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            DeepWasmFocus::Full => write!(f, "full"),
+            DeepWasmFocus::Source => write!(f, "source"),
+            DeepWasmFocus::Compilation => write!(f, "compilation"),
+            DeepWasmFocus::Runtime => write!(f, "runtime"),
+            DeepWasmFocus::Interop => write!(f, "interop"),
+        }
+    }
+}
+
+/// Deep WASM output format
+#[derive(Clone, Debug, ValueEnum, PartialEq)]
+pub enum DeepWasmOutputFormat {
+    /// Markdown report
+    Markdown,
+    /// JSON data
+    Json,
+    /// HTML report
+    Html,
+}
+
+impl fmt::Display for DeepWasmOutputFormat {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            DeepWasmOutputFormat::Markdown => write!(f, "markdown"),
+            DeepWasmOutputFormat::Json => write!(f, "json"),
+            DeepWasmOutputFormat::Html => write!(f, "html"),
+        }
+    }
+}
+
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

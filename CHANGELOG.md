@@ -7,6 +7,94 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Deep WASM Pipeline Inspection (Phase 1)**: Multi-layer bidirectional tracing for Rust/Ruchy → WebAssembly → JavaScript → HTML pipeline
+  - WASM binary parser with zero-copy analysis using wasmparser (DWASM-001)
+  - DWARF v5 debug information framework with gimli integration (DWASM-002)
+  - JavaScript-style source map handler for WASM debugging (DWASM-003)
+  - Rust analyzer extension detecting WASM boundary functions: #[wasm_bindgen], extern "C", #[no_mangle] (DWASM-004)
+  - Memory pattern tracking: Box, Vec, String, RawPointer, Reference types
+  - Toyota Way quality gates with strict enforcement (module size, complexity, coverage)
+  - CLI command `pmat analyze deep-wasm` with 13 configuration options
+  - 5 MCP tools for AI agent integration: analyze, query_mapping, trace_execution, compare_optimizations, detect_issues
+  - Markdown report generation with 7 comprehensive sections
+  - Feature-gated compilation with `--features deep-wasm`
+  - Auto-detection of source language (Rust/Ruchy) from file extensions
+  - Multiple output formats: Markdown, JSON, HTML
+  - 30+ comprehensive tests including TDD unit tests and property tests
+
+### Technical Details
+- New service module: `server/src/services/deep_wasm/` (10 files, 2000+ lines)
+  - Core service: `service.rs` - Orchestrates all analysis components
+  - WASM inspector: `wasm_inspector.rs` - Binary parsing and module analysis
+  - DWARF parser: `dwarf_parser.rs` - Debug information extraction (framework)
+  - Source map handler: `source_map_handler.rs` - Source mapping support
+  - Correlation engine: `correlation_engine.rs` - Source-to-WASM mapping (framework)
+  - Quality gates: `quality_gates.rs` - Zero-tolerance defect detection
+  - Report generator: `report_generator.rs` - Markdown output generation
+  - Type system: `types.rs` - 38 comprehensive types for pipeline analysis
+  - Error handling: `error.rs` - Specialized error types with thiserror
+- New Rust WASM analyzer: `server/src/services/rust_wasm_analyzer.rs` (359 lines, 8 tests)
+- CLI integration: `server/src/cli/handlers/deep_wasm_handlers.rs` (331 lines)
+- MCP integration: `server/src/mcp_integration/deep_wasm_tools.rs` (419 lines, 5 tools)
+- Test suite: `tests/deep_wasm_cli_tests.rs` (15+ tests with proptest)
+- Dependencies added: wasmparser 0.239, wasm-encoder 0.239, walrus 0.22, object 0.37, sourcemap 9.0, gimli 0.32, ahash 0.8
+
+### Documentation
+- **Specification**: `docs/specifications/deep-wasm.md` - Complete technical specification with architecture
+- **Usage Guide**: `docs/deep-wasm-usage.md` - 480+ line comprehensive guide with examples
+  - Installation and feature enablement
+  - CLI usage with all options and focus modes
+  - MCP integration examples with JSON schemas
+  - Quality gate configuration and customization
+  - CI/CD integration examples (GitHub Actions, pre-commit hooks)
+  - Programmatic usage with Rust examples
+  - Troubleshooting guide
+  - Phase 2 and Phase 3 roadmap
+
+### Quality Gates
+- **Module Size Limits**: 10MB default, 5MB strict mode
+- **WASM Complexity**: ≤20 default, ≤15 strict mode
+- **Source Map Coverage**: ≥95% default, ≥99% strict mode
+- **Zero Tolerance Issues**: Unreachable code, unbounded loops, stack overflow, memory leaks, undefined behavior, type unsafety
+
+### Usage
+```bash
+# Basic analysis
+pmat analyze deep-wasm -p src/lib.rs --wasm-file app.wasm
+
+# Full pipeline analysis with strict mode
+pmat analyze deep-wasm --source-path src/ --wasm-file app.wasm \
+  --dwarf-file app.dwarf --source-map app.map \
+  --language rust --focus full --format markdown \
+  --strict --output report.md
+
+# Specific focus areas
+pmat analyze deep-wasm -p src/ --focus source       # Source only
+pmat analyze deep-wasm -p src/ --focus compilation  # Compilation pipeline
+pmat analyze deep-wasm -p src/ --focus runtime      # Runtime behavior
+pmat analyze deep-wasm -p src/ --focus interop      # JS interop
+```
+
+### MCP Integration
+```json
+{
+  "name": "deep_wasm_analyze",
+  "arguments": {
+    "source_path": "src/lib.rs",
+    "wasm_path": "app.wasm",
+    "language": "rust",
+    "focus": "full",
+    "strict": true
+  }
+}
+```
+
+### Roadmap
+- **Phase 1 (Complete)**: WASM parsing, DWARF framework, source maps, quality gates, CLI, MCP tools, Rust analyzer
+- **Phase 2**: Source-to-WASM correlation, type flow analysis, optimization comparison, issue detection
+- **Phase 3**: Execution tracing, performance profiling, Chrome DevTools integration, Ruchy deadlock detection
+
 ## [2.109.0] - 2025-10-02
 
 ### Added

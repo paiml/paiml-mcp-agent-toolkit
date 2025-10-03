@@ -239,43 +239,60 @@ fn quote_variables(command: &str) -> String {
 }
 
 fn detect_secret(name: &str, value: &str) -> Option<String> {
-    let name_lower = name.to_lowercase();
     let value_trimmed = value.trim();
 
-    // Check for common secret variable names
-    if name_lower.contains("password")
+    check_secret_var_name(name, value_trimmed)
+        .or_else(|| check_aws_credential(value_trimmed))
+        .or_else(|| check_github_token(value_trimmed))
+        .or_else(|| check_jwt_token(value_trimmed))
+        .or_else(|| check_api_key(value_trimmed))
+}
+
+fn check_secret_var_name(name: &str, value: &str) -> Option<String> {
+    let name_lower = name.to_lowercase();
+    let is_secret_name = name_lower.contains("password")
         || name_lower.contains("secret")
         || name_lower.contains("token")
         || name_lower.contains("api_key")
-        || name_lower.contains("access_key")
-    {
-        // Check if it's not a variable reference
-        if !value_trimmed.starts_with('$') && value_trimmed.len() > 4 {
-            return Some("credential".to_string());
-        }
-    }
+        || name_lower.contains("access_key");
 
-    // Check for AWS credentials pattern
-    if value_trimmed.starts_with("AKIA") && value_trimmed.len() == 20 {
-        return Some("AWS access key".to_string());
+    if is_secret_name && !value.starts_with('$') && value.len() > 4 {
+        Some("credential".to_string())
+    } else {
+        None
     }
+}
 
-    // Check for GitHub token pattern
-    if value_trimmed.starts_with("ghp_") || value_trimmed.starts_with("github_pat_") {
-        return Some("GitHub token".to_string());
+fn check_aws_credential(value: &str) -> Option<String> {
+    if value.starts_with("AKIA") && value.len() == 20 {
+        Some("AWS access key".to_string())
+    } else {
+        None
     }
+}
 
-    // Check for JWT pattern
-    if value_trimmed.starts_with("eyJ") {
-        return Some("JWT token".to_string());
+fn check_github_token(value: &str) -> Option<String> {
+    if value.starts_with("ghp_") || value.starts_with("github_pat_") {
+        Some("GitHub token".to_string())
+    } else {
+        None
     }
+}
 
-    // Check for API key patterns
-    if value_trimmed.starts_with("sk-") || value_trimmed.starts_with("pk-") {
-        return Some("API key".to_string());
+fn check_jwt_token(value: &str) -> Option<String> {
+    if value.starts_with("eyJ") {
+        Some("JWT token".to_string())
+    } else {
+        None
     }
+}
 
-    None
+fn check_api_key(value: &str) -> Option<String> {
+    if value.starts_with("sk-") || value.starts_with("pk-") {
+        Some("API key".to_string())
+    } else {
+        None
+    }
 }
 
 fn detect_secret_in_command(command: &str) -> Option<String> {

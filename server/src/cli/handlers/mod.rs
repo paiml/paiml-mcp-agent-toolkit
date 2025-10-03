@@ -18,6 +18,8 @@ pub mod comprehensive_handler;
 pub mod config_command_handlers;
 pub mod configuration_handlers;
 pub mod defect_prediction_handler;
+#[cfg(feature = "deep-wasm")]
+pub mod deep_wasm_handlers;
 pub mod demo_handlers;
 pub mod doc_validate_handlers;
 pub mod duplication_analysis;

@@ -414,154 +414,167 @@ fn get_simple_function_annotations(
 ) -> String {
     let mut annotations = String::new();
 
-    // Complexity metrics from analyses (with fallbacks)
-    let mut complexity_added = false;
-    if let Some(complexity_report) = &analyses.complexity_report {
-        if let Some(file_metrics) = complexity_report
-            .files
-            .iter()
-            .find(|f| file.path.ends_with(&f.path))
-        {
-            if let Some(func_complexity) =
-                file_metrics.functions.iter().find(|f| f.name == func_name)
-            {
-                annotations.push_str(&format!(
-                    " [complexity: {}]",
-                    func_complexity.metrics.cyclomatic
-                ));
-                annotations.push_str(&format!(
-                    " [cognitive: {}]",
-                    func_complexity.metrics.cognitive
-                ));
+    add_complexity_annotation(&mut annotations, func_name, file, analyses);
+    add_provability_annotation(&mut annotations, analyses);
+    add_satd_annotation(&mut annotations, file, analyses);
+    add_pagerank_annotation(&mut annotations, func_name, file, analyses);
+    add_churn_annotation(&mut annotations, file, analyses);
+    annotations.push_str(" [tdg: 2.5]");
 
-                // Big-O complexity estimation
-                let big_o = match func_complexity.metrics.cyclomatic {
-                    1..=3 => "O(1)",
-                    4..=7 => "O(n)",
-                    8..=15 => "O(n log n)",
-                    16..=25 => "O(n²)",
-                    _ => "O(?)",
-                };
-                annotations.push_str(&format!(" [big-o: {big_o}]"));
-                complexity_added = true;
-            }
-        }
-    }
+    annotations
+}
 
-    // Always provide complexity annotations if not found
+fn add_complexity_annotation(
+    annotations: &mut String,
+    func_name: &str,
+    file: &crate::services::context::FileContext,
+    analyses: &crate::services::deep_context::AnalysisResults,
+) {
+    let complexity_added = analyses
+        .complexity_report
+        .as_ref()
+        .and_then(|report| {
+            report
+                .files
+                .iter()
+                .find(|f| file.path.ends_with(&f.path))
+                .and_then(|file_metrics| {
+                    file_metrics
+                        .functions
+                        .iter()
+                        .find(|f| f.name == func_name)
+                        .map(|func_complexity| {
+                            annotations.push_str(&format!(
+                                " [complexity: {}]",
+                                func_complexity.metrics.cyclomatic
+                            ));
+                            annotations.push_str(&format!(
+                                " [cognitive: {}]",
+                                func_complexity.metrics.cognitive
+                            ));
+                            let big_o = match func_complexity.metrics.cyclomatic {
+                                1..=3 => "O(1)",
+                                4..=7 => "O(n)",
+                                8..=15 => "O(n log n)",
+                                16..=25 => "O(n²)",
+                                _ => "O(?)",
+                            };
+                            annotations.push_str(&format!(" [big-o: {big_o}]"));
+                        })
+                })
+        })
+        .is_some();
+
     if !complexity_added {
-        annotations.push_str(" [complexity: 3]");
-        annotations.push_str(" [cognitive: 2]");
-        annotations.push_str(" [big-o: O(n)]");
+        annotations.push_str(" [complexity: 3] [cognitive: 2] [big-o: O(n)]");
     }
+}
 
-    // Provability annotations
-    if let Some(provability) = &analyses.provability_results {
-        // ProofSummary has provability_score field (not confidence_score)
-        if !provability.is_empty() {
-            let avg_score = provability.iter().map(|p| p.provability_score).sum::<f64>()
-                / provability.len() as f64;
-            annotations.push_str(&format!(" [provability: {:.0}%]", avg_score * 100.0));
-        } else {
-            annotations.push_str(" [provability: 75%]");
-        }
+fn add_provability_annotation(
+    annotations: &mut String,
+    analyses: &crate::services::deep_context::AnalysisResults,
+) {
+    let score = analyses
+        .provability_results
+        .as_ref()
+        .filter(|p| !p.is_empty())
+        .map(|provability| {
+            provability.iter().map(|p| p.provability_score).sum::<f64>()
+                / provability.len() as f64
+        })
+        .unwrap_or(0.75);
+
+    annotations.push_str(&format!(" [provability: {:.0}%]", score * 100.0));
+}
+
+fn add_satd_annotation(
+    annotations: &mut String,
+    file: &crate::services::context::FileContext,
+    analyses: &crate::services::deep_context::AnalysisResults,
+) {
+    let satd_count = analyses
+        .satd_results
+        .as_ref()
+        .map(|satd| {
+            satd.items
+                .iter()
+                .filter(|item| file.path.contains(&*item.file.to_string_lossy()))
+                .count()
+        })
+        .unwrap_or(0);
+
+    if satd_count > 0 {
+        annotations.push_str(&format!(" [satd: {} items]", satd_count));
     } else {
-        // Default provability if analysis not available
-        annotations.push_str(" [provability: 75%]");
-    }
-
-    // SATD annotations (TODO/FIXME detection)
-    let mut satd_added = false;
-    if let Some(satd) = &analyses.satd_results {
-        // Only show SATD annotation if there are actual debt items for this file
-        let satd_count = satd
-            .items
-            .iter()
-            .filter(|item| file.path.contains(&*item.file.to_string_lossy()))
-            .count();
-
-        if satd_count > 0 {
-            annotations.push_str(&format!(" [satd: {} items]", satd_count));
-            satd_added = true;
-        }
-    }
-
-    // Always provide SATD annotation if not found
-    if !satd_added {
         annotations.push_str(" [satd: 0]");
     }
+}
 
-    // Graph metrics (PageRank, centrality) from dependency graph
-    // Only show PageRank for functions that are actually in the dependency graph
-    // and have meaningful connectivity (not isolated nodes)
+fn add_pagerank_annotation(
+    annotations: &mut String,
+    func_name: &str,
+    file: &crate::services::context::FileContext,
+    analyses: &crate::services::deep_context::AnalysisResults,
+) {
     if let Some(dag) = &analyses.dependency_graph {
-        // Check if this function is in the dependency graph
-        if let Some((node_id, _node_info)) = dag
+        if let Some((node_id, _)) = dag
             .nodes
             .iter()
             .find(|(id, _)| id.contains(func_name) || id.contains(&file.path))
         {
-            // Count connections (both incoming and outgoing)
             let incoming = dag.edges.iter().filter(|e| e.to == *node_id).count();
             let outgoing = dag.edges.iter().filter(|e| e.from == *node_id).count();
-            let total_connections = incoming + outgoing;
 
-            // Only show PageRank for nodes with significant connectivity
-            // PageRank should reflect actual connectivity, not be a constant
-            if total_connections > 0 {
-                // Calculate PageRank-like score based on connectivity
-                // More incoming connections = higher importance
-                let pagerank_value = match (incoming, outgoing) {
-                    (0, _) => 0.0,       // No incoming links = low importance
-                    (1, 0) => 0.25,      // Only one incoming, no outgoing
-                    (1, _) => 0.35,      // One incoming, some outgoing
-                    (2..=3, _) => 0.50,  // Moderate incoming links
-                    (4..=6, _) => 0.65,  // Good connectivity
-                    (7..=10, _) => 0.75, // High connectivity
-                    _ => 0.85,           // Very high connectivity (hub node)
-                };
-
-                // Only show if PageRank is above threshold (meaningful connectivity)
-                // Don't show for nodes with very low connectivity
+            if incoming + outgoing > 0 {
+                let pagerank_value = calculate_pagerank_value(incoming, outgoing);
                 if pagerank_value >= 0.35 {
                     annotations.push_str(&format!(" [pagerank: {:.2}]", pagerank_value));
                 }
             }
         }
     }
-    // No fallback - don't add PageRank if not meaningful
+}
 
-    // Churn annotations
-    let mut churn_added = false;
-    if let Some(churn) = &analyses.churn_analysis {
-        // Find churn metrics for this file
-        if let Some(file_churn) = churn
-            .files
-            .iter()
-            .find(|f| file.path.contains(&f.relative_path))
-        {
-            // Always show churn if there are commits (as requested by user)
-            if file_churn.commit_count > 10 {
-                annotations.push_str(&format!(" [churn: high({})]", file_churn.commit_count));
-            } else if file_churn.commit_count > 5 {
-                annotations.push_str(&format!(" [churn: med({})]", file_churn.commit_count));
-            } else if file_churn.commit_count > 0 {
-                annotations.push_str(&format!(" [churn: low({})]", file_churn.commit_count));
-            }
-            churn_added = true;
-        }
+fn calculate_pagerank_value(incoming: usize, outgoing: usize) -> f64 {
+    match (incoming, outgoing) {
+        (0, _) => 0.0,
+        (1, 0) => 0.25,
+        (1, _) => 0.35,
+        (2..=3, _) => 0.50,
+        (4..=6, _) => 0.65,
+        (7..=10, _) => 0.75,
+        _ => 0.85,
     }
+}
 
-    // Always provide churn annotation if not found
+fn add_churn_annotation(
+    annotations: &mut String,
+    file: &crate::services::context::FileContext,
+    analyses: &crate::services::deep_context::AnalysisResults,
+) {
+    let churn_added = analyses
+        .churn_analysis
+        .as_ref()
+        .and_then(|churn| {
+            churn
+                .files
+                .iter()
+                .find(|f| file.path.contains(&f.relative_path))
+                .map(|file_churn| {
+                    if file_churn.commit_count > 10 {
+                        annotations.push_str(&format!(" [churn: high({})]", file_churn.commit_count));
+                    } else if file_churn.commit_count > 5 {
+                        annotations.push_str(&format!(" [churn: med({})]", file_churn.commit_count));
+                    } else if file_churn.commit_count > 0 {
+                        annotations.push_str(&format!(" [churn: low({})]", file_churn.commit_count));
+                    }
+                })
+        })
+        .is_some();
+
     if !churn_added {
         annotations.push_str(" [churn: low(1)]");
     }
-
-    // TDG (Technical Debt Gradient) score - use default for now
-    // (TDG is computed separately in correlate_defects, not stored in AnalysisResults)
-    annotations.push_str(" [tdg: 2.5]");
-
-    annotations
 }
 
 /// Detect toolchain or use provided one
@@ -755,190 +768,140 @@ fn format_context_output_simple(
     format: ContextFormat,
     _graph_annotations: Option<&Vec<crate::graph::ContextAnnotation>>,
 ) -> Result<String> {
-    // Extract metrics directly from project context
-    let total_functions = project_context.summary.total_functions;
-    let total_structs = project_context.summary.total_structs;
-    let total_enums = project_context.summary.total_enums;
-    let total_traits = project_context.summary.total_traits;
-
     let output = match format {
-        ContextFormat::Markdown => {
-            let mut md = String::new();
-            md.push_str("# Project Context\n\n## Project Structure\n\n");
-            md.push_str(&format!("- **Language**: {}\n", detected_toolchain));
-            md.push_str(&format!(
-                "- **Total Files**: {}\n",
-                project_context.summary.total_files
-            ));
-            md.push_str(&format!("- **Total Functions**: {}\n", total_functions));
-            md.push_str(&format!("- **Total Structs**: {}\n", total_structs));
-            md.push_str(&format!("- **Total Enums**: {}\n", total_enums));
-            md.push_str(&format!("- **Total Traits**: {}\n\n", total_traits));
-
-            // Add file-level details if available
-            if !project_context.files.is_empty() {
-                md.push_str("## Key Components\n\n");
-                for file in &project_context.files {
-                    md.push_str(&format!("### File: {}\n", file.path));
-                    let functions: Vec<&str> = file
-                        .items
-                        .iter()
-                        .filter_map(|item| match item {
-                            crate::services::context::AstItem::Function { name, .. } => {
-                                Some(name.as_str())
-                            }
-                            _ => None,
-                        })
-                        .collect();
-
-                    if !functions.is_empty() {
-                        md.push_str("**Functions:**\n");
-                        for func in functions {
-                            md.push_str(&format!("- `{}`\n", func));
-                        }
-                    }
-                    md.push('\n');
-                }
-            }
-            md
-        }
-        ContextFormat::LlmOptimized => {
-            let mut output = String::new();
-
-            // Header and Summary
-            output.push_str(&format!(
-                "Project: {} ({})\n\nSummary:\n- Files: {}\n- Functions: {}\n- Types: {} structs, {} enums, {} traits\n\n",
-                project_path.file_name().unwrap_or_default().to_string_lossy(),
-                detected_toolchain,
-                project_context.summary.total_files,
-                total_functions,
-                total_structs,
-                total_enums,
-                total_traits
-            ));
-
-            // Key Components section with file breakdown
-            if total_functions > 0 {
-                output.push_str("Key Components:\n\n");
-
-                // Show per-file function counts if we have them from build_project_context_from_simple
-                // This data comes from analysis_report.file_complexity_details
-                output.push_str(&format!(
-                    "Analysis detected {} functions across {} files:\n\n",
-                    total_functions, project_context.summary.total_files
-                ));
-
-                // Note: Individual function names require full AST parsing
-                output.push_str("(Individual function names require --format deep for detailed AST analysis)\n\n");
-            }
-
-            // Quality Insights section
-            if total_functions > 20 {
-                output.push_str("Quality Insights:\n");
-                output.push_str(&format!(
-                    "- Large codebase with {} functions across {} files\n",
-                    total_functions, project_context.summary.total_files
-                ));
-
-                if project_context.summary.total_files > 0 {
-                    let avg_functions =
-                        total_functions as f64 / project_context.summary.total_files as f64;
-                    output.push_str(&format!(
-                        "- Average {:.1} functions per file\n",
-                        avg_functions
-                    ));
-
-                    if avg_functions > 10.0 {
-                        output.push_str(
-                            "- Consider splitting large files for better maintainability\n",
-                        );
-                    }
-                }
-                output.push('\n');
-            }
-
-            // Recommendations section
-            output.push_str("Recommendations:\n");
-            if total_functions == 0 {
-                output
-                    .push_str("- No functions detected - ensure language is properly supported\n");
-            } else if total_functions > 50 {
-                output.push_str("- Consider modularizing the codebase for better organization\n");
-            }
-
-            if project_context.files.is_empty() {
-                output.push_str("- Enable detailed AST analysis for function-level insights\n");
-            }
-
-            output
-        }
-        ContextFormat::Json => {
-            let mut json_output = serde_json::json!({
-                "project_type": detected_toolchain,
-                "summary": {
-                    "total_files": project_context.summary.total_files,
-                    "total_functions": total_functions,
-                    "total_structs": total_structs,
-                    "total_enums": total_enums,
-                    "total_traits": total_traits,
-                }
-            });
-
-            // Add file details if available
-            if !project_context.files.is_empty() {
-                let files_json: Vec<_> = project_context
-                    .files
-                    .iter()
-                    .map(|file| {
-                        let functions: Vec<_> = file
-                            .items
-                            .iter()
-                            .filter_map(|item| match item {
-                                crate::services::context::AstItem::Function { name, .. } => {
-                                    Some(name.clone())
-                                }
-                                _ => None,
-                            })
-                            .collect();
-
-                        serde_json::json!({
-                            "path": file.path,
-                            "functions": functions,
-                            "function_count": functions.len()
-                        })
-                    })
-                    .collect();
-
-                json_output["files"] = serde_json::json!(files_json);
-            }
-
-            serde_json::to_string_pretty(&json_output)?
-        }
-        ContextFormat::Sarif => {
-            // Enhanced SARIF format with annotations
-            serde_json::to_string_pretty(&serde_json::json!({
-                "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
-                "version": "2.1.0",
-                "runs": [{
-                    "tool": {
-                        "driver": {
-                            "name": "pmat-context",
-                            "version": "2.98.0",
-                            "informationUri": "https://github.com/paiml/paiml-mcp-agent-toolkit"
-                        }
-                    },
-                    "results": [],
-                    "properties": {
-                        "total_functions": total_functions,
-                        "total_files": project_context.summary.total_files,
-                        "language": detected_toolchain
-                    }
-                }]
-            }))?
-        }
+        ContextFormat::Markdown => simple_markdown_format(project_context, detected_toolchain),
+        ContextFormat::LlmOptimized => simple_llm_format(project_context, detected_toolchain, project_path),
+        ContextFormat::Json => simple_json_format(project_context, detected_toolchain)?,
+        ContextFormat::Sarif => simple_sarif_format(project_context, detected_toolchain)?,
     };
 
     Ok(output)
+}
+
+fn simple_markdown_format(ctx: &crate::services::context::ProjectContext, lang: &str) -> String {
+    let mut md = String::new();
+    md.push_str("# Project Context\n\n## Project Structure\n\n");
+    md.push_str(&format!("- **Language**: {}\n", lang));
+    md.push_str(&format!("- **Total Files**: {}\n", ctx.summary.total_files));
+    md.push_str(&format!("- **Total Functions**: {}\n", ctx.summary.total_functions));
+    md.push_str(&format!("- **Total Structs**: {}\n", ctx.summary.total_structs));
+    md.push_str(&format!("- **Total Enums**: {}\n", ctx.summary.total_enums));
+    md.push_str(&format!("- **Total Traits**: {}\n\n", ctx.summary.total_traits));
+
+    if !ctx.files.is_empty() {
+        md.push_str("## Key Components\n\n");
+        for file in &ctx.files {
+            md.push_str(&format!("### File: {}\n", file.path));
+            let functions: Vec<&str> = file
+                .items
+                .iter()
+                .filter_map(|item| match item {
+                    crate::services::context::AstItem::Function { name, .. } => Some(name.as_str()),
+                    _ => None,
+                })
+                .collect();
+
+            if !functions.is_empty() {
+                md.push_str("**Functions:**\n");
+                for func in functions {
+                    md.push_str(&format!("- `{}`\n", func));
+                }
+            }
+            md.push('\n');
+        }
+    }
+    md
+}
+
+fn simple_llm_format(ctx: &crate::services::context::ProjectContext, lang: &str, path: &Path) -> String {
+    let mut out = String::new();
+    out.push_str(&format!(
+        "Project: {} ({})\n\nSummary:\n- Files: {}\n- Functions: {}\n- Types: {} structs, {} enums, {} traits\n\n",
+        path.file_name().unwrap_or_default().to_string_lossy(),
+        lang,
+        ctx.summary.total_files,
+        ctx.summary.total_functions,
+        ctx.summary.total_structs,
+        ctx.summary.total_enums,
+        ctx.summary.total_traits
+    ));
+
+    if ctx.summary.total_functions > 0 {
+        out.push_str(&format!(
+            "Key Components:\n\nAnalysis detected {} functions across {} files:\n\n(Individual function names require --format deep for detailed AST analysis)\n\n",
+            ctx.summary.total_functions, ctx.summary.total_files
+        ));
+    }
+
+    if ctx.summary.total_functions > 20 {
+        out.push_str(&format!("Quality Insights:\n- Large codebase with {} functions across {} files\n", ctx.summary.total_functions, ctx.summary.total_files));
+        if ctx.summary.total_files > 0 {
+            let avg = ctx.summary.total_functions as f64 / ctx.summary.total_files as f64;
+            out.push_str(&format!("- Average {:.1} functions per file\n", avg));
+            if avg > 10.0 {
+                out.push_str("- Consider splitting large files for better maintainability\n");
+            }
+        }
+        out.push('\n');
+    }
+
+    out.push_str("Recommendations:\n");
+    if ctx.summary.total_functions == 0 {
+        out.push_str("- No functions detected - ensure language is properly supported\n");
+    } else if ctx.summary.total_functions > 50 {
+        out.push_str("- Consider modularizing the codebase for better organization\n");
+    }
+    if ctx.files.is_empty() {
+        out.push_str("- Enable detailed AST analysis for function-level insights\n");
+    }
+    out
+}
+
+fn simple_json_format(ctx: &crate::services::context::ProjectContext, lang: &str) -> Result<String> {
+    let mut json = serde_json::json!({
+        "project_type": lang,
+        "summary": {
+            "total_files": ctx.summary.total_files,
+            "total_functions": ctx.summary.total_functions,
+            "total_structs": ctx.summary.total_structs,
+            "total_enums": ctx.summary.total_enums,
+            "total_traits": ctx.summary.total_traits,
+        }
+    });
+
+    if !ctx.files.is_empty() {
+        json["files"] = serde_json::json!(ctx.files.iter().map(|file| {
+            let funcs: Vec<_> = file.items.iter().filter_map(|item| match item {
+                crate::services::context::AstItem::Function { name, .. } => Some(name.clone()),
+                _ => None,
+            }).collect();
+            serde_json::json!({"path": file.path, "functions": funcs, "function_count": funcs.len()})
+        }).collect::<Vec<_>>());
+    }
+
+    serde_json::to_string_pretty(&json).map_err(Into::into)
+}
+
+fn simple_sarif_format(ctx: &crate::services::context::ProjectContext, lang: &str) -> Result<String> {
+    serde_json::to_string_pretty(&serde_json::json!({
+        "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+        "version": "2.1.0",
+        "runs": [{
+            "tool": {
+                "driver": {
+                    "name": "pmat-context",
+                    "version": "2.98.0",
+                    "informationUri": "https://github.com/paiml/paiml-mcp-agent-toolkit"
+                }
+            },
+            "results": [],
+            "properties": {
+                "total_functions": ctx.summary.total_functions,
+                "total_files": ctx.summary.total_files,
+                "language": lang
+            }
+        }]
+    })).map_err(Into::into)
 }
 
 /// Update project summary statistics
