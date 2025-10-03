@@ -119,10 +119,12 @@ impl McpTool for DeepWasmAnalyzeTool {
 
         if params["strict"].as_bool().unwrap_or(false) {
             use crate::services::deep_wasm::WasmQualityGates;
-            let mut gates = WasmQualityGates::default();
-            gates.max_module_size = 5_242_880; // 5MB strict limit
-            gates.max_wasm_complexity = 15;
-            gates.min_source_map_coverage = 0.99;
+            let gates = WasmQualityGates {
+                max_module_size: 5_242_880, // 5MB strict limit
+                max_wasm_complexity: 15,
+                min_source_map_coverage: 0.99,
+                ..Default::default()
+            };
             service = service.with_quality_gates(gates);
         }
 

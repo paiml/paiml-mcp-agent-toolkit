@@ -220,7 +220,7 @@ impl<'a> Visit<'_> for MutationVisitor<'a> {
                         let hash = format!("{:x}", hasher.finalize());
 
                         let mutant = Mutant {
-                            id: format!("{}_{}", operator.name(), hash[..8].to_string()),
+                            id: format!("{}_{}", operator.name(), &hash[..8]),
                             original_file: self.file_path.clone(),
                             mutated_source: mutated_source.clone(),
                             location: location.clone(),
