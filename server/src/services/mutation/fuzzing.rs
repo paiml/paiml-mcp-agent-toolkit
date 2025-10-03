@@ -2,7 +2,7 @@
 //!
 //! EXTREME TDD: GREEN PHASE - Minimal implementation to pass RED tests
 
-use super::{MutationEngine, Mutant};
+use super::{CoverageCorpus, CoverageInfo, CoverageTracker, MutationEngine, Mutant};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -173,7 +173,11 @@ impl FuzzMutationStrategy {
         let mut crashes = Vec::new();
         let mut hangs = Vec::new();
 
-        // Generate inputs based on strategy
+        // Initialize coverage corpus for coverage-guided fuzzing
+        let baseline_coverage = CoverageInfo::new();
+        let mut corpus = CoverageCorpus::new(baseline_coverage);
+
+        // Generate initial inputs based on strategy
         let inputs = match self.fuzz_config.input_generator {
             InputGeneratorType::Random => self.generate_inputs(self.fuzz_config.iterations),
             InputGeneratorType::GrammarBased => {
@@ -184,41 +188,67 @@ impl FuzzMutationStrategy {
                 self.generate_inputs(self.fuzz_config.iterations)
             }
             InputGeneratorType::CoverageGuided => {
-                // For now, use random (full impl would track coverage)
-                self.generate_inputs(self.fuzz_config.iterations)
+                // Start with seed inputs
+                self.generate_inputs(std::cmp::min(100, self.fuzz_config.iterations))
             }
         };
 
+        let is_coverage_guided = matches!(self.fuzz_config.input_generator, InputGeneratorType::CoverageGuided);
+
         // Test each input
-        for (idx, input) in inputs.iter().enumerate() {
-            let _start = Instant::now(); // Reserved for coverage tracking
+        let mut iteration = 0;
+        let max_iterations = self.fuzz_config.iterations;
+
+        while iteration < max_iterations {
+            let input = if iteration < inputs.len() {
+                inputs[iteration].clone()
+            } else if is_coverage_guided && !corpus.interesting_inputs.is_empty() {
+                // Mutate interesting inputs from corpus
+                let seed = &corpus.get_seeds(1)[0];
+                mutate_input(seed)
+            } else {
+                break;
+            };
+
+            let _start = Instant::now(); // Reserved for profiling
 
             // Execute with timeout to detect hangs
             let result = timeout(
                 self.fuzz_config.iteration_timeout,
                 tokio::task::spawn_blocking({
                     let mutant_source = mutant.mutated_source.clone();
-                    let input = input.clone();
+                    let input_clone = input.clone();
                     move || {
                         // Try to execute mutated code with input
                         // For Phase 1, we simulate execution
                         // Real implementation would compile and run
-                        panic::catch_unwind(|| {
-                            execute_mutant_with_input(&mutant_source, &input)
-                        })
+                        let exec_result = panic::catch_unwind(|| {
+                            execute_mutant_with_input(&mutant_source, &input_clone)
+                        });
+
+                        // Simulate coverage tracking
+                        let coverage = CoverageTracker::simulate_coverage(&input_clone);
+
+                        (exec_result, coverage)
                     }
                 }),
             )
             .await;
 
             match result {
-                Ok(Ok(Ok(_))) => {
-                    // Execution succeeded
+                Ok(Ok((Ok(_), coverage))) => {
+                    // Execution succeeded, track coverage
+                    if is_coverage_guided {
+                        corpus.add_if_interesting(input.clone(), coverage);
+                    }
                 }
-                Ok(Ok(Err(_))) => {
+                Ok(Ok((Err(_), coverage))) => {
                     // Panic detected = crash
                     if self.fuzz_config.crash_detection {
-                        crashes.push(format!("crash_at_input_{}", idx));
+                        crashes.push(format!("crash_at_input_{}", iteration));
+                    }
+                    if is_coverage_guided {
+                        corpus.add_if_interesting(input.clone(), coverage);
                     }
                 }
                 Ok(Err(_)) => {
@@ -230,16 +260,25 @@ impl FuzzMutationStrategy {
                 }
             }
 
+            iteration += 1;
+
             // Early exit if we've found crashes and hangs
             if !crashes.is_empty() && !hangs.is_empty() {
                 break;
             }
         }
 
+        // Calculate coverage increase
+        let coverage_increase = if is_coverage_guided {
+            corpus.total_coverage_increase()
+        } else {
+            0.0
+        };
+
         Ok(FuzzResult {
             crashes,
             hangs,
-            coverage_increase: 0.0, // Coverage tracking in next REFACTOR phase
+            coverage_increase,
         })
     }
 
@@ -371,4 +410,56 @@ fn execute_mutant_with_input(_mutant_source: &str, input: &[u8]) -> Result<()> {
 
     // Simulate success
     Ok(())
+}
+
+/// Mutate an input to create new test cases
+fn mutate_input(seed: &[u8]) -> Vec<u8> {
+    use rand::Rng;
+    let mut rng = rand::rng();
+    let mut mutated = seed.to_vec();
+
+    if mutated.is_empty() {
+        return vec![rng.random::<u8>()];
+    }
+
+    // Apply random mutation strategy
+    match rng.random_range(0..5) {
+        0 => {
+            // Bit flip
+            if !mutated.is_empty() {
+                let idx = rng.random_range(0..mutated.len());
+                let bit = rng.random_range(0..8);
+                mutated[idx] ^= 1 << bit;
+            }
+        }
+        1 => {
+            // Byte flip
+            if !mutated.is_empty() {
+                let idx = rng.random_range(0..mutated.len());
+                mutated[idx] = rng.random::<u8>();
+            }
+        }
+        2 => {
+            // Insert byte
+            let idx = rng.random_range(0..=mutated.len());
+            mutated.insert(idx, rng.random::<u8>());
+        }
+        3 => {
+            // Delete byte
+            if !mutated.is_empty() {
+                let idx = rng.random_range(0..mutated.len());
+                mutated.remove(idx);
+            }
+        }
+        4 => {
+            // Append bytes
+            let count = rng.random_range(1..=4);
+            for _ in 0..count {
+                mutated.push(rng.random::<u8>());
+            }
+        }
+        _ => unreachable!(),
+    }
+
+    mutated
 }
