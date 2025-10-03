@@ -11,12 +11,16 @@ pub mod scoring;
 pub mod rust_adapter;
 pub mod typescript_adapter;
 pub mod python_adapter;
+pub mod go_adapter;
 
 #[cfg(test)]
 mod typescript_adapter_tests;
 
 #[cfg(test)]
 mod python_adapter_tests;
+
+#[cfg(test)]
+mod go_adapter_tests;
 
 pub use types::*;
 pub use operators::*;
@@ -26,3 +30,4 @@ pub use scoring::*;
 pub use rust_adapter::*;
 pub use typescript_adapter::*;
 pub use python_adapter::*;
+pub use go_adapter::*;

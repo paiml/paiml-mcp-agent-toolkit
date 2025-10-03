@@ -69,6 +69,12 @@ impl LanguageRegistry {
         self.register(Arc::new(PythonAdapter::new()));
     }
 
+    /// Register Go adapter
+    pub fn register_go(&mut self) {
+        use crate::services::mutation::GoAdapter;
+        self.register(Arc::new(GoAdapter::new()));
+    }
+
     /// Detect language from file path
     pub fn detect_language(&self, path: &Path) -> Option<Arc<dyn LanguageAdapter>> {
         let extension = path.extension()?.to_str()?;
