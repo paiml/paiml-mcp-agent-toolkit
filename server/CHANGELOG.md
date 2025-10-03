@@ -7,6 +7,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.113.0] - 2025-10-03 - Mutation Testing Phase 4.1 & Deep WASM Ruchy Support
+
+### Added
+
+- **Mutation Testing Phase 4.1: Fuzzing Integration** 🎯
+  - Coverage-guided fuzzing with intelligent input generation
+  - Crash detection using panic::catch_unwind
+  - Hang detection with configurable timeouts
+  - 4 input generation strategies: Random, GrammarBased, MutationBased, CoverageGuided
+  - Parallel fuzzing execution with worker pool
+  - Comprehensive coverage tracking (lines, blocks, branches)
+  - Input mutation strategies (bit flip, byte flip, insert, delete, append)
+  - FuzzMutationReport with detailed crash/hang/coverage metrics
+
+- **Coverage Tracking Infrastructure**
+  - CoverageInfo: Line/block/branch execution tracking
+  - CoverageCorpus: Interesting input corpus management
+  - CoverageTracker: Real-time coverage instrumentation (simulated for Phase 1)
+  - Coverage-guided input selection and prioritization
+  - Weighted coverage calculation (lines×2 + blocks×3 + branches×5)
+
+- **Deep WASM Ruchy Language Support**
+  - Ruchy source analysis in deep-wasm pipeline
+  - Auto-detection from .ruchy/.rch file extensions
+  - Function counting with "fun" and "async fun" patterns
+  - Complexity estimation for Ruchy code
+  - Phase 1 simplified analysis (full AST parsing in Phase 2)
+
+### Fixed
+
+- **Issue #61**: Deep WASM now properly analyzes Ruchy files
+  - Service layer respects language parameter
+  - Conditional parsing: syn for Rust, pattern matching for Ruchy
+  - --language ruchy flag now works correctly
+  - .ruchy extension properly detected
+
+### Changed
+
+- **MutationEngine**: Added Clone derive for parallel fuzzing
+- **Fuzzing execution**: Serial and parallel execution modes
+- **Test Coverage**: 116 mutation testing tests passing (94 baseline + 15 fuzzing + 7 coverage)
+
+### Technical Details
+
+- Phase 4.1 implements crash detection, hang detection, coverage tracking
+- Coverage-guided fuzzing discovers new code paths dynamically
+- Input mutation creates derivative test cases from interesting seeds
+- Parallel execution uses tokio::sync::Semaphore for worker limiting
+- Simulated coverage for Phase 1 (real instrumentation with LLVM in Phase 2)
+
 ## [2.92.1] - 2025-09-20
 
 ## [2.88.0] - 2025-09-20
