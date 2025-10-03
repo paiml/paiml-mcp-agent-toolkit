@@ -35,6 +35,12 @@ pub mod error;
 #[cfg(test)]
 mod tests;
 
+#[cfg(test)]
+mod dwarf_parser_phase2_tests;
+
+#[cfg(test)]
+mod correlation_engine_phase2_tests;
+
 pub use service::DeepWasmService;
 pub use wasm_inspector::WasmInspector;
 pub use dwarf_parser::DwarfParser;
