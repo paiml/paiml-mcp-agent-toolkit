@@ -19,6 +19,9 @@ use crate::cli::{
     SearchScope, SymbolTableOutputFormat, SymbolTypeFilter, TdgOutputFormat,
     VerificationMethodFilter, WasmOutputFormat,
 };
+
+#[cfg(feature = "deep-wasm")]
+use crate::cli::{DeepWasmFocus, DeepWasmLanguage, DeepWasmOutputFormat};
 use crate::models::churn::ChurnOutputFormat;
 use clap::{Parser, Subcommand};
 use serde_json::Value;
@@ -1815,6 +1818,62 @@ pub enum AnalyzeCommands {
         /// Enable verbose output with detailed analysis
         #[arg(long)]
         verbose: bool,
+    },
+
+    /// Deep WASM pipeline inspection (Rust/Ruchy → WASM → JS)
+    #[cfg(feature = "deep-wasm")]
+    DeepWasm {
+        /// Source code path to analyze
+        #[arg(short = 'p', long)]
+        source_path: PathBuf,
+
+        /// WASM binary file path
+        #[arg(long)]
+        wasm_file: Option<PathBuf>,
+
+        /// DWARF debug symbols file path
+        #[arg(long)]
+        dwarf_file: Option<PathBuf>,
+
+        /// Source map file path
+        #[arg(long)]
+        source_map: Option<PathBuf>,
+
+        /// Source language (auto-detected if not specified)
+        #[arg(long, value_enum)]
+        language: Option<DeepWasmLanguage>,
+
+        /// Analysis focus area
+        #[arg(long, value_enum, default_value = "full")]
+        focus: DeepWasmFocus,
+
+        /// Output format
+        #[arg(long, value_enum, default_value = "markdown")]
+        format: DeepWasmOutputFormat,
+
+        /// Output file path
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+
+        /// Enable strict quality gates
+        #[arg(long)]
+        strict: bool,
+
+        /// Include MIR analysis (Rust only)
+        #[arg(long)]
+        include_mir: bool,
+
+        /// Include LLVM IR analysis
+        #[arg(long)]
+        include_llvm_ir: bool,
+
+        /// Track memory layout
+        #[arg(long)]
+        track_memory: bool,
+
+        /// Detect deadlocks (Ruchy actor systems)
+        #[arg(long)]
+        detect_deadlocks: bool,
     },
 }
 

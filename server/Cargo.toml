@@ -219,6 +219,13 @@ crc32fast = "1.5.0"
 pest = "2.8.2"
 pest_derive = { version = "2.8.2", features = ["default"] }
 
+# Deep WASM inspection dependencies
+wasm-encoder = "0.239.0"
+walrus = "0.22"
+object = "0.37"
+sourcemap = "9.0"
+ahash = "0.8"
+
 [dev-dependencies]
 mockall = "0.13"
 tokio-test = "0.4"
@@ -247,7 +254,7 @@ capnpc = "0.20"
 
 [features]
 default = ["all-languages", "demo"]
-all-languages = ["rust-ast", "typescript-ast", "python-ast", "c-ast", "cpp-ast", "ruchy-ast", "go-ast", "wasm-ast", "shell-ast", "java-ast", "csharp-ast", "kotlin-ast", "swift-ast", "ruby-ast", "erlang-ast", "elixir-ast", "haskell-ast", "ocaml-ast"]
+all-languages = ["rust-ast", "typescript-ast", "python-ast", "c-ast", "cpp-ast", "ruchy-ast", "go-ast", "wasm-ast", "deep-wasm", "shell-ast", "java-ast", "csharp-ast", "kotlin-ast", "swift-ast", "ruby-ast", "erlang-ast", "elixir-ast", "haskell-ast", "ocaml-ast"]
 most-languages = ["rust-ast", "typescript-ast", "python-ast", "c-ast", "cpp-ast", "java-ast", "csharp-ast", "kotlin-ast", "swift-ast", "ruby-ast"]
 rust-only = ["rust-ast"]
 ruchy-ast = ["ruchy", "logos"]
@@ -262,6 +269,7 @@ elixir-ast = ["tree-sitter", "tree-sitter-elixir"]
 haskell-ast = ["tree-sitter", "tree-sitter-haskell"]
 ocaml-ast = ["tree-sitter", "tree-sitter-ocaml"]
 wasm-ast = []
+deep-wasm = ["gimli", "wasm-ast"]
 shell-ast = []
 skip-slow-tests = []
 internal_tests = []

@@ -1921,6 +1921,9 @@ impl CliAdapter {
             | AnalyzeCommands::AssemblyScript { .. }
             | AnalyzeCommands::WebAssembly { .. }
             | AnalyzeCommands::Wasm { .. } => AnalyzeCommandCategory::Specialized,
+
+            #[cfg(feature = "deep-wasm")]
+            AnalyzeCommands::DeepWasm { .. } => AnalyzeCommandCategory::Specialized,
         }
     }
 }

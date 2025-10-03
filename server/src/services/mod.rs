@@ -189,6 +189,10 @@ pub mod unified_typescript_analyzer; // TICKET-3002: Single-pass TypeScript/Java
 pub mod unified_wasm_analyzer; // TICKET-3005: Single-pass WebAssembly analyzer
 pub mod verified_complexity;
 pub mod wasm;
+#[cfg(feature = "deep-wasm")]
+pub mod deep_wasm;
+#[cfg(feature = "deep-wasm")]
+pub mod rust_wasm_analyzer;
 
 #[cfg(test)]
 mod satd_property_tests;

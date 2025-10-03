@@ -5309,33 +5309,7 @@ pub async fn analyze_provability(
     let start = Instant::now();
 
     // Detect the primary language of the project
-    use crate::services::file_discovery::ProjectFileDiscovery;
-    let discovery = ProjectFileDiscovery::new(path.to_path_buf());
-    let files = discovery.discover_files().unwrap_or_default();
-
-    // Count file extensions to determine primary language
-    let mut rust_count = 0;
-    let mut python_count = 0;
-    let mut ruby_count = 0;
-
-    for file in &files {
-        if let Some(ext) = file.extension().and_then(|e| e.to_str()) {
-            match ext {
-                "rs" => rust_count += 1,
-                "py" => python_count += 1,
-                "rb" => ruby_count += 1,
-                _ => {}
-            }
-        }
-    }
-
-    let language = if rust_count >= python_count && rust_count >= ruby_count {
-        "rust"
-    } else if python_count >= ruby_count {
-        "python"
-    } else {
-        "ruby"
-    };
+    let language = detect_project_language(path);
 
     // Discover functions from the project using AST analysis
     let project_context = match analyze_project(path, language).await {
@@ -5392,6 +5366,35 @@ pub async fn analyze_provability(
     Ok(summaries)
 }
 
+fn detect_project_language(path: &std::path::Path) -> &'static str {
+    use crate::services::file_discovery::ProjectFileDiscovery;
+    let discovery = ProjectFileDiscovery::new(path.to_path_buf());
+    let files = discovery.discover_files().unwrap_or_default();
+
+    let mut counts = [0; 5]; // rust, python, ruby, ts, js
+    for file in &files {
+        if let Some(ext) = file.extension().and_then(|e| e.to_str()) {
+            match ext {
+                "rs" => counts[0] += 1,
+                "py" => counts[1] += 1,
+                "rb" => counts[2] += 1,
+                "ts" | "tsx" => counts[3] += 1,
+                "js" | "jsx" => counts[4] += 1,
+                _ => {}
+            }
+        }
+    }
+
+    let (max_idx, _) = counts.iter().enumerate().max_by_key(|(_, &count)| count).unwrap_or((0, &0));
+    match max_idx {
+        0 => "rust",
+        1 => "python",
+        2 => "ruby",
+        3 => "typescript",
+        _ => "javascript",
+    }
+}
+
 async fn analyze_dag(path: &std::path::Path, dag_type: DagType) -> anyhow::Result<DependencyGraph> {
     use crate::services::{
         context::analyze_project,
@@ -5407,45 +5410,7 @@ async fn analyze_dag(path: &std::path::Path, dag_type: DagType) -> anyhow::Resul
     // No timeout - efficient DAG analysis
 
     // Detect the primary language of the project
-    use crate::services::file_discovery::ProjectFileDiscovery;
-    let discovery = ProjectFileDiscovery::new(path.to_path_buf());
-    let files = discovery.discover_files().unwrap_or_default();
-
-    // Count file extensions to determine primary language
-    let mut rust_count = 0;
-    let mut python_count = 0;
-    let mut ruby_count = 0;
-    let mut ts_count = 0;
-    let mut js_count = 0;
-
-    for file in &files {
-        if let Some(ext) = file.extension().and_then(|e| e.to_str()) {
-            match ext {
-                "rs" => rust_count += 1,
-                "py" => python_count += 1,
-                "rb" => ruby_count += 1,
-                "ts" | "tsx" => ts_count += 1,
-                "js" | "jsx" => js_count += 1,
-                _ => {}
-            }
-        }
-    }
-
-    let language = if rust_count >= python_count
-        && rust_count >= ruby_count
-        && rust_count >= ts_count
-        && rust_count >= js_count
-    {
-        "rust"
-    } else if python_count >= ruby_count && python_count >= ts_count && python_count >= js_count {
-        "python"
-    } else if ruby_count >= ts_count && ruby_count >= js_count {
-        "ruby"
-    } else if ts_count >= js_count {
-        "typescript"
-    } else {
-        "javascript"
-    };
+    let language = detect_project_language(path);
 
     // Analyze the project to get AST information - NO TIMEOUT!
     let project_context = analyze_project(path, language).await.map_err(|e| {
