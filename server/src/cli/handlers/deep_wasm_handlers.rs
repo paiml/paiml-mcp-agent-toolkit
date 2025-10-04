@@ -83,16 +83,25 @@ pub async fn handle_deep_wasm(options: DeepWasmOptions) -> Result<()> {
         analysis_focus,
     };
 
-    // Create service
+    // Create service with appropriate quality gates
+    use crate::services::deep_wasm::WasmQualityGates;
     let mut service = DeepWasmService::new();
 
-    // Apply strict mode if requested
     if strict {
-        use crate::services::deep_wasm::WasmQualityGates;
+        // Strict mode: enforce stricter quality gates
         let gates = WasmQualityGates {
             max_module_size: 5_242_880, // Stricter 5MB limit
             max_wasm_complexity: 15, // Stricter complexity limit
             min_source_map_coverage: 0.99, // Stricter coverage
+            ..Default::default()
+        };
+        service = service.with_quality_gates(gates);
+    } else {
+        // Non-strict mode: relaxed quality gates (don't require source maps)
+        let gates = WasmQualityGates {
+            max_module_size: 20_971_520, // Relaxed 20MB limit
+            max_wasm_complexity: 30, // Relaxed complexity limit
+            min_source_map_coverage: 0.0, // Don't require source maps
             ..Default::default()
         };
         service = service.with_quality_gates(gates);
@@ -124,13 +133,20 @@ pub async fn handle_deep_wasm(options: DeepWasmOptions) -> Result<()> {
         println!("{}", output_content);
     }
 
-    // Check quality gates
+    // Check quality gates and fail in strict mode
     if !report.quality_gate_results.passed {
         eprintln!("\n❌ Quality gate violations detected:");
         for violation in &report.quality_gate_results.violations {
             eprintln!("  - {}: {}", violation.rule, violation.message);
         }
-        std::process::exit(1);
+
+        // Only fail the command in strict mode
+        if strict {
+            return Err(anyhow::anyhow!(
+                "Quality gate violations detected in strict mode. {} violation(s) found.",
+                report.quality_gate_results.violations.len()
+            ));
+        }
     }
 
     Ok(())

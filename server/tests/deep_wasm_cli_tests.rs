@@ -209,7 +209,12 @@ fn test_deep_wasm_strict_mode() {
         .await
     });
 
-    assert!(result.is_ok(), "Strict mode analysis should complete");
+    // In strict mode without source map, should fail quality gates
+    assert!(result.is_err(), "Strict mode should fail when quality gates are violated");
+    assert!(
+        result.unwrap_err().to_string().contains("Quality gate violations"),
+        "Error should mention quality gate violations"
+    );
 }
 
 #[cfg(feature = "deep-wasm")]
