@@ -303,13 +303,14 @@ impl MutationOperator for ConditionalReturnOperator {
     }
 }
 
-/// Statement Deletion Operator (SDO)
-/// Removes non-critical statements to test necessity
+/// Statement Deletion Operator (SDL)
+/// Advanced operator for Phase 5 - removes statements to test necessity
+/// Can delete: assignments, method calls, function calls
 pub struct StatementDeletionOperator;
 
 impl MutationOperator for StatementDeletionOperator {
     fn name(&self) -> &str {
-        "SDO"
+        "SDL"
     }
 
     fn operator_type(&self) -> MutationOperatorType {
@@ -317,17 +318,38 @@ impl MutationOperator for StatementDeletionOperator {
     }
 
     fn can_mutate(&self, expr: &Expr) -> bool {
-        // Can delete assignments and method calls
-        matches!(expr, Expr::Assign(_) | Expr::Call(_) | Expr::MethodCall(_))
+        // Can delete assignments, method calls, and function calls
+        matches!(
+            expr,
+            Expr::Assign(_)
+                | Expr::Call(_)
+                | Expr::MethodCall(_)
+                | Expr::Macro(_)
+        )
     }
 
-    fn mutate(&self, _expr: &Expr, _location: SourceLocation) -> Result<Vec<Expr>> {
-        // Minimal: return empty vec (deletion simulated elsewhere)
-        Ok(vec![])
+    fn mutate(&self, expr: &Expr, _location: SourceLocation) -> Result<Vec<Expr>> {
+        // For statement deletion, we return a unit expression ()
+        // This represents removing the statement
+        match expr {
+            Expr::Assign(_) => {
+                // Delete assignment - replace with ()
+                Ok(vec![syn::parse_quote!(())])
+            }
+            Expr::Call(_) | Expr::MethodCall(_) => {
+                // Delete function/method call - replace with ()
+                Ok(vec![syn::parse_quote!(())])
+            }
+            Expr::Macro(_) => {
+                // Delete macro call - replace with ()
+                Ok(vec![syn::parse_quote!(())])
+            }
+            _ => Ok(vec![]),
+        }
     }
 
     fn kill_probability(&self) -> f64 {
-        0.65
+        0.75 // Statement deletions often caught by tests
     }
 }
 
@@ -428,6 +450,94 @@ impl MutationOperator for BoundaryValueOperator {
 
     fn kill_probability(&self) -> f64 {
         0.85
+    }
+}
+
+/// Constant Replacement (CRR)
+/// Advanced operator for Phase 5 - replaces constants with common alternatives
+/// Handles: integers, booleans, strings, floats
+pub struct ConstantReplacementOperator;
+
+impl MutationOperator for ConstantReplacementOperator {
+    fn name(&self) -> &str {
+        "CRR"
+    }
+
+    fn operator_type(&self) -> MutationOperatorType {
+        MutationOperatorType::ConstantReplacement
+    }
+
+    fn can_mutate(&self, expr: &Expr) -> bool {
+        matches!(
+            expr,
+            Expr::Lit(syn::ExprLit {
+                lit: syn::Lit::Int(_) | syn::Lit::Bool(_) | syn::Lit::Str(_) | syn::Lit::Float(_),
+                ..
+            })
+        )
+    }
+
+    fn mutate(&self, expr: &Expr, _location: SourceLocation) -> Result<Vec<Expr>> {
+        if let Expr::Lit(lit_expr) = expr {
+            match &lit_expr.lit {
+                // Integer replacements: 0→1, 1→0, n→n+1, n→n-1
+                syn::Lit::Int(lit_int) => {
+                    if let Ok(value) = lit_int.base10_parse::<i64>() {
+                        let mutants = match value {
+                            0 => vec![syn::parse_quote!(1), syn::parse_quote!(-1)],
+                            1 => vec![syn::parse_quote!(0), syn::parse_quote!(2)],
+                            -1 => vec![syn::parse_quote!(0), syn::parse_quote!(1)],
+                            n => {
+                                let plus = n + 1;
+                                let minus = n - 1;
+                                vec![
+                                    syn::parse_quote!(0),
+                                    syn::parse_quote!(1),
+                                    syn::parse_quote!(#plus),
+                                    syn::parse_quote!(#minus),
+                                ]
+                            }
+                        };
+                        return Ok(mutants);
+                    }
+                }
+                // Boolean replacements: true→false, false→true
+                syn::Lit::Bool(lit_bool) => {
+                    let replacement = !lit_bool.value;
+                    return Ok(vec![syn::parse_quote!(#replacement)]);
+                }
+                // String replacements: ""→"null", "x"→""
+                syn::Lit::Str(lit_str) => {
+                    let value = lit_str.value();
+                    let mutants = if value.is_empty() {
+                        vec![syn::parse_quote!("null"), syn::parse_quote!("undefined")]
+                    } else {
+                        vec![syn::parse_quote!(""), syn::parse_quote!("null")]
+                    };
+                    return Ok(mutants);
+                }
+                // Float replacements: 0.0→1.0, n→n+1.0, n→n-1.0
+                syn::Lit::Float(lit_float) => {
+                    if let Ok(value) = lit_float.base10_parse::<f64>() {
+                        let plus = value + 1.0;
+                        let minus = value - 1.0;
+                        let mutants = vec![
+                            syn::parse_quote!(0.0),
+                            syn::parse_quote!(1.0),
+                            syn::parse_quote!(#plus),
+                            syn::parse_quote!(#minus),
+                        ];
+                        return Ok(mutants);
+                    }
+                }
+                _ => {}
+            }
+        }
+        Ok(vec![])
+    }
+
+    fn kill_probability(&self) -> f64 {
+        0.82 // Constants are often in critical logic
     }
 }
 
@@ -532,5 +642,211 @@ mod tests {
 
         let mutants = operator.mutate(&expr, location).unwrap();
         assert_eq!(mutants.len(), 1); // Remove !
+    }
+
+    // Phase 5 Advanced Operator Tests
+
+    #[test]
+    fn test_constant_replacement_integer_zero() {
+        let operator = ConstantReplacementOperator;
+        let expr: Expr = parse_quote!(0);
+        let location = SourceLocation {
+            line: 1,
+            column: 1,
+            end_line: 1,
+            end_column: 1,
+        };
+
+        assert!(operator.can_mutate(&expr));
+
+        let mutants = operator.mutate(&expr, location).unwrap();
+        assert_eq!(mutants.len(), 2); // 1, -1
+    }
+
+    #[test]
+    fn test_constant_replacement_integer_one() {
+        let operator = ConstantReplacementOperator;
+        let expr: Expr = parse_quote!(1);
+        let location = SourceLocation {
+            line: 1,
+            column: 1,
+            end_line: 1,
+            end_column: 1,
+        };
+
+        assert!(operator.can_mutate(&expr));
+
+        let mutants = operator.mutate(&expr, location).unwrap();
+        assert_eq!(mutants.len(), 2); // 0, 2
+    }
+
+    #[test]
+    fn test_constant_replacement_integer_arbitrary() {
+        let operator = ConstantReplacementOperator;
+        let expr: Expr = parse_quote!(42);
+        let location = SourceLocation {
+            line: 1,
+            column: 1,
+            end_line: 1,
+            end_column: 2,
+        };
+
+        assert!(operator.can_mutate(&expr));
+
+        let mutants = operator.mutate(&expr, location).unwrap();
+        assert_eq!(mutants.len(), 4); // 0, 1, 43, 41
+    }
+
+    #[test]
+    fn test_constant_replacement_boolean_true() {
+        let operator = ConstantReplacementOperator;
+        let expr: Expr = parse_quote!(true);
+        let location = SourceLocation {
+            line: 1,
+            column: 1,
+            end_line: 1,
+            end_column: 4,
+        };
+
+        assert!(operator.can_mutate(&expr));
+
+        let mutants = operator.mutate(&expr, location).unwrap();
+        assert_eq!(mutants.len(), 1); // false
+    }
+
+    #[test]
+    fn test_constant_replacement_boolean_false() {
+        let operator = ConstantReplacementOperator;
+        let expr: Expr = parse_quote!(false);
+        let location = SourceLocation {
+            line: 1,
+            column: 1,
+            end_line: 1,
+            end_column: 5,
+        };
+
+        assert!(operator.can_mutate(&expr));
+
+        let mutants = operator.mutate(&expr, location).unwrap();
+        assert_eq!(mutants.len(), 1); // true
+    }
+
+    #[test]
+    fn test_constant_replacement_string_empty() {
+        let operator = ConstantReplacementOperator;
+        let expr: Expr = parse_quote!("");
+        let location = SourceLocation {
+            line: 1,
+            column: 1,
+            end_line: 1,
+            end_column: 2,
+        };
+
+        assert!(operator.can_mutate(&expr));
+
+        let mutants = operator.mutate(&expr, location).unwrap();
+        assert_eq!(mutants.len(), 2); // "null", "undefined"
+    }
+
+    #[test]
+    fn test_constant_replacement_string_nonempty() {
+        let operator = ConstantReplacementOperator;
+        let expr: Expr = parse_quote!("hello");
+        let location = SourceLocation {
+            line: 1,
+            column: 1,
+            end_line: 1,
+            end_column: 7,
+        };
+
+        assert!(operator.can_mutate(&expr));
+
+        let mutants = operator.mutate(&expr, location).unwrap();
+        assert_eq!(mutants.len(), 2); // "", "null"
+    }
+
+    #[test]
+    fn test_constant_replacement_float() {
+        let operator = ConstantReplacementOperator;
+        let expr: Expr = parse_quote!(3.14);
+        let location = SourceLocation {
+            line: 1,
+            column: 1,
+            end_line: 1,
+            end_column: 4,
+        };
+
+        assert!(operator.can_mutate(&expr));
+
+        let mutants = operator.mutate(&expr, location).unwrap();
+        assert_eq!(mutants.len(), 4); // 0.0, 1.0, 4.14, 2.14
+    }
+
+    #[test]
+    fn test_statement_deletion_assignment() {
+        let operator = StatementDeletionOperator;
+        let expr: Expr = parse_quote!(x = 5);
+        let location = SourceLocation {
+            line: 1,
+            column: 1,
+            end_line: 1,
+            end_column: 5,
+        };
+
+        assert!(operator.can_mutate(&expr));
+
+        let mutants = operator.mutate(&expr, location).unwrap();
+        assert_eq!(mutants.len(), 1); // ()
+    }
+
+    #[test]
+    fn test_statement_deletion_method_call() {
+        let operator = StatementDeletionOperator;
+        let expr: Expr = parse_quote!(obj.method());
+        let location = SourceLocation {
+            line: 1,
+            column: 1,
+            end_line: 1,
+            end_column: 12,
+        };
+
+        assert!(operator.can_mutate(&expr));
+
+        let mutants = operator.mutate(&expr, location).unwrap();
+        assert_eq!(mutants.len(), 1); // ()
+    }
+
+    #[test]
+    fn test_statement_deletion_function_call() {
+        let operator = StatementDeletionOperator;
+        let expr: Expr = parse_quote!(func());
+        let location = SourceLocation {
+            line: 1,
+            column: 1,
+            end_line: 1,
+            end_column: 6,
+        };
+
+        assert!(operator.can_mutate(&expr));
+
+        let mutants = operator.mutate(&expr, location).unwrap();
+        assert_eq!(mutants.len(), 1); // ()
+    }
+
+    #[test]
+    fn test_statement_deletion_macro_call() {
+        let operator = StatementDeletionOperator;
+        let expr: Expr = parse_quote!(println!("test"));
+        let location = SourceLocation {
+            line: 1,
+            column: 1,
+            end_line: 1,
+            end_column: 18,
+        };
+
+        assert!(operator.can_mutate(&expr));
+
+        let mutants = operator.mutate(&expr, location).unwrap();
+        assert_eq!(mutants.len(), 1); // ()
     }
 }
