@@ -28,7 +28,7 @@ mod cross_validation_tests {
         let mut data = Vec::new();
 
         // Add diverse mutants with different outcomes
-        for _i in 0..20 {
+        for i in 0..20 {
             let operator = if i % 2 == 0 {
                 MutationOperatorType::ArithmeticReplacement
             } else {
