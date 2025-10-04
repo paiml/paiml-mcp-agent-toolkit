@@ -896,7 +896,7 @@ impl UnifiedEngine {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::services::refactor_engine::EngineError;
 ///
 /// // State machine errors

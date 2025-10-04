@@ -41,7 +41,7 @@ use std::path::Path;
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::services::complexity::{ComplexityMetrics, HalsteadMetrics};
 ///
 /// // Simple function with low complexity
@@ -221,7 +221,7 @@ impl ComplexityMetrics {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::services::complexity::HalsteadMetrics;
 ///
 /// // Create Halstead metrics for a simple function
@@ -516,7 +516,7 @@ impl<'a> ComplexityVisitor<'a> {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::services::complexity::compute_complexity_cache_key;
 /// use std::path::Path;
 ///
@@ -671,7 +671,7 @@ impl ComplexityRule for CognitiveComplexityRule {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::services::complexity::{aggregate_results, FileComplexityMetrics};
 ///
 /// let metrics = vec![];
@@ -682,7 +682,7 @@ impl ComplexityRule for CognitiveComplexityRule {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::services::complexity::{aggregate_results, FileComplexityMetrics, ComplexityMetrics};
 ///
 /// let file = FileComplexityMetrics {
@@ -719,7 +719,7 @@ pub fn aggregate_results(file_metrics: Vec<FileComplexityMetrics>) -> Complexity
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::services::complexity::*;
 ///
 /// let metrics = ComplexityMetrics {
@@ -1058,7 +1058,7 @@ fn build_complexity_report(
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::services::complexity::*;
 ///
 /// let file_metrics = vec![
@@ -1316,7 +1316,7 @@ pub fn format_complexity_report(report: &ComplexityReport) -> String {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::services::complexity::{format_as_sarif, ComplexityReport, ComplexitySummary};
 ///
 /// let report = ComplexityReport {

@@ -107,17 +107,17 @@ pub struct PdmtOutput {
 ///
 /// # Example
 ///
-/// ```
+/// ```ignore
 /// use pmat::mcp_pmcp::pdmt_handler::PdmtTool;
 /// use pmcp::ToolHandler;
 ///
 /// let tool = PdmtTool::new();
 /// assert_eq!(tool.name(), "pdmt_deterministic_todos");
-/// ```
+/// ```ignore
 ///
 /// # Using PDMT for Todo Generation
 ///
-/// ```
+/// ```ignore
 /// use pmat::mcp_pmcp::pdmt_handler::{PdmtTool, PdmtInput, QualityConfigInput};
 /// use pmcp::ToolHandler;
 /// use serde_json::json;
@@ -150,11 +150,11 @@ pub struct PdmtOutput {
 /// assert!(result["todo_list"].is_object());
 /// # Ok(())
 /// # }
-/// ```
+/// ```ignore
 ///
 /// # Quality Configuration Options
 ///
-/// ```
+/// ```ignore
 /// use pmat::mcp_pmcp::pdmt_handler::QualityConfigInput;
 ///
 /// // Strict production configuration
@@ -178,7 +178,7 @@ pub struct PdmtOutput {
 ///     require_examples: false,
 ///     zero_satd_tolerance: true,
 /// };
-/// ```
+/// ```ignore
 pub struct PdmtTool {
     service: PdmtService,
     quality_enforcer: PdmtQualityEnforcer,

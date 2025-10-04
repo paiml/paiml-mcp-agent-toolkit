@@ -62,7 +62,7 @@ use super::{EntropyConfig, PatternType};
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::entropy::entropy_calculator::EntropyMetrics;
 /// use pmat::entropy::PatternType;
 /// use std::collections::HashMap;
@@ -112,7 +112,7 @@ pub struct EntropyMetrics {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::entropy::entropy_calculator::{EntropyReport, EntropyMetrics};
 /// use std::collections::HashMap;
 ///

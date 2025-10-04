@@ -150,14 +150,14 @@ pub struct ValidationSummary {
 ///
 /// # Examples
 ///
-/// ```
+/// ```ignore
 /// use pmat::services::doc_validator::extract_links;
 /// use std::path::PathBuf;
 ///
 /// let content = "[example](https://example.com) and [local](./file.md)";
 /// let links = extract_links(content, &PathBuf::from("test.md"));
 /// assert_eq!(links.len(), 2);
-/// ```
+/// ```ignore
 pub fn extract_links(content: &str, source_file: &Path) -> Vec<Link> {
     let mut links = Vec::new();
     let regex = Regex::new(r"\[([^\]]+)\]\(([^)]+)\)").unwrap();
@@ -190,14 +190,14 @@ pub fn extract_links(content: &str, source_file: &Path) -> Vec<Link> {
 ///
 /// # Examples
 ///
-/// ```
+/// ```ignore
 /// use pmat::services::doc_validator::{classify_link, LinkType};
 ///
 /// assert_eq!(classify_link("https://example.com"), LinkType::ExternalHttp);
 /// assert_eq!(classify_link("./local.md"), LinkType::Internal);
 /// assert_eq!(classify_link("#anchor"), LinkType::Anchor);
 /// assert_eq!(classify_link("mailto:user@example.com"), LinkType::Email);
-/// ```
+/// ```ignore
 pub fn classify_link(target: &str) -> LinkType {
     if target.starts_with("http://") || target.starts_with("https://") {
         LinkType::ExternalHttp

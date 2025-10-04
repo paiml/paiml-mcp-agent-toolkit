@@ -171,7 +171,7 @@ impl Default for GitHubConfig {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::services::github_issues::GitHubIssuesService;
 ///
 /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {

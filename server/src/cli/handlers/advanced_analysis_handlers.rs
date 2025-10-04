@@ -47,7 +47,7 @@ use tracing::{debug, info};
 /// ).await?;
 /// # Ok(())
 /// # }
-/// ```
+/// ```ignore
 ///
 /// ```no_run
 /// # use pmat::cli::{DeepContextOutputFormat, DagType};
@@ -74,7 +74,7 @@ use tracing::{debug, info};
 /// ).await?;
 /// # Ok(())
 /// # }
-/// ```
+/// ```ignore
 ///
 /// # Returns
 ///

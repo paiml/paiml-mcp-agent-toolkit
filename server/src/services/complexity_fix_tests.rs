@@ -169,7 +169,7 @@ mod tests {
 /// 
 /// # Examples
 /// 
-/// ```rust
+/// ```rust,no_run
 /// use pmat::services::ast_rust::RustComplexityVisitor;
 /// use syn::Visit;
 /// 

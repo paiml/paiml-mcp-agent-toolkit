@@ -74,7 +74,7 @@ use tracing::{debug, error, info};
 ///     }
 ///   }
 /// }
-/// ```
+/// ```ignore
 ///
 /// ## Refactor Start Request
 /// ```json
@@ -90,7 +90,7 @@ use tracing::{debug, error, info};
 ///     }
 ///   }
 /// }
-/// ```
+/// ```ignore
 ///
 /// ## State Query Request
 /// ```json
@@ -99,7 +99,7 @@ use tracing::{debug, error, info};
 ///   "id": 3,
 ///   "method": "refactor.getState"
 /// }
-/// ```
+/// ```ignore
 pub struct McpServer {
     state_manager: Arc<Mutex<StateManager>>,
     cache: Arc<McpCache>,

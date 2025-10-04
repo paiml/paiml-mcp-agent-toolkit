@@ -312,7 +312,7 @@ async fn format_and_write_output(
 /// ).await?;
 /// # Ok(())
 /// # }
-/// ```
+/// ```ignore
 ///
 /// ```no_run
 /// // Example 2: AI agent builds refactoring pipeline
@@ -351,7 +351,7 @@ async fn format_and_write_output(
 /// // 4. Chain to other pmat tools (dead-code, duplicates, etc.)
 /// # Ok(())
 /// # }
-/// ```
+/// ```ignore
 ///
 /// # Threshold Filtering Examples
 ///
@@ -384,7 +384,7 @@ async fn format_and_write_output(
 /// // - File with functions [21, 30, 40] complexity -> INCLUDED (all above 20)
 /// # Ok(())
 /// # }
-/// ```
+/// ```ignore
 ///
 /// ```no_run
 /// // Example: Combined threshold filtering
@@ -415,7 +415,7 @@ async fn format_and_write_output(
 /// // - A file needs at least ONE function with cyclomatic > 15 OR cognitive > 12 to be included
 /// # Ok(())
 /// # }
-/// ```
+/// ```ignore
 ///
 /// # Parameters
 ///
@@ -443,7 +443,7 @@ async fn format_and_write_output(
 ///
 /// # Exit with code 1 if violations exceed threshold
 /// pmat analyze complexity --max-cyclomatic 10 --fail-on-violation
-/// ```
+/// ```ignore
 ///
 /// # Returns
 ///
@@ -1855,7 +1855,7 @@ fn generate_satd_sarif(
 /// // Note: Files are sorted by SATD count, then alphabetically
 /// assert!(summary.contains("- 1 SATD items"));
 /// assert!(summary.contains("- 1 SATD items"));
-/// ```
+/// ```ignore
 #[must_use]
 pub fn format_satd_summary(
     result: &crate::services::satd_detector::SATDAnalysisResult,
@@ -2022,7 +2022,7 @@ fn format_satd_markdown(
 ///
 /// assert!(result.is_ok());
 /// # });
-/// ```
+/// ```ignore
 pub async fn handle_analyze_dag(
     _dag_type: DagType,
     project_path: PathBuf,

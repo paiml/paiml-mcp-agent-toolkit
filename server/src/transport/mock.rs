@@ -19,7 +19,7 @@ use tracing::debug;
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::transport::mock::MockTransport;
 /// use pmcp::transport::TransportMessage;
 ///

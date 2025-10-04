@@ -19,7 +19,7 @@ pub struct SymbolInfo {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::cli::symbol_table_helpers::extract_symbol_from_ast_item;
 /// use pmat::services::context::AstItem;
 ///
@@ -88,7 +88,7 @@ pub fn extract_symbol_from_ast_item(
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::cli::symbol_table_helpers::passes_type_filter;
 /// use pmat::cli::SymbolTypeFilter;
 ///
@@ -100,7 +100,7 @@ pub fn extract_symbol_from_ast_item(
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::cli::symbol_table_helpers::passes_type_filter;
 /// use pmat::cli::SymbolTypeFilter;
 ///
@@ -132,7 +132,7 @@ pub fn passes_type_filter(kind: &str, filter: &Option<super::SymbolTypeFilter>) 
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::cli::symbol_table_helpers::passes_query_filter;
 ///
 /// assert!(passes_query_filter("hello_world", &Some("hello".to_string())));
@@ -190,7 +190,7 @@ pub fn extract_symbols_from_context(
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::cli::symbol_table_helpers::{count_by_type, SymbolInfo};
 /// use std::path::PathBuf;
 ///

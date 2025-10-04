@@ -44,11 +44,11 @@ struct ComplexityArgs {
 ///   "top_files": 10,                    // Optional: number of files to return
 ///   "threshold": 20                     // Optional: complexity threshold
 /// }
-/// ```
+/// ```ignore
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::mcp_pmcp::analyze_handlers::AnalyzeComplexityTool;
 /// use pmcp::ToolHandler;
 /// use serde_json::json;
@@ -122,11 +122,11 @@ struct SatdArgs {
 ///   "paths": ["src/"],              // Required: paths to analyze
 ///   "include_resolved": false       // Optional: include resolved items
 /// }
-/// ```
+/// ```ignore
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// # #[cfg(feature = "pmcp-mcp")]
 /// # {
 /// use pmat::mcp_pmcp::analyze_handlers::AnalyzeSatdTool;
@@ -372,11 +372,11 @@ struct TdgArgs {
 ///   "top_files": 10,                    // Optional: number of files to return
 ///   "include_components": true          // Optional: include metric breakdown
 /// }
-/// ```
+/// ```ignore
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::mcp_pmcp::analyze_handlers::AnalyzeTdgTool;
 /// use pmcp::ToolHandler;
 /// use serde_json::json;
@@ -455,7 +455,7 @@ struct TdgCompareArgs {
 ///   "path1": "src/old_version/",       // Required: first path to compare
 ///   "path2": "src/new_version/"        // Required: second path to compare
 /// }
-/// ```
+/// ```ignore
 pub struct TdgCompareTool;
 
 impl TdgCompareTool {

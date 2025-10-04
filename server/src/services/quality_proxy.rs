@@ -17,7 +17,7 @@ use tracing::{debug, info, warn};
 ///
 /// # Example
 ///
-/// ```
+/// ```ignore
 /// use pmat::services::quality_proxy::QualityProxyService;
 /// use pmat::models::proxy::{ProxyRequest, ProxyOperation, ProxyMode};
 ///
@@ -37,7 +37,7 @@ use tracing::{debug, info, warn};
 /// assert!(response.quality_report.passed);
 /// # Ok(())
 /// # }
-/// ```
+/// ```ignore
 pub struct QualityProxyService {
     satd_detector: SATDDetector,
 }

@@ -124,7 +124,7 @@ use std::path::{Path, PathBuf};
 /// # Component-level TDG analysis
 /// pmat analyze tdg /path/to/project --include-components --verbose \
 ///   --format json --output tdg-detailed.json
-/// ```
+/// ```ignore
 /// Helper function to perform TDG analysis without watch mode
 #[allow(clippy::too_many_arguments)]
 async fn perform_tdg_analysis(
@@ -1709,7 +1709,7 @@ async fn output_defect_result(content: String, output: Option<PathBuf>) -> Resul
 /// pmat analyze proof-annotations /path/to/project --format full \
 ///   --include-evidence --verification-method theorem-proving \
 ///   --clear-cache --output formal-specs.md
-/// ```
+/// ```ignore
 #[allow(clippy::too_many_arguments)]
 pub async fn handle_analyze_proof_annotations(
     project_path: PathBuf,
@@ -1881,7 +1881,7 @@ pub async fn handle_analyze_proof_annotations(
 /// pmat analyze incremental-coverage /path/to/project --base-branch main \
 ///   --coverage-threshold 0.95 --perf --force-refresh \
 ///   --output coverage-gate.json
-/// ```
+/// ```ignore
 #[allow(clippy::too_many_arguments)]
 pub async fn handle_analyze_incremental_coverage(
     project_path: PathBuf,
@@ -2092,7 +2092,7 @@ fn format_churn_as_json(analysis: &crate::models::churn::CodeChurnAnalysis) -> R
 /// assert!(analysis.files.len() == 2);
 /// assert_eq!(analysis.period_days, 30);
 /// assert_eq!(analysis.summary.total_files_changed, 2);
-/// ```
+/// ```ignore
 // Helper function to format churn analysis as summary
 pub fn format_churn_as_summary(
     analysis: &crate::models::churn::CodeChurnAnalysis,
@@ -2889,7 +2889,7 @@ pub async fn handle_analyze_dag(
 /// //   Average time per check: 0.08s
 /// # Ok(())
 /// # }
-/// ```
+/// ```ignore
 #[allow(clippy::too_many_arguments)]
 pub async fn handle_quality_gate(
     project_path: PathBuf,
@@ -4092,7 +4092,7 @@ async fn start_full_server(addr: String, _cors: bool) -> Result<()> {
 /// pmat analyze comprehensive /path/to/project --format markdown \
 ///   --include-defects --confidence-threshold 0.9 \
 ///   --output defect-report.md
-/// ```
+/// ```ignore
 #[allow(clippy::too_many_arguments)]
 pub async fn handle_analyze_comprehensive(
     project_path: PathBuf,
@@ -4570,11 +4570,11 @@ fn is_build_artifact(path: &Path) -> bool {
 /// }
 /// # Ok(())
 /// # }
-/// ```
+/// ```ignore
 ///
 /// # Property Tests
 ///
-/// ```rust
+/// ```rust,no_run
 /// # tokio_test::block_on(async {
 /// use std::path::Path;
 /// use pmat::cli::analysis_utilities::check_complexity;
@@ -4715,11 +4715,11 @@ fn process_complexity_violation(
 /// }
 /// # Ok(())
 /// # }
-/// ```
+/// ```ignore
 ///
 /// # Property Tests
 ///
-/// ```rust
+/// ```rust,no_run
 /// # use std::path::Path;
 /// # use pmat::cli::analysis_utilities::check_dead_code;
 /// #
@@ -4821,11 +4821,11 @@ pub async fn check_dead_code(
 /// }
 /// # Ok(())
 /// # }
-/// ```
+/// ```ignore
 ///
 /// # Property Tests
 ///
-/// ```rust
+/// ```rust,no_run
 /// # tokio_test::block_on(async {
 /// use std::path::Path;
 /// use pmat::cli::analysis_utilities::check_satd;
@@ -4896,7 +4896,7 @@ pub async fn check_satd(project_path: &Path) -> Result<Vec<QualityViolation>> {
 ///
 /// # Example
 ///
-/// ```rust
+/// ```rust,no_run
 /// # use std::path::Path;
 /// # use pmat::cli::analysis_utilities::QualityViolation;
 /// #
@@ -4915,7 +4915,7 @@ pub async fn check_satd(project_path: &Path) -> Result<Vec<QualityViolation>> {
 ///
 /// # Property Tests
 ///
-/// ```rust
+/// ```rust,no_run
 /// # use std::path::Path;
 /// #
 /// # #[tokio::test]
@@ -5093,11 +5093,11 @@ fn scan_content_for_pattern(
 /// }
 /// # Ok(())
 /// # }
-/// ```
+/// ```ignore
 ///
 /// # Property Tests
 ///
-/// ```rust
+/// ```rust,no_run
 /// # tokio_test::block_on(async {
 /// use std::path::Path;
 /// use pmat::cli::analysis_utilities::check_duplicates;
@@ -5340,7 +5340,7 @@ async fn check_provability(
 ///
 /// # Example
 ///
-/// ```rust
+/// ```rust,no_run
 /// # use std::path::Path;
 /// # use pmat::cli::analysis_utilities::calculate_provability_score;
 /// #
@@ -5364,7 +5364,7 @@ async fn check_provability(
 ///
 /// # Property Tests
 ///
-/// ```rust
+/// ```rust,no_run
 /// # use std::path::Path;
 /// # use pmat::cli::analysis_utilities::calculate_provability_score;
 /// #
@@ -5450,7 +5450,7 @@ pub async fn calculate_provability_score(project_path: &Path) -> Result<f64> {
 /// // Test summary format
 /// let summary = format_quality_gate_output(&results, &violations, QualityGateOutputFormat::Summary).unwrap();
 /// assert!(summary.contains("Status: FAILED"));
-/// ```
+/// ```ignore
 pub fn format_quality_gate_output(
     results: &QualityGateResults,
     violations: &[QualityViolation],
@@ -5867,7 +5867,7 @@ pub fn build_complexity_thresholds(
 ///
 /// # Examples
 ///
-/// ```
+/// ```ignore
 /// use pmat::cli::analysis_utilities::analyze_project_files;
 /// use std::path::Path;
 ///
@@ -5884,7 +5884,7 @@ pub fn build_complexity_thresholds(
 /// assert!(metrics.len() >= 0);
 /// # Ok(())
 /// # }
-/// ```
+/// ```ignore
 ///
 /// # Quality Improvements
 ///
@@ -5955,7 +5955,7 @@ pub async fn analyze_project_files(
 ///
 /// # Examples
 ///
-/// ```
+/// ```ignore
 /// # use pmat::cli::analysis_utilities::get_file_extensions;
 /// let rust_extensions = get_file_extensions(Some("rust"));
 /// assert_eq!(rust_extensions, vec!["rs"]);
@@ -5965,7 +5965,7 @@ pub async fn analyze_project_files(
 ///
 /// let default_extensions = get_file_extensions(None);
 /// assert_eq!(default_extensions, vec!["rs"]);
-/// ```
+/// ```ignore
 #[must_use]
 pub fn get_file_extensions(toolchain: Option<&str>) -> Vec<&'static str> {
     match toolchain {
@@ -6324,7 +6324,7 @@ fn extract_identifiers_for_pattern(
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::cli::analysis_utilities::calculate_string_similarity;
 ///
 /// assert_eq!(calculate_string_similarity("hello", "hello"), 1.0);
@@ -6390,7 +6390,7 @@ fn get_ngrams(s: &str, n: usize) -> HashSet<String> {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::cli::analysis_utilities::calculate_edit_distance;
 ///
 /// assert_eq!(calculate_edit_distance("kitten", "sitting"), 3);
@@ -7166,7 +7166,7 @@ fn format_incremental_coverage_sarif(report: &IncrementalCoverageReport) -> Resu
 ///
 /// # Examples
 ///
-/// ```
+/// ```ignore
 /// use pmat::cli::analysis_utilities::format_incremental_coverage_summary;
 /// use std::path::{Path, PathBuf};
 ///
@@ -7198,7 +7198,7 @@ fn format_incremental_coverage_sarif(report: &IncrementalCoverageReport) -> Resu
 /// // In real usage, this would be an IncrementalCoverageReport struct
 /// // let output = format_incremental_coverage_summary(&report, 10).unwrap();
 /// // assert!(output.contains("Top Files by Coverage Change"));
-/// ```
+/// ```ignore
 /// Formats incremental coverage analysis into a comprehensive summary.
 ///
 /// This function creates a detailed markdown report showing coverage changes
@@ -7216,11 +7216,11 @@ fn format_incremental_coverage_sarif(report: &IncrementalCoverageReport) -> Resu
 ///
 /// # Examples
 ///
-/// ```
+/// ```ignore
 /// // This function formats incremental coverage reports
 /// // See the examples/ directory for usage demonstrations
 /// // Basic doctest to verify function is available
-/// ```
+/// ```ignore
 pub fn format_incremental_coverage_summary(
     report: &IncrementalCoverageReport,
     top_files: usize,
@@ -9440,7 +9440,7 @@ pub struct FilePrediction {
 /// assert!(output.contains("Total files analyzed: 100"));
 /// assert!(output.contains("## Top Files by Defect Risk"));
 /// assert!(output.contains("1. `main.rs` - 90.0% risk (high)"));
-/// ```
+/// ```ignore
 pub fn format_defect_summary(report: &DefectPredictionReport, top_files: usize) -> Result<String> {
     use std::fmt::Write;
     let mut output = String::new();

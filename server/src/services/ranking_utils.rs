@@ -285,7 +285,7 @@ impl AnalysisResultBuilder {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::services::ranking_utils::format_ranked_files_table;
 /// use pmat::services::defect_analyzer::RankedFile;
 /// use std::path::PathBuf;

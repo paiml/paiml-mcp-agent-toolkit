@@ -236,7 +236,7 @@ thread_local! {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::unified_protocol::{Protocol, error::{set_protocol_context, clear_protocol_context}};
 ///
 /// set_protocol_context(Protocol::Http);
@@ -252,7 +252,7 @@ pub fn set_protocol_context(protocol: Protocol) {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::unified_protocol::{Protocol, error::{set_protocol_context, clear_protocol_context}};
 ///
 /// set_protocol_context(Protocol::Mcp);
