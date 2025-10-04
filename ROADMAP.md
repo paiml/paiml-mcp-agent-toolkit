@@ -1,8 +1,39 @@
 # PMAT Agent System Roadmap
 
-## 🎯 CURRENT STATUS: v2.113.0 - Mutation Testing Phase 4.1 + Ruchy Support COMPLETE!
+## 🎯 CURRENT STATUS: v2.115.0 - Mutation Testing Phase 4.2 Enhanced Features + Code Quality COMPLETE!
 
-### ✅ Latest Achievements (v2.113.0 - October 3, 2025)
+### ✅ Latest Achievements (v2.115.0 - October 4, 2025)
+
+**Mutation Testing Phase 4.2 - Enhanced Feature Engineering - COMPLETE**
+- ✅ **18 enhanced features** for ML prediction (up from 10 in v2.114.0)
+- ✅ **8 new features**: has_error_handling, has_assertions, token_count, unique_variables, has_arithmetic, has_comparisons, has_logical_ops, mutation_depth
+- ✅ Enhanced pattern detection: unique variable counting, error handling detection
+- ✅ Statistical baseline model with 18-feature vector
+- ✅ All 30 ML tests passing (12 predictor + 13 detector + 5 integration)
+- ✅ Ready for gradient boosting upgrade (Phase 4.2 REFACTOR)
+
+**Code Quality Improvements - COMPLETE**
+- ✅ Fixed all compiler warnings (7 fixes total)
+  - Unused variables: refactored to tuple destructuring
+  - Unused imports: removed MutationOperatorType
+  - Ambiguous glob re-exports: added allow attribute
+- ✅ Resolved all clippy lints (11 fixes total)
+  - Option.and_then → Option.map (2 fixes)
+  - Collapsed nested if statements (2 fixes)
+  - 13-parameter function → DeepWasmOptions struct
+  - MutexGuard await point: fixed async lock management
+- ✅ Enhanced boolean tautology detection for code blocks
+- ✅ All quality gates passing
+
+**Documentation - COMPLETE**
+- ✅ Comprehensive mutation testing guide: `docs/mutation-testing.md`
+- ✅ All 18 features documented with examples
+- ✅ API usage patterns and integration examples
+- ✅ Equivalent mutant detection patterns
+- ✅ Performance considerations and optimization tips
+- ✅ Updated ROADMAP with v2.115.0 status
+
+### ✅ Previous Achievements (v2.113.0 - October 3, 2025)
 
 **Mutation Testing Phase 4.1 - Fuzzing Integration - COMPLETE**
 - ✅ Coverage-guided fuzzing with 4 input generation strategies
@@ -122,7 +153,7 @@
 - ✅ All quality gates passing
 - ✅ Toyota Way compliance maintained
 
-## Current Status: v2.114.0 Released | Mutation Testing Phase 4.2 ML Foundation Complete
+## Current Status: v2.115.0 Released | Mutation Testing Phase 4.2 Enhanced Features Complete
 
 ### Sprint Status Overview
 - ✅ Sprints 1-6: Foundation Complete (100%)
@@ -134,19 +165,21 @@
 - ✅ TDG Improvement: Per-Function Analysis (100%)
 - ✅ Mutation Testing Phase 4.1: Fuzzing Integration (100%)
 - ✅ Deep WASM Ruchy Support: Issue #61 Fixed (100%)
-- ✅ Mutation Testing Phase 4.2: ML Foundation (100%) ← **Just Completed!**
+- ✅ Mutation Testing Phase 4.2: Enhanced Feature Engineering (100%) ← **Just Completed!**
 - ⏳ Remaining: ML REFACTOR (LightGBM), Mutation Testing Phase 5 (production hardening)
 
 ## 🎯 Next Priority Options (4 Choices)
 
 ### Option 1: Mutation Testing Phase 4.2 REFACTOR - LightGBM Integration (3-5 days) ⭐ NEXT
-**Status**: Phase 4.2 Foundation COMPLETE ✅ - Statistical baseline deployed
+**Status**: Phase 4.2 Enhanced Features COMPLETE ✅ - Statistical baseline with 18 features
 **Impact**: Upgrade from statistical baseline to full ML model
-**Builds On**: Completed Phase 4.2 ML foundation (v2.114.0)
+**Builds On**: Completed Phase 4.2 enhanced features (v2.115.0)
 
-**✅ Phase 4.2 Foundation Complete (v2.114.0)**:
+**✅ Phase 4.2 Enhanced Features Complete (v2.115.0)**:
 1. ✅ **Mutant Survivability Predictor**
-   - Extract 10 features from mutants
+   - **18 enhanced features** (up from 10 in v2.114.0)
+   - Original 10: operator_type, cyclomatic_complexity, cognitive_complexity, source_line, nesting_depth, control_flow_count, has_loops, has_conditionals, function_size, parameter_count
+   - **NEW 8 features**: has_error_handling, has_assertions, token_count, unique_variables, has_arithmetic, has_comparisons, has_logical_ops, mutation_depth
    - Statistical baseline model (operator-based kill rates)
    - Predict kill probability with confidence
    - Prioritize mutants by probability
@@ -158,6 +191,7 @@
    - Identity ops (x+0→x), tautologies (x||true→true), commutative swaps
    - Human-readable explanations
    - Model save/load, incremental updates
+   - **Enhanced boolean tautology detection** for code blocks
    - 13 RED tests passing
 
 3. ✅ **Integration Pipeline**
@@ -166,11 +200,24 @@
    - Incremental learning validated
    - 5 integration tests passing
 
+4. ✅ **Code Quality Improvements**
+   - Fixed all compiler warnings (unused variables, imports)
+   - Resolved all clippy lints (11 fixes)
+   - Refactored 13-parameter function to struct pattern
+   - Fixed async lock management (MutexGuard await points)
+   - All 30 ML tests passing
+
+5. ✅ **Documentation**
+   - Comprehensive mutation testing guide: `docs/mutation-testing.md`
+   - 18 feature descriptions with examples
+   - API usage documentation
+   - Performance considerations
+
 **🔨 REFACTOR Work Remaining (3-5 days)**:
-1. **LightGBM Integration** (2-3 days)
-   - Replace statistical model with LightGBM
-   - Full feature engineering (complexity, coverage, patterns)
-   - Train on larger historical dataset
+1. **LightGBM/Linfa Integration** (2-3 days)
+   - Replace statistical model with gradient boosting
+   - Use Linfa (pure Rust) or LightGBM for ML
+   - Train on 18 enhanced features
    - Cross-validation and hyperparameter tuning
 
 2. **Advanced Equivalence Detection** (1-2 days)
@@ -179,8 +226,8 @@
    - Feature importance analysis
 
 **Value**: Enhanced accuracy from 60-70% (statistical) to 85-95% (ML)
-**Dependencies**: Phase 4.2 foundation complete ✅
-**Estimated ROI**: High - Significant accuracy improvement
+**Dependencies**: Phase 4.2 enhanced features complete ✅
+**Estimated ROI**: High - 18 features provide strong prediction signal
 
 ---
 
