@@ -271,7 +271,7 @@ mod ml_predictor_red_tests {
         // Initial training
         predictor.train(&create_minimal_training_data()).unwrap();
 
-        let initial_prediction = predictor.predict(&create_test_mutant()).unwrap();
+        let _initial_prediction = predictor.predict(&create_test_mutant()).unwrap();
 
         // Incremental update with new data
         let new_data = vec![
