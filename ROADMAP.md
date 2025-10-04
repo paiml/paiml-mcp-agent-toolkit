@@ -1,8 +1,19 @@
 # PMAT Agent System Roadmap
 
-## 🎯 CURRENT STATUS: v2.121.0 - Phase 5 WASM Mutation Testing COMPLETE
+## 🎯 CURRENT STATUS: v2.121.0 - Phase 5 WASM Mutation Testing + Technical Debt Sprint COMPLETE
 
 ### ✅ Latest Achievements (v2.121.0 - October 4, 2025)
+
+**Technical Debt Sprint - COMPLETE**
+- ✅ **Build Warning Cleanup** (commit c54eb99)
+  - Removed 4 unused imports (Context, Arc, Path)
+  - Fixed 2 unused variables (_source_file, _completed_steps, _current_level)
+  - Applied clippy auto-fixes (44 warnings resolved)
+  - Library builds with zero warnings
+- ✅ **Files Modified**: 16 files (29 insertions, 35 deletions)
+  - wasm_adapter.rs, distributed.rs, ci_cd_learning.rs
+  - executor.rs, ml_predictor.rs, various test files
+- ✅ **Quality Gates**: All pre-commit checks passed
 
 **WASM Mutation Testing Support - COMPLETE**
 - ✅ **WasmAdapter Implementation**
@@ -256,6 +267,49 @@
 - ✅ Deep WASM Ruchy Support: Issue #61 Fixed (100%)
 - ✅ Mutation Testing Phase 4.2: ML Model + Cross-Validation (100%) ← **Just Completed!**
 - ⏳ Remaining: Mutation Testing Phase 5 (production hardening), Advanced ML enhancements
+
+## 🎯 Deep WASM Phase 3: Runtime Analysis & Performance (Scoped)
+
+**Status**: Phase 1 & 2 Complete, Phase 3 Scoped for Future Work
+
+### Phase 3 Tracks (Proposed)
+
+**Track 1: Performance Profiling & Hotspot Detection** 🔥
+- Instruction-level profiling (execution time per WASM instruction type)
+- Function-level hotspots (call counts, average execution time, memory patterns)
+- Flame graphs and source-level heatmaps
+- Optimization suggestions (inlining, SIMD, etc.)
+- **Estimated**: 2-3 days
+
+**Track 2: WASM Runtime Integration** 🏃
+- Wasmtime v36 integration (already in dependencies)
+- Execute .wasm binaries with instrumentation
+- Function entry/exit tracing
+- Memory access tracking, import/export monitoring
+- Gas metering for cost analysis
+- Integration with mutation testing
+- **Estimated**: 2-3 days
+
+**Track 3: Security & Vulnerability Analysis** 🔒
+- Memory bounds checking (out-of-bounds, integer overflow, stack overflow)
+- Import analysis (dangerous JS imports, unsafe patterns)
+- Quality gates enhancement with security scoring
+- Automated vulnerability reports
+- **Estimated**: 1-2 days
+
+**Track 4: Chrome DevTools Integration** 🌐 (Optional)
+- DWARF → DevTools source map conversion
+- Breakpoint-compatible location mapping
+- Export `.map` files for browser debugging
+- **Estimated**: 1-2 days
+
+**Recommended Scope**:
+- **Minimal** (3-4 days): Tracks 1 + 2 (runtime + profiling)
+- **Full** (5-7 days): All 4 tracks
+
+**Priority**: Lower than multi-language mutation testing completion
+
+---
 
 ## 🎯 Next Priority Options (4 Choices)
 
