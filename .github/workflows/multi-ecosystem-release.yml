@@ -216,15 +216,10 @@ jobs:
         
         # Add changelog entry
         DATE=$(date -R)
-        cat > temp_changelog << EOF
-pmat (${VERSION}) unstable; urgency=medium
-
-  * Automated release v${VERSION}
-  * Updated via GitHub Actions multi-ecosystem workflow
-
- -- GitHub Action <action@github.com>  ${DATE}
-
-EOF
+        printf "pmat (%s) unstable; urgency=medium\n\n" "${VERSION}" > temp_changelog
+        printf "  * Automated release v%s\n" "${VERSION}" >> temp_changelog
+        printf "  * Updated via GitHub Actions multi-ecosystem workflow\n\n" >> temp_changelog
+        printf " -- GitHub Action <action@github.com>  %s\n\n" "${DATE}" >> temp_changelog
         
         # Prepend to existing changelog if it exists
         if [ -f debian/usr/share/doc/pmat/changelog.Debian ]; then
