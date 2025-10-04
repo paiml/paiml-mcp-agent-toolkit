@@ -20,6 +20,7 @@ pub mod coverage;
 pub mod ml_predictor;
 pub mod equivalent_detector;
 pub mod distributed;
+pub mod ci_cd_learning;
 
 #[cfg(test)]
 mod typescript_adapter_tests;
@@ -66,3 +67,4 @@ pub use coverage::*;
 pub use ml_predictor::*;
 pub use equivalent_detector::*;
 pub use distributed::*;
+pub use ci_cd_learning::*;
