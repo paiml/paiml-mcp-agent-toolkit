@@ -423,13 +423,26 @@ impl McpTool for ValidateTool {
 
 // Orchestrate tool - invokes orchestrator for complex workflows
 pub struct OrchestrateTool {
-    _registry: Arc<AgentRegistry>,
+    registry: Arc<AgentRegistry>,
+    executor: Arc<dyn crate::workflow::WorkflowExecutor>,
 }
 
 impl OrchestrateTool {
     pub fn new(registry: Arc<AgentRegistry>) -> Self {
+        let executor = Arc::new(crate::workflow::executor::DefaultWorkflowExecutor::new(registry.clone()));
         Self {
-            _registry: registry,
+            registry,
+            executor,
+        }
+    }
+
+    pub fn new_with_executor(
+        registry: Arc<AgentRegistry>,
+        executor: Arc<dyn crate::workflow::WorkflowExecutor>,
+    ) -> Self {
+        Self {
+            registry,
+            executor,
         }
     }
 }
@@ -471,20 +484,83 @@ impl McpTool for OrchestrateTool {
     }
 
     async fn execute(&self, params: Value) -> Result<Value, McpError> {
-        let _workflow = params["workflow"].clone();
-        let _input = params["input"].clone();
+        use crate::workflow::{Workflow, WorkflowContext, WorkflowState};
+        use parking_lot::RwLock;
+        use std::time::Instant;
+        use uuid::Uuid;
 
-        // Orchestration is handled by the WorkflowRepository and WorkflowExecutor
-        // This tool provides a simplified MCP interface to workflow execution
-        // Full workflow orchestration requires:
-        // 1. WorkflowBuilder to create workflow definitions
-        // 2. WorkflowRepository to store workflows
-        // 3. WorkflowExecutor to execute workflows with DagEngine
-        // 4. Integration with agent registry for step execution
+        let workflow_def = params["workflow"].as_object().ok_or_else(|| McpError {
+            code: error_codes::INVALID_PARAMS,
+            message: "Missing workflow parameter".to_string(),
+            data: None,
+        })?;
 
+        let input = params["input"].clone();
+
+        // Parse workflow from JSON
+        let workflow: Workflow = serde_json::from_value(json!({
+            "id": Uuid::new_v4().to_string(),
+            "name": workflow_def.get("name")
+                .and_then(|v| v.as_str())
+                .unwrap_or("mcp_workflow"),
+            "description": workflow_def.get("description")
+                .and_then(|v| v.as_str()),
+            "version": "1.0.0",
+            "steps": workflow_def.get("steps")
+                .ok_or_else(|| McpError {
+                    code: error_codes::INVALID_PARAMS,
+                    message: "Missing steps in workflow".to_string(),
+                    data: None,
+                })?,
+            "error_strategy": "fail_fast",
+            "timeout": null,
+            "metadata": {}
+        }))
+        .map_err(|e| McpError {
+            code: error_codes::INVALID_PARAMS,
+            message: format!("Invalid workflow definition: {}", e),
+            data: None,
+        })?;
+
+        // Create workflow context
+        let context = WorkflowContext {
+            workflow_id: workflow.id,
+            execution_id: Uuid::new_v4(),
+            variables: Arc::new(RwLock::new(
+                input.as_object()
+                    .map(|obj| {
+                        obj.iter()
+                            .map(|(k, v)| (k.clone(), v.clone()))
+                            .collect()
+                    })
+                    .unwrap_or_default()
+            )),
+            step_results: Arc::new(RwLock::new(std::collections::HashMap::new())),
+            state: Arc::new(RwLock::new(WorkflowState::Running)),
+            started_at: Instant::now(),
+            agent_registry: self.registry.clone(),
+        };
+
+        // Execute workflow
+        let result = self
+            .executor
+            .execute(&workflow, &context)
+            .await
+            .map_err(|e| McpError {
+                code: error_codes::INTERNAL_ERROR,
+                message: format!("Workflow execution failed: {}", e),
+                data: None,
+            })?;
+
+        // Return results in MCP format
         Ok(json!({
             "type": "text",
-            "text": "Orchestration via WorkflowRepository - use workflow/execute endpoint"
+            "text": format!(
+                "Workflow Execution Results:\n\nWorkflow: {}\nExecution ID: {}\n\nResult:\n{}\n",
+                workflow.name,
+                context.execution_id,
+                serde_json::to_string_pretty(&result).unwrap_or_else(|_| "{}".to_string())
+            )
         }))
     }
 }
@@ -540,7 +616,7 @@ impl McpTool for QualityGateTool {
             data: None,
         })?;
 
-        let _language = params["language"].as_str().ok_or_else(|| McpError {
+        let language = params["language"].as_str().ok_or_else(|| McpError {
             code: error_codes::INVALID_PARAMS,
             message: "Missing language parameter".to_string(),
             data: None,
@@ -564,9 +640,15 @@ impl McpTool for QualityGateTool {
         for gate in gates {
             match gate.as_str() {
                 "complexity" => {
+                    // Note: ComplexityAnalyzer currently only supports Rust (uses syn::parse_file)
+                    // For non-Rust languages, this will fail gracefully and return default metrics
                     let analyzer = ComplexityAnalyzer::new();
-                    // TODO: Fix when analyze_code is implemented for language parameter
-                    let complexity = analyzer.analyze_string(code).unwrap_or_default();
+                    let complexity = if language.to_lowercase() == "rust" {
+                        analyzer.analyze_string(code).unwrap_or_default()
+                    } else {
+                        // Return default/zero metrics for unsupported languages
+                        Default::default()
+                    };
                     results["complexity"] = json!(complexity);
                 }
                 "satd" => {
