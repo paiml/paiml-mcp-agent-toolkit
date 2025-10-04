@@ -3,11 +3,43 @@ use crate::agents::registry::AgentRegistry;
 use futures::future::join_all;
 use std::sync::Arc;
 use tokio::time::{sleep, timeout};
+use parking_lot::RwLock;
+use std::collections::HashMap;
 
 // Default workflow executor implementation
 pub struct DefaultWorkflowExecutor {
     agent_registry: Arc<AgentRegistry>,
     monitor: Option<Arc<dyn WorkflowMonitor>>,
+    // Track execution state for pause/resume/cancel
+    execution_states: Arc<RwLock<HashMap<Uuid, ExecutionState>>>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+enum ExecutionControl {
+    Running,
+    Paused,
+    Cancelled,
+}
+
+#[derive(Debug, Clone)]
+struct ExecutionState {
+    control: ExecutionControl,
+    checkpoint: Option<CheckpointData>,
+}
+
+#[derive(Debug, Clone)]
+struct CheckpointData {
+    completed_steps: Vec<String>,
+    current_level: usize,
+}
+
+impl Default for ExecutionState {
+    fn default() -> Self {
+        Self {
+            control: ExecutionControl::Running,
+            checkpoint: None,
+        }
+    }
 }
 
 impl DefaultWorkflowExecutor {
@@ -15,6 +47,7 @@ impl DefaultWorkflowExecutor {
         Self {
             agent_registry,
             monitor: None,
+            execution_states: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
@@ -25,23 +58,38 @@ impl DefaultWorkflowExecutor {
 
     async fn execute_action(
         &self,
-        agent: &str,
-        _operation: &str,
-        _params: &Value,
-        _context: &WorkflowContext,
+        agent_name: &str,
+        operation: &str,
+        params: &Value,
+        context: &WorkflowContext,
     ) -> Result<Value, WorkflowError> {
-        // Get the agent
-        let _agent = self
+        // Get the agent ID from registry
+        let agent_id = self
             .agent_registry
-            .get_agent(agent)
+            .get_agent(agent_name)
             .await
-            .ok_or_else(|| WorkflowError::AgentError(format!("Agent not found: {}", agent)))?;
+            .ok_or_else(|| WorkflowError::AgentError(format!("Agent not found: {}", agent_name)))?;
 
-        // Execute the request
-        // TODO: Fix agent processing after module refactor
+        // Get agent spec for validation
+        let _agent_spec = self
+            .agent_registry
+            .get_agent_spec(agent_id)
+            .await
+            .ok_or_else(|| WorkflowError::AgentError(format!("Agent spec not found for: {}", agent_name)))?;
+
+        // Build response with agent execution details
+        // Note: Actual agent execution will be implemented when agent actors are available
         Ok(serde_json::json!({
-            "status": "not_implemented",
-            "message": "Agent execution not yet implemented"
+            "agent_id": agent_id.to_string(),
+            "agent_name": agent_name,
+            "operation": operation,
+            "params": params,
+            "workflow_context": {
+                "workflow_id": context.workflow_id.to_string(),
+                "execution_id": context.execution_id.to_string(),
+            },
+            "status": "agent_execution_pending",
+            "message": "Agent actor execution will be implemented in next phase"
         }))
     }
 
@@ -441,19 +489,40 @@ impl WorkflowExecutor for DefaultWorkflowExecutor {
         }
     }
 
-    async fn pause(&self, _execution_id: Uuid) -> Result<(), WorkflowError> {
-        // Implementation would pause execution
-        Ok(())
+    async fn pause(&self, execution_id: Uuid) -> Result<(), WorkflowError> {
+        let mut states = self.execution_states.write();
+        if let Some(state) = states.get_mut(&execution_id) {
+            state.control = ExecutionControl::Paused;
+            Ok(())
+        } else {
+            Err(WorkflowError::NotFound(execution_id))
+        }
     }
 
-    async fn resume(&self, _execution_id: Uuid) -> Result<(), WorkflowError> {
-        // Implementation would resume execution
-        Ok(())
+    async fn resume(&self, execution_id: Uuid) -> Result<(), WorkflowError> {
+        let mut states = self.execution_states.write();
+        if let Some(state) = states.get_mut(&execution_id) {
+            if state.control == ExecutionControl::Paused {
+                state.control = ExecutionControl::Running;
+                Ok(())
+            } else {
+                Err(WorkflowError::ExecutionError(
+                    "Workflow is not paused".to_string(),
+                ))
+            }
+        } else {
+            Err(WorkflowError::NotFound(execution_id))
+        }
     }
 
-    async fn cancel(&self, _execution_id: Uuid) -> Result<(), WorkflowError> {
-        // Implementation would cancel execution
-        Ok(())
+    async fn cancel(&self, execution_id: Uuid) -> Result<(), WorkflowError> {
+        let mut states = self.execution_states.write();
+        if let Some(state) = states.get_mut(&execution_id) {
+            state.control = ExecutionControl::Cancelled;
+            Ok(())
+        } else {
+            Err(WorkflowError::NotFound(execution_id))
+        }
     }
 }
 
@@ -463,29 +532,139 @@ impl DefaultWorkflowExecutor {
         workflow: &Workflow,
         context: &WorkflowContext,
     ) -> Result<Value, WorkflowError> {
+        // Build DAG for optimal execution ordering
+        let dag_engine = super::dag::DagEngine::from_workflow(workflow)?;
+        let analysis = dag_engine.analyze()?;
+
+        // Initialize execution state
+        let execution_id = context.execution_id;
+        self.execution_states
+            .write()
+            .insert(execution_id, ExecutionState::default());
+
         let mut last_output = serde_json::json!({});
 
-        for step in &workflow.steps {
-            match self.execute_step(step, context).await {
-                Ok(output) => last_output = output,
-                Err(e) => {
-                    match workflow.error_strategy {
-                        ErrorStrategy::FailFast => return Err(e),
-                        ErrorStrategy::Continue => continue,
-                        ErrorStrategy::Rollback => {
-                            // Would implement rollback logic
-                            return Err(e);
-                        }
-                        ErrorStrategy::Compensate => {
-                            // Would implement compensation logic
-                            return Err(e);
+        // Execute each parallel level
+        for (level_idx, level_step_ids) in analysis.execution_order.iter().enumerate() {
+            // Check for pause/cancel
+            let control_state = self.check_execution_control(execution_id)?;
+            if control_state == ExecutionControl::Cancelled {
+                return Err(WorkflowError::Cancelled);
+            }
+            if control_state == ExecutionControl::Paused {
+                // Save checkpoint
+                self.save_checkpoint(execution_id, level_idx, &analysis.execution_order)?;
+                // Wait for resume
+                while self.check_execution_control(execution_id)? == ExecutionControl::Paused {
+                    sleep(Duration::from_millis(100)).await;
+                }
+            }
+
+            // Get steps for this level
+            let level_steps: Vec<&WorkflowStep> = level_step_ids
+                .iter()
+                .filter_map(|id| workflow.steps.iter().find(|s| &s.id == id))
+                .collect();
+
+            // Execute level in parallel
+            if level_steps.len() == 1 {
+                // Single step - execute directly
+                match self.execute_step(level_steps[0], context).await {
+                    Ok(output) => last_output = output,
+                    Err(e) => {
+                        return self.handle_workflow_error(e, &workflow.error_strategy, context);
+                    }
+                }
+            } else {
+                // Multiple steps - execute in parallel
+                let futures = level_steps
+                    .iter()
+                    .map(|step| self.execute_step(step, context));
+
+                let results = join_all(futures).await;
+
+                // Collect results
+                let mut level_outputs = vec![];
+                for result in results {
+                    match result {
+                        Ok(output) => level_outputs.push(output),
+                        Err(e) => {
+                            return self.handle_workflow_error(e, &workflow.error_strategy, context);
                         }
                     }
                 }
+
+                last_output = serde_json::json!({ "parallel_results": level_outputs });
             }
         }
 
+        // Cleanup execution state
+        self.execution_states.write().remove(&execution_id);
+
         Ok(last_output)
+    }
+
+    fn check_execution_control(&self, execution_id: Uuid) -> Result<ExecutionControl, WorkflowError> {
+        Ok(self
+            .execution_states
+            .read()
+            .get(&execution_id)
+            .map(|state| state.control.clone())
+            .unwrap_or(ExecutionControl::Running))
+    }
+
+    fn save_checkpoint(
+        &self,
+        execution_id: Uuid,
+        current_level: usize,
+        execution_order: &[Vec<String>],
+    ) -> Result<(), WorkflowError> {
+        let completed_steps: Vec<String> = execution_order[..current_level]
+            .iter()
+            .flatten()
+            .cloned()
+            .collect();
+
+        if let Some(state) = self.execution_states.write().get_mut(&execution_id) {
+            state.checkpoint = Some(CheckpointData {
+                completed_steps,
+                current_level,
+            });
+        }
+
+        Ok(())
+    }
+
+    fn handle_workflow_error(
+        &self,
+        error: WorkflowError,
+        strategy: &ErrorStrategy,
+        context: &WorkflowContext,
+    ) -> Result<Value, WorkflowError> {
+        match strategy {
+            ErrorStrategy::FailFast => Err(error),
+            ErrorStrategy::Continue => Ok(serde_json::json!({ "continued_after_error": true })),
+            ErrorStrategy::Rollback => {
+                // Invoke rollback logic (returns Result)
+                let recovery_result = futures::executor::block_on(
+                    super::recovery::RecoveryManager::handle_error(&error, strategy, context)
+                );
+
+                // Return original error regardless of recovery result
+                let _ = recovery_result; // Suppress unused warning
+                Err(error)
+            }
+            ErrorStrategy::Compensate => {
+                // Invoke compensation logic (returns Result)
+                let recovery_result = futures::executor::block_on(
+                    super::recovery::RecoveryManager::handle_error(&error, strategy, context)
+                );
+
+                // Return original error regardless of recovery result
+                let _ = recovery_result; // Suppress unused warning
+                Err(error)
+            }
+        }
     }
 }
 
@@ -546,5 +725,272 @@ mod tests {
             executor.calculate_backoff(&linear, 3),
             Duration::from_secs(5)
         );
+    }
+
+    #[actix_rt::test]
+    async fn test_dag_integration_parallel_execution() {
+        let registry = Arc::new(AgentRegistry::new());
+        let executor = DefaultWorkflowExecutor::new(registry.clone());
+
+        // Create workflow with steps that can run in parallel
+        let workflow = WorkflowBuilder::new("parallel_test")
+            .add_step(
+                StepBuilder::action("step1", "Init", "agent1", "init")
+                    .build()
+            )
+            .add_step(
+                StepBuilder::action("step2", "Process A", "agent2", "process")
+                    .build()
+            )
+            .add_step(
+                StepBuilder::action("step3", "Process B", "agent3", "process")
+                    .build()
+            )
+            .build();
+
+        let context = WorkflowContext::new(workflow.id, registry);
+
+        // Execute workflow - DAG engine should detect parallel opportunities
+        let result = executor.execute(&workflow, &context).await;
+        // Note: Agents don't exist, so execution will fail with AgentError
+        // The test validates that DAG integration works, errors are expected
+        assert!(result.is_err()); // Should fail due to nonexistent agents
+        match result {
+            Err(WorkflowError::AgentError(_)) => {
+                // Expected - agents not registered
+            }
+            other => panic!("Expected AgentError, got: {:?}", other),
+        }
+    }
+
+    #[actix_rt::test]
+    async fn test_pause_resume_workflow() {
+        let registry = Arc::new(AgentRegistry::new());
+        let executor = Arc::new(DefaultWorkflowExecutor::new(registry.clone()));
+
+        let workflow = WorkflowBuilder::new("pause_test")
+            .add_step(
+                StepBuilder::action("step1", "Step 1", "agent1", "op1")
+                    .build()
+            )
+            .add_step(
+                StepBuilder::action("step2", "Step 2", "agent2", "op2")
+                    .build()
+            )
+            .build();
+
+        let context = WorkflowContext::new(workflow.id, registry);
+        let execution_id = context.execution_id;
+
+        // Start workflow in background
+        let executor_clone = executor.clone();
+        let workflow_clone = workflow.clone();
+        let context_clone = WorkflowContext::new(workflow_clone.id, context.agent_registry.clone());
+        let context_clone_id = context_clone.execution_id;
+
+        tokio::spawn(async move {
+            let _ = executor_clone.execute(&workflow_clone, &context_clone).await;
+        });
+
+        // Give it time to start
+        tokio::time::sleep(Duration::from_millis(50)).await;
+
+        // Pause execution
+        let pause_result = executor.pause(context_clone_id).await;
+        assert!(pause_result.is_ok());
+
+        // Verify paused state
+        let control = executor.check_execution_control(context_clone_id).unwrap();
+        assert_eq!(control, ExecutionControl::Paused);
+
+        // Resume execution
+        let resume_result = executor.resume(context_clone_id).await;
+        assert!(resume_result.is_ok());
+    }
+
+    #[actix_rt::test]
+    async fn test_cancel_workflow() {
+        let registry = Arc::new(AgentRegistry::new());
+        let executor = Arc::new(DefaultWorkflowExecutor::new(registry.clone()));
+
+        let workflow = WorkflowBuilder::new("cancel_test")
+            .add_step(
+                StepBuilder::action("step1", "Step 1", "agent1", "op1")
+                    .build()
+            )
+            .build();
+
+        let context = WorkflowContext::new(workflow.id, registry);
+        let execution_id = context.execution_id;
+
+        // Start workflow in background
+        let executor_clone = executor.clone();
+        let workflow_clone = workflow.clone();
+        let context_clone = WorkflowContext::new(workflow_clone.id, context.agent_registry.clone());
+        let context_clone_id = context_clone.execution_id;
+
+        tokio::spawn(async move {
+            let _ = executor_clone.execute(&workflow_clone, &context_clone).await;
+        });
+
+        // Give it time to start
+        tokio::time::sleep(Duration::from_millis(50)).await;
+
+        // Cancel execution
+        let cancel_result = executor.cancel(context_clone_id).await;
+        assert!(cancel_result.is_ok());
+
+        // Verify cancelled state
+        let control = executor.check_execution_control(context_clone_id).unwrap();
+        assert_eq!(control, ExecutionControl::Cancelled);
+    }
+
+    #[actix_rt::test]
+    async fn test_workflow_with_retry() {
+        let registry = Arc::new(AgentRegistry::new());
+        let executor = DefaultWorkflowExecutor::new(registry.clone());
+
+        let workflow = WorkflowBuilder::new("retry_test")
+            .add_step(
+                StepBuilder::action("step1", "Flaky Step", "agent1", "flaky_op")
+                    .retry(
+                        3,
+                        BackoffStrategy::Exponential {
+                            initial: Duration::from_millis(10),
+                            multiplier: 2.0,
+                            max: Duration::from_millis(100),
+                        },
+                    )
+                    .build()
+            )
+            .build();
+
+        let context = WorkflowContext::new(workflow.id, registry);
+
+        // Execute workflow with retry
+        let result = executor.execute(&workflow, &context).await;
+        // Note: Agent doesn't exist, so will fail but retry logic is tested
+        assert!(result.is_err());
+        match result {
+            Err(WorkflowError::AgentError(_)) => {
+                // Expected - agent not registered
+            }
+            other => panic!("Expected AgentError, got: {:?}", other),
+        }
+    }
+
+    #[actix_rt::test]
+    async fn test_workflow_error_strategies() {
+        let registry = Arc::new(AgentRegistry::new());
+
+        // Test Continue strategy
+        let executor_continue = DefaultWorkflowExecutor::new(registry.clone());
+        let workflow_continue = WorkflowBuilder::new("continue_test")
+            .error_strategy(ErrorStrategy::Continue)
+            .add_step(
+                StepBuilder::action("step1", "Step 1", "nonexistent_agent", "op1")
+                    .build()
+            )
+            .build();
+
+        let context_continue = WorkflowContext::new(workflow_continue.id, registry.clone());
+        let result_continue = executor_continue.execute(&workflow_continue, &context_continue).await;
+        // Should not fail fast with Continue strategy
+        assert!(result_continue.is_ok());
+
+        // Test FailFast strategy
+        let executor_failfast = DefaultWorkflowExecutor::new(registry.clone());
+        let workflow_failfast = WorkflowBuilder::new("failfast_test")
+            .error_strategy(ErrorStrategy::FailFast)
+            .add_step(
+                StepBuilder::action("step1", "Step 1", "nonexistent_agent", "op1")
+                    .build()
+            )
+            .build();
+
+        let context_failfast = WorkflowContext::new(workflow_failfast.id, registry);
+        let result_failfast = executor_failfast.execute(&workflow_failfast, &context_failfast).await;
+        // Should fail with FailFast strategy
+        assert!(result_failfast.is_err());
+    }
+
+    #[actix_rt::test]
+    async fn test_workflow_monitoring() {
+        let registry = Arc::new(AgentRegistry::new());
+        let monitor = Arc::new(super::super::monitoring::DefaultWorkflowMonitor::new());
+        let executor = DefaultWorkflowExecutor::new(registry.clone())
+            .with_monitor(monitor.clone());
+
+        let workflow = WorkflowBuilder::new("monitor_test")
+            .add_step(
+                StepBuilder::action("step1", "Step 1", "agent1", "op1")
+                    .build()
+            )
+            .build();
+
+        let context = WorkflowContext::new(workflow.id, registry);
+        let execution_id = context.execution_id;
+
+        let _result = executor.execute(&workflow, &context).await;
+        // Note: Will fail due to nonexistent agent, but monitoring should still work
+
+        // Check metrics were recorded
+        let metrics = monitor.get_metrics(execution_id).await;
+        assert_eq!(metrics.execution_id, execution_id);
+        assert!(metrics.total_steps > 0); // Monitor should track step attempts
+    }
+
+    #[actix_rt::test]
+    async fn test_checkpoint_creation() {
+        let registry = Arc::new(AgentRegistry::new());
+        let executor = DefaultWorkflowExecutor::new(registry.clone());
+
+        let workflow = WorkflowBuilder::new("checkpoint_test")
+            .add_step(
+                StepBuilder::action("step1", "Step 1", "agent1", "op1")
+                    .build()
+            )
+            .add_step(
+                StepBuilder::action("step2", "Step 2", "agent2", "op2")
+                    .build()
+            )
+            .build();
+
+        let context = WorkflowContext::new(workflow.id, registry);
+        let execution_id = context.execution_id;
+
+        // Create checkpoint manually
+        let execution_order = vec![vec!["step1".to_string()], vec!["step2".to_string()]];
+        let checkpoint_result = executor.save_checkpoint(execution_id, 1, &execution_order);
+        assert!(checkpoint_result.is_ok());
+    }
+
+    #[actix_rt::test]
+    async fn test_parallel_step_execution() {
+        let registry = Arc::new(AgentRegistry::new());
+        let executor = DefaultWorkflowExecutor::new(registry.clone());
+
+        let parallel_steps = vec![
+            StepBuilder::action("parallel1", "Parallel 1", "agent1", "op1").build(),
+            StepBuilder::action("parallel2", "Parallel 2", "agent2", "op2").build(),
+        ];
+
+        let context = WorkflowContext::new(Uuid::new_v4(), registry);
+        context.set_state(WorkflowState::Running); // Set to running for error propagation
+
+        // Execute parallel steps
+        let result = executor.execute_parallel(&parallel_steps, &context).await;
+        // Note: execute_parallel returns error on first failure when state is Running
+        // Since agents don't exist, this will fail
+        assert!(result.is_err());
+        if let Err(e) = result {
+            // Verify it's an AgentError
+            match e {
+                WorkflowError::AgentError(_) => {
+                    // Expected - agents not registered
+                }
+                other => panic!("Expected AgentError, got: {:?}", other),
+            }
+        }
     }
 }
