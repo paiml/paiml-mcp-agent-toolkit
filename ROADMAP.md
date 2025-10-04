@@ -1,8 +1,24 @@
 # PMAT Agent System Roadmap
 
-## 🎯 CURRENT STATUS: v2.124.0 - Complete WASM + Mutation Testing Integration SHIPPED
+## 🎯 CURRENT STATUS: v2.126.0 - Deep WASM Quality Gates Fix SHIPPED
 
-### ✅ Latest Achievements (v2.124.0 - October 4, 2025)
+### ✅ Latest Achievements (v2.126.0 - October 4, 2025)
+
+**Deep WASM Quality Gates Fix - SHIPPED TO PRODUCTION**
+- ✅ **Quality Gates Configuration** (v2.126.0)
+  - Fixed non-strict mode to use relaxed quality gates (min_source_map_coverage: 0.0)
+  - Strict mode enforces stricter gates (min_source_map_coverage: 0.99)
+  - Previously applied default 0.95 coverage requirement in all modes
+- ✅ **Test Suite Corrections** (v2.126.0)
+  - Fixed 3 failing deep_wasm_cli_tests
+  - Updated test_deep_wasm_strict_mode to expect error on violations
+  - All 13 deep_wasm_cli_tests passing
+- ✅ **Handler Improvements** (v2.126.0)
+  - Return Err() instead of std::process::exit(1) for testability
+  - Strict mode fails on violations, non-strict mode reports but continues
+  - Better error messages for quality gate violations
+
+### ✅ Previous Achievements (v2.124.0 - October 4, 2025)
 
 **Complete Feature Integration - SHIPPED TO PRODUCTION**
 - ✅ **Mutation Testing CLI** (v2.124.0)
@@ -23,6 +39,7 @@
   - v2.122.0: Documentation + build fixes
   - v2.123.0: CLI/MCP stubs
   - v2.124.0: Full implementation
+  - v2.126.0: Deep WASM quality gates fix
 
 ### ✅ Previous Achievements (v2.121.0 - October 4, 2025)
 
