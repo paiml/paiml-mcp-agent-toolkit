@@ -1,8 +1,32 @@
 # PMAT Agent System Roadmap
 
-## 🎯 CURRENT STATUS: v2.120.0 - MCP Tool Enhancement & Phase 5 Mutation Testing IN PROGRESS
+## 🎯 CURRENT STATUS: v2.121.0 - Phase 5 WASM Mutation Testing COMPLETE
 
-### ✅ Latest Achievements (v2.120.0 - October 4, 2025)
+### ✅ Latest Achievements (v2.121.0 - October 4, 2025)
+
+**WASM Mutation Testing Support - COMPLETE**
+- ✅ **WasmAdapter Implementation**
+  - Language adapter for .wasm and .wat files
+  - WAT text-based mutation approach (simple and effective)
+  - Integration with mutation engine via LanguageRegistry
+  - Support for WebAssembly text format mutations
+- ✅ **WASM Mutation Operators** (3 operators)
+  - `WasmNumericMutator`: i32/i64/f32/f64 arithmetic mutations (add→sub, mul→div, 80% kill prob)
+  - `WasmControlFlowMutator`: Control flow mutations (br→br_if, loop→block, 90% kill prob)
+  - `WasmLocalMutator`: Stack operations (local.set→local.tee, 75% kill prob)
+- ✅ **Type System Enhancements**
+  - Added `MutationOperatorType::UnaryReplacement`
+  - Added `MutationOperatorType::Custom(String)` for language-specific operators
+  - Updated ML predictor to handle new operator types (numeric encoding: 12.0, 13.0)
+- ✅ **Test Coverage**: 6 comprehensive WASM mutation tests (all passing)
+  - i32, i64, f32, f64 numeric mutation tests
+  - Control flow mutation tests (br, loop)
+  - Local variable mutation tests (local.set, local.tee)
+- ✅ **Integration**: Added `register_wasm()` to LanguageRegistry
+- ✅ **Total Mutation Tests**: 180 passing (174 baseline + 6 WASM)
+- ✅ **Infrastructure**: Leverages existing Deep WASM analysis pipeline
+
+### ✅ Previous Achievements (v2.120.0 - October 4, 2025)
 
 **MCP Tool Enhancement & Integration - COMPLETE**
 - ✅ **TransformTool Integration Tests** (6 tests)
