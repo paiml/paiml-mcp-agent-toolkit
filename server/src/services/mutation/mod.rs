@@ -42,6 +42,9 @@ mod fuzzing_integration_tests;
 mod ml_predictor_tests;
 
 #[cfg(test)]
+mod cross_validation_test;
+
+#[cfg(test)]
 mod equivalent_detector_tests;
 
 #[cfg(test)]

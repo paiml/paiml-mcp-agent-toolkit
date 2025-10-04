@@ -1,6 +1,6 @@
 //! ML-Based Mutant Survivability Predictor - Phase 4.2 REFACTOR
 //!
-//! EXTREME TDD: REFACTOR PHASE - Gradient Boosting with Linfa Random Forest
+//! EXTREME TDD: REFACTOR PHASE - Decision Tree with Cross-Validation
 
 use super::{Mutant, MutationOperatorType};
 use anyhow::Result;
@@ -225,7 +225,7 @@ pub struct PredictionResult {
 /// ML-based survivability predictor
 #[derive(Debug)]
 pub struct SurvivabilityPredictor {
-    /// Trained Random Forest model (Phase 4.2 REFACTOR)
+    /// Trained Decision Tree model
     model: Option<DecisionTree<f64, usize>>,
 
     /// Historical kill rates by operator type (fallback/baseline)
@@ -306,14 +306,14 @@ impl SurvivabilityPredictor {
         let dataset = Dataset::new(features_array, labels_array);
 
         // Train Decision Tree with optimized hyperparameters
-        let model = DecisionTree::params()
+        let tree = DecisionTree::params()
             .split_quality(SplitQuality::Gini)  // Gini impurity for classification
             .max_depth(Some(10))  // Prevent overfitting
             .min_weight_split(5.0)  // Require at least 5 samples to split
             .min_weight_leaf(2.0)   // At least 2 samples per leaf
             .fit(&dataset)?;
 
-        self.model = Some(model);
+        self.model = Some(tree);
 
         // Calculate statistical baseline (fallback)
         let mut operator_counts: HashMap<MutationOperatorType, (usize, usize)> = HashMap::new();
@@ -339,6 +339,69 @@ impl SurvivabilityPredictor {
         self.training_samples = training_data.len();
 
         Ok(())
+    }
+
+    /// Perform k-fold cross-validation to measure model accuracy
+    /// Returns average accuracy across folds
+    pub fn cross_validate(&self, training_data: &[TrainingData], k_folds: usize) -> Result<f64> {
+        if training_data.is_empty() {
+            anyhow::bail!("Training data cannot be empty");
+        }
+        if k_folds < 2 {
+            anyhow::bail!("k_folds must be at least 2");
+        }
+
+        let n_samples = training_data.len();
+        let fold_size = n_samples / k_folds;
+
+        if fold_size < 2 {
+            anyhow::bail!("Not enough samples for {}-fold cross-validation", k_folds);
+        }
+
+        let mut accuracies = Vec::new();
+
+        for fold in 0..k_folds {
+            // Split data into train and test
+            let test_start = fold * fold_size;
+            let test_end = if fold == k_folds - 1 {
+                n_samples
+            } else {
+                (fold + 1) * fold_size
+            };
+
+            let mut train_data = Vec::new();
+            let mut test_data = Vec::new();
+
+            for (i, sample) in training_data.iter().enumerate() {
+                if i >= test_start && i < test_end {
+                    test_data.push(sample.clone());
+                } else {
+                    train_data.push(sample.clone());
+                }
+            }
+
+            // Train model on fold
+            let mut fold_predictor = SurvivabilityPredictor::new();
+            fold_predictor.train(&train_data)?;
+
+            // Evaluate on test set
+            let mut correct = 0;
+            for sample in &test_data {
+                if let Ok(prediction) = fold_predictor.predict(&sample.mutant) {
+                    let predicted_killed = prediction.kill_probability > 0.5;
+                    if predicted_killed == sample.was_killed {
+                        correct += 1;
+                    }
+                }
+            }
+
+            let accuracy = correct as f64 / test_data.len() as f64;
+            accuracies.push(accuracy);
+        }
+
+        // Return average accuracy
+        let avg_accuracy = accuracies.iter().sum::<f64>() / accuracies.len() as f64;
+        Ok(avg_accuracy)
     }
 
     /// Calculate feature importance based on variance and correlation
@@ -432,10 +495,10 @@ impl SurvivabilityPredictor {
             let feature_array = Array2::from_shape_vec((1, 18), feature_vec.clone())?;
             let dataset = Dataset::new(feature_array, Array1::from_vec(vec![0])); // Dummy target
 
-            // Predict using the model
+            // Predict using the Decision Tree model
             let prediction = model.predict(&dataset);
 
-            // Convert prediction to probability (0 or 1 from tree -> smooth to probability)
+            // Convert prediction to probability (0 or 1 from classifier -> smooth to probability)
             let pred_value = prediction[0];
             if pred_value == 1 {
                 0.85 // High probability if model predicts killed
