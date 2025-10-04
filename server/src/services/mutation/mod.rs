@@ -19,6 +19,7 @@ pub mod fuzzing;
 pub mod coverage;
 pub mod ml_predictor;
 pub mod equivalent_detector;
+pub mod distributed;
 
 #[cfg(test)]
 mod typescript_adapter_tests;
@@ -64,3 +65,4 @@ pub use fuzzing::*;
 pub use coverage::*;
 pub use ml_predictor::*;
 pub use equivalent_detector::*;
+pub use distributed::*;

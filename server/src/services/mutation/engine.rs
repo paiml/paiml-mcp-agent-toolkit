@@ -139,7 +139,7 @@ impl MutationEngine {
         }
     }
 
-    /// Execute mutants and return results
+    /// Execute mutants and return results (sequential)
     pub async fn execute_mutants(&self, mutants: Vec<Mutant>) -> Result<Vec<MutationResult>> {
         let mut results = Vec::new();
 
@@ -149,6 +149,23 @@ impl MutationEngine {
         }
 
         Ok(results)
+    }
+
+    /// Execute mutants in parallel using distributed executor
+    pub async fn execute_mutants_parallel(&self, mutants: Vec<Mutant>) -> Result<Vec<MutationResult>> {
+        let config = super::distributed::DistributedConfig {
+            worker_count: self.config.parallel_threads,
+            max_concurrent: self.config.parallel_threads * 2,
+            queue_size: 1000,
+            track_progress: true,
+        };
+
+        let executor = super::distributed::DistributedExecutor::new(
+            self.adapter.clone(),
+            config,
+        );
+
+        executor.execute_parallel(mutants).await
     }
 
     /// Execute a single mutant
