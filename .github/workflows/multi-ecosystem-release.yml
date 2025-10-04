@@ -50,25 +50,28 @@ jobs:
         echo "sha256=${SHA256}" >> $GITHUB_OUTPUT
         echo "SHA256: ${SHA256}"
 
-  # Update npm package
+  # Update npm package and publish to MCP registry
   update-npm:
     needs: prepare
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write  # Required for MCP registry OIDC authentication
+      contents: write
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-      
+
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '18'
         registry-url: 'https://registry.npmjs.org'
-        
+
     - name: Update npm package version
       run: |
         cd npm-package
         npm version ${{ needs.prepare.outputs.version }} --no-git-tag-version
-        
+
     - name: Publish to npm
       if: ${{ !github.event.inputs.dry_run }}
       run: |
@@ -76,7 +79,26 @@ jobs:
         npm publish --access public
       env:
         NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        
+
+    - name: Wait for npm package availability
+      if: ${{ !github.event.inputs.dry_run }}
+      run: |
+        echo "Waiting 30 seconds for npm package to be available..."
+        sleep 30
+
+    - name: Install MCP Publisher
+      if: ${{ !github.event.inputs.dry_run }}
+      run: |
+        curl -L "https://github.com/modelcontextprotocol/registry/releases/download/latest/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
+
+    - name: Login to MCP Registry
+      if: ${{ !github.event.inputs.dry_run }}
+      run: ./mcp-publisher login github-oidc
+
+    - name: Publish to MCP Registry
+      if: ${{ !github.event.inputs.dry_run }}
+      run: ./mcp-publisher publish
+
     - name: Commit npm updates
       run: |
         git config --local user.email "action@github.com"
@@ -233,6 +255,7 @@ EOF
         echo ""
         echo "📦 Updated Packages for v${{ needs.prepare.outputs.version }}:"
         echo "✅ npm: pmat-agent@${{ needs.prepare.outputs.version }}"
+        echo "✅ MCP Registry: io.github.paiml/pmat-agent"
         echo "✅ Homebrew: Formula updated with SHA256 ${{ needs.prepare.outputs.sha256 }}"
         echo "✅ AUR: PKGBUILD and .SRCINFO updated"
         echo "✅ Chocolatey: nuspec and install script updated"
@@ -249,10 +272,11 @@ EOF
         echo "• crates.io: Via publish-crates.yml workflow"
         echo "• Docker Hub: Via docker-publish.yml workflow"
         echo "• npm: Published automatically (if NPM_TOKEN available)"
+        echo "• MCP Registry: Published automatically via GitHub OIDC"
         echo ""
         echo "🔗 Installation Commands Updated:"
         echo "• cargo install pmat"
-        echo "• npm install -g pmat-agent"  
+        echo "• npm install -g pmat-agent"
         echo "• docker run paiml/pmat:latest"
         echo "• brew install pmat (after homebrew-core submission)"
         echo "• choco install pmat (after chocolatey submission)"
