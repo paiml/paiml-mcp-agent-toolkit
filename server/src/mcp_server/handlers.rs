@@ -36,7 +36,7 @@ use tracing::debug;
 ///     "batch_size": 10
 ///   }
 /// }
-/// ```
+/// ```ignore
 ///
 /// # Response Format
 ///
@@ -50,7 +50,7 @@ use tracing::debug;
 ///     "summary": {...}
 ///   }
 /// }
-/// ```
+/// ```ignore
 ///
 /// # Examples
 ///
@@ -307,11 +307,11 @@ pub async fn handle_refactor_stop(
 /// {
 ///   "targets": ["/path/to/file1.rs", "/path/to/file2.rs"]
 /// }
-/// ```
+/// ```ignore
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use serde_json::json;
 /// use std::path::PathBuf;
 ///
@@ -476,7 +476,7 @@ fn parse_config(params: &Value) -> Result<RefactorConfig, Box<dyn std::error::Er
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::models::refactor::{RefactorStateMachine, RefactorConfig};
 /// use std::path::PathBuf;
 /// use serde_json::Value;

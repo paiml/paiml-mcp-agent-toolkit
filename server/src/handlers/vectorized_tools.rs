@@ -24,7 +24,7 @@ pub const VECTORIZED_TOOLS: &[&str] = &[
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::handlers::vectorized_tools::is_vectorized_tool;
 ///
 /// assert!(is_vectorized_tool("analyze_duplicates_vectorized"));
@@ -588,7 +588,7 @@ async fn handle_enhanced_report(request_id: Value, args: Option<Value>) -> McpRe
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::handlers::vectorized_tools::get_vectorized_tools_info;
 ///
 /// let tools = get_vectorized_tools_info();

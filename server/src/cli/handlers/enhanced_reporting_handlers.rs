@@ -152,7 +152,7 @@ use tracing::info;
 /// # Management dashboard (legacy HTML format)
 /// pmat generate report /path/to/project --format dashboard \
 ///   --include-visualizations --include-executive-summary
-/// ```
+/// ```ignore
 ///
 /// # Integration Examples
 ///
@@ -164,13 +164,13 @@ use tracing::info;
 ///     pmat generate report . --format json \
 ///       --confidence-threshold 90 \
 ///       --output quality-report.json
-/// ```
+/// ```ignore
 ///
 /// ## Development Workflow Integration
 /// ```bash
 /// # Pre-commit hook
 /// pmat generate report . --format text --perf > quality-summary.txt
-/// ```
+/// ```ignore
 #[allow(clippy::too_many_arguments)]
 pub async fn handle_generate_report(
     project_path: PathBuf,

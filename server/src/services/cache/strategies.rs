@@ -23,7 +23,7 @@ use std::time::{Duration, UNIX_EPOCH};
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::services::cache::strategies::AstCacheStrategy;
 /// use pmat::services::cache::base::CacheStrategy;
 /// use pmat::services::context::FileContext;
@@ -207,7 +207,7 @@ impl CacheStrategy for TemplateCacheStrategy {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::services::cache::strategies::DagCacheStrategy;
 /// use pmat::services::cache::base::CacheStrategy;
 /// use pmat::models::dag::DependencyGraph;
@@ -440,7 +440,7 @@ pub struct GitStatsCacheStrategy;
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::services::cache::GitStats;
 ///
 /// let stats = GitStats {

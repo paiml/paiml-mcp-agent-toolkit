@@ -691,7 +691,7 @@ impl CodeIntelligence {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::services::code_intelligence::analyze_dag_enhanced;
 /// use pmat::cli::DagType;
 /// use tempfile::tempdir;

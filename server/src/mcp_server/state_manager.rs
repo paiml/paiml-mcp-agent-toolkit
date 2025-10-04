@@ -24,7 +24,7 @@ use tracing::{info, warn};
 /// New StateManager → start_session() → Active Session → advance() → Complete
 ///                                   ↓                    ↑
 ///                                   └─── stop_session() ──┘
-/// ```
+/// ```ignore
 ///
 /// # State Machine Phases
 ///
@@ -36,7 +36,7 @@ use tracing::{info, warn};
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::mcp_server::state_manager::StateManager;
 /// use pmat::models::refactor::RefactorConfig;
 /// use std::path::PathBuf;

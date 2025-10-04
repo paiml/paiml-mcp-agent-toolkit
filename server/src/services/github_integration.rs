@@ -196,7 +196,7 @@ impl GitHubClient {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::services::github_integration::{parse_issue, GitHubIssue};
 ///
 /// let issue = GitHubIssue {

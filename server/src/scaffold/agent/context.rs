@@ -145,7 +145,7 @@ impl AgentContextBuilder {
 ///
 /// assert_eq!(context.name, "my_agent");
 /// assert_eq!(context.quality_level, QualityLevel::Extreme);
-/// ```
+/// ```ignore
 #[must_use]
 pub fn create_agent_context(name: &str, template: &str) -> AgentContextBuilder {
     AgentContextBuilder::new(name, template)

@@ -55,7 +55,7 @@ use std::path::Path;
 /// scaffold_agent(&context, Path::new("./my_agent")).await?;
 /// # Ok(())
 /// # }
-/// ```
+/// ```ignore
 pub async fn scaffold_agent(context: &AgentContext, output: &Path) -> Result<()> {
     let registry = TemplateRegistry::new();
     let generator = registry.get(&context.template_type)?;

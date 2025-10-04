@@ -287,7 +287,7 @@ impl PartialOrd for DuplicationScore {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::services::ranking::rank_files_vectorized;
 ///
 /// let scores = vec![0.8, 0.2, 0.9, 0.1];

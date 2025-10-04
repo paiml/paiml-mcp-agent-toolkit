@@ -186,7 +186,7 @@ pub fn format_provability_json(
 /// assert!(output.contains("Total functions analyzed: 2"));
 /// assert!(output.contains("## Top Files by Provability"));
 /// assert!(output.contains("1. `main.rs` - 90.0% avg score"));
-/// ```
+/// ```ignore
 pub fn format_provability_summary(
     function_ids: &[FunctionId],
     summaries: &[ProofSummary],

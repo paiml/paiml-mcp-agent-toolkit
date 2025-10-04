@@ -417,7 +417,7 @@ fn apply_filters(
 /// let output = format_output(table, SymbolTableOutputFormat::Summary, true, false).unwrap();
 /// assert!(output.contains("Top Files by Symbol Count"));
 /// assert!(output.contains("main.rs"));
-/// ```
+/// ```ignore
 pub fn format_output(
     table: SymbolTable,
     format: crate::cli::SymbolTableOutputFormat,

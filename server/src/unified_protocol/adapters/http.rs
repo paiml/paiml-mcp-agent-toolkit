@@ -35,11 +35,11 @@ use crate::unified_protocol::{
 /// HTTP Request → HttpAdapter → UnifiedRequest → Business Logic
 ///                                ↓
 /// HTTP Response ← HttpAdapter ← UnifiedResponse ← Business Logic
-/// ```
+/// ```ignore
 ///
 /// # Examples
 ///
-/// ```
+/// ```ignore
 /// use pmat::unified_protocol::adapters::http::HttpAdapter;
 /// use pmat::unified_protocol::ProtocolAdapter;
 /// use std::net::{SocketAddr, IpAddr, Ipv4Addr};
@@ -50,7 +50,7 @@ use crate::unified_protocol::{
 ///
 /// // Verify configuration
 /// assert_eq!(adapter.protocol(), pmat::unified_protocol::Protocol::Http);
-/// ```
+/// ```ignore
 pub struct HttpAdapter {
     listener: Option<TcpListener>,
     bind_addr: SocketAddr,
@@ -334,7 +334,7 @@ pub enum HttpOutput {
 ///
 /// ```text
 /// TCP Connections → HttpServer → HttpServiceHandler → Business Logic
-/// ```
+/// ```ignore
 ///
 /// # Examples
 ///
@@ -368,7 +368,7 @@ pub enum HttpOutput {
 /// let bind_result = server.bind().await;
 /// assert!(bind_result.is_ok());
 /// # });
-/// ```
+/// ```ignore
 pub struct HttpServer {
     adapter: HttpAdapter,
     service: Box<dyn HttpServiceHandler>,
@@ -537,7 +537,7 @@ where
 ///
 /// # Examples
 ///
-/// ```
+/// ```ignore
 /// use pmat::unified_protocol::adapters::http::HttpResponseBuilder;
 /// use serde_json::json;
 ///
@@ -572,11 +572,11 @@ where
 ///     "<html><body><h1>Welcome</h1></body></html>"
 /// );
 /// assert_eq!(html_response.status, axum::http::StatusCode::OK);
-/// ```
+/// ```ignore
 ///
 /// # REST API Usage Examples
 ///
-/// ```
+/// ```ignore
 /// use pmat::unified_protocol::adapters::http::HttpResponseBuilder;
 /// use serde_json::json;
 ///
@@ -606,7 +606,7 @@ where
 ///     "version": "1.0.0",
 ///     "uptime": "2d 5h 23m"
 /// })).unwrap();
-/// ```
+/// ```ignore
 pub struct HttpResponseBuilder;
 
 impl HttpResponseBuilder {

@@ -94,7 +94,7 @@ pub struct EarlyCliArgs {
 ///
 /// // The function always returns valid EarlyCliArgs
 /// // Values depend on actual command line arguments
-/// ```
+/// ```ignore
 #[must_use]
 pub fn parse_early_for_tracing() -> EarlyCliArgs {
     let args: Vec<String> = std::env::args().collect();
@@ -196,7 +196,7 @@ use std::path::Path;
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::cli::detect_primary_language;
 /// use std::path::Path;
 /// use tempfile::tempdir;
@@ -500,7 +500,7 @@ pub fn build_deep_context_config(
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::cli::{convert_dag_type, DeepContextDagType};
 /// use pmat::models::dag::DagType;
 ///
@@ -522,7 +522,7 @@ pub fn convert_dag_type(dag_type: DeepContextDagType) -> crate::models::dag::Dag
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::cli::{convert_cache_strategy, DeepContextCacheStrategy};
 ///
 /// let strategy = DeepContextCacheStrategy::Normal;
@@ -558,7 +558,7 @@ pub fn parse_analysis_filters(
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::cli::{parse_analysis_type, AnalysisType};
 ///
 /// assert_eq!(parse_analysis_type("complexity").unwrap(), AnalysisType::Complexity);

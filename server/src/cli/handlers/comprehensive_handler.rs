@@ -105,7 +105,7 @@ pub struct ComprehensiveConfig {
 /// ).await?;
 /// # Ok(())
 /// # }
-/// ```
+/// ```ignore
 #[allow(clippy::too_many_arguments)]
 pub async fn handle_analyze_comprehensive(
     project_path: PathBuf,

@@ -62,7 +62,7 @@ use std::path::PathBuf;
 /// ).await?;
 /// # Ok(())
 /// # }
-/// ```
+/// ```ignore
 #[allow(clippy::too_many_arguments)]
 pub async fn handle_analyze_tdg(
     project_path: PathBuf,

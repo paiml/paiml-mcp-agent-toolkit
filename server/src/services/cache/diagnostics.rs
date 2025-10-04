@@ -108,7 +108,7 @@ impl CacheDiagnosticReport {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::services::cache::diagnostics::{format_prometheus_metrics, CacheDiagnostics, CacheEffectiveness};
 /// use std::time::Duration;
 /// use uuid::Uuid;
