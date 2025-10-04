@@ -52,6 +52,7 @@ Welcome to the PMAT (Pragmatic AI MCP Agent Toolkit) documentation.
 #### Specifications
 - **[specifications/](./specifications/)** - Feature specifications
   - [roadmap-todo-quality-gate-spec.md](./specifications/roadmap-todo-quality-gate-spec.md) - Roadmap management spec
+  - [publish-mcp-registry.md](./specifications/publish-mcp-registry.md) - MCP Registry publishing specification
 
 ### Release Information
 - **[release-process.md](./release-process.md)** - Release workflow and procedures
@@ -95,6 +96,7 @@ All documentation follows these principles:
 
 - **Repository**: [github.com/paiml/paiml-mcp-agent-toolkit](https://github.com/paiml/paiml-mcp-agent-toolkit)
 - **Crates.io**: [crates.io/crates/pmat](https://crates.io/crates/pmat)
+- **MCP Registry**: [registry.modelcontextprotocol.io (io.github.paiml/pmat-agent)](https://registry.modelcontextprotocol.io/v0/servers?search=pmat)
 - **Homepage**: [paiml.com](https://paiml.com)
 
 ---
