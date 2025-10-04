@@ -27,6 +27,8 @@ Welcome to the PMAT (Pragmatic AI MCP Agent Toolkit) documentation.
 - **[features/](./features/)** - Feature documentation
   - [README.md](./features/README.md) - Feature overview
   - [claude-agent-sdk-guide.md](./claude-agent-sdk-guide.md) - Claude Agent SDK Integration Guide
+  - [deep-wasm-usage.md](./deep-wasm-usage.md) - Deep WASM Pipeline Inspection (Phases 1-2.7 Complete)
+  - [mutation-testing.md](./mutation-testing.md) - Mutation Testing with ML Prediction
   - Individual feature guides for each major capability
 
 #### User Guides
@@ -99,6 +101,30 @@ All documentation follows these principles:
 - **MCP Registry**: [registry.modelcontextprotocol.io (io.github.paiml/pmat-agent)](https://registry.modelcontextprotocol.io/v0/servers?search=pmat)
 - **Homepage**: [paiml.com](https://paiml.com)
 
+## 🎯 Featured Capabilities
+
+### Deep WASM Pipeline Inspection
+Complete Rust/Ruchy → WebAssembly analysis pipeline with bidirectional tracing. **[Full Guide →](./deep-wasm-usage.md)**
+
+- ✅ **Phase 1-2.7 Complete**: WASM binary parsing, DWARF correlation, mutation testing, unified parser
+- 🔬 WASM binary parser with zero-copy analysis (wasmparser)
+- 🗺️ DWARF v5 bidirectional source mapping (gimli)
+- 🧬 WASM mutation testing with 3 operators (180 tests passing)
+- ⚡ Unified WASM parser with 40-50% performance improvement
+- 🎭 Ruchy language support for actor systems
+- 📋 Phase 3 scoped: Runtime analysis, profiling, security scanning
+
+### Mutation Testing Engine
+ML-powered mutation testing with decision tree prediction. **[Full Guide →](./mutation-testing.md)**
+
+- 🧠 Decision tree classifier with 75-95% accuracy (18 features)
+- 🔀 6 mutation operators (AOR, ROR, COR, UOR, CRR, SDL)
+- 🌐 Multi-language support (Rust, WASM/WAT)
+- 📊 K-fold cross-validation for accuracy measurement
+- 🚀 Distributed execution with work-stealing queue
+- 🎯 ML-based survivability prediction
+- 📈 CI/CD learning and auto-training (50 sample threshold)
+
 ---
 
-*Last Updated: 2025-01-21 | Version: 2.94.0*
+*Last Updated: 2025-10-04 | Version: 2.121.0*

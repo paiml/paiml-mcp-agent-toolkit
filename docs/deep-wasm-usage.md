@@ -446,37 +446,99 @@ wasm-pack build --debug
 
 ## Roadmap
 
-### Phase 1 (Current) ✅
-- ✅ WASM binary parser
-- ✅ DWARF v5 parser framework
-- ✅ Source map handler
-- ✅ Basic quality gates
-- ✅ CLI interface
-- ✅ MCP tool integration
-- ✅ Markdown report generation
+### Phase 1: WASM Binary Parsing ✅ COMPLETE
+- ✅ WASM binary parser with zero-copy analysis (wasmparser)
+- ✅ DWARF v5 parser framework (gimli integration)
+- ✅ Source map handler (JavaScript-style debugging)
+- ✅ Rust WASM analyzer (boundary function detection)
+- ✅ Quality gates (strict + default modes)
+- ✅ CLI interface: `pmat analyze deep-wasm` (13 options)
+- ✅ MCP tool integration (5 AI agent tools)
+- ✅ Markdown/JSON/HTML report generation
+- ✅ 30+ comprehensive tests
 
-### Phase 2 (Weeks 5-8)
-- Source-to-WASM correlation engine
-- Type flow analysis
-- Optimization comparison
-- Issue detection
-- Enhanced DWARF integration
+### Phase 2: DWARF Correlation ✅ COMPLETE
+- ✅ DWARF v5 line program parsing with validation (DWARF v2-v5 support)
+- ✅ Enhanced correlation engine with bidirectional mapping
+- ✅ `correlate_with_line_programs()` - Line data integration
+- ✅ `calculate_confidence()` - Multi-signal scoring (perfect match: 1.0)
+- ✅ `lookup_source_location()` - WASM address → source location
+- ✅ `lookup_wasm_addresses()` - Source line → WASM addresses
+- ✅ Graceful error handling for malformed/synthetic DWARF data
+- ✅ 20 new Phase 2 tests (9 parser + 11 correlation)
+- ✅ 72 total deep_wasm tests passing
 
-### Phase 3 (Weeks 9-12)
-- Execution tracing
-- Performance profiling
-- Chrome DevTools integration
-- Ruchy deadlock detection
-- HTML report generation
+### Phase 2.5: WASM Mutation Testing ✅ COMPLETE
+- ✅ WasmAdapter implementation for .wasm and .wat files
+- ✅ WAT text-based mutation approach (simple and effective)
+- ✅ 3 WASM Mutation Operators:
+  - `WasmNumericMutator`: i32/i64/f32/f64 arithmetic mutations (80% kill prob)
+  - `WasmControlFlowMutator`: Control flow mutations (90% kill prob)
+  - `WasmLocalMutator`: Stack operations (75% kill prob)
+- ✅ Type system enhancements for WASM operators
+- ✅ 6 comprehensive WASM mutation tests
+- ✅ Integration with LanguageRegistry via `register_wasm()`
+- ✅ 180 total mutation tests passing (174 baseline + 6 WASM)
+
+### Phase 2.6: WASM Unified Parser ✅ COMPLETE
+- ✅ Eliminated double parsing for WASM/WAT files
+- ✅ Created `UnifiedWasmAnalyzer` with pattern-based extraction
+- ✅ Control flow complexity analysis (br, loop, block, if)
+- ✅ Stack complexity tracking
+- ✅ 10 EXTREME TDD tests passing
+- ✅ Integrated with deep_context.rs using WASM_UNIFIED_CACHE
+- ✅ 40-50% performance improvement
+
+### Phase 2.7: Ruchy Language Support ✅ COMPLETE
+- ✅ Fixed Issue #61: Ruchy source analysis in deep-wasm pipeline
+- ✅ Auto-detection from .ruchy/.rch file extensions
+- ✅ Function counting with "fun" and "async fun" patterns
+- ✅ Complexity estimation for Ruchy code
+- ✅ Conditional parsing: syn for Rust, pattern matching for Ruchy
+- ✅ 1 new deep-wasm test for Ruchy analysis
+- ✅ 73 total deep_wasm tests passing
+
+### Phase 3: Runtime Analysis & Performance (Scoped - Future Work)
+
+**Track 1: Performance Profiling & Hotspot Detection** 🔥 (2-3 days)
+- Instruction-level profiling (execution time per WASM instruction type)
+- Function-level hotspots (call counts, average execution time, memory patterns)
+- Flame graphs and source-level heatmaps
+- Optimization suggestions (inlining, SIMD, etc.)
+
+**Track 2: WASM Runtime Integration** 🏃 (2-3 days)
+- Wasmtime v36 integration (already in dependencies)
+- Execute .wasm binaries with instrumentation
+- Function entry/exit tracing
+- Memory access tracking, import/export monitoring
+- Gas metering for cost analysis
+- Integration with mutation testing
+
+**Track 3: Security & Vulnerability Analysis** 🔒 (1-2 days)
+- Memory bounds checking (out-of-bounds, integer overflow, stack overflow)
+- Import analysis (dangerous JS imports, unsafe patterns)
+- Quality gates enhancement with security scoring
+- Automated vulnerability reports
+
+**Track 4: Chrome DevTools Integration** 🌐 (1-2 days, Optional)
+- DWARF → DevTools source map conversion
+- Breakpoint-compatible location mapping
+- Export `.map` files for browser debugging
+
+**Recommended Scope:**
+- **Minimal** (3-4 days): Tracks 1 + 2 (runtime + profiling)
+- **Full** (5-7 days): All 4 tracks
+
+**Priority:** Lower than multi-language mutation testing completion
 
 ## Support
 
 - **Documentation:** https://docs.pmat.dev/deep-wasm
-- **Examples:** https://github.com/pmat/examples/deep-wasm
-- **Issues:** https://github.com/pmat/issues
+- **Examples:** https://github.com/paiml/paiml-mcp-agent-toolkit/tree/master/examples
+- **Issues:** https://github.com/paiml/paiml-mcp-agent-toolkit/issues
 
 ---
 
-**Last Updated:** 2025-10-03
-**PMAT Version:** 2.109.0
-**Deep WASM Version:** 1.0.0 (Phase 1)
+**Last Updated:** 2025-10-04
+**PMAT Version:** 2.121.0
+**Deep WASM Status:** Phases 1-2.7 Complete (Phase 3 scoped for future work)
