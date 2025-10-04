@@ -73,12 +73,20 @@ impl ServiceRegistry {
     }
 
     pub async fn health_check_all(&self) -> HashMap<String, bool> {
-        let services = self.services.read();
-        let mut results = HashMap::new();
+        // Collect services while holding the lock, then drop it before async work
+        let services_snapshot: Vec<_> = {
+            let services = self.services.read();
+            services
+                .iter()
+                .map(|(name, service)| (name.clone(), service.clone()))
+                .collect()
+        };
+        // Lock is dropped here
 
-        for (name, service) in services.iter() {
+        let mut results = HashMap::new();
+        for (name, service) in services_snapshot {
             let health = service.health_check().await.unwrap_or(false);
-            results.insert(name.clone(), health);
+            results.insert(name, health);
         }
 
         results

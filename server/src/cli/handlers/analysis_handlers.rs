@@ -1039,7 +1039,7 @@ async fn route_deep_wasm_analysis(cmd: AnalyzeCommands) -> Result<()> {
         detect_deadlocks,
     } = cmd
     {
-        super::deep_wasm_handlers::handle_deep_wasm(
+        super::deep_wasm_handlers::handle_deep_wasm(super::deep_wasm_handlers::DeepWasmOptions {
             source_path,
             wasm_file,
             dwarf_file,
@@ -1049,11 +1049,11 @@ async fn route_deep_wasm_analysis(cmd: AnalyzeCommands) -> Result<()> {
             format,
             output,
             strict,
-            include_mir,
-            include_llvm_ir,
-            track_memory,
-            detect_deadlocks,
-        )
+            _include_mir: include_mir,
+            _include_llvm_ir: include_llvm_ir,
+            _track_memory: track_memory,
+            _detect_deadlocks: detect_deadlocks,
+        })
         .await
     } else {
         unreachable!("Expected DeepWasm command")

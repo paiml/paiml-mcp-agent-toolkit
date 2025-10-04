@@ -11,23 +11,42 @@ use crate::services::deep_wasm::{
 use anyhow::Result;
 use std::path::PathBuf;
 
+/// Options for deep WASM analysis
+#[cfg(feature = "deep-wasm")]
+pub struct DeepWasmOptions {
+    pub source_path: PathBuf,
+    pub wasm_file: Option<PathBuf>,
+    pub dwarf_file: Option<PathBuf>,
+    pub source_map: Option<PathBuf>,
+    pub language: Option<DeepWasmLanguage>,
+    pub focus: DeepWasmFocus,
+    pub format: DeepWasmOutputFormat,
+    pub output: Option<PathBuf>,
+    pub strict: bool,
+    pub _include_mir: bool,
+    pub _include_llvm_ir: bool,
+    pub _track_memory: bool,
+    pub _detect_deadlocks: bool,
+}
+
 /// Handles the deep-wasm analysis command
 #[cfg(feature = "deep-wasm")]
-pub async fn handle_deep_wasm(
-    source_path: PathBuf,
-    wasm_file: Option<PathBuf>,
-    dwarf_file: Option<PathBuf>,
-    source_map: Option<PathBuf>,
-    language: Option<DeepWasmLanguage>,
-    focus: DeepWasmFocus,
-    format: DeepWasmOutputFormat,
-    output: Option<PathBuf>,
-    strict: bool,
-    _include_mir: bool,
-    _include_llvm_ir: bool,
-    _track_memory: bool,
-    _detect_deadlocks: bool,
-) -> Result<()> {
+pub async fn handle_deep_wasm(options: DeepWasmOptions) -> Result<()> {
+    let DeepWasmOptions {
+        source_path,
+        wasm_file,
+        dwarf_file,
+        source_map,
+        language,
+        focus,
+        format,
+        output,
+        strict,
+        _include_mir,
+        _include_llvm_ir,
+        _track_memory,
+        _detect_deadlocks,
+    } = options;
     // Convert CLI enums to service types
     let source_language = match language {
         Some(DeepWasmLanguage::Rust) => SourceLanguage::Rust,
