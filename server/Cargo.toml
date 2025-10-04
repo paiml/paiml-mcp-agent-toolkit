@@ -56,6 +56,12 @@ kani-verifier = { version = "0.56", optional = true }
 # Text similarity
 levenshtein = "1.0"
 
+# Machine Learning (Pure Rust - no C++ dependencies)
+linfa = "0.8"
+linfa-trees = "0.8"
+linfa-ensemble = { version = "0.8", features = ["serde"] }
+ndarray = "0.16"
+
 # Serialization (pinned to avoid swc_common issue with serde::__private)
 serde = { version = "=1.0.219", default-features = false, features = ["derive", "std"] }
 serde_json = { version = "1.0", default-features = false, features = ["std"] }
