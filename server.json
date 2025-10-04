@@ -1,22 +1,26 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-29/server.schema.json",
   "name": "io.github.paiml/pmat-agent",
+  "displayName": "PMAT Agent Toolkit",
   "description": "Zero-config AI context generation and code quality toolkit with Claude Code Agent Mode support",
-  "version": "2.12.0",
-  "license": "MIT",
+  "version": "2.121.0",
   "homepage": "https://github.com/paiml/paiml-mcp-agent-toolkit",
-  "repository": {
-    "url": "",
-    "source": ""
+  "sourceUrl": "https://github.com/paiml/paiml-mcp-agent-toolkit",
+  "author": {
+    "name": "Pragmatic AI Labs",
+    "email": "hello@paiml.com",
+    "url": "https://github.com/paiml"
   },
-  "packages": [
-    {
-      "registryType": "npm",
-      "identifier": "pmat-agent",
-      "version": "2.12.0",
-      "transport": {
-        "type": "stdio"
-      }
+  "license": "MIT",
+  "readme": "https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/master/README.md",
+  "categories": ["development-tools", "code-analysis"],
+  "tags": ["code-quality", "static-analysis", "complexity", "technical-debt", "ai-context", "claude-code", "agent"],
+  "deployment": {
+    "type": "package",
+    "package": {
+      "type": "cargo",
+      "name": "pmat",
+      "binaryName": "pmat-agent"
     }
-  ]
+  }
 }
