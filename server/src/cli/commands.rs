@@ -1875,6 +1875,57 @@ pub enum AnalyzeCommands {
         #[arg(long)]
         detect_deadlocks: bool,
     },
+
+    /// Mutation testing with ML prediction
+    Mutate {
+        /// Path to source code to mutate
+        #[arg(short = 'p', long)]
+        path: PathBuf,
+
+        /// Mutation operators to use (comma-separated: AOR,ROR,COR,UOR,CRR,SDL)
+        #[arg(long, value_delimiter = ',')]
+        operators: Option<Vec<String>>,
+
+        /// Enable ML-based survivability prediction
+        #[arg(long)]
+        ml_predict: bool,
+
+        /// Enable distributed execution
+        #[arg(long)]
+        distributed: bool,
+
+        /// Number of worker threads for distributed execution
+        #[arg(long, default_value = "4")]
+        workers: usize,
+
+        /// Show real-time progress
+        #[arg(long)]
+        progress: bool,
+
+        /// Minimum mutation score threshold (0.0-1.0)
+        #[arg(long)]
+        min_score: Option<f64>,
+
+        /// Enable CI/CD learning mode
+        #[arg(long)]
+        ci_learning: bool,
+
+        /// CI provider (github, gitlab, jenkins)
+        #[arg(long)]
+        ci_provider: Option<String>,
+
+        /// Auto-train threshold (number of samples)
+        #[arg(long, default_value = "50")]
+        auto_train_threshold: usize,
+
+        /// Output format
+        #[arg(long, value_enum, default_value = "json")]
+        format: OutputFormat,
+
+        /// Output file path
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+    },
 }
 
 /// Quality-Driven Development (QDD) subcommands
