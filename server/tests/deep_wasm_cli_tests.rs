@@ -108,19 +108,21 @@ fn test_deep_wasm_handler_basic_analysis() {
     // Run analysis without WASM file (should still work)
     let result = tokio_test::block_on(async {
         deep_wasm_handlers::handle_deep_wasm(
-            source_path,
-            None, // wasm_file
-            None, // dwarf_file
-            None, // source_map
-            Some(DeepWasmLanguage::Rust),
-            DeepWasmFocus::Source,
-            DeepWasmOutputFormat::Markdown,
-            None,  // output
-            false, // strict
-            false, // include_mir
-            false, // include_llvm_ir
-            false, // track_memory
-            false, // detect_deadlocks
+            deep_wasm_handlers::DeepWasmOptions {
+                source_path,
+                wasm_file: None,
+                dwarf_file: None,
+                source_map: None,
+                language: Some(DeepWasmLanguage::Rust),
+                focus: DeepWasmFocus::Source,
+                format: DeepWasmOutputFormat::Markdown,
+                output: None,
+                strict: false,
+                _include_mir: false,
+                _include_llvm_ir: false,
+                _track_memory: false,
+                _detect_deadlocks: false,
+            }
         )
         .await
     });
@@ -153,19 +155,21 @@ fn test_deep_wasm_with_wasm_binary() {
 
     let result = tokio_test::block_on(async {
         deep_wasm_handlers::handle_deep_wasm(
-            source_path,
-            Some(wasm_path),
-            None,
-            None,
-            Some(DeepWasmLanguage::Rust),
-            DeepWasmFocus::Full,
-            DeepWasmOutputFormat::Markdown,
-            None,
-            false,
-            false,
-            false,
-            false,
-            false,
+            deep_wasm_handlers::DeepWasmOptions {
+                source_path,
+                wasm_file: Some(wasm_path),
+                dwarf_file: None,
+                source_map: None,
+                language: Some(DeepWasmLanguage::Rust),
+                focus: DeepWasmFocus::Full,
+                format: DeepWasmOutputFormat::Markdown,
+                output: None,
+                strict: false,
+                _include_mir: false,
+                _include_llvm_ir: false,
+                _track_memory: false,
+                _detect_deadlocks: false,
+            }
         )
         .await
     });
@@ -186,19 +190,21 @@ fn test_deep_wasm_strict_mode() {
 
     let result = tokio_test::block_on(async {
         deep_wasm_handlers::handle_deep_wasm(
-            source_path,
-            None,
-            None,
-            None,
-            Some(DeepWasmLanguage::Rust),
-            DeepWasmFocus::Full,
-            DeepWasmOutputFormat::Json,
-            None,
-            true, // STRICT MODE ENABLED
-            false,
-            false,
-            false,
-            false,
+            deep_wasm_handlers::DeepWasmOptions {
+                source_path,
+                wasm_file: None,
+                dwarf_file: None,
+                source_map: None,
+                language: Some(DeepWasmLanguage::Rust),
+                focus: DeepWasmFocus::Full,
+                format: DeepWasmOutputFormat::Json,
+                output: None,
+                strict: true, // STRICT MODE ENABLED
+                _include_mir: false,
+                _include_llvm_ir: false,
+                _track_memory: false,
+                _detect_deadlocks: false,
+            }
         )
         .await
     });
@@ -221,19 +227,21 @@ fn test_deep_wasm_json_output() {
 
     let result = tokio_test::block_on(async {
         deep_wasm_handlers::handle_deep_wasm(
-            source_path,
-            None,
-            None,
-            None,
-            Some(DeepWasmLanguage::Rust),
-            DeepWasmFocus::Full,
-            DeepWasmOutputFormat::Json,
-            Some(output_path.clone()),
-            false,
-            false,
-            false,
-            false,
-            false,
+            deep_wasm_handlers::DeepWasmOptions {
+                source_path,
+                wasm_file: None,
+                dwarf_file: None,
+                source_map: None,
+                language: Some(DeepWasmLanguage::Rust),
+                focus: DeepWasmFocus::Full,
+                format: DeepWasmOutputFormat::Json,
+                output: Some(output_path.clone()),
+                strict: false,
+                _include_mir: false,
+                _include_llvm_ir: false,
+                _track_memory: false,
+                _detect_deadlocks: false,
+            }
         )
         .await
     });
@@ -265,19 +273,21 @@ fn test_deep_wasm_ruchy_language() {
 
     let result = tokio_test::block_on(async {
         deep_wasm_handlers::handle_deep_wasm(
-            source_path,
-            None,
-            None,
-            None,
-            Some(DeepWasmLanguage::Ruchy),
-            DeepWasmFocus::Full,
-            DeepWasmOutputFormat::Markdown,
-            None,
-            false,
-            false,
-            false,
-            false,
-            true, // detect_deadlocks for Ruchy
+            deep_wasm_handlers::DeepWasmOptions {
+                source_path,
+                wasm_file: None,
+                dwarf_file: None,
+                source_map: None,
+                language: Some(DeepWasmLanguage::Ruchy),
+                focus: DeepWasmFocus::Full,
+                format: DeepWasmOutputFormat::Markdown,
+                output: None,
+                strict: false,
+                _include_mir: false,
+                _include_llvm_ir: false,
+                _track_memory: false,
+                _detect_deadlocks: true, // detect_deadlocks for Ruchy
+            }
         )
         .await
     });
@@ -301,19 +311,21 @@ fn test_deep_wasm_auto_language_detection() {
     // Test Rust auto-detection
     let rust_result = tokio_test::block_on(async {
         deep_wasm_handlers::handle_deep_wasm(
-            rust_path,
-            None,
-            None,
-            None,
-            None, // Language NOT specified - should auto-detect
-            DeepWasmFocus::Source,
-            DeepWasmOutputFormat::Markdown,
-            None,
-            false,
-            false,
-            false,
-            false,
-            false,
+            deep_wasm_handlers::DeepWasmOptions {
+                source_path: rust_path,
+                wasm_file: None,
+                dwarf_file: None,
+                source_map: None,
+                language: None, // Language NOT specified - should auto-detect
+                focus: DeepWasmFocus::Source,
+                format: DeepWasmOutputFormat::Markdown,
+                output: None,
+                strict: false,
+                _include_mir: false,
+                _include_llvm_ir: false,
+                _track_memory: false,
+                _detect_deadlocks: false,
+            }
         )
         .await
     });
@@ -326,19 +338,21 @@ fn test_deep_wasm_auto_language_detection() {
     // Test Ruchy auto-detection
     let ruchy_result = tokio_test::block_on(async {
         deep_wasm_handlers::handle_deep_wasm(
-            ruchy_path,
-            None,
-            None,
-            None,
-            None, // Language NOT specified - should auto-detect
-            DeepWasmFocus::Source,
-            DeepWasmOutputFormat::Markdown,
-            None,
-            false,
-            false,
-            false,
-            false,
-            false,
+            deep_wasm_handlers::DeepWasmOptions {
+                source_path: ruchy_path,
+                wasm_file: None,
+                dwarf_file: None,
+                source_map: None,
+                language: None, // Language NOT specified - should auto-detect
+                focus: DeepWasmFocus::Source,
+                format: DeepWasmOutputFormat::Markdown,
+                output: None,
+                strict: false,
+                _include_mir: false,
+                _include_llvm_ir: false,
+                _track_memory: false,
+                _detect_deadlocks: false,
+            }
         )
         .await
     });
@@ -407,19 +421,21 @@ fn test_deep_wasm_with_all_debug_info() {
 
     let result = tokio_test::block_on(async {
         deep_wasm_handlers::handle_deep_wasm(
-            source_path,
-            Some(wasm_path),
-            Some(dwarf_path),
-            Some(source_map_path),
-            Some(DeepWasmLanguage::Rust),
-            DeepWasmFocus::Full,
-            DeepWasmOutputFormat::Markdown,
-            None,
-            false,
-            false,
-            false,
-            false,
-            false,
+            deep_wasm_handlers::DeepWasmOptions {
+                source_path,
+                wasm_file: Some(wasm_path),
+                dwarf_file: Some(dwarf_path),
+                source_map: Some(source_map_path),
+                language: Some(DeepWasmLanguage::Rust),
+                focus: DeepWasmFocus::Full,
+                format: DeepWasmOutputFormat::Markdown,
+                output: None,
+                strict: false,
+                _include_mir: false,
+                _include_llvm_ir: false,
+                _track_memory: false,
+                _detect_deadlocks: false,
+            }
         )
         .await
     });
