@@ -3512,6 +3512,45 @@ dependencies = [
 ]
 
 [[package]]
+name = "linfa"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d2361c22359417e9b84bacfe81ae77f511b947282c366f141485c2beba8792c6"
+dependencies = [
+ "approx",
+ "ndarray",
+ "num-traits",
+ "rand 0.8.5",
+ "sprs",
+ "thiserror 2.0.16",
+]
+
+[[package]]
+name = "linfa-ensemble"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "56fc70f8517653cf4658d7528e86f9737a4e048b5e936bc526118c88cbc56f69"
+dependencies = [
+ "linfa",
+ "linfa-trees",
+ "ndarray",
+ "ndarray-rand",
+ "rand 0.8.5",
+ "serde",
+]
+
+[[package]]
+name = "linfa-trees"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e265f1a2233defa4a661a9a0d03723bbe164d83140e9af659aa8dd89dd04fb9f"
+dependencies = [
+ "linfa",
+ "ndarray",
+ "ndarray-rand",
+]
+
+[[package]]
 name = "linux-raw-sys"
 version = "0.4.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3970,6 +4009,35 @@ dependencies = [
 ]
 
 [[package]]
+name = "ndarray"
+version = "0.16.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "882ed72dce9365842bf196bdeedf5055305f11fc8c03dee7bb0194a6cad34841"
+dependencies = [
+ "approx",
+ "matrixmultiply",
+ "num-complex",
+ "num-integer",
+ "num-traits",
+ "portable-atomic",
+ "portable-atomic-util",
+ "rawpointer",
+ "rayon",
+ "serde",
+]
+
+[[package]]
+name = "ndarray-rand"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f093b3db6fd194718dcdeea6bd8c829417deae904e3fcc7732dabcd4416d25d8"
+dependencies = [
+ "ndarray",
+ "rand 0.8.5",
+ "rand_distr",
+]
+
+[[package]]
 name = "ndk-context"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4159,6 +4227,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "071dfc062690e90b734c0b2273ce72ad0ffa95f0c74596bc250dcfd960262841"
 dependencies = [
  "autocfg",
+ "libm",
 ]
 
 [[package]]
@@ -4565,7 +4634,7 @@ dependencies = [
 
 [[package]]
 name = "pmat"
-version = "2.113.0"
+version = "2.114.0"
 dependencies = [
  "actix",
  "actix-rt",
@@ -4619,12 +4688,16 @@ dependencies = [
  "lazy_static",
  "levenshtein",
  "libc",
+ "linfa",
+ "linfa-ensemble",
+ "linfa-trees",
  "logos 0.14.4",
  "lru 0.14.0",
  "lz4_flex",
  "memmap2",
  "mockall",
  "nalgebra-sparse",
+ "ndarray",
  "notify",
  "num-traits",
  "num_cpus",
@@ -5242,6 +5315,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "99d9a13982dcf210057a8a78572b2217b667c3beacbf3a0d8b454f6f82837d38"
 dependencies = [
  "getrandom 0.3.3",
+]
+
+[[package]]
+name = "rand_distr"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "32cb0b9bc82b0a0876c2dd994a7e7a2683d3e7390ca40e6886785ef0c7e3ee31"
+dependencies = [
+ "num-traits",
+ "rand 0.8.5",
 ]
 
 [[package]]
@@ -6297,6 +6380,18 @@ name = "spin"
 version = "0.9.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6980e8d7511241f8acf4aebddbb1ff938df5eebe98691418c4468d0b72a96a67"
+
+[[package]]
+name = "sprs"
+version = "0.11.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8bff8419009a08f6cb7519a602c5590241fbff1446bcc823c07af15386eb801b"
+dependencies = [
+ "ndarray",
+ "num-complex",
+ "num-traits",
+ "smallvec",
+]
 
 [[package]]
 name = "stable_deref_trait"
