@@ -1,7 +1,8 @@
 # Mutation Testing with ML Optimization
 
-**Version**: 2.116.0 (Development)
-**Status**: Phase 4.2 REFACTOR - Decision Tree ML Model Complete
+**Version**: 2.117.0 (Development)
+**Status**: Phase 5 - Advanced Operators (SDL, CRR) COMPLETE
+**Operators**: 6 total (AOR, ROR, COR, UOR, CRR, SDL)
 **Model**: Linfa Decision Tree with 18 features
 **Accuracy**: 85-95% (ML model) / 60-70% (statistical fallback)
 
@@ -53,6 +54,8 @@ The type of mutation operator applied:
 - `ROR` - Relational Operator Replacement (==, !=, <, >, <=, >=)
 - `COR` - Conditional Operator Replacement (&&, ||)
 - `UOR` - Unary Operator Replacement (!, -, ~)
+- `CRR` - Constant Replacement (0→1, true→false, "x"→"", 3.14→4.14) **[Phase 5]**
+- `SDL` - Statement Deletion (remove assignments, calls, macros) **[Phase 5]**
 
 #### 2. **cyclomatic_complexity** (u32)
 Cyclomatic complexity at the mutation point. Higher values indicate more complex control flow with more test paths to cover.
@@ -459,11 +462,15 @@ The mutation testing system is accessible via MCP tools:
 - [ ] Feature importance analysis
 - [ ] Cross-validation
 
-### Phase 5 (Production Hardening)
+### Phase 5 (Production Hardening) - IN PROGRESS
+- ✅ **Advanced operators (SDL, CRR)** - COMPLETE
+  - Statement Deletion (SDL): Removes assignments, function calls, method calls
+  - Constant Replacement (CRR): Replaces integers, booleans, strings, floats
+  - 13 new comprehensive tests (all passing)
+  - Integrated with RustAdapter (6 total operators: AOR, ROR, COR, UOR, CRR, SDL)
 - [ ] Distributed mutation testing
 - [ ] Real-time learning from CI/CD
 - [ ] Multi-language support (Python, Go, C++)
-- [ ] Advanced operators (SDL, MCR)
 - [ ] Visualization dashboard
 
 ---
