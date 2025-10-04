@@ -1080,23 +1080,21 @@ async fn route_mutation_testing(cmd: AnalyzeCommands) -> Result<()> {
         output,
     } = cmd
     {
-        println!("🧬 Mutation Testing");
-        println!("Path: {}", path.display());
-        if let Some(ref ops) = operators {
-            println!("Operators: {}", ops.join(", "));
-        }
-        println!("ML Prediction: {}", ml_predict);
-        println!("Distributed: {} (workers: {})", distributed, workers);
-
-        // TODO: Implement actual mutation testing execution
-        // This would integrate with the mutation testing engine at:
-        // server/src/services/mutation/
-
-        eprintln!("⚠️  Mutation testing execution not yet implemented in CLI");
-        eprintln!("   The mutation testing library is available but needs CLI integration");
-        eprintln!("   Use the MCP tool 'mutation_test' for now");
-
-        Ok(())
+        super::mutation_handlers::handle_mutate(
+            path,
+            operators,
+            ml_predict,
+            distributed,
+            workers,
+            progress,
+            min_score,
+            ci_learning,
+            ci_provider,
+            auto_train_threshold,
+            format,
+            output,
+        )
+        .await
     } else {
         unreachable!("Expected Mutate command")
     }
