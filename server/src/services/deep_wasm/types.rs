@@ -263,13 +263,11 @@ mod tests {
 
     #[test]
     fn test_analysis_focus_values() {
-        let focuses = vec![
-            AnalysisFocus::Full,
+        let focuses = [AnalysisFocus::Full,
             AnalysisFocus::Source,
             AnalysisFocus::Compilation,
             AnalysisFocus::Runtime,
-            AnalysisFocus::Interop,
-        ];
+            AnalysisFocus::Interop];
         assert_eq!(focuses.len(), 5);
     }
 }

@@ -6,7 +6,6 @@
 mod fuzzing_red_tests {
     use crate::services::mutation::{
         FuzzConfig, FuzzMutationStrategy, FuzzResult, InputGeneratorType, MutationEngine,
-        RustAdapter,
     };
     use std::time::Duration;
 
@@ -326,7 +325,7 @@ mod fuzzing_red_tests {
         // All should be valid JSON bytes
         for input in inputs {
             // Should start with { or [ for JSON
-            assert!(input.starts_with(&[b'{']) || input.starts_with(&[b'[']) || input.is_empty());
+            assert!(input.starts_with(b"{") || input.starts_with(b"[") || input.is_empty());
         }
     }
 }

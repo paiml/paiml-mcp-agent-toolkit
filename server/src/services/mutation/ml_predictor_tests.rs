@@ -6,7 +6,7 @@
 mod ml_predictor_red_tests {
     use crate::services::mutation::{
         Mutant, MutantStatus, MutationOperatorType, SourceLocation,
-        MutantFeatures, SurvivabilityPredictor, PredictionResult, TrainingData,
+        MutantFeatures, SurvivabilityPredictor, TrainingData,
     };
 
     #[test]

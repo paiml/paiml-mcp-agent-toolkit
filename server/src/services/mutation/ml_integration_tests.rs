@@ -60,7 +60,7 @@ mod ml_integration_tests {
 
         // This demonstrates: equivalence filtering + smart prioritization
         // Expected outcome: Pipeline works end-to-end
-        assert!(prioritized.len() > 0, "Should have mutants to test");
+        assert!(!prioritized.is_empty(), "Should have mutants to test");
     }
 
     #[test]
@@ -190,7 +190,7 @@ mod ml_integration_tests {
         }
 
         // This demonstrates the ML pipeline works end-to-end
-        assert!(prioritized.len() > 0, "ML pipeline completes successfully");
+        assert!(!prioritized.is_empty(), "ML pipeline completes successfully");
     }
 
     #[test]

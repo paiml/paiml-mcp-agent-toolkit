@@ -526,12 +526,10 @@ impl SurvivabilityPredictor {
             } else {
                 0.7 // Medium confidence for unseen operators even with model
             }
+        } else if has_seen_operator {
+            0.8 // Good confidence with statistical baseline for seen operators
         } else {
-            if has_seen_operator {
-                0.8 // Good confidence with statistical baseline for seen operators
-            } else {
-                0.5 // Low confidence for unseen operators with baseline
-            }
+            0.5 // Low confidence for unseen operators with baseline
         };
 
         // Feature contributions weighted by importance

@@ -6,10 +6,9 @@
 use super::language::{LanguageAdapter, TestRunResult};
 use super::operators::MutationOperator;
 use super::types::*;
-use anyhow::{Context, Result};
+use anyhow::Result;
 use async_trait::async_trait;
 use std::path::Path;
-use std::sync::Arc;
 
 /// WASM language adapter
 pub struct WasmAdapter {
@@ -69,7 +68,7 @@ impl LanguageAdapter for WasmAdapter {
             .collect()
     }
 
-    async fn run_tests(&self, source_file: &Path) -> Result<TestRunResult> {
+    async fn run_tests(&self, _source_file: &Path) -> Result<TestRunResult> {
         // For WASM, we would typically run tests using a WASM runtime
         // For now, return a placeholder result
         Ok(TestRunResult {
@@ -262,7 +261,7 @@ mod tests {
         let wat = "(i32.add (i32.const 1) (i32.const 2))";
         let mutants = mutator.mutate_wat(wat).unwrap();
 
-        assert!(mutants.len() >= 1);
+        assert!(!mutants.is_empty());
         assert!(mutants.iter().any(|m| m.contains("i32.sub")));
         assert!(mutants.iter().any(|m| m.contains("i32.mul")));
     }
@@ -273,7 +272,7 @@ mod tests {
         let wat = "(block (br 0))";
         let mutants = mutator.mutate_wat(wat).unwrap();
 
-        assert!(mutants.len() >= 1);
+        assert!(!mutants.is_empty());
         assert!(mutants.iter().any(|m| m.contains("br_if")));
     }
 
@@ -283,7 +282,7 @@ mod tests {
         let wat = "(local.set $x (i32.const 10))";
         let mutants = mutator.mutate_wat(wat).unwrap();
 
-        assert!(mutants.len() >= 1);
+        assert!(!mutants.is_empty());
         assert!(mutants.iter().any(|m| m.contains("local.tee")));
     }
 

@@ -42,7 +42,7 @@ mod advanced_operators_red_tests {
         let location = SourceLocation { line: 1, column: 0, end_line: 1, end_column: 9 };
 
         let mutants = operator.mutate(&expr, location).unwrap();
-        assert!(mutants.len() > 0, "Must generate early return mutants");
+        assert!(!mutants.is_empty(), "Must generate early return mutants");
     }
 
     // ===== SDO: Statement Deletion Operator (RED) =====
@@ -100,7 +100,7 @@ mod advanced_operators_red_tests {
         let location = SourceLocation { line: 1, column: 0, end_line: 1, end_column: 9 };
 
         let mutants = operator.mutate(&expr, location).unwrap();
-        assert!(mutants.len() > 0, "Must generate return value mutants");
+        assert!(!mutants.is_empty(), "Must generate return value mutants");
     }
 
     // ===== VRO: Variable Replacement Operator (RED) =====
@@ -191,6 +191,6 @@ mod advanced_operators_red_tests {
         let location = SourceLocation { line: 1, column: 0, end_line: 1, end_column: 7 };
 
         let mutants = operator.mutate(&expr, location).unwrap();
-        assert!(mutants.len() > 0, "Must generate try removal mutants");
+        assert!(!mutants.is_empty(), "Must generate try removal mutants");
     }
 }
