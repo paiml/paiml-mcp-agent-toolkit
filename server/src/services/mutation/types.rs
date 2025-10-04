@@ -73,6 +73,12 @@ pub enum MutationOperatorType {
     /// Return Value Replacement (alternative naming)
     ReturnValueReplacement,
 
+    /// Unary Operator Replacement (!, -, ~)
+    UnaryReplacement,
+
+    /// Custom operator (language-specific)
+    Custom(String),
+
     /// None (for testing)
     None,
 }

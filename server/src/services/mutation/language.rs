@@ -81,6 +81,12 @@ impl LanguageRegistry {
         self.register(Arc::new(CppAdapter::new()));
     }
 
+    /// Register WASM adapter
+    pub fn register_wasm(&mut self) {
+        use crate::services::mutation::WasmAdapter;
+        self.register(Arc::new(WasmAdapter::new()));
+    }
+
     /// Detect language from file path
     pub fn detect_language(&self, path: &Path) -> Option<Arc<dyn LanguageAdapter>> {
         let extension = path.extension()?.to_str()?;

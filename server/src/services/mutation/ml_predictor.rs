@@ -195,6 +195,8 @@ impl MutantFeatures {
             MutationOperatorType::BoundaryValue => 9.0,
             MutationOperatorType::ExceptionHandlerRemoval => 10.0,
             MutationOperatorType::ReturnValueReplacement => 11.0,
+            MutationOperatorType::UnaryReplacement => 12.0,
+            MutationOperatorType::Custom(_) => 13.0,
             MutationOperatorType::None => 0.0,
         }
     }
