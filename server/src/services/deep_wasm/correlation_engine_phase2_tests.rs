@@ -235,7 +235,7 @@ mod line_program_integration_tests {
 #[cfg(test)]
 mod enhanced_confidence_scoring_tests {
     use crate::services::deep_wasm::correlation_engine::CorrelationEngine;
-    use crate::services::deep_wasm::{DwarfDebugEntry, Location, SourceMapEntry};
+    
 
     #[test]
     #[cfg(feature = "deep-wasm")]

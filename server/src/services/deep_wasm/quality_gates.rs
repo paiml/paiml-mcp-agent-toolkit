@@ -145,6 +145,6 @@ mod tests {
         assert!(result.is_ok());
         let gate_results = result.unwrap();
         assert!(!gate_results.passed);
-        assert!(gate_results.violations.len() > 0);
+        assert!(!gate_results.violations.is_empty());
     }
 }

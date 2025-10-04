@@ -29,8 +29,8 @@ struct ExecutionState {
 
 #[derive(Debug, Clone)]
 struct CheckpointData {
-    completed_steps: Vec<String>,
-    current_level: usize,
+    _completed_steps: Vec<String>,
+    _current_level: usize,
 }
 
 impl Default for ExecutionState {
@@ -627,8 +627,8 @@ impl DefaultWorkflowExecutor {
 
         if let Some(state) = self.execution_states.write().get_mut(&execution_id) {
             state.checkpoint = Some(CheckpointData {
-                completed_steps,
-                current_level,
+                _completed_steps: completed_steps,
+                _current_level: current_level,
             });
         }
 

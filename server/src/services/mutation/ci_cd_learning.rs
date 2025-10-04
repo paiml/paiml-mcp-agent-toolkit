@@ -8,7 +8,7 @@ use super::ml_predictor::{SurvivabilityPredictor, TrainingData};
 use super::types::*;
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use chrono::{DateTime, Utc};
 
 /// CI/CD learning configuration

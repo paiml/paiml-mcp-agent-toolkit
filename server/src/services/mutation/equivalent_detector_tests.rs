@@ -6,7 +6,7 @@
 mod equivalent_detector_red_tests {
     use crate::services::mutation::{
         Mutant, MutantStatus, MutationOperatorType, SourceLocation,
-        EquivalentMutantDetector, EquivalenceFeatures, EquivalenceResult, EquivalenceTrainingData,
+        EquivalentMutantDetector, EquivalenceFeatures, EquivalenceTrainingData,
     };
 
     #[test]
