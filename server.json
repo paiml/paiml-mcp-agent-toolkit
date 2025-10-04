@@ -6,8 +6,8 @@
   "license": "MIT",
   "homepage": "https://github.com/paiml/paiml-mcp-agent-toolkit",
   "repository": {
-    "source": "https://github.com/paiml/paiml-mcp-agent-toolkit",
-    "url": "https://github.com/paiml/paiml-mcp-agent-toolkit"
+    "url": "",
+    "source": ""
   },
   "packages": [
     {
