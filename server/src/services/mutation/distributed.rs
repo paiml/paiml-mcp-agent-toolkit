@@ -6,7 +6,7 @@
 
 use super::types::*;
 use super::language::LanguageAdapter;
-use anyhow::{Context, Result};
+use anyhow::Result;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use tokio::sync::{mpsc, Semaphore};

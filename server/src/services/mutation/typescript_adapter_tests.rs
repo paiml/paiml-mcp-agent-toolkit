@@ -100,7 +100,7 @@ FAIL src/div.test.ts
         "#;
 
         let failures = parse_test_failures(stdout, "");
-        assert!(failures.len() >= 1, "Must detect at least 1 failure");
+        assert!(!failures.is_empty(), "Must detect at least 1 failure");
     }
 
     #[test]

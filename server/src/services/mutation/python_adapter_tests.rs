@@ -116,7 +116,7 @@ FAILED tests/test_math.py::test_subtract - AssertionError: assert 3 == 2
         "#;
 
         let failures = parse_test_failures(stdout, "");
-        assert!(failures.len() >= 1, "Must detect at least 1 failure");
+        assert!(!failures.is_empty(), "Must detect at least 1 failure");
     }
 
     // ===== Phase 3: Integration (RED) =====
