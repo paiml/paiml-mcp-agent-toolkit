@@ -172,6 +172,9 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
         #[cfg(feature = "deep-wasm")]
         AnalyzeCommands::DeepWasm { .. } => route_deep_wasm_analysis(cmd).await,
 
+        // Mutation testing
+        AnalyzeCommands::Mutate { .. } => route_mutation_testing(cmd).await,
+
         // System commands
         AnalyzeCommands::Makefile { .. } => route_system_analysis(cmd).await,
     }
@@ -1057,6 +1060,45 @@ async fn route_deep_wasm_analysis(cmd: AnalyzeCommands) -> Result<()> {
         .await
     } else {
         unreachable!("Expected DeepWasm command")
+    }
+}
+
+/// Route Mutation Testing command
+async fn route_mutation_testing(cmd: AnalyzeCommands) -> Result<()> {
+    if let AnalyzeCommands::Mutate {
+        path,
+        operators,
+        ml_predict,
+        distributed,
+        workers,
+        progress,
+        min_score,
+        ci_learning,
+        ci_provider,
+        auto_train_threshold,
+        format,
+        output,
+    } = cmd
+    {
+        println!("🧬 Mutation Testing");
+        println!("Path: {}", path.display());
+        if let Some(ref ops) = operators {
+            println!("Operators: {}", ops.join(", "));
+        }
+        println!("ML Prediction: {}", ml_predict);
+        println!("Distributed: {} (workers: {})", distributed, workers);
+
+        // TODO: Implement actual mutation testing execution
+        // This would integrate with the mutation testing engine at:
+        // server/src/services/mutation/
+
+        eprintln!("⚠️  Mutation testing execution not yet implemented in CLI");
+        eprintln!("   The mutation testing library is available but needs CLI integration");
+        eprintln!("   Use the MCP tool 'mutation_test' for now");
+
+        Ok(())
+    } else {
+        unreachable!("Expected Mutate command")
     }
 }
 

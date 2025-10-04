@@ -1920,7 +1920,8 @@ impl CliAdapter {
             | AnalyzeCommands::IncrementalCoverage { .. }
             | AnalyzeCommands::AssemblyScript { .. }
             | AnalyzeCommands::WebAssembly { .. }
-            | AnalyzeCommands::Wasm { .. } => AnalyzeCommandCategory::Specialized,
+            | AnalyzeCommands::Wasm { .. }
+            | AnalyzeCommands::Mutate { .. } => AnalyzeCommandCategory::Specialized,
 
             #[cfg(feature = "deep-wasm")]
             AnalyzeCommands::DeepWasm { .. } => AnalyzeCommandCategory::Specialized,

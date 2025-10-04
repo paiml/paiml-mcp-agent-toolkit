@@ -6,6 +6,7 @@ pub mod service_registry;
 pub mod tools;
 #[cfg(feature = "deep-wasm")]
 pub mod deep_wasm_tools;
+pub mod mutation_tools;
 pub mod transport;
 
 #[cfg(test)]
