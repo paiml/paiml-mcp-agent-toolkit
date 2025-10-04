@@ -111,7 +111,7 @@ mod ml_integration_tests {
         predictor.train(&initial_data).unwrap();
 
         let test_mutant = create_arithmetic_mutant();
-        let initial_prediction = predictor.predict(&test_mutant).unwrap();
+        let _initial_prediction = predictor.predict(&test_mutant).unwrap();
 
         // Simulate mutation testing run - collect new data
         let new_results = vec![

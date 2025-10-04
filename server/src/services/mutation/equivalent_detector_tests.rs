@@ -209,7 +209,7 @@ mod equivalent_detector_red_tests {
         let mut detector = EquivalentMutantDetector::new();
         detector.train(&create_basic_training_data()).unwrap();
 
-        let initial_accuracy = detector.get_accuracy_estimate();
+        let _initial_accuracy = detector.get_accuracy_estimate();
 
         // Add new equivalence patterns
         let new_patterns = vec![

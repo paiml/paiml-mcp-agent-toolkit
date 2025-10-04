@@ -415,7 +415,7 @@ mod tests {
 
     #[test]
     fn test_training_batch_creation() {
-        let metadata = create_test_metadata();
+        let _metadata = create_test_metadata();
         let mutant = create_test_mutant();
 
         let results = vec![MutationResult {
@@ -463,7 +463,7 @@ mod tests {
     async fn test_collect_training_data() {
         let config = create_test_config();
         let mut manager = CiCdLearningManager::new(config);
-        let metadata = create_test_metadata();
+        let _metadata = create_test_metadata();
         let mutant = create_test_mutant();
 
         let results = vec![
