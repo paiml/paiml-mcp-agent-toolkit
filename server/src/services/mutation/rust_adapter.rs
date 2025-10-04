@@ -42,10 +42,14 @@ impl LanguageAdapter for RustAdapter {
 
     fn mutation_operators(&self) -> Vec<Box<dyn MutationOperator>> {
         vec![
+            // Phase 1-4 Operators
             Box::new(ArithmeticOperatorReplacement),
             Box::new(RelationalOperatorReplacement),
             Box::new(ConditionalOperatorReplacement),
             Box::new(UnaryOperatorReplacement),
+            // Phase 5 Advanced Operators
+            Box::new(ConstantReplacementOperator),
+            Box::new(StatementDeletionOperator),
         ]
     }
 
@@ -163,11 +167,14 @@ mod tests {
         let adapter = RustAdapter::new();
         let operators = adapter.mutation_operators();
 
-        assert_eq!(operators.len(), 4);
+        // Phase 5: Now includes 2 advanced operators (CRR, SDL)
+        assert_eq!(operators.len(), 6);
         assert_eq!(operators[0].name(), "AOR");
         assert_eq!(operators[1].name(), "ROR");
         assert_eq!(operators[2].name(), "COR");
         assert_eq!(operators[3].name(), "UOR");
+        assert_eq!(operators[4].name(), "CRR"); // Phase 5 Advanced
+        assert_eq!(operators[5].name(), "SDL"); // Phase 5 Advanced
     }
 
     #[test]

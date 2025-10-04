@@ -50,7 +50,7 @@ mod advanced_operators_red_tests {
     #[test]
     fn red_sdo_must_have_correct_name() {
         let operator = StatementDeletionOperator;
-        assert_eq!(operator.name(), "SDO");
+        assert_eq!(operator.name(), "SDL"); // Phase 5: Changed from SDO to SDL per spec
     }
 
     #[test]
