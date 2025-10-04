@@ -81,25 +81,6 @@ jobs:
       env:
         NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-    - name: Wait for npm package availability
-      if: ${{ !github.event.inputs.dry_run }}
-      run: |
-        echo "Waiting 30 seconds for npm package to be available..."
-        sleep 30
-
-    - name: Install MCP Publisher
-      if: ${{ !github.event.inputs.dry_run }}
-      run: |
-        curl -L "https://github.com/modelcontextprotocol/registry/releases/download/v1.2.3/mcp-publisher_1.2.3_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz
-
-    - name: Login to MCP Registry
-      if: ${{ !github.event.inputs.dry_run }}
-      run: ./mcp-publisher login github-oidc
-
-    - name: Publish to MCP Registry
-      if: ${{ !github.event.inputs.dry_run }}
-      run: ./mcp-publisher publish
-
     - name: Commit npm updates
       run: |
         git config --local user.email "action@github.com"
@@ -238,9 +219,39 @@ jobs:
         git commit -m "debian: Update to v${{ needs.prepare.outputs.version }}" || exit 0
         git push
 
+  # Publish to MCP Registry (after crates.io)
+  publish-mcp:
+    needs: prepare
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write  # Required for OIDC authentication
+      contents: read
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Wait for crates.io availability
+      if: ${{ !github.event.inputs.dry_run }}
+      run: |
+        echo "Waiting 60 seconds for crates.io to index the package..."
+        sleep 60
+
+    - name: Install MCP Publisher
+      if: ${{ !github.event.inputs.dry_run }}
+      run: |
+        curl -L "https://github.com/modelcontextprotocol/registry/releases/download/v1.2.3/mcp-publisher_1.2.3_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz
+
+    - name: Login to MCP Registry
+      if: ${{ !github.event.inputs.dry_run }}
+      run: ./mcp-publisher login github-oidc
+
+    - name: Publish to MCP Registry
+      if: ${{ !github.event.inputs.dry_run }}
+      run: ./mcp-publisher publish
+
   # Summary and next steps
   summary:
-    needs: [prepare, update-npm, update-homebrew, update-aur, update-chocolatey, update-debian]
+    needs: [prepare, update-npm, update-homebrew, update-aur, update-chocolatey, update-debian, publish-mcp]
     runs-on: ubuntu-latest
     if: always()
     steps:
