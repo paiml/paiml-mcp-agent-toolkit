@@ -2,7 +2,7 @@
 //!
 //! EXTREME TDD: GREEN PHASE - Minimal implementation to pass RED tests
 
-use super::{Mutant, MutationOperatorType};
+use super::Mutant;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -207,31 +207,31 @@ impl EquivalentMutantDetector {
         let features = EquivalenceFeatures::from_mutant_pair(mutant, original);
 
         // Check for known equivalence patterns
-        let mut is_equivalent = false;
-        let mut confidence = 0.0;
-        let mut reason = String::new();
         let patterns = features.operator_patterns.clone();
 
-        // Identity operations
-        if features.has_identity_ops {
-            is_equivalent = true;
-            confidence = 0.9;
-            reason = "Contains identity operation (e.g., +0, *1, -0, /1)".to_string();
-        }
-        // Boolean tautology
-        else if features.has_tautology {
-            is_equivalent = true;
-            confidence = 0.85;
-            reason = "Contains boolean tautology (e.g., x || true → true)".to_string();
-        }
-        // Commutative swap
-        else if features.has_commutative {
-            is_equivalent = true;
-            confidence = 0.8;
-            reason = "commutative operation swap (e.g., a + b → b + a)".to_string();
-        }
-        // Pattern-based detection
-        else {
+        let (is_equivalent, confidence, reason) = if features.has_identity_ops {
+            // Identity operations
+            (
+                true,
+                0.9,
+                "Contains identity operation (e.g., +0, *1, -0, /1)".to_string(),
+            )
+        } else if features.has_tautology {
+            // Boolean tautology
+            (
+                true,
+                0.85,
+                "Contains boolean tautology (e.g., x || true → true)".to_string(),
+            )
+        } else if features.has_commutative {
+            // Commutative swap
+            (
+                true,
+                0.8,
+                "commutative operation swap (e.g., a + b → b + a)".to_string(),
+            )
+        } else {
+            // Pattern-based detection
             let mut total_score = 0.0;
             let mut pattern_count = 0;
 
@@ -244,15 +244,19 @@ impl EquivalentMutantDetector {
 
             if pattern_count > 0 {
                 let avg_score = total_score / pattern_count as f64;
-                is_equivalent = avg_score > 0.6;
-                confidence = avg_score;
-                reason = format!("Pattern-based detection (score: {:.2})", avg_score);
+                (
+                    avg_score > 0.6,
+                    avg_score,
+                    format!("Pattern-based detection (score: {:.2})", avg_score),
+                )
             } else {
-                is_equivalent = false;
-                confidence = 0.5;
-                reason = "No known equivalence patterns detected".to_string();
+                (
+                    false,
+                    0.5,
+                    "No known equivalence patterns detected".to_string(),
+                )
             }
-        }
+        };
 
         Ok(EquivalenceResult {
             is_equivalent,
@@ -413,13 +417,13 @@ fn detect_identity_operations(original: &str, mutated: &str) -> bool {
 fn detect_boolean_tautology(original: &str, mutated: &str) -> bool {
     // x || true → true (tautology simplification)
     let or_true = original.contains("|| true")
-        && mutated.trim().ends_with("true")
+        && (mutated.contains("{ true }") || mutated.trim().ends_with("true"))
         && mutated.len() < original.len()
         && !mutated.contains("||");
 
     // x && false → false (contradiction simplification)
     let and_false = original.contains("&& false")
-        && mutated.trim().ends_with("false")
+        && (mutated.contains("{ false }") || mutated.trim().ends_with("false"))
         && mutated.len() < original.len()
         && !mutated.contains("&&");
 
@@ -452,11 +456,10 @@ fn detect_commutative_swap(original: &str, mutated: &str) -> bool {
 
     // Check each potential commutative operation
     for i in 0..orig_tokens.len() - 2 {
-        if is_commutative_op(orig_tokens[i + 1]) {
-            if has_swapped_operands(&orig_tokens, &mut_tokens, i) {
+        if is_commutative_op(orig_tokens[i + 1])
+            && has_swapped_operands(&orig_tokens, &mut_tokens, i) {
                 return true;
             }
-        }
     }
 
     false
@@ -506,11 +509,10 @@ fn extract_operator_patterns(original: &str, mutated: &str) -> Vec<String> {
     }
 
     // Associative patterns
-    if original.contains("(") && mutated.contains("(") {
-        if original.matches('(').count() == mutated.matches('(').count() {
+    if original.contains("(") && mutated.contains("(")
+        && original.matches('(').count() == mutated.matches('(').count() {
             patterns.push("associative_grouping".to_string());
         }
-    }
 
     patterns
 }

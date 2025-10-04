@@ -82,11 +82,11 @@ impl McpTool for AnalyzeTool {
         // Create message with priority
         let priority = params["priority"]
             .as_str()
-            .and_then(|p| match p {
-                "critical" => Some(Priority::Critical),
-                "high" => Some(Priority::High),
-                "low" => Some(Priority::Low),
-                _ => Some(Priority::Normal),
+            .map(|p| match p {
+                "critical" => Priority::Critical,
+                "high" => Priority::High,
+                "low" => Priority::Low,
+                _ => Priority::Normal,
             })
             .unwrap_or(Priority::Normal);
 
@@ -208,11 +208,11 @@ impl McpTool for TransformTool {
         // Create message with priority
         let priority = params["priority"]
             .as_str()
-            .and_then(|p| match p {
-                "critical" => Some(Priority::Critical),
-                "high" => Some(Priority::High),
-                "low" => Some(Priority::Low),
-                _ => Some(Priority::Normal),
+            .map(|p| match p {
+                "critical" => Priority::Critical,
+                "high" => Priority::High,
+                "low" => Priority::Low,
+                _ => Priority::Normal,
             })
             .unwrap_or(Priority::Normal);
 
