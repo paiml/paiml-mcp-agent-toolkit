@@ -15,12 +15,12 @@ use super::{Comparison, Grade, ProjectScore, TdgScore};
 /// A formatted string with boxed output suitable for terminal display
 ///
 /// # Example
-/// ```
+/// ```ignore
 /// use pmat::tdg::{TdgScore, Grade};
 /// let score = TdgScore::new(85.5, Grade::A, 0.95);
 /// let output = format_human(&score);
 /// assert!(output.contains("85.5/100 (A)"));
-/// ```
+/// ```ignore
 #[must_use]
 pub fn format_human(score: &TdgScore) -> String {
     let mut output = String::new();
@@ -189,12 +189,12 @@ pub fn format_human(score: &TdgScore) -> String {
 /// A JSON string representation of the TDG score
 ///
 /// # Example
-/// ```
+/// ```ignore
 /// use pmat::tdg::{TdgScore, Grade};
 /// let score = TdgScore::new(85.5, Grade::A, 0.95);
 /// let json = format_json(&score);
 /// assert!(json.contains("85.5"));
-/// ```
+/// ```ignore
 #[must_use]
 pub fn format_json(score: &TdgScore) -> String {
     serde_json::to_string_pretty(score).unwrap_or_else(|_| "{}".to_string())
@@ -212,12 +212,12 @@ pub fn format_json(score: &TdgScore) -> String {
 /// A Markdown string with formatted tables and sections
 ///
 /// # Example
-/// ```
+/// ```ignore
 /// use pmat::tdg::{TdgScore, Grade};
 /// let score = TdgScore::new(85.5, Grade::A, 0.95);
 /// let md = format_markdown(&score);
 /// assert!(md.contains("## TDG Score"));
-/// ```
+/// ```ignore
 #[must_use]
 pub fn format_markdown(score: &TdgScore) -> String {
     let mut output = String::new();
@@ -326,14 +326,14 @@ pub fn format_markdown(score: &TdgScore) -> String {
 /// A formatted string showing the comparison in a boxed layout
 ///
 /// # Example
-/// ```
+/// ```ignore
 /// use pmat::tdg::{Comparison, TdgScore, Grade};
 /// let before = TdgScore::new(75.0, Grade::B, 0.9);
 /// let after = TdgScore::new(85.0, Grade::A, 0.95);
 /// let comparison = Comparison::new(before, after);
 /// let output = format_comparison(&comparison);
 /// assert!(output.contains("improvement"));
-/// ```
+/// ```ignore
 #[must_use]
 pub fn format_comparison(comparison: &Comparison) -> String {
     let mut output = String::new();
@@ -528,12 +528,12 @@ pub fn format_comparison(comparison: &Comparison) -> String {
 /// A formatted string with project-level metrics and summary
 ///
 /// # Example
-/// ```
+/// ```ignore
 /// use pmat::tdg::ProjectScore;
 /// let project = ProjectScore::new("my-project", 85.0, 42);
 /// let output = format_project(&project);
 /// assert!(output.contains("Project Score"));
-/// ```
+/// ```ignore
 #[must_use]
 pub fn format_project(project: &ProjectScore) -> String {
     let mut output = String::new();

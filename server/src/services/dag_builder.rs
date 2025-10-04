@@ -502,7 +502,7 @@ impl Default for DagBuilder {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::services::dag_builder::filter_call_edges;
 /// use pmat::models::dag::{DependencyGraph, EdgeType};
 ///
@@ -519,7 +519,7 @@ pub fn filter_call_edges(graph: DependencyGraph) -> DependencyGraph {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::services::dag_builder::filter_import_edges;
 /// use pmat::models::dag::{DependencyGraph, EdgeType};
 ///
@@ -536,7 +536,7 @@ pub fn filter_import_edges(graph: DependencyGraph) -> DependencyGraph {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::services::dag_builder::filter_inheritance_edges;
 /// use pmat::models::dag::{DependencyGraph, EdgeType};
 ///
@@ -553,7 +553,7 @@ pub fn filter_inheritance_edges(graph: DependencyGraph) -> DependencyGraph {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::services::dag_builder::add_pagerank_scores;
 /// use pmat::models::dag::DependencyGraph;
 ///

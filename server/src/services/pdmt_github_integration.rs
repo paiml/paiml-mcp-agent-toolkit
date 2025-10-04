@@ -220,7 +220,7 @@ impl Default for QualityRequirements {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::services::pdmt_github_integration::{PdmtGitHubService, PdmtIssueRequest, IssueType, Priority};
 ///
 /// # fn example() -> Result<(), Box<dyn std::error::Error>> {

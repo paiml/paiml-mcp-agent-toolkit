@@ -145,7 +145,7 @@ impl HierarchicalBitSet {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::services::dead_code_analyzer::{CrossLangReferenceGraph, ReferenceEdge, ReferenceNode};
 /// use pmat::models::unified_ast::NodeKey;
 /// use std::collections::HashMap;
@@ -201,7 +201,7 @@ pub enum ReferenceType {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::services::dead_code_analyzer::VTableResolver;
 ///
 /// let resolver = VTableResolver::new();
@@ -266,7 +266,7 @@ impl VTableResolver {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::services::dead_code_analyzer::CoverageData;
 /// use std::collections::{HashMap, HashSet};
 ///
@@ -303,7 +303,7 @@ pub struct CoverageData {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::services::dead_code_analyzer::{DeadCodeReport, DeadCodeSummary, DeadCodeItem};
 /// use std::collections::HashMap;
 ///

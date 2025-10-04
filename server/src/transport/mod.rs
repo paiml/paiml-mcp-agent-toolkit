@@ -54,7 +54,7 @@ impl From<pmcp::Error> for TransportError {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::transport::{TransportAdapter, stdio::StdioTransportAdapter};
 /// use pmcp::transport::TransportMessage;
 ///

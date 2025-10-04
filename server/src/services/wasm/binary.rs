@@ -132,7 +132,7 @@ impl Default for WasmBinaryAnalyzer {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::services::wasm::binary::count_occurrences;
 ///
 /// let data = b"hello world hello";

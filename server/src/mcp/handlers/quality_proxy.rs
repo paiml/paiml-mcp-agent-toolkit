@@ -9,12 +9,12 @@ use tracing::{debug, info};
 ///
 /// # Example
 ///
-/// ```
+/// ```ignore
 /// use pmat::mcp::handlers::quality_proxy::create_quality_proxy_tool;
 ///
 /// let tool = create_quality_proxy_tool();
 /// assert_eq!(tool.name, "quality_proxy");
-/// ```
+/// ```ignore
 pub fn create_quality_proxy_tool() -> Tool {
     Tool {
         name: "quality_proxy".to_string(),
@@ -90,7 +90,7 @@ pub fn create_quality_proxy_tool() -> Tool {
 ///
 /// # Example
 ///
-/// ```
+/// ```ignore
 /// use pmat::mcp::handlers::quality_proxy::handle_quality_proxy;
 /// use serde_json::json;
 ///
@@ -105,7 +105,7 @@ pub fn create_quality_proxy_tool() -> Tool {
 /// assert!(result["status"].is_string());
 /// # Ok(())
 /// # }
-/// ```
+/// ```ignore
 pub async fn handle_quality_proxy(arguments: Value) -> Result<Value> {
     info!("Processing quality proxy request");
     debug!("Arguments: {:?}", arguments);

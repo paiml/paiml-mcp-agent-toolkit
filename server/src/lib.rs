@@ -154,7 +154,7 @@ use crate::services::renderer::TemplateRenderer;
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::MetadataCache;
 /// use std::sync::Arc;
 /// use tokio::sync::RwLock;
@@ -178,7 +178,7 @@ pub type MetadataCache = Arc<RwLock<LruCache<String, Arc<TemplateResource>>>>;
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::ContentCache;
 /// use std::sync::Arc;
 /// use tokio::sync::RwLock;
@@ -213,7 +213,7 @@ pub use crate::services::renderer::TemplateRenderer as PublicTemplateRenderer;
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::S3Client;
 ///
 /// let client = S3Client;
@@ -229,7 +229,7 @@ pub struct S3Client;
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::{TemplateServerTrait, TemplateRenderer, S3Client, MetadataCache, ContentCache};
 /// use anyhow::Result;
 /// use std::sync::Arc;

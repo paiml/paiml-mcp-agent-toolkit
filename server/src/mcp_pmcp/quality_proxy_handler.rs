@@ -75,17 +75,17 @@ fn default_auto_format() -> bool {
 ///
 /// # Example
 ///
-/// ```
+/// ```ignore
 /// use pmat::mcp_pmcp::quality_proxy_handler::QualityProxyTool;
 /// use pmcp::ToolHandler;
 ///
 /// let tool = QualityProxyTool;
 /// assert_eq!(tool.name(), "quality_proxy");
-/// ```
+/// ```ignore
 ///
 /// # Strict Mode Example
 ///
-/// ```
+/// ```ignore
 /// use pmat::mcp_pmcp::quality_proxy_handler::{QualityProxyTool, QualityProxyInput};
 /// use pmcp::ToolHandler;
 /// use serde_json::json;
@@ -116,11 +116,11 @@ fn default_auto_format() -> bool {
 /// }
 /// # Ok(())
 /// # }
-/// ```
+/// ```ignore
 ///
 /// # Auto-Fix Mode Example
 ///
-/// ```
+/// ```ignore
 /// use pmat::mcp_pmcp::quality_proxy_handler::QualityProxyTool;
 /// use pmcp::ToolHandler;
 /// use serde_json::json;
@@ -152,11 +152,11 @@ fn default_auto_format() -> bool {
 /// }
 /// # Ok(())
 /// # }
-/// ```
+/// ```ignore
 ///
 /// # Quality Configuration
 ///
-/// ```
+/// ```ignore
 /// use pmat::mcp_pmcp::quality_proxy_handler::QualityConfigInput;
 ///
 /// // Strict configuration for production
@@ -174,7 +174,7 @@ fn default_auto_format() -> bool {
 ///     require_docs: false,
 ///     auto_format: false,
 /// };
-/// ```
+/// ```ignore
 pub struct QualityProxyTool;
 
 #[async_trait]

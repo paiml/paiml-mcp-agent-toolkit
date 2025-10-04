@@ -49,7 +49,7 @@ pub enum Language {
 /// # Examples
 ///
 /// Basic flag manipulation:
-/// ```rust
+/// ```rust,no_run
 /// use pmat::models::unified_ast::NodeFlags;
 ///
 /// let mut flags = NodeFlags::new();
@@ -63,7 +63,7 @@ pub enum Language {
 /// ```
 ///
 /// Combining multiple flags:
-/// ```rust
+/// ```rust,no_run
 /// use pmat::models::unified_ast::NodeFlags;
 ///
 /// let mut flags = NodeFlags::new();

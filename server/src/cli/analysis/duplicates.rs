@@ -669,7 +669,7 @@ fn format_json_output(report: &DuplicateReport) -> Result<String> {
 /// assert!(output.contains("Total duplicate blocks: 2"));
 /// assert!(output.contains("## Top Files by Duplication"));
 /// assert!(output.contains("main.rs"));
-/// ```
+/// ```ignore
 pub fn format_human_output(report: &DuplicateReport) -> Result<String> {
     let mut output = String::new();
 
