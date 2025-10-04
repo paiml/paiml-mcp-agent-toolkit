@@ -311,9 +311,45 @@
 
 ---
 
-## 🎯 Next Priority Options (4 Choices)
+## 🎯 Next Priority Options (5 Choices)
 
-### Option 1: Mutation Testing Phase 5 - Production Hardening ⭐ NEXT
+### Option 1: PMAT + PForge Agent Scaffolding Integration ⭐ NEW
+**Status**: Not started
+**Impact**: Enable pmat to use pforge (from crates.io) for intelligent agent scaffolding
+**Dependencies**: pforge crate from crates.io
+
+**Work Required**:
+1. **PForge Dependency Integration** (1-2 days)
+   - Add pforge as a dependency in Cargo.toml
+   - Integrate pforge scaffolding API into pmat
+   - Pass agent specifications to pforge library
+   - Generate agent code into pmat workspace
+
+2. **Agent Template Generation** (1 day)
+   - Use pforge templates for common agent patterns
+   - Generate boilerplate agent code
+   - Create agent configuration files
+   - Set up agent dependencies
+
+3. **Publishing Integration** (1 day)
+   - Coordinate with MCP Registry publishing
+   - Use pforge for both local scaffolding and registry publishing
+   - Update publishing workflow to use pforge library
+   - CLI integration for seamless scaffolding
+
+**Files**:
+- `Cargo.toml` - Add pforge dependency
+- `server/src/pforge/` (new module)
+- `server/src/pforge/integration.rs`
+- `server/src/pforge/templates.rs`
+- CLI command: `pmat scaffold agent --name <name>`
+
+**Value**: Streamlines agent development, reduces boilerplate, improves consistency
+**Estimated ROI**: High - Accelerates agent creation workflow using published pforge crate
+
+---
+
+### Option 2: Mutation Testing Phase 5 - Production Hardening ⭐ RECOMMENDED
 **Status**: Phase 4.2 ML Model COMPLETE ✅ - Decision Tree with cross-validation
 **Impact**: Production-ready mutation testing with distributed execution
 **Builds On**: Completed Phase 4.2 ML model (v2.116.0)
@@ -374,7 +410,7 @@
 
 ---
 
-### Option 2: Workflow Executor Implementation (5-7 days)
+### Option 3: Workflow Executor Implementation (5-7 days)
 **Status**: Ready to start - DAG engine and Repository complete
 **Impact**: Complete end-to-end workflow execution with agent integration
 **Builds On**: Completed Sprint 9 (DAG + Repository)
@@ -416,7 +452,7 @@
 
 ---
 
-### Option 3: MCP Tool Enhancement & Completion (3-5 days)
+### Option 4: MCP Tool Enhancement & Completion (3-5 days)
 **Status**: 8/9 TODOs removed, final polish needed
 **Impact**: Production-ready MCP tools with full test coverage
 
@@ -456,7 +492,7 @@
 
 ---
 
-### Option 4: Technical Debt & Quality Sprint (4-6 days)
+### Option 5: Technical Debt & Quality Sprint (4-6 days)
 **Status**: Always available, continuous improvement
 **Impact**: Reduce complexity, clean TODOs, improve maintainability
 
@@ -500,18 +536,20 @@
 ## 📊 Recommended Priority Ranking
 
 ### Tier 1: High Value, Ready to Start
-1. **Option 1** (Workflow Executor) - Completes Sprint 9, enables production workflows
-2. **Option 2** (Deep WASM Phase 2) - Completes Deep WASM vision, high technical value
+1. **Option 1** (PMAT + PForge Agent Scaffolding) - NEW! Streamlines agent development workflow
+2. **Option 2** (Mutation Testing Phase 5) - Production hardening, distributed execution
+3. **Option 3** (Workflow Executor) - Completes Sprint 9, enables production workflows
 
 ### Tier 2: Polish & Quality
-3. **Option 3** (MCP Enhancement) - Production polish, requires Option 1 for full value
-4. **Option 4** (Technical Debt) - Continuous improvement, can run in parallel
+4. **Option 4** (MCP Enhancement) - Production polish, requires Option 3 for full value
+5. **Option 5** (Technical Debt) - Continuous improvement, can run in parallel
 
 ### Strategic Recommendations
-- **Fast Path**: Option 1 → Option 3 → Option 2 (workflows first, then WASM)
-- **Deep Tech Path**: Option 2 → Option 1 → Option 3 (WASM first, then workflows)
-- **Quality First**: Option 4 → Option 1 → Option 2 (clean house, then build)
-- **Balanced**: Option 1 (60%) + Option 4 (40%) in parallel
+- **Agent-First Path**: Option 1 → Option 3 → Option 4 (agent scaffolding first, then workflows)
+- **Testing-First Path**: Option 2 → Option 1 → Option 3 (mutation testing, then agent scaffolding)
+- **Workflow Path**: Option 3 → Option 1 → Option 4 (workflows first, then agent scaffolding)
+- **Quality First**: Option 5 → Option 1 → Option 2 (clean house, then build)
+- **Balanced**: Option 1 (40%) + Option 2 (40%) + Option 5 (20%) in parallel
 
 ### Blocked Options (Not Recommended Now)
 - ~~Option C (Ruchy WASM)~~ - Still BLOCKED by ruchy compiler issues
