@@ -1,5 +1,6 @@
 name: Multi-Ecosystem Package Distribution
 
+# Automated multi-ecosystem distribution with MCP registry support
 on:
   release:
     types: [published]
