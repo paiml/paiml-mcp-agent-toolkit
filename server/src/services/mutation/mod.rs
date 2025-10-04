@@ -3,6 +3,8 @@
 //! AST-based mutation testing and fuzzing system for language-agnostic
 //! test suite quality evaluation.
 
+#![allow(ambiguous_glob_reexports)]
+
 pub mod types;
 pub mod operators;
 pub mod language;
