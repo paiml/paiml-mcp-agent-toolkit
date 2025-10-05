@@ -138,3 +138,111 @@ fn test_scaffold_full_workflow() {
     assert!(project_dir.is_dir());
     assert!(project_dir.join(".git").exists());
 }
+
+// TICKET-PMAT-5004: Project structure generation tests
+
+#[test]
+fn test_scaffold_pforge_project() {
+    let temp_dir = TempDir::new().unwrap();
+    std::env::set_current_dir(temp_dir.path()).unwrap();
+
+    let config = ScaffoldConfig {
+        project_name: "my-agent".into(),
+        template_type: TemplateType::Agent { based_on: AgentFramework::Pforge },
+        features: vec![],
+        quality_gates: QualityGateConfig::default(),
+    };
+
+    let engine = ScaffoldEngine::new().unwrap();
+    let project_dir = engine.scaffold(config).unwrap();
+
+    // Verify directory structure
+    assert!(project_dir.join("src/handlers").exists());
+    assert!(project_dir.join("tests").exists());
+    assert!(project_dir.join("docs").exists());
+    assert!(project_dir.join(".git").exists());
+
+    // Verify files
+    assert!(project_dir.join("pforge.yaml").exists());
+    assert!(project_dir.join("Cargo.toml").exists());
+    assert!(project_dir.join("README.md").exists());
+    assert!(project_dir.join("src/handlers/example.rs").exists());
+
+    // Verify file contents
+    let cargo_toml = std::fs::read_to_string(project_dir.join("Cargo.toml")).unwrap();
+    assert!(cargo_toml.contains("name = \"my-agent\""));
+}
+
+#[test]
+fn test_scaffold_wasm_project() {
+    let temp_dir = TempDir::new().unwrap();
+    std::env::set_current_dir(temp_dir.path()).unwrap();
+
+    let config = ScaffoldConfig {
+        project_name: "my-wasm".into(),
+        template_type: TemplateType::Wasm { based_on: WasmFramework::WasmLabs },
+        features: vec![],
+        quality_gates: QualityGateConfig::default(),
+    };
+
+    let engine = ScaffoldEngine::new().unwrap();
+    let project_dir = engine.scaffold(config).unwrap();
+
+    // Verify directory structure
+    assert!(project_dir.join("src").exists());
+    assert!(project_dir.join("tests").exists());
+    assert!(project_dir.join("benches").exists());
+    assert!(project_dir.join(".git").exists());
+
+    // Verify files (WASM templates: Cargo.toml, Makefile, lib.rs, vfs.rs)
+    assert!(project_dir.join("Cargo.toml").exists());
+    assert!(project_dir.join("Makefile").exists());
+    assert!(project_dir.join("src/lib.rs").exists());
+    assert!(project_dir.join("src/vfs.rs").exists());
+
+    // Verify file contents
+    let cargo_toml = std::fs::read_to_string(project_dir.join("Cargo.toml")).unwrap();
+    assert!(cargo_toml.contains("name = \"my-wasm\""));
+    assert!(cargo_toml.contains("cdylib"));
+}
+
+#[test]
+fn test_create_project_structure_agent() {
+    let temp_dir = TempDir::new().unwrap();
+    let engine = ScaffoldEngine::new().unwrap();
+
+    let template_type = TemplateType::Agent { based_on: AgentFramework::Pforge };
+    engine.create_project_structure(temp_dir.path(), &template_type).unwrap();
+
+    assert!(temp_dir.path().join("src/handlers").exists());
+    assert!(temp_dir.path().join("tests").exists());
+    assert!(temp_dir.path().join("docs").exists());
+}
+
+#[test]
+fn test_create_project_structure_wasm() {
+    let temp_dir = TempDir::new().unwrap();
+    let engine = ScaffoldEngine::new().unwrap();
+
+    let template_type = TemplateType::Wasm { based_on: WasmFramework::WasmLabs };
+    engine.create_project_structure(temp_dir.path(), &template_type).unwrap();
+
+    assert!(temp_dir.path().join("src").exists());
+    assert!(temp_dir.path().join("tests").exists());
+    assert!(temp_dir.path().join("benches").exists());
+}
+
+#[test]
+fn test_write_file() {
+    let temp_dir = TempDir::new().unwrap();
+    let engine = ScaffoldEngine::new().unwrap();
+
+    let file_path = temp_dir.path().join("nested/dir/test.txt");
+    let content = "Hello, World!";
+
+    engine.write_file(&file_path, content).unwrap();
+
+    assert!(file_path.exists());
+    let read_content = std::fs::read_to_string(&file_path).unwrap();
+    assert_eq!(read_content, content);
+}
