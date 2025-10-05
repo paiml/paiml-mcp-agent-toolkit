@@ -5,7 +5,7 @@
 use anyhow::{Result, Context};
 use std::path::PathBuf;
 use crate::cli::OutputFormat;
-use crate::services::mutation::{MutationEngine, MutationConfig, RustAdapter};
+use crate::services::mutation::{MutationEngine, MutationConfig, RustAdapter, MutantExecutor, MutationScore};
 use std::sync::Arc;
 
 /// Handle mutation testing command
@@ -54,13 +54,28 @@ pub async fn handle_mutate(
 
     println!("✅ Generated {} mutants", mutants.len());
 
-    // Calculate basic statistics
-    let total_mutants = mutants.len();
+    if mutants.is_empty() {
+        println!("\n⚠️  No mutants generated - file may be too simple or no applicable operators");
+        return Ok(());
+    }
 
-    // For now, simulate mutation score (actual execution would run tests)
-    let simulated_killed = (total_mutants as f64 * 0.75) as usize;
-    let simulated_survived = total_mutants - simulated_killed;
-    let mutation_score = simulated_killed as f64 / total_mutants as f64;
+    // Execute tests on mutants
+    println!("\n🧪 Running tests on mutants...");
+    let work_dir = path.parent()
+        .and_then(|p| p.parent()) // Go up two levels to find cargo project root
+        .or_else(|| path.parent())
+        .unwrap_or(std::path::Path::new("."))
+        .to_path_buf();
+
+    let executor = MutantExecutor::new(work_dir)
+        .with_timeout(600); // 10 minute timeout per mutant
+
+    let results = executor.execute_mutants(&mutants).await
+        .context("Failed to execute mutants")?;
+
+    // Calculate mutation score from actual results
+    let score = MutationScore::from_results(&results);
+    let mutation_score = score.score;
 
     // Check minimum score threshold
     if let Some(min) = min_score {
@@ -78,17 +93,22 @@ pub async fn handle_mutate(
         OutputFormat::Json => {
             serde_json::json!({
                 "mutation_score": mutation_score,
-                "total_mutants": total_mutants,
-                "killed": simulated_killed,
-                "survived": simulated_survived,
+                "total_mutants": score.total,
+                "killed": score.killed,
+                "survived": score.survived,
+                "compile_errors": score.compile_errors,
+                "timeouts": score.timeouts,
+                "equivalent": score.equivalent,
                 "operators": operators.unwrap_or_else(|| vec!["AOR".to_string(), "ROR".to_string(), "COR".to_string(), "UOR".to_string()]),
-                "note": "Simulation mode - actual test execution not yet implemented",
-                "mutants": mutants.iter().take(10).map(|m| {
+                "results": results.iter().take(20).map(|r| {
                     serde_json::json!({
-                        "id": m.id,
-                        "operator": format!("{:?}", m.operator),
-                        "line": m.location.line,
-                        "column": m.location.column,
+                        "id": r.mutant.id,
+                        "operator": format!("{:?}", r.mutant.operator),
+                        "line": r.mutant.location.line,
+                        "column": r.mutant.location.column,
+                        "status": format!("{:?}", r.status),
+                        "test_failures": r.test_failures,
+                        "execution_time_ms": r.execution_time_ms,
                     })
                 }).collect::<Vec<_>>()
             })
@@ -98,10 +118,13 @@ pub async fn handle_mutate(
                 "summary": format!(
                     "Mutation Score: {:.2}% ({}/{} mutants killed)",
                     mutation_score * 100.0,
-                    simulated_killed,
-                    total_mutants
+                    score.killed,
+                    score.total
                 ),
-                "note": "Simulation mode - actual test execution not yet implemented"
+                "breakdown": format!(
+                    "Killed: {}, Survived: {}, Compile Errors: {}, Timeouts: {}, Equivalent: {}",
+                    score.killed, score.survived, score.compile_errors, score.timeouts, score.equivalent
+                )
             })
         }
     };
@@ -116,9 +139,16 @@ pub async fn handle_mutate(
         println!("{}", serde_json::to_string_pretty(&report)?);
     }
 
-    println!("\n⚠️  NOTE: This is simulation mode");
-    println!("   Actual test execution will be implemented in a future version");
-    println!("   Mutants have been generated successfully");
+    println!("\n✅ Mutation testing complete!");
+    println!("   Mutation score: {:.2}%", mutation_score * 100.0);
+    println!("   {} mutants killed, {} survived", score.killed, score.survived);
+
+    if score.compile_errors > 0 {
+        println!("   ⚠️  {} mutants caused compilation errors", score.compile_errors);
+    }
+    if score.timeouts > 0 {
+        println!("   ⏱️  {} mutants timed out", score.timeouts);
+    }
 
     Ok(())
 }

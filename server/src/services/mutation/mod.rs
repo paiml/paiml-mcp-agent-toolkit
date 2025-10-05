@@ -22,6 +22,7 @@ pub mod ml_predictor;
 pub mod equivalent_detector;
 pub mod distributed;
 pub mod ci_cd_learning;
+pub mod executor;
 
 #[cfg(test)]
 mod typescript_adapter_tests;
@@ -70,3 +71,4 @@ pub use ml_predictor::*;
 pub use equivalent_detector::*;
 pub use distributed::*;
 pub use ci_cd_learning::*;
+pub use executor::*;
