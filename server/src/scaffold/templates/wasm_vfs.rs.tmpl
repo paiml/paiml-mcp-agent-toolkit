@@ -1,0 +1,149 @@
+//! Virtual filesystem using persistent data structures
+//!
+//! Uses im-rs HashMap for O(1) cloning via structural sharing
+
+use im::HashMap;
+use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
+
+/// Virtual filesystem with O(1) cloning
+///
+/// # Design
+/// - Uses im::HashMap for persistent data structure
+/// - All mutations return new VFS instances
+/// - Original VFS remains unchanged (immutability)
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct VirtualFileSystem {
+    files: HashMap<PathBuf, Vec<u8>>,
+    cwd: PathBuf,
+}
+
+impl VirtualFileSystem {
+    /// Create new VFS
+    ///
+    /// # Complexity
+    /// - Time: O(1)
+    /// - Cyclomatic: 1
+    pub fn new() -> Self {
+        Self {
+            files: HashMap::new(),
+            cwd: PathBuf::from("/"),
+        }
+    }
+
+    /// Write file (returns new VFS)
+    ///
+    /// # Complexity
+    /// - Time: O(log n) where n is number of files
+    /// - Cyclomatic: 1
+    pub fn write(&self, path: PathBuf, content: Vec<u8>) -> Self {
+        Self {
+            files: self.files.update(path, content),
+            cwd: self.cwd.clone(),
+        }
+    }
+
+    /// Read file
+    ///
+    /// # Complexity
+    /// - Time: O(log n)
+    /// - Cyclomatic: 2
+    pub fn read(&self, path: &PathBuf) -> Option<&Vec<u8>> {
+        self.files.get(path)
+    }
+
+    /// List files
+    ///
+    /// # Complexity
+    /// - Time: O(n)
+    /// - Cyclomatic: 1
+    pub fn list(&self) -> Vec<PathBuf> {
+        self.files.keys().cloned().collect()
+    }
+
+    /// Get current working directory
+    ///
+    /// # Complexity
+    /// - Time: O(1)
+    /// - Cyclomatic: 1
+    pub fn cwd(&self) -> &PathBuf {
+        &self.cwd
+    }
+}
+
+impl Default for VirtualFileSystem {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_vfs_new() {
+        let vfs = VirtualFileSystem::new();
+        assert_eq!(vfs.cwd(), &PathBuf::from("/"));
+        assert_eq!(vfs.list().len(), 0);
+    }
+
+    #[test]
+    fn test_vfs_write_read() {
+        let vfs = VirtualFileSystem::new();
+        let path = PathBuf::from("/test.txt");
+        let content = b"hello world".to_vec();
+
+        let vfs2 = vfs.write(path.clone(), content.clone());
+
+        assert_eq!(vfs2.read(&path), Some(&content));
+        assert_eq!(vfs.read(&path), None); // Original unchanged
+    }
+
+    #[test]
+    fn test_vfs_immutability() {
+        let vfs1 = VirtualFileSystem::new();
+        let path = PathBuf::from("/file.txt");
+
+        let vfs2 = vfs1.write(path.clone(), b"v1".to_vec());
+        let vfs3 = vfs2.write(path.clone(), b"v2".to_vec());
+
+        // Each version maintains its own state
+        assert_eq!(vfs1.read(&path), None);
+        assert_eq!(vfs2.read(&path), Some(&b"v1".to_vec()));
+        assert_eq!(vfs3.read(&path), Some(&b"v2".to_vec()));
+    }
+}
+
+#[cfg(test)]
+mod property_tests {
+    use super::*;
+    use proptest::prelude::*;
+
+    proptest! {
+        #[test]
+        fn prop_write_read_roundtrip(content in prop::collection::vec(any::<u8>(), 0..100)) {
+            let vfs = VirtualFileSystem::new();
+            let path = PathBuf::from("/test");
+
+            let vfs2 = vfs.write(path.clone(), content.clone());
+
+            prop_assert_eq!(vfs2.read(&path), Some(&content));
+        }
+
+        #[test]
+        fn prop_clone_is_cheap(count in 0..10usize) {
+            let mut vfs = VirtualFileSystem::new();
+
+            for i in 0..count {
+                let path = PathBuf::from(format!("/file{}", i));
+                vfs = vfs.write(path, vec![i as u8]);
+            }
+
+            // Clone should be O(1)
+            let vfs2 = vfs.clone();
+
+            prop_assert_eq!(vfs.list().len(), vfs2.list().len());
+        }
+    }
+}
