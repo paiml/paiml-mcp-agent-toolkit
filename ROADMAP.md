@@ -30,13 +30,13 @@ Build a comprehensive system for scaffolding new projects (agents, WASM) and mai
 - Property tests for template generation
 - Mutation score >85%
 
-### Sprint 17: Maintenance Engine (2-3 days) - IN PROGRESS (60% complete)
+### Sprint 17: Maintenance Engine (2-3 days) - COMPLETE ✅
 **Focus:** Roadmap and ticket management
 - [x] TICKET-PMAT-5010: Roadmap parsing and validation (commit: 2c869ab)
 - [x] TICKET-PMAT-5011: Ticket management system (commit: f75cedb)
 - [x] TICKET-PMAT-5012: Roadmap-ticket linking verification (commit: 0187f68)
-- [ ] TICKET-PMAT-5013: Auto-update hooks (post-commit)
-- [ ] TICKET-PMAT-5014: Health score calculation
+- [x] TICKET-PMAT-5013: Auto-update hooks (post-commit) (commit: af0bf12)
+- [x] TICKET-PMAT-5014: Health score calculation (commit: 4c784cc)
 
 **Quality Gates:**
 - Parser handles malformed roadmaps gracefully
