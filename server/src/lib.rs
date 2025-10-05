@@ -113,6 +113,7 @@ pub mod demo;
 pub mod entropy; // Actionable entropy analysis
 pub mod graph; // Graph-theoretic analysis for dependency networks
 pub mod handlers;
+pub mod maintenance; // Roadmap and ticket maintenance system (Sprint 17)
 pub mod mcp_integration; // MCP protocol integration
 pub mod mcp_pmcp; // Now always available with pmcp 1.0
 pub mod mcp_server;
