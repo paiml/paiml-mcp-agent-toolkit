@@ -4,6 +4,7 @@
 //! Extended to include core scaffolding engine for project creation.
 
 pub mod agent;
+pub mod ci; // TICKET-PMAT-5022: GitHub Actions workflow generation
 pub mod config;
 pub mod errors;
 pub mod hooks; // TICKET-PMAT-5005
