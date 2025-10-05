@@ -1,18 +1,26 @@
-# Mutation Testing with ML Prediction
+# Mutation Testing with Empirical Execution
 
 ## Overview
 
-PMAT's mutation testing engine provides intelligent, ML-powered mutation testing with decision tree prediction. The system identifies weak spots in test suites by generating mutants and predicting their survivability using machine learning.
+PMAT's mutation testing engine provides **empirical mutation testing** with **actual test execution** and optional ML-powered prediction. The system identifies weak spots in test suites by generating mutants, executing your test suite on each mutant, and measuring which mutants are killed vs survived.
 
 ## Features
 
-### ✅ Completed (v2.121.0)
+### ✅ Completed (v2.130.0)
+
+#### Empirical Test Execution (v2.130.0) 🎯 NEW!
+- **Real Test Execution**: Runs `cargo test --lib` on each mutant
+- **Empirical Mutation Score**: Actual measurement, not simulation
+- **Detailed Results**: Shows which tests caught which mutants
+- **Status Classification**: Killed, Survived, CompileError, Timeout, Equivalent
+- **Execution Metrics**: Reports execution time per mutant
+- **Safety**: Automatic backup/restore of original source files
 
 #### Phase 1-4.2: Core Engine + ML Model
 - **6 Mutation Operators**: AOR, ROR, COR, UOR, CRR, SDL
-- **Decision Tree Classifier**: 75-95% accuracy with 18 features
+- **Decision Tree Classifier**: 75-95% accuracy with 18 features (optional)
 - **Multi-Language Support**: Rust, WebAssembly (WAT), with adapter system
-- **ML-Based Prediction**: Survivability prediction with confidence scoring
+- **ML-Based Prediction**: Survivability prediction with confidence scoring (optional)
 - **K-Fold Cross-Validation**: Empirical accuracy measurement (5-fold CV)
 - **Equivalent Mutant Detection**: Pattern-based equivalence detection
 
@@ -60,12 +68,41 @@ Automatically included with the `mutation-testing` feature:
 
 ## CLI Usage
 
-### Basic Mutation Testing
+### Basic Mutation Testing with Empirical Execution
 
-Run mutation testing on a Rust project:
+Run mutation testing with **actual test execution** on a Rust file:
 
 ```bash
-pmat mutate --path src/lib.rs
+pmat analyze mutate --path src/lib.rs
+```
+
+This will:
+1. Generate mutants from `src/lib.rs`
+2. For each mutant: backup original → write mutant → run `cargo test --lib` → restore original
+3. Report empirical mutation score with breakdown of killed/survived/errors
+
+**Example Output:**
+```
+🧬 Mutation Testing
+Path: src/lib.rs
+Operators: AOR, ROR, COR, UOR (default)
+
+📝 Generating mutants...
+✅ Generated 45 mutants
+
+🧪 Running tests on mutants...
+  [1/45] Testing mutant AOR_a3f1b2c...
+    ✅ Killed (1243ms)
+  [2/45] Testing mutant ROR_d4e5f6a...
+    ❌ Survived (982ms)
+  [3/45] Testing mutant COR_b1c2d3e...
+    🔧 CompileError (45ms)
+  ...
+
+✅ Mutation testing complete!
+   Mutation score: 73.33%
+   33 mutants killed, 12 survived
+   ⚠️  3 mutants caused compilation errors
 ```
 
 ### Full Pipeline with ML Prediction
