@@ -110,7 +110,19 @@ The following tests have been marked as `#[ignore]` to achieve stable coverage m
 - `tests::dead_code_timeout_test::test_dead_code_handles_empty_directory`
 - `tests::dead_code_timeout_test::test_dead_code_handles_single_file`
 
-**Total: 59 tests ignored for stable coverage**
+### Ruchy Parser Tests (10 tests) - RED tests for ruchy-ast feature
+- `ruchy_parser_tests::test_ruchy_parser_integration_simple_function`
+- `ruchy_parser_tests::test_ruchy_parser_integration_complex_function`
+- `ruchy_parser_tests::test_ruchy_parser_integration_match_expression`
+- `ruchy_parser_tests::test_ruchy_parser_integration_loops`
+- `ruchy_parser_tests::test_ruchy_parser_integration_multiple_functions`
+- `ruchy_parser_tests::test_ruchy_parser_integration_actor_model`
+- `ruchy_parser_tests::test_ruchy_parser_integration_syntax_error`
+- `ruchy_parser_tests::test_ruchy_parser_integration_empty_file`
+- `ruchy_parser_tests::test_ruchy_parser_integration_pipeline_operators`
+- `ruchy_parser_tests::test_ruchy_parser_integration_generic_functions`
+
+**Total: 69 tests ignored for stable coverage**
 
 These tests can be re-enabled by removing the `#[ignore]` attribute when they are fixed.
 - always walk of master.  we don't do branching
