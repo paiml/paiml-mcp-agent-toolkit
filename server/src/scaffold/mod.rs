@@ -6,6 +6,7 @@
 pub mod agent;
 pub mod config;
 pub mod errors;
+pub mod hooks; // TICKET-PMAT-5005
 pub mod template; // TICKET-PMAT-5002
 
 #[cfg(test)]
@@ -93,11 +94,11 @@ impl ScaffoldEngine {
         Ok(())
     }
 
-    /// Full scaffolding workflow (TICKET-PMAT-5004)
+    /// Full scaffolding workflow (TICKET-PMAT-5005)
     ///
     /// # Complexity
     /// - Time: O(n*m) where n=templates, m=avg template size
-    /// - Cyclomatic: 5 (validation, creation, git, structure, files)
+    /// - Cyclomatic: 6 (validation, creation, git, structure, files, hooks)
     pub fn scaffold(&self, config: ScaffoldConfig) -> Result<PathBuf> {
         self.validate_config(&config)?;
         let project_dir = self.create_directory(&config.project_name)?;
@@ -107,6 +108,9 @@ impl ScaffoldEngine {
         let registry = self.get_template_registry(&config.template_type);
         self.create_project_structure(&project_dir, &config.template_type)?;
         self.generate_files(&project_dir, &registry, &config)?;
+
+        // TICKET-PMAT-5005: Install pre-commit hooks
+        self.install_hooks(&project_dir, &config)?;
 
         Ok(project_dir)
     }
@@ -237,6 +241,25 @@ impl ScaffoldEngine {
 
         fs::write(path, content)
             .map_err(ScaffoldError::IoError)?;
+
+        Ok(())
+    }
+
+    /// Install pre-commit hooks (TICKET-PMAT-5005)
+    ///
+    /// # Complexity
+    /// - Time: O(1)
+    /// - Cyclomatic: 2
+    fn install_hooks(&self, project_dir: &Path, config: &ScaffoldConfig) -> Result<()> {
+        use crate::scaffold::hooks::{HookConfig, generate_pre_commit_hook, install_pre_commit_hook};
+
+        let hook_config = HookConfig {
+            project_type: config.template_type.clone(),
+            quality_gates: config.quality_gates.clone(),
+        };
+
+        let script = generate_pre_commit_hook(&hook_config)?;
+        install_pre_commit_hook(project_dir, &script)?;
 
         Ok(())
     }
