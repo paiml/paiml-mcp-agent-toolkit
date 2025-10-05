@@ -1,8 +1,29 @@
 # PMAT Agent System Roadmap
 
-## 🎯 CURRENT STATUS: v2.128.0 - Option 5 Complexity Reduction SHIPPED
+## 🎯 CURRENT STATUS: v2.129.0 - Option 5 Complexity Reduction Phase 2 SHIPPED
 
-### ✅ Latest Achievements (v2.128.0 - October 4, 2025)
+### ✅ Latest Achievements (v2.129.0 - October 5, 2025)
+
+**Option 5: Technical Debt & Quality - Complexity Refactoring (Phase 2)**
+- ✅ **Additional Complexity Reduction** (v2.129.0)
+  - Refactored `detect_boolean_tautology`: **CC=20 → CC=6** (70% reduction)
+  - Refactored `extract_coverage_from_output`: **CC=20 → CC=3** (85% reduction)
+  - Applied Extract Method pattern to both functions
+- ✅ **detect_boolean_tautology Refactoring** (v2.129.0)
+  - Split into 5 focused helper functions (1 per boolean pattern)
+  - Each helper: CC=1 (single responsibility)
+  - Patterns: OR-true tautology, AND-false contradiction, OR-false identity, AND-true identity, double negation
+- ✅ **extract_coverage_from_output Refactoring** (v2.129.0)
+  - Replaced nested if-let with functional `or_else()` chain
+  - Split into 3 functions: main + prefix extraction + percentage parsing
+  - Improved readability and error handling
+- ✅ **Summary of Phase 1-2** (v2.128.0-v2.129.0)
+  - 3 high-complexity functions refactored: CC=67 → CC=13 (81% total reduction)
+  - handle_deep_wasm: CC=27 → CC=4 (v2.128.0)
+  - detect_boolean_tautology: CC=20 → CC=6 (v2.129.0)
+  - extract_coverage_from_output: CC=20 → CC=3 (v2.129.0)
+
+### ✅ Previous Achievements (v2.128.0 - October 4, 2025)
 
 **Option 5: Technical Debt & Quality - Complexity Refactoring (Phase 1)**
 - ✅ **Complexity Analysis** (v2.128.0)
@@ -17,9 +38,6 @@
   - Created 10 helper functions with single responsibilities
   - Each helper function: CC=1-3 (all under threshold)
   - Improved testability, reusability, and maintainability
-- ✅ **Next Targets** (Pending)
-  - `detect_boolean_tautology` (CC=20) - server/src/services/mutation/equivalent_detector.rs
-  - `extract_coverage_from_output` (CC=20) - server/src/roadmap/quality.rs
 
 ### ✅ Previous Achievements (v2.127.0 - October 4, 2025)
 
