@@ -415,34 +415,48 @@ fn detect_identity_operations(original: &str, mutated: &str) -> bool {
 
 /// Detect boolean tautologies
 fn detect_boolean_tautology(original: &str, mutated: &str) -> bool {
-    // x || true → true (tautology simplification)
-    let or_true = original.contains("|| true")
+    detect_or_true_tautology(original, mutated)
+        || detect_and_false_contradiction(original, mutated)
+        || detect_or_false_identity(original, mutated)
+        || detect_and_true_identity(original, mutated)
+        || detect_double_negation(original, mutated)
+}
+
+/// Detects x || true → true (tautology simplification)
+fn detect_or_true_tautology(original: &str, mutated: &str) -> bool {
+    original.contains("|| true")
         && (mutated.contains("{ true }") || mutated.trim().ends_with("true"))
         && mutated.len() < original.len()
-        && !mutated.contains("||");
+        && !mutated.contains("||")
+}
 
-    // x && false → false (contradiction simplification)
-    let and_false = original.contains("&& false")
+/// Detects x && false → false (contradiction simplification)
+fn detect_and_false_contradiction(original: &str, mutated: &str) -> bool {
+    original.contains("&& false")
         && (mutated.contains("{ false }") || mutated.trim().ends_with("false"))
         && mutated.len() < original.len()
-        && !mutated.contains("&&");
+        && !mutated.contains("&&")
+}
 
-    // x || false → x (identity for OR)
-    let or_false = original.contains("|| false")
+/// Detects x || false → x (identity for OR)
+fn detect_or_false_identity(original: &str, mutated: &str) -> bool {
+    original.contains("|| false")
         && !mutated.contains("||")
         && !mutated.contains("false")
-        && mutated.len() < original.len();
+        && mutated.len() < original.len()
+}
 
-    // x && true → x (identity for AND)
-    let and_true = original.contains("&& true")
+/// Detects x && true → x (identity for AND)
+fn detect_and_true_identity(original: &str, mutated: &str) -> bool {
+    original.contains("&& true")
         && !mutated.contains("&&")
         && !mutated.contains("true")
-        && mutated.len() < original.len();
+        && mutated.len() < original.len()
+}
 
-    // !!x → x (double negation)
-    let double_neg = original.contains("!!") && !mutated.contains("!!");
-
-    or_true || and_false || or_false || and_true || double_neg
+/// Detects !!x → x (double negation elimination)
+fn detect_double_negation(original: &str, mutated: &str) -> bool {
+    original.contains("!!") && !mutated.contains("!!")
 }
 
 /// Detect commutative operation swap
