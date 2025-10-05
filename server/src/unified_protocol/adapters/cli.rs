@@ -98,6 +98,7 @@ impl CliAdapter {
             } => Self::decode_serve(host, *port, *cors),
             Commands::Diagnose(_)
             | Commands::QualityGate { .. }
+            | Commands::QualityGates { .. } // TICKET-PMAT-5023
             | Commands::Report { .. }
             | Commands::Enforce(_)
             | Commands::Refactor(_)
@@ -1758,7 +1759,7 @@ impl CliInput {
     fn get_command_category(command: &Commands) -> CommandCategory {
         match command {
             Commands::Generate { .. } | Commands::Scaffold { .. } => CommandCategory::Generation,
-            Commands::QualityGate { .. } | Commands::Report { .. } | Commands::ValidateDocs(_) => CommandCategory::Analysis,
+            Commands::QualityGate { .. } | Commands::QualityGates { .. } | Commands::Report { .. } | Commands::ValidateDocs(_) => CommandCategory::Analysis,
             Commands::Serve { .. }
             | Commands::Cache { .. }
             | Commands::Memory { .. }
