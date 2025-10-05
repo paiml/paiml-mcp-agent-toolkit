@@ -139,6 +139,80 @@ mod tests {
     // Expected: "fn process(x: i32) -> i32 { compute(x) }" (no validate call)
 }
 
+/// RED TEST: SDL should not delete method calls inside if conditions
+///
+/// v2.133.0: SDL deletes tool_names.insert(name) from "if !tool_names.insert(name)"
+/// Result: "if ! {" which is invalid syntax
+/// v2.134.0: Should only delete top-level statements, not expressions in conditions
+#[tokio::test]
+async fn test_sdl_does_not_delete_expressions_in_conditions() {
+    let source = r#"
+fn validate() -> Result<(), String> {
+    let mut set = std::collections::HashSet::new();
+    let name = "test";
+
+    if !set.insert(name) {
+        return Err("duplicate".to_string());
+    }
+
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_validate() {
+        assert!(validate().is_ok());
+    }
+}
+"#;
+
+    let mut temp_file = NamedTempFile::new().unwrap();
+    temp_file.write_all(source.as_bytes()).unwrap();
+    let temp_path = temp_file.path().to_path_buf();
+
+    let adapter = Arc::new(RustAdapter::new());
+    let config = MutationConfig::default();
+    let engine = MutationEngine::new(adapter, config);
+
+    let mutants = engine.generate_mutants_from_file(&temp_path).await.unwrap();
+
+    // Find SDL mutants
+    let sdl_mutants: Vec<_> = mutants
+        .iter()
+        .filter(|m| matches!(m.operator, pmat::services::mutation::MutationOperatorType::StatementDeletion))
+        .collect();
+
+    println!("Found {} SDL mutants", sdl_mutants.len());
+
+    // All SDL mutants should compile
+    for mutant in &sdl_mutants {
+        println!("Testing SDL mutant: {}", mutant.id);
+        println!("Mutated source:\n{}", mutant.mutated_source);
+
+        // Should parse as valid Rust
+        let parse_result = syn::parse_file(&mutant.mutated_source);
+        assert!(
+            parse_result.is_ok(),
+            "SDL mutant should parse: {:?}\nMutated source: {}",
+            parse_result.err(),
+            mutant.mutated_source
+        );
+
+        // If source contains Ok(()), the mutant should also contain it (don't delete return values)
+        // This is the key test: SDL should not delete the final return expression
+        if source.contains("Ok(())") {
+            assert!(
+                mutant.mutated_source.contains("Ok"),
+                "SDL should not delete function return value Ok(()). Mutant: {}",
+                mutant.mutated_source
+            );
+        }
+    }
+}
+
 /// RED TEST: Mutant should compile with cargo
 ///
 /// This is the ultimate test - can cargo actually compile it?
