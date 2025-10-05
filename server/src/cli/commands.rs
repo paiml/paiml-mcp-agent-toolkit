@@ -553,6 +553,13 @@ pub enum Commands {
         #[arg(long, default_value = ".")]
         project_dir: PathBuf,
     },
+
+    /// Project maintenance commands (TICKET-PMAT-5032, TICKET-PMAT-5033)
+    Maintain {
+        /// Maintain subcommand
+        #[command(subcommand)]
+        command: MaintainCommands,
+    },
 }
 
 /// Quality gates subcommands (TICKET-PMAT-5024)
@@ -574,6 +581,53 @@ pub enum QualityGatesCommand {
         /// Output format
         #[arg(long, value_enum, default_value = "toml")]
         format: ConfigFormat,
+    },
+}
+
+/// Maintain subcommands (TICKET-PMAT-5032, TICKET-PMAT-5033)
+#[derive(Subcommand)]
+#[cfg_attr(test, derive(Debug))]
+pub enum MaintainCommands {
+    /// Validate roadmap structure and ticket consistency
+    Roadmap {
+        /// Path to ROADMAP.md
+        #[arg(long, default_value = "ROADMAP.md")]
+        roadmap: PathBuf,
+
+        /// Path to tickets directory
+        #[arg(long, default_value = "docs/tickets")]
+        tickets_dir: PathBuf,
+
+        /// Check ticket status consistency
+        #[arg(long)]
+        validate: bool,
+
+        /// Show roadmap health report
+        #[arg(long)]
+        health: bool,
+
+        /// Auto-fix checkbox status based on ticket files
+        #[arg(long)]
+        fix: bool,
+
+        /// Dry-run mode (show changes without applying)
+        #[arg(long)]
+        dry_run: bool,
+
+        /// Output format
+        #[arg(long, value_enum, default_value = "table")]
+        format: OutputFormat,
+    },
+
+    /// Validate project health (TICKET-PMAT-5033)
+    Health {
+        /// Project directory
+        #[arg(long, default_value = ".")]
+        project_dir: PathBuf,
+
+        /// Output format
+        #[arg(long, value_enum, default_value = "table")]
+        format: OutputFormat,
     },
 }
 

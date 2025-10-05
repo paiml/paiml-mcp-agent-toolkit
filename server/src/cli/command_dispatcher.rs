@@ -307,6 +307,36 @@ impl CommandDispatcher {
                 json,
                 project_dir,
             } => handlers::handle_quality_gates_command(command, config, report, json, project_dir).await,
+
+            Commands::Maintain { command } => {
+                use super::commands::MaintainCommands;
+                match command {
+                    MaintainCommands::Roadmap {
+                        roadmap,
+                        tickets_dir,
+                        validate,
+                        health,
+                        fix,
+                        dry_run,
+                        format,
+                    } => {
+                        handlers::handle_maintain_roadmap(
+                            roadmap,
+                            tickets_dir,
+                            validate,
+                            health,
+                            fix,
+                            dry_run,
+                            format,
+                        )
+                        .await
+                    }
+                    MaintainCommands::Health { .. } => {
+                        // TICKET-PMAT-5033
+                        Err(anyhow::anyhow!("Health command not yet implemented"))
+                    }
+                }
+            }
         }
     }
 
