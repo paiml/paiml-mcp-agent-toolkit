@@ -366,6 +366,12 @@ impl CommandExecutor {
                 }
                 Ok(())
             }
+            Commands::QualityGates {
+                config,
+                report,
+                json,
+                project_dir,
+            } => super::handlers::handle_quality_gates_command(config, report, json, project_dir).await,
         }
     }
 }

@@ -43,6 +43,7 @@ pub mod qdd_handlers;
 pub mod quality_gate_formatter;
 #[cfg(test)]
 pub mod quality_gate_property_tests;
+pub mod quality_gates_handler; // TICKET-PMAT-5023
 pub mod refactor_auto_handlers;
 #[cfg(test)]
 pub mod refactor_auto_property_tests;
@@ -93,6 +94,7 @@ pub use lint_hotspot_handlers::handle_analyze_lint_hotspot;
 pub use memory::handle_memory_command;
 pub use name_similarity_analysis::handle_analyze_name_similarity;
 pub use provability_handler::handle_analyze_provability;
+pub use quality_gates_handler::handle_quality_gates_command; // TICKET-PMAT-5023
 pub use refactor_docs_handlers::handle_refactor_docs;
 pub use refactor_handlers::{route_refactor_command, RefactorServeParams};
 pub use satd_handler::handle_analyze_satd;

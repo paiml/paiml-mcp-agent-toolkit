@@ -299,6 +299,13 @@ impl CommandDispatcher {
                 };
                 handlers::handle_tdg_command(tdg_config).await
             }
+
+            Commands::QualityGates {
+                config,
+                report,
+                json,
+                project_dir,
+            } => handlers::handle_quality_gates_command(config, report, json, project_dir).await,
         }
     }
 
