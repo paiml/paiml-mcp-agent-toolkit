@@ -554,6 +554,49 @@ exit $?
 cargo build --features mutation-testing --release
 ```
 
+### ⚠️ CRITICAL: File Corruption Issue (Issue #64) - FIXED in v2.136.0
+
+**Issue:** In versions prior to v2.136.0, `pmat analyze mutate` could corrupt source files, leaving them with unformatted code on a single line.
+
+**Example of Corrupted File:**
+```rust
+# ! [doc = ""] use serde :: { Deserialize , Serialize } ; # [derive ( Debug , Clone , Serialize , Deserialize , PartialEq , Eq , Hash ) ] pub enum MutationOperatorType { ArithmeticReplacement , RelationalReplacement , ...
+```
+
+**Root Cause (from Five Whys Analysis):**
+1. Why are files corrupted? → `quote!()` macro generates unformatted token streams
+2. Why use `quote!()`? → Converting syn AST back to source code
+3. Why leave corrupted files? → Mutation testing timed out, failed to restore backup
+4. Why timeout? → Running entire test suite for every mutant (design flaw)
+5. Root cause: **Two design flaws:**
+   - Used `quote!()` instead of proper formatter
+   - No smart test filtering for scalability
+
+**Fix (v2.135.0 - v2.136.0):**
+1. **Smart Test Filtering** (v2.135.0): Module-based test execution
+   - Extract module path from file
+   - Run only relevant tests: `cargo test --lib -- module::path`
+   - Result: 20× faster than cargo-mutants
+2. **Proper Formatting** (v2.136.0): Use `prettyplease` crate
+   - Replace `quote!(#tree).to_string()` with `prettyplease::unparse(&tree)`
+   - Result: Human-readable, properly formatted mutants
+
+**Verification:**
+```bash
+# Test on PMAT itself (dogfooding)
+pmat analyze mutate --path server/src/services/mutation/types.rs
+
+# Before fix: >5 minutes timeout, corrupted files
+# After fix: 10.8s, properly formatted source
+```
+
+**If You Hit This Issue:**
+1. **Immediate fix:** Restore from git: `git checkout -- <corrupted-file>`
+2. **Upgrade:** Update to v2.136.0 or later: `cargo install pmat --version 2.137.0`
+3. **Verify:** Check version: `pmat --version` (should be ≥2.136.0)
+
+**Related Issue:** https://github.com/paiml/paiml-mcp-agent-toolkit/issues/64
+
 ### Low Mutation Score
 
 **Issue:** Mutation score below threshold
