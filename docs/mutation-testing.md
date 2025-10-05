@@ -68,6 +68,21 @@ Automatically included with the `mutation-testing` feature:
 
 ## CLI Usage
 
+### Quick Start Examples
+
+**Interactive Demo:** Run the included demo script to see mutation testing in action:
+
+```bash
+./examples/mutation-testing-demo.sh
+```
+
+**Full Example Guide:** See [examples/cli-usage/mutation-testing-example.md](../examples/cli-usage/mutation-testing-example.md) for:
+- Complete calculator example with test gaps
+- Step-by-step usage instructions
+- How to interpret results
+- CI/CD integration patterns
+- Troubleshooting guide
+
 ### Basic Mutation Testing with Empirical Execution
 
 Run mutation testing with **actual test execution** on a Rust file:
