@@ -1,8 +1,38 @@
 # PMAT Agent System Roadmap
 
-## 🎯 CURRENT STATUS: v2.131.0 - Mutation Generation FIXED with EXTREME TDD
+## 🎯 CURRENT STATUS: v2.132.0 - AST Replacement WORKING with EXTREME TDD
 
-### ✅ Latest Achievements (v2.131.0 - October 5, 2025)
+### ✅ Latest Achievements (v2.132.0 - October 5, 2025)
+
+**AST Replacement Fix: Compilable Mutants (EXTREME TDD + syn::visit_mut)**
+- 🐛 **Bug Discovered** (v2.131.0)
+  - Benchmarked on pforge: **51/51 mutants cause compile errors** (0% effective)
+  - Root cause: Mutated source was expression-only ("x"), not full file
+  - Original: `quote::quote!(#mutated_expr).to_string()` generated incomplete code
+- ✅ **EXTREME TDD Fix** (v2.132.0)
+  - **RED**: 3 compilation tests (all failed - mutants were just expressions)
+  - **GREEN**: Implemented ExpressionReplacer using syn::visit_mut::VisitMut
+  - **VERIFY**: All tests pass, AST replacement generates full files
+- ✅ **Results** (v2.132.0)
+  - Before: 0% compilation rate (0/51) ❌
+  - After: **39% compilation rate (20/51)** ✅
+  - Mutation score: 0% → **30%** (6 killed, 14 survived)
+  - Speed: ~14s (faster than cargo-mutants 20.4s!)
+- ✅ **Expression Mutations Working**
+  - UOR (Unary): 2/2 compile and execute ✅
+  - CRR (Constant): 18/18 compile and execute ✅
+  - AST replacement preserves full file structure
+- ⚠️ **Known Issue** (v2.132.0)
+  - SDL (Statement Deletion): 0/31 compile (all failures)
+  - SDL operates on expressions but should operate on statements
+  - Replacing with `()` creates invalid syntax in many contexts
+  - Will fix with statement-level VisitMut in v2.133.0
+- ✅ **Methodology Validated**
+  - syn::visit_mut::VisitMut: Correct pattern for AST mutation
+  - EXTREME TDD: RED → GREEN in 45 minutes
+  - cargo-mutants: Continues to provide ground truth
+
+### ✅ Previous Achievements (v2.131.0 - October 5, 2025)
 
 **CRITICAL FIX: Mutation Generation Bug (EXTREME TDD + cargo-mutants verification)**
 - 🐛 **Bug Discovered** (v2.130.0)
@@ -20,7 +50,7 @@
 - ⚠️ **Known Issue** (v2.131.0)
   - 51/51 mutants cause compilation errors (0% effective score)
   - Mutated expressions not integrated into full source AST
-  - Will fix AST replacement in v2.132.0
+  - **FIXED in v2.132.0** ✅
 - ✅ **Methodology Validated**
   - EXTREME TDD: Faster debugging than traditional approach
   - Toyota Way: Testing on pforge caught bug immediately

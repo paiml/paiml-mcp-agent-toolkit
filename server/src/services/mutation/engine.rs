@@ -89,6 +89,7 @@ impl MutationEngine {
             operators: self.adapter.mutation_operators(),
             original_source: source,
             file_path: file_path.to_path_buf(),
+            syntax_tree: &syntax_tree,
         };
 
         visitor.visit_file(&syntax_tree);
@@ -224,9 +225,55 @@ impl Default for MutationEngine {
 struct MutationVisitor<'a> {
     mutants: Vec<Mutant>,
     operators: Vec<Box<dyn super::operators::MutationOperator>>,
-    #[allow(dead_code)] // Reserved for source context in future mutation strategies
     original_source: &'a str,
     file_path: std::path::PathBuf,
+    syntax_tree: &'a File,
+}
+
+impl<'a> MutationVisitor<'a> {
+    /// Replace an expression in the entire file and return the modified source
+    fn replace_expression_in_file(&self, original_expr: &Expr, mutated_expr: &Expr) -> String {
+        // Clone the syntax tree so we can modify it
+        let mut modified_tree = self.syntax_tree.clone();
+
+        // Create a replacer visitor that will find and replace the expression
+        let mut replacer = ExpressionReplacer {
+            original: quote::quote!(#original_expr).to_string(),
+            replacement: mutated_expr.clone(),
+            replaced: false,
+        };
+
+        // Visit and modify the tree
+        use syn::visit_mut::VisitMut;
+        replacer.visit_file_mut(&mut modified_tree);
+
+        // Quote the entire modified file back to source code
+        quote::quote!(#modified_tree).to_string()
+    }
+}
+
+/// Visitor that replaces a specific expression in the AST
+struct ExpressionReplacer {
+    original: String,
+    replacement: Expr,
+    replaced: bool,
+}
+
+impl syn::visit_mut::VisitMut for ExpressionReplacer {
+    fn visit_expr_mut(&mut self, expr: &mut Expr) {
+        // Only replace the first occurrence to avoid over-mutation
+        if !self.replaced {
+            let current = quote::quote!(#expr).to_string();
+            if current == self.original {
+                *expr = self.replacement.clone();
+                self.replaced = true;
+                return; // Don't visit children after replacement
+            }
+        }
+
+        // Continue visiting children
+        syn::visit_mut::visit_expr_mut(self, expr);
+    }
 }
 
 impl<'a> Visit<'_> for MutationVisitor<'a> {
@@ -245,18 +292,19 @@ impl<'a> Visit<'_> for MutationVisitor<'a> {
                 // Generate mutated expressions
                 if let Ok(mutated_exprs) = operator.mutate(expr, location.clone()) {
                     for mutated_expr in mutated_exprs {
-                        // Generate mutated source
-                        let mutated_source = quote::quote!(#mutated_expr).to_string();
+                        // Replace expression in full file (not just the expression)
+                        let mutated_source = self.replace_expression_in_file(expr, &mutated_expr);
 
-                        // Generate hash
+                        // Generate hash from the mutated expression (not full source)
                         let mut hasher = Sha256::new();
-                        hasher.update(&mutated_source);
+                        let expr_str = quote::quote!(#mutated_expr).to_string();
+                        hasher.update(&expr_str);
                         let hash = format!("{:x}", hasher.finalize());
 
                         let mutant = Mutant {
                             id: format!("{}_{}", operator.name(), &hash[..8]),
                             original_file: self.file_path.clone(),
-                            mutated_source: mutated_source.clone(),
+                            mutated_source,
                             location: location.clone(),
                             operator: operator.operator_type(),
                             hash,
