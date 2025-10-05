@@ -529,6 +529,26 @@ pub enum Commands {
         #[arg(short, long)]
         output: Option<PathBuf>,
     },
+
+    /// Run quality gates on the current project (TICKET-PMAT-5023)
+    #[command(name = "quality-gates")]
+    QualityGates {
+        /// Path to quality gate configuration file
+        #[arg(long, default_value = ".pmat-gates.toml")]
+        config: PathBuf,
+
+        /// Generate markdown report
+        #[arg(long)]
+        report: bool,
+
+        /// Output JSON format
+        #[arg(long)]
+        json: bool,
+
+        /// Project directory
+        #[arg(long, default_value = ".")]
+        project_dir: PathBuf,
+    },
 }
 
 /// Diagnostic output format
