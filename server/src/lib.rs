@@ -121,7 +121,7 @@ pub mod models;
 pub mod modules; // Modular monolith architecture
 pub mod protocol; // Unified protocol design per SPECIFICATION.md Section 3
 pub mod qdd; // Quality-Driven Development tool
-pub mod quality; // Quality gates and enforcement
+pub mod quality; // Quality gates and enforcement (Sprint 18: Gate executor)
 pub mod resources; // Resource control and limits
 pub mod roadmap; // Roadmap-driven development with quality gates
 pub mod scaffold;
