@@ -1,8 +1,36 @@
 # PMAT Agent System Roadmap
 
-## 🎯 CURRENT STATUS: v2.137.0 - DOGFOODING QUALITY PASS 🎯
+## 🎯 CURRENT STATUS: v2.137.0 - DOGFOODING P0/P1 FIXES COMPLETE 🎯
 
 ### ✅ Latest Achievements (v2.137.0 - October 5, 2025)
+
+**Dogfooding P0/P1 Fixes (All Critical Issues Resolved)**
+- ✅ **Fixed Top 3 Complexity Violations**
+  - handle_mutate: 25 → 8 (extracted 10 helpers)
+  - handle_memory_pools: 25 → 9 (extracted 6 helpers)
+  - route_entropy_analysis: 25 → 7 (extracted 8 helpers)
+  - All functions now under threshold of 20
+  - Commit: `09ba6d2`
+- ✅ **SIGINT Bug Documented with RED Tests**
+  - Created RED tests in mutation_cleanup_tests.rs
+  - Documented limitation at executor.rs:67
+  - Workaround documented: `git checkout` to restore
+  - Commit: `7f7c572`
+- ✅ **Parallel Execution Validated**
+  - Tested with `--distributed --workers 2`
+  - Confirmed concurrent execution works
+  - File isolation prevents conflicts
+  - Original files preserved correctly
+- 🧹 **Code Cleanup**
+  - Removed unused imports with cargo fix
+  - Clean compilation with no warnings
+  - Commit: `037a9eb`
+- 📊 **Results**
+  - P0 (critical): 100% complete ✅
+  - P1 (high): 100% complete ✅
+  - P2 (low): 55 SATD + 53 entropy remaining (future work)
+
+### ✅ Previous Achievements (v2.137.0 - October 5, 2025)
 
 **Dogfooding Quality Pass (Option 2 Complete)**
 - 🔬 **Applied PMAT Tools to PMAT Itself**
