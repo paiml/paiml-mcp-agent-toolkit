@@ -7,14 +7,14 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ScaffoldConfig {
     pub project_name: String,
-    pub template: Template,
+    pub template_type: TemplateType,
     pub features: Vec<Feature>,
     pub quality_gates: QualityGateConfig,
 }
 
 /// Template type for scaffolding
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum Template {
+pub enum TemplateType {
     Agent { based_on: AgentFramework },
     Wasm { based_on: WasmFramework },
     Library,

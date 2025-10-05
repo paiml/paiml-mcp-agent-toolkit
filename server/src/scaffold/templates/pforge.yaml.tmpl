@@ -1,0 +1,22 @@
+forge:
+  name: "{{project_name}}"
+  version: "0.1.0"
+  description: "{{description}}"
+  author: "{{author}}"
+
+tools:
+  - name: "example"
+    handler: "handlers::example::execute"
+    params:
+      type: "object"
+      properties:
+        message:
+          type: "string"
+          description: "Message to process"
+      required:
+        - message
+    timeout_ms: 30000
+
+resources: []
+
+prompts: []
