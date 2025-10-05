@@ -9,5 +9,7 @@
 //! - Auto-updating roadmaps and tickets
 
 pub mod roadmap;
+pub mod ticket;
 
 pub use roadmap::{Roadmap, Sprint, Ticket, SprintStatus, RoadmapError};
+pub use ticket::{TicketFile, TicketStatus, Priority, TicketError, list_tickets, ticket_exists};
