@@ -1,0 +1,164 @@
+//! Tests that generated mutants compile successfully
+//!
+//! RED TEST for v2.132.0: Mutants should compile, not just generate
+
+use pmat::services::mutation::{MutationEngine, MutationConfig, RustAdapter, MutantExecutor};
+use std::sync::Arc;
+use tempfile::NamedTempFile;
+use std::io::Write;
+
+/// RED TEST: Generated mutant should compile
+///
+/// v2.131.0: Generates mutant but doesn't compile (0% compilation rate)
+/// v2.132.0: Should generate compilable mutant source
+#[tokio::test]
+async fn test_unary_mutant_compiles() {
+    let source = r#"
+fn validate(x: bool) -> bool {
+    !x
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_validate() {
+        assert_eq!(validate(true), false);
+        assert_eq!(validate(false), true);
+    }
+}
+"#;
+
+    let mut temp_file = NamedTempFile::new().unwrap();
+    temp_file.write_all(source.as_bytes()).unwrap();
+    let temp_path = temp_file.path().to_path_buf();
+
+    let adapter = Arc::new(RustAdapter::new());
+    let config = MutationConfig::default();
+    let engine = MutationEngine::new(adapter, config);
+
+    let mutants = engine.generate_mutants_from_file(&temp_path).await.unwrap();
+
+    assert!(mutants.len() > 0, "Should generate at least 1 mutant");
+
+    // Check that mutated source is a complete file, not just an expression
+    let first_mutant = &mutants[0];
+    println!("Mutated source:\n{}", first_mutant.mutated_source);
+
+    // Should contain function signature
+    assert!(
+        first_mutant.mutated_source.contains("fn validate"),
+        "Mutated source should contain function signature, got: {}",
+        first_mutant.mutated_source
+    );
+
+    // Should parse as valid Rust
+    let parse_result = syn::parse_file(&first_mutant.mutated_source);
+    assert!(
+        parse_result.is_ok(),
+        "Mutated source should parse as valid Rust file, got error: {:?}",
+        parse_result.err()
+    );
+}
+
+/// RED TEST: Mutant should compile with cargo
+///
+/// This is the ultimate test - can cargo actually compile it?
+#[tokio::test]
+#[ignore] // Will enable once AST replacement is implemented
+async fn test_mutant_compiles_with_cargo() {
+    let source = r#"
+pub fn add(a: i32, b: i32) -> i32 {
+    a + b
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_add() {
+        assert_eq!(add(2, 3), 5);
+    }
+}
+"#;
+
+    let mut temp_file = NamedTempFile::new().unwrap();
+    temp_file.write_all(source.as_bytes()).unwrap();
+    let temp_path = temp_file.path().to_path_buf();
+
+    let adapter = Arc::new(RustAdapter::new());
+    let config = MutationConfig::default();
+    let engine = MutationEngine::new(adapter, config);
+
+    let mutants = engine.generate_mutants_from_file(&temp_path).await.unwrap();
+
+    assert!(mutants.len() > 0);
+
+    // Try to execute the first mutant
+    let work_dir = temp_path.parent().unwrap().to_path_buf();
+    let executor = MutantExecutor::new(work_dir);
+
+    let result = executor.execute_mutant(&mutants[0]).await;
+
+    // Should NOT be a compile error
+    assert!(
+        result.is_ok(),
+        "Mutant execution should succeed (even if tests fail)"
+    );
+
+    let mutation_result = result.unwrap();
+    assert_ne!(
+        mutation_result.status,
+        pmat::services::mutation::MutantStatus::CompileError,
+        "Mutant should compile successfully. Error: {:?}",
+        mutation_result.error_message
+    );
+}
+
+/// RED TEST: Simple expression mutation
+///
+/// Start with the simplest possible case
+#[tokio::test]
+async fn test_simple_expression_mutation_compiles() {
+    let source = r#"fn negate(x: i32) -> i32 { -x }"#;
+
+    let mut temp_file = NamedTempFile::new().unwrap();
+    temp_file.write_all(source.as_bytes()).unwrap();
+    let temp_path = temp_file.path().to_path_buf();
+
+    let adapter = Arc::new(RustAdapter::new());
+    let config = MutationConfig::default();
+    let engine = MutationEngine::new(adapter, config);
+
+    let mutants = engine.generate_mutants_from_file(&temp_path).await.unwrap();
+
+    if mutants.is_empty() {
+        panic!("No mutants generated");
+    }
+
+    let mutant = &mutants[0];
+
+    // Should be a complete function, not just "x"
+    println!("Original: {}", source);
+    println!("Mutated:  {}", mutant.mutated_source);
+
+    assert!(
+        mutant.mutated_source.contains("fn negate"),
+        "Should contain function name"
+    );
+
+    assert!(
+        mutant.mutated_source.contains("-> i32"),
+        "Should contain return type"
+    );
+
+    // Parse check
+    let parse_result = syn::parse_file(&mutant.mutated_source);
+    assert!(
+        parse_result.is_ok(),
+        "Should parse as valid Rust: {:?}",
+        parse_result.err()
+    );
+}
