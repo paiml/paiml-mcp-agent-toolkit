@@ -1,8 +1,27 @@
 # PMAT Agent System Roadmap
 
-## 🎯 CURRENT STATUS: v2.127.0 - Doctest Infrastructure Fix SHIPPED
+## 🎯 CURRENT STATUS: v2.128.0 - Option 5 Complexity Reduction SHIPPED
 
-### ✅ Latest Achievements (v2.127.0 - October 4, 2025)
+### ✅ Latest Achievements (v2.128.0 - October 4, 2025)
+
+**Option 5: Technical Debt & Quality - Complexity Refactoring (Phase 1)**
+- ✅ **Complexity Analysis** (v2.128.0)
+  - Analyzed entire codebase using `pmat analyze complexity`
+  - Found 332 TODO/FIXME comments (roadmap outdated: claimed only 1)
+  - Identified top complexity offenders using self-analysis
+- ✅ **Major Refactoring** (v2.128.0)
+  - Refactored `handle_deep_wasm`: **CC=27 → CC=4** (85% reduction)
+  - Applied Extract Method pattern: 1 function → 11 focused functions
+  - All 13 deep_wasm_cli_tests passing after refactoring
+- ✅ **Refactoring Strategy** (v2.128.0)
+  - Created 10 helper functions with single responsibilities
+  - Each helper function: CC=1-3 (all under threshold)
+  - Improved testability, reusability, and maintainability
+- ✅ **Next Targets** (Pending)
+  - `detect_boolean_tautology` (CC=20) - server/src/services/mutation/equivalent_detector.rs
+  - `extract_coverage_from_output` (CC=20) - server/src/roadmap/quality.rs
+
+### ✅ Previous Achievements (v2.127.0 - October 4, 2025)
 
 **Doctest Infrastructure Fix - Toyota Way Five Whys Analysis**
 - ✅ **Root Cause Analysis** (v2.127.0)
