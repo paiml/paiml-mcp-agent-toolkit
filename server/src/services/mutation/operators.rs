@@ -223,7 +223,7 @@ impl MutationOperator for UnaryOperatorReplacement {
     }
 
     fn operator_type(&self) -> MutationOperatorType {
-        MutationOperatorType::ConditionalReplacement
+        MutationOperatorType::UnaryReplacement
     }
 
     fn can_mutate(&self, expr: &Expr) -> bool {
