@@ -1,8 +1,37 @@
 # PMAT Agent System Roadmap
 
-## 🎯 CURRENT STATUS: v2.129.0 - Option 5 Complexity Reduction Phase 2 SHIPPED
+## 🎯 CURRENT STATUS: v2.130.0 - Empirical Mutation Testing SHIPPED
 
-### ✅ Latest Achievements (v2.129.0 - October 5, 2025)
+### ✅ Latest Achievements (v2.130.0 - October 5, 2025)
+
+**Empirical Mutation Testing - GitHub Issue #63 Priority 1 RESOLVED**
+- ✅ **MutantExecutor Module** (v2.130.0)
+  - Implements **actual test execution** (no more simulation mode!)
+  - Runs `cargo test --lib` on each mutant
+  - Backup/restore mechanism for safe file mutations
+  - Timeout handling (600s default per mutant)
+  - Status classification: Killed, Survived, CompileError, Timeout
+- ✅ **Empirical Measurement** (v2.130.0)
+  - Real mutation score from test execution
+  - Reports which tests caught which mutants
+  - Execution time metrics per mutant
+  - Detailed JSON/text output with breakdown
+- ✅ **CLI & MCP Integration** (v2.130.0)
+  - Updated `pmat analyze mutate` to use real execution
+  - Updated `mutation_test` MCP tool for empirical results
+  - Removed "simulation mode" warnings
+- ✅ **Testing & Documentation** (v2.130.0)
+  - 4 new unit tests in executor::tests (all passing)
+  - Updated docs/mutation-testing.md for empirical mode
+  - Created MUTATION_TESTING_STATUS.md with limitations
+  - Created benchmark_mutation.sh for future comparisons
+- ✅ **Known Limitations Documented** (v2.130.0)
+  - Cannot test PMAT on itself (circular dependency)
+  - Single file only (directory support future work)
+  - Sequential execution (parallel future work)
+  - Location metadata needs AST extraction
+
+### ✅ Previous Achievements (v2.129.0 - October 5, 2025)
 
 **Option 5: Technical Debt & Quality - Complexity Refactoring (Phase 2)**
 - ✅ **Additional Complexity Reduction** (v2.129.0)
