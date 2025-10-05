@@ -87,7 +87,6 @@ impl MutationEngine {
         let mut visitor = MutationVisitor {
             mutants: Vec::new(),
             operators: self.adapter.mutation_operators(),
-            original_source: source,
             file_path: file_path.to_path_buf(),
             syntax_tree: &syntax_tree,
         };
@@ -225,7 +224,6 @@ impl Default for MutationEngine {
 struct MutationVisitor<'a> {
     mutants: Vec<Mutant>,
     operators: Vec<Box<dyn super::operators::MutationOperator>>,
-    original_source: &'a str,
     file_path: std::path::PathBuf,
     syntax_tree: &'a File,
 }
