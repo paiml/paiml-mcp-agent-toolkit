@@ -94,12 +94,38 @@ impl CommandExecutor {
                             )
                             .await
                     }
-                    _ => {
-                        // Handle other scaffold subcommands (agent scaffolding)
-                        // Note: Agent scaffolding is handled in the main CLI dispatcher
-                        anyhow::bail!(
-                            "Agent scaffolding should be handled via the main CLI dispatcher"
-                        )
+                    ScaffoldCommands::Agent {
+                        name,
+                        template,
+                        features,
+                        quality,
+                        output,
+                        force,
+                        dry_run,
+                        interactive,
+                        deterministic_core,
+                        probabilistic_wrapper,
+                    } => {
+                        // TICKET-PMAT-5030: Wire up agent scaffolding
+                        let params = super::handlers::ScaffoldAgentParams {
+                            name,
+                            template,
+                            features,
+                            quality,
+                            output,
+                            force,
+                            dry_run,
+                            interactive,
+                            deterministic_core,
+                            probabilistic_wrapper,
+                        };
+                        super::handlers::handle_scaffold_agent(params).await
+                    }
+                    ScaffoldCommands::ListTemplates => {
+                        super::handlers::handle_list_agent_templates().await
+                    }
+                    ScaffoldCommands::ValidateTemplate { path } => {
+                        super::handlers::handle_validate_agent_template(path).await
                     }
                 }
             }
