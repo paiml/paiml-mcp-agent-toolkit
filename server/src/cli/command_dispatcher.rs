@@ -301,11 +301,12 @@ impl CommandDispatcher {
             }
 
             Commands::QualityGates {
+                command,
                 config,
                 report,
                 json,
                 project_dir,
-            } => handlers::handle_quality_gates_command(config, report, json, project_dir).await,
+            } => handlers::handle_quality_gates_command(command, config, report, json, project_dir).await,
         }
     }
 
