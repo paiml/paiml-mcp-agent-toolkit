@@ -53,10 +53,10 @@ impl MutantExecutor {
             return Err(e).context("Failed to write mutated source");
         }
 
-        // Step 3: Run tests with timeout
+        // Step 3: Run tests with timeout (smart filtering)
         let test_result = timeout(
             self.timeout,
-            self.run_cargo_test()
+            self.run_cargo_test_for_mutant(mutant)
         ).await;
 
         // Step 4: Restore original file
@@ -141,7 +141,34 @@ impl MutantExecutor {
         Ok(())
     }
 
-    /// Run cargo test in working directory
+    /// Run cargo test in working directory with smart test filtering
+    async fn run_cargo_test_for_mutant(&self, mutant: &Mutant) -> Result<String> {
+        // Extract module path for test filtering
+        let module_filter = self.extract_module_path(&mutant.original_file);
+
+        let mut cmd = Command::new("cargo");
+        cmd.arg("test")
+            .arg("--lib");
+
+        // Add module filter if present
+        if !module_filter.is_empty() {
+            cmd.arg("--").arg(&module_filter);
+        }
+
+        let output = cmd
+            .current_dir(&self.work_dir)
+            .output()
+            .context("Failed to run cargo test")?;
+
+        // Combine stdout and stderr
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let combined = format!("{}\n{}", stdout, stderr);
+
+        Ok(combined)
+    }
+
+    /// Run cargo test in working directory (legacy method - for backward compat)
     async fn run_cargo_test(&self) -> Result<String> {
         let output = Command::new("cargo")
             .arg("test")
@@ -158,6 +185,62 @@ impl MutantExecutor {
         let combined = format!("{}\n{}", stdout, stderr);
 
         Ok(combined)
+    }
+
+    /// Extract module path from file path for smart test filtering
+    ///
+    /// This implements the Toyota Way fix: only run tests relevant to the mutation
+    /// instead of the entire test suite.
+    fn extract_module_path(&self, file_path: &Path) -> String {
+        let path_str = file_path.to_str().unwrap_or("");
+
+        // Handle external crates (paths starting with ../)
+        if path_str.starts_with("../") || path_str.starts_with("..\\") {
+            return String::new(); // Use package-level testing
+        }
+
+        // Remove "server/src/" or "src/" prefix
+        let relative = path_str
+            .strip_prefix("server/src/")
+            .or_else(|| path_str.strip_prefix("src/"))
+            .unwrap_or(path_str);
+
+        // Remove ".rs" suffix
+        let without_ext = relative.strip_suffix(".rs").unwrap_or(relative);
+
+        // Handle lib.rs and main.rs - run all tests
+        if without_ext == "lib" || without_ext == "main" {
+            return String::new();
+        }
+
+        // Check if this is a mod.rs file
+        let is_mod_file = without_ext.ends_with("/mod");
+
+        // Remove "/mod" at end for processing
+        let without_mod = without_ext
+            .strip_suffix("/mod")
+            .unwrap_or(without_ext);
+
+        // Split into parts
+        let parts: Vec<&str> = without_mod.split('/').collect();
+
+        // Determine which parts to use
+        let module_parts = if is_mod_file {
+            // For mod.rs files, keep full path
+            &parts[..]
+        } else if parts.len() > 3 {
+            // For deep paths, use parent module for broader coverage
+            &parts[..parts.len() - 1]
+        } else if parts.len() > 1 {
+            // For 2-3 levels, use parent module
+            &parts[..parts.len() - 1]
+        } else {
+            // Single level, use as-is
+            &parts[..]
+        };
+
+        // Join with "::"
+        module_parts.join("::")
     }
 
     /// Parse test output to determine mutant status
