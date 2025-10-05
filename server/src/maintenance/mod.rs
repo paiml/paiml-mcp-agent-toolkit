@@ -10,6 +10,8 @@
 
 pub mod roadmap;
 pub mod ticket;
+pub mod validator;
 
 pub use roadmap::{Roadmap, Sprint, Ticket, SprintStatus, RoadmapError};
 pub use ticket::{TicketFile, TicketStatus, Priority, TicketError, list_tickets, ticket_exists};
+pub use validator::{ValidationReport, validate_project, format_report, ValidatorError};
