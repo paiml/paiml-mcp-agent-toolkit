@@ -419,30 +419,25 @@ impl QualityCheck {
 /// Extract coverage percentage from output
 #[allow(dead_code)]
 fn extract_coverage_from_output(output: &str) -> Option<u8> {
-    // Look for patterns like "Coverage: 85%" or "85% coverage"
-    if let Some(idx) = output.find("Coverage:") {
-        let rest = &output[idx + 9..].trim();
-        if let Some(percent_pos) = rest.find('%') {
-            let num_str = &rest[..percent_pos].trim();
-            // Parse as f64 first to handle decimals, then truncate to u8
-            if let Ok(val) = num_str.parse::<f64>() {
-                return Some(val as u8);
-            }
-        }
-    }
+    // Try "Coverage: 85%" pattern first
+    extract_coverage_with_prefix(output, "Coverage:", 9)
+        // Fall back to "Coverage 85%" pattern
+        .or_else(|| extract_coverage_with_prefix(output, "Coverage", 8))
+}
 
-    if let Some(idx) = output.find("Coverage") {
-        let rest = &output[idx + 8..].trim();
-        if let Some(percent_pos) = rest.find('%') {
-            let num_str = &rest[..percent_pos].trim();
-            // Parse as f64 first to handle decimals, then truncate to u8
-            if let Ok(val) = num_str.parse::<f64>() {
-                return Some(val as u8);
-            }
-        }
-    }
+/// Extracts coverage percentage from text with a given prefix
+fn extract_coverage_with_prefix(text: &str, prefix: &str, skip_len: usize) -> Option<u8> {
+    let idx = text.find(prefix)?;
+    let rest = text[idx + skip_len..].trim();
+    extract_percentage_value(rest)
+}
 
-    None
+/// Extracts percentage value from text ending with '%'
+fn extract_percentage_value(text: &str) -> Option<u8> {
+    let percent_pos = text.find('%')?;
+    let num_str = text[..percent_pos].trim();
+    // Parse as f64 first to handle decimals, then truncate to u8
+    num_str.parse::<f64>().ok().map(|val| val as u8)
 }
 
 #[cfg(test)]
