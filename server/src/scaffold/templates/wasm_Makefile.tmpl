@@ -1,0 +1,54 @@
+.PHONY: help build test coverage quality wasm-full clean
+
+help:
+	@echo "WASM Project: {{project_name}}"
+	@echo "=============================="
+	@echo "make build          - Build WASM binary"
+	@echo "make test           - Run tests"
+	@echo "make coverage       - Generate coverage report"
+	@echo "make quality        - Run quality gates"
+	@echo "make wasm-full      - Complete WASM pipeline"
+	@echo "make clean          - Clean build artifacts"
+
+build:
+	@echo "🔨 Building WASM binary..."
+	cargo build --target wasm32-unknown-unknown --release
+	@echo "✓ Build complete"
+
+test:
+	@echo "🧪 Running tests..."
+	cargo test --all-features
+	@echo "✓ Tests passed"
+
+coverage:
+	@echo "📊 Generating coverage report..."
+	cargo llvm-cov --lib --lcov --output-path target/lcov.info
+	cargo llvm-cov report --html --output-dir target/coverage/html
+	cargo llvm-cov report --summary-only
+	@echo "💡 HTML report: target/coverage/html/index.html"
+
+quality: test
+	@echo "🔬 Running quality gates..."
+	cargo fmt --check
+	cargo clippy --all-targets -- -D warnings
+	@if command -v pmat &> /dev/null; then \
+		pmat analyze complexity --max-cyclomatic 10 --path $(CURDIR); \
+		pmat analyze satd --strict --path $(CURDIR); \
+	else \
+		echo "⚠️  PMAT not installed - skipping complexity/SATD checks"; \
+	fi
+	@echo "✓ Quality gates passed"
+
+wasm-full: build
+	@echo "🚀 Creating optimized WASM build..."
+	@mkdir -p pkg
+	wasm-bindgen target/wasm32-unknown-unknown/release/{{project_name}}.wasm \
+		--out-dir pkg --target web
+	@echo "✨ WASM build complete: pkg/{{project_name}}_bg.wasm"
+	@ls -lh pkg/
+
+clean:
+	@echo "🧹 Cleaning build artifacts..."
+	cargo clean
+	rm -rf pkg target/coverage
+	@echo "✓ Clean complete"

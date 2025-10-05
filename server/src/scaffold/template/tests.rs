@@ -154,3 +154,81 @@ fn test_template_named() {
     let template = Template::new("test.txt", "content").unwrap();
     assert_eq!(template.name(), "test.txt");
 }
+
+// WASM template tests (TICKET-PMAT-5003)
+
+#[test]
+fn test_wasm_cargo_toml() {
+    let template = Template::wasm_cargo_toml();
+    let mut vars = HashMap::new();
+    vars.insert("project_name".to_string(), "my-wasm".to_string());
+    vars.insert("author".to_string(), "Test Author".to_string());
+
+    let result = template.render(&vars).unwrap();
+
+    // Should contain WASM-specific configuration
+    assert!(result.contains("name = \"my-wasm\""));
+    assert!(result.contains("crate-type = [\"cdylib\", \"rlib\"]"));
+    assert!(result.contains("wasm-bindgen"));
+    assert!(result.contains("im = "));  // Persistent data structures
+}
+
+#[test]
+fn test_wasm_makefile() {
+    let template = Template::wasm_makefile();
+    let mut vars = HashMap::new();
+    vars.insert("project_name".to_string(), "test-wasm".to_string());
+
+    let result = template.render(&vars).unwrap();
+
+    // Should contain WASM build targets
+    assert!(result.contains("wasm32-unknown-unknown"));
+    assert!(result.contains("wasm-full"));
+    assert!(result.contains("quality"));
+    assert!(result.contains("coverage"));
+}
+
+#[test]
+fn test_wasm_lib_rs() {
+    let template = Template::wasm_lib_rs();
+    let mut vars = HashMap::new();
+    vars.insert("project_name".to_string(), "my-wasm".to_string());
+    vars.insert("description".to_string(), "Test WASM project".to_string());
+
+    let result = template.render(&vars).unwrap();
+
+    // Should contain WASM entry point and state
+    assert!(result.contains("use wasm_bindgen::prelude::*;"));
+    assert!(result.contains("pub struct State"));
+    assert!(result.contains("#[wasm_bindgen]"));
+    assert!(result.contains("pub fn process"));
+    assert!(result.contains("#[cfg(test)]"));
+}
+
+#[test]
+fn test_wasm_vfs_rs() {
+    let template = Template::wasm_vfs_rs();
+    let vars = HashMap::new();
+
+    let result = template.render(&vars).unwrap();
+
+    // Should contain VFS with persistent data structures
+    assert!(result.contains("use im::HashMap"));
+    assert!(result.contains("pub struct VirtualFileSystem"));
+    assert!(result.contains("pub fn write"));
+    assert!(result.contains("pub fn read"));
+    assert!(result.contains("O(1) cloning"));
+}
+
+#[test]
+fn test_wasm_registry() {
+    let registry = TemplateRegistry::with_wasm_templates();
+
+    assert!(registry.get("Cargo.toml").is_ok());
+    assert!(registry.get("Makefile").is_ok());
+    assert!(registry.get("lib.rs").is_ok());
+    assert!(registry.get("vfs.rs").is_ok());
+
+    let list = registry.list();
+    assert_eq!(list.len(), 4);
+}
