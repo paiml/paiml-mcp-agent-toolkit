@@ -6,6 +6,7 @@
 pub mod agent;
 pub mod config;
 pub mod errors;
+pub mod template; // TICKET-PMAT-5002
 
 #[cfg(test)]
 mod tests;
@@ -16,12 +17,16 @@ mod property_tests;
 // Re-export existing agent scaffolding
 pub use agent::{
     scaffold_agent, AgentContext, AgentContextBuilder, AgentFeature, AgentTemplate,
-    InteractiveScaffolder, QualityLevel, TemplateRegistry,
+    InteractiveScaffolder, QualityLevel,
+    TemplateRegistry as AgentTemplateRegistry,
 };
 
 // TICKET-PMAT-5001: Core ScaffoldEngine exports
-pub use config::{ScaffoldConfig, Template, AgentFramework, WasmFramework, Feature, QualityGateConfig};
+pub use config::{ScaffoldConfig, TemplateType, AgentFramework, WasmFramework, Feature, QualityGateConfig};
 pub use errors::{ScaffoldError, Result};
+
+// TICKET-PMAT-5002: Template system exports
+pub use template::{Template, TemplateRegistry};
 
 use std::path::{Path, PathBuf};
 use std::process::Command;

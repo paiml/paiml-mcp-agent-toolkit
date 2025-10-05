@@ -16,7 +16,7 @@ proptest! {
     fn prop_valid_names_accepted(name in valid_project_name()) {
         let config = ScaffoldConfig {
             project_name: name,
-            template: Template::Agent { based_on: AgentFramework::Pforge },
+            template_type: TemplateType::Agent { based_on: AgentFramework::Pforge },
             features: vec![],
             quality_gates: QualityGateConfig::default(),
         };
@@ -29,7 +29,7 @@ proptest! {
     fn prop_invalid_names_rejected_slash(name in "[a-z]+/[a-z]+") {
         let config = ScaffoldConfig {
             project_name: name,
-            template: Template::Agent { based_on: AgentFramework::Pforge },
+            template_type: TemplateType::Agent { based_on: AgentFramework::Pforge },
             features: vec![],
             quality_gates: QualityGateConfig::default(),
         };
@@ -43,7 +43,7 @@ proptest! {
         let invalid_name = format!("{}\\{}", name, suffix);
         let config = ScaffoldConfig {
             project_name: invalid_name,
-            template: Template::Agent { based_on: AgentFramework::Pforge },
+            template_type: TemplateType::Agent { based_on: AgentFramework::Pforge },
             features: vec![],
             quality_gates: QualityGateConfig::default(),
         };
