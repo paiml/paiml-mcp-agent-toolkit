@@ -3113,6 +3113,37 @@ pub enum ScaffoldCommands {
         probabilistic_wrapper: Option<String>,
     },
 
+    /// Scaffold a WebAssembly project (TICKET-PMAT-5031)
+    Wasm {
+        /// Project name
+        #[arg(short, long)]
+        name: String,
+
+        /// WASM framework (wasm-labs, pure-wasm)
+        #[arg(short, long, default_value = "wasm-labs")]
+        framework: String,
+
+        /// Features to include (comma-separated)
+        #[arg(short, long, value_delimiter = ',')]
+        features: Vec<String>,
+
+        /// Quality level (standard, strict, extreme)
+        #[arg(short = 'q', long, default_value = "strict")]
+        quality: String,
+
+        /// Output directory
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+
+        /// Overwrite existing directory
+        #[arg(long)]
+        force: bool,
+
+        /// Show what would be generated without creating files
+        #[arg(long)]
+        dry_run: bool,
+    },
+
     /// List available agent templates
     ListTemplates,
 

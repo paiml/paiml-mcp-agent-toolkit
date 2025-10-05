@@ -451,6 +451,27 @@ impl CommandDispatcher {
                 )
                 .await
             }
+            ScaffoldCommands::Wasm {
+                name,
+                framework,
+                features,
+                quality,
+                output,
+                force,
+                dry_run,
+            } => {
+                // TICKET-PMAT-5031: WASM scaffolding
+                let params = handlers::ScaffoldWasmParams {
+                    name,
+                    framework,
+                    features,
+                    quality,
+                    output,
+                    force,
+                    dry_run,
+                };
+                handlers::handle_scaffold_wasm(params).await
+            }
             ScaffoldCommands::ListTemplates => handlers::handle_list_agent_templates().await,
             ScaffoldCommands::ValidateTemplate { path } => {
                 handlers::handle_validate_agent_template(path).await

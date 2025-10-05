@@ -121,6 +121,27 @@ impl CommandExecutor {
                         };
                         super::handlers::handle_scaffold_agent(params).await
                     }
+                    ScaffoldCommands::Wasm {
+                        name,
+                        framework,
+                        features,
+                        quality,
+                        output,
+                        force,
+                        dry_run,
+                    } => {
+                        // TICKET-PMAT-5031: Wire up WASM scaffolding
+                        let params = super::handlers::ScaffoldWasmParams {
+                            name,
+                            framework,
+                            features,
+                            quality,
+                            output,
+                            force,
+                            dry_run,
+                        };
+                        super::handlers::handle_scaffold_wasm(params).await
+                    }
                     ScaffoldCommands::ListTemplates => {
                         super::handlers::handle_list_agent_templates().await
                     }
