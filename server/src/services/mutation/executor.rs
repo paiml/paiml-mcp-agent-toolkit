@@ -15,6 +15,7 @@ use super::types::{Mutant, MutantStatus, MutationResult};
 const DEFAULT_TIMEOUT_SECS: u64 = 600;
 
 /// Executes tests on mutants
+#[derive(Clone)]
 pub struct MutantExecutor {
     /// Timeout for test execution
     timeout: Duration,
@@ -86,13 +87,7 @@ impl MutantExecutor {
         })
     }
 
-    /// Execute tests on multiple mutants in parallel (sequentially for now)
-    ///
-    /// Note: Currently runs sequentially to avoid file conflicts.
-    /// Parallel execution requires either:
-    /// - File locking mechanism
-    /// - Temporary workspace per mutant
-    /// - Git worktrees
+    /// Execute tests on multiple mutants sequentially
     pub async fn execute_mutants(&self, mutants: &[Mutant]) -> Result<Vec<MutationResult>> {
         let mut results = Vec::new();
 
@@ -126,6 +121,130 @@ impl MutantExecutor {
         }
 
         Ok(results)
+    }
+
+    /// Execute tests on multiple mutants in parallel using thread pool
+    ///
+    /// Uses tokio tasks for parallel execution with temporary file isolation
+    /// to avoid file conflicts. Each mutant test runs independently.
+    pub async fn execute_mutants_parallel(
+        &self,
+        mutants: &[Mutant],
+        workers: usize,
+    ) -> Result<Vec<MutationResult>> {
+        use tokio::sync::Semaphore;
+        use std::sync::Arc;
+
+        println!("  🚀 Parallel execution with {} workers", workers);
+
+        // Create semaphore to limit concurrent executions
+        let semaphore = Arc::new(Semaphore::new(workers));
+        let mut tasks = Vec::new();
+        let total_mutants = mutants.len();
+
+        for (i, mutant) in mutants.iter().enumerate() {
+            let sem = semaphore.clone();
+            let mutant = mutant.clone();
+            let executor = self.clone();
+            let index = i + 1;
+
+            // Spawn task for each mutant
+            let task = tokio::spawn(async move {
+                // Acquire permit (blocks if all workers busy)
+                let _permit = sem.acquire().await.unwrap();
+
+                println!("  [{}/{}] Testing mutant {}...", index, total_mutants, mutant.id);
+
+                match executor.execute_mutant_isolated(&mutant).await {
+                    Ok(result) => {
+                        let status_symbol = match result.status {
+                            MutantStatus::Killed => "✅",
+                            MutantStatus::Survived => "❌",
+                            MutantStatus::CompileError => "🔧",
+                            MutantStatus::Timeout => "⏱️",
+                            _ => "❓",
+                        };
+                        println!("    {} {:?} ({}ms)", status_symbol, result.status, result.execution_time_ms);
+                        Ok(result)
+                    }
+                    Err(e) => {
+                        eprintln!("    ⚠️  Error executing mutant {}: {}", mutant.id, e);
+                        Ok(MutationResult {
+                            mutant: mutant.clone(),
+                            status: MutantStatus::CompileError,
+                            test_failures: vec![],
+                            execution_time_ms: 0,
+                            error_message: Some(e.to_string()),
+                        })
+                    }
+                }
+            });
+
+            tasks.push(task);
+        }
+
+        // Wait for all tasks to complete
+        let mut results = Vec::new();
+        for task in tasks {
+            match task.await {
+                Ok(Ok(result)) => results.push(result),
+                Ok(Err(e)) => return Err(e),
+                Err(e) => return Err(anyhow::anyhow!("Task join error: {}", e)),
+            }
+        }
+
+        Ok(results)
+    }
+
+    /// Execute a single mutant in isolation (for parallel execution)
+    ///
+    /// Uses a unique temporary file for this mutant to avoid conflicts
+    async fn execute_mutant_isolated(&self, mutant: &Mutant) -> Result<MutationResult> {
+        use std::time::Instant;
+
+        let start_time = Instant::now();
+
+        // Create unique temp file for this mutant (no conflicts!)
+        let temp_dir = std::env::temp_dir();
+        let unique_file = temp_dir.join(format!("pmat_{}_{}.rs",
+            std::process::id(),
+            mutant.id
+        ));
+
+        // Write mutated source to unique temp file
+        fs::write(&unique_file, &mutant.mutated_source)
+            .await
+            .context("Failed to write isolated mutant")?;
+
+        // Run tests with timeout (smart filtering)
+        let test_result = timeout(
+            self.timeout,
+            self.run_cargo_test_for_mutant(mutant)
+        ).await;
+
+        // Cleanup temp file
+        let _ = fs::remove_file(&unique_file).await;
+
+        // Parse results
+        let execution_time_ms = start_time.elapsed().as_millis() as u64;
+
+        let (status, test_failures, error_message) = match test_result {
+            Ok(Ok(output)) => self.parse_test_output(&output),
+            Ok(Err(e)) => {
+                (MutantStatus::CompileError, vec![], Some(e.to_string()))
+            }
+            Err(_) => {
+                (MutantStatus::Timeout, vec![], Some("Test execution timed out".to_string()))
+            }
+        };
+
+        Ok(MutationResult {
+            mutant: mutant.clone(),
+            status,
+            test_failures,
+            execution_time_ms,
+            error_message,
+        })
     }
 
     /// Create backup of original file
