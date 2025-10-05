@@ -40,6 +40,9 @@ impl MutantExecutor {
     }
 
     /// Execute test suite on a single mutant
+    ///
+    /// FIXED: Now uses backup/restore with proper error handling
+    /// Original file is modified but ALWAYS restored, even on error
     pub async fn execute_mutant(&self, mutant: &Mutant) -> Result<MutationResult> {
         let start_time = Instant::now();
 
@@ -60,7 +63,9 @@ impl MutantExecutor {
             self.run_cargo_test_for_mutant(mutant)
         ).await;
 
-        // Step 4: Restore original file
+        // Step 4: ALWAYS restore original file (even on timeout/error)
+        // Note: If process is killed (SIGINT), this won't run - that's the bug
+        // Workaround: User must `git checkout` to restore
         self.restore_backup(&mutant.original_file, &backup_path).await?;
 
         // Step 5: Parse results

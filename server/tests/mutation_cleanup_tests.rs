@@ -3,9 +3,9 @@
 //! CRITICAL BUG FOUND: When mutation testing times out or is interrupted,
 //! the mutated file is left in place (not restored from backup).
 //!
-//! ROOT CAUSE: execute_mutant() line 64 restore never happens on timeout/interrupt
+//! ROOT CAUSE: execute_mutant() modifies files in place, SIGINT kills before restore
 //!
-//! FIX: Use Drop guard or defer pattern to ALWAYS restore
+//! FIX: NEVER modify original file - use temp files ONLY (Toyota Way: proper design)
 
 use pmat::services::mutation::{Mutant, MutantExecutor, MutantStatus, MutationOperatorType, SourceLocation};
 use std::path::PathBuf;
@@ -106,4 +106,38 @@ async fn red_must_clean_up_backup_files() {
     // Cleanup
     let _ = std::fs::remove_file(&test_file);
     let _ = std::fs::remove_file(&backup_file);
+}
+
+#[tokio::test]
+async fn red_original_file_must_never_be_modified() {
+    // This is the REAL fix: NEVER touch the original file!
+
+    // Create a test file
+    let test_file = std::env::temp_dir().join("test_never_modified.rs");
+    let original_content = "fn original() { 42 }";
+    std::fs::write(&test_file, original_content).unwrap();
+
+    let mutant = Mutant {
+        id: "TEST_NEVER_MODIFY".to_string(),
+        original_file: test_file.clone(),
+        mutated_source: "fn mutated() { 999 }".to_string(),
+        location: SourceLocation { line: 1, column: 1, end_line: 1, end_column: 10 },
+        operator: MutationOperatorType::ArithmeticReplacement,
+        hash: "test".to_string(),
+        status: MutantStatus::Pending,
+    };
+
+    let executor = MutantExecutor::new(std::env::temp_dir());
+
+    // Execute mutant
+    let _ = executor.execute_mutant(&mutant).await;
+
+    // RED: Original file MUST be completely unchanged!
+    // We should NEVER write to the original file, only to temp files
+    let final_content = std::fs::read_to_string(&test_file).unwrap();
+    assert_eq!(final_content, original_content,
+        "CRITICAL: Original file was modified! Should use temp files only.");
+
+    // Cleanup
+    let _ = std::fs::remove_file(&test_file);
 }
