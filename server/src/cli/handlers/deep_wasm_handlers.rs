@@ -138,7 +138,7 @@ fn convert_analysis_focus(focus: DeepWasmFocus) -> AnalysisFocus {
 /// Creates service with quality gates based on strict mode
 #[cfg(feature = "deep-wasm")]
 fn create_configured_service(strict: bool) -> DeepWasmService {
-    use crate::services::deep_wasm::WasmQualityGates;
+    
 
     let gates = if strict {
         create_strict_quality_gates()
