@@ -231,6 +231,25 @@ struct MutationVisitor<'a> {
 }
 
 impl<'a> MutationVisitor<'a> {
+    /// Delete a statement from the entire file and return the modified source
+    fn delete_statement_in_file(&self, stmt_to_delete: &syn::Stmt) -> String {
+        // Clone the syntax tree so we can modify it
+        let mut modified_tree = self.syntax_tree.clone();
+
+        // Create a deletion visitor
+        let mut deleter = StatementDeletion {
+            target_stmt: quote::quote!(#stmt_to_delete).to_string(),
+            deleted: false,
+        };
+
+        // Visit and modify the tree
+        use syn::visit_mut::VisitMut;
+        deleter.visit_file_mut(&mut modified_tree);
+
+        // Quote the entire modified file back to source code
+        quote::quote!(#modified_tree).to_string()
+    }
+
     /// Replace an expression in the entire file and return the modified source
     fn replace_expression_in_file(&self, original_expr: &Expr, mutated_expr: &Expr) -> String {
         // Clone the syntax tree so we can modify it
@@ -249,6 +268,33 @@ impl<'a> MutationVisitor<'a> {
 
         // Quote the entire modified file back to source code
         quote::quote!(#modified_tree).to_string()
+    }
+}
+
+/// Visitor that deletes a specific statement from the AST
+struct StatementDeletion {
+    target_stmt: String,
+    deleted: bool,
+}
+
+impl syn::visit_mut::VisitMut for StatementDeletion {
+    fn visit_block_mut(&mut self, block: &mut syn::Block) {
+        // Only delete the first occurrence
+        if !self.deleted {
+            // Find and remove the target statement
+            block.stmts.retain(|stmt| {
+                let stmt_str = quote::quote!(#stmt).to_string();
+                if stmt_str == self.target_stmt && !self.deleted {
+                    self.deleted = true;
+                    false // Remove this statement
+                } else {
+                    true // Keep this statement
+                }
+            });
+        }
+
+        // Continue visiting nested blocks
+        syn::visit_mut::visit_block_mut(self, block);
     }
 }
 
@@ -277,9 +323,67 @@ impl syn::visit_mut::VisitMut for ExpressionReplacer {
 }
 
 impl<'a> Visit<'_> for MutationVisitor<'a> {
+    fn visit_stmt(&mut self, stmt: &syn::Stmt) {
+        // Check if this is a statement that SDL can delete
+        // SDL targets: Call, MethodCall, Assign, Macro
+        let can_delete = match stmt {
+            syn::Stmt::Expr(expr, _) => {
+                // Expression statement (with or without semicolon)
+                matches!(
+                    expr,
+                    Expr::Call(_) | Expr::MethodCall(_) | Expr::Assign(_) | Expr::Macro(_)
+                )
+            }
+            syn::Stmt::Macro(_) => true, // Macro statement
+            _ => false,
+        };
+
+        if can_delete {
+            // Generate SDL mutant by deleting this statement
+            for operator in &self.operators {
+                if operator.name() == "SDL" {
+                    let mutated_source = self.delete_statement_in_file(stmt);
+
+                    // Generate hash from the statement
+                    let mut hasher = Sha256::new();
+                    let stmt_str = quote::quote!(#stmt).to_string();
+                    hasher.update(&stmt_str);
+                    let hash = format!("{:x}", hasher.finalize());
+
+                    let location = SourceLocation {
+                        line: 0,
+                        column: 0,
+                        end_line: 0,
+                        end_column: 0,
+                    };
+
+                    let mutant = Mutant {
+                        id: format!("{}_{}", operator.name(), &hash[..8]),
+                        original_file: self.file_path.clone(),
+                        mutated_source,
+                        location,
+                        operator: operator.operator_type(),
+                        hash,
+                        status: MutantStatus::Pending,
+                    };
+
+                    self.mutants.push(mutant);
+                    break;
+                }
+            }
+        }
+
+        // Continue visiting nested statements
+        syn::visit::visit_stmt(self, stmt);
+    }
+
     fn visit_expr(&mut self, expr: &Expr) {
-        // Try each operator on this expression
+        // Try each operator on this expression (but skip SDL, which is handled at statement level)
         for operator in &self.operators {
+            if operator.name() == "SDL" {
+                continue; // SDL is handled in visit_stmt
+            }
+
             if operator.can_mutate(expr) {
                 // Generate location from expression span
                 let location = SourceLocation {

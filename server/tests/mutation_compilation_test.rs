@@ -62,6 +62,83 @@ mod tests {
     );
 }
 
+/// RED TEST: Statement deletion should compile
+///
+/// v2.132.0: SDL generates () expressions that don't compile in all contexts
+/// v2.133.0: Should delete statements entirely from AST
+#[tokio::test]
+async fn test_statement_deletion_compiles() {
+    let source = r#"
+fn process(x: i32) -> i32 {
+    validate(x);
+    compute(x)
+}
+
+fn validate(x: i32) {
+    println!("validating {}", x);
+}
+
+fn compute(x: i32) -> i32 {
+    x * 2
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_process() {
+        assert_eq!(process(5), 10);
+    }
+}
+"#;
+
+    let mut temp_file = NamedTempFile::new().unwrap();
+    temp_file.write_all(source.as_bytes()).unwrap();
+    let temp_path = temp_file.path().to_path_buf();
+
+    let adapter = Arc::new(RustAdapter::new());
+    let config = MutationConfig::default();
+    let engine = MutationEngine::new(adapter, config);
+
+    let mutants = engine.generate_mutants_from_file(&temp_path).await.unwrap();
+
+    // Find SDL mutant (statement deletion)
+    let sdl_mutant = mutants.iter().find(|m| {
+        matches!(m.operator, pmat::services::mutation::MutationOperatorType::StatementDeletion)
+    });
+
+    assert!(sdl_mutant.is_some(), "Should generate SDL mutant");
+    let mutant = sdl_mutant.unwrap();
+
+    println!("SDL Mutated source:\n{}", mutant.mutated_source);
+
+    // Should contain function signature
+    assert!(
+        mutant.mutated_source.contains("fn process"),
+        "Should contain function signature"
+    );
+
+    // The key test: Should NOT contain "() ;" (which is what current broken SDL does)
+    assert!(
+        !mutant.mutated_source.contains("() ;"),
+        "SDL should delete statement, not replace with '() ;'. Got: {}",
+        mutant.mutated_source
+    );
+
+    // Should parse as valid Rust
+    let parse_result = syn::parse_file(&mutant.mutated_source);
+    assert!(
+        parse_result.is_ok(),
+        "SDL mutated source should parse as valid Rust: {:?}",
+        parse_result.err()
+    );
+
+    // The real test: Does it compile?
+    // If SDL is working, the statement should be deleted entirely
+    // Expected: "fn process(x: i32) -> i32 { compute(x) }" (no validate call)
+}
+
 /// RED TEST: Mutant should compile with cargo
 ///
 /// This is the ultimate test - can cargo actually compile it?
