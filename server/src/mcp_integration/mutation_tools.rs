@@ -84,7 +84,7 @@ impl McpTool for MutationTestTool {
     }
 
     async fn execute(&self, params: Value) -> Result<Value, McpError> {
-        use crate::services::mutation::{MutationEngine, MutationConfig, RustAdapter};
+        use crate::services::mutation::{MutationEngine, MutationConfig, RustAdapter, MutantExecutor, MutationScore};
         use std::path::PathBuf;
 
         let path_str = params["path"].as_str().ok_or_else(|| McpError {
@@ -142,16 +142,36 @@ impl McpTool for MutationTestTool {
             });
         };
 
-        let total_mutants = mutants.len();
+        if mutants.is_empty() {
+            return Ok(json!({
+                "mutation_score": 0.0,
+                "total_mutants": 0,
+                "killed": 0,
+                "survived": 0,
+                "note": "No mutants generated - file may be too simple or no applicable operators"
+            }));
+        }
 
-        // Simulate mutation score (actual execution would run tests)
-        let simulated_killed = (total_mutants as f64 * 0.75) as usize;
-        let simulated_survived = total_mutants - simulated_killed;
-        let mutation_score = if total_mutants > 0 {
-            simulated_killed as f64 / total_mutants as f64
-        } else {
-            0.0
-        };
+        // Execute tests on mutants
+        let work_dir = path.parent()
+            .and_then(|p| p.parent())
+            .or_else(|| path.parent())
+            .unwrap_or(std::path::Path::new("."))
+            .to_path_buf();
+
+        let executor = MutantExecutor::new(work_dir)
+            .with_timeout(600);
+
+        let results = executor.execute_mutants(&mutants).await
+            .map_err(|e| McpError {
+                code: error_codes::INTERNAL_ERROR,
+                message: format!("Failed to execute mutants: {}", e),
+                data: None,
+            })?;
+
+        // Calculate mutation score from actual results
+        let score = MutationScore::from_results(&results);
+        let mutation_score = score.score;
 
         // Check minimum score threshold
         if let Some(min) = min_score {
@@ -170,18 +190,23 @@ impl McpTool for MutationTestTool {
 
         let report = json!({
             "mutation_score": mutation_score,
-            "total_mutants": total_mutants,
-            "killed": simulated_killed,
-            "survived": simulated_survived,
+            "total_mutants": score.total,
+            "killed": score.killed,
+            "survived": score.survived,
+            "compile_errors": score.compile_errors,
+            "timeouts": score.timeouts,
+            "equivalent": score.equivalent,
             "operators": operators,
-            "mode": "simulation",
-            "note": "Simulation mode - actual test execution not yet implemented",
-            "mutants_sample": mutants.iter().take(10).map(|m| {
+            "mode": "empirical",
+            "results_sample": results.iter().take(10).map(|r| {
                 json!({
-                    "id": m.id,
-                    "operator": format!("{:?}", m.operator),
-                    "line": m.location.line,
-                    "column": m.location.column,
+                    "id": r.mutant.id,
+                    "operator": format!("{:?}", r.mutant.operator),
+                    "line": r.mutant.location.line,
+                    "column": r.mutant.location.column,
+                    "status": format!("{:?}", r.status),
+                    "test_failures": r.test_failures,
+                    "execution_time_ms": r.execution_time_ms,
                 })
             }).collect::<Vec<_>>()
         });
