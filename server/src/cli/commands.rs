@@ -530,24 +530,50 @@ pub enum Commands {
         output: Option<PathBuf>,
     },
 
-    /// Run quality gates on the current project (TICKET-PMAT-5023)
+    /// Run quality gates on the current project (TICKET-PMAT-5023, TICKET-PMAT-5024)
     #[command(name = "quality-gates")]
     QualityGates {
+        /// Quality gates subcommand
+        #[command(subcommand)]
+        command: Option<QualityGatesCommand>,
+
         /// Path to quality gate configuration file
-        #[arg(long, default_value = ".pmat-gates.toml")]
+        #[arg(long, default_value = ".pmat-gates.toml", global = true)]
         config: PathBuf,
 
-        /// Generate markdown report
+        /// Generate markdown report (only when no subcommand)
         #[arg(long)]
         report: bool,
 
-        /// Output JSON format
+        /// Output JSON format (only when no subcommand)
         #[arg(long)]
         json: bool,
 
         /// Project directory
         #[arg(long, default_value = ".")]
         project_dir: PathBuf,
+    },
+}
+
+/// Quality gates subcommands (TICKET-PMAT-5024)
+#[derive(Subcommand)]
+#[cfg_attr(test, derive(Debug))]
+pub enum QualityGatesCommand {
+    /// Initialize .pmat-gates.toml with defaults
+    Init {
+        /// Force overwrite existing file
+        #[arg(long)]
+        force: bool,
+    },
+
+    /// Validate configuration file
+    Validate,
+
+    /// Show current configuration
+    Show {
+        /// Output format
+        #[arg(long, value_enum, default_value = "toml")]
+        format: ConfigFormat,
     },
 }
 
