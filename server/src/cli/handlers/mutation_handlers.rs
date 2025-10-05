@@ -70,8 +70,14 @@ pub async fn handle_mutate(
     let executor = MutantExecutor::new(work_dir)
         .with_timeout(600); // 10 minute timeout per mutant
 
-    let results = executor.execute_mutants(&mutants).await
-        .context("Failed to execute mutants")?;
+    // Use parallel execution if enabled
+    let results = if _distributed && _workers > 1 {
+        executor.execute_mutants_parallel(&mutants, _workers).await
+            .context("Failed to execute mutants in parallel")?
+    } else {
+        executor.execute_mutants(&mutants).await
+            .context("Failed to execute mutants")?
+    };
 
     // Calculate mutation score from actual results
     let score = MutationScore::from_results(&results);
