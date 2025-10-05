@@ -324,17 +324,25 @@ impl syn::visit_mut::VisitMut for ExpressionReplacer {
 
 impl<'a> Visit<'_> for MutationVisitor<'a> {
     fn visit_stmt(&mut self, stmt: &syn::Stmt) {
-        // Check if this is a statement that SDL can delete
+        // Check if this is a statement that SDL can SAFELY delete
         // SDL targets: Call, MethodCall, Assign, Macro
+        // BUT: We must NOT delete:
+        // 1. Last expression in a function (likely the return value)
+        // 2. Expressions inside control flow conditions
+
         let can_delete = match stmt {
-            syn::Stmt::Expr(expr, _) => {
+            syn::Stmt::Expr(expr, semi) => {
                 // Expression statement (with or without semicolon)
-                matches!(
+                let is_deletable_type = matches!(
                     expr,
                     Expr::Call(_) | Expr::MethodCall(_) | Expr::Assign(_) | Expr::Macro(_)
-                )
+                );
+
+                // Only delete if it has a semicolon (not a return value)
+                // Expressions without semicolons are typically return values
+                is_deletable_type && semi.is_some()
             }
-            syn::Stmt::Macro(_) => true, // Macro statement
+            syn::Stmt::Macro(_) => true, // Macro statement (usually safe to delete)
             _ => false,
         };
 
