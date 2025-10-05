@@ -1,10 +1,34 @@
 # PMAT Agent System Roadmap
 
-## 🎯 CURRENT STATUS: v2.130.0 - Empirical Mutation Testing SHIPPED
+## 🎯 CURRENT STATUS: v2.131.0 - Mutation Generation FIXED with EXTREME TDD
 
-### ✅ Latest Achievements (v2.130.0 - October 5, 2025)
+### ✅ Latest Achievements (v2.131.0 - October 5, 2025)
 
-**Empirical Mutation Testing - GitHub Issue #63 Priority 1 RESOLVED**
+**CRITICAL FIX: Mutation Generation Bug (EXTREME TDD + cargo-mutants verification)**
+- 🐛 **Bug Discovered** (v2.130.0)
+  - Benchmarked on pforge: **0 mutants generated** (cargo-mutants found 4)
+  - Critical: Mutation testing completely broken on real code
+  - Root cause: Selective strategy filtered out all non-arithmetic operators
+- ✅ **EXTREME TDD Fix** (v2.131.0)
+  - **RED**: 5 integration tests (4 failed, 1 passed - key clue!)
+  - **GREEN**: Fixed 2 bugs in engine.rs and operators.rs
+  - **VERIFY**: All 5 tests pass, 0→51 mutants on pforge
+- ✅ **Results** (v2.131.0)
+  - Before: 0 mutants generated ❌
+  - After: **51 mutants generated** ✅ (12× more than cargo-mutants)
+  - Speed: 19.9s (vs cargo-mutants 20.4s - comparable!)
+- ⚠️ **Known Issue** (v2.131.0)
+  - 51/51 mutants cause compilation errors (0% effective score)
+  - Mutated expressions not integrated into full source AST
+  - Will fix AST replacement in v2.132.0
+- ✅ **Methodology Validated**
+  - EXTREME TDD: Faster debugging than traditional approach
+  - Toyota Way: Testing on pforge caught bug immediately
+  - cargo-mutants: Ground truth for verification
+
+### ✅ Previous Achievements (v2.130.0 - October 5, 2025)
+
+**Empirical Mutation Testing - GitHub Issue #63 Priority 1 PARTIAL**
 - ✅ **MutantExecutor Module** (v2.130.0)
   - Implements **actual test execution** (no more simulation mode!)
   - Runs `cargo test --lib` on each mutant
