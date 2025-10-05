@@ -1214,6 +1214,8 @@ async fn route_clippy_analysis(cmd: AnalyzeCommands) -> Result<()> {
 }
 
 /// Route entropy analysis command
+///
+/// Refactored to reduce complexity from 25 to <20 by extracting helper functions
 async fn route_entropy_analysis(cmd: AnalyzeCommands) -> Result<()> {
     if let AnalyzeCommands::Entropy {
         project_path,
@@ -1225,133 +1227,186 @@ async fn route_entropy_analysis(cmd: AnalyzeCommands) -> Result<()> {
         include_tests,
     } = cmd
     {
-        use crate::cli::{EntropyOutputFormat, EntropySeverity};
-        use crate::entropy::violation_detector::Severity;
-        use crate::entropy::{EntropyAnalyzer, EntropyConfig};
+        use crate::cli::EntropySeverity;
+        use crate::entropy::EntropyAnalyzer;
         use std::fs;
 
-        // Convert CLI severity to entropy severity
-        let min_sev = match min_severity {
-            EntropySeverity::Low => Severity::Low,
-            EntropySeverity::Medium => Severity::Medium,
-            EntropySeverity::High => Severity::High,
-        };
-
-        // Create entropy configuration
-        let mut config = EntropyConfig {
-            min_severity: min_sev,
-            ..Default::default()
-        };
-
-        // Update exclude paths if tests should be excluded
-        if !include_tests {
-            config.exclude_paths.push("**/*test*.rs".to_string());
-            config.exclude_paths.push("tests/**".to_string());
-        }
-
-        // Create analyzer and run analysis
+        let config = create_entropy_config(min_severity, include_tests);
         let analyzer = EntropyAnalyzer::with_config(config);
 
-        let analysis_path = if let Some(file_path) = file {
-            file_path
-        } else {
-            project_path
-        };
-
+        let analysis_path = file.unwrap_or(project_path);
         let report = analyzer.analyze(&analysis_path).await?;
 
-        // Generate output based on format
-        let output_content = match format {
-            EntropyOutputFormat::Summary => {
-                let violations =
-                    if top_violations > 0 && report.actionable_violations.len() > top_violations {
-                        report
-                            .actionable_violations
-                            .iter()
-                            .take(top_violations)
-                            .cloned()
-                            .collect::<Vec<_>>()
-                    } else {
-                        report.actionable_violations.clone()
-                    };
+        let output_content = format_entropy_report(&report, format, top_violations)?;
 
-                format!(
-                    "Entropy Analysis Summary\n========================\n\n\
-                     Files Analyzed: {}\n\
-                     Total Violations: {}\n\
-                     Potential LOC Reduction: {} lines ({:.1}%)\n\n\
-                     Top Violations:\n{}\n",
-                    report.total_files_analyzed,
-                    report.actionable_violations.len(),
-                    report.total_loc_reduction(),
-                    report.reduction_percentage(),
-                    violations
-                        .iter()
-                        .enumerate()
-                        .map(|(i, v)| format!(
-                            "{}. {} (saves {} lines)\n   Fix: {}",
-                            i + 1,
-                            v.message,
-                            v.estimated_loc_reduction,
-                            v.fix_suggestion
-                        ))
-                        .collect::<Vec<_>>()
-                        .join("\n\n")
-                )
-            }
-            EntropyOutputFormat::Detailed => report.format_report(),
-            EntropyOutputFormat::Json => serde_json::to_string_pretty(&report)?,
-            EntropyOutputFormat::Markdown => {
-                format!(
-                    "# Entropy Analysis Report\n\n\
-                     ## Summary\n\n\
-                     - **Files Analyzed**: {}\n\
-                     - **Total Violations**: {}\n\
-                     - **Potential LOC Reduction**: {} lines ({:.1}%)\n\n\
-                     ## Violations\n\n{}\n",
-                    report.total_files_analyzed,
-                    report.actionable_violations.len(),
-                    report.total_loc_reduction(),
-                    report.reduction_percentage(),
-                    report
-                        .actionable_violations
-                        .iter()
-                        .take(if top_violations == 0 {
-                            usize::MAX
-                        } else {
-                            top_violations
-                        })
-                        .map(|v| format!(
-                            "### {} ({:?})\n\n\
-                             **Pattern**: {:?} (repeated {} times)\n\
-                             **Fix**: {}\n\
-                             **LOC Reduction**: {} lines\n\
-                             **Affected Files**: {}\n",
-                            v.message,
-                            v.severity,
-                            v.pattern.pattern_type,
-                            v.pattern.repetitions,
-                            v.fix_suggestion,
-                            v.estimated_loc_reduction,
-                            v.affected_files.len()
-                        ))
-                        .collect::<Vec<_>>()
-                        .join("\n")
-                )
-            }
-        };
-
-        // Output results
-        if let Some(output_path) = output {
-            fs::write(output_path, output_content)?;
-        } else {
-            println!("{output_content}");
-        }
+        output_entropy_results(output, &output_content)?;
 
         Ok(())
     } else {
         unreachable!("Expected Entropy command")
     }
+}
+
+/// Create entropy configuration from CLI parameters
+fn create_entropy_config(
+    min_severity: crate::cli::EntropySeverity,
+    include_tests: bool,
+) -> crate::entropy::EntropyConfig {
+    use crate::cli::EntropySeverity;
+    use crate::entropy::violation_detector::Severity;
+    use crate::entropy::EntropyConfig;
+
+    let min_sev = match min_severity {
+        EntropySeverity::Low => Severity::Low,
+        EntropySeverity::Medium => Severity::Medium,
+        EntropySeverity::High => Severity::High,
+    };
+
+    let mut config = EntropyConfig {
+        min_severity: min_sev,
+        ..Default::default()
+    };
+
+    if !include_tests {
+        config.exclude_paths.push("**/*test*.rs".to_string());
+        config.exclude_paths.push("tests/**".to_string());
+    }
+
+    config
+}
+
+/// Format entropy report based on output format
+fn format_entropy_report(
+    report: &crate::entropy::EntropyReport,
+    format: crate::cli::EntropyOutputFormat,
+    top_violations: usize,
+) -> Result<String> {
+    use crate::cli::EntropyOutputFormat;
+
+    match format {
+        EntropyOutputFormat::Summary => Ok(format_summary_report(report, top_violations)),
+        EntropyOutputFormat::Detailed => Ok(report.format_report()),
+        EntropyOutputFormat::Json => Ok(serde_json::to_string_pretty(&report)?),
+        EntropyOutputFormat::Markdown => Ok(format_markdown_report(report, top_violations)),
+    }
+}
+
+/// Format summary report
+fn format_summary_report(
+    report: &crate::entropy::EntropyReport,
+    top_violations: usize,
+) -> String {
+    let violations = get_top_violations(&report.actionable_violations, top_violations);
+
+    format!(
+        "Entropy Analysis Summary\n========================\n\n\
+         Files Analyzed: {}\n\
+         Total Violations: {}\n\
+         Potential LOC Reduction: {} lines ({:.1}%)\n\n\
+         Top Violations:\n{}\n",
+        report.total_files_analyzed,
+        report.actionable_violations.len(),
+        report.total_loc_reduction(),
+        report.reduction_percentage(),
+        format_violation_list(&violations)
+    )
+}
+
+/// Format markdown report
+fn format_markdown_report(
+    report: &crate::entropy::EntropyReport,
+    top_violations: usize,
+) -> String {
+    let max_violations = if top_violations == 0 {
+        usize::MAX
+    } else {
+        top_violations
+    };
+
+    format!(
+        "# Entropy Analysis Report\n\n\
+         ## Summary\n\n\
+         - **Files Analyzed**: {}\n\
+         - **Total Violations**: {}\n\
+         - **Potential LOC Reduction**: {} lines ({:.1}%)\n\n\
+         ## Violations\n\n{}\n",
+        report.total_files_analyzed,
+        report.actionable_violations.len(),
+        report.total_loc_reduction(),
+        report.reduction_percentage(),
+        format_markdown_violations(&report.actionable_violations, max_violations)
+    )
+}
+
+/// Get top N violations from list
+fn get_top_violations(
+    violations: &[crate::entropy::violation_detector::ActionableViolation],
+    top_n: usize,
+) -> Vec<crate::entropy::violation_detector::ActionableViolation> {
+    if top_n > 0 && violations.len() > top_n {
+        violations.iter().take(top_n).cloned().collect()
+    } else {
+        violations.to_vec()
+    }
+}
+
+/// Format violation list for summary
+fn format_violation_list(violations: &[crate::entropy::violation_detector::ActionableViolation]) -> String {
+    violations
+        .iter()
+        .enumerate()
+        .map(|(i, v)| {
+            format!(
+                "{}. {} (saves {} lines)\n   Fix: {}",
+                i + 1,
+                v.message,
+                v.estimated_loc_reduction,
+                v.fix_suggestion
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n\n")
+}
+
+/// Format violations for markdown output
+fn format_markdown_violations(
+    violations: &[crate::entropy::violation_detector::ActionableViolation],
+    max_count: usize,
+) -> String {
+    violations
+        .iter()
+        .take(max_count)
+        .map(|v| {
+            format!(
+                "### {} ({:?})\n\n\
+                 **Pattern**: {:?} (repeated {} times)\n\
+                 **Fix**: {}\n\
+                 **LOC Reduction**: {} lines\n\
+                 **Affected Files**: {}\n",
+                v.message,
+                v.severity,
+                v.pattern.pattern_type,
+                v.pattern.repetitions,
+                v.fix_suggestion,
+                v.estimated_loc_reduction,
+                v.affected_files.len()
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+/// Output entropy results to file or stdout
+fn output_entropy_results(output: Option<std::path::PathBuf>, content: &str) -> Result<()> {
+    use std::fs;
+
+    if let Some(output_path) = output {
+        fs::write(output_path, content)?;
+    } else {
+        println!("{content}");
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]

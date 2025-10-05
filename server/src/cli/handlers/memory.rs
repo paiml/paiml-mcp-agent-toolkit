@@ -150,7 +150,7 @@ fn build_pool_stats_output(
     let mut pool_stats_output = HashMap::new();
 
     for (pool_type, pool_stats) in pool_stats {
-        let efficiency_rating = calculate_efficiency_rating(pool_stats.reuse_ratio);
+        let efficiency_rating = calculate_pool_efficiency_rating(pool_stats.reuse_ratio);
 
         pool_stats_output.insert(
             format!("{pool_type:?}"),
@@ -166,19 +166,6 @@ fn build_pool_stats_output(
     }
 
     pool_stats_output
-}
-
-/// Calculate efficiency rating from reuse ratio
-fn calculate_efficiency_rating(reuse_ratio: f64) -> &'static str {
-    if reuse_ratio > 0.8 {
-        "Excellent"
-    } else if reuse_ratio > 0.6 {
-        "Good"
-    } else if reuse_ratio > 0.4 {
-        "Fair"
-    } else {
-        "Poor"
-    }
 }
 
 /// Generate memory usage recommendations
@@ -430,59 +417,94 @@ async fn handle_memory_configure(
     Ok(())
 }
 
+/// Handle memory pools command
+///
+/// Refactored to reduce complexity from 25 to <20 by extracting helper functions
 async fn handle_memory_pools(pool: &Option<String>, efficiency: bool) -> Result<()> {
     let manager = global_memory_manager()?;
     let stats = manager.stats();
 
-    let bold = Style::new().bold();
-    println!("{}", bold.apply_to("Memory Pool Statistics"));
-    println!();
+    print_pool_statistics_header();
 
     for (pool_type, pool_stats) in &stats.pool_stats {
         let pool_name = format!("{pool_type:?}");
 
-        // Filter by specific pool if requested
-        if let Some(target_pool) = pool {
-            if !pool_name
-                .to_lowercase()
-                .contains(&target_pool.to_lowercase())
-            {
-                continue;
-            }
+        if should_skip_pool(&pool_name, pool) {
+            continue;
         }
 
-        println!("{}:", bold.apply_to(&pool_name));
-        println!("  Buffers:     {}", pool_stats.buffer_count);
-        println!("  Total Size:  {}", format_bytes(pool_stats.total_size));
-        println!("  Allocations: {}", pool_stats.allocation_count);
-        println!("  Reuses:      {}", pool_stats.reuse_count);
+        print_pool_basic_stats(&pool_name, pool_stats);
 
         if efficiency {
-            println!("  Reuse Ratio: {:.1}%", pool_stats.reuse_ratio * 100.0);
-
-            let avg_buffer_size = if pool_stats.buffer_count > 0 {
-                pool_stats.total_size / pool_stats.buffer_count
-            } else {
-                0
-            };
-            println!("  Avg Buffer:  {}", format_bytes(avg_buffer_size));
-
-            let efficiency_rating = if pool_stats.reuse_ratio > 0.8 {
-                "Excellent"
-            } else if pool_stats.reuse_ratio > 0.6 {
-                "Good"
-            } else if pool_stats.reuse_ratio > 0.4 {
-                "Fair"
-            } else {
-                "Poor"
-            };
-            println!("  Efficiency:  {efficiency_rating}");
+            print_pool_efficiency_stats(pool_stats);
         }
 
         println!();
     }
 
     Ok(())
+}
+
+/// Print header for pool statistics
+fn print_pool_statistics_header() {
+    let bold = Style::new().bold();
+    println!("{}", bold.apply_to("Memory Pool Statistics"));
+    println!();
+}
+
+/// Check if pool should be skipped based on filter
+fn should_skip_pool(pool_name: &str, target_pool: &Option<String>) -> bool {
+    if let Some(target) = target_pool {
+        !pool_name.to_lowercase().contains(&target.to_lowercase())
+    } else {
+        false
+    }
+}
+
+/// Print basic pool statistics
+fn print_pool_basic_stats(
+    pool_name: &str,
+    pool_stats: &crate::services::memory_manager::PoolStats,
+) {
+    let bold = Style::new().bold();
+    println!("{}:", bold.apply_to(pool_name));
+    println!("  Buffers:     {}", pool_stats.buffer_count);
+    println!("  Total Size:  {}", format_bytes(pool_stats.total_size));
+    println!("  Allocations: {}", pool_stats.allocation_count);
+    println!("  Reuses:      {}", pool_stats.reuse_count);
+}
+
+/// Print pool efficiency statistics
+fn print_pool_efficiency_stats(pool_stats: &crate::services::memory_manager::PoolStats) {
+    println!("  Reuse Ratio: {:.1}%", pool_stats.reuse_ratio * 100.0);
+
+    let avg_buffer_size = calculate_average_buffer_size(pool_stats);
+    println!("  Avg Buffer:  {}", format_bytes(avg_buffer_size));
+
+    let efficiency_rating = calculate_pool_efficiency_rating(pool_stats.reuse_ratio);
+    println!("  Efficiency:  {efficiency_rating}");
+}
+
+/// Calculate average buffer size for pool
+fn calculate_average_buffer_size(pool_stats: &crate::services::memory_manager::PoolStats) -> usize {
+    if pool_stats.buffer_count > 0 {
+        pool_stats.total_size / pool_stats.buffer_count
+    } else {
+        0
+    }
+}
+
+/// Calculate efficiency rating from reuse ratio
+fn calculate_pool_efficiency_rating(reuse_ratio: f64) -> &'static str {
+    if reuse_ratio > 0.8 {
+        "Excellent"
+    } else if reuse_ratio > 0.6 {
+        "Good"
+    } else if reuse_ratio > 0.4 {
+        "Fair"
+    } else {
+        "Poor"
+    }
 }
 
 async fn handle_memory_pressure(threshold: f64, watch: &Option<u64>) -> Result<()> {
