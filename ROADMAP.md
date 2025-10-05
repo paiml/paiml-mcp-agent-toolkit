@@ -18,11 +18,18 @@
   - Step-by-step fix explanation (v2.135.0 - v2.136.0)
   - Verification commands and examples
   - Link to GitHub issue #64 for tracking
+- 📚 **Examples & Demo**
+  - Created mutation-testing-example.md: Complete usage guide
+  - Created calculator.rs: Demo code with intentional test gaps
+  - Created mutation-testing-demo.sh: Interactive walkthrough script
+  - Added Quick Start section to main documentation
+  - Examples show: operators, benchmarks, CI/CD integration
 - 🎯 **User Impact**
   - Users can quickly identify if they hit the issue
   - Clear recovery path (git checkout + upgrade)
   - Confidence that bug is fixed in v2.136.0+
   - Understanding of root cause and solution
+  - Hands-on examples for learning mutation testing
 
 **Code Quality + Mutation Analysis (Technical Debt Cleanup)**
 - ✅ **Mutation Score Analysis** (Option 1)
