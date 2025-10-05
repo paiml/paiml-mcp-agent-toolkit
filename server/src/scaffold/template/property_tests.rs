@@ -144,4 +144,49 @@ proptest! {
         let retrieved = registry.get(&name);
         prop_assert!(retrieved.is_ok());
     }
+
+    // WASM template property tests (TICKET-PMAT-5003)
+
+    #[test]
+    fn prop_wasm_cargo_has_cdylib(name in valid_project_name(), author in valid_author()) {
+        let template = Template::wasm_cargo_toml();
+        let mut vars = HashMap::new();
+        vars.insert("project_name".into(), name);
+        vars.insert("author".into(), author);
+
+        let rendered = template.render(&vars).unwrap();
+
+        // Property: WASM projects have cdylib crate type
+        prop_assert!(rendered.contains("cdylib"));
+        prop_assert!(rendered.contains("wasm-bindgen"));
+    }
+
+    #[test]
+    fn prop_wasm_makefile_has_targets(name in valid_project_name()) {
+        let template = Template::wasm_makefile();
+        let mut vars = HashMap::new();
+        vars.insert("project_name".into(), name);
+
+        let rendered = template.render(&vars).unwrap();
+
+        // Property: WASM Makefile has required targets
+        prop_assert!(rendered.contains("wasm-full"));
+        prop_assert!(rendered.contains("quality"));
+        prop_assert!(rendered.contains("wasm32-unknown-unknown"));
+    }
+
+    #[test]
+    fn prop_wasm_lib_valid_rust(name in valid_project_name()) {
+        let template = Template::wasm_lib_rs();
+        let mut vars = HashMap::new();
+        vars.insert("project_name".into(), name);
+        vars.insert("description".into(), "Test".into());
+
+        let rendered = template.render(&vars).unwrap();
+
+        // Property: Contains valid Rust WASM structure
+        prop_assert!(rendered.contains("#[wasm_bindgen]"));
+        prop_assert!(rendered.contains("use wasm_bindgen::prelude::*;"));
+        prop_assert!(rendered.contains("pub fn process"));
+    }
 }

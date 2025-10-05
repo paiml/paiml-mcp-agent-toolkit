@@ -1,0 +1,27 @@
+[package]
+name = "{{project_name}}"
+version = "0.1.0"
+edition = "2021"
+authors = ["{{author}}"]
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+wasm-bindgen = "0.2"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+im = "15.1"  # Persistent data structures for O(1) cloning
+
+[dev-dependencies]
+wasm-bindgen-test = "0.3"
+proptest = "1.0"
+criterion = "0.5"
+tempfile = "3.0"
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = "symbols"

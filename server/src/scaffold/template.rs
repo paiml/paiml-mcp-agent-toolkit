@@ -103,6 +103,40 @@ impl Template {
             include_str!("templates/README.md.tmpl")
         ).expect("README.md template should be valid")
     }
+
+    // WASM templates (TICKET-PMAT-5003)
+
+    /// WASM Cargo.toml template
+    pub fn wasm_cargo_toml() -> Self {
+        Self::new(
+            "Cargo.toml",
+            include_str!("templates/wasm_Cargo.toml.tmpl")
+        ).expect("wasm Cargo.toml template should be valid")
+    }
+
+    /// WASM Makefile template
+    pub fn wasm_makefile() -> Self {
+        Self::new(
+            "Makefile",
+            include_str!("templates/wasm_Makefile.tmpl")
+        ).expect("wasm Makefile template should be valid")
+    }
+
+    /// WASM lib.rs template
+    pub fn wasm_lib_rs() -> Self {
+        Self::new(
+            "lib.rs",
+            include_str!("templates/wasm_lib.rs.tmpl")
+        ).expect("wasm lib.rs template should be valid")
+    }
+
+    /// WASM VFS template
+    pub fn wasm_vfs_rs() -> Self {
+        Self::new(
+            "vfs.rs",
+            include_str!("templates/wasm_vfs.rs.tmpl")
+        ).expect("wasm vfs.rs template should be valid")
+    }
 }
 
 /// Template registry for managing templates
@@ -164,6 +198,20 @@ impl TemplateRegistry {
         registry.register("Cargo.toml".into(), Template::cargo_toml());
         registry.register("handler.rs".into(), Template::handler_rs());
         registry.register("README.md".into(), Template::readme_md());
+        registry
+    }
+
+    /// Create registry with WASM templates (TICKET-PMAT-5003)
+    ///
+    /// # Complexity
+    /// - Time: O(1)
+    /// - Cyclomatic: 1
+    pub fn with_wasm_templates() -> Self {
+        let mut registry = Self::new();
+        registry.register("Cargo.toml".into(), Template::wasm_cargo_toml());
+        registry.register("Makefile".into(), Template::wasm_makefile());
+        registry.register("lib.rs".into(), Template::wasm_lib_rs());
+        registry.register("vfs.rs".into(), Template::wasm_vfs_rs());
         registry
     }
 }
