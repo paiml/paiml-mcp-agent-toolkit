@@ -93,16 +93,152 @@ impl ScaffoldEngine {
         Ok(())
     }
 
-    /// Full scaffolding workflow (to be expanded in later tickets)
+    /// Full scaffolding workflow (TICKET-PMAT-5004)
     ///
     /// # Complexity
-    /// - Time: O(n) where n is number of files in template
-    /// - Cyclomatic: 5 (validation, creation, git, error handling)
+    /// - Time: O(n*m) where n=templates, m=avg template size
+    /// - Cyclomatic: 5 (validation, creation, git, structure, files)
     pub fn scaffold(&self, config: ScaffoldConfig) -> Result<PathBuf> {
         self.validate_config(&config)?;
         let project_dir = self.create_directory(&config.project_name)?;
         self.init_git(&project_dir)?;
+
+        // TICKET-PMAT-5004: Generate project structure and files
+        let registry = self.get_template_registry(&config.template_type);
+        self.create_project_structure(&project_dir, &config.template_type)?;
+        self.generate_files(&project_dir, &registry, &config)?;
+
         Ok(project_dir)
+    }
+
+    /// Get template registry based on project type
+    ///
+    /// # Complexity
+    /// - Time: O(1)
+    /// - Cyclomatic: 3
+    fn get_template_registry(&self, template_type: &TemplateType) -> TemplateRegistry {
+        match template_type {
+            TemplateType::Agent { .. } => TemplateRegistry::with_pforge_templates(),
+            TemplateType::Wasm { .. } => TemplateRegistry::with_wasm_templates(),
+            _ => TemplateRegistry::new(),
+        }
+    }
+
+    /// Create project directory structure
+    ///
+    /// # Complexity
+    /// - Time: O(1) - fixed number of directories
+    /// - Cyclomatic: 3
+    fn create_project_structure(
+        &self,
+        project_dir: &Path,
+        template_type: &TemplateType,
+    ) -> Result<()> {
+        match template_type {
+            TemplateType::Agent { .. } => {
+                fs::create_dir_all(project_dir.join("src/handlers"))?;
+                fs::create_dir_all(project_dir.join("tests"))?;
+                fs::create_dir_all(project_dir.join("docs"))?;
+            }
+            TemplateType::Wasm { .. } => {
+                fs::create_dir_all(project_dir.join("src"))?;
+                fs::create_dir_all(project_dir.join("tests"))?;
+                fs::create_dir_all(project_dir.join("benches"))?;
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+
+    /// Generate all files from templates
+    ///
+    /// # Complexity
+    /// - Time: O(n*m) where n=templates, m=avg template size
+    /// - Cyclomatic: 4
+    fn generate_files(
+        &self,
+        project_dir: &Path,
+        registry: &TemplateRegistry,
+        config: &ScaffoldConfig,
+    ) -> Result<()> {
+        // Prepare variables for template rendering
+        let vars = self.prepare_template_vars(config);
+
+        // Render and write each template
+        for template_name in registry.list() {
+            let template = registry.get(&template_name)?;
+            let rendered = template.render(&vars)?;
+
+            let file_path = self.get_file_path(
+                project_dir,
+                &template_name,
+                &config.template_type,
+            );
+
+            self.write_file(&file_path, &rendered)?;
+        }
+
+        Ok(())
+    }
+
+    /// Prepare template variables from config
+    ///
+    /// # Complexity
+    /// - Time: O(1)
+    /// - Cyclomatic: 1
+    fn prepare_template_vars(&self, config: &ScaffoldConfig) -> std::collections::HashMap<String, String> {
+        use std::collections::HashMap;
+
+        let mut vars = HashMap::new();
+        vars.insert("project_name".into(), config.project_name.clone());
+        vars.insert("author".into(), "Developer".into());
+        vars.insert("description".into(), format!("{} project", config.project_name));
+
+        // Add handler-specific vars
+        vars.insert("handler_name".into(), "Example".into());
+        vars.insert("handler_description".into(), "Example handler".into());
+
+        vars
+    }
+
+    /// Get file path for template
+    ///
+    /// # Complexity
+    /// - Time: O(1)
+    /// - Cyclomatic: 6
+    fn get_file_path(
+        &self,
+        project_dir: &Path,
+        template_name: &str,
+        _template_type: &TemplateType,
+    ) -> PathBuf {
+        match template_name {
+            "pforge.yaml" => project_dir.join("pforge.yaml"),
+            "Cargo.toml" => project_dir.join("Cargo.toml"),
+            "Makefile" => project_dir.join("Makefile"),
+            "README.md" => project_dir.join("README.md"),
+            "handler.rs" => project_dir.join("src/handlers/example.rs"),
+            "lib.rs" => project_dir.join("src/lib.rs"),
+            "vfs.rs" => project_dir.join("src/vfs.rs"),
+            _ => project_dir.join(template_name),
+        }
+    }
+
+    /// Write file to disk
+    ///
+    /// # Complexity
+    /// - Time: O(n) where n is content length
+    /// - Cyclomatic: 2
+    fn write_file(&self, path: &Path, content: &str) -> Result<()> {
+        // Create parent directory if needed
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+
+        fs::write(path, content)
+            .map_err(ScaffoldError::IoError)?;
+
+        Ok(())
     }
 }
 
