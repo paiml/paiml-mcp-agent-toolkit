@@ -13,9 +13,11 @@ pub mod ticket;
 pub mod validator;
 pub mod git;
 pub mod updater;
+pub mod health;
 
 pub use roadmap::{Roadmap, Sprint, Ticket, SprintStatus, RoadmapError};
 pub use ticket::{TicketFile, TicketStatus, Priority, TicketError, list_tickets, ticket_exists};
 pub use validator::{ValidationReport, validate_project, format_report, ValidatorError};
 pub use git::{CommitInfo, extract_ticket_ids, get_current_commit, ticket_file_updated, GitError};
 pub use updater::{update_roadmap_ticket, write_roadmap, update_roadmap_from_commit};
+pub use health::{HealthScore, HealthMetrics, calculate_health_score, format_health_report, HealthError};
