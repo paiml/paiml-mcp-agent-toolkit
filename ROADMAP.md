@@ -1,8 +1,28 @@
 # PMAT Agent System Roadmap
 
-## 🎯 CURRENT STATUS: v2.137.0 - CLEAN BUILD + ANALYSIS 🎯
+## 🎯 CURRENT STATUS: v2.137.0 - MUTATION TESTING DOCUMENTATION 🎯
 
 ### ✅ Latest Achievements (v2.137.0 - October 5, 2025)
+
+**Mutation Testing Documentation (Issue #64)**
+- 📝 **Comprehensive Bug Documentation**
+  - Added critical file corruption issue (Issue #64) to mutation-testing.md
+  - Documented Five Whys root cause analysis
+  - Explained fix: Smart test filtering + prettyplease formatting
+  - Added recovery instructions for affected users
+  - Updated CLI help text with bug fix notice
+  - Updated docs/README.md feature highlights
+- ✅ **Documentation Quality**
+  - Clear warning section in troubleshooting
+  - Example of corrupted file output
+  - Step-by-step fix explanation (v2.135.0 - v2.136.0)
+  - Verification commands and examples
+  - Link to GitHub issue #64 for tracking
+- 🎯 **User Impact**
+  - Users can quickly identify if they hit the issue
+  - Clear recovery path (git checkout + upgrade)
+  - Confidence that bug is fixed in v2.136.0+
+  - Understanding of root cause and solution
 
 **Code Quality + Mutation Analysis (Technical Debt Cleanup)**
 - ✅ **Mutation Score Analysis** (Option 1)
