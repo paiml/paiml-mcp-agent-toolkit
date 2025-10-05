@@ -1,6 +1,7 @@
 pub mod analyzers;
 pub mod complexity;
 pub mod complexity_enhanced;
+pub mod config; // TICKET-PMAT-5024: Configuration management
 pub mod efficiency;
 pub mod efficiency_enhanced;
 pub mod entropy;
@@ -16,3 +17,6 @@ pub use gates::{
     execute_all_gates, execute_clippy, execute_coverage, execute_complexity, execute_tests,
     format_report as format_quality_report, GateConfig, GateError, GateResult, QualityReport,
 };
+
+// Re-export configuration management (TICKET-PMAT-5024)
+pub use config::{generate_config_toml, generate_default_config, validate_config};
