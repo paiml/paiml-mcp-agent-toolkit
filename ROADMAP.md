@@ -58,9 +58,9 @@ Build a comprehensive system for scaffolding new projects (agents, WASM) and mai
 
 ### Sprint 19: CLI Integration & Dogfooding (2-3 days) - TICKET-PMAT-5030
 **Focus:** CLI commands and self-application
-- [ ] TICKET-PMAT-5030: `pmat scaffold agent` command
-- [ ] TICKET-PMAT-5031: `pmat scaffold wasm` command
-- [ ] TICKET-PMAT-5032: `pmat maintain roadmap` command
+- [x] TICKET-PMAT-5030: `pmat scaffold agent` command
+- [x] TICKET-PMAT-5031: `pmat scaffold wasm` command
+- [x] TICKET-PMAT-5032: `pmat maintain roadmap` command
 - [ ] TICKET-PMAT-5033: `pmat maintain health` command
 - [ ] TICKET-PMAT-5034: `pmat install-hooks` command
 - [ ] TICKET-PMAT-5035: Dogfood on PMAT itself
