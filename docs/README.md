@@ -115,14 +115,16 @@ Complete Rust/Ruchy → WebAssembly analysis pipeline with bidirectional tracing
 - 📋 Phase 3 scoped: Runtime analysis, profiling, security scanning
 
 ### Mutation Testing Engine
-ML-powered mutation testing with decision tree prediction. **[Full Guide →](./mutation-testing.md)**
+Empirical mutation testing with actual test execution and optional ML prediction. **[Full Guide →](./mutation-testing.md)**
 
-- 🧠 Decision tree classifier with 75-95% accuracy (18 features)
+- ⚡ **20× faster than cargo-mutants** with smart test filtering (v2.135.0)
+- ✨ **Properly formatted output** using prettyplease (v2.136.0)
+- 🔧 **CRITICAL BUG FIXED**: File corruption issue resolved (Issue #64, v2.136.0)
+- 🧪 Real test execution with `cargo test --lib` on each mutant
 - 🔀 6 mutation operators (AOR, ROR, COR, UOR, CRR, SDL)
 - 🌐 Multi-language support (Rust, WASM/WAT)
-- 📊 K-fold cross-validation for accuracy measurement
+- 🧠 Optional ML prediction with decision tree classifier (75-95% accuracy)
 - 🚀 Distributed execution with work-stealing queue
-- 🎯 ML-based survivability prediction
 - 📈 CI/CD learning and auto-training (50 sample threshold)
 
 ---

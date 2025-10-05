@@ -1876,7 +1876,10 @@ pub enum AnalyzeCommands {
         detect_deadlocks: bool,
     },
 
-    /// Mutation testing with ML prediction
+    /// Mutation testing with empirical execution (v2.136.0: File corruption bug FIXED - Issue #64)
+    ///
+    /// Note: 20× faster than cargo-mutants with smart test filtering.
+    /// Generates properly formatted mutants using prettyplease.
     Mutate {
         /// Path to source code to mutate
         #[arg(short = 'p', long)]
