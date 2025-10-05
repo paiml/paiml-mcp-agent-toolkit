@@ -246,8 +246,8 @@ impl<'a> MutationVisitor<'a> {
         use syn::visit_mut::VisitMut;
         deleter.visit_file_mut(&mut modified_tree);
 
-        // Quote the entire modified file back to source code
-        quote::quote!(#modified_tree).to_string()
+        // Quote the entire modified file back to source code and format it
+        Self::format_syn_file(&modified_tree)
     }
 
     /// Replace an expression in the entire file and return the modified source
@@ -266,8 +266,14 @@ impl<'a> MutationVisitor<'a> {
         use syn::visit_mut::VisitMut;
         replacer.visit_file_mut(&mut modified_tree);
 
-        // Quote the entire modified file back to source code
-        quote::quote!(#modified_tree).to_string()
+        // Quote the entire modified file back to source code and format it
+        Self::format_syn_file(&modified_tree)
+    }
+
+    /// Format a syn::File back to readable Rust code using prettyplease
+    fn format_syn_file(file: &File) -> String {
+        // Use prettyplease to format the file
+        prettyplease::unparse(file)
     }
 }
 

@@ -231,6 +231,7 @@ walrus = "0.22"
 object = "0.37"
 sourcemap = "9.0"
 ahash = "0.8"
+prettyplease = "0.2.37"
 
 [dev-dependencies]
 mockall = "0.13"
