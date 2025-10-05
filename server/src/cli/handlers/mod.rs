@@ -86,7 +86,8 @@ pub use duplication_analysis::handle_analyze_duplicates;
 pub use enforce_handlers::route_enforce_command;
 pub use generation_handlers::{
     handle_generate, handle_list_agent_templates, handle_scaffold, handle_scaffold_agent,
-    handle_validate, handle_validate_agent_template, ScaffoldAgentParams,
+    handle_scaffold_wasm, handle_validate, handle_validate_agent_template, ScaffoldAgentParams,
+    ScaffoldWasmParams, // TICKET-PMAT-5031
 };
 pub use hooks_command_handlers::handle_hooks_command;
 pub use incremental_coverage_handler::handle_analyze_incremental_coverage;
