@@ -110,6 +110,10 @@ impl MutationEngine {
                         m.operator,
                         MutationOperatorType::ArithmeticReplacement
                             | MutationOperatorType::RelationalReplacement
+                            | MutationOperatorType::ConditionalReplacement
+                            | MutationOperatorType::UnaryReplacement
+                            | MutationOperatorType::ConstantReplacement
+                            | MutationOperatorType::StatementDeletion
                     )
                 });
             }
