@@ -1,0 +1,38 @@
+use anyhow::Result;
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Deserialize)]
+pub struct {{handler_name}}Input {
+    pub message: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct {{handler_name}}Output {
+    pub result: String,
+}
+
+/// Handler: {{handler_description}}
+///
+/// # Complexity
+/// - Time: O(1)
+/// - Cyclomatic: 1
+pub async fn execute(input: {{handler_name}}Input) -> Result<{{handler_name}}Output> {
+    Ok({{handler_name}}Output {
+        result: format!("Processed: {}", input.message),
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_execute() {
+        let input = {{handler_name}}Input {
+            message: "test".into(),
+        };
+
+        let result = execute(input).await.unwrap();
+        assert!(result.result.contains("test"));
+    }
+}

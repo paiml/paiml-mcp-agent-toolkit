@@ -15,7 +15,7 @@ fn test_scaffold_engine_creation() {
 fn test_validate_config_valid() {
     let config = ScaffoldConfig {
         project_name: "valid-project".into(),
-        template: Template::Agent { based_on: AgentFramework::Pforge },
+        template_type: TemplateType::Agent { based_on: AgentFramework::Pforge },
         features: vec![],
         quality_gates: QualityGateConfig::default(),
     };
@@ -28,7 +28,7 @@ fn test_validate_config_valid() {
 fn test_validate_config_invalid_empty_name() {
     let config = ScaffoldConfig {
         project_name: "".into(),
-        template: Template::Agent { based_on: AgentFramework::Pforge },
+        template_type: TemplateType::Agent { based_on: AgentFramework::Pforge },
         features: vec![],
         quality_gates: QualityGateConfig::default(),
     };
@@ -41,7 +41,7 @@ fn test_validate_config_invalid_empty_name() {
 fn test_validate_config_invalid_slash_in_name() {
     let config = ScaffoldConfig {
         project_name: "invalid/project".into(),
-        template: Template::Agent { based_on: AgentFramework::Pforge },
+        template_type: TemplateType::Agent { based_on: AgentFramework::Pforge },
         features: vec![],
         quality_gates: QualityGateConfig::default(),
     };
@@ -54,7 +54,7 @@ fn test_validate_config_invalid_slash_in_name() {
 fn test_validate_config_invalid_too_long() {
     let config = ScaffoldConfig {
         project_name: "a".repeat(300),
-        template: Template::Agent { based_on: AgentFramework::Pforge },
+        template_type: TemplateType::Agent { based_on: AgentFramework::Pforge },
         features: vec![],
         quality_gates: QualityGateConfig::default(),
     };
@@ -123,7 +123,7 @@ fn test_scaffold_full_workflow() {
 
     let config = ScaffoldConfig {
         project_name: "full-test-project".into(),
-        template: Template::Agent { based_on: AgentFramework::Pforge },
+        template_type: TemplateType::Agent { based_on: AgentFramework::Pforge },
         features: vec![Feature::Logging],
         quality_gates: QualityGateConfig::extreme_tdd(),
     };
