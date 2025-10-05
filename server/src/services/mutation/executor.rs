@@ -86,10 +86,14 @@ impl MutantExecutor {
         })
     }
 
-    /// Execute tests on multiple mutants in parallel
+    /// Execute tests on multiple mutants in parallel (sequentially for now)
+    ///
+    /// Note: Currently runs sequentially to avoid file conflicts.
+    /// Parallel execution requires either:
+    /// - File locking mechanism
+    /// - Temporary workspace per mutant
+    /// - Git worktrees
     pub async fn execute_mutants(&self, mutants: &[Mutant]) -> Result<Vec<MutationResult>> {
-        // For safety, run sequentially to avoid file conflicts
-        // Future optimization: run in parallel with file locking
         let mut results = Vec::new();
 
         for (i, mutant) in mutants.iter().enumerate() {
@@ -156,25 +160,6 @@ impl MutantExecutor {
         }
 
         let output = cmd
-            .current_dir(&self.work_dir)
-            .output()
-            .context("Failed to run cargo test")?;
-
-        // Combine stdout and stderr
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        let combined = format!("{}\n{}", stdout, stderr);
-
-        Ok(combined)
-    }
-
-    /// Run cargo test in working directory (legacy method - for backward compat)
-    async fn run_cargo_test(&self) -> Result<String> {
-        let output = Command::new("cargo")
-            .arg("test")
-            .arg("--lib")
-            .arg("--")
-            .arg("--nocapture")
             .current_dir(&self.work_dir)
             .output()
             .context("Failed to run cargo test")?;
