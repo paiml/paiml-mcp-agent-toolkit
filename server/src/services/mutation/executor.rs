@@ -199,11 +199,23 @@ impl MutantExecutor {
             return String::new(); // Use package-level testing
         }
 
-        // Remove "server/src/" or "src/" prefix
-        let relative = path_str
-            .strip_prefix("server/src/")
-            .or_else(|| path_str.strip_prefix("src/"))
-            .unwrap_or(path_str);
+        // Handle workspace crates (crates/foo/src/bar.rs)
+        // Extract just the module path from the crate
+        let relative = if let Some(after_crates) = path_str.strip_prefix("crates/") {
+            // Find the crate name boundary (e.g., "pforge-config/src/validator.rs")
+            if let Some(src_index) = after_crates.find("/src/") {
+                // Get everything after "/src/" (e.g., "validator.rs")
+                &after_crates[src_index + 5..]
+            } else {
+                after_crates
+            }
+        } else {
+            // Remove "server/src/" or "src/" prefix for regular paths
+            path_str
+                .strip_prefix("server/src/")
+                .or_else(|| path_str.strip_prefix("src/"))
+                .unwrap_or(path_str)
+        };
 
         // Remove ".rs" suffix
         let without_ext = relative.strip_suffix(".rs").unwrap_or(relative);

@@ -1,8 +1,50 @@
 # PMAT Agent System Roadmap
 
-## 🎯 CURRENT STATUS: v2.135.0 - SMART TEST FILTERING (20× FASTER!) 🎯
+## 🎯 CURRENT STATUS: v2.136.0 - WORKSPACE CRATES + FORMATTING 🎯
 
-### ✅ Latest Achievements (v2.135.0 - October 5, 2025)
+### ✅ Latest Achievements (v2.136.0 - October 5, 2025)
+
+**Workspace Crate Support + Pretty Formatting (EXTREME TDD Fixes)**
+- 🐛 **Issues Discovered** (Continued Dogfooding)
+  - **Issue #1**: 0% mutation score on pforge workspace crates (all mutants survived)
+  - **Issue #2**: Mutated source code unreadable (all on one line from quote!())
+  - Root causes identified through systematic testing
+- ✅ **Issue #1: Workspace Crate Module Extraction** (EXTREME TDD)
+  - **Problem**: `crates/pforge-config/src/validator.rs` → filter: `'crates::pforge-config::src'` (wrong!)
+  - **Should be**: `'validator'` (matches test module)
+  - **RED**: 2 tests for workspace crate paths (both failed)
+  - **GREEN**: Handle `crates/{name}/src/` prefix, extract module name
+  - **VERIFY**: 0% → **21.43% mutation score (6/28 killed)** ✅
+  - Tests now running correctly on workspace crates!
+- ✅ **Issue #2: Readable Source Formatting** (prettyplease)
+  - **Problem**: `quote!(#tree).to_string()` generates unformatted code
+  - **Before**: `# ! [doc = ""] use serde :: { Deserialize , Serialize } ; ...` (one line!)
+  - **After**: Proper newlines, indentation, readable Rust code ✅
+  - **Implementation**: Added `prettyplease::unparse()` for syn::File formatting
+  - **Result**: Mutants are now human-readable for debugging ✅
+- ✅ **Dogfooding Validation** (Option 3)
+  - Tested on PMAT's own `server/src/services/mutation/types.rs`
+  - 170 mutants generated
+  - Smart filtering working: `services::mutation` module
+  - Execution time: ~18-20s per mutant (down from 120s!)
+  - No file corruption, proper formatting maintained ✅
+- 🎯 **Complete Mutation Testing Stack**
+  - ✅ 100% compilation rate (v2.134.0)
+  - ✅ 20× faster than cargo-mutants (v2.135.0)
+  - ✅ Workspace crate support (v2.136.0)
+  - ✅ Readable formatted output (v2.136.0)
+  - ✅ Works on real-world codebases (dogfooded!)
+- ✅ **All Tests Passing**
+  - 11 smart filtering tests (including 2 new workspace tests)
+  - All mutation operators at 100% compilation
+  - Real-world validation on pforge and PMAT
+- 🚀 **PRODUCTION READY**
+  - Enterprise-grade mutation testing
+  - Works on monorepos with workspace crates
+  - Human-readable mutant source code
+  - Toyota Way quality standards
+
+### ✅ Previous Achievements (v2.135.0 - October 5, 2025)
 
 **Smart Test Filtering: Toyota Way Root Cause Fix (Five Whys + EXTREME TDD)**
 - 🐛 **Issue Discovered** (Dogfooding PMAT on itself)

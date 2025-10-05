@@ -11,17 +11,30 @@ use std::path::PathBuf;
 /// - "server/src/services/mutation/types.rs" -> "services::mutation"
 /// - "src/cli/handlers/mod.rs" -> "cli::handlers"
 /// - "src/lib.rs" -> "" (run all tests)
+/// - "crates/pforge-config/src/validator.rs" -> "validator"
 fn extract_module_path(file_path: &str) -> String {
     // Handle external crates (paths starting with ../)
     if file_path.starts_with("../") || file_path.starts_with("..\\") {
         return String::new(); // Use package-level testing for external crates
     }
 
-    // Remove "server/src/" or "src/" prefix
-    let relative = file_path
-        .strip_prefix("server/src/")
-        .or_else(|| file_path.strip_prefix("src/"))
-        .unwrap_or(file_path);
+    // Handle workspace crates (crates/foo/src/bar.rs)
+    // Extract just the module path from the crate
+    let relative = if let Some(after_crates) = file_path.strip_prefix("crates/") {
+        // Find the crate name boundary (e.g., "pforge-config/src/validator.rs")
+        if let Some(src_index) = after_crates.find("/src/") {
+            // Get everything after "/src/" (e.g., "validator.rs")
+            &after_crates[src_index + 5..]
+        } else {
+            after_crates
+        }
+    } else {
+        // Remove "server/src/" or "src/" prefix for regular paths
+        file_path
+            .strip_prefix("server/src/")
+            .or_else(|| file_path.strip_prefix("src/"))
+            .unwrap_or(file_path)
+    };
 
     // Remove ".rs" suffix
     let without_ext = relative.strip_suffix(".rs").unwrap_or(relative);
@@ -130,4 +143,22 @@ fn test_extract_module_with_underscores() {
     let path = "src/mutation_testing/test_runner.rs";
     let module = extract_module_path(path);
     assert_eq!(module, "mutation_testing");
+}
+
+#[test]
+fn test_extract_module_from_workspace_crate() {
+    // RED: Workspace crates (crates/foo/src/bar.rs) should extract just module name
+    let path = "crates/pforge-config/src/validator.rs";
+    let module = extract_module_path(path);
+    // Should be "validator" not "crates::pforge-config::src"
+    assert_eq!(module, "validator");
+}
+
+#[test]
+fn test_extract_module_from_workspace_crate_nested() {
+    // RED: Nested modules in workspace crates
+    let path = "crates/pforge-config/src/parser/toml.rs";
+    let module = extract_module_path(path);
+    // Should be "parser" (parent module)
+    assert_eq!(module, "parser");
 }
