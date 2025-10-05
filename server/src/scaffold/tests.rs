@@ -246,3 +246,66 @@ fn test_write_file() {
     let read_content = std::fs::read_to_string(&file_path).unwrap();
     assert_eq!(read_content, content);
 }
+
+// TICKET-PMAT-5005: Pre-commit hook installation tests
+
+#[test]
+fn test_scaffold_pforge_installs_hooks() {
+    let temp_dir = TempDir::new().unwrap();
+    std::env::set_current_dir(temp_dir.path()).unwrap();
+
+    let config = ScaffoldConfig {
+        project_name: "hook-test-agent".into(),
+        template_type: TemplateType::Agent { based_on: AgentFramework::Pforge },
+        features: vec![],
+        quality_gates: QualityGateConfig::default(),
+    };
+
+    let engine = ScaffoldEngine::new().unwrap();
+    let project_dir = engine.scaffold(config).unwrap();
+
+    // Verify hook exists
+    let hook_path = project_dir.join(".git/hooks/pre-commit");
+    assert!(hook_path.exists());
+
+    // Verify hook content
+    let hook_content = std::fs::read_to_string(&hook_path).unwrap();
+    assert!(hook_content.contains("#!/bin/bash"));
+    assert!(hook_content.contains("cargo clippy"));
+    assert!(hook_content.contains("cargo test"));
+
+    // Verify executable on Unix
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let perms = std::fs::metadata(&hook_path).unwrap().permissions();
+        assert!(perms.mode() & 0o111 != 0, "Hook should be executable");
+    }
+}
+
+#[test]
+fn test_scaffold_wasm_installs_hooks() {
+    let temp_dir = TempDir::new().unwrap();
+    std::env::set_current_dir(temp_dir.path()).unwrap();
+
+    let config = ScaffoldConfig {
+        project_name: "hook-test-wasm".into(),
+        template_type: TemplateType::Wasm { based_on: WasmFramework::WasmLabs },
+        features: vec![],
+        quality_gates: QualityGateConfig::default(),
+    };
+
+    let engine = ScaffoldEngine::new().unwrap();
+    let project_dir = engine.scaffold(config).unwrap();
+
+    // Verify hook exists
+    let hook_path = project_dir.join(".git/hooks/pre-commit");
+    assert!(hook_path.exists());
+
+    // Verify hook content includes WASM-specific checks
+    let hook_content = std::fs::read_to_string(&hook_path).unwrap();
+    assert!(hook_content.contains("#!/bin/bash"));
+    assert!(hook_content.contains("cargo clippy"));
+    assert!(hook_content.contains("cargo test"));
+    assert!(hook_content.contains("wasm32-unknown-unknown"));
+}

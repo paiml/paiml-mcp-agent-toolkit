@@ -13,6 +13,7 @@ pub enum ScaffoldError {
     DirectoryExists(PathBuf),
     IoError(std::io::Error),
     GitError(String),
+    UnsupportedProjectType,
     // Re-export agent scaffold errors
     Agent(Box<crate::scaffold::agent::error::ScaffoldError>),
 }
@@ -31,6 +32,9 @@ impl fmt::Display for ScaffoldError {
             }
             ScaffoldError::GitError(msg) => {
                 write!(f, "Git error: {}", msg)
+            }
+            ScaffoldError::UnsupportedProjectType => {
+                write!(f, "Unsupported project type for hook generation")
             }
             ScaffoldError::Agent(e) => {
                 write!(f, "Agent scaffolding error: {}", e)
