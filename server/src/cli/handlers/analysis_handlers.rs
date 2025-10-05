@@ -1227,9 +1227,9 @@ async fn route_entropy_analysis(cmd: AnalyzeCommands) -> Result<()> {
         include_tests,
     } = cmd
     {
-        use crate::cli::EntropySeverity;
+        
         use crate::entropy::EntropyAnalyzer;
-        use std::fs;
+        
 
         let config = create_entropy_config(min_severity, include_tests);
         let analyzer = EntropyAnalyzer::with_config(config);
