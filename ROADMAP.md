@@ -16,13 +16,13 @@ Build a comprehensive system for scaffolding new projects (agents, WASM) and mai
 
 **Sprint Series (4 Sprints, 8-12 Days Total)**
 
-### Sprint 16: Scaffolding Foundation (2-3 days) - TICKET-PMAT-5001
+### Sprint 16: Scaffolding Foundation (2-3 days) - COMPLETE ✅
 **Focus:** Core scaffolding engine and template system
 - [x] TICKET-PMAT-5001: Core ScaffoldEngine implementation (commit: 1adfcd7)
 - [x] TICKET-PMAT-5002: Template system (pforge-based agents) (commit: a7cc051)
 - [x] TICKET-PMAT-5003: Template system (wasm-labs-based WASM) (commit: 14cb763)
 - [x] TICKET-PMAT-5004: Project structure generation (commit: 496097d)
-- [ ] TICKET-PMAT-5005: Git initialization and pre-commit hooks
+- [x] TICKET-PMAT-5005: Git initialization and pre-commit hooks (commit: cee4e6a)
 
 **Quality Gates:**
 - Complexity <10 for all functions
