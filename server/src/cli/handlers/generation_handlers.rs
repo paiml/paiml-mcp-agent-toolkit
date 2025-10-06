@@ -344,10 +344,11 @@ fn add_probabilistic_wrapper_spec(
 /// Validate output path and force flag
 fn validate_output_path(output_path: &Path, force: bool) -> Result<()> {
     if output_path.exists() && !force {
-        anyhow::bail!(
-            "Directory {} already exists. Use --force to overwrite.",
+        let error = format!(
+            "ERROR: Directory already exists\n  Location: {}\n\n  Suggestions:\n  - Use --force to overwrite existing directory\n  - Choose a different output directory with --output\n  - Remove the existing directory manually",
             output_path.display()
         );
+        anyhow::bail!(error);
     }
     Ok(())
 }
@@ -477,7 +478,13 @@ pub async fn handle_scaffold_wasm(params: ScaffoldWasmParams) -> Result<()> {
     let wasm_framework = match framework.as_str() {
         "wasm-labs" => WasmFramework::WasmLabs,
         "pure-wasm" => WasmFramework::PureWasm,
-        _ => return Err(anyhow::anyhow!("Unknown WASM framework: {}. Use 'wasm-labs' or 'pure-wasm'", framework)),
+        _ => {
+            let error = format!(
+                "ERROR: Unknown WASM framework: '{}'\n\n  Suggestions:\n  - Use 'wasm-labs' for full-featured WASM development\n  - Use 'pure-wasm' for minimal WASM setup\n  - Run 'pmat scaffold --help' for more information",
+                framework
+            );
+            return Err(anyhow::anyhow!(error));
+        }
     };
 
     // Parse features
@@ -525,10 +532,11 @@ pub async fn handle_scaffold_wasm(params: ScaffoldWasmParams) -> Result<()> {
     let project_dir = output_dir.join(&name);
 
     if project_dir.exists() && !force {
-        return Err(anyhow::anyhow!(
-            "Directory {} already exists. Use --force to overwrite",
+        let error = format!(
+            "ERROR: Directory already exists\n  Location: {}\n\n  Suggestions:\n  - Use --force to overwrite existing directory\n  - Choose a different project name\n  - Remove the existing directory manually",
             project_dir.display()
-        ));
+        );
+        return Err(anyhow::anyhow!(error));
     }
 
     let progress = ProgressIndicator::new(&format!("Scaffolding WASM project '{}'...", name));
