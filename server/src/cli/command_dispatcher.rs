@@ -317,6 +317,7 @@ impl CommandDispatcher {
                         validate,
                         health,
                         fix,
+                        generate_tickets,
                         dry_run,
                         format,
                     } => {
@@ -326,6 +327,7 @@ impl CommandDispatcher {
                             validate,
                             health,
                             fix,
+                            generate_tickets,
                             dry_run,
                             format,
                         )
