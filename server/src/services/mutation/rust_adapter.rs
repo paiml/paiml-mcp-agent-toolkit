@@ -193,6 +193,7 @@ test test_div ... FAILED
     }
 
     #[test]
+    #[serial_test::serial]
     fn test_find_cargo_root() {
         // This test requires an actual Cargo.toml to exist
         let current_file = std::path::Path::new(file!());

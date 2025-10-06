@@ -636,6 +636,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_service_lifecycle() {
         let config_service = ConfigurationService::new(None);
 

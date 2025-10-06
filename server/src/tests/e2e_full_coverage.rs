@@ -168,6 +168,7 @@ async fn test_mcp_server_e2e_coverage() {
 }
 
 #[test]
+#[serial_test::serial]
 #[cfg_attr(feature = "skip-slow-tests", ignore)]
 fn test_cli_main_binary_version() {
     let output = Command::new("cargo")
@@ -190,6 +191,7 @@ fn test_cli_main_binary_version() {
 }
 
 #[test]
+#[serial_test::serial]
 #[cfg_attr(feature = "skip-slow-tests", ignore)]
 fn test_cli_main_binary_help() {
     let output = Command::new("cargo")
@@ -304,6 +306,7 @@ fn test_cli_invalid_command() {
 }
 
 #[test]
+#[serial_test::serial]
 #[cfg_attr(feature = "skip-slow-tests", ignore)]
 fn test_cli_analyze_churn() {
     let output = Command::new("cargo")
