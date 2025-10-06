@@ -6,10 +6,10 @@ Get started with PMAT scaffolding in 5 minutes.
 
 ```bash
 # Create agent
-pmat scaffold agent --name quick-agent --template basic
+pmat scaffold agent --name quick_agent --template basic
 
 # Build and test
-cd quick-agent
+cd quick_agent
 cargo build
 cargo test
 
@@ -23,10 +23,10 @@ pmat quality-gates
 
 ```bash
 # Create WASM project
-pmat scaffold wasm --name quick-wasm --framework wasm-labs
+pmat scaffold wasm --name quick_wasm --framework wasm-labs
 
 # Build
-cd quick-wasm
+cd quick_wasm
 make wasm-full
 
 # Serve
@@ -41,7 +41,7 @@ python3 -m http.server 8000
 ### I want to build an MCP agent
 
 ```bash
-pmat scaffold agent --name my-agent --template basic
+pmat scaffold agent --name my_agent --template basic
 ```
 
 → [Full Agent Guide](./agent-scaffolding.md)
@@ -49,7 +49,7 @@ pmat scaffold agent --name my-agent --template basic
 ### I want to build a WASM app
 
 ```bash
-pmat scaffold wasm --name my-wasm --framework wasm-labs
+pmat scaffold wasm --name my_wasm --framework wasm-labs
 ```
 
 → [Full WASM Guide](./wasm-scaffolding.md)
