@@ -543,6 +543,9 @@ mod tests {
     #[path = "../tests/helpers.rs"]
     mod helpers;
 
+    #[path = "../tests/cli_integration_tests.rs"]
+    mod cli_integration_tests;
+
     #[path = "../tests/quality_checks_property_tests.rs"]
     mod quality_checks_property_tests;
 
