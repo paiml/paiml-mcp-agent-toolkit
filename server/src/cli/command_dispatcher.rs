@@ -355,7 +355,7 @@ impl CommandDispatcher {
             }
 
             Commands::Hooks(hooks_cmd) => {
-                handlers::handle_hooks_command(hooks_cmd).await
+                handlers::handle_hooks_command(&hooks_cmd).await
             }
         }
     }
