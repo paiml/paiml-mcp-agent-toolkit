@@ -7,6 +7,7 @@
 
 use crate::docs_enforcement::generic_detector::is_generic_description;
 use anyhow::Result;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 /// MCP tool definition (simplified for validation)
@@ -18,7 +19,7 @@ pub struct McpToolDefinition {
 }
 
 /// MCP documentation validation report
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct McpDocumentationReport {
     pub tool_name: String,
     pub has_description: bool,
@@ -30,7 +31,7 @@ pub struct McpDocumentationReport {
 }
 
 /// Parameter documentation report
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ParameterReport {
     pub name: String,
     pub has_description: bool,
@@ -240,7 +241,7 @@ pub fn load_mcp_tool_definitions() -> Result<Vec<McpToolDefinition>> {
                     "features": {
                         "type": "array",
                         "items": { "type": "string" },
-                        "description": "Features to include: testing, docs, ci, mutation, property-testing, tui, http-server (comma-separated)"
+                        "description": "Features to include: testing, docs, ci, mutation, property-testing, tui, http-server (comma-separated, default: empty array)"
                     }
                 },
                 "required": ["name"]
@@ -334,6 +335,43 @@ pub fn load_mcp_tool_definitions() -> Result<Vec<McpToolDefinition>> {
     ];
 
     Ok(tools)
+}
+
+/// Validation summary for JSON output
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ValidationSummary {
+    pub total_tools: usize,
+    pub valid_tools: usize,
+    pub invalid_tools: usize,
+    pub total_issues: usize,
+    pub tools: Vec<McpDocumentationReport>,
+}
+
+/// Generate comprehensive validation report as JSON
+pub fn generate_validation_report_json() -> Result<String> {
+    let tools = load_mcp_tool_definitions()?;
+    let mut reports = Vec::new();
+    let mut valid_count = 0;
+    let mut total_issues = 0;
+
+    for tool in tools {
+        let report = validate_mcp_documentation(&tool)?;
+        if report.is_valid() {
+            valid_count += 1;
+        }
+        total_issues += report.issues.len() + report.parameters.iter().map(|p| p.issues.len()).sum::<usize>();
+        reports.push(report);
+    }
+
+    let summary = ValidationSummary {
+        total_tools: reports.len(),
+        valid_tools: valid_count,
+        invalid_tools: reports.len() - valid_count,
+        total_issues,
+        tools: reports,
+    };
+
+    Ok(serde_json::to_string_pretty(&summary)?)
 }
 
 #[cfg(test)]
