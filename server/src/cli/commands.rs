@@ -63,6 +63,10 @@ pub struct Cli {
     #[arg(short, long, global = true)]
     pub verbose: bool,
 
+    /// Enable quiet mode (errors only)
+    #[arg(short, long, global = true, conflicts_with = "verbose")]
+    pub quiet: bool,
+
     /// Enable debug output (debug level)
     #[arg(long, global = true)]
     pub debug: bool,
@@ -76,6 +80,10 @@ pub struct Cli {
     #[arg(long, global = true, env = "RUST_LOG")]
     pub trace_filter: Option<String>,
 
+    /// Control color output
+    #[arg(long, global = true, value_enum, default_value = "auto")]
+    pub color: ColorMode,
+
     #[command(subcommand)]
     pub command: Commands,
 }
@@ -85,6 +93,18 @@ pub struct Cli {
 pub enum Mode {
     Cli,
     Mcp,
+}
+
+/// Color output mode (TICKET-PMAT-6006)
+#[derive(Clone, Debug, clap::ValueEnum, PartialEq, Default)]
+pub enum ColorMode {
+    /// Auto-detect based on TTY and environment
+    #[default]
+    Auto,
+    /// Always use colors
+    Always,
+    /// Never use colors
+    Never,
 }
 
 /// Main command enum

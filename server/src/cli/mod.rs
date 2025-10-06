@@ -135,6 +135,9 @@ pub async fn run(server: Arc<StatelessTemplateServer>) -> anyhow::Result<()> {
 
     debug!("CLI arguments parsed");
 
+    // Apply UX settings (TICKET-PMAT-6006)
+    apply_ux_settings(&cli);
+
     // Handle forced mode
     if let Some(commands::Mode::Mcp) = cli.mode {
         info!("Forced MCP mode detected");
@@ -143,6 +146,29 @@ pub async fn run(server: Arc<StatelessTemplateServer>) -> anyhow::Result<()> {
 
     // Use command dispatcher for improved modularity
     CommandDispatcher::execute_command(cli.command, server).await
+}
+
+/// Apply UX settings from CLI flags (TICKET-PMAT-6006)
+///
+/// CC=3: Quiet mode + color mode checks
+fn apply_ux_settings(cli: &commands::Cli) {
+    // Set quiet mode environment variable
+    if cli.quiet {
+        std::env::set_var("PMAT_QUIET", "1");
+    }
+
+    // Handle color mode
+    match cli.color {
+        commands::ColorMode::Never => {
+            std::env::set_var("NO_COLOR", "1");
+        }
+        commands::ColorMode::Always => {
+            std::env::set_var("CLICOLOR_FORCE", "1");
+        }
+        commands::ColorMode::Auto => {
+            // Auto mode - respect existing environment
+        }
+    }
 }
 
 /// Parse CLI with command suggestions on failure
