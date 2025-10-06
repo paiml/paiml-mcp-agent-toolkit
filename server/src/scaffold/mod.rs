@@ -35,16 +35,12 @@ use std::process::Command;
 use std::fs;
 
 /// Core scaffolding engine for creating new projects from templates
-pub struct ScaffoldEngine {
-    template_dir: PathBuf,
-}
+pub struct ScaffoldEngine {}
 
 impl ScaffoldEngine {
     /// Create a new scaffolding engine
     pub fn new() -> Result<Self> {
-        Ok(Self {
-            template_dir: PathBuf::from("templates"),
-        })
+        Ok(Self {})
     }
 
     /// Validate scaffolding configuration
