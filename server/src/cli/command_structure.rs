@@ -466,6 +466,10 @@ impl CommandExecutor {
                     }
                 }
             }
+
+            Commands::Hooks(hooks_cmd) => {
+                super::handlers::handle_hooks_command(hooks_cmd).await
+            }
         }
     }
 }
