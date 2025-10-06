@@ -42,9 +42,6 @@ pub async fn handle_tdg_diagnostics(command: &TdgCommand, base_path: &PathBuf) -
         TdgCommand::Config(config_cmd) => {
             super::config_command_handlers::handle_config_command(config_cmd).await
         }
-        TdgCommand::Hooks(hooks_cmd) => {
-            super::hooks_command_handlers::handle_hooks_command(hooks_cmd).await
-        }
     }
 }
 

@@ -56,14 +56,9 @@ async fn handle_tdg_subcommand(
         }
         TdgCommand::Diagnostics { .. }
         | TdgCommand::Storage { .. }
-        | TdgCommand::Dashboard { .. } => {
+        | TdgCommand::Dashboard { .. }
+        | TdgCommand::Config(_) => {
             super::tdg_diagnostic_handler::handle_tdg_diagnostics(&cmd, &config.path).await
-        }
-        TdgCommand::Config(config_cmd) => {
-            super::config_command_handlers::handle_config_command(&config_cmd).await
-        }
-        TdgCommand::Hooks(hooks_cmd) => {
-            super::hooks_command_handlers::handle_hooks_command(&hooks_cmd).await
         }
     }
 }
