@@ -634,6 +634,10 @@ pub enum MaintainCommands {
         #[arg(long)]
         fix: bool,
 
+        /// Auto-generate missing ticket files (TICKET-PMAT-6012)
+        #[arg(long)]
+        generate_tickets: bool,
+
         /// Dry-run mode (show changes without applying)
         #[arg(long)]
         dry_run: bool,

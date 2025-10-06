@@ -43,17 +43,18 @@ pub enum TicketStatus {
     Unknown,
 }
 
-/// Handle roadmap maintenance command
+/// Handle roadmap maintenance command (TICKET-PMAT-6012)
 ///
 /// # Complexity
 /// - Time: O(n) where n is number of tickets
-/// - Cyclomatic: 6
+/// - Cyclomatic: 7
 pub async fn handle_maintain_roadmap(
     roadmap_path: PathBuf,
     tickets_dir: PathBuf,
     validate: bool,
     health: bool,
     fix: bool,
+    generate_tickets: bool,
     dry_run: bool,
     format: OutputFormat,
 ) -> Result<()> {
@@ -69,7 +70,11 @@ pub async fn handle_maintain_roadmap(
         fix_roadmap_status(&roadmap_path, &tickets_dir, dry_run).await?;
     }
 
-    if !validate && !health && !fix {
+    if generate_tickets {
+        generate_missing_ticket_files(&roadmap_path, &tickets_dir, dry_run).await?;
+    }
+
+    if !validate && !health && !fix && !generate_tickets {
         // Default: show health
         show_health_report(&roadmap_path, &tickets_dir, &format).await?;
     }
@@ -226,6 +231,142 @@ async fn fix_roadmap_status(
     }
 
     Ok(())
+}
+
+/// Generate missing ticket files from roadmap (TICKET-PMAT-6012)
+///
+/// # Complexity
+/// - Time: O(n) where n is number of tickets
+/// - Cyclomatic: 6
+async fn generate_missing_ticket_files(
+    roadmap_path: &Path,
+    tickets_dir: &Path,
+    dry_run: bool,
+) -> Result<()> {
+    let roadmap_content = fs::read_to_string(roadmap_path)?;
+    let roadmap_tickets = parse_roadmap_tickets(&roadmap_content)?;
+
+    let mut generated = Vec::new();
+    let mut skipped = Vec::new();
+
+    eprintln!("📝 Checking for missing ticket files...\n");
+
+    for (ticket_id, checked) in &roadmap_tickets {
+        let ticket_path = tickets_dir.join(format!("{ticket_id}.md"));
+
+        if ticket_path.exists() {
+            skipped.push(ticket_id.clone());
+            continue;
+        }
+
+        generated.push(ticket_id.clone());
+
+        // Extract sprint context from roadmap
+        let sprint = extract_sprint_for_ticket(&roadmap_content, ticket_id);
+        let status = if *checked { "GREEN ✅" } else { "PLANNED 📋" };
+
+        let template = generate_ticket_template(ticket_id, &sprint, status);
+
+        if dry_run {
+            eprintln!("Would create: {ticket_id}.md (Sprint: {sprint}, Status: {status})");
+        } else {
+            fs::create_dir_all(tickets_dir)?;
+            fs::write(&ticket_path, template)?;
+            eprintln!("Created: {ticket_id}.md");
+        }
+    }
+
+    eprintln!();
+    if generated.is_empty() {
+        eprintln!("✅ No missing ticket files");
+    } else {
+        eprintln!("✅ Generated {} ticket file(s)", generated.len());
+        if dry_run {
+            eprintln!("🔍 Dry-run mode - no files created");
+        }
+    }
+
+    if !skipped.is_empty() {
+        eprintln!("⏭️  Skipped {} existing ticket(s)", skipped.len());
+    }
+
+    Ok(())
+}
+
+/// Extract sprint name for a ticket from roadmap context
+///
+/// # Complexity
+/// - Time: O(n) where n is lines in roadmap
+/// - Cyclomatic: 4
+fn extract_sprint_for_ticket(roadmap_content: &str, ticket_id: &str) -> String {
+    let lines: Vec<&str> = roadmap_content.lines().collect();
+    let mut current_sprint = "Unknown Sprint".to_string();
+
+    for (_i, line) in lines.iter().enumerate() {
+        // Look for sprint headers like "### Sprint 21:"
+        if line.starts_with("### Sprint") || line.starts_with("## Sprint") {
+            if let Some(sprint_name) = line.split(':').next() {
+                current_sprint = sprint_name.trim_start_matches('#').trim().to_string();
+            }
+        }
+
+        // Check if this line contains our ticket
+        if line.contains(ticket_id) {
+            return current_sprint;
+        }
+    }
+
+    current_sprint
+}
+
+/// Generate ticket file template (TICKET-PMAT-6012)
+///
+/// # Complexity
+/// - Time: O(1)
+/// - Cyclomatic: 1
+fn generate_ticket_template(ticket_id: &str, sprint: &str, status: &str) -> String {
+    let today = chrono::Local::now().format("%Y-%m-%d");
+
+    format!(r#"# {ticket_id}: [Title - TODO: Update from roadmap]
+
+**Sprint:** {sprint}
+**Priority:** [TBD - To be determined]
+**Estimated Effort:** [TBD - To be estimated]
+**Status**: {status}
+**Created:** {today}
+
+## Problem Statement
+
+[TODO: Describe the problem this ticket solves]
+
+## Solution
+
+[TODO: Describe the proposed solution]
+
+## Acceptance Criteria
+
+- [ ] [TODO: Add acceptance criteria]
+
+## Quality Metrics
+
+- **CC:** [TBD]
+- **Tests:** [TBD]
+- **Coverage:** [TBD]
+
+## Files Modified
+
+- [TODO: List files to be modified]
+
+## Related Tickets
+
+- [TODO: Link to related tickets]
+
+---
+
+**Status:** {status}
+**Delivered:** [TBD]
+**Target Release:** [TBD]
+"#)
 }
 
 /// Parse ticket IDs and checkbox status from roadmap

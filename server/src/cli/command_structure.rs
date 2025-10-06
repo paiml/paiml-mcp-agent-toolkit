@@ -430,6 +430,7 @@ impl CommandExecutor {
                         validate,
                         health,
                         fix,
+                        generate_tickets,
                         dry_run,
                         format,
                     } => {
@@ -439,6 +440,7 @@ impl CommandExecutor {
                             validate,
                             health,
                             fix,
+                            generate_tickets,
                             dry_run,
                             format,
                         )
