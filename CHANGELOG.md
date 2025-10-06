@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [2.141.0] - 2025-10-06
+## [2.142.0] - 2025-10-06
 
 ### Added
 - **PMAT-7001 Phase 3: Documentation Enforcement Integration**
