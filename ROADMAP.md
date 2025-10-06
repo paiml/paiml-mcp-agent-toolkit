@@ -77,9 +77,9 @@ Build a comprehensive system for scaffolding new projects (agents, WASM) and mai
 **Dogfooding Results:** `docs/dogfooding/SPRINT-19-DOGFOODING-RESULTS.md`
 **Sprint Summary:** `docs/sprints/SPRINT-19-SUMMARY.md`
 
-### Sprint 20: UX Improvements & Optimizations (2-3 days) - 📋 PLANNED
+### Sprint 20: UX Improvements & Optimizations (2-3 days) - 🔄 IN PROGRESS
 **Focus:** Address Sprint 19 dogfooding findings, improve performance and UX
-- [ ] TICKET-PMAT-6001: Health command optimization (--quick mode, opt-in checks)
+- [x] TICKET-PMAT-6001: Health command optimization (--quick mode, opt-in checks) (commit: 18ac24d)
 - [ ] TICKET-PMAT-6002: Progress indicators for long operations
 - [ ] TICKET-PMAT-6003: Documentation naming convention fixes
 - [ ] TICKET-PMAT-6004: Enhanced error messages with suggestions
