@@ -54,14 +54,14 @@ enum CheckType {
     Satd,
 }
 
-/// Handle project health check command (TICKET-PMAT-6001, PMAT-6010)
+/// Run health checks and return report (internal, reusable)
+/// (TICKET-PMAT-6020)
 ///
 /// # Complexity
 /// - Time: O(n) where n is project size
 /// - Cyclomatic: 7
-pub async fn handle_maintain_health(
-    project_dir: PathBuf,
-    format: OutputFormat,
+pub async fn run_health_checks_internal(
+    project_dir: &PathBuf,
     quick: bool,
     all: bool,
     check_build: bool,
@@ -69,7 +69,7 @@ pub async fn handle_maintain_health(
     check_coverage: bool,
     check_complexity: bool,
     check_satd: bool,
-) -> Result<()> {
+) -> Result<HealthReport> {
     // Determine which checks to run based on flags
     let checks_to_run = determine_checks_to_run(
         quick,
@@ -100,7 +100,7 @@ pub async fn handle_maintain_health(
     }
 
     // Run checks in parallel (TICKET-PMAT-6010)
-    let checks = run_checks_parallel(&project_dir, check_types).await?;
+    let checks = run_checks_parallel(project_dir, check_types).await?;
 
     let summary = calculate_summary(&checks);
     let report = HealthReport {
@@ -108,6 +108,33 @@ pub async fn handle_maintain_health(
         checks,
         summary,
     };
+
+    Ok(report)
+}
+
+/// Handle project health check command (CLI wrapper)
+/// (TICKET-PMAT-6001, PMAT-6010)
+pub async fn handle_maintain_health(
+    project_dir: PathBuf,
+    format: OutputFormat,
+    quick: bool,
+    all: bool,
+    check_build: bool,
+    check_tests: bool,
+    check_coverage: bool,
+    check_complexity: bool,
+    check_satd: bool,
+) -> Result<()> {
+    let report = run_health_checks_internal(
+        &project_dir,
+        quick,
+        all,
+        check_build,
+        check_tests,
+        check_coverage,
+        check_complexity,
+        check_satd,
+    ).await?;
 
     print_health_report(&report, &format)?;
 
