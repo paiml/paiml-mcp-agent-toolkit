@@ -7,6 +7,7 @@ use anyhow::Result;
 use crate::cli::OutputFormat;
 use serde::Serialize;
 use std::path::PathBuf;
+use tokio::task::JoinSet;
 
 /// Health check result
 #[derive(Debug, Serialize)]
@@ -43,7 +44,17 @@ pub struct HealthSummary {
     pub skipped: usize,
 }
 
-/// Handle project health check command (TICKET-PMAT-6001)
+/// Check type for parallel execution (TICKET-PMAT-6010)
+#[derive(Debug, Clone, Copy)]
+enum CheckType {
+    Build,
+    Tests,
+    Coverage,
+    Complexity,
+    Satd,
+}
+
+/// Handle project health check command (TICKET-PMAT-6001, PMAT-6010)
 ///
 /// # Complexity
 /// - Time: O(n) where n is project size
@@ -70,27 +81,26 @@ pub async fn handle_maintain_health(
         check_satd,
     );
 
-    let mut checks = Vec::new();
-
+    // Build list of check types to run (TICKET-PMAT-6010: parallel execution)
+    let mut check_types = Vec::new();
     if checks_to_run.build {
-        checks.push(run_build_check(&project_dir).await?);
+        check_types.push(CheckType::Build);
     }
-
     if checks_to_run.tests {
-        checks.push(run_test_check(&project_dir).await?);
+        check_types.push(CheckType::Tests);
     }
-
     if checks_to_run.coverage {
-        checks.push(run_coverage_check(&project_dir).await?);
+        check_types.push(CheckType::Coverage);
     }
-
     if checks_to_run.complexity {
-        checks.push(run_complexity_check(&project_dir).await?);
+        check_types.push(CheckType::Complexity);
+    }
+    if checks_to_run.satd {
+        check_types.push(CheckType::Satd);
     }
 
-    if checks_to_run.satd {
-        checks.push(run_satd_check(&project_dir).await?);
-    }
+    // Run checks in parallel (TICKET-PMAT-6010)
+    let checks = run_checks_parallel(&project_dir, check_types).await?;
 
     let summary = calculate_summary(&checks);
     let report = HealthReport {
@@ -268,6 +278,40 @@ async fn run_satd_check(_project_dir: &PathBuf) -> Result<HealthCheck> {
         message: "SATD check not yet implemented".to_string(),
         details: Some("Use 'pmat analyze satd' for detailed analysis".to_string()),
     })
+}
+
+/// Run multiple health checks in parallel (TICKET-PMAT-6010)
+///
+/// # Complexity
+/// - Time: O(max(check_times)) instead of O(sum(check_times))
+/// - Cyclomatic: 4
+async fn run_checks_parallel(
+    project_dir: &PathBuf,
+    check_types: Vec<CheckType>,
+) -> Result<Vec<HealthCheck>> {
+    let mut set = JoinSet::new();
+
+    // Spawn parallel tasks for each check
+    for check_type in check_types {
+        let dir = project_dir.clone();
+        set.spawn(async move {
+            match check_type {
+                CheckType::Build => run_build_check(&dir).await,
+                CheckType::Tests => run_test_check(&dir).await,
+                CheckType::Coverage => run_coverage_check(&dir).await,
+                CheckType::Complexity => run_complexity_check(&dir).await,
+                CheckType::Satd => run_satd_check(&dir).await,
+            }
+        });
+    }
+
+    // Collect results as they complete
+    let mut results = Vec::new();
+    while let Some(res) = set.join_next().await {
+        results.push(res??);
+    }
+
+    Ok(results)
 }
 
 /// Parse coverage percentage from llvm-cov output
@@ -626,5 +670,73 @@ mod property_tests {
             prop_assert_eq!(summary.failed, failed as usize);
             prop_assert_eq!(summary.skipped, skipped as usize);
         }
+    }
+}
+
+// TICKET-PMAT-6010: Tests for parallel health check execution
+#[cfg(test)]
+mod parallel_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_run_checks_parallel_returns_all_results() {
+        let project_dir = PathBuf::from(".");
+        let check_types = vec![
+            CheckType::Build,
+            CheckType::Complexity,
+            CheckType::Satd,
+        ];
+
+        let results = run_checks_parallel(&project_dir, check_types).await;
+
+        assert!(results.is_ok());
+        let checks = results.unwrap();
+        assert_eq!(checks.len(), 3);
+
+        // Verify all check names are present
+        let names: Vec<_> = checks.iter().map(|c| c.name.as_str()).collect();
+        assert!(names.contains(&"Build"));
+        assert!(names.contains(&"Complexity"));
+        assert!(names.contains(&"SATD"));
+    }
+
+    #[tokio::test]
+    async fn test_run_checks_parallel_empty_list() {
+        let project_dir = PathBuf::from(".");
+        let check_types = vec![];
+
+        let results = run_checks_parallel(&project_dir, check_types).await;
+
+        assert!(results.is_ok());
+        let checks = results.unwrap();
+        assert_eq!(checks.len(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_run_checks_parallel_single_check() {
+        let project_dir = PathBuf::from(".");
+        let check_types = vec![CheckType::Build];
+
+        let results = run_checks_parallel(&project_dir, check_types).await;
+
+        assert!(results.is_ok());
+        let checks = results.unwrap();
+        assert_eq!(checks.len(), 1);
+        assert_eq!(checks[0].name, "Build");
+    }
+
+    #[test]
+    fn test_check_type_coverage() {
+        // Verify CheckType enum has all expected variants
+        let types = vec![
+            CheckType::Build,
+            CheckType::Tests,
+            CheckType::Coverage,
+            CheckType::Complexity,
+            CheckType::Satd,
+        ];
+
+        // If this compiles, all types exist
+        assert_eq!(types.len(), 5);
     }
 }

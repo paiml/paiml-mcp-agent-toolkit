@@ -255,6 +255,7 @@ fn output_summary(report: &QualityReport) -> Result<()> {
 mod tests {
     use super::*;
     use crate::quality::gates::GateResult;
+    use std::time::Duration;
 
     #[test]
     fn test_load_config_from_file() {
