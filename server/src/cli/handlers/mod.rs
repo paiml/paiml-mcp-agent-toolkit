@@ -50,6 +50,7 @@ pub mod refactor_auto_property_tests;
 pub mod refactor_docs_handlers;
 pub mod refactor_handlers;
 pub mod roadmap_handler;
+pub mod health_handler;
 pub mod satd_handler;
 pub mod similarity_handler;
 pub mod tdg_diagnostic_handler;
@@ -100,6 +101,7 @@ pub use quality_gates_handler::handle_quality_gates_command; // TICKET-PMAT-5023
 pub use refactor_docs_handlers::handle_refactor_docs;
 pub use refactor_handlers::{route_refactor_command, RefactorServeParams};
 pub use roadmap_handler::handle_maintain_roadmap; // TICKET-PMAT-5032
+pub use health_handler::handle_maintain_health; // TICKET-PMAT-5033
 pub use satd_handler::handle_analyze_satd;
 pub use tdg_handlers::handle_tdg_command;
 pub use telemetry_handlers::handle_telemetry;

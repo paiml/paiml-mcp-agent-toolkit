@@ -331,9 +331,25 @@ impl CommandDispatcher {
                         )
                         .await
                     }
-                    MaintainCommands::Health { .. } => {
-                        // TICKET-PMAT-5033
-                        Err(anyhow::anyhow!("Health command not yet implemented"))
+                    MaintainCommands::Health {
+                        project_dir,
+                        format,
+                        check_build,
+                        check_tests,
+                        check_coverage,
+                        check_complexity,
+                        check_satd,
+                    } => {
+                        handlers::handle_maintain_health(
+                            project_dir,
+                            format,
+                            check_build,
+                            check_tests,
+                            check_coverage,
+                            check_complexity,
+                            check_satd,
+                        )
+                        .await
                     }
                 }
             }
