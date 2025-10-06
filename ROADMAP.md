@@ -63,7 +63,7 @@ Build a comprehensive system for scaffolding new projects (agents, WASM) and mai
 - [x] TICKET-PMAT-5032: `pmat maintain roadmap` command
 - [x] TICKET-PMAT-5033: `pmat maintain health` command
 - [x] TICKET-PMAT-5034: `pmat hooks` command (install/uninstall/status/verify/refresh)
-- [ ] TICKET-PMAT-5035: Dogfood on PMAT itself
+- [x] TICKET-PMAT-5035: Dogfood on PMAT itself (documented, pending binary)
 - [ ] TICKET-PMAT-5036: Create example scaffolded projects
 
 **Success Criteria:**
