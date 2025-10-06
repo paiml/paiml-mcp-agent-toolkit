@@ -122,7 +122,32 @@ The following tests have been marked as `#[ignore]` to achieve stable coverage m
 - `ruchy_parser_tests::test_ruchy_parser_integration_pipeline_operators`
 - `ruchy_parser_tests::test_ruchy_parser_integration_generic_functions`
 
-**Total: 69 tests ignored for stable coverage**
+### Known Failing Tests (14 tests) - Pre-existing issues, need investigation
+**Documented**: `docs/quality/TEST-FAILURES-2025-10-06.md`
+**Fix Plan**: Sprint 21 or later
+
+#### Service Layer (6 tests)
+- `services::configuration_service::tests::test_service_lifecycle`
+- `services::deep_wasm::service::tests::test_analyze_minimal_request`
+- `services::deep_wasm::service::tests::test_analyze_ruchy_file`
+- `services::deep_wasm::tests::integration_tests::test_end_to_end_minimal_analysis`
+- `services::mutation::rust_adapter::tests::test_find_cargo_root`
+- `tests::cli_integration_full::tests::test_cli_context_generation`
+
+#### Defect Report Service (5 tests) - Missing test fixtures
+- `services::defect_report_service::integration_tests::tests::test_csv_formatting`
+- `services::defect_report_service::integration_tests::tests::test_defect_report_generation`
+- `services::defect_report_service::integration_tests::tests::test_json_formatting`
+- `services::defect_report_service::integration_tests::tests::test_markdown_formatting`
+- `services::defect_report_service::integration_tests::tests::test_text_formatting`
+
+#### E2E Binary Tests (3 tests) - Binary execution issues
+- `tests::e2e_full_coverage::test_cli_analyze_churn`
+- `tests::e2e_full_coverage::test_cli_main_binary_help`
+- `tests::e2e_full_coverage::test_cli_main_binary_version`
+
+**Total: 83 tests ignored/failing (69 ignored + 14 failing)**
 
 These tests can be re-enabled by removing the `#[ignore]` attribute when they are fixed.
+Known failures are pre-existing and unrelated to Sprint 19 work.
 - always walk of master.  we don't do branching
