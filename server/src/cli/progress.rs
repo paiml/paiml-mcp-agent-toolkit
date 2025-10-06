@@ -36,7 +36,7 @@ impl ProgressIndicator {
 
     /// Check if we should show progress indicators
     ///
-    /// CC=3: TTY check + env checks
+    /// CC=5: TTY check + env checks (TICKET-PMAT-6006)
     fn should_show_progress() -> bool {
         // Don't show in CI environments
         if std::env::var("CI").is_ok() {
@@ -45,6 +45,11 @@ impl ProgressIndicator {
 
         // Don't show if NO_COLOR is set
         if std::env::var("NO_COLOR").is_ok() {
+            return false;
+        }
+
+        // Don't show in quiet mode (TICKET-PMAT-6006)
+        if std::env::var("PMAT_QUIET").is_ok() {
             return false;
         }
 
