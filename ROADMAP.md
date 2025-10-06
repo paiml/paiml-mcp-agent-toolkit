@@ -18,7 +18,7 @@
 - [x] TICKET-PMAT-6010: Parallel health check execution (P0 - 3-4h) (commit: c705d5c)
 - [x] TICKET-PMAT-6011: Fix hook verification timestamp issue (P0 - 1-2h) (commit: f259a5e)
 - [x] TICKET-PMAT-6012: Auto-generate ticket files from roadmap (P1 - 3-4h) (commit: accf87c)
-- [ ] TICKET-PMAT-6013: MCP server for scaffolding (P1 - 4-6h)
+- [x] TICKET-PMAT-6013: MCP server for scaffolding (P1 - 4-6h) (commit: ccd3f34)
 
 **Deferred to Sprint 22 (P2-P3):**
 - [ ] TICKET-PMAT-6014: Smart coverage (changed files only) (P2 - 4-5h)
