@@ -628,6 +628,26 @@ pub enum MaintainCommands {
         /// Output format
         #[arg(long, value_enum, default_value = "table")]
         format: OutputFormat,
+
+        /// Check build status
+        #[arg(long, default_value_t = true)]
+        check_build: bool,
+
+        /// Check tests
+        #[arg(long, default_value_t = true)]
+        check_tests: bool,
+
+        /// Check coverage
+        #[arg(long, default_value_t = true)]
+        check_coverage: bool,
+
+        /// Check complexity
+        #[arg(long, default_value_t = true)]
+        check_complexity: bool,
+
+        /// Check SATD
+        #[arg(long, default_value_t = true)]
+        check_satd: bool,
     },
 }
 
