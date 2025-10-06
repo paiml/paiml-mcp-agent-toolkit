@@ -6,6 +6,7 @@ mod integration_tests {
     use std::path::PathBuf;
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_end_to_end_minimal_analysis() {
         let service = DeepWasmService::new();
         let request = DeepWasmAnalysisRequest {

@@ -109,6 +109,7 @@ pub fn unsafe_function(input: &str) {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_defect_report_generation() {
         let test_project = create_test_project().await;
         let service = DefectReportService::new();
@@ -126,6 +127,7 @@ pub fn unsafe_function(input: &str) {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_json_formatting() {
         let test_project = create_test_project().await;
         let service = DefectReportService::new();
@@ -149,6 +151,7 @@ pub fn unsafe_function(input: &str) {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_csv_formatting() {
         let test_project = create_test_project().await;
         let service = DefectReportService::new();
@@ -170,6 +173,7 @@ pub fn unsafe_function(input: &str) {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_markdown_formatting() {
         let test_project = create_test_project().await;
         let service = DefectReportService::new();
@@ -189,6 +193,7 @@ pub fn unsafe_function(input: &str) {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_text_formatting() {
         let test_project = create_test_project().await;
         let service = DefectReportService::new();
