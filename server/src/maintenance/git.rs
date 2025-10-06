@@ -60,7 +60,7 @@ pub fn extract_ticket_ids(commit_message: &str) -> Vec<String> {
 /// - Cyclomatic: 3
 pub fn get_current_commit() -> Result<CommitInfo> {
     let hash_output = Command::new("git")
-        .args(&["rev-parse", "HEAD"])
+        .args(["rev-parse", "HEAD"])
         .output()?;
 
     if !hash_output.status.success() {
@@ -70,7 +70,7 @@ pub fn get_current_commit() -> Result<CommitInfo> {
     }
 
     let message_output = Command::new("git")
-        .args(&["log", "-1", "--pretty=%B"])
+        .args(["log", "-1", "--pretty=%B"])
         .output()?;
 
     if !message_output.status.success() {
@@ -80,7 +80,7 @@ pub fn get_current_commit() -> Result<CommitInfo> {
     }
 
     let files_output = Command::new("git")
-        .args(&["diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD"])
+        .args(["diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD"])
         .output()?;
 
     if !files_output.status.success() {
