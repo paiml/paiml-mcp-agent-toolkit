@@ -53,13 +53,11 @@ fn test_deep_wasm_language_enum() {
 #[test]
 fn test_deep_wasm_focus_enum() {
     // RED Phase: Test focus enum variants
-    let focuses = vec![
-        DeepWasmFocus::Full,
+    let focuses = [DeepWasmFocus::Full,
         DeepWasmFocus::Source,
         DeepWasmFocus::Compilation,
         DeepWasmFocus::Runtime,
-        DeepWasmFocus::Interop,
-    ];
+        DeepWasmFocus::Interop];
 
     assert_eq!(focuses.len(), 5);
     assert_eq!(DeepWasmFocus::Full.to_string(), "full");
@@ -73,11 +71,9 @@ fn test_deep_wasm_focus_enum() {
 #[test]
 fn test_deep_wasm_output_format_enum() {
     // RED Phase: Test output format enum variants
-    let formats = vec![
-        DeepWasmOutputFormat::Markdown,
+    let formats = [DeepWasmOutputFormat::Markdown,
         DeepWasmOutputFormat::Json,
-        DeepWasmOutputFormat::Html,
-    ];
+        DeepWasmOutputFormat::Html];
 
     assert_eq!(formats.len(), 3);
     assert_eq!(DeepWasmOutputFormat::Markdown.to_string(), "markdown");

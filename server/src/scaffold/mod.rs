@@ -82,7 +82,7 @@ impl ScaffoldEngine {
     /// - Cyclomatic: 2 (success/error)
     pub fn init_git(&self, project_dir: &Path) -> Result<()> {
         let output = Command::new("git")
-            .args(&["init"])
+            .args(["init"])
             .current_dir(project_dir)
             .output()
             .map_err(|e| ScaffoldError::GitError(format!("Failed to run git: {}", e)))?;
