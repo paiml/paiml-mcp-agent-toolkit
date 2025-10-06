@@ -634,7 +634,7 @@ pub enum MaintainCommands {
         #[arg(long)]
         fix: bool,
 
-        /// Auto-generate missing ticket files (TICKET-PMAT-6012)
+        /// Auto-generate missing ticket files from roadmap entries that don't have corresponding files (TICKET-PMAT-6012)
         #[arg(long)]
         generate_tickets: bool,
 
@@ -3191,7 +3191,7 @@ pub enum ScaffoldCommands {
         features: Vec<String>,
 
         /// Quality level (standard, strict, extreme)
-        #[arg(short = 'q', long, default_value = "strict")]
+        #[arg(short = 'l', long, default_value = "strict")]
         quality: String,
 
         /// Output directory
@@ -3234,7 +3234,7 @@ pub enum ScaffoldCommands {
         features: Vec<String>,
 
         /// Quality level (standard, strict, extreme)
-        #[arg(short = 'q', long, default_value = "strict")]
+        #[arg(short = 'l', long, default_value = "strict")]
         quality: String,
 
         /// Output directory
