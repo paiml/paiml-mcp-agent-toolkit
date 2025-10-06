@@ -10,6 +10,7 @@ This directory contains comprehensive documentation for all PMAT features, cross
 ### 🔧 Build & Quality Tools
 - [**Makefile Linter**](./makefile-linter.md) - Automated Makefile quality analysis with 50+ rules
 - [**Excellence Tracker**](./excellence-tracker.md) - Code quality metrics and tracking system
+- [**Documentation Enforcement**](./documentation-enforcement.md) - ✨ NEW v2.142.0 - Automated CLI/MCP documentation quality validation ⭐
 
 ### 🚀 Refactoring & Optimization
 - [**Refactor Auto**](./refactor-auto.md) - AI-powered automated refactoring with extreme quality standards ⭐
