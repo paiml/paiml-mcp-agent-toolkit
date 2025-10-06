@@ -560,6 +560,10 @@ pub enum Commands {
         #[command(subcommand)]
         command: MaintainCommands,
     },
+
+    /// Pre-commit hook management (TICKET-PMAT-5034)
+    #[command(subcommand)]
+    Hooks(HooksCommands),
 }
 
 /// Quality gates subcommands (TICKET-PMAT-5024)
@@ -774,10 +778,6 @@ pub enum TdgCommand {
     /// Configuration management (single source of truth)
     #[command(subcommand)]
     Config(ConfigCommands),
-
-    /// Pre-commit hook management (core feature)
-    #[command(subcommand)]
-    Hooks(HooksCommands),
 }
 
 /// Analyze subcommands
