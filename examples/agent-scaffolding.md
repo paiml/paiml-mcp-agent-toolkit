@@ -6,16 +6,16 @@ Create Model Context Protocol (MCP) agents with PMAT scaffolding.
 
 ```bash
 # Basic agent
-pmat scaffold agent --name my-agent --template basic
+pmat scaffold agent --name my_agent --template basic
 
 # Stateful agent with features
-pmat scaffold agent --name smart-agent \
+pmat scaffold agent --name smart_agent \
   --template stateful \
   --features logging,metrics \
   --quality extreme
 
 # Dry run to preview
-pmat scaffold agent --name test-agent --template basic --dry-run
+pmat scaffold agent --name test_agent --template basic --dry-run
 ```
 
 ## Command Options
@@ -39,7 +39,7 @@ Simple MCP server for straightforward use cases.
 
 **Structure:**
 ```
-my-agent/
+my_agent/
 ├── src/
 │   ├── main.rs
 │   ├── server.rs
@@ -53,7 +53,7 @@ my-agent/
 
 **Next Steps:**
 ```bash
-cd my-agent
+cd my_agent
 cargo build && cargo test
 pmat quality-gates
 ```
@@ -99,21 +99,21 @@ Distributed tracing with OpenTelemetry.
 
 ```bash
 # Simple echo agent
-pmat scaffold agent --name echo-agent --template basic
+pmat scaffold agent --name echo_agent --template basic
 
 # File system agent
-pmat scaffold agent --name fs-agent --template stateful \
+pmat scaffold agent --name fs_agent --template stateful \
   --features logging,metrics
 
 # Code assistant
-pmat scaffold agent --name code-assistant --template hybrid \
+pmat scaffold agent --name code_assistant --template hybrid \
   --features logging,metrics,tracing --quality extreme
 ```
 
 ## Workflow
 
-1. **Scaffold**: `pmat scaffold agent --name my-agent --template basic`
-2. **Build**: `cd my-agent && cargo build`
+1. **Scaffold**: `pmat scaffold agent --name my_agent --template basic`
+2. **Build**: `cd my_agent && cargo build`
 3. **Test**: `cargo test`
 4. **Quality**: `pmat quality-gates`
 5. **Develop**: Add your agent logic

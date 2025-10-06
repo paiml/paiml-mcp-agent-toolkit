@@ -15,7 +15,7 @@ This directory contains examples and guides for using PMAT's scaffolding command
 Create Model Context Protocol (MCP) agents with built-in quality gates.
 
 ```bash
-pmat scaffold agent --name my-agent --template basic
+pmat scaffold agent --name my_agent --template basic
 ```
 
 **Features:**
@@ -35,7 +35,7 @@ pmat scaffold agent --name my-agent --template basic
 Create WebAssembly projects optimized for local development.
 
 ```bash
-pmat scaffold wasm --name my-wasm --framework wasm-labs
+pmat scaffold wasm --name my_wasm --framework wasm-labs
 ```
 
 **Features:**
