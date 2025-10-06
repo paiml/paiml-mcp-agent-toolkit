@@ -100,6 +100,7 @@ impl CliAdapter {
             | Commands::QualityGate { .. }
             | Commands::QualityGates { .. } // TICKET-PMAT-5023
             | Commands::Maintain { .. } // TICKET-PMAT-5032
+            | Commands::Hooks(_) // TICKET-PMAT-5034
             | Commands::Report { .. }
             | Commands::Enforce(_)
             | Commands::Refactor(_)
@@ -1769,6 +1770,7 @@ impl CliInput {
             | Commands::Test { .. }
             | Commands::Roadmap(_)
             | Commands::Maintain { .. } // TICKET-PMAT-5032
+            | Commands::Hooks(_) // TICKET-PMAT-5034
             | Commands::Validate { .. } => CommandCategory::Workflow,
             Commands::List { .. }
             | Commands::Search { .. }
