@@ -26,6 +26,7 @@ Welcome to the PMAT (Pragmatic AI MCP Agent Toolkit) documentation.
 #### Features
 - **[features/](./features/)** - Feature documentation
   - [README.md](./features/README.md) - Feature overview
+  - **[SCAFFOLDING-AND-MAINTENANCE.md](./features/SCAFFOLDING-AND-MAINTENANCE.md)** - **🆕 v2.139.0** Project Scaffolding & Maintenance System (Complete Guide)
   - [claude-agent-sdk-guide.md](./claude-agent-sdk-guide.md) - Claude Agent SDK Integration Guide
   - [deep-wasm-usage.md](./deep-wasm-usage.md) - Deep WASM Pipeline Inspection (Phases 1-2.7 Complete)
   - [mutation-testing.md](./mutation-testing.md) - Mutation Testing with ML Prediction
