@@ -43,6 +43,13 @@ pub enum TicketStatus {
     Unknown,
 }
 
+/// Ticket generation result (TICKET-PMAT-6021)
+#[derive(Debug, Serialize)]
+pub struct TicketGenerationResult {
+    pub generated: Vec<String>,
+    pub skipped: Vec<String>,
+}
+
 /// Handle roadmap maintenance command (TICKET-PMAT-6012)
 ///
 /// # Complexity
@@ -82,8 +89,12 @@ pub async fn handle_maintain_roadmap(
     Ok(())
 }
 
-/// Validate roadmap structure and ticket consistency
-async fn validate_roadmap(roadmap_path: &Path, tickets_dir: &Path) -> Result<()> {
+/// Validate roadmap structure and ticket consistency (internal, reusable)
+/// (TICKET-PMAT-6019)
+pub async fn validate_roadmap_internal(
+    roadmap_path: &Path,
+    tickets_dir: &Path,
+) -> Result<RoadmapValidation> {
     let roadmap_content = fs::read_to_string(roadmap_path).map_err(|_| {
         let error = crate::cli::error_context::roadmap_not_found(roadmap_path);
         anyhow::anyhow!(error.format_detailed())
@@ -119,23 +130,34 @@ async fn validate_roadmap(roadmap_path: &Path, tickets_dir: &Path) -> Result<()>
         }
     }
 
+    Ok(RoadmapValidation {
+        valid: errors.is_empty(),
+        errors,
+        warnings,
+    })
+}
+
+/// Validate roadmap structure and ticket consistency (CLI wrapper)
+async fn validate_roadmap(roadmap_path: &Path, tickets_dir: &Path) -> Result<()> {
+    let validation = validate_roadmap_internal(roadmap_path, tickets_dir).await?;
+
     // Report results
-    if errors.is_empty() && warnings.is_empty() {
+    if validation.valid && validation.warnings.is_empty() {
         eprintln!("✅ Roadmap validation passed!");
     } else {
-        if !errors.is_empty() {
+        if !validation.errors.is_empty() {
             eprintln!("❌ Validation errors:");
-            for error in &errors {
+            for error in &validation.errors {
                 eprintln!("  - {error}");
             }
         }
-        if !warnings.is_empty() {
+        if !validation.warnings.is_empty() {
             eprintln!("⚠️  Warnings:");
-            for warning in &warnings {
+            for warning in &validation.warnings {
                 eprintln!("  - {warning}");
             }
         }
-        if !errors.is_empty() {
+        if !validation.valid {
             std::process::exit(1);
         }
     }
@@ -233,23 +255,22 @@ async fn fix_roadmap_status(
     Ok(())
 }
 
-/// Generate missing ticket files from roadmap (TICKET-PMAT-6012)
+/// Generate missing ticket files from roadmap (internal, reusable)
+/// (TICKET-PMAT-6021)
 ///
 /// # Complexity
 /// - Time: O(n) where n is number of tickets
 /// - Cyclomatic: 6
-async fn generate_missing_ticket_files(
+pub async fn generate_tickets_internal(
     roadmap_path: &Path,
     tickets_dir: &Path,
     dry_run: bool,
-) -> Result<()> {
+) -> Result<TicketGenerationResult> {
     let roadmap_content = fs::read_to_string(roadmap_path)?;
     let roadmap_tickets = parse_roadmap_tickets(&roadmap_content)?;
 
     let mut generated = Vec::new();
     let mut skipped = Vec::new();
-
-    eprintln!("📝 Checking for missing ticket files...\n");
 
     for (ticket_id, checked) in &roadmap_tickets {
         let ticket_path = tickets_dir.join(format!("{ticket_id}.md"));
@@ -267,27 +288,49 @@ async fn generate_missing_ticket_files(
 
         let template = generate_ticket_template(ticket_id, &sprint, status);
 
-        if dry_run {
-            eprintln!("Would create: {ticket_id}.md (Sprint: {sprint}, Status: {status})");
-        } else {
+        if !dry_run {
             fs::create_dir_all(tickets_dir)?;
             fs::write(&ticket_path, template)?;
+        }
+    }
+
+    Ok(TicketGenerationResult { generated, skipped })
+}
+
+/// Generate missing ticket files from roadmap (CLI wrapper)
+/// (TICKET-PMAT-6012)
+async fn generate_missing_ticket_files(
+    roadmap_path: &Path,
+    tickets_dir: &Path,
+    dry_run: bool,
+) -> Result<()> {
+    eprintln!("📝 Checking for missing ticket files...\n");
+
+    let result = generate_tickets_internal(roadmap_path, tickets_dir, dry_run).await?;
+
+    // Print each generated ticket
+    for ticket_id in &result.generated {
+        if dry_run {
+            let roadmap_content = fs::read_to_string(roadmap_path)?;
+            let sprint = extract_sprint_for_ticket(&roadmap_content, ticket_id);
+            eprintln!("Would create: {ticket_id}.md (Sprint: {sprint})");
+        } else {
             eprintln!("Created: {ticket_id}.md");
         }
     }
 
     eprintln!();
-    if generated.is_empty() {
+    if result.generated.is_empty() {
         eprintln!("✅ No missing ticket files");
     } else {
-        eprintln!("✅ Generated {} ticket file(s)", generated.len());
+        eprintln!("✅ Generated {} ticket file(s)", result.generated.len());
         if dry_run {
             eprintln!("🔍 Dry-run mode - no files created");
         }
     }
 
-    if !skipped.is_empty() {
-        eprintln!("⏭️  Skipped {} existing ticket(s)", skipped.len());
+    if !result.skipped.is_empty() {
+        eprintln!("⏭️  Skipped {} existing ticket(s)", result.skipped.len());
     }
 
     Ok(())
