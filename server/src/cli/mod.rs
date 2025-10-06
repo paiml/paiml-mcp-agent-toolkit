@@ -21,6 +21,7 @@ pub mod formatting_helpers;
 pub mod handlers;
 pub mod language_analyzer;
 pub mod name_similarity_helpers;
+pub mod progress;
 pub mod proof_annotation_formatter;
 pub mod proof_annotation_helpers;
 pub mod provability_helpers;

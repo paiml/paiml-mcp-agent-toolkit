@@ -110,6 +110,8 @@ pub async fn handle_maintain_health(
 
 /// Run build health check
 async fn run_build_check(project_dir: &PathBuf) -> Result<HealthCheck> {
+    use crate::cli::progress::ProgressIndicator;
+
     // Check if Cargo.toml exists
     let cargo_toml = project_dir.join("Cargo.toml");
 
@@ -122,15 +124,21 @@ async fn run_build_check(project_dir: &PathBuf) -> Result<HealthCheck> {
         });
     }
 
+    // Show progress for build check
+    let progress = ProgressIndicator::new("Running build check...");
+
     // Try to build
+    let start = std::time::Instant::now();
     let output = tokio::process::Command::new("cargo")
         .arg("check")
         .arg("--quiet")
         .current_dir(project_dir)
         .output()
         .await?;
+    let duration = start.elapsed();
 
     if output.status.success() {
+        progress.finish_with_message(&format!("Build check passed ({:.1}s)", duration.as_secs_f64()));
         Ok(HealthCheck {
             name: "Build".to_string(),
             status: CheckStatus::Pass,
@@ -138,6 +146,7 @@ async fn run_build_check(project_dir: &PathBuf) -> Result<HealthCheck> {
             details: None,
         })
     } else {
+        progress.finish_with_error("Build check failed");
         let stderr = String::from_utf8_lossy(&output.stderr);
         Ok(HealthCheck {
             name: "Build".to_string(),
@@ -150,6 +159,11 @@ async fn run_build_check(project_dir: &PathBuf) -> Result<HealthCheck> {
 
 /// Run test health check
 async fn run_test_check(project_dir: &PathBuf) -> Result<HealthCheck> {
+    use crate::cli::progress::ProgressIndicator;
+
+    let progress = ProgressIndicator::new("Running tests...");
+    let start = std::time::Instant::now();
+
     let output = tokio::process::Command::new("cargo")
         .arg("test")
         .arg("--quiet")
@@ -158,7 +172,10 @@ async fn run_test_check(project_dir: &PathBuf) -> Result<HealthCheck> {
         .output()
         .await?;
 
+    let duration = start.elapsed();
+
     if output.status.success() {
+        progress.finish_with_message(&format!("Tests passed ({:.1}s)", duration.as_secs_f64()));
         Ok(HealthCheck {
             name: "Tests".to_string(),
             status: CheckStatus::Pass,
@@ -166,6 +183,7 @@ async fn run_test_check(project_dir: &PathBuf) -> Result<HealthCheck> {
             details: None,
         })
     } else {
+        progress.finish_with_error("Tests failed");
         Ok(HealthCheck {
             name: "Tests".to_string(),
             status: CheckStatus::Fail,
@@ -177,6 +195,11 @@ async fn run_test_check(project_dir: &PathBuf) -> Result<HealthCheck> {
 
 /// Run coverage health check
 async fn run_coverage_check(project_dir: &PathBuf) -> Result<HealthCheck> {
+    use crate::cli::progress::ProgressIndicator;
+
+    let progress = ProgressIndicator::new("Running coverage check...");
+    let start = std::time::Instant::now();
+
     // Use cargo llvm-cov to get coverage
     let output = tokio::process::Command::new("cargo")
         .arg("llvm-cov")
@@ -185,6 +208,8 @@ async fn run_coverage_check(project_dir: &PathBuf) -> Result<HealthCheck> {
         .current_dir(project_dir)
         .output()
         .await;
+
+    let duration = start.elapsed();
 
     match output {
         Ok(result) if result.status.success() => {
@@ -200,6 +225,8 @@ async fn run_coverage_check(project_dir: &PathBuf) -> Result<HealthCheck> {
                 CheckStatus::Fail
             };
 
+            progress.finish_with_message(&format!("Coverage: {:.1}% ({:.1}s)", coverage, duration.as_secs_f64()));
+
             Ok(HealthCheck {
                 name: "Coverage".to_string(),
                 status,
@@ -207,12 +234,15 @@ async fn run_coverage_check(project_dir: &PathBuf) -> Result<HealthCheck> {
                 details: Some(format!("Target: ≥80%, Current: {:.1}%", coverage)),
             })
         }
-        _ => Ok(HealthCheck {
-            name: "Coverage".to_string(),
-            status: CheckStatus::Skip,
-            message: "cargo-llvm-cov not available".to_string(),
-            details: Some("Install with: cargo install cargo-llvm-cov".to_string()),
-        }),
+        _ => {
+            progress.finish_with_message("cargo-llvm-cov not available");
+            Ok(HealthCheck {
+                name: "Coverage".to_string(),
+                status: CheckStatus::Skip,
+                message: "cargo-llvm-cov not available".to_string(),
+                details: Some("Install with: cargo install cargo-llvm-cov".to_string()),
+            })
+        }
     }
 }
 
