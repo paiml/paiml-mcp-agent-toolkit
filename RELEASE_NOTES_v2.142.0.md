@@ -1,4 +1,4 @@
-# Release Notes - PMAT v2.141.0
+# Release Notes - PMAT v2.142.0
 
 **Release Date**: 2025-10-06
 **Codename**: Documentation Enforcement
@@ -6,7 +6,7 @@
 
 ## Overview
 
-Version 2.141.0 completes PMAT-7001 with Phase 3 (REFACTOR), integrating documentation enforcement into PMAT's quality gate infrastructure. This release makes documentation quality a first-class concern alongside complexity, SATD, and dead code analysis.
+Version 2.142.0 completes PMAT-7001 with Phase 3 (REFACTOR), integrating documentation enforcement into PMAT's quality gate infrastructure. This release makes documentation quality a first-class concern alongside complexity, SATD, and dead code analysis.
 
 ## 🎯 Highlights
 
@@ -145,7 +145,7 @@ Overall: 6/6 tests passing ✅
    - Added MCP documentation enforcement check
 
 7. **CHANGELOG.md**
-   - Added v2.141.0 release notes
+   - Added v2.142.0 release notes
 
 ## 🎓 PMAT-7001 Journey
 
@@ -175,9 +175,9 @@ This release completes the PMAT-7001 ticket following EXTREME TDD methodology:
 
 ### For Existing Projects
 
-1. **Update to v2.141.0**:
+1. **Update to v2.142.0**:
    ```bash
-   cargo install pmat --version 2.141.0
+   cargo install pmat --version 2.142.0
    ```
 
 2. **Enable Documentation Enforcement** (optional):
@@ -203,10 +203,10 @@ This release completes the PMAT-7001 ticket following EXTREME TDD methodology:
 
 ```bash
 # Via cargo
-cargo install pmat --version 2.141.0
+cargo install pmat --version 2.142.0
 
 # Via crates.io
-pmat = "2.141.0"
+pmat = "2.142.0"
 
 # Verify installation
 pmat --version
@@ -242,5 +242,5 @@ See [CHANGELOG.md](CHANGELOG.md) for complete changes.
 ---
 
 **Generated**: 2025-10-06
-**Version**: 2.141.0
+**Version**: 2.142.0
 **Status**: ✅ Production Ready
