@@ -1,6 +1,48 @@
 # PMAT Agent System Roadmap
 
-## 🎯 CURRENT STATUS: v2.139.0 Released - Project Scaffolding & Maintenance System Complete 🎯
+## 🎯 CURRENT STATUS: Planning v2.140.0 - Sprint 21 Refinements 🎯
+
+## 📋 Planned: v2.140.0 - Scaffolding System Refinements (Sprint 21)
+
+**Status:** 📋 Planning
+**Duration:** 2-3 days
+**Focus:** Address v2.139.0 dogfooding findings and high-value enhancements
+
+### Sprint 21: Scaffolding System Refinements (2-3 days) - 📋 PLANNING
+
+**Based On:** v2.139.0 dogfooding findings
+**Sprint Plan:** `docs/sprints/SPRINT-21-PLAN.md`
+**Priority Matrix:** `docs/sprints/SPRINT-21-PRIORITIES.md`
+
+**Recommended Scope (P0 + P1):**
+- [ ] TICKET-PMAT-6010: Parallel health check execution (P0 - 3-4h)
+- [ ] TICKET-PMAT-6011: Fix hook verification timestamp issue (P0 - 1-2h)
+- [ ] TICKET-PMAT-6012: Auto-generate ticket files from roadmap (P1 - 3-4h)
+- [ ] TICKET-PMAT-6013: MCP server for scaffolding (P1 - 4-6h)
+
+**Deferred to Sprint 22 (P2-P3):**
+- [ ] TICKET-PMAT-6014: Smart coverage (changed files only) (P2 - 4-5h)
+- [ ] TICKET-PMAT-6015: Enhanced hook diagnostics (P2 - 2-3h)
+- [ ] TICKET-PMAT-6016: Roadmap health trends (P3 - 3-4h)
+
+**Success Criteria:**
+- Parallel health checks 14-40% faster
+- Hook verification issue resolved
+- Ticket auto-generation working
+- 5 MCP tools exposed for scaffolding
+- All existing tests passing
+- Documentation updated
+
+**Value Proposition:**
+- **Performance**: Faster health checks through parallelization
+- **Reliability**: Fixed hook verification bugs
+- **Automation**: Auto-generate ticket files, eliminate manual work
+- **Integration**: Enable agent ecosystem via MCP protocol
+- **Developer Experience**: Reduced friction, increased productivity
+
+**Estimated Effort:** 11-16 hours (P0+P1 scope)
+
+---
 
 ## 📋 Completed: v2.139.0 - Project Scaffolding & Maintenance System
 
