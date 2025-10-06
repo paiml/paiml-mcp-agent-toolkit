@@ -238,12 +238,12 @@ tokio-test = "0.4"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 pretty_assertions = "1.4"
 tempfile = "3.20"
+assert_cmd = "2.0"      # CLI testing for PMAT-7001
+predicates = "3.1"      # Assertion helpers for PMAT-7001
 criterion = { version = "0.6", features = ["html_reports"] }
 proptest = "1.6"
 quickcheck = "1.0"
 quickcheck_macros = "1.0"
-assert_cmd = "2.0"
-predicates = "3.1"
 scraper = "0.24"
 serial_test = "3.2"
 futures-test = "0.3"
