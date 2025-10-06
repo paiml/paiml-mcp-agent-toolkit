@@ -56,7 +56,7 @@ Build a comprehensive system for scaffolding new projects (agents, WASM) and mai
 - All gates have bypass documentation
 - Test on real repositories (PMAT, pforge, wasm-labs)
 
-### Sprint 19: CLI Integration & Dogfooding (2-3 days) - TICKET-PMAT-5030
+### Sprint 19: CLI Integration & Dogfooding (2-3 days) - TICKET-PMAT-5030 ✅ COMPLETE
 **Focus:** CLI commands and self-application
 - [x] TICKET-PMAT-5030: `pmat scaffold agent` command
 - [x] TICKET-PMAT-5031: `pmat scaffold wasm` command
@@ -64,7 +64,7 @@ Build a comprehensive system for scaffolding new projects (agents, WASM) and mai
 - [x] TICKET-PMAT-5033: `pmat maintain health` command
 - [x] TICKET-PMAT-5034: `pmat hooks` command (install/uninstall/status/verify/refresh)
 - [x] TICKET-PMAT-5035: Dogfood on PMAT itself (documented, pending binary)
-- [ ] TICKET-PMAT-5036: Create example scaffolded projects
+- [x] TICKET-PMAT-5036: Create example scaffolded projects
 
 **Success Criteria:**
 - Scaffold new agent in <5 minutes to first build
