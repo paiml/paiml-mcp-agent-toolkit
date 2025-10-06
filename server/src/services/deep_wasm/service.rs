@@ -218,6 +218,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_analyze_minimal_request() {
         let service = DeepWasmService::new();
         let request = DeepWasmAnalysisRequest {
@@ -236,6 +237,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_analyze_ruchy_file() {
         let service = DeepWasmService::new();
         let request = DeepWasmAnalysisRequest {
