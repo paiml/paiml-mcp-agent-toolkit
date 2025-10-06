@@ -82,8 +82,8 @@ Build a comprehensive system for scaffolding new projects (agents, WASM) and mai
 - [x] TICKET-PMAT-6001: Health command optimization (--quick mode, opt-in checks) (commit: 18ac24d)
 - [x] TICKET-PMAT-6002: Progress indicators for long operations (commit: fdb2fad)
 - [x] TICKET-PMAT-6003: Documentation naming convention fixes (commit: 0be34c5)
-- [ ] TICKET-PMAT-6004: Enhanced error messages with suggestions
-- [ ] TICKET-PMAT-6005: CLI integration tests
+- [x] TICKET-PMAT-6004: Enhanced error messages with suggestions (commit: 6eda28a)
+- [x] TICKET-PMAT-6005: CLI integration tests (commit: 90b0833)
 - [ ] TICKET-PMAT-6006: UX polish (color config, verbose/quiet modes)
 
 **Success Criteria:**
