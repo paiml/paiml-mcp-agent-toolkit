@@ -105,6 +105,8 @@ git2 = { version = "0.20", default-features = false, features = ["https"] }
 # CLI utilities
 dialoguer = "0.11"
 console = "0.15"
+indicatif = "0.17"
+atty = "0.2"
 url = "2.5"
 
 # Storage
@@ -205,9 +207,6 @@ reqwest = { version = "0.12", default-features = false, features = ["json", "rus
 # Prometheus metrics
 prometheus = "0.14"
 warp = "0.3"
-
-# Progress bars
-indicatif = "0.17"
 
 # Table formatting
 prettytable-rs = "0.10"

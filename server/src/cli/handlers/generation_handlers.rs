@@ -209,6 +209,7 @@ async fn handle_interactive_scaffold(
     force: bool,
 ) -> Result<()> {
     use crate::scaffold::agent::{scaffold_agent, InteractiveScaffolder};
+    use crate::cli::progress::ProgressIndicator;
 
     let mut scaffolder = InteractiveScaffolder::new();
     let context = scaffolder.run()?;
@@ -224,12 +225,14 @@ async fn handle_interactive_scaffold(
     }
 
     validate_output_path(&output_path, force)?;
+
+    let progress = ProgressIndicator::new(&format!("Scaffolding agent '{}'...", context.name));
+    let start = std::time::Instant::now();
+
     scaffold_agent(&context, &output_path).await?;
-    eprintln!(
-        "✅ Agent '{}' scaffolded successfully at {}",
-        context.name,
-        output_path.display()
-    );
+
+    let duration = start.elapsed();
+    progress.finish_with_message(&format!("Agent '{}' scaffolded successfully ({:.1}s)", context.name, duration.as_secs_f64()));
 
     Ok(())
 }
@@ -358,6 +361,7 @@ async fn execute_scaffold_operation(
     force: bool,
 ) -> Result<()> {
     use crate::scaffold::agent::scaffold_agent;
+    use crate::cli::progress::ProgressIndicator;
 
     if dry_run {
         print_dry_run_info(context, output_path);
@@ -365,12 +369,14 @@ async fn execute_scaffold_operation(
     }
 
     validate_output_path(output_path, force)?;
+
+    let progress = ProgressIndicator::new(&format!("Scaffolding agent '{}'...", name));
+    let start = std::time::Instant::now();
+
     scaffold_agent(context, output_path).await?;
-    eprintln!(
-        "✅ Agent '{}' scaffolded successfully at {}",
-        name,
-        output_path.display()
-    );
+
+    let duration = start.elapsed();
+    progress.finish_with_message(&format!("Agent '{}' scaffolded successfully ({:.1}s)", name, duration.as_secs_f64()));
 
     Ok(())
 }
@@ -509,6 +515,8 @@ pub async fn handle_scaffold_wasm(params: ScaffoldWasmParams) -> Result<()> {
         return Ok(());
     }
 
+    use crate::cli::progress::ProgressIndicator;
+
     // Use scaffold engine
     let engine = ScaffoldEngine::new()?;
     engine.validate_config(&config)?;
@@ -523,9 +531,14 @@ pub async fn handle_scaffold_wasm(params: ScaffoldWasmParams) -> Result<()> {
         ));
     }
 
+    let progress = ProgressIndicator::new(&format!("Scaffolding WASM project '{}'...", name));
+    let start = std::time::Instant::now();
+
     engine.scaffold(config)?;
 
-    eprintln!("✅ Created WASM project: {}", name);
+    let duration = start.elapsed();
+    progress.finish_with_message(&format!("WASM project '{}' created ({:.1}s)", name, duration.as_secs_f64()));
+
     eprintln!("  Location: {}", project_dir.display());
     eprintln!("  Framework: {}", framework);
     eprintln!();
