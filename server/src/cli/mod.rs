@@ -17,6 +17,7 @@ pub mod defect_helpers;
 pub mod defect_prediction_helpers;
 pub mod diagnose;
 pub mod enums;
+pub mod error_context;
 pub mod formatting_helpers;
 pub mod handlers;
 pub mod language_analyzer;

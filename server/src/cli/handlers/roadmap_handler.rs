@@ -79,8 +79,10 @@ pub async fn handle_maintain_roadmap(
 
 /// Validate roadmap structure and ticket consistency
 async fn validate_roadmap(roadmap_path: &Path, tickets_dir: &Path) -> Result<()> {
-    let roadmap_content =
-        fs::read_to_string(roadmap_path).context("Failed to read ROADMAP.md")?;
+    let roadmap_content = fs::read_to_string(roadmap_path).map_err(|_| {
+        let error = crate::cli::error_context::roadmap_not_found(roadmap_path);
+        anyhow::anyhow!(error.format_detailed())
+    })?;
 
     let mut errors = Vec::new();
     let mut warnings = Vec::new();
@@ -142,7 +144,10 @@ async fn show_health_report(
     tickets_dir: &Path,
     format: &OutputFormat,
 ) -> Result<()> {
-    let roadmap_content = fs::read_to_string(roadmap_path)?;
+    let roadmap_content = fs::read_to_string(roadmap_path).map_err(|_| {
+        let error = crate::cli::error_context::roadmap_not_found(roadmap_path);
+        anyhow::anyhow!(error.format_detailed())
+    })?;
     let sprints = parse_sprint_info(&roadmap_content, tickets_dir)?;
 
     match format {
