@@ -7,6 +7,7 @@ use crate::quality::gates::{execute_all_gates, format_report, GateConfig, Qualit
 use crate::quality::{generate_config_toml, generate_default_config, validate_config};
 use anyhow::Result;
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 /// Handle quality-gates command with subcommands
 ///
