@@ -28,6 +28,14 @@ pub enum QualityCheck {
     Coverage { min: f64 },
     Lint,
     Documentation,
+    /// Documentation quality enforcement (PMAT-7001)
+    /// Validates CLI help text and MCP tool documentation
+    DocsEnforcement {
+        /// Check CLI command documentation
+        check_cli: bool,
+        /// Check MCP tool documentation
+        check_mcp: bool,
+    },
 }
 
 /// Output from quality gate checks
@@ -205,6 +213,93 @@ impl QualityGateService {
             violations: vec![],
         })
     }
+
+    /// Check documentation quality enforcement (PMAT-7001)
+    async fn check_docs_enforcement(
+        &self,
+        _path: &Path,
+        check_cli: bool,
+        check_mcp: bool,
+    ) -> Result<QualityCheckResult> {
+        use crate::docs_enforcement::mcp_checker::load_mcp_tool_definitions;
+        use crate::docs_enforcement::mcp_checker::validate_mcp_documentation;
+
+        let mut violations = Vec::new();
+        let mut passed = true;
+
+        // Check MCP documentation
+        if check_mcp {
+            match load_mcp_tool_definitions() {
+                Ok(tools) => {
+                    for tool in tools {
+                        match validate_mcp_documentation(&tool) {
+                            Ok(report) => {
+                                if !report.is_valid() {
+                                    passed = false;
+                                    for issue in report.issues {
+                                        violations.push(Violation {
+                                            file: format!("MCP tool: {}", tool.name),
+                                            line: None,
+                                            severity: Severity::Error,
+                                            message: issue,
+                                        });
+                                    }
+                                }
+                            }
+                            Err(e) => {
+                                passed = false;
+                                violations.push(Violation {
+                                    file: format!("MCP tool: {}", tool.name),
+                                    line: None,
+                                    severity: Severity::Error,
+                                    message: format!("Validation error: {}", e),
+                                });
+                            }
+                        }
+                    }
+                }
+                Err(e) => {
+                    passed = false;
+                    violations.push(Violation {
+                        file: "MCP".to_string(),
+                        line: None,
+                        severity: Severity::Error,
+                        message: format!("Failed to load MCP tools: {}", e),
+                    });
+                }
+            }
+        }
+
+        // Check CLI documentation
+        if check_cli {
+            // For now, we rely on the test suite for CLI validation
+            // Future: Could add runtime CLI validation here
+            violations.push(Violation {
+                file: "CLI".to_string(),
+                line: None,
+                severity: Severity::Info,
+                message: "CLI documentation validated via test suite (cargo test --test cli_docs_enforcement -- --ignored)".to_string(),
+            });
+        }
+
+        let error_count = violations.iter().filter(|v| matches!(v.severity, Severity::Error)).count();
+        let message = if passed {
+            format!(
+                "Documentation enforcement passed (MCP: {}, CLI: {})",
+                if check_mcp { "checked" } else { "skipped" },
+                if check_cli { "info" } else { "skipped" }
+            )
+        } else {
+            format!("{} documentation issues found", error_count)
+        };
+
+        Ok(QualityCheckResult {
+            check: "Documentation Enforcement (PMAT-7001)".to_string(),
+            passed,
+            message,
+            violations,
+        })
+    }
 }
 
 #[async_trait::async_trait]
@@ -231,6 +326,9 @@ impl Service for QualityGateService {
                 QualityCheck::Coverage { min } => self.check_coverage(&input.path, *min).await?,
                 QualityCheck::Lint => self.check_lint(&input.path).await?,
                 QualityCheck::Documentation => self.check_documentation(&input.path).await?,
+                QualityCheck::DocsEnforcement { check_cli, check_mcp } => {
+                    self.check_docs_enforcement(&input.path, *check_cli, *check_mcp).await?
+                }
             };
             results.push(result);
         }
