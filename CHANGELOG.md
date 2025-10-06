@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.141.0] - 2025-10-06
+
+### Added
+- **PMAT-7001 Phase 3: Documentation Enforcement Integration**
+  - Integrated documentation enforcement into quality gate system
+  - Added `DocsEnforcement` variant to `QualityCheck` enum with configurable CLI/MCP flags
+  - Implemented JSON export for validation reports via `generate_validation_report_json()`
+  - Added comprehensive validation summary with tool/parameter metrics
+  - Created 4 quality gate integration tests (all passing)
+  - Created 2 unit tests for JSON validation (all passing)
+  - Updated pre-commit hook to include MCP documentation enforcement
+
+### Fixed
+- Fixed `scaffold_agent` MCP tool parameter validation
+  - Added default value documentation to `features` parameter
+  - All 4 MCP tools now pass validation with 0 issues
+  - 17 parameters across 4 tools fully validated
+
+### Changed
+- Added `Serialize`/`Deserialize` traits to MCP documentation report structures
+- Enhanced `McpDocumentationReport` and `ParameterReport` with JSON support
+- Pre-commit hook now configurable via `PMAT_DOCS_ENFORCEMENT_ENABLED` flag
+
+### Technical Details
+- New integration tests: `server/tests/docs_enforcement_quality_gate_test.rs`
+- New unit tests: `server/tests/docs_enforcement_unit_test.rs`
+- Enhanced: `server/src/docs_enforcement/mcp_checker.rs` with JSON reporting
+- Enhanced: `server/src/services/quality_gate_service.rs` with docs enforcement
+- Test coverage: 6/6 tests passing, 0 documentation issues
+
+### Quality Metrics
+- MCP validation: 4 tools, 17 parameters, 100% valid
+- Test execution: <100ms for pre-commit, ~5s for quality gate
+- PMAT-7001 Status: ✅ COMPLETED (RED → GREEN → REFACTOR)
+
 ## [2.111.0] - 2025-10-03
 
 ### Added
