@@ -38,6 +38,12 @@ Welcome to the PMAT (Pragmatic AI MCP Agent Toolkit) documentation.
   - [refactor-auto-guide.md](./guides/refactor-auto-guide.md) - Automated refactoring guide
   - [github-actions-quality-gate.md](./guides/github-actions-quality-gate.md) - CI/CD integration
 
+#### Dogfooding
+- **[dogfooding/](./dogfooding/)** - Real-world validation of PMAT features
+  - [README.md](./dogfooding/README.md) - Dogfooding overview and command reference
+  - [v2.139.0-INTEGRATION-SHOWCASE.md](./dogfooding/v2.139.0-INTEGRATION-SHOWCASE.md) - **🆕** Complete v2.139.0 integration showcase
+  - [SPRINT-19-DOGFOODING-RESULTS.md](./dogfooding/SPRINT-19-DOGFOODING-RESULTS.md) - Sprint 19 findings
+
 #### Operations
 - **[operations/](./operations/)** - Operational documentation
   - [configuration.md](./operations/configuration.md) - Configuration guide
