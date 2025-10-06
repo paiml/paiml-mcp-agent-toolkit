@@ -334,6 +334,8 @@ impl CommandDispatcher {
                     MaintainCommands::Health {
                         project_dir,
                         format,
+                        quick,
+                        all,
                         check_build,
                         check_tests,
                         check_coverage,
@@ -343,6 +345,8 @@ impl CommandDispatcher {
                         handlers::handle_maintain_health(
                             project_dir,
                             format,
+                            quick,
+                            all,
                             check_build,
                             check_tests,
                             check_coverage,

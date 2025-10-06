@@ -43,7 +43,7 @@ pub struct HealthSummary {
     pub skipped: usize,
 }
 
-/// Handle project health check command
+/// Handle project health check command (TICKET-PMAT-6001)
 ///
 /// # Complexity
 /// - Time: O(n) where n is project size
@@ -51,31 +51,44 @@ pub struct HealthSummary {
 pub async fn handle_maintain_health(
     project_dir: PathBuf,
     format: OutputFormat,
+    quick: bool,
+    all: bool,
     check_build: bool,
     check_tests: bool,
     check_coverage: bool,
     check_complexity: bool,
     check_satd: bool,
 ) -> Result<()> {
+    // Determine which checks to run based on flags
+    let checks_to_run = determine_checks_to_run(
+        quick,
+        all,
+        check_build,
+        check_tests,
+        check_coverage,
+        check_complexity,
+        check_satd,
+    );
+
     let mut checks = Vec::new();
 
-    if check_build {
+    if checks_to_run.build {
         checks.push(run_build_check(&project_dir).await?);
     }
 
-    if check_tests {
+    if checks_to_run.tests {
         checks.push(run_test_check(&project_dir).await?);
     }
 
-    if check_coverage {
+    if checks_to_run.coverage {
         checks.push(run_coverage_check(&project_dir).await?);
     }
 
-    if check_complexity {
+    if checks_to_run.complexity {
         checks.push(run_complexity_check(&project_dir).await?);
     }
 
-    if check_satd {
+    if checks_to_run.satd {
         checks.push(run_satd_check(&project_dir).await?);
     }
 
@@ -405,6 +418,127 @@ mod tests {
         let output = "No coverage data";
         let coverage = parse_coverage_percentage(output);
         assert_eq!(coverage, 0.0);
+    }
+
+    #[test]
+    fn test_determine_checks_quick_mode() {
+        let checks = determine_checks_to_run(true, false, false, false, false, false, false);
+        assert!(checks.build);
+        assert!(!checks.tests);
+        assert!(!checks.coverage);
+        assert!(!checks.complexity);
+        assert!(!checks.satd);
+    }
+
+    #[test]
+    fn test_determine_checks_all_mode() {
+        let checks = determine_checks_to_run(false, true, false, false, false, false, false);
+        assert!(checks.build);
+        assert!(checks.tests);
+        assert!(checks.coverage);
+        assert!(checks.complexity);
+        assert!(checks.satd);
+    }
+
+    #[test]
+    fn test_determine_checks_default_no_flags() {
+        let checks = determine_checks_to_run(false, false, false, false, false, false, false);
+        assert!(checks.build);
+        assert!(!checks.tests);
+        assert!(!checks.coverage);
+        assert!(!checks.complexity);
+        assert!(!checks.satd);
+    }
+
+    #[test]
+    fn test_determine_checks_specific_flags() {
+        let checks = determine_checks_to_run(false, false, true, true, false, false, false);
+        assert!(checks.build);
+        assert!(checks.tests);
+        assert!(!checks.coverage);
+        assert!(!checks.complexity);
+        assert!(!checks.satd);
+    }
+
+    #[test]
+    fn test_determine_checks_quick_overrides_all() {
+        let checks = determine_checks_to_run(true, true, false, false, false, false, false);
+        assert!(checks.build);
+        assert!(!checks.tests);
+    }
+}
+
+/// Checks configuration (TICKET-PMAT-6001)
+struct ChecksToRun {
+    build: bool,
+    tests: bool,
+    coverage: bool,
+    complexity: bool,
+    satd: bool,
+}
+
+/// Determine which checks to run based on flags (TICKET-PMAT-6001)
+///
+/// # Logic
+/// - quick: only build
+/// - all: enable everything
+/// - no flags: only build (default)
+/// - specific flags: only those checks
+///
+/// # Complexity
+/// - Cyclomatic: 7
+fn determine_checks_to_run(
+    quick: bool,
+    all: bool,
+    check_build: bool,
+    check_tests: bool,
+    check_coverage: bool,
+    check_complexity: bool,
+    check_satd: bool,
+) -> ChecksToRun {
+    // Quick mode: only build
+    if quick {
+        return ChecksToRun {
+            build: true,
+            tests: false,
+            coverage: false,
+            complexity: false,
+            satd: false,
+        };
+    }
+
+    // All mode: enable everything
+    if all {
+        return ChecksToRun {
+            build: true,
+            tests: true,
+            coverage: true,
+            complexity: true,
+            satd: true,
+        };
+    }
+
+    // Check if any specific flags are set
+    let has_specific_flags = check_build || check_tests || check_coverage || check_complexity || check_satd;
+
+    // If no flags specified, default to build only
+    if !has_specific_flags {
+        return ChecksToRun {
+            build: true,
+            tests: false,
+            coverage: false,
+            complexity: false,
+            satd: false,
+        };
+    }
+
+    // Use specified flags
+    ChecksToRun {
+        build: check_build,
+        tests: check_tests,
+        coverage: check_coverage,
+        complexity: check_complexity,
+        satd: check_satd,
     }
 }
 

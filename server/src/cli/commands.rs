@@ -623,7 +623,7 @@ pub enum MaintainCommands {
         format: OutputFormat,
     },
 
-    /// Validate project health (TICKET-PMAT-5033)
+    /// Validate project health (TICKET-PMAT-5033, TICKET-PMAT-6001)
     Health {
         /// Project directory
         #[arg(long, default_value = ".")]
@@ -633,24 +633,32 @@ pub enum MaintainCommands {
         #[arg(long, value_enum, default_value = "table")]
         format: OutputFormat,
 
-        /// Check build status
-        #[arg(long, default_value_t = true)]
+        /// Quick mode: only build check (fastest, <10s)
+        #[arg(long)]
+        quick: bool,
+
+        /// Run all checks (build + tests + coverage + complexity + SATD)
+        #[arg(long)]
+        all: bool,
+
+        /// Check build status (default if no other flags specified)
+        #[arg(long)]
         check_build: bool,
 
         /// Check tests
-        #[arg(long, default_value_t = true)]
+        #[arg(long)]
         check_tests: bool,
 
         /// Check coverage
-        #[arg(long, default_value_t = true)]
+        #[arg(long)]
         check_coverage: bool,
 
         /// Check complexity
-        #[arg(long, default_value_t = true)]
+        #[arg(long)]
         check_complexity: bool,
 
         /// Check SATD
-        #[arg(long, default_value_t = true)]
+        #[arg(long)]
         check_satd: bool,
     },
 }
