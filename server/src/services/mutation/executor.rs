@@ -415,7 +415,6 @@ impl MutantExecutor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::services::mutation::types::{MutationOperatorType, SourceLocation};
 
     #[test]
     fn test_parse_compilation_error() {
