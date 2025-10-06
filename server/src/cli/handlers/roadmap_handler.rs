@@ -3,7 +3,7 @@
 //! This module provides functionality for maintaining project roadmaps,
 //! including validation, health reporting, and auto-fixing checkbox status.
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use crate::cli::OutputFormat;
 use serde::Serialize;
 use std::collections::HashMap;
