@@ -532,6 +532,25 @@ impl CommandDispatcher {
             ScaffoldCommands::ValidateTemplate { path } => {
                 handlers::handle_validate_agent_template(path).await
             }
+            ScaffoldCommands::ListSubagents { all } => {
+                handlers::subagent_handlers::list_subagents(all)
+            }
+            ScaffoldCommands::CreateSubagent {
+                agent_name,
+                output,
+            } => handlers::subagent_handlers::create_subagent(&agent_name, output),
+            ScaffoldCommands::CreateAllSubagents { output } => {
+                handlers::subagent_handlers::create_all_mvp_subagents(output)
+            }
+            ScaffoldCommands::ValidateSubagent { file_path } => {
+                handlers::subagent_handlers::validate_subagent(&file_path)
+            }
+            ScaffoldCommands::ShowToolMapping { agent } => {
+                handlers::subagent_handlers::show_tool_mapping(agent)
+            }
+            ScaffoldCommands::ExportToolMapping { output } => {
+                handlers::subagent_handlers::export_tool_mapping_json(&output)
+            }
         }
     }
 
