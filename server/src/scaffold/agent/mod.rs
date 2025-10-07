@@ -12,6 +12,7 @@ pub mod hybrid;
 pub mod interactive;
 pub mod invariants;
 pub mod registry;
+pub mod subagents;
 pub mod templates;
 
 pub use context::{AgentContext, AgentContextBuilder};
@@ -28,6 +29,7 @@ pub use invariants::{
     InvariantChecker, InvariantViolation, ViolationAction, ViolationHandler,
 };
 pub use registry::TemplateRegistry;
+pub use subagents::{PmatSubAgent, SubAgentGenerator};
 pub use templates::{AgentTemplate, MCPServerTemplate, StateMachineTemplate};
 
 use anyhow::Result;

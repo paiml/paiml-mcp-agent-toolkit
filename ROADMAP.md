@@ -83,6 +83,47 @@ After 23 sprints of focused development, **PMAT has achieved MVP status** with a
 
 ---
 
+## 📋 Next: Sprint 24 - Learning System & Sub-Agent Scaffolding
+
+**Status:** 🚀 PLANNED
+**Target**: v2.144.0
+**Focus**: Claude Code Sub-Agents, Declarative Workflows, Pattern Learning
+**Tickets**: PMAT-7007, PMAT-7008, PMAT-7009
+
+### Sprint 24 Priorities
+
+**Priority 0: Claude Code Sub-Agent Scaffolding (PMAT-7007)**
+- Create 20+ specialized PMAT sub-agents for Claude Code
+- Integrate with existing agent scaffolding system
+- CLI commands for sub-agent generation
+- MCP tool mapping and validation
+- **Estimated**: 4-6 weeks (MVP: 1-2 weeks for 5 core agents)
+
+**Priority 1: High ROI Features**
+1. **PMAT-7008: Declarative Workflow API**
+   - Fluent builder pattern for workflows
+   - Methods: `and_then()`, `and_all()`, `and_race()`, `and_when()`
+   - Zero-overhead compilation to existing DAG
+   - **Estimated**: 3-5 days
+
+2. **PMAT-7009: Pattern Learning System**
+   - Learn from historical analysis results
+   - Pattern storage and similarity matching
+   - Improve ML mutation predictor accuracy
+   - Cross-project insights
+   - **Estimated**: 5-7 days
+
+**All other ideas from learning-system-ideas.md are speculative and deferred.**
+
+### Success Criteria
+- ✅ 5+ core sub-agents production-ready
+- ✅ Declarative workflow API with full test coverage
+- ✅ Pattern learning integrated with mutation testing
+- ✅ Documentation and examples for all features
+- ✅ 85%+ test coverage maintained
+
+---
+
 ## 📋 Completed: v2.141.0 - Documentation Enforcement System (PMAT-7001)
 
 **Status:** ✅ Released (October 6, 2025)
