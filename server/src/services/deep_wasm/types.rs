@@ -191,6 +191,15 @@ pub struct DeepWasmReport {
     pub type_flows: Vec<TypeFlowAnalysis>,
     pub hotspots: Vec<PerformanceHotspot>,
     pub quality_gate_results: QualityGateResults,
+
+    /// Enhanced bytecode analysis (Issue #65)
+    pub bytecode_analysis: Option<crate::services::deep_wasm::bytecode_analyzer::ModuleBytecodeAnalysis>,
+
+    /// Disassembled functions (Issue #65)
+    pub disassembled_functions: Option<Vec<crate::services::deep_wasm::disassembler::DisassembledFunction>>,
+
+    /// Suspicious patterns detected (Issue #65)
+    pub suspicious_patterns: Option<Vec<crate::services::deep_wasm::disassembler::InstructionPattern>>,
 }
 
 /// Pipeline overview
