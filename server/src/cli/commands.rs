@@ -3258,6 +3258,50 @@ pub enum ScaffoldCommands {
         /// Path to template file
         path: PathBuf,
     },
+
+    /// List available Claude Code sub-agents
+    ListSubagents {
+        /// Show all sub-agents (including future phases)
+        #[arg(long)]
+        all: bool,
+    },
+
+    /// Create a specific Claude Code sub-agent
+    CreateSubagent {
+        /// Sub-agent name (e.g., complexity-analyst, mutation-tester)
+        agent_name: String,
+
+        /// Output directory (defaults to .claude/subagents)
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+    },
+
+    /// Create all MVP Claude Code sub-agents
+    CreateAllSubagents {
+        /// Output directory (defaults to .claude/subagents)
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+    },
+
+    /// Validate a sub-agent definition file
+    ValidateSubagent {
+        /// Path to sub-agent definition file
+        file_path: PathBuf,
+    },
+
+    /// Show MCP tool mapping for sub-agents
+    ShowToolMapping {
+        /// Specific sub-agent name (shows all if not specified)
+        #[arg(short, long)]
+        agent: Option<String>,
+    },
+
+    /// Export MCP tool mapping as JSON
+    ExportToolMapping {
+        /// Output file path
+        #[arg(short, long)]
+        output: PathBuf,
+    },
 }
 
 /// Roadmap management subcommands

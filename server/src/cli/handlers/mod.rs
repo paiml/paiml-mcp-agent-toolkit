@@ -53,6 +53,7 @@ pub mod roadmap_handler;
 pub mod health_handler;
 pub mod satd_handler;
 pub mod similarity_handler;
+pub mod subagent_handlers;
 pub mod tdg_diagnostic_handler;
 pub mod tdg_formatter;
 pub mod tdg_handlers;
