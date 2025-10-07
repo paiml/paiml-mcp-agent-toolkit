@@ -31,6 +31,8 @@ pub mod report_generator;
 pub mod quality_gates;
 pub mod types;
 pub mod error;
+pub mod bytecode_analyzer;
+pub mod disassembler;
 
 #[cfg(test)]
 mod tests;
@@ -49,6 +51,15 @@ pub use correlation_engine::CorrelationEngine;
 pub use report_generator::ReportGenerator;
 pub use quality_gates::WasmQualityGates;
 pub use error::{DeepWasmError, DeepWasmResult};
+pub use bytecode_analyzer::{
+    BytecodeAnalyzer, ComplexityMetrics, ControlFlowPattern, ExportAnalysis, FunctionAnalysis,
+    FunctionSignature, ImportAnalysis, InstructionCategoryBreakdown, InstructionStats,
+    ModuleBytecodeAnalysis, ModuleStats, StackDepthAnalysis, ValidationError,
+};
+pub use disassembler::{
+    BasicBlock, DisassembledFunction, DisassembledInstruction, Disassembler, InstructionPattern,
+    StackEffect,
+};
 
 // Re-export commonly used types
 pub use types::{
