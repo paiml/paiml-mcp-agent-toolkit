@@ -3,8 +3,8 @@
 //! Main service that coordinates all deep WASM inspection components.
 
 use crate::services::deep_wasm::{
-    CorrelationEngine, DeepWasmAnalysisRequest, DeepWasmReport, DeepWasmResult, DwarfParser,
-    PipelineOverview, SourceLanguage, SourceMapHandler, SourceMetrics,
+    BytecodeAnalyzer, CorrelationEngine, DeepWasmAnalysisRequest, DeepWasmReport, DeepWasmResult,
+    Disassembler, DwarfParser, PipelineOverview, SourceLanguage, SourceMapHandler, SourceMetrics,
     WasmInspector, WasmModuleAnalysis, WasmQualityGates,
 };
 use crate::services::rust_wasm_analyzer;
@@ -18,6 +18,9 @@ pub struct DeepWasmService {
     source_map_handler: SourceMapHandler,
     correlation_engine: CorrelationEngine,
     quality_gates: WasmQualityGates,
+    bytecode_analyzer: BytecodeAnalyzer,
+    disassembler: Disassembler,
+    enable_deep_analysis: bool,
 }
 
 impl DeepWasmService {
@@ -28,11 +31,21 @@ impl DeepWasmService {
             source_map_handler: SourceMapHandler::new(),
             correlation_engine: CorrelationEngine::new(),
             quality_gates: WasmQualityGates::new(),
+            bytecode_analyzer: BytecodeAnalyzer::new(),
+            disassembler: Disassembler::new(),
+            enable_deep_analysis: true,
         }
     }
 
     pub fn with_quality_gates(mut self, gates: WasmQualityGates) -> Self {
         self.quality_gates = gates;
+        self
+    }
+
+    pub fn with_deep_analysis(mut self, enabled: bool) -> Self {
+        self.enable_deep_analysis = enabled;
+        self.bytecode_analyzer = BytecodeAnalyzer::with_deep_analysis(enabled);
+        self.disassembler = Disassembler::with_pattern_detection(enabled);
         self
     }
 
@@ -50,6 +63,36 @@ impl DeepWasmService {
                 has_source_map: false,
             }
         };
+
+        // Enhanced bytecode analysis (Issue #65)
+        let (bytecode_analysis, disassembled_functions, suspicious_patterns) =
+            if self.enable_deep_analysis && request.wasm_path.is_some() {
+                let wasm_bytes = fs::read(request.wasm_path.as_ref().unwrap())
+                    .map_err(crate::services::deep_wasm::DeepWasmError::Io)?;
+
+                // Perform detailed bytecode analysis
+                let bytecode_result = self.bytecode_analyzer.analyze(&wasm_bytes)?;
+
+                // Disassemble selected functions (exported functions + functions with high complexity)
+                let mut disassembled = Vec::new();
+                let mut all_patterns = Vec::new();
+
+                for func_analysis in &bytecode_result.functions {
+                    // Disassemble if exported or high complexity
+                    if func_analysis.is_exported || func_analysis.complexity.cyclomatic_complexity > 10 {
+                        // Note: We would need access to the FunctionBody to disassemble
+                        // For now, we'll skip actual disassembly and focus on the analysis
+                        // TODO: Add disassembly support when FunctionBody access is available
+                    }
+                }
+
+                // Detect patterns across all instructions
+                // TODO: Implement pattern detection across module
+
+                (Some(bytecode_result), Some(disassembled), Some(all_patterns))
+            } else {
+                (None, None, None)
+            };
 
         // Analyze source code for WASM constructs
         let source_metrics = self.analyze_source_code(&request.source_path, request.language.clone())?;
@@ -105,6 +148,9 @@ impl DeepWasmService {
             type_flows: vec![],
             hotspots: vec![],
             quality_gate_results: quality_results,
+            bytecode_analysis,
+            disassembled_functions,
+            suspicious_patterns,
         })
     }
 

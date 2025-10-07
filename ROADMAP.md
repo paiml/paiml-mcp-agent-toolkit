@@ -1116,7 +1116,7 @@ Build a comprehensive system for scaffolding new projects (agents, WASM) and mai
 
 ---
 
-## 🎯 Next Priority Options (5 Choices)
+## 🎯 Next Priority Options (6 Choices)
 
 ### Option 1: PMAT + PForge Agent Scaffolding Integration ⭐ NEW
 **Status**: Not started
@@ -1257,7 +1257,47 @@ Build a comprehensive system for scaffolding new projects (agents, WASM) and mai
 
 ---
 
-### Option 4: MCP Tool Enhancement & Completion (3-5 days)
+### Option 4: Enhanced WASM Deep Inspection (Issue #65) ⭐ NEW
+**Status**: Not started
+**Impact**: Detailed WASM bytecode analysis for compiler development
+**GitHub Issue**: https://github.com/paiml/paiml-mcp-agent-toolkit/issues/65
+
+**Problem**: Current `pmat analyze deep-wasm` provides only high-level metrics, insufficient for compiler debugging (Ruchy → WASM compiler development).
+
+**Work Required**:
+1. **Function-level Analysis** (2-3 days)
+   - Extract and display function signatures
+   - Calculate complexity metrics per function
+   - Count instructions per function
+   - Analyze stack depth per function
+   - Identify control flow patterns
+
+2. **Instruction-level Details** (2-3 days)
+   - Implement function disassembly
+   - Provide instruction type breakdown
+   - Detect suspicious code patterns
+   - Show instruction-level metrics
+
+3. **Advanced Features** (2-3 days)
+   - Track and report validation errors
+   - Map source expressions to bytecode
+   - Analyze import/export functions
+   - Generate detailed debug reports
+
+**Files**:
+- `server/src/services/deep_wasm/` (extend existing)
+- `server/src/services/deep_wasm/bytecode_analyzer.rs` (new)
+- `server/src/services/deep_wasm/disassembler.rs` (new)
+- `server/src/services/deep_wasm/validation.rs` (extend)
+
+**Value**: Enable compiler developers to debug WASM output at bytecode level
+**Use Case**: Ruchy → WASM compiler development and debugging
+**Estimated ROI**: High - Critical for compiler development workflows
+**Estimated Duration**: 6-9 days
+
+---
+
+### Option 5: MCP Tool Enhancement & Completion (3-5 days)
 **Status**: 8/9 TODOs removed, final polish needed
 **Impact**: Production-ready MCP tools with full test coverage
 
