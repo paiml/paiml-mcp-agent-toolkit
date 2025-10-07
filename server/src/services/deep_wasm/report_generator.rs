@@ -187,6 +187,9 @@ mod tests {
                 passed: true,
                 violations: vec![],
             },
+            bytecode_analysis: None,
+            disassembled_functions: None,
+            suspicious_patterns: None,
         };
 
         let result = gen.generate_markdown(&report);
