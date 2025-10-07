@@ -74,8 +74,8 @@ impl DeepWasmService {
                 let bytecode_result = self.bytecode_analyzer.analyze(&wasm_bytes)?;
 
                 // Disassemble selected functions (exported functions + functions with high complexity)
-                let mut disassembled = Vec::new();
-                let mut all_patterns = Vec::new();
+                let disassembled = Vec::new();
+                let all_patterns = Vec::new();
 
                 for func_analysis in &bytecode_result.functions {
                     // Disassemble if exported or high complexity
