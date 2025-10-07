@@ -1,10 +1,10 @@
 # PMAT Agent System Roadmap
 
-## 🎉 CURRENT STATUS: v2.143.0 Released - MVP COMPLETE! 🎉
+## 🎉 CURRENT STATUS: v2.144.0 Released - Claude Code Sub-Agents! 🎉
 
 **Release Date**: October 7, 2025
-**Milestone**: MVP Complete - All core features production-ready
-**Sprint**: 23 sprints completed
+**Milestone**: Sprint 24 - Sub-Agent Scaffolding Complete
+**Sprint**: 24 sprints completed (PMAT-7007 ✅)
 
 ---
 
@@ -83,43 +83,99 @@ After 23 sprints of focused development, **PMAT has achieved MVP status** with a
 
 ---
 
-## 📋 Next: Sprint 24 - Learning System & Sub-Agent Scaffolding
+## 📋 Completed: v2.144.0 - Sprint 24 Phase 1 (PMAT-7007)
+
+**Status:** ✅ COMPLETE
+**Release**: v2.144.0 (October 7, 2025)
+**Duration**: 1 day (Phases 1-2 complete)
+**Focus**: Claude Code Sub-Agent Scaffolding
+**Tickets**: PMAT-7007 ✅ | PMAT-7008 🔄 | PMAT-7009 🔄
+
+### PMAT-7007: Claude Code Sub-Agent Scaffolding ✅
+
+**Objective:** Generate specialized sub-agents for Claude Code integration
+
+**Implementation (5,000+ lines):**
+- `subagents.rs` (350 lines) - Core infrastructure
+  - `PmatSubAgent` enum with 12 agent types (5 MVP)
+  - `SubAgentGenerator` for template rendering
+  - MCP tool mapping system
+  - FromStr parsing for CLI integration
+
+- **5 MVP Sub-Agent Templates** (~4,200 lines):
+  1. `complexity-analyst.md.tmpl` - Cyclomatic/cognitive complexity analysis
+  2. `mutation-tester.md.tmpl` - ML-powered mutation testing specialist
+  3. `satd-detector.md.tmpl` - Technical debt tracking (TODO/FIXME/HACK)
+  4. `dead-code-eliminator.md.tmpl` - Safe unused code removal
+  5. `documentation-enforcer.md.tmpl` - Generic description detection
+
+- `subagent_handlers.rs` (400 lines) - CLI handlers
+  - 6 CLI commands: list, create, create-all, validate, show-tools, export-mapping
+  - Colored output formatting
+  - Comprehensive error handling
+
+**CLI Commands (6 new):**
+```bash
+pmat scaffold list-subagents [--all]
+pmat scaffold create-subagent <name> [-o <dir>]
+pmat scaffold create-all-subagents [-o <dir>]
+pmat scaffold validate-subagent <file>
+pmat scaffold show-tool-mapping [--agent <name>]
+pmat scaffold export-tool-mapping -o <file>
+```
+
+**Testing (19 tests):**
+- 8 subagents module tests ✅
+- 11 CLI handler tests ✅
+- End-to-end testing validated all commands
+- All tests passing
+
+**Documentation:**
+- `docs/features/SUBAGENT_SCAFFOLDING.md` (comprehensive guide)
+- Integration examples with Claude Code
+- Best practices and troubleshooting
+
+**Value:** Enables specialized AI assistants for code quality tasks, fully integrated with PMAT's MCP server
+
+---
+
+## 📋 Next: Sprint 24 Phase 2 - Declarative Workflows & Pattern Learning
 
 **Status:** 🚀 PLANNED
-**Target**: v2.144.0
-**Focus**: Claude Code Sub-Agents, Declarative Workflows, Pattern Learning
-**Tickets**: PMAT-7007, PMAT-7008, PMAT-7009
+**Target**: v2.145.0
+**Focus**: High ROI features from learning-system-ideas.md
+**Tickets**: PMAT-7008, PMAT-7009
 
-### Sprint 24 Priorities
+### Sprint 24 Remaining Priorities
 
-**Priority 0: Claude Code Sub-Agent Scaffolding (PMAT-7007)**
-- Create 20+ specialized PMAT sub-agents for Claude Code
-- Integrate with existing agent scaffolding system
-- CLI commands for sub-agent generation
-- MCP tool mapping and validation
-- **Estimated**: 4-6 weeks (MVP: 1-2 weeks for 5 core agents)
+**Priority 1: Declarative Workflow API (PMAT-7008)**
+- Fluent builder pattern for workflows
+- Methods: `and_then()`, `and_all()`, `and_race()`, `and_when()`
+- Zero-overhead compilation to existing DAG
+- Retry policies and error handling
+- **Estimated**: 3-5 days
 
-**Priority 1: High ROI Features**
-1. **PMAT-7008: Declarative Workflow API**
-   - Fluent builder pattern for workflows
-   - Methods: `and_then()`, `and_all()`, `and_race()`, `and_when()`
-   - Zero-overhead compilation to existing DAG
-   - **Estimated**: 3-5 days
+**Priority 1: Pattern Learning System (PMAT-7009)**
+- Learn from historical analysis results
+- Pattern storage and similarity matching
+- Improve ML mutation predictor accuracy
+- Cross-project insights
+- **Estimated**: 5-7 days
 
-2. **PMAT-7009: Pattern Learning System**
-   - Learn from historical analysis results
-   - Pattern storage and similarity matching
-   - Improve ML mutation predictor accuracy
-   - Cross-project insights
-   - **Estimated**: 5-7 days
+**Note:** All other ideas from `learning-system-ideas.md` are speculative and deferred.
 
-**All other ideas from learning-system-ideas.md are speculative and deferred.**
+### Sprint 24 Phase 1 Success Criteria (PMAT-7007)
+- ✅ 5 core sub-agents production-ready
+- ✅ CLI commands for sub-agent management
+- ✅ MCP tool mapping system
+- ✅ Comprehensive documentation
+- ✅ 19 tests passing (100% coverage)
+- ✅ End-to-end validation complete
 
-### Success Criteria
-- ✅ 5+ core sub-agents production-ready
-- ✅ Declarative workflow API with full test coverage
-- ✅ Pattern learning integrated with mutation testing
-- ✅ Documentation and examples for all features
+### Sprint 24 Remaining Success Criteria
+- 🔄 Declarative workflow API with full test coverage
+- 🔄 Pattern learning integrated with mutation testing
+- 🔄 Documentation and examples for PMAT-7008/7009
 - ✅ 85%+ test coverage maintained
 
 ---
