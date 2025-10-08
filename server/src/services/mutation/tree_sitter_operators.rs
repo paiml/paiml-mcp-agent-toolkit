@@ -52,7 +52,12 @@ mod tests {
     #[test]
     #[ignore] // RED: Will fail - not implemented yet
     fn red_test_source_location_has_line_and_column() {
-        let loc = SourceLocation { line: 10, column: 5 };
+        let loc = SourceLocation {
+            line: 10,
+            column: 5,
+            end_line: 10,
+            end_column: 10,
+        };
         assert_eq!(loc.line, 10);
         assert_eq!(loc.column, 5);
     }
@@ -63,7 +68,12 @@ mod tests {
         let mutant = MutatedSource {
             source: "return a - b;".to_string(),
             description: "+ → -".to_string(),
-            location: SourceLocation { line: 1, column: 10 },
+            location: SourceLocation {
+                line: 1,
+                column: 10,
+                end_line: 1,
+                end_column: 11,
+            },
         };
 
         assert_eq!(mutant.description, "+ → -");

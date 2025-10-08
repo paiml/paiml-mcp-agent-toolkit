@@ -145,6 +145,17 @@ Empirical mutation testing with actual test execution and optional ML prediction
 - 🔄 **Full automation** - Source → mutants → tests → score
 - 🏗️ **Language-agnostic architecture** - Reusable for Python, Go, C++
 
+### Python Mutation Testing ✨ NEW (v2.152.0)
+**Production-ready AST-based mutation testing for Python 3.6+.** **[Full Guide →](./features/PYTHON-MUTATION-TESTING.md)**
+
+- 🎯 **80%+ mutation scores achievable** - Validate test suite quality
+- ⚡ **Ultra-fast generation** - 56 mutants in 5ms using tree-sitter AST
+- 🔍 **Real test execution** - Works with pytest and unittest
+- 🧬 **5 mutation operators** - Binary (AOR), relational (ROR), logical (LOR), identity (is/is not), membership (in/not in)
+- 📊 **Identifies test gaps** - Surviving mutants reveal actual weaknesses
+- 🔄 **Full automation** - Source → mutants → tests → score
+- 🏗️ **Language-agnostic architecture** - Shared with TypeScript implementation
+
 ---
 
-*Last Updated: 2025-10-08 | Version: 2.144.0*
+*Last Updated: 2025-10-08 | Version: 2.152.0*

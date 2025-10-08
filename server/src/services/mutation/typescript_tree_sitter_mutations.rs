@@ -363,16 +363,16 @@ mod tests {
 
     fn parse_typescript(source: &str) -> Tree {
         let mut parser = Parser::new();
-        let language = tree_sitter_typescript::language_typescript();
-        parser.set_language(&language).unwrap();
+        parser
+            .set_language(&tree_sitter_typescript::LANGUAGE_TYPESCRIPT.into())
+            .unwrap();
         parser.parse(source, None).unwrap()
     }
 
     fn find_binary_expression(tree: &Tree) -> Option<Node> {
         let root = tree.root_node();
-        let mut cursor = root.walk();
 
-        fn find_recursive(node: &Node) -> Option<Node> {
+        fn find_recursive<'a>(node: &tree_sitter::Node<'a>) -> Option<tree_sitter::Node<'a>> {
             if node.kind() == "binary_expression" {
                 return Some(*node);
             }
