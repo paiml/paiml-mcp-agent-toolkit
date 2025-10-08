@@ -23,6 +23,9 @@ pub mod equivalent_detector;
 pub mod distributed;
 pub mod ci_cd_learning;
 pub mod executor;
+pub mod tree_sitter_operators;
+pub mod typescript_tree_sitter_mutations;
+pub mod typescript_mutation_generator;
 
 #[cfg(test)]
 mod typescript_adapter_tests;
@@ -72,3 +75,6 @@ pub use equivalent_detector::*;
 pub use distributed::*;
 pub use ci_cd_learning::*;
 pub use executor::*;
+pub use tree_sitter_operators::*;
+pub use typescript_tree_sitter_mutations::*;
+pub use typescript_mutation_generator::*;

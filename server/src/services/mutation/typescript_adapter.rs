@@ -74,14 +74,43 @@ impl LanguageAdapter for TypeScriptAdapter {
         ]
     }
 
-    async fn run_tests(&self, _source_file: &Path) -> Result<TestRunResult> {
-        // Minimal implementation for now
+    async fn run_tests(&self, source_file: &Path) -> Result<TestRunResult> {
+        // GREEN PHASE: Real test execution
+        use std::time::Instant;
+        use tokio::process::Command;
+
+        // Find project root with package.json
+        let project_root = find_package_json_root(source_file)
+            .ok_or_else(|| anyhow::anyhow!("No package.json found"))?;
+
+        // Detect test command from package.json
+        let package_json_path = project_root.join("package.json");
+        let package_json = tokio::fs::read_to_string(&package_json_path).await?;
+        let test_cmd = detect_test_command(&package_json)?;
+
+        // Run tests with timeout
+        let start = Instant::now();
+        let output = Command::new("npm")
+            .arg("run")
+            .arg(&test_cmd)
+            .current_dir(project_root)
+            .output()
+            .await?;
+
+        let execution_time_ms = start.elapsed().as_millis() as u64;
+        let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+        let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+
+        // Parse failures
+        let failures = parse_test_failures(&stdout, &stderr);
+        let passed = output.status.success();
+
         Ok(TestRunResult {
-            passed: true,
-            failures: vec![],
-            execution_time_ms: 0,
-            stdout: String::new(),
-            stderr: String::new(),
+            passed,
+            failures,
+            execution_time_ms,
+            stdout,
+            stderr,
         })
     }
 }
@@ -138,4 +167,33 @@ pub fn extract_test_name(line: &str) -> Option<String> {
     }
 
     None
+}
+
+/// Detect test command from package.json
+pub fn detect_test_command(package_json: &str) -> Result<String> {
+    use serde_json::Value;
+
+    let pkg: Value = serde_json::from_str(package_json)?;
+
+    // Check scripts for test command
+    if let Some(scripts) = pkg.get("scripts").and_then(|s| s.as_object()) {
+        if scripts.contains_key("test") {
+            return Ok("test".to_string());
+        }
+    }
+
+    // Check devDependencies for framework
+    if let Some(deps) = pkg.get("devDependencies").and_then(|d| d.as_object()) {
+        if deps.contains_key("vitest") {
+            return Ok("vitest".to_string());
+        }
+        if deps.contains_key("jest") {
+            return Ok("jest".to_string());
+        }
+        if deps.contains_key("mocha") {
+            return Ok("mocha".to_string());
+        }
+    }
+
+    Err(anyhow::anyhow!("No test command found in package.json"))
 }
