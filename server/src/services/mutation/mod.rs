@@ -26,6 +26,8 @@ pub mod executor;
 pub mod tree_sitter_operators;
 pub mod typescript_tree_sitter_mutations;
 pub mod typescript_mutation_generator;
+pub mod python_tree_sitter_mutations;
+pub mod python_mutation_generator;
 
 #[cfg(test)]
 mod typescript_adapter_tests;
@@ -78,3 +80,5 @@ pub use executor::*;
 pub use tree_sitter_operators::*;
 pub use typescript_tree_sitter_mutations::*;
 pub use typescript_mutation_generator::*;
+pub use python_tree_sitter_mutations::*;
+pub use python_mutation_generator::*;
