@@ -267,6 +267,7 @@ impl Default for KotlinComplexityAnalyzer {
     }
 }
 
+#[cfg(feature = "kotlin-ast")]
 impl KotlinComplexityAnalyzer {
     /// Creates a new Kotlin complexity analyzer
     #[must_use]

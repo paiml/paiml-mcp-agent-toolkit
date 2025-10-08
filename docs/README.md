@@ -134,6 +134,17 @@ Empirical mutation testing with actual test execution and optional ML prediction
 - 🚀 Distributed execution with work-stealing queue
 - 📈 CI/CD learning and auto-training (50 sample threshold)
 
+### TypeScript/JavaScript Mutation Testing ✨ NEW (v2.144.0)
+**Production-ready AST-based mutation testing for TypeScript and JavaScript.** **[Full Guide →](./features/TYPESCRIPT-MUTATION-TESTING.md)**
+
+- 🎯 **80%+ mutation scores achievable** - Quantify test suite quality
+- ⚡ **Fast generation** - 67 mutants in 14ms using tree-sitter AST
+- 🔍 **Real test execution** - Works with jest, vitest, mocha
+- 🧬 **5 mutation operators** - Arithmetic, equality, optional chaining, nullish coalescing, async/await
+- 📊 **Identifies test gaps** - Surviving mutants show actual weaknesses
+- 🔄 **Full automation** - Source → mutants → tests → score
+- 🏗️ **Language-agnostic architecture** - Reusable for Python, Go, C++
+
 ---
 
-*Last Updated: 2025-10-04 | Version: 2.121.0*
+*Last Updated: 2025-10-08 | Version: 2.144.0*
