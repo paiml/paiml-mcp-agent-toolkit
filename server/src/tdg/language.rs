@@ -160,7 +160,7 @@ pub struct JavaScriptAdapter {
 impl JavaScriptAdapter {
     pub fn new() -> Result<Self> {
         let mut parser = Parser::new();
-        parser.set_language(&tree_sitter_javascript::language())?;
+        parser.set_language(&tree_sitter_javascript::LANGUAGE.into())?;
         Ok(Self { parser })
     }
 }

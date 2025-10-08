@@ -31,9 +31,8 @@ impl CStrategy {
     #[cfg(feature = "c-ast")]
     fn parse_with_tree_sitter(&self, content: &str) -> Result<Tree> {
         let mut parser = TsParser::new();
-        let language = tree_sitter_c::language();
         parser
-            .set_language(&language)
+            .set_language(&tree_sitter_c::LANGUAGE.into())
             .map_err(|e| anyhow::anyhow!("Failed to set C language: {e}"))?;
 
         parser
@@ -144,9 +143,8 @@ impl CppStrategy {
 
     fn parse_with_tree_sitter(&self, content: &str) -> Result<Tree> {
         let mut parser = TsParser::new();
-        let language = tree_sitter_cpp::language();
         parser
-            .set_language(&language)
+            .set_language(&tree_sitter_cpp::LANGUAGE.into())
             .map_err(|e| anyhow::anyhow!("Failed to set C++ language: {e}"))?;
 
         parser
