@@ -368,10 +368,8 @@ impl BytecodeAnalyzer {
                     );
                     for section in name_reader {
                         if let Ok(wasmparser::Name::Function(func_names)) = section {
-                            for naming in func_names {
-                                if let Ok(naming) = naming {
-                                    name_map.insert(naming.index, naming.name.to_string());
-                                }
+                            for naming in func_names.into_iter().flatten() {
+                                name_map.insert(naming.index, naming.name.to_string());
                             }
                         }
                     }
@@ -510,12 +508,12 @@ impl BytecodeAnalyzer {
         let mut current_stack_depth = 0u32;
 
         let mut control_flow_patterns: Vec<ControlFlowPattern> = Vec::new();
-        let mut offset = 0u32;
 
         let reader = body.get_operators_reader()
             .map_err(|e| DeepWasmError::WasmParse(e.to_string()))?;
 
-        for op in reader {
+        for (offset, op) in reader.into_iter().enumerate() {
+            let offset = offset as u32;
             let op = op.map_err(|e| DeepWasmError::WasmParse(e.to_string()))?;
             instruction_count += 1;
 
@@ -568,8 +566,6 @@ impl BytecodeAnalyzer {
             // Track stack depth (simplified)
             update_stack_depth(&op, &mut current_stack_depth);
             stack_depths.push(current_stack_depth);
-
-            offset += 1;
         }
 
         // Calculate cyclomatic complexity: M = E - N + 2P
