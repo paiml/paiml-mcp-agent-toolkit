@@ -1,11 +1,148 @@
 # PMAT Agent System Roadmap
 
-## 🎉 CURRENT STATUS: v2.156.0 - Sprint 28 Quick Cleanup Complete! 🦀🎉
+## 🎉 CURRENT STATUS: v2.156.0 - Sprint 28 Complete! 🦀🎉
 
 **Current Date**: October 9, 2025
-**Milestone**: Sprint 28 - Quality Cleanup & v2.156.0 Release
+**Milestone**: Sprint 28 Complete, Planning Sprints 29-31
 **Sprint**: 28 sprints completed
-**Latest Achievement**: Zero compiler warnings achieved! Published v2.156.0 with 3 new language features!
+**Latest Achievement**: Zero compiler warnings! v2.156.0 published! Semantic search specification ready!
+
+---
+
+## 🚀 Upcoming: Sprints 29-31 - Semantic Code Search 🧠
+
+**Status:** 📋 PLANNED (Specification Complete)
+**Version**: v2.157.0 (target)
+**Duration**: 3 sprints (~3 weeks)
+**Focus**: Add semantic code search using OpenAI embeddings and vector similarity
+**Specification**: `docs/specifications/semantic-search-pmat-mcp-vector-db.md`
+
+### Vision
+
+Enable AI assistants to discover code by **meaning**, not just keywords. Find "memory safety patterns" across your codebase even when different terminology is used.
+
+**Inspired by**: ../assetsearch semantic search implementation (65 tests, proven architecture)
+
+### Architecture Overview
+
+```
+Code Files → AST Chunking → OpenAI Embeddings → Turso Vector DB → Hybrid Search
+                                                                   (ripgrep + vector)
+                                                                          ↓
+                                                                    MCP Tools
+```
+
+### Sprint 29: Foundation & Embedding Pipeline (Week 1)
+
+**Goal**: Core embedding generation infrastructure
+
+**Tickets (3)**:
+- PMAT-SEARCH-001: AST-aware code chunker (20 tests)
+- PMAT-SEARCH-002: OpenAI embeddings client (15 tests)
+- PMAT-SEARCH-003: Turso vector database integration (12 tests)
+
+**Deliverables**:
+- Code chunking by function/class/module
+- Batch embedding generation (50 chunks/request)
+- Local SQLite vector storage
+- Checksum-based incremental updates
+- 45+ tests passing
+
+**Cost Analysis**:
+- 1K files: ~$0.05 (one-time)
+- 10K files: ~$0.50 (one-time)
+- Daily updates: $0.001-$0.025 (only changed files)
+
+### Sprint 30: Search Engine & MCP Tools (Week 2)
+
+**Goal**: Hybrid search with MCP integration
+
+**Tickets (3)**:
+- PMAT-SEARCH-004: Vector similarity search (18 tests)
+- PMAT-SEARCH-005: Hybrid search with RRF (25 tests)
+- PMAT-SEARCH-006: 4 new MCP tools (20 tests)
+
+**Deliverables**:
+- Cosine similarity search
+- Reciprocal Rank Fusion (RRF) algorithm
+- Search modes: ripgrep-only, vector-only, hybrid
+- MCP tools: semantic_search, find_similar_code, cluster_code, analyze_topics
+- 65+ tests passing (cumulative)
+
+**MCP Tools**:
+```typescript
+// New AI assistant tools
+semantic_search(query, mode, language, limit)
+find_similar_code(file_path, limit)
+cluster_code(method, k)
+analyze_topics(num_topics)
+```
+
+### Sprint 31: Analytics & Polish (Week 3)
+
+**Goal**: Code clustering, topic modeling, CLI polish
+
+**Tickets (4)**:
+- PMAT-SEARCH-007: K-means clustering (15 tests)
+- PMAT-SEARCH-008: Topic modeling with LDA (10 tests)
+- PMAT-SEARCH-009: CLI commands (30 tests)
+- PMAT-SEARCH-010: Documentation suite
+
+**Deliverables**:
+- K-means, hierarchical, DBSCAN clustering
+- LDA topic extraction
+- Full CLI: `pmat embed`, `pmat semantic`, `pmat analyze`
+- Complete documentation
+- 100+ tests passing (total)
+
+**CLI Examples**:
+```bash
+# Embedding pipeline
+pmat embed sync ./src --all
+pmat embed status
+
+# Semantic search
+pmat semantic search "ownership patterns" --mode hybrid
+pmat semantic similar src/main.rs --limit 20
+
+# Analytics
+pmat analyze cluster --method kmeans --k 10
+pmat analyze topics --num-topics 15
+```
+
+### Expected Outcomes
+
+**Must-Have (MVP)**:
+- ✅ Embeddings for Rust, TypeScript, Python
+- ✅ Vector similarity search (cosine distance)
+- ✅ Hybrid search (ripgrep + vector with RRF)
+- ✅ 4 MCP tools in Claude Code
+- ✅ CLI commands for all operations
+- ✅ 100+ tests passing
+
+**Value Delivered**:
+- 🧠 **Concept-based code discovery**: Find "error handling patterns" across languages
+- 🔍 **Better than grep**: Semantic similarity + keyword matching
+- 🤖 **AI assistant integration**: Works in Claude Code, Cursor, etc.
+- 📊 **Architecture insights**: Clustering reveals code patterns
+- 💡 **Refactoring opportunities**: Similarity detection finds duplicates
+
+### Technical Stack
+
+| Component | Technology | Rationale |
+|-----------|------------|-----------|
+| Embeddings | OpenAI text-embedding-3-small | Best cost/performance ($0.00002/1K tokens) |
+| Vector DB | Turso (SQLite) | Local-first, zero config, proven |
+| Hybrid Search | Reciprocal Rank Fusion (RRF) | Scientifically validated (Cormack et al., 2009) |
+| Chunking | PMAT AST parsers | Already have for 14+ languages |
+| MCP | pmcp SDK v1.4.2 | Already integrated |
+
+### Success Metrics
+
+- **Code Quality**: 100+ tests, <10 cyclomatic complexity, 90%+ coverage
+- **Performance**: <100ms vector search, <150ms hybrid search
+- **Cost**: <$1 for 10K file codebase (one-time)
+- **User Value**: 4 new MCP tools, semantic CLI commands
 
 ---
 
