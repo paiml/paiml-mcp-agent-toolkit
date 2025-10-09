@@ -453,17 +453,14 @@ impl CommandExecutor {
                         dry_run,
                         format,
                     } => {
-                        super::handlers::handle_maintain_roadmap(
-                            roadmap,
-                            tickets_dir,
+                        let config = super::handlers::roadmap_handler::RoadmapMaintenanceConfig::new(
                             validate,
                             health,
                             fix,
                             generate_tickets,
                             dry_run,
-                            format,
-                        )
-                        .await
+                        );
+                        super::handlers::handle_maintain_roadmap(roadmap, tickets_dir, config, format).await
                     }
                     MaintainCommands::Health {
                         project_dir,
