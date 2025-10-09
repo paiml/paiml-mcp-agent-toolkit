@@ -481,6 +481,7 @@ impl TreeSitterMutationOperator for RustBorrowMutation {
 // ============================================================
 
 #[cfg(test)]
+#[allow(unused_variables)]
 mod tests {
     use super::*;
     use tree_sitter::Parser;

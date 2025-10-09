@@ -780,7 +780,7 @@ mod tests {
             .build();
 
         let context = WorkflowContext::new(workflow.id, registry);
-        let execution_id = context.execution_id;
+        let _execution_id = context.execution_id;
 
         // Start workflow in background
         let executor_clone = executor.clone();
@@ -821,7 +821,7 @@ mod tests {
             .build();
 
         let context = WorkflowContext::new(workflow.id, registry);
-        let execution_id = context.execution_id;
+        let _execution_id = context.execution_id;
 
         // Start workflow in background
         let executor_clone = executor.clone();
