@@ -109,7 +109,7 @@ mod tests {
     #[test]
     fn test_progress_indicator_creation() {
         let progress = ProgressIndicator::new("Testing...");
-        assert!(progress.bar.is_none() || progress.bar.is_some());
+        assert!(progress.progress_bar.is_none() || progress.progress_bar.is_some());
     }
 
     #[test]
