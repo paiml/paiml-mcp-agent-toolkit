@@ -40,7 +40,7 @@ impl KotlinAstParser {
     pub fn with_limits(max_depth: usize, timeout: Duration) -> Self {
         let mut parser = Parser::new();
         parser
-            .set_language(&tree_sitter_kotlin::language())
+            .set_language(&tree_sitter_kotlin_ng::LANGUAGE.into())
             .expect("Failed to set Kotlin language");
         Self {
             parser,

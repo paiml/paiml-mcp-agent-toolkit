@@ -151,8 +151,8 @@ tree-sitter-javascript = { version = "0.23", optional = true }
 tree-sitter-typescript = { version = "0.23", optional = true }
 tree-sitter-python = { version = "0.23", optional = true }
 tree-sitter-c-sharp = { version = "0.23", optional = true }
+tree-sitter-kotlin-ng = { version = "1.1", optional = true }
 # TEMPORARILY DISABLED: Incompatible with tree-sitter 0.23 (need upgrades)
-# tree-sitter-kotlin = { version = "0.3", optional = true }
 # tree-sitter-swift = { version = "0.7", optional = true }
 tree-sitter-ruby = { version = "0.23", optional = true }
 tree-sitter-rust = { version = "0.23", optional = true }
@@ -271,7 +271,7 @@ ruchy-ast = ["ruchy", "logos"]
 go-ast = ["tree-sitter", "tree-sitter-go"]
 java-ast = ["tree-sitter", "tree-sitter-java"]
 csharp-ast = ["tree-sitter", "tree-sitter-c-sharp"]
-# TEMPORARILY DISABLED: kotlin-ast = ["tree-sitter", "tree-sitter-kotlin"]
+kotlin-ast = ["tree-sitter", "tree-sitter-kotlin-ng"]
 # TEMPORARILY DISABLED: swift-ast = ["tree-sitter", "tree-sitter-swift"]
 ruby-ast = ["tree-sitter", "tree-sitter-ruby"]
 erlang-ast = ["tree-sitter", "tree-sitter-erlang"]
