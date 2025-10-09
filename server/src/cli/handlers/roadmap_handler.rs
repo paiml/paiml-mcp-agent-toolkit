@@ -345,7 +345,7 @@ fn extract_sprint_for_ticket(roadmap_content: &str, ticket_id: &str) -> String {
     let lines: Vec<&str> = roadmap_content.lines().collect();
     let mut current_sprint = "Unknown Sprint".to_string();
 
-    for (_i, line) in lines.iter().enumerate() {
+    for line in lines.iter() {
         // Look for sprint headers like "### Sprint 21:"
         if line.starts_with("### Sprint") || line.starts_with("## Sprint") {
             if let Some(sprint_name) = line.split(':').next() {

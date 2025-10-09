@@ -199,7 +199,7 @@ pub fn find_undocumented_flags(
         .collect();
 
     expected_flags.iter()
-        .filter(|flag| !documented_set.contains(&flag.to_string()))
+        .filter(|flag| !documented_set.contains(**flag))
         .map(|f| f.to_string())
         .collect()
 }

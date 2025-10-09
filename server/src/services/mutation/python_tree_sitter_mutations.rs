@@ -87,7 +87,7 @@ impl TreeSitterMutationOperator for PythonRelationalOpMutation {
         "PythonRelationalOp"
     }
 
-    fn can_mutate(&self, node: &Node, source: &[u8]) -> bool {
+    fn can_mutate(&self, node: &Node, _source: &[u8]) -> bool {
         node.kind() == "comparison_operator"
     }
 
@@ -228,7 +228,7 @@ impl TreeSitterMutationOperator for PythonIdentityOpMutation {
         "PythonIdentityOp"
     }
 
-    fn can_mutate(&self, node: &Node, source: &[u8]) -> bool {
+    fn can_mutate(&self, node: &Node, _source: &[u8]) -> bool {
         if node.kind() != "comparison_operator" {
             return false;
         }
@@ -341,7 +341,7 @@ impl TreeSitterMutationOperator for PythonMembershipOpMutation {
         "PythonMembershipOp"
     }
 
-    fn can_mutate(&self, node: &Node, source: &[u8]) -> bool {
+    fn can_mutate(&self, node: &Node, _source: &[u8]) -> bool {
         if node.kind() != "comparison_operator" {
             return false;
         }

@@ -19,7 +19,7 @@ impl TreeSitterMutationOperator for CppBinaryOpMutation {
         "CppBinaryOp"
     }
 
-    fn can_mutate(&self, node: &Node, source: &[u8]) -> bool {
+    fn can_mutate(&self, node: &Node, _source: &[u8]) -> bool {
         if node.kind() != "binary_expression" {
             return false;
         }
@@ -99,7 +99,7 @@ impl TreeSitterMutationOperator for CppRelationalOpMutation {
         "CppRelationalOp"
     }
 
-    fn can_mutate(&self, node: &Node, source: &[u8]) -> bool {
+    fn can_mutate(&self, node: &Node, _source: &[u8]) -> bool {
         if node.kind() != "binary_expression" {
             return false;
         }
@@ -478,7 +478,7 @@ impl TreeSitterMutationOperator for CppPointerOpMutation {
             };
 
             let op_bytes = &source[operator_node.byte_range()];
-            let op_text = std::str::from_utf8(op_bytes).unwrap_or("");
+            let _op_text = std::str::from_utf8(op_bytes).unwrap_or("");
 
             // For pointer operators, mutation is tricky
             // * (dereference) and & (address-of) can't be simply swapped
@@ -498,7 +498,7 @@ impl TreeSitterMutationOperator for CppPointerOpMutation {
                 }
             }
 
-            let operator_node = match operator_node {
+            let _operator_node = match operator_node {
                 Some(n) => n,
                 None => return vec![],
             };
@@ -550,7 +550,7 @@ impl TreeSitterMutationOperator for CppMemberAccessMutation {
         }
     }
 
-    fn mutate(&self, node: &Node, source: &[u8]) -> Vec<MutatedSource> {
+    fn mutate(&self, _node: &Node, _source: &[u8]) -> Vec<MutatedSource> {
         // Member access mutations are semantically complex
         // . and :: have different meanings (instance vs static/namespace)
         // Can't mutate without type information

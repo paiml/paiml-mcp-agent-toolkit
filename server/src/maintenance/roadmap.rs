@@ -80,7 +80,7 @@ impl Roadmap {
     /// - Cyclomatic: 2
     pub fn from_file(path: &Path) -> Result<Self> {
         let content = std::fs::read_to_string(path)?;
-        Self::from_str(&content)
+        Self::parse_content(&content)
     }
 
     /// Parse roadmap from string
@@ -88,7 +88,7 @@ impl Roadmap {
     /// # Complexity
     /// - Time: O(n) where n is number of lines
     /// - Cyclomatic: 9
-    pub fn from_str(content: &str) -> Result<Self> {
+    pub fn parse_content(content: &str) -> Result<Self> {
         let mut sprints = Vec::new();
         let mut current_sprint: Option<Sprint> = None;
         let mut next_line_is_focus = false;
@@ -364,7 +364,7 @@ mod tests {
 
     #[test]
     fn test_parse_empty_roadmap() {
-        let roadmap = Roadmap::from_str("").unwrap();
+        let roadmap = Roadmap::parse_content("").unwrap();
         assert_eq!(roadmap.sprints.len(), 0);
     }
 
@@ -514,7 +514,7 @@ mod tests {
 - [ ] TICKET-PMAT-5011: Ticket management system
 "#;
 
-        let roadmap = Roadmap::from_str(content).unwrap();
+        let roadmap = Roadmap::parse_content(content).unwrap();
 
         assert_eq!(roadmap.version, "v2.139.0");
         assert_eq!(roadmap.sprints.len(), 2);
