@@ -730,6 +730,7 @@ impl SimpleDeepContext {
             // Use Kotlin AST analysis
             use tokio::fs;
             match fs::read_to_string(file_path).await {
+                #[cfg_attr(not(feature = "kotlin-ast"), allow(unused_variables))]
                 Ok(content) => {
                     #[cfg(feature = "kotlin-ast")]
                     {
