@@ -200,7 +200,11 @@ impl MutantFeatures {
             MutationOperatorType::AssignmentReplacement => 14.0,
             MutationOperatorType::PointerReplacement => 15.0,
             MutationOperatorType::MemberAccessReplacement => 16.0,
-            MutationOperatorType::Custom(_) => 17.0,
+            MutationOperatorType::RangeReplacement => 17.0,
+            MutationOperatorType::PatternReplacement => 18.0,
+            MutationOperatorType::MethodChainReplacement => 19.0,
+            MutationOperatorType::BorrowReplacement => 20.0,
+            MutationOperatorType::Custom(_) => 21.0,
             MutationOperatorType::None => 0.0,
         }
     }

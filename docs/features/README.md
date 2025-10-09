@@ -22,6 +22,15 @@ This directory contains comprehensive documentation for all PMAT features, cross
 - [**SATD Detection**](./satd-detection.md) - Self-Admitted Technical Debt identification
 <!-- TODO: Add dedicated documentation files for Complexity Analysis -->
 
+### 🧬 Multi-Language Mutation Testing
+Production-ready AST-based mutation testing quantifying test suite quality across 5 languages:
+- [**TypeScript Mutation Testing**](./TYPESCRIPT-MUTATION-TESTING.md) - 11 operators including optional chaining, strict equality ⭐
+- [**Python Mutation Testing**](./PYTHON-MUTATION-TESTING.md) - 9 operators including list comprehensions, decorators ⭐
+- [**Go Mutation Testing**](./GO-MUTATION-TESTING.md) - 7 operators including defer, goroutines, channels ⭐
+- [**C++ Mutation Testing**](./CPP-MUTATION-TESTING.md) - 7 operators including pointers, member access ⭐
+- [**Rust Mutation Testing**](./RUST-MUTATION-TESTING.md) - 8 operators including ranges, patterns, borrows 🦀 **NEW!**
+
+**Status:** 100% Complete - All 5 languages implemented with tree-sitter AST parsing
 
 ### 🌐 Protocol Support
 - [**MCP Protocol**](./mcp-protocol.md) - Model Context Protocol implementation

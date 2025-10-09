@@ -1,0 +1,12 @@
+[package]
+name = "rust_fixtures"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "rust_fixtures"
+path = "lib.rs"
+
+[[test]]
+name = "calculator_test"
+path = "tests/calculator_test.rs"
