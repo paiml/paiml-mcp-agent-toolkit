@@ -126,13 +126,13 @@ impl Disassembler {
         body: &FunctionBody,
     ) -> DeepWasmResult<DisassembledFunction> {
         let mut instructions = Vec::new();
-        let mut offset = 0u32;
 
         let reader = body
             .get_operators_reader()
             .map_err(|e| DeepWasmError::WasmParse(e.to_string()))?;
 
-        for op in reader {
+        for (offset, op) in reader.into_iter().enumerate() {
+            let offset = offset as u32;
             let op = op.map_err(|e| DeepWasmError::WasmParse(e.to_string()))?;
 
             let (mnemonic, operands) = format_operator(&op);
@@ -148,8 +148,6 @@ impl Disassembler {
                 category,
                 cost_estimate,
             });
-
-            offset += 1;
         }
 
         // Build basic blocks

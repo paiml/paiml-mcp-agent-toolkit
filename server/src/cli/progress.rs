@@ -8,7 +8,7 @@ use std::time::Duration;
 
 /// Progress indicator for long-running operations
 pub struct ProgressIndicator {
-    bar: Option<ProgressBar>,
+    progress_bar: Option<ProgressBar>,
 }
 
 impl ProgressIndicator {
@@ -16,7 +16,7 @@ impl ProgressIndicator {
     ///
     /// CC=2: Simple initialization
     pub fn new(message: &str) -> Self {
-        let bar = if Self::should_show_progress() {
+        let progress_bar = if Self::should_show_progress() {
             let pb = ProgressBar::new_spinner();
             pb.set_style(
                 ProgressStyle::default_spinner()
@@ -31,7 +31,7 @@ impl ProgressIndicator {
             None
         };
 
-        Self { bar }
+        Self { progress_bar }
     }
 
     /// Check if we should show progress indicators
@@ -61,8 +61,8 @@ impl ProgressIndicator {
     ///
     /// CC=1: Simple delegation
     pub fn set_message(&self, message: &str) {
-        if let Some(ref bar) = self.bar {
-            bar.set_message(message.to_string());
+        if let Some(ref pb) = self.progress_bar {
+            pb.set_message(message.to_string());
         }
     }
 
@@ -70,8 +70,8 @@ impl ProgressIndicator {
     ///
     /// CC=2: Conditional finish
     pub fn finish_with_message(&self, message: &str) {
-        if let Some(ref bar) = self.bar {
-            bar.finish_with_message(format!("✓ {}", message));
+        if let Some(ref pb) = self.progress_bar {
+            pb.finish_with_message(format!("✓ {}", message));
         }
     }
 
@@ -79,8 +79,8 @@ impl ProgressIndicator {
     ///
     /// CC=2: Conditional finish
     pub fn finish_with_error(&self, message: &str) {
-        if let Some(ref bar) = self.bar {
-            bar.finish_with_message(format!("✗ {}", message));
+        if let Some(ref pb) = self.progress_bar {
+            pb.finish_with_message(format!("✗ {}", message));
         }
     }
 
@@ -88,8 +88,8 @@ impl ProgressIndicator {
     ///
     /// CC=1: Simple delegation
     pub fn clear(&self) {
-        if let Some(ref bar) = self.bar {
-            bar.finish_and_clear();
+        if let Some(ref pb) = self.progress_bar {
+            pb.finish_and_clear();
         }
     }
 }
