@@ -32,6 +32,8 @@ pub mod go_tree_sitter_mutations;
 pub mod go_mutation_generator;
 pub mod cpp_tree_sitter_mutations;
 pub mod cpp_mutation_generator;
+pub mod rust_tree_sitter_mutations;
+pub mod rust_mutation_generator;
 
 #[cfg(test)]
 mod typescript_adapter_tests;
@@ -90,3 +92,5 @@ pub use go_tree_sitter_mutations::*;
 pub use go_mutation_generator::*;
 pub use cpp_tree_sitter_mutations::*;
 pub use cpp_mutation_generator::*;
+pub use rust_tree_sitter_mutations::*;
+pub use rust_mutation_generator::*;
