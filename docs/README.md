@@ -156,6 +156,18 @@ Empirical mutation testing with actual test execution and optional ML prediction
 - 🔄 **Full automation** - Source → mutants → tests → score
 - 🏗️ **Language-agnostic architecture** - Shared with TypeScript implementation
 
+### Go Mutation Testing ✨ NEW (v2.153.0)
+**Production-ready AST-based mutation testing for Go 1.21+.** **[Full Guide →](./features/GO-MUTATION-TESTING.md)**
+
+- 🎯 **80%+ mutation scores achievable** - Validate test suite quality
+- ⚡ **FASTEST generation** - <3ms for ~60 mutants using tree-sitter AST
+- 🔍 **Real test execution** - Works with standard `go test`
+- 🧬 **6 mutation operators** - Binary (AOR), relational (ROR), logical (LOR), **bitwise (BOR)**, **unary (UOR)**, **assignment**
+- 🔷 **Go-specific features** - Bitwise ops, compound assignment, unary operators
+- 📊 **Identifies test gaps** - Surviving mutants reveal actual weaknesses
+- 🔄 **Full automation** - Source → mutants → tests → score
+- 🏗️ **Language-agnostic architecture** - Shared with TypeScript/Python
+
 ---
 
-*Last Updated: 2025-10-08 | Version: 2.152.0*
+*Last Updated: 2025-10-08 | Version: 2.153.0*
