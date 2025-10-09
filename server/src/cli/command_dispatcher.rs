@@ -344,9 +344,7 @@ impl CommandDispatcher {
                         check_complexity,
                         check_satd,
                     } => {
-                        handlers::handle_maintain_health(
-                            project_dir,
-                            format,
+                        let config = handlers::health_handler::HealthCheckConfig::new(
                             quick,
                             all,
                             check_build,
@@ -354,8 +352,8 @@ impl CommandDispatcher {
                             check_coverage,
                             check_complexity,
                             check_satd,
-                        )
-                        .await
+                        );
+                        handlers::handle_maintain_health(project_dir, format, config).await
                     }
                 }
             }
