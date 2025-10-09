@@ -4,6 +4,7 @@
 //! Automatically detects TTY and disables in CI environments.
 
 use indicatif::{ProgressBar, ProgressStyle};
+use std::io::IsTerminal;
 use std::time::Duration;
 
 /// Progress indicator for long-running operations
@@ -54,7 +55,7 @@ impl ProgressIndicator {
         }
 
         // Only show if we have a TTY
-        atty::is(atty::Stream::Stdout)
+        std::io::stdout().is_terminal()
     }
 
     /// Update the progress message
