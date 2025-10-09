@@ -190,4 +190,108 @@ mod tests {
         assert!(adapter.is_some());
         assert_eq!(adapter.unwrap().name(), "mock");
     }
+
+    // Sprint 25: Dogfooding - Additional edge case tests
+
+    #[test]
+    fn test_language_registry_get_adapter_unknown() {
+        let registry = LanguageRegistry::new();
+        let adapter = registry.get_adapter("unknown");
+        assert!(adapter.is_none(), "Unknown adapter should return None");
+    }
+
+    #[test]
+    fn test_language_registry_languages_empty() {
+        let registry = LanguageRegistry::new();
+        assert_eq!(registry.languages().len(), 0, "Empty registry should have no languages");
+    }
+
+    #[test]
+    fn test_language_registry_languages_multiple() {
+        struct MockAdapter2;
+
+        #[async_trait]
+        impl LanguageAdapter for MockAdapter2 {
+            fn name(&self) -> &str {
+                "mock2"
+            }
+
+            fn extensions(&self) -> &[&str] {
+                &["m2"]
+            }
+
+            async fn parse(&self, source: &str) -> Result<String> {
+                Ok(source.to_string())
+            }
+
+            async fn unparse(&self, ast: &str) -> Result<String> {
+                Ok(ast.to_string())
+            }
+
+            fn mutation_operators(&self) -> Vec<Box<dyn MutationOperator>> {
+                vec![]
+            }
+
+            async fn run_tests(&self, _source_file: &Path) -> Result<TestRunResult> {
+                Ok(TestRunResult {
+                    passed: true,
+                    failures: vec![],
+                    execution_time_ms: 100,
+                    stdout: String::new(),
+                    stderr: String::new(),
+                })
+            }
+        }
+
+        let mut registry = LanguageRegistry::new();
+        registry.register(Arc::new(MockAdapter));
+        registry.register(Arc::new(MockAdapter2));
+
+        let languages = registry.languages();
+        assert_eq!(languages.len(), 2);
+        assert!(languages.contains(&"mock"));
+        assert!(languages.contains(&"mock2"));
+    }
+
+    #[test]
+    fn test_language_registry_default() {
+        let registry = LanguageRegistry::default();
+        assert_eq!(registry.languages().len(), 0, "Default registry should be empty");
+    }
+
+    #[test]
+    fn test_language_registry_detect_no_extension() {
+        let mut registry = LanguageRegistry::new();
+        registry.register(Arc::new(MockAdapter));
+
+        let adapter = registry.detect_language(Path::new("noextension"));
+        assert!(adapter.is_none(), "File without extension should not match");
+    }
+
+    #[test]
+    fn test_language_registry_detect_case_sensitive() {
+        let mut registry = LanguageRegistry::new();
+        registry.register(Arc::new(MockAdapter));
+
+        // Extensions are case-sensitive
+        let adapter = registry.detect_language(Path::new("test.MOCK"));
+        assert!(adapter.is_none(), "Extension matching should be case-sensitive");
+    }
+
+    #[test]
+    fn test_test_run_result_construction() {
+        let result = TestRunResult {
+            passed: true,
+            failures: vec!["test1".to_string()],
+            execution_time_ms: 250,
+            stdout: "output".to_string(),
+            stderr: "errors".to_string(),
+        };
+
+        assert!(result.passed);
+        assert_eq!(result.failures.len(), 1);
+        assert_eq!(result.execution_time_ms, 250);
+        assert_eq!(result.stdout, "output");
+        assert_eq!(result.stderr, "errors");
+    }
 }
