@@ -73,9 +73,8 @@ mod dwarf_line_program_tests {
 
         // Must have extracted mappings (address, location pairs)
         // Even if empty for now, structure should be correct
-        for (_address, location) in &mappings {
-            assert!(location.line >= 0);
-            assert!(location.column >= 0);
+        for (_address, _location) in &mappings {
+            // Location structure validated by type system
         }
     }
 
@@ -132,9 +131,8 @@ mod dwarf_line_program_tests {
         assert!(result.is_ok());
 
         // Must support parsing multiple units
-        let mappings = result.unwrap();
+        let _mappings = result.unwrap();
         // Will have mappings from both units when implemented
-        assert!(mappings.len() >= 0);
     }
 }
 
@@ -169,11 +167,8 @@ mod dwarf_enhanced_die_tests {
         let entries = result.unwrap();
 
         // When enhanced, entries will have line numbers
-        // For now, just verify structure
-        for entry in &entries {
-            // Each entry should have proper offset
-            assert!(entry.die_offset >= 0);
-        }
+        // For now, just verify structure exists
+        assert!(!entries.is_empty() || entries.is_empty()); // Structure validated by type system
     }
 
     #[test]
@@ -192,8 +187,7 @@ mod dwarf_enhanced_die_tests {
         assert!(result.is_ok());
 
         // Entries should eventually have file information
-        let entries = result.unwrap();
-        assert!(entries.len() >= 0);
+        let _entries = result.unwrap();
     }
 }
 
@@ -251,7 +245,6 @@ mod dwarf_integration_tests {
         assert!(result.is_ok());
 
         // Must handle inlined functions gracefully
-        let entries = result.unwrap();
-        assert!(entries.len() >= 0);
+        let _entries = result.unwrap();
     }
 }

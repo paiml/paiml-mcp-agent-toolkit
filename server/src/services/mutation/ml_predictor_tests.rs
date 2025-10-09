@@ -43,11 +43,9 @@ mod ml_predictor_red_tests {
         let mutant = create_nested_mutant();
         let features = MutantFeatures::from_mutant(&mutant);
 
-        // Must detect nesting depth
-        assert!(features.nesting_depth >= 0);
-
-        // Must count control flow constructs
-        assert!(features.control_flow_count >= 0);
+        // Fields are unsigned types, validated by type system
+        let _ = features.nesting_depth;
+        let _ = features.control_flow_count;
 
         // Must identify code patterns
         assert!(features.has_loops || !features.has_loops); // Boolean exists

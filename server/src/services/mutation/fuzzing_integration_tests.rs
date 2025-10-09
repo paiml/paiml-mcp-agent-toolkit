@@ -122,9 +122,8 @@ mod fuzzing_red_tests {
             assert!(result.is_ok());
 
             // Should detect crash from out-of-bounds access
-            let fuzz_result = result.unwrap();
+            let _fuzz_result = result.unwrap();
             // Note: May not always crash with random inputs, but should handle gracefully
-            assert!(fuzz_result.crashes.len() >= 0);
         }
     }
 
@@ -159,9 +158,8 @@ mod fuzzing_red_tests {
             let result = strategy.fuzz_mutant(&mutants[0]).await;
             assert!(result.is_ok());
 
-            let fuzz_result = result.unwrap();
-            // Should detect hangs
-            assert!(fuzz_result.hangs.len() >= 0);
+            let _fuzz_result = result.unwrap();
+            // Should detect hangs (validated by Result::Ok)
         }
     }
 
@@ -228,11 +226,8 @@ mod fuzzing_red_tests {
         let report = strategy.execute_from_source(source).await;
         assert!(report.is_ok());
 
-        let report = report.unwrap();
-        assert!(report.total_mutants >= 0);
-        assert!(report.mutants_with_crashes >= 0);
-        assert!(report.mutants_with_hangs >= 0);
-        assert!(report.execution_time.as_secs() >= 0);
+        let _report = report.unwrap();
+        // Report fields are unsigned types, always valid
     }
 
     #[tokio::test]

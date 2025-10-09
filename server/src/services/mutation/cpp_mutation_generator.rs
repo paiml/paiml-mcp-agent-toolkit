@@ -179,8 +179,7 @@ int Dereference(int* ptr) {
 
         // Pointer operators are detected but not mutated (complex semantics)
         // So we may have 0 mutants from pointer operators
-        // But the generator should still work without errors
-        assert!(mutants.len() >= 0, "Generator should handle pointer operators");
+        // Generator works without errors (validated by Result::Ok)
     }
 
     #[test]
@@ -199,8 +198,7 @@ class Calculator {
             .expect("Should generate mutants");
 
         // Member access operators are detected but not mutated (complex semantics)
-        // Generator should handle this without errors
-        assert!(mutants.len() >= 0, "Generator should handle member access");
+        // Generator works without errors (validated by Result::Ok)
     }
 
     #[test]

@@ -30,8 +30,7 @@ mod ml_integration_tests {
         let original_sources = create_original_sources();
 
         // Step 1: Filter equivalent mutants
-        let (non_equiv, filtered_count) = filter_equivalent_mutants(&detector, &mutants, &original_sources);
-        assert!(filtered_count >= 0, "Filtering should complete successfully");
+        let (non_equiv, _filtered_count) = filter_equivalent_mutants(&detector, &mutants, &original_sources);
         assert!(non_equiv.len() <= mutants.len(), "Should have same or fewer mutants after filtering");
 
         // Step 2: Prioritize remaining mutants by kill probability
