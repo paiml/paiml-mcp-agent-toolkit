@@ -334,7 +334,7 @@ mod tests {
     #[test]
     fn test_generator_creation() {
         let gen = SubAgentGenerator::new();
-        assert!(gen.template_dir.to_string_lossy().contains("subagent_templates"));
+        assert!(gen._template_dir.to_string_lossy().contains("subagent_templates"));
     }
 
     #[test]

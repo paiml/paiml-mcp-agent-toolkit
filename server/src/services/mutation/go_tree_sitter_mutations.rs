@@ -460,6 +460,7 @@ impl TreeSitterMutationOperator for GoAssignmentOpMutation {
 }
 
 #[cfg(test)]
+#[allow(unused_variables)]
 mod tests {
     use super::*;
 
