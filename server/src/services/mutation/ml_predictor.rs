@@ -198,7 +198,9 @@ impl MutantFeatures {
             MutationOperatorType::UnaryReplacement => 12.0,
             MutationOperatorType::BitwiseReplacement => 13.0,
             MutationOperatorType::AssignmentReplacement => 14.0,
-            MutationOperatorType::Custom(_) => 15.0,
+            MutationOperatorType::PointerReplacement => 15.0,
+            MutationOperatorType::MemberAccessReplacement => 16.0,
+            MutationOperatorType::Custom(_) => 17.0,
             MutationOperatorType::None => 0.0,
         }
     }
