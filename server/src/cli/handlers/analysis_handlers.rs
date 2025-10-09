@@ -1080,8 +1080,7 @@ async fn route_mutation_testing(cmd: AnalyzeCommands) -> Result<()> {
         output,
     } = cmd
     {
-        super::mutation_handlers::handle_mutate(
-            path,
+        let config = super::mutation_handlers::MutationTestConfig::new(
             operators,
             ml_predict,
             distributed,
@@ -1091,10 +1090,8 @@ async fn route_mutation_testing(cmd: AnalyzeCommands) -> Result<()> {
             ci_learning,
             ci_provider,
             auto_train_threshold,
-            format,
-            output,
-        )
-        .await
+        );
+        super::mutation_handlers::handle_mutate(path, config, format, output).await
     } else {
         unreachable!("Expected Mutate command")
     }
