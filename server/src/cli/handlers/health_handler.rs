@@ -9,6 +9,41 @@ use serde::Serialize;
 use std::path::PathBuf;
 use tokio::task::JoinSet;
 
+/// Configuration for health checks
+#[derive(Debug, Clone)]
+pub struct HealthCheckConfig {
+    pub quick: bool,
+    pub all: bool,
+    pub check_build: bool,
+    pub check_tests: bool,
+    pub check_coverage: bool,
+    pub check_complexity: bool,
+    pub check_satd: bool,
+}
+
+impl HealthCheckConfig {
+    /// Create config from individual flags
+    pub fn new(
+        quick: bool,
+        all: bool,
+        check_build: bool,
+        check_tests: bool,
+        check_coverage: bool,
+        check_complexity: bool,
+        check_satd: bool,
+    ) -> Self {
+        Self {
+            quick,
+            all,
+            check_build,
+            check_tests,
+            check_coverage,
+            check_complexity,
+            check_satd,
+        }
+    }
+}
+
 /// Health check result
 #[derive(Debug, Serialize)]
 pub struct HealthReport {
@@ -62,23 +97,17 @@ enum CheckType {
 /// - Cyclomatic: 7
 pub async fn run_health_checks_internal(
     project_dir: &PathBuf,
-    quick: bool,
-    all: bool,
-    check_build: bool,
-    check_tests: bool,
-    check_coverage: bool,
-    check_complexity: bool,
-    check_satd: bool,
+    config: &HealthCheckConfig,
 ) -> Result<HealthReport> {
     // Determine which checks to run based on flags
     let checks_to_run = determine_checks_to_run(
-        quick,
-        all,
-        check_build,
-        check_tests,
-        check_coverage,
-        check_complexity,
-        check_satd,
+        config.quick,
+        config.all,
+        config.check_build,
+        config.check_tests,
+        config.check_coverage,
+        config.check_complexity,
+        config.check_satd,
     );
 
     // Build list of check types to run (TICKET-PMAT-6010: parallel execution)
@@ -117,24 +146,9 @@ pub async fn run_health_checks_internal(
 pub async fn handle_maintain_health(
     project_dir: PathBuf,
     format: OutputFormat,
-    quick: bool,
-    all: bool,
-    check_build: bool,
-    check_tests: bool,
-    check_coverage: bool,
-    check_complexity: bool,
-    check_satd: bool,
+    config: HealthCheckConfig,
 ) -> Result<()> {
-    let report = run_health_checks_internal(
-        &project_dir,
-        quick,
-        all,
-        check_build,
-        check_tests,
-        check_coverage,
-        check_complexity,
-        check_satd,
-    ).await?;
+    let report = run_health_checks_internal(&project_dir, &config).await?;
 
     print_health_report(&report, &format)?;
 
