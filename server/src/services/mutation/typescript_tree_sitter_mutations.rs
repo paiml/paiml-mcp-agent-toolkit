@@ -111,7 +111,7 @@ impl TreeSitterMutationOperator for TypeScriptStrictEqualityMutation {
         "Strict Equality"
     }
 
-    fn can_mutate(&self, node: &Node, source: &[u8]) -> bool {
+    fn can_mutate(&self, node: &Node, _source: &[u8]) -> bool {
         // GREEN PHASE: Detect strict equality operators
         if node.kind() != "binary_expression" {
             return false;
@@ -229,7 +229,7 @@ impl TreeSitterMutationOperator for TypeScriptNullishCoalescingMutation {
         "Nullish Coalescing"
     }
 
-    fn can_mutate(&self, node: &Node, source: &[u8]) -> bool {
+    fn can_mutate(&self, node: &Node, _source: &[u8]) -> bool {
         // GREEN PHASE: Detect nullish coalescing operator
         if node.kind() != "binary_expression" {
             return false;

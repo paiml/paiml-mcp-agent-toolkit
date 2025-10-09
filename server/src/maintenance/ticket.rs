@@ -84,7 +84,7 @@ impl TicketFile {
     /// - Cyclomatic: 2
     pub fn from_file(path: &Path) -> Result<Self> {
         let content = std::fs::read_to_string(path)?;
-        let mut ticket = Self::from_str(&content)?;
+        let mut ticket = Self::parse_content(&content)?;
         ticket.file_path = path.to_path_buf();
         Ok(ticket)
     }
@@ -94,7 +94,7 @@ impl TicketFile {
     /// # Complexity
     /// - Time: O(n) where n is content length
     /// - Cyclomatic: 8
-    pub fn from_str(content: &str) -> Result<Self> {
+    pub fn parse_content(content: &str) -> Result<Self> {
         let lines: Vec<&str> = content.lines().collect();
 
         // Extract header (first line)

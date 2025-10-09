@@ -179,20 +179,20 @@ impl std::fmt::Display for PmatSubAgent {
 
 /// Sub-agent generator for Claude Code.
 pub struct SubAgentGenerator {
-    template_dir: PathBuf,
+    _template_dir: PathBuf,
 }
 
 impl SubAgentGenerator {
     /// Create a new sub-agent generator.
     pub fn new() -> Self {
         Self {
-            template_dir: PathBuf::from("server/src/scaffold/agent/subagent_templates"),
+            _template_dir: PathBuf::from("server/src/scaffold/agent/subagent_templates"),
         }
     }
 
     /// Create a generator with custom template directory.
     pub fn with_template_dir(template_dir: PathBuf) -> Self {
-        Self { template_dir }
+        Self { _template_dir: template_dir }
     }
 
     /// Generate a sub-agent definition in markdown format.
