@@ -88,6 +88,18 @@ pub enum MutationOperatorType {
     /// Member Access Replacement (., ::) - C++ specific
     MemberAccessReplacement,
 
+    /// Range Operator Replacement (.., ..=) - Rust specific
+    RangeReplacement,
+
+    /// Pattern Matching Replacement (Some/None, Ok/Err) - Rust specific
+    PatternReplacement,
+
+    /// Method Chain Replacement (.map, .filter) - Rust specific
+    MethodChainReplacement,
+
+    /// Borrow/Reference Replacement (&, &mut) - Rust specific
+    BorrowReplacement,
+
     /// Custom operator (language-specific)
     Custom(String),
 
