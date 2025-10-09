@@ -10,6 +10,35 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+/// Configuration for roadmap maintenance operations
+#[derive(Debug, Clone)]
+pub struct RoadmapMaintenanceConfig {
+    pub validate: bool,
+    pub health: bool,
+    pub fix: bool,
+    pub generate_tickets: bool,
+    pub dry_run: bool,
+}
+
+impl RoadmapMaintenanceConfig {
+    /// Create config from individual flags
+    pub fn new(
+        validate: bool,
+        health: bool,
+        fix: bool,
+        generate_tickets: bool,
+        dry_run: bool,
+    ) -> Self {
+        Self {
+            validate,
+            health,
+            fix,
+            generate_tickets,
+            dry_run,
+        }
+    }
+}
+
 /// Roadmap validation result
 #[derive(Debug)]
 pub struct RoadmapValidation {
@@ -58,30 +87,26 @@ pub struct TicketGenerationResult {
 pub async fn handle_maintain_roadmap(
     roadmap_path: PathBuf,
     tickets_dir: PathBuf,
-    validate: bool,
-    health: bool,
-    fix: bool,
-    generate_tickets: bool,
-    dry_run: bool,
+    config: RoadmapMaintenanceConfig,
     format: OutputFormat,
 ) -> Result<()> {
-    if validate {
+    if config.validate {
         validate_roadmap(&roadmap_path, &tickets_dir).await?;
     }
 
-    if health {
+    if config.health {
         show_health_report(&roadmap_path, &tickets_dir, &format).await?;
     }
 
-    if fix {
-        fix_roadmap_status(&roadmap_path, &tickets_dir, dry_run).await?;
+    if config.fix {
+        fix_roadmap_status(&roadmap_path, &tickets_dir, config.dry_run).await?;
     }
 
-    if generate_tickets {
-        generate_missing_ticket_files(&roadmap_path, &tickets_dir, dry_run).await?;
+    if config.generate_tickets {
+        generate_missing_ticket_files(&roadmap_path, &tickets_dir, config.dry_run).await?;
     }
 
-    if !validate && !health && !fix && !generate_tickets {
+    if !config.validate && !config.health && !config.fix && !config.generate_tickets {
         // Default: show health
         show_health_report(&roadmap_path, &tickets_dir, &format).await?;
     }
