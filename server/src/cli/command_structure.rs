@@ -476,9 +476,7 @@ impl CommandExecutor {
                         check_complexity,
                         check_satd,
                     } => {
-                        super::handlers::handle_maintain_health(
-                            project_dir,
-                            format,
+                        let config = super::handlers::health_handler::HealthCheckConfig::new(
                             quick,
                             all,
                             check_build,
@@ -486,8 +484,8 @@ impl CommandExecutor {
                             check_coverage,
                             check_complexity,
                             check_satd,
-                        )
-                        .await
+                        );
+                        super::handlers::handle_maintain_health(project_dir, format, config).await
                     }
                 }
             }
