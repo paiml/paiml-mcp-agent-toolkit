@@ -76,6 +76,12 @@ pub enum MutationOperatorType {
     /// Unary Operator Replacement (!, -, ~)
     UnaryReplacement,
 
+    /// Bitwise Operator Replacement (&, |, ^, <<, >>)
+    BitwiseReplacement,
+
+    /// Assignment Operator Replacement (+=, -=, *=, /=)
+    AssignmentReplacement,
+
     /// Custom operator (language-specific)
     Custom(String),
 

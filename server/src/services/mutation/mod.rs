@@ -28,6 +28,8 @@ pub mod typescript_tree_sitter_mutations;
 pub mod typescript_mutation_generator;
 pub mod python_tree_sitter_mutations;
 pub mod python_mutation_generator;
+pub mod go_tree_sitter_mutations;
+pub mod go_mutation_generator;
 
 #[cfg(test)]
 mod typescript_adapter_tests;
@@ -82,3 +84,5 @@ pub use typescript_tree_sitter_mutations::*;
 pub use typescript_mutation_generator::*;
 pub use python_tree_sitter_mutations::*;
 pub use python_mutation_generator::*;
+pub use go_tree_sitter_mutations::*;
+pub use go_mutation_generator::*;
