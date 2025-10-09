@@ -321,17 +321,14 @@ impl CommandDispatcher {
                         dry_run,
                         format,
                     } => {
-                        handlers::handle_maintain_roadmap(
-                            roadmap,
-                            tickets_dir,
+                        let config = handlers::roadmap_handler::RoadmapMaintenanceConfig::new(
                             validate,
                             health,
                             fix,
                             generate_tickets,
                             dry_run,
-                            format,
-                        )
-                        .await
+                        );
+                        handlers::handle_maintain_roadmap(roadmap, tickets_dir, config, format).await
                     }
                     MaintainCommands::Health {
                         project_dir,
