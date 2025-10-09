@@ -5,7 +5,7 @@
 use super::python_tree_sitter_mutations::*;
 use super::tree_sitter_operators::TreeSitterMutationOperator;
 use super::types::{Mutant, MutantStatus, MutationOperatorType};
-use anyhow::{Context, Result};
+use anyhow::Result;
 use sha2::{Digest, Sha256};
 use std::path::PathBuf;
 use tree_sitter::{Node, Parser, Tree};

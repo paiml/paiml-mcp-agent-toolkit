@@ -3,7 +3,7 @@
 //! GREEN PHASE: AST traversal and mutation generation
 
 use super::tree_sitter_operators::TreeSitterMutationOperator;
-use super::types::{Mutant, MutationOperatorType, SourceLocation};
+use super::types::{Mutant, MutationOperatorType};
 use anyhow::Result;
 use tree_sitter::{Parser, Tree};
 
