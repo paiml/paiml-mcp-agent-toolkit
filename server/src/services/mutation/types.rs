@@ -82,6 +82,12 @@ pub enum MutationOperatorType {
     /// Assignment Operator Replacement (+=, -=, *=, /=)
     AssignmentReplacement,
 
+    /// Pointer Operator Replacement (*, &, ->) - C++ specific
+    PointerReplacement,
+
+    /// Member Access Replacement (., ::) - C++ specific
+    MemberAccessReplacement,
+
     /// Custom operator (language-specific)
     Custom(String),
 

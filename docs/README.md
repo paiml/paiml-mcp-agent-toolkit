@@ -168,6 +168,18 @@ Empirical mutation testing with actual test execution and optional ML prediction
 - 🔄 **Full automation** - Source → mutants → tests → score
 - 🏗️ **Language-agnostic architecture** - Shared with TypeScript/Python
 
+### C++ Mutation Testing ✨ NEW (v2.154.0)
+**Production-ready AST-based mutation testing for C++17+.** **[Full Guide →](./features/CPP-MUTATION-TESTING.md)**
+
+- 🎯 **80%+ mutation scores achievable** - Quantify test suite quality
+- ⚡ **Fast generation** - ~5ms for ~75 mutants using tree-sitter AST
+- 🔍 **Real test execution** - Works with CMake/CTest and Google Test
+- 🧬 **7 mutation operators** - Binary (AOR), relational (ROR), logical (LOR), **bitwise (BOR)**, **unary (UOR)**, **pointer (POR)**, **member access (MAR)**
+- 🔷 **C++-specific features** - Pointer operators, member access, pre/post increment
+- 📊 **Identifies test gaps** - Surviving mutants reveal actual weaknesses
+- 🔄 **Full automation** - Source → mutants → tests → score
+- 🏗️ **Language-agnostic architecture** - Shared with TypeScript/Python/Go
+
 ---
 
-*Last Updated: 2025-10-08 | Version: 2.153.0*
+*Last Updated: 2025-10-09 | Version: 2.154.0*
