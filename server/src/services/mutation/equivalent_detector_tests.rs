@@ -83,8 +83,8 @@ mod equivalent_detector_red_tests {
         // Must detect operator patterns
         assert!(!features.operator_patterns.is_empty());
 
-        // Must measure code distance
-        assert!(features.edit_distance >= 0);
+        // edit_distance is unsigned type, validated by type system
+        let _ = features.edit_distance;
     }
 
     #[test]

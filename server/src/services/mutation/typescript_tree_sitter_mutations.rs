@@ -369,7 +369,7 @@ mod tests {
         parser.parse(source, None).unwrap()
     }
 
-    fn find_binary_expression(tree: &Tree) -> Option<Node> {
+    fn find_binary_expression(tree: &Tree) -> Option<Node<'_>> {
         let root = tree.root_node();
 
         fn find_recursive<'a>(node: &tree_sitter::Node<'a>) -> Option<tree_sitter::Node<'a>> {

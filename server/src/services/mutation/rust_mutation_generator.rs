@@ -208,8 +208,7 @@ fn unwrap(value: Option<i32>) -> i32 {
             .expect("Should generate mutants");
 
         // Should detect pattern matching (may not mutate due to complexity)
-        // Generator should handle this without errors
-        assert!(mutants.len() >= 0, "Generator should handle pattern matching");
+        // Generator works without errors (validated by Result::Ok)
     }
 
     #[test]
@@ -226,7 +225,6 @@ fn process(values: Vec<i32>) -> Vec<i32> {
             .expect("Should generate mutants");
 
         // Method chains may be detection-only
-        // Generator should handle this without errors
-        assert!(mutants.len() >= 0, "Generator should handle method chains");
+        // Generator works without errors (validated by Result::Ok)
     }
 }
