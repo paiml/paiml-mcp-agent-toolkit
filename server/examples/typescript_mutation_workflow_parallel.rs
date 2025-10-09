@@ -241,7 +241,8 @@ fn test_mutant_with_lock(
     }
 }
 
-/// Copy directory recursively
+/// Copy directory recursively (future use)
+#[allow(dead_code)]
 fn copy_dir_recursive(src: &Path, dst: &Path) -> Result<()> {
     std::fs::create_dir_all(dst)?;
 

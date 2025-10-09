@@ -2,12 +2,12 @@
 // Sprint 25 - Phase 1: Baseline mutation testing
 
 use anyhow::Result;
-use pmat::services::mutation::{RustMutationGenerator, MutationScore};
+use pmat::services::mutation::RustMutationGenerator;
 
 fn main() -> Result<()> {
     println!("🦀 Sprint 25: Dogfooding PMAT with PMAT\n");
     println!("Testing: services/mutation/types.rs");
-    println!("=" .repeat(60));
+    println!("{}", "=".repeat(60));
 
     // Read the types.rs source
     let source = std::fs::read_to_string("src/services/mutation/types.rs")?;
@@ -67,7 +67,7 @@ fn main() -> Result<()> {
         }
     }
 
-    println!("\n" + &"=".repeat(60));
+    println!("\n{}", "=".repeat(60));
     println!("\n✅ Mutation generation successful!");
     println!("\n📝 Next Steps:");
     println!("   1. Run test suite against each mutant");
