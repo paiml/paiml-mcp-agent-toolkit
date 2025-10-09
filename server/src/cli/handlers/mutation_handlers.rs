@@ -8,24 +8,58 @@ use crate::cli::OutputFormat;
 use crate::services::mutation::{MutationEngine, MutationConfig, RustAdapter, MutantExecutor, MutationScore};
 use std::sync::Arc;
 
+/// Configuration for mutation testing
+#[derive(Debug, Clone)]
+pub struct MutationTestConfig {
+    pub operators: Option<Vec<String>>,
+    pub ml_predict: bool,
+    pub distributed: bool,
+    pub workers: usize,
+    pub progress: bool,
+    pub min_score: Option<f64>,
+    pub ci_learning: bool,
+    pub ci_provider: Option<String>,
+    pub auto_train_threshold: usize,
+}
+
+impl MutationTestConfig {
+    /// Create config from individual parameters
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        operators: Option<Vec<String>>,
+        ml_predict: bool,
+        distributed: bool,
+        workers: usize,
+        progress: bool,
+        min_score: Option<f64>,
+        ci_learning: bool,
+        ci_provider: Option<String>,
+        auto_train_threshold: usize,
+    ) -> Self {
+        Self {
+            operators,
+            ml_predict,
+            distributed,
+            workers,
+            progress,
+            min_score,
+            ci_learning,
+            ci_provider,
+            auto_train_threshold,
+        }
+    }
+}
+
 /// Handle mutation testing command
 ///
 /// Refactored to reduce complexity from 25 to <20 by extracting helper functions
 pub async fn handle_mutate(
     path: PathBuf,
-    operators: Option<Vec<String>>,
-    _ml_predict: bool,
-    _distributed: bool,
-    _workers: usize,
-    _progress: bool,
-    min_score: Option<f64>,
-    _ci_learning: bool,
-    _ci_provider: Option<String>,
-    _auto_train_threshold: usize,
+    config: MutationTestConfig,
     format: OutputFormat,
     output: Option<PathBuf>,
 ) -> Result<()> {
-    print_header(&path, &operators);
+    print_header(&path, &config.operators);
     validate_path(&path)?;
 
     let engine = create_mutation_engine();
@@ -36,12 +70,12 @@ pub async fn handle_mutate(
         return Ok(());
     }
 
-    let results = execute_mutants(&path, &mutants, _distributed, _workers).await?;
+    let results = execute_mutants(&path, &mutants, config.distributed, config.workers).await?;
     let score = MutationScore::from_results(&results);
 
-    validate_score_threshold(&score, min_score)?;
+    validate_score_threshold(&score, config.min_score)?;
 
-    let report = format_report(&score, &results, &operators, format);
+    let report = format_report(&score, &results, &config.operators, format);
     output_report(&report, output).await?;
 
     print_summary(&score);
