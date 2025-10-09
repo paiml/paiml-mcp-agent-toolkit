@@ -1,6 +1,11 @@
 //! # PMAT (Professional Project Quantitative Analysis Toolkit)
 //!
 //! A comprehensive toolkit for project analysis, quality assurance, and technical debt management.
+//
+// EXTREME TDD - Quality Cleanup Sprint 26
+#![deny(unused_imports)]
+#![deny(unused_variables)]
+//
 #![allow(clippy::needless_range_loop)]
 #![allow(clippy::single_match)]
 #![allow(clippy::ptr_arg)]
