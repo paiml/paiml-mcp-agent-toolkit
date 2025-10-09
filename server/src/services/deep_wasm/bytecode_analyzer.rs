@@ -333,10 +333,10 @@ impl BytecodeAnalyzer {
                                     type_section.get(type_idx as usize).map(|func_type| {
                                         FunctionSignature {
                                             params: func_type.params().iter()
-                                                .map(|t| valtype_to_string(t))
+                                                .map(valtype_to_string)
                                                 .collect(),
                                             results: func_type.results().iter()
-                                                .map(|t| valtype_to_string(t))
+                                                .map(valtype_to_string)
                                                 .collect(),
                                             type_index: type_idx,
                                         }
@@ -414,10 +414,10 @@ impl BytecodeAnalyzer {
 
             let signature = FunctionSignature {
                 params: func_type.params().iter()
-                    .map(|t| valtype_to_string(t))
+                    .map(valtype_to_string)
                     .collect(),
                 results: func_type.results().iter()
-                    .map(|t| valtype_to_string(t))
+                    .map(valtype_to_string)
                     .collect(),
                 type_index: *type_idx,
             };
@@ -491,7 +491,7 @@ impl BytecodeAnalyzer {
         let mut branch_count = 0;
         let mut loop_count = 0;
         let mut call_count = 0;
-        let mut nesting_depth = 0;
+        let mut nesting_depth: u32 = 0;
         let mut max_nesting = 0;
         let mut basic_block_count = 1; // Start with entry block
 
@@ -544,9 +544,7 @@ impl BytecodeAnalyzer {
                     }
                 }
                 Operator::End => {
-                    if nesting_depth > 0 {
-                        nesting_depth -= 1;
-                    }
+                    nesting_depth = nesting_depth.saturating_sub(1);
                 }
                 Operator::Br { .. } | Operator::BrIf { .. } | Operator::BrTable { .. } => {
                     branch_count += 1;

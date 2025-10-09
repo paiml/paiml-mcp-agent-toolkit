@@ -26,7 +26,7 @@ impl Default for MutationConfig {
         }
     }
 }
-///
+
 #[derive(Debug, Clone)]
 pub enum MutationStrategy {
     /// Select only high-kill-probability mutations

@@ -299,7 +299,7 @@ impl TreeSitterMutationOperator for RustRangeOpMutation {
         "RustRangeOp"
     }
 
-    fn can_mutate(&self, node: &Node, source: &[u8]) -> bool {
+    fn can_mutate(&self, node: &Node, _source: &[u8]) -> bool {
         // Check for range expressions
         match node.kind() {
             "range_expression" | "inclusive_range_expression" => {

@@ -730,7 +730,7 @@ impl SimpleDeepContext {
             // Use Kotlin AST analysis
             use tokio::fs;
             match fs::read_to_string(file_path).await {
-                Ok(content) => {
+                Ok(_content) => {
                     #[cfg(feature = "kotlin-ast")]
                     {
                         use crate::services::context::AstItem;
