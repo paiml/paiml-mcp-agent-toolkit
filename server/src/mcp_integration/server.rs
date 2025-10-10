@@ -201,29 +201,70 @@ impl McpServer {
             return Ok(());
         }
 
+        // Sprint 33 (PMAT-SEARCH-012 GREEN): Adapter layer implementation complete
+        use crate::mcp_integration::tools::*;
+        use crate::services::semantic::HybridSearchEngine;
+
+        // Get configuration
+        let api_key = self
+            .config
+            .semantic_api_key
+            .as_ref()
+            .ok_or("Semantic search enabled but API key not configured")?;
+
+        let db_path = self
+            .config
+            .semantic_db_path
+            .clone()
+            .unwrap_or_else(|| {
+                dirs::home_dir()
+                    .map(|h| {
+                        h.join(".pmat")
+                            .join("embeddings.db")
+                            .to_string_lossy()
+                            .to_string()
+                    })
+                    .unwrap_or_else(|| "embeddings.db".to_string())
+            });
+
+        let workspace = self
+            .config
+            .semantic_workspace
+            .clone()
+            .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
+
+        // Initialize hybrid search engine
         tracing::info!(
-            "Semantic search tools are implemented but require adapter layer for mcp_integration.\n\
-             See docs/sprints/SPRINT-32-IMPLEMENTATION-NOTES.md for details.\n\
-             Tools are available via CLI: pmat embed sync, pmat semantic search, etc."
+            "Initializing semantic search engine: db={}, workspace={}",
+            db_path,
+            workspace.display()
         );
 
-        // TODO: Implement adapter layer
-        // Example implementation:
-        //
-        // use crate::services::semantic::HybridSearchEngine;
-        //
-        // let api_key = self.config.semantic_api_key.as_ref().ok_or("API key required")?;
-        // let db_path = self.config.semantic_db_path.clone().unwrap_or_else(|| "embeddings.db".to_string());
-        // let workspace = self.config.semantic_workspace.clone().unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
-        //
-        // let engine = Arc::new(HybridSearchEngine::new(api_key, &db_path, &workspace).await?);
-        //
-        // // Create adapters that implement mcp_integration::McpTool
-        // let mut tools = self.context.tools.write();
-        // tools.register(Arc::new(SemanticSearchToolAdapter::new(engine.clone())));
-        // tools.register(Arc::new(FindSimilarCodeToolAdapter::new(engine.clone())));
-        // tools.register(Arc::new(ClusterCodeToolAdapter::new(engine.clone())));
-        // tools.register(Arc::new(AnalyzeTopicsToolAdapter::new(engine)));
+        let engine = match HybridSearchEngine::new(api_key, &db_path, &workspace).await {
+            Ok(engine) => Arc::new(engine),
+            Err(e) => {
+                tracing::warn!("Failed to initialize semantic search engine: {}", e);
+                tracing::info!("Semantic search tools will not be available");
+                return Ok(());
+            }
+        };
+
+        // Register semantic search tools via adapter layer
+        let mut tools = self.context.tools.write();
+
+        tools.register(Arc::new(SemanticSearchToolAdapter::new(engine.clone())));
+        tracing::info!("✓ Registered semantic_search tool");
+
+        tools.register(Arc::new(FindSimilarCodeToolAdapter::new(engine.clone())));
+        tracing::info!("✓ Registered find_similar_code tool");
+
+        tools.register(Arc::new(ClusterCodeToolAdapter::new(engine.clone())));
+        tracing::info!("✓ Registered cluster_code tool");
+
+        tools.register(Arc::new(AnalyzeTopicsToolAdapter::new(engine)));
+        tracing::info!("✓ Registered analyze_topics tool");
+
+        tracing::info!("✅ Semantic search tools registered successfully (4 tools)");
 
         Ok(())
     }
