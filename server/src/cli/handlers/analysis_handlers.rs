@@ -177,6 +177,11 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
 
         // System commands
         AnalyzeCommands::Makefile { .. } => route_system_analysis(cmd).await,
+
+        // Semantic analysis commands (PMAT-SEARCH-011)
+        AnalyzeCommands::Cluster { .. } | AnalyzeCommands::Topics { .. } => {
+            route_semantic_analysis(cmd).await
+        }
     }
 }
 
@@ -1404,6 +1409,33 @@ fn output_entropy_results(output: Option<std::path::PathBuf>, content: &str) -> 
     }
 
     Ok(())
+}
+
+/// Route semantic analysis commands (PMAT-SEARCH-011)
+async fn route_semantic_analysis(cmd: AnalyzeCommands) -> Result<()> {
+    match cmd {
+        AnalyzeCommands::Cluster { method, k, language, format: _ } => {
+            anyhow::bail!(
+                "Semantic clustering is not yet fully integrated.\n\
+                 Service layer is complete (149 tests passing).\n\
+                 To complete: Implement handler in src/cli/handlers/semantic_handler.rs\n\
+                 See: docs/sprints/SPRINT-32-STATUS.md\n\
+                 Method: {:?}, K: {:?}, Language: {:?}",
+                method, k, language
+            )
+        }
+        AnalyzeCommands::Topics { num_topics, language, format: _ } => {
+            anyhow::bail!(
+                "Semantic topic modeling is not yet fully integrated.\n\
+                 Service layer is complete (149 tests passing).\n\
+                 To complete: Implement handler in src/cli/handlers/semantic_handler.rs\n\
+                 See: docs/sprints/SPRINT-32-STATUS.md\n\
+                 Num Topics: {}, Language: {:?}",
+                num_topics, language
+            )
+        }
+        _ => unreachable!("Expected semantic analysis command"),
+    }
 }
 
 #[cfg(test)]

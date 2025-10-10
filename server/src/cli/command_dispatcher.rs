@@ -3,7 +3,7 @@
 //! This module implements a dispatch table pattern to reduce cyclomatic complexity
 //! in the CLI module by delegating command execution to specialized handlers.
 
-use super::commands::{QddCommands, RoadmapCommands, ScaffoldCommands};
+use super::commands::{EmbedCommands, QddCommands, RoadmapCommands, ScaffoldCommands, SemanticCommands};
 use super::{AnalyzeCommands, Commands, DemoProtocol, OutputFormat, RefactorCommands};
 use crate::cli::handlers;
 use crate::cli::handlers::cache::CacheCommand;
@@ -88,6 +88,8 @@ impl CommandDispatcher {
             }
             Commands::Analyze(analyze_cmd) => Self::execute_analyze_command(analyze_cmd).await,
             Commands::Qdd(qdd_cmd) => Self::execute_qdd_command(qdd_cmd).await,
+            Commands::Embed(embed_cmd) => Self::execute_embed_command(embed_cmd).await,
+            Commands::Semantic(semantic_cmd) => Self::execute_semantic_command(semantic_cmd).await,
             Commands::Demo {
                 path,
                 url,
@@ -596,6 +598,85 @@ impl CommandDispatcher {
     pub async fn execute_qdd_command(qdd_cmd: QddCommands) -> anyhow::Result<()> {
         // Delegate to the QDD handlers
         super::handlers::qdd_handlers::handle_qdd_command(qdd_cmd).await
+    }
+
+    /// Execute embed commands for semantic search (PMAT-SEARCH-011)
+    pub async fn execute_embed_command(embed_cmd: EmbedCommands) -> anyhow::Result<()> {
+        use crate::cli::commands::EmbedCommands;
+
+        match embed_cmd {
+            EmbedCommands::Sync { path, language, format: _ } => {
+                anyhow::bail!(
+                    "Semantic search embedding is not yet fully integrated.\n\
+                     Service layer is complete (149 tests passing).\n\
+                     To complete: Implement handler in src/cli/handlers/semantic_handler.rs\n\
+                     See: docs/sprints/SPRINT-32-STATUS.md\n\
+                     Path: {:?}, Language: {:?}",
+                    path,
+                    language
+                )
+            }
+            EmbedCommands::Status { format: _ } => {
+                anyhow::bail!(
+                    "Semantic search status is not yet fully integrated.\n\
+                     Service layer is complete (149 tests passing).\n\
+                     To complete: Implement handler in src/cli/handlers/semantic_handler.rs\n\
+                     See: docs/sprints/SPRINT-32-STATUS.md"
+                )
+            }
+            EmbedCommands::Clear { confirm } => {
+                anyhow::bail!(
+                    "Semantic search clear is not yet fully integrated.\n\
+                     Service layer is complete (149 tests passing).\n\
+                     To complete: Implement handler in src/cli/handlers/semantic_handler.rs\n\
+                     See: docs/sprints/SPRINT-32-STATUS.md\n\
+                     Confirm: {}",
+                    confirm
+                )
+            }
+        }
+    }
+
+    /// Execute semantic search commands (PMAT-SEARCH-011)
+    pub async fn execute_semantic_command(semantic_cmd: SemanticCommands) -> anyhow::Result<()> {
+        use crate::cli::commands::SemanticCommands;
+
+        match semantic_cmd {
+            SemanticCommands::Search {
+                query,
+                mode,
+                language,
+                limit,
+                format: _,
+            } => {
+                anyhow::bail!(
+                    "Semantic search is not yet fully integrated.\n\
+                     Service layer is complete (149 tests passing).\n\
+                     To complete: Implement handler in src/cli/handlers/semantic_handler.rs\n\
+                     See: docs/sprints/SPRINT-32-STATUS.md\n\
+                     Query: '{}', Mode: {:?}, Language: {:?}, Limit: {}",
+                    query,
+                    mode,
+                    language,
+                    limit
+                )
+            }
+            SemanticCommands::Similar {
+                file_path,
+                limit,
+                format: _,
+            } => {
+                anyhow::bail!(
+                    "Semantic similar search is not yet fully integrated.\n\
+                     Service layer is complete (149 tests passing).\n\
+                     To complete: Implement handler in src/cli/handlers/semantic_handler.rs\n\
+                     See: docs/sprints/SPRINT-32-STATUS.md\n\
+                     File: {:?}, Limit: {}",
+                    file_path,
+                    limit
+                )
+            }
+        }
     }
 
     /// Execute refactor commands using handler pattern (reduces CC)
