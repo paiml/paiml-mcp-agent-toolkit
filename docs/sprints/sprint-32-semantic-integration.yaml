@@ -1,0 +1,194 @@
+# Sprint 32: Semantic Search Integration
+# Version: v2.159.0
+# Duration: October 10, 2025
+# Methodology: EXTREME TDD (RED → GREEN → REFACTOR)
+
+sprint:
+  number: 32
+  name: "Semantic Search Integration"
+  version: "2.159.0"
+  start_date: "2025-10-10"
+  end_date: "2025-10-10"
+  status: "ready_for_implementation"
+
+  description: |
+    Integrate semantic search functionality into CLI and MCP server.
+    Wire up the semantic search services built in Sprint 29-31 to make them
+    accessible through pmat CLI commands and MCP protocol tools.
+
+  goals:
+    - "Wire semantic commands to main CLI parser"
+    - "Register 4 semantic MCP tools in server"
+    - "End-to-end integration testing"
+    - "Production validation"
+
+  tickets:
+    - id: "PMAT-SEARCH-011"
+      title: "CLI Integration for Semantic Commands"
+      status: "pending"
+      priority: "high"
+      points: 5
+      description: |
+        Integrate semantic search CLI commands into main pmat binary.
+        Add embed, semantic, and analyze subcommands for clustering/topics.
+
+      acceptance_criteria:
+        - "pmat embed sync works with --path argument"
+        - "pmat embed status shows database statistics"
+        - "pmat embed clear removes embeddings with --confirm"
+        - "pmat semantic search executes natural language queries"
+        - "pmat semantic similar finds similar code files"
+        - "pmat analyze cluster works with kmeans/hierarchical/dbscan"
+        - "pmat analyze topics extracts semantic topics"
+        - "All commands have --help documentation"
+        - "Error messages are clear and actionable"
+
+      technical_details:
+        files:
+          - "server/src/cli/mod.rs"
+          - "server/src/cli/handlers.rs"
+          - "server/src/bin/main.rs"
+
+        tasks:
+          - task: "Add embed subcommand to CLI parser"
+            status: "pending"
+            tdd_phase: "red"
+
+          - task: "Add semantic subcommand to CLI parser"
+            status: "pending"
+            tdd_phase: "red"
+
+          - task: "Wire analyze cluster command"
+            status: "pending"
+            tdd_phase: "red"
+
+          - task: "Wire analyze topics command"
+            status: "pending"
+            tdd_phase: "red"
+
+          - task: "Write integration tests for CLI"
+            status: "pending"
+            tdd_phase: "green"
+
+          - task: "Refactor and optimize"
+            status: "pending"
+            tdd_phase: "refactor"
+
+      tests:
+        unit: 10
+        integration: 5
+        e2e: 3
+
+      estimated_lines: 200
+
+    - id: "PMAT-SEARCH-012"
+      title: "MCP Server Integration for Semantic Tools"
+      status: "pending"
+      priority: "high"
+      points: 5
+      description: |
+        Register 4 semantic search tools in MCP server.
+        Enable Claude Code and Cursor to use semantic search capabilities.
+
+      acceptance_criteria:
+        - "semantic_search tool registered in MCP server"
+        - "find_similar_code tool registered in MCP server"
+        - "cluster_code tool registered in MCP server"
+        - "analyze_topics tool registered in MCP server"
+        - "JSON schemas properly validated"
+        - "Tools respond with correct format"
+        - "Error handling for all edge cases"
+        - "Integration tests pass"
+
+      technical_details:
+        files:
+          - "server/src/mcp/server.rs"
+          - "server/src/mcp/handlers.rs"
+          - "server/src/mcp/tools/mod.rs"
+
+        tasks:
+          - task: "Register semantic_search in tool registry"
+            status: "pending"
+            tdd_phase: "red"
+
+          - task: "Register find_similar_code in tool registry"
+            status: "pending"
+            tdd_phase: "red"
+
+          - task: "Register cluster_code in tool registry"
+            status: "pending"
+            tdd_phase: "red"
+
+          - task: "Register analyze_topics in tool registry"
+            status: "pending"
+            tdd_phase: "red"
+
+          - task: "Write MCP integration tests"
+            status: "pending"
+            tdd_phase: "green"
+
+          - task: "Test with Claude Code client"
+            status: "pending"
+            tdd_phase: "green"
+
+          - task: "Refactor and document"
+            status: "pending"
+            tdd_phase: "refactor"
+
+      tests:
+        unit: 8
+        integration: 4
+        e2e: 2
+
+      estimated_lines: 150
+
+  metrics:
+    total_tickets: 2
+    total_points: 10
+    estimated_lines: 350
+    estimated_tests: 32
+
+  quality_gates:
+    - "All tests passing (100% pass rate)"
+    - "Zero compiler errors/warnings (except expected)"
+    - "95%+ test coverage"
+    - "Cyclomatic complexity ≤10"
+    - "All CLI commands work end-to-end"
+    - "All MCP tools respond correctly"
+    - "Documentation updated"
+
+  dependencies:
+    - sprint: 29
+      status: "complete"
+      description: "Semantic search foundation"
+
+    - sprint: 30
+      status: "complete"
+      description: "Search engine and MCP tools"
+
+    - sprint: 31
+      status: "complete"
+      description: "Analytics and CLI commands"
+
+  deliverables:
+    - "Working CLI integration for all semantic commands"
+    - "MCP server with 4 registered semantic tools"
+    - "32 integration tests passing"
+    - "Updated documentation with examples"
+    - "v2.159.0 release on crates.io"
+
+  risks:
+    - risk: "CLI argument parsing conflicts"
+      mitigation: "Use clap subcommands with clear namespacing"
+      probability: "low"
+
+    - risk: "MCP tool registration issues"
+      mitigation: "Follow existing tool registration patterns"
+      probability: "low"
+
+  notes: |
+    This sprint completes the semantic search feature by making it
+    accessible to end users through CLI and AI assistants through MCP.
+
+    All foundation work (Sprints 29-31) is complete with 149 tests passing.
+    This sprint focuses purely on integration and wiring, not new algorithms.
