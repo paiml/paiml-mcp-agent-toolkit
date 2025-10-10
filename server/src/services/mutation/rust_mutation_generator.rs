@@ -203,7 +203,7 @@ fn unwrap(value: Option<i32>) -> i32 {
 "#;
 
         let generator = RustMutationGenerator::with_default_operators();
-        let mutants = generator
+        let _mutants = generator
             .generate_mutants(source, "test.rs")
             .expect("Should generate mutants");
 
@@ -220,7 +220,7 @@ fn process(values: Vec<i32>) -> Vec<i32> {
 "#;
 
         let generator = RustMutationGenerator::with_default_operators();
-        let mutants = generator
+        let _mutants = generator
             .generate_mutants(source, "test.rs")
             .expect("Should generate mutants");
 
