@@ -174,6 +174,7 @@ pub mod refactor_engine;
 pub mod renderer;
 pub mod rust_borrow_checker;
 pub mod satd_detector;
+pub mod semantic; // PMAT-SEARCH-001: Semantic code search services
 pub mod semantic_naming;
 pub mod simple_deep_context;
 pub mod symbol_table;

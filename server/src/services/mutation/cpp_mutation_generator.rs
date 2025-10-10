@@ -173,7 +173,7 @@ int Dereference(int* ptr) {
 "#;
 
         let generator = CppMutationGenerator::with_default_operators();
-        let mutants = generator
+        let _mutants = generator
             .generate_mutants(source, "test.cpp")
             .expect("Should generate mutants");
 
@@ -193,7 +193,7 @@ class Calculator {
 "#;
 
         let generator = CppMutationGenerator::with_default_operators();
-        let mutants = generator
+        let _mutants = generator
             .generate_mutants(source, "test.cpp")
             .expect("Should generate mutants");
 
