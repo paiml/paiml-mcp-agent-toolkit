@@ -88,6 +88,10 @@ impl McpServer {
         // Register default tools
         self.register_agent_tools().await?;
 
+        // Register semantic search tools (PMAT-SEARCH-012)
+        // TODO: Requires HybridSearchEngine initialization with API key and DB path
+        // self.register_semantic_tools().await?;
+
         // Register default resources
         self.register_agent_resources().await?;
 
@@ -121,6 +125,51 @@ impl McpServer {
         tools.register(Arc::new(OrchestrateTool::new(
             self.context.agent_registry.clone(),
         )));
+
+        Ok(())
+    }
+
+    /// Register semantic search tools (PMAT-SEARCH-012)
+    ///
+    /// RED Phase: Stub implementation
+    ///
+    /// TODO: Full implementation requires:
+    /// 1. Configuration for OpenAI API key
+    /// 2. Configuration for Turso database path
+    /// 3. Configuration for workspace path
+    /// 4. Initialize HybridSearchEngine on server startup
+    /// 5. Pass engine to semantic tools
+    ///
+    /// Example usage (when implemented):
+    /// ```ignore
+    /// let engine = Arc::new(
+    ///     HybridSearchEngine::new(&api_key, &db_path, &workspace_path).await?
+    /// );
+    /// tools.register(Arc::new(SemanticSearchTool::new(engine.clone())));
+    /// tools.register(Arc::new(FindSimilarCodeTool::new(engine.clone())));
+    /// tools.register(Arc::new(ClusterCodeTool::new(engine.clone())));
+    /// tools.register(Arc::new(AnalyzeTopicsTool::new(engine.clone())));
+    /// ```
+    #[allow(dead_code)]
+    async fn register_semantic_tools(&self) -> Result<(), Box<dyn std::error::Error>> {
+        // Semantic tools require configuration that's not yet wired through server config
+        // This will be implemented in GREEN phase after configuration is added
+
+        // TODO: Initialize HybridSearchEngine
+        // let engine = Arc::new(
+        //     HybridSearchEngine::new(&api_key, &db_path, &workspace_path).await?
+        // );
+
+        // TODO: Register semantic tools
+        // use crate::mcp::{
+        //     SemanticSearchTool, FindSimilarCodeTool,
+        //     ClusterCodeTool, AnalyzeTopicsTool
+        // };
+        // let mut tools = self.context.tools.write();
+        // tools.register(Arc::new(SemanticSearchTool::new(engine.clone())));
+        // tools.register(Arc::new(FindSimilarCodeTool::new(engine.clone())));
+        // tools.register(Arc::new(ClusterCodeTool::new(engine.clone())));
+        // tools.register(Arc::new(AnalyzeTopicsTool::new(engine.clone())));
 
         Ok(())
     }
