@@ -1413,26 +1413,75 @@ fn output_entropy_results(output: Option<std::path::PathBuf>, content: &str) -> 
 
 /// Route semantic analysis commands (PMAT-SEARCH-011)
 async fn route_semantic_analysis(cmd: AnalyzeCommands) -> Result<()> {
+    use crate::cli::semantic_commands::SemanticCli;
+    use crate::services::configuration_service::ConfigurationService;
+
+    // Load configuration with environment variable fallbacks
+    let config_service = ConfigurationService::new(None);
+    let semantic_config = config_service.get_semantic_config_with_env_fallback()?;
+
+    // Check if semantic search is enabled
+    if !semantic_config.enabled {
+        anyhow::bail!(
+            "Semantic search is not enabled.\n\
+             To enable, set semantic.enabled = true in config file or provide OPENAI_API_KEY environment variable.\n\
+             See: docs/sprints/SPRINT-32-IMPLEMENTATION-NOTES.md"
+        );
+    }
+
+    // Get API key
+    let api_key = semantic_config.openai_api_key.ok_or_else(|| {
+        anyhow::anyhow!(
+            "OpenAI API key not configured.\n\
+             Set OPENAI_API_KEY environment variable or semantic.openai_api_key in config file."
+        )
+    })?;
+
+    // Get database path
+    let db_path = semantic_config
+        .vector_db_path
+        .unwrap_or_else(|| {
+            dirs::home_dir()
+                .map(|h| h.join(".pmat").join("embeddings.db").to_string_lossy().to_string())
+                .unwrap_or_else(|| "embeddings.db".to_string())
+        });
+
+    // Get workspace path
+    let workspace = semantic_config
+        .workspace_path
+        .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
+
+    // Initialize semantic CLI
+    let semantic_cli = SemanticCli::new(&db_path, &api_key, &workspace)
+        .await
+        .map_err(|e| anyhow::anyhow!(e))?;
+
     match cmd {
         AnalyzeCommands::Cluster { method, k, language, format: _ } => {
-            anyhow::bail!(
-                "Semantic clustering is not yet fully integrated.\n\
-                 Service layer is complete (149 tests passing).\n\
-                 To complete: Implement handler in src/cli/handlers/semantic_handler.rs\n\
-                 See: docs/sprints/SPRINT-32-STATUS.md\n\
-                 Method: {:?}, K: {:?}, Language: {:?}",
-                method, k, language
-            )
+            // Convert ClusterMethod to string for semantic_cli interface
+            let method_str = match method {
+                crate::cli::commands::ClusterMethod::Kmeans => "kmeans",
+                crate::cli::commands::ClusterMethod::Hierarchical => "hierarchical",
+                crate::cli::commands::ClusterMethod::Dbscan => "dbscan",
+            };
+
+            let result = semantic_cli
+                .analyze_cluster(method_str, k)
+                .await
+                .map_err(|e| anyhow::anyhow!(e))?;
+
+            println!("{}", result);
+            println!("Language filter: {:?}", language);
+            Ok(())
         }
         AnalyzeCommands::Topics { num_topics, language, format: _ } => {
-            anyhow::bail!(
-                "Semantic topic modeling is not yet fully integrated.\n\
-                 Service layer is complete (149 tests passing).\n\
-                 To complete: Implement handler in src/cli/handlers/semantic_handler.rs\n\
-                 See: docs/sprints/SPRINT-32-STATUS.md\n\
-                 Num Topics: {}, Language: {:?}",
-                num_topics, language
-            )
+            let result = semantic_cli
+                .analyze_topics(num_topics, language)
+                .await
+                .map_err(|e| anyhow::anyhow!(e))?;
+
+            println!("{}", result);
+            Ok(())
         }
         _ => unreachable!("Expected semantic analysis command"),
     }
