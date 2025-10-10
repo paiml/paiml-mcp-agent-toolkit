@@ -584,6 +584,14 @@ pub enum Commands {
     /// Pre-commit hook management (TICKET-PMAT-5034)
     #[command(subcommand)]
     Hooks(HooksCommands),
+
+    /// Manage semantic search embeddings (PMAT-SEARCH-011)
+    #[command(subcommand)]
+    Embed(EmbedCommands),
+
+    /// Semantic code search (PMAT-SEARCH-011)
+    #[command(subcommand)]
+    Semantic(SemanticCommands),
 }
 
 /// Quality gates subcommands (TICKET-PMAT-5024)
@@ -2080,6 +2088,40 @@ pub enum AnalyzeCommands {
         /// Output file path
         #[arg(short, long)]
         output: Option<PathBuf>,
+    },
+
+    /// Cluster code by semantic similarity (PMAT-SEARCH-011)
+    Cluster {
+        /// Clustering method
+        #[arg(long, value_enum)]
+        method: ClusterMethod,
+
+        /// Number of clusters (required for kmeans)
+        #[arg(long)]
+        k: Option<usize>,
+
+        /// Filter by language
+        #[arg(long)]
+        language: Option<String>,
+
+        /// Output format
+        #[arg(long, value_enum, default_value = "summary")]
+        format: OutputFormat,
+    },
+
+    /// Extract semantic topics from codebase (PMAT-SEARCH-011)
+    Topics {
+        /// Number of topics to extract
+        #[arg(long)]
+        num_topics: usize,
+
+        /// Filter by language
+        #[arg(long)]
+        language: Option<String>,
+
+        /// Output format
+        #[arg(long, value_enum, default_value = "summary")]
+        format: OutputFormat,
     },
 }
 
@@ -3640,10 +3682,107 @@ pub enum HooksCommands {
 pub enum ConfigFormat {
     /// JSON format
     Json,
-    /// TOML format  
+    /// TOML format
     Toml,
     /// Environment variables format
     Env,
+}
+
+/// Embed subcommands for semantic search (PMAT-SEARCH-011)
+#[derive(Subcommand)]
+#[cfg_attr(test, derive(Debug))]
+pub enum EmbedCommands {
+    /// Sync embeddings for codebase
+    Sync {
+        /// Path to analyze
+        #[arg(short, long, default_value = ".")]
+        path: PathBuf,
+
+        /// Filter by language
+        #[arg(long)]
+        language: Option<String>,
+
+        /// Output format
+        #[arg(long, value_enum, default_value = "summary")]
+        format: OutputFormat,
+    },
+
+    /// Show embedding database status
+    Status {
+        /// Output format
+        #[arg(long, value_enum, default_value = "summary")]
+        format: OutputFormat,
+    },
+
+    /// Clear all embeddings (requires --confirm)
+    Clear {
+        /// Confirm deletion
+        #[arg(long)]
+        confirm: bool,
+    },
+}
+
+/// Semantic search subcommands (PMAT-SEARCH-011)
+#[derive(Subcommand)]
+#[cfg_attr(test, derive(Debug))]
+pub enum SemanticCommands {
+    /// Search code by natural language query
+    Search {
+        /// Natural language query
+        query: String,
+
+        /// Search mode
+        #[arg(long, value_enum, default_value = "hybrid")]
+        mode: SearchMode,
+
+        /// Filter by language
+        #[arg(long)]
+        language: Option<String>,
+
+        /// Max results to return
+        #[arg(long, default_value_t = 10)]
+        limit: usize,
+
+        /// Output format
+        #[arg(long, value_enum, default_value = "summary")]
+        format: OutputFormat,
+    },
+
+    /// Find code files similar to a reference file
+    Similar {
+        /// Reference file path
+        file_path: PathBuf,
+
+        /// Max results to return
+        #[arg(long, default_value_t = 10)]
+        limit: usize,
+
+        /// Output format
+        #[arg(long, value_enum, default_value = "summary")]
+        format: OutputFormat,
+    },
+}
+
+/// Search mode for semantic search (PMAT-SEARCH-011)
+#[derive(Clone, Debug, clap::ValueEnum, PartialEq)]
+pub enum SearchMode {
+    /// Keyword-only search (ripgrep)
+    Keyword,
+    /// Vector-only search (semantic similarity)
+    Vector,
+    /// Hybrid search (keyword + vector with RRF)
+    Hybrid,
+}
+
+/// Clustering method (PMAT-SEARCH-011)
+#[derive(Clone, Debug, clap::ValueEnum, PartialEq)]
+pub enum ClusterMethod {
+    /// K-means clustering
+    Kmeans,
+    /// Hierarchical clustering
+    Hierarchical,
+    /// DBSCAN density-based clustering
+    Dbscan,
 }
 
 #[cfg(test)]

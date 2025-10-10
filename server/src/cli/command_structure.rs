@@ -490,6 +490,14 @@ impl CommandExecutor {
             Commands::Hooks(hooks_cmd) => {
                 super::handlers::handle_hooks_command(&hooks_cmd).await
             }
+
+            // Semantic search commands (PMAT-SEARCH-011)
+            Commands::Embed(embed_cmd) => {
+                super::command_dispatcher::CommandDispatcher::execute_embed_command(embed_cmd).await
+            }
+            Commands::Semantic(semantic_cmd) => {
+                super::command_dispatcher::CommandDispatcher::execute_semantic_command(semantic_cmd).await
+            }
         }
     }
 }
