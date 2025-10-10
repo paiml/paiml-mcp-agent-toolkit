@@ -3,11 +3,13 @@
 //! This module implements a dispatch table pattern to reduce cyclomatic complexity
 //! in the CLI module by delegating command execution to specialized handlers.
 
-use super::commands::{EmbedCommands, QddCommands, RoadmapCommands, ScaffoldCommands, SemanticCommands};
+use super::commands::{EmbedCommands, QddCommands, RoadmapCommands, ScaffoldCommands, SemanticCommands, SearchMode};
 use super::{AnalyzeCommands, Commands, DemoProtocol, OutputFormat, RefactorCommands};
 use crate::cli::handlers;
 use crate::cli::handlers::cache::CacheCommand;
 use crate::cli::handlers::memory::MemoryCommand;
+use crate::cli::semantic_commands::SemanticCli;
+use crate::services::configuration_service::ConfigurationService;
 use crate::stateless_server::StatelessTemplateServer;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -604,35 +606,80 @@ impl CommandDispatcher {
     pub async fn execute_embed_command(embed_cmd: EmbedCommands) -> anyhow::Result<()> {
         use crate::cli::commands::EmbedCommands;
 
+        // Load configuration with environment variable fallbacks
+        let config_service = ConfigurationService::new(None);
+        let semantic_config = config_service.get_semantic_config_with_env_fallback()?;
+
+        // Check if semantic search is enabled
+        if !semantic_config.enabled {
+            anyhow::bail!(
+                "Semantic search is not enabled.\n\
+                 To enable, set semantic.enabled = true in config file or provide OPENAI_API_KEY environment variable.\n\
+                 See: docs/sprints/SPRINT-32-IMPLEMENTATION-NOTES.md"
+            );
+        }
+
+        // Get API key
+        let api_key = semantic_config.openai_api_key.ok_or_else(|| {
+            anyhow::anyhow!(
+                "OpenAI API key not configured.\n\
+                 Set OPENAI_API_KEY environment variable or semantic.openai_api_key in config file."
+            )
+        })?;
+
+        // Get database path
+        let db_path = semantic_config
+            .vector_db_path
+            .unwrap_or_else(|| {
+                dirs::home_dir()
+                    .map(|h| h.join(".pmat").join("embeddings.db").to_string_lossy().to_string())
+                    .unwrap_or_else(|| "embeddings.db".to_string())
+            });
+
+        // Get workspace path
+        let workspace = semantic_config
+            .workspace_path
+            .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
+
+        // Initialize semantic CLI
+        let semantic_cli = SemanticCli::new(&db_path, &api_key, &workspace)
+            .await
+            .map_err(|e| anyhow::anyhow!(e))?;
+
         match embed_cmd {
-            EmbedCommands::Sync { path, language, format: _ } => {
-                anyhow::bail!(
-                    "Semantic search embedding is not yet fully integrated.\n\
-                     Service layer is complete (149 tests passing).\n\
-                     To complete: Implement handler in src/cli/handlers/semantic_handler.rs\n\
-                     See: docs/sprints/SPRINT-32-STATUS.md\n\
-                     Path: {:?}, Language: {:?}",
-                    path,
-                    language
-                )
+            EmbedCommands::Sync { path, language, format } => {
+                let result = semantic_cli
+                    .embed_sync(&path, language)
+                    .await
+                    .map_err(|e| anyhow::anyhow!(e))?;
+                match format {
+                    OutputFormat::Json => {
+                        println!("{}", serde_json::json!({"status": "success", "message": result}));
+                    }
+                    _ => println!("{}", result),
+                }
+                Ok(())
             }
-            EmbedCommands::Status { format: _ } => {
-                anyhow::bail!(
-                    "Semantic search status is not yet fully integrated.\n\
-                     Service layer is complete (149 tests passing).\n\
-                     To complete: Implement handler in src/cli/handlers/semantic_handler.rs\n\
-                     See: docs/sprints/SPRINT-32-STATUS.md"
-                )
+            EmbedCommands::Status { format } => {
+                let result = semantic_cli
+                    .embed_status()
+                    .await
+                    .map_err(|e| anyhow::anyhow!(e))?;
+                match format {
+                    OutputFormat::Json => {
+                        println!("{}", serde_json::json!({"status": "success", "message": result}));
+                    }
+                    _ => println!("{}", result),
+                }
+                Ok(())
             }
             EmbedCommands::Clear { confirm } => {
-                anyhow::bail!(
-                    "Semantic search clear is not yet fully integrated.\n\
-                     Service layer is complete (149 tests passing).\n\
-                     To complete: Implement handler in src/cli/handlers/semantic_handler.rs\n\
-                     See: docs/sprints/SPRINT-32-STATUS.md\n\
-                     Confirm: {}",
-                    confirm
-                )
+                let result = semantic_cli
+                    .embed_clear(confirm)
+                    .await
+                    .map_err(|e| anyhow::anyhow!(e))?;
+                println!("{}", result);
+                Ok(())
             }
         }
     }
@@ -641,40 +688,89 @@ impl CommandDispatcher {
     pub async fn execute_semantic_command(semantic_cmd: SemanticCommands) -> anyhow::Result<()> {
         use crate::cli::commands::SemanticCommands;
 
+        // Load configuration with environment variable fallbacks
+        let config_service = ConfigurationService::new(None);
+        let semantic_config = config_service.get_semantic_config_with_env_fallback()?;
+
+        // Check if semantic search is enabled
+        if !semantic_config.enabled {
+            anyhow::bail!(
+                "Semantic search is not enabled.\n\
+                 To enable, set semantic.enabled = true in config file or provide OPENAI_API_KEY environment variable.\n\
+                 See: docs/sprints/SPRINT-32-IMPLEMENTATION-NOTES.md"
+            );
+        }
+
+        // Get API key
+        let api_key = semantic_config.openai_api_key.ok_or_else(|| {
+            anyhow::anyhow!(
+                "OpenAI API key not configured.\n\
+                 Set OPENAI_API_KEY environment variable or semantic.openai_api_key in config file."
+            )
+        })?;
+
+        // Get database path
+        let db_path = semantic_config
+            .vector_db_path
+            .unwrap_or_else(|| {
+                dirs::home_dir()
+                    .map(|h| h.join(".pmat").join("embeddings.db").to_string_lossy().to_string())
+                    .unwrap_or_else(|| "embeddings.db".to_string())
+            });
+
+        // Get workspace path
+        let workspace = semantic_config
+            .workspace_path
+            .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
+
+        // Initialize semantic CLI
+        let semantic_cli = SemanticCli::new(&db_path, &api_key, &workspace)
+            .await
+            .map_err(|e| anyhow::anyhow!(e))?;
+
         match semantic_cmd {
             SemanticCommands::Search {
                 query,
                 mode,
                 language,
                 limit,
-                format: _,
+                format,
             } => {
-                anyhow::bail!(
-                    "Semantic search is not yet fully integrated.\n\
-                     Service layer is complete (149 tests passing).\n\
-                     To complete: Implement handler in src/cli/handlers/semantic_handler.rs\n\
-                     See: docs/sprints/SPRINT-32-STATUS.md\n\
-                     Query: '{}', Mode: {:?}, Language: {:?}, Limit: {}",
-                    query,
-                    mode,
-                    language,
-                    limit
-                )
+                // Convert SearchMode to string
+                let mode_str = match mode {
+                    SearchMode::Keyword => "keyword",
+                    SearchMode::Vector => "vector",
+                    SearchMode::Hybrid => "hybrid",
+                };
+
+                let result = semantic_cli
+                    .semantic_search(&query, mode_str, limit, language)
+                    .await
+                    .map_err(|e| anyhow::anyhow!(e))?;
+                match format {
+                    OutputFormat::Json => {
+                        println!("{}", result); // Result is already JSON
+                    }
+                    _ => println!("{}", result),
+                }
+                Ok(())
             }
             SemanticCommands::Similar {
                 file_path,
                 limit,
-                format: _,
+                format,
             } => {
-                anyhow::bail!(
-                    "Semantic similar search is not yet fully integrated.\n\
-                     Service layer is complete (149 tests passing).\n\
-                     To complete: Implement handler in src/cli/handlers/semantic_handler.rs\n\
-                     See: docs/sprints/SPRINT-32-STATUS.md\n\
-                     File: {:?}, Limit: {}",
-                    file_path,
-                    limit
-                )
+                let result = semantic_cli
+                    .semantic_similar(&file_path, limit)
+                    .await
+                    .map_err(|e| anyhow::anyhow!(e))?;
+                match format {
+                    OutputFormat::Json => {
+                        println!("{}", result); // Result is already JSON
+                    }
+                    _ => println!("{}", result),
+                }
+                Ok(())
             }
         }
     }
