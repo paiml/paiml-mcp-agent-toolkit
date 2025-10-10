@@ -112,7 +112,10 @@ impl CliAdapter {
             | Commands::Config { .. }
             | Commands::Agent { .. }
             | Commands::Tdg { .. }
-            | Commands::ValidateDocs(_) => Self::cli_only_command_error(),
+            | Commands::ValidateDocs(_)
+            | Commands::Embed(_) // PMAT-SEARCH-011
+            | Commands::Semantic(_) // PMAT-SEARCH-011
+            => Self::cli_only_command_error(),
         }
     }
 
@@ -1761,7 +1764,7 @@ impl CliInput {
     fn get_command_category(command: &Commands) -> CommandCategory {
         match command {
             Commands::Generate { .. } | Commands::Scaffold { .. } => CommandCategory::Generation,
-            Commands::QualityGate { .. } | Commands::QualityGates { .. } | Commands::Report { .. } | Commands::ValidateDocs(_) => CommandCategory::Analysis,
+            Commands::QualityGate { .. } | Commands::QualityGates { .. } | Commands::Report { .. } | Commands::ValidateDocs(_) | Commands::Embed(_) | Commands::Semantic(_) => CommandCategory::Analysis,
             Commands::Serve { .. }
             | Commands::Cache { .. }
             | Commands::Memory { .. }
@@ -1926,7 +1929,10 @@ impl CliAdapter {
             | AnalyzeCommands::AssemblyScript { .. }
             | AnalyzeCommands::WebAssembly { .. }
             | AnalyzeCommands::Wasm { .. }
-            | AnalyzeCommands::Mutate { .. } => AnalyzeCommandCategory::Specialized,
+            | AnalyzeCommands::Mutate { .. }
+            | AnalyzeCommands::Cluster { .. } // PMAT-SEARCH-011
+            | AnalyzeCommands::Topics { .. } // PMAT-SEARCH-011
+            => AnalyzeCommandCategory::Specialized,
 
             #[cfg(feature = "deep-wasm")]
             AnalyzeCommands::DeepWasm { .. } => AnalyzeCommandCategory::Specialized,
