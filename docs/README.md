@@ -27,6 +27,7 @@ Welcome to the PMAT (Pragmatic AI MCP Agent Toolkit) documentation.
 - **[features/](./features/)** - Feature documentation
   - [README.md](./features/README.md) - Feature overview
   - **[SCAFFOLDING-AND-MAINTENANCE.md](./features/SCAFFOLDING-AND-MAINTENANCE.md)** - **🆕 v2.139.0** Project Scaffolding & Maintenance System (Complete Guide)
+  - **[SEMANTIC-SEARCH-GUIDE.md](./SEMANTIC-SEARCH-GUIDE.md)** - **🆕 v2.159.0** Semantic Code Search - Complete User Guide
   - [claude-agent-sdk-guide.md](./claude-agent-sdk-guide.md) - Claude Agent SDK Integration Guide
   - [deep-wasm-usage.md](./deep-wasm-usage.md) - Deep WASM Pipeline Inspection (Phases 1-2.7 Complete)
   - [mutation-testing.md](./mutation-testing.md) - Mutation Testing with ML Prediction
@@ -121,6 +122,28 @@ Complete Rust/Ruchy → WebAssembly analysis pipeline with bidirectional tracing
 - 🎭 Ruchy language support for actor systems
 - 📋 Phase 3 scoped: Runtime analysis, profiling, security scanning
 
+### Semantic Code Search ✨ NEW (v2.159.0)
+**AI-powered code search using natural language and vector embeddings.** **[Full Guide →](./SEMANTIC-SEARCH-GUIDE.md)**
+
+- 🔍 **Natural language search** - Find code by meaning: "authentication middleware"
+- 🧠 **Hybrid search** - Combines keyword + semantic understanding (Reciprocal Rank Fusion)
+- 🔎 **Find similar code** - Discover duplicates and refactoring opportunities
+- 🗂️ **Auto-clustering** - Group code by semantic similarity (K-means, hierarchical, DBSCAN)
+- 📊 **Topic extraction** - Identify architectural patterns and themes
+- 🤖 **MCP integration** - 4 tools for AI assistants (Claude Code, Cursor)
+- 🌐 **Multi-language** - Rust, TypeScript, Python, C/C++, Go
+- ⚡ **Fast** - <150ms hybrid search on 10K chunks
+- 💰 **Low cost** - $0.01-$0.05 for most codebases (one-time)
+- 📦 **Published** - Available on crates.io v2.159.0
+
+**Quick Start:**
+```bash
+export OPENAI_API_KEY="sk-..."
+pmat embed sync .
+pmat semantic search "authentication logic"
+pmat analyze cluster --method kmeans --k 5
+```
+
 ### Mutation Testing Engine
 Empirical mutation testing with actual test execution and optional ML prediction. **[Full Guide →](./mutation-testing.md)**
 
@@ -182,4 +205,4 @@ Empirical mutation testing with actual test execution and optional ML prediction
 
 ---
 
-*Last Updated: 2025-10-09 | Version: 2.154.0*
+*Last Updated: 2025-10-10 | Version: 2.159.0*
