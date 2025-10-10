@@ -36,6 +36,9 @@ pub struct PmatConfig {
     /// Telemetry settings
     pub telemetry: TelemetryConfig,
 
+    /// Semantic search configuration (PMAT-SEARCH-011, PMAT-SEARCH-012)
+    pub semantic: SemanticConfig,
+
     /// Custom user configurations
     pub custom: HashMap<String, serde_json::Value>,
 }
@@ -233,6 +236,59 @@ pub struct TelemetryConfig {
     pub export_format: String,
 }
 
+/// Semantic search configuration (PMAT-SEARCH-011, PMAT-SEARCH-012)
+///
+/// Configuration for semantic search, code embeddings, and AI-powered code analysis.
+/// Requires OpenAI API key for embedding generation.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SemanticConfig {
+    /// Enable semantic search features
+    pub enabled: bool,
+
+    /// OpenAI API key for embeddings (can also be set via OPENAI_API_KEY env var)
+    /// Takes precedence: CLI flag > config file > env var
+    pub openai_api_key: Option<String>,
+
+    /// Path to vector database file (default: ~/.pmat/embeddings.db)
+    pub vector_db_path: Option<String>,
+
+    /// Workspace path for code indexing (default: current directory)
+    pub workspace_path: Option<PathBuf>,
+
+    /// OpenAI embedding model to use
+    pub embedding_model: String,
+
+    /// Embedding dimensions (1536 for text-embedding-3-small)
+    pub embedding_dimensions: usize,
+
+    /// Default search mode: keyword, vector, or hybrid
+    pub default_search_mode: String,
+
+    /// Default number of search results
+    pub default_limit: usize,
+
+    /// Auto-sync embeddings on file changes
+    pub auto_sync: bool,
+
+    /// Sync interval in seconds (if auto_sync is enabled)
+    pub sync_interval_seconds: u64,
+
+    /// Maximum chunk size for code embeddings (in tokens)
+    pub max_chunk_tokens: usize,
+
+    /// Supported languages for semantic analysis
+    pub supported_languages: Vec<String>,
+
+    /// Enable MCP semantic tools
+    pub enable_mcp_tools: bool,
+
+    /// Cache embedding results (for performance)
+    pub enable_cache: bool,
+
+    /// Cache expiration in days
+    pub cache_expiration_days: u32,
+}
+
 /// Configuration service providing centralized config management
 pub struct ConfigurationService {
     config: Arc<RwLock<PmatConfig>>,
@@ -388,6 +444,56 @@ impl ConfigurationService {
         Ok(self.get_config()?.telemetry)
     }
 
+    /// Get semantic search configuration (PMAT-SEARCH-011, PMAT-SEARCH-012)
+    pub fn get_semantic_config(&self) -> Result<SemanticConfig> {
+        Ok(self.get_config()?.semantic)
+    }
+
+    /// Get semantic configuration with environment variable fallbacks
+    ///
+    /// Priority order:
+    /// 1. Config file values (if explicitly set)
+    /// 2. Environment variables
+    /// 3. Defaults
+    ///
+    /// Environment variables:
+    /// - OPENAI_API_KEY: API key for OpenAI embeddings
+    /// - PMAT_VECTOR_DB_PATH: Path to vector database
+    /// - PMAT_WORKSPACE: Workspace path for code indexing
+    pub fn get_semantic_config_with_env_fallback(&self) -> Result<SemanticConfig> {
+        let mut config = self.get_semantic_config()?;
+
+        // API key fallback: config file > env var
+        if config.openai_api_key.is_none() {
+            config.openai_api_key = std::env::var("OPENAI_API_KEY").ok();
+        }
+
+        // Vector DB path fallback: config file > env var > default
+        if config.vector_db_path.is_none() {
+            config.vector_db_path = std::env::var("PMAT_VECTOR_DB_PATH")
+                .ok()
+                .or_else(|| {
+                    // Default: ~/.pmat/embeddings.db
+                    dirs::home_dir().map(|home| {
+                        home.join(".pmat")
+                            .join("embeddings.db")
+                            .to_string_lossy()
+                            .to_string()
+                    })
+                });
+        }
+
+        // Workspace path fallback: config file > env var > current directory
+        if config.workspace_path.is_none() {
+            config.workspace_path = std::env::var("PMAT_WORKSPACE")
+                .ok()
+                .map(PathBuf::from)
+                .or_else(|| std::env::current_dir().ok());
+        }
+
+        Ok(config)
+    }
+
     /// Notify all watchers of configuration changes
     fn notify_watchers(&self, config: &PmatConfig) -> Result<()> {
         let watchers = self
@@ -486,6 +592,30 @@ impl ConfigurationService {
                 enable_export: false,
                 export_format: "json".to_string(),
             },
+            semantic: SemanticConfig {
+                enabled: false, // Disabled by default (requires API key)
+                openai_api_key: None, // Can be set via OPENAI_API_KEY env var
+                vector_db_path: None, // Defaults to ~/.pmat/embeddings.db
+                workspace_path: None, // Defaults to current directory
+                embedding_model: "text-embedding-3-small".to_string(),
+                embedding_dimensions: 1536,
+                default_search_mode: "hybrid".to_string(),
+                default_limit: 10,
+                auto_sync: false,
+                sync_interval_seconds: 300, // 5 minutes
+                max_chunk_tokens: 8000,
+                supported_languages: vec![
+                    "rust".to_string(),
+                    "typescript".to_string(),
+                    "python".to_string(),
+                    "c".to_string(),
+                    "cpp".to_string(),
+                    "go".to_string(),
+                ],
+                enable_mcp_tools: true,
+                enable_cache: true,
+                cache_expiration_days: 7,
+            },
             custom: HashMap::new(),
         }
     }
@@ -540,7 +670,7 @@ impl ConfigurationService {
             "Configuration service: {} (file: {}, sections: {})",
             if config_exists { "loaded" } else { "default" },
             self.config_path.display(),
-            7 // Number of main config sections
+            8 // Number of main config sections (system, quality, analysis, performance, mcp, roadmap, telemetry, semantic)
         ))
     }
 
