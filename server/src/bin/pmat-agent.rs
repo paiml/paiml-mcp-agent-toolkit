@@ -189,15 +189,11 @@ async fn serve_mcp(
     stdio: bool,
     max_connections: usize,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let config = ServerConfig {
-        name: "PMAT Agent Server".to_string(),
-        version: env!("CARGO_PKG_VERSION").to_string(),
-        bind_address: bind.clone(),
-        unix_socket: socket.clone(),
-        max_connections,
-        request_timeout: Duration::from_secs(30),
-        enable_logging: true,
-    };
+    let mut config = ServerConfig::default();
+    config.name = "PMAT Agent Server".to_string();
+    config.bind_address = bind.clone();
+    config.unix_socket = socket.clone();
+    config.max_connections = max_connections;
 
     let server = McpServer::new(registry, config)?;
     server.register_defaults().await?;
