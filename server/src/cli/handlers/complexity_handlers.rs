@@ -516,7 +516,7 @@ pub async fn handle_analyze_complexity(
     let original_file_count = file_metrics.len();
 
     // Apply filtering and aggregation
-    let filtered_count =
+    let _filtered_count =
         apply_complexity_filters(&mut file_metrics, max_cyclomatic, max_cognitive);
     apply_top_files_limit(&mut file_metrics, config.top_files);
 
