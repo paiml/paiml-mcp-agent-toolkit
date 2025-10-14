@@ -207,7 +207,7 @@ pub enum Commands {
     },
 
     /// Analyze code metrics and patterns
-    #[command(subcommand)]
+    #[command(subcommand, visible_aliases = &["a", "an"])]
     Analyze(AnalyzeCommands),
 
     /// Quality-Driven Development (QDD) tool for creating and refactoring code with guaranteed quality
@@ -825,6 +825,7 @@ pub enum TdgCommand {
 #[cfg_attr(test, derive(Debug))]
 pub enum AnalyzeCommands {
     /// Analyze code churn (change frequency)
+    #[command(visible_aliases = &["ch"])]
     Churn {
         /// Project path to analyze
         #[arg(short = 'p', long, default_value = ".")]
@@ -861,6 +862,7 @@ pub enum AnalyzeCommands {
     /// 1. Find hotspots: pmat analyze complexity --top-files 5 --format json
     /// 2. Analyze specific files: pmat analyze complexity --files src/main.rs,src/lib.rs
     /// 3. Chain with other tools using JSON output for AI agent workflows
+    #[command(visible_aliases = &["cx", "complex"])]
     Complexity {
         /// Path to analyze (file or directory)
         #[arg(short = 'p', long, default_value = ".")]
@@ -928,6 +930,7 @@ pub enum AnalyzeCommands {
     },
 
     /// Generate dependency graphs using Mermaid
+    #[command(visible_aliases = &["dep", "graph"])]
     Dag {
         /// Type of dependency graph to generate
         #[arg(long, value_enum, default_value = "full-dependency")]
@@ -971,7 +974,7 @@ pub enum AnalyzeCommands {
     },
 
     /// Analyze dead and unreachable code
-    #[command(name = "dead-code")]
+    #[command(name = "dead-code", visible_aliases = &["dead", "dc"])]
     DeadCode {
         /// Path to analyze (defaults to current directory)
         #[arg(long, short = 'p', default_value = ".")]
@@ -1027,7 +1030,7 @@ pub enum AnalyzeCommands {
     },
 
     /// Analyze Self-Admitted Technical Debt (SATD) in comments
-    #[command(name = "satd")]
+    #[command(name = "satd", visible_aliases = &["debt", "td", "tech-debt"])]
     Satd {
         /// Path to analyze (defaults to current directory)
         #[arg(long, short = 'p', default_value = ".")]
@@ -1091,7 +1094,7 @@ pub enum AnalyzeCommands {
     },
 
     /// Generate comprehensive deep context analysis with defect detection
-    #[command(name = "deep-context")]
+    #[command(name = "deep-context", visible_aliases = &["context", "ctx", "deep"])]
     DeepContext {
         /// Project path to analyze (defaults to current directory)
         #[arg(long, short = 'p', default_value = ".")]
