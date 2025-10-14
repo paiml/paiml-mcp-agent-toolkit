@@ -4660,7 +4660,7 @@ dependencies = [
 
 [[package]]
 name = "pmat"
-version = "2.158.0"
+version = "2.160.0"
 dependencies = [
  "actix",
  "actix-rt",
