@@ -134,6 +134,7 @@ pub enum Commands {
     },
 
     /// Scaffold complete project or agent
+    #[command(visible_aliases = &["sc"])]
     Scaffold {
         /// Scaffold subcommand
         #[command(subcommand)]
@@ -141,6 +142,7 @@ pub enum Commands {
     },
 
     /// List available templates
+    #[command(visible_aliases = &["ls"])]
     List {
         /// Filter by toolchain
         #[arg(long)]
@@ -156,6 +158,7 @@ pub enum Commands {
     },
 
     /// Search templates
+    #[command(visible_aliases = &["find", "s"])]
     Search {
         /// Search query
         query: String,
@@ -180,6 +183,7 @@ pub enum Commands {
     },
 
     /// Generate project context (AST analysis)
+    #[command(visible_aliases = &["ctx", "ast"])]
     Context {
         /// Target toolchain (auto-detected if not specified)
         #[arg(long, short = 't')]
@@ -211,10 +215,11 @@ pub enum Commands {
     Analyze(AnalyzeCommands),
 
     /// Quality-Driven Development (QDD) tool for creating and refactoring code with guaranteed quality
-    #[command(subcommand)]
+    #[command(subcommand, visible_aliases = &["q"])]
     Qdd(QddCommands),
 
     /// Run interactive demo of all capabilities
+    #[command(visible_aliases = &["d", "show"])]
     Demo {
         /// Repository path (defaults to current directory)
         #[arg(short, long)]
@@ -286,9 +291,11 @@ pub enum Commands {
     },
 
     /// Validate documentation links
+    #[command(visible_aliases = &["docs", "doc"])]
     ValidateDocs(crate::cli::handlers::ValidateDocsCmd),
 
     /// Run quality gate checks on the codebase
+    #[command(visible_aliases = &["check", "c", "verify", "gate"])]
     QualityGate {
         /// Project path to analyze (defaults to current directory)
         #[arg(short = 'p', long, default_value = ".")]
@@ -336,6 +343,7 @@ pub enum Commands {
     },
 
     /// Generate enhanced analysis reports
+    #[command(visible_aliases = &["r", "rep"])]
     Report {
         /// Project path to analyze (defaults to current directory)
         #[arg(short = 'p', long, default_value = ".")]
@@ -387,6 +395,7 @@ pub enum Commands {
     },
 
     /// Start HTTP API server with WebSocket support
+    #[command(visible_aliases = &["server", "api"])]
     Serve {
         /// Port to bind the server to
         #[arg(long, default_value_t = 8080)]
@@ -406,18 +415,19 @@ pub enum Commands {
     },
 
     /// Run self-diagnostics to verify all features are working
+    #[command(visible_aliases = &["diag", "doctor"])]
     Diagnose(DiagnoseArgs),
 
     /// Enforce extreme quality standards using state machine
-    #[command(subcommand)]
+    #[command(subcommand, visible_aliases = &["enf"])]
     Enforce(EnforceCommands),
 
     /// Refactor code with real-time analysis or interactive mode
-    #[command(subcommand)]
+    #[command(subcommand, visible_aliases = &["ref", "rf"])]
     Refactor(RefactorCommands),
 
     /// Roadmap management with PDMT todos and quality gates
-    #[command(subcommand)]
+    #[command(subcommand, visible_aliases = &["road", "rm"])]
     Roadmap(RoadmapCommands),
 
     /// Performance testing per SPECIFICATION.md Section 30
@@ -509,6 +519,7 @@ pub enum Commands {
     },
 
     /// Start Claude Code background agent for continuous quality monitoring
+    #[command(visible_aliases = &["ag"])]
     Agent {
         /// Agent mode subcommand
         #[command(subcommand)]
@@ -516,6 +527,7 @@ pub enum Commands {
     },
 
     /// Grade technical debt and code quality (TDG - Technical Debt Grading)
+    #[command(visible_aliases = &["grade", "debt-grade"])]
     Tdg {
         /// File or directory to analyze
         #[arg(default_value = ".")]
@@ -551,7 +563,7 @@ pub enum Commands {
     },
 
     /// Run quality gates on the current project (TICKET-PMAT-5023, TICKET-PMAT-5024)
-    #[command(name = "quality-gates")]
+    #[command(name = "quality-gates", visible_aliases = &["gates", "qg"])]
     QualityGates {
         /// Quality gates subcommand
         #[command(subcommand)]
@@ -575,6 +587,7 @@ pub enum Commands {
     },
 
     /// Project maintenance commands (TICKET-PMAT-5032, TICKET-PMAT-5033)
+    #[command(visible_aliases = &["maint", "m"])]
     Maintain {
         /// Maintain subcommand
         #[command(subcommand)]
@@ -582,15 +595,15 @@ pub enum Commands {
     },
 
     /// Pre-commit hook management (TICKET-PMAT-5034)
-    #[command(subcommand)]
+    #[command(subcommand, visible_aliases = &["hook", "h"])]
     Hooks(HooksCommands),
 
     /// Manage semantic search embeddings (PMAT-SEARCH-011)
-    #[command(subcommand)]
+    #[command(subcommand, visible_aliases = &["emb"])]
     Embed(EmbedCommands),
 
     /// Semantic code search (PMAT-SEARCH-011)
-    #[command(subcommand)]
+    #[command(subcommand, visible_aliases = &["search", "find-code"])]
     Semantic(SemanticCommands),
 }
 
