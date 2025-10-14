@@ -164,22 +164,41 @@ async fn analyze_project(
 ///
 /// Filters files to only include those with functions exceeding the specified
 /// cyclomatic or cognitive complexity thresholds.
+///
+/// Returns the count of files that were filtered out for better UX reporting.
 fn apply_complexity_filters(
     file_metrics: &mut Vec<crate::services::complexity::FileComplexityMetrics>,
     max_cyclomatic: Option<u16>,
     max_cognitive: Option<u16>,
-) {
-    if max_cyclomatic.is_some() || max_cognitive.is_some() {
-        file_metrics.retain(|file| {
-            file.functions.iter().any(|func| {
-                let exceeds_cyclomatic =
-                    max_cyclomatic.is_some_and(|threshold| func.metrics.cyclomatic > threshold);
-                let exceeds_cognitive =
-                    max_cognitive.is_some_and(|threshold| func.metrics.cognitive > threshold);
-                exceeds_cyclomatic || exceeds_cognitive
-            })
-        });
+) -> usize {
+    if max_cyclomatic.is_none() && max_cognitive.is_none() {
+        return 0;
     }
+
+    let original_count = file_metrics.len();
+
+    file_metrics.retain(|file| {
+        file.functions.iter().any(|func| {
+            let exceeds_cyclomatic =
+                max_cyclomatic.is_some_and(|threshold| func.metrics.cyclomatic > threshold);
+            let exceeds_cognitive =
+                max_cognitive.is_some_and(|threshold| func.metrics.cognitive > threshold);
+            exceeds_cyclomatic || exceeds_cognitive
+        })
+    });
+
+    let filtered_count = original_count - file_metrics.len();
+
+    if filtered_count > 0 {
+        let cyc_threshold = max_cyclomatic.unwrap_or(u16::MAX);
+        let cog_threshold = max_cognitive.unwrap_or(u16::MAX);
+        eprintln!(
+            "ℹ️  Filtered {} file(s) with no functions exceeding thresholds (cyclomatic > {}, cognitive > {})",
+            filtered_count, cyc_threshold, cog_threshold
+        );
+    }
+
+    filtered_count
 }
 
 /// Apply top files limit by sorting and truncating results
@@ -493,12 +512,36 @@ pub async fn handle_analyze_complexity(
 
     let mut file_metrics = analyze_files_by_mode(file, files, &config).await?;
 
+    // Track original count before filtering for better UX
+    let original_file_count = file_metrics.len();
+
     // Apply filtering and aggregation
-    apply_complexity_filters(&mut file_metrics, max_cyclomatic, max_cognitive);
+    let filtered_count =
+        apply_complexity_filters(&mut file_metrics, max_cyclomatic, max_cognitive);
     apply_top_files_limit(&mut file_metrics, config.top_files);
 
-    let summary =
+    // Check if all files were filtered out and provide helpful message
+    if original_file_count > 0 && file_metrics.is_empty() {
+        eprintln!("\n⚠️  Warning: All {} file(s) were filtered out", original_file_count);
+        eprintln!("   No functions found exceeding the complexity thresholds:");
+        if let Some(cyc) = max_cyclomatic {
+            eprintln!("   - Cyclomatic complexity > {}", cyc);
+        }
+        if let Some(cog) = max_cognitive {
+            eprintln!("   - Cognitive complexity > {}", cog);
+        }
+        eprintln!("\n💡 Suggestions:");
+        eprintln!("   1. Lower the thresholds using --max-cyclomatic or --max-cognitive");
+        eprintln!("   2. Remove thresholds to see all files");
+        eprintln!("   3. Use --verbose to see detailed analysis of all files\n");
+    }
+
+    // Create summary with original file count for accurate reporting
+    let mut summary =
         aggregate_results_with_thresholds(file_metrics.clone(), max_cyclomatic, max_cognitive);
+
+    // Fix: Update summary to reflect actual files analyzed before filtering
+    summary.summary.total_files = original_file_count;
 
     // Format and write output
     format_and_write_output(&summary, &file_metrics, format, output, top_files).await?;
@@ -522,14 +565,37 @@ async fn analyze_files_by_mode(
 ) -> Result<Vec<crate::services::complexity::FileComplexityMetrics>> {
     eprintln!("⏰ Analysis timeout set to {} seconds", config.timeout);
 
-    if let Some(single_file) = file {
+    let result = if let Some(single_file) = file {
         analyze_single_file(&single_file, config).await
     } else if !files.is_empty() {
         analyze_multiple_files(&files, config).await
     } else {
         let detected_toolchain = config.detect_toolchain();
         analyze_project(detected_toolchain, config).await
+    };
+
+    // Provide feedback on analysis results
+    match &result {
+        Ok(metrics) if metrics.is_empty() => {
+            eprintln!("\n⚠️  Warning: No files were found or analyzed");
+            eprintln!("   Possible reasons:");
+            eprintln!("   - Directory is empty or contains no supported file types");
+            eprintln!("   - Files are excluded by .gitignore patterns");
+            eprintln!("   - Include patterns don't match any files");
+            if !config.include.is_empty() {
+                eprintln!("   - Current include patterns: {:?}", config.include);
+            }
+            eprintln!();
+        }
+        Ok(metrics) => {
+            eprintln!("✅ Successfully analyzed {} file(s)", metrics.len());
+        }
+        Err(_) => {
+            // Error will be returned and handled by caller
+        }
     }
+
+    result
 }
 
 /// Check for complexity violations and exit if required
