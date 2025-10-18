@@ -37,6 +37,8 @@ pub struct PmatConfig {
     pub telemetry: TelemetryConfig,
 
     /// Semantic search configuration (PMAT-SEARCH-011, PMAT-SEARCH-012)
+    /// Added in Sprint 29 - defaults to disabled for backward compatibility
+    #[serde(default)]
     pub semantic: SemanticConfig,
 
     /// Custom user configurations
@@ -240,8 +242,9 @@ pub struct TelemetryConfig {
 ///
 /// Configuration for semantic search, code embeddings, and AI-powered code analysis.
 /// Requires OpenAI API key for embedding generation.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct SemanticConfig {
+    #[serde(default)]
     /// Enable semantic search features
     pub enabled: bool,
 
