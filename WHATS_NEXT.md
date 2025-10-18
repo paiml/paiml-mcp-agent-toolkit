@@ -1,8 +1,8 @@
 # What's Next: Post v2.163.0 Roadmap
 
-**Last Updated:** October 18, 2025 (Session: Sprint 39 - Quality & Coverage Enhancement)
+**Last Updated:** October 18, 2025 (Session: Sprint 39b - Re-enabling Ignored Tests)
 **Current Version:** v2.163.0
-**Status:** 🟡 SPRINT 39 IN PROGRESS (0%)
+**Status:** 🟡 SPRINT 39b IN PROGRESS (Phase 1: 6 tests re-enabled)
 
 **Recent Achievements:**
 - ✅ Sprint 35: Documentation Accuracy Enforcement (specifications + automation)
@@ -39,6 +39,48 @@
 - Test coverage: 100% for new parsers
 - Commits: 7 (4 feature/fix, 3 documentation)
 - Quality gates: 100% passing ✅
+
+---
+
+## Sprint 39b - IN PROGRESS (October 18, 2025)
+
+**Goal**: Re-enable ignored tests by fixing root causes (Priority 3 from Sprint 39)
+
+**Status**: Phase 1 COMPLETE - 6 tests re-enabled (69 → 63 ignored tests)
+
+**Tests Re-enabled**:
+1. ✅ `services::languages::wasm::tests::test_complex_wat_control_flow`
+2. ✅ `services::languages::wasm::tests::test_wasm_complexity_analysis`
+3. ✅ `services::languages::wasm::tests::test_wat_text_analysis`
+4. ✅ `tdg::web_dashboard::tests::test_dashboard_state_creation`
+5. ✅ `tdg::web_dashboard::tests::test_metrics_update`
+6. ✅ `tdg::web_dashboard::tests::test_router_creation`
+
+**Root Causes Fixed**:
+1. **WASM Function Detection** (server/src/services/languages/wasm.rs:77):
+   - Changed `contains("(func ")` → `starts_with("(func ")`
+   - Prevented false matches on export statements like `(export "fibonacci" (func $fibonacci))`
+   - Fixed `test_complex_wat_control_flow` (expected 1 function, was finding 2)
+
+2. **WASM Stack Analysis** (server/src/services/languages/wasm.rs:167):
+   - Added support for `0x20` opcode (local.get) in `analyze_stack_complexity()`
+   - Previously only handled i32.const (0x41) and i64.const (0x42)
+   - Fixed `test_wasm_complexity_analysis` (was returning 0 stack depth)
+
+3. **Web Dashboard Tests**:
+   - Tests were already passing, just needed `#[ignore]` attribute removed
+   - No code changes required
+
+**Progress Metrics**:
+- Tests re-enabled: 6 (9% reduction in ignored tests)
+- Root causes fixed: 2 systemic issues
+- Code changes: 2 files, 5 lines modified
+- Time spent: ~1.5 hours
+
+**Next Steps (Phase 2)**:
+- Continue testing remaining 63 ignored tests
+- Fix additional systemic issues where possible
+- Document tests that require infrastructure changes (e.g., binary builds)
 
 ---
 
