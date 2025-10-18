@@ -920,6 +920,69 @@ impl SimpleDeepContext {
                 }
                 Err(_) => (0, 0, 0.0),
             }
+        } else if extension == "swift" {
+            info!("🚀 Using Swift AST analysis for {}", file_path.display());
+            // Use Swift AST analysis
+            use tokio::fs;
+            match fs::read_to_string(file_path).await {
+                Ok(content) => {
+                    #[cfg(feature = "swift-ast")]
+                    {
+                        use crate::services::context::AstItem;
+                        use crate::services::languages::swift::SwiftSourceAnalyzer;
+
+                        let analyzer = SwiftSourceAnalyzer::new(file_path);
+                        match analyzer.analyze_swift_source(&content) {
+                            Ok(items) => {
+                                info!("🔍 Extracted {} AST items from Swift source", items.len());
+
+                                // Count functions from the items
+                                let function_count = items
+                                    .iter()
+                                    .filter(|item| {
+                                        matches!(item, AstItem::Function { .. })
+                                    })
+                                    .count();
+
+                                info!("📊 Found {} functions in Swift source", function_count);
+
+                                if function_count == 0 {
+                                    (0, 0, 0.0)
+                                } else {
+                                    // For Swift, estimate complexity as 2.5 average
+                                    // This will be improved when full complexity analysis is added
+                                    let avg_complexity = 2.5;
+                                    let high_complexity_functions = 0; // Conservative estimate
+
+                                    (function_count, high_complexity_functions, avg_complexity)
+                                }
+                            }
+                            Err(_) => {
+                                // Fall back to heuristic analysis for Swift
+                                match self
+                                    .analyze_file_complexity_heuristic(file_path, extension)
+                                    .await
+                                {
+                                    Ok((count, high, avg)) => (count, high, avg),
+                                    Err(_) => (0, 0, 0.0),
+                                }
+                            }
+                        }
+                    }
+                    #[cfg(not(feature = "swift-ast"))]
+                    {
+                        // Fall back to heuristic analysis when swift-ast feature is not enabled
+                        match self
+                            .analyze_file_complexity_heuristic(file_path, extension)
+                            .await
+                        {
+                            Ok((count, high, avg)) => (count, high, avg),
+                            Err(_) => (0, 0, 0.0),
+                        }
+                    }
+                }
+                Err(_) => (0, 0, 0.0),
+            }
         } else {
             // For other non-Rust files, use heuristic-based analysis
             // This provides basic metrics until full AST support is added for each language
@@ -1147,6 +1210,33 @@ impl SimpleDeepContext {
                 }
             }
             #[cfg(not(feature = "php-ast"))]
+            vec![]
+        } else if extension == "swift" {
+            // For Swift files, extract function names from AST
+            #[cfg(feature = "swift-ast")]
+            {
+                use crate::services::context::AstItem;
+                use crate::services::languages::swift::SwiftSourceAnalyzer;
+                use tokio::fs;
+
+                match fs::read_to_string(file_path).await {
+                    Ok(content) => {
+                        let analyzer = SwiftSourceAnalyzer::new(file_path);
+                        match analyzer.analyze_swift_source(&content) {
+                            Ok(items) => items
+                                .iter()
+                                .filter_map(|item| match item {
+                                    AstItem::Function { name, .. } => Some(name.clone()),
+                                    _ => None,
+                                })
+                                .collect(),
+                            Err(_) => vec![],
+                        }
+                    }
+                    Err(_) => vec![],
+                }
+            }
+            #[cfg(not(feature = "swift-ast"))]
             vec![]
         } else {
             // For other languages, extract function names using regex patterns

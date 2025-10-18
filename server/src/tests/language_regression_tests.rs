@@ -420,10 +420,8 @@ class Calculator {
 }
 
 /// Regression Test: Swift language support in deep_context pipeline
-/// NOTE: Ignored until full Swift AST parser is implemented
-/// Files are discovered but functions are not yet extracted
+/// Swift AST parser is implemented and integrated into the deep_context pipeline
 #[tokio::test]
-#[ignore]
 async fn test_swift_deep_context_analysis() {
     // ARRANGE: Create Swift file with known complexity
     let temp_dir = TempDir::new().unwrap();
