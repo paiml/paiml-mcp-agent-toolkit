@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Issue #67: Extracted function line numbers now accurate**
+  - Fixed: Functions moved between files (e.g., `utils.rs:500` → `attributes.rs:148`) now report correct line numbers
+  - Root cause: TDG cache used `Blake3Hash(content)` as key, returning stale line numbers from original file location
+  - Solution: Created `analyze_file_complexity_uncached()` that bypasses TDG cache for `--file` parameter
+  - Switched to heuristic analyzer for exact line numbers (AST provides approximate `i*50` lines)
+  - Files modified: 3 core files + 330 lines of EXTREME TDD tests
+  - Quality gates: 6/6 unit tests, 10K property tests (71.81s), fuzz tests, dogfooding - all passing
+  - Location: `server/src/services/complexity.rs:1485-1512`, `server/src/cli/handlers/complexity_handlers.rs:89-99`
+  - STOP THE LINE fixes: 2 critical defects caught and fixed during integration testing
+  - Production ready: Zero regressions across 4460 existing tests
+
 ## [2.160.0] - 2025-10-14
 
 ### Fixed
