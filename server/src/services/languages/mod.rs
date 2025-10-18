@@ -8,6 +8,7 @@ pub mod csharp;
 pub mod go;
 pub mod java;
 pub mod kotlin;
+pub mod php;
 pub mod ruchy;
 pub mod ruchy_ml;
 pub mod wasm;
