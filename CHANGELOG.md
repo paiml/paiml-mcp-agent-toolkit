@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.162.0] - 2025-10-18
+
+### Fixed
+- **PMAT-BUG-001: TypeScript/JavaScript class methods now detected (EXTREME TDD validated)**
+  - Fixed: `pmat analyze complexity` returned `functions: 0` for TypeScript/JavaScript classes with methods
+  - Root cause: `JavaScriptAnalyzer` (regex-based) only detected `function name()` declarations, NOT class methods
+  - CLI execution path: `pmat analyze` → `analyze_with_heuristics()` → `JavaScriptAnalyzer` (NOT `EnhancedTypeScriptVisitor`)
+  - Unit test path used `EnhancedTypeScriptVisitor` (AST-based), which worked correctly - tests passed but CLI failed
+  - Solution: Enhanced `JavaScriptAnalyzer::extract_functions()` to detect:
+    - Class method declarations: `methodName(params) { }`
+    - Constructor methods: `constructor(params) { }`
+    - Static methods: `static methodName(params) { }`
+    - Async methods: `async methodName(params) { }`
+  - Implementation: Track class context using brace depth, qualify method names with `ClassName::methodName`
+  - Files modified: 1 core file (`language_analyzer.rs`) + 165 lines (93 implementation + 72 tests)
+  - EXTREME TDD quality gates (ALL PASSING):
+    - RED tests: 2/2 confirmed FAIL before fix (TypeScript + JavaScript)
+    - GREEN tests: 2/2 confirmed PASS after fix
+    - Property tests: 4 tests × 1000 iterations = 4,000+ test cases, ZERO failures
+    - Integration test: CLI binary verified detecting 5 methods in test file (vs 0 before)
+    - Zero regressions: 4,472 existing tests pass
+  - Location: `server/src/cli/language_analyzer.rs:142-309` (implementation), `:820-1075` (tests)
+  - Quality: Toyota Way Andon Cord - STOPPED pmat-book validation to fix critical bug
+  - Commit: `<pending>`
+
 ## [2.161.0] - 2025-10-18
 
 ### Fixed
