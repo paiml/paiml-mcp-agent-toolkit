@@ -1,8 +1,35 @@
 # PMAT Agent System Roadmap
 
+## 🛑 HOTFIX: Multi-Language File Extension Mapping Bug (v2.163.0)
+
+**Status**: 🔴 RED PHASE - ROOT CAUSE IDENTIFIED
+**Bug**: JavaScript, C, C++ files return 0 files when analyzing
+**Severity**: CRITICAL - Multiple languages completely broken
+**Discovery**: 2025-10-18, during pmat-book Chapter 13 validation (after v2.162.0 fix)
+**In Progress**: 2025-10-18 14:00 UTC
+**Ticket**: PMAT-BUG-002, PMAT-BUG-003, PMAT-BUG-004
+
+**Root Cause Analysis**:
+- **Problem**: `pmat analyze complexity` returns `total_files: 0` for JavaScript, C, C++ projects
+- **Root Cause**: `get_file_extensions()` in `analysis_utilities.rs:5995-6009` has incomplete toolchain mapping
+- **Code Path**:
+  1. `detect_primary_language()` correctly returns `"javascript"`, `"c"`, `"cpp"`
+  2. `get_file_extensions(Some("javascript"))` hits `Some(_) => vec!["rs"]` catchall case
+  3. Extensions filter looks for `.rs` files in JavaScript projects → 0 files found
+- **Evidence**:
+  - JavaScript: toolchain="javascript" → extensions=["rs"] → FAIL
+  - C: toolchain="c" → extensions=["rs"] → FAIL
+  - C++: toolchain="cpp" → extensions=["rs"] → FAIL
+  - TypeScript: toolchain="typescript" → extensions=["ts","tsx","js","jsx"] → WORKS ✅
+
+**Fix Required**:
+Add cases for "javascript", "c", "cpp", "c++", "go", "java", "kotlin", etc. to `get_file_extensions()`.
+
+---
+
 ## 🛑 HOTFIX: TypeScript/JavaScript Class Method Bug (v2.162.0)
 
-**Status**: ✅ FIXED - GREEN PHASE COMPLETE
+**Status**: ✅ FIXED - GREEN PHASE COMPLETE - RELEASED
 **Bug**: TypeScript/JavaScript class method extraction completely broken
 **Severity**: HIGH - Core functionality failure
 **Discovery**: 2025-10-18, during pmat-book Chapter 13 validation
@@ -16,7 +43,7 @@
 - **Tests**: 2 RED tests + 4 property tests (4000+ iterations) - ALL PASS
 - **Verification**: CLI binary tested, 5 methods detected (vs 0 before fix)
 - **Ticket**: PMAT-BUG-001
-- **Version**: v2.162.0 READY FOR RELEASE
+- **Version**: v2.162.0 RELEASED
 
 ---
 
