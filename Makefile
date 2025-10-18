@@ -402,7 +402,7 @@ run-mcp-test:
 
 
 # Build all projects (binaries only - no Docker)
-build: validate-docs validate-naming
+build: validate-docs validate-naming validate-book
 	@echo "🔨 Building server binary..."
 	@cargo build --manifest-path server/Cargo.toml
 	@echo ""
