@@ -794,6 +794,69 @@ impl SimpleDeepContext {
                 }
                 Err(_) => (0, 0, 0.0),
             }
+        } else if matches!(extension, "sh" | "bash") {
+            info!("🚀 Using Bash AST analysis for {}", file_path.display());
+            // Use Bash AST analysis
+            use tokio::fs;
+            match fs::read_to_string(file_path).await {
+                Ok(content) => {
+                    #[cfg(feature = "shell-ast")]
+                    {
+                        use crate::services::context::AstItem;
+                        use crate::services::languages::bash::BashScriptAnalyzer;
+
+                        let analyzer = BashScriptAnalyzer::new(file_path);
+                        match analyzer.analyze_bash_script(&content) {
+                            Ok(items) => {
+                                info!("🔍 Extracted {} AST items from Bash script", items.len());
+
+                                // Count functions from the items
+                                let function_count = items
+                                    .iter()
+                                    .filter(|item| {
+                                        matches!(item, AstItem::Function { .. })
+                                    })
+                                    .count();
+
+                                info!("📊 Found {} functions in Bash script", function_count);
+
+                                if function_count == 0 {
+                                    (0, 0, 0.0)
+                                } else {
+                                    // For Bash, estimate complexity as 2.0 average (simple scripts)
+                                    // This will be improved when full complexity analysis is added
+                                    let avg_complexity = 2.0;
+                                    let high_complexity_functions = 0; // Conservative estimate
+
+                                    (function_count, high_complexity_functions, avg_complexity)
+                                }
+                            }
+                            Err(_) => {
+                                // Fall back to heuristic analysis for Bash
+                                match self
+                                    .analyze_file_complexity_heuristic(file_path, extension)
+                                    .await
+                                {
+                                    Ok((count, high, avg)) => (count, high, avg),
+                                    Err(_) => (0, 0, 0.0),
+                                }
+                            }
+                        }
+                    }
+                    #[cfg(not(feature = "shell-ast"))]
+                    {
+                        // Fall back to heuristic analysis when shell-ast feature is not enabled
+                        match self
+                            .analyze_file_complexity_heuristic(file_path, extension)
+                            .await
+                        {
+                            Ok((count, high, avg)) => (count, high, avg),
+                            Err(_) => (0, 0, 0.0),
+                        }
+                    }
+                }
+                Err(_) => (0, 0, 0.0),
+            }
         } else {
             // For other non-Rust files, use heuristic-based analysis
             // This provides basic metrics until full AST support is added for each language
@@ -968,6 +1031,33 @@ impl SimpleDeepContext {
                     .await
                     .unwrap_or_default()
             }
+        } else if matches!(extension, "sh" | "bash") {
+            // For Bash files, extract function names from AST
+            #[cfg(feature = "shell-ast")]
+            {
+                use crate::services::context::AstItem;
+                use crate::services::languages::bash::BashScriptAnalyzer;
+                use tokio::fs;
+
+                match fs::read_to_string(file_path).await {
+                    Ok(content) => {
+                        let analyzer = BashScriptAnalyzer::new(file_path);
+                        match analyzer.analyze_bash_script(&content) {
+                            Ok(items) => items
+                                .iter()
+                                .filter_map(|item| match item {
+                                    AstItem::Function { name, .. } => Some(name.clone()),
+                                    _ => None,
+                                })
+                                .collect(),
+                            Err(_) => vec![],
+                        }
+                    }
+                    Err(_) => vec![],
+                }
+            }
+            #[cfg(not(feature = "shell-ast"))]
+            vec![]
         } else {
             // For other languages, extract function names using regex patterns
             self.extract_function_names_heuristic(file_path, extension)

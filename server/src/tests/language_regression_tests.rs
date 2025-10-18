@@ -209,10 +209,8 @@ public:
 }
 
 /// Regression Test: Bash language support in deep_context pipeline
-/// NOTE: Ignored until full Bash AST parser is implemented
-/// Files are discovered but functions are not yet extracted
+/// Uses BashScriptAnalyzer to extract function definitions
 #[tokio::test]
-#[ignore]
 async fn test_bash_deep_context_analysis() {
     // ARRANGE: Create Bash file with known complexity
     let temp_dir = TempDir::new().unwrap();
