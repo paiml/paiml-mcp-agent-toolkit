@@ -97,10 +97,8 @@ int sum_array(int *arr, int size) {
 }
 
 /// Regression Test: C++ language support in deep_context pipeline
-/// NOTE: Ignored until full C++ AST parser is implemented
-/// Files are discovered but function extraction needs improvement
+/// C++ function extraction improved to detect both top-level functions and class methods
 #[tokio::test]
-#[ignore]
 async fn test_cpp_deep_context_analysis() {
     // ARRANGE: Create C++ file with known complexity
     let temp_dir = TempDir::new().unwrap();

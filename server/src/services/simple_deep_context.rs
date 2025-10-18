@@ -1359,12 +1359,14 @@ impl SimpleDeepContext {
                 }
             }
             "c" | "cpp" | "cc" | "cxx" => {
-                // C/C++: return_type function_name(
-                if let Ok(re) = regex::Regex::new(r"(?m)^\w+(?:\s*\**)?\s+(\w+)\s*\([^)]*\)\s*\{") {
+                // C/C++: return_type function_name( - matches both top-level and class methods
+                if let Ok(re) = regex::Regex::new(r"(?m)^\s*\w+(?:\s*\**)?\s+(\w+)\s*\([^)]*\)\s*\{") {
                     for cap in re.captures_iter(&content) {
                         if let Some(name) = cap.get(1) {
                             let name_str = name.as_str();
-                            if name_str != "if" && name_str != "for" && name_str != "while" {
+                            // Filter out C++ keywords that look like functions
+                            if name_str != "if" && name_str != "for" && name_str != "while"
+                                && name_str != "switch" && name_str != "catch" {
                                 function_names.push(name_str.to_string());
                             }
                         }
