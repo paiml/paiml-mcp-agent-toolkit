@@ -432,6 +432,14 @@ impl CommandExecutor {
                 }
                 Ok(())
             }
+            Commands::ValidateReadme(cmd) => {
+                // Sprint 38: Hallucination detection (synchronous)
+                let exit_code = cmd.execute()?;
+                if exit_code != std::process::ExitCode::SUCCESS {
+                    std::process::exit(1);
+                }
+                Ok(())
+            }
             Commands::QualityGates {
                 command,
                 config,

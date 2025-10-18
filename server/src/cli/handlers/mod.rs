@@ -23,6 +23,7 @@ pub mod deep_wasm_handlers;
 pub mod mutation_handlers;
 pub mod demo_handlers;
 pub mod doc_validate_handlers;
+pub mod readme_validate_handlers; // Sprint 38: Hallucination detection CLI
 pub mod duplication_analysis;
 pub mod enforce_handlers;
 pub mod enhanced_reporting_handlers;
@@ -85,6 +86,7 @@ pub use configuration_handlers::handle_configuration;
 pub use defect_prediction_handler::handle_analyze_defect_prediction;
 pub use demo_handlers::{handle_demo, handle_quality_gate};
 pub use doc_validate_handlers::ValidateDocsCmd;
+pub use readme_validate_handlers::ValidateReadmeCmd; // Sprint 38: Hallucination detection CLI
 pub use duplication_analysis::handle_analyze_duplicates;
 pub use enforce_handlers::route_enforce_command;
 pub use generation_handlers::{
