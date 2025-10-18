@@ -72,7 +72,9 @@ impl WasmModuleAnalyzer {
         for line in wat_source.lines() {
             let trimmed = line.trim();
 
-            if trimmed.contains("(func ") {
+            // Match function definitions, not function references in exports
+            // Function definitions start with "(func " but exports have "(func $name)"
+            if trimmed.starts_with("(func ") {
                 let func_name = self.extract_wat_function_name(trimmed);
                 let qualified_name = self.get_qualified_name(&func_name);
 
@@ -162,10 +164,11 @@ impl WasmStackAnalyzer {
 
         for &byte in function_body {
             match byte {
+                0x20 => self.current_depth += 1, // local.get - pushes value to stack
                 0x41 => self.current_depth += 1, // i32.const
                 0x42 => self.current_depth += 1, // i64.const
                 0x6a => {
-                    // i32.add
+                    // i32.add - pops 2, pushes 1 (net -1)
                     if self.current_depth >= 2 {
                         self.current_depth -= 1;
                     }
@@ -368,7 +371,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn test_wat_text_analysis() {
         let analyzer = WasmModuleAnalyzer::new(Path::new("add.wasm"));
         let items = analyzer
@@ -393,7 +395,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn test_wasm_complexity_analysis() {
         let mut analyzer = WasmStackAnalyzer::new();
         let stack_complexity = analyzer
@@ -420,7 +421,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn test_complex_wat_control_flow() {
         let analyzer = WasmModuleAnalyzer::new(Path::new("fibonacci.wasm"));
         let items = analyzer
