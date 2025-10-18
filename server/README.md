@@ -131,6 +131,10 @@ pmat analyze satd
 # Validate documentation links
 pmat validate-docs
 
+# Validate README for hallucinations - NEW! (Sprint 38)
+pmat context --output deep_context.md --format llm-optimized
+pmat validate-readme --targets README.md --deep-context deep_context.md
+
 # Run quality gates
 pmat quality-gate --strict
 
