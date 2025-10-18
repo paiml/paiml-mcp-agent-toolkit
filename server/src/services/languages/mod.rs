@@ -11,6 +11,7 @@ pub mod kotlin;
 pub mod php;
 pub mod ruchy;
 pub mod ruchy_ml;
+pub mod swift;
 pub mod wasm;
 
 use std::path::Path;
