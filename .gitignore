@@ -173,3 +173,7 @@ quality_report_*.md
 proptest-regressions/
 *.profraw
 *.profdata
+
+# Mutation testing output
+mutants.out/
+mutants.out.old/
