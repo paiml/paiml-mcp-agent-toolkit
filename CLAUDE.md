@@ -39,6 +39,145 @@ Before committing any code that changes functionality or bumping version numbers
 
 ---
 
+## CRITICAL: Documentation Accuracy Enforcement (Zero Hallucinations)
+
+**MANDATORY FOR README.md, CLAUDE.md, GEMINI.md, AGENT.md:**
+
+All AI agent instruction files must be verified against the actual codebase to prevent hallucinations, broken references, and 404 errors.
+
+### Required Before Commits
+
+When modifying any of these documentation files:
+- `README.md`
+- `CLAUDE.md`
+- `GEMINI.md`
+- `AGENT.md`
+
+**Run the documentation accuracy validation:**
+
+```bash
+# Step 1: Generate deep context (caches codebase facts)
+pmat context --output deep_context.md --format llm-optimized
+
+# Step 2: Validate documentation accuracy
+pmat validate-readme \
+    --targets README.md CLAUDE.md GEMINI.md AGENT.md \
+    --deep-context deep_context.md \
+    --check-hallucinations \
+    --check-links \
+    --check-code-refs \
+    --similarity-threshold 0.7 \
+    --fail-on-error
+```
+
+### What Gets Validated
+
+#### 1. Hallucination Detection (Semantic Entropy)
+- **Capability Claims**: "PMAT can analyze X" → Verified against codebase
+- **API Claims**: "Function foo(args)" → Checked in AST
+- **Structure Claims**: "File X contains Y" → Cross-validated
+- **Language Support**: "Supports Ruby" → Verified in language_analyzer.rs
+
+#### 2. Broken Reference Detection
+- **File Paths**: All `path/to/file.rs` references validated
+- **Function Names**: All mentioned functions checked in deep context
+- **Module References**: All module/class references verified
+
+#### 3. 404 Detection
+- **External Links**: All HTTP/HTTPS URLs checked (status code validation)
+- **Internal Links**: All relative file links verified
+- **Anchors**: Section references validated
+
+### Scientific Foundation
+
+Based on peer-reviewed research (2024-2025):
+
+1. **Semantic Entropy** (Farquhar et al., Nature 2024)
+   - Detects confabulations via entropy-based uncertainty estimation
+   - Measures semantic consistency between claims and ground truth
+
+2. **Internal Representation Analysis** (IJCAI 2025)
+   - MIND framework for hallucination detection
+   - EigenScore for semantic information validation
+
+3. **Unified Detection Framework** (Complex & Intelligent Systems 2025)
+   - Output parser → Reference parser → Fact verifier → Mitigator
+   - End-to-end validation pipeline
+
+### Validation Process
+
+```mermaid
+graph LR
+    A[Documentation] --> B[Extract Claims]
+    B --> C[Build Code Facts DB]
+    C --> D[Semantic Similarity]
+    D --> E{Verify}
+    E -->|High Entropy| F[Unverified/Hallucination]
+    E -->|Low Entropy + High Similarity| G[Verified]
+    E -->|Low Similarity| H[Contradiction]
+```
+
+### Example Violations
+
+**FAIL - Hallucinated Capability:**
+```markdown
+❌ CLAUDE.md:42
+   Claim: "PMAT can compile Rust code to native binaries"
+   Status: Contradiction
+   Confidence: 0.12
+   Error: PMAT analyzes code but does not compile it
+```
+
+**FAIL - Broken Reference:**
+```markdown
+❌ README.md:100
+   Claim: "See server/src/compiler/optimizer.rs for details"
+   Status: NotFound
+   Error: File not found in codebase
+```
+
+**FAIL - 404 Error:**
+```markdown
+❌ AGENT.md:55
+   Claim: "[Documentation](https://example.com/nonexistent)"
+   Status: NotFound
+   Error: HTTP 404: https://example.com/nonexistent
+```
+
+**PASS - Verified Claim:**
+```markdown
+✅ README.md:10
+   Claim: "PMAT can analyze TypeScript complexity"
+   Status: Verified
+   Confidence: 0.94
+   Evidence: server/src/cli/language_analyzer.rs:150
+```
+
+### Rationale (Scientific Quality Assurance)
+
+- **Zero Hallucinations**: All claims verified against codebase reality
+- **Evidence-Based**: Semantic similarity + AST cross-validation
+- **Automated**: Pre-commit hooks prevent bad documentation from entering repo
+- **Peer-Reviewed Methods**: Based on Nature, IJCAI, ACM research (2024-2025)
+
+### Enforcement
+
+This is enforced by:
+1. **Pre-commit Hook**: Automatically runs on doc file changes
+2. **CI/CD Pipeline**: GitHub Actions validation
+3. **Quality Gate**: Part of `pmat quality-gate --checks docs-accuracy`
+
+**Bypass** (NOT RECOMMENDED):
+```bash
+git commit --no-verify
+```
+
+### Specification
+
+Full specification: `docs/specifications/documentation-accuracy-enforcement.md`
+
+---
+
 ## Coverage Tool Policy
 
 **IMPORTANT: We do NOT use cargo-tarpaulin for code coverage.**
