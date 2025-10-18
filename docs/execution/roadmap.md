@@ -1,6 +1,38 @@
 # PMAT Development Roadmap
 
-## 🏆 CURRENT STATUS: v2.154.0 - C++ MUTATION TESTING COMPLETE! 🎯
+## 🏆 CURRENT STATUS: v2.161.0 - ISSUE #67 FIXED WITH EXTREME TDD! 🎯
+
+### **SPRINT 110 ACHIEVEMENT: ACCURATE LINE NUMBERS FOR EXTRACTED FUNCTIONS (Issue #67)**
+- **Release**: v2.161.0
+- **Completion Date**: 2025-10-18
+- **Priority**: P0 - CRITICAL BUG FIX
+- **Status**: ✅ **COMPLETED - PRODUCTION READY (EXTREME TDD VALIDATED)**
+- **Issue**: Functions extracted from one file to another reported stale line numbers
+- **Root Cause**: TDG cache used Blake3Hash(content) as key, returning line numbers from original location
+- **Solution**:
+  - Created `analyze_file_complexity_uncached()` to bypass TDG cache for `--file` parameter
+  - Switched to heuristic analyzer for exact line numbers (AST provides approximate i*50)
+  - Fixed 2 critical defects discovered via STOP THE LINE principle
+- **EXTREME TDD Quality Gates**:
+  - ✅ Unit tests: 6/6 (100% pass rate)
+  - ✅ Property tests: 10,000 iterations, 71.81s, ZERO failures
+  - ✅ Fuzz tests: Empty files, single-line, 10K-line files validated
+  - ✅ Dogfooding: pmat analyzed itself (fix has cyclomatic complexity: 1)
+  - ✅ Zero regressions: 4,460 existing tests pass
+  - ✅ Boundary logic: Comprehensive verification confirms correct `>` operator
+- **Code Delivered**:
+  - 46 LOC core fix (3 files)
+  - 605 LOC test suite (unit + property + fuzz + integration)
+  - 1,658 LOC comprehensive documentation (5 quality reports)
+  - Total: 2,475 insertions across 14 files
+- **Methodology**: EXTREME TDD (RED → GREEN → REFACTOR) + Toyota Way (Jidoka, Andon Cord, Kaizen, Genbutsu)
+- **Documentation**:
+  - [ISSUE-67-EXTREME-TDD-QUALITY-REPORT.md](../../ISSUE-67-EXTREME-TDD-QUALITY-REPORT.md)
+  - [ISSUE-67-FINAL-REPORT.md](../../ISSUE-67-FINAL-REPORT.md)
+  - [ISSUE-67-FIX-SUMMARY.md](../../ISSUE-67-FIX-SUMMARY.md)
+- **Commit**: `9cbdd3c5`
+
+## 🏆 PREVIOUS ACHIEVEMENT: v2.154.0 - C++ MUTATION TESTING COMPLETE! 🎯
 
 ### **SPRINT 109 ACHIEVEMENT: C++ MUTATION TESTING (PMAT-7013)**
 - **Release**: v2.154.0
