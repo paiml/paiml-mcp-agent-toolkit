@@ -310,6 +310,32 @@ test result: ok. 6 passed; 0 failed; 0 ignored
 - Consider using `serial_test` crate for inherently serial tests
 
 **Estimated Time**: 2-4 hours
+**Actual Time**: ~65 minutes (well under estimate)
+
+**Status**: ✅ COMPLETE (October 18, 2025)
+
+**Solution Implemented**:
+Changed `TempDir::new()` to `TempDir::with_prefix("pmat_test_<lang>_")` for all 6 tests:
+- `test_c_deep_context_analysis`: prefix `"pmat_test_c_"`
+- `test_cpp_deep_context_analysis`: prefix `"pmat_test_cpp_"`
+- `test_bash_deep_context_analysis`: prefix `"pmat_test_bash_"`
+- `test_php_deep_context_analysis`: prefix `"pmat_test_php_"`
+- `test_swift_deep_context_analysis`: prefix `"pmat_test_swift_"`
+- `test_wasm_deep_context_analysis`: prefix `"pmat_test_wasm_"`
+
+**Test Results**:
+```
+BEFORE: Parallel: FAILED (2 passed, 4 failed)  Serial: PASSED (6 passed)
+AFTER:  Parallel: PASSED (6 passed) ✅         Serial: PASSED (6 passed) ✅
+```
+
+**Commit**: `45cd1400` - "fix: Resolve test isolation issue in language regression tests"
+
+**Impact**:
+- ✅ Zero regressions - all language regression tests passing
+- ✅ Proper test isolation with unique temp directories
+- ✅ Fixed critical test infrastructure issue
+- ✅ All tests functionally correct
 
 ---
 
@@ -579,12 +605,17 @@ pmat analyze satd --path server/src
 
 ---
 
-**Sprint 39 Status**: IN PROGRESS (Priority 1 analysis complete, awaiting fixes)
+**Sprint 39 Status**: IN PROGRESS (Priority 1 COMPLETE ✅, Priority 2 in progress)
+
+**Progress**:
+- ✅ Priority 1: Test isolation fixed (all 6 language regression tests passing in parallel)
+- 🟡 Priority 2: Known failing tests investigation started (1/14 analyzed)
+- ⚙️ Priority 3-7: Pending
 
 **Next Steps**:
-1. Fix test isolation issues (Priority 1)
-2. Fix known failing tests (Priority 2)
-3. Begin re-enabling ignored tests (Priority 3 Phase 1)
+1. ✅ Fix test isolation issues (Priority 1) - COMPLETE
+2. 🟡 Continue fixing known failing tests (Priority 2) - IN PROGRESS
+3. ⚙️ Begin re-enabling ignored tests (Priority 3 Phase 1) - PENDING
 
 ---
 
