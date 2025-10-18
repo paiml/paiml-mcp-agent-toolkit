@@ -1,11 +1,21 @@
 # PMAT Agent System Roadmap
 
-## 🎉 CURRENT STATUS: v2.161.0 - Sprint 32 In Progress! 📚✨
+## 🛑 STOP THE LINE: Critical Bug Detected (Sprint 32)
+
+**Status**: 🔴 ANDON CORD PULLED
+**Bug**: TypeScript/JavaScript class method extraction completely broken
+**Severity**: HIGH - Core functionality failure
+**Discovery**: 2025-10-18, during pmat-book Chapter 13 validation
+**Action**: Immediate fix required before continuing Sprint 32
+
+---
+
+## 🎉 CURRENT STATUS: v2.161.0 - Sprint 32 PAUSED! 🛑
 
 **Current Date**: October 18, 2025
-**Milestone**: Sprint 32 - Documentation Validation & Integration
-**Sprint**: 32 sprints (31 complete, Sprint 32 in progress)
-**Latest Achievement**: Chapter 30 (.pmatignore) documentation created; comprehensive chapter validation in progress
+**Milestone**: Sprint 32 - Documentation Validation & Integration (PAUSED for bug fix)
+**Sprint**: 32 sprints (31 complete, Sprint 32 in progress → PAUSED)
+**Latest Achievement**: Chapter 30 (.pmatignore) documentation created; **BUG DISCOVERED** in TypeScript/JavaScript parser
 
 ---
 
@@ -524,6 +534,86 @@ time make test-all-chapters  # Must be < 2.5 minutes
 
 **⏳ Blocked**:
 - Quality gate (PMAT-DOC-030) - waiting on chapter audits
+
+---
+
+## 🛑 HOTFIX: TypeScript/JavaScript Class Method Bug (v2.162.0)
+
+**Status**: 🔴 IN PROGRESS (ANDON CORD ACTIVE)
+**Severity**: HIGH - Core functionality broken
+**Discovery**: Sprint 32, Chapter 13 validation (2025-10-18)
+**Target**: v2.162.0 release
+**Methodology**: EXTREME TDD + Mutation + Property + PMAT verification
+
+### Bug Description
+
+**Symptom**: PMAT returns `functions: []` for TypeScript/JavaScript class methods, but correctly extracts standalone functions.
+
+**Impact**:
+- All TypeScript/JavaScript class-based code reports ZERO functions
+- Complexity analysis completely misses class methods
+- Users get incorrect metrics for OOP codebases
+- Affects ALL users analyzing TypeScript/JavaScript classes
+
+**Root Cause**: TypeScript/JavaScript AST parser (`server/src/services/ast_typescript.rs`) does not traverse into class method declarations.
+
+### Evidence
+
+```typescript
+// ❌ FAILS: Class methods not extracted
+export class Calculator {
+    add(a: number, b: number): number {  // Not detected
+        return a + b;
+    }
+}
+// Result: "functions": []
+
+// ✅ WORKS: Standalone functions extracted correctly
+export function add(a: number, b: number): number {
+    return a + b;
+}
+// Result: "functions": [{"name": "add", ...}]
+```
+
+### Tickets
+
+**PMAT-BUG-001**: Fix TypeScript class method extraction (P0 - CRITICAL)
+- **Phase 1**: Write RED tests (EXTREME TDD)
+  - Test class methods are extracted
+  - Test class constructors are extracted
+  - Test static methods are extracted
+  - Test private/public/protected methods
+  - Test async methods
+  - Test getter/setter methods
+- **Phase 2**: Fix AST parser
+  - Add class traversal to `ast_typescript.rs`
+  - Extract method declarations
+  - Handle TypeScript-specific modifiers
+- **Phase 3**: Add mutation tests
+  - Mutate class method extraction logic
+  - Target 90%+ mutation score
+- **Phase 4**: Add property tests
+  - Generate random TypeScript classes
+  - Verify method count matches
+  - Verify method names extracted
+- **Phase 5**: Run PMAT self-verification
+  - Analyze PMAT's own TypeScript files
+  - Verify correct function counts
+
+**PMAT-BUG-002**: Fix JavaScript class method extraction (P0 - CRITICAL)
+- Same phases as PMAT-BUG-001 for JavaScript
+
+### Success Criteria
+
+- [ ] RED tests written and failing
+- [ ] Parser fix implements class method extraction
+- [ ] All tests GREEN
+- [ ] Mutation testing shows 90%+ score
+- [ ] Property tests pass 1000+ iterations
+- [ ] PMAT self-analysis shows correct counts
+- [ ] Version v2.162.0 released to crates.io
+- [ ] CHANGELOG updated
+- [ ] Return to Sprint 32 pmat-book validation
 
 ---
 
