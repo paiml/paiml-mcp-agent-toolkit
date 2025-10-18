@@ -4,38 +4,48 @@
 
 **MANDATORY BEFORE ANY RELEASE OR VERSION BUMP:**
 
-Before committing any code that changes functionality or bumping version numbers:
+**USE THE FAST MAKEFILE TARGET:**
 
-1. **Run pmat-book validation tests**:
-   ```bash
-   cd /home/noah/src/pmat-book
-   # Test core chapters (minimum requirement)
-   bash tests/ch13/test_language_examples.sh  # Multi-language support
+```bash
+# Fast, parallel, fail-fast validation (recommended)
+make validate-book
+```
 
-   # Full validation (recommended for releases)
-   for ch in 01 02 03 04 05 06 07 08 09 10 11 12 13 14; do
-       echo "=== Testing Chapter $ch ==="
-       bash tests/ch${ch}/test_*.sh 2>&1 | grep -E "(✅|❌|PASS|FAIL|Summary)"
-   done
-   ```
+This Makefile target:
+- ✅ Runs critical chapters in parallel (Ch 5, 7, 13, 14)
+- ✅ Uses fail-fast behavior (stops on first failure)
+- ✅ Typically completes in <30 seconds
+- ✅ Automatically run by pre-commit hook for code changes
 
-2. **Verify test results**:
-   - ALL core functionality tests must PASS
-   - Chapter 13 (Multi-Language) is CRITICAL - must always pass
-   - Document any failures in git commit message
+**Manual validation (only if needed):**
 
-3. **Update if needed**:
-   - If tests fail, fix the code OR update the book tests
-   - Never commit broken functionality
-   - Apply Toyota Way Andon Cord: STOP if quality issues found
+```bash
+# Run specific chapter
+cd /home/noah/src/pmat-book
+bash tests/ch13/test_language_examples.sh  # Multi-language support
+```
+
+**Verify test results**:
+- ALL core functionality tests must PASS
+- Chapter 13 (Multi-Language) is CRITICAL - must always pass
+- Document any failures in git commit message
+
+**Update if needed**:
+- If tests fail, fix the code OR update the book tests
+- Never commit broken functionality
+- Apply Toyota Way Andon Cord: STOP if quality issues found
 
 **Rationale (Toyota Way - Jidoka):**
 - **Built-in Quality**: Book validation catches regressions before release
 - **Genchi Genbutsu**: Tests verify actual CLI behavior, not just unit tests
 - **Andon Cord**: Stop the line if book validation fails
 - **Kaizen**: Continuous validation improves quality over time
+- **Muda** (Waste Elimination): Fast parallel execution minimizes validation time
 
-**Enforcement**: This is a QUALITY GATE. Do not bypass.
+**Enforcement**:
+- Automatically enforced via pre-commit hook (`.git/hooks/pre-commit`)
+- Also part of `make validate` target
+- This is a QUALITY GATE. Do not bypass.
 
 ---
 
