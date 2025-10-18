@@ -1,5 +1,44 @@
 # Claude Code Configuration
 
+## CRITICAL: pmat-book Validation Policy (Toyota Way - Jidoka)
+
+**MANDATORY BEFORE ANY RELEASE OR VERSION BUMP:**
+
+Before committing any code that changes functionality or bumping version numbers:
+
+1. **Run pmat-book validation tests**:
+   ```bash
+   cd /home/noah/src/pmat-book
+   # Test core chapters (minimum requirement)
+   bash tests/ch13/test_language_examples.sh  # Multi-language support
+
+   # Full validation (recommended for releases)
+   for ch in 01 02 03 04 05 06 07 08 09 10 11 12 13 14; do
+       echo "=== Testing Chapter $ch ==="
+       bash tests/ch${ch}/test_*.sh 2>&1 | grep -E "(✅|❌|PASS|FAIL|Summary)"
+   done
+   ```
+
+2. **Verify test results**:
+   - ALL core functionality tests must PASS
+   - Chapter 13 (Multi-Language) is CRITICAL - must always pass
+   - Document any failures in git commit message
+
+3. **Update if needed**:
+   - If tests fail, fix the code OR update the book tests
+   - Never commit broken functionality
+   - Apply Toyota Way Andon Cord: STOP if quality issues found
+
+**Rationale (Toyota Way - Jidoka):**
+- **Built-in Quality**: Book validation catches regressions before release
+- **Genchi Genbutsu**: Tests verify actual CLI behavior, not just unit tests
+- **Andon Cord**: Stop the line if book validation fails
+- **Kaizen**: Continuous validation improves quality over time
+
+**Enforcement**: This is a QUALITY GATE. Do not bypass.
+
+---
+
 ## Coverage Tool Policy
 
 **IMPORTANT: We do NOT use cargo-tarpaulin for code coverage.**
