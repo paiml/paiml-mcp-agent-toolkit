@@ -1,0 +1,5372 @@
+[
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "ComplexityMetrics::with_halstead",
+      "return_type": "-> Self",
+      "span": {
+        "start": {
+          "line": 108,
+          "column": 5
+        },
+        "end": {
+          "line": 147,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 140,
+        "column": 9
+      },
+      "end": {
+        "line": 146,
+        "column": 10
+      }
+    },
+    "replacement": "Default::default()",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "ComplexityMetrics::is_simple",
+      "return_type": "-> bool",
+      "span": {
+        "start": {
+          "line": 149,
+          "column": 5
+        },
+        "end": {
+          "line": 168,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 167,
+        "column": 9
+      },
+      "end": {
+        "line": 167,
+        "column": 52
+      }
+    },
+    "replacement": "true",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "ComplexityMetrics::is_simple",
+      "return_type": "-> bool",
+      "span": {
+        "start": {
+          "line": 149,
+          "column": 5
+        },
+        "end": {
+          "line": 168,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 167,
+        "column": 9
+      },
+      "end": {
+        "line": 167,
+        "column": 52
+      }
+    },
+    "replacement": "false",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "ComplexityMetrics::is_simple",
+      "return_type": "-> bool",
+      "span": {
+        "start": {
+          "line": 149,
+          "column": 5
+        },
+        "end": {
+          "line": 168,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 167,
+        "column": 30
+      },
+      "end": {
+        "line": 167,
+        "column": 32
+      }
+    },
+    "replacement": "||",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "ComplexityMetrics::is_simple",
+      "return_type": "-> bool",
+      "span": {
+        "start": {
+          "line": 149,
+          "column": 5
+        },
+        "end": {
+          "line": 168,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 167,
+        "column": 25
+      },
+      "end": {
+        "line": 167,
+        "column": 27
+      }
+    },
+    "replacement": ">",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "ComplexityMetrics::is_simple",
+      "return_type": "-> bool",
+      "span": {
+        "start": {
+          "line": 149,
+          "column": 5
+        },
+        "end": {
+          "line": 168,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 167,
+        "column": 48
+      },
+      "end": {
+        "line": 167,
+        "column": 50
+      }
+    },
+    "replacement": ">",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "ComplexityMetrics::needs_refactoring",
+      "return_type": "-> bool",
+      "span": {
+        "start": {
+          "line": 170,
+          "column": 5
+        },
+        "end": {
+          "line": 189,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 188,
+        "column": 9
+      },
+      "end": {
+        "line": 188,
+        "column": 52
+      }
+    },
+    "replacement": "true",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "ComplexityMetrics::needs_refactoring",
+      "return_type": "-> bool",
+      "span": {
+        "start": {
+          "line": 170,
+          "column": 5
+        },
+        "end": {
+          "line": 189,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 188,
+        "column": 9
+      },
+      "end": {
+        "line": 188,
+        "column": 52
+      }
+    },
+    "replacement": "false",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "ComplexityMetrics::needs_refactoring",
+      "return_type": "-> bool",
+      "span": {
+        "start": {
+          "line": 170,
+          "column": 5
+        },
+        "end": {
+          "line": 189,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 188,
+        "column": 30
+      },
+      "end": {
+        "line": 188,
+        "column": 32
+      }
+    },
+    "replacement": "&&",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "ComplexityMetrics::needs_refactoring",
+      "return_type": "-> bool",
+      "span": {
+        "start": {
+          "line": 170,
+          "column": 5
+        },
+        "end": {
+          "line": 189,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 188,
+        "column": 25
+      },
+      "end": {
+        "line": 188,
+        "column": 26
+      }
+    },
+    "replacement": "==",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "ComplexityMetrics::needs_refactoring",
+      "return_type": "-> bool",
+      "span": {
+        "start": {
+          "line": 170,
+          "column": 5
+        },
+        "end": {
+          "line": 189,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 188,
+        "column": 25
+      },
+      "end": {
+        "line": 188,
+        "column": 26
+      }
+    },
+    "replacement": "<",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "ComplexityMetrics::needs_refactoring",
+      "return_type": "-> bool",
+      "span": {
+        "start": {
+          "line": 170,
+          "column": 5
+        },
+        "end": {
+          "line": 189,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 188,
+        "column": 25
+      },
+      "end": {
+        "line": 188,
+        "column": 26
+      }
+    },
+    "replacement": ">=",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "ComplexityMetrics::needs_refactoring",
+      "return_type": "-> bool",
+      "span": {
+        "start": {
+          "line": 170,
+          "column": 5
+        },
+        "end": {
+          "line": 189,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 188,
+        "column": 48
+      },
+      "end": {
+        "line": 188,
+        "column": 49
+      }
+    },
+    "replacement": "==",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "ComplexityMetrics::needs_refactoring",
+      "return_type": "-> bool",
+      "span": {
+        "start": {
+          "line": 170,
+          "column": 5
+        },
+        "end": {
+          "line": 189,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 188,
+        "column": 48
+      },
+      "end": {
+        "line": 188,
+        "column": 49
+      }
+    },
+    "replacement": "<",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "ComplexityMetrics::needs_refactoring",
+      "return_type": "-> bool",
+      "span": {
+        "start": {
+          "line": 170,
+          "column": 5
+        },
+        "end": {
+          "line": 189,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 188,
+        "column": 48
+      },
+      "end": {
+        "line": 188,
+        "column": 49
+      }
+    },
+    "replacement": ">=",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "ComplexityMetrics::complexity_score",
+      "return_type": "-> f64",
+      "span": {
+        "start": {
+          "line": 191,
+          "column": 5
+        },
+        "end": {
+          "line": 213,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 209,
+        "column": 9
+      },
+      "end": {
+        "line": 212,
+        "column": 44
+      }
+    },
+    "replacement": "0.0",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "ComplexityMetrics::complexity_score",
+      "return_type": "-> f64",
+      "span": {
+        "start": {
+          "line": 191,
+          "column": 5
+        },
+        "end": {
+          "line": 213,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 209,
+        "column": 9
+      },
+      "end": {
+        "line": 212,
+        "column": 44
+      }
+    },
+    "replacement": "1.0",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "ComplexityMetrics::complexity_score",
+      "return_type": "-> f64",
+      "span": {
+        "start": {
+          "line": 191,
+          "column": 5
+        },
+        "end": {
+          "line": 213,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 209,
+        "column": 9
+      },
+      "end": {
+        "line": 212,
+        "column": 44
+      }
+    },
+    "replacement": "-1.0",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "ComplexityMetrics::complexity_score",
+      "return_type": "-> f64",
+      "span": {
+        "start": {
+          "line": 191,
+          "column": 5
+        },
+        "end": {
+          "line": 213,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 212,
+        "column": 13
+      },
+      "end": {
+        "line": 212,
+        "column": 14
+      }
+    },
+    "replacement": "-",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "ComplexityMetrics::complexity_score",
+      "return_type": "-> f64",
+      "span": {
+        "start": {
+          "line": 191,
+          "column": 5
+        },
+        "end": {
+          "line": 213,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 212,
+        "column": 13
+      },
+      "end": {
+        "line": 212,
+        "column": 14
+      }
+    },
+    "replacement": "*",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "ComplexityMetrics::complexity_score",
+      "return_type": "-> f64",
+      "span": {
+        "start": {
+          "line": 191,
+          "column": 5
+        },
+        "end": {
+          "line": 213,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 211,
+        "column": 13
+      },
+      "end": {
+        "line": 211,
+        "column": 14
+      }
+    },
+    "replacement": "-",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "ComplexityMetrics::complexity_score",
+      "return_type": "-> f64",
+      "span": {
+        "start": {
+          "line": 191,
+          "column": 5
+        },
+        "end": {
+          "line": 213,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 211,
+        "column": 13
+      },
+      "end": {
+        "line": 211,
+        "column": 14
+      }
+    },
+    "replacement": "*",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "ComplexityMetrics::complexity_score",
+      "return_type": "-> f64",
+      "span": {
+        "start": {
+          "line": 191,
+          "column": 5
+        },
+        "end": {
+          "line": 213,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 210,
+        "column": 13
+      },
+      "end": {
+        "line": 210,
+        "column": 14
+      }
+    },
+    "replacement": "-",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "ComplexityMetrics::complexity_score",
+      "return_type": "-> f64",
+      "span": {
+        "start": {
+          "line": 191,
+          "column": 5
+        },
+        "end": {
+          "line": 213,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 210,
+        "column": 13
+      },
+      "end": {
+        "line": 210,
+        "column": 14
+      }
+    },
+    "replacement": "*",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "ComplexityMetrics::complexity_score",
+      "return_type": "-> f64",
+      "span": {
+        "start": {
+          "line": 191,
+          "column": 5
+        },
+        "end": {
+          "line": 213,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 209,
+        "column": 37
+      },
+      "end": {
+        "line": 209,
+        "column": 38
+      }
+    },
+    "replacement": "+",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "ComplexityMetrics::complexity_score",
+      "return_type": "-> f64",
+      "span": {
+        "start": {
+          "line": 191,
+          "column": 5
+        },
+        "end": {
+          "line": 213,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 209,
+        "column": 37
+      },
+      "end": {
+        "line": 209,
+        "column": 38
+      }
+    },
+    "replacement": "/",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "ComplexityMetrics::complexity_score",
+      "return_type": "-> f64",
+      "span": {
+        "start": {
+          "line": 191,
+          "column": 5
+        },
+        "end": {
+          "line": 213,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 210,
+        "column": 42
+      },
+      "end": {
+        "line": 210,
+        "column": 43
+      }
+    },
+    "replacement": "+",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "ComplexityMetrics::complexity_score",
+      "return_type": "-> f64",
+      "span": {
+        "start": {
+          "line": 191,
+          "column": 5
+        },
+        "end": {
+          "line": 213,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 210,
+        "column": 42
+      },
+      "end": {
+        "line": 210,
+        "column": 43
+      }
+    },
+    "replacement": "/",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "ComplexityMetrics::complexity_score",
+      "return_type": "-> f64",
+      "span": {
+        "start": {
+          "line": 191,
+          "column": 5
+        },
+        "end": {
+          "line": 213,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 211,
+        "column": 44
+      },
+      "end": {
+        "line": 211,
+        "column": 45
+      }
+    },
+    "replacement": "+",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "ComplexityMetrics::complexity_score",
+      "return_type": "-> f64",
+      "span": {
+        "start": {
+          "line": 191,
+          "column": 5
+        },
+        "end": {
+          "line": 213,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 211,
+        "column": 44
+      },
+      "end": {
+        "line": 211,
+        "column": 45
+      }
+    },
+    "replacement": "/",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "ComplexityMetrics::complexity_score",
+      "return_type": "-> f64",
+      "span": {
+        "start": {
+          "line": 191,
+          "column": 5
+        },
+        "end": {
+          "line": 213,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 212,
+        "column": 38
+      },
+      "end": {
+        "line": 212,
+        "column": 39
+      }
+    },
+    "replacement": "+",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "ComplexityMetrics::complexity_score",
+      "return_type": "-> f64",
+      "span": {
+        "start": {
+          "line": 191,
+          "column": 5
+        },
+        "end": {
+          "line": 213,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 212,
+        "column": 38
+      },
+      "end": {
+        "line": 212,
+        "column": 39
+      }
+    },
+    "replacement": "/",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "HalsteadMetrics::calculate_derived",
+      "return_type": "-> Self",
+      "span": {
+        "start": {
+          "line": 305,
+          "column": 5
+        },
+        "end": {
+          "line": 355,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 327,
+        "column": 9
+      },
+      "end": {
+        "line": 354,
+        "column": 13
+      }
+    },
+    "replacement": "Default::default()",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "HalsteadMetrics::calculate_derived",
+      "return_type": "-> Self",
+      "span": {
+        "start": {
+          "line": 305,
+          "column": 5
+        },
+        "end": {
+          "line": 355,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 327,
+        "column": 39
+      },
+      "end": {
+        "line": 327,
+        "column": 41
+      }
+    },
+    "replacement": "&&",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "HalsteadMetrics::calculate_derived",
+      "return_type": "-> Self",
+      "span": {
+        "start": {
+          "line": 305,
+          "column": 5
+        },
+        "end": {
+          "line": 355,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 327,
+        "column": 34
+      },
+      "end": {
+        "line": 327,
+        "column": 36
+      }
+    },
+    "replacement": "!=",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "HalsteadMetrics::calculate_derived",
+      "return_type": "-> Self",
+      "span": {
+        "start": {
+          "line": 305,
+          "column": 5
+        },
+        "end": {
+          "line": 355,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 327,
+        "column": 63
+      },
+      "end": {
+        "line": 327,
+        "column": 65
+      }
+    },
+    "replacement": "!=",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "HalsteadMetrics::calculate_derived",
+      "return_type": "-> Self",
+      "span": {
+        "start": {
+          "line": 305,
+          "column": 5
+        },
+        "end": {
+          "line": 355,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 331,
+        "column": 42
+      },
+      "end": {
+        "line": 331,
+        "column": 43
+      }
+    },
+    "replacement": "-",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "HalsteadMetrics::calculate_derived",
+      "return_type": "-> Self",
+      "span": {
+        "start": {
+          "line": 305,
+          "column": 5
+        },
+        "end": {
+          "line": 355,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 331,
+        "column": 42
+      },
+      "end": {
+        "line": 331,
+        "column": 43
+      }
+    },
+    "replacement": "*",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "HalsteadMetrics::calculate_derived",
+      "return_type": "-> Self",
+      "span": {
+        "start": {
+          "line": 305,
+          "column": 5
+        },
+        "end": {
+          "line": 355,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 332,
+        "column": 44
+      },
+      "end": {
+        "line": 332,
+        "column": 45
+      }
+    },
+    "replacement": "-",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "HalsteadMetrics::calculate_derived",
+      "return_type": "-> Self",
+      "span": {
+        "start": {
+          "line": 305,
+          "column": 5
+        },
+        "end": {
+          "line": 355,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 332,
+        "column": 44
+      },
+      "end": {
+        "line": 332,
+        "column": 45
+      }
+    },
+    "replacement": "*",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "HalsteadMetrics::calculate_derived",
+      "return_type": "-> Self",
+      "span": {
+        "start": {
+          "line": 305,
+          "column": 5
+        },
+        "end": {
+          "line": 355,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 335,
+        "column": 19
+      },
+      "end": {
+        "line": 335,
+        "column": 20
+      }
+    },
+    "replacement": "==",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "HalsteadMetrics::calculate_derived",
+      "return_type": "-> Self",
+      "span": {
+        "start": {
+          "line": 305,
+          "column": 5
+        },
+        "end": {
+          "line": 355,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 335,
+        "column": 19
+      },
+      "end": {
+        "line": 335,
+        "column": 20
+      }
+    },
+    "replacement": "<",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "HalsteadMetrics::calculate_derived",
+      "return_type": "-> Self",
+      "span": {
+        "start": {
+          "line": 305,
+          "column": 5
+        },
+        "end": {
+          "line": 355,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 335,
+        "column": 19
+      },
+      "end": {
+        "line": 335,
+        "column": 20
+      }
+    },
+    "replacement": ">=",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "HalsteadMetrics::calculate_derived",
+      "return_type": "-> Self",
+      "span": {
+        "start": {
+          "line": 305,
+          "column": 5
+        },
+        "end": {
+          "line": 355,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 336,
+        "column": 44
+      },
+      "end": {
+        "line": 336,
+        "column": 45
+      }
+    },
+    "replacement": "+",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "HalsteadMetrics::calculate_derived",
+      "return_type": "-> Self",
+      "span": {
+        "start": {
+          "line": 305,
+          "column": 5
+        },
+        "end": {
+          "line": 355,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 336,
+        "column": 44
+      },
+      "end": {
+        "line": 336,
+        "column": 45
+      }
+    },
+    "replacement": "/",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "HalsteadMetrics::calculate_derived",
+      "return_type": "-> Self",
+      "span": {
+        "start": {
+          "line": 305,
+          "column": 5
+        },
+        "end": {
+          "line": 355,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 340,
+        "column": 33
+      },
+      "end": {
+        "line": 340,
+        "column": 34
+      }
+    },
+    "replacement": "==",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "HalsteadMetrics::calculate_derived",
+      "return_type": "-> Self",
+      "span": {
+        "start": {
+          "line": 305,
+          "column": 5
+        },
+        "end": {
+          "line": 355,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 340,
+        "column": 33
+      },
+      "end": {
+        "line": 340,
+        "column": 34
+      }
+    },
+    "replacement": "<",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "HalsteadMetrics::calculate_derived",
+      "return_type": "-> Self",
+      "span": {
+        "start": {
+          "line": 305,
+          "column": 5
+        },
+        "end": {
+          "line": 355,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 340,
+        "column": 33
+      },
+      "end": {
+        "line": 340,
+        "column": 34
+      }
+    },
+    "replacement": ">=",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "HalsteadMetrics::calculate_derived",
+      "return_type": "-> Self",
+      "span": {
+        "start": {
+          "line": 305,
+          "column": 5
+        },
+        "end": {
+          "line": 355,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 342,
+        "column": 17
+      },
+      "end": {
+        "line": 342,
+        "column": 18
+      }
+    },
+    "replacement": "+",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "HalsteadMetrics::calculate_derived",
+      "return_type": "-> Self",
+      "span": {
+        "start": {
+          "line": 305,
+          "column": 5
+        },
+        "end": {
+          "line": 355,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 342,
+        "column": 17
+      },
+      "end": {
+        "line": 342,
+        "column": 18
+      }
+    },
+    "replacement": "/",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "HalsteadMetrics::calculate_derived",
+      "return_type": "-> Self",
+      "span": {
+        "start": {
+          "line": 305,
+          "column": 5
+        },
+        "end": {
+          "line": 355,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 341,
+        "column": 65
+      },
+      "end": {
+        "line": 341,
+        "column": 66
+      }
+    },
+    "replacement": "%",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "HalsteadMetrics::calculate_derived",
+      "return_type": "-> Self",
+      "span": {
+        "start": {
+          "line": 305,
+          "column": 5
+        },
+        "end": {
+          "line": 355,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 341,
+        "column": 65
+      },
+      "end": {
+        "line": 341,
+        "column": 66
+      }
+    },
+    "replacement": "*",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "HalsteadMetrics::calculate_derived",
+      "return_type": "-> Self",
+      "span": {
+        "start": {
+          "line": 305,
+          "column": 5
+        },
+        "end": {
+          "line": 355,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 342,
+        "column": 51
+      },
+      "end": {
+        "line": 342,
+        "column": 52
+      }
+    },
+    "replacement": "%",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "HalsteadMetrics::calculate_derived",
+      "return_type": "-> Self",
+      "span": {
+        "start": {
+          "line": 305,
+          "column": 5
+        },
+        "end": {
+          "line": 355,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 342,
+        "column": 51
+      },
+      "end": {
+        "line": 342,
+        "column": 52
+      }
+    },
+    "replacement": "*",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "HalsteadMetrics::calculate_derived",
+      "return_type": "-> Self",
+      "span": {
+        "start": {
+          "line": 305,
+          "column": 5
+        },
+        "end": {
+          "line": 355,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 346,
+        "column": 35
+      },
+      "end": {
+        "line": 346,
+        "column": 36
+      }
+    },
+    "replacement": "+",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "HalsteadMetrics::calculate_derived",
+      "return_type": "-> Self",
+      "span": {
+        "start": {
+          "line": 305,
+          "column": 5
+        },
+        "end": {
+          "line": 355,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 346,
+        "column": 35
+      },
+      "end": {
+        "line": 346,
+        "column": 36
+      }
+    },
+    "replacement": "/",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "HalsteadMetrics::calculate_derived",
+      "return_type": "-> Self",
+      "span": {
+        "start": {
+          "line": 305,
+          "column": 5
+        },
+        "end": {
+          "line": 355,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 349,
+        "column": 33
+      },
+      "end": {
+        "line": 349,
+        "column": 34
+      }
+    },
+    "replacement": "%",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "HalsteadMetrics::calculate_derived",
+      "return_type": "-> Self",
+      "span": {
+        "start": {
+          "line": 305,
+          "column": 5
+        },
+        "end": {
+          "line": 355,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 349,
+        "column": 33
+      },
+      "end": {
+        "line": 349,
+        "column": 34
+      }
+    },
+    "replacement": "*",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "HalsteadMetrics::calculate_derived",
+      "return_type": "-> Self",
+      "span": {
+        "start": {
+          "line": 305,
+          "column": 5
+        },
+        "end": {
+          "line": 355,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 352,
+        "column": 49
+      },
+      "end": {
+        "line": 352,
+        "column": 50
+      }
+    },
+    "replacement": "%",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "HalsteadMetrics::calculate_derived",
+      "return_type": "-> Self",
+      "span": {
+        "start": {
+          "line": 305,
+          "column": 5
+        },
+        "end": {
+          "line": 355,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 352,
+        "column": 49
+      },
+      "end": {
+        "line": 352,
+        "column": 50
+      }
+    },
+    "replacement": "*",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "HalsteadMetrics::calculate_derived",
+      "return_type": "-> Self",
+      "span": {
+        "start": {
+          "line": 305,
+          "column": 5
+        },
+        "end": {
+          "line": 355,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 352,
+        "column": 42
+      },
+      "end": {
+        "line": 352,
+        "column": 43
+      }
+    },
+    "replacement": "%",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "HalsteadMetrics::calculate_derived",
+      "return_type": "-> Self",
+      "span": {
+        "start": {
+          "line": 305,
+          "column": 5
+        },
+        "end": {
+          "line": 355,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 352,
+        "column": 42
+      },
+      "end": {
+        "line": 352,
+        "column": 43
+      }
+    },
+    "replacement": "*",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "ComplexityVisitor<'a>::calculate_cognitive_increment",
+      "return_type": "-> u16",
+      "span": {
+        "start": {
+          "line": 487,
+          "column": 5
+        },
+        "end": {
+          "line": 496,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 491,
+        "column": 9
+      },
+      "end": {
+        "line": 495,
+        "column": 10
+      }
+    },
+    "replacement": "0",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "ComplexityVisitor<'a>::calculate_cognitive_increment",
+      "return_type": "-> u16",
+      "span": {
+        "start": {
+          "line": 487,
+          "column": 5
+        },
+        "end": {
+          "line": 496,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 491,
+        "column": 9
+      },
+      "end": {
+        "line": 495,
+        "column": 10
+      }
+    },
+    "replacement": "1",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "ComplexityVisitor<'a>::calculate_cognitive_increment",
+      "return_type": "-> u16",
+      "span": {
+        "start": {
+          "line": 487,
+          "column": 5
+        },
+        "end": {
+          "line": 496,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 492,
+        "column": 15
+      },
+      "end": {
+        "line": 492,
+        "column": 16
+      }
+    },
+    "replacement": "-",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "ComplexityVisitor<'a>::calculate_cognitive_increment",
+      "return_type": "-> u16",
+      "span": {
+        "start": {
+          "line": 487,
+          "column": 5
+        },
+        "end": {
+          "line": 496,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 492,
+        "column": 15
+      },
+      "end": {
+        "line": 492,
+        "column": 16
+      }
+    },
+    "replacement": "*",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "ComplexityVisitor<'a>::enter_nesting",
+      "return_type": "",
+      "span": {
+        "start": {
+          "line": 498,
+          "column": 5
+        },
+        "end": {
+          "line": 505,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 501,
+        "column": 9
+      },
+      "end": {
+        "line": 504,
+        "column": 10
+      }
+    },
+    "replacement": "()",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "ComplexityVisitor<'a>::enter_nesting",
+      "return_type": "",
+      "span": {
+        "start": {
+          "line": 498,
+          "column": 5
+        },
+        "end": {
+          "line": 505,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 502,
+        "column": 31
+      },
+      "end": {
+        "line": 502,
+        "column": 32
+      }
+    },
+    "replacement": "==",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "ComplexityVisitor<'a>::enter_nesting",
+      "return_type": "",
+      "span": {
+        "start": {
+          "line": 498,
+          "column": 5
+        },
+        "end": {
+          "line": 505,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 502,
+        "column": 31
+      },
+      "end": {
+        "line": 502,
+        "column": 32
+      }
+    },
+    "replacement": "<",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "ComplexityVisitor<'a>::enter_nesting",
+      "return_type": "",
+      "span": {
+        "start": {
+          "line": 498,
+          "column": 5
+        },
+        "end": {
+          "line": 505,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 502,
+        "column": 31
+      },
+      "end": {
+        "line": 502,
+        "column": 32
+      }
+    },
+    "replacement": ">=",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "ComplexityVisitor<'a>::exit_nesting",
+      "return_type": "",
+      "span": {
+        "start": {
+          "line": 507,
+          "column": 5
+        },
+        "end": {
+          "line": 511,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 510,
+        "column": 9
+      },
+      "end": {
+        "line": 510,
+        "column": 67
+      }
+    },
+    "replacement": "()",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "compute_complexity_cache_key",
+      "return_type": "-> String",
+      "span": {
+        "start": {
+          "line": 514,
+          "column": 1
+        },
+        "end": {
+          "line": 539,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 532,
+        "column": 5
+      },
+      "end": {
+        "line": 538,
+        "column": 40
+      }
+    },
+    "replacement": "String::new()",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "compute_complexity_cache_key",
+      "return_type": "-> String",
+      "span": {
+        "start": {
+          "line": 514,
+          "column": 1
+        },
+        "end": {
+          "line": 539,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 532,
+        "column": 5
+      },
+      "end": {
+        "line": 538,
+        "column": 40
+      }
+    },
+    "replacement": "\"xyzzy\".into()",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "ComplexityRule::exceeds_threshold",
+      "return_type": "-> bool",
+      "span": {
+        "start": {
+          "line": 551,
+          "column": 5
+        },
+        "end": {
+          "line": 554,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 553,
+        "column": 9
+      },
+      "end": {
+        "line": 553,
+        "column": 26
+      }
+    },
+    "replacement": "true",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "ComplexityRule::exceeds_threshold",
+      "return_type": "-> bool",
+      "span": {
+        "start": {
+          "line": 551,
+          "column": 5
+        },
+        "end": {
+          "line": 554,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 553,
+        "column": 9
+      },
+      "end": {
+        "line": 553,
+        "column": 26
+      }
+    },
+    "replacement": "false",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "ComplexityRule::exceeds_threshold",
+      "return_type": "-> bool",
+      "span": {
+        "start": {
+          "line": 551,
+          "column": 5
+        },
+        "end": {
+          "line": 554,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 553,
+        "column": 15
+      },
+      "end": {
+        "line": 553,
+        "column": 16
+      }
+    },
+    "replacement": "==",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "ComplexityRule::exceeds_threshold",
+      "return_type": "-> bool",
+      "span": {
+        "start": {
+          "line": 551,
+          "column": 5
+        },
+        "end": {
+          "line": 554,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 553,
+        "column": 15
+      },
+      "end": {
+        "line": 553,
+        "column": 16
+      }
+    },
+    "replacement": "<",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "ComplexityRule::exceeds_threshold",
+      "return_type": "-> bool",
+      "span": {
+        "start": {
+          "line": 551,
+          "column": 5
+        },
+        "end": {
+          "line": 554,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 553,
+        "column": 15
+      },
+      "end": {
+        "line": 553,
+        "column": 16
+      }
+    },
+    "replacement": ">=",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "<impl ComplexityRule for CyclomaticComplexityRule>::evaluate",
+      "return_type": "-> Option<Violation>",
+      "span": {
+        "start": {
+          "line": 574,
+          "column": 5
+        },
+        "end": {
+          "line": 610,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 581,
+        "column": 9
+      },
+      "end": {
+        "line": 609,
+        "column": 10
+      }
+    },
+    "replacement": "None",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "<impl ComplexityRule for CyclomaticComplexityRule>::evaluate",
+      "return_type": "-> Option<Violation>",
+      "span": {
+        "start": {
+          "line": 574,
+          "column": 5
+        },
+        "end": {
+          "line": 610,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 581,
+        "column": 9
+      },
+      "end": {
+        "line": 609,
+        "column": 10
+      }
+    },
+    "replacement": "Some(Default::default())",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "<impl ComplexityRule for CognitiveComplexityRule>::evaluate",
+      "return_type": "-> Option<Violation>",
+      "span": {
+        "start": {
+          "line": 630,
+          "column": 5
+        },
+        "end": {
+          "line": 666,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 637,
+        "column": 9
+      },
+      "end": {
+        "line": 665,
+        "column": 10
+      }
+    },
+    "replacement": "None",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "<impl ComplexityRule for CognitiveComplexityRule>::evaluate",
+      "return_type": "-> Option<Violation>",
+      "span": {
+        "start": {
+          "line": 630,
+          "column": 5
+        },
+        "end": {
+          "line": 666,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 637,
+        "column": 9
+      },
+      "end": {
+        "line": 665,
+        "column": 10
+      }
+    },
+    "replacement": "Some(Default::default())",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "aggregate_results",
+      "return_type": "-> ComplexityReport",
+      "span": {
+        "start": {
+          "line": 669,
+          "column": 1
+        },
+        "end": {
+          "line": 707,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 706,
+        "column": 5
+      },
+      "end": {
+        "line": 706,
+        "column": 64
+      }
+    },
+    "replacement": "Default::default()",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "aggregate_results_with_thresholds",
+      "return_type": "-> ComplexityReport",
+      "span": {
+        "start": {
+          "line": 709,
+          "column": 1
+        },
+        "end": {
+          "line": 769,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 762,
+        "column": 5
+      },
+      "end": {
+        "line": 768,
+        "column": 88
+      }
+    },
+    "replacement": "Default::default()",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "build_custom_thresholds",
+      "return_type": "-> ComplexityThresholds",
+      "span": {
+        "start": {
+          "line": 771,
+          "column": 1
+        },
+        "end": {
+          "line": 788,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 776,
+        "column": 5
+      },
+      "end": {
+        "line": 787,
+        "column": 15
+      }
+    },
+    "replacement": "Default::default()",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "create_complexity_rules",
+      "return_type": "-> (CyclomaticComplexityRule, CognitiveComplexityRule)",
+      "span": {
+        "start": {
+          "line": 790,
+          "column": 1
+        },
+        "end": {
+          "line": 797,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 794,
+        "column": 5
+      },
+      "end": {
+        "line": 796,
+        "column": 38
+      }
+    },
+    "replacement": "(Default::default(), Default::default())",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "analyze_file_metrics",
+      "return_type": "-> AnalysisData",
+      "span": {
+        "start": {
+          "line": 808,
+          "column": 1
+        },
+        "end": {
+          "line": 828,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 814,
+        "column": 5
+      },
+      "end": {
+        "line": 827,
+        "column": 9
+      }
+    },
+    "replacement": "Default::default()",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "process_file_functions",
+      "return_type": "",
+      "span": {
+        "start": {
+          "line": 830,
+          "column": 1
+        },
+        "end": {
+          "line": 853,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 837,
+        "column": 5
+      },
+      "end": {
+        "line": 852,
+        "column": 6
+      }
+    },
+    "replacement": "()",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "process_file_functions",
+      "return_type": "",
+      "span": {
+        "start": {
+          "line": 830,
+          "column": 1
+        },
+        "end": {
+          "line": 853,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 840,
+        "column": 30
+      },
+      "end": {
+        "line": 840,
+        "column": 32
+      }
+    },
+    "replacement": "-=",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "process_file_functions",
+      "return_type": "",
+      "span": {
+        "start": {
+          "line": 830,
+          "column": 1
+        },
+        "end": {
+          "line": 853,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 840,
+        "column": 30
+      },
+      "end": {
+        "line": 840,
+        "column": 32
+      }
+    },
+    "replacement": "*=",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "process_file_classes",
+      "return_type": "",
+      "span": {
+        "start": {
+          "line": 855,
+          "column": 1
+        },
+        "end": {
+          "line": 878,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 861,
+        "column": 5
+      },
+      "end": {
+        "line": 877,
+        "column": 6
+      }
+    },
+    "replacement": "()",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "process_file_classes",
+      "return_type": "",
+      "span": {
+        "start": {
+          "line": 855,
+          "column": 1
+        },
+        "end": {
+          "line": 878,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 865,
+        "column": 34
+      },
+      "end": {
+        "line": 865,
+        "column": 36
+      }
+    },
+    "replacement": "-=",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "process_file_classes",
+      "return_type": "",
+      "span": {
+        "start": {
+          "line": 855,
+          "column": 1
+        },
+        "end": {
+          "line": 878,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 865,
+        "column": 34
+      },
+      "end": {
+        "line": 865,
+        "column": 36
+      }
+    },
+    "replacement": "*=",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "check_function_violations",
+      "return_type": "",
+      "span": {
+        "start": {
+          "line": 880,
+          "column": 1
+        },
+        "end": {
+          "line": 899,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 888,
+        "column": 5
+      },
+      "end": {
+        "line": 898,
+        "column": 6
+      }
+    },
+    "replacement": "()",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "check_method_violations",
+      "return_type": "",
+      "span": {
+        "start": {
+          "line": 901,
+          "column": 1
+        },
+        "end": {
+          "line": 926,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 909,
+        "column": 5
+      },
+      "end": {
+        "line": 925,
+        "column": 6
+      }
+    },
+    "replacement": "()",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "check_function_hotspots",
+      "return_type": "",
+      "span": {
+        "start": {
+          "line": 928,
+          "column": 1
+        },
+        "end": {
+          "line": 944,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 935,
+        "column": 5
+      },
+      "end": {
+        "line": 943,
+        "column": 6
+      }
+    },
+    "replacement": "()",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "check_function_hotspots",
+      "return_type": "",
+      "span": {
+        "start": {
+          "line": 928,
+          "column": 1
+        },
+        "end": {
+          "line": 944,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 935,
+        "column": 32
+      },
+      "end": {
+        "line": 935,
+        "column": 33
+      }
+    },
+    "replacement": "==",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "check_function_hotspots",
+      "return_type": "",
+      "span": {
+        "start": {
+          "line": 928,
+          "column": 1
+        },
+        "end": {
+          "line": 944,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 935,
+        "column": 32
+      },
+      "end": {
+        "line": 935,
+        "column": 33
+      }
+    },
+    "replacement": "<",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "check_function_hotspots",
+      "return_type": "",
+      "span": {
+        "start": {
+          "line": 928,
+          "column": 1
+        },
+        "end": {
+          "line": 944,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 935,
+        "column": 32
+      },
+      "end": {
+        "line": 935,
+        "column": 33
+      }
+    },
+    "replacement": ">=",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "calculate_summary_statistics",
+      "return_type": "-> SummaryStats",
+      "span": {
+        "start": {
+          "line": 956,
+          "column": 1
+        },
+        "end": {
+          "line": 978,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 958,
+        "column": 5
+      },
+      "end": {
+        "line": 977,
+        "column": 6
+      }
+    },
+    "replacement": "Default::default()",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "calculate_percentiles",
+      "return_type": "-> (u16, u16)",
+      "span": {
+        "start": {
+          "line": 980,
+          "column": 1
+        },
+        "end": {
+          "line": 986,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 982,
+        "column": 5
+      },
+      "end": {
+        "line": 985,
+        "column": 36
+      }
+    },
+    "replacement": "(0, 0)",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "calculate_percentiles",
+      "return_type": "-> (u16, u16)",
+      "span": {
+        "start": {
+          "line": 980,
+          "column": 1
+        },
+        "end": {
+          "line": 986,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 982,
+        "column": 5
+      },
+      "end": {
+        "line": 985,
+        "column": 36
+      }
+    },
+    "replacement": "(0, 1)",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "calculate_percentiles",
+      "return_type": "-> (u16, u16)",
+      "span": {
+        "start": {
+          "line": 980,
+          "column": 1
+        },
+        "end": {
+          "line": 986,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 982,
+        "column": 5
+      },
+      "end": {
+        "line": 985,
+        "column": 36
+      }
+    },
+    "replacement": "(1, 0)",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "calculate_percentiles",
+      "return_type": "-> (u16, u16)",
+      "span": {
+        "start": {
+          "line": 980,
+          "column": 1
+        },
+        "end": {
+          "line": 986,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 982,
+        "column": 5
+      },
+      "end": {
+        "line": 985,
+        "column": 36
+      }
+    },
+    "replacement": "(1, 1)",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "calculate_percentiles",
+      "return_type": "-> (u16, u16)",
+      "span": {
+        "start": {
+          "line": 980,
+          "column": 1
+        },
+        "end": {
+          "line": 986,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 982,
+        "column": 50
+      },
+      "end": {
+        "line": 982,
+        "column": 51
+      }
+    },
+    "replacement": "+",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "calculate_percentiles",
+      "return_type": "-> (u16, u16)",
+      "span": {
+        "start": {
+          "line": 980,
+          "column": 1
+        },
+        "end": {
+          "line": 986,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 982,
+        "column": 50
+      },
+      "end": {
+        "line": 982,
+        "column": 51
+      }
+    },
+    "replacement": "/",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "calculate_medians",
+      "return_type": "-> (f32, f32)",
+      "span": {
+        "start": {
+          "line": 988,
+          "column": 1
+        },
+        "end": {
+          "line": 993,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 990,
+        "column": 5
+      },
+      "end": {
+        "line": 992,
+        "column": 42
+      }
+    },
+    "replacement": "(0.0, 0.0)",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "calculate_medians",
+      "return_type": "-> (f32, f32)",
+      "span": {
+        "start": {
+          "line": 988,
+          "column": 1
+        },
+        "end": {
+          "line": 993,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 990,
+        "column": 5
+      },
+      "end": {
+        "line": 992,
+        "column": 42
+      }
+    },
+    "replacement": "(0.0, 1.0)",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "calculate_medians",
+      "return_type": "-> (f32, f32)",
+      "span": {
+        "start": {
+          "line": 988,
+          "column": 1
+        },
+        "end": {
+          "line": 993,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 990,
+        "column": 5
+      },
+      "end": {
+        "line": 992,
+        "column": 42
+      }
+    },
+    "replacement": "(0.0, -1.0)",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "calculate_medians",
+      "return_type": "-> (f32, f32)",
+      "span": {
+        "start": {
+          "line": 988,
+          "column": 1
+        },
+        "end": {
+          "line": 993,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 990,
+        "column": 5
+      },
+      "end": {
+        "line": 992,
+        "column": 42
+      }
+    },
+    "replacement": "(1.0, 0.0)",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "calculate_medians",
+      "return_type": "-> (f32, f32)",
+      "span": {
+        "start": {
+          "line": 988,
+          "column": 1
+        },
+        "end": {
+          "line": 993,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 990,
+        "column": 5
+      },
+      "end": {
+        "line": 992,
+        "column": 42
+      }
+    },
+    "replacement": "(1.0, 1.0)",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "calculate_medians",
+      "return_type": "-> (f32, f32)",
+      "span": {
+        "start": {
+          "line": 988,
+          "column": 1
+        },
+        "end": {
+          "line": 993,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 990,
+        "column": 5
+      },
+      "end": {
+        "line": 992,
+        "column": 42
+      }
+    },
+    "replacement": "(1.0, -1.0)",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "calculate_medians",
+      "return_type": "-> (f32, f32)",
+      "span": {
+        "start": {
+          "line": 988,
+          "column": 1
+        },
+        "end": {
+          "line": 993,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 990,
+        "column": 5
+      },
+      "end": {
+        "line": 992,
+        "column": 42
+      }
+    },
+    "replacement": "(-1.0, 0.0)",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "calculate_medians",
+      "return_type": "-> (f32, f32)",
+      "span": {
+        "start": {
+          "line": 988,
+          "column": 1
+        },
+        "end": {
+          "line": 993,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 990,
+        "column": 5
+      },
+      "end": {
+        "line": 992,
+        "column": 42
+      }
+    },
+    "replacement": "(-1.0, 1.0)",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "calculate_medians",
+      "return_type": "-> (f32, f32)",
+      "span": {
+        "start": {
+          "line": 988,
+          "column": 1
+        },
+        "end": {
+          "line": 993,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 990,
+        "column": 5
+      },
+      "end": {
+        "line": 992,
+        "column": 42
+      }
+    },
+    "replacement": "(-1.0, -1.0)",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "calculate_median",
+      "return_type": "-> f32",
+      "span": {
+        "start": {
+          "line": 995,
+          "column": 1
+        },
+        "end": {
+          "line": 1007,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 997,
+        "column": 5
+      },
+      "end": {
+        "line": 1006,
+        "column": 6
+      }
+    },
+    "replacement": "0.0",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "calculate_median",
+      "return_type": "-> f32",
+      "span": {
+        "start": {
+          "line": 995,
+          "column": 1
+        },
+        "end": {
+          "line": 1007,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 997,
+        "column": 5
+      },
+      "end": {
+        "line": 1006,
+        "column": 6
+      }
+    },
+    "replacement": "1.0",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "calculate_median",
+      "return_type": "-> f32",
+      "span": {
+        "start": {
+          "line": 995,
+          "column": 1
+        },
+        "end": {
+          "line": 1007,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 997,
+        "column": 5
+      },
+      "end": {
+        "line": 1006,
+        "column": 6
+      }
+    },
+    "replacement": "-1.0",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "calculate_median",
+      "return_type": "-> f32",
+      "span": {
+        "start": {
+          "line": 995,
+          "column": 1
+        },
+        "end": {
+          "line": 1007,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1001,
+        "column": 28
+      },
+      "end": {
+        "line": 1001,
+        "column": 29
+      }
+    },
+    "replacement": "%",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "calculate_median",
+      "return_type": "-> f32",
+      "span": {
+        "start": {
+          "line": 995,
+          "column": 1
+        },
+        "end": {
+          "line": 1007,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1001,
+        "column": 28
+      },
+      "end": {
+        "line": 1001,
+        "column": 29
+      }
+    },
+    "replacement": "*",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "calculate_median",
+      "return_type": "-> f32",
+      "span": {
+        "start": {
+          "line": 995,
+          "column": 1
+        },
+        "end": {
+          "line": 1007,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1002,
+        "column": 25
+      },
+      "end": {
+        "line": 1002,
+        "column": 27
+      }
+    },
+    "replacement": "!=",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "calculate_median",
+      "return_type": "-> f32",
+      "span": {
+        "start": {
+          "line": 995,
+          "column": 1
+        },
+        "end": {
+          "line": 1007,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1002,
+        "column": 21
+      },
+      "end": {
+        "line": 1002,
+        "column": 22
+      }
+    },
+    "replacement": "/",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "calculate_median",
+      "return_type": "-> f32",
+      "span": {
+        "start": {
+          "line": 995,
+          "column": 1
+        },
+        "end": {
+          "line": 1007,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1002,
+        "column": 21
+      },
+      "end": {
+        "line": 1002,
+        "column": 22
+      }
+    },
+    "replacement": "+",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "calculate_median",
+      "return_type": "-> f32",
+      "span": {
+        "start": {
+          "line": 995,
+          "column": 1
+        },
+        "end": {
+          "line": 1007,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1003,
+        "column": 50
+      },
+      "end": {
+        "line": 1003,
+        "column": 51
+      }
+    },
+    "replacement": "%",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "calculate_median",
+      "return_type": "-> f32",
+      "span": {
+        "start": {
+          "line": 995,
+          "column": 1
+        },
+        "end": {
+          "line": 1007,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1003,
+        "column": 50
+      },
+      "end": {
+        "line": 1003,
+        "column": 51
+      }
+    },
+    "replacement": "*",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "calculate_median",
+      "return_type": "-> f32",
+      "span": {
+        "start": {
+          "line": 995,
+          "column": 1
+        },
+        "end": {
+          "line": 1007,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1003,
+        "column": 35
+      },
+      "end": {
+        "line": 1003,
+        "column": 36
+      }
+    },
+    "replacement": "-",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "calculate_median",
+      "return_type": "-> f32",
+      "span": {
+        "start": {
+          "line": 995,
+          "column": 1
+        },
+        "end": {
+          "line": 1007,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1003,
+        "column": 35
+      },
+      "end": {
+        "line": 1003,
+        "column": 36
+      }
+    },
+    "replacement": "*",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "calculate_median",
+      "return_type": "-> f32",
+      "span": {
+        "start": {
+          "line": 995,
+          "column": 1
+        },
+        "end": {
+          "line": 1007,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1003,
+        "column": 30
+      },
+      "end": {
+        "line": 1003,
+        "column": 31
+      }
+    },
+    "replacement": "+",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "calculate_median",
+      "return_type": "-> f32",
+      "span": {
+        "start": {
+          "line": 995,
+          "column": 1
+        },
+        "end": {
+          "line": 1007,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1003,
+        "column": 30
+      },
+      "end": {
+        "line": 1003,
+        "column": 31
+      }
+    },
+    "replacement": "/",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "calculate_max_values",
+      "return_type": "-> (u16, u16)",
+      "span": {
+        "start": {
+          "line": 1009,
+          "column": 1
+        },
+        "end": {
+          "line": 1014,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1011,
+        "column": 5
+      },
+      "end": {
+        "line": 1013,
+        "column": 36
+      }
+    },
+    "replacement": "(0, 0)",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "calculate_max_values",
+      "return_type": "-> (u16, u16)",
+      "span": {
+        "start": {
+          "line": 1009,
+          "column": 1
+        },
+        "end": {
+          "line": 1014,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1011,
+        "column": 5
+      },
+      "end": {
+        "line": 1013,
+        "column": 36
+      }
+    },
+    "replacement": "(0, 1)",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "calculate_max_values",
+      "return_type": "-> (u16, u16)",
+      "span": {
+        "start": {
+          "line": 1009,
+          "column": 1
+        },
+        "end": {
+          "line": 1014,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1011,
+        "column": 5
+      },
+      "end": {
+        "line": 1013,
+        "column": 36
+      }
+    },
+    "replacement": "(1, 0)",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "calculate_max_values",
+      "return_type": "-> (u16, u16)",
+      "span": {
+        "start": {
+          "line": 1009,
+          "column": 1
+        },
+        "end": {
+          "line": 1014,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1011,
+        "column": 5
+      },
+      "end": {
+        "line": 1013,
+        "column": 36
+      }
+    },
+    "replacement": "(1, 1)",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "calculate_technical_debt",
+      "return_type": "-> f32",
+      "span": {
+        "start": {
+          "line": 1016,
+          "column": 1
+        },
+        "end": {
+          "line": 1030,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1018,
+        "column": 5
+      },
+      "end": {
+        "line": 1029,
+        "column": 24
+      }
+    },
+    "replacement": "0.0",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "calculate_technical_debt",
+      "return_type": "-> f32",
+      "span": {
+        "start": {
+          "line": 1016,
+          "column": 1
+        },
+        "end": {
+          "line": 1030,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1018,
+        "column": 5
+      },
+      "end": {
+        "line": 1029,
+        "column": 24
+      }
+    },
+    "replacement": "1.0",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "calculate_technical_debt",
+      "return_type": "-> f32",
+      "span": {
+        "start": {
+          "line": 1016,
+          "column": 1
+        },
+        "end": {
+          "line": 1030,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1018,
+        "column": 5
+      },
+      "end": {
+        "line": 1029,
+        "column": 24
+      }
+    },
+    "replacement": "-1.0",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "calculate_technical_debt",
+      "return_type": "-> f32",
+      "span": {
+        "start": {
+          "line": 1016,
+          "column": 1
+        },
+        "end": {
+          "line": 1030,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1023,
+        "column": 47
+      },
+      "end": {
+        "line": 1023,
+        "column": 48
+      }
+    },
+    "replacement": "+",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "calculate_technical_debt",
+      "return_type": "-> f32",
+      "span": {
+        "start": {
+          "line": 1016,
+          "column": 1
+        },
+        "end": {
+          "line": 1030,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1023,
+        "column": 47
+      },
+      "end": {
+        "line": 1023,
+        "column": 48
+      }
+    },
+    "replacement": "/",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "calculate_technical_debt",
+      "return_type": "-> f32",
+      "span": {
+        "start": {
+          "line": 1016,
+          "column": 1
+        },
+        "end": {
+          "line": 1030,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1023,
+        "column": 34
+      },
+      "end": {
+        "line": 1023,
+        "column": 35
+      }
+    },
+    "replacement": "+",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "calculate_technical_debt",
+      "return_type": "-> f32",
+      "span": {
+        "start": {
+          "line": 1016,
+          "column": 1
+        },
+        "end": {
+          "line": 1030,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1023,
+        "column": 34
+      },
+      "end": {
+        "line": 1023,
+        "column": 35
+      }
+    },
+    "replacement": "/",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "calculate_technical_debt",
+      "return_type": "-> f32",
+      "span": {
+        "start": {
+          "line": 1016,
+          "column": 1
+        },
+        "end": {
+          "line": 1030,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1026,
+        "column": 47
+      },
+      "end": {
+        "line": 1026,
+        "column": 48
+      }
+    },
+    "replacement": "+",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "calculate_technical_debt",
+      "return_type": "-> f32",
+      "span": {
+        "start": {
+          "line": 1016,
+          "column": 1
+        },
+        "end": {
+          "line": 1030,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1026,
+        "column": 47
+      },
+      "end": {
+        "line": 1026,
+        "column": 48
+      }
+    },
+    "replacement": "/",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "calculate_technical_debt",
+      "return_type": "-> f32",
+      "span": {
+        "start": {
+          "line": 1016,
+          "column": 1
+        },
+        "end": {
+          "line": 1030,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1026,
+        "column": 34
+      },
+      "end": {
+        "line": 1026,
+        "column": 35
+      }
+    },
+    "replacement": "+",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "calculate_technical_debt",
+      "return_type": "-> f32",
+      "span": {
+        "start": {
+          "line": 1016,
+          "column": 1
+        },
+        "end": {
+          "line": 1030,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1026,
+        "column": 34
+      },
+      "end": {
+        "line": 1026,
+        "column": 35
+      }
+    },
+    "replacement": "/",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "calculate_technical_debt",
+      "return_type": "-> f32",
+      "span": {
+        "start": {
+          "line": 1016,
+          "column": 1
+        },
+        "end": {
+          "line": 1030,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1029,
+        "column": 18
+      },
+      "end": {
+        "line": 1029,
+        "column": 19
+      }
+    },
+    "replacement": "%",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "calculate_technical_debt",
+      "return_type": "-> f32",
+      "span": {
+        "start": {
+          "line": 1016,
+          "column": 1
+        },
+        "end": {
+          "line": 1030,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1029,
+        "column": 18
+      },
+      "end": {
+        "line": 1029,
+        "column": 19
+      }
+    },
+    "replacement": "*",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "build_complexity_report",
+      "return_type": "-> ComplexityReport",
+      "span": {
+        "start": {
+          "line": 1032,
+          "column": 1
+        },
+        "end": {
+          "line": 1055,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1039,
+        "column": 5
+      },
+      "end": {
+        "line": 1054,
+        "column": 6
+      }
+    },
+    "replacement": "Default::default()",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "format_complexity_summary",
+      "return_type": "-> String",
+      "span": {
+        "start": {
+          "line": 1057,
+          "column": 1
+        },
+        "end": {
+          "line": 1252,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1102,
+        "column": 5
+      },
+      "end": {
+        "line": 1251,
+        "column": 11
+      }
+    },
+    "replacement": "String::new()",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "format_complexity_summary",
+      "return_type": "-> String",
+      "span": {
+        "start": {
+          "line": 1057,
+          "column": 1
+        },
+        "end": {
+          "line": 1252,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1102,
+        "column": 5
+      },
+      "end": {
+        "line": 1251,
+        "column": 11
+      }
+    },
+    "replacement": "\"xyzzy\".into()",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "format_complexity_summary",
+      "return_type": "-> String",
+      "span": {
+        "start": {
+          "line": 1057,
+          "column": 1
+        },
+        "end": {
+          "line": 1252,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1141,
+        "column": 44
+      },
+      "end": {
+        "line": 1141,
+        "column": 45
+      }
+    },
+    "replacement": "==",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "format_complexity_summary",
+      "return_type": "-> String",
+      "span": {
+        "start": {
+          "line": 1057,
+          "column": 1
+        },
+        "end": {
+          "line": 1252,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1141,
+        "column": 44
+      },
+      "end": {
+        "line": 1141,
+        "column": 45
+      }
+    },
+    "replacement": "<",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "format_complexity_summary",
+      "return_type": "-> String",
+      "span": {
+        "start": {
+          "line": 1057,
+          "column": 1
+        },
+        "end": {
+          "line": 1252,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1141,
+        "column": 44
+      },
+      "end": {
+        "line": 1141,
+        "column": 45
+      }
+    },
+    "replacement": ">=",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "format_complexity_summary",
+      "return_type": "-> String",
+      "span": {
+        "start": {
+          "line": 1057,
+          "column": 1
+        },
+        "end": {
+          "line": 1252,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1160,
+        "column": 24
+      },
+      "end": {
+        "line": 1160,
+        "column": 26
+      }
+    },
+    "replacement": "&&",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "format_complexity_summary",
+      "return_type": "-> String",
+      "span": {
+        "start": {
+          "line": 1057,
+          "column": 1
+        },
+        "end": {
+          "line": 1252,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1160,
+        "column": 20
+      },
+      "end": {
+        "line": 1160,
+        "column": 21
+      }
+    },
+    "replacement": "==",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "format_complexity_summary",
+      "return_type": "-> String",
+      "span": {
+        "start": {
+          "line": 1057,
+          "column": 1
+        },
+        "end": {
+          "line": 1252,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1160,
+        "column": 20
+      },
+      "end": {
+        "line": 1160,
+        "column": 21
+      }
+    },
+    "replacement": "<",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "format_complexity_summary",
+      "return_type": "-> String",
+      "span": {
+        "start": {
+          "line": 1057,
+          "column": 1
+        },
+        "end": {
+          "line": 1252,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1160,
+        "column": 20
+      },
+      "end": {
+        "line": 1160,
+        "column": 21
+      }
+    },
+    "replacement": ">=",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "format_complexity_summary",
+      "return_type": "-> String",
+      "span": {
+        "start": {
+          "line": 1057,
+          "column": 1
+        },
+        "end": {
+          "line": 1252,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1160,
+        "column": 41
+      },
+      "end": {
+        "line": 1160,
+        "column": 42
+      }
+    },
+    "replacement": "==",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "format_complexity_summary",
+      "return_type": "-> String",
+      "span": {
+        "start": {
+          "line": 1057,
+          "column": 1
+        },
+        "end": {
+          "line": 1252,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1160,
+        "column": 41
+      },
+      "end": {
+        "line": 1160,
+        "column": 42
+      }
+    },
+    "replacement": "<",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "format_complexity_summary",
+      "return_type": "-> String",
+      "span": {
+        "start": {
+          "line": 1057,
+          "column": 1
+        },
+        "end": {
+          "line": 1252,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1160,
+        "column": 41
+      },
+      "end": {
+        "line": 1160,
+        "column": 42
+      }
+    },
+    "replacement": ">=",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "format_complexity_summary",
+      "return_type": "-> String",
+      "span": {
+        "start": {
+          "line": 1057,
+          "column": 1
+        },
+        "end": {
+          "line": 1252,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1162,
+        "column": 24
+      },
+      "end": {
+        "line": 1162,
+        "column": 25
+      }
+    },
+    "replacement": "==",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "format_complexity_summary",
+      "return_type": "-> String",
+      "span": {
+        "start": {
+          "line": 1057,
+          "column": 1
+        },
+        "end": {
+          "line": 1252,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1162,
+        "column": 24
+      },
+      "end": {
+        "line": 1162,
+        "column": 25
+      }
+    },
+    "replacement": "<",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "format_complexity_summary",
+      "return_type": "-> String",
+      "span": {
+        "start": {
+          "line": 1057,
+          "column": 1
+        },
+        "end": {
+          "line": 1252,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1162,
+        "column": 24
+      },
+      "end": {
+        "line": 1162,
+        "column": 25
+      }
+    },
+    "replacement": ">=",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "format_complexity_summary",
+      "return_type": "-> String",
+      "span": {
+        "start": {
+          "line": 1057,
+          "column": 1
+        },
+        "end": {
+          "line": 1252,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1165,
+        "column": 26
+      },
+      "end": {
+        "line": 1165,
+        "column": 27
+      }
+    },
+    "replacement": "==",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "format_complexity_summary",
+      "return_type": "-> String",
+      "span": {
+        "start": {
+          "line": 1057,
+          "column": 1
+        },
+        "end": {
+          "line": 1252,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1165,
+        "column": 26
+      },
+      "end": {
+        "line": 1165,
+        "column": 27
+      }
+    },
+    "replacement": "<",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "format_complexity_summary",
+      "return_type": "-> String",
+      "span": {
+        "start": {
+          "line": 1057,
+          "column": 1
+        },
+        "end": {
+          "line": 1252,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1165,
+        "column": 26
+      },
+      "end": {
+        "line": 1165,
+        "column": 27
+      }
+    },
+    "replacement": ">=",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "format_complexity_summary",
+      "return_type": "-> String",
+      "span": {
+        "start": {
+          "line": 1057,
+          "column": 1
+        },
+        "end": {
+          "line": 1252,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1172,
+        "column": 8
+      },
+      "end": {
+        "line": 1172,
+        "column": 9
+      }
+    },
+    "replacement": "",
+    "genre": "UnaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "format_complexity_summary",
+      "return_type": "-> String",
+      "span": {
+        "start": {
+          "line": 1057,
+          "column": 1
+        },
+        "end": {
+          "line": 1252,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1181,
+        "column": 21
+      },
+      "end": {
+        "line": 1181,
+        "column": 22
+      }
+    },
+    "replacement": "-",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "format_complexity_summary",
+      "return_type": "-> String",
+      "span": {
+        "start": {
+          "line": 1057,
+          "column": 1
+        },
+        "end": {
+          "line": 1252,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1181,
+        "column": 21
+      },
+      "end": {
+        "line": 1181,
+        "column": 22
+      }
+    },
+    "replacement": "*",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "format_complexity_summary",
+      "return_type": "-> String",
+      "span": {
+        "start": {
+          "line": 1057,
+          "column": 1
+        },
+        "end": {
+          "line": 1252,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1205,
+        "column": 36
+      },
+      "end": {
+        "line": 1205,
+        "column": 38
+      }
+    },
+    "replacement": "||",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "format_complexity_summary",
+      "return_type": "-> String",
+      "span": {
+        "start": {
+          "line": 1057,
+          "column": 1
+        },
+        "end": {
+          "line": 1252,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1205,
+        "column": 31
+      },
+      "end": {
+        "line": 1205,
+        "column": 33
+      }
+    },
+    "replacement": "!=",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "format_complexity_summary",
+      "return_type": "-> String",
+      "span": {
+        "start": {
+          "line": 1057,
+          "column": 1
+        },
+        "end": {
+          "line": 1252,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1205,
+        "column": 39
+      },
+      "end": {
+        "line": 1205,
+        "column": 40
+      }
+    },
+    "replacement": "",
+    "genre": "UnaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "format_complexity_summary",
+      "return_type": "-> String",
+      "span": {
+        "start": {
+          "line": 1057,
+          "column": 1
+        },
+        "end": {
+          "line": 1252,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1213,
+        "column": 65
+      },
+      "end": {
+        "line": 1213,
+        "column": 66
+      }
+    },
+    "replacement": "-",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "format_complexity_summary",
+      "return_type": "-> String",
+      "span": {
+        "start": {
+          "line": 1057,
+          "column": 1
+        },
+        "end": {
+          "line": 1252,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1213,
+        "column": 65
+      },
+      "end": {
+        "line": 1213,
+        "column": 66
+      }
+    },
+    "replacement": "*",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "format_complexity_summary",
+      "return_type": "-> String",
+      "span": {
+        "start": {
+          "line": 1057,
+          "column": 1
+        },
+        "end": {
+          "line": 1252,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1237,
+        "column": 8
+      },
+      "end": {
+        "line": 1237,
+        "column": 9
+      }
+    },
+    "replacement": "",
+    "genre": "UnaryOperator"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "format_complexity_report",
+      "return_type": "-> String",
+      "span": {
+        "start": {
+          "line": 1254,
+          "column": 1
+        },
+        "end": {
+          "line": 1312,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1257,
+        "column": 5
+      },
+      "end": {
+        "line": 1311,
+        "column": 11
+      }
+    },
+    "replacement": "String::new()",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "format_complexity_report",
+      "return_type": "-> String",
+      "span": {
+        "start": {
+          "line": 1254,
+          "column": 1
+        },
+        "end": {
+          "line": 1312,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1257,
+        "column": 5
+      },
+      "end": {
+        "line": 1311,
+        "column": 11
+      }
+    },
+    "replacement": "\"xyzzy\".into()",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "format_as_sarif",
+      "return_type": "-> Result<String, serde_json::Error>",
+      "span": {
+        "start": {
+          "line": 1314,
+          "column": 1
+        },
+        "end": {
+          "line": 1432,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1344,
+        "column": 5
+      },
+      "end": {
+        "line": 1431,
+        "column": 41
+      }
+    },
+    "replacement": "Ok(String::new())",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "format_as_sarif",
+      "return_type": "-> Result<String, serde_json::Error>",
+      "span": {
+        "start": {
+          "line": 1314,
+          "column": 1
+        },
+        "end": {
+          "line": 1432,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1344,
+        "column": 5
+      },
+      "end": {
+        "line": 1431,
+        "column": 41
+      }
+    },
+    "replacement": "Ok(\"xyzzy\".into())",
+    "genre": "FnValue"
+  },
+  {
+    "package": "pmat",
+    "file": "server/src/services/complexity.rs",
+    "function": {
+      "function_name": "analyze_file_complexity_uncached",
+      "return_type": "-> anyhow::Result<FileComplexityMetrics>",
+      "span": {
+        "start": {
+          "line": 1434,
+          "column": 1
+        },
+        "end": {
+          "line": 1512,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 1489,
+        "column": 5
+      },
+      "end": {
+        "line": 1511,
+        "column": 91
+      }
+    },
+    "replacement": "Ok(Default::default())",
+    "genre": "FnValue"
+  }
+]

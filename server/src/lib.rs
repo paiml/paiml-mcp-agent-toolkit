@@ -652,6 +652,10 @@ mod tests {
     #[path = "../tests/multi_language_deep_context_tests.rs"]
     mod multi_language_deep_context_tests;
 
+    // Priority 3: Language Regression Tests (Sprint 36)
+    #[path = "../tests/language_regression_tests.rs"]
+    mod language_regression_tests;
+
     // TICKET-3001: Unified Rust Analyzer (EXTREME TDD - RED Phase)
     #[path = "../tests/unified_rust_analyzer_tests.rs"]
     mod unified_rust_analyzer_tests;
