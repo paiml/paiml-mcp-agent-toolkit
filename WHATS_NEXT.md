@@ -4,11 +4,13 @@
 **Current Version:** v2.163.0
 **Status:** Multi-language support complete + Documentation accuracy enforcement + Fast book validation automation + Language regression test suite
 
-**Recent Session Accomplishments (October 18, 2025 - Sprint 36):**
+**Recent Session Accomplishments (October 18, 2025 - Sprint 36 Extended):**
 - ✅ **Priority 1 Complete**: Discovered validate-docs is already fully implemented
 - ✅ **Priority 2 Complete**: Tested all remaining pmat-book chapters (77% pass rate, 100% core functionality validated)
-- ✅ **Priority 3 Complete**: Created language regression test suite (6 tests: 2 passing, 4 ignored awaiting AST parsers)
+- ✅ **Priority 3 Complete**: Created language regression test suite (6 tests: 3 passing, 3 ignored)
 - ✅ **Chapter 09 Fix**: Replaced Python YAML validation with shell-based checks (100% pass rate achieved)
+- ✅ **Bash AST Parser**: Integrated BashScriptAnalyzer - regression test now passing (+50% improvement)
+- ✅ **Repository Cleanup**: Removed mutation test artifacts from git tracking
 
 ---
 
@@ -181,17 +183,19 @@ The 77% pass rate is GOOD for v2.163.0. Failed chapters are advanced features. C
 3. ✅ Added PHP and Swift to supported file extensions
 4. ✅ Documented test coverage in CLAUDE.md
 
-**Test Results**:
+**Test Results** (Updated Sprint 36 Extended):
 - C language: ✅ PASSING (3+ functions detected)
+- Bash language: ✅ PASSING (3+ functions detected) **[IMPLEMENTED IN SPRINT 36!]**
 - WASM language: ✅ PASSING (3+ functions detected)
-- Bash: ⏸️ Ignored (awaiting full AST parser)
 - C++: ⏸️ Ignored (awaiting full AST parser improvement)
 - PHP: ⏸️ Ignored (awaiting full AST parser)
 - Swift: ⏸️ Ignored (awaiting full AST parser)
 
 **Value Delivered**:
-- Prevents regression in C and WASM language support
-- Documents expected behavior for 4 languages awaiting full support
+- Prevents regression in C, Bash, and WASM language support
+- **Bash parser integrated**: Used existing 753-line BashScriptAnalyzer
+- Test pass rate improved: 2/6 → 3/6 (50% improvement)
+- Documents expected behavior for 3 languages awaiting full support
 - Follows EXTREME TDD pattern (RED tests define expected behavior)
 - Easy to re-enable tests once AST parsers are implemented
 
