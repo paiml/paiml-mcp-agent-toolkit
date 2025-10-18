@@ -21,7 +21,7 @@
 #
 # This design eliminates confusion and ensures consistent behavior across all environments.
 
-.PHONY: all validate format lint lint-main check test test-doc test-fast coverage coverage-ci coverage-full coverage-summary coverage-open coverage-stdout coverage-no-report coverage-report-only coverage-clean build release clean clean-tmp install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts test-scripts lint-makefile fix validate-docs ci-status validate-naming context setup audit docs run-mcp run-mcp-test test-actions install-act check-act deps-validate dogfood dogfood-ci update-rust-docs size-report size-track size-check size-compare test-all-interfaces test-feature-all-interfaces test-interface-consistency benchmark-all-interfaces load-test-interfaces context-json context-sarif context-llm context-legacy context-benchmark analyze-top-files analyze-composite analyze-health-dashboard profile-binary-performance profile-deep-context analyze-memory-usage analyze-scaling kaizen test-slow-integration test-safe test-dogfood test-critical-scripts coverage-scripts clean-coverage test-workflow-dag test-workflow-dag-verbose context-root context-simple context-json-root context-benchmark-legacy local-install server-build-binary server-build-docker server-run-mcp server-run-mcp-test server-benchmark server-test server-test-all server-outdated server-tokei build-target cargo-doc cargo-geiger update-deps update-deps-aggressive update-deps-security upgrade-deps audit-fix benchmark coverage-report outdated test-all-features clippy-strict server-build-release create-release test-curl-install cargo-rustdoc install-dev-tools tokei quickstart context-fast clear-swap config-swap overnight-improve overnight-monitor overnight-swap-cron test-unit test-services test-protocols test-e2e test-performance test-property test-property-slow test-all coverage-stratified crate-release crate-docs dev commit sprint-close setup-quality quality-gate-full help-toyota-way
+.PHONY: all validate format lint lint-main check test test-doc test-fast coverage coverage-ci coverage-full coverage-summary coverage-open coverage-stdout coverage-no-report coverage-report-only coverage-clean build release clean clean-tmp install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts test-scripts lint-makefile fix validate-docs ci-status validate-naming validate-book context setup audit docs run-mcp run-mcp-test test-actions install-act check-act deps-validate dogfood dogfood-ci update-rust-docs size-report size-track size-check size-compare test-all-interfaces test-feature-all-interfaces test-interface-consistency benchmark-all-interfaces load-test-interfaces context-json context-sarif context-llm context-legacy context-benchmark analyze-top-files analyze-composite analyze-health-dashboard profile-binary-performance profile-deep-context analyze-memory-usage analyze-scaling kaizen test-slow-integration test-safe test-dogfood test-critical-scripts coverage-scripts clean-coverage test-workflow-dag test-workflow-dag-verbose context-root context-simple context-json-root context-benchmark-legacy local-install server-build-binary server-build-docker server-run-mcp server-run-mcp-test server-benchmark server-test server-test-all server-outdated server-tokei build-target cargo-doc cargo-geiger update-deps update-deps-aggressive update-deps-security upgrade-deps audit-fix benchmark coverage-report outdated test-all-features clippy-strict server-build-release create-release test-curl-install cargo-rustdoc install-dev-tools tokei quickstart context-fast clear-swap config-swap overnight-improve overnight-monitor overnight-swap-cron test-unit test-services test-protocols test-e2e test-performance test-property test-property-slow test-all coverage-stratified crate-release crate-docs dev commit sprint-close setup-quality quality-gate-full help-toyota-way
 
 # Define sub-projects
 # NOTE: client project will be added when implemented
@@ -34,7 +34,7 @@ SCRIPTS_DIR = scripts
 all: format build
 
 # Validate everything passes across all projects
-validate: check lint test-fast validate-docs validate-doc-links validate-naming test-workflow-dag test-actions deps-validate validate-contracts
+validate: check lint test-fast validate-docs validate-doc-links validate-naming validate-book test-workflow-dag test-actions deps-validate validate-contracts
 	@echo "✅ All projects validated! All checks passed:"
 	@echo "  ✓ Type checking (cargo check + deno check)"
 	@echo "  ✓ Linting (cargo clippy + deno lint)"
@@ -42,6 +42,7 @@ validate: check lint test-fast validate-docs validate-doc-links validate-naming 
 	@echo "  ✓ Documentation naming consistency"
 	@echo "  ✓ Documentation link validation"
 	@echo "  ✓ Project naming conventions"
+	@echo "  ✓ pmat-book validation (critical chapters)"
 	@echo "  ✓ GitHub Actions workflow DAG (no version mismatches)"
 	@echo "  ✓ GitHub Actions workflows validated"
 	@echo "  ✓ Dependencies validated"
@@ -761,6 +762,13 @@ validate-contracts:
 		echo "  ✅ Using uniform file parameters"; \
 	fi
 	@echo "  ✅ Contract validation complete!"
+
+# Validate pmat-book tests (fast, parallel, fail-fast)
+# Only runs critical chapters that validate core functionality
+# Optimized for pre-commit hooks - typically completes in <30 seconds
+validate-book:
+	@echo "📚 Validating pmat-book (critical chapters only)..."
+	@bash $(SCRIPTS_DIR)/validate-pmat-book.sh
 
 # Generate comprehensive context with full AST and metrics analysis
 context-root: release
