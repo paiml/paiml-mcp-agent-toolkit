@@ -294,6 +294,10 @@ pub enum Commands {
     #[command(visible_aliases = &["docs", "doc"])]
     ValidateDocs(crate::cli::handlers::ValidateDocsCmd),
 
+    /// Validate README/documentation for hallucinations (Sprint 38)
+    #[command(visible_aliases = &["readme", "hallucination"])]
+    ValidateReadme(crate::cli::handlers::ValidateReadmeCmd),
+
     /// Run quality gate checks on the codebase
     #[command(visible_aliases = &["check", "c", "verify", "gate"])]
     QualityGate {
