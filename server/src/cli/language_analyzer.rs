@@ -143,9 +143,54 @@ impl LanguageAnalyzer for JavaScriptAnalyzer {
         let mut functions = Vec::new();
         let lines: Vec<&str> = content.lines().collect();
 
+        // Track class context for method name qualification
+        let mut current_class: Option<String> = None;
+        let mut class_brace_depth = 0;
+        let mut global_brace_depth = 0;
+
         for (line_num, line) in lines.iter().enumerate() {
             let trimmed = line.trim();
 
+            // Track class declarations
+            if let Some(class_name) = self.extract_class_name(trimmed) {
+                current_class = Some(class_name);
+                class_brace_depth = global_brace_depth + 1;
+            }
+
+            // Track brace depth to know when we exit class
+            for ch in line.chars() {
+                match ch {
+                    '{' => global_brace_depth += 1,
+                    '}' => {
+                        global_brace_depth -= 1;
+                        // Exit class when we close its braces
+                        if current_class.is_some() && global_brace_depth < class_brace_depth {
+                            current_class = None;
+                        }
+                    }
+                    _ => {}
+                }
+            }
+
+            // Detect class methods (PMAT-BUG-001 fix)
+            if current_class.is_some() {
+                if let Some(method_name) = self.extract_method_name(trimmed) {
+                    let line_end = self.find_function_end(&lines, line_num);
+                    let qualified_name = format!(
+                        "{}::{}",
+                        current_class.as_ref().unwrap(),
+                        method_name
+                    );
+                    functions.push(FunctionInfo {
+                        name: qualified_name,
+                        line_start: line_num,
+                        line_end,
+                    });
+                    continue;
+                }
+            }
+
+            // Detect regular function declarations
             if self.is_function_declaration(trimmed) {
                 if let Some(name) = self.extract_function_name(trimmed) {
                     let line_end = self.find_function_end(&lines, line_num);
@@ -172,6 +217,97 @@ impl LanguageAnalyzer for JavaScriptAnalyzer {
 }
 
 impl JavaScriptAnalyzer {
+    /// Extract class name from class declaration (PMAT-BUG-001 fix)
+    ///
+    /// Detects: `class Name`, `export class Name`, `export default class Name`
+    fn extract_class_name(&self, line: &str) -> Option<String> {
+        let patterns = ["export default class ", "export class ", "class "];
+
+        for pattern in &patterns {
+            if let Some(pos) = line.find(pattern) {
+                let after = &line[pos + pattern.len()..];
+                // Extract until space or {
+                if let Some(end) = after.find(|c: char| c.is_whitespace() || c == '{') {
+                    let name = after[..end].trim();
+                    if !name.is_empty() {
+                        return Some(name.to_string());
+                    }
+                }
+            }
+        }
+        None
+    }
+
+    /// Extract method name from class method declaration (PMAT-BUG-001 fix)
+    ///
+    /// Detects:
+    /// - Regular methods: `methodName(params) {`
+    /// - Async methods: `async methodName(params) {`
+    /// - Static methods: `static methodName(params) {`
+    /// - Constructors: `constructor(params) {`
+    /// - Getters/Setters: `get propertyName()`, `set propertyName(value)`
+    fn extract_method_name(&self, line: &str) -> Option<String> {
+        let trimmed = line.trim();
+
+        // Skip non-method lines
+        if trimmed.starts_with("//") || trimmed.starts_with("/*") || trimmed.starts_with('*') {
+            return None;
+        }
+
+        // Skip property declarations (e.g., `private name: string;`)
+        if !trimmed.contains('(') {
+            return None;
+        }
+
+        // Handle: static methodName(
+        if trimmed.starts_with("static ") {
+            let after = &trimmed[7..];  // Skip "static "
+            return self.extract_simple_method_name(after).map(|n| format!("static {}", n));
+        }
+
+        // Handle: async methodName(
+        if trimmed.starts_with("async ") {
+            let after = &trimmed[6..];  // Skip "async "
+            return self.extract_simple_method_name(after);
+        }
+
+        // Handle: get propertyName() or set propertyName(value)
+        if trimmed.starts_with("get ") || trimmed.starts_with("set ") {
+            let after = if trimmed.starts_with("get ") {
+                &trimmed[4..]
+            } else {
+                &trimmed[4..]
+            };
+            return self.extract_simple_method_name(after);
+        }
+
+        // Handle: constructor(
+        if trimmed.starts_with("constructor(") || trimmed.starts_with("constructor (") {
+            return Some("constructor".to_string());
+        }
+
+        // Handle: methodName( or methodName (
+        self.extract_simple_method_name(trimmed)
+    }
+
+    /// Extract simple method name from pattern: `methodName(params)`
+    fn extract_simple_method_name(&self, text: &str) -> Option<String> {
+        if let Some(paren_pos) = text.find('(') {
+            let before_paren = &text[..paren_pos].trim();
+            // Extract last word before '('
+            if let Some(last_word_start) = before_paren.rfind(|c: char| c.is_whitespace()) {
+                let name = before_paren[last_word_start..].trim();
+                if !name.is_empty() && name.chars().next().map_or(false, |c| c.is_alphabetic() || c == '_') {
+                    return Some(name.to_string());
+                }
+            } else if !before_paren.is_empty()
+                && before_paren.chars().next().map_or(false, |c| c.is_alphabetic() || c == '_') {
+                return Some(before_paren.to_string());
+            }
+        }
+        None
+    }
+
     fn is_function_declaration(&self, line: &str) -> bool {
         line.starts_with("function ")
             || line.starts_with("async function ")
@@ -680,11 +816,262 @@ pub fn second_function() {
                 .collect::<Vec<_>>()
         );
     }
+
+    /// RED TEST (PMAT-BUG-001): TypeScript/JavaScript class methods must be extracted
+    ///
+    /// **BUG**: JavaScriptAnalyzer uses regex/heuristic parsing that ONLY detects:
+    /// - `function name()` declarations
+    /// - Arrow functions `const x = () => {}`
+    /// - Variable assignments to functions
+    ///
+    /// But it does NOT detect:
+    /// - Class methods (e.g., `add(a, b) { ... }` inside a class)
+    /// - Constructors (e.g., `constructor() { ... }`)
+    /// - Static methods (e.g., `static create() { ... }`)
+    ///
+    /// **ROOT CAUSE**: CLI uses `JavaScriptAnalyzer` (heuristics) instead of
+    /// `EnhancedTypeScriptVisitor` (full AST analysis).
+    ///
+    /// **EXPECTED**: After fix, this test must PASS.
+    /// **ACTUAL**: Currently FAILS because class methods return empty `[]`.
+    ///
+    /// **FIX STRATEGY**:
+    /// 1. Modify `JavaScriptAnalyzer::extract_functions()` to detect class methods
+    /// 2. Add regex patterns for: `methodName(params)`, `constructor(params)`, `static methodName(params)`
+    /// 3. Track class context using brace counting
+    /// 4. Qualify method names with class name (e.g., `Calculator::add`)
+    ///
+    /// **Quality Gate**: This test must pass before v2.162.0 release.
+    #[test]
+    fn red_test_typescript_class_methods_must_be_extracted() {
+        let analyzer = JavaScriptAnalyzer;
+        let content = r#"
+export class Calculator {
+    add(a: number, b: number): number {
+        return a + b;
+    }
+
+    divide(a: number, b: number): number {
+        if (b === 0) {
+            throw new Error("Division by zero");
+        }
+        return a / b;
+    }
+
+    constructor(private name: string) {}
+}
+"#;
+
+        let functions = analyzer.extract_functions(content);
+
+        // RED: This assertion WILL FAIL until the fix is implemented
+        assert!(
+            functions.len() >= 3,
+            "PMAT-BUG-001: JavaScriptAnalyzer must extract class methods. \
+             Expected >=3 (add, divide, constructor), found {}. \
+             Functions: {:?}",
+            functions.len(),
+            functions.iter().map(|f| &f.name).collect::<Vec<_>>()
+        );
+
+        // Verify specific method names are detected
+        let method_names: Vec<&str> = functions.iter().map(|f| f.name.as_str()).collect();
+        assert!(
+            method_names.iter().any(|n| n.contains("add")),
+            "Must detect 'add' method"
+        );
+        assert!(
+            method_names.iter().any(|n| n.contains("divide")),
+            "Must detect 'divide' method"
+        );
+        assert!(
+            method_names.iter().any(|n| n.contains("constructor")),
+            "Must detect 'constructor' method"
+        );
+    }
+
+    /// RED TEST (PMAT-BUG-001): JavaScript class methods must be extracted
+    ///
+    /// Same bug affects JavaScript ES6 classes. This test validates plain JavaScript
+    /// class syntax without TypeScript types.
+    ///
+    /// **Quality Gate**: Must pass before v2.162.0 release.
+    #[test]
+    fn red_test_javascript_class_methods_must_be_extracted() {
+        let analyzer = JavaScriptAnalyzer;
+        let content = r#"
+class Server {
+    constructor(port) {
+        this.port = port;
+    }
+
+    start() {
+        console.log(`Starting on port ${this.port}`);
+    }
+
+    stop() {
+        console.log('Stopping server');
+    }
+
+    static create(port) {
+        return new Server(port);
+    }
+}
+"#;
+
+        let functions = analyzer.extract_functions(content);
+
+        // RED: This assertion WILL FAIL until the fix is implemented
+        assert!(
+            functions.len() >= 4,
+            "PMAT-BUG-001: JavaScriptAnalyzer must extract class methods. \
+             Expected >=4 (constructor, start, stop, static create), found {}. \
+             Functions: {:?}",
+            functions.len(),
+            functions.iter().map(|f| &f.name).collect::<Vec<_>>()
+        );
+
+        // Verify specific method names
+        let method_names: Vec<&str> = functions.iter().map(|f| f.name.as_str()).collect();
+        assert!(
+            method_names.iter().any(|n| n.contains("constructor")),
+            "Must detect 'constructor'"
+        );
+        assert!(
+            method_names.iter().any(|n| n.contains("start")),
+            "Must detect 'start' method"
+        );
+        assert!(
+            method_names.iter().any(|n| n.contains("stop")),
+            "Must detect 'stop' method"
+        );
+        assert!(
+            method_names.iter().any(|n| n.contains("create")),
+            "Must detect static 'create' method"
+        );
+    }
 }
 
 #[cfg(test)]
 mod property_tests {
+    use super::*;
     use proptest::prelude::*;
+
+    /// Property: Class method extraction must be stable across valid identifiers
+    /// NASA-style: 1000+ iterations to verify edge cases
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(1000))]
+
+        #[test]
+        fn property_class_method_extraction_is_stable(
+            class_name in "[A-Z][a-zA-Z0-9]{2,20}",
+            method_name in "[a-z][a-zA-Z0-9]{2,20}"
+        ) {
+            let analyzer = JavaScriptAnalyzer;
+            let content = format!(
+                "class {} {{\n    {}() {{\n        return 42;\n    }}\n}}",
+                class_name, method_name
+            );
+
+            let functions = analyzer.extract_functions(&content);
+
+            // Property: Must extract at least 1 function (the method)
+            prop_assert!(
+                functions.len() >= 1,
+                "Class with method must extract at least 1 function, found {}. Content: {}",
+                functions.len(),
+                content
+            );
+
+            // Property: Method name must be detected in qualified form
+            prop_assert!(
+                functions.iter().any(|f| f.name.contains(&method_name)),
+                "Must detect method '{}' in class '{}'. Found: {:?}",
+                method_name,
+                class_name,
+                functions.iter().map(|f| &f.name).collect::<Vec<_>>()
+            );
+        }
+
+        #[test]
+        fn property_constructor_always_detected(
+            class_name in "[A-Z][a-zA-Z0-9]{2,20}"
+        ) {
+            let analyzer = JavaScriptAnalyzer;
+            let content = format!(
+                "class {} {{\n    constructor() {{\n        this.value = 0;\n    }}\n}}",
+                class_name
+            );
+
+            let functions = analyzer.extract_functions(&content);
+
+            // Property: Constructor must always be detected
+            prop_assert!(
+                functions.iter().any(|f| f.name.contains("constructor")),
+                "Class '{}' with constructor must detect constructor. Found: {:?}",
+                class_name,
+                functions.iter().map(|f| &f.name).collect::<Vec<_>>()
+            );
+        }
+
+        #[test]
+        fn property_static_methods_detected(
+            class_name in "[A-Z][a-zA-Z0-9]{2,20}",
+            method_name in "[a-z][a-zA-Z0-9]{2,20}"
+        ) {
+            let analyzer = JavaScriptAnalyzer;
+            let content = format!(
+                "class {} {{\n    static {}() {{\n        return true;\n    }}\n}}",
+                class_name, method_name
+            );
+
+            let functions = analyzer.extract_functions(&content);
+
+            // Property: Static methods must be detected
+            prop_assert!(
+                functions.len() >= 1,
+                "Static method in class '{}' must be detected. Found {} functions",
+                class_name,
+                functions.len()
+            );
+
+            prop_assert!(
+                functions.iter().any(|f| f.name.contains(&method_name)),
+                "Static method '{}' in class '{}' must be detected. Found: {:?}",
+                method_name,
+                class_name,
+                functions.iter().map(|f| &f.name).collect::<Vec<_>>()
+            );
+        }
+
+        #[test]
+        fn property_multiple_methods_counted_correctly(
+            class_name in "[A-Z][a-zA-Z0-9]{2,20}",
+            num_methods in 1usize..10
+        ) {
+            let analyzer = JavaScriptAnalyzer;
+
+            // Generate class with N methods
+            let mut methods = String::new();
+            for i in 0..num_methods {
+                methods.push_str(&format!("    method{}() {{ return {}; }}\n", i, i));
+            }
+
+            let content = format!("class {} {{\n{}}}",  class_name, methods);
+            let functions = analyzer.extract_functions(&content);
+
+            // Property: Number of extracted functions must match number of methods
+            prop_assert!(
+                functions.len() == num_methods,
+                "Class '{}' with {} methods must extract exactly {} functions, found {}. Content:\n{}",
+                class_name,
+                num_methods,
+                num_methods,
+                functions.len(),
+                content
+            );
+        }
+    }
 
     proptest! {
         #[test]

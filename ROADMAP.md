@@ -1,21 +1,31 @@
 # PMAT Agent System Roadmap
 
-## 🛑 STOP THE LINE: Critical Bug Detected (Sprint 32)
+## 🛑 HOTFIX: TypeScript/JavaScript Class Method Bug (v2.162.0)
 
-**Status**: 🔴 ANDON CORD PULLED
+**Status**: ✅ FIXED - GREEN PHASE COMPLETE
 **Bug**: TypeScript/JavaScript class method extraction completely broken
 **Severity**: HIGH - Core functionality failure
 **Discovery**: 2025-10-18, during pmat-book Chapter 13 validation
-**Action**: Immediate fix required before continuing Sprint 32
+**Fixed**: 2025-10-18 13:15 UTC
+**Quality Gates**: ALL PASSED ✅
+
+**Fix Summary**:
+- **Problem**: `pmat analyze complexity` returned `functions: 0` for TS/JS classes with methods
+- **Root Cause**: CLI uses `JavaScriptAnalyzer` (regex), NOT `EnhancedTypeScriptVisitor` (AST)
+- **Solution**: Enhanced `JavaScriptAnalyzer` to detect class methods, constructors, static methods
+- **Tests**: 2 RED tests + 4 property tests (4000+ iterations) - ALL PASS
+- **Verification**: CLI binary tested, 5 methods detected (vs 0 before fix)
+- **Ticket**: PMAT-BUG-001
+- **Version**: v2.162.0 READY FOR RELEASE
 
 ---
 
-## 🎉 CURRENT STATUS: v2.161.0 - Sprint 32 PAUSED! 🛑
+## 🎉 CURRENT STATUS: v2.162.0 - Sprint 32 RESUMED! ✅
 
 **Current Date**: October 18, 2025
-**Milestone**: Sprint 32 - Documentation Validation & Integration (PAUSED for bug fix)
-**Sprint**: 32 sprints (31 complete, Sprint 32 in progress → PAUSED)
-**Latest Achievement**: Chapter 30 (.pmatignore) documentation created; **BUG DISCOVERED** in TypeScript/JavaScript parser
+**Milestone**: Sprint 32 - Documentation Validation & Integration (RESUMED after hotfix)
+**Sprint**: 32 sprints (31 complete, Sprint 32 in progress)
+**Latest Achievement**: PMAT-BUG-001 fixed with EXTREME TDD; Ready to resume Chapter 13 validation
 
 ---
 
