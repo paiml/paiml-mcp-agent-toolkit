@@ -15,6 +15,16 @@ pub enum Language {
     JavaScript,
     TypeScript,
     Python,
+    C,       // PMAT-BUG-003 fix
+    CPP,     // PMAT-BUG-004 fix
+    Go,      // PMAT-BUG-005 fix
+    Bash,    // PMAT-BUG-006 fix
+    Java,    // PMAT-BUG-007 fix
+    Kotlin,  // PMAT-BUG-008 fix
+    Ruby,    // PMAT-BUG-009 fix
+    PHP,     // PMAT-BUG-010 fix
+    Swift,   // PMAT-BUG-011 fix
+    CSharp,  // PMAT-BUG-012 fix
     Unknown,
 }
 
@@ -27,6 +37,16 @@ impl Language {
             Some("js" | "jsx") => Language::JavaScript,
             Some("ts" | "tsx") => Language::TypeScript,
             Some("py") => Language::Python,
+            Some("c" | "h") => Language::C,                                   // PMAT-BUG-003 fix
+            Some("cpp" | "cc" | "cxx" | "hpp" | "hxx" | "h++" | "c++") => Language::CPP, // PMAT-BUG-004 fix
+            Some("go") => Language::Go,                                       // PMAT-BUG-005 fix
+            Some("sh" | "bash") => Language::Bash,                            // PMAT-BUG-006 fix
+            Some("java") => Language::Java,                                   // PMAT-BUG-007 fix
+            Some("kt" | "kts") => Language::Kotlin,                           // PMAT-BUG-008 fix
+            Some("rb") => Language::Ruby,                                     // PMAT-BUG-009 fix
+            Some("php") => Language::PHP,                                     // PMAT-BUG-010 fix
+            Some("swift") => Language::Swift,                                 // PMAT-BUG-011 fix
+            Some("cs") => Language::CSharp,                                   // PMAT-BUG-012 fix
             _ => Language::Unknown,
         }
     }
@@ -376,6 +396,171 @@ impl JavaScriptAnalyzer {
     }
 }
 
+/// C language analyzer
+pub struct CAnalyzer;
+
+impl LanguageAnalyzer for CAnalyzer {
+    fn extract_functions(&self, content: &str) -> Vec<FunctionInfo> {
+        let mut functions = Vec::new();
+        let lines: Vec<&str> = content.lines().collect();
+
+        for (line_num, line) in lines.iter().enumerate() {
+            let trimmed = line.trim();
+
+            // Skip comments
+            if trimmed.starts_with("//") || trimmed.starts_with("/*") || trimmed.starts_with('*') {
+                continue;
+            }
+
+            // Detect C function declarations
+            if self.is_function_declaration(trimmed) {
+                if let Some(name) = self.extract_function_name(trimmed) {
+                    let line_end = self.find_function_end(&lines, line_num);
+                    functions.push(FunctionInfo {
+                        name,
+                        line_start: line_num,
+                        line_end,
+                    });
+                }
+            }
+        }
+
+        functions
+    }
+
+    fn estimate_complexity(&self, content: &str, function: &FunctionInfo) -> ComplexityMetrics {
+        let lines: Vec<&str> = content.lines().collect();
+        let function_lines = &lines[function.line_start..=function.line_end];
+
+        let mut visitor = ComplexityVisitor::new();
+        visitor.analyze_lines(function_lines);
+        visitor.into_metrics()
+    }
+}
+
+impl CAnalyzer {
+    /// Check if line is a C function declaration
+    /// Pattern: [storage-class] <type> <name>(<params>) {
+    /// Examples: int add(int a, int b) {
+    ///          static void* malloc(size_t size) {
+    ///          extern inline char get_char(void) {
+    fn is_function_declaration(&self, line: &str) -> bool {
+        // Must contain both '(' and '{'
+        if !line.contains('(') || !line.contains('{') {
+            return false;
+        }
+
+        // Skip preprocessor directives
+        if line.starts_with('#') {
+            return false;
+        }
+
+        // Skip control flow keywords (if, while, for, switch)
+        let trimmed = line.trim();
+        if trimmed.starts_with("if ")
+            || trimmed.starts_with("if(")
+            || trimmed.starts_with("while ")
+            || trimmed.starts_with("while(")
+            || trimmed.starts_with("for ")
+            || trimmed.starts_with("for(")
+            || trimmed.starts_with("switch ")
+            || trimmed.starts_with("switch(")
+        {
+            return false;
+        }
+
+        // Basic pattern: something followed by identifier(params) {
+        // This catches most C function declarations
+        let has_paren = line.contains('(');
+        let has_brace = line.ends_with('{') || line.contains(") {");
+
+        has_paren && has_brace
+    }
+
+    /// Extract function name from C function declaration
+    /// Handles: int add(int a, int b) {
+    ///         static void* malloc(size_t size) {
+    ///         extern inline char get_char(void) {
+    fn extract_function_name(&self, line: &str) -> Option<String> {
+        // Remove storage class specifiers
+        let mut cleaned = line.to_string();
+        for keyword in &["static ", "extern ", "inline ", "__inline__ "] {
+            cleaned = cleaned.replace(keyword, "");
+        }
+
+        let cleaned = cleaned.trim();
+
+        // Find the opening parenthesis
+        let paren_pos = cleaned.find('(')?;
+
+        // Work backwards from '(' to find the function name
+        let before_paren = &cleaned[..paren_pos];
+
+        // Split by whitespace and get the last token (the function name)
+        let tokens: Vec<&str> = before_paren.split_whitespace().collect();
+
+        if tokens.is_empty() {
+            return None;
+        }
+
+        // Last token before '(' is the function name
+        let name = tokens.last()?.trim();
+
+        // Handle pointer syntax: "void* name" -> extract "name"
+        let name = if name.starts_with('*') {
+            name.trim_start_matches('*')
+        } else {
+            name
+        };
+
+        if name.is_empty() || !self.is_valid_identifier(name) {
+            return None;
+        }
+
+        Some(name.to_string())
+    }
+
+    /// Check if string is a valid C identifier
+    fn is_valid_identifier(&self, s: &str) -> bool {
+        if s.is_empty() {
+            return false;
+        }
+
+        let first = s.chars().next().unwrap();
+        if !first.is_alphabetic() && first != '_' {
+            return false;
+        }
+
+        s.chars().all(|c| c.is_alphanumeric() || c == '_')
+    }
+
+    /// Find the closing brace of a function
+    fn find_function_end(&self, lines: &[&str], start: usize) -> usize {
+        let mut brace_count = 0;
+        let mut found_first_brace = false;
+
+        for (i, line) in lines.iter().enumerate().skip(start) {
+            for ch in line.chars() {
+                match ch {
+                    '{' => {
+                        brace_count += 1;
+                        found_first_brace = true;
+                    }
+                    '}' => {
+                        brace_count -= 1;
+                        if found_first_brace && brace_count == 0 {
+                            return i;
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        lines.len() - 1
+    }
+}
+
 /// Python analyzer
 pub struct PythonAnalyzer;
 
@@ -580,6 +765,34 @@ fn create_analyzer(language: Language) -> Box<dyn LanguageAnalyzer> {
         Language::Rust => Box::new(RustAnalyzer),
         Language::JavaScript | Language::TypeScript => Box::new(JavaScriptAnalyzer),
         Language::Python => Box::new(PythonAnalyzer),
+        Language::C => Box::new(CAnalyzer),
+        // PMAT-BUG-004 fix: Reuse JavaScriptAnalyzer for C++
+        // C++ function syntax is similar enough to JavaScript for basic extraction
+        Language::CPP => Box::new(JavaScriptAnalyzer),
+        // PMAT-BUG-005 fix: Reuse CAnalyzer for Go
+        // Go func syntax: func name(params) type { } - similar to C
+        Language::Go => Box::new(CAnalyzer),
+        // PMAT-BUG-006 fix: Reuse JavaScriptAnalyzer for Bash
+        // Bash function syntax: function name() { } or name() { } - similar to JavaScript
+        Language::Bash => Box::new(JavaScriptAnalyzer),
+        // PMAT-BUG-007 fix: Reuse CAnalyzer for Java
+        // Java method syntax: public Type name(params) { } - similar to C
+        Language::Java => Box::new(CAnalyzer),
+        // PMAT-BUG-008 fix: Reuse CAnalyzer for Kotlin
+        // Kotlin fun syntax: fun name(params): Type { } - similar to C
+        Language::Kotlin => Box::new(CAnalyzer),
+        // PMAT-BUG-009 fix: Reuse PythonAnalyzer for Ruby
+        // Ruby def syntax: def name(params) - similar to Python
+        Language::Ruby => Box::new(PythonAnalyzer),
+        // PMAT-BUG-010 fix: Reuse JavaScriptAnalyzer for PHP
+        // PHP function syntax: function name($params) { } - similar to JavaScript
+        Language::PHP => Box::new(JavaScriptAnalyzer),
+        // PMAT-BUG-011 fix: Reuse CAnalyzer for Swift
+        // Swift func syntax: func name(params) -> Type { } - similar to C
+        Language::Swift => Box::new(CAnalyzer),
+        // PMAT-BUG-012 fix: Reuse CAnalyzer for C#
+        // C# method syntax: public Type Name(params) { } - similar to C
+        Language::CSharp => Box::new(CAnalyzer),
         Language::Unknown => unreachable!("Unknown language should be handled earlier"),
     }
 }
