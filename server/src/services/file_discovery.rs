@@ -278,6 +278,8 @@ impl ProjectFileDiscovery {
             .git_exclude(self.config.respect_gitignore)
             .follow_links(self.config.follow_links)
             .max_depth(self.config.max_depth)
+            // UX Fix: Support both .pmatignore (users expect this) AND .paimlignore (legacy)
+            .add_custom_ignore_filename(".pmatignore")
             .add_custom_ignore_filename(".paimlignore");
 
         // Add build artifact filters

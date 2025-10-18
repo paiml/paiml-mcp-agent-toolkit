@@ -26,6 +26,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - STOP THE LINE fixes: 2 critical defects caught and fixed during integration testing
   - Commit: `9cbdd3c5`
 
+- **Critical: .pmatignore/.paimlignore files now respected (EXTREME TDD validated)**
+  - Fixed: Complexity analysis was ignoring `.pmatignore` and `.paimlignore` exclusion files
+  - Root causes (3 bugs fixed):
+    1. `ProjectFileDiscovery` only supported `.paimlignore` (legacy name), not `.pmatignore` (expected based on tool name)
+    2. `analyze_project_files()` used `walkdir` directly, completely bypassing `ProjectFileDiscovery` ignore logic
+    3. Double-filtering with `is_excluded_path()` was incorrectly excluding `/tmp/` paths (breaking tests)
+  - Solutions:
+    1. Added support for BOTH `.pmatignore` AND `.paimlignore` in `file_discovery.rs:282-283`
+    2. Refactored `analyze_project_files()` to use `ProjectFileDiscovery` instead of raw `walkdir`
+    3. Removed redundant `is_excluded_path()` filtering (ProjectFileDiscovery already handles exclusions)
+  - Files modified: 3 core files + 200 lines of tests
+  - EXTREME TDD quality gates (ALL PASSING):
+    - Unit tests: 9/9 (100%) - gitignore + pmatignore integration tests
+    - Real-world validation: Confirmed exclusions work in ruchy project
+    - Zero regressions: All existing file discovery tests pass
+  - Location: `server/src/services/file_discovery.rs:282-283`, `server/src/cli/analysis_utilities.rs:5903-5941`
+  - STOP THE LINE: Halted release to fix critical UX bug reported by user
+
 ### Documentation
 - Added 5 comprehensive quality reports for Issue #67 (1,658 lines total)
   - EXTREME TDD Quality Report with full methodology
