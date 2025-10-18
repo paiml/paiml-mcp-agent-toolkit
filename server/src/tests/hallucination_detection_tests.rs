@@ -1,17 +1,18 @@
-//! Hallucination Detection Tests - Sprint 37 (EXTREME TDD - RED Phase)
+//! Hallucination Detection Tests - Sprint 37 (EXTREME TDD - GREEN Phase)
 //!
 //! Tests for semantic entropy-based hallucination detection in documentation.
-//! These tests MUST FAIL until HallucinationDetector is implemented.
+//! These tests validate the HallucinationDetector implementation.
 //!
 //! Based on peer-reviewed research:
 //! - Semantic Entropy (Farquhar et al., Nature 2024)
 //! - MIND framework (IJCAI 2025)
 //! - Unified Detection Framework (Complex & Intelligent Systems 2025)
 
+use crate::services::hallucination_detector::*;
 use std::path::PathBuf;
 
 #[cfg(test)]
-mod red_phase_tests {
+mod green_phase_tests {
     use super::*;
 
     /// RED TEST 1: ClaimExtractor must extract capability claims from documentation
@@ -26,8 +27,7 @@ mod red_phase_tests {
     /// 2. Complex capability: "PMAT can analyze TypeScript files for complexity metrics"
     /// 3. Negative capability: "PMAT cannot compile code"
     #[test]
-    #[ignore] // RED: Will fail until ClaimExtractor is implemented
-    fn red_claim_extractor_must_parse_capability_claims() {
+    fn green_claim_extractor_must_parse_capability_claims() {
         // ARRANGE
         let documentation = r#"
 # PMAT Features
@@ -37,8 +37,10 @@ PMAT can analyze TypeScript files for complexity metrics.
 PMAT cannot compile code - it only analyzes existing source.
         "#;
 
+        let extractor = ClaimExtractor::new();
+
         // ACT
-        let claims = extract_claims(documentation);
+        let claims = extractor.extract_claims(documentation);
 
         // ASSERT
         assert_eq!(claims.len(), 3, "Should extract 3 claims");
@@ -73,8 +75,7 @@ PMAT cannot compile code - it only analyzes existing source.
     /// # Test Case
     /// Given a deep context with Rust functions, verify facts are accessible
     #[test]
-    #[ignore] // RED: Will fail until CodeFactDatabase is implemented
-    fn red_code_fact_database_must_load_from_deep_context() {
+    fn green_code_fact_database_must_load_from_deep_context() {
         // ARRANGE
         let deep_context = r#"
 ## File: server/src/main.rs
@@ -125,8 +126,8 @@ Supported languages:
     /// - Verified: "PMAT can analyze Rust" vs fact "Rust language supported"
     /// - Contradiction: "PMAT can compile code" vs fact "Analysis only, no compilation"
     #[test]
-    #[ignore] // RED: Will fail until SemanticSimilarity is implemented
-    fn red_semantic_similarity_must_score_claim_vs_fact() {
+    // GREEN: Will fail until SemanticSimilarity is implemented
+    fn green_semantic_similarity_must_score_claim_vs_fact() {
         // ARRANGE
         let similarity = SemanticSimilarity::new();
 
@@ -164,8 +165,8 @@ Supported languages:
     /// Claim: "PMAT can analyze TypeScript complexity"
     /// Fact: TypeScript analyzer exists in codebase
     #[test]
-    #[ignore] // RED: Will fail until HallucinationDetector is implemented
-    fn red_hallucination_detector_must_verify_true_claims() {
+    // GREEN: Will fail until HallucinationDetector is implemented
+    fn green_hallucination_detector_must_verify_true_claims() {
         // ARRANGE
         let code_facts = create_test_code_facts_with_typescript();
         let detector = HallucinationDetector::new(code_facts);
@@ -210,8 +211,8 @@ Supported languages:
     /// Claim: "PMAT can compile code to native binaries"
     /// Fact: PMAT only analyzes, does not compile
     #[test]
-    #[ignore] // RED: Will fail until HallucinationDetector is implemented
-    fn red_hallucination_detector_must_detect_contradictions() {
+    // GREEN: Will fail until HallucinationDetector is implemented
+    fn green_hallucination_detector_must_detect_contradictions() {
         // ARRANGE
         let code_facts = create_test_code_facts_analysis_only();
         let detector = HallucinationDetector::new(code_facts);
@@ -258,8 +259,8 @@ Supported languages:
     /// Claim: "PMAT can analyze Haskell code"
     /// Fact: No Haskell support in codebase (yet)
     #[test]
-    #[ignore] // RED: Will fail until HallucinationDetector is implemented
-    fn red_hallucination_detector_must_detect_unverified_claims() {
+    // GREEN: Will fail until HallucinationDetector is implemented
+    fn green_hallucination_detector_must_detect_unverified_claims() {
         // ARRANGE
         let code_facts = create_test_code_facts_no_haskell();
         let detector = HallucinationDetector::new(code_facts);
@@ -300,8 +301,8 @@ Supported languages:
     /// # Test Case
     /// README with 3 claims (1 verified, 1 unverified, 1 contradiction)
     #[test]
-    #[ignore] // RED: Will fail until full integration is implemented
-    fn red_end_to_end_readme_validation() {
+    // GREEN: Will fail until full integration is implemented
+    fn green_end_to_end_readme_validation() {
         // ARRANGE
         let readme = r#"
 # PMAT - Code Analysis Tool
@@ -340,147 +341,48 @@ PMAT can compile Rust code to WebAssembly.
 }
 
 // ============================================================================
-// Test Helper Types (will be implemented in main code)
-// ============================================================================
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ClaimType {
-    Capability,
-    Structure,
-    Api,
-    Command,
-    ExternalRef,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Entity {
-    Language(String),
-    Function(String),
-    File(String),
-    Module(String),
-    Capability(String),
-}
-
-#[derive(Debug, Clone)]
-pub struct Claim {
-    pub source_file: PathBuf,
-    pub line_number: usize,
-    pub text: String,
-    pub claim_type: ClaimType,
-    pub entities: Vec<Entity>,
-    pub is_negative: bool,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ValidationStatus {
-    Verified,
-    Unverified,
-    Contradiction,
-    NotFound,
-    Outdated,
-    Inconclusive,
-}
-
-#[derive(Debug, Clone)]
-pub struct ValidationResult {
-    pub claim: Claim,
-    pub status: ValidationStatus,
-    pub evidence: Option<Evidence>,
-    pub error_message: Option<String>,
-    pub confidence: f32,
-}
-
-#[derive(Debug, Clone)]
-pub struct Evidence {
-    pub source: String,
-    pub similarity: f32,
-    pub content: String,
-}
-
-// ============================================================================
-// Stub Implementations (for RED phase - will fail)
-// ============================================================================
-
-pub fn extract_claims(_documentation: &str) -> Vec<Claim> {
-    unimplemented!("RED: ClaimExtractor not yet implemented")
-}
-
-pub struct CodeFactDatabase;
-
-impl CodeFactDatabase {
-    pub fn from_markdown(_content: &str) -> Result<Self, String> {
-        unimplemented!("RED: CodeFactDatabase not yet implemented")
-    }
-
-    pub fn has_function(&self, _name: &str) -> bool {
-        unimplemented!("RED: CodeFactDatabase not yet implemented")
-    }
-
-    pub fn has_language_support(&self, _language: &str) -> bool {
-        unimplemented!("RED: CodeFactDatabase not yet implemented")
-    }
-}
-
-pub struct SemanticSimilarity;
-
-impl SemanticSimilarity {
-    pub fn new() -> Self {
-        unimplemented!("RED: SemanticSimilarity not yet implemented")
-    }
-
-    pub fn calculate(&self, _claim: &str, _fact: &str) -> f32 {
-        unimplemented!("RED: SemanticSimilarity not yet implemented")
-    }
-}
-
-pub struct HallucinationDetector;
-
-impl HallucinationDetector {
-    pub fn new(_code_facts: CodeFactDatabase) -> Self {
-        unimplemented!("RED: HallucinationDetector not yet implemented")
-    }
-
-    pub fn validate_claim(&self, _claim: &Claim) -> Result<ValidationResult, String> {
-        unimplemented!("RED: HallucinationDetector not yet implemented")
-    }
-}
-
-pub struct DocAccuracyValidator;
-
-impl DocAccuracyValidator {
-    pub fn new(_code_facts: CodeFactDatabase) -> Self {
-        unimplemented!("RED: DocAccuracyValidator not yet implemented")
-    }
-
-    pub fn validate_documentation(
-        &self,
-        _content: &str,
-        _filename: &str,
-    ) -> Result<Vec<ValidationResult>, String> {
-        unimplemented!("RED: DocAccuracyValidator not yet implemented")
-    }
-
-    pub fn has_contradictions(&self, _results: &[ValidationResult]) -> bool {
-        unimplemented!("RED: has_contradictions not yet implemented")
-    }
-}
-
-// ============================================================================
 // Test Fixture Helpers
 // ============================================================================
 
 fn create_test_code_facts_with_typescript() -> CodeFactDatabase {
-    CodeFactDatabase
+    let markdown = r#"
+Supported languages:
+- TypeScript
+- JavaScript
+- Rust
+    "#;
+    CodeFactDatabase::from_markdown(markdown).unwrap()
 }
 
 fn create_test_code_facts_analysis_only() -> CodeFactDatabase {
-    CodeFactDatabase
+    let mut db = CodeFactDatabase::new();
+    db.add_capability("analyze".to_string());
+    db
 }
 
 fn create_test_code_facts_no_haskell() -> CodeFactDatabase {
-    CodeFactDatabase
+    let markdown = r#"
+Supported languages:
+- Rust
+- TypeScript
+- Python
+    "#;
+    CodeFactDatabase::from_markdown(markdown).unwrap()
 }
 
 fn create_test_code_facts_realistic() -> CodeFactDatabase {
-    CodeFactDatabase
+    let markdown = r#"
+Supported languages:
+- Rust
+- TypeScript
+- Python
+
+Functions:
+- analyze()
+- detect()
+- validate()
+    "#;
+    let mut db = CodeFactDatabase::from_markdown(markdown).unwrap();
+    db.add_capability("analyze".to_string());
+    db
 }
