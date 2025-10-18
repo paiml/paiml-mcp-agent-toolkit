@@ -1,14 +1,15 @@
 # What's Next: Post v2.163.0 Roadmap
 
-**Last Updated:** October 18, 2025 (Session: Sprint 38 COMPLETE - CLI Integration)
+**Last Updated:** October 18, 2025 (Session: Sprint 39 - Quality & Coverage Enhancement)
 **Current Version:** v2.163.0
-**Status:** ✅ SPRINT 38 COMPLETE (100%)
+**Status:** 🟡 SPRINT 39 IN PROGRESS (0%)
 
 **Recent Achievements:**
 - ✅ Sprint 35: Documentation Accuracy Enforcement (specifications + automation)
 - ✅ Sprint 36: Language Regression Test Suite (100% coverage - 6/6 passing)
 - ✅ Sprint 37: Hallucination Detection System (7/7 tests passing - 100%)
 - ✅ Sprint 38: CLI Integration (validate-readme command - 100% complete)
+- 🟡 Sprint 39: Quality & Coverage Enhancement (IN PROGRESS)
 - ✅ All sprints comprehensively documented in ROADMAP.md
 
 **Sprint 36 - COMPLETE (October 18, 2025) - 100% REGRESSION COVERAGE ACHIEVED! 🎉🎯**
@@ -357,6 +358,122 @@ pmat validate-readme \
 - ✅ Fail-fast on contradictions
 - ✅ Comprehensive documentation and examples
 - ✅ Toyota Way quality principles applied
+
+---
+
+**Sprint 39 - IN PROGRESS (October 18, 2025) - QUALITY & COVERAGE ENHANCEMENT 🔬**
+
+**Status**: 🟡 0% Complete (Plan created, awaiting Priority 1 fixes)
+
+**Major Goal**: Fix regressions, reduce ignored tests, enhance test coverage
+
+**User Story**:
+> "Fix 83 ignored/failing tests, and enhance with mutation, property, fuzz and pmat validation"
+
+**Sprint 39 Plan Overview**:
+```
+Priority 1 (URGENT): Fix Regressions         │ 4 tests  │ 2-4 hours   │ CRITICAL
+Priority 2:          Fix Known Failing Tests │ 14 tests │ 4-6 hours   │ HIGH
+Priority 3:          Re-enable Ignored Tests │ 69 tests │ 10-15 hours │ MEDIUM
+Priority 4:          Mutation Testing        │ -        │ 3-4 hours   │ MEDIUM
+Priority 5:          Property-Based Testing  │ -        │ 2-3 hours   │ LOW
+Priority 6:          Fuzz Testing            │ -        │ 2-3 hours   │ LOW
+Priority 7:          pmat Self-Validation    │ -        │ 1-2 hours   │ LOW
+────────────────────────────────────────────────────────────────────────
+Total Estimated Time: 24-37 hours (recommend 3 sub-sprints: 39a, 39b, 39c)
+```
+
+**Current Status - Priority 1 (URGENT)**:
+
+**4 Language Regression Tests Failing** (were passing in Sprint 36):
+1. ❌ `test_bash_deep_context_analysis` - FAILED (passes with --test-threads=1 ✅)
+2. ❌ `test_cpp_deep_context_analysis` - FAILED (passes with --test-threads=1 ✅)
+3. ❌ `test_php_deep_context_analysis` - FAILED (passes with --test-threads=1 ✅)
+4. ❌ `test_swift_deep_context_analysis` - FAILED (passes with --test-threads=1 ✅)
+
+**Investigation Results**:
+```bash
+# Parallel execution (default):
+cargo test language_regression_tests::
+test result: FAILED. 2 passed; 4 failed; 0 ignored
+
+# Serial execution:
+cargo test language_regression_tests:: --lib -- --test-threads=1
+test result: ok. 6 passed; 0 failed; 0 ignored ✅
+```
+
+**Root Cause**: Test isolation issue (NOT code regression):
+- Tests share global state or test fixtures
+- Race conditions occur during parallel execution
+- All tests functionally correct (pass serially)
+- Individual test runs: 100% passing ✅
+
+**Evidence (All Tests Functionally Correct)**:
+- ✅ Bash test: 39 functions detected (required ≥3)
+- ✅ C test: 3 functions detected
+- ✅ C++ test: 6 functions detected
+- ✅ PHP test: 6 functions detected
+- ✅ Swift test: 9 functions detected
+- ✅ WASM test: 6 functions detected
+
+**Fix Required**:
+- Isolate test fixtures (unique temp directories per test)
+- Remove shared mutable state
+- Add proper cleanup between tests
+- Consider `serial_test` crate for inherently serial tests
+
+**Estimated Time**: 2-4 hours
+
+---
+
+**Priority 2: Fix 14 Known Failing Tests** (pre-existing issues):
+- 6 service layer tests
+- 5 defect report service tests (missing fixtures)
+- 3 e2e binary tests (binary execution issues)
+- **Estimated Time**: 4-6 hours
+
+**Priority 3: Re-enable 69 Ignored Tests** (phased approach):
+- Phase 1: 20 high-priority tests (language-specific, infrastructure, annotation TDD, CLI)
+- Phase 2: 25 medium-priority tests (unified quality, end-to-end, language detection)
+- Phase 3: 24 lower-priority tests (enhanced naming, unified context, TypeScript/JavaScript)
+- Not re-enabling: 7 Ruchy parser tests (RED tests for unimplemented feature)
+- **Estimated Time**: 10-15 hours
+
+**Priority 4-7: Advanced Testing** (mutation, property, fuzz, self-validation):
+- Mutation testing with cargo-mutants (target: >70% mutation score)
+- Property-based testing with proptest (language detection, complexity, classification)
+- Fuzz testing with cargo-fuzz (JavaScript, Rust, Python, WASM parsers)
+- pmat self-validation (run pmat quality gates on pmat itself)
+- **Estimated Time**: 8-12 hours
+
+**Sprint 39 Sub-Sprint Breakdown**:
+- **Sprint 39a**: Fix Regressions + Known Failures (6-10 hours)
+- **Sprint 39b**: Re-enable Ignored Tests (10-15 hours)
+- **Sprint 39c**: Advanced Testing (8-12 hours)
+
+**Success Metrics**:
+- ✅ 0 regressions (all language tests passing in parallel)
+- ✅ 0 known failing tests (14 → 0)
+- ✅ < 50 ignored tests (69 → <50)
+- ✅ Mutation score > 70%
+- ✅ Property tests for critical paths
+- ✅ Fuzz testing for all parsers
+- ✅ pmat quality gates passing
+
+**Documentation**:
+- ✅ Sprint 39 plan created (`/tmp/sprint39_plan.md`)
+- ✅ ROADMAP.md updated with comprehensive Sprint 39 section (343 lines)
+- ✅ WHATS_NEXT.md updated with current status
+- ⚙️ Test isolation fixes (pending)
+
+**Current Session Progress**:
+- ✅ Analyzed test failures and categorized them
+- ✅ Created Sprint 39 plan
+- ✅ Updated ROADMAP.md with Sprint 39 section
+- ✅ Updated WHATS_NEXT.md with Sprint 39 status
+- ⚙️ Next: Fix test isolation issues (Priority 1)
+
+**Detailed Plan**: See ROADMAP.md Sprint 39 section for complete breakdown
 
 ---
 
