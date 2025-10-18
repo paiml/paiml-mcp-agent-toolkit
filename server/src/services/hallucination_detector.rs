@@ -340,45 +340,154 @@ impl Default for CodeFactDatabase {
 // ============================================================================
 
 /// Calculates semantic similarity between claims and facts
-pub struct SemanticSimilarity;
+pub struct SemanticSimilarity {
+    /// Common stopwords to filter out
+    stopwords: Vec<String>,
+}
 
 impl SemanticSimilarity {
     /// Create new similarity calculator
     pub fn new() -> Self {
-        Self
+        let stopwords = vec![
+            "the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for",
+            "of", "with", "by", "from", "as", "is", "was", "are", "were", "be",
+            "been", "being", "have", "has", "had", "do", "does", "did", "will",
+            "would", "should", "could", "may", "might", "must", "can", "cannot",
+        ]
+        .into_iter()
+        .map(|s| s.to_string())
+        .collect();
+
+        Self { stopwords }
     }
 
     /// Calculate similarity between claim and fact (0.0 - 1.0)
     ///
-    /// Uses simple keyword-based similarity for now.
-    /// TODO: Upgrade to embedding-based similarity in future sprint.
+    /// Uses enhanced keyword-based similarity with:
+    /// - Stopword filtering
+    /// - Weighted matching (exact > partial)
+    /// - Semantic keyword boosting
     pub fn calculate(&self, claim: &str, fact: &str) -> f32 {
         let claim_lower = claim.to_lowercase();
         let fact_lower = fact.to_lowercase();
 
-        // Simple keyword overlap scoring
-        let claim_words: Vec<&str> = claim_lower.split_whitespace().collect();
-        let fact_words: Vec<&str> = fact_lower.split_whitespace().collect();
+        // Extract meaningful keywords (filter stopwords)
+        let claim_words = self.extract_keywords(&claim_lower);
+        let fact_words = self.extract_keywords(&fact_lower);
 
         if claim_words.is_empty() || fact_words.is_empty() {
             return 0.0;
         }
 
-        // Count matching words
-        let mut matches = 0;
-        for word in &claim_words {
-            if fact_words.contains(word) {
-                matches += 1;
+        // Calculate weighted similarity
+        let mut score = 0.0;
+        let mut total_weight = 0.0;
+
+        for claim_word in &claim_words {
+            let weight = self.get_word_weight(claim_word);
+            total_weight += weight;
+
+            // Exact match
+            if fact_words.contains(claim_word) {
+                score += weight;
+            }
+            // Partial match (substring)
+            else if fact_words.iter().any(|fw| fw.contains(claim_word.as_str()) || claim_word.contains(fw)) {
+                score += weight * 0.5;
             }
         }
 
-        // Jaccard similarity: intersection / union
-        let union_size = claim_words.len() + fact_words.len() - matches;
-        if union_size == 0 {
+        if total_weight == 0.0 {
             return 0.0;
         }
 
-        matches as f32 / union_size as f32
+        // Normalize to 0.0-1.0 range
+        let base_score = score / total_weight;
+
+        // Boost score if key semantic keywords match
+        let boost = self.semantic_keyword_boost(&claim_lower, &fact_lower);
+
+        // Combine base score with boost (capped at 1.0)
+        (base_score + boost).min(1.0)
+    }
+
+    /// Extract meaningful keywords (filter stopwords)
+    fn extract_keywords(&self, text: &str) -> Vec<String> {
+        text.split_whitespace()
+            .filter(|word| !self.stopwords.contains(&word.to_string()))
+            .map(|s| s.to_string())
+            .collect()
+    }
+
+    /// Get weight for a word (higher weight for important words)
+    fn get_word_weight(&self, word: &str) -> f32 {
+        // Technical terms get higher weight
+        match word {
+            // Language names
+            "rust" | "typescript" | "javascript" | "python" | "c" | "cpp" | "go" |
+            "java" | "kotlin" | "ruby" | "php" | "swift" | "haskell" => 3.0,
+
+            // Action verbs (capabilities)
+            "analyze" | "analyzes" | "analyzing" | "analysis" => 2.5,
+            "compile" | "compiles" | "compiling" | "compilation" => 2.5,
+            "support" | "supports" | "supporting" | "supported" => 2.0,
+            "detect" | "detects" | "detecting" | "detection" => 2.0,
+            "generate" | "generates" | "generating" => 2.0,
+
+            // Technical nouns
+            "complexity" | "metrics" | "code" | "files" | "functions" => 1.5,
+            "pmat" => 1.0, // Tool name is neutral
+
+            _ => 1.0, // Default weight
+        }
+    }
+
+    /// Calculate semantic keyword boost
+    fn semantic_keyword_boost(&self, claim: &str, fact: &str) -> f32 {
+        let mut boost = 0.0;
+
+        // Check for explicit contradictions first (highest priority)
+        // Pattern: claim says "can X" but fact says "does not X" or "cannot X"
+        let action_verbs = ["compile", "compiles", "analyze", "support", "generate"];
+        for verb in &action_verbs {
+            // Claim is positive about verb, fact is negative
+            if claim.contains(verb) && !claim.contains("cannot") && !claim.contains("does not") {
+                if fact.contains(&format!("does not {}", verb)) ||
+                   fact.contains(&format!("cannot {}", verb)) ||
+                   fact.contains(&format!("not {}", verb)) ||
+                   (fact.contains(verb) && (fact.contains("but not") || fact.contains("only"))) {
+                    // CONTRADICTION: claim positive, fact negative
+                    return -0.8; // Strong negative boost
+                }
+            }
+            // Both agree on capability
+            if claim.contains(verb) && fact.contains(verb) {
+                // Check if both are positive or both are negative
+                let claim_negative = claim.contains("cannot") || claim.contains("does not");
+                let fact_negative = fact.contains("cannot") || fact.contains("does not") || fact.contains("but not");
+
+                if claim_negative == fact_negative {
+                    boost += 0.3; // Both agree
+                }
+            }
+        }
+
+        // Language matching (high boost for exact match)
+        let languages = ["rust", "typescript", "javascript", "python", "c", "cpp"];
+        for lang in &languages {
+            if claim.contains(lang) && fact.contains(lang) {
+                boost += 0.4;
+                break;
+            }
+        }
+
+        // Complexity/metrics matching
+        if (claim.contains("complexity") && fact.contains("complexity")) ||
+           (claim.contains("metrics") && fact.contains("metrics")) {
+            boost += 0.2;
+        }
+
+        boost
     }
 }
 
@@ -411,57 +520,58 @@ impl HallucinationDetector {
 
     /// Validate a claim against codebase
     pub fn validate_claim(&self, claim: &Claim) -> Result<ValidationResult> {
-        // Check each entity in the claim
+        // First pass: Check for contradictions (highest priority)
         for entity in &claim.entities {
-            match entity {
-                Entity::Language(lang) => {
-                    if self.code_facts.has_language_support(lang) && !claim.is_negative {
-                        // Language is supported and claim is positive - VERIFIED
-                        return Ok(ValidationResult {
-                            claim: claim.clone(),
-                            status: ValidationStatus::Verified,
-                            evidence: Some(Evidence {
-                                source: "CodeFactDatabase".to_string(),
-                                similarity: 0.95,
-                                content: format!("{} language analysis supported", lang),
-                            }),
-                            error_message: None,
-                            confidence: 0.95,
-                        });
-                    } else if !self.code_facts.has_language_support(lang) && !claim.is_negative {
-                        // Language not supported but claim is positive - UNVERIFIED
-                        return Ok(ValidationResult {
-                            claim: claim.clone(),
-                            status: ValidationStatus::Unverified,
-                            evidence: None,
-                            error_message: Some(format!(
-                                "{} language support not found in codebase",
-                                lang
-                            )),
-                            confidence: 0.5,
-                        });
-                    }
+            if let Entity::Capability(cap) = entity {
+                // Check for contradictory capabilities (e.g., "compile")
+                if cap == "compile" && !claim.is_negative {
+                    // PMAT doesn't compile - CONTRADICTION
+                    return Ok(ValidationResult {
+                        claim: claim.clone(),
+                        status: ValidationStatus::Contradiction,
+                        evidence: Some(Evidence {
+                            source: "CodeFactDatabase".to_string(),
+                            similarity: 0.2,
+                            content: "PMAT analyzes code but does not compile it".to_string(),
+                        }),
+                        error_message: Some(
+                            "PMAT does not compile code - analysis only".to_string()
+                        ),
+                        confidence: 0.2,
+                    });
                 }
-                Entity::Capability(cap) => {
-                    // Check for contradictory capabilities (e.g., "compile")
-                    if cap == "compile" && !claim.is_negative {
-                        // PMAT doesn't compile - CONTRADICTION
-                        return Ok(ValidationResult {
-                            claim: claim.clone(),
-                            status: ValidationStatus::Contradiction,
-                            evidence: Some(Evidence {
-                                source: "CodeFactDatabase".to_string(),
-                                similarity: 0.2,
-                                content: "PMAT analyzes code but does not compile it".to_string(),
-                            }),
-                            error_message: Some(
-                                "PMAT does not compile code - analysis only".to_string()
-                            ),
-                            confidence: 0.2,
-                        });
-                    }
+            }
+        }
+
+        // Second pass: Check for verification/unverified
+        for entity in &claim.entities {
+            if let Entity::Language(lang) = entity {
+                if self.code_facts.has_language_support(lang) && !claim.is_negative {
+                    // Language is supported and claim is positive - VERIFIED
+                    return Ok(ValidationResult {
+                        claim: claim.clone(),
+                        status: ValidationStatus::Verified,
+                        evidence: Some(Evidence {
+                            source: "CodeFactDatabase".to_string(),
+                            similarity: 0.95,
+                            content: format!("{} language analysis supported", lang),
+                        }),
+                        error_message: None,
+                        confidence: 0.95,
+                    });
+                } else if !self.code_facts.has_language_support(lang) && !claim.is_negative {
+                    // Language not supported but claim is positive - UNVERIFIED
+                    return Ok(ValidationResult {
+                        claim: claim.clone(),
+                        status: ValidationStatus::Unverified,
+                        evidence: None,
+                        error_message: Some(format!(
+                            "{} language support not found in codebase",
+                            lang
+                        )),
+                        confidence: 0.5,
+                    });
                 }
-                _ => {}
             }
         }
 
