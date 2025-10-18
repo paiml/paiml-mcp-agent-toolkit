@@ -140,7 +140,7 @@ impl SimpleDeepContext {
 
         let source_extensions = [
             "rs", "js", "ts", "jsx", "tsx", "py", "cpp", "c", "h", "wasm", "wat", "rb", "ruchy",
-            "go", "java", "cs", "kt", "sh", "bash",
+            "go", "java", "cs", "kt", "sh", "bash", "php", "swift",
         ];
         let exclude_dirs = ["target", "node_modules", ".git", "build", "dist"];
 
