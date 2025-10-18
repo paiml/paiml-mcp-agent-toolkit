@@ -363,7 +363,7 @@ pmat validate-readme \
 
 **Sprint 39 - IN PROGRESS (October 18, 2025) - QUALITY & COVERAGE ENHANCEMENT 🔬**
 
-**Status**: 🟡 0% Complete (Plan created, awaiting Priority 1 fixes)
+**Status**: 🟡 15% Complete (Priority 1 COMPLETE ✅)
 
 **Major Goal**: Fix regressions, reduce ignored tests, enhance test coverage
 
@@ -383,48 +383,43 @@ Priority 7:          pmat Self-Validation    │ -        │ 1-2 hours   │ LO
 Total Estimated Time: 24-37 hours (recommend 3 sub-sprints: 39a, 39b, 39c)
 ```
 
-**Current Status - Priority 1 (URGENT)**:
+**Priority 1 (URGENT) - COMPLETE ✅**:
 
-**4 Language Regression Tests Failing** (were passing in Sprint 36):
-1. ❌ `test_bash_deep_context_analysis` - FAILED (passes with --test-threads=1 ✅)
-2. ❌ `test_cpp_deep_context_analysis` - FAILED (passes with --test-threads=1 ✅)
-3. ❌ `test_php_deep_context_analysis` - FAILED (passes with --test-threads=1 ✅)
-4. ❌ `test_swift_deep_context_analysis` - FAILED (passes with --test-threads=1 ✅)
+**Fix: Test Isolation in Language Regression Tests**
 
-**Investigation Results**:
+**Problem Solved**:
+- 4 language regression tests were failing in parallel execution
+- All 6 tests passed when run serially (--test-threads=1)
+- Root cause: TempDir::new() naming collision causing race conditions
+
+**Solution Implemented**:
+Changed `TempDir::new()` to `TempDir::with_prefix("pmat_test_<lang>_")` for all 6 tests
+
+**Test Results**:
 ```bash
-# Parallel execution (default):
-cargo test language_regression_tests::
-test result: FAILED. 2 passed; 4 failed; 0 ignored
+BEFORE:
+- Parallel: FAILED. 2 passed; 4 failed; 0 ignored ❌
+- Serial:   ok. 6 passed; 0 failed; 0 ignored ✅
 
-# Serial execution:
-cargo test language_regression_tests:: --lib -- --test-threads=1
-test result: ok. 6 passed; 0 failed; 0 ignored ✅
+AFTER:
+- Parallel: ok. 6 passed; 0 failed; 0 ignored ✅
+- Serial:   ok. 6 passed; 0 ignored ✅
 ```
 
-**Root Cause**: Test isolation issue (NOT code regression):
-- Tests share global state or test fixtures
-- Race conditions occur during parallel execution
-- All tests functionally correct (pass serially)
-- Individual test runs: 100% passing ✅
+**Impact**:
+- ✅ All 6 language regression tests now pass in parallel
+- ✅ Zero regressions (all tests functionally correct)
+- ✅ Proper test isolation with unique temp directories
+- ✅ Fixed critical test infrastructure issue
 
-**Evidence (All Tests Functionally Correct)**:
-- ✅ Bash test: 39 functions detected (required ≥3)
-- ✅ C test: 3 functions detected
-- ✅ C++ test: 6 functions detected
-- ✅ PHP test: 6 functions detected
-- ✅ Swift test: 9 functions detected
-- ✅ WASM test: 6 functions detected
-
-**Fix Required**:
-- Isolate test fixtures (unique temp directories per test)
-- Remove shared mutable state
-- Add proper cleanup between tests
-- Consider `serial_test` crate for inherently serial tests
-
-**Estimated Time**: 2-4 hours
+**Time Spent**: ~65 minutes (well under 2-4 hour estimate)
+**Commit**: `45cd1400` - "fix: Resolve test isolation issue in language regression tests"
 
 ---
+
+**Current Status - Priority 2 (HIGH)**:
+
+**14 Known Failing Tests** (pre-existing issues):
 
 **Priority 2: Fix 14 Known Failing Tests** (pre-existing issues):
 - 6 service layer tests
