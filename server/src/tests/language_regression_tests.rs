@@ -9,7 +9,7 @@ use tempfile::TempDir;
 #[tokio::test]
 async fn test_c_deep_context_analysis() {
     // ARRANGE: Create C file with known complexity
-    let temp_dir = TempDir::new().unwrap();
+    let temp_dir = TempDir::with_prefix("pmat_test_c_").unwrap();
     let c_file = temp_dir.path().join("main.c");
     fs::write(
         &c_file,
@@ -101,7 +101,7 @@ int sum_array(int *arr, int size) {
 #[tokio::test]
 async fn test_cpp_deep_context_analysis() {
     // ARRANGE: Create C++ file with known complexity
-    let temp_dir = TempDir::new().unwrap();
+    let temp_dir = TempDir::with_prefix("pmat_test_cpp_").unwrap();
     let cpp_file = temp_dir.path().join("main.cpp");
     fs::write(
         &cpp_file,
@@ -211,7 +211,7 @@ public:
 #[tokio::test]
 async fn test_bash_deep_context_analysis() {
     // ARRANGE: Create Bash file with known complexity
-    let temp_dir = TempDir::new().unwrap();
+    let temp_dir = TempDir::with_prefix("pmat_test_bash_").unwrap();
     let bash_file = temp_dir.path().join("script.sh");
     fs::write(
         &bash_file,
@@ -310,7 +310,7 @@ main "$@"
 #[tokio::test]
 async fn test_php_deep_context_analysis() {
     // ARRANGE: Create PHP file with known complexity
-    let temp_dir = TempDir::new().unwrap();
+    let temp_dir = TempDir::with_prefix("pmat_test_php_").unwrap();
     let php_file = temp_dir.path().join("index.php");
     fs::write(
         &php_file,
@@ -422,7 +422,7 @@ class Calculator {
 #[tokio::test]
 async fn test_swift_deep_context_analysis() {
     // ARRANGE: Create Swift file with known complexity
-    let temp_dir = TempDir::new().unwrap();
+    let temp_dir = TempDir::with_prefix("pmat_test_swift_").unwrap();
     let swift_file = temp_dir.path().join("main.swift");
     fs::write(
         &swift_file,
@@ -533,7 +533,7 @@ class Calculator {
 #[tokio::test]
 async fn test_wasm_deep_context_analysis() {
     // ARRANGE: Create WAT (WebAssembly Text) file with known complexity
-    let temp_dir = TempDir::new().unwrap();
+    let temp_dir = TempDir::with_prefix("pmat_test_wasm_").unwrap();
     let wat_file = temp_dir.path().join("module.wat");
     fs::write(
         &wat_file,
