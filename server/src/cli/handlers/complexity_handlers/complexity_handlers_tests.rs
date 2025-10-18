@@ -519,4 +519,75 @@ mod tests {
 
         assert!(should_include);
     }
+
+    /// RED TEST: Issue - Boundary condition bug in --fail-on-violation
+    /// Reported: Complexity 9 fails with threshold 10 (should pass)
+    /// Root cause: has_complexity_violations() uses unwrap_or with hardcoded defaults
+    #[test]
+    fn test_fail_on_violation_boundary_exact() {
+        use super::super::has_complexity_violations;
+
+        // Test data: Function with complexity exactly at threshold - 1
+        let file = FileComplexityMetrics {
+            path: "test.rs".to_string(),
+            total_complexity: ComplexityMetrics::new(9, 9, 3, 100),
+            functions: vec![FunctionComplexity {
+                name: "func_with_9".to_string(),
+                line_start: 1,
+                line_end: 10,
+                metrics: ComplexityMetrics::new(9, 9, 3, 10),
+            }],
+            classes: vec![],
+        };
+
+        // CRITICAL: Complexity 9 with threshold 10 should NOT be a violation
+        // (violation means strictly greater than threshold)
+        let has_violation = has_complexity_violations(&[file.clone()], Some(10), None);
+
+        assert!(
+            !has_violation,
+            "Complexity 9 should NOT violate threshold 10 (9 is not > 10)"
+        );
+
+        // Additional test: Complexity exactly AT threshold should also NOT violate
+        let file_at_threshold = FileComplexityMetrics {
+            path: "test2.rs".to_string(),
+            total_complexity: ComplexityMetrics::new(10, 10, 3, 100),
+            functions: vec![FunctionComplexity {
+                name: "func_with_10".to_string(),
+                line_start: 1,
+                line_end: 10,
+                metrics: ComplexityMetrics::new(10, 10, 3, 10),
+            }],
+            classes: vec![],
+        };
+
+        let has_violation_at_threshold =
+            has_complexity_violations(&[file_at_threshold], Some(10), None);
+
+        assert!(
+            !has_violation_at_threshold,
+            "Complexity 10 should NOT violate threshold 10 (10 is not > 10)"
+        );
+
+        // Sanity check: Complexity 11 with threshold 10 SHOULD violate
+        let file_above = FileComplexityMetrics {
+            path: "test3.rs".to_string(),
+            total_complexity: ComplexityMetrics::new(11, 11, 3, 100),
+            functions: vec![FunctionComplexity {
+                name: "func_with_11".to_string(),
+                line_start: 1,
+                line_end: 10,
+                metrics: ComplexityMetrics::new(11, 11, 3, 10),
+            }],
+            classes: vec![],
+        };
+
+        let has_violation_above = has_complexity_violations(&[file_above], Some(10), None);
+
+        assert!(
+            has_violation_above,
+            "Complexity 11 SHOULD violate threshold 10 (11 > 10)"
+        );
+    }
 }

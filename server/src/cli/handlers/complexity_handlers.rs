@@ -65,6 +65,10 @@ impl ComplexityConfig {
 ///
 /// This helper function handles single file analysis with proper error handling
 /// and maintains consistency with the Issue #42 fix for multi-language support.
+///
+/// **Issue #67 Fix**: When analyzing a single file with `--file` parameter,
+/// we ALWAYS use uncached analysis to ensure line numbers reflect the CURRENT
+/// file location, not stale cached data from when the function was in a different file.
 async fn analyze_single_file(
     file_path: &Path,
     config: &ComplexityConfig,
@@ -82,12 +86,17 @@ async fn analyze_single_file(
         anyhow::bail!("File not found: {}", full_path.display());
     }
 
-    // Use unified analyzer (maintains Issue #42 fix)
-    let file_content = std::fs::read_to_string(&full_path)
-        .context(format!("Failed to read file: {}", full_path.display()))?;
-
-    let metrics =
-        crate::cli::language_analyzer::analyze_file_complexity(&full_path, &file_content).await?;
+    // Issue #67 Fix: Use UNCACHED analysis for single file operations
+    // This ensures line numbers are accurate for extracted/moved functions
+    // When functions are extracted from one file to another, the TDG cache
+    // (keyed by content hash) returns stale line numbers from the old location.
+    // By using uncached analysis, we always report line numbers from the CURRENT file.
+    let metrics = crate::services::complexity::analyze_file_complexity_uncached(&full_path, None)
+        .await
+        .context(format!(
+            "Failed to analyze file complexity: {}",
+            full_path.display()
+        ))?;
 
     Ok(vec![metrics])
 }
