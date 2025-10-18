@@ -1,0 +1,188 @@
+# GitHub Actions Workflow: README Hallucination Detection
+#
+# This workflow validates AI-generated documentation against codebase reality
+# using pmat's semantic entropy-based hallucination detection.
+#
+# Triggers:
+# - On pull requests that modify documentation files
+# - On pushes to main branch
+#
+# Based on Sprint 38 (validate-readme CLI command)
+
+name: Validate README Accuracy
+
+on:
+  pull_request:
+    paths:
+      - 'README.md'
+      - 'CLAUDE.md'
+      - 'GEMINI.md'
+      - 'AGENT.md'
+      - 'docs/**/*.md'
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - 'README.md'
+      - 'CLAUDE.md'
+      - 'GEMINI.md'
+      - 'AGENT.md'
+
+jobs:
+  validate-documentation:
+    name: Detect Hallucinations in Documentation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Install PMAT
+        run: |
+          cargo install pmat
+          pmat --version
+
+      - name: Generate Deep Context
+        run: |
+          echo "🔍 Generating deep context from codebase..."
+          pmat context \
+            --output deep_context.md \
+            --format llm-optimized
+
+          echo "📊 Deep context size:"
+          wc -l deep_context.md
+
+      - name: Validate README.md
+        id: validate
+        run: |
+          echo "🔬 Validating README.md for hallucinations..."
+
+          # Generate JSON report
+          pmat validate-readme \
+            --targets README.md \
+            --deep-context deep_context.md \
+            --output json \
+            --fail-on-contradiction \
+            > hallucination_report.json || true
+
+          # Generate JUnit XML for test reporting
+          pmat validate-readme \
+            --targets README.md \
+            --deep-context deep_context.md \
+            --output junit \
+            --fail-on-contradiction \
+            > hallucination_junit.xml
+
+      - name: Upload Hallucination Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hallucination-report
+          path: |
+            hallucination_report.json
+            hallucination_junit.xml
+            deep_context.md
+          retention-days: 30
+
+      - name: Publish Test Results
+        if: always()
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          files: hallucination_junit.xml
+          check_name: README Hallucination Detection Results
+
+      - name: Comment PR with Results (if failures)
+        if: failure() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = JSON.parse(fs.readFileSync('hallucination_report.json', 'utf8'));
+
+            let comment = '## 🔬 README Hallucination Detection Results\n\n';
+            comment += `📄 Files validated: ${report.files_validated}\n`;
+            comment += `✅ Verified claims: ${report.verified_claims}\n`;
+            comment += `❌ Contradictions: ${report.contradictions}\n`;
+            comment += `⚠️ Unverified claims: ${report.unverified_claims}\n\n`;
+
+            if (report.contradictions > 0) {
+              comment += '### ❌ Contradictions Found (Hallucinations Detected)\n\n';
+
+              for (const file of report.results) {
+                const contradictions = file.claims.filter(c => c.status === 'Contradiction');
+                if (contradictions.length > 0) {
+                  comment += `**${file.file}:**\n\n`;
+                  for (const claim of contradictions) {
+                    comment += `- Line ${claim.line_number}: "${claim.claim_text}"\n`;
+                    comment += `  - Status: ${claim.status}\n`;
+                    comment += `  - Confidence: ${claim.confidence.toFixed(2)}\n`;
+                    if (claim.evidence) {
+                      comment += `  - Evidence: ${claim.evidence}\n`;
+                    }
+                    comment += '\n';
+                  }
+                }
+              }
+
+              comment += '\n💥 **Action Required**: Fix hallucinated claims before merging.\n';
+            }
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+      - name: Fail if contradictions found
+        run: |
+          # Final validation with verbose output
+          pmat validate-readme \
+            --targets README.md CLAUDE.md GEMINI.md AGENT.md \
+            --deep-context deep_context.md \
+            --fail-on-contradiction \
+            --verbose
+
+# Advanced Configuration Examples:
+#
+# 1. Validate multiple documentation files:
+#    pmat validate-readme \
+#      --targets README.md CLAUDE.md GEMINI.md AGENT.md \
+#      --deep-context deep_context.md \
+#      --fail-on-contradiction
+#
+# 2. Strict mode (fail on unverified claims):
+#    pmat validate-readme \
+#      --targets README.md \
+#      --deep-context deep_context.md \
+#      --fail-on-contradiction \
+#      --fail-on-unverified
+#
+# 3. Custom confidence thresholds:
+#    pmat validate-readme \
+#      --targets README.md \
+#      --deep-context deep_context.md \
+#      --verified-threshold 0.85 \
+#      --contradiction-threshold 0.4 \
+#      --fail-on-contradiction
+#
+# 4. Generate reports only (don't fail):
+#    pmat validate-readme \
+#      --targets README.md \
+#      --deep-context deep_context.md \
+#      --output json \
+#      > report.json
+#
+# Benefits:
+# - ✅ Prevents hallucinated documentation from being merged
+# - ✅ Evidence-based validation with confidence scoring
+# - ✅ Automatic PR comments with detailed results
+# - ✅ Test reports integrated into GitHub UI
+# - ✅ Downloadable artifacts for debugging
+# - ✅ Fast execution (no ML inference, pure Rust)
