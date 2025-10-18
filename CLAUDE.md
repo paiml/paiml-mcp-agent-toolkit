@@ -208,24 +208,25 @@ The following tests have been marked as `#[ignore]` to achieve stable coverage m
 - `services::languages::wasm::tests::test_wasm_complexity_analysis`
 - `services::languages::wasm::tests::test_wat_text_analysis`
 
-### Language Regression Tests (6 tests) - Priority 3 Sprint 36
+### Language Regression Tests (6 tests) - Priority 3 Sprint 36 - 100% COVERAGE! 🎯
 **Status**: Created as regression tests for multi-language support
-**Passing**: 5/6 tests (C, Bash, PHP, Swift, WASM) ⬆️ Swift parser implemented!
-**Ignored**: 1/6 tests (C++ awaiting parser improvement)
+**Passing**: 6/6 tests (100% coverage!) ⬆️ C++ parser fixed!
+**Ignored**: 0/6 tests (ALL PASSING!)
 
 - `tests::language_regression_tests::test_c_deep_context_analysis` ✅ PASSING
+- `tests::language_regression_tests::test_cpp_deep_context_analysis` ✅ PASSING (Sprint 36 - fixed!)
 - `tests::language_regression_tests::test_bash_deep_context_analysis` ✅ PASSING (Sprint 36 - implemented!)
 - `tests::language_regression_tests::test_php_deep_context_analysis` ✅ PASSING (Sprint 36 - implemented!)
 - `tests::language_regression_tests::test_swift_deep_context_analysis` ✅ PASSING (Sprint 36 - implemented!)
 - `tests::language_regression_tests::test_wasm_deep_context_analysis` ✅ PASSING
-- `tests::language_regression_tests::test_cpp_deep_context_analysis` - Files discovered but function extraction needs improvement
 
-**Note**: C++ test will pass once AST parser improvement is complete.
+**Achievement**: 100% language regression test coverage (6/6 passing)
 **File**: `server/src/tests/language_regression_tests.rs` (533 lines)
 **Implementation**:
 - `server/src/services/languages/bash.rs` (BashScriptAnalyzer - 753 lines)
 - `server/src/services/languages/php.rs` (PhpScriptAnalyzer - 397 lines)
 - `server/src/services/languages/swift.rs` (SwiftSourceAnalyzer - 456 lines)
+- `server/src/services/simple_deep_context.rs` (C++ regex fix - line 1363)
 
 ### Infrastructure Tests (7 tests)
 - `services::memory_manager::tests::test_concurrent_access`
@@ -353,14 +354,15 @@ The following tests have been marked as `#[ignore]` to achieve stable coverage m
 - `tests::e2e_full_coverage::test_cli_main_binary_help`
 - `tests::e2e_full_coverage::test_cli_main_binary_version`
 
-**Total: 84 tests ignored/failing (70 ignored + 14 failing)**
+**Total: 83 tests ignored/failing (69 ignored + 14 failing)**
 
 Sprint 36 changes:
 - Added 4 new language regression tests (Bash, C++, PHP, Swift)
 - Implemented Bash AST parser - test now PASSING ✅
 - Implemented PHP AST parser - test now PASSING ✅
 - Implemented Swift AST parser - test now PASSING ✅
-- Net change: +1 ignored test (C++ still awaiting parser improvement)
+- Fixed C++ regex to detect class methods - test now PASSING ✅
+- Net change: 0 ignored tests (ALL 6 REGRESSION TESTS PASSING! 100% coverage achieved 🎯)
 
 These tests can be re-enabled by removing the `#[ignore]` attribute when they are fixed.
 Known failures are pre-existing and unrelated to Sprint 19 work.
