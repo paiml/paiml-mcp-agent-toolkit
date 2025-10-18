@@ -47,7 +47,32 @@ Add cases for "javascript", "c", "cpp", "c++", "go", "java", "kotlin", etc. to `
 
 ---
 
-## 🎉 CURRENT STATUS: v2.162.0 - Sprint 32 RESUMED! ✅
+## 🎉 CURRENT STATUS: Sprint 38 IN PROGRESS - CLI Integration ⚙️
+
+**Active Sprint**: Sprint 38 - Hallucination Detection CLI Integration
+**Status**: 🟡 IN PROGRESS (50% complete)
+**Started**: October 18, 2025
+**Goal**: Make Sprint 37's hallucination detection accessible via CLI
+
+**Completed**:
+- ✅ CLI handler implementation (`validate-readme` command)
+- ✅ Text, JSON, and JUnit XML output formats
+- ✅ Integration with command dispatcher and MCP adapters
+- ✅ CLAUDE.md documentation updated
+
+**In Progress**:
+- ⚙️ pmat-book chapter creation
+- ⚙️ Pre-commit hook example
+- ⚙️ CI/CD integration guide
+
+**Next Steps**:
+- Document in pmat-book Chapter 17 (Advanced Topics)
+- Add GitHub Actions workflow example
+- Update README.md with usage examples
+
+---
+
+## 🎉 ARCHIVE: v2.162.0 - Sprint 32 RESUMED! ✅
 
 **Current Date**: October 18, 2025
 **Milestone**: Sprint 32 - Documentation Validation & Integration (RESUMED after hotfix)
@@ -109,6 +134,99 @@ Code Files → AST Chunking → OpenAI Embeddings → Turso Vector DB → Hybrid
 - OpenAI embeddings integration with retry logic
 - Turso vector DB with upsert semantics
 - Complete EXTREME TDD methodology (RED → GREEN → REFACTOR)
+
+### Sprint 38: CLI Integration for Hallucination Detection 🟡 IN PROGRESS (50%)
+
+**Goal**: Make Sprint 37's hallucination detection accessible from command line
+**Status**: 🟡 50% Complete (October 18, 2025)
+**Achievement**: 🚀 `pmat validate-readme` command LIVE!
+
+**User Story**:
+> Users can now validate AI-generated documentation from the command line, with JSON/JUnit output for CI/CD integration.
+
+**Completed Work** (3 files, 394 lines):
+
+1. **CLI Handler** (`server/src/cli/handlers/readme_validate_handlers.rs` - 353 lines)
+   - ValidateReadmeCmd with comprehensive options
+   - Text output with emoji status icons
+   - JSON output for programmatic consumption
+   - JUnit XML for CI/CD integration
+   - Configurable confidence thresholds
+   - Fail-on-contradiction and fail-on-unverified flags
+
+2. **Command Integration**
+   - Command enum registration (`commands.rs`)
+   - Dispatcher logic (`command_dispatcher.rs`, `command_structure.rs`)
+   - MCP protocol adapter (`unified_protocol/adapters/cli.rs`)
+   - Module exports (`handlers/mod.rs`)
+
+3. **Documentation**
+   - CLAUDE.md updated with usage examples
+   - Three output formats documented (text, json, junit)
+   - All 9 CLI options documented
+
+**Command Usage**:
+
+```bash
+# Generate deep context
+pmat context --output deep_context.md --format llm-optimized
+
+# Validate README (text output)
+pmat validate-readme \
+    --targets README.md CLAUDE.md \
+    --deep-context deep_context.md \
+    --fail-on-contradiction
+
+# Generate JSON report for CI/CD
+pmat validate-readme \
+    --targets README.md \
+    --deep-context deep_context.md \
+    --output json > hallucination_report.json
+
+# Generate JUnit XML for CI integration
+pmat validate-readme \
+    --targets README.md \
+    --deep-context deep_context.md \
+    --output junit > hallucination_junit.xml
+```
+
+**CLI Options** (9 total):
+- `--targets <FILES>...`: Documentation files to validate (required)
+- `--deep-context <FILE>`: Deep context markdown (required)
+- `--verified-threshold <FLOAT>`: Confidence for verification (default: 0.9)
+- `--contradiction-threshold <FLOAT>`: Confidence for contradictions (default: 0.3)
+- `--fail-on-contradiction`: Exit with error if contradictions found (default: true)
+- `--fail-on-unverified`: Exit with error if unverified claims found (default: false)
+- `--output <FORMAT>`: text | json | junit (default: text)
+- `--failures-only`: Show only failures
+- `--verbose`: Detailed validation information
+
+**Test Results**:
+```
+✅ Verified 2 true claims (Rust & TypeScript analysis)
+❌ Detected 1 contradiction (compile capability)
+✅ JSON output validated
+✅ JUnit XML output validated
+✅ Exit code 1 on contradiction (fail-fast)
+✅ All quality gates passing
+```
+
+**Remaining Work** (50%):
+- ⚙️ pmat-book chapter (Chapter 17 - Advanced Topics)
+- ⚙️ Pre-commit hook integration example
+- ⚙️ GitHub Actions CI/CD workflow example
+- ⚙️ README.md usage examples
+
+**Value Delivered**:
+- ✅ CLI access to hallucination detection
+- ✅ CI/CD ready (JSON/JUnit outputs)
+- ✅ Configurable thresholds
+- ✅ Multiple output formats
+- ✅ Fail-fast on contradictions
+
+**Next Sprint**: Complete documentation and CI/CD examples
+
+---
 
 ### Sprint 37: Hallucination Detection System ✅ COMPLETE (100%)
 
