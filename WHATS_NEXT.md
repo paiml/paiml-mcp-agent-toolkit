@@ -98,41 +98,36 @@
 
 ## 🎯 Next Recommended Tasks
 
-### Priority 1: Implement Documentation Accuracy Validation
+### Priority 1: Documentation Link Validation - ALREADY IMPLEMENTED ✅
 
-**Rationale**: Enforce specification from Sprint 35 - prevent hallucinations in AI agent files
+**Status**: Link validation is COMPLETE and integrated!
 
-**Tasks**:
-1. Implement `pmat validate-docs` command (new CLI command)
-   - Semantic entropy-based hallucination detector
-   - Multi-source evidence validation (AST, benchmarks, coverage, git)
-   - Link validation (404 detection)
-   - Confidence scoring and evidence gathering
-2. Add validation targets in Makefile
-3. Integrate into pre-commit hook for CLAUDE.md/README.md changes
-4. Write RED/GREEN TDD tests for validation
-5. Document usage in pmat-book Chapter 27
+**What's Already Working**:
+1. ✅ `pmat validate-docs` command (fully functional CLI command)
+   - Link validation (404 detection for HTTP/HTTPS and file paths)
+   - JSON, JUnit, and text output formats
+   - Configurable timeouts, retries, and concurrency
+   - Exclude patterns support
+2. ✅ Service layer: `server/src/services/doc_validator.rs` (799 lines)
+3. ✅ CLI handler: `server/src/cli/handlers/doc_validate_handlers.rs`
+4. ✅ Makefile target: `make validate-doc-links` (line 669-672)
+5. ✅ Integrated into `make validate` target
 
-**Estimated Effort**: 4-6 hours (substantial feature)
-**Value**: CRITICAL - Prevents shipping false documentation claims
-**Status**: Specification complete, implementation pending
+**Current Link Status**:
+- `docs/` directory: ✅ 0 broken links
+- Full repository: ⚠️ 159 broken links found
+- Most broken links are in archived/deprecated documentation
 
-**Implementation Order**:
-```bash
-# 1. Create RED tests
-cargo test test_validate_docs_detects_hallucination -- --nocapture
+**What's NOT Yet Implemented** (from Sprint 35 spec):
+- ❌ Semantic entropy-based hallucination detector
+- ❌ Multi-source evidence validation (AST, benchmarks, coverage, git)
+- ❌ Confidence scoring for documentation claims
+- ❌ Deep context cross-validation
 
-# 2. Implement core hallucination detector
-# In server/src/cli/validate_docs.rs
-
-# 3. Implement CLI command
-# In server/src/cli/mod.rs
-
-# 4. Add to Makefile
-make validate-docs-accuracy
-
-# 5. Update pre-commit hook
-```
+**Next Steps**:
+1. Consider whether to fix the 159 broken links (separate task)
+2. Decide if advanced hallucination detection is needed (spec exists but may be overkill)
+3. Document `pmat validate-docs` command in pmat-book if not already present
 
 ### Priority 2: Complete pmat-book Validation
 
