@@ -1,11 +1,11 @@
 # PMAT Agent System Roadmap
 
-## 🎉 CURRENT STATUS: v2.158.0 - Sprints 29-31 Complete! 🧠✨
+## 🎉 CURRENT STATUS: v2.161.0 - Sprint 32 In Progress! 📚✨
 
-**Current Date**: October 10, 2025
-**Milestone**: Sprints 29-31 Complete - Full Semantic Search System LIVE!
-**Sprint**: 31 sprints completed
-**Latest Achievement**: Production-ready semantic code search with OpenAI embeddings, hybrid search (RRF), clustering, topic modeling, and MCP integration - 149 tests passing!
+**Current Date**: October 18, 2025
+**Milestone**: Sprint 32 - Documentation Validation & Integration
+**Sprint**: 32 sprints (31 complete, Sprint 32 in progress)
+**Latest Achievement**: Chapter 30 (.pmatignore) documentation created; comprehensive chapter validation in progress
 
 ---
 
@@ -165,6 +165,365 @@ pmat analyze topics --num-topics 15
 - **Performance**: <100ms vector search, <150ms hybrid search
 - **Cost**: <$1 for 10K file codebase (one-time)
 - **User Value**: 4 new MCP tools, semantic CLI commands
+
+---
+
+## 🚀 Sprint 32: Documentation Validation & Integration 📚
+
+**Status:** 🟡 IN PROGRESS
+**Version**: v2.161.0
+**Duration**: 1 sprint (~1 week)
+**Focus**: Validate all PMAT Book chapters against actual PMAT behavior, integrate as official documentation
+**Repository**: https://github.com/paiml/pmat-book
+
+### Vision
+
+**STOP THE LINE - Quality Issue Detected**: 27% of pmat-book chapter tests don't validate against actual PMAT binary behavior, only syntax. This violates EXTREME TDD principles and Toyota Way Genchi Genbutsu (go and see).
+
+**Goal**: Ensure every single chapter in the PMAT Book validates against the ACTUAL STATE OF THE PROJECT, establish pmat-book as official user-facing documentation, and make PMAT accessible to new users.
+
+**Inspired by**: Toyota Production System Jidoka (built-in quality), NASA-style documentation verification
+
+### Architecture Overview
+
+```
+PMAT Book (28 chapters) → TDD Tests (52 scripts) → Actual PMAT Binary
+                                                           ↓
+                                                    Validation Status
+                                                           ↓
+                                            Official Documentation Integration
+```
+
+### Sprint 32 Deliverables
+
+**Phase 1: Chapter Validation Audit (PMAT-DOC-001 through PMAT-DOC-028)**
+- Audit all 28 chapters for PMAT binary validation
+- Document validation status per chapter
+- Identify chapters needing test improvements
+- Fix Chapter 30 tests to run actual PMAT commands
+
+**Phase 2: Official Documentation Integration (PMAT-DOC-029)**
+- Link pmat-book from main PMAT repository
+- Add "Getting Started" section to README.md
+- Update documentation references
+
+**Phase 3: Quality Gates (PMAT-DOC-030)**
+- All chapters must validate against PMAT binary
+- Tests must pass in < 5 seconds per chapter
+- 100% chapter coverage with TDD validation
+
+### Tickets (30 total)
+
+#### PMAT-DOC-001: Chapter 1 Validation Audit
+**Priority**: P0 (Critical)
+**Estimate**: 30 minutes
+**Status**: 🟡 Pending
+
+**Description**: Audit Chapter 1 (Installation and Setup) tests to verify they validate against actual PMAT binary.
+
+**Acceptance Criteria**:
+- [ ] Review `tests/ch01/test_simple.sh` and `tests/ch01/test_02_first_analysis.sh`
+- [ ] Verify tests execute `pmat` commands (not just file syntax checks)
+- [ ] Document findings in Sprint 32 audit report
+- [ ] If needed, create fix ticket with specific improvements
+
+**Current Status**:
+- `test_simple.sh`: Only checks file existence (NO PMAT validation)
+- `test_02_first_analysis.sh`: Runs `pmat analyze` commands (YES - validates actual behavior)
+
+**Validation**: 50% - Partial PMAT validation
+
+---
+
+#### PMAT-DOC-002: Chapter 2 Validation Audit
+**Priority**: P0 (Critical)
+**Estimate**: 30 minutes
+**Status**: 🟡 Pending
+
+**Description**: Audit Chapter 2 (Getting Started with PMAT) tests.
+
+**Acceptance Criteria**:
+- [ ] Review `tests/ch02/test_context.sh`
+- [ ] Verify `pmat context` command execution
+- [ ] Document validation status
+- [ ] Create fix ticket if needed
+
+---
+
+#### PMAT-DOC-003: Chapter 3 Validation Audit
+**Priority**: P0 (Critical)
+**Estimate**: 30 minutes
+**Status**: 🟡 Pending
+
+**Description**: Audit Chapter 3 (MCP Protocol) tests.
+
+**Acceptance Criteria**:
+- [ ] Review `tests/ch03/test_simple.sh`
+- [ ] Verify MCP integration testing
+- [ ] Document validation status
+
+---
+
+#### PMAT-DOC-004: Chapter 4 Validation Audit (TDG)
+**Priority**: P0 (Critical)
+**Estimate**: 30 minutes
+**Status**: 🟡 Pending
+
+**Description**: Audit Chapter 4 (Technical Debt Grading) tests.
+
+**Acceptance Criteria**:
+- [ ] Review `tests/ch04/test_tdg.sh`
+- [ ] Verify `pmat analyze tdg` command validation
+- [ ] Document TDG grading accuracy
+
+---
+
+#### PMAT-DOC-005: Chapter 5 Validation Audit (Analyze Suite)
+**Priority**: P0 (Critical)
+**Estimate**: 30 minutes
+**Status**: 🟡 Pending
+
+**Description**: Audit Chapter 5 (Analyze Command Suite) tests.
+
+**Acceptance Criteria**:
+- [ ] Review `tests/ch05/test_analyze.sh`
+- [ ] Verify all analyze subcommands tested
+- [ ] Document coverage of analyze suite
+
+---
+
+#### PMAT-DOC-006 through PMAT-DOC-026: Chapters 6-26 Validation Audits
+**Priority**: P0 (Critical)
+**Estimate**: 30 minutes each (10.5 hours total)
+**Status**: 🟡 Pending
+
+**Chapters to Audit**:
+- Chapter 6: Scaffold Command
+- Chapter 7: Quality Gates
+- Chapter 8: Demo Command
+- Chapter 9: Report Command
+- Chapter 10: Pre-commit Hooks
+- Chapter 11: Custom Quality Rules
+- Chapter 12: Architecture Analysis
+- Chapter 13-14: Multi-Language Examples
+- Chapter 15: MCP Tools Reference
+- Chapter 16: Deep Context Analysis
+- Chapter 17: WebAssembly Analysis
+- Chapter 18: API Server
+- Chapter 19-24: Advanced features
+- Chapter 25: Sub-Agents
+- Chapter 26: Graph Statistics
+
+**Acceptance Criteria** (per chapter):
+- [ ] Review test script(s)
+- [ ] Verify PMAT binary execution
+- [ ] Document validation percentage
+- [ ] Create fix tickets as needed
+
+---
+
+#### PMAT-DOC-027: Chapter 30 Validation Audit (.pmatignore)
+**Priority**: P0 (Critical - KNOWN ISSUE)
+**Estimate**: 1 hour
+**Status**: 🔴 FAILED (27% - No PMAT validation)
+
+**Description**: **STOP THE LINE** - Chapter 30 tests only validate file syntax, not actual PMAT exclusion behavior.
+
+**Current Status**:
+- Tests created: `tests/ch30/test_01_pmatignore.sh`
+- Tests passing: 5/5 (100%)
+- **PMAT validation**: ❌ NONE - Tests only check file creation/syntax
+- **Issue**: Violates EXTREME TDD and Genchi Genbutsu principles
+
+**Acceptance Criteria**:
+- [x] Identify validation gap (COMPLETE)
+- [ ] Rewrite tests to use `pmat analyze` commands
+- [ ] Verify `.pmatignore` actually excludes files
+- [ ] Verify `.paimlignore` legacy support
+- [ ] Verify precedence (.pmatignore > .paimlignore)
+- [ ] Test actual file discovery with exclusions
+- [ ] Performance: Tests complete in < 5 seconds
+
+**Fix Plan**:
+```bash
+# Example: Test that .pmatignore actually excludes files
+pmat analyze . --format json | jq '.repository.total_files'
+# Verify excluded directories don't appear in output
+pmat analyze . --format json | jq '.languages[].files[].path' | grep -v "tests_disabled/"
+```
+
+---
+
+#### PMAT-DOC-028: Chapter 27 Validation Audit (QDD)
+**Priority**: P0 (Critical)
+**Estimate**: 30 minutes
+**Status**: 🟡 Pending
+
+**Description**: Audit Chapter 27 (Quality-Driven Development) tests.
+
+**Acceptance Criteria**:
+- [ ] Review QDD test scripts
+- [ ] Verify quality-driven workflow validation
+- [ ] Document test coverage
+
+---
+
+#### PMAT-DOC-029: Official Documentation Integration
+**Priority**: P1 (High)
+**Estimate**: 2 hours
+**Status**: 🟡 Pending
+
+**Description**: Integrate pmat-book as official PMAT documentation and add "Getting Started" section to README.md.
+
+**Deliverables**:
+
+1. **Update `/home/noah/src/paiml-mcp-agent-toolkit/README.md`**:
+   - Add "Getting Started" section after installation
+   - Explain core PMAT functionality (5-7 bullet points)
+   - Link to pmat-book comprehensive guide
+   - Add quick start examples
+
+2. **Link pmat-book repository**:
+   - Add "Documentation" section to README.md
+   - Link to https://github.com/paiml/pmat-book
+   - Reference pmat-book in docs/ directory
+
+3. **Update pmat-book README.md**:
+   - Add badge linking back to main PMAT repository
+   - Clarify this is official documentation
+
+**Acceptance Criteria**:
+- [ ] README.md has "Getting Started" section (150-200 words)
+- [ ] Core functionality explained clearly for new users
+- [ ] pmat-book linked as official documentation
+- [ ] Quick start examples included
+- [ ] Bidirectional links (PMAT ↔ pmat-book)
+
+**Example Getting Started Section**:
+```markdown
+## Getting Started
+
+PMAT (Pragmatic Multi-language Analysis Tool) analyzes codebases across 14+ languages to provide:
+
+- **Technical Debt Grading (TDG)**: Letter grades (A+ to F) for code quality
+- **Complexity Analysis**: Cyclomatic complexity, cognitive complexity, nesting depth
+- **Dead Code Detection**: Unused functions, variables, imports
+- **SATD Analysis**: Self-Admitted Technical Debt annotations (TODO, FIXME, HACK)
+- **Architecture Insights**: Dependency graphs, module relationships
+- **MCP Integration**: AI-powered code analysis via Model Context Protocol
+- **Quality Gates**: Pre-commit hooks enforcing quality standards
+
+### Quick Start
+
+```bash
+# Analyze current directory
+pmat analyze .
+
+# Get Technical Debt Grade
+pmat analyze tdg .
+
+# Generate comprehensive context for AI assistants
+pmat context
+
+# Run quality gate checks
+pmat quality-gate --threshold B+
+```
+
+### Comprehensive Documentation
+
+For detailed guides, examples, and best practices, see the **[PMAT Book](https://github.com/paiml/pmat-book)** - the official comprehensive documentation with 28 chapters covering all PMAT features.
+```
+
+---
+
+#### PMAT-DOC-030: Quality Gate - All Chapters Validated
+**Priority**: P0 (Critical)
+**Estimate**: 1 hour
+**Status**: 🟡 Pending (Blocked by PMAT-DOC-001 through PMAT-DOC-028)
+
+**Description**: Final quality gate - ensure all 28 chapters pass PMAT validation.
+
+**Acceptance Criteria**:
+- [ ] All 28 chapters have passing tests
+- [ ] All tests execute actual PMAT commands
+- [ ] 100% chapter validation coverage
+- [ ] Tests complete in < 5 seconds per chapter (< 2.5 minutes total)
+- [ ] Zero chapters with syntax-only validation
+- [ ] Audit report documents validation status per chapter
+
+**Quality Metrics**:
+- **Target**: 100% chapters with PMAT binary validation (currently 73%)
+- **Performance**: < 5s per chapter test
+- **Coverage**: All major PMAT commands covered
+
+**Success Criteria**:
+```bash
+# Run all chapter tests
+cd /home/noah/src/pmat-book
+make test-all-chapters
+
+# Verify all tests pass
+echo $?  # Must be 0
+
+# Verify performance
+time make test-all-chapters  # Must be < 2.5 minutes
+```
+
+---
+
+### Expected Outcomes
+
+**Must-Have (MVP)**:
+- ✅ Chapter 30 created and documented
+- 🟡 All 28 chapters audited for PMAT validation
+- 🟡 Chapter 30 tests rewritten to validate actual PMAT behavior
+- 🟡 pmat-book integrated as official documentation
+- 🟡 README.md updated with "Getting Started" section
+- 🟡 100% chapters validated against PMAT binary
+
+**Value Delivered**:
+- 📚 **Official Documentation**: pmat-book becomes canonical user guide
+- ✅ **Quality Assurance**: Every chapter validated against actual PMAT
+- 🎯 **User Onboarding**: Clear getting started guide for new users
+- 🔗 **Discoverability**: Documentation linked from main repository
+- 🏭 **Toyota Way**: Jidoka (built-in quality), Genchi Genbutsu (go and see)
+
+### Technical Stack
+
+| Component | Technology | Rationale |
+|-----------|------------|-----------|
+| Documentation | mdBook | Rust ecosystem standard |
+| Testing | Bash TDD scripts | Direct PMAT binary validation |
+| Quality Metrics | EXTREME TDD | RED → GREEN → REFACTOR |
+| Methodology | Toyota Way | Stop the line when quality issues found |
+
+### Success Metrics
+
+- **Chapter Validation**: 73% → 100% (27% currently syntax-only)
+- **Test Coverage**: 52 test scripts, all running PMAT commands
+- **Performance**: < 5s per chapter, < 2.5 minutes total
+- **User Value**: Official documentation discoverable from README.md
+
+### Current Progress
+
+**✅ Completed**:
+- Chapter 30 documentation created (800+ lines)
+- Chapter 30 test script created (5/5 passing)
+- SUMMARY.md updated
+- Makefile test-ch30 target added
+- mdBook build successful
+
+**🔴 Issues Identified (STOP THE LINE)**:
+- Chapter 30 tests don't validate actual PMAT behavior
+- 27% of chapter tests (14/52) don't run PMAT commands
+- Quality gap violates EXTREME TDD principles
+
+**🟡 In Progress**:
+- Comprehensive chapter audit (PMAT-DOC-001 through PMAT-DOC-028)
+- Official documentation integration (PMAT-DOC-029)
+
+**⏳ Blocked**:
+- Quality gate (PMAT-DOC-030) - waiting on chapter audits
 
 ---
 
