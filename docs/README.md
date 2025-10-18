@@ -94,6 +94,47 @@ Historical and deprecated documentation has been moved to the archive:
 3. **Contributors**: Review [quality/standards.md](./quality/standards.md) for quality requirements
 4. **Integrators**: See [guides/interfaces-overview.md](./guides/interfaces-overview.md) for API details
 
+## 📖 Getting Started with PMAT
+
+PMAT (Pragmatic Multi-language Analysis Tool) analyzes codebases across 14+ languages to provide:
+
+- **Technical Debt Grading (TDG)**: Letter grades (A+ to F) for code quality
+- **Complexity Analysis**: Cyclomatic complexity, cognitive complexity, nesting depth
+- **Dead Code Detection**: Unused functions, variables, imports
+- **SATD Analysis**: Self-Admitted Technical Debt annotations (TODO, FIXME, HACK)
+- **Architecture Insights**: Dependency graphs, module relationships
+- **MCP Integration**: AI-powered code analysis via Model Context Protocol
+- **Quality Gates**: Pre-commit hooks enforcing quality standards
+
+### Quick Start Commands
+
+```bash
+# Analyze current directory
+pmat analyze .
+
+# Get Technical Debt Grade
+pmat analyze tdg .
+
+# Generate comprehensive context for AI assistants
+pmat context
+
+# Run quality gate checks
+pmat quality-gate --threshold B+
+```
+
+### 📚 Comprehensive User Documentation
+
+For detailed guides, examples, and best practices, see the **[PMAT Book](https://github.com/paiml/pmat-book)** - the official comprehensive documentation with 28 chapters covering all PMAT features, including:
+
+- Installation and setup guides
+- Complete command reference
+- Real-world examples with TDD validation
+- Multi-language project tutorials
+- MCP integration guides
+- Quality-driven development workflows
+
+**New users should start with the PMAT Book for step-by-step tutorials and practical examples.**
+
 ## 📖 Documentation Standards
 
 All documentation follows these principles:
