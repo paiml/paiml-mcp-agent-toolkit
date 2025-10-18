@@ -7,17 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.161.0] - 2025-10-18
+
 ### Fixed
-- **Issue #67: Extracted function line numbers now accurate**
+- **Issue #67: Extracted function line numbers now accurate (EXTREME TDD validated)**
   - Fixed: Functions moved between files (e.g., `utils.rs:500` → `attributes.rs:148`) now report correct line numbers
   - Root cause: TDG cache used `Blake3Hash(content)` as key, returning stale line numbers from original file location
   - Solution: Created `analyze_file_complexity_uncached()` that bypasses TDG cache for `--file` parameter
   - Switched to heuristic analyzer for exact line numbers (AST provides approximate `i*50` lines)
-  - Files modified: 3 core files + 330 lines of EXTREME TDD tests
-  - Quality gates: 6/6 unit tests, 10K property tests (71.81s), fuzz tests, dogfooding - all passing
+  - Files modified: 3 core files + 605 lines of tests + 1,658 lines of documentation
+  - EXTREME TDD quality gates (ALL PASSING):
+    - Unit tests: 6/6 (100%)
+    - Property tests: 10,000 iterations, 71.81s, ZERO failures
+    - Fuzz tests: Empty files, single-line, 10K-line files
+    - Dogfooding: pmat analyzed itself (fix has cyclomatic complexity: 1)
+    - Zero regressions: 4,460 existing tests pass
   - Location: `server/src/services/complexity.rs:1485-1512`, `server/src/cli/handlers/complexity_handlers.rs:89-99`
   - STOP THE LINE fixes: 2 critical defects caught and fixed during integration testing
-  - Production ready: Zero regressions across 4460 existing tests
+  - Commit: `9cbdd3c5`
+
+### Documentation
+- Added 5 comprehensive quality reports for Issue #67 (1,658 lines total)
+  - EXTREME TDD Quality Report with full methodology
+  - Final Report with Toyota Way principles
+  - Fix Summary with technical deep dive
+  - Refactoring Plan with root cause analysis
+  - Status Report with quality metrics
 
 ## [2.160.0] - 2025-10-14
 
