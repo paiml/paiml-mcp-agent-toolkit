@@ -469,7 +469,7 @@ pmat analyze complexity --help
 **IMPORTANT NOTE**:
 - ✅ Specification complete for documentation accuracy enforcement
 - ❌ Implementation NOT complete - `pmat validate-docs` command not yet built
-- ❌ pmat-book GitHub Pages deployment NOT automated (workflow exists but not enabled)
+- ✅ pmat-book GitHub Pages deployment IS automated and working (https://paiml.github.io/pmat-book/)
 
 *Last session: Sprint 35 - Documentation accuracy spec + fast book validation automation*
-*Next session: Implement pmat validate-docs command OR enable pmat-book auto-deployment*
+*Next session: Implement pmat validate-docs command (specification ready, implementation pending)*
