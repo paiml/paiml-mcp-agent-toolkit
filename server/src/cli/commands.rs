@@ -603,7 +603,7 @@ pub enum Commands {
     Embed(EmbedCommands),
 
     /// Semantic code search (PMAT-SEARCH-011)
-    #[command(subcommand, visible_aliases = &["search", "find-code"])]
+    #[command(subcommand, visible_aliases = &["sem", "find-code"])]
     Semantic(SemanticCommands),
 }
 

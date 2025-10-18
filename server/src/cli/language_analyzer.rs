@@ -411,7 +411,7 @@ async fn try_ast_analysis(path: &Path, language: Language) -> Option<FileComplex
     }
 }
 
-fn analyze_with_heuristics(
+pub fn analyze_with_heuristics(
     path: &Path,
     content: &str,
     language: Language,

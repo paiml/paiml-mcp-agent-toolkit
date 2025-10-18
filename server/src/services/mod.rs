@@ -103,6 +103,8 @@ pub mod code_intelligence;
 pub mod complexity;
 #[cfg(test)]
 mod complexity_analyzer_tests;
+#[cfg(test)]
+mod complexity_file_extraction_tests;
 pub mod complexity_patterns;
 #[cfg(test)]
 mod complexity_property_tests;
