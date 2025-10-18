@@ -69,16 +69,38 @@ When modifying any of these documentation files:
 # Step 1: Generate deep context (caches codebase facts)
 pmat context --output deep_context.md --format llm-optimized
 
-# Step 2: Validate documentation accuracy
+# Step 2: Validate documentation accuracy (Sprint 38 - IMPLEMENTED ✅)
 pmat validate-readme \
     --targets README.md CLAUDE.md GEMINI.md AGENT.md \
     --deep-context deep_context.md \
-    --check-hallucinations \
-    --check-links \
-    --check-code-refs \
-    --similarity-threshold 0.7 \
-    --fail-on-error
+    --fail-on-contradiction \
+    --verbose
+
+# Optional: Generate JSON report for CI/CD
+pmat validate-readme \
+    --targets README.md \
+    --deep-context deep_context.md \
+    --output json \
+    --fail-on-contradiction > hallucination_report.json
+
+# Optional: Generate JUnit XML for CI integration
+pmat validate-readme \
+    --targets README.md \
+    --deep-context deep_context.md \
+    --output junit \
+    --fail-on-contradiction > hallucination_junit.xml
 ```
+
+**Available Options:**
+- `--targets <FILES>...`: Documentation files to validate (required)
+- `--deep-context <FILE>`: Deep context markdown from `pmat context` (required)
+- `--verified-threshold <FLOAT>`: Confidence threshold for verification (default: 0.9)
+- `--contradiction-threshold <FLOAT>`: Confidence threshold for contradictions (default: 0.3)
+- `--fail-on-contradiction`: Exit with error if contradictions found (default: true)
+- `--fail-on-unverified`: Exit with error if unverified claims found (default: false)
+- `--output <FORMAT>`: Output format: text, json, junit (default: text)
+- `--failures-only`: Show only failures (contradictions and unverified)
+- `--verbose`: Show detailed validation information
 
 ### What Gets Validated
 
