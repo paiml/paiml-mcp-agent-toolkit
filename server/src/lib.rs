@@ -656,6 +656,10 @@ mod tests {
     #[path = "../tests/language_regression_tests.rs"]
     mod language_regression_tests;
 
+    // Sprint 37: Hallucination Detection (EXTREME TDD - RED Phase)
+    #[path = "../tests/hallucination_detection_tests.rs"]
+    mod hallucination_detection_tests;
+
     // TICKET-3001: Unified Rust Analyzer (EXTREME TDD - RED Phase)
     #[path = "../tests/unified_rust_analyzer_tests.rs"]
     mod unified_rust_analyzer_tests;
