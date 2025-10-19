@@ -525,7 +525,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // Requires cargo in PATH
     fn integration_execute_clippy() {
         let config = GateConfig::default();
         let project_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
@@ -535,7 +534,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // Requires cargo in PATH and time
     fn integration_execute_all_gates() {
         let config = GateConfig {
             run_clippy: true,

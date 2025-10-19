@@ -337,7 +337,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // Integration test
     fn integration_workflow_installation() {
         use tempfile::TempDir;
 

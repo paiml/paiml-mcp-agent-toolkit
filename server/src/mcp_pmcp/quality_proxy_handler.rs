@@ -255,7 +255,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore = "Requires pmcp internal types"]
     async fn test_quality_proxy_handle() {
         // Test disabled - requires pmcp internal types not exposed in API
     }
