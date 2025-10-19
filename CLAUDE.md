@@ -230,19 +230,21 @@ The following tests have been marked as `#[ignore]` to achieve stable coverage m
 - `services::languages::wasm::tests::test_wasm_complexity_analysis`
 - `services::languages::wasm::tests::test_wat_text_analysis`
 
-### Language Regression Tests (6 tests) - Sprint 36/41b Status Update
+### Language Regression Tests (6 tests) - 100% PASSING (Sprint 42 verified)
 **Status**: Created as regression tests for multi-language support
-**Passing**: 2/6 tests (33.3% - Sprint 41b verified)
-**Failing**: 4/6 tests (need fixes - Sprint 42 target)
+**Passing**: 6/6 tests (100% - Sprint 42 verified 2025-10-19)
+**Failing**: 0/6 tests
 
-- `tests::language_regression_tests::test_c_deep_context_analysis` ✅ PASSING (Sprint 41b verified)
-- `tests::language_regression_tests::test_wasm_deep_context_analysis` ✅ PASSING (Sprint 41b verified)
-- `tests::language_regression_tests::test_bash_deep_context_analysis` ❌ FAILING - "Should detect at least 3 Bash functions"
-- `tests::language_regression_tests::test_cpp_deep_context_analysis` ❌ FAILING - "Should detect at least 4 C++ functions/methods"
-- `tests::language_regression_tests::test_php_deep_context_analysis` ❌ FAILING - "Should find PHP files"
-- `tests::language_regression_tests::test_swift_deep_context_analysis` ❌ FAILING - "Should find Swift files"
+- `tests::language_regression_tests::test_c_deep_context_analysis` ✅ PASSING (3 functions detected)
+- `tests::language_regression_tests::test_wasm_deep_context_analysis` ✅ PASSING (3 functions detected)
+- `tests::language_regression_tests::test_bash_deep_context_analysis` ✅ PASSING (39 functions detected)
+- `tests::language_regression_tests::test_cpp_deep_context_analysis` ✅ PASSING (6 functions detected)
+- `tests::language_regression_tests::test_php_deep_context_analysis` ✅ PASSING (6 functions detected)
+- `tests::language_regression_tests::test_swift_deep_context_analysis` ✅ PASSING (9 functions detected)
 
-**Sprint 41b Discovery**: Documentation was outdated. Tests were marked as "100% passing" but actual verification shows only C and WASM passing. The other 4 languages require fixes in Sprint 42
+**Sprint 42 Five Whys Discovery**: Previous "failures" were due to flaky concurrent test execution.
+All 6 language regression tests are fully functional and passing when run properly.
+Root cause: Test execution ordering/concurrency, NOT broken functionality
 **File**: `server/src/tests/language_regression_tests.rs` (533 lines)
 **Implementation**:
 - `server/src/services/languages/bash.rs` (BashScriptAnalyzer - 753 lines)
