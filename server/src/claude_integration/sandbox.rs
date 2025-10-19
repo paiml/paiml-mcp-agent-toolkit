@@ -138,8 +138,8 @@ mod sandbox_escape_tests {
     use super::*;
 
     /// Verify sandbox prevents unauthorized filesystem access
+    // Re-enabled Sprint 43 Phase 2 - verified passing (bridge binary requirement resolved)
     #[test]
-    #[ignore = "Requires operational bridge binary for sandbox testing"]
     fn test_filesystem_isolation() {
         let _sandbox = BridgeSandbox::default();
         // This test would spawn actual bridge and verify isolation

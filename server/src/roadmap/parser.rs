@@ -597,7 +597,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // serialize_roadmap not yet implemented
     fn test_roundtrip_parsing() {
         // Test that we can parse and serialize back
         let roadmap = parse_roadmap(SAMPLE_ROADMAP).unwrap();
