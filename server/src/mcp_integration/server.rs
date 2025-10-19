@@ -118,6 +118,12 @@ impl McpServer {
         // Register default tools
         self.register_agent_tools().await?;
 
+        // Register hallucination detection tools (Sprint 40a)
+        self.register_hallucination_detection_tools().await?;
+
+        // Register TDG analysis tools (Sprint 40c)
+        self.register_tdg_tools().await?;
+
         // Register semantic search tools (PMAT-SEARCH-012)
         // Only registers if OPENAI_API_KEY is set
         self.register_semantic_tools().await?;
@@ -155,6 +161,69 @@ impl McpServer {
         tools.register(Arc::new(OrchestrateTool::new(
             self.context.agent_registry.clone(),
         )));
+
+        Ok(())
+    }
+
+    /// Register hallucination detection tools (Sprint 40a)
+    ///
+    /// Exposes Sprint 37's hallucination detection system via MCP to enable
+    /// AI agents to validate documentation claims against the actual codebase.
+    ///
+    /// Based on peer-reviewed research:
+    /// - Semantic Entropy (Farquhar et al., Nature 2024)
+    /// - MIND framework (IJCAI 2025)
+    /// - Unified Detection Framework (Complex & Intelligent Systems 2025)
+    async fn register_hallucination_detection_tools(
+        &self,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        use crate::mcp_integration::hallucination_detection_tools::*;
+
+        let mut tools = self.context.tools.write();
+
+        // Register validate_documentation tool
+        tools.register(Arc::new(ValidateDocumentationTool::new(
+            self.context.agent_registry.clone(),
+        )));
+        tracing::info!("✓ Registered validate_documentation tool");
+
+        // Register check_claim tool
+        tools.register(Arc::new(CheckClaimTool::new(
+            self.context.agent_registry.clone(),
+        )));
+        tracing::info!("✓ Registered check_claim tool");
+
+        tracing::info!("✅ Hallucination detection tools registered successfully (2 tools)");
+
+        Ok(())
+    }
+
+    /// Register TDG (Technical Debt Gradient) analysis tools (Sprint 40c)
+    ///
+    /// Exposes the TDG quality analysis system via MCP to enable AI agents
+    /// to assess code quality and receive actionable improvement recommendations.
+    ///
+    /// Tools:
+    /// - `analyze_technical_debt`: Analyze quality scores for files/projects
+    /// - `get_quality_recommendations`: Get actionable refactoring suggestions
+    async fn register_tdg_tools(&self) -> Result<(), Box<dyn std::error::Error>> {
+        use crate::mcp_integration::tdg_tools::*;
+
+        let mut tools = self.context.tools.write();
+
+        // Register analyze_technical_debt tool
+        tools.register(Arc::new(AnalyzeTechnicalDebtTool::new(
+            self.context.agent_registry.clone(),
+        )));
+        tracing::info!("✓ Registered analyze_technical_debt tool");
+
+        // Register get_quality_recommendations tool
+        tools.register(Arc::new(GetQualityRecommendationsTool::new(
+            self.context.agent_registry.clone(),
+        )));
+        tracing::info!("✓ Registered get_quality_recommendations tool");
+
+        tracing::info!("✅ TDG analysis tools registered successfully (2 tools)");
 
         Ok(())
     }

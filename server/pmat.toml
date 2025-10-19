@@ -79,4 +79,18 @@ enable_aggregation = true
 enable_export = false
 export_format = "json"
 
+[semantic]
+enabled = false
+embedding_model = ""
+embedding_dimensions = 0
+default_search_mode = ""
+default_limit = 0
+auto_sync = false
+sync_interval_seconds = 0
+max_chunk_tokens = 0
+supported_languages = []
+enable_mcp_tools = false
+enable_cache = false
+cache_expiration_days = 0
+
 [custom]
