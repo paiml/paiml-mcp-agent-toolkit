@@ -4,6 +4,12 @@
 //! executes HTTP assertions against live server.
 //!
 //! These tests are skipped in CI due to timing issues with subprocess spawning.
+//!
+//! NOTE (PMAT-COVERAGE-004): All tests in this file are marked #[ignore] because:
+//! - Spawn subprocesses (incompatible with coverage instrumentation)
+//! - Take 60+ seconds each
+//! - Cause "Broken pipe" errors in coverage runs
+//! - Should be run manually: cargo test --test demo_e2e_integration -- --ignored
 
 // Helper macro to skip tests in CI
 macro_rules! skip_in_ci {
@@ -376,6 +382,7 @@ pub fn format_number(n: i32) -> String {
 }
 
 #[tokio::test]
+    #[ignore] // E2E test spawns subprocess (PMAT-COVERAGE-004)
 async fn test_demo_server_happy_path() -> Result<()> {
     skip_in_ci!();
 
@@ -403,6 +410,7 @@ async fn test_demo_server_happy_path() -> Result<()> {
 }
 
 #[tokio::test]
+    #[ignore] // E2E test spawns subprocess (PMAT-COVERAGE-004)
 async fn test_api_contract_compliance() -> Result<()> {
     skip_in_ci!();
 
@@ -468,6 +476,7 @@ async fn test_api_contract_compliance() -> Result<()> {
 }
 
 #[tokio::test]
+    #[ignore] // E2E test spawns subprocess (PMAT-COVERAGE-004)
 async fn test_concurrent_requests() -> Result<()> {
     skip_in_ci!();
 
@@ -506,6 +515,7 @@ async fn test_concurrent_requests() -> Result<()> {
 }
 
 #[tokio::test]
+    #[ignore] // E2E test spawns subprocess (PMAT-COVERAGE-004)
 #[serial]
 async fn test_performance_assertions() -> Result<()> {
     skip_in_ci!();
@@ -556,6 +566,7 @@ async fn test_performance_assertions() -> Result<()> {
 }
 
 #[tokio::test]
+    #[ignore] // E2E test spawns subprocess (PMAT-COVERAGE-004)
 #[serial]
 async fn test_error_handling() -> Result<()> {
     skip_in_ci!();
@@ -584,6 +595,7 @@ async fn test_error_handling() -> Result<()> {
 }
 
 #[tokio::test]
+    #[ignore] // E2E test spawns subprocess (PMAT-COVERAGE-004)
 async fn test_analysis_pipeline_integrity() -> Result<()> {
     skip_in_ci!();
 
@@ -667,6 +679,7 @@ async fn test_analysis_pipeline_integrity() -> Result<()> {
 }
 
 #[tokio::test]
+    #[ignore] // E2E test spawns subprocess (PMAT-COVERAGE-004)
 async fn test_data_source_indicators() -> Result<()> {
     skip_in_ci!();
 
@@ -709,6 +722,7 @@ async fn test_data_source_indicators() -> Result<()> {
 }
 
 #[tokio::test]
+    #[ignore] // E2E test spawns subprocess (PMAT-COVERAGE-004)
 async fn test_mermaid_diagram_rendering() -> Result<()> {
     skip_in_ci!();
 
