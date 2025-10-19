@@ -147,15 +147,14 @@ impl Roadmap {
     ///
     /// # Complexity
     /// - Time: O(n*m) where n=sprints, m=tickets
-    /// - Cyclomatic: 5
+    /// - Cyclomatic: 4
+    ///
+    /// # Note
+    /// Modern sprints (38+) may not use ticket format - they use narrative structure.
+    /// This is acceptable as roadmap evolved. Only validate ticket IDs if tickets exist.
     pub fn validate(&self) -> Result<()> {
         for sprint in &self.sprints {
-            // Validate sprint has tickets
-            if sprint.tickets.is_empty() {
-                return Err(RoadmapError::EmptySprint(sprint.number));
-            }
-
-            // Validate ticket IDs
+            // Validate ticket IDs only if sprint uses ticket format
             for ticket in &sprint.tickets {
                 validate_ticket_id(&ticket.id)?;
             }
@@ -271,11 +270,16 @@ fn parse_sprint_header(line: &str) -> Option<Sprint> {
 ///
 /// # Complexity
 /// - Time: O(1)
-/// - Cyclomatic: 5
+/// - Cyclomatic: 6
 fn parse_ticket_line(line: &str) -> Option<Ticket> {
     let line = line.trim();
 
     if !line.starts_with("- [") {
+        return None;
+    }
+
+    // Only parse lines that contain TICKET- (skip quality gates, etc.)
+    if !line.contains("TICKET-") {
         return None;
     }
 
