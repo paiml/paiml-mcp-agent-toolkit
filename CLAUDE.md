@@ -210,6 +210,89 @@ Full specification: `docs/specifications/documentation-accuracy-enforcement.md`
 
 ---
 
+## Bash/Makefile Quality Enforcement with bashrs
+
+**MANDATORY: All bash scripts and Makefiles must pass bashrs linting.**
+
+### Overview
+
+bashrs is a bidirectional shell safety tool that lints bash scripts and Makefiles for safety issues, including:
+- **SC2086**: Unquoted variable expansion (prevents word splitting & glob expansion)
+- **SC2046**: Unquoted command substitution
+- **SC2116**: Useless echo in command substitution
+- **DET003**: Unordered wildcard (non-deterministic results)
+- **IDEM002**: Non-idempotent operations
+- **SEC008**: Security issues (e.g., piping curl to shell)
+
+### Usage
+
+```bash
+# Lint a single bash script
+bashrs lint scripts/install.sh
+
+# Lint Makefile
+bashrs lint Makefile
+
+# Lint all bash scripts in a directory
+find scripts -name "*.sh" -exec bashrs lint {} \;
+```
+
+### Pre-commit Hook
+
+A git pre-commit hook is installed at `.git/hooks/pre-commit` that automatically runs bashrs on all staged bash/Makefile files.
+
+**Hook behavior:**
+- ✅ Exits 0 (allows commit) if no errors
+- ⚠️  Exits 0 (allows commit) with warnings (displayed to user)
+- ❌ Exits 1 (blocks commit) if errors found
+
+**Bypass hook** (NOT RECOMMENDED):
+```bash
+git commit --no-verify
+```
+
+### Installation
+
+bashrs is located in the parent directory (`../bashrs`) and is already installed:
+
+```bash
+# Check installation
+which bashrs  # Should show: /home/noah/.cargo/bin/bashrs
+
+# Build from source if needed
+cd ../bashrs && cargo build --release
+```
+
+### Exit Codes
+
+- `0` - No issues found
+- `1` - Warnings detected (commit allowed)
+- `2` - Errors detected (commit blocked)
+
+### Example Output
+
+```bash
+$ bashrs lint scripts/install.sh
+Issues found in scripts/install.sh:
+
+⚠ 28:28-32 [warning] SC2086: Double quote to prevent globbing and word splitting on ${NC}
+  Fix: "${NC}"
+
+✗ 8:106-109 [error] SEC008: CRITICAL: Piping curl/wget to shell - download and inspect first
+
+Summary: 2 error(s), 35 warning(s), 0 info(s)
+```
+
+### Rationale
+
+- **Safety First**: Prevents shell injection, word splitting, and glob expansion vulnerabilities
+- **Deterministic**: Catches non-deterministic patterns that cause flaky behavior
+- **Zero Dependencies**: Native Rust implementation, no ShellCheck installation required
+- **Fast**: <2ms per file
+- **Auto-fixable**: Many issues have suggested fixes (auto-fix coming in bashrs v1.2)
+
+---
+
 ## Coverage Tool Policy
 
 **IMPORTANT: We do NOT use cargo-tarpaulin for code coverage.**
