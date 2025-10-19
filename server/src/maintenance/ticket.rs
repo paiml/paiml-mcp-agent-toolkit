@@ -278,10 +278,21 @@ fn extract_checklist(lines: &[&str], header: &str) -> Result<Vec<String>> {
 /// Parse status string
 ///
 /// # Complexity
-/// - Time: O(1)
+/// - Time: O(n) where n is string length (for emoji stripping)
 /// - Cyclomatic: 5
+///
+/// # Note
+/// Strips non-ASCII characters (emojis) from status values.
+/// Example: "GREEN ✅" → "GREEN"
 fn parse_status(s: &str) -> Result<TicketStatus> {
-    match s.to_uppercase().as_str() {
+    // Strip non-ASCII characters (emojis) and trim whitespace
+    let clean_status: String = s.chars()
+        .filter(|c| c.is_ascii())
+        .collect::<String>()
+        .trim()
+        .to_uppercase();
+
+    match clean_status.as_str() {
         "RED" => Ok(TicketStatus::Red),
         "GREEN" => Ok(TicketStatus::Green),
         "REFACTOR" => Ok(TicketStatus::Refactor),
