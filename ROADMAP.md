@@ -2,28 +2,37 @@
 
 ## 🛑 HOTFIX: Multi-Language File Extension Mapping Bug (v2.163.0)
 
-**Status**: 🔴 RED PHASE - ROOT CAUSE IDENTIFIED
+**Status**: ✅ FIXED - GREEN PHASE COMPLETE
 **Bug**: JavaScript, C, C++ files return 0 files when analyzing
 **Severity**: CRITICAL - Multiple languages completely broken
 **Discovery**: 2025-10-18, during pmat-book Chapter 13 validation (after v2.162.0 fix)
-**In Progress**: 2025-10-18 14:00 UTC
+**Fixed**: 2025-10-19 (documented Sprint 39 completion)
+**Quality Gates**: ALL PASSED ✅ (6/6 language regression tests)
 **Ticket**: PMAT-BUG-002, PMAT-BUG-003, PMAT-BUG-004
 
 **Root Cause Analysis**:
 - **Problem**: `pmat analyze complexity` returns `total_files: 0` for JavaScript, C, C++ projects
-- **Root Cause**: `get_file_extensions()` in `analysis_utilities.rs:5995-6009` has incomplete toolchain mapping
+- **Root Cause**: `get_file_extensions()` in `analysis_utilities.rs:5995-6009` had incomplete toolchain mapping
 - **Code Path**:
   1. `detect_primary_language()` correctly returns `"javascript"`, `"c"`, `"cpp"`
-  2. `get_file_extensions(Some("javascript"))` hits `Some(_) => vec!["rs"]` catchall case
-  3. Extensions filter looks for `.rs` files in JavaScript projects → 0 files found
-- **Evidence**:
-  - JavaScript: toolchain="javascript" → extensions=["rs"] → FAIL
-  - C: toolchain="c" → extensions=["rs"] → FAIL
-  - C++: toolchain="cpp" → extensions=["rs"] → FAIL
-  - TypeScript: toolchain="typescript" → extensions=["ts","tsx","js","jsx"] → WORKS ✅
+  2. `get_file_extensions(Some("javascript"))` was hitting `Some(_) => vec!["rs"]` catchall case
+  3. Extensions filter looked for `.rs` files in JavaScript projects → 0 files found
 
-**Fix Required**:
-Add cases for "javascript", "c", "cpp", "c++", "go", "java", "kotlin", etc. to `get_file_extensions()`.
+**Fix Applied** (`analysis_utilities.rs:5999-6005`):
+```rust
+Some("javascript") => vec!["js", "jsx"], // PMAT-BUG-002 fix
+Some("c") => vec!["c", "h"],              // PMAT-BUG-003 fix
+Some("cpp" | "c++") => vec!["cpp", "cc", "cxx", "hpp", "h", "hxx"], // PMAT-BUG-004 fix
+Some("go") => vec!["go"],
+Some("java") => vec!["java"],
+Some("kotlin") => vec!["kt", "kts"],
+```
+
+**Verification**:
+- ✅ C test: 3 functions detected
+- ✅ C++ test: 6 functions detected
+- ✅ All 6 language regression tests passing
+- ✅ TypeScript/JavaScript/Bash/PHP/Swift/WASM all working
 
 ---
 
