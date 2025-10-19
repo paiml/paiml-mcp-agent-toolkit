@@ -1,8 +1,8 @@
 # What's Next: Post v2.163.0 Roadmap
 
-**Last Updated:** October 18, 2025 (Session: Sprint 39b - Re-enabling Ignored Tests)
+**Last Updated:** October 19, 2025 (Session: Sprint 39b - Re-enabling Ignored Tests - COMPLETE)
 **Current Version:** v2.163.0
-**Status:** 🟡 SPRINT 39b IN PROGRESS (Phase 1: 6 tests re-enabled)
+**Status:** ✅ SPRINT 39b COMPLETE (10 tests re-enabled, 14% reduction)
 
 **Recent Achievements:**
 - ✅ Sprint 35: Documentation Accuracy Enforcement (specifications + automation)
@@ -42,19 +42,27 @@
 
 ---
 
-## Sprint 39b - IN PROGRESS (October 18, 2025)
+## Sprint 39b - COMPLETE ✅ (October 19, 2025)
 
 **Goal**: Re-enable ignored tests by fixing root causes (Priority 3 from Sprint 39)
 
-**Status**: Phase 1 COMPLETE - 6 tests re-enabled (69 → 63 ignored tests)
+**Status**: COMPLETE - 10 tests re-enabled (69 → 59 ignored tests, 14% reduction)
 
-**Tests Re-enabled**:
+**Tests Re-enabled (10 total)**:
+
+**Phase 1 - WASM & Web Dashboard (6 tests)**:
 1. ✅ `services::languages::wasm::tests::test_complex_wat_control_flow`
 2. ✅ `services::languages::wasm::tests::test_wasm_complexity_analysis`
 3. ✅ `services::languages::wasm::tests::test_wat_text_analysis`
 4. ✅ `tdg::web_dashboard::tests::test_dashboard_state_creation`
 5. ✅ `tdg::web_dashboard::tests::test_metrics_update`
 6. ✅ `tdg::web_dashboard::tests::test_router_creation`
+
+**Phase 2 - Quality & Resource Control (4 tests)**:
+7. ✅ `tests::quality_checks_property_tests::unit_tests::test_complexity_violation_detection`
+8. ✅ `tdg::resource_control::tests::test_critical_priority_bypass`
+9. ✅ `tdg::resource_control::tests::test_enforcement_stats`
+10. ✅ `tdg::resource_control::tests::test_factory_patterns`
 
 **Root Causes Fixed**:
 1. **WASM Function Detection** (server/src/services/languages/wasm.rs:77):
@@ -72,15 +80,21 @@
    - No code changes required
 
 **Progress Metrics**:
-- Tests re-enabled: 6 (9% reduction in ignored tests)
-- Root causes fixed: 2 systemic issues
-- Code changes: 2 files, 5 lines modified
-- Time spent: ~1.5 hours
+- **Tests re-enabled**: 10 (14% reduction in ignored tests)
+- **Root causes fixed**: 2 systemic issues (WASM parser bugs)
+- **Tests that were already passing**: 7 (just needed `#[ignore]` removed)
+- **Code changes**: 4 files, 13 lines modified
+- **Time spent**: ~3 hours total (1.5h Phase 1 + 1.5h Phase 2)
 
-**Next Steps (Phase 2)**:
-- Continue testing remaining 63 ignored tests
-- Fix additional systemic issues where possible
-- Document tests that require infrastructure changes (e.g., binary builds)
+**Key Insights**:
+- Many "ignored" tests are actually passing - systematic testing revealed 7/10 just needed attr removed
+- WASM parser had 2 subtle bugs (regex pattern, missing opcode support)
+- Resource control tests marked "hangs" no longer exhibit the issue
+
+**Remaining Work**:
+- 59 ignored tests remain (many require infrastructure: binaries, feature flags, test fixtures)
+- E2E tests (4) failing due to import parsing issues
+- Infrastructure tests (5) have genuine issues requiring deeper fixes
 
 ---
 
