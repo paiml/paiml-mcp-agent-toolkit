@@ -506,6 +506,7 @@ pub struct HallucinationDetector {
     /// Code facts from codebase
     code_facts: CodeFactDatabase,
     /// Similarity calculator
+    #[allow(dead_code)] // Reserved for future semantic similarity Phase 2 integration
     similarity: SemanticSimilarity,
 }
 

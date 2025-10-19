@@ -9,6 +9,7 @@ use std::sync::Arc;
 
 /// Clustering engine
 pub struct ClusteringEngine {
+    #[allow(dead_code)] // Reserved for future clustering Phase 2 integration
     vector_db: Arc<TursoVectorDB>,
 }
 
