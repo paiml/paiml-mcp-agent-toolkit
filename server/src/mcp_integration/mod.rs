@@ -7,6 +7,8 @@ pub mod tools;
 #[cfg(feature = "deep-wasm")]
 pub mod deep_wasm_tools;
 pub mod mutation_tools;
+pub mod hallucination_detection_tools;
+pub mod tdg_tools;
 pub mod transport;
 
 #[cfg(test)]
