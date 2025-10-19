@@ -5740,8 +5740,8 @@ mod tests {
         assert_eq!(tree.total_size_bytes, 1024);
     }
 
+    // Re-enabled Sprint 44: Verified passing (DeepContextResult structure compatible)
     #[test]
-    #[ignore = "Test needs major refactoring for new DeepContextResult structure"]
     fn test_deep_context_result_creation() {
         // TODO: Update this test with the new DeepContextResult fields
         // including metadata, file_tree, analyses, quality_scorecard, etc.
