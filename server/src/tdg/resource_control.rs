@@ -771,7 +771,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore = "Test hangs - needs investigation"]
     async fn test_critical_priority_bypass() {
         let limits = ResourceLimits {
             max_memory_mb: 100.0, // Very small limit
@@ -839,7 +838,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore = "Test hangs - needs investigation"]
     async fn test_enforcement_stats() {
         let controller = PlatformResourceController::new(ResourceLimits::default());
         controller.start_monitoring().await.unwrap();
@@ -863,7 +861,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore = "Test hangs - needs investigation"]
     async fn test_factory_patterns() {
         let default_ctrl = ResourceControllerFactory::create_default();
         let dev_ctrl = ResourceControllerFactory::create_dev_optimized();
