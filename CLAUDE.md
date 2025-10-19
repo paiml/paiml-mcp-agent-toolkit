@@ -465,7 +465,15 @@ Root cause: Test execution ordering/concurrency, NOT broken functionality
 - `tests::e2e_full_coverage::test_cli_main_binary_help` (requires pmat binary)
 - `tests::e2e_full_coverage::test_cli_main_binary_version` (requires pmat binary)
 
-**Total: 59 tests ignored (14 previously failing tests now passing - documentation updated)**
+**Total: 117 tests ignored (down from 137 before Sprint 44)**
+
+Sprint 44 changes (October 19, 2025):
+- **Re-enabled 20 tests** via Five Whys empirical verification (100% passing)
+- **16 mutation tests** (CRITICAL for FAST methodology) - `server/src/services/mutation/rust_tree_sitter_mutations.rs`
+- **2 graph tests** (integration tests) - `server/src/graph/tests/builder_tests.rs`
+- **2 service tests** (core functionality) - `server/src/services/{context,deep_context}.rs`
+- **Ignored tests**: 137 → 117 (-20, -14.6%)
+- **Pattern validated**: Sprint 42/43/44 all show 100% pass rate for verified ignored tests
 
 Sprint 36 changes:
 - Added 4 new language regression tests (Bash, C++, PHP, Swift)

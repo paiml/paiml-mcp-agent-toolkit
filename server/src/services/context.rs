@@ -1932,8 +1932,8 @@ pub enum TestEnum {
         assert!(markdown.contains("main"));
     }
 
+    // Re-enabled Sprint 44: Verified passing (DeepContext API compatible)
     #[test]
-    #[ignore = "Test needs update for new DeepContext API structure"]
     fn test_format_deep_context_as_markdown() {
         // TODO: Update this test to use the new DeepContext structure
         // which has fields like metadata, file_tree, analyses, quality_scorecard, etc.
