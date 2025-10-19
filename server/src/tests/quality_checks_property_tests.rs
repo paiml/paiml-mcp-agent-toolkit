@@ -419,7 +419,6 @@ mod unit_tests {
 
     /// Test violation detection with complexity check
     #[test]
-    #[ignore]
     fn test_complexity_violation_detection() {
         let rt = Runtime::new().unwrap();
         let temp_dir = TempDir::new().unwrap();
