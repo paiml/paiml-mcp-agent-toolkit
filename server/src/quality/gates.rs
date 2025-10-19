@@ -534,6 +534,9 @@ mod tests {
     }
 
     #[test]
+    #[ignore] // Integration test that runs full test suite + clippy (PMAT-COVERAGE-003)
+              // Takes 12+ minutes, times out at 600s, causes recursive test execution
+              // Run manually with: cargo test integration_execute_all_gates -- --ignored
     fn integration_execute_all_gates() {
         let config = GateConfig {
             run_clippy: true,
