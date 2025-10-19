@@ -2646,7 +2646,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "Stack overflow issue - needs investigation"]
     fn test_cli_parse_empty() {
         // Test that CLI can be parsed with minimal args
         let result = Cli::try_parse_from(["pmat", "list"]);

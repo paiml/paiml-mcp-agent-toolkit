@@ -207,7 +207,6 @@ mod tests {
 
     // Integration test - only runs if we're in a git repo
     #[test]
-    #[ignore] // Ignore by default, can be run manually
     fn integration_get_current_commit() {
         // This test requires being in a git repo with at least one commit
         match get_current_commit() {
