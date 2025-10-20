@@ -24,7 +24,6 @@ macro_rules! skip_in_ci {
 use anyhow::Result;
 use regex::Regex;
 use reqwest::Client;
-use scraper::{Html, Selector};
 use serde_json::Value;
 use serial_test::serial;
 use std::process::{Child, Command, Stdio};
@@ -397,14 +396,13 @@ async fn test_demo_server_happy_path() -> Result<()> {
     assert!(html_content.contains("PAIML MCP Agent Toolkit"));
     assert!(html_content.len() > 100); // Basic sanity check that we got content
 
-    // Parse HTML and verify structure
-    let document = Html::parse_document(&html_content);
-    let stats_grid_selector = Selector::parse(".stats-grid").unwrap();
-    let stat_cards_selector = Selector::parse(".stat-card").unwrap();
+    // Verify HTML structure with string matching (replaces scraper dependency)
+    assert!(html_content.contains("stats-grid"), "Missing stats-grid class");
+    assert!(html_content.contains("stat-card"), "Missing stat-card class");
 
-    assert!(document.select(&stats_grid_selector).next().is_some());
-    let stat_cards: Vec<_> = document.select(&stat_cards_selector).collect();
-    assert!(stat_cards.len() >= 4, "Should have at least 4 stat cards");
+    // Count stat-card occurrences (should have at least 4)
+    let stat_card_count = html_content.matches("stat-card").count();
+    assert!(stat_card_count >= 4, "Should have at least 4 stat cards, found {}", stat_card_count);
 
     Ok(())
 }
@@ -690,31 +688,15 @@ async fn test_data_source_indicators() -> Result<()> {
     let response = HTTP_CLIENT.get(server.url("/")).send().await?;
     let html_content = response.text().await?;
 
-    let document = Html::parse_document(&html_content);
-
-    // Check for data source indicators
-    let dynamic_selector = Selector::parse(".data-indicator.dynamic").unwrap();
-    let default_selector = Selector::parse(".data-indicator.default").unwrap();
-
-    let dynamic_indicators: Vec<_> = document.select(&dynamic_selector).collect();
-    let _default_indicators: Vec<_> = document.select(&default_selector).collect();
-
-    // Should have both dynamic and default indicators
+    // Check for data source indicators with string matching (replaces scraper)
     assert!(
-        !dynamic_indicators.is_empty(),
+        html_content.contains("data-indicator") && html_content.contains("dynamic"),
         "Should have dynamic data indicators"
     );
 
-    // Verify Performance Breakdown shows dynamic data
-    let performance_section = document
-        .select(&Selector::parse(".section").unwrap())
-        .find(|el| {
-            el.text()
-                .collect::<String>()
-                .contains("Performance Breakdown")
-        });
+    // Verify Performance Breakdown section exists
     assert!(
-        performance_section.is_some(),
+        html_content.contains("Performance Breakdown"),
         "Performance section should exist"
     );
 
