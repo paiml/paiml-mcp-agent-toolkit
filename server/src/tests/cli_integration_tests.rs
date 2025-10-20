@@ -120,6 +120,8 @@ fn test_scaffold_agent_quality_levels() {
 // Scaffold WASM Tests
 
 #[test]
+#[ignore] // Requires pmat binary (CLI integration test) - Sprint 45 Round 3
+          // Run manually: cargo build --bin pmat && cargo test test_scaffold_wasm_dry_run -- --ignored
 fn test_scaffold_wasm_dry_run() {
     let output = Command::new(get_pmat_binary())
         .args(&[
