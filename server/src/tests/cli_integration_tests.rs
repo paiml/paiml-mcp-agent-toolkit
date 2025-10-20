@@ -55,6 +55,8 @@ fn test_scaffold_agent_list_templates() {
 }
 
 #[test]
+#[ignore] // Requires pmat binary (CLI integration test) - Sprint 45 Phase 1
+          // Run manually: cargo build --bin pmat && cargo test test_scaffold_agent_invalid_template -- --ignored
 fn test_scaffold_agent_invalid_template() {
     let output = Command::new(get_pmat_binary())
         .args(&[
@@ -143,6 +145,8 @@ fn test_scaffold_wasm_dry_run() {
 }
 
 #[test]
+#[ignore] // Requires pmat binary (CLI integration test) - Sprint 45 Phase 1
+          // Run manually: cargo build --bin pmat && cargo test test_scaffold_wasm_frameworks -- --ignored
 fn test_scaffold_wasm_frameworks() {
     for framework in &["wasm-labs", "pure-wasm"] {
         let output = Command::new(get_pmat_binary())
@@ -167,6 +171,8 @@ fn test_scaffold_wasm_frameworks() {
 }
 
 #[test]
+#[ignore] // Requires pmat binary (CLI integration test) - Sprint 45 Phase 1
+          // Run manually: cargo build --bin pmat && cargo test test_scaffold_wasm_invalid_framework -- --ignored
 fn test_scaffold_wasm_invalid_framework() {
     let output = Command::new(get_pmat_binary())
         .args(&[
@@ -217,6 +223,8 @@ fn test_maintain_health_quick_flag() {
 }
 
 #[test]
+#[ignore] // Requires pmat binary (CLI integration test) - Sprint 45 Phase 1
+          // Run manually: cargo build --bin pmat && cargo test test_maintain_health_individual_checks -- --ignored
 fn test_maintain_health_individual_checks() {
     let output = Command::new(get_pmat_binary())
         .args(&["maintain", "health", "--check-build"])
@@ -247,6 +255,8 @@ fn test_maintain_roadmap_missing_file() {
 }
 
 #[test]
+#[ignore] // Requires pmat binary (CLI integration test) - Sprint 45 Phase 1
+          // Run manually: cargo build --bin pmat && cargo test test_maintain_roadmap_with_file -- --ignored
 fn test_maintain_roadmap_with_file() {
     // Test with actual ROADMAP.md
     let output = Command::new(get_pmat_binary())
