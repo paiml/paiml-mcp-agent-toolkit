@@ -1,0 +1,46 @@
+# Complexity Analysis Summary
+
+📊 **Files analyzed**: 813
+🔧 **Total functions**: 46
+
+## Complexity Metrics
+
+- **Median Cyclomatic**: 8.0
+- **Median Cognitive**: 13.0
+- **Max Cyclomatic**: 18
+- **Max Cognitive**: 41
+- **90th Percentile Cyclomatic**: 14
+- **90th Percentile Cognitive**: 30
+
+⏱️  **Estimated Refactoring Time**: 42.5 hours
+
+## Issues Found
+
+❌ **Errors**: 4
+⚠️  **Warnings**: 23
+
+## Top Files by Complexity
+
+1. `generic_detector.rs` - Cyclomatic: 12, Cognitive: 19, Functions: 2
+2. `complex.rs` - Cyclomatic: 9, Cognitive: 20, Functions: 3
+3. `cli_checker.rs` - Cyclomatic: 8, Cognitive: 18, Functions: 4
+4. `test_handlers.rs` - Cyclomatic: 8, Cognitive: 15, Functions: 3
+5. `updater.rs` - Cyclomatic: 7, Cognitive: 15, Functions: 4
+6. `defect_probability.rs` - Cyclomatic: 6, Cognitive: 14, Functions: 1
+7. `roadmap_handler.rs` - Cyclomatic: 7, Cognitive: 12, Functions: 14
+8. `code_intelligence.rs` - Cyclomatic: 9, Cognitive: 10, Functions: 1
+9. `validator.rs` - Cyclomatic: 7, Cognitive: 11, Functions: 3
+10. `memory_property_tests.rs` - Cyclomatic: 7, Cognitive: 11, Functions: 11
+
+## Top Complexity Hotspots
+
+1. `deeply_nested_conditionals` - cyclomatic complexity: 18
+   📁 server/src/tests/fixtures/metric_tests/complex.rs:100
+2. `validate_cli_documentation` - cyclomatic complexity: 18
+   📁 server/src/docs_enforcement/cli_checker.rs:0
+3. `is_generic_description` - cyclomatic complexity: 15
+   📁 server/src/docs_enforcement/generic_detector.rs:0
+4. `handle_test` - cyclomatic complexity: 14
+   📁 server/src/cli/handlers/test_handlers.rs:0
+5. `handle_maintain_roadmap` - cyclomatic complexity: 14
+   📁 server/src/cli/handlers/roadmap_handler.rs:0
