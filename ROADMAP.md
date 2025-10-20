@@ -53,12 +53,12 @@ Some("kotlin") => vec!["kt", "kts"],
 ---
 
 
-## 🚧 Sprint 46: Quality & Security Improvements (v2.169.0) - IN PROGRESS
+## 🚧 Sprint 46: Quality, Security, Performance & Size Optimization (v2.169.0) - IN PROGRESS
 
 **Release**: v2.169.0
 **Status**: 🚧 IN PROGRESS
 **Started**: October 20, 2025
-**Focus**: Security fixes, complexity reduction, technical debt elimination
+**Focus**: Security, dependencies, binary size, performance, complexity, technical debt
 
 **Sprint 46 Priorities**:
 
@@ -68,7 +68,24 @@ Some("kotlin") => vec!["kt", "kts"],
 - **Target**: Zero security vulnerabilities
 - **Link**: https://github.com/paiml/paiml-mcp-agent-toolkit/security/dependabot/5
 
-### Priority 2: Complexity Reduction 🟡
+### Priority 2: Dependency Updates 🟡
+- **Issue**: Dependencies may be outdated
+- **Action**: `cargo update`, check `cargo outdated`, update incrementally
+- **Target**: All dependencies up to date (latest patch/minor versions)
+
+### Priority 3: Binary Size Reduction 🟡
+- **Issue**: Current binary size is 40MB (release build)
+- **Baseline**: 40MB (v2.168.0)
+- **Action**: Analyze with `cargo bloat`, optimize, keep all features
+- **Target**: Reduce to <35MB (12.5% reduction)
+- **Constraint**: MUST preserve all functionality
+
+### Priority 4: Performance Improvements 🟢
+- **Issue**: Need baseline measurements and optimizations
+- **Action**: Measure baselines, profile, optimize, add benchmarks
+- **Target**: 10%+ analysis speed improvement, <50ms startup time
+
+### Priority 5: Complexity Reduction 🟡
 - **Issue**: 4 functions with cognitive complexity >30 (error level)
 - **Hotspots**:
   - `deeply_nested_conditionals` (cognitive: 41) - Test fixture
@@ -78,24 +95,29 @@ Some("kotlin") => vec!["kt", "kts"],
 - **Action**: Refactor to reduce cognitive complexity below 30
 - **Target**: Zero error-level violations
 
-### Priority 3: Technical Debt Reduction 🟡
+### Priority 6: Technical Debt Reduction 🟡
 - **Issue**: 42.5 hours of technical debt, 23 cyclomatic complexity warnings
 - **Action**: Extract methods, simplify logic, add documentation
 - **Target**: Reduce technical debt to <30 hours
 
-### Priority 4: Test Re-enablement 🟢
+### Priority 7: Test Re-enablement 🟢
 - **Issue**: 14 tests marked as `#[ignore]` in Sprint 45
 - **Action**: Fix property tests, implement CI binary caching
 - **Target**: Re-enable 11 of 14 tests
 
 **Success Criteria**:
 - ✅ Zero security vulnerabilities
+- ✅ All dependencies up to date
+- ✅ Binary size <35MB (from 40MB baseline)
+- ✅ Performance improvements documented (10%+ improvement)
+- ✅ Performance benchmarks added
 - ✅ Zero error-level complexity violations
 - ✅ Technical debt <30 hours
 - ✅ At least 11 of 14 ignored tests re-enabled
 - ✅ All tests passing, zero regressions
+- ✅ All features preserved
 
-**Estimated Duration**: 8-14 hours (4 phases)
+**Estimated Duration**: 14-22 hours (6 phases)
 
 ---
 
