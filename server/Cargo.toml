@@ -249,7 +249,6 @@ criterion = { version = "0.6", features = ["html_reports"] }
 proptest = "1.6"
 quickcheck = "1.0"
 quickcheck_macros = "1.0"
-scraper = "0.24"
 serial_test = "3.2"
 futures-test = "0.3"
 actix-test = "0.1"
