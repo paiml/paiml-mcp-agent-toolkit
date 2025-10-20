@@ -109,10 +109,10 @@ indicatif = "0.17"
 url = "2.5"
 
 # Storage
-libsql = "0.9"  # Modern SQLite-compatible database (replaces sled + rusqlite)
+libsql = "0.9"  # Modern SQLite-compatible database (future replacement for sled + rusqlite)
 lz4_flex = "0.11"
-# rusqlite = { version = "0.32", features = ["bundled"] }  # Replaced by libsql
-# sled = "0.34"  # Replaced by libsql (unmaintained dependencies)
+rusqlite = { version = "0.32", features = ["bundled"] }  # TODO: Migrate turso_vector_db.rs to libsql (async API)
+sled = "0.34"  # TODO: Migrate storage_backend.rs to libsql (unmaintained dependencies - Phase 1 incomplete)
 # rocksdb = { version = "0.22", default-features = false, features = ["zstd"] }
 bincode = "1.3"
 
