@@ -52,6 +52,53 @@ Some("kotlin") => vec!["kt", "kts"],
 
 ---
 
+
+## 🚧 Sprint 46: Quality & Security Improvements (v2.169.0) - IN PROGRESS
+
+**Release**: v2.169.0
+**Status**: 🚧 IN PROGRESS
+**Started**: October 20, 2025
+**Focus**: Security fixes, complexity reduction, technical debt elimination
+
+**Sprint 46 Priorities**:
+
+### Priority 1: Security (Dependabot Alert) 🔴
+- **Issue**: GitHub Dependabot #5 - Moderate severity vulnerability
+- **Action**: Update vulnerable dependency
+- **Target**: Zero security vulnerabilities
+- **Link**: https://github.com/paiml/paiml-mcp-agent-toolkit/security/dependabot/5
+
+### Priority 2: Complexity Reduction 🟡
+- **Issue**: 4 functions with cognitive complexity >30 (error level)
+- **Hotspots**:
+  - `deeply_nested_conditionals` (cognitive: 41) - Test fixture
+  - `validate_cli_documentation` (cognitive: 37) - Docs enforcement
+  - `extract_flags_from_help` (cognitive: 35) - Docs enforcement
+  - `is_generic_description` (cognitive: 30) - Docs enforcement
+- **Action**: Refactor to reduce cognitive complexity below 30
+- **Target**: Zero error-level violations
+
+### Priority 3: Technical Debt Reduction 🟡
+- **Issue**: 42.5 hours of technical debt, 23 cyclomatic complexity warnings
+- **Action**: Extract methods, simplify logic, add documentation
+- **Target**: Reduce technical debt to <30 hours
+
+### Priority 4: Test Re-enablement 🟢
+- **Issue**: 14 tests marked as `#[ignore]` in Sprint 45
+- **Action**: Fix property tests, implement CI binary caching
+- **Target**: Re-enable 11 of 14 tests
+
+**Success Criteria**:
+- ✅ Zero security vulnerabilities
+- ✅ Zero error-level complexity violations
+- ✅ Technical debt <30 hours
+- ✅ At least 11 of 14 ignored tests re-enabled
+- ✅ All tests passing, zero regressions
+
+**Estimated Duration**: 8-14 hours (4 phases)
+
+---
+
 ## 🛑 HOTFIX: TypeScript/JavaScript Class Method Bug (v2.162.0)
 
 **Status**: ✅ FIXED - GREEN PHASE COMPLETE - RELEASED
