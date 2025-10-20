@@ -109,9 +109,10 @@ indicatif = "0.17"
 url = "2.5"
 
 # Storage
-sled = "0.34"
+libsql = "0.9"  # Modern SQLite-compatible database (replaces sled + rusqlite)
 lz4_flex = "0.11"
-rusqlite = { version = "0.32", features = ["bundled"] }
+# rusqlite = { version = "0.32", features = ["bundled"] }  # Replaced by libsql
+# sled = "0.34"  # Replaced by libsql (unmaintained dependencies)
 # rocksdb = { version = "0.22", default-features = false, features = ["zstd"] }
 bincode = "1.3"
 
