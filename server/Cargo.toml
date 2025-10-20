@@ -160,10 +160,11 @@ tree-sitter-kotlin-ng = { version = "1.1", optional = true }
 tree-sitter-swift = { version = "0.7", optional = true }
 tree-sitter-ruby = { version = "0.23", optional = true }
 tree-sitter-rust = { version = "0.23", optional = true }
-tree-sitter-erlang = { version = "0.15", optional = true }
-tree-sitter-elixir = { version = "0.3", optional = true }
-tree-sitter-haskell = { version = "0.23", optional = true }
-tree-sitter-ocaml = { version = "0.23", optional = true }
+# Sprint 46 Phase 5: Removed unused language parsers (1.25 MB release binary savings)
+# tree-sitter-erlang = { version = "0.15", optional = true }
+# tree-sitter-elixir = { version = "0.3", optional = true }
+# tree-sitter-haskell = { version = "0.23", optional = true }
+# tree-sitter-ocaml = { version = "0.23", optional = true }
 # For Ruchy language support (Ruby alternative parser)
 ruchy = { version = "3.31", optional = true }
 logos = { version = "0.14", optional = true }
@@ -269,7 +270,7 @@ capnpc = "0.20"
 
 [features]
 default = ["all-languages", "demo"]
-all-languages = ["rust-ast", "typescript-ast", "python-ast", "c-ast", "cpp-ast", "ruchy-ast", "go-ast", "wasm-ast", "deep-wasm", "shell-ast", "php-ast", "swift-ast", "java-ast", "csharp-ast", "ruby-ast", "erlang-ast", "haskell-ast", "ocaml-ast"]
+all-languages = ["rust-ast", "typescript-ast", "python-ast", "c-ast", "cpp-ast", "ruchy-ast", "go-ast", "wasm-ast", "deep-wasm", "shell-ast", "php-ast", "swift-ast", "java-ast", "csharp-ast", "ruby-ast"]
 most-languages = ["rust-ast", "typescript-ast", "python-ast", "c-ast", "cpp-ast", "java-ast", "csharp-ast", "ruby-ast"]
 rust-only = ["rust-ast"]
 ruchy-ast = ["ruchy", "logos"]
@@ -278,10 +279,11 @@ java-ast = ["tree-sitter", "tree-sitter-java"]
 csharp-ast = ["tree-sitter", "tree-sitter-c-sharp"]
 kotlin-ast = ["tree-sitter", "tree-sitter-kotlin-ng"]
 ruby-ast = ["tree-sitter", "tree-sitter-ruby"]
-erlang-ast = ["tree-sitter", "tree-sitter-erlang"]
-elixir-ast = ["tree-sitter", "tree-sitter-elixir"]
-haskell-ast = ["tree-sitter", "tree-sitter-haskell"]
-ocaml-ast = ["tree-sitter", "tree-sitter-ocaml"]
+# Sprint 46 Phase 5: Removed unused language feature definitions
+# erlang-ast = ["tree-sitter", "tree-sitter-erlang"]
+# elixir-ast = ["tree-sitter", "tree-sitter-elixir"]
+# haskell-ast = ["tree-sitter", "tree-sitter-haskell"]
+# ocaml-ast = ["tree-sitter", "tree-sitter-ocaml"]
 wasm-ast = []
 deep-wasm = ["gimli", "wasm-ast"]
 shell-ast = []
