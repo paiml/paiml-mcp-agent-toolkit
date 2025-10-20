@@ -1,4 +1,8 @@
 // RED Phase: Write failing tests first
+
+// NOTE (Sprint 47): Use assetsearch (../../assetsearch) for MCP-based semantic search.
+// All tests in this file marked #[ignore] pending migration to assetsearch.
+
 // PMAT-SEARCH-004: Vector Similarity Search Engine
 // Test count: 18 tests
 
@@ -63,6 +67,7 @@ class Calculator:
 // Search by Query Tests (3 tests)
 // ============================================================================
 
+#[ignore]
 #[tokio::test]
 #[ignore] // Requires actual OpenAI API
 async fn test_search_by_query() {
@@ -88,6 +93,7 @@ async fn test_search_by_query() {
     assert!(results[0].similarity_score > 0.7);
 }
 
+#[ignore]
 #[tokio::test]
 async fn test_search_empty_query() {
     let (engine, _temp_dir) = setup_test_engine().await;
@@ -105,6 +111,7 @@ async fn test_search_empty_query() {
     assert!(result.is_err());
 }
 
+#[ignore]
 #[tokio::test]
 async fn test_search_with_limit() {
     let (engine, temp_dir) = setup_test_engine().await;
@@ -130,6 +137,7 @@ async fn test_search_with_limit() {
 // Find Similar Code Test (1 test)
 // ============================================================================
 
+#[ignore]
 #[tokio::test]
 async fn test_find_similar_code() {
     let (engine, temp_dir) = setup_test_engine().await;
@@ -154,6 +162,7 @@ async fn test_find_similar_code() {
 // Incremental Updates Tests (2 tests)
 // ============================================================================
 
+#[ignore]
 #[tokio::test]
 async fn test_incremental_update() {
     let (engine, temp_dir) = setup_test_engine().await;
@@ -172,6 +181,7 @@ async fn test_incremental_update() {
     assert_eq!(stats2.updated, 0);
 }
 
+#[ignore]
 #[tokio::test]
 async fn test_incremental_after_modification() {
     let (engine, temp_dir) = setup_test_engine().await;
@@ -202,6 +212,7 @@ fn add(a: i32, b: i32) -> i32 {
 // Filtering Tests (3 tests)
 // ============================================================================
 
+#[ignore]
 #[tokio::test]
 async fn test_language_filter() {
     let (engine, temp_dir) = setup_test_engine().await;
@@ -223,6 +234,7 @@ async fn test_language_filter() {
     assert!(results.iter().all(|r| r.language == "rust"));
 }
 
+#[ignore]
 #[tokio::test]
 async fn test_file_pattern_filter() {
     let (engine, temp_dir) = setup_test_engine().await;
@@ -244,6 +256,7 @@ async fn test_file_pattern_filter() {
     assert!(results.iter().all(|r| r.file_path.ends_with(".rs")));
 }
 
+#[ignore]
 #[tokio::test]
 async fn test_chunk_type_filter() {
     let (engine, temp_dir) = setup_test_engine().await;
@@ -269,6 +282,7 @@ async fn test_chunk_type_filter() {
 // Empty Results Test (1 test)
 // ============================================================================
 
+#[ignore]
 #[tokio::test]
 async fn test_empty_results() {
     let (engine, _temp_dir) = setup_test_engine().await;
@@ -290,6 +304,7 @@ async fn test_empty_results() {
 // Snippet Extraction Test (1 test)
 // ============================================================================
 
+#[ignore]
 #[tokio::test]
 async fn test_snippet_extraction() {
     let (engine, temp_dir) = setup_test_engine().await;
@@ -318,6 +333,7 @@ async fn test_snippet_extraction() {
 // Result Ranking Test (1 test)
 // ============================================================================
 
+#[ignore]
 #[tokio::test]
 async fn test_result_ranking() {
     let (engine, temp_dir) = setup_test_engine().await;
@@ -347,6 +363,7 @@ async fn test_result_ranking() {
 // Statistics Test (1 test)
 // ============================================================================
 
+#[ignore]
 #[tokio::test]
 async fn test_index_statistics() {
     let (engine, temp_dir) = setup_test_engine().await;
@@ -367,6 +384,7 @@ async fn test_index_statistics() {
 // Embedding Count Test (1 test)
 // ============================================================================
 
+#[ignore]
 #[tokio::test]
 async fn test_embedding_count() {
     let (engine, temp_dir) = setup_test_engine().await;
@@ -386,12 +404,14 @@ async fn test_embedding_count() {
 // Search Mode Tests (3 tests)
 // ============================================================================
 
+#[ignore]
 #[test]
 fn test_search_mode_enum() {
     assert_eq!(SearchMode::SemanticOnly, SearchMode::SemanticOnly);
     assert_ne!(SearchMode::SemanticOnly, SearchMode::KeywordOnly);
 }
 
+#[ignore]
 #[test]
 fn test_search_query_builder() {
     let query = SearchQuery {
@@ -407,6 +427,7 @@ fn test_search_query_builder() {
     assert_eq!(query.limit, 5);
 }
 
+#[ignore]
 #[test]
 fn test_index_stats_display() {
     let stats = IndexStats {

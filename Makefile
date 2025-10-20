@@ -21,7 +21,7 @@
 #
 # This design eliminates confusion and ensures consistent behavior across all environments.
 
-.PHONY: all validate format lint lint-main check test test-doc test-fast coverage coverage-ci coverage-full coverage-summary coverage-open coverage-stdout coverage-no-report coverage-report-only coverage-clean build release clean clean-tmp install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts test-scripts lint-makefile fix validate-docs ci-status validate-naming validate-book context setup audit docs run-mcp run-mcp-test test-actions install-act check-act deps-validate dogfood dogfood-ci update-rust-docs size-report size-track size-check size-compare test-all-interfaces test-feature-all-interfaces test-interface-consistency benchmark-all-interfaces load-test-interfaces context-json context-sarif context-llm context-legacy context-benchmark analyze-top-files analyze-composite analyze-health-dashboard profile-binary-performance profile-deep-context analyze-memory-usage analyze-scaling kaizen test-slow-integration test-safe test-dogfood test-critical-scripts coverage-scripts clean-coverage test-workflow-dag test-workflow-dag-verbose context-root context-simple context-json-root context-benchmark-legacy local-install server-build-binary server-build-docker server-run-mcp server-run-mcp-test server-benchmark server-test server-test-all server-outdated server-tokei build-target cargo-doc cargo-geiger update-deps update-deps-aggressive update-deps-security upgrade-deps audit-fix benchmark coverage-report outdated test-all-features clippy-strict server-build-release create-release test-curl-install cargo-rustdoc install-dev-tools tokei quickstart context-fast clear-swap config-swap overnight-improve overnight-monitor overnight-swap-cron test-unit test-services test-protocols test-e2e test-performance test-property test-property-slow test-all coverage-stratified crate-release crate-docs dev commit sprint-close setup-quality quality-gate-full help-toyota-way
+.PHONY: all validate format lint lint-main check test test-doc test-fast coverage coverage-ci coverage-full coverage-summary coverage-open coverage-stdout coverage-no-report coverage-report-only coverage-clean build release clean clean-tmp install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts test-scripts lint-makefile fix validate-docs ci-status validate-naming validate-book context setup audit docs run-mcp run-mcp-test test-actions install-act check-act deps-validate dogfood dogfood-ci update-rust-docs size-report size-track size-check size-compare test-all-interfaces test-feature-all-interfaces test-interface-consistency benchmark-all-interfaces load-test-interfaces context-json context-sarif context-llm context-legacy context-benchmark analyze-top-files analyze-composite analyze-health-dashboard profile-binary-performance profile-deep-context analyze-memory-usage analyze-scaling kaizen test-slow-integration test-safe test-dogfood test-critical-scripts coverage-scripts clean-coverage test-workflow-dag test-workflow-dag-verbose context-root context-simple context-json-root context-benchmark-legacy local-install server-build-binary server-build-docker server-run-mcp server-run-mcp-test server-benchmark server-test server-test-all server-outdated server-tokei build-target cargo-doc cargo-geiger update-deps update-deps-aggressive update-deps-security upgrade-deps audit-fix benchmark coverage-report outdated test-all-features clippy-strict server-build-release create-release test-curl-install cargo-rustdoc install-dev-tools tokei quickstart context-fast clear-swap config-swap overnight-improve overnight-monitor overnight-swap-cron test-unit test-services test-protocols test-e2e test-performance test-property test-property-slow test-all coverage-stratified crate-release crate-docs dev commit sprint-close setup-quality quality-gate-full help-toyota-way test-examples clean-quick clean-deep validate-doc-links validate-contracts release-dry release-verify
 
 # Define sub-projects
 # NOTE: client project will be added when implemented
@@ -566,15 +566,15 @@ check-scripts:
 lint-makefile:
 	@echo "🔍 Linting Makefile..."
 	@if [ -f ./target/release/pmat ]; then \
-		output=$$(./target/release/pmat analyze makefile Makefile --format human 2>&1); \
-		echo "$$output" | head -n 5; \
-		issues=$$(echo "$$output" | grep -c "issues" || true); \
-		if [ $$issues -gt 0 ]; then \
-			real_issues=$$(echo "$$output" | grep -E "minphony|phonydeclared|timestampexpanded|portability|performance" | wc -l); \
+		output="$$(./target/release/pmat analyze makefile Makefile --format human 2>&1)"; \
+		echo "$${output}" | head -n 5; \
+		issues="$$(echo "$${output}" | grep -c "issues" || true)"; \
+		if [ "$${issues}" -gt 0 ]; then \
+			real_issues="$$(echo "$${output}" | grep -E "minphony|phonydeclared|timestampexpanded|portability|performance" | wc -l)"; \
 			echo ""; \
-			echo "📊 Summary: Found $$real_issues actionable issues (filtering out false positives)"; \
+			echo "📊 Summary: Found $${real_issues} actionable issues (filtering out false positives)"; \
 			echo ""; \
-			echo "$$output" | grep -E "minphony|phonydeclared|timestampexpanded|portability|performance" -A1 | grep -v "^--$$" || echo "✅ No critical issues found!"; \
+			echo "$${output}" | grep -E "minphony|phonydeclared|timestampexpanded|portability|performance" -A1 | grep -v "^--$$" || echo "✅ No critical issues found!"; \
 		fi; \
 	else \
 		echo "⚠️  Release binary not found. Run 'make release' first or using debug build..."; \
@@ -586,11 +586,11 @@ lint-makefile:
 # Test TypeScript scripts with coverage
 test-scripts:
 	@rm -rf coverage_deno
-	@if [ -d "$(SCRIPTS_DIR)" ] && [ "$$(find $(SCRIPTS_DIR) -name '*.test.ts' -type f 2>/dev/null | wc -l)" -gt 0 ]; then \
+	@if [ -d "$(SCRIPTS_DIR)" ] && [ "$$(find "$(SCRIPTS_DIR)" -name '*.test.ts' -type f 2>/dev/null | wc -l)" -gt 0 ]; then \
 		echo "🧪 Testing TypeScript scripts with coverage..."; \
 		deno test --allow-all --coverage=coverage_deno \
-			$(SCRIPTS_DIR)/lib/*.test.ts \
-			$(SCRIPTS_DIR)/*.test.ts; \
+			"$(SCRIPTS_DIR)/lib/*.test.ts" \
+			"$(SCRIPTS_DIR)/*.test.ts"; \
 		echo ""; \
 		echo "📊 Coverage Report:"; \
 		deno coverage coverage_deno; \
@@ -651,14 +651,6 @@ coverage-scripts:
 
 # Clean all coverage artifacts
 clean-coverage: coverage-clean
-
-# Clean coverage data and profraw files
-coverage-clean:
-	@echo "🧹 Cleaning coverage artifacts..."
-	@cargo llvm-cov clean --workspace
-	@rm -rf target/llvm-cov target/llvm-cov-target
-	@rm -f *.profraw *.profdata
-	@echo "✅ Coverage artifacts cleaned"
 
 # Validate documentation naming consistency
 validate-docs:
@@ -1004,23 +996,6 @@ audit-fix:
 # Run benchmarks
 benchmark:
 	@$(MAKE) server-benchmark
-
-
-# Generate coverage summary (for CI and fast tests)
-coverage-summary:
-	@echo "📊 Generating coverage summary..."
-	@if ! command -v cargo-llvm-cov >/dev/null 2>&1; then \
-		echo "📦 Installing cargo-llvm-cov..."; \
-		cargo install cargo-llvm-cov --locked; \
-	fi
-	@if ! rustup component list --installed | grep -q llvm-tools-preview; then \
-		echo "📦 Installing llvm-tools-preview..."; \
-		rustup component add llvm-tools-preview; \
-	fi
-	@cargo llvm-cov --workspace --summary-only \
-		--features "skip-slow-tests" \
-		--ignore-filename-regex='tests?\.rs'
-	@echo "✅ Coverage summary completed!"
 
 # Check outdated dependencies
 outdated:

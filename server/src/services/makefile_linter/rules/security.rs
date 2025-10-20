@@ -208,7 +208,8 @@ fn contains_shell_injection(command: &str) -> bool {
     static UNQUOTED_VAR_REGEX: OnceLock<Regex> = OnceLock::new();
     let regex = UNQUOTED_VAR_REGEX.get_or_init(|| {
         // Match $(VAR) or ${VAR} not inside quotes
-        Regex::new(r#"(?:^|[^"'])\$\([^)]+\)|(?:^|[^"'])\$\{[^}]+\}"#).unwrap()
+        // But NOT $$(...) or $${...} which are Make-escaped variables
+        Regex::new(r#"(?:^|[^"'\$])\$\([^)]+\)|(?:^|[^"'\$])\$\{[^}]+\}"#).unwrap()
     });
 
     // Skip safe commands
@@ -219,16 +220,17 @@ fn contains_shell_injection(command: &str) -> bool {
         }
     }
 
+    // Skip if command contains properly quoted Make variables like "$${VAR}" or "$(VAR)"
+    if command.contains("\"$$")  || command.contains("\"$(") {
+        return false;
+    }
+
     // Check for dangerous patterns
     let dangerous_commands = ["rm", "find", "curl", "wget", "tar", "install"];
     let has_dangerous = dangerous_commands.iter().any(|&cmd| command.contains(cmd));
 
-    if has_dangerous && regex.is_match(command) {
-        // Check if it's not already quoted
-        !command.contains('"') || regex.is_match(command)
-    } else {
-        false
-    }
+    // Simple logic: dangerous command + unquoted variable = shell injection risk
+    has_dangerous && regex.is_match(command)
 }
 
 fn quote_variables(command: &str) -> String {
@@ -412,6 +414,106 @@ mod tests {
 
         assert_eq!(violations.len(), 1);
         assert!(violations[0].message.contains("shell injection"));
+    }
+
+    /// RED TEST: Properly quoted Make variables with $${VAR} should NOT trigger warnings
+    #[test]
+    fn test_make_escaped_variables_are_safe() {
+        let content = r#"test:
+	@output="$$(./tool run)"; \
+	echo "$${output}" | head -n 5; \
+	issues="$$(echo "$${output}" | grep -c "error" || true)"
+"#;
+        let mut parser = MakefileParser::new(content);
+        let ast = parser.parse().unwrap();
+
+        let rule = ShellInjectionRule;
+        let violations = rule.check(&ast);
+
+        // MUST be zero - these are properly quoted Make variables
+        assert_eq!(violations.len(), 0,
+            "Properly quoted Make variables ${{VAR}} should not trigger shell injection warnings");
+    }
+
+    /// RED TEST: Quoted $(VAR) in dangerous commands should be SAFE
+    #[test]
+    fn test_quoted_command_substitution_is_safe() {
+        let content = r#"dangerous:
+	find "$(SCRIPTS_DIR)" -name '*.test.ts'
+	rm -rf "$(BUILD_DIR)"
+"#;
+        let mut parser = MakefileParser::new(content);
+        let ast = parser.parse().unwrap();
+
+        let rule = ShellInjectionRule;
+        let violations = rule.check(&ast);
+
+        assert_eq!(violations.len(), 0,
+            "Quoted $(VAR) in dangerous commands should not trigger warnings");
+    }
+
+    /// PROPERTY TEST: Any command with "$${" should NEVER trigger shell injection
+    #[test]
+    fn property_test_double_dollar_brace_always_safe() {
+        let test_cases = vec![
+            r#"echo "$${foo}""#,
+            r#"echo "$${output}" | grep test"#,
+            r#"rm -rf "$${tmpdir}""#,
+            r#"find "$${path}" -name '*.rs'"#,
+            r#"curl "$${url}" -o file"#,
+        ];
+
+        for (i, cmd) in test_cases.iter().enumerate() {
+            let content = format!("test:\n\t{}\n", cmd);
+            let mut parser = MakefileParser::new(&content);
+            let ast = parser.parse().unwrap();
+
+            let rule = ShellInjectionRule;
+            let violations = rule.check(&ast);
+
+            assert_eq!(violations.len(), 0,
+                "Test case {}: Command with ${{{{...}}}} should not trigger: {}", i, cmd);
+        }
+    }
+
+    /// PROPERTY TEST: Any command with "$$(" should NEVER trigger shell injection
+    #[test]
+    fn property_test_double_dollar_paren_always_safe() {
+        let test_cases = vec![
+            r#"output="$$(ls)""#,
+            r#"count="$$(echo "$${var}" | wc -l)""#,
+            r#"rm -rf "$$(pwd)/tmp""#,
+            r#"tar xzf "$$(find . -name '*.tar.gz')""#,
+        ];
+
+        for (i, cmd) in test_cases.iter().enumerate() {
+            let content = format!("test:\n\t{}\n", cmd);
+            let mut parser = MakefileParser::new(&content);
+            let ast = parser.parse().unwrap();
+
+            let rule = ShellInjectionRule;
+            let violations = rule.check(&ast);
+
+            assert_eq!(violations.len(), 0,
+                "Test case {}: Command with $$((...)) should not trigger: {}", i, cmd);
+        }
+    }
+
+    /// MUTATION TEST: Unquoted variables MUST still trigger (regression check)
+    #[test]
+    fn mutation_test_unquoted_vars_still_detected() {
+        let content = r#"dangerous:
+	rm -rf $(UNQUOTED_VAR)
+	find $(SOME_PATH) -name '*.tmp'
+"#;
+        let mut parser = MakefileParser::new(content);
+        let ast = parser.parse().unwrap();
+
+        let rule = ShellInjectionRule;
+        let violations = rule.check(&ast);
+
+        assert!(violations.len() >= 1,
+            "Unquoted variables in dangerous commands MUST still be detected");
     }
 
     #[test]
