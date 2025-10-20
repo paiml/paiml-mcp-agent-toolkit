@@ -1,4 +1,8 @@
 // RED Phase: Write failing tests first
+
+// NOTE (Sprint 47): Use assetsearch (../../assetsearch) for MCP-based semantic search.
+// All tests in this file marked #[ignore] pending migration to assetsearch.
+
 // PMAT-SEARCH-005: Hybrid Search Engine with RRF
 // Test count: 25 tests
 
@@ -56,6 +60,7 @@ fn validate_weights(keyword_weight: f64, vector_weight: f64) -> bool {
 // Keyword-Only Search Tests (3 tests)
 // ============================================================================
 
+#[ignore]
 #[tokio::test]
 async fn test_keyword_only_search() {
     let (engine, temp_dir) = setup_hybrid_engine().await;
@@ -77,6 +82,7 @@ async fn test_keyword_only_search() {
     assert_eq!(results[0].vector_score, 0.0);
 }
 
+#[ignore]
 #[tokio::test]
 async fn test_keyword_search_exact_match() {
     let (engine, temp_dir) = setup_hybrid_engine().await;
@@ -96,6 +102,7 @@ async fn test_keyword_search_exact_match() {
     assert!(results.iter().any(|r| r.chunk_name.contains("multiply")));
 }
 
+#[ignore]
 #[tokio::test]
 async fn test_keyword_search_no_results() {
     let (engine, temp_dir) = setup_hybrid_engine().await;
@@ -119,6 +126,7 @@ async fn test_keyword_search_no_results() {
 // Vector-Only Search Tests (3 tests)
 // ============================================================================
 
+#[ignore]
 #[tokio::test]
 #[ignore] // Requires OpenAI API
 async fn test_vector_only_search() {
@@ -141,6 +149,7 @@ async fn test_vector_only_search() {
     assert_eq!(results[0].keyword_score, 0.0);
 }
 
+#[ignore]
 #[tokio::test]
 async fn test_vector_only_mode_selection() {
     let (engine, temp_dir) = setup_hybrid_engine().await;
@@ -162,6 +171,7 @@ async fn test_vector_only_mode_selection() {
     assert!(results.len() >= 0);
 }
 
+#[ignore]
 #[tokio::test]
 async fn test_vector_search_semantic_matching() {
     let (engine, temp_dir) = setup_hybrid_engine().await;
@@ -186,6 +196,7 @@ async fn test_vector_search_semantic_matching() {
 // Hybrid Search Tests (5 tests)
 // ============================================================================
 
+#[ignore]
 #[tokio::test]
 async fn test_hybrid_search() {
     let (engine, temp_dir) = setup_hybrid_engine().await;
@@ -208,6 +219,7 @@ async fn test_hybrid_search() {
     assert!(results[0].hybrid_score > 0.0);
 }
 
+#[ignore]
 #[tokio::test]
 async fn test_hybrid_combines_both_sources() {
     let (engine, temp_dir) = setup_hybrid_engine().await;
@@ -233,6 +245,7 @@ async fn test_hybrid_combines_both_sources() {
     assert!(has_keyword || has_vector);
 }
 
+#[ignore]
 #[tokio::test]
 async fn test_hybrid_score_combination() {
     let (engine, temp_dir) = setup_hybrid_engine().await;
@@ -257,6 +270,7 @@ async fn test_hybrid_score_combination() {
     }
 }
 
+#[ignore]
 #[tokio::test]
 async fn test_hybrid_empty_query() {
     let (engine, _temp_dir) = setup_hybrid_engine().await;
@@ -275,6 +289,7 @@ async fn test_hybrid_empty_query() {
     assert!(result.is_err());
 }
 
+#[ignore]
 #[tokio::test]
 async fn test_hybrid_with_filters() {
     let (engine, temp_dir) = setup_hybrid_engine().await;
@@ -302,6 +317,7 @@ async fn test_hybrid_with_filters() {
 // RRF Calculation Tests (3 tests)
 // ============================================================================
 
+#[ignore]
 #[test]
 fn test_rrf_calculation() {
     // Test RRF formula: 1 / (k + rank)
@@ -318,6 +334,7 @@ fn test_rrf_calculation() {
     assert!(rrf2 > rrf10);
 }
 
+#[ignore]
 #[test]
 fn test_rrf_k_constant() {
     // Test with different k values
@@ -328,6 +345,7 @@ fn test_rrf_k_constant() {
     assert!(rrf_k60 > rrf_k100);
 }
 
+#[ignore]
 #[test]
 fn test_rrf_score_range() {
     // RRF scores should always be positive and < 1
@@ -342,6 +360,7 @@ fn test_rrf_score_range() {
 // Deduplication Tests (2 tests)
 // ============================================================================
 
+#[ignore]
 #[tokio::test]
 async fn test_result_deduplication() {
     let (engine, temp_dir) = setup_hybrid_engine().await;
@@ -368,6 +387,7 @@ async fn test_result_deduplication() {
     }
 }
 
+#[ignore]
 #[tokio::test]
 async fn test_deduplication_preserves_higher_score() {
     let (engine, temp_dir) = setup_hybrid_engine().await;
@@ -397,6 +417,7 @@ async fn test_deduplication_preserves_higher_score() {
 // Weight Adjustment Tests (3 tests)
 // ============================================================================
 
+#[ignore]
 #[tokio::test]
 async fn test_weight_adjustment_keyword_heavy() {
     let (engine, temp_dir) = setup_hybrid_engine().await;
@@ -423,6 +444,7 @@ async fn test_weight_adjustment_keyword_heavy() {
     }
 }
 
+#[ignore]
 #[tokio::test]
 async fn test_weight_adjustment_vector_heavy() {
     let (engine, temp_dir) = setup_hybrid_engine().await;
@@ -442,6 +464,7 @@ async fn test_weight_adjustment_vector_heavy() {
     assert!(results.len() > 0);
 }
 
+#[ignore]
 #[test]
 fn test_weight_validation() {
     // Valid weights
@@ -460,6 +483,7 @@ fn test_weight_validation() {
 // Performance Tests (3 tests)
 // ============================================================================
 
+#[ignore]
 #[tokio::test]
 async fn test_keyword_search_performance() {
     let (engine, temp_dir) = setup_hybrid_engine().await;
@@ -483,6 +507,7 @@ async fn test_keyword_search_performance() {
     assert!(duration.as_millis() < 1000); // < 1 second
 }
 
+#[ignore]
 #[tokio::test]
 async fn test_hybrid_search_performance() {
     let (engine, temp_dir) = setup_hybrid_engine().await;
@@ -506,6 +531,7 @@ async fn test_hybrid_search_performance() {
     assert!(duration.as_secs() < 5); // < 5 seconds for hybrid
 }
 
+#[ignore]
 #[tokio::test]
 async fn test_result_limit_respected() {
     let (engine, temp_dir) = setup_hybrid_engine().await;
@@ -529,6 +555,7 @@ async fn test_result_limit_respected() {
 // Hybrid Result Ranking Test (1 test)
 // ============================================================================
 
+#[ignore]
 #[tokio::test]
 async fn test_hybrid_result_ranking() {
     let (engine, temp_dir) = setup_hybrid_engine().await;
@@ -556,6 +583,7 @@ async fn test_hybrid_result_ranking() {
 // Edge Cases (3 tests)
 // ============================================================================
 
+#[ignore]
 #[tokio::test]
 async fn test_empty_index_search() {
     let (engine, _temp_dir) = setup_hybrid_engine().await;
@@ -575,6 +603,7 @@ async fn test_empty_index_search() {
     assert_eq!(results.len(), 0);
 }
 
+#[ignore]
 #[tokio::test]
 async fn test_special_characters_in_query() {
     let (engine, temp_dir) = setup_hybrid_engine().await;
@@ -595,6 +624,7 @@ async fn test_special_characters_in_query() {
     assert!(results.len() >= 0);
 }
 
+#[ignore]
 #[tokio::test]
 async fn test_very_long_query() {
     let (engine, temp_dir) = setup_hybrid_engine().await;

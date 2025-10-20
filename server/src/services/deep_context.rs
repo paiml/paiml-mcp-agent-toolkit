@@ -4460,54 +4460,38 @@ async fn analyze_swift_file(
 }
 
 /// Simple Elixir file analysis
+/// Note: Elixir parser removed in Sprint 46 Phase 5 (unimplemented stub)
 async fn analyze_elixir_file(
     _file_path: &Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
-    #[cfg(feature = "elixir-ast")]
-    {
-        // TODO: Implement Elixir tree-sitter analyzer
-        Ok(Vec::new())
-    }
-    #[cfg(not(feature = "elixir-ast"))]
+    // Feature removed - was unimplemented stub
     Ok(Vec::new())
 }
 
 /// Simple Erlang file analysis
+/// Note: Erlang parser removed in Sprint 46 Phase 5 (unimplemented stub)
 async fn analyze_erlang_file(
     _file_path: &Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
-    #[cfg(feature = "erlang-ast")]
-    {
-        // TODO: Implement Erlang tree-sitter analyzer
-        Ok(Vec::new())
-    }
-    #[cfg(not(feature = "erlang-ast"))]
+    // Feature removed - was unimplemented stub
     Ok(Vec::new())
 }
 
 /// Simple Haskell file analysis
+/// Note: Haskell parser removed in Sprint 46 Phase 5 (unimplemented stub)
 async fn analyze_haskell_file(
     _file_path: &Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
-    #[cfg(feature = "haskell-ast")]
-    {
-        // TODO: Implement Haskell tree-sitter analyzer
-        Ok(Vec::new())
-    }
-    #[cfg(not(feature = "haskell-ast"))]
+    // Feature removed - was unimplemented stub
     Ok(Vec::new())
 }
 
 /// Simple OCaml file analysis
+/// Note: OCaml parser removed in Sprint 46 Phase 5 (unimplemented stub)
 async fn analyze_ocaml_file(
     _file_path: &Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
-    #[cfg(feature = "ocaml-ast")]
-    {
-        // TODO: Implement OCaml tree-sitter analyzer
-        Ok(Vec::new())
-    }
-    #[cfg(not(feature = "ocaml-ast"))]
+    // Feature removed - was unimplemented stub
     Ok(Vec::new())
 }
 
