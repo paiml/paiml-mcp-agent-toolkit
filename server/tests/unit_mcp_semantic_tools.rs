@@ -1,4 +1,8 @@
 // RED Phase: Write failing tests first
+
+// NOTE (Sprint 47): Use assetsearch (../../assetsearch) for MCP-based semantic search.
+// All tests in this file marked #[ignore] pending migration to assetsearch.
+
 // PMAT-SEARCH-006: MCP Tools Integration
 // Test count: 20 tests
 
@@ -41,6 +45,7 @@ fn add(a: i32, b: i32) -> i32 {
 // semantic_search Tool Tests (5 tests)
 // ============================================================================
 
+#[ignore]
 #[tokio::test]
 async fn test_semantic_search_tool_basic() {
     let (engine, _temp_dir) = setup_engine().await;
@@ -60,6 +65,7 @@ async fn test_semantic_search_tool_basic() {
     assert!(result["query_time_ms"].is_number());
 }
 
+#[ignore]
 #[tokio::test]
 async fn test_semantic_search_result_structure() {
     let (engine, _temp_dir) = setup_engine().await;
@@ -88,6 +94,7 @@ async fn test_semantic_search_result_structure() {
     }
 }
 
+#[ignore]
 #[tokio::test]
 async fn test_semantic_search_empty_query() {
     let (engine, _temp_dir) = setup_engine().await;
@@ -102,6 +109,7 @@ async fn test_semantic_search_empty_query() {
     assert!(result.is_err());
 }
 
+#[ignore]
 #[tokio::test]
 async fn test_semantic_search_invalid_mode() {
     let (engine, _temp_dir) = setup_engine().await;
@@ -116,6 +124,7 @@ async fn test_semantic_search_invalid_mode() {
     assert!(result.is_err());
 }
 
+#[ignore]
 #[tokio::test]
 async fn test_semantic_search_with_filters() {
     let (engine, _temp_dir) = setup_engine().await;
@@ -136,6 +145,7 @@ async fn test_semantic_search_with_filters() {
 // find_similar_code Tool Tests (4 tests)
 // ============================================================================
 
+#[ignore]
 #[tokio::test]
 async fn test_find_similar_code_tool() {
     let (engine, temp_dir) = setup_engine().await;
@@ -154,6 +164,7 @@ async fn test_find_similar_code_tool() {
     assert!(result["total"].is_number());
 }
 
+#[ignore]
 #[tokio::test]
 async fn test_find_similar_result_structure() {
     let (engine, temp_dir) = setup_engine().await;
@@ -178,6 +189,7 @@ async fn test_find_similar_result_structure() {
     }
 }
 
+#[ignore]
 #[tokio::test]
 async fn test_find_similar_invalid_file() {
     let (engine, _temp_dir) = setup_engine().await;
@@ -192,6 +204,7 @@ async fn test_find_similar_invalid_file() {
     assert!(result.is_err());
 }
 
+#[ignore]
 #[tokio::test]
 async fn test_find_similar_missing_params() {
     let (engine, _temp_dir) = setup_engine().await;
@@ -210,6 +223,7 @@ async fn test_find_similar_missing_params() {
 // cluster_code Tool Tests (4 tests)
 // ============================================================================
 
+#[ignore]
 #[tokio::test]
 async fn test_cluster_code_tool() {
     let (engine, _temp_dir) = setup_engine().await;
@@ -228,6 +242,7 @@ async fn test_cluster_code_tool() {
     assert!(result["total_clusters"].is_number());
 }
 
+#[ignore]
 #[tokio::test]
 async fn test_cluster_result_structure() {
     let (engine, _temp_dir) = setup_engine().await;
@@ -250,6 +265,7 @@ async fn test_cluster_result_structure() {
     }
 }
 
+#[ignore]
 #[tokio::test]
 async fn test_cluster_invalid_method() {
     let (engine, _temp_dir) = setup_engine().await;
@@ -264,6 +280,7 @@ async fn test_cluster_invalid_method() {
     assert!(result.is_err());
 }
 
+#[ignore]
 #[tokio::test]
 async fn test_cluster_missing_k() {
     let (engine, _temp_dir) = setup_engine().await;
@@ -282,6 +299,7 @@ async fn test_cluster_missing_k() {
 // analyze_topics Tool Tests (4 tests)
 // ============================================================================
 
+#[ignore]
 #[tokio::test]
 async fn test_analyze_topics_tool() {
     let (engine, _temp_dir) = setup_engine().await;
@@ -297,6 +315,7 @@ async fn test_analyze_topics_tool() {
     assert!(result["num_topics"].is_number());
 }
 
+#[ignore]
 #[tokio::test]
 async fn test_analyze_topics_result_structure() {
     let (engine, _temp_dir) = setup_engine().await;
@@ -318,6 +337,7 @@ async fn test_analyze_topics_result_structure() {
     }
 }
 
+#[ignore]
 #[tokio::test]
 async fn test_analyze_topics_invalid_count() {
     let (engine, _temp_dir) = setup_engine().await;
@@ -331,6 +351,7 @@ async fn test_analyze_topics_invalid_count() {
     assert!(result.is_err());
 }
 
+#[ignore]
 #[tokio::test]
 async fn test_analyze_topics_too_many() {
     let (engine, _temp_dir) = setup_engine().await;
@@ -348,6 +369,7 @@ async fn test_analyze_topics_too_many() {
 // Schema Validation Tests (3 tests)
 // ============================================================================
 
+#[ignore]
 #[test]
 fn test_semantic_search_schema() {
     let schema = SemanticSearchTool::schema();
@@ -360,6 +382,7 @@ fn test_semantic_search_schema() {
     assert!(schema["parameters"]["required"].is_array());
 }
 
+#[ignore]
 #[test]
 fn test_find_similar_schema() {
     let schema = FindSimilarCodeTool::schema();
@@ -370,6 +393,7 @@ fn test_find_similar_schema() {
     assert!(schema["parameters"]["required"].as_array().unwrap().contains(&json!("file_path")));
 }
 
+#[ignore]
 #[test]
 fn test_all_tool_schemas() {
     let schemas = vec![

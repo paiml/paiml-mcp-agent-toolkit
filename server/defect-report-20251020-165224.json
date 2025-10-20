@@ -1,0 +1,18 @@
+{
+  "metadata": {
+    "tool": "pmat",
+    "version": "2.169.0",
+    "generated_at": "2025-10-20T16:52:24.142277088Z",
+    "project_root": "/tmp/.tmpJv4PrB",
+    "total_files_analyzed": 0,
+    "analysis_duration_ms": 102
+  },
+  "defects": [],
+  "summary": {
+    "total_defects": 0,
+    "by_severity": {},
+    "by_category": {},
+    "hotspot_files": []
+  },
+  "file_index": {}
+}

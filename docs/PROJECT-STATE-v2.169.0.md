@@ -1,8 +1,8 @@
-# PMAT Project State Summary - v2.169.0 (WIP)
+# PMAT Project State Summary - v2.169.0 ✅ RELEASED
 
 **Date**: October 20, 2025
-**Version**: 2.169.0-dev
-**Status**: 🚧 SPRINT 46 IN PROGRESS (Quality & Security Improvements)
+**Version**: 2.169.0
+**Status**: ✅ SPRINT 46 COMPLETE & RELEASED TO CRATES.IO (Binary Size Optimization - Hypothesis Rejected)
 
 ## Executive Summary
 
@@ -532,11 +532,11 @@ PMAT v2.169.0 is a **quality and security-focused release** building on Sprint 4
 
 ---
 
-**Project State**: ✅ SPRINT 46 COMPLETE (Binary Size Optimization - Accepting Current Size)
-**Version**: 2.169.0-dev
+**Project State**: ✅ SPRINT 46 COMPLETE & v2.169.0 RELEASED
+**Version**: 2.169.0 (PUBLISHED TO CRATES.IO)
 **Previous Release**: v2.168.0 (October 20, 2025)
-**Target Release Date**: TBD
-**Estimated Duration**: 6.75 hours total (5 phases complete)
+**Release Date**: October 20, 2025
+**Total Duration**: 6.75 hours (5 phases complete)
 
 *Document created: October 20, 2025*
 *Last updated: October 20, 2025 (Phases 1-5 complete, accepting 39.92 MB size)*
@@ -545,16 +545,22 @@ PMAT v2.169.0 is a **quality and security-focused release** building on Sprint 4
 
 ---
 
-## Sprint 46 Summary - COMPLETE
+## Sprint 46 Summary - ✅ COMPLETE & RELEASED
 
 **Phases Complete**: 5 of 5 (Phase 1 partial, Phases 1.5-5 complete)
 **Time Spent**: ~6.75 hours (Phase 1: 2h, Phase 1.5: 45min, Phase 2: 1h, Phase 3: 2h, Phase 4: 1h, Phase 5: 30min)
-**Commits Pushed**: 5 commits to origin/master
+**Commits Pushed**: 7 commits to origin/master
   - Commit 248d4433: Sprint 46 Phase 1.5 - scraper removal, E2E test rewrite
   - Commit f58076f9: Sprint 46 CRITICAL - Revert Phase 1 incomplete libsql migration
   - Commit f11632fa: Sprint 46 Phase 1+1.5 Documentation: Regression Analysis
   - Commit bf869cb2: Sprint 46 Phase 4 - Dependency feature optimization (450-720 KB estimated)
   - Commit a7aa6616: Sprint 46 Phase 5 - Remove unimplemented language parsers (1.25 MB estimated)
+  - Commit eba1ed70: Sprint 46 COMPLETE - Documentation + findings
+  - Commit e61d6eaa: Bump version to 2.169.0 for crates.io release
+
+**Git Tag**: v2.169.0 (created and pushed to origin)
+**Crates.io**: ✅ Published pmat v2.169.0 at https://crates.io/crates/pmat/2.169.0
+**GitHub Release**: https://github.com/paiml/paiml-mcp-agent-toolkit/releases/tag/v2.169.0
 
 **Critical Findings**:
 - ❌ **Binary Size Optimization FAILED**: Optimizations INCREASED size by 12 KB instead of reducing it
