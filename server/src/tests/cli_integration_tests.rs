@@ -210,6 +210,8 @@ fn test_maintain_health_no_project() {
 }
 
 #[test]
+#[ignore] // Requires pmat binary (CLI integration test) - Sprint 45 Phase 3
+          // Run manually: cargo build --bin pmat && cargo test test_maintain_health_quick_flag -- --ignored
 fn test_maintain_health_quick_flag() {
     let output = Command::new(get_pmat_binary())
         .args(&["maintain", "health", "--quick"])
