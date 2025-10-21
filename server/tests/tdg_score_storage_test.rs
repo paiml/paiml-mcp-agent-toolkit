@@ -6,8 +6,6 @@
 use pmat::tdg::{TdgAnalyzer, TdgConfig};
 use tempfile::TempDir;
 
-#[ignore]
-#[ignore]
 #[tokio::test]
 async fn test_tdg_analysis_stores_file_score() {
     // Arrange
@@ -42,8 +40,6 @@ async fn test_tdg_analysis_stores_file_score() {
     );
 }
 
-#[ignore]
-#[ignore]
 #[tokio::test]
 async fn test_tdg_storage_tracks_multiple_files() {
     // Arrange
@@ -93,8 +89,6 @@ async fn test_tdg_storage_tracks_multiple_files() {
     }
 }
 
-#[ignore]
-#[ignore]
 #[tokio::test]
 async fn test_tdg_storage_persists_across_sessions() {
     // Arrange
@@ -140,7 +134,6 @@ async fn test_tdg_storage_persists_across_sessions() {
 }
 
 #[ignore]
-#[ignore]
 #[tokio::test]
 async fn test_tdg_storage_updates_on_file_change() {
     // Arrange
@@ -184,8 +177,6 @@ async fn test_tdg_storage_updates_on_file_change() {
     );
 }
 
-#[ignore]
-#[ignore]
 #[tokio::test]
 async fn test_tdg_storage_statistics_accuracy() {
     // Arrange
@@ -221,7 +212,6 @@ async fn test_tdg_storage_statistics_accuracy() {
     );
 }
 
-#[ignore]
 #[ignore]
 #[tokio::test]
 async fn test_tdg_score_comparison_tracking() {
@@ -268,8 +258,6 @@ async fn test_tdg_score_comparison_tracking() {
     // For now, just verify we can retrieve and compare scores
 }
 
-#[ignore]
-#[ignore]
 #[tokio::test]
 async fn test_tdg_storage_cache_hit_tracking() {
     // Arrange
@@ -300,8 +288,6 @@ async fn test_tdg_storage_cache_hit_tracking() {
 }
 
 // Property-based test for storage consistency
-#[ignore]
-#[ignore]
 #[tokio::test]
 async fn test_tdg_storage_consistency_invariants() {
     // This test verifies that storage maintains consistency invariants:
