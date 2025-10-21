@@ -12,7 +12,6 @@ use pmat::services::semantic::chunker::*;
 // Rust Language Tests (4 tests)
 // ============================================================================
 
-#[ignore]
 #[test]
 fn test_chunk_rust_functions() {
     let source = r#"
@@ -71,7 +70,6 @@ fn test_chunk_rust_modules() {
     assert!(has_content);
 }
 
-#[ignore]
 #[test]
 fn test_chunk_rust_with_docstrings() {
     let source = r#"
@@ -143,7 +141,6 @@ fn test_chunk_typescript_interface() {
     assert_eq!(chunks[0].chunk_name, "Calculator");
 }
 
-#[ignore]
 #[test]
 fn test_chunk_typescript_with_jsdoc() {
     let source = r#"
@@ -188,7 +185,6 @@ def multiply(a, b):
     assert!(chunks[0].content.contains("Calculate sum"));
 }
 
-#[ignore]
 #[test]
 fn test_chunk_python_class() {
     let source = r#"
@@ -252,7 +248,6 @@ def outer(x):
 // C/C++ Language Tests (4 tests)
 // ============================================================================
 
-#[ignore]
 #[test]
 fn test_chunk_c_functions() {
     let source = r#"
@@ -290,7 +285,6 @@ fn test_chunk_cpp_class() {
     assert_eq!(chunks[0].chunk_name, "Calculator");
 }
 
-#[ignore]
 #[test]
 fn test_chunk_cpp_template() {
     let source = r#"
@@ -305,7 +299,6 @@ fn test_chunk_cpp_template() {
     assert_eq!(chunks[0].chunk_name, "add");
 }
 
-#[ignore]
 #[test]
 fn test_chunk_c_with_comments() {
     let source = r#"
@@ -329,7 +322,6 @@ fn test_chunk_c_with_comments() {
 // Go Language Tests (4 tests)
 // ============================================================================
 
-#[ignore]
 #[test]
 fn test_chunk_go_functions() {
     let source = r#"
@@ -373,7 +365,6 @@ fn test_chunk_go_struct() {
     assert!(has_struct_or_method);
 }
 
-#[ignore]
 #[test]
 fn test_chunk_go_interface() {
     let source = r#"
