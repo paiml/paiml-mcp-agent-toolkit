@@ -7,6 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- **Eliminated RUSTSEC Warnings**: Migrated from sled to libsql as default storage backend
+  - sled now optional feature (opt-in only via `sled-backend` feature flag)
+  - Default storage: libsql (modern SQLite-compatible, actively maintained)
+  - Backward compatibility preserved for migration period
+  - 2 RUSTSEC warnings eliminated from default build
+  - Files modified: `server/Cargo.toml`, `server/src/tdg/storage_backend.rs`, `server/src/tdg/mod.rs`, `server/src/mcp_pmcp/tool_functions.rs`
+  - Commit: ba5d7d7f
+
+### Fixed
+- **Code Quality - Clippy Warnings Elimination**: Fixed all 18 clippy warnings (100% clean)
+  - Auto-fixed 12 warnings using `cargo clippy --fix`
+  - Manually fixed 6 warnings with idiomatic patterns:
+    - Empty doc comment → regular comment (python.rs)
+    - `if let` instead of `is_some()` + `unwrap()` (language_analyzer.rs)
+    - `strip_prefix()` instead of manual slicing (3 files)
+    - Separate match arms instead of wildcard in OR patterns (tdg_tools.rs)
+  - Files modified: 11 files across services and CLI
+  - Commit: c8d0e91d
+
+- **Documentation Validation - False Positives**: Fixed hallucination detector extracting claims from markdown code blocks
+  - Root cause: Claim extractor didn't skip fenced code blocks (```)
+  - Solution: Implemented state machine for markdown parsing with code block tracking
+  - False positives eliminated: 3 (2 code block examples + 1 wording clarification)
+  - Files modified: `server/src/services/hallucination_detector.rs`, `CLAUDE.md`
+  - Commit: 83b493c9
+
+### Documentation
+- **bashrs Bug Reporting Policy**: Added mandatory bug reporting documentation
+  - All bashrs bugs/features must be submitted to https://github.com/paiml/bashrs/issues
+  - Required context: reproduction steps, version, example code
+  - Location: `CLAUDE.md` (bashrs section)
+  - Commit: 94ba7f7c
+
+- **Session 2 Progress**: Documented all quality and security improvements
+  - Updated ignored test tracking clarification (~309 total vs 94 curated)
+  - Quality gates: All passing (pmat-book, clippy, compilation, tests, docs accuracy)
+  - Location: `CLAUDE.md`
+  - Commit: 7c027c4c
+
+### Quality Metrics
+- ✅ **Build**: CLEAN (0 errors, 0 warnings)
+- ✅ **Clippy**: 0 warnings (18 → 0, -100%)
+- ✅ **Security**: 2 RUSTSEC warnings eliminated (sled → optional)
+- ✅ **Documentation Validation**: 0 false positives
+- ✅ **Tests**: All passing (200+ tests)
+- ✅ **Quality Gates**: pmat-book validation, docs accuracy, compilation
+
 ## [2.169.0] - 2025-10-20
 
 ### Changed
