@@ -465,16 +465,17 @@ Root cause: Test execution ordering/concurrency, NOT broken functionality
 - `tests::e2e_full_coverage::test_cli_main_binary_help` (requires pmat binary)
 - `tests::e2e_full_coverage::test_cli_main_binary_version` (requires pmat binary)
 
-**Total: 95 tests ignored (down from 117 on October 21, 2025)**
+**Total: 94 tests ignored (down from 117 on October 21, 2025)**
 
 October 21, 2025 changes:
-- **Re-enabled 22 tests** via systematic verification (100% passing)
+- **Re-enabled 23 tests** via systematic verification (100% passing)
 - **8 storage backend tests** - `server/tests/storage_backend_tests.rs`
 - **6 TDG storage tests** - `server/tests/tdg_score_storage_test.rs`
 - **4 complexity analysis tests** - `server/tests/{complexity_analyzer_tests,complexity_threshold_filtering}.rs`
 - **4 path validation tests** - `server/src/utils/path_validator.rs`
-- **Ignored tests**: 117 → 95 (-22, -18.8%)
-- **Pattern validated**: All 22 re-enabled tests passing (100% success rate)
+- **1 analyze exit status test** - `server/tests/analyze_exit_status.rs`
+- **Ignored tests**: 117 → 94 (-23, -19.7%)
+- **Pattern validated**: All 23 re-enabled tests passing (100% success rate)
 
 Sprint 44 changes (October 19, 2025):
 - **Re-enabled 20 tests** via Five Whys empirical verification (100% passing)
