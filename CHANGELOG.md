@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.169.1] - 2025-10-21
+
 ### Security
 - **Eliminated RUSTSEC Warnings**: Migrated from sled to libsql as default storage backend
   - sled now optional feature (opt-in only via `sled-backend` feature flag)
