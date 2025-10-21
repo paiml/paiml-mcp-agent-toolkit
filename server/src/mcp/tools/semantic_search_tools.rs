@@ -287,7 +287,7 @@ impl McpTool for ClusterCodeTool {
                 .as_u64()
                 .ok_or("Parameter 'k' required for kmeans")?;
 
-            if k < 2 || k > 20 {
+            if !(2..=20).contains(&k) {
                 return Err("Parameter 'k' must be between 2 and 20".to_string());
             }
         }
@@ -358,7 +358,7 @@ impl McpTool for AnalyzeTopicsTool {
             .as_u64()
             .ok_or("Missing required parameter: num_topics")?;
 
-        if num_topics < 1 || num_topics > 20 {
+        if !(1..=20).contains(&num_topics) {
             return Err("Parameter 'num_topics' must be between 1 and 20".to_string());
         }
 

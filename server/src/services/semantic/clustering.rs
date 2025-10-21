@@ -510,7 +510,7 @@ impl ClusteringEngine {
         let mut min_avg_dist = f64::MAX;
 
         // Find all unique clusters
-        let mut clusters: Vec<usize> = labels.iter().copied().collect();
+        let mut clusters: Vec<usize> = labels.to_vec();
         clusters.sort();
         clusters.dedup();
 

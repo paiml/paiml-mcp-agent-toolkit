@@ -183,7 +183,7 @@ impl LanguageStrategy for PythonStrategy {
     }
 }
 
-/// DEPRECATED: Old rustpython-parser visitor (commented out during migration to tree-sitter)
+// DEPRECATED: Old rustpython-parser visitor (commented out during migration to tree-sitter)
 // struct PythonAstVisitor<'a> {
 //     dag: &'a mut AstDag,
 //     current_parent: Option<u32>,
