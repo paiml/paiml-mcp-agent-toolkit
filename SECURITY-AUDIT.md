@@ -70,8 +70,8 @@ All detected issues are **warnings** about unmaintained crates, not active secur
 
 ### Immediate (Low Priority)
 - [x] Document security audit findings
-- [ ] Add `cargo audit` to CI/CD pipeline
-- [ ] Set up Dependabot alerts monitoring
+- [x] Add `cargo audit` to CI/CD pipeline - ✅ DONE (running in .github/workflows/main.yml:116-131)
+- [x] Set up Dependabot alerts monitoring - ✅ DONE (GitHub Dependabot active, 3 alerts tracked)
 
 ### Short-Term (Next Sprint)
 - [ ] Evaluate `enderpy_python_parser` as rustpython-parser replacement
