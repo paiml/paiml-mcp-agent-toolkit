@@ -31,7 +31,6 @@ fn test_chunk_rust_functions() {
     assert_eq!(chunks[1].chunk_name, "multiply");
 }
 
-#[ignore]
 #[test]
 fn test_chunk_rust_impl_blocks() {
     let source = r#"
@@ -52,7 +51,6 @@ fn test_chunk_rust_impl_blocks() {
     assert!(has_impl_or_methods);
 }
 
-#[ignore]
 #[test]
 fn test_chunk_rust_modules() {
     let source = r#"
@@ -92,7 +90,6 @@ fn test_chunk_rust_with_docstrings() {
 // TypeScript Language Tests (4 tests)
 // ============================================================================
 
-#[ignore]
 #[test]
 fn test_chunk_typescript_class() {
     let source = r#"
@@ -108,7 +105,6 @@ fn test_chunk_typescript_class() {
     assert_eq!(chunks[0].chunk_name, "Calculator");
 }
 
-#[ignore]
 #[test]
 fn test_chunk_typescript_functions() {
     let source = r#"
@@ -125,7 +121,6 @@ fn test_chunk_typescript_functions() {
     assert!(chunks.iter().any(|c| c.chunk_name == "multiply"));
 }
 
-#[ignore]
 #[test]
 fn test_chunk_typescript_interface() {
     let source = r#"
@@ -165,7 +160,6 @@ fn test_chunk_typescript_with_jsdoc() {
 // Python Language Tests (4 tests)
 // ============================================================================
 
-#[ignore]
 #[test]
 fn test_chunk_python_functions() {
     let source = r#"
@@ -205,7 +199,6 @@ class Calculator:
     assert!(chunks[0].content.contains("simple calculator"));
 }
 
-#[ignore]
 #[test]
 fn test_chunk_python_with_decorators() {
     let source = r#"
@@ -226,7 +219,6 @@ def create():
     assert!(chunks.iter().any(|c| c.chunk_name == "create"));
 }
 
-#[ignore]
 #[test]
 fn test_chunk_python_nested_functions() {
     let source = r#"
@@ -268,7 +260,6 @@ fn test_chunk_c_functions() {
     assert_eq!(chunks[0].chunk_name, "add");
 }
 
-#[ignore]
 #[test]
 fn test_chunk_cpp_class() {
     let source = r#"
@@ -343,7 +334,6 @@ fn test_chunk_go_functions() {
     assert!(chunks[0].content.contains("calculates sum"));
 }
 
-#[ignore]
 #[test]
 fn test_chunk_go_struct() {
     let source = r#"
@@ -380,7 +370,6 @@ fn test_chunk_go_interface() {
     assert_eq!(chunks[0].chunk_name, "Calculator");
 }
 
-#[ignore]
 #[test]
 fn test_chunk_go_package() {
     let source = r#"
@@ -401,7 +390,6 @@ fn test_chunk_go_package() {
 // Edge Case Tests (5 tests)
 // ============================================================================
 
-#[ignore]
 #[test]
 fn test_chunk_empty_file() {
     let source = "";
@@ -409,7 +397,6 @@ fn test_chunk_empty_file() {
     assert_eq!(chunks.len(), 0);
 }
 
-#[ignore]
 #[test]
 fn test_chunk_whitespace_only() {
     let source = "   \n\n   \t\t   \n   ";
@@ -417,7 +404,6 @@ fn test_chunk_whitespace_only() {
     assert_eq!(chunks.len(), 0);
 }
 
-#[ignore]
 #[test]
 fn test_chunk_comments_only() {
     let source = r#"
@@ -429,7 +415,6 @@ fn test_chunk_comments_only() {
     assert_eq!(chunks.len(), 0);
 }
 
-#[ignore]
 #[test]
 fn test_chunk_checksum_deterministic() {
     let source = "fn foo() { }";
@@ -440,7 +425,6 @@ fn test_chunk_checksum_deterministic() {
     assert_eq!(chunks1[0].content_checksum, chunks2[0].content_checksum);
 }
 
-#[ignore]
 #[test]
 fn test_chunk_metadata_complete() {
     let source = r#"
