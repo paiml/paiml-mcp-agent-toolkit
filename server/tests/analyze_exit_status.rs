@@ -139,7 +139,6 @@ fn test_analyze_satd_exits_zero_without_violations() {
 }
 
 #[test]
-#[ignore] // Test requires proper Rust project setup for dead code analysis
 fn test_analyze_dead_code_exit_status() {
     let temp_dir = TempDir::new().unwrap();
 
