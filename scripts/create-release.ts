@@ -43,7 +43,7 @@ async function main(): Promise<void> {
     const platform = detectPlatform();
 
     // Create tarball
-    const binaryName = "paiml-mcp-agent-toolkit";
+    const binaryName = "pmat";
     const tarball = await createTarball(binaryName, platform);
     console.log(`${YELLOW}Created tarball: ${tarball}${NC}`);
 
