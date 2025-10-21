@@ -17,7 +17,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Commit: ba5d7d7f
 
 ### Fixed
-- **Code Quality - Clippy Warnings Elimination**: Fixed all 18 clippy warnings (100% clean)
+- **CRITICAL REGRESSION**: Fixed tdg::storage tests broken by sled migration (Session 3)
+  - Root cause: Session 2 sled migration broke 4 tests re-enabled in Session 1
+  - Tests used `TieredStore::new()` which hardcoded sled backend (now optional feature)
+  - Solution: Changed to `TieredStore::in_memory()` for unit tests
+  - Tests fixed: test_tiered_storage_creation, test_store_and_retrieve, test_compression, test_backend_migration
+  - Impact: 4 critical tests passing again (was 2/6, now 6/6)
+  - Files modified: `server/src/tdg/storage.rs` (4 tests + removed unused TempDir import)
+  - Commit: d62b7fde
+
+- **Code Quality - Additional Clippy Warning**: Fixed struct initialization warning (Session 3)
+  - Warning: field assignment outside of initializer for Default::default()
+  - Solution: Use ServerConfig struct initialization with ..Default::default()
+  - More idiomatic Rust pattern
+  - Files modified: `server/src/bin/pmat-agent.rs`
+  - Commit: 20b2ea68
+
+- **Code Quality - Clippy Warnings Elimination**: Fixed all 18 clippy warnings (100% clean) (Session 2)
   - Auto-fixed 12 warnings using `cargo clippy --fix`
   - Manually fixed 6 warnings with idiomatic patterns:
     - Empty doc comment → regular comment (python.rs)
@@ -27,7 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Files modified: 11 files across services and CLI
   - Commit: c8d0e91d
 
-- **Documentation Validation - False Positives**: Fixed hallucination detector extracting claims from markdown code blocks
+- **Documentation Validation - False Positives**: Fixed hallucination detector extracting claims from markdown code blocks (Session 2)
   - Root cause: Claim extractor didn't skip fenced code blocks (```)
   - Solution: Implemented state machine for markdown parsing with code block tracking
   - False positives eliminated: 3 (2 code block examples + 1 wording clarification)
@@ -47,13 +63,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Location: `CLAUDE.md`
   - Commit: 7c027c4c
 
+- **Session 3 Progress**: Documented CHANGELOG updates
+  - Updated [Unreleased] section with Session 2 work
+  - Added Session 3 regression fix documentation
+  - Location: `CHANGELOG.md`
+  - Commit: c280ab22
+
 ### Quality Metrics
 - ✅ **Build**: CLEAN (0 errors, 0 warnings)
-- ✅ **Clippy**: 0 warnings (18 → 0, -100%)
+- ✅ **Clippy**: 0 warnings (19 → 0, -100%)
 - ✅ **Security**: 2 RUSTSEC warnings eliminated (sled → optional)
 - ✅ **Documentation Validation**: 0 false positives
-- ✅ **Tests**: All passing (200+ tests)
-- ✅ **Quality Gates**: pmat-book validation, docs accuracy, compilation
+- ✅ **Tests**: 4 regression tests fixed (tdg::storage: 2/6 → 6/6)
+- ✅ **Quality Gates**: pmat-book validation (4/4 critical chapters), docs accuracy, compilation
+- 🔧 **Sessions**: 3 total (Session 1: test re-enabling, Session 2: sled migration + quality, Session 3: regression fix)
 
 ## [2.169.0] - 2025-10-20
 
