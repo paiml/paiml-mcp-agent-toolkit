@@ -385,8 +385,8 @@ impl HybridSearchEngine {
 
     /// Check if path matches pattern
     fn matches_pattern(path: &str, pattern: &str) -> bool {
-        if pattern.starts_with('*') {
-            path.ends_with(&pattern[1..])
+        if let Some(suffix) = pattern.strip_prefix('*') {
+            path.ends_with(suffix)
         } else {
             path.contains(pattern)
         }

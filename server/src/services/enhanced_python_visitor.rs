@@ -87,7 +87,7 @@ impl EnhancedPythonVisitor {
             let line = self.get_line(node);
 
             // Check if async by looking for parent async_function_definition
-            let is_async = node.parent().map_or(false, |p| p.kind() == "module");
+            let is_async = node.parent().is_some_and(|p| p.kind() == "module");
 
             self.items.push(AstItem::Function {
                 name: qualified_name,
