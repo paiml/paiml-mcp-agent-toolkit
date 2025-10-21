@@ -33,11 +33,13 @@ All detected issues are **warnings** about unmaintained crates, not active secur
 - `fxhash` 0.2.1 (RUSTSEC-2025-0057)
 - `instant` 0.1.13 (RUSTSEC-2024-0384)
 
-**Status**: Migration to `libsql` already planned
+**Status**: ✅ MIGRATION COMPLETE (2025-10-21)
 **Mitigation**:
-- Migration path documented in `server/Cargo.toml:115-118`
-- TODO: Complete `storage_backend.rs` migration to libsql
-- Tracked as: "Phase 1 incomplete"
+- Migrated to libsql-compatible backend (uses rusqlite for sync API)
+- New `LibsqlBackend` implements full StorageBackend trait
+- Default backend changed from Sled to Libsql in StorageConfig
+- Sled backend deprecated but remains available for compatibility
+- Commit: 5b4ac0b4 "Complete sled → libsql migration for TDG storage backend"
 
 ### 3. paste 1.0.15
 
@@ -73,7 +75,7 @@ All detected issues are **warnings** about unmaintained crates, not active secur
 
 ### Short-Term (Next Sprint)
 - [ ] Evaluate `enderpy_python_parser` as rustpython-parser replacement
-- [ ] Complete sled → libsql migration (storage_backend.rs)
+- [x] Complete sled → libsql migration (storage_backend.rs) - ✅ DONE (2025-10-21, commit 5b4ac0b4)
 - [ ] Monitor paste crate for maintained alternatives
 
 ### Long-Term
