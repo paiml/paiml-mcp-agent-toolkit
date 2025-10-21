@@ -105,10 +105,10 @@ pmat validate-readme \
 ### What Gets Validated
 
 #### 1. Hallucination Detection (Semantic Entropy)
-- **Capability Claims**: "PMAT can analyze X" → Verified against codebase
-- **API Claims**: "Function foo(args)" → Checked in AST
-- **Structure Claims**: "File X contains Y" → Cross-validated
-- **Language Support**: "Supports Ruby" → Verified in language_analyzer.rs
+- **Capability Claims**: Statements about PMAT capabilities are verified against codebase
+- **API Claims**: Function and method references are checked in AST
+- **Structure Claims**: File structure assertions are cross-validated
+- **Language Support**: Language compatibility claims are verified in language_analyzer.rs
 
 #### 2. Broken Reference Detection
 - **File Paths**: All `path/to/file.rs` references validated

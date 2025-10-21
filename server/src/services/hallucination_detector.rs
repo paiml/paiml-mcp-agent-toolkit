@@ -149,10 +149,24 @@ impl ClaimExtractor {
     /// Extract all claims from documentation text
     pub fn extract_claims(&self, documentation: &str) -> Vec<Claim> {
         let mut claims = Vec::new();
+        let mut in_code_block = false;
 
         for (line_number, line) in documentation.lines().enumerate() {
+            let trimmed = line.trim();
+
+            // Track markdown fenced code blocks (```)
+            if trimmed.starts_with("```") {
+                in_code_block = !in_code_block;
+                continue;
+            }
+
+            // Skip lines inside code blocks
+            if in_code_block {
+                continue;
+            }
+
             // Skip empty lines and headers
-            if line.trim().is_empty() || line.trim().starts_with('#') {
+            if trimmed.is_empty() || trimmed.starts_with('#') {
                 continue;
             }
 
