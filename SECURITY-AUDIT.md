@@ -85,16 +85,18 @@ All detected issues are **warnings** about unmaintained crates, not active secur
 
 ## GitHub Dependabot Alerts
 
-### Open Alerts (3 total)
+### Open Alerts (1 active, 2 resolved)
 
-**npm vulnerabilities (2 - medium severity):**
-1. **vite** (>= 5.2.6, <= 5.4.20) → Fix: Upgrade to 7.1.11
+**npm vulnerabilities (2 - medium severity):** ✅ FIXED (2025-10-21)
+1. **vite** (>= 5.2.6, <= 5.4.20) → ✅ Upgraded to 7.1.11+ (via vitest 3.2.4)
    - Issue: server.fs.deny bypass via backslash on Windows
-   - Status: Transitive dependency, investigating source
+   - Source: fixtures/typescript/package.json (vitest devDependency)
+   - Commit: 719c16fd
 
-2. **esbuild** (<= 0.24.2) → Fix: Upgrade to 0.25.0
+2. **esbuild** (<= 0.24.2) → ✅ Upgraded to 0.25.0+ (via vitest 3.2.4)
    - Issue: Any website can send requests to dev server
-   - Status: Transitive dependency, investigating source
+   - Source: fixtures/typescript/package.json (vitest devDependency)
+   - Commit: 719c16fd
 
 **Rust vulnerabilities (1 - low severity):**
 3. **libsql-sqlite3-parser** (<= 0.13.0) → Fix: No patch available
@@ -108,19 +110,21 @@ All detected issues are **warnings** about unmaintained crates, not active secur
 - libsql-sqlite3-parser remains at 0.13.0 (no patch available yet)
 - Monitoring upstream for security fix
 
-⚠️ **npm vulnerabilities**: vite and esbuild remain open
-- Both are transitive dependencies (not direct)
-- Medium severity, dev-only impact
-- Action: Audit npm dependency tree in next sprint
+✅ **npm vulnerabilities**: vite and esbuild FIXED (2025-10-21)
+- Source identified: fixtures/typescript/package.json (vitest test framework)
+- Upgraded vitest: ^2.0.0 → 3.2.4 (includes secure vite + esbuild)
+- Verification: npm audit reports 0 vulnerabilities
+- Commit: 719c16fd
 
 ## Conclusion
 
 ✅ **Project is production-ready** - No critical security vulnerabilities
-⚠️ **Technical debt identified** - 9 unmaintained dependencies + 3 Dependabot alerts
-📋 **Migration path exists** - Clear plan for major unmaintained dependencies
-🔄 **Active maintenance** - libsql updated to latest, npm audit scheduled
+✅ **Security posture improved** - 2/3 Dependabot alerts resolved (only 1 low-severity remaining)
+✅ **Unmaintained dependencies addressed** - Sled migration complete, npm vulnerabilities fixed
+📋 **Migration path exists** - Clear plan for remaining unmaintained dependencies
+🔄 **Active maintenance** - All security tooling in place (cargo audit in CI, Dependabot active)
 
-**Recommendation**: Deploy with confidence. Monitor Dependabot for patches. Schedule npm audit in next sprint.
+**Recommendation**: Deploy with full confidence. Only 1 low-severity alert remains (libsql-sqlite3-parser - monitoring upstream for patch).
 
 ---
 
