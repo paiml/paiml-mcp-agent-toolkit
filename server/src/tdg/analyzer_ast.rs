@@ -514,13 +514,20 @@ impl TdgAnalyzerAst {
     ) -> Result<()> {
         #[cfg(feature = "python-ast")]
         {
-            use rustpython_parser::{parse, Mode};
+            // Modern tree-sitter-python parsing (replaces rustpython-parser)
+            use tree_sitter::Parser as TsParser;
 
-            let ast = parse(source, Mode::Module, "<string>")
-                .map_err(|e| anyhow::anyhow!("Python parse error: {e:?}"))?;
+            let mut parser = TsParser::new();
+            parser
+                .set_language(&tree_sitter_python::LANGUAGE.into())
+                .map_err(|e| anyhow::anyhow!("Failed to set Python language: {e}"))?;
 
-            let mut visitor = PythonComplexityVisitor::new();
-            visitor.analyze_module(ast);
+            let tree = parser
+                .parse(source, None)
+                .ok_or_else(|| anyhow::anyhow!("Failed to parse Python code"))?;
+
+            let mut visitor = PythonComplexityVisitor::new(source);
+            visitor.analyze_tree(&tree);
 
             score.structural_complexity = self.score_structural_complexity(
                 visitor.cyclomatic_complexity,
@@ -1604,7 +1611,8 @@ impl<'ast> syn::visit::Visit<'ast> for RustComplexityVisitor {
 }
 
 #[cfg(feature = "python-ast")]
-struct PythonComplexityVisitor {
+struct PythonComplexityVisitor<'a> {
+    source: &'a str,
     cyclomatic_complexity: u32,
     cognitive_complexity: u32,
     max_nesting_depth: usize,
@@ -1618,12 +1626,14 @@ struct PythonComplexityVisitor {
     total_functions: u32,
     docstring_lines: u32,
     total_lines: u32,
+    current_nesting_depth: usize,
 }
 
 #[cfg(feature = "python-ast")]
-impl PythonComplexityVisitor {
-    fn new() -> Self {
+impl<'a> PythonComplexityVisitor<'a> {
+    fn new(source: &'a str) -> Self {
         Self {
+            source,
             cyclomatic_complexity: 1,
             cognitive_complexity: 0,
             max_nesting_depth: 0,
@@ -1636,27 +1646,140 @@ impl PythonComplexityVisitor {
             documented_functions: 0,
             total_functions: 0,
             docstring_lines: 0,
-            total_lines: 0,
+            total_lines: source.lines().count() as u32,
+            current_nesting_depth: 0,
         }
     }
 
-    fn analyze_module(&mut self, module: rustpython_parser::ast::Mod) {
-        // Python AST analysis implementation for complexity and structure metrics
-        // Simplified implementation to fix compilation issues
-        if let rustpython_parser::ast::Mod::Module(_) = module {
-            // Basic complexity estimation for Python modules
-            self.cyclomatic_complexity += 5; // Base complexity for Python module
-            self.max_nesting_depth = 2; // Typical nesting depth
-        } else {
-            // Handle other module types (interactive, expression, etc.)
-        }
+    fn analyze_tree(&mut self, tree: &tree_sitter::Tree) {
+        let root = tree.root_node();
+        self.visit_node(&root);
     }
 
-    #[allow(dead_code)]
-    fn analyze_python_statement(&mut self, _stmt: &rustpython_parser::ast::Stmt) {
-        // Simplified Python statement analysis - proper implementation deferred
-        // This fixes the compilation error while maintaining basic functionality
-        self.cyclomatic_complexity += 1;
+    fn visit_node(&mut self, node: &tree_sitter::Node) {
+        match node.kind() {
+            "function_definition" => {
+                self.total_functions += 1;
+                self.current_nesting_depth += 1;
+                if self.current_nesting_depth > self.max_nesting_depth {
+                    self.max_nesting_depth = self.current_nesting_depth;
+                }
+
+                // Count parameters
+                if let Some(params) = node.child_by_field_name("parameters") {
+                    let param_count = params.child_count();
+                    if param_count > self.max_params as usize {
+                        self.max_params = param_count;
+                    }
+                }
+
+                // Check for docstring
+                if let Some(body) = node.child_by_field_name("body") {
+                    if let Some(first_child) = body.child(0) {
+                        if first_child.kind() == "expression_statement" {
+                            if let Some(string_node) = first_child.child(0) {
+                                if string_node.kind() == "string" {
+                                    self.documented_functions += 1;
+                                    // Count docstring lines
+                                    let docstring_text = &self.source[string_node.byte_range()];
+                                    self.docstring_lines += docstring_text.lines().count() as u32;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Count decorators
+                let mut cursor = node.walk();
+                for child in node.children(&mut cursor) {
+                    if child.kind() == "decorator" {
+                        self.decorator_count += 1;
+                    }
+                }
+
+                // Visit function body
+                for child in node.children(&mut node.walk()) {
+                    self.visit_node(&child);
+                }
+
+                self.current_nesting_depth -= 1;
+            }
+            "class_definition" => {
+                self.current_nesting_depth += 1;
+                if self.current_nesting_depth > self.max_nesting_depth {
+                    self.max_nesting_depth = self.current_nesting_depth;
+                }
+
+                // Check for metaclass
+                if let Some(arg_list) = node.child_by_field_name("superclasses") {
+                    let arg_text = &self.source[arg_list.byte_range()];
+                    if arg_text.contains("metaclass") {
+                        self.metaclass_count += 1;
+                    }
+                }
+
+                for child in node.children(&mut node.walk()) {
+                    self.visit_node(&child);
+                }
+
+                self.current_nesting_depth -= 1;
+            }
+            "import_statement" | "import_from_statement" => {
+                self.import_count += 1;
+            }
+            "if_statement" | "while_statement" | "for_statement" | "match_statement" => {
+                self.cyclomatic_complexity += 1;
+                self.cognitive_complexity += 1 + self.current_nesting_depth as u32;
+
+                self.current_nesting_depth += 1;
+                if self.current_nesting_depth > self.max_nesting_depth {
+                    self.max_nesting_depth = self.current_nesting_depth;
+                }
+
+                for child in node.children(&mut node.walk()) {
+                    self.visit_node(&child);
+                }
+
+                self.current_nesting_depth -= 1;
+            }
+            "elif_clause" | "else_clause" | "except_clause" => {
+                self.cyclomatic_complexity += 1;
+                self.cognitive_complexity += 1 + self.current_nesting_depth as u32;
+
+                for child in node.children(&mut node.walk()) {
+                    self.visit_node(&child);
+                }
+            }
+            "try_statement" => {
+                self.cyclomatic_complexity += 1;
+
+                for child in node.children(&mut node.walk()) {
+                    self.visit_node(&child);
+                }
+            }
+            "boolean_operator" | "comparison_operator" => {
+                // Logical operators add to complexity
+                self.cyclomatic_complexity += 1;
+
+                for child in node.children(&mut node.walk()) {
+                    self.visit_node(&child);
+                }
+            }
+            "call" => {
+                // Count external calls (simplified - counts all calls)
+                self.external_calls += 1;
+
+                for child in node.children(&mut node.walk()) {
+                    self.visit_node(&child);
+                }
+            }
+            _ => {
+                // Visit children for other node types
+                for child in node.children(&mut node.walk()) {
+                    self.visit_node(&child);
+                }
+            }
+        }
     }
 }
 
