@@ -438,14 +438,21 @@ fn create_storage_backend(
             let temp_path = std::env::temp_dir().join("tdg-mcp-libsql.db");
             Ok(Box::new(LibsqlBackend::new(&temp_path)?))
         }
+        #[cfg(feature = "sled-backend")]
         Some("sled") => {
-            // Deprecated: Use libsql instead
+            // Deprecated: Use libsql instead (requires sled-backend feature)
             #[allow(deprecated)]
             {
                 use crate::tdg::storage_backend::SledBackend;
                 let temp_path = std::env::temp_dir().join("tdg-mcp-sled");
                 Ok(Box::new(SledBackend::new(&temp_path)?))
             }
+        }
+        #[cfg(not(feature = "sled-backend"))]
+        Some("sled") => {
+            Err(anyhow::anyhow!(
+                "Sled backend not available. Enable 'sled-backend' feature or use 'libsql' instead (default)."
+            ))
         }
         #[cfg(feature = "rocksdb-backend")]
         Some("rocksdb") => {
