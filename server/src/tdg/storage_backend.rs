@@ -1,9 +1,10 @@
 /// Storage backend abstraction for flexible persistence options
 ///
 /// Supports multiple backend implementations:
-/// - Sled: Embedded database with good performance (default)
-/// - `RocksDB`: Facebook's embedded database with excellent performance
-/// - `InMemory`: Fast testing and development backend
+/// - Libsql: Modern SQLite-compatible embedded database (default)
+/// - Sled: Embedded database (deprecated - unmaintained)
+/// - RocksDB: Facebook's embedded database with excellent performance
+/// - InMemory: Fast testing and development backend
 use anyhow::Result;
 use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
@@ -121,6 +122,182 @@ impl StorageBackend for SledBackend {
             stats.insert("size_bytes".to_string(), size.to_string());
         }
         stats.insert("tree_name".to_string(), "tdg_storage".to_string());
+        stats
+    }
+}
+
+/// Libsql database backend (modern SQLite-compatible)
+/// Note: Uses rusqlite for synchronous API (libsql is async-first)
+pub struct LibsqlBackend {
+    db: Arc<parking_lot::Mutex<rusqlite::Connection>>,
+    path: std::path::PathBuf,
+}
+
+impl LibsqlBackend {
+    pub fn new(path: &Path) -> Result<Self> {
+        // Create database directory if needed
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+
+        // Open database with rusqlite (libsql-compatible)
+        let conn = rusqlite::Connection::open(path)?;
+
+        // Create table for key-value storage
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS tdg_storage (
+                key BLOB PRIMARY KEY,
+                value BLOB NOT NULL
+            )",
+            [],
+        )?;
+
+        Ok(Self {
+            db: Arc::new(parking_lot::Mutex::new(conn)),
+            path: path.to_path_buf(),
+        })
+    }
+
+    pub fn new_temporary() -> Result<Self> {
+        // Use in-memory database for temporary storage
+        let conn = rusqlite::Connection::open_in_memory()?;
+
+        // Create table for key-value storage
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS tdg_storage (
+                key BLOB PRIMARY KEY,
+                value BLOB NOT NULL
+            )",
+            [],
+        )?;
+
+        Ok(Self {
+            db: Arc::new(parking_lot::Mutex::new(conn)),
+            path: std::path::PathBuf::from(":memory:"),
+        })
+    }
+}
+
+impl StorageBackend for LibsqlBackend {
+    fn put(&self, key: &[u8], value: &[u8]) -> Result<()> {
+        let db = self.db.lock();
+        db.execute(
+            "INSERT OR REPLACE INTO tdg_storage (key, value) VALUES (?, ?)",
+            rusqlite::params![key, value],
+        )?;
+        Ok(())
+    }
+
+    fn get(&self, key: &[u8]) -> Result<Option<Vec<u8>>> {
+        let db = self.db.lock();
+        let mut stmt = db.prepare_cached("SELECT value FROM tdg_storage WHERE key = ?")?;
+
+        let result = stmt.query_row([key], |row| row.get::<_, Vec<u8>>(0));
+
+        match result {
+            Ok(value) => Ok(Some(value)),
+            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+            Err(e) => Err(e.into()),
+        }
+    }
+
+    fn delete(&self, key: &[u8]) -> Result<()> {
+        let db = self.db.lock();
+        db.execute("DELETE FROM tdg_storage WHERE key = ?", [key])?;
+        Ok(())
+    }
+
+    fn contains(&self, key: &[u8]) -> Result<bool> {
+        let db = self.db.lock();
+        let mut stmt = db.prepare_cached("SELECT 1 FROM tdg_storage WHERE key = ? LIMIT 1")?;
+        let result = stmt.query_row([key], |_row| Ok(()));
+
+        match result {
+            Ok(()) => Ok(true),
+            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(false),
+            Err(e) => Err(e.into()),
+        }
+    }
+
+    fn iter(&self) -> Result<StorageIterator<'_>> {
+        // For iteration, we need to collect all data first since we can't hold
+        // the lock across iterator lifetime
+        let db = self.db.lock();
+        let mut stmt = db.prepare("SELECT key, value FROM tdg_storage")?;
+        let rows = stmt.query_map([], |row| {
+            let key: Vec<u8> = row.get(0)?;
+            let value: Vec<u8> = row.get(1)?;
+            Ok((key, value))
+        })?;
+
+        let items: Vec<Result<KeyValuePair>> = rows.map(|r| r.map_err(Into::into)).collect();
+
+        Ok(Box::new(items.into_iter()))
+    }
+
+    fn size_on_disk(&self) -> Result<u64> {
+        if self.path.to_str() == Some(":memory:") {
+            // In-memory database - estimate from row count
+            let db = self.db.lock();
+            let total_bytes: Option<i64> = db.query_row(
+                "SELECT SUM(LENGTH(key) + LENGTH(value)) FROM tdg_storage",
+                [],
+                |row| row.get(0),
+            )?;
+
+            Ok(total_bytes.unwrap_or(0) as u64)
+        } else {
+            // File-based database
+            match std::fs::metadata(&self.path) {
+                Ok(metadata) => Ok(metadata.len()),
+                Err(_) => Ok(0),
+            }
+        }
+    }
+
+    fn flush(&self) -> Result<()> {
+        // SQLite auto-commits by default, but we can execute a checkpoint for WAL mode
+        let db = self.db.lock();
+        // Try WAL checkpoint, ignore error if not in WAL mode
+        let _ = db.execute("PRAGMA wal_checkpoint(TRUNCATE)", []);
+        Ok(())
+    }
+
+    fn clear(&self) -> Result<()> {
+        let db = self.db.lock();
+        db.execute("DELETE FROM tdg_storage", [])?;
+        Ok(())
+    }
+
+    fn backend_name(&self) -> &'static str {
+        "libsql"
+    }
+
+    fn get_stats(&self) -> HashMap<String, String> {
+        let mut stats = HashMap::new();
+
+        let db = self.db.lock();
+
+        // Get row count
+        if let Ok(count) = db.query_row::<i64, _, _>("SELECT COUNT(*) FROM tdg_storage", [], |row| {
+            row.get(0)
+        }) {
+            stats.insert("entries".to_string(), count.to_string());
+        }
+
+        // Get database size
+        if let Ok(size) = self.size_on_disk() {
+            stats.insert("size_bytes".to_string(), size.to_string());
+        }
+
+        // Add database path
+        stats.insert("path".to_string(), self.path.display().to_string());
+
+        // Get page count (SQLite specific)
+        if let Ok(pages) = db.query_row::<i64, _, _>("PRAGMA page_count", [], |row| row.get(0)) {
+            stats.insert("page_count".to_string(), pages.to_string());
+        }
+
         stats
     }
 }
@@ -320,9 +497,9 @@ impl StorageBackend for RocksDbBackend {
 pub struct StorageBackendFactory;
 
 impl StorageBackendFactory {
-    /// Create default backend (sled)
+    /// Create default backend (libsql)
     pub fn create_default(path: &Path) -> Result<Box<dyn StorageBackend>> {
-        Ok(Box::new(SledBackend::new(path)?))
+        Ok(Box::new(LibsqlBackend::new(path)?))
     }
 
     /// Create in-memory backend for testing
@@ -331,12 +508,24 @@ impl StorageBackendFactory {
         Box::new(InMemoryBackend::new())
     }
 
-    /// Create sled backend
+    /// Create libsql backend
+    pub fn create_libsql(path: &Path) -> Result<Box<dyn StorageBackend>> {
+        Ok(Box::new(LibsqlBackend::new(path)?))
+    }
+
+    /// Create temporary libsql backend
+    pub fn create_libsql_temporary() -> Result<Box<dyn StorageBackend>> {
+        Ok(Box::new(LibsqlBackend::new_temporary()?))
+    }
+
+    /// Create sled backend (deprecated - use libsql instead)
+    #[deprecated(note = "Use create_libsql instead - sled is unmaintained")]
     pub fn create_sled(path: &Path) -> Result<Box<dyn StorageBackend>> {
         Ok(Box::new(SledBackend::new(path)?))
     }
 
-    /// Create temporary sled backend
+    /// Create temporary sled backend (deprecated - use libsql instead)
+    #[deprecated(note = "Use create_libsql_temporary instead - sled is unmaintained")]
     pub fn create_sled_temporary() -> Result<Box<dyn StorageBackend>> {
         Ok(Box::new(SledBackend::new_temporary()?))
     }
@@ -350,6 +539,14 @@ impl StorageBackendFactory {
     /// Create backend from configuration
     pub fn create_from_config(config: &StorageConfig) -> Result<Box<dyn StorageBackend>> {
         match config.backend_type {
+            StorageBackendType::Libsql => {
+                if let Some(path) = &config.path {
+                    Self::create_libsql(path)
+                } else {
+                    Self::create_libsql_temporary()
+                }
+            }
+            #[allow(deprecated)]
             StorageBackendType::Sled => {
                 if let Some(path) = &config.path {
                     Self::create_sled(path)
@@ -386,7 +583,7 @@ pub struct StorageConfig {
 impl Default for StorageConfig {
     fn default() -> Self {
         Self {
-            backend_type: StorageBackendType::Sled,
+            backend_type: StorageBackendType::Libsql,
             path: None,
             cache_size_mb: Some(128),
             compression: true,
@@ -398,6 +595,7 @@ impl Default for StorageConfig {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 pub enum StorageBackendType {
     Sled,
+    Libsql,
     InMemory,
     RocksDb,
 }
@@ -406,6 +604,7 @@ impl std::fmt::Display for StorageBackendType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             StorageBackendType::Sled => write!(f, "sled"),
+            StorageBackendType::Libsql => write!(f, "libsql"),
             StorageBackendType::InMemory => write!(f, "in-memory"),
             StorageBackendType::RocksDb => write!(f, "rocksdb"),
         }
@@ -468,12 +667,49 @@ mod tests {
     }
 
     #[test]
+    fn test_libsql_backend() {
+        let temp_dir = TempDir::new().unwrap();
+        let backend = LibsqlBackend::new(temp_dir.path().join("test.db").as_path()).unwrap();
+
+        // Test basic operations
+        let key = b"libsql_key";
+        let value = b"libsql_value";
+
+        backend.put(key, value).unwrap();
+        backend.flush().unwrap();
+
+        let retrieved = backend.get(key).unwrap().unwrap();
+        assert_eq!(retrieved, value);
+
+        // Test iteration
+        let mut count = 0;
+        for result in backend.iter().unwrap() {
+            let (k, v) = result.unwrap();
+            if k == key.to_vec() {
+                assert_eq!(v, value);
+                count += 1;
+            }
+        }
+        assert_eq!(count, 1);
+
+        // Test stats
+        let stats = backend.get_stats();
+        assert!(stats.contains_key("entries"));
+        assert_eq!(stats.get("entries").unwrap(), "1");
+    }
+
+    #[test]
     fn test_backend_factory() {
         // Test in-memory creation
         let backend = StorageBackendFactory::create_in_memory();
         assert_eq!(backend.backend_name(), "in-memory");
 
-        // Test temporary sled creation
+        // Test temporary libsql creation
+        let backend = StorageBackendFactory::create_libsql_temporary().unwrap();
+        assert_eq!(backend.backend_name(), "libsql");
+
+        // Test temporary sled creation (deprecated)
+        #[allow(deprecated)]
         let backend = StorageBackendFactory::create_sled_temporary().unwrap();
         assert_eq!(backend.backend_name(), "sled");
 
