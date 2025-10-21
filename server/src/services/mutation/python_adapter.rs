@@ -8,8 +8,9 @@ use anyhow::Result;
 use async_trait::async_trait;
 use std::path::Path;
 
+// Modern tree-sitter-python parsing (replaces rustpython-parser)
 #[cfg(feature = "python-ast")]
-use rustpython_parser as parser;
+use tree_sitter::Parser as TsParser;
 
 /// Python language adapter
 pub struct PythonAdapter;
@@ -32,9 +33,21 @@ impl LanguageAdapter for PythonAdapter {
 
     #[cfg(feature = "python-ast")]
     async fn parse(&self, source: &str) -> Result<String> {
-        // Parse using rustpython-parser
-        parser::parse(source, parser::Mode::Module, "<string>")
-            .map_err(|_| anyhow::anyhow!("Parse failed"))?;
+        // Parse using tree-sitter-python to validate syntax
+        let mut parser = TsParser::new();
+        parser
+            .set_language(&tree_sitter_python::LANGUAGE.into())
+            .map_err(|e| anyhow::anyhow!("Failed to set Python language: {e}"))?;
+
+        let tree = parser
+            .parse(source, None)
+            .ok_or_else(|| anyhow::anyhow!("Failed to parse Python code"))?;
+
+        // Check for syntax errors
+        let root = tree.root_node();
+        if Self::has_syntax_errors(&root) {
+            return Err(anyhow::anyhow!("Parse failed: syntax errors detected"));
+        }
 
         Ok(source.to_string())
     }
@@ -66,6 +79,24 @@ impl LanguageAdapter for PythonAdapter {
             stdout: String::new(),
             stderr: String::new(),
         })
+    }
+}
+
+#[cfg(feature = "python-ast")]
+impl PythonAdapter {
+    /// Check if tree-sitter parse tree has syntax errors
+    fn has_syntax_errors(node: &tree_sitter::Node) -> bool {
+        if node.kind() == "ERROR" || node.is_error() || node.is_missing() {
+            return true;
+        }
+
+        for child in node.children(&mut node.walk()) {
+            if Self::has_syntax_errors(&child) {
+                return true;
+            }
+        }
+
+        false
     }
 }
 
