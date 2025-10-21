@@ -337,8 +337,8 @@ impl SemanticSearchEngine {
     /// Check if path matches pattern
     fn matches_pattern(path: &str, pattern: &str) -> bool {
         // Simple glob matching (just check suffix for now)
-        if pattern.starts_with('*') {
-            path.ends_with(&pattern[1..])
+        if let Some(suffix) = pattern.strip_prefix('*') {
+            path.ends_with(suffix)
         } else {
             path.contains(pattern)
         }

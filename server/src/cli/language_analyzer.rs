@@ -193,12 +193,12 @@ impl LanguageAnalyzer for JavaScriptAnalyzer {
             }
 
             // Detect class methods (PMAT-BUG-001 fix)
-            if current_class.is_some() {
+            if let Some(class_name) = &current_class {
                 if let Some(method_name) = self.extract_method_name(trimmed) {
                     let line_end = self.find_function_end(&lines, line_num);
                     let qualified_name = format!(
                         "{}::{}",
-                        current_class.as_ref().unwrap(),
+                        class_name,
                         method_name
                     );
                     functions.push(FunctionInfo {
@@ -280,24 +280,22 @@ impl JavaScriptAnalyzer {
         }
 
         // Handle: static methodName(
-        if trimmed.starts_with("static ") {
-            let after = &trimmed[7..];  // Skip "static "
+        if let Some(after) = trimmed.strip_prefix("static ") {
+            // Skip "static "
             return self.extract_simple_method_name(after).map(|n| format!("static {}", n));
         }
 
         // Handle: async methodName(
-        if trimmed.starts_with("async ") {
-            let after = &trimmed[6..];  // Skip "async "
+        if let Some(after) = trimmed.strip_prefix("async ") {
+            // Skip "async "
             return self.extract_simple_method_name(after);
         }
 
         // Handle: get propertyName() or set propertyName(value)
-        if trimmed.starts_with("get ") || trimmed.starts_with("set ") {
-            let after = if trimmed.starts_with("get ") {
-                &trimmed[4..]
-            } else {
-                &trimmed[4..]
-            };
+        if let Some(after) = trimmed.strip_prefix("get ") {
+            return self.extract_simple_method_name(after);
+        }
+        if let Some(after) = trimmed.strip_prefix("set ") {
             return self.extract_simple_method_name(after);
         }
 
@@ -317,11 +315,11 @@ impl JavaScriptAnalyzer {
             // Extract last word before '('
             if let Some(last_word_start) = before_paren.rfind(|c: char| c.is_whitespace()) {
                 let name = before_paren[last_word_start..].trim();
-                if !name.is_empty() && name.chars().next().map_or(false, |c| c.is_alphabetic() || c == '_') {
+                if !name.is_empty() && name.chars().next().is_some_and(|c| c.is_alphabetic() || c == '_') {
                     return Some(name.to_string());
                 }
             } else if !before_paren.is_empty()
-                && before_paren.chars().next().map_or(false, |c| c.is_alphabetic() || c == '_') {
+                && before_paren.chars().next().is_some_and(|c| c.is_alphabetic() || c == '_') {
                 return Some(before_paren.to_string());
             }
         }

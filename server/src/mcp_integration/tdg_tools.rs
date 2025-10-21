@@ -92,7 +92,8 @@ impl McpTool for AnalyzeTechnicalDebtTool {
         let should_analyze_project = match analysis_type {
             "project" => true,
             "file" => false,
-            "auto" | _ => is_dir,
+            "auto" => is_dir,
+            _ => is_dir, // Default to auto behavior
         };
 
         if should_analyze_project {

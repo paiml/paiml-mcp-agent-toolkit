@@ -290,7 +290,7 @@ impl CodeFactDatabase {
             let function_name = caps.get(1).unwrap().as_str().to_string();
             db.functions
                 .entry(function_name.clone())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push("".to_string());
         }
 
@@ -451,15 +451,14 @@ impl SemanticSimilarity {
         let action_verbs = ["compile", "compiles", "analyze", "support", "generate"];
         for verb in &action_verbs {
             // Claim is positive about verb, fact is negative
-            if claim.contains(verb) && !claim.contains("cannot") && !claim.contains("does not") {
-                if fact.contains(&format!("does not {}", verb)) ||
+            if claim.contains(verb) && !claim.contains("cannot") && !claim.contains("does not")
+                && (fact.contains(&format!("does not {}", verb)) ||
                    fact.contains(&format!("cannot {}", verb)) ||
                    fact.contains(&format!("not {}", verb)) ||
-                   (fact.contains(verb) && (fact.contains("but not") || fact.contains("only"))) {
+                   (fact.contains(verb) && (fact.contains("but not") || fact.contains("only")))) {
                     // CONTRADICTION: claim positive, fact negative
                     return -0.8; // Strong negative boost
                 }
-            }
             // Both agree on capability
             if claim.contains(verb) && fact.contains(verb) {
                 // Check if both are positive or both are negative

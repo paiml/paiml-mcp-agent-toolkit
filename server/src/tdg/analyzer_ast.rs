@@ -1668,7 +1668,7 @@ impl<'a> PythonComplexityVisitor<'a> {
                 // Count parameters
                 if let Some(params) = node.child_by_field_name("parameters") {
                     let param_count = params.child_count();
-                    if param_count > self.max_params as usize {
+                    if param_count > self.max_params {
                         self.max_params = param_count;
                     }
                 }

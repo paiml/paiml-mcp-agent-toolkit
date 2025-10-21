@@ -236,7 +236,7 @@ impl TopicEngine {
         for (idx, &label) in labels.iter().enumerate() {
             cluster_chunks
                 .entry(label)
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push((idx, &chunks[idx]));
         }
 
