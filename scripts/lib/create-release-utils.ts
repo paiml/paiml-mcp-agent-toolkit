@@ -10,7 +10,8 @@ export const YELLOW = "\x1b[33m";
 export const NC = "\x1b[0m";
 
 export async function getVersion(): Promise<string> {
-  const cargoToml = await Deno.readTextFile("server/Cargo.toml");
+  // Read from workspace Cargo.toml since server/Cargo.toml uses version.workspace = true
+  const cargoToml = await Deno.readTextFile("Cargo.toml");
   const match = cargoToml.match(/^version = "(.*)"/m);
   if (!match) {
     throw new Error("Could not find version in Cargo.toml");
@@ -76,11 +77,12 @@ export async function createTarball(
 ): Promise<string> {
   const tarballName = `${binaryName}-${platform}.tar.gz`;
 
+  // Workspace builds put binaries in target/release, not server/target/release
   const { success, error } = await runCommand("tar", [
     "-czf",
     tarballName,
     "-C",
-    "server/target/release",
+    "target/release",
     binaryName,
   ]);
 
