@@ -219,6 +219,28 @@ fn test_rocksdb_backend() {
 #[test]
 fn test_storage_backend_type_display() {
     assert_eq!(format!("{}", StorageBackendType::Sled), "sled");
+    assert_eq!(format!("{}", StorageBackendType::Libsql), "libsql");
     assert_eq!(format!("{}", StorageBackendType::InMemory), "in-memory");
     assert_eq!(format!("{}", StorageBackendType::RocksDb), "rocksdb");
+}
+
+#[ignore]
+#[test]
+fn test_libsql_backend() {
+    use pmat::tdg::storage_backend::LibsqlBackend;
+
+    let temp_dir = TempDir::new().unwrap();
+    let backend = LibsqlBackend::new(temp_dir.path().join("test.db").as_path()).unwrap();
+
+    // Test basic operations
+    let key = b"libsql_key";
+    let value = b"libsql_value";
+
+    backend.put(key, value).unwrap();
+    assert!(backend.contains(key).unwrap());
+
+    let retrieved = backend.get(key).unwrap().unwrap();
+    assert_eq!(retrieved, value);
+
+    assert_eq!(backend.backend_name(), "libsql");
 }
