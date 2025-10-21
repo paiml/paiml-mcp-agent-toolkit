@@ -208,7 +208,6 @@ fn ultra_complex_function(x: i32) -> i32 {{
     path
 }
 
-#[ignore]
 #[test]
 fn test_max_cyclomatic_filters_correctly() {
     let temp_dir = TempDir::new().unwrap();
@@ -254,7 +253,6 @@ fn test_max_cyclomatic_filters_correctly() {
     );
 }
 
-#[ignore]
 #[test]
 fn test_max_cyclomatic_with_top_files() {
     let temp_dir = TempDir::new().unwrap();
@@ -302,7 +300,6 @@ fn test_max_cyclomatic_with_top_files() {
     assert!(stdout.contains("file5.rs"), "file5.rs should be included");
 }
 
-#[ignore]
 #[test]
 fn test_exact_threshold_boundary() {
     let temp_dir = TempDir::new().unwrap();
