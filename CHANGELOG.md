@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Dependency Updates (Sprint 46 Priority 2)**: Updated 43 dependencies to latest compatible versions
+  - **Major updates**:
+    - ruchy: 3.98.0 → 3.107.0 (Ruchy language - 9 version jump, enhanced language capabilities)
+    - pmcp: 1.6.0 → 1.8.0 (MCP protocol library - improved protocol support)
+    - clap: 4.5.49 → 4.5.50 (CLI framework - latest bug fixes)
+    - memmap2: 0.9.8 → 0.9.9
+    - indoc: 2.0.6 → 2.0.7
+  - **New capabilities**:
+    - HTML/CSS parsing support (html5ever, cssparser)
+    - WebSocket support (tokio-tungstenite, tungstenite)
+    - Enhanced networking (neli - Netlink protocol)
+    - CSS selector matching (selectors)
+  - **Benefits**: Latest bug fixes, performance improvements, enhanced MCP/Ruchy support
+  - **Quality gates**: All passing (pmat-book 4/4, tests 6/6, clippy 0 warnings)
+  - Commit: [to be added]
+
 ## [2.169.1] - 2025-10-21
 
 ### Security
