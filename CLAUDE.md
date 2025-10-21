@@ -216,13 +216,24 @@ Full specification: `docs/specifications/documentation-accuracy-enforcement.md`
 
 ### Overview
 
-bashrs is a bidirectional shell safety tool that lints bash scripts and Makefiles for safety issues, including:
+bashrs is a bidirectional shell safety tool developed by PAIML that lints bash scripts and Makefiles for safety issues, including:
 - **SC2086**: Unquoted variable expansion (prevents word splitting & glob expansion)
 - **SC2046**: Unquoted command substitution
 - **SC2116**: Useless echo in command substitution
 - **DET003**: Unordered wildcard (non-deterministic results)
 - **IDEM002**: Non-idempotent operations
 - **SEC008**: Security issues (e.g., piping curl to shell)
+
+### Bug Reports and Feature Requests
+
+**IMPORTANT**: bashrs is developed and maintained by PAIML.
+
+If you encounter a bug or need a feature while using bashrs:
+- **GitHub Issues**: https://github.com/paiml/bashrs/issues
+- **Required**: All bugs and feature requests must be submitted as GitHub issues
+- **Context**: Include reproduction steps, bashrs version, and example bash code
+
+This ensures proper tracking and allows the bashrs team to improve the tool for all users.
 
 ### Usage
 
