@@ -17,10 +17,10 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::services::complexity::{ComplexityMetrics, FileComplexityMetrics, FunctionComplexity};
 use crate::services::context::AstItem;
-use crate::services::enhanced_python_visitor::EnhancedPythonVisitor;
 
+// Modern tree-sitter-python parsing (replaces rustpython-parser)
 #[cfg(feature = "python-ast")]
-use rustpython_parser::{ast::ModModule, Parse};
+use tree_sitter::{Parser as TsParser, Tree};
 
 /// Unified analyzer that parses Python once, extracts twice
 pub struct UnifiedPythonAnalyzer {
@@ -87,13 +87,13 @@ impl UnifiedPythonAnalyzer {
             .await
             .map_err(AnalysisError::Io)?;
 
-        // 2. Parse ONCE with rustpython_parser
+        // 2. Parse ONCE with tree-sitter-python
         #[cfg(feature = "python-ast")]
-        let module = self.parse_python(&content)?;
+        let tree = self.parse_python(&content)?;
 
-        // 3. Extract AST items using existing EnhancedPythonVisitor
+        // 3. Extract AST items using tree-sitter
         #[cfg(feature = "python-ast")]
-        let ast_items = self.extract_ast_items(&module);
+        let ast_items = self.extract_ast_items(&tree, &content);
         #[cfg(not(feature = "python-ast"))]
         let ast_items = Vec::new();
 
@@ -107,12 +107,49 @@ impl UnifiedPythonAnalyzer {
         })
     }
 
-    /// Parse Python with rustpython_parser
+    /// Parse Python with tree-sitter-python
     #[cfg(feature = "python-ast")]
-    fn parse_python(&self, content: &str) -> Result<ModModule, AnalysisError> {
-        let filename = self.file_path.display().to_string();
-        ModModule::parse(content, &filename)
-            .map_err(|e| AnalysisError::Parse(format!("Python parse error: {}", e)))
+    fn parse_python(&self, content: &str) -> Result<Tree, AnalysisError> {
+        let mut parser = TsParser::new();
+        parser
+            .set_language(&tree_sitter_python::LANGUAGE.into())
+            .map_err(|e| AnalysisError::Parse(format!("Failed to set Python language: {}", e)))?;
+
+        let tree = parser
+            .parse(content, None)
+            .ok_or_else(|| AnalysisError::Parse("Failed to parse Python code".to_string()))?;
+
+        // Check for syntax errors
+        if Self::has_syntax_errors(&tree) {
+            return Err(AnalysisError::Parse(
+                "Python syntax error detected in source".to_string(),
+            ));
+        }
+
+        Ok(tree)
+    }
+
+    /// Check if tree-sitter parse tree has syntax errors
+    #[cfg(feature = "python-ast")]
+    fn has_syntax_errors(tree: &Tree) -> bool {
+        let root = tree.root_node();
+        Self::node_has_error(&root)
+    }
+
+    /// Recursively check node for errors
+    #[cfg(feature = "python-ast")]
+    fn node_has_error(node: &tree_sitter::Node) -> bool {
+        if node.kind() == "ERROR" || node.is_error() || node.is_missing() {
+            return true;
+        }
+
+        for child in node.children(&mut node.walk()) {
+            if Self::node_has_error(&child) {
+                return true;
+            }
+        }
+
+        false
     }
 
     /// Get parse count (test-only, for verifying single parse)
@@ -121,11 +158,84 @@ impl UnifiedPythonAnalyzer {
         self.parse_count.load(Ordering::SeqCst)
     }
 
-    /// Extract AST items from parsed Python module
+    /// Extract AST items from parsed Python tree using tree-sitter
     #[cfg(feature = "python-ast")]
-    fn extract_ast_items(&self, module: &ModModule) -> Vec<AstItem> {
-        let visitor = EnhancedPythonVisitor::new(&self.file_path);
-        visitor.extract_items(module)
+    fn extract_ast_items(&self, tree: &Tree, source: &str) -> Vec<AstItem> {
+        let mut items = Vec::new();
+        let root = tree.root_node();
+        self.visit_node_for_items(&root, source, &mut items, &mut Vec::new());
+        items
+    }
+
+    /// Visit tree-sitter node to extract AST items
+    #[cfg(feature = "python-ast")]
+    fn visit_node_for_items(
+        &self,
+        node: &tree_sitter::Node,
+        source: &str,
+        items: &mut Vec<AstItem>,
+        class_stack: &mut Vec<String>,
+    ) {
+        match node.kind() {
+            "function_definition" => {
+                if let Some(name_node) = node.child_by_field_name("name") {
+                    let name = &source[name_node.byte_range()];
+                    let qualified_name = if class_stack.is_empty() {
+                        name.to_string()
+                    } else {
+                        format!("{}::{}", class_stack.join("::"), name)
+                    };
+
+                    items.push(AstItem::Function {
+                        name: qualified_name,
+                        visibility: "public".to_string(),
+                        is_async: false, // TODO: detect async functions
+                        line: node.start_position().row + 1,
+                    });
+                }
+
+                // Visit children
+                for child in node.children(&mut node.walk()) {
+                    self.visit_node_for_items(&child, source, items, class_stack);
+                }
+            }
+            "class_definition" => {
+                if let Some(name_node) = node.child_by_field_name("name") {
+                    let name = &source[name_node.byte_range()];
+                    let qualified_name = if class_stack.is_empty() {
+                        name.to_string()
+                    } else {
+                        format!("{}::{}", class_stack.join("::"), name)
+                    };
+
+                    // Python classes map to Struct in AstItem enum
+                    items.push(AstItem::Struct {
+                        name: qualified_name.clone(),
+                        visibility: "public".to_string(),
+                        fields_count: 0, // Python classes don't expose field count easily
+                        derives: Vec::new(),
+                        line: node.start_position().row + 1,
+                    });
+
+                    // Push class onto stack for nested items
+                    class_stack.push(name.to_string());
+
+                    // Visit children
+                    for child in node.children(&mut node.walk()) {
+                        self.visit_node_for_items(&child, source, items, class_stack);
+                    }
+
+                    // Pop class from stack
+                    class_stack.pop();
+                }
+            }
+            _ => {
+                // Visit children for other node types
+                for child in node.children(&mut node.walk()) {
+                    self.visit_node_for_items(&child, source, items, class_stack);
+                }
+            }
+        }
     }
 
     /// Extract complexity metrics from Python content
