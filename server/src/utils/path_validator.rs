@@ -175,7 +175,6 @@ mod tests {
     use tempfile::TempDir;
 
     #[test]
-    #[ignore]
     fn test_ensure_exists_valid_file() {
         // Use Cargo.toml as a file we know exists
         let path = Path::new("Cargo.toml");
@@ -189,14 +188,12 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn test_ensure_file_valid() {
         let path = Path::new("Cargo.toml");
         assert!(PathValidator::ensure_file(path).is_ok());
     }
 
     #[test]
-    #[ignore]
     fn test_ensure_directory_valid() {
         let path = Path::new("src");
         assert!(PathValidator::ensure_directory(path).is_ok());
@@ -232,7 +229,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn test_validate_anyhow_methods() {
         // Test with Cargo.toml (should exist)
         let path = Path::new("Cargo.toml");
