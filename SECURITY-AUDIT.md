@@ -81,15 +81,47 @@ All detected issues are **warnings** about unmaintained crates, not active secur
 - [ ] Create dependency update policy
 - [ ] Evaluate moving to tree-sitter-only for all language parsing
 
+## GitHub Dependabot Alerts
+
+### Open Alerts (3 total)
+
+**npm vulnerabilities (2 - medium severity):**
+1. **vite** (>= 5.2.6, <= 5.4.20) → Fix: Upgrade to 7.1.11
+   - Issue: server.fs.deny bypass via backslash on Windows
+   - Status: Transitive dependency, investigating source
+
+2. **esbuild** (<= 0.24.2) → Fix: Upgrade to 0.25.0
+   - Issue: Any website can send requests to dev server
+   - Status: Transitive dependency, investigating source
+
+**Rust vulnerabilities (1 - low severity):**
+3. **libsql-sqlite3-parser** (<= 0.13.0) → Fix: No patch available
+   - Issue: Crash due to invalid UTF-8 input
+   - Status: Transitive via libsql 0.9.24, upgraded to latest
+   - Impact: LOW - denial of service only, no data breach risk
+
+## Recent Updates (2025-10-21)
+
+✅ **libsql upgraded**: 0.9 → 0.9.24 (latest version)
+- libsql-sqlite3-parser remains at 0.13.0 (no patch available yet)
+- Monitoring upstream for security fix
+
+⚠️ **npm vulnerabilities**: vite and esbuild remain open
+- Both are transitive dependencies (not direct)
+- Medium severity, dev-only impact
+- Action: Audit npm dependency tree in next sprint
+
 ## Conclusion
 
 ✅ **Project is production-ready** - No critical security vulnerabilities
-⚠️ **Technical debt identified** - 9 unmaintained dependencies to monitor
+⚠️ **Technical debt identified** - 9 unmaintained dependencies + 3 Dependabot alerts
 📋 **Migration path exists** - Clear plan for major unmaintained dependencies
+🔄 **Active maintenance** - libsql updated to latest, npm audit scheduled
 
-**Recommendation**: Deploy with confidence. Schedule dependency updates in next sprint.
+**Recommendation**: Deploy with confidence. Monitor Dependabot for patches. Schedule npm audit in next sprint.
 
 ---
 
 **Audit By**: Claude Code
+**Last Update**: 2025-10-21
 **Next Audit**: 2026-01-21 (90 days)
