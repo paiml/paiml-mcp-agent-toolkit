@@ -194,7 +194,6 @@ mod complexity_analyzer_tests {
 
     // Benchmark test
     #[test]
-    #[ignore] // Run with --ignored flag
     fn bench_complexity_analysis() {
         use std::time::Instant;
 
