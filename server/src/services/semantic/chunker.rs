@@ -93,13 +93,63 @@ fn parse_rust(source: &str) -> Result<Tree, String> {
         .ok_or_else(|| "Failed to parse Rust source".to_string())
 }
 
+/// Helper: Find preceding doc comments for a node (all languages)
+/// Returns the start byte position of the first comment, or node start if none
+fn find_doc_comment_start(node: Node, source: &str) -> usize {
+    let mut start_byte = node.start_byte();
+
+    // Walk backwards through preceding siblings to find comments
+    if let Some(parent) = node.parent() {
+        let mut cursor = parent.walk();
+        let siblings: Vec<Node> = parent.children(&mut cursor).collect();
+
+        if let Some(node_index) = siblings.iter().position(|n| n.id() == node.id()) {
+            // Check previous siblings in reverse order
+            for i in (0..node_index).rev() {
+                let sibling = siblings[i];
+                let kind = sibling.kind();
+
+                // Detect comments for all languages
+                let is_comment = kind == "comment"  // TypeScript, C, C++, Go
+                    || kind == "line_comment"   // Rust
+                    || kind == "block_comment";  // Rust, C, C++
+
+                if is_comment {
+                    // For Rust: only include /// doc comments, not regular //
+                    if kind == "line_comment" {
+                        let comment_text = &source[sibling.byte_range()];
+                        if comment_text.trim_start().starts_with("///") {
+                            start_byte = sibling.start_byte();
+                            continue;
+                        }
+                        // Skip regular // comments in Rust
+                        break;
+                    } else {
+                        // Include all other comment types
+                        start_byte = sibling.start_byte();
+                        continue;
+                    }
+                }
+
+                // Stop if we hit a non-comment node
+                break;
+            }
+        }
+    }
+
+    start_byte
+}
+
 /// Extract items (functions, impl blocks, modules) from Rust AST
 fn extract_rust_items(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
     // Check if this node is a function
     if node.kind() == "function_item" {
         if let Some(name_node) = node.child_by_field_name("name") {
             let name = source[name_node.byte_range()].to_string();
-            let content = source[node.byte_range()].to_string();
+
+            // Include preceding doc comments
+            let start_byte = find_doc_comment_start(node, source);
+            let content = source[start_byte..node.end_byte()].to_string();
 
             chunks.push(CodeChunk {
                 file_path: String::new(),
@@ -221,7 +271,10 @@ fn extract_typescript_items(node: Node, source: &str, chunks: &mut Vec<CodeChunk
     else if node.kind() == "function_declaration" || node.kind() == "function" {
         if let Some(name_node) = node.child_by_field_name("name") {
             let name = source[name_node.byte_range()].to_string();
-            let content = source[node.byte_range()].to_string();
+
+            // Include preceding doc comments
+            let start_byte = find_doc_comment_start(node, source);
+            let content = source[start_byte..node.end_byte()].to_string();
 
             chunks.push(CodeChunk {
                 file_path: String::new(),
@@ -297,15 +350,15 @@ fn parse_python(source: &str) -> Result<Tree, String> {
 
 /// Extract items from Python AST
 fn extract_python_items(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
-    // Check for function definition
-    if node.kind() == "function_definition" {
+    // Check for class definition
+    if node.kind() == "class_definition" {
         if let Some(name_node) = node.child_by_field_name("name") {
             let name = source[name_node.byte_range()].to_string();
             let content = source[node.byte_range()].to_string();
 
             chunks.push(CodeChunk {
                 file_path: String::new(),
-                chunk_type: ChunkType::Function,
+                chunk_type: ChunkType::Class,
                 chunk_name: name,
                 language: "python".to_string(),
                 start_line: node.start_position().row + 1,
@@ -314,16 +367,18 @@ fn extract_python_items(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
                 content_checksum: compute_checksum(&content),
             });
         }
+        // Don't recurse into class children - class is extracted as a whole
+        return;
     }
-    // Check for class definition
-    else if node.kind() == "class_definition" {
+    // Check for function definition
+    else if node.kind() == "function_definition" {
         if let Some(name_node) = node.child_by_field_name("name") {
             let name = source[name_node.byte_range()].to_string();
             let content = source[node.byte_range()].to_string();
 
             chunks.push(CodeChunk {
                 file_path: String::new(),
-                chunk_type: ChunkType::Class,
+                chunk_type: ChunkType::Function,
                 chunk_name: name,
                 language: "python".to_string(),
                 start_line: node.start_position().row + 1,
@@ -371,7 +426,10 @@ fn extract_c_items(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
             // Navigate to function name
             if let Some(name_node) = find_function_declarator_name(declarator, source) {
                 let name = source[name_node.byte_range()].to_string();
-                let content = source[node.byte_range()].to_string();
+
+                // Include preceding doc comments
+                let start_byte = find_doc_comment_start(node, source);
+                let content = source[start_byte..node.end_byte()].to_string();
 
                 chunks.push(CodeChunk {
                     file_path: String::new(),
@@ -461,7 +519,10 @@ fn extract_cpp_items(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
         if let Some(declarator) = node.child_by_field_name("declarator") {
             if let Some(name_node) = find_function_declarator_name(declarator, source) {
                 let name = source[name_node.byte_range()].to_string();
-                let content = source[node.byte_range()].to_string();
+
+                // Include preceding doc comments
+                let start_byte = find_doc_comment_start(node, source);
+                let content = source[start_byte..node.end_byte()].to_string();
 
                 chunks.push(CodeChunk {
                     file_path: String::new(),
@@ -485,8 +546,10 @@ fn extract_cpp_items(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
                     if let Some(declarator) = child.child_by_field_name("declarator") {
                         if let Some(name_node) = find_function_declarator_name(declarator, source) {
                             let name = source[name_node.byte_range()].to_string();
-                            // Include whole template
-                            let content = source[node.byte_range()].to_string();
+
+                            // Include preceding doc comments and whole template
+                            let start_byte = find_doc_comment_start(node, source);
+                            let content = source[start_byte..node.end_byte()].to_string();
 
                             chunks.push(CodeChunk {
                                 file_path: String::new(),
@@ -503,6 +566,8 @@ fn extract_cpp_items(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
                 }
             }
         }
+        // Don't recurse into template children - template is extracted as a whole
+        return;
     }
 
     // Recursively process children
@@ -540,7 +605,10 @@ fn extract_go_items(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
     if node.kind() == "function_declaration" {
         if let Some(name_node) = node.child_by_field_name("name") {
             let name = source[name_node.byte_range()].to_string();
-            let content = source[node.byte_range()].to_string();
+
+            // Include preceding doc comments
+            let start_byte = find_doc_comment_start(node, source);
+            let content = source[start_byte..node.end_byte()].to_string();
 
             chunks.push(CodeChunk {
                 file_path: String::new(),
@@ -574,24 +642,34 @@ fn extract_go_items(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
     }
     // Check for type declaration (struct, interface)
     else if node.kind() == "type_declaration" {
-        if let Some(type_spec) = node.child_by_field_name("type") {
-            // Get type name
-            if let Some(name_node) = type_spec.child_by_field_name("name") {
-                let name = source[name_node.byte_range()].to_string();
-                let content = source[node.byte_range()].to_string();
+        // Go type_declaration has a type_spec child
+        let mut cursor = node.walk();
+        for child in node.children(&mut cursor) {
+            if child.kind() == "type_spec" {
+                // type_spec has name and type fields
+                if let Some(name_node) = child.child_by_field_name("name") {
+                    let name = source[name_node.byte_range()].to_string();
 
-                chunks.push(CodeChunk {
-                    file_path: String::new(),
-                    chunk_type: ChunkType::Class, // Treat struct/interface as class-like
-                    chunk_name: name,
-                    language: "go".to_string(),
-                    start_line: node.start_position().row + 1,
-                    end_line: node.end_position().row + 1,
-                    content: content.clone(),
-                    content_checksum: compute_checksum(&content),
-                });
+                    // Include preceding doc comments
+                    let start_byte = find_doc_comment_start(node, source);
+                    let content = source[start_byte..node.end_byte()].to_string();
+
+                    chunks.push(CodeChunk {
+                        file_path: String::new(),
+                        chunk_type: ChunkType::Class, // Treat struct/interface as class-like
+                        chunk_name: name,
+                        language: "go".to_string(),
+                        start_line: node.start_position().row + 1,
+                        end_line: node.end_position().row + 1,
+                        content: content.clone(),
+                        content_checksum: compute_checksum(&content),
+                    });
+                    break; // Only extract the first type_spec
+                }
             }
         }
+        // Don't recurse into type declaration children
+        return;
     }
 
     // Recursively process children
