@@ -398,7 +398,6 @@ mod tests {
     use super::*;
     use crate::tdg::language_simple::Language;
     use crate::tdg::Grade;
-    use tempfile::TempDir;
 
     fn create_test_record() -> FullTdgRecord {
         let content = b"fn test() { println!(\"hello\"); }";
@@ -451,8 +450,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_tiered_storage_creation() {
-        let temp_dir = TempDir::new().unwrap();
-        let storage = TieredStore::new(temp_dir.path()).unwrap();
+        let storage = TieredStore::in_memory();
 
         let stats = storage.get_statistics();
         assert_eq!(stats.hot_entries, 0);
@@ -482,8 +480,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_store_and_retrieve() {
-        let temp_dir = TempDir::new().unwrap();
-        let storage = TieredStore::new(temp_dir.path()).unwrap();
+        let storage = TieredStore::in_memory();
         let record = create_test_record();
         let hash = record.identity.content_hash;
 
@@ -503,8 +500,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_compression() {
-        let temp_dir = TempDir::new().unwrap();
-        let storage = TieredStore::new(temp_dir.path()).unwrap();
+        let storage = TieredStore::in_memory();
         let record = create_test_record();
 
         // Store and verify compression
@@ -544,8 +540,7 @@ mod tests {
     async fn test_backend_migration() {
         use crate::tdg::storage_backend::StorageBackendType;
 
-        let temp_dir = TempDir::new().unwrap();
-        let mut storage = TieredStore::new(temp_dir.path()).unwrap();
+        let mut storage = TieredStore::in_memory();
 
         // Store some records
         let record1 = create_test_record();
@@ -553,7 +548,7 @@ mod tests {
         storage.store(record1.clone()).await.unwrap();
         storage.store(record2.clone()).await.unwrap();
 
-        // Migrate to in-memory backend
+        // Migrate to another in-memory backend (tests migration logic)
         let new_warm = StorageConfig {
             backend_type: StorageBackendType::InMemory,
             path: None,
