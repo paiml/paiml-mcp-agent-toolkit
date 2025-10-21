@@ -7,7 +7,6 @@ use pmat::tdg::{
 use std::path::PathBuf;
 use tempfile::TempDir;
 
-#[ignore]
 #[test]
 fn test_in_memory_backend_basic_operations() {
     let backend = InMemoryBackend::new();
@@ -46,7 +45,6 @@ fn test_sled_backend_persistence() {
     assert_eq!(retrieved, value);
 }
 
-#[ignore]
 #[test]
 fn test_backend_factory_creation() {
     // Test in-memory creation
@@ -68,7 +66,6 @@ fn test_backend_factory_creation() {
     assert_eq!(backend.backend_name(), "in-memory");
 }
 
-#[ignore]
 #[tokio::test]
 async fn test_tiered_storage_with_backends() {
     // Test with in-memory backend
@@ -140,7 +137,6 @@ async fn test_tiered_storage_with_backends() {
     assert_eq!(retrieved.score.total, record.score.total);
 }
 
-#[ignore]
 #[tokio::test]
 async fn test_storage_statistics() {
     let temp_dir = TempDir::new().unwrap();
@@ -154,7 +150,6 @@ async fn test_storage_statistics() {
     assert_eq!(stats.cold_backend, "sled");
 }
 
-#[ignore]
 #[test]
 fn test_backend_iteration() {
     let backend = InMemoryBackend::new();
@@ -175,7 +170,6 @@ fn test_backend_iteration() {
     assert_eq!(count, 10);
 }
 
-#[ignore]
 #[test]
 fn test_backend_clear() {
     let backend = InMemoryBackend::new();
@@ -215,7 +209,6 @@ fn test_rocksdb_backend() {
     assert_eq!(backend.backend_name(), "rocksdb");
 }
 
-#[ignore]
 #[test]
 fn test_storage_backend_type_display() {
     assert_eq!(format!("{}", StorageBackendType::Sled), "sled");
@@ -224,7 +217,6 @@ fn test_storage_backend_type_display() {
     assert_eq!(format!("{}", StorageBackendType::RocksDb), "rocksdb");
 }
 
-#[ignore]
 #[test]
 fn test_libsql_backend() {
     use pmat::tdg::storage_backend::LibsqlBackend;
