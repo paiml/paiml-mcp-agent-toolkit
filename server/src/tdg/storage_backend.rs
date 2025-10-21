@@ -51,12 +51,14 @@ pub trait StorageBackend: Send + Sync {
     fn get_stats(&self) -> HashMap<String, String>;
 }
 
-/// Sled database backend
+/// Sled database backend (deprecated - requires sled-backend feature)
+#[cfg(feature = "sled-backend")]
 pub struct SledBackend {
     db: sled::Db,
     tree: sled::Tree,
 }
 
+#[cfg(feature = "sled-backend")]
 impl SledBackend {
     pub fn new(path: &Path) -> Result<Self> {
         let db = sled::open(path)?;
@@ -71,6 +73,7 @@ impl SledBackend {
     }
 }
 
+#[cfg(feature = "sled-backend")]
 impl StorageBackend for SledBackend {
     fn put(&self, key: &[u8], value: &[u8]) -> Result<()> {
         self.tree.insert(key, value)?;
@@ -518,14 +521,16 @@ impl StorageBackendFactory {
         Ok(Box::new(LibsqlBackend::new_temporary()?))
     }
 
-    /// Create sled backend (deprecated - use libsql instead)
+    /// Create sled backend (deprecated - requires sled-backend feature)
     #[deprecated(note = "Use create_libsql instead - sled is unmaintained")]
+    #[cfg(feature = "sled-backend")]
     pub fn create_sled(path: &Path) -> Result<Box<dyn StorageBackend>> {
         Ok(Box::new(SledBackend::new(path)?))
     }
 
-    /// Create temporary sled backend (deprecated - use libsql instead)
+    /// Create temporary sled backend (deprecated - requires sled-backend feature)
     #[deprecated(note = "Use create_libsql_temporary instead - sled is unmaintained")]
+    #[cfg(feature = "sled-backend")]
     pub fn create_sled_temporary() -> Result<Box<dyn StorageBackend>> {
         Ok(Box::new(SledBackend::new_temporary()?))
     }
@@ -546,6 +551,7 @@ impl StorageBackendFactory {
                     Self::create_libsql_temporary()
                 }
             }
+            #[cfg(feature = "sled-backend")]
             #[allow(deprecated)]
             StorageBackendType::Sled => {
                 if let Some(path) = &config.path {
@@ -554,6 +560,10 @@ impl StorageBackendFactory {
                     Self::create_sled_temporary()
                 }
             }
+            #[cfg(not(feature = "sled-backend"))]
+            StorageBackendType::Sled => Err(anyhow::anyhow!(
+                "Sled backend not available. Enable 'sled-backend' feature or use 'libsql' instead."
+            )),
             StorageBackendType::InMemory => Ok(Self::create_in_memory()),
             #[cfg(feature = "rocksdb-backend")]
             StorageBackendType::RocksDb => {
@@ -635,6 +645,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "sled-backend")]
     fn test_sled_backend() {
         let temp_dir = TempDir::new().unwrap();
         let backend = SledBackend::new(temp_dir.path()).unwrap();
@@ -708,10 +719,13 @@ mod tests {
         let backend = StorageBackendFactory::create_libsql_temporary().unwrap();
         assert_eq!(backend.backend_name(), "libsql");
 
-        // Test temporary sled creation (deprecated)
-        #[allow(deprecated)]
-        let backend = StorageBackendFactory::create_sled_temporary().unwrap();
-        assert_eq!(backend.backend_name(), "sled");
+        // Test temporary sled creation (deprecated - only if feature enabled)
+        #[cfg(feature = "sled-backend")]
+        {
+            #[allow(deprecated)]
+            let backend = StorageBackendFactory::create_sled_temporary().unwrap();
+            assert_eq!(backend.backend_name(), "sled");
+        }
 
         // Test config-based creation
         let config = StorageConfig {

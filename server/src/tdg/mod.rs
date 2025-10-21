@@ -58,9 +58,10 @@ pub use storage::{
     SemanticSignature, StorageStatistics, TieredStorageFactory, TieredStore,
 };
 pub use storage_backend::{
-    InMemoryBackend, SledBackend, StorageBackend, StorageBackendFactory, StorageBackendType,
-    StorageConfig,
+    InMemoryBackend, StorageBackend, StorageBackendFactory, StorageBackendType, StorageConfig,
 };
+#[cfg(feature = "sled-backend")]
+pub use storage_backend::SledBackend;
 pub use web_dashboard::{
     create_dashboard_router, start_dashboard_server, DashboardState,
     HealthStatus as DashboardHealthStatus, PerformanceMetrics as DashboardPerformanceMetrics,
