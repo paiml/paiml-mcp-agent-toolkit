@@ -74,7 +74,11 @@ All detected issues are **warnings** about unmaintained crates, not active secur
 - [x] Set up Dependabot alerts monitoring - ✅ DONE (GitHub Dependabot active, 3 alerts tracked)
 
 ### Short-Term (Next Sprint)
-- [ ] Evaluate `enderpy_python_parser` as rustpython-parser replacement
+- [x] Evaluate `enderpy_python_parser` as rustpython-parser replacement - ✅ DONE (2025-10-21)
+  - **Recommendation**: Migrate to `tree-sitter-python` (already a dependency)
+  - **Document**: PYTHON-PARSER-EVALUATION.md
+  - **Impact**: Will eliminate 6 unmaintained UNIC crates
+  - **Status**: Evaluation complete, migration planned for future sprint
 - [x] Complete sled → libsql migration (storage_backend.rs) - ✅ DONE (2025-10-21, commit 5b4ac0b4)
 - [ ] Monitor paste crate for maintained alternatives
 
