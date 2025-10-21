@@ -432,10 +432,20 @@ fn create_storage_backend(
             use crate::tdg::storage_backend::InMemoryBackend;
             Ok(Box::new(InMemoryBackend::new()))
         }
-        Some("sled") | None => {
-            use crate::tdg::storage_backend::SledBackend;
-            let temp_path = std::env::temp_dir().join("tdg-mcp-sled");
-            Ok(Box::new(SledBackend::new(&temp_path)?))
+        Some("libsql") | None => {
+            // Default to libsql (modern SQLite-compatible database)
+            use crate::tdg::storage_backend::LibsqlBackend;
+            let temp_path = std::env::temp_dir().join("tdg-mcp-libsql.db");
+            Ok(Box::new(LibsqlBackend::new(&temp_path)?))
+        }
+        Some("sled") => {
+            // Deprecated: Use libsql instead
+            #[allow(deprecated)]
+            {
+                use crate::tdg::storage_backend::SledBackend;
+                let temp_path = std::env::temp_dir().join("tdg-mcp-sled");
+                Ok(Box::new(SledBackend::new(&temp_path)?))
+            }
         }
         #[cfg(feature = "rocksdb-backend")]
         Some("rocksdb") => {
@@ -443,7 +453,7 @@ fn create_storage_backend(
             Err(anyhow::anyhow!("RocksDB backend not yet implemented"))
         }
         Some(backend) => Err(anyhow::anyhow!(
-            "Unsupported storage backend: {backend}. Supported: sled, inmemory, rocksdb"
+            "Unsupported storage backend: {backend}. Supported: libsql (default), sled (deprecated), inmemory, rocksdb"
         )),
     }
 }
