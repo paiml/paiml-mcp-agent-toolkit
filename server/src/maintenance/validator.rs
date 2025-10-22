@@ -115,12 +115,12 @@ impl ValidationReport {
 ///
 /// # Complexity
 /// - Time: O(n*m) where n=tickets in roadmap, m=ticket files
-/// - Cyclomatic: 7
+/// - Cyclomatic: 7 (reduced from 11 via Extract Method refactoring)
 pub fn validate_project(
     roadmap_path: &Path,
     tickets_dir: &Path,
 ) -> Result<ValidationReport> {
-    use std::collections::{HashMap, HashSet};
+    use std::collections::HashMap;
 
     // Parse roadmap
     let roadmap = Roadmap::from_file(roadmap_path)?;
@@ -134,7 +134,25 @@ pub fn validate_project(
 
     let mut report = ValidationReport::new("PMAT".to_string());
 
-    // Check all roadmap tickets have files
+    // Validate roadmap tickets
+    validate_roadmap_tickets(&roadmap, &ticket_map, &mut report);
+
+    // Validate ticket dependencies
+    validate_ticket_dependencies(&roadmap, &ticket_files, &ticket_map, &mut report);
+
+    report.update_counts();
+    Ok(report)
+}
+
+/// Validate roadmap tickets have corresponding files and status matches
+///
+/// # Complexity
+/// - Cyclomatic: 4
+fn validate_roadmap_tickets(
+    roadmap: &Roadmap,
+    ticket_map: &std::collections::HashMap<String, &super::ticket::TicketFile>,
+    report: &mut ValidationReport,
+) {
     for sprint in &roadmap.sprints {
         for ticket in &sprint.tickets {
             if !ticket_map.contains_key(&ticket.id) {
@@ -155,6 +173,19 @@ pub fn validate_project(
             }
         }
     }
+}
+
+/// Validate ticket dependencies and check for orphaned tickets
+///
+/// # Complexity
+/// - Cyclomatic: 4
+fn validate_ticket_dependencies(
+    roadmap: &Roadmap,
+    ticket_files: &[super::ticket::TicketFile],
+    ticket_map: &std::collections::HashMap<String, &super::ticket::TicketFile>,
+    report: &mut ValidationReport,
+) {
+    use std::collections::HashSet;
 
     // Check for orphaned tickets
     let roadmap_ticket_ids: HashSet<_> = roadmap
@@ -163,7 +194,7 @@ pub fn validate_project(
         .flat_map(|s| s.tickets.iter().map(|t| &t.id))
         .collect();
 
-    for ticket_file in &ticket_files {
+    for ticket_file in ticket_files {
         if !roadmap_ticket_ids.contains(&ticket_file.id) {
             report.orphaned_tickets.push(ticket_file.id.clone());
         }
@@ -178,9 +209,6 @@ pub fn validate_project(
             }
         }
     }
-
-    report.update_counts();
-    Ok(report)
 }
 
 /// Check if ticket status matches roadmap completion
