@@ -658,7 +658,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn test_concurrent_access() -> Result<()> {
         let manager = MemoryManager::new()?;
         let manager = Arc::clone(&manager);
@@ -684,7 +683,9 @@ mod tests {
         }
 
         let stats = manager.stats();
-        assert!(stats.total_allocated > 0);
+        // Check peak_usage instead of total_allocated because buffers are dropped
+        // at end of thread scope, returning them to pool and decrementing total_allocated
+        assert!(stats.peak_usage > 0, "Expected peak_usage > 0, got {}", stats.peak_usage);
 
         Ok(())
     }
