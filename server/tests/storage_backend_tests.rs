@@ -1,11 +1,14 @@
 //! Integration tests for TDG storage backend flexibility
 
 use pmat::tdg::{
-    Grade, InMemoryBackend, Language, SledBackend, StorageBackend, StorageBackendFactory,
+    Grade, InMemoryBackend, Language, StorageBackend, StorageBackendFactory,
     StorageBackendType, StorageConfig, TdgScore, TieredStore,
 };
 use std::path::PathBuf;
 use tempfile::TempDir;
+
+#[cfg(feature = "sled-backend")]
+use pmat::tdg::SledBackend;
 
 #[test]
 fn test_in_memory_backend_basic_operations() {
@@ -26,6 +29,7 @@ fn test_in_memory_backend_basic_operations() {
     assert!(!backend.contains(key).unwrap());
 }
 
+#[cfg(feature = "sled-backend")]
 #[ignore]
 #[test]
 fn test_sled_backend_persistence() {
@@ -51,10 +55,6 @@ fn test_backend_factory_creation() {
     let backend = StorageBackendFactory::create_in_memory();
     assert_eq!(backend.backend_name(), "in-memory");
 
-    // Test temporary sled creation
-    let backend = StorageBackendFactory::create_sled_temporary().unwrap();
-    assert_eq!(backend.backend_name(), "sled");
-
     // Test config-based creation
     let config = StorageConfig {
         backend_type: StorageBackendType::InMemory,
@@ -64,6 +64,14 @@ fn test_backend_factory_creation() {
     };
     let backend = StorageBackendFactory::create_from_config(&config).unwrap();
     assert_eq!(backend.backend_name(), "in-memory");
+}
+
+#[cfg(feature = "sled-backend")]
+#[test]
+fn test_sled_backend_factory_creation() {
+    // Test temporary sled creation
+    let backend = StorageBackendFactory::create_sled_temporary().unwrap();
+    assert_eq!(backend.backend_name(), "sled");
 }
 
 #[tokio::test]
@@ -137,6 +145,7 @@ async fn test_tiered_storage_with_backends() {
     assert_eq!(retrieved.score.total, record.score.total);
 }
 
+#[cfg(feature = "sled-backend")]
 #[tokio::test]
 async fn test_storage_statistics() {
     let temp_dir = TempDir::new().unwrap();
