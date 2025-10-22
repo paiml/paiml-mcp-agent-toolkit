@@ -37,6 +37,11 @@ impl RoadmapMaintenanceConfig {
             dry_run,
         }
     }
+
+    /// Check if any action flags are set
+    pub fn has_actions(&self) -> bool {
+        self.validate || self.health || self.fix || self.generate_tickets
+    }
 }
 
 /// Roadmap validation result
@@ -106,7 +111,7 @@ pub async fn handle_maintain_roadmap(
         generate_missing_ticket_files(&roadmap_path, &tickets_dir, config.dry_run).await?;
     }
 
-    if !config.validate && !config.health && !config.fix && !config.generate_tickets {
+    if !config.has_actions() {
         // Default: show health
         show_health_report(&roadmap_path, &tickets_dir, &format).await?;
     }
