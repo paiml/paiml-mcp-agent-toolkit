@@ -213,7 +213,7 @@ fn extract_version(content: &str) -> String {
 ///
 /// # Complexity
 /// - Time: O(1)
-/// - Cyclomatic: 6
+/// - Cyclomatic: 6 (reduced from 12 via Extract Method refactoring)
 fn parse_sprint_header(line: &str) -> Option<Sprint> {
     if !line.starts_with("### Sprint ") {
         return None;
@@ -233,34 +233,48 @@ fn parse_sprint_header(line: &str) -> Option<Sprint> {
 
     // Extract name and status
     let rest = parts[1].trim();
-    let (name, status) = if rest.contains(" - COMPLETE") {
-        (rest.split(" (").next()?.trim(), SprintStatus::Complete)
-    } else if rest.contains(" - IN PROGRESS") {
-        (rest.split(" (").next()?.trim(), SprintStatus::InProgress)
-    } else {
-        (rest.split(" (").next()?.trim(), SprintStatus::Planned)
-    };
-
-    // Extract duration
-    let duration = if let Some(start) = rest.find('(') {
-        if let Some(end) = rest.find(')') {
-            rest[start + 1..end].to_string()
-        } else {
-            "unknown".to_string()
-        }
-    } else {
-        "unknown".to_string()
-    };
+    let name = rest.split(" (").next()?.trim().to_string();
+    let status = parse_sprint_status(rest);
+    let duration = extract_duration(rest);
 
     Some(Sprint {
         number,
-        name: name.to_string(),
+        name,
         focus: String::new(),
         status,
         duration,
         tickets: Vec::new(),
         quality_gates: Vec::new(),
     })
+}
+
+/// Extract sprint status from header text
+///
+/// # Complexity
+/// - Time: O(n) where n is string length
+/// - Cyclomatic: 3
+fn parse_sprint_status(text: &str) -> SprintStatus {
+    if text.contains(" - COMPLETE") {
+        SprintStatus::Complete
+    } else if text.contains(" - IN PROGRESS") {
+        SprintStatus::InProgress
+    } else {
+        SprintStatus::Planned
+    }
+}
+
+/// Extract duration from parenthesized text
+///
+/// # Complexity
+/// - Time: O(n) where n is string length
+/// - Cyclomatic: 3
+fn extract_duration(text: &str) -> String {
+    if let Some(start) = text.find('(') {
+        if let Some(end) = text.find(')') {
+            return text[start + 1..end].to_string();
+        }
+    }
+    "unknown".to_string()
 }
 
 /// Parse ticket line
