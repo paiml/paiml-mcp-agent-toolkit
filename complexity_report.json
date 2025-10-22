@@ -1,0 +1,46 @@
+# Complexity Analysis Summary
+
+📊 **Files analyzed**: 813
+🔧 **Total functions**: 50
+
+## Complexity Metrics
+
+- **Median Cyclomatic**: 6.5
+- **Median Cognitive**: 10.5
+- **Max Cyclomatic**: 18
+- **Max Cognitive**: 41
+- **90th Percentile Cyclomatic**: 11
+- **90th Percentile Cognitive**: 20
+
+⏱️  **Estimated Refactoring Time**: 26.2 hours
+
+## Issues Found
+
+❌ **Errors**: 1
+⚠️  **Warnings**: 19
+
+## Top Files by Complexity
+
+1. `complex.rs` - Cyclomatic: 9, Cognitive: 20, Functions: 3
+2. `updater.rs` - Cyclomatic: 7, Cognitive: 15, Functions: 4
+3. `defect_probability.rs` - Cyclomatic: 6, Cognitive: 14, Functions: 1
+4. `code_intelligence.rs` - Cyclomatic: 9, Cognitive: 10, Functions: 1
+5. `validator.rs` - Cyclomatic: 7, Cognitive: 11, Functions: 3
+6. `memory_property_tests.rs` - Cyclomatic: 7, Cognitive: 11, Functions: 11
+7. `incremental_coverage_analyzer.rs` - Cyclomatic: 5, Cognitive: 12, Functions: 1
+8. `typescript_adapter.rs` - Cyclomatic: 5, Cognitive: 12, Functions: 4
+9. `roadmap_handler.rs` - Cyclomatic: 6, Cognitive: 10, Functions: 16
+10. `roadmap.rs` - Cyclomatic: 5, Cognitive: 8, Functions: 6
+
+## Top Complexity Hotspots
+
+1. `deeply_nested_conditionals` - cyclomatic complexity: 18
+   📁 server/src/tests/fixtures/metric_tests/complex.rs:100
+2. `test_pool_efficiency` - cyclomatic complexity: 13
+   📁 server/src/services/memory_property_tests.rs:200
+3. `update_roadmap_from_commit` - cyclomatic complexity: 12
+   📁 server/src/maintenance/updater.rs:150
+4. `parse_sprint_header` - cyclomatic complexity: 12
+   📁 server/src/maintenance/roadmap.rs:50
+5. `validate_project` - cyclomatic complexity: 11
+   📁 server/src/maintenance/validator.rs:0

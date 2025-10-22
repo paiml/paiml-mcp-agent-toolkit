@@ -413,7 +413,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn test_analyze_complex_code() -> Result<()> {
         let source = r#"
             fn complex_function(x: i32) -> i32 {

@@ -1,0 +1,23 @@
+# SATD Analysis Summary
+
+Found 72 SATD violations in 24 files
+
+Total violations: 72
+
+## Severity Distribution
+- Critical: 0
+- High: 15
+- Medium: 2
+- Low: 55
+
+## Top Violations
+1. server/src/quality/efficiency_enhanced.rs:199 - Requirement (Low)
+2. server/src/quality/efficiency_enhanced.rs:363 - Requirement (Low)
+3. server/src/quality/efficiency_enhanced.rs:367 - Requirement (Low)
+4. server/src/quality/gate.rs:114 - Requirement (Low)
+5. server/src/qdd/refactor.rs:189 - Requirement (Low)
+6. server/src/docs_enforcement/mcp_checker.rs:213 - Requirement (Low)
+7. server/src/maintenance/health.rs:194 - Defect (High)
+8. server/src/maintenance/validator.rs:235 - Defect (High)
+9. server/src/cli/analysis_utilities.rs:5907 - Defect (High)
+10. server/src/cli/commands.rs:41 - Design (Medium)

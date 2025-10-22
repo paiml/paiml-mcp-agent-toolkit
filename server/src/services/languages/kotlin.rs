@@ -440,7 +440,6 @@ class AsyncProcessor {
     }
 
     #[test]
-    #[ignore]
     fn test_kotlin_class_with_methods_analysis() {
         let visitor = KotlinAstVisitor::new(Path::new("Calculator.kt"));
         let items = visitor
