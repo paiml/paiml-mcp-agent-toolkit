@@ -131,24 +131,8 @@ pub fn create_all_mvp_subagents(output_dir: Option<PathBuf>) -> Result<()> {
     Ok(())
 }
 
-/// Validate a sub-agent definition file.
-pub fn validate_subagent(file_path: &Path) -> Result<()> {
-    println!("Validating sub-agent: {}", file_path.display());
-    println!();
-
-    // Check if file exists
-    if !file_path.exists() {
-        bail!("File not found: {}", file_path.display());
-    }
-
-    // Read file
-    let content = std::fs::read_to_string(file_path)?;
-
-    // Validation checks
-    let mut issues = Vec::new();
-    let mut warnings = Vec::new();
-
-    // Check required sections
+/// Check for required markdown sections in sub-agent definition.
+fn check_required_sections(content: &str, issues: &mut Vec<String>) {
     let required_sections = [
         "# ",          // Title
         "## Description",
@@ -166,58 +150,85 @@ pub fn validate_subagent(file_path: &Path) -> Result<()> {
             issues.push(format!("Missing required section: {}", section));
         }
     }
+}
 
-    // Check for common patterns
+/// Check for common content patterns in sub-agent definition.
+fn check_content_patterns(content: &str, warnings: &mut Vec<String>) {
     if !content.contains("MCP") {
-        warnings.push("No MCP tools mentioned (expected for PMAT sub-agents)");
+        warnings.push("No MCP tools mentioned (expected for PMAT sub-agents)".to_string());
     }
 
     if !content.contains("@") {
-        warnings.push("No example invocations with @ syntax");
+        warnings.push("No example invocations with @ syntax".to_string());
     }
 
     if content.contains("TODO") || content.contains("TBD") {
-        warnings.push("Contains placeholder text (TODO/TBD)");
+        warnings.push("Contains placeholder text (TODO/TBD)".to_string());
     }
+}
 
-    // Check markdown formatting
+/// Check markdown formatting rules.
+fn check_markdown_format(content: &str, issues: &mut Vec<String>) {
     if !content.starts_with("# ") {
         issues.push("File should start with # title".to_string());
     }
+}
 
-    // Report results
+/// Report validation results to the user.
+fn report_validation_results(issues: &[String], warnings: &[String]) -> Result<()> {
     if issues.is_empty() && warnings.is_empty() {
         println!("✅ Validation passed!");
         println!("  All required sections present");
         println!("  Markdown format valid");
         println!("  No issues found");
-        Ok(())
-    } else {
-        if !issues.is_empty() {
-            println!("❌ Validation failed!");
-            println!();
-            println!("Issues:");
-            for issue in &issues {
-                println!("  ✗ {}", issue);
-            }
-        }
+        return Ok(());
+    }
 
-        if !warnings.is_empty() {
-            println!();
-            println!("Warnings:");
-            for warning in &warnings {
-                println!("  ⚠ {}", warning);
-            }
-        }
-
-        if issues.is_empty() {
-            println!();
-            println!("✅ Validation passed with warnings");
-            Ok(())
-        } else {
-            bail!("Validation failed with {} issues", issues.len());
+    if !issues.is_empty() {
+        println!("❌ Validation failed!");
+        println!();
+        println!("Issues:");
+        for issue in issues {
+            println!("  ✗ {}", issue);
         }
     }
+
+    if !warnings.is_empty() {
+        println!();
+        println!("Warnings:");
+        for warning in warnings {
+            println!("  ⚠ {}", warning);
+        }
+    }
+
+    if issues.is_empty() {
+        println!();
+        println!("✅ Validation passed with warnings");
+        Ok(())
+    } else {
+        bail!("Validation failed with {} issues", issues.len());
+    }
+}
+
+/// Validate a sub-agent definition file.
+pub fn validate_subagent(file_path: &Path) -> Result<()> {
+    println!("Validating sub-agent: {}", file_path.display());
+    println!();
+
+    if !file_path.exists() {
+        bail!("File not found: {}", file_path.display());
+    }
+
+    let content = std::fs::read_to_string(file_path)?;
+
+    let mut issues = Vec::new();
+    let mut warnings = Vec::new();
+
+    check_required_sections(&content, &mut issues);
+    check_content_patterns(&content, &mut warnings);
+    check_markdown_format(&content, &mut issues);
+
+    report_validation_results(&issues, &warnings)
 }
 
 /// Show MCP tool mapping for sub-agents.
