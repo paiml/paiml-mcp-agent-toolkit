@@ -229,94 +229,104 @@ fn parse_typescript(source: &str) -> Result<Tree, String> {
         .ok_or_else(|| "Failed to parse TypeScript source".to_string())
 }
 
-/// Extract items from TypeScript AST
-fn extract_typescript_items(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
-    // Check for class declaration
-    if node.kind() == "class_declaration" {
-        if let Some(name_node) = node.child_by_field_name("name") {
-            let name = source[name_node.byte_range()].to_string();
-            let content = source[node.byte_range()].to_string();
+/// Extract TypeScript class declaration
+fn extract_ts_class(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
+    if let Some(name_node) = node.child_by_field_name("name") {
+        let name = source[name_node.byte_range()].to_string();
+        let content = source[node.byte_range()].to_string();
 
-            chunks.push(CodeChunk {
-                file_path: String::new(),
-                chunk_type: ChunkType::Class,
-                chunk_name: name,
-                language: "typescript".to_string(),
-                start_line: node.start_position().row + 1,
-                end_line: node.end_position().row + 1,
-                content: content.clone(),
-                content_checksum: compute_checksum(&content),
-            });
-        }
+        chunks.push(CodeChunk {
+            file_path: String::new(),
+            chunk_type: ChunkType::Class,
+            chunk_name: name,
+            language: "typescript".to_string(),
+            start_line: node.start_position().row + 1,
+            end_line: node.end_position().row + 1,
+            content: content.clone(),
+            content_checksum: compute_checksum(&content),
+        });
     }
-    // Check for interface declaration
-    else if node.kind() == "interface_declaration" {
-        if let Some(name_node) = node.child_by_field_name("name") {
-            let name = source[name_node.byte_range()].to_string();
-            let content = source[node.byte_range()].to_string();
+}
 
-            chunks.push(CodeChunk {
-                file_path: String::new(),
-                chunk_type: ChunkType::Class, // Treat interface as class-like
-                chunk_name: name,
-                language: "typescript".to_string(),
-                start_line: node.start_position().row + 1,
-                end_line: node.end_position().row + 1,
-                content: content.clone(),
-                content_checksum: compute_checksum(&content),
-            });
-        }
+/// Extract TypeScript interface declaration
+fn extract_ts_interface(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
+    if let Some(name_node) = node.child_by_field_name("name") {
+        let name = source[name_node.byte_range()].to_string();
+        let content = source[node.byte_range()].to_string();
+
+        chunks.push(CodeChunk {
+            file_path: String::new(),
+            chunk_type: ChunkType::Class, // Treat interface as class-like
+            chunk_name: name,
+            language: "typescript".to_string(),
+            start_line: node.start_position().row + 1,
+            end_line: node.end_position().row + 1,
+            content: content.clone(),
+            content_checksum: compute_checksum(&content),
+        });
     }
-    // Check for function declaration
-    else if node.kind() == "function_declaration" || node.kind() == "function" {
-        if let Some(name_node) = node.child_by_field_name("name") {
-            let name = source[name_node.byte_range()].to_string();
+}
 
-            // Include preceding doc comments
-            let start_byte = find_doc_comment_start(node, source);
-            let content = source[start_byte..node.end_byte()].to_string();
+/// Extract TypeScript function declaration
+fn extract_ts_function(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
+    if let Some(name_node) = node.child_by_field_name("name") {
+        let name = source[name_node.byte_range()].to_string();
+        let start_byte = find_doc_comment_start(node, source);
+        let content = source[start_byte..node.end_byte()].to_string();
 
-            chunks.push(CodeChunk {
-                file_path: String::new(),
-                chunk_type: ChunkType::Function,
-                chunk_name: name,
-                language: "typescript".to_string(),
-                start_line: node.start_position().row + 1,
-                end_line: node.end_position().row + 1,
-                content: content.clone(),
-                content_checksum: compute_checksum(&content),
-            });
-        }
+        chunks.push(CodeChunk {
+            file_path: String::new(),
+            chunk_type: ChunkType::Function,
+            chunk_name: name,
+            language: "typescript".to_string(),
+            start_line: node.start_position().row + 1,
+            end_line: node.end_position().row + 1,
+            content: content.clone(),
+            content_checksum: compute_checksum(&content),
+        });
     }
-    // Check for arrow function with variable declaration
-    else if node.kind() == "lexical_declaration" || node.kind() == "variable_declaration" {
-        // Look for arrow function patterns: const foo = () => {}
-        for i in 0..node.child_count() {
-            if let Some(child) = node.child(i) {
-                if child.kind() == "variable_declarator" {
-                    if let Some(name_node) = child.child_by_field_name("name") {
-                        if let Some(value_node) = child.child_by_field_name("value") {
-                            if value_node.kind() == "arrow_function" {
-                                let name = source[name_node.byte_range()].to_string();
-                                // Include the whole declaration
-                                let content = source[child.byte_range()].to_string();
+}
 
-                                chunks.push(CodeChunk {
-                                    file_path: String::new(),
-                                    chunk_type: ChunkType::Function,
-                                    chunk_name: name,
-                                    language: "typescript".to_string(),
-                                    start_line: child.start_position().row + 1,
-                                    end_line: child.end_position().row + 1,
-                                    content: content.clone(),
-                                    content_checksum: compute_checksum(&content),
-                                });
-                            }
+/// Extract TypeScript arrow function from variable declaration
+fn extract_ts_arrow_function(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
+    // Look for arrow function patterns: const foo = () => {}
+    for i in 0..node.child_count() {
+        if let Some(child) = node.child(i) {
+            if child.kind() == "variable_declarator" {
+                if let Some(name_node) = child.child_by_field_name("name") {
+                    if let Some(value_node) = child.child_by_field_name("value") {
+                        if value_node.kind() == "arrow_function" {
+                            let name = source[name_node.byte_range()].to_string();
+                            let content = source[child.byte_range()].to_string();
+
+                            chunks.push(CodeChunk {
+                                file_path: String::new(),
+                                chunk_type: ChunkType::Function,
+                                chunk_name: name,
+                                language: "typescript".to_string(),
+                                start_line: child.start_position().row + 1,
+                                end_line: child.end_position().row + 1,
+                                content: content.clone(),
+                                content_checksum: compute_checksum(&content),
+                            });
                         }
                     }
                 }
             }
         }
+    }
+}
+
+/// Extract items from TypeScript AST
+fn extract_typescript_items(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
+    match node.kind() {
+        "class_declaration" => extract_ts_class(node, source, chunks),
+        "interface_declaration" => extract_ts_interface(node, source, chunks),
+        "function_declaration" | "function" => extract_ts_function(node, source, chunks),
+        "lexical_declaration" | "variable_declaration" => {
+            extract_ts_arrow_function(node, source, chunks)
+        }
+        _ => {}
     }
 
     // Recursively process children
