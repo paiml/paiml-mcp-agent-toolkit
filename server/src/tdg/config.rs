@@ -148,7 +148,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn test_config_from_file() -> Result<()> {
         let mut temp_file = NamedTempFile::new()?;
         writeln!(

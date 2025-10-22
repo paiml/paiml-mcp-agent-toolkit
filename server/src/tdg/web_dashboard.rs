@@ -460,7 +460,6 @@ mod tests {
     use super::*;
     use tokio::time::{sleep, Duration};
 
-    #[ignore]
     #[tokio::test]
     async fn test_dashboard_state_creation() {
         let result = DashboardState::new().await;
@@ -471,7 +470,6 @@ mod tests {
         assert_eq!(metrics.health_status.overall, "healthy");
     }
 
-    #[ignore]
     #[tokio::test]
     async fn test_metrics_update() {
         let state = DashboardState::new().await.unwrap();
@@ -482,7 +480,6 @@ mod tests {
         assert!(metrics.timestamp > SystemTime::UNIX_EPOCH);
     }
 
-    #[ignore]
     #[test]
     fn test_router_creation() {
         tokio::runtime::Runtime::new().unwrap().block_on(async {
@@ -492,7 +489,6 @@ mod tests {
         });
     }
 
-    #[ignore]
     #[tokio::test]
     async fn test_background_metrics_updates() {
         let state = DashboardState::new().await.unwrap();
@@ -522,14 +518,12 @@ mod property_tests {
     use proptest::prelude::*;
 
     proptest! {
-        #[ignore]
         #[test]
         fn basic_property_stability(_input in ".*") {
             // Basic property test for coverage
             prop_assert!(true);
         }
 
-        #[ignore]
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
