@@ -3,7 +3,7 @@
 //! Automatically updates roadmap with commit information.
 
 use super::roadmap::{Roadmap, RoadmapError};
-use super::git::{extract_ticket_ids, get_current_commit, ticket_file_updated};
+use super::git::{extract_ticket_ids, get_current_commit, ticket_file_updated, CommitInfo};
 use super::ticket::{TicketFile, TicketStatus};
 use std::path::Path;
 
@@ -109,7 +109,7 @@ fn format_roadmap_markdown(roadmap: &Roadmap) -> String {
 ///
 /// # Complexity
 /// - Time: O(n*m) where n=sprints, m=tickets
-/// - Cyclomatic: 7
+/// - Cyclomatic: 7 (reduced from 12 via Extract Method refactoring)
 pub fn update_roadmap_from_commit(
     roadmap_path: &Path,
     tickets_dir: &Path,
@@ -128,20 +128,10 @@ pub fn update_roadmap_from_commit(
     let mut roadmap = Roadmap::from_file(roadmap_path)?;
     let mut updated = false;
 
-    // Check each ticket
+    // Process each ticket
     for ticket_id in ticket_ids {
-        // Only update if ticket file was modified
-        if ticket_file_updated(&commit, &ticket_id) {
-            // Check if ticket is now GREEN or COMPLETE
-            let ticket_path = tickets_dir.join(format!("{}.md", ticket_id));
-            if let Ok(ticket_file) = TicketFile::from_file(&ticket_path) {
-                if matches!(ticket_file.status, TicketStatus::Green | TicketStatus::Complete) {
-                    // Update roadmap
-                    if update_roadmap_ticket(&mut roadmap, &ticket_id, &commit.hash)? {
-                        updated = true;
-                    }
-                }
-            }
+        if process_ticket_update(&mut roadmap, &commit, &ticket_id, tickets_dir)? {
+            updated = true;
         }
     }
 
@@ -152,6 +142,36 @@ pub fn update_roadmap_from_commit(
     }
 
     Ok(())
+}
+
+/// Process a single ticket update and return whether roadmap was modified
+///
+/// # Complexity
+/// - Cyclomatic: 5 (reduced via Extract Method)
+fn process_ticket_update(
+    roadmap: &mut Roadmap,
+    commit: &CommitInfo,
+    ticket_id: &str,
+    tickets_dir: &Path,
+) -> Result<bool, Box<dyn std::error::Error>> {
+    // Only update if ticket file was modified
+    if !ticket_file_updated(commit, ticket_id) {
+        return Ok(false);
+    }
+
+    // Check if ticket is now GREEN or COMPLETE
+    let ticket_path = tickets_dir.join(format!("{}.md", ticket_id));
+    let ticket_file = match TicketFile::from_file(&ticket_path) {
+        Ok(file) => file,
+        Err(_) => return Ok(false),
+    };
+
+    if !matches!(ticket_file.status, TicketStatus::Green | TicketStatus::Complete) {
+        return Ok(false);
+    }
+
+    // Update roadmap
+    Ok(update_roadmap_ticket(roadmap, ticket_id, &commit.hash)?)
 }
 
 #[cfg(test)]
