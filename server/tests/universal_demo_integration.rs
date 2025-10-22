@@ -63,7 +63,7 @@ mod universal_demo_tests {
 
     #[ignore]
     #[tokio::test]
-    #[ignore] // Ignore by default as it requires network access
+     // Ignore by default as it requires network access
     async fn test_rust_repository_analysis() -> Result<()> {
         let repo = &get_test_repos()[0]; // Rust repo
         test_repository_analysis(repo).await
@@ -71,7 +71,7 @@ mod universal_demo_tests {
 
     #[ignore]
     #[tokio::test]
-    #[ignore] // Ignore by default as it requires network access
+     // Ignore by default as it requires network access
     async fn test_python_repository_analysis() -> Result<()> {
         let repo = &get_test_repos()[1]; // Python repo
         test_repository_analysis(repo).await
@@ -79,7 +79,7 @@ mod universal_demo_tests {
 
     #[ignore]
     #[tokio::test]
-    #[ignore] // Ignore by default as it requires network access
+     // Ignore by default as it requires network access
     async fn test_javascript_repository_analysis() -> Result<()> {
         let repo = &get_test_repos()[2]; // JavaScript repo
         test_repository_analysis(repo).await
@@ -87,7 +87,7 @@ mod universal_demo_tests {
 
     #[ignore]
     #[tokio::test]
-    #[ignore] // Ignore by default as it requires network access
+     // Ignore by default as it requires network access
     async fn test_typescript_repository_analysis() -> Result<()> {
         let repo = &get_test_repos()[3]; // TypeScript repo
         test_repository_analysis(repo).await
@@ -95,7 +95,7 @@ mod universal_demo_tests {
 
     #[ignore]
     #[tokio::test]
-    #[ignore] // Ignore by default as it requires network access
+     // Ignore by default as it requires network access
     async fn test_go_repository_analysis() -> Result<()> {
         let repo = &get_test_repos()[4]; // Go repo
         test_repository_analysis(repo).await
