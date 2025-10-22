@@ -444,7 +444,7 @@ mod property_tests {
 
     proptest! {
         #[test]
-        #[ignore]
+        #[ignore] // Fails on edge case: name = "_" - parser doesn't handle wildcard pattern
         fn parser_handles_valid_identifiers(name in valid_rust_identifier()) {
             let mut parser = EnhancedParser::new();
             let code = simple_rust_function(name);
