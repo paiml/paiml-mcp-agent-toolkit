@@ -1,0 +1,46 @@
+# Complexity Analysis Summary
+
+📊 **Files analyzed**: 813
+🔧 **Total functions**: 64
+
+## Complexity Metrics
+
+- **Median Cyclomatic**: 6.0
+- **Median Cognitive**: 9.0
+- **Max Cyclomatic**: 18
+- **Max Cognitive**: 52
+- **90th Percentile Cyclomatic**: 12
+- **90th Percentile Cognitive**: 27
+
+⏱️  **Estimated Refactoring Time**: 54.8 hours
+
+## Issues Found
+
+❌ **Errors**: 4
+⚠️  **Warnings**: 23
+
+## Top Files by Complexity
+
+1. `complex.rs` - Cyclomatic: 9, Cognitive: 20, Functions: 3
+2. `updater.rs` - Cyclomatic: 7, Cognitive: 15, Functions: 4
+3. `defect_probability.rs` - Cyclomatic: 6, Cognitive: 14, Functions: 1
+4. `roadmap_handler.rs` - Cyclomatic: 7, Cognitive: 12, Functions: 14
+5. `code_intelligence.rs` - Cyclomatic: 9, Cognitive: 10, Functions: 1
+6. `validator.rs` - Cyclomatic: 7, Cognitive: 11, Functions: 3
+7. `memory_property_tests.rs` - Cyclomatic: 7, Cognitive: 11, Functions: 11
+8. `incremental_coverage_analyzer.rs` - Cyclomatic: 5, Cognitive: 12, Functions: 1
+9. `typescript_adapter.rs` - Cyclomatic: 5, Cognitive: 12, Functions: 4
+10. `chunker.rs` - Cyclomatic: 4, Cognitive: 10, Functions: 22
+
+## Top Complexity Hotspots
+
+1. `deeply_nested_conditionals` - cyclomatic complexity: 18
+   📁 server/src/tests/fixtures/metric_tests/complex.rs:100
+2. `extract_typescript_items` - cyclomatic complexity: 17
+   📁 server/src/services/semantic/chunker.rs:350
+3. `handle_maintain_roadmap` - cyclomatic complexity: 14
+   📁 server/src/cli/handlers/roadmap_handler.rs:0
+4. `fix_roadmap_status` - cyclomatic complexity: 14
+   📁 server/src/cli/handlers/roadmap_handler.rs:200
+5. `test_pool_efficiency` - cyclomatic complexity: 13
+   📁 server/src/services/memory_property_tests.rs:200
