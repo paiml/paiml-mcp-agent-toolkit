@@ -223,6 +223,38 @@ async fn show_health_report(
 }
 
 /// Fix roadmap checkbox status based on ticket files
+/// Build checkbox markdown pattern for a ticket
+fn build_checkbox_pattern(ticket_id: &str, checked: bool) -> String {
+    if checked {
+        format!("- [x] {ticket_id}")
+    } else {
+        format!("- [ ] {ticket_id}")
+    }
+}
+
+/// Apply and report roadmap changes
+fn apply_roadmap_changes(
+    roadmap_path: &Path,
+    updated_content: String,
+    changes: &[(String, bool)],
+    dry_run: bool,
+) -> Result<()> {
+    eprintln!("📝 Changes to apply:");
+    for (ticket_id, checked) in changes {
+        let action = if *checked { "✓" } else { "☐" };
+        eprintln!("  {action} {ticket_id}");
+    }
+
+    if dry_run {
+        eprintln!("\n🔍 Dry-run mode - no changes applied");
+    } else {
+        fs::write(roadmap_path, updated_content)?;
+        eprintln!("\n✅ Updated {}", roadmap_path.display());
+    }
+
+    Ok(())
+}
+
 async fn fix_roadmap_status(
     roadmap_path: &Path,
     tickets_dir: &Path,
@@ -247,18 +279,8 @@ async fn fix_roadmap_status(
         if *checkbox_status != should_be_checked {
             changes.push((ticket_id.clone(), should_be_checked));
 
-            // Replace checkbox
-            let old_pattern = if *checkbox_status {
-                format!("- [x] {ticket_id}")
-            } else {
-                format!("- [ ] {ticket_id}")
-            };
-
-            let new_pattern = if should_be_checked {
-                format!("- [x] {ticket_id}")
-            } else {
-                format!("- [ ] {ticket_id}")
-            };
+            let old_pattern = build_checkbox_pattern(ticket_id, *checkbox_status);
+            let new_pattern = build_checkbox_pattern(ticket_id, should_be_checked);
 
             updated_content = updated_content.replace(&old_pattern, &new_pattern);
         }
@@ -269,20 +291,7 @@ async fn fix_roadmap_status(
         return Ok(());
     }
 
-    eprintln!("📝 Changes to apply:");
-    for (ticket_id, checked) in &changes {
-        let action = if *checked { "✓" } else { "☐" };
-        eprintln!("  {action} {ticket_id}");
-    }
-
-    if dry_run {
-        eprintln!("\n🔍 Dry-run mode - no changes applied");
-    } else {
-        fs::write(roadmap_path, updated_content)?;
-        eprintln!("\n✅ Updated {}", roadmap_path.display());
-    }
-
-    Ok(())
+    apply_roadmap_changes(roadmap_path, updated_content, &changes, dry_run)
 }
 
 /// Generate missing ticket files from roadmap (internal, reusable)
