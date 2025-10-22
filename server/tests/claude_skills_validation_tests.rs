@@ -389,3 +389,288 @@ Prompt content
         fs::remove_file(test_file).ok();
     }
 }
+
+#[cfg(test)]
+mod phase_2_skill_discovery_tests {
+    use super::*;
+
+    /// Phase 2 Test: Discover all skill directories
+    #[test]
+    fn test_discover_all_skills() {
+        let workspace_root = get_workspace_root();
+        let skills_dir = workspace_root.join(".claude/skills");
+
+        assert!(skills_dir.exists(), "Skills directory must exist");
+
+        let entries = fs::read_dir(&skills_dir)
+            .expect("Should be able to read skills directory");
+
+        let skill_dirs: Vec<String> = entries
+            .filter_map(|e| e.ok())
+            .filter(|e| e.path().is_dir())
+            .map(|e| e.file_name().to_string_lossy().to_string())
+            .collect();
+
+        // Should have exactly 5 skills
+        assert_eq!(
+            skill_dirs.len(), 5,
+            "Should have 5 skill directories, found: {:?}",
+            skill_dirs
+        );
+
+        // Verify expected skills are present
+        let expected_skills = vec![
+            "pmat-quality",
+            "pmat-context",
+            "pmat-refactor",
+            "pmat-tech-debt",
+            "pmat-multi-lang",
+        ];
+
+        for expected in &expected_skills {
+            assert!(
+                skill_dirs.contains(&expected.to_string()),
+                "Missing expected skill: {}",
+                expected
+            );
+        }
+    }
+
+    /// Phase 2 Test: All skills have skill.md files
+    #[test]
+    fn test_all_skills_have_skill_files() {
+        let workspace_root = get_workspace_root();
+        let skills_dir = workspace_root.join(".claude/skills");
+
+        let expected_skills = vec![
+            "pmat-quality",
+            "pmat-context",
+            "pmat-refactor",
+            "pmat-tech-debt",
+            "pmat-multi-lang",
+        ];
+
+        for skill_name in &expected_skills {
+            let skill_path = skills_dir.join(skill_name).join("skill.md");
+            assert!(
+                skill_path.exists(),
+                "Skill {} must have skill.md file at {:?}",
+                skill_name,
+                skill_path
+            );
+        }
+    }
+
+    /// Phase 2 Test: All skills parse successfully
+    #[test]
+    fn test_all_skills_parse_successfully() {
+        let workspace_root = get_workspace_root();
+        let skills_dir = workspace_root.join(".claude/skills");
+
+        let expected_skills = vec![
+            "pmat-quality",
+            "pmat-context",
+            "pmat-refactor",
+            "pmat-tech-debt",
+            "pmat-multi-lang",
+        ];
+
+        for skill_name in &expected_skills {
+            let skill_path = skills_dir.join(skill_name).join("skill.md");
+            let result = parse_skill_file(&skill_path);
+            assert!(
+                result.is_ok(),
+                "Skill {} failed to parse: {:?}",
+                skill_name,
+                result.err()
+            );
+        }
+    }
+}
+
+#[cfg(test)]
+mod phase_2_all_skills_validation_tests {
+    use super::*;
+
+    /// Phase 2 Test: pmat-context skill validation
+    #[test]
+    fn test_pmat_context_skill_valid() {
+        let workspace_root = get_workspace_root();
+        let skill_path = workspace_root.join(".claude/skills/pmat-context/skill.md");
+        let skill = parse_skill_file(&skill_path).expect("Failed to parse pmat-context skill");
+
+        // Validate required fields
+        assert!(!skill.name.is_empty());
+        assert!(skill.description.len() > 50);
+        assert!(!skill.allowed_tools.is_empty());
+        assert!(skill.prompt_content.len() > 200);
+
+        // Validate name contains expected keywords
+        let name_lower = skill.name.to_lowercase();
+        assert!(
+            name_lower.contains("context") || name_lower.contains("pmat"),
+            "Skill name should reference context or PMAT"
+        );
+
+        // Validate required tools
+        let tools_lower: Vec<String> = skill.allowed_tools
+            .iter()
+            .map(|t| t.to_lowercase())
+            .collect();
+        assert!(
+            tools_lower.contains(&"bash".to_string()),
+            "pmat-context must include Bash tool"
+        );
+    }
+
+    /// Phase 2 Test: pmat-refactor skill validation
+    #[test]
+    fn test_pmat_refactor_skill_valid() {
+        let workspace_root = get_workspace_root();
+        let skill_path = workspace_root.join(".claude/skills/pmat-refactor/skill.md");
+        let skill = parse_skill_file(&skill_path).expect("Failed to parse pmat-refactor skill");
+
+        assert!(!skill.name.is_empty());
+        assert!(skill.description.len() > 50);
+        assert!(!skill.allowed_tools.is_empty());
+        assert!(skill.prompt_content.len() > 200);
+
+        let name_lower = skill.name.to_lowercase();
+        assert!(
+            name_lower.contains("refactor") || name_lower.contains("pmat"),
+            "Skill name should reference refactoring or PMAT"
+        );
+
+        // Validate refactor-specific tools
+        let tools_lower: Vec<String> = skill.allowed_tools
+            .iter()
+            .map(|t| t.to_lowercase())
+            .collect();
+        assert!(
+            tools_lower.contains(&"bash".to_string()) && tools_lower.contains(&"edit".to_string()),
+            "pmat-refactor should include Bash and Edit tools"
+        );
+    }
+
+    /// Phase 2 Test: pmat-tech-debt skill validation
+    #[test]
+    fn test_pmat_tech_debt_skill_valid() {
+        let workspace_root = get_workspace_root();
+        let skill_path = workspace_root.join(".claude/skills/pmat-tech-debt/skill.md");
+        let skill = parse_skill_file(&skill_path).expect("Failed to parse pmat-tech-debt skill");
+
+        assert!(!skill.name.is_empty());
+        assert!(skill.description.len() > 50);
+        assert!(!skill.allowed_tools.is_empty());
+        assert!(skill.prompt_content.len() > 200);
+
+        let content_lower = skill.prompt_content.to_lowercase();
+        assert!(
+            content_lower.contains("satd") || content_lower.contains("technical debt"),
+            "Prompt must reference SATD or technical debt"
+        );
+    }
+
+    /// Phase 2 Test: pmat-multi-lang skill validation
+    #[test]
+    fn test_pmat_multi_lang_skill_valid() {
+        let workspace_root = get_workspace_root();
+        let skill_path = workspace_root.join(".claude/skills/pmat-multi-lang/skill.md");
+        let skill = parse_skill_file(&skill_path).expect("Failed to parse pmat-multi-lang skill");
+
+        assert!(!skill.name.is_empty());
+        assert!(skill.description.len() > 50);
+        assert!(!skill.allowed_tools.is_empty());
+        assert!(skill.prompt_content.len() > 200);
+
+        let content_lower = skill.prompt_content.to_lowercase();
+        assert!(
+            content_lower.contains("multi-language") || content_lower.contains("polyglot"),
+            "Prompt must reference multi-language or polyglot"
+        );
+    }
+
+    /// Phase 2 Test: All skills have activation triggers documented
+    #[test]
+    fn test_all_skills_have_activation_triggers() {
+        let workspace_root = get_workspace_root();
+        let skills_dir = workspace_root.join(".claude/skills");
+
+        let skills = vec![
+            "pmat-quality",
+            "pmat-context",
+            "pmat-refactor",
+            "pmat-tech-debt",
+            "pmat-multi-lang",
+        ];
+
+        for skill_name in &skills {
+            let skill_path = skills_dir.join(skill_name).join("skill.md");
+            let skill = parse_skill_file(&skill_path)
+                .expect(&format!("Failed to parse {} skill", skill_name));
+
+            let full_text = format!("{} {}", skill.description, skill.prompt_content).to_lowercase();
+            assert!(
+                full_text.contains("when") || full_text.contains("use this"),
+                "Skill {} must document activation triggers",
+                skill_name
+            );
+        }
+    }
+
+    /// Phase 2 Test: All skills include examples
+    #[test]
+    fn test_all_skills_include_examples() {
+        let workspace_root = get_workspace_root();
+        let skills_dir = workspace_root.join(".claude/skills");
+
+        let skills = vec![
+            "pmat-quality",
+            "pmat-context",
+            "pmat-refactor",
+            "pmat-tech-debt",
+            "pmat-multi-lang",
+        ];
+
+        for skill_name in &skills {
+            let skill_path = skills_dir.join(skill_name).join("skill.md");
+            let skill = parse_skill_file(&skill_path)
+                .expect(&format!("Failed to parse {} skill", skill_name));
+
+            let content_lower = skill.prompt_content.to_lowercase();
+            assert!(
+                content_lower.contains("example") || content_lower.contains("workflow"),
+                "Skill {} should include examples or workflow",
+                skill_name
+            );
+        }
+    }
+
+    /// Phase 2 Test: All skills reference PMAT tool
+    #[test]
+    fn test_all_skills_reference_pmat() {
+        let workspace_root = get_workspace_root();
+        let skills_dir = workspace_root.join(".claude/skills");
+
+        let skills = vec![
+            "pmat-quality",
+            "pmat-context",
+            "pmat-refactor",
+            "pmat-tech-debt",
+            "pmat-multi-lang",
+        ];
+
+        for skill_name in &skills {
+            let skill_path = skills_dir.join(skill_name).join("skill.md");
+            let skill = parse_skill_file(&skill_path)
+                .expect(&format!("Failed to parse {} skill", skill_name));
+
+            let full_text = format!("{} {}", skill.description, skill.prompt_content).to_lowercase();
+            assert!(
+                full_text.contains("pmat"),
+                "Skill {} must reference PMAT tool",
+                skill_name
+            );
+        }
+    }
+}
