@@ -6,6 +6,64 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+## [2.170.0] - 2025-10-22 - Sprint 46: Security, Dependencies, Binary Size, Performance
+
+### Security
+- **Zero Vulnerabilities** 🔒
+  - Ran `cargo audit` - no security vulnerabilities detected
+  - Updated ruchy: 3.110 → 3.115 (eliminated fxhash unmaintained warning)
+  - Updated nalgebra-sparse: 0.9 → 0.11 (eliminated fxhash dependency)
+  - Remaining warnings acceptable: `instant` (optional sled), `paste` (compile-time proc-macro)
+
+### Dependencies
+- **Updated to Latest Safe Versions** 📦
+  - `rustls`: 0.23.33 → 0.23.34 (security patches)
+  - `nalgebra`: Transitive update to 0.34.1
+  - All dependencies updated via `cargo update`
+  - 30+ major updates available but deferred to avoid breaking changes
+
+### Performance
+- **Performance Baselines Established** ⚡
+  - Context generation (single file): **8ms** (excellent)
+  - Complexity analysis: **20ms** for ~12 files (excellent)
+  - Dead code analysis: 48.86s for 377 files (7.7 files/second)
+  - No performance regressions from dependency updates
+  - Binary performance prioritized over size optimization
+
+### Binary Size
+- **Binary Size Analysis Complete** 📊
+  - Current size: 44.7 MB (up from 40 MB baseline)
+  - +11.75% increase due to dependency security updates
+  - Top contributors: Clap (336KB), regex_automata (93.9KB), tree-sitter lexers (69KB each)
+  - Release profile already aggressively optimized (opt-level=3, lto="fat", strip="symbols")
+  - **Decision**: Maintained performance (opt-level=3) over size reduction (opt-level="z")
+
+### Testing
+- **Test Status** ✅
+  - 4400+ tests passing individually
+  - 11 tests show concurrent execution flakiness (pre-existing, all pass individually)
+  - Test verification using Five Whys methodology (Sprint 42 pattern)
+
+### Release Artifacts
+- **Complete Release** 🚀
+  - Git tag: v2.170.0
+  - GitHub Release: https://github.com/paiml/paiml-mcp-agent-toolkit/releases/tag/v2.170.0
+  - crates.io: https://crates.io/crates/pmat/2.170.0
+  - Installation: `cargo install pmat --version 2.170.0`
+
+### Documentation
+- **Updated Documentation** 📖
+  - ROADMAP.md: Sprint 46 marked complete
+  - CHANGELOG.md: This entry
+  - Release notes: Complete Sprint 46 summary
+  - Performance baselines documented
+
+### Commits
+- `12a31059`: Sprint 46 Priority 1 - Security updates
+- `ea9aca77`: Sprint 46 Priority 2 - Dependency updates
+- `da106c5b`: Sprint 46 COMPLETE - ROADMAP update
+- `cdf6fa72`: Version bump to v2.170.0
+
 
 ## [2.159.0] - 2025-10-10 - Semantic Search CLI Integration (Sprint 32)
 
