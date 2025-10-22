@@ -102,64 +102,75 @@ pub fn is_generic_description(desc: &str) -> bool {
         return true;
     }
 
-    // Trim whitespace
     let desc = desc.trim();
 
-    // Length check: too short is generic
+    // Basic checks: length and pattern matching
+    if is_too_short_or_matches_pattern(desc) {
+        return true;
+    }
+
+    let words: Vec<&str> = desc.split_whitespace().collect();
+    if words.len() < 3 {
+        return true;
+    }
+
+    // Check for lazy words and repetitive patterns
+    if has_too_many_lazy_words(&words) || has_low_word_uniqueness(&words) {
+        return true;
+    }
+
+    // If has detail indicators and decent length, it's specific
+    if has_detail_indicators(desc) && desc.len() > 30 {
+        return false;
+    }
+
+    // Default: generic unless proven specific
+    false
+}
+
+/// Check if description is too short or matches a generic pattern
+fn is_too_short_or_matches_pattern(desc: &str) -> bool {
     if desc.len() < 15 {
         return true;
     }
 
-    // Pattern check: matches generic pattern
     for pattern in GENERIC_PATTERNS.iter() {
         if pattern.is_match(desc) {
             return true;
         }
     }
 
-    // Word count check
-    let words: Vec<&str> = desc.split_whitespace().collect();
-    if words.len() < 3 {
-        return true;
-    }
+    false
+}
 
-    // Lazy word ratio check
-    // If more than 50% of words are lazy words, it's generic
+/// Check if more than 50% of words are lazy/generic words
+fn has_too_many_lazy_words(words: &[&str]) -> bool {
     let lazy_count = words.iter()
         .filter(|w| LAZY_WORDS.contains(&w.to_lowercase().as_str()))
         .count();
 
-    if (lazy_count as f64) / (words.len() as f64) > 0.5 {
-        return true;
-    }
+    (lazy_count as f64) / (words.len() as f64) > 0.5
+}
 
-    // Check for detail indicators (suggests specific content)
-    let has_details = desc.contains("(") ||  // Examples: "(default: ...)", "(e.g., ...)"
-                      desc.contains("[") ||  // Constraints: "[required]"
-                      desc.contains(":") ||  // Enumerations: "level: standard, high"
-                      desc.contains("e.g.") ||
-                      desc.contains("default") ||
-                      desc.contains("example");
+/// Check if description has detail indicators like examples, defaults, constraints
+fn has_detail_indicators(desc: &str) -> bool {
+    desc.contains("(")      // Examples: "(default: ...)", "(e.g., ...)"
+        || desc.contains("[")   // Constraints: "[required]"
+        || desc.contains(":")   // Enumerations: "level: standard, high"
+        || desc.contains("e.g.")
+        || desc.contains("default")
+        || desc.contains("example")
+}
 
-    if has_details && desc.len() > 30 {
-        // Has details and decent length = specific
-        return false;
-    }
-
-    // If we get here, check if it's just repeating words
-    // "name for name" type patterns
+/// Check if description has low word uniqueness (repetitive)
+fn has_low_word_uniqueness(words: &[&str]) -> bool {
     let lowercase_words: Vec<String> = words.iter()
         .map(|w| w.to_lowercase())
         .collect();
     let unique_words: std::collections::HashSet<&String> = lowercase_words.iter().collect();
 
     // If <40% unique words, probably generic
-    if (unique_words.len() as f64) / (words.len() as f64) < 0.4 {
-        return true;
-    }
-
-    // Passed all checks - likely specific
-    false
+    (unique_words.len() as f64) / (words.len() as f64) < 0.4
 }
 
 /// Suggest improvements for generic descriptions

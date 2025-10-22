@@ -6,7 +6,7 @@
 //! It checks that all flags are documented and descriptions are non-generic.
 
 use crate::docs_enforcement::generic_detector::is_generic_description;
-use anyhow::{Context, Result};
+use anyhow::Result;
 use std::collections::HashSet;
 use std::process::Command;
 
@@ -58,7 +58,32 @@ pub fn validate_cli_documentation(
         issues: Vec::new(),
     };
 
-    // Try to run --help
+    // Execute command and get help text
+    let help_text = match execute_help_command(binary_path, command) {
+        Ok(text) => {
+            report.has_help = true;
+            text
+        }
+        Err(exit_code) => {
+            report.issues.push(format!("Command failed with exit code: {}", exit_code));
+            return Ok(report);
+        }
+    };
+
+    // Validate required sections
+    validate_sections(&help_text, &mut report);
+
+    // Extract flags
+    report.documented_flags = extract_flags_from_help(&help_text);
+
+    // Check for generic descriptions in flag help text
+    report.generic_descriptions = find_generic_flag_descriptions(&help_text);
+
+    Ok(report)
+}
+
+/// Execute command with --help flag and return output
+fn execute_help_command(binary_path: &str, command: &[&str]) -> Result<String, i32> {
     let mut cmd = Command::new(binary_path);
     for arg in command {
         cmd.arg(arg);
@@ -66,22 +91,17 @@ pub fn validate_cli_documentation(
     cmd.arg("--help");
 
     let output = cmd.output()
-        .context("Failed to execute command")?;
+        .map_err(|_| -1)?;
 
     if !output.status.success() {
-        report.issues.push(format!(
-            "Command failed with exit code: {}",
-            output.status.code().unwrap_or(-1)
-        ));
-        return Ok(report);
+        return Err(output.status.code().unwrap_or(-1));
     }
 
-    report.has_help = true;
+    Ok(String::from_utf8_lossy(&output.stdout).to_string())
+}
 
-    // Parse help text
-    let help_text = String::from_utf8_lossy(&output.stdout);
-
-    // Check for required sections
+/// Validate presence of required sections and add issues if missing
+fn validate_sections(help_text: &str, report: &mut CliDocumentationReport) {
     report.has_usage_section = help_text.contains("Usage:");
     report.has_options_section = help_text.contains("Options:") || help_text.contains("FLAGS:");
     report.has_examples_section = help_text.contains("EXAMPLE")
@@ -95,11 +115,12 @@ pub fn validate_cli_documentation(
     if !report.has_options_section {
         report.issues.push("Missing 'Options:' or 'FLAGS:' section".to_string());
     }
+}
 
-    // Extract flags
-    report.documented_flags = extract_flags_from_help(&help_text);
+/// Find generic descriptions in flag help text
+fn find_generic_flag_descriptions(help_text: &str) -> Vec<String> {
+    let mut generic_descriptions = Vec::new();
 
-    // Check for generic descriptions
     for line in help_text.lines() {
         // Skip empty lines and section headers
         if line.trim().is_empty() || line.ends_with(':') {
@@ -107,13 +128,10 @@ pub fn validate_cli_documentation(
         }
 
         // Check if line looks like a flag description
-        // Format: "  -f, --flag <VALUE>    Description here"
         if line.trim_start().starts_with('-') {
-            // Extract description part (after flag definition)
-            if let Some(desc_part) = line.split_whitespace().skip_while(|w| w.starts_with('-') || w.starts_with('<') || w.starts_with('[')).collect::<Vec<_>>().get(0..) {
-                let description = desc_part.join(" ");
-                if !description.is_empty() && is_generic_description(&description) {
-                    report.generic_descriptions.push(format!(
+            if let Some(description) = extract_description_from_flag_line(line) {
+                if is_generic_description(&description) {
+                    generic_descriptions.push(format!(
                         "Flag '{}': {}",
                         extract_flag_name(line),
                         description
@@ -123,7 +141,27 @@ pub fn validate_cli_documentation(
         }
     }
 
-    Ok(report)
+    generic_descriptions
+}
+
+/// Extract description part from a flag help line
+fn extract_description_from_flag_line(line: &str) -> Option<String> {
+    // Format: "  -f, --flag <VALUE>    Description here"
+    let desc_part: Vec<&str> = line
+        .split_whitespace()
+        .skip_while(|w| w.starts_with('-') || w.starts_with('<') || w.starts_with('['))
+        .collect();
+
+    if desc_part.is_empty() {
+        return None;
+    }
+
+    let description = desc_part.join(" ");
+    if description.is_empty() {
+        None
+    } else {
+        Some(description)
+    }
 }
 
 /// Extract flag names from help text
@@ -132,42 +170,77 @@ pub fn validate_cli_documentation(
 /// Returns flags like ["--help", "--verbose", "-v", etc.]
 fn extract_flags_from_help(help_text: &str) -> Vec<String> {
     let mut flags = Vec::new();
+    let options_lines = extract_options_section_lines(help_text);
+
+    for line in options_lines {
+        if let Some(line_flags) = parse_flags_from_line(line) {
+            flags.extend(line_flags);
+        }
+    }
+
+    flags
+}
+
+/// Extract lines from the Options/FLAGS section
+fn extract_options_section_lines(help_text: &str) -> Vec<&str> {
+    let mut section_lines = Vec::new();
     let mut in_options_section = false;
 
     for line in help_text.lines() {
         // Detect start of options section
-        if line.contains("Options:") || line.contains("FLAGS:") {
+        if is_options_section_start(line) {
             in_options_section = true;
             continue;
         }
 
         // Detect end of options section (next section)
-        if in_options_section && !line.trim().is_empty() && !line.starts_with(' ') {
+        if is_section_boundary(line, in_options_section) {
             break;
         }
 
         if in_options_section {
-            // Extract flags from line
-            // Format: "  -f, --flag <VALUE>    Description"
-            let trimmed = line.trim_start();
-            if trimmed.starts_with('-') {
-                // Parse flag names (could be multiple like "-v, --verbose")
-                let flag_part = trimmed.split_whitespace()
-                    .take_while(|w| w.starts_with('-') || w == &",")
-                    .collect::<Vec<_>>();
-
-                for token in flag_part {
-                    if token.starts_with('-') {
-                        // Remove trailing comma if present
-                        let flag = token.trim_end_matches(',');
-                        flags.push(flag.to_string());
-                    }
-                }
-            }
+            section_lines.push(line);
         }
     }
 
-    flags
+    section_lines
+}
+
+/// Check if line marks the start of options section
+fn is_options_section_start(line: &str) -> bool {
+    line.contains("Options:") || line.contains("FLAGS:")
+}
+
+/// Check if line is a section boundary (end of current section)
+fn is_section_boundary(line: &str, in_section: bool) -> bool {
+    in_section && !line.trim().is_empty() && !line.starts_with(' ')
+}
+
+/// Parse flag names from a single help line
+/// Format: "  -f, --flag <VALUE>    Description"
+/// Returns: Some(vec!["-f", "--flag"]) or None
+fn parse_flags_from_line(line: &str) -> Option<Vec<String>> {
+    let trimmed = line.trim_start();
+    if !trimmed.starts_with('-') {
+        return None;
+    }
+
+    let flag_tokens: Vec<&str> = trimmed
+        .split_whitespace()
+        .take_while(|w| w.starts_with('-') || w == &",")
+        .collect();
+
+    let flags: Vec<String> = flag_tokens
+        .iter()
+        .filter(|token| token.starts_with('-'))
+        .map(|token| token.trim_end_matches(',').to_string())
+        .collect();
+
+    if flags.is_empty() {
+        None
+    } else {
+        Some(flags)
+    }
 }
 
 /// Extract primary flag name from a help line
