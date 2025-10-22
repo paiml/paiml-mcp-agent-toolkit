@@ -166,7 +166,7 @@ tree-sitter-rust = { version = "0.23", optional = true }
 # tree-sitter-haskell = { version = "0.23", optional = true }
 # tree-sitter-ocaml = { version = "0.23", optional = true }
 # For Ruchy language support (Ruby alternative parser)
-ruchy = { version = "3.31", optional = true }
+ruchy = { version = "3.110", optional = true }
 logos = { version = "0.14", optional = true }
 # For Kotlin parsing (conditional) - DISABLED due to tree-sitter version conflict
 # tree-sitter-kotlin = { version = "0.3.8", optional = true }
