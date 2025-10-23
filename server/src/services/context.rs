@@ -780,26 +780,26 @@ async fn analyze_file_by_toolchain(
         //     cpp::analyze_cpp_file(path).await.ok()
         // }
 
-        // Java files - TODO: implement analyze_java_file()
-        // #[cfg(feature = "java-ast")]
-        // "java" => {
-        //     use crate::services::languages::java;
-        //     java::analyze_java_file(path).await.ok()
-        // }
+        // Java files
+        #[cfg(feature = "java-ast")]
+        "java" => {
+            use crate::services::languages::java;
+            java::analyze_java_file(path).await.ok()
+        }
 
-        // C# files - TODO: implement analyze_csharp_file()
-        // #[cfg(feature = "csharp-ast")]
-        // "cs" => {
-        //     use crate::services::languages::csharp;
-        //     csharp::analyze_csharp_file(path).await.ok()
-        // }
+        // C# files
+        #[cfg(feature = "csharp-ast")]
+        "cs" => {
+            use crate::services::languages::csharp;
+            csharp::analyze_csharp_file(path).await.ok()
+        }
 
-        // Kotlin files - TODO: implement analyze_kotlin_file()
-        // #[cfg(feature = "kotlin-ast")]
-        // "kt" | "kts" => {
-        //     use crate::services::languages::kotlin;
-        //     kotlin::analyze_kotlin_file(path).await.ok()
-        // }
+        // Kotlin files
+        #[cfg(feature = "kotlin-ast")]
+        "kt" | "kts" => {
+            use crate::services::languages::kotlin;
+            kotlin::analyze_kotlin_file(path).await.ok()
+        }
 
         // Ruby files (tree-sitter) - TODO: implement analyze_ruby_file()
         // #[cfg(feature = "ruby-ast")]
@@ -815,12 +815,12 @@ async fn analyze_file_by_toolchain(
         //     ruchy::analyze_ruby_file(path).await.ok()
         // }
 
-        // Swift files - TODO: implement analyze_swift_file()
-        // #[cfg(feature = "swift-ast")]
-        // "swift" => {
-        //     use crate::services::languages::swift;
-        //     swift::analyze_swift_file(path).await.ok()
-        // }
+        // Swift files
+        #[cfg(feature = "swift-ast")]
+        "swift" => {
+            use crate::services::languages::swift;
+            swift::analyze_swift_file(path).await.ok()
+        }
 
         // Erlang files - TODO: implement analyze_erlang_file()
         // #[cfg(feature = "erlang-ast")]
@@ -1121,26 +1121,26 @@ async fn analyze_file_by_toolchain_persistent(
         //     cpp::analyze_cpp_file(path).await.ok()
         // }
 
-        // Java files - TODO: implement analyze_java_file()
-        // #[cfg(feature = "java-ast")]
-        // "java" => {
-        //     use crate::services::languages::java;
-        //     java::analyze_java_file(path).await.ok()
-        // }
+        // Java files
+        #[cfg(feature = "java-ast")]
+        "java" => {
+            use crate::services::languages::java;
+            java::analyze_java_file(path).await.ok()
+        }
 
-        // C# files - TODO: implement analyze_csharp_file()
-        // #[cfg(feature = "csharp-ast")]
-        // "cs" => {
-        //     use crate::services::languages::csharp;
-        //     csharp::analyze_csharp_file(path).await.ok()
-        // }
+        // C# files
+        #[cfg(feature = "csharp-ast")]
+        "cs" => {
+            use crate::services::languages::csharp;
+            csharp::analyze_csharp_file(path).await.ok()
+        }
 
-        // Kotlin files - TODO: implement analyze_kotlin_file()
-        // #[cfg(feature = "kotlin-ast")]
-        // "kt" | "kts" => {
-        //     use crate::services::languages::kotlin;
-        //     kotlin::analyze_kotlin_file(path).await.ok()
-        // }
+        // Kotlin files
+        #[cfg(feature = "kotlin-ast")]
+        "kt" | "kts" => {
+            use crate::services::languages::kotlin;
+            kotlin::analyze_kotlin_file(path).await.ok()
+        }
 
         // Ruby files (tree-sitter) - TODO: implement analyze_ruby_file()
         // #[cfg(feature = "ruby-ast")]
@@ -1156,12 +1156,12 @@ async fn analyze_file_by_toolchain_persistent(
         //     ruchy::analyze_ruby_file(path).await.ok()
         // }
 
-        // Swift files - TODO: implement analyze_swift_file()
-        // #[cfg(feature = "swift-ast")]
-        // "swift" => {
-        //     use crate::services::languages::swift;
-        //     swift::analyze_swift_file(path).await.ok()
-        // }
+        // Swift files
+        #[cfg(feature = "swift-ast")]
+        "swift" => {
+            use crate::services::languages::swift;
+            swift::analyze_swift_file(path).await.ok()
+        }
 
         // Erlang files - TODO: implement analyze_erlang_file()
         // #[cfg(feature = "erlang-ast")]
