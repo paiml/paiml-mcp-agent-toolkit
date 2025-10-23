@@ -2,6 +2,14 @@ use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use syn::{self, visit::Visit, Expr, Stmt};
 
+/// Helper function to convert a syn::Path to a string
+fn path_to_string(path: &syn::Path) -> String {
+    path.segments.iter()
+        .map(|seg| seg.ident.to_string())
+        .collect::<Vec<_>>()
+        .join("::")
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Complexity {
     O1,         // O(1) - Constant
@@ -195,12 +203,30 @@ impl SymbolicExecutor {
 
         for stmt in &func.block.stmts {
             if let Stmt::Local(local) = stmt {
-                if let Some(_init) = &local.init {
-                    // TODO: Fix quote macro usage with LocalInit
-                    // let code = quote::quote!(#init).to_string();
-                    // if code.contains("HashMap") || code.contains("cache") || code.contains("memo") {
-                    //     has_cache = true;
-                    // }
+                if let Some(local_init) = &local.init {
+                    // Look for memoization patterns directly in the AST
+                    match &*local_init.expr {
+                        syn::Expr::Call(call) => {
+                            // Check if we're creating a HashMap or similar cache structure
+                            if let syn::Expr::Path(path) = &*call.func {
+                                let path_str = path_to_string(&path.path);
+                                if path_str.contains("HashMap") || path_str.contains("BTreeMap") {
+                                    return true; // Found a cache
+                                }
+                            }
+                        },
+                        syn::Expr::Macro(mac) => {
+                            // Check macro invocations like vec![] or hashmap![]
+                            let mac_name = mac.mac.path.segments.last()
+                                .map(|seg| seg.ident.to_string())
+                                .unwrap_or_default();
+                            
+                            if mac_name.contains("hashmap") || mac_name.contains("cache") {
+                                return true;
+                            }
+                        },
+                        _ => {}
+                    }
                 }
             }
         }
@@ -359,16 +385,43 @@ impl SpaceComplexityAnalyzer {
 
 impl<'ast> Visit<'ast> for SpaceComplexityAnalyzer {
     fn visit_local(&mut self, node: &'ast syn::Local) {
-        if let Some(_init) = &node.init {
-            // TODO: Fix quote macro usage with LocalInit
-            // let expr_str = quote::quote!(#init).to_string();
-
-            // Check for vector/array allocations (simplified check)
-            // TODO: Implement proper allocation detection without quote macro
-            self.allocations.push(Allocation {
-                size: AllocationSize::Dynamic,
-                _location: "local".to_string(),
-            });
+        if let Some(local_init) = &node.init {
+            // Check for vector/array allocations directly in the AST
+            match &*local_init.expr {
+                syn::Expr::Array(_) => {
+                    // Static array
+                    self.allocations.push(Allocation {
+                        size: AllocationSize::Static,
+                        _location: "array".to_string(),
+                    });
+                },
+                syn::Expr::Call(call) => {
+                    // Check for Vec::new(), Vec::with_capacity(), etc.
+                    if let syn::Expr::Path(path) = &*call.func {
+                        let path_str = path_to_string(&path.path);
+                        if path_str.contains("Vec") || path_str.contains("String") {
+                            self.allocations.push(Allocation {
+                                size: AllocationSize::Dynamic,
+                                _location: "vec/string".to_string(),
+                            });
+                        }
+                    }
+                },
+                syn::Expr::Macro(mac) => {
+                    // Check for vec![], string![], etc.
+                    let mac_name = mac.mac.path.segments.last()
+                        .map(|seg| seg.ident.to_string())
+                        .unwrap_or_default();
+                    
+                    if mac_name == "vec" || mac_name.contains("string") {
+                        self.allocations.push(Allocation {
+                            size: AllocationSize::Dynamic,
+                            _location: "macro".to_string(),
+                        });
+                    }
+                },
+                _ => {}
+            }
         }
 
         syn::visit::visit_local(self, node);
