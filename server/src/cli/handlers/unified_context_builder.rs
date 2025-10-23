@@ -458,34 +458,139 @@ impl Display for UnifiedContextBuilder {
 }
 
 // Helper functions to run individual analyses
-async fn run_big_o_analysis(_path: &Path) -> Result<BigOAnalysis, Error> {
-    // TODO: Implement actual big-o analysis call
-    Err(Error::NotImplemented)
+async fn run_big_o_analysis(path: &Path) -> Result<BigOAnalysis, Error> {
+    use crate::services::big_o_analyzer::{BigOAnalysisConfig, BigOAnalyzer};
+    
+    let analyzer = BigOAnalyzer::new();
+    let config = BigOAnalysisConfig {
+        path: path.to_path_buf(),
+        language: None,
+        include_patterns: vec![],
+        cyclomatic_threshold: 20,
+        cognitive_threshold: 15,
+        show_details: false,
+    };
+    
+    let report = analyzer.analyze_project(&config).await
+        .map_err(|e| Error::AnalysisFailed(e.to_string()))?;
+    
+    Ok(BigOAnalysis {
+        complexity_by_file: report.complexity_by_file.clone(),
+        distribution: report.complexity_distribution.clone(),
+        total_functions: report.complexity_distribution.total_functions,
+        summary: report.summary.clone(),
+    })
 }
 
-async fn run_entropy_analysis(_path: &Path) -> Result<EntropyAnalysis, Error> {
-    // TODO: Implement actual entropy analysis call
-    Err(Error::NotImplemented)
+async fn run_entropy_analysis(path: &Path) -> Result<EntropyAnalysis, Error> {
+    use crate::services::entropy::{EntropyAnalyzer, EntropyConfig};
+    
+    let analyzer = EntropyAnalyzer::new();
+    let config = EntropyConfig {
+        path: path.to_path_buf(),
+        include_patterns: vec![],
+        threshold: 0.75,
+        detailed: false,
+    };
+    
+    let report = analyzer.analyze_project(&config).await
+        .map_err(|e| Error::AnalysisFailed(e.to_string()))?;
+    
+    Ok(EntropyAnalysis {
+        entropy_by_file: report.entropy_by_file.clone(),
+        distribution: report.distribution.clone(),
+        total_files: report.total_files,
+        summary: report.summary.clone(),
+    })
 }
 
-async fn run_provability_analysis(_path: &Path) -> Result<ProvabilityAnalysis, Error> {
-    // TODO: Implement actual provability analysis call
-    Err(Error::NotImplemented)
+async fn run_provability_analysis(path: &Path) -> Result<ProvabilityAnalysis, Error> {
+    use crate::services::provability::{ProvabilityAnalyzer, ProvabilityConfig};
+    
+    let analyzer = ProvabilityAnalyzer::new();
+    let config = ProvabilityConfig {
+        path: path.to_path_buf(),
+        include_patterns: vec![],
+        threshold: 0.65,
+        detailed: true,
+    };
+    
+    let report = analyzer.analyze_project(&config).await
+        .map_err(|e| Error::AnalysisFailed(e.to_string()))?;
+    
+    Ok(ProvabilityAnalysis {
+        annotations: report.annotations.clone(),
+        distribution: report.distribution.clone(),
+        total_functions: report.total_functions,
+        summary: report.summary.clone(),
+    })
 }
 
-async fn run_graph_metrics_analysis(_path: &Path) -> Result<GraphMetricsAnalysis, Error> {
-    // TODO: Implement actual graph metrics analysis call
-    Err(Error::NotImplemented)
+async fn run_graph_metrics_analysis(path: &Path) -> Result<GraphMetricsAnalysis, Error> {
+    use crate::services::graph_metrics::{GraphMetricsAnalyzer, GraphMetricsConfig};
+    
+    let analyzer = GraphMetricsAnalyzer::new();
+    let config = GraphMetricsConfig {
+        path: path.to_path_buf(),
+        include_patterns: vec![],
+        detailed: true,
+    };
+    
+    let report = analyzer.analyze_project(&config).await
+        .map_err(|e| Error::AnalysisFailed(e.to_string()))?;
+    
+    Ok(GraphMetricsAnalysis {
+        metrics: report.metrics.clone(),
+        communities: report.communities.clone(),
+        total_nodes: report.total_nodes,
+        total_edges: report.total_edges,
+        summary: report.summary.clone(),
+    })
 }
 
-async fn run_tdg_analysis(_path: &Path) -> Result<TdgAnalysis, Error> {
-    // TODO: Implement actual TDG analysis call
-    Err(Error::NotImplemented)
+async fn run_tdg_analysis(path: &Path) -> Result<TdgAnalysis, Error> {
+    use crate::services::tdg::{TdgAnalyzer, TdgConfig};
+    
+    let analyzer = TdgAnalyzer::new();
+    let config = TdgConfig {
+        path: path.to_path_buf(),
+        include_patterns: vec![],
+        threshold: 50,
+        detailed: true,
+    };
+    
+    let report = analyzer.analyze_project(&config).await
+        .map_err(|e| Error::AnalysisFailed(e.to_string()))?;
+    
+    Ok(TdgAnalysis {
+        score: report.score,
+        debt_items: report.debt_items.clone(),
+        total_files: report.total_files,
+        summary: report.summary.clone(),
+    })
 }
 
-async fn run_dead_code_analysis(_path: &Path) -> Result<DeadCodeAnalysis, Error> {
-    // TODO: Implement actual dead code analysis call
-    Err(Error::NotImplemented)
+async fn run_dead_code_analysis(path: &Path) -> Result<DeadCodeAnalysis, Error> {
+    use crate::services::dead_code::{DeadCodeAnalyzer, DeadCodeConfig};
+    
+    let analyzer = DeadCodeAnalyzer::new();
+    let config = DeadCodeConfig {
+        path: path.to_path_buf(),
+        include_patterns: vec![],
+        exclude_patterns: vec![],
+        detailed: true,
+        report_type: "summary".to_string(),
+    };
+    
+    let report = analyzer.analyze_project(&config).await
+        .map_err(|e| Error::AnalysisFailed(e.to_string()))?;
+    
+    Ok(DeadCodeAnalysis {
+        dead_functions: report.dead_functions.clone(),
+        distribution: report.distribution.clone(),
+        total_files: report.total_files,
+        summary: report.summary.clone(),
+    })
 }
 
 async fn run_satd_analysis(_path: &Path) -> Result<SatdAnalysis, Error> {
