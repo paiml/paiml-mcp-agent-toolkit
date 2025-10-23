@@ -175,28 +175,34 @@ mod tests {
     use tempfile::TempDir;
 
     #[test]
-    fn test_ensure_exists_valid_file() {
-        // Use Cargo.toml as a file we know exists
-        let path = Path::new("Cargo.toml");
-        assert!(PathValidator::ensure_exists(path).is_ok());
+    fn test_ensure_exists_valid_file() -> Result<()> {
+        let temp_dir = TempDir::new()?;
+        let file_path = temp_dir.path().join("test_file.txt");
+        fs::write(&file_path, "test content")?;
+        assert!(PathValidator::ensure_exists(&file_path).is_ok());
+        Ok(())
     }
 
     #[test]
     fn test_ensure_exists_invalid_file() {
-        let path = Path::new("nonexistent_file.txt");
+        let path = Path::new("/tmp/nonexistent_file_that_definitely_does_not_exist_12345.txt");
         assert!(PathValidator::ensure_exists(path).is_err());
     }
 
     #[test]
-    fn test_ensure_file_valid() {
-        let path = Path::new("Cargo.toml");
-        assert!(PathValidator::ensure_file(path).is_ok());
+    fn test_ensure_file_valid() -> Result<()> {
+        let temp_dir = TempDir::new()?;
+        let file_path = temp_dir.path().join("test_file.txt");
+        fs::write(&file_path, "test content")?;
+        assert!(PathValidator::ensure_file(&file_path).is_ok());
+        Ok(())
     }
 
     #[test]
-    fn test_ensure_directory_valid() {
-        let path = Path::new("src");
-        assert!(PathValidator::ensure_directory(path).is_ok());
+    fn test_ensure_directory_valid() -> Result<()> {
+        let temp_dir = TempDir::new()?;
+        assert!(PathValidator::ensure_directory(temp_dir.path()).is_ok());
+        Ok(())
     }
 
     #[test]
@@ -229,18 +235,24 @@ mod tests {
     }
 
     #[test]
-    fn test_validate_anyhow_methods() {
-        // Test with Cargo.toml (should exist)
-        let path = Path::new("Cargo.toml");
-        assert!(PathValidator::validate_exists_anyhow(path).is_ok());
-        assert!(PathValidator::validate_file_anyhow(path).is_ok());
+    fn test_validate_anyhow_methods() -> Result<()> {
+        let temp_dir = TempDir::new()?;
 
-        // Test with src directory
-        let dir_path = Path::new("src");
-        assert!(PathValidator::validate_directory_anyhow(dir_path).is_ok());
+        // Test with a file (should exist)
+        let file_path = temp_dir.path().join("test_file.txt");
+        fs::write(&file_path, "test content")?;
+        assert!(PathValidator::validate_exists_anyhow(&file_path).is_ok());
+        assert!(PathValidator::validate_file_anyhow(&file_path).is_ok());
+
+        // Test with a directory
+        let dir_path = temp_dir.path().join("test_dir");
+        fs::create_dir(&dir_path)?;
+        assert!(PathValidator::validate_directory_anyhow(&dir_path).is_ok());
 
         // Test with nonexistent path
-        let bad_path = Path::new("nonexistent");
-        assert!(PathValidator::validate_exists_anyhow(bad_path).is_err());
+        let bad_path = temp_dir.path().join("nonexistent_123456");
+        assert!(PathValidator::validate_exists_anyhow(&bad_path).is_err());
+
+        Ok(())
     }
 }
