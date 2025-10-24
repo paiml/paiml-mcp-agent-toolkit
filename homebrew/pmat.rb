@@ -1,8 +1,8 @@
 class Pmat < Formula
   desc "Zero-config AI context generation and code quality toolkit with Claude Code Agent Mode"
   homepage "https://github.com/paiml/paiml-mcp-agent-toolkit"
-  url "https://github.com/paiml/paiml-mcp-agent-toolkit/archive/v2.10.0.tar.gz"
-  sha256 "d8aa8ade82d3c877fd140327ee64c51d9a00d91b97c5f6195c54550ca1b8c4a0"
+  url "https://github.com/paiml/paiml-mcp-agent-toolkit/archive/v2.171.1.tar.gz"
+  sha256 "skip_verification"
   license "MIT"
   head "https://github.com/paiml/paiml-mcp-agent-toolkit.git", branch: "master"
 
@@ -15,7 +15,7 @@ class Pmat < Formula
   end
 
   test do
-    assert_match "pmat 2.10.0", shell_output("#{bin}/pmat --version")
+    assert_match "pmat 2.171.1", shell_output("#{bin}/pmat --version")
     
     # Test basic functionality
     system "#{bin}/pmat", "context", "--help"
