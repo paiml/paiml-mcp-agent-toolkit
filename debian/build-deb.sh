@@ -31,7 +31,7 @@ if [ -f "usr/share/doc/pmat/changelog.Debian" ]; then
 else
     echo "⚠️ changelog.Debian not found, creating basic one..."
     cat > usr/share/doc/pmat/changelog.Debian << 'EOF'
-pmat (2.10.0) unstable; urgency=medium
+pmat (2.171.1) unstable; urgency=medium
 
   * Initial Debian package release
   * Claude Code Agent Mode integration
@@ -71,26 +71,26 @@ sed -i "s/^Installed-Size:.*/Installed-Size: $INSTALLED_SIZE/" DEBIAN/control
 # Build the package
 echo "📦 Building package..."
 cd ..
-dpkg-deb --build debian pmat_2.10.0_amd64.deb
+dpkg-deb --build debian pmat_2.171.1_amd64.deb
 
-if [ -f "pmat_2.10.0_amd64.deb" ]; then
-    echo "✅ Package built successfully: pmat_2.10.0_amd64.deb"
-    echo "📏 Package size: $(du -h pmat_2.10.0_amd64.deb | cut -f1)"
+if [ -f "pmat_2.171.1_amd64.deb" ]; then
+    echo "✅ Package built successfully: pmat_2.171.1_amd64.deb"
+    echo "📏 Package size: $(du -h pmat_2.171.1_amd64.deb | cut -f1)"
     
     # Validate package
     echo ""
     echo "🔍 Validating package..."
-    dpkg-deb --info pmat_2.10.0_amd64.deb
+    dpkg-deb --info pmat_2.171.1_amd64.deb
     
     echo ""
     echo "📋 Package contents:"
-    dpkg-deb --contents pmat_2.10.0_amd64.deb | head -20
+    dpkg-deb --contents pmat_2.171.1_amd64.deb | head -20
     
     echo ""
     echo "✅ Package validation completed!"
     echo ""
     echo "🧪 Test installation:"
-    echo "  sudo dpkg -i pmat_2.10.0_amd64.deb"
+    echo "  sudo dpkg -i pmat_2.171.1_amd64.deb"
     echo ""
     echo "🗑️ Remove package:"
     echo "  sudo apt remove pmat"
