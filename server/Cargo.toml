@@ -302,7 +302,6 @@ python-ast = ["rust-ast", "tree-sitter", "tree-sitter-python"]
 #   - services/enhanced_python_visitor.rs (Phase 5b)
 c-ast = ["tree-sitter", "tree-sitter-c", "fixedbitset"]
 cpp-ast = ["c-ast", "tree-sitter-cpp", "cpp_demangle", "gimli", "goblin"]
-# kotlin-ast = ["tree-sitter", "tree-sitter-kotlin"] # DISABLED
 # Feature to exclude demo/reporting functionality for minimal builds
 demo = []
 # TUI mode support

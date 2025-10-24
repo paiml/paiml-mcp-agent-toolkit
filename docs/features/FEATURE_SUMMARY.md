@@ -17,6 +17,7 @@ This document provides a comprehensive summary of all features implemented in PM
 - **TypeScript/JavaScript**: Complete parsing via SWC
 - **Python**: AST analysis via RustPython parser
 - **C/C++**: Tree-sitter based parsing with goto tracking
+- **Kotlin**: Tree-sitter based parsing with coroutine support
 - **Cython**: Hybrid Python/C analysis
 
 ## Analysis Features
