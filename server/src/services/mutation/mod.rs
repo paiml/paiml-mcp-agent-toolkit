@@ -34,6 +34,10 @@ pub mod cpp_tree_sitter_mutations;
 pub mod cpp_mutation_generator;
 pub mod rust_tree_sitter_mutations;
 pub mod rust_mutation_generator;
+pub mod guard;
+pub mod state;
+pub mod worker_monitor;
+pub mod temp_file;
 
 #[cfg(test)]
 mod typescript_adapter_tests;
@@ -83,6 +87,10 @@ pub use equivalent_detector::*;
 pub use distributed::*;
 pub use ci_cd_learning::*;
 pub use executor::*;
+pub use guard::*;
+pub use state::*;
+pub use worker_monitor::*;
+pub use temp_file::*;
 pub use tree_sitter_operators::*;
 pub use typescript_tree_sitter_mutations::*;
 pub use typescript_mutation_generator::*;
