@@ -17,6 +17,9 @@ pub mod java_tools;
 #[cfg(feature = "scala-ast")]
 pub mod scala_tools;
 
+// Cross-language analysis (Sprint 52)
+pub mod polyglot_tools;
+
 #[cfg(test)]
 mod tools_integration_tests;
 #[cfg(all(test, feature = "java-ast", feature = "scala-ast"))]
