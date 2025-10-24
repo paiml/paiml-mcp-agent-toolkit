@@ -3,7 +3,7 @@
 
 set -e
 
-echo "🏛️ Submitting PMAT v2.10.0 to AUR"
+echo "🏛️ Submitting PMAT v2.171.1 to AUR"
 echo "=================================="
 
 # Run setup first
@@ -32,7 +32,7 @@ echo ""
 echo "🚀 Committing and pushing to AUR..."
 
 # Commit with descriptive message
-git commit -m "pmat: initial upload - v2.10.0
+git commit -m "pmat: initial upload - v2.171.1
 
 PMAT is a zero-config AI context generation and code quality toolkit 
 with Claude Code Agent Mode for continuous quality monitoring.

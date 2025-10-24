@@ -126,7 +126,7 @@ Write-Host ""
 Write-Host "📋 Package Information:" -ForegroundColor Cyan
 Write-Host "======================" -ForegroundColor Cyan
 Write-Host "Package ID: pmat" -ForegroundColor White
-Write-Host "Version: 2.10.0" -ForegroundColor White
+Write-Host "Version: 2.171.1" -ForegroundColor White
 Write-Host "Type: Cargo-based installation with fallback helpers" -ForegroundColor White
 Write-Host "Dependencies: None (optional: Rust/Cargo or Node.js/npm)" -ForegroundColor White
 

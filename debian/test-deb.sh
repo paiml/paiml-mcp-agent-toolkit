@@ -7,7 +7,7 @@ echo "🧪 Testing PMAT Debian Package"
 echo "==============================="
 
 # Check if package exists
-if [ ! -f "../pmat_2.10.0_amd64.deb" ]; then
+if [ ! -f "../pmat_2.171.1_amd64.deb" ]; then
     echo "❌ Package file not found. Build first with: ./build-deb.sh"
     exit 1
 fi
@@ -18,20 +18,20 @@ if ! command -v dpkg >/dev/null 2>&1; then
     exit 1
 fi
 
-echo "📦 Package found: ../pmat_2.10.0_amd64.deb"
+echo "📦 Package found: ../pmat_2.171.1_amd64.deb"
 
 # Package info
 echo ""
 echo "📋 Package Information:"
 echo "======================="
-dpkg-deb --field ../pmat_2.10.0_amd64.deb
+dpkg-deb --field ../pmat_2.171.1_amd64.deb
 
 # Lint package
 echo ""
 echo "🔍 Linting package..."
 if command -v lintian >/dev/null 2>&1; then
     echo "Running lintian checks..."
-    lintian ../pmat_2.10.0_amd64.deb || echo "⚠️ Lintian warnings (may be acceptable)"
+    lintian ../pmat_2.171.1_amd64.deb || echo "⚠️ Lintian warnings (may be acceptable)"
 else
     echo "ℹ️ lintian not available (install with: sudo apt install lintian)"
 fi
@@ -43,7 +43,7 @@ if [ "$EUID" -eq 0 ]; then
     
     # Install package
     echo "Installing package..."
-    dpkg -i ../pmat_2.10.0_amd64.deb || apt-get install -f -y
+    dpkg -i ../pmat_2.171.1_amd64.deb || apt-get install -f -y
     
     echo "✅ Package installed"
     
@@ -93,7 +93,7 @@ else
     echo ""
     echo "ℹ️ Not running as root - skipping installation test"
     echo "To test installation manually:"
-    echo "  sudo dpkg -i ../pmat_2.10.0_amd64.deb"
+    echo "  sudo dpkg -i ../pmat_2.171.1_amd64.deb"
     echo "  sudo apt remove pmat"
     echo "  sudo apt purge pmat"
 fi
@@ -102,12 +102,12 @@ fi
 echo ""
 echo "📦 Package Contents:"
 echo "===================="
-dpkg-deb --contents ../pmat_2.10.0_amd64.deb
+dpkg-deb --contents ../pmat_2.171.1_amd64.deb
 
 echo ""
 echo "✅ Package testing completed!"
 echo ""
 echo "📤 Package ready for distribution:"
-echo "  - Local installation: sudo dpkg -i pmat_2.10.0_amd64.deb"
+echo "  - Local installation: sudo dpkg -i pmat_2.171.1_amd64.deb"
 echo "  - APT repository: Upload to repository and run apt update"  
 echo "  - PPA submission: Follow Ubuntu PPA guidelines"
