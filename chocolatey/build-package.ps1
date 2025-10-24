@@ -67,7 +67,7 @@ Write-Host "======================" -ForegroundColor Cyan
 try {
     $packageInfo = choco info $packageFile.Name --local-only --limit-output
     Write-Host "Package ID: pmat" -ForegroundColor White
-    Write-Host "Version: 2.10.0" -ForegroundColor White
+    Write-Host "Version: 2.171.1" -ForegroundColor White
     Write-Host "Authors: Pragmatic AI Labs" -ForegroundColor White
     Write-Host "Tags: ai, claude-code, mcp, agent, code-quality" -ForegroundColor White
 } catch {
