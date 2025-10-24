@@ -127,6 +127,9 @@ impl McpServer {
         // Register JVM language tools (Sprint 51)
         self.register_jvm_tools().await?;
 
+        // Register cross-language analysis tools (Sprint 52)
+        self.register_polyglot_tools().await?;
+
         // Register semantic search tools (PMAT-SEARCH-012)
         // Only registers if OPENAI_API_KEY is set
         self.register_semantic_tools().await?;
@@ -290,6 +293,38 @@ impl McpServer {
         } else {
             tracing::info!("ℹ️ No JVM language tools registered (features not enabled)");
         }
+        
+        Ok(())
+    }
+    
+    /// Register cross-language analysis tools (Sprint 52)
+    ///
+    /// Sprint 52 adds cross-language analysis capabilities to detect relationships
+    /// between different programming languages in a project. These tools build upon
+    /// the JVM language support from Sprint 51 and extend it to create a unified
+    /// polyglot analysis framework.
+    ///
+    /// Tools:
+    /// - analyze_polyglot: Analyzes cross-language relationships in a project
+    /// - detect_language_boundaries: Detects language boundaries and interop points
+    async fn register_polyglot_tools(&self) -> Result<(), Box<dyn std::error::Error>> {
+        use crate::mcp_integration::polyglot_tools::*;
+        
+        let mut tools = self.context.tools.write();
+        
+        // Register polyglot analysis tool
+        tools.register(Arc::new(PolyglotAnalysisTool::new(
+            self.context.agent_registry.clone(),
+        )));
+        tracing::info!("✓ Registered analyze_polyglot tool");
+        
+        // Register language boundary tool
+        tools.register(Arc::new(LanguageBoundaryTool::new(
+            self.context.agent_registry.clone(),
+        )));
+        tracing::info!("✓ Registered detect_language_boundaries tool");
+        
+        tracing::info!("✅ Cross-language analysis tools registered successfully (2 tools)");
         
         Ok(())
     }
