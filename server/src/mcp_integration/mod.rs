@@ -11,8 +11,16 @@ pub mod hallucination_detection_tools;
 pub mod tdg_tools;
 pub mod transport;
 
+// JVM language support (Sprint 51)
+#[cfg(feature = "java-ast")]
+pub mod java_tools;
+#[cfg(feature = "scala-ast")]
+pub mod scala_tools;
+
 #[cfg(test)]
 mod tools_integration_tests;
+#[cfg(all(test, feature = "java-ast", feature = "scala-ast"))]
+mod jvm_tools_integration_tests;
 
 use async_trait::async_trait;
 use parking_lot::RwLock;

@@ -124,6 +124,9 @@ impl McpServer {
         // Register TDG analysis tools (Sprint 40c)
         self.register_tdg_tools().await?;
 
+        // Register JVM language tools (Sprint 51)
+        self.register_jvm_tools().await?;
+
         // Register semantic search tools (PMAT-SEARCH-012)
         // Only registers if OPENAI_API_KEY is set
         self.register_semantic_tools().await?;
@@ -225,6 +228,69 @@ impl McpServer {
 
         tracing::info!("✅ TDG analysis tools registered successfully (2 tools)");
 
+        Ok(())
+    }
+
+    /// Register JVM language tools (Sprint 51)
+    /// 
+    /// Sprint 51 added comprehensive JVM language support with Java and Scala
+    /// analysis. These tools provide:
+    /// 
+    /// - Java analysis: Class, interface, and method detection with complexity metrics
+    /// - Scala analysis: Classes, traits, objects, and case classes with functional metrics
+    /// - Mutation testing for Java and Scala code
+    /// 
+    /// Both tools are feature-gated behind the "java-ast" and "scala-ast" features.
+    async fn register_jvm_tools(&self) -> Result<(), Box<dyn std::error::Error>> {
+        let mut tools = self.context.tools.write();
+        let mut registered_tools = 0;
+        
+        // Register Java analysis tools if feature is enabled
+        #[cfg(feature = "java-ast")]
+        {
+            use crate::mcp_integration::java_tools::*;
+            
+            // Register Java analysis tool
+            tools.register(Arc::new(JavaAnalysisTool::new(
+                self.context.agent_registry.clone(),
+            )));
+            tracing::info!("✓ Registered analyze_java tool");
+            registered_tools += 1;
+            
+            // Register Java mutation testing tool
+            tools.register(Arc::new(JavaMutationTool::new(
+                self.context.agent_registry.clone(),
+            )));
+            tracing::info!("✓ Registered mutation_test_java tool");
+            registered_tools += 1;
+        }
+        
+        // Register Scala analysis tools if feature is enabled
+        #[cfg(feature = "scala-ast")]
+        {
+            use crate::mcp_integration::scala_tools::*;
+            
+            // Register Scala analysis tool
+            tools.register(Arc::new(ScalaAnalysisTool::new(
+                self.context.agent_registry.clone(),
+            )));
+            tracing::info!("✓ Registered analyze_scala tool");
+            registered_tools += 1;
+            
+            // Register Scala mutation testing tool
+            tools.register(Arc::new(ScalaMutationTool::new(
+                self.context.agent_registry.clone(),
+            )));
+            tracing::info!("✓ Registered mutation_test_scala tool");
+            registered_tools += 1;
+        }
+        
+        if registered_tools > 0 {
+            tracing::info!("✅ JVM language tools registered successfully ({} tools)", registered_tools);
+        } else {
+            tracing::info!("ℹ️ No JVM language tools registered (features not enabled)");
+        }
+        
         Ok(())
     }
 
