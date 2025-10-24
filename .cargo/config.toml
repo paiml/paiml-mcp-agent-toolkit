@@ -2,6 +2,15 @@
 # Allow cargo to use optimal parallelism (remove the job limit)
 # jobs = 2  # Commented out to use default parallelism
 
+[package.metadata]
+include = [
+    "server/src/services/mutation/temp_file.rs",
+    "server/src/services/mutation/guard.rs", 
+    "server/src/services/mutation/state.rs",
+    "server/src/services/mutation/worker_monitor.rs",
+    "server/src/services/ast/languages/c_cpp_strategy.rs"
+]
+
 [target.x86_64-unknown-linux-gnu]
 # Override global mold linker config to use gcc as linker for this project
 linker = "gcc"
