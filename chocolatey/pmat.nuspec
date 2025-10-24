@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
   <metadata>
     <id>pmat</id>
-    <version>2.10.0</version>
+    <version>2.171.1</version>
     <packageSourceUrl>https://github.com/paiml/paiml-mcp-agent-toolkit/tree/master/chocolatey</packageSourceUrl>
     <owners>Pragmatic AI Labs</owners>
     
@@ -68,14 +68,15 @@ Built with ❤️ following Toyota Way principles by Pragmatic AI Labs.
 ]]></description>
     
     <releaseNotes>
-      v2.10.0 - "Always Working Achievement"
+      v2.171.1 - "Multi-Language Support Release"
       
-      - NEW: Claude Code Agent Mode with continuous quality monitoring
-      - NEW: MCP (Model Context Protocol) integration for seamless Claude Code experience
-      - NEW: Real-time file system watching with instant feedback
-      - NEW: Persistent state management with auto-save across restarts
-      - NEW: Production-ready systemd service deployment
-      - NEW: 6 agent-specific MCP tools plus 18 existing analysis tools
+      - NEW: Comprehensive C/C++ language support (Sprint 49)
+      - NEW: Experimental Kotlin language support with coroutine analysis (Sprint 50)
+      - NEW: AST-based parsing for C/C++ code with tree-sitter
+      - NEW: Function, class, and struct detection for C/C++
+      - NEW: Kotlin class, interface, and coroutine detection
+      - NEW: Integration with unified AST framework
+      - IMPROVED: Deep context generation for C/C++/Kotlin code
       - Toyota Way compliance maintained: ≤20 complexity, zero SATD tolerance
     </releaseNotes>
     
