@@ -609,10 +609,11 @@ console.log(tools.tools.map(t => t.name));
 ## Next Steps
 
 - [Integration Guide](INTEGRATION.md) - How to connect to the MCP server
+- [JVM Language Tools](JVM-TOOLS.md) - Java and Scala language analysis tools (New in Sprint 51)
 - [Examples](../examples/mcp/) - Complete usage examples
 - [Architecture](../architecture/) - System architecture documentation
 
 ---
 
 **Maintained by**: PMAT Development Team
-**Last Updated**: Sprint 40d (October 19, 2025)
+**Last Updated**: Sprint 51 (October 24, 2025)
