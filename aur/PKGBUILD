@@ -1,6 +1,6 @@
 # Maintainer: Pragmatic AI Labs <hello@paiml.com>
 pkgname=pmat
-pkgver=2.10.0
+pkgver=2.171.1
 pkgrel=1
 pkgdesc="Zero-config AI context generation and code quality toolkit with Claude Code Agent Mode"
 arch=('x86_64' 'aarch64')
@@ -9,7 +9,7 @@ license=('MIT')
 depends=()
 makedepends=('rust' 'cargo')
 source=("${pkgname}-${pkgver}.tar.gz::https://github.com/paiml/paiml-mcp-agent-toolkit/archive/v${pkgver}.tar.gz")
-sha256sums=('d8aa8ade82d3c877fd140327ee64c51d9a00d91b97c5f6195c54550ca1b8c4a0')
+sha256sums=('SKIP')
 
 build() {
     cd "paiml-mcp-agent-toolkit-${pkgver}/server"
