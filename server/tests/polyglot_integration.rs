@@ -8,16 +8,14 @@
 use pmat::services::polyglot_analyzer::{LanguageInfo, PolyglotAnalysis, PolyglotAnalyzer};
 #[cfg(feature = "polyglot-ast")]
 use pmat::ast::polyglot::{
-    Language, NodeKind, UnifiedNode, CrossLanguageDependencies,
-    unified_node::{SourcePosition, NodeReference, ReferenceKind, TypeInfo},
+    Language, NodeKind, UnifiedNode,
+    unified_node::{SourcePosition, NodeReference, ReferenceKind},
 };
-use std::path::{Path, PathBuf};
-use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
+use std::path::PathBuf;
+use std::collections::HashMap;
 use tokio::fs;
 use anyhow::Result;
 use tempfile::tempdir;
-use serde::Serialize;
 
 // Define the types here for testing purposes when the actual implementations
 // are not available
@@ -505,7 +503,7 @@ async fn test_unified_node_cross_language_dependencies() {
     // Create test nodes representing a Java class, Kotlin class, and TypeScript interface
     
     // Java BaseModel class
-    let mut java_base = create_unified_node(
+    let java_base = create_unified_node(
         "BaseModel",
         NodeKind::Class,
         "com.example.BaseModel",
@@ -655,7 +653,7 @@ async fn test_mcp_polyglot_analysis_tool() -> Result<()> {
     let status = result.get("status").and_then(|s| s.as_str());
     let path = result.get("path").and_then(|p| p.as_str());
     assert_eq!(status, Some("completed"));
-    assert_eq!(path, Some(&fixture_path.to_string_lossy().to_string()));
+    assert_eq!(path, Some(fixture_path.to_string_lossy().as_ref()));
     
     // Verify languages analyzed
     let languages = result.get("languages").and_then(|l| l.as_array());
@@ -716,7 +714,7 @@ async fn test_mcp_language_boundary_tool() -> Result<()> {
     let status = result.get("status").and_then(|s| s.as_str());
     let path = result.get("path").and_then(|p| p.as_str());
     assert_eq!(status, Some("completed"));
-    assert_eq!(path, Some(&fixture_path.to_string_lossy().to_string()));
+    assert_eq!(path, Some(fixture_path.to_string_lossy().as_ref()));
     
     // Verify languages analyzed
     let languages_analyzed = result.get("languages_analyzed").and_then(|l| l.as_array());

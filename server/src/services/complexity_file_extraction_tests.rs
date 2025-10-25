@@ -215,8 +215,8 @@ mod property_tests {
     use super::*;
     use proptest::prelude::*;
 
-    /// Property: Line numbers must NEVER exceed file line count
     proptest! {
+        /// Property: Line numbers must NEVER exceed file line count
         #[test]
         fn prop_line_numbers_within_file_bounds(
             num_preamble_lines in 0usize..500,
@@ -224,7 +224,7 @@ mod property_tests {
         ) {
             let runtime = tokio::runtime::Runtime::new().unwrap();
 
-            runtime.block_on(async {
+            let _ = runtime.block_on(async {
                 // Generate file with function at variable position
                 let preamble = "// preamble\n".repeat(num_preamble_lines);
                 let function_body = "    let x = 1;\n".repeat(num_function_lines);
