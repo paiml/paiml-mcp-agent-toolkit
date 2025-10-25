@@ -10,6 +10,7 @@ pub mod mutation_tools;
 pub mod hallucination_detection_tools;
 pub mod tdg_tools;
 pub mod transport;
+pub mod ast_item_helpers;
 
 // JVM language support (Sprint 51)
 #[cfg(feature = "java-ast")]

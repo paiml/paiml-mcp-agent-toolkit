@@ -4,7 +4,7 @@
 //! It builds on top of the central PathValidator to add language-specific validation and
 //! helper methods specifically designed for cross-language analysis.
 
-use crate::utils::path_validator::{PathValidator, PathValidationError};
+use crate::utils::path_validator::PathValidator;
 use crate::ast::polyglot::Language;
 use anyhow::{anyhow, Result};
 use std::path::{Path, PathBuf};

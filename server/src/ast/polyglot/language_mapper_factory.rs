@@ -3,18 +3,16 @@
 //! This module provides a factory for creating language-specific mappers
 //! that can transform language-specific ASTs into the unified representation.
 
-use crate::ast::polyglot::{Language, UnifiedNode, LanguageMapper, PolyglotPathValidator, NodeKind};
+use crate::ast::polyglot::{Language, UnifiedNode, LanguageMapper, PolyglotPathValidator};
 use crate::ast::polyglot::language_mapper::{
-    JavaMapper, KotlinMapper, ScalaMapper, TypeScriptMapper,
-    JavaScriptMapper, CSharpMapper, RubyMapper
+    JavaMapper, ScalaMapper, TypeScriptMapper,
+    CSharpMapper, RubyMapper
 };
 use crate::services::context::AstItem;
-use anyhow::{Result, anyhow};
+use anyhow::Result;
 use async_trait::async_trait;
-use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
-use tokio::fs;
 
 /// Factory for creating language mappers
 pub struct LanguageMapperFactory;

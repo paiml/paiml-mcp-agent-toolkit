@@ -6,20 +6,19 @@
 
 use crate::mcp_integration::{McpError, McpTool, ToolMetadata};
 use crate::ast::polyglot::{
-    Language, NodeKind, UnifiedNode, LanguageMapper, CrossLanguageDependencies,
-    language_mapper::LanguageMapperFactory,
+    Language, UnifiedNode, CrossLanguageDependencies, LanguageMapperFactory
 };
-use crate::utils::path_validator::PathValidator;
+use crate::ast::polyglot::utils::PolyglotPathValidator;
 use anyhow::Result;
 use async_trait::async_trait;
 use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::Arc;
-use tokio::fs;
 
 /// Analyzes cross-language relationships in a project
 pub struct PolyglotAnalysisTool {
+    #[allow(dead_code)]
     agent_registry: Arc<crate::agents::registry::AgentRegistry>,
 }
 
@@ -81,11 +80,11 @@ impl McpTool for PolyglotAnalysisTool {
         let max_depth = params["max_depth"].as_u64().unwrap_or(3) as usize;
         let include_graph = params["include_graph"].as_bool().unwrap_or(true);
         
-        // Validate path
-        if !PathValidator::ensure_directory(&path).is_ok() {
+        // Validate path using the new polyglot path validator
+        if let Err(e) = PolyglotPathValidator::validate_directory_path(&path) {
             return Err(McpError {
                 code: crate::mcp_integration::error_codes::INVALID_PARAMS,
-                message: format!("Path is not a directory: {}", path.display()),
+                message: format!("Invalid directory path: {}", e),
                 data: Some(json!({
                     "path": path.display().to_string(),
                     "suggestion": "Please provide a valid directory path"
@@ -264,6 +263,7 @@ fn get_node_type_counts(nodes: &[UnifiedNode]) -> HashMap<String, HashMap<String
 
 /// Detects language boundaries in a project
 pub struct LanguageBoundaryTool {
+    #[allow(dead_code)]
     agent_registry: Arc<crate::agents::registry::AgentRegistry>,
 }
 
@@ -319,11 +319,11 @@ impl McpTool for LanguageBoundaryTool {
         let path = PathBuf::from(path_str);
         let max_depth = params["max_depth"].as_u64().unwrap_or(3) as usize;
         
-        // Validate path
-        if !PathValidator::ensure_directory(&path).is_ok() {
+        // Validate path using the new polyglot path validator
+        if let Err(e) = PolyglotPathValidator::validate_directory_path(&path) {
             return Err(McpError {
                 code: crate::mcp_integration::error_codes::INVALID_PARAMS,
-                message: format!("Path is not a directory: {}", path.display()),
+                message: format!("Invalid directory path: {}", e),
                 data: Some(json!({
                     "path": path.display().to_string(),
                     "suggestion": "Please provide a valid directory path"
@@ -502,7 +502,7 @@ impl McpTool for LanguageBoundaryTool {
 /// Analyze patterns in language boundaries
 fn analyze_boundary_patterns(
     deps: Vec<&crate::ast::polyglot::cross_language_dependencies::CrossLanguageDependency>,
-    nodes: &[UnifiedNode],
+    _nodes: &[UnifiedNode],
 ) -> Value {
     let mut patterns = Vec::new();
     
@@ -579,7 +579,10 @@ fn analyze_boundary_patterns(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ast::polyglot::{NodeKind, Language, UnifiedNode};
     use crate::ast::polyglot::unified_node::{SourcePosition, ReferenceKind as PolyglotReferenceKind};
+    use std::path::PathBuf;
+    use std::collections::HashMap;
     
     fn create_test_node(
         id: &str,
