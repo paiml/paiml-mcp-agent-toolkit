@@ -5,11 +5,11 @@
 //! relationships such as inheritance, implementation, and usage across
 //! language boundaries.
 
-use crate::ast::polyglot::{Language, NodeKind, UnifiedNode, ReferenceKind};
+use crate::ast::polyglot::{Language, NodeKind, UnifiedNode};
+use crate::ast::polyglot::unified_node::ReferenceKind;
 use std::collections::{HashMap, HashSet};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use serde::{Serialize, Deserialize};
-use anyhow::Result;
 
 /// Represents a dependency between nodes in different languages
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -96,30 +96,81 @@ impl CrossLanguageDependencies {
         self.dependencies.clear();
         
         // Group nodes by language
-        let mut nodes_by_language: HashMap<Language, Vec<&UnifiedNode>> = HashMap::new();
-        for node in self.nodes.values() {
+        let mut nodes_by_language: HashMap<Language, Vec<String>> = HashMap::new();
+        for (id, node) in &self.nodes {
             nodes_by_language
                 .entry(node.language)
                 .or_insert_with(Vec::new)
-                .push(node);
+                .push(id.clone());
         }
         
         // Compare nodes between different languages
         let languages: Vec<Language> = nodes_by_language.keys().cloned().collect();
+        
+        // Create a list of dependencies to add (to avoid borrowing self mutably while iterating)
+        let mut new_dependencies = Vec::new();
+        
         for (i, lang1) in languages.iter().enumerate() {
             for lang2 in languages.iter().skip(i + 1) {
                 if lang1 != lang2 {
-                    if let (Some(nodes1), Some(nodes2)) = (nodes_by_language.get(lang1), nodes_by_language.get(lang2)) {
-                        self.detect_between_languages(nodes1, *lang1, nodes2, *lang2);
+                    if let (Some(node_ids1), Some(node_ids2)) = (nodes_by_language.get(lang1), nodes_by_language.get(lang2)) {
+                        // Get dependencies between these language groups
+                        let deps = self.detect_between_language_groups(node_ids1, *lang1, node_ids2, *lang2);
+                        new_dependencies.extend(deps);
                     }
                 }
             }
         }
         
-        // Resolve unresolved references
+        // Add the collected dependencies
+        self.dependencies.extend(new_dependencies);
+        
+        // Resolve unresolved references (moved outside)
         self.resolve_references();
         
         &self.dependencies
+    }
+    
+    /// Detect dependencies between nodes of two specific language groups
+    /// This function avoids borrowing self mutably while iterating
+    fn detect_between_language_groups(
+        &self,
+        node_ids1: &[String],
+        lang1: Language,
+        node_ids2: &[String],
+        lang2: Language,
+    ) -> Vec<CrossLanguageDependency> {
+        let mut dependencies = Vec::new();
+        
+        // For each node in first language
+        for id1 in node_ids1 {
+            if let Some(source) = self.nodes.get(id1) {
+                // For each reference in the node
+                for reference in &source.references {
+                    // For each node in second language
+                    for id2 in node_ids2 {
+                        if let Some(target) = self.nodes.get(id2) {
+                            // Check if reference matches target
+                            if self.is_reference_match(source, reference, target, lang1, lang2) {
+                                // Create a dependency (without modifying self)
+                                let dependency = CrossLanguageDependency {
+                                    source_id: source.id.clone(),
+                                    target_id: target.id.clone(),
+                                    source_language: lang1,
+                                    target_language: lang2,
+                                    kind: reference.kind,
+                                    confidence: 1.0,
+                                    metadata: HashMap::new(),
+                                };
+                                dependencies.push(dependency);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        dependencies
     }
     
     /// Detect dependencies between nodes of two specific languages
@@ -197,34 +248,67 @@ impl CrossLanguageDependencies {
     
     /// Resolve unresolved references
     fn resolve_references(&mut self) {
-        // Collect all nodes by name and FQN for faster lookup
-        let mut name_map: HashMap<String, Vec<&UnifiedNode>> = HashMap::new();
+        // First collect all unresolved references we need to process
+        let mut to_resolve = Vec::new();
         
-        for node in self.nodes.values() {
+        // Collect nodes by name for faster lookup (using String keys instead of refs)
+        let mut name_map: HashMap<String, Vec<String>> = HashMap::new();
+        
+        // Build the name map
+        for (id, node) in &self.nodes {
             name_map.entry(node.name.clone())
                 .or_insert_with(Vec::new)
-                .push(node);
+                .push(id.clone());
                 
             name_map.entry(node.fqn.clone())
                 .or_insert_with(Vec::new)
-                .push(node);
+                .push(id.clone());
         }
         
-        // For each node, try to resolve its references
-        for source in self.nodes.values() {
+        // Collect references that need resolution
+        for (source_id, source) in &self.nodes {
             for reference in &source.references {
                 if reference.target_id.is_empty() {
-                    // Try to find by name
-                    if let Some(candidates) = name_map.get(&reference.target_name) {
-                        for &target in candidates {
+                    // Store info about unresolved reference
+                    to_resolve.push((
+                        source_id.clone(),
+                        reference.target_name.clone(),
+                        reference.kind
+                    ));
+                }
+            }
+        }
+        
+        // Process all unresolved references
+        let mut new_dependencies = Vec::new();
+        for (source_id, target_name, kind) in to_resolve {
+            // Get the source node
+            if let Some(source) = self.nodes.get(&source_id) {
+                // Look for candidate targets by name
+                if let Some(target_ids) = name_map.get(&target_name) {
+                    for target_id in target_ids {
+                        if let Some(target) = self.nodes.get(target_id) {
+                            // Check if this is a cross-language reference
                             if source.language != target.language {
-                                self.add_dependency(source, target, reference.kind, 0.8);
+                                let dependency = CrossLanguageDependency {
+                                    source_id: source_id.clone(),
+                                    target_id: target_id.clone(),
+                                    source_language: source.language,
+                                    target_language: target.language,
+                                    kind,
+                                    confidence: 0.8, // Lower confidence for name-based resolution
+                                    metadata: HashMap::new(),
+                                };
+                                new_dependencies.push(dependency);
                             }
                         }
                     }
                 }
             }
         }
+        
+        // Add all new dependencies
+        self.dependencies.extend(new_dependencies);
     }
     
     /// Get all dependencies
@@ -351,7 +435,7 @@ impl NameResolver for JavaKotlinResolver {
         &self,
         source_language: Language,
         target_language: Language,
-        source: &UnifiedNode,
+        _source: &UnifiedNode,
         reference: &crate::ast::polyglot::unified_node::NodeReference,
         target: &UnifiedNode,
     ) -> bool {
@@ -397,7 +481,7 @@ impl NameResolver for JavaScalaResolver {
         &self,
         source_language: Language,
         target_language: Language,
-        source: &UnifiedNode,
+        _source: &UnifiedNode,
         reference: &crate::ast::polyglot::unified_node::NodeReference,
         target: &UnifiedNode,
     ) -> bool {
@@ -443,7 +527,7 @@ impl NameResolver for TypeScriptJavaResolver {
         &self,
         source_language: Language,
         target_language: Language,
-        source: &UnifiedNode,
+        _source: &UnifiedNode,
         reference: &crate::ast::polyglot::unified_node::NodeReference,
         target: &UnifiedNode,
     ) -> bool {

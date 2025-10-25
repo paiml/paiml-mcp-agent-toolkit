@@ -7,11 +7,14 @@ pub mod bash;
 pub mod csharp;
 pub mod go;
 pub mod java;
+pub mod javascript;
 pub mod kotlin;
 pub mod php;
 pub mod ruchy;
 pub mod ruchy_ml;
+pub mod scala;
 pub mod swift;
+pub mod typescript;
 pub mod wasm;
 
 use std::path::Path;
