@@ -7,6 +7,9 @@ use anyhow::Result;
 use std::path::Path;
 use crate::services::context::AstItem;
 
+#[cfg(feature = "typescript-ast")]
+use crate::services::ast_typescript::analyze_typescript_file;
+
 /// Visitor for TypeScript AST analysis
 pub struct TypeScriptAstVisitor {
     #[allow(dead_code)]
@@ -20,12 +23,30 @@ impl TypeScriptAstVisitor {
     }
 
     /// Analyze TypeScript source code
+    ///
+    /// This method parses TypeScript source code and extracts AST items.
+    /// It creates a temporary file to leverage the existing file-based parser.
     #[cfg(feature = "typescript-ast")]
-    pub fn analyze_typescript_source(&self, _source: &str) -> Result<Vec<AstItem>> {
-        // For now, return empty vec - this would need to write source to temp file
-        // and call analyze_typescript_file, or we'd need a parse_source method
-        // This is a placeholder that satisfies the type system
-        Ok(Vec::new())
+    pub fn analyze_typescript_source(&self, source: &str) -> Result<Vec<AstItem>> {
+        // Create temporary file with .ts extension (builder pattern)
+        let temp_file = tempfile::Builder::new()
+            .suffix(".ts")
+            .tempfile()
+            .map_err(|e| anyhow::anyhow!("Failed to create temp file: {}", e))?;
+
+        // Write source code to temporary file
+        std::fs::write(temp_file.path(), source.as_bytes())
+            .map_err(|e| anyhow::anyhow!("Failed to write source to temp file: {}", e))?;
+
+        // Use existing file-based parser
+        let runtime = tokio::runtime::Runtime::new()
+            .map_err(|e| anyhow::anyhow!("Failed to create runtime: {}", e))?;
+
+        runtime.block_on(async {
+            let context = analyze_typescript_file(temp_file.path()).await
+                .map_err(|e| anyhow::anyhow!("TypeScript parsing failed: {}", e))?;
+            Ok(context.items)
+        })
     }
 
     /// Analyze TypeScript source code (feature not enabled)
