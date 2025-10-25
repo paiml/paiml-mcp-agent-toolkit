@@ -766,32 +766,50 @@ async fn analyze_file_by_toolchain(
         // NOTE: Languages below need analyze_*_file() implementations
         // See server/src/services/languages/go.rs:analyze_go_file() as reference
 
-        // C files - TODO: implement analyze_c_file()
-        // #[cfg(feature = "c-ast")]
-        // "c" | "h" => {
-        //     use crate::services::languages::c;
-        //     c::analyze_c_file(path).await.ok()
-        // }
+        // C files
+        #[cfg(feature = "c-ast")]
+        "c" | "h" => {
+            use crate::services::ast::languages::c;
+            c::analyze_c_file(path).await.ok()
+        }
 
-        // C++ files - TODO: implement analyze_cpp_file()
-        // #[cfg(feature = "cpp-ast")]
-        // "cpp" | "cc" | "cxx" | "hpp" | "hxx" => {
-        //     use crate::services::languages::cpp;
-        //     cpp::analyze_cpp_file(path).await.ok()
-        // }
+        // C++ files
+        #[cfg(feature = "cpp-ast")]
+        "cpp" | "cc" | "cxx" | "hpp" | "hxx" | "hh" => {
+            use crate::services::ast::languages::cpp;
+            cpp::analyze_cpp_file(path).await.ok()
+        }
 
         // Java files
         #[cfg(feature = "java-ast")]
         "java" => {
-            use crate::services::languages::java;
-            java::analyze_java_file(path).await.ok()
+            use crate::services::deep_context;
+            // Convert Vec<AstItem> to FileContext
+            match deep_context::analyze_java_file(path).await {
+                Ok(items) => Some(FileContext {
+                    path: path.display().to_string(),
+                    language: "java".to_string(),
+                    items,
+                    complexity_metrics: None,
+                }),
+                Err(_) => None
+            }
         }
 
         // C# files
         #[cfg(feature = "csharp-ast")]
         "cs" => {
-            use crate::services::languages::csharp;
-            csharp::analyze_csharp_file(path).await.ok()
+            use crate::services::deep_context;
+            // Convert Vec<AstItem> to FileContext
+            match deep_context::analyze_csharp_file(path).await {
+                Ok(items) => Some(FileContext {
+                    path: path.display().to_string(),
+                    language: "csharp".to_string(),
+                    items,
+                    complexity_metrics: None,
+                }),
+                Err(_) => None
+            }
         }
 
         // Kotlin files
@@ -818,8 +836,17 @@ async fn analyze_file_by_toolchain(
         // Swift files
         #[cfg(feature = "swift-ast")]
         "swift" => {
-            use crate::services::languages::swift;
-            swift::analyze_swift_file(path).await.ok()
+            use crate::services::deep_context;
+            // Convert Vec<AstItem> to FileContext
+            match deep_context::analyze_swift_file(path).await {
+                Ok(items) => Some(FileContext {
+                    path: path.display().to_string(),
+                    language: "swift".to_string(),
+                    items,
+                    complexity_metrics: None,
+                }),
+                Err(_) => None
+            }
         }
 
         // Erlang files - TODO: implement analyze_erlang_file()
@@ -1107,32 +1134,50 @@ async fn analyze_file_by_toolchain_persistent(
         // NOTE: Languages below need analyze_*_file() implementations
         // See server/src/services/languages/go.rs:analyze_go_file() as reference
 
-        // C files - TODO: implement analyze_c_file()
-        // #[cfg(feature = "c-ast")]
-        // "c" | "h" => {
-        //     use crate::services::languages::c;
-        //     c::analyze_c_file(path).await.ok()
-        // }
+        // C files
+        #[cfg(feature = "c-ast")]
+        "c" | "h" => {
+            use crate::services::ast::languages::c;
+            c::analyze_c_file(path).await.ok()
+        }
 
-        // C++ files - TODO: implement analyze_cpp_file()
-        // #[cfg(feature = "cpp-ast")]
-        // "cpp" | "cc" | "cxx" | "hpp" | "hxx" => {
-        //     use crate::services::languages::cpp;
-        //     cpp::analyze_cpp_file(path).await.ok()
-        // }
+        // C++ files
+        #[cfg(feature = "cpp-ast")]
+        "cpp" | "cc" | "cxx" | "hpp" | "hxx" | "hh" => {
+            use crate::services::ast::languages::cpp;
+            cpp::analyze_cpp_file(path).await.ok()
+        }
 
         // Java files
         #[cfg(feature = "java-ast")]
         "java" => {
-            use crate::services::languages::java;
-            java::analyze_java_file(path).await.ok()
+            use crate::services::deep_context;
+            // Convert Vec<AstItem> to FileContext
+            match deep_context::analyze_java_file(path).await {
+                Ok(items) => Some(FileContext {
+                    path: path.display().to_string(),
+                    language: "java".to_string(),
+                    items,
+                    complexity_metrics: None,
+                }),
+                Err(_) => None
+            }
         }
 
         // C# files
         #[cfg(feature = "csharp-ast")]
         "cs" => {
-            use crate::services::languages::csharp;
-            csharp::analyze_csharp_file(path).await.ok()
+            use crate::services::deep_context;
+            // Convert Vec<AstItem> to FileContext
+            match deep_context::analyze_csharp_file(path).await {
+                Ok(items) => Some(FileContext {
+                    path: path.display().to_string(),
+                    language: "csharp".to_string(),
+                    items,
+                    complexity_metrics: None,
+                }),
+                Err(_) => None
+            }
         }
 
         // Kotlin files
@@ -1159,8 +1204,17 @@ async fn analyze_file_by_toolchain_persistent(
         // Swift files
         #[cfg(feature = "swift-ast")]
         "swift" => {
-            use crate::services::languages::swift;
-            swift::analyze_swift_file(path).await.ok()
+            use crate::services::deep_context;
+            // Convert Vec<AstItem> to FileContext
+            match deep_context::analyze_swift_file(path).await {
+                Ok(items) => Some(FileContext {
+                    path: path.display().to_string(),
+                    language: "swift".to_string(),
+                    items,
+                    complexity_metrics: None,
+                }),
+                Err(_) => None
+            }
         }
 
         // Erlang files - TODO: implement analyze_erlang_file()

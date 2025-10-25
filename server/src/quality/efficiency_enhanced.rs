@@ -391,7 +391,7 @@ impl<'ast> Visit<'ast> for SpaceComplexityAnalyzer {
                 syn::Expr::Array(_) => {
                     // Static array
                     self.allocations.push(Allocation {
-                        size: AllocationSize::Static,
+                        size: AllocationSize::Constant(1),
                         _location: "array".to_string(),
                     });
                 },

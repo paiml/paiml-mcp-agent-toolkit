@@ -10,6 +10,7 @@ use crate::services::deep_wasm::{
 use crate::services::rust_wasm_analyzer;
 use std::fs;
 use std::path::Path;
+use wasmparser;
 
 /// Deep WASM analysis service
 pub struct DeepWasmService {
@@ -72,23 +73,45 @@ impl DeepWasmService {
 
                 // Perform detailed bytecode analysis
                 let bytecode_result = self.bytecode_analyzer.analyze(&wasm_bytes)?;
-
-                // Disassemble selected functions (exported functions + functions with high complexity)
-                let disassembled = Vec::new();
-                let all_patterns = Vec::new();
-
-                for func_analysis in &bytecode_result.functions {
-                    // Disassemble if exported or high complexity
-                    if func_analysis.is_exported || func_analysis.complexity.cyclomatic_complexity > 10 {
-                        // Note: We would need access to the FunctionBody to disassemble
-                        // For now, we'll skip actual disassembly and focus on the analysis
-                        // TODO: Add disassembly support when FunctionBody access is available
+                
+                // Prepare parser for disassembly
+                let mut disassembled = Vec::new();
+                let mut all_patterns = Vec::new();
+                
+                // Reparse the module to access function bodies
+                let parser = wasmparser::Parser::new(0);
+                let mut code_section_index = 0;
+                
+                for payload in parser.parse_all(&wasm_bytes) {
+                    if let Ok(wasmparser::Payload::CodeSectionEntry(function_body)) = payload {
+                        // Get function analysis to determine if we should disassemble
+                        let func_idx = code_section_index;
+                        let func_analysis = bytecode_result.functions.iter().find(|f| {
+                            f.function_index as usize == func_idx
+                        });
+                        
+                        code_section_index += 1;
+                        
+                        // Only disassemble if exported or high complexity
+                        if let Some(func_analysis) = func_analysis {
+                            if func_analysis.is_exported || func_analysis.complexity.cyclomatic_complexity > 10 {
+                                // Disassemble the function
+                                let result = self.disassembler.disassemble_function(
+                                    func_analysis.function_index,
+                                    func_analysis.name.clone(),
+                                    &function_body
+                                )?;
+                                
+                                // Detect patterns in this function's instructions
+                                let function_patterns = self.disassembler.detect_patterns(&result.instructions);
+                                all_patterns.extend(function_patterns);
+                                
+                                disassembled.push(result);
+                            }
+                        }
                     }
                 }
-
-                // Detect patterns across all instructions
-                // TODO: Implement pattern detection across module
-
+                
                 (Some(bytecode_result), Some(disassembled), Some(all_patterns))
             } else {
                 (None, None, None)
@@ -309,5 +332,63 @@ mod tests {
 
         // Phase 1: No WASM boundary analysis for Ruchy yet
         assert_eq!(report.source_metrics.wasm_boundary_functions, 0);
+    }
+    
+    #[tokio::test]
+    #[serial_test::serial]
+    #[ignore] // Integration test requiring wasm test file
+    async fn test_disassemble_wasm_module() {
+        // This test verifies the disassembly functionality works correctly
+        let service = DeepWasmService::new().with_deep_analysis(true);
+        let request = DeepWasmAnalysisRequest {
+            source_path: PathBuf::from("tests/fixtures/test.rs"),
+            wasm_path: Some(PathBuf::from("tests/fixtures/test.wasm")),
+            dwarf_path: None,
+            source_map_path: None,
+            language: SourceLanguage::Rust,
+            analysis_focus: AnalysisFocus::Full,
+        };
+
+        let result = service.analyze(request).await;
+        assert!(result.is_ok());
+        
+        let report = result.unwrap();
+        
+        // Verify disassembly data is present
+        assert!(report.bytecode_analysis.is_some());
+        
+        // If we have exported functions, we should have disassembled them
+        if let Some(bytecode) = &report.bytecode_analysis {
+            let exported_count = bytecode.functions.iter()
+                .filter(|f| f.is_exported)
+                .count();
+                
+            if exported_count > 0 {
+                assert!(report.disassembled_functions.is_some());
+                if let Some(disassembled) = &report.disassembled_functions {
+                    // We should have at least one disassembled function
+                    assert!(!disassembled.is_empty());
+                    
+                    // First disassembled function should have instructions
+                    assert!(!disassembled[0].instructions.is_empty());
+                    
+                    // Check for basic blocks
+                    assert!(!disassembled[0].basic_blocks.is_empty());
+                }
+            }
+            
+            // If we found patterns, check they're structured correctly
+            if let Some(patterns) = &report.suspicious_patterns {
+                for pattern in patterns {
+                    assert!(!pattern.name.is_empty());
+                    assert!(!pattern.description.is_empty());
+                    
+                    // If suspicious, should have a reason
+                    if pattern.suspicious {
+                        assert!(pattern.suspicion_reason.is_some());
+                    }
+                }
+            }
+        }
     }
 }
