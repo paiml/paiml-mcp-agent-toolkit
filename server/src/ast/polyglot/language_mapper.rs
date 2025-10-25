@@ -5,13 +5,12 @@
 //! supported language implements the `LanguageMapper` trait to convert
 //! its native AST nodes to `UnifiedNode` instances.
 
-use crate::ast::core::AstItem;
-use crate::ast::polyglot::{Language, NodeKind, UnifiedNode};
-use crate::utils::path_validator::PathValidator;
+use crate::services::context::AstItem;
+use crate::ast::polyglot::{Language, NodeKind, UnifiedNode, PolyglotPathValidator};
 use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::Arc;
 use tokio::fs;
 
@@ -32,6 +31,14 @@ pub trait LanguageMapper: Send + Sync {
     
     /// Convert language-specific AST items to unified nodes
     fn convert_ast_items(&self, items: &[AstItem], path: &Path) -> Vec<UnifiedNode>;
+    
+    /// Clone this mapper as a trait object
+    fn clone_box(&self) -> Box<dyn LanguageMapper>;
+    
+    /// Create a test node for unit testing
+    fn create_test_node(&self, kind: NodeKind, name: &str) -> UnifiedNode {
+        UnifiedNode::new(kind, name, self.language())
+    }
 }
 
 /// Factory for creating language mappers
@@ -80,6 +87,7 @@ impl LanguageMapperFactory {
 }
 
 /// Base implementation of LanguageMapper with common functionality
+#[derive(Clone)]
 pub struct BaseLanguageMapper {
     language: Language,
 }
@@ -98,18 +106,14 @@ impl LanguageMapper for BaseLanguageMapper {
     }
     
     async fn map_file(&self, path: &Path) -> Result<Vec<UnifiedNode>> {
-        if !PathValidator::ensure_file(path).is_ok() {
-            return Err(anyhow!("Invalid file path: {:?}", path));
-        }
+        PolyglotPathValidator::validate_file_path(path)?;
         
         let content = fs::read_to_string(path).await?;
         self.map_source(&content, path).await
     }
     
     async fn map_directory(&self, path: &Path, recursive: bool) -> Result<Vec<UnifiedNode>> {
-        if !PathValidator::ensure_directory(path).is_ok() {
-            return Err(anyhow!("Invalid directory path: {:?}", path));
-        }
+        PolyglotPathValidator::validate_directory_path(path)?;
         
         let mut nodes = Vec::new();
         let extensions: Vec<String> = self.language()
@@ -159,9 +163,14 @@ impl LanguageMapper for BaseLanguageMapper {
             .map(|item| UnifiedNode::from_ast_item(item, self.language(), path, None))
             .collect()
     }
+    
+    fn clone_box(&self) -> Box<dyn LanguageMapper> {
+        Box::new(self.clone())
+    }
 }
 
 /// Java language mapper
+#[derive(Clone)]
 pub struct JavaMapper {
     base: BaseLanguageMapper,
 }
@@ -227,9 +236,14 @@ impl LanguageMapper for JavaMapper {
     fn convert_ast_items(&self, items: &[AstItem], path: &Path) -> Vec<UnifiedNode> {
         self.base.convert_ast_items(items, path)
     }
+    
+    fn clone_box(&self) -> Box<dyn LanguageMapper> {
+        Box::new(self.clone())
+    }
 }
 
 /// Kotlin language mapper
+#[derive(Clone)]
 pub struct KotlinMapper {
     base: BaseLanguageMapper,
 }
@@ -280,25 +294,22 @@ impl LanguageMapper for KotlinMapper {
     }
     
     async fn map_source(&self, source: &str, path: &Path) -> Result<Vec<UnifiedNode>> {
-        use crate::services::languages::kotlin::KotlinAstVisitor;
-        
-        let visitor = KotlinAstVisitor::new(path);
-        match visitor.analyze_kotlin_source(source) {
-            Ok(items) => {
-                let mut nodes = self.convert_ast_items(&items, path);
-                self.process_kotlin_specific(&mut nodes);
-                Ok(nodes)
-            },
-            Err(e) => Err(anyhow!("Failed to analyze Kotlin source: {}", e)),
-        }
+        // For now, use the base mapper implementation
+        // TODO: Add Kotlin-specific analysis when kotlin-ast feature is enabled
+        self.base.map_source(source, path).await
     }
     
     fn convert_ast_items(&self, items: &[AstItem], path: &Path) -> Vec<UnifiedNode> {
         self.base.convert_ast_items(items, path)
     }
+    
+    fn clone_box(&self) -> Box<dyn LanguageMapper> {
+        Box::new(self.clone())
+    }
 }
 
 /// Scala language mapper
+#[derive(Clone)]
 pub struct ScalaMapper {
     base: BaseLanguageMapper,
 }
@@ -363,9 +374,14 @@ impl LanguageMapper for ScalaMapper {
     fn convert_ast_items(&self, items: &[AstItem], path: &Path) -> Vec<UnifiedNode> {
         self.base.convert_ast_items(items, path)
     }
+    
+    fn clone_box(&self) -> Box<dyn LanguageMapper> {
+        Box::new(self.clone())
+    }
 }
 
 /// TypeScript language mapper
+#[derive(Clone)]
 pub struct TypeScriptMapper {
     base: BaseLanguageMapper,
 }
@@ -428,9 +444,14 @@ impl LanguageMapper for TypeScriptMapper {
     fn convert_ast_items(&self, items: &[AstItem], path: &Path) -> Vec<UnifiedNode> {
         self.base.convert_ast_items(items, path)
     }
+    
+    fn clone_box(&self) -> Box<dyn LanguageMapper> {
+        Box::new(self.clone())
+    }
 }
 
 /// JavaScript language mapper
+#[derive(Clone)]
 pub struct JavaScriptMapper {
     base: BaseLanguageMapper,
 }
@@ -494,12 +515,100 @@ impl LanguageMapper for JavaScriptMapper {
     fn convert_ast_items(&self, items: &[AstItem], path: &Path) -> Vec<UnifiedNode> {
         self.base.convert_ast_items(items, path)
     }
+    
+    fn clone_box(&self) -> Box<dyn LanguageMapper> {
+        Box::new(self.clone())
+    }
+}
+
+/// C# language mapper
+#[derive(Clone)]
+pub struct CSharpMapper {
+    base: BaseLanguageMapper,
+}
+
+impl CSharpMapper {
+    /// Create a new C# mapper
+    pub fn new() -> Self {
+        Self {
+            base: BaseLanguageMapper::new(Language::CSharp),
+        }
+    }
+}
+
+#[async_trait]
+impl LanguageMapper for CSharpMapper {
+    fn language(&self) -> Language {
+        self.base.language()
+    }
+
+    async fn map_file(&self, path: &Path) -> Result<Vec<UnifiedNode>> {
+        self.base.map_file(path).await
+    }
+
+    async fn map_directory(&self, path: &Path, recursive: bool) -> Result<Vec<UnifiedNode>> {
+        self.base.map_directory(path, recursive).await
+    }
+
+    async fn map_source(&self, source: &str, path: &Path) -> Result<Vec<UnifiedNode>> {
+        self.base.map_source(source, path).await
+    }
+
+    fn convert_ast_items(&self, items: &[AstItem], path: &Path) -> Vec<UnifiedNode> {
+        self.base.convert_ast_items(items, path)
+    }
+
+    fn clone_box(&self) -> Box<dyn LanguageMapper> {
+        Box::new(self.clone())
+    }
+}
+
+/// Ruby language mapper
+#[derive(Clone)]
+pub struct RubyMapper {
+    base: BaseLanguageMapper,
+}
+
+impl RubyMapper {
+    /// Create a new Ruby mapper
+    pub fn new() -> Self {
+        Self {
+            base: BaseLanguageMapper::new(Language::Ruby),
+        }
+    }
+}
+
+#[async_trait]
+impl LanguageMapper for RubyMapper {
+    fn language(&self) -> Language {
+        self.base.language()
+    }
+
+    async fn map_file(&self, path: &Path) -> Result<Vec<UnifiedNode>> {
+        self.base.map_file(path).await
+    }
+
+    async fn map_directory(&self, path: &Path, recursive: bool) -> Result<Vec<UnifiedNode>> {
+        self.base.map_directory(path, recursive).await
+    }
+
+    async fn map_source(&self, source: &str, path: &Path) -> Result<Vec<UnifiedNode>> {
+        self.base.map_source(source, path).await
+    }
+
+    fn convert_ast_items(&self, items: &[AstItem], path: &Path) -> Vec<UnifiedNode> {
+        self.base.convert_ast_items(items, path)
+    }
+
+    fn clone_box(&self) -> Box<dyn LanguageMapper> {
+        Box::new(self.clone())
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ast::core::{AstItem, ItemKind, Span, Position};
+    use crate::services::context::{AstItem, ItemKind, Span, Position};
     
     fn create_test_ast_item(kind: &str, name: &str) -> AstItem {
         AstItem {

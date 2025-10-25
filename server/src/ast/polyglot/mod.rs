@@ -36,20 +36,27 @@
 //! let dependencies = CrossLanguageDependencies::detect(&java_nodes, &ts_nodes);
 //! ```
 
-use crate::ast::core::{AstItem, ItemKind};
-use anyhow::Result;
-use std::collections::{HashMap, HashSet};
-use std::path::{Path, PathBuf};
-use async_trait::async_trait;
+use crate::services::context::AstItem;
+use std::path::Path;
 use serde::{Serialize, Deserialize};
 
 pub mod unified_node;
 pub mod language_mapper;
 pub mod cross_language_dependencies;
+pub mod language_mapper_factory;
+pub mod utils;
+#[cfg(test)]
+mod tests;
 
 pub use unified_node::UnifiedNode;
-pub use language_mapper::LanguageMapper;
+pub use language_mapper::{
+    LanguageMapper, JavaMapper, KotlinMapper, ScalaMapper,
+    TypeScriptMapper, JavaScriptMapper, CSharpMapper, RubyMapper,
+    LanguageMapperFactory as LMFactory, BaseLanguageMapper
+};
 pub use cross_language_dependencies::CrossLanguageDependencies;
+pub use language_mapper_factory::{LanguageMapperFactory, StubMapper};
+pub use utils::PolyglotPathValidator;
 
 /// Common language identifiers used throughout the polyglot AST system
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -155,6 +162,7 @@ pub enum NodeKind {
     Enum,
     Struct,
     Union,
+    Type,          // Type alias or typedef
     
     // Type variations
     Record,      // Java record, Kotlin data class, TypeScript interface
@@ -173,11 +181,13 @@ pub enum NodeKind {
     Property,
     LocalVariable,
     Parameter,
+    Variable,    // Generic variable declaration
     
     // Other elements
     Annotation,
     Decorator,
     Comment,
+    Macro,       // Macro definition
     
     // Relationships
     Inherits,
@@ -190,12 +200,27 @@ pub enum NodeKind {
 }
 
 impl NodeKind {
-    /// Convert from AstItem's ItemKind
-    pub fn from_ast_item_kind(kind: &ItemKind) -> Self {
-        match kind.as_str() {
+    /// Convert from AstItem enum
+    pub fn from_ast_item(item: &AstItem) -> Self {
+        match item {
+            AstItem::Function { .. } => NodeKind::Function,
+            AstItem::Struct { .. } => NodeKind::Struct,
+            AstItem::Enum { .. } => NodeKind::Enum,
+            AstItem::Trait { .. } => NodeKind::Trait,
+            AstItem::Impl { .. } => NodeKind::Implements,
+            AstItem::Use { .. } => NodeKind::Uses,
+            AstItem::Module { .. } => NodeKind::Module,
+            AstItem::Import { .. } => NodeKind::Import,
+        }
+    }
+    
+    /// Convert from a string item kind
+    pub fn from_ast_item_kind(kind: &str) -> Self {
+        match kind.to_lowercase().as_str() {
             "package" => NodeKind::Package,
-            "import" | "require" => NodeKind::Import,
-            "module" | "namespace" => NodeKind::Module,
+            "import" => NodeKind::Import,
+            "module" => NodeKind::Module,
+            "namespace" => NodeKind::Namespace,
             
             "class" => NodeKind::Class,
             "interface" => NodeKind::Interface,
@@ -203,25 +228,32 @@ impl NodeKind {
             "enum" => NodeKind::Enum,
             "struct" => NodeKind::Struct,
             "union" => NodeKind::Union,
+            "type" | "typealias" | "typedef" => NodeKind::Type,
             
-            "record" | "data class" => NodeKind::Record,
-            "case class" => NodeKind::CaseClass,
-            "abstract class" | "abstract interface" => NodeKind::AbstractType,
+            "record" => NodeKind::Record,
+            "caseclass" => NodeKind::CaseClass,
+            "abstracttype" => NodeKind::AbstractType,
             
             "method" => NodeKind::Method,
             "function" => NodeKind::Function,
             "constructor" => NodeKind::Constructor,
-            "lambda" | "arrow function" => NodeKind::Lambda,
+            "lambda" => NodeKind::Lambda,
             "closure" => NodeKind::Closure,
             
-            "field" | "member" => NodeKind::Field,
+            "field" => NodeKind::Field,
             "property" => NodeKind::Property,
-            "variable" | "var" | "let" | "const" => NodeKind::LocalVariable,
-            "parameter" | "param" => NodeKind::Parameter,
+            "localvariable" => NodeKind::LocalVariable,
+            "parameter" => NodeKind::Parameter,
+            "variable" => NodeKind::Variable,
             
-            "annotation" | "attribute" => NodeKind::Annotation,
+            "annotation" => NodeKind::Annotation,
             "decorator" => NodeKind::Decorator,
-            "comment" | "doc comment" => NodeKind::Comment,
+            "comment" => NodeKind::Comment,
+            "macro" => NodeKind::Macro,
+            
+            "inherits" => NodeKind::Inherits,
+            "implements" => NodeKind::Implements,
+            "uses" => NodeKind::Uses,
             
             _ => NodeKind::Unknown,
         }
@@ -241,6 +273,7 @@ impl NodeKind {
             NodeKind::Enum => "enum",
             NodeKind::Struct => "struct",
             NodeKind::Union => "union",
+            NodeKind::Type => "type",
             
             NodeKind::Record => "record",
             NodeKind::CaseClass => "caseClass",
@@ -256,10 +289,12 @@ impl NodeKind {
             NodeKind::Property => "property",
             NodeKind::LocalVariable => "localVariable",
             NodeKind::Parameter => "parameter",
+            NodeKind::Variable => "variable",
             
             NodeKind::Annotation => "annotation",
             NodeKind::Decorator => "decorator",
             NodeKind::Comment => "comment",
+            NodeKind::Macro => "macro",
             
             NodeKind::Inherits => "inherits",
             NodeKind::Implements => "implements",
@@ -330,9 +365,9 @@ mod tests {
     
     #[test]
     fn test_node_kind_from_ast_item_kind() {
-        assert_eq!(NodeKind::from_ast_item_kind(&"class".into()), NodeKind::Class);
-        assert_eq!(NodeKind::from_ast_item_kind(&"method".into()), NodeKind::Method);
-        assert_eq!(NodeKind::from_ast_item_kind(&"unknown".into()), NodeKind::Unknown);
+        assert_eq!(NodeKind::from_ast_item_kind("class"), NodeKind::Class);
+        assert_eq!(NodeKind::from_ast_item_kind("method"), NodeKind::Method);
+        assert_eq!(NodeKind::from_ast_item_kind("unknown"), NodeKind::Unknown);
     }
     
     #[test]
@@ -344,5 +379,34 @@ mod tests {
         assert!(config.languages.contains(&Language::TypeScript));
         assert!(config.detect_relationships);
         assert_eq!(config.relationship_depth, 3);
+    }
+    
+    #[test]
+    fn test_node_kind_comprehensive_string_conversion() {
+        // Test conversion from strings to NodeKind
+        assert_eq!(NodeKind::from_ast_item_kind("function"), NodeKind::Function);
+        assert_eq!(NodeKind::from_ast_item_kind("struct"), NodeKind::Struct);
+        assert_eq!(NodeKind::from_ast_item_kind("enum"), NodeKind::Enum);
+        assert_eq!(NodeKind::from_ast_item_kind("trait"), NodeKind::Trait);
+        assert_eq!(NodeKind::from_ast_item_kind("implements"), NodeKind::Implements);
+        assert_eq!(NodeKind::from_ast_item_kind("import"), NodeKind::Import);
+        assert_eq!(NodeKind::from_ast_item_kind("module"), NodeKind::Module);
+        assert_eq!(NodeKind::from_ast_item_kind("type"), NodeKind::Type);
+        assert_eq!(NodeKind::from_ast_item_kind("typedef"), NodeKind::Type);
+        assert_eq!(NodeKind::from_ast_item_kind("typealias"), NodeKind::Type);
+        assert_eq!(NodeKind::from_ast_item_kind("macro"), NodeKind::Macro);
+        assert_eq!(NodeKind::from_ast_item_kind("variable"), NodeKind::Variable);
+        
+        // Test NodeKind to string conversion
+        assert_eq!(NodeKind::Function.as_str(), "function");
+        assert_eq!(NodeKind::Struct.as_str(), "struct");
+        assert_eq!(NodeKind::Enum.as_str(), "enum");
+        assert_eq!(NodeKind::Trait.as_str(), "trait");
+        assert_eq!(NodeKind::Implements.as_str(), "implements");
+        assert_eq!(NodeKind::Import.as_str(), "import");
+        assert_eq!(NodeKind::Module.as_str(), "module");
+        assert_eq!(NodeKind::Type.as_str(), "type");
+        assert_eq!(NodeKind::Macro.as_str(), "macro");
+        assert_eq!(NodeKind::Variable.as_str(), "variable");
     }
 }
