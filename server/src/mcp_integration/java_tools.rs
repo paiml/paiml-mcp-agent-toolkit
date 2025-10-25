@@ -1,4 +1,5 @@
 use crate::mcp_integration::{McpError, McpTool, ToolMetadata};
+use crate::mcp_integration::ast_item_helpers::{extract_kind, extract_name, extract_complexity};
 use crate::services::languages::java::JavaAstVisitor;
 use crate::utils::path_validator::PathValidator;
 use anyhow::Result;
@@ -11,6 +12,7 @@ use tracing::{info, warn};
 
 /// Analyzes Java source code for complexity and structure
 pub struct JavaAnalysisTool {
+    #[allow(dead_code)]
     agent_registry: Arc<crate::agents::registry::AgentRegistry>,
 }
 
@@ -70,7 +72,7 @@ impl McpTool for JavaAnalysisTool {
         let include_ast = params["include_ast"].as_bool().unwrap_or(false);
         
         // Validate path
-        if !PathValidator::ensure_path_exists(&path).is_ok() {
+        if !PathValidator::ensure_exists(&path).is_ok() {
             return Err(McpError {
                 code: crate::mcp_integration::error_codes::INVALID_PARAMS,
                 message: format!("Path does not exist: {}", path.display()),
@@ -83,7 +85,7 @@ impl McpTool for JavaAnalysisTool {
         
         // Analyze the file or directory
         info!("Analyzing Java at path: {}", path.display());
-        let result = if PathValidator::ensure_directory(&path).is_ok() {
+        let result = if path.is_dir() {
             analyze_java_directory(&path, max_depth, include_metrics, include_ast).await
         } else if path.extension().map_or(false, |ext| ext == "java") {
             analyze_java_file(&path, include_metrics, include_ast).await
@@ -125,23 +127,23 @@ async fn analyze_java_file(
             // Calculate metrics
             let class_count = items
                 .iter()
-                .filter(|item| matches!(item.kind.as_str(), "class"))
+                .filter(|item| extract_kind(item) == "class" || extract_kind(item) == "struct")
                 .count();
-                
+
             let interface_count = items
                 .iter()
-                .filter(|item| matches!(item.kind.as_str(), "interface"))
+                .filter(|item| extract_kind(item) == "interface" || extract_kind(item) == "trait")
                 .count();
-                
+
             let method_count = items
                 .iter()
-                .filter(|item| matches!(item.kind.as_str(), "method"))
+                .filter(|item| extract_kind(item) == "method" || extract_kind(item) == "function")
                 .count();
-                
+
             let package_name = items
                 .iter()
-                .find(|item| matches!(item.kind.as_str(), "package"))
-                .map(|item| item.name.clone())
+                .find(|item| extract_kind(item) == "package" || extract_kind(item) == "module")
+                .map(|item| extract_name(item))
                 .unwrap_or_else(|| "default".to_string());
             
             // Build response
@@ -163,13 +165,12 @@ async fn analyze_java_file(
                 // Calculate complexity metrics
                 let total_complexity: u32 = items
                     .iter()
-                    .filter(|item| item.complexity > 0)
-                    .map(|item| item.complexity)
+                    .map(|item| extract_complexity(item))
                     .sum();
-                    
+
                 let max_complexity = items
                     .iter()
-                    .map(|item| item.complexity)
+                    .map(|item| extract_complexity(item))
                     .max()
                     .unwrap_or(0);
                     
@@ -336,6 +337,7 @@ fn find_java_files(path: &std::path::Path, max_depth: usize) -> Result<Vec<PathB
 
 /// Java mutation testing tool
 pub struct JavaMutationTool {
+    #[allow(dead_code)]
     agent_registry: Arc<crate::agents::registry::AgentRegistry>,
 }
 

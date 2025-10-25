@@ -8,7 +8,6 @@
 use crate::ast::polyglot::{Language, NodeKind, UnifiedNode};
 use crate::ast::polyglot::unified_node::ReferenceKind;
 use std::collections::{HashMap, HashSet};
-use std::path::PathBuf;
 use serde::{Serialize, Deserialize};
 
 /// Represents a dependency between nodes in different languages
@@ -174,6 +173,7 @@ impl CrossLanguageDependencies {
     }
     
     /// Detect dependencies between nodes of two specific languages
+    #[allow(dead_code)]
     fn detect_between_languages(
         &mut self,
         nodes1: &[&UnifiedNode],
@@ -226,6 +226,7 @@ impl CrossLanguageDependencies {
     }
     
     /// Add a dependency between two nodes
+    #[allow(dead_code)]
     fn add_dependency(
         &mut self,
         source: &UnifiedNode,
@@ -569,6 +570,7 @@ impl NameResolver for TypeScriptJavaResolver {
 mod tests {
     use super::*;
     use crate::ast::polyglot::unified_node::SourcePosition;
+    use std::path::PathBuf;
     
     fn create_test_node(
         id: &str,

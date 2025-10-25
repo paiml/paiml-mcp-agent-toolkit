@@ -257,6 +257,7 @@ impl KotlinMapper {
     }
     
     /// Process Kotlin-specific nodes
+    #[allow(dead_code)]
     fn process_kotlin_specific(&self, nodes: &mut [UnifiedNode]) {
         for node in nodes.iter_mut() {
             // Add Kotlin-specific metadata
@@ -608,26 +609,47 @@ impl LanguageMapper for RubyMapper {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::services::context::{AstItem, ItemKind, Span, Position};
-    
+    use crate::services::context::AstItem;
+
     fn create_test_ast_item(kind: &str, name: &str) -> AstItem {
-        AstItem {
-            id: 1,
-            kind: kind.into(),
-            name: name.to_string(),
-            namespace: "com.example".to_string(),
-            signature: Some(format!("public {} {}", kind, name)),
-            content: format!("{} {} {{}}", kind, name),
-            complexity: 1,
-            span: Span {
-                start: Position { line: 1, column: 1 },
-                end: Position { line: 2, column: 1 },
+        // Map string kind to AstItem enum variant
+        match kind {
+            "function" | "method" => AstItem::Function {
+                name: name.to_string(),
+                visibility: "public".to_string(),
+                is_async: false,
+                line: 1,
             },
-            access: Some("public".to_string()),
-            modifiers: Some(vec![]),
-            documentation: None,
-            children: Vec::new(),
-            references: Vec::new(),
+            "class" | "struct" => AstItem::Struct {
+                name: name.to_string(),
+                visibility: "public".to_string(),
+                fields_count: 0,
+                derives: vec![],
+                line: 1,
+            },
+            "trait" | "interface" => AstItem::Trait {
+                name: name.to_string(),
+                visibility: "public".to_string(),
+                line: 1,
+            },
+            "enum" => AstItem::Enum {
+                name: name.to_string(),
+                visibility: "public".to_string(),
+                variants_count: 0,
+                line: 1,
+            },
+            "module" | "namespace" => AstItem::Module {
+                name: name.to_string(),
+                visibility: "public".to_string(),
+                line: 1,
+            },
+            _ => AstItem::Struct {
+                name: name.to_string(),
+                visibility: "public".to_string(),
+                fields_count: 0,
+                derives: vec![],
+                line: 1,
+            },
         }
     }
     
