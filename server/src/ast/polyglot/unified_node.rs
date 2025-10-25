@@ -7,7 +7,7 @@
 
 use crate::services::context::AstItem;
 use crate::ast::polyglot::{Language, NodeKind};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use serde::{Serialize, Deserialize};
 
@@ -194,21 +194,21 @@ impl UnifiedNode {
         // Extract name based on AstItem type
         let (name, line, visibility, namespace) = match item {
             AstItem::Function { name, line, visibility, .. } =>
-                (name.clone(), *line, visibility.clone(), None),
+                (name.clone(), *line, visibility.clone(), None::<String>),
             AstItem::Struct { name, line, visibility, .. } =>
-                (name.clone(), *line, visibility.clone(), None),
+                (name.clone(), *line, visibility.clone(), None::<String>),
             AstItem::Enum { name, line, visibility, .. } =>
-                (name.clone(), *line, visibility.clone(), None),
+                (name.clone(), *line, visibility.clone(), None::<String>),
             AstItem::Trait { name, line, visibility, .. } =>
-                (name.clone(), *line, visibility.clone(), None),
+                (name.clone(), *line, visibility.clone(), None::<String>),
             AstItem::Module { name, line, visibility, .. } =>
-                (name.clone(), *line, visibility.clone(), None),
+                (name.clone(), *line, visibility.clone(), None::<String>),
             AstItem::Use { path, line } =>
-                (path.clone(), *line, "public".to_string(), None),
+                (path.clone(), *line, "public".to_string(), None::<String>),
             AstItem::Impl { type_name, line, .. } =>
-                (type_name.clone(), *line, "public".to_string(), None),
+                (type_name.clone(), *line, "public".to_string(), None::<String>),
             AstItem::Import { module, line, .. } =>
-                (module.clone(), *line, "public".to_string(), None),
+                (module.clone(), *line, "public".to_string(), None::<String>),
         };
         
         let kind = NodeKind::from_ast_item(item);
@@ -368,26 +368,16 @@ impl UnifiedNode {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::services::context::{AstItem, ItemKind, Span, Position};
-    
+    use crate::services::context::AstItem;
+
     fn create_test_ast_item() -> AstItem {
-        AstItem {
-            id: 1,
-            kind: "class".into(),
+        // Create a simple Struct variant for testing
+        AstItem::Struct {
             name: "TestClass".to_string(),
-            namespace: "com.example".to_string(),
-            signature: Some("public class TestClass".to_string()),
-            content: "class TestClass {}".to_string(),
-            complexity: 1,
-            span: Span {
-                start: Position { line: 10, column: 1 },
-                end: Position { line: 20, column: 1 },
-            },
-            access: Some("public".to_string()),
-            modifiers: Some(vec!["final".to_string()]),
-            documentation: Some("Test class documentation".to_string()),
-            children: Vec::new(),
-            references: Vec::new(),
+            visibility: "public".to_string(),
+            fields_count: 0,
+            derives: vec![],
+            line: 10,
         }
     }
     

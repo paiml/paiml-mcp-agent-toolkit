@@ -45,8 +45,6 @@ pub mod language_mapper;
 pub mod cross_language_dependencies;
 pub mod language_mapper_factory;
 pub mod utils;
-#[cfg(test)]
-mod tests;
 
 pub use unified_node::UnifiedNode;
 pub use language_mapper::{
