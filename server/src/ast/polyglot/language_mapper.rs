@@ -177,6 +177,7 @@ pub struct JavaMapper {
 
 impl JavaMapper {
     /// Create a new Java mapper
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
             base: BaseLanguageMapper::new(Language::Java),
@@ -250,6 +251,7 @@ pub struct KotlinMapper {
 
 impl KotlinMapper {
     /// Create a new Kotlin mapper
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
             base: BaseLanguageMapper::new(Language::Kotlin),
@@ -317,6 +319,7 @@ pub struct ScalaMapper {
 
 impl ScalaMapper {
     /// Create a new Scala mapper
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
             base: BaseLanguageMapper::new(Language::Scala),
@@ -389,6 +392,7 @@ pub struct TypeScriptMapper {
 
 impl TypeScriptMapper {
     /// Create a new TypeScript mapper
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
             base: BaseLanguageMapper::new(Language::TypeScript),
@@ -459,6 +463,7 @@ pub struct JavaScriptMapper {
 
 impl JavaScriptMapper {
     /// Create a new JavaScript mapper
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
             base: BaseLanguageMapper::new(Language::JavaScript),
@@ -530,6 +535,7 @@ pub struct CSharpMapper {
 
 impl CSharpMapper {
     /// Create a new C# mapper
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
             base: BaseLanguageMapper::new(Language::CSharp),
@@ -572,6 +578,7 @@ pub struct RubyMapper {
 
 impl RubyMapper {
     /// Create a new Ruby mapper
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
             base: BaseLanguageMapper::new(Language::Ruby),
