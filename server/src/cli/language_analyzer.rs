@@ -1159,11 +1159,11 @@ mod property_tests {
     use super::*;
     use proptest::prelude::*;
 
-    /// Property: Class method extraction must be stable across valid identifiers
-    /// NASA-style: 1000+ iterations to verify edge cases
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(1000))]
 
+        /// Property: Class method extraction must be stable across valid identifiers
+        /// NASA-style: 1000+ iterations to verify edge cases
         #[test]
         fn property_class_method_extraction_is_stable(
             class_name in "[A-Z][a-zA-Z0-9]{2,20}",

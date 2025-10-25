@@ -142,7 +142,7 @@ impl MutationState {
 }
 
 #[cfg(test)]
-#[cfg(skip_mutation_tests)] // Tests disabled due to API changes
+#[cfg(any())] // Tests disabled due to API changes (use cfg(any()) instead of custom cfg)
 mod tests {
     use super::*;
     // Note: MutationOrigin is now merged into types::MutantOperator
