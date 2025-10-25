@@ -238,6 +238,11 @@ make sprint-close
 - **[Sprint Management](docs/execution/roadmap.md)** - Task tracking and execution DAG
 - **[Quality Gates](docs/quality-gates-proxy-detailed.md)** - Enforcement mechanisms
 
+### Language Support
+- **[Cross-Language Analysis](docs/cross-language-analysis.md)** - **NEW!** Polyglot codebase analysis
+- **[Polyglot AST Feature Flags](docs/polyglot-ast-feature-flags.md)** - **NEW!** Language feature configuration
+- **[Language Support Details](docs/language-support.md)** - Supported language capabilities
+
 ### Integration Guides
 - **[MCP Integration](docs/mcp-methods.md)** - Model Context Protocol setup
 - **[PDMT Guide](docs/pdmt-integration-guide.md)** - Deterministic todo generation
@@ -322,6 +327,30 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
+### Feature Flag Options
+
+PMAT uses Rust's feature flag system for customizing language support:
+
+```toml
+# Default configuration (all features enabled)
+pmat = "2.158.0"
+
+# Custom configuration with specific language support
+pmat = { version = "2.158.0", default-features = false, features = ["polyglot-java", "polyglot-typescript"] }
+
+# Available language-specific features:
+# - polyglot-java
+# - polyglot-kotlin
+# - polyglot-scala
+# - polyglot-typescript
+# - polyglot-javascript
+# - polyglot-csharp
+# - polyglot-ruby
+```
+
+See [Polyglot AST Feature Flags](../docs/polyglot-ast-feature-flags.md) for detailed documentation.
+```
+
 ## 🔍 Language Support
 
 - **Rust**: Full cargo integration with syn AST
@@ -338,6 +367,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   - Import/export dependency tracking
 - **Kotlin**: Tree-sitter based analysis
 - **30+ Languages**: Via tree-sitter grammar support
+
+### Cross-Language Analysis
+
+PMAT provides a unified cross-language AST framework that enables analysis across language boundaries:
+
+- **Polyglot AST**: Common node representation across all languages
+- **Cross-Language Dependencies**: Track relationships between nodes in different languages
+- **Language Mappers**: Translate language-specific ASTs to unified nodes
+- **Configurable Support**: Build with only the language support you need ([Feature Flags](../docs/polyglot-ast-feature-flags.md))
 
 ## 🤖 MCP Integration
 
