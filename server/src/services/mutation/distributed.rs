@@ -94,19 +94,48 @@ impl MutationProgress {
 
 /// Distributed mutation executor
 pub struct DistributedExecutor {
+    /// Language adapter for test execution
     adapter: Arc<dyn LanguageAdapter>,
+    
+    /// Configuration for distributed execution
     config: DistributedConfig,
+    
+    /// Progress tracking for mutation execution
     progress: Arc<RwLock<MutationProgress>>,
+    
+    /// Worker monitoring system
+    worker_monitor: Option<Arc<super::worker_monitor::WorkerMonitor>>,
 }
 
 impl DistributedExecutor {
     /// Create new distributed executor
     pub fn new(adapter: Arc<dyn LanguageAdapter>, config: DistributedConfig) -> Self {
+        // Create worker monitor if progress tracking is enabled
+        let worker_monitor = if config.track_progress {
+            let stall_timeout = std::time::Duration::from_secs(60); // 1 minute stall timeout
+            Some(Arc::new(super::worker_monitor::WorkerMonitor::new(
+                config.worker_count,
+                stall_timeout,
+            )))
+        } else {
+            None
+        };
+        
         Self {
             adapter,
             config,
             progress: Arc::new(RwLock::new(MutationProgress::new(0))),
+            worker_monitor,
         }
+    }
+    
+    /// Create distributed executor with custom worker monitor
+    pub fn with_worker_monitor(
+        mut self,
+        monitor: Arc<super::worker_monitor::WorkerMonitor>,
+    ) -> Self {
+        self.worker_monitor = Some(monitor);
+        self
     }
 
     /// Execute mutants in parallel across worker pool
@@ -115,6 +144,24 @@ impl DistributedExecutor {
         {
             let mut progress = self.progress.write();
             *progress = MutationProgress::new(mutants.len());
+        }
+
+        // Initialize worker monitoring if enabled
+        if let Some(ref monitor) = self.worker_monitor {
+            monitor.initialize_workers().await;
+            
+            // Start monitoring task in background
+            let monitor_clone = monitor.clone();
+            let monitoring_interval = std::time::Duration::from_secs(10);
+            
+            let _monitoring_task = super::worker_monitor::WorkerMonitor::run_monitoring_task(
+                monitor_clone,
+                monitoring_interval,
+                |worker_id| {
+                    // Handler for stalled workers
+                    eprintln!("⚠️ Worker {} appears to be stalled, execution may be slow", worker_id);
+                },
+            ).await;
         }
 
         // Create channels for work distribution
@@ -130,10 +177,29 @@ impl DistributedExecutor {
         // Spawn worker pool
         let workers = self.spawn_workers(
             work_rx,
-            result_tx,
+            result_tx.clone(), // Clone for error reporting
             semaphore.clone(),
             completed_count.clone(),
         );
+
+        // Set up signal handler for graceful shutdown
+        let (shutdown_tx, mut shutdown_rx) = mpsc::channel::<()>(1);
+        
+        #[cfg(unix)]
+        {
+            use tokio::signal::unix::{signal, SignalKind};
+            let shutdown_tx_clone = shutdown_tx.clone();
+            
+            // Handle SIGINT (Ctrl+C)
+            tokio::spawn(async move {
+                let mut sigint = signal(SignalKind::interrupt())
+                    .expect("Failed to set up SIGINT handler");
+                
+                sigint.recv().await;
+                eprintln!("\n🛑 Received interrupt signal, stopping gracefully...");
+                let _ = shutdown_tx_clone.send(()).await;
+            });
+        }
 
         // Send all mutants to work queue
         let sender_task = tokio::spawn(async move {
@@ -151,7 +217,40 @@ impl DistributedExecutor {
         };
 
         let mut results = Vec::with_capacity(total);
-        while let Some(result) = result_rx.recv().await {
+        let mut shutdown_requested = false;
+        
+        'result_loop: while let Some(result) = result_rx.recv().await {
+            // Check for shutdown signal
+            if !shutdown_requested {
+                if let Ok(()) = shutdown_rx.try_recv() {
+                    shutdown_requested = true;
+                    eprintln!("🛑 Graceful shutdown in progress, waiting for current tasks...");
+                }
+            }
+            
+            // Update worker metrics if monitoring is enabled
+            if let Some(ref monitor) = self.worker_monitor {
+                // Extract worker ID from result
+                // Convert string ID to numeric ID for worker assignment
+                let numeric_id = result.mutant.id.parse::<usize>().unwrap_or_else(|_| {
+                    // If parsing fails, hash the string to get a numeric value
+                    use std::collections::hash_map::DefaultHasher;
+                    use std::hash::{Hash, Hasher};
+                    
+                    let mut hasher = DefaultHasher::new();
+                    result.mutant.id.hash(&mut hasher);
+                    hasher.finish() as usize
+                });
+                let worker_id = numeric_id % self.config.worker_count;
+                
+                if result.status == MutantStatus::CompileError || result.status == MutantStatus::Timeout {
+                    let error_msg = result.error_message.as_deref().unwrap_or("Unknown error");
+                    monitor.record_failure(worker_id, error_msg).await;
+                } else {
+                    monitor.record_success(worker_id, result.execution_time_ms).await;
+                }
+            }
+            
             // Update progress
             {
                 let mut progress = self.progress.write();
@@ -167,18 +266,43 @@ impl DistributedExecutor {
 
             results.push(result);
 
-            // Check if complete
-            if results.len() >= total {
-                break;
+            // Check if complete or shutdown requested
+            if results.len() >= total || shutdown_requested {
+                break 'result_loop;
             }
+        }
+
+        if shutdown_requested {
+            eprintln!("🛑 Graceful shutdown completed. Processed {} of {} mutants.",
+                results.len(), total);
         }
 
         // Wait for all tasks to complete
         sender_task.await?;
 
-        // Wait for all workers
+        // Wait for all workers to terminate
         for worker in workers {
             let _ = worker.await;
+        }
+        
+        // Print final worker statistics if monitoring was enabled
+        if let Some(ref monitor) = self.worker_monitor {
+            // Calculate and display overall health score
+            let health_score = monitor.calculate_health_score().await;
+            let _state_counts = monitor.get_state_counts().await;
+            
+            eprintln!("\n📊 Worker health: {:.1}%", health_score);
+            
+            // Display worker statistics
+            let metrics = monitor.get_all_metrics().await;
+            let total_processed = metrics.iter().map(|m| m.processed_count).sum::<usize>();
+            let total_failed = metrics.iter().map(|m| m.failed_count).sum::<usize>();
+            let avg_time = metrics.iter()
+                .map(|m| m.avg_processing_time_ms * m.processed_count as f64)
+                .sum::<f64>() / total_processed.max(1) as f64;
+            
+            eprintln!("📈 Processed: {}, Failed: {}, Avg Time: {:.1}ms", 
+                total_processed, total_failed, avg_time);
         }
 
         Ok(results)
@@ -196,6 +320,9 @@ impl DistributedExecutor {
 
         // Shared receiver using Arc<Mutex>
         let work_rx = Arc::new(tokio::sync::Mutex::new(work_rx));
+        
+        // Heartbeat interval (5 seconds)
+        let heartbeat_interval = std::time::Duration::from_secs(5);
 
         for worker_id in 0..self.config.worker_count {
             let adapter = self.adapter.clone();
@@ -204,47 +331,100 @@ impl DistributedExecutor {
             let completed_count = completed_count.clone();
             let progress = self.progress.clone();
             let work_rx = work_rx.clone();
+            let worker_monitor = self.worker_monitor.clone();
 
             let worker = tokio::spawn(async move {
+                // Set up heartbeat ticker if worker monitoring is enabled
+                let mut heartbeat_ticker = tokio::time::interval(heartbeat_interval);
+                
+                // Mark worker as idle initially
+                if let Some(ref monitor) = worker_monitor {
+                    monitor.record_heartbeat(worker_id).await;
+                }
+                
                 loop {
-                    // Acquire work from shared queue
-                    let mutant = {
-                        let mut rx = work_rx.lock().await;
-                        rx.recv().await
-                    };
-
-                    let Some(mutant) = mutant else {
-                        break; // Queue closed
-                    };
-
-                    // Acquire semaphore permit (limits concurrency)
-                    let _permit = semaphore.acquire().await.unwrap();
-
-                    // Update in-progress count
-                    {
-                        let mut prog = progress.write();
-                        prog.in_progress += 1;
+                    // Send heartbeat (tokio::select! ensures this happens even while waiting)
+                    tokio::select! {
+                        _ = heartbeat_ticker.tick() => {
+                            if let Some(ref monitor) = worker_monitor {
+                                monitor.record_heartbeat(worker_id).await;
+                            }
+                        }
+                        
+                        result = async {
+                            // Acquire work from shared queue
+                            let mutant = {
+                                let mut rx = work_rx.lock().await;
+                                rx.recv().await
+                            };
+                            
+                            let Some(mutant) = mutant else {
+                                return None; // Queue closed
+                            };
+                            
+                            // Acquire semaphore permit (limits concurrency)
+                            let _permit = match semaphore.acquire().await {
+                                Ok(permit) => permit,
+                                Err(_) => {
+                                    // Semaphore was closed
+                                    return None;
+                                }
+                            };
+                            
+                            // Update worker state to processing
+                            if let Some(ref monitor) = worker_monitor {
+                                monitor.record_start_processing(worker_id).await;
+                            }
+                            
+                            // Update in-progress count
+                            {
+                                let mut prog = progress.write();
+                                prog.in_progress += 1;
+                            }
+                            
+                            // Execute mutant with RAII-based safe error handling
+                            let start = std::time::Instant::now();
+                            let result = Self::execute_mutant_worker(
+                                &adapter,
+                                &mutant,
+                                worker_id,
+                            ).await;
+                            let execution_time_ms = start.elapsed().as_millis() as u64;
+                            
+                            // Update worker metrics
+                            if let Some(ref monitor) = worker_monitor {
+                                if result.status == MutantStatus::CompileError || result.status == MutantStatus::Timeout {
+                                    let error_msg = result.error_message.as_deref().unwrap_or("Unknown error");
+                                    monitor.record_failure(worker_id, error_msg).await;
+                                } else {
+                                    monitor.record_success(worker_id, execution_time_ms).await;
+                                }
+                            }
+                            
+                            // Update in-progress count
+                            {
+                                let mut prog = progress.write();
+                                prog.in_progress = prog.in_progress.saturating_sub(1);
+                            }
+                            
+                            // Send result
+                            if result_tx.send(result).await.is_err() {
+                                return None; // Result channel closed
+                            }
+                            
+                            completed_count.fetch_add(1, Ordering::SeqCst);
+                            
+                            Some(()) // Continue loop
+                        } => {
+                            if result.is_none() {
+                                // If worker monitoring is enabled, mark worker as terminated
+                                if let Some(ref monitor) = worker_monitor {
+                                    monitor.mark_terminated(worker_id).await;
+                                }
+                                break; // Exit worker loop
+                            }
+                        }
                     }
-
-                    // Execute mutant
-                    let result = Self::execute_mutant_worker(
-                        &adapter,
-                        &mutant,
-                        worker_id,
-                    ).await;
-
-                    // Update in-progress count
-                    {
-                        let mut prog = progress.write();
-                        prog.in_progress = prog.in_progress.saturating_sub(1);
-                    }
-
-                    // Send result
-                    if result_tx.send(result).await.is_err() {
-                        break;
-                    }
-
-                    completed_count.fetch_add(1, Ordering::SeqCst);
                 }
             });
 
@@ -255,16 +435,34 @@ impl DistributedExecutor {
     }
 
     /// Execute single mutant in worker context
+    ///
+    /// Uses RAII pattern with WorkerTempFile to ensure proper cleanup of
+    /// temporary files even in case of errors or panics.
     async fn execute_mutant_worker(
         adapter: &Arc<dyn LanguageAdapter>,
         mutant: &Mutant,
         worker_id: usize,
     ) -> MutationResult {
-        // Write mutated source to temp file (worker-specific)
-        let temp_dir = std::env::temp_dir();
-        let temp_file = temp_dir.join(format!("mutant_w{}_{}.rs", worker_id, mutant.id));
-
-        if let Err(e) = tokio::fs::write(&temp_file, &mutant.mutated_source).await {
+        let start = std::time::Instant::now();
+        
+        // Create temp file with RAII-based cleanup
+        let temp_file = super::temp_file::WorkerTempFile::new(
+            worker_id, 
+            // Convert string ID to numeric ID for temp file naming
+            mutant.id.parse::<usize>().unwrap_or_else(|_| {
+                // If parsing fails, hash the string to get a numeric value
+                use std::collections::hash_map::DefaultHasher;
+                use std::hash::{Hash, Hasher};
+                
+                let mut hasher = DefaultHasher::new();
+                mutant.id.hash(&mut hasher);
+                hasher.finish() as usize
+            }),
+            Some("rs")
+        );
+        
+        // Write mutated source to temp file
+        if let Err(e) = temp_file.write(&mutant.mutated_source).await {
             return MutationResult {
                 mutant: mutant.clone(),
                 status: MutantStatus::CompileError,
@@ -273,15 +471,11 @@ impl DistributedExecutor {
                 error_message: Some(format!("Failed to write temp file: {}", e)),
             };
         }
-
-        // Run tests
-        let start = std::time::Instant::now();
-        let test_result = match adapter.run_tests(&temp_file).await {
+        
+        // Run tests (temp_file will be cleaned up automatically when dropped)
+        let test_result = match adapter.run_tests(temp_file.path()).await {
             Ok(result) => result,
             Err(e) => {
-                // Cleanup
-                let _ = tokio::fs::remove_file(&temp_file).await;
-
                 return MutationResult {
                     mutant: mutant.clone(),
                     status: MutantStatus::CompileError,
@@ -291,18 +485,18 @@ impl DistributedExecutor {
                 };
             }
         };
+        
         let execution_time_ms = start.elapsed().as_millis() as u64;
-
+        
         // Determine status
         let status = if test_result.passed {
             MutantStatus::Survived
         } else {
             MutantStatus::Killed
         };
-
-        // Cleanup temp file
-        let _ = tokio::fs::remove_file(&temp_file).await;
-
+        
+        // No need to explicitly cleanup - temp_file will be cleaned up when dropped
+        
         MutationResult {
             mutant: mutant.clone(),
             status,

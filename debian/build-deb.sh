@@ -51,8 +51,8 @@ fi
 
 # Set permissions
 echo "🔧 Setting correct permissions..."
-find . -type d -exec chmod 755 {} \;
-find . -type f -exec chmod 644 {} \;
+find . -type d -exec chmod 755 "{}" \;
+find . -type f -exec chmod 644 "{}" \;
 chmod +x DEBIAN/postinst DEBIAN/prerm DEBIAN/postrm
 
 # Fix ownership (best effort)

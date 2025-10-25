@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.171.1] - 2025-10-27
+
+### Added
+- **C/C++ Language Support (Sprint 49)**: Implemented full AST-based analysis for C and C++ files
+  - **New Features**:
+    - C language analyzer in services/ast/languages/c.rs
+    - C++ language analyzer in services/ast/languages/cpp.rs
+    - AST strategy pattern implementation for C/C++ (c_cpp_strategy.rs)
+    - Integration with deep context generation
+  - **Capabilities**:
+    - Function, struct, class, and namespace extraction
+    - Cyclomatic and cognitive complexity analysis
+    - Header file analysis (.h, .hpp, .hxx)
+    - C++ template and namespace support
+  - **Integrations**: File context generation, complexity analysis, symbol table
+  - **Documentation**: Added Sprint 49 C/C++ Integration Status documentation
+  - **Quality gates**: All core functionality passing with clean build (0 warnings)
+  - **Extensions supported**: .c, .h, .cpp, .cc, .cxx, .hpp, .hxx, .hh
+  - Commit: 98c35f36
+
 ### Changed
 - **Dependency Updates (Sprint 46 Priority 2)**: Updated 43 dependencies to latest compatible versions
   - **Major updates**:

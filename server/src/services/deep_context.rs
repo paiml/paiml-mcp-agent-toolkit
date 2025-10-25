@@ -116,6 +116,16 @@ thread_local! {
     static BASH_UNIFIED_CACHE: RefCell<FxHashMap<PathBuf, FileComplexityMetrics>> = RefCell::new(FxHashMap::default());
 }
 
+// Thread-local cache for unified C analysis results
+thread_local! {
+    static C_UNIFIED_CACHE: RefCell<FxHashMap<PathBuf, FileComplexityMetrics>> = RefCell::new(FxHashMap::default());
+}
+
+// Thread-local cache for unified C++ analysis results
+thread_local! {
+    static CPP_UNIFIED_CACHE: RefCell<FxHashMap<PathBuf, FileComplexityMetrics>> = RefCell::new(FxHashMap::default());
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DeepContextConfig {
     pub include_analyses: Vec<AnalysisType>,
@@ -3937,7 +3947,8 @@ pub async fn analyze_file_by_language(
         "typescript" | "javascript" => analyze_typescript_language(file_path).await,
         "python" => analyze_python_language(file_path).await,
         "go" => analyze_go_language(file_path).await,
-        "c" | "cpp" => analyze_c_language(file_path).await,
+        "c" => analyze_c_language(file_path).await,
+        "cpp" => analyze_cpp_language(file_path).await,
 
         // JVM languages
         "java" => analyze_java_language(file_path).await,
@@ -4061,11 +4072,46 @@ pub async fn analyze_go_language(
     Ok(Vec::new())
 }
 
-/// Toyota Way Single Responsibility: Handle C/C++ file analysis
+/// Toyota Way Single Responsibility: Handle C language analysis with improved features
+/// Uses the enhanced CAstVisitor from services/ast/languages/c.rs
 pub async fn analyze_c_language(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
+    #[cfg(feature = "c-ast")]
+    {
+        // Use the new comprehensive C language analyzer
+        use crate::services::ast::languages::c;
+        let file_context = c::analyze_c_file(file_path)
+            .await
+            .map_err(|e| anyhow::anyhow!("C analysis error: {}", e))?;
+        
+        // Return the AST items from the file context
+        Ok(file_context.items)
+    }
+    
+    #[cfg(not(feature = "c-ast"))]
     analyze_c_file(file_path).await
+}
+
+/// Toyota Way Single Responsibility: Handle C++ language analysis with modern features
+/// Uses the enhanced CppAstVisitor from services/ast/languages/cpp.rs
+pub async fn analyze_cpp_language(
+    file_path: &std::path::Path,
+) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
+    #[cfg(feature = "cpp-ast")]
+    {
+        // Use the comprehensive C++ language analyzer
+        use crate::services::ast::languages::cpp;
+        let file_context = cpp::analyze_cpp_file(file_path)
+            .await
+            .map_err(|e| anyhow::anyhow!("C++ analysis error: {}", e))?;
+        
+        // Return the AST items from the file context
+        Ok(file_context.items)
+    }
+    
+    #[cfg(not(feature = "cpp-ast"))]
+    analyze_c_file(file_path).await  // Fallback to C analysis if C++ feature is not enabled
 }
 
 /// Toyota Way Single Responsibility: Handle Kotlin file analysis with debug logging
@@ -4301,38 +4347,22 @@ async fn analyze_go_file(
     Ok(Vec::new())
 }
 
-/// Simple C/C++ file analysis
+/// Legacy C file analysis - redirects to services/ast/languages/c.rs
+/// This function is kept for backward compatibility but delegates to the new implementation
+#[allow(dead_code)]
 async fn analyze_c_file(
     #[allow(unused_variables)] file_path: &Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
     #[cfg(feature = "c-ast")]
     {
-        use crate::models::unified_ast::AstKind;
-        use crate::services::ast_c::CAstParser;
-        use tokio::fs;
-
-        // Read file content
-        let content = fs::read_to_string(file_path).await?;
-
-        // Parse with C AST parser
-        let mut parser = CAstParser::new();
-        let ast_dag = parser.parse_file(file_path, &content)?;
-
-        // Convert AST DAG to context items
-        let mut items = Vec::new();
-        for node in ast_dag.nodes.iter() {
-            if let AstKind::Function(_) = &node.kind {
-                let item = crate::services::context::AstItem::Function {
-                    name: format!("function_{}", node.name_vector), // Using name hash as placeholder
-                    visibility: "public".to_string(),
-                    is_async: false,
-                    line: node.source_range.start as usize,
-                };
-                items.push(item);
-            }
-        }
-
-        Ok(items)
+        // Direct delegation to the new implementation
+        // This avoids code duplication and ensures consistency
+        use crate::services::ast::languages::c;
+        let file_context = c::analyze_c_file(file_path)
+            .await
+            .map_err(|e| anyhow::anyhow!("C analysis error: {}", e))?;
+        
+        Ok(file_context.items)
     }
     #[cfg(not(feature = "c-ast"))]
     Ok(Vec::new())
@@ -4365,7 +4395,7 @@ async fn analyze_bash_file(
 }
 
 /// Simple Java file analysis
-async fn analyze_java_file(
+pub async fn analyze_java_file(
     _file_path: &Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
     #[cfg(feature = "java-ast")]
@@ -4389,7 +4419,7 @@ async fn analyze_java_file(
 }
 
 /// Simple C# file analysis
-async fn analyze_csharp_file(
+pub async fn analyze_csharp_file(
     _file_path: &Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
     #[cfg(feature = "csharp-ast")]
@@ -4447,7 +4477,7 @@ async fn analyze_ruby_file(
 }
 
 /// Simple Swift file analysis
-async fn analyze_swift_file(
+pub async fn analyze_swift_file(
     _file_path: &Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
     #[cfg(feature = "swift-ast")]
