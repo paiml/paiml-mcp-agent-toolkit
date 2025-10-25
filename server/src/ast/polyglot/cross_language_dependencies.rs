@@ -73,7 +73,7 @@ impl CrossLanguageDependencies {
             // Add to FQN map
             self.fqn_map
                 .entry(node.fqn.clone())
-                .or_insert_with(HashSet::new)
+                .or_default()
                 .insert(node.id.clone());
                 
             // Add to node map
@@ -99,7 +99,7 @@ impl CrossLanguageDependencies {
         for (id, node) in &self.nodes {
             nodes_by_language
                 .entry(node.language)
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(id.clone());
         }
         
@@ -258,11 +258,11 @@ impl CrossLanguageDependencies {
         // Build the name map
         for (id, node) in &self.nodes {
             name_map.entry(node.name.clone())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(id.clone());
                 
             name_map.entry(node.fqn.clone())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(id.clone());
         }
         

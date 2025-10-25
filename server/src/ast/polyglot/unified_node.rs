@@ -66,6 +66,7 @@ pub struct UnifiedNode {
 
 /// Position in source code
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default)]
 pub struct SourcePosition {
     /// Starting line (1-based)
     pub start_line: usize,
@@ -77,16 +78,6 @@ pub struct SourcePosition {
     pub end_col: usize,
 }
 
-impl Default for SourcePosition {
-    fn default() -> Self {
-        Self {
-            start_line: 0,
-            start_col: 0,
-            end_line: 0,
-            end_col: 0,
-        }
-    }
-}
 
 /// A reference to another node
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -339,7 +330,7 @@ impl UnifiedNode {
     pub fn add_reference(&mut self, kind: ReferenceKind, target_name: String, target_id: Option<String>) {
         let reference = NodeReference {
             kind,
-            target_id: target_id.unwrap_or_else(|| "".to_string()),
+            target_id: target_id.unwrap_or_default(),
             target_name,
             target_language: None, // To be resolved later
         };

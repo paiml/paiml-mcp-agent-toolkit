@@ -73,7 +73,7 @@ impl McpTool for ScalaAnalysisTool {
         let include_ast = params["include_ast"].as_bool().unwrap_or(false);
         
         // Validate path
-        if !PathValidator::ensure_exists(&path).is_ok() {
+        if PathValidator::ensure_exists(&path).is_err() {
             return Err(McpError {
                 code: crate::mcp_integration::error_codes::INVALID_PARAMS,
                 message: format!("Path does not exist: {}", path.display()),
@@ -88,7 +88,7 @@ impl McpTool for ScalaAnalysisTool {
         info!("Analyzing Scala at path: {}", path.display());
         let result = if path.is_dir() {
             analyze_scala_directory(&path, max_depth, include_metrics, include_ast).await
-        } else if path.extension().map_or(false, |ext| ext == "scala" || ext == "sc") {
+        } else if path.extension().is_some_and(|ext| ext == "scala" || ext == "sc") {
             analyze_scala_file(&path, include_metrics, include_ast).await
         } else {
             return Err(McpError {
@@ -172,7 +172,7 @@ async fn analyze_scala_file(
                     let kind = extract_kind(item);
                     kind == "package" || kind == "module"
                 })
-                .map(|item| extract_name(item))
+                .map(extract_name)
                 .unwrap_or_else(|| "default".to_string());
             
             // Build response
@@ -196,12 +196,12 @@ async fn analyze_scala_file(
                 // Calculate complexity metrics
                 let total_complexity: u32 = items
                     .iter()
-                    .map(|item| extract_complexity(item))
+                    .map(extract_complexity)
                     .sum();
 
                 let max_complexity = items
                     .iter()
-                    .map(|item| extract_complexity(item))
+                    .map(extract_complexity)
                     .max()
                     .unwrap_or(0);
                     
@@ -384,7 +384,7 @@ fn find_scala_files(path: &std::path::Path, max_depth: usize) -> Result<Vec<Path
         
     for entry in walker {
         let path = entry.path();
-        if path.is_file() && path.extension().map_or(false, |ext| ext == "scala" || ext == "sc") {
+        if path.is_file() && path.extension().is_some_and(|ext| ext == "scala" || ext == "sc") {
             scala_files.push(path.to_path_buf());
         }
     }
