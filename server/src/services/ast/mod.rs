@@ -18,6 +18,10 @@ use std::sync::Arc;
 pub mod languages;
 pub mod strategy;
 
+// Re-export C/C++ strategy adapters
+#[cfg(any(feature = "c-ast", feature = "cpp-ast"))]
+pub use languages::c_cpp_strategy;
+
 // use crate::models::unified_ast::AstDag; // Not needed in unified framework
 use crate::services::context::FileContext;
 use crate::services::file_classifier::FileClassifier;
@@ -78,12 +82,17 @@ impl AstRegistry {
 
         #[cfg(feature = "c-ast")]
         {
-            self.register(Arc::new(languages::c::CStrategy::new()));
+            self.register(Arc::new(languages::c_cpp_strategy::CStrategy::new()));
         }
 
         #[cfg(feature = "cpp-ast")]
         {
-            self.register(Arc::new(languages::cpp::CppStrategy::new()));
+            self.register(Arc::new(languages::c_cpp_strategy::CppStrategy::new()));
+        }
+
+        #[cfg(feature = "kotlin-ast")]
+        {
+            self.register(Arc::new(languages::kotlin::KotlinStrategy::new()));
         }
     }
 

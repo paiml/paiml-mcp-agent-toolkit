@@ -41,21 +41,19 @@ impl MutantExecutor {
 
     /// Execute test suite on a single mutant
     ///
-    /// FIXED: Now uses backup/restore with proper error handling
-    /// Original file is modified but ALWAYS restored, even on error
+    /// Uses RAII pattern with MutantGuard to ensure original file is ALWAYS restored
+    /// even if process is interrupted (SIGINT/Ctrl+C)
     pub async fn execute_mutant(&self, mutant: &Mutant) -> Result<MutationResult> {
         let start_time = Instant::now();
 
-        // Step 1: Backup original file
-        let backup_path = self.create_backup(&mutant.original_file).await?;
+        // Step 1: Create MutantGuard to handle backup and automatic restoration
+        // The guard will restore the file when dropped, even on panic or early return
+        let mut guard = super::guard::MutantGuard::new(&mutant.original_file).await?;
 
-        // Step 2: Write mutated source
-        let write_result = fs::write(&mutant.original_file, &mutant.mutated_source).await;
-        if let Err(e) = write_result {
-            // Restore backup before returning error
-            let _ = self.restore_backup(&mutant.original_file, &backup_path).await;
-            return Err(e).context("Failed to write mutated source");
-        }
+        // Step 2: Write mutated source (safe to return early on error - guard ensures cleanup)
+        fs::write(&mutant.original_file, &mutant.mutated_source)
+            .await
+            .context("Failed to write mutated source")?;
 
         // Step 3: Run tests with timeout (smart filtering)
         let test_result = timeout(
@@ -63,10 +61,12 @@ impl MutantExecutor {
             self.run_cargo_test_for_mutant(mutant)
         ).await;
 
-        // Step 4: ALWAYS restore original file (even on timeout/error)
-        // Note: If process is killed (SIGINT), this won't run - that's the bug
-        // Workaround: User must `git checkout` to restore
-        self.restore_backup(&mutant.original_file, &backup_path).await?;
+        // Step 4: Explicitly restore file (not strictly necessary, but preferred)
+        // The guard's Drop implementation is our safety net if this fails
+        if let Err(e) = guard.restore().await {
+            eprintln!("Warning: Error restoring file: {}", e);
+            // Continue - we'll still create a result
+        }
 
         // Step 5: Parse results
         let execution_time_ms = start_time.elapsed().as_millis() as u64;
@@ -252,7 +252,195 @@ impl MutantExecutor {
         })
     }
 
-    /// Create backup of original file
+    /// Execute mutants with resumable testing
+    ///
+    /// This function saves the state to disk periodically to allow
+    /// resuming an interrupted test run.
+    pub async fn execute_mutants_resumable(
+        &self,
+        mutants: &[Mutant],
+        state_path: &Path,
+        save_interval: Duration,
+    ) -> Result<Vec<MutationResult>> {
+        // Create initial state or load existing state
+        let mut state = if state_path.exists() {
+            println!("  📋 Found existing state at {}", state_path.display());
+            super::state::MutationState::load(state_path).await?
+        } else {
+            // Create state directory if needed
+            if let Some(parent) = state_path.parent() {
+                if !parent.exists() {
+                    fs::create_dir_all(parent).await?;
+                }
+            }
+            
+            println!("  📋 Creating new state file at {}", state_path.display());
+            let state = super::state::MutationState::new(
+                &self.work_dir,
+                mutants.to_vec(),
+                self.timeout.as_secs(),
+                false,
+                None,
+            );
+            
+            // Save initial state
+            state.save(state_path).await?;
+            state
+        };
+        
+        // Handle case where everything is already done
+        if state.is_complete() {
+            println!("  ✅ All mutants already tested!");
+            return Ok(state.completed_mutants);
+        }
+        
+        println!("  🚀 Resuming mutation testing with {} mutants to process ({:.1}% complete)",
+            state.pending_mutants.len(),
+            state.completion_percentage()
+        );
+        
+        // Set up periodic state saving
+        let (tx, mut rx) = tokio::sync::mpsc::channel::<()>(1);
+        
+        // Spawn save task
+        let state_path_clone = state_path.to_path_buf();
+        let state_clone = state.clone();
+        let save_task = tokio::spawn(async move {
+            let mut interval = tokio::time::interval(save_interval);
+            
+            loop {
+                tokio::select! {
+                    _ = interval.tick() => {
+                        // Save state
+                        if let Err(e) = state_clone.save_with_backup(&state_path_clone).await {
+                            eprintln!("  ⚠️  Error saving state: {}", e);
+                        } else {
+                            println!("  💾 Saved progress ({:.1}% complete)",
+                                state_clone.completion_percentage());
+                        }
+                    }
+                    _ = rx.recv() => {
+                        // Final save on completion
+                        if let Err(e) = state_clone.save_with_backup(&state_path_clone).await {
+                            eprintln!("  ⚠️  Error saving final state: {}", e);
+                        }
+                        break;
+                    }
+                }
+            }
+        });
+        
+        // Set up signal handler
+        let (signal_tx, mut signal_rx) = tokio::sync::mpsc::channel::<()>(1);
+        
+        #[cfg(unix)]
+        {
+            use tokio::signal::unix::{signal, SignalKind};
+            let signal_tx_clone = signal_tx.clone();
+            
+            // Handle SIGINT
+            tokio::spawn(async move {
+                let mut sigint = signal(SignalKind::interrupt()).expect("Failed to set up SIGINT handler");
+                
+                sigint.recv().await;
+                println!("\n  🛑 Received interrupt signal, stopping gracefully...");
+                let _ = signal_tx_clone.send(()).await;
+            });
+            
+            // Handle SIGTERM
+            let signal_tx_clone = signal_tx.clone();
+            tokio::spawn(async move {
+                let mut sigterm = signal(SignalKind::terminate()).expect("Failed to set up SIGTERM handler");
+                
+                sigterm.recv().await;
+                println!("\n  🛑 Received termination signal, stopping gracefully...");
+                let _ = signal_tx_clone.send(()).await;
+            });
+        }
+        
+        // Process mutants
+        let mut results = state.completed_mutants.clone();
+        
+        // First clone the pending mutants to avoid the borrow conflict
+        let pending_mutants = state.pending_mutants.clone();
+        
+        'outer: for mutant in pending_mutants.iter() {
+            // Check for signal
+            if let Ok(()) = signal_rx.try_recv() {
+                println!("  🛑 Graceful shutdown requested, stopping execution");
+                break 'outer;
+            }
+            
+            println!("  [{}] Testing mutant {}...", results.len() + 1, mutant.id);
+            
+            match self.execute_mutant(mutant).await {
+                Ok(result) => {
+                    let status_symbol = match result.status {
+                        MutantStatus::Killed => "✅",
+                        MutantStatus::Survived => "❌",
+                        MutantStatus::CompileError => "🔧",
+                        MutantStatus::Timeout => "⏱️",
+                        _ => "❓",
+                    };
+                    println!("    {} {:?} ({}ms)", status_symbol, result.status, result.execution_time_ms);
+                    
+                    // Add to state and results
+                    {
+                        // Use a scope to drop the mutable borrow before continuing
+                        state.add_result(result.clone());
+                    }
+                    results.push(result);
+                }
+                Err(e) => {
+                    eprintln!("    ⚠️  Error executing mutant {}: {}", mutant.id, e);
+                    
+                    // Create error result
+                    let error_result = MutationResult {
+                        mutant: mutant.clone(),
+                        status: MutantStatus::CompileError,
+                        test_failures: vec![],
+                        execution_time_ms: 0,
+                        error_message: Some(e.to_string()),
+                    };
+                    
+                    // Add to state and results
+                    {
+                        // Use a scope to drop the mutable borrow before continuing
+                        state.add_result(error_result.clone());
+                    }
+                    results.push(error_result);
+                }
+            }
+        }
+        
+        // Signal save task to complete
+        let _ = tx.send(()).await;
+        
+        // Wait for save task
+        if let Err(e) = save_task.await {
+            eprintln!("  ⚠️  Error in state saving task: {}", e);
+        }
+        
+        println!("  ✅ Mutation testing complete! Processed {} mutants", results.len());
+        println!("  📊 Stats: {} killed, {} survived, {} errors",
+            results.iter().filter(|r| r.status == MutantStatus::Killed).count(),
+            results.iter().filter(|r| r.status == MutantStatus::Survived).count(),
+            results.iter().filter(|r| r.status == MutantStatus::CompileError || r.status == MutantStatus::Timeout).count()
+        );
+        
+        Ok(results)
+    }
+    
+    /// Get default state path for a project
+    pub fn get_default_state_path(&self) -> PathBuf {
+        self.work_dir.join(".pmat").join("mutation_state.json")
+    }
+    
+    /// These functions are deprecated - use MutantGuard instead
+    /// Kept for backward compatibility
+    /// Create backup of original file (deprecated)
+    #[deprecated(since = "2.171.0", note = "Use MutantGuard instead")]
+    #[allow(dead_code)]
     async fn create_backup(&self, original_path: &Path) -> Result<PathBuf> {
         let backup_path = original_path.with_extension("pmat_backup");
         fs::copy(original_path, &backup_path).await
@@ -260,7 +448,9 @@ impl MutantExecutor {
         Ok(backup_path)
     }
 
-    /// Restore original file from backup
+    /// Restore original file from backup (deprecated)
+    #[deprecated(since = "2.171.0", note = "Use MutantGuard instead")]
+    #[allow(dead_code)]
     async fn restore_backup(&self, original_path: &Path, backup_path: &Path) -> Result<()> {
         fs::copy(backup_path, original_path).await
             .context("Failed to restore backup")?;

@@ -20,6 +20,12 @@ pub mod c;
 #[cfg(feature = "cpp-ast")]
 pub mod cpp;
 
+#[cfg(any(feature = "c-ast", feature = "cpp-ast"))]
+pub mod c_cpp_strategy;
+
+#[cfg(feature = "kotlin-ast")]
+pub mod kotlin_strategy;
+
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

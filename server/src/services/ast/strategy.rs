@@ -29,11 +29,11 @@ impl StrategySelector {
             "py" | "pyi" | "pyw" => Some(Arc::new(super::languages::python::PythonStrategy::new())),
 
             #[cfg(feature = "c-ast")]
-            "c" | "h" => Some(Arc::new(super::languages::c::CStrategy::new())),
+            "c" | "h" => Some(Arc::new(super::languages::c_cpp_strategy::CStrategy::new())),
 
             #[cfg(feature = "cpp-ast")]
             "cpp" | "cxx" | "cc" | "hpp" | "hxx" | "hh" => {
-                Some(Arc::new(super::languages::cpp::CppStrategy::new()))
+                Some(Arc::new(super::languages::c_cpp_strategy::CppStrategy::new()))
             }
 
             _ => None,

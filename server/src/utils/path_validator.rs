@@ -48,6 +48,24 @@ impl PathValidator {
         Ok(())
     }
 
+    /// Check if a path exists (returns boolean)
+    ///
+    /// Unlike ensure_exists, this returns a boolean instead of a Result
+    /// This is useful in conditional expressions
+    ///
+    /// # Examples
+    /// ```
+    /// use std::path::Path;
+    /// use pmat::utils::path_validator::PathValidator;
+    ///
+    /// let existing_path = Path::new("Cargo.toml");
+    /// assert!(PathValidator::path_exists(existing_path));
+    /// ```
+    #[must_use]
+    pub fn path_exists(path: &Path) -> bool {
+        path.exists()
+    }
+
     /// Validate that a path exists and is a file
     ///
     /// # Examples
@@ -69,6 +87,24 @@ impl PathValidator {
         Ok(())
     }
 
+    /// Check if a path exists and is a file (returns boolean)
+    ///
+    /// Unlike ensure_file, this returns a boolean instead of a Result
+    /// This is useful in conditional expressions
+    ///
+    /// # Examples
+    /// ```
+    /// use std::path::Path;
+    /// use pmat::utils::path_validator::PathValidator;
+    ///
+    /// let file_path = Path::new("Cargo.toml");
+    /// assert!(PathValidator::is_valid_file(file_path));
+    /// ```
+    #[must_use]
+    pub fn is_valid_file(path: &Path) -> bool {
+        path.exists() && path.is_file()
+    }
+
     /// Validate that a path exists and is a directory
     ///
     /// # Examples
@@ -88,6 +124,24 @@ impl PathValidator {
             });
         }
         Ok(())
+    }
+    
+    /// Check if a path exists and is a directory (returns boolean)
+    ///
+    /// Unlike ensure_directory, this returns a boolean instead of a Result
+    /// This is useful in conditional expressions
+    ///
+    /// # Examples
+    /// ```
+    /// use std::path::Path;
+    /// use pmat::utils::path_validator::PathValidator;
+    ///
+    /// let dir_path = Path::new("src");
+    /// assert!(PathValidator::is_valid_directory(dir_path));
+    /// ```
+    #[must_use]
+    pub fn is_valid_directory(path: &Path) -> bool {
+        path.exists() && path.is_dir()
     }
 
     /// Validate that a path exists and is readable
@@ -216,6 +270,39 @@ mod tests {
 
         Ok(())
     }
+    
+    #[test]
+    fn test_boolean_path_validators() -> Result<()> {
+        let temp_dir = TempDir::new()?;
+        
+        // Create a file
+        let file_path = temp_dir.path().join("test_file.txt");
+        fs::write(&file_path, "test content")?;
+        
+        // Create a directory
+        let dir_path = temp_dir.path().join("test_dir");
+        fs::create_dir(&dir_path)?;
+        
+        // Test non-existent path
+        let non_existent = temp_dir.path().join("does_not_exist");
+        
+        // Test path_exists
+        assert!(PathValidator::path_exists(&file_path));
+        assert!(PathValidator::path_exists(&dir_path));
+        assert!(!PathValidator::path_exists(&non_existent));
+        
+        // Test is_valid_file
+        assert!(PathValidator::is_valid_file(&file_path));
+        assert!(!PathValidator::is_valid_file(&dir_path));
+        assert!(!PathValidator::is_valid_file(&non_existent));
+        
+        // Test is_valid_directory
+        assert!(PathValidator::is_valid_directory(&dir_path));
+        assert!(!PathValidator::is_valid_directory(&file_path));
+        assert!(!PathValidator::is_valid_directory(&non_existent));
+        
+        Ok(())
+    }
 
     #[test]
     fn test_is_source_file() -> Result<()> {
@@ -248,6 +335,13 @@ mod tests {
         let dir_path = temp_dir.path().join("test_dir");
         fs::create_dir(&dir_path)?;
         assert!(PathValidator::validate_directory_anyhow(&dir_path).is_ok());
+        
+        // Test boolean methods
+        assert!(PathValidator::path_exists(&file_path));
+        assert!(PathValidator::is_valid_file(&file_path));
+        assert!(PathValidator::is_valid_directory(&dir_path));
+        assert!(!PathValidator::is_valid_file(&dir_path));
+        assert!(!PathValidator::is_valid_directory(&file_path));
 
         // Test with nonexistent path
         let bad_path = temp_dir.path().join("nonexistent_123456");
