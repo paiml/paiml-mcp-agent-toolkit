@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Test Stability (Sprint 56)**: Fixed 8 test failures and made tests deterministic
+  - **Polyglot AST Tests**: Fixed NodeKind mapping expectations (Java classes → NodeKind::Struct)
+  - **C Language Analyzer**: Fixed struct detection bug (excluded function return types)
+  - **C++ Language Analyzer**:
+    - Fixed function duplicate detection (excluded variable assignments)
+    - Added namespace qualification for enums and functions
+  - **Cross-Language Dependencies**: Fixed duplicate dependency reporting via HashSet deduplication
+  - **Scala Analyzer**: Fixed comment filtering (prevented false positives from code in comments)
+  - **Scala MCP Tools**: Fixed case class vs regular class counting logic
+  - **Test Determinism**: Made test_detect_dependencies deterministic via sorting (added Ord to ReferenceKind)
+  - **Quality**: All 8 issues resolved, tests now pass reliably in both normal and coverage builds
+  - **Commits**: 08e6d312, 7e18adf7, e1e563cc, 4708811d, 43952e58
+
 ## [2.172.0] - 2025-10-26
 
 ### Added
