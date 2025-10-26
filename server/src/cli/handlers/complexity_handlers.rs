@@ -500,7 +500,7 @@ pub async fn handle_analyze_complexity(
             toolchain.as_deref(),
             max_cyclomatic,
             max_cognitive,
-            include.clone(),
+            include,
             timeout,
             top_files,
             format,
@@ -822,7 +822,7 @@ fn handle_watch_mode(
         &include,
         timeout,
         top_files,
-        format.clone(),
+        format,
         output,
     );
 

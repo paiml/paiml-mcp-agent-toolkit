@@ -1775,7 +1775,7 @@ async fn handle_analyze_system_architecture(
     let context = match build_architecture_analysis_context(&project_path, &deep_context) {
         Ok(ctx) => ctx,
         Err(e) => {
-            return McpResponse::error(request_id, -32000, e.clone());
+            return McpResponse::error(request_id, -32000, e);
         }
     };
 

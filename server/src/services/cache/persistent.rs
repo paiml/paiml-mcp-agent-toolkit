@@ -361,7 +361,7 @@ where
         // Remove from memory cache
         let value = self.memory_cache.write().remove(&cache_key).map(|entry| {
             self.stats.remove_bytes(entry.size_bytes);
-            entry.value.clone()
+            entry.value
         });
 
         // Remove from disk

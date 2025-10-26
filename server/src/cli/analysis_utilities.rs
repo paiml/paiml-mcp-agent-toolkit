@@ -573,7 +573,7 @@ fn create_summary_from_file_results(
     };
 
     // Calculate percentiles
-    let mut sorted_values = tdg_values.clone();
+    let mut sorted_values = tdg_values;
     sorted_values.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
 
     let p95_tdg = percentile(&sorted_values, 0.95);
@@ -4623,7 +4623,7 @@ pub async fn check_complexity(
 
     // Check for violations using the same logic as analyze complexity
     let report = aggregate_results_with_thresholds(
-        file_metrics.clone(),
+        file_metrics,
         Some(max_cyclomatic as u16),
         Some(max_cognitive as u16),
     );

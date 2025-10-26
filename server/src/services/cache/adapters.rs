@@ -101,7 +101,7 @@ where
     }
 
     async fn put(&self, key: Self::Key, value: Self::Value) -> Result<()> {
-        self.inner.write().put(key.clone(), value)?;
+        self.inner.write().put(key, value)?;
         Ok(())
     }
 

@@ -60,7 +60,7 @@ impl DagEngine {
         };
 
         self.nodes.insert(step.id.clone(), node);
-        self.edges.insert(step.id.clone(), Vec::new());
+        self.edges.insert(step.id, Vec::new());
     }
 
     /// Add dependency between steps

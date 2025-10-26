@@ -242,7 +242,7 @@ async fn analyze_scala_file(
                 "status": "error",
                 "path": path.display().to_string(),
                 "language": "scala",
-                "error": e.to_string()
+                "error": e
             }))
         }
     }

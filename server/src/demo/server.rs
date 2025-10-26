@@ -533,7 +533,7 @@ pub(crate) fn serve_polyglot_analysis(state: &Arc<RwLock<DemoState>>) -> Respons
     let polyglot_data = serde_json::json!({
         "languages": [
             {
-                "language": primary_language.clone(),
+                "language": primary_language,
                 "file_count": 25, // These would be calculated in a full implementation
                 "line_count": 2500,
                 "complexity_score": 6.5,

@@ -158,7 +158,7 @@ impl ComplexityDefectAnalyzer {
             id: format!("CPLX-{index:04}"),
             severity,
             category: DefectCategory::Complexity,
-            file_path: file_path.clone(),
+            file_path,
             line_start: 1, // TDG is file-level
             line_end: None,
             column_start: None,

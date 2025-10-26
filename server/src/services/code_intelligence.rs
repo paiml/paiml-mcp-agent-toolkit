@@ -328,7 +328,7 @@ impl CodeIntelligence {
         let dag = Arc::new(RwLock::new(AstDag::new()));
 
         Self {
-            dag: dag.clone(),
+            dag,
             deadcode: Arc::new(RwLock::new(DeadCodeAnalyzer::new(10000))), // Initial capacity
             cache: Arc::new(UnifiedCache::new(100)),
         }
