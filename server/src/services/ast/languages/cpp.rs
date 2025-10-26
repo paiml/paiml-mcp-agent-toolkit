@@ -177,34 +177,70 @@ impl CppAstVisitor {
 
     /// Extracts function declarations (complexity ≤10)
     fn extract_function_declarations(&mut self, source: &str) -> Result<(), String> {
+        // Track namespace context while parsing
+        let mut namespace_stack: Vec<String> = Vec::new();
+        let mut brace_depth = 0;
+        let mut class_depth = 0;  // Track if we're inside a class
+
         for (line_num, line) in source.lines().enumerate() {
             let trimmed = line.trim();
-            
+
             // Skip comments and preprocessor directives
             if trimmed.starts_with("//") || trimmed.starts_with("/*") || trimmed.starts_with("#") {
                 continue;
             }
-            
-            // Skip class methods (handled separately)
-            if self.current_class.is_some() {
+
+            // Track namespace declarations
+            if trimmed.starts_with("namespace ") {
+                if let Some(ns_name) = self.extract_namespace_name(trimmed) {
+                    namespace_stack.push(ns_name);
+                }
+            }
+
+            // Track class/struct declarations to avoid extracting methods
+            if trimmed.starts_with("class ") || trimmed.starts_with("struct ") {
+                class_depth = brace_depth + 1;  // Methods will be at this depth or deeper
+            }
+
+            // Track brace depth
+            brace_depth += trimmed.chars().filter(|&c| c == '{').count() as i32;
+            brace_depth -= trimmed.chars().filter(|&c| c == '}').count() as i32;
+
+            // Reset class depth when we exit the class
+            if class_depth > 0 && brace_depth < class_depth {
+                class_depth = 0;
+            }
+
+            // Check for closing namespace
+            if trimmed.contains("}") && !namespace_stack.is_empty() && brace_depth < namespace_stack.len() as i32 {
+                namespace_stack.pop();
+            }
+
+            // Skip if we're inside a class
+            if class_depth > 0 && brace_depth >= class_depth {
                 continue;
             }
-            
+
             // Check for function declaration
             if self.is_function_declaration(trimmed) && !self.is_class_method(trimmed) {
                 if let Ok(name) = self.extract_function_name(trimmed) {
-                    let qualified_name = self.get_qualified_name(&name);
-                    
+                    // Build qualified name with current namespace
+                    let qualified_name = if !namespace_stack.is_empty() {
+                        format!("{}::{}", namespace_stack.join("::"), name)
+                    } else {
+                        name
+                    };
+
                     // Check for function visibility
                     let visibility = if trimmed.contains("static ") {
                         "private"
                     } else {
                         "public"
                     }.to_string();
-                    
+
                     // Check if function is async (C++20 feature)
                     let is_async = trimmed.contains("async ") || trimmed.contains("co_await ");
-                    
+
                     self.items.push(AstItem::Function {
                         name: qualified_name,
                         visibility: visibility.clone(),
@@ -304,16 +340,41 @@ impl CppAstVisitor {
 
     /// Extracts enum declarations (complexity ≤10)
     fn extract_enum_declarations(&mut self, source: &str) -> Result<(), String> {
+        // Track namespace context while parsing
+        let mut namespace_stack: Vec<String> = Vec::new();
+        let mut brace_depth = 0;
+
         for (line_num, line) in source.lines().enumerate() {
             let trimmed = line.trim();
-            
+
+            // Track namespace declarations
+            if trimmed.starts_with("namespace ") {
+                if let Some(ns_name) = self.extract_namespace_name(trimmed) {
+                    namespace_stack.push(ns_name);
+                }
+            }
+
+            // Track brace depth
+            brace_depth += trimmed.chars().filter(|&c| c == '{').count() as i32;
+            brace_depth -= trimmed.chars().filter(|&c| c == '}').count() as i32;
+
+            // Check for closing namespace
+            if trimmed.contains("}") && !namespace_stack.is_empty() && brace_depth < namespace_stack.len() as i32 {
+                namespace_stack.pop();
+            }
+
             if (trimmed.starts_with("enum ") || trimmed.starts_with("enum class ")) && trimmed.contains("{") {
                 if let Some(name) = self.extract_enum_name(trimmed) {
-                    let qualified_name = self.get_qualified_name(&name);
-                    
+                    // Build qualified name with current namespace
+                    let qualified_name = if !namespace_stack.is_empty() {
+                        format!("{}::{}", namespace_stack.join("::"), name)
+                    } else {
+                        name
+                    };
+
                     // Count enum variants (simplified)
                     let variants_count = self.count_enum_variants(source, line_num);
-                    
+
                     self.items.push(AstItem::Enum {
                         name: qualified_name,
                         visibility: "public".to_string(),
@@ -447,30 +508,40 @@ impl CppAstVisitor {
         if !line.contains("(") || line.starts_with("#") {
             return false;
         }
-        
+
         // Exclude control statements
         if line.starts_with("if") || line.starts_with("while") || line.starts_with("for") {
             return false;
         }
-        
+
+        // Exclude variable declarations with function calls (e.g., "int result = add(5, 3);")
+        // If there's an = before the (, it's an assignment/initialization, not a function declaration
+        if let Some(paren_pos) = line.find("(") {
+            if let Some(equals_pos) = line.find("=") {
+                if equals_pos < paren_pos {
+                    return false;
+                }
+            }
+        }
+
         // Check for common function return types and modifiers
         let common_types = ["void", "int", "char", "float", "double", "auto", "bool", "string"];
         let common_modifiers = ["static", "inline", "virtual", "explicit", "constexpr"];
-        
+
         for typ in &common_types {
             if line.contains(&format!("{} ", typ)) && line.contains("(") {
                 return true;
             }
         }
-        
+
         for modifier in &common_modifiers {
             if line.contains(&format!("{} ", modifier)) && line.contains("(") {
                 return true;
             }
         }
-        
+
         // Also check for function pointers or constructors/destructors
-        line.contains("(") && line.contains(")") && 
+        line.contains("(") && line.contains(")") &&
             (line.contains("*") || line.contains("~") || line.contains("::"))
     }
     
