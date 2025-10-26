@@ -12,8 +12,8 @@ Sprint 56 focused on eliminating all test failures and ensuring tests run determ
 
 ### Test Fixes Summary
 
-- **Tests Fixed**: 8 failing tests across 6 test files
-- **Commits**: 5 incremental commits (08e6d312, 7e18adf7, e1e563cc, 4708811d, 43952e58)
+- **Tests Fixed**: 11 failing tests across 7 test files
+- **Commits**: 6 incremental commits (08e6d312, 7e18adf7, e1e563cc, 4708811d, 43952e58, 16d45a94)
 - **Quality**: All tests now pass reliably in both normal and coverage builds
 - **Approach**: Zero tolerance for workarounds - all issues fixed at root cause level
 
@@ -221,6 +221,39 @@ dependencies.sort_by(|a, b| {
 
 **Commit**: 43952e58 (amended)
 
+#### 9. Worker Monitor Tests (3 tests)
+**Files**:
+- `server/src/services/mutation/worker_monitor.rs:334-352` (test_worker_metrics_record_failure)
+- `server/src/services/mutation/worker_monitor.rs:420-455` (test_worker_monitor_state_changes)
+- `server/src/services/mutation/worker_monitor.rs:481-502` (test_worker_monitor_health_score)
+
+**Problem**: Tests failing in coverage builds with assertion errors
+
+**Root Causes**:
+1. **Test expectation off-by-one error**: After adding 11 errors total ("Test error" + "Error 0" through "Error 9"), the test expected the first element of recent_errors (which keeps last 5) to be "Error 6", but the actual value was "Error 5"
+   - Calculation: Last 5 of 11 errors = ["Error 5", "Error 6", "Error 7", "Error 8", "Error 9"]
+   - Test expected: recent_errors[0] == "Error 6"
+   - Actual: recent_errors[0] == "Error 5"
+
+2. **State management bug in mark_failed()**: The method called `set_state(WorkerState::Failed)` then `record_failure()`, but `record_failure()` sets state to `Idle`, overriding the Failed state
+   ```rust
+   // Before (WRONG):
+   worker.set_state(WorkerState::Failed);
+   worker.record_failure(reason);  // Sets state to Idle!
+
+   // After (CORRECT):
+   worker.record_failure(reason);  // Sets state to Idle
+   worker.set_state(WorkerState::Failed);  // Override with Failed
+   ```
+
+**Fixes**:
+1. **Line 351**: Changed test expectation from `"Error 6"` to `"Error 5"`
+2. **Lines 201-203**: Reordered method calls in `mark_failed()` to call `record_failure()` before `set_state()`
+
+**Result**: All 3 worker_monitor tests now passing (100% pass rate)
+
+**Commit**: 16d45a94
+
 ## Key Learnings
 
 ### 1. Zero Tolerance for Pre-existing Failures
@@ -256,11 +289,11 @@ Java classes mapping to `AstItem::Struct` → `NodeKind::Struct` is by design. T
 
 ## Metrics
 
-- **Before**: 8 failing tests
+- **Before**: 11 failing tests (8 in normal builds + 3 discovered in coverage builds)
 - **After**: 0 failing tests (100% pass rate)
-- **Commits**: 5 incremental commits
-- **Files Modified**: 8 files
-- **Lines Changed**: ~200 lines (fixes + tests)
+- **Commits**: 6 incremental commits
+- **Files Modified**: 9 files (7 test files + 2 implementation files)
+- **Lines Changed**: ~250 lines (fixes + tests + documentation)
 - **Build Stability**: 100% (tests pass in both normal and coverage builds)
 
 ## Related Documentation
@@ -272,6 +305,7 @@ Java classes mapping to `AstItem::Struct` → `NodeKind::Struct` is by design. T
   - e1e563cc: Fix cross-language dependency deduplication
   - 4708811d: Fix Scala analyzer comment filtering + MCP tools
   - 43952e58: Make test_detect_dependencies deterministic (amended)
+  - 16d45a94: Fix 3 worker_monitor test failures
 
 ## Next Steps
 
