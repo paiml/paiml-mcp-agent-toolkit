@@ -6,7 +6,7 @@ const https = require('https');
 const { execSync } = require('child_process');
 const os = require('os');
 
-const VERSION = '2.171.1';
+const VERSION = '2.172.0';
 const REPO = 'paiml/paiml-mcp-agent-toolkit';
 
 function getPlatform() {
@@ -24,13 +24,13 @@ function getPlatform() {
 
 function downloadBinary() {
   return new Promise((resolve, reject) => {
-    console.log('📦 Installing PMAT v2.171.1...');
+    console.log('📦 Installing PMAT v2.172.0...');
     
     // Check if cargo is available for installation from source
     try {
       execSync('cargo --version', { stdio: 'ignore' });
       console.log('🦀 Cargo detected, installing from crates.io...');
-      execSync('cargo install pmat --version 2.171.1 --force', { stdio: 'inherit' });
+      execSync('cargo install pmat --version 2.172.0 --force', { stdio: 'inherit' });
       
       // Create wrapper script
       const binDir = path.join(__dirname, 'bin');
