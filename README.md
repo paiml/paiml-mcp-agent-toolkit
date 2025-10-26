@@ -6,7 +6,7 @@
 
 **Zero-configuration AI context generation** for any codebase. Analyze code quality, complexity, and technical debt across 17+ programming languages with extreme quality enforcement and Toyota Way standards.
 
-📖 **[Read the PMAT Book](https://paiml.com/docs/pmat-book/)** - Complete documentation, tutorials, and guides
+📖 **[Read the PMAT Book]([https://paiml.com/docs/pmat-book/](https://paiml.github.io/pmat-book/))** - Complete documentation, tutorials, and guides
 
 ---
 
