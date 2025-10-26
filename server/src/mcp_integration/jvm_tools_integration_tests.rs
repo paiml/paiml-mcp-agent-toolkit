@@ -180,7 +180,7 @@ mod tests {
         });
         
         let result = scala_tool.execute(params).await.unwrap();
-        
+
         // Verify basic analysis
         assert_eq!(result["status"], "completed");
         assert_eq!(result["language"], "scala");
