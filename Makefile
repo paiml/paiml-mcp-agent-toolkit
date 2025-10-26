@@ -94,8 +94,8 @@ test-fast:
 # Stratified test targets for distributed test architecture
 test-unit:
 	@echo "🚀 Running unit tests (<10s feedback)..."
-	@CORES=$$(nproc); THREADS=$$((CORES > 2 ? CORES - 2 : 1)); \
-	cd server && cargo test --test unit_core -- --test-threads=$$THREADS
+	@CORES=$$(nproc) && THREADS=$$((CORES > 2 ? CORES - 2 : 1)) && \
+	cd server && cargo test --test unit_core -- --test-threads=$${THREADS}
 	@echo "✅ Unit tests completed!"
 
 test-services:
@@ -120,23 +120,23 @@ test-performance:
 
 test-property:
 	@echo "🎲 Running property-based tests..."
-	@THREADS=$${PROPTEST_THREADS:-$$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)}; \
-	echo "  Running all property test modules with $$THREADS threads..."; \
-	echo "  (Override with PROPTEST_THREADS=n make test-property)"; \
-	echo "  Note: Slow cache tests are skipped. Run 'make test-property-slow' to include them."; \
-	timeout 180 cargo test --manifest-path server/Cargo.toml --lib -- property_tests --test-threads=$$THREADS || echo "⚠️  Some property tests timed out after 3 minutes"; \
-	timeout 60 cargo test --manifest-path server/Cargo.toml --lib -- prop_ --test-threads=$$THREADS || echo "⚠️  Some prop tests timed out"; \
-	cargo test --manifest-path server/Cargo.toml --test refactor_auto_property_integration -- --test-threads=$$THREADS
+	@THREADS=$${PROPTEST_THREADS:-$$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)} && \
+	echo "  Running all property test modules with $${THREADS} threads..." && \
+	echo "  (Override with PROPTEST_THREADS=n make test-property)" && \
+	echo "  Note: Slow cache tests are skipped. Run 'make test-property-slow' to include them." && \
+	timeout 180 cargo test --manifest-path server/Cargo.toml --lib -- property_tests --test-threads=$${THREADS} || echo "⚠️  Some property tests timed out after 3 minutes" && \
+	timeout 60 cargo test --manifest-path server/Cargo.toml --lib -- prop_ --test-threads=$${THREADS} || echo "⚠️  Some prop tests timed out" && \
+	cargo test --manifest-path server/Cargo.toml --test refactor_auto_property_integration -- --test-threads=$${THREADS}
 	@echo "✅ Property tests completed!"
 
 # Run property tests including slow ones
 test-property-slow:
 	@echo "🐌 Running ALL property-based tests (including slow ones)..."
-	@THREADS=$${PROPTEST_THREADS:-$$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)}; \
-	echo "  Running with $$THREADS threads..."; \
-	cargo test --manifest-path server/Cargo.toml --lib -- property_tests --test-threads=$$THREADS --include-ignored; \
-	cargo test --manifest-path server/Cargo.toml --lib -- prop_ --test-threads=$$THREADS --include-ignored; \
-	cargo test --manifest-path server/Cargo.toml --test refactor_auto_property_integration -- --test-threads=$$THREADS
+	@THREADS=$${PROPTEST_THREADS:-$$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)} && \
+	echo "  Running with $${THREADS} threads..." && \
+	cargo test --manifest-path server/Cargo.toml --lib -- property_tests --test-threads=$${THREADS} --include-ignored && \
+	cargo test --manifest-path server/Cargo.toml --lib -- prop_ --test-threads=$${THREADS} --include-ignored && \
+	cargo test --manifest-path server/Cargo.toml --test refactor_auto_property_integration -- --test-threads=$${THREADS}
 	@echo "✅ All property tests completed (including slow tests)!"
 
 # Run all stratified tests in parallel
@@ -160,9 +160,9 @@ test-slow-integration:
 # Test with manual thread control - use when automatic detection isn't working
 test-safe:
 	@echo "🛡️ Running tests with manual thread control..."
-	@THREADS=$${THREADS:-4}; \
-	echo "📊 Using $$THREADS threads (override with THREADS=n make test-safe)"; \
-	SKIP_SLOW_TESTS=1 RUST_TEST_THREADS=$$THREADS cargo test --release --workspace --exclude slow_integration -- --test-threads=$$THREADS
+	@THREADS=$${THREADS:-4} && \
+	echo "📊 Using $${THREADS} threads (override with THREADS=n make test-safe)" && \
+	SKIP_SLOW_TESTS=1 RUST_TEST_THREADS=$${THREADS} cargo test --release --workspace --exclude slow_integration -- --test-threads=$${THREADS}
 	@echo "✅ Safe test run completed!"
 
 # Run tests - ALWAYS FAST (zero tolerance for slow tests) with coverage summary
@@ -196,8 +196,8 @@ test-doc:
 coverage:
 	@echo "📊 Running comprehensive test coverage analysis..."
 	@echo "🔍 Checking for cargo-llvm-cov and cargo-nextest..."
-	@which cargo-llvm-cov > /dev/null 2>&1 || (echo "📦 Installing cargo-llvm-cov..." && cargo install cargo-llvm-cov --locked)
-	@which cargo-nextest > /dev/null 2>&1 || (echo "📦 Installing cargo-nextest..." && cargo install cargo-nextest --locked)
+	@command -v cargo-llvm-cov > /dev/null 2>&1 || (echo "📦 Installing cargo-llvm-cov..." && cargo install cargo-llvm-cov --locked)
+	@command -v cargo-nextest > /dev/null 2>&1 || (echo "📦 Installing cargo-nextest..." && cargo install cargo-nextest --locked)
 	@echo "🧹 Cleaning old coverage data..."
 	@cargo llvm-cov clean --workspace
 	@mkdir -p target/coverage
@@ -510,7 +510,7 @@ config-swap:
 		echo "   • Make changes permanent"; \
 		echo ""; \
 		echo "⚠️  This requires sudo privileges"; \
-		sudo $$(which deno) run --allow-run --allow-read --allow-write $(SCRIPTS_DIR)/config-swap.ts; \
+		sudo "$$(command -v deno)" run --allow-run --allow-read --allow-write $(SCRIPTS_DIR)/config-swap.ts; \
 	else \
 		echo "❌ Swap configuration script not found at $(SCRIPTS_DIR)/config-swap.ts"; \
 		echo "   Please ensure the script exists before running this target."; \
@@ -522,7 +522,7 @@ format-scripts:
 	@echo "📝 Formatting TypeScript scripts (excluding archive)..."
 	@if [ -d "$(SCRIPTS_DIR)" ]; then \
 		if [ "$$(find $(SCRIPTS_DIR) -name '*.ts' -type f -not -path '*/archive/*' 2>/dev/null | wc -l)" -gt 0 ]; then \
-			find $(SCRIPTS_DIR) -name '*.ts' -type f -not -path '*/archive/*' -exec deno fmt --quiet {} + 2>/dev/null || echo "✓ No TypeScript files found or deno not available"; \
+			find $(SCRIPTS_DIR) -name '*.ts' -type f -not -path '*/archive/*' -exec deno fmt --quiet "{}" + 2>/dev/null || echo "✓ No TypeScript files found or deno not available"; \
 		else \
 			echo "✓ No TypeScript scripts to format"; \
 		fi \
@@ -535,9 +535,9 @@ lint-scripts:
 	@echo "🔍 Linting TypeScript scripts (excluding archive)..."
 	@if [ -d "$(SCRIPTS_DIR)" ]; then \
 		if [ "$$(find $(SCRIPTS_DIR) -name '*.ts' -type f -not -path '*/archive/*' 2>/dev/null | wc -l)" -gt 0 ]; then \
-			find $(SCRIPTS_DIR) -name '*.ts' -type f -not -path '*/archive/*' -exec deno lint --quiet {} + 2>/dev/null || echo "✓ No TypeScript files found or deno not available"; \
+			find $(SCRIPTS_DIR) -name '*.ts' -type f -not -path '*/archive/*' -exec deno lint --quiet "{}" + 2>/dev/null || echo "✓ No TypeScript files found or deno not available"; \
 			echo "✅ Type checking TypeScript scripts (excluding archive)..."; \
-			find $(SCRIPTS_DIR) -name '*.ts' -type f -not -path '*/archive/*' -exec deno check {} + 2>/dev/null || echo "✓ No TypeScript files found or deno not available"; \
+			find $(SCRIPTS_DIR) -name '*.ts' -type f -not -path '*/archive/*' -exec deno check "{}" + 2>/dev/null || echo "✓ No TypeScript files found or deno not available"; \
 		else \
 			echo "✓ No TypeScript scripts to lint"; \
 		fi \
@@ -550,7 +550,7 @@ check-scripts:
 	@echo "✅ Type checking TypeScript scripts (excluding archive)..."
 	@if [ -d "$(SCRIPTS_DIR)" ]; then \
 		if [ "$$(find $(SCRIPTS_DIR) -name '*.ts' -type f -not -path '*/archive/*' 2>/dev/null | wc -l)" -gt 0 ]; then \
-			find $(SCRIPTS_DIR) -name '*.ts' -type f -not -path '*/archive/*' -exec deno check {} + 2>/dev/null || echo "✓ No TypeScript files found or deno not available"; \
+			find $(SCRIPTS_DIR) -name '*.ts' -type f -not -path '*/archive/*' -exec deno check "{}" + 2>/dev/null || echo "✓ No TypeScript files found or deno not available"; \
 		else \
 			echo "✓ No TypeScript scripts to check"; \
 		fi \
@@ -565,20 +565,38 @@ check-scripts:
 # which is a style preference that we accept for complex operations.
 lint-makefile:
 	@echo "🔍 Linting Makefile..."
+	@echo "🔧 Analyzing Makefile..."
 	@if [ -f ./target/release/pmat ]; then \
 		output="$$(./target/release/pmat analyze makefile Makefile --format human 2>&1)"; \
 		echo "$${output}" | head -n 5; \
-		issues="$$(echo "$${output}" | grep -c "issues" || true)"; \
+		issues=$$(printf "%s\n" "$${output}" | grep -c "issues" || true); \
 		if [ "$${issues}" -gt 0 ]; then \
-			real_issues="$$(echo "$${output}" | grep -E "minphony|phonydeclared|timestampexpanded|portability|performance" | wc -l)"; \
+			real_issues=$$(printf "%s\n" "$${output}" | grep -E "minphony|phonydeclared|timestampexpanded|portability|performance" | wc -l); \
 			echo ""; \
 			echo "📊 Summary: Found $${real_issues} actionable issues (filtering out false positives)"; \
 			echo ""; \
-			echo "$${output}" | grep -E "minphony|phonydeclared|timestampexpanded|portability|performance" -A1 | grep -v "^--$$" || echo "✅ No critical issues found!"; \
+			printf "%s\n" "$${output}" | grep -E "minphony|phonydeclared|timestampexpanded|portability|performance" -A1 | grep -v "^--$$" || echo "✅ No critical issues found!"; \
 		fi; \
 	else \
 		echo "⚠️  Release binary not found. Run 'make release' first or using debug build..."; \
 		cargo run --manifest-path server/Cargo.toml -- analyze makefile Makefile --format human || true; \
+	fi
+	@echo ""
+	@echo "🔍 Running bashrs linter on Makefile..."
+	@if command -v bashrs >/dev/null 2>&1; then \
+		if bashrs lint Makefile 2>&1 | tee /tmp/bashrs-makefile.log; then \
+			echo "✅ bashrs: No issues found"; \
+		else \
+			exit_code=$$?; \
+			if [ $$exit_code -eq 1 ]; then \
+				echo "⚠️  bashrs: Warnings detected (non-blocking)"; \
+			else \
+				echo "❌ bashrs: Errors detected"; \
+				exit $$exit_code; \
+			fi; \
+		fi; \
+	else \
+		echo "⚠️  bashrs not found. Install from https://github.com/paiml/bashrs"; \
 	fi
 	@echo ""
 	@echo "✅ Makefile linting complete!"
@@ -695,10 +713,10 @@ test-actions:
 		exit 1; \
 	fi; \
 	echo "Testing auto-tag-release workflow..."; \
-	$$ACT_CMD -W .github/workflows/auto-tag-release.yml workflow_dispatch -P ubuntu-latest=node:20-bullseye --dryrun; \
+	"$$ACT_CMD" -W .github/workflows/auto-tag-release.yml workflow_dispatch -P ubuntu-latest=node:20-bullseye --dryrun; \
 	echo ""; \
 	echo "Testing ci workflow..."; \
-	$$ACT_CMD -W .github/workflows/ci.yml push -P ubuntu-latest=node:20-bullseye --dryrun; \
+	"$$ACT_CMD" -W .github/workflows/ci.yml push -P ubuntu-latest=node:20-bullseye --dryrun; \
 	echo ""; \
 	echo "✅ Workflow syntax validation complete!"
 
@@ -849,7 +867,7 @@ check-rebuild:
 uninstall:
 	@echo "🗑️  Uninstalling MCP Agent Toolkit..."
 	@echo "Note: Uninstall functionality moved to installation scripts"
-	@echo "Run: curl -fsSL https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/master/scripts/install.sh | sh -s -- --uninstall"
+	@echo "Visit: https://github.com/paiml/paiml-mcp-agent-toolkit for uninstall instructions"
 
 # Server-specific commands (direct cargo execution)
 server-build-binary: ## Build server binary
@@ -1285,7 +1303,7 @@ setup:
 		echo "✅ Deno is already installed"; \
 	else \
 		echo "📦 Installing Deno..."; \
-		curl -fsSL https://deno.land/install.sh | sh; \
+		curl -fsSL https://deno.land/install.sh -o /tmp/deno-install.sh && sh /tmp/deno-install.sh && rm /tmp/deno-install.sh; \
 		echo "Please add Deno to your PATH as instructed above"; \
 	fi
 	@if command -v shellcheck >/dev/null 2>&1; then \
@@ -1764,7 +1782,7 @@ setup-mermaid-validator:
 	@echo "🔧 Setting up Mermaid specification validator..."
 	@if ! command -v deno &> /dev/null; then \
 		echo "Error: Deno is required but not installed"; \
-		echo "Install with: curl -fsSL https://deno.land/install.sh | sh"; \
+		echo "Visit https://deno.land to install"; \
 		exit 1; \
 	fi
 	@echo "✅ Deno validator ready"
