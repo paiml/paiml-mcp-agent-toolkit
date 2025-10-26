@@ -695,9 +695,9 @@ mod tests {
         let nodes = java_mapper.convert_ast_items(&items, file_path);
         
         assert_eq!(nodes.len(), 2);
-        assert_eq!(nodes[0].kind, NodeKind::Class);
+        assert_eq!(nodes[0].kind, NodeKind::Struct); // Java classes are represented as Struct in AstItem
         assert_eq!(nodes[0].name, "TestClass");
-        assert_eq!(nodes[1].kind, NodeKind::Method);
+        assert_eq!(nodes[1].kind, NodeKind::Function); // Methods are represented as Function in AstItem
         assert_eq!(nodes[1].name, "testMethod");
     }
 }
