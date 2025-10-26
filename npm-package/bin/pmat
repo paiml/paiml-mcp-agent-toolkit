@@ -1,0 +1,3 @@
+#!/usr/bin/env node
+console.error('❌ PMAT binary not found. Please reinstall: npm install -g pmat-agent');
+process.exit(1);
