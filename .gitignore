@@ -177,4 +177,5 @@ proptest-regressions/
 # Mutation testing output
 mutants.out/
 mutants.out.old/
+mutation_results/
 *.deb
