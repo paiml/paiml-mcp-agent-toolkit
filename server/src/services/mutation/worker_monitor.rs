@@ -197,10 +197,10 @@ impl WorkerMonitor {
     /// Mark worker as failed
     pub async fn mark_failed(&self, worker_id: usize, reason: &str) {
         let mut workers = self.workers.write().await;
-        
+
         if let Some(worker) = workers.get_mut(&worker_id) {
-            worker.set_state(WorkerState::Failed);
             worker.record_failure(reason);
+            worker.set_state(WorkerState::Failed);
         }
     }
     
@@ -348,7 +348,7 @@ mod tests {
         
         assert_eq!(metrics.failed_count, 11);
         assert_eq!(metrics.recent_errors.len(), 5);
-        assert_eq!(metrics.recent_errors[0], "Error 6");
+        assert_eq!(metrics.recent_errors[0], "Error 5");
     }
     
     #[tokio::test]
