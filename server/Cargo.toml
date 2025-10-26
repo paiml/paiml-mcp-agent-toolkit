@@ -11,7 +11,7 @@ license = "MIT OR Apache-2.0"
 readme = "README.md"
 keywords = ["mcp", "code-analysis", "refactoring", "quality", "ai"]
 categories = ["command-line-utilities", "development-tools", "development-tools::testing"]
-exclude = ["*.log", "temp_*", "*.profraw", ".pmat-cache", "proptest-regressions"]
+exclude = ["*.log", "*.profraw", ".pmat-cache", "proptest-regressions"]
 
 [[bin]]
 name = "pmat-agent"
