@@ -85,6 +85,10 @@ impl ScalaAstVisitor {
         let lines: Vec<&str> = source.lines().collect();
         for (line_num, line) in lines.iter().enumerate() {
             let trimmed = line.trim();
+            // Skip comments
+            if trimmed.starts_with("//") || trimmed.starts_with("/*") {
+                continue;
+            }
             if let Some(class_name) = self.extract_class_name_from_line(trimmed) {
                 let qualified_name = self.get_qualified_name(&class_name);
                 let visibility = self.determine_visibility(trimmed);
@@ -107,6 +111,10 @@ impl ScalaAstVisitor {
         let lines: Vec<&str> = source.lines().collect();
         for (line_num, line) in lines.iter().enumerate() {
             let trimmed = line.trim();
+            // Skip comments
+            if trimmed.starts_with("//") || trimmed.starts_with("/*") {
+                continue;
+            }
             if let Some(class_name) = self.extract_case_class_name_from_line(trimmed) {
                 let qualified_name = self.get_qualified_name(&class_name);
                 let visibility = self.determine_visibility(trimmed);
@@ -159,6 +167,10 @@ impl ScalaAstVisitor {
         let lines: Vec<&str> = source.lines().collect();
         for (line_num, line) in lines.iter().enumerate() {
             let trimmed = line.trim();
+            // Skip comments
+            if trimmed.starts_with("//") || trimmed.starts_with("/*") {
+                continue;
+            }
             if let Some(trait_name) = self.extract_trait_name_from_line(trimmed) {
                 let qualified_name = self.get_qualified_name(&trait_name);
                 let visibility = self.determine_visibility(trimmed);
@@ -193,6 +205,10 @@ impl ScalaAstVisitor {
         let lines: Vec<&str> = source.lines().collect();
         for (line_num, line) in lines.iter().enumerate() {
             let trimmed = line.trim();
+            // Skip comments
+            if trimmed.starts_with("//") || trimmed.starts_with("/*") {
+                continue;
+            }
             if let Some(object_name) = self.extract_object_name_from_line(trimmed) {
                 let qualified_name = self.get_qualified_name(&object_name);
                 let visibility = self.determine_visibility(trimmed);
@@ -227,6 +243,10 @@ impl ScalaAstVisitor {
         let lines: Vec<&str> = source.lines().collect();
         for (line_num, line) in lines.iter().enumerate() {
             let trimmed = line.trim();
+            // Skip comments
+            if trimmed.starts_with("//") || trimmed.starts_with("/*") {
+                continue;
+            }
             if let Some(method_name) = self.extract_method_name_from_line(trimmed) {
                 let qualified_name = self.get_qualified_name(&method_name);
                 let visibility = self.determine_visibility(trimmed);

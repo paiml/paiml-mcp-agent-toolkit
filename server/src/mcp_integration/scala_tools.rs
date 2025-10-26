@@ -129,8 +129,12 @@ async fn analyze_scala_file(
             let class_count = items
                 .iter()
                 .filter(|item| {
-                    let kind = extract_kind(item);
-                    kind == "class" || kind == "struct"
+                    // Regular classes are represented as AstItem::Struct WITHOUT "case" in derives
+                    if let crate::services::context::AstItem::Struct { derives, .. } = item {
+                        !derives.contains(&"case".to_string())
+                    } else {
+                        false
+                    }
                 })
                 .count();
 
@@ -153,8 +157,12 @@ async fn analyze_scala_file(
             let case_class_count = items
                 .iter()
                 .filter(|item| {
-                    let kind = extract_kind(item);
-                    kind == "case_class" || kind == "struct"
+                    // Case classes are represented as AstItem::Struct with derives containing "case"
+                    if let crate::services::context::AstItem::Struct { derives, .. } = item {
+                        derives.contains(&"case".to_string())
+                    } else {
+                        false
+                    }
                 })
                 .count();
 
