@@ -616,7 +616,7 @@ mod tests {
             "com.example.User",
             Language::Java,
         );
-        
+
         // Create Kotlin class
         let kotlin_class = create_test_node(
             "Kotlin:class:KotlinUser",
@@ -625,19 +625,26 @@ mod tests {
             "com.example.KotlinUser",
             Language::Kotlin,
         );
-        
+
         // Add reference from Java to Kotlin
         java_class.add_reference(
             ReferenceKind::Inherits,
             "com.example.KotlinUser".to_string(),
             None,
         );
-        
-        // Detect dependencies
-        let dependencies = CrossLanguageDependencies::detect(&[java_class], &[kotlin_class]);
 
-        // Verify
-        assert_eq!(dependencies.len(), 1);
+        // Detect dependencies
+        let mut dependencies = CrossLanguageDependencies::detect(&[java_class], &[kotlin_class]);
+
+        // Sort dependencies by source_id to make test deterministic
+        dependencies.sort_by(|a, b| {
+            a.source_id.cmp(&b.source_id)
+                .then(a.target_id.cmp(&b.target_id))
+                .then(a.kind.cmp(&b.kind))
+        });
+
+        // Verify - exactly one dependency
+        assert_eq!(dependencies.len(), 1, "Expected exactly 1 dependency, found {}", dependencies.len());
         assert_eq!(dependencies[0].source_id, "Java:class:User");
         assert_eq!(dependencies[0].target_id, "Kotlin:class:KotlinUser");
         assert_eq!(dependencies[0].kind, ReferenceKind::Inherits);
