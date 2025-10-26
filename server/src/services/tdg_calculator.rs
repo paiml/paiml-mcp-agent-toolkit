@@ -322,7 +322,7 @@ impl TDGCalculator {
         let variance = squared_diff_sum / complexities.len() as f64;
 
         // Calculate Gini coefficient
-        let mut sorted = complexities.clone();
+        let mut sorted = complexities;
         sorted.sort_unstable();
 
         let mut gini_sum = 0.0;
@@ -477,7 +477,7 @@ impl TDGCalculator {
                         author_contributions: HashMap::new(),
                     },
                 };
-                *cache = Some(empty_analysis.clone());
+                *cache = Some(empty_analysis);
                 Err(e.into())
             }
         }

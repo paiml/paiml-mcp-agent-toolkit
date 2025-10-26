@@ -41,7 +41,7 @@ impl QualityRefactoringEngine {
         const MAX_ITERATIONS: u32 = 10;
 
         let mut rollback_plan = RollbackPlan {
-            original: original_code.clone(),
+            original: original_code,
             checkpoints: Vec::new(),
         };
 

@@ -210,7 +210,7 @@ impl UnifiedPythonAnalyzer {
 
                     // Python classes map to Struct in AstItem enum
                     items.push(AstItem::Struct {
-                        name: qualified_name.clone(),
+                        name: qualified_name,
                         visibility: "public".to_string(),
                         fields_count: 0, // Python classes don't expose field count easily
                         derives: Vec::new(),

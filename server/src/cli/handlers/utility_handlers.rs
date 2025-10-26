@@ -674,7 +674,7 @@ fn build_project_context_from_simple(
     use crate::services::context::{ProjectContext, ProjectSummary};
 
     let project_context = ProjectContext {
-        project_type: detected_toolchain.clone(),
+        project_type: detected_toolchain,
         files: vec![], // Simple context doesn't use file-based approach
         summary: ProjectSummary {
             total_files: analysis_report.file_count,
@@ -699,7 +699,7 @@ fn build_project_context(
     use crate::services::context::{ProjectContext, ProjectSummary};
 
     let mut project_context = ProjectContext {
-        project_type: detected_toolchain.clone(),
+        project_type: detected_toolchain,
         files: vec![],
         summary: ProjectSummary {
             total_files: 0,

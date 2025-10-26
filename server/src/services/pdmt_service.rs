@@ -132,7 +132,7 @@ impl PdmtService {
                 .push(base_id.clone());
 
             let test_todo = PdmtTodo {
-                id: test_id.clone(),
+                id: test_id,
                 content: format!("Write comprehensive tests for: {requirement}"),
                 status: TodoStatus::Pending,
                 priority: base_todo.priority.clone(),
@@ -183,7 +183,7 @@ impl PdmtService {
                 priority: TodoPriority::Low,
                 estimated_hours: 2.0,
                 dependencies: vec![base_id],
-                quality_gates: base_todo.quality_gates.clone(),
+                quality_gates: base_todo.quality_gates,
                 validation_commands: ValidationCommands {
                     unit_tests: String::new(),
                     doctests: "cargo test --doc".to_string(),

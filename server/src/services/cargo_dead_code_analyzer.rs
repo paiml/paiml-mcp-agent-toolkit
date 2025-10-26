@@ -218,7 +218,7 @@ impl CargoDeadCodeAnalyzer {
         let (name, kind) = self.parse_message(message_text)?;
 
         Some((
-            file_path.clone(),
+            file_path,
             DeadItem {
                 name,
                 kind,

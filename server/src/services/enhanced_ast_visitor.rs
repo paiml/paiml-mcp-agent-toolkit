@@ -194,7 +194,7 @@ impl<'ast> Visit<'ast> for EnhancedAstVisitor {
         });
 
         // Track module path for nested items
-        self.module_path.push(name.clone());
+        self.module_path.push(name);
         syn::visit::visit_item_mod(self, node);
         self.module_path.pop();
     }

@@ -308,7 +308,7 @@ impl LightweightProvabilityAnalyzer {
                 }
 
                 let summary = self.analyze_function_fast(&func_id);
-                self.proof_cache.insert(func_id.clone(), summary.clone());
+                self.proof_cache.insert(func_id, summary.clone());
                 summary
             })
             .collect()

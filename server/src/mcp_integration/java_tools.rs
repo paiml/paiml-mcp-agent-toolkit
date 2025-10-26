@@ -202,7 +202,7 @@ async fn analyze_java_file(
                 "status": "error",
                 "path": path.display().to_string(),
                 "language": "java",
-                "error": e.to_string()
+                "error": e
             }))
         }
     }

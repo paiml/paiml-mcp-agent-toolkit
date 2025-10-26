@@ -54,7 +54,7 @@ impl SymbolTable {
 
         // Update module map
         self.module_map
-            .insert(entry.module_path.clone(), entry.file_path.clone());
+            .insert(entry.module_path.clone(), entry.file_path);
     }
 
     /// Resolve a symbol by name

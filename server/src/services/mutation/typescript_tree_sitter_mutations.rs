@@ -81,7 +81,7 @@ impl TreeSitterMutationOperator for TypeScriptBinaryOpMutation {
             let range = op_node.byte_range();
 
             // Splice in the new operator
-            mutated.splice(range.clone(), new_op.bytes());
+            mutated.splice(range, new_op.bytes());
 
             MutatedSource {
                 source: String::from_utf8(mutated).unwrap_or_else(|_| String::new()),

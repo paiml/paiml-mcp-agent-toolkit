@@ -97,7 +97,7 @@ impl PatternCollection {
 
     pub fn add_pattern(&mut self, pattern: AstPattern) {
         let hash = pattern.pattern_hash.clone();
-        self.patterns.insert(hash.clone(), pattern);
+        self.patterns.insert(hash, pattern);
     }
 
     #[must_use]

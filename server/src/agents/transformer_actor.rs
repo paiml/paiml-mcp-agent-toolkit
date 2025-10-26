@@ -17,7 +17,7 @@ impl Handler<TransformMessage> for TransformerActor {
 
     fn handle(&mut self, msg: TransformMessage, _ctx: &mut Context<Self>) -> Self::Result {
         let transformer = self.transformer.clone();
-        let code = msg.code.clone();
+        let code = msg.code;
 
         Box::pin(
             async move {
