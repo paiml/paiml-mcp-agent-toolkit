@@ -123,10 +123,17 @@ impl CrossLanguageDependencies {
         
         // Add the collected dependencies
         self.dependencies.extend(new_dependencies);
-        
+
         // Resolve unresolved references (moved outside)
         self.resolve_references();
-        
+
+        // Deduplicate dependencies (same source_id + target_id + kind = duplicate)
+        let mut seen = std::collections::HashSet::new();
+        self.dependencies.retain(|dep| {
+            let key = (dep.source_id.clone(), dep.target_id.clone(), dep.kind);
+            seen.insert(key)
+        });
+
         &self.dependencies
     }
     
