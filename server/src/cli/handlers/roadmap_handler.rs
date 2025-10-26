@@ -263,7 +263,7 @@ async fn fix_roadmap_status(
     let roadmap_content = fs::read_to_string(roadmap_path)?;
     let roadmap_tickets = parse_roadmap_tickets(&roadmap_content)?;
 
-    let mut updated_content = roadmap_content.clone();
+    let mut updated_content = roadmap_content;
     let mut changes = Vec::new();
 
     for (ticket_id, checkbox_status) in &roadmap_tickets {

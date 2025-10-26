@@ -136,7 +136,7 @@ pub fn setup_proof_annotator(clear_cache: bool) -> ProofAnnotator {
     use crate::services::{proof_annotator::MockProofSource, symbol_table::SymbolTable};
 
     let symbol_table = std::sync::Arc::new(SymbolTable::new());
-    let mut annotator = ProofAnnotator::new(symbol_table.clone());
+    let mut annotator = ProofAnnotator::new(symbol_table);
 
     if clear_cache {
         annotator.clear_cache();

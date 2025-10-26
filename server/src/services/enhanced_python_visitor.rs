@@ -129,7 +129,7 @@ impl EnhancedPythonVisitor {
             };
 
             self.items.push(AstItem::Struct {
-                name: qualified_name.clone(),
+                name: qualified_name,
                 visibility: "public".to_string(),
                 fields_count,
                 derives: vec![], // Python doesn't have derives like Rust

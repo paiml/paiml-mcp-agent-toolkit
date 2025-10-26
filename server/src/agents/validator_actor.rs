@@ -18,7 +18,7 @@ impl Handler<ValidateMessage> for ValidatorActor {
     fn handle(&mut self, msg: ValidateMessage, _ctx: &mut Context<Self>) -> Self::Result {
         let validator = self.validator.clone();
         let metrics = msg.metrics.clone();
-        let thresholds = msg.thresholds.clone();
+        let thresholds = msg.thresholds;
 
         Box::pin(
             async move {

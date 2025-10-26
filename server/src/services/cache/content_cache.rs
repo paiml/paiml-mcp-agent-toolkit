@@ -102,7 +102,7 @@ impl<T: CacheStrategy> ContentCache<T> {
         if let Some(entry) = cache.pop(&cache_key) {
             self.stats.remove_bytes(entry.size_bytes);
             self.hashes.write().remove(&cache_key);
-            Some(entry.value.clone())
+            Some(entry.value)
         } else {
             None
         }

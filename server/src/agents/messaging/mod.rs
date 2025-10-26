@@ -183,7 +183,7 @@ impl MessageRouter {
 
         // Add to priority queue
         self.priority_queue
-            .push((message.header.priority, message.clone()));
+            .push((message.header.priority, message));
 
         // Process queue by priority
         self.process_queue()

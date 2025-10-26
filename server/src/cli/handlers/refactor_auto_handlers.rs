@@ -243,7 +243,7 @@ async fn setup_refactoring_context(
         mode,
         quality_profile: QualityProfile::default(),
         patterns: PatternConfig {
-            root_path: project_path.clone(),
+            root_path: project_path,
             ignore_file: ignore_file
                 .as_ref()
                 .and_then(|p| p.file_name().map(|n| n.to_string_lossy().to_string())),
