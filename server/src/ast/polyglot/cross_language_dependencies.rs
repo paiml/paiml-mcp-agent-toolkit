@@ -628,7 +628,7 @@ mod tests {
         
         // Detect dependencies
         let dependencies = CrossLanguageDependencies::detect(&[java_class], &[kotlin_class]);
-        
+
         // Verify
         assert_eq!(dependencies.len(), 1);
         assert_eq!(dependencies[0].source_id, "Java:class:User");

@@ -114,16 +114,22 @@ impl CAstVisitor {
         for (line_num, line) in source.lines().enumerate() {
             let trimmed = line.trim();
 
-            // Check for struct declaration
+            // Check for struct declaration (but not function return types)
             if !in_struct && trimmed.starts_with("struct ") {
-                if let Some(name) = self.extract_struct_name(trimmed) {
-                    current_struct_name = name;
-                    struct_start_line = line_num + 1;
-                    
-                    // Check if struct definition has opening brace
-                    if trimmed.contains("{") {
-                        in_struct = true;
-                        fields_count = 0;
+                // Skip if this is a function (has parentheses before brace)
+                let has_function_params = trimmed.contains("(") &&
+                    trimmed.find("(").unwrap_or(usize::MAX) < trimmed.find("{").unwrap_or(usize::MAX);
+
+                if !has_function_params {
+                    if let Some(name) = self.extract_struct_name(trimmed) {
+                        current_struct_name = name;
+                        struct_start_line = line_num + 1;
+
+                        // Check if struct definition has opening brace
+                        if trimmed.contains("{") {
+                            in_struct = true;
+                            fields_count = 0;
+                        }
                     }
                 }
             }
