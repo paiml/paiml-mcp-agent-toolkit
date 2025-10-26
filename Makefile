@@ -139,6 +139,183 @@ test-property-slow:
 	cargo test --manifest-path server/Cargo.toml --test refactor_auto_property_integration -- --test-threads=$${THREADS}
 	@echo "✅ All property tests completed (including slow tests)!"
 
+# ==============================================================================
+# Mutation Testing (Dual Strategy: PMAT + cargo-mutants)
+# ==============================================================================
+# Sprint 60: Enhanced Coverage via Mutation Testing
+# Documentation: docs/sprints/SPRINT-60-DUAL-MUTATION-STRATEGY.md
+#
+# PMAT Mutation Testing: Fast AST-based, multi-language, ML-powered
+# cargo-mutants: Industry standard Rust validation
+# ==============================================================================
+
+# Quick PMAT mutation test (high-value targets, daily use)
+test-mutation-pmat-quick:
+	@echo "🧬 Running PMAT mutation testing (quick mode)..."
+	@echo "  Target: High-value security-critical modules"
+	@if ! command -v pmat >/dev/null 2>&1; then \
+		echo "❌ PMAT binary not found. Build with 'make release' first."; \
+		exit 1; \
+	fi
+	@echo "  Testing path_validator.rs (security-critical)..."
+	@./target/release/pmat analyze mutation \
+		--file server/src/utils/path_validator.rs \
+		--timeout 60 \
+		--format json \
+		--output mutation_results/pmat_path_validator.json || true
+	@echo "  Testing calculator.rs (TDG business logic)..."
+	@./target/release/pmat analyze mutation \
+		--file server/src/quality/calculator.rs \
+		--timeout 60 \
+		--format json \
+		--output mutation_results/pmat_calculator.json || true
+	@echo "✅ PMAT quick mutation tests completed!"
+	@echo "📊 Results: mutation_results/pmat_*.json"
+
+# Full PMAT mutation test (all modules, weekly/pre-release)
+test-mutation-pmat-full:
+	@echo "🧬 Running PMAT mutation testing (full mode)..."
+	@echo "  Target: All server modules with ML prioritization"
+	@if ! command -v pmat >/dev/null 2>&1; then \
+		echo "❌ PMAT binary not found. Build with 'make release' first."; \
+		exit 1; \
+	fi
+	@mkdir -p mutation_results
+	@WORKERS=$$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4) && \
+	echo "  Using $${WORKERS} workers for distributed execution..." && \
+	./target/release/pmat analyze mutation \
+		--path server/src/ \
+		--workers "$${WORKERS}" \
+		--ml-prioritize \
+		--timeout 300 \
+		--format json \
+		--output mutation_results/pmat_full_report.json
+	@echo "✅ PMAT full mutation testing completed!"
+	@echo "📊 Results: mutation_results/pmat_full_report.json"
+
+# Quick cargo-mutants test (validation, daily use)
+test-mutation-cargo-quick:
+	@echo "🦀 Running cargo-mutants (quick mode)..."
+	@echo "  Target: High-value security-critical modules"
+	@if ! command -v cargo-mutants >/dev/null 2>&1; then \
+		echo "📦 Installing cargo-mutants..."; \
+		cargo install cargo-mutants; \
+	fi
+	@mkdir -p mutation_results
+	@echo "  Testing path_validator.rs..."
+	@cargo mutants \
+		--manifest-path server/Cargo.toml \
+		--file server/src/utils/path_validator.rs \
+		--timeout 60 \
+		--output mutation_results/cargo_path_validator.txt || true
+	@echo "  Testing calculator.rs..."
+	@cargo mutants \
+		--manifest-path server/Cargo.toml \
+		--file server/src/quality/calculator.rs \
+		--timeout 60 \
+		--output mutation_results/cargo_calculator.txt || true
+	@echo "✅ cargo-mutants quick tests completed!"
+	@echo "📊 Results: mutation_results/cargo_*.txt"
+
+# Full cargo-mutants test (all modules, weekly/pre-release)
+test-mutation-cargo-full:
+	@echo "🦀 Running cargo-mutants (full workspace mode)..."
+	@echo "  Target: All Rust source files in workspace"
+	@if ! command -v cargo-mutants >/dev/null 2>&1; then \
+		echo "📦 Installing cargo-mutants..."; \
+		cargo install cargo-mutants; \
+	fi
+	@mkdir -p mutation_results
+	@JOBS=$$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4) && \
+	echo "  Using $${JOBS} parallel jobs..." && \
+	cargo mutants \
+		--manifest-path server/Cargo.toml \
+		--workspace \
+		--timeout 120 \
+		--jobs "$${JOBS}" \
+		--output mutation_results/cargo_full_report.txt
+	@echo "✅ cargo-mutants full testing completed!"
+	@echo "📊 Results: mutation_results/cargo_full_report.txt"
+
+# Dual mutation testing (run both PMAT and cargo-mutants, compare results)
+test-mutation-dual:
+	@echo "🧬🦀 Running dual mutation testing strategy..."
+	@echo "  Running PMAT mutation testing..."
+	@$(MAKE) test-mutation-pmat-quick
+	@echo ""
+	@echo "  Running cargo-mutants validation..."
+	@$(MAKE) test-mutation-cargo-quick
+	@echo ""
+	@echo "📊 Comparing results..."
+	@if [ -f scripts/compare_mutation_results.sh ]; then \
+		bash scripts/compare_mutation_results.sh; \
+	else \
+		echo "⚠️  Comparison script not found. Install with:"; \
+		echo "    See docs/sprints/SPRINT-60-DUAL-MUTATION-STRATEGY.md"; \
+	fi
+	@echo "✅ Dual mutation testing completed!"
+
+# CI mutation testing (5-minute budget, critical modules only)
+test-mutation-ci:
+	@echo "🚀 Running CI mutation testing (5-minute budget)..."
+	@echo "  Target: Critical security and business logic modules"
+	@mkdir -p mutation_results
+	@if ! command -v pmat >/dev/null 2>&1; then \
+		echo "❌ PMAT binary not found. Build with 'make release' first."; \
+		exit 1; \
+	fi
+	@echo "  Testing path_validator.rs (30s timeout)..."
+	@timeout 30 ./target/release/pmat analyze mutation \
+		--file server/src/utils/path_validator.rs \
+		--timeout 30 \
+		--format json \
+		--output mutation_results/ci_path_validator.json || echo "⚠️  Timed out"
+	@echo "  Testing calculator.rs (30s timeout)..."
+	@timeout 30 ./target/release/pmat analyze mutation \
+		--file server/src/quality/calculator.rs \
+		--timeout 30 \
+		--format json \
+		--output mutation_results/ci_calculator.json || echo "⚠️  Timed out"
+	@echo "✅ CI mutation testing completed!"
+	@echo "📊 Results: mutation_results/ci_*.json"
+
+# Mutation score summary (parse JSON reports)
+test-mutation-summary:
+	@echo "📊 Mutation Testing Summary"
+	@echo "======================================"
+	@if [ -d mutation_results ]; then \
+		echo "PMAT Results:"; \
+		for file in mutation_results/pmat_*.json; do \
+			if [ -f "$$file" ]; then \
+				echo "  $$file:"; \
+				jq -r '.summary // {total_mutants: 0, caught: 0, missed: 0, timeout: 0, score: 0} | "    Total: \(.total_mutants) | Caught: \(.caught) | Missed: \(.missed) | Score: \(.score)%"' "$$file" 2>/dev/null || echo "    (parsing failed)"; \
+			fi; \
+		done; \
+		echo ""; \
+		echo "cargo-mutants Results:"; \
+		for file in mutation_results/cargo_*.txt; do \
+			if [ -f "$$file" ]; then \
+				echo "  $$file:"; \
+				grep -E "caught|missed|timeout|score" "$$file" 2>/dev/null | head -5 || echo "    (no summary found)"; \
+			fi; \
+		done; \
+	else \
+		echo "❌ No mutation results found. Run 'make test-mutation-dual' first."; \
+	fi
+	@echo "======================================"
+
+# Clean mutation testing artifacts
+test-mutation-clean:
+	@echo "🧹 Cleaning mutation testing artifacts..."
+	@rm -rf mutation_results/
+	@rm -rf mutants.out/ mutants.out.old/
+	@echo "✅ Mutation artifacts cleaned!"
+
+.PHONY: test-mutation-pmat-quick test-mutation-pmat-full \
+        test-mutation-cargo-quick test-mutation-cargo-full \
+        test-mutation-dual test-mutation-ci \
+        test-mutation-summary test-mutation-clean
+
 # Run all stratified tests in parallel
 test-all: 
 	@echo "🔄 Running all stratified tests in parallel..."
