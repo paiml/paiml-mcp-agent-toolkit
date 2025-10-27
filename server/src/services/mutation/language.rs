@@ -1,6 +1,7 @@
 //! Language adapter system for mutation testing
 
 use super::operators::MutationOperator;
+use super::language_detector::Language; // Sprint 63: Use centralized language detection
 use anyhow::Result;
 use async_trait::async_trait;
 use std::collections::HashMap;
@@ -87,8 +88,23 @@ impl LanguageRegistry {
         self.register(Arc::new(WasmAdapter::new()));
     }
 
-    /// Detect language from file path
+    /// Detect language from file path using centralized Language enum (Sprint 63)
     pub fn detect_language(&self, path: &Path) -> Option<Arc<dyn LanguageAdapter>> {
+        // Use centralized language detection from language_detector module
+        let detected_language = Language::from_extension(path);
+
+        match detected_language {
+            Language::Rust => self.get_adapter("rust"),
+            Language::Python => self.get_adapter("python"),
+            Language::TypeScript | Language::JavaScript => self.get_adapter("typescript"),
+            Language::Go => self.get_adapter("go"),
+            Language::Cpp => self.get_adapter("cpp"),
+            Language::Unsupported => None,
+        }
+    }
+
+    /// Detect language from file path (legacy extension-based detection)
+    pub fn detect_language_by_extension(&self, path: &Path) -> Option<Arc<dyn LanguageAdapter>> {
         let extension = path.extension()?.to_str()?;
 
         for adapter in self.adapters.values() {
@@ -293,5 +309,133 @@ mod tests {
         assert_eq!(result.execution_time_ms, 250);
         assert_eq!(result.stdout, "output");
         assert_eq!(result.stderr, "errors");
+    }
+
+    // Sprint 63: Multi-Language Detection Integration Tests
+
+    #[test]
+    fn test_language_enum_integration_rust() {
+        use crate::services::mutation::RustAdapter;
+
+        let mut registry = LanguageRegistry::new();
+        registry.register(Arc::new(RustAdapter::new()));
+
+        // Test .rs extension detection via Language enum
+        let adapter = registry.detect_language(Path::new("test.rs"));
+        assert!(adapter.is_some(), "Rust file should be detected");
+        assert_eq!(adapter.unwrap().name(), "rust");
+    }
+
+    #[test]
+    fn test_language_enum_integration_python() {
+        use crate::services::mutation::PythonAdapter;
+
+        let mut registry = LanguageRegistry::new();
+        registry.register(Arc::new(PythonAdapter::new()));
+
+        // Test .py extension detection via Language enum
+        let adapter = registry.detect_language(Path::new("test.py"));
+        assert!(adapter.is_some(), "Python file should be detected");
+        assert_eq!(adapter.unwrap().name(), "python");
+    }
+
+    #[test]
+    fn test_language_enum_integration_typescript() {
+        use crate::services::mutation::TypeScriptAdapter;
+
+        let mut registry = LanguageRegistry::new();
+        registry.register(Arc::new(TypeScriptAdapter::new()));
+
+        // Test .ts extension detection via Language enum
+        let adapter = registry.detect_language(Path::new("test.ts"));
+        assert!(adapter.is_some(), "TypeScript file should be detected");
+        assert_eq!(adapter.unwrap().name(), "typescript");
+
+        // Test .tsx extension
+        let adapter_tsx = registry.detect_language(Path::new("component.tsx"));
+        assert!(adapter_tsx.is_some(), "TSX file should be detected");
+        assert_eq!(adapter_tsx.unwrap().name(), "typescript");
+    }
+
+    #[test]
+    fn test_language_enum_integration_javascript() {
+        use crate::services::mutation::TypeScriptAdapter;
+
+        let mut registry = LanguageRegistry::new();
+        registry.register(Arc::new(TypeScriptAdapter::new()));
+
+        // Test .js extension detection via Language enum (handled by TypeScript adapter)
+        let adapter = registry.detect_language(Path::new("test.js"));
+        assert!(adapter.is_some(), "JavaScript file should be detected");
+        assert_eq!(adapter.unwrap().name(), "typescript");
+
+        // Test .jsx extension
+        let adapter_jsx = registry.detect_language(Path::new("component.jsx"));
+        assert!(adapter_jsx.is_some(), "JSX file should be detected");
+        assert_eq!(adapter_jsx.unwrap().name(), "typescript");
+    }
+
+    #[test]
+    fn test_language_enum_integration_go() {
+        use crate::services::mutation::GoAdapter;
+
+        let mut registry = LanguageRegistry::new();
+        registry.register(Arc::new(GoAdapter::new()));
+
+        // Test .go extension detection via Language enum
+        let adapter = registry.detect_language(Path::new("main.go"));
+        assert!(adapter.is_some(), "Go file should be detected");
+        assert_eq!(adapter.unwrap().name(), "go");
+    }
+
+    #[test]
+    fn test_language_enum_integration_cpp() {
+        use crate::services::mutation::CppAdapter;
+
+        let mut registry = LanguageRegistry::new();
+        registry.register(Arc::new(CppAdapter::new()));
+
+        // Test multiple C++ extensions via Language enum
+        let extensions = vec!["cpp", "cc", "cxx", "hpp", "hxx", "h"];
+
+        for ext in extensions {
+            let filename = format!("test.{}", ext);
+            let adapter = registry.detect_language(Path::new(&filename));
+            assert!(adapter.is_some(), "{} file should be detected", ext);
+            assert_eq!(adapter.unwrap().name(), "cpp");
+        }
+    }
+
+    #[test]
+    fn test_language_enum_integration_unsupported() {
+        let mut registry = LanguageRegistry::new();
+        registry.register(Arc::new(MockAdapter));
+
+        // Test unsupported extension returns None
+        let adapter = registry.detect_language(Path::new("test.xyz"));
+        assert!(adapter.is_none(), "Unsupported extension should return None");
+    }
+
+    #[test]
+    fn test_language_enum_integration_multi_language() {
+        use crate::services::mutation::{RustAdapter, PythonAdapter, TypeScriptAdapter};
+
+        let mut registry = LanguageRegistry::new();
+        registry.register(Arc::new(RustAdapter::new()));
+        registry.register(Arc::new(PythonAdapter::new()));
+        registry.register(Arc::new(TypeScriptAdapter::new()));
+
+        // Verify all languages detected correctly
+        assert!(registry.detect_language(Path::new("test.rs")).is_some());
+        assert!(registry.detect_language(Path::new("test.py")).is_some());
+        assert!(registry.detect_language(Path::new("test.ts")).is_some());
+        assert!(registry.detect_language(Path::new("test.js")).is_some());
+
+        // Verify languages list
+        let languages = registry.languages();
+        assert_eq!(languages.len(), 3);
+        assert!(languages.contains(&"rust"));
+        assert!(languages.contains(&"python"));
+        assert!(languages.contains(&"typescript"));
     }
 }
