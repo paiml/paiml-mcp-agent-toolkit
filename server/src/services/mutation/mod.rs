@@ -8,6 +8,7 @@
 pub mod types;
 pub mod operators;
 pub mod language;
+pub mod language_detector; // Sprint 63: Multi-language support
 pub mod engine;
 pub mod scoring;
 pub mod rust_adapter;
@@ -72,6 +73,7 @@ mod ml_integration_tests;
 pub use types::*;
 pub use operators::*;
 pub use language::*;
+pub use language_detector::*; // Sprint 63: Multi-language support
 pub use engine::*;
 pub use scoring::*;
 pub use rust_adapter::*;
