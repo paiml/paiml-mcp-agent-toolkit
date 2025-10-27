@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.175.0] - 2025-10-27
+
+### Added
+- **Mutation Testing Output Refinement (Sprint 62 Day 2)**: Enhanced `pmat mutate` with filtering and color-coded output
+  - **New Flag**: `--failures-only` - Filter output to show only failures (survived mutants, compile errors, timeouts)
+    - Applies to all output formats (text, JSON, markdown)
+    - Reduces noise for large-scale mutation testing
+    - Perfect for CI/CD failure analysis
+  - **Color-Coded Terminal Output**: Semantic color scheme using `console` crate
+    - **Green**: Killed mutants, passing scores (≥80%)
+    - **Red**: Survived mutants, failing scores (<60%)
+    - **Yellow**: Compile errors, timeouts, warning scores (60-80%)
+    - **Cyan**: File paths, operator names, locations
+    - Enhances readability for both interactive terminals and CI logs
+  - **Implementation**:
+    - Modified `server/src/cli/commands.rs` - Added `failures_only` field to MutateArgs
+    - Enhanced `server/src/cli/handlers/mutate.rs` - Implemented filtering and color coding across all output functions
+    - Filtering logic: `matches!(status, Survived | CompileError | Timeout)`
+    - Total changes: +114 lines, -89 lines refactored
+  - **Usage**:
+    ```bash
+    # Show only failures (survived mutants, errors, timeouts)
+    pmat mutate --target src/file.rs --failures-only
+
+    # JSON output with failures only (CI/CD integration)
+    pmat mutate --target src/file.rs --output-format json --failures-only > failures.json
+
+    # Color-coded terminal output (default)
+    pmat mutate --target src/file.rs
+    ```
+  - **Sprint 62 Status**: Day 2 complete (3-day sprint, 67% complete)
+    - Day 1: Code snippet extraction ✅ (v2.174.0)
+    - Day 2: Failures-only flag + color coding ✅ (v2.175.0)
+    - Day 3: Documentation and testing (pending v2.176.0)
+  - Commit: ca39a7f0
+
 ## [2.174.0] - 2025-10-27
 
 ### Added
