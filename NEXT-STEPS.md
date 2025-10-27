@@ -26,6 +26,7 @@
 - **Previous Release**: https://github.com/paiml/paiml-mcp-agent-toolkit/releases/tag/v2.174.0
 - **Documentation**: `server/README.md`
 - **CHANGELOG**: `CHANGELOG.md` (lines 10-44 for v2.175.0)
+- **pmat-book**: Chapter 28 - Mutation Testing (commit ee4bb73)
 
 ### Installation
 ```bash
@@ -66,7 +67,8 @@ pmat mutate --target src/file.rs
 6. Update documentation in `docs/`
 
 **Status**: Sprint 62 Days 1-2 COMPLETE ✅
-**Remaining**: Day 3 documentation and large-scale testing
+**Documentation**: pmat-book Chapter 28 COMPLETE ✅ (commit ee4bb73)
+**Remaining**: Day 3 large-scale testing and performance verification
 
 ---
 
