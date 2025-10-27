@@ -7,6 +7,7 @@ use crate::services::mutation::engine::{MutationEngine, MutationConfig, Mutation
 use crate::services::mutation::types::{MutationResult, MutationScore, SourceLocation};
 use crate::stateless_server::StatelessTemplateServer;
 use anyhow::{Context, Result};
+use console::style;
 use serde::Serialize;
 use std::fs;
 use std::path::Path;
@@ -58,9 +59,9 @@ pub async fn handle(
 
     // 6. Output
     match args.output_format.as_str() {
-        "json" => output_json(&score, &results)?,
-        "markdown" => output_markdown(&score, &results)?,
-        _ => output_text(&score, &results)?,
+        "json" => output_json(&score, &results, args.failures_only)?,
+        "markdown" => output_markdown(&score, &results, args.failures_only)?,
+        _ => output_text(&score, &results, args.failures_only)?,
     }
 
     // 7. Check threshold
@@ -194,16 +195,28 @@ struct EnhancedMutationResult {
     mutated_code_snippet: Option<String>,
 }
 
-fn output_json(score: &MutationScore, results: &[MutationResult]) -> Result<()> {
+fn output_json(score: &MutationScore, results: &[MutationResult], failures_only: bool) -> Result<()> {
+    use crate::services::mutation::types::MutantStatus;
+
+    // Sprint 62 Day 2: Filter for failures-only mode
+    let filtered_results: Vec<&MutationResult> = if failures_only {
+        results
+            .iter()
+            .filter(|r| matches!(r.status, MutantStatus::Survived | MutantStatus::CompileError | MutantStatus::Timeout))
+            .collect()
+    } else {
+        results.iter().collect()
+    };
+
     // Enhance results with code snippets
-    let enhanced_results: Vec<EnhancedMutationResult> = results
+    let enhanced_results: Vec<EnhancedMutationResult> = filtered_results
         .iter()
         .map(|r| {
             let original_snippet = extract_code_snippet(&r.mutant.original_file, &r.mutant.location).ok();
             let mutated_snippet = Some(r.mutant.mutated_source.clone());
 
             EnhancedMutationResult {
-                result: r.clone(),
+                result: (*r).clone(),
                 original_code_snippet: original_snippet,
                 mutated_code_snippet: mutated_snippet,
             }
@@ -220,47 +233,66 @@ fn output_json(score: &MutationScore, results: &[MutationResult]) -> Result<()> 
     Ok(())
 }
 
-fn output_markdown(score: &MutationScore, results: &[MutationResult]) -> Result<()> {
-    println!("# Mutation Testing Results\n");
-    println!("## Summary\n");
-    println!("| Metric | Count | Percentage |");
-    println!("|--------|-------|------------|");
-    println!("| **Total Mutants** | {} | 100.0% |", score.total);
+fn output_markdown(score: &MutationScore, results: &[MutationResult], failures_only: bool) -> Result<()> {
+    use crate::services::mutation::types::MutantStatus;
 
-    if score.total > 0 {
-        println!(
-            "| Killed | {} | {:.1}% |",
-            score.killed,
-            (score.killed as f64 / score.total as f64) * 100.0
-        );
-        println!(
-            "| Survived | {} | {:.1}% |",
-            score.survived,
-            (score.survived as f64 / score.total as f64) * 100.0
-        );
-        println!(
-            "| Compile Errors | {} | {:.1}% |",
-            score.compile_errors,
-            (score.compile_errors as f64 / score.total as f64) * 100.0
-        );
-        println!(
-            "| Timeouts | {} | {:.1}% |",
-            score.timeouts,
-            (score.timeouts as f64 / score.total as f64) * 100.0
-        );
-        println!(
-            "| Equivalent | {} | {:.1}% |",
-            score.equivalent,
-            (score.equivalent as f64 / score.total as f64) * 100.0
-        );
+    // Sprint 62 Day 2: Filter for failures-only mode
+    let filtered_results: Vec<&MutationResult> = if failures_only {
+        results
+            .iter()
+            .filter(|r| matches!(r.status, MutantStatus::Survived | MutantStatus::CompileError | MutantStatus::Timeout))
+            .collect()
+    } else {
+        results.iter().collect()
+    };
+
+    if failures_only {
+        println!("# Mutation Testing Failures\n");
+    } else {
+        println!("# Mutation Testing Results\n");
     }
 
-    println!("\n## Mutation Score: **{:.1}%**\n", score.score * 100.0);
+    if !failures_only {
+        println!("## Summary\n");
+        println!("| Metric | Count | Percentage |");
+        println!("|--------|-------|------------|");
+        println!("| **Total Mutants** | {} | 100.0% |", score.total);
+
+        if score.total > 0 {
+            println!(
+                "| Killed | {} | {:.1}% |",
+                score.killed,
+                (score.killed as f64 / score.total as f64) * 100.0
+            );
+            println!(
+                "| Survived | {} | {:.1}% |",
+                score.survived,
+                (score.survived as f64 / score.total as f64) * 100.0
+            );
+            println!(
+                "| Compile Errors | {} | {:.1}% |",
+                score.compile_errors,
+                (score.compile_errors as f64 / score.total as f64) * 100.0
+            );
+            println!(
+                "| Timeouts | {} | {:.1}% |",
+                score.timeouts,
+                (score.timeouts as f64 / score.total as f64) * 100.0
+            );
+            println!(
+                "| Equivalent | {} | {:.1}% |",
+                score.equivalent,
+                (score.equivalent as f64 / score.total as f64) * 100.0
+            );
+        }
+
+        println!("\n## Mutation Score: **{:.1}%**\n", score.score * 100.0);
+    }
 
     // Show survived mutants for test improvements
-    let survived: Vec<_> = results
+    let survived: Vec<_> = filtered_results
         .iter()
-        .filter(|r| r.status == crate::services::mutation::types::MutantStatus::Survived)
+        .filter(|r| r.status == MutantStatus::Survived)
         .collect();
 
     if !survived.is_empty() {
@@ -293,72 +325,150 @@ fn output_markdown(score: &MutationScore, results: &[MutationResult]) -> Result<
     Ok(())
 }
 
-fn output_text(score: &MutationScore, results: &[MutationResult]) -> Result<()> {
-    println!("\nMutation Testing Results\n");
-    println!("Total mutants:  {}", score.total);
+fn output_text(score: &MutationScore, results: &[MutationResult], failures_only: bool) -> Result<()> {
+    use crate::services::mutation::types::MutantStatus;
 
-    if score.total > 0 {
-        println!(
-            "Killed:         {} ({:.1}%)",
-            score.killed,
-            (score.killed as f64 / score.total as f64) * 100.0
-        );
-        println!(
-            "Survived:       {} ({:.1}%)",
-            score.survived,
-            (score.survived as f64 / score.total as f64) * 100.0
-        );
+    // Sprint 62 Day 2: Filter for failures-only mode
+    let filtered_results: Vec<_> = if failures_only {
+        results
+            .iter()
+            .filter(|r| matches!(r.status, MutantStatus::Survived | MutantStatus::CompileError | MutantStatus::Timeout))
+            .collect()
+    } else {
+        results.iter().collect()
+    };
 
-        if score.compile_errors > 0 {
-            println!(
-                "Compile errors: {} ({:.1}%)",
-                score.compile_errors,
-                (score.compile_errors as f64 / score.total as f64) * 100.0
-            );
-        }
-
-        if score.timeouts > 0 {
-            println!(
-                "Timeouts:       {} ({:.1}%)",
-                score.timeouts,
-                (score.timeouts as f64 / score.total as f64) * 100.0
-            );
-        }
-
-        if score.equivalent > 0 {
-            println!(
-                "Equivalent:     {} ({:.1}%)",
-                score.equivalent,
-                (score.equivalent as f64 / score.total as f64) * 100.0
-            );
-        }
+    if failures_only {
+        println!("\n{}\n", style("Mutation Testing Failures").bold().red());
+    } else {
+        println!("\n{}\n", style("Mutation Testing Results").bold());
     }
 
-    println!("\nMutation Score: {:.1}%\n", score.score * 100.0);
+    // Summary statistics (always show, with color coding)
+    if !failures_only {
+        println!("Total mutants:  {}", score.total);
 
-    // Sprint 62: Show survived mutants with code snippets
-    let survived: Vec<_> = results
+        if score.total > 0 {
+            println!(
+                "{}         {} ({:.1}%)",
+                style("Killed:").green(),
+                score.killed,
+                (score.killed as f64 / score.total as f64) * 100.0
+            );
+            println!(
+                "{}       {} ({:.1}%)",
+                style("Survived:").red(),
+                score.survived,
+                (score.survived as f64 / score.total as f64) * 100.0
+            );
+
+            if score.compile_errors > 0 {
+                println!(
+                    "{} {} ({:.1}%)",
+                    style("Compile errors:").yellow(),
+                    score.compile_errors,
+                    (score.compile_errors as f64 / score.total as f64) * 100.0
+                );
+            }
+
+            if score.timeouts > 0 {
+                println!(
+                    "{}       {} ({:.1}%)",
+                    style("Timeouts:").yellow(),
+                    score.timeouts,
+                    (score.timeouts as f64 / score.total as f64) * 100.0
+                );
+            }
+
+            if score.equivalent > 0 {
+                println!(
+                    "{}     {} ({:.1}%)",
+                    style("Equivalent:").cyan(),
+                    score.equivalent,
+                    (score.equivalent as f64 / score.total as f64) * 100.0
+                );
+            }
+        }
+
+        // Color-code mutation score
+        let score_percent = score.score * 100.0;
+        let score_styled = if score_percent >= 80.0 {
+            style(format!("{:.1}%", score_percent)).green().bold()
+        } else if score_percent >= 60.0 {
+            style(format!("{:.1}%", score_percent)).yellow().bold()
+        } else {
+            style(format!("{:.1}%", score_percent)).red().bold()
+        };
+        println!("\n{} {}\n", style("Mutation Score:").bold(), score_styled);
+    }
+
+    // Sprint 62: Show failures with code snippets
+    let survived: Vec<_> = filtered_results
         .iter()
-        .filter(|r| r.status == crate::services::mutation::types::MutantStatus::Survived)
+        .filter(|r| r.status == MutantStatus::Survived)
         .collect();
 
     if !survived.is_empty() {
-        println!("Survived Mutants (needs test coverage):\n");
+        println!("{}\n", style("Survived Mutants (needs test coverage):").red().bold());
         for (i, result) in survived.iter().enumerate() {
-            println!("{}. {}:{}:{}",
-                i + 1,
-                result.mutant.original_file.display(),
-                result.mutant.location.line,
-                result.mutant.location.column
+            println!("{}. {}",
+                style(format!("{}", i + 1)).red().bold(),
+                style(format!("{}:{}:{}",
+                    result.mutant.original_file.display(),
+                    result.mutant.location.line,
+                    result.mutant.location.column
+                )).cyan()
             );
-            println!("   Operator: {:?}", result.mutant.operator);
+            println!("   {}: {:?}", style("Operator").bold(), result.mutant.operator);
 
             // Extract and display code snippet
             if let Ok(snippet) = extract_code_snippet(&result.mutant.original_file, &result.mutant.location) {
-                println!("   Code: {}", snippet);
+                println!("   {}: {}", style("Code").bold(), snippet);
             }
 
-            println!("   Time: {:.2}s\n", result.execution_time_ms as f64 / 1000.0);
+            println!("   {}: {:.2}s\n", style("Time").bold(), result.execution_time_ms as f64 / 1000.0);
+        }
+    }
+
+    // Show compile errors if any
+    let compile_errors: Vec<_> = filtered_results
+        .iter()
+        .filter(|r| r.status == MutantStatus::CompileError)
+        .collect();
+
+    if !compile_errors.is_empty() {
+        println!("{}\n", style("Compile Errors:").yellow().bold());
+        for (i, result) in compile_errors.iter().enumerate() {
+            println!("{}. {}",
+                style(format!("{}", i + 1)).yellow().bold(),
+                style(format!("{}:{}:{}",
+                    result.mutant.original_file.display(),
+                    result.mutant.location.line,
+                    result.mutant.location.column
+                )).cyan()
+            );
+            println!("   {}: {:?}\n", style("Operator").bold(), result.mutant.operator);
+        }
+    }
+
+    // Show timeouts if any
+    let timeouts: Vec<_> = filtered_results
+        .iter()
+        .filter(|r| r.status == MutantStatus::Timeout)
+        .collect();
+
+    if !timeouts.is_empty() {
+        println!("{}\n", style("Timeouts:").yellow().bold());
+        for (i, result) in timeouts.iter().enumerate() {
+            println!("{}. {}",
+                style(format!("{}", i + 1)).yellow().bold(),
+                style(format!("{}:{}:{}",
+                    result.mutant.original_file.display(),
+                    result.mutant.location.line,
+                    result.mutant.location.column
+                )).cyan()
+            );
+            println!("   {}: {:?}\n", style("Operator").bold(), result.mutant.operator);
         }
     }
 

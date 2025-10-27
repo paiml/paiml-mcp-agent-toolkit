@@ -3838,6 +3838,10 @@ pub struct MutateArgs {
     /// Mutation score threshold (fail if below)
     #[arg(long)]
     pub threshold: Option<f64>,
+
+    /// Show only failures (survived mutants, compile errors, timeouts)
+    #[arg(long, default_value = "false")]
+    pub failures_only: bool,
 }
 
 #[cfg(test)]
