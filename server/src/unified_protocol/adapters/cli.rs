@@ -116,6 +116,7 @@ impl CliAdapter {
             | Commands::ValidateReadme(_) // Sprint 38: Hallucination detection
             | Commands::Embed(_) // PMAT-SEARCH-011
             | Commands::Semantic(_) // PMAT-SEARCH-011
+            | Commands::Mutate(_) // Sprint 61: Mutation testing
             => Self::cli_only_command_error(),
         }
     }
@@ -1765,7 +1766,7 @@ impl CliInput {
     fn get_command_category(command: &Commands) -> CommandCategory {
         match command {
             Commands::Generate { .. } | Commands::Scaffold { .. } => CommandCategory::Generation,
-            Commands::QualityGate { .. } | Commands::QualityGates { .. } | Commands::Report { .. } | Commands::ValidateDocs(_) | Commands::ValidateReadme(_) | Commands::Embed(_) | Commands::Semantic(_) => CommandCategory::Analysis,
+            Commands::QualityGate { .. } | Commands::QualityGates { .. } | Commands::Report { .. } | Commands::ValidateDocs(_) | Commands::ValidateReadme(_) | Commands::Embed(_) | Commands::Semantic(_) | Commands::Mutate(_) => CommandCategory::Analysis,
             Commands::Serve { .. }
             | Commands::Cache { .. }
             | Commands::Memory { .. }
