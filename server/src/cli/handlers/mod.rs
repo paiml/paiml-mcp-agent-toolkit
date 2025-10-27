@@ -36,6 +36,7 @@ pub mod lint_hotspot_handlers;
 #[cfg(test)]
 pub mod lint_hotspot_property_tests;
 pub mod memory;
+pub mod mutate;
 pub mod name_similarity_analysis;
 pub mod new_tdg_handler;
 pub mod proof_annotations_handler;

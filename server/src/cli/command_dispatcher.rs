@@ -370,6 +370,8 @@ impl CommandDispatcher {
             Commands::Hooks(hooks_cmd) => {
                 handlers::handle_hooks_command(&hooks_cmd).await
             }
+
+            Commands::Mutate(args) => handlers::mutate::handle(args, server).await,
         }
     }
 

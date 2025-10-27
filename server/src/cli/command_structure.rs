@@ -506,6 +506,11 @@ impl CommandExecutor {
             Commands::Semantic(semantic_cmd) => {
                 super::command_dispatcher::CommandDispatcher::execute_semantic_command(semantic_cmd).await
             }
+
+            // Mutation testing command (Sprint 61)
+            Commands::Mutate(args) => {
+                super::handlers::mutate::handle(args, self.server.clone()).await
+            }
         }
     }
 }
