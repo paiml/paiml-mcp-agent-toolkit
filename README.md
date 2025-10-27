@@ -83,11 +83,11 @@ pmat hooks install --dry-run
 📖 **[PMAT Book](https://paiml.github.io/pmat-book/)** - Complete guide with tutorials
 
 **Key chapters:**
-- [Getting Started](https://paiml.github.io/pmat-book/ch01-getting-started.html)
-- [Multi-Language Support](https://paiml.github.io/pmat-book/ch13-multi-language.html)
-- [Technical Debt Grading](https://paiml.github.io/pmat-book/ch07-tdg.html)
-- [MCP Integration](https://paiml.github.io/pmat-book/ch10-mcp.html)
-- [Git Hooks](https://paiml.github.io/pmat-book/ch14-git-hooks.html)
+- [Installation and Setup](https://paiml.github.io/pmat-book/ch01-00-installation.html)
+- [Getting Started](https://paiml.github.io/pmat-book/ch02-00-getting-started.html)
+- [MCP Protocol](https://paiml.github.io/pmat-book/ch03-00-mcp-protocol.html)
+- [Technical Debt Grading](https://paiml.github.io/pmat-book/ch04-01-tdg.html)
+- [Multi-Language Examples](https://paiml.github.io/pmat-book/ch13-00-language-examples.html)
 
 ---
 
