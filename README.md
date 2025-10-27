@@ -1,12 +1,12 @@
 # PMAT - Pragmatic AI Labs Multi-language Agent Toolkit
 
-[![Documentation](https://img.shields.io/badge/docs-pmat--book-blue)](https://paiml.com/docs/pmat-book/)
+[![Documentation](https://img.shields.io/badge/docs-pmat--book-blue)](https://paiml.github.io/pmat-book/)
 [![Crates.io](https://img.shields.io/crates/v/pmat.svg)](https://crates.io/crates/pmat)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 **Zero-configuration AI context generation** for any codebase. Analyze code quality, complexity, and technical debt across 17+ programming languages with extreme quality enforcement and Toyota Way standards.
 
-📖 **[https://paiml.com/docs/pmat-book/](https://paiml.github.io/pmat-book/)** - Complete documentation, tutorials, and guides
+📖 **[https://paiml.github.io/pmat-book/](https://paiml.github.io/pmat-book/)** - Complete documentation, tutorials, and guides
 
 ---
 
@@ -80,14 +80,14 @@ pmat hooks install --dry-run
 
 ## Documentation
 
-📖 **[PMAT Book](https://paiml.com/docs/pmat-book/)** - Complete guide with tutorials
+📖 **[PMAT Book](https://paiml.github.io/pmat-book/)** - Complete guide with tutorials
 
 **Key chapters:**
-- [Getting Started](https://paiml.com/docs/pmat-book/ch01-getting-started.html)
-- [Multi-Language Support](https://paiml.com/docs/pmat-book/ch13-multi-language.html)
-- [Technical Debt Grading](https://paiml.com/docs/pmat-book/ch07-tdg.html)
-- [MCP Integration](https://paiml.com/docs/pmat-book/ch10-mcp.html)
-- [Git Hooks](https://paiml.com/docs/pmat-book/ch14-git-hooks.html)
+- [Getting Started](https://paiml.github.io/pmat-book/ch01-getting-started.html)
+- [Multi-Language Support](https://paiml.github.io/pmat-book/ch13-multi-language.html)
+- [Technical Debt Grading](https://paiml.github.io/pmat-book/ch07-tdg.html)
+- [MCP Integration](https://paiml.github.io/pmat-book/ch10-mcp.html)
+- [Git Hooks](https://paiml.github.io/pmat-book/ch14-git-hooks.html)
 
 ---
 
