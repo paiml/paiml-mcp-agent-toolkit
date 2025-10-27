@@ -7,6 +7,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.174.0] - 2025-10-27
+
+### Added
+- **Mutation Testing CLI (Sprint 61)**: Complete CLI command for AST-based mutation testing
+  - **New Command**: `pmat mutate` exposes PMAT's 47-file mutation testing infrastructure
+  - **Features**:
+    - AST-based mutant generation using tree-sitter (avoids source recompilation)
+    - Parallel execution with configurable worker threads (default: CPU core count)
+    - Real-time progress bar with percentage display (40-character width)
+    - Execution timing (start time, elapsed time)
+    - Three output formats:
+      - **Text**: Simple terminal output with metrics and percentages
+      - **JSON**: Full serialization for CI/CD integration (jq-compatible)
+      - **Markdown**: GitHub PR-ready reports with "Survived Mutants" section for test gap identification
+    - Timeout per mutant (default: 30s, configurable via `--timeout`)
+    - Mutation score threshold enforcement (fail build if below threshold via `--threshold`)
+  - **Usage**:
+    ```bash
+    # Basic mutation testing
+    pmat mutate --target src/file.rs
+
+    # JSON output for CI/CD
+    pmat mutate --target src/file.rs --output-format json > results.json
+
+    # Markdown output for PR comments
+    pmat mutate --target src/file.rs --output-format markdown > MUTATION_REPORT.md
+
+    # With threshold enforcement
+    pmat mutate --target src/file.rs --threshold 80.0  # Fail if score < 80%
+    ```
+  - **Available Options**:
+    - `-t, --target <PATH>` - File or directory to mutate (REQUIRED)
+    - `-l, --language <LANGUAGE>` - Programming language (rust, python, typescript, go, cpp)
+    - `--timeout <TIMEOUT>` - Timeout per mutant in seconds (default: 30)
+    - `-j, --jobs <JOBS>` - Parallel execution workers
+    - `-f, --output-format <FORMAT>` - Output format: json, markdown, text (default: text)
+    - `-o, --output <FILE>` - Output file (stdout if omitted)
+    - `--threshold <THRESHOLD>` - Mutation score threshold (fail if below)
+  - **Implementation**:
+    - New handler: `server/src/cli/handlers/mutate.rs` (280 lines)
+    - Command registration: `server/src/cli/commands.rs` (MutateArgs struct)
+    - Integration: `server/src/cli/command_dispatcher.rs`, `command_structure.rs`
+    - Leverages existing mutation infrastructure: `MutationEngine`, `MutationConfig`, `MutationScore`
+  - **Testing**:
+    - Verified on path_validator.rs (352 lines) - generated 239 mutants
+    - Verified on test_sample.rs (52 lines) - generated 37 mutants
+    - Progress indicators functional in both parallel and sequential execution
+  - **Current Language Support**: Rust (Sprint 62+ will add Python, TypeScript, Go, C++)
+  - **Sprint 61 Status**: Days 1-4 complete (9-day sprint, 44% complete)
+    - Day 1: Command skeleton and CLI integration ✅
+    - Day 2: Real file testing (239 mutants generated) ✅
+    - Day 3: Output formats (JSON, Markdown, Text) ✅
+    - Day 4: Progress indicators and timing ✅
+    - Days 5-9: Deferred to v2.175.0+ (output refinements, multi-language support)
+  - **Files Modified**: 6 files
+  - **Lines Added**: ~280 lines
+  - Commits: c1377cdf, e112fb8a
+
 ## [2.173.0] - 2025-10-26
 
 ### Performance

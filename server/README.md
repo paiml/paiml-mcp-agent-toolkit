@@ -19,6 +19,16 @@
 
 **Zero-configuration AI context generation system** with extreme quality enforcement and Toyota Way standards. Analyze any codebase instantly through CLI, MCP, or HTTP interfaces. Built by [Pragmatic AI Labs](https://paiml.com).
 
+> **🧬 v2.174.0 Release**: **Mutation Testing CLI (Sprint 61)!** AST-based test quality measurement:
+> - **🧪 `pmat mutate` Command**: Test your tests with AST-based mutation testing (no source recompilation)
+> - **⚡ Parallel Execution**: Configurable worker threads (default: CPU core count) with real-time progress bars
+> - **📊 Three Output Formats**: Text (terminal), JSON (CI/CD), Markdown (PR comments with "Survived Mutants" section)
+> - **🎯 Threshold Enforcement**: Fail builds if mutation score below threshold (`--threshold 80.0`)
+> - **🔍 Test Gap Detection**: Markdown reports highlight survived mutants for test improvement
+> - **🦀 Rust Support**: Fully functional for Rust (Python, TypeScript, Go, C++ planned for v2.175.0+)
+> - **⏱️ Smart Timeouts**: Per-mutant timeout control (default: 30s, configurable via `--timeout`)
+> - **✅ Production Ready**: Tested on real files (239+ mutants), progress indicators, execution timing
+
 > **🧠 v2.158.0 Release**: **Semantic Code Search System!** AI-powered code discovery with natural language:
 > - **🔍 Hybrid Search**: Combines keyword matching (ripgrep) + vector similarity with RRF algorithm
 > - **🧬 AST-Aware Chunking**: Semantic code extraction for 5 languages (Rust, TypeScript, Python, C/C++, Go)
@@ -127,6 +137,13 @@ pmat analyze complexity --top-files 10
 
 # Find technical debt
 pmat analyze satd
+
+# Mutation Testing - NEW! (v2.174.0 - Sprint 61)
+pmat mutate --target src/file.rs                      # Basic mutation testing
+pmat mutate --target src/ --output-format json        # JSON output for CI/CD
+pmat mutate --target src/ --output-format markdown    # Markdown report
+pmat mutate --target src/ --threshold 80.0            # Fail if score < 80%
+pmat mutate --target src/ --timeout 60 --jobs 4       # Custom timeout and parallelism
 
 # Validate documentation links
 pmat validate-docs
