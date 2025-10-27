@@ -49,6 +49,77 @@ bash tests/ch13/test_language_examples.sh  # Multi-language support
 
 ---
 
+## CRITICAL: pmat-book Push Enforcement Policy
+
+**MANDATORY: Book updates MUST be pushed with code changes**
+
+### The Problem
+The 404 issue occurred because pmat-book commits were made locally but never pushed to GitHub, causing the live book at https://paiml.github.io/pmat-book/ to become out of sync with the codebase.
+
+### The Solution: Two-Layer Enforcement
+
+#### 1. Pre-Commit Hook (Warning)
+- Warns about unpushed pmat-book commits during `git commit`
+- Shows exactly which commits haven't been pushed
+- Doesn't block commits (allows local development)
+- Reminds you that pre-push hook will enforce synchronization
+
+#### 2. Pre-Push Hook (BLOCKING)
+- **BLOCKS `git push`** until all pmat-book commits are pushed first
+- Critical for releases and crates.io publications
+- Ensures live book is always in sync with published code
+- Cannot be bypassed without `--no-verify` (strongly discouraged)
+
+### Workflow
+
+```bash
+# 1. Make code changes
+vim server/src/some_file.rs
+
+# 2. Update pmat-book
+cd ../pmat-book
+# ... update book chapters ...
+git add .
+git commit -m "docs: Update for new feature"
+
+# 3. MUST push book first
+git push origin main  # This deploys book to GitHub Pages
+
+# 4. Now push code
+cd ../paiml-mcp-agent-toolkit
+git add .
+git commit -m "feat: Add new feature"  # Warning shown about book sync
+git push origin master  # Will succeed because book is pushed
+
+# ❌ If you forget step 3, step 4 will FAIL with clear instructions
+```
+
+### Special Cases
+
+#### crates.io Release
+Before running `cargo publish`, ensure:
+1. ✅ All pmat-book changes committed and pushed
+2. ✅ Book documentation matches new version
+3. ✅ `make validate-book` passes
+4. ✅ GitHub Pages deployment completed (check https://github.com/paiml/pmat-book/actions)
+
+#### Emergency Bypass (NOT RECOMMENDED)
+```bash
+# Only use in emergencies (e.g., critical hotfix)
+git push --no-verify
+
+# Then immediately push book:
+cd ../pmat-book && git push origin main
+```
+
+### Rationale
+- **Zero Tolerance for Drift**: Code and documentation must stay synchronized
+- **User Experience**: Users should never encounter 404s or outdated documentation
+- **Release Quality**: crates.io releases must have matching documentation
+- **GitHub Pages**: Book deploys automatically when pushed to main branch
+
+---
+
 ## CRITICAL: Documentation Accuracy Enforcement (Zero Hallucinations)
 
 **MANDATORY FOR README.md, CLAUDE.md, GEMINI.md, AGENT.md:**
