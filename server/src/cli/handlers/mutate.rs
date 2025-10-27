@@ -4,10 +4,12 @@
 
 use crate::cli::commands::MutateArgs;
 use crate::services::mutation::engine::{MutationEngine, MutationConfig, MutationStrategy};
-use crate::services::mutation::types::{MutationResult, MutationScore};
+use crate::services::mutation::types::{MutationResult, MutationScore, SourceLocation};
 use crate::stateless_server::StatelessTemplateServer;
 use anyhow::{Context, Result};
 use serde::Serialize;
+use std::fs;
+use std::path::Path;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tracing::info;
@@ -153,18 +155,66 @@ fn print_progress(completed: usize, total: usize) {
     let _ = std::io::stderr().flush();
 }
 
-/// JSON output wrapper for serialization
+/// Extract code snippet from source file using SourceLocation (Sprint 62)
+///
+/// Reads the source file and extracts lines from location.line to location.end_line
+fn extract_code_snippet(file_path: &Path, location: &SourceLocation) -> Result<String> {
+    let content = fs::read_to_string(file_path)
+        .with_context(|| format!("Failed to read source file: {}", file_path.display()))?;
+
+    let lines: Vec<&str> = content.lines().collect();
+
+    // Line numbers are 1-indexed in SourceLocation
+    let start_line = location.line.saturating_sub(1);
+    let end_line = location.end_line.min(lines.len());
+
+    if start_line >= lines.len() {
+        return Ok(String::from("<code location out of bounds>"));
+    }
+
+    let snippet_lines = &lines[start_line..end_line];
+    let snippet = snippet_lines.join("\n");
+
+    Ok(snippet.trim().to_string())
+}
+
+/// JSON output wrapper for serialization (Sprint 62 - enhanced with code snippets)
 #[derive(Serialize)]
 struct MutationTestOutput {
     score: MutationScore,
-    results: Vec<MutationResult>,
+    results: Vec<EnhancedMutationResult>,
+}
+
+/// Enhanced mutation result with code snippets (Sprint 62)
+#[derive(Serialize)]
+struct EnhancedMutationResult {
+    #[serde(flatten)]
+    result: MutationResult,
+    original_code_snippet: Option<String>,
+    mutated_code_snippet: Option<String>,
 }
 
 fn output_json(score: &MutationScore, results: &[MutationResult]) -> Result<()> {
+    // Enhance results with code snippets
+    let enhanced_results: Vec<EnhancedMutationResult> = results
+        .iter()
+        .map(|r| {
+            let original_snippet = extract_code_snippet(&r.mutant.original_file, &r.mutant.location).ok();
+            let mutated_snippet = Some(r.mutant.mutated_source.clone());
+
+            EnhancedMutationResult {
+                result: r.clone(),
+                original_code_snippet: original_snippet,
+                mutated_code_snippet: mutated_snippet,
+            }
+        })
+        .collect();
+
     let output = MutationTestOutput {
         score: score.clone(),
-        results: results.to_vec(),
+        results: enhanced_results,
     };
+
     let json = serde_json::to_string_pretty(&output)?;
     println!("{}", json);
     Ok(())
@@ -226,6 +276,16 @@ fn output_markdown(score: &MutationScore, results: &[MutationResult]) -> Result<
             );
             println!("- **Operator**: {:?}", result.mutant.operator);
             println!("- **Status**: Survived");
+
+            // Sprint 62: Add diff block for code changes
+            if let Ok(original) = extract_code_snippet(&result.mutant.original_file, &result.mutant.location) {
+                println!("\n**Code Change:**");
+                println!("```diff");
+                println!("- {}", original);
+                println!("+ {}", result.mutant.mutated_source.lines().next().unwrap_or("<empty>"));
+                println!("```");
+            }
+
             println!();
         }
     }
@@ -233,7 +293,7 @@ fn output_markdown(score: &MutationScore, results: &[MutationResult]) -> Result<
     Ok(())
 }
 
-fn output_text(score: &MutationScore, _results: &[MutationResult]) -> Result<()> {
+fn output_text(score: &MutationScore, results: &[MutationResult]) -> Result<()> {
     println!("\nMutation Testing Results\n");
     println!("Total mutants:  {}", score.total);
 
@@ -275,5 +335,32 @@ fn output_text(score: &MutationScore, _results: &[MutationResult]) -> Result<()>
     }
 
     println!("\nMutation Score: {:.1}%\n", score.score * 100.0);
+
+    // Sprint 62: Show survived mutants with code snippets
+    let survived: Vec<_> = results
+        .iter()
+        .filter(|r| r.status == crate::services::mutation::types::MutantStatus::Survived)
+        .collect();
+
+    if !survived.is_empty() {
+        println!("Survived Mutants (needs test coverage):\n");
+        for (i, result) in survived.iter().enumerate() {
+            println!("{}. {}:{}:{}",
+                i + 1,
+                result.mutant.original_file.display(),
+                result.mutant.location.line,
+                result.mutant.location.column
+            );
+            println!("   Operator: {:?}", result.mutant.operator);
+
+            // Extract and display code snippet
+            if let Ok(snippet) = extract_code_snippet(&result.mutant.original_file, &result.mutant.location) {
+                println!("   Code: {}", snippet);
+            }
+
+            println!("   Time: {:.2}s\n", result.execution_time_ms as f64 / 1000.0);
+        }
+    }
+
     Ok(())
 }
