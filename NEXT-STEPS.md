@@ -1,26 +1,31 @@
-# Next Steps - Post v2.174.0 Release
+# Next Steps - Post v2.175.0 Release
 
-**Current Status**: ✅ Sprint 61 Complete - v2.174.0 Released
+**Current Status**: ✅ Sprint 62 Days 1-2 Complete - v2.175.0 Released
 **Release Date**: October 27, 2025
 **Published**: GitHub + crates.io
 
 ---
 
-## v2.174.0 Release Summary
+## v2.175.0 Release Summary
 
-### What Was Delivered
-- **🧬 Mutation Testing CLI** (`pmat mutate`)
-  - AST-based mutant generation (no source recompilation)
-  - Parallel execution with progress bars
-  - Three output formats: Text, JSON, Markdown
-  - Threshold enforcement for CI/CD
-  - Tested on real files (239+ mutants generated)
+### What Was Delivered (Sprint 62 Days 1-2)
+- **🧬 Enhanced Mutation Testing Output**
+  - **Code Snippet Extraction**: Original/mutated code shown in all outputs
+  - **`--failures-only` Flag**: Filter to show only survived mutants, compile errors, and timeouts
+  - **Color-Coded Terminal Output**: Semantic color scheme using `console` crate
+    - Green: Killed mutants, passing scores (≥80%)
+    - Red: Survived mutants, failing scores (<60%)
+    - Yellow: Compile errors, timeouts, warning scores (60-80%)
+    - Cyan: File paths, operator names, locations
+  - **Enhanced Formats**: Text, JSON, and Markdown all support new features
+  - **CI/CD Integration**: Failures-only mode perfect for automated testing
 
 ### Links
-- **GitHub Release**: https://github.com/paiml/paiml-mcp-agent-toolkit/releases/tag/v2.174.0
-- **Crates.io**: https://crates.io/crates/pmat (v2.174.0 published)
-- **Documentation**: `server/README.md` (updated with mutation testing examples)
-- **Progress Tracking**: `docs/execution/SPRINT-61-PROGRESS.md`
+- **GitHub Release**: https://github.com/paiml/paiml-mcp-agent-toolkit/releases/tag/v2.175.0
+- **Crates.io**: https://crates.io/crates/pmat (v2.175.0 published)
+- **Previous Release**: https://github.com/paiml/paiml-mcp-agent-toolkit/releases/tag/v2.174.0
+- **Documentation**: `server/README.md`
+- **CHANGELOG**: `CHANGELOG.md` (lines 10-44 for v2.175.0)
 
 ### Installation
 ```bash
@@ -31,64 +36,37 @@ cargo install pmat
 cargo install pmat --force
 ```
 
+### Usage Examples
+```bash
+# Show only failures (survived mutants, errors, timeouts)
+pmat mutate --target src/file.rs --failures-only
+
+# JSON output with failures only (CI/CD integration)
+pmat mutate --target src/file.rs --output-format json --failures-only > failures.json
+
+# Color-coded terminal output (default)
+pmat mutate --target src/file.rs
+```
+
 ---
 
-## Immediate Next Steps (Sprint 62 - v2.175.0)
+## Immediate Next Steps (Sprint 62 Day 3 - v2.176.0)
 
-**Sprint**: Sprint 62 - Output Refinement
-**Duration**: 3 days
-**Target Version**: v2.175.0
-**Focus**: Enhanced output details, failures-only flag, color coding
-
-### Day 1: Enhanced Mutant Details
-**Goal**: Add code snippets and detailed mutation information to all outputs
-
-**Implementation**:
-1. Extend `MutationResult` struct to include:
-   - `original_code: String`
-   - `mutated_code: String`
-2. Modify `output_text()` to show survived mutant details:
-   ```
-   Survived Mutants:
-   1. src/file.rs:150:20 - BinaryOp(+ → -)
-      Original: if count + 1 > MAX_DEPTH
-      Mutated:  if count - 1 > MAX_DEPTH
-      Time: 0.42s
-   ```
-3. Enhance JSON output with code snippet fields
-4. Add diff blocks to Markdown output
-
-**Files to Modify**:
-- `server/src/services/mutation/types.rs` - Add code snippet fields
-- `server/src/cli/handlers/mutate.rs` - Enhance all three output functions
-
-### Day 2: Failures-Only Flag and Color Coding
-**Goal**: Add `--failures-only` filter and color-coded terminal output
-
-**Implementation**:
-1. Add `failures_only: bool` to `MutateArgs` in `commands.rs`
-2. Filter results to show only survived mutants, compile errors, and timeouts
-3. Add color coding using `console` crate:
-   - Green: Killed mutants, passing scores
-   - Red: Survived mutants, failing scores
-   - Yellow: Compile errors, timeouts
-   - Cyan: File paths, operator names
-4. Respect `NO_COLOR` environment variable
-
-**Files to Modify**:
-- `server/src/cli/commands.rs` - Add failures_only flag
-- `server/src/cli/handlers/mutate.rs` - Implement filtering and coloring
-
-### Day 3: Multi-File Testing and Documentation
-**Goal**: Validate with large files and update documentation
+**Sprint**: Sprint 62 - Documentation and Testing
+**Duration**: 1 day
+**Target Version**: v2.176.0 (or continue as v2.175.x patch)
+**Focus**: Large-scale testing, documentation updates, workflow examples
 
 **Tasks**:
 1. Test with large file (`server/src/services/deep_context.rs`, ~2000 lines)
-2. Update `server/README.md` with new flags
-3. Update `CHANGELOG.md` with v2.175.0 entry
-4. Create `examples/mutation_testing_workflow.md`
+2. Test `--failures-only` with various file sizes
+3. Verify color coding in different terminal environments
+4. Update `server/README.md` with new flags and examples
+5. Create `examples/mutation_testing_workflow.md`
+6. Update documentation in `docs/`
 
-**Kickoff Guide**: `docs/execution/SPRINT-62-KICKOFF.md`
+**Status**: Sprint 62 Days 1-2 COMPLETE ✅
+**Remaining**: Day 3 documentation and large-scale testing
 
 ---
 
@@ -320,5 +298,5 @@ vim docs/execution/SPRINT-62-PROGRESS.md
 ---
 
 **Last Updated**: October 27, 2025
-**Current Version**: v2.174.0
-**Next Sprint**: Sprint 62 (v2.175.0)
+**Current Version**: v2.175.0
+**Next Sprint**: Sprint 62 Day 3 (documentation/testing) or Sprint 63 (multi-language support)
