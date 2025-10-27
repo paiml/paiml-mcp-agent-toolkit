@@ -4,7 +4,6 @@
 /// mutation testing support.
 ///
 /// Sprint 63 - Multi-Language Mutation Testing Support
-
 use std::path::Path;
 
 /// Supported programming languages for mutation testing
