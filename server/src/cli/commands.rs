@@ -23,7 +23,7 @@ use crate::cli::{
 #[cfg(feature = "deep-wasm")]
 use crate::cli::{DeepWasmFocus, DeepWasmLanguage, DeepWasmOutputFormat};
 use crate::models::churn::ChurnOutputFormat;
-use clap::{Parser, Subcommand};
+use clap::{Args, Parser, Subcommand};
 use serde_json::Value;
 use std::path::PathBuf;
 
@@ -609,6 +609,9 @@ pub enum Commands {
     /// Semantic code search (PMAT-SEARCH-011)
     #[command(subcommand, visible_aliases = &["sem", "find-code"])]
     Semantic(SemanticCommands),
+
+    /// Run mutation testing on specified files (Sprint 61)
+    Mutate(MutateArgs),
 }
 
 /// Quality gates subcommands (TICKET-PMAT-5024)
@@ -3802,6 +3805,39 @@ pub enum ClusterMethod {
     Hierarchical,
     /// DBSCAN density-based clustering
     Dbscan,
+}
+
+/// Mutation testing arguments (Sprint 61)
+#[derive(Args, Debug, Clone)]
+#[cfg_attr(test, derive(PartialEq))]
+pub struct MutateArgs {
+    /// File or directory to mutate
+    #[arg(short, long, value_name = "PATH")]
+    pub target: PathBuf,
+
+    /// Programming language (rust, python, typescript, go, cpp)
+    #[arg(short, long)]
+    pub language: Option<String>,
+
+    /// Timeout per mutant in seconds
+    #[arg(long, default_value = "30")]
+    pub timeout: u64,
+
+    /// Parallel execution workers
+    #[arg(short, long)]
+    pub jobs: Option<usize>,
+
+    /// Output format (json, markdown, text)
+    #[arg(short = 'f', long, default_value = "text")]
+    pub output_format: String,
+
+    /// Output file (stdout if omitted)
+    #[arg(short, long)]
+    pub output: Option<PathBuf>,
+
+    /// Mutation score threshold (fail if below)
+    #[arg(long)]
+    pub threshold: Option<f64>,
 }
 
 #[cfg(test)]
