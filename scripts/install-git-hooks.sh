@@ -28,13 +28,13 @@ if [ ! -d "${REPO_ROOT}/.git" ]; then
 fi
 
 # === PRE-COMMIT HOOK ===
-echo -e "${GREEN}1. Installing pre-commit hook (bashrs + book sync warning)...${NC}"
+echo -e "${GREEN}1. Installing pre-commit hook (docs validation + bashrs + book sync)...${NC}"
 
 cat > "${HOOK_DIR}/pre-commit" <<'HOOK_EOF'
 #!/bin/bash
 # Pre-commit hook for paiml-mcp-agent-toolkit
+# Validates documentation with pmat validate-docs + validate-readme
 # Enforces bash/Makefile quality with bashrs
-# Validates documentation accuracy with pmat validate-readme
 # Warns about unpushed pmat-book commits
 
 set -e
@@ -48,13 +48,15 @@ NC='\033[0m' # No Color
 
 echo "Running pre-commit checks..."
 
-# === 1. Documentation Validation (pmat validate-readme) ===
+# === 1. Documentation Validation (pmat validate-docs + validate-readme) ===
 # Check if README.md or other docs are staged
 DOC_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^(README\.md|CLAUDE\.md|GEMINI\.md|AGENT\.md)$' || true)
 
 if [ -n "${DOC_FILES}" ]; then
     echo ""
-    echo -e "${CYAN}📚 Validating documentation accuracy...${NC}"
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${CYAN}📚 Validating documentation (links + accuracy)...${NC}"
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
     # Check if pmat is available
     if ! command -v pmat &> /dev/null; then
@@ -62,32 +64,51 @@ if [ -n "${DOC_FILES}" ]; then
         echo -e "${YELLOW}   Install with: cargo install pmat${NC}"
         echo ""
     else
+        # Step 1: Validate documentation links (fast check for 404s)
+        echo ""
+        echo -e "${CYAN}Step 1/2: Checking for broken links (pmat validate-docs)...${NC}"
+        if pmat validate-docs --fail-on-error 2>&1; then
+            echo -e "${GREEN}✅ All documentation links are valid${NC}"
+        else
+            echo ""
+            echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+            echo -e "${RED}❌ Documentation link validation FAILED${NC}"
+            echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+            echo ""
+            echo -e "${YELLOW}Found broken links (404s) in documentation.${NC}"
+            echo -e "${YELLOW}Fix the broken links or bypass with: git commit --no-verify${NC}"
+            echo ""
+            exit 1
+        fi
+
+        # Step 2: Validate documentation accuracy (semantic analysis)
+        echo ""
+        echo -e "${CYAN}Step 2/2: Checking for hallucinations (pmat validate-readme)...${NC}"
+
         # Generate temporary deep context for validation
         TEMP_CONTEXT=$(mktemp)
-        echo "Generating deep context for validation..."
+        echo "Generating deep context..."
 
         if pmat context --output "${TEMP_CONTEXT}" --format llm-optimized 2>&1 | grep -q "error\|Error"; then
             echo -e "${YELLOW}⚠️  WARNING: Could not generate deep context${NC}"
-            echo -e "${YELLOW}   Skipping documentation validation${NC}"
+            echo -e "${YELLOW}   Skipping hallucination validation${NC}"
             rm -f "${TEMP_CONTEXT}"
         else
-            echo "Running pmat validate-readme..."
-
             # Run validation on staged doc files
             if pmat validate-readme \
                 --targets ${DOC_FILES} \
                 --deep-context "${TEMP_CONTEXT}" \
                 --fail-on-contradiction \
                 --failures-only 2>&1; then
-                echo -e "${GREEN}✅ Documentation validation passed${NC}"
+                echo -e "${GREEN}✅ Documentation accuracy validated (no hallucinations)${NC}"
             else
                 VALIDATE_EXIT=$?
                 echo ""
                 echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-                echo -e "${RED}❌ Documentation validation FAILED${NC}"
+                echo -e "${RED}❌ Documentation accuracy validation FAILED${NC}"
                 echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
                 echo ""
-                echo -e "${YELLOW}Found contradictions or broken references in documentation.${NC}"
+                echo -e "${YELLOW}Found contradictions or unverified claims in documentation.${NC}"
                 echo -e "${YELLOW}Fix the issues above or bypass with: git commit --no-verify${NC}"
                 echo ""
                 rm -f "${TEMP_CONTEXT}"
@@ -96,6 +117,11 @@ if [ -n "${DOC_FILES}" ]; then
 
             rm -f "${TEMP_CONTEXT}"
         fi
+
+        echo ""
+        echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${GREEN}✅ All documentation validation checks passed!${NC}"
+        echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     fi
 fi
 
@@ -324,9 +350,10 @@ echo ""
 echo -e "${GREEN}What these hooks do:${NC}"
 echo ""
 echo -e "${CYAN}📋 pre-commit hook:${NC}"
-echo -e "  1. Validates documentation with pmat validate-readme (BLOCKS on contradictions/404s)"
-echo -e "  2. Checks bash/Makefile files with bashrs"
-echo -e "  3. Warns about unpushed pmat-book commits (warning only)"
+echo -e "  1. Step 1/2: pmat validate-docs (BLOCKS on 404s/broken links)"
+echo -e "  2. Step 2/2: pmat validate-readme (BLOCKS on hallucinations/contradictions)"
+echo -e "  3. Checks bash/Makefile files with bashrs (BLOCKS on errors)"
+echo -e "  4. Warns about unpushed pmat-book commits (warning only)"
 echo ""
 echo -e "${CYAN}🚫 pre-push hook:${NC}"
 echo -e "  1. BLOCKS push if pmat-book has unpushed commits"
