@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.176.0] - 2025-10-27
+
+### Added
+- **Multi-Language Mutation Testing Support (Sprint 63 Day 1)**: Centralized language detection system
+  - **New Module**: `server/src/services/mutation/language_detector.rs` (286 lines)
+    - `Language` enum with 7 variants: Rust, Python, TypeScript, JavaScript, Go, Cpp, Unsupported
+    - Type-safe language detection via `from_extension()` method
+    - Helper methods: `name()`, `is_supported()`, `extensions()`
+    - Case-sensitive extension matching (lowercase required)
+  - **Enhanced LanguageRegistry**: `server/src/services/mutation/language.rs` (+128 lines)
+    - `detect_language()` now uses centralized Language enum
+    - Backward-compatible `detect_language_by_extension()` for legacy code
+    - Integration with existing language adapters (Rust, Python, TypeScript, Go, C++)
+  - **Language Support**: 6 languages with full mutation testing capabilities
+    - **Rust**: `.rs` files
+    - **Python**: `.py` files
+    - **TypeScript**: `.ts`, `.tsx` files
+    - **JavaScript**: `.js`, `.jsx` files
+    - **Go**: `.go` files
+    - **C++**: `.cpp`, `.cc`, `.cxx`, `.hpp`, `.hxx`, `.h` files
+  - **Testing**: 19 comprehensive tests (100% passing)
+    - 11 unit tests for language detection edge cases
+    - 8 integration tests for adapter-Language enum coordination
+  - **Benefits**:
+    - Single source of truth for language detection (no scattered extension checks)
+    - Compiler-enforced type safety (exhaustive enum matching)
+    - Easy extensibility for future languages (add enum variant + adapter)
+    - Centralized architecture enables future AST-based detection
+  - **Implementation**:
+    - Module declaration: `server/src/services/mutation/mod.rs` (+2 lines)
+    - Export: `pub use language_detector::*;`
+    - Integration: `use super::language_detector::Language;`
+  - **Sprint 63 Status**: Day 1 complete (planned 3-day sprint)
+    - Day 1: Centralized language detection ✅ (v2.176.0)
+    - Day 2-3: Documentation and validation (planned)
+  - Commit: 771d35e6
+
 ## [2.175.0] - 2025-10-27
 
 ### Added
