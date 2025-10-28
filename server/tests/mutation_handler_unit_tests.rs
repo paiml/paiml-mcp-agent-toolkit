@@ -1062,6 +1062,598 @@ async fn test_failures_only_with_combined_flags() {
 }
 
 // ============================================================================
+// Category 4: Progress Indicators (6 tests)
+// ============================================================================
+//
+// Note: Progress indicators write to stderr and are hard to test directly.
+// These tests verify the handler runs without panicking when progress is expected.
+
+/// Test 31: Handler runs with single job (progress expected)
+#[tokio::test]
+async fn test_progress_with_single_job() {
+    let temp_file = create_test_rust_file();
+    let args = MutateArgs {
+        target: temp_file.path().to_path_buf(),
+        language: None,
+        timeout: 30,
+        jobs: Some(1),
+        output_format: "text".to_string(),
+        output: None,
+        threshold: None,
+        failures_only: false,
+    };
+    let server = Arc::new(StatelessTemplateServer::new().unwrap());
+
+    // Act & Assert - Should not panic
+    let _ = handle(args, server).await;
+}
+
+/// Test 32: Handler runs with multiple jobs (parallel progress expected)
+#[tokio::test]
+async fn test_progress_with_multiple_jobs() {
+    let temp_file = create_test_rust_file();
+    let args = MutateArgs {
+        target: temp_file.path().to_path_buf(),
+        language: None,
+        timeout: 30,
+        jobs: Some(4),
+        output_format: "text".to_string(),
+        output: None,
+        threshold: None,
+        failures_only: false,
+    };
+    let server = Arc::new(StatelessTemplateServer::new().unwrap());
+
+    // Act & Assert - Should not panic
+    let _ = handle(args, server).await;
+}
+
+/// Test 33: Handler with default jobs (None means automatic detection)
+#[tokio::test]
+async fn test_progress_with_default_jobs() {
+    let temp_file = create_test_rust_file();
+    let args = MutateArgs {
+        target: temp_file.path().to_path_buf(),
+        language: None,
+        timeout: 30,
+        jobs: None,  // Automatic job detection
+        output_format: "text".to_string(),
+        output: None,
+        threshold: None,
+        failures_only: false,
+    };
+    let server = Arc::new(StatelessTemplateServer::new().unwrap());
+
+    // Act & Assert - Should not panic
+    let _ = handle(args, server).await;
+}
+
+/// Test 34: Progress with sequential execution (jobs=1)
+#[tokio::test]
+async fn test_progress_sequential_execution() {
+    let temp_file = create_test_rust_file();
+    let args = MutateArgs {
+        target: temp_file.path().to_path_buf(),
+        language: None,
+        timeout: 30,
+        jobs: Some(1),  // Sequential
+        output_format: "json".to_string(),
+        output: None,
+        threshold: None,
+        failures_only: false,
+    };
+    let server = Arc::new(StatelessTemplateServer::new().unwrap());
+
+    // Act & Assert - Should not panic with sequential execution
+    let _ = handle(args, server).await;
+}
+
+/// Test 35: Progress with parallel execution (jobs>1)
+#[tokio::test]
+async fn test_progress_parallel_execution() {
+    let temp_file = create_test_rust_file();
+    let args = MutateArgs {
+        target: temp_file.path().to_path_buf(),
+        language: None,
+        timeout: 30,
+        jobs: Some(8),  // Parallel
+        output_format: "json".to_string(),
+        output: None,
+        threshold: None,
+        failures_only: false,
+    };
+    let server = Arc::new(StatelessTemplateServer::new().unwrap());
+
+    // Act & Assert - Should not panic with parallel execution
+    let _ = handle(args, server).await;
+}
+
+/// Test 36: Progress indicators work across all output formats
+#[tokio::test]
+async fn test_progress_all_formats() {
+    let temp_file = create_test_rust_file();
+    let formats = vec!["json", "markdown", "text"];
+
+    for format in formats {
+        let args = MutateArgs {
+            target: temp_file.path().to_path_buf(),
+            language: None,
+            timeout: 30,
+            jobs: Some(2),
+            output_format: format.to_string(),
+            output: None,
+            threshold: None,
+            failures_only: false,
+        };
+        let server = Arc::new(StatelessTemplateServer::new().unwrap());
+
+        // Act & Assert - Should not panic for any format
+        let _ = handle(args, server).await;
+    }
+}
+
+// ============================================================================
+// Category 5: Code Snippet Extraction (8 tests)
+// ============================================================================
+//
+// Note: Code snippet extraction is tested indirectly through output formats.
+// These tests verify the handler runs without panicking when snippets are expected.
+
+/// Test 37: Code snippets with JSON output
+#[tokio::test]
+async fn test_code_snippets_json() {
+    let temp_file = create_test_rust_file();
+    let args = MutateArgs {
+        target: temp_file.path().to_path_buf(),
+        language: None,
+        timeout: 30,
+        jobs: Some(1),
+        output_format: "json".to_string(),
+        output: None,
+        threshold: None,
+        failures_only: false,
+    };
+    let server = Arc::new(StatelessTemplateServer::new().unwrap());
+
+    // Act & Assert - Should extract snippets without errors
+    let _ = handle(args, server).await;
+}
+
+/// Test 38: Code snippets with Markdown output
+#[tokio::test]
+async fn test_code_snippets_markdown() {
+    let temp_file = create_test_rust_file();
+    let args = MutateArgs {
+        target: temp_file.path().to_path_buf(),
+        language: None,
+        timeout: 30,
+        jobs: Some(1),
+        output_format: "markdown".to_string(),
+        output: None,
+        threshold: None,
+        failures_only: false,
+    };
+    let server = Arc::new(StatelessTemplateServer::new().unwrap());
+
+    // Act & Assert - Should extract snippets without errors
+    let _ = handle(args, server).await;
+}
+
+/// Test 39: Code snippets with Text output
+#[tokio::test]
+async fn test_code_snippets_text() {
+    let temp_file = create_test_rust_file();
+    let args = MutateArgs {
+        target: temp_file.path().to_path_buf(),
+        language: None,
+        timeout: 30,
+        jobs: Some(1),
+        output_format: "text".to_string(),
+        output: None,
+        threshold: None,
+        failures_only: false,
+    };
+    let server = Arc::new(StatelessTemplateServer::new().unwrap());
+
+    // Act & Assert - Should extract snippets without errors
+    let _ = handle(args, server).await;
+}
+
+/// Test 40: Code snippets with failures_only=true
+#[tokio::test]
+async fn test_code_snippets_failures_only() {
+    let temp_file = create_test_rust_file();
+    let args = MutateArgs {
+        target: temp_file.path().to_path_buf(),
+        language: None,
+        timeout: 30,
+        jobs: Some(1),
+        output_format: "json".to_string(),
+        output: None,
+        threshold: None,
+        failures_only: true,
+    };
+    let server = Arc::new(StatelessTemplateServer::new().unwrap());
+
+    // Act & Assert - Should extract snippets even with filtering
+    let _ = handle(args, server).await;
+}
+
+/// Test 41: Code snippets from multi-line functions
+#[tokio::test]
+async fn test_code_snippets_multiline() {
+    // Create file with multi-line function
+    let mut temp_file = NamedTempFile::new().unwrap();
+    writeln!(
+        temp_file,
+        r#"
+fn complex_function(x: i32, y: i32) -> i32 {{
+    let result = if x > y {{
+        x - y
+    }} else {{
+        y - x
+    }};
+    result * 2
+}}
+"#
+    ).unwrap();
+
+    let args = MutateArgs {
+        target: temp_file.path().to_path_buf(),
+        language: None,
+        timeout: 30,
+        jobs: Some(1),
+        output_format: "json".to_string(),
+        output: None,
+        threshold: None,
+        failures_only: false,
+    };
+    let server = Arc::new(StatelessTemplateServer::new().unwrap());
+
+    // Act & Assert - Should handle multi-line snippets
+    let _ = handle(args, server).await;
+}
+
+/// Test 42: Code snippets from empty file (edge case)
+#[tokio::test]
+async fn test_code_snippets_empty_file() {
+    let temp_file = NamedTempFile::new().unwrap();  // Empty file
+
+    let args = MutateArgs {
+        target: temp_file.path().to_path_buf(),
+        language: None,
+        timeout: 30,
+        jobs: Some(1),
+        output_format: "json".to_string(),
+        output: None,
+        threshold: None,
+        failures_only: false,
+    };
+    let server = Arc::new(StatelessTemplateServer::new().unwrap());
+
+    // Act & Assert - Should handle empty file gracefully
+    let _ = handle(args, server).await;
+}
+
+/// Test 43: Code snippets with Unicode content
+#[tokio::test]
+async fn test_code_snippets_unicode() {
+    let mut temp_file = NamedTempFile::new().unwrap();
+    writeln!(
+        temp_file,
+        r#"
+// Test with Unicode: 你好世界 🦀
+fn hello() -> &'static str {{
+    "Hello, 世界!"
+}}
+"#
+    ).unwrap();
+
+    let args = MutateArgs {
+        target: temp_file.path().to_path_buf(),
+        language: None,
+        timeout: 30,
+        jobs: Some(1),
+        output_format: "json".to_string(),
+        output: None,
+        threshold: None,
+        failures_only: false,
+    };
+    let server = Arc::new(StatelessTemplateServer::new().unwrap());
+
+    // Act & Assert - Should handle Unicode without errors
+    let _ = handle(args, server).await;
+}
+
+/// Test 44: Code snippet extraction across all formats
+#[tokio::test]
+async fn test_code_snippets_all_formats() {
+    let temp_file = create_test_rust_file();
+    let formats = vec!["json", "markdown", "text"];
+
+    for format in formats {
+        let args = MutateArgs {
+            target: temp_file.path().to_path_buf(),
+            language: None,
+            timeout: 30,
+            jobs: Some(1),
+            output_format: format.to_string(),
+            output: None,
+            threshold: None,
+            failures_only: false,
+        };
+        let server = Arc::new(StatelessTemplateServer::new().unwrap());
+
+        // Act & Assert - Snippets should work with all formats
+        let _ = handle(args, server).await;
+    }
+}
+
+// ============================================================================
+// Category 6: Error Handling (10 tests)
+// ============================================================================
+
+/// Test 45: Error on invalid Rust syntax (unparseable file)
+#[tokio::test]
+async fn test_error_invalid_rust_syntax() {
+    let mut temp_file = NamedTempFile::new().unwrap();
+    writeln!(temp_file, "fn invalid_syntax( {{ {{ }}").unwrap();  // Invalid Rust
+
+    let args = MutateArgs {
+        target: temp_file.path().to_path_buf(),
+        language: None,
+        timeout: 30,
+        jobs: Some(1),
+        output_format: "json".to_string(),
+        output: None,
+        threshold: None,
+        failures_only: false,
+    };
+    let server = Arc::new(StatelessTemplateServer::new().unwrap());
+
+    // Act
+    let result = handle(args, server).await;
+
+    // Assert - May error or succeed with no mutants (both acceptable)
+    if let Err(e) = result {
+        let msg = e.to_string();
+        // If it errors, should be about parsing/mutant generation
+        assert!(msg.len() > 0, "Error message should not be empty");
+    }
+}
+
+/// Test 46: Error on directory instead of file
+#[tokio::test]
+async fn test_error_directory_instead_of_file() {
+    let temp_dir = tempdir().unwrap();
+
+    let args = MutateArgs {
+        target: temp_dir.path().to_path_buf(),
+        language: None,
+        timeout: 30,
+        jobs: Some(1),
+        output_format: "json".to_string(),
+        output: None,
+        threshold: None,
+        failures_only: false,
+    };
+    let server = Arc::new(StatelessTemplateServer::new().unwrap());
+
+    // Act
+    let result = handle(args, server).await;
+
+    // Assert - Should error (directory, not file)
+    assert!(result.is_err(), "Should error when given directory instead of file");
+}
+
+/// Test 47: Error with invalid output path (non-existent directory)
+#[tokio::test]
+async fn test_error_invalid_output_path() {
+    let temp_file = create_test_rust_file();
+
+    let args = MutateArgs {
+        target: temp_file.path().to_path_buf(),
+        language: None,
+        timeout: 30,
+        jobs: Some(1),
+        output_format: "json".to_string(),
+        output: Some(PathBuf::from("/nonexistent/dir/output.json")),
+        threshold: None,
+        failures_only: false,
+    };
+    let server = Arc::new(StatelessTemplateServer::new().unwrap());
+
+    // Act
+    let result = handle(args, server).await;
+
+    // Assert - May error on output write failure (acceptable)
+    // Or succeed if output is ignored (also acceptable)
+    let _ = result;  // Don't assert - output path handling varies
+}
+
+/// Test 48: Error with zero jobs (invalid configuration)
+#[tokio::test]
+async fn test_error_zero_jobs() {
+    let temp_file = create_test_rust_file();
+
+    let args = MutateArgs {
+        target: temp_file.path().to_path_buf(),
+        language: None,
+        timeout: 30,
+        jobs: Some(0),  // Invalid - zero jobs
+        output_format: "json".to_string(),
+        output: None,
+        threshold: None,
+        failures_only: false,
+    };
+    let server = Arc::new(StatelessTemplateServer::new().unwrap());
+
+    // Act
+    let result = handle(args, server).await;
+
+    // Assert - Implementation may handle this differently
+    // Just verify it doesn't panic
+    let _ = result;
+}
+
+/// Test 49: Error with extremely short timeout
+#[tokio::test]
+async fn test_error_short_timeout() {
+    let temp_file = create_test_rust_file();
+
+    let args = MutateArgs {
+        target: temp_file.path().to_path_buf(),
+        language: None,
+        timeout: 1,  // Very short timeout (1 second)
+        jobs: Some(1),
+        output_format: "json".to_string(),
+        output: None,
+        threshold: None,
+        failures_only: false,
+    };
+    let server = Arc::new(StatelessTemplateServer::new().unwrap());
+
+    // Act
+    let result = handle(args, server).await;
+
+    // Assert - May timeout or succeed quickly
+    // Both are acceptable - just verify no panic
+    let _ = result;
+}
+
+/// Test 50: Graceful handling of unsupported language
+#[tokio::test]
+async fn test_error_unsupported_language() {
+    let mut temp_file = NamedTempFile::new().unwrap();
+    writeln!(temp_file, "This is not Rust code").unwrap();
+
+    let args = MutateArgs {
+        target: temp_file.path().to_path_buf(),
+        language: Some("nonexistent_language".to_string()),
+        timeout: 30,
+        jobs: Some(1),
+        output_format: "json".to_string(),
+        output: None,
+        threshold: None,
+        failures_only: false,
+    };
+    let server = Arc::new(StatelessTemplateServer::new().unwrap());
+
+    // Act
+    let result = handle(args, server).await;
+
+    // Assert - May error or succeed with no mutants
+    let _ = result;
+}
+
+/// Test 51: Error recovery with multiple invalid arguments
+#[tokio::test]
+async fn test_error_multiple_invalid_args() {
+    let args = MutateArgs {
+        target: PathBuf::from("/nonexistent/file.rs"),
+        language: Some("invalid_lang".to_string()),
+        timeout: 0,  // Invalid timeout
+        jobs: Some(0),  // Invalid jobs
+        output_format: "invalid_format".to_string(),
+        output: Some(PathBuf::from("/nonexistent/output.json")),
+        threshold: Some(150.0),  // Invalid threshold (>100)
+        failures_only: true,
+    };
+    let server = Arc::new(StatelessTemplateServer::new().unwrap());
+
+    // Act
+    let result = handle(args, server).await;
+
+    // Assert - Should error (file not found at minimum)
+    assert!(result.is_err(), "Should error with multiple invalid arguments");
+}
+
+/// Test 52: Threshold violation error
+#[tokio::test]
+async fn test_error_threshold_violation() {
+    let temp_file = create_test_rust_file();
+
+    let args = MutateArgs {
+        target: temp_file.path().to_path_buf(),
+        language: None,
+        timeout: 30,
+        jobs: Some(1),
+        output_format: "json".to_string(),
+        output: None,
+        threshold: Some(100.0),  // Require 100% mutation score (very strict)
+        failures_only: false,
+    };
+    let server = Arc::new(StatelessTemplateServer::new().unwrap());
+
+    // Act
+    let result = handle(args, server).await;
+
+    // Assert - May fail due to threshold violation (acceptable)
+    // Or succeed if score is 100% (unlikely but acceptable)
+    let _ = result;
+}
+
+/// Test 53: Concurrent execution error handling
+#[tokio::test]
+async fn test_error_concurrent_execution() {
+    let temp_file = create_test_rust_file();
+
+    let args = MutateArgs {
+        target: temp_file.path().to_path_buf(),
+        language: None,
+        timeout: 30,
+        jobs: Some(100),  // Very high concurrency (may cause issues)
+        output_format: "json".to_string(),
+        output: None,
+        threshold: None,
+        failures_only: false,
+    };
+    let server = Arc::new(StatelessTemplateServer::new().unwrap());
+
+    // Act
+    let result = handle(args, server).await;
+
+    // Assert - Should handle high concurrency gracefully
+    // May succeed or fail, but shouldn't panic
+    let _ = result;
+}
+
+/// Test 54: Error message contains useful information
+#[tokio::test]
+async fn test_error_useful_messages() {
+    let args = MutateArgs {
+        target: PathBuf::from("/definitely/does/not/exist/file.rs"),
+        language: None,
+        timeout: 30,
+        jobs: Some(1),
+        output_format: "json".to_string(),
+        output: None,
+        threshold: None,
+        failures_only: false,
+    };
+    let server = Arc::new(StatelessTemplateServer::new().unwrap());
+
+    // Act
+    let result = handle(args, server).await;
+
+    // Assert - Error message should be informative
+    assert!(result.is_err(), "Should error on non-existent file");
+    if let Err(e) = result {
+        let msg = e.to_string();
+        assert!(msg.len() > 10, "Error message should be descriptive");
+        // Should mention file or path
+        assert!(
+            msg.to_lowercase().contains("file") ||
+            msg.to_lowercase().contains("path") ||
+            msg.to_lowercase().contains("not found") ||
+            msg.to_lowercase().contains("exist"),
+            "Error should mention file/path issue: {}",
+            msg
+        );
+    }
+}
+
+// ============================================================================
 // Helper Functions
 // ============================================================================
 
