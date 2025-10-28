@@ -354,6 +354,8 @@ struct TdgArgs {
     top_files: Option<usize>,
     #[serde(default)]
     include_components: Option<bool>,
+    #[serde(default)] // Sprint 65: Git-commit correlation
+    with_git_context: Option<bool>,
 }
 
 /// Tool handler for analyzing Technical Debt Grading (TDG) scores.
@@ -426,6 +428,7 @@ impl ToolHandler for TdgTool {
             params.threshold,
             params.top_files,
             params.include_components,
+            params.with_git_context, // Sprint 65: Git-commit correlation
         )
         .await
         .map_err(|e| Error::internal(format!("TDG analysis failed: {e}")))?;
@@ -440,6 +443,8 @@ impl ToolHandler for TdgTool {
 struct TdgCompareArgs {
     path1: String,
     path2: String,
+    #[serde(default)] // Sprint 65: Git-commit correlation
+    with_git_context: Option<bool>,
 }
 
 /// Tool handler for comparing TDG scores between two files or directories.
@@ -483,7 +488,7 @@ impl ToolHandler for TdgCompareTool {
         let path1 = PathBuf::from(params.path1);
         let path2 = PathBuf::from(params.path2);
 
-        let results = tool_functions::compare_tdg(&path1, &path2)
+        let results = tool_functions::compare_tdg(&path1, &path2, params.with_git_context)
             .await
             .map_err(|e| Error::internal(format!("TDG comparison failed: {e}")))?;
 
