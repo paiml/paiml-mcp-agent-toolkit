@@ -520,7 +520,7 @@ fn format_history_output(
 
         for record in records {
             if let Some(git_ctx) = &record.git_context {
-                let timestamp: DateTime<Utc> = git_ctx.commit_timestamp.into();
+                let timestamp: DateTime<Utc> = git_ctx.commit_timestamp;
                 let date_str = timestamp.format("%Y-%m-%d %H:%M").to_string();
 
                 output.push_str(&format!(
