@@ -7,6 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.177.0] - 2025-10-28
+
+### Added
+- **Mutation Testing Documentation Complete (Sprint 64)**: Comprehensive guides and examples
+  - **User Guide**: `docs/guides/mutation-testing.md` (750+ lines)
+    - What is mutation testing (concepts, examples)
+    - Getting started (installation, first test)
+    - Multi-language support (6 languages)
+    - Output formats (text, JSON, markdown)
+    - Workflow integration (local development, pre-commit hooks, CI/CD, PR workflow)
+    - Troubleshooting (runtime, memory, flaky tests)
+    - FAQ (11 questions)
+  - **API Reference**: `docs/guides/mutation-testing-api-reference.md` (1,050 lines)
+    - Complete flag documentation (--target, --output-format, --failures-only, --threshold, --jobs, --timeout, --language)
+    - Exit codes (0: success, 1: failure, 2: invalid args)
+    - Output format schemas (text, JSON, markdown)
+    - Environment variables
+    - CI/CD integration examples (GitHub Actions, GitLab CI, Jenkins)
+    - Mutation operators reference
+  - **Best Practices**: `docs/guides/mutation-testing-best-practices.md` (969 lines)
+    - When to use mutation testing (ideal use cases, anti-patterns)
+    - 3-phase team adoption roadmap (8 weeks)
+    - Quality threshold recommendations by code type
+    - Performance optimization techniques (15× speedup)
+    - Common pitfalls and solutions
+    - Multi-language project guidance
+  - **CI/CD Guides**: `docs/ci-cd/`
+    - GitHub Actions integration (680+ lines)
+    - GitLab CI integration (1,204 lines)
+    - Jenkins integration (1,456 lines)
+  - **Example Projects**: `examples/`
+    - Rust mutation testing example (445 lines README, 8 functions, 8 tests)
+    - Python mutation testing example (400+ lines README, 8 functions, 24 tests)
+    - TypeScript mutation testing example (380+ lines README, 8 functions, 24 tests)
+  - **Main README**: Added mutation testing section with quick start
+  - **Sprint 64 Status**: 100% complete (Day 1: 88 tests, Day 2: 6 deliverables, Day 3: 4 docs)
+  - **Total Documentation**: 6,486+ lines across Sprint 64
+  - Commits: 6fa0f5ed, 8c9c65d7, a915f0de, 8931fe5f
+
 ## [2.176.0] - 2025-10-27
 
 ### Added
