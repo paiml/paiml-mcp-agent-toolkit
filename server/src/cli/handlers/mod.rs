@@ -61,6 +61,8 @@ pub mod tdg_formatter;
 pub mod tdg_handlers;
 #[cfg(test)]
 pub mod tdg_git_context_tests; // Sprint 65 Phase 2: Git-commit correlation
+#[cfg(test)]
+pub mod tdg_history_tests; // Sprint 65 Phase 3: TDG History Commands
 pub mod telemetry_handlers;
 pub mod test_handlers;
 pub mod unified_context_advanced;
