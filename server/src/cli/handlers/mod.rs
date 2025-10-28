@@ -59,6 +59,8 @@ pub mod subagent_handlers;
 pub mod tdg_diagnostic_handler;
 pub mod tdg_formatter;
 pub mod tdg_handlers;
+#[cfg(test)]
+pub mod tdg_git_context_tests; // Sprint 65 Phase 2: Git-commit correlation
 pub mod telemetry_handlers;
 pub mod test_handlers;
 pub mod unified_context_advanced;

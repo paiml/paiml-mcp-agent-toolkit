@@ -15,12 +15,20 @@ pub struct TdgCommandConfig {
     pub include_components: bool,
     pub min_grade: Option<String>,
     pub output: Option<PathBuf>,
+    /// Sprint 65: Include git context (commit SHA, branch, author)
+    pub with_git_context: bool,
 }
 
 /// Handle TDG command execution
 pub async fn handle_tdg_command(config: TdgCommandConfig) -> Result<()> {
     let tdg_config = load_tdg_configuration(&config)?;
-    let analyzer = TdgAnalyzer::with_storage(tdg_config)?;
+    let mut analyzer = TdgAnalyzer::with_storage(tdg_config)?;
+
+    // Sprint 65: Extract git context if --with-git-context flag enabled
+    if config.with_git_context {
+        let git_context = crate::models::git_context::GitContext::try_from_current_dir(&config.path);
+        analyzer.set_git_context(git_context);
+    }
 
     if let Some(ref cmd) = config.command {
         return handle_tdg_subcommand(cmd.clone(), &analyzer, &config).await;
@@ -28,7 +36,10 @@ pub async fn handle_tdg_command(config: TdgCommandConfig) -> Result<()> {
 
     let score = execute_tdg_analysis(&analyzer, &config).await?;
     validate_minimum_grade(&score, &config)?;
-    let output_str = format_tdg_output(&score, &config)?;
+
+    // Sprint 65: Get git context from analyzer for output formatting
+    let git_context = analyzer.get_git_context();
+    let output_str = format_tdg_output(&score, git_context, &config)?;
     write_tdg_output(&output_str, &config)?;
 
     Ok(())
@@ -110,12 +121,17 @@ fn validate_minimum_grade(score: &crate::tdg::TdgScore, config: &TdgCommandConfi
 }
 
 /// Format TDG output based on config (cognitive complexity ≤3)
-fn format_tdg_output(score: &crate::tdg::TdgScore, config: &TdgCommandConfig) -> Result<String> {
+fn format_tdg_output(
+    score: &crate::tdg::TdgScore,
+    git_context: Option<&crate::models::git_context::GitContext>,
+    config: &TdgCommandConfig,
+) -> Result<String> {
     if config.quiet {
         Ok(format!("{:.1}", score.total))
     } else {
         format_tdg_score(
             score.clone(),
+            git_context,
             config.format.clone(),
             config.include_components,
         )
@@ -134,6 +150,7 @@ fn write_tdg_output(output_str: &str, config: &TdgCommandConfig) -> Result<()> {
 
 fn format_tdg_score(
     score: crate::tdg::TdgScore,
+    git_context: Option<&crate::models::git_context::GitContext>,
     format: TdgOutputFormat,
     include_components: bool,
 ) -> Result<String> {
@@ -164,6 +181,24 @@ fn format_tdg_score(
                 score.language,
                 score.confidence * 100.0
             ));
+
+            // Sprint 65: Git context (if available)
+            if let Some(git) = git_context {
+                output.push_str("│                                                 │\n");
+                output.push_str("│  🔗 Git Context:                                │\n");
+                output.push_str(&format!(
+                    "│  ├─ Commit:  {}                     │\n",
+                    &git.commit_sha_short
+                ));
+                output.push_str(&format!(
+                    "│  ├─ Branch:  {}                               │\n",
+                    &git.branch
+                ));
+                output.push_str(&format!(
+                    "│  └─ Author:  {}                          │\n",
+                    &git.author_name
+                ));
+            }
 
             if include_components {
                 output.push_str("│                                                 │\n");
@@ -217,7 +252,19 @@ fn format_tdg_score(
                     } else {
                         None
                     }
-                }
+                },
+                "git_context": git_context.map(|git| serde_json::json!({
+                    "commit_sha": git.commit_sha,
+                    "commit_sha_short": git.commit_sha_short,
+                    "branch": git.branch,
+                    "author_name": git.author_name,
+                    "author_email": git.author_email,
+                    "commit_timestamp": git.commit_timestamp.to_rfc3339(),
+                    "commit_message": git.commit_message,
+                    "tags": git.tags,
+                    "is_clean": git.is_clean,
+                    "uncommitted_files": git.uncommitted_files,
+                }))
             });
             Ok(serde_json::to_string_pretty(&json_value)?)
         }

@@ -20,6 +20,8 @@ pub struct TdgAnalyzerAst {
     scheduler: Option<SimpleFairScheduler>,
     adaptive_manager: Option<AdaptiveThresholdManager>,
     resource_controller: Option<PlatformResourceController>,
+    /// Sprint 65: Optional git context for commit correlation
+    git_context: Option<crate::models::git_context::GitContext>,
 }
 
 impl TdgAnalyzerAst {
@@ -30,6 +32,7 @@ impl TdgAnalyzerAst {
             scheduler: None,
             adaptive_manager: None,
             resource_controller: None,
+            git_context: None,
         })
     }
 
@@ -40,6 +43,7 @@ impl TdgAnalyzerAst {
             scheduler: None,
             adaptive_manager: None,
             resource_controller: None,
+            git_context: None,
         })
     }
 
@@ -54,6 +58,7 @@ impl TdgAnalyzerAst {
             scheduler: Some(scheduler),
             adaptive_manager: Some(adaptive_manager),
             resource_controller: Some(resource_controller),
+            git_context: None,
         })
     }
 
@@ -73,7 +78,19 @@ impl TdgAnalyzerAst {
             scheduler: Some(scheduler),
             adaptive_manager: Some(adaptive_manager),
             resource_controller: Some(resource_controller),
+            git_context: None,
         })
+    }
+
+    /// Sprint 65: Set git context for commit correlation
+    /// This should be called before analyze_file() when --with-git-context flag is enabled
+    pub fn set_git_context(&mut self, git_context: Option<crate::models::git_context::GitContext>) {
+        self.git_context = git_context;
+    }
+
+    /// Sprint 65: Get git context for output formatting
+    pub fn get_git_context(&self) -> Option<&crate::models::git_context::GitContext> {
+        self.git_context.as_ref()
     }
 
     pub async fn analyze_file(&self, path: &Path) -> Result<TdgScore> {
@@ -236,7 +253,7 @@ impl TdgAnalyzerAst {
                     analysis_timestamp: SystemTime::now(),
                     cache_hit: false,
                 },
-                git_context: None, // TODO: Add --with-git-context flag support
+                git_context: self.git_context.clone(), // Sprint 65: Git-commit correlation
             };
 
             storage.store(record).await?;
