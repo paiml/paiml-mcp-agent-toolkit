@@ -1,13 +1,13 @@
 # PMAT Agent System Roadmap
 
-## 🎉 CURRENT STATUS: Sprint 65 (Phase 1-2) COMPLETE - Git-Commit Correlation Foundation ✅
+## 🎉 CURRENT STATUS: Sprint 65 (Phase 1-3) COMPLETE - Git-Commit Correlation with History ✅
 
-**Current Version**: v2.179.0 (Proposed - Sprint 65 Phase 1-2)
+**Current Version**: v2.179.0 (Proposed - Sprint 65 Phase 1-3)
 **Completion Date**: October 28, 2025
-**Status**: ✅ PARTIAL - Sprint 65 Phase 1-2 Complete, Phase 3+ Pending
-**Achievement**: Complete foundation for git-linked TDG analysis with CLI and MCP support
+**Status**: ✅ PHASE 3 COMPLETE - Sprint 65 Phase 1-3 Complete, Dashboard/Docs Pending
+**Achievement**: Complete git-linked TDG analysis with history query capabilities
 
-**Sprint 65 Phase 1-2 Achievements**:
+**Sprint 65 Phase 1-3 Achievements**:
 - **Phase 1**: GitContext Foundation ✅
   - Core data model (server/src/models/git_context.rs - 324 lines)
   - Git repository integration using git2-rs
@@ -23,8 +23,15 @@
   - Git context in all JSON responses
   - 8 RED tests for MCP integration
   - Commit: fa1279f9
-- **Total**: 837 lines of code, 35 tests, 3 commits
-- **Next**: Phase 3 - TDG History Commands (`pmat tdg history`, `compare`, `regressions`)
+- **Phase 3**: TDG History Commands ✅
+  - `pmat tdg history` command with 5 flags (--commit, --since, --range, --path, --format)
+  - Storage query methods (get_by_commit, get_all_with_git_context, get_by_path)
+  - Git2 integration for tag resolution and time filtering
+  - Table and JSON output formatters
+  - 377 lines of implementation
+  - Commit: 3ca73739
+- **Total**: 1,214 lines of code, 47 tests, 4 commits
+- **Next**: Phase 4 - Dashboard Integration OR Version Bump to v2.179.0
 
 ---
 
