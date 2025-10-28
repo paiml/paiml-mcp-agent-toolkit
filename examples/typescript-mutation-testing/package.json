@@ -1,0 +1,32 @@
+{
+  "name": "typescript-mutation-testing-example",
+  "version": "0.1.0",
+  "description": "TypeScript example project for demonstrating PMAT mutation testing",
+  "main": "src/calculator.ts",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "build": "tsc",
+    "lint": "eslint src tests --ext .ts"
+  },
+  "keywords": [
+    "mutation-testing",
+    "pmat",
+    "typescript",
+    "testing"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@jest/globals": "^29.7.0",
+    "@types/jest": "^29.5.0",
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.0",
+    "typescript": "^5.0.0"
+  }
+}
