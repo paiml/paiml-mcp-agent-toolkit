@@ -564,6 +564,10 @@ pub enum Commands {
         /// Output file path
         #[arg(short, long)]
         output: Option<PathBuf>,
+
+        /// Include git context (commit SHA, branch, author) - Sprint 65
+        #[arg(long)]
+        with_git_context: bool,
     },
 
     /// Run quality gates on the current project (TICKET-PMAT-5023, TICKET-PMAT-5024)
