@@ -783,6 +783,29 @@ pub enum TdgCommand {
         source2: PathBuf,
     },
 
+    /// View TDG history at specific commits (Sprint 65 Phase 3)
+    History {
+        /// Specific commit SHA or tag to query
+        #[arg(long)]
+        commit: Option<String>,
+
+        /// Show TDG history since this commit/tag (e.g., HEAD~10, v2.177.0)
+        #[arg(long)]
+        since: Option<String>,
+
+        /// Show TDG history in commit range (e.g., HEAD~10..HEAD, v2.177.0..v2.178.0)
+        #[arg(long)]
+        range: Option<String>,
+
+        /// Filter history by specific file path
+        #[arg(long)]
+        path: Option<PathBuf>,
+
+        /// Output format
+        #[arg(long, value_enum, default_value = "table")]
+        format: TdgOutputFormat,
+    },
+
     /// Show TDG system diagnostics and health status
     Diagnostics {
         /// Show detailed backend statistics
