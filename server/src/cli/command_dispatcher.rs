@@ -298,6 +298,7 @@ impl CommandDispatcher {
                 include_components,
                 min_grade,
                 output,
+                with_git_context,
             } => {
                 let tdg_config = handlers::tdg_handlers::TdgCommandConfig {
                     path,
@@ -308,6 +309,7 @@ impl CommandDispatcher {
                     include_components,
                     min_grade,
                     output,
+                    with_git_context,
                 };
                 handlers::handle_tdg_command(tdg_config).await
             }
