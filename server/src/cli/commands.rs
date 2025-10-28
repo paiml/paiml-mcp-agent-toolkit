@@ -3666,8 +3666,27 @@ pub enum ConfigCommands {
 #[derive(Subcommand, Clone)]
 #[cfg_attr(test, derive(Debug))]
 pub enum HooksCommands {
+    /// Initialize pre-commit hooks (alias for install)
+    Init {
+        /// Enable interactive mode for configuration
+        #[arg(long)]
+        interactive: bool,
+
+        /// Force installation (overwrite existing)
+        #[arg(long)]
+        force: bool,
+
+        /// Create backup of existing hooks
+        #[arg(long, default_value = "true")]
+        backup: bool,
+    },
+
     /// Install or update pre-commit hooks
     Install {
+        /// Enable interactive mode for configuration
+        #[arg(long)]
+        interactive: bool,
+
         /// Force installation (overwrite existing)
         #[arg(long)]
         force: bool,
@@ -3696,6 +3715,17 @@ pub enum HooksCommands {
 
     /// Regenerate hooks from current configuration
     Refresh,
+
+    /// Run pre-commit hooks (for CI/CD integration)
+    Run {
+        /// Run on all files instead of just staged
+        #[arg(long)]
+        all_files: bool,
+
+        /// Verbose output
+        #[arg(long, short)]
+        verbose: bool,
+    },
 }
 
 /// Configuration output format

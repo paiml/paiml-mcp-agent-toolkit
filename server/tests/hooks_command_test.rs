@@ -572,3 +572,111 @@ async fn test_hooks_performance_requirements() -> Result<()> {
 
     Ok(())
 }
+
+// =============================================================================
+// NEW COMMANDS TESTS (Sprint 61) - init and run
+// =============================================================================
+
+#[tokio::test]
+#[ignore = "RED phase TDD - hooks init command not yet tested"]
+async fn test_hooks_init_basic() -> Result<()> {
+    // Test that `init` command works as alias for `install`
+
+    // ARRANGE
+    let fixture = HooksTestFixture::new()?;
+    let hooks_cmd = HooksCommand::new(fixture.hooks_dir().clone(), fixture.config_path().clone());
+
+    // ACT
+    let result = hooks_cmd.install(false, true).await?;
+
+    // ASSERT
+    assert!(result.success);
+    assert!(result.hook_created);
+    assert!(fixture.pre_commit_hook().exists());
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "RED phase TDD - hooks run command not yet implemented"]
+async fn test_hooks_run_with_installed_hooks() -> Result<()> {
+    // Test running hooks via `run` command
+
+    // ARRANGE
+    let fixture = HooksTestFixture::new()?;
+
+    // Create a simple test hook that succeeds
+    let test_hook = r#"#!/bin/bash
+echo "✅ Test check passed"
+exit 0
+"#;
+    fixture.create_existing_hook(test_hook)?;
+
+    let hooks_cmd = HooksCommand::new(fixture.hooks_dir().clone(), fixture.config_path().clone());
+
+    // ACT - this would need to be implemented
+    // let result = hooks_cmd.run(false, true).await?;
+
+    // ASSERT
+    // assert!(result.success);
+    // assert_eq!(result.checks_passed, 1);
+    // assert_eq!(result.checks_failed, 0);
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "RED phase TDD - hooks run command not yet implemented"]
+async fn test_hooks_run_all_files() -> Result<()> {
+    // Test running hooks on all files (CI/CD mode)
+
+    // ARRANGE
+    let fixture = HooksTestFixture::new()?;
+
+    // Create test hook
+    let test_hook = r#"#!/bin/bash
+echo "🔍 Running on all files..."
+echo "✅ Check 1 passed"
+echo "✅ Check 2 passed"
+exit 0
+"#;
+    fixture.create_existing_hook(test_hook)?;
+
+    let hooks_cmd = HooksCommand::new(fixture.hooks_dir().clone(), fixture.config_path().clone());
+
+    // ACT - would test all_files flag
+    // let result = hooks_cmd.run(true, true).await?;
+
+    // ASSERT
+    // assert!(result.success);
+    // assert_eq!(result.checks_passed, 2);
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "RED phase TDD - hooks run command not yet implemented"]
+async fn test_hooks_run_fails_on_error() -> Result<()> {
+    // Test that run command fails when hook exits with error
+
+    // ARRANGE
+    let fixture = HooksTestFixture::new()?;
+
+    // Create hook that fails
+    let test_hook = r#"#!/bin/bash
+echo "✅ Check 1 passed"
+echo "❌ Check 2 failed"
+exit 1
+"#;
+    fixture.create_existing_hook(test_hook)?;
+
+    let hooks_cmd = HooksCommand::new(fixture.hooks_dir().clone(), fixture.config_path().clone());
+
+    // ACT & ASSERT
+    // let result = hooks_cmd.run(false, false).await?;
+    // assert!(!result.success);
+    // assert_eq!(result.checks_passed, 1);
+    // assert_eq!(result.checks_failed, 1);
+
+    Ok(())
+}
