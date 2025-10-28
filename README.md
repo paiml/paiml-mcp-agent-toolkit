@@ -74,6 +74,7 @@ pmat hooks install --dry-run
 - **17+ Languages**: Rust, TypeScript, Python, Go, Java, C/C++, Ruby, PHP, Swift, Kotlin, and more
 - **AI-Ready Context**: Generate deep context for Claude, GPT, and other LLMs
 - **Technical Debt Grading (TDG)**: A+ through F scoring with 6 orthogonal metrics
+- **Git-Commit Correlation** ✨NEW: Track TDG scores at specific commits for quality archaeology
 - **Semantic Code Search**: Natural language code discovery with hybrid search
 - **Quality Gates**: Pre-commit hooks, CI/CD integration, mutation testing
 - **MCP Integration**: 19 tools for Claude Code, Cline, and other MCP clients
@@ -154,6 +155,58 @@ pmat mutate --target src/ --output-format json > results.json
 - [Rust Example](examples/rust-mutation-testing/) - 8 functions, 8 tests, ~90% mutation score
 - [Python Example](examples/python-mutation-testing/) - 8 functions, 24 tests, comprehensive coverage
 - [TypeScript Example](examples/typescript-mutation-testing/) - 8 functions, 24 tests, Jest integration
+
+---
+
+## Git-Commit Correlation (v2.179.0+)
+
+Track Technical Debt Grading (TDG) scores at specific git commits for "quality archaeology" workflows.
+
+```bash
+# Analyze with git context
+pmat tdg server/src/lib.rs --with-git-context
+
+# Query specific commit
+pmat tdg history --commit v2.178.0
+
+# History since reference
+pmat tdg history --since HEAD~10
+
+# Commit range
+pmat tdg history --range v2.177.0..v2.178.0
+
+# Filter by file
+pmat tdg history --path server/src/lib.rs --since HEAD~5
+
+# JSON output for scripting
+pmat tdg history --commit 60125a0 --format json
+```
+
+**Use Cases:**
+- **Quality Archaeology**: Find which commit broke quality
+- **Release Tracking**: Compare quality between releases
+- **Regression Detection**: Identify quality drops over time
+- **Developer Metrics**: Track quality attribution
+
+**Example Workflows:**
+
+```bash
+# Find when quality dropped below B+
+pmat tdg history --since HEAD~50 --format json | \
+  jq '.history[] | select(.score.grade | test("C|D|F"))'
+
+# Quality delta between releases
+pmat tdg history --range v2.177.0..v2.178.0
+
+# Per-file quality trend
+pmat tdg history --path src/lib.rs --since HEAD~20
+```
+
+**Features:**
+- Tag resolution support (e.g., `--commit v2.178.0`)
+- MCP integration (`with_git_context: true` parameter)
+- Zero performance overhead (<1% analysis time)
+- Backward compatible (git context is optional)
 
 ---
 
