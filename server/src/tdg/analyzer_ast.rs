@@ -93,6 +93,11 @@ impl TdgAnalyzerAst {
         self.git_context.as_ref()
     }
 
+    /// Sprint 65 Phase 3: Get storage reference for history queries
+    pub fn storage(&self) -> Option<&TieredStore> {
+        self.storage.as_ref()
+    }
+
     pub async fn analyze_file(&self, path: &Path) -> Result<TdgScore> {
         self.analyze_file_with_priority(path, OperationPriority::Medium)
             .await

@@ -65,6 +65,15 @@ async fn handle_tdg_subcommand(
         TdgCommand::Compare { source1, source2 } => {
             handle_compare_command(analyzer, &source1, &source2, config).await
         }
+        TdgCommand::History {
+            commit,
+            since,
+            range,
+            path,
+            format,
+        } => {
+            handle_history_command(analyzer, commit, since, range, path, format, config).await
+        }
         TdgCommand::Diagnostics { .. }
         | TdgCommand::Storage { .. }
         | TdgCommand::Dashboard { .. }
@@ -91,6 +100,127 @@ async fn handle_compare_command(
     }
 
     Ok(())
+}
+
+/// Handle TDG history subcommand (Sprint 65 Phase 3)
+async fn handle_history_command(
+    analyzer: &TdgAnalyzer,
+    commit: Option<String>,
+    since: Option<String>,
+    range: Option<String>,
+    path_filter: Option<PathBuf>,
+    format: TdgOutputFormat,
+    config: &TdgCommandConfig,
+) -> Result<()> {
+    // Get storage from analyzer
+    let storage = analyzer.storage()
+        .ok_or_else(|| anyhow!("TDG storage not initialized. Run with --with-git-context flag."))?;
+
+    // Query based on flags
+    let mut records = if let Some(commit_ref) = commit {
+        // Query by specific commit
+        let found_records = storage.get_by_commit(&commit_ref).await?;
+        if found_records.is_empty() {
+            return Err(anyhow!(
+                "No TDG data found for commit '{}'. Ensure TDG was run with --with-git-context.",
+                commit_ref
+            ));
+        }
+        found_records
+    } else if let Some(since_ref) = since {
+        // Query all records and filter by commit history since ref
+        let all_records = storage.get_all_with_git_context().await?;
+        filter_by_git_since(&since_ref, all_records, &config.path)?
+    } else if let Some(range_ref) = range {
+        // Query all records and filter by commit range
+        let all_records = storage.get_all_with_git_context().await?;
+        filter_by_git_range(&range_ref, all_records, &config.path)?
+    } else {
+        // No flags - show all records with git context
+        storage.get_all_with_git_context().await?
+    };
+
+    // Apply path filter if specified
+    if let Some(target_path) = path_filter {
+        records.retain(|r| r.identity.path == target_path);
+    }
+
+    if records.is_empty() {
+        println!("No TDG history found matching criteria.");
+        return Ok(());
+    }
+
+    // Format and output
+    let output_str = format_history_output(&records, format)?;
+    if let Some(output_path) = &config.output {
+        fs::write(output_path, output_str)?;
+    } else {
+        println!("{output_str}");
+    }
+
+    Ok(())
+}
+
+/// Filter records by git "since" reference using git2
+fn filter_by_git_since(
+    since_ref: &str,
+    mut records: Vec<crate::tdg::storage::FullTdgRecord>,
+    repo_path: &Path,
+) -> Result<Vec<crate::tdg::storage::FullTdgRecord>> {
+    use git2::Repository;
+
+    let repo = Repository::discover(repo_path)?;
+    let since_commit = repo.revparse_single(since_ref)?.peel_to_commit()?;
+    let since_time = since_commit.time();
+
+    // Filter records to commits after since_time
+    records.retain(|r| {
+        if let Some(git_ctx) = &r.git_context {
+            // Convert DateTime<Utc> to timestamp for comparison
+            let record_time = git_ctx.commit_timestamp.timestamp();
+            record_time > since_time.seconds()
+        } else {
+            false
+        }
+    });
+
+    Ok(records)
+}
+
+/// Filter records by git commit range using git2
+fn filter_by_git_range(
+    range_ref: &str,
+    mut records: Vec<crate::tdg::storage::FullTdgRecord>,
+    repo_path: &Path,
+) -> Result<Vec<crate::tdg::storage::FullTdgRecord>> {
+    use git2::Repository;
+
+    let repo = Repository::discover(repo_path)?;
+
+    // Parse range (e.g., "HEAD~10..HEAD" or "v2.177.0..v2.178.0")
+    let parts: Vec<&str> = range_ref.split("..").collect();
+    if parts.len() != 2 {
+        return Err(anyhow!("Invalid range format. Expected 'start..end' (e.g., HEAD~10..HEAD)"));
+    }
+
+    let start_commit = repo.revparse_single(parts[0])?.peel_to_commit()?;
+    let end_commit = repo.revparse_single(parts[1])?.peel_to_commit()?;
+
+    let start_time = start_commit.time().seconds();
+    let end_time = end_commit.time().seconds();
+
+    // Filter records within time range
+    records.retain(|r| {
+        if let Some(git_ctx) = &r.git_context {
+            // Convert DateTime<Utc> to timestamp for comparison
+            let record_time = git_ctx.commit_timestamp.timestamp();
+            record_time >= start_time && record_time <= end_time
+        } else {
+            false
+        }
+    });
+
+    Ok(records)
 }
 
 /// Execute TDG analysis on file or directory (cognitive complexity ≤3)
@@ -372,6 +502,91 @@ fn format_comparison(
             "winner": comparison.winner
         });
         Ok(serde_json::to_string_pretty(&json_value)?)
+    }
+}
+
+/// Format TDG history output (Sprint 65 Phase 3)
+fn format_history_output(
+    records: &[crate::tdg::storage::FullTdgRecord],
+    format: TdgOutputFormat,
+) -> Result<String> {
+    use chrono::{DateTime, Utc};
+
+    if format == TdgOutputFormat::Table {
+        let mut output = String::new();
+        output.push_str("╭──────────────────────────────────────────────────────────────────────────╮\n");
+        output.push_str("│  TDG History                                                             │\n");
+        output.push_str("├──────────────────────────────────────────────────────────────────────────┤\n");
+
+        for record in records {
+            if let Some(git_ctx) = &record.git_context {
+                let timestamp: DateTime<Utc> = git_ctx.commit_timestamp.into();
+                let date_str = timestamp.format("%Y-%m-%d %H:%M").to_string();
+
+                output.push_str(&format!(
+                    "│  📝 {} - {} ({})                                            │\n",
+                    git_ctx.commit_sha_short,
+                    format_grade(record.score.grade),
+                    record.score.total
+                ));
+                output.push_str(&format!(
+                    "│  ├─ Branch:  {}                                                           │\n",
+                    git_ctx.branch
+                ));
+                output.push_str(&format!(
+                    "│  ├─ Author:  {}                                                      │\n",
+                    git_ctx.author_name
+                ));
+                output.push_str(&format!(
+                    "│  ├─ Date:    {}                                                  │\n",
+                    date_str
+                ));
+                output.push_str(&format!(
+                    "│  └─ File:    {}                                                          │\n",
+                    record.identity.path.display()
+                ));
+                output.push_str("│                                                                          │\n");
+            }
+        }
+
+        output.push_str("╰──────────────────────────────────────────────────────────────────────────╯\n");
+        Ok(output)
+    } else {
+        // JSON format
+        let json_records: Vec<_> = records
+            .iter()
+            .map(|r| {
+                serde_json::json!({
+                    "file_path": r.identity.path,
+                    "score": {
+                        "total": r.score.total,
+                        "grade": format_grade(r.score.grade),
+                        "structural_complexity": r.score.structural_complexity,
+                        "semantic_complexity": r.score.semantic_complexity,
+                        "duplication_ratio": r.score.duplication_ratio,
+                        "coupling_score": r.score.coupling_score,
+                        "doc_coverage": r.score.doc_coverage,
+                        "consistency_score": r.score.consistency_score,
+                        "entropy_score": r.score.entropy_score,
+                    },
+                    "git_context": r.git_context.as_ref().map(|git| serde_json::json!({
+                        "commit_sha": git.commit_sha,
+                        "commit_sha_short": git.commit_sha_short,
+                        "branch": git.branch,
+                        "author_name": git.author_name,
+                        "author_email": git.author_email,
+                        "commit_timestamp": git.commit_timestamp,
+                        "commit_message": git.commit_message,
+                        "tags": git.tags,
+                    })),
+                })
+            })
+            .collect();
+
+        Ok(serde_json::to_string_pretty(&serde_json::json!({
+            "history": json_records,
+            "total_records": records.len()
+        }))?)
     }
 }
 
