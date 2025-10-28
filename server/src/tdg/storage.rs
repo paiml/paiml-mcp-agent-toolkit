@@ -56,6 +56,11 @@ pub struct FullTdgRecord {
     pub components: ComponentScores,
     pub semantic_sig: SemanticSignature,
     pub metadata: AnalysisMetadata,
+
+    /// Git context (Sprint 65 - Git-Commit Correlation)
+    /// None if not in a git repository or --no-git-context flag used
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub git_context: Option<crate::models::git_context::GitContext>,
 }
 
 /// Hot cache entry for high-speed access (in-memory)
@@ -396,7 +401,6 @@ impl TieredStorageFactory {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tdg::language_simple::Language;
     use crate::tdg::Grade;
 
     fn create_test_record() -> FullTdgRecord {
@@ -410,21 +414,7 @@ mod tests {
                 size_bytes: content.len() as u64,
                 modified_time: SystemTime::now(),
             },
-            score: TdgScore {
-                structural_complexity: 20.0,
-                semantic_complexity: 18.0,
-                duplication_ratio: 19.0,
-                coupling_score: 14.0,
-                doc_coverage: 9.0,
-                consistency_score: 8.0,
-                entropy_score: 16.0,
-                total: 88.0,
-                grade: Grade::AMinus,
-                confidence: 0.95,
-                language: Language::Rust,
-                file_path: Some(PathBuf::from("test.rs")),
-                penalties_applied: Vec::new(),
-            },
+            score: TdgScore::default(),
             components: ComponentScores {
                 complexity_breakdown: HashMap::new(),
                 duplication_sources: Vec::new(),
@@ -445,6 +435,7 @@ mod tests {
                 analysis_timestamp: SystemTime::now(),
                 cache_hit: false,
             },
+            git_context: None, // Test helper doesn't include git context
         }
     }
 
@@ -590,5 +581,181 @@ mod property_tests {
             // Module consistency verification
             prop_assert!(_x < 1001);
         }
+    }
+}
+
+#[cfg(test)]
+mod git_context_integration_tests {
+    use super::*;
+    use crate::models::git_context::GitContext;
+    use std::path::PathBuf;
+
+    // Helper: Get repository root
+    fn get_repo_root() -> PathBuf {
+        let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let mut current = manifest_dir.clone();
+        loop {
+            let git_dir = current.join(".git");
+            if git_dir.exists() && git_dir.join("HEAD").exists() {
+                return current;
+            }
+            if !current.pop() {
+                return manifest_dir.parent().unwrap().to_path_buf();
+            }
+        }
+    }
+
+    // RED TEST 1: FullTdgRecord can store git_context
+    #[test]
+    fn test_full_tdg_record_stores_git_context() {
+        // Arrange
+        let repo_path = get_repo_root();
+        let git_context = GitContext::from_current_dir(&repo_path).ok();
+
+        let record = FullTdgRecord {
+            identity: FileIdentity {
+                path: PathBuf::from("test.rs"),
+                content_hash: blake3::hash(b"test"),
+                size_bytes: 4,
+                modified_time: std::time::SystemTime::now(),
+            },
+            score: TdgScore::default(),
+            components: ComponentScores {
+                complexity_breakdown: Default::default(),
+                duplication_sources: Vec::new(),
+                coupling_dependencies: Vec::new(),
+                doc_missing_items: Vec::new(),
+                consistency_violations: Vec::new(),
+            },
+            semantic_sig: SemanticSignature {
+                ast_structure_hash: 12345,
+                identifier_pattern: "test".to_string(),
+                control_flow_pattern: "linear".to_string(),
+                import_dependencies: Vec::new(),
+            },
+            metadata: AnalysisMetadata {
+                analyzer_version: "2.178.0".to_string(),
+                analysis_duration_ms: 100,
+                language_confidence: 0.95,
+                analysis_timestamp: std::time::SystemTime::now(),
+                cache_hit: false,
+            },
+            git_context,
+        };
+
+        // Act & Assert
+        if record.git_context.is_some() {
+            let ctx = record.git_context.as_ref().unwrap();
+            assert!(!ctx.commit_sha.is_empty(), "Should have commit SHA");
+            assert!(!ctx.branch.is_empty(), "Should have branch name");
+        }
+    }
+
+    // RED TEST 2: FullTdgRecord serializes with git_context
+    #[test]
+    fn test_full_tdg_record_serializes_with_git_context() {
+        // Arrange
+        let repo_path = get_repo_root();
+        let git_context = GitContext::from_current_dir(&repo_path).ok();
+
+        let record = FullTdgRecord {
+            identity: FileIdentity {
+                path: PathBuf::from("test.rs"),
+                content_hash: blake3::hash(b"test"),
+                size_bytes: 4,
+                modified_time: std::time::SystemTime::now(),
+            },
+            score: TdgScore::default(),
+            components: ComponentScores {
+                complexity_breakdown: Default::default(),
+                duplication_sources: Vec::new(),
+                coupling_dependencies: Vec::new(),
+                doc_missing_items: Vec::new(),
+                consistency_violations: Vec::new(),
+            },
+            semantic_sig: SemanticSignature {
+                ast_structure_hash: 12345,
+                identifier_pattern: "test".to_string(),
+                control_flow_pattern: "linear".to_string(),
+                import_dependencies: Vec::new(),
+            },
+            metadata: AnalysisMetadata {
+                analyzer_version: "2.178.0".to_string(),
+                analysis_duration_ms: 100,
+                language_confidence: 0.95,
+                analysis_timestamp: std::time::SystemTime::now(),
+                cache_hit: false,
+            },
+            git_context: git_context.clone(),
+        };
+
+        // Act: Serialize to JSON
+        let json = serde_json::to_string(&record).unwrap();
+
+        // Assert: Deserialize back
+        let deserialized: FullTdgRecord = serde_json::from_str(&json).unwrap();
+
+        if git_context.is_some() {
+            assert!(
+                deserialized.git_context.is_some(),
+                "Git context should round-trip through JSON"
+            );
+            let orig = git_context.as_ref().unwrap();
+            let deser = deserialized.git_context.as_ref().unwrap();
+            assert_eq!(orig.commit_sha, deser.commit_sha, "Commit SHA should match");
+            assert_eq!(orig.branch, deser.branch, "Branch should match");
+        }
+    }
+
+    // RED TEST 3: FullTdgRecord works without git_context (backward compat)
+    #[test]
+    fn test_full_tdg_record_works_without_git_context() {
+        // Arrange
+        let record = FullTdgRecord {
+            identity: FileIdentity {
+                path: PathBuf::from("test.rs"),
+                content_hash: blake3::hash(b"test"),
+                size_bytes: 4,
+                modified_time: std::time::SystemTime::now(),
+            },
+            score: TdgScore::default(),
+            components: ComponentScores {
+                complexity_breakdown: Default::default(),
+                duplication_sources: Vec::new(),
+                coupling_dependencies: Vec::new(),
+                doc_missing_items: Vec::new(),
+                consistency_violations: Vec::new(),
+            },
+            semantic_sig: SemanticSignature {
+                ast_structure_hash: 12345,
+                identifier_pattern: "test".to_string(),
+                control_flow_pattern: "linear".to_string(),
+                import_dependencies: Vec::new(),
+            },
+            metadata: AnalysisMetadata {
+                analyzer_version: "2.178.0".to_string(),
+                analysis_duration_ms: 100,
+                language_confidence: 0.95,
+                analysis_timestamp: std::time::SystemTime::now(),
+                cache_hit: false,
+            },
+            git_context: None, // No git context
+        };
+
+        // Act: Serialize to JSON
+        let json = serde_json::to_string(&record).unwrap();
+
+        // Assert: Should not contain "git_context" field (skipped)
+        assert!(
+            !json.contains("git_context"),
+            "JSON should skip None git_context field"
+        );
+
+        // Deserialize back
+        let deserialized: FullTdgRecord = serde_json::from_str(&json).unwrap();
+        assert!(
+            deserialized.git_context.is_none(),
+            "Git context should remain None"
+        );
     }
 }

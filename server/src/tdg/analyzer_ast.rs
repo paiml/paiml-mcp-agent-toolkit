@@ -236,6 +236,7 @@ impl TdgAnalyzerAst {
                     analysis_timestamp: SystemTime::now(),
                     cache_hit: false,
                 },
+                git_context: None, // TODO: Add --with-git-context flag support
             };
 
             storage.store(record).await?;
