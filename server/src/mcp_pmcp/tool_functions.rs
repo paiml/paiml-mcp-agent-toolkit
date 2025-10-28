@@ -562,6 +562,7 @@ fn create_tdg_record(
         components: create_component_scores(),
         semantic_sig: create_semantic_signature(&hash),
         metadata: create_analysis_metadata(file_score),
+        git_context: None, // MCP tool doesn't collect git context
     })
 }
 
