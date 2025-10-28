@@ -901,6 +901,7 @@ mod tests {
     #[tokio::test]
     async fn test_hooks_install() {
         let cmd = HooksCommands::Install {
+            interactive: false,
             force: false,
             backup: true,
         };
