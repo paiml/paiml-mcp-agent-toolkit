@@ -1,0 +1,15 @@
+[package]
+name = "rust-mutation-testing-example"
+version = "0.1.0"
+edition = "2021"
+
+[workspace]
+# Empty workspace to keep this example independent from parent workspace
+
+[lib]
+name = "calculator"
+path = "src/lib.rs"
+
+[dependencies]
+
+[dev-dependencies]
