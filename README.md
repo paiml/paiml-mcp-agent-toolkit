@@ -42,6 +42,9 @@ pmat analyze tdg
 
 # Find Self-Admitted Technical Debt
 pmat analyze satd
+
+# Test suite quality (mutation testing)
+pmat mutate --target src/
 ```
 
 ### Git Hooks Setup
@@ -110,6 +113,47 @@ pmat semantic search "error handling patterns"
 # Validate documentation for hallucinations
 pmat validate-readme --targets README.md
 ```
+
+---
+
+## Mutation Testing
+
+Evaluate test suite quality by introducing code mutations and checking if tests detect them.
+
+```bash
+# Basic mutation testing
+pmat mutate --target src/lib.rs
+
+# With quality gate (fail if score < 85%)
+pmat mutate --target src/ --threshold 85
+
+# Failures only (CI/CD optimization)
+pmat mutate --target src/ --failures-only
+
+# JSON output for integration
+pmat mutate --target src/ --output-format json > results.json
+```
+
+**Mutation Score** = (Killed Mutants / Total Valid Mutants) × 100%
+
+**Supported Languages:** Rust, Python, TypeScript, JavaScript, Go, C++
+
+**Key Features:**
+- Multi-language mutation operators (arithmetic, comparison, logical, boundary)
+- CI/CD integration (GitHub Actions, GitLab CI, Jenkins)
+- Performance optimization (parallel execution, differential testing)
+- Quality gates with configurable thresholds
+
+**Documentation:**
+- [User Guide](docs/guides/mutation-testing.md) - Complete guide with examples
+- [API Reference](docs/guides/mutation-testing-api-reference.md) - All CLI flags and options
+- [Best Practices](docs/guides/mutation-testing-best-practices.md) - Team adoption strategies
+- [CI/CD Integration](docs/ci-cd/) - GitHub Actions, GitLab CI, Jenkins
+
+**Example Projects:**
+- [Rust Example](examples/rust-mutation-testing/) - 8 functions, 8 tests, ~90% mutation score
+- [Python Example](examples/python-mutation-testing/) - 8 functions, 24 tests, comprehensive coverage
+- [TypeScript Example](examples/typescript-mutation-testing/) - 8 functions, 24 tests, Jest integration
 
 ---
 
