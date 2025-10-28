@@ -1,8 +1,36 @@
 # PMAT Agent System Roadmap
 
-## 🎉 CURRENT STATUS: Sprint 64 COMPLETE - Mutation Testing Documentation ✅
+## 🎉 CURRENT STATUS: Sprint 65 (Phase 1-2) COMPLETE - Git-Commit Correlation Foundation ✅
 
-**Current Version**: v2.177.0 (Sprint 64 - Documentation Release)
+**Current Version**: v2.179.0 (Proposed - Sprint 65 Phase 1-2)
+**Completion Date**: October 28, 2025
+**Status**: ✅ PARTIAL - Sprint 65 Phase 1-2 Complete, Phase 3+ Pending
+**Achievement**: Complete foundation for git-linked TDG analysis with CLI and MCP support
+
+**Sprint 65 Phase 1-2 Achievements**:
+- **Phase 1**: GitContext Foundation ✅
+  - Core data model (server/src/models/git_context.rs - 324 lines)
+  - Git repository integration using git2-rs
+  - 17 unit tests (100% passing)
+  - Commit: 7b40db96
+- **Phase 2A**: CLI Integration ✅
+  - `--with-git-context` flag for `pmat tdg` command
+  - Enhanced table and JSON output formatters
+  - 10 tests (2 GREEN, 8 RED for end-to-end)
+  - Commit: 3730e612
+- **Phase 2B**: MCP Integration ✅
+  - `with_git_context` parameter for MCP `analyze.tdg` tool
+  - Git context in all JSON responses
+  - 8 RED tests for MCP integration
+  - Commit: fa1279f9
+- **Total**: 837 lines of code, 35 tests, 3 commits
+- **Next**: Phase 3 - TDG History Commands (`pmat tdg history`, `compare`, `regressions`)
+
+---
+
+## ✅ Sprint 64: Mutation Testing Documentation - COMPLETE ✅
+
+**Version**: v2.177.0 (Sprint 64 - Documentation Release)
 **Completion Date**: October 28, 2025
 **Status**: ✅ COMPLETE - Sprint 64 (Mutation Testing Documentation) Complete
 **Achievement**: 6,486+ lines of comprehensive mutation testing documentation across 4 guides, 3 CI/CD integrations, and 3 example projects
