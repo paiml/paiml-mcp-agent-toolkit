@@ -26,7 +26,21 @@ pub async fn handle_tdg_command(config: TdgCommandConfig) -> Result<()> {
 
     // Sprint 65: Extract git context if --with-git-context flag enabled
     if config.with_git_context {
-        let git_context = crate::models::git_context::GitContext::try_from_current_dir(&config.path);
+        // Use parent directory of file for git repo discovery
+        let search_path = if config.path.is_file() {
+            config.path.parent().unwrap_or(&config.path)
+        } else {
+            &config.path
+        };
+
+        // Discover git repo root from the search path
+        let git_context = if let Ok(repo) = git2::Repository::discover(search_path) {
+            let workdir = repo.workdir().unwrap_or(search_path);
+            crate::models::git_context::GitContext::try_from_current_dir(workdir)
+        } else {
+            None
+        };
+
         analyzer.set_git_context(git_context);
     }
 
