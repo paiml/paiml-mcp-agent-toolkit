@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.178.0] - 2025-10-28
+
+### Added
+- **Pre-commit Hooks: Missing Commands Implementation (Sprint 61)**
+  - `pmat hooks init` command (alias for `install`, as documented in pmat-book Chapter 9)
+  - `pmat hooks run` command for CI/CD integration (supports `--all-files` and `--verbose`)
+  - `--interactive` flag for `pmat hooks init` and `pmat hooks install`
+    - Auto-detects project type (Rust, JavaScript/TypeScript, Python, Go)
+    - Interactive prompts for quality thresholds
+    - Generates/updates `pmat.toml` configuration
+  - **Files Modified**:
+    - `server/src/cli/commands.rs` - Added `Init` and `Run` enum variants with flags
+    - `server/src/cli/handlers/hooks_command_handlers.rs` - Implemented interactive setup, project detection, hook execution
+    - `server/tests/hooks_command_test.rs` - Added 4 TDD tests for new commands
+  - **Resolves**: Documentation-reality gap from pmat-book Chapter 9 (lines 40, 51, 421)
+  - **Impact**: Eliminates "vaporware" perception for pre-commit hooks feature
+
 ## [2.177.0] - 2025-10-28
 
 ### Added
