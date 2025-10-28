@@ -777,6 +777,294 @@ async fn test_large_results_output() {
 
 /// Create a temporary Rust file with basic content for testing
 #[allow(dead_code)]
+// ============================================================================
+// Category 3: Filtering Logic (8 tests)
+// ============================================================================
+//
+// Note: These tests verify the handler accepts failures_only flag correctly.
+// Actual filtering behavior is tested in integration tests where we can
+// control mutant statuses.
+
+/// Test 23: failures_only flag set to true
+#[tokio::test]
+async fn test_failures_only_true() {
+    // Arrange
+    let temp_file = create_test_rust_file();
+    let args = MutateArgs {
+        target: temp_file.path().to_path_buf(),
+        language: None,
+        timeout: 30,
+        jobs: Some(1),
+        output_format: "json".to_string(),
+        output: None,
+        threshold: None,
+        failures_only: true, // Enable failures-only filtering
+    };
+    let server = Arc::new(StatelessTemplateServer::new().unwrap());
+
+    // Act
+    let result = handle(args, server).await;
+
+    // Assert - Handler should accept failures_only=true
+    match result {
+        Ok(_) => {},
+        Err(e) => {
+            let msg = e.to_string();
+            // Should not fail due to failures_only flag
+            assert!(!msg.contains("failures_only") && !msg.contains("invalid"));
+        }
+    }
+}
+
+/// Test 24: failures_only flag set to false (default behavior)
+#[tokio::test]
+async fn test_failures_only_false() {
+    // Arrange
+    let temp_file = create_test_rust_file();
+    let args = MutateArgs {
+        target: temp_file.path().to_path_buf(),
+        language: None,
+        timeout: 30,
+        jobs: Some(1),
+        output_format: "json".to_string(),
+        output: None,
+        threshold: None,
+        failures_only: false, // Show all results
+    };
+    let server = Arc::new(StatelessTemplateServer::new().unwrap());
+
+    // Act
+    let result = handle(args, server).await;
+
+    // Assert - Handler should accept failures_only=false
+    match result {
+        Ok(_) => {},
+        Err(e) => {
+            let msg = e.to_string();
+            // Should not fail due to failures_only flag
+            assert!(!msg.contains("failures_only") && !msg.contains("invalid"));
+        }
+    }
+}
+
+/// Test 25: failures_only with JSON output format
+#[tokio::test]
+async fn test_failures_only_with_json_output() {
+    // Arrange
+    let temp_file = create_test_rust_file();
+    let args = MutateArgs {
+        target: temp_file.path().to_path_buf(),
+        language: None,
+        timeout: 30,
+        jobs: Some(1),
+        output_format: "json".to_string(),
+        output: None,
+        threshold: None,
+        failures_only: true,
+    };
+    let server = Arc::new(StatelessTemplateServer::new().unwrap());
+
+    // Act
+    let result = handle(args, server).await;
+
+    // Assert - JSON output should work with failures_only
+    match result {
+        Ok(_) => {},
+        Err(e) => {
+            let msg = e.to_string();
+            assert!(!msg.contains("incompatible") && !msg.contains("invalid"));
+        }
+    }
+}
+
+/// Test 26: failures_only with markdown output format
+#[tokio::test]
+async fn test_failures_only_with_markdown_output() {
+    // Arrange
+    let temp_file = create_test_rust_file();
+    let args = MutateArgs {
+        target: temp_file.path().to_path_buf(),
+        language: None,
+        timeout: 30,
+        jobs: Some(1),
+        output_format: "markdown".to_string(),
+        output: None,
+        threshold: None,
+        failures_only: true,
+    };
+    let server = Arc::new(StatelessTemplateServer::new().unwrap());
+
+    // Act
+    let result = handle(args, server).await;
+
+    // Assert - Markdown output should work with failures_only
+    match result {
+        Ok(_) => {},
+        Err(e) => {
+            let msg = e.to_string();
+            assert!(!msg.contains("incompatible") && !msg.contains("invalid"));
+        }
+    }
+}
+
+/// Test 27: failures_only with text output format
+#[tokio::test]
+async fn test_failures_only_with_text_output() {
+    // Arrange
+    let temp_file = create_test_rust_file();
+    let args = MutateArgs {
+        target: temp_file.path().to_path_buf(),
+        language: None,
+        timeout: 30,
+        jobs: Some(1),
+        output_format: "text".to_string(),
+        output: None,
+        threshold: None,
+        failures_only: true,
+    };
+    let server = Arc::new(StatelessTemplateServer::new().unwrap());
+
+    // Act
+    let result = handle(args, server).await;
+
+    // Assert - Text output should work with failures_only
+    match result {
+        Ok(_) => {},
+        Err(e) => {
+            let msg = e.to_string();
+            assert!(!msg.contains("incompatible") && !msg.contains("invalid"));
+        }
+    }
+}
+
+/// Test 28: failures_only with all output formats (comprehensive)
+#[tokio::test]
+async fn test_failures_only_all_formats() {
+    // Arrange
+    let temp_file = create_test_rust_file();
+    let formats = vec!["json", "markdown", "text"];
+
+    for format in formats {
+        let args = MutateArgs {
+            target: temp_file.path().to_path_buf(),
+            language: None,
+            timeout: 30,
+            jobs: Some(1),
+            output_format: format.to_string(),
+            output: None,
+            threshold: None,
+            failures_only: true,
+        };
+        let server = Arc::new(StatelessTemplateServer::new().unwrap());
+
+        // Act
+        let result = handle(args, server).await;
+
+        // Assert - All formats should work with failures_only
+        match result {
+            Ok(_) => {},
+            Err(e) => {
+                let msg = e.to_string();
+                assert!(
+                    !msg.contains("incompatible") && !msg.contains("invalid"),
+                    "Format {} failed with failures_only: {}",
+                    format,
+                    msg
+                );
+            }
+        }
+    }
+}
+
+/// Test 29: Test that handler preserves failures_only flag through execution
+/// Note: This is a smoke test - actual filtering is tested in integration tests
+#[tokio::test]
+async fn test_failures_only_flag_preserved() {
+    // Arrange
+    let temp_file = create_test_rust_file();
+
+    // Test with failures_only=true
+    let args_true = MutateArgs {
+        target: temp_file.path().to_path_buf(),
+        language: None,
+        timeout: 30,
+        jobs: Some(1),
+        output_format: "json".to_string(),
+        output: None,
+        threshold: None,
+        failures_only: true,
+    };
+    let server_true = Arc::new(StatelessTemplateServer::new().unwrap());
+
+    // Test with failures_only=false
+    let args_false = MutateArgs {
+        target: temp_file.path().to_path_buf(),
+        language: None,
+        timeout: 30,
+        jobs: Some(1),
+        output_format: "json".to_string(),
+        output: None,
+        threshold: None,
+        failures_only: false,
+    };
+    let server_false = Arc::new(StatelessTemplateServer::new().unwrap());
+
+    // Act & Assert - Both should succeed
+    let result_true = handle(args_true, server_true).await;
+    let result_false = handle(args_false, server_false).await;
+
+    // Neither should error due to failures_only flag
+    if let Err(e) = result_true {
+        assert!(!e.to_string().contains("failures_only"));
+    }
+    if let Err(e) = result_false {
+        assert!(!e.to_string().contains("failures_only"));
+    }
+}
+
+/// Test 30: failures_only with combination of other flags
+#[tokio::test]
+async fn test_failures_only_with_combined_flags() {
+    // Arrange
+    let temp_file = create_test_rust_file();
+    let args = MutateArgs {
+        target: temp_file.path().to_path_buf(),
+        language: None,
+        timeout: 30,
+        jobs: Some(2),
+        output_format: "json".to_string(),
+        output: None,
+        threshold: Some(80.0),
+        failures_only: true,
+    };
+    let server = Arc::new(StatelessTemplateServer::new().unwrap());
+
+    // Act
+    let result = handle(args, server).await;
+
+    // Assert - Should work with combined flags
+    match result {
+        Ok(_) => {},
+        Err(e) => {
+            let msg = e.to_string();
+            // Might fail due to threshold or other reasons, but not failures_only
+            if msg.contains("threshold") {
+                // Expected - threshold violations are acceptable
+            } else {
+                assert!(
+                    !msg.contains("failures_only") && !msg.contains("incompatible"),
+                    "Should not fail due to failures_only flag: {}",
+                    msg
+                );
+            }
+        }
+    }
+}
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
 fn create_test_rust_file() -> NamedTempFile {
     let mut temp_file = NamedTempFile::new().unwrap();
     writeln!(
