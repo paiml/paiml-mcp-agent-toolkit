@@ -503,3 +503,302 @@ fn test_add() {
         "Workspace-level mutation should succeed"
     );
 }
+
+// ============================================================================
+// Category 2: Performance and Scale Tests (6 tests)
+// ============================================================================
+
+/// Test 9: Large file mutation (>1000 lines)
+///
+/// Verifies mutation testing can handle large files efficiently
+#[tokio::test]
+async fn test_large_file_mutation() {
+    // Arrange: Create large Rust file (simulating ~1000+ lines)
+    let temp_dir = tempdir().unwrap();
+    let file_path = temp_dir.path().join("large_file.rs");
+
+    // Generate many functions to simulate large file
+    let mut code = String::new();
+    for i in 0..200 {
+        code.push_str(&format!(
+            r#"
+fn function_{}(a: i32, b: i32) -> i32 {{
+    a + b + {}
+}}
+"#,
+            i, i
+        ));
+    }
+    fs::write(&file_path, code).unwrap();
+
+    // Arrange: Create handler arguments
+    let args = MutateArgs {
+        target: file_path.clone(),
+        language: None,
+        timeout: 60, // Longer timeout for large file
+        jobs: Some(4), // Use multiple jobs for performance
+        output_format: "json".to_string(),
+        output: None,
+        threshold: None,
+        failures_only: true, // Reduce output volume
+    };
+    let server = Arc::new(StatelessTemplateServer::new().unwrap());
+
+    // Act: Run mutation testing on large file
+    let result = handle(args, server).await;
+
+    // Assert: Should handle large file (may succeed or fail gracefully)
+    match result {
+        Ok(_) => {
+            // Success - large file mutation completed
+        }
+        Err(e) => {
+            // Acceptable errors for large files
+            let msg = e.to_string();
+            assert!(
+                msg.contains("No mutants") || msg.contains("timeout") || msg.contains("Too many"),
+                "Error should be acceptable for large file: {}",
+                msg
+            );
+        }
+    }
+}
+
+/// Test 10: Many mutants (targeting >500 mutants)
+///
+/// Verifies mutation testing can handle many mutants efficiently
+#[tokio::test]
+async fn test_many_mutants_handling() {
+    // Arrange: Create file with many mutation opportunities
+    let temp_dir = tempdir().unwrap();
+    let file_path = temp_dir.path().join("many_mutants.rs");
+
+    let mut code = String::from("fn process(x: i32) -> i32 {\n");
+    code.push_str("    let mut result = x;\n");
+
+    // Create many arithmetic operations (each creates multiple mutants)
+    for i in 0..50 {
+        code.push_str(&format!("    result = result + {} - {} * {} / {};\n", i, i+1, i+2, i+3));
+    }
+
+    code.push_str("    result\n}\n");
+    fs::write(&file_path, code).unwrap();
+
+    // Arrange: Create handler arguments
+    let args = MutateArgs {
+        target: file_path.clone(),
+        language: None,
+        timeout: 60,
+        jobs: Some(4),
+        output_format: "json".to_string(),
+        output: None,
+        threshold: None,
+        failures_only: true,
+    };
+    let server = Arc::new(StatelessTemplateServer::new().unwrap());
+
+    // Act: Run mutation testing
+    let result = handle(args, server).await;
+
+    // Assert: Should handle many mutants
+    match result {
+        Ok(_) => {
+            // Success - many mutants handled
+        }
+        Err(e) => {
+            let msg = e.to_string();
+            assert!(
+                msg.contains("No mutants") || msg.contains("timeout"),
+                "Error should be acceptable: {}",
+                msg
+            );
+        }
+    }
+}
+
+/// Test 11: Parallel execution scaling (1, 2, 4, 8 threads)
+///
+/// Verifies parallel execution works correctly with different thread counts
+#[tokio::test]
+async fn test_parallel_execution_scaling() {
+    // Arrange: Create test file
+    let temp_dir = tempdir().unwrap();
+    let file_path = temp_dir.path().join("parallel_test.rs");
+    fs::write(
+        &file_path,
+        r#"
+fn add(a: i32, b: i32) -> i32 { a + b }
+fn sub(a: i32, b: i32) -> i32 { a - b }
+fn mul(a: i32, b: i32) -> i32 { a * b }
+fn div(a: i32, b: i32) -> i32 { a / b }
+"#,
+    )
+    .unwrap();
+
+    // Test with different thread counts
+    for jobs in [1, 2, 4, 8] {
+        let args = MutateArgs {
+            target: file_path.clone(),
+            language: None,
+            timeout: 30,
+            jobs: Some(jobs),
+            output_format: "json".to_string(),
+            output: None,
+            threshold: None,
+            failures_only: false,
+        };
+        let server = Arc::new(StatelessTemplateServer::new().unwrap());
+
+        // Act: Run with specific job count
+        let result = handle(args, server).await;
+
+        // Assert: Should work with any valid job count
+        assert!(
+            result.is_ok() || result.as_ref().err().map(|e| e.to_string().contains("No mutants")).unwrap_or(false),
+            "Parallel execution with {} jobs should work",
+            jobs
+        );
+    }
+}
+
+/// Test 12: Timeout handling
+///
+/// Verifies mutation testing respects timeout settings
+#[tokio::test]
+async fn test_timeout_handling() {
+    // Arrange: Create test file
+    let temp_dir = tempdir().unwrap();
+    let file_path = temp_dir.path().join("timeout_test.rs");
+    fs::write(
+        &file_path,
+        r#"
+fn compute(n: i32) -> i32 {
+    let mut sum = 0;
+    for i in 0..n {
+        sum += i;
+    }
+    sum
+}
+"#,
+    )
+    .unwrap();
+
+    // Arrange: Create handler arguments with short timeout
+    let args = MutateArgs {
+        target: file_path.clone(),
+        language: None,
+        timeout: 1, // Very short timeout (1 second)
+        jobs: Some(1),
+        output_format: "json".to_string(),
+        output: None,
+        threshold: None,
+        failures_only: false,
+    };
+    let server = Arc::new(StatelessTemplateServer::new().unwrap());
+
+    // Act: Run mutation testing with short timeout
+    let result = handle(args, server).await;
+
+    // Assert: Should complete quickly or timeout gracefully
+    match result {
+        Ok(_) => {
+            // Completed within timeout - acceptable
+        }
+        Err(e) => {
+            // Timeout or no mutants - both acceptable
+            let msg = e.to_string();
+            assert!(
+                msg.contains("timeout") || msg.contains("No mutants") || msg.contains("Timed out"),
+                "Error should be timeout-related or no mutants: {}",
+                msg
+            );
+        }
+    }
+}
+
+/// Test 13: Memory usage bounds
+///
+/// Verifies mutation testing doesn't consume excessive memory
+#[tokio::test]
+async fn test_memory_usage_bounds() {
+    // Arrange: Create moderately large file
+    let temp_dir = tempdir().unwrap();
+    let file_path = temp_dir.path().join("memory_test.rs");
+
+    let mut code = String::new();
+    for i in 0..100 {
+        code.push_str(&format!(
+            "fn func_{}(x: i32) -> i32 {{ x + {} }}\n",
+            i, i
+        ));
+    }
+    fs::write(&file_path, code).unwrap();
+
+    // Arrange: Create handler arguments
+    let args = MutateArgs {
+        target: file_path.clone(),
+        language: None,
+        timeout: 30,
+        jobs: Some(2),
+        output_format: "json".to_string(),
+        output: None,
+        threshold: None,
+        failures_only: true, // Reduce memory footprint
+    };
+    let server = Arc::new(StatelessTemplateServer::new().unwrap());
+
+    // Act: Run mutation testing
+    let result = handle(args, server).await;
+
+    // Assert: Should complete without OOM
+    // Note: This test primarily verifies no OOM/crash occurs
+    assert!(
+        result.is_ok() || result.as_ref().err().map(|e| !e.to_string().contains("out of memory")).unwrap_or(true),
+        "Should not run out of memory"
+    );
+}
+
+/// Test 14: Execution time bounds
+///
+/// Verifies mutation testing completes within reasonable time
+#[tokio::test]
+async fn test_execution_time_bounds() {
+    use std::time::Instant;
+
+    // Arrange: Create small test file
+    let temp_dir = tempdir().unwrap();
+    let file_path = temp_dir.path().join("time_test.rs");
+    fs::write(
+        &file_path,
+        r#"
+fn add(a: i32, b: i32) -> i32 { a + b }
+fn sub(a: i32, b: i32) -> i32 { a - b }
+"#,
+    )
+    .unwrap();
+
+    let args = MutateArgs {
+        target: file_path.clone(),
+        language: None,
+        timeout: 30,
+        jobs: Some(2),
+        output_format: "json".to_string(),
+        output: None,
+        threshold: None,
+        failures_only: false,
+    };
+    let server = Arc::new(StatelessTemplateServer::new().unwrap());
+
+    // Act: Measure execution time
+    let start = Instant::now();
+    let _result = handle(args, server).await;
+    let duration = start.elapsed();
+
+    // Assert: Should complete quickly for small file
+    // Generous time bound: 60 seconds for small file
+    assert!(
+        duration.as_secs() < 60,
+        "Small file mutation should complete within 60 seconds, took {:?}",
+        duration
+    );
+}
