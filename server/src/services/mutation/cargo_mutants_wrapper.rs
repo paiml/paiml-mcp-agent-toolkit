@@ -25,8 +25,24 @@ impl CargoMutantsWrapper {
     /// Returns Ok even if cargo-mutants is not installed (cargo_mutants_path will be None).
     /// This allows graceful degradation with helpful error messages.
     pub fn new() -> Result<Self, Box<dyn std::error::Error>> {
-        // Use which crate to find cargo-mutants in PATH
-        let path = which::which("cargo-mutants").ok();
+        // cargo-mutants is a cargo subcommand, so check if `cargo` exists
+        let cargo_path = which::which("cargo").ok();
+
+        // Verify cargo-mutants subcommand is actually installed
+        let path = if cargo_path.is_some() {
+            // Try to run cargo mutants --version to verify it's installed
+            let output = Command::new("cargo")
+                .arg("mutants")
+                .arg("--version")
+                .output();
+
+            match output {
+                Ok(result) if result.status.success() => Some(PathBuf::from("cargo")),
+                _ => None,
+            }
+        } else {
+            None
+        };
 
         if path.is_none() {
             // Not installed, but don't error - allow graceful handling
@@ -47,19 +63,20 @@ impl CargoMutantsWrapper {
 
     /// Get cargo-mutants version
     ///
-    /// Executes `cargo-mutants --version` and returns output.
+    /// Executes `cargo mutants --version` and returns output.
     /// Returns error if not installed or execution fails.
     pub fn version(&self) -> Result<String, Box<dyn std::error::Error>> {
-        let path = self.cargo_mutants_path.as_ref()
+        self.cargo_mutants_path.as_ref()
             .ok_or("cargo-mutants not found in PATH")?;
 
-        let output = Command::new(path)
+        let output = Command::new("cargo")
+            .arg("mutants")
             .arg("--version")
             .output()?;
 
         if !output.status.success() {
             return Err(format!(
-                "cargo-mutants --version failed: {}",
+                "cargo mutants --version failed: {}",
                 String::from_utf8_lossy(&output.stderr)
             ).into());
         }
