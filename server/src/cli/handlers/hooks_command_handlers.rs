@@ -965,7 +965,7 @@ fn install_tdg_pre_commit_hook(hooks_dir: &Path, config: &TdgHooksConfig) -> Res
     let hook_path = hooks_dir.join("pre-commit");
 
     // Read template
-    let template = include_str!("../../../../templates/hooks/pre-commit-tdg.sh");
+    let template = include_str!("../../../templates/hooks/pre-commit-tdg.sh");
 
     // Substitute configuration values
     let hook_content = template
@@ -1015,7 +1015,7 @@ fn install_tdg_post_commit_hook(hooks_dir: &Path, config: &TdgHooksConfig) -> Re
     let hook_path = hooks_dir.join("post-commit");
 
     // Read template
-    let template = include_str!("../../../../templates/hooks/post-commit-tdg.sh");
+    let template = include_str!("../../../templates/hooks/post-commit-tdg.sh");
 
     // Substitute configuration values
     let hook_content = template
