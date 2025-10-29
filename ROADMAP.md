@@ -50,7 +50,7 @@
 
 **Version**: v2.180.0 (Target - Sprint 66 All Phases)
 **Started**: October 28, 2025
-**Status**: ✅ PHASE 1-2 COMPLETE - Phase 3 Starting
+**Status**: ✅ PHASE 1-3 COMPLETE - Phase 4 Starting
 **Goal**: Zero-regression quality enforcement with content-hash based tracking
 
 **Sprint 66 Overview**:
@@ -70,13 +70,17 @@
   - CI/CD integration: `--fail-on-regression`, `--fail-on-violation` flags
   - Achieved: ~903 lines (620 quality_gate.rs + 180 handlers + 103 CLI), 12 RED tests
   - Commit: 654d0f87
-  - Documentation: Phase 2 completion pending
-- **Phase 3**: Git Hook Integration (2 hours) ⏳ PENDING
-  - Pre-commit quality checks
-  - Post-commit baseline updates
+  - Documentation: docs/sprints/SPRINT-66-PHASE2-COMPLETION.md
+- **Phase 3**: Git Hook Integration (2 hours) ✅ COMPLETE
+  - TDG hooks configuration system (hooks_config.rs, 380 lines)
+  - Pre-commit hook template with quality checks (150 lines)
+  - Post-commit hook template with baseline auto-update (70 lines)
   - Hook configuration via `.pmat/tdg-rules.toml`
   - CLI: `pmat hooks install --tdg-enforcement`
-  - Target: ~200 lines implementation, 10 tests
+  - Enforcement modes: strict, warning, disabled
+  - Achieved: ~1,076 lines (760 production + 316 modifications), 11 RED tests
+  - Commit: 2ffc6311
+  - Documentation: docs/sprints/SPRINT-66-PHASE3-COMPLETION.md
 - **Phase 4**: CI/CD Templates (2 hours) ⏳ PENDING
   - GitHub Actions workflow template
   - GitLab CI template
