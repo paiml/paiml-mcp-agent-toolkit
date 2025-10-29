@@ -76,15 +76,18 @@ fn test_cargo_mutants_end_to_end_workflow() {
   ]
 }"#;
 
-    let report = CargoMutantsReport::from_json(sample_json)
-        .expect("Failed to parse cargo-mutants JSON");
+    let report =
+        CargoMutantsReport::from_json(sample_json).expect("Failed to parse cargo-mutants JSON");
 
     println!("✅ Parsed {} mutants from JSON", report.mutants.len());
     assert_eq!(report.mutants.len(), 4, "Should parse 4 mutants");
 
     // Step 4: Convert to PMAT format
     let pmat_report = report.to_pmat_report();
-    println!("✅ Converted to PMAT format ({} mutants)", pmat_report.len());
+    println!(
+        "✅ Converted to PMAT format ({} mutants)",
+        pmat_report.len()
+    );
     assert_eq!(
         pmat_report.len(),
         4,
@@ -148,8 +151,7 @@ fn test_integration_with_empty_json() {
 
     let empty_json = r#"{"mutants": []}"#;
 
-    let report =
-        CargoMutantsReport::from_json(empty_json).expect("Failed to parse empty JSON");
+    let report = CargoMutantsReport::from_json(empty_json).expect("Failed to parse empty JSON");
 
     assert_eq!(report.mutants.len(), 0, "Should parse 0 mutants");
 
