@@ -158,6 +158,93 @@ pmat mutate --target src/ --output-format json > results.json
 
 ---
 
+## TDG Enforcement System (v2.180.0+)
+
+**Zero-regression quality enforcement** across local development, git workflows, and CI/CD pipelines.
+
+### Quick Start
+
+```bash
+# 1. Create quality baseline
+pmat tdg baseline create --output .pmat/tdg-baseline.json --path .
+
+# 2. Install git hooks (optional)
+pmat hooks install --tdg-enforcement
+
+# 3. Check for regressions
+pmat tdg check-regression \
+  --baseline .pmat/tdg-baseline.json \
+  --path . \
+  --max-score-drop 5.0 \
+  --fail-on-regression
+
+# 4. Enforce quality standards for new code
+pmat tdg check-quality \
+  --path . \
+  --min-grade B+ \
+  --new-files-only \
+  --fail-on-violation
+```
+
+### Features
+
+**Baseline System**:
+- Blake3 content-hash based deduplication
+- Project-wide quality snapshots
+- Delta detection (improved, regressed, unchanged files)
+
+**Quality Gates**:
+- Regression detection (prevents quality degradation)
+- Minimum grade enforcement (ensures new code quality)
+- Language-specific thresholds
+
+**Git Hooks**:
+- Pre-commit quality checks
+- Post-commit baseline updates
+- Configurable enforcement modes (strict, warning, disabled)
+
+**CI/CD Templates**:
+- GitHub Actions workflow
+- GitLab CI pipeline
+- Jenkins declarative pipeline
+
+### Configuration
+
+Create `.pmat/tdg-rules.toml`:
+
+```toml
+[quality_gates]
+rust_min_grade = "A"
+python_min_grade = "B+"
+max_score_drop = 5.0
+mode = "strict"  # strict, warning, or disabled
+
+[baseline]
+baseline_path = ".pmat/tdg-baseline.json"
+auto_update_on_main = true
+```
+
+### CI/CD Integration
+
+**GitHub Actions**:
+```bash
+cp templates/ci/github-actions-tdg.yml .github/workflows/tdg-quality.yml
+```
+
+**GitLab CI**:
+```bash
+cp templates/ci/gitlab-ci-tdg.yml .gitlab-ci.yml
+```
+
+**Jenkins**:
+```bash
+cp templates/ci/Jenkinsfile-tdg Jenkinsfile
+```
+
+**See Complete Guide**: `docs/guides/ci-cd-tdg-integration.md`
+
+---
+
 ## Git-Commit Correlation (v2.179.0+)
 
 Track Technical Debt Grading (TDG) scores at specific git commits for "quality archaeology" workflows.
