@@ -4001,7 +4001,7 @@ pub enum ClusterMethod {
     Dbscan,
 }
 
-/// Mutation testing arguments (Sprint 61)
+/// Mutation testing arguments (Sprint 61 + Sprint 70)
 #[derive(Args, Debug, Clone)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct MutateArgs {
@@ -4036,6 +4036,29 @@ pub struct MutateArgs {
     /// Show only failures (survived mutants, compile errors, timeouts)
     #[arg(long, default_value = "false")]
     pub failures_only: bool,
+
+    // ========================================================================
+    // Sprint 70: cargo-mutants backend options
+    // ========================================================================
+    /// Use cargo-mutants backend instead of built-in PMAT mutation testing
+    #[arg(long)]
+    pub use_cargo_mutants: bool,
+
+    /// Cargo features to enable (cargo-mutants backend only)
+    #[arg(long, value_delimiter = ',')]
+    pub features: Option<Vec<String>>,
+
+    /// Enable all features (cargo-mutants backend only)
+    #[arg(long)]
+    pub all_features: bool,
+
+    /// Disable default features (cargo-mutants backend only)
+    #[arg(long)]
+    pub no_default_features: bool,
+
+    /// Don't shuffle test execution order (cargo-mutants backend only)
+    #[arg(long)]
+    pub no_shuffle: bool,
 }
 
 #[cfg(test)]
