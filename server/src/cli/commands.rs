@@ -3835,6 +3835,10 @@ pub enum HooksCommands {
         /// Create backup of existing hooks
         #[arg(long, default_value = "true")]
         backup: bool,
+
+        /// Enable TDG quality enforcement hooks (Sprint 66 Phase 3)
+        #[arg(long)]
+        tdg_enforcement: bool,
     },
 
     /// Install or update pre-commit hooks
@@ -3850,6 +3854,10 @@ pub enum HooksCommands {
         /// Create backup of existing hooks
         #[arg(long, default_value = "true")]
         backup: bool,
+
+        /// Enable TDG quality enforcement hooks (Sprint 66 Phase 3)
+        #[arg(long)]
+        tdg_enforcement: bool,
     },
 
     /// Remove PMAT-managed hooks
