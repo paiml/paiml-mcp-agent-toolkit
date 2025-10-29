@@ -871,6 +871,60 @@ pub enum TdgCommand {
     /// Configuration management (single source of truth)
     #[command(subcommand)]
     Config(ConfigCommands),
+
+    /// Check for quality regressions against baseline (Sprint 66 Phase 2)
+    CheckRegression {
+        /// Path to baseline file
+        #[arg(short, long)]
+        baseline: PathBuf,
+
+        /// Path to analyze (defaults to current directory)
+        #[arg(short, long, default_value = ".")]
+        path: PathBuf,
+
+        /// Output format
+        #[arg(short, long, value_enum, default_value = "table")]
+        format: TdgOutputFormat,
+
+        /// Fail with non-zero exit code if regressions detected
+        #[arg(long)]
+        fail_on_regression: bool,
+
+        /// Maximum score drop allowed (overrides config)
+        #[arg(long)]
+        max_score_drop: Option<f32>,
+
+        /// Whether to allow grade drops
+        #[arg(long)]
+        allow_grade_drop: bool,
+    },
+
+    /// Check files meet minimum quality thresholds (Sprint 66 Phase 2)
+    CheckQuality {
+        /// Path to analyze
+        #[arg(short, long, default_value = ".")]
+        path: PathBuf,
+
+        /// Minimum grade required for all files
+        #[arg(long)]
+        min_grade: Option<String>,
+
+        /// Output format
+        #[arg(short, long, value_enum, default_value = "table")]
+        format: TdgOutputFormat,
+
+        /// Fail with non-zero exit code if files below threshold
+        #[arg(long, default_value = "true")]
+        fail_on_violation: bool,
+
+        /// Check only new files (requires baseline)
+        #[arg(long)]
+        new_files_only: bool,
+
+        /// Baseline for new-files-only mode
+        #[arg(long)]
+        baseline: Option<PathBuf>,
+    },
 }
 
 /// Baseline management subcommands (Sprint 66 Phase 1)
