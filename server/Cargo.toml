@@ -139,6 +139,7 @@ ignore = "0.4"
 glob = "0.3"
 toml = "0.8.23"
 crossbeam-channel = "0.5"
+which = "6.0"  # Sprint 70: Find cargo-mutants in PATH
 # For TypeScript/JavaScript parsing (conditional) - use compatible versions
 swc_ecma_parser = { version = "24.0", optional = true }
 swc_common = { version = "14.0", optional = true }
