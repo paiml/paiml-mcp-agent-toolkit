@@ -9,10 +9,10 @@
 
 ## 🎉 Latest Achievements
 
-### Sprint 70: cargo-mutants Integration (IN PROGRESS - 50% Complete)
+### Sprint 70: cargo-mutants Integration (IN PROGRESS - 57% Complete)
 **Current Sprint** - Fixing PMAT's 0% mutation testing kill rate by wrapping cargo-mutants
 
-**Progress**: 3/7 phases complete (ahead of schedule)
+**Progress**: 4/7 phases complete (ahead of schedule)
 
 **Completed**:
 - ✅ **Phase 1 (PMAT-070-001)**: CargoMutantsWrapper infrastructure
@@ -68,23 +68,24 @@ $ pmat mutate --target . --use-cargo-mutants --timeout 10
 📈 Mutation Score: 80.0%
 ```
 
-- 🔄 **Phase 4 (PMAT-070-004)**: Comprehensive Testing (75% complete)
+- ✅ **Phase 4 (PMAT-070-004)**: Comprehensive Testing (100% COMPLETE)
   - 5 test fixtures with real cargo-mutants v25.3.1 output
-  - 8 tests updated to use `from_output_dir()` API
+  - 10 tests updated to use `from_output_dir()` API (8 unit + 2 integration)
   - 5 new edge case tests (empty, perfect score, timeout, unviable, performance)
-  - 8/8 tests passing (100% pass rate)
-  - Duration: ~2 hours (Tasks 1-3 complete, Tasks 4-5 pending)
-  - **Commits**: ab83b3a2 (fixtures), d1298b9f (tests)
+  - 10/10 tests passing (100% pass rate)
+  - Duration: ~3 hours (All 5 tasks complete)
+  - **Commits**: ab83b3a2 (fixtures), d1298b9f (tests), 9a5d5b7b (integration), 0f128875 (fix)
 
-**Next**: Complete Phase 4 (Tasks 4-5) then Phase 5 (Documentation)
+**Next**: Phase 5 (Documentation) - User guide, troubleshooting, pmat-book updates
 
 **Documentation**:
+- Phase 4 completion: `docs/sprints/SPRINT-70-PHASE4-COMPLETION.md` (100% complete)
 - Phase 4 partial completion: `docs/sprints/SPRINT-70-PHASE4-PARTIAL-COMPLETION.md`
 - Phase 4 kickoff: `docs/sprints/SPRINT-70-PHASE4-KICKOFF.md`
 - Session 4 summary: `docs/sprints/SPRINT-70-SESSION4-SUMMARY.md`
 - Session 4 handoff: `docs/sprints/SPRINT-70-SESSION4-HANDOFF.md`
 - Issue doc (resolved): `docs/sprints/SPRINT-70-PHASE2-JSON-FORMAT-ISSUE.md`
-- All phase completion reports: Phases 1, 2, 3, & 4 (partial) documented
+- All phase completion reports: Phases 1, 2, 3, & 4 fully documented
 
 ### v2.180.1 Hotfix (Sprint 67)
 **Sprint 67 - TDG Dogfooding** completed with critical bugfix released same day!
