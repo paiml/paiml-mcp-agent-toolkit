@@ -253,23 +253,9 @@ async fn handle_baseline_command(
             path,
             output,
             with_git_context,
-            name,
+            name: _name,
         } => {
-            println!("🔨 Creating TDG baseline...");
-            println!("   Path: {}", path.display());
-            println!("   Output: {}", output.display());
-            println!("   Git context: {}", if with_git_context { "yes" } else { "no" });
-            if let Some(n) = name {
-                println!("   Name: {}", n);
-            }
-
-            // TODO (Sprint 66 Phase 1): Implement baseline creation
-            // 1. Analyze all files in project
-            // 2. Create TdgBaseline with entries
-            // 3. Save to output file
-
-            println!("✅ Baseline creation not yet implemented (Sprint 66 Phase 1)");
-            Ok(())
+            create_baseline(_analyzer, &path, &output, with_git_context).await
         }
 
         BaselineCommand::Compare {
@@ -278,37 +264,11 @@ async fn handle_baseline_command(
             format,
             fail_on_regression,
         } => {
-            println!("📊 Comparing against baseline...");
-            println!("   Baseline: {}", baseline.display());
-            println!("   Current path: {}", path.display());
-            println!("   Format: {:?}", format);
-
-            // TODO (Sprint 66 Phase 1): Implement baseline comparison
-            // 1. Load baseline from file
-            // 2. Analyze current project state
-            // 3. Create BaselineComparison
-            // 4. Format and output
-            // 5. Exit with error if fail_on_regression and has_regressions()
-
-            println!("✅ Baseline comparison not yet implemented (Sprint 66 Phase 1)");
-
-            if fail_on_regression {
-                println!("   Would fail on regression: yes");
-            }
-            Ok(())
+            compare_baseline(_analyzer, &baseline, &path, format, fail_on_regression).await
         }
 
         BaselineCommand::List { path, format } => {
-            println!("📋 Listing baselines...");
-            println!("   Path: {}", path.display());
-            println!("   Format: {:?}", format);
-
-            // TODO (Sprint 66 Phase 1): Implement baseline listing
-            // 1. Search directory for .pmat-baseline.json files
-            // 2. Load and display summary info
-
-            println!("✅ Baseline listing not yet implemented (Sprint 66 Phase 1)");
-            Ok(())
+            list_baselines(&path, format).await
         }
 
         BaselineCommand::Update {
@@ -316,20 +276,292 @@ async fn handle_baseline_command(
             path,
             with_git_context,
         } => {
-            println!("🔄 Updating baseline...");
-            println!("   Baseline: {}", baseline.display());
-            println!("   Path: {}", path.display());
-            println!("   Git context: {}", if with_git_context { "yes" } else { "no" });
-
-            // TODO (Sprint 66 Phase 1): Implement baseline update
-            // 1. Re-analyze project
-            // 2. Update baseline entries
-            // 3. Save to same file
-
-            println!("✅ Baseline update not yet implemented (Sprint 66 Phase 1)");
-            Ok(())
+            update_baseline(_analyzer, &baseline, &path, with_git_context).await
         }
     }
+}
+
+/// Create a new TDG baseline for the project (Sprint 66 Phase 1)
+async fn create_baseline(
+    analyzer: &TdgAnalyzer,
+    path: &Path,
+    output: &Path,
+    with_git_context: bool,
+) -> Result<()> {
+    use crate::tdg::{BaselineEntry, TdgBaseline};
+    use std::fs;
+    use walkdir::WalkDir;
+
+    println!("🔨 Creating TDG baseline...");
+    println!("   Path: {}", path.display());
+    println!("   Output: {}", output.display());
+    println!("   Git context: {}", if with_git_context { "yes" } else { "no" });
+
+    // Extract git context if requested
+    let git_context = if with_git_context {
+        match crate::models::git_context::GitContext::try_from_current_dir(path) {
+            Some(ctx) => {
+                println!("   📍 Git: {} on {}", ctx.commit_sha_short, ctx.branch);
+                Some(ctx)
+            }
+            None => {
+                println!("   ⚠️  Warning: Not in a git repository, git context unavailable");
+                None
+            }
+        }
+    } else {
+        None
+    };
+
+    // Create baseline
+    let mut baseline = TdgBaseline::new(git_context);
+
+    // Find all source files
+    let mut files_analyzed = 0;
+    let mut files_skipped = 0;
+
+    println!("\n📊 Analyzing files...");
+
+    for entry in WalkDir::new(path)
+        .follow_links(false)
+        .into_iter()
+        .filter_entry(|e| {
+            // Skip common non-source directories
+            let name = e.file_name().to_string_lossy();
+            !name.starts_with('.')
+                && name != "target"
+                && name != "node_modules"
+                && name != "dist"
+                && name != "build"
+        })
+    {
+        let entry = entry?;
+        if !entry.file_type().is_file() {
+            continue;
+        }
+
+        let file_path = entry.path();
+
+        // Check if it's a source file we can analyze
+        if !is_analyzable_file(file_path) {
+            continue;
+        }
+
+        // Analyze the file
+        match analyzer.analyze_file(file_path).await {
+            Ok(score) => {
+                // Read file content for hash
+                let content = fs::read(file_path)?;
+                let content_hash = blake3::hash(&content);
+
+                // Create baseline entry
+                let entry = BaselineEntry {
+                    content_hash,
+                    score: score.clone(),
+                    components: crate::tdg::storage::ComponentScores::default(),
+                    git_context: None,
+                };
+
+                baseline.add_entry(file_path.to_path_buf(), entry);
+                files_analyzed += 1;
+
+                if files_analyzed % 10 == 0 {
+                    print!(".");
+                    use std::io::Write;
+                    std::io::stdout().flush().ok();
+                }
+            }
+            Err(e) => {
+                files_skipped += 1;
+                if files_skipped <= 5 {
+                    println!("   ⚠️  Skipped {}: {}", file_path.display(), e);
+                }
+            }
+        }
+    }
+
+    println!();
+    println!("\n✅ Analysis complete:");
+    println!("   Files analyzed: {}", files_analyzed);
+    println!("   Files skipped: {}", files_skipped);
+    println!("   Average score: {:.1}", baseline.summary.avg_score);
+
+    // Save baseline
+    baseline.save(output)?;
+    println!("\n💾 Baseline saved to: {}", output.display());
+
+    Ok(())
+}
+
+/// Check if file is analyzable by extension
+fn is_analyzable_file(path: &Path) -> bool {
+    if let Some(ext) = path.extension() {
+        matches!(
+            ext.to_str(),
+            Some("rs" | "py" | "js" | "ts" | "tsx" | "jsx" | "java" | "c" | "cpp" | "h" | "hpp" | "go" | "rb" | "php" | "swift" | "kt" | "kts")
+        )
+    } else {
+        false
+    }
+}
+
+/// Compare current state against a baseline (Sprint 66 Phase 1)
+async fn compare_baseline(
+    analyzer: &TdgAnalyzer,
+    baseline_path: &Path,
+    current_path: &Path,
+    format: crate::cli::TdgOutputFormat,
+    fail_on_regression: bool,
+) -> Result<()> {
+    use crate::tdg::TdgBaseline;
+
+    println!("📊 Comparing against baseline...");
+    println!("   Baseline: {}", baseline_path.display());
+    println!("   Current path: {}", current_path.display());
+
+    // Load baseline
+    let old_baseline = TdgBaseline::load(baseline_path)?;
+    println!("   📝 Loaded baseline: {} files, avg score {:.1}",
+        old_baseline.summary.total_files,
+        old_baseline.summary.avg_score
+    );
+
+    // Create new baseline for current state
+    println!("\n🔍 Analyzing current state...");
+    let temp_output = std::env::temp_dir().join("pmat-current-baseline.json");
+    create_baseline(analyzer, current_path, &temp_output, false).await?;
+    let new_baseline = TdgBaseline::load(&temp_output)?;
+
+    // Clean up temp file
+    std::fs::remove_file(&temp_output).ok();
+
+    // Compare
+    println!("\n📈 Computing comparison...");
+    let comparison = old_baseline.compare(&new_baseline);
+
+    // Format output
+    let output_str = match format {
+        crate::cli::TdgOutputFormat::Table | crate::cli::TdgOutputFormat::Markdown => {
+            comparison.format_text()
+        }
+        crate::cli::TdgOutputFormat::Json => {
+            serde_json::to_string_pretty(&comparison)?
+        }
+        crate::cli::TdgOutputFormat::Sarif => {
+            // SARIF not implemented yet, use text
+            comparison.format_text()
+        }
+    };
+
+    println!("\n{}", output_str);
+
+    // Check for regressions
+    if fail_on_regression && comparison.has_regressions() {
+        return Err(anyhow!(
+            "Quality regression detected: {} file(s) regressed",
+            comparison.regressed.len()
+        ));
+    }
+
+    Ok(())
+}
+
+/// List all baselines in a directory (Sprint 66 Phase 1)
+async fn list_baselines(
+    path: &Path,
+    format: crate::cli::TdgOutputFormat,
+) -> Result<()> {
+    use crate::tdg::TdgBaseline;
+    use walkdir::WalkDir;
+
+    println!("📋 Listing baselines in: {}", path.display());
+
+    let mut baselines = Vec::new();
+
+    // Find all .pmat-baseline.json files
+    for entry in WalkDir::new(path)
+        .max_depth(3)
+        .follow_links(false)
+        .into_iter()
+        .filter_map(|e| e.ok())
+    {
+        if entry.file_type().is_file() {
+            if let Some(name) = entry.file_name().to_str() {
+                if name.ends_with("-baseline.json") || name == ".pmat-baseline.json" {
+                    if let Ok(baseline) = TdgBaseline::load(entry.path()) {
+                        baselines.push((entry.path().to_path_buf(), baseline));
+                    }
+                }
+            }
+        }
+    }
+
+    if baselines.is_empty() {
+        println!("   No baselines found");
+        return Ok(());
+    }
+
+    println!("\n📊 Found {} baseline(s):\n", baselines.len());
+
+    match format {
+        crate::cli::TdgOutputFormat::Table | crate::cli::TdgOutputFormat::Markdown => {
+            for (path, baseline) in &baselines {
+                println!("📝 {}", path.display());
+                println!("   Version: {}", baseline.version);
+                println!("   Created: {}", baseline.created_at.format("%Y-%m-%d %H:%M:%S"));
+                println!("   Files: {}", baseline.summary.total_files);
+                println!("   Avg Score: {:.1}", baseline.summary.avg_score);
+                if let Some(git_ctx) = &baseline.git_context {
+                    println!("   Git: {} on {}", git_ctx.commit_sha_short, git_ctx.branch);
+                }
+                println!();
+            }
+        }
+        crate::cli::TdgOutputFormat::Json => {
+            let output = baselines
+                .iter()
+                .map(|(path, baseline)| {
+                    serde_json::json!({
+                        "path": path.display().to_string(),
+                        "version": baseline.version,
+                        "created_at": baseline.created_at,
+                        "total_files": baseline.summary.total_files,
+                        "avg_score": baseline.summary.avg_score,
+                        "git_context": baseline.git_context
+                    })
+                })
+                .collect::<Vec<_>>();
+            println!("{}", serde_json::to_string_pretty(&output)?);
+        }
+        crate::cli::TdgOutputFormat::Sarif => {
+            // SARIF not implemented, use table
+            for (path, baseline) in &baselines {
+                println!("📝 {}", path.display());
+                println!("   Files: {} | Avg: {:.1}", baseline.summary.total_files, baseline.summary.avg_score);
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// Update an existing baseline (Sprint 66 Phase 1)
+async fn update_baseline(
+    analyzer: &TdgAnalyzer,
+    baseline_path: &Path,
+    project_path: &Path,
+    with_git_context: bool,
+) -> Result<()> {
+    println!("🔄 Updating baseline...");
+    println!("   Baseline: {}", baseline_path.display());
+    println!("   Path: {}", project_path.display());
+
+    // Simply re-create the baseline (overwrites the file)
+    create_baseline(analyzer, project_path, baseline_path, with_git_context).await?;
+
+    println!("\n✅ Baseline updated successfully");
+
+    Ok(())
 }
 
 /// Execute TDG analysis on file or directory (cognitive complexity ≤3)
