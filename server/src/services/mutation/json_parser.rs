@@ -93,9 +93,8 @@ impl CargoMutantsReport {
     /// assert_eq!(report.mutants.len(), 0);
     /// ```
     pub fn from_json(json: &str) -> Result<Self> {
-        serde_json::from_str(json).map_err(|e| {
-            format!("Failed to parse cargo-mutants JSON: {}", e).into()
-        })
+        serde_json::from_str(json)
+            .map_err(|e| format!("Failed to parse cargo-mutants JSON: {}", e).into())
     }
 
     /// Convert cargo-mutants report to PMAT mutation report
@@ -120,56 +119,116 @@ impl CargoMutantsReport {
         self.mutants
             .iter()
             .enumerate()
-            .map(|(idx, cargo_mutant)| {
-                // Map cargo-mutants outcome to PMAT status
-                let status = match cargo_mutant.outcome {
-                    MutantOutcome::Caught => MutantStatus::Killed,
-                    MutantOutcome::Missed => MutantStatus::Survived,
-                    MutantOutcome::Timeout => MutantStatus::Timeout,
-                    MutantOutcome::Unviable => MutantStatus::CompileError,
-                };
-
-                // Generate unique ID
-                let id = format!(
-                    "cargo-mutants-{}-{}-{}",
-                    cargo_mutant.file.replace('/', "_").replace(".rs", ""),
-                    cargo_mutant.line,
-                    idx
-                );
-
-                // Create source location
-                let location = SourceLocation {
-                    line: cargo_mutant.line,
-                    column: 0, // cargo-mutants doesn't provide column
-                    end_line: cargo_mutant.line,
-                    end_column: 0,
-                };
-
-                // Generate mutated source description
-                let mutated_source = if let Some(ref replacement) = cargo_mutant.replacement {
-                    format!("Replacement: {}", replacement)
-                } else {
-                    "Unknown mutation".to_string()
-                };
-
-                // Generate hash using DefaultHasher
-                let mut hasher = DefaultHasher::new();
-                cargo_mutant.file.hash(&mut hasher);
-                cargo_mutant.line.hash(&mut hasher);
-                format!("{:?}", cargo_mutant.outcome).hash(&mut hasher);
-                let hash = format!("{:x}", hasher.finish());
-
-                Mutant {
-                    id,
-                    original_file: PathBuf::from(&cargo_mutant.file),
-                    mutated_source,
-                    location,
-                    operator: MutationOperatorType::Custom("cargo-mutants".to_string()),
-                    hash,
-                    status,
-                }
-            })
+            .map(|(idx, cargo_mutant)| Self::convert_mutant(cargo_mutant, idx))
             .collect()
+    }
+
+    /// Calculate mutation score (percentage of caught mutants)
+    ///
+    /// # Returns
+    /// Mutation score as a percentage (0.0 - 100.0)
+    ///
+    /// # Example
+    /// ```rust
+    /// let json = r#"{"mutants": [
+    ///     {"outcome": "caught", "file": "src/lib.rs", "line": 10},
+    ///     {"outcome": "missed", "file": "src/lib.rs", "line": 20}
+    /// ]}"#;
+    /// let report = CargoMutantsReport::from_json(json)?;
+    /// assert_eq!(report.mutation_score(), 50.0);
+    /// ```
+    pub fn mutation_score(&self) -> f64 {
+        if self.mutants.is_empty() {
+            return 0.0;
+        }
+
+        let caught = self.count_by_outcome(MutantOutcome::Caught);
+        (caught as f64 / self.mutants.len() as f64) * 100.0
+    }
+
+    /// Count mutants by outcome
+    ///
+    /// # Arguments
+    /// * `outcome` - The outcome to count
+    ///
+    /// # Returns
+    /// Number of mutants with the given outcome
+    pub fn count_by_outcome(&self, outcome: MutantOutcome) -> usize {
+        self.mutants.iter().filter(|m| m.outcome == outcome).count()
+    }
+
+    /// Convert a single cargo mutant to PMAT format
+    ///
+    /// # Arguments
+    /// * `cargo_mutant` - The cargo-mutants mutant to convert
+    /// * `idx` - Index for generating unique ID
+    ///
+    /// # Returns
+    /// PMAT Mutant struct
+    fn convert_mutant(cargo_mutant: &CargoMutant, idx: usize) -> Mutant {
+        let status = Self::map_outcome(&cargo_mutant.outcome);
+        let id = Self::generate_id(cargo_mutant, idx);
+        let location = Self::create_location(cargo_mutant);
+        let mutated_source = Self::format_mutated_source(cargo_mutant);
+        let hash = Self::generate_hash(cargo_mutant);
+
+        Mutant {
+            id,
+            original_file: PathBuf::from(&cargo_mutant.file),
+            mutated_source,
+            location,
+            operator: MutationOperatorType::Custom("cargo-mutants".to_string()),
+            hash,
+            status,
+        }
+    }
+
+    /// Map cargo-mutants outcome to PMAT status
+    fn map_outcome(outcome: &MutantOutcome) -> MutantStatus {
+        match outcome {
+            MutantOutcome::Caught => MutantStatus::Killed,
+            MutantOutcome::Missed => MutantStatus::Survived,
+            MutantOutcome::Timeout => MutantStatus::Timeout,
+            MutantOutcome::Unviable => MutantStatus::CompileError,
+        }
+    }
+
+    /// Generate unique ID for mutant
+    fn generate_id(cargo_mutant: &CargoMutant, idx: usize) -> String {
+        format!(
+            "cargo-mutants-{}-{}-{}",
+            cargo_mutant.file.replace('/', "_").replace(".rs", ""),
+            cargo_mutant.line,
+            idx
+        )
+    }
+
+    /// Create source location from cargo mutant
+    fn create_location(cargo_mutant: &CargoMutant) -> SourceLocation {
+        SourceLocation {
+            line: cargo_mutant.line,
+            column: 0, // cargo-mutants doesn't provide column
+            end_line: cargo_mutant.line,
+            end_column: 0,
+        }
+    }
+
+    /// Format mutated source description
+    fn format_mutated_source(cargo_mutant: &CargoMutant) -> String {
+        if let Some(ref replacement) = cargo_mutant.replacement {
+            format!("Replacement: {}", replacement)
+        } else {
+            "Unknown mutation".to_string()
+        }
+    }
+
+    /// Generate hash for mutant
+    fn generate_hash(cargo_mutant: &CargoMutant) -> String {
+        let mut hasher = DefaultHasher::new();
+        cargo_mutant.file.hash(&mut hasher);
+        cargo_mutant.line.hash(&mut hasher);
+        format!("{:?}", cargo_mutant.outcome).hash(&mut hasher);
+        format!("{:x}", hasher.finish())
     }
 }
 
