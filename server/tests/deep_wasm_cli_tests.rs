@@ -53,11 +53,13 @@ fn test_deep_wasm_language_enum() {
 #[test]
 fn test_deep_wasm_focus_enum() {
     // RED Phase: Test focus enum variants
-    let focuses = [DeepWasmFocus::Full,
+    let focuses = [
+        DeepWasmFocus::Full,
         DeepWasmFocus::Source,
         DeepWasmFocus::Compilation,
         DeepWasmFocus::Runtime,
-        DeepWasmFocus::Interop];
+        DeepWasmFocus::Interop,
+    ];
 
     assert_eq!(focuses.len(), 5);
     assert_eq!(DeepWasmFocus::Full.to_string(), "full");
@@ -71,9 +73,11 @@ fn test_deep_wasm_focus_enum() {
 #[test]
 fn test_deep_wasm_output_format_enum() {
     // RED Phase: Test output format enum variants
-    let formats = [DeepWasmOutputFormat::Markdown,
+    let formats = [
+        DeepWasmOutputFormat::Markdown,
         DeepWasmOutputFormat::Json,
-        DeepWasmOutputFormat::Html];
+        DeepWasmOutputFormat::Html,
+    ];
 
     assert_eq!(formats.len(), 3);
     assert_eq!(DeepWasmOutputFormat::Markdown.to_string(), "markdown");
@@ -103,23 +107,21 @@ fn test_deep_wasm_handler_basic_analysis() {
 
     // Run analysis without WASM file (should still work)
     let result = tokio_test::block_on(async {
-        deep_wasm_handlers::handle_deep_wasm(
-            deep_wasm_handlers::DeepWasmOptions {
-                source_path,
-                wasm_file: None,
-                dwarf_file: None,
-                source_map: None,
-                language: Some(DeepWasmLanguage::Rust),
-                focus: DeepWasmFocus::Source,
-                format: DeepWasmOutputFormat::Markdown,
-                output: None,
-                strict: false,
-                _include_mir: false,
-                _include_llvm_ir: false,
-                _track_memory: false,
-                _detect_deadlocks: false,
-            }
-        )
+        deep_wasm_handlers::handle_deep_wasm(deep_wasm_handlers::DeepWasmOptions {
+            source_path,
+            wasm_file: None,
+            dwarf_file: None,
+            source_map: None,
+            language: Some(DeepWasmLanguage::Rust),
+            focus: DeepWasmFocus::Source,
+            format: DeepWasmOutputFormat::Markdown,
+            output: None,
+            strict: false,
+            _include_mir: false,
+            _include_llvm_ir: false,
+            _track_memory: false,
+            _detect_deadlocks: false,
+        })
         .await
     });
 
@@ -150,23 +152,21 @@ fn test_deep_wasm_with_wasm_binary() {
     .unwrap();
 
     let result = tokio_test::block_on(async {
-        deep_wasm_handlers::handle_deep_wasm(
-            deep_wasm_handlers::DeepWasmOptions {
-                source_path,
-                wasm_file: Some(wasm_path),
-                dwarf_file: None,
-                source_map: None,
-                language: Some(DeepWasmLanguage::Rust),
-                focus: DeepWasmFocus::Full,
-                format: DeepWasmOutputFormat::Markdown,
-                output: None,
-                strict: false,
-                _include_mir: false,
-                _include_llvm_ir: false,
-                _track_memory: false,
-                _detect_deadlocks: false,
-            }
-        )
+        deep_wasm_handlers::handle_deep_wasm(deep_wasm_handlers::DeepWasmOptions {
+            source_path,
+            wasm_file: Some(wasm_path),
+            dwarf_file: None,
+            source_map: None,
+            language: Some(DeepWasmLanguage::Rust),
+            focus: DeepWasmFocus::Full,
+            format: DeepWasmOutputFormat::Markdown,
+            output: None,
+            strict: false,
+            _include_mir: false,
+            _include_llvm_ir: false,
+            _track_memory: false,
+            _detect_deadlocks: false,
+        })
         .await
     });
 
@@ -185,30 +185,34 @@ fn test_deep_wasm_strict_mode() {
     std::fs::write(&source_path, "pub fn test() {}").unwrap();
 
     let result = tokio_test::block_on(async {
-        deep_wasm_handlers::handle_deep_wasm(
-            deep_wasm_handlers::DeepWasmOptions {
-                source_path,
-                wasm_file: None,
-                dwarf_file: None,
-                source_map: None,
-                language: Some(DeepWasmLanguage::Rust),
-                focus: DeepWasmFocus::Full,
-                format: DeepWasmOutputFormat::Json,
-                output: None,
-                strict: true, // STRICT MODE ENABLED
-                _include_mir: false,
-                _include_llvm_ir: false,
-                _track_memory: false,
-                _detect_deadlocks: false,
-            }
-        )
+        deep_wasm_handlers::handle_deep_wasm(deep_wasm_handlers::DeepWasmOptions {
+            source_path,
+            wasm_file: None,
+            dwarf_file: None,
+            source_map: None,
+            language: Some(DeepWasmLanguage::Rust),
+            focus: DeepWasmFocus::Full,
+            format: DeepWasmOutputFormat::Json,
+            output: None,
+            strict: true, // STRICT MODE ENABLED
+            _include_mir: false,
+            _include_llvm_ir: false,
+            _track_memory: false,
+            _detect_deadlocks: false,
+        })
         .await
     });
 
     // In strict mode without source map, should fail quality gates
-    assert!(result.is_err(), "Strict mode should fail when quality gates are violated");
     assert!(
-        result.unwrap_err().to_string().contains("Quality gate violations"),
+        result.is_err(),
+        "Strict mode should fail when quality gates are violated"
+    );
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("Quality gate violations"),
         "Error should mention quality gate violations"
     );
 }
@@ -227,33 +231,28 @@ fn test_deep_wasm_json_output() {
     std::fs::write(&source_path, "pub fn test() {}").unwrap();
 
     let result = tokio_test::block_on(async {
-        deep_wasm_handlers::handle_deep_wasm(
-            deep_wasm_handlers::DeepWasmOptions {
-                source_path,
-                wasm_file: None,
-                dwarf_file: None,
-                source_map: None,
-                language: Some(DeepWasmLanguage::Rust),
-                focus: DeepWasmFocus::Full,
-                format: DeepWasmOutputFormat::Json,
-                output: Some(output_path.clone()),
-                strict: false,
-                _include_mir: false,
-                _include_llvm_ir: false,
-                _track_memory: false,
-                _detect_deadlocks: false,
-            }
-        )
+        deep_wasm_handlers::handle_deep_wasm(deep_wasm_handlers::DeepWasmOptions {
+            source_path,
+            wasm_file: None,
+            dwarf_file: None,
+            source_map: None,
+            language: Some(DeepWasmLanguage::Rust),
+            focus: DeepWasmFocus::Full,
+            format: DeepWasmOutputFormat::Json,
+            output: Some(output_path.clone()),
+            strict: false,
+            _include_mir: false,
+            _include_llvm_ir: false,
+            _track_memory: false,
+            _detect_deadlocks: false,
+        })
         .await
     });
 
     assert!(result.is_ok(), "JSON output should succeed");
 
     // Verify JSON file was created
-    assert!(
-        output_path.exists(),
-        "JSON output file should be created"
-    );
+    assert!(output_path.exists(), "JSON output file should be created");
 
     // Verify JSON is valid
     let content = fs::read_to_string(&output_path).unwrap();
@@ -273,23 +272,21 @@ fn test_deep_wasm_ruchy_language() {
     std::fs::write(&source_path, "actor TestActor {}").unwrap();
 
     let result = tokio_test::block_on(async {
-        deep_wasm_handlers::handle_deep_wasm(
-            deep_wasm_handlers::DeepWasmOptions {
-                source_path,
-                wasm_file: None,
-                dwarf_file: None,
-                source_map: None,
-                language: Some(DeepWasmLanguage::Ruchy),
-                focus: DeepWasmFocus::Full,
-                format: DeepWasmOutputFormat::Markdown,
-                output: None,
-                strict: false,
-                _include_mir: false,
-                _include_llvm_ir: false,
-                _track_memory: false,
-                _detect_deadlocks: true, // detect_deadlocks for Ruchy
-            }
-        )
+        deep_wasm_handlers::handle_deep_wasm(deep_wasm_handlers::DeepWasmOptions {
+            source_path,
+            wasm_file: None,
+            dwarf_file: None,
+            source_map: None,
+            language: Some(DeepWasmLanguage::Ruchy),
+            focus: DeepWasmFocus::Full,
+            format: DeepWasmOutputFormat::Markdown,
+            output: None,
+            strict: false,
+            _include_mir: false,
+            _include_llvm_ir: false,
+            _track_memory: false,
+            _detect_deadlocks: true, // detect_deadlocks for Ruchy
+        })
         .await
     });
 
@@ -311,64 +308,54 @@ fn test_deep_wasm_auto_language_detection() {
 
     // Test Rust auto-detection
     let rust_result = tokio_test::block_on(async {
-        deep_wasm_handlers::handle_deep_wasm(
-            deep_wasm_handlers::DeepWasmOptions {
-                source_path: rust_path,
-                wasm_file: None,
-                dwarf_file: None,
-                source_map: None,
-                language: None, // Language NOT specified - should auto-detect
-                focus: DeepWasmFocus::Source,
-                format: DeepWasmOutputFormat::Markdown,
-                output: None,
-                strict: false,
-                _include_mir: false,
-                _include_llvm_ir: false,
-                _track_memory: false,
-                _detect_deadlocks: false,
-            }
-        )
+        deep_wasm_handlers::handle_deep_wasm(deep_wasm_handlers::DeepWasmOptions {
+            source_path: rust_path,
+            wasm_file: None,
+            dwarf_file: None,
+            source_map: None,
+            language: None, // Language NOT specified - should auto-detect
+            focus: DeepWasmFocus::Source,
+            format: DeepWasmOutputFormat::Markdown,
+            output: None,
+            strict: false,
+            _include_mir: false,
+            _include_llvm_ir: false,
+            _track_memory: false,
+            _detect_deadlocks: false,
+        })
         .await
     });
 
-    assert!(
-        rust_result.is_ok(),
-        "Rust auto-detection should succeed"
-    );
+    assert!(rust_result.is_ok(), "Rust auto-detection should succeed");
 
     // Test Ruchy auto-detection
     let ruchy_result = tokio_test::block_on(async {
-        deep_wasm_handlers::handle_deep_wasm(
-            deep_wasm_handlers::DeepWasmOptions {
-                source_path: ruchy_path,
-                wasm_file: None,
-                dwarf_file: None,
-                source_map: None,
-                language: None, // Language NOT specified - should auto-detect
-                focus: DeepWasmFocus::Source,
-                format: DeepWasmOutputFormat::Markdown,
-                output: None,
-                strict: false,
-                _include_mir: false,
-                _include_llvm_ir: false,
-                _track_memory: false,
-                _detect_deadlocks: false,
-            }
-        )
+        deep_wasm_handlers::handle_deep_wasm(deep_wasm_handlers::DeepWasmOptions {
+            source_path: ruchy_path,
+            wasm_file: None,
+            dwarf_file: None,
+            source_map: None,
+            language: None, // Language NOT specified - should auto-detect
+            focus: DeepWasmFocus::Source,
+            format: DeepWasmOutputFormat::Markdown,
+            output: None,
+            strict: false,
+            _include_mir: false,
+            _include_llvm_ir: false,
+            _track_memory: false,
+            _detect_deadlocks: false,
+        })
         .await
     });
 
-    assert!(
-        ruchy_result.is_ok(),
-        "Ruchy auto-detection should succeed"
-    );
+    assert!(ruchy_result.is_ok(), "Ruchy auto-detection should succeed");
 }
 
 #[cfg(feature = "deep-wasm")]
 #[test]
 fn test_deep_wasm_quality_gate_violation() {
     use pmat::services::deep_wasm::{
-        DeepWasmAnalysisRequest, DeepWasmService, SourceLanguage, AnalysisFocus, WasmQualityGates,
+        AnalysisFocus, DeepWasmAnalysisRequest, DeepWasmService, SourceLanguage, WasmQualityGates,
     };
 
     // RED Phase: Test quality gate violation detection
@@ -412,32 +399,26 @@ fn test_deep_wasm_with_all_debug_info() {
     let source_map_path = temp_dir.path().join("app.map");
 
     std::fs::write(&source_path, "pub fn test() {}").unwrap();
-    std::fs::write(
-        &wasm_path,
-        [0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00],
-    )
-    .unwrap();
+    std::fs::write(&wasm_path, [0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00]).unwrap();
     std::fs::write(&dwarf_path, b"dummy dwarf").unwrap();
     std::fs::write(&source_map_path, "{}").unwrap();
 
     let result = tokio_test::block_on(async {
-        deep_wasm_handlers::handle_deep_wasm(
-            deep_wasm_handlers::DeepWasmOptions {
-                source_path,
-                wasm_file: Some(wasm_path),
-                dwarf_file: Some(dwarf_path),
-                source_map: Some(source_map_path),
-                language: Some(DeepWasmLanguage::Rust),
-                focus: DeepWasmFocus::Full,
-                format: DeepWasmOutputFormat::Markdown,
-                output: None,
-                strict: false,
-                _include_mir: false,
-                _include_llvm_ir: false,
-                _track_memory: false,
-                _detect_deadlocks: false,
-            }
-        )
+        deep_wasm_handlers::handle_deep_wasm(deep_wasm_handlers::DeepWasmOptions {
+            source_path,
+            wasm_file: Some(wasm_path),
+            dwarf_file: Some(dwarf_path),
+            source_map: Some(source_map_path),
+            language: Some(DeepWasmLanguage::Rust),
+            focus: DeepWasmFocus::Full,
+            format: DeepWasmOutputFormat::Markdown,
+            output: None,
+            strict: false,
+            _include_mir: false,
+            _include_llvm_ir: false,
+            _track_memory: false,
+            _detect_deadlocks: false,
+        })
         .await
     });
 

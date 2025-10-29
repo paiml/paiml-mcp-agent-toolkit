@@ -5,8 +5,8 @@
 #[cfg(test)]
 mod ml_predictor_red_tests {
     use crate::services::mutation::{
-        Mutant, MutantStatus, MutationOperatorType, SourceLocation,
-        MutantFeatures, SurvivabilityPredictor, TrainingData,
+        Mutant, MutantFeatures, MutantStatus, MutationOperatorType, SourceLocation,
+        SurvivabilityPredictor, TrainingData,
     };
 
     #[test]
@@ -29,7 +29,10 @@ mod ml_predictor_red_tests {
         let features = MutantFeatures::from_mutant(&mutant);
 
         // Must extract operator type
-        assert_eq!(features.operator_type, MutationOperatorType::ArithmeticReplacement);
+        assert_eq!(
+            features.operator_type,
+            MutationOperatorType::ArithmeticReplacement
+        );
 
         // Must calculate complexity features
         assert!(features.cyclomatic_complexity > 0);
@@ -94,11 +97,13 @@ mod ml_predictor_red_tests {
     #[test]
     fn red_predictor_must_prioritize_high_kill_probability_mutants() {
         let mut predictor = SurvivabilityPredictor::new();
-        predictor.train(&create_training_data_with_patterns()).unwrap();
+        predictor
+            .train(&create_training_data_with_patterns())
+            .unwrap();
 
         let mutants = vec![
-            create_arithmetic_mutant(), // Historically high kill rate
-            create_relational_mutant(), // Medium kill rate
+            create_arithmetic_mutant(),  // Historically high kill rate
+            create_relational_mutant(),  // Medium kill rate
             create_conditional_mutant(), // Low kill rate
         ];
 
@@ -112,7 +117,7 @@ mod ml_predictor_red_tests {
 
         // Must be sorted by kill probability (descending)
         for i in 1..ranked.len() {
-            assert!(ranked[i-1].1.kill_probability >= ranked[i].1.kill_probability);
+            assert!(ranked[i - 1].1.kill_probability >= ranked[i].1.kill_probability);
         }
     }
 
@@ -121,9 +126,10 @@ mod ml_predictor_red_tests {
         let mut predictor = SurvivabilityPredictor::new();
 
         // Train only on Arithmetic
-        let training_data = vec![
-            create_training_sample(MutationOperatorType::ArithmeticReplacement, true),
-        ];
+        let training_data = vec![create_training_sample(
+            MutationOperatorType::ArithmeticReplacement,
+            true,
+        )];
         predictor.train(&training_data).unwrap();
 
         // Predict for ConstantReplacement (unseen)
@@ -155,8 +161,8 @@ mod ml_predictor_red_tests {
 
         // Predicted probabilities should match actual outcomes
         // (This is a calibration check)
-        let avg_predicted = predictions.iter().map(|p| p.kill_probability).sum::<f64>()
-            / predictions.len() as f64;
+        let avg_predicted =
+            predictions.iter().map(|p| p.kill_probability).sum::<f64>() / predictions.len() as f64;
 
         // Average should be reasonable (not all 0.0 or 1.0)
         assert!(avg_predicted > 0.1);
@@ -197,7 +203,9 @@ mod ml_predictor_red_tests {
     #[test]
     fn red_predictor_must_provide_feature_importance() {
         let mut predictor = SurvivabilityPredictor::new();
-        predictor.train(&create_training_data_with_patterns()).unwrap();
+        predictor
+            .train(&create_training_data_with_patterns())
+            .unwrap();
 
         let importance = predictor.feature_importance();
         assert!(importance.is_ok());
@@ -246,7 +254,9 @@ mod ml_predictor_red_tests {
     #[test]
     fn red_prediction_result_must_include_explanation() {
         let mut predictor = SurvivabilityPredictor::new();
-        predictor.train(&create_training_data_with_patterns()).unwrap();
+        predictor
+            .train(&create_training_data_with_patterns())
+            .unwrap();
 
         let mutant = create_test_mutant();
         let result = predictor.predict_with_explanation(&mutant);
@@ -272,9 +282,10 @@ mod ml_predictor_red_tests {
         let _initial_prediction = predictor.predict(&create_test_mutant()).unwrap();
 
         // Incremental update with new data
-        let new_data = vec![
-            create_training_sample(MutationOperatorType::ConditionalReplacement, true),
-        ];
+        let new_data = vec![create_training_sample(
+            MutationOperatorType::ConditionalReplacement,
+            true,
+        )];
 
         let update_result = predictor.update(&new_data);
         assert!(update_result.is_ok());
@@ -318,7 +329,8 @@ mod ml_predictor_red_tests {
                         }
                     }
                 }
-            "#.to_string(),
+            "#
+            .to_string(),
             ..create_test_mutant()
         }
     }
@@ -350,11 +362,19 @@ mod ml_predictor_red_tests {
         TrainingData {
             mutant: Mutant {
                 operator,
-                status: if was_killed { MutantStatus::Killed } else { MutantStatus::Survived },
+                status: if was_killed {
+                    MutantStatus::Killed
+                } else {
+                    MutantStatus::Survived
+                },
                 ..create_test_mutant()
             },
             was_killed,
-            test_failures: if was_killed { vec!["test1".to_string()] } else { vec![] },
+            test_failures: if was_killed {
+                vec!["test1".to_string()]
+            } else {
+                vec![]
+            },
             execution_time_ms: 100,
         }
     }
@@ -375,7 +395,7 @@ mod ml_predictor_red_tests {
         for i in 0..10 {
             data.push(create_training_sample(
                 MutationOperatorType::ArithmeticReplacement,
-                i < 8 // 80% kill rate
+                i < 8, // 80% kill rate
             ));
         }
 
@@ -383,7 +403,7 @@ mod ml_predictor_red_tests {
         for i in 0..10 {
             data.push(create_training_sample(
                 MutationOperatorType::RelationalReplacement,
-                i < 5 // 50% kill rate
+                i < 5, // 50% kill rate
             ));
         }
 
@@ -391,7 +411,7 @@ mod ml_predictor_red_tests {
         for i in 0..10 {
             data.push(create_training_sample(
                 MutationOperatorType::ConditionalReplacement,
-                i < 2 // 20% kill rate
+                i < 2, // 20% kill rate
             ));
         }
 

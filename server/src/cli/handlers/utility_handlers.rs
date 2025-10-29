@@ -479,8 +479,7 @@ fn add_provability_annotation(
         .as_ref()
         .filter(|p| !p.is_empty())
         .map(|provability| {
-            provability.iter().map(|p| p.provability_score).sum::<f64>()
-                / provability.len() as f64
+            provability.iter().map(|p| p.provability_score).sum::<f64>() / provability.len() as f64
         })
         .unwrap_or(0.75);
 
@@ -562,11 +561,14 @@ fn add_churn_annotation(
                 .find(|f| file.path.contains(&f.relative_path))
                 .map(|file_churn| {
                     if file_churn.commit_count > 10 {
-                        annotations.push_str(&format!(" [churn: high({})]", file_churn.commit_count));
+                        annotations
+                            .push_str(&format!(" [churn: high({})]", file_churn.commit_count));
                     } else if file_churn.commit_count > 5 {
-                        annotations.push_str(&format!(" [churn: med({})]", file_churn.commit_count));
+                        annotations
+                            .push_str(&format!(" [churn: med({})]", file_churn.commit_count));
                     } else if file_churn.commit_count > 0 {
-                        annotations.push_str(&format!(" [churn: low({})]", file_churn.commit_count));
+                        annotations
+                            .push_str(&format!(" [churn: low({})]", file_churn.commit_count));
                     }
                 })
         })
@@ -770,7 +772,9 @@ fn format_context_output_simple(
 ) -> Result<String> {
     let output = match format {
         ContextFormat::Markdown => simple_markdown_format(project_context, detected_toolchain),
-        ContextFormat::LlmOptimized => simple_llm_format(project_context, detected_toolchain, project_path),
+        ContextFormat::LlmOptimized => {
+            simple_llm_format(project_context, detected_toolchain, project_path)
+        }
         ContextFormat::Json => simple_json_format(project_context, detected_toolchain)?,
         ContextFormat::Sarif => simple_sarif_format(project_context, detected_toolchain)?,
     };
@@ -783,10 +787,19 @@ fn simple_markdown_format(ctx: &crate::services::context::ProjectContext, lang: 
     md.push_str("# Project Context\n\n## Project Structure\n\n");
     md.push_str(&format!("- **Language**: {}\n", lang));
     md.push_str(&format!("- **Total Files**: {}\n", ctx.summary.total_files));
-    md.push_str(&format!("- **Total Functions**: {}\n", ctx.summary.total_functions));
-    md.push_str(&format!("- **Total Structs**: {}\n", ctx.summary.total_structs));
+    md.push_str(&format!(
+        "- **Total Functions**: {}\n",
+        ctx.summary.total_functions
+    ));
+    md.push_str(&format!(
+        "- **Total Structs**: {}\n",
+        ctx.summary.total_structs
+    ));
     md.push_str(&format!("- **Total Enums**: {}\n", ctx.summary.total_enums));
-    md.push_str(&format!("- **Total Traits**: {}\n\n", ctx.summary.total_traits));
+    md.push_str(&format!(
+        "- **Total Traits**: {}\n\n",
+        ctx.summary.total_traits
+    ));
 
     if !ctx.files.is_empty() {
         md.push_str("## Key Components\n\n");
@@ -813,7 +826,11 @@ fn simple_markdown_format(ctx: &crate::services::context::ProjectContext, lang: 
     md
 }
 
-fn simple_llm_format(ctx: &crate::services::context::ProjectContext, lang: &str, path: &Path) -> String {
+fn simple_llm_format(
+    ctx: &crate::services::context::ProjectContext,
+    lang: &str,
+    path: &Path,
+) -> String {
     let mut out = String::new();
     out.push_str(&format!(
         "Project: {} ({})\n\nSummary:\n- Files: {}\n- Functions: {}\n- Types: {} structs, {} enums, {} traits\n\n",
@@ -834,7 +851,10 @@ fn simple_llm_format(ctx: &crate::services::context::ProjectContext, lang: &str,
     }
 
     if ctx.summary.total_functions > 20 {
-        out.push_str(&format!("Quality Insights:\n- Large codebase with {} functions across {} files\n", ctx.summary.total_functions, ctx.summary.total_files));
+        out.push_str(&format!(
+            "Quality Insights:\n- Large codebase with {} functions across {} files\n",
+            ctx.summary.total_functions, ctx.summary.total_files
+        ));
         if ctx.summary.total_files > 0 {
             let avg = ctx.summary.total_functions as f64 / ctx.summary.total_files as f64;
             out.push_str(&format!("- Average {:.1} functions per file\n", avg));
@@ -857,7 +877,10 @@ fn simple_llm_format(ctx: &crate::services::context::ProjectContext, lang: &str,
     out
 }
 
-fn simple_json_format(ctx: &crate::services::context::ProjectContext, lang: &str) -> Result<String> {
+fn simple_json_format(
+    ctx: &crate::services::context::ProjectContext,
+    lang: &str,
+) -> Result<String> {
     let mut json = serde_json::json!({
         "project_type": lang,
         "summary": {
@@ -882,7 +905,10 @@ fn simple_json_format(ctx: &crate::services::context::ProjectContext, lang: &str
     serde_json::to_string_pretty(&json).map_err(Into::into)
 }
 
-fn simple_sarif_format(ctx: &crate::services::context::ProjectContext, lang: &str) -> Result<String> {
+fn simple_sarif_format(
+    ctx: &crate::services::context::ProjectContext,
+    lang: &str,
+) -> Result<String> {
     serde_json::to_string_pretty(&serde_json::json!({
         "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
         "version": "2.1.0",

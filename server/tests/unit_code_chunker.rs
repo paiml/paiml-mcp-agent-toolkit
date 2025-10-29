@@ -45,9 +45,9 @@ fn test_chunk_rust_impl_blocks() {
     let chunks = chunk_code(source, Language::Rust).unwrap();
     assert!(chunks.len() >= 1);
     // Should extract impl block or individual methods
-    let has_impl_or_methods = chunks.iter().any(|c| {
-        c.chunk_type == ChunkType::Class || c.chunk_type == ChunkType::Function
-    });
+    let has_impl_or_methods = chunks
+        .iter()
+        .any(|c| c.chunk_type == ChunkType::Class || c.chunk_type == ChunkType::Function);
     assert!(has_impl_or_methods);
 }
 
@@ -62,9 +62,9 @@ fn test_chunk_rust_modules() {
     let chunks = chunk_code(source, Language::Rust).unwrap();
     assert!(chunks.len() >= 1);
     // Should extract module or functions within
-    let has_content = chunks.iter().any(|c| {
-        c.chunk_type == ChunkType::Module || c.chunk_type == ChunkType::Function
-    });
+    let has_content = chunks
+        .iter()
+        .any(|c| c.chunk_type == ChunkType::Module || c.chunk_type == ChunkType::Function);
     assert!(has_content);
 }
 
@@ -349,9 +349,9 @@ fn test_chunk_go_struct() {
     let chunks = chunk_code(source, Language::Go).unwrap();
     // Should extract struct and/or methods
     assert!(chunks.len() >= 1);
-    let has_struct_or_method = chunks.iter().any(|c| {
-        c.chunk_name == "Calculator" || c.chunk_name == "Add"
-    });
+    let has_struct_or_method = chunks
+        .iter()
+        .any(|c| c.chunk_name == "Calculator" || c.chunk_name == "Add");
     assert!(has_struct_or_method);
 }
 

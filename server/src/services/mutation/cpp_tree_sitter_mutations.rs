@@ -577,7 +577,10 @@ mod tests {
     }
 
     // Helper to find a node of a specific kind (non-recursive for lifetime safety)
-    fn find_node_by_kind_iter<'a>(tree: &'a tree_sitter::Tree, kind: &str) -> Option<tree_sitter::Node<'a>> {
+    fn find_node_by_kind_iter<'a>(
+        tree: &'a tree_sitter::Tree,
+        kind: &str,
+    ) -> Option<tree_sitter::Node<'a>> {
         let mut cursor = tree.walk();
 
         loop {
@@ -611,7 +614,8 @@ mod tests {
         let source = "int result = a + b;";
         let tree = parse_cpp(source);
 
-        let binary_node = find_node_by_kind_iter(&tree, "binary_expression").expect("Should find binary_expression");
+        let binary_node = find_node_by_kind_iter(&tree, "binary_expression")
+            .expect("Should find binary_expression");
 
         let operator = CppBinaryOpMutation;
         assert!(operator.can_mutate(&binary_node, source.as_bytes()));
@@ -630,7 +634,8 @@ mod tests {
         let source = "int result = a - b;";
         let tree = parse_cpp(source);
 
-        let binary_node = find_node_by_kind_iter(&tree, "binary_expression").expect("Should find binary_expression");
+        let binary_node = find_node_by_kind_iter(&tree, "binary_expression")
+            .expect("Should find binary_expression");
 
         let operator = CppBinaryOpMutation;
         let mutants = operator.mutate(&binary_node, source.as_bytes());
@@ -646,7 +651,8 @@ mod tests {
         let source = "bool result = a > b;";
         let tree = parse_cpp(source);
 
-        let binary_node = find_node_by_kind_iter(&tree, "binary_expression").expect("Should find binary_expression");
+        let binary_node = find_node_by_kind_iter(&tree, "binary_expression")
+            .expect("Should find binary_expression");
 
         let operator = CppRelationalOpMutation;
         assert!(operator.can_mutate(&binary_node, source.as_bytes()));
@@ -663,7 +669,8 @@ mod tests {
         let source = "bool result = a < b;";
         let tree = parse_cpp(source);
 
-        let binary_node = find_node_by_kind_iter(&tree, "binary_expression").expect("Should find binary_expression");
+        let binary_node = find_node_by_kind_iter(&tree, "binary_expression")
+            .expect("Should find binary_expression");
 
         let operator = CppRelationalOpMutation;
         let mutants = operator.mutate(&binary_node, source.as_bytes());
@@ -679,7 +686,8 @@ mod tests {
         let source = "bool result = a && b;";
         let tree = parse_cpp(source);
 
-        let binary_node = find_node_by_kind_iter(&tree, "binary_expression").expect("Should find binary_expression");
+        let binary_node = find_node_by_kind_iter(&tree, "binary_expression")
+            .expect("Should find binary_expression");
 
         let operator = CppLogicalOpMutation;
         assert!(operator.can_mutate(&binary_node, source.as_bytes()));
@@ -694,7 +702,8 @@ mod tests {
         let source = "bool result = a || b;";
         let tree = parse_cpp(source);
 
-        let binary_node = find_node_by_kind_iter(&tree, "binary_expression").expect("Should find binary_expression");
+        let binary_node = find_node_by_kind_iter(&tree, "binary_expression")
+            .expect("Should find binary_expression");
 
         let operator = CppLogicalOpMutation;
         let mutants = operator.mutate(&binary_node, source.as_bytes());
@@ -711,7 +720,8 @@ mod tests {
         let source = "int result = a & b;";
         let tree = parse_cpp(source);
 
-        let binary_node = find_node_by_kind_iter(&tree, "binary_expression").expect("Should find binary_expression");
+        let binary_node = find_node_by_kind_iter(&tree, "binary_expression")
+            .expect("Should find binary_expression");
 
         let operator = CppBitwiseOpMutation;
         assert!(operator.can_mutate(&binary_node, source.as_bytes()));
@@ -727,7 +737,8 @@ mod tests {
         let source = "int result = ~a;";
         let tree = parse_cpp(source);
 
-        let unary_node = find_node_by_kind_iter(&tree, "unary_expression").expect("Should find unary_expression");
+        let unary_node = find_node_by_kind_iter(&tree, "unary_expression")
+            .expect("Should find unary_expression");
 
         let operator = CppBitwiseOpMutation;
         assert!(operator.can_mutate(&unary_node, source.as_bytes()));
@@ -746,7 +757,8 @@ mod tests {
         let source = "bool result = !flag;";
         let tree = parse_cpp(source);
 
-        let unary_node = find_node_by_kind_iter(&tree, "unary_expression").expect("Should find unary_expression");
+        let unary_node = find_node_by_kind_iter(&tree, "unary_expression")
+            .expect("Should find unary_expression");
 
         let operator = CppUnaryOpMutation;
         assert!(operator.can_mutate(&unary_node, source.as_bytes()));
@@ -761,7 +773,8 @@ mod tests {
         let source = "int result = -value;";
         let tree = parse_cpp(source);
 
-        let unary_node = find_node_by_kind_iter(&tree, "unary_expression").expect("Should find unary_expression");
+        let unary_node = find_node_by_kind_iter(&tree, "unary_expression")
+            .expect("Should find unary_expression");
 
         let operator = CppUnaryOpMutation;
         let mutants = operator.mutate(&unary_node, source.as_bytes());
@@ -774,7 +787,8 @@ mod tests {
         let source = "int result = ++i;";
         let tree = parse_cpp(source);
 
-        let update_node = find_node_by_kind_iter(&tree, "update_expression").expect("Should find update_expression");
+        let update_node = find_node_by_kind_iter(&tree, "update_expression")
+            .expect("Should find update_expression");
 
         let operator = CppUnaryOpMutation;
         assert!(operator.can_mutate(&update_node, source.as_bytes()));
@@ -789,7 +803,8 @@ mod tests {
         let source = "int result = i++;";
         let tree = parse_cpp(source);
 
-        let update_node = find_node_by_kind_iter(&tree, "update_expression").expect("Should find update_expression");
+        let update_node = find_node_by_kind_iter(&tree, "update_expression")
+            .expect("Should find update_expression");
 
         let operator = CppUnaryOpMutation;
         let mutants = operator.mutate(&update_node, source.as_bytes());
@@ -806,7 +821,8 @@ mod tests {
         let source = "int value = *ptr;";
         let tree = parse_cpp(source);
 
-        let pointer_node = find_node_by_kind_iter(&tree, "pointer_expression").expect("Should find pointer_expression");
+        let pointer_node = find_node_by_kind_iter(&tree, "pointer_expression")
+            .expect("Should find pointer_expression");
 
         let operator = CppPointerOpMutation;
         assert!(operator.can_mutate(&pointer_node, source.as_bytes()));

@@ -155,7 +155,14 @@ pub fn extract_test_name(line: &str) -> Option<String> {
 
     if trimmed.starts_with('✕') {
         // Jest failure marker - skip the Unicode character
-        return Some(trimmed.chars().skip(1).collect::<String>().trim().to_string());
+        return Some(
+            trimmed
+                .chars()
+                .skip(1)
+                .collect::<String>()
+                .trim()
+                .to_string(),
+        );
     }
 
     if trimmed.starts_with("FAIL") {

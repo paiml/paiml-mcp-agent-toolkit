@@ -164,7 +164,9 @@ mod tests {
         parser
             .set_language(&tree_sitter_python::LANGUAGE.into())
             .expect("Failed to set Python language");
-        parser.parse(code, None).expect("Failed to parse Python code")
+        parser
+            .parse(code, None)
+            .expect("Failed to parse Python code")
     }
 
     #[test]

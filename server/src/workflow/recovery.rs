@@ -13,12 +13,8 @@ impl RecoveryManager {
         match strategy {
             ErrorStrategy::FailFast => Err(error.clone()),
             ErrorStrategy::Continue => Ok(()),
-            ErrorStrategy::Rollback => {
-                Self::rollback_completed_steps(context).await
-            }
-            ErrorStrategy::Compensate => {
-                Self::compensate_completed_steps(context).await
-            }
+            ErrorStrategy::Rollback => Self::rollback_completed_steps(context).await,
+            ErrorStrategy::Compensate => Self::compensate_completed_steps(context).await,
         }
     }
 
@@ -29,7 +25,10 @@ impl RecoveryManager {
             .iter()
             .filter(|(_, result)| result.status == StepStatus::Completed)
             .filter_map(|(step_id, result)| {
-                result.output.as_ref().map(|output| (step_id.clone(), output.clone()))
+                result
+                    .output
+                    .as_ref()
+                    .map(|output| (step_id.clone(), output.clone()))
             })
             .collect();
 
@@ -42,13 +41,17 @@ impl RecoveryManager {
         for (step_id, output) in completed_steps {
             if let Some(rollback_action) = Self::get_rollback_action(&step_id, &output) {
                 // Log rollback action
-                tracing::info!("Rolling back step: {} with action: {}", step_id, rollback_action);
+                tracing::info!(
+                    "Rolling back step: {} with action: {}",
+                    step_id,
+                    rollback_action
+                );
 
                 // In production, would execute actual rollback
                 // For now, just record in context
                 context.set_variable(
                     format!("rollback_{}", step_id),
-                    serde_json::json!({ "action": rollback_action, "status": "rolled_back" })
+                    serde_json::json!({ "action": rollback_action, "status": "rolled_back" }),
                 );
             }
         }
@@ -63,7 +66,10 @@ impl RecoveryManager {
             .iter()
             .filter(|(_, result)| result.status == StepStatus::Completed)
             .filter_map(|(step_id, result)| {
-                result.output.as_ref().map(|output| (step_id.clone(), output.clone()))
+                result
+                    .output
+                    .as_ref()
+                    .map(|output| (step_id.clone(), output.clone()))
             })
             .collect();
 
@@ -73,13 +79,17 @@ impl RecoveryManager {
         for (step_id, output) in completed_steps {
             if let Some(compensation_action) = Self::get_compensation_action(&step_id, &output) {
                 // Log compensation action
-                tracing::info!("Compensating step: {} with action: {}", step_id, compensation_action);
+                tracing::info!(
+                    "Compensating step: {} with action: {}",
+                    step_id,
+                    compensation_action
+                );
 
                 // In production, would execute actual compensation
                 // For now, just record in context
                 context.set_variable(
                     format!("compensate_{}", step_id),
-                    serde_json::json!({ "action": compensation_action, "status": "compensated" })
+                    serde_json::json!({ "action": compensation_action, "status": "compensated" }),
                 );
             }
         }

@@ -13,9 +13,7 @@
 use crate::services::deep_wasm::{DeepWasmError, DeepWasmResult};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use wasmparser::{
-    FuncType, FunctionBody, Operator, Parser, Payload, TypeRef, ValType,
-};
+use wasmparser::{FuncType, FunctionBody, Operator, Parser, Payload, TypeRef, ValType};
 
 /// Detailed function analysis results
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -332,10 +330,14 @@ impl BytecodeAnalyzer {
                                 let signature = if let TypeRef::Func(type_idx) = import.ty {
                                     type_section.get(type_idx as usize).map(|func_type| {
                                         FunctionSignature {
-                                            params: func_type.params().iter()
+                                            params: func_type
+                                                .params()
+                                                .iter()
                                                 .map(valtype_to_string)
                                                 .collect(),
-                                            results: func_type.results().iter()
+                                            results: func_type
+                                                .results()
+                                                .iter()
                                                 .map(valtype_to_string)
                                                 .collect(),
                                             type_index: type_idx,
@@ -364,7 +366,7 @@ impl BytecodeAnalyzer {
                 Ok(Payload::CustomSection(reader)) if reader.name() == "name" => {
                     // Parse function names from name section
                     let name_reader = wasmparser::NameSectionReader::new(
-                        wasmparser::BinaryReader::new(reader.data(), 0)
+                        wasmparser::BinaryReader::new(reader.data(), 0),
                     );
                     for section in name_reader {
                         if let Ok(wasmparser::Name::Function(func_names)) = section {
@@ -385,7 +387,8 @@ impl BytecodeAnalyzer {
         }
 
         // Analyze each function
-        let import_count = import_section.iter()
+        let import_count = import_section
+            .iter()
             .filter(|imp| imp.kind == "function")
             .count() as u32;
 
@@ -393,16 +396,18 @@ impl BytecodeAnalyzer {
         let mut total_instructions = 0;
         let mut max_complexity = 0;
 
-        for (func_idx, (type_idx, body)) in function_section.iter()
-            .zip(code_section.iter())
-            .enumerate()
+        for (func_idx, (type_idx, body)) in
+            function_section.iter().zip(code_section.iter()).enumerate()
         {
             let func_index = import_count + func_idx as u32;
             let func_type = type_section.get(*type_idx as usize);
 
             if func_type.is_none() {
                 validation_errors.push(ValidationError {
-                    message: format!("Function {} references invalid type index {}", func_index, type_idx),
+                    message: format!(
+                        "Function {} references invalid type index {}",
+                        func_index, type_idx
+                    ),
                     offset: None,
                 });
                 continue;
@@ -411,19 +416,16 @@ impl BytecodeAnalyzer {
             let func_type = func_type.unwrap();
 
             let signature = FunctionSignature {
-                params: func_type.params().iter()
-                    .map(valtype_to_string)
-                    .collect(),
-                results: func_type.results().iter()
-                    .map(valtype_to_string)
-                    .collect(),
+                params: func_type.params().iter().map(valtype_to_string).collect(),
+                results: func_type.results().iter().map(valtype_to_string).collect(),
                 type_index: *type_idx,
             };
 
             let name = name_map.get(&func_index).cloned();
 
             // Find export name if exported
-            let (is_exported, export_name) = export_section.iter()
+            let (is_exported, export_name) = export_section
+                .iter()
                 .find(|(_, idx, kind)| *idx == func_index && kind == "function")
                 .map(|(name, _, _)| (true, Some(name.clone())))
                 .unwrap_or((false, None));
@@ -453,14 +455,17 @@ impl BytecodeAnalyzer {
         }
 
         let avg_complexity = if !functions.is_empty() {
-            functions.iter()
+            functions
+                .iter()
                 .map(|f| f.complexity.cyclomatic_complexity as f64)
-                .sum::<f64>() / functions.len() as f64
+                .sum::<f64>()
+                / functions.len() as f64
         } else {
             0.0
         };
 
-        let exports: Vec<ExportAnalysis> = export_section.into_iter()
+        let exports: Vec<ExportAnalysis> = export_section
+            .into_iter()
             .map(|(name, index, kind)| ExportAnalysis { name, kind, index })
             .collect();
 
@@ -484,7 +489,12 @@ impl BytecodeAnalyzer {
     fn analyze_function_body(
         &self,
         body: &FunctionBody,
-    ) -> DeepWasmResult<(ComplexityMetrics, InstructionStats, StackDepthAnalysis, Vec<ControlFlowPattern>)> {
+    ) -> DeepWasmResult<(
+        ComplexityMetrics,
+        InstructionStats,
+        StackDepthAnalysis,
+        Vec<ControlFlowPattern>,
+    )> {
         let mut instruction_count = 0;
         let mut branch_count = 0;
         let mut loop_count = 0;
@@ -509,7 +519,8 @@ impl BytecodeAnalyzer {
 
         let mut control_flow_patterns: Vec<ControlFlowPattern> = Vec::new();
 
-        let reader = body.get_operators_reader()
+        let reader = body
+            .get_operators_reader()
             .map_err(|e| DeepWasmError::WasmParse(e.to_string()))?;
 
         for (offset, op) in reader.into_iter().enumerate() {
@@ -517,7 +528,11 @@ impl BytecodeAnalyzer {
             let op = op.map_err(|e| DeepWasmError::WasmParse(e.to_string()))?;
             instruction_count += 1;
 
-            let op_name = format!("{:?}", op).split('(').next().unwrap_or("Unknown").to_string();
+            let op_name = format!("{:?}", op)
+                .split('(')
+                .next()
+                .unwrap_or("Unknown")
+                .to_string();
             *instruction_types.entry(op_name.clone()).or_insert(0) += 1;
 
             // Categorize instruction
@@ -557,7 +572,9 @@ impl BytecodeAnalyzer {
                         description: "Unreachable instruction (trap)".to_string(),
                         offset,
                         suspicious: true,
-                        suspicion_reason: Some("Unreachable code may indicate dead code or error paths".to_string()),
+                        suspicion_reason: Some(
+                            "Unreachable code may indicate dead code or error paths".to_string(),
+                        ),
                     });
                 }
                 _ => {}
@@ -610,13 +627,19 @@ impl BytecodeAnalyzer {
     fn analyze_function_body_shallow(
         &self,
         body: &FunctionBody,
-    ) -> DeepWasmResult<(ComplexityMetrics, InstructionStats, StackDepthAnalysis, Vec<ControlFlowPattern>)> {
+    ) -> DeepWasmResult<(
+        ComplexityMetrics,
+        InstructionStats,
+        StackDepthAnalysis,
+        Vec<ControlFlowPattern>,
+    )> {
         let mut instruction_count = 0;
         let mut branch_count = 0;
         let mut loop_count = 0;
         let mut call_count = 0;
 
-        let reader = body.get_operators_reader()
+        let reader = body
+            .get_operators_reader()
             .map_err(|e| DeepWasmError::WasmParse(e.to_string()))?;
 
         for op in reader {
@@ -693,30 +716,51 @@ fn valtype_to_string(ty: &ValType) -> String {
 fn categorize_instruction(op: &Operator, breakdown: &mut InstructionCategoryBreakdown) {
     match op {
         // Control flow
-        Operator::Unreachable | Operator::Nop | Operator::Block { .. } | Operator::Loop { .. }
-        | Operator::If { .. } | Operator::Else | Operator::End | Operator::Br { .. }
-        | Operator::BrIf { .. } | Operator::BrTable { .. } | Operator::Return
-        | Operator::Call { .. } | Operator::CallIndirect { .. } => {
+        Operator::Unreachable
+        | Operator::Nop
+        | Operator::Block { .. }
+        | Operator::Loop { .. }
+        | Operator::If { .. }
+        | Operator::Else
+        | Operator::End
+        | Operator::Br { .. }
+        | Operator::BrIf { .. }
+        | Operator::BrTable { .. }
+        | Operator::Return
+        | Operator::Call { .. }
+        | Operator::CallIndirect { .. } => {
             breakdown.control_flow += 1;
         }
 
         // Memory operations
-        Operator::I32Load { .. } | Operator::I64Load { .. } | Operator::F32Load { .. }
-        | Operator::F64Load { .. } | Operator::I32Store { .. } | Operator::I64Store { .. }
-        | Operator::F32Store { .. } | Operator::F64Store { .. } | Operator::MemorySize { .. }
+        Operator::I32Load { .. }
+        | Operator::I64Load { .. }
+        | Operator::F32Load { .. }
+        | Operator::F64Load { .. }
+        | Operator::I32Store { .. }
+        | Operator::I64Store { .. }
+        | Operator::F32Store { .. }
+        | Operator::F64Store { .. }
+        | Operator::MemorySize { .. }
         | Operator::MemoryGrow { .. } => {
             breakdown.memory_ops += 1;
         }
 
         // Variable operations
-        Operator::LocalGet { .. } | Operator::LocalSet { .. } | Operator::LocalTee { .. }
-        | Operator::GlobalGet { .. } | Operator::GlobalSet { .. } => {
+        Operator::LocalGet { .. }
+        | Operator::LocalSet { .. }
+        | Operator::LocalTee { .. }
+        | Operator::GlobalGet { .. }
+        | Operator::GlobalSet { .. } => {
             breakdown.variable_ops += 1;
         }
 
         // Table operations
-        Operator::TableGet { .. } | Operator::TableSet { .. } | Operator::TableGrow { .. }
-        | Operator::TableSize { .. } | Operator::TableFill { .. } => {
+        Operator::TableGet { .. }
+        | Operator::TableSet { .. }
+        | Operator::TableGrow { .. }
+        | Operator::TableSize { .. }
+        | Operator::TableFill { .. } => {
             breakdown.table_ops += 1;
         }
 
@@ -741,9 +785,12 @@ fn categorize_instruction(op: &Operator, breakdown: &mut InstructionCategoryBrea
 fn update_stack_depth(op: &Operator, depth: &mut u32) {
     match op {
         // Instructions that push values
-        Operator::I32Const { .. } | Operator::I64Const { .. }
-        | Operator::F32Const { .. } | Operator::F64Const { .. }
-        | Operator::LocalGet { .. } | Operator::GlobalGet { .. } => {
+        Operator::I32Const { .. }
+        | Operator::I64Const { .. }
+        | Operator::F32Const { .. }
+        | Operator::F64Const { .. }
+        | Operator::LocalGet { .. }
+        | Operator::GlobalGet { .. } => {
             *depth = depth.saturating_add(1);
         }
 
@@ -756,18 +803,38 @@ fn update_stack_depth(op: &Operator, depth: &mut u32) {
         Operator::Drop => {
             *depth = depth.saturating_sub(1);
         }
-        Operator::I32Store { .. } | Operator::I64Store { .. }
-        | Operator::F32Store { .. } | Operator::F64Store { .. } => {
+        Operator::I32Store { .. }
+        | Operator::I64Store { .. }
+        | Operator::F32Store { .. }
+        | Operator::F64Store { .. } => {
             *depth = depth.saturating_sub(2);
         }
 
         // Binary operations (pop 2, push 1)
-        Operator::I32Add | Operator::I32Sub | Operator::I32Mul | Operator::I32DivS
-        | Operator::I32DivU | Operator::I32RemS | Operator::I32RemU | Operator::I32And
-        | Operator::I32Or | Operator::I32Xor | Operator::I32Shl | Operator::I32ShrS
-        | Operator::I32ShrU | Operator::I32Rotl | Operator::I32Rotr | Operator::I32Eq
-        | Operator::I32Ne | Operator::I32LtS | Operator::I32LtU | Operator::I32GtS
-        | Operator::I32GtU | Operator::I32LeS | Operator::I32LeU | Operator::I32GeS
+        Operator::I32Add
+        | Operator::I32Sub
+        | Operator::I32Mul
+        | Operator::I32DivS
+        | Operator::I32DivU
+        | Operator::I32RemS
+        | Operator::I32RemU
+        | Operator::I32And
+        | Operator::I32Or
+        | Operator::I32Xor
+        | Operator::I32Shl
+        | Operator::I32ShrS
+        | Operator::I32ShrU
+        | Operator::I32Rotl
+        | Operator::I32Rotr
+        | Operator::I32Eq
+        | Operator::I32Ne
+        | Operator::I32LtS
+        | Operator::I32LtU
+        | Operator::I32GtS
+        | Operator::I32GtU
+        | Operator::I32LeS
+        | Operator::I32LeU
+        | Operator::I32GeS
         | Operator::I32GeU => {
             *depth = depth.saturating_sub(1);
         }
@@ -813,10 +880,8 @@ mod tests {
             0x00, 0x61, 0x73, 0x6D, // Magic number
             0x01, 0x00, 0x00, 0x00, // Version
             // Type section: one function type () -> ()
-            0x01, 0x05, 0x01, 0x60, 0x00, 0x00,
-            // Function section: one function
-            0x03, 0x02, 0x01, 0x00,
-            // Code section: one function with just 'end'
+            0x01, 0x05, 0x01, 0x60, 0x00, 0x00, // Function section: one function
+            0x03, 0x02, 0x01, 0x00, // Code section: one function with just 'end'
             0x0a, 0x04, 0x01, 0x02, 0x00, 0x0b,
         ];
 

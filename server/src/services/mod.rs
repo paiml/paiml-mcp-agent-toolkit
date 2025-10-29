@@ -124,9 +124,8 @@ pub mod defect_analyzers;
 pub mod defect_report_service;
 // pub mod deep_context_orchestrator; // TRACKED: Fix AST node compatibility
 pub mod defect_probability;
-pub mod doc_validator;
-pub mod hallucination_detector; // Sprint 37: Semantic entropy-based hallucination detection
 pub mod deterministic_mermaid_engine;
+pub mod doc_validator;
 pub mod dogfooding_engine;
 pub mod duplicate_detector;
 #[cfg(test)]
@@ -146,6 +145,7 @@ pub mod fixed_graph_builder;
 pub mod git_analysis;
 pub mod git_clone;
 pub mod github_integration;
+pub mod hallucination_detector; // Sprint 37: Semantic entropy-based hallucination detection
 pub mod incremental_churn;
 pub mod incremental_coverage_analyzer;
 pub mod lightweight_provability_analyzer;
@@ -167,6 +167,8 @@ pub mod similarity; // Advanced similarity and entropy detection
 pub use quality_gates as quality_gate;
 #[cfg(test)]
 mod deep_context_property_tests;
+#[cfg(feature = "deep-wasm")]
+pub mod deep_wasm;
 pub mod polyglot_analyzer;
 pub mod quality_proxy;
 pub mod ranking;
@@ -176,6 +178,8 @@ pub mod recommendation_engine;
 pub mod refactor_engine;
 pub mod renderer;
 pub mod rust_borrow_checker;
+#[cfg(feature = "deep-wasm")]
+pub mod rust_wasm_analyzer;
 pub mod satd_detector;
 pub mod semantic; // PMAT-SEARCH-001: Semantic code search services
 pub mod semantic_naming;
@@ -193,10 +197,6 @@ pub mod unified_typescript_analyzer; // TICKET-3002: Single-pass TypeScript/Java
 pub mod unified_wasm_analyzer; // TICKET-3005: Single-pass WebAssembly analyzer
 pub mod verified_complexity;
 pub mod wasm;
-#[cfg(feature = "deep-wasm")]
-pub mod deep_wasm;
-#[cfg(feature = "deep-wasm")]
-pub mod rust_wasm_analyzer;
 
 // Mutation testing engine (Phase 1 foundation)
 pub mod mutation;

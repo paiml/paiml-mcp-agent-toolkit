@@ -62,30 +62,42 @@ impl PmatSubAgent {
     /// Get a brief description of the sub-agent.
     pub fn description(&self) -> &'static str {
         match self {
-            Self::ComplexityAnalyst =>
-                "Expert in cyclomatic and cognitive complexity analysis, suggests refactorings",
-            Self::MutationTester =>
-                "Mutation testing specialist with ML prediction and test improvement suggestions",
-            Self::SATDDetector =>
-                "Technical debt identifier tracking TODO, FIXME, and HACK comments",
-            Self::DeadCodeEliminator =>
-                "Unused code removal specialist identifying safe-to-delete code",
-            Self::DocumentationEnforcer =>
-                "Generic description detector enforcing documentation quality standards",
-            Self::RustQualityExpert =>
-                "Rust-specific quality expert covering ownership, lifetimes, and idiomatic patterns",
-            Self::PythonQualityExpert =>
-                "Python quality expert for type hints, PEP compliance, and best practices",
-            Self::TypeScriptQualityExpert =>
-                "TypeScript/JavaScript quality expert for type safety and modern patterns",
-            Self::WasmDeepInspector =>
-                "WebAssembly bytecode analyst for compiler debugging and optimization",
-            Self::RefactoringAdvisor =>
-                "AI-powered refactoring advisor using historical pattern learning",
-            Self::TestCoverageAnalyst =>
-                "Test coverage gap identifier suggesting missing test cases",
-            Self::QualityGateOrchestrator =>
-                "Coordinates multiple quality checks and synthesizes results",
+            Self::ComplexityAnalyst => {
+                "Expert in cyclomatic and cognitive complexity analysis, suggests refactorings"
+            }
+            Self::MutationTester => {
+                "Mutation testing specialist with ML prediction and test improvement suggestions"
+            }
+            Self::SATDDetector => {
+                "Technical debt identifier tracking TODO, FIXME, and HACK comments"
+            }
+            Self::DeadCodeEliminator => {
+                "Unused code removal specialist identifying safe-to-delete code"
+            }
+            Self::DocumentationEnforcer => {
+                "Generic description detector enforcing documentation quality standards"
+            }
+            Self::RustQualityExpert => {
+                "Rust-specific quality expert covering ownership, lifetimes, and idiomatic patterns"
+            }
+            Self::PythonQualityExpert => {
+                "Python quality expert for type hints, PEP compliance, and best practices"
+            }
+            Self::TypeScriptQualityExpert => {
+                "TypeScript/JavaScript quality expert for type safety and modern patterns"
+            }
+            Self::WasmDeepInspector => {
+                "WebAssembly bytecode analyst for compiler debugging and optimization"
+            }
+            Self::RefactoringAdvisor => {
+                "AI-powered refactoring advisor using historical pattern learning"
+            }
+            Self::TestCoverageAnalyst => {
+                "Test coverage gap identifier suggesting missing test cases"
+            }
+            Self::QualityGateOrchestrator => {
+                "Coordinates multiple quality checks and synthesizes results"
+            }
         }
     }
 
@@ -105,7 +117,9 @@ impl PmatSubAgent {
     pub fn primary_tools(&self) -> Vec<&'static str> {
         match self {
             Self::ComplexityAnalyst => vec!["analyze_complexity", "analyze_cognitive_complexity"],
-            Self::MutationTester => vec!["mutation_test", "mutation_predict", "equivalent_detector"],
+            Self::MutationTester => {
+                vec!["mutation_test", "mutation_predict", "equivalent_detector"]
+            }
             Self::SATDDetector => vec!["analyze_satd", "analyze_context"],
             Self::DeadCodeEliminator => vec!["analyze_dead_code", "analyze_imports"],
             Self::DocumentationEnforcer => vec!["check_generic_docs", "analyze_context"],
@@ -192,7 +206,9 @@ impl SubAgentGenerator {
 
     /// Create a generator with custom template directory.
     pub fn with_template_dir(template_dir: PathBuf) -> Self {
-        Self { _template_dir: template_dir }
+        Self {
+            _template_dir: template_dir,
+        }
     }
 
     /// Generate a sub-agent definition in markdown format.
@@ -334,7 +350,10 @@ mod tests {
     #[test]
     fn test_generator_creation() {
         let gen = SubAgentGenerator::new();
-        assert!(gen._template_dir.to_string_lossy().contains("subagent_templates"));
+        assert!(gen
+            ._template_dir
+            .to_string_lossy()
+            .contains("subagent_templates"));
     }
 
     #[test]
@@ -342,6 +361,9 @@ mod tests {
         let gen = SubAgentGenerator::new();
         let result = gen.generate_subagent(PmatSubAgent::RustQualityExpert);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("not yet implemented"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("not yet implemented"));
     }
 }

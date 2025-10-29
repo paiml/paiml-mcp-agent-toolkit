@@ -109,13 +109,11 @@ pub fn validate_mcp_documentation(tool: &McpToolDefinition) -> Result<McpDocumen
     // Extract parameters from schema
     if let Some(properties) = tool.input_schema.get("properties") {
         if let Some(props_obj) = properties.as_object() {
-            let required_params = tool.input_schema.get("required")
+            let required_params = tool
+                .input_schema
+                .get("required")
                 .and_then(|r| r.as_array())
-                .map(|arr| {
-                    arr.iter()
-                        .filter_map(|v| v.as_str())
-                        .collect::<Vec<_>>()
-                })
+                .map(|arr| arr.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>())
                 .unwrap_or_default();
 
             for (param_name, param_schema) in props_obj {
@@ -128,23 +126,23 @@ pub fn validate_mcp_documentation(tool: &McpToolDefinition) -> Result<McpDocumen
             }
         }
     } else {
-        report.issues.push("Input schema has no 'properties' field".to_string());
+        report
+            .issues
+            .push("Input schema has no 'properties' field".to_string());
     }
 
     Ok(report)
 }
 
 /// Validate a single parameter's documentation
-fn validate_parameter(
-    name: &str,
-    schema: &Value,
-    is_required: bool,
-) -> ParameterReport {
-    let description = schema.get("description")
+fn validate_parameter(name: &str, schema: &Value, is_required: bool) -> ParameterReport {
+    let description = schema
+        .get("description")
         .and_then(|d| d.as_str())
         .unwrap_or("");
 
-    let param_type = schema.get("type")
+    let param_type = schema
+        .get("type")
         .and_then(|t| t.as_str())
         .unwrap_or("unknown");
 
@@ -173,8 +171,7 @@ fn validate_parameter(
     if description_is_generic {
         issues.push(format!(
             "Parameter '{}' has generic description: '{}'",
-            name,
-            description
+            name, description
         ));
     }
 
@@ -359,7 +356,12 @@ pub fn generate_validation_report_json() -> Result<String> {
         if report.is_valid() {
             valid_count += 1;
         }
-        total_issues += report.issues.len() + report.parameters.iter().map(|p| p.issues.len()).sum::<usize>();
+        total_issues += report.issues.len()
+            + report
+                .parameters
+                .iter()
+                .map(|p| p.issues.len())
+                .sum::<usize>();
         reports.push(report);
     }
 

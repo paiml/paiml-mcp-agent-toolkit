@@ -3,7 +3,9 @@
 //! This module implements a dispatch table pattern to reduce cyclomatic complexity
 //! in the CLI module by delegating command execution to specialized handlers.
 
-use super::commands::{EmbedCommands, QddCommands, RoadmapCommands, ScaffoldCommands, SemanticCommands, SearchMode};
+use super::commands::{
+    EmbedCommands, QddCommands, RoadmapCommands, ScaffoldCommands, SearchMode, SemanticCommands,
+};
 use super::{AnalyzeCommands, Commands, DemoProtocol, OutputFormat, RefactorCommands};
 use crate::cli::handlers;
 use crate::cli::handlers::cache::CacheCommand;
@@ -320,7 +322,10 @@ impl CommandDispatcher {
                 report,
                 json,
                 project_dir,
-            } => handlers::handle_quality_gates_command(command, config, report, json, project_dir).await,
+            } => {
+                handlers::handle_quality_gates_command(command, config, report, json, project_dir)
+                    .await
+            }
 
             Commands::Maintain { command } => {
                 use super::commands::MaintainCommands;
@@ -342,7 +347,8 @@ impl CommandDispatcher {
                             generate_tickets,
                             dry_run,
                         );
-                        handlers::handle_maintain_roadmap(roadmap, tickets_dir, config, format).await
+                        handlers::handle_maintain_roadmap(roadmap, tickets_dir, config, format)
+                            .await
                     }
                     MaintainCommands::Health {
                         project_dir,
@@ -369,9 +375,7 @@ impl CommandDispatcher {
                 }
             }
 
-            Commands::Hooks(hooks_cmd) => {
-                handlers::handle_hooks_command(&hooks_cmd).await
-            }
+            Commands::Hooks(hooks_cmd) => handlers::handle_hooks_command(&hooks_cmd).await,
 
             Commands::Mutate(args) => handlers::mutate::handle(args, server).await,
         }
@@ -546,10 +550,9 @@ impl CommandDispatcher {
             ScaffoldCommands::ListSubagents { all } => {
                 handlers::subagent_handlers::list_subagents(all)
             }
-            ScaffoldCommands::CreateSubagent {
-                agent_name,
-                output,
-            } => handlers::subagent_handlers::create_subagent(&agent_name, output),
+            ScaffoldCommands::CreateSubagent { agent_name, output } => {
+                handlers::subagent_handlers::create_subagent(&agent_name, output)
+            }
             ScaffoldCommands::CreateAllSubagents { output } => {
                 handlers::subagent_handlers::create_all_mvp_subagents(output)
             }
@@ -640,13 +643,16 @@ impl CommandDispatcher {
         })?;
 
         // Get database path
-        let db_path = semantic_config
-            .vector_db_path
-            .unwrap_or_else(|| {
-                dirs::home_dir()
-                    .map(|h| h.join(".pmat").join("embeddings.db").to_string_lossy().to_string())
-                    .unwrap_or_else(|| "embeddings.db".to_string())
-            });
+        let db_path = semantic_config.vector_db_path.unwrap_or_else(|| {
+            dirs::home_dir()
+                .map(|h| {
+                    h.join(".pmat")
+                        .join("embeddings.db")
+                        .to_string_lossy()
+                        .to_string()
+                })
+                .unwrap_or_else(|| "embeddings.db".to_string())
+        });
 
         // Get workspace path
         let workspace = semantic_config
@@ -659,14 +665,21 @@ impl CommandDispatcher {
             .map_err(|e| anyhow::anyhow!(e))?;
 
         match embed_cmd {
-            EmbedCommands::Sync { path, language, format } => {
+            EmbedCommands::Sync {
+                path,
+                language,
+                format,
+            } => {
                 let result = semantic_cli
                     .embed_sync(&path, language)
                     .await
                     .map_err(|e| anyhow::anyhow!(e))?;
                 match format {
                     OutputFormat::Json => {
-                        println!("{}", serde_json::json!({"status": "success", "message": result}));
+                        println!(
+                            "{}",
+                            serde_json::json!({"status": "success", "message": result})
+                        );
                     }
                     _ => println!("{}", result),
                 }
@@ -679,7 +692,10 @@ impl CommandDispatcher {
                     .map_err(|e| anyhow::anyhow!(e))?;
                 match format {
                     OutputFormat::Json => {
-                        println!("{}", serde_json::json!({"status": "success", "message": result}));
+                        println!(
+                            "{}",
+                            serde_json::json!({"status": "success", "message": result})
+                        );
                     }
                     _ => println!("{}", result),
                 }
@@ -722,13 +738,16 @@ impl CommandDispatcher {
         })?;
 
         // Get database path
-        let db_path = semantic_config
-            .vector_db_path
-            .unwrap_or_else(|| {
-                dirs::home_dir()
-                    .map(|h| h.join(".pmat").join("embeddings.db").to_string_lossy().to_string())
-                    .unwrap_or_else(|| "embeddings.db".to_string())
-            });
+        let db_path = semantic_config.vector_db_path.unwrap_or_else(|| {
+            dirs::home_dir()
+                .map(|h| {
+                    h.join(".pmat")
+                        .join("embeddings.db")
+                        .to_string_lossy()
+                        .to_string()
+                })
+                .unwrap_or_else(|| "embeddings.db".to_string())
+        });
 
         // Get workspace path
         let workspace = semantic_config

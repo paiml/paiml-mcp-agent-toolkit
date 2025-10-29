@@ -7,7 +7,9 @@
 //!
 //! FIX: NEVER modify original file - use temp files ONLY (Toyota Way: proper design)
 
-use pmat::services::mutation::{Mutant, MutantExecutor, MutantStatus, MutationOperatorType, SourceLocation};
+use pmat::services::mutation::{
+    Mutant, MutantExecutor, MutantStatus, MutationOperatorType, SourceLocation,
+};
 use std::path::PathBuf;
 use std::time::Duration;
 use tokio::time::timeout;
@@ -23,22 +25,28 @@ async fn red_must_restore_file_on_timeout() {
         id: "TEST_TIMEOUT".to_string(),
         original_file: test_file.clone(),
         mutated_source: "fn mutated() { 999 }".to_string(),
-        location: SourceLocation { line: 1, column: 1, end_line: 1, end_column: 10 },
+        location: SourceLocation {
+            line: 1,
+            column: 1,
+            end_line: 1,
+            end_column: 10,
+        },
         operator: MutationOperatorType::ArithmeticReplacement,
         hash: "test".to_string(),
         status: MutantStatus::Pending,
     };
 
-    let executor = MutantExecutor::new(std::env::temp_dir())
-        .with_timeout(1); // 1 second timeout
+    let executor = MutantExecutor::new(std::env::temp_dir()).with_timeout(1); // 1 second timeout
 
     // Execute mutant (will timeout)
     let _ = timeout(Duration::from_millis(500), executor.execute_mutant(&mutant)).await;
 
     // RED: File MUST be restored to original, even after timeout!
     let final_content = std::fs::read_to_string(&test_file).unwrap();
-    assert_eq!(final_content, original_content,
-        "File was NOT restored after timeout! This is the bug we found.");
+    assert_eq!(
+        final_content, original_content,
+        "File was NOT restored after timeout! This is the bug we found."
+    );
 
     // Cleanup
     let _ = std::fs::remove_file(&test_file);
@@ -55,7 +63,12 @@ async fn red_must_restore_file_on_panic() {
         id: "TEST_PANIC".to_string(),
         original_file: test_file.clone(),
         mutated_source: "fn mutated() { panic!() }".to_string(),
-        location: SourceLocation { line: 1, column: 1, end_line: 1, end_column: 10 },
+        location: SourceLocation {
+            line: 1,
+            column: 1,
+            end_line: 1,
+            end_column: 10,
+        },
         operator: MutationOperatorType::ArithmeticReplacement,
         hash: "test".to_string(),
         status: MutantStatus::Pending,
@@ -68,8 +81,10 @@ async fn red_must_restore_file_on_panic() {
 
     // RED: File MUST be restored even if panic occurs!
     let final_content = std::fs::read_to_string(&test_file).unwrap();
-    assert_eq!(final_content, original_content,
-        "File was NOT restored after panic!");
+    assert_eq!(
+        final_content, original_content,
+        "File was NOT restored after panic!"
+    );
 
     // Cleanup
     let _ = std::fs::remove_file(&test_file);
@@ -86,22 +101,29 @@ async fn red_must_clean_up_backup_files() {
         id: "TEST_BACKUP".to_string(),
         original_file: test_file.clone(),
         mutated_source: "fn mutated() { 0 }".to_string(),
-        location: SourceLocation { line: 1, column: 1, end_line: 1, end_column: 10 },
+        location: SourceLocation {
+            line: 1,
+            column: 1,
+            end_line: 1,
+            end_column: 10,
+        },
         operator: MutationOperatorType::ArithmeticReplacement,
         hash: "test".to_string(),
         status: MutantStatus::Pending,
     };
 
-    let executor = MutantExecutor::new(std::env::temp_dir())
-        .with_timeout(1);
+    let executor = MutantExecutor::new(std::env::temp_dir()).with_timeout(1);
 
     // Execute mutant
     let _ = executor.execute_mutant(&mutant).await;
 
     // RED: Backup file MUST be cleaned up!
     let backup_file = test_file.with_extension("pmat_backup");
-    assert!(!backup_file.exists(),
-        "Backup file was not cleaned up! Found: {}", backup_file.display());
+    assert!(
+        !backup_file.exists(),
+        "Backup file was not cleaned up! Found: {}",
+        backup_file.display()
+    );
 
     // Cleanup
     let _ = std::fs::remove_file(&test_file);
@@ -121,7 +143,12 @@ async fn red_original_file_must_never_be_modified() {
         id: "TEST_NEVER_MODIFY".to_string(),
         original_file: test_file.clone(),
         mutated_source: "fn mutated() { 999 }".to_string(),
-        location: SourceLocation { line: 1, column: 1, end_line: 1, end_column: 10 },
+        location: SourceLocation {
+            line: 1,
+            column: 1,
+            end_line: 1,
+            end_column: 10,
+        },
         operator: MutationOperatorType::ArithmeticReplacement,
         hash: "test".to_string(),
         status: MutantStatus::Pending,
@@ -135,8 +162,10 @@ async fn red_original_file_must_never_be_modified() {
     // RED: Original file MUST be completely unchanged!
     // We should NEVER write to the original file, only to temp files
     let final_content = std::fs::read_to_string(&test_file).unwrap();
-    assert_eq!(final_content, original_content,
-        "CRITICAL: Original file was modified! Should use temp files only.");
+    assert_eq!(
+        final_content, original_content,
+        "CRITICAL: Original file was modified! Should use temp files only."
+    );
 
     // Cleanup
     let _ = std::fs::remove_file(&test_file);

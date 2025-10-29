@@ -460,32 +460,32 @@ impl Display for UnifiedContextBuilder {
 // Helper functions to run individual analyses
 async fn run_big_o_analysis(path: &Path) -> Result<BigOAnalysis, Error> {
     use crate::services::big_o_analyzer::{BigOAnalysisConfig, BigOAnalyzer};
-    
+
     let analyzer = BigOAnalyzer::new();
     let config = BigOAnalysisConfig {
         project_path: path.to_path_buf(),
         include_patterns: vec![],
         exclude_patterns: vec![],
-        confidence_threshold: 70, // Default confidence threshold
+        confidence_threshold: 70,        // Default confidence threshold
         analyze_space_complexity: false, // Skip space complexity for now
     };
-    
-    let report = analyzer.analyze(config).await
+
+    let report = analyzer
+        .analyze(config)
+        .await
         .map_err(|e| Error::AnalysisFailed(e.to_string()))?;
-    
+
     // Convert report data to our simplified structure
     let mut complexities = HashMap::new();
-    
+
     // Add high complexity functions to our map
     for func in &report.high_complexity_functions {
         let path = func.file_path.display().to_string();
         let value = format!("Complexity: {}", func.function_name);
         complexities.insert(path, value);
     }
-    
-    Ok(BigOAnalysis {
-        complexities
-    })
+
+    Ok(BigOAnalysis { complexities })
 }
 
 async fn run_entropy_analysis(_path: &Path) -> Result<EntropyAnalysis, Error> {
@@ -493,28 +493,32 @@ async fn run_entropy_analysis(_path: &Path) -> Result<EntropyAnalysis, Error> {
     // This feature is not critical for this release but we'll need to update it later
     /*
     use crate::entropy::{EntropyCalculator, EntropyMetrics};
-    
+
     let calculator = EntropyCalculator::new();
     // Implement proper entropy analysis with the new API
     */
-    
+
     // Return empty analysis for now
     Ok(EntropyAnalysis {
         pattern_entropy: 0.0,
         duplication_percentage: 0.0,
         structural_entropy: 0.0,
-        actionable_improvements: vec!["Entropy analysis temporarily disabled during refactoring".to_string()],
+        actionable_improvements: vec![
+            "Entropy analysis temporarily disabled during refactoring".to_string()
+        ],
     })
 }
 
 async fn run_provability_analysis(_path: &Path) -> Result<ProvabilityAnalysis, Error> {
     // Provability analysis will be updated in a future release
-    
+
     // Return empty analysis for now
     Ok(ProvabilityAnalysis {
         invariants: vec![],
         preconditions: vec![],
-        postconditions: vec!["Provability analysis temporarily disabled during refactoring".to_string()],
+        postconditions: vec![
+            "Provability analysis temporarily disabled during refactoring".to_string(),
+        ],
         is_sound: false,
         is_complete: false,
     })
@@ -522,7 +526,7 @@ async fn run_provability_analysis(_path: &Path) -> Result<ProvabilityAnalysis, E
 
 async fn run_graph_metrics_analysis(_path: &Path) -> Result<GraphMetricsAnalysis, Error> {
     // Graph metrics analysis will be updated in a future release
-    
+
     // Return empty analysis for now
     Ok(GraphMetricsAnalysis {
         betweenness: 0.0,
@@ -531,13 +535,15 @@ async fn run_graph_metrics_analysis(_path: &Path) -> Result<GraphMetricsAnalysis
         node_count: 0,
         edge_count: 0,
         cyclomatic: 0,
-        critical_paths: vec!["Graph metrics analysis temporarily disabled during refactoring".to_string()],
+        critical_paths: vec![
+            "Graph metrics analysis temporarily disabled during refactoring".to_string(),
+        ],
     })
 }
 
 async fn run_tdg_analysis(_path: &Path) -> Result<TdgAnalysis, Error> {
     // TDG analysis will be updated in a future release
-    
+
     // Return empty analysis for now
     Ok(TdgAnalysis {
         overall_score: 0.0,
@@ -549,7 +555,7 @@ async fn run_tdg_analysis(_path: &Path) -> Result<TdgAnalysis, Error> {
 
 async fn run_dead_code_analysis(_path: &Path) -> Result<DeadCodeAnalysis, Error> {
     // Dead code analysis will be updated in a future release
-    
+
     // Return empty analysis for now
     Ok(DeadCodeAnalysis {
         unreachable_functions: Default::default(),

@@ -3,8 +3,8 @@
 //
 // Tests for semantic search tool adapters in MCP integration framework
 
-use pmat::mcp_integration::{McpError, McpTool, ToolMetadata};
 use pmat::mcp_integration::tools::*;
+use pmat::mcp_integration::{McpError, McpTool, ToolMetadata};
 use pmat::services::semantic::HybridSearchEngine;
 use serde_json::json;
 use std::sync::Arc;
@@ -188,7 +188,11 @@ async fn test_find_similar_missing_file_path() {
     assert!(result.is_err());
 
     if let Err(err) = result {
-        assert!(err.message.contains("file") || err.message.contains("required") || err.message.contains("path"));
+        assert!(
+            err.message.contains("file")
+                || err.message.contains("required")
+                || err.message.contains("path")
+        );
     }
 }
 
@@ -256,7 +260,11 @@ async fn test_analyze_topics_missing_num_topics() {
     assert!(result.is_err());
 
     if let Err(err) = result {
-        assert!(err.message.contains("topics") || err.message.contains("required") || err.message.contains("num"));
+        assert!(
+            err.message.contains("topics")
+                || err.message.contains("required")
+                || err.message.contains("num")
+        );
     }
 }
 

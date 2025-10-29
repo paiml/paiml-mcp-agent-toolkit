@@ -32,9 +32,9 @@ impl StrategySelector {
             "c" | "h" => Some(Arc::new(super::languages::c_cpp_strategy::CStrategy::new())),
 
             #[cfg(feature = "cpp-ast")]
-            "cpp" | "cxx" | "cc" | "hpp" | "hxx" | "hh" => {
-                Some(Arc::new(super::languages::c_cpp_strategy::CppStrategy::new()))
-            }
+            "cpp" | "cxx" | "cc" | "hpp" | "hxx" | "hh" => Some(Arc::new(
+                super::languages::c_cpp_strategy::CppStrategy::new(),
+            )),
 
             _ => None,
         }

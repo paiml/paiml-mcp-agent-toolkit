@@ -111,7 +111,10 @@ fn test_template_handler_rs() {
     let template = Template::handler_rs();
     let mut vars = HashMap::new();
     vars.insert("handler_name".to_string(), "Example".to_string());
-    vars.insert("handler_description".to_string(), "Example handler".to_string());
+    vars.insert(
+        "handler_description".to_string(),
+        "Example handler".to_string(),
+    );
 
     let result = template.render(&vars).unwrap();
 
@@ -170,7 +173,7 @@ fn test_wasm_cargo_toml() {
     assert!(result.contains("name = \"my-wasm\""));
     assert!(result.contains("crate-type = [\"cdylib\", \"rlib\"]"));
     assert!(result.contains("wasm-bindgen"));
-    assert!(result.contains("im = "));  // Persistent data structures
+    assert!(result.contains("im = ")); // Persistent data structures
 }
 
 #[test]

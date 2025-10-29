@@ -40,7 +40,7 @@ mod integration_tests {
             exported_functions: 2,
             max_complexity: 10,
             has_dwarf: false,
-            has_source_map: true,  // Updated to pass quality gate
+            has_source_map: true, // Updated to pass quality gate
         };
 
         let result = gates.evaluate(&analysis);

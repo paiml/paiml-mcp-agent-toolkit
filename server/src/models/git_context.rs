@@ -97,9 +97,8 @@ impl GitContext {
         use git2::Repository;
 
         // Open repository
-        let repo = Repository::open(repo_path).map_err(|e| {
-            GitContextError::NotGitRepo(format!("{}: {}", repo_path.display(), e))
-        })?;
+        let repo = Repository::open(repo_path)
+            .map_err(|e| GitContextError::NotGitRepo(format!("{}: {}", repo_path.display(), e)))?;
 
         // Get HEAD commit
         let head = repo.head()?;
@@ -130,9 +129,8 @@ impl GitContext {
         use git2::{Oid, Repository};
 
         // Open repository
-        let repo = Repository::open(repo_path).map_err(|e| {
-            GitContextError::NotGitRepo(format!("{}: {}", repo_path.display(), e))
-        })?;
+        let repo = Repository::open(repo_path)
+            .map_err(|e| GitContextError::NotGitRepo(format!("{}: {}", repo_path.display(), e)))?;
 
         // Parse commit SHA
         let oid = Oid::from_str(sha).map_err(|e| {
@@ -197,23 +195,17 @@ impl GitContext {
 
         // Extract author info
         let author = commit.author();
-        let author_name = author
-            .name()
-            .unwrap_or("Unknown")
-            .to_string();
-        let author_email = author
-            .email()
-            .unwrap_or("unknown@example.com")
-            .to_string();
+        let author_name = author.name().unwrap_or("Unknown").to_string();
+        let author_email = author.email().unwrap_or("unknown@example.com").to_string();
 
         // Extract commit timestamp
         let timestamp_secs = commit.time().seconds();
-        let commit_timestamp = Utc.timestamp_opt(timestamp_secs, 0).single().ok_or_else(|| {
-            GitContextError::GitCommandFailed(format!(
-                "Invalid timestamp: {}",
-                timestamp_secs
-            ))
-        })?;
+        let commit_timestamp = Utc
+            .timestamp_opt(timestamp_secs, 0)
+            .single()
+            .ok_or_else(|| {
+                GitContextError::GitCommandFailed(format!("Invalid timestamp: {}", timestamp_secs))
+            })?;
 
         // Extract commit message (first line only)
         let commit_message = commit
@@ -231,10 +223,7 @@ impl GitContext {
         let tags = Self::get_tags_at_commit(repo, commit)?;
 
         // Extract parent commits
-        let parent_commits = commit
-            .parent_ids()
-            .map(|oid| oid.to_string())
-            .collect();
+        let parent_commits = commit.parent_ids().map(|oid| oid.to_string()).collect();
 
         // Extract remote URL (optional)
         let remote_url = Self::get_remote_url(repo).ok();
@@ -306,16 +295,12 @@ impl GitContext {
         let remote = repo.find_remote("origin")?;
         remote
             .url()
-            .ok_or_else(|| {
-                GitContextError::GitCommandFailed("Remote URL not found".to_string())
-            })
+            .ok_or_else(|| GitContextError::GitCommandFailed("Remote URL not found".to_string()))
             .map(String::from)
     }
 
     /// Check working directory status
-    fn check_working_dir_status(
-        repo: &git2::Repository,
-    ) -> Result<(bool, usize), GitContextError> {
+    fn check_working_dir_status(repo: &git2::Repository) -> Result<(bool, usize), GitContextError> {
         let statuses = repo.statuses(None)?;
         let uncommitted_count = statuses.len();
         let is_clean = uncommitted_count == 0;
@@ -360,13 +345,14 @@ mod tests {
         // Act & Assert
         assert!(
             GitContext::is_git_repo(&repo_path),
-            "Repo at {:?} should be detected as git repo", repo_path
+            "Repo at {:?} should be detected as git repo",
+            repo_path
         );
     }
 
     // RED TEST 2: Test is_git_repo returns false for non-git directory
     #[test]
-    
+
     fn test_is_git_repo_returns_false_for_non_git_dir() {
         // Arrange: Create temp directory without .git
         let temp_dir = TempDir::new().unwrap();
@@ -380,7 +366,7 @@ mod tests {
 
     // RED TEST 3: Test from_current_dir extracts commit SHA
     #[test]
-    
+
     fn test_from_current_dir_extracts_commit_sha() {
         // Arrange
         let repo_path = get_repo_root();
@@ -407,7 +393,7 @@ mod tests {
 
     // RED TEST 4: Test from_current_dir extracts branch name
     #[test]
-    
+
     fn test_from_current_dir_extracts_branch_name() {
         // Arrange
         let repo_path = get_repo_root();
@@ -429,7 +415,7 @@ mod tests {
 
     // RED TEST 5: Test from_current_dir extracts author info
     #[test]
-    
+
     fn test_from_current_dir_extracts_author_info() {
         // Arrange
         let repo_path = get_repo_root();
@@ -454,7 +440,7 @@ mod tests {
 
     // RED TEST 6: Test from_current_dir extracts commit timestamp
     #[test]
-    
+
     fn test_from_current_dir_extracts_commit_timestamp() {
         // Arrange
         let repo_path = get_repo_root();
@@ -480,7 +466,7 @@ mod tests {
 
     // RED TEST 7: Test from_current_dir extracts commit message
     #[test]
-    
+
     fn test_from_current_dir_extracts_commit_message() {
         // Arrange
         let repo_path = get_repo_root();
@@ -502,7 +488,7 @@ mod tests {
 
     // RED TEST 8: Test from_current_dir detects clean working directory
     #[test]
-    
+
     fn test_from_current_dir_detects_clean_working_dir() {
         // Arrange
         let repo_path = get_repo_root();
@@ -528,7 +514,7 @@ mod tests {
 
     // RED TEST 9: Test from_current_dir extracts tags
     #[test]
-    
+
     fn test_from_current_dir_extracts_tags() {
         // Arrange
         let repo_path = get_repo_root();
@@ -540,16 +526,13 @@ mod tests {
         // Tags list may be empty (if HEAD is not tagged)
         // Just verify it's a valid Vec<String>
         for tag in &context.tags {
-            assert!(
-                !tag.is_empty(),
-                "Tag name should not be empty if present"
-            );
+            assert!(!tag.is_empty(), "Tag name should not be empty if present");
         }
     }
 
     // RED TEST 10: Test from_current_dir extracts parent commits
     #[test]
-    
+
     fn test_from_current_dir_extracts_parent_commits() {
         // Arrange
         let repo_path = get_repo_root();
@@ -564,17 +547,13 @@ mod tests {
             "Most commits have 0-2 parents"
         );
         for parent in &context.parent_commits {
-            assert_eq!(
-                parent.len(),
-                40,
-                "Parent commit SHA should be 40 hex chars"
-            );
+            assert_eq!(parent.len(), 40, "Parent commit SHA should be 40 hex chars");
         }
     }
 
     // RED TEST 11: Test from_current_dir fails for non-git directory
     #[test]
-    
+
     fn test_from_current_dir_fails_for_non_git_dir() {
         // Arrange
         let temp_dir = TempDir::new().unwrap();
@@ -583,10 +562,7 @@ mod tests {
         let result = GitContext::from_current_dir(temp_dir.path());
 
         // Assert
-        assert!(
-            result.is_err(),
-            "Should return error for non-git directory"
-        );
+        assert!(result.is_err(), "Should return error for non-git directory");
         match result.unwrap_err() {
             GitContextError::NotGitRepo(_) => {
                 // Expected error type
@@ -597,7 +573,7 @@ mod tests {
 
     // RED TEST 12: Test try_from_current_dir returns None for non-git directory
     #[test]
-    
+
     fn test_try_from_current_dir_returns_none_for_non_git_dir() {
         // Arrange
         let temp_dir = TempDir::new().unwrap();
@@ -611,7 +587,7 @@ mod tests {
 
     // RED TEST 13: Test try_from_current_dir returns Some for git directory
     #[test]
-    
+
     fn test_try_from_current_dir_returns_some_for_git_dir() {
         // Arrange
         let repo_path = get_repo_root();
@@ -625,7 +601,7 @@ mod tests {
 
     // RED TEST 14: Test from_commit_sha extracts specific commit
     #[test]
-    
+
     fn test_from_commit_sha_extracts_specific_commit() {
         // Arrange: Use a known commit from git history
         let repo_path = get_repo_root();
@@ -653,7 +629,7 @@ mod tests {
 
     // RED TEST 15: Test from_commit_sha fails for invalid SHA
     #[test]
-    
+
     fn test_from_commit_sha_fails_for_invalid_sha() {
         // Arrange
         let repo_path = get_repo_root();
@@ -674,7 +650,7 @@ mod tests {
 
     // RED TEST 16: Test GitContext serialization (for storage)
     #[test]
-    
+
     fn test_git_context_serialization() {
         // Arrange
         let repo_path = get_repo_root();
@@ -693,7 +669,7 @@ mod tests {
 
     // RED TEST 17: Test remote URL extraction
     #[test]
-    
+
     fn test_from_current_dir_extracts_remote_url() {
         // Arrange
         let repo_path = get_repo_root();

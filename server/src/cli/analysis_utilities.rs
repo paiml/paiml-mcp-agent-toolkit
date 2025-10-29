@@ -5910,8 +5910,8 @@ pub async fn analyze_project_files(
         ..Default::default()
     };
 
-    let discovery = ProjectFileDiscovery::new(project_path.to_path_buf())
-        .with_config(discovery_config);
+    let discovery =
+        ProjectFileDiscovery::new(project_path.to_path_buf()).with_config(discovery_config);
 
     // Discover all files using the intelligent file discovery service
     let discovered_files = discovery.discover_files()?;

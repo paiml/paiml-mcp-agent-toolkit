@@ -50,7 +50,8 @@ impl TursoVectorDB {
     /// # Returns
     /// Database instance
     pub async fn new_local<P: AsRef<Path>>(path: P) -> Result<Self, String> {
-        let connection = Connection::open(path).map_err(|e| format!("Failed to open database: {e}"))?;
+        let connection =
+            Connection::open(path).map_err(|e| format!("Failed to open database: {e}"))?;
 
         // Create schema
         connection

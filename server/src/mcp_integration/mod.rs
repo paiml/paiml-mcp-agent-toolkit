@@ -1,16 +1,16 @@
 // MCP (Model Context Protocol) integration for agent system
+pub mod ast_item_helpers;
+#[cfg(feature = "deep-wasm")]
+pub mod deep_wasm_tools;
+pub mod hallucination_detection_tools;
+pub mod mutation_tools;
 pub mod prompts;
 pub mod resources;
 pub mod server;
 pub mod service_registry;
-pub mod tools;
-#[cfg(feature = "deep-wasm")]
-pub mod deep_wasm_tools;
-pub mod mutation_tools;
-pub mod hallucination_detection_tools;
 pub mod tdg_tools;
+pub mod tools;
 pub mod transport;
-pub mod ast_item_helpers;
 
 // JVM language support (Sprint 51)
 #[cfg(feature = "java-ast")]
@@ -21,10 +21,10 @@ pub mod scala_tools;
 // Cross-language analysis (Sprint 52)
 pub mod polyglot_tools;
 
-#[cfg(test)]
-mod tools_integration_tests;
 #[cfg(all(test, feature = "java-ast", feature = "scala-ast"))]
 mod jvm_tools_integration_tests;
+#[cfg(test)]
+mod tools_integration_tests;
 
 use async_trait::async_trait;
 use parking_lot::RwLock;

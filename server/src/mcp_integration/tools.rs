@@ -145,7 +145,10 @@ impl TransformTool {
         }
     }
 
-    pub fn new_with_actor(registry: Arc<AgentRegistry>, transformer: Addr<TransformerActor>) -> Self {
+    pub fn new_with_actor(
+        registry: Arc<AgentRegistry>,
+        transformer: Addr<TransformerActor>,
+    ) -> Self {
         Self {
             _registry: registry,
             transformer: Some(transformer),
@@ -429,21 +432,17 @@ pub struct OrchestrateTool {
 
 impl OrchestrateTool {
     pub fn new(registry: Arc<AgentRegistry>) -> Self {
-        let executor = Arc::new(crate::workflow::executor::DefaultWorkflowExecutor::new(registry.clone()));
-        Self {
-            registry,
-            executor,
-        }
+        let executor = Arc::new(crate::workflow::executor::DefaultWorkflowExecutor::new(
+            registry.clone(),
+        ));
+        Self { registry, executor }
     }
 
     pub fn new_with_executor(
         registry: Arc<AgentRegistry>,
         executor: Arc<dyn crate::workflow::WorkflowExecutor>,
     ) -> Self {
-        Self {
-            registry,
-            executor,
-        }
+        Self { registry, executor }
     }
 }
 
@@ -527,13 +526,10 @@ impl McpTool for OrchestrateTool {
             workflow_id: workflow.id,
             execution_id: Uuid::new_v4(),
             variables: Arc::new(RwLock::new(
-                input.as_object()
-                    .map(|obj| {
-                        obj.iter()
-                            .map(|(k, v)| (k.clone(), v.clone()))
-                            .collect()
-                    })
-                    .unwrap_or_default()
+                input
+                    .as_object()
+                    .map(|obj| obj.iter().map(|(k, v)| (k.clone(), v.clone())).collect())
+                    .unwrap_or_default(),
             )),
             step_results: Arc::new(RwLock::new(std::collections::HashMap::new())),
             state: Arc::new(RwLock::new(WorkflowState::Running)),

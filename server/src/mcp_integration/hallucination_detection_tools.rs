@@ -81,9 +81,7 @@ impl McpTool for ValidateDocumentationTool {
                 data: None,
             })?;
 
-        let similarity_threshold = params["similarity_threshold"]
-            .as_f64()
-            .unwrap_or(0.7) as f32;
+        let similarity_threshold = params["similarity_threshold"].as_f64().unwrap_or(0.7) as f32;
 
         let fail_on_error = params["fail_on_error"].as_bool().unwrap_or(false);
 
@@ -249,9 +247,7 @@ impl McpTool for CheckClaimTool {
                 data: None,
             })?;
 
-        let _similarity_threshold = params["similarity_threshold"]
-            .as_f64()
-            .unwrap_or(0.7) as f32;
+        let _similarity_threshold = params["similarity_threshold"].as_f64().unwrap_or(0.7) as f32;
 
         // Read deep context file
         let deep_context = std::fs::read_to_string(deep_context_path).map_err(|e| McpError {
@@ -306,8 +302,8 @@ impl McpTool for CheckClaimTool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::NamedTempFile;
     use std::io::Write;
+    use tempfile::NamedTempFile;
 
     /// RED TEST: Validate documentation tool should have correct metadata
     #[test]
@@ -326,7 +322,10 @@ mod tests {
         assert!(schema["properties"]["documentation_path"].is_object());
         assert!(schema["properties"]["deep_context_path"].is_object());
         assert!(schema["properties"]["similarity_threshold"].is_object());
-        assert_eq!(schema["required"], json!(["documentation_path", "deep_context_path"]));
+        assert_eq!(
+            schema["required"],
+            json!(["documentation_path", "deep_context_path"])
+        );
     }
 
     /// RED TEST: Check claim tool should have correct metadata
@@ -403,7 +402,11 @@ mod tests {
         });
 
         let result = tool.execute(params).await;
-        assert!(result.is_ok(), "Should succeed with valid input: {:?}", result);
+        assert!(
+            result.is_ok(),
+            "Should succeed with valid input: {:?}",
+            result
+        );
 
         let response = result.unwrap();
         assert_eq!(response["status"], "completed");
@@ -430,7 +433,11 @@ mod tests {
         });
 
         let result = tool.execute(params).await;
-        assert!(result.is_ok(), "Should succeed with valid claim: {:?}", result);
+        assert!(
+            result.is_ok(),
+            "Should succeed with valid claim: {:?}",
+            result
+        );
 
         let response = result.unwrap();
         assert_eq!(response["status"], "completed");

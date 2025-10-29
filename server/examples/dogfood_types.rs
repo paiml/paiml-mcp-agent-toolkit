@@ -37,7 +37,9 @@ fn main() -> Result<()> {
     println!("\n📋 Mutant Breakdown:");
     let mut operator_counts = std::collections::HashMap::new();
     for mutant in &mutants {
-        *operator_counts.entry(format!("{:?}", mutant.operator)).or_insert(0) += 1;
+        *operator_counts
+            .entry(format!("{:?}", mutant.operator))
+            .or_insert(0) += 1;
     }
 
     let mut operators: Vec<_> = operator_counts.iter().collect();
@@ -51,18 +53,24 @@ fn main() -> Result<()> {
     println!("\n🔍 Sample Mutants (first 5):");
     for (i, mutant) in mutants.iter().take(5).enumerate() {
         println!("\n   {}. Mutant ID: {}", i + 1, mutant.id);
-        println!("      Location: line {}, col {}", mutant.location.line, mutant.location.column);
+        println!(
+            "      Location: line {}, col {}",
+            mutant.location.line, mutant.location.column
+        );
         println!("      Operator: {:?}", mutant.operator);
 
         // Show the mutated line
         if let Some(line) = mutant.mutated_source.lines().nth(mutant.location.line - 1) {
             let trimmed = line.trim();
             if !trimmed.is_empty() {
-                println!("      Code: {}", if trimmed.len() > 80 {
-                    format!("{}...", &trimmed[..77])
-                } else {
-                    trimmed.to_string()
-                });
+                println!(
+                    "      Code: {}",
+                    if trimmed.len() > 80 {
+                        format!("{}...", &trimmed[..77])
+                    } else {
+                        trimmed.to_string()
+                    }
+                );
             }
         }
     }

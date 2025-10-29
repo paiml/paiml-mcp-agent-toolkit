@@ -26,23 +26,16 @@ pub async fn handle_test(
 
     match suite {
         TestSuite::Performance => {
-            run_performance_suite(iterations, memory, throughput, regression, timeout, output, perf).await
+            run_performance_suite(
+                iterations, memory, throughput, regression, timeout, output, perf,
+            )
+            .await
         }
-        TestSuite::Property => {
-            run_property_expansion_tests(iterations, timeout, output).await
-        }
-        TestSuite::Integration => {
-            run_integration_tests(timeout, output).await
-        }
-        TestSuite::Regression => {
-            run_regression_suite(iterations).await
-        }
-        TestSuite::Memory => {
-            run_memory_suite(iterations).await
-        }
-        TestSuite::Throughput => {
-            run_throughput_suite(iterations).await
-        }
+        TestSuite::Property => run_property_expansion_tests(iterations, timeout, output).await,
+        TestSuite::Integration => run_integration_tests(timeout, output).await,
+        TestSuite::Regression => run_regression_suite(iterations).await,
+        TestSuite::Memory => run_memory_suite(iterations).await,
+        TestSuite::Throughput => run_throughput_suite(iterations).await,
         TestSuite::All => {
             run_all_suites(iterations, memory, throughput, regression, timeout, output).await
         }
@@ -78,7 +71,10 @@ async fn run_performance_suite(
     )
     .await;
 
-    handle_performance_result(result, start, output, iterations, memory, throughput, regression).await
+    handle_performance_result(
+        result, start, output, iterations, memory, throughput, regression,
+    )
+    .await
 }
 
 /// Handle performance test result
@@ -97,7 +93,14 @@ async fn handle_performance_result(
             info!("✅ Performance test suite completed in {:?}", duration);
 
             if let Some(output_path) = output {
-                write_performance_report(output_path, duration, iterations, memory, throughput, regression)?;
+                write_performance_report(
+                    output_path,
+                    duration,
+                    iterations,
+                    memory,
+                    throughput,
+                    regression,
+                )?;
             }
 
             Ok(())

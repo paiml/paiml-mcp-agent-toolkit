@@ -15,9 +15,9 @@
 //! 4. Schema accuracy
 //! 5. Required vs optional clarity
 
-use serde_json::json;
 use pmat::docs_enforcement::generic_detector::is_generic_description;
 use pmat::docs_enforcement::mcp_checker::{load_mcp_tool_definitions, McpToolDefinition};
+use serde_json::json;
 
 // ============================================================================
 // Category 1: Tool Description Completeness
@@ -43,7 +43,8 @@ fn red_test_all_mcp_tools_have_descriptions() {
 
         assert!(
             !tool.description.is_empty(),
-            "Tool '{}' has no description", tool_name
+            "Tool '{}' has no description",
+            tool_name
         );
     }
 }
@@ -126,20 +127,22 @@ fn red_test_scaffold_agent_params_documented() {
 
     assert!(
         name_desc.len() > 15,
-        "Parameter 'name' description too short: '{}'", name_desc
+        "Parameter 'name' description too short: '{}'",
+        name_desc
     );
 
     assert!(
         !is_generic_description(name_desc),
-        "Parameter 'name' has generic description: '{}'", name_desc
+        "Parameter 'name' has generic description: '{}'",
+        name_desc
     );
 
     // Should explain constraints
     assert!(
-        name_desc.contains("lowercase") ||
-        name_desc.contains("alphanumeric") ||
-        name_desc.contains("hyphen") ||
-        name_desc.contains("dash"),
+        name_desc.contains("lowercase")
+            || name_desc.contains("alphanumeric")
+            || name_desc.contains("hyphen")
+            || name_desc.contains("dash"),
         "Parameter 'name' should mention naming constraints"
     );
 }
@@ -173,9 +176,9 @@ fn red_test_validate_roadmap_params_documented() {
 
     // Should mention default or expected format
     assert!(
-        roadmap_desc.contains("ROADMAP.md") ||
-        roadmap_desc.contains("default") ||
-        roadmap_desc.contains("markdown"),
+        roadmap_desc.contains("ROADMAP.md")
+            || roadmap_desc.contains("default")
+            || roadmap_desc.contains("markdown"),
         "Parameter 'roadmap_path' should mention file format or default"
     );
 }
@@ -204,9 +207,9 @@ fn red_test_health_check_params_documented() {
 
     // Should explain what 'quick' means
     assert!(
-        quick_desc.contains("fast") ||
-        quick_desc.contains("build only") ||
-        quick_desc.contains("subset"),
+        quick_desc.contains("fast")
+            || quick_desc.contains("build only")
+            || quick_desc.contains("subset"),
         "Parameter 'quick' should explain what it does"
     );
 }
@@ -235,9 +238,9 @@ fn red_test_generate_tickets_params_documented() {
 
     // Should explain what dry_run does
     assert!(
-        dry_run_desc.contains("preview") ||
-        dry_run_desc.contains("without creating") ||
-        dry_run_desc.contains("simulation"),
+        dry_run_desc.contains("preview")
+            || dry_run_desc.contains("without creating")
+            || dry_run_desc.contains("simulation"),
         "Parameter 'dry_run' should explain what it does"
     );
 }
@@ -269,7 +272,8 @@ fn red_test_generic_description_detector() {
     for desc in generic {
         assert!(
             is_generic_description(desc),
-            "Failed to detect generic description: '{}'", desc
+            "Failed to detect generic description: '{}'",
+            desc
         );
     }
 
@@ -285,7 +289,8 @@ fn red_test_generic_description_detector() {
     for desc in good {
         assert!(
             !is_generic_description(desc),
-            "Incorrectly flagged as generic: '{}'", desc
+            "Incorrectly flagged as generic: '{}'",
+            desc
         );
     }
 }
@@ -367,10 +372,11 @@ fn red_test_optional_params_have_defaults() {
     let template = &schema["properties"]["template"];
 
     assert!(
-        template.get("default").is_some() ||
-        template["description"].as_str()
-            .map(|d| d.contains("default"))
-            .unwrap_or(false),
+        template.get("default").is_some()
+            || template["description"]
+                .as_str()
+                .map(|d| d.contains("default"))
+                .unwrap_or(false),
         "Optional parameter 'template' should document default value"
     );
 }
@@ -431,7 +437,8 @@ fn red_test_consistent_parameter_naming() {
 /// Get MCP tool definition by name
 fn get_mcp_tool_definition(name: &str) -> McpToolDefinition {
     let tools = load_mcp_tool_definitions().expect("Failed to load MCP tools");
-    tools.into_iter()
+    tools
+        .into_iter()
         .find(|t| t.name == name)
         .unwrap_or_else(|| panic!("Tool '{}' not found", name))
 }

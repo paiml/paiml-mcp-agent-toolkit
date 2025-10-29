@@ -1,8 +1,6 @@
 //! Documentation link validation CLI handlers
 
-use crate::services::doc_validator::{
-    DocValidator, ValidationStatus, ValidatorConfig,
-};
+use crate::services::doc_validator::{DocValidator, ValidationStatus, ValidatorConfig};
 use anyhow::Result;
 use clap::{Parser, ValueEnum};
 use std::path::PathBuf;
@@ -190,7 +188,10 @@ impl ValidateDocsCmd {
         }
     }
 
-    fn print_json_summary(&self, summary: &crate::services::doc_validator::ValidationSummary) -> Result<()> {
+    fn print_json_summary(
+        &self,
+        summary: &crate::services::doc_validator::ValidationSummary,
+    ) -> Result<()> {
         use serde_json::json;
 
         let results_json: Vec<_> = summary
@@ -225,7 +226,10 @@ impl ValidateDocsCmd {
         Ok(())
     }
 
-    fn print_junit_summary(&self, summary: &crate::services::doc_validator::ValidationSummary) -> Result<()> {
+    fn print_junit_summary(
+        &self,
+        summary: &crate::services::doc_validator::ValidationSummary,
+    ) -> Result<()> {
         println!("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
         println!(
             "<testsuites name=\"Documentation Link Validation\" tests=\"{}\" failures=\"{}\" time=\"{:.3}\">",
@@ -233,8 +237,10 @@ impl ValidateDocsCmd {
             summary.broken_links,
             summary.duration_ms as f64 / 1000.0
         );
-        println!("  <testsuite name=\"Link Validation\" tests=\"{}\" failures=\"{}\">",
-            summary.total_links, summary.broken_links);
+        println!(
+            "  <testsuite name=\"Link Validation\" tests=\"{}\" failures=\"{}\">",
+            summary.total_links, summary.broken_links
+        );
 
         for result in &summary.results {
             let test_name = format!(
@@ -244,8 +250,10 @@ impl ValidateDocsCmd {
                 result.link.target
             );
 
-            print!("    <testcase name=\"{}\" classname=\"LinkValidation\"",
-                xml_escape(&test_name));
+            print!(
+                "    <testcase name=\"{}\" classname=\"LinkValidation\"",
+                xml_escape(&test_name)
+            );
 
             if let Some(time_ms) = result.response_time_ms {
                 print!(" time=\"{:.3}\"", time_ms as f64 / 1000.0);
@@ -316,10 +324,14 @@ mod tests {
 
         // Should have defaults + CLI excludes
         assert!(config.exclude_patterns.contains(&"archive".to_string()));
-        assert!(config.exclude_patterns.contains(&"node_modules".to_string()));
+        assert!(config
+            .exclude_patterns
+            .contains(&"node_modules".to_string()));
         assert!(config.exclude_patterns.contains(&".git".to_string()));
         assert!(config.exclude_patterns.contains(&"target".to_string()));
-        assert!(config.exclude_patterns.contains(&"custom_exclude".to_string()));
+        assert!(config
+            .exclude_patterns
+            .contains(&"custom_exclude".to_string()));
         assert_eq!(config.exclude_patterns.len(), 5);
     }
 
@@ -340,11 +352,14 @@ mod tests {
         let config = cmd.build_config();
 
         // Should still have defaults
-        assert_eq!(config.exclude_patterns, vec![
-            "archive".to_string(),
-            "node_modules".to_string(),
-            ".git".to_string(),
-            "target".to_string(),
-        ]);
+        assert_eq!(
+            config.exclude_patterns,
+            vec![
+                "archive".to_string(),
+                "node_modules".to_string(),
+                ".git".to_string(),
+                "target".to_string(),
+            ]
+        );
     }
 }

@@ -25,7 +25,8 @@ impl McpTool for MutationTestTool {
     fn metadata(&self) -> ToolMetadata {
         ToolMetadata {
             name: "mutation_test".to_string(),
-            description: "Perform ML-powered mutation testing to assess test suite quality".to_string(),
+            description: "Perform ML-powered mutation testing to assess test suite quality"
+                .to_string(),
             input_schema: json!({
                 "type": "object",
                 "properties": {
@@ -84,7 +85,9 @@ impl McpTool for MutationTestTool {
     }
 
     async fn execute(&self, params: Value) -> Result<Value, McpError> {
-        use crate::services::mutation::{MutationEngine, MutationConfig, RustAdapter, MutantExecutor, MutationScore};
+        use crate::services::mutation::{
+            MutantExecutor, MutationConfig, MutationEngine, MutationScore, RustAdapter,
+        };
         use std::path::PathBuf;
 
         let path_str = params["path"].as_str().ok_or_else(|| McpError {
@@ -110,7 +113,14 @@ impl McpTool for MutationTestTool {
                     .filter_map(|v| v.as_str().map(String::from))
                     .collect::<Vec<_>>()
             })
-            .unwrap_or_else(|| vec!["AOR".to_string(), "ROR".to_string(), "COR".to_string(), "UOR".to_string()]);
+            .unwrap_or_else(|| {
+                vec![
+                    "AOR".to_string(),
+                    "ROR".to_string(),
+                    "COR".to_string(),
+                    "UOR".to_string(),
+                ]
+            });
 
         let _ml_predict = params["ml_predict"].as_bool().unwrap_or(false);
         let _distributed = params["distributed"].as_bool().unwrap_or(false);
@@ -127,7 +137,8 @@ impl McpTool for MutationTestTool {
 
         // Generate mutants
         let mutants = if path.is_file() {
-            engine.generate_mutants_from_file(&path)
+            engine
+                .generate_mutants_from_file(&path)
                 .await
                 .map_err(|e| McpError {
                     code: error_codes::INTERNAL_ERROR,
@@ -137,7 +148,9 @@ impl McpTool for MutationTestTool {
         } else {
             return Err(McpError {
                 code: error_codes::INVALID_PARAMS,
-                message: "Directory mutation testing not yet supported. Please provide a file path.".to_string(),
+                message:
+                    "Directory mutation testing not yet supported. Please provide a file path."
+                        .to_string(),
                 data: None,
             });
         };
@@ -153,16 +166,18 @@ impl McpTool for MutationTestTool {
         }
 
         // Execute tests on mutants
-        let work_dir = path.parent()
+        let work_dir = path
+            .parent()
             .and_then(|p| p.parent())
             .or_else(|| path.parent())
             .unwrap_or(std::path::Path::new("."))
             .to_path_buf();
 
-        let executor = MutantExecutor::new(work_dir)
-            .with_timeout(600);
+        let executor = MutantExecutor::new(work_dir).with_timeout(600);
 
-        let results = executor.execute_mutants(&mutants).await
+        let results = executor
+            .execute_mutants(&mutants)
+            .await
             .map_err(|e| McpError {
                 code: error_codes::INTERNAL_ERROR,
                 message: format!("Failed to execute mutants: {}", e),

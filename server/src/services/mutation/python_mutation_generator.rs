@@ -34,7 +34,12 @@ impl PythonMutationGenerator {
         let tree = self.parse_python(source)?;
         let mut mutants = Vec::new();
 
-        self.visit_node(&tree.root_node(), source.as_bytes(), &mut mutants, file_path);
+        self.visit_node(
+            &tree.root_node(),
+            source.as_bytes(),
+            &mut mutants,
+            file_path,
+        );
 
         Ok(mutants)
     }
@@ -52,13 +57,7 @@ impl PythonMutationGenerator {
     }
 
     /// Recursively visit AST nodes and apply mutation operators
-    fn visit_node(
-        &self,
-        node: &Node,
-        source: &[u8],
-        mutants: &mut Vec<Mutant>,
-        file_path: &str,
-    ) {
+    fn visit_node(&self, node: &Node, source: &[u8], mutants: &mut Vec<Mutant>, file_path: &str) {
         // Apply all operators to current node
         for operator in &self.operators {
             if operator.can_mutate(node, source) {
@@ -100,7 +99,7 @@ fn map_operator_name_to_type(name: &str) -> MutationOperatorType {
         "PythonLogicalOp" => MutationOperatorType::ConditionalReplacement,
         "PythonIdentityOp" => MutationOperatorType::RelationalReplacement, // Identity is a type of comparison
         "PythonMembershipOp" => MutationOperatorType::RelationalReplacement, // Membership is a type of comparison
-        _ => MutationOperatorType::ArithmeticReplacement, // Default
+        _ => MutationOperatorType::ArithmeticReplacement,                    // Default
     }
 }
 
@@ -122,7 +121,10 @@ def add(a, b):
             .generate_mutants(source, "test.py")
             .expect("Should generate mutants");
 
-        assert!(!mutants.is_empty(), "Should generate at least one mutant for '+' operator");
+        assert!(
+            !mutants.is_empty(),
+            "Should generate at least one mutant for '+' operator"
+        );
 
         // Verify mutant structure
         let mutant = &mutants[0];

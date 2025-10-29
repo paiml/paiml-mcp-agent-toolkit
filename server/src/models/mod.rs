@@ -48,13 +48,13 @@
 pub mod churn;
 pub mod complexity_bound;
 pub mod dag;
-pub mod git_context;
 #[cfg(test)]
 pub mod dag_property_tests;
 pub mod dead_code;
 pub mod deep_context_config;
 pub mod defect_report;
 pub mod error;
+pub mod git_context;
 pub mod mcp;
 pub mod pdmt;
 pub mod project_meta;

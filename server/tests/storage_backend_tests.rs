@@ -1,8 +1,8 @@
 //! Integration tests for TDG storage backend flexibility
 
 use pmat::tdg::{
-    Grade, InMemoryBackend, Language, StorageBackend, StorageBackendFactory,
-    StorageBackendType, StorageConfig, TdgScore, TieredStore,
+    Grade, InMemoryBackend, Language, StorageBackend, StorageBackendFactory, StorageBackendType,
+    StorageConfig, TdgScore, TieredStore,
 };
 use std::path::PathBuf;
 use tempfile::TempDir;

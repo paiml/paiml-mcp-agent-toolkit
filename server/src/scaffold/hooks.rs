@@ -63,7 +63,8 @@ cargo test
 
 echo "✓ All quality gates passed!"
 exit 0
-"#.to_string()
+"#
+    .to_string()
 }
 
 /// Generate WASM-specific pre-commit hook
@@ -100,7 +101,8 @@ cargo build --target wasm32-unknown-unknown --release
 
 echo "✓ All quality gates passed!"
 exit 0
-"#.to_string()
+"#
+    .to_string()
 }
 
 /// Install pre-commit hook to project directory
@@ -114,8 +116,7 @@ pub fn install_pre_commit_hook(project_dir: &Path, script: &str) -> Result<()> {
     let hook_path = project_dir.join(".git/hooks/pre-commit");
 
     // Write hook script
-    fs::write(&hook_path, script)
-        .map_err(ScaffoldError::IoError)?;
+    fs::write(&hook_path, script).map_err(ScaffoldError::IoError)?;
 
     // Make executable (chmod +x)
     #[cfg(unix)]
@@ -125,8 +126,7 @@ pub fn install_pre_commit_hook(project_dir: &Path, script: &str) -> Result<()> {
             .map_err(ScaffoldError::IoError)?
             .permissions();
         perms.set_mode(0o755);
-        fs::set_permissions(&hook_path, perms)
-            .map_err(ScaffoldError::IoError)?;
+        fs::set_permissions(&hook_path, perms).map_err(ScaffoldError::IoError)?;
     }
 
     Ok(())
@@ -155,7 +155,8 @@ if command -v pmat &> /dev/null; then
 fi
 
 exit 0
-"#.to_string()
+"#
+    .to_string()
 }
 
 /// Install post-commit hook to project directory
@@ -171,8 +172,7 @@ pub fn install_post_commit_hook(project_dir: &Path) -> Result<()> {
     let hook_path = project_dir.join(".git/hooks/post-commit");
     let script = generate_post_commit_hook();
 
-    fs::write(&hook_path, script)
-        .map_err(ScaffoldError::IoError)?;
+    fs::write(&hook_path, script).map_err(ScaffoldError::IoError)?;
 
     #[cfg(unix)]
     {
@@ -181,8 +181,7 @@ pub fn install_post_commit_hook(project_dir: &Path) -> Result<()> {
             .map_err(ScaffoldError::IoError)?
             .permissions();
         perms.set_mode(0o755);
-        fs::set_permissions(&hook_path, perms)
-            .map_err(ScaffoldError::IoError)?;
+        fs::set_permissions(&hook_path, perms).map_err(ScaffoldError::IoError)?;
     }
 
     Ok(())
@@ -223,7 +222,8 @@ cargo test --all-features
 echo "✓ All quality gates passed!"
 echo "ℹ️  For full coverage/complexity checks, run: pmat quality-gates"
 exit 0
-"#.to_string()
+"#
+    .to_string()
 }
 
 /// Generate .pmat-gates.toml configuration file
@@ -246,7 +246,8 @@ check_coverage = true
 min_coverage = 80.0
 check_complexity = true
 max_complexity = 10
-"#.to_string()
+"#
+    .to_string()
 }
 
 /// Install quality gate configuration file
@@ -262,8 +263,7 @@ pub fn install_gate_config(project_dir: &Path) -> Result<()> {
     let config_path = project_dir.join(".pmat-gates.toml");
     let toml = generate_gate_config_toml();
 
-    fs::write(&config_path, toml)
-        .map_err(ScaffoldError::IoError)?;
+    fs::write(&config_path, toml).map_err(ScaffoldError::IoError)?;
 
     Ok(())
 }
@@ -294,13 +294,15 @@ mod tests {
     use super::*;
     use crate::scaffold::config::AgentFramework;
     use crate::scaffold::config::WasmFramework;
-    use tempfile::TempDir;
     use std::fs;
+    use tempfile::TempDir;
 
     #[test]
     fn test_generate_pforge_hook() {
         let config = HookConfig {
-            project_type: TemplateType::Agent { based_on: AgentFramework::Pforge },
+            project_type: TemplateType::Agent {
+                based_on: AgentFramework::Pforge,
+            },
             quality_gates: QualityGateConfig::default(),
         };
 
@@ -315,7 +317,9 @@ mod tests {
     #[test]
     fn test_generate_wasm_hook() {
         let config = HookConfig {
-            project_type: TemplateType::Wasm { based_on: WasmFramework::WasmLabs },
+            project_type: TemplateType::Wasm {
+                based_on: WasmFramework::WasmLabs,
+            },
             quality_gates: QualityGateConfig::default(),
         };
 
@@ -355,7 +359,9 @@ mod tests {
     #[test]
     fn test_hook_script_format() {
         let config = HookConfig {
-            project_type: TemplateType::Agent { based_on: AgentFramework::Pforge },
+            project_type: TemplateType::Agent {
+                based_on: AgentFramework::Pforge,
+            },
             quality_gates: QualityGateConfig::extreme_tdd(),
         };
 
@@ -540,7 +546,9 @@ mod property_tests {
     fn prop_wasm_hooks_verify_wasm_build() {
         // Simple property test (not using proptest macro)
         let config = HookConfig {
-            project_type: TemplateType::Wasm { based_on: WasmFramework::WasmLabs },
+            project_type: TemplateType::Wasm {
+                based_on: WasmFramework::WasmLabs,
+            },
             quality_gates: QualityGateConfig::default(),
         };
 

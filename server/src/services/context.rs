@@ -792,7 +792,7 @@ async fn analyze_file_by_toolchain(
                     items,
                     complexity_metrics: None,
                 }),
-                Err(_) => None
+                Err(_) => None,
             }
         }
 
@@ -808,7 +808,7 @@ async fn analyze_file_by_toolchain(
                     items,
                     complexity_metrics: None,
                 }),
-                Err(_) => None
+                Err(_) => None,
             }
         }
 
@@ -845,7 +845,7 @@ async fn analyze_file_by_toolchain(
                     items,
                     complexity_metrics: None,
                 }),
-                Err(_) => None
+                Err(_) => None,
             }
         }
 
@@ -1160,7 +1160,7 @@ async fn analyze_file_by_toolchain_persistent(
                     items,
                     complexity_metrics: None,
                 }),
-                Err(_) => None
+                Err(_) => None,
             }
         }
 
@@ -1176,7 +1176,7 @@ async fn analyze_file_by_toolchain_persistent(
                     items,
                     complexity_metrics: None,
                 }),
-                Err(_) => None
+                Err(_) => None,
             }
         }
 
@@ -1213,7 +1213,7 @@ async fn analyze_file_by_toolchain_persistent(
                     items,
                     complexity_metrics: None,
                 }),
-                Err(_) => None
+                Err(_) => None,
             }
         }
 

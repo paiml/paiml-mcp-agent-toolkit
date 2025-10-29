@@ -5,9 +5,7 @@
 //! This test verifies that documentation enforcement is properly integrated
 //! into the quality gate system and can be used as part of automated checks.
 
-use pmat::services::quality_gate_service::{
-    QualityCheck, QualityGateInput, QualityGateService,
-};
+use pmat::services::quality_gate_service::{QualityCheck, QualityGateInput, QualityGateService};
 use pmat::services::service_base::Service;
 use std::path::PathBuf;
 
@@ -31,13 +29,14 @@ async fn test_docs_enforcement_quality_gate_mcp_only() {
     assert_eq!(output.results.len(), 1, "Should have 1 check result");
 
     let docs_result = &output.results[0];
-    assert_eq!(
-        docs_result.check,
-        "Documentation Enforcement (PMAT-7001)"
-    );
+    assert_eq!(docs_result.check, "Documentation Enforcement (PMAT-7001)");
 
-    println!("Result: passed={}, message={}, violations={}",
-        docs_result.passed, docs_result.message, docs_result.violations.len());
+    println!(
+        "Result: passed={}, message={}, violations={}",
+        docs_result.passed,
+        docs_result.message,
+        docs_result.violations.len()
+    );
     for v in &docs_result.violations {
         println!("  Violation: {:?} - {}", v.severity, v.message);
     }
@@ -70,10 +69,7 @@ async fn test_docs_enforcement_quality_gate_both() {
     assert_eq!(output.results.len(), 1);
 
     let docs_result = &output.results[0];
-    assert_eq!(
-        docs_result.check,
-        "Documentation Enforcement (PMAT-7001)"
-    );
+    assert_eq!(docs_result.check, "Documentation Enforcement (PMAT-7001)");
 
     // MCP should pass, CLI shows info message
     assert!(
@@ -122,12 +118,10 @@ async fn test_quality_gate_summary_with_docs_enforcement() {
 
     let input = QualityGateInput {
         path: PathBuf::from("."),
-        checks: vec![
-            QualityCheck::DocsEnforcement {
-                check_cli: false,
-                check_mcp: true,
-            },
-        ],
+        checks: vec![QualityCheck::DocsEnforcement {
+            check_cli: false,
+            check_mcp: true,
+        }],
         strict: true,
     };
 

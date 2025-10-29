@@ -5,8 +5,8 @@
 #[cfg(test)]
 mod equivalent_detector_red_tests {
     use crate::services::mutation::{
-        Mutant, MutantStatus, MutationOperatorType, SourceLocation,
-        EquivalentMutantDetector, EquivalenceFeatures, EquivalenceTrainingData,
+        EquivalenceFeatures, EquivalenceTrainingData, EquivalentMutantDetector, Mutant,
+        MutantStatus, MutationOperatorType, SourceLocation,
     };
 
     #[test]
@@ -152,7 +152,8 @@ mod equivalent_detector_red_tests {
 
         // (a + b) + c == a + (b + c)
         let original = "fn calc(a: i32, b: i32, c: i32) -> i32 { (a + b) + c }";
-        let mutant = create_mutant_with_source("fn calc(a: i32, b: i32, c: i32) -> i32 { a + (b + c) }");
+        let mutant =
+            create_mutant_with_source("fn calc(a: i32, b: i32, c: i32) -> i32 { a + (b + c) }");
 
         let equivalence = detector.detect_equivalent(&mutant, original).unwrap();
         assert!(equivalence.is_equivalent);
@@ -249,7 +250,11 @@ mod equivalent_detector_red_tests {
         }
     }
 
-    fn create_equivalence_sample(original: &str, mutated: &str, is_equivalent: bool) -> EquivalenceTrainingData {
+    fn create_equivalence_sample(
+        original: &str,
+        mutated: &str,
+        is_equivalent: bool,
+    ) -> EquivalenceTrainingData {
         EquivalenceTrainingData {
             mutant: create_mutant_with_source(mutated),
             original_source: original.to_string(),

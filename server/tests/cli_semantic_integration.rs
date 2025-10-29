@@ -22,7 +22,9 @@ fn test_embed_help() {
 
     cmd.assert()
         .success()
-        .stdout(predicate::str::contains("Manage semantic search embeddings"))
+        .stdout(predicate::str::contains(
+            "Manage semantic search embeddings",
+        ))
         .stdout(predicate::str::contains("sync"))
         .stdout(predicate::str::contains("status"))
         .stdout(predicate::str::contains("clear"));
@@ -293,6 +295,8 @@ fn test_env_var_configuration() {
 
     // Should not contain generic "not configured" error
     assert!(
-        !stderr.contains("not configured") || stderr.contains("Synced") || stderr.contains("Indexed")
+        !stderr.contains("not configured")
+            || stderr.contains("Synced")
+            || stderr.contains("Indexed")
     );
 }

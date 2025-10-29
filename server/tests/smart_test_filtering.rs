@@ -48,9 +48,7 @@ fn extract_module_path(file_path: &str) -> String {
     let is_mod_file = without_ext.ends_with("/mod");
 
     // Remove "/mod" at end for processing
-    let without_mod = without_ext
-        .strip_suffix("/mod")
-        .unwrap_or(without_ext);
+    let without_mod = without_ext.strip_suffix("/mod").unwrap_or(without_ext);
 
     // Split into parts
     let parts: Vec<&str> = without_mod.split('/').collect();

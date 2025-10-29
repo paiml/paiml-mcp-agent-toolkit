@@ -318,8 +318,8 @@ impl TreeSitterMutationOperator for RustRangeOpMutation {
 
             // Define mutation mappings for range operators
             let replacements: &[&[u8]] = match original_op {
-                b".." => &[b"..="],    // Exclusive to inclusive
-                b"..=" => &[b".."],    // Inclusive to exclusive
+                b".." => &[b"..="], // Exclusive to inclusive
+                b"..=" => &[b".."], // Inclusive to exclusive
                 _ => &[],
             };
 
@@ -373,8 +373,10 @@ impl TreeSitterMutationOperator for RustPatternMutation {
                 // Check for Option/Result patterns
                 let text = &source[node.byte_range()];
                 let text_str = std::str::from_utf8(text).unwrap_or("");
-                text_str.contains("Some") || text_str.contains("None")
-                    || text_str.contains("Ok") || text_str.contains("Err")
+                text_str.contains("Some")
+                    || text_str.contains("None")
+                    || text_str.contains("Ok")
+                    || text_str.contains("Err")
             }
             _ => false,
         }

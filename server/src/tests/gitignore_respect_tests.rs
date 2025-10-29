@@ -195,7 +195,11 @@ fn test_pmatignore_file_support() {
     let files = discovery.discover_files().unwrap();
 
     // Should only find main.rs and lib.rs
-    assert_eq!(files.len(), 2, "Should find exactly 2 files (main.rs, lib.rs)");
+    assert_eq!(
+        files.len(),
+        2,
+        "Should find exactly 2 files (main.rs, lib.rs)"
+    );
     assert!(files.iter().any(|f| f.ends_with("main.rs")));
     assert!(files.iter().any(|f| f.ends_with("lib.rs")));
 

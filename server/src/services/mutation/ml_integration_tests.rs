@@ -5,9 +5,8 @@
 #[cfg(test)]
 mod ml_integration_tests {
     use crate::services::mutation::{
-        Mutant, MutantStatus, MutationOperatorType, SourceLocation,
-        SurvivabilityPredictor, EquivalentMutantDetector,
-        TrainingData, EquivalenceTrainingData,
+        EquivalenceTrainingData, EquivalentMutantDetector, Mutant, MutantStatus,
+        MutationOperatorType, SourceLocation, SurvivabilityPredictor, TrainingData,
     };
 
     #[test]
@@ -30,8 +29,12 @@ mod ml_integration_tests {
         let original_sources = create_original_sources();
 
         // Step 1: Filter equivalent mutants
-        let (non_equiv, _filtered_count) = filter_equivalent_mutants(&detector, &mutants, &original_sources);
-        assert!(non_equiv.len() <= mutants.len(), "Should have same or fewer mutants after filtering");
+        let (non_equiv, _filtered_count) =
+            filter_equivalent_mutants(&detector, &mutants, &original_sources);
+        assert!(
+            non_equiv.len() <= mutants.len(),
+            "Should have same or fewer mutants after filtering"
+        );
 
         // Step 2: Prioritize remaining mutants by kill probability
         let prioritized = predictor.prioritize_mutants(&non_equiv).unwrap();
@@ -46,7 +49,11 @@ mod ml_integration_tests {
         }
 
         // Step 3: Select top N mutants for testing (smart sampling)
-        let top_n = if non_equiv.len() >= 3 { 3 } else { non_equiv.len() };
+        let top_n = if non_equiv.len() >= 3 {
+            3
+        } else {
+            non_equiv.len()
+        };
         let smart_sample: Vec<_> = prioritized.iter().take(top_n).collect();
 
         assert_eq!(smart_sample.len(), top_n);
@@ -69,7 +76,9 @@ mod ml_integration_tests {
         predictor.train(&create_historical_mutation_data()).unwrap();
 
         let mut detector = EquivalentMutantDetector::new();
-        detector.train(&create_historical_equivalence_data()).unwrap();
+        detector
+            .train(&create_historical_equivalence_data())
+            .unwrap();
 
         // Save models
         let pred_path = std::path::PathBuf::from("/tmp/test_predictor.bin");
@@ -143,11 +152,11 @@ mod ml_integration_tests {
 
         // Create diverse mutant set
         let all_mutants = vec![
-            create_arithmetic_mutant(),      // Likely killed
-            create_relational_mutant(),      // Medium probability
-            create_conditional_mutant(),     // Lower probability
-            create_identity_mutant(),        // Equivalent (should filter)
-            create_tautology_mutant(),       // Equivalent (should filter)
+            create_arithmetic_mutant(),  // Likely killed
+            create_relational_mutant(),  // Medium probability
+            create_conditional_mutant(), // Lower probability
+            create_identity_mutant(),    // Equivalent (should filter)
+            create_tautology_mutant(),   // Equivalent (should filter)
         ];
 
         let original_sources = vec![
@@ -172,7 +181,10 @@ mod ml_integration_tests {
             .collect();
 
         // Should filter at least some equivalent mutants (Phase 1: pattern-based)
-        assert!(non_equiv.len() <= all_mutants.len(), "Should filter or keep same count");
+        assert!(
+            non_equiv.len() <= all_mutants.len(),
+            "Should filter or keep same count"
+        );
 
         // Prioritize remaining
         let prioritized = predictor.prioritize_mutants(&non_equiv).unwrap();
@@ -189,7 +201,10 @@ mod ml_integration_tests {
         }
 
         // This demonstrates the ML pipeline works end-to-end
-        assert!(!prioritized.is_empty(), "ML pipeline completes successfully");
+        assert!(
+            !prioritized.is_empty(),
+            "ML pipeline completes successfully"
+        );
     }
 
     #[test]
@@ -275,11 +290,19 @@ mod ml_integration_tests {
         TrainingData {
             mutant: Mutant {
                 operator,
-                status: if was_killed { MutantStatus::Killed } else { MutantStatus::Survived },
+                status: if was_killed {
+                    MutantStatus::Killed
+                } else {
+                    MutantStatus::Survived
+                },
                 ..create_test_mutant()
             },
             was_killed,
-            test_failures: if was_killed { vec!["test1".to_string()] } else { vec![] },
+            test_failures: if was_killed {
+                vec!["test1".to_string()]
+            } else {
+                vec![]
+            },
             execution_time_ms: 100,
         }
     }
@@ -305,7 +328,11 @@ mod ml_integration_tests {
         ]
     }
 
-    fn create_equivalence_sample(original: &str, mutated: &str, is_equivalent: bool) -> EquivalenceTrainingData {
+    fn create_equivalence_sample(
+        original: &str,
+        mutated: &str,
+        is_equivalent: bool,
+    ) -> EquivalenceTrainingData {
         EquivalenceTrainingData {
             mutant: Mutant {
                 mutated_source: mutated.to_string(),
@@ -353,7 +380,11 @@ mod ml_integration_tests {
                 ""
             };
 
-            if !detector.detect_equivalent(mutant, original).unwrap().is_equivalent {
+            if !detector
+                .detect_equivalent(mutant, original)
+                .unwrap()
+                .is_equivalent
+            {
                 non_equiv.push(mutant.clone());
             } else {
                 filtered += 1;

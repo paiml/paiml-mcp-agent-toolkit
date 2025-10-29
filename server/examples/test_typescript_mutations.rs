@@ -49,7 +49,8 @@ export async function fetchValue(): Promise<number> {
     // Show first 5 mutants
     println!("📋 First {} mutants:\n", mutants.len().min(5));
     for (i, mutant) in mutants.iter().take(5).enumerate() {
-        println!("{}. {} at line {}:{}",
+        println!(
+            "{}. {} at line {}:{}",
             i + 1,
             mutant.id,
             mutant.location.line,
@@ -68,7 +69,9 @@ export async function fetchValue(): Promise<number> {
     // Count by operator type
     let mut operator_counts: HashMap<String, usize> = HashMap::new();
     for mutant in &mutants {
-        *operator_counts.entry(format!("{:?}", mutant.operator)).or_insert(0) += 1;
+        *operator_counts
+            .entry(format!("{:?}", mutant.operator))
+            .or_insert(0) += 1;
     }
 
     println!("📊 Mutants by operator type:");
@@ -80,9 +83,9 @@ export async function fetchValue(): Promise<number> {
     // Check mutation coverage
     let expected_mutations = vec![
         "ArithmeticReplacement",  // + in add()
-        "RelationalReplacement",   // === in isEqual()
-        "StatementDeletion",       // ?. and await
-        "ConditionalReplacement",  // ??
+        "RelationalReplacement",  // === in isEqual()
+        "StatementDeletion",      // ?. and await
+        "ConditionalReplacement", // ??
     ];
 
     println!("🎯 Mutation Coverage:");

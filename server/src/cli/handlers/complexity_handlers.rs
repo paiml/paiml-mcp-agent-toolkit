@@ -531,7 +531,10 @@ pub async fn handle_analyze_complexity(
 
     // Check if all files were filtered out and provide helpful message
     if original_file_count > 0 && file_metrics.is_empty() {
-        eprintln!("\n⚠️  Warning: All {} file(s) were filtered out", original_file_count);
+        eprintln!(
+            "\n⚠️  Warning: All {} file(s) were filtered out",
+            original_file_count
+        );
         eprintln!("   No functions found exceeding the complexity thresholds:");
         if let Some(cyc) = max_cyclomatic {
             eprintln!("   - Cyclomatic complexity > {}", cyc);

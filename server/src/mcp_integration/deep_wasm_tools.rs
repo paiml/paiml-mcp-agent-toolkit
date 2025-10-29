@@ -160,7 +160,8 @@ impl McpTool for DeepWasmAnalyzeTool {
     async fn execute(&self, _params: Value) -> Result<Value, McpError> {
         Err(McpError {
             code: error_codes::METHOD_NOT_FOUND,
-            message: "Deep WASM feature not enabled. Recompile with --features deep-wasm".to_string(),
+            message: "Deep WASM feature not enabled. Recompile with --features deep-wasm"
+                .to_string(),
             data: None,
         })
     }
@@ -232,8 +233,7 @@ impl McpTool for DeepWasmQueryMappingTool {
             .to_string();
 
         // Derive source path from wasm path (assume .rs or .ruchy in same directory)
-        let source_path = PathBuf::from(&wasm_path)
-            .with_extension("rs");
+        let source_path = PathBuf::from(&wasm_path).with_extension("rs");
 
         let dwarf_path = params["dwarf_path"].as_str().map(PathBuf::from);
         let source_map_path = params["source_map_path"].as_str().map(PathBuf::from);
@@ -313,13 +313,14 @@ impl McpTool for DeepWasmQueryMappingTool {
                     .file_name()
                     .and_then(|s| s.to_str())
                     .unwrap_or("unknown");
-                let source_type = if mapping.dwarf_die.is_some() && mapping.source_map_entry.is_some() {
-                    "Both"
-                } else if mapping.dwarf_die.is_some() {
-                    "DWARF"
-                } else {
-                    "SourceMap"
-                };
+                let source_type =
+                    if mapping.dwarf_die.is_some() && mapping.source_map_entry.is_some() {
+                        "Both"
+                    } else if mapping.dwarf_die.is_some() {
+                        "DWARF"
+                    } else {
+                        "SourceMap"
+                    };
                 output.push_str(&format!(
                     "| {} | {}:{} | {} | {:.0}% | {} |\n",
                     source_file,
@@ -365,7 +366,8 @@ impl McpTool for DeepWasmQueryMappingTool {
     async fn execute(&self, _params: Value) -> Result<Value, McpError> {
         Err(McpError {
             code: error_codes::METHOD_NOT_FOUND,
-            message: "Deep WASM feature not enabled. Recompile with --features deep-wasm".to_string(),
+            message: "Deep WASM feature not enabled. Recompile with --features deep-wasm"
+                .to_string(),
             data: None,
         })
     }

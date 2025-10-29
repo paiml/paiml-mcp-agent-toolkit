@@ -22,10 +22,18 @@ pub struct QualityGateInput {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum QualityCheck {
-    Complexity { max: u32 },
-    Satd { tolerance: u32 },
-    DeadCode { max_percentage: f64 },
-    Coverage { min: f64 },
+    Complexity {
+        max: u32,
+    },
+    Satd {
+        tolerance: u32,
+    },
+    DeadCode {
+        max_percentage: f64,
+    },
+    Coverage {
+        min: f64,
+    },
     Lint,
     Documentation,
     /// Documentation quality enforcement (PMAT-7001)
@@ -282,7 +290,10 @@ impl QualityGateService {
             });
         }
 
-        let error_count = violations.iter().filter(|v| matches!(v.severity, Severity::Error)).count();
+        let error_count = violations
+            .iter()
+            .filter(|v| matches!(v.severity, Severity::Error))
+            .count();
         let message = if passed {
             format!(
                 "Documentation enforcement passed (MCP: {}, CLI: {})",
@@ -326,8 +337,12 @@ impl Service for QualityGateService {
                 QualityCheck::Coverage { min } => self.check_coverage(&input.path, *min).await?,
                 QualityCheck::Lint => self.check_lint(&input.path).await?,
                 QualityCheck::Documentation => self.check_documentation(&input.path).await?,
-                QualityCheck::DocsEnforcement { check_cli, check_mcp } => {
-                    self.check_docs_enforcement(&input.path, *check_cli, *check_mcp).await?
+                QualityCheck::DocsEnforcement {
+                    check_cli,
+                    check_mcp,
+                } => {
+                    self.check_docs_enforcement(&input.path, *check_cli, *check_mcp)
+                        .await?
                 }
             };
             results.push(result);

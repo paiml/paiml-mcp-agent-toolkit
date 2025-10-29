@@ -24,8 +24,7 @@ fn main() -> Result<()> {
 
     // Step 1: Read source file
     println!("📝 Reading source file: {}", source_file.display());
-    let source = std::fs::read_to_string(&source_file)
-        .context("Failed to read source file")?;
+    let source = std::fs::read_to_string(&source_file).context("Failed to read source file")?;
 
     println!("   Size: {} bytes\n", source.len());
 
@@ -115,10 +114,16 @@ fn main() -> Result<()> {
 
     println!("\n📊 Mutation Testing Results\n");
     println!("   Total Mutants:    {}", total);
-    println!("   Killed:           {} ({}%)",
-        killed_count, (killed_count * 100) / total);
-    println!("   Survived:         {} ({}%)",
-        survived_count, (survived_count * 100) / total);
+    println!(
+        "   Killed:           {} ({}%)",
+        killed_count,
+        (killed_count * 100) / total
+    );
+    println!(
+        "   Survived:         {} ({}%)",
+        survived_count,
+        (survived_count * 100) / total
+    );
     println!("   Timeout/Error:    {}", timeout_final);
 
     let mutation_score = if total > timeout_final {
@@ -143,8 +148,10 @@ fn main() -> Result<()> {
     println!("   Test Time:       {:?}", test_time);
     println!("   Total Time:      {:?}", generation_time + test_time);
     println!("   Time per Mutant: {:?}", test_time / total as u32);
-    println!("   Throughput:      {:.2} mutants/sec",
-        total as f64 / test_time.as_secs_f64());
+    println!(
+        "   Throughput:      {:.2} mutants/sec",
+        total as f64 / test_time.as_secs_f64()
+    );
 
     // Speedup calculation (vs sequential ~1.8s per mutant)
     let sequential_estimate = std::time::Duration::from_secs_f64(total as f64 * 1.8);
@@ -154,16 +161,16 @@ fn main() -> Result<()> {
     // Show surviving mutants
     if survived_count > 0 {
         println!("\n🧟 Surviving Mutants (weaknesses in tests):\n");
-        let mut survivors: Vec<_> = mutants.iter()
+        let mut survivors: Vec<_> = mutants
+            .iter()
             .filter(|m| m.status == MutantStatus::Survived)
             .collect();
         survivors.sort_by_key(|m| m.location.line);
 
         for mutant in survivors.iter().take(10) {
-            println!("   • {} at line {}:{}",
-                mutant.id,
-                mutant.location.line,
-                mutant.location.column
+            println!(
+                "   • {} at line {}:{}",
+                mutant.id, mutant.location.line, mutant.location.column
             );
 
             let lines: Vec<&str> = mutant.mutated_source.lines().collect();
@@ -207,12 +214,10 @@ fn test_mutant_with_lock(
 
     // Create backup
     let backup_path = source_file.with_extension("ts.backup");
-    std::fs::copy(source_file, &backup_path)
-        .context("Failed to create backup")?;
+    std::fs::copy(source_file, &backup_path).context("Failed to create backup")?;
 
     // Write mutant
-    std::fs::write(source_file, mutated_source)
-        .context("Failed to write mutated source")?;
+    std::fs::write(source_file, mutated_source).context("Failed to write mutated source")?;
 
     // Release lock before running tests (tests can run in parallel)
     drop(_guard);
@@ -229,10 +234,8 @@ fn test_mutant_with_lock(
     let _guard = file_lock.lock().unwrap();
 
     // Restore original
-    std::fs::copy(&backup_path, source_file)
-        .context("Failed to restore original")?;
-    std::fs::remove_file(&backup_path)
-        .context("Failed to remove backup")?;
+    std::fs::copy(&backup_path, source_file).context("Failed to restore original")?;
+    std::fs::remove_file(&backup_path).context("Failed to remove backup")?;
 
     // Return result
     match output {
@@ -257,7 +260,10 @@ fn copy_dir_recursive(src: &Path, dst: &Path) -> Result<()> {
         }
 
         // Skip temp and cache directories
-        if file_name == ".pmat-cache" || file_name == "temp_" || file_name.to_string_lossy().starts_with('.') {
+        if file_name == ".pmat-cache"
+            || file_name == "temp_"
+            || file_name.to_string_lossy().starts_with('.')
+        {
             continue;
         }
 

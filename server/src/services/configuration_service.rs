@@ -473,17 +473,15 @@ impl ConfigurationService {
 
         // Vector DB path fallback: config file > env var > default
         if config.vector_db_path.is_none() {
-            config.vector_db_path = std::env::var("PMAT_VECTOR_DB_PATH")
-                .ok()
-                .or_else(|| {
-                    // Default: ~/.pmat/embeddings.db
-                    dirs::home_dir().map(|home| {
-                        home.join(".pmat")
-                            .join("embeddings.db")
-                            .to_string_lossy()
-                            .to_string()
-                    })
-                });
+            config.vector_db_path = std::env::var("PMAT_VECTOR_DB_PATH").ok().or_else(|| {
+                // Default: ~/.pmat/embeddings.db
+                dirs::home_dir().map(|home| {
+                    home.join(".pmat")
+                        .join("embeddings.db")
+                        .to_string_lossy()
+                        .to_string()
+                })
+            });
         }
 
         // Workspace path fallback: config file > env var > current directory
@@ -596,7 +594,7 @@ impl ConfigurationService {
                 export_format: "json".to_string(),
             },
             semantic: SemanticConfig {
-                enabled: false, // Disabled by default (requires API key)
+                enabled: false,       // Disabled by default (requires API key)
                 openai_api_key: None, // Can be set via OPENAI_API_KEY env var
                 vector_db_path: None, // Defaults to ~/.pmat/embeddings.db
                 workspace_path: None, // Defaults to current directory

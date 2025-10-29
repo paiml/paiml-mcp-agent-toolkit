@@ -114,7 +114,10 @@ pub fn parse_rust_attribute_arguments(
 
     println!("✅ Issue #67 fix verified!");
     println!("   Function: {}", func.name);
-    println!("   Lines: {}-{} (in current file)", func.line_start, func.line_end);
+    println!(
+        "   Lines: {}-{} (in current file)",
+        func.line_start, func.line_end
+    );
     println!("   File has {} total lines", total_lines);
     println!("   ✅ Line numbers are accurate (not from old cached location 500-550)");
 }
@@ -178,7 +181,10 @@ async fn test_issue_67_multiple_extractions() {
 
     println!("✅ Issue #67 multi-file test passed!");
     println!("   File1: function at line {}", func1.line_start);
-    println!("   File2: function at line {} (different!)", func2.line_start);
+    println!(
+        "   File2: function at line {} (different!)",
+        func2.line_start
+    );
 }
 
 #[tokio::test]
@@ -269,7 +275,9 @@ async fn test_issue_67_pre_commit_hook_scenario() {
 
     println!("✅ Issue #67 pre-commit hook scenario PASSED!");
     println!("   Function extracted from: utils.rs:500-550 (old location)");
-    println!("   Function now at: attributes.rs:{}-{} (current location)",
-             func.line_start, func.line_end);
+    println!(
+        "   Function now at: attributes.rs:{}-{} (current location)",
+        func.line_start, func.line_end
+    );
     println!("   ✅ Pre-commit hooks will report correct line numbers!");
 }

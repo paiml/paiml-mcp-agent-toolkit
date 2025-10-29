@@ -50,7 +50,10 @@ impl DeepWasmService {
         self
     }
 
-    pub async fn analyze(&self, request: DeepWasmAnalysisRequest) -> DeepWasmResult<DeepWasmReport> {
+    pub async fn analyze(
+        &self,
+        request: DeepWasmAnalysisRequest,
+    ) -> DeepWasmResult<DeepWasmReport> {
         // Analyze WASM binary if provided
         let wasm_analysis = if let Some(ref wasm_path) = request.wasm_path {
             self.wasm_inspector.inspect_file(wasm_path)?
@@ -73,58 +76,68 @@ impl DeepWasmService {
 
                 // Perform detailed bytecode analysis
                 let bytecode_result = self.bytecode_analyzer.analyze(&wasm_bytes)?;
-                
+
                 // Prepare parser for disassembly
                 let mut disassembled = Vec::new();
                 let mut all_patterns = Vec::new();
-                
+
                 // Reparse the module to access function bodies
                 let parser = wasmparser::Parser::new(0);
                 let mut code_section_index = 0;
-                
+
                 for payload in parser.parse_all(&wasm_bytes) {
                     if let Ok(wasmparser::Payload::CodeSectionEntry(function_body)) = payload {
                         // Get function analysis to determine if we should disassemble
                         let func_idx = code_section_index;
-                        let func_analysis = bytecode_result.functions.iter().find(|f| {
-                            f.function_index as usize == func_idx
-                        });
-                        
+                        let func_analysis = bytecode_result
+                            .functions
+                            .iter()
+                            .find(|f| f.function_index as usize == func_idx);
+
                         code_section_index += 1;
-                        
+
                         // Only disassemble if exported or high complexity
                         if let Some(func_analysis) = func_analysis {
-                            if func_analysis.is_exported || func_analysis.complexity.cyclomatic_complexity > 10 {
+                            if func_analysis.is_exported
+                                || func_analysis.complexity.cyclomatic_complexity > 10
+                            {
                                 // Disassemble the function
                                 let result = self.disassembler.disassemble_function(
                                     func_analysis.function_index,
                                     func_analysis.name.clone(),
-                                    &function_body
+                                    &function_body,
                                 )?;
-                                
+
                                 // Detect patterns in this function's instructions
-                                let function_patterns = self.disassembler.detect_patterns(&result.instructions);
+                                let function_patterns =
+                                    self.disassembler.detect_patterns(&result.instructions);
                                 all_patterns.extend(function_patterns);
-                                
+
                                 disassembled.push(result);
                             }
                         }
                     }
                 }
-                
-                (Some(bytecode_result), Some(disassembled), Some(all_patterns))
+
+                (
+                    Some(bytecode_result),
+                    Some(disassembled),
+                    Some(all_patterns),
+                )
             } else {
                 (None, None, None)
             };
 
         // Analyze source code for WASM constructs
-        let source_metrics = self.analyze_source_code(&request.source_path, request.language.clone())?;
+        let source_metrics =
+            self.analyze_source_code(&request.source_path, request.language.clone())?;
 
         // Parse DWARF debug information if provided
         let dwarf_entries = if let Some(ref dwarf_path) = request.dwarf_path {
-            let dwarf_data = fs::read(dwarf_path)
-                .map_err(crate::services::deep_wasm::DeepWasmError::Io)?;
-            self.dwarf_parser.parse_dwarf_sections(&dwarf_data, None, None)?
+            let dwarf_data =
+                fs::read(dwarf_path).map_err(crate::services::deep_wasm::DeepWasmError::Io)?;
+            self.dwarf_parser
+                .parse_dwarf_sections(&dwarf_data, None, None)?
         } else {
             vec![]
         };
@@ -138,7 +151,8 @@ impl DeepWasmService {
 
         // Create source-to-WASM correlations
         let correlations = if !dwarf_entries.is_empty() || !source_map_entries.is_empty() {
-            self.correlation_engine.correlate(&dwarf_entries, &source_map_entries)?
+            self.correlation_engine
+                .correlate(&dwarf_entries, &source_map_entries)?
         } else {
             vec![]
         };
@@ -178,12 +192,15 @@ impl DeepWasmService {
     }
 
     /// Analyze source code for WASM-specific constructs
-    fn analyze_source_code(&self, source_path: &Path, language: SourceLanguage) -> DeepWasmResult<SourceMetrics> {
+    fn analyze_source_code(
+        &self,
+        source_path: &Path,
+        language: SourceLanguage,
+    ) -> DeepWasmResult<SourceMetrics> {
         use crate::services::deep_wasm::DeepWasmError;
 
         // Read source file
-        let source_code = fs::read_to_string(source_path)
-            .map_err(DeepWasmError::Io)?;
+        let source_code = fs::read_to_string(source_path).map_err(DeepWasmError::Io)?;
 
         // Count lines of code
         let lines_of_code = source_code.lines().count();
@@ -191,8 +208,9 @@ impl DeepWasmService {
         match language {
             SourceLanguage::Rust => {
                 // Parse as Rust code
-                let syntax_tree = syn::parse_file(&source_code)
-                    .map_err(|e| DeepWasmError::Analysis(format!("Failed to parse Rust source: {}", e)))?;
+                let syntax_tree = syn::parse_file(&source_code).map_err(|e| {
+                    DeepWasmError::Analysis(format!("Failed to parse Rust source: {}", e))
+                })?;
 
                 // Analyze WASM constructs
                 let wasm_analysis = rust_wasm_analyzer::analyze_wasm_constructs(&syntax_tree);
@@ -239,7 +257,9 @@ impl DeepWasmService {
                     let trimmed = line.trim();
 
                     // Detect function declarations: "fun name(...)" or "async fun name(...)"
-                    if (trimmed.starts_with("fun ") || trimmed.starts_with("async fun ")) && trimmed.contains('(') {
+                    if (trimmed.starts_with("fun ") || trimmed.starts_with("async fun "))
+                        && trimmed.contains('(')
+                    {
                         total_functions += 1;
 
                         // Simple complexity heuristic
@@ -323,7 +343,10 @@ mod tests {
         let report = result.unwrap();
 
         // Verify report has correct language
-        assert_eq!(report.pipeline_overview.source_language, SourceLanguage::Ruchy);
+        assert_eq!(
+            report.pipeline_overview.source_language,
+            SourceLanguage::Ruchy
+        );
 
         // Verify source metrics were calculated
         assert!(report.source_metrics.lines_of_code > 0);
@@ -333,7 +356,7 @@ mod tests {
         // Phase 1: No WASM boundary analysis for Ruchy yet
         assert_eq!(report.source_metrics.wasm_boundary_functions, 0);
     }
-    
+
     #[tokio::test]
     #[serial_test::serial]
     #[ignore] // Integration test requiring wasm test file
@@ -351,38 +374,36 @@ mod tests {
 
         let result = service.analyze(request).await;
         assert!(result.is_ok());
-        
+
         let report = result.unwrap();
-        
+
         // Verify disassembly data is present
         assert!(report.bytecode_analysis.is_some());
-        
+
         // If we have exported functions, we should have disassembled them
         if let Some(bytecode) = &report.bytecode_analysis {
-            let exported_count = bytecode.functions.iter()
-                .filter(|f| f.is_exported)
-                .count();
-                
+            let exported_count = bytecode.functions.iter().filter(|f| f.is_exported).count();
+
             if exported_count > 0 {
                 assert!(report.disassembled_functions.is_some());
                 if let Some(disassembled) = &report.disassembled_functions {
                     // We should have at least one disassembled function
                     assert!(!disassembled.is_empty());
-                    
+
                     // First disassembled function should have instructions
                     assert!(!disassembled[0].instructions.is_empty());
-                    
+
                     // Check for basic blocks
                     assert!(!disassembled[0].basic_blocks.is_empty());
                 }
             }
-            
+
             // If we found patterns, check they're structured correctly
             if let Some(patterns) = &report.suspicious_patterns {
                 for pattern in patterns {
                     assert!(!pattern.name.is_empty());
                     assert!(!pattern.description.is_empty());
-                    
+
                     // If suspicious, should have a reason
                     if pattern.suspicious {
                         assert!(pattern.suspicion_reason.is_some());

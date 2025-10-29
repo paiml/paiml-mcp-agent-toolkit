@@ -381,7 +381,7 @@ pub fn format_number(n: i32) -> String {
 }
 
 #[tokio::test]
-    #[ignore] // E2E test spawns subprocess (PMAT-COVERAGE-004)
+#[ignore] // E2E test spawns subprocess (PMAT-COVERAGE-004)
 async fn test_demo_server_happy_path() -> Result<()> {
     skip_in_ci!();
 
@@ -397,18 +397,28 @@ async fn test_demo_server_happy_path() -> Result<()> {
     assert!(html_content.len() > 100); // Basic sanity check that we got content
 
     // Verify HTML structure with string matching (replaces scraper dependency)
-    assert!(html_content.contains("stats-grid"), "Missing stats-grid class");
-    assert!(html_content.contains("stat-card"), "Missing stat-card class");
+    assert!(
+        html_content.contains("stats-grid"),
+        "Missing stats-grid class"
+    );
+    assert!(
+        html_content.contains("stat-card"),
+        "Missing stat-card class"
+    );
 
     // Count stat-card occurrences (should have at least 4)
     let stat_card_count = html_content.matches("stat-card").count();
-    assert!(stat_card_count >= 4, "Should have at least 4 stat cards, found {}", stat_card_count);
+    assert!(
+        stat_card_count >= 4,
+        "Should have at least 4 stat cards, found {}",
+        stat_card_count
+    );
 
     Ok(())
 }
 
 #[tokio::test]
-    #[ignore] // E2E test spawns subprocess (PMAT-COVERAGE-004)
+#[ignore] // E2E test spawns subprocess (PMAT-COVERAGE-004)
 async fn test_api_contract_compliance() -> Result<()> {
     skip_in_ci!();
 
@@ -474,7 +484,7 @@ async fn test_api_contract_compliance() -> Result<()> {
 }
 
 #[tokio::test]
-    #[ignore] // E2E test spawns subprocess (PMAT-COVERAGE-004)
+#[ignore] // E2E test spawns subprocess (PMAT-COVERAGE-004)
 async fn test_concurrent_requests() -> Result<()> {
     skip_in_ci!();
 
@@ -513,7 +523,7 @@ async fn test_concurrent_requests() -> Result<()> {
 }
 
 #[tokio::test]
-    #[ignore] // E2E test spawns subprocess (PMAT-COVERAGE-004)
+#[ignore] // E2E test spawns subprocess (PMAT-COVERAGE-004)
 #[serial]
 async fn test_performance_assertions() -> Result<()> {
     skip_in_ci!();
@@ -564,7 +574,7 @@ async fn test_performance_assertions() -> Result<()> {
 }
 
 #[tokio::test]
-    #[ignore] // E2E test spawns subprocess (PMAT-COVERAGE-004)
+#[ignore] // E2E test spawns subprocess (PMAT-COVERAGE-004)
 #[serial]
 async fn test_error_handling() -> Result<()> {
     skip_in_ci!();
@@ -593,7 +603,7 @@ async fn test_error_handling() -> Result<()> {
 }
 
 #[tokio::test]
-    #[ignore] // E2E test spawns subprocess (PMAT-COVERAGE-004)
+#[ignore] // E2E test spawns subprocess (PMAT-COVERAGE-004)
 async fn test_analysis_pipeline_integrity() -> Result<()> {
     skip_in_ci!();
 
@@ -677,7 +687,7 @@ async fn test_analysis_pipeline_integrity() -> Result<()> {
 }
 
 #[tokio::test]
-    #[ignore] // E2E test spawns subprocess (PMAT-COVERAGE-004)
+#[ignore] // E2E test spawns subprocess (PMAT-COVERAGE-004)
 async fn test_data_source_indicators() -> Result<()> {
     skip_in_ci!();
 
@@ -704,7 +714,7 @@ async fn test_data_source_indicators() -> Result<()> {
 }
 
 #[tokio::test]
-    #[ignore] // E2E test spawns subprocess (PMAT-COVERAGE-004)
+#[ignore] // E2E test spawns subprocess (PMAT-COVERAGE-004)
 async fn test_mermaid_diagram_rendering() -> Result<()> {
     skip_in_ci!();
 

@@ -37,9 +37,20 @@ impl TreeSitterMutationOperator for TypeScriptBinaryOpMutation {
         for child in node.children(&mut cursor) {
             let kind = child.kind();
             // Tree-sitter TypeScript represents operators as their literal text
-            if kind == "+" || kind == "-" || kind == "*" || kind == "/" || kind == "%"
-                || kind == ">" || kind == "<" || kind == ">=" || kind == "<="
-                || kind == "==" || kind == "!=" || kind == "===" || kind == "!==" {
+            if kind == "+"
+                || kind == "-"
+                || kind == "*"
+                || kind == "/"
+                || kind == "%"
+                || kind == ">"
+                || kind == "<"
+                || kind == ">="
+                || kind == "<="
+                || kind == "=="
+                || kind == "!="
+                || kind == "==="
+                || kind == "!=="
+            {
                 operator_node = Some(child);
                 break;
             }
@@ -76,24 +87,27 @@ impl TreeSitterMutationOperator for TypeScriptBinaryOpMutation {
         };
 
         // Generate mutated source for each replacement
-        replacements.into_iter().map(|new_op| {
-            let mut mutated = source.to_vec();
-            let range = op_node.byte_range();
+        replacements
+            .into_iter()
+            .map(|new_op| {
+                let mut mutated = source.to_vec();
+                let range = op_node.byte_range();
 
-            // Splice in the new operator
-            mutated.splice(range, new_op.bytes());
+                // Splice in the new operator
+                mutated.splice(range, new_op.bytes());
 
-            MutatedSource {
-                source: String::from_utf8(mutated).unwrap_or_else(|_| String::new()),
-                description: format!("{} → {}", op_text, new_op),
-                location: SourceLocation {
-                    line: op_node.start_position().row + 1,
-                    column: op_node.start_position().column + 1,
-                    end_line: op_node.end_position().row + 1,
-                    end_column: op_node.end_position().column + 1,
-                },
-            }
-        }).collect()
+                MutatedSource {
+                    source: String::from_utf8(mutated).unwrap_or_else(|_| String::new()),
+                    description: format!("{} → {}", op_text, new_op),
+                    location: SourceLocation {
+                        line: op_node.start_position().row + 1,
+                        column: op_node.start_position().column + 1,
+                        end_line: op_node.end_position().row + 1,
+                        end_column: op_node.end_position().column + 1,
+                    },
+                }
+            })
+            .collect()
     }
 
     fn kill_probability(&self) -> f64 {
@@ -157,21 +171,24 @@ impl TreeSitterMutationOperator for TypeScriptStrictEqualityMutation {
             _ => vec![],
         };
 
-        replacements.into_iter().map(|new_op| {
-            let mut mutated = source.to_vec();
-            mutated.splice(op_node.byte_range(), new_op.bytes());
+        replacements
+            .into_iter()
+            .map(|new_op| {
+                let mut mutated = source.to_vec();
+                mutated.splice(op_node.byte_range(), new_op.bytes());
 
-            MutatedSource {
-                source: String::from_utf8(mutated).unwrap_or_else(|_| String::new()),
-                description: format!("{} → {}", op_text, new_op),
-                location: SourceLocation {
-                    line: op_node.start_position().row + 1,
-                    column: op_node.start_position().column + 1,
-                    end_line: op_node.end_position().row + 1,
-                    end_column: op_node.end_position().column + 1,
-                },
-            }
-        }).collect()
+                MutatedSource {
+                    source: String::from_utf8(mutated).unwrap_or_else(|_| String::new()),
+                    description: format!("{} → {}", op_text, new_op),
+                    location: SourceLocation {
+                        line: op_node.start_position().row + 1,
+                        column: op_node.start_position().column + 1,
+                        end_line: op_node.end_position().row + 1,
+                        end_column: op_node.end_position().column + 1,
+                    },
+                }
+            })
+            .collect()
     }
 }
 
@@ -188,8 +205,8 @@ impl TreeSitterMutationOperator for TypeScriptOptionalChainingMutation {
     fn can_mutate(&self, node: &Node, _source: &[u8]) -> bool {
         // GREEN PHASE: Detect optional chaining expressions
         // Tree-sitter represents optional chaining as specific node types
-        matches!(node.kind(), "optional_chain" | "member_expression") &&
-            node.to_sexp().contains("?.")
+        matches!(node.kind(), "optional_chain" | "member_expression")
+            && node.to_sexp().contains("?.")
     }
 
     fn mutate(&self, node: &Node, source: &[u8]) -> Vec<MutatedSource> {
@@ -266,22 +283,20 @@ impl TreeSitterMutationOperator for TypeScriptNullishCoalescingMutation {
         };
 
         // Two mutations: ?? → || and ?? → (use right operand only)
-        vec![
-            MutatedSource {
-                source: {
-                    let mut mutated = source.to_vec();
-                    mutated.splice(op_node.byte_range(), "||".bytes());
-                    String::from_utf8(mutated).unwrap_or_else(|_| String::new())
-                },
-                description: "?? → ||".to_string(),
-                location: SourceLocation {
-                    line: op_node.start_position().row + 1,
-                    column: op_node.start_position().column + 1,
-                    end_line: op_node.end_position().row + 1,
-                    end_column: op_node.end_position().column + 1,
-                },
-            }
-        ]
+        vec![MutatedSource {
+            source: {
+                let mut mutated = source.to_vec();
+                mutated.splice(op_node.byte_range(), "||".bytes());
+                String::from_utf8(mutated).unwrap_or_else(|_| String::new())
+            },
+            description: "?? → ||".to_string(),
+            location: SourceLocation {
+                line: op_node.start_position().row + 1,
+                column: op_node.start_position().column + 1,
+                end_line: op_node.end_position().row + 1,
+                end_column: op_node.end_position().column + 1,
+            },
+        }]
     }
 }
 
@@ -298,7 +313,8 @@ impl TreeSitterMutationOperator for TypeScriptAsyncAwaitMutation {
     fn can_mutate(&self, node: &Node, source: &[u8]) -> bool {
         // GREEN PHASE: Detect async/await keywords
         let kind = node.kind();
-        if kind == "function_declaration" || kind == "arrow_function" || kind == "method_definition" {
+        if kind == "function_declaration" || kind == "arrow_function" || kind == "method_definition"
+        {
             let source_text = std::str::from_utf8(source).unwrap_or("");
             let node_text = &source_text[node.byte_range()];
             return node_text.contains("async");
@@ -400,7 +416,11 @@ mod tests {
         let mutants = operator.mutate(&node, source.as_bytes());
 
         // Should generate: a - b, a * b, a / b
-        assert!(mutants.len() >= 3, "Expected at least 3 mutants, got {}", mutants.len());
+        assert!(
+            mutants.len() >= 3,
+            "Expected at least 3 mutants, got {}",
+            mutants.len()
+        );
         assert!(
             mutants.iter().any(|m| m.source.contains("a - b")),
             "Missing mutation: + → -"
@@ -481,7 +501,9 @@ mod tests {
         let mutants = operator.mutate(&root, source.as_bytes());
 
         assert!(
-            mutants.iter().any(|m| m.source.contains("return api()") && !m.source.contains("await")),
+            mutants
+                .iter()
+                .any(|m| m.source.contains("return api()") && !m.source.contains("await")),
             "Missing mutation: Remove await"
         );
         assert!(

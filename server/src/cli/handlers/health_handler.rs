@@ -3,8 +3,8 @@
 //! This module provides functionality for checking overall project health
 //! by running multiple quality checks and generating consolidated reports.
 
-use anyhow::Result;
 use crate::cli::OutputFormat;
+use anyhow::Result;
 use serde::Serialize;
 use std::path::PathBuf;
 use tokio::task::JoinSet;
@@ -189,7 +189,10 @@ async fn run_build_check(project_dir: &PathBuf) -> Result<HealthCheck> {
     let duration = start.elapsed();
 
     if output.status.success() {
-        progress.finish_with_message(&format!("Build check passed ({:.1}s)", duration.as_secs_f64()));
+        progress.finish_with_message(&format!(
+            "Build check passed ({:.1}s)",
+            duration.as_secs_f64()
+        ));
         Ok(HealthCheck {
             name: "Build".to_string(),
             status: CheckStatus::Pass,
@@ -276,7 +279,11 @@ async fn run_coverage_check(project_dir: &PathBuf) -> Result<HealthCheck> {
                 CheckStatus::Fail
             };
 
-            progress.finish_with_message(&format!("Coverage: {:.1}% ({:.1}s)", coverage, duration.as_secs_f64()));
+            progress.finish_with_message(&format!(
+                "Coverage: {:.1}% ({:.1}s)",
+                coverage,
+                duration.as_secs_f64()
+            ));
 
             Ok(HealthCheck {
                 name: "Coverage".to_string(),
@@ -634,7 +641,8 @@ fn determine_checks_to_run(
     }
 
     // Check if any specific flags are set
-    let has_specific_flags = check_build || check_tests || check_coverage || check_complexity || check_satd;
+    let has_specific_flags =
+        check_build || check_tests || check_coverage || check_complexity || check_satd;
 
     // If no flags specified, default to build only
     if !has_specific_flags {
@@ -722,11 +730,7 @@ mod parallel_tests {
     #[tokio::test]
     async fn test_run_checks_parallel_returns_all_results() {
         let project_dir = PathBuf::from(".");
-        let check_types = vec![
-            CheckType::Build,
-            CheckType::Complexity,
-            CheckType::Satd,
-        ];
+        let check_types = vec![CheckType::Build, CheckType::Complexity, CheckType::Satd];
 
         let results = run_checks_parallel(&project_dir, check_types).await;
 

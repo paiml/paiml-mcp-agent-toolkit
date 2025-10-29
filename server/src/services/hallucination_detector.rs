@@ -132,9 +132,25 @@ impl ClaimExtractor {
         ];
 
         let known_languages = vec![
-            "Rust", "TypeScript", "JavaScript", "Python", "C", "C++", "Go",
-            "Java", "Kotlin", "Ruby", "PHP", "Swift", "C#", "Bash", "WASM",
-            "Haskell", "Elixir", "Erlang", "OCaml",
+            "Rust",
+            "TypeScript",
+            "JavaScript",
+            "Python",
+            "C",
+            "C++",
+            "Go",
+            "Java",
+            "Kotlin",
+            "Ruby",
+            "PHP",
+            "Swift",
+            "C#",
+            "Bash",
+            "WASM",
+            "Haskell",
+            "Elixir",
+            "Erlang",
+            "OCaml",
         ]
         .into_iter()
         .map(|s| s.to_string())
@@ -250,8 +266,8 @@ impl ClaimExtractor {
 
         // Extract capability entities (verbs)
         let capability_verbs = vec![
-            "analyze", "compile", "support", "detect", "generate", "validate",
-            "parse", "extract", "format", "refactor",
+            "analyze", "compile", "support", "detect", "generate", "validate", "parse", "extract",
+            "format", "refactor",
         ];
 
         for verb in capability_verbs {
@@ -309,7 +325,9 @@ impl CodeFactDatabase {
         }
 
         // Parse supported languages from "Supported languages:" sections
-        let language_regex = Regex::new(r"(?m)^-\s+(Rust|TypeScript|JavaScript|Python|C|C\+\+|Go|Java|Kotlin|Ruby|PHP|Swift|C#|Bash|WASM|Haskell|Elixir|Erlang|OCaml)")?;
+        let language_regex = Regex::new(
+            r"(?m)^-\s+(Rust|TypeScript|JavaScript|Python|C|C\+\+|Go|Java|Kotlin|Ruby|PHP|Swift|C#|Bash|WASM|Haskell|Elixir|Erlang|OCaml)",
+        )?;
         for caps in language_regex.captures_iter(content) {
             let language = caps.get(1).unwrap().as_str().to_string();
             if !db.languages.contains(&language) {
@@ -363,10 +381,10 @@ impl SemanticSimilarity {
     /// Create new similarity calculator
     pub fn new() -> Self {
         let stopwords = vec![
-            "the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for",
-            "of", "with", "by", "from", "as", "is", "was", "are", "were", "be",
-            "been", "being", "have", "has", "had", "do", "does", "did", "will",
-            "would", "should", "could", "may", "might", "must", "can", "cannot",
+            "the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for", "of", "with",
+            "by", "from", "as", "is", "was", "are", "were", "be", "been", "being", "have", "has",
+            "had", "do", "does", "did", "will", "would", "should", "could", "may", "might", "must",
+            "can", "cannot",
         ]
         .into_iter()
         .map(|s| s.to_string())
@@ -406,7 +424,10 @@ impl SemanticSimilarity {
                 score += weight;
             }
             // Partial match (substring)
-            else if fact_words.iter().any(|fw| fw.contains(claim_word.as_str()) || claim_word.contains(fw)) {
+            else if fact_words
+                .iter()
+                .any(|fw| fw.contains(claim_word.as_str()) || claim_word.contains(fw))
+            {
                 score += weight * 0.5;
             }
         }
@@ -438,8 +459,8 @@ impl SemanticSimilarity {
         // Technical terms get higher weight
         match word {
             // Language names
-            "rust" | "typescript" | "javascript" | "python" | "c" | "cpp" | "go" |
-            "java" | "kotlin" | "ruby" | "php" | "swift" | "haskell" => 3.0,
+            "rust" | "typescript" | "javascript" | "python" | "c" | "cpp" | "go" | "java"
+            | "kotlin" | "ruby" | "php" | "swift" | "haskell" => 3.0,
 
             // Action verbs (capabilities)
             "analyze" | "analyzes" | "analyzing" | "analysis" => 2.5,
@@ -465,19 +486,24 @@ impl SemanticSimilarity {
         let action_verbs = ["compile", "compiles", "analyze", "support", "generate"];
         for verb in &action_verbs {
             // Claim is positive about verb, fact is negative
-            if claim.contains(verb) && !claim.contains("cannot") && !claim.contains("does not")
-                && (fact.contains(&format!("does not {}", verb)) ||
-                   fact.contains(&format!("cannot {}", verb)) ||
-                   fact.contains(&format!("not {}", verb)) ||
-                   (fact.contains(verb) && (fact.contains("but not") || fact.contains("only")))) {
-                    // CONTRADICTION: claim positive, fact negative
-                    return -0.8; // Strong negative boost
-                }
+            if claim.contains(verb)
+                && !claim.contains("cannot")
+                && !claim.contains("does not")
+                && (fact.contains(&format!("does not {}", verb))
+                    || fact.contains(&format!("cannot {}", verb))
+                    || fact.contains(&format!("not {}", verb))
+                    || (fact.contains(verb) && (fact.contains("but not") || fact.contains("only"))))
+            {
+                // CONTRADICTION: claim positive, fact negative
+                return -0.8; // Strong negative boost
+            }
             // Both agree on capability
             if claim.contains(verb) && fact.contains(verb) {
                 // Check if both are positive or both are negative
                 let claim_negative = claim.contains("cannot") || claim.contains("does not");
-                let fact_negative = fact.contains("cannot") || fact.contains("does not") || fact.contains("but not");
+                let fact_negative = fact.contains("cannot")
+                    || fact.contains("does not")
+                    || fact.contains("but not");
 
                 if claim_negative == fact_negative {
                     boost += 0.3; // Both agree
@@ -495,8 +521,9 @@ impl SemanticSimilarity {
         }
 
         // Complexity/metrics matching
-        if (claim.contains("complexity") && fact.contains("complexity")) ||
-           (claim.contains("metrics") && fact.contains("metrics")) {
+        if (claim.contains("complexity") && fact.contains("complexity"))
+            || (claim.contains("metrics") && fact.contains("metrics"))
+        {
             boost += 0.2;
         }
 
@@ -549,7 +576,7 @@ impl HallucinationDetector {
                             content: "PMAT analyzes code but does not compile it".to_string(),
                         }),
                         error_message: Some(
-                            "PMAT does not compile code - analysis only".to_string()
+                            "PMAT does not compile code - analysis only".to_string(),
                         ),
                         confidence: 0.2,
                     });

@@ -20,16 +20,17 @@ pub struct SemanticCli {
 
 impl SemanticCli {
     /// Create new semantic CLI handler
-    pub async fn new(db_path: &str, api_key: &str, workspace_path: &std::path::Path) -> Result<Self, String> {
+    pub async fn new(
+        db_path: &str,
+        api_key: &str,
+        workspace_path: &std::path::Path,
+    ) -> Result<Self, String> {
         let vector_db = Arc::new(TursoVectorDB::new_local(db_path).await?);
 
-        let search_engine = Arc::new(
-            SemanticSearchEngine::new(api_key, db_path).await?,
-        );
+        let search_engine = Arc::new(SemanticSearchEngine::new(api_key, db_path).await?);
 
-        let hybrid_engine = Arc::new(
-            HybridSearchEngine::new(api_key, db_path, workspace_path).await?,
-        );
+        let hybrid_engine =
+            Arc::new(HybridSearchEngine::new(api_key, db_path, workspace_path).await?);
 
         let clustering_engine = Arc::new(ClusteringEngine::new(Arc::clone(&vector_db)));
         let topic_engine = Arc::new(TopicEngine::new(Arc::clone(&vector_db)));
@@ -43,7 +44,11 @@ impl SemanticCli {
     }
 
     /// Sync embeddings for directory
-    pub async fn embed_sync(&self, directory: &PathBuf, language: Option<String>) -> Result<String, String> {
+    pub async fn embed_sync(
+        &self,
+        directory: &PathBuf,
+        language: Option<String>,
+    ) -> Result<String, String> {
         let stats = self.search_engine.index_directory(directory).await?;
 
         let msg = format!(
@@ -105,7 +110,11 @@ impl SemanticCli {
 
         let results = self.hybrid_engine.search(&search_query).await?;
 
-        Ok(format!("Found {} results for query: {}", results.len(), query))
+        Ok(format!(
+            "Found {} results for query: {}",
+            results.len(),
+            query
+        ))
     }
 
     /// Find similar code
@@ -115,7 +124,11 @@ impl SemanticCli {
         }
 
         // For now, return placeholder
-        Ok(format!("Finding {} similar files to: {}", limit, file.display()))
+        Ok(format!(
+            "Finding {} similar files to: {}",
+            limit,
+            file.display()
+        ))
     }
 
     /// Cluster code
@@ -125,7 +138,9 @@ impl SemanticCli {
                 let k_val = k.ok_or("K-means requires --k parameter")?;
                 ClusteringMethod::KMeans { k: k_val }
             }
-            "hierarchical" => ClusteringMethod::Hierarchical { linkage: Linkage::Average },
+            "hierarchical" => ClusteringMethod::Hierarchical {
+                linkage: Linkage::Average,
+            },
             "dbscan" => ClusteringMethod::DBSCAN {
                 epsilon: 1.0,
                 min_samples: 2,
@@ -142,7 +157,11 @@ impl SemanticCli {
     }
 
     /// Extract topics
-    pub async fn analyze_topics(&self, num_topics: usize, language: Option<String>) -> Result<String, String> {
+    pub async fn analyze_topics(
+        &self,
+        num_topics: usize,
+        language: Option<String>,
+    ) -> Result<String, String> {
         if num_topics == 0 || num_topics > 20 {
             return Err("num_topics must be between 1 and 20".to_string());
         }
@@ -153,7 +172,10 @@ impl SemanticCli {
             file_pattern: None,
         };
 
-        let result = self.topic_engine.extract_topics(num_topics, filters).await?;
+        let result = self
+            .topic_engine
+            .extract_topics(num_topics, filters)
+            .await?;
 
         Ok(format!("Extracted {} topics", result.topics.len()))
     }
@@ -224,7 +246,9 @@ mod tests {
     async fn test_semantic_search_basic() {
         let (cli, _temp) = setup_cli().await;
 
-        let result = cli.semantic_search("error handling", "hybrid", 10, None).await;
+        let result = cli
+            .semantic_search("error handling", "hybrid", 10, None)
+            .await;
 
         // Test passes if method executes without panic
         // May return error with empty database/workspace - that's OK

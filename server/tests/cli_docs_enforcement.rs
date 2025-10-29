@@ -36,14 +36,11 @@ fn red_test_all_commands_have_help() {
         "analyze dead-code",
         "analyze churn",
         "analyze deep-context",
-
         // Maintain commands
         "maintain health",
         "maintain roadmap",
-
         // Scaffold commands
         "scaffold agent",
-
         // Hooks commands
         "hooks install",
         "hooks verify",
@@ -77,8 +74,10 @@ fn red_test_help_has_basic_structure() {
     let help = String::from_utf8(output).unwrap();
 
     assert!(help.contains("Usage:"), "Missing Usage section");
-    assert!(help.contains("Options:") || help.contains("FLAGS:"),
-        "Missing Options/FLAGS section");
+    assert!(
+        help.contains("Options:") || help.contains("FLAGS:"),
+        "Missing Options/FLAGS section"
+    );
 }
 
 // ============================================================================
@@ -109,13 +108,27 @@ fn red_test_maintain_roadmap_flags_complete() {
     let help = String::from_utf8(output).unwrap();
 
     // All flags from code must appear in help
-    assert!(help.contains("--validate"), "Missing --validate flag documentation");
-    assert!(help.contains("--health"), "Missing --health flag documentation");
+    assert!(
+        help.contains("--validate"),
+        "Missing --validate flag documentation"
+    );
+    assert!(
+        help.contains("--health"),
+        "Missing --health flag documentation"
+    );
     assert!(help.contains("--fix"), "Missing --fix flag documentation");
-    assert!(help.contains("--generate-tickets"),
-        "Missing --generate-tickets flag documentation (PMAT-6012)");
-    assert!(help.contains("--dry-run"), "Missing --dry-run flag documentation");
-    assert!(help.contains("--format"), "Missing --format flag documentation");
+    assert!(
+        help.contains("--generate-tickets"),
+        "Missing --generate-tickets flag documentation (PMAT-6012)"
+    );
+    assert!(
+        help.contains("--dry-run"),
+        "Missing --dry-run flag documentation"
+    );
+    assert!(
+        help.contains("--format"),
+        "Missing --format flag documentation"
+    );
 }
 
 /// RED: scaffold agent must document ALL flags
@@ -133,14 +146,22 @@ fn red_test_scaffold_agent_flags_complete() {
 
     let help = String::from_utf8(output).unwrap();
 
-    assert!(help.contains("--template") || help.contains("-t"),
-        "Missing --template flag");
-    assert!(help.contains("--quality-level") || help.contains("--quality"),
-        "Missing --quality-level flag");
-    assert!(help.contains("--output") || help.contains("-o"),
-        "Missing --output flag");
-    assert!(help.contains("--features") || help.contains("-f"),
-        "Missing --features flag");
+    assert!(
+        help.contains("--template") || help.contains("-t"),
+        "Missing --template flag"
+    );
+    assert!(
+        help.contains("--quality-level") || help.contains("--quality"),
+        "Missing --quality-level flag"
+    );
+    assert!(
+        help.contains("--output") || help.contains("-o"),
+        "Missing --output flag"
+    );
+    assert!(
+        help.contains("--features") || help.contains("-f"),
+        "Missing --features flag"
+    );
 }
 
 /// RED: maintain health must document ALL flags
@@ -164,8 +185,14 @@ fn red_test_maintain_health_flags_complete() {
     assert!(help.contains("--all"), "Missing --all flag");
     assert!(help.contains("--check-build"), "Missing --check-build flag");
     assert!(help.contains("--check-tests"), "Missing --check-tests flag");
-    assert!(help.contains("--check-coverage"), "Missing --check-coverage flag");
-    assert!(help.contains("--check-complexity"), "Missing --check-complexity flag");
+    assert!(
+        help.contains("--check-coverage"),
+        "Missing --check-coverage flag"
+    );
+    assert!(
+        help.contains("--check-complexity"),
+        "Missing --check-complexity flag"
+    );
     assert!(help.contains("--check-satd"), "Missing --check-satd flag");
 }
 
@@ -196,17 +223,17 @@ fn red_test_help_has_descriptive_text() {
 
     // Check for meaningful --validate description
     assert!(
-        help.contains("Validate roadmap structure") ||
-        help.contains("Check roadmap consistency") ||
-        help.contains("Verify roadmap and tickets"),
+        help.contains("Validate roadmap structure")
+            || help.contains("Check roadmap consistency")
+            || help.contains("Verify roadmap and tickets"),
         "Missing descriptive text for --validate"
     );
 
     // Check for meaningful --generate-tickets description
     assert!(
-        help.contains("missing ticket files") ||
-        help.contains("Create ticket files from roadmap") ||
-        help.contains("Auto-generate"),
+        help.contains("missing ticket files")
+            || help.contains("Create ticket files from roadmap")
+            || help.contains("Auto-generate"),
         "Missing descriptive text for --generate-tickets"
     );
 }
@@ -221,11 +248,7 @@ fn red_test_help_has_descriptive_text() {
 #[test]
 #[ignore]
 fn red_test_no_generic_descriptions_cli() {
-    let commands = vec![
-        "scaffold agent",
-        "maintain roadmap",
-        "maintain health",
-    ];
+    let commands = vec!["scaffold agent", "maintain roadmap", "maintain health"];
 
     for cmd in commands {
         let output = Command::cargo_bin("pmat")
@@ -253,7 +276,8 @@ fn red_test_no_generic_descriptions_cli() {
             assert!(
                 !help.contains(pattern),
                 "Command '{}' contains forbidden generic pattern: '{}'",
-                cmd, pattern
+                cmd,
+                pattern
             );
         }
     }
@@ -291,12 +315,13 @@ fn red_test_help_includes_examples() {
         let help = String::from_utf8(output).unwrap();
 
         assert!(
-            help.contains("EXAMPLE") ||
-            help.contains("Example") ||
-            help.contains("example") ||
-            help.contains("EXAMPLES") ||
-            help.contains("Examples"),
-            "Command '{}' missing examples section", cmd
+            help.contains("EXAMPLE")
+                || help.contains("Example")
+                || help.contains("example")
+                || help.contains("EXAMPLES")
+                || help.contains("Examples"),
+            "Command '{}' missing examples section",
+            cmd
         );
     }
 }
@@ -385,11 +410,7 @@ fn red_test_required_vs_optional_clear() {
 #[test]
 #[ignore]
 fn red_test_hooks_commands_documented() {
-    let hook_commands = vec![
-        "hooks install",
-        "hooks verify",
-        "hooks refresh",
-    ];
+    let hook_commands = vec!["hooks install", "hooks verify", "hooks refresh"];
 
     for cmd in hook_commands {
         Command::cargo_bin("pmat")

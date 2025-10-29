@@ -28,8 +28,8 @@ impl LanguageAdapter for RustAdapter {
 
     async fn parse(&self, source: &str) -> Result<String> {
         // Parse using syn
-        let _syntax_tree: syn::File = syn::parse_file(source)
-            .context("Failed to parse Rust source")?;
+        let _syntax_tree: syn::File =
+            syn::parse_file(source).context("Failed to parse Rust source")?;
 
         // For now, return source as-is (we'll use syn AST directly)
         Ok(source.to_string())
@@ -55,8 +55,7 @@ impl LanguageAdapter for RustAdapter {
 
     async fn run_tests(&self, source_file: &Path) -> Result<TestRunResult> {
         // Get the project root (traverse up from source file)
-        let project_root = find_cargo_root(source_file)
-            .context("Could not find Cargo.toml")?;
+        let project_root = find_cargo_root(source_file).context("Could not find Cargo.toml")?;
 
         // Run cargo test
         let output = TokioCommand::new("cargo")

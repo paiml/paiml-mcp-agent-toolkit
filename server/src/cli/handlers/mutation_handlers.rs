@@ -2,10 +2,12 @@
 //!
 //! Handles the `pmat analyze mutate` command for mutation testing with ML prediction.
 
-use anyhow::{Result, Context};
-use std::path::PathBuf;
 use crate::cli::OutputFormat;
-use crate::services::mutation::{MutationEngine, MutationConfig, RustAdapter, MutantExecutor, MutationScore};
+use crate::services::mutation::{
+    MutantExecutor, MutationConfig, MutationEngine, MutationScore, RustAdapter,
+};
+use anyhow::{Context, Result};
+use std::path::PathBuf;
 use std::sync::Arc;
 
 /// Configuration for mutation testing
@@ -111,15 +113,21 @@ fn create_mutation_engine() -> MutationEngine {
 }
 
 /// Generate mutants from path
-async fn generate_mutants(engine: &MutationEngine, path: &PathBuf) -> Result<Vec<crate::services::mutation::Mutant>> {
+async fn generate_mutants(
+    engine: &MutationEngine,
+    path: &PathBuf,
+) -> Result<Vec<crate::services::mutation::Mutant>> {
     println!("\n📝 Generating mutants...");
 
     let mutants = if path.is_file() {
-        engine.generate_mutants_from_file(path)
+        engine
+            .generate_mutants_from_file(path)
             .await
             .context("Failed to generate mutants")?
     } else {
-        anyhow::bail!("Directory mutation testing not yet implemented. Please provide a file path.");
+        anyhow::bail!(
+            "Directory mutation testing not yet implemented. Please provide a file path."
+        );
     };
 
     println!("✅ Generated {} mutants", mutants.len());
@@ -131,11 +139,12 @@ async fn execute_mutants(
     path: &PathBuf,
     mutants: &[crate::services::mutation::Mutant],
     distributed: bool,
-    workers: usize
+    workers: usize,
 ) -> Result<Vec<crate::services::mutation::MutationResult>> {
     println!("\n🧪 Running tests on mutants...");
 
-    let work_dir = path.parent()
+    let work_dir = path
+        .parent()
         .and_then(|p| p.parent())
         .or_else(|| path.parent())
         .unwrap_or(std::path::Path::new("."))
@@ -144,10 +153,14 @@ async fn execute_mutants(
     let executor = MutantExecutor::new(work_dir).with_timeout(600);
 
     if distributed && workers > 1 {
-        executor.execute_mutants_parallel(mutants, workers).await
+        executor
+            .execute_mutants_parallel(mutants, workers)
+            .await
             .context("Failed to execute mutants in parallel")
     } else {
-        executor.execute_mutants(mutants).await
+        executor
+            .execute_mutants(mutants)
+            .await
             .context("Failed to execute mutants")
     }
 }
@@ -171,7 +184,7 @@ fn format_report(
     score: &MutationScore,
     results: &[crate::services::mutation::MutationResult],
     operators: &Option<Vec<String>>,
-    format: OutputFormat
+    format: OutputFormat,
 ) -> serde_json::Value {
     match format {
         OutputFormat::Json => format_json_report(score, results, operators),
@@ -183,7 +196,7 @@ fn format_report(
 fn format_json_report(
     score: &MutationScore,
     results: &[crate::services::mutation::MutationResult],
-    operators: &Option<Vec<String>>
+    operators: &Option<Vec<String>>,
 ) -> serde_json::Value {
     serde_json::json!({
         "mutation_score": score.score,
@@ -243,10 +256,16 @@ async fn output_report(report: &serde_json::Value, output: Option<PathBuf>) -> R
 fn print_summary(score: &MutationScore) {
     println!("\n✅ Mutation testing complete!");
     println!("   Mutation score: {:.2}%", score.score * 100.0);
-    println!("   {} mutants killed, {} survived", score.killed, score.survived);
+    println!(
+        "   {} mutants killed, {} survived",
+        score.killed, score.survived
+    );
 
     if score.compile_errors > 0 {
-        println!("   ⚠️  {} mutants caused compilation errors", score.compile_errors);
+        println!(
+            "   ⚠️  {} mutants caused compilation errors",
+            score.compile_errors
+        );
     }
     if score.timeouts > 0 {
         println!("   ⏱️  {} mutants timed out", score.timeouts);

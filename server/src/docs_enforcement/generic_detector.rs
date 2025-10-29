@@ -145,7 +145,8 @@ fn is_too_short_or_matches_pattern(desc: &str) -> bool {
 
 /// Check if more than 50% of words are lazy/generic words
 fn has_too_many_lazy_words(words: &[&str]) -> bool {
-    let lazy_count = words.iter()
+    let lazy_count = words
+        .iter()
         .filter(|w| LAZY_WORDS.contains(&w.to_lowercase().as_str()))
         .count();
 
@@ -164,9 +165,7 @@ fn has_detail_indicators(desc: &str) -> bool {
 
 /// Check if description has low word uniqueness (repetitive)
 fn has_low_word_uniqueness(words: &[&str]) -> bool {
-    let lowercase_words: Vec<String> = words.iter()
-        .map(|w| w.to_lowercase())
-        .collect();
+    let lowercase_words: Vec<String> = words.iter().map(|w| w.to_lowercase()).collect();
     let unique_words: std::collections::HashSet<&String> = lowercase_words.iter().collect();
 
     // If <40% unique words, probably generic
@@ -180,7 +179,8 @@ pub fn suggest_improvements(desc: &str) -> Vec<String> {
     let mut suggestions = Vec::new();
 
     if desc.len() < 15 {
-        suggestions.push("Make description at least 15 characters with specific details".to_string());
+        suggestions
+            .push("Make description at least 15 characters with specific details".to_string());
     }
 
     if desc.split_whitespace().count() < 3 {
@@ -200,7 +200,8 @@ pub fn suggest_improvements(desc: &str) -> Vec<String> {
     }
 
     if desc.split_whitespace().count() < 5 {
-        suggestions.push("Explain: What is it? What does it do? What are valid values?".to_string());
+        suggestions
+            .push("Explain: What is it? What does it do? What are valid values?".to_string());
     }
 
     suggestions
