@@ -6,7 +6,8 @@
 
 use crate::cli::commands::HooksCommands;
 use crate::services::configuration_service::{configuration, PmatConfig};
-use anyhow::Result;
+use crate::tdg::TdgHooksConfig;
+use anyhow::{Context, Result};
 use chrono::Local;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -678,12 +679,14 @@ pub async fn handle_hooks_command(cmd: &HooksCommands) -> Result<()> {
             interactive,
             force,
             backup,
-        } => handle_install(&hooks_cmd, *force, *backup, *interactive).await,
+            tdg_enforcement,
+        } => handle_install(&hooks_cmd, *force, *backup, *interactive, *tdg_enforcement).await,
         HooksCommands::Install {
             interactive,
             force,
             backup,
-        } => handle_install(&hooks_cmd, *force, *backup, *interactive).await,
+            tdg_enforcement,
+        } => handle_install(&hooks_cmd, *force, *backup, *interactive, *tdg_enforcement).await,
         HooksCommands::Uninstall { restore_backup } => {
             handle_uninstall(&hooks_cmd, *restore_backup).await
         }
@@ -703,7 +706,14 @@ async fn handle_install(
     force: bool,
     backup: bool,
     interactive: bool,
+    tdg_enforcement: bool,
 ) -> Result<()> {
+    // Handle TDG enforcement installation (Sprint 66 Phase 3)
+    if tdg_enforcement {
+        println!("🔧 Installing PMAT hooks with TDG enforcement...");
+        return install_tdg_hooks_wrapper().await;
+    }
+
     println!("🔧 Installing pre-commit hooks...");
     if interactive {
         println!("  Interactive mode enabled");
@@ -892,6 +902,146 @@ async fn handle_run(hooks_cmd: &HooksCommand, all_files: bool, verbose: bool) ->
         println!("\n❌ Pre-commit checks failed");
         Err(anyhow::anyhow!("Pre-commit checks failed"))
     }
+}
+
+// =============================================================================
+// TDG ENFORCEMENT HOOKS (Sprint 66 Phase 3)
+// =============================================================================
+
+/// Wrapper function for TDG hooks installation
+async fn install_tdg_hooks_wrapper() -> Result<()> {
+    let project_root = std::env::current_dir()?;
+    install_tdg_hooks(&project_root).await?;
+
+    println!("✅ TDG enforcement hooks installed successfully");
+    println!("");
+    println!("Hooks installed:");
+    println!("  - .git/hooks/pre-commit (TDG quality checks)");
+    println!("  - .git/hooks/post-commit (baseline auto-update)");
+    println!("");
+    println!("Configuration: .pmat/tdg-rules.toml");
+
+    Ok(())
+}
+
+/// Install TDG enforcement hooks
+async fn install_tdg_hooks(project_root: &Path) -> Result<()> {
+    let git_dir = project_root.join(".git");
+    let hooks_dir = git_dir.join("hooks");
+
+    // Verify .git directory exists
+    if !git_dir.exists() {
+        return Err(anyhow::anyhow!(
+            "Not a git repository (no .git directory found)"
+        ));
+    }
+
+    // Create hooks directory if it doesn't exist
+    if !hooks_dir.exists() {
+        fs::create_dir_all(&hooks_dir).context("Failed to create .git/hooks directory")?;
+    }
+
+    // Load or create TDG configuration
+    let config = match TdgHooksConfig::load(project_root) {
+        Ok(cfg) => cfg,
+        Err(_) => {
+            println!("📝 Creating default TDG configuration...");
+            TdgHooksConfig::create_default(project_root)?;
+            TdgHooksConfig::load(project_root)?
+        }
+    };
+
+    // Install pre-commit hook
+    install_tdg_pre_commit_hook(&hooks_dir, &config)?;
+
+    // Install post-commit hook
+    install_tdg_post_commit_hook(&hooks_dir, &config)?;
+
+    Ok(())
+}
+
+/// Install pre-commit hook with TDG enforcement
+fn install_tdg_pre_commit_hook(hooks_dir: &Path, config: &TdgHooksConfig) -> Result<()> {
+    let hook_path = hooks_dir.join("pre-commit");
+
+    // Read template
+    let template = include_str!("../../../../templates/hooks/pre-commit-tdg.sh");
+
+    // Substitute configuration values
+    let hook_content = template
+        .replace("{{BASELINE_PATH}}", &config.baseline.baseline_path)
+        .replace(
+            "{{MIN_GRADE}}",
+            config.quality_gates.get_default_min_grade(),
+        )
+        .replace(
+            "{{MAX_SCORE_DROP}}",
+            &config.quality_gates.max_score_drop.to_string(),
+        )
+        .replace(
+            "{{ALLOW_GRADE_DROP}}",
+            &config.quality_gates.allow_grade_drop.to_string(),
+        )
+        .replace("{{MODE}}", &config.quality_gates.mode.to_string())
+        .replace(
+            "{{BLOCK_ON_REGRESSION}}",
+            &config.quality_gates.block_on_regression.to_string(),
+        )
+        .replace(
+            "{{BLOCK_ON_NEW_FILES}}",
+            &config
+                .quality_gates
+                .block_on_new_files_below_threshold
+                .to_string(),
+        );
+
+    // Write hook file
+    fs::write(&hook_path, hook_content)?;
+
+    // Make executable on Unix
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = fs::metadata(&hook_path)?.permissions();
+        perms.set_mode(0o755);
+        fs::set_permissions(&hook_path, perms)?;
+    }
+
+    Ok(())
+}
+
+/// Install post-commit hook for baseline auto-update
+fn install_tdg_post_commit_hook(hooks_dir: &Path, config: &TdgHooksConfig) -> Result<()> {
+    let hook_path = hooks_dir.join("post-commit");
+
+    // Read template
+    let template = include_str!("../../../../templates/hooks/post-commit-tdg.sh");
+
+    // Substitute configuration values
+    let hook_content = template
+        .replace("{{BASELINE_PATH}}", &config.baseline.baseline_path)
+        .replace(
+            "{{AUTO_UPDATE}}",
+            &config.baseline.auto_update_on_commit.to_string(),
+        )
+        .replace(
+            "{{STORE_IN_GIT}}",
+            &config.baseline.store_in_git.to_string(),
+        );
+
+    // Write hook file
+    fs::write(&hook_path, hook_content)?;
+
+    // Make executable on Unix
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = fs::metadata(&hook_path)?.permissions();
+        perms.set_mode(0o755);
+        fs::set_permissions(&hook_path, perms)?;
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]

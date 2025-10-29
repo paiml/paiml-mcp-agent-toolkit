@@ -9,6 +9,7 @@ pub mod analyzer_simple;
 pub mod baseline;
 pub mod config;
 pub mod diagnostics;
+pub mod hooks_config;
 pub mod quality_gate;
 // Temporarily disable export to fix circular dependency
 // pub mod export;
@@ -43,6 +44,9 @@ pub use baseline::{
     BaselineComparison, BaselineEntry, BaselineSummary, FileComparison, TdgBaseline,
 };
 pub use config::TdgConfig;
+pub use hooks_config::{
+    BaselineConfig, CiCdConfig, EnforcementMode, QualityGatesConfig, TdgHooksConfig,
+};
 pub use quality_gate::{
     GateConfig, GateResult, MinimumGradeGate, NewFileGate, QualityGate, RegressionGate, Severity,
     Violation, ViolationType,
