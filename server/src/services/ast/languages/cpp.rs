@@ -64,22 +64,22 @@ impl CppAstVisitor {
 
         for line in source.lines() {
             let trimmed = line.trim();
-            
+
             // Track namespace declarations
             if trimmed.starts_with("namespace ") && !in_namespace {
                 if let Some(name) = self.extract_namespace_name(trimmed) {
                     _current_namespace = name;
                     self.current_namespace.push(_current_namespace.clone());
                     in_namespace = true;
-                    
+
                     // No AST item for namespaces yet, just track it for qualification
                 }
             }
-            
+
             // Track opening and closing braces
             brace_depth += trimmed.chars().filter(|&c| c == '{').count() as i32;
             brace_depth -= trimmed.chars().filter(|&c| c == '}').count() as i32;
-            
+
             // Check if we're exiting a namespace
             if in_namespace && trimmed.contains("}") && brace_depth == 0 {
                 in_namespace = false;
@@ -108,12 +108,21 @@ impl CppAstVisitor {
 
             // Check for class/struct declaration
             if (trimmed.starts_with("class ") || trimmed.starts_with("struct ")) && !in_class {
-                let class_type = if trimmed.starts_with("class ") { "class" } else { "struct" };
-                
+                let class_type = if trimmed.starts_with("class ") {
+                    "class"
+                } else {
+                    "struct"
+                };
+
                 if let Some(name) = self.extract_class_name(trimmed) {
                     // Set default visibility based on type
-                    visibility = if class_type == "class" { "private" } else { "public" }.to_string();
-                    
+                    visibility = if class_type == "class" {
+                        "private"
+                    } else {
+                        "public"
+                    }
+                    .to_string();
+
                     current_class_name = self.get_qualified_name(&name);
                     self.current_class = Some(current_class_name.clone());
                     class_start_line = line_num + 1;
@@ -125,15 +134,15 @@ impl CppAstVisitor {
             // Count fields when in a class
             if in_class && !trimmed.is_empty() {
                 // Skip certain lines that aren't fields
-                let is_field = !trimmed.starts_with("public:") 
-                    && !trimmed.starts_with("private:") 
+                let is_field = !trimmed.starts_with("public:")
+                    && !trimmed.starts_with("private:")
                     && !trimmed.starts_with("protected:")
-                    && !trimmed.starts_with("{") 
+                    && !trimmed.starts_with("{")
                     && !trimmed.starts_with("}")
                     && !trimmed.starts_with("//")
                     && !trimmed.starts_with("/*")
                     && trimmed.contains(";");
-                    
+
                 // Track access modifiers
                 if trimmed.starts_with("public:") {
                     visibility = "public".to_string();
@@ -142,7 +151,7 @@ impl CppAstVisitor {
                 } else if trimmed.starts_with("protected:") {
                     visibility = "protected".to_string();
                 }
-                
+
                 // Count field if it looks like one
                 if is_field {
                     fields_count += 1;
@@ -156,7 +165,7 @@ impl CppAstVisitor {
             // Check if we're at the end of a class definition
             if in_class && trimmed.contains("}") && (brace_depth == 0 || trimmed.ends_with("};")) {
                 in_class = false;
-                
+
                 // Only add class if it has a name
                 if !current_class_name.is_empty() {
                     // Use Struct for Class
@@ -168,7 +177,7 @@ impl CppAstVisitor {
                         line: class_start_line,
                     });
                 }
-                
+
                 self.current_class = None;
             }
         }
@@ -180,7 +189,7 @@ impl CppAstVisitor {
         // Track namespace context while parsing
         let mut namespace_stack: Vec<String> = Vec::new();
         let mut brace_depth = 0;
-        let mut class_depth = 0;  // Track if we're inside a class
+        let mut class_depth = 0; // Track if we're inside a class
 
         for (line_num, line) in source.lines().enumerate() {
             let trimmed = line.trim();
@@ -199,7 +208,7 @@ impl CppAstVisitor {
 
             // Track class/struct declarations to avoid extracting methods
             if trimmed.starts_with("class ") || trimmed.starts_with("struct ") {
-                class_depth = brace_depth + 1;  // Methods will be at this depth or deeper
+                class_depth = brace_depth + 1; // Methods will be at this depth or deeper
             }
 
             // Track brace depth
@@ -212,7 +221,10 @@ impl CppAstVisitor {
             }
 
             // Check for closing namespace
-            if trimmed.contains("}") && !namespace_stack.is_empty() && brace_depth < namespace_stack.len() as i32 {
+            if trimmed.contains("}")
+                && !namespace_stack.is_empty()
+                && brace_depth < namespace_stack.len() as i32
+            {
                 namespace_stack.pop();
             }
 
@@ -236,7 +248,8 @@ impl CppAstVisitor {
                         "private"
                     } else {
                         "public"
-                    }.to_string();
+                    }
+                    .to_string();
 
                     // Check if function is async (C++20 feature)
                     let is_async = trimmed.contains("async ") || trimmed.contains("co_await ");
@@ -262,25 +275,34 @@ impl CppAstVisitor {
 
         for (line_num, line) in source.lines().enumerate() {
             let trimmed = line.trim();
-            
+
             // Skip comments and preprocessor directives
             if trimmed.starts_with("//") || trimmed.starts_with("/*") || trimmed.starts_with("#") {
                 continue;
             }
-            
+
             // Track class declarations
             if (trimmed.starts_with("class ") || trimmed.starts_with("struct ")) && !in_class {
-                let class_type = if trimmed.starts_with("class ") { "class" } else { "struct" };
-                
+                let class_type = if trimmed.starts_with("class ") {
+                    "class"
+                } else {
+                    "struct"
+                };
+
                 if let Some(name) = self.extract_class_name(trimmed) {
                     // Set default visibility based on type
-                    visibility = if class_type == "class" { "private" } else { "public" }.to_string();
-                    
+                    visibility = if class_type == "class" {
+                        "private"
+                    } else {
+                        "public"
+                    }
+                    .to_string();
+
                     current_class_name = self.get_qualified_name(&name);
                     in_class = true;
                 }
             }
-            
+
             // Track access modifiers within class
             if in_class {
                 if trimmed.starts_with("public:") {
@@ -291,17 +313,17 @@ impl CppAstVisitor {
                     visibility = "protected".to_string();
                 }
             }
-            
+
             // Check for method declaration within class
             if in_class && self.is_function_declaration(trimmed) {
                 if let Ok(method_name) = self.extract_function_name(trimmed) {
                     let qualified_name = format!("{}::{}", current_class_name, method_name);
-                    
+
                     // Check for virtual/static/const modifiers
                     let is_virtual = trimmed.contains("virtual ");
                     let is_static = trimmed.contains("static ");
                     let is_const = trimmed.contains(" const");
-                    
+
                     // Add more detail to visibility
                     let method_visibility = if is_virtual {
                         format!("{}_virtual", visibility)
@@ -312,10 +334,10 @@ impl CppAstVisitor {
                     } else {
                         visibility.clone()
                     };
-                    
+
                     // Check if method is async
                     let is_async = trimmed.contains("async ") || trimmed.contains("co_await ");
-                    
+
                     // Use Function for Method
                     self.items.push(AstItem::Function {
                         name: qualified_name,
@@ -325,11 +347,11 @@ impl CppAstVisitor {
                     });
                 }
             }
-            
+
             // Track brace depth
             brace_depth += trimmed.chars().filter(|&c| c == '{').count() as i32;
             brace_depth -= trimmed.chars().filter(|&c| c == '}').count() as i32;
-            
+
             // Check if we're exiting a class
             if in_class && trimmed.contains("}") && (brace_depth == 0 || trimmed.ends_with("};")) {
                 in_class = false;
@@ -359,11 +381,16 @@ impl CppAstVisitor {
             brace_depth -= trimmed.chars().filter(|&c| c == '}').count() as i32;
 
             // Check for closing namespace
-            if trimmed.contains("}") && !namespace_stack.is_empty() && brace_depth < namespace_stack.len() as i32 {
+            if trimmed.contains("}")
+                && !namespace_stack.is_empty()
+                && brace_depth < namespace_stack.len() as i32
+            {
                 namespace_stack.pop();
             }
 
-            if (trimmed.starts_with("enum ") || trimmed.starts_with("enum class ")) && trimmed.contains("{") {
+            if (trimmed.starts_with("enum ") || trimmed.starts_with("enum class "))
+                && trimmed.contains("{")
+            {
                 if let Some(name) = self.extract_enum_name(trimmed) {
                     // Build qualified name with current namespace
                     let qualified_name = if !namespace_stack.is_empty() {
@@ -391,16 +418,18 @@ impl CppAstVisitor {
     fn extract_typedef_declarations(&mut self, source: &str) -> Result<(), String> {
         for (line_num, line) in source.lines().enumerate() {
             let trimmed = line.trim();
-            
+
             // Check for typedef and using declarations
-            if trimmed.starts_with("typedef ") || (trimmed.starts_with("using ") && trimmed.contains("=")) {
+            if trimmed.starts_with("typedef ")
+                || (trimmed.starts_with("using ") && trimmed.contains("="))
+            {
                 if let Some(name) = if trimmed.starts_with("typedef ") {
                     self.extract_typedef_name(trimmed)
                 } else {
                     self.extract_using_name(trimmed)
                 } {
                     let qualified_name = self.get_qualified_name(&name);
-                    
+
                     // Use Struct for TypeAlias
                     self.items.push(AstItem::Struct {
                         name: qualified_name,
@@ -419,26 +448,26 @@ impl CppAstVisitor {
     fn extract_template_declarations(&mut self, source: &str) -> Result<(), String> {
         let mut in_template = false;
         let mut template_line = 0;
-        
+
         for (line_num, line) in source.lines().enumerate() {
             let trimmed = line.trim();
-            
+
             // Check for template declaration start
             if trimmed.starts_with("template<") || trimmed.starts_with("template <") {
                 in_template = true;
                 template_line = line_num;
                 continue;
             }
-            
+
             // Check what follows the template
             if in_template {
                 in_template = false;
-                
+
                 if trimmed.starts_with("class ") || trimmed.starts_with("struct ") {
                     // Template class/struct
                     if let Some(name) = self.extract_class_name(trimmed) {
                         let qualified_name = self.get_qualified_name(&name);
-                        
+
                         // Use Struct for GenericType
                         self.items.push(AstItem::Struct {
                             name: qualified_name,
@@ -452,7 +481,7 @@ impl CppAstVisitor {
                     // Template function
                     if let Ok(name) = self.extract_function_name(trimmed) {
                         let qualified_name = self.get_qualified_name(&name);
-                        
+
                         self.items.push(AstItem::Function {
                             name: format!("template::{}", qualified_name),
                             visibility: "public".to_string(),
@@ -471,25 +500,25 @@ impl CppAstVisitor {
         let mut in_enum = false;
         let mut brace_depth = 0;
         let mut variant_count = 0;
-        
+
         for (i, line) in source.lines().enumerate().skip(enum_start_line) {
             let trimmed = line.trim();
-            
+
             // Find the enum start
             if i == enum_start_line && trimmed.contains("{") {
                 in_enum = true;
             }
-            
+
             // Track brace depth
             brace_depth += trimmed.chars().filter(|&c| c == '{').count() as i32;
             brace_depth -= trimmed.chars().filter(|&c| c == '}').count() as i32;
-            
+
             // Count variants
             if in_enum && trimmed.contains(",") {
                 // Each comma represents a variant (except trailing comma)
                 variant_count += trimmed.chars().filter(|&c| c == ',').count();
             }
-            
+
             // Exit when enum is closed
             if in_enum && trimmed.contains("}") && brace_depth == 0 {
                 // Add 1 for the last variant (after the last comma)
@@ -497,7 +526,7 @@ impl CppAstVisitor {
                 break;
             }
         }
-        
+
         // Ensure at least 1 variant
         std::cmp::max(1, variant_count)
     }
@@ -525,7 +554,9 @@ impl CppAstVisitor {
         }
 
         // Check for common function return types and modifiers
-        let common_types = ["void", "int", "char", "float", "double", "auto", "bool", "string"];
+        let common_types = [
+            "void", "int", "char", "float", "double", "auto", "bool", "string",
+        ];
         let common_modifiers = ["static", "inline", "virtual", "explicit", "constexpr"];
 
         for typ in &common_types {
@@ -541,10 +572,11 @@ impl CppAstVisitor {
         }
 
         // Also check for function pointers or constructors/destructors
-        line.contains("(") && line.contains(")") &&
-            (line.contains("*") || line.contains("~") || line.contains("::"))
+        line.contains("(")
+            && line.contains(")")
+            && (line.contains("*") || line.contains("~") || line.contains("::"))
     }
-    
+
     /// Checks if a function declaration is a class method (complexity ≤10)
     fn is_class_method(&self, line: &str) -> bool {
         // Class methods have :: in their name
@@ -557,13 +589,13 @@ impl CppAstVisitor {
         if line.contains("::") {
             let parts: Vec<&str> = line.split("::").collect();
             let after_scope = parts.last().unwrap_or(&"");
-            
+
             // Get text before opening parenthesis
             let before_paren = after_scope.split('(').next().unwrap_or("");
-            
+
             // Get last word which should be the function name
             let name = before_paren.split_whitespace().last().unwrap_or("");
-            
+
             if !name.is_empty() {
                 return Ok(name.to_string());
             }
@@ -571,28 +603,26 @@ impl CppAstVisitor {
             // Regular function
             let before_paren = line.split('(').next().unwrap_or("");
             let words: Vec<&str> = before_paren.split_whitespace().collect();
-            
+
             if !words.is_empty() {
                 return Ok(words.last().unwrap_or(&"").to_string());
             }
         }
-        
+
         Err("Could not extract function name".to_string())
     }
 
     /// Extracts class name from declaration line (complexity ≤10)
     fn extract_class_name(&self, line: &str) -> Option<String> {
         let words: Vec<&str> = line.split_whitespace().collect();
-        
+
         // Find the word after "class" or "struct"
         for (i, word) in words.iter().enumerate() {
             if (*word == "class" || *word == "struct") && i + 1 < words.len() {
                 let next_word = words[i + 1];
                 // Strip any trailing characters like { or : for inheritance
-                let name = next_word
-                    .trim_end_matches(['{', ':', ';'])
-                    .to_string();
-                    
+                let name = next_word.trim_end_matches(['{', ':', ';']).to_string();
+
                 if !name.is_empty() {
                     return Some(name);
                 }
@@ -604,16 +634,14 @@ impl CppAstVisitor {
     /// Extracts namespace name from declaration line (complexity ≤10)
     fn extract_namespace_name(&self, line: &str) -> Option<String> {
         let words: Vec<&str> = line.split_whitespace().collect();
-        
+
         // Find the word after "namespace"
         for (i, word) in words.iter().enumerate() {
             if *word == "namespace" && i + 1 < words.len() {
                 let next_word = words[i + 1];
                 // Strip any trailing characters like {
-                let name = next_word
-                    .trim_end_matches(['{', ';'])
-                    .to_string();
-                    
+                let name = next_word.trim_end_matches(['{', ';']).to_string();
+
                 if !name.is_empty() {
                     return Some(name);
                 }
@@ -625,25 +653,21 @@ impl CppAstVisitor {
     /// Extracts enum name from declaration line (complexity ≤10)
     fn extract_enum_name(&self, line: &str) -> Option<String> {
         let words: Vec<&str> = line.split_whitespace().collect();
-        
+
         // Handle both "enum Foo" and "enum class Foo"
         for (i, word) in words.iter().enumerate() {
             if *word == "enum" {
                 if i + 1 < words.len() && words[i + 1] == "class" {
                     // Handle "enum class Foo"
                     if i + 2 < words.len() {
-                        let enum_name = words[i + 2]
-                            .trim_end_matches(['{', ':', ';'])
-                            .to_string();
+                        let enum_name = words[i + 2].trim_end_matches(['{', ':', ';']).to_string();
                         if !enum_name.is_empty() {
                             return Some(enum_name);
                         }
                     }
                 } else if i + 1 < words.len() {
                     // Handle "enum Foo"
-                    let enum_name = words[i + 1]
-                        .trim_end_matches(['{', ':', ';'])
-                        .to_string();
+                    let enum_name = words[i + 1].trim_end_matches(['{', ':', ';']).to_string();
                     if !enum_name.is_empty() {
                         return Some(enum_name);
                     }
@@ -658,7 +682,7 @@ impl CppAstVisitor {
         // For typedef, the name is typically the last token before the semicolon
         let before_semicolon = line.split(';').next().unwrap_or("");
         let words: Vec<&str> = before_semicolon.split_whitespace().collect();
-        
+
         if !words.is_empty() {
             // Last word is usually the new type name
             Some(words.last().unwrap().to_string())
@@ -666,7 +690,7 @@ impl CppAstVisitor {
             None
         }
     }
-    
+
     /// Extracts 'using' alias name (C++11 style typedef) (complexity ≤10)
     fn extract_using_name(&self, line: &str) -> Option<String> {
         // For "using Alias = Type;", extract "Alias"
@@ -675,11 +699,8 @@ impl CppAstVisitor {
             if !parts.is_empty() {
                 let name_part = parts[0].trim();
                 if name_part.starts_with("using ") {
-                    let name = name_part
-                        .trim_start_matches("using ")
-                        .trim()
-                        .to_string();
-                        
+                    let name = name_part.trim_start_matches("using ").trim().to_string();
+
                     if !name.is_empty() {
                         return Some(name);
                     }
@@ -693,22 +714,22 @@ impl CppAstVisitor {
     fn get_qualified_name(&self, name: &str) -> String {
         // Build qualified name based on current namespace and class
         let mut qualified_name = String::new();
-        
+
         // Add namespaces
         if !self.current_namespace.is_empty() {
             qualified_name.push_str(&self.current_namespace.join("::"));
             qualified_name.push_str("::");
         }
-        
+
         // Add class if we're in one
         if let Some(ref class_name) = self.current_class {
             qualified_name.push_str(class_name);
             qualified_name.push_str("::");
         }
-        
+
         // Add the name itself
         qualified_name.push_str(name);
-        
+
         qualified_name
     }
 }
@@ -741,19 +762,19 @@ impl CppComplexityAnalyzer {
     pub fn analyze_complexity(&mut self, source: &str) -> Result<(u32, u32), String> {
         self.cyclomatic_complexity = 1;
         self.cognitive_complexity = 0;
-        
+
         let mut nesting_depth = 0;
         let mut in_comment = false;
         let mut in_function = false;
 
         for line in source.lines() {
             let trimmed = line.trim();
-            
+
             // Skip preprocessor directives
             if trimmed.starts_with("#") {
                 continue;
             }
-            
+
             // Handle comments
             if trimmed.contains("/*") {
                 in_comment = true;
@@ -767,13 +788,15 @@ impl CppComplexityAnalyzer {
             if trimmed.starts_with("//") {
                 continue;
             }
-            
+
             // Track function scope
-            if !in_function && trimmed.contains("{") && 
-               (trimmed.contains("(") || trimmed.contains(")")) {
+            if !in_function
+                && trimmed.contains("{")
+                && (trimmed.contains("(") || trimmed.contains(")"))
+            {
                 in_function = true;
             }
-            
+
             // Only analyze inside function bodies
             if in_function {
                 // Check for control flow statements
@@ -782,26 +805,35 @@ impl CppComplexityAnalyzer {
                 let _is_else = trimmed.starts_with("else") && !is_else_if;
                 let is_switch = trimmed.starts_with("switch ");
                 let is_case = trimmed.starts_with("case ") || trimmed.starts_with("default:");
-                let is_loop = trimmed.starts_with("while ") || 
-                              trimmed.starts_with("for ") || 
-                              trimmed.starts_with("do ");
+                let is_loop = trimmed.starts_with("while ")
+                    || trimmed.starts_with("for ")
+                    || trimmed.starts_with("do ");
                 let is_try = trimmed.starts_with("try ");
                 let is_catch = trimmed.starts_with("catch ");
                 let is_goto = trimmed.starts_with("goto ");
                 let is_ternary = trimmed.contains(" ? ") && trimmed.contains(" : ");
-                
+
                 // C++ specific control flow
                 let is_range_for = trimmed.contains("for (") && trimmed.contains(" : ");
-                let is_lambda = trimmed.contains("[") && trimmed.contains("]") && 
-                                (trimmed.contains("(") || trimmed.contains("mutable"));
+                let is_lambda = trimmed.contains("[")
+                    && trimmed.contains("]")
+                    && (trimmed.contains("(") || trimmed.contains("mutable"));
                 let is_template = trimmed.contains("<") && trimmed.contains(">");
-                
+
                 // Increment cyclomatic complexity for decision points
-                if is_if_stmt || is_else_if || is_switch || is_case || is_loop || 
-                   is_catch || is_goto || is_ternary || is_range_for {
+                if is_if_stmt
+                    || is_else_if
+                    || is_switch
+                    || is_case
+                    || is_loop
+                    || is_catch
+                    || is_goto
+                    || is_ternary
+                    || is_range_for
+                {
                     self.cyclomatic_complexity += 1;
                 }
-                
+
                 // Cognitive complexity considers nesting
                 if is_if_stmt || is_else_if || is_switch || is_loop || is_try || is_lambda {
                     self.cognitive_complexity += 1 + nesting_depth;
@@ -810,16 +842,16 @@ impl CppComplexityAnalyzer {
                     // Templates add complexity but less than control flow
                     self.cognitive_complexity += 1;
                 }
-                
+
                 // Track nesting depth with braces
                 if trimmed.contains("{") && !trimmed.contains("}") {
                     nesting_depth += 1;
                 }
-                
+
                 // Track closing braces
                 if trimmed.contains("}") {
                     nesting_depth = nesting_depth.saturating_sub(1);
-                    
+
                     // Check if we're exiting the function
                     if nesting_depth == 0 {
                         in_function = false;
@@ -827,7 +859,7 @@ impl CppComplexityAnalyzer {
                 }
             }
         }
-        
+
         Ok((self.cyclomatic_complexity, self.cognitive_complexity))
     }
 }
@@ -861,30 +893,29 @@ pub async fn analyze_cpp_file(
     // Convert to correct types for ComplexityMetrics::new
     // Create function complexity metrics
     let func_metrics = ComplexityMetrics::new(
-        (cyclomatic & 0xFFFF) as u16, // Convert to u16 with clamping
-        (cognitive & 0xFFFF) as u16,  // Convert to u16 with clamping
-        0,                            // nesting_max (not calculated)
-        std::cmp::min(items.len(), 65535) as u16 // lines (clamped to u16 max)
+        (cyclomatic & 0xFFFF) as u16,             // Convert to u16 with clamping
+        (cognitive & 0xFFFF) as u16,              // Convert to u16 with clamping
+        0,                                        // nesting_max (not calculated)
+        std::cmp::min(items.len(), 65535) as u16, // lines (clamped to u16 max)
     );
-    
+
     // Create a file complexity metrics object
     let file_complexity = crate::services::complexity::FileComplexityMetrics {
         path: path.display().to_string(),
         total_complexity: func_metrics,
-        functions: vec![
-            crate::services::complexity::FunctionComplexity {
-                name: path.file_name()
-                    .and_then(|n| n.to_str())
-                    .unwrap_or("unknown")
-                    .to_string(),
-                line_start: 1,
-                line_end: std::cmp::min(items.len(), 65535) as u32,
-                metrics: func_metrics,
-            }
-        ],
+        functions: vec![crate::services::complexity::FunctionComplexity {
+            name: path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("unknown")
+                .to_string(),
+            line_start: 1,
+            line_end: std::cmp::min(items.len(), 65535) as u32,
+            metrics: func_metrics,
+        }],
         classes: vec![],
     };
-    
+
     let complexity_metrics = Some(file_complexity);
 
     // Return FileContext
@@ -1111,7 +1142,10 @@ int main() {
             .collect();
 
         assert!(func_names.contains(&"add"), "Should extract 'add' function");
-        assert!(func_names.contains(&"main"), "Should extract 'main' function");
+        assert!(
+            func_names.contains(&"main"),
+            "Should extract 'main' function"
+        );
     }
 
     #[cfg(feature = "cpp-ast")]
@@ -1139,8 +1173,14 @@ int main() {
             })
             .collect();
 
-        assert!(class_names.contains(&"Person"), "Should extract 'Person' class");
-        assert!(class_names.contains(&"Student"), "Should extract 'Student' class");
+        assert!(
+            class_names.contains(&"Person"),
+            "Should extract 'Person' class"
+        );
+        assert!(
+            class_names.contains(&"Student"),
+            "Should extract 'Student' class"
+        );
 
         // Check for methods
         let method_items: Vec<_> = items
@@ -1176,7 +1216,10 @@ int main() {
         assert_eq!(enum_items.len(), 1, "Should extract one enum");
 
         if let AstItem::Enum { name, .. } = &enum_items[0] {
-            assert_eq!(name, "example::Color", "Should extract correct enum name with namespace");
+            assert_eq!(
+                name, "example::Color",
+                "Should extract correct enum name with namespace"
+            );
         }
 
         // Check for type alias
@@ -1197,10 +1240,13 @@ int main() {
             .collect();
 
         assert_eq!(complex_function.len(), 1, "Should extract complex function");
-        
+
         // Check for namespace qualification
         if let AstItem::Function { name, .. } = &complex_function[0] {
-            assert!(name.contains("example::"), "Should include namespace qualification");
+            assert!(
+                name.contains("example::"),
+                "Should include namespace qualification"
+            );
         }
     }
 
@@ -1213,7 +1259,10 @@ int main() {
             .expect("Should analyze C++ complexity");
 
         // Complex example should have significant complexity
-        assert!(cyclomatic > 5, "Cyclomatic complexity should be significant");
+        assert!(
+            cyclomatic > 5,
+            "Cyclomatic complexity should be significant"
+        );
         assert!(cognitive > 5, "Cognitive complexity should be significant");
     }
 }

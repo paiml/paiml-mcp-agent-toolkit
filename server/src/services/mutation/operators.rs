@@ -47,35 +47,54 @@ impl MutationOperator for ArithmeticOperatorReplacement {
 
             match bin.op {
                 BinOp::Add(_) => {
-                    for new_op in [BinOp::Sub(Default::default()), BinOp::Mul(Default::default()), BinOp::Div(Default::default())] {
+                    for new_op in [
+                        BinOp::Sub(Default::default()),
+                        BinOp::Mul(Default::default()),
+                        BinOp::Div(Default::default()),
+                    ] {
                         let mut mutated = bin.clone();
                         mutated.op = new_op;
                         mutants.push(Expr::Binary(mutated));
                     }
                 }
                 BinOp::Sub(_) => {
-                    for new_op in [BinOp::Add(Default::default()), BinOp::Mul(Default::default()), BinOp::Div(Default::default())] {
+                    for new_op in [
+                        BinOp::Add(Default::default()),
+                        BinOp::Mul(Default::default()),
+                        BinOp::Div(Default::default()),
+                    ] {
                         let mut mutated = bin.clone();
                         mutated.op = new_op;
                         mutants.push(Expr::Binary(mutated));
                     }
                 }
                 BinOp::Mul(_) => {
-                    for new_op in [BinOp::Add(Default::default()), BinOp::Sub(Default::default()), BinOp::Div(Default::default())] {
+                    for new_op in [
+                        BinOp::Add(Default::default()),
+                        BinOp::Sub(Default::default()),
+                        BinOp::Div(Default::default()),
+                    ] {
                         let mut mutated = bin.clone();
                         mutated.op = new_op;
                         mutants.push(Expr::Binary(mutated));
                     }
                 }
                 BinOp::Div(_) => {
-                    for new_op in [BinOp::Add(Default::default()), BinOp::Sub(Default::default()), BinOp::Mul(Default::default())] {
+                    for new_op in [
+                        BinOp::Add(Default::default()),
+                        BinOp::Sub(Default::default()),
+                        BinOp::Mul(Default::default()),
+                    ] {
                         let mut mutated = bin.clone();
                         mutated.op = new_op;
                         mutants.push(Expr::Binary(mutated));
                     }
                 }
                 BinOp::Rem(_) => {
-                    for new_op in [BinOp::Mul(Default::default()), BinOp::Div(Default::default())] {
+                    for new_op in [
+                        BinOp::Mul(Default::default()),
+                        BinOp::Div(Default::default()),
+                    ] {
                         let mut mutated = bin.clone();
                         mutated.op = new_op;
                         mutants.push(Expr::Binary(mutated));
@@ -118,42 +137,78 @@ impl MutationOperator for RelationalOperatorReplacement {
 
             match bin.op {
                 BinOp::Lt(_) => {
-                    for new_op in [BinOp::Le(Default::default()), BinOp::Gt(Default::default()), BinOp::Ge(Default::default()), BinOp::Eq(Default::default()), BinOp::Ne(Default::default())] {
+                    for new_op in [
+                        BinOp::Le(Default::default()),
+                        BinOp::Gt(Default::default()),
+                        BinOp::Ge(Default::default()),
+                        BinOp::Eq(Default::default()),
+                        BinOp::Ne(Default::default()),
+                    ] {
                         let mut mutated = bin.clone();
                         mutated.op = new_op;
                         mutants.push(Expr::Binary(mutated));
                     }
                 }
                 BinOp::Le(_) => {
-                    for new_op in [BinOp::Lt(Default::default()), BinOp::Gt(Default::default()), BinOp::Ge(Default::default()), BinOp::Eq(Default::default()), BinOp::Ne(Default::default())] {
+                    for new_op in [
+                        BinOp::Lt(Default::default()),
+                        BinOp::Gt(Default::default()),
+                        BinOp::Ge(Default::default()),
+                        BinOp::Eq(Default::default()),
+                        BinOp::Ne(Default::default()),
+                    ] {
                         let mut mutated = bin.clone();
                         mutated.op = new_op;
                         mutants.push(Expr::Binary(mutated));
                     }
                 }
                 BinOp::Gt(_) => {
-                    for new_op in [BinOp::Lt(Default::default()), BinOp::Le(Default::default()), BinOp::Ge(Default::default()), BinOp::Eq(Default::default()), BinOp::Ne(Default::default())] {
+                    for new_op in [
+                        BinOp::Lt(Default::default()),
+                        BinOp::Le(Default::default()),
+                        BinOp::Ge(Default::default()),
+                        BinOp::Eq(Default::default()),
+                        BinOp::Ne(Default::default()),
+                    ] {
                         let mut mutated = bin.clone();
                         mutated.op = new_op;
                         mutants.push(Expr::Binary(mutated));
                     }
                 }
                 BinOp::Ge(_) => {
-                    for new_op in [BinOp::Lt(Default::default()), BinOp::Le(Default::default()), BinOp::Gt(Default::default()), BinOp::Eq(Default::default()), BinOp::Ne(Default::default())] {
+                    for new_op in [
+                        BinOp::Lt(Default::default()),
+                        BinOp::Le(Default::default()),
+                        BinOp::Gt(Default::default()),
+                        BinOp::Eq(Default::default()),
+                        BinOp::Ne(Default::default()),
+                    ] {
                         let mut mutated = bin.clone();
                         mutated.op = new_op;
                         mutants.push(Expr::Binary(mutated));
                     }
                 }
                 BinOp::Eq(_) => {
-                    for new_op in [BinOp::Ne(Default::default()), BinOp::Lt(Default::default()), BinOp::Le(Default::default()), BinOp::Gt(Default::default()), BinOp::Ge(Default::default())] {
+                    for new_op in [
+                        BinOp::Ne(Default::default()),
+                        BinOp::Lt(Default::default()),
+                        BinOp::Le(Default::default()),
+                        BinOp::Gt(Default::default()),
+                        BinOp::Ge(Default::default()),
+                    ] {
                         let mut mutated = bin.clone();
                         mutated.op = new_op;
                         mutants.push(Expr::Binary(mutated));
                     }
                 }
                 BinOp::Ne(_) => {
-                    for new_op in [BinOp::Eq(Default::default()), BinOp::Lt(Default::default()), BinOp::Le(Default::default()), BinOp::Gt(Default::default()), BinOp::Ge(Default::default())] {
+                    for new_op in [
+                        BinOp::Eq(Default::default()),
+                        BinOp::Lt(Default::default()),
+                        BinOp::Le(Default::default()),
+                        BinOp::Gt(Default::default()),
+                        BinOp::Ge(Default::default()),
+                    ] {
                         let mut mutated = bin.clone();
                         mutated.op = new_op;
                         mutants.push(Expr::Binary(mutated));
@@ -321,10 +376,7 @@ impl MutationOperator for StatementDeletionOperator {
         // Can delete assignments, method calls, and function calls
         matches!(
             expr,
-            Expr::Assign(_)
-                | Expr::Call(_)
-                | Expr::MethodCall(_)
-                | Expr::Macro(_)
+            Expr::Assign(_) | Expr::Call(_) | Expr::MethodCall(_) | Expr::Macro(_)
         )
     }
 
@@ -429,19 +481,26 @@ impl MutationOperator for BoundaryValueOperator {
     }
 
     fn can_mutate(&self, expr: &Expr) -> bool {
-        matches!(expr, Expr::Lit(syn::ExprLit { lit: syn::Lit::Int(_), .. }))
+        matches!(
+            expr,
+            Expr::Lit(syn::ExprLit {
+                lit: syn::Lit::Int(_),
+                ..
+            })
+        )
     }
 
     fn mutate(&self, expr: &Expr, _location: SourceLocation) -> Result<Vec<Expr>> {
-        if let Expr::Lit(syn::ExprLit { lit: syn::Lit::Int(lit_int), .. }) = expr {
+        if let Expr::Lit(syn::ExprLit {
+            lit: syn::Lit::Int(lit_int),
+            ..
+        }) = expr
+        {
             if let Ok(value) = lit_int.base10_parse::<i64>() {
                 let plus_one = value + 1;
                 let minus_one = value - 1;
 
-                let mutants = vec![
-                    syn::parse_quote!(#plus_one),
-                    syn::parse_quote!(#minus_one),
-                ];
+                let mutants = vec![syn::parse_quote!(#plus_one), syn::parse_quote!(#minus_one)];
                 return Ok(mutants);
             }
         }

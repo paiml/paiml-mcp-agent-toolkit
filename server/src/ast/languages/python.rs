@@ -348,7 +348,8 @@ impl<'a> PythonTreeSitterVisitor<'a> {
                 }
             }
             "import_statement" | "import_from_statement" => {
-                let mut n = UnifiedAstNode::new(AstKind::Import(ImportKind::Module), Language::Python);
+                let mut n =
+                    UnifiedAstNode::new(AstKind::Import(ImportKind::Module), Language::Python);
                 n.flags.set(NodeFlags::IMPORT);
                 self.dag.add_node(n);
 
@@ -357,7 +358,8 @@ impl<'a> PythonTreeSitterVisitor<'a> {
                     self.visit_node(&child, parent);
                 }
             }
-            "if_statement" | "while_statement" | "for_statement" | "match_statement" | "try_statement" => {
+            "if_statement" | "while_statement" | "for_statement" | "match_statement"
+            | "try_statement" => {
                 let mut n = UnifiedAstNode::new(AstKind::Statement(StmtKind::If), Language::Python);
                 n.flags.set(NodeFlags::CONTROL_FLOW);
                 self.dag.add_node(n);
@@ -397,7 +399,8 @@ impl<'a> PythonTreeSitterVisitor<'a> {
             }
             "boolean_operator" | "comparison_operator" => {
                 // Logical operators add to cyclomatic complexity
-                let mut n = UnifiedAstNode::new(AstKind::Statement(StmtKind::Block), Language::Python);
+                let mut n =
+                    UnifiedAstNode::new(AstKind::Statement(StmtKind::Block), Language::Python);
                 n.flags.set(NodeFlags::CONTROL_FLOW);
                 self.dag.add_node(n);
 
@@ -415,9 +418,13 @@ impl<'a> PythonTreeSitterVisitor<'a> {
                     self.visit_node(&child, parent);
                 }
             }
-            "list_comprehension" | "set_comprehension" | "dictionary_comprehension" | "generator_expression" => {
+            "list_comprehension"
+            | "set_comprehension"
+            | "dictionary_comprehension"
+            | "generator_expression" => {
                 // Comprehensions add cognitive complexity
-                let mut n = UnifiedAstNode::new(AstKind::Statement(StmtKind::For), Language::Python);
+                let mut n =
+                    UnifiedAstNode::new(AstKind::Statement(StmtKind::For), Language::Python);
                 n.flags.set(NodeFlags::CONTROL_FLOW);
                 self.dag.add_node(n);
 

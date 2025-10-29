@@ -112,7 +112,7 @@ fn find_doc_comment_start(node: Node, source: &str) -> usize {
                 // Detect comments for all languages
                 let is_comment = kind == "comment"  // TypeScript, C, C++, Go
                     || kind == "line_comment"   // Rust
-                    || kind == "block_comment";  // Rust, C, C++
+                    || kind == "block_comment"; // Rust, C, C++
 
                 if is_comment {
                     // For Rust: only include /// doc comments, not regular //
@@ -468,16 +468,10 @@ fn find_function_declarator_name<'a>(node: Node<'a>, _source: &str) -> Option<No
         return Some(node);
     }
     if node.kind() == "function_declarator" {
-        return find_function_declarator_name(
-            node.child_by_field_name("declarator")?,
-            _source,
-        );
+        return find_function_declarator_name(node.child_by_field_name("declarator")?, _source);
     }
     if node.kind() == "pointer_declarator" {
-        return find_function_declarator_name(
-            node.child_by_field_name("declarator")?,
-            _source,
-        );
+        return find_function_declarator_name(node.child_by_field_name("declarator")?, _source);
     }
     None
 }

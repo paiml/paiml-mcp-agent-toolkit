@@ -1,10 +1,10 @@
 use super::*;
 use crate::agents::registry::AgentRegistry;
 use futures::future::join_all;
-use std::sync::Arc;
-use tokio::time::{sleep, timeout};
 use parking_lot::RwLock;
 use std::collections::HashMap;
+use std::sync::Arc;
+use tokio::time::{sleep, timeout};
 
 // Default workflow executor implementation
 pub struct DefaultWorkflowExecutor {
@@ -75,7 +75,9 @@ impl DefaultWorkflowExecutor {
             .agent_registry
             .get_agent_spec(agent_id)
             .await
-            .ok_or_else(|| WorkflowError::AgentError(format!("Agent spec not found for: {}", agent_name)))?;
+            .ok_or_else(|| {
+                WorkflowError::AgentError(format!("Agent spec not found for: {}", agent_name))
+            })?;
 
         // Build response with agent execution details
         // Note: Actual agent execution will be implemented when agent actors are available
@@ -589,7 +591,11 @@ impl DefaultWorkflowExecutor {
                     match result {
                         Ok(output) => level_outputs.push(output),
                         Err(e) => {
-                            return self.handle_workflow_error(e, &workflow.error_strategy, context);
+                            return self.handle_workflow_error(
+                                e,
+                                &workflow.error_strategy,
+                                context,
+                            );
                         }
                     }
                 }
@@ -604,7 +610,10 @@ impl DefaultWorkflowExecutor {
         Ok(last_output)
     }
 
-    fn check_execution_control(&self, execution_id: Uuid) -> Result<ExecutionControl, WorkflowError> {
+    fn check_execution_control(
+        &self,
+        execution_id: Uuid,
+    ) -> Result<ExecutionControl, WorkflowError> {
         Ok(self
             .execution_states
             .read()
@@ -647,7 +656,7 @@ impl DefaultWorkflowExecutor {
             ErrorStrategy::Rollback => {
                 // Invoke rollback logic (returns Result)
                 let recovery_result = futures::executor::block_on(
-                    super::recovery::RecoveryManager::handle_error(&error, strategy, context)
+                    super::recovery::RecoveryManager::handle_error(&error, strategy, context),
                 );
 
                 // Return original error regardless of recovery result
@@ -657,7 +666,7 @@ impl DefaultWorkflowExecutor {
             ErrorStrategy::Compensate => {
                 // Invoke compensation logic (returns Result)
                 let recovery_result = futures::executor::block_on(
-                    super::recovery::RecoveryManager::handle_error(&error, strategy, context)
+                    super::recovery::RecoveryManager::handle_error(&error, strategy, context),
                 );
 
                 // Return original error regardless of recovery result
@@ -734,18 +743,9 @@ mod tests {
 
         // Create workflow with steps that can run in parallel
         let workflow = WorkflowBuilder::new("parallel_test")
-            .add_step(
-                StepBuilder::action("step1", "Init", "agent1", "init")
-                    .build()
-            )
-            .add_step(
-                StepBuilder::action("step2", "Process A", "agent2", "process")
-                    .build()
-            )
-            .add_step(
-                StepBuilder::action("step3", "Process B", "agent3", "process")
-                    .build()
-            )
+            .add_step(StepBuilder::action("step1", "Init", "agent1", "init").build())
+            .add_step(StepBuilder::action("step2", "Process A", "agent2", "process").build())
+            .add_step(StepBuilder::action("step3", "Process B", "agent3", "process").build())
             .build();
 
         let context = WorkflowContext::new(workflow.id, registry);
@@ -769,14 +769,8 @@ mod tests {
         let executor = Arc::new(DefaultWorkflowExecutor::new(registry.clone()));
 
         let workflow = WorkflowBuilder::new("pause_test")
-            .add_step(
-                StepBuilder::action("step1", "Step 1", "agent1", "op1")
-                    .build()
-            )
-            .add_step(
-                StepBuilder::action("step2", "Step 2", "agent2", "op2")
-                    .build()
-            )
+            .add_step(StepBuilder::action("step1", "Step 1", "agent1", "op1").build())
+            .add_step(StepBuilder::action("step2", "Step 2", "agent2", "op2").build())
             .build();
 
         let context = WorkflowContext::new(workflow.id, registry);
@@ -789,7 +783,9 @@ mod tests {
         let context_clone_id = context_clone.execution_id;
 
         tokio::spawn(async move {
-            let _ = executor_clone.execute(&workflow_clone, &context_clone).await;
+            let _ = executor_clone
+                .execute(&workflow_clone, &context_clone)
+                .await;
         });
 
         // Give it time to start
@@ -814,10 +810,7 @@ mod tests {
         let executor = Arc::new(DefaultWorkflowExecutor::new(registry.clone()));
 
         let workflow = WorkflowBuilder::new("cancel_test")
-            .add_step(
-                StepBuilder::action("step1", "Step 1", "agent1", "op1")
-                    .build()
-            )
+            .add_step(StepBuilder::action("step1", "Step 1", "agent1", "op1").build())
             .build();
 
         let context = WorkflowContext::new(workflow.id, registry);
@@ -830,7 +823,9 @@ mod tests {
         let context_clone_id = context_clone.execution_id;
 
         tokio::spawn(async move {
-            let _ = executor_clone.execute(&workflow_clone, &context_clone).await;
+            let _ = executor_clone
+                .execute(&workflow_clone, &context_clone)
+                .await;
         });
 
         // Give it time to start
@@ -861,7 +856,7 @@ mod tests {
                             max: Duration::from_millis(100),
                         },
                     )
-                    .build()
+                    .build(),
             )
             .build();
 
@@ -887,14 +882,13 @@ mod tests {
         let executor_continue = DefaultWorkflowExecutor::new(registry.clone());
         let workflow_continue = WorkflowBuilder::new("continue_test")
             .error_strategy(ErrorStrategy::Continue)
-            .add_step(
-                StepBuilder::action("step1", "Step 1", "nonexistent_agent", "op1")
-                    .build()
-            )
+            .add_step(StepBuilder::action("step1", "Step 1", "nonexistent_agent", "op1").build())
             .build();
 
         let context_continue = WorkflowContext::new(workflow_continue.id, registry.clone());
-        let result_continue = executor_continue.execute(&workflow_continue, &context_continue).await;
+        let result_continue = executor_continue
+            .execute(&workflow_continue, &context_continue)
+            .await;
         // Should not fail fast with Continue strategy
         assert!(result_continue.is_ok());
 
@@ -902,14 +896,13 @@ mod tests {
         let executor_failfast = DefaultWorkflowExecutor::new(registry.clone());
         let workflow_failfast = WorkflowBuilder::new("failfast_test")
             .error_strategy(ErrorStrategy::FailFast)
-            .add_step(
-                StepBuilder::action("step1", "Step 1", "nonexistent_agent", "op1")
-                    .build()
-            )
+            .add_step(StepBuilder::action("step1", "Step 1", "nonexistent_agent", "op1").build())
             .build();
 
         let context_failfast = WorkflowContext::new(workflow_failfast.id, registry);
-        let result_failfast = executor_failfast.execute(&workflow_failfast, &context_failfast).await;
+        let result_failfast = executor_failfast
+            .execute(&workflow_failfast, &context_failfast)
+            .await;
         // Should fail with FailFast strategy
         assert!(result_failfast.is_err());
     }
@@ -918,14 +911,10 @@ mod tests {
     async fn test_workflow_monitoring() {
         let registry = Arc::new(AgentRegistry::new());
         let monitor = Arc::new(super::super::monitoring::DefaultWorkflowMonitor::new());
-        let executor = DefaultWorkflowExecutor::new(registry.clone())
-            .with_monitor(monitor.clone());
+        let executor = DefaultWorkflowExecutor::new(registry.clone()).with_monitor(monitor.clone());
 
         let workflow = WorkflowBuilder::new("monitor_test")
-            .add_step(
-                StepBuilder::action("step1", "Step 1", "agent1", "op1")
-                    .build()
-            )
+            .add_step(StepBuilder::action("step1", "Step 1", "agent1", "op1").build())
             .build();
 
         let context = WorkflowContext::new(workflow.id, registry);
@@ -946,14 +935,8 @@ mod tests {
         let executor = DefaultWorkflowExecutor::new(registry.clone());
 
         let workflow = WorkflowBuilder::new("checkpoint_test")
-            .add_step(
-                StepBuilder::action("step1", "Step 1", "agent1", "op1")
-                    .build()
-            )
-            .add_step(
-                StepBuilder::action("step2", "Step 2", "agent2", "op2")
-                    .build()
-            )
+            .add_step(StepBuilder::action("step1", "Step 1", "agent1", "op1").build())
+            .add_step(StepBuilder::action("step2", "Step 2", "agent2", "op2").build())
             .build();
 
         let context = WorkflowContext::new(workflow.id, registry);

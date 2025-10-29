@@ -143,7 +143,10 @@ impl SemanticSearchEngine {
             .map(|r| {
                 // Create snippet from chunk metadata
                 // TODO: Store actual content snippet in database for better display
-                let snippet = format!("{} {} ({}:{})", r.chunk_type, r.chunk_name, r.start_line, r.end_line);
+                let snippet = format!(
+                    "{} {} ({}:{})",
+                    r.chunk_type, r.chunk_name, r.start_line, r.end_line
+                );
 
                 SearchResult {
                     file_path: r.file_path,
@@ -198,7 +201,10 @@ impl SemanticSearchEngine {
             .into_iter()
             .map(|r| {
                 // Create snippet from chunk metadata
-                let snippet = format!("{} {} ({}:{})", r.chunk_type, r.chunk_name, r.start_line, r.end_line);
+                let snippet = format!(
+                    "{} {} ({}:{})",
+                    r.chunk_type, r.chunk_name, r.start_line, r.end_line
+                );
 
                 SearchResult {
                     file_path: r.file_path,
@@ -276,8 +282,7 @@ impl SemanticSearchEngine {
                     .await?;
 
                 let should_skip = existing.iter().any(|e| {
-                    e.chunk_name == chunk.chunk_name
-                        && e.file_path == file_path.to_str().unwrap()
+                    e.chunk_name == chunk.chunk_name && e.file_path == file_path.to_str().unwrap()
                 });
 
                 if should_skip {
@@ -315,7 +320,10 @@ impl SemanticSearchEngine {
     /// Get total embedding count
     pub async fn embedding_count(&self) -> Result<usize, String> {
         // Query all embeddings and count
-        let all = self.vector_db.similarity_search(&vec![0.0; 1536], usize::MAX).await?;
+        let all = self
+            .vector_db
+            .similarity_search(&vec![0.0; 1536], usize::MAX)
+            .await?;
         Ok(all.len())
     }
 
@@ -343,7 +351,6 @@ impl SemanticSearchEngine {
             path.contains(pattern)
         }
     }
-
 }
 
 #[cfg(test)]
@@ -369,8 +376,13 @@ mod tests {
     #[test]
     fn test_matches_pattern() {
         assert!(SemanticSearchEngine::matches_pattern("src/main.rs", "*.rs"));
-        assert!(!SemanticSearchEngine::matches_pattern("src/main.rs", "*.py"));
-        assert!(SemanticSearchEngine::matches_pattern("src/utils/math.rs", "utils"));
+        assert!(!SemanticSearchEngine::matches_pattern(
+            "src/main.rs",
+            "*.py"
+        ));
+        assert!(SemanticSearchEngine::matches_pattern(
+            "src/utils/math.rs",
+            "utils"
+        ));
     }
-
 }

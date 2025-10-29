@@ -1,5 +1,5 @@
 // Toyota Way: C/C++ Strategy Implementation for AST Service Layer
-// 
+//
 // This adapter module implements the services::ast::AstStrategy trait
 // for the ast::languages::c_cpp::CStrategy and CppStrategy types.
 
@@ -27,7 +27,7 @@ impl AstStrategy for CStrategy {
         let file_context = c::analyze_c_file(file_path)
             .await
             .map_err(|e| anyhow::anyhow!("C analysis error: {}", e))?;
-            
+
         Ok(file_context)
     }
 
@@ -55,7 +55,7 @@ impl AstStrategy for CppStrategy {
         let file_context = cpp::analyze_cpp_file(file_path)
             .await
             .map_err(|e| anyhow::anyhow!("C++ analysis error: {}", e))?;
-            
+
         Ok(file_context)
     }
 

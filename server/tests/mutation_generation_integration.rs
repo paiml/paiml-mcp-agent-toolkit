@@ -3,10 +3,10 @@
 //! These tests verify that PMAT actually generates mutants on real Rust code.
 //! Regression test for: 0 mutants generated on pforge validator.rs
 
-use pmat::services::mutation::{MutationEngine, MutationConfig, RustAdapter};
+use pmat::services::mutation::{MutationConfig, MutationEngine, RustAdapter};
+use std::io::Write;
 use std::sync::Arc;
 use tempfile::NamedTempFile;
-use std::io::Write;
 
 /// RED TEST: Verify unary operator mutation (!) is detected
 ///
@@ -33,8 +33,16 @@ fn validate(x: bool) -> bool {
     // Debug: print what we got
     println!("\nUnary test generated {} mutants:", mutants.len());
     for (i, mutant) in mutants.iter().enumerate() {
-        println!("  {}. {:?} at line {}", i + 1, mutant.operator, mutant.location.line);
-        println!("     Source: {}", &mutant.mutated_source[..mutant.mutated_source.len().min(50)]);
+        println!(
+            "  {}. {:?} at line {}",
+            i + 1,
+            mutant.operator,
+            mutant.location.line
+        );
+        println!(
+            "     Source: {}",
+            &mutant.mutated_source[..mutant.mutated_source.len().min(50)]
+        );
     }
 
     // Should generate at least 1 mutant for the ! operator
@@ -44,14 +52,17 @@ fn validate(x: bool) -> bool {
     );
 
     // Check that we have a UOR (unary) mutation
-    let has_unary_mutation = mutants.iter().any(|m| {
-        format!("{:?}", m.operator).contains("Unary")
-    });
+    let has_unary_mutation = mutants
+        .iter()
+        .any(|m| format!("{:?}", m.operator).contains("Unary"));
 
     assert!(
         has_unary_mutation,
         "Expected at least one UnaryReplacement mutant, got: {:?}",
-        mutants.iter().map(|m| format!("{:?}", m.operator)).collect::<Vec<_>>()
+        mutants
+            .iter()
+            .map(|m| format!("{:?}", m.operator))
+            .collect::<Vec<_>>()
     );
 }
 
@@ -170,7 +181,12 @@ fn validate_handler_path(path: &str) -> Result<(), String> {
     // Print what we found for debugging
     println!("Generated {} mutants:", mutants.len());
     for (i, mutant) in mutants.iter().enumerate() {
-        println!("  {}. {:?} at line {}", i + 1, mutant.operator, mutant.location.line);
+        println!(
+            "  {}. {:?} at line {}",
+            i + 1,
+            mutant.operator,
+            mutant.location.line
+        );
     }
 }
 
@@ -200,8 +216,16 @@ fn subtract(a: i32, b: i32) -> i32 {
     // Debug: print what we got
     println!("\nArithmetic test generated {} mutants:", mutants.len());
     for (i, mutant) in mutants.iter().enumerate() {
-        println!("  {}. {:?} at line {}", i + 1, mutant.operator, mutant.location.line);
-        println!("     Source: {}", &mutant.mutated_source[..mutant.mutated_source.len().min(50)]);
+        println!(
+            "  {}. {:?} at line {}",
+            i + 1,
+            mutant.operator,
+            mutant.location.line
+        );
+        println!(
+            "     Source: {}",
+            &mutant.mutated_source[..mutant.mutated_source.len().min(50)]
+        );
     }
 
     // Should generate mutants for + and -

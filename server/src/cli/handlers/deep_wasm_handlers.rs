@@ -138,8 +138,6 @@ fn convert_analysis_focus(focus: DeepWasmFocus) -> AnalysisFocus {
 /// Creates service with quality gates based on strict mode
 #[cfg(feature = "deep-wasm")]
 fn create_configured_service(strict: bool) -> DeepWasmService {
-    
-
     let gates = if strict {
         create_strict_quality_gates()
     } else {
@@ -154,9 +152,9 @@ fn create_configured_service(strict: bool) -> DeepWasmService {
 fn create_strict_quality_gates() -> crate::services::deep_wasm::WasmQualityGates {
     use crate::services::deep_wasm::WasmQualityGates;
     WasmQualityGates {
-        max_module_size: 5_242_880,      // Stricter 5MB limit
-        max_wasm_complexity: 15,         // Stricter complexity limit
-        min_source_map_coverage: 0.99,   // Stricter coverage
+        max_module_size: 5_242_880,    // Stricter 5MB limit
+        max_wasm_complexity: 15,       // Stricter complexity limit
+        min_source_map_coverage: 0.99, // Stricter coverage
         ..Default::default()
     }
 }
@@ -166,9 +164,9 @@ fn create_strict_quality_gates() -> crate::services::deep_wasm::WasmQualityGates
 fn create_relaxed_quality_gates() -> crate::services::deep_wasm::WasmQualityGates {
     use crate::services::deep_wasm::WasmQualityGates;
     WasmQualityGates {
-        max_module_size: 20_971_520,     // Relaxed 20MB limit
-        max_wasm_complexity: 30,         // Relaxed complexity limit
-        min_source_map_coverage: 0.0,    // Don't require source maps
+        max_module_size: 20_971_520,  // Relaxed 20MB limit
+        max_wasm_complexity: 30,      // Relaxed complexity limit
+        min_source_map_coverage: 0.0, // Don't require source maps
         ..Default::default()
     }
 }
@@ -203,12 +201,8 @@ fn generate_output_content(
             let generator = ReportGenerator::new();
             Ok(generator.generate_markdown(report)?)
         }
-        DeepWasmOutputFormat::Json => {
-            Ok(serde_json::to_string_pretty(report)?)
-        }
-        DeepWasmOutputFormat::Html => {
-            Err(anyhow::anyhow!("HTML output not yet implemented"))
-        }
+        DeepWasmOutputFormat::Json => Ok(serde_json::to_string_pretty(report)?),
+        DeepWasmOutputFormat::Html => Err(anyhow::anyhow!("HTML output not yet implemented")),
     }
 }
 

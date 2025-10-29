@@ -2,8 +2,8 @@
 //!
 //! Parses ticket files from docs/tickets/ into structured data for validation.
 
-use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
+use std::path::{Path, PathBuf};
 
 /// Represents a parsed ticket file
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -98,7 +98,8 @@ impl TicketFile {
         let lines: Vec<&str> = content.lines().collect();
 
         // Extract header (first line)
-        let header = lines.first()
+        let header = lines
+            .first()
             .ok_or_else(|| TicketError::ParseError("Empty ticket file".into()))?;
 
         let (id, title) = parse_header(header)?;
@@ -144,7 +145,10 @@ impl TicketFile {
     pub fn validate(&self) -> Result<()> {
         // Validate ID format
         if !self.id.starts_with("TICKET-PMAT-") {
-            return Err(TicketError::ParseError(format!("Invalid ticket ID: {}", self.id)));
+            return Err(TicketError::ParseError(format!(
+                "Invalid ticket ID: {}",
+                self.id
+            )));
         }
 
         // Validate complexity range
@@ -198,10 +202,13 @@ fn parse_header(line: &str) -> Result<(String, String)> {
 fn extract_metadata(lines: &[&str], key: &str) -> Result<String> {
     for line in lines {
         if line.starts_with(key) {
-            let value = line.strip_prefix(key)
+            let value = line
+                .strip_prefix(key)
                 .and_then(|s| s.strip_prefix(":"))
                 .map(|s| s.trim())
-                .ok_or_else(|| TicketError::ParseError(format!("Invalid metadata format for {}", key)))?;
+                .ok_or_else(|| {
+                    TicketError::ParseError(format!("Invalid metadata format for {}", key))
+                })?;
             return Ok(value.to_string());
         }
     }
@@ -262,7 +269,8 @@ fn extract_checklist(lines: &[&str], header: &str) -> Result<Vec<String>> {
                 break;
             }
             if line.trim().starts_with("- [ ]") {
-                let item = line.trim()
+                let item = line
+                    .trim()
                     .strip_prefix("- [ ]")
                     .unwrap_or("")
                     .trim()
@@ -286,7 +294,8 @@ fn extract_checklist(lines: &[&str], header: &str) -> Result<Vec<String>> {
 /// Example: "GREEN ✅" → "GREEN"
 fn parse_status(s: &str) -> Result<TicketStatus> {
     // Strip non-ASCII characters (emojis) and trim whitespace
-    let clean_status: String = s.chars()
+    let clean_status: String = s
+        .chars()
         .filter(|c| c.is_ascii())
         .collect::<String>()
         .trim()
@@ -491,11 +500,19 @@ mod tests {
 
         // Should have at least some tickets (Sprint 16 + Sprint 17 started)
         assert!(!tickets.is_empty());
-        assert!(tickets.len() >= 5, "Expected at least 5 tickets, found {}", tickets.len());
+        assert!(
+            tickets.len() >= 5,
+            "Expected at least 5 tickets, found {}",
+            tickets.len()
+        );
 
         // Verify we can parse real tickets without errors
         for ticket in &tickets {
-            assert!(ticket.validate().is_ok(), "Ticket {} failed validation", ticket.id);
+            assert!(
+                ticket.validate().is_ok(),
+                "Ticket {} failed validation",
+                ticket.id
+            );
         }
     }
 

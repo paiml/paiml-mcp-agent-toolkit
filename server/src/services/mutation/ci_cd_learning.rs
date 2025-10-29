@@ -7,9 +7,9 @@
 use super::ml_predictor::{SurvivabilityPredictor, TrainingData};
 use super::types::*;
 use anyhow::{Context, Result};
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use chrono::{DateTime, Utc};
 
 /// CI/CD learning configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -160,7 +160,10 @@ impl CiCdLearningManager {
     }
 
     /// Train model incrementally with new data
-    pub async fn train_incremental(&mut self, training_data: &[TrainingData]) -> Result<ModelVersion> {
+    pub async fn train_incremental(
+        &mut self,
+        training_data: &[TrainingData],
+    ) -> Result<ModelVersion> {
         // Limit to max_training_samples (keep most recent)
         let samples = if training_data.len() > self.config.max_training_samples {
             &training_data[training_data.len() - self.config.max_training_samples..]
@@ -174,10 +177,7 @@ impl CiCdLearningManager {
             .context("Failed to train predictor")?;
 
         // Validate with cross-validation
-        let accuracy = self
-            .predictor
-            .cross_validate(samples, 5)
-            .unwrap_or(0.0);
+        let accuracy = self.predictor.cross_validate(samples, 5).unwrap_or(0.0);
 
         // Create model version
         let version = self.get_next_version();
@@ -227,7 +227,10 @@ impl CiCdLearningManager {
     async fn save_training_batch(&self, batch: &TrainingBatch) -> Result<()> {
         tokio::fs::create_dir_all(&self.config.data_dir).await?;
 
-        let file_path = self.config.data_dir.join(format!("batch_{}.json", batch.id));
+        let file_path = self
+            .config
+            .data_dir
+            .join(format!("batch_{}.json", batch.id));
         let json = serde_json::to_string_pretty(batch)?;
 
         tokio::fs::write(file_path, json)
@@ -316,7 +319,9 @@ impl CiCdLearningManager {
 
     /// Get model file path for version
     fn get_model_path(&self, version: u32) -> PathBuf {
-        self.config.model_dir.join(format!("model_v{}.bin", version))
+        self.config
+            .model_dir
+            .join(format!("model_v{}.bin", version))
     }
 
     /// Clean old training data (keep only recent batches)

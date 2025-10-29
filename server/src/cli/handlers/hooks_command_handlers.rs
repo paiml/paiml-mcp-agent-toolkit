@@ -294,9 +294,7 @@ impl HooksCommand {
         }
 
         // Run the hook script
-        let output = Command::new("bash")
-            .arg(&hook_path)
-            .output()?;
+        let output = Command::new("bash").arg(&hook_path).output()?;
 
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -318,7 +316,6 @@ impl HooksCommand {
 
     /// Run interactive setup to configure hook preferences
     fn run_interactive_setup(&self) -> Result<()> {
-
         println!("🔧 Interactive Pre-commit Hook Setup");
         println!("====================================\n");
 
@@ -328,26 +325,15 @@ impl HooksCommand {
 
         // Ask about complexity thresholds
         println!("\n⚙️  Quality Thresholds:");
-        let max_complexity = self.prompt_number(
-            "Maximum cyclomatic complexity (default: 10)",
-            10,
-        )?;
-        let max_cognitive = self.prompt_number(
-            "Maximum cognitive complexity (default: 15)",
-            15,
-        )?;
+        let max_complexity =
+            self.prompt_number("Maximum cyclomatic complexity (default: 10)", 10)?;
+        let max_cognitive = self.prompt_number("Maximum cognitive complexity (default: 15)", 15)?;
 
         // Ask about coverage
-        let min_coverage = self.prompt_number(
-            "Minimum test coverage % (default: 80)",
-            80,
-        )?;
+        let min_coverage = self.prompt_number("Minimum test coverage % (default: 80)", 80)?;
 
         // Ask about SATD
-        let max_satd = self.prompt_number(
-            "Maximum SATD comments (default: 5)",
-            5,
-        )?;
+        let max_satd = self.prompt_number("Maximum SATD comments (default: 5)", 5)?;
 
         println!("\n📝 Updating configuration...");
 
@@ -367,12 +353,8 @@ impl HooksCommand {
             println!("✅ Updated pmat.toml with your preferences");
         } else {
             // Create new config
-            let config_content = self.generate_config_content(
-                max_complexity,
-                max_cognitive,
-                min_coverage,
-                max_satd,
-            );
+            let config_content =
+                self.generate_config_content(max_complexity, max_cognitive, min_coverage, max_satd);
             fs::write(&config_path, config_content)?;
             println!("✅ Created pmat.toml with your preferences");
         }
@@ -395,7 +377,8 @@ impl HooksCommand {
         if input.is_empty() {
             Ok(default)
         } else {
-            input.parse::<u32>()
+            input
+                .parse::<u32>()
                 .map_err(|e| anyhow::anyhow!("Invalid number: {}", e))
         }
     }
@@ -693,10 +676,9 @@ pub async fn handle_hooks_command(cmd: &HooksCommands) -> Result<()> {
         HooksCommands::Status => handle_status(&hooks_cmd).await,
         HooksCommands::Verify { fix } => handle_verify(&hooks_cmd, *fix).await,
         HooksCommands::Refresh => handle_refresh(&hooks_cmd).await,
-        HooksCommands::Run {
-            all_files,
-            verbose,
-        } => handle_run(&hooks_cmd, *all_files, *verbose).await,
+        HooksCommands::Run { all_files, verbose } => {
+            handle_run(&hooks_cmd, *all_files, *verbose).await
+        }
     }
 }
 

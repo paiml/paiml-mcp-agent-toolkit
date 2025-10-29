@@ -53,11 +53,14 @@ impl AgentRegistry {
     }
 
     pub async fn register_agent_with_capability(&self, capability: &str, agent_id: AgentId) {
-        self.agents_by_capability.insert(capability.to_string(), agent_id);
+        self.agents_by_capability
+            .insert(capability.to_string(), agent_id);
     }
 
     pub async fn find_agent_for_capability(&self, capability: &str) -> Option<AgentId> {
-        self.agents_by_capability.get(capability).map(|entry| *entry.value())
+        self.agents_by_capability
+            .get(capability)
+            .map(|entry| *entry.value())
     }
 
     pub async fn get_agent_spec(&self, agent_id: AgentId) -> Option<AgentSpec> {
@@ -69,27 +72,36 @@ impl AgentRegistry {
     }
 
     pub async fn mark_agent_healthy(&self, name: &str) {
-        self.agent_health.insert(name.to_string(), AgentHealth {
-            healthy: true,
-            last_error: None,
-        });
+        self.agent_health.insert(
+            name.to_string(),
+            AgentHealth {
+                healthy: true,
+                last_error: None,
+            },
+        );
     }
 
     pub async fn mark_agent_unhealthy(&self, name: &str, error: &str) {
-        self.agent_health.insert(name.to_string(), AgentHealth {
-            healthy: false,
-            last_error: Some(error.to_string()),
-        });
+        self.agent_health.insert(
+            name.to_string(),
+            AgentHealth {
+                healthy: false,
+                last_error: Some(error.to_string()),
+            },
+        );
     }
 
     pub async fn is_agent_healthy(&self, name: &str) -> bool {
-        self.agent_health.get(name).map(|entry| entry.healthy).unwrap_or(false)
+        self.agent_health
+            .get(name)
+            .map(|entry| entry.healthy)
+            .unwrap_or(false)
     }
 
     pub async fn register(&self, _name: &str, agent: Arc<dyn std::any::Any + Send + Sync>) {
         // Legacy method - kept for compatibility
         let _ = agent; // Suppress unused warning
-        // Extract AgentId if needed
+                       // Extract AgentId if needed
     }
 
     pub async fn list_agents(&self) -> Vec<String> {

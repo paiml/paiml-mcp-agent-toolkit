@@ -133,7 +133,10 @@ pub fn execute_clippy(config: &GateConfig, project_dir: &Path) -> Result<GateRes
         "✓ Clippy passed".to_string()
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        format!("✗ Clippy failed:\n{}", stderr.lines().take(10).collect::<Vec<_>>().join("\n"))
+        format!(
+            "✗ Clippy failed:\n{}",
+            stderr.lines().take(10).collect::<Vec<_>>().join("\n")
+        )
     };
 
     Ok(GateResult {
@@ -170,7 +173,10 @@ pub fn execute_tests(config: &GateConfig, project_dir: &Path) -> Result<GateResu
         "✓ Tests passed".to_string()
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        format!("✗ Tests failed:\n{}", stderr.lines().take(10).collect::<Vec<_>>().join("\n"))
+        format!(
+            "✗ Tests failed:\n{}",
+            stderr.lines().take(10).collect::<Vec<_>>().join("\n")
+        )
     };
 
     Ok(GateResult {
@@ -274,10 +280,7 @@ pub fn execute_complexity(config: &GateConfig, _project_dir: &Path) -> Result<Ga
         name: "complexity".to_string(),
         passed,
         duration,
-        message: format!(
-            "✓ Complexity: All functions <{}",
-            config.max_complexity
-        ),
+        message: format!("✓ Complexity: All functions <{}", config.max_complexity),
     })
 }
 

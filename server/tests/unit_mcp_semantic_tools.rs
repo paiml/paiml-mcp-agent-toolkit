@@ -11,7 +11,10 @@ use serde_json::json;
 use tempfile::TempDir;
 
 // Helper to setup engine
-async fn setup_engine() -> (std::sync::Arc<pmat::services::semantic::HybridSearchEngine>, TempDir) {
+async fn setup_engine() -> (
+    std::sync::Arc<pmat::services::semantic::HybridSearchEngine>,
+    TempDir,
+) {
     let temp_dir = TempDir::new().unwrap();
     let db_path = temp_dir.path().join("mcp_test.db");
 
@@ -390,7 +393,10 @@ fn test_find_similar_schema() {
     assert_eq!(schema["name"], "find_similar_code");
     assert!(schema["description"].is_string());
     assert!(schema["parameters"]["properties"]["file_path"].is_object());
-    assert!(schema["parameters"]["required"].as_array().unwrap().contains(&json!("file_path")));
+    assert!(schema["parameters"]["required"]
+        .as_array()
+        .unwrap()
+        .contains(&json!("file_path")));
 }
 
 #[ignore]

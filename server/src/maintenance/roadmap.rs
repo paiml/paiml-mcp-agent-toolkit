@@ -2,8 +2,8 @@
 //!
 //! Parses ROADMAP.md files into structured data for analysis and validation.
 
-use std::path::Path;
 use serde::{Deserialize, Serialize};
+use std::path::Path;
 
 /// Represents a parsed roadmap
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -104,7 +104,11 @@ impl Roadmap {
                 next_line_is_focus = true;
             } else if next_line_is_focus && line.starts_with("**Focus:**") {
                 if let Some(ref mut sprint) = current_sprint {
-                    sprint.focus = line.strip_prefix("**Focus:**").unwrap_or("").trim().to_string();
+                    sprint.focus = line
+                        .strip_prefix("**Focus:**")
+                        .unwrap_or("")
+                        .trim()
+                        .to_string();
                 }
                 next_line_is_focus = false;
             } else if let Some(ticket) = parse_ticket_line(line) {
@@ -114,7 +118,10 @@ impl Roadmap {
             } else if is_quality_gate_section(line) {
                 // Skip the "**Quality Gates:**" header
                 continue;
-            } else if current_sprint.is_some() && line.trim().starts_with("- ") && !line.contains("TICKET-") {
+            } else if current_sprint.is_some()
+                && line.trim().starts_with("- ")
+                && !line.contains("TICKET-")
+            {
                 if let Some(gate) = parse_quality_gate(line) {
                     if let Some(ref mut sprint) = current_sprint {
                         sprint.quality_gates.push(gate);
@@ -225,11 +232,7 @@ fn parse_sprint_header(line: &str) -> Option<Sprint> {
     }
 
     // Extract sprint number
-    let number = parts[0]
-        .split_whitespace()
-        .nth(2)?
-        .parse::<u32>()
-        .ok()?;
+    let number = parts[0].split_whitespace().nth(2)?.parse::<u32>().ok()?;
 
     // Extract name and status
     let rest = parts[1].trim();
@@ -366,7 +369,8 @@ fn validate_ticket_id(id: &str) -> Result<()> {
         return Err(RoadmapError::InvalidTicketId(id.to_string()));
     }
 
-    let number_part = id.strip_prefix("TICKET-PMAT-")
+    let number_part = id
+        .strip_prefix("TICKET-PMAT-")
         .ok_or_else(|| RoadmapError::InvalidTicketId(id.to_string()))?;
 
     if number_part.len() != 4 || !number_part.chars().all(|c| c.is_ascii_digit()) {
@@ -441,9 +445,24 @@ mod tests {
             status: SprintStatus::InProgress,
             duration: "2 days".to_string(),
             tickets: vec![
-                Ticket { id: "TICKET-PMAT-5001".into(), description: "".into(), completed: true, commit: None },
-                Ticket { id: "TICKET-PMAT-5002".into(), description: "".into(), completed: true, commit: None },
-                Ticket { id: "TICKET-PMAT-5003".into(), description: "".into(), completed: false, commit: None },
+                Ticket {
+                    id: "TICKET-PMAT-5001".into(),
+                    description: "".into(),
+                    completed: true,
+                    commit: None,
+                },
+                Ticket {
+                    id: "TICKET-PMAT-5002".into(),
+                    description: "".into(),
+                    completed: true,
+                    commit: None,
+                },
+                Ticket {
+                    id: "TICKET-PMAT-5003".into(),
+                    description: "".into(),
+                    completed: false,
+                    commit: None,
+                },
             ],
             quality_gates: vec![],
         };
@@ -459,9 +478,12 @@ mod tests {
             focus: "".to_string(),
             status: SprintStatus::Complete,
             duration: "2 days".to_string(),
-            tickets: vec![
-                Ticket { id: "TICKET-PMAT-5001".into(), description: "".into(), completed: true, commit: None },
-            ],
+            tickets: vec![Ticket {
+                id: "TICKET-PMAT-5001".into(),
+                description: "".into(),
+                completed: true,
+                commit: None,
+            }],
             quality_gates: vec![],
         };
 
@@ -479,7 +501,10 @@ mod tests {
         let roadmap = Roadmap::from_file(&roadmap_path).unwrap();
 
         // Verify we parsed something
-        assert!(!roadmap.sprints.is_empty(), "Should have parsed sprints from ROADMAP.md");
+        assert!(
+            !roadmap.sprints.is_empty(),
+            "Should have parsed sprints from ROADMAP.md"
+        );
 
         // Find Sprint 16 (should be complete)
         let sprint16 = roadmap.sprints.iter().find(|s| s.number == 16);
@@ -491,7 +516,10 @@ mod tests {
         assert_eq!(sprint16.tickets.len(), 5);
 
         // All Sprint 16 tickets should be complete
-        assert!(sprint16.is_complete(), "Sprint 16 should be marked complete");
+        assert!(
+            sprint16.is_complete(),
+            "Sprint 16 should be marked complete"
+        );
         assert_eq!(sprint16.completion_percentage(), 100.0);
     }
 
@@ -507,7 +535,11 @@ mod tests {
 
         // Validate structure
         let result = roadmap.validate();
-        assert!(result.is_ok(), "PMAT roadmap should pass validation: {:?}", result);
+        assert!(
+            result.is_ok(),
+            "PMAT roadmap should pass validation: {:?}",
+            result
+        );
     }
 
     #[test]
@@ -540,7 +572,10 @@ mod tests {
         let sprint16 = &roadmap.sprints[0];
         assert_eq!(sprint16.number, 16);
         assert_eq!(sprint16.name, "Scaffolding Foundation");
-        assert_eq!(sprint16.focus, "Core scaffolding engine and template system");
+        assert_eq!(
+            sprint16.focus,
+            "Core scaffolding engine and template system"
+        );
         assert_eq!(sprint16.status, SprintStatus::Complete);
         assert_eq!(sprint16.tickets.len(), 3);
         assert_eq!(sprint16.quality_gates.len(), 2);

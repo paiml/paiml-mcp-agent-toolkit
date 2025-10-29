@@ -4,8 +4,8 @@
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
     use crate::cli::TdgOutputFormat;
+    use std::path::PathBuf;
 
     // Helper: Get repository root
     fn get_repo_root() -> PathBuf {
@@ -41,7 +41,10 @@ mod tests {
         };
 
         // Act & Assert
-        assert!(config.with_git_context, "Should have with_git_context field");
+        assert!(
+            config.with_git_context,
+            "Should have with_git_context field"
+        );
     }
 
     // GREEN TEST 2: TdgCommandConfig with_git_context defaults to false

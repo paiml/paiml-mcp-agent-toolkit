@@ -190,7 +190,11 @@ async fn test_similarity_with_limit() {
 
     // Insert 5 entries
     for i in 0..5 {
-        let entry = create_test_entry(&format!("src/file{i}.rs"), &format!("fn{i}"), vec![0.1; 1536]);
+        let entry = create_test_entry(
+            &format!("src/file{i}.rs"),
+            &format!("fn{i}"),
+            vec![0.1; 1536],
+        );
         db.insert(&entry).await.unwrap();
     }
 
@@ -340,7 +344,13 @@ async fn test_large_batch_insert() {
 
     // Create 100 entries
     let entries: Vec<EmbeddingEntry> = (0..100)
-        .map(|i| create_test_entry(&format!("src/file{i}.rs"), &format!("fn{i}"), vec![0.1; 1536]))
+        .map(|i| {
+            create_test_entry(
+                &format!("src/file{i}.rs"),
+                &format!("fn{i}"),
+                vec![0.1; 1536],
+            )
+        })
         .collect();
 
     let ids = db.batch_insert(&entries).await.unwrap();

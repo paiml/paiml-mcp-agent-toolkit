@@ -4,7 +4,8 @@ use syn::{self, visit::Visit, Expr, Stmt};
 
 /// Helper function to convert a syn::Path to a string
 fn path_to_string(path: &syn::Path) -> String {
-    path.segments.iter()
+    path.segments
+        .iter()
         .map(|seg| seg.ident.to_string())
         .collect::<Vec<_>>()
         .join("::")
@@ -214,17 +215,21 @@ impl SymbolicExecutor {
                                     return true; // Found a cache
                                 }
                             }
-                        },
+                        }
                         syn::Expr::Macro(mac) => {
                             // Check macro invocations like vec![] or hashmap![]
-                            let mac_name = mac.mac.path.segments.last()
+                            let mac_name = mac
+                                .mac
+                                .path
+                                .segments
+                                .last()
                                 .map(|seg| seg.ident.to_string())
                                 .unwrap_or_default();
-                            
+
                             if mac_name.contains("hashmap") || mac_name.contains("cache") {
                                 return true;
                             }
-                        },
+                        }
                         _ => {}
                     }
                 }
@@ -394,7 +399,7 @@ impl<'ast> Visit<'ast> for SpaceComplexityAnalyzer {
                         size: AllocationSize::Constant(1),
                         _location: "array".to_string(),
                     });
-                },
+                }
                 syn::Expr::Call(call) => {
                     // Check for Vec::new(), Vec::with_capacity(), etc.
                     if let syn::Expr::Path(path) = &*call.func {
@@ -406,20 +411,24 @@ impl<'ast> Visit<'ast> for SpaceComplexityAnalyzer {
                             });
                         }
                     }
-                },
+                }
                 syn::Expr::Macro(mac) => {
                     // Check for vec![], string![], etc.
-                    let mac_name = mac.mac.path.segments.last()
+                    let mac_name = mac
+                        .mac
+                        .path
+                        .segments
+                        .last()
                         .map(|seg| seg.ident.to_string())
                         .unwrap_or_default();
-                    
+
                     if mac_name == "vec" || mac_name.contains("string") {
                         self.allocations.push(Allocation {
                             size: AllocationSize::Dynamic,
                             _location: "macro".to_string(),
                         });
                     }
-                },
+                }
                 _ => {}
             }
         }

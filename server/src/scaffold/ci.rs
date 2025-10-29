@@ -294,7 +294,11 @@ mod tests {
 
         // Verify YAML is parseable
         let parsed: Result<serde_yaml::Value, _> = serde_yaml::from_str(&workflow);
-        assert!(parsed.is_ok(), "Generated YAML should be valid: {:?}", parsed.err());
+        assert!(
+            parsed.is_ok(),
+            "Generated YAML should be valid: {:?}",
+            parsed.err()
+        );
     }
 
     #[test]
@@ -322,11 +326,7 @@ mod tests {
     #[test]
     fn test_workflow_multiple_versions() {
         let config = WorkflowConfig {
-            rust_versions: vec![
-                "stable".to_string(),
-                "beta".to_string(),
-                "1.70".to_string(),
-            ],
+            rust_versions: vec!["stable".to_string(), "beta".to_string(), "1.70".to_string()],
             ..Default::default()
         };
         let workflow = generate_github_workflow(&config);

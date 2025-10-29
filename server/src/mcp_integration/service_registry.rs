@@ -6,9 +6,9 @@
 
 use super::*;
 use async_trait::async_trait;
+use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::sync::Arc;
-use parking_lot::RwLock;
 
 /// Registry for managing services that agents can use
 pub struct ServiceRegistry {
@@ -55,7 +55,9 @@ impl ServiceRegistry {
     pub fn register(&self, service: Arc<dyn Service>) {
         let metadata = service.metadata();
         self.services.write().insert(metadata.name.clone(), service);
-        self.metadata.write().insert(metadata.name.clone(), metadata);
+        self.metadata
+            .write()
+            .insert(metadata.name.clone(), metadata);
     }
 
     pub fn get(&self, name: &str) -> Option<Arc<dyn Service>> {

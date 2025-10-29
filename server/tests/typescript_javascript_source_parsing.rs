@@ -1,9 +1,9 @@
 #![cfg(all(test, feature = "typescript-ast", feature = "integration-tests"))]
 
 use anyhow::Result;
-use pmat::services::languages::typescript::TypeScriptAstVisitor;
-use pmat::services::languages::javascript::JavaScriptAstVisitor;
 use pmat::services::context::AstItem;
+use pmat::services::languages::javascript::JavaScriptAstVisitor;
+use pmat::services::languages::typescript::TypeScriptAstVisitor;
 use std::path::Path;
 
 /// Test TypeScript source parsing with a simple function
@@ -21,11 +21,15 @@ fn test_typescript_source_parsing_simple_function() -> Result<()> {
     // Verify we found the function
     assert!(!items.is_empty(), "Should find at least one AST item");
 
-    let function_items: Vec<_> = items.iter()
+    let function_items: Vec<_> = items
+        .iter()
         .filter(|item| matches!(item, AstItem::Function { .. }))
         .collect();
 
-    assert!(!function_items.is_empty(), "Should find at least one function");
+    assert!(
+        !function_items.is_empty(),
+        "Should find at least one function"
+    );
 
     // Check function name
     if let Some(AstItem::Function { name, .. }) = function_items.first() {
@@ -65,14 +69,16 @@ fn test_typescript_source_parsing_class() -> Result<()> {
     assert!(!items.is_empty(), "Should find AST items");
 
     // Check for class
-    let class_items: Vec<_> = items.iter()
+    let class_items: Vec<_> = items
+        .iter()
         .filter(|item| matches!(item, AstItem::Struct { .. }))
         .collect();
 
     assert!(!class_items.is_empty(), "Should find at least one class");
 
     // Check for methods
-    let method_items: Vec<_> = items.iter()
+    let method_items: Vec<_> = items
+        .iter()
         .filter(|item| matches!(item, AstItem::Function { .. }))
         .collect();
 
@@ -110,13 +116,17 @@ fn test_typescript_source_parsing_interface() -> Result<()> {
     assert!(!items.is_empty(), "Should find AST items");
 
     // Check for trait (interface)
-    let _trait_items: Vec<_> = items.iter()
+    let _trait_items: Vec<_> = items
+        .iter()
         .filter(|item| matches!(item, AstItem::Trait { .. }))
         .collect();
 
     // TypeScript parser may represent interfaces as traits or structs
     // Just verify we found some structural items
-    assert!(!items.is_empty(), "Should find structural items for interface");
+    assert!(
+        !items.is_empty(),
+        "Should find structural items for interface"
+    );
 
     Ok(())
 }
@@ -140,11 +150,15 @@ fn test_javascript_source_parsing_simple_function() -> Result<()> {
     // Verify we found functions
     assert!(!items.is_empty(), "Should find at least one AST item");
 
-    let function_items: Vec<_> = items.iter()
+    let function_items: Vec<_> = items
+        .iter()
         .filter(|item| matches!(item, AstItem::Function { .. }))
         .collect();
 
-    assert!(function_items.len() >= 2, "Should find at least two functions");
+    assert!(
+        function_items.len() >= 2,
+        "Should find at least two functions"
+    );
 
     Ok(())
 }
@@ -181,7 +195,8 @@ fn test_javascript_source_parsing_es6_class() -> Result<()> {
     assert!(!items.is_empty(), "Should find AST items");
 
     // Check for class
-    let class_items: Vec<_> = items.iter()
+    let class_items: Vec<_> = items
+        .iter()
         .filter(|item| matches!(item, AstItem::Struct { .. }))
         .collect();
 
@@ -207,7 +222,10 @@ fn test_javascript_source_parsing_arrow_functions() -> Result<()> {
     let items = visitor.analyze_javascript_source(js_source)?;
 
     // Verify we found items (arrow functions may be detected as functions or variables)
-    assert!(!items.is_empty(), "Should find AST items for arrow functions");
+    assert!(
+        !items.is_empty(),
+        "Should find AST items for arrow functions"
+    );
 
     Ok(())
 }
@@ -233,7 +251,8 @@ fn test_javascript_source_parsing_async_await() -> Result<()> {
     // Verify we found async functions
     assert!(!items.is_empty(), "Should find AST items");
 
-    let async_functions: Vec<_> = items.iter()
+    let async_functions: Vec<_> = items
+        .iter()
         .filter(|item| {
             if let AstItem::Function { is_async, .. } = item {
                 *is_async
@@ -243,7 +262,10 @@ fn test_javascript_source_parsing_async_await() -> Result<()> {
         })
         .collect();
 
-    assert!(!async_functions.is_empty(), "Should find at least one async function");
+    assert!(
+        !async_functions.is_empty(),
+        "Should find at least one async function"
+    );
 
     Ok(())
 }

@@ -50,19 +50,26 @@ PMAT cannot compile code - it only analyzes existing source.
         assert_eq!(claim1.claim_type, ClaimType::Capability);
         assert_eq!(claim1.text, "PMAT can analyze Rust code complexity");
         assert!(
-            claim1.entities.contains(&Entity::Language("Rust".to_string())),
+            claim1
+                .entities
+                .contains(&Entity::Language("Rust".to_string())),
             "Should identify Rust language entity"
         );
 
         // Claim 2: Complex capability
         let claim2 = &claims[1];
         assert_eq!(claim2.claim_type, ClaimType::Capability);
-        assert!(claim2.entities.contains(&Entity::Language("TypeScript".to_string())));
+        assert!(claim2
+            .entities
+            .contains(&Entity::Language("TypeScript".to_string())));
 
         // Claim 3: Negative capability
         let claim3 = &claims[2];
         assert_eq!(claim3.claim_type, ClaimType::Capability);
-        assert_eq!(claim3.is_negative, true, "Should detect negative capability");
+        assert_eq!(
+            claim3.is_negative, true,
+            "Should detect negative capability"
+        );
     }
 
     /// RED TEST 2: CodeFactDatabase must load AST facts from deep context
@@ -96,10 +103,7 @@ Supported languages:
         let fact_db = CodeFactDatabase::from_markdown(deep_context).unwrap();
 
         // ASSERT
-        assert!(
-            fact_db.has_function("main"),
-            "Should find main() function"
-        );
+        assert!(fact_db.has_function("main"), "Should find main() function");
         assert!(
             fact_db.has_function("run_server"),
             "Should find run_server() function"
@@ -318,7 +322,9 @@ PMAT can compile Rust code to WebAssembly.
         let validator = DocAccuracyValidator::new(code_facts);
 
         // ACT
-        let results = validator.validate_documentation(readme, "README.md").unwrap();
+        let results = validator
+            .validate_documentation(readme, "README.md")
+            .unwrap();
 
         // ASSERT
         assert_eq!(results.len(), 3, "Should validate 3 claims");

@@ -99,7 +99,10 @@ impl TreeSitterMutationOperator for PythonRelationalOpMutation {
         for child in node.children(&mut cursor) {
             let kind = child.kind();
             // Python comparison operators
-            if matches!(kind, "<" | ">" | "<=" | ">=" | "==" | "!=" | "is" | "is not" | "in" | "not in") {
+            if matches!(
+                kind,
+                "<" | ">" | "<=" | ">=" | "==" | "!=" | "is" | "is not" | "in" | "not in"
+            ) {
                 // Only handle relational operators here (not identity/membership)
                 if matches!(kind, "<" | ">" | "<=" | ">=" | "==" | "!=") {
                     operator_node = Some(child);
@@ -432,10 +435,17 @@ mod tests {
         let root = tree.root_node();
 
         // Recursively search for binary_operator node
-        fn find_and_test(node: &tree_sitter::Node, source: &[u8], operator: &PythonBinaryOpMutation) -> bool {
+        fn find_and_test(
+            node: &tree_sitter::Node,
+            source: &[u8],
+            operator: &PythonBinaryOpMutation,
+        ) -> bool {
             if operator.can_mutate(node, source) {
                 let mutations = operator.mutate(node, source);
-                assert!(!mutations.is_empty(), "Should generate mutations for '+' operator");
+                assert!(
+                    !mutations.is_empty(),
+                    "Should generate mutations for '+' operator"
+                );
 
                 // Verify mutations replace + with -, *, /, //, %, **
                 let expected_ops = vec!["-", "*", "/", "//", "%", "**"];
@@ -457,7 +467,10 @@ mod tests {
             false
         }
 
-        assert!(find_and_test(&root, source, &operator), "Should find binary_operator node");
+        assert!(
+            find_and_test(&root, source, &operator),
+            "Should find binary_operator node"
+        );
     }
 
     #[test]
@@ -473,10 +486,17 @@ mod tests {
         let tree = parser.parse(source, None).expect("Failed to parse");
         let root = tree.root_node();
 
-        fn find_and_test(node: &tree_sitter::Node, source: &[u8], operator: &PythonRelationalOpMutation) -> bool {
+        fn find_and_test(
+            node: &tree_sitter::Node,
+            source: &[u8],
+            operator: &PythonRelationalOpMutation,
+        ) -> bool {
             if operator.can_mutate(node, source) {
                 let mutations = operator.mutate(node, source);
-                assert!(!mutations.is_empty(), "Should generate mutations for '>' operator");
+                assert!(
+                    !mutations.is_empty(),
+                    "Should generate mutations for '>' operator"
+                );
 
                 // Verify mutations replace > with <, >=, <=, ==, !=
                 let expected_ops = vec!["<", ">=", "<=", "==", "!="];
@@ -493,7 +513,10 @@ mod tests {
             false
         }
 
-        assert!(find_and_test(&root, source, &operator), "Should find comparison_operator node");
+        assert!(
+            find_and_test(&root, source, &operator),
+            "Should find comparison_operator node"
+        );
     }
 
     #[test]
@@ -509,10 +532,17 @@ mod tests {
         let tree = parser.parse(source, None).expect("Failed to parse");
         let root = tree.root_node();
 
-        fn find_and_test(node: &tree_sitter::Node, source: &[u8], operator: &PythonLogicalOpMutation) -> bool {
+        fn find_and_test(
+            node: &tree_sitter::Node,
+            source: &[u8],
+            operator: &PythonLogicalOpMutation,
+        ) -> bool {
             if operator.can_mutate(node, source) {
                 let mutations = operator.mutate(node, source);
-                assert!(!mutations.is_empty(), "Should generate mutations for 'and' operator");
+                assert!(
+                    !mutations.is_empty(),
+                    "Should generate mutations for 'and' operator"
+                );
 
                 // Verify mutations replace 'and' with 'or'
                 assert!(mutations.iter().any(|m| m.source.contains("or")));
@@ -529,7 +559,10 @@ mod tests {
             false
         }
 
-        assert!(find_and_test(&root, source, &operator), "Should find boolean_operator node");
+        assert!(
+            find_and_test(&root, source, &operator),
+            "Should find boolean_operator node"
+        );
     }
 
     #[test]
@@ -545,10 +578,17 @@ mod tests {
         let tree = parser.parse(source, None).expect("Failed to parse");
         let root = tree.root_node();
 
-        fn find_and_test(node: &tree_sitter::Node, source: &[u8], operator: &PythonIdentityOpMutation) -> bool {
+        fn find_and_test(
+            node: &tree_sitter::Node,
+            source: &[u8],
+            operator: &PythonIdentityOpMutation,
+        ) -> bool {
             if operator.can_mutate(node, source) {
                 let mutations = operator.mutate(node, source);
-                assert!(!mutations.is_empty(), "Should generate mutations for 'is' operator");
+                assert!(
+                    !mutations.is_empty(),
+                    "Should generate mutations for 'is' operator"
+                );
 
                 // Verify mutations replace 'is' with 'is not' and '=='
                 assert!(mutations.iter().any(|m| m.source.contains("is not")));
@@ -565,7 +605,10 @@ mod tests {
             false
         }
 
-        assert!(find_and_test(&root, source, &operator), "Should find 'is' operator");
+        assert!(
+            find_and_test(&root, source, &operator),
+            "Should find 'is' operator"
+        );
     }
 
     #[test]
@@ -581,10 +624,17 @@ mod tests {
         let tree = parser.parse(source, None).expect("Failed to parse");
         let root = tree.root_node();
 
-        fn find_and_test(node: &tree_sitter::Node, source: &[u8], operator: &PythonMembershipOpMutation) -> bool {
+        fn find_and_test(
+            node: &tree_sitter::Node,
+            source: &[u8],
+            operator: &PythonMembershipOpMutation,
+        ) -> bool {
             if operator.can_mutate(node, source) {
                 let mutations = operator.mutate(node, source);
-                assert!(!mutations.is_empty(), "Should generate mutations for 'in' operator");
+                assert!(
+                    !mutations.is_empty(),
+                    "Should generate mutations for 'in' operator"
+                );
 
                 // Verify mutation replaces 'in' with 'not in'
                 assert!(mutations.iter().any(|m| m.source.contains("not in")));
@@ -601,6 +651,9 @@ mod tests {
             false
         }
 
-        assert!(find_and_test(&root, source, &operator), "Should find 'in' operator");
+        assert!(
+            find_and_test(&root, source, &operator),
+            "Should find 'in' operator"
+        );
     }
 }

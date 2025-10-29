@@ -15,14 +15,16 @@ pub mod search_engine;
 pub mod topic_modeling;
 pub mod turso_vector_db;
 
-pub use chunker::{chunk_code, CodeChunk, ChunkType, Language};
+pub use chunker::{chunk_code, ChunkType, CodeChunk, Language};
 pub use clustering::{
-    Cluster, ClusterFilters, ClusteringEngine, ClusteringMethod, ClusterMember, ClusterResult,
+    Cluster, ClusterFilters, ClusterMember, ClusterResult, ClusteringEngine, ClusteringMethod,
     Dendrogram, DendrogramMerge, Linkage, OutlierPoint,
 };
-pub use hybrid_search::{HybridSearchEngine, HybridSearchMode, HybridSearchQuery, HybridSearchResult};
+pub use hybrid_search::{
+    HybridSearchEngine, HybridSearchMode, HybridSearchQuery, HybridSearchResult,
+};
 pub use openai_embeddings::{EmbeddingResult, OpenAIEmbeddingsClient};
-pub use search_engine::{IndexStats, SearchMode, SearchQuery, SemanticSearchEngine};
 pub use search_engine::SearchResult; // Primary search result type
+pub use search_engine::{IndexStats, SearchMode, SearchQuery, SemanticSearchEngine};
 pub use topic_modeling::{Topic, TopicChunk, TopicEngine, TopicFilters, TopicResult};
 pub use turso_vector_db::{EmbeddingEntry, TursoVectorDB};

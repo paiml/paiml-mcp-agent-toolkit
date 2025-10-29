@@ -196,11 +196,7 @@ impl LanguageAnalyzer for JavaScriptAnalyzer {
             if let Some(class_name) = &current_class {
                 if let Some(method_name) = self.extract_method_name(trimmed) {
                     let line_end = self.find_function_end(&lines, line_num);
-                    let qualified_name = format!(
-                        "{}::{}",
-                        class_name,
-                        method_name
-                    );
+                    let qualified_name = format!("{}::{}", class_name, method_name);
                     functions.push(FunctionInfo {
                         name: qualified_name,
                         line_start: line_num,
@@ -282,7 +278,9 @@ impl JavaScriptAnalyzer {
         // Handle: static methodName(
         if let Some(after) = trimmed.strip_prefix("static ") {
             // Skip "static "
-            return self.extract_simple_method_name(after).map(|n| format!("static {}", n));
+            return self
+                .extract_simple_method_name(after)
+                .map(|n| format!("static {}", n));
         }
 
         // Handle: async methodName(
@@ -315,11 +313,20 @@ impl JavaScriptAnalyzer {
             // Extract last word before '('
             if let Some(last_word_start) = before_paren.rfind(|c: char| c.is_whitespace()) {
                 let name = before_paren[last_word_start..].trim();
-                if !name.is_empty() && name.chars().next().is_some_and(|c| c.is_alphabetic() || c == '_') {
+                if !name.is_empty()
+                    && name
+                        .chars()
+                        .next()
+                        .is_some_and(|c| c.is_alphabetic() || c == '_')
+                {
                     return Some(name.to_string());
                 }
             } else if !before_paren.is_empty()
-                && before_paren.chars().next().is_some_and(|c| c.is_alphabetic() || c == '_') {
+                && before_paren
+                    .chars()
+                    .next()
+                    .is_some_and(|c| c.is_alphabetic() || c == '_')
+            {
                 return Some(before_paren.to_string());
             }
         }

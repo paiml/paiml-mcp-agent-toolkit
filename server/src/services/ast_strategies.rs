@@ -661,7 +661,7 @@ impl AstStrategy for KotlinAstStrategy {
     async fn analyze(&self, path: &Path, classifier: &FileClassifier) -> Result<FileContext> {
         // Delegate to the new implementation in ast::languages::kotlin_strategy
         use crate::services::ast::languages::kotlin_strategy::KotlinStrategy;
-        
+
         let kotlin_strategy = KotlinStrategy;
         kotlin_strategy.analyze(path, classifier).await
     }

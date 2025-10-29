@@ -7,8 +7,7 @@ use tempfile::TempDir;
 
 // Generator for valid project names
 fn valid_project_name() -> impl Strategy<Value = String> {
-    "[a-z][a-z0-9-]{0,63}"
-        .prop_map(|s| s.to_string())
+    "[a-z][a-z0-9-]{0,63}".prop_map(|s| s.to_string())
 }
 
 proptest! {

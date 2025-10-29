@@ -3,7 +3,7 @@
 //! Exposes PMAT's AST-based mutation testing infrastructure via CLI command.
 
 use crate::cli::commands::MutateArgs;
-use crate::services::mutation::engine::{MutationEngine, MutationConfig, MutationStrategy};
+use crate::services::mutation::engine::{MutationConfig, MutationEngine, MutationStrategy};
 use crate::services::mutation::types::{MutationResult, MutationScore, SourceLocation};
 use crate::stateless_server::StatelessTemplateServer;
 use anyhow::{Context, Result};
@@ -16,10 +16,7 @@ use std::time::{Duration, Instant};
 use tracing::info;
 
 /// Handle mutation testing command
-pub async fn handle(
-    args: MutateArgs,
-    _server: Arc<StatelessTemplateServer>,
-) -> Result<()> {
+pub async fn handle(args: MutateArgs, _server: Arc<StatelessTemplateServer>) -> Result<()> {
     info!("Starting mutation testing on {:?}", args.target);
 
     // 1. Validate target
@@ -87,9 +84,7 @@ async fn execute_with_progress(
     use tokio::time::sleep;
 
     // Start execution in background
-    let exec_handle = tokio::spawn(async move {
-        engine.execute_mutants_parallel(mutants).await
-    });
+    let exec_handle = tokio::spawn(async move { engine.execute_mutants_parallel(mutants).await });
 
     // Progress reporting loop
     let mut completed = 0;
@@ -195,14 +190,23 @@ struct EnhancedMutationResult {
     mutated_code_snippet: Option<String>,
 }
 
-fn output_json(score: &MutationScore, results: &[MutationResult], failures_only: bool) -> Result<()> {
+fn output_json(
+    score: &MutationScore,
+    results: &[MutationResult],
+    failures_only: bool,
+) -> Result<()> {
     use crate::services::mutation::types::MutantStatus;
 
     // Sprint 62 Day 2: Filter for failures-only mode
     let filtered_results: Vec<&MutationResult> = if failures_only {
         results
             .iter()
-            .filter(|r| matches!(r.status, MutantStatus::Survived | MutantStatus::CompileError | MutantStatus::Timeout))
+            .filter(|r| {
+                matches!(
+                    r.status,
+                    MutantStatus::Survived | MutantStatus::CompileError | MutantStatus::Timeout
+                )
+            })
             .collect()
     } else {
         results.iter().collect()
@@ -212,7 +216,8 @@ fn output_json(score: &MutationScore, results: &[MutationResult], failures_only:
     let enhanced_results: Vec<EnhancedMutationResult> = filtered_results
         .iter()
         .map(|r| {
-            let original_snippet = extract_code_snippet(&r.mutant.original_file, &r.mutant.location).ok();
+            let original_snippet =
+                extract_code_snippet(&r.mutant.original_file, &r.mutant.location).ok();
             let mutated_snippet = Some(r.mutant.mutated_source.clone());
 
             EnhancedMutationResult {
@@ -233,14 +238,23 @@ fn output_json(score: &MutationScore, results: &[MutationResult], failures_only:
     Ok(())
 }
 
-fn output_markdown(score: &MutationScore, results: &[MutationResult], failures_only: bool) -> Result<()> {
+fn output_markdown(
+    score: &MutationScore,
+    results: &[MutationResult],
+    failures_only: bool,
+) -> Result<()> {
     use crate::services::mutation::types::MutantStatus;
 
     // Sprint 62 Day 2: Filter for failures-only mode
     let filtered_results: Vec<&MutationResult> = if failures_only {
         results
             .iter()
-            .filter(|r| matches!(r.status, MutantStatus::Survived | MutantStatus::CompileError | MutantStatus::Timeout))
+            .filter(|r| {
+                matches!(
+                    r.status,
+                    MutantStatus::Survived | MutantStatus::CompileError | MutantStatus::Timeout
+                )
+            })
             .collect()
     } else {
         results.iter().collect()
@@ -301,7 +315,8 @@ fn output_markdown(score: &MutationScore, results: &[MutationResult], failures_o
 
         for (i, result) in survived.iter().enumerate() {
             println!("### Mutant #{}", i + 1);
-            println!("- **Location**: {}:{}:{}",
+            println!(
+                "- **Location**: {}:{}:{}",
                 result.mutant.original_file.display(),
                 result.mutant.location.line,
                 result.mutant.location.column
@@ -310,11 +325,21 @@ fn output_markdown(score: &MutationScore, results: &[MutationResult], failures_o
             println!("- **Status**: Survived");
 
             // Sprint 62: Add diff block for code changes
-            if let Ok(original) = extract_code_snippet(&result.mutant.original_file, &result.mutant.location) {
+            if let Ok(original) =
+                extract_code_snippet(&result.mutant.original_file, &result.mutant.location)
+            {
                 println!("\n**Code Change:**");
                 println!("```diff");
                 println!("- {}", original);
-                println!("+ {}", result.mutant.mutated_source.lines().next().unwrap_or("<empty>"));
+                println!(
+                    "+ {}",
+                    result
+                        .mutant
+                        .mutated_source
+                        .lines()
+                        .next()
+                        .unwrap_or("<empty>")
+                );
                 println!("```");
             }
 
@@ -325,14 +350,23 @@ fn output_markdown(score: &MutationScore, results: &[MutationResult], failures_o
     Ok(())
 }
 
-fn output_text(score: &MutationScore, results: &[MutationResult], failures_only: bool) -> Result<()> {
+fn output_text(
+    score: &MutationScore,
+    results: &[MutationResult],
+    failures_only: bool,
+) -> Result<()> {
     use crate::services::mutation::types::MutantStatus;
 
     // Sprint 62 Day 2: Filter for failures-only mode
     let filtered_results: Vec<_> = if failures_only {
         results
             .iter()
-            .filter(|r| matches!(r.status, MutantStatus::Survived | MutantStatus::CompileError | MutantStatus::Timeout))
+            .filter(|r| {
+                matches!(
+                    r.status,
+                    MutantStatus::Survived | MutantStatus::CompileError | MutantStatus::Timeout
+                )
+            })
             .collect()
     } else {
         results.iter().collect()
@@ -409,24 +443,42 @@ fn output_text(score: &MutationScore, results: &[MutationResult], failures_only:
         .collect();
 
     if !survived.is_empty() {
-        println!("{}\n", style("Survived Mutants (needs test coverage):").red().bold());
+        println!(
+            "{}\n",
+            style("Survived Mutants (needs test coverage):")
+                .red()
+                .bold()
+        );
         for (i, result) in survived.iter().enumerate() {
-            println!("{}. {}",
+            println!(
+                "{}. {}",
                 style(format!("{}", i + 1)).red().bold(),
-                style(format!("{}:{}:{}",
+                style(format!(
+                    "{}:{}:{}",
                     result.mutant.original_file.display(),
                     result.mutant.location.line,
                     result.mutant.location.column
-                )).cyan()
+                ))
+                .cyan()
             );
-            println!("   {}: {:?}", style("Operator").bold(), result.mutant.operator);
+            println!(
+                "   {}: {:?}",
+                style("Operator").bold(),
+                result.mutant.operator
+            );
 
             // Extract and display code snippet
-            if let Ok(snippet) = extract_code_snippet(&result.mutant.original_file, &result.mutant.location) {
+            if let Ok(snippet) =
+                extract_code_snippet(&result.mutant.original_file, &result.mutant.location)
+            {
                 println!("   {}: {}", style("Code").bold(), snippet);
             }
 
-            println!("   {}: {:.2}s\n", style("Time").bold(), result.execution_time_ms as f64 / 1000.0);
+            println!(
+                "   {}: {:.2}s\n",
+                style("Time").bold(),
+                result.execution_time_ms as f64 / 1000.0
+            );
         }
     }
 
@@ -439,15 +491,22 @@ fn output_text(score: &MutationScore, results: &[MutationResult], failures_only:
     if !compile_errors.is_empty() {
         println!("{}\n", style("Compile Errors:").yellow().bold());
         for (i, result) in compile_errors.iter().enumerate() {
-            println!("{}. {}",
+            println!(
+                "{}. {}",
                 style(format!("{}", i + 1)).yellow().bold(),
-                style(format!("{}:{}:{}",
+                style(format!(
+                    "{}:{}:{}",
                     result.mutant.original_file.display(),
                     result.mutant.location.line,
                     result.mutant.location.column
-                )).cyan()
+                ))
+                .cyan()
             );
-            println!("   {}: {:?}\n", style("Operator").bold(), result.mutant.operator);
+            println!(
+                "   {}: {:?}\n",
+                style("Operator").bold(),
+                result.mutant.operator
+            );
         }
     }
 
@@ -460,15 +519,22 @@ fn output_text(score: &MutationScore, results: &[MutationResult], failures_only:
     if !timeouts.is_empty() {
         println!("{}\n", style("Timeouts:").yellow().bold());
         for (i, result) in timeouts.iter().enumerate() {
-            println!("{}. {}",
+            println!(
+                "{}. {}",
                 style(format!("{}", i + 1)).yellow().bold(),
-                style(format!("{}:{}:{}",
+                style(format!(
+                    "{}:{}:{}",
                     result.mutant.original_file.display(),
                     result.mutant.location.line,
                     result.mutant.location.column
-                )).cyan()
+                ))
+                .cyan()
             );
-            println!("   {}: {:?}\n", style("Operator").bold(), result.mutant.operator);
+            println!(
+                "   {}: {:?}\n",
+                style("Operator").bold(),
+                result.mutant.operator
+            );
         }
     }
 

@@ -66,11 +66,17 @@ impl DagEngine {
     /// Add dependency between steps
     pub fn add_dependency(&mut self, from: String, to: String) -> Result<(), WorkflowError> {
         if !self.nodes.contains_key(&from) {
-            return Err(WorkflowError::InvalidDefinition(format!("Step not found: {}", from)));
+            return Err(WorkflowError::InvalidDefinition(format!(
+                "Step not found: {}",
+                from
+            )));
         }
 
         if !self.nodes.contains_key(&to) {
-            return Err(WorkflowError::InvalidDefinition(format!("Step not found: {}", to)));
+            return Err(WorkflowError::InvalidDefinition(format!(
+                "Step not found: {}",
+                to
+            )));
         }
 
         // Add edge
@@ -215,7 +221,11 @@ impl DagEngine {
             self.topological_sort()?
         };
 
-        let max_parallelism = execution_order.iter().map(|level| level.len()).max().unwrap_or(0);
+        let max_parallelism = execution_order
+            .iter()
+            .map(|level| level.len())
+            .max()
+            .unwrap_or(0);
 
         let critical_path = self.find_critical_path();
 
@@ -326,7 +336,9 @@ mod tests {
         engine.add_step(create_simple_step("step1"));
         engine.add_step(create_simple_step("step2"));
 
-        engine.add_dependency("step1".to_string(), "step2".to_string()).unwrap();
+        engine
+            .add_dependency("step1".to_string(), "step2".to_string())
+            .unwrap();
 
         assert_eq!(engine.edges.get("step1").unwrap().len(), 1);
     }
@@ -338,8 +350,12 @@ mod tests {
         engine.add_step(create_simple_step("step2"));
         engine.add_step(create_simple_step("step3"));
 
-        engine.add_dependency("step1".to_string(), "step2".to_string()).unwrap();
-        engine.add_dependency("step2".to_string(), "step3".to_string()).unwrap();
+        engine
+            .add_dependency("step1".to_string(), "step2".to_string())
+            .unwrap();
+        engine
+            .add_dependency("step2".to_string(), "step3".to_string())
+            .unwrap();
 
         let cycles = engine.detect_cycles();
         assert!(cycles.is_empty());
@@ -352,9 +368,15 @@ mod tests {
         engine.add_step(create_simple_step("step2"));
         engine.add_step(create_simple_step("step3"));
 
-        engine.add_dependency("step1".to_string(), "step2".to_string()).unwrap();
-        engine.add_dependency("step2".to_string(), "step3".to_string()).unwrap();
-        engine.add_dependency("step3".to_string(), "step1".to_string()).unwrap();
+        engine
+            .add_dependency("step1".to_string(), "step2".to_string())
+            .unwrap();
+        engine
+            .add_dependency("step2".to_string(), "step3".to_string())
+            .unwrap();
+        engine
+            .add_dependency("step3".to_string(), "step1".to_string())
+            .unwrap();
 
         let cycles = engine.detect_cycles();
         assert!(!cycles.is_empty());
@@ -367,8 +389,12 @@ mod tests {
         engine.add_step(create_simple_step("step2"));
         engine.add_step(create_simple_step("step3"));
 
-        engine.add_dependency("step1".to_string(), "step2".to_string()).unwrap();
-        engine.add_dependency("step1".to_string(), "step3".to_string()).unwrap();
+        engine
+            .add_dependency("step1".to_string(), "step2".to_string())
+            .unwrap();
+        engine
+            .add_dependency("step1".to_string(), "step3".to_string())
+            .unwrap();
 
         let order = engine.topological_sort().unwrap();
         assert_eq!(order.len(), 2);
@@ -383,8 +409,12 @@ mod tests {
         engine.add_step(create_simple_step("step2"));
         engine.add_step(create_simple_step("step3"));
 
-        engine.add_dependency("step1".to_string(), "step2".to_string()).unwrap();
-        engine.add_dependency("step1".to_string(), "step3".to_string()).unwrap();
+        engine
+            .add_dependency("step1".to_string(), "step2".to_string())
+            .unwrap();
+        engine
+            .add_dependency("step1".to_string(), "step3".to_string())
+            .unwrap();
 
         let analysis = engine.analyze().unwrap();
         assert!(!analysis.has_cycles);

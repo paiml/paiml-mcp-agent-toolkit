@@ -220,7 +220,10 @@ fn output_markdown(report: &QualityReport) -> Result<()> {
 /// - Time: O(n) where n is number of gates
 /// - Cyclomatic: 3
 fn output_summary(report: &QualityReport) -> Result<()> {
-    println!("\n{} Quality Gate Results", if report.passed { "✅" } else { "❌" });
+    println!(
+        "\n{} Quality Gate Results",
+        if report.passed { "✅" } else { "❌" }
+    );
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 
     for gate in &report.gates {

@@ -26,7 +26,10 @@ async fn setup_engine() -> (TopicEngine, TempDir) {
 async fn test_extract_topics_basic() {
     let (engine, _temp) = setup_engine().await;
 
-    let result = engine.extract_topics(3, TopicFilters::default()).await.unwrap();
+    let result = engine
+        .extract_topics(3, TopicFilters::default())
+        .await
+        .unwrap();
 
     assert_eq!(result.num_topics, 3);
     assert!(result.topics.len() <= 3);
@@ -37,7 +40,10 @@ async fn test_extract_topics_basic() {
 async fn test_topic_result_structure() {
     let (engine, _temp) = setup_engine().await;
 
-    let result = engine.extract_topics(2, TopicFilters::default()).await.unwrap();
+    let result = engine
+        .extract_topics(2, TopicFilters::default())
+        .await
+        .unwrap();
 
     // Verify structure
     assert_eq!(result.num_topics, 2);
@@ -112,7 +118,10 @@ async fn test_topic_keywords_extraction() {
 async fn test_topic_strength_computation() {
     let (engine, _temp) = setup_engine().await;
 
-    let result = engine.extract_topics(2, TopicFilters::default()).await.unwrap();
+    let result = engine
+        .extract_topics(2, TopicFilters::default())
+        .await
+        .unwrap();
 
     for topic in &result.topics {
         // Strength should be normalized
@@ -125,7 +134,10 @@ async fn test_topic_strength_computation() {
 async fn test_coherence_score_computation() {
     let (engine, _temp) = setup_engine().await;
 
-    let result = engine.extract_topics(3, TopicFilters::default()).await.unwrap();
+    let result = engine
+        .extract_topics(3, TopicFilters::default())
+        .await
+        .unwrap();
 
     // Coherence score should be in valid range
     assert!(result.coherence_score >= 0.0);
@@ -165,7 +177,10 @@ async fn test_extract_topics_with_language_filter() {
 async fn test_chunk_topic_assignment() {
     let (engine, _temp) = setup_engine().await;
 
-    let result = engine.extract_topics(3, TopicFilters::default()).await.unwrap();
+    let result = engine
+        .extract_topics(3, TopicFilters::default())
+        .await
+        .unwrap();
 
     // Each chunk should be assigned to exactly one dominant topic
     for topic in &result.topics {
@@ -180,7 +195,10 @@ async fn test_chunk_topic_assignment() {
 async fn test_topic_probability_distribution() {
     let (engine, _temp) = setup_engine().await;
 
-    let result = engine.extract_topics(3, TopicFilters::default()).await.unwrap();
+    let result = engine
+        .extract_topics(3, TopicFilters::default())
+        .await
+        .unwrap();
 
     // For a given chunk, topic probabilities across all topics should sum to ~1.0
     // This test verifies that we have a valid probability distribution

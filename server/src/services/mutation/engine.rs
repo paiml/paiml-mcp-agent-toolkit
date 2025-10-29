@@ -53,14 +53,12 @@ impl MutationEngine {
         Self::new(Arc::new(RustAdapter::new()), MutationConfig::default())
     }
     /// Generate mutants from source file
-    pub async fn generate_mutants_from_file(
-        &self,
-        source_file: &Path,
-    ) -> Result<Vec<Mutant>> {
+    pub async fn generate_mutants_from_file(&self, source_file: &Path) -> Result<Vec<Mutant>> {
         let source = tokio::fs::read_to_string(source_file)
             .await
             .context("Failed to read source file")?;
-        self.generate_mutants_from_source(source_file, &source).await
+        self.generate_mutants_from_source(source_file, &source)
+            .await
     }
     /// Generate mutants from source code
     pub async fn generate_mutants_from_source(
@@ -68,8 +66,7 @@ impl MutationEngine {
         file_path: &Path,
         source: &str,
     ) -> Result<Vec<Mutant>> {
-        let syntax_tree: File = syn::parse_file(source)
-            .context("Failed to parse source")?;
+        let syntax_tree: File = syn::parse_file(source).context("Failed to parse source")?;
         let mut visitor = MutationVisitor {
             mutants: Vec::new(),
             operators: self.adapter.mutation_operators(),
@@ -85,28 +82,30 @@ impl MutationEngine {
     fn apply_strategy(&self, mutants: &mut Vec<Mutant>) {
         match &self.config.strategy {
             MutationStrategy::Selective => {
-                mutants
-                    .retain(|m| {
-                        matches!(
-                            m.operator, MutationOperatorType::ArithmeticReplacement |
-                            MutationOperatorType::RelationalReplacement |
-                            MutationOperatorType::ConditionalReplacement |
-                            MutationOperatorType::UnaryReplacement |
-                            MutationOperatorType::ConstantReplacement |
-                            MutationOperatorType::StatementDeletion
-                        )
-                    });
+                mutants.retain(|m| {
+                    matches!(
+                        m.operator,
+                        MutationOperatorType::ArithmeticReplacement
+                            | MutationOperatorType::RelationalReplacement
+                            | MutationOperatorType::ConditionalReplacement
+                            | MutationOperatorType::UnaryReplacement
+                            | MutationOperatorType::ConstantReplacement
+                            | MutationOperatorType::StatementDeletion
+                    )
+                });
             }
             MutationStrategy::Random => {
-                if self.config.max_mutants > 0 && mutants.len() > self.config.max_mutants
-                {
+                if self.config.max_mutants > 0 && mutants.len() > self.config.max_mutants {
                     use rand::seq::SliceRandom;
                     let mut rng = rand::rng();
                     mutants.shuffle(&mut rng);
                     mutants.truncate(self.config.max_mutants);
                 }
             }
-            MutationStrategy::Hybrid { selective, random: _ } => {
+            MutationStrategy::Hybrid {
+                selective,
+                random: _,
+            } => {
                 let selective_count = (mutants.len() as f64 * selective) as usize;
                 mutants.sort_by(|a, b| b.operator.cmp(&a.operator));
                 mutants.truncate(selective_count);
@@ -117,10 +116,7 @@ impl MutationEngine {
         }
     }
     /// Execute mutants and return results (sequential)
-    pub async fn execute_mutants(
-        &self,
-        mutants: Vec<Mutant>,
-    ) -> Result<Vec<MutationResult>> {
+    pub async fn execute_mutants(&self, mutants: Vec<Mutant>) -> Result<Vec<MutationResult>> {
         let mut results = Vec::new();
         for mutant in mutants {
             let result = self.execute_mutant(&mutant).await?;
@@ -139,10 +135,7 @@ impl MutationEngine {
             queue_size: 1000,
             track_progress: true,
         };
-        let executor = super::distributed::DistributedExecutor::new(
-            self.adapter.clone(),
-            config,
-        );
+        let executor = super::distributed::DistributedExecutor::new(self.adapter.clone(), config);
         executor.execute_parallel(mutants).await
     }
     /// Execute a single mutant
@@ -200,11 +193,7 @@ impl<'a> MutationVisitor<'a> {
         Self::format_syn_file(&modified_tree)
     }
     /// Replace an expression in the entire file and return the modified source
-    fn replace_expression_in_file(
-        &self,
-        original_expr: &Expr,
-        mutated_expr: &Expr,
-    ) -> String {
+    fn replace_expression_in_file(&self, original_expr: &Expr, mutated_expr: &Expr) -> String {
         let mut modified_tree = self.syntax_tree.clone();
         let mut replacer = ExpressionReplacer {
             original: quote::quote!(# original_expr).to_string(),
@@ -228,17 +217,15 @@ struct StatementDeletion {
 impl syn::visit_mut::VisitMut for StatementDeletion {
     fn visit_block_mut(&mut self, block: &mut syn::Block) {
         if !self.deleted {
-            block
-                .stmts
-                .retain(|stmt| {
-                    let stmt_str = quote::quote!(# stmt).to_string();
-                    if stmt_str == self.target_stmt && !self.deleted {
-                        self.deleted = true;
-                        false
-                    } else {
-                        true
-                    }
-                });
+            block.stmts.retain(|stmt| {
+                let stmt_str = quote::quote!(# stmt).to_string();
+                if stmt_str == self.target_stmt && !self.deleted {
+                    self.deleted = true;
+                    false
+                } else {
+                    true
+                }
+            });
         }
         syn::visit_mut::visit_block_mut(self, block);
     }
@@ -267,8 +254,8 @@ impl<'a> Visit<'_> for MutationVisitor<'a> {
         let can_delete = match stmt {
             syn::Stmt::Expr(expr, semi) => {
                 let is_deletable_type = matches!(
-                    expr, Expr::Call(_) | Expr::MethodCall(_) | Expr::Assign(_) |
-                    Expr::Macro(_)
+                    expr,
+                    Expr::Call(_) | Expr::MethodCall(_) | Expr::Assign(_) | Expr::Macro(_)
                 );
                 is_deletable_type && semi.is_some()
             }
@@ -290,7 +277,7 @@ impl<'a> Visit<'_> for MutationVisitor<'a> {
                         end_column: 0,
                     };
                     let mutant = Mutant {
-                        id: format!("{}_{}", operator.name(), & hash[..8]),
+                        id: format!("{}_{}", operator.name(), &hash[..8]),
                         original_file: self.file_path.clone(),
                         mutated_source,
                         location,
@@ -319,14 +306,13 @@ impl<'a> Visit<'_> for MutationVisitor<'a> {
                 };
                 if let Ok(mutated_exprs) = operator.mutate(expr, location.clone()) {
                     for mutated_expr in mutated_exprs {
-                        let mutated_source = self
-                            .replace_expression_in_file(expr, &mutated_expr);
+                        let mutated_source = self.replace_expression_in_file(expr, &mutated_expr);
                         let mut hasher = Sha256::new();
                         let expr_str = quote::quote!(# mutated_expr).to_string();
                         hasher.update(&expr_str);
                         let hash = format!("{:x}", hasher.finalize());
                         let mutant = Mutant {
-                            id: format!("{}_{}", operator.name(), & hash[..8]),
+                            id: format!("{}_{}", operator.name(), &hash[..8]),
                             original_file: self.file_path.clone(),
                             mutated_source,
                             location: location.clone(),
@@ -356,7 +342,7 @@ mod tests {
             .generate_mutants_from_source(Path::new("test.rs"), source)
             .await
             .unwrap();
-        assert!(! mutants.is_empty());
+        assert!(!mutants.is_empty());
     }
     #[tokio::test]
     async fn test_mutation_engine_selective_strategy() {

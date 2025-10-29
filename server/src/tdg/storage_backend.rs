@@ -282,9 +282,9 @@ impl StorageBackend for LibsqlBackend {
         let db = self.db.lock();
 
         // Get row count
-        if let Ok(count) = db.query_row::<i64, _, _>("SELECT COUNT(*) FROM tdg_storage", [], |row| {
-            row.get(0)
-        }) {
+        if let Ok(count) =
+            db.query_row::<i64, _, _>("SELECT COUNT(*) FROM tdg_storage", [], |row| row.get(0))
+        {
             stats.insert("entries".to_string(), count.to_string());
         }
 

@@ -46,7 +46,6 @@ pub struct MutantFeatures {
     pub parameter_count: u32,
 
     // NEW ENHANCED FEATURES (v2)
-
     /// Has error handling (try/catch/Result)
     pub has_error_handling: bool,
 
@@ -80,7 +79,8 @@ impl MutantFeatures {
         let source = &mutant.mutated_source;
 
         // Original 10 features
-        let has_loops = source.contains("for") || source.contains("while") || source.contains("loop");
+        let has_loops =
+            source.contains("for") || source.contains("while") || source.contains("loop");
         let has_conditionals = source.contains("if") || source.contains("match");
 
         let control_flow_count = source.matches("if").count() as u32
@@ -125,9 +125,8 @@ impl MutantFeatures {
             || source.contains('<')
             || source.contains('>');
 
-        let has_logical_ops = source.contains("&&")
-            || source.contains("||")
-            || source.contains('!');
+        let has_logical_ops =
+            source.contains("&&") || source.contains("||") || source.contains('!');
 
         // Mutation depth = nesting at mutation point
         let mutation_depth = nesting_depth;
@@ -317,10 +316,10 @@ impl SurvivabilityPredictor {
 
         // Train Decision Tree with optimized hyperparameters
         let tree = DecisionTree::params()
-            .split_quality(SplitQuality::Gini)  // Gini impurity for classification
-            .max_depth(Some(10))  // Prevent overfitting
-            .min_weight_split(5.0)  // Require at least 5 samples to split
-            .min_weight_leaf(2.0)   // At least 2 samples per leaf
+            .split_quality(SplitQuality::Gini) // Gini impurity for classification
+            .max_depth(Some(10)) // Prevent overfitting
+            .min_weight_split(5.0) // Require at least 5 samples to split
+            .min_weight_leaf(2.0) // At least 2 samples per leaf
             .fit(&dataset)?;
 
         self.model = Some(tree);
@@ -470,7 +469,8 @@ impl SurvivabilityPredictor {
 
         // Update kill rates
         for sample in new_data {
-            let current_rate = self.operator_kill_rates
+            let current_rate = self
+                .operator_kill_rates
                 .get(&sample.mutant.operator)
                 .copied()
                 .unwrap_or(0.5);
@@ -483,7 +483,8 @@ impl SurvivabilityPredictor {
                 current_rate * (1.0 - alpha)
             };
 
-            self.operator_kill_rates.insert(sample.mutant.operator.clone(), new_rate);
+            self.operator_kill_rates
+                .insert(sample.mutant.operator.clone(), new_rate);
         }
 
         Ok(())
@@ -517,7 +518,8 @@ impl SurvivabilityPredictor {
             }
         } else {
             // Fallback to statistical baseline
-            let base_probability = self.operator_kill_rates
+            let base_probability = self
+                .operator_kill_rates
                 .get(&mutant.operator)
                 .copied()
                 .unwrap_or(0.5);
@@ -567,14 +569,18 @@ impl SurvivabilityPredictor {
             self.operator_kill_rates
                 .get(&mutant.operator)
                 .copied()
-                .unwrap_or(0.5) * 100.0
+                .unwrap_or(0.5)
+                * 100.0
         );
 
         Ok((prediction, explanation))
     }
 
     /// Prioritize mutants by predicted kill probability
-    pub fn prioritize_mutants(&self, mutants: &[Mutant]) -> Result<Vec<(Mutant, PredictionResult)>> {
+    pub fn prioritize_mutants(
+        &self,
+        mutants: &[Mutant],
+    ) -> Result<Vec<(Mutant, PredictionResult)>> {
         let mut results = Vec::new();
 
         for mutant in mutants {
@@ -739,11 +745,40 @@ fn count_unique_variables(source: &str) -> u32 {
 fn is_rust_keyword(word: &str) -> bool {
     matches!(
         word,
-        "fn" | "let" | "mut" | "const" | "static" | "if" | "else" | "for"
-            | "while" | "loop" | "match" | "return" | "break" | "continue"
-            | "pub" | "use" | "mod" | "struct" | "enum" | "impl" | "trait"
-            | "type" | "where" | "unsafe" | "async" | "await" | "move"
-            | "ref" | "in" | "as" | "crate" | "super" | "self" | "Self"
-            | "true" | "false"
+        "fn" | "let"
+            | "mut"
+            | "const"
+            | "static"
+            | "if"
+            | "else"
+            | "for"
+            | "while"
+            | "loop"
+            | "match"
+            | "return"
+            | "break"
+            | "continue"
+            | "pub"
+            | "use"
+            | "mod"
+            | "struct"
+            | "enum"
+            | "impl"
+            | "trait"
+            | "type"
+            | "where"
+            | "unsafe"
+            | "async"
+            | "await"
+            | "move"
+            | "ref"
+            | "in"
+            | "as"
+            | "crate"
+            | "super"
+            | "self"
+            | "Self"
+            | "true"
+            | "false"
     )
 }

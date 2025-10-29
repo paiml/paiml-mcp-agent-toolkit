@@ -5,7 +5,7 @@
 #[cfg(test)]
 mod agent_registry_red_tests {
     use crate::agents::registry::AgentRegistry;
-    use crate::agents::{AgentSpec, AgentClass};
+    use crate::agents::{AgentClass, AgentSpec};
     use uuid::Uuid;
 
     // ===== Agent Registration Tests =====
@@ -15,7 +15,9 @@ mod agent_registry_red_tests {
         let registry = AgentRegistry::new();
         let agent_id = Uuid::new_v4();
 
-        registry.register_agent_with_name("analyzer", agent_id).await;
+        registry
+            .register_agent_with_name("analyzer", agent_id)
+            .await;
 
         let found = registry.get_agent("analyzer").await;
         assert_eq!(found, Some(agent_id));
@@ -35,8 +37,12 @@ mod agent_registry_red_tests {
         let agent_id1 = Uuid::new_v4();
         let agent_id2 = Uuid::new_v4();
 
-        registry.register_agent_with_name("analyzer", agent_id1).await;
-        registry.register_agent_with_name("analyzer", agent_id2).await;
+        registry
+            .register_agent_with_name("analyzer", agent_id1)
+            .await;
+        registry
+            .register_agent_with_name("analyzer", agent_id2)
+            .await;
 
         let found = registry.get_agent("analyzer").await;
         assert_eq!(found, Some(agent_id2), "Must use latest registration");
@@ -48,9 +54,15 @@ mod agent_registry_red_tests {
     async fn red_must_list_all_registered_agents() {
         let registry = AgentRegistry::new();
 
-        registry.register_agent_with_name("analyzer", Uuid::new_v4()).await;
-        registry.register_agent_with_name("transformer", Uuid::new_v4()).await;
-        registry.register_agent_with_name("validator", Uuid::new_v4()).await;
+        registry
+            .register_agent_with_name("analyzer", Uuid::new_v4())
+            .await;
+        registry
+            .register_agent_with_name("transformer", Uuid::new_v4())
+            .await;
+        registry
+            .register_agent_with_name("validator", Uuid::new_v4())
+            .await;
 
         let agents = registry.list_agents().await;
         assert_eq!(agents.len(), 3);
@@ -103,7 +115,9 @@ mod agent_registry_red_tests {
         let registry = AgentRegistry::new();
         let analyzer_id = Uuid::new_v4();
 
-        registry.register_agent_with_capability("analyze", analyzer_id).await;
+        registry
+            .register_agent_with_capability("analyze", analyzer_id)
+            .await;
 
         let found = registry.find_agent_for_capability("analyze").await;
         assert_eq!(found, Some(analyzer_id));
@@ -113,7 +127,9 @@ mod agent_registry_red_tests {
     async fn red_must_return_none_for_unknown_capability() {
         let registry = AgentRegistry::new();
 
-        let found = registry.find_agent_for_capability("unknown_capability").await;
+        let found = registry
+            .find_agent_for_capability("unknown_capability")
+            .await;
         assert_eq!(found, None);
     }
 
@@ -124,7 +140,9 @@ mod agent_registry_red_tests {
         let registry = AgentRegistry::new();
         let agent_id = Uuid::new_v4();
 
-        registry.register_agent_with_name("analyzer", agent_id).await;
+        registry
+            .register_agent_with_name("analyzer", agent_id)
+            .await;
         assert!(registry.get_agent("analyzer").await.is_some());
 
         registry.remove_agent("analyzer").await;
@@ -138,7 +156,9 @@ mod agent_registry_red_tests {
         let registry = AgentRegistry::new();
         let agent_id = Uuid::new_v4();
 
-        registry.register_agent_with_name("analyzer", agent_id).await;
+        registry
+            .register_agent_with_name("analyzer", agent_id)
+            .await;
         registry.mark_agent_healthy("analyzer").await;
 
         let is_healthy = registry.is_agent_healthy("analyzer").await;
@@ -150,8 +170,12 @@ mod agent_registry_red_tests {
         let registry = AgentRegistry::new();
         let agent_id = Uuid::new_v4();
 
-        registry.register_agent_with_name("analyzer", agent_id).await;
-        registry.mark_agent_unhealthy("analyzer", "test error").await;
+        registry
+            .register_agent_with_name("analyzer", agent_id)
+            .await;
+        registry
+            .mark_agent_unhealthy("analyzer", "test error")
+            .await;
 
         let is_healthy = registry.is_agent_healthy("analyzer").await;
         assert!(!is_healthy, "Must track agent as unhealthy");

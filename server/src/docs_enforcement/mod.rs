@@ -12,11 +12,11 @@
 //! - `cli_checker` - Validates CLI help text and flag documentation
 //! - `mcp_checker` - Validates MCP tool descriptions and schemas
 
-pub mod generic_detector;
 pub mod cli_checker;
+pub mod generic_detector;
 pub mod mcp_checker;
 
 // Re-export main functions
-pub use generic_detector::{is_generic_description, suggest_improvements};
 pub use cli_checker::validate_cli_documentation;
+pub use generic_detector::{is_generic_description, suggest_improvements};
 pub use mcp_checker::validate_mcp_documentation;

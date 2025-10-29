@@ -27,12 +27,7 @@ pub fn list_subagents(show_all: bool) -> Result<()> {
             "🔄 Future"
         };
 
-        println!(
-            "  {} {} - {}",
-            status,
-            agent.name(),
-            agent.description()
-        );
+        println!("  {} {} - {}", status, agent.name(), agent.description());
 
         // Show primary tools
         let tools = agent.primary_tools();
@@ -51,10 +46,7 @@ pub fn list_subagents(show_all: bool) -> Result<()> {
 }
 
 /// Create a specific sub-agent.
-pub fn create_subagent(
-    agent_name: &str,
-    output_dir: Option<PathBuf>,
-) -> Result<()> {
+pub fn create_subagent(agent_name: &str, output_dir: Option<PathBuf>) -> Result<()> {
     // Parse agent name
     let agent: PmatSubAgent = agent_name.parse()?;
 
@@ -134,7 +126,7 @@ pub fn create_all_mvp_subagents(output_dir: Option<PathBuf>) -> Result<()> {
 /// Check for required markdown sections in sub-agent definition.
 fn check_required_sections(content: &str, issues: &mut Vec<String>) {
     let required_sections = [
-        "# ",          // Title
+        "# ", // Title
         "## Description",
         "## Capabilities",
         "## Tools Used",
@@ -238,9 +230,9 @@ pub fn show_tool_mapping(agent_name: Option<String>) -> Result<()> {
     if let Some(name) = agent_name {
         // Show mapping for specific agent
         let agent: PmatSubAgent = name.parse()?;
-        let tools = mapping.get(&agent).ok_or_else(|| {
-            anyhow::anyhow!("No tool mapping found for agent: {}", agent.name())
-        })?;
+        let tools = mapping
+            .get(&agent)
+            .ok_or_else(|| anyhow::anyhow!("No tool mapping found for agent: {}", agent.name()))?;
 
         println!("MCP Tool Mapping: {}", agent.name());
         println!("  Description: {}", agent.description());
@@ -341,7 +333,10 @@ mod tests {
 
         let result = create_subagent("rust-quality-expert", Some(output));
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("not yet implemented"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("not yet implemented"));
     }
 
     #[test]

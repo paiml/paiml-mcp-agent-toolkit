@@ -88,12 +88,20 @@ impl ValidateReadmeCmd {
             eprintln!("📄 Targets: {:?}", self.targets);
             eprintln!("📊 Deep context: {}", self.deep_context.display());
             eprintln!("🎯 Verified threshold: {}", self.verified_threshold);
-            eprintln!("⚠️  Contradiction threshold: {}", self.contradiction_threshold);
+            eprintln!(
+                "⚠️  Contradiction threshold: {}",
+                self.contradiction_threshold
+            );
         }
 
         // Load deep context
-        let deep_context_markdown = std::fs::read_to_string(&self.deep_context)
-            .with_context(|| format!("Failed to read deep context: {}", self.deep_context.display()))?;
+        let deep_context_markdown =
+            std::fs::read_to_string(&self.deep_context).with_context(|| {
+                format!(
+                    "Failed to read deep context: {}",
+                    self.deep_context.display()
+                )
+            })?;
 
         // Build code fact database
         let code_facts = CodeFactDatabase::from_markdown(&deep_context_markdown)
@@ -116,7 +124,8 @@ impl ValidateReadmeCmd {
             let doc_content = std::fs::read_to_string(target)
                 .with_context(|| format!("Failed to read target file: {}", target.display()))?;
 
-            let results = validator.validate_documentation(&doc_content, &target.to_string_lossy())
+            let results = validator
+                .validate_documentation(&doc_content, &target.to_string_lossy())
                 .with_context(|| format!("Failed to validate {}", target.display()))?;
 
             // Count statuses
@@ -124,7 +133,9 @@ impl ValidateReadmeCmd {
                 match result.status {
                     ValidationStatus::Verified => verified_count += 1,
                     ValidationStatus::Contradiction => contradiction_count += 1,
-                    ValidationStatus::Unverified | ValidationStatus::NotFound | ValidationStatus::Outdated => unverified_count += 1,
+                    ValidationStatus::Unverified
+                    | ValidationStatus::NotFound
+                    | ValidationStatus::Outdated => unverified_count += 1,
                     ValidationStatus::Inconclusive => {}
                 }
             }
@@ -134,7 +145,12 @@ impl ValidateReadmeCmd {
 
         // Output results
         match self.output {
-            OutputFormat::Text => self.print_text_summary(&all_results, verified_count, contradiction_count, unverified_count),
+            OutputFormat::Text => self.print_text_summary(
+                &all_results,
+                verified_count,
+                contradiction_count,
+                unverified_count,
+            ),
             OutputFormat::Json => self.print_json_summary(&all_results)?,
             OutputFormat::Junit => self.print_junit_summary(&all_results)?,
         }
@@ -142,12 +158,18 @@ impl ValidateReadmeCmd {
         // Determine exit code
         if self.fail_on_contradiction && contradiction_count > 0 {
             if self.verbose {
-                eprintln!("\n❌ Exiting with failure: {} contradictions found", contradiction_count);
+                eprintln!(
+                    "\n❌ Exiting with failure: {} contradictions found",
+                    contradiction_count
+                );
             }
             Ok(ExitCode::FAILURE)
         } else if self.fail_on_unverified && unverified_count > 0 {
             if self.verbose {
-                eprintln!("\n❌ Exiting with failure: {} unverified claims found", unverified_count);
+                eprintln!(
+                    "\n❌ Exiting with failure: {} unverified claims found",
+                    unverified_count
+                );
             }
             Ok(ExitCode::FAILURE)
         } else {
@@ -193,7 +215,12 @@ impl ValidateReadmeCmd {
                     ValidationStatus::Inconclusive => "❓",
                 };
 
-                println!("\n{} Claim #{}: {:?}", status_icon, idx + 1, result.claim.claim_type);
+                println!(
+                    "\n{} Claim #{}: {:?}",
+                    status_icon,
+                    idx + 1,
+                    result.claim.claim_type
+                );
                 println!("   Text: \"{}\"", result.claim.text);
                 println!("   Line: {}", result.claim.line_number);
                 println!("   Status: {:?}", result.status);
@@ -214,7 +241,10 @@ impl ValidateReadmeCmd {
         if contradictions == 0 && unverified == 0 {
             println!("🎉 All documentation claims are verified!");
         } else if contradictions > 0 {
-            println!("💥 Found {} contradiction(s) - documentation contains hallucinations!", contradictions);
+            println!(
+                "💥 Found {} contradiction(s) - documentation contains hallucinations!",
+                contradictions
+            );
         } else if unverified > 0 {
             println!("⚠️  Found {} unverified claim(s)", unverified);
         }
@@ -249,19 +279,29 @@ impl ValidateReadmeCmd {
             })
             .collect();
 
-        let verified = results.iter()
+        let verified = results
+            .iter()
             .flat_map(|(_, r)| r)
             .filter(|r| matches!(r.status, ValidationStatus::Verified))
             .count();
 
-        let contradictions = results.iter()
+        let contradictions = results
+            .iter()
             .flat_map(|(_, r)| r)
             .filter(|r| matches!(r.status, ValidationStatus::Contradiction))
             .count();
 
-        let unverified = results.iter()
+        let unverified = results
+            .iter()
             .flat_map(|(_, r)| r)
-            .filter(|r| matches!(r.status, ValidationStatus::Unverified | ValidationStatus::NotFound | ValidationStatus::Outdated))
+            .filter(|r| {
+                matches!(
+                    r.status,
+                    ValidationStatus::Unverified
+                        | ValidationStatus::NotFound
+                        | ValidationStatus::Outdated
+                )
+            })
             .count();
 
         let output = json!({
@@ -278,9 +318,18 @@ impl ValidateReadmeCmd {
 
     fn print_junit_summary(&self, results: &[(PathBuf, Vec<ValidationResult>)]) -> Result<()> {
         let total_claims: usize = results.iter().map(|(_, r)| r.len()).sum();
-        let failures: usize = results.iter()
+        let failures: usize = results
+            .iter()
             .flat_map(|(_, r)| r)
-            .filter(|r| matches!(r.status, ValidationStatus::Contradiction | ValidationStatus::Unverified | ValidationStatus::NotFound | ValidationStatus::Outdated))
+            .filter(|r| {
+                matches!(
+                    r.status,
+                    ValidationStatus::Contradiction
+                        | ValidationStatus::Unverified
+                        | ValidationStatus::NotFound
+                        | ValidationStatus::Outdated
+                )
+            })
             .count();
 
         println!("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
@@ -288,8 +337,10 @@ impl ValidateReadmeCmd {
             "<testsuites name=\"README Hallucination Detection\" tests=\"{}\" failures=\"{}\">",
             total_claims, failures
         );
-        println!("  <testsuite name=\"Documentation Validation\" tests=\"{}\" failures=\"{}\">",
-            total_claims, failures);
+        println!(
+            "  <testsuite name=\"Documentation Validation\" tests=\"{}\" failures=\"{}\">",
+            total_claims, failures
+        );
 
         for (target, file_results) in results {
             for (idx, result) in file_results.iter().enumerate() {
@@ -300,10 +351,18 @@ impl ValidateReadmeCmd {
                     result.claim.text.chars().take(50).collect::<String>()
                 );
 
-                print!("    <testcase name=\"{}\" classname=\"HallucinationDetection\"",
-                    xml_escape(&test_name));
+                print!(
+                    "    <testcase name=\"{}\" classname=\"HallucinationDetection\"",
+                    xml_escape(&test_name)
+                );
 
-                if matches!(result.status, ValidationStatus::Contradiction | ValidationStatus::Unverified | ValidationStatus::NotFound | ValidationStatus::Outdated) {
+                if matches!(
+                    result.status,
+                    ValidationStatus::Contradiction
+                        | ValidationStatus::Unverified
+                        | ValidationStatus::NotFound
+                        | ValidationStatus::Outdated
+                ) {
                     println!(">");
                     println!(
                         "      <failure message=\"{}: Confidence {:.2}\">",

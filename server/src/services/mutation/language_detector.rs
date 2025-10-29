@@ -183,10 +183,7 @@ mod tests {
 
     #[test]
     fn test_go_detection() {
-        assert_eq!(
-            Language::from_extension(Path::new("main.go")),
-            Language::Go
-        );
+        assert_eq!(Language::from_extension(Path::new("main.go")), Language::Go);
     }
 
     #[test]

@@ -143,8 +143,7 @@ fn test() {
         assert_ne!(
             first_fn.line_start, second_fn.line_start,
             "Different file structure should yield different line numbers: {} vs {}",
-            first_fn.line_start,
-            second_fn.line_start
+            first_fn.line_start, second_fn.line_start
         );
     }
 
@@ -182,8 +181,14 @@ fn test() {
             .expect("File2 analysis should succeed");
 
         // Both files should have the function detected
-        assert!(!metrics1.functions.is_empty(), "File1 should have functions");
-        assert!(!metrics2.functions.is_empty(), "File2 should have functions");
+        assert!(
+            !metrics1.functions.is_empty(),
+            "File1 should have functions"
+        );
+        assert!(
+            !metrics2.functions.is_empty(),
+            "File2 should have functions"
+        );
 
         let fn1 = &metrics1.functions[0];
         let fn2 = &metrics2.functions[0];

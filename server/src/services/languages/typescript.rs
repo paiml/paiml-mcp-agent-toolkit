@@ -3,9 +3,9 @@
 //! This module provides support for analyzing TypeScript code, including
 //! AST parsing, syntax analysis, and code structure extraction.
 
+use crate::services::context::AstItem;
 use anyhow::Result;
 use std::path::Path;
-use crate::services::context::AstItem;
 
 #[cfg(feature = "typescript-ast")]
 use crate::services::ast_typescript::analyze_typescript_file;
@@ -19,7 +19,9 @@ pub struct TypeScriptAstVisitor {
 impl TypeScriptAstVisitor {
     /// Create a new TypeScript AST visitor
     pub fn new(path: &Path) -> Self {
-        Self { path: path.to_path_buf() }
+        Self {
+            path: path.to_path_buf(),
+        }
     }
 
     /// Analyze TypeScript source code
@@ -43,7 +45,8 @@ impl TypeScriptAstVisitor {
             .map_err(|e| anyhow::anyhow!("Failed to create runtime: {}", e))?;
 
         runtime.block_on(async {
-            let context = analyze_typescript_file(temp_file.path()).await
+            let context = analyze_typescript_file(temp_file.path())
+                .await
                 .map_err(|e| anyhow::anyhow!("TypeScript parsing failed: {}", e))?;
             Ok(context.items)
         })

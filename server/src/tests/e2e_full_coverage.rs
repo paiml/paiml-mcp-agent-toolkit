@@ -168,8 +168,9 @@ async fn test_mcp_server_e2e_coverage() {
 }
 
 #[test]
-#[ignore] // Requires pmat binary compilation (E2E test) - Sprint 45 Phase 2
-          // Run manually: cargo build --bin pmat && cargo test test_cli_main_binary_version -- --ignored
+#[ignore]
+// Requires pmat binary compilation (E2E test) - Sprint 45 Phase 2
+// Run manually: cargo build --bin pmat && cargo test test_cli_main_binary_version -- --ignored
 #[serial_test::serial]
 fn test_cli_main_binary_version() {
     let output = Command::new("cargo")
@@ -192,8 +193,9 @@ fn test_cli_main_binary_version() {
 }
 
 #[test]
-#[ignore] // Requires pmat binary compilation (E2E test) - Sprint 45 Phase 2
-          // Run manually: cargo build --bin pmat && cargo test test_cli_main_binary_help -- --ignored
+#[ignore]
+// Requires pmat binary compilation (E2E test) - Sprint 45 Phase 2
+// Run manually: cargo build --bin pmat && cargo test test_cli_main_binary_help -- --ignored
 #[serial_test::serial]
 fn test_cli_main_binary_help() {
     let output = Command::new("cargo")
@@ -308,8 +310,9 @@ fn test_cli_invalid_command() {
 }
 
 #[test]
-#[ignore] // Requires pmat binary compilation (E2E test) - Sprint 45 Phase 2
-          // Run manually: cargo build --bin pmat && cargo test test_cli_analyze_churn -- --ignored
+#[ignore]
+// Requires pmat binary compilation (E2E test) - Sprint 45 Phase 2
+// Run manually: cargo build --bin pmat && cargo test test_cli_analyze_churn -- --ignored
 #[serial_test::serial]
 fn test_cli_analyze_churn() {
     let output = Command::new("cargo")

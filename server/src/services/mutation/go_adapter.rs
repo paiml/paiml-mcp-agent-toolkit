@@ -34,11 +34,13 @@ impl LanguageAdapter for GoAdapter {
     async fn parse(&self, source: &str) -> Result<String> {
         // Create tree-sitter parser for Go
         let mut parser = Parser::new();
-        parser.set_language(&tree_sitter_go::LANGUAGE.into())
+        parser
+            .set_language(&tree_sitter_go::LANGUAGE.into())
             .map_err(|e| anyhow::anyhow!("Failed to set Go language: {}", e))?;
 
         // Parse the source
-        let tree = parser.parse(source, None)
+        let tree = parser
+            .parse(source, None)
             .ok_or_else(|| anyhow::anyhow!("Parse failed"))?;
 
         // Check for errors

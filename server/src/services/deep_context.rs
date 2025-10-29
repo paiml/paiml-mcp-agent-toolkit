@@ -4084,11 +4084,11 @@ pub async fn analyze_c_language(
         let file_context = c::analyze_c_file(file_path)
             .await
             .map_err(|e| anyhow::anyhow!("C analysis error: {}", e))?;
-        
+
         // Return the AST items from the file context
         Ok(file_context.items)
     }
-    
+
     #[cfg(not(feature = "c-ast"))]
     analyze_c_file(file_path).await
 }
@@ -4105,13 +4105,13 @@ pub async fn analyze_cpp_language(
         let file_context = cpp::analyze_cpp_file(file_path)
             .await
             .map_err(|e| anyhow::anyhow!("C++ analysis error: {}", e))?;
-        
+
         // Return the AST items from the file context
         Ok(file_context.items)
     }
-    
+
     #[cfg(not(feature = "cpp-ast"))]
-    analyze_c_file(file_path).await  // Fallback to C analysis if C++ feature is not enabled
+    analyze_c_file(file_path).await // Fallback to C analysis if C++ feature is not enabled
 }
 
 /// Toyota Way Single Responsibility: Handle Kotlin file analysis with debug logging
@@ -4361,7 +4361,7 @@ async fn analyze_c_file(
         let file_context = c::analyze_c_file(file_path)
             .await
             .map_err(|e| anyhow::anyhow!("C analysis error: {}", e))?;
-        
+
         Ok(file_context.items)
     }
     #[cfg(not(feature = "c-ast"))]
@@ -5399,7 +5399,11 @@ fn detect_project_language(path: &std::path::Path) -> &'static str {
         }
     }
 
-    let (max_idx, _) = counts.iter().enumerate().max_by_key(|(_, &count)| count).unwrap_or((0, &0));
+    let (max_idx, _) = counts
+        .iter()
+        .enumerate()
+        .max_by_key(|(_, &count)| count)
+        .unwrap_or((0, &0));
     match max_idx {
         0 => "rust",
         1 => "python",

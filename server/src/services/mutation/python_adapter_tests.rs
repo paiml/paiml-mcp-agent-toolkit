@@ -48,7 +48,7 @@ mod python_adapter_red_tests {
     #[tokio::test]
     async fn red_python_adapter_must_reject_invalid_syntax() {
         let adapter = PythonAdapter::new();
-        let source = "def add(a, b)\n    return a + b";  // Missing colon
+        let source = "def add(a, b)\n    return a + b"; // Missing colon
 
         let result = adapter.parse(source).await;
         assert!(result.is_err(), "Must reject invalid syntax");

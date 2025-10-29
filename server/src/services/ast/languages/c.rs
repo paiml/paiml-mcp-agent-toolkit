@@ -25,10 +25,7 @@ impl CAstVisitor {
     #[must_use]
     pub fn new(file_path: &Path) -> Self {
         // Check if file is a header file
-        let is_header = file_path
-            .extension()
-            .map(|ext| ext == "h")
-            .unwrap_or(false);
+        let is_header = file_path.extension().map(|ext| ext == "h").unwrap_or(false);
 
         Self {
             items: Vec::new(),
@@ -60,7 +57,7 @@ impl CAstVisitor {
         let mut current_function_name = String::new();
         let mut has_static_modifier = false;
         let mut _has_inline_modifier = false;
-        
+
         // Mark them as used
         let _ = &current_function_name;
         let _ = &has_static_modifier;
@@ -73,15 +70,20 @@ impl CAstVisitor {
                 // Check modifiers
                 has_static_modifier = trimmed.contains("static ");
                 _has_inline_modifier = trimmed.contains("inline ");
-                
+
                 if let Ok(name) = self.extract_function_name(trimmed) {
                     current_function_name = name;
-                    
+
                     // Only add function if it has a body (not just a declaration)
                     if trimmed.contains("{") {
                         self.items.push(AstItem::Function {
                             name: current_function_name.clone(),
-                            visibility: if has_static_modifier { "private" } else { "public" }.to_string(),
+                            visibility: if has_static_modifier {
+                                "private"
+                            } else {
+                                "public"
+                            }
+                            .to_string(),
                             is_async: false,
                             line: line_num + 1,
                         });
@@ -117,8 +119,9 @@ impl CAstVisitor {
             // Check for struct declaration (but not function return types)
             if !in_struct && trimmed.starts_with("struct ") {
                 // Skip if this is a function (has parentheses before brace)
-                let has_function_params = trimmed.contains("(") &&
-                    trimmed.find("(").unwrap_or(usize::MAX) < trimmed.find("{").unwrap_or(usize::MAX);
+                let has_function_params = trimmed.contains("(")
+                    && trimmed.find("(").unwrap_or(usize::MAX)
+                        < trimmed.find("{").unwrap_or(usize::MAX);
 
                 if !has_function_params {
                     if let Some(name) = self.extract_struct_name(trimmed) {
@@ -135,7 +138,11 @@ impl CAstVisitor {
             }
 
             // Count fields when in a struct
-            if in_struct && !trimmed.is_empty() && !trimmed.starts_with("{") && !trimmed.starts_with("}") {
+            if in_struct
+                && !trimmed.is_empty()
+                && !trimmed.starts_with("{")
+                && !trimmed.starts_with("}")
+            {
                 // This is a field
                 fields_count += 1;
             }
@@ -145,9 +152,12 @@ impl CAstVisitor {
             brace_depth -= trimmed.chars().filter(|&c| c == '}').count() as i32;
 
             // Check if we're at the end of a struct definition
-            if in_struct && trimmed.contains("}") && (brace_depth == 0 || trimmed.trim_end().ends_with(";")) {
+            if in_struct
+                && trimmed.contains("}")
+                && (brace_depth == 0 || trimmed.trim_end().ends_with(";"))
+            {
                 in_struct = false;
-                
+
                 // Only add struct if it has a name (avoids anonymous structs)
                 if !current_struct_name.is_empty() {
                     self.items.push(AstItem::Struct {
@@ -237,7 +247,7 @@ impl CAstVisitor {
                     } else {
                         "public"
                     };
-                    
+
                     // Variables not supported in AstItem, use Struct as placeholder
                     self.items.push(AstItem::Struct {
                         name,
@@ -258,10 +268,10 @@ impl CAstVisitor {
         if !line.contains("(") || line.starts_with("#") {
             return false;
         }
-        
+
         // Check for common function return types
         let common_types = ["void", "int", "char", "float", "double", "size_t", "bool"];
-        
+
         for typ in &common_types {
             // Check for pattern like "int foo(" or "static void bar("
             let pattern = format!("{} ", typ);
@@ -269,20 +279,28 @@ impl CAstVisitor {
                 return true;
             }
         }
-        
+
         // Also check for function pointers
-        line.contains("(") && line.contains(")") && line.contains("*") && !line.starts_with("if") && !line.starts_with("while")
+        line.contains("(")
+            && line.contains(")")
+            && line.contains("*")
+            && !line.starts_with("if")
+            && !line.starts_with("while")
     }
 
     /// Extracts function name from declaration line (complexity ≤10)
     fn extract_function_name(&self, line: &str) -> Result<String, String> {
         // Simplified extraction - get text between return type and opening parenthesis
-        let after_type = line.split_whitespace().skip(1).collect::<Vec<&str>>().join(" ");
+        let after_type = line
+            .split_whitespace()
+            .skip(1)
+            .collect::<Vec<&str>>()
+            .join(" ");
         let before_paren = after_type.split('(').next().unwrap_or("");
-        
+
         // Get last word which should be the function name
         let name = before_paren.split_whitespace().last().unwrap_or("");
-        
+
         if name.is_empty() {
             Err("Could not extract function name".to_string())
         } else {
@@ -293,7 +311,7 @@ impl CAstVisitor {
     /// Extracts struct name from declaration line (complexity ≤10)
     fn extract_struct_name(&self, line: &str) -> Option<String> {
         let words: Vec<&str> = line.split_whitespace().collect();
-        
+
         // Find the word after "struct"
         for (i, word) in words.iter().enumerate() {
             if *word == "struct" && i + 1 < words.len() {
@@ -311,7 +329,7 @@ impl CAstVisitor {
     /// Extracts enum name from declaration line (complexity ≤10)
     fn extract_enum_name(&self, line: &str) -> Option<String> {
         let words: Vec<&str> = line.split_whitespace().collect();
-        
+
         // Find the word after "enum"
         for (i, word) in words.iter().enumerate() {
             if *word == "enum" && i + 1 < words.len() {
@@ -331,7 +349,7 @@ impl CAstVisitor {
         // For typedef, the name is typically the last token before the semicolon
         let before_semicolon = line.split(';').next().unwrap_or("");
         let words: Vec<&str> = before_semicolon.split_whitespace().collect();
-        
+
         if !words.is_empty() {
             // Last word is usually the new type name
             Some(words.last().unwrap().to_string())
@@ -349,10 +367,10 @@ impl CAstVisitor {
             .replace("static ", "")
             .replace("extern ", "")
             .replace("volatile ", "");
-            
+
         // Split by whitespace to get the type and name
         let parts: Vec<&str> = clean_line.split_whitespace().collect();
-        
+
         if parts.len() >= 2 {
             // Second word is usually the variable name (after the type)
             let name_part = parts[1];
@@ -370,7 +388,7 @@ impl CAstVisitor {
                 .split(';')
                 .next()
                 .unwrap_or(name_part);
-                
+
             if !name.is_empty() {
                 return Some(name.to_string());
             }
@@ -407,31 +425,33 @@ impl CComplexityAnalyzer {
     pub fn analyze_complexity(&mut self, source: &str) -> Result<(u32, u32), String> {
         self.cyclomatic_complexity = 1;
         self.cognitive_complexity = 0;
-        
+
         let mut nesting_depth = 0;
 
         for line in source.lines() {
             let trimmed = line.trim();
-            
+
             // Skip comments and preprocessor directives
             if trimmed.starts_with("//") || trimmed.starts_with("/*") || trimmed.starts_with("#") {
                 continue;
             }
-            
+
             // Check for control flow statements
             let is_if_stmt = trimmed.starts_with("if ") || trimmed.starts_with("if(");
             let is_else_if = trimmed.starts_with("else if") || trimmed.contains("} else if");
             let _is_else = trimmed.starts_with("else") && !is_else_if;
             let is_switch = trimmed.starts_with("switch ");
             let is_case = trimmed.starts_with("case ") || trimmed.starts_with("default:");
-            let is_loop = trimmed.starts_with("while ") || trimmed.starts_with("for ") || trimmed.starts_with("do ");
+            let is_loop = trimmed.starts_with("while ")
+                || trimmed.starts_with("for ")
+                || trimmed.starts_with("do ");
             let is_goto = trimmed.starts_with("goto ");
-            
+
             // Increment cyclomatic complexity for decision points
             if is_if_stmt || is_else_if || is_switch || is_case || is_loop || is_goto {
                 self.cyclomatic_complexity += 1;
             }
-            
+
             // Cognitive complexity considers nesting
             if is_if_stmt || is_else_if || is_switch || is_loop {
                 self.cognitive_complexity += 1 + nesting_depth;
@@ -440,13 +460,13 @@ impl CComplexityAnalyzer {
                 // Opening a block (not a one-line block)
                 nesting_depth += 1;
             }
-            
+
             // Track closing braces
             if trimmed.contains("}") {
                 nesting_depth = nesting_depth.saturating_sub(1);
             }
         }
-        
+
         Ok((self.cyclomatic_complexity, self.cognitive_complexity))
     }
 }
@@ -480,30 +500,29 @@ pub async fn analyze_c_file(
     // Convert to correct types for ComplexityMetrics::new
     // Create function complexity metrics
     let func_metrics = ComplexityMetrics::new(
-        (cyclomatic & 0xFFFF) as u16, // Convert to u16 with clamping
-        (cognitive & 0xFFFF) as u16,  // Convert to u16 with clamping
-        0,                            // nesting_max (not calculated)
-        std::cmp::min(items.len(), 65535) as u16 // lines (clamped to u16 max)
+        (cyclomatic & 0xFFFF) as u16,             // Convert to u16 with clamping
+        (cognitive & 0xFFFF) as u16,              // Convert to u16 with clamping
+        0,                                        // nesting_max (not calculated)
+        std::cmp::min(items.len(), 65535) as u16, // lines (clamped to u16 max)
     );
-    
+
     // Create a file complexity metrics object
     let file_complexity = crate::services::complexity::FileComplexityMetrics {
         path: path.display().to_string(),
         total_complexity: func_metrics,
-        functions: vec![
-            crate::services::complexity::FunctionComplexity {
-                name: path.file_name()
-                    .and_then(|n| n.to_str())
-                    .unwrap_or("unknown")
-                    .to_string(),
-                line_start: 1,
-                line_end: std::cmp::min(items.len(), 65535) as u32,
-                metrics: func_metrics,
-            }
-        ],
+        functions: vec![crate::services::complexity::FunctionComplexity {
+            name: path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("unknown")
+                .to_string(),
+            line_start: 1,
+            line_end: std::cmp::min(items.len(), 65535) as u32,
+            metrics: func_metrics,
+        }],
         classes: vec![],
     };
-    
+
     let complexity_metrics = Some(file_complexity);
 
     // Return FileContext
@@ -658,7 +677,10 @@ int main() {
             .collect();
 
         assert!(func_names.contains(&"add"), "Should extract 'add' function");
-        assert!(func_names.contains(&"main"), "Should extract 'main' function");
+        assert!(
+            func_names.contains(&"main"),
+            "Should extract 'main' function"
+        );
     }
 
     #[cfg(feature = "c-ast")]
@@ -736,7 +758,10 @@ int main() {
             .expect("Should analyze C complexity");
 
         // Complex example should have significant complexity
-        assert!(cyclomatic > 5, "Cyclomatic complexity should be significant");
+        assert!(
+            cyclomatic > 5,
+            "Cyclomatic complexity should be significant"
+        );
         assert!(cognitive > 5, "Cognitive complexity should be significant");
     }
 }

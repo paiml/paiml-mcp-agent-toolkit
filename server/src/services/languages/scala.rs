@@ -92,7 +92,7 @@ impl ScalaAstVisitor {
             if let Some(class_name) = self.extract_class_name_from_line(trimmed) {
                 let qualified_name = self.get_qualified_name(&class_name);
                 let visibility = self.determine_visibility(trimmed);
-                
+
                 self.items.push(AstItem::Struct {
                     name: qualified_name,
                     visibility: visibility.to_string(),
@@ -118,7 +118,7 @@ impl ScalaAstVisitor {
             if let Some(class_name) = self.extract_case_class_name_from_line(trimmed) {
                 let qualified_name = self.get_qualified_name(&class_name);
                 let visibility = self.determine_visibility(trimmed);
-                
+
                 self.items.push(AstItem::Struct {
                     name: qualified_name,
                     visibility: visibility.to_string(),
@@ -131,7 +131,7 @@ impl ScalaAstVisitor {
         }
         Ok(())
     }
-    
+
     /// Helper to extract class name from line (complexity ≤10)
     fn extract_class_name_from_line(&self, line: &str) -> Option<String> {
         if line.contains("class ") && !line.contains("case class ") {
@@ -146,7 +146,7 @@ impl ScalaAstVisitor {
         }
         None
     }
-    
+
     /// Helper to extract case class name from line (complexity ≤10)
     fn extract_case_class_name_from_line(&self, line: &str) -> Option<String> {
         if line.contains("case class ") {
@@ -174,7 +174,7 @@ impl ScalaAstVisitor {
             if let Some(trait_name) = self.extract_trait_name_from_line(trimmed) {
                 let qualified_name = self.get_qualified_name(&trait_name);
                 let visibility = self.determine_visibility(trimmed);
-                
+
                 self.items.push(AstItem::Trait {
                     name: qualified_name,
                     visibility: visibility.to_string(),
@@ -185,7 +185,7 @@ impl ScalaAstVisitor {
         }
         Ok(())
     }
-    
+
     /// Helper to extract trait name from line (complexity ≤10)
     fn extract_trait_name_from_line(&self, line: &str) -> Option<String> {
         if line.contains("trait ") {
@@ -212,7 +212,7 @@ impl ScalaAstVisitor {
             if let Some(object_name) = self.extract_object_name_from_line(trimmed) {
                 let qualified_name = self.get_qualified_name(&object_name);
                 let visibility = self.determine_visibility(trimmed);
-                
+
                 self.items.push(AstItem::Module {
                     name: qualified_name,
                     visibility: visibility.to_string(),
@@ -223,7 +223,7 @@ impl ScalaAstVisitor {
         }
         Ok(())
     }
-    
+
     /// Helper to extract object name from line (complexity ≤10)
     fn extract_object_name_from_line(&self, line: &str) -> Option<String> {
         if line.contains("object ") {
@@ -250,7 +250,7 @@ impl ScalaAstVisitor {
             if let Some(method_name) = self.extract_method_name_from_line(trimmed) {
                 let qualified_name = self.get_qualified_name(&method_name);
                 let visibility = self.determine_visibility(trimmed);
-                
+
                 self.items.push(AstItem::Function {
                     name: qualified_name,
                     visibility,
@@ -261,7 +261,7 @@ impl ScalaAstVisitor {
         }
         Ok(())
     }
-    
+
     /// Helper to extract method name from line (complexity ≤10)
     fn extract_method_name_from_line(&self, line: &str) -> Option<String> {
         // Match Scala method declarations: "def methodName(...)"
@@ -279,7 +279,7 @@ impl ScalaAstVisitor {
         }
         None
     }
-    
+
     /// Helper to determine visibility from modifiers (complexity ≤10)
     fn determine_visibility(&self, line: &str) -> String {
         if line.contains("private ") {
@@ -292,7 +292,7 @@ impl ScalaAstVisitor {
             "public".to_string()
         }
     }
-    
+
     /// Gets qualified name for a symbol (complexity ≤10)
     fn get_qualified_name(&self, name: &str) -> String {
         if self.package_name.is_empty() {
@@ -327,21 +327,21 @@ impl ScalaComplexityAnalyzer {
             cognitive_complexity: 0,
         }
     }
-    
+
     /// Analyzes complexity of Scala source code (complexity ≤10)
     pub fn analyze_complexity(&mut self, source: &str) -> Result<(u32, u32), String> {
         self.cyclomatic_complexity = 1;
         self.cognitive_complexity = 1;
-        
+
         let lines: Vec<&str> = source.lines().collect();
         for line in lines {
             let trimmed = line.trim();
             self.analyze_complexity_for_line(trimmed);
         }
-        
+
         Ok((self.cyclomatic_complexity, self.cognitive_complexity))
     }
-    
+
     /// Helper to analyze complexity for a single line (complexity ≤10)
     fn analyze_complexity_for_line(&mut self, line: &str) {
         // Control flow increases cyclomatic complexity
@@ -349,30 +349,30 @@ impl ScalaComplexityAnalyzer {
             self.cyclomatic_complexity += 1;
             self.cognitive_complexity += 1;
         }
-        
+
         // Match expressions
         if line.contains("match ") || line.contains(" match ") {
             self.cyclomatic_complexity += 1;
             self.cognitive_complexity += 1;
         }
-        
+
         // Case patterns
         if line.contains("case ") && !line.contains("case class ") {
             self.cyclomatic_complexity += 1;
             self.cognitive_complexity += 1;
         }
-        
+
         // Logical operators increase complexity
         if line.contains(" && ") || line.contains(" || ") {
             self.cyclomatic_complexity += 1;
         }
-        
+
         // Loops
         if line.contains(" for ") || line.contains("while ") {
             self.cyclomatic_complexity += 1;
             self.cognitive_complexity += 1;
         }
-        
+
         // Try/catch blocks
         if line.contains("try ") || line.contains("catch ") {
             self.cyclomatic_complexity += 1;
@@ -385,7 +385,7 @@ impl ScalaComplexityAnalyzer {
 mod tests {
     use super::*;
     use std::path::Path;
-    
+
     const SIMPLE_SCALA_CLASS: &str = r#"
     package com.example
     
@@ -395,7 +395,7 @@ mod tests {
       }
     }
     "#;
-    
+
     const SCALA_TRAIT_EXAMPLE: &str = r#"
     package com.example.shapes
     
@@ -409,7 +409,7 @@ mod tests {
       def perimeter(): Double = 2 * math.Pi * radius
     }
     "#;
-    
+
     const SCALA_CASE_CLASS_EXAMPLE: &str = r#"
     package com.example.models
     
@@ -421,7 +421,7 @@ mod tests {
       def apply(name: String): Person = new Person(name, 0)
     }
     "#;
-    
+
     const SCALA_COMPREHENSIVE_EXAMPLE: &str = r#"
     package com.example.functional
     
@@ -468,84 +468,100 @@ mod tests {
       def fold[B](z: B)(op: (B, T) => B): B = data.foldLeft(z)(op)
     }
     "#;
-    
+
     #[test]
     fn test_simple_scala_class_analysis() {
         let visitor = ScalaAstVisitor::new(Path::new("HelloWorld.scala"));
         let items = visitor
             .analyze_scala_source(SIMPLE_SCALA_CLASS)
             .expect("Should parse Scala class");
-        
+
         assert!(!items.is_empty(), "Should extract at least one AST item");
-        
+
         let class_items: Vec<_> = items
             .iter()
             .filter(|item| matches!(item, AstItem::Struct { .. }))
             .collect();
-        
+
         assert_eq!(class_items.len(), 1, "Should extract exactly one class");
-        
+
         if let AstItem::Struct {
             name, visibility, ..
-        } = &class_items[0] {
-            assert_eq!(name, "com.example::HelloWorld", "Should have qualified class name");
-            assert_eq!(visibility, "public", "Scala classes have public visibility by default");
+        } = &class_items[0]
+        {
+            assert_eq!(
+                name, "com.example::HelloWorld",
+                "Should have qualified class name"
+            );
+            assert_eq!(
+                visibility, "public",
+                "Scala classes have public visibility by default"
+            );
         } else {
             panic!("Expected class item");
         }
     }
-    
+
     #[test]
     fn test_scala_trait_analysis() {
         let visitor = ScalaAstVisitor::new(Path::new("Shape.scala"));
         let items = visitor
             .analyze_scala_source(SCALA_TRAIT_EXAMPLE)
             .expect("Should parse Scala trait");
-        
+
         // Check that we found the trait
         let trait_items: Vec<_> = items
             .iter()
             .filter(|item| matches!(item, AstItem::Trait { .. }))
             .collect();
-        
+
         assert_eq!(trait_items.len(), 1, "Should extract exactly one trait");
-        
+
         if let AstItem::Trait { name, .. } = &trait_items[0] {
-            assert_eq!(name, "com.example.shapes::Shape", "Should have qualified trait name");
+            assert_eq!(
+                name, "com.example.shapes::Shape",
+                "Should have qualified trait name"
+            );
         }
-        
+
         // Check that we found the implementing class
         let class_items: Vec<_> = items
             .iter()
             .filter(|item| matches!(item, AstItem::Struct { .. }))
             .collect();
-        
+
         assert_eq!(class_items.len(), 1, "Should extract exactly one class");
-        
+
         // Check for methods
         let method_items: Vec<_> = items
             .iter()
             .filter(|item| matches!(item, AstItem::Function { .. }))
             .collect();
-        
-        assert!(method_items.len() >= 2, "Should extract at least two methods");
+
+        assert!(
+            method_items.len() >= 2,
+            "Should extract at least two methods"
+        );
     }
-    
+
     #[test]
     fn test_scala_case_class_analysis() {
         let visitor = ScalaAstVisitor::new(Path::new("Person.scala"));
         let items = visitor
             .analyze_scala_source(SCALA_CASE_CLASS_EXAMPLE)
             .expect("Should parse Scala case class");
-        
+
         // Check that we found the case class
         let case_class_items: Vec<_> = items
             .iter()
             .filter(|item| matches!(item, AstItem::Struct { .. }))
             .collect();
-        
-        assert!(!case_class_items.is_empty(), "Should extract at least one case class");
-        
+
+        assert!(
+            !case_class_items.is_empty(),
+            "Should extract at least one case class"
+        );
+
         let has_case_class = case_class_items.iter().any(|item| {
             if let AstItem::Struct { derives, .. } = item {
                 derives.contains(&"case".to_string())
@@ -553,77 +569,103 @@ mod tests {
                 false
             }
         });
-        
+
         assert!(has_case_class, "Should identify a case class");
-        
+
         // Check that we found the companion object
         let object_items: Vec<_> = items
             .iter()
             .filter(|item| matches!(item, AstItem::Module { .. }))
             .collect();
-        
-        assert!(!object_items.is_empty(), "Should extract at least one object");
+
+        assert!(
+            !object_items.is_empty(),
+            "Should extract at least one object"
+        );
     }
-    
+
     #[test]
     fn test_scala_comprehensive_analysis() {
         let visitor = ScalaAstVisitor::new(Path::new("Comprehensive.scala"));
         let items = visitor
             .analyze_scala_source(SCALA_COMPREHENSIVE_EXAMPLE)
             .expect("Should parse comprehensive Scala example");
-        
+
         // Should have extracted a good number of items
-        assert!(items.len() >= 10, "Should extract numerous AST items from comprehensive example");
-        
+        assert!(
+            items.len() >= 10,
+            "Should extract numerous AST items from comprehensive example"
+        );
+
         // Check for traits, case classes, objects, and methods
-        let trait_count = items.iter()
+        let trait_count = items
+            .iter()
             .filter(|item| matches!(item, AstItem::Trait { .. }))
             .count();
-        
+
         let case_class_count = items.iter()
             .filter(|item| matches!(item, AstItem::Struct { derives, .. } if derives.contains(&"case".to_string())))
             .count();
-        
-        let object_count = items.iter()
+
+        let object_count = items
+            .iter()
             .filter(|item| matches!(item, AstItem::Module { .. }))
             .count();
-        
-        let method_count = items.iter()
+
+        let method_count = items
+            .iter()
             .filter(|item| matches!(item, AstItem::Function { .. }))
             .count();
-        
+
         assert!(trait_count > 0, "Should find at least one trait");
         assert!(case_class_count > 0, "Should find at least one case class");
         assert!(object_count > 0, "Should find at least one object");
         assert!(method_count > 0, "Should find at least one method");
     }
-    
+
     #[test]
     fn test_scala_complexity_analysis() {
         let mut analyzer = ScalaComplexityAnalyzer::new();
         let (cyclomatic, cognitive) = analyzer
             .analyze_complexity(SCALA_COMPREHENSIVE_EXAMPLE)
             .expect("Should analyze Scala complexity");
-        
-        assert!(cyclomatic >= 1, "Should have at least cyclomatic complexity of 1");
-        assert!(cognitive >= 1, "Should have at least cognitive complexity of 1");
-        assert!(cyclomatic <= 20, "Should maintain reasonable cyclomatic complexity");
-        assert!(cognitive <= 20, "Should maintain reasonable cognitive complexity");
+
+        assert!(
+            cyclomatic >= 1,
+            "Should have at least cyclomatic complexity of 1"
+        );
+        assert!(
+            cognitive >= 1,
+            "Should have at least cognitive complexity of 1"
+        );
+        assert!(
+            cyclomatic <= 20,
+            "Should maintain reasonable cyclomatic complexity"
+        );
+        assert!(
+            cognitive <= 20,
+            "Should maintain reasonable cognitive complexity"
+        );
     }
-    
+
     #[test]
     fn test_empty_scala_source() {
         let visitor = ScalaAstVisitor::new(Path::new("empty.scala"));
-        let items = visitor.analyze_scala_source("").expect("Should handle empty source");
-        
+        let items = visitor
+            .analyze_scala_source("")
+            .expect("Should handle empty source");
+
         assert!(items.is_empty(), "Empty source should produce no AST items");
     }
-    
+
     #[test]
     fn test_invalid_scala_syntax() {
         let visitor = ScalaAstVisitor::new(Path::new("invalid.scala"));
         let result = visitor.analyze_scala_source("invalid scala syntax {{{ !!!");
-        
-        assert!(result.is_err(), "Should return error for invalid Scala syntax");
+
+        assert!(
+            result.is_err(),
+            "Should return error for invalid Scala syntax"
+        );
     }
 }

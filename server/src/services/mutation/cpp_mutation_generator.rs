@@ -36,7 +36,12 @@ impl CppMutationGenerator {
         let tree = self.parse_cpp(source)?;
         let mut mutants = Vec::new();
 
-        self.visit_node(&tree.root_node(), source.as_bytes(), &mut mutants, file_path);
+        self.visit_node(
+            &tree.root_node(),
+            source.as_bytes(),
+            &mut mutants,
+            file_path,
+        );
 
         Ok(mutants)
     }
@@ -54,13 +59,7 @@ impl CppMutationGenerator {
     }
 
     /// Recursively visit AST nodes and apply mutation operators
-    fn visit_node(
-        &self,
-        node: &Node,
-        source: &[u8],
-        mutants: &mut Vec<Mutant>,
-        file_path: &str,
-    ) {
+    fn visit_node(&self, node: &Node, source: &[u8], mutants: &mut Vec<Mutant>, file_path: &str) {
         // Apply all operators to current node
         for operator in &self.operators {
             if operator.can_mutate(node, source) {
@@ -215,7 +214,10 @@ int BitwiseAnd(int a, int b) {
             .expect("Should generate mutants");
 
         // Should generate mutants for bitwise & operator
-        assert!(!mutants.is_empty(), "Should generate bitwise operator mutants");
+        assert!(
+            !mutants.is_empty(),
+            "Should generate bitwise operator mutants"
+        );
 
         let has_bitwise = mutants.iter().any(|m| m.id.contains("BitwiseOp"));
         assert!(has_bitwise, "Should have bitwise operator mutants");
@@ -235,7 +237,10 @@ int PreIncrement(int value) {
             .expect("Should generate mutants");
 
         // Should generate mutants for ++ operator
-        assert!(!mutants.is_empty(), "Should generate update expression mutants");
+        assert!(
+            !mutants.is_empty(),
+            "Should generate update expression mutants"
+        );
 
         let has_unary = mutants.iter().any(|m| m.id.contains("UnaryOp"));
         assert!(has_unary, "Should have unary operator mutants");

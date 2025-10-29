@@ -144,10 +144,7 @@ impl PhpScriptAnalyzer {
     fn extract_class_name(&self, line: &str) -> Option<String> {
         // class ClassName {
         let after_class = line.strip_prefix("class ")?.trim();
-        let name_part = after_class
-            .split_whitespace()
-            .next()?
-            .trim_end_matches('{');
+        let name_part = after_class.split_whitespace().next()?.trim_end_matches('{');
         Some(name_part.trim().to_string())
     }
 
@@ -305,7 +302,10 @@ class Calculator {
             .expect("Should parse simple PHP script");
 
         // Simple script may not have functions
-        assert!(items.is_empty() || !items.is_empty(), "Should handle simple PHP script");
+        assert!(
+            items.is_empty() || !items.is_empty(),
+            "Should handle simple PHP script"
+        );
     }
 
     #[test]
@@ -334,7 +334,9 @@ class Calculator {
             })
             .collect();
 
-        assert!(function_names.iter().any(|&name| name.contains("printHello")));
+        assert!(function_names
+            .iter()
+            .any(|&name| name.contains("printHello")));
         assert!(function_names
             .iter()
             .any(|&name| name.contains("calculateScore")));
@@ -353,10 +355,7 @@ class Calculator {
             .filter(|item| matches!(item, AstItem::Struct { .. }))
             .collect();
 
-        assert!(
-            class_items.len() >= 1,
-            "Should extract Calculator class"
-        );
+        assert!(class_items.len() >= 1, "Should extract Calculator class");
 
         let method_items: Vec<_> = items
             .iter()

@@ -182,12 +182,12 @@ impl QualityGate for RegressionGate {
 
         let passed = violations.is_empty();
         let message = if passed {
-            format!("✅ No quality regressions detected ({} files analyzed)", current.summary.total_files)
-        } else {
             format!(
-                "❌ {} quality regression(s) detected",
-                violations.len()
+                "✅ No quality regressions detected ({} files analyzed)",
+                current.summary.total_files
             )
+        } else {
+            format!("❌ {} quality regression(s) detected", violations.len())
         };
 
         Ok(GateResult {
@@ -335,9 +335,7 @@ impl QualityGate for NewFileGate {
                         severity: Severity::Error,
                         message: format!(
                             "New file below minimum grade: {} ({:.1}) < required {}",
-                            entry.score.grade,
-                            entry.score.total,
-                            self.config.new_file_min_grade
+                            entry.score.grade, entry.score.total, self.config.new_file_min_grade
                         ),
                         old_score: None,
                         new_score: entry.score.total,
@@ -420,40 +418,27 @@ mod tests {
     #[test]
     #[ignore] // RED test - run with --include-ignored
     fn test_regression_gate_detects_score_drop() {
-        let baseline = create_test_baseline(vec![(
-            PathBuf::from("src/main.rs"),
-            90.0,
-            Grade::A,
-        )]);
+        let baseline = create_test_baseline(vec![(PathBuf::from("src/main.rs"), 90.0, Grade::A)]);
 
-        let current = create_test_baseline(vec![(
-            PathBuf::from("src/main.rs"),
-            75.0,
-            Grade::B,
-        )]);
+        let current = create_test_baseline(vec![(PathBuf::from("src/main.rs"), 75.0, Grade::B)]);
 
         let gate = RegressionGate::with_defaults();
         let result = gate.check(&baseline, &current).unwrap();
 
         assert!(!result.passed);
         assert_eq!(result.violations.len(), 1);
-        assert_eq!(result.violations[0].violation_type, ViolationType::Regression);
+        assert_eq!(
+            result.violations[0].violation_type,
+            ViolationType::Regression
+        );
     }
 
     #[test]
     #[ignore]
     fn test_regression_gate_passes_improvement() {
-        let baseline = create_test_baseline(vec![(
-            PathBuf::from("src/main.rs"),
-            75.0,
-            Grade::B,
-        )]);
+        let baseline = create_test_baseline(vec![(PathBuf::from("src/main.rs"), 75.0, Grade::B)]);
 
-        let current = create_test_baseline(vec![(
-            PathBuf::from("src/main.rs"),
-            90.0,
-            Grade::A,
-        )]);
+        let current = create_test_baseline(vec![(PathBuf::from("src/main.rs"), 90.0, Grade::A)]);
 
         let gate = RegressionGate::with_defaults();
         let result = gate.check(&baseline, &current).unwrap();
@@ -465,17 +450,9 @@ mod tests {
     #[test]
     #[ignore]
     fn test_regression_gate_allows_small_drop() {
-        let baseline = create_test_baseline(vec![(
-            PathBuf::from("src/main.rs"),
-            90.0,
-            Grade::A,
-        )]);
+        let baseline = create_test_baseline(vec![(PathBuf::from("src/main.rs"), 90.0, Grade::A)]);
 
-        let current = create_test_baseline(vec![(
-            PathBuf::from("src/main.rs"),
-            87.0,
-            Grade::A,
-        )]);
+        let current = create_test_baseline(vec![(PathBuf::from("src/main.rs"), 87.0, Grade::A)]);
 
         let gate = RegressionGate::with_defaults();
         let result = gate.check(&baseline, &current).unwrap();
@@ -518,11 +495,8 @@ mod tests {
     #[test]
     #[ignore]
     fn test_new_file_gate_detects_low_quality_new_files() {
-        let baseline = create_test_baseline(vec![(
-            PathBuf::from("src/existing.rs"),
-            90.0,
-            Grade::A,
-        )]);
+        let baseline =
+            create_test_baseline(vec![(PathBuf::from("src/existing.rs"), 90.0, Grade::A)]);
 
         let current = create_test_baseline(vec![
             (PathBuf::from("src/existing.rs"), 90.0, Grade::A),
@@ -543,11 +517,8 @@ mod tests {
     #[test]
     #[ignore]
     fn test_new_file_gate_allows_good_new_files() {
-        let baseline = create_test_baseline(vec![(
-            PathBuf::from("src/existing.rs"),
-            90.0,
-            Grade::A,
-        )]);
+        let baseline =
+            create_test_baseline(vec![(PathBuf::from("src/existing.rs"), 90.0, Grade::A)]);
 
         let current = create_test_baseline(vec![
             (PathBuf::from("src/existing.rs"), 90.0, Grade::A),
@@ -586,17 +557,10 @@ mod tests {
         let mut config = GateConfig::default();
         config.allow_grade_drop = false;
 
-        let baseline = create_test_baseline(vec![(
-            PathBuf::from("src/main.rs"),
-            91.0,
-            Grade::A,
-        )]);
+        let baseline = create_test_baseline(vec![(PathBuf::from("src/main.rs"), 91.0, Grade::A)]);
 
-        let current = create_test_baseline(vec![(
-            PathBuf::from("src/main.rs"),
-            89.0,
-            Grade::BPlus,
-        )]);
+        let current =
+            create_test_baseline(vec![(PathBuf::from("src/main.rs"), 89.0, Grade::BPlus)]);
 
         let gate = RegressionGate::new(config);
         let result = gate.check(&baseline, &current).unwrap();
@@ -609,9 +573,9 @@ mod tests {
     fn test_language_specific_min_grades() {
         let baseline = TdgBaseline::new(None);
         let current = create_test_baseline(vec![
-            (PathBuf::from("src/main.rs"), 88.0, Grade::BPlus),    // Rust requires B+
-            (PathBuf::from("src/script.py"), 82.0, Grade::B),      // Python requires B
-            (PathBuf::from("src/app.js"), 75.0, Grade::C),         // JS requires B (FAIL)
+            (PathBuf::from("src/main.rs"), 88.0, Grade::BPlus), // Rust requires B+
+            (PathBuf::from("src/script.py"), 82.0, Grade::B),   // Python requires B
+            (PathBuf::from("src/app.js"), 75.0, Grade::C),      // JS requires B (FAIL)
         ]);
 
         let gate = MinimumGradeGate::with_defaults();

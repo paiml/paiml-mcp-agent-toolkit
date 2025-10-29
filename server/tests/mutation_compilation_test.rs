@@ -2,10 +2,10 @@
 //!
 //! RED TEST for v2.132.0: Mutants should compile, not just generate
 
-use pmat::services::mutation::{MutationEngine, MutationConfig, RustAdapter, MutantExecutor};
+use pmat::services::mutation::{MutantExecutor, MutationConfig, MutationEngine, RustAdapter};
+use std::io::Write;
 use std::sync::Arc;
 use tempfile::NamedTempFile;
-use std::io::Write;
 
 /// RED TEST: Generated mutant should compile
 ///
@@ -105,7 +105,10 @@ mod tests {
 
     // Find SDL mutant (statement deletion)
     let sdl_mutant = mutants.iter().find(|m| {
-        matches!(m.operator, pmat::services::mutation::MutationOperatorType::StatementDeletion)
+        matches!(
+            m.operator,
+            pmat::services::mutation::MutationOperatorType::StatementDeletion
+        )
     });
 
     assert!(sdl_mutant.is_some(), "Should generate SDL mutant");
@@ -182,7 +185,12 @@ mod tests {
     // Find SDL mutants
     let sdl_mutants: Vec<_> = mutants
         .iter()
-        .filter(|m| matches!(m.operator, pmat::services::mutation::MutationOperatorType::StatementDeletion))
+        .filter(|m| {
+            matches!(
+                m.operator,
+                pmat::services::mutation::MutationOperatorType::StatementDeletion
+            )
+        })
         .collect();
 
     println!("Found {} SDL mutants", sdl_mutants.len());

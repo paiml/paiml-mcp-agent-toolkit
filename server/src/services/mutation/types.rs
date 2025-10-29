@@ -177,11 +177,26 @@ impl MutationScore {
     /// Calculate mutation score from results
     pub fn from_results(results: &[MutationResult]) -> Self {
         let total = results.len();
-        let killed = results.iter().filter(|r| r.status == MutantStatus::Killed).count();
-        let survived = results.iter().filter(|r| r.status == MutantStatus::Survived).count();
-        let compile_errors = results.iter().filter(|r| r.status == MutantStatus::CompileError).count();
-        let timeouts = results.iter().filter(|r| r.status == MutantStatus::Timeout).count();
-        let equivalent = results.iter().filter(|r| r.status == MutantStatus::Equivalent).count();
+        let killed = results
+            .iter()
+            .filter(|r| r.status == MutantStatus::Killed)
+            .count();
+        let survived = results
+            .iter()
+            .filter(|r| r.status == MutantStatus::Survived)
+            .count();
+        let compile_errors = results
+            .iter()
+            .filter(|r| r.status == MutantStatus::CompileError)
+            .count();
+        let timeouts = results
+            .iter()
+            .filter(|r| r.status == MutantStatus::Timeout)
+            .count();
+        let equivalent = results
+            .iter()
+            .filter(|r| r.status == MutantStatus::Equivalent)
+            .count();
 
         // Mutation score = killed / (total - equivalent)
         let valid_mutants = total.saturating_sub(equivalent + compile_errors);
@@ -347,7 +362,10 @@ mod tests {
         assert_eq!(score.total, 3);
         assert_eq!(score.killed, 3);
         assert_eq!(score.survived, 0);
-        assert_eq!(score.score, 1.0, "All killed should have perfect score of 1.0");
+        assert_eq!(
+            score.score, 1.0,
+            "All killed should have perfect score of 1.0"
+        );
     }
 
     #[test]
@@ -400,7 +418,10 @@ mod tests {
 
         assert_eq!(score.total, 2);
         assert_eq!(score.compile_errors, 2);
-        assert_eq!(score.score, 0.0, "All compile errors should have score of 0.0 (no valid mutants)");
+        assert_eq!(
+            score.score, 0.0,
+            "All compile errors should have score of 0.0 (no valid mutants)"
+        );
     }
 
     #[test]
@@ -454,7 +475,10 @@ mod tests {
 
         assert_eq!(score.total, 2);
         assert_eq!(score.equivalent, 2);
-        assert_eq!(score.score, 0.0, "All equivalent should have score of 0.0 (no valid mutants)");
+        assert_eq!(
+            score.score, 0.0,
+            "All equivalent should have score of 0.0 (no valid mutants)"
+        );
     }
 
     #[test]
@@ -581,7 +605,9 @@ mod tests {
         let score = MutationScore::from_results(&results);
 
         // 1 killed / 3 valid = 0.333...
-        assert!((score.score - 0.333333).abs() < 0.00001, "Score precision test");
+        assert!(
+            (score.score - 0.333333).abs() < 0.00001,
+            "Score precision test"
+        );
     }
 }
-

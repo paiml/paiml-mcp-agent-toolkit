@@ -294,7 +294,10 @@ async fn analyze_single_tdg_path(analyzer: &crate::tdg::TdgAnalyzer, path: &Path
     }
 }
 
-async fn analyze_multiple_tdg_paths(analyzer: &crate::tdg::TdgAnalyzer, paths: &[PathBuf]) -> Result<Value> {
+async fn analyze_multiple_tdg_paths(
+    analyzer: &crate::tdg::TdgAnalyzer,
+    paths: &[PathBuf],
+) -> Result<Value> {
     use crate::tdg::ProjectScore;
     let mut all_scores = Vec::new();
 

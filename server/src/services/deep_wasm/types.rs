@@ -193,13 +193,16 @@ pub struct DeepWasmReport {
     pub quality_gate_results: QualityGateResults,
 
     /// Enhanced bytecode analysis (Issue #65)
-    pub bytecode_analysis: Option<crate::services::deep_wasm::bytecode_analyzer::ModuleBytecodeAnalysis>,
+    pub bytecode_analysis:
+        Option<crate::services::deep_wasm::bytecode_analyzer::ModuleBytecodeAnalysis>,
 
     /// Disassembled functions (Issue #65)
-    pub disassembled_functions: Option<Vec<crate::services::deep_wasm::disassembler::DisassembledFunction>>,
+    pub disassembled_functions:
+        Option<Vec<crate::services::deep_wasm::disassembler::DisassembledFunction>>,
 
     /// Suspicious patterns detected (Issue #65)
-    pub suspicious_patterns: Option<Vec<crate::services::deep_wasm::disassembler::InstructionPattern>>,
+    pub suspicious_patterns:
+        Option<Vec<crate::services::deep_wasm::disassembler::InstructionPattern>>,
 }
 
 /// Pipeline overview
@@ -253,7 +256,10 @@ mod tests {
 
     #[test]
     fn test_location_creation() {
-        let loc = Location { line: 10, column: 5 };
+        let loc = Location {
+            line: 10,
+            column: 5,
+        };
         assert_eq!(loc.line, 10);
         assert_eq!(loc.column, 5);
     }
@@ -272,11 +278,13 @@ mod tests {
 
     #[test]
     fn test_analysis_focus_values() {
-        let focuses = [AnalysisFocus::Full,
+        let focuses = [
+            AnalysisFocus::Full,
             AnalysisFocus::Source,
             AnalysisFocus::Compilation,
             AnalysisFocus::Runtime,
-            AnalysisFocus::Interop];
+            AnalysisFocus::Interop,
+        ];
         assert_eq!(focuses.len(), 5);
     }
 }

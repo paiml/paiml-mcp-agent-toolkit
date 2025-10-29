@@ -23,8 +23,7 @@ async fn main() -> Result<()> {
 
     // Step 1: Read source file
     println!("📝 Reading source file: {}", source_file.display());
-    let source = std::fs::read_to_string(&source_file)
-        .context("Failed to read source file")?;
+    let source = std::fs::read_to_string(&source_file).context("Failed to read source file")?;
 
     println!("   Size: {} bytes\n", source.len());
 
@@ -63,7 +62,12 @@ async fn main() -> Result<()> {
     let test_start = Instant::now();
 
     for (i, mutant) in mutants.iter_mut().enumerate() {
-        print!("   [{}/{}] Testing mutant: {} ... ", i + 1, total, mutant.id);
+        print!(
+            "   [{}/{}] Testing mutant: {} ... ",
+            i + 1,
+            total,
+            mutant.id
+        );
         std::io::Write::flush(&mut std::io::stdout()).ok();
 
         match test_mutant(&source_file, &project_root, &mutant.mutated_source).await {
@@ -88,16 +92,31 @@ async fn main() -> Result<()> {
     let test_time = test_start.elapsed();
 
     // Step 5: Calculate mutation score
-    let killed_count = mutants.iter().filter(|m| m.status == MutantStatus::Killed).count();
-    let survived_count = mutants.iter().filter(|m| m.status == MutantStatus::Survived).count();
-    let timeout_count = mutants.iter().filter(|m| m.status == MutantStatus::Timeout).count();
+    let killed_count = mutants
+        .iter()
+        .filter(|m| m.status == MutantStatus::Killed)
+        .count();
+    let survived_count = mutants
+        .iter()
+        .filter(|m| m.status == MutantStatus::Survived)
+        .count();
+    let timeout_count = mutants
+        .iter()
+        .filter(|m| m.status == MutantStatus::Timeout)
+        .count();
 
     println!("\n📊 Mutation Testing Results\n");
     println!("   Total Mutants:    {}", total);
-    println!("   Killed:           {} ({}%)",
-        killed_count, (killed_count * 100) / total);
-    println!("   Survived:         {} ({}%)",
-        survived_count, (survived_count * 100) / total);
+    println!(
+        "   Killed:           {} ({}%)",
+        killed_count,
+        (killed_count * 100) / total
+    );
+    println!(
+        "   Survived:         {} ({}%)",
+        survived_count,
+        (survived_count * 100) / total
+    );
     println!("   Timeout/Error:    {}", timeout_count);
 
     let mutation_score = if total > timeout_count {
@@ -128,16 +147,16 @@ async fn main() -> Result<()> {
     // Show surviving mutants
     if survived_count > 0 {
         println!("\n🧟 Surviving Mutants (weaknesses in tests):\n");
-        let mut survivors: Vec<_> = mutants.iter()
+        let mut survivors: Vec<_> = mutants
+            .iter()
             .filter(|m| m.status == MutantStatus::Survived)
             .collect();
         survivors.sort_by_key(|m| m.location.line);
 
         for mutant in survivors.iter().take(10) {
-            println!("   • {} at line {}:{}",
-                mutant.id,
-                mutant.location.line,
-                mutant.location.column
+            println!(
+                "   • {} at line {}:{}",
+                mutant.id, mutant.location.line, mutant.location.column
             );
 
             let lines: Vec<&str> = mutant.mutated_source.lines().collect();
@@ -192,12 +211,10 @@ async fn test_mutant(
 ) -> Result<bool> {
     // Create backup
     let backup_path = source_file.with_extension("go.backup");
-    std::fs::copy(source_file, &backup_path)
-        .context("Failed to create backup")?;
+    std::fs::copy(source_file, &backup_path).context("Failed to create backup")?;
 
     // Write mutant
-    std::fs::write(source_file, mutated_source)
-        .context("Failed to write mutated source")?;
+    std::fs::write(source_file, mutated_source).context("Failed to write mutated source")?;
 
     // Run tests
     let has_go = Command::new("go")
@@ -220,10 +237,8 @@ async fn test_mutant(
     };
 
     // Restore original
-    std::fs::copy(&backup_path, source_file)
-        .context("Failed to restore original")?;
-    std::fs::remove_file(&backup_path)
-        .context("Failed to remove backup")?;
+    std::fs::copy(&backup_path, source_file).context("Failed to restore original")?;
+    std::fs::remove_file(&backup_path).context("Failed to remove backup")?;
 
     // Return result
     match result {

@@ -59,9 +59,7 @@ pub fn extract_ticket_ids(commit_message: &str) -> Vec<String> {
 /// - Time: O(1)
 /// - Cyclomatic: 3
 pub fn get_current_commit() -> Result<CommitInfo> {
-    let hash_output = Command::new("git")
-        .args(["rev-parse", "HEAD"])
-        .output()?;
+    let hash_output = Command::new("git").args(["rev-parse", "HEAD"]).output()?;
 
     if !hash_output.status.success() {
         return Err(GitError::CommandFailed(
@@ -212,11 +210,17 @@ mod tests {
         match get_current_commit() {
             Ok(commit) => {
                 assert!(!commit.hash.is_empty(), "Commit hash should not be empty");
-                assert!(!commit.message.is_empty(), "Commit message should not be empty");
+                assert!(
+                    !commit.message.is_empty(),
+                    "Commit message should not be empty"
+                );
                 // Files can be empty if this is the first commit or no files changed
             }
             Err(e) => {
-                eprintln!("Git command failed (this is expected if not in a git repo): {}", e);
+                eprintln!(
+                    "Git command failed (this is expected if not in a git repo): {}",
+                    e
+                );
             }
         }
     }

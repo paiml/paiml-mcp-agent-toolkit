@@ -41,7 +41,9 @@ impl InMemoryWorkflowRepository {
 impl WorkflowRepository for InMemoryWorkflowRepository {
     async fn save(&self, workflow: &Workflow) -> Result<(), WorkflowError> {
         self.workflows.write().insert(workflow.id, workflow.clone());
-        self.name_index.write().insert(workflow.name.clone(), workflow.id);
+        self.name_index
+            .write()
+            .insert(workflow.name.clone(), workflow.id);
         Ok(())
     }
 

@@ -85,9 +85,7 @@ async fn handle_tdg_subcommand(
             range,
             path,
             format,
-        } => {
-            handle_history_command(analyzer, commit, since, range, path, format, config).await
-        }
+        } => handle_history_command(analyzer, commit, since, range, path, format, config).await,
         TdgCommand::Baseline { command } => {
             handle_baseline_command(command, analyzer, config).await
         }
@@ -168,7 +166,8 @@ async fn handle_history_command(
     config: &TdgCommandConfig,
 ) -> Result<()> {
     // Get storage from analyzer
-    let storage = analyzer.storage()
+    let storage = analyzer
+        .storage()
         .ok_or_else(|| anyhow!("TDG storage not initialized. Run with --with-git-context flag."))?;
 
     // Query based on flags
@@ -255,7 +254,9 @@ fn filter_by_git_range(
     // Parse range (e.g., "HEAD~10..HEAD" or "v2.177.0..v2.178.0")
     let parts: Vec<&str> = range_ref.split("..").collect();
     if parts.len() != 2 {
-        return Err(anyhow!("Invalid range format. Expected 'start..end' (e.g., HEAD~10..HEAD)"));
+        return Err(anyhow!(
+            "Invalid range format. Expected 'start..end' (e.g., HEAD~10..HEAD)"
+        ));
     }
 
     let start_commit = repo.revparse_single(parts[0])?.peel_to_commit()?;
@@ -292,30 +293,22 @@ async fn handle_baseline_command(
             output,
             with_git_context,
             name: _name,
-        } => {
-            create_baseline(_analyzer, &path, &output, with_git_context).await
-        }
+        } => create_baseline(_analyzer, &path, &output, with_git_context).await,
 
         BaselineCommand::Compare {
             baseline,
             path,
             format,
             fail_on_regression,
-        } => {
-            compare_baseline(_analyzer, &baseline, &path, format, fail_on_regression).await
-        }
+        } => compare_baseline(_analyzer, &baseline, &path, format, fail_on_regression).await,
 
-        BaselineCommand::List { path, format } => {
-            list_baselines(&path, format).await
-        }
+        BaselineCommand::List { path, format } => list_baselines(&path, format).await,
 
         BaselineCommand::Update {
             baseline,
             path,
             with_git_context,
-        } => {
-            update_baseline(_analyzer, &baseline, &path, with_git_context).await
-        }
+        } => update_baseline(_analyzer, &baseline, &path, with_git_context).await,
     }
 }
 
@@ -333,7 +326,10 @@ async fn create_baseline(
     println!("🔨 Creating TDG baseline...");
     println!("   Path: {}", path.display());
     println!("   Output: {}", output.display());
-    println!("   Git context: {}", if with_git_context { "yes" } else { "no" });
+    println!(
+        "   Git context: {}",
+        if with_git_context { "yes" } else { "no" }
+    );
 
     // Extract git context if requested
     let git_context = if with_git_context {
@@ -436,7 +432,24 @@ fn is_analyzable_file(path: &Path) -> bool {
     if let Some(ext) = path.extension() {
         matches!(
             ext.to_str(),
-            Some("rs" | "py" | "js" | "ts" | "tsx" | "jsx" | "java" | "c" | "cpp" | "h" | "hpp" | "go" | "rb" | "php" | "swift" | "kt" | "kts")
+            Some(
+                "rs" | "py"
+                    | "js"
+                    | "ts"
+                    | "tsx"
+                    | "jsx"
+                    | "java"
+                    | "c"
+                    | "cpp"
+                    | "h"
+                    | "hpp"
+                    | "go"
+                    | "rb"
+                    | "php"
+                    | "swift"
+                    | "kt"
+                    | "kts"
+            )
         )
     } else {
         false
@@ -459,9 +472,9 @@ async fn compare_baseline(
 
     // Load baseline
     let old_baseline = TdgBaseline::load(baseline_path)?;
-    println!("   📝 Loaded baseline: {} files, avg score {:.1}",
-        old_baseline.summary.total_files,
-        old_baseline.summary.avg_score
+    println!(
+        "   📝 Loaded baseline: {} files, avg score {:.1}",
+        old_baseline.summary.total_files, old_baseline.summary.avg_score
     );
 
     // Create new baseline for current state
@@ -482,9 +495,7 @@ async fn compare_baseline(
         crate::cli::TdgOutputFormat::Table | crate::cli::TdgOutputFormat::Markdown => {
             comparison.format_text()
         }
-        crate::cli::TdgOutputFormat::Json => {
-            serde_json::to_string_pretty(&comparison)?
-        }
+        crate::cli::TdgOutputFormat::Json => serde_json::to_string_pretty(&comparison)?,
         crate::cli::TdgOutputFormat::Sarif => {
             // SARIF not implemented yet, use text
             comparison.format_text()
@@ -505,10 +516,7 @@ async fn compare_baseline(
 }
 
 /// List all baselines in a directory (Sprint 66 Phase 1)
-async fn list_baselines(
-    path: &Path,
-    format: crate::cli::TdgOutputFormat,
-) -> Result<()> {
+async fn list_baselines(path: &Path, format: crate::cli::TdgOutputFormat) -> Result<()> {
     use crate::tdg::TdgBaseline;
     use walkdir::WalkDir;
 
@@ -546,7 +554,10 @@ async fn list_baselines(
             for (path, baseline) in &baselines {
                 println!("📝 {}", path.display());
                 println!("   Version: {}", baseline.version);
-                println!("   Created: {}", baseline.created_at.format("%Y-%m-%d %H:%M:%S"));
+                println!(
+                    "   Created: {}",
+                    baseline.created_at.format("%Y-%m-%d %H:%M:%S")
+                );
                 println!("   Files: {}", baseline.summary.total_files);
                 println!("   Avg Score: {:.1}", baseline.summary.avg_score);
                 if let Some(git_ctx) = &baseline.git_context {
@@ -575,7 +586,10 @@ async fn list_baselines(
             // SARIF not implemented, use table
             for (path, baseline) in &baselines {
                 println!("📝 {}", path.display());
-                println!("   Files: {} | Avg: {:.1}", baseline.summary.total_files, baseline.summary.avg_score);
+                println!(
+                    "   Files: {} | Avg: {:.1}",
+                    baseline.summary.total_files, baseline.summary.avg_score
+                );
             }
         }
     }
@@ -893,9 +907,15 @@ fn format_history_output(
 
     if format == TdgOutputFormat::Table {
         let mut output = String::new();
-        output.push_str("╭──────────────────────────────────────────────────────────────────────────╮\n");
-        output.push_str("│  TDG History                                                             │\n");
-        output.push_str("├──────────────────────────────────────────────────────────────────────────┤\n");
+        output.push_str(
+            "╭──────────────────────────────────────────────────────────────────────────╮\n",
+        );
+        output.push_str(
+            "│  TDG History                                                             │\n",
+        );
+        output.push_str(
+            "├──────────────────────────────────────────────────────────────────────────┤\n",
+        );
 
         for record in records {
             if let Some(git_ctx) = &record.git_context {
@@ -928,7 +948,9 @@ fn format_history_output(
             }
         }
 
-        output.push_str("╰──────────────────────────────────────────────────────────────────────────╯\n");
+        output.push_str(
+            "╰──────────────────────────────────────────────────────────────────────────╯\n",
+        );
         Ok(output)
     } else {
         // JSON format
@@ -1002,7 +1024,10 @@ async fn handle_check_regression(
 
     // Load baseline
     let baseline = TdgBaseline::load(baseline_path)?;
-    println!("   ✅ Loaded baseline: {} files", baseline.summary.total_files);
+    println!(
+        "   ✅ Loaded baseline: {} files",
+        baseline.summary.total_files
+    );
 
     // Create current baseline
     let temp_output = std::env::temp_dir().join("pmat-regression-check.json");
@@ -1153,7 +1178,9 @@ fn parse_grade(s: &str) -> Result<crate::tdg::Grade> {
         "C-" => Ok(Grade::CMinus),
         "D" => Ok(Grade::D),
         "F" => Ok(Grade::F),
-        _ => Err(anyhow::anyhow!("Invalid grade: {s}. Valid grades: A+, A, A-, B+, B, B-, C+, C, C-, D, F")),
+        _ => Err(anyhow::anyhow!(
+            "Invalid grade: {s}. Valid grades: A+, A, A-, B+, B, B-, C+, C, C-, D, F"
+        )),
     }
 }
 

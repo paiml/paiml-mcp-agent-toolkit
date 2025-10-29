@@ -83,10 +83,7 @@ impl TopicEngine {
         // Create mock topics for testing
         for i in 0..num_topics {
             // Give each topic distinct keywords for better coherence
-            let keywords = vec![
-                format!("keyword{}_1", i),
-                format!("keyword{}_2", i),
-            ];
+            let keywords = vec![format!("keyword{}_1", i), format!("keyword{}_2", i)];
 
             topics.push(Topic {
                 id: i,
@@ -202,10 +199,7 @@ impl TopicEngine {
 
     /// Count keyword overlap between two keyword sets
     fn keyword_overlap(&self, keywords1: &[String], keywords2: &[String]) -> usize {
-        keywords1
-            .iter()
-            .filter(|k| keywords2.contains(k))
-            .count()
+        keywords1.iter().filter(|k| keywords2.contains(k)).count()
     }
 
     /// Simplified LDA using K-means clustering
@@ -246,8 +240,10 @@ impl TopicEngine {
         for cluster_id in 0..num_topics {
             if let Some(chunk_indices) = cluster_chunks.get(&cluster_id) {
                 // Extract chunk names for keyword extraction
-                let chunk_names: Vec<String> =
-                    chunk_indices.iter().map(|(_, c)| c.chunk_name.clone()).collect();
+                let chunk_names: Vec<String> = chunk_indices
+                    .iter()
+                    .map(|(_, c)| c.chunk_name.clone())
+                    .collect();
 
                 let keywords = self.extract_keywords(&chunk_names, 5);
 

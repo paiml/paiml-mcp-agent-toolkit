@@ -72,13 +72,9 @@ impl McpTool for AnalyzeTechnicalDebtTool {
             });
         }
 
-        let analysis_type = params["analysis_type"]
-            .as_str()
-            .unwrap_or("auto");
+        let analysis_type = params["analysis_type"].as_str().unwrap_or("auto");
 
-        let include_penalties = params["include_penalties"]
-            .as_bool()
-            .unwrap_or(true);
+        let include_penalties = params["include_penalties"].as_bool().unwrap_or(true);
 
         // Create TDG analyzer
         let analyzer = TdgAnalyzer::new().map_err(|e| McpError {
@@ -180,7 +176,8 @@ impl McpTool for GetQualityRecommendationsTool {
     fn metadata(&self) -> ToolMetadata {
         ToolMetadata {
             name: "get_quality_recommendations".to_string(),
-            description: "Get actionable quality improvement recommendations based on TDG analysis".to_string(),
+            description: "Get actionable quality improvement recommendations based on TDG analysis"
+                .to_string(),
             input_schema: json!({
                 "type": "object",
                 "properties": {
@@ -224,13 +221,9 @@ impl McpTool for GetQualityRecommendationsTool {
             });
         }
 
-        let max_recommendations = params["max_recommendations"]
-            .as_u64()
-            .unwrap_or(5) as usize;
+        let max_recommendations = params["max_recommendations"].as_u64().unwrap_or(5) as usize;
 
-        let min_severity = params["min_severity"]
-            .as_str()
-            .unwrap_or("medium");
+        let min_severity = params["min_severity"].as_str().unwrap_or("medium");
 
         // Create TDG analyzer
         let analyzer = TdgAnalyzer::new().map_err(|e| McpError {
@@ -241,11 +234,14 @@ impl McpTool for GetQualityRecommendationsTool {
 
         // Analyze file or project
         let score = if path.is_dir() {
-            analyzer.analyze_project(&path).map_err(|e| McpError {
-                code: error_codes::INTERNAL_ERROR,
-                message: format!("Analysis failed: {}", e),
-                data: None,
-            })?.average()
+            analyzer
+                .analyze_project(&path)
+                .map_err(|e| McpError {
+                    code: error_codes::INTERNAL_ERROR,
+                    message: format!("Analysis failed: {}", e),
+                    data: None,
+                })?
+                .average()
         } else {
             analyzer.analyze_file(&path).map_err(|e| McpError {
                 code: error_codes::INTERNAL_ERROR,
@@ -316,8 +312,14 @@ impl McpTool for GetQualityRecommendationsTool {
 // Helper function to determine if severity should be included
 fn should_include_severity(severity: &str, min_severity: &str) -> bool {
     let severity_levels = ["low", "medium", "high", "critical"];
-    let min_index = severity_levels.iter().position(|&s| s == min_severity).unwrap_or(1);
-    let severity_index = severity_levels.iter().position(|&s| s == severity).unwrap_or(0);
+    let min_index = severity_levels
+        .iter()
+        .position(|&s| s == min_severity)
+        .unwrap_or(1);
+    let severity_index = severity_levels
+        .iter()
+        .position(|&s| s == severity)
+        .unwrap_or(0);
     severity_index >= min_index
 }
 
@@ -338,15 +340,18 @@ fn generate_suggestion(reason: &str, category: &str) -> String {
     } else if reason_lower.contains("consistency") {
         "Improve code consistency by following established style guides and naming conventions. Use automated formatters.".to_string()
     } else {
-        format!("Review {} and apply refactoring techniques to improve code quality.", category)
+        format!(
+            "Review {} and apply refactoring techniques to improve code quality.",
+            category
+        )
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::NamedTempFile;
     use std::io::Write;
+    use tempfile::NamedTempFile;
 
     /// RED TEST: Analyze technical debt tool should have correct metadata
     #[test]
@@ -404,9 +409,11 @@ mod tests {
         let registry = Arc::new(AgentRegistry::new());
         let tool = AnalyzeTechnicalDebtTool::new(registry);
 
-        let result = tool.execute(json!({
-            "path": "/nonexistent/path/to/file.rs"
-        })).await;
+        let result = tool
+            .execute(json!({
+                "path": "/nonexistent/path/to/file.rs"
+            }))
+            .await;
 
         assert!(result.is_err());
         let err = result.unwrap_err();
@@ -428,10 +435,12 @@ mod tests {
         writeln!(temp_file, "}}").unwrap();
         temp_file.flush().unwrap();
 
-        let result = tool.execute(json!({
-            "path": temp_file.path().to_str().unwrap(),
-            "analysis_type": "file"
-        })).await;
+        let result = tool
+            .execute(json!({
+                "path": temp_file.path().to_str().unwrap(),
+                "analysis_type": "file"
+            }))
+            .await;
 
         assert!(result.is_ok(), "Should analyze valid file: {:?}", result);
         let response = result.unwrap();
@@ -474,10 +483,12 @@ mod tests {
         writeln!(temp_file, "}}").unwrap();
         temp_file.flush().unwrap();
 
-        let result = tool.execute(json!({
-            "path": temp_file.path().to_str().unwrap(),
-            "max_recommendations": 3
-        })).await;
+        let result = tool
+            .execute(json!({
+                "path": temp_file.path().to_str().unwrap(),
+                "max_recommendations": 3
+            }))
+            .await;
 
         assert!(result.is_ok());
         let response = result.unwrap();
@@ -499,13 +510,18 @@ mod tests {
     /// RED TEST: Suggestion generation should be contextual
     #[test]
     fn red_suggestion_generation() {
-        let complexity_suggestion = generate_suggestion("High cyclomatic complexity: 20", "StructuralComplexity");
+        let complexity_suggestion =
+            generate_suggestion("High cyclomatic complexity: 20", "StructuralComplexity");
         assert!(complexity_suggestion.contains("smaller"));
         assert!(complexity_suggestion.contains("functions"));
 
-        let nesting_suggestion = generate_suggestion("Deep nesting: 5 levels", "SemanticComplexity");
+        let nesting_suggestion =
+            generate_suggestion("Deep nesting: 5 levels", "SemanticComplexity");
         assert!(nesting_suggestion.contains("nesting"));
-        assert!(nesting_suggestion.contains("early returns") || nesting_suggestion.contains("guard clauses"));
+        assert!(
+            nesting_suggestion.contains("early returns")
+                || nesting_suggestion.contains("guard clauses")
+        );
 
         let duplication_suggestion = generate_suggestion("Code duplication: 15.2%", "Duplication");
         assert!(duplication_suggestion.contains("reusable"));

@@ -342,7 +342,7 @@ async fn test_demo_content_rendering() {
     // Verify specific content is rendered
     assert!(html.contains("42")); // files_analyzed
     assert!(html.contains("6.78")); // avg_complexity formatted
-    // Note: tech_debt_hours is not currently displayed in the HTML template
+                                    // Note: tech_debt_hours is not currently displayed in the HTML template
 
     // Verify timing values
     assert!(html.contains("100")); // time_context

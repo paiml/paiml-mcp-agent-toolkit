@@ -685,7 +685,11 @@ mod tests {
         let stats = manager.stats();
         // Check peak_usage instead of total_allocated because buffers are dropped
         // at end of thread scope, returning them to pool and decrementing total_allocated
-        assert!(stats.peak_usage > 0, "Expected peak_usage > 0, got {}", stats.peak_usage);
+        assert!(
+            stats.peak_usage > 0,
+            "Expected peak_usage > 0, got {}",
+            stats.peak_usage
+        );
 
         Ok(())
     }

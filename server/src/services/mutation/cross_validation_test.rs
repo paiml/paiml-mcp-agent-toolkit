@@ -64,7 +64,11 @@ mod cross_validation_tests {
         println!("Cross-validation accuracy: {:.2}%", acc * 100.0);
 
         // Accuracy should be reasonable (> 0.5 for this test data)
-        assert!(acc >= 0.5, "Expected accuracy >= 50%, got {:.2}%", acc * 100.0);
+        assert!(
+            acc >= 0.5,
+            "Expected accuracy >= 50%, got {:.2}%",
+            acc * 100.0
+        );
         assert!(acc <= 1.0, "Accuracy should not exceed 100%");
     }
 
@@ -122,6 +126,9 @@ mod cross_validation_tests {
 
         let result = predictor.cross_validate(&small_data, 10);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Not enough samples"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Not enough samples"));
     }
 }

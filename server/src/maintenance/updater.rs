@@ -2,8 +2,8 @@
 //!
 //! Automatically updates roadmap with commit information.
 
-use super::roadmap::{Roadmap, RoadmapError};
 use super::git::{extract_ticket_ids, get_current_commit, ticket_file_updated, CommitInfo};
+use super::roadmap::{Roadmap, RoadmapError};
 use super::ticket::{TicketFile, TicketStatus};
 use std::path::Path;
 
@@ -138,7 +138,10 @@ pub fn update_roadmap_from_commit(
     // Write roadmap if updated
     if updated {
         write_roadmap(&roadmap, roadmap_path)?;
-        println!("✓ Updated roadmap with commit {}", &commit.hash[..7.min(commit.hash.len())]);
+        println!(
+            "✓ Updated roadmap with commit {}",
+            &commit.hash[..7.min(commit.hash.len())]
+        );
     }
 
     Ok(())
@@ -166,7 +169,10 @@ fn process_ticket_update(
         Err(_) => return Ok(false),
     };
 
-    if !matches!(ticket_file.status, TicketStatus::Green | TicketStatus::Complete) {
+    if !matches!(
+        ticket_file.status,
+        TicketStatus::Green | TicketStatus::Complete
+    ) {
         return Ok(false);
     }
 
@@ -215,10 +221,7 @@ mod tests {
 
         assert!(updated);
         assert!(roadmap.sprints[0].tickets[0].completed);
-        assert_eq!(
-            roadmap.sprints[0].tickets[0].commit,
-            Some("abc1234".into())
-        );
+        assert_eq!(roadmap.sprints[0].tickets[0].commit, Some("abc1234".into()));
     }
 
     #[test]
@@ -239,10 +242,7 @@ mod tests {
         let updated = update_roadmap_ticket(&mut roadmap, "TICKET-PMAT-5013", "abc1234").unwrap();
 
         assert!(!updated);
-        assert_eq!(
-            roadmap.sprints[0].tickets[0].commit,
-            Some("old123".into())
-        );
+        assert_eq!(roadmap.sprints[0].tickets[0].commit, Some("old123".into()));
     }
 
     #[test]
@@ -355,14 +355,8 @@ mod tests {
 
         assert!(updated);
         assert!(roadmap.sprints[1].tickets[0].completed);
-        assert_eq!(
-            roadmap.sprints[1].tickets[0].commit,
-            Some("new456".into())
-        );
+        assert_eq!(roadmap.sprints[1].tickets[0].commit, Some("new456".into()));
         // First sprint should be unchanged
-        assert_eq!(
-            roadmap.sprints[0].tickets[0].commit,
-            Some("old123".into())
-        );
+        assert_eq!(roadmap.sprints[0].tickets[0].commit, Some("old123".into()));
     }
 }

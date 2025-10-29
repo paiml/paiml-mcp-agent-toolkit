@@ -40,7 +40,12 @@ impl TypeScriptMutationGenerator {
 
         // Visit AST and collect mutations
         let mut mutants = Vec::new();
-        self.visit_node(&tree.root_node(), source.as_bytes(), &mut mutants, file_path);
+        self.visit_node(
+            &tree.root_node(),
+            source.as_bytes(),
+            &mut mutants,
+            file_path,
+        );
 
         Ok(mutants)
     }
@@ -74,7 +79,7 @@ impl TypeScriptMutationGenerator {
                 for mutation in mutations {
                     let mutated_source = mutation.source.clone();
                     // Simple hash using SHA256 (already in deps)
-                    use sha2::{Sha256, Digest};
+                    use sha2::{Digest, Sha256};
                     let hash = format!("{:x}", Sha256::digest(&mutated_source));
 
                     mutants.push(Mutant {

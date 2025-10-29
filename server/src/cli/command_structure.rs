@@ -151,10 +151,9 @@ impl CommandExecutor {
                     ScaffoldCommands::ListSubagents { all } => {
                         super::handlers::subagent_handlers::list_subagents(all)
                     }
-                    ScaffoldCommands::CreateSubagent {
-                        agent_name,
-                        output,
-                    } => super::handlers::subagent_handlers::create_subagent(&agent_name, output),
+                    ScaffoldCommands::CreateSubagent { agent_name, output } => {
+                        super::handlers::subagent_handlers::create_subagent(&agent_name, output)
+                    }
                     ScaffoldCommands::CreateAllSubagents { output } => {
                         super::handlers::subagent_handlers::create_all_mvp_subagents(output)
                     }
@@ -448,7 +447,16 @@ impl CommandExecutor {
                 report,
                 json,
                 project_dir,
-            } => super::handlers::handle_quality_gates_command(command, config, report, json, project_dir).await,
+            } => {
+                super::handlers::handle_quality_gates_command(
+                    command,
+                    config,
+                    report,
+                    json,
+                    project_dir,
+                )
+                .await
+            }
 
             Commands::Maintain { command } => {
                 use super::commands::MaintainCommands;
@@ -463,14 +471,21 @@ impl CommandExecutor {
                         dry_run,
                         format,
                     } => {
-                        let config = super::handlers::roadmap_handler::RoadmapMaintenanceConfig::new(
-                            validate,
-                            health,
-                            fix,
-                            generate_tickets,
-                            dry_run,
-                        );
-                        super::handlers::handle_maintain_roadmap(roadmap, tickets_dir, config, format).await
+                        let config =
+                            super::handlers::roadmap_handler::RoadmapMaintenanceConfig::new(
+                                validate,
+                                health,
+                                fix,
+                                generate_tickets,
+                                dry_run,
+                            );
+                        super::handlers::handle_maintain_roadmap(
+                            roadmap,
+                            tickets_dir,
+                            config,
+                            format,
+                        )
+                        .await
                     }
                     MaintainCommands::Health {
                         project_dir,
@@ -497,16 +512,15 @@ impl CommandExecutor {
                 }
             }
 
-            Commands::Hooks(hooks_cmd) => {
-                super::handlers::handle_hooks_command(&hooks_cmd).await
-            }
+            Commands::Hooks(hooks_cmd) => super::handlers::handle_hooks_command(&hooks_cmd).await,
 
             // Semantic search commands (PMAT-SEARCH-011)
             Commands::Embed(embed_cmd) => {
                 super::command_dispatcher::CommandDispatcher::execute_embed_command(embed_cmd).await
             }
             Commands::Semantic(semantic_cmd) => {
-                super::command_dispatcher::CommandDispatcher::execute_semantic_command(semantic_cmd).await
+                super::command_dispatcher::CommandDispatcher::execute_semantic_command(semantic_cmd)
+                    .await
             }
 
             // Mutation testing command (Sprint 61)

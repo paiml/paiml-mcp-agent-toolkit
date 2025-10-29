@@ -23,10 +23,16 @@ fn test_wrapper_new_success_when_cargo_mutants_installed() {
     let wrapper = CargoMutantsWrapper::new();
 
     // This should pass if cargo-mutants is installed
-    assert!(wrapper.is_ok(), "Wrapper should initialize successfully when cargo-mutants is installed");
+    assert!(
+        wrapper.is_ok(),
+        "Wrapper should initialize successfully when cargo-mutants is installed"
+    );
 
     let wrapper = wrapper.unwrap();
-    assert!(wrapper.is_installed(), "is_installed() should return true when cargo-mutants is in PATH");
+    assert!(
+        wrapper.is_installed(),
+        "is_installed() should return true when cargo-mutants is in PATH"
+    );
 }
 
 #[test]
@@ -40,7 +46,10 @@ fn test_wrapper_new_error_message_when_not_installed() {
     let wrapper = CargoMutantsWrapper::new();
 
     // Should always initialize successfully (doesn't panic)
-    assert!(wrapper.is_ok(), "Wrapper should initialize gracefully even when cargo-mutants not found");
+    assert!(
+        wrapper.is_ok(),
+        "Wrapper should initialize gracefully even when cargo-mutants not found"
+    );
 
     // If cargo-mutants IS installed, we can't test the "not installed" scenario
     // This would require environment mocking (future enhancement)
@@ -55,11 +64,17 @@ fn test_detect_cargo_mutants_in_path() {
     let wrapper = CargoMutantsWrapper::new().expect("Failed to create wrapper");
 
     if wrapper.is_installed() {
-        assert!(wrapper.cargo_mutants_path.is_some(), "cargo_mutants_path should be Some when installed");
+        assert!(
+            wrapper.cargo_mutants_path().is_some(),
+            "cargo_mutants_path should be Some when installed"
+        );
 
-        let path = wrapper.cargo_mutants_path.unwrap();
+        let path = wrapper.cargo_mutants_path().unwrap();
         // cargo-mutants is a cargo subcommand, so we store "cargo" as the path
-        assert!(path.to_string_lossy().contains("cargo"), "Path should contain 'cargo'");
+        assert!(
+            path.to_string_lossy().contains("cargo"),
+            "Path should contain 'cargo'"
+        );
     }
 }
 
@@ -73,11 +88,20 @@ fn test_execute_cargo_mutants_version() {
 
     if wrapper.is_installed() {
         let version = wrapper.version();
-        assert!(version.is_ok(), "version() should succeed when cargo-mutants is installed");
+        assert!(
+            version.is_ok(),
+            "version() should succeed when cargo-mutants is installed"
+        );
 
         let version_string = version.unwrap();
-        assert!(!version_string.is_empty(), "Version string should not be empty");
-        assert!(version_string.contains("cargo-mutants"), "Version output should mention cargo-mutants");
+        assert!(
+            !version_string.is_empty(),
+            "Version string should not be empty"
+        );
+        assert!(
+            version_string.contains("cargo-mutants"),
+            "Version output should mention cargo-mutants"
+        );
     }
 }
 
@@ -94,11 +118,17 @@ fn test_version_check_requires_24_7_0_minimum() {
 
         // Parse version (example: "cargo-mutants 24.7.1")
         let version_parts: Vec<&str> = version.split_whitespace().collect();
-        assert!(version_parts.len() >= 2, "Version should have at least 2 parts");
+        assert!(
+            version_parts.len() >= 2,
+            "Version should have at least 2 parts"
+        );
 
         let version_number = version_parts[1];
         let parts: Vec<&str> = version_number.split('.').collect();
-        assert!(parts.len() >= 2, "Version should have major.minor at minimum");
+        assert!(
+            parts.len() >= 2,
+            "Version should have major.minor at minimum"
+        );
 
         let major: u32 = parts[0].parse().expect("Major version should be a number");
         let minor: u32 = parts[1].parse().expect("Minor version should be a number");
@@ -121,8 +151,8 @@ fn test_wrapper_initialization_is_idempotent() {
     let wrapper2 = CargoMutantsWrapper::new().expect("Second initialization failed");
 
     assert_eq!(
-        wrapper1.cargo_mutants_path,
-        wrapper2.cargo_mutants_path,
+        wrapper1.cargo_mutants_path(),
+        wrapper2.cargo_mutants_path(),
         "Multiple calls to new() should detect same cargo-mutants path"
     );
 }
@@ -138,10 +168,14 @@ fn test_error_messages_include_installation_instructions() {
 
     let error_message = "cargo-mutants not found in PATH\nInstall: cargo install cargo-mutants";
 
-    assert!(error_message.contains("cargo install cargo-mutants"),
-        "Error message should include installation command");
-    assert!(error_message.contains("PATH"),
-        "Error message should mention PATH");
+    assert!(
+        error_message.contains("cargo install cargo-mutants"),
+        "Error message should include installation command"
+    );
+    assert!(
+        error_message.contains("PATH"),
+        "Error message should mention PATH"
+    );
 }
 
 // ============================================================================
@@ -169,7 +203,10 @@ fn test_wrapper_handles_permission_denied() {
     // This would require mocking file permissions
     // For now, just ensure initialization doesn't panic
     let wrapper = CargoMutantsWrapper::new();
-    assert!(wrapper.is_ok(), "Should handle permission errors gracefully");
+    assert!(
+        wrapper.is_ok(),
+        "Should handle permission errors gracefully"
+    );
 }
 
 #[test]
@@ -185,8 +222,10 @@ fn test_wrapper_handles_corrupted_binary() {
     if wrapper.is_installed() {
         // version() should return Result<String, Error>, allowing for failure
         let version_result = wrapper.version();
-        assert!(version_result.is_ok() || version_result.is_err(),
-            "version() should return Result type");
+        assert!(
+            version_result.is_ok() || version_result.is_err(),
+            "version() should return Result type"
+        );
     }
 }
 

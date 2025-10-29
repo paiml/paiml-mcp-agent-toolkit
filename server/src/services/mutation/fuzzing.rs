@@ -2,7 +2,7 @@
 //!
 //! EXTREME TDD: GREEN PHASE - Minimal implementation to pass RED tests
 
-use super::{CoverageCorpus, CoverageInfo, CoverageTracker, MutationEngine, Mutant};
+use super::{CoverageCorpus, CoverageInfo, CoverageTracker, Mutant, MutationEngine};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -193,7 +193,10 @@ impl FuzzMutationStrategy {
             }
         };
 
-        let is_coverage_guided = matches!(self.fuzz_config.input_generator, InputGeneratorType::CoverageGuided);
+        let is_coverage_guided = matches!(
+            self.fuzz_config.input_generator,
+            InputGeneratorType::CoverageGuided
+        );
 
         // Test each input
         let mut iteration = 0;

@@ -208,8 +208,8 @@ async fn handle_interactive_scaffold(
     dry_run: bool,
     force: bool,
 ) -> Result<()> {
-    use crate::scaffold::agent::{scaffold_agent, InteractiveScaffolder};
     use crate::cli::progress::ProgressIndicator;
+    use crate::scaffold::agent::{scaffold_agent, InteractiveScaffolder};
 
     let mut scaffolder = InteractiveScaffolder::new();
     let context = scaffolder.run()?;
@@ -232,7 +232,11 @@ async fn handle_interactive_scaffold(
     scaffold_agent(&context, &output_path).await?;
 
     let duration = start.elapsed();
-    progress.finish_with_message(&format!("Agent '{}' scaffolded successfully ({:.1}s)", context.name, duration.as_secs_f64()));
+    progress.finish_with_message(&format!(
+        "Agent '{}' scaffolded successfully ({:.1}s)",
+        context.name,
+        duration.as_secs_f64()
+    ));
 
     Ok(())
 }
@@ -361,8 +365,8 @@ async fn execute_scaffold_operation(
     dry_run: bool,
     force: bool,
 ) -> Result<()> {
-    use crate::scaffold::agent::scaffold_agent;
     use crate::cli::progress::ProgressIndicator;
+    use crate::scaffold::agent::scaffold_agent;
 
     if dry_run {
         print_dry_run_info(context, output_path);
@@ -377,7 +381,11 @@ async fn execute_scaffold_operation(
     scaffold_agent(context, output_path).await?;
 
     let duration = start.elapsed();
-    progress.finish_with_message(&format!("Agent '{}' scaffolded successfully ({:.1}s)", name, duration.as_secs_f64()));
+    progress.finish_with_message(&format!(
+        "Agent '{}' scaffolded successfully ({:.1}s)",
+        name,
+        duration.as_secs_f64()
+    ));
 
     Ok(())
 }
@@ -461,7 +469,9 @@ pub struct ScaffoldWasmParams {
 /// - Time: O(n) where n is project size
 /// - Cyclomatic: 5
 pub async fn handle_scaffold_wasm(params: ScaffoldWasmParams) -> Result<()> {
-    use crate::scaffold::config::{Feature, QualityGateConfig, ScaffoldConfig, TemplateType, WasmFramework};
+    use crate::scaffold::config::{
+        Feature, QualityGateConfig, ScaffoldConfig, TemplateType, WasmFramework,
+    };
     use crate::scaffold::ScaffoldEngine;
 
     let ScaffoldWasmParams {
@@ -545,7 +555,11 @@ pub async fn handle_scaffold_wasm(params: ScaffoldWasmParams) -> Result<()> {
     engine.scaffold(config)?;
 
     let duration = start.elapsed();
-    progress.finish_with_message(&format!("WASM project '{}' created ({:.1}s)", name, duration.as_secs_f64()));
+    progress.finish_with_message(&format!(
+        "WASM project '{}' created ({:.1}s)",
+        name,
+        duration.as_secs_f64()
+    ));
 
     eprintln!("  Location: {}", project_dir.display());
     eprintln!("  Framework: {}", framework);

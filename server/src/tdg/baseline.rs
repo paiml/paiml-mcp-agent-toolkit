@@ -2,7 +2,6 @@
 ///
 /// Provides project-wide TDG quality tracking with content-hash based deduplication.
 /// Enables regression detection and quality trend analysis.
-
 use super::storage::ComponentScores;
 use super::{Grade, TdgScore};
 use crate::models::git_context::GitContext;
@@ -144,7 +143,11 @@ impl TdgBaseline {
         // Calculate grade distribution
         self.summary.grade_distribution.clear();
         for entry in self.files.values() {
-            *self.summary.grade_distribution.entry(entry.score.grade).or_insert(0) += 1;
+            *self
+                .summary
+                .grade_distribution
+                .entry(entry.score.grade)
+                .or_insert(0) += 1;
         }
 
         // Calculate language distribution
@@ -518,8 +521,16 @@ mod tests {
         // Both files tracked, but same hash means same content
         assert_eq!(baseline.files.len(), 2);
         assert_eq!(
-            baseline.files.get(&PathBuf::from("file1.rs")).unwrap().content_hash,
-            baseline.files.get(&PathBuf::from("file2.rs")).unwrap().content_hash
+            baseline
+                .files
+                .get(&PathBuf::from("file1.rs"))
+                .unwrap()
+                .content_hash,
+            baseline
+                .files
+                .get(&PathBuf::from("file2.rs"))
+                .unwrap()
+                .content_hash
         );
     }
 
@@ -551,9 +562,22 @@ mod tests {
         }
 
         // Verify distribution
-        assert_eq!(*baseline.summary.grade_distribution.get(&Grade::APLus).unwrap(), 1);
-        assert_eq!(*baseline.summary.grade_distribution.get(&Grade::A).unwrap(), 2);
-        assert_eq!(*baseline.summary.grade_distribution.get(&Grade::B).unwrap(), 1);
+        assert_eq!(
+            *baseline
+                .summary
+                .grade_distribution
+                .get(&Grade::APLus)
+                .unwrap(),
+            1
+        );
+        assert_eq!(
+            *baseline.summary.grade_distribution.get(&Grade::A).unwrap(),
+            2
+        );
+        assert_eq!(
+            *baseline.summary.grade_distribution.get(&Grade::B).unwrap(),
+            1
+        );
     }
 
     #[test]
@@ -585,11 +609,19 @@ mod tests {
 
         // Verify language counts
         assert_eq!(
-            *baseline.summary.languages.get(&format!("{:?}", Language::Rust)).unwrap(),
+            *baseline
+                .summary
+                .languages
+                .get(&format!("{:?}", Language::Rust))
+                .unwrap(),
             2
         );
         assert_eq!(
-            *baseline.summary.languages.get(&format!("{:?}", Language::Python)).unwrap(),
+            *baseline
+                .summary
+                .languages
+                .get(&format!("{:?}", Language::Python))
+                .unwrap(),
             1
         );
     }

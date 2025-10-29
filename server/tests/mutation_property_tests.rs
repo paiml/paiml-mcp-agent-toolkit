@@ -3,7 +3,6 @@
 /// Sprint 64 Day 1 - Testing Infrastructure
 /// These tests verify mathematical properties and invariants that should hold
 /// for all valid inputs to the mutation testing system.
-
 use pmat::services::mutation::types::{
     Mutant, MutantStatus, MutationOperatorType, MutationResult, MutationScore, SourceLocation,
 };

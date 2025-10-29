@@ -4,11 +4,11 @@
 //! AI agents to detect and analyze relationships between different programming
 //! languages in a project.
 
-use crate::mcp_integration::{McpError, McpTool, ToolMetadata};
-use crate::ast::polyglot::{
-    Language, UnifiedNode, CrossLanguageDependencies, LanguageMapperFactory
-};
 use crate::ast::polyglot::utils::PolyglotPathValidator;
+use crate::ast::polyglot::{
+    CrossLanguageDependencies, Language, LanguageMapperFactory, UnifiedNode,
+};
+use crate::mcp_integration::{McpError, McpTool, ToolMetadata};
 use anyhow::Result;
 use async_trait::async_trait;
 use serde_json::{json, Value};
@@ -68,18 +68,16 @@ impl McpTool for PolyglotAnalysisTool {
 
     async fn execute(&self, params: Value) -> Result<Value, McpError> {
         // Extract parameters
-        let path_str = params["path"]
-            .as_str()
-            .ok_or_else(|| McpError {
-                code: crate::mcp_integration::error_codes::INVALID_PARAMS,
-                message: "Missing path parameter".to_string(),
-                data: None,
-            })?;
-            
+        let path_str = params["path"].as_str().ok_or_else(|| McpError {
+            code: crate::mcp_integration::error_codes::INVALID_PARAMS,
+            message: "Missing path parameter".to_string(),
+            data: None,
+        })?;
+
         let path = PathBuf::from(path_str);
         let max_depth = params["max_depth"].as_u64().unwrap_or(3) as usize;
         let include_graph = params["include_graph"].as_bool().unwrap_or(true);
-        
+
         // Validate path using the new polyglot path validator
         if let Err(e) = PolyglotPathValidator::validate_directory_path(&path) {
             return Err(McpError {
@@ -91,7 +89,7 @@ impl McpTool for PolyglotAnalysisTool {
                 })),
             });
         }
-        
+
         // Parse languages to include
         let languages = if params["languages"].is_array() {
             let langs = params["languages"]
@@ -108,7 +106,7 @@ impl McpTool for PolyglotAnalysisTool {
                     _ => None,
                 })
                 .collect::<Vec<_>>();
-                
+
             if langs.is_empty() {
                 vec![
                     Language::Java,
@@ -130,22 +128,20 @@ impl McpTool for PolyglotAnalysisTool {
                 Language::JavaScript,
             ]
         };
-        
+
         // Analyze the directory for each language
         let mut language_nodes: HashMap<Language, Vec<UnifiedNode>> = HashMap::new();
         let mut all_nodes = Vec::new();
-        
+
         for language in &languages {
             match LanguageMapperFactory::create(*language) {
-                Ok(mapper) => {
-                    match mapper.map_directory(&path, max_depth > 0).await {
-                        Ok(nodes) => {
-                            language_nodes.insert(*language, nodes.clone());
-                            all_nodes.extend(nodes);
-                        },
-                        Err(e) => {
-                            tracing::warn!("Error mapping {:?} files: {}", language, e);
-                        }
+                Ok(mapper) => match mapper.map_directory(&path, max_depth > 0).await {
+                    Ok(nodes) => {
+                        language_nodes.insert(*language, nodes.clone());
+                        all_nodes.extend(nodes);
+                    }
+                    Err(e) => {
+                        tracing::warn!("Error mapping {:?} files: {}", language, e);
                     }
                 },
                 Err(e) => {
@@ -153,12 +149,12 @@ impl McpTool for PolyglotAnalysisTool {
                 }
             }
         }
-        
+
         // Detect cross-language dependencies
         let mut dependencies = CrossLanguageDependencies::new();
         dependencies.add_nodes(all_nodes.clone());
         dependencies.detect_all();
-        
+
         // Build response
         let mut result = json!({
             "status": "completed",
@@ -178,15 +174,15 @@ impl McpTool for PolyglotAnalysisTool {
                 "total_cross_language_dependencies": dependencies.get_dependencies().len()
             }
         });
-        
+
         // Add detailed node counts by type
         let node_counts = get_node_type_counts(&all_nodes);
         result["node_counts"] = json!(node_counts);
-        
+
         // Add dependency information
         let deps = dependencies.get_dependencies();
         let mut dep_counts: HashMap<String, usize> = HashMap::new();
-        
+
         for dep in deps {
             let key = format!(
                 "{} -> {}",
@@ -195,32 +191,38 @@ impl McpTool for PolyglotAnalysisTool {
             );
             *dep_counts.entry(key).or_insert(0) += 1;
         }
-        
+
         result["dependency_counts"] = json!(dep_counts);
-        
+
         // Add detailed dependencies
         let mut detailed_deps = Vec::new();
         for dep in deps {
-            let source_node = all_nodes.iter()
+            let source_node = all_nodes
+                .iter()
                 .find(|n| n.id == dep.source_id)
-                .map(|n| json!({
-                    "id": n.id,
-                    "name": n.name,
-                    "fqn": n.fqn,
-                    "kind": n.kind.as_str()
-                }))
+                .map(|n| {
+                    json!({
+                        "id": n.id,
+                        "name": n.name,
+                        "fqn": n.fqn,
+                        "kind": n.kind.as_str()
+                    })
+                })
                 .unwrap_or_else(|| json!({"id": dep.source_id}));
-                
-            let target_node = all_nodes.iter()
+
+            let target_node = all_nodes
+                .iter()
                 .find(|n| n.id == dep.target_id)
-                .map(|n| json!({
-                    "id": n.id,
-                    "name": n.name,
-                    "fqn": n.fqn,
-                    "kind": n.kind.as_str()
-                }))
+                .map(|n| {
+                    json!({
+                        "id": n.id,
+                        "name": n.name,
+                        "fqn": n.fqn,
+                        "kind": n.kind.as_str()
+                    })
+                })
                 .unwrap_or_else(|| json!({"id": dep.target_id}));
-                
+
             detailed_deps.push(json!({
                 "source": source_node,
                 "target": target_node,
@@ -230,14 +232,14 @@ impl McpTool for PolyglotAnalysisTool {
                 "confidence": dep.confidence
             }));
         }
-        
+
         result["dependencies"] = json!(detailed_deps);
-        
+
         // Add graph if requested
         if include_graph {
             result["graph_dot"] = json!(dependencies.to_dot());
         }
-        
+
         Ok(result)
     }
 }
@@ -245,11 +247,11 @@ impl McpTool for PolyglotAnalysisTool {
 /// Get counts of node types by language
 fn get_node_type_counts(nodes: &[UnifiedNode]) -> HashMap<String, HashMap<String, usize>> {
     let mut counts = HashMap::new();
-    
+
     for node in nodes {
         let lang_name = node.language.name().to_string();
         let kind_name = node.kind.as_str().to_string();
-        
+
         counts
             .entry(lang_name)
             .or_insert_with(HashMap::new)
@@ -257,7 +259,7 @@ fn get_node_type_counts(nodes: &[UnifiedNode]) -> HashMap<String, HashMap<String
             .and_modify(|c| *c += 1)
             .or_insert(1);
     }
-    
+
     counts
 }
 
@@ -279,7 +281,8 @@ impl McpTool for LanguageBoundaryTool {
     fn metadata(&self) -> ToolMetadata {
         ToolMetadata {
             name: "detect_language_boundaries".to_string(),
-            description: "Detects language boundaries and interoperability points in a project".to_string(),
+            description: "Detects language boundaries and interoperability points in a project"
+                .to_string(),
             input_schema: json!({
                 "type": "object",
                 "properties": {
@@ -308,17 +311,15 @@ impl McpTool for LanguageBoundaryTool {
 
     async fn execute(&self, params: Value) -> Result<Value, McpError> {
         // Extract parameters
-        let path_str = params["path"]
-            .as_str()
-            .ok_or_else(|| McpError {
-                code: crate::mcp_integration::error_codes::INVALID_PARAMS,
-                message: "Missing path parameter".to_string(),
-                data: None,
-            })?;
-            
+        let path_str = params["path"].as_str().ok_or_else(|| McpError {
+            code: crate::mcp_integration::error_codes::INVALID_PARAMS,
+            message: "Missing path parameter".to_string(),
+            data: None,
+        })?;
+
         let path = PathBuf::from(path_str);
         let max_depth = params["max_depth"].as_u64().unwrap_or(3) as usize;
-        
+
         // Validate path using the new polyglot path validator
         if let Err(e) = PolyglotPathValidator::validate_directory_path(&path) {
             return Err(McpError {
@@ -330,30 +331,32 @@ impl McpTool for LanguageBoundaryTool {
                 })),
             });
         }
-        
+
         // Parse source and target languages
-        let source_language = params["source_language"]
-            .as_str()
-            .and_then(|l| match l.to_lowercase().as_str() {
-                "java" => Some(Language::Java),
-                "kotlin" => Some(Language::Kotlin),
-                "scala" => Some(Language::Scala),
-                "typescript" => Some(Language::TypeScript),
-                "javascript" => Some(Language::JavaScript),
-                _ => None,
-            });
-            
-        let target_language = params["target_language"]
-            .as_str()
-            .and_then(|l| match l.to_lowercase().as_str() {
-                "java" => Some(Language::Java),
-                "kotlin" => Some(Language::Kotlin),
-                "scala" => Some(Language::Scala),
-                "typescript" => Some(Language::TypeScript),
-                "javascript" => Some(Language::JavaScript),
-                _ => None,
-            });
-        
+        let source_language =
+            params["source_language"]
+                .as_str()
+                .and_then(|l| match l.to_lowercase().as_str() {
+                    "java" => Some(Language::Java),
+                    "kotlin" => Some(Language::Kotlin),
+                    "scala" => Some(Language::Scala),
+                    "typescript" => Some(Language::TypeScript),
+                    "javascript" => Some(Language::JavaScript),
+                    _ => None,
+                });
+
+        let target_language =
+            params["target_language"]
+                .as_str()
+                .and_then(|l| match l.to_lowercase().as_str() {
+                    "java" => Some(Language::Java),
+                    "kotlin" => Some(Language::Kotlin),
+                    "scala" => Some(Language::Scala),
+                    "typescript" => Some(Language::TypeScript),
+                    "javascript" => Some(Language::JavaScript),
+                    _ => None,
+                });
+
         // Set up languages to analyze based on parameters
         let languages = if source_language.is_none() && target_language.is_none() {
             // Analyze all supported languages if no specific ones were requested
@@ -377,22 +380,20 @@ impl McpTool for LanguageBoundaryTool {
             }
             langs
         };
-        
+
         // Analyze the directory for each language
         let mut language_nodes: HashMap<Language, Vec<UnifiedNode>> = HashMap::new();
         let mut all_nodes = Vec::new();
-        
+
         for language in &languages {
             match LanguageMapperFactory::create(*language) {
-                Ok(mapper) => {
-                    match mapper.map_directory(&path, max_depth > 0).await {
-                        Ok(nodes) => {
-                            language_nodes.insert(*language, nodes.clone());
-                            all_nodes.extend(nodes);
-                        },
-                        Err(e) => {
-                            tracing::warn!("Error mapping {:?} files: {}", language, e);
-                        }
+                Ok(mapper) => match mapper.map_directory(&path, max_depth > 0).await {
+                    Ok(nodes) => {
+                        language_nodes.insert(*language, nodes.clone());
+                        all_nodes.extend(nodes);
+                    }
+                    Err(e) => {
+                        tracing::warn!("Error mapping {:?} files: {}", language, e);
                     }
                 },
                 Err(e) => {
@@ -400,23 +401,28 @@ impl McpTool for LanguageBoundaryTool {
                 }
             }
         }
-        
+
         // Detect cross-language dependencies
         let mut dependencies = CrossLanguageDependencies::new();
         dependencies.add_nodes(all_nodes.clone());
         dependencies.detect_all();
-        
+
         // Filter dependencies based on source/target language if specified
         let deps = dependencies.get_dependencies();
-        
-        let filtered_deps = deps.iter()
+
+        let filtered_deps = deps
+            .iter()
             .filter(|dep| {
-                let source_match = source_language.map(|l| dep.source_language == l).unwrap_or(true);
-                let target_match = target_language.map(|l| dep.target_language == l).unwrap_or(true);
+                let source_match = source_language
+                    .map(|l| dep.source_language == l)
+                    .unwrap_or(true);
+                let target_match = target_language
+                    .map(|l| dep.target_language == l)
+                    .unwrap_or(true);
                 source_match && target_match
             })
             .collect::<Vec<_>>();
-            
+
         // Build response
         let mut result = json!({
             "status": "completed",
@@ -428,32 +434,38 @@ impl McpTool for LanguageBoundaryTool {
                 "target_language": target_language.map(|l| l.name()),
             }
         });
-        
+
         // Add boundary information
         let mut boundaries = Vec::new();
         for dep in &filtered_deps {
-            let source_node = all_nodes.iter()
+            let source_node = all_nodes
+                .iter()
                 .find(|n| n.id == dep.source_id)
-                .map(|n| json!({
-                    "id": n.id,
-                    "name": n.name,
-                    "fqn": n.fqn,
-                    "kind": n.kind.as_str(),
-                    "file": n.file_path.display().to_string()
-                }))
+                .map(|n| {
+                    json!({
+                        "id": n.id,
+                        "name": n.name,
+                        "fqn": n.fqn,
+                        "kind": n.kind.as_str(),
+                        "file": n.file_path.display().to_string()
+                    })
+                })
                 .unwrap_or_else(|| json!({"id": dep.source_id}));
-                
-            let target_node = all_nodes.iter()
+
+            let target_node = all_nodes
+                .iter()
                 .find(|n| n.id == dep.target_id)
-                .map(|n| json!({
-                    "id": n.id,
-                    "name": n.name,
-                    "fqn": n.fqn,
-                    "kind": n.kind.as_str(),
-                    "file": n.file_path.display().to_string()
-                }))
+                .map(|n| {
+                    json!({
+                        "id": n.id,
+                        "name": n.name,
+                        "fqn": n.fqn,
+                        "kind": n.kind.as_str(),
+                        "file": n.file_path.display().to_string()
+                    })
+                })
                 .unwrap_or_else(|| json!({"id": dep.target_id}));
-                
+
             boundaries.push(json!({
                 "boundary_type": format!("{:?}", dep.kind),
                 "source": {
@@ -467,9 +479,9 @@ impl McpTool for LanguageBoundaryTool {
                 "confidence": dep.confidence
             }));
         }
-        
+
         result["boundaries"] = json!(boundaries);
-        
+
         // Group boundaries by type
         let mut grouped_boundaries = HashMap::new();
         for dep in &filtered_deps {
@@ -479,7 +491,7 @@ impl McpTool for LanguageBoundaryTool {
                 .or_insert_with(Vec::new)
                 .push(dep);
         }
-        
+
         let mut boundary_stats = json!({});
         for (kind, deps) in &grouped_boundaries {
             boundary_stats[kind] = json!({
@@ -489,12 +501,12 @@ impl McpTool for LanguageBoundaryTool {
                     .collect::<HashSet<_>>()
             });
         }
-        
+
         result["boundary_types"] = boundary_stats;
-        
+
         // Add common patterns and recommendations
         result["patterns"] = analyze_boundary_patterns(filtered_deps, &all_nodes);
-        
+
         Ok(result)
     }
 }
@@ -505,24 +517,28 @@ fn analyze_boundary_patterns(
     _nodes: &[UnifiedNode],
 ) -> Value {
     let mut patterns = Vec::new();
-    
+
     // Group boundaries by language pairs
     let mut language_pairs = HashMap::new();
     for dep in &deps {
-        let key = format!("{}-{}", dep.source_language.name(), dep.target_language.name());
+        let key = format!(
+            "{}-{}",
+            dep.source_language.name(),
+            dep.target_language.name()
+        );
         language_pairs
             .entry(key)
             .or_insert_with(Vec::new)
             .push(*dep);
     }
-    
+
     // Analyze each language pair
     for (pair, deps) in language_pairs {
         let mut pattern = json!({
             "language_pair": pair,
             "count": deps.len()
         });
-        
+
         let parts: Vec<&str> = pair.split('-').collect();
         if parts.len() == 2 {
             match (parts[0], parts[1]) {
@@ -533,7 +549,7 @@ fn analyze_boundary_patterns(
                         "Use Kotlin's nullable types consistently with Java's @Nullable",
                         "Consider avoiding Kotlin-specific features at boundaries (coroutines, delegation)"
                     ]);
-                },
+                }
                 ("Java", "Scala") | ("Scala", "Java") => {
                     pattern["recommendations"] = json!([
                         "Prefer Java interfaces at language boundaries",
@@ -541,7 +557,7 @@ fn analyze_boundary_patterns(
                         "Avoid using Scala's case classes as Java API",
                         "Use Java collections when sharing data between Java and Scala"
                     ]);
-                },
+                }
                 ("TypeScript", "JavaScript") | ("JavaScript", "TypeScript") => {
                     pattern["recommendations"] = json!([
                         "Use TypeScript declaration files (.d.ts) for JavaScript modules",
@@ -549,7 +565,7 @@ fn analyze_boundary_patterns(
                         "Consider migrating to pure TypeScript gradually",
                         "Use ES modules format for better interoperability"
                     ]);
-                },
+                }
                 ("Java", "TypeScript") | ("TypeScript", "Java") => {
                     pattern["recommendations"] = json!([
                         "Use consistent naming conventions across both languages",
@@ -557,7 +573,7 @@ fn analyze_boundary_patterns(
                         "Consider type-safe approaches like GraphQL or gRPC",
                         "Enforce model consistency with shared schemas"
                     ]);
-                },
+                }
                 _ => {
                     // Generic recommendations
                     pattern["recommendations"] = json!([
@@ -569,21 +585,23 @@ fn analyze_boundary_patterns(
                 }
             }
         }
-        
+
         patterns.push(pattern);
     }
-    
+
     json!(patterns)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ast::polyglot::{NodeKind, Language, UnifiedNode};
-    use crate::ast::polyglot::unified_node::{SourcePosition, ReferenceKind as PolyglotReferenceKind};
-    use std::path::PathBuf;
+    use crate::ast::polyglot::unified_node::{
+        ReferenceKind as PolyglotReferenceKind, SourcePosition,
+    };
+    use crate::ast::polyglot::{Language, NodeKind, UnifiedNode};
     use std::collections::HashMap;
-    
+    use std::path::PathBuf;
+
     fn create_test_node(
         id: &str,
         kind: NodeKind,
@@ -610,7 +628,7 @@ mod tests {
             metadata: HashMap::new(),
         }
     }
-    
+
     #[tokio::test]
     #[ignore] // Ignoring since it requires file system access
     async fn test_analyze_boundary_patterns() {
@@ -622,7 +640,7 @@ mod tests {
             "com.example.JavaClass",
             Language::Java,
         );
-        
+
         let kotlin_node = create_test_node(
             "Kotlin:class:KotlinClass",
             NodeKind::Class,
@@ -630,28 +648,29 @@ mod tests {
             "com.example.KotlinClass",
             Language::Kotlin,
         );
-        
+
         // Create a cross-language dependency
-        let dependency = crate::ast::polyglot::cross_language_dependencies::CrossLanguageDependency {
-            source_id: java_node.id.clone(),
-            target_id: kotlin_node.id.clone(),
-            source_language: Language::Java,
-            target_language: Language::Kotlin,
-            kind: PolyglotReferenceKind::Inherits,
-            confidence: 1.0,
-            metadata: HashMap::new(),
-        };
-        
+        let dependency =
+            crate::ast::polyglot::cross_language_dependencies::CrossLanguageDependency {
+                source_id: java_node.id.clone(),
+                target_id: kotlin_node.id.clone(),
+                source_language: Language::Java,
+                target_language: Language::Kotlin,
+                kind: PolyglotReferenceKind::Inherits,
+                confidence: 1.0,
+                metadata: HashMap::new(),
+            };
+
         // Test analyzing patterns
         let nodes = vec![java_node, kotlin_node];
         let deps = vec![&dependency];
-        
+
         let patterns = analyze_boundary_patterns(deps, &nodes);
-        
+
         // Verify results
         assert!(patterns.is_array());
         assert_eq!(patterns.as_array().unwrap().len(), 1);
-        
+
         let first_pattern = &patterns.as_array().unwrap()[0];
         assert_eq!(first_pattern["language_pair"], "Java-Kotlin");
         assert!(first_pattern["recommendations"].is_array());

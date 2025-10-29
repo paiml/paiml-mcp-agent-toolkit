@@ -4,8 +4,8 @@
 
 use super::roadmap::Roadmap;
 use super::ticket::TicketFile;
-use std::path::Path;
 use serde::{Deserialize, Serialize};
+use std::path::Path;
 
 /// Validation result containing all issues found
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -116,10 +116,7 @@ impl ValidationReport {
 /// # Complexity
 /// - Time: O(n*m) where n=tickets in roadmap, m=ticket files
 /// - Cyclomatic: 7 (reduced from 11 via Extract Method refactoring)
-pub fn validate_project(
-    roadmap_path: &Path,
-    tickets_dir: &Path,
-) -> Result<ValidationReport> {
+pub fn validate_project(roadmap_path: &Path, tickets_dir: &Path) -> Result<ValidationReport> {
     use std::collections::HashMap;
 
     // Parse roadmap
@@ -127,10 +124,7 @@ pub fn validate_project(
 
     // List all ticket files
     let ticket_files = super::ticket::list_tickets(tickets_dir)?;
-    let ticket_map: HashMap<_, _> = ticket_files
-        .iter()
-        .map(|t| (t.id.clone(), t))
-        .collect();
+    let ticket_map: HashMap<_, _> = ticket_files.iter().map(|t| (t.id.clone(), t)).collect();
 
     let mut report = ValidationReport::new("PMAT".to_string());
 
@@ -221,7 +215,10 @@ fn status_matches(ticket_file: &TicketFile, roadmap_completed: bool) -> bool {
 
     if roadmap_completed {
         // If marked complete in roadmap, ticket should be GREEN or COMPLETE
-        matches!(ticket_file.status, TicketStatus::Green | TicketStatus::Complete)
+        matches!(
+            ticket_file.status,
+            TicketStatus::Green | TicketStatus::Complete
+        )
     } else {
         // If not complete in roadmap, allow any status
         true
@@ -324,7 +321,7 @@ mod tests {
 
     #[test]
     fn test_status_matches_completed() {
-        use super::super::ticket::{TicketFile, TicketStatus, Priority};
+        use super::super::ticket::{Priority, TicketFile, TicketStatus};
 
         let ticket = TicketFile {
             id: "TICKET-PMAT-0001".into(),
@@ -345,7 +342,7 @@ mod tests {
 
     #[test]
     fn test_status_matches_incomplete() {
-        use super::super::ticket::{TicketFile, TicketStatus, Priority};
+        use super::super::ticket::{Priority, TicketFile, TicketStatus};
 
         let ticket = TicketFile {
             id: "TICKET-PMAT-0001".into(),

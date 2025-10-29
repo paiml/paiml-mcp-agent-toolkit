@@ -5,9 +5,9 @@
 use super::tools::*;
 use super::*;
 use crate::agents::analyzer_actor::AnalyzerActor;
+use crate::agents::registry::AgentRegistry;
 use crate::agents::transformer_actor::TransformerActor;
 use crate::agents::validator_actor::ValidatorActor;
-use crate::agents::registry::AgentRegistry;
 use actix::prelude::*;
 use serde_json::json;
 use std::sync::Arc;
@@ -249,10 +249,22 @@ fn red_transform_tool_metadata_must_include_all_parameters() {
     // Must have transformation enum values
     let transformation_enum = &schema["properties"]["transformation"]["enum"];
     assert!(transformation_enum.is_array());
-    assert!(transformation_enum.as_array().unwrap().contains(&json!("optimize")));
-    assert!(transformation_enum.as_array().unwrap().contains(&json!("minify")));
-    assert!(transformation_enum.as_array().unwrap().contains(&json!("beautify")));
-    assert!(transformation_enum.as_array().unwrap().contains(&json!("refactor")));
+    assert!(transformation_enum
+        .as_array()
+        .unwrap()
+        .contains(&json!("optimize")));
+    assert!(transformation_enum
+        .as_array()
+        .unwrap()
+        .contains(&json!("minify")));
+    assert!(transformation_enum
+        .as_array()
+        .unwrap()
+        .contains(&json!("beautify")));
+    assert!(transformation_enum
+        .as_array()
+        .unwrap()
+        .contains(&json!("refactor")));
 }
 
 // ================== ValidateTool Integration Tests ==================

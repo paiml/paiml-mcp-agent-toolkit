@@ -1,22 +1,39 @@
-//! GREEN Phase Implementation for PMAT-070-001: CargoMutantsWrapper
+//! REFACTOR Phase Implementation for PMAT-070-001: CargoMutantsWrapper
 //!
-//! Minimal implementation to pass RED phase tests.
-//! This is intentionally simple - REFACTOR phase will clean it up.
+//! Wrapper for cargo-mutants mutation testing tool.
 //!
-//! Functionality:
-//! - Detect cargo-mutants in PATH
-//! - Execute cargo-mutants --version
+//! # Functionality
+//!
+//! - Detect cargo-mutants in PATH (cargo subcommand)
+//! - Execute `cargo mutants --version`
 //! - Parse and validate version (require v24.7.0+)
 //! - Graceful error handling when not installed
+//!
+//! # Example
+//!
+//! ```no_run
+//! use pmat::services::mutation::cargo_mutants_wrapper::CargoMutantsWrapper;
+//!
+//! let wrapper = CargoMutantsWrapper::new()?;
+//! if wrapper.is_installed() {
+//!     let version = wrapper.version()?;
+//!     println!("cargo-mutants version: {}", version);
+//! }
+//! # Ok::<(), Box<dyn std::error::Error>>(())
+//! ```
 
 use std::path::PathBuf;
 use std::process::Command;
 
+/// Type alias for Result with boxed error
+type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
+
 /// Wrapper for cargo-mutants subprocess execution
 ///
-/// GREEN Phase: Minimal implementation to pass tests
+/// cargo-mutants is a cargo subcommand, so we store "cargo" as the path
+/// and execute via `cargo mutants <args>`.
 pub struct CargoMutantsWrapper {
-    pub cargo_mutants_path: Option<PathBuf>,
+    cargo_mutants_path: Option<PathBuf>,
 }
 
 impl CargoMutantsWrapper {
@@ -24,7 +41,12 @@ impl CargoMutantsWrapper {
     ///
     /// Returns Ok even if cargo-mutants is not installed (cargo_mutants_path will be None).
     /// This allows graceful degradation with helpful error messages.
-    pub fn new() -> Result<Self, Box<dyn std::error::Error>> {
+    ///
+    /// # Errors
+    ///
+    /// This method should not fail under normal circumstances. It returns Ok even when
+    /// cargo-mutants is not installed.
+    pub fn new() -> Result<Self> {
         // cargo-mutants is a cargo subcommand, so check if `cargo` exists
         let cargo_path = which::which("cargo").ok();
 
@@ -56,7 +78,16 @@ impl CargoMutantsWrapper {
         })
     }
 
+    /// Get the detected cargo path (if cargo-mutants is installed)
+    ///
+    /// Returns the path to the cargo binary used for executing cargo-mutants subcommand.
+    pub fn cargo_mutants_path(&self) -> Option<&PathBuf> {
+        self.cargo_mutants_path.as_ref()
+    }
+
     /// Check if cargo-mutants is installed
+    ///
+    /// Returns `true` if cargo-mutants subcommand is available via `cargo mutants`.
     pub fn is_installed(&self) -> bool {
         self.cargo_mutants_path.is_some()
     }
@@ -64,9 +95,13 @@ impl CargoMutantsWrapper {
     /// Get cargo-mutants version
     ///
     /// Executes `cargo mutants --version` and returns output.
-    /// Returns error if not installed or execution fails.
-    pub fn version(&self) -> Result<String, Box<dyn std::error::Error>> {
-        self.cargo_mutants_path.as_ref()
+    ///
+    /// # Errors
+    ///
+    /// Returns error if cargo-mutants is not installed or execution fails.
+    pub fn version(&self) -> Result<String> {
+        self.cargo_mutants_path
+            .as_ref()
             .ok_or("cargo-mutants not found in PATH")?;
 
         let output = Command::new("cargo")
@@ -78,31 +113,56 @@ impl CargoMutantsWrapper {
             return Err(format!(
                 "cargo mutants --version failed: {}",
                 String::from_utf8_lossy(&output.stderr)
-            ).into());
+            )
+            .into());
         }
 
-        let version_str = String::from_utf8(output.stdout)?
-            .trim()
-            .to_string();
+        let version_str = String::from_utf8(output.stdout)?.trim().to_string();
 
         Ok(version_str)
     }
 
     /// Validate version meets minimum requirement (v24.7.0+)
     ///
-    /// GREEN Phase: Basic validation
-    /// REFACTOR Phase: Could extract this to separate function
-    #[allow(dead_code)]
-    pub fn validate_version(&self) -> Result<(), Box<dyn std::error::Error>> {
+    /// # Errors
+    ///
+    /// Returns error if:
+    /// - cargo-mutants is not installed
+    /// - Version cannot be retrieved
+    /// - Version format is invalid
+    /// - Version is below minimum (v24.7.0)
+    pub fn validate_version(&self) -> Result<()> {
         let version_str = self.version()?;
+        let (major, minor) = Self::parse_version(&version_str)?;
 
+        // Enforce minimum v24.7.0
+        if major < 24 || (major == 24 && minor < 7) {
+            return Err(format!(
+                "cargo-mutants version {}.{} is too old. Minimum required: v24.7.0",
+                major, minor
+            )
+            .into());
+        }
+
+        Ok(())
+    }
+
+    /// Parse cargo-mutants version string
+    ///
+    /// Expects format: "cargo-mutants X.Y.Z" where X is major, Y is minor, Z is patch.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if version string format is invalid or version numbers cannot be parsed.
+    fn parse_version(version_str: &str) -> Result<(u32, u32)> {
         // Parse version (example: "cargo-mutants 24.7.1")
         let parts: Vec<&str> = version_str.split_whitespace().collect();
         if parts.len() < 2 {
             return Err(format!(
-                "Unexpected version format: '{}'",
+                "Unexpected version format: '{}' (expected 'cargo-mutants X.Y.Z')",
                 version_str
-            ).into());
+            )
+            .into());
         }
 
         let version_number = parts[1];
@@ -110,26 +170,27 @@ impl CargoMutantsWrapper {
 
         if version_parts.len() < 2 {
             return Err(format!(
-                "Invalid version number: '{}'",
+                "Invalid version number: '{}' (expected X.Y.Z format)",
                 version_number
-            ).into());
+            )
+            .into());
         }
 
-        let major: u32 = version_parts[0].parse()
-            .map_err(|_| format!("Invalid major version: '{}'", version_parts[0]))?;
+        let major: u32 = version_parts[0].parse().map_err(|_| {
+            format!(
+                "Invalid major version: '{}' (not a number)",
+                version_parts[0]
+            )
+        })?;
 
-        let minor: u32 = version_parts[1].parse()
-            .map_err(|_| format!("Invalid minor version: '{}'", version_parts[1]))?;
+        let minor: u32 = version_parts[1].parse().map_err(|_| {
+            format!(
+                "Invalid minor version: '{}' (not a number)",
+                version_parts[1]
+            )
+        })?;
 
-        // Enforce minimum v24.7.0
-        if major < 24 || (major == 24 && minor < 7) {
-            return Err(format!(
-                "cargo-mutants version {} is too old. Minimum required: v24.7.0",
-                version_number
-            ).into());
-        }
-
-        Ok(())
+        Ok((major, minor))
     }
 }
 
@@ -164,8 +225,14 @@ mod tests {
             assert!(version.is_ok(), "version() should succeed when installed");
 
             let version_str = version.unwrap();
-            assert!(!version_str.is_empty(), "Version string should not be empty");
-            assert!(version_str.contains("cargo-mutants"), "Version should mention cargo-mutants");
+            assert!(
+                !version_str.is_empty(),
+                "Version string should not be empty"
+            );
+            assert!(
+                version_str.contains("cargo-mutants"),
+                "Version should mention cargo-mutants"
+            );
         }
     }
 }

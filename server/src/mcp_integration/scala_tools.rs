@@ -1,5 +1,5 @@
+use crate::mcp_integration::ast_item_helpers::{extract_complexity, extract_kind, extract_name};
 use crate::mcp_integration::{McpError, McpTool, ToolMetadata};
-use crate::mcp_integration::ast_item_helpers::{extract_kind, extract_name, extract_complexity};
 // Import the ScalaAstVisitor when available
 use crate::services::languages::scala::ScalaAstVisitor;
 use crate::utils::path_validator::PathValidator;
@@ -28,7 +28,9 @@ impl McpTool for ScalaAnalysisTool {
     fn metadata(&self) -> ToolMetadata {
         ToolMetadata {
             name: "analyze_scala".to_string(),
-            description: "Analyzes Scala source code for complexity, structure, and quality metrics.".to_string(),
+            description:
+                "Analyzes Scala source code for complexity, structure, and quality metrics."
+                    .to_string(),
             input_schema: json!({
                 "type": "object",
                 "properties": {
@@ -59,19 +61,17 @@ impl McpTool for ScalaAnalysisTool {
 
     async fn execute(&self, params: Value) -> Result<Value, McpError> {
         // Extract parameters
-        let path_str = params["path"]
-            .as_str()
-            .ok_or_else(|| McpError {
-                code: crate::mcp_integration::error_codes::INVALID_PARAMS,
-                message: "Missing path parameter".to_string(),
-                data: None,
-            })?;
-        
+        let path_str = params["path"].as_str().ok_or_else(|| McpError {
+            code: crate::mcp_integration::error_codes::INVALID_PARAMS,
+            message: "Missing path parameter".to_string(),
+            data: None,
+        })?;
+
         let path = PathBuf::from(path_str);
         let max_depth = params["max_depth"].as_u64().unwrap_or(3);
         let include_metrics = params["include_metrics"].as_bool().unwrap_or(true);
         let include_ast = params["include_ast"].as_bool().unwrap_or(false);
-        
+
         // Validate path
         if PathValidator::ensure_exists(&path).is_err() {
             return Err(McpError {
@@ -83,12 +83,15 @@ impl McpTool for ScalaAnalysisTool {
                 })),
             });
         }
-        
+
         // Analyze the file or directory
         info!("Analyzing Scala at path: {}", path.display());
         let result = if path.is_dir() {
             analyze_scala_directory(&path, max_depth, include_metrics, include_ast).await
-        } else if path.extension().is_some_and(|ext| ext == "scala" || ext == "sc") {
+        } else if path
+            .extension()
+            .is_some_and(|ext| ext == "scala" || ext == "sc")
+        {
             analyze_scala_file(&path, include_metrics, include_ast).await
         } else {
             return Err(McpError {
@@ -100,7 +103,7 @@ impl McpTool for ScalaAnalysisTool {
                 })),
             });
         };
-        
+
         match result {
             Ok(analysis) => Ok(analysis),
             Err(e) => Err(McpError {
@@ -120,7 +123,7 @@ async fn analyze_scala_file(
 ) -> Result<Value> {
     // Read the file content
     let content = fs::read_to_string(path).await?;
-    
+
     // Create visitor and analyze
     let visitor = ScalaAstVisitor::new(path);
     match visitor.analyze_scala_source(&content) {
@@ -182,7 +185,7 @@ async fn analyze_scala_file(
                 })
                 .map(extract_name)
                 .unwrap_or_else(|| "default".to_string());
-            
+
             // Build response
             let mut result = json!({
                 "status": "completed",
@@ -198,27 +201,20 @@ async fn analyze_scala_file(
                     "total_items": items.len()
                 }
             });
-            
+
             // Add metrics if requested
             if include_metrics {
                 // Calculate complexity metrics
-                let total_complexity: u32 = items
-                    .iter()
-                    .map(extract_complexity)
-                    .sum();
+                let total_complexity: u32 = items.iter().map(extract_complexity).sum();
 
-                let max_complexity = items
-                    .iter()
-                    .map(extract_complexity)
-                    .max()
-                    .unwrap_or(0);
-                    
+                let max_complexity = items.iter().map(extract_complexity).max().unwrap_or(0);
+
                 let avg_complexity = if method_count > 0 {
                     (total_complexity as f64) / (method_count as f64)
                 } else {
                     0.0
                 };
-                
+
                 // Add metrics to result
                 result["metrics"] = json!({
                     "total_complexity": total_complexity,
@@ -228,14 +224,14 @@ async fn analyze_scala_file(
                     "loc": content.lines().count()
                 });
             }
-            
+
             // Add AST items if requested
             if include_ast {
                 result["items"] = serde_json::to_value(&items)?;
             }
-            
+
             Ok(result)
-        },
+        }
         Err(e) => {
             warn!("Failed to parse Scala file {}: {}", path.display(), e);
             Ok(json!({
@@ -257,7 +253,7 @@ async fn analyze_scala_directory(
 ) -> Result<Value> {
     // Use walkdir to find all Scala files
     let scala_files = find_scala_files(path, max_depth as usize)?;
-    
+
     if scala_files.is_empty() {
         return Ok(json!({
             "status": "completed",
@@ -269,7 +265,7 @@ async fn analyze_scala_directory(
             }
         }));
     }
-    
+
     // Analyze each file
     let mut file_results = Vec::new();
     let mut total_classes = 0;
@@ -282,7 +278,7 @@ async fn analyze_scala_directory(
     let mut total_loc = 0;
     let mut weighted_functional_percentage = 0.0;
     let mut total_weight = 0.0;
-    
+
     for file_path in &scala_files {
         match analyze_scala_file(file_path, include_metrics, false).await {
             Ok(result) => {
@@ -304,7 +300,7 @@ async fn analyze_scala_directory(
                         total_methods += method_count;
                     }
                 }
-                
+
                 // Update complexity metrics
                 if include_metrics {
                     if let Some(metrics) = result["metrics"].as_object() {
@@ -316,7 +312,7 @@ async fn analyze_scala_directory(
                         }
                         if let Some(loc) = metrics["loc"].as_u64() {
                             total_loc += loc;
-                            
+
                             // Calculate weighted functional percentage
                             if let Some(fp) = metrics["functional_percentage"].as_f64() {
                                 weighted_functional_percentage += fp * (loc as f64);
@@ -325,28 +321,28 @@ async fn analyze_scala_directory(
                         }
                     }
                 }
-                
+
                 file_results.push(result);
-            },
+            }
             Err(e) => {
                 warn!("Error analyzing Scala file {}: {}", file_path.display(), e);
             }
         }
     }
-    
+
     // Calculate average complexity and functional percentage
     let avg_complexity = if total_methods > 0 {
         (total_complexity as f64) / (total_methods as f64)
     } else {
         0.0
     };
-    
+
     let avg_functional_percentage = if total_weight > 0.0 {
         weighted_functional_percentage / total_weight
     } else {
         0.0
     };
-    
+
     // Build aggregate response
     let mut result = json!({
         "status": "completed",
@@ -361,7 +357,7 @@ async fn analyze_scala_directory(
             "method_count": total_methods,
         }
     });
-    
+
     // Add metrics if requested
     if include_metrics {
         result["metrics"] = json!({
@@ -372,31 +368,35 @@ async fn analyze_scala_directory(
             "total_loc": total_loc
         });
     }
-    
+
     // Add file-level results if include_ast was requested
     if include_ast {
         result["files"] = serde_json::to_value(&file_results)?;
     }
-    
+
     Ok(result)
 }
 
 /// Helper function to find all Scala files in a directory
 fn find_scala_files(path: &std::path::Path, max_depth: usize) -> Result<Vec<PathBuf>> {
     let mut scala_files = Vec::new();
-    
+
     let walker = walkdir::WalkDir::new(path)
         .max_depth(max_depth)
         .into_iter()
         .filter_map(Result::ok);
-        
+
     for entry in walker {
         let path = entry.path();
-        if path.is_file() && path.extension().is_some_and(|ext| ext == "scala" || ext == "sc") {
+        if path.is_file()
+            && path
+                .extension()
+                .is_some_and(|ext| ext == "scala" || ext == "sc")
+        {
             scala_files.push(path.to_path_buf());
         }
     }
-    
+
     Ok(scala_files)
 }
 
@@ -421,7 +421,7 @@ fn calculate_functional_percentage(items: &[crate::services::context::AstItem]) 
             _ => {}
         }
     }
-    
+
     let total = functional_score + imperative_score;
     if total > 0.0 {
         (functional_score / total) * 100.0
@@ -447,7 +447,8 @@ impl McpTool for ScalaMutationTool {
     fn metadata(&self) -> ToolMetadata {
         ToolMetadata {
             name: "mutation_test_scala".to_string(),
-            description: "Performs mutation testing on Scala code to assess test suite quality.".to_string(),
+            description: "Performs mutation testing on Scala code to assess test suite quality."
+                .to_string(),
             input_schema: json!({
                 "type": "object",
                 "properties": {
@@ -481,25 +482,21 @@ impl McpTool for ScalaMutationTool {
     }
 
     async fn execute(&self, params: Value) -> Result<Value, McpError> {
-        let project_path = params["project_path"]
-            .as_str()
-            .ok_or_else(|| McpError {
-                code: crate::mcp_integration::error_codes::INVALID_PARAMS,
-                message: "Missing project_path parameter".to_string(),
-                data: None,
-            })?;
-            
-        let source_path = params["source_path"]
-            .as_str()
-            .ok_or_else(|| McpError {
-                code: crate::mcp_integration::error_codes::INVALID_PARAMS,
-                message: "Missing source_path parameter".to_string(),
-                data: None,
-            })?;
-            
+        let project_path = params["project_path"].as_str().ok_or_else(|| McpError {
+            code: crate::mcp_integration::error_codes::INVALID_PARAMS,
+            message: "Missing project_path parameter".to_string(),
+            data: None,
+        })?;
+
+        let source_path = params["source_path"].as_str().ok_or_else(|| McpError {
+            code: crate::mcp_integration::error_codes::INVALID_PARAMS,
+            message: "Missing source_path parameter".to_string(),
+            data: None,
+        })?;
+
         let test_command = params["test_command"].as_str().unwrap_or("sbt test");
         let timeout = params["timeout"].as_u64().unwrap_or(30);
-        
+
         // Extract mutation operators
         let mutation_operators = if let Some(operators) = params["mutation_operators"].as_array() {
             operators
@@ -515,12 +512,12 @@ impl McpTool for ScalaMutationTool {
                 "functional".to_string(),
             ]
         };
-        
+
         info!(
             "Running Scala mutation tests on project: {}, source: {}",
             project_path, source_path
         );
-        
+
         // In a real implementation, we would spawn the Stryker or similar mutation testing tool
         // For now, return a placeholder response
         Ok(json!({
