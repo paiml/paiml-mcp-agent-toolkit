@@ -1,15 +1,41 @@
 # PMAT Project State Summary
 
 **Generated**: October 29, 2025
-**Current Version**: v2.180.0 (RELEASED)
+**Current Version**: v2.180.1 (RELEASED)
 **Status**: Production-Ready, Published to crates.io
 **Downloads**: 59,675+ total (crates.io)
 
 ---
 
-## 🎉 Latest Achievement: v2.180.0 Release
+## 🎉 Latest Achievements
 
-**Sprint 66 - TDG Enforcement System** is complete and published!
+### v2.180.1 Hotfix (Sprint 67)
+**Sprint 67 - TDG Dogfooding** completed with critical bugfix released same day!
+
+**What Happened**: Dogfooding TDG enforcement on PMAT itself discovered critical bug in v2.180.0 where baseline creation failed due to hardcoded sled backend.
+
+**Fix**: Changed `StorageBackendType::Sled` → `StorageBackendType::Libsql` in `server/src/tdg/storage.rs`
+
+**Timeline**: < 4 hours from discovery to published hotfix (demonstrates rapid response capability)
+
+**Results**:
+- ✅ 851 files analyzed across PMAT codebase
+- ✅ 93.0 average TDG score (A grade)
+- ✅ 83.9% of files score A- or higher
+- ✅ Validated TDG enforcement system works at scale
+
+### Sprint 69: pmat-book TDG Chapter
+**Documentation milestone** - Comprehensive TDG Enforcement System chapter added to pmat-book!
+
+**Deliverables**:
+- ✅ Chapter 4.2: TDG Enforcement System (824 lines)
+- ✅ Covers baselines, git hooks, CI/CD integration
+- ✅ Real-world examples from Sprint 67 dogfooding
+- ✅ Migration guide and best practices
+- ✅ TDG integration reports for ruchy, bashrs, ruchyruchy (GitHub issues filed)
+
+### v2.180.0 Release (Sprint 66)
+**Sprint 66 - TDG Enforcement System** complete and published!
 
 ### What Was Released
 
