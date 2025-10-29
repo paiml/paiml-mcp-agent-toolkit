@@ -27,6 +27,7 @@
   - Utility methods: mutation_score(), count_by_outcome()
   - 9 tests (100% passing)
   - Duration: ~2 hours
+  - **FIXED in Session 4**: Parser rewritten for actual v25.3.1 format
 
 - ✅ **Phase 3 (PMAT-070-003)**: CLI Integration - `pmat mutate --use-cargo-mutants`
   - cargo_mutants_backend handler (189 lines)
@@ -37,26 +38,42 @@
   - Backward compatible with Sprint 61
   - Duration: ~3 hours
   - **Commits**: 9170c846 (RED), a17abd9b (GREEN), bcb81189 (REFACTOR)
+  - **FIXED in Session 4**: Backend updated for directory-based output
+
+**Session 4 Critical Fix** (October 29, 2025):
+- **Issue**: Phase 2 parser designed for assumed JSON format, not actual cargo-mutants v25.3.1
+- **Fix**: Complete parser rewrite for actual format (reads `outcomes.json` from directory)
+- **Result**: ✅ End-to-end workflow now functional
+- **Testing**: Validated with real cargo-mutants (5 mutants, 80% score)
+- **Commits**: 4fe05dcf (fix), acf3c233 (style)
+- **Duration**: 2 hours
 
 **Quality Metrics**:
 - Test Pass Rate: 100% (31/31 tests compile)
 - Clippy Warnings: 0
-- Code Size: 3,672 lines (661 implementation + 707 tests + 304 examples + 2,000 docs)
-- Extreme TDD: RED → GREEN → REFACTOR → VERIFY → COMMIT
+- Code Size: 3,833 lines (790 implementation + 707 tests + 304 examples + 2,032 docs)
+- Extreme TDD: RED → GREEN → REFACTOR → FIX → VERIFY → COMMIT
 
-**Usage**:
+**End-to-End Validation** ✅:
 ```bash
-pmat mutate --target . --use-cargo-mutants
-pmat mutate --target . --use-cargo-mutants --features serde,tokio
-pmat mutate --target . --use-cargo-mutants --timeout 600 --jobs 8
+$ pmat mutate --target . --use-cargo-mutants --timeout 10
+🧪 cargo-mutants Backend
+✅ Detected: cargo-mutants 25.3.1
+✅ Mutation testing complete
+
+📊 Mutation Testing Results:
+   Total mutants: 5
+   Caught: 4 (80.0%)
+   Missed: 1 (20.0%)
+📈 Mutation Score: 80.0%
 ```
 
 **Next**: Phase 4 (Comprehensive Testing)
 
 **Documentation**:
-- Phase 3 kickoff: `docs/sprints/SPRINT-70-PHASE3-KICKOFF.md`
-- Phase 3 completion: `docs/sprints/SPRINT-70-PHASE3-COMPLETION.md`
-- Session summaries: `docs/sprints/SPRINT-70-SESSION-SUMMARY.md`
+- Session 4 summary: `docs/sprints/SPRINT-70-SESSION4-SUMMARY.md`
+- Session 4 handoff: `docs/sprints/SPRINT-70-SESSION4-HANDOFF.md`
+- Issue doc (resolved): `docs/sprints/SPRINT-70-PHASE2-JSON-FORMAT-ISSUE.md`
 - All phase completion reports: Phases 1, 2, & 3 documented
 
 ### v2.180.1 Hotfix (Sprint 67)
