@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.181.0] - 2025-10-29
+
 ### Added - Sprint 70: cargo-mutants Integration
 - **Comprehensive Rust Mutation Testing via cargo-mutants Backend**
   - New `--use-cargo-mutants` flag for `pmat mutate` command
