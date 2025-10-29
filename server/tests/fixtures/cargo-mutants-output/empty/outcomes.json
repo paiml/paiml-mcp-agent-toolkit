@@ -1,0 +1,39 @@
+{
+  "outcomes": [
+    {
+      "scenario": "Baseline",
+      "summary": "Success",
+      "log_path": "log/baseline.log",
+      "diff_path": null,
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 0.201048065,
+          "process_status": "Success",
+          "argv": [
+            "/usr/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.05121649,
+          "process_status": "Success",
+          "argv": [
+            "/usr/bin/cargo",
+            "test",
+            "--verbose"
+          ]
+        }
+      ]
+    }
+  ],
+  "total_mutants": 0,
+  "missed": 0,
+  "caught": 0,
+  "timeout": 0,
+  "unviable": 0,
+  "success": 1
+}
