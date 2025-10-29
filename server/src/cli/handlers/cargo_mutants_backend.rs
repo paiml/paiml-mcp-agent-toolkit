@@ -1,4 +1,4 @@
-//! cargo-mutants Backend Handler (Sprint 70 - Phase 3 GREEN)
+//! cargo-mutants Backend Handler (Sprint 70 - Phase 3 GREEN/REFACTOR)
 //!
 //! Executes cargo-mutants and parses results into PMAT format.
 //! This module bridges cargo-mutants JSON output with PMAT's mutation testing types.
@@ -10,28 +10,37 @@ use console::style;
 use std::path::PathBuf;
 use std::process::Command;
 
+/// Configuration for cargo-mutants execution
+#[derive(Debug, Clone)]
+pub struct CargoMutantsConfig {
+    pub path: PathBuf,
+    pub output: Option<PathBuf>,
+    pub timeout: u64,
+    pub jobs: Option<usize>,
+    pub features: Option<Vec<String>>,
+    pub all_features: bool,
+    pub no_default_features: bool,
+    pub no_shuffle: bool,
+}
+
 /// Execute cargo-mutants and return JSON output
-pub fn execute(
-    path: PathBuf,
-    output: Option<PathBuf>,
-    timeout: u64,
-    jobs: Option<usize>,
-    features: Option<Vec<String>>,
-    all_features: bool,
-    no_default_features: bool,
-    no_shuffle: bool,
-) -> Result<String> {
+pub fn execute(config: CargoMutantsConfig) -> Result<String> {
     // 1. Detect and validate cargo-mutants installation
     eprintln!("{}", style("🧪 cargo-mutants Backend").bold());
     eprintln!();
 
-    let wrapper = CargoMutantsWrapper::new()
-        .map_err(|e| anyhow::anyhow!("cargo-mutants not found. Install: cargo install cargo-mutants. Error: {}", e))?;
+    let wrapper = CargoMutantsWrapper::new().map_err(|e| {
+        anyhow::anyhow!(
+            "cargo-mutants not found. Install: cargo install cargo-mutants. Error: {}",
+            e
+        )
+    })?;
 
     wrapper.validate_version()
         .map_err(|e| anyhow::anyhow!("cargo-mutants version too old. Minimum v24.7.0 required. Upgrade: cargo install --force cargo-mutants. Error: {}", e))?;
 
-    let version = wrapper.version()
+    let version = wrapper
+        .version()
         .map_err(|e| anyhow::anyhow!("Failed to get cargo-mutants version: {}", e))?;
     eprintln!("{} {}", style("✅ Detected:").green(), version);
     eprintln!();
@@ -42,30 +51,30 @@ pub fn execute(
     cmd.arg("--output").arg("json");
 
     // Set working directory
-    cmd.current_dir(&path);
+    cmd.current_dir(&config.path);
 
     // Add timeout
-    cmd.arg("--timeout").arg(timeout.to_string());
+    cmd.arg("--timeout").arg(config.timeout.to_string());
 
     // Add parallel jobs
-    if let Some(j) = jobs {
+    if let Some(j) = config.jobs {
         cmd.arg("--jobs").arg(j.to_string());
     }
 
     // Add features
-    if all_features {
+    if config.all_features {
         cmd.arg("--all-features");
-    } else if no_default_features {
+    } else if config.no_default_features {
         cmd.arg("--no-default-features");
-        if let Some(ref feats) = features {
+        if let Some(ref feats) = config.features {
             cmd.arg("--features").arg(feats.join(","));
         }
-    } else if let Some(ref feats) = features {
+    } else if let Some(ref feats) = config.features {
         cmd.arg("--features").arg(feats.join(","));
     }
 
     // Add no-shuffle flag
-    if no_shuffle {
+    if config.no_shuffle {
         cmd.arg("--no-shuffle");
     }
 
@@ -73,8 +82,8 @@ pub fn execute(
     eprintln!(
         "{} cargo mutants --output json --timeout {} {}",
         style("🔧 Executing:").cyan(),
-        timeout,
-        if let Some(j) = jobs {
+        config.timeout,
+        if let Some(j) = config.jobs {
             format!("--jobs {}", j)
         } else {
             String::new()
@@ -103,7 +112,7 @@ pub fn execute(
         .context("cargo-mutants output is not valid UTF-8")?;
 
     // 5. Save to file if requested
-    if let Some(output_path) = output {
+    if let Some(output_path) = config.output {
         std::fs::write(&output_path, &json)
             .with_context(|| format!("Failed to write output to {}", output_path.display()))?;
         eprintln!(
