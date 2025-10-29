@@ -552,20 +552,23 @@ fn output_text(
 
 /// Handle mutation testing via cargo-mutants backend
 async fn handle_cargo_mutants_backend(args: MutateArgs) -> Result<()> {
-    use crate::cli::handlers::cargo_mutants_backend;
+    use crate::cli::handlers::cargo_mutants_backend::{self, CargoMutantsConfig};
     use crate::services::mutation::json_parser::CargoMutantsReport;
 
+    // Build configuration
+    let config = CargoMutantsConfig {
+        path: args.target.clone(),
+        output: args.output.clone(),
+        timeout: args.timeout,
+        jobs: args.jobs,
+        features: args.features,
+        all_features: args.all_features,
+        no_default_features: args.no_default_features,
+        no_shuffle: args.no_shuffle,
+    };
+
     // Execute cargo-mutants
-    let json = cargo_mutants_backend::execute(
-        args.target.clone(),
-        args.output.clone(),
-        args.timeout,
-        args.jobs,
-        args.features,
-        args.all_features,
-        args.no_default_features,
-        args.no_shuffle,
-    )?;
+    let json = cargo_mutants_backend::execute(config)?;
 
     // Parse JSON output
     let report = CargoMutantsReport::from_json(&json)

@@ -6,10 +6,28 @@
 //! Note: Sprint 61 implemented PMAT's built-in mutation testing (`pmat mutate`).
 //! Sprint 70 adds cargo-mutants wrapper as an alternative backend via `--use-cargo-mutants`.
 
-use pmat::cli::handlers::cargo_mutants_backend;
+use pmat::cli::handlers::cargo_mutants_backend::{self, CargoMutantsConfig};
 use pmat::services::mutation::cargo_mutants_wrapper::CargoMutantsWrapper;
 use pmat::services::mutation::json_parser::CargoMutantsReport;
 use std::path::PathBuf;
+
+// ============================================================================
+// Test Helpers
+// ============================================================================
+
+/// Helper to create a default test config
+fn test_config() -> CargoMutantsConfig {
+    CargoMutantsConfig {
+        path: PathBuf::from("."),
+        output: None,
+        timeout: 300,
+        jobs: None,
+        features: None,
+        all_features: false,
+        no_default_features: false,
+        no_shuffle: false,
+    }
+}
 
 // ============================================================================
 // Unit Tests
@@ -88,16 +106,8 @@ fn test_cargo_mutants_backend_executes_and_parses() {
     assert_eq!(report.mutants.len(), 1, "Should have 1 mutant");
 
     // Backend execution will use this in GREEN phase
-    let result = cargo_mutants_backend::execute(
-        PathBuf::from("."),
-        None,
-        300,
-        None,
-        None,
-        false,
-        false,
-        false,
-    );
+    let config = test_config();
+    let result = cargo_mutants_backend::execute(config);
 
     assert!(result.is_ok(), "Backend should execute successfully");
 }
@@ -108,16 +118,10 @@ fn test_cargo_mutants_backend_passes_timeout() {
     // Test: Verify --timeout flag is passed to cargo-mutants
     // Expected: Command includes --timeout <value>
 
-    let result = cargo_mutants_backend::execute(
-        PathBuf::from("."),
-        None,
-        600, // 10 minutes
-        None,
-        None,
-        false,
-        false,
-        false,
-    );
+    let mut config = test_config();
+    config.timeout = 600; // 10 minutes
+
+    let result = cargo_mutants_backend::execute(config);
 
     // Should build: cargo mutants --timeout 600
     assert!(result.is_ok(), "Should handle timeout flag");
@@ -153,16 +157,10 @@ fn test_cargo_mutants_backend_saves_output() {
 
     let output_path = PathBuf::from("/tmp/pmat-cargo-mutants-test.json");
 
-    let result = cargo_mutants_backend::execute(
-        PathBuf::from("."),
-        Some(output_path.clone()),
-        300,
-        None,
-        None,
-        false,
-        false,
-        false,
-    );
+    let mut config = test_config();
+    config.output = Some(output_path.clone());
+
+    let result = cargo_mutants_backend::execute(config);
 
     assert!(result.is_ok(), "Should save output file");
     // GREEN phase will verify: std::fs::exists(&output_path)
@@ -174,16 +172,12 @@ fn test_cargo_mutants_backend_passes_all_flags() {
     // Test: Verify all flags are passed correctly
     // Expected: cargo mutants --features feat1,feat2 --jobs 4 --no-shuffle
 
-    let result = cargo_mutants_backend::execute(
-        PathBuf::from("."),
-        None,
-        300,
-        Some(4),                                              // --jobs 4
-        Some(vec!["feat1".to_string(), "feat2".to_string()]), // --features
-        false,
-        false,
-        true, // --no-shuffle
-    );
+    let mut config = test_config();
+    config.jobs = Some(4);
+    config.features = Some(vec!["feat1".to_string(), "feat2".to_string()]);
+    config.no_shuffle = true;
+
+    let result = cargo_mutants_backend::execute(config);
 
     // Should build command with all flags
     assert!(result.is_ok(), "Should pass all flags to cargo-mutants");
