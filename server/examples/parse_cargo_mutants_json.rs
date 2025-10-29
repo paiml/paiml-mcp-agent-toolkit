@@ -1,15 +1,13 @@
-//! RED Phase Example for PMAT-070-002: JSON Parsing
+//! GREEN Phase Example for PMAT-070-002: JSON Parsing
 //!
 //! Example demonstrating cargo-mutants JSON parsing.
-//! This is a skeleton - will be implemented in GREEN phase.
+//! Now using real implementation from json_parser.rs
 
-// use pmat::services::mutation::json_parser::CargoMutantsReport;
-// use pmat::services::mutation::types::Mutant;
+use pmat::services::mutation::json_parser::{CargoMutantsReport, MutantOutcome};
 use std::process;
 
 fn main() {
-    println!("🧪 cargo-mutants JSON Parser - RED Phase Example\n");
-    println!("⚠️  This is a RED phase skeleton - parser not yet implemented.\n");
+    println!("🧪 cargo-mutants JSON Parser - GREEN Phase Example\n");
 
     // Sample cargo-mutants JSON output (from Phase 2 kickoff guide)
     let sample_json = r#"{
@@ -48,44 +46,79 @@ fn main() {
     println!("📄 Sample cargo-mutants JSON:");
     println!("{}\n", sample_json);
 
-    // RED Phase: Parser not implemented yet
-    println!("❌ Parser implementation not available (RED phase)");
-    println!("\n📋 Expected workflow (GREEN phase):");
-    println!("   1. Parse JSON → CargoMutantsReport");
-    println!("   2. Convert outcomes:");
-    println!("      - caught → Killed");
-    println!("      - missed → Survived");
-    println!("      - timeout → Timeout");
-    println!("      - unviable → CompileError");
-    println!("   3. Convert to PMAT Mutant format");
-    println!("   4. Display mutation score\n");
-
-    // GREEN Phase implementation will look like:
-    /*
+    // GREEN Phase: Parse and convert JSON
     match CargoMutantsReport::from_json(sample_json) {
         Ok(report) => {
-            println!("✅ Parsed {} mutants", report.mutants.len());
+            println!("✅ Parsed {} mutants from JSON\n", report.mutants.len());
 
+            // Convert to PMAT format
             let pmat_report = report.to_pmat_report();
-            println!("✅ Converted to PMAT format ({} mutants)", pmat_report.len());
+            println!("✅ Converted to PMAT format ({} mutants)\n", pmat_report.len());
 
-            let caught = report.mutants.iter().filter(|m| matches!(m.outcome, MutantOutcome::Caught)).count();
+            // Calculate statistics
             let total = report.mutants.len();
-            let score = (caught as f64 / total as f64) * 100.0;
+            let caught = report
+                .mutants
+                .iter()
+                .filter(|m| matches!(m.outcome, MutantOutcome::Caught))
+                .count();
+            let missed = report
+                .mutants
+                .iter()
+                .filter(|m| matches!(m.outcome, MutantOutcome::Missed))
+                .count();
+            let timeout = report
+                .mutants
+                .iter()
+                .filter(|m| matches!(m.outcome, MutantOutcome::Timeout))
+                .count();
+            let unviable = report
+                .mutants
+                .iter()
+                .filter(|m| matches!(m.outcome, MutantOutcome::Unviable))
+                .count();
 
-            println!("\n📊 Mutation Score: {:.1}%", score);
-            println!("   Caught: {} ({:.1}%)", caught, score);
-            println!("   Missed: {} ({:.1}%)",
-                report.mutants.iter().filter(|m| matches!(m.outcome, MutantOutcome::Missed)).count(),
-                (report.mutants.iter().filter(|m| matches!(m.outcome, MutantOutcome::Missed)).count() as f64 / total as f64) * 100.0
+            let mutation_score = if total > 0 {
+                (caught as f64 / total as f64) * 100.0
+            } else {
+                0.0
+            };
+
+            // Display results
+            println!("📊 Mutation Testing Results:");
+            println!("   Total mutants: {}", total);
+            println!("   Caught: {} ({:.1}%)", caught, mutation_score);
+            println!(
+                "   Missed: {} ({:.1}%)",
+                missed,
+                (missed as f64 / total as f64) * 100.0
             );
+            println!(
+                "   Timeout: {} ({:.1}%)",
+                timeout,
+                (timeout as f64 / total as f64) * 100.0
+            );
+            println!(
+                "   Unviable: {} ({:.1}%)\n",
+                unviable,
+                (unviable as f64 / total as f64) * 100.0
+            );
+
+            println!("📈 Mutation Score: {:.1}%", mutation_score);
+
+            if mutation_score >= 90.0 {
+                println!("✅ Excellent! Test suite quality is very high");
+            } else if mutation_score >= 75.0 {
+                println!("⚠️  Good, but room for improvement");
+            } else {
+                println!("❌ Test suite needs significant improvement");
+            }
+
+            println!("\n✅ GREEN Phase implementation complete!");
         }
         Err(e) => {
             eprintln!("❌ Failed to parse JSON: {}", e);
             process::exit(1);
         }
     }
-    */
-
-    println!("⏳ Waiting for GREEN phase implementation...");
 }
