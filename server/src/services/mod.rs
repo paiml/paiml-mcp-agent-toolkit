@@ -52,6 +52,7 @@
 pub mod analysis_service;
 pub mod analyzer; // Toyota Way: Unified analyzer framework
 pub mod ast; // Toyota Way: Unified AST module (consolidates 25+ AST files)
+pub mod dap; // Sprint 71: Debug Adapter Protocol server
 pub mod detection; // Toyota Way: Unified detection framework (consolidates detection services)
 pub mod facades;
 pub mod language_analyzer;
