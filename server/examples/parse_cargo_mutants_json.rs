@@ -53,7 +53,10 @@ fn main() {
 
             // Convert to PMAT format
             let pmat_report = report.to_pmat_report();
-            println!("✅ Converted to PMAT format ({} mutants)\n", pmat_report.len());
+            println!(
+                "✅ Converted to PMAT format ({} mutants)\n",
+                pmat_report.len()
+            );
 
             // Calculate statistics
             let total = report.mutants.len();
