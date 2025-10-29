@@ -567,12 +567,12 @@ async fn handle_cargo_mutants_backend(args: MutateArgs) -> Result<()> {
         no_shuffle: args.no_shuffle,
     };
 
-    // Execute cargo-mutants
-    let json = cargo_mutants_backend::execute(config)?;
+    // Execute cargo-mutants (returns path to output directory)
+    let output_dir = cargo_mutants_backend::execute(config)?;
 
-    // Parse JSON output
-    let report = CargoMutantsReport::from_json(&json)
-        .map_err(|e| anyhow::anyhow!("Failed to parse cargo-mutants JSON output: {}", e))?;
+    // Parse output directory (reads outcomes.json)
+    let report = CargoMutantsReport::from_output_dir(&output_dir)
+        .map_err(|e| anyhow::anyhow!("Failed to parse cargo-mutants output: {}", e))?;
 
     // Display statistics
     cargo_mutants_backend::display_statistics(&report);

@@ -23,8 +23,8 @@ pub struct CargoMutantsConfig {
     pub no_shuffle: bool,
 }
 
-/// Execute cargo-mutants and return JSON output
-pub fn execute(config: CargoMutantsConfig) -> Result<String> {
+/// Execute cargo-mutants and return path to output directory
+pub fn execute(config: CargoMutantsConfig) -> Result<PathBuf> {
     // 1. Detect and validate cargo-mutants installation
     eprintln!("{}", style("🧪 cargo-mutants Backend").bold());
     eprintln!();
@@ -45,10 +45,17 @@ pub fn execute(config: CargoMutantsConfig) -> Result<String> {
     eprintln!("{} {}", style("✅ Detected:").green(), version);
     eprintln!();
 
+    // Determine output directory
+    let output_dir = if let Some(ref output) = config.output {
+        output.clone()
+    } else {
+        config.path.join("mutants.out")
+    };
+
     // 2. Build cargo mutants command
     let mut cmd = Command::new("cargo");
     cmd.arg("mutants");
-    cmd.arg("--output").arg("json");
+    cmd.arg("--output").arg(&output_dir);
 
     // Set working directory
     cmd.current_dir(&config.path);
@@ -80,8 +87,9 @@ pub fn execute(config: CargoMutantsConfig) -> Result<String> {
 
     // Display command being executed
     eprintln!(
-        "{} cargo mutants --output json --timeout {} {}",
+        "{} cargo mutants --output {} --timeout {} {}",
         style("🔧 Executing:").cyan(),
+        output_dir.display(),
         config.timeout,
         if let Some(j) = config.jobs {
             format!("--jobs {}", j)
@@ -102,28 +110,34 @@ pub fn execute(config: CargoMutantsConfig) -> Result<String> {
         .output()
         .context("Failed to execute cargo mutants command")?;
 
-    if !output_result.status.success() {
+    // cargo-mutants exit codes:
+    // 0 - Success (all mutants caught)
+    // 2 - Success with missed mutants (this is expected!)
+    // Other - Actual failure
+    let exit_code = output_result.status.code().unwrap_or(-1);
+    if exit_code != 0 && exit_code != 2 {
         let stderr = String::from_utf8_lossy(&output_result.stderr);
-        anyhow::bail!("cargo-mutants execution failed:\n{}", stderr);
-    }
-
-    // 4. Parse JSON output
-    let json = String::from_utf8(output_result.stdout)
-        .context("cargo-mutants output is not valid UTF-8")?;
-
-    // 5. Save to file if requested
-    if let Some(output_path) = config.output {
-        std::fs::write(&output_path, &json)
-            .with_context(|| format!("Failed to write output to {}", output_path.display()))?;
-        eprintln!(
-            "{} {}",
-            style("💾 Results saved to:").green(),
-            output_path.display()
+        anyhow::bail!(
+            "cargo-mutants execution failed with exit code {}:\n{}",
+            exit_code,
+            stderr
         );
-        eprintln!();
     }
 
-    Ok(json)
+    eprintln!("{}", style("✅ Mutation testing complete").green());
+    eprintln!();
+
+    // cargo-mutants may create a nested directory structure
+    // Check if outcomes.json exists, if not check nested location
+    let actual_output = if output_dir.join("outcomes.json").exists() {
+        output_dir
+    } else if output_dir.join("mutants.out").join("outcomes.json").exists() {
+        output_dir.join("mutants.out")
+    } else {
+        output_dir
+    };
+
+    Ok(actual_output)
 }
 
 /// Display mutation testing statistics
