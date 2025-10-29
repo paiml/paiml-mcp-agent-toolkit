@@ -1,8 +1,8 @@
-# PMAT Agent System Implementation Roadmap
+# PMAT Implementation Roadmap
 # Extreme TDD with Zero Tolerance Quality Gates
 
 meta:
-  project: PMAT Agent System
+  project: PMAT - Pragmatic AI Labs Multi-language Agent Toolkit
   approach: Extreme Test-Driven Development
   quality_gates:
     max_complexity: 10
@@ -15,7 +15,232 @@ meta:
     commit_strategy: atomic_per_ticket
     build_verification: mandatory_clean
 
+# COMPLETED SPRINTS (v2.167.0 - v2.180.1)
+completed_sprints:
+  - id: sprint-66
+    name: "TDG Enforcement System"
+    status: "✅ COMPLETE"
+    version: "v2.180.0"
+    date: "October 29, 2025"
+    deliverables:
+      - "TDG baseline tracking with Blake3 content-hash"
+      - "Quality gates (RegressionGate, MinimumGradeGate, NewFileGate)"
+      - "Git hook integration (pre-commit, post-commit)"
+      - "CI/CD templates (GitHub Actions, GitLab CI, Jenkins)"
+      - "3,129 lines of production code"
+      - "1,886 lines of tests (64 RED tests)"
+      - "3,339 lines of documentation"
+
+  - id: sprint-67
+    name: "TDG Dogfooding"
+    status: "✅ COMPLETE"
+    version: "v2.180.1"
+    date: "October 29, 2025"
+    deliverables:
+      - "Dogfooded TDG enforcement on PMAT codebase"
+      - "851 files analyzed, 93.0 avg score (A grade)"
+      - "Critical bugfix: hardcoded sled backend → libsql"
+      - "< 4 hour turnaround from bug discovery to hotfix"
+      - "Validated TDG system works at scale"
+
+  - id: sprint-69
+    name: "pmat-book TDG Chapter & Integration Reports"
+    status: "✅ COMPLETE"
+    date: "October 29, 2025"
+    deliverables:
+      - "Chapter 4.2: TDG Enforcement System (824 lines)"
+      - "Published to https://paiml.github.io/pmat-book/"
+      - "TDG integration reports: ruchy, bashrs, ruchyruchy (1,159 lines)"
+      - "GitHub issues filed for all 3 PAIML projects"
+      - "Mutation testing enhancement specification (952 lines)"
+
+# ACTIVE SPRINTS
 sprints:
+  # SPRINT 70: cargo-mutants Wrapper (CURRENT)
+  - id: sprint-70
+    name: "cargo-mutants Wrapper"
+    goal: "Replace defective generic mutation operators with cargo-mutants wrapper"
+    status: "🚀 STARTING"
+    priority: "HIGH (fix 0% effectiveness defect)"
+    duration: "1-2 weeks"
+    target_version: "v2.181.0 or v2.182.0"
+
+    problem:
+      description: "PMAT mutation testing has 0% kill rate due to generic operators"
+      evidence:
+        - "178 mutants generated across bashrs codebase"
+        - "0 mutants killed by tests (100% survival rate)"
+        - "Generic operators (AOR, ROR, COR, UOR) produce invalid/irrelevant mutations"
+        - "cargo-mutants has proven ≥90% kill rate"
+
+    solution:
+      approach: "Wrap cargo-mutants (subprocess wrapper) instead of re-implementing"
+      benefits:
+        - "Achieve ≥90% kill rate (match cargo-mutants effectiveness)"
+        - "Zero maintenance burden (community maintains cargo-mutants)"
+        - "Maintain PMAT interface (seamless user experience)"
+        - "1-2 weeks vs 3-4 weeks for re-implementation"
+
+    implementation_phases:
+      week_1:
+        name: "Core Wrapper"
+        days: "Days 1-5"
+        tasks:
+          day_1_2:
+            goal: "Infrastructure"
+            deliverables:
+              - "Create server/src/mutation/cargo_mutants_wrapper.rs"
+              - "Add which dependency to Cargo.toml"
+              - "Implement CargoMutantsWrapper::new()"
+              - "Handle cargo-mutants not installed gracefully"
+            success_criteria:
+              - "Can detect cargo-mutants in PATH"
+              - "Can execute cargo-mutants --version"
+              - "Graceful error if not installed"
+              - "Unit tests passing"
+
+          day_3_4:
+            goal: "JSON Parsing"
+            deliverables:
+              - "Define CargoMutantsReport struct"
+              - "Implement JSON parsing with serde"
+              - "Implement to_pmat_report() conversion"
+              - "Handle edge cases (no mutants, timeouts, unviable)"
+            success_criteria:
+              - "Can parse all cargo-mutants JSON formats"
+              - "Handles all mutant outcomes (killed, survived, timeout, unviable)"
+              - "Converts to PMAT MutationReport correctly"
+              - "Edge case handling tested"
+
+          day_5:
+            goal: "CLI Integration"
+            deliverables:
+              - "Update handle_mutate_command() to use wrapper"
+              - "Pass through cargo-mutants arguments"
+              - "Add --cargo-mutants-args for advanced users"
+              - "Display PMAT-formatted output"
+            success_criteria:
+              - "pmat mutate calls cargo-mutants successfully"
+              - "Arguments passed through correctly"
+              - "PMAT-formatted output displayed"
+              - "Help text updated"
+
+      week_2:
+        name: "Testing & Release"
+        days: "Days 6-10"
+        tasks:
+          day_6_7:
+            goal: "Comprehensive Testing"
+            deliverables:
+              - "Unit tests for JSON parsing (all edge cases)"
+              - "Integration tests with cargo-mutants"
+              - "Error handling tests"
+              - "Dogfood on PMAT codebase (target: ≥90% kill rate)"
+            success_criteria:
+              - "All unit tests passing"
+              - "Integration tests working"
+              - "≥90% kill rate on PMAT modules"
+              - "Results match raw cargo-mutants"
+
+          day_8:
+            goal: "Documentation"
+            deliverables:
+              - "Update docs/guides/mutation-testing.md"
+              - "Document cargo-mutants requirement"
+              - "Add installation instructions"
+              - "Create migration guide"
+            success_criteria:
+              - "Complete installation guide"
+              - "Usage examples with expected output"
+              - "Troubleshooting section"
+              - "Migration guide from v2.180.1"
+
+          day_9:
+            goal: "Validation"
+            deliverables:
+              - "Run on multiple PMAT modules"
+              - "Verify ≥90% kill rate achieved"
+              - "Performance benchmarks"
+              - "Compare vs generic operators (0% → ≥90%)"
+            success_criteria:
+              - "≥90% kill rate on PMAT codebase"
+              - "Performance acceptable (~30s/mutant)"
+              - "All quality gates passing"
+              - "pmat-book validation passing"
+
+          day_10:
+            goal: "Release Preparation"
+            deliverables:
+              - "Update CHANGELOG"
+              - "Version bump: v2.181.0 or v2.182.0"
+              - "Create GitHub release"
+              - "Update crates.io"
+            success_criteria:
+              - "Version bumped correctly"
+              - "CHANGELOG complete"
+              - "GitHub release published"
+              - "crates.io updated"
+
+    success_criteria:
+      functional:
+        - "cargo-mutants wrapper working"
+        - "≥90% kill rate on PMAT codebase (vs 0% with generic operators)"
+        - "JSON parsing handles all cargo-mutants output"
+        - "PMAT CLI interface maintained"
+
+      quality:
+        - "All modules: Cyclomatic complexity <10"
+        - "All modules: TDG score ≥90 (A grade)"
+        - "All tests passing (unit, integration, dogfooding)"
+        - "Zero security issues"
+
+      performance:
+        - "30-60s per mutant (match cargo-mutants)"
+        - "No significant overhead from wrapper"
+        - "Memory usage reasonable"
+
+      documentation:
+        - "Installation guide complete"
+        - "Migration guide from generic operators"
+        - "Troubleshooting section"
+        - "pmat-book validation passing"
+
+    files_to_create:
+      - path: "server/src/mutation/cargo_mutants_wrapper.rs"
+        lines: "~300"
+      - path: "server/tests/mutation/cargo_mutants_integration.rs"
+        lines: "~200"
+      - path: "docs/guides/mutation-testing-cargo-mutants.md"
+        lines: "~400"
+
+    files_to_modify:
+      - path: "server/src/mutation/mod.rs"
+        change: "export wrapper"
+      - path: "server/src/cli/handlers/mutate.rs"
+        change: "use wrapper"
+      - path: "Cargo.toml"
+        change: "add which dependency"
+      - path: "docs/guides/mutation-testing.md"
+        change: "update for wrapper"
+      - path: "README.md"
+        change: "mention cargo-mutants requirement"
+      - path: "CHANGELOG.md"
+        change: "document changes"
+
+    dependencies:
+      cargo:
+        - name: "which"
+          version: "6.0"
+          purpose: "Find cargo-mutants in PATH"
+
+      external_tools:
+        - name: "cargo-mutants"
+          version: "v24.7.0+"
+          installation: "cargo install cargo-mutants"
+          purpose: "Language-specific Rust mutation testing"
+
+  # FUTURE SPRINTS (Agent System Architecture)
+  # SPRINT 1: Modular Monolith Foundation (Week 1-2)
   # SPRINT 1: Modular Monolith Foundation (Week 1-2)
   - id: sprint-1
     name: "Modular Monolith Foundation"
