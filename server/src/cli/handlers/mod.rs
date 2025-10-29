@@ -11,6 +11,7 @@ pub mod analysis_handlers;
 pub mod annotation_tdd_tests;
 pub mod big_o_handlers;
 pub mod cache;
+pub mod cargo_mutants_backend; // Sprint 70: cargo-mutants wrapper
 pub mod churn_formatter;
 pub mod complexity_handlers;
 pub mod comprehensive_analysis_handler;
