@@ -4040,23 +4040,49 @@ pub struct MutateArgs {
     // ========================================================================
     // Sprint 70: cargo-mutants backend options
     // ========================================================================
-    /// Use cargo-mutants backend instead of built-in PMAT mutation testing
+    /// Use cargo-mutants backend for Rust mutation testing (requires cargo-mutants v24.7.0+)
+    ///
+    /// Provides comprehensive Rust mutation testing using the industry-standard cargo-mutants tool.
+    /// Automatically detects cargo-mutants installation and validates version compatibility.
+    ///
+    /// Example: pmat mutate --use-cargo-mutants --timeout 600
+    /// Guide: docs/user-guides/cargo-mutants-integration.md
     #[arg(long)]
     pub use_cargo_mutants: bool,
 
-    /// Cargo features to enable (cargo-mutants backend only)
+    /// Cargo features to enable for mutation testing (comma-separated)
+    ///
+    /// Only applies when --use-cargo-mutants is specified.
+    /// Enables specific Cargo features during mutation testing.
+    ///
+    /// Example: --features "serde,logging"
     #[arg(long, value_delimiter = ',')]
     pub features: Option<Vec<String>>,
 
-    /// Enable all features (cargo-mutants backend only)
+    /// Enable all Cargo features during mutation testing
+    ///
+    /// Only applies when --use-cargo-mutants is specified.
+    /// Equivalent to cargo test --all-features.
+    ///
+    /// Example: --use-cargo-mutants --all-features
     #[arg(long)]
     pub all_features: bool,
 
-    /// Disable default features (cargo-mutants backend only)
+    /// Disable default Cargo features during mutation testing
+    ///
+    /// Only applies when --use-cargo-mutants is specified.
+    /// Equivalent to cargo test --no-default-features.
+    ///
+    /// Example: --use-cargo-mutants --no-default-features --features "minimal"
     #[arg(long)]
     pub no_default_features: bool,
 
-    /// Don't shuffle test execution order (cargo-mutants backend only)
+    /// Don't shuffle mutant execution order (deterministic results)
+    ///
+    /// Only applies when --use-cargo-mutants is specified.
+    /// Mutants will be tested in sequential order for reproducible results.
+    ///
+    /// Example: --use-cargo-mutants --no-shuffle
     #[arg(long)]
     pub no_shuffle: bool,
 }
