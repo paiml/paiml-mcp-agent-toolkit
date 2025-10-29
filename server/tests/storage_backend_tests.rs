@@ -131,6 +131,7 @@ async fn test_tiered_storage_with_backends() {
             analysis_timestamp: SystemTime::now(),
             cache_hit: false,
         },
+        git_context: None,
     };
 
     // Store and retrieve
