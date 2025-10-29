@@ -6,6 +6,7 @@ pub mod adaptive;
 pub mod alerts;
 pub mod analyzer_ast;
 pub mod analyzer_simple;
+pub mod baseline;
 pub mod config;
 pub mod diagnostics;
 // Temporarily disable export to fix circular dependency
@@ -37,6 +38,9 @@ pub use adaptive::{
 // Use AST analyzer by default (proper implementation)
 pub use analyzer_ast::TdgAnalyzerAst as TdgAnalyzer;
 pub use analyzer_simple::TdgAnalyzer as TdgAnalyzerSimple;
+pub use baseline::{
+    BaselineComparison, BaselineEntry, BaselineSummary, FileComparison, TdgBaseline,
+};
 pub use config::TdgConfig;
 pub use diagnostics::{
     AdaptiveDiagnostics, HealthStatus, ResourceDiagnostics, SchedulerDiagnostics,
@@ -157,7 +161,7 @@ impl TdgScore {
     }
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Grade {
     APLus,
     A,
