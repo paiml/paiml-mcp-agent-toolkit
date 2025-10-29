@@ -255,7 +255,10 @@ fn test_gitlab_ci_template_has_required_stages() -> Result<()> {
         template.contains("- analyze"),
         "Template must have analyze stage"
     );
-    assert!(template.contains("- report"), "Template must have report stage");
+    assert!(
+        template.contains("- report"),
+        "Template must have report stage"
+    );
     assert!(
         template.contains("- update"),
         "Template must have update stage"

@@ -44,19 +44,19 @@ pub use baseline::{
     BaselineComparison, BaselineEntry, BaselineSummary, FileComparison, TdgBaseline,
 };
 pub use config::TdgConfig;
-pub use hooks_config::{
-    BaselineConfig, CiCdConfig, EnforcementMode, QualityGatesConfig, TdgHooksConfig,
-};
-pub use quality_gate::{
-    GateConfig, GateResult, MinimumGradeGate, NewFileGate, QualityGate, RegressionGate, Severity,
-    Violation, ViolationType,
-};
 pub use diagnostics::{
     AdaptiveDiagnostics, HealthStatus, ResourceDiagnostics, SchedulerDiagnostics,
     StorageDiagnostics, SystemDiagnostics,
 };
 pub use formatters::{format_human, format_json, format_markdown};
+pub use hooks_config::{
+    BaselineConfig, CiCdConfig, EnforcementMode, QualityGatesConfig, TdgHooksConfig,
+};
 pub use language_simple::{Language, LanguageRules};
+pub use quality_gate::{
+    GateConfig, GateResult, MinimumGradeGate, NewFileGate, QualityGate, RegressionGate, Severity,
+    Violation, ViolationType,
+};
 pub use resource_control::{
     OperationPriority, OperationType as ResourceOperationType, PlatformResourceController,
     ResourceAction, ResourceAllocation, ResourceControllerFactory, ResourceEnforcementStats,
@@ -70,11 +70,11 @@ pub use storage::{
     AnalysisMetadata, ComponentScores, FileIdentity, FullTdgRecord, HotCacheEntry,
     SemanticSignature, StorageStatistics, TieredStorageFactory, TieredStore,
 };
+#[cfg(feature = "sled-backend")]
+pub use storage_backend::SledBackend;
 pub use storage_backend::{
     InMemoryBackend, StorageBackend, StorageBackendFactory, StorageBackendType, StorageConfig,
 };
-#[cfg(feature = "sled-backend")]
-pub use storage_backend::SledBackend;
 pub use web_dashboard::{
     create_dashboard_router, start_dashboard_server, DashboardState,
     HealthStatus as DashboardHealthStatus, PerformanceMetrics as DashboardPerformanceMetrics,

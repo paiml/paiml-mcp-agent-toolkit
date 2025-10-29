@@ -17,19 +17,18 @@ pub mod comprehensive_analysis_handler;
 pub mod comprehensive_handler;
 pub mod config_command_handlers;
 pub mod configuration_handlers;
-pub mod defect_prediction_handler;
 #[cfg(feature = "deep-wasm")]
 pub mod deep_wasm_handlers;
-pub mod mutation_handlers;
+pub mod defect_prediction_handler;
 pub mod demo_handlers;
 pub mod doc_validate_handlers;
-pub mod readme_validate_handlers; // Sprint 38: Hallucination detection CLI
 pub mod duplication_analysis;
 pub mod enforce_handlers;
 pub mod enhanced_reporting_handlers;
 pub mod generation_handlers;
 #[cfg(test)]
 pub mod graph_context_integration_tests;
+pub mod health_handler;
 pub mod hooks_command_handlers;
 pub mod incremental_coverage_handler;
 pub mod lint_hotspot_handlers;
@@ -37,6 +36,7 @@ pub mod lint_hotspot_handlers;
 pub mod lint_hotspot_property_tests;
 pub mod memory;
 pub mod mutate;
+pub mod mutation_handlers;
 pub mod name_similarity_analysis;
 pub mod new_tdg_handler;
 pub mod proof_annotations_handler;
@@ -46,21 +46,21 @@ pub mod quality_gate_formatter;
 #[cfg(test)]
 pub mod quality_gate_property_tests;
 pub mod quality_gates_handler; // TICKET-PMAT-5023
+pub mod readme_validate_handlers; // Sprint 38: Hallucination detection CLI
 pub mod refactor_auto_handlers;
 #[cfg(test)]
 pub mod refactor_auto_property_tests;
 pub mod refactor_docs_handlers;
 pub mod refactor_handlers;
 pub mod roadmap_handler;
-pub mod health_handler;
 pub mod satd_handler;
 pub mod similarity_handler;
 pub mod subagent_handlers;
 pub mod tdg_diagnostic_handler;
 pub mod tdg_formatter;
-pub mod tdg_handlers;
 #[cfg(test)]
 pub mod tdg_git_context_tests; // Sprint 65 Phase 2: Git-commit correlation
+pub mod tdg_handlers;
 #[cfg(test)]
 pub mod tdg_history_tests; // Sprint 65 Phase 3: TDG History Commands
 pub mod telemetry_handlers;
@@ -91,14 +91,20 @@ pub use configuration_handlers::handle_configuration;
 pub use defect_prediction_handler::handle_analyze_defect_prediction;
 pub use demo_handlers::{handle_demo, handle_quality_gate};
 pub use doc_validate_handlers::ValidateDocsCmd;
-pub use readme_validate_handlers::ValidateReadmeCmd; // Sprint 38: Hallucination detection CLI
 pub use duplication_analysis::handle_analyze_duplicates;
 pub use enforce_handlers::route_enforce_command;
 pub use generation_handlers::{
-    handle_generate, handle_list_agent_templates, handle_scaffold, handle_scaffold_agent,
-    handle_scaffold_wasm, handle_validate, handle_validate_agent_template, ScaffoldAgentParams,
+    handle_generate,
+    handle_list_agent_templates,
+    handle_scaffold,
+    handle_scaffold_agent,
+    handle_scaffold_wasm,
+    handle_validate,
+    handle_validate_agent_template,
+    ScaffoldAgentParams,
     ScaffoldWasmParams, // TICKET-PMAT-5031
 };
+pub use health_handler::handle_maintain_health; // TICKET-PMAT-5033
 pub use hooks_command_handlers::handle_hooks_command;
 pub use incremental_coverage_handler::handle_analyze_incremental_coverage;
 pub use lint_hotspot_handlers::handle_analyze_lint_hotspot;
@@ -106,10 +112,10 @@ pub use memory::handle_memory_command;
 pub use name_similarity_analysis::handle_analyze_name_similarity;
 pub use provability_handler::handle_analyze_provability;
 pub use quality_gates_handler::handle_quality_gates_command; // TICKET-PMAT-5023
+pub use readme_validate_handlers::ValidateReadmeCmd; // Sprint 38: Hallucination detection CLI
 pub use refactor_docs_handlers::handle_refactor_docs;
 pub use refactor_handlers::{route_refactor_command, RefactorServeParams};
 pub use roadmap_handler::handle_maintain_roadmap; // TICKET-PMAT-5032
-pub use health_handler::handle_maintain_health; // TICKET-PMAT-5033
 pub use satd_handler::handle_analyze_satd;
 pub use tdg_handlers::handle_tdg_command;
 pub use telemetry_handlers::handle_telemetry;

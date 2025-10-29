@@ -68,9 +68,7 @@ impl CorrelationEngine {
         let source_map_by_file: HashMap<String, Vec<&SourceMapEntry>> = {
             let mut map: HashMap<String, Vec<&SourceMapEntry>> = HashMap::new();
             for entry in source_map_entries {
-                map.entry(entry.source.clone())
-                    .or_default()
-                    .push(entry);
+                map.entry(entry.source.clone()).or_default().push(entry);
             }
             map
         };
@@ -78,11 +76,15 @@ impl CorrelationEngine {
         // Correlate DWARF entries (primary, high confidence)
         for (func_name, dwarf_entry) in &dwarf_functions {
             // Try to find matching source map entry
-            let confidence = if let Some(source_entries) = source_map_by_file.values().find(|entries| {
-                entries.iter().any(|e| e.name.as_ref() == Some(func_name))
-            }) {
+            let confidence = if let Some(source_entries) = source_map_by_file
+                .values()
+                .find(|entries| entries.iter().any(|e| e.name.as_ref() == Some(func_name)))
+            {
                 // Found exact name match in source map
-                if let Some(source_entry) = source_entries.iter().find(|e| e.name.as_ref() == Some(func_name)) {
+                if let Some(source_entry) = source_entries
+                    .iter()
+                    .find(|e| e.name.as_ref() == Some(func_name))
+                {
                     mappings.push(SourceToWasmMapping {
                         source_file: PathBuf::from(&source_entry.source),
                         source_location: Location {
@@ -130,8 +132,8 @@ impl CorrelationEngine {
                         line: entry.original_line,
                         column: entry.original_column,
                     },
-                    wasm_function_idx: 0, // Unknown without DWARF
-                    wasm_instruction_offset: 0,  // Unknown without DWARF
+                    wasm_function_idx: 0,       // Unknown without DWARF
+                    wasm_instruction_offset: 0, // Unknown without DWARF
                     dwarf_die: None,
                     source_map_entry: Some((*entry).clone()),
                     confidence: 0.50, // Lower confidence: source map only
@@ -150,7 +152,11 @@ impl CorrelationEngine {
 
     /// Create mapping from DWARF entry with default values
     #[allow(dead_code)] // May be used in future iterations
-    fn create_dwarf_mapping(&self, dwarf_entry: &DwarfDebugEntry, confidence: f64) -> SourceToWasmMapping {
+    fn create_dwarf_mapping(
+        &self,
+        dwarf_entry: &DwarfDebugEntry,
+        confidence: f64,
+    ) -> SourceToWasmMapping {
         SourceToWasmMapping {
             source_file: PathBuf::from("unknown"),
             source_location: Location { line: 0, column: 0 },
@@ -194,23 +200,27 @@ impl CorrelationEngine {
             let source_map_entry = source_map_by_name.get(func_name.as_str()).copied();
 
             // Find line program entry closest to this DWARF entry's offset
-            let line_program_location = self.find_location_for_dwarf_entry(dwarf_entry, line_program_mappings);
+            let line_program_location =
+                self.find_location_for_dwarf_entry(dwarf_entry, line_program_mappings);
 
             // Calculate enhanced confidence
             let has_dwarf = true;
             let has_source_map = source_map_entry.is_some();
-            let line_match = if let (Some(sm), Some(lp)) = (source_map_entry, &line_program_location) {
-                sm.original_line == lp.line
-            } else {
-                false
-            };
-            let column_match = if let (Some(sm), Some(lp)) = (source_map_entry, &line_program_location) {
-                sm.original_column == lp.column
-            } else {
-                false
-            };
+            let line_match =
+                if let (Some(sm), Some(lp)) = (source_map_entry, &line_program_location) {
+                    sm.original_line == lp.line
+                } else {
+                    false
+                };
+            let column_match =
+                if let (Some(sm), Some(lp)) = (source_map_entry, &line_program_location) {
+                    sm.original_column == lp.column
+                } else {
+                    false
+                };
 
-            let confidence = self.calculate_confidence(has_dwarf, has_source_map, line_match, column_match);
+            let confidence =
+                self.calculate_confidence(has_dwarf, has_source_map, line_match, column_match);
 
             // Create mapping with best available location data
             let (source_file, source_location) = match (source_map_entry, line_program_location) {
@@ -286,13 +296,13 @@ impl CorrelationEngine {
         column_match: bool,
     ) -> f64 {
         match (has_dwarf, has_source_map, line_match, column_match) {
-            (true, true, true, true) => 1.0,   // Perfect match
-            (true, true, true, false) => 0.98, // Line match (most important)
-            (true, true, false, true) => 0.92, // Column match (less important)
+            (true, true, true, true) => 1.0,    // Perfect match
+            (true, true, true, false) => 0.98,  // Line match (most important)
+            (true, true, false, true) => 0.92,  // Column match (less important)
             (true, true, false, false) => 0.85, // Name match only
-            (true, false, _, _) => 0.75,       // DWARF only
-            (false, true, _, _) => 0.50,       // SourceMap only
-            (false, false, _, _) => 0.0,       // No data
+            (true, false, _, _) => 0.75,        // DWARF only
+            (false, true, _, _) => 0.50,        // SourceMap only
+            (false, false, _, _) => 0.0,        // No data
         }
     }
 
@@ -322,7 +332,6 @@ impl CorrelationEngine {
 
         Ok(addresses)
     }
-
 }
 
 impl Default for CorrelationEngine {
@@ -365,13 +374,11 @@ mod tests {
     fn test_correlate_dwarf_only() {
         let engine = CorrelationEngine::new();
 
-        let dwarf_entries = vec![
-            DwarfDebugEntry {
-                die_offset: 100,
-                tag: "DW_TAG_subprogram".to_string(),
-                name: Some("test_function".to_string()),
-            },
-        ];
+        let dwarf_entries = vec![DwarfDebugEntry {
+            die_offset: 100,
+            tag: "DW_TAG_subprogram".to_string(),
+            name: Some("test_function".to_string()),
+        }];
 
         let result = engine.correlate(&dwarf_entries, &[]).unwrap();
 
@@ -386,16 +393,14 @@ mod tests {
     fn test_correlate_source_map_only() {
         let engine = CorrelationEngine::new();
 
-        let source_map_entries = vec![
-            SourceMapEntry {
-                generated_line: 10,
-                generated_column: 5,
-                original_line: 42,
-                original_column: 8,
-                source: "test.rs".to_string(),
-                name: Some("helper_function".to_string()),
-            },
-        ];
+        let source_map_entries = vec![SourceMapEntry {
+            generated_line: 10,
+            generated_column: 5,
+            original_line: 42,
+            original_column: 8,
+            source: "test.rs".to_string(),
+            name: Some("helper_function".to_string()),
+        }];
 
         let result = engine.correlate(&[], &source_map_entries).unwrap();
 
@@ -413,26 +418,24 @@ mod tests {
     fn test_correlate_dwarf_and_source_map_match() {
         let engine = CorrelationEngine::new();
 
-        let dwarf_entries = vec![
-            DwarfDebugEntry {
-                die_offset: 200,
-                tag: "DW_TAG_subprogram".to_string(),
-                name: Some("matched_function".to_string()),
-            },
-        ];
+        let dwarf_entries = vec![DwarfDebugEntry {
+            die_offset: 200,
+            tag: "DW_TAG_subprogram".to_string(),
+            name: Some("matched_function".to_string()),
+        }];
 
-        let source_map_entries = vec![
-            SourceMapEntry {
-                generated_line: 15,
-                generated_column: 10,
-                original_line: 100,
-                original_column: 20,
-                source: "lib.rs".to_string(),
-                name: Some("matched_function".to_string()),
-            },
-        ];
+        let source_map_entries = vec![SourceMapEntry {
+            generated_line: 15,
+            generated_column: 10,
+            original_line: 100,
+            original_column: 20,
+            source: "lib.rs".to_string(),
+            name: Some("matched_function".to_string()),
+        }];
 
-        let result = engine.correlate(&dwarf_entries, &source_map_entries).unwrap();
+        let result = engine
+            .correlate(&dwarf_entries, &source_map_entries)
+            .unwrap();
 
         // Should create high-confidence mapping from DWARF + source map match
         assert_eq!(result.len(), 1);
@@ -479,7 +482,9 @@ mod tests {
             },
         ];
 
-        let result = engine.correlate(&dwarf_entries, &source_map_entries).unwrap();
+        let result = engine
+            .correlate(&dwarf_entries, &source_map_entries)
+            .unwrap();
 
         // Should have: 1 high-confidence (func_b), 1 DWARF-only (func_a), 1 source-map-only (func_c)
         assert_eq!(result.len(), 3);
@@ -493,26 +498,24 @@ mod tests {
     fn test_confidence_threshold_filtering() {
         let engine = CorrelationEngine::with_confidence_threshold(0.8);
 
-        let dwarf_entries = vec![
-            DwarfDebugEntry {
-                die_offset: 100,
-                tag: "DW_TAG_subprogram".to_string(),
-                name: Some("test_func".to_string()),
-            },
-        ];
+        let dwarf_entries = vec![DwarfDebugEntry {
+            die_offset: 100,
+            tag: "DW_TAG_subprogram".to_string(),
+            name: Some("test_func".to_string()),
+        }];
 
-        let source_map_entries = vec![
-            SourceMapEntry {
-                generated_line: 10,
-                generated_column: 5,
-                original_line: 42,
-                original_column: 8,
-                source: "test.rs".to_string(),
-                name: Some("other_func".to_string()),
-            },
-        ];
+        let source_map_entries = vec![SourceMapEntry {
+            generated_line: 10,
+            generated_column: 5,
+            original_line: 42,
+            original_column: 8,
+            source: "test.rs".to_string(),
+            name: Some("other_func".to_string()),
+        }];
 
-        let result = engine.correlate(&dwarf_entries, &source_map_entries).unwrap();
+        let result = engine
+            .correlate(&dwarf_entries, &source_map_entries)
+            .unwrap();
 
         // DWARF-only confidence (0.75) should be filtered out by threshold (0.8)
         // Source-map-only confidence (0.50) should be filtered out by threshold (0.8)

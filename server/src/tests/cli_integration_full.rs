@@ -142,8 +142,9 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore] // Slow integration test - Sprint 45 Phase 3
-              // Run manually: cargo test test_cli_context_generation -- --ignored
+    #[ignore]
+    // Slow integration test - Sprint 45 Phase 3
+    // Run manually: cargo test test_cli_context_generation -- --ignored
     #[serial_test::serial]
     async fn test_cli_context_generation() {
         // Skip this slow test in CI environments to prevent timeout

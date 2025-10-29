@@ -67,8 +67,7 @@ async fn main() -> Result<()> {
 
     let total = mutants.len();
     for (i, mutant) in mutants.iter_mut().enumerate() {
-        print!("   [{}/{}] Testing mutant: {} ",
-            i + 1, total, mutant.id);
+        print!("   [{}/{}] Testing mutant: {} ", i + 1, total, mutant.id);
 
         match test_mutant(&source_file, &project_root, &mutant.mutated_source).await {
             Ok(false) => {
@@ -95,10 +94,16 @@ async fn main() -> Result<()> {
     // Step 5: Calculate mutation score
     println!("\n📊 Mutation Testing Results\n");
     println!("   Total Mutants:    {}", total);
-    println!("   Killed:           {} ({}%)",
-        killed, (killed * 100) / total);
-    println!("   Survived:         {} ({}%)",
-        survived, (survived * 100) / total);
+    println!(
+        "   Killed:           {} ({}%)",
+        killed,
+        (killed * 100) / total
+    );
+    println!(
+        "   Survived:         {} ({}%)",
+        survived,
+        (survived * 100) / total
+    );
     println!("   Timeout/Error:    {}", timeout_count);
 
     let mutation_score = if total > timeout_count {
@@ -120,11 +125,13 @@ async fn main() -> Result<()> {
     // Step 6: Show surviving mutants
     if survived > 0 {
         println!("\n🧟 Surviving Mutants (weaknesses in tests):\n");
-        for mutant in mutants.iter().filter(|m| m.status == MutantStatus::Survived) {
-            println!("   • {} at line {}:{}",
-                mutant.id,
-                mutant.location.line,
-                mutant.location.column
+        for mutant in mutants
+            .iter()
+            .filter(|m| m.status == MutantStatus::Survived)
+        {
+            println!(
+                "   • {} at line {}:{}",
+                mutant.id, mutant.location.line, mutant.location.column
             );
 
             // Show the mutated line
@@ -191,8 +198,9 @@ async fn test_mutant(
     // Run tests with timeout
     let test_result = tokio::time::timeout(
         std::time::Duration::from_secs(30),
-        run_tests(project_root, None)
-    ).await;
+        run_tests(project_root, None),
+    )
+    .await;
 
     // Restore original file
     fs::copy(&backup_path, source_file).await?;

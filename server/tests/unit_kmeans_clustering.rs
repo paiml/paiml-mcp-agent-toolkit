@@ -183,11 +183,7 @@ async fn test_dbscan_noise_detection() {
 async fn test_dbscan_no_clusters() {
     let (engine, _temp) = setup_engine().await;
     // Vectors too far apart
-    let vectors = vec![
-        vec![0.0, 0.0],
-        vec![10.0, 10.0],
-        vec![20.0, 20.0],
-    ];
+    let vectors = vec![vec![0.0, 0.0], vec![10.0, 10.0], vec![20.0, 20.0]];
 
     let labels = engine.dbscan(&vectors, 1.0, 2).unwrap();
 

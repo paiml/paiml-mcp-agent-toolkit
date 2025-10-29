@@ -15,7 +15,9 @@ fn test_scaffold_engine_creation() {
 fn test_validate_config_valid() {
     let config = ScaffoldConfig {
         project_name: "valid-project".into(),
-        template_type: TemplateType::Agent { based_on: AgentFramework::Pforge },
+        template_type: TemplateType::Agent {
+            based_on: AgentFramework::Pforge,
+        },
         features: vec![],
         quality_gates: QualityGateConfig::default(),
     };
@@ -28,7 +30,9 @@ fn test_validate_config_valid() {
 fn test_validate_config_invalid_empty_name() {
     let config = ScaffoldConfig {
         project_name: "".into(),
-        template_type: TemplateType::Agent { based_on: AgentFramework::Pforge },
+        template_type: TemplateType::Agent {
+            based_on: AgentFramework::Pforge,
+        },
         features: vec![],
         quality_gates: QualityGateConfig::default(),
     };
@@ -41,7 +45,9 @@ fn test_validate_config_invalid_empty_name() {
 fn test_validate_config_invalid_slash_in_name() {
     let config = ScaffoldConfig {
         project_name: "invalid/project".into(),
-        template_type: TemplateType::Agent { based_on: AgentFramework::Pforge },
+        template_type: TemplateType::Agent {
+            based_on: AgentFramework::Pforge,
+        },
         features: vec![],
         quality_gates: QualityGateConfig::default(),
     };
@@ -54,7 +60,9 @@ fn test_validate_config_invalid_slash_in_name() {
 fn test_validate_config_invalid_too_long() {
     let config = ScaffoldConfig {
         project_name: "a".repeat(300),
-        template_type: TemplateType::Agent { based_on: AgentFramework::Pforge },
+        template_type: TemplateType::Agent {
+            based_on: AgentFramework::Pforge,
+        },
         features: vec![],
         quality_gates: QualityGateConfig::default(),
     };
@@ -123,7 +131,9 @@ fn test_scaffold_full_workflow() {
 
     let config = ScaffoldConfig {
         project_name: "full-test-project".into(),
-        template_type: TemplateType::Agent { based_on: AgentFramework::Pforge },
+        template_type: TemplateType::Agent {
+            based_on: AgentFramework::Pforge,
+        },
         features: vec![Feature::Logging],
         quality_gates: QualityGateConfig::extreme_tdd(),
     };
@@ -148,7 +158,9 @@ fn test_scaffold_pforge_project() {
 
     let config = ScaffoldConfig {
         project_name: "my-agent".into(),
-        template_type: TemplateType::Agent { based_on: AgentFramework::Pforge },
+        template_type: TemplateType::Agent {
+            based_on: AgentFramework::Pforge,
+        },
         features: vec![],
         quality_gates: QualityGateConfig::default(),
     };
@@ -180,7 +192,9 @@ fn test_scaffold_wasm_project() {
 
     let config = ScaffoldConfig {
         project_name: "my-wasm".into(),
-        template_type: TemplateType::Wasm { based_on: WasmFramework::WasmLabs },
+        template_type: TemplateType::Wasm {
+            based_on: WasmFramework::WasmLabs,
+        },
         features: vec![],
         quality_gates: QualityGateConfig::default(),
     };
@@ -211,8 +225,12 @@ fn test_create_project_structure_agent() {
     let temp_dir = TempDir::new().unwrap();
     let engine = ScaffoldEngine::new().unwrap();
 
-    let template_type = TemplateType::Agent { based_on: AgentFramework::Pforge };
-    engine.create_project_structure(temp_dir.path(), &template_type).unwrap();
+    let template_type = TemplateType::Agent {
+        based_on: AgentFramework::Pforge,
+    };
+    engine
+        .create_project_structure(temp_dir.path(), &template_type)
+        .unwrap();
 
     assert!(temp_dir.path().join("src/handlers").exists());
     assert!(temp_dir.path().join("tests").exists());
@@ -224,8 +242,12 @@ fn test_create_project_structure_wasm() {
     let temp_dir = TempDir::new().unwrap();
     let engine = ScaffoldEngine::new().unwrap();
 
-    let template_type = TemplateType::Wasm { based_on: WasmFramework::WasmLabs };
-    engine.create_project_structure(temp_dir.path(), &template_type).unwrap();
+    let template_type = TemplateType::Wasm {
+        based_on: WasmFramework::WasmLabs,
+    };
+    engine
+        .create_project_structure(temp_dir.path(), &template_type)
+        .unwrap();
 
     assert!(temp_dir.path().join("src").exists());
     assert!(temp_dir.path().join("tests").exists());
@@ -256,7 +278,9 @@ fn test_scaffold_pforge_installs_hooks() {
 
     let config = ScaffoldConfig {
         project_name: "hook-test-agent".into(),
-        template_type: TemplateType::Agent { based_on: AgentFramework::Pforge },
+        template_type: TemplateType::Agent {
+            based_on: AgentFramework::Pforge,
+        },
         features: vec![],
         quality_gates: QualityGateConfig::default(),
     };
@@ -290,7 +314,9 @@ fn test_scaffold_wasm_installs_hooks() {
 
     let config = ScaffoldConfig {
         project_name: "hook-test-wasm".into(),
-        template_type: TemplateType::Wasm { based_on: WasmFramework::WasmLabs },
+        template_type: TemplateType::Wasm {
+            based_on: WasmFramework::WasmLabs,
+        },
         features: vec![],
         quality_gates: QualityGateConfig::default(),
     };

@@ -813,9 +813,7 @@ impl SimpleDeepContext {
                                 // Count functions from the items
                                 let function_count = items
                                     .iter()
-                                    .filter(|item| {
-                                        matches!(item, AstItem::Function { .. })
-                                    })
+                                    .filter(|item| matches!(item, AstItem::Function { .. }))
                                     .count();
 
                                 info!("📊 Found {} functions in Bash script", function_count);
@@ -876,9 +874,7 @@ impl SimpleDeepContext {
                                 // Count functions from the items
                                 let function_count = items
                                     .iter()
-                                    .filter(|item| {
-                                        matches!(item, AstItem::Function { .. })
-                                    })
+                                    .filter(|item| matches!(item, AstItem::Function { .. }))
                                     .count();
 
                                 info!("📊 Found {} functions in PHP script", function_count);
@@ -939,9 +935,7 @@ impl SimpleDeepContext {
                                 // Count functions from the items
                                 let function_count = items
                                     .iter()
-                                    .filter(|item| {
-                                        matches!(item, AstItem::Function { .. })
-                                    })
+                                    .filter(|item| matches!(item, AstItem::Function { .. }))
                                     .count();
 
                                 info!("📊 Found {} functions in Swift source", function_count);
@@ -1360,13 +1354,19 @@ impl SimpleDeepContext {
             }
             "c" | "cpp" | "cc" | "cxx" => {
                 // C/C++: return_type function_name( - matches both top-level and class methods
-                if let Ok(re) = regex::Regex::new(r"(?m)^\s*\w+(?:\s*\**)?\s+(\w+)\s*\([^)]*\)\s*\{") {
+                if let Ok(re) =
+                    regex::Regex::new(r"(?m)^\s*\w+(?:\s*\**)?\s+(\w+)\s*\([^)]*\)\s*\{")
+                {
                     for cap in re.captures_iter(&content) {
                         if let Some(name) = cap.get(1) {
                             let name_str = name.as_str();
                             // Filter out C++ keywords that look like functions
-                            if name_str != "if" && name_str != "for" && name_str != "while"
-                                && name_str != "switch" && name_str != "catch" {
+                            if name_str != "if"
+                                && name_str != "for"
+                                && name_str != "while"
+                                && name_str != "switch"
+                                && name_str != "catch"
+                            {
                                 function_names.push(name_str.to_string());
                             }
                         }

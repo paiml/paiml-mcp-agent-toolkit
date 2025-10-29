@@ -33,16 +33,14 @@ impl Default for ServerConfig {
         // Load semantic config from environment variables if available
         let semantic_enabled = std::env::var("OPENAI_API_KEY").is_ok();
         let semantic_api_key = std::env::var("OPENAI_API_KEY").ok();
-        let semantic_db_path = std::env::var("PMAT_VECTOR_DB_PATH")
-            .ok()
-            .or_else(|| {
-                dirs::home_dir().map(|h| {
-                    h.join(".pmat")
-                        .join("embeddings.db")
-                        .to_string_lossy()
-                        .to_string()
-                })
-            });
+        let semantic_db_path = std::env::var("PMAT_VECTOR_DB_PATH").ok().or_else(|| {
+            dirs::home_dir().map(|h| {
+                h.join(".pmat")
+                    .join("embeddings.db")
+                    .to_string_lossy()
+                    .to_string()
+            })
+        });
         let semantic_workspace = std::env::var("PMAT_WORKSPACE")
             .ok()
             .map(std::path::PathBuf::from)
@@ -235,31 +233,31 @@ impl McpServer {
     }
 
     /// Register JVM language tools (Sprint 51)
-    /// 
+    ///
     /// Sprint 51 added comprehensive JVM language support with Java and Scala
     /// analysis. These tools provide:
-    /// 
+    ///
     /// - Java analysis: Class, interface, and method detection with complexity metrics
     /// - Scala analysis: Classes, traits, objects, and case classes with functional metrics
     /// - Mutation testing for Java and Scala code
-    /// 
+    ///
     /// Both tools are feature-gated behind the "java-ast" and "scala-ast" features.
     async fn register_jvm_tools(&self) -> Result<(), Box<dyn std::error::Error>> {
         let mut tools = self.context.tools.write();
         let mut registered_tools = 0;
-        
+
         // Register Java analysis tools if feature is enabled
         #[cfg(feature = "java-ast")]
         {
             use crate::mcp_integration::java_tools::*;
-            
+
             // Register Java analysis tool
             tools.register(Arc::new(JavaAnalysisTool::new(
                 self.context.agent_registry.clone(),
             )));
             tracing::info!("✓ Registered analyze_java tool");
             registered_tools += 1;
-            
+
             // Register Java mutation testing tool
             tools.register(Arc::new(JavaMutationTool::new(
                 self.context.agent_registry.clone(),
@@ -267,19 +265,19 @@ impl McpServer {
             tracing::info!("✓ Registered mutation_test_java tool");
             registered_tools += 1;
         }
-        
+
         // Register Scala analysis tools if feature is enabled
         #[cfg(feature = "scala-ast")]
         {
             use crate::mcp_integration::scala_tools::*;
-            
+
             // Register Scala analysis tool
             tools.register(Arc::new(ScalaAnalysisTool::new(
                 self.context.agent_registry.clone(),
             )));
             tracing::info!("✓ Registered analyze_scala tool");
             registered_tools += 1;
-            
+
             // Register Scala mutation testing tool
             tools.register(Arc::new(ScalaMutationTool::new(
                 self.context.agent_registry.clone(),
@@ -287,16 +285,19 @@ impl McpServer {
             tracing::info!("✓ Registered mutation_test_scala tool");
             registered_tools += 1;
         }
-        
+
         if registered_tools > 0 {
-            tracing::info!("✅ JVM language tools registered successfully ({} tools)", registered_tools);
+            tracing::info!(
+                "✅ JVM language tools registered successfully ({} tools)",
+                registered_tools
+            );
         } else {
             tracing::info!("ℹ️ No JVM language tools registered (features not enabled)");
         }
-        
+
         Ok(())
     }
-    
+
     /// Register cross-language analysis tools (Sprint 52)
     ///
     /// Sprint 52 adds cross-language analysis capabilities to detect relationships
@@ -309,23 +310,23 @@ impl McpServer {
     /// - detect_language_boundaries: Detects language boundaries and interop points
     async fn register_polyglot_tools(&self) -> Result<(), Box<dyn std::error::Error>> {
         use crate::mcp_integration::polyglot_tools::*;
-        
+
         let mut tools = self.context.tools.write();
-        
+
         // Register polyglot analysis tool
         tools.register(Arc::new(PolyglotAnalysisTool::new(
             self.context.agent_registry.clone(),
         )));
         tracing::info!("✓ Registered analyze_polyglot tool");
-        
+
         // Register language boundary tool
         tools.register(Arc::new(LanguageBoundaryTool::new(
             self.context.agent_registry.clone(),
         )));
         tracing::info!("✓ Registered detect_language_boundaries tool");
-        
+
         tracing::info!("✅ Cross-language analysis tools registered successfully (2 tools)");
-        
+
         Ok(())
     }
 
@@ -382,20 +383,16 @@ impl McpServer {
             .as_ref()
             .ok_or("Semantic search enabled but API key not configured")?;
 
-        let db_path = self
-            .config
-            .semantic_db_path
-            .clone()
-            .unwrap_or_else(|| {
-                dirs::home_dir()
-                    .map(|h| {
-                        h.join(".pmat")
-                            .join("embeddings.db")
-                            .to_string_lossy()
-                            .to_string()
-                    })
-                    .unwrap_or_else(|| "embeddings.db".to_string())
-            });
+        let db_path = self.config.semantic_db_path.clone().unwrap_or_else(|| {
+            dirs::home_dir()
+                .map(|h| {
+                    h.join(".pmat")
+                        .join("embeddings.db")
+                        .to_string_lossy()
+                        .to_string()
+                })
+                .unwrap_or_else(|| "embeddings.db".to_string())
+        });
 
         let workspace = self
             .config

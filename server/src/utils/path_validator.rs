@@ -125,7 +125,7 @@ impl PathValidator {
         }
         Ok(())
     }
-    
+
     /// Check if a path exists and is a directory (returns boolean)
     ///
     /// Unlike ensure_directory, this returns a boolean instead of a Result
@@ -270,37 +270,37 @@ mod tests {
 
         Ok(())
     }
-    
+
     #[test]
     fn test_boolean_path_validators() -> Result<()> {
         let temp_dir = TempDir::new()?;
-        
+
         // Create a file
         let file_path = temp_dir.path().join("test_file.txt");
         fs::write(&file_path, "test content")?;
-        
+
         // Create a directory
         let dir_path = temp_dir.path().join("test_dir");
         fs::create_dir(&dir_path)?;
-        
+
         // Test non-existent path
         let non_existent = temp_dir.path().join("does_not_exist");
-        
+
         // Test path_exists
         assert!(PathValidator::path_exists(&file_path));
         assert!(PathValidator::path_exists(&dir_path));
         assert!(!PathValidator::path_exists(&non_existent));
-        
+
         // Test is_valid_file
         assert!(PathValidator::is_valid_file(&file_path));
         assert!(!PathValidator::is_valid_file(&dir_path));
         assert!(!PathValidator::is_valid_file(&non_existent));
-        
+
         // Test is_valid_directory
         assert!(PathValidator::is_valid_directory(&dir_path));
         assert!(!PathValidator::is_valid_directory(&file_path));
         assert!(!PathValidator::is_valid_directory(&non_existent));
-        
+
         Ok(())
     }
 
@@ -335,7 +335,7 @@ mod tests {
         let dir_path = temp_dir.path().join("test_dir");
         fs::create_dir(&dir_path)?;
         assert!(PathValidator::validate_directory_anyhow(&dir_path).is_ok());
-        
+
         // Test boolean methods
         assert!(PathValidator::path_exists(&file_path));
         assert!(PathValidator::is_valid_file(&file_path));

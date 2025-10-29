@@ -57,13 +57,7 @@ impl RustMutationGenerator {
     }
 
     /// Recursively visit AST nodes and apply mutation operators
-    fn visit_node(
-        &self,
-        node: &Node,
-        source: &[u8],
-        mutants: &mut Vec<Mutant>,
-        file_path: &str,
-    ) {
+    fn visit_node(&self, node: &Node, source: &[u8], mutants: &mut Vec<Mutant>, file_path: &str) {
         // Try to apply each operator to this node
         for operator in &self.operators {
             if operator.can_mutate(node, source) {
@@ -80,7 +74,10 @@ impl RustMutationGenerator {
                     let hash = format!("{:x}", hasher.finalize());
 
                     let mutant = Mutant {
-                        id: format!("{}_{}_{}_{}", operator_name, mutation.location.line, mutation.location.column, index),
+                        id: format!(
+                            "{}_{}_{}_{}",
+                            operator_name, mutation.location.line, mutation.location.column, index
+                        ),
                         original_file: PathBuf::from(file_path),
                         mutated_source: mutation.source.clone(),
                         location: mutation.location.clone(),

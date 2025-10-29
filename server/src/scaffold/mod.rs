@@ -19,20 +19,21 @@ mod property_tests;
 // Re-export existing agent scaffolding
 pub use agent::{
     scaffold_agent, AgentContext, AgentContextBuilder, AgentFeature, AgentTemplate,
-    InteractiveScaffolder, QualityLevel,
-    TemplateRegistry as AgentTemplateRegistry,
+    InteractiveScaffolder, QualityLevel, TemplateRegistry as AgentTemplateRegistry,
 };
 
 // TICKET-PMAT-5001: Core ScaffoldEngine exports
-pub use config::{ScaffoldConfig, TemplateType, AgentFramework, WasmFramework, Feature, QualityGateConfig};
-pub use errors::{ScaffoldError, Result};
+pub use config::{
+    AgentFramework, Feature, QualityGateConfig, ScaffoldConfig, TemplateType, WasmFramework,
+};
+pub use errors::{Result, ScaffoldError};
 
 // TICKET-PMAT-5002: Template system exports
 pub use template::{Template, TemplateRegistry};
 
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::fs;
 
 /// Core scaffolding engine for creating new projects from templates
 pub struct ScaffoldEngine {}
@@ -65,8 +66,7 @@ impl ScaffoldEngine {
             return Err(ScaffoldError::DirectoryExists(path));
         }
 
-        fs::create_dir_all(&path)
-            .map_err(ScaffoldError::IoError)?;
+        fs::create_dir_all(&path).map_err(ScaffoldError::IoError)?;
 
         Ok(path)
     }
@@ -85,7 +85,10 @@ impl ScaffoldEngine {
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(ScaffoldError::GitError(format!("git init failed: {}", stderr)));
+            return Err(ScaffoldError::GitError(format!(
+                "git init failed: {}",
+                stderr
+            )));
         }
 
         Ok(())
@@ -170,11 +173,7 @@ impl ScaffoldEngine {
             let template = registry.get(&template_name)?;
             let rendered = template.render(&vars)?;
 
-            let file_path = self.get_file_path(
-                project_dir,
-                &template_name,
-                &config.template_type,
-            );
+            let file_path = self.get_file_path(project_dir, &template_name, &config.template_type);
 
             self.write_file(&file_path, &rendered)?;
         }
@@ -187,13 +186,19 @@ impl ScaffoldEngine {
     /// # Complexity
     /// - Time: O(1)
     /// - Cyclomatic: 1
-    fn prepare_template_vars(&self, config: &ScaffoldConfig) -> std::collections::HashMap<String, String> {
+    fn prepare_template_vars(
+        &self,
+        config: &ScaffoldConfig,
+    ) -> std::collections::HashMap<String, String> {
         use std::collections::HashMap;
 
         let mut vars = HashMap::new();
         vars.insert("project_name".into(), config.project_name.clone());
         vars.insert("author".into(), "Developer".into());
-        vars.insert("description".into(), format!("{} project", config.project_name));
+        vars.insert(
+            "description".into(),
+            format!("{} project", config.project_name),
+        );
 
         // Add handler-specific vars
         vars.insert("handler_name".into(), "Example".into());
@@ -236,8 +241,7 @@ impl ScaffoldEngine {
             fs::create_dir_all(parent)?;
         }
 
-        fs::write(path, content)
-            .map_err(ScaffoldError::IoError)?;
+        fs::write(path, content).map_err(ScaffoldError::IoError)?;
 
         Ok(())
     }
@@ -248,7 +252,9 @@ impl ScaffoldEngine {
     /// - Time: O(1)
     /// - Cyclomatic: 2
     fn install_hooks(&self, project_dir: &Path, config: &ScaffoldConfig) -> Result<()> {
-        use crate::scaffold::hooks::{HookConfig, generate_pre_commit_hook, install_pre_commit_hook};
+        use crate::scaffold::hooks::{
+            generate_pre_commit_hook, install_pre_commit_hook, HookConfig,
+        };
 
         let hook_config = HookConfig {
             project_type: config.template_type.clone(),
@@ -292,7 +298,5 @@ fn validate_project_name(name: &str) -> Result<()> {
 /// - Time: O(n) where n is length of name
 /// - Cyclomatic: 4 (empty, length, contains checks)
 fn is_valid_name(name: &str) -> bool {
-    !name.is_empty()
-        && name.len() < 256
-        && !name.contains(['/', '\\', '\0'])
+    !name.is_empty() && name.len() < 256 && !name.contains(['/', '\\', '\0'])
 }

@@ -113,14 +113,10 @@ fn generate_suggestions(file: &PathBuf, survived_count: usize) -> Vec<String> {
     ));
 
     if survived_count > 5 {
-        suggestions.push(
-            "Consider adding property-based tests to catch edge cases".to_string(),
-        );
+        suggestions.push("Consider adding property-based tests to catch edge cases".to_string());
     }
 
-    suggestions.push(
-        "Review boundary conditions and error handling in this file".to_string(),
-    );
+    suggestions.push("Review boundary conditions and error handling in this file".to_string());
 
     suggestions
 }
@@ -219,7 +215,11 @@ mod tests {
         let scorer = MutationScorer::new(results);
         let weak_spots = scorer.weak_spots();
 
-        assert_eq!(weak_spots.len(), 0, "Empty results should have no weak spots");
+        assert_eq!(
+            weak_spots.len(),
+            0,
+            "Empty results should have no weak spots"
+        );
     }
 
     #[test]
@@ -233,7 +233,11 @@ mod tests {
         let scorer = MutationScorer::new(results);
         let weak_spots = scorer.weak_spots();
 
-        assert_eq!(weak_spots.len(), 0, "No survivors should mean no weak spots");
+        assert_eq!(
+            weak_spots.len(),
+            0,
+            "No survivors should mean no weak spots"
+        );
     }
 
     #[test]
@@ -322,7 +326,9 @@ mod tests {
         // Exactly 5 should NOT include property-based test suggestion
         let suggestions_five = generate_suggestions(&file, 5);
         assert_eq!(suggestions_five.len(), 2);
-        assert!(!suggestions_five.iter().any(|s| s.contains("property-based")));
+        assert!(!suggestions_five
+            .iter()
+            .any(|s| s.contains("property-based")));
 
         // 6 or more SHOULD include property-based test suggestion
         let suggestions_six = generate_suggestions(&file, 6);
@@ -358,7 +364,11 @@ mod tests {
         assert_eq!(summary.killed, 3);
         assert_eq!(summary.survived, 0);
         assert_eq!(summary.mutation_score, 1.0);
-        assert_eq!(summary.weak_spots.len(), 0, "Perfect score should have no weak spots");
+        assert_eq!(
+            summary.weak_spots.len(),
+            0,
+            "Perfect score should have no weak spots"
+        );
     }
 
     #[test]

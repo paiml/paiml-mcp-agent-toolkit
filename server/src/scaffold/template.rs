@@ -1,8 +1,8 @@
 // Template rendering system - TICKET-PMAT-5002
 // Simple variable substitution for code generation
 
+use crate::scaffold::errors::{Result, ScaffoldError};
 use std::collections::HashMap;
-use crate::scaffold::errors::{ScaffoldError, Result};
 
 /// Template with variable substitution
 #[derive(Debug, Clone)]
@@ -56,10 +56,11 @@ impl Template {
             // Extract unreplaced variable for error message
             if let Some(start) = result.find("{{") {
                 if let Some(end) = result[start..].find("}}") {
-                    let var_name = &result[start+2..start+end];
-                    return Err(ScaffoldError::InvalidProjectName(
-                        format!("Unreplaced template variable: {}", var_name)
-                    ));
+                    let var_name = &result[start + 2..start + end];
+                    return Err(ScaffoldError::InvalidProjectName(format!(
+                        "Unreplaced template variable: {}",
+                        var_name
+                    )));
                 }
             }
         }
@@ -74,68 +75,52 @@ impl Template {
 
     /// pforge.yaml template
     pub fn pforge_yaml() -> Self {
-        Self::new(
-            "pforge.yaml",
-            include_str!("templates/pforge.yaml.tmpl")
-        ).expect("pforge.yaml template should be valid")
+        Self::new("pforge.yaml", include_str!("templates/pforge.yaml.tmpl"))
+            .expect("pforge.yaml template should be valid")
     }
 
     /// Cargo.toml template
     pub fn cargo_toml() -> Self {
-        Self::new(
-            "Cargo.toml",
-            include_str!("templates/Cargo.toml.tmpl")
-        ).expect("Cargo.toml template should be valid")
+        Self::new("Cargo.toml", include_str!("templates/Cargo.toml.tmpl"))
+            .expect("Cargo.toml template should be valid")
     }
 
     /// Handler template
     pub fn handler_rs() -> Self {
-        Self::new(
-            "handler.rs",
-            include_str!("templates/handler.rs.tmpl")
-        ).expect("handler.rs template should be valid")
+        Self::new("handler.rs", include_str!("templates/handler.rs.tmpl"))
+            .expect("handler.rs template should be valid")
     }
 
     /// README template
     pub fn readme_md() -> Self {
-        Self::new(
-            "README.md",
-            include_str!("templates/README.md.tmpl")
-        ).expect("README.md template should be valid")
+        Self::new("README.md", include_str!("templates/README.md.tmpl"))
+            .expect("README.md template should be valid")
     }
 
     // WASM templates (TICKET-PMAT-5003)
 
     /// WASM Cargo.toml template
     pub fn wasm_cargo_toml() -> Self {
-        Self::new(
-            "Cargo.toml",
-            include_str!("templates/wasm_Cargo.toml.tmpl")
-        ).expect("wasm Cargo.toml template should be valid")
+        Self::new("Cargo.toml", include_str!("templates/wasm_Cargo.toml.tmpl"))
+            .expect("wasm Cargo.toml template should be valid")
     }
 
     /// WASM Makefile template
     pub fn wasm_makefile() -> Self {
-        Self::new(
-            "Makefile",
-            include_str!("templates/wasm_Makefile.tmpl")
-        ).expect("wasm Makefile template should be valid")
+        Self::new("Makefile", include_str!("templates/wasm_Makefile.tmpl"))
+            .expect("wasm Makefile template should be valid")
     }
 
     /// WASM lib.rs template
     pub fn wasm_lib_rs() -> Self {
-        Self::new(
-            "lib.rs",
-            include_str!("templates/wasm_lib.rs.tmpl")
-        ).expect("wasm lib.rs template should be valid")
+        Self::new("lib.rs", include_str!("templates/wasm_lib.rs.tmpl"))
+            .expect("wasm lib.rs template should be valid")
     }
 
     /// WASM VFS template
     pub fn wasm_vfs_rs() -> Self {
-        Self::new(
-            "vfs.rs",
-            include_str!("templates/wasm_vfs.rs.tmpl")
-        ).expect("wasm vfs.rs template should be valid")
+        Self::new("vfs.rs", include_str!("templates/wasm_vfs.rs.tmpl"))
+            .expect("wasm vfs.rs template should be valid")
     }
 }
 
@@ -172,10 +157,9 @@ impl TemplateRegistry {
     /// - Time: O(1) average
     /// - Cyclomatic: 2 (lookup + error)
     pub fn get(&self, name: &str) -> Result<&Template> {
-        self.templates.get(name)
-            .ok_or_else(|| ScaffoldError::InvalidProjectName(
-                format!("Template not found: {}", name)
-            ))
+        self.templates.get(name).ok_or_else(|| {
+            ScaffoldError::InvalidProjectName(format!("Template not found: {}", name))
+        })
     }
 
     /// List all template names

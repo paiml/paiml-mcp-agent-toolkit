@@ -35,7 +35,12 @@ impl GoMutationGenerator {
         let tree = self.parse_go(source)?;
         let mut mutants = Vec::new();
 
-        self.visit_node(&tree.root_node(), source.as_bytes(), &mut mutants, file_path);
+        self.visit_node(
+            &tree.root_node(),
+            source.as_bytes(),
+            &mut mutants,
+            file_path,
+        );
 
         Ok(mutants)
     }
@@ -53,13 +58,7 @@ impl GoMutationGenerator {
     }
 
     /// Recursively visit AST nodes and apply mutation operators
-    fn visit_node(
-        &self,
-        node: &Node,
-        source: &[u8],
-        mutants: &mut Vec<Mutant>,
-        file_path: &str,
-    ) {
+    fn visit_node(&self, node: &Node, source: &[u8], mutants: &mut Vec<Mutant>, file_path: &str) {
         // Apply all operators to current node
         for operator in &self.operators {
             if operator.can_mutate(node, source) {

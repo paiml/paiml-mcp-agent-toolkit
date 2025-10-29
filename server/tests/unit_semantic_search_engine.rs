@@ -18,9 +18,12 @@ async fn setup_test_engine() -> (SemanticSearchEngine, TempDir) {
     let db_path = temp_dir.path().join("test_search.db");
 
     // Use mock API key for tests
-    let engine = SemanticSearchEngine::new("sk-test-key-1234567890abcdefghijklmnop", db_path.to_str().unwrap())
-        .await
-        .unwrap();
+    let engine = SemanticSearchEngine::new(
+        "sk-test-key-1234567890abcdefghijklmnop",
+        db_path.to_str().unwrap(),
+    )
+    .await
+    .unwrap();
 
     (engine, temp_dir)
 }
@@ -147,7 +150,10 @@ async fn test_find_similar_code() {
     engine.index_directory(&fixtures_dir).await.unwrap();
 
     let file_path = fixtures_dir.join("src/math.rs");
-    let results = engine.find_similar(file_path.to_str().unwrap(), 5).await.unwrap();
+    let results = engine
+        .find_similar(file_path.to_str().unwrap(), 5)
+        .await
+        .unwrap();
 
     // Should find at least 1 result (the file itself)
     assert!(results.len() > 0);
@@ -441,5 +447,8 @@ fn test_index_stats_display() {
 
     assert_eq!(stats.total_files, 10);
     assert_eq!(stats.total_chunks, 50);
-    assert_eq!(stats.created + stats.updated + stats.skipped, stats.total_chunks);
+    assert_eq!(
+        stats.created + stats.updated + stats.skipped,
+        stats.total_chunks
+    );
 }

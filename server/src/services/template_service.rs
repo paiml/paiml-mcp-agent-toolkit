@@ -354,13 +354,26 @@ pub async fn search_templates<T: TemplateServerTrait>(
     Ok(results)
 }
 
-fn compute_template_relevance(template: Arc<crate::models::template::TemplateResource>, query_lower: &str) -> Option<SearchResult> {
+fn compute_template_relevance(
+    template: Arc<crate::models::template::TemplateResource>,
+    query_lower: &str,
+) -> Option<SearchResult> {
     let mut matches = Vec::new();
     let mut relevance = 0.0_f32;
 
     check_name_match(&template.name, query_lower, &mut matches, &mut relevance);
-    check_description_match(&template.description, query_lower, &mut matches, &mut relevance);
-    check_parameter_matches(&template.parameters, query_lower, &mut matches, &mut relevance);
+    check_description_match(
+        &template.description,
+        query_lower,
+        &mut matches,
+        &mut relevance,
+    );
+    check_parameter_matches(
+        &template.parameters,
+        query_lower,
+        &mut matches,
+        &mut relevance,
+    );
 
     if matches.is_empty() {
         None
@@ -376,18 +389,32 @@ fn compute_template_relevance(template: Arc<crate::models::template::TemplateRes
 fn check_name_match(name: &str, query: &str, matches: &mut Vec<String>, relevance: &mut f32) {
     if name.to_lowercase().contains(query) {
         matches.push(format!("name: {}", name));
-        *relevance += if name.to_lowercase() == query { 10.0 } else { 5.0 };
+        *relevance += if name.to_lowercase() == query {
+            10.0
+        } else {
+            5.0
+        };
     }
 }
 
-fn check_description_match(desc: &str, query: &str, matches: &mut Vec<String>, relevance: &mut f32) {
+fn check_description_match(
+    desc: &str,
+    query: &str,
+    matches: &mut Vec<String>,
+    relevance: &mut f32,
+) {
     if desc.to_lowercase().contains(query) {
         matches.push("description".to_string());
         *relevance += 3.0;
     }
 }
 
-fn check_parameter_matches(params: &[crate::models::template::ParameterSpec], query: &str, matches: &mut Vec<String>, relevance: &mut f32) {
+fn check_parameter_matches(
+    params: &[crate::models::template::ParameterSpec],
+    query: &str,
+    matches: &mut Vec<String>,
+    relevance: &mut f32,
+) {
     for param in params {
         if param.name.to_lowercase().contains(query) {
             matches.push(format!("parameter: {}", param.name));

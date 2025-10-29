@@ -1,8 +1,8 @@
 // Error types for scaffolding - TICKET-PMAT-5001
 // Extends existing ScaffoldError from agent module
 
-use std::path::PathBuf;
 use std::fmt;
+use std::path::PathBuf;
 
 pub type Result<T> = std::result::Result<T, ScaffoldError>;
 

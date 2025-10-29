@@ -14,7 +14,7 @@ pub mod satd_item;
 
 // Re-export quality gate executor (TICKET-PMAT-5020)
 pub use gates::{
-    execute_all_gates, execute_clippy, execute_coverage, execute_complexity, execute_tests,
+    execute_all_gates, execute_clippy, execute_complexity, execute_coverage, execute_tests,
     format_report as format_quality_report, GateConfig, GateError, GateResult, QualityReport,
 };
 

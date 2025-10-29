@@ -30,13 +30,18 @@ async fn red_parallel_execution_must_be_faster_than_sequential() {
 
     // Parallel execution (RED: This method doesn't exist yet!)
     let start = Instant::now();
-    let par_results = executor.execute_mutants_parallel(&mutants, 4).await.unwrap();
+    let par_results = executor
+        .execute_mutants_parallel(&mutants, 4)
+        .await
+        .unwrap();
     let par_time = start.elapsed();
 
     // Parallel should be faster (at least 2× with 4 workers)
-    assert!(par_time < seq_time / 2,
+    assert!(
+        par_time < seq_time / 2,
         "Parallel ({:?}) should be at least 2× faster than sequential ({:?})",
-        par_time, seq_time
+        par_time,
+        seq_time
     );
 
     // Results should be identical (order doesn't matter)
@@ -59,7 +64,10 @@ async fn red_parallel_execution_must_handle_file_conflicts_safely() {
     let executor = MutantExecutor::new(work_dir);
 
     // RED: This should not corrupt files or cause race conditions
-    let results = executor.execute_mutants_parallel(&mutants, 3).await.unwrap();
+    let results = executor
+        .execute_mutants_parallel(&mutants, 3)
+        .await
+        .unwrap();
 
     assert_eq!(results.len(), 3);
 
@@ -83,7 +91,10 @@ async fn red_parallel_execution_must_respect_worker_count() {
     let executor = MutantExecutor::new(work_dir);
 
     // RED: Should use exactly N workers (not more, not less)
-    let results = executor.execute_mutants_parallel(&mutants, 2).await.unwrap();
+    let results = executor
+        .execute_mutants_parallel(&mutants, 2)
+        .await
+        .unwrap();
 
     assert_eq!(results.len(), 10);
 
@@ -107,12 +118,17 @@ async fn red_parallel_execution_must_preserve_original_files() {
     let executor = MutantExecutor::new(work_dir);
 
     // RED: Parallel execution
-    let _ = executor.execute_mutants_parallel(&mutants, 2).await.unwrap();
+    let _ = executor
+        .execute_mutants_parallel(&mutants, 2)
+        .await
+        .unwrap();
 
     // Original file must be unchanged
     let final_content = std::fs::read_to_string(&test_file).unwrap();
-    assert_eq!(final_content, original_content,
-        "Original file was corrupted during parallel execution!");
+    assert_eq!(
+        final_content, original_content,
+        "Original file was corrupted during parallel execution!"
+    );
 
     // Cleanup
     let _ = std::fs::remove_file(&test_file);
@@ -130,7 +146,10 @@ async fn red_parallel_execution_must_not_deadlock() {
 
     // RED: Should complete without deadlock
     let start = Instant::now();
-    let results = executor.execute_mutants_parallel(&mutants, 8).await.unwrap();
+    let results = executor
+        .execute_mutants_parallel(&mutants, 8)
+        .await
+        .unwrap();
     let elapsed = start.elapsed();
 
     assert_eq!(results.len(), 100);

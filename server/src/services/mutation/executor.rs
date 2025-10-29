@@ -56,10 +56,7 @@ impl MutantExecutor {
             .context("Failed to write mutated source")?;
 
         // Step 3: Run tests with timeout (smart filtering)
-        let test_result = timeout(
-            self.timeout,
-            self.run_cargo_test_for_mutant(mutant)
-        ).await;
+        let test_result = timeout(self.timeout, self.run_cargo_test_for_mutant(mutant)).await;
 
         // Step 4: Explicitly restore file (not strictly necessary, but preferred)
         // The guard's Drop implementation is our safety net if this fails
@@ -79,7 +76,11 @@ impl MutantExecutor {
             }
             Err(_) => {
                 // Timeout
-                (MutantStatus::Timeout, vec![], Some("Test execution timed out".to_string()))
+                (
+                    MutantStatus::Timeout,
+                    vec![],
+                    Some("Test execution timed out".to_string()),
+                )
             }
         };
 
@@ -97,7 +98,12 @@ impl MutantExecutor {
         let mut results = Vec::new();
 
         for (i, mutant) in mutants.iter().enumerate() {
-            println!("  [{}/{}] Testing mutant {}...", i + 1, mutants.len(), mutant.id);
+            println!(
+                "  [{}/{}] Testing mutant {}...",
+                i + 1,
+                mutants.len(),
+                mutant.id
+            );
 
             match self.execute_mutant(mutant).await {
                 Ok(result) => {
@@ -108,7 +114,10 @@ impl MutantExecutor {
                         MutantStatus::Timeout => "⏱️",
                         _ => "❓",
                     };
-                    println!("    {} {:?} ({}ms)", status_symbol, result.status, result.execution_time_ms);
+                    println!(
+                        "    {} {:?} ({}ms)",
+                        status_symbol, result.status, result.execution_time_ms
+                    );
                     results.push(result);
                 }
                 Err(e) => {
@@ -137,8 +146,8 @@ impl MutantExecutor {
         mutants: &[Mutant],
         workers: usize,
     ) -> Result<Vec<MutationResult>> {
-        use tokio::sync::Semaphore;
         use std::sync::Arc;
+        use tokio::sync::Semaphore;
 
         println!("  🚀 Parallel execution with {} workers", workers);
 
@@ -158,7 +167,10 @@ impl MutantExecutor {
                 // Acquire permit (blocks if all workers busy)
                 let _permit = sem.acquire().await.unwrap();
 
-                println!("  [{}/{}] Testing mutant {}...", index, total_mutants, mutant.id);
+                println!(
+                    "  [{}/{}] Testing mutant {}...",
+                    index, total_mutants, mutant.id
+                );
 
                 match executor.execute_mutant_isolated(&mutant).await {
                     Ok(result) => {
@@ -169,7 +181,10 @@ impl MutantExecutor {
                             MutantStatus::Timeout => "⏱️",
                             _ => "❓",
                         };
-                        println!("    {} {:?} ({}ms)", status_symbol, result.status, result.execution_time_ms);
+                        println!(
+                            "    {} {:?} ({}ms)",
+                            status_symbol, result.status, result.execution_time_ms
+                        );
                         Ok(result)
                     }
                     Err(e) => {
@@ -211,10 +226,7 @@ impl MutantExecutor {
 
         // Create unique temp file for this mutant (no conflicts!)
         let temp_dir = std::env::temp_dir();
-        let unique_file = temp_dir.join(format!("pmat_{}_{}.rs",
-            std::process::id(),
-            mutant.id
-        ));
+        let unique_file = temp_dir.join(format!("pmat_{}_{}.rs", std::process::id(), mutant.id));
 
         // Write mutated source to unique temp file
         fs::write(&unique_file, &mutant.mutated_source)
@@ -222,10 +234,7 @@ impl MutantExecutor {
             .context("Failed to write isolated mutant")?;
 
         // Run tests with timeout (smart filtering)
-        let test_result = timeout(
-            self.timeout,
-            self.run_cargo_test_for_mutant(mutant)
-        ).await;
+        let test_result = timeout(self.timeout, self.run_cargo_test_for_mutant(mutant)).await;
 
         // Cleanup temp file
         let _ = fs::remove_file(&unique_file).await;
@@ -235,12 +244,12 @@ impl MutantExecutor {
 
         let (status, test_failures, error_message) = match test_result {
             Ok(Ok(output)) => self.parse_test_output(&output),
-            Ok(Err(e)) => {
-                (MutantStatus::CompileError, vec![], Some(e.to_string()))
-            }
-            Err(_) => {
-                (MutantStatus::Timeout, vec![], Some("Test execution timed out".to_string()))
-            }
+            Ok(Err(e)) => (MutantStatus::CompileError, vec![], Some(e.to_string())),
+            Err(_) => (
+                MutantStatus::Timeout,
+                vec![],
+                Some("Test execution timed out".to_string()),
+            ),
         };
 
         Ok(MutationResult {
@@ -273,7 +282,7 @@ impl MutantExecutor {
                     fs::create_dir_all(parent).await?;
                 }
             }
-            
+
             println!("  📋 Creating new state file at {}", state_path.display());
             let state = super::state::MutationState::new(
                 &self.work_dir,
@@ -282,32 +291,33 @@ impl MutantExecutor {
                 false,
                 None,
             );
-            
+
             // Save initial state
             state.save(state_path).await?;
             state
         };
-        
+
         // Handle case where everything is already done
         if state.is_complete() {
             println!("  ✅ All mutants already tested!");
             return Ok(state.completed_mutants);
         }
-        
-        println!("  🚀 Resuming mutation testing with {} mutants to process ({:.1}% complete)",
+
+        println!(
+            "  🚀 Resuming mutation testing with {} mutants to process ({:.1}% complete)",
             state.pending_mutants.len(),
             state.completion_percentage()
         );
-        
+
         // Set up periodic state saving
         let (tx, mut rx) = tokio::sync::mpsc::channel::<()>(1);
-        
+
         // Spawn save task
         let state_path_clone = state_path.to_path_buf();
         let state_clone = state.clone();
         let save_task = tokio::spawn(async move {
             let mut interval = tokio::time::interval(save_interval);
-            
+
             loop {
                 tokio::select! {
                     _ = interval.tick() => {
@@ -329,50 +339,52 @@ impl MutantExecutor {
                 }
             }
         });
-        
+
         // Set up signal handler
         let (signal_tx, mut signal_rx) = tokio::sync::mpsc::channel::<()>(1);
-        
+
         #[cfg(unix)]
         {
             use tokio::signal::unix::{signal, SignalKind};
             let signal_tx_clone = signal_tx.clone();
-            
+
             // Handle SIGINT
             tokio::spawn(async move {
-                let mut sigint = signal(SignalKind::interrupt()).expect("Failed to set up SIGINT handler");
-                
+                let mut sigint =
+                    signal(SignalKind::interrupt()).expect("Failed to set up SIGINT handler");
+
                 sigint.recv().await;
                 println!("\n  🛑 Received interrupt signal, stopping gracefully...");
                 let _ = signal_tx_clone.send(()).await;
             });
-            
+
             // Handle SIGTERM
             let signal_tx_clone = signal_tx.clone();
             tokio::spawn(async move {
-                let mut sigterm = signal(SignalKind::terminate()).expect("Failed to set up SIGTERM handler");
-                
+                let mut sigterm =
+                    signal(SignalKind::terminate()).expect("Failed to set up SIGTERM handler");
+
                 sigterm.recv().await;
                 println!("\n  🛑 Received termination signal, stopping gracefully...");
                 let _ = signal_tx_clone.send(()).await;
             });
         }
-        
+
         // Process mutants
         let mut results = state.completed_mutants.clone();
-        
+
         // First clone the pending mutants to avoid the borrow conflict
         let pending_mutants = state.pending_mutants.clone();
-        
+
         'outer: for mutant in pending_mutants.iter() {
             // Check for signal
             if let Ok(()) = signal_rx.try_recv() {
                 println!("  🛑 Graceful shutdown requested, stopping execution");
                 break 'outer;
             }
-            
+
             println!("  [{}] Testing mutant {}...", results.len() + 1, mutant.id);
-            
+
             match self.execute_mutant(mutant).await {
                 Ok(result) => {
                     let status_symbol = match result.status {
@@ -382,8 +394,11 @@ impl MutantExecutor {
                         MutantStatus::Timeout => "⏱️",
                         _ => "❓",
                     };
-                    println!("    {} {:?} ({}ms)", status_symbol, result.status, result.execution_time_ms);
-                    
+                    println!(
+                        "    {} {:?} ({}ms)",
+                        status_symbol, result.status, result.execution_time_ms
+                    );
+
                     // Add to state and results
                     {
                         // Use a scope to drop the mutable borrow before continuing
@@ -393,7 +408,7 @@ impl MutantExecutor {
                 }
                 Err(e) => {
                     eprintln!("    ⚠️  Error executing mutant {}: {}", mutant.id, e);
-                    
+
                     // Create error result
                     let error_result = MutationResult {
                         mutant: mutant.clone(),
@@ -402,7 +417,7 @@ impl MutantExecutor {
                         execution_time_ms: 0,
                         error_message: Some(e.to_string()),
                     };
-                    
+
                     // Add to state and results
                     {
                         // Use a scope to drop the mutable borrow before continuing
@@ -412,30 +427,45 @@ impl MutantExecutor {
                 }
             }
         }
-        
+
         // Signal save task to complete
         let _ = tx.send(()).await;
-        
+
         // Wait for save task
         if let Err(e) = save_task.await {
             eprintln!("  ⚠️  Error in state saving task: {}", e);
         }
-        
-        println!("  ✅ Mutation testing complete! Processed {} mutants", results.len());
-        println!("  📊 Stats: {} killed, {} survived, {} errors",
-            results.iter().filter(|r| r.status == MutantStatus::Killed).count(),
-            results.iter().filter(|r| r.status == MutantStatus::Survived).count(),
-            results.iter().filter(|r| r.status == MutantStatus::CompileError || r.status == MutantStatus::Timeout).count()
+
+        println!(
+            "  ✅ Mutation testing complete! Processed {} mutants",
+            results.len()
         );
-        
+        println!(
+            "  📊 Stats: {} killed, {} survived, {} errors",
+            results
+                .iter()
+                .filter(|r| r.status == MutantStatus::Killed)
+                .count(),
+            results
+                .iter()
+                .filter(|r| r.status == MutantStatus::Survived)
+                .count(),
+            results
+                .iter()
+                .filter(
+                    |r| r.status == MutantStatus::CompileError || r.status == MutantStatus::Timeout
+                )
+                .count()
+        );
+
         Ok(results)
     }
-    
+
     /// Get default state path for a project
     pub fn get_default_state_path(&self) -> PathBuf {
         self.work_dir.join(".pmat").join("mutation_state.json")
     }
-    
+
     /// These functions are deprecated - use MutantGuard instead
     /// Kept for backward compatibility
     /// Create backup of original file (deprecated)
@@ -443,7 +473,8 @@ impl MutantExecutor {
     #[allow(dead_code)]
     async fn create_backup(&self, original_path: &Path) -> Result<PathBuf> {
         let backup_path = original_path.with_extension("pmat_backup");
-        fs::copy(original_path, &backup_path).await
+        fs::copy(original_path, &backup_path)
+            .await
             .context("Failed to create backup")?;
         Ok(backup_path)
     }
@@ -452,9 +483,11 @@ impl MutantExecutor {
     #[deprecated(since = "2.171.0", note = "Use MutantGuard instead")]
     #[allow(dead_code)]
     async fn restore_backup(&self, original_path: &Path, backup_path: &Path) -> Result<()> {
-        fs::copy(backup_path, original_path).await
+        fs::copy(backup_path, original_path)
+            .await
             .context("Failed to restore backup")?;
-        fs::remove_file(backup_path).await
+        fs::remove_file(backup_path)
+            .await
             .context("Failed to remove backup")?;
         Ok(())
     }
@@ -465,8 +498,7 @@ impl MutantExecutor {
         let module_filter = self.extract_module_path(&mutant.original_file);
 
         let mut cmd = Command::new("cargo");
-        cmd.arg("test")
-            .arg("--lib");
+        cmd.arg("test").arg("--lib");
 
         // Add module filter if present
         if !module_filter.is_empty() {
@@ -528,9 +560,7 @@ impl MutantExecutor {
         let is_mod_file = without_ext.ends_with("/mod");
 
         // Remove "/mod" at end for processing
-        let without_mod = without_ext
-            .strip_suffix("/mod")
-            .unwrap_or(without_ext);
+        let without_mod = without_ext.strip_suffix("/mod").unwrap_or(without_ext);
 
         // Split into parts
         let parts: Vec<&str> = without_mod.split('/').collect();
@@ -561,7 +591,7 @@ impl MutantExecutor {
             return (
                 MutantStatus::CompileError,
                 vec![],
-                Some("Compilation failed".to_string())
+                Some("Compilation failed".to_string()),
             );
         }
 
@@ -591,7 +621,8 @@ impl MutantExecutor {
             // Look for "test <name> ... FAILED" pattern (not "test result:")
             if line.starts_with("test ")
                 && line.contains("... FAILED")
-                && !line.starts_with("test result") {
+                && !line.starts_with("test result")
+            {
                 if let Some(test_name) = line.split_whitespace().nth(1) {
                     failures.push(test_name.to_string());
                 }

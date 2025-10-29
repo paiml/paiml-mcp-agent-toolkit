@@ -310,7 +310,13 @@ impl ClusteringEngine {
 
             for i in 0..clusters.len() {
                 for j in (i + 1)..clusters.len() {
-                    let dist = self.cluster_distance(&clusters[i], &clusters[j], &distances, vectors, linkage);
+                    let dist = self.cluster_distance(
+                        &clusters[i],
+                        &clusters[j],
+                        &distances,
+                        vectors,
+                        linkage,
+                    );
                     if dist < min_dist {
                         min_dist = dist;
                         min_i = i;
@@ -363,8 +369,14 @@ impl ClusteringEngine {
         }
 
         match linkage {
-            Linkage::Single => *dists.iter().min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap(),
-            Linkage::Complete => *dists.iter().max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap(),
+            Linkage::Single => *dists
+                .iter()
+                .min_by(|a, b| a.partial_cmp(b).unwrap())
+                .unwrap(),
+            Linkage::Complete => *dists
+                .iter()
+                .max_by(|a, b| a.partial_cmp(b).unwrap())
+                .unwrap(),
             Linkage::Average => dists.iter().sum::<f64>() / dists.len() as f64,
         }
     }
@@ -398,14 +410,7 @@ impl ClusteringEngine {
             }
 
             // Start new cluster
-            self.expand_cluster(
-                vectors,
-                &mut labels,
-                i,
-                cluster_id,
-                epsilon,
-                min_samples,
-            );
+            self.expand_cluster(vectors, &mut labels, i, cluster_id, epsilon, min_samples);
             cluster_id += 1;
         }
 
@@ -485,7 +490,12 @@ impl ClusteringEngine {
     }
 
     /// Average distance to points in same cluster
-    fn intra_cluster_distance(&self, vectors: &[Vec<f32>], labels: &[usize], point_idx: usize) -> f64 {
+    fn intra_cluster_distance(
+        &self,
+        vectors: &[Vec<f32>],
+        labels: &[usize],
+        point_idx: usize,
+    ) -> f64 {
         let cluster_label = labels[point_idx];
         let mut sum = 0.0;
         let mut count = 0;
@@ -505,7 +515,12 @@ impl ClusteringEngine {
     }
 
     /// Average distance to nearest cluster
-    fn nearest_cluster_distance(&self, vectors: &[Vec<f32>], labels: &[usize], point_idx: usize) -> f64 {
+    fn nearest_cluster_distance(
+        &self,
+        vectors: &[Vec<f32>],
+        labels: &[usize],
+        point_idx: usize,
+    ) -> f64 {
         let current_cluster = labels[point_idx];
         let mut min_avg_dist = f64::MAX;
 
@@ -546,7 +561,8 @@ impl ClusteringEngine {
             return f64::MAX;
         }
 
-        let sum: f32 = v1.iter()
+        let sum: f32 = v1
+            .iter()
             .zip(v2.iter())
             .map(|(a, b)| (a - b) * (a - b))
             .sum();

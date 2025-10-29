@@ -30,7 +30,7 @@ pub struct WasmQualityGates {
 impl Default for WasmQualityGates {
     fn default() -> Self {
         Self {
-            max_module_size: 10_485_760,        // 10 MB
+            max_module_size: 10_485_760, // 10 MB
             max_wasm_complexity: 20,
             min_source_map_coverage: 0.95,
             max_stack_depth: 1000,

@@ -114,8 +114,8 @@ fn analyze_impl_method(
     method: &syn::ImplItemFn,
     impl_attrs: &[Attribute],
 ) -> Option<WasmBoundaryFunction> {
-    let is_wasm_bindgen = has_attribute(&method.attrs, "wasm_bindgen")
-        || has_attribute(impl_attrs, "wasm_bindgen");
+    let is_wasm_bindgen =
+        has_attribute(&method.attrs, "wasm_bindgen") || has_attribute(impl_attrs, "wasm_bindgen");
     let is_no_mangle = has_attribute(&method.attrs, "no_mangle");
     let is_extern_c = is_extern_c_fn(&method.sig.abi);
 

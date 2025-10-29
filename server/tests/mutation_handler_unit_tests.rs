@@ -14,10 +14,10 @@
 use pmat::cli::commands::MutateArgs;
 use pmat::cli::handlers::mutate::handle;
 use pmat::stateless_server::StatelessTemplateServer;
+use std::io::Write;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tempfile::{tempdir, NamedTempFile};
-use std::io::Write;
 
 // ============================================================================
 // Category 1: Argument Validation (10 tests)
@@ -75,10 +75,7 @@ async fn test_target_directory_instead_of_file() {
     // Assert
     // Handler should either reject directories or handle them gracefully
     // Current implementation expects a file, so this should fail
-    assert!(
-        result.is_err(),
-        "Expected error when target is a directory"
-    );
+    assert!(result.is_err(), "Expected error when target is a directory");
 }
 
 /// Test 3: Relative path canonicalization
@@ -89,7 +86,11 @@ async fn test_relative_path_canonicalization() {
     let file_path = temp_file.path();
 
     // Write minimal Rust code
-    writeln!(temp_file.as_file(), "fn add(a: i32, b: i32) -> i32 {{ a + b }}").unwrap();
+    writeln!(
+        temp_file.as_file(),
+        "fn add(a: i32, b: i32) -> i32 {{ a + b }}"
+    )
+    .unwrap();
 
     // Get relative path (if possible)
     let current_dir = std::env::current_dir().unwrap();
@@ -119,7 +120,7 @@ async fn test_relative_path_canonicalization() {
     // Should canonicalize and work (or fail for valid reasons like no mutations)
     // The key is it shouldn't fail due to path resolution
     match result {
-        Ok(_) => {}, // Success is fine
+        Ok(_) => {} // Success is fine
         Err(e) => {
             let msg = e.to_string();
             assert!(
@@ -163,7 +164,7 @@ async fn test_symlink_resolution() {
     // Assert
     // Should resolve symlink and work (or fail for valid reasons, not path resolution)
     match result {
-        Ok(_) => {},
+        Ok(_) => {}
         Err(e) => {
             let msg = e.to_string();
             assert!(
@@ -394,7 +395,7 @@ async fn test_combined_arguments() {
     // With all valid arguments, should not fail due to argument validation
     // May fail for other reasons (no mutants, threshold not met, etc.)
     match result {
-        Ok(_) => {}, // Success is fine
+        Ok(_) => {} // Success is fine
         Err(e) => {
             let msg = e.to_string();
             // Should not be argument validation errors
@@ -436,7 +437,7 @@ async fn test_json_output_structure() {
     // Should produce JSON output (captured via stdout in real usage)
     // For now, just verify the handler completes
     match result {
-        Ok(_) => {}, // JSON output sent to stdout
+        Ok(_) => {} // JSON output sent to stdout
         Err(e) => {
             // May fail if no mutants generated, but shouldn't be format error
             let msg = e.to_string();
@@ -527,7 +528,7 @@ async fn test_markdown_output_structure() {
 
     // Assert
     match result {
-        Ok(_) => {},
+        Ok(_) => {}
         Err(e) => {
             let msg = e.to_string();
             assert!(
@@ -807,7 +808,7 @@ async fn test_failures_only_true() {
 
     // Assert - Handler should accept failures_only=true
     match result {
-        Ok(_) => {},
+        Ok(_) => {}
         Err(e) => {
             let msg = e.to_string();
             // Should not fail due to failures_only flag
@@ -838,7 +839,7 @@ async fn test_failures_only_false() {
 
     // Assert - Handler should accept failures_only=false
     match result {
-        Ok(_) => {},
+        Ok(_) => {}
         Err(e) => {
             let msg = e.to_string();
             // Should not fail due to failures_only flag
@@ -869,7 +870,7 @@ async fn test_failures_only_with_json_output() {
 
     // Assert - JSON output should work with failures_only
     match result {
-        Ok(_) => {},
+        Ok(_) => {}
         Err(e) => {
             let msg = e.to_string();
             assert!(!msg.contains("incompatible") && !msg.contains("invalid"));
@@ -899,7 +900,7 @@ async fn test_failures_only_with_markdown_output() {
 
     // Assert - Markdown output should work with failures_only
     match result {
-        Ok(_) => {},
+        Ok(_) => {}
         Err(e) => {
             let msg = e.to_string();
             assert!(!msg.contains("incompatible") && !msg.contains("invalid"));
@@ -929,7 +930,7 @@ async fn test_failures_only_with_text_output() {
 
     // Assert - Text output should work with failures_only
     match result {
-        Ok(_) => {},
+        Ok(_) => {}
         Err(e) => {
             let msg = e.to_string();
             assert!(!msg.contains("incompatible") && !msg.contains("invalid"));
@@ -962,7 +963,7 @@ async fn test_failures_only_all_formats() {
 
         // Assert - All formats should work with failures_only
         match result {
-            Ok(_) => {},
+            Ok(_) => {}
             Err(e) => {
                 let msg = e.to_string();
                 assert!(
@@ -1044,7 +1045,7 @@ async fn test_failures_only_with_combined_flags() {
 
     // Assert - Should work with combined flags
     match result {
-        Ok(_) => {},
+        Ok(_) => {}
         Err(e) => {
             let msg = e.to_string();
             // Might fail due to threshold or other reasons, but not failures_only
@@ -1116,7 +1117,7 @@ async fn test_progress_with_default_jobs() {
         target: temp_file.path().to_path_buf(),
         language: None,
         timeout: 30,
-        jobs: None,  // Automatic job detection
+        jobs: None, // Automatic job detection
         output_format: "text".to_string(),
         output: None,
         threshold: None,
@@ -1136,7 +1137,7 @@ async fn test_progress_sequential_execution() {
         target: temp_file.path().to_path_buf(),
         language: None,
         timeout: 30,
-        jobs: Some(1),  // Sequential
+        jobs: Some(1), // Sequential
         output_format: "json".to_string(),
         output: None,
         threshold: None,
@@ -1156,7 +1157,7 @@ async fn test_progress_parallel_execution() {
         target: temp_file.path().to_path_buf(),
         language: None,
         timeout: 30,
-        jobs: Some(8),  // Parallel
+        jobs: Some(8), // Parallel
         output_format: "json".to_string(),
         output: None,
         threshold: None,
@@ -1296,7 +1297,8 @@ fn complex_function(x: i32, y: i32) -> i32 {{
     result * 2
 }}
 "#
-    ).unwrap();
+    )
+    .unwrap();
 
     let args = MutateArgs {
         target: temp_file.path().to_path_buf(),
@@ -1317,7 +1319,7 @@ fn complex_function(x: i32, y: i32) -> i32 {{
 /// Test 42: Code snippets from empty file (edge case)
 #[tokio::test]
 async fn test_code_snippets_empty_file() {
-    let temp_file = NamedTempFile::new().unwrap();  // Empty file
+    let temp_file = NamedTempFile::new().unwrap(); // Empty file
 
     let args = MutateArgs {
         target: temp_file.path().to_path_buf(),
@@ -1347,7 +1349,8 @@ fn hello() -> &'static str {{
     "Hello, 世界!"
 }}
 "#
-    ).unwrap();
+    )
+    .unwrap();
 
     let args = MutateArgs {
         target: temp_file.path().to_path_buf(),
@@ -1397,7 +1400,7 @@ async fn test_code_snippets_all_formats() {
 #[tokio::test]
 async fn test_error_invalid_rust_syntax() {
     let mut temp_file = NamedTempFile::new().unwrap();
-    writeln!(temp_file, "fn invalid_syntax( {{ {{ }}").unwrap();  // Invalid Rust
+    writeln!(temp_file, "fn invalid_syntax( {{ {{ }}").unwrap(); // Invalid Rust
 
     let args = MutateArgs {
         target: temp_file.path().to_path_buf(),
@@ -1443,7 +1446,10 @@ async fn test_error_directory_instead_of_file() {
     let result = handle(args, server).await;
 
     // Assert - Should error (directory, not file)
-    assert!(result.is_err(), "Should error when given directory instead of file");
+    assert!(
+        result.is_err(),
+        "Should error when given directory instead of file"
+    );
 }
 
 /// Test 47: Error with invalid output path (non-existent directory)
@@ -1468,7 +1474,7 @@ async fn test_error_invalid_output_path() {
 
     // Assert - May error on output write failure (acceptable)
     // Or succeed if output is ignored (also acceptable)
-    let _ = result;  // Don't assert - output path handling varies
+    let _ = result; // Don't assert - output path handling varies
 }
 
 /// Test 48: Error with zero jobs (invalid configuration)
@@ -1480,7 +1486,7 @@ async fn test_error_zero_jobs() {
         target: temp_file.path().to_path_buf(),
         language: None,
         timeout: 30,
-        jobs: Some(0),  // Invalid - zero jobs
+        jobs: Some(0), // Invalid - zero jobs
         output_format: "json".to_string(),
         output: None,
         threshold: None,
@@ -1504,7 +1510,7 @@ async fn test_error_short_timeout() {
     let args = MutateArgs {
         target: temp_file.path().to_path_buf(),
         language: None,
-        timeout: 1,  // Very short timeout (1 second)
+        timeout: 1, // Very short timeout (1 second)
         jobs: Some(1),
         output_format: "json".to_string(),
         output: None,
@@ -1552,11 +1558,11 @@ async fn test_error_multiple_invalid_args() {
     let args = MutateArgs {
         target: PathBuf::from("/nonexistent/file.rs"),
         language: Some("invalid_lang".to_string()),
-        timeout: 0,  // Invalid timeout
-        jobs: Some(0),  // Invalid jobs
+        timeout: 0,    // Invalid timeout
+        jobs: Some(0), // Invalid jobs
         output_format: "invalid_format".to_string(),
         output: Some(PathBuf::from("/nonexistent/output.json")),
-        threshold: Some(150.0),  // Invalid threshold (>100)
+        threshold: Some(150.0), // Invalid threshold (>100)
         failures_only: true,
     };
     let server = Arc::new(StatelessTemplateServer::new().unwrap());
@@ -1565,7 +1571,10 @@ async fn test_error_multiple_invalid_args() {
     let result = handle(args, server).await;
 
     // Assert - Should error (file not found at minimum)
-    assert!(result.is_err(), "Should error with multiple invalid arguments");
+    assert!(
+        result.is_err(),
+        "Should error with multiple invalid arguments"
+    );
 }
 
 /// Test 52: Threshold violation error
@@ -1580,7 +1589,7 @@ async fn test_error_threshold_violation() {
         jobs: Some(1),
         output_format: "json".to_string(),
         output: None,
-        threshold: Some(100.0),  // Require 100% mutation score (very strict)
+        threshold: Some(100.0), // Require 100% mutation score (very strict)
         failures_only: false,
     };
     let server = Arc::new(StatelessTemplateServer::new().unwrap());
@@ -1602,7 +1611,7 @@ async fn test_error_concurrent_execution() {
         target: temp_file.path().to_path_buf(),
         language: None,
         timeout: 30,
-        jobs: Some(100),  // Very high concurrency (may cause issues)
+        jobs: Some(100), // Very high concurrency (may cause issues)
         output_format: "json".to_string(),
         output: None,
         threshold: None,
@@ -1643,10 +1652,10 @@ async fn test_error_useful_messages() {
         assert!(msg.len() > 10, "Error message should be descriptive");
         // Should mention file or path
         assert!(
-            msg.to_lowercase().contains("file") ||
-            msg.to_lowercase().contains("path") ||
-            msg.to_lowercase().contains("not found") ||
-            msg.to_lowercase().contains("exist"),
+            msg.to_lowercase().contains("file")
+                || msg.to_lowercase().contains("path")
+                || msg.to_lowercase().contains("not found")
+                || msg.to_lowercase().contains("exist"),
             "Error should mention file/path issue: {}",
             msg
         );

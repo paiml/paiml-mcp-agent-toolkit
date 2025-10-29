@@ -370,12 +370,8 @@ mode = "strict"
     // ASSERT
     // Hook should contain language-specific grade checks
     // This might be in the hook logic or passed as parameters
-    assert!(
-        hook_content.contains("A-") || hook_content.contains("rust_min_grade")
-    );
-    assert!(
-        hook_content.contains("B+") || hook_content.contains("typescript_min_grade")
-    );
+    assert!(hook_content.contains("A-") || hook_content.contains("rust_min_grade"));
+    assert!(hook_content.contains("B+") || hook_content.contains("typescript_min_grade"));
 
     Ok(())
 }

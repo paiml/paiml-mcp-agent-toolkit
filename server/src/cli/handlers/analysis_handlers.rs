@@ -1229,9 +1229,7 @@ async fn route_entropy_analysis(cmd: AnalyzeCommands) -> Result<()> {
         include_tests,
     } = cmd
     {
-        
         use crate::entropy::EntropyAnalyzer;
-        
 
         let config = create_entropy_config(min_severity, include_tests);
         let analyzer = EntropyAnalyzer::with_config(config);
@@ -1294,10 +1292,7 @@ fn format_entropy_report(
 }
 
 /// Format summary report
-fn format_summary_report(
-    report: &crate::entropy::EntropyReport,
-    top_violations: usize,
-) -> String {
+fn format_summary_report(report: &crate::entropy::EntropyReport, top_violations: usize) -> String {
     let violations = get_top_violations(&report.actionable_violations, top_violations);
 
     format!(
@@ -1315,10 +1310,7 @@ fn format_summary_report(
 }
 
 /// Format markdown report
-fn format_markdown_report(
-    report: &crate::entropy::EntropyReport,
-    top_violations: usize,
-) -> String {
+fn format_markdown_report(report: &crate::entropy::EntropyReport, top_violations: usize) -> String {
     let max_violations = if top_violations == 0 {
         usize::MAX
     } else {
@@ -1353,7 +1345,9 @@ fn get_top_violations(
 }
 
 /// Format violation list for summary
-fn format_violation_list(violations: &[crate::entropy::violation_detector::ActionableViolation]) -> String {
+fn format_violation_list(
+    violations: &[crate::entropy::violation_detector::ActionableViolation],
+) -> String {
     violations
         .iter()
         .enumerate()
@@ -1438,13 +1432,16 @@ async fn route_semantic_analysis(cmd: AnalyzeCommands) -> Result<()> {
     })?;
 
     // Get database path
-    let db_path = semantic_config
-        .vector_db_path
-        .unwrap_or_else(|| {
-            dirs::home_dir()
-                .map(|h| h.join(".pmat").join("embeddings.db").to_string_lossy().to_string())
-                .unwrap_or_else(|| "embeddings.db".to_string())
-        });
+    let db_path = semantic_config.vector_db_path.unwrap_or_else(|| {
+        dirs::home_dir()
+            .map(|h| {
+                h.join(".pmat")
+                    .join("embeddings.db")
+                    .to_string_lossy()
+                    .to_string()
+            })
+            .unwrap_or_else(|| "embeddings.db".to_string())
+    });
 
     // Get workspace path
     let workspace = semantic_config
@@ -1457,7 +1454,12 @@ async fn route_semantic_analysis(cmd: AnalyzeCommands) -> Result<()> {
         .map_err(|e| anyhow::anyhow!(e))?;
 
     match cmd {
-        AnalyzeCommands::Cluster { method, k, language, format: _ } => {
+        AnalyzeCommands::Cluster {
+            method,
+            k,
+            language,
+            format: _,
+        } => {
             // Convert ClusterMethod to string for semantic_cli interface
             let method_str = match method {
                 crate::cli::commands::ClusterMethod::Kmeans => "kmeans",
@@ -1474,7 +1476,11 @@ async fn route_semantic_analysis(cmd: AnalyzeCommands) -> Result<()> {
             println!("Language filter: {:?}", language);
             Ok(())
         }
-        AnalyzeCommands::Topics { num_topics, language, format: _ } => {
+        AnalyzeCommands::Topics {
+            num_topics,
+            language,
+            format: _,
+        } => {
             let result = semantic_cli
                 .analyze_topics(num_topics, language)
                 .await

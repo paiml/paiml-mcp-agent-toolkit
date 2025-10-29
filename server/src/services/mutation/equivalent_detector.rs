@@ -132,13 +132,12 @@ impl EquivalentMutantDetector {
 
         // Phase 1: Pattern-based detection
         for sample in training_data {
-            let features = EquivalenceFeatures::from_mutant_pair(
-                &sample.mutant,
-                &sample.original_source,
-            );
+            let features =
+                EquivalenceFeatures::from_mutant_pair(&sample.mutant, &sample.original_source);
 
             for pattern in &features.operator_patterns {
-                let entry = self.equivalence_patterns
+                let entry = self
+                    .equivalence_patterns
                     .entry(pattern.clone())
                     .or_insert(0.0);
 
@@ -173,13 +172,12 @@ impl EquivalentMutantDetector {
         self.training_samples += new_data.len();
 
         for sample in new_data {
-            let features = EquivalenceFeatures::from_mutant_pair(
-                &sample.mutant,
-                &sample.original_source,
-            );
+            let features =
+                EquivalenceFeatures::from_mutant_pair(&sample.mutant, &sample.original_source);
 
             for pattern in &features.operator_patterns {
-                let current = self.equivalence_patterns
+                let current = self
+                    .equivalence_patterns
                     .get(pattern)
                     .copied()
                     .unwrap_or(0.5);
@@ -402,8 +400,8 @@ fn detect_identity_operations(original: &str, mutated: &str) -> bool {
     let has_mul_one = original.contains("* 1") || original.contains("*1");
     let has_sub_zero = original.contains("- 0") || original.contains("-0");
     let has_div_one = original.contains("/ 1") || original.contains("/1");
-    let has_mul_zero = original.contains("* 0") || original.contains("*0")
-        || original.contains("0 *");
+    let has_mul_zero =
+        original.contains("* 0") || original.contains("*0") || original.contains("0 *");
 
     let identity_removed = (has_add_zero || has_mul_one || has_sub_zero || has_div_one)
         && (mutated.len() < original.len());
@@ -471,9 +469,10 @@ fn detect_commutative_swap(original: &str, mutated: &str) -> bool {
     // Check each potential commutative operation
     for i in 0..orig_tokens.len() - 2 {
         if is_commutative_op(orig_tokens[i + 1])
-            && has_swapped_operands(&orig_tokens, &mut_tokens, i) {
-                return true;
-            }
+            && has_swapped_operands(&orig_tokens, &mut_tokens, i)
+        {
+            return true;
+        }
     }
 
     false
@@ -483,9 +482,9 @@ fn detect_commutative_swap(original: &str, mutated: &str) -> bool {
 fn has_swapped_operands(orig: &[&str], mutated: &[&str], pos: usize) -> bool {
     let (op, a, b) = (orig[pos + 1], orig[pos], orig[pos + 2]);
 
-    mutated.windows(3).any(|window| {
-        window[1] == op && window[0] == b && window[2] == a
-    })
+    mutated
+        .windows(3)
+        .any(|window| window[1] == op && window[0] == b && window[2] == a)
 }
 
 /// Check if operator is commutative
@@ -523,10 +522,12 @@ fn extract_operator_patterns(original: &str, mutated: &str) -> Vec<String> {
     }
 
     // Associative patterns
-    if original.contains("(") && mutated.contains("(")
-        && original.matches('(').count() == mutated.matches('(').count() {
-            patterns.push("associative_grouping".to_string());
-        }
+    if original.contains("(")
+        && mutated.contains("(")
+        && original.matches('(').count() == mutated.matches('(').count()
+    {
+        patterns.push("associative_grouping".to_string());
+    }
 
     patterns
 }

@@ -200,11 +200,7 @@ impl HybridSearchEngine {
     }
 
     /// Keyword search using ripgrep
-    async fn keyword_search(
-        &self,
-        query: &str,
-        limit: usize,
-    ) -> Result<Vec<KeywordMatch>, String> {
+    async fn keyword_search(&self, query: &str, limit: usize) -> Result<Vec<KeywordMatch>, String> {
         let output = Command::new("rg")
             .arg("--line-number")
             .arg("--no-heading")
@@ -281,7 +277,8 @@ impl HybridSearchEngine {
             if let Some(existing) = result_map.get_mut(&key) {
                 // Merge: update vector score and recalculate hybrid
                 existing.vector_score = vector_score;
-                existing.hybrid_score = weights.0 * existing.keyword_score + weights.1 * vector_score;
+                existing.hybrid_score =
+                    weights.0 * existing.keyword_score + weights.1 * vector_score;
             } else {
                 // New entry from vector search
                 result_map.insert(
@@ -434,7 +431,10 @@ mod tests {
     fn test_matches_pattern() {
         assert!(HybridSearchEngine::matches_pattern("src/main.rs", "*.rs"));
         assert!(!HybridSearchEngine::matches_pattern("src/main.rs", "*.py"));
-        assert!(HybridSearchEngine::matches_pattern("src/utils/math.rs", "utils"));
+        assert!(HybridSearchEngine::matches_pattern(
+            "src/utils/math.rs",
+            "utils"
+        ));
     }
 
     #[test]

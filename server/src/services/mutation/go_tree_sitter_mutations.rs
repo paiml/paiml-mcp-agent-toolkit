@@ -406,7 +406,10 @@ impl TreeSitterMutationOperator for GoAssignmentOpMutation {
 
         for child in node.children(&mut cursor) {
             let kind = child.kind();
-            if matches!(kind, "+=" | "-=" | "*=" | "/=" | "%=" | "&=" | "|=" | "^=" | "<<=" | ">>=") {
+            if matches!(
+                kind,
+                "+=" | "-=" | "*=" | "/=" | "%=" | "&=" | "|=" | "^=" | "<<=" | ">>="
+            ) {
                 operator_node = Some(child);
                 break;
             }

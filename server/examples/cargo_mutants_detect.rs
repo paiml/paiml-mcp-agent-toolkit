@@ -13,8 +13,8 @@
 //! ✅ Version: cargo-mutants 25.3.1 (meets minimum v24.7.0)
 //! ```
 
-use std::process;
 use pmat::services::mutation::cargo_mutants_wrapper::CargoMutantsWrapper;
+use std::process;
 
 fn main() {
     println!("🔍 Detecting cargo-mutants installation...\n");
@@ -22,7 +22,10 @@ fn main() {
     match CargoMutantsWrapper::new() {
         Ok(wrapper) => {
             if wrapper.is_installed() {
-                println!("✅ cargo-mutants found: {:?}", wrapper.cargo_mutants_path.as_ref().unwrap());
+                println!(
+                    "✅ cargo-mutants found: {:?}",
+                    wrapper.cargo_mutants_path().unwrap()
+                );
 
                 match wrapper.version() {
                     Ok(version) => {

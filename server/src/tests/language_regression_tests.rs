@@ -90,10 +90,7 @@ int sum_array(int *arr, int size) {
         c_details.function_count, c_details.function_names
     );
 
-    assert!(
-        c_details.function_count >= 3,
-        "Should detect C functions"
-    );
+    assert!(c_details.function_count >= 3, "Should detect C functions");
 }
 
 /// Regression Test: C++ language support in deep_context pipeline

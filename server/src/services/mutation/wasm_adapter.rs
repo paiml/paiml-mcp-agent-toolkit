@@ -293,7 +293,9 @@ mod tests {
         let mutants = mutator.mutate_wat(wat).unwrap();
 
         assert!(!mutants.is_empty());
-        assert!(mutants.iter().any(|m| m.contains("i64.sub") || m.contains("i64.mul")));
+        assert!(mutants
+            .iter()
+            .any(|m| m.contains("i64.sub") || m.contains("i64.mul")));
     }
 
     #[test]
@@ -303,6 +305,8 @@ mod tests {
         let mutants = mutator.mutate_wat(wat).unwrap();
 
         assert!(!mutants.is_empty());
-        assert!(mutants.iter().any(|m| m.contains("f32.sub") || m.contains("f32.mul")));
+        assert!(mutants
+            .iter()
+            .any(|m| m.contains("f32.sub") || m.contains("f32.mul")));
     }
 }

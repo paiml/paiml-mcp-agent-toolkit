@@ -5,10 +5,9 @@
 #[cfg(test)]
 mod advanced_operators_red_tests {
     use crate::services::mutation::{
-        MutationOperator, MutationOperatorType, SourceLocation,
-        ConditionalReturnOperator, StatementDeletionOperator,
-        ReturnValueReplacement, VariableReplacementOperator,
-        BoundaryValueOperator, ExceptionHandlerRemoval,
+        BoundaryValueOperator, ConditionalReturnOperator, ExceptionHandlerRemoval,
+        MutationOperator, MutationOperatorType, ReturnValueReplacement, SourceLocation,
+        StatementDeletionOperator, VariableReplacementOperator,
     };
 
     // ===== CRO: Conditional Return Operator (RED) =====
@@ -22,7 +21,10 @@ mod advanced_operators_red_tests {
     #[test]
     fn red_cro_must_have_correct_type() {
         let operator = ConditionalReturnOperator;
-        assert_eq!(operator.operator_type(), MutationOperatorType::ConditionalReturn);
+        assert_eq!(
+            operator.operator_type(),
+            MutationOperatorType::ConditionalReturn
+        );
     }
 
     #[test]
@@ -39,7 +41,12 @@ mod advanced_operators_red_tests {
         let operator = ConditionalReturnOperator;
         let source = "return 42";
         let expr = syn::parse_str::<syn::Expr>(source).unwrap();
-        let location = SourceLocation { line: 1, column: 0, end_line: 1, end_column: 9 };
+        let location = SourceLocation {
+            line: 1,
+            column: 0,
+            end_line: 1,
+            end_column: 9,
+        };
 
         let mutants = operator.mutate(&expr, location).unwrap();
         assert!(!mutants.is_empty(), "Must generate early return mutants");
@@ -56,7 +63,10 @@ mod advanced_operators_red_tests {
     #[test]
     fn red_sdo_must_have_correct_type() {
         let operator = StatementDeletionOperator;
-        assert_eq!(operator.operator_type(), MutationOperatorType::StatementDeletion);
+        assert_eq!(
+            operator.operator_type(),
+            MutationOperatorType::StatementDeletion
+        );
     }
 
     #[test]
@@ -66,7 +76,10 @@ mod advanced_operators_red_tests {
         let source = "x = 5";
         let expr = syn::parse_str::<syn::Expr>(source).unwrap();
 
-        assert!(operator.can_mutate(&expr), "Must detect deletable statements");
+        assert!(
+            operator.can_mutate(&expr),
+            "Must detect deletable statements"
+        );
     }
 
     // ===== RVR: Return Value Replacement (RED) =====
@@ -80,7 +93,10 @@ mod advanced_operators_red_tests {
     #[test]
     fn red_rvr_must_have_correct_type() {
         let operator = ReturnValueReplacement;
-        assert_eq!(operator.operator_type(), MutationOperatorType::ReturnValueReplacement);
+        assert_eq!(
+            operator.operator_type(),
+            MutationOperatorType::ReturnValueReplacement
+        );
     }
 
     #[test]
@@ -97,7 +113,12 @@ mod advanced_operators_red_tests {
         let operator = ReturnValueReplacement;
         let source = "return 42";
         let expr = syn::parse_str::<syn::Expr>(source).unwrap();
-        let location = SourceLocation { line: 1, column: 0, end_line: 1, end_column: 9 };
+        let location = SourceLocation {
+            line: 1,
+            column: 0,
+            end_line: 1,
+            end_column: 9,
+        };
 
         let mutants = operator.mutate(&expr, location).unwrap();
         assert!(!mutants.is_empty(), "Must generate return value mutants");
@@ -114,7 +135,10 @@ mod advanced_operators_red_tests {
     #[test]
     fn red_vro_must_have_correct_type() {
         let operator = VariableReplacementOperator;
-        assert_eq!(operator.operator_type(), MutationOperatorType::VariableReplacement);
+        assert_eq!(
+            operator.operator_type(),
+            MutationOperatorType::VariableReplacement
+        );
     }
 
     #[test]
@@ -137,7 +161,10 @@ mod advanced_operators_red_tests {
     #[test]
     fn red_bvo_must_have_correct_type() {
         let operator = BoundaryValueOperator;
-        assert_eq!(operator.operator_type(), MutationOperatorType::BoundaryValue);
+        assert_eq!(
+            operator.operator_type(),
+            MutationOperatorType::BoundaryValue
+        );
     }
 
     #[test]
@@ -154,7 +181,12 @@ mod advanced_operators_red_tests {
         let operator = BoundaryValueOperator;
         let source = "42";
         let expr = syn::parse_str::<syn::Expr>(source).unwrap();
-        let location = SourceLocation { line: 1, column: 0, end_line: 1, end_column: 2 };
+        let location = SourceLocation {
+            line: 1,
+            column: 0,
+            end_line: 1,
+            end_column: 2,
+        };
 
         let mutants = operator.mutate(&expr, location).unwrap();
         assert!(mutants.len() >= 2, "Must generate +1 and -1 mutants");
@@ -171,7 +203,10 @@ mod advanced_operators_red_tests {
     #[test]
     fn red_ehr_must_have_correct_type() {
         let operator = ExceptionHandlerRemoval;
-        assert_eq!(operator.operator_type(), MutationOperatorType::ExceptionHandlerRemoval);
+        assert_eq!(
+            operator.operator_type(),
+            MutationOperatorType::ExceptionHandlerRemoval
+        );
     }
 
     #[test]
@@ -188,7 +223,12 @@ mod advanced_operators_red_tests {
         let operator = ExceptionHandlerRemoval;
         let source = "result?";
         let expr = syn::parse_str::<syn::Expr>(source).unwrap();
-        let location = SourceLocation { line: 1, column: 0, end_line: 1, end_column: 7 };
+        let location = SourceLocation {
+            line: 1,
+            column: 0,
+            end_line: 1,
+            end_column: 7,
+        };
 
         let mutants = operator.mutate(&expr, location).unwrap();
         assert!(!mutants.is_empty(), "Must generate try removal mutants");

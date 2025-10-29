@@ -1,5 +1,5 @@
 //! Polyglot AST module for cross-language analysis
-//! 
+//!
 //! This module provides a unified representation of AST nodes across different
 //! programming languages, enabling cross-language analysis and dependency tracking.
 //! The polyglot AST framework is designed to map language-specific AST nodes into
@@ -37,23 +37,22 @@
 //! ```
 
 use crate::services::context::AstItem;
+use serde::{Deserialize, Serialize};
 use std::path::Path;
-use serde::{Serialize, Deserialize};
 
-pub mod unified_node;
-pub mod language_mapper;
 pub mod cross_language_dependencies;
+pub mod language_mapper;
 pub mod language_mapper_factory;
+pub mod unified_node;
 pub mod utils;
 
-pub use unified_node::UnifiedNode;
-pub use language_mapper::{
-    LanguageMapper, JavaMapper, KotlinMapper, ScalaMapper,
-    TypeScriptMapper, JavaScriptMapper, CSharpMapper, RubyMapper,
-    LanguageMapperFactory as LMFactory, BaseLanguageMapper
-};
 pub use cross_language_dependencies::CrossLanguageDependencies;
+pub use language_mapper::{
+    BaseLanguageMapper, CSharpMapper, JavaMapper, JavaScriptMapper, KotlinMapper, LanguageMapper,
+    LanguageMapperFactory as LMFactory, RubyMapper, ScalaMapper, TypeScriptMapper,
+};
 pub use language_mapper_factory::{LanguageMapperFactory, StubMapper};
+pub use unified_node::UnifiedNode;
 pub use utils::PolyglotPathValidator;
 
 /// Common language identifiers used throughout the polyglot AST system
@@ -95,7 +94,7 @@ impl Language {
             Language::Other(_) => "Other",
         }
     }
-    
+
     /// Returns the language from a file extension
     pub fn from_extension(ext: &str) -> Option<Self> {
         match ext.to_lowercase().as_str() {
@@ -115,14 +114,14 @@ impl Language {
             _ => None,
         }
     }
-    
+
     /// Returns the language from a file path
     pub fn from_path(path: &Path) -> Option<Self> {
         path.extension()
             .and_then(|ext| ext.to_str())
             .and_then(Self::from_extension)
     }
-    
+
     /// Returns common file extensions for this language
     pub fn file_extensions(&self) -> Vec<&'static str> {
         match self {
@@ -152,7 +151,7 @@ pub enum NodeKind {
     Import,
     Module,
     Namespace,
-    
+
     // Types
     Class,
     Interface,
@@ -160,38 +159,38 @@ pub enum NodeKind {
     Enum,
     Struct,
     Union,
-    Type,          // Type alias or typedef
-    
+    Type, // Type alias or typedef
+
     // Type variations
-    Record,      // Java record, Kotlin data class, TypeScript interface
-    CaseClass,   // Scala case class
+    Record,       // Java record, Kotlin data class, TypeScript interface
+    CaseClass,    // Scala case class
     AbstractType, // Abstract class/interface/trait
-    
+
     // Functions & methods
     Method,
     Function,
     Constructor,
     Lambda,
     Closure,
-    
+
     // Variables
     Field,
     Property,
     LocalVariable,
     Parameter,
-    Variable,    // Generic variable declaration
-    
+    Variable, // Generic variable declaration
+
     // Other elements
     Annotation,
     Decorator,
     Comment,
-    Macro,       // Macro definition
-    
+    Macro, // Macro definition
+
     // Relationships
     Inherits,
     Implements,
     Uses,
-    
+
     // For any language-specific constructs
     LanguageSpecific(u32), // Numeric identifier for language-specific nodes
     Unknown,
@@ -211,7 +210,7 @@ impl NodeKind {
             AstItem::Import { .. } => NodeKind::Import,
         }
     }
-    
+
     /// Convert from a string item kind
     pub fn from_ast_item_kind(kind: &str) -> Self {
         match kind.to_lowercase().as_str() {
@@ -219,7 +218,7 @@ impl NodeKind {
             "import" => NodeKind::Import,
             "module" => NodeKind::Module,
             "namespace" => NodeKind::Namespace,
-            
+
             "class" => NodeKind::Class,
             "interface" => NodeKind::Interface,
             "trait" => NodeKind::Trait,
@@ -227,36 +226,36 @@ impl NodeKind {
             "struct" => NodeKind::Struct,
             "union" => NodeKind::Union,
             "type" | "typealias" | "typedef" => NodeKind::Type,
-            
+
             "record" => NodeKind::Record,
             "caseclass" => NodeKind::CaseClass,
             "abstracttype" => NodeKind::AbstractType,
-            
+
             "method" => NodeKind::Method,
             "function" => NodeKind::Function,
             "constructor" => NodeKind::Constructor,
             "lambda" => NodeKind::Lambda,
             "closure" => NodeKind::Closure,
-            
+
             "field" => NodeKind::Field,
             "property" => NodeKind::Property,
             "localvariable" => NodeKind::LocalVariable,
             "parameter" => NodeKind::Parameter,
             "variable" => NodeKind::Variable,
-            
+
             "annotation" => NodeKind::Annotation,
             "decorator" => NodeKind::Decorator,
             "comment" => NodeKind::Comment,
             "macro" => NodeKind::Macro,
-            
+
             "inherits" => NodeKind::Inherits,
             "implements" => NodeKind::Implements,
             "uses" => NodeKind::Uses,
-            
+
             _ => NodeKind::Unknown,
         }
     }
-    
+
     /// Returns a string representation
     pub fn as_str(&self) -> &'static str {
         match self {
@@ -264,7 +263,7 @@ impl NodeKind {
             NodeKind::Import => "import",
             NodeKind::Module => "module",
             NodeKind::Namespace => "namespace",
-            
+
             NodeKind::Class => "class",
             NodeKind::Interface => "interface",
             NodeKind::Trait => "trait",
@@ -272,32 +271,32 @@ impl NodeKind {
             NodeKind::Struct => "struct",
             NodeKind::Union => "union",
             NodeKind::Type => "type",
-            
+
             NodeKind::Record => "record",
             NodeKind::CaseClass => "caseClass",
             NodeKind::AbstractType => "abstractType",
-            
+
             NodeKind::Method => "method",
             NodeKind::Function => "function",
             NodeKind::Constructor => "constructor",
             NodeKind::Lambda => "lambda",
             NodeKind::Closure => "closure",
-            
+
             NodeKind::Field => "field",
             NodeKind::Property => "property",
             NodeKind::LocalVariable => "localVariable",
             NodeKind::Parameter => "parameter",
             NodeKind::Variable => "variable",
-            
+
             NodeKind::Annotation => "annotation",
             NodeKind::Decorator => "decorator",
             NodeKind::Comment => "comment",
             NodeKind::Macro => "macro",
-            
+
             NodeKind::Inherits => "inherits",
             NodeKind::Implements => "implements",
             NodeKind::Uses => "uses",
-            
+
             NodeKind::LanguageSpecific(_) => "languageSpecific",
             NodeKind::Unknown => "unknown",
         }
@@ -309,13 +308,13 @@ impl NodeKind {
 pub struct PolyglotConfig {
     /// List of languages to include in analysis
     pub languages: Vec<Language>,
-    
+
     /// Whether to detect cross-language relationships
     pub detect_relationships: bool,
-    
+
     /// Maximum depth for relationship analysis (inheritance, implementation, etc.)
     pub relationship_depth: usize,
-    
+
     /// Whether to include language-specific details
     pub include_language_specific: bool,
 }
@@ -340,7 +339,7 @@ impl Default for PolyglotConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_language_from_extension() {
         assert_eq!(Language::from_extension("java"), Some(Language::Java));
@@ -349,36 +348,36 @@ mod tests {
         assert_eq!(Language::from_extension("ts"), Some(Language::TypeScript));
         assert_eq!(Language::from_extension("unknown"), None);
     }
-    
+
     #[test]
     fn test_language_from_path() {
         let java_path = Path::new("/path/to/MyClass.java");
         let scala_path = Path::new("/path/to/MyClass.scala");
         let unknown_path = Path::new("/path/to/file.unknown");
-        
+
         assert_eq!(Language::from_path(java_path), Some(Language::Java));
         assert_eq!(Language::from_path(scala_path), Some(Language::Scala));
         assert_eq!(Language::from_path(unknown_path), None);
     }
-    
+
     #[test]
     fn test_node_kind_from_ast_item_kind() {
         assert_eq!(NodeKind::from_ast_item_kind("class"), NodeKind::Class);
         assert_eq!(NodeKind::from_ast_item_kind("method"), NodeKind::Method);
         assert_eq!(NodeKind::from_ast_item_kind("unknown"), NodeKind::Unknown);
     }
-    
+
     #[test]
     fn test_polyglot_config_default() {
         let config = PolyglotConfig::default();
-        
+
         assert!(config.languages.contains(&Language::Java));
         assert!(config.languages.contains(&Language::Scala));
         assert!(config.languages.contains(&Language::TypeScript));
         assert!(config.detect_relationships);
         assert_eq!(config.relationship_depth, 3);
     }
-    
+
     #[test]
     fn test_node_kind_comprehensive_string_conversion() {
         // Test conversion from strings to NodeKind
@@ -386,7 +385,10 @@ mod tests {
         assert_eq!(NodeKind::from_ast_item_kind("struct"), NodeKind::Struct);
         assert_eq!(NodeKind::from_ast_item_kind("enum"), NodeKind::Enum);
         assert_eq!(NodeKind::from_ast_item_kind("trait"), NodeKind::Trait);
-        assert_eq!(NodeKind::from_ast_item_kind("implements"), NodeKind::Implements);
+        assert_eq!(
+            NodeKind::from_ast_item_kind("implements"),
+            NodeKind::Implements
+        );
         assert_eq!(NodeKind::from_ast_item_kind("import"), NodeKind::Import);
         assert_eq!(NodeKind::from_ast_item_kind("module"), NodeKind::Module);
         assert_eq!(NodeKind::from_ast_item_kind("type"), NodeKind::Type);
@@ -394,7 +396,7 @@ mod tests {
         assert_eq!(NodeKind::from_ast_item_kind("typealias"), NodeKind::Type);
         assert_eq!(NodeKind::from_ast_item_kind("macro"), NodeKind::Macro);
         assert_eq!(NodeKind::from_ast_item_kind("variable"), NodeKind::Variable);
-        
+
         // Test NodeKind to string conversion
         assert_eq!(NodeKind::Function.as_str(), "function");
         assert_eq!(NodeKind::Struct.as_str(), "struct");

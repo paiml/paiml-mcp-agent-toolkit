@@ -89,7 +89,7 @@ impl SwiftSourceAnalyzer {
                         name: qualified_name,
                         visibility: self.extract_visibility(trimmed),
                         fields_count: 0, // Swift field extraction not implemented yet
-                        derives: vec![],  // Swift doesn't have derives
+                        derives: vec![], // Swift doesn't have derives
                         line: line_num + 1,
                     });
                     self.class_count += 1;
@@ -336,7 +336,10 @@ class Calculator {
             .expect("Should parse simple Swift source");
 
         // Simple script may not have functions
-        assert!(items.is_empty() || !items.is_empty(), "Should handle simple Swift source");
+        assert!(
+            items.is_empty() || !items.is_empty(),
+            "Should handle simple Swift source"
+        );
     }
 
     #[test]
@@ -365,7 +368,9 @@ class Calculator {
             })
             .collect();
 
-        assert!(function_names.iter().any(|&name| name.contains("printHello")));
+        assert!(function_names
+            .iter()
+            .any(|&name| name.contains("printHello")));
         assert!(function_names
             .iter()
             .any(|&name| name.contains("calculateScore")));
@@ -384,10 +389,7 @@ class Calculator {
             .filter(|item| matches!(item, AstItem::Struct { .. }))
             .collect();
 
-        assert!(
-            class_items.len() >= 1,
-            "Should extract Calculator class"
-        );
+        assert!(class_items.len() >= 1, "Should extract Calculator class");
 
         let method_items: Vec<_> = items
             .iter()

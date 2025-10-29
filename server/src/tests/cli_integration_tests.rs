@@ -391,9 +391,7 @@ fn test_invalid_command_suggestions() {
     // Should suggest correct command or show help
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(
-        stderr.contains("scaffold")
-            || stderr.contains("Did you mean")
-            || stderr.contains("help")
+        stderr.contains("scaffold") || stderr.contains("Did you mean") || stderr.contains("help")
     );
 }
 

@@ -21,9 +21,27 @@ mod line_program_integration_tests {
 
         // Line program data: (address, location) pairs
         let line_program_mappings = vec![
-            (0x1000, Location { line: 42, column: 10 }),
-            (0x1010, Location { line: 43, column: 15 }),
-            (0x1020, Location { line: 44, column: 5 }),
+            (
+                0x1000,
+                Location {
+                    line: 42,
+                    column: 10,
+                },
+            ),
+            (
+                0x1010,
+                Location {
+                    line: 43,
+                    column: 15,
+                },
+            ),
+            (
+                0x1020,
+                Location {
+                    line: 44,
+                    column: 5,
+                },
+            ),
         ];
 
         let source_map_entries = vec![SourceMapEntry {
@@ -69,7 +87,13 @@ mod line_program_integration_tests {
         }];
 
         // Line program shows function starts at line 100
-        let line_program_mappings = vec![(0x2000, Location { line: 100, column: 5 })];
+        let line_program_mappings = vec![(
+            0x2000,
+            Location {
+                line: 100,
+                column: 5,
+            },
+        )];
 
         // Source map shows same line number
         let source_map_entries = vec![SourceMapEntry {
@@ -82,7 +106,11 @@ mod line_program_integration_tests {
         }];
 
         let result = engine
-            .correlate_with_line_programs(&dwarf_entries, &source_map_entries, &line_program_mappings)
+            .correlate_with_line_programs(
+                &dwarf_entries,
+                &source_map_entries,
+                &line_program_mappings,
+            )
             .unwrap();
 
         // Line number match should boost confidence above standard 0.95
@@ -101,7 +129,13 @@ mod line_program_integration_tests {
         }];
 
         // Line program shows function at line 50
-        let line_program_mappings = vec![(0x3000, Location { line: 50, column: 0 })];
+        let line_program_mappings = vec![(
+            0x3000,
+            Location {
+                line: 50,
+                column: 0,
+            },
+        )];
 
         // Source map shows different line number
         let source_map_entries = vec![SourceMapEntry {
@@ -114,7 +148,11 @@ mod line_program_integration_tests {
         }];
 
         let result = engine
-            .correlate_with_line_programs(&dwarf_entries, &source_map_entries, &line_program_mappings)
+            .correlate_with_line_programs(
+                &dwarf_entries,
+                &source_map_entries,
+                &line_program_mappings,
+            )
             .unwrap();
 
         // Line number mismatch should reduce confidence
@@ -135,9 +173,27 @@ mod line_program_integration_tests {
 
         // Line program provides precise locations
         let line_program_mappings = vec![
-            (0x4000, Location { line: 75, column: 12 }),
-            (0x4004, Location { line: 76, column: 8 }),
-            (0x4008, Location { line: 77, column: 4 }),
+            (
+                0x4000,
+                Location {
+                    line: 75,
+                    column: 12,
+                },
+            ),
+            (
+                0x4004,
+                Location {
+                    line: 76,
+                    column: 8,
+                },
+            ),
+            (
+                0x4008,
+                Location {
+                    line: 77,
+                    column: 4,
+                },
+            ),
         ];
 
         let result = engine
@@ -164,7 +220,8 @@ mod line_program_integration_tests {
         // Empty line program
         let line_program_mappings = vec![];
 
-        let result = engine.correlate_with_line_programs(&dwarf_entries, &[], &line_program_mappings);
+        let result =
+            engine.correlate_with_line_programs(&dwarf_entries, &[], &line_program_mappings);
 
         // Should handle gracefully and fall back to existing behavior
         assert!(result.is_ok());
@@ -181,9 +238,27 @@ mod line_program_integration_tests {
 
         // Line program with address mappings
         let line_program_mappings = vec![
-            (0x1000, Location { line: 10, column: 0 }),
-            (0x1100, Location { line: 20, column: 0 }),
-            (0x1200, Location { line: 30, column: 0 }),
+            (
+                0x1000,
+                Location {
+                    line: 10,
+                    column: 0,
+                },
+            ),
+            (
+                0x1100,
+                Location {
+                    line: 20,
+                    column: 0,
+                },
+            ),
+            (
+                0x1200,
+                Location {
+                    line: 30,
+                    column: 0,
+                },
+            ),
         ];
 
         // Query specific WASM address
@@ -200,7 +275,13 @@ mod line_program_integration_tests {
     fn red_must_handle_address_not_in_line_program() {
         let engine = CorrelationEngine::new();
 
-        let line_program_mappings = vec![(0x1000, Location { line: 10, column: 0 })];
+        let line_program_mappings = vec![(
+            0x1000,
+            Location {
+                line: 10,
+                column: 0,
+            },
+        )];
 
         // Query address not in mappings
         let result = engine.lookup_source_location(0x9999, &line_program_mappings);
@@ -215,9 +296,27 @@ mod line_program_integration_tests {
         let engine = CorrelationEngine::new();
 
         let line_program_mappings = vec![
-            (0x1000, Location { line: 42, column: 10 }),
-            (0x1010, Location { line: 43, column: 15 }),
-            (0x1020, Location { line: 44, column: 5 }),
+            (
+                0x1000,
+                Location {
+                    line: 42,
+                    column: 10,
+                },
+            ),
+            (
+                0x1010,
+                Location {
+                    line: 43,
+                    column: 15,
+                },
+            ),
+            (
+                0x1020,
+                Location {
+                    line: 44,
+                    column: 5,
+                },
+            ),
         ];
 
         // Forward: source → WASM
@@ -235,7 +334,6 @@ mod line_program_integration_tests {
 #[cfg(test)]
 mod enhanced_confidence_scoring_tests {
     use crate::services::deep_wasm::correlation_engine::CorrelationEngine;
-    
 
     #[test]
     #[cfg(feature = "deep-wasm")]
@@ -244,10 +342,10 @@ mod enhanced_confidence_scoring_tests {
 
         // Perfect match: name + line + column all match
         let confidence = engine.calculate_confidence(
-            true,  // has_dwarf
-            true,  // has_source_map
-            true,  // line_match
-            true,  // column_match
+            true, // has_dwarf
+            true, // has_source_map
+            true, // line_match
+            true, // column_match
         );
 
         assert_eq!(confidence, 1.0); // Perfect confidence

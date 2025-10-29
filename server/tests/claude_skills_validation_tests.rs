@@ -24,8 +24,8 @@ struct ClaudeSkill {
 
 /// Parse a skill.md file into a ClaudeSkill struct
 fn parse_skill_file(path: &Path) -> Result<ClaudeSkill, String> {
-    let content = fs::read_to_string(path)
-        .map_err(|e| format!("Failed to read skill file: {}", e))?;
+    let content =
+        fs::read_to_string(path).map_err(|e| format!("Failed to read skill file: {}", e))?;
 
     // Split YAML frontmatter from prompt content
     let parts: Vec<&str> = content.split("---").collect();
@@ -47,10 +47,7 @@ fn parse_skill_file(path: &Path) -> Result<ClaudeSkill, String> {
             name = line.strip_prefix("name:").unwrap().trim().to_string();
         } else if line.starts_with("allowed-tools:") {
             let tools_str = line.strip_prefix("allowed-tools:").unwrap().trim();
-            allowed_tools = tools_str
-                .split(',')
-                .map(|s| s.trim().to_string())
-                .collect();
+            allowed_tools = tools_str.split(',').map(|s| s.trim().to_string()).collect();
         }
         // Note: description parsing happens in the multiline fallback code below
     }
@@ -210,7 +207,8 @@ mod red_phase_skill_validation_tests {
         let skill = parse_skill_file(&skill_path).expect("Failed to parse skill file");
 
         // pmat-quality should at minimum have Bash tool (to run pmat commands)
-        let tools_lower: Vec<String> = skill.allowed_tools
+        let tools_lower: Vec<String> = skill
+            .allowed_tools
             .iter()
             .map(|t| t.to_lowercase())
             .collect();
@@ -340,7 +338,10 @@ mod red_phase_error_handling_tests {
         fs::write(&test_file, "Just some content without frontmatter").unwrap();
 
         let result = parse_skill_file(&test_file);
-        assert!(result.is_err(), "Parser should reject file without frontmatter");
+        assert!(
+            result.is_err(),
+            "Parser should reject file without frontmatter"
+        );
 
         fs::remove_file(test_file).ok();
     }
@@ -360,7 +361,10 @@ Prompt content
         fs::write(&test_file, content).unwrap();
 
         let result = parse_skill_file(&test_file);
-        assert!(result.is_err(), "Parser should reject skill missing name field");
+        assert!(
+            result.is_err(),
+            "Parser should reject skill missing name field"
+        );
 
         fs::remove_file(test_file).ok();
     }
@@ -402,8 +406,7 @@ mod phase_2_skill_discovery_tests {
 
         assert!(skills_dir.exists(), "Skills directory must exist");
 
-        let entries = fs::read_dir(&skills_dir)
-            .expect("Should be able to read skills directory");
+        let entries = fs::read_dir(&skills_dir).expect("Should be able to read skills directory");
 
         let skill_dirs: Vec<String> = entries
             .filter_map(|e| e.ok())
@@ -413,7 +416,8 @@ mod phase_2_skill_discovery_tests {
 
         // Should have exactly 5 skills
         assert_eq!(
-            skill_dirs.len(), 5,
+            skill_dirs.len(),
+            5,
             "Should have 5 skill directories, found: {:?}",
             skill_dirs
         );
@@ -513,7 +517,8 @@ mod phase_2_all_skills_validation_tests {
         );
 
         // Validate required tools
-        let tools_lower: Vec<String> = skill.allowed_tools
+        let tools_lower: Vec<String> = skill
+            .allowed_tools
             .iter()
             .map(|t| t.to_lowercase())
             .collect();
@@ -542,7 +547,8 @@ mod phase_2_all_skills_validation_tests {
         );
 
         // Validate refactor-specific tools
-        let tools_lower: Vec<String> = skill.allowed_tools
+        let tools_lower: Vec<String> = skill
+            .allowed_tools
             .iter()
             .map(|t| t.to_lowercase())
             .collect();
@@ -609,7 +615,8 @@ mod phase_2_all_skills_validation_tests {
             let skill = parse_skill_file(&skill_path)
                 .expect(&format!("Failed to parse {} skill", skill_name));
 
-            let full_text = format!("{} {}", skill.description, skill.prompt_content).to_lowercase();
+            let full_text =
+                format!("{} {}", skill.description, skill.prompt_content).to_lowercase();
             assert!(
                 full_text.contains("when") || full_text.contains("use this"),
                 "Skill {} must document activation triggers",
@@ -665,7 +672,8 @@ mod phase_2_all_skills_validation_tests {
             let skill = parse_skill_file(&skill_path)
                 .expect(&format!("Failed to parse {} skill", skill_name));
 
-            let full_text = format!("{} {}", skill.description, skill.prompt_content).to_lowercase();
+            let full_text =
+                format!("{} {}", skill.description, skill.prompt_content).to_lowercase();
             assert!(
                 full_text.contains("pmat"),
                 "Skill {} must reference PMAT tool",

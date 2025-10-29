@@ -379,9 +379,7 @@ impl Default for Disassembler {
 /// Format operator as mnemonic and operands
 fn format_operator(op: &Operator) -> (String, Vec<String>) {
     match op {
-        Operator::Call { function_index } => {
-            ("call".to_string(), vec![function_index.to_string()])
-        }
+        Operator::Call { function_index } => ("call".to_string(), vec![function_index.to_string()]),
         Operator::LocalGet { local_index } => {
             ("local.get".to_string(), vec![local_index.to_string()])
         }

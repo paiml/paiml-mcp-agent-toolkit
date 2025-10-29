@@ -109,7 +109,9 @@ impl DwarfParser {
         // Handle errors gracefully for malformed/synthetic data
         while let Some((_, entry)) = entries_cursor.next_dfs().ok().flatten() {
             // Get offset - convert unit-relative offset to debug_info offset
-            let die_offset = entry.offset().to_debug_info_offset(&header)
+            let die_offset = entry
+                .offset()
+                .to_debug_info_offset(&header)
                 .map(|offset| offset.0 as u64)
                 .unwrap_or(0);
 
@@ -141,16 +143,20 @@ impl DwarfParser {
         entry: &gimli::DebuggingInformationEntry<R>,
         debug_str: &DebugStr<R>,
     ) -> DeepWasmResult<Option<String>> {
-        if let Some(attr) = entry.attr(gimli::DW_AT_name).map_err(|e| {
-            DeepWasmError::Analysis(format!("Failed to read DW_AT_name: {}", e))
-        })? {
+        if let Some(attr) = entry
+            .attr(gimli::DW_AT_name)
+            .map_err(|e| DeepWasmError::Analysis(format!("Failed to read DW_AT_name: {}", e)))?
+        {
             if let gimli::AttributeValue::DebugStrRef(offset) = attr.value() {
                 let name_slice = debug_str.get_str(offset).map_err(|e| {
                     DeepWasmError::Analysis(format!("Failed to resolve string: {}", e))
                 })?;
 
-                let name = name_slice.to_string_lossy()
-                    .map_err(|e| DeepWasmError::Analysis(format!("Invalid UTF-8 in function name: {}", e)))?
+                let name = name_slice
+                    .to_string_lossy()
+                    .map_err(|e| {
+                        DeepWasmError::Analysis(format!("Invalid UTF-8 in function name: {}", e))
+                    })?
                     .to_string();
 
                 return Ok(Some(name));
@@ -167,10 +173,7 @@ impl DwarfParser {
     /// For production use with full correlation, pass both sections together.
     /// This implementation handles synthetic test data and provides graceful degradation.
     #[cfg(feature = "deep-wasm")]
-    pub fn parse_line_program(
-        &self,
-        debug_line: &[u8],
-    ) -> DeepWasmResult<Vec<(u64, Location)>> {
+    pub fn parse_line_program(&self, debug_line: &[u8]) -> DeepWasmResult<Vec<(u64, Location)>> {
         // Early return for empty input
         if debug_line.is_empty() {
             return Ok(Vec::new());
@@ -222,10 +225,7 @@ impl DwarfParser {
 
     /// Stub implementation when feature is disabled
     #[cfg(not(feature = "deep-wasm"))]
-    pub fn parse_line_program(
-        &self,
-        _debug_line: &[u8],
-    ) -> DeepWasmResult<Vec<(u64, Location)>> {
+    pub fn parse_line_program(&self, _debug_line: &[u8]) -> DeepWasmResult<Vec<(u64, Location)>> {
         Err(DeepWasmError::MissingDebugInfo)
     }
 }
@@ -396,7 +396,10 @@ mod tests {
         let parser = DwarfParser::new();
         let result = parser.parse_dwarf_sections(&[], None, None);
         assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), DeepWasmError::MissingDebugInfo));
+        assert!(matches!(
+            result.unwrap_err(),
+            DeepWasmError::MissingDebugInfo
+        ));
     }
 
     #[cfg(not(feature = "deep-wasm"))]
@@ -405,6 +408,9 @@ mod tests {
         let parser = DwarfParser::new();
         let result = parser.parse_line_program(&[]);
         assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), DeepWasmError::MissingDebugInfo));
+        assert!(matches!(
+            result.unwrap_err(),
+            DeepWasmError::MissingDebugInfo
+        ));
     }
 }

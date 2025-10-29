@@ -316,10 +316,7 @@ impl DocValidator {
         }
 
         // Resolve relative path
-        let base_dir = link
-            .source_file
-            .parent()
-            .unwrap_or_else(|| Path::new("."));
+        let base_dir = link.source_file.parent().unwrap_or_else(|| Path::new("."));
         let target_path = base_dir.join(target);
         let normalized_path = normalize_path(&target_path);
 
@@ -542,14 +539,8 @@ mod unit_tests {
     #[test]
     fn red_test_classify_http_link() {
         // RED: Implementation missing
-        assert_eq!(
-            classify_link("http://example.com"),
-            LinkType::ExternalHttp
-        );
-        assert_eq!(
-            classify_link("https://example.com"),
-            LinkType::ExternalHttp
-        );
+        assert_eq!(classify_link("http://example.com"), LinkType::ExternalHttp);
+        assert_eq!(classify_link("https://example.com"), LinkType::ExternalHttp);
     }
 
     #[test]
@@ -666,10 +657,7 @@ mod unit_tests {
         }
 
         let validator = DocValidator::default();
-        let summary = validator
-            .validate_directory(temp_dir.path())
-            .await
-            .unwrap();
+        let summary = validator.validate_directory(temp_dir.path()).await.unwrap();
 
         assert_eq!(summary.total_files, 10);
         assert_eq!(summary.valid_links, 10);
@@ -686,16 +674,10 @@ mod unit_tests {
         // Create archive directory with broken links (should be excluded)
         let archive_dir = temp_dir.path().join("archive");
         std::fs::create_dir(&archive_dir).unwrap();
-        std::fs::write(
-            archive_dir.join("old.md"),
-            "[broken](./nonexistent.md)",
-        ).unwrap();
+        std::fs::write(archive_dir.join("old.md"), "[broken](./nonexistent.md)").unwrap();
 
         let validator = DocValidator::default();
-        let summary = validator
-            .validate_directory(temp_dir.path())
-            .await
-            .unwrap();
+        let summary = validator.validate_directory(temp_dir.path()).await.unwrap();
 
         // Should only scan 2 files (readme.md and test.md), excluding archive/old.md
         assert_eq!(summary.total_files, 2);

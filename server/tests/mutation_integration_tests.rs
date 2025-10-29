@@ -127,7 +127,9 @@ def test_multiply():
             // Expected if Python adapter not implemented yet
             let msg = e.to_string();
             assert!(
-                msg.contains("Python") || msg.contains("not supported") || msg.contains("No mutants"),
+                msg.contains("Python")
+                    || msg.contains("not supported")
+                    || msg.contains("No mutants"),
                 "Error should be related to Python support: {}",
                 msg
             );
@@ -192,7 +194,9 @@ describe('Math functions', () => {
             // Expected if TypeScript adapter not fully implemented
             let msg = e.to_string();
             assert!(
-                msg.contains("TypeScript") || msg.contains("not supported") || msg.contains("No mutants"),
+                msg.contains("TypeScript")
+                    || msg.contains("not supported")
+                    || msg.contains("No mutants"),
                 "Error should be related to TypeScript support: {}",
                 msg
             );
@@ -255,7 +259,9 @@ describe('Math functions', () => {
             // Expected if JavaScript adapter not fully implemented
             let msg = e.to_string();
             assert!(
-                msg.contains("JavaScript") || msg.contains("not supported") || msg.contains("No mutants"),
+                msg.contains("JavaScript")
+                    || msg.contains("not supported")
+                    || msg.contains("No mutants"),
                 "Error should be related to JavaScript support: {}",
                 msg
             );
@@ -498,10 +504,7 @@ fn test_add() {
     let result = handle(args, server).await;
 
     // Assert: Should handle workspace file successfully
-    assert!(
-        result.is_ok(),
-        "Workspace-level mutation should succeed"
-    );
+    assert!(result.is_ok(), "Workspace-level mutation should succeed");
 }
 
 // ============================================================================
@@ -535,7 +538,7 @@ fn function_{}(a: i32, b: i32) -> i32 {{
     let args = MutateArgs {
         target: file_path.clone(),
         language: None,
-        timeout: 60, // Longer timeout for large file
+        timeout: 60,   // Longer timeout for large file
         jobs: Some(4), // Use multiple jobs for performance
         output_format: "json".to_string(),
         output: None,
@@ -578,7 +581,13 @@ async fn test_many_mutants_handling() {
 
     // Create many arithmetic operations (each creates multiple mutants)
     for i in 0..50 {
-        code.push_str(&format!("    result = result + {} - {} * {} / {};\n", i, i+1, i+2, i+3));
+        code.push_str(&format!(
+            "    result = result + {} - {} * {} / {};\n",
+            i,
+            i + 1,
+            i + 2,
+            i + 3
+        ));
     }
 
     code.push_str("    result\n}\n");
@@ -654,7 +663,12 @@ fn div(a: i32, b: i32) -> i32 { a / b }
 
         // Assert: Should work with any valid job count
         assert!(
-            result.is_ok() || result.as_ref().err().map(|e| e.to_string().contains("No mutants")).unwrap_or(false),
+            result.is_ok()
+                || result
+                    .as_ref()
+                    .err()
+                    .map(|e| e.to_string().contains("No mutants"))
+                    .unwrap_or(false),
             "Parallel execution with {} jobs should work",
             jobs
         );
@@ -727,10 +741,7 @@ async fn test_memory_usage_bounds() {
 
     let mut code = String::new();
     for i in 0..100 {
-        code.push_str(&format!(
-            "fn func_{}(x: i32) -> i32 {{ x + {} }}\n",
-            i, i
-        ));
+        code.push_str(&format!("fn func_{}(x: i32) -> i32 {{ x + {} }}\n", i, i));
     }
     fs::write(&file_path, code).unwrap();
 
@@ -753,7 +764,12 @@ async fn test_memory_usage_bounds() {
     // Assert: Should complete without OOM
     // Note: This test primarily verifies no OOM/crash occurs
     assert!(
-        result.is_ok() || result.as_ref().err().map(|e| !e.to_string().contains("out of memory")).unwrap_or(true),
+        result.is_ok()
+            || result
+                .as_ref()
+                .err()
+                .map(|e| !e.to_string().contains("out of memory"))
+                .unwrap_or(true),
         "Should not run out of memory"
     );
 }
@@ -812,12 +828,32 @@ fn sub(a: i32, b: i32) -> i32 { a - b }
 async fn test_parallel_mutant_execution_correctness() {
     let temp_dir = tempdir().unwrap();
     let file_path = temp_dir.path().join("parallel.rs");
-    fs::write(&file_path, "fn add(a: i32, b: i32) -> i32 { a + b }\nfn sub(a: i32, b: i32) -> i32 { a - b }").unwrap();
+    fs::write(
+        &file_path,
+        "fn add(a: i32, b: i32) -> i32 { a + b }\nfn sub(a: i32, b: i32) -> i32 { a - b }",
+    )
+    .unwrap();
 
-    let args = MutateArgs { target: file_path, language: None, timeout: 30, jobs: Some(4), output_format: "json".to_string(), output: None, threshold: None, failures_only: false };
+    let args = MutateArgs {
+        target: file_path,
+        language: None,
+        timeout: 30,
+        jobs: Some(4),
+        output_format: "json".to_string(),
+        output: None,
+        threshold: None,
+        failures_only: false,
+    };
     let server = Arc::new(StatelessTemplateServer::new().unwrap());
     let result = handle(args, server).await;
-    assert!(result.is_ok() || result.as_ref().err().map(|e| e.to_string().contains("No mutants")).unwrap_or(false));
+    assert!(
+        result.is_ok()
+            || result
+                .as_ref()
+                .err()
+                .map(|e| e.to_string().contains("No mutants"))
+                .unwrap_or(false)
+    );
 }
 
 /// Test 16: Race condition handling
@@ -829,7 +865,16 @@ async fn test_race_condition_handling() {
 
     // Run multiple times to catch potential race conditions
     for _ in 0..3 {
-        let args = MutateArgs { target: file_path.clone(), language: None, timeout: 30, jobs: Some(8), output_format: "json".to_string(), output: None, threshold: None, failures_only: false };
+        let args = MutateArgs {
+            target: file_path.clone(),
+            language: None,
+            timeout: 30,
+            jobs: Some(8),
+            output_format: "json".to_string(),
+            output: None,
+            threshold: None,
+            failures_only: false,
+        };
         let server = Arc::new(StatelessTemplateServer::new().unwrap());
         let _ = handle(args, server).await;
     }
@@ -842,10 +887,26 @@ async fn test_resource_contention() {
     let file_path = temp_dir.path().join("contention.rs");
     fs::write(&file_path, "fn process(n: i32) -> i32 { (0..n).sum() }").unwrap();
 
-    let args = MutateArgs { target: file_path, language: None, timeout: 30, jobs: Some(16), output_format: "json".to_string(), output: None, threshold: None, failures_only: true };
+    let args = MutateArgs {
+        target: file_path,
+        language: None,
+        timeout: 30,
+        jobs: Some(16),
+        output_format: "json".to_string(),
+        output: None,
+        threshold: None,
+        failures_only: true,
+    };
     let server = Arc::new(StatelessTemplateServer::new().unwrap());
     let result = handle(args, server).await;
-    assert!(result.is_ok() || result.as_ref().err().map(|e| !e.to_string().contains("panic")).unwrap_or(true));
+    assert!(
+        result.is_ok()
+            || result
+                .as_ref()
+                .err()
+                .map(|e| !e.to_string().contains("panic"))
+                .unwrap_or(true)
+    );
 }
 
 /// Test 18: Graceful shutdown on error
@@ -855,7 +916,16 @@ async fn test_graceful_shutdown_on_error() {
     let file_path = temp_dir.path().join("shutdown.rs");
     fs::write(&file_path, "fn invalid syntax here").unwrap();
 
-    let args = MutateArgs { target: file_path, language: None, timeout: 5, jobs: Some(4), output_format: "json".to_string(), output: None, threshold: None, failures_only: false };
+    let args = MutateArgs {
+        target: file_path,
+        language: None,
+        timeout: 5,
+        jobs: Some(4),
+        output_format: "json".to_string(),
+        output: None,
+        threshold: None,
+        failures_only: false,
+    };
     let server = Arc::new(StatelessTemplateServer::new().unwrap());
     let result = handle(args, server).await;
     assert!(result.is_err() || result.as_ref().ok().is_some());
@@ -870,12 +940,30 @@ async fn test_graceful_shutdown_on_error() {
 async fn test_mutation_of_actual_pmat_code() {
     use std::path::Path;
     let pmat_file = Path::new("src/utils/path_validator.rs");
-    if !pmat_file.exists() { return; }
+    if !pmat_file.exists() {
+        return;
+    }
 
-    let args = MutateArgs { target: pmat_file.to_path_buf(), language: None, timeout: 60, jobs: Some(2), output_format: "json".to_string(), output: None, threshold: None, failures_only: true };
+    let args = MutateArgs {
+        target: pmat_file.to_path_buf(),
+        language: None,
+        timeout: 60,
+        jobs: Some(2),
+        output_format: "json".to_string(),
+        output: None,
+        threshold: None,
+        failures_only: true,
+    };
     let server = Arc::new(StatelessTemplateServer::new().unwrap());
     let result = handle(args, server).await;
-    assert!(result.is_ok() || result.as_ref().err().map(|e| e.to_string().contains("No mutants")).unwrap_or(false));
+    assert!(
+        result.is_ok()
+            || result
+                .as_ref()
+                .err()
+                .map(|e| e.to_string().contains("No mutants"))
+                .unwrap_or(false)
+    );
 }
 
 /// Test 20: Mutation with failing tests
@@ -883,13 +971,26 @@ async fn test_mutation_of_actual_pmat_code() {
 async fn test_mutation_with_failing_tests() {
     let temp_dir = tempdir().unwrap();
     let file_path = temp_dir.path().join("failing.rs");
-    fs::write(&file_path, r#"
+    fs::write(
+        &file_path,
+        r#"
 fn buggy_add(a: i32, b: i32) -> i32 { a - b }
 #[test]
 fn test_add() { assert_eq!(buggy_add(2, 3), 5); }
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
-    let args = MutateArgs { target: file_path, language: None, timeout: 30, jobs: Some(1), output_format: "json".to_string(), output: None, threshold: None, failures_only: false };
+    let args = MutateArgs {
+        target: file_path,
+        language: None,
+        timeout: 30,
+        jobs: Some(1),
+        output_format: "json".to_string(),
+        output: None,
+        threshold: None,
+        failures_only: false,
+    };
     let server = Arc::new(StatelessTemplateServer::new().unwrap());
     let _ = handle(args, server).await;
 }
@@ -901,10 +1002,26 @@ async fn test_mutation_with_no_tests() {
     let file_path = temp_dir.path().join("notests.rs");
     fs::write(&file_path, "fn add(a: i32, b: i32) -> i32 { a + b }").unwrap();
 
-    let args = MutateArgs { target: file_path, language: None, timeout: 30, jobs: Some(1), output_format: "json".to_string(), output: None, threshold: None, failures_only: false };
+    let args = MutateArgs {
+        target: file_path,
+        language: None,
+        timeout: 30,
+        jobs: Some(1),
+        output_format: "json".to_string(),
+        output: None,
+        threshold: None,
+        failures_only: false,
+    };
     let server = Arc::new(StatelessTemplateServer::new().unwrap());
     let result = handle(args, server).await;
-    assert!(result.is_ok() || result.as_ref().err().map(|e| e.to_string().contains("No mutants")).unwrap_or(false));
+    assert!(
+        result.is_ok()
+            || result
+                .as_ref()
+                .err()
+                .map(|e| e.to_string().contains("No mutants"))
+                .unwrap_or(false)
+    );
 }
 
 /// Test 22: Mutation with flaky tests
@@ -919,7 +1036,16 @@ fn time_dependent() -> bool { SystemTime::now().duration_since(SystemTime::UNIX_
 fn test_flaky() { assert!(time_dependent() || !time_dependent()); }
 "#).unwrap();
 
-    let args = MutateArgs { target: file_path, language: None, timeout: 30, jobs: Some(1), output_format: "json".to_string(), output: None, threshold: None, failures_only: true };
+    let args = MutateArgs {
+        target: file_path,
+        language: None,
+        timeout: 30,
+        jobs: Some(1),
+        output_format: "json".to_string(),
+        output: None,
+        threshold: None,
+        failures_only: true,
+    };
     let server = Arc::new(StatelessTemplateServer::new().unwrap());
     let _ = handle(args, server).await;
 }

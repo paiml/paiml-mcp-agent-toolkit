@@ -1,5 +1,5 @@
+use crate::mcp_integration::ast_item_helpers::{extract_complexity, extract_kind, extract_name};
 use crate::mcp_integration::{McpError, McpTool, ToolMetadata};
-use crate::mcp_integration::ast_item_helpers::{extract_kind, extract_name, extract_complexity};
 use crate::services::languages::java::JavaAstVisitor;
 use crate::utils::path_validator::PathValidator;
 use anyhow::Result;
@@ -27,7 +27,9 @@ impl McpTool for JavaAnalysisTool {
     fn metadata(&self) -> ToolMetadata {
         ToolMetadata {
             name: "analyze_java".to_string(),
-            description: "Analyzes Java source code for complexity, structure, and quality metrics.".to_string(),
+            description:
+                "Analyzes Java source code for complexity, structure, and quality metrics."
+                    .to_string(),
             input_schema: json!({
                 "type": "object",
                 "properties": {
@@ -58,19 +60,17 @@ impl McpTool for JavaAnalysisTool {
 
     async fn execute(&self, params: Value) -> Result<Value, McpError> {
         // Extract parameters
-        let path_str = params["path"]
-            .as_str()
-            .ok_or_else(|| McpError {
-                code: crate::mcp_integration::error_codes::INVALID_PARAMS,
-                message: "Missing path parameter".to_string(),
-                data: None,
-            })?;
-        
+        let path_str = params["path"].as_str().ok_or_else(|| McpError {
+            code: crate::mcp_integration::error_codes::INVALID_PARAMS,
+            message: "Missing path parameter".to_string(),
+            data: None,
+        })?;
+
         let path = PathBuf::from(path_str);
         let max_depth = params["max_depth"].as_u64().unwrap_or(3);
         let include_metrics = params["include_metrics"].as_bool().unwrap_or(true);
         let include_ast = params["include_ast"].as_bool().unwrap_or(false);
-        
+
         // Validate path
         if PathValidator::ensure_exists(&path).is_err() {
             return Err(McpError {
@@ -82,7 +82,7 @@ impl McpTool for JavaAnalysisTool {
                 })),
             });
         }
-        
+
         // Analyze the file or directory
         info!("Analyzing Java at path: {}", path.display());
         let result = if path.is_dir() {
@@ -99,7 +99,7 @@ impl McpTool for JavaAnalysisTool {
                 })),
             });
         };
-        
+
         match result {
             Ok(analysis) => Ok(analysis),
             Err(e) => Err(McpError {
@@ -119,7 +119,7 @@ async fn analyze_java_file(
 ) -> Result<Value> {
     // Read the file content
     let content = fs::read_to_string(path).await?;
-    
+
     // Create visitor and analyze
     let visitor = JavaAstVisitor::new(path);
     match visitor.analyze_java_source(&content) {
@@ -145,7 +145,7 @@ async fn analyze_java_file(
                 .find(|item| extract_kind(item) == "package" || extract_kind(item) == "module")
                 .map(extract_name)
                 .unwrap_or_else(|| "default".to_string());
-            
+
             // Build response
             let mut result = json!({
                 "status": "completed",
@@ -159,27 +159,20 @@ async fn analyze_java_file(
                     "total_items": items.len()
                 }
             });
-            
+
             // Add metrics if requested
             if include_metrics {
                 // Calculate complexity metrics
-                let total_complexity: u32 = items
-                    .iter()
-                    .map(extract_complexity)
-                    .sum();
+                let total_complexity: u32 = items.iter().map(extract_complexity).sum();
 
-                let max_complexity = items
-                    .iter()
-                    .map(extract_complexity)
-                    .max()
-                    .unwrap_or(0);
-                    
+                let max_complexity = items.iter().map(extract_complexity).max().unwrap_or(0);
+
                 let avg_complexity = if method_count > 0 {
                     (total_complexity as f64) / (method_count as f64)
                 } else {
                     0.0
                 };
-                
+
                 // Add metrics to result
                 result["metrics"] = json!({
                     "total_complexity": total_complexity,
@@ -188,14 +181,14 @@ async fn analyze_java_file(
                     "loc": content.lines().count()
                 });
             }
-            
+
             // Add AST items if requested
             if include_ast {
                 result["items"] = serde_json::to_value(&items)?;
             }
-            
+
             Ok(result)
-        },
+        }
         Err(e) => {
             warn!("Failed to parse Java file {}: {}", path.display(), e);
             Ok(json!({
@@ -217,7 +210,7 @@ async fn analyze_java_directory(
 ) -> Result<Value> {
     // Use walkdir to find all Java files
     let java_files = find_java_files(path, max_depth as usize)?;
-    
+
     if java_files.is_empty() {
         return Ok(json!({
             "status": "completed",
@@ -229,7 +222,7 @@ async fn analyze_java_directory(
             }
         }));
     }
-    
+
     // Analyze each file
     let mut file_results = Vec::new();
     let mut total_classes = 0;
@@ -238,7 +231,7 @@ async fn analyze_java_directory(
     let mut total_complexity = 0;
     let mut max_complexity = 0;
     let mut total_loc = 0;
-    
+
     for file_path in &java_files {
         match analyze_java_file(file_path, include_metrics, false).await {
             Ok(result) => {
@@ -254,7 +247,7 @@ async fn analyze_java_directory(
                         total_methods += method_count;
                     }
                 }
-                
+
                 // Update complexity metrics
                 if include_metrics {
                     if let Some(metrics) = result["metrics"].as_object() {
@@ -269,22 +262,22 @@ async fn analyze_java_directory(
                         }
                     }
                 }
-                
+
                 file_results.push(result);
-            },
+            }
             Err(e) => {
                 warn!("Error analyzing Java file {}: {}", file_path.display(), e);
             }
         }
     }
-    
+
     // Calculate average complexity
     let avg_complexity = if total_methods > 0 {
         (total_complexity as f64) / (total_methods as f64)
     } else {
         0.0
     };
-    
+
     // Build aggregate response
     let mut result = json!({
         "status": "completed",
@@ -297,7 +290,7 @@ async fn analyze_java_directory(
             "method_count": total_methods,
         }
     });
-    
+
     // Add metrics if requested
     if include_metrics {
         result["metrics"] = json!({
@@ -307,31 +300,31 @@ async fn analyze_java_directory(
             "total_loc": total_loc
         });
     }
-    
+
     // Add file-level results if include_ast was requested
     if include_ast {
         result["files"] = serde_json::to_value(&file_results)?;
     }
-    
+
     Ok(result)
 }
 
 /// Helper function to find all Java files in a directory
 fn find_java_files(path: &std::path::Path, max_depth: usize) -> Result<Vec<PathBuf>> {
     let mut java_files = Vec::new();
-    
+
     let walker = walkdir::WalkDir::new(path)
         .max_depth(max_depth)
         .into_iter()
         .filter_map(Result::ok);
-        
+
     for entry in walker {
         let path = entry.path();
         if path.is_file() && path.extension().is_some_and(|ext| ext == "java") {
             java_files.push(path.to_path_buf());
         }
     }
-    
+
     Ok(java_files)
 }
 
@@ -352,7 +345,8 @@ impl McpTool for JavaMutationTool {
     fn metadata(&self) -> ToolMetadata {
         ToolMetadata {
             name: "mutation_test_java".to_string(),
-            description: "Performs mutation testing on Java code to assess test suite quality.".to_string(),
+            description: "Performs mutation testing on Java code to assess test suite quality."
+                .to_string(),
             input_schema: json!({
                 "type": "object",
                 "properties": {
@@ -386,25 +380,21 @@ impl McpTool for JavaMutationTool {
     }
 
     async fn execute(&self, params: Value) -> Result<Value, McpError> {
-        let project_path = params["project_path"]
-            .as_str()
-            .ok_or_else(|| McpError {
-                code: crate::mcp_integration::error_codes::INVALID_PARAMS,
-                message: "Missing project_path parameter".to_string(),
-                data: None,
-            })?;
-            
-        let source_path = params["source_path"]
-            .as_str()
-            .ok_or_else(|| McpError {
-                code: crate::mcp_integration::error_codes::INVALID_PARAMS,
-                message: "Missing source_path parameter".to_string(),
-                data: None,
-            })?;
-            
+        let project_path = params["project_path"].as_str().ok_or_else(|| McpError {
+            code: crate::mcp_integration::error_codes::INVALID_PARAMS,
+            message: "Missing project_path parameter".to_string(),
+            data: None,
+        })?;
+
+        let source_path = params["source_path"].as_str().ok_or_else(|| McpError {
+            code: crate::mcp_integration::error_codes::INVALID_PARAMS,
+            message: "Missing source_path parameter".to_string(),
+            data: None,
+        })?;
+
         let test_command = params["test_command"].as_str();
         let timeout = params["timeout"].as_u64().unwrap_or(30);
-        
+
         // Extract mutation operators
         let mutation_operators = if let Some(operators) = params["mutation_operators"].as_array() {
             operators
@@ -420,12 +410,12 @@ impl McpTool for JavaMutationTool {
                 "assignment".to_string(),
             ]
         };
-        
+
         info!(
             "Running Java mutation tests on project: {}, source: {}",
             project_path, source_path
         );
-        
+
         // In a real implementation, we would spawn the PITest or similar mutation testing tool
         // For now, return a placeholder response
         Ok(json!({

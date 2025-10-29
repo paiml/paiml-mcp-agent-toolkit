@@ -14,10 +14,7 @@ mod fuzzing_red_tests {
         let config = FuzzConfig::default();
 
         assert_eq!(config.iterations, 1000);
-        assert!(matches!(
-            config.input_generator,
-            InputGeneratorType::Random
-        ));
+        assert!(matches!(config.input_generator, InputGeneratorType::Random));
         assert!(config.crash_detection);
         assert_eq!(config.iteration_timeout, Duration::from_millis(100));
     }
@@ -110,10 +107,10 @@ mod fuzzing_red_tests {
         let strategy = FuzzMutationStrategy::new(engine, config);
 
         // Generate mutant with off-by-one error
-        let mutants = strategy.engine().generate_mutants_from_source(
-            std::path::Path::new("test.rs"),
-            source
-        ).await;
+        let mutants = strategy
+            .engine()
+            .generate_mutants_from_source(std::path::Path::new("test.rs"), source)
+            .await;
         assert!(mutants.is_ok());
 
         let mutants = mutants.unwrap();
@@ -147,10 +144,10 @@ mod fuzzing_red_tests {
 
         let strategy = FuzzMutationStrategy::new(engine, config);
 
-        let mutants = strategy.engine().generate_mutants_from_source(
-            std::path::Path::new("test.rs"),
-            source
-        ).await;
+        let mutants = strategy
+            .engine()
+            .generate_mutants_from_source(std::path::Path::new("test.rs"), source)
+            .await;
         assert!(mutants.is_ok());
 
         let mutants = mutants.unwrap();
@@ -188,10 +185,10 @@ mod fuzzing_red_tests {
 
         let strategy = FuzzMutationStrategy::new(engine, config);
 
-        let mutants = strategy.engine().generate_mutants_from_source(
-            std::path::Path::new("test.rs"),
-            source
-        ).await;
+        let mutants = strategy
+            .engine()
+            .generate_mutants_from_source(std::path::Path::new("test.rs"), source)
+            .await;
         assert!(mutants.is_ok());
 
         let mutants = mutants.unwrap();

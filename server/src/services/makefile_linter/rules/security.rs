@@ -221,7 +221,7 @@ fn contains_shell_injection(command: &str) -> bool {
     }
 
     // Skip if command contains properly quoted Make variables like "$${VAR}" or "$(VAR)"
-    if command.contains("\"$$")  || command.contains("\"$(") {
+    if command.contains("\"$$") || command.contains("\"$(") {
         return false;
     }
 
@@ -431,8 +431,11 @@ mod tests {
         let violations = rule.check(&ast);
 
         // MUST be zero - these are properly quoted Make variables
-        assert_eq!(violations.len(), 0,
-            "Properly quoted Make variables ${{VAR}} should not trigger shell injection warnings");
+        assert_eq!(
+            violations.len(),
+            0,
+            "Properly quoted Make variables ${{VAR}} should not trigger shell injection warnings"
+        );
     }
 
     /// RED TEST: Quoted $(VAR) in dangerous commands should be SAFE
@@ -448,8 +451,11 @@ mod tests {
         let rule = ShellInjectionRule;
         let violations = rule.check(&ast);
 
-        assert_eq!(violations.len(), 0,
-            "Quoted $(VAR) in dangerous commands should not trigger warnings");
+        assert_eq!(
+            violations.len(),
+            0,
+            "Quoted $(VAR) in dangerous commands should not trigger warnings"
+        );
     }
 
     /// PROPERTY TEST: Any command with "$${" should NEVER trigger shell injection
@@ -471,8 +477,13 @@ mod tests {
             let rule = ShellInjectionRule;
             let violations = rule.check(&ast);
 
-            assert_eq!(violations.len(), 0,
-                "Test case {}: Command with ${{{{...}}}} should not trigger: {}", i, cmd);
+            assert_eq!(
+                violations.len(),
+                0,
+                "Test case {}: Command with ${{{{...}}}} should not trigger: {}",
+                i,
+                cmd
+            );
         }
     }
 
@@ -494,8 +505,13 @@ mod tests {
             let rule = ShellInjectionRule;
             let violations = rule.check(&ast);
 
-            assert_eq!(violations.len(), 0,
-                "Test case {}: Command with $$((...)) should not trigger: {}", i, cmd);
+            assert_eq!(
+                violations.len(),
+                0,
+                "Test case {}: Command with $$((...)) should not trigger: {}",
+                i,
+                cmd
+            );
         }
     }
 
@@ -512,8 +528,10 @@ mod tests {
         let rule = ShellInjectionRule;
         let violations = rule.check(&ast);
 
-        assert!(violations.len() >= 1,
-            "Unquoted variables in dangerous commands MUST still be detected");
+        assert!(
+            violations.len() >= 1,
+            "Unquoted variables in dangerous commands MUST still be detected"
+        );
     }
 
     #[test]

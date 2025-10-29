@@ -65,7 +65,9 @@ pub fn validate_cli_documentation(
             text
         }
         Err(exit_code) => {
-            report.issues.push(format!("Command failed with exit code: {}", exit_code));
+            report
+                .issues
+                .push(format!("Command failed with exit code: {}", exit_code));
             return Ok(report);
         }
     };
@@ -90,8 +92,7 @@ fn execute_help_command(binary_path: &str, command: &[&str]) -> Result<String, i
     }
     cmd.arg("--help");
 
-    let output = cmd.output()
-        .map_err(|_| -1)?;
+    let output = cmd.output().map_err(|_| -1)?;
 
     if !output.status.success() {
         return Err(output.status.code().unwrap_or(-1));
@@ -113,7 +114,9 @@ fn validate_sections(help_text: &str, report: &mut CliDocumentationReport) {
     }
 
     if !report.has_options_section {
-        report.issues.push("Missing 'Options:' or 'FLAGS:' section".to_string());
+        report
+            .issues
+            .push("Missing 'Options:' or 'FLAGS:' section".to_string());
     }
 }
 
@@ -246,11 +249,10 @@ fn parse_flags_from_line(line: &str) -> Option<Vec<String>> {
 /// Extract primary flag name from a help line
 fn extract_flag_name(line: &str) -> String {
     let trimmed = line.trim_start();
-    if let Some(long_flag) = trimmed.split_whitespace()
-        .find(|w| w.starts_with("--"))
-    {
+    if let Some(long_flag) = trimmed.split_whitespace().find(|w| w.starts_with("--")) {
         long_flag.trim_end_matches(',').to_string()
-    } else if let Some(short_flag) = trimmed.split_whitespace()
+    } else if let Some(short_flag) = trimmed
+        .split_whitespace()
         .find(|w| w.starts_with('-') && !w.starts_with("--"))
     {
         short_flag.trim_end_matches(',').to_string()
@@ -267,11 +269,10 @@ pub fn find_undocumented_flags(
     expected_flags: &[&str],
     documented_flags: &[String],
 ) -> Vec<String> {
-    let documented_set: HashSet<String> = documented_flags.iter()
-        .map(|f| f.to_string())
-        .collect();
+    let documented_set: HashSet<String> = documented_flags.iter().map(|f| f.to_string()).collect();
 
-    expected_flags.iter()
+    expected_flags
+        .iter()
         .filter(|flag| !documented_set.contains(**flag))
         .map(|f| f.to_string())
         .collect()

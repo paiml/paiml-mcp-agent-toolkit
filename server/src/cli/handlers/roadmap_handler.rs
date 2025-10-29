@@ -3,8 +3,8 @@
 //! This module provides functionality for maintaining project roadmaps,
 //! including validation, health reporting, and auto-fixing checkbox status.
 
-use anyhow::Result;
 use crate::cli::OutputFormat;
+use anyhow::Result;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::fs;
@@ -156,7 +156,9 @@ pub async fn validate_roadmap_internal(
         }
 
         if !checkbox_status && ticket_status == TicketStatus::Green {
-            warnings.push(format!("{ticket_id}: Unchecked in roadmap but status is GREEN"));
+            warnings.push(format!(
+                "{ticket_id}: Unchecked in roadmap but status is GREEN"
+            ));
         }
     }
 
@@ -255,11 +257,7 @@ fn apply_roadmap_changes(
     Ok(())
 }
 
-async fn fix_roadmap_status(
-    roadmap_path: &Path,
-    tickets_dir: &Path,
-    dry_run: bool,
-) -> Result<()> {
+async fn fix_roadmap_status(roadmap_path: &Path, tickets_dir: &Path, dry_run: bool) -> Result<()> {
     let roadmap_content = fs::read_to_string(roadmap_path)?;
     let roadmap_tickets = parse_roadmap_tickets(&roadmap_content)?;
 
@@ -323,7 +321,11 @@ pub async fn generate_tickets_internal(
 
         // Extract sprint context from roadmap
         let sprint = extract_sprint_for_ticket(&roadmap_content, ticket_id);
-        let status = if *checked { "GREEN ✅" } else { "PLANNED 📋" };
+        let status = if *checked {
+            "GREEN ✅"
+        } else {
+            "PLANNED 📋"
+        };
 
         let template = generate_ticket_template(ticket_id, &sprint, status);
 
@@ -409,7 +411,8 @@ fn extract_sprint_for_ticket(roadmap_content: &str, ticket_id: &str) -> String {
 fn generate_ticket_template(ticket_id: &str, sprint: &str, status: &str) -> String {
     let today = chrono::Local::now().format("%Y-%m-%d");
 
-    format!(r#"# {ticket_id}: [Title - TODO: Update from roadmap]
+    format!(
+        r#"# {ticket_id}: [Title - TODO: Update from roadmap]
 
 **Sprint:** {sprint}
 **Priority:** [TBD - To be determined]
@@ -448,7 +451,8 @@ fn generate_ticket_template(ticket_id: &str, sprint: &str, status: &str) -> Stri
 **Status:** {status}
 **Delivered:** [TBD]
 **Target Release:** [TBD]
-"#)
+"#
+    )
 }
 
 /// Parse ticket IDs and checkbox status from roadmap
@@ -511,15 +515,14 @@ fn parse_sprint_info(content: &str, _tickets_dir: &Path) -> Result<Vec<SprintInf
 
     // Calculate status
     for sprint in &mut sprints {
-        sprint.status = if sprint.completed_tickets == sprint.total_tickets
-            && sprint.total_tickets > 0
-        {
-            SprintStatus::Complete
-        } else if sprint.completed_tickets > 0 {
-            SprintStatus::InProgress
-        } else {
-            SprintStatus::NotStarted
-        };
+        sprint.status =
+            if sprint.completed_tickets == sprint.total_tickets && sprint.total_tickets > 0 {
+                SprintStatus::Complete
+            } else if sprint.completed_tickets > 0 {
+                SprintStatus::InProgress
+            } else {
+                SprintStatus::NotStarted
+            };
     }
 
     Ok(sprints)

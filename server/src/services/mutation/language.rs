@@ -1,7 +1,7 @@
 //! Language adapter system for mutation testing
 
-use super::operators::MutationOperator;
 use super::language_detector::Language; // Sprint 63: Use centralized language detection
+use super::operators::MutationOperator;
 use anyhow::Result;
 use async_trait::async_trait;
 use std::collections::HashMap;
@@ -219,7 +219,11 @@ mod tests {
     #[test]
     fn test_language_registry_languages_empty() {
         let registry = LanguageRegistry::new();
-        assert_eq!(registry.languages().len(), 0, "Empty registry should have no languages");
+        assert_eq!(
+            registry.languages().len(),
+            0,
+            "Empty registry should have no languages"
+        );
     }
 
     #[test]
@@ -272,7 +276,11 @@ mod tests {
     #[test]
     fn test_language_registry_default() {
         let registry = LanguageRegistry::default();
-        assert_eq!(registry.languages().len(), 0, "Default registry should be empty");
+        assert_eq!(
+            registry.languages().len(),
+            0,
+            "Default registry should be empty"
+        );
     }
 
     #[test]
@@ -291,7 +299,10 @@ mod tests {
 
         // Extensions are case-sensitive
         let adapter = registry.detect_language(Path::new("test.MOCK"));
-        assert!(adapter.is_none(), "Extension matching should be case-sensitive");
+        assert!(
+            adapter.is_none(),
+            "Extension matching should be case-sensitive"
+        );
     }
 
     #[test]
@@ -413,12 +424,15 @@ mod tests {
 
         // Test unsupported extension returns None
         let adapter = registry.detect_language(Path::new("test.xyz"));
-        assert!(adapter.is_none(), "Unsupported extension should return None");
+        assert!(
+            adapter.is_none(),
+            "Unsupported extension should return None"
+        );
     }
 
     #[test]
     fn test_language_enum_integration_multi_language() {
-        use crate::services::mutation::{RustAdapter, PythonAdapter, TypeScriptAdapter};
+        use crate::services::mutation::{PythonAdapter, RustAdapter, TypeScriptAdapter};
 
         let mut registry = LanguageRegistry::new();
         registry.register(Arc::new(RustAdapter::new()));

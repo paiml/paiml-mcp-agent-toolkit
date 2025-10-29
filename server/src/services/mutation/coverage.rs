@@ -44,9 +44,18 @@ impl CoverageInfo {
 
     /// Calculate coverage increase from baseline
     pub fn coverage_increase(&self, baseline: &CoverageInfo) -> f64 {
-        let new_lines = self.lines_covered.difference(&baseline.lines_covered).count();
-        let new_blocks = self.blocks_covered.difference(&baseline.blocks_covered).count();
-        let new_branches = self.branches_taken.difference(&baseline.branches_taken).count();
+        let new_lines = self
+            .lines_covered
+            .difference(&baseline.lines_covered)
+            .count();
+        let new_blocks = self
+            .blocks_covered
+            .difference(&baseline.blocks_covered)
+            .count();
+        let new_branches = self
+            .branches_taken
+            .difference(&baseline.branches_taken)
+            .count();
 
         // Simple weighted average
         let total_new = (new_lines * 2 + new_blocks * 3 + new_branches * 5) as f64;
@@ -105,7 +114,13 @@ impl CoverageCorpus {
 
     /// Add input if it discovers new coverage
     pub fn add_if_interesting(&mut self, input: Vec<u8>, coverage: CoverageInfo) -> bool {
-        if coverage.is_interesting(&self.interesting_inputs.iter().map(|(_, c)| c.clone()).collect::<Vec<_>>()) {
+        if coverage.is_interesting(
+            &self
+                .interesting_inputs
+                .iter()
+                .map(|(_, c)| c.clone())
+                .collect::<Vec<_>>(),
+        ) {
             self.max_coverage.merge(&coverage);
             self.interesting_inputs.push((input, coverage));
             true
@@ -201,7 +216,9 @@ impl CoverageTracker {
 
         // Simulate blocks based on first bytes
         for (idx, &byte) in input.iter().take(5).enumerate() {
-            coverage.blocks_covered.insert(byte as u64 + idx as u64 * 256);
+            coverage
+                .blocks_covered
+                .insert(byte as u64 + idx as u64 * 256);
         }
 
         // Simulate branches based on patterns

@@ -20,10 +20,10 @@ impl AstStrategy for KotlinStrategy {
     /// Analyzes a Kotlin file and returns a FileContext with AST information
     async fn analyze(&self, path: &Path, _classifier: &FileClassifier) -> Result<FileContext> {
         use tokio::fs;
-        
+
         // Read file content
         let content = fs::read_to_string(path).await?;
-        
+
         // Use KotlinAstVisitor to analyze the Kotlin file
         let visitor = KotlinAstVisitor::new(path);
         match visitor.analyze_kotlin_source(&content) {
@@ -35,7 +35,7 @@ impl AstStrategy for KotlinStrategy {
                     items,
                     complexity_metrics: None, // Complexity metrics could be added here
                 })
-            },
+            }
             Err(e) => {
                 // Log error and return empty context
                 tracing::warn!("Failed to parse Kotlin file {}: {}", path.display(), e);
@@ -59,16 +59,28 @@ impl AstStrategy for KotlinStrategy {
 mod tests {
     use super::*;
     use std::path::Path;
-    
+
     #[tokio::test]
     async fn test_kotlin_strategy_supports_extension() {
         let strategy = KotlinStrategy;
-        
-        assert!(strategy.supports_extension("kt"), "Should support .kt files");
-        assert!(strategy.supports_extension("kts"), "Should support .kts files");
-        assert!(!strategy.supports_extension("java"), "Should not support .java files");
-        assert!(!strategy.supports_extension("py"), "Should not support .py files");
+
+        assert!(
+            strategy.supports_extension("kt"),
+            "Should support .kt files"
+        );
+        assert!(
+            strategy.supports_extension("kts"),
+            "Should support .kts files"
+        );
+        assert!(
+            !strategy.supports_extension("java"),
+            "Should not support .java files"
+        );
+        assert!(
+            !strategy.supports_extension("py"),
+            "Should not support .py files"
+        );
     }
-    
+
     // Add more tests as needed for the Kotlin strategy
 }

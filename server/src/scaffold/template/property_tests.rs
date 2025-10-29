@@ -5,14 +5,12 @@ use proptest::prelude::*;
 
 // Generator for valid project names (same as in scaffold property_tests)
 fn valid_project_name() -> impl Strategy<Value = String> {
-    "[a-z][a-z0-9-]{0,63}"
-        .prop_map(|s| s.to_string())
+    "[a-z][a-z0-9-]{0,63}".prop_map(|s| s.to_string())
 }
 
 // Generator for author names
 fn valid_author() -> impl Strategy<Value = String> {
-    "[A-Za-z ]{3,30}"
-        .prop_map(|s| s.to_string())
+    "[A-Za-z ]{3,30}".prop_map(|s| s.to_string())
 }
 
 proptest! {

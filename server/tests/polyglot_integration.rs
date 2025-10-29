@@ -1,30 +1,33 @@
 // This module contains integration tests for the polyglot AST framework,
 // which provides cross-language analysis capabilities.
 
-// Use cfg_attr to conditionally mark the tests as ignored when the required 
+// Use cfg_attr to conditionally mark the tests as ignored when the required
 // features are not enabled
-#![cfg_attr(not(feature = "polyglot-ast"), allow(dead_code, unused_imports, unused_variables))]
+#![cfg_attr(
+    not(feature = "polyglot-ast"),
+    allow(dead_code, unused_imports, unused_variables)
+)]
 
-use pmat::services::polyglot_analyzer::{LanguageInfo, PolyglotAnalysis, PolyglotAnalyzer};
+use anyhow::Result;
 #[cfg(feature = "polyglot-ast")]
 use pmat::ast::polyglot::{
+    unified_node::{NodeReference, ReferenceKind, SourcePosition},
     Language, NodeKind, UnifiedNode,
-    unified_node::{SourcePosition, NodeReference, ReferenceKind},
 };
-use std::path::PathBuf;
+use pmat::services::polyglot_analyzer::{LanguageInfo, PolyglotAnalysis, PolyglotAnalyzer};
 use std::collections::HashMap;
-use tokio::fs;
-use anyhow::Result;
+use std::path::PathBuf;
 use tempfile::tempdir;
+use tokio::fs;
 
 // Define the types here for testing purposes when the actual implementations
 // are not available
 #[cfg(not(feature = "polyglot-ast"))]
 mod test_types {
-    use std::path::{Path, PathBuf};
-    use std::collections::HashMap;
     use serde::Serialize;
-    
+    use std::collections::HashMap;
+    use std::path::{Path, PathBuf};
+
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
     pub enum Language {
         Java,
@@ -40,9 +43,9 @@ mod test_types {
         Ruby,
         Swift,
         Php,
-        Other(u32), 
+        Other(u32),
     }
-    
+
     impl Language {
         pub fn name(&self) -> &'static str {
             match self {
@@ -63,7 +66,7 @@ mod test_types {
             }
         }
     }
-    
+
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
     pub enum NodeKind {
         Class,
@@ -81,7 +84,7 @@ mod test_types {
         Union,
         Unknown,
     }
-    
+
     impl NodeKind {
         pub fn as_str(&self) -> &'static str {
             match self {
@@ -102,7 +105,7 @@ mod test_types {
             }
         }
     }
-    
+
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
     pub enum ReferenceKind {
         Inherits,
@@ -114,7 +117,7 @@ mod test_types {
         Annotates,
         DependsOn,
     }
-    
+
     #[derive(Debug, Clone, Serialize)]
     pub struct NodeReference {
         pub kind: ReferenceKind,
@@ -122,7 +125,7 @@ mod test_types {
         pub target_name: String,
         pub target_language: Option<Language>,
     }
-    
+
     #[derive(Debug, Clone)]
     pub struct SourcePosition {
         pub start_line: usize,
@@ -130,7 +133,7 @@ mod test_types {
         pub end_line: usize,
         pub end_col: usize,
     }
-    
+
     impl Default for SourcePosition {
         fn default() -> Self {
             Self {
@@ -141,7 +144,7 @@ mod test_types {
             }
         }
     }
-    
+
     #[derive(Debug, Clone)]
     pub struct TypeInfo {
         pub name: String,
@@ -152,7 +155,7 @@ mod test_types {
         pub is_nullable: bool,
         pub original_type_string: String,
     }
-    
+
     #[derive(Clone)]
     pub struct UnifiedNode {
         pub id: String,
@@ -183,16 +186,16 @@ async fn create_test_polyglot_fixtures() -> Result<PathBuf> {
     // Create a temporary directory
     let temp_dir = tempdir()?;
     let fixture_path = temp_dir.path().to_path_buf();
-    
+
     // Create Java directory structure
     fs::create_dir_all(&fixture_path.join("java/src/com/example")).await?;
-    
+
     // Create Kotlin directory structure
     fs::create_dir_all(&fixture_path.join("kotlin/src/com/example")).await?;
-    
+
     // Create TypeScript directory structure
     fs::create_dir_all(&fixture_path.join("typescript/src/models")).await?;
-    
+
     // Create Java files
     fs::write(
         fixture_path.join("java/src/com/example/BaseModel.java"),
@@ -214,8 +217,9 @@ public abstract class BaseModel {
     }
 }
         "#,
-    ).await?;
-    
+    )
+    .await?;
+
     fs::write(
         fixture_path.join("java/src/com/example/UserRepository.java"),
         r#"
@@ -237,8 +241,9 @@ public class UserRepository {
     }
 }
         "#,
-    ).await?;
-    
+    )
+    .await?;
+
     // Create Kotlin files
     fs::write(
         fixture_path.join("kotlin/src/com/example/User.kt"),
@@ -259,8 +264,9 @@ data class User(
     }
 }
         "#,
-    ).await?;
-    
+    )
+    .await?;
+
     fs::write(
         fixture_path.join("kotlin/src/com/example/UserDto.kt"),
         r#"
@@ -274,8 +280,9 @@ data class UserDto(
     val email: String
 )
         "#,
-    ).await?;
-    
+    )
+    .await?;
+
     // Create TypeScript files
     fs::write(
         fixture_path.join("typescript/src/models/UserModel.ts"),
@@ -300,8 +307,9 @@ export class UserService {
     }
 }
         "#,
-    ).await?;
-    
+    )
+    .await?;
+
     fs::write(
         fixture_path.join("typescript/src/models/UserDto.ts"),
         r#"
@@ -320,8 +328,9 @@ export function mapToUserDto(user: any): UserDto {
     };
 }
         "#,
-    ).await?;
-    
+    )
+    .await?;
+
     Ok(fixture_path)
 }
 
@@ -501,74 +510,84 @@ fn test_implementation_requirements_documentation() {
 #[ignore = "Requires polyglot-ast feature to be enabled"]
 async fn test_unified_node_cross_language_dependencies() {
     // Create test nodes representing a Java class, Kotlin class, and TypeScript interface
-    
+
     // Java BaseModel class
     let java_base = create_unified_node(
         "BaseModel",
         NodeKind::Class,
         "com.example.BaseModel",
         Language::Java,
-        PathBuf::from("/java/src/com/example/BaseModel.java")
+        PathBuf::from("/java/src/com/example/BaseModel.java"),
     );
-    
+
     // Kotlin User class that extends Java BaseModel
     let mut kotlin_user = create_unified_node(
         "User",
         NodeKind::Record, // Kotlin data class
         "com.example.User",
         Language::Kotlin,
-        PathBuf::from("/kotlin/src/com/example/User.kt")
+        PathBuf::from("/kotlin/src/com/example/User.kt"),
     );
-    
+
     // TypeScript UserModel interface
     let mut ts_user_model = create_unified_node(
         "UserModel",
         NodeKind::Interface,
         "models.UserModel",
         Language::TypeScript,
-        PathBuf::from("/typescript/src/models/UserModel.ts")
+        PathBuf::from("/typescript/src/models/UserModel.ts"),
     );
-    
+
     // Add cross-language relationships
     kotlin_user.add_reference(
         ReferenceKind::Inherits,
         "BaseModel".to_string(),
-        Some("Java:class:com.example.BaseModel".to_string())
+        Some("Java:class:com.example.BaseModel".to_string()),
     );
-    
+
     ts_user_model.add_reference(
         ReferenceKind::DependsOn,
         "User".to_string(),
-        Some("Kotlin:record:com.example.User".to_string())
+        Some("Kotlin:record:com.example.User".to_string()),
     );
-    
+
     // Collect nodes for dependency analysis
-    let nodes = vec![java_base.clone(), kotlin_user.clone(), ts_user_model.clone()];
-    
+    let nodes = vec![
+        java_base.clone(),
+        kotlin_user.clone(),
+        ts_user_model.clone(),
+    ];
+
     // Create a cross-language dependency analyzer
     let dependency_analyzer = MockCrossLanguageDependencyAnalyzer::new(nodes);
-    
+
     // Test dependency detection
     let dependencies = dependency_analyzer.detect_dependencies();
-    
+
     // Verify detected dependencies
     assert_eq!(dependencies.len(), 2);
-    
+
     // Check Kotlin → Java inheritance dependency
-    let kotlin_java_dep = dependencies.iter().find(|d| 
-        d.source_language == Language::Kotlin && 
-        d.target_language == Language::Java &&
-        d.kind == ReferenceKind::Inherits
+    let kotlin_java_dep = dependencies.iter().find(|d| {
+        d.source_language == Language::Kotlin
+            && d.target_language == Language::Java
+            && d.kind == ReferenceKind::Inherits
+    });
+    assert!(
+        kotlin_java_dep.is_some(),
+        "Expected to find a Kotlin -> Java dependency with Inherits kind"
     );
-    assert!(kotlin_java_dep.is_some(), "Expected to find a Kotlin -> Java dependency with Inherits kind");
-    
+
     // Check TypeScript → Kotlin dependency
-    let ts_kotlin_dep = dependencies.iter().find(|d|
-        d.source_language == Language::TypeScript &&
-        d.target_language == Language::Kotlin &&
-        d.kind == ReferenceKind::DependsOn
+    let ts_kotlin_dep = dependencies.iter().find(|d| {
+        d.source_language == Language::TypeScript
+            && d.target_language == Language::Kotlin
+            && d.kind == ReferenceKind::DependsOn
+    });
+    assert!(
+        ts_kotlin_dep.is_some(),
+        "Expected to find a TypeScript -> Kotlin dependency with DependsOn kind"
     );
-    assert!(ts_kotlin_dep.is_some(), "Expected to find a TypeScript -> Kotlin dependency with DependsOn kind");
 }
 
 /// Test for actual fixture-based cross-language analysis
@@ -577,54 +596,50 @@ async fn test_unified_node_cross_language_dependencies() {
 async fn test_polyglot_analyzer_with_fixtures() -> Result<()> {
     // Create test fixtures
     let fixture_path = create_test_polyglot_fixtures().await?;
-    
+
     // Create a polyglot analyzer using the fixtures
     let analyzer = MockPolyglotAnalyzer::new(fixture_path.clone());
-    
+
     // Analyze the fixtures
     let analysis = analyzer.analyze().await?;
-    
+
     // Verify language detection
     assert!(analysis.languages.contains(&Language::Java));
     assert!(analysis.languages.contains(&Language::Kotlin));
     assert!(analysis.languages.contains(&Language::TypeScript));
-    
+
     // Verify file counts
     assert_eq!(analysis.file_counts.get(&Language::Java), Some(&2));
     assert_eq!(analysis.file_counts.get(&Language::Kotlin), Some(&2));
     assert_eq!(analysis.file_counts.get(&Language::TypeScript), Some(&2));
-    
+
     // Verify cross-language dependencies
     let deps = &analysis.cross_language_dependencies;
     assert!(!deps.is_empty());
-    
+
     // Kotlin User extends Java BaseModel
-    assert!(deps.iter().any(|d| 
-        d.source_language == Language::Kotlin && 
-        d.target_language == Language::Java &&
-        d.source_name == "User" &&
-        d.target_name == "BaseModel" &&
-        d.kind == ReferenceKind::Inherits
-    ));
-    
+    assert!(deps.iter().any(|d| d.source_language == Language::Kotlin
+        && d.target_language == Language::Java
+        && d.source_name == "User"
+        && d.target_name == "BaseModel"
+        && d.kind == ReferenceKind::Inherits));
+
     // Java UserRepository uses Kotlin User
-    assert!(deps.iter().any(|d|
-        d.source_language == Language::Java && 
-        d.target_language == Language::Kotlin &&
-        d.source_name == "UserRepository" &&
-        d.target_name == "User" &&
-        d.kind == ReferenceKind::Uses
-    ));
-    
+    assert!(deps.iter().any(|d| d.source_language == Language::Java
+        && d.target_language == Language::Kotlin
+        && d.source_name == "UserRepository"
+        && d.target_name == "User"
+        && d.kind == ReferenceKind::Uses));
+
     // TypeScript UserModel depends on Kotlin User (via API)
-    assert!(deps.iter().any(|d|
-        d.source_language == Language::TypeScript && 
-        d.target_language == Language::Kotlin &&
-        d.source_name.contains("User") &&
-        d.target_name == "User" &&
-        d.kind == ReferenceKind::DependsOn
-    ));
-    
+    assert!(deps
+        .iter()
+        .any(|d| d.source_language == Language::TypeScript
+            && d.target_language == Language::Kotlin
+            && d.source_name.contains("User")
+            && d.target_name == "User"
+            && d.kind == ReferenceKind::DependsOn));
+
     Ok(())
 }
 
@@ -634,27 +649,31 @@ async fn test_polyglot_analyzer_with_fixtures() -> Result<()> {
 async fn test_mcp_polyglot_analysis_tool() -> Result<()> {
     // Create test fixtures
     let fixture_path = create_test_polyglot_fixtures().await?;
-    
+
     // Create a mock MCP tool instance
     let tool = MockPolyglotAnalysisTool::new(fixture_path.clone());
-    
+
     // Create analysis parameters
     let params = PolyglotAnalysisParams {
         path: fixture_path.to_string_lossy().to_string(),
-        languages: Some(vec!["java".to_string(), "kotlin".to_string(), "typescript".to_string()]),
+        languages: Some(vec![
+            "java".to_string(),
+            "kotlin".to_string(),
+            "typescript".to_string(),
+        ]),
         max_depth: Some(3),
         include_graph: Some(true),
     };
-    
+
     // Execute the analysis
     let result = tool.analyze(params).await?;
-    
+
     // Verify the result
     let status = result.get("status").and_then(|s| s.as_str());
     let path = result.get("path").and_then(|p| p.as_str());
     assert_eq!(status, Some("completed"));
     assert_eq!(path, Some(fixture_path.to_string_lossy().as_ref()));
-    
+
     // Verify languages analyzed
     let languages = result.get("languages").and_then(|l| l.as_array());
     assert!(languages.is_some());
@@ -662,22 +681,40 @@ async fn test_mcp_polyglot_analysis_tool() -> Result<()> {
     assert!(languages.iter().any(|l| l.as_str() == Some("Java")));
     assert!(languages.iter().any(|l| l.as_str() == Some("Kotlin")));
     assert!(languages.iter().any(|l| l.as_str() == Some("TypeScript")));
-    
+
     // Verify summary statistics
     let summary = result.get("summary").and_then(|s| s.as_object());
     assert!(summary.is_some());
     let summary = summary.unwrap();
-    assert!(summary.get("total_files").and_then(|f| f.as_u64()).unwrap_or(0) > 0);
-    assert!(summary.get("total_nodes").and_then(|n| n.as_u64()).unwrap_or(0) > 0);
-    assert!(summary.get("total_cross_language_dependencies").and_then(|d| d.as_u64()).unwrap_or(0) > 0);
-    
+    assert!(
+        summary
+            .get("total_files")
+            .and_then(|f| f.as_u64())
+            .unwrap_or(0)
+            > 0
+    );
+    assert!(
+        summary
+            .get("total_nodes")
+            .and_then(|n| n.as_u64())
+            .unwrap_or(0)
+            > 0
+    );
+    assert!(
+        summary
+            .get("total_cross_language_dependencies")
+            .and_then(|d| d.as_u64())
+            .unwrap_or(0)
+            > 0
+    );
+
     // Verify dependency types
     let dependency_counts = result.get("dependency_counts").and_then(|d| d.as_object());
     assert!(dependency_counts.is_some());
     let dependency_counts = dependency_counts.unwrap();
     assert!(dependency_counts.contains_key("Java -> Kotlin"));
     assert!(dependency_counts.contains_key("Kotlin -> Java"));
-    
+
     // Verify DOT graph
     let graph_dot = result.get("graph_dot").and_then(|g| g.as_str());
     assert!(graph_dot.is_some());
@@ -685,7 +722,7 @@ async fn test_mcp_polyglot_analysis_tool() -> Result<()> {
     assert!(graph_dot.contains("digraph"));
     assert!(graph_dot.contains("Java:class:BaseModel"));
     assert!(graph_dot.contains("Kotlin:record:User"));
-    
+
     Ok(())
 }
 
@@ -695,10 +732,10 @@ async fn test_mcp_polyglot_analysis_tool() -> Result<()> {
 async fn test_mcp_language_boundary_tool() -> Result<()> {
     // Create test fixtures
     let fixture_path = create_test_polyglot_fixtures().await?;
-    
+
     // Create a mock MCP tool instance
     let tool = MockLanguageBoundaryTool::new(fixture_path.clone());
-    
+
     // Create boundary detection parameters
     let params = LanguageBoundaryParams {
         path: fixture_path.to_string_lossy().to_string(),
@@ -706,52 +743,71 @@ async fn test_mcp_language_boundary_tool() -> Result<()> {
         target_language: Some("kotlin".to_string()),
         max_depth: Some(3),
     };
-    
+
     // Execute the boundary detection
     let result = tool.detect_boundaries(params).await?;
-    
+
     // Verify the result
     let status = result.get("status").and_then(|s| s.as_str());
     let path = result.get("path").and_then(|p| p.as_str());
     assert_eq!(status, Some("completed"));
     assert_eq!(path, Some(fixture_path.to_string_lossy().as_ref()));
-    
+
     // Verify languages analyzed
     let languages_analyzed = result.get("languages_analyzed").and_then(|l| l.as_array());
     assert!(languages_analyzed.is_some());
     let languages_analyzed = languages_analyzed.unwrap();
-    assert!(languages_analyzed.iter().any(|l| l.as_str() == Some("Java")));
-    assert!(languages_analyzed.iter().any(|l| l.as_str() == Some("Kotlin")));
-    
+    assert!(languages_analyzed
+        .iter()
+        .any(|l| l.as_str() == Some("Java")));
+    assert!(languages_analyzed
+        .iter()
+        .any(|l| l.as_str() == Some("Kotlin")));
+
     // Verify summary statistics
     let summary = result.get("summary").and_then(|s| s.as_object());
     assert!(summary.is_some());
     let summary = summary.unwrap();
-    assert!(summary.get("total_boundaries").and_then(|f| f.as_u64()).unwrap_or(0) > 0);
-    assert_eq!(summary.get("source_language").and_then(|s| s.as_str()), Some("Java"));
-    assert_eq!(summary.get("target_language").and_then(|s| s.as_str()), Some("Kotlin"));
-    
+    assert!(
+        summary
+            .get("total_boundaries")
+            .and_then(|f| f.as_u64())
+            .unwrap_or(0)
+            > 0
+    );
+    assert_eq!(
+        summary.get("source_language").and_then(|s| s.as_str()),
+        Some("Java")
+    );
+    assert_eq!(
+        summary.get("target_language").and_then(|s| s.as_str()),
+        Some("Kotlin")
+    );
+
     // Verify boundary types
     let boundary_types = result.get("boundary_types").and_then(|b| b.as_object());
     assert!(boundary_types.is_some());
     let boundary_types = boundary_types.unwrap();
     assert!(boundary_types.contains_key("Uses"));
     assert!(boundary_types.contains_key("Implements") || boundary_types.contains_key("Inherits"));
-    
+
     // Verify patterns and recommendations
     let patterns = result.get("patterns").and_then(|p| p.as_array());
     assert!(patterns.is_some());
     let patterns = patterns.unwrap();
     assert!(!patterns.is_empty());
-    
-    let java_kotlin_pattern = patterns.iter().find(|p| 
-        p.get("language_pair").and_then(|l| l.as_str()) == Some("Java-Kotlin"));
+
+    let java_kotlin_pattern = patterns
+        .iter()
+        .find(|p| p.get("language_pair").and_then(|l| l.as_str()) == Some("Java-Kotlin"));
     assert!(java_kotlin_pattern.is_some());
-    let recommendations = java_kotlin_pattern.unwrap()
-        .get("recommendations").and_then(|r| r.as_array());
+    let recommendations = java_kotlin_pattern
+        .unwrap()
+        .get("recommendations")
+        .and_then(|r| r.as_array());
     assert!(recommendations.is_some());
     assert!(!recommendations.unwrap().is_empty());
-    
+
     Ok(())
 }
 
@@ -763,7 +819,7 @@ fn create_unified_node(
     kind: NodeKind,
     fqn: &str,
     language: Language,
-    file_path: PathBuf
+    file_path: PathBuf,
 ) -> UnifiedNode {
     UnifiedNode {
         id: format!("{}:{}:{}", language.name(), kind.as_str(), name),
@@ -788,11 +844,21 @@ fn create_unified_node(
 /// Extension trait for UnifiedNode in test context
 trait UnifiedNodeExt {
     /// Add a reference to another node (helper method for tests)
-    fn add_reference(&mut self, kind: ReferenceKind, target_name: String, target_id: Option<String>);
+    fn add_reference(
+        &mut self,
+        kind: ReferenceKind,
+        target_name: String,
+        target_id: Option<String>,
+    );
 }
 
 impl UnifiedNodeExt for UnifiedNode {
-    fn add_reference(&mut self, kind: ReferenceKind, target_name: String, target_id: Option<String>) {
+    fn add_reference(
+        &mut self,
+        kind: ReferenceKind,
+        target_name: String,
+        target_id: Option<String>,
+    ) {
         let reference = NodeReference {
             kind,
             target_id: target_id.unwrap_or_else(|| "".to_string()),
@@ -805,17 +871,17 @@ impl UnifiedNodeExt for UnifiedNode {
 
 /// Mock cross-language dependency analyzer for testing
 struct MockCrossLanguageDependencyAnalyzer {
-    nodes: Vec<UnifiedNode>
+    nodes: Vec<UnifiedNode>,
 }
 
 impl MockCrossLanguageDependencyAnalyzer {
     fn new(nodes: Vec<UnifiedNode>) -> Self {
         Self { nodes }
     }
-    
+
     fn detect_dependencies(&self) -> Vec<CrossLanguageDependency> {
         let mut dependencies = Vec::new();
-        
+
         for source_node in &self.nodes {
             for reference in &source_node.references {
                 if let Some(target_node) = self.nodes.iter().find(|n| n.id == reference.target_id) {
@@ -835,7 +901,7 @@ impl MockCrossLanguageDependencyAnalyzer {
                 }
             }
         }
-        
+
         dependencies
     }
 }
@@ -855,23 +921,23 @@ struct CrossLanguageDependency {
 
 /// Mock polyglot analyzer for testing
 struct MockPolyglotAnalyzer {
-    fixture_path: PathBuf
+    fixture_path: PathBuf,
 }
 
 impl MockPolyglotAnalyzer {
     fn new(fixture_path: PathBuf) -> Self {
         Self { fixture_path }
     }
-    
+
     async fn analyze(&self) -> Result<PolyglotAnalysisResult> {
         // In a real implementation, this would analyze the fixture files
         // For testing, we'll return a mock result
-        
+
         let mut file_counts = HashMap::new();
         file_counts.insert(Language::Java, 2);
         file_counts.insert(Language::Kotlin, 2);
         file_counts.insert(Language::TypeScript, 2);
-        
+
         let cross_language_dependencies = vec![
             CrossLanguageDependency {
                 source_id: "Kotlin:record:User".to_string(),
@@ -907,7 +973,7 @@ impl MockPolyglotAnalyzer {
                 metadata: HashMap::new(),
             },
         ];
-        
+
         Ok(PolyglotAnalysisResult {
             languages: vec![Language::Java, Language::Kotlin, Language::TypeScript],
             file_counts,
@@ -982,41 +1048,41 @@ struct NodeSummary {
 
 /// Mock MCP polyglot analysis tool for testing
 struct MockPolyglotAnalysisTool {
-    fixture_path: PathBuf
+    fixture_path: PathBuf,
 }
 
 impl MockPolyglotAnalysisTool {
     fn new(fixture_path: PathBuf) -> Self {
         Self { fixture_path }
     }
-    
+
     async fn analyze(&self, params: PolyglotAnalysisParams) -> Result<serde_json::Value> {
         // For testing, we'll return a mock result that matches the expected schema
         // In a real implementation, this would call the actual tool
-        
+
         let mut node_counts = HashMap::new();
         let mut java_counts = HashMap::new();
         java_counts.insert("class".to_string(), 2);
         java_counts.insert("method".to_string(), 4);
-        
+
         let mut kotlin_counts = HashMap::new();
         kotlin_counts.insert("class".to_string(), 2);
         kotlin_counts.insert("method".to_string(), 3);
-        
+
         let mut ts_counts = HashMap::new();
         ts_counts.insert("interface".to_string(), 1);
         ts_counts.insert("class".to_string(), 1);
         ts_counts.insert("method".to_string(), 2);
-        
+
         node_counts.insert("Java".to_string(), java_counts);
         node_counts.insert("Kotlin".to_string(), kotlin_counts);
         node_counts.insert("TypeScript".to_string(), ts_counts);
-        
+
         let mut dependency_counts = HashMap::new();
         dependency_counts.insert("Java -> Kotlin".to_string(), 1);
         dependency_counts.insert("Kotlin -> Java".to_string(), 1);
         dependency_counts.insert("TypeScript -> Kotlin".to_string(), 1);
-        
+
         let result = PolyglotAnalysisToolResult {
             status: "completed".to_string(),
             path: params.path,
@@ -1062,35 +1128,44 @@ impl MockPolyglotAnalysisTool {
             ],
             graph_dot: "digraph CrossLanguageDependencies {\n  \"Java:class:BaseModel\" -> \"Kotlin:record:User\" [label=\"Inherits\"];\n  \"Java:class:UserRepository\" -> \"Kotlin:record:User\" [label=\"Uses\"];\n  \"TypeScript:interface:UserModel\" -> \"Kotlin:record:User\" [label=\"DependsOn\"];\n}".to_string(),
         };
-        
+
         Ok(serde_json::to_value(result)?)
     }
 }
 
 /// Mock MCP language boundary tool for testing
 struct MockLanguageBoundaryTool {
-    fixture_path: PathBuf
+    fixture_path: PathBuf,
 }
 
 impl MockLanguageBoundaryTool {
     fn new(fixture_path: PathBuf) -> Self {
         Self { fixture_path }
     }
-    
+
     async fn detect_boundaries(&self, params: LanguageBoundaryParams) -> Result<serde_json::Value> {
         // For testing, we'll return a mock result that matches the expected schema
         // In a real implementation, this would call the actual tool
-        
+
         let mut boundary_types = HashMap::new();
-        boundary_types.insert("Inherits".to_string(), BoundaryTypeInfo {
-            count: 1,
-            languages: vec!["Java → Kotlin".to_string(), "Kotlin → Java".to_string()],
-        });
-        boundary_types.insert("Uses".to_string(), BoundaryTypeInfo {
-            count: 2,
-            languages: vec!["Java → Kotlin".to_string(), "TypeScript → Kotlin".to_string()],
-        });
-        
+        boundary_types.insert(
+            "Inherits".to_string(),
+            BoundaryTypeInfo {
+                count: 1,
+                languages: vec!["Java → Kotlin".to_string(), "Kotlin → Java".to_string()],
+            },
+        );
+        boundary_types.insert(
+            "Uses".to_string(),
+            BoundaryTypeInfo {
+                count: 2,
+                languages: vec![
+                    "Java → Kotlin".to_string(),
+                    "TypeScript → Kotlin".to_string(),
+                ],
+            },
+        );
+
         let result = LanguageBoundaryToolResult {
             status: "completed".to_string(),
             path: params.path,
@@ -1135,9 +1210,11 @@ impl MockLanguageBoundaryTool {
                     language_pair: "Java-Kotlin".to_string(),
                     count: 2,
                     recommendations: vec![
-                        "Use Kotlin's @JvmName annotation to control Java-visible names".to_string(),
+                        "Use Kotlin's @JvmName annotation to control Java-visible names"
+                            .to_string(),
                         "Leverage Kotlin extension functions for Java interoperability".to_string(),
-                        "Use Kotlin's nullable types consistently with Java's @Nullable".to_string(),
+                        "Use Kotlin's nullable types consistently with Java's @Nullable"
+                            .to_string(),
                     ],
                 },
                 BoundaryPattern {
@@ -1150,7 +1227,7 @@ impl MockLanguageBoundaryTool {
                 },
             ],
         };
-        
+
         Ok(serde_json::to_value(result)?)
     }
 }

@@ -111,7 +111,10 @@ FAIL src/div.test.ts
         let result = extract_test_name(line);
 
         assert!(result.is_some(), "Must extract test name");
-        assert!(result.unwrap().contains("subtract"), "Must contain test name");
+        assert!(
+            result.unwrap().contains("subtract"),
+            "Must contain test name"
+        );
     }
 
     // ===== Phase 3: Integration (NEW - RED) =====

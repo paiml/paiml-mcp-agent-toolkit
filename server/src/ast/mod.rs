@@ -23,11 +23,8 @@ pub use languages::{LanguageRegistry, LanguageStrategy};
 
 // Re-export polyglot types
 pub use polyglot::{
-    Language as PolyglotLanguage,
-    NodeKind as PolyglotNodeKind,
-    UnifiedNode,
-    LanguageMapper,
-    CrossLanguageDependencies
+    CrossLanguageDependencies, Language as PolyglotLanguage, LanguageMapper,
+    NodeKind as PolyglotNodeKind, UnifiedNode,
 };
 
 /// Prelude module for common imports
@@ -37,11 +34,8 @@ pub mod prelude {
     pub use super::languages::LanguageStrategy;
     pub use super::parser::UnifiedParser;
     pub use super::polyglot::{
-        Language as PolyglotLanguage,
-        NodeKind as PolyglotNodeKind,
-        UnifiedNode,
-        LanguageMapper,
-        CrossLanguageDependencies
+        CrossLanguageDependencies, Language as PolyglotLanguage, LanguageMapper,
+        NodeKind as PolyglotNodeKind, UnifiedNode,
     };
 }
 

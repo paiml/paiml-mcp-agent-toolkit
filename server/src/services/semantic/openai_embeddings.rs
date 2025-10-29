@@ -261,19 +261,32 @@ mod tests {
         assert!(OpenAIEmbeddingsClient::new("").is_err());
         assert!(OpenAIEmbeddingsClient::new("invalid").is_err());
         assert!(OpenAIEmbeddingsClient::new("sk-").is_err());
-        assert!(OpenAIEmbeddingsClient::new("sk-abc123def456ghi789jkl012mno345pqr678stu901vwx234").is_ok());
+        assert!(
+            OpenAIEmbeddingsClient::new("sk-abc123def456ghi789jkl012mno345pqr678stu901vwx234")
+                .is_ok()
+        );
     }
 
     #[test]
     fn test_cost_calculation() {
-        assert_eq!(OpenAIEmbeddingsClient::calculate_cost(1000, "text-embedding-3-small"), 0.00002);
-        assert_eq!(OpenAIEmbeddingsClient::calculate_cost(5000, "text-embedding-3-small"), 0.0001);
-        assert_eq!(OpenAIEmbeddingsClient::calculate_cost(1000, "text-embedding-3-large"), 0.00013);
+        assert_eq!(
+            OpenAIEmbeddingsClient::calculate_cost(1000, "text-embedding-3-small"),
+            0.00002
+        );
+        assert_eq!(
+            OpenAIEmbeddingsClient::calculate_cost(5000, "text-embedding-3-small"),
+            0.0001
+        );
+        assert_eq!(
+            OpenAIEmbeddingsClient::calculate_cost(1000, "text-embedding-3-large"),
+            0.00013
+        );
     }
 
     #[test]
     fn test_client_configuration() {
-        let client = OpenAIEmbeddingsClient::new("sk-test1234567890abcdefghijklmnopqrstuvwxyz").unwrap();
+        let client =
+            OpenAIEmbeddingsClient::new("sk-test1234567890abcdefghijklmnopqrstuvwxyz").unwrap();
         assert_eq!(client.model(), "text-embedding-3-small");
         assert_eq!(client.max_retries(), 3);
         assert_eq!(client.base_delay_ms(), 1000);

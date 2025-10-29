@@ -1,13 +1,12 @@
 //! Factory for creating language-specific mappers
-//! 
+//!
 //! This module provides a factory for creating language-specific mappers
 //! that can transform language-specific ASTs into the unified representation.
 
-use crate::ast::polyglot::{Language, UnifiedNode, LanguageMapper, PolyglotPathValidator};
 use crate::ast::polyglot::language_mapper::{
-    JavaMapper, ScalaMapper, TypeScriptMapper,
-    CSharpMapper, RubyMapper
+    CSharpMapper, JavaMapper, RubyMapper, ScalaMapper, TypeScriptMapper,
 };
+use crate::ast::polyglot::{Language, LanguageMapper, PolyglotPathValidator, UnifiedNode};
 use crate::services::context::AstItem;
 use anyhow::Result;
 use async_trait::async_trait;
@@ -23,25 +22,25 @@ impl LanguageMapperFactory {
         match language {
             #[cfg(feature = "polyglot-java")]
             Language::Java => Ok(Arc::new(JavaMapper::new())),
-            
+
             #[cfg(feature = "polyglot-kotlin")]
             Language::Kotlin => Ok(Arc::new(KotlinMapper::new())),
-            
+
             #[cfg(feature = "polyglot-scala")]
             Language::Scala => Ok(Arc::new(ScalaMapper::new())),
-            
+
             #[cfg(feature = "polyglot-typescript")]
             Language::TypeScript => Ok(Arc::new(TypeScriptMapper::new())),
-            
+
             #[cfg(feature = "polyglot-javascript")]
             Language::JavaScript => Ok(Arc::new(JavaScriptMapper::new())),
-            
+
             #[cfg(feature = "polyglot-csharp")]
             Language::CSharp => Ok(Arc::new(CSharpMapper::new())),
-            
+
             #[cfg(feature = "polyglot-ruby")]
             Language::Ruby => Ok(Arc::new(RubyMapper::new())),
-            
+
             _ => {
                 // For now, use a stub mapper for testing
                 Ok(Arc::new(StubMapper::new(language)))
@@ -67,31 +66,31 @@ impl LanguageMapper for StubMapper {
     fn language(&self) -> Language {
         self.language
     }
-    
+
     async fn map_file(&self, path: &Path) -> Result<Vec<UnifiedNode>> {
         // Validate path first
         PolyglotPathValidator::validate_file_path(path)?;
         // Return an empty list for now - this is just a stub
         Ok(Vec::new())
     }
-    
+
     async fn map_directory(&self, path: &Path, _recursive: bool) -> Result<Vec<UnifiedNode>> {
         // Validate path first
         PolyglotPathValidator::validate_directory_path(path)?;
         // Return an empty list for now - this is just a stub
         Ok(Vec::new())
     }
-    
+
     async fn map_source(&self, _source: &str, _path: &Path) -> Result<Vec<UnifiedNode>> {
         // Return an empty list for now - this is just a stub
         Ok(Vec::new())
     }
-    
+
     fn convert_ast_items(&self, _items: &[AstItem], _path: &Path) -> Vec<UnifiedNode> {
         // Return an empty list for now - this is just a stub
         Vec::new()
     }
-    
+
     fn clone_box(&self) -> Box<dyn LanguageMapper> {
         Box::new(self.clone())
     }

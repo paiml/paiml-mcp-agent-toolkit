@@ -3,9 +3,9 @@
 //! This module provides support for analyzing JavaScript code, including
 //! AST parsing, syntax analysis, and code structure extraction.
 
+use crate::services::context::AstItem;
 use anyhow::Result;
 use std::path::Path;
-use crate::services::context::AstItem;
 
 #[cfg(feature = "typescript-ast")]
 use crate::services::ast_typescript::analyze_typescript_file;
@@ -19,7 +19,9 @@ pub struct JavaScriptAstVisitor {
 impl JavaScriptAstVisitor {
     /// Create a new JavaScript AST visitor
     pub fn new(path: &Path) -> Self {
-        Self { path: path.to_path_buf() }
+        Self {
+            path: path.to_path_buf(),
+        }
     }
 
     /// Analyze JavaScript source code
@@ -44,7 +46,8 @@ impl JavaScriptAstVisitor {
             .map_err(|e| anyhow::anyhow!("Failed to create runtime: {}", e))?;
 
         runtime.block_on(async {
-            let context = analyze_typescript_file(temp_file.path()).await
+            let context = analyze_typescript_file(temp_file.path())
+                .await
                 .map_err(|e| anyhow::anyhow!("JavaScript parsing failed: {}", e))?;
             Ok(context.items)
         })

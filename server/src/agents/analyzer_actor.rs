@@ -56,9 +56,7 @@ impl Handler<AnalyzeMessage> for AnalyzerActor {
                         if actor.complexity_cache.len() >= actor.max_cache_size {
                             actor.complexity_cache.clear();
                         }
-                        actor
-                            .complexity_cache
-                            .insert(msg.code, metrics.clone());
+                        actor.complexity_cache.insert(msg.code, metrics.clone());
                         Ok(AgentResponse::Analyzed(metrics))
                     }
                     Err(e) => Err(e),
