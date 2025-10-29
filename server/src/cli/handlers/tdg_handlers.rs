@@ -88,6 +88,9 @@ async fn handle_tdg_subcommand(
         } => {
             handle_history_command(analyzer, commit, since, range, path, format, config).await
         }
+        TdgCommand::Baseline { command } => {
+            handle_baseline_command(command, analyzer, config).await
+        }
         TdgCommand::Diagnostics { .. }
         | TdgCommand::Storage { .. }
         | TdgCommand::Dashboard { .. }
@@ -235,6 +238,98 @@ fn filter_by_git_range(
     });
 
     Ok(records)
+}
+
+/// Handle TDG baseline subcommand (Sprint 66 Phase 1)
+async fn handle_baseline_command(
+    command: crate::cli::commands::BaselineCommand,
+    _analyzer: &TdgAnalyzer,
+    _config: &TdgCommandConfig,
+) -> Result<()> {
+    use crate::cli::commands::BaselineCommand;
+
+    match command {
+        BaselineCommand::Create {
+            path,
+            output,
+            with_git_context,
+            name,
+        } => {
+            println!("🔨 Creating TDG baseline...");
+            println!("   Path: {}", path.display());
+            println!("   Output: {}", output.display());
+            println!("   Git context: {}", if with_git_context { "yes" } else { "no" });
+            if let Some(n) = name {
+                println!("   Name: {}", n);
+            }
+
+            // TODO (Sprint 66 Phase 1): Implement baseline creation
+            // 1. Analyze all files in project
+            // 2. Create TdgBaseline with entries
+            // 3. Save to output file
+
+            println!("✅ Baseline creation not yet implemented (Sprint 66 Phase 1)");
+            Ok(())
+        }
+
+        BaselineCommand::Compare {
+            baseline,
+            path,
+            format,
+            fail_on_regression,
+        } => {
+            println!("📊 Comparing against baseline...");
+            println!("   Baseline: {}", baseline.display());
+            println!("   Current path: {}", path.display());
+            println!("   Format: {:?}", format);
+
+            // TODO (Sprint 66 Phase 1): Implement baseline comparison
+            // 1. Load baseline from file
+            // 2. Analyze current project state
+            // 3. Create BaselineComparison
+            // 4. Format and output
+            // 5. Exit with error if fail_on_regression and has_regressions()
+
+            println!("✅ Baseline comparison not yet implemented (Sprint 66 Phase 1)");
+
+            if fail_on_regression {
+                println!("   Would fail on regression: yes");
+            }
+            Ok(())
+        }
+
+        BaselineCommand::List { path, format } => {
+            println!("📋 Listing baselines...");
+            println!("   Path: {}", path.display());
+            println!("   Format: {:?}", format);
+
+            // TODO (Sprint 66 Phase 1): Implement baseline listing
+            // 1. Search directory for .pmat-baseline.json files
+            // 2. Load and display summary info
+
+            println!("✅ Baseline listing not yet implemented (Sprint 66 Phase 1)");
+            Ok(())
+        }
+
+        BaselineCommand::Update {
+            baseline,
+            path,
+            with_git_context,
+        } => {
+            println!("🔄 Updating baseline...");
+            println!("   Baseline: {}", baseline.display());
+            println!("   Path: {}", path.display());
+            println!("   Git context: {}", if with_git_context { "yes" } else { "no" });
+
+            // TODO (Sprint 66 Phase 1): Implement baseline update
+            // 1. Re-analyze project
+            // 2. Update baseline entries
+            // 3. Save to same file
+
+            println!("✅ Baseline update not yet implemented (Sprint 66 Phase 1)");
+            Ok(())
+        }
+    }
 }
 
 /// Execute TDG analysis on file or directory (cognitive complexity ≤3)
