@@ -806,6 +806,12 @@ pub enum TdgCommand {
         format: TdgOutputFormat,
     },
 
+    /// Manage TDG baselines for quality regression detection (Sprint 66 Phase 1)
+    Baseline {
+        #[command(subcommand)]
+        command: BaselineCommand,
+    },
+
     /// Show TDG system diagnostics and health status
     Diagnostics {
         /// Show detailed backend statistics
@@ -865,6 +871,75 @@ pub enum TdgCommand {
     /// Configuration management (single source of truth)
     #[command(subcommand)]
     Config(ConfigCommands),
+}
+
+/// Baseline management subcommands (Sprint 66 Phase 1)
+#[derive(Subcommand, Clone)]
+#[cfg_attr(test, derive(Debug))]
+pub enum BaselineCommand {
+    /// Create a new TDG baseline for the project
+    Create {
+        /// Project path to analyze
+        #[arg(short, long, default_value = ".")]
+        path: PathBuf,
+
+        /// Output file for baseline (JSON format)
+        #[arg(short, long, default_value = ".pmat-baseline.json")]
+        output: PathBuf,
+
+        /// Include git context in baseline
+        #[arg(long)]
+        with_git_context: bool,
+
+        /// Baseline name/label for reference
+        #[arg(long)]
+        name: Option<String>,
+    },
+
+    /// Compare current state against a baseline
+    Compare {
+        /// Path to baseline file
+        #[arg(short, long)]
+        baseline: PathBuf,
+
+        /// Project path to analyze (current state)
+        #[arg(short, long, default_value = ".")]
+        path: PathBuf,
+
+        /// Output format
+        #[arg(short, long, value_enum, default_value = "table")]
+        format: TdgOutputFormat,
+
+        /// Exit with error code if regressions detected
+        #[arg(long)]
+        fail_on_regression: bool,
+    },
+
+    /// List all available baselines
+    List {
+        /// Directory to search for baselines
+        #[arg(short, long, default_value = ".")]
+        path: PathBuf,
+
+        /// Output format
+        #[arg(short, long, value_enum, default_value = "table")]
+        format: TdgOutputFormat,
+    },
+
+    /// Update an existing baseline
+    Update {
+        /// Path to baseline file to update
+        #[arg(short, long)]
+        baseline: PathBuf,
+
+        /// Project path to re-analyze
+        #[arg(short, long, default_value = ".")]
+        path: PathBuf,
+
+        /// Include git context in updated baseline
+        #[arg(long)]
+        with_git_context: bool,
+    },
 }
 
 /// Analyze subcommands
