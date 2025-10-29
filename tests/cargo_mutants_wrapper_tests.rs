@@ -1,7 +1,6 @@
-//! RED Phase Tests for PMAT-070-001: CargoMutantsWrapper Infrastructure
+//! GREEN Phase Tests for PMAT-070-001: CargoMutantsWrapper Infrastructure
 //!
-//! These tests are written FIRST (before implementation) following Extreme TDD.
-//! All tests should FAIL initially - this is correct behavior!
+//! Tests updated to use real implementation from server/src/services/mutation/cargo_mutants_wrapper.rs
 //!
 //! Test Categories:
 //! 1. Wrapper initialization (new())
@@ -10,39 +9,13 @@
 //! 4. Error handling
 //! 5. Basic subprocess execution
 
-use std::path::PathBuf;
-
-/// Mock struct - will be implemented in GREEN phase
-/// This is intentionally incomplete to make tests fail
-#[allow(dead_code)]
-struct CargoMutantsWrapper {
-    cargo_mutants_path: Option<PathBuf>,
-}
-
-#[allow(dead_code)]
-impl CargoMutantsWrapper {
-    fn new() -> Result<Self, Box<dyn std::error::Error>> {
-        // RED Phase: Not implemented yet, tests should fail
-        unimplemented!("RED Phase: new() not implemented yet")
-    }
-
-    fn version(&self) -> Result<String, Box<dyn std::error::Error>> {
-        // RED Phase: Not implemented yet, tests should fail
-        unimplemented!("RED Phase: version() not implemented yet")
-    }
-
-    fn is_installed(&self) -> bool {
-        // RED Phase: Not implemented yet, tests should fail
-        unimplemented!("RED Phase: is_installed() not implemented yet")
-    }
-}
+use pmat::services::mutation::cargo_mutants_wrapper::CargoMutantsWrapper;
 
 // ============================================================================
 // RED PHASE TESTS - Unit Tests
 // ============================================================================
 
 #[test]
-#[ignore] // Remove #[ignore] when ready to run RED phase
 fn test_wrapper_new_success_when_cargo_mutants_installed() {
     // RED Phase Test 1: Wrapper initialization when cargo-mutants is installed
     // Expected: Should detect cargo-mutants in PATH and initialize successfully
@@ -57,7 +30,6 @@ fn test_wrapper_new_success_when_cargo_mutants_installed() {
 }
 
 #[test]
-#[ignore] // Remove #[ignore] when ready to run RED phase
 fn test_wrapper_new_error_message_when_not_installed() {
     // RED Phase Test 2: Error handling when cargo-mutants is not installed
     // Expected: Should return graceful error with installation instructions
@@ -75,7 +47,6 @@ fn test_wrapper_new_error_message_when_not_installed() {
 }
 
 #[test]
-#[ignore] // Remove #[ignore] when ready to run RED phase
 fn test_detect_cargo_mutants_in_path() {
     // RED Phase Test 3: PATH detection functionality
     // Expected: Should correctly detect cargo-mutants binary location
@@ -92,7 +63,7 @@ fn test_detect_cargo_mutants_in_path() {
 }
 
 #[test]
-#[ignore] // Remove #[ignore] when ready to run RED phase
+
 fn test_execute_cargo_mutants_version() {
     // RED Phase Test 4: Basic subprocess execution (--version)
     // Expected: Should execute cargo-mutants --version and return output
@@ -110,7 +81,7 @@ fn test_execute_cargo_mutants_version() {
 }
 
 #[test]
-#[ignore] // Remove #[ignore] when ready to run RED phase
+
 fn test_version_check_requires_24_7_0_minimum() {
     // RED Phase Test 5: Version validation
     // Expected: Should enforce minimum version v24.7.0
@@ -140,7 +111,7 @@ fn test_version_check_requires_24_7_0_minimum() {
 }
 
 #[test]
-#[ignore] // Remove #[ignore] when ready to run RED phase
+
 fn test_wrapper_initialization_is_idempotent() {
     // RED Phase Test 6: Idempotency check
     // Expected: Calling new() multiple times should return same PATH
@@ -156,7 +127,7 @@ fn test_wrapper_initialization_is_idempotent() {
 }
 
 #[test]
-#[ignore] // Remove #[ignore] when ready to run RED phase
+
 fn test_error_messages_include_installation_instructions() {
     // RED Phase Test 7: Error message quality
     // Expected: Errors should include actionable installation instructions
@@ -177,7 +148,7 @@ fn test_error_messages_include_installation_instructions() {
 // ============================================================================
 
 #[test]
-#[ignore] // Remove #[ignore] when ready to run RED phase
+
 fn test_wrapper_handles_multiple_cargo_mutants_in_path() {
     // RED Phase Test 8: Handle edge case of multiple installations
     // Expected: Should pick the first one in PATH (standard behavior)
@@ -189,7 +160,7 @@ fn test_wrapper_handles_multiple_cargo_mutants_in_path() {
 }
 
 #[test]
-#[ignore] // Remove #[ignore] when ready to run RED phase
+
 fn test_wrapper_handles_permission_denied() {
     // RED Phase Test 9: Handle permission errors
     // Expected: Should gracefully handle permission denied errors
@@ -201,7 +172,7 @@ fn test_wrapper_handles_permission_denied() {
 }
 
 #[test]
-#[ignore] // Remove #[ignore] when ready to run RED phase
+
 fn test_wrapper_handles_corrupted_binary() {
     // RED Phase Test 10: Handle corrupted/invalid binary
     // Expected: version() should fail with clear error message
