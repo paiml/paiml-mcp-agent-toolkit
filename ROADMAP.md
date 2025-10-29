@@ -1,11 +1,12 @@
 # PMAT Agent System Roadmap
 
-## 🎉 CURRENT STATUS: Sprint 66 COMPLETE - TDG Enforcement System ✅
+## 🎉 CURRENT STATUS: v2.180.0 RELEASED - TDG Enforcement System ✅
 
-**Current Version**: v2.179.0 (Released October 28, 2025)
-**Next Version**: v2.180.0 (Sprint 66 - TDG Enforcement Complete)
-**Status**: ✅ ALL 4 PHASES COMPLETE - Zero-Regression Quality Enforcement
-**Achievement**: Complete TDG enforcement system (5,985 lines, 64 tests, 9 commits)
+**Current Version**: v2.180.0 (Released October 29, 2025)
+**Status**: ✅ PUBLISHED TO CRATES.IO - Zero-Regression Quality Enforcement Live
+**Installation**: `cargo install pmat --version 2.180.0`
+**Crates.io**: https://crates.io/crates/pmat
+**Achievement**: Complete TDG enforcement system (8,354 lines, 64 tests, 15 commits)
 
 ---
 
@@ -46,14 +47,16 @@
 
 ---
 
-## ✅ Sprint 66: TDG Enforcement System - COMPLETE ✅
+## ✅ Sprint 66: TDG Enforcement System - COMPLETE & RELEASED ✅
 
-**Version**: v2.180.0 (Target - Sprint 66 All Phases)
+**Version**: v2.180.0 (Released October 29, 2025)
 **Started**: October 28, 2025
 **Completed**: October 29, 2025
-**Status**: ✅ ALL 4 PHASES COMPLETE - Ready for Release
+**Released**: October 29, 2025
+**Status**: ✅ PUBLISHED TO CRATES.IO - All phases complete and live
 **Goal**: Zero-regression quality enforcement with content-hash based tracking
 **Achievement**: Complete TDG enforcement system with baselines, quality gates, git hooks, and CI/CD templates
+**Crates.io**: https://crates.io/crates/pmat/2.180.0
 
 **Sprint 66 Overview**:
 - **Phase 1**: Baseline System (3-4 hours) ✅ COMPLETE
@@ -94,12 +97,12 @@
   - Documentation: docs/sprints/SPRINT-66-PHASE4-COMPLETION.md
 
 **Sprint 66 Totals**:
-- **Total Lines**: 5,985 lines
+- **Total Lines**: 8,354 lines
   - Production code: 3,129 lines (baseline: 1,030 + gates: 620 + hooks: 760 + templates: 719)
-  - Documentation: 3,339 lines (Phase 1: 650 + Phase 2: 580 + Phase 3: 639 + Phase 4: 970 + Phase 4 doc: 500)
+  - Documentation: 3,339 lines (Phase 1: 650 + Phase 2: 580 + Phase 3: 639 + Phase 4: 970 + release notes: 627 + guides: 970)
   - Tests: 1,886 lines (Phase 1: 570 + Phase 2: 283 + Phase 3: 316 + Phase 4: 717)
 - **Total Tests**: 64 RED tests (Phase 1: 15 + Phase 2: 12 + Phase 3: 11 + Phase 4: 26)
-- **Total Commits**: 9 commits across 4 phases
+- **Total Commits**: 15 commits (4 phases + release + link fixes + packaging)
 - **Specification**: `docs/specifications/tdg-enforcement-system.md` (6,000+ lines)
 - **Completion Documentation**:
   - docs/sprints/SPRINT-66-PHASE1-COMPLETION.md
