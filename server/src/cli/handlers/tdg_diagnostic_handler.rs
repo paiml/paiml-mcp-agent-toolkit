@@ -29,7 +29,7 @@ pub async fn handle_tdg_diagnostics(command: &TdgCommand, base_path: &PathBuf) -
             .await
         }
         TdgCommand::Storage { command } => handle_storage_command(command, base_path).await,
-        TdgCommand::Compare { .. } | TdgCommand::History { .. } => {
+        TdgCommand::Compare { .. } | TdgCommand::History { .. } | TdgCommand::Baseline { .. } => {
             // These are handled elsewhere in the existing TDG handler
             Ok(())
         }
