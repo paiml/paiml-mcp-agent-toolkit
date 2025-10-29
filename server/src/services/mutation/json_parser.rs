@@ -1,24 +1,30 @@
-//! GREEN Phase Implementation for PMAT-070-002: JSON Parser
+//! FIXED Phase Implementation for PMAT-070-002: JSON Parser
 //!
 //! Parses cargo-mutants JSON output and converts to PMAT mutation report format.
 //!
+//! ## Actual cargo-mutants v25.3.1 Format
+//!
+//! cargo-mutants writes to `mutants.out/` directory:
+//! - `mutants.json`: List of mutant definitions (no outcomes)
+//! - `outcomes.json`: Execution results with outcomes
+//!
 //! ## Outcome Mapping
 //!
-//! cargo-mutants → PMAT MutantStatus:
-//! - `caught` → `Killed` (test suite detected the mutant)
-//! - `missed` → `Survived` (test suite missed the mutant)
-//! - `timeout` → `Timeout` (test suite timed out)
-//! - `unviable` → `CompileError` (mutant failed to compile)
+//! cargo-mutants summary → PMAT MutantStatus:
+//! - `CaughtMutant` → `Killed` (test suite detected the mutant)
+//! - `MissedMutant` → `Survived` (test suite missed the mutant)
+//! - `Timeout` → `Timeout` (test suite timed out)
+//! - `Unviable` → `CompileError` (mutant failed to compile)
 //!
 //! ## Example
 //!
 //! ```rust
 //! use pmat::services::mutation::json_parser::CargoMutantsReport;
+//! use std::path::PathBuf;
 //!
-//! let json = r#"{"mutants": [{"outcome": "caught", "file": "src/lib.rs", "line": 10}]}"#;
-//! let report = CargoMutantsReport::from_json(json)?;
+//! let output_dir = PathBuf::from("mutants.out");
+//! let report = CargoMutantsReport::from_output_dir(&output_dir)?;
 //! let pmat_report = report.to_pmat_report();
-//! assert_eq!(pmat_report.len(), 1);
 //! ```
 
 use serde::{Deserialize, Serialize};
@@ -76,8 +82,116 @@ pub enum MutantOutcome {
     Unviable,
 }
 
+// ============================================================================
+// Actual cargo-mutants v25.3.1 JSON Format Structs
+// ============================================================================
+
+/// Actual outcomes.json structure from cargo-mutants
+#[derive(Debug, Deserialize)]
+struct OutcomesFile {
+    outcomes: Vec<Outcome>,
+}
+
+/// Individual outcome entry
+#[derive(Debug, Deserialize)]
+struct Outcome {
+    scenario: ScenarioType,
+    summary: String,
+}
+
+/// Scenario can be either "Baseline" or {"Mutant": {...}}
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+enum ScenarioType {
+    Baseline(String),
+    Mutant { #[serde(rename = "Mutant")] mutant: MutantDefinition },
+}
+
+/// Mutant definition from outcomes.json (embedded in scenario)
+#[derive(Debug, Deserialize)]
+struct MutantDefinition {
+    package: String,
+    file: String,
+    function: FunctionInfo,
+    span: SpanInfo,
+    replacement: String,
+    genre: String,
+}
+
+/// Function information
+#[derive(Debug, Deserialize)]
+struct FunctionInfo {
+    function_name: String,
+}
+
+/// Span information (line/column range)
+#[derive(Debug, Deserialize)]
+struct SpanInfo {
+    start: Position,
+}
+
+/// Position in file
+#[derive(Debug, Deserialize)]
+struct Position {
+    line: usize,
+}
+
 impl CargoMutantsReport {
-    /// Parse cargo-mutants JSON output
+    /// Parse cargo-mutants output from directory (ACTUAL v25.3.1 format)
+    ///
+    /// Reads `outcomes.json` from the cargo-mutants output directory and
+    /// converts it to PMAT mutation report format.
+    ///
+    /// # Arguments
+    /// * `dir` - Path to `mutants.out/` directory
+    ///
+    /// # Returns
+    /// * `Ok(CargoMutantsReport)` - Successfully parsed report
+    /// * `Err(...)` - Parse error with description
+    ///
+    /// # Example
+    /// ```rust
+    /// use std::path::PathBuf;
+    /// let output_dir = PathBuf::from("mutants.out");
+    /// let report = CargoMutantsReport::from_output_dir(&output_dir)?;
+    /// ```
+    pub fn from_output_dir(dir: &std::path::Path) -> Result<Self> {
+        // Read outcomes.json
+        let outcomes_path = dir.join("outcomes.json");
+        let outcomes_json = std::fs::read_to_string(&outcomes_path)
+            .map_err(|e| format!("Failed to read outcomes.json: {}", e))?;
+
+        // Parse outcomes file
+        let outcomes_file: OutcomesFile = serde_json::from_str(&outcomes_json)
+            .map_err(|e| format!("Failed to parse outcomes.json: {}", e))?;
+
+        // Extract mutants from outcomes
+        let mut mutants = Vec::new();
+        for outcome in outcomes_file.outcomes {
+            // Skip baseline scenario
+            if let ScenarioType::Mutant { mutant } = outcome.scenario {
+                // Map cargo-mutants summary to our outcome enum
+                let outcome_type = match outcome.summary.as_str() {
+                    "CaughtMutant" => MutantOutcome::Caught,
+                    "MissedMutant" => MutantOutcome::Missed,
+                    "Timeout" => MutantOutcome::Timeout,
+                    _ => MutantOutcome::Unviable, // Includes "Unviable" and unknown
+                };
+
+                mutants.push(CargoMutant {
+                    outcome: outcome_type,
+                    file: mutant.file,
+                    function: Some(mutant.function.function_name),
+                    line: mutant.span.start.line,
+                    replacement: Some(mutant.replacement),
+                });
+            }
+        }
+
+        Ok(CargoMutantsReport { mutants })
+    }
+
+    /// Parse cargo-mutants JSON output (DEPRECATED - for backward compatibility)
     ///
     /// # Arguments
     /// * `json` - JSON string from cargo-mutants output
@@ -92,6 +206,7 @@ impl CargoMutantsReport {
     /// let report = CargoMutantsReport::from_json(json)?;
     /// assert_eq!(report.mutants.len(), 0);
     /// ```
+    #[deprecated(note = "Use from_output_dir() instead - matches actual cargo-mutants v25.3.1 format")]
     pub fn from_json(json: &str) -> Result<Self> {
         serde_json::from_str(json)
             .map_err(|e| format!("Failed to parse cargo-mutants JSON: {}", e).into())
