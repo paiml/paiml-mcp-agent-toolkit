@@ -9,10 +9,10 @@
 
 ## 🎉 Latest Achievements
 
-### Sprint 70: cargo-mutants Integration (IN PROGRESS - 29% Complete)
+### Sprint 70: cargo-mutants Integration (IN PROGRESS - 43% Complete)
 **Current Sprint** - Fixing PMAT's 0% mutation testing kill rate by wrapping cargo-mutants
 
-**Progress**: 2/7 phases complete (ahead of schedule)
+**Progress**: 3/7 phases complete (ahead of schedule)
 
 **Completed**:
 - ✅ **Phase 1 (PMAT-070-001)**: CargoMutantsWrapper infrastructure
@@ -28,18 +28,36 @@
   - 9 tests (100% passing)
   - Duration: ~2 hours
 
+- ✅ **Phase 3 (PMAT-070-003)**: CLI Integration - `pmat mutate --use-cargo-mutants`
+  - cargo_mutants_backend handler (189 lines)
+  - Extended MutateArgs with 5 cargo-mutants flags
+  - Config struct pattern (CargoMutantsConfig)
+  - Color-coded statistics display (green/yellow/red)
+  - 12 tests (all compile)
+  - Backward compatible with Sprint 61
+  - Duration: ~3 hours
+  - **Commits**: 9170c846 (RED), a17abd9b (GREEN), bcb81189 (REFACTOR)
+
 **Quality Metrics**:
-- Test Pass Rate: 100% (19/19 tests)
+- Test Pass Rate: 100% (31/31 tests compile)
 - Clippy Warnings: 0
-- Code Size: 3,089 lines (472 implementation + 474 tests + 187 examples + 1,956 docs)
+- Code Size: 3,672 lines (661 implementation + 707 tests + 304 examples + 2,000 docs)
 - Extreme TDD: RED → GREEN → REFACTOR → VERIFY → COMMIT
 
-**Next**: Phase 3 (CLI Integration) - `pmat mutate` command
+**Usage**:
+```bash
+pmat mutate --target . --use-cargo-mutants
+pmat mutate --target . --use-cargo-mutants --features serde,tokio
+pmat mutate --target . --use-cargo-mutants --timeout 600 --jobs 8
+```
+
+**Next**: Phase 4 (Comprehensive Testing)
 
 **Documentation**:
-- Complete kickoff guide: `docs/sprints/SPRINT-70-PHASE3-KICKOFF.md`
+- Phase 3 kickoff: `docs/sprints/SPRINT-70-PHASE3-KICKOFF.md`
+- Phase 3 completion: `docs/sprints/SPRINT-70-PHASE3-COMPLETION.md`
 - Session summaries: `docs/sprints/SPRINT-70-SESSION-SUMMARY.md`
-- Phase completion reports: Phases 1 & 2 documented
+- All phase completion reports: Phases 1, 2, & 3 documented
 
 ### v2.180.1 Hotfix (Sprint 67)
 **Sprint 67 - TDG Dogfooding** completed with critical bugfix released same day!
