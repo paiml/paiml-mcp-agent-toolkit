@@ -102,19 +102,25 @@ struct Outcome {
 /// Scenario can be either "Baseline" or {"Mutant": {...}}
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]
+#[allow(dead_code)]
 enum ScenarioType {
     Baseline(String),
-    Mutant { #[serde(rename = "Mutant")] mutant: MutantDefinition },
+    Mutant {
+        #[serde(rename = "Mutant")]
+        mutant: MutantDefinition,
+    },
 }
 
 /// Mutant definition from outcomes.json (embedded in scenario)
 #[derive(Debug, Deserialize)]
 struct MutantDefinition {
+    #[allow(dead_code)]
     package: String,
     file: String,
     function: FunctionInfo,
     span: SpanInfo,
     replacement: String,
+    #[allow(dead_code)]
     genre: String,
 }
 
