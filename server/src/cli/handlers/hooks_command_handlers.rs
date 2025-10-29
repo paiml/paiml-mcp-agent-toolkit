@@ -1054,6 +1054,7 @@ mod tests {
             interactive: false,
             force: false,
             backup: true,
+            tdg_enforcement: false,
         };
 
         let result = handle_hooks_command(&cmd).await;

@@ -386,8 +386,7 @@ fn format_delta(delta: f32) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tdg::{BaselineEntry, BaselineSummary, ComponentScores};
-    use chrono::Utc;
+    use crate::tdg::{BaselineEntry, ComponentScores, TdgScore};
 
     fn create_test_baseline(scores: Vec<(PathBuf, f32, Grade)>) -> TdgBaseline {
         use crate::tdg::Language;
