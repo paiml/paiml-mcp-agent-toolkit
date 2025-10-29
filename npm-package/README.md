@@ -71,10 +71,10 @@ pmat agent mcp-server
 ## 🆘 Support
 
 - **Issues**: [GitHub Issues](https://github.com/paiml/paiml-mcp-agent-toolkit/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/paiml/paiml-mcp-agent-toolkit/discussions)
+- **Discussions**: [GitHub Discussions](https://github.com/paiml/paiml-mcp-agent-toolkit/issues)
 
 ## 📄 License
 
-MIT License - See [LICENSE](https://github.com/paiml/paiml-mcp-agent-toolkit/blob/master/LICENSE) for details.
+MIT License - See [LICENSE](../../LICENSE) for details.
 
 Built with ❤️ by [Pragmatic AI Labs](https://paiml.com)

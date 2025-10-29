@@ -186,5 +186,5 @@ No overrides without:
 ## Related Documentation
 
 - [Quality Gates](../execution/quality-gates.md)
-- [Toyota Way Principles](../CLAUDE.md)
+- [Toyota Way Principles](../../CLAUDE.md)
 - [SPECIFICATION.md Section 31-33](../SPECIFICATION.md#31-zero-satd-policy)

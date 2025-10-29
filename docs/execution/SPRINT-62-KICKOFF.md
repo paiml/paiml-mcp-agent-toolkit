@@ -12,7 +12,7 @@
 
 **Previous Sprint (Sprint 61 - v2.174.0)**:
 - ✅ Completed Days 1-4: Command skeleton, real file testing, output formats, progress indicators
-- ✅ Published to crates.io: https://crates.io/crates/pmat
+<!-- PMAT not yet published to crates.io: - ✅ Published to crates.io: https://crates.io/crates/pmat -->
 - ✅ GitHub release: https://github.com/paiml/paiml-mcp-agent-toolkit/releases/tag/v2.174.0
 
 **Current State**:

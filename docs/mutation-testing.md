@@ -653,7 +653,7 @@ pmat analyze mutate --path server/src/services/mutation/types.rs
 
 - **Documentation**: https://github.com/paiml/paiml-mcp-agent-toolkit/tree/master/docs
 - **Issues**: https://github.com/paiml/paiml-mcp-agent-toolkit/issues
-- **Crates.io**: https://crates.io/crates/pmat
+<!-- PMAT not yet published to crates.io: - **Crates.io**: https://crates.io/crates/pmat -->
 
 ---
 

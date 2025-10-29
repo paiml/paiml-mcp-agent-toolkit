@@ -315,7 +315,7 @@ test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 4596 filtered out
 ### 7.3 Documentation Accessibility
 
 - ✅ GitHub repository: https://github.com/paiml/paiml-mcp-agent-toolkit
-- ✅ Crates.io: https://crates.io/crates/pmat
+<!-- PMAT not yet published to crates.io: - ✅ Crates.io: https://crates.io/crates/pmat -->
 - ✅ README.md: Comprehensive overview
 - ✅ CHANGELOG.md: Detailed version history
 - ✅ ROADMAP.md: Strategic direction

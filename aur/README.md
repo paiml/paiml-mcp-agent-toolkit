@@ -90,7 +90,7 @@ docker run --rm paiml/pmat:latest pmat --version
 
 ## Support
 
-- **AUR Issues**: Comments on [AUR package page](https://aur.archlinux.org/packages/pmat)
+- **AUR Issues**: Comments on <!-- PMAT not yet published to AUR: [AUR package page](https://aur.archlinux.org/packages/pmat) -->
 - **PMAT Issues**: [GitHub Issues](https://github.com/paiml/paiml-mcp-agent-toolkit/issues)
 - **Documentation**: [User Guide](https://github.com/paiml/paiml-mcp-agent-toolkit/blob/master/docs/CLAUDE_CODE_AGENT.md)
 

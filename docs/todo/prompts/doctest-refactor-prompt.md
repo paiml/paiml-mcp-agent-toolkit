@@ -110,7 +110,7 @@ git add server/src/path/to/file.rs && \
 git commit -m "docs: Add doctest for function_name
 
 🤖 Generated with Claude Code
-https://claude.ai/code
+https://claude.com/claude-code
 
 Co-Authored-By: Claude <noreply@anthropic.com>" && \
 git push origin master
@@ -200,7 +200,7 @@ cargo test --doc --package pmat -- module::Type::function 2>&1 | grep "test resu
 git add file.rs && git commit -m "docs: Add doctest for function_name
 
 🤖 Generated with Claude Code
-https://claude.ai/code
+https://claude.com/claude-code
 
 Co-Authored-By: Claude <noreply@anthropic.com>" && git push origin master
 ```

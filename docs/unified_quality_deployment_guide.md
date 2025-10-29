@@ -649,7 +649,7 @@ After successful deployment:
 ## Support Resources
 
 - **Documentation**: https://docs.pmat.dev/unified-quality
-- **Community**: https://github.com/paiml/paiml-mcp-agent-toolkit/discussions
+- **Community**: https://github.com/paiml/paiml-mcp-agent-toolkit/issues
 - **Issue Tracking**: https://github.com/paiml/paiml-mcp-agent-toolkit/issues
 - **Professional Support**: enterprise@paiml.com
 

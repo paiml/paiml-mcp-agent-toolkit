@@ -200,7 +200,7 @@ Added 40+ aliases across ALL command categories:
 ## 📚 References
 
 - GitHub Issue: [#66 - "0 files analyzed" bug](https://github.com/paiml/paiml-mcp-agent-toolkit/issues/66)
-- Crates.io: [pmat v2.160.0](https://crates.io/crates/pmat/2.160.0)
+<!-- PMAT not yet published to crates.io: - Crates.io: <!-- PMAT not yet published to crates.io: [pmat v2.160.0](https://crates.io/crates/pmat/2.160.0) --> -->
 - CHANGELOG: `/CHANGELOG.md` (v2.160.0 entry)
 
 ---

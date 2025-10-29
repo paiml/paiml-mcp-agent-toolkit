@@ -23,7 +23,7 @@ These distributions update automatically on every release with no manual interve
 - **Workflow**: `.github/workflows/publish-crates.yml`
 - **Trigger**: Release published
 - **Command**: `cargo publish`
-- **Status**: Live at https://crates.io/crates/pmat
+<!-- PMAT not yet published to crates.io: - **Status**: Live at https://crates.io/crates/pmat -->
 
 #### ✅ npm (Node.js)  
 - **Workflow**: `.github/workflows/multi-ecosystem-release.yml`

@@ -279,7 +279,7 @@ PMAT v2.166.0 represents a **quality-focused release** applying **Five Whys meth
 
 ### crates.io Release
 
-**URL**: https://crates.io/crates/pmat/2.166.0
+<!-- PMAT not yet published to crates.io: **URL**: https://crates.io/crates/pmat/2.166.0 -->
 **Status**: ✅ Published
 **Date**: October 19, 2025
 **Install**: `cargo install pmat --version 2.166.0`
