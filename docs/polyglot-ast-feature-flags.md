@@ -132,6 +132,6 @@ pub fn analyze_ast(source: &str) -> Result<Vec<UnifiedNode>> {
 
 ## Related Documentation
 
-- [Language Support Documentation](/docs/languages.md)
-- [Cross-Language Analysis Guide](/docs/cross-language-analysis.md)
-- [MCP Integration for Polyglot Analysis](/docs/mcp/polyglot-tools.md)
+- [Language Support Documentation](./languages.md)
+- [Cross-Language Analysis Guide](./cross-language-analysis.md)
+- [MCP Integration for Polyglot Analysis](./mcp/polyglot-tools.md)

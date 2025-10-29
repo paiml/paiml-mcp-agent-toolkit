@@ -1,5 +1,14 @@
-# api guide
+# PMAT HTTP API Guide
 
-Documentation coming soon. For more information, see:
-- [Revolutionary Features](REVOLUTIONARY_FEATURES.md)
-- [Main README](../README.md)
+## Overview
+
+PMAT provides an optional HTTP API for code analysis.
+
+## Status
+
+HTTP API is under development. Primary interface is CLI.
+
+## Related Documentation
+
+- [CLI Reference](./cli-reference.md)
+- [MCP Integration](./mcp-integration.md)

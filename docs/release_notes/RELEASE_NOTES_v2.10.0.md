@@ -67,7 +67,7 @@ sudo ./deployment/deploy.sh
 ## 📚 Documentation & Testing
 
 ### Comprehensive User Guide
-- **[Claude Code Agent Guide](docs/CLAUDE_CODE_AGENT.md)**: 373-line complete setup guide
+- **[Claude Code Agent Guide](../../server/docs/CLAUDE_CODE_AGENT.md)**: 373-line complete setup guide
 - **Quick Start**: 5-minute setup from installation to Claude Code integration
 - **Troubleshooting**: Common issues, debug mode, and configuration validation
 - **API Reference**: Complete MCP tool documentation with examples
@@ -137,7 +137,7 @@ pmat agent stop
 
 - **GitHub Release**: https://github.com/paiml/paiml-mcp-agent-toolkit/releases/tag/v2.10.0
 - **Crates.io**: `pmat = "2.10.0"`
-- **Documentation**: [Claude Code Agent Guide](docs/CLAUDE_CODE_AGENT.md)
+- **Documentation**: [Claude Code Agent Guide](../../server/docs/CLAUDE_CODE_AGENT.md)
 - **Support**: GitHub Issues and Documentation
 
 ---

@@ -146,7 +146,7 @@ All documentation follows these principles:
 ## 🔗 External Resources
 
 - **Repository**: [github.com/paiml/paiml-mcp-agent-toolkit](https://github.com/paiml/paiml-mcp-agent-toolkit)
-- **Crates.io**: [crates.io/crates/pmat](https://crates.io/crates/pmat)
+<!-- PMAT not yet published to crates.io: - **Crates.io**: <!-- PMAT not yet published to crates.io: [crates.io/crates/pmat](https://crates.io/crates/pmat) --> -->
 - **MCP Registry**: [registry.modelcontextprotocol.io (io.github.paiml/pmat-agent)](https://registry.modelcontextprotocol.io/v0/servers?search=pmat)
 - **Homepage**: [paiml.com](https://paiml.com)
 

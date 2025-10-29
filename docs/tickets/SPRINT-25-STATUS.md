@@ -13,7 +13,7 @@
 
 1. **v2.154.0 Released**
    - Multi-language mutation testing 100% complete
-   - Published to crates.io: https://crates.io/crates/pmat/2.154.0
+<!-- PMAT not yet published to crates.io:    - Published to crates.io: https://crates.io/crates/pmat/2.154.0 -->
    - Git tag v2.154.0 created and pushed
    - Release notes created: `docs/release_notes/v2.154.0.md`
 

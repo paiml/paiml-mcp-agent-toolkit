@@ -331,8 +331,9 @@ jobs:
             - **Categories**: correctness, perf, style
             
             ### Reports
-            - [Clippy Analysis](clippy-report.json)
-            - [Fix Report](fix-report.json)
+            <!-- CI artifacts - not committed to repo -->
+            <!-- - [Clippy Analysis](clippy-report.json) -->
+            <!-- - [Fix Report](fix-report.json) -->
             
             ### Validation
             ✅ All tests passing after fixes

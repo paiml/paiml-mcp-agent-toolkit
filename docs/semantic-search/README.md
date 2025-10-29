@@ -254,10 +254,10 @@ See [LICENSE](../../LICENSE) for details.
 - Arthur & Vassilvitskii (2007) - "k-means++: The advantages of careful seeding"
 
 ### Technologies
-- [OpenAI Embeddings](https://platform.openai.com/docs/guides/embeddings)
+- [OpenAI Embeddings](https://platform.openai.com/docs/guides/embeddings) *(may require login)*
 - [Turso Database](https://turso.tech/)
 - [Tree-sitter](https://tree-sitter.github.io/)
-- [MCP Protocol](https://github.com/anthropics/mcp)
+- [MCP Protocol](https://github.com/modelcontextprotocol/specification)
 
 ---
 

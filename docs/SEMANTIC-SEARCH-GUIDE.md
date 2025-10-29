@@ -1026,7 +1026,7 @@ A: Only code chunks (functions, classes) are sent for embedding generation. Full
 
 - **Try the tutorial**: [Semantic Search Tutorial](SEMANTIC-SEARCH-TUTORIAL.md)
 - **Read the API docs**: [API Reference](API.md)
-- **Join the community**: [GitHub Discussions](https://github.com/paiml/paiml-mcp-agent-toolkit/discussions)
+- **Join the community**: [GitHub Discussions](https://github.com/paiml/paiml-mcp-agent-toolkit/issues)
 - **Report issues**: [GitHub Issues](https://github.com/paiml/paiml-mcp-agent-toolkit/issues)
 
 ---

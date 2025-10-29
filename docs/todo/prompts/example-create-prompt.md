@@ -704,7 +704,7 @@ git add examples/cli-usage/complexity-example.md
 git commit -m "docs: Add complexity analysis example
 
 🤖 Generated with Claude Code
-https://claude.ai/code
+https://claude.com/claude-code
 
 Co-Authored-By: Claude <noreply@anthropic.com>"
 git push origin master
