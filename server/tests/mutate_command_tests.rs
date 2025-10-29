@@ -1,33 +1,15 @@
-//! RED Phase Tests for PMAT-070-003: cargo-mutants Backend Integration
+//! GREEN Phase Tests for PMAT-070-003: cargo-mutants Backend Integration
 //!
 //! This test suite validates the cargo-mutants backend for `pmat mutate --use-cargo-mutants`.
-//! Following Extreme TDD: These tests are written FIRST and will fail until GREEN phase.
+//! Following Extreme TDD: Tests written in RED phase, implementation in GREEN phase.
 //!
 //! Note: Sprint 61 implemented PMAT's built-in mutation testing (`pmat mutate`).
 //! Sprint 70 adds cargo-mutants wrapper as an alternative backend via `--use-cargo-mutants`.
 
+use pmat::cli::handlers::cargo_mutants_backend;
 use pmat::services::mutation::cargo_mutants_wrapper::CargoMutantsWrapper;
 use pmat::services::mutation::json_parser::CargoMutantsReport;
 use std::path::PathBuf;
-
-/// Mock cargo-mutants backend handler for RED phase
-/// Will be replaced with real implementation in GREEN phase
-mod cargo_mutants_backend {
-    use super::*;
-
-    pub fn execute(
-        _path: PathBuf,
-        _output: Option<PathBuf>,
-        _timeout: u64,
-        _jobs: Option<usize>,
-        _features: Option<Vec<String>>,
-        _all_features: bool,
-        _no_default_features: bool,
-        _no_shuffle: bool,
-    ) -> Result<String, Box<dyn std::error::Error>> {
-        unimplemented!("GREEN phase: Implement cargo-mutants backend")
-    }
-}
 
 // ============================================================================
 // Unit Tests

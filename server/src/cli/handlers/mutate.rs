@@ -19,6 +19,11 @@ use tracing::info;
 pub async fn handle(args: MutateArgs, _server: Arc<StatelessTemplateServer>) -> Result<()> {
     info!("Starting mutation testing on {:?}", args.target);
 
+    // Sprint 70: Route to cargo-mutants backend if requested
+    if args.use_cargo_mutants {
+        return handle_cargo_mutants_backend(args).await;
+    }
+
     // 1. Validate target
     let target = args
         .target
@@ -534,6 +539,49 @@ fn output_text(
                 "   {}: {:?}\n",
                 style("Operator").bold(),
                 result.mutant.operator
+            );
+        }
+    }
+
+    Ok(())
+}
+
+// ============================================================================
+// Sprint 70: cargo-mutants Backend Handler
+// ============================================================================
+
+/// Handle mutation testing via cargo-mutants backend
+async fn handle_cargo_mutants_backend(args: MutateArgs) -> Result<()> {
+    use crate::cli::handlers::cargo_mutants_backend;
+    use crate::services::mutation::json_parser::CargoMutantsReport;
+
+    // Execute cargo-mutants
+    let json = cargo_mutants_backend::execute(
+        args.target.clone(),
+        args.output.clone(),
+        args.timeout,
+        args.jobs,
+        args.features,
+        args.all_features,
+        args.no_default_features,
+        args.no_shuffle,
+    )?;
+
+    // Parse JSON output
+    let report = CargoMutantsReport::from_json(&json)
+        .map_err(|e| anyhow::anyhow!("Failed to parse cargo-mutants JSON output: {}", e))?;
+
+    // Display statistics
+    cargo_mutants_backend::display_statistics(&report);
+
+    // Check threshold if specified
+    if let Some(threshold) = args.threshold {
+        let mutation_score = report.mutation_score();
+        if mutation_score < threshold {
+            anyhow::bail!(
+                "Mutation score {:.1}% below threshold {:.1}%",
+                mutation_score,
+                threshold
             );
         }
     }

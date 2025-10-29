@@ -1,17 +1,19 @@
-//! RED Phase Example for PMAT-070-003: cargo-mutants Backend
+//! GREEN Phase Example for PMAT-070-003: cargo-mutants Backend
 //!
-//! Demonstrates expected usage of cargo-mutants backend via `pmat mutate --use-cargo-mutants`
+//! Demonstrates usage of cargo-mutants backend via `pmat mutate --use-cargo-mutants`
 //!
-//! Usage (after GREEN phase implementation):
+//! Usage:
 //! ```bash
 //! # Use cargo-mutants backend instead of built-in PMAT mutation testing
 //! cargo run --example cargo_mutants_backend_demo
 //! ```
 
+use pmat::cli::handlers::cargo_mutants_backend;
+use pmat::services::mutation::json_parser::CargoMutantsReport;
 use std::path::PathBuf;
 
 fn main() {
-    println!("🧪 cargo-mutants Backend Demo (RED Phase)\n");
+    println!("🧪 cargo-mutants Backend Demo (GREEN Phase)\n");
 
     println!("Expected workflow after GREEN phase implementation:\n");
 
@@ -72,10 +74,43 @@ fn main() {
     println!("   pmat mutate --target . --use-cargo-mutants --output mutation-report.json");
     println!();
 
-    println!("✅ This example will be updated in GREEN phase with working code");
+    println!("✅ GREEN phase: Working implementation!\n");
 
-    // RED phase: Demonstrate expected error when backend not implemented
-    let _path = PathBuf::from(".");
-    // Backend execution would go here in GREEN phase
-    // cargo_mutants_backend::execute(...)?;
+    // Demonstrate actual usage (requires cargo-mutants installation)
+    println!("Attempting to execute cargo-mutants backend...\n");
+
+    let result = cargo_mutants_backend::execute(
+        PathBuf::from("."),
+        None,  // No output file
+        300,   // 5 minute timeout
+        None,  // Auto-detect jobs
+        None,  // No specific features
+        false, // Not all features
+        false, // Use default features
+        false, // Shuffle enabled
+    );
+
+    match result {
+        Ok(json) => {
+            println!("✅ cargo-mutants executed successfully!\n");
+
+            // Parse and display results
+            match CargoMutantsReport::from_json(&json) {
+                Ok(report) => {
+                    cargo_mutants_backend::display_statistics(&report);
+                }
+                Err(e) => {
+                    eprintln!("⚠️  Failed to parse results: {}", e);
+                }
+            }
+        }
+        Err(e) => {
+            eprintln!("❌ Demo failed: {}", e);
+            eprintln!("\nThis is expected if:");
+            eprintln!("  1. cargo-mutants is not installed");
+            eprintln!("  2. cargo-mutants version is < v24.7.0");
+            eprintln!("  3. Not running in a Rust project directory");
+            eprintln!("\nInstall: cargo install cargo-mutants");
+        }
+    }
 }
