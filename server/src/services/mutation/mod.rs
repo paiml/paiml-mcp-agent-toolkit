@@ -39,6 +39,7 @@ pub mod guard;
 pub mod state;
 pub mod worker_monitor;
 pub mod temp_file;
+pub mod cargo_mutants_wrapper;  // Sprint 70: cargo-mutants subprocess wrapper
 
 #[cfg(test)]
 mod typescript_adapter_tests;
