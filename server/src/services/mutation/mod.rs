@@ -7,6 +7,7 @@
 
 pub mod cargo_mutants_wrapper;
 pub mod ci_cd_learning;
+pub mod json_parser; // Sprint 70: cargo-mutants JSON parser
 pub mod coverage;
 pub mod cpp_adapter;
 pub mod cpp_mutation_generator;
