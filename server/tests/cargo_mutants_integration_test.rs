@@ -146,12 +146,14 @@ fn test_cargo_mutants_end_to_end_workflow() {
 }
 
 #[test]
-fn test_integration_with_empty_json() {
-    // Test integration with edge case: empty mutants list
+fn test_integration_with_empty_project() {
+    // Test integration with edge case: empty project (no mutants)
 
-    let empty_json = r#"{"mutants": []}"#;
+    use std::path::PathBuf;
 
-    let report = CargoMutantsReport::from_json(empty_json).expect("Failed to parse empty JSON");
+    let fixture = PathBuf::from("tests/fixtures/cargo-mutants-output/empty");
+    let report = CargoMutantsReport::from_output_dir(&fixture)
+        .expect("Failed to parse empty fixture");
 
     assert_eq!(report.mutants.len(), 0, "Should parse 0 mutants");
 
@@ -164,34 +166,32 @@ fn test_integration_with_empty_json() {
         "Mutation score should be 0% for empty report"
     );
 
-    println!("✅ Empty JSON integration test passed");
+    println!("✅ Empty project integration test passed");
 }
 
 #[test]
 fn test_integration_outcome_counts() {
     // Test that outcome counting works correctly in integration
 
-    let json = r#"{
-  "mutants": [
-    {"outcome": "caught", "file": "src/a.rs", "line": 1},
-    {"outcome": "caught", "file": "src/b.rs", "line": 2},
-    {"outcome": "caught", "file": "src/c.rs", "line": 3},
-    {"outcome": "missed", "file": "src/d.rs", "line": 4}
-  ]
-}"#;
+    use std::path::PathBuf;
 
-    let report = CargoMutantsReport::from_json(json).expect("Failed to parse JSON");
+    let fixture = PathBuf::from("tests/fixtures/cargo-mutants-output/some-missed");
+    let report = CargoMutantsReport::from_output_dir(&fixture)
+        .expect("Failed to parse fixture");
 
     let caught_count = report.count_by_outcome(MutantOutcome::Caught);
     let missed_count = report.count_by_outcome(MutantOutcome::Missed);
     let mutation_score = report.mutation_score();
 
-    assert_eq!(caught_count, 3, "Should have 3 caught mutants");
+    assert_eq!(caught_count, 4, "Should have 4 caught mutants");
     assert_eq!(missed_count, 1, "Should have 1 missed mutant");
     assert_eq!(
-        mutation_score, 75.0,
-        "Mutation score should be 75% (3/4 caught)"
+        mutation_score, 80.0,
+        "Mutation score should be 80% (4/5 caught)"
     );
 
     println!("✅ Outcome counting integration test passed");
+    println!("   Caught: {}", caught_count);
+    println!("   Missed: {}", missed_count);
+    println!("   Score: {:.1}%", mutation_score);
 }
