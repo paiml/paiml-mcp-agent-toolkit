@@ -115,18 +115,18 @@ pub struct TieredStore {
 }
 
 impl TieredStore {
-    /// Create new tiered storage instance with default Sled backend
+    /// Create new tiered storage instance with default Libsql backend
     pub fn new(db_path: impl AsRef<Path>) -> Result<Self> {
         let warm_config = StorageConfig {
-            backend_type: crate::tdg::storage_backend::StorageBackendType::Sled,
-            path: Some(db_path.as_ref().join(".pmat/tdg-warm")),
+            backend_type: crate::tdg::storage_backend::StorageBackendType::Libsql,
+            path: Some(db_path.as_ref().join(".pmat/tdg-warm.db")),
             cache_size_mb: Some(128),
             compression: true,
         };
 
         let cold_config = StorageConfig {
-            backend_type: crate::tdg::storage_backend::StorageBackendType::Sled,
-            path: Some(db_path.as_ref().join(".pmat/tdg-cold")),
+            backend_type: crate::tdg::storage_backend::StorageBackendType::Libsql,
+            path: Some(db_path.as_ref().join(".pmat/tdg-cold.db")),
             cache_size_mb: Some(64),
             compression: false, // Cold storage doesn't need additional compression
         };
