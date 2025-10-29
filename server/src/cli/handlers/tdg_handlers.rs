@@ -91,6 +91,44 @@ async fn handle_tdg_subcommand(
         TdgCommand::Baseline { command } => {
             handle_baseline_command(command, analyzer, config).await
         }
+        TdgCommand::CheckRegression {
+            baseline,
+            path,
+            format,
+            fail_on_regression,
+            max_score_drop,
+            allow_grade_drop,
+        } => {
+            handle_check_regression(
+                analyzer,
+                baseline.as_path(),
+                path.as_path(),
+                format.clone(),
+                fail_on_regression,
+                max_score_drop.clone(),
+                allow_grade_drop,
+            )
+            .await
+        }
+        TdgCommand::CheckQuality {
+            path,
+            min_grade,
+            format,
+            fail_on_violation,
+            new_files_only,
+            baseline,
+        } => {
+            handle_check_quality(
+                analyzer,
+                path.as_path(),
+                min_grade.as_deref(),
+                format.clone(),
+                fail_on_violation,
+                new_files_only,
+                baseline.as_ref(),
+            )
+            .await
+        }
         TdgCommand::Diagnostics { .. }
         | TdgCommand::Storage { .. }
         | TdgCommand::Dashboard { .. }
@@ -948,22 +986,174 @@ fn format_grade(grade: Grade) -> String {
     .to_string()
 }
 
-fn parse_grade(grade_str: &str) -> Result<Grade> {
-    match grade_str.to_uppercase().as_str() {
-        "A+" | "APLUS" => Ok(Grade::APLus),
+/// Handle check-regression command (Sprint 66 Phase 2)
+async fn handle_check_regression(
+    analyzer: &TdgAnalyzer,
+    baseline_path: &Path,
+    current_path: &Path,
+    format: crate::cli::TdgOutputFormat,
+    fail_on_regression: bool,
+    max_score_drop: Option<f32>,
+    allow_grade_drop: bool,
+) -> Result<()> {
+    use crate::tdg::{GateConfig, QualityGate, RegressionGate, TdgBaseline};
+
+    println!("🔍 Checking for quality regressions...");
+
+    // Load baseline
+    let baseline = TdgBaseline::load(baseline_path)?;
+    println!("   ✅ Loaded baseline: {} files", baseline.summary.total_files);
+
+    // Create current baseline
+    let temp_output = std::env::temp_dir().join("pmat-regression-check.json");
+    create_baseline(analyzer, current_path, &temp_output, false).await?;
+    let current = TdgBaseline::load(&temp_output)?;
+    std::fs::remove_file(&temp_output).ok();
+
+    // Configure gate
+    let mut config = GateConfig::default();
+    if let Some(drop) = max_score_drop {
+        config.max_score_drop = drop;
+    }
+    config.allow_grade_drop = allow_grade_drop;
+
+    // Run regression gate
+    let gate = RegressionGate::new(config);
+    let result = gate.check(&baseline, &current)?;
+
+    // Display results
+    match &format {
+        crate::cli::TdgOutputFormat::Table => display_gate_result_table(&result),
+        crate::cli::TdgOutputFormat::Json => {
+            println!("{}", serde_json::to_string_pretty(&result)?);
+        }
+        crate::cli::TdgOutputFormat::Sarif => {
+            println!("SARIF format not yet implemented for quality gates");
+        }
+        crate::cli::TdgOutputFormat::Markdown => {
+            println!("Markdown format not yet implemented for quality gates");
+        }
+    }
+
+    // Exit with error if requested and gate failed
+    if fail_on_regression && !result.passed {
+        return Err(anyhow::anyhow!("Quality regression detected"));
+    }
+
+    Ok(())
+}
+
+/// Handle check-quality command (Sprint 66 Phase 2)
+async fn handle_check_quality(
+    analyzer: &TdgAnalyzer,
+    path: &Path,
+    min_grade_str: Option<&str>,
+    format: crate::cli::TdgOutputFormat,
+    fail_on_violation: bool,
+    new_files_only: bool,
+    baseline_path: Option<&PathBuf>,
+) -> Result<()> {
+    use crate::tdg::{GateConfig, MinimumGradeGate, NewFileGate, QualityGate, TdgBaseline};
+
+    println!("🔍 Checking quality thresholds...");
+
+    // Create current baseline
+    let temp_output = std::env::temp_dir().join("pmat-quality-check.json");
+    create_baseline(analyzer, path, &temp_output, false).await?;
+    let current = TdgBaseline::load(&temp_output)?;
+    std::fs::remove_file(&temp_output).ok();
+
+    // Choose gate based on mode
+    let result = if new_files_only {
+        if baseline_path.is_none() {
+            return Err(anyhow::anyhow!(
+                "Baseline required for --new-files-only mode"
+            ));
+        }
+        let baseline = TdgBaseline::load(baseline_path.unwrap())?;
+
+        let mut config = GateConfig::default();
+        if let Some(grade_str) = min_grade_str {
+            config.new_file_min_grade = parse_grade(grade_str)?;
+        }
+
+        let gate = NewFileGate::new(config);
+        gate.check(&baseline, &current)?
+    } else {
+        let baseline = TdgBaseline::new(None); // Empty baseline for minimum grade check
+
+        let mut config = GateConfig::default();
+        if let Some(grade_str) = min_grade_str {
+            config.default_min_grade = parse_grade(grade_str)?;
+        }
+
+        let gate = MinimumGradeGate::new(config);
+        gate.check(&baseline, &current)?
+    };
+
+    // Display results
+    match &format {
+        crate::cli::TdgOutputFormat::Table => display_gate_result_table(&result),
+        crate::cli::TdgOutputFormat::Json => {
+            println!("{}", serde_json::to_string_pretty(&result)?);
+        }
+        crate::cli::TdgOutputFormat::Sarif => {
+            println!("SARIF format not yet implemented for quality gates");
+        }
+        crate::cli::TdgOutputFormat::Markdown => {
+            println!("Markdown format not yet implemented for quality gates");
+        }
+    }
+
+    // Exit with error if requested and gate failed
+    if fail_on_violation && !result.passed {
+        return Err(anyhow::anyhow!("Quality violations detected"));
+    }
+
+    Ok(())
+}
+
+/// Display gate result in table format
+fn display_gate_result_table(result: &crate::tdg::GateResult) {
+    use prettytable::{row, Table};
+
+    println!("\n{}", result.message);
+
+    if !result.violations.is_empty() {
+        println!("\n📋 Violations:");
+
+        let mut table = Table::new();
+        table.add_row(row!["File", "Type", "Severity", "Message"]);
+
+        for violation in &result.violations {
+            table.add_row(row![
+                violation.path.display(),
+                format!("{:?}", violation.violation_type),
+                format!("{:?}", violation.severity),
+                &violation.message
+            ]);
+        }
+
+        table.printstd();
+    }
+}
+
+/// Parse grade string to Grade enum
+fn parse_grade(s: &str) -> Result<crate::tdg::Grade> {
+    use crate::tdg::Grade;
+    match s.to_uppercase().as_str() {
+        "A+" => Ok(Grade::APLus),
         "A" => Ok(Grade::A),
-        "A-" | "AMINUS" => Ok(Grade::AMinus),
-        "B+" | "BPLUS" => Ok(Grade::BPlus),
+        "A-" => Ok(Grade::AMinus),
+        "B+" => Ok(Grade::BPlus),
         "B" => Ok(Grade::B),
-        "B-" | "BMINUS" => Ok(Grade::BMinus),
-        "C+" | "CPLUS" => Ok(Grade::CPlus),
+        "B-" => Ok(Grade::BMinus),
+        "C+" => Ok(Grade::CPlus),
         "C" => Ok(Grade::C),
-        "C-" | "CMINUS" => Ok(Grade::CMinus),
+        "C-" => Ok(Grade::CMinus),
         "D" => Ok(Grade::D),
         "F" => Ok(Grade::F),
-        _ => Err(anyhow!(
-            "Invalid grade: {grade_str}. Valid grades are: A+, A, A-, B+, B, B-, C+, C, C-, D, F"
-        )),
+        _ => Err(anyhow::anyhow!("Invalid grade: {s}. Valid grades: A+, A, A-, B+, B, B-, C+, C, C-, D, F")),
     }
 }
 
