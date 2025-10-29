@@ -559,7 +559,7 @@ PMAT v2.169.0 is a **quality and security-focused release** building on Sprint 4
   - Commit e61d6eaa: Bump version to 2.169.0 for crates.io release
 
 **Git Tag**: v2.169.0 (created and pushed to origin)
-**Crates.io**: ✅ Published pmat v2.169.0 at https://crates.io/crates/pmat/2.169.0
+<!-- PMAT not yet published to crates.io: **Crates.io**: ✅ Published pmat v2.169.0 at https://crates.io/crates/pmat/2.169.0 -->
 **GitHub Release**: https://github.com/paiml/paiml-mcp-agent-toolkit/releases/tag/v2.169.0
 
 **Critical Findings**:

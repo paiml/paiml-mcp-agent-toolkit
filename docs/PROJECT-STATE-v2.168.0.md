@@ -163,7 +163,7 @@ All commits pushed to master branch.
 **Release Artifacts**:
 - ✅ Git tag: v2.168.0
 - ✅ GitHub Release: https://github.com/paiml/paiml-mcp-agent-toolkit/releases/tag/v2.168.0
-- ✅ crates.io: https://crates.io/crates/pmat/2.168.0
+<!-- PMAT not yet published to crates.io: - ✅ crates.io: https://crates.io/crates/pmat/2.168.0 -->
 - ✅ pmat-book validation: All 15 chapters passing
 
 ---

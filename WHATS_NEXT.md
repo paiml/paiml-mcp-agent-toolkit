@@ -1227,7 +1227,7 @@ cargo publish --dry-run                          # Test release
 
 ### External
 - GitHub: https://github.com/paiml/paiml-mcp-agent-toolkit
-- crates.io: https://crates.io/crates/pmat
+<!-- PMAT not yet published to crates.io: - crates.io: https://crates.io/crates/pmat -->
 - Releases: https://github.com/paiml/paiml-mcp-agent-toolkit/releases
 
 ---

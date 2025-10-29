@@ -70,7 +70,7 @@ pmat = "2.173.0"    # PMAT - AI context generation and code quality toolkit
 **Troubleshooting:**
 - If you get "already published" error, that's okay - skip to next step
 - If you get authentication error, run `cargo login` again
-- Check https://crates.io/crates/pmat to verify
+<!-- PMAT not yet published to crates.io: - Check https://crates.io/crates/pmat to verify -->
 
 ---
 
@@ -208,7 +208,7 @@ pmat --version
 
 ### Update README.md Badges (if applicable)
 ```markdown
-[![Crates.io](https://img.shields.io/crates/v/pmat.svg)](https://crates.io/crates/pmat)
+<!-- PMAT not yet published to crates.io: <!-- PMAT not yet published to crates.io: [![Crates.io](https://img.shields.io/crates/v/pmat.svg)](https://crates.io/crates/pmat) --> -->
 [![npm](https://img.shields.io/npm/v/pmat-agent.svg)](https://www.npmjs.com/package/pmat-agent)
 ```
 

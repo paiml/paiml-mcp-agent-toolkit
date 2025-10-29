@@ -322,5 +322,5 @@ jobs:
 
 - **Documentation**: See `/docs/features/` for detailed guides
 - **Issues**: https://github.com/paiml/paiml-mcp-agent-toolkit/issues
-- **Discussions**: https://github.com/paiml/paiml-mcp-agent-toolkit/discussions
+- **Discussions**: https://github.com/paiml/paiml-mcp-agent-toolkit/issues
 - **Email**: support@paiml.com

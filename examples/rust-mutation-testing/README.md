@@ -272,7 +272,7 @@ PMAT applies various mutation operators:
 - **PMAT Repository**: https://github.com/paiml/paiml-mcp-agent-toolkit
 - **Crates.io**: https://crates.io/crates/pmat
 - **Documentation**: `server/README.md`
-- **Mutation Testing Paper**: [Mutation Testing: An Empirical Evaluation](https://dl.acm.org/doi/10.1145/3183440)
+- **Mutation Testing Paper**: [Mutation Testing: An Empirical Evaluation](https://dl.acm.org/doi/10.1145/3183440) *(requires ACM subscription)*
 
 ## License
 

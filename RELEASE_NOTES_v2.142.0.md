@@ -215,7 +215,7 @@ pmat --version
 ## 🔗 Links
 
 - **GitHub**: https://github.com/paiml/paiml-mcp-agent-toolkit
-- **Crates.io**: https://crates.io/crates/pmat
+<!-- PMAT not yet published to crates.io: - **Crates.io**: https://crates.io/crates/pmat -->
 - **Documentation**: https://paiml.com
 - **MCP Registry**: https://registry.modelcontextprotocol.io/v0/servers?search=pmat
 

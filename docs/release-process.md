@@ -91,7 +91,7 @@ git commit -m "release: Prepare v0.27.0
 - Update documentation
 - Bump version in Cargo.toml
 
-🤖 Generated with [Claude Code](https://claude.ai/code)
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
 Co-Authored-By: Claude <noreply@anthropic.com>"
 
@@ -138,12 +138,12 @@ cargo publish --dry-run
 cargo publish --no-verify
 
 # Verify publication
-open https://crates.io/crates/pmat
+<!-- PMAT not yet published to crates.io: open https://crates.io/crates/pmat -->
 ```
 
 ### Step 8: Create GitHub Release
 
-1. Go to [GitHub Releases](https://github.com/paiml/pmat/releases)
+1. Go to [GitHub Releases](https://github.com/paiml/paiml-mcp-agent-toolkit/releases)
 2. Click "Draft a new release"
 3. Select the tag `v0.27.0`
 4. Title: `v0.27.0`
@@ -165,7 +165,7 @@ cargo install pmat --force
 pmat --version
 
 # 2. Test binary downloads
-curl -L https://github.com/paiml/pmat/releases/download/v0.27.0/pmat-linux-x86_64.tar.gz | tar xz
+curl -L https://github.com/paiml/paiml-mcp-agent-toolkit/releases/download/v0.27.0/pmat-linux-x86_64.tar.gz | tar xz
 ./pmat --version
 
 # 3. Verify documentation
@@ -324,7 +324,7 @@ Every release must pass:
 ### 🙏 Contributors
 - @username - contribution description
 
-**Full Changelog**: https://github.com/paiml/pmat/compare/vX.Y.Y...vX.Y.Z
+**Full Changelog**: https://github.com/paiml/paiml-mcp-agent-toolkit/compare/vX.Y.Y...vX.Y.Z
 ```
 
 ## Rollback Procedure

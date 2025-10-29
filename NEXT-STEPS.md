@@ -22,7 +22,7 @@
 
 ### Links
 - **GitHub Release**: https://github.com/paiml/paiml-mcp-agent-toolkit/releases/tag/v2.175.0
-- **Crates.io**: https://crates.io/crates/pmat (v2.175.0 published)
+<!-- PMAT not yet published to crates.io: - **Crates.io**: https://crates.io/crates/pmat (v2.175.0 published) -->
 - **Previous Release**: https://github.com/paiml/paiml-mcp-agent-toolkit/releases/tag/v2.174.0
 - **Documentation**: `server/README.md`
 - **CHANGELOG**: `CHANGELOG.md` (lines 10-44 for v2.175.0)
@@ -73,7 +73,7 @@ pmat mutate --target src/file.rs
 
 ### Release Information
 - **GitHub Tag**: v2.176.0 (https://github.com/paiml/paiml-mcp-agent-toolkit/releases/tag/v2.176.0)
-- **Crates.io**: https://crates.io/crates/pmat (v2.176.0 published)
+<!-- PMAT not yet published to crates.io: - **Crates.io**: https://crates.io/crates/pmat (v2.176.0 published) -->
 - **Published**: October 27, 2025
 
 ### Documentation
@@ -346,7 +346,7 @@ vim docs/execution/SPRINT-62-PROGRESS.md
 
 ### External Links
 - **GitHub Repository**: https://github.com/paiml/paiml-mcp-agent-toolkit
-- **Crates.io Package**: https://crates.io/crates/pmat
+<!-- PMAT not yet published to crates.io: - **Crates.io Package**: https://crates.io/crates/pmat -->
 - **Latest Release**: https://github.com/paiml/paiml-mcp-agent-toolkit/releases/tag/v2.176.0
 
 ---

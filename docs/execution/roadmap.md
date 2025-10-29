@@ -29,7 +29,7 @@
   - Total: +452, -12 across 6 files
 - **Impact**: Eliminates "vaporware" perception, restores user trust in documentation
 - **Documentation**: [GitHub Release v2.178.0](https://github.com/paiml/paiml-mcp-agent-toolkit/releases/tag/v2.178.0)
-- **Crates.io**: https://crates.io/crates/pmat/2.178.0
+<!-- PMAT not yet published to crates.io: - **Crates.io**: https://crates.io/crates/pmat/2.178.0 -->
 - **Commit**: `e2b475ef`
 
 ## 🏆 PREVIOUS ACHIEVEMENT: v2.161.0 - ISSUE #67 FIXED WITH EXTREME TDD! 🎯
@@ -1071,7 +1071,7 @@
   - ✅ 6/6 tests passing (4 integration + 2 unit)
   - ✅ EXTREME TDD methodology (RED → GREEN → REFACTOR)
 - **Links**:
-  - Crates.io: https://crates.io/crates/pmat/2.142.0
+<!-- PMAT not yet published to crates.io:   - Crates.io: https://crates.io/crates/pmat/2.142.0 -->
   - GitHub: https://github.com/paiml/paiml-mcp-agent-toolkit/releases/tag/v2.142.0
   - Documentation: docs/features/documentation-enforcement.md
 

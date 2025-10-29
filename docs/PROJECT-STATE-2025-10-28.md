@@ -15,7 +15,7 @@ PMAT (PAIML MCP Agent Toolkit) is a production-ready, multi-language code qualit
 - **Languages Supported**: 20+ (Rust, Python, TypeScript, JavaScript, Go, C++, Java, PHP, Ruby, Swift, Kotlin, C, Bash, and more)
 - **Test Coverage**: 85%+ with mutation testing
 - **Build Status**: ✅ All quality gates passing
-- **Crates.io**: https://crates.io/crates/pmat/2.178.0
+<!-- PMAT not yet published to crates.io: - **Crates.io**: https://crates.io/crates/pmat/2.178.0 -->
 - **Documentation**: https://paiml.github.io/pmat-book/
 
 ---

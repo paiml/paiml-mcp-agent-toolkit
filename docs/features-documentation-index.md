@@ -120,8 +120,8 @@ All feature documentation follows these standards:
 
 ## Support
 
-- **GitHub Issues**: [Report bugs or request features](https://github.com/paiml/pmat/issues)
-- **Documentation Issues**: [Report documentation problems](https://github.com/paiml/pmat/issues?label=documentation)
+- **GitHub Issues**: [Report bugs or request features](https://github.com/paiml/paiml-mcp-agent-toolkit/issues)
+- **Documentation Issues**: [Report documentation problems](https://github.com/paiml/paiml-mcp-agent-toolkit/issues?label=documentation)
 - **Community**: [Discord Server](https://discord.gg/pmat)
 
 ---

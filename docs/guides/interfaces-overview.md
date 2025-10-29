@@ -321,9 +321,9 @@ Need to integrate PMAT?
 
 ## See Also
 
-- [CLI Reference](/docs/cli-reference.md)
-- [HTTP API Documentation](/rust-docs/http-api.md)
-- [MCP Protocol Guide](/docs/features/mcp-protocol.md)
-- [Rust API Guide](/docs/api-guide.md)
-- [Demo Interface](/docs/features/demo-interface.md)
-- [TUI Documentation](/docs/features/tui-interface.md)
+- [CLI Reference](../cli-reference.md)
+- [HTTP API Documentation](../../rust-docs/http-api.md)
+- [MCP Protocol Guide](../features/mcp-protocol.md)
+- [Rust API Guide](../api-guide.md)
+- [Demo Interface](../features/demo-interface.md)
+- [TUI Documentation](../features/tui-interface.md)

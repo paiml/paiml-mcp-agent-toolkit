@@ -296,7 +296,7 @@ diff before.json after.json
 ## References
 
 ### Documentation
-- [Code Entropy Definition](https://en.wikipedia.org/wiki/Entropy_(information_theory))
+- [Code Entropy Definition](https://en.wikipedia.org/wiki/Entropy_%28information_theory%29)
 - [Martin Fowler's Refactoring Catalog](https://refactoring.com/catalog/)
 - [Extract Method Pattern](https://refactoring.guru/extract-method)
 
