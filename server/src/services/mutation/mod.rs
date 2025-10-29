@@ -7,7 +7,6 @@
 
 pub mod cargo_mutants_wrapper;
 pub mod ci_cd_learning;
-pub mod json_parser; // Sprint 70: cargo-mutants JSON parser
 pub mod coverage;
 pub mod cpp_adapter;
 pub mod cpp_mutation_generator;
@@ -21,6 +20,7 @@ pub mod go_adapter;
 pub mod go_mutation_generator;
 pub mod go_tree_sitter_mutations;
 pub mod guard;
+pub mod json_parser; // Sprint 70: cargo-mutants JSON parser
 pub mod language;
 pub mod language_detector; // Sprint 63: Multi-language support
 pub mod ml_predictor;
