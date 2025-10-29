@@ -8,7 +8,7 @@
 //! cargo run --example cargo_mutants_backend_demo
 //! ```
 
-use pmat::cli::handlers::cargo_mutants_backend;
+use pmat::cli::handlers::cargo_mutants_backend::{self, CargoMutantsConfig};
 use pmat::services::mutation::json_parser::CargoMutantsReport;
 use std::path::PathBuf;
 
@@ -79,16 +79,18 @@ fn main() {
     // Demonstrate actual usage (requires cargo-mutants installation)
     println!("Attempting to execute cargo-mutants backend...\n");
 
-    let result = cargo_mutants_backend::execute(
-        PathBuf::from("."),
-        None,  // No output file
-        300,   // 5 minute timeout
-        None,  // Auto-detect jobs
-        None,  // No specific features
-        false, // Not all features
-        false, // Use default features
-        false, // Shuffle enabled
-    );
+    let config = CargoMutantsConfig {
+        path: PathBuf::from("."),
+        output: None,
+        timeout: 300,
+        jobs: None,
+        features: None,
+        all_features: false,
+        no_default_features: false,
+        no_shuffle: false,
+    };
+
+    let result = cargo_mutants_backend::execute(config);
 
     match result {
         Ok(json) => {
