@@ -1,7 +1,6 @@
-//! RED Phase Tests for PMAT-070-002: JSON Parsing
+//! GREEN Phase Tests for PMAT-070-002: JSON Parsing
 //!
-//! Tests written BEFORE implementation (Extreme TDD RED phase).
-//! All tests should FAIL initially - this is correct behavior!
+//! Tests updated to use real implementation from json_parser.rs
 //!
 //! Test Categories:
 //! 1. JSON parsing (all outcomes)
@@ -9,49 +8,15 @@
 //! 3. Outcome conversion
 //! 4. PMAT report conversion
 
+use pmat::services::mutation::json_parser::{CargoMutantsReport, MutantOutcome};
+use pmat::services::mutation::types::MutantStatus;
 use std::path::PathBuf;
-
-// RED Phase: Mock structs - will be replaced with real implementation
-#[derive(Debug, Clone)]
-struct CargoMutantsReport {
-    mutants: Vec<CargoMutant>,
-}
-
-#[derive(Debug, Clone)]
-struct CargoMutant {
-    outcome: MutantOutcome,
-    file: String,
-    function: Option<String>,
-    line: usize,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-enum MutantOutcome {
-    Caught,
-    Missed,
-    Timeout,
-    Unviable,
-}
-
-// PMAT types (reference from types.rs)
-use pmat::services::mutation::types::{Mutant, MutantStatus};
-
-impl CargoMutantsReport {
-    fn from_json(_json: &str) -> Result<Self, Box<dyn std::error::Error>> {
-        unimplemented!("RED Phase: JSON parsing not implemented yet")
-    }
-
-    fn to_pmat_report(&self) -> Vec<Mutant> {
-        unimplemented!("RED Phase: PMAT conversion not implemented yet")
-    }
-}
 
 // ============================================================================
 // RED PHASE TESTS - JSON Parsing
 // ============================================================================
 
 #[test]
-#[ignore] // Remove when ready for RED phase
 fn test_parse_cargo_mutants_json_all_outcomes() {
     // RED Phase Test 1: Parse JSON with all 4 outcomes
     // Expected: Should deserialize correctly
@@ -95,7 +60,6 @@ fn test_parse_cargo_mutants_json_all_outcomes() {
 }
 
 #[test]
-#[ignore]
 fn test_parse_empty_mutants_list() {
     // RED Phase Test 2: Parse JSON with empty mutants array
     // Expected: Should succeed with empty Vec
@@ -108,7 +72,6 @@ fn test_parse_empty_mutants_list() {
 }
 
 #[test]
-#[ignore]
 fn test_parse_invalid_json_returns_error() {
     // RED Phase Test 3: Parse malformed JSON
     // Expected: Should return Err, not panic
@@ -125,7 +88,6 @@ fn test_parse_invalid_json_returns_error() {
 // ============================================================================
 
 #[test]
-#[ignore]
 fn test_convert_caught_to_killed() {
     // RED Phase Test 4: Verify caught → Killed mapping
     // Expected: caught outcome becomes MutantStatus::Killed
@@ -147,7 +109,6 @@ fn test_convert_caught_to_killed() {
 }
 
 #[test]
-#[ignore]
 fn test_convert_missed_to_survived() {
     // RED Phase Test 5: Verify missed → Survived mapping
     // Expected: missed outcome becomes MutantStatus::Survived
@@ -168,7 +129,6 @@ fn test_convert_missed_to_survived() {
 }
 
 #[test]
-#[ignore]
 fn test_convert_timeout_outcome() {
     // RED Phase Test 6: Verify timeout → Timeout mapping
     // Expected: timeout outcome becomes MutantStatus::Timeout
@@ -189,7 +149,6 @@ fn test_convert_timeout_outcome() {
 }
 
 #[test]
-#[ignore]
 fn test_convert_unviable_outcome() {
     // RED Phase Test 7: Verify unviable → CompileError mapping
     // Expected: unviable outcome becomes MutantStatus::CompileError
@@ -214,7 +173,6 @@ fn test_convert_unviable_outcome() {
 // ============================================================================
 
 #[test]
-#[ignore]
 fn test_to_pmat_report_preserves_all_data() {
     // RED Phase Test 8: Verify file, line, function preserved in conversion
     // Expected: All data preserved correctly
@@ -240,7 +198,6 @@ fn test_to_pmat_report_preserves_all_data() {
 }
 
 #[test]
-#[ignore]
 fn test_pmat_conversion_preserves_count() {
     // RED Phase Test 9: Verify mutant count preserved
     // Expected: to_pmat_report().len() == original.mutants.len()
