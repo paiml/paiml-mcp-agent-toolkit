@@ -499,6 +499,16 @@ impl DapServer {
         *stopped_line = Some(line);
     }
 
+    /// Get current stopped file (TRACE-005)
+    pub fn current_stopped_file(&self) -> Option<String> {
+        self.current_stopped_file.lock().unwrap().clone()
+    }
+
+    /// Get current stopped line (TRACE-005)
+    pub fn current_stopped_line(&self) -> Option<usize> {
+        *self.current_stopped_line.lock().unwrap()
+    }
+
     /// Detect language from file path
     fn detect_language_from_path(&self, path: &Path) -> Option<Language> {
         let extension = path.extension()?.to_str()?;
