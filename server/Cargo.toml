@@ -67,6 +67,7 @@ ndarray = "0.16"
 # Serialization (pinned to avoid swc_common issue with serde::__private)
 serde = { version = "=1.0.219", default-features = false, features = ["derive", "std"] }
 serde_json = { version = "1.0", default-features = false, features = ["std"] }
+rmp-serde = "1.3"  # MessagePack for .pmat recording format (Sprint 75)
 
 # Template engine
 handlebars = { version = "6.3", default-features = false, features = ["string_helpers"] }
