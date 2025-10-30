@@ -616,6 +616,44 @@ pub enum Commands {
 
     /// Run mutation testing on specified files (Sprint 61)
     Mutate(MutateArgs),
+
+    /// Time-travel debugging commands (Sprint 74)
+    #[command(visible_aliases = &["dbg"])]
+    Debug {
+        #[command(subcommand)]
+        command: DebugCommands,
+    },
+}
+
+/// Debug subcommands (Sprint 74 - TRACE-001 through TRACE-003)
+#[derive(Debug, Clone, Subcommand)]
+pub enum DebugCommands {
+    /// Start DAP (Debug Adapter Protocol) server for time-travel debugging
+    #[command(visible_aliases = &["srv", "server"])]
+    Serve {
+        /// Port to bind DAP server (default: 5678)
+        #[arg(short, long, default_value = "5678")]
+        port: u16,
+
+        /// Host address to bind (default: 127.0.0.1)
+        #[arg(long, default_value = "127.0.0.1")]
+        host: String,
+    },
+
+    /// Replay execution recording with time-travel navigation
+    #[command(visible_aliases = &["play", "view"])]
+    Replay {
+        /// Path to execution recording file (.pmat format)
+        recording: PathBuf,
+
+        /// Start at specific snapshot position
+        #[arg(long)]
+        position: Option<usize>,
+
+        /// Enable interactive timeline navigation
+        #[arg(short, long)]
+        interactive: bool,
+    },
 }
 
 /// Quality gates subcommands (TICKET-PMAT-5024)

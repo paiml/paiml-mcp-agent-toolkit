@@ -527,6 +527,19 @@ impl CommandExecutor {
             Commands::Mutate(args) => {
                 super::handlers::mutate::handle(args, self.server.clone()).await
             }
+
+            // Time-travel debugging commands (Sprint 74)
+            Commands::Debug { command } => {
+                use crate::cli::commands::DebugCommands;
+                match command {
+                    DebugCommands::Serve { port, host } => {
+                        anyhow::bail!("Debug serve command not yet implemented (DEBUG-002). Port: {}, Host: {}", port, host)
+                    }
+                    DebugCommands::Replay { recording, position, interactive } => {
+                        anyhow::bail!("Debug replay command not yet implemented (DEBUG-003). Recording: {:?}, Position: {:?}, Interactive: {}", recording, position, interactive)
+                    }
+                }
+            }
         }
     }
 }
