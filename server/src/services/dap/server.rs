@@ -1,13 +1,18 @@
 // DAP (Debug Adapter Protocol) Server Implementation
 // Sprint 71 - TRACE-001: DAP Protocol Server Implementation
+// Sprint 71 - TRACE-004: DAP-PMAT Integration
 //
 // This implements a Debug Adapter Protocol server for PMAT
 // allowing integration with VSCode and other DAP-compatible debuggers
 
 use super::types::*;
+use super::variable_inspector::VariableInspector;
+use crate::cli::language_analyzer::Language;
 use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
+use tree_sitter::Tree;
 
 /// Server state enumeration
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -19,7 +24,6 @@ pub enum ServerState {
 }
 
 /// DAP Server structure
-#[derive(Debug)]
 pub struct DapServer {
     /// Current server state
     state: Arc<Mutex<ServerState>>,
@@ -31,6 +35,16 @@ pub struct DapServer {
     program: Arc<Mutex<Option<String>>>,
     /// Breakpoints storage
     breakpoints: Arc<Mutex<HashMap<String, HashSet<i64>>>>,
+    /// TRACE-004: Language detection integration
+    current_language: Arc<Mutex<Option<Language>>>,
+    /// TRACE-004: AST cache for tree-sitter parse trees
+    ast_cache: Arc<Mutex<HashMap<PathBuf, Tree>>>,
+    /// TRACE-004: Variable inspector for extracting variables
+    variable_inspector: VariableInspector,
+    /// TRACE-004: Current stopped file (for simulation)
+    current_stopped_file: Arc<Mutex<Option<String>>>,
+    /// TRACE-004: Current stopped line (for simulation)
+    current_stopped_line: Arc<Mutex<Option<usize>>>,
 }
 
 impl DapServer {
@@ -42,6 +56,11 @@ impl DapServer {
             capabilities: Self::default_capabilities(),
             program: Arc::new(Mutex::new(None)),
             breakpoints: Arc::new(Mutex::new(HashMap::new())),
+            current_language: Arc::new(Mutex::new(None)),
+            ast_cache: Arc::new(Mutex::new(HashMap::new())),
+            variable_inspector: VariableInspector::new(),
+            current_stopped_file: Arc::new(Mutex::new(None)),
+            current_stopped_line: Arc::new(Mutex::new(None)),
         }
     }
 
@@ -192,6 +211,18 @@ impl DapServer {
         *program = Some(args.program.clone());
         drop(program);
 
+        // TRACE-004: Detect language and cache AST
+        let program_path = Path::new(&args.program);
+
+        // Detect language
+        if let Some(language) = self.detect_language_from_path(program_path) {
+            let mut lang = self.current_language.lock().unwrap();
+            *lang = Some(language);
+        }
+
+        // Parse and cache AST
+        let _ = self.parse_and_cache_ast(program_path);
+
         // Update state
         let mut state = self.state.lock().unwrap();
         *state = ServerState::Running;
@@ -255,11 +286,15 @@ impl DapServer {
 
         if let Some(bps) = args.breakpoints {
             let lines: HashSet<i64> = bps.iter().map(|bp| bp.line).collect();
-            breakpoints_map.insert(source_path, lines);
+            breakpoints_map.insert(source_path.clone(), lines);
         } else {
             breakpoints_map.remove(&source_path);
         }
         drop(breakpoints_map);
+
+        // TRACE-004: Parse and cache AST for breakpoint validation
+        let bp_path = Path::new(&source_path);
+        let _ = self.parse_and_cache_ast(bp_path);
 
         let seq = self.next_seq();
         let response = DapResponse::success(
@@ -301,25 +336,66 @@ impl DapServer {
     }
 
     /// Handle scopes request
+    /// TRACE-004: Returns Locals scope when stopped at a line
     fn handle_scopes(&self, request: DapRequest) -> Value {
         let seq = self.next_seq();
+
+        // Check if we're stopped at a line
+        let stopped_file = self.current_stopped_file.lock().unwrap();
+        let stopped_line = self.current_stopped_line.lock().unwrap();
+
+        let scopes = if stopped_file.is_some() && stopped_line.is_some() {
+            // Return Locals scope with variablesReference = 1
+            vec![json!({
+                "name": "Locals",
+                "variablesReference": 1,
+                "expensive": false
+            })]
+        } else {
+            vec![]
+        };
+
         let response = DapResponse::success(
             request.seq,
             seq,
             request.command,
-            Some(json!({"scopes": []})),
+            Some(json!({"scopes": scopes})),
         );
         serde_json::to_value(&response).unwrap()
     }
 
     /// Handle variables request
+    /// TRACE-004: Returns variables from VariableInspector
     fn handle_variables(&self, request: DapRequest) -> Value {
         let seq = self.next_seq();
+
+        // Get stopped location
+        let stopped_file = self.current_stopped_file.lock().unwrap().clone();
+        let stopped_line = self.current_stopped_line.lock().unwrap().clone();
+
+        let variables = if let (Some(file), Some(line)) = (stopped_file, stopped_line) {
+            // Use VariableInspector to get variables
+            match self.get_variables_at_line(&file, line) {
+                Ok(vars) => {
+                    // Convert Variable to DAP variable format
+                    vars.iter().map(|v| json!({
+                        "name": v.name,
+                        "value": v.value,
+                        "type": v.type_info,
+                        "variablesReference": 0
+                    })).collect()
+                }
+                Err(_) => vec![]
+            }
+        } else {
+            vec![]
+        };
+
         let response = DapResponse::success(
             request.seq,
             seq,
             request.command,
-            Some(json!({"variables": []})),
+            Some(json!({"variables": variables})),
         );
         serde_json::to_value(&response).unwrap()
     }
@@ -374,6 +450,109 @@ impl DapServer {
             "Command not supported".to_string(),
         );
         serde_json::to_value(&response).unwrap()
+    }
+
+    // ========================================================================
+    // TRACE-004: DAP-PMAT Integration Methods
+    // ========================================================================
+
+    /// Get the current detected language
+    pub fn current_language(&self) -> Option<Language> {
+        let lang = self.current_language.lock().unwrap();
+        *lang
+    }
+
+    /// Check if AST is cached for a given file path
+    pub fn has_ast_for(&self, path: &str) -> bool {
+        let cache = self.ast_cache.lock().unwrap();
+        cache.contains_key(Path::new(path))
+    }
+
+    /// Get variables at a specific line in a file using VariableInspector
+    pub fn get_variables_at_line(&self, path: &str, line: usize) -> Result<Vec<Variable>, String> {
+        // Read file contents
+        let source = std::fs::read_to_string(path)
+            .map_err(|e| format!("Failed to read file {}: {}", path, e))?;
+
+        // Detect language from path
+        let language = self.detect_language_from_path(Path::new(path))
+            .ok_or_else(|| format!("Could not detect language for {}", path))?;
+
+        // Use VariableInspector to extract variables
+        match language {
+            Language::Rust => self.variable_inspector.inspect_rust(&source, line),
+            Language::TypeScript | Language::JavaScript => {
+                self.variable_inspector.inspect_typescript(&source, line)
+            }
+            Language::Python => self.variable_inspector.inspect_python(&source, line),
+            _ => Err(format!("Language {:?} not supported for variable inspection", language)),
+        }
+    }
+
+    /// Simulate stopping at a specific line (for testing)
+    pub fn simulate_stop_at_line(&mut self, path: &str, line: usize) {
+        let mut stopped_file = self.current_stopped_file.lock().unwrap();
+        *stopped_file = Some(path.to_string());
+        drop(stopped_file);
+
+        let mut stopped_line = self.current_stopped_line.lock().unwrap();
+        *stopped_line = Some(line);
+    }
+
+    /// Detect language from file path
+    fn detect_language_from_path(&self, path: &Path) -> Option<Language> {
+        let extension = path.extension()?.to_str()?;
+
+        match extension {
+            "rs" => Some(Language::Rust),
+            "py" => Some(Language::Python),
+            "ts" | "tsx" => Some(Language::TypeScript),
+            "js" | "jsx" => Some(Language::JavaScript),
+            _ => None,
+        }
+    }
+
+    /// Parse and cache AST for a file
+    fn parse_and_cache_ast(&self, path: &Path) -> Result<(), String> {
+        // Read source
+        let source = std::fs::read_to_string(path)
+            .map_err(|e| format!("Failed to read file: {}", e))?;
+
+        // Detect language
+        let language = self.detect_language_from_path(path)
+            .ok_or_else(|| format!("Could not detect language for {:?}", path))?;
+
+        // Parse using tree-sitter
+        let tree = match language {
+            Language::Rust => {
+                let mut parser = tree_sitter::Parser::new();
+                parser.set_language(&tree_sitter_rust::LANGUAGE.into())
+                    .map_err(|e| format!("Failed to set Rust language: {}", e))?;
+                parser.parse(&source, None)
+                    .ok_or_else(|| "Failed to parse Rust source".to_string())?
+            }
+            Language::Python => {
+                let mut parser = tree_sitter::Parser::new();
+                parser.set_language(&tree_sitter_python::LANGUAGE.into())
+                    .map_err(|e| format!("Failed to set Python language: {}", e))?;
+                parser.parse(&source, None)
+                    .ok_or_else(|| "Failed to parse Python source".to_string())?
+            }
+            Language::TypeScript | Language::JavaScript => {
+                let mut parser = tree_sitter::Parser::new();
+                parser.set_language(&tree_sitter_typescript::LANGUAGE_TYPESCRIPT.into())
+                    .map_err(|e| format!("Failed to set TypeScript language: {}", e))?;
+                parser.parse(&source, None)
+                    .ok_or_else(|| "Failed to parse TypeScript source".to_string())?
+            }
+            _ => return Err(format!("Language {:?} not supported for parsing", language)),
+        };
+
+        // Cache the tree
+        let mut cache = self.ast_cache.lock().unwrap();
+        cache.insert(path.to_path_buf(), tree);
+
+        Ok(())
     }
 }
 
