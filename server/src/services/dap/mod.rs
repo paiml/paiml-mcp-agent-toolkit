@@ -13,6 +13,7 @@ pub mod replay_engine;
 pub mod server;
 pub mod timeline_ui;
 pub mod types;
+pub mod variable_diff;
 pub mod variable_inspector;
 
 pub use breakpoint_manager::BreakpointManager;
@@ -21,4 +22,5 @@ pub use replay_engine::ReplayEngine;
 pub use server::DapServer;
 pub use timeline_ui::TimelineUI;
 pub use types::*;
+pub use variable_diff::VariableDiff;
 pub use variable_inspector::VariableInspector;
