@@ -19,7 +19,10 @@ pub mod variable_inspector;
 
 pub use breakpoint_manager::BreakpointManager;
 pub use execution_recorder::ExecutionRecorder;
-pub use recording::{Recording, RecordingMetadata, Snapshot, StackFrame};
+pub use recording::{
+    CompressionLevel, Recording, RecordingMetadata, RecordingWriter, Snapshot,
+    SnapshotSerializer, StackFrame,
+};
 pub use replay_engine::ReplayEngine;
 pub use server::DapServer;
 pub use timeline_ui::TimelineUI;
