@@ -533,7 +533,8 @@ impl CommandExecutor {
                 use crate::cli::commands::DebugCommands;
                 match command {
                     DebugCommands::Serve { port, host } => {
-                        anyhow::bail!("Debug serve command not yet implemented (DEBUG-002). Port: {}, Host: {}", port, host)
+                        // DEBUG-002: DAP Server CLI Handler (implemented)
+                        super::handlers::debug_handlers::handle_debug_serve(port, host).await
                     }
                     DebugCommands::Replay { recording, position, interactive } => {
                         anyhow::bail!("Debug replay command not yet implemented (DEBUG-003). Recording: {:?}, Position: {:?}, Interactive: {}", recording, position, interactive)

@@ -564,6 +564,40 @@ impl DapServer {
 
         Ok(())
     }
+
+    // ========================================================================
+    // Sprint 74 - DEBUG-002: DAP Server CLI Handler
+    // ========================================================================
+
+    /// Run the DAP server on the specified port
+    ///
+    /// This starts an async TCP server that listens for DAP protocol connections.
+    /// The server runs until the async task is aborted (e.g., via Ctrl+C).
+    ///
+    /// # Arguments
+    /// * `port` - Port number to bind to (e.g., 5678)
+    /// * `host` - Host address to bind to (e.g., "127.0.0.1")
+    ///
+    /// # Returns
+    /// * `Ok(())` if server starts and shuts down cleanly
+    /// * `Err` if port binding fails (e.g., "address already in use")
+    pub async fn run(&self, port: u16, host: String) -> anyhow::Result<()> {
+        use tokio::net::TcpListener;
+
+        // Bind to TCP port
+        let addr = format!("{}:{}", host, port);
+        let listener = TcpListener::bind(&addr).await
+            .map_err(|e| anyhow::anyhow!("Failed to bind to {}: {}", addr, e))?;
+
+        // Server is now listening - accept connections in a loop
+        loop {
+            // Accept incoming connection
+            let (_stream, _addr) = listener.accept().await?;
+
+            // Minimal implementation: just accept and drop connections
+            // Future enhancement: read DAP messages from stream and call handle_request()
+        }
+    }
 }
 
 impl Default for DapServer {

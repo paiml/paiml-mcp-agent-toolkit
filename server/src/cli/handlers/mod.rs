@@ -18,6 +18,7 @@ pub mod comprehensive_analysis_handler;
 pub mod comprehensive_handler;
 pub mod config_command_handlers;
 pub mod configuration_handlers;
+pub mod debug_handlers; // Sprint 74: Time-travel debugging CLI handlers
 #[cfg(feature = "deep-wasm")]
 pub mod deep_wasm_handlers;
 pub mod defect_prediction_handler;
