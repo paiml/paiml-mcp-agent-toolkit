@@ -13,7 +13,7 @@ use crossterm::{
 };
 use std::{
     collections::VecDeque,
-    io::{stdout, Stdout},
+    io::stdout,
     time::Duration,
 };
 
@@ -59,8 +59,6 @@ pub struct EventLoop {
     raw_mode_enabled: bool,
     /// Event queue for testing
     event_queue: VecDeque<TerminalEvent>,
-    /// Stdout handle
-    _stdout: Option<Stdout>,
 }
 
 impl EventLoop {
@@ -70,7 +68,6 @@ impl EventLoop {
             running: false,
             raw_mode_enabled: false,
             event_queue: VecDeque::new(),
-            _stdout: None,
         }
     }
 
