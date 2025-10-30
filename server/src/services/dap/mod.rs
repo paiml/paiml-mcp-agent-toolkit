@@ -9,6 +9,7 @@
 
 pub mod breakpoint_manager;
 pub mod execution_recorder;
+pub mod recording;  // Sprint 75: .pmat file format
 pub mod replay_engine;
 pub mod server;
 pub mod timeline_ui;
@@ -18,6 +19,7 @@ pub mod variable_inspector;
 
 pub use breakpoint_manager::BreakpointManager;
 pub use execution_recorder::ExecutionRecorder;
+pub use recording::{Recording, RecordingMetadata, Snapshot, StackFrame};
 pub use replay_engine::ReplayEngine;
 pub use server::DapServer;
 pub use timeline_ui::TimelineUI;
