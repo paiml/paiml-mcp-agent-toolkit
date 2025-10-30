@@ -384,8 +384,8 @@ impl CommandDispatcher {
                 // TODO: Implement debug handlers in DEBUG-002 and DEBUG-003
                 use crate::cli::commands::DebugCommands;
                 match command {
-                    DebugCommands::Serve { port, host } => {
-                        anyhow::bail!("Debug serve command not yet implemented (DEBUG-002). Port: {}, Host: {}", port, host)
+                    DebugCommands::Serve { port, host, record_dir } => {
+                        anyhow::bail!("Debug serve command not yet implemented (DEBUG-002). Port: {}, Host: {}, Record Dir: {:?}", port, host, record_dir)
                     }
                     DebugCommands::Replay { recording, position, interactive } => {
                         anyhow::bail!("Debug replay command not yet implemented (DEBUG-003). Recording: {:?}, Position: {:?}, Interactive: {}", recording, position, interactive)
