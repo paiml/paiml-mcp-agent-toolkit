@@ -226,6 +226,43 @@ pub struct SnapshotDelta {
     pub stack_delta: i32,
 }
 
+impl SnapshotDelta {
+    /// Compute delta between two snapshots (TRACE-006)
+    pub fn compute(previous: &ExecutionSnapshot, current: &ExecutionSnapshot) -> Self {
+        let mut changed_vars = HashMap::new();
+        let mut removed_vars = HashSet::new();
+
+        // Find changed and new variables
+        for (key, value) in &current.variables {
+            if let Some(prev_value) = previous.variables.get(key) {
+                // Variable exists in both - check if changed
+                if prev_value != value {
+                    changed_vars.insert(key.clone(), value.clone());
+                }
+            } else {
+                // Variable is new in current snapshot
+                changed_vars.insert(key.clone(), value.clone());
+            }
+        }
+
+        // Find removed variables
+        for key in previous.variables.keys() {
+            if !current.variables.contains_key(key) {
+                removed_vars.insert(key.clone());
+            }
+        }
+
+        // Calculate stack depth change
+        let stack_delta = (current.call_stack.len() as i32) - (previous.call_stack.len() as i32);
+
+        Self {
+            changed_vars,
+            removed_vars,
+            stack_delta,
+        }
+    }
+}
+
 /// Execution snapshot representing program state at a point in time
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExecutionSnapshot {
@@ -242,6 +279,33 @@ pub struct ExecutionSnapshot {
     /// Delta from previous snapshot (for compression)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub delta: Option<SnapshotDelta>,
+}
+
+impl ExecutionSnapshot {
+    /// Apply delta to create new snapshot (TRACE-006)
+    pub fn apply_delta(&self, delta: &SnapshotDelta) -> Self {
+        let mut new_variables = self.variables.clone();
+
+        // Apply changed variables (includes new variables)
+        for (key, value) in &delta.changed_vars {
+            new_variables.insert(key.clone(), value.clone());
+        }
+
+        // Remove deleted variables
+        for key in &delta.removed_vars {
+            new_variables.remove(key);
+        }
+
+        // Create new snapshot with updated variables
+        Self {
+            timestamp: self.timestamp + 1000, // Increment by 1 microsecond
+            sequence: self.sequence + 1,
+            variables: new_variables,
+            call_stack: self.call_stack.clone(), // Stack changes tracked but not applied for now
+            location: self.location.clone(),
+            delta: Some(delta.clone()),
+        }
+    }
 }
 
 #[cfg(test)]
