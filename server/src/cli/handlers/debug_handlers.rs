@@ -5,7 +5,7 @@
 //
 // Handlers for `pmat debug` subcommands
 
-use crate::services::dap::{DapServer, Recording};
+use crate::services::dap::{ComparisonView, DapServer, Recording, TimelinePlayer, TimelineUI};
 use anyhow::{Context, Result};
 use std::path::PathBuf;
 
@@ -166,5 +166,156 @@ pub async fn handle_debug_replay(
     }
 
     println!("✅ Replay complete");
+    Ok(())
+}
+
+/// Handle `pmat debug timeline` command
+///
+/// Interactive timeline playback for a single recording with frame navigation.
+/// Sprint 77 - TIMELINE-004: CLI Integration
+///
+/// # Arguments
+/// * `recording` - Path to the .pmat recording file
+///
+/// # Returns
+/// * `Ok(())` if timeline playback completes successfully
+/// * `Err` if recording file not found or invalid format
+pub async fn handle_debug_timeline(recording: PathBuf) -> Result<()> {
+    // Validate recording file exists
+    if !recording.exists() {
+        anyhow::bail!("Recording file not found: {}", recording.display());
+    }
+
+    println!("⏱️  Timeline Playback...");
+    println!("   Recording: {}", recording.display());
+    println!();
+
+    // Load recording
+    let loaded = Recording::load_from_file(&recording)
+        .context("Failed to load recording file")?;
+
+    // Display recording metadata
+    println!("📋 Recording Metadata:");
+    let metadata = loaded.metadata();
+    println!("   Program: {}", metadata.program);
+    println!("   Snapshots: {}", loaded.snapshot_count());
+    println!();
+
+    // Create TimelinePlayer and UI
+    let player = TimelinePlayer::new(loaded);
+    let ui = TimelineUI::from_player(player);
+
+    println!("🎮 Timeline Player created");
+    println!("   {}", ui.progress_text());
+    println!();
+
+    // Display frame info
+    println!("📊 Frame Info:");
+    println!("   {}", ui.progress_text());
+
+    // Get current variables and stack frames
+    let variables = ui.current_variables();
+    let stack_frames = ui.current_stack_frames();
+
+    // Display source location
+    if !stack_frames.is_empty() {
+        let frame = &stack_frames[0];
+        if let (Some(file), Some(line)) = (&frame.file, &frame.line) {
+            println!("   Location: {}:{}", file, line);
+        }
+    }
+
+    // Display variables
+    if !variables.is_empty() {
+        println!("   Variables: {}", variables.len());
+        for (name, value) in variables.iter().take(5) {
+            println!("      {} = {}", name, value);
+        }
+        if variables.len() > 5 {
+            println!("      ... and {} more", variables.len() - 5);
+        }
+    }
+    println!();
+
+    println!("✅ Timeline playback ready");
+    println!("   [Interactive UI would appear here - Sprint 77 TIMELINE-002]");
+    Ok(())
+}
+
+/// Handle `pmat debug compare` command
+///
+/// Side-by-side comparison of two recordings with diff highlighting.
+/// Sprint 77 - TIMELINE-004: CLI Integration
+///
+/// # Arguments
+/// * `recording_a` - Path to the first .pmat recording file
+/// * `recording_b` - Path to the second .pmat recording file
+///
+/// # Returns
+/// * `Ok(())` if comparison completes successfully
+/// * `Err` if either recording file not found or invalid format
+pub async fn handle_debug_compare(recording_a: PathBuf, recording_b: PathBuf) -> Result<()> {
+    // Validate both recording files exist
+    if !recording_a.exists() {
+        anyhow::bail!("Recording A not found: {}", recording_a.display());
+    }
+    if !recording_b.exists() {
+        anyhow::bail!("Recording B not found: {}", recording_b.display());
+    }
+
+    println!("🔀 Comparing Recordings...");
+    println!("   Recording A: {}", recording_a.display());
+    println!("   Recording B: {}", recording_b.display());
+    println!();
+
+    // Load both recordings
+    let loaded_a = Recording::load_from_file(&recording_a)
+        .context("Failed to load recording A")?;
+    let loaded_b = Recording::load_from_file(&recording_b)
+        .context("Failed to load recording B")?;
+
+    println!("📋 Recording Metadata:");
+    println!("   Recording A: {} ({} snapshots)", loaded_a.metadata().program, loaded_a.snapshot_count());
+    println!("   Recording B: {} ({} snapshots)", loaded_b.metadata().program, loaded_b.snapshot_count());
+    println!();
+
+    // Create ComparisonView
+    let comparison = ComparisonView::new(loaded_a, loaded_b);
+    println!("🎮 ComparisonView created");
+    println!();
+
+    // Display split view
+    println!("📊 Split View:");
+    let split_output = comparison.render_split();
+    println!("{}", split_output);
+
+    // Display variable diff
+    let diff = comparison.variable_diff();
+    if !diff.is_empty() {
+        println!("🔍 Variable Differences:");
+        for (name, status) in diff.iter().take(10) {
+            let status_icon = match status {
+                crate::services::dap::DiffStatus::Same => "✓",
+                crate::services::dap::DiffStatus::Modified => "~",
+                crate::services::dap::DiffStatus::Added => "+",
+                crate::services::dap::DiffStatus::Removed => "-",
+            };
+            println!("   {} {}", status_icon, name);
+        }
+        if diff.len() > 10 {
+            println!("   ... and {} more variables", diff.len() - 10);
+        }
+        println!();
+    }
+
+    // Display divergence point if found
+    if let Some(divergence_frame) = comparison.find_divergence_point() {
+        println!("⚠️  Divergence detected at frame {}", divergence_frame);
+    } else {
+        println!("✅ Recordings are identical");
+    }
+    println!();
+
+    println!("✅ Comparison complete");
     Ok(())
 }

@@ -90,6 +90,7 @@ pub use complexity_handlers::{
 };
 pub use config_command_handlers::handle_config_command;
 pub use configuration_handlers::handle_configuration;
+pub use debug_handlers::{handle_debug_compare, handle_debug_timeline}; // Sprint 77: TIMELINE-004
 pub use defect_prediction_handler::handle_analyze_defect_prediction;
 pub use demo_handlers::{handle_demo, handle_quality_gate};
 pub use doc_validate_handlers::ValidateDocsCmd;
