@@ -1,9 +1,10 @@
 // DEBUG-002: Debug Command Handlers
 // Sprint 74 - GREEN Phase
+// Sprint 75 - REPLAY-003: Recording deserialization integration
 //
 // Handlers for `pmat debug` subcommands
 
-use crate::services::dap::DapServer;
+use crate::services::dap::{DapServer, Recording};
 use anyhow::{Context, Result};
 use std::path::PathBuf;
 
@@ -37,7 +38,7 @@ pub async fn handle_debug_serve(port: u16, host: String) -> Result<()> {
 /// Handle `pmat debug replay` command
 ///
 /// Replays a time-travel debugging recording with Timeline UI visualization.
-/// Integrates with Sprint 72-73 Timeline UI and Replay Engine.
+/// Sprint 75: Fully integrated with Recording deserialization.
 ///
 /// # Arguments
 /// * `recording` - Path to the .pmat recording file
@@ -59,24 +60,93 @@ pub async fn handle_debug_replay(
 
     println!("🎬 Replaying debug recording...");
     println!("   Recording: {}", recording.display());
-    if let Some(pos) = position {
-        println!("   Position: {}", pos);
+    println!();
+
+    // Load recording (Sprint 75 - REPLAY-003)
+    let loaded = Recording::load_from_file(&recording)
+        .context("Failed to load recording file")?;
+
+    // Display recording metadata
+    println!("📋 Recording Metadata:");
+    let metadata = loaded.metadata();
+    println!("   Program: {}", metadata.program);
+
+    if !metadata.args.is_empty() {
+        println!("   Arguments: {}", metadata.args.join(" "));
     }
+
+    // Format timestamp
+    use std::time::{Duration, UNIX_EPOCH};
+    if let Some(datetime) = UNIX_EPOCH.checked_add(Duration::from_millis(metadata.timestamp)) {
+        if let Ok(system_time) = std::time::SystemTime::try_from(datetime) {
+            println!("   Recorded: {:?}", system_time);
+        }
+    }
+
+    if !metadata.environment.is_empty() {
+        println!("   Environment variables: {}", metadata.environment.len());
+    }
+
+    println!("   Snapshots: {}", loaded.snapshot_count());
+    println!();
+
+    // Handle position jump
+    let target_position = position.unwrap_or(0);
+    if target_position >= loaded.snapshot_count() {
+        anyhow::bail!(
+            "Position {} out of range (recording has {} snapshots)",
+            target_position,
+            loaded.snapshot_count()
+        );
+    }
+
+    // Display snapshot information
+    if loaded.snapshot_count() > 0 {
+        println!("📊 Snapshot at position {}:", target_position);
+        let snapshot = &loaded.snapshots()[target_position];
+
+        println!("   Frame ID: {}", snapshot.frame_id);
+        println!("   Timestamp: {}ms", snapshot.timestamp_relative_ms);
+        println!("   Instruction Pointer: 0x{:x}", snapshot.instruction_pointer);
+
+        if !snapshot.variables.is_empty() {
+            println!("   Variables: {}", snapshot.variables.len());
+            for (name, value) in snapshot.variables.iter().take(5) {
+                println!("      {} = {}", name, value);
+            }
+            if snapshot.variables.len() > 5 {
+                println!("      ... and {} more", snapshot.variables.len() - 5);
+            }
+        }
+
+        if !snapshot.stack_frames.is_empty() {
+            println!("   Stack Frames: {}", snapshot.stack_frames.len());
+            for (i, frame) in snapshot.stack_frames.iter().take(3).enumerate() {
+                let location = match (&frame.file, &frame.line) {
+                    (Some(file), Some(line)) => format!(" @ {}:{}", file, line),
+                    _ => String::new(),
+                };
+                println!("      #{} {}{}", i, frame.name, location);
+            }
+            if snapshot.stack_frames.len() > 3 {
+                println!("      ... and {} more frames", snapshot.stack_frames.len() - 3);
+            }
+        }
+
+        if snapshot.memory_snapshot.is_some() {
+            println!("   Memory snapshot: present");
+        }
+        println!();
+    }
+
+    // Interactive mode
     if interactive {
-        println!("   Mode: Interactive");
+        println!("🎮 Interactive Mode:");
+        println!("   [Interactive step-through would appear here]");
+        println!("   Sprint 72-73 Timeline UI integration pending");
+        println!();
     }
-    println!();
-
-    // Read recording file (minimal implementation for GREEN phase)
-    let _recording_data = std::fs::read(&recording)
-        .context("Failed to read recording file")?;
-
-    println!("📊 Timeline UI:");
-    println!("   [Timeline visualization would appear here]");
-    println!("   Sprint 72-73 integration pending");
-    println!();
 
     println!("✅ Replay complete");
-
     Ok(())
 }
