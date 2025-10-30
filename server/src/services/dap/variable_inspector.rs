@@ -89,6 +89,12 @@ impl VariableInspector {
         // Convert line number to byte position (lines are 0-indexed internally)
         let target_line_idx = if target_line > 0 { target_line - 1 } else { 0 };
 
+        // Validate line number is within bounds
+        let max_line = root_node.end_position().row;
+        if target_line_idx > max_line {
+            return Err(format!("Line {} is out of bounds (file has {} lines)", target_line, max_line + 1));
+        }
+
         // Find the scope containing the target line
         let scope_node = self.find_scope_at_line(root_node, target_line_idx);
 
@@ -111,7 +117,8 @@ impl VariableInspector {
         // Extract let bindings from the function or scope
         self.extract_rust_let_bindings(search_scope, bytes, &mut variables, target_line_idx);
 
-        Ok(variables)
+        // Deduplicate variables by name (keep last occurrence for shadowing)
+        Ok(self.deduplicate_variables(variables))
     }
 
     /// Extract variables from TypeScript AST
@@ -119,6 +126,12 @@ impl VariableInspector {
         let root_node = tree.root_node();
         let bytes = source.as_bytes();
         let target_line_idx = if target_line > 0 { target_line - 1 } else { 0 };
+
+        // Validate line number is within bounds
+        let max_line = root_node.end_position().row;
+        if target_line_idx > max_line {
+            return Err(format!("Line {} is out of bounds (file has {} lines)", target_line, max_line + 1));
+        }
 
         let scope_node = self.find_scope_at_line(root_node, target_line_idx);
         if scope_node.is_none() {
@@ -140,7 +153,8 @@ impl VariableInspector {
         // Extract variable declarations (const, let, var) from the function or scope
         self.extract_ts_variable_declarations(search_scope, bytes, &mut variables, target_line_idx);
 
-        Ok(variables)
+        // Deduplicate variables by name (keep last occurrence for shadowing)
+        Ok(self.deduplicate_variables(variables))
     }
 
     /// Extract variables from Python AST
@@ -148,6 +162,12 @@ impl VariableInspector {
         let root_node = tree.root_node();
         let bytes = source.as_bytes();
         let target_line_idx = if target_line > 0 { target_line - 1 } else { 0 };
+
+        // Validate line number is within bounds
+        let max_line = root_node.end_position().row;
+        if target_line_idx > max_line {
+            return Err(format!("Line {} is out of bounds (file has {} lines)", target_line, max_line + 1));
+        }
 
         let scope_node = self.find_scope_at_line(root_node, target_line_idx);
         if scope_node.is_none() {
@@ -169,7 +189,8 @@ impl VariableInspector {
         // Extract assignments from the function or scope
         self.extract_python_assignments(search_scope, bytes, &mut variables, target_line_idx);
 
-        Ok(variables)
+        // Deduplicate variables by name (keep last occurrence for shadowing)
+        Ok(self.deduplicate_variables(variables))
     }
 
     /// Find the innermost scope containing the target line
@@ -205,6 +226,21 @@ impl VariableInspector {
                 || kind == "method_definition"
             {
                 return Some(node);
+            }
+
+            // For lexical_declaration, check if it contains an arrow_function
+            if kind == "lexical_declaration" {
+                let mut cursor = node.walk();
+                for child in node.children(&mut cursor) {
+                    if child.kind() == "variable_declarator" {
+                        let mut decl_cursor = child.walk();
+                        for decl_child in child.children(&mut decl_cursor) {
+                            if decl_child.kind() == "arrow_function" {
+                                return Some(decl_child);
+                            }
+                        }
+                    }
+                }
             }
 
             match node.parent() {
@@ -350,10 +386,44 @@ impl VariableInspector {
 
     /// Extract TypeScript function parameters
     fn extract_ts_function_params(&self, func_node: Node, bytes: &[u8], variables: &mut Vec<Variable>) {
-        if let Some(params_node) = func_node.child_by_field_name("parameters") {
+        // Try field-based access first (regular functions)
+        let params_node_opt = if let Some(params) = func_node.child_by_field_name("parameters") {
+            Some(params)
+        } else {
+            // For arrow functions, look for formal_parameters child manually
+            let mut found = None;
+            let mut params_cursor = func_node.walk();
+            for child in func_node.children(&mut params_cursor) {
+                if child.kind() == "formal_parameters" {
+                    found = Some(child);
+                    break;
+                }
+            }
+            found
+        };
+
+        if let Some(params_node) = params_node_opt {
             let mut cursor = params_node.walk();
             for param in params_node.children(&mut cursor) {
-                if param.kind() == "required_parameter" || param.kind() == "identifier" {
+                if param.kind() == "required_parameter" {
+                    // Extract the identifier child from required_parameter
+                    let mut param_cursor = param.walk();
+                    for param_child in param.children(&mut param_cursor) {
+                        if param_child.kind() == "identifier" {
+                            let name = param_child.utf8_text(bytes).unwrap_or("").to_string();
+                            if !name.is_empty() {
+                                variables.push(Variable {
+                                    name,
+                                    value: String::new(),
+                                    type_info: "any".to_string(),
+                                    variables_reference: None,
+                                });
+                            }
+                            break;
+                        }
+                    }
+                } else if param.kind() == "identifier" {
+                    // Direct identifier (uncommon but possible)
                     let name = param.utf8_text(bytes).unwrap_or("").to_string();
                     if !name.is_empty() && name != "(" && name != ")" && name != "," {
                         variables.push(Variable {
@@ -418,6 +488,21 @@ impl VariableInspector {
                 }
             }
         }
+    }
+
+    /// Deduplicate variables by name, keeping only the last occurrence (for shadowing)
+    fn deduplicate_variables(&self, variables: Vec<Variable>) -> Vec<Variable> {
+        use std::collections::HashMap;
+
+        // Use HashMap to track the last occurrence of each variable name
+        let mut unique_vars: HashMap<String, Variable> = HashMap::new();
+
+        for var in variables {
+            unique_vars.insert(var.name.clone(), var);
+        }
+
+        // Convert back to Vec, preserving original order where possible
+        unique_vars.into_values().collect()
     }
 }
 
