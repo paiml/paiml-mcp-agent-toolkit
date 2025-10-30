@@ -11,6 +11,7 @@ pub mod breakpoint_manager;
 pub mod execution_recorder;
 pub mod replay_engine;
 pub mod server;
+pub mod timeline_ui;
 pub mod types;
 pub mod variable_inspector;
 
@@ -18,5 +19,6 @@ pub use breakpoint_manager::BreakpointManager;
 pub use execution_recorder::ExecutionRecorder;
 pub use replay_engine::ReplayEngine;
 pub use server::DapServer;
+pub use timeline_ui::TimelineUI;
 pub use types::*;
 pub use variable_inspector::VariableInspector;
