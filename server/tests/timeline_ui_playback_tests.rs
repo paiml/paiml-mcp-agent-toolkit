@@ -33,20 +33,14 @@
 /// - Initial state matches player (frame 0, not playing)
 #[test]
 fn test_timeline_ui_accepts_player() {
-    // This test drives the requirement for TimelinePlayer integration
-    // Will implement in GREEN phase:
-    //
-    // use pmat::services::dap::{TimelinePlayer, Recording};
-    // use pmat::services::dap::timeline_ui::TimelineUI;
-    //
-    // let recording = create_test_recording(10);
-    // let player = TimelinePlayer::new(recording);
-    // let ui = TimelineUI::from_player(player);
-    //
-    // assert_eq!(ui.current_frame(), 0);
-    // assert!(!ui.is_playing());
+    use pmat::services::dap::{TimelinePlayer, TimelineUI};
 
-    assert!(false, "Must implement TimelineUI::from_player()");
+    let recording = create_test_recording(10);
+    let player = TimelinePlayer::new(recording);
+    let ui = TimelineUI::from_player(player);
+
+    assert_eq!(ui.current_frame(), 0);
+    assert!(!ui.is_playing());
 }
 
 /// RED Test 2: Progress bar shows correct position
@@ -59,25 +53,19 @@ fn test_timeline_ui_accepts_player() {
 /// - Shows percentage or visual bar
 #[test]
 fn test_progress_bar_display() {
-    // This test drives the requirement for progress display
-    // Will implement in GREEN phase:
-    //
-    // use pmat::services::dap::{TimelinePlayer, Recording};
-    // use pmat::services::dap::timeline_ui::TimelineUI;
-    //
-    // let recording = create_test_recording(100);
-    // let player = TimelinePlayer::new(recording);
-    // let mut ui = TimelineUI::from_player(player);
-    //
-    // assert_eq!(ui.progress_text(), "Frame 0/100");
-    //
-    // ui.next_frame();
-    // assert_eq!(ui.progress_text(), "Frame 1/100");
-    //
-    // ui.jump_to(50);
-    // assert_eq!(ui.progress_text(), "Frame 50/100");
+    use pmat::services::dap::{TimelinePlayer, TimelineUI};
 
-    assert!(false, "Must implement progress bar display");
+    let recording = create_test_recording(100);
+    let player = TimelinePlayer::new(recording);
+    let mut ui = TimelineUI::from_player(player);
+
+    assert_eq!(ui.progress_text(), "Frame 0/100");
+
+    ui.next_frame().unwrap();
+    assert_eq!(ui.progress_text(), "Frame 1/100");
+
+    ui.jump_to(50).unwrap();
+    assert_eq!(ui.progress_text(), "Frame 50/100");
 }
 
 /// RED Test 3: Variables panel shows current snapshot
@@ -90,27 +78,21 @@ fn test_progress_bar_display() {
 /// - Empty when no variables in snapshot
 #[test]
 fn test_variables_panel_display() {
-    // This test drives the requirement for variable display
-    // Will implement in GREEN phase:
-    //
-    // use pmat::services::dap::{TimelinePlayer, Recording};
-    // use pmat::services::dap::timeline_ui::TimelineUI;
-    //
-    // let recording = create_test_recording(10);
-    // let player = TimelinePlayer::new(recording);
-    // let mut ui = TimelineUI::from_player(player);
-    //
-    // // Frame 0 variables
-    // let vars = ui.current_variables();
-    // assert!(vars.contains_key("test_var"));
-    // assert_eq!(vars["test_var"], serde_json::json!(0));
-    //
-    // // Navigate to frame 5
-    // ui.jump_to(5);
-    // let vars = ui.current_variables();
-    // assert_eq!(vars["test_var"], serde_json::json!(5));
+    use pmat::services::dap::{TimelinePlayer, TimelineUI};
 
-    assert!(false, "Must implement variables panel");
+    let recording = create_test_recording(10);
+    let player = TimelinePlayer::new(recording);
+    let mut ui = TimelineUI::from_player(player);
+
+    // Frame 0 variables
+    let vars = ui.current_variables();
+    assert!(vars.contains_key("test_var"));
+    assert_eq!(vars["test_var"], serde_json::json!(0));
+
+    // Navigate to frame 5
+    ui.jump_to(5).unwrap();
+    let vars = ui.current_variables();
+    assert_eq!(vars["test_var"], serde_json::json!(5));
 }
 
 /// RED Test 4: Stack panel shows current stack frames
@@ -142,7 +124,20 @@ fn test_stack_panel_display() {
     // let stack = ui.current_stack_frames();
     // assert_eq!(stack[0].name, "test_function_1");
 
-    assert!(false, "Must implement stack panel");
+    use pmat::services::dap::{TimelinePlayer, TimelineUI};
+
+    let recording = create_test_recording(10);
+    let player = TimelinePlayer::new(recording);
+    let mut ui = TimelineUI::from_player(player);
+
+    let stack = ui.current_stack_frames();
+    assert_eq!(stack.len(), 1);
+    assert_eq!(stack[0].name, "test_function_0");
+    assert_eq!(stack[0].file, Some("test.rs".to_string()));
+
+    ui.next_frame().unwrap();
+    let stack = ui.current_stack_frames();
+    assert_eq!(stack[0].name, "test_function_1");
 }
 
 /// RED Test 5: Right arrow (→) advances frame
@@ -155,25 +150,19 @@ fn test_stack_panel_display() {
 /// - Returns Err at end of recording
 #[test]
 fn test_right_arrow_advances() {
-    // This test drives the requirement for forward navigation
-    // Will implement in GREEN phase:
-    //
-    // use pmat::services::dap::{TimelinePlayer, Recording};
-    // use pmat::services::dap::timeline_ui::TimelineUI;
-    //
-    // let recording = create_test_recording(10);
-    // let player = TimelinePlayer::new(recording);
-    // let mut ui = TimelineUI::from_player(player);
-    //
-    // assert_eq!(ui.current_frame(), 0);
-    //
-    // ui.handle_key('→').unwrap();
-    // assert_eq!(ui.current_frame(), 1);
-    //
-    // ui.handle_key('→').unwrap();
-    // assert_eq!(ui.current_frame(), 2);
+    use pmat::services::dap::{TimelinePlayer, TimelineUI};
 
-    assert!(false, "Must implement → key handling");
+    let recording = create_test_recording(10);
+    let player = TimelinePlayer::new(recording);
+    let mut ui = TimelineUI::from_player(player);
+
+    assert_eq!(ui.current_frame(), 0);
+
+    ui.handle_key('→').unwrap();
+    assert_eq!(ui.current_frame(), 1);
+
+    ui.handle_key('→').unwrap();
+    assert_eq!(ui.current_frame(), 2);
 }
 
 /// RED Test 6: Left arrow (←) moves back
@@ -186,27 +175,21 @@ fn test_right_arrow_advances() {
 /// - Returns Err at start of recording
 #[test]
 fn test_left_arrow_moves_back() {
-    // This test drives the requirement for backward navigation
-    // Will implement in GREEN phase:
-    //
-    // use pmat::services::dap::{TimelinePlayer, Recording};
-    // use pmat::services::dap::timeline_ui::TimelineUI;
-    //
-    // let recording = create_test_recording(10);
-    // let player = TimelinePlayer::new(recording);
-    // let mut ui = TimelineUI::from_player(player);
-    //
-    // // Move forward then back
-    // ui.jump_to(5);
-    // assert_eq!(ui.current_frame(), 5);
-    //
-    // ui.handle_key('←').unwrap();
-    // assert_eq!(ui.current_frame(), 4);
-    //
-    // ui.handle_key('←').unwrap();
-    // assert_eq!(ui.current_frame(), 3);
+    use pmat::services::dap::{TimelinePlayer, TimelineUI};
 
-    assert!(false, "Must implement ← key handling");
+    let recording = create_test_recording(10);
+    let player = TimelinePlayer::new(recording);
+    let mut ui = TimelineUI::from_player(player);
+
+    // Move forward then back
+    ui.jump_to(5).unwrap();
+    assert_eq!(ui.current_frame(), 5);
+
+    ui.handle_key('←').unwrap();
+    assert_eq!(ui.current_frame(), 4);
+
+    ui.handle_key('←').unwrap();
+    assert_eq!(ui.current_frame(), 3);
 }
 
 /// RED Test 7: Space toggles play/pause
@@ -219,25 +202,19 @@ fn test_left_arrow_moves_back() {
 /// - Second press: pauses playback
 #[test]
 fn test_space_toggles_playback() {
-    // This test drives the requirement for play/pause control
-    // Will implement in GREEN phase:
-    //
-    // use pmat::services::dap::{TimelinePlayer, Recording};
-    // use pmat::services::dap::timeline_ui::TimelineUI;
-    //
-    // let recording = create_test_recording(10);
-    // let player = TimelinePlayer::new(recording);
-    // let mut ui = TimelineUI::from_player(player);
-    //
-    // assert!(!ui.is_playing());
-    //
-    // ui.handle_key(' ').unwrap();
-    // assert!(ui.is_playing());
-    //
-    // ui.handle_key(' ').unwrap();
-    // assert!(!ui.is_playing());
+    use pmat::services::dap::{TimelinePlayer, TimelineUI};
 
-    assert!(false, "Must implement Space key for play/pause");
+    let recording = create_test_recording(10);
+    let player = TimelinePlayer::new(recording);
+    let mut ui = TimelineUI::from_player(player);
+
+    assert!(!ui.is_playing());
+
+    ui.handle_key(' ').unwrap();
+    assert!(ui.is_playing());
+
+    ui.handle_key(' ').unwrap();
+    assert!(!ui.is_playing());
 }
 
 /// RED Test 8: J prompts for frame number and jumps
@@ -250,27 +227,21 @@ fn test_space_toggles_playback() {
 /// - Jump to specified frame
 #[test]
 fn test_jump_key_handling() {
-    // This test drives the requirement for jump functionality
-    // Will implement in GREEN phase:
-    //
-    // use pmat::services::dap::{TimelinePlayer, Recording};
-    // use pmat::services::dap::timeline_ui::TimelineUI;
-    //
-    // let recording = create_test_recording(100);
-    // let player = TimelinePlayer::new(recording);
-    // let mut ui = TimelineUI::from_player(player);
-    //
-    // // Direct jump method (keyboard input handled by UI layer)
-    // ui.jump_to(50).unwrap();
-    // assert_eq!(ui.current_frame(), 50);
-    //
-    // ui.jump_to(0).unwrap();
-    // assert_eq!(ui.current_frame(), 0);
-    //
-    // // Out of bounds fails
-    // assert!(ui.jump_to(200).is_err());
+    use pmat::services::dap::{TimelinePlayer, TimelineUI};
 
-    assert!(false, "Must implement jump functionality");
+    let recording = create_test_recording(100);
+    let player = TimelinePlayer::new(recording);
+    let mut ui = TimelineUI::from_player(player);
+
+    // Direct jump method (keyboard input handled by UI layer)
+    ui.jump_to(50).unwrap();
+    assert_eq!(ui.current_frame(), 50);
+
+    ui.jump_to(0).unwrap();
+    assert_eq!(ui.current_frame(), 0);
+
+    // Out of bounds fails
+    assert!(ui.jump_to(200).is_err());
 }
 
 /// RED Test 9: Frame counter updates on navigation
@@ -283,28 +254,22 @@ fn test_jump_key_handling() {
 /// - Updates when frame changes
 #[test]
 fn test_frame_counter_display() {
-    // This test drives the requirement for frame counter
-    // Will implement in GREEN phase:
-    //
-    // use pmat::services::dap::{TimelinePlayer, Recording};
-    // use pmat::services::dap::timeline_ui::TimelineUI;
-    //
-    // let recording = create_test_recording(10);
-    // let player = TimelinePlayer::new(recording);
-    // let mut ui = TimelineUI::from_player(player);
-    //
-    // let info = ui.frame_info();
-    // assert!(info.contains("Frame 0/10"));
-    // assert!(info.contains("0ms")); // timestamp_relative_ms
-    // assert!(info.contains("test.rs:10")); // file:line
-    //
-    // ui.next_frame();
-    // let info = ui.frame_info();
-    // assert!(info.contains("Frame 1/10"));
-    // assert!(info.contains("100ms"));
-    // assert!(info.contains("test.rs:11"));
+    use pmat::services::dap::{TimelinePlayer, TimelineUI};
 
-    assert!(false, "Must implement frame counter display");
+    let recording = create_test_recording(10);
+    let player = TimelinePlayer::new(recording);
+    let mut ui = TimelineUI::from_player(player);
+
+    let info = ui.frame_info();
+    assert!(info.contains("Frame 0/10"));
+    assert!(info.contains("0ms")); // timestamp_relative_ms
+    assert!(info.contains("test.rs:10")); // file:line
+
+    ui.next_frame().unwrap();
+    let info = ui.frame_info();
+    assert!(info.contains("Frame 1/10"));
+    assert!(info.contains("100ms"));
+    assert!(info.contains("test.rs:11"));
 }
 
 /// RED Test 10: UI updates during playback mode
@@ -317,34 +282,28 @@ fn test_frame_counter_display() {
 /// - Stops at end of recording
 #[test]
 fn test_playback_auto_advance() {
-    // This test drives the requirement for auto-advance playback
-    // Will implement in GREEN phase:
-    //
-    // use pmat::services::dap::{TimelinePlayer, Recording};
-    // use pmat::services::dap::timeline_ui::TimelineUI;
-    //
-    // let recording = create_test_recording(10);
-    // let player = TimelinePlayer::new(recording);
-    // let mut ui = TimelineUI::from_player(player);
-    //
-    // // Start playback
-    // ui.play();
-    // assert!(ui.is_playing());
-    // assert_eq!(ui.current_frame(), 0);
-    //
-    // // Tick advances frame when playing
-    // ui.tick();
-    // assert_eq!(ui.current_frame(), 1);
-    //
-    // ui.tick();
-    // assert_eq!(ui.current_frame(), 2);
-    //
-    // // Pause stops advancement
-    // ui.pause();
-    // ui.tick();
-    // assert_eq!(ui.current_frame(), 2); // Unchanged
+    use pmat::services::dap::{TimelinePlayer, TimelineUI};
 
-    assert!(false, "Must implement auto-advance playback");
+    let recording = create_test_recording(10);
+    let player = TimelinePlayer::new(recording);
+    let mut ui = TimelineUI::from_player(player);
+
+    // Start playback
+    ui.play();
+    assert!(ui.is_playing());
+    assert_eq!(ui.current_frame(), 0);
+
+    // Tick advances frame when playing
+    ui.tick();
+    assert_eq!(ui.current_frame(), 1);
+
+    ui.tick();
+    assert_eq!(ui.current_frame(), 2);
+
+    // Pause stops advancement
+    ui.pause();
+    ui.tick();
+    assert_eq!(ui.current_frame(), 2); // Unchanged
 }
 
 // ============================================================================
