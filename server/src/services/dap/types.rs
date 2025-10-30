@@ -4,7 +4,7 @@
 // Types for Debug Adapter Protocol communication
 
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 /// DAP Request structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -203,6 +203,45 @@ pub struct SourceBreakpoint {
     pub condition: Option<String>,
     pub hit_condition: Option<String>,
     pub log_message: Option<String>,
+}
+
+// Sprint 72 - TRACE-005: Execution Recording Types
+
+/// Source location (simplified from Source for execution recording)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SourceLocation {
+    pub file: String,
+    pub line: usize,
+    pub column: Option<usize>,
+}
+
+/// Delta between two snapshots for efficient storage
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SnapshotDelta {
+    /// Variables that changed from previous snapshot
+    pub changed_vars: HashMap<String, serde_json::Value>,
+    /// Variables that were removed
+    pub removed_vars: HashSet<String>,
+    /// Stack depth change
+    pub stack_delta: i32,
+}
+
+/// Execution snapshot representing program state at a point in time
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExecutionSnapshot {
+    /// Unique timestamp (nanoseconds since epoch)
+    pub timestamp: u64,
+    /// Sequence number (0-indexed)
+    pub sequence: usize,
+    /// Variable values at this point
+    pub variables: HashMap<String, serde_json::Value>,
+    /// Call stack frames
+    pub call_stack: Vec<StackFrame>,
+    /// Source code location
+    pub location: SourceLocation,
+    /// Delta from previous snapshot (for compression)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub delta: Option<SnapshotDelta>,
 }
 
 #[cfg(test)]
