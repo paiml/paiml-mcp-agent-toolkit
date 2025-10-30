@@ -1,15 +1,20 @@
 // DAP (Debug Adapter Protocol) Server Implementation
 // Sprint 71 - TRACE-001: DAP Protocol Server Implementation
 // Sprint 71 - TRACE-004: DAP-PMAT Integration
+// Sprint 76 - CAPTURE-002: DAP Server Recording Capture
 //
 // This implements a Debug Adapter Protocol server for PMAT
 // allowing integration with VSCode and other DAP-compatible debuggers
+//
+// Sprint 76: Now supports optional recording to .pmat files during debug sessions
 
+use super::execution_recorder::ExecutionRecorder;
 use super::types::*;
 use super::variable_inspector::VariableInspector;
 use crate::cli::language_analyzer::Language;
 use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
+use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use tree_sitter::Tree;
@@ -45,11 +50,39 @@ pub struct DapServer {
     current_stopped_file: Arc<Mutex<Option<String>>>,
     /// TRACE-004: Current stopped line (for simulation)
     current_stopped_line: Arc<Mutex<Option<usize>>>,
+    /// CAPTURE-002: Optional recording directory
+    recording_dir: Option<PathBuf>,
+    /// CAPTURE-002: Current recording file path
+    recording_path: Arc<Mutex<Option<PathBuf>>>,
+    /// CAPTURE-002: Execution recorder for snapshot capture
+    execution_recorder: Arc<Mutex<Option<ExecutionRecorder<File>>>>,
 }
 
 impl DapServer {
-    /// Create a new DAP server instance
+    /// Create a new DAP server instance without recording
     pub fn new() -> Self {
+        Self::with_recording(None)
+    }
+
+    /// Create a new DAP server instance with optional recording
+    ///
+    /// Sprint 76 - CAPTURE-002: Enable recording capture to .pmat files
+    ///
+    /// # Arguments
+    /// * `recording_dir` - Optional directory to save recording files
+    ///
+    /// # Example
+    /// ```rust,no_run
+    /// use pmat::services::dap::server::DapServer;
+    /// use std::path::PathBuf;
+    ///
+    /// // Without recording
+    /// let server1 = DapServer::new();
+    ///
+    /// // With recording
+    /// let server2 = DapServer::with_recording(Some(PathBuf::from("./recordings")));
+    /// ```
+    pub fn with_recording(recording_dir: Option<PathBuf>) -> Self {
         Self {
             state: Arc::new(Mutex::new(ServerState::Uninitialized)),
             response_seq: Arc::new(Mutex::new(0)),
@@ -61,6 +94,9 @@ impl DapServer {
             variable_inspector: VariableInspector::new(),
             current_stopped_file: Arc::new(Mutex::new(None)),
             current_stopped_line: Arc::new(Mutex::new(None)),
+            recording_dir,
+            recording_path: Arc::new(Mutex::new(None)),
+            execution_recorder: Arc::new(Mutex::new(None)),
         }
     }
 
@@ -223,6 +259,14 @@ impl DapServer {
         // Parse and cache AST
         let _ = self.parse_and_cache_ast(program_path);
 
+        // CAPTURE-002: Start recording if configured
+        // Note: LaunchRequestArguments doesn't expose command-line args in DAP spec
+        // Recording metadata will use empty args vector for now
+        if let Err(e) = self.start_recording(&args.program, vec![]) {
+            eprintln!("Warning: Failed to start recording: {}", e);
+            // Continue debug session even if recording fails
+        }
+
         // Update state
         let mut state = self.state.lock().unwrap();
         *state = ServerState::Running;
@@ -247,6 +291,11 @@ impl DapServer {
         *state = ServerState::Stopped;
         drop(state);
 
+        // CAPTURE-002: Finalize recording on disconnect
+        if let Ok(Some(path)) = self.finalize_recording() {
+            println!("Recording saved: {}", path.display());
+        }
+
         let seq = self.next_seq();
         let response = DapResponse::success(request.seq, seq, request.command, None);
         serde_json::to_value(&response).unwrap()
@@ -257,6 +306,11 @@ impl DapServer {
         let mut state = self.state.lock().unwrap();
         *state = ServerState::Stopped;
         drop(state);
+
+        // CAPTURE-002: Finalize recording on terminate
+        if let Ok(Some(path)) = self.finalize_recording() {
+            println!("Recording saved: {}", path.display());
+        }
 
         let seq = self.next_seq();
         let response = DapResponse::success(request.seq, seq, request.command, None);
@@ -414,6 +468,9 @@ impl DapServer {
 
     /// Handle next request (step over)
     fn handle_next(&self, request: DapRequest) -> Value {
+        // CAPTURE-002: Capture snapshot after step
+        self.capture_snapshot_if_recording();
+
         let seq = self.next_seq();
         let response = DapResponse::success(request.seq, seq, request.command, None);
         serde_json::to_value(&response).unwrap()
@@ -421,6 +478,9 @@ impl DapServer {
 
     /// Handle stepIn request
     fn handle_step_in(&self, request: DapRequest) -> Value {
+        // CAPTURE-002: Capture snapshot after step
+        self.capture_snapshot_if_recording();
+
         let seq = self.next_seq();
         let response = DapResponse::success(request.seq, seq, request.command, None);
         serde_json::to_value(&response).unwrap()
@@ -428,6 +488,9 @@ impl DapServer {
 
     /// Handle stepOut request
     fn handle_step_out(&self, request: DapRequest) -> Value {
+        // CAPTURE-002: Capture snapshot after step
+        self.capture_snapshot_if_recording();
+
         let seq = self.next_seq();
         let response = DapResponse::success(request.seq, seq, request.command, None);
         serde_json::to_value(&response).unwrap()
@@ -563,6 +626,106 @@ impl DapServer {
         cache.insert(path.to_path_buf(), tree);
 
         Ok(())
+    }
+
+    // ========================================================================
+    // Sprint 76 - CAPTURE-002: Recording Capture Methods
+    // ========================================================================
+
+    /// Generate a unique recording file path with timestamp
+    ///
+    /// Format: session-{timestamp}.pmat
+    fn generate_recording_path(&self) -> Option<PathBuf> {
+        use std::time::{SystemTime, UNIX_EPOCH};
+
+        let recording_dir = self.recording_dir.as_ref()?;
+
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .ok()?
+            .as_secs();
+
+        Some(recording_dir.join(format!("session-{}.pmat", timestamp)))
+    }
+
+    /// Initialize recording on session start
+    ///
+    /// Creates recording directory if needed and sets up ExecutionRecorder
+    fn start_recording(&self, program: &str, args: Vec<String>) -> anyhow::Result<()> {
+        // Only start recording if recording_dir is configured
+        let recording_dir = match &self.recording_dir {
+            Some(dir) => dir,
+            None => return Ok(()), // No recording configured
+        };
+
+        // Create recording directory if it doesn't exist
+        if !recording_dir.exists() {
+            std::fs::create_dir_all(recording_dir)
+                .map_err(|e| anyhow::anyhow!("Failed to create recording directory: {}", e))?;
+        }
+
+        // Generate recording file path
+        let recording_path = self.generate_recording_path()
+            .ok_or_else(|| anyhow::anyhow!("Failed to generate recording path"))?;
+
+        // Create recording file
+        let file = File::create(&recording_path)
+            .map_err(|e| anyhow::anyhow!("Failed to create recording file: {}", e))?;
+
+        // Create ExecutionRecorder with writer
+        let dap_server_arc = Arc::new(Mutex::new(DapServer::new()));
+        let mut recorder = ExecutionRecorder::with_writer(
+            file,
+            program.to_string(),
+            args,
+            dap_server_arc,
+        )?;
+
+        // Start recording (enables snapshot capture)
+        recorder.start_recording();
+
+        // Store recorder and path
+        *self.execution_recorder.lock().unwrap() = Some(recorder);
+        *self.recording_path.lock().unwrap() = Some(recording_path);
+
+        Ok(())
+    }
+
+    /// Finalize and save recording
+    ///
+    /// Called on disconnect or terminate to complete the .pmat file
+    fn finalize_recording(&self) -> anyhow::Result<Option<PathBuf>> {
+        let mut recorder_guard = self.execution_recorder.lock().unwrap();
+        let recorder = recorder_guard.take();
+
+        if let Some(recorder) = recorder {
+            recorder.finalize()?;
+            let path = self.recording_path.lock().unwrap().clone();
+            return Ok(path);
+        }
+
+        Ok(None)
+    }
+
+    /// CAPTURE-002: Attempt to capture a snapshot if recording is active
+    ///
+    /// This is called on debug events (breakpoint hits, step commands) to capture
+    /// execution state. Silently fails if recording is not active or capture fails.
+    fn capture_snapshot_if_recording(&self) {
+        let mut recorder_guard = match self.execution_recorder.lock() {
+            Ok(guard) => guard,
+            Err(_) => return, // Lock poisoned, skip capture
+        };
+
+        if let Some(ref mut recorder) = *recorder_guard {
+            // Only attempt capture if recorder is in recording state
+            if recorder.is_recording() {
+                if let Err(e) = recorder.capture_snapshot() {
+                    eprintln!("Warning: Failed to capture snapshot: {}", e);
+                    // Continue execution even if snapshot capture fails
+                }
+            }
+        }
     }
 
     // ========================================================================
