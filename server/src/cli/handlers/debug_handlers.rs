@@ -1,6 +1,7 @@
 // DEBUG-002: Debug Command Handlers
 // Sprint 74 - GREEN Phase
 // Sprint 75 - REPLAY-003: Recording deserialization integration
+// Sprint 76 - CAPTURE-003: CLI Recording Workflow
 //
 // Handlers for `pmat debug` subcommands
 
@@ -13,23 +14,40 @@ use std::path::PathBuf;
 /// Starts a DAP (Debug Adapter Protocol) server on the specified port
 /// allowing debuggers like VSCode to connect for time-travel debugging.
 ///
+/// Sprint 76: Now supports optional recording to .pmat files via --record-dir
+///
 /// # Arguments
 /// * `port` - Port number to bind the DAP server (default: 5678)
 /// * `host` - Host address to bind (default: "127.0.0.1")
+/// * `record_dir` - Optional directory to save recording files (Sprint 76)
 ///
 /// # Returns
 /// * `Ok(())` if server starts successfully
 /// * `Err` if port is already in use or other startup errors
-pub async fn handle_debug_serve(port: u16, host: String) -> Result<()> {
+pub async fn handle_debug_serve(
+    port: u16,
+    host: String,
+    record_dir: Option<PathBuf>,
+) -> Result<()> {
     println!("🔍 Starting DAP server...");
     println!("   Host: {}", host);
     println!("   Port: {}", port);
+
+    // Sprint 76: Display recording configuration
+    if let Some(ref dir) = record_dir {
+        println!("   Recording: enabled");
+        println!("   Record directory: {}", dir.display());
+    } else {
+        println!("   Recording: disabled");
+    }
+
     println!();
     println!("Connect your debugger to: {}:{}", host, port);
     println!("Press Ctrl+C to stop the server");
     println!();
 
-    let server = DapServer::new();
+    // Sprint 76: Create server with optional recording support
+    let server = DapServer::with_recording(record_dir);
     server.run(port, host).await?;
 
     Ok(())

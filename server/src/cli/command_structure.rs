@@ -532,9 +532,10 @@ impl CommandExecutor {
             Commands::Debug { command } => {
                 use crate::cli::commands::DebugCommands;
                 match command {
-                    DebugCommands::Serve { port, host } => {
+                    DebugCommands::Serve { port, host, record_dir } => {
                         // DEBUG-002: DAP Server CLI Handler (implemented)
-                        super::handlers::debug_handlers::handle_debug_serve(port, host).await
+                        // Sprint 76 CAPTURE-003: Added record_dir support
+                        super::handlers::debug_handlers::handle_debug_serve(port, host, record_dir).await
                     }
                     DebugCommands::Replay { recording, position, interactive } => {
                         // DEBUG-003: Replay CLI Handler (implemented)
