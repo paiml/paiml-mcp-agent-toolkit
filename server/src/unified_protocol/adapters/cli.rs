@@ -117,6 +117,7 @@ impl CliAdapter {
             | Commands::Embed(_) // PMAT-SEARCH-011
             | Commands::Semantic(_) // PMAT-SEARCH-011
             | Commands::Mutate(_) // Sprint 61: Mutation testing
+            | Commands::Debug { .. } // Sprint 74: Time-travel debugging (CLI-only)
             => Self::cli_only_command_error(),
         }
     }
@@ -1780,7 +1781,8 @@ impl CliInput {
             Commands::List { .. }
             | Commands::Search { .. }
             | Commands::Context { .. }
-            | Commands::Diagnose(_) => CommandCategory::System,
+            | Commands::Diagnose(_)
+            | Commands::Debug { .. } => CommandCategory::System,
             Commands::Config { .. } | Commands::Agent { .. } | Commands::Tdg { .. } => {
                 CommandCategory::Configuration
             }
@@ -1842,6 +1844,7 @@ impl CliInput {
             Commands::Search { .. } => "search",
             Commands::Context { .. } => "context",
             Commands::Diagnose(_) => "diagnose",
+            Commands::Debug { .. } => "debug",
             _ => unreachable!("Non-system command passed to system command name extractor"),
         }
     }
