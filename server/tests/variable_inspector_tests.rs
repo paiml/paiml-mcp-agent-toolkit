@@ -8,7 +8,6 @@ use std::path::Path;
 // RED Phase Test 1: Rust - Simple Local Variables
 // TODO: AST node traversal needs refinement for actual tree-sitter node types
 #[test]
-#[ignore]
 fn test_rust_simple_local_variables() {
     let source = r#"
 fn main() {
@@ -46,7 +45,6 @@ fn main() {
 // RED Phase Test 2: Rust - Function Parameters
 // TODO: Function parameter extraction needs tree-sitter node type mapping
 #[test]
-#[ignore]
 fn test_rust_function_parameters() {
     let source = r#"
 fn calculate(x: i32, y: i32, name: &str) -> i32 {
@@ -81,7 +79,6 @@ fn calculate(x: i32, y: i32, name: &str) -> i32 {
 
 // RED Phase Test 3: Rust - Nested Scopes
 #[test]
-#[ignore]
 fn test_rust_nested_scopes() {
     let source = r#"
 fn main() {
@@ -107,7 +104,6 @@ fn main() {
 
 // RED Phase Test 4: TypeScript - Simple Variables
 #[test]
-#[ignore]
 fn test_typescript_simple_variables() {
     let source = r#"
 function main() {
@@ -138,7 +134,6 @@ function main() {
 
 // RED Phase Test 5: TypeScript - Arrow Functions
 #[test]
-#[ignore]
 fn test_typescript_arrow_function_parameters() {
     let source = r#"
 const add = (x: number, y: number): number => {
@@ -161,7 +156,6 @@ const add = (x: number, y: number): number => {
 
 // RED Phase Test 6: Python - Simple Variables
 #[test]
-#[ignore]
 fn test_python_simple_variables() {
     let source = r#"
 def main():
@@ -185,7 +179,6 @@ def main():
 
 // RED Phase Test 7: Python - Function Parameters
 #[test]
-#[ignore]
 fn test_python_function_parameters() {
     let source = r#"
 def calculate(x, y, name):
@@ -226,7 +219,6 @@ fn main() {
 
 // RED Phase Test 9: Invalid Line Number
 #[test]
-#[ignore]
 fn test_invalid_line_number() {
     let source = r#"
 fn main() {
@@ -261,7 +253,6 @@ fn main() {
 
 // RED Phase Test 11: Multiple Assignments
 #[test]
-#[ignore]
 fn test_multiple_assignments() {
     let source = r#"
 fn main() {
@@ -285,7 +276,6 @@ fn main() {
 
 // RED Phase Test 12: Variable Shadowing
 #[test]
-#[ignore]
 fn test_variable_shadowing() {
     let source = r#"
 fn main() {
@@ -309,7 +299,6 @@ fn main() {
 
 // RED Phase Test 13: Inspect from File
 #[test]
-#[ignore]
 fn test_inspect_from_file() {
     // Create temporary test file
     let test_file = "/tmp/pmat_test_variable_inspection.rs";
@@ -334,7 +323,6 @@ fn main() {
 
 // RED Phase Test 14: Performance - Large Scope
 #[test]
-#[ignore]
 fn test_performance_large_scope() {
     use std::time::Instant;
 
