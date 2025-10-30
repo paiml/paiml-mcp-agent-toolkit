@@ -14,6 +14,8 @@ pub mod recording;  // Sprint 75: .pmat file format
 pub mod replay_engine;
 pub mod server;
 pub mod timeline_player;  // Sprint 77: TIMELINE-001 - Recording playback control
+#[cfg(feature = "tui")]
+pub mod timeline_tui;  // Sprint 78: TUI-001 - Terminal event loop
 pub mod timeline_ui;
 pub mod types;
 pub mod variable_diff;
