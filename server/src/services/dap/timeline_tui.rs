@@ -188,3 +188,115 @@ impl Default for EventLoop {
         Self::new()
     }
 }
+
+// ============================================================================
+// PlaybackState - Playback control state
+// ============================================================================
+
+/// Playback state for timeline
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PlaybackState {
+    /// Playback is paused
+    Paused,
+    /// Playback is active
+    Playing,
+}
+
+// ============================================================================
+// TimelineRenderer - Timeline visualization state
+// ============================================================================
+
+/// Timeline renderer for frame-based debugging visualization
+pub struct TimelineRenderer {
+    /// Total number of frames
+    total_frames: usize,
+    /// Current frame position
+    current_frame: usize,
+    /// Playback state
+    playback_state: PlaybackState,
+}
+
+impl TimelineRenderer {
+    /// Create new timeline renderer with frame count
+    pub fn new(total_frames: usize) -> Self {
+        Self {
+            total_frames,
+            current_frame: 0,
+            playback_state: PlaybackState::Paused,
+        }
+    }
+
+    /// Get total frames
+    pub fn total_frames(&self) -> usize {
+        self.total_frames
+    }
+
+    /// Get current frame position
+    pub fn current_frame(&self) -> usize {
+        self.current_frame
+    }
+
+    /// Set current frame (with bounds checking)
+    pub fn set_current_frame(&mut self, frame: usize) {
+        self.current_frame = frame.min(self.total_frames.saturating_sub(1));
+    }
+
+    /// Advance frame by offset (can be negative)
+    pub fn advance_frame(&mut self, offset: i32) {
+        let new_frame = self.current_frame as i32 + offset;
+        if new_frame < 0 {
+            self.current_frame = 0;
+        } else {
+            self.set_current_frame(new_frame as usize);
+        }
+    }
+
+    /// Get playback state
+    pub fn playback_state(&self) -> PlaybackState {
+        self.playback_state
+    }
+
+    /// Toggle playback state
+    pub fn toggle_playback(&mut self) {
+        self.playback_state = match self.playback_state {
+            PlaybackState::Paused => PlaybackState::Playing,
+            PlaybackState::Playing => PlaybackState::Paused,
+        };
+    }
+
+    /// Jump to first frame
+    pub fn jump_to_start(&mut self) {
+        self.current_frame = 0;
+    }
+
+    /// Jump to last frame
+    pub fn jump_to_end(&mut self) {
+        self.current_frame = self.total_frames.saturating_sub(1);
+    }
+
+    /// Calculate progress as percentage (0.0 to 100.0)
+    pub fn progress_percentage(&self) -> f64 {
+        if self.total_frames == 0 {
+            return 0.0;
+        }
+        (self.current_frame as f64 / self.total_frames as f64) * 100.0
+    }
+
+    /// Get frame info string (e.g., "50/100")
+    pub fn frame_info(&self) -> String {
+        format!("{}/{}", self.current_frame, self.total_frames)
+    }
+
+    /// Get playback controls text
+    pub fn playback_controls_text(&self) -> String {
+        match self.playback_state {
+            PlaybackState::Paused => "▶ Play".to_string(),
+            PlaybackState::Playing => "⏸ Pause".to_string(),
+        }
+    }
+
+    /// Get keyboard shortcuts hint
+    pub fn keyboard_shortcuts(&self) -> String {
+        "← Prev | → Next | Space Play/Pause | Home Start | End End | q Quit".to_string()
+    }
+}
