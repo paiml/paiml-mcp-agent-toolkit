@@ -638,6 +638,10 @@ pub enum DebugCommands {
         /// Host address to bind (default: 127.0.0.1)
         #[arg(long, default_value = "127.0.0.1")]
         host: String,
+
+        /// Directory to save recording files (.pmat format) [Sprint 76 - CAPTURE-003]
+        #[arg(long, value_name = "DIR")]
+        record_dir: Option<PathBuf>,
     },
 
     /// Replay execution recording with time-travel navigation
