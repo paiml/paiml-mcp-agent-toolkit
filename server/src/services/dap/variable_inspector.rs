@@ -518,17 +518,17 @@ mod tests {
 
     #[test]
     fn test_inspector_creation() {
-        let inspector = VariableInspector::new();
+        let _inspector = VariableInspector::new();
         assert!(true); // Just test creation
     }
 
     #[test]
     fn test_find_scope_basic() {
-        let inspector = VariableInspector::new();
+        let _inspector = VariableInspector::new();
         let source = "fn main() { let x = 1; }";
 
         let mut parser = Parser::new();
-        parser.set_language(tree_sitter_rust::language()).unwrap();
+        parser.set_language(&tree_sitter_rust::LANGUAGE.into()).unwrap();
         let tree = parser.parse(source, None).unwrap();
 
         let scope = inspector.find_scope_at_line(tree.root_node(), 0);
