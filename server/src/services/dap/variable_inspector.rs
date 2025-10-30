@@ -524,7 +524,7 @@ mod tests {
 
     #[test]
     fn test_find_scope_basic() {
-        let _inspector = VariableInspector::new();
+        let inspector = VariableInspector::new();
         let source = "fn main() { let x = 1; }";
 
         let mut parser = Parser::new();
