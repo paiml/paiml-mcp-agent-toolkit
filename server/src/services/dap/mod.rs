@@ -12,6 +12,7 @@ pub mod execution_recorder;
 pub mod recording;  // Sprint 75: .pmat file format
 pub mod replay_engine;
 pub mod server;
+pub mod timeline_player;  // Sprint 77: TIMELINE-001 - Recording playback control
 pub mod timeline_ui;
 pub mod types;
 pub mod variable_diff;
@@ -25,6 +26,7 @@ pub use recording::{
 };
 pub use replay_engine::ReplayEngine;
 pub use server::DapServer;
+pub use timeline_player::TimelinePlayer;
 pub use timeline_ui::TimelineUI;
 pub use types::*;
 pub use variable_diff::VariableDiff;
