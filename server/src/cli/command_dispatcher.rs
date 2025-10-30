@@ -378,6 +378,20 @@ impl CommandDispatcher {
             Commands::Hooks(hooks_cmd) => handlers::handle_hooks_command(&hooks_cmd).await,
 
             Commands::Mutate(args) => handlers::mutate::handle(args, server).await,
+
+            Commands::Debug { command } => {
+                // Sprint 74: Time-travel debugging commands
+                // TODO: Implement debug handlers in DEBUG-002 and DEBUG-003
+                use crate::cli::commands::DebugCommands;
+                match command {
+                    DebugCommands::Serve { port, host } => {
+                        anyhow::bail!("Debug serve command not yet implemented (DEBUG-002). Port: {}, Host: {}", port, host)
+                    }
+                    DebugCommands::Replay { recording, position, interactive } => {
+                        anyhow::bail!("Debug replay command not yet implemented (DEBUG-003). Recording: {:?}, Position: {:?}, Interactive: {}", recording, position, interactive)
+                    }
+                }
+            }
         }
     }
 
