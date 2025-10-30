@@ -7,6 +7,8 @@
 // - Terminal state management (raw mode, cleanup)
 // - Event parsing and routing
 
+#![cfg(feature = "tui")]
+
 use pmat::services::dap::timeline_tui::{EventLoop, TerminalEvent, KeyCode};
 
 // ============================================================================
@@ -25,6 +27,7 @@ fn test_event_loop_creation() {
 // ============================================================================
 
 #[test]
+#[ignore] // Requires real TTY (fails in CI/test harness)
 fn test_terminal_raw_mode_enable() {
     // RED: EventLoop should enable terminal raw mode
     let mut event_loop = EventLoop::new();
@@ -37,6 +40,7 @@ fn test_terminal_raw_mode_enable() {
 }
 
 #[test]
+#[ignore] // Requires real TTY (fails in CI/test harness)
 fn test_terminal_raw_mode_cleanup() {
     // RED: EventLoop should restore terminal on drop
     let mut event_loop = EventLoop::new();
@@ -141,6 +145,7 @@ fn test_event_loop_stop() {
 }
 
 #[test]
+#[ignore] // Requires real TTY (fails in CI/test harness)
 fn test_event_loop_poll_timeout() {
     // RED: Event loop should timeout if no events available
     use std::time::Duration;
