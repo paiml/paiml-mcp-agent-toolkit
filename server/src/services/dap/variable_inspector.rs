@@ -99,13 +99,17 @@ impl VariableInspector {
         let scope = scope_node.unwrap();
         let mut variables = Vec::new();
 
-        // Extract let bindings
-        self.extract_rust_let_bindings(scope, bytes, &mut variables, target_line_idx);
-
-        // Extract function parameters if we're in a function
-        if let Some(func_node) = self.find_parent_function(scope) {
+        // Find the parent function to get the scope we should search from
+        let search_scope = if let Some(func_node) = self.find_parent_function(scope) {
+            // Extract function parameters
             self.extract_rust_function_params(func_node, bytes, &mut variables);
-        }
+            func_node
+        } else {
+            scope
+        };
+
+        // Extract let bindings from the function or scope
+        self.extract_rust_let_bindings(search_scope, bytes, &mut variables, target_line_idx);
 
         Ok(variables)
     }
@@ -124,13 +128,17 @@ impl VariableInspector {
         let scope = scope_node.unwrap();
         let mut variables = Vec::new();
 
-        // Extract variable declarations (const, let, var)
-        self.extract_ts_variable_declarations(scope, bytes, &mut variables, target_line_idx);
-
-        // Extract function parameters
-        if let Some(func_node) = self.find_parent_function(scope) {
+        // Find the parent function to get the scope we should search from
+        let search_scope = if let Some(func_node) = self.find_parent_function(scope) {
+            // Extract function parameters
             self.extract_ts_function_params(func_node, bytes, &mut variables);
-        }
+            func_node
+        } else {
+            scope
+        };
+
+        // Extract variable declarations (const, let, var) from the function or scope
+        self.extract_ts_variable_declarations(search_scope, bytes, &mut variables, target_line_idx);
 
         Ok(variables)
     }
@@ -149,13 +157,17 @@ impl VariableInspector {
         let scope = scope_node.unwrap();
         let mut variables = Vec::new();
 
-        // Extract assignments
-        self.extract_python_assignments(scope, bytes, &mut variables, target_line_idx);
-
-        // Extract function parameters
-        if let Some(func_node) = self.find_parent_function(scope) {
+        // Find the parent function to get the scope we should search from
+        let search_scope = if let Some(func_node) = self.find_parent_function(scope) {
+            // Extract function parameters
             self.extract_python_function_params(func_node, bytes, &mut variables);
-        }
+            func_node
+        } else {
+            scope
+        };
+
+        // Extract assignments from the function or scope
+        self.extract_python_assignments(search_scope, bytes, &mut variables, target_line_idx);
 
         Ok(variables)
     }
@@ -213,14 +225,26 @@ impl VariableInspector {
             }
 
             if child.kind() == "let_declaration" {
-                if let Some(pattern_node) = child.child_by_field_name("pattern") {
-                    let var_name = pattern_node.utf8_text(bytes).unwrap_or("").to_string();
+                // Find the identifier node (variable name)
+                let mut decl_cursor = child.walk();
+                let mut var_name = String::new();
+                let mut value_node = None;
 
-                    // Infer type
-                    let type_info = if let Some(type_node) = child.child_by_field_name("type") {
-                        type_node.utf8_text(bytes).unwrap_or("unknown").to_string()
-                    } else if let Some(value_node) = child.child_by_field_name("value") {
-                        self.infer_rust_type(value_node, bytes)
+                for decl_child in child.children(&mut decl_cursor) {
+                    match decl_child.kind() {
+                        "identifier" if var_name.is_empty() => {
+                            var_name = decl_child.utf8_text(bytes).unwrap_or("").to_string();
+                        }
+                        "integer_literal" | "float_literal" | "string_literal" | "boolean_literal" | "true" | "false" => {
+                            value_node = Some(decl_child);
+                        }
+                        _ => {}
+                    }
+                }
+
+                if !var_name.is_empty() {
+                    let type_info = if let Some(val_node) = value_node {
+                        self.infer_rust_type(val_node, bytes)
                     } else {
                         "unknown".to_string()
                     };
@@ -245,14 +269,24 @@ impl VariableInspector {
             let mut cursor = params_node.walk();
             for param in params_node.children(&mut cursor) {
                 if param.kind() == "parameter" {
-                    if let Some(pattern) = param.child_by_field_name("pattern") {
-                        let name = pattern.utf8_text(bytes).unwrap_or("").to_string();
-                        let type_info = if let Some(type_node) = param.child_by_field_name("type") {
-                            type_node.utf8_text(bytes).unwrap_or("unknown").to_string()
-                        } else {
-                            "unknown".to_string()
-                        };
+                    // Extract identifier and type from parameter children
+                    let mut param_cursor = param.walk();
+                    let mut name = String::new();
+                    let mut type_info = String::from("unknown");
 
+                    for param_child in param.children(&mut param_cursor) {
+                        match param_child.kind() {
+                            "identifier" if name.is_empty() => {
+                                name = param_child.utf8_text(bytes).unwrap_or("").to_string();
+                            }
+                            "primitive_type" | "type_identifier" => {
+                                type_info = param_child.utf8_text(bytes).unwrap_or("unknown").to_string();
+                            }
+                            _ => {}
+                        }
+                    }
+
+                    if !name.is_empty() {
                         variables.push(Variable {
                             name,
                             value: String::new(),
@@ -290,14 +324,21 @@ impl VariableInspector {
                 let mut child_cursor = child.walk();
                 for declarator in child.children(&mut child_cursor) {
                     if declarator.kind() == "variable_declarator" {
-                        if let Some(name_node) = declarator.child_by_field_name("name") {
-                            let name = name_node.utf8_text(bytes).unwrap_or("").to_string();
-                            variables.push(Variable {
-                                name,
-                                value: String::new(),
-                                type_info: "any".to_string(),
-                                variables_reference: None,
-                            });
+                        // Find the first identifier child
+                        let mut decl_cursor = declarator.walk();
+                        for decl_child in declarator.children(&mut decl_cursor) {
+                            if decl_child.kind() == "identifier" {
+                                let name = decl_child.utf8_text(bytes).unwrap_or("").to_string();
+                                if !name.is_empty() {
+                                    variables.push(Variable {
+                                        name,
+                                        value: String::new(),
+                                        type_info: "any".to_string(),
+                                        variables_reference: None,
+                                    });
+                                }
+                                break; // Only get the first identifier
+                            }
                         }
                     }
                 }
@@ -337,14 +378,21 @@ impl VariableInspector {
             }
 
             if child.kind() == "assignment" {
-                if let Some(left_node) = child.child_by_field_name("left") {
-                    let name = left_node.utf8_text(bytes).unwrap_or("").to_string();
-                    variables.push(Variable {
-                        name,
-                        value: String::new(),
-                        type_info: "Any".to_string(),
-                        variables_reference: None,
-                    });
+                // Find the first identifier child (the variable being assigned to)
+                let mut assign_cursor = child.walk();
+                for assign_child in child.children(&mut assign_cursor) {
+                    if assign_child.kind() == "identifier" {
+                        let name = assign_child.utf8_text(bytes).unwrap_or("").to_string();
+                        if !name.is_empty() {
+                            variables.push(Variable {
+                                name,
+                                value: String::new(),
+                                type_info: "Any".to_string(),
+                                variables_reference: None,
+                            });
+                        }
+                        break; // Only get the first identifier (left side of assignment)
+                    }
                 }
             }
 
