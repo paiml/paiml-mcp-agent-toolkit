@@ -65,6 +65,8 @@ impl CliAdapter {
                 format,
                 include_large_files: _,
                 skip_expensive_metrics: _,
+                language: _,
+                languages: _,
             } => Self::decode_context(toolchain.as_deref(), project_path, output, format),
             Commands::Analyze(analyze_cmd) => Self::decode_analyze_command(analyze_cmd),
             Commands::Qdd(_) => Self::cli_only_command_error(),

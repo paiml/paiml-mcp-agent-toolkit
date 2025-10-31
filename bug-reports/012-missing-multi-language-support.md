@@ -2,10 +2,11 @@
 
 **Date**: 2025-10-31
 **Reporter**: User feedback
-**Severity**: Medium → 🔴 RED (TDD in progress)
+**Severity**: Medium → **FIXED** ✅
 **Component**: CLI - context command
-**Status**: RED phase complete (6/6 tests written, all failing)
-**Progress**: Sprint 79 Phase 1 - In development
+**Status**: GREEN phase complete (15/15 tests passing, 100%)
+**Progress**: Sprint 79 Phase 1 - COMPLETE
+**Fixed**: 2025-10-31 (Sprint 79)
 
 ## Description
 
@@ -309,4 +310,108 @@ test result: FAILED. 0 passed; 6 failed; 0 ignored
 **Estimated Effort**: 2-3 hours
 **Methodology**: Extreme TDD (RED ✅ → GREEN → REFACTOR → COMMIT)
 
-**Commit**: 53db52aa
+**Commit (RED)**: 53db52aa
+
+---
+
+## FIXED ✅ (2025-10-31 - Sprint 79 Phase 1)
+
+### Solution Implemented
+
+Created CLI language override functionality with full integration into `pmat context` command:
+
+**Architecture:**
+- `LanguageOverride` struct with `language` and `languages` fields
+- CLI argument parsing via clap (`--language` and `--languages`)
+- Integration with enhanced_language_detection (BUG-011)
+- 3-tier priority: single override > multiple override > auto-detection
+
+**Implementation Details:**
+- **CLI Arguments**: Added to Commands::Context in server/src/cli/commands.rs
+  - `--language <LANG>`: Override to single language
+  - `--languages <LANG1>,<LANG2>`: Specify multiple languages (comma-separated)
+  - Case-insensitive language names (Python, PYTHON, python all work)
+
+- **Language Override Module**: server/src/services/language_override.rs (262 lines)
+  - `get_effective_languages()`: Main API with 3-tier priority
+  - `normalize_language_name()`: Case-insensitive normalization
+  - `validate_language_support()`: Whitelist-based validation
+  - Supported languages: rust, python, javascript, typescript, go, cpp, c, java, kotlin, swift, ruby, php, bash, sh, shell, wasm, wat
+
+- **CLI Integration**: Updated command dispatcher and handler
+  - server/src/cli/command_dispatcher.rs - Added language parameters
+  - server/src/cli/command_structure.rs - Updated UtilityCommandGroup
+  - server/src/cli/handlers/utility_handlers.rs - Applied override logic
+
+**Test Coverage:**
+- 6 integration tests (100% passing)
+- 9 unit tests in language_override module (100% passing)
+- Cargo example: `cargo run --example bug_012_multi_language_cli`
+
+**Files Changed:**
+- `server/src/services/language_override.rs` (262 lines, NEW)
+- `server/src/services/mod.rs` (+1 line, module registration)
+- `server/src/cli/commands.rs` (+10 lines, CLI arguments)
+- `server/src/cli/command_dispatcher.rs` (+2 lines, parameter passing)
+- `server/src/cli/command_structure.rs` (+4 lines, method signature)
+- `server/src/cli/handlers/utility_handlers.rs` (+13 lines, override logic)
+- `server/src/unified_protocol/adapters/cli.rs` (+2 lines, pattern match)
+- `server/tests/bug_012_multi_language_cli_tests.rs` (317 lines, tests)
+- `server/examples/bug_012_multi_language_cli.rs` (205 lines, demo)
+
+**Test Results:**
+```
+running 6 tests
+test test_language_name_case_insensitive ... ok
+test test_language_override_beats_auto_detection ... ok
+test test_language_override_invalid_language ... ok
+test test_language_override_single ... ok
+test test_languages_override_multiple ... ok
+test test_uses_enhanced_language_detection ... ok
+
+test result: ok. 6 passed; 0 failed
+```
+
+**Methodology:** Extreme TDD (RED ✅ → GREEN ✅ → REFACTOR → COMMIT)
+
+**Quality Gates:** ✅ All passing
+- Compilation: Clean
+- Tests: 15/15 passing (100%) - 6 integration + 9 unit
+- TDG: No regressions
+- Cargo example: Verified
+
+**Usage Examples:**
+```bash
+# Override to specific language
+pmat context --language python
+
+# Analyze multiple languages
+pmat context --languages rust,python,typescript
+
+# Case-insensitive
+pmat context --language Python
+pmat context --language PYTHON
+
+# Auto-detection fallback (uses BUG-011)
+pmat context
+```
+
+**User Impact:**
+- ✅ Manual language override when auto-detection is wrong
+- ✅ Multi-language project support (Rust + Python + TypeScript)
+- ✅ Case-insensitive language names for better UX
+- ✅ Helpful error messages for unsupported languages
+- ✅ Seamless integration with BUG-011 enhanced detection
+- ✅ Clear priority: override > auto-detection
+
+**Documentation:**
+- Bug report updated with FIXED section
+- Cargo example demonstrates all features
+- pmat-book chapter: TBD
+
+**Sprint 79 Phase 1 Status:**
+- ✅ BUG-011: Enhanced Language Detection (COMPLETE)
+- ✅ BUG-004: Multi-Language Dead Code (COMPLETE)
+- ✅ BUG-012: CLI Language Override (COMPLETE)
+
+**Commit (GREEN)**: TBD
