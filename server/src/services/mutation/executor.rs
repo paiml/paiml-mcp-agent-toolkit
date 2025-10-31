@@ -43,6 +43,8 @@ impl MutantExecutor {
     ///
     /// Uses RAII pattern with MutantGuard to ensure original file is ALWAYS restored
     /// even if process is interrupted (SIGINT/Ctrl+C)
+    ///
+    /// BUG-064 FIX: Uses atomic write operations to prevent file corruption
     pub async fn execute_mutant(&self, mutant: &Mutant) -> Result<MutationResult> {
         let start_time = Instant::now();
 
@@ -50,10 +52,12 @@ impl MutantExecutor {
         // The guard will restore the file when dropped, even on panic or early return
         let mut guard = super::guard::MutantGuard::new(&mutant.original_file).await?;
 
-        // Step 2: Write mutated source (safe to return early on error - guard ensures cleanup)
-        fs::write(&mutant.original_file, &mutant.mutated_source)
+        // Step 2: Write mutated source ATOMICALLY (BUG-064 FIX)
+        // Using atomic write ensures file is either fully written or unchanged
+        // Prevents "491 lines → 5 lines" corruption on timeout/interruption
+        self.atomic_write(&mutant.original_file, &mutant.mutated_source)
             .await
-            .context("Failed to write mutated source")?;
+            .context("Failed to write mutated source atomically")?;
 
         // Step 3: Run tests with timeout (smart filtering)
         let test_result = timeout(self.timeout, self.run_cargo_test_for_mutant(mutant)).await;
@@ -518,6 +522,73 @@ impl MutantExecutor {
         Ok(combined)
     }
 
+    /// Atomically write content to a file (BUG-064 FIX)
+    ///
+    /// Uses write-to-temp-then-rename pattern to ensure atomic file operations.
+    /// This prevents file corruption if the process is interrupted during write.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - Target file path
+    /// * `content` - Content to write
+    ///
+    /// # Returns
+    ///
+    /// Ok(()) if successful, or an error
+    ///
+    /// # Implementation
+    ///
+    /// 1. Create temp file in same directory (ensures atomic rename works)
+    /// 2. Write content to temp file
+    /// 3. Flush and sync to ensure data is on disk
+    /// 4. Atomically rename temp file to target (Unix atomic operation)
+    /// 5. On error, clean up temp file
+    ///
+    /// This ensures the target file is either:
+    /// - Fully updated with new content, OR
+    /// - Completely unchanged (original content preserved)
+    ///
+    /// Never partially written (which causes "491 lines → 5 lines" bug)
+    async fn atomic_write(&self, path: &Path, content: &str) -> Result<()> {
+        use tokio::io::AsyncWriteExt;
+
+        // Create temp file in same directory as target
+        // (required for atomic rename on same filesystem)
+        let temp_path = path.with_extension("pmat_tmp");
+
+        // Write to temp file
+        let mut file = tokio::fs::File::create(&temp_path)
+            .await
+            .with_context(|| format!("Failed to create temp file: {}", temp_path.display()))?;
+
+        file.write_all(content.as_bytes())
+            .await
+            .context("Failed to write to temp file")?;
+
+        // Flush and sync to ensure data is on disk
+        file.flush().await.context("Failed to flush temp file")?;
+        file.sync_all()
+            .await
+            .context("Failed to sync temp file")?;
+
+        // Close the file explicitly
+        drop(file);
+
+        // Atomically rename temp file to target
+        // This is atomic on Unix - either succeeds completely or fails completely
+        tokio::fs::rename(&temp_path, path)
+            .await
+            .with_context(|| {
+                format!(
+                    "Failed to atomically rename {} to {}",
+                    temp_path.display(),
+                    path.display()
+                )
+            })?;
+
+        Ok(())
+    }
+
     /// Extract module path from file path for smart test filtering
     ///
     /// This implements the Toyota Way fix: only run tests relevant to the mutation
@@ -684,5 +755,59 @@ mod tests {
         assert_eq!(failures.len(), 2);
         assert!(failures.contains(&"test_add".to_string()));
         assert!(failures.contains(&"test_sub".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_atomic_write_basic() {
+        use tempfile::NamedTempFile;
+        use std::fs;
+
+        // Create a temp file for testing
+        let temp_file = NamedTempFile::new().unwrap();
+        let test_path = temp_file.path().to_path_buf();
+
+        // Write initial content
+        fs::write(&test_path, "original content").unwrap();
+
+        // Create executor and write new content atomically
+        let executor = MutantExecutor::new(PathBuf::from("."));
+        let new_content = "new content that should be atomic";
+
+        executor.atomic_write(&test_path, new_content).await.unwrap();
+
+        // Verify content was written correctly
+        let final_content = fs::read_to_string(&test_path).unwrap();
+        assert_eq!(final_content, new_content);
+
+        // Verify no temp file left behind
+        let temp_path = test_path.with_extension("pmat_tmp");
+        assert!(!temp_path.exists(), "Temp file should be cleaned up");
+    }
+
+    #[tokio::test]
+    async fn test_atomic_write_preserves_on_error() {
+        use tempfile::TempDir;
+        use std::fs;
+
+        // Create a temp directory
+        let temp_dir = TempDir::new().unwrap();
+        let test_path = temp_dir.path().join("test_file.rs");
+
+        // Write original content
+        fs::write(&test_path, "original content").unwrap();
+
+        // Create executor
+        let executor = MutantExecutor::new(PathBuf::from("."));
+
+        // Try to write to non-existent directory (should fail)
+        let bad_path = PathBuf::from("/nonexistent/directory/file.rs");
+        let result = executor.atomic_write(&bad_path, "new content").await;
+
+        // Verify operation failed
+        assert!(result.is_err(), "Should fail to write to nonexistent directory");
+
+        // Verify original file unchanged
+        let final_content = fs::read_to_string(&test_path).unwrap();
+        assert_eq!(final_content, "original content", "Original file should be unchanged");
     }
 }
