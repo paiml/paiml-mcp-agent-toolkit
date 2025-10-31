@@ -3965,6 +3965,21 @@ pub enum ConfigFormat {
 /// Embed subcommands for semantic search (PMAT-SEARCH-011)
 #[derive(Subcommand)]
 #[cfg_attr(test, derive(Debug))]
+#[command(after_help = "EXAMPLES:
+# Sync embeddings for current codebase
+pmat embed sync
+
+# Check embedding database status
+pmat embed status
+
+# Clear all embeddings (requires confirmation)
+pmat embed clear --confirm
+
+# Sync with verbose output
+pmat embed sync --verbose
+
+# Check status in JSON format
+pmat embed status --format json")]
 pub enum EmbedCommands {
     /// Sync embeddings for codebase
     Sync {
@@ -3977,14 +3992,14 @@ pub enum EmbedCommands {
         language: Option<String>,
 
         /// Output format
-        #[arg(long, value_enum, default_value = "summary")]
+        #[arg(long, value_enum, default_value = "table")]
         format: OutputFormat,
     },
 
     /// Show embedding database status
     Status {
         /// Output format
-        #[arg(long, value_enum, default_value = "summary")]
+        #[arg(long, value_enum, default_value = "table")]
         format: OutputFormat,
     },
 
