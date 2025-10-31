@@ -54,61 +54,50 @@
 **Test Results**: 9/9 tests passing (100%)
 **Commit**: (pending)
 
-#### BUG-004: Dead Code Requires Cargo.toml (CRITICAL) 🟡 WIP
-**Status**: 🟡 WIP - 3/7 tests passing (43%), foundation complete
+#### BUG-004: Dead Code Requires Cargo.toml (CRITICAL) ✅ COMPLETE
+**Status**: ✅ GREEN (All 8/8 tests passing, cargo example verified)
 **Priority**: P0 - DEAD CODE ANALYSIS BROKEN FOR NON-RUST
 **Issue**: Dead code analyzer assumes Rust, requires Cargo.toml
 **Impact**: Feature completely broken for C, C++, Python projects
 **Files**:
-- `server/src/services/dead_code_multi_language.rs` - NEW: Multi-language analyzer (535 lines)
-- `server/tests/bug_004_dead_code_multi_language_tests.rs` - 7 tests (3 passing, 4 refinement needed)
-- `server/examples/bug_004_dead_code_c_project.rs` - Reproduction example
-**Cargo Example**: `cargo run --example bug_004_dead_code_c_project` (compiles, shows bug)
-**TDD Progress**:
-1. ✅ RED: 7 tests written (all failing initially)
+- `server/src/services/dead_code_multi_language.rs` - NEW: Multi-language analyzer (490 lines)
+- `server/tests/bug_004_dead_code_multi_language_tests.rs` - 8 tests (100% passing)
+- `server/examples/bug_004_dead_code_c_project.rs` - Demonstration example
+**Cargo Example**: `cargo run --example bug_004_dead_code_c_project` ✅ VERIFIED
+**TDD Completed**:
+1. ✅ RED: 7 integration tests + 1 unit test written (all failing initially)
 2. ✅ GREEN: DeadCodeStrategy trait implemented
 3. ✅ GREEN: Language detection integration (uses BUG-011)
-4. ✅ GREEN: C/C++ function definition detection (regex-based)
-5. ✅ GREEN: Python function detection
-6. 🟡 PARTIAL: Dead code identification (3/7 tests passing)
-7. ⏳ PENDING: Refine header file filtering
-8. ⏳ PENDING: Improve call detection for Python
-9. ⏳ PENDING: Implement Rust strategy
+4. ✅ GREEN: C/C++ function definition detection (regex-based, multiline support)
+5. ✅ GREEN: Python function detection (def filtering)
+6. ✅ GREEN: Rust strategy (regex-based with test filtering)
+7. ✅ GREEN: Fixed duplicate detection bug (skip_next_line logic)
+8. ✅ GREEN: Fixed inline function body scanning
+9. ✅ GREEN: All 8/8 tests passing
 
-**Implementation Status**:
+**Implementation Complete**:
 - ✅ DeadCodeStrategy trait pattern
-- ✅ RustDeadCodeStrategy (stub)
-- ✅ CDeadCodeStrategy (functional for simple cases)
+- ✅ RustDeadCodeStrategy (regex-based, functional)
+- ✅ CDeadCodeStrategy (handles inline bodies, multiline defs)
 - ✅ CppDeadCodeStrategy (delegates to C)
-- ✅ PythonDeadCodeStrategy (basic implementation)
+- ✅ PythonDeadCodeStrategy (def filtering for declarations)
 - ✅ Language-agnostic entry point
 - ✅ Integration with enhanced_language_detection
 
-**Test Results**: 3/7 passing (43%)
+**Test Results**: 8/8 passing (100%)
+- ✅ test_c_project_dead_code_without_cargo_toml
 - ✅ test_cpp_project_dead_code_with_cmake
+- ✅ test_python_project_dead_code_without_cargo_toml
+- ✅ test_rust_project_dead_code_still_works
 - ✅ test_unsupported_language_returns_error
 - ✅ test_uses_enhanced_language_detection
-- ❌ test_c_project_dead_code_without_cargo_toml (header filtering needed)
-- ❌ test_python_project_dead_code_without_cargo_toml (call detection)
-- ❌ test_rust_project_dead_code_still_works (not implemented)
-- ❌ test_dead_code_percentage_calculation (edge case)
+- ✅ test_dead_code_percentage_calculation
+- ✅ test_c_dead_code_detection (unit test)
 
-**What Works**:
-- Language detection (integrates with BUG-011)
-- C/C++ function definition parsing (multiline, inline)
-- Basic dead code identification
-- Error handling for unsupported languages
-- DeadCodeStrategy extensibility pattern
+**Quality Gates**: ✅ All passing
+**Commit**: e589ac07
 
-**What Needs Refinement**:
-- Filter declarations in .h files (count only .c implementations)
-- Python call detection (filter keywords better)
-- Rust strategy (integrate existing cargo-based analyzer)
-- Edge cases (complex multiline functions, templates)
-
-**Commit**: (WIP - foundation complete, refinement needed)
-
-#### BUG-012: Multi-Language Support Missing (HIGH)
+#### BUG-012: Multi-Language CLI Support (HIGH) ⏳ PENDING
 **Status**: 🔴 RED (Tests written, implementation pending)
 **Priority**: P1 - BLOCKS POLYGLOT PROJECTS
 **Issue**: No --language flag, no multi-language context generation
