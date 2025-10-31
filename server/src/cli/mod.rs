@@ -35,6 +35,7 @@ pub use commands::{
     AgentCommands, AnalyzeCommands, Cli, Commands, EnforceCommands, Mode, RefactorCommands,
 };
 pub use enums::*;
+pub use handlers::get_timeline_help_text; // Sprint 78: TUI-006
 
 // Type definitions for handler compatibility
 #[derive(Debug, Clone)]
