@@ -2,8 +2,9 @@
 
 **Date**: 2025-10-31
 **Reporter**: User feedback
-**Severity**: Medium
+**Severity**: Medium → ✅ FIXED
 **Component**: CLI - embed subcommand
+**Status**: GREEN phase complete (same fix as BUG-001)
 
 ## Description
 
@@ -71,3 +72,16 @@ The command should either:
 - `server/src/cli/mod.rs` - Main CLI definition
 - `server/src/cli/handlers/embed.rs` or similar - Embed command handler
 - Shared argument parsing logic for embed subcommands
+
+## Fix Applied
+
+**Root Cause**: Same as BUG-001 - `default_value = "summary"` but OutputFormat only has `Table`, `Json`, `Yaml`
+
+**Solution**: Changed default value from "summary" to "table" for Sync command
+
+**Files Modified**:
+- `server/src/cli/commands.rs:3995` - Changed Sync default from "summary" to "table"
+- `server/tests/bug_001_002_003_embed_tests.rs` - Shared test suite (test 2, part of 6)
+- `bug-reports/002-embed-sync-wrong-error.md` - Updated to FIXED
+
+**Impact**: `pmat embed sync` now works with default arguments, matching BUG-001 fix.
