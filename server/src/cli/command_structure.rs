@@ -213,6 +213,8 @@ impl CommandExecutor {
                 format,
                 include_large_files,
                 skip_expensive_metrics,
+                language,
+                languages,
             } => {
                 self.registry
                     .utility_handlers
@@ -223,6 +225,8 @@ impl CommandExecutor {
                         format,
                         include_large_files,
                         skip_expensive_metrics,
+                        language,
+                        languages,
                     )
                     .await
             }
@@ -660,6 +664,8 @@ impl UtilityCommandGroup {
         format: crate::cli::ContextFormat,
         include_large_files: bool,
         skip_expensive_metrics: bool,
+        language: Option<String>,
+        languages: Option<Vec<String>>,
     ) -> Result<()> {
         crate::cli::handlers::utility_handlers::handle_context(
             toolchain,
@@ -668,6 +674,8 @@ impl UtilityCommandGroup {
             format,
             include_large_files,
             skip_expensive_metrics,
+            language,
+            languages,
         )
         .await
     }

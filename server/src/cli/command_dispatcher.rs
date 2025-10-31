@@ -79,6 +79,8 @@ impl CommandDispatcher {
                 format,
                 include_large_files,
                 skip_expensive_metrics,
+                language,
+                languages,
             } => {
                 handlers::handle_context(
                     toolchain,
@@ -87,6 +89,8 @@ impl CommandDispatcher {
                     format,
                     include_large_files,
                     skip_expensive_metrics,
+                    language,
+                    languages,
                 )
                 .await
             }
