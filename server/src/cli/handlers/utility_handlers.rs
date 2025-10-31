@@ -109,13 +109,25 @@ pub async fn handle_context(
     format: ContextFormat,
     include_large_files: bool,
     skip_expensive_metrics: bool,
+    language: Option<String>,
+    languages: Option<Vec<String>>,
 ) -> Result<()> {
     use crate::services::deep_context::{
         AnalysisType, CacheStrategy, DagType, DeepContextAnalyzer, DeepContextConfig,
     };
+    use crate::services::language_override::{get_effective_languages, LanguageOverride};
 
-    // Detect or use provided toolchain
-    let toolchain = detect_or_use_toolchain(toolchain, &project_path)?;
+    // BUG-012: Apply language override if specified
+    let override_opts = LanguageOverride { language, languages };
+    let effective_languages = get_effective_languages(&override_opts, &project_path)?;
+
+    // Use the first effective language as the toolchain (for now - single language support)
+    // TODO: Full multi-language support in future sprint
+    let toolchain = if !effective_languages.is_empty() {
+        effective_languages[0].clone()
+    } else {
+        detect_or_use_toolchain(toolchain, &project_path)?
+    };
 
     // Configure deep context analysis - RESTORE FULL ANALYSIS CAPABILITY
     let config = DeepContextConfig {

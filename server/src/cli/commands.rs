@@ -208,6 +208,16 @@ pub enum Commands {
         /// Skip expensive metrics (TDG, complexity analysis) for faster execution
         #[arg(long)]
         skip_expensive_metrics: bool,
+
+        /// Override language detection (e.g., "rust", "cpp", "python")
+        /// BUG-012: Single language override support
+        #[arg(long)]
+        language: Option<String>,
+
+        /// Specify multiple languages (comma-separated: "rust,python,typescript")
+        /// BUG-012: Multi-language override support
+        #[arg(long, value_delimiter = ',')]
+        languages: Option<Vec<String>>,
     },
 
     /// Analyze code metrics and patterns
