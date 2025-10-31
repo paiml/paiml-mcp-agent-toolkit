@@ -2539,6 +2539,8 @@ mod tests {
             format: ContextFormat::Markdown,
             include_large_files: false,
             skip_expensive_metrics: true,
+            language: None,
+            languages: None,
         };
 
         let input = CliInput::from_commands(command);
