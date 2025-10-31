@@ -2,8 +2,10 @@
 
 **Date**: 2025-10-31
 **Reporter**: User feedback
-**Severity**: Medium
+**Severity**: Medium → 🔴 RED (TDD in progress)
 **Component**: CLI - context command
+**Status**: RED phase complete (6/6 tests written, all failing)
+**Progress**: Sprint 79 Phase 1 - In development
 
 ## Description
 
@@ -221,3 +223,90 @@ fn test_language_override() {
 
 - Bug #011: Wrong language detection needs manual override capability
 - Bug #004: Dead code analyzer needs multi-language support
+
+---
+
+## TDD PROGRESS - RED PHASE COMPLETE 🔴
+
+**Date**: 2025-10-31
+**Phase**: RED (Test Definition)
+**Status**: ✅ Complete - 6 failing tests written
+
+### RED Phase Tests Created
+
+**File**: `server/tests/bug_012_multi_language_cli_tests.rs` (272 lines)
+
+1. ✅ **test_language_override_single**
+   - Tests: `--language python` flag
+   - Expected: Analyze only Python files, ignore others
+   - Status: 🔴 Failing (not implemented)
+
+2. ✅ **test_languages_override_multiple**
+   - Tests: `--languages rust,python` flag
+   - Expected: Analyze multiple specified languages
+   - Status: 🔴 Failing (not implemented)
+
+3. ✅ **test_language_override_invalid_language**
+   - Tests: Error handling for unsupported languages
+   - Expected: Helpful error message for `--language fortran`
+   - Status: 🔴 Failing (not implemented)
+
+4. ✅ **test_language_override_beats_auto_detection**
+   - Tests: Override precedence over auto-detection
+   - Expected: `--language c` should override auto-detected C++
+   - Status: 🔴 Failing (not implemented)
+
+5. ✅ **test_uses_enhanced_language_detection**
+   - Tests: Integration with BUG-011 enhanced detection
+   - Expected: Auto-detect using confidence scoring
+   - Status: 🔴 Failing (not implemented)
+
+6. ✅ **test_language_name_case_insensitive**
+   - Tests: Case-insensitive language names
+   - Expected: `python`, `Python`, `PYTHON` all work
+   - Status: 🔴 Failing (not implemented)
+
+### Test Results (RED Phase)
+
+```
+running 6 tests
+test test_language_name_case_insensitive ... FAILED
+test test_language_override_beats_auto_detection ... FAILED
+test test_language_override_invalid_language ... FAILED
+test test_language_override_single ... FAILED
+test test_languages_override_multiple ... FAILED
+test test_uses_enhanced_language_detection ... FAILED
+
+test result: FAILED. 0 passed; 6 failed; 0 ignored
+```
+
+✅ **RED Phase Verification**: All tests fail as expected - ready for GREEN phase
+
+### Next Steps (GREEN Phase)
+
+**Implementation Required:**
+1. Add CLI argument fields:
+   ```rust
+   #[arg(long)]
+   language: Option<String>,
+   
+   #[arg(long, value_delimiter = ',')]
+   languages: Option<Vec<String>>,
+   ```
+
+2. Implement language override logic in context handler
+3. Integrate with `enhanced_language_detection` (BUG-011)
+4. Normalize language names (case-insensitive)
+5. Validate language support
+6. Make all 6 tests pass (GREEN)
+
+**Quality Requirements:**
+- All 6 tests must pass (100%)
+- Cargo example demonstrating flags
+- pmat-book chapter via TDD
+- Quality gates: TDG, compilation, tests
+
+**Estimated Effort**: 2-3 hours
+**Methodology**: Extreme TDD (RED ✅ → GREEN → REFACTOR → COMMIT)
+
+**Commit**: 53db52aa
