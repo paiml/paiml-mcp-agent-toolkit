@@ -1,14 +1,213 @@
 # PMAT Agent System Roadmap
 
-## 🎉 CURRENT STATUS: v2.183.0 - Sprint 77 + 78 Release ✅
+## 🎉 CURRENT STATUS: v2.184.0 - Sprint 79 In Progress 🚧
 
-**Current Version**: v2.183.0 (Released October 31, 2025)
-**Latest Sprint**: Sprint 78 - Interactive Timeline TUI (Completed October 31, 2025)
-**Status**: ✅ RELEASED - Sprint 77 + 78 published to crates.io and GitHub
-**Installation**: `cargo install pmat --version 2.183.0`
+**Current Version**: v2.184.0-dev (In Development)
+**Latest Sprint**: Sprint 79 - Production Bug Fixes (In Progress - Started October 31, 2025)
+**Previous Release**: v2.183.0 (Sprint 77 + 78 - Released October 31, 2025)
+**Status**: 🚧 IN PROGRESS - Production bug fixes using Extreme TDD
+**Installation**: `cargo install pmat --version 2.183.0` (stable)
 **Crates.io**: https://crates.io/crates/pmat
-**GitHub**: https://github.com/paiml/paiml-mcp-agent-toolkit/releases/tag/v2.183.0
-**Achievement**: Time-travel debugging timeline (Sprint 77) + Interactive TUI (Sprint 78)
+**GitHub**: https://github.com/paiml/paiml-mcp-agent-toolkit
+**Goal**: Fix 12 production bugs identified in user testing with zero-regression quality
+
+---
+
+## 🚧 Sprint 79: Production Bug Fixes - IN PROGRESS 🚧
+
+**Version**: v2.184.0 (Target Release: November 1, 2025)
+**Started**: October 31, 2025
+**Status**: 🚧 IN PROGRESS - Extreme TDD bug fixes
+**Goal**: Fix critical production bugs from user testing with comprehensive test coverage
+**Methodology**: Extreme TDD with cargo examples for each bug reproduction
+
+**Bug Reports**: See `bug-reports/` directory for complete specifications
+
+### Sprint 79 Phase 1: Critical Path (High Priority) 🚧
+
+#### BUG-011: Language Detection Hang (CRITICAL) ✅ COMPLETE
+**Status**: ✅ GREEN (All 9 tests passing, cargo example verified)
+**Priority**: P0 - BLOCKS C++ PROJECT ANALYSIS
+**Issue**: Ceph project detected as "python-uv" (57.2%), hangs on discovery
+**Impact**: Cannot analyze large C++ projects
+**Files**:
+- `server/src/services/enhanced_language_detection.rs` - NEW: Enhanced detection (394 lines)
+- `server/tests/bug_011_language_detection_tests.rs` - 9 tests (100% passing)
+- `server/examples/bug_011_language_detection.rs` - Reproduction example
+**Cargo Example**: `cargo run --example bug_011_language_detection` ✅ VERIFIED
+**TDD Completed**:
+1. ✅ RED: Test multi-language detection algorithm (9 tests written, all failing)
+2. ✅ RED: Test confidence calculation for C++ vs Python
+3. ✅ RED: Test discovery phase timeout (30s)
+4. ✅ RED: Test user override flags (--language cpp)
+5. ✅ GREEN: Implement file extension counting with weights
+6. ✅ GREEN: Implement primary indicators (CMakeLists.txt, Cargo.toml, package.json, go.mod)
+7. ✅ GREEN: Add timeout structure (will be enforced at call site)
+8. ✅ GREEN: Implement multi-language detection (detect_all_languages)
+9. ✅ GREEN: All 9 tests passing
+**Implementation**:
+- Enhanced language detection with confidence scoring
+- Primary indicators: Cargo.toml (+90), CMakeLists.txt (+85), package.json (+30), pyproject.toml (+50), go.mod (+90)
+- Multi-language detection (detects all languages >5%)
+- Manual override support (--language, --languages)
+- File extension mapping for 14+ languages
+**Test Results**: 9/9 tests passing (100%)
+**Commit**: (pending)
+
+#### BUG-004: Dead Code Requires Cargo.toml (CRITICAL)
+**Status**: 🔴 RED (Tests written, implementation pending)
+**Priority**: P0 - DEAD CODE ANALYSIS BROKEN FOR NON-RUST
+**Issue**: Dead code analyzer assumes Rust, requires Cargo.toml
+**Impact**: Feature completely broken for C, C++, Python projects
+**Files**:
+- `server/src/cli/handlers/analyze.rs` - Dead code handler
+- `server/src/services/dead_code.rs` - Language-agnostic analyzer
+**Cargo Example**: `cargo run --example bug_004_dead_code_c_project`
+**TDD Plan**:
+1. RED: Test dead code analysis on C project (no Cargo.toml)
+2. RED: Test dead code analysis on Python project
+3. RED: Test error message for unsupported language
+4. GREEN: Implement language detection in dead code analyzer
+5. GREEN: Add C/C++ dead code strategy (cppcheck or AST-based)
+6. GREEN: Add Python dead code strategy (AST-based)
+7. REFACTOR: Extract DeadCodeStrategy trait
+8. COMMIT: "fix(BUG-004): Multi-language dead code analysis"
+
+#### BUG-012: Multi-Language Support Missing (HIGH)
+**Status**: 🔴 RED (Tests written, implementation pending)
+**Priority**: P1 - BLOCKS POLYGLOT PROJECTS
+**Issue**: No --language flag, no multi-language context generation
+**Impact**: Polyglot projects only analyzed in one language
+**Files**:
+- `server/src/cli/mod.rs` - CLI arguments
+- `server/src/cli/handlers/context.rs` - Multi-language orchestration
+**Cargo Example**: `cargo run --example bug_012_multi_language`
+**TDD Plan**:
+1. RED: Test --language flag parsing
+2. RED: Test --languages flag (comma-separated)
+3. RED: Test multi-language detection (all langs >5%)
+4. RED: Test multi-language context generation
+5. GREEN: Add --language and --languages CLI args
+6. GREEN: Implement detect_all_languages()
+7. GREEN: Implement analyze_multi_language()
+8. REFACTOR: Extract MultiLanguageContext aggregator
+9. COMMIT: "fix(BUG-012): Multi-language support in pmat context"
+
+### Sprint 79 Phase 2: User Experience (Medium Priority) ⏳
+
+#### BUG-007: Function Count Always Zero (MEDIUM)
+**Status**: ⏳ PENDING
+**Priority**: P2 - MISLEADING METRICS
+**Issue**: Shows "Functions: 0" despite functions present
+**Cargo Example**: `cargo run --example bug_007_function_count`
+**TDD Plan**:
+1. RED: Test function count reflects actual functions
+2. RED: Test function count aggregation per file
+3. GREEN: Fix function counting logic
+4. GREEN: Fix display formatting
+5. COMMIT: "fix(BUG-007): Correct function count display"
+
+#### BUG-009: Copyright Detected as Function (MEDIUM)
+**Status**: ⏳ PENDING
+**Priority**: P2 - FALSE POSITIVES IN REPORTS
+**Issue**: Copyright headers detected as function names
+**Cargo Example**: `cargo run --example bug_009_copyright_detection`
+**TDD Plan**:
+1. RED: Test copyright headers ignored
+2. RED: Test actual functions detected
+3. GREEN: Add comment filtering to C/C++ parser
+4. GREEN: Add copyright pattern exclusion
+5. COMMIT: "fix(BUG-009): Filter copyright from function detection"
+
+#### BUG-008: Placeholder Text in Reports (MEDIUM)
+**Status**: ⏳ PENDING
+**Priority**: P2 - EMPTY REPORT SECTIONS
+**Issue**: Report sections show placeholder text instead of data
+**Cargo Example**: `cargo run --example bug_008_placeholder_text`
+**TDD Plan**:
+1. RED: Test all report sections contain data
+2. GREEN: Integrate entropy analysis
+3. GREEN: Integrate graph metrics
+4. GREEN: Integrate provability analysis
+5. COMMIT: "fix(BUG-008): Fill report sections with actual data"
+
+#### BUG-005: Broken Progress Output (MEDIUM)
+**Status**: ⏳ PENDING
+**Priority**: P2 - POOR USER EXPERIENCE
+**Issue**: Progress lines don't overwrite, cause visual corruption
+**Cargo Example**: `cargo run --example bug_005_progress_output`
+**TDD Plan**:
+1. RED: Test progress indicator updates single line
+2. GREEN: Use indicatif progress bars
+3. GREEN: Implement proper ANSI escape codes
+4. COMMIT: "fix(BUG-005): Clean progress output with indicatif"
+
+### Sprint 79 Phase 3: Polish (Low Priority) ⏳
+
+#### BUG-001, BUG-002, BUG-003: Embed Command Errors (LOW)
+**Status**: ⏳ PENDING
+**Priority**: P3 - EMBED SUBCOMMAND BROKEN
+**Issues**: Wrong error messages and examples for embed subcommand
+**Cargo Example**: `cargo run --example bug_001_002_003_embed_errors`
+**TDD Plan**:
+1. RED: Test pmat embed status shows correct status
+2. RED: Test pmat embed sync syncs embeddings
+3. RED: Test pmat embed shows relevant examples
+4. GREEN: Fix embed subcommand handlers
+5. GREEN: Fix clap examples for embed
+6. COMMIT: "fix(BUG-001-003): Embed subcommand errors"
+
+#### BUG-006: Parallel Analysis Count Wrong (LOW)
+**Status**: ⏳ PENDING
+**Priority**: P3 - CONFUSING OUTPUT
+**Issue**: Shows "8 analyses" but only 4 run
+**Cargo Example**: `cargo run --example bug_006_parallel_count`
+**TDD Plan**:
+1. RED: Test analysis count matches spawned count
+2. GREEN: Dynamic count calculation
+3. COMMIT: "fix(BUG-006): Correct parallel analysis count"
+
+#### BUG-010: Warnings Shown as Errors (LOW)
+**Status**: ⏳ PENDING
+**Priority**: P3 - FORMATTING ISSUE
+**Issue**: Warnings formatted like errors, truncated messages
+**Cargo Example**: `cargo run --example bug_010_warning_display`
+**TDD Plan**:
+1. RED: Test warnings displayed distinctly from errors
+2. RED: Test complete error messages (no truncation)
+3. GREEN: Buffer warnings, display at end
+4. GREEN: Add terminal width detection
+5. COMMIT: "fix(BUG-010): Improve warning display"
+
+### Sprint 79 Success Criteria
+
+**Phase 1 Complete When**:
+- ✅ All Phase 1 tests passing (BUG-011, BUG-004, BUG-012)
+- ✅ Ceph project analyzes correctly (C++ detection)
+- ✅ CPython dead code analysis works
+- ✅ Multi-language projects supported
+
+**Phase 2 Complete When**:
+- ✅ All Phase 2 tests passing (BUG-007, BUG-009, BUG-008, BUG-005)
+- ✅ Function counts accurate
+- ✅ No false positives in function detection
+- ✅ All report sections filled with data
+
+**Phase 3 Complete When**:
+- ✅ All Phase 3 tests passing (BUG-001-003, BUG-006, BUG-010)
+- ✅ Embed commands working
+- ✅ Output polished and professional
+
+**Release Criteria**:
+- ✅ All 12 bugs fixed
+- ✅ 100% test coverage for bug fixes
+- ✅ Zero regressions in existing tests
+- ✅ pmat-book validation passes
+- ✅ All cargo examples working
+- ✅ Documentation updated
+
+**Estimated Effort**: 3-4 days (1-1.5 days per phase)
+**Target Release**: v2.184.0 (November 1, 2025)
 
 ---
 
