@@ -1,0 +1,118 @@
+// Sprint 78: TUI-006 GREEN - Timeline CLI Integration
+//
+// Provides TimelineMode enum and helpers for CLI --interactive flag
+
+use anyhow::Result;
+
+/// Timeline playback mode (interactive TUI vs non-interactive)
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TimelineMode {
+    /// Interactive TUI mode (requires TTY)
+    Interactive,
+    /// Non-interactive batch mode
+    NonInteractive,
+}
+
+impl TimelineMode {
+    /// Parse mode from command-line arguments
+    pub fn from_args(args: &[&str]) -> Self {
+        if args.contains(&"--interactive") || args.contains(&"-i") {
+            TimelineMode::Interactive
+        } else {
+            TimelineMode::NonInteractive
+        }
+    }
+
+    /// Check if this is interactive mode
+    pub fn is_interactive(&self) -> bool {
+        matches!(self, TimelineMode::Interactive)
+    }
+
+    /// Check if this is non-interactive mode
+    pub fn is_non_interactive(&self) -> bool {
+        matches!(self, TimelineMode::NonInteractive)
+    }
+
+    /// Check if mode requires a terminal (TTY)
+    pub fn requires_terminal(&self) -> bool {
+        self.is_interactive()
+    }
+
+    /// Validate terminal availability for this mode
+    pub fn validate_terminal_availability(&self, has_tty: bool) -> Result<()> {
+        if self.requires_terminal() && !has_tty {
+            anyhow::bail!("Interactive mode requires a TTY (terminal). Run without --interactive flag for batch mode.");
+        }
+        Ok(())
+    }
+
+    /// Get human-readable description
+    pub fn description(&self) -> &str {
+        match self {
+            TimelineMode::Interactive => "Interactive TUI mode",
+            TimelineMode::NonInteractive => "Non-interactive batch mode",
+        }
+    }
+
+    /// Validate arguments for conflicting flags
+    pub fn validate_args(args: &[&str]) -> Result<()> {
+        let has_interactive = args.contains(&"--interactive") || args.contains(&"-i");
+        let has_json = args.contains(&"--json");
+
+        if has_interactive && has_json {
+            anyhow::bail!("Conflicting flags: --interactive and --json cannot be used together");
+        }
+
+        Ok(())
+    }
+
+    /// Check if TUI feature is available
+    #[cfg(feature = "tui")]
+    pub fn check_feature_availability(&self) -> Result<()> {
+        Ok(())
+    }
+
+    /// Check if TUI feature is available
+    #[cfg(not(feature = "tui"))]
+    pub fn check_feature_availability(&self) -> Result<()> {
+        if self.is_interactive() {
+            anyhow::bail!("Interactive mode requires the 'tui' feature. Rebuild with --features tui");
+        }
+        Ok(())
+    }
+}
+
+impl Default for TimelineMode {
+    fn default() -> Self {
+        TimelineMode::NonInteractive
+    }
+}
+
+/// Placeholder for handle_timeline function
+/// This will be properly implemented when integrating with existing timeline command
+pub fn handle_timeline(_args: &[&str]) -> Result<()> {
+    Ok(())
+}
+
+/// Get timeline command help text
+pub fn get_timeline_help_text() -> String {
+    r#"USAGE:
+    pmat timeline <recording.pmat> [OPTIONS]
+
+OPTIONS:
+    --interactive, -i    Launch interactive TUI for timeline navigation
+    --json              Output timeline data as JSON (conflicts with --interactive)
+    --help, -h          Print this help message
+
+EXAMPLES:
+    # Interactive mode (TUI)
+    pmat timeline recording.pmat --interactive
+
+    # Non-interactive mode (default)
+    pmat timeline recording.pmat
+
+    # JSON output
+    pmat timeline recording.pmat --json
+"#
+    .to_string()
+}
