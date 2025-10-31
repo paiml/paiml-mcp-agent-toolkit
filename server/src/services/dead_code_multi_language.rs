@@ -265,7 +265,14 @@ fn analyze_c_files(files: &[std::path::PathBuf]) -> Result<(Vec<FunctionInfo>, H
         ).unwrap();
 
         let lines: Vec<&str> = content.lines().collect();
+        let mut skip_next_line = false;
         for (line_idx, line) in lines.iter().enumerate() {
+            // Skip if this line was part of a multiline match
+            if skip_next_line {
+                skip_next_line = false;
+                continue;
+            }
+
             // Check current line
             if let Some(cap) = def_regex.captures(line) {
                 let func_name = cap.get(1).unwrap().as_str().to_string();
@@ -284,11 +291,14 @@ fn analyze_c_files(files: &[std::path::PathBuf]) -> Result<(Vec<FunctionInfo>, H
                 if let Some(cap) = def_regex.captures(&combined) {
                     let func_name = cap.get(1).unwrap().as_str().to_string();
                     if func_name != "main" && !func_name.starts_with("_") {
+                        // Add function at the NEXT line (where the actual definition is)
                         defined_functions.push(FunctionInfo {
                             name: func_name,
                             file: file.display().to_string(),
-                            line: line_idx + 1,
+                            line: line_idx + 2,  // Next line, not current
                         });
+                        // Skip processing the next line since we've already handled it
+                        skip_next_line = true;
                     }
                 }
             }
@@ -296,13 +306,21 @@ fn analyze_c_files(files: &[std::path::PathBuf]) -> Result<(Vec<FunctionInfo>, H
 
         // Find function calls: function_name(
         let call_regex = regex::Regex::new(r"\b(\w+)\s*\(").unwrap();
+        // Regex to detect function declarations (return_type function_name)
+        let declaration_regex = regex::Regex::new(
+            r"^\s*(?:static\s+)?(?:inline\s+)?(?:extern\s+)?(?:void|int|char|float|double|long|short|unsigned|struct\s+\w+|enum\s+\w+|\w+\s+\*?)\s+\w+\s*\("
+        ).unwrap();
 
         for line in content.lines() {
             // For lines with inline bodies like: int main() { used_function(); }
-            // Extract the part after the opening brace
+            // Extract the part after the opening brace FIRST (before skipping declarations)
             let code_to_scan = if let Some(brace_pos) = line.find('{') {
                 &line[brace_pos+1..]  // Scan content after the '{'
             } else {
+                // Skip function declarations (lines that start with return type and have no body)
+                if declaration_regex.is_match(line) {
+                    continue;
+                }
                 line  // Scan entire line
             };
 
@@ -357,11 +375,20 @@ fn analyze_python_files(files: &[std::path::PathBuf]) -> Result<(Vec<FunctionInf
 
         // Find function calls
         let call_regex = regex::Regex::new(r"\b(\w+)\s*\(").unwrap();
-        for cap in call_regex.captures_iter(&content) {
-            let func_name = cap.get(1).unwrap().as_str().to_string();
-            // Filter out Python keywords
-            if !["if", "while", "for", "print", "range", "len", "str", "int", "list", "dict", "set"].contains(&func_name.as_str()) {
-                called_functions.insert(func_name);
+        let def_regex_check = regex::Regex::new(r"^\s*def\s+\w+\s*\(").unwrap();
+
+        for line in content.lines() {
+            // Skip function definitions
+            if def_regex_check.is_match(line) {
+                continue;
+            }
+
+            for cap in call_regex.captures_iter(line) {
+                let func_name = cap.get(1).unwrap().as_str().to_string();
+                // Filter out Python keywords
+                if !["if", "while", "for", "print", "range", "len", "str", "int", "list", "dict", "set", "def"].contains(&func_name.as_str()) {
+                    called_functions.insert(func_name);
+                }
             }
         }
     }
@@ -392,15 +419,73 @@ fn find_uncalled_functions(
 // Rust-specific helpers (existing cargo-based analysis)
 // =============================================================================
 
-fn analyze_rust_dead_code_with_cargo(_path: &Path) -> Result<Vec<DeadFunction>> {
-    // Simplified stub - in reality would run cargo check and parse warnings
-    // For now, return empty to make tests pass
-    Ok(Vec::new())
+fn analyze_rust_dead_code_with_cargo(path: &Path) -> Result<Vec<DeadFunction>> {
+    // Simple regex-based analyzer (similar to C/Python)
+    // In future, could integrate cargo check warnings
+
+    let rust_files = find_files_by_extension(path, &["rs"]);
+    let (defined_functions, called_functions) = analyze_rust_files(&rust_files)?;
+    let dead_functions = find_uncalled_functions(&defined_functions, &called_functions);
+
+    Ok(dead_functions)
 }
 
-fn count_rust_functions(_path: &Path) -> Result<usize> {
-    // Simplified stub - would count fn definitions
-    Ok(0)
+fn count_rust_functions(path: &Path) -> Result<usize> {
+    let rust_files = find_files_by_extension(path, &["rs"]);
+    let (defined_functions, _) = analyze_rust_files(&rust_files)?;
+    Ok(defined_functions.len())
+}
+
+/// Analyze Rust files
+fn analyze_rust_files(files: &[std::path::PathBuf]) -> Result<(Vec<FunctionInfo>, HashSet<String>)> {
+    let mut defined_functions = Vec::new();
+    let mut called_functions = HashSet::new();
+
+    for file in files {
+        let content = std::fs::read_to_string(file)
+            .with_context(|| format!("Failed to read file: {:?}", file))?;
+
+        // Find function definitions: fn function_name(
+        let def_regex = regex::Regex::new(r"(?m)^\s*(?:pub\s+)?(?:async\s+)?fn\s+(\w+)\s*[<(]").unwrap();
+
+        for (line_idx, line) in content.lines().enumerate() {
+            if let Some(cap) = def_regex.captures(line) {
+                let func_name = cap.get(1).unwrap().as_str().to_string();
+
+                // Skip main and test functions
+                if func_name != "main" && !func_name.starts_with("test_") {
+                    defined_functions.push(FunctionInfo {
+                        name: func_name,
+                        file: file.display().to_string(),
+                        line: line_idx + 1,
+                    });
+                }
+            }
+        }
+
+        // Find function calls
+        let call_regex = regex::Regex::new(r"\b(\w+)\s*[!]?\(").unwrap();
+        let fn_def_regex = regex::Regex::new(r"^\s*(?:pub\s+)?(?:async\s+)?fn\s+\w+").unwrap();
+
+        for line in content.lines() {
+            // Skip function definitions
+            if fn_def_regex.is_match(line) {
+                continue;
+            }
+
+            for cap in call_regex.captures_iter(line) {
+                let func_name = cap.get(1).unwrap().as_str().to_string();
+                // Filter out Rust keywords
+                if !["if", "while", "for", "match", "return", "let", "mut", "use", "mod", "fn", "println", "vec", "Some", "None", "Ok", "Err"].contains(&func_name.as_str()) {
+                    called_functions.insert(func_name);
+                }
+            }
+        }
+    }
+
+    debug!("Found {} defined Rust functions, {} unique calls", defined_functions.len(), called_functions.len());
+
+    Ok((defined_functions, called_functions))
 }
 
 #[cfg(test)]

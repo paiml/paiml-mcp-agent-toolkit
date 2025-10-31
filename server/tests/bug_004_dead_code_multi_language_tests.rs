@@ -11,13 +11,10 @@
 //! 3. REFACTOR: Clean up implementation
 //! 4. COMMIT: Single atomic commit with fix
 
-use anyhow::Result;
 use tempfile::TempDir;
 
 // Import the actual implementation
-use pmat::services::dead_code_multi_language::{
-    analyze_dead_code_multi_language, DeadCodeResult, DeadFunction,
-};
+use pmat::services::dead_code_multi_language::analyze_dead_code_multi_language;
 
 // =============================================================================
 // RED TEST 1: C Project Dead Code Analysis
