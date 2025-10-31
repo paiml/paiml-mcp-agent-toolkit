@@ -10,6 +10,10 @@ use std::sync::Arc;
 use tokio::sync::mpsc;
 use tracing::{info, warn};
 
+/// Number of parallel analyses executed during deep context generation
+/// (complexity, provability, satd, churn, dag, tdg, big_o, dead_code)
+const ANALYSIS_COUNT: u64 = 8;
+
 /// Enhanced Deep Context Analyzer with proper concurrency
 pub struct ConcurrentDeepContextAnalyzer {
     config: DeepContextConfig,
@@ -81,7 +85,7 @@ impl ConcurrentDeepContextAnalyzer {
         path: &Path,
         ast_cache: &Arc<AstCache>,
     ) -> Result<CombinedAnalyses> {
-        let pb = self.create_progress_bar("Running analyses", 8);
+        let pb = self.create_progress_bar("Running analyses", ANALYSIS_COUNT);
 
         // Clone for parallel execution
         let cache1 = ast_cache.clone();
@@ -123,7 +127,7 @@ impl ConcurrentDeepContextAnalyzer {
             self.analyze_dead_code_cached(&cache8),
         );
 
-        pb.inc(8);
+        pb.inc(ANALYSIS_COUNT);
         pb.finish_with_message("✅ All analyses complete");
 
         Ok(CombinedAnalyses {
