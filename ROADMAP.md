@@ -1,12 +1,12 @@
 # PMAT Agent System Roadmap
 
-## 🎉 CURRENT STATUS: v2.185.0 - Sprint 79 Phase 2 IN PROGRESS ⏳
+## 🎉 CURRENT STATUS: v2.186.0 - Sprint 79 Phase 2 COMPLETE ✅
 
-**Current Version**: v2.185.0 (Released October 31, 2025)
-**Latest Sprint**: Sprint 79 Phase 2 - User Experience Bug Fixes (3/4 complete)
-**Previous Release**: v2.184.0 (Sprint 79 Phase 1 - Released October 31, 2025)
-**Status**: ⏳ IN PROGRESS - Sprint 79 Phase 2 (3/4 UX bugs fixed)
-**Installation**: `cargo install pmat --version 2.185.0`
+**Current Version**: v2.186.0 (Released October 31, 2025)
+**Latest Sprint**: Sprint 79 Phase 2 - User Experience Bug Fixes (COMPLETE ✅)
+**Previous Release**: v2.185.0 (Sprint 79 Phase 2 partial - Released October 31, 2025)
+**Status**: ✅ COMPLETE - Sprint 79 Phase 2 (4/4 UX bugs fixed)
+**Installation**: `cargo install pmat --version 2.186.0`
 **Crates.io**: https://crates.io/crates/pmat
 **GitHub**: https://github.com/paiml/paiml-mcp-agent-toolkit
 **Goal**: Fix critical production bugs identified in user testing with zero-regression quality
@@ -196,16 +196,25 @@
 **Impact**: Context reports now show only file analysis with actual data, eliminating confusing placeholder text
 **Commits**: 5d17a50c (RED), 15b13781 (GREEN)
 
-#### BUG-005: Broken Progress Output (MEDIUM)
-**Status**: ⏳ PENDING
+#### BUG-005: Broken Progress Output (MEDIUM) ✅ COMPLETE
+**Status**: ✅ GREEN (All 5 CLI integration tests passing)
 **Priority**: P2 - POOR USER EXPERIENCE
 **Issue**: Progress lines don't overwrite, cause visual corruption
-**Cargo Example**: `cargo run --example bug_005_progress_output`
-**TDD Plan**:
-1. RED: Test progress indicator updates single line
-2. GREEN: Use indicatif progress bars
-3. GREEN: Implement proper ANSI escape codes
-4. COMMIT: "fix(BUG-005): Clean progress output with indicatif"
+**Root Cause**: Used eprintln!() which always creates new lines
+**Files**:
+- `server/src/cli/handlers/utility_handlers.rs:590-622` - Added ANSI escape codes
+- `server/tests/bug_005_progress_output_tests.rs` - 5 tests (CLI integration)
+- `bug-reports/005-broken-progress-output.md` - Updated to FIXED
+**TDD Completed**:
+1. ✅ RED: 5 tests for single-line progress updates (d25835e5)
+2. ✅ GREEN: Implemented `\r\x1b[K` ANSI escape codes (1b02d094)
+3. ✅ Verification: Manual testing shows clean progress
+**Implementation**:
+- Use `eprint!()` (no newline) for initial message
+- Flush stderr immediately
+- Use `\r\x1b[K` to clear line and overwrite
+**Test Results**: 5/5 passing (CLI integration tests)
+**Commits**: d25835e5 (RED), 1b02d094 (GREEN)
 
 ### Sprint 79 Phase 3: Polish (Low Priority) ⏳
 
