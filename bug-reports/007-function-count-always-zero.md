@@ -2,10 +2,10 @@
 
 **Date**: 2025-10-31
 **Reporter**: User feedback
-**Severity**: Medium → 🔴 RED (TDD in progress)
+**Severity**: Medium → ✅ FIXED
 **Component**: Context generation - function detection
-**Status**: RED phase complete (5/5 tests written, all failing)
-**Progress**: Sprint 79 Phase 2 - In development
+**Status**: GREEN phase complete (5/5 tests passing)
+**Progress**: Sprint 79 Phase 2 - FIXED
 
 ## Description
 
@@ -87,3 +87,26 @@ fn test_function_count_reflects_actual_functions() {
     assert!(result.contains("Functions: 5"));  // Not "Functions: 0"
 }
 ```
+
+## Fix Applied
+
+**Root Cause**: Path matching failure in `utility_handlers.rs:350`. The code used `file.path.ends_with(&f.path)` which failed when file paths were in different formats (relative vs absolute).
+
+**Solution**: Implemented comprehensive path matching with 4 strategies + fallback:
+
+1. **Strategy 1**: Exact string match
+2. **Strategy 2**: `ends_with` for relative paths
+3. **Strategy 3**: File name comparison
+4. **Strategy 4**: Canonical path comparison
+5. **Fallback**: Count functions from `file.items` if complexity report missing
+
+**Files Modified**:
+- `server/src/cli/handlers/utility_handlers.rs` - Added improved path matching logic
+- `server/tests/bug_007_function_count_tests.rs` - Added 5 comprehensive tests (100% passing)
+
+**Test Coverage**: 5/5 tests passing
+- ✅ `test_function_count_reflects_actual_functions`
+- ✅ `test_function_count_zero_when_no_functions`
+- ✅ `test_function_count_per_file`
+- ✅ `test_function_count_includes_all_types`
+- ✅ `test_function_count_in_summary`

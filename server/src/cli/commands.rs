@@ -3382,6 +3382,8 @@ mod tests {
             format: ContextFormat::Markdown,
             include_large_files: false,
             skip_expensive_metrics: true,
+            language: None,
+            languages: None,
         };
 
         match context {
@@ -3392,6 +3394,8 @@ mod tests {
                 format,
                 include_large_files,
                 skip_expensive_metrics,
+                language,
+                languages,
             } => {
                 assert_eq!(toolchain, Some("rust".to_string()));
                 assert_eq!(project_path, PathBuf::from("."));
@@ -3399,6 +3403,8 @@ mod tests {
                 assert_eq!(format, ContextFormat::Markdown);
                 assert!(!include_large_files);
                 assert!(skip_expensive_metrics);
+                assert_eq!(language, None);
+                assert_eq!(languages, None);
             }
             _ => panic!("Expected Context variant"),
         }

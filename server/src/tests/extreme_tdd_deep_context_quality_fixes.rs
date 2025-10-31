@@ -33,6 +33,8 @@ fn multiply(x: i32, y: i32) -> i32 {
         crate::cli::ContextFormat::Markdown,
         false,
         false,
+        None,
+        None,
     )
     .await;
 
@@ -78,6 +80,8 @@ fn bad_function() -> i32 {
         crate::cli::ContextFormat::Markdown,
         false,
         false,
+        None,
+        None,
     )
     .await;
 
@@ -129,6 +133,8 @@ async fn test_churn_annotations_appear() {
         crate::cli::ContextFormat::Markdown,
         false,
         false,
+        None,
+        None,
     )
     .await;
 
@@ -158,6 +164,8 @@ async fn test_overall_health_is_normalized_tdg_score() {
         crate::cli::ContextFormat::Markdown,
         false,
         false,
+        None,
+        None,
     )
     .await;
 
@@ -200,6 +208,8 @@ async fn test_coverage_is_meaningful_or_absent() {
         crate::cli::ContextFormat::Markdown,
         false,
         false,
+        None,
+        None,
     )
     .await;
 
@@ -256,6 +266,8 @@ pub fn highly_connected() -> Vec<String> {
         crate::cli::ContextFormat::Markdown,
         false,
         false,
+        None,
+        None,
     )
     .await;
 
@@ -352,6 +364,8 @@ main "$@"
         crate::cli::ContextFormat::Markdown,
         false,
         false,
+        None,
+        None,
     )
     .await;
 

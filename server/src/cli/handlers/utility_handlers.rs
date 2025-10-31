@@ -344,16 +344,67 @@ fn add_simple_file_section(
     builder.content.push_str(&format!("### {}\n\n", file.path));
 
     // File-level metrics from analyses
-    if let Some(file_metrics) = analyses
+    // BUG-007 FIX: Improved path matching to handle different path formats
+    let file_metrics = analyses
         .complexity_report
         .as_ref()
-        .and_then(|report| report.files.iter().find(|f| file.path.ends_with(&f.path)))
-    {
+        .and_then(|report| {
+            report.files.iter().find(|f| {
+                // Try multiple matching strategies for robustness
+                use std::path::Path;
+
+                let file_path = Path::new(&file.path);
+                let metric_path = Path::new(&f.path);
+
+                // Strategy 1: Exact match
+                if file.path == f.path {
+                    return true;
+                }
+
+                // Strategy 2: ends_with for relative paths
+                if file.path.ends_with(&f.path) || f.path.ends_with(&file.path) {
+                    return true;
+                }
+
+                // Strategy 3: Compare file names
+                if let (Some(file_name), Some(metric_name)) = (file_path.file_name(), metric_path.file_name()) {
+                    if file_name == metric_name {
+                        return true;
+                    }
+                }
+
+                // Strategy 4: Canonicalize and compare if possible
+                if let (Ok(canon_file), Ok(canon_metric)) = (
+                    std::fs::canonicalize(file_path),
+                    std::fs::canonicalize(metric_path)
+                ) {
+                    if canon_file == canon_metric {
+                        return true;
+                    }
+                }
+
+                false
+            })
+        });
+
+    if let Some(file_metrics) = file_metrics {
         builder.content.push_str(&format!(
             "**File Complexity**: {} | **Functions**: {}\n\n",
             file_metrics.total_complexity.cyclomatic,
             file_metrics.functions.len()
         ));
+    } else {
+        // BUG-007 FIX: Fallback - count functions from file.items if complexity report missing
+        let function_count = file.items.iter().filter(|item| {
+            matches!(item, crate::services::context::AstItem::Function { .. })
+        }).count();
+
+        if function_count > 0 || !file.items.is_empty() {
+            builder.content.push_str(&format!(
+                "**File Complexity**: N/A | **Functions**: {}\n\n",
+                function_count
+            ));
+        }
     }
 
     // Add AST items with rich annotations
