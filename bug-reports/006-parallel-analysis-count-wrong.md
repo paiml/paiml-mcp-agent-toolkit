@@ -2,8 +2,9 @@
 
 **Date**: 2025-10-31
 **Reporter**: User feedback
-**Severity**: Low
+**Severity**: Low → ✅ FIXED
 **Component**: CLI - context command parallel analysis
+**Status**: GREEN phase complete (code quality improvement)
 
 ## Description
 
@@ -81,3 +82,42 @@ let analyses = vec![
 let pb = ProgressBar::new(analyses.len() as u64);
 pb.set_message("Running parallel analyses...");
 ```
+
+## Fix Applied
+
+**Root Cause**: Hardcoded magic number "8" instead of named constant.
+
+**Investigation Results**:
+- Bug report claimed "only 4 actually run" but code inspection showed ALL 8 analyses DO execute
+- Analyses: complexity, provability, satd, churn, dag, tdg, big_o, dead_code
+- Real issue: Hardcoded "8" in two places (line 84, line 126) - code quality/maintainability problem
+
+**Solution**: Replaced magic number with named constant `ANALYSIS_COUNT = 8`.
+
+**Files Modified**:
+- `server/src/services/deep_context_concurrent.rs:13-15` - Added `ANALYSIS_COUNT` constant
+- `server/src/services/deep_context_concurrent.rs:88` - Use constant in progress bar creation
+- `server/src/services/deep_context_concurrent.rs:130` - Use constant in progress increment
+- `server/tests/bug_006_parallel_count_tests.rs` - 5 comprehensive tests (3 documentation, 2 integration)
+
+**TDD Approach**:
+1. ✅ RED: 5 tests written (verifying count correctness)
+2. ✅ GREEN: Implemented `ANALYSIS_COUNT` constant
+3. ✅ Verification: All 8 analyses confirmed running via code inspection
+
+**Implementation Details**:
+```rust
+// Before (hardcoded magic number):
+let pb = self.create_progress_bar("Running analyses", 8);
+// ...
+pb.inc(8);
+
+// After (named constant):
+const ANALYSIS_COUNT: u64 = 8;
+// ...
+let pb = self.create_progress_bar("Running analyses", ANALYSIS_COUNT);
+// ...
+pb.inc(ANALYSIS_COUNT);
+```
+
+**Impact**: Improved code maintainability - future addition/removal of analyses will only require updating constant and adding/removing tokio::join! arms. No functional behavior change (all 8 analyses were already running correctly).
