@@ -133,6 +133,7 @@ pub mod duplicate_detector;
 mod duplicate_detector_property_tests;
 pub mod embedded_templates;
 pub mod enhanced_ast_visitor;
+pub mod enhanced_language_detection; // BUG-011: Multi-language detection with confidence
 #[cfg(test)]
 pub mod enhanced_naming_tests;
 pub mod enhanced_python_visitor;
