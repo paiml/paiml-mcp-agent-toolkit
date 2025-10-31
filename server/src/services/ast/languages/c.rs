@@ -57,6 +57,7 @@ impl CAstVisitor {
         let mut current_function_name = String::new();
         let mut has_static_modifier = false;
         let mut _has_inline_modifier = false;
+        let mut in_multiline_comment = false; // BUG-009 FIX: Track multiline comment state
 
         // Mark them as used
         let _ = &current_function_name;
@@ -64,6 +65,28 @@ impl CAstVisitor {
 
         for (line_num, line) in source.lines().enumerate() {
             let trimmed = line.trim();
+
+            // BUG-009 FIX: Handle multiline comment state
+            // Check if we're entering a multiline comment
+            if trimmed.contains("/*") {
+                in_multiline_comment = true;
+            }
+
+            // Check if we're exiting a multiline comment
+            if trimmed.contains("*/") {
+                in_multiline_comment = false;
+                continue; // Skip the line with the closing comment
+            }
+
+            // Skip if we're inside a multiline comment
+            if in_multiline_comment {
+                continue;
+            }
+
+            // Skip single-line comments and preprocessor directives
+            if trimmed.starts_with("//") || trimmed.starts_with("/*") || trimmed.starts_with("#") {
+                continue;
+            }
 
             // Check for function declaration
             if !in_function && self.is_function_declaration(trimmed) {
