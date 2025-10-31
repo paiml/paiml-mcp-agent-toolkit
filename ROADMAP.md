@@ -1,12 +1,12 @@
 # PMAT Agent System Roadmap
 
-## 🎉 CURRENT STATUS: v2.187.0 - Sprint 79 Phase 3 (1/3 Polish Bugs) ✅
+## 🎉 CURRENT STATUS: v2.188.0 - Sprint 79 Phase 3 (2/3 Polish Bugs) ✅
 
-**Current Version**: v2.187.0 (Released October 31, 2025)
+**Current Version**: v2.188.0 (Released October 31, 2025)
 **Latest Sprint**: Sprint 79 Phase 3 - Polish Bug Fixes (IN PROGRESS)
-**Previous Release**: v2.186.0 (Sprint 79 Phase 2 - Released October 31, 2025)
-**Status**: ⏳ IN PROGRESS - Sprint 79 Phase 3 (1/3 polish bugs fixed)
-**Installation**: `cargo install pmat --version 2.187.0`
+**Previous Release**: v2.187.0 (Sprint 79 Phase 3 partial - Released October 31, 2025)
+**Status**: ⏳ IN PROGRESS - Sprint 79 Phase 3 (2/3 polish bugs fixed)
+**Installation**: `cargo install pmat --version 2.188.0`
 **Crates.io**: https://crates.io/crates/pmat
 **GitHub**: https://github.com/paiml/paiml-mcp-agent-toolkit
 **Goal**: Fix critical production bugs identified in user testing with zero-regression quality
@@ -218,18 +218,32 @@
 
 ### Sprint 79 Phase 3: Polish (Low Priority) ⏳
 
-#### BUG-001, BUG-002, BUG-003: Embed Command Errors (LOW)
-**Status**: ⏳ PENDING
-**Priority**: P3 - EMBED SUBCOMMAND BROKEN
-**Issues**: Wrong error messages and examples for embed subcommand
-**Cargo Example**: `cargo run --example bug_001_002_003_embed_errors`
-**TDD Plan**:
-1. RED: Test pmat embed status shows correct status
-2. RED: Test pmat embed sync syncs embeddings
-3. RED: Test pmat embed shows relevant examples
-4. GREEN: Fix embed subcommand handlers
-5. GREEN: Fix clap examples for embed
-6. COMMIT: "fix(BUG-001-003): Embed subcommand errors"
+#### BUG-001, BUG-002, BUG-003: Embed Command Errors (LOW) ✅ COMPLETE
+**Status**: ✅ GREEN (All 3 bugs fixed)
+**Priority**: P3 - EMBED SUBCOMMAND BROKEN → FIXED
+**Issues**:
+- BUG-001: `pmat embed status` showed invalid 'summary' format error
+- BUG-002: `pmat embed sync` showed invalid 'summary' format error
+- BUG-003: `pmat embed` showed generic examples instead of embed-specific
+**Root Causes**:
+- `default_value = "summary"` but OutputFormat only has Table/Json/Yaml (no Summary variant)
+- EmbedCommands inherited generic examples from root CLI `after_help`
+**Files**:
+- `server/src/cli/commands.rs:3995,4002` - Fixed defaults "summary" → "table"
+- `server/src/cli/commands.rs:3968-3982` - Added embed-specific examples via `#[command(after_help)]`
+- `server/tests/bug_001_002_003_embed_tests.rs` - 7 comprehensive tests
+- `bug-reports/001-embed-status-wrong-error.md` - Updated to FIXED
+- `bug-reports/002-embed-sync-wrong-error.md` - Updated to FIXED
+- `bug-reports/003-embed-wrong-examples.md` - Updated to FIXED
+**TDD Completed**:
+1. ✅ RED: 7 tests (2 per command + 3 combined) (7f34ac79)
+2. ✅ GREEN: Fixed defaults + added 6 embed examples (7f34ac79)
+3. ✅ Verification: Code compiles, commands work with defaults
+**Implementation**:
+- Changed Status & Sync default format: "summary" → "table"
+- Added embed-specific help examples (sync, status, clear, verbose, JSON format)
+**Test Results**: 7/7 tests (CLI integration)
+**Commits**: 7f34ac79 (RED+GREEN), 6b926d95 (version bump)
 
 #### BUG-006: Parallel Analysis Count Wrong (LOW) ✅ COMPLETE
 **Status**: ✅ GREEN (Code quality improvement)
