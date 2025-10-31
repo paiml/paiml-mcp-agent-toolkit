@@ -54,24 +54,59 @@
 **Test Results**: 9/9 tests passing (100%)
 **Commit**: (pending)
 
-#### BUG-004: Dead Code Requires Cargo.toml (CRITICAL)
-**Status**: 🔴 RED (Tests written, implementation pending)
+#### BUG-004: Dead Code Requires Cargo.toml (CRITICAL) 🟡 WIP
+**Status**: 🟡 WIP - 3/7 tests passing (43%), foundation complete
 **Priority**: P0 - DEAD CODE ANALYSIS BROKEN FOR NON-RUST
 **Issue**: Dead code analyzer assumes Rust, requires Cargo.toml
 **Impact**: Feature completely broken for C, C++, Python projects
 **Files**:
-- `server/src/cli/handlers/analyze.rs` - Dead code handler
-- `server/src/services/dead_code.rs` - Language-agnostic analyzer
-**Cargo Example**: `cargo run --example bug_004_dead_code_c_project`
-**TDD Plan**:
-1. RED: Test dead code analysis on C project (no Cargo.toml)
-2. RED: Test dead code analysis on Python project
-3. RED: Test error message for unsupported language
-4. GREEN: Implement language detection in dead code analyzer
-5. GREEN: Add C/C++ dead code strategy (cppcheck or AST-based)
-6. GREEN: Add Python dead code strategy (AST-based)
-7. REFACTOR: Extract DeadCodeStrategy trait
-8. COMMIT: "fix(BUG-004): Multi-language dead code analysis"
+- `server/src/services/dead_code_multi_language.rs` - NEW: Multi-language analyzer (535 lines)
+- `server/tests/bug_004_dead_code_multi_language_tests.rs` - 7 tests (3 passing, 4 refinement needed)
+- `server/examples/bug_004_dead_code_c_project.rs` - Reproduction example
+**Cargo Example**: `cargo run --example bug_004_dead_code_c_project` (compiles, shows bug)
+**TDD Progress**:
+1. ✅ RED: 7 tests written (all failing initially)
+2. ✅ GREEN: DeadCodeStrategy trait implemented
+3. ✅ GREEN: Language detection integration (uses BUG-011)
+4. ✅ GREEN: C/C++ function definition detection (regex-based)
+5. ✅ GREEN: Python function detection
+6. 🟡 PARTIAL: Dead code identification (3/7 tests passing)
+7. ⏳ PENDING: Refine header file filtering
+8. ⏳ PENDING: Improve call detection for Python
+9. ⏳ PENDING: Implement Rust strategy
+
+**Implementation Status**:
+- ✅ DeadCodeStrategy trait pattern
+- ✅ RustDeadCodeStrategy (stub)
+- ✅ CDeadCodeStrategy (functional for simple cases)
+- ✅ CppDeadCodeStrategy (delegates to C)
+- ✅ PythonDeadCodeStrategy (basic implementation)
+- ✅ Language-agnostic entry point
+- ✅ Integration with enhanced_language_detection
+
+**Test Results**: 3/7 passing (43%)
+- ✅ test_cpp_project_dead_code_with_cmake
+- ✅ test_unsupported_language_returns_error
+- ✅ test_uses_enhanced_language_detection
+- ❌ test_c_project_dead_code_without_cargo_toml (header filtering needed)
+- ❌ test_python_project_dead_code_without_cargo_toml (call detection)
+- ❌ test_rust_project_dead_code_still_works (not implemented)
+- ❌ test_dead_code_percentage_calculation (edge case)
+
+**What Works**:
+- Language detection (integrates with BUG-011)
+- C/C++ function definition parsing (multiline, inline)
+- Basic dead code identification
+- Error handling for unsupported languages
+- DeadCodeStrategy extensibility pattern
+
+**What Needs Refinement**:
+- Filter declarations in .h files (count only .c implementations)
+- Python call detection (filter keywords better)
+- Rust strategy (integrate existing cargo-based analyzer)
+- Edge cases (complex multiline functions, templates)
+
+**Commit**: (WIP - foundation complete, refinement needed)
 
 #### BUG-012: Multi-Language Support Missing (HIGH)
 **Status**: 🔴 RED (Tests written, implementation pending)
