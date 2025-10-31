@@ -157,29 +157,44 @@
 **Quality Gates**: ✅ All passing
 **Commits**: 14314c41 (RED), 537429ad (GREEN)
 
-#### BUG-009: Copyright Detected as Function (MEDIUM)
-**Status**: ⏳ PENDING
+#### BUG-009: Copyright Detected as Function (MEDIUM) ✅ COMPLETE
+**Status**: ✅ GREEN (All 5/5 tests passing)
 **Priority**: P2 - FALSE POSITIVES IN REPORTS
-**Issue**: Copyright headers detected as function names
-**Cargo Example**: `cargo run --example bug_009_copyright_detection`
-**TDD Plan**:
-1. RED: Test copyright headers ignored
-2. RED: Test actual functions detected
-3. GREEN: Add comment filtering to C/C++ parser
-4. GREEN: Add copyright pattern exclusion
-5. COMMIT: "fix(BUG-009): Filter copyright from function detection"
+**Issue**: Copyright headers in C/C++ files detected as function names
+**Root Cause**: AST parser only skipped lines starting with `//` or `/*`, not lines INSIDE multiline comments
+**Files**:
+- `server/src/services/ast/languages/cpp.rs` - Added multiline comment state tracking
+- `server/src/services/ast/languages/c.rs` - Same fix for C analyzer
+- `server/tests/bug_009_copyright_tests.rs` - 5 tests (100% passing)
+- `bug-reports/009-copyright-detected-as-function.md` - Updated to FIXED
+**TDD Completed**:
+1. ✅ RED: Test copyright headers ignored (5 tests written)
+2. ✅ RED: Test actual functions still detected
+3. ✅ GREEN: Implemented multiline comment state tracking (940806d3)
+4. ✅ GREEN: Skip all lines while in_multiline_comment = true
+5. ✅ GREEN: All 5/5 tests passing
+**Test Results**: 5/5 passing (100%)
+**Commits**: 940806d3 (RED), 0800fffd (GREEN)
 
-#### BUG-008: Placeholder Text in Reports (MEDIUM)
-**Status**: ⏳ PENDING
+#### BUG-008: Placeholder Text in Reports (MEDIUM) ✅ COMPLETE
+**Status**: ✅ GREEN (All 11/11 tests passing)
 **Priority**: P2 - EMPTY REPORT SECTIONS
-**Issue**: Report sections show placeholder text instead of data
-**Cargo Example**: `cargo run --example bug_008_placeholder_text`
-**TDD Plan**:
-1. RED: Test all report sections contain data
-2. GREEN: Integrate entropy analysis
-3. GREEN: Integrate graph metrics
-4. GREEN: Integrate provability analysis
-5. COMMIT: "fix(BUG-008): Fill report sections with actual data"
+**Issue**: Report sections show placeholder text instead of actual data
+**Root Cause**: `format_simple_markdown_context` unconditionally generated 10 placeholder sections with generic descriptions
+**Solution**: Removed all placeholder sections (Option 2 - clean reports showing only real data)
+**Files**:
+- `server/src/cli/handlers/utility_handlers.rs:279-332` - Removed all 10 placeholder sections
+- `server/tests/bug_008_placeholder_text_tests.rs` - 11 tests (100% passing)
+- `server/src/tests/extreme_tdd_*.rs` - Fixed 5 test files with outdated `handle_context` calls
+- `bug-reports/008-placeholder-text-in-report.md` - Updated to FIXED
+**TDD Completed**:
+1. ✅ RED: Test NO placeholder text in reports (11 tests written, 10 failing)
+2. ✅ GREEN: Removed placeholder sections (lines 279-332)
+3. ✅ GREEN: Fixed regression test compilation errors
+4. ✅ GREEN: All 11/11 tests passing
+**Test Results**: 11/11 passing (100%)
+**Impact**: Context reports now show only file analysis with actual data, eliminating confusing placeholder text
+**Commits**: (pending)
 
 #### BUG-005: Broken Progress Output (MEDIUM)
 **Status**: ⏳ PENDING
