@@ -44,6 +44,8 @@ impl Data{} {{
         crate::cli::ContextFormat::Markdown,
         false,
         false, // Full analysis with all annotations
+        None, // language
+        None, // languages
     )
     .await;
 
@@ -113,6 +115,8 @@ async fn test_parallel_analysis_execution() {
         crate::cli::ContextFormat::Markdown,
         false,
         false,
+        None, // language
+        None, // languages
     )
     .await;
 
@@ -192,6 +196,8 @@ async fn test_progress_bars_for_long_operations() {
         crate::cli::ContextFormat::Markdown,
         false,
         false,
+        None, // language
+        None, // languages
     )
     .await;
 
@@ -285,6 +291,8 @@ impl DataProcessor {
         crate::cli::ContextFormat::Markdown,
         false,
         false,
+        None, // language
+        None, // languages
     )
     .await;
 

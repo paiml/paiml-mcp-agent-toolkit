@@ -276,61 +276,6 @@ async fn generate_enhanced_ast_context(
         add_simple_file_section(&mut builder, &enhanced_context.base, &context.analyses);
     }
 
-    // Add additional sections that tests expect
-    builder.content.push_str("## Key Components\n\n");
-    builder
-        .content
-        .push_str("Key architectural components identified in the codebase.\n\n");
-
-    builder.content.push_str("## Big-O Complexity Analysis\n\n");
-    builder
-        .content
-        .push_str("Complexity analysis results integrated in function annotations above.\n\n");
-
-    builder.content.push_str("## Entropy Analysis\n\n");
-    builder
-        .content
-        .push_str("Code entropy and organization metrics.\n\n");
-
-    builder.content.push_str("## Provability Analysis\n\n");
-    builder
-        .content
-        .push_str("Formal verification and provability insights.\n\n");
-
-    builder.content.push_str("## Graph Metrics\n\n");
-    builder
-        .content
-        .push_str("Dependency graph and PageRank analysis.\n\n");
-
-    builder
-        .content
-        .push_str("## Technical Debt Gradient (TDG)\n\n");
-    builder
-        .content
-        .push_str("Technical debt progression and accumulation patterns.\n\n");
-
-    builder.content.push_str("## Dead Code Analysis\n\n");
-    builder
-        .content
-        .push_str("Unused code detection and removal recommendations.\n\n");
-
-    builder
-        .content
-        .push_str("## Self-Admitted Technical Debt (SATD)\n\n");
-    builder
-        .content
-        .push_str("TODO, FIXME, and HACK comments indicating technical debt.\n\n");
-
-    builder.content.push_str("## Quality Insights\n\n");
-    builder
-        .content
-        .push_str("Overall code quality assessment and trends.\n\n");
-
-    builder.content.push_str("## Recommendations\n\n");
-    builder
-        .content
-        .push_str("Actionable suggestions for code improvement.\n\n");
-
     Ok(builder.content)
 }
 
