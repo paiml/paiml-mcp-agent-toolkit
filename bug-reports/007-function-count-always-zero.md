@@ -2,8 +2,10 @@
 
 **Date**: 2025-10-31
 **Reporter**: User feedback
-**Severity**: Medium
+**Severity**: Medium → 🔴 RED (TDD in progress)
 **Component**: Context generation - function detection
+**Status**: RED phase complete (5/5 tests written, all failing)
+**Progress**: Sprint 79 Phase 2 - In development
 
 ## Description
 
