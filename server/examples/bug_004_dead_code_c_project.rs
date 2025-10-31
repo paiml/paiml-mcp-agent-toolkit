@@ -1,124 +1,73 @@
-//! BUG-004: Dead Code Analysis Requires Cargo.toml for Non-Rust Projects
+//! BUG-004: Multi-Language Dead Code Analysis
 //!
-//! This example reproduces BUG-004 where:
-//! 1. Dead code analysis fails on C/C++ projects without Cargo.toml
-//! 2. Error: "could not find `Cargo.toml` in ... or any parent directory"
-//! 3. Feature completely broken for non-Rust projects
-//!
-//! Expected behavior:
-//! - Should detect project language (C, C++, Python, etc.)
-//! - Should use appropriate dead code detection for that language
-//! - Should NOT require Cargo.toml for non-Rust projects
+//! This example demonstrates the fix for BUG-004 where dead code analysis
+//! now works for C/C++/Python projects without requiring Cargo.toml.
 //!
 //! Run with: `cargo run --example bug_004_dead_code_c_project`
 
 use anyhow::Result;
-use std::path::PathBuf;
+use pmat::services::dead_code_multi_language::analyze_dead_code_multi_language;
+use std::fs;
 use tempfile::TempDir;
 
-#[tokio::main]
-async fn main() -> Result<()> {
-    println!("🐛 BUG-004: Dead Code Analysis Requires Cargo.toml\n");
+fn main() -> Result<()> {
+    println!("🐛 BUG-004: Multi-Language Dead Code Analysis\n");
 
-    // Example 1: Reproduce the bug - C project without Cargo.toml
-    println!("Example 1: C project dead code analysis (reproduces bug)");
+    // Example 1: C Project (no Cargo.toml required!)
+    println!("Example 1: C project dead code analysis");
     println!("{}", "=".repeat(60));
 
-    let c_project = create_mock_c_project().await?;
-    println!("Created mock C project at: {:?}", c_project.path());
+    let c_project = create_c_project()?;
+    println!("Created C project at: {:?}", c_project.path());
     println!("Files:");
-    println!("  - src/main.c (has main function)");
-    println!("  - src/utils.c (has unused_function)");
-    println!("  - include/utils.h (header)");
-    println!("  - CMakeLists.txt (C project indicator)");
-    println!("  - NO Cargo.toml (not a Rust project!)");
+    println!("  - src/main.c (calls used_function)");
+    println!("  - src/utils.c (defines used_function and unused_function)");
+    println!("  - include/utils.h (declarations)");
+    println!("  - Makefile (C project indicator)");
+    println!("  - NO Cargo.toml!");
 
-    println!("\n🔍 Attempting dead code analysis...");
+    println!("\n🔍 Running dead code analysis...");
 
-    // This will fail with current implementation
-    match analyze_dead_code_current(c_project.path()).await {
-        Ok(result) => {
-            println!("✅ Analysis succeeded: {}", result);
-        }
-        Err(e) => {
-            println!("❌ BUG REPRODUCED: {}", e);
-            println!("   Error mentions Cargo.toml even though this is a C project!");
-        }
+    let result = analyze_dead_code_multi_language(c_project.path())?;
+
+    println!("✅ Analysis successful!");
+    println!("  Language: {}", result.language);
+    println!("  Total functions: {}", result.total_functions);
+    println!("  Dead functions: {}", result.dead_functions.len());
+    println!("  Dead code %: {:.1}%", result.dead_code_percentage);
+
+    println!("\n📊 Dead Functions:");
+    for func in &result.dead_functions {
+        println!("  - {} ({}:{})", func.name, func.file, func.line);
+        println!("    Reason: {}", func.reason);
     }
 
-    // Example 2: What the fix should enable
-    println!("\n\nExample 2: Multi-language dead code detection (after fix)");
-    println!("{}", "=".repeat(60));
-    println!("After fix, this should work:");
-    println!("  1. Detect language: C (from CMakeLists.txt and .c files)");
-    println!("  2. Use C-appropriate dead code detection:");
-    println!("     - AST-based analysis (tree-sitter)");
-    println!("     - Or call graph analysis");
-    println!("     - Or cppcheck integration");
-    println!("  3. Report: unused_function is dead code");
-
-    // Example 3: Python project
-    println!("\n\nExample 3: Python project (also broken)");
+    // Example 2: Python Project
+    println!("\n\nExample 2: Python project dead code analysis");
     println!("{}", "=".repeat(60));
 
-    let py_project = create_mock_python_project().await?;
-    println!("Created mock Python project at: {:?}", py_project.path());
-    println!("Files:");
-    println!("  - main.py (imports utils)");
-    println!("  - utils.py (has unused_function)");
-    println!("  - pyproject.toml (Python project indicator)");
+    let py_project = create_python_project()?;
+    println!("Created Python project at: {:?}", py_project.path());
 
-    println!("\n🔍 Attempting dead code analysis...");
+    let result = analyze_dead_code_multi_language(py_project.path())?;
 
-    match analyze_dead_code_current(py_project.path()).await {
-        Ok(result) => {
-            println!("✅ Analysis succeeded: {}", result);
-        }
-        Err(e) => {
-            println!("❌ BUG REPRODUCED: {}", e);
-            println!("   Python project also fails!");
-        }
-    }
+    println!("✅ Analysis successful!");
+    println!("  Language: {}", result.language);
+    println!("  Dead functions: {}", result.dead_functions.len());
 
-    println!("\n🎯 To fix this bug:");
-    println!("  1. Add language detection to dead code analyzer");
-    println!("  2. Create DeadCodeStrategy trait for language-specific analysis");
-    println!("  3. Implement C/C++ dead code strategy (AST-based)");
-    println!("  4. Implement Python dead code strategy (AST-based)");
-    println!("  5. Only use cargo check for Rust projects");
+    println!("\n✅ BUG-004 FIXED: Multi-language dead code analysis works!");
 
     Ok(())
 }
 
-/// Current dead code analysis (has the bug)
-async fn analyze_dead_code_current(path: &std::path::Path) -> Result<String> {
-    // Try to use the existing dead code analyzer
-    // This will fail for non-Rust projects
-
-    use pmat::cli::handlers::analyze_handlers::handle_analyze_dead_code;
-
-    // Current implementation requires Cargo.toml
-    handle_analyze_dead_code(
-        path.to_path_buf(),
-        60, // timeout
-        std::io::stdout(),
-    ).await?;
-
-    Ok("Analysis completed".to_string())
-}
-
-/// Create a mock C project
-async fn create_mock_c_project() -> Result<TempDir> {
-    use std::fs;
-
+fn create_c_project() -> Result<TempDir> {
     let temp = TempDir::new()?;
     let base = temp.path();
 
-    // Create C source files
     fs::create_dir_all(base.join("src"))?;
     fs::create_dir_all(base.join("include"))?;
 
-    // main.c - uses only used_function
+    // main.c
     fs::write(
         base.join("src/main.c"),
         r#"
@@ -132,7 +81,7 @@ int main() {
 "#,
     )?;
 
-    // utils.c - has one used and one unused function
+    // utils.c with dead code
     fs::write(
         base.join("src/utils.c"),
         r#"
@@ -140,11 +89,11 @@ int main() {
 #include "utils.h"
 
 void used_function() {
-    printf("This is used\n");
+    printf("Used\n");
 }
 
 void unused_function() {
-    printf("This is NEVER called - DEAD CODE!\n");
+    printf("DEAD CODE!\n");
 }
 "#,
     )?;
@@ -163,29 +112,17 @@ void unused_function();
 "#,
     )?;
 
-    // CMakeLists.txt (indicates C project)
-    fs::write(
-        base.join("CMakeLists.txt"),
-        r#"
-cmake_minimum_required(VERSION 3.10)
-project(TestProject C)
-
-add_executable(main src/main.c src/utils.c)
-target_include_directories(main PRIVATE include)
-"#,
-    )?;
+    // Makefile (C project indicator)
+    fs::write(base.join("Makefile"), "CC=gcc\nCFLAGS=-Wall\n\nall: main\n")?;
 
     Ok(temp)
 }
 
-/// Create a mock Python project
-async fn create_mock_python_project() -> Result<TempDir> {
-    use std::fs;
-
+fn create_python_project() -> Result<TempDir> {
     let temp = TempDir::new()?;
     let base = temp.path();
 
-    // main.py - uses only used_function
+    // main.py
     fs::write(
         base.join("main.py"),
         r#"
@@ -199,27 +136,20 @@ if __name__ == "__main__":
 "#,
     )?;
 
-    // utils.py - has one used and one unused function
+    // utils.py with dead code
     fs::write(
         base.join("utils.py"),
         r#"
 def used_function():
-    print("This is used")
+    print("Used")
 
 def unused_function():
-    print("This is NEVER called - DEAD CODE!")
+    print("DEAD CODE!")
 "#,
     )?;
 
-    // pyproject.toml (indicates Python project)
-    fs::write(
-        base.join("pyproject.toml"),
-        r#"
-[project]
-name = "test-project"
-version = "0.1.0"
-"#,
-    )?;
+    // pyproject.toml
+    fs::write(base.join("pyproject.toml"), "[project]\nname = \"test\"\n")?;
 
     Ok(temp)
 }
