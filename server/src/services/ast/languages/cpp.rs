@@ -190,11 +190,29 @@ impl CppAstVisitor {
         let mut namespace_stack: Vec<String> = Vec::new();
         let mut brace_depth = 0;
         let mut class_depth = 0; // Track if we're inside a class
+        let mut in_multiline_comment = false; // BUG-009 FIX: Track multiline comment state
 
         for (line_num, line) in source.lines().enumerate() {
             let trimmed = line.trim();
 
-            // Skip comments and preprocessor directives
+            // BUG-009 FIX: Handle multiline comment state
+            // Check if we're entering a multiline comment
+            if trimmed.contains("/*") {
+                in_multiline_comment = true;
+            }
+
+            // Check if we're exiting a multiline comment
+            if trimmed.contains("*/") {
+                in_multiline_comment = false;
+                continue; // Skip the line with the closing comment
+            }
+
+            // Skip if we're inside a multiline comment
+            if in_multiline_comment {
+                continue;
+            }
+
+            // Skip single-line comments and preprocessor directives
             if trimmed.starts_with("//") || trimmed.starts_with("/*") || trimmed.starts_with("#") {
                 continue;
             }

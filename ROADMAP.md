@@ -133,19 +133,29 @@
 **Quality Gates**: ✅ All passing
 **Commit**: 33c73839
 
-### Sprint 79 Phase 2: User Experience (Medium Priority) ⏳
+### Sprint 79 Phase 2: User Experience (Medium Priority) ⏳ IN PROGRESS
 
-#### BUG-007: Function Count Always Zero (MEDIUM)
-**Status**: ⏳ PENDING
+#### BUG-007: Function Count Always Zero (MEDIUM) ✅ COMPLETE
+**Status**: ✅ GREEN (All 5 tests passing)
 **Priority**: P2 - MISLEADING METRICS
 **Issue**: Shows "Functions: 0" despite functions present
-**Cargo Example**: `cargo run --example bug_007_function_count`
-**TDD Plan**:
-1. RED: Test function count reflects actual functions
-2. RED: Test function count aggregation per file
-3. GREEN: Fix function counting logic
-4. GREEN: Fix display formatting
-5. COMMIT: "fix(BUG-007): Correct function count display"
+**Root Cause**: Path matching failure (relative vs absolute paths)
+**Files**:
+- `server/src/cli/handlers/utility_handlers.rs` - Improved path matching (4 strategies + fallback)
+- `server/tests/bug_007_function_count_tests.rs` - 5 tests (100% passing)
+- `bug-reports/007-function-count-always-zero.md` - Updated to FIXED
+**TDD Completed**:
+1. ✅ RED: Test function count reflects actual functions (14314c41)
+2. ✅ RED: Test function count aggregation per file
+3. ✅ RED: Test zero functions case
+4. ✅ RED: Test all function types
+5. ✅ RED: Test summary display
+6. ✅ GREEN: Implemented 4-strategy path matching + fallback (537429ad)
+7. ✅ GREEN: Fixed BUG-012 test compilation errors
+8. ✅ GREEN: All 5/5 tests passing
+**Test Results**: 5/5 passing (100%)
+**Quality Gates**: ✅ All passing
+**Commits**: 14314c41 (RED), 537429ad (GREEN)
 
 #### BUG-009: Copyright Detected as Function (MEDIUM)
 **Status**: ⏳ PENDING

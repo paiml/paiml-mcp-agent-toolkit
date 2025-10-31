@@ -2,8 +2,9 @@
 
 **Date**: 2025-10-31
 **Reporter**: User feedback
-**Severity**: Medium
+**Severity**: Medium → ✅ FIXED
 **Component**: Function detection - AST parsing
+**Status**: GREEN phase complete (5/5 tests passing)
 
 ## Description
 
@@ -114,3 +115,27 @@ fn test_copyright_not_detected_as_function() {
     assert!(!functions.iter().any(|f| f.name == "Copyright"));
 }
 ```
+
+## Fix Applied
+
+**Root Cause**: The C/C++ AST parsers only skipped lines that STARTED with `//` or `/*`, but did not track multiline comment state. Lines inside `/* ... */` blocks were still being processed for function detection.
+
+**Solution**: Added multiline comment state tracking to both C and C++ analyzers:
+
+1. **Track multiline comment state**: Added `in_multiline_comment` boolean flag
+2. **Enter state**: Set to `true` when encountering `/*`
+3. **Exit state**: Set to `false` when encountering `*/`
+4. **Skip processing**: Skip all lines while `in_multiline_comment` is `true`
+
+**Files Modified**:
+- `server/src/services/ast/languages/cpp.rs` - Added multiline comment tracking to `extract_function_declarations`
+- `server/src/services/ast/languages/c.rs` - Same fix for C analyzer
+- `server/tests/bug_009_copyright_tests.rs` - 5 comprehensive tests (100% passing)
+- `bug-reports/009-copyright-detected-as-function.md` - Updated to FIXED
+
+**Test Results**: 5/5 passing (100%)
+- ✅ `test_copyright_single_line_not_detected`
+- ✅ `test_real_functions_still_detected_with_copyright`
+- ✅ `test_multiline_copyright_not_detected`
+- ✅ `test_license_headers_not_detected`
+- ✅ `test_c_file_copyright_not_detected`

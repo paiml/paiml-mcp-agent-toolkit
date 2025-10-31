@@ -18,7 +18,6 @@ use tempfile::TempDir;
 // =============================================================================
 
 #[test]
-#[ignore = "BUG-009: RED test - will fail until copyright filtering implemented"]
 fn test_copyright_single_line_not_detected() {
     // Arrange: C++ file with copyright header
     let project = create_cpp_file_with_copyright();
@@ -42,7 +41,6 @@ fn test_copyright_single_line_not_detected() {
 // =============================================================================
 
 #[test]
-#[ignore = "BUG-009: RED test - real functions must be detected"]
 fn test_real_functions_still_detected_with_copyright() {
     // Arrange: C++ file with copyright AND real functions
     let project = create_cpp_file_with_copyright_and_functions();
@@ -73,7 +71,6 @@ fn test_real_functions_still_detected_with_copyright() {
 // =============================================================================
 
 #[test]
-#[ignore = "BUG-009: RED test - multiline copyright blocks"]
 fn test_multiline_copyright_not_detected() {
     // Arrange: C++ file with multiline copyright block
     let project = create_cpp_file_with_multiline_copyright();
@@ -96,7 +93,6 @@ fn test_multiline_copyright_not_detected() {
 // =============================================================================
 
 #[test]
-#[ignore = "BUG-009: RED test - license headers should be filtered"]
 fn test_license_headers_not_detected() {
     // Arrange: C++ file with various header keywords
     let project = create_cpp_file_with_license_headers();
@@ -123,7 +119,6 @@ fn test_license_headers_not_detected() {
 // =============================================================================
 
 #[test]
-#[ignore = "BUG-009: RED test - C files should also filter copyright"]
 fn test_c_file_copyright_not_detected() {
     // Arrange: C file (not C++) with copyright
     let project = create_c_file_with_copyright();
