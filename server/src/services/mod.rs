@@ -118,6 +118,7 @@ pub mod dead_code_analyzer;
 mod dead_code_analyzer_tests;
 #[cfg(test)]
 mod dead_code_property_tests;
+pub mod dead_code_multi_language; // BUG-004: Multi-language dead code analysis
 pub mod dead_code_prover;
 pub mod deep_context;
 pub mod defect_analyzer;
