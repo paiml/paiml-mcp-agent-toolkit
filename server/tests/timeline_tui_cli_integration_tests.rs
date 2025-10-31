@@ -108,7 +108,7 @@ fn test_interactive_mode_error_when_no_tty() {
     let result = mode.validate_terminal_availability(has_tty);
 
     assert!(result.is_err());
-    assert!(result.unwrap_err().contains("TTY"));
+    assert!(result.unwrap_err().to_string().contains("TTY"));
 }
 
 #[test]
@@ -180,7 +180,8 @@ fn test_conflicting_flags_error() {
     let result = TimelineMode::validate_args(&args);
 
     assert!(result.is_err());
-    assert!(result.unwrap_err().contains("conflicting"));
+    let error_msg = result.unwrap_err().to_string();
+    assert!(error_msg.to_lowercase().contains("conflicting"));
 }
 
 #[test]
@@ -200,8 +201,6 @@ fn test_valid_interactive_only() {
 #[test]
 fn test_timeline_command_with_interactive_flag() {
     // RED: Timeline command should accept --interactive flag
-    use pmat::cli::handlers::handle_timeline;
-
     let args = vec!["timeline", "test.pmat", "--interactive"];
     // This should not panic, even if it can't run (no TTY in test env)
     // Just verify flag is recognized
@@ -212,8 +211,6 @@ fn test_timeline_command_with_interactive_flag() {
 #[test]
 fn test_timeline_command_default_non_interactive() {
     // RED: Timeline command should default to non-interactive
-    use pmat::cli::handlers::handle_timeline;
-
     let args = vec!["timeline", "test.pmat"];
     let mode = TimelineMode::from_args(&args);
     assert_eq!(mode, TimelineMode::NonInteractive);
@@ -232,7 +229,7 @@ fn test_interactive_mode_disabled_without_tui_feature() {
     let result = mode.check_feature_availability();
 
     assert!(result.is_err());
-    assert!(result.unwrap_err().contains("tui"));
+    assert!(result.unwrap_err().to_string().contains("tui"));
 }
 
 #[cfg(feature = "tui")]
