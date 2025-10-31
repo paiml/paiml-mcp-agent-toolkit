@@ -589,27 +589,34 @@ fn add_churn_annotation(
 
 /// Detect toolchain or use provided one
 fn detect_or_use_toolchain(toolchain: Option<String>, project_path: &Path) -> Result<String> {
+    use std::io::{self, Write};
+
     if let Some(t) = toolchain {
         Ok(t)
     } else {
-        eprintln!("🔍 Auto-detecting project language...");
+        // Print without newline for in-place update
+        eprint!("🔍 Auto-detecting project language...");
+        io::stderr().flush().ok();
 
         // First try with confidence
         if let Some((lang, confidence)) =
             super::super::detect_primary_language_with_confidence(project_path)
         {
-            eprintln!("✅ Detected: {lang} (confidence: {confidence:.1}%)");
+            // Clear line and print result (\r = carriage return, \x1b[K = clear to end of line)
+            eprintln!("\r\x1b[K✅ Detected: {lang} (confidence: {confidence:.1}%)");
             return Ok(lang);
         }
 
         // Fall back to simple detection
         if let Some(lang) = super::super::detect_primary_language(project_path) {
-            eprintln!("✅ Detected: {lang}");
+            // Clear line and print result
+            eprintln!("\r\x1b[K✅ Detected: {lang}");
             return Ok(lang);
         }
 
         // Default to rust if no language detected
-        eprintln!("⚠️  Could not detect language, defaulting to Rust");
+        // Clear line and print warning
+        eprintln!("\r\x1b[K⚠️  Could not detect language, defaulting to Rust");
         Ok("rust".to_string())
     }
 }
