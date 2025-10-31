@@ -2,8 +2,9 @@
 
 **Date**: 2025-10-31
 **Reporter**: User feedback
-**Severity**: High
+**Severity**: High → ✅ FIXED
 **Component**: Language detection
+**Status**: GREEN phase complete (Sprint 79 Phase 1)
 
 ## Description
 
@@ -185,3 +186,66 @@ fn test_discovery_timeout() {
     assert!(result.is_ok(), "Discovery should complete within timeout");
 }
 ```
+
+## Fix Applied
+
+**Root Cause**: Simple language detection that only counted file extensions without weighing primary language indicators (CMakeLists.txt, Cargo.toml, etc.)
+
+**Solution**: Implemented enhanced language detection with:
+- Primary indicators (CMakeLists.txt +85, Cargo.toml +90, package.json +30, pyproject.toml +50, go.mod +90)
+- File extension counting with weighted scoring
+- Multi-language detection (detects all languages >5%)
+- Confidence-based scoring
+- Manual override support (--language, --languages flags)
+
+**Files Modified**:
+- `server/src/services/enhanced_language_detection.rs` - NEW: Enhanced detection (394 lines)
+- `server/tests/bug_011_language_detection_tests.rs` - 9 tests (100% passing)
+- `server/examples/bug_011_language_detection.rs` - Reproduction example
+- `server/src/cli/commands.rs` - Added --language and --languages args
+- `server/src/cli/handlers/utility_handlers.rs` - Integration
+
+**TDD Approach**:
+1. ✅ RED: 9 integration tests for multi-language detection (all failing initially)
+2. ✅ GREEN: Implemented file extension counting with weights
+3. ✅ GREEN: Implemented primary indicators (CMakeLists.txt, Cargo.toml, etc.)
+4. ✅ GREEN: Multi-language detection (detect_all_languages)
+5. ✅ GREEN: Manual override support (--language, --languages)
+6. ✅ GREEN: All 9/9 tests passing
+
+**Implementation Details**:
+```rust
+// Primary indicators with high weights
+if path.join("CMakeLists.txt").exists() {
+    scores.insert(Language::Cpp, 85.0);
+}
+if path.join("Cargo.toml").exists() {
+    scores.insert(Language::Rust, 90.0);
+}
+
+// File extension counting
+let file_counts = count_files_by_extension(path);
+let total: usize = file_counts.values().sum();
+
+for (ext, count) in file_counts {
+    let percentage = (count as f64 / total as f64) * 100.0;
+    match ext.as_str() {
+        "cc" | "cpp" | "cxx" | "h" | "hpp" => {
+            *scores.entry(Language::Cpp).or_insert(0.0) += percentage * 0.8;
+        }
+        "py" => {
+            *scores.entry(Language::Python).or_insert(0.0) += percentage * 0.6;
+        }
+        // ... other languages
+    }
+}
+```
+
+**Impact**:
+- ✅ Ceph project now correctly detected as C++ (85%+ confidence)
+- ✅ Multi-language projects show all detected languages
+- ✅ Manual override available for edge cases
+- ✅ No more hanging on wrong language detection
+- ℹ️ Validated with cargo example: `cargo run --example bug_011_language_detection`
+
+**Release**: Included in v2.184.0 (Sprint 79 Phase 1)
