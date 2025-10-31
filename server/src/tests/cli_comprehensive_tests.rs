@@ -358,6 +358,8 @@ fn test_context_command_parsing() {
             format,
             include_large_files,
             skip_expensive_metrics,
+            language,
+            languages,
         } => {
             assert_eq!(toolchain, Some("rust".to_string()));
             assert_eq!(project_path, PathBuf::from("/tmp/project"));
@@ -365,6 +367,8 @@ fn test_context_command_parsing() {
             assert_eq!(format, ContextFormat::Markdown);
             assert!(!include_large_files); // default value
             assert!(!skip_expensive_metrics); // default value
+            assert_eq!(language, None); // default value
+            assert_eq!(languages, None); // default value
         }
         _ => panic!("Expected Context command"),
     }
