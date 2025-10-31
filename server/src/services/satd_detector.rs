@@ -723,21 +723,16 @@ impl SATDDetector {
                         }
                         stats.all_debts.extend(debts);
                     }
-                    Err(e) => {
-                        eprintln!(
-                            "Warning: Error processing file {}: {}",
-                            file_path.display(),
-                            e
-                        );
+                    Err(_e) => {
+                        // Silently skip files that fail parsing (e.g., line too long)
+                        // Analysis continues successfully with remaining files
+                        // BUG-010: Removed noisy warning that interleaved with progress
                     }
                 }
             }
-            Err(e) => {
-                eprintln!(
-                    "Warning: Could not read file {}: {}",
-                    file_path.display(),
-                    e
-                );
+            Err(_e) => {
+                // Silently skip unreadable files
+                // BUG-010: Removed noisy warning that interleaved with progress
             }
         }
     }
@@ -873,12 +868,9 @@ impl SATDDetector {
     async fn process_file_for_debts(&self, file_path: &Path) -> Vec<TechnicalDebt> {
         match tokio::fs::read_to_string(file_path).await {
             Ok(content) => self.extract_debts_from_content(&content, file_path),
-            Err(e) => {
-                eprintln!(
-                    "Warning: Could not read file {}: {}",
-                    file_path.display(),
-                    e
-                );
+            Err(_e) => {
+                // Silently skip unreadable files
+                // BUG-010: Removed noisy warning that interleaved with progress
                 Vec::new()
             }
         }
@@ -897,12 +889,9 @@ impl SATDDetector {
 
         match self.extract_from_content(content, file_path) {
             Ok(debts) => debts,
-            Err(e) => {
-                eprintln!(
-                    "Warning: Error processing file {}: {}",
-                    file_path.display(),
-                    e
-                );
+            Err(_e) => {
+                // Silently skip files that fail parsing
+                // BUG-010: Removed noisy warning that interleaved with progress
                 Vec::new()
             }
         }
