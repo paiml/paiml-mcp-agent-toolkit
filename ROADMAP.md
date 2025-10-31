@@ -1,13 +1,14 @@
 # PMAT Agent System Roadmap
 
-## 🎉 CURRENT STATUS: Sprint 78 - Interactive Timeline TUI ✅
+## 🎉 CURRENT STATUS: v2.183.0 - Sprint 77 + 78 Release ✅
 
-**Current Version**: v2.180.0 (Released October 29, 2025)
+**Current Version**: v2.183.0 (Released October 31, 2025)
 **Latest Sprint**: Sprint 78 - Interactive Timeline TUI (Completed October 31, 2025)
-**Status**: ✅ COMPLETE - 6 TUI tickets, 13 commits, 114 tests passing
-**Installation**: `cargo install pmat --version 2.180.0`
+**Status**: ✅ RELEASED - Sprint 77 + 78 published to crates.io and GitHub
+**Installation**: `cargo install pmat --version 2.183.0`
 **Crates.io**: https://crates.io/crates/pmat
-**Achievement**: Interactive TUI for timeline debugging with keyboard controls, variable inspection, and stack navigation
+**GitHub**: https://github.com/paiml/paiml-mcp-agent-toolkit/releases/tag/v2.183.0
+**Achievement**: Time-travel debugging timeline (Sprint 77) + Interactive TUI (Sprint 78)
 
 ---
 
@@ -113,14 +114,16 @@
 
 ---
 
-## ✅ Sprint 78: Interactive Timeline TUI - COMPLETE ✅
+## ✅ Sprint 78: Interactive Timeline TUI - COMPLETE & RELEASED ✅
 
-**Version**: Not released (part of v2.180.0 codebase)
+**Version**: v2.183.0 (Released October 31, 2025)
 **Started**: October 31, 2025
 **Completed**: October 31, 2025
-**Status**: ✅ COMPLETE - All 6 tickets implemented with EXTREME TDD
+**Status**: ✅ RELEASED - Published to crates.io and GitHub
 **Goal**: Interactive Terminal User Interface for timeline-based debugging
 **Achievement**: Complete TUI system with keyboard controls, variable inspection, stack navigation, and CLI integration
+**GitHub**: https://github.com/paiml/paiml-mcp-agent-toolkit/releases/tag/v2.183.0
+**Crates.io**: https://crates.io/crates/pmat/2.183.0
 
 **Sprint 78 Overview**:
 - **TUI-001**: Terminal Event Loop ✅ COMPLETE
