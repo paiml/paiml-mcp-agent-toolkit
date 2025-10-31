@@ -2,8 +2,9 @@
 
 **Date**: 2025-10-31
 **Reporter**: User feedback
-**Severity**: Medium
+**Severity**: Medium → ✅ FIXED
 **Component**: CLI - context command progress display
+**Status**: GREEN phase complete (5/5 tests passing)
 
 ## Description
 
@@ -78,3 +79,38 @@ Or use ANSI escape codes directly:
 print!("\r\x1b[K🔍 Processing file {}/{}", current, total);
 std::io::stdout().flush()?;
 ```
+
+## Fix Applied
+
+**Root Cause**: Used `eprintln!()` which always creates new lines instead of updating in place.
+
+**Solution**: Implemented ANSI escape codes for in-place progress updates:
+- Use `eprint!()` (no newline) for initial "Auto-detecting..." message
+- Flush stderr immediately to ensure prompt display
+- Use `\r\x1b[K` to clear line and overwrite with result messages
+- Pattern: `\r` (carriage return) + `\x1b[K` (clear to end of line)
+
+**Files Modified**:
+- `server/src/cli/handlers/utility_handlers.rs:590-622` - Added ANSI escape codes
+- `server/tests/bug_005_progress_output_tests.rs` - 5 comprehensive tests (passing with --ignored)
+
+**TDD Approach**:
+1. ✅ RED: 5 tests written (verifying single-line progress)
+2. ✅ GREEN: Implemented `\r\x1b[K` escape codes
+3. ✅ Verification: Manual testing shows clean progress updates
+
+**Implementation Details**:
+```rust
+// Before (broken):
+eprintln!("🔍 Auto-detecting project language...");
+// ... detection happens ...
+eprintln!("✅ Detected: {lang}");  // Creates new line!
+
+// After (fixed):
+eprint!("🔍 Auto-detecting project language...");
+io::stderr().flush().ok();
+// ... detection happens ...
+eprintln!("\r\x1b[K✅ Detected: {lang}");  // Clears and overwrites!
+```
+
+**Impact**: Progress output now cleanly updates in place, providing better UX without visual corruption.
