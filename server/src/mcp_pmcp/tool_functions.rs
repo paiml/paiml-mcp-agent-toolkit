@@ -108,7 +108,7 @@ pub async fn analyze_complexity(
     }))
 }
 
-pub async fn analyze_satd(paths: &[PathBuf], include_resolved: bool) -> Result<Value> {
+pub async fn analyze_satd(paths: &[PathBuf], _include_resolved: bool) -> Result<Value> {
     use crate::services::satd_detector::SATDDetector;
 
     // Validate input
@@ -116,7 +116,8 @@ pub async fn analyze_satd(paths: &[PathBuf], include_resolved: bool) -> Result<V
         return Err(anyhow::anyhow!("At least one path must be provided"));
     }
 
-    // Always use standard detector - include_resolved affects which comments we count
+    // TODO: implement include_resolved parameter to filter resolved debt (DONE, RESOLVED comments)
+    // Currently using standard detector which detects all SATD markers
     let detector = SATDDetector::new();
 
     let mut total_satd = 0;
