@@ -211,12 +211,64 @@ pub async fn analyze_dead_code(paths: &[PathBuf], _include_tests: bool) -> Resul
     }))
 }
 
-pub async fn analyze_lint_hotspots(_paths: &[PathBuf], _top_files: Option<usize>) -> Result<Value> {
+pub async fn analyze_lint_hotspots(paths: &[PathBuf], top_files: Option<usize>) -> Result<Value> {
+    use crate::tdg::analyzer_simple::TdgAnalyzer;
+
+    if paths.is_empty() {
+        return Err(anyhow::anyhow!("At least one path must be provided"));
+    }
+
+    let top_files_limit = top_files.unwrap_or(10);
+    let analyzer = TdgAnalyzer::new()?;
+    let project_path = &paths[0];
+
+    // Analyze project with TDG
+    let project_score = if project_path.is_dir() {
+        analyzer.analyze_project(project_path)?
+    } else {
+        return Err(anyhow::anyhow!("Path must be a directory"));
+    };
+
+    // Sort files by score (lower score = worse quality = hotspot)
+    let mut file_scores = project_score.files.clone();
+    file_scores.sort_by(|a, b| {
+        a.total
+            .partial_cmp(&b.total)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+
+    // Take top N hotspots (lowest scores)
+    file_scores.truncate(top_files_limit);
+
+    // Build hotspot entries
+    let hotspots: Vec<Value> = file_scores
+        .iter()
+        .filter_map(|file_score| {
+            file_score.file_path.as_ref().map(|path| {
+                json!({
+                    "file": path.display().to_string(),
+                    "score": file_score.total,
+                    "grade": file_score.grade.to_string(),
+                    "violation_count": file_score.penalties_applied.len(),
+                    "complexity": file_score.structural_complexity,
+                    "satd_count": file_score.penalties_applied.iter()
+                        .filter(|p| p.issue.to_lowercase().contains("satd") || p.issue.to_lowercase().contains("todo"))
+                        .count(),
+                    "total_penalty": file_score.penalties_applied.iter()
+                        .map(|p| p.amount)
+                        .sum::<f32>(),
+                })
+            })
+        })
+        .collect();
+
     Ok(json!({
         "status": "completed",
-        "message": "Lint hotspot analysis completed (placeholder implementation)",
+        "message": format!("Lint hotspot analysis completed ({} hotspots found)", hotspots.len()),
         "results": {
-            "hotspots": []
+            "hotspots": hotspots,
+            "total_files_analyzed": project_score.files.len(),
+            "top_files_limit": top_files_limit,
         }
     }))
 }
@@ -273,12 +325,96 @@ pub async fn analyze_churn(
     }
 }
 
-pub async fn analyze_coupling(_paths: &[PathBuf], _threshold: Option<f64>) -> Result<Value> {
+pub async fn analyze_coupling(paths: &[PathBuf], threshold: Option<f64>) -> Result<Value> {
+    use crate::services::deep_context::{DeepContextAnalyzer, DeepContextConfig};
+    use std::collections::HashMap;
+
+    if paths.is_empty() {
+        return Err(anyhow::anyhow!("At least one path must be provided"));
+    }
+
+    let project_path = &paths[0];
+    let threshold_value = threshold.unwrap_or(0.5);
+
+    // Use deep context analyzer to get AST contexts
+    let config = DeepContextConfig::default();
+    let analyzer = DeepContextAnalyzer::new(config);
+    let context = analyzer.analyze_project(project_path).await?;
+
+    // Analyze coupling from AST contexts
+    let mut file_metrics: HashMap<String, (usize, usize, f64)> = HashMap::new();
+
+    // Build import map for afferent coupling calculation
+    let mut all_imports: HashMap<String, Vec<String>> = HashMap::new();
+    for ast_context in &context.analyses.ast_contexts {
+        let file_path = ast_context.base.path.clone();
+        let imports: Vec<String> = ast_context.base.items.iter()
+            .filter_map(|item| match item {
+                crate::services::context::AstItem::Use { path, .. } => Some(path.clone()),
+                crate::services::context::AstItem::Import { module, .. } => Some(module.clone()),
+                _ => None,
+            })
+            .collect();
+        all_imports.insert(file_path, imports);
+    }
+
+    // Calculate metrics
+    for (file, imports) in &all_imports {
+        let efferent = imports.len();
+        let afferent = all_imports.values()
+            .filter(|deps| deps.iter().any(|d| d.contains(file) || file.contains(d)))
+            .count();
+        let total = afferent + efferent;
+        let instability = if total > 0 {
+            efferent as f64 / total as f64
+        } else {
+            0.0
+        };
+
+        file_metrics.insert(file.clone(), (afferent, efferent, instability));
+    }
+
+    // Filter by threshold and build coupling entries
+    let couplings: Vec<Value> = file_metrics.iter()
+        .filter(|(_, (_, _, instability))| *instability >= threshold_value)
+        .map(|(file, (afferent, efferent, instability))| {
+            json!({
+                "file": file,
+                "afferent_coupling": afferent,
+                "efferent_coupling": efferent,
+                "instability": instability,
+                "strength": afferent + efferent,
+            })
+        })
+        .collect();
+
+    // Calculate project-level metrics
+    let avg_afferent = if !file_metrics.is_empty() {
+        file_metrics.values().map(|(a, _, _)| *a).sum::<usize>() as f64 / file_metrics.len() as f64
+    } else {
+        0.0
+    };
+    let avg_efferent = if !file_metrics.is_empty() {
+        file_metrics.values().map(|(_, e, _)| *e).sum::<usize>() as f64 / file_metrics.len() as f64
+    } else {
+        0.0
+    };
+    let max_afferent = file_metrics.values().map(|(a, _, _)| *a).max().unwrap_or(0);
+    let max_efferent = file_metrics.values().map(|(_, e, _)| *e).max().unwrap_or(0);
+
     Ok(json!({
         "status": "completed",
-        "message": "Coupling analysis completed (placeholder implementation)",
+        "message": format!("Coupling analysis completed ({} files analyzed)", file_metrics.len()),
         "results": {
-            "couplings": []
+            "couplings": couplings,
+            "total_files": file_metrics.len(),
+            "threshold": threshold_value,
+            "project_metrics": {
+                "avg_afferent": avg_afferent,
+                "avg_efferent": avg_efferent,
+                "max_afferent": max_afferent,
+                "max_efferent": max_efferent,
+            }
         }
     }))
 }
@@ -786,22 +922,138 @@ pub async fn generate_deep_context(
     }
 }
 
-pub async fn analyze_context(_paths: &[PathBuf], _analysis_types: &[String]) -> Result<Value> {
+pub async fn analyze_context(paths: &[PathBuf], analysis_types: &[String]) -> Result<Value> {
+    use crate::services::deep_context::{DeepContextAnalyzer, DeepContextConfig};
+
+    if paths.is_empty() {
+        return Err(anyhow::anyhow!("At least one path must be provided"));
+    }
+
+    let project_path = &paths[0];
+    let config = DeepContextConfig::default();
+    let analyzer = DeepContextAnalyzer::new(config);
+
+    // Analyze project
+    let context = analyzer.analyze_project(project_path).await?;
+
+    // Build analyses based on requested types (or all if none specified)
+    let requested_all = analysis_types.is_empty();
+    let mut analyses = serde_json::Map::new();
+
+    if requested_all || analysis_types.iter().any(|t| t == "structure") {
+        let file_count = context.file_tree.total_files;
+        let function_count: usize = context.analyses.ast_contexts.iter()
+            .map(|ast| ast.base.items.iter()
+                .filter(|item| matches!(item, crate::services::context::AstItem::Function { .. }))
+                .count())
+            .sum();
+        analyses.insert("structure".to_string(), json!({
+            "total_files": file_count,
+            "total_functions": function_count,
+        }));
+    }
+
+    if requested_all || analysis_types.iter().any(|t| t == "dependencies") {
+        let import_count: usize = context.analyses.ast_contexts.iter()
+            .map(|ast| ast.base.items.iter()
+                .filter(|item| matches!(item,
+                    crate::services::context::AstItem::Use { .. } |
+                    crate::services::context::AstItem::Import { .. }))
+                .count())
+            .sum();
+        analyses.insert("dependencies".to_string(), json!({
+            "total_imports": import_count,
+        }));
+    }
+
     Ok(json!({
         "status": "completed",
-        "message": "Context analysis completed (placeholder implementation)",
-        "analyses": {}
+        "message": "Context analysis completed using DeepContextAnalyzer",
+        "analyses": analyses,
+        "context": format!("Analyzed {} files", context.file_tree.total_files),
     }))
 }
 
-pub async fn context_summary(_paths: &[PathBuf], _level: Option<&str>) -> Result<Value> {
+pub async fn context_summary(paths: &[PathBuf], _level: Option<&str>) -> Result<Value> {
+    use std::collections::HashSet;
+    use std::fs;
+
+    if paths.is_empty() {
+        return Err(anyhow::anyhow!("At least one path must be provided"));
+    }
+
+    let project_path = &paths[0];
+
+    // Count files and lines
+    let mut total_files = 0;
+    let mut total_lines = 0;
+    let mut languages = HashSet::new();
+
+    // Recursively traverse directory
+    fn traverse_dir(
+        dir: &Path,
+        total_files: &mut usize,
+        total_lines: &mut usize,
+        languages: &mut HashSet<String>,
+    ) -> Result<()> {
+        if dir.is_dir() {
+            for entry in fs::read_dir(dir)? {
+                let entry = entry?;
+                let path = entry.path();
+
+                if path.is_dir() {
+                    // Skip hidden directories and common exclusions
+                    if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                        if name.starts_with('.') || name == "target" || name == "node_modules" {
+                            continue;
+                        }
+                    }
+                    traverse_dir(&path, total_files, total_lines, languages)?;
+                } else if path.is_file() {
+                    // Detect language by extension
+                    if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+                        let language = match ext {
+                            "rs" => "Rust",
+                            "py" => "Python",
+                            "js" => "JavaScript",
+                            "ts" => "TypeScript",
+                            "java" => "Java",
+                            "cpp" | "cc" | "cxx" => "C++",
+                            "c" | "h" => "C",
+                            "go" => "Go",
+                            "rb" => "Ruby",
+                            "php" => "PHP",
+                            "swift" => "Swift",
+                            "kt" => "Kotlin",
+                            "sh" => "Shell",
+                            _ => continue, // Skip unknown extensions
+                        };
+
+                        languages.insert(language.to_string());
+                        *total_files += 1;
+
+                        // Count lines
+                        if let Ok(content) = fs::read_to_string(&path) {
+                            *total_lines += content.lines().count();
+                        }
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    traverse_dir(project_path, &mut total_files, &mut total_lines, &mut languages)?;
+
+    let languages_vec: Vec<String> = languages.into_iter().collect();
+
     Ok(json!({
         "status": "completed",
-        "message": "Context summary generated (placeholder implementation)",
+        "message": "Context summary generated from file system analysis",
         "summary": {
-            "total_files": 0,
-            "total_lines": 0,
-            "languages": []
+            "total_files": total_files,
+            "total_lines": total_lines,
+            "languages": languages_vec,
         }
     }))
 }
