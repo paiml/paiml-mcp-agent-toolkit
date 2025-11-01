@@ -1269,3 +1269,353 @@ async fn test_git_status_non_git_directory() {
         "Non-git directory should return error, not placeholder success"
     );
 }
+
+// ============================================================================
+// Batch 5: Advanced Analysis Functions (Final 4/4 - Complete Issue #53)
+// ============================================================================
+
+// Test 1: analyze_lint_hotspots - Find files with high quality violation density
+#[tokio::test]
+#[ignore = "Issue #53: RED test - analyze_lint_hotspots must call real TDG service"]
+async fn test_analyze_lint_hotspots_calls_real_service() {
+    use tempfile::TempDir;
+
+    let temp_dir = TempDir::new().unwrap();
+
+    // Create test file with high complexity and SATD
+    let file_path = temp_dir.path().join("hotspot.rs");
+    std::fs::write(
+        &file_path,
+        r#"
+// TODO: Refactor this complex function
+pub fn complex_nested(x: i32) -> i32 {
+    if x > 0 {
+        if x < 10 {
+            if x % 2 == 0 {
+                if x % 3 == 0 {
+                    return x * 2;
+                } else {
+                    return x + 1;
+                }
+            }
+        }
+    }
+    x
+}
+"#,
+    )
+    .unwrap();
+
+    let result = tool_functions::analyze_lint_hotspots(&[temp_dir.path().to_path_buf()], Some(10))
+        .await
+        .unwrap();
+
+    // Verify NOT a placeholder response
+    let message = result["message"].as_str().unwrap();
+    assert!(
+        !message.contains("placeholder"),
+        "Response should NOT contain 'placeholder' keyword"
+    );
+
+    // Verify real hotspot data is returned
+    assert!(
+        result.get("results").is_some(),
+        "Should have results field from real analysis"
+    );
+
+    let results = &result["results"];
+    assert!(
+        results.get("hotspots").is_some(),
+        "Should have hotspots array from real TDG analysis"
+    );
+
+    // Hotspots should contain file with quality violations
+    let hotspots = results["hotspots"].as_array().unwrap();
+    if !hotspots.is_empty() {
+        let first_hotspot = &hotspots[0];
+        assert!(
+            first_hotspot.get("file").is_some(),
+            "Hotspot should have file field"
+        );
+        assert!(
+            first_hotspot.get("violation_count").is_some() || first_hotspot.get("score").is_some(),
+            "Hotspot should have violation metrics from real analysis"
+        );
+    }
+}
+
+// Test 2: analyze_coupling - Detect structural/temporal coupling
+#[tokio::test]
+#[ignore = "Issue #53: RED test - analyze_coupling must call real coupling analysis"]
+async fn test_analyze_coupling_calls_real_service() {
+    use tempfile::TempDir;
+
+    let temp_dir = TempDir::new().unwrap();
+
+    // Create test files with dependencies
+    let file_a = temp_dir.path().join("module_a.rs");
+    let file_b = temp_dir.path().join("module_b.rs");
+
+    std::fs::write(
+        &file_a,
+        r#"
+use crate::module_b;
+
+pub fn function_a() {
+    module_b::function_b();
+}
+"#,
+    )
+    .unwrap();
+
+    std::fs::write(
+        &file_b,
+        r#"
+pub fn function_b() {
+    println!("B");
+}
+"#,
+    )
+    .unwrap();
+
+    let result =
+        tool_functions::analyze_coupling(&[temp_dir.path().to_path_buf()], Some(0.5))
+            .await
+            .unwrap();
+
+    // Verify NOT a placeholder response
+    let message = result["message"].as_str().unwrap();
+    assert!(
+        !message.contains("placeholder"),
+        "Response should NOT contain 'placeholder' keyword"
+    );
+
+    // Verify real coupling data is returned
+    assert!(
+        result.get("results").is_some(),
+        "Should have results field from real coupling analysis"
+    );
+
+    let results = &result["results"];
+    assert!(
+        results.get("couplings").is_some(),
+        "Should have couplings array from real analysis"
+    );
+}
+
+// Test 3: analyze_coupling - Validate coupling metrics
+#[tokio::test]
+#[ignore = "Issue #53: RED test - analyze_coupling must return real coupling metrics"]
+async fn test_analyze_coupling_returns_real_metrics() {
+    use tempfile::TempDir;
+
+    let temp_dir = TempDir::new().unwrap();
+
+    let file = temp_dir.path().join("test.rs");
+    std::fs::write(&file, "pub fn test() {}").unwrap();
+
+    let result =
+        tool_functions::analyze_coupling(&[temp_dir.path().to_path_buf()], None)
+            .await
+            .unwrap();
+
+    let results = &result["results"];
+    let couplings = results["couplings"].as_array().unwrap();
+
+    // If couplings found, verify they have real metrics
+    if !couplings.is_empty() {
+        let first_coupling = &couplings[0];
+        // Should have coupling metrics like afferent/efferent or strength
+        let has_metrics = first_coupling.get("afferent_coupling").is_some()
+            || first_coupling.get("efferent_coupling").is_some()
+            || first_coupling.get("strength").is_some()
+            || first_coupling.get("instability").is_some();
+
+        assert!(
+            has_metrics,
+            "Coupling entry should have real metrics from analysis, not placeholder zeros"
+        );
+    }
+}
+
+// Test 4: analyze_context - Multi-type context analysis
+#[tokio::test]
+#[ignore = "Issue #53: RED test - analyze_context must call real context service"]
+async fn test_analyze_context_calls_real_service() {
+    use tempfile::TempDir;
+
+    let temp_dir = TempDir::new().unwrap();
+
+    let file = temp_dir.path().join("test.rs");
+    std::fs::write(
+        &file,
+        r#"
+pub struct TestStruct {
+    field: i32
+}
+
+impl TestStruct {
+    pub fn new(field: i32) -> Self {
+        Self { field }
+    }
+}
+"#,
+    )
+    .unwrap();
+
+    let result = tool_functions::analyze_context(
+        &[temp_dir.path().to_path_buf()],
+        &["structure".to_string(), "dependencies".to_string()],
+    )
+    .await
+    .unwrap();
+
+    // Verify NOT a placeholder response
+    let message = result["message"].as_str().unwrap();
+    assert!(
+        !message.contains("placeholder"),
+        "Response should NOT contain 'placeholder' keyword"
+    );
+
+    // Verify real context analysis data is returned
+    assert!(
+        result.get("analyses").is_some(),
+        "Should have analyses field from real context service"
+    );
+
+    let analyses = &result["analyses"];
+    // Should not be an empty object (placeholder)
+    assert!(
+        !analyses.as_object().unwrap().is_empty() || result.get("context").is_some(),
+        "Should have real context data, not empty placeholder object"
+    );
+}
+
+// Test 5: analyze_context - Returns structured data
+#[tokio::test]
+#[ignore = "Issue #53: RED test - analyze_context must return structured context data"]
+async fn test_analyze_context_returns_structured_data() {
+    use tempfile::TempDir;
+
+    let temp_dir = TempDir::new().unwrap();
+
+    let file = temp_dir.path().join("module.rs");
+    std::fs::write(
+        &file,
+        r#"
+pub fn function_one() {}
+pub fn function_two() {}
+"#,
+    )
+    .unwrap();
+
+    let result =
+        tool_functions::analyze_context(&[temp_dir.path().to_path_buf()], &["structure".to_string()])
+            .await
+            .unwrap();
+
+    // Verify context data has structure
+    assert!(
+        result.get("analyses").is_some() || result.get("context").is_some(),
+        "Should have context data field"
+    );
+
+    // Should have meaningful data (not placeholder zeros/empty)
+    let has_data = if let Some(analyses) = result.get("analyses") {
+        !analyses.as_object().unwrap().is_empty()
+    } else if let Some(context) = result.get("context") {
+        context.as_str().map_or(false, |s| !s.is_empty())
+    } else {
+        false
+    };
+
+    assert!(has_data, "Should have real context data, not placeholder");
+}
+
+// Test 6: context_summary - Aggregate codebase summary
+#[tokio::test]
+#[ignore = "Issue #53: RED test - context_summary must call real context service"]
+async fn test_context_summary_calls_real_service() {
+    use tempfile::TempDir;
+
+    let temp_dir = TempDir::new().unwrap();
+
+    // Create multiple test files
+    let file1 = temp_dir.path().join("file1.rs");
+    let file2 = temp_dir.path().join("file2.rs");
+
+    std::fs::write(&file1, "pub fn test1() {}\n// Line 2\n// Line 3").unwrap();
+    std::fs::write(&file2, "pub fn test2() {}\n// Another line").unwrap();
+
+    let result = tool_functions::context_summary(&[temp_dir.path().to_path_buf()], Some("full"))
+        .await
+        .unwrap();
+
+    // Verify NOT a placeholder response
+    let message = result["message"].as_str().unwrap();
+    assert!(
+        !message.contains("placeholder"),
+        "Response should NOT contain 'placeholder' keyword"
+    );
+
+    // Verify real summary data is returned
+    assert!(
+        result.get("summary").is_some(),
+        "Should have summary field from real context service"
+    );
+
+    let summary = &result["summary"];
+
+    // Should have real counts (not placeholder zeros)
+    let total_files = summary["total_files"].as_u64().unwrap_or(0);
+    let total_lines = summary["total_lines"].as_u64().unwrap_or(0);
+
+    assert!(
+        total_files > 0,
+        "Should have real file count from analysis, not placeholder 0"
+    );
+    assert!(
+        total_lines > 0,
+        "Should have real line count from analysis, not placeholder 0"
+    );
+}
+
+// Test 7: context_summary - Language detection
+#[tokio::test]
+#[ignore = "Issue #53: RED test - context_summary must detect languages"]
+async fn test_context_summary_detects_languages() {
+    use tempfile::TempDir;
+
+    let temp_dir = TempDir::new().unwrap();
+
+    let rust_file = temp_dir.path().join("test.rs");
+    std::fs::write(&rust_file, "pub fn rust_function() {}").unwrap();
+
+    let result = tool_functions::context_summary(&[temp_dir.path().to_path_buf()], None)
+        .await
+        .unwrap();
+
+    let summary = &result["summary"];
+
+    // Should detect languages (not empty placeholder array)
+    let languages = summary["languages"].as_array().unwrap();
+    assert!(
+        !languages.is_empty(),
+        "Should detect at least one language (Rust), not empty placeholder array"
+    );
+
+    // Verify language detection includes expected language
+    let has_rust = languages.iter().any(|lang| {
+        lang.as_str().map_or(false, |s| s.to_lowercase().contains("rust"))
+            || lang
+                .as_object()
+                .and_then(|o| o.get("name"))
+                .and_then(|n| n.as_str())
+                .map_or(false, |s| s.to_lowercase().contains("rust"))
+    });
+
+    assert!(
+        has_rust,
+        "Should detect Rust language from .rs file, not return placeholder empty array"
+    );
+}
