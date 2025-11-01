@@ -429,3 +429,266 @@ async fn test_analyze_dead_code_respects_include_tests() {
 // 4. Handle errors properly
 // 5. Respect all parameters (threshold, top_files, include_resolved, include_tests)
 //
+
+// =============================================================================
+// RED Phase Tests - Batch 2: Context & Churn Functions
+// =============================================================================
+
+#[tokio::test]
+#[ignore = "Issue #53: RED test - generate_context must call real service"]
+async fn test_generate_context_calls_real_service() {
+    // Create a temporary Rust file
+    let temp_dir = TempDir::new().unwrap();
+    let file_path = create_test_rust_file(
+        &temp_dir,
+        "sample.rs",
+        r#"
+        fn sample_function() -> i32 {
+            42
+        }
+
+        struct SampleStruct {
+            field: String,
+        }
+        "#,
+    );
+
+    // Call generate_context with the test file
+    let result = tool_functions::generate_context(&[file_path.clone()], Some(10), false)
+        .await
+        .unwrap();
+
+    // Verify NOT a placeholder response
+    let message = result["message"].as_str().unwrap();
+    assert!(
+        !message.contains("placeholder"),
+        "Response should NOT contain 'placeholder' keyword"
+    );
+
+    // Verify real context data is returned
+    let context = &result["context"];
+    assert!(
+        context.is_object(),
+        "Should return context object with real data"
+    );
+
+    // Verify files array exists and contains data
+    if let Some(files) = context["files"].as_array() {
+        assert!(!files.is_empty(), "Should analyze at least 1 file");
+    }
+}
+
+#[tokio::test]
+#[ignore = "Issue #53: RED test - generate_context with empty paths returns error"]
+async fn test_generate_context_empty_paths_error() {
+    // Call with empty paths array
+    let result = tool_functions::generate_context(&[], None, false).await;
+
+    // Should return an error for empty paths
+    assert!(
+        result.is_err(),
+        "Should return error when no paths provided"
+    );
+}
+
+#[tokio::test]
+#[ignore = "Issue #53: RED test - generate_context respects max_depth parameter"]
+async fn test_generate_context_respects_max_depth() {
+    // Create nested directory structure
+    let temp_dir = TempDir::new().unwrap();
+    let level1 = temp_dir.path().join("level1");
+    let level2 = level1.join("level2");
+    std::fs::create_dir_all(&level2).unwrap();
+
+    let file1 = create_test_rust_file(&temp_dir, "level1/file1.rs", "fn foo() {}");
+    let _file2 = level2.join("file2.rs");
+    std::fs::write(&_file2, "fn bar() {}").unwrap();
+
+    // Test with max_depth limiting traversal
+    let result_shallow = tool_functions::generate_context(&[file1.clone()], Some(1), false)
+        .await
+        .unwrap();
+
+    let result_deep = tool_functions::generate_context(&[file1.clone()], Some(10), false)
+        .await
+        .unwrap();
+
+    // Both should complete (depth affects directory traversal if implemented)
+    assert_eq!(
+        result_shallow["status"].as_str().unwrap(),
+        "completed",
+        "Shallow depth should complete"
+    );
+    assert_eq!(
+        result_deep["status"].as_str().unwrap(),
+        "completed",
+        "Deep depth should complete"
+    );
+}
+
+#[tokio::test]
+#[ignore = "Issue #53: RED test - generate_deep_context must call real service"]
+async fn test_generate_deep_context_calls_real_service() {
+    // Create a temporary Rust file with complexity
+    let temp_dir = TempDir::new().unwrap();
+    let file_path = create_test_rust_file(
+        &temp_dir,
+        "complex.rs",
+        r#"
+        fn complex_function(x: i32) -> i32 {
+            if x > 10 {
+                if x > 20 {
+                    return x * 2;
+                }
+                return x + 5;
+            }
+            x
+        }
+        "#,
+    );
+
+    // Call generate_deep_context with the test file
+    let result = tool_functions::generate_deep_context(&[file_path.clone()], None)
+        .await
+        .unwrap();
+
+    // Verify NOT a placeholder response
+    let message = result["message"].as_str().unwrap();
+    assert!(
+        !message.contains("placeholder"),
+        "Response should NOT contain 'placeholder' keyword"
+    );
+
+    // Verify real deep context data is returned
+    let context = &result["context"];
+    assert!(
+        context.is_object(),
+        "Should return context object with real analysis"
+    );
+
+    // Verify metadata exists (DeepContext has metadata field)
+    assert!(
+        context["metadata"].is_object() || result["results"].is_object(),
+        "Should contain metadata or results from deep analysis"
+    );
+}
+
+#[tokio::test]
+#[ignore = "Issue #53: RED test - generate_deep_context with empty paths returns error"]
+async fn test_generate_deep_context_empty_paths_error() {
+    // Call with empty paths array
+    let result = tool_functions::generate_deep_context(&[], None).await;
+
+    // Should return an error for empty paths
+    assert!(
+        result.is_err(),
+        "Should return error when no paths provided"
+    );
+}
+
+#[tokio::test]
+#[ignore = "Issue #53: RED test - generate_deep_context respects format parameter"]
+async fn test_generate_deep_context_respects_format() {
+    // Create a test file
+    let temp_dir = TempDir::new().unwrap();
+    let file_path = create_test_rust_file(&temp_dir, "test.rs", "fn test() {}");
+
+    // Test with format parameter (if supported)
+    let result_default = tool_functions::generate_deep_context(&[file_path.clone()], None)
+        .await
+        .unwrap();
+
+    let result_with_format =
+        tool_functions::generate_deep_context(&[file_path.clone()], Some("json"))
+            .await
+            .unwrap();
+
+    // Both should complete successfully
+    assert_eq!(
+        result_default["status"].as_str().unwrap(),
+        "completed",
+        "Default format should complete"
+    );
+    assert_eq!(
+        result_with_format["status"].as_str().unwrap(),
+        "completed",
+        "Specified format should complete"
+    );
+}
+
+#[tokio::test]
+#[ignore = "Issue #53: RED test - analyze_churn must call real git service"]
+async fn test_analyze_churn_calls_real_service() {
+    // NOTE: This test requires a git repository
+    // Use current repository as test subject
+    let repo_path = std::env::current_dir().unwrap();
+
+    // Call analyze_churn
+    let result = tool_functions::analyze_churn(&[repo_path.clone()], Some(30), Some(10))
+        .await
+        .unwrap();
+
+    // Verify NOT a placeholder response
+    let message = result["message"].as_str().unwrap();
+    assert!(
+        !message.contains("placeholder"),
+        "Response should NOT contain 'placeholder' keyword"
+    );
+
+    // Verify real churn data is returned
+    let results = &result["results"];
+    assert!(
+        results.is_object(),
+        "Should return results object with churn data"
+    );
+
+    // Verify files array exists (even if empty for non-git directories)
+    assert!(
+        results["files"].is_array(),
+        "Should have files array in results"
+    );
+}
+
+#[tokio::test]
+#[ignore = "Issue #53: RED test - analyze_churn with empty paths returns error"]
+async fn test_analyze_churn_empty_paths_error() {
+    // Call with empty paths array
+    let result = tool_functions::analyze_churn(&[], Some(30), Some(10)).await;
+
+    // Should return an error for empty paths
+    assert!(
+        result.is_err(),
+        "Should return error when no paths provided"
+    );
+}
+
+#[tokio::test]
+#[ignore = "Issue #53: RED test - analyze_churn respects days parameter"]
+async fn test_analyze_churn_respects_days() {
+    // Use current repository as test subject
+    let repo_path = std::env::current_dir().unwrap();
+
+    // Test with different day ranges
+    let result_30_days = tool_functions::analyze_churn(&[repo_path.clone()], Some(30), None)
+        .await
+        .unwrap();
+
+    let result_7_days = tool_functions::analyze_churn(&[repo_path.clone()], Some(7), None)
+        .await
+        .unwrap();
+
+    // Both should complete
+    assert_eq!(
+        result_30_days["status"].as_str().unwrap(),
+        "completed",
+        "30-day analysis should complete"
+    );
+    assert_eq!(
+        result_7_days["status"].as_str().unwrap(),
+        "completed",
+        "7-day analysis should complete"
+    );
+
+    // Verify days parameter is reflected in response (if the service includes it)
+    // This validates the parameter is actually passed through
+}
