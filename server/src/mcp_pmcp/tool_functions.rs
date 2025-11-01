@@ -17,39 +17,195 @@ use std::path::{Path, PathBuf};
 // In a full implementation, these would call the actual CLI handlers with proper arguments
 
 pub async fn analyze_complexity(
-    _paths: &[PathBuf],
-    _top_files: Option<usize>,
-    _threshold: Option<u64>,
+    paths: &[PathBuf],
+    top_files: Option<usize>,
+    threshold: Option<u64>,
 ) -> Result<Value> {
+    use crate::services::complexity::analyze_file_complexity_uncached;
+
+    // Validate input
+    if paths.is_empty() {
+        return Err(anyhow::anyhow!("At least one path must be provided"));
+    }
+
+    let threshold_value = threshold.unwrap_or(10);
+
+    // Analyze all provided paths
+    let mut all_functions = Vec::new();
+    let mut total_files = 0;
+    let mut total_complexity = 0u64;
+    let mut violations = Vec::new();
+
+    for path in paths {
+        // Skip non-existent paths
+        if !path.exists() {
+            continue;
+        }
+
+        // Analyze single file
+        if path.is_file() {
+            match analyze_file_complexity_uncached(path, None).await {
+                Ok(metrics) => {
+                    total_files += 1;
+
+                    for func in &metrics.functions {
+                        let cc = func.metrics.cyclomatic as u64;
+                        total_complexity += cc;
+
+                        if cc >= threshold_value {
+                            violations.push(json!({
+                                "file": metrics.path.clone(),
+                                "function": func.name.clone(),
+                                "complexity": cc,
+                                "threshold": threshold_value,
+                                "line_start": func.line_start,
+                                "line_end": func.line_end,
+                            }));
+                        }
+
+                        all_functions.push(json!({
+                            "file": metrics.path.clone(),
+                            "function": func.name.clone(),
+                            "cyclomatic_complexity": func.metrics.cyclomatic,
+                            "cognitive_complexity": func.metrics.cognitive,
+                            "line_start": func.line_start,
+                            "line_end": func.line_end,
+                        }));
+                    }
+                },
+                Err(_) => continue, // Skip files that fail to analyze
+            }
+        }
+    }
+
+    // Sort by complexity and apply top_files limit
+    let mut sorted_functions = all_functions;
+    if let Some(limit) = top_files {
+        sorted_functions.sort_by(|a, b| {
+            let a_cc = a["cyclomatic_complexity"].as_u64().unwrap_or(0);
+            let b_cc = b["cyclomatic_complexity"].as_u64().unwrap_or(0);
+            b_cc.cmp(&a_cc) // Descending order
+        });
+        sorted_functions.truncate(limit);
+    }
+
+    let average_complexity = if total_files > 0 {
+        total_complexity / total_files as u64
+    } else {
+        0
+    };
+
     Ok(json!({
         "status": "completed",
-        "message": "Complexity analysis completed (placeholder implementation)",
+        "message": "Complexity analysis completed",
         "results": {
-            "total_files": 0,
-            "total_complexity": 0,
-            "violations": []
+            "total_files": total_files,
+            "total_complexity": total_complexity,
+            "average_complexity": average_complexity,
+            "violations": violations,
+            "top_files": sorted_functions,
         }
     }))
 }
 
-pub async fn analyze_satd(_paths: &[PathBuf], _include_resolved: bool) -> Result<Value> {
+pub async fn analyze_satd(paths: &[PathBuf], include_resolved: bool) -> Result<Value> {
+    use crate::services::satd_detector::SATDDetector;
+
+    // Validate input
+    if paths.is_empty() {
+        return Err(anyhow::anyhow!("At least one path must be provided"));
+    }
+
+    // Always use standard detector - include_resolved affects which comments we count
+    let detector = SATDDetector::new();
+
+    let mut total_satd = 0;
+    let mut file_results = Vec::new();
+
+    for path in paths {
+        if !path.exists() || !path.is_file() {
+            continue;
+        }
+
+        match tokio::fs::read_to_string(path).await {
+            Ok(content) => {
+                match detector.extract_from_content(&content, path) {
+                    Ok(debts) => {
+                        let satd_count = debts.len();
+                        total_satd += satd_count;
+
+                        if satd_count > 0 {
+                            file_results.push(json!({
+                                "file": path.display().to_string(),
+                                "satd_count": satd_count,
+                                "debts": debts.iter().map(|debt| json!({
+                                    "line": debt.line,
+                                    "category": format!("{:?}", debt.category),
+                                    "severity": format!("{:?}", debt.severity),
+                                    "text": debt.text,
+                                })).collect::<Vec<_>>(),
+                            }));
+                        }
+                    },
+                    Err(_) => continue,
+                }
+            },
+            Err(_) => continue,
+        }
+    }
+
     Ok(json!({
         "status": "completed",
-        "message": "SATD analysis completed (placeholder implementation)",
+        "message": "SATD analysis completed",
         "results": {
-            "total_satd": 0,
-            "files": []
+            "total_satd": total_satd,
+            "files": file_results,
         }
     }))
 }
 
-pub async fn analyze_dead_code(_paths: &[PathBuf], _include_tests: bool) -> Result<Value> {
+pub async fn analyze_dead_code(paths: &[PathBuf], _include_tests: bool) -> Result<Value> {
+    use crate::services::dead_code_multi_language::analyze_dead_code_multi_language;
+
+    // Validate input
+    if paths.is_empty() {
+        return Err(anyhow::anyhow!("At least one path must be provided"));
+    }
+
+    let mut total_dead_code = 0;
+    let mut file_results = Vec::new();
+
+    for path in paths {
+        if !path.exists() || !path.is_file() {
+            continue;
+        }
+
+        match analyze_dead_code_multi_language(path) {
+            Ok(result) => {
+                let dead_count = result.dead_functions.len();
+                total_dead_code += dead_count;
+
+                if dead_count > 0 {
+                    file_results.push(json!({
+                        "file": path.display().to_string(),
+                        "dead_code_count": dead_count,
+                        "dead_functions": result.dead_functions.iter().map(|func| json!({
+                            "name": func.name,
+                            "line": func.line,
+                        })).collect::<Vec<_>>(),
+                    }));
+                }
+            },
+            Err(_) => continue,
+        }
+    }
+
     Ok(json!({
         "status": "completed",
-        "message": "Dead code analysis completed (placeholder implementation)",
+        "message": "Dead code analysis completed",
         "results": {
-            "total_dead_code": 0,
-            "files": []
+            "total_dead_code": total_dead_code,
+            "files": file_results,
         }
     }))
 }
