@@ -283,33 +283,187 @@ pub async fn analyze_coupling(_paths: &[PathBuf], _threshold: Option<f64>) -> Re
     }))
 }
 
-pub async fn check_quality_gates(_paths: &[PathBuf], _strict: bool) -> Result<Value> {
+pub async fn check_quality_gates(paths: &[PathBuf], strict: bool) -> Result<Value> {
+    use crate::tdg::analyzer_simple::TdgAnalyzer;
+
+    if paths.is_empty() {
+        return Err(anyhow::anyhow!("At least one path must be provided"));
+    }
+
+    // Create TDG analyzer
+    let analyzer = TdgAnalyzer::new()?;
+
+    // Analyze the first path (typically project root)
+    let project_path = &paths[0];
+
+    let project_score = if project_path.is_file() {
+        // Analyze single file and wrap in ProjectScore
+        let file_score = analyzer.analyze_file(project_path)?;
+        crate::tdg::ProjectScore::aggregate(vec![file_score])
+    } else {
+        // Analyze entire project
+        analyzer.analyze_project(project_path)?
+    };
+
+    // Determine pass/fail threshold based on strict mode
+    let threshold_score = if strict { 70.0 } else { 50.0 };
+    let threshold_grade = if strict {
+        crate::tdg::Grade::B
+    } else {
+        crate::tdg::Grade::D
+    };
+
+    let passed = project_score.average_score >= threshold_score
+        && project_score.average_grade >= threshold_grade;
+
+    // Collect violations (files below threshold)
+    let violations: Vec<Value> = project_score
+        .files
+        .iter()
+        .filter(|score| score.total < threshold_score)
+        .map(|score| {
+            json!({
+                "file": score.file_path.as_ref().map(|p| p.display().to_string()).unwrap_or_else(|| "unknown".to_string()),
+                "score": score.total,
+                "grade": format!("{:?}", score.grade),
+                "issues": score.penalties_applied.iter().map(|p| p.issue.clone()).collect::<Vec<_>>()
+            })
+        })
+        .collect();
+
     Ok(json!({
         "status": "completed",
-        "message": "Quality gate check completed (placeholder implementation)",
-        "passed": true,
-        "violations": []
+        "message": format!(
+            "Quality gate check completed ({} mode)",
+            if strict { "strict" } else { "standard" }
+        ),
+        "passed": passed,
+        "score": project_score.average_score,
+        "grade": format!("{:?}", project_score.average_grade),
+        "threshold": threshold_score,
+        "files_analyzed": project_score.total_files,
+        "violations": violations
     }))
 }
 
-pub async fn check_quality_gate_file(_file_path: &Path, _strict: bool) -> Result<Value> {
+pub async fn check_quality_gate_file(file_path: &Path, strict: bool) -> Result<Value> {
+    use crate::tdg::analyzer_simple::TdgAnalyzer;
+
+    if !file_path.exists() {
+        return Err(anyhow::anyhow!(
+            "File does not exist: {}",
+            file_path.display()
+        ));
+    }
+
+    // Create TDG analyzer
+    let analyzer = TdgAnalyzer::new()?;
+
+    // Analyze the file
+    let file_score = analyzer.analyze_file(file_path)?;
+
+    // Determine pass/fail threshold based on strict mode
+    let threshold_score = if strict { 70.0 } else { 50.0 };
+    let threshold_grade = if strict {
+        crate::tdg::Grade::B
+    } else {
+        crate::tdg::Grade::D
+    };
+
+    let passed = file_score.total >= threshold_score && file_score.grade >= threshold_grade;
+
+    // Collect violations (penalty details)
+    let violations: Vec<Value> = file_score
+        .penalties_applied
+        .iter()
+        .map(|p| {
+            json!({
+                "category": format!("{:?}", p.source_metric),
+                "penalty": p.amount,
+                "description": p.issue,
+            })
+        })
+        .collect();
+
     Ok(json!({
         "status": "completed",
-        "message": "Quality gate check completed for file (placeholder implementation)",
-        "file": _file_path.display().to_string(),
-        "passed": true,
-        "violations": []
+        "message": format!(
+            "Quality gate check completed for file ({} mode)",
+            if strict { "strict" } else { "standard" }
+        ),
+        "file": file_path.display().to_string(),
+        "passed": passed,
+        "score": file_score.total,
+        "grade": format!("{:?}", file_score.grade),
+        "threshold": threshold_score,
+        "violations": violations,
+        "metrics": {
+            "structural_complexity": file_score.structural_complexity,
+            "semantic_complexity": file_score.semantic_complexity,
+            "duplication_ratio": file_score.duplication_ratio,
+            "coupling_score": file_score.coupling_score,
+            "doc_coverage": file_score.doc_coverage,
+            "consistency_score": file_score.consistency_score,
+        }
     }))
 }
 
-pub async fn quality_gate_summary(_paths: &[PathBuf]) -> Result<Value> {
+pub async fn quality_gate_summary(paths: &[PathBuf]) -> Result<Value> {
+    use crate::tdg::analyzer_simple::TdgAnalyzer;
+
+    if paths.is_empty() {
+        return Err(anyhow::anyhow!("At least one path must be provided"));
+    }
+
+    // Create TDG analyzer
+    let analyzer = TdgAnalyzer::new()?;
+
+    // Analyze the first path (typically project root)
+    let project_path = &paths[0];
+
+    let project_score = if project_path.is_file() {
+        // Analyze single file and wrap in ProjectScore
+        let file_score = analyzer.analyze_file(project_path)?;
+        crate::tdg::ProjectScore::aggregate(vec![file_score])
+    } else {
+        // Analyze entire project
+        analyzer.analyze_project(project_path)?
+    };
+
+    // Standard threshold for summary (not strict)
+    let threshold_score = 50.0;
+    let threshold_grade = crate::tdg::Grade::D;
+
+    // Count passed/failed files
+    let passed_files = project_score
+        .files
+        .iter()
+        .filter(|s| s.total >= threshold_score && s.grade >= threshold_grade)
+        .count();
+    let failed_files = project_score.total_files - passed_files;
+
+    // Calculate grade distribution
+    let mut grade_distribution = std::collections::HashMap::new();
+    for score in &project_score.files {
+        *grade_distribution
+            .entry(format!("{:?}", score.grade))
+            .or_insert(0) += 1;
+    }
+
     Ok(json!({
         "status": "completed",
-        "message": "Quality gate summary generated (placeholder implementation)",
+        "message": "Quality gate summary generated",
         "summary": {
-            "total_files": 0,
-            "passed_files": 0,
-            "failed_files": 0
+            "total_files": project_score.total_files,
+            "passed_files": passed_files,
+            "failed_files": failed_files,
+            "average_score": project_score.average_score,
+            "average_grade": format!("{:?}", project_score.average_grade),
+            "threshold_score": threshold_score,
+            "grade_distribution": grade_distribution,
+            "language_distribution": project_score.language_distribution.iter()
+                .map(|(lang, count)| (format!("{:?}", lang), count))
+                .collect::<std::collections::HashMap<_, _>>()
         }
     }))
 }
@@ -381,7 +535,7 @@ pub async fn generate_context(
     }
 
     let mut all_files = Vec::new();
-    let mut all_dependencies: Vec<String> = Vec::new();
+    let all_dependencies: Vec<String> = Vec::new();
 
     for path in paths {
         if !path.exists() {
