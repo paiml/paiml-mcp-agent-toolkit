@@ -468,25 +468,168 @@ pub async fn quality_gate_summary(paths: &[PathBuf]) -> Result<Value> {
     }))
 }
 
-pub async fn quality_gate_baseline(_paths: &[PathBuf], _output: Option<&Path>) -> Result<Value> {
+pub async fn quality_gate_baseline(paths: &[PathBuf], output: Option<&Path>) -> Result<Value> {
+    use crate::models::git_context::GitContext;
+    use crate::tdg::analyzer_simple::TdgAnalyzer;
+    use crate::tdg::baseline::{TdgBaseline, BaselineEntry};
+    use crate::tdg::storage::ComponentScores;
+
+    if paths.is_empty() {
+        return Err(anyhow::anyhow!("At least one path must be provided"));
+    }
+
+    let project_path = &paths[0];
+
+    // Try to get git context (optional)
+    let git_context = GitContext::from_current_dir(project_path).ok();
+
+    // Create new baseline
+    let mut baseline = TdgBaseline::new(git_context);
+
+    // Analyze all files in the project
+    let analyzer = TdgAnalyzer::new()?;
+
+    // If it's a directory, analyze the project
+    if project_path.is_dir() {
+        let project_score = analyzer.analyze_project(project_path)?;
+
+        // Add each file to baseline
+        for file_score in &project_score.files {
+            if let Some(file_path) = &file_score.file_path {
+                // Create baseline entry
+                let mut complexity_breakdown = HashMap::new();
+                complexity_breakdown.insert("structural".to_string(), file_score.structural_complexity);
+                complexity_breakdown.insert("semantic".to_string(), file_score.semantic_complexity);
+                complexity_breakdown.insert("entropy".to_string(), file_score.entropy_score);
+
+                let entry = BaselineEntry {
+                    content_hash: blake3::hash(
+                        std::fs::read(file_path)
+                            .unwrap_or_default()
+                            .as_slice()
+                    ),
+                    score: file_score.clone(),
+                    components: ComponentScores {
+                        complexity_breakdown,
+                        duplication_sources: Vec::new(),
+                        coupling_dependencies: Vec::new(),
+                        doc_missing_items: Vec::new(),
+                        consistency_violations: Vec::new(),
+                    },
+                    git_context: GitContext::from_current_dir(file_path).ok(),
+                };
+
+                baseline.add_entry(file_path.clone(), entry);
+            }
+        }
+    } else if project_path.is_file() {
+        // Analyze single file
+        let file_score = analyzer.analyze_file(project_path)?;
+
+        let mut complexity_breakdown = HashMap::new();
+        complexity_breakdown.insert("structural".to_string(), file_score.structural_complexity);
+        complexity_breakdown.insert("semantic".to_string(), file_score.semantic_complexity);
+        complexity_breakdown.insert("entropy".to_string(), file_score.entropy_score);
+
+        let entry = BaselineEntry {
+            content_hash: blake3::hash(
+                std::fs::read(project_path)
+                    .unwrap_or_default()
+                    .as_slice()
+            ),
+            score: file_score.clone(),
+            components: ComponentScores {
+                complexity_breakdown,
+                duplication_sources: Vec::new(),
+                coupling_dependencies: Vec::new(),
+                doc_missing_items: Vec::new(),
+                consistency_violations: Vec::new(),
+            },
+            git_context: GitContext::from_current_dir(project_path).ok(),
+        };
+
+        baseline.add_entry(project_path.clone(), entry);
+    }
+
+    // Save baseline to file if output path provided
+    let file_path = if let Some(output_path) = output {
+        baseline.save(output_path)?;
+        output_path.display().to_string()
+    } else {
+        // Default to temp location
+        let temp_path = std::env::temp_dir().join("pmat_baseline.json");
+        baseline.save(&temp_path)?;
+        temp_path.display().to_string()
+    };
+
     Ok(json!({
         "status": "completed",
-        "message": "Quality gate baseline created (placeholder implementation)",
+        "message": "Quality gate baseline created successfully",
         "baseline": {
-            "timestamp": "2024-01-01T00:00:00Z",
-            "metrics": {}
+            "file_path": file_path,
+            "timestamp": baseline.created_at.to_rfc3339(),
+            "summary": {
+                "total_files": baseline.summary.total_files,
+                "avg_score": baseline.summary.avg_score,
+                "grade_distribution": baseline.summary.grade_distribution.iter()
+                    .map(|(grade, count)| (format!("{:?}", grade), count))
+                    .collect::<HashMap<_, _>>(),
+                "languages": baseline.summary.languages.clone(),
+            },
+            "git_context": baseline.git_context.as_ref().map(|ctx| json!({
+                "commit_sha": ctx.commit_sha_short.clone(),
+                "branch": ctx.branch.clone(),
+                "is_clean": ctx.is_clean,
+            })),
         }
     }))
 }
 
-pub async fn quality_gate_compare(_baseline: &Path, _paths: &[PathBuf]) -> Result<Value> {
+pub async fn quality_gate_compare(baseline: &Path, paths: &[PathBuf]) -> Result<Value> {
+    use crate::tdg::baseline::TdgBaseline;
+
+    if paths.is_empty() {
+        return Err(anyhow::anyhow!("At least one path must be provided"));
+    }
+
+    if !baseline.exists() {
+        return Err(anyhow::anyhow!("Baseline file not found: {}", baseline.display()));
+    }
+
+    // Load existing baseline
+    let old_baseline = TdgBaseline::load(baseline)?;
+
+    // Create new baseline from current state
+    let temp_new_baseline = std::env::temp_dir().join("pmat_baseline_new.json");
+    quality_gate_baseline(paths, Some(&temp_new_baseline)).await?;
+    let new_baseline = TdgBaseline::load(&temp_new_baseline)?;
+
+    // Compare baselines
+    let comparison = old_baseline.compare(&new_baseline);
+
     Ok(json!({
         "status": "completed",
-        "message": "Quality gate comparison completed (placeholder implementation)",
+        "message": "Quality gate comparison completed successfully",
         "comparison": {
-            "improved": 0,
-            "degraded": 0,
-            "unchanged": 0
+            "improved": comparison.improved.len(),
+            "regressed": comparison.regressed.len(),
+            "unchanged": comparison.unchanged.len(),
+            "added": comparison.added.len(),
+            "removed": comparison.removed.len(),
+            "improved_files": comparison.improved.iter().take(5).map(|fc| json!({
+                "path": fc.path.display().to_string(),
+                "old_score": fc.old_score.total,
+                "new_score": fc.new_score.total,
+                "delta": fc.delta,
+            })).collect::<Vec<_>>(),
+            "regressed_files": comparison.regressed.iter().take(5).map(|fc| json!({
+                "path": fc.path.display().to_string(),
+                "old_score": fc.old_score.total,
+                "new_score": fc.new_score.total,
+                "delta": fc.delta,
+            })).collect::<Vec<_>>(),
+            "has_regressions": !comparison.regressed.is_empty(),
+            "total_changes": comparison.improved.len() + comparison.regressed.len() + comparison.added.len() + comparison.removed.len(),
         }
     }))
 }
@@ -511,14 +654,28 @@ pub async fn git_clone(
         }))
 }
 
-pub async fn git_status(_path: &Path) -> Result<Value> {
+pub async fn git_status(path: &Path) -> Result<Value> {
+    use crate::models::git_context::GitContext;
+
+    // Extract git context from the repository
+    let git_context = GitContext::from_current_dir(path)?;
+
     Ok(json!({
         "status": "completed",
-        "message": "Git status retrieved (placeholder implementation)",
+        "message": "Git status retrieved successfully",
         "git_status": {
-            "branch": "main",
-            "clean": true,
-            "uncommitted_changes": []
+            "commit_sha": git_context.commit_sha.clone(),
+            "commit_sha_short": git_context.commit_sha_short.clone(),
+            "branch": git_context.branch.clone(),
+            "author_name": git_context.author_name.clone(),
+            "author_email": git_context.author_email.clone(),
+            "commit_timestamp": git_context.commit_timestamp.to_rfc3339(),
+            "commit_message": git_context.commit_message.clone(),
+            "tags": git_context.tags.clone(),
+            "parent_commits": git_context.parent_commits.clone(),
+            "remote_url": git_context.remote_url.clone(),
+            "is_clean": git_context.is_clean,
+            "uncommitted_files": git_context.uncommitted_files,
         }
     }))
 }
