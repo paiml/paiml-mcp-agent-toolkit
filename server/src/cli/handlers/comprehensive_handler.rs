@@ -9,7 +9,7 @@ use anyhow::{Context, Result};
 use serde_json;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
-use tracing::{info, warn};
+use tracing::info;
 
 /// Configuration for comprehensive analysis
 pub struct ComprehensiveConfig {
@@ -164,7 +164,15 @@ async fn handle_analyze_comprehensive_with_config(config: ComprehensiveConfig) -
     let service = DefectReportService::new();
 
     // Generate comprehensive report
-    let report = service.generate_report(&analysis_path).await?;
+    let mut report = service.generate_report(&analysis_path).await?;
+
+    // Apply include/exclude file filtering (Feature #52)
+    report = DefectReportService::filter_by_pattern(
+        &report,
+        config.include.clone(),
+        config.exclude.clone(),
+        config.min_lines,
+    );
 
     // Apply filters based on confidence threshold and file targeting
     let filtered_defects = filter_defects(
@@ -339,13 +347,9 @@ fn print_performance_metrics(
 }
 
 /// Warn about ignored parameters
-fn warn_ignored_parameters(config: &ComprehensiveConfig) {
-    if config.min_lines > 0 {
-        warn!("Note: min_lines parameter is currently handled by the DefectReportService");
-    }
-    if config.include.is_some() || config.exclude.is_some() {
-        warn!("Note: include/exclude patterns are currently handled by the DefectReportService");
-    }
+fn warn_ignored_parameters(_config: &ComprehensiveConfig) {
+    // Feature #52: include/exclude/min_lines filtering now implemented
+    // No warnings needed - all parameters are handled by DefectReportService::filter_by_pattern()
 }
 
 /// Find the project root by looking for Cargo.toml
