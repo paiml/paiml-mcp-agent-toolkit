@@ -222,17 +222,55 @@ pub async fn analyze_lint_hotspots(_paths: &[PathBuf], _top_files: Option<usize>
 }
 
 pub async fn analyze_churn(
-    _paths: &[PathBuf],
-    _days: Option<u32>,
-    _top_files: Option<usize>,
+    paths: &[PathBuf],
+    days: Option<u32>,
+    top_files: Option<usize>,
 ) -> Result<Value> {
-    Ok(json!({
-        "status": "completed",
-        "message": "Churn analysis completed (placeholder implementation)",
-        "results": {
-            "files": []
+    use crate::services::git_analysis::GitAnalysisService;
+
+    if paths.is_empty() {
+        return Err(anyhow::anyhow!("At least one path must be provided"));
+    }
+
+    let days_value = days.unwrap_or(30);
+    let top_files_value = top_files.unwrap_or(10);
+
+    // Analyze churn for the first path (typically repository root)
+    let repo_path = &paths[0];
+
+    match GitAnalysisService::analyze_code_churn(repo_path, days_value) {
+        Ok(mut analysis) => {
+            // Apply top_files filtering
+            analysis.files.sort_by(|a, b| {
+                b.churn_score
+                    .partial_cmp(&a.churn_score)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            });
+            analysis.files.truncate(top_files_value);
+
+            // Transform to JSON
+            Ok(json!({
+                "status": "completed",
+                "message": format!("Churn analysis completed for last {days_value} days"),
+                "results": {
+                    "period_days": analysis.period_days,
+                    "total_commits": analysis.summary.total_commits,
+                    "total_files_changed": analysis.summary.total_files_changed,
+                    "files": analysis.files.iter().map(|f| json!({
+                        "path": f.relative_path,
+                        "commit_count": f.commit_count,
+                        "unique_authors": f.unique_authors.len(),
+                        "additions": f.additions,
+                        "deletions": f.deletions,
+                        "churn_score": f.churn_score,
+                        "last_modified": f.last_modified.to_rfc3339(),
+                    })).collect::<Vec<_>>(),
+                    "hotspot_files": analysis.summary.hotspot_files.len(),
+                }
+            }))
         }
-    }))
+        Err(e) => Err(anyhow::anyhow!("Churn analysis failed: {e}")),
+    }
 }
 
 pub async fn analyze_coupling(_paths: &[PathBuf], _threshold: Option<f64>) -> Result<Value> {
@@ -332,18 +370,109 @@ pub async fn git_status(_path: &Path) -> Result<Value> {
 }
 
 pub async fn generate_context(
-    _paths: &[PathBuf],
+    paths: &[PathBuf],
     _max_depth: Option<usize>,
     _include_dependencies: bool,
 ) -> Result<Value> {
+    use crate::services::deep_context::analyze_single_file;
+
+    if paths.is_empty() {
+        return Err(anyhow::anyhow!("At least one path must be provided"));
+    }
+
+    let mut all_files = Vec::new();
+    let mut all_dependencies: Vec<String> = Vec::new();
+
+    for path in paths {
+        if !path.exists() {
+            continue;
+        }
+
+        // Analyze each file
+        match analyze_single_file(path).await {
+            Ok(file_context) => {
+                all_files.push(json!({
+                    "path": file_context.path,
+                    "language": file_context.language,
+                    "items_count": file_context.items.len(),
+                    "items": file_context.items.iter().map(|item| match item {
+                        crate::services::context::AstItem::Function { name, visibility, is_async, line } => json!({
+                            "type": "function",
+                            "name": name,
+                            "visibility": visibility,
+                            "is_async": is_async,
+                            "line": line,
+                        }),
+                        crate::services::context::AstItem::Struct { name, visibility, fields_count, derives, line } => json!({
+                            "type": "struct",
+                            "name": name,
+                            "visibility": visibility,
+                            "fields_count": fields_count,
+                            "derives": derives,
+                            "line": line,
+                        }),
+                        _ => json!({"type": "other"}),
+                    }).collect::<Vec<_>>(),
+                }));
+            }
+            Err(_) => continue,
+        }
+    }
+
     Ok(json!({
         "status": "completed",
-        "message": "Context generation completed (placeholder implementation)",
+        "message": "Context generation completed",
         "context": {
-            "files": [],
-            "dependencies": []
+            "files": all_files,
+            "dependencies": all_dependencies,
+            "total_files": all_files.len(),
         }
     }))
+}
+
+pub async fn generate_deep_context(
+    paths: &[PathBuf],
+    _format: Option<&str>,
+) -> Result<Value> {
+    use crate::services::deep_context::{DeepContextAnalyzer, DeepContextConfig};
+
+    if paths.is_empty() {
+        return Err(anyhow::anyhow!("At least one path must be provided"));
+    }
+
+    // Create deep context analyzer with default config
+    let config = DeepContextConfig::default();
+    let analyzer = DeepContextAnalyzer::new(config);
+
+    // For simplicity, analyze the first path (typically the project root)
+    let project_path = &paths[0];
+
+    match analyzer.analyze_project(project_path).await {
+        Ok(context) => {
+            // Return simplified JSON representation
+            Ok(json!({
+                "status": "completed",
+                "message": "Deep context generation completed",
+                "context": {
+                    "metadata": {
+                        "project_root": context.metadata.project_root,
+                        "tool_version": context.metadata.tool_version,
+                        "generated_at": context.metadata.generated_at.to_rfc3339(),
+                        "analysis_duration_ms": context.metadata.analysis_duration.as_millis(),
+                    },
+                    "quality_scorecard": {
+                        "overall_health": context.quality_scorecard.overall_health,
+                        "complexity_score": context.quality_scorecard.complexity_score,
+                        "maintainability_index": context.quality_scorecard.maintainability_index,
+                        "modularity_score": context.quality_scorecard.modularity_score,
+                        "technical_debt_hours": context.quality_scorecard.technical_debt_hours,
+                    },
+                    "file_count": context.file_tree.total_files,
+                }
+            }))
+        }
+        Err(e) => Err(anyhow::anyhow!("Deep context analysis failed: {e}")),
+    }
 }
 
 pub async fn analyze_context(_paths: &[PathBuf], _analysis_types: &[String]) -> Result<Value> {

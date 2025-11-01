@@ -208,7 +208,7 @@ pub fn override_multiple_languages(
             // Calculate actual file count for this language
             let count = file_counts
                 .iter()
-                .filter(|(ext, _)| extension_to_language(ext) == Some(&lang))
+                .filter(|(ext, _)| extension_to_language(ext).map(|s| s.to_string()) == Some(lang.clone()))
                 .map(|(_, c)| *c)
                 .sum();
 
