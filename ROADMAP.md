@@ -954,72 +954,129 @@ All skills implement peer-reviewed research:
 
 ---
 
-## ✅ Sprint 46: Quality, Security, Performance & Size Optimization (v2.170.0) - COMPLETE ✅
+## ⚠️ Sprint 46: Security & Dev Dependencies - PARTIAL (Phase 1 Regression, Phase 1.5 Complete)
 
-**Release**: v2.170.0
-**Status**: ✅ COMPLETE
-**Started**: October 20, 2025
-**Completed**: October 22, 2025
-**Focus**: Security, dependencies, binary size, performance
+**Status**: ⚠️ PARTIAL - Phase 1 ❌ INCOMPLETE (regression) | Phase 1.5 ✅ COMPLETE
+**Started**: October 21, 2025
+**Phase 1.5 Completed**: October 21, 2025
+**Focus**: Security updates, dependency cleanup
+**Ticket**: Issue #68
 
-**Sprint 46 Priorities**:
+### Phase 1: Security & Dependencies ❌ INCOMPLETE
 
-### Priority 1: Security (Dependabot Alert) 🔴
-- **Issue**: GitHub Dependabot #5 - Moderate severity vulnerability
-- **Action**: Update vulnerable dependency
-- **Target**: Zero security vulnerabilities
-- **Link**: https://github.com/paiml/paiml-mcp-agent-toolkit/security/dependabot/5
+**Goal**: Migrate from rusqlite/sled to libsql for security compliance
 
-### Priority 2: Dependency Updates 🟡
-- **Issue**: Dependencies may be outdated
-- **Action**: `cargo update`, check `cargo outdated`, update incrementally
-- **Target**: All dependencies up to date (latest patch/minor versions)
+**Attempted Changes**:
+- Remove rusqlite v0.32.1 from dependencies
+- Remove sled v0.34.7 from dependencies
+- Add libsql v0.8.0
 
-### Priority 3: Binary Size Reduction 🟡
-- **Issue**: Current binary size is 40MB (release build)
-- **Baseline**: 40MB (v2.168.0)
-- **Action**: Analyze with `cargo bloat`, optimize, keep all features
-- **Target**: Reduce to <35MB (12.5% reduction)
-- **Constraint**: MUST preserve all functionality
+**Result**: ❌ REGRESSION DISCOVERED
 
-### Priority 4: Performance Improvements 🟢
-- **Issue**: Need baseline measurements and optimizations
-- **Action**: Measure baselines, profile, optimize, add benchmarks
-- **Target**: 10%+ analysis speed improvement, <50ms startup time
+**Problem**: Only removed dependencies without migrating code
+- `server/src/services/turso_vector_db.rs` (408 lines) - Still uses rusqlite APIs
+- `server/src/services/storage_backend.rs` - Still uses sled APIs
+- Compilation fails with missing types: `Connection`, `params!`, `Result<T, rusqlite::Error>`
 
-### Priority 5: Complexity Reduction 🟡
-- **Issue**: 4 functions with cognitive complexity >30 (error level)
-- **Hotspots**:
-  - `deeply_nested_conditionals` (cognitive: 41) - Test fixture
-  - `validate_cli_documentation` (cognitive: 37) - Docs enforcement
-  - `extract_flags_from_help` (cognitive: 35) - Docs enforcement
-  - `is_generic_description` (cognitive: 30) - Docs enforcement
-- **Action**: Refactor to reduce cognitive complexity below 30
-- **Target**: Zero error-level violations
+**Five Whys Root Cause Analysis**:
+1. **Why did removal fail?** → Code still depends on rusqlite/sled APIs
+2. **Why wasn't code migrated?** → Assumed libsql was drop-in replacement
+3. **Why that assumption?** → Didn't verify API compatibility before removal
+4. **Why no verification?** → Skipped investigation step in TDD cycle
+5. **Root Cause**: Violated Extreme TDD principle - removed dependencies before writing failing tests for migration
 
-### Priority 6: Technical Debt Reduction 🟡
-- **Issue**: 42.5 hours of technical debt, 23 cyclomatic complexity warnings
-- **Action**: Extract methods, simplify logic, add documentation
-- **Target**: Reduce technical debt to <30 hours
+**Resolution**:
+- **Commit f58076f9**: Revert rusqlite removal (re-add rusqlite v0.32.1)
+- **Commit f11632fa**: Revert sled removal (re-add sled v0.34.7)
+- Both dependencies restored, compilation fixed
+- Migration deferred to future sprint with proper TDD approach
 
-### Priority 7: Test Re-enablement 🟢
-- **Issue**: 14 tests marked as `#[ignore]` in Sprint 45
-- **Action**: Fix property tests, implement CI binary caching
-- **Target**: Re-enable 11 of 14 tests
+**Files Involved**:
+- `Cargo.toml` - Dependencies reverted
+- `server/src/services/turso_vector_db.rs` - Requires rusqlite APIs (408 lines)
+- `server/src/services/storage_backend.rs` - Requires sled APIs
 
-**Success Criteria**:
-- ✅ Zero security vulnerabilities
-- ✅ All dependencies up to date
-- ✅ Binary size <35MB (from 40MB baseline)
-- ✅ Performance improvements documented (10%+ improvement)
-- ✅ Performance benchmarks added
-- ✅ Zero error-level complexity violations
-- ✅ Technical debt <30 hours
-- ✅ At least 11 of 14 ignored tests re-enabled
-- ✅ All tests passing, zero regressions
-- ✅ All features preserved
+---
 
-**Estimated Duration**: 14-22 hours (6 phases)
+### Phase 1.5: Dev Dependency Cleanup ✅ COMPLETE
+
+**Goal**: Remove unnecessary dev-dependencies after E2E test rewrite
+
+**Changes**:
+- Removed `scraper = "0.24.0"` from `[dev-dependencies]`
+- E2E tests now use simple string matching instead of HTML parsing
+- No longer need HTML selector engine for tests
+
+**Results**:
+- ✅ **18 packages removed** from dependency tree
+- ✅ **fxhash warning paths reduced**: 2 paths → 1 path
+- ✅ **Tests still passing**: All E2E tests work with string matching
+- ✅ **Faster builds**: Fewer dependencies to compile
+
+**Verification**:
+```bash
+cargo tree | grep -i scraper  # Returns nothing - removed successfully
+cargo test --test cli_comprehensive_integration  # PASS
+```
+
+**Upstream Improvements Filed**:
+- **Issue #42**: https://github.com/paiml/paiml-mcp-agent-toolkit/issues/42
+  - Request: `pmat analyze comprehensive --format html` to enable proper HTML testing
+- **Issue #43**: https://github.com/paiml/paiml-mcp-agent-toolkit/issues/43
+  - Request: Structured HTML output with semantic classes for easier parsing
+
+**Commit**: 248d4433
+
+**Files Modified**:
+- `Cargo.toml` - Removed scraper from dev-dependencies
+- `server/tests/cli_comprehensive_integration.rs` - Simplified assertions
+
+---
+
+### Sprint 46 Learnings
+
+**What Went Wrong (Phase 1)**:
+1. **Assumption Over Verification**: Assumed libsql was API-compatible without testing
+2. **Skipped TDD**: Removed dependencies before writing migration tests
+3. **Incomplete Analysis**: Didn't grep for API usage before dependency removal
+
+**What Went Right (Phase 1.5)**:
+1. **Test-Driven Removal**: Verified tests pass before removing scraper
+2. **Impact Analysis**: Measured dependency reduction (18 packages)
+3. **Upstream Feedback**: Filed issues for future HTML output feature
+
+**Key Insight**:
+> Even for dependency removal, **write the tests first**. For Phase 1, should have:
+> 1. Written tests using libsql APIs (RED)
+> 2. Migrated code to make tests pass (GREEN)
+> 3. Then removed rusqlite/sled (REFACTOR)
+
+**Toyota Way Connection**:
+- **Jidoka** (Built-in Quality): Phase 1 regression shows importance of quality gates before removal
+- **Genchi Genbutsu** (Go See): Should have inspected actual API usage before assuming compatibility
+
+---
+
+### Next Steps (Post-Sprint 46)
+
+**Immediate**:
+1. ✅ **Document Sprint 46** in ROADMAP.md (Issue #68)
+2. **Phase 2**: Performance & binary size optimization (deferred from original plan)
+
+**Future Sprints**:
+1. **libsql Migration** (with proper TDD):
+   - RED: Write tests using libsql Connection APIs
+   - GREEN: Migrate turso_vector_db.rs and storage_backend.rs
+   - REFACTOR: Remove rusqlite/sled after passing tests
+2. **Dependency Security**: Monitor Dependabot alerts for rusqlite/sled
+3. **Performance Baseline**: Establish measurements for optimization work
+
+**Sprint 46 Commits**:
+```
+248d4433 chore: Remove scraper dev-dependency - Phase 1.5 COMPLETE
+f58076f9 revert: Re-add rusqlite v0.32.1 - Phase 1 regression fix
+f11632fa revert: Re-add sled v0.34.7 - Phase 1 regression fix
+```
 
 ---
 
