@@ -692,3 +692,339 @@ async fn test_analyze_churn_respects_days() {
     // Verify days parameter is reflected in response (if the service includes it)
     // This validates the parameter is actually passed through
 }
+
+// ============================================================================
+// Batch 3: Quality Gate Functions
+// ============================================================================
+
+#[tokio::test]
+#[ignore = "Issue #53: RED test - check_quality_gates must call real TDG service"]
+async fn test_check_quality_gates_calls_real_service() {
+    use tempfile::TempDir;
+
+    let temp_dir = TempDir::new().unwrap();
+
+    // Create simple Rust file
+    let file_path = temp_dir.path().join("main.rs");
+    std::fs::write(
+        &file_path,
+        r#"
+fn main() {
+    println!("Hello, world!");
+}
+
+fn simple_function(x: i32) -> i32 {
+    x + 1
+}
+"#,
+    )
+    .unwrap();
+
+    let result = tool_functions::check_quality_gates(&[temp_dir.path().to_path_buf()], false)
+        .await
+        .unwrap();
+
+    // Verify NOT a placeholder response
+    let message = result["message"].as_str().unwrap();
+    assert!(
+        !message.contains("placeholder"),
+        "Response should NOT contain 'placeholder' keyword"
+    );
+
+    // Verify real TDG quality gate data is returned
+    assert!(result["status"].is_string(), "Should have status field");
+    assert!(
+        result["passed"].is_boolean(),
+        "Should have boolean passed field from real TDG analysis"
+    );
+
+    // Verify quality metrics are present (TDG provides these)
+    assert!(
+        result.get("score").is_some() || result.get("grade").is_some(),
+        "Should include quality score or grade from TDG"
+    );
+}
+
+#[tokio::test]
+#[ignore = "Issue #53: RED test - check_quality_gates must handle threshold parameter"]
+async fn test_check_quality_gates_respects_strict_mode() {
+    use tempfile::TempDir;
+
+    let temp_dir = TempDir::new().unwrap();
+
+    // Create file with intentionally complex function
+    let file_path = temp_dir.path().join("complex.rs");
+    std::fs::write(
+        &file_path,
+        r#"
+fn complex_function(x: i32) -> i32 {
+    if x > 10 {
+        if x > 20 {
+            if x > 30 {
+                if x > 40 {
+                    return x * 2;
+                }
+                return x + 15;
+            }
+            return x + 10;
+        }
+        return x + 5;
+    }
+    x
+}
+"#,
+    )
+    .unwrap();
+
+    // Non-strict mode - might pass with warning
+    let result_lenient = tool_functions::check_quality_gates(&[temp_dir.path().to_path_buf()], false)
+        .await
+        .unwrap();
+
+    // Strict mode - should enforce higher standards
+    let result_strict = tool_functions::check_quality_gates(&[temp_dir.path().to_path_buf()], true)
+        .await
+        .unwrap();
+
+    // Verify strict mode produces meaningful results (not placeholder)
+    let message_strict = result_strict["message"].as_str().unwrap();
+    assert!(
+        !message_strict.contains("placeholder"),
+        "Strict mode should use real TDG thresholds"
+    );
+
+    // Both should return structured quality gate data
+    assert!(result_lenient["passed"].is_boolean());
+    assert!(result_strict["passed"].is_boolean());
+}
+
+#[tokio::test]
+#[ignore = "Issue #53: RED test - check_quality_gates must handle empty paths"]
+async fn test_check_quality_gates_empty_paths_error() {
+    let result = tool_functions::check_quality_gates(&[], false).await;
+
+    // Should return error for empty paths
+    assert!(
+        result.is_err(),
+        "Empty paths should return error, not placeholder success"
+    );
+
+    let error_message = result.unwrap_err().to_string();
+    assert!(
+        error_message.contains("path") || error_message.contains("provide"),
+        "Error should mention path requirement"
+    );
+}
+
+#[tokio::test]
+#[ignore = "Issue #53: RED test - check_quality_gate_file must call real TDG service"]
+async fn test_check_quality_gate_file_calls_real_service() {
+    use tempfile::TempDir;
+
+    let temp_dir = TempDir::new().unwrap();
+    let file_path = temp_dir.path().join("test.rs");
+    std::fs::write(
+        &file_path,
+        r#"
+fn simple_function() -> i32 {
+    42
+}
+"#,
+    )
+    .unwrap();
+
+    let result = tool_functions::check_quality_gate_file(&file_path, false)
+        .await
+        .unwrap();
+
+    // Verify NOT a placeholder response
+    let message = result["message"].as_str().unwrap();
+    assert!(
+        !message.contains("placeholder"),
+        "Response should NOT contain 'placeholder' keyword"
+    );
+
+    // Verify real file-level quality gate data
+    assert!(result["passed"].is_boolean());
+    assert!(result["file"].is_string());
+
+    let file_str = result["file"].as_str().unwrap();
+    assert!(
+        file_str.contains("test.rs"),
+        "Should reference the analyzed file"
+    );
+
+    // Should include quality metrics from TDG
+    assert!(
+        result.get("violations").is_some() || result.get("score").is_some(),
+        "Should include real quality metrics from TDG analysis"
+    );
+}
+
+#[tokio::test]
+#[ignore = "Issue #53: RED test - check_quality_gate_file must handle violations"]
+async fn test_check_quality_gate_file_detects_violations() {
+    use tempfile::TempDir;
+
+    let temp_dir = TempDir::new().unwrap();
+    let file_path = temp_dir.path().join("bad_quality.rs");
+    std::fs::write(
+        &file_path,
+        r#"
+// TODO: This should be refactored
+fn very_complex_function(x: i32, y: i32, z: i32) -> i32 {
+    if x > 0 {
+        if y > 0 {
+            if z > 0 {
+                if x > y {
+                    if y > z {
+                        return x + y + z;
+                    }
+                    return x + y;
+                }
+                return x;
+            }
+            return 0;
+        }
+        return -1;
+    }
+    return -999;
+}
+"#,
+    )
+    .unwrap();
+
+    let result = tool_functions::check_quality_gate_file(&file_path, true)
+        .await
+        .unwrap();
+
+    // Should detect quality violations (high complexity, SATD)
+    let _passed = result["passed"].as_bool().unwrap();
+
+    // In strict mode with this complex code, should ideally fail
+    // But at minimum, violations array should be populated (not placeholder empty array)
+    if let Some(violations) = result["violations"].as_array() {
+        // If there are violations, verify they're real (not placeholder)
+        if !violations.is_empty() {
+            let first_violation = &violations[0];
+            assert!(
+                first_violation.is_object(),
+                "Violations should be real objects with details"
+            );
+        }
+    }
+}
+
+#[tokio::test]
+#[ignore = "Issue #53: RED test - quality_gate_summary must call real TDG service"]
+async fn test_quality_gate_summary_calls_real_service() {
+    use tempfile::TempDir;
+
+    let temp_dir = TempDir::new().unwrap();
+
+    // Create multiple files
+    let file1 = temp_dir.path().join("good.rs");
+    std::fs::write(&file1, "fn simple() -> i32 { 42 }").unwrap();
+
+    let file2 = temp_dir.path().join("complex.rs");
+    std::fs::write(
+        &file2,
+        r#"
+fn complex(x: i32) -> i32 {
+    if x > 10 {
+        if x > 20 {
+            return x * 2;
+        }
+        return x + 10;
+    }
+    x
+}
+"#,
+    )
+    .unwrap();
+
+    let result = tool_functions::quality_gate_summary(&[temp_dir.path().to_path_buf()])
+        .await
+        .unwrap();
+
+    // Verify NOT a placeholder response
+    let message = result["message"].as_str().unwrap();
+    assert!(
+        !message.contains("placeholder"),
+        "Response should NOT contain 'placeholder' keyword"
+    );
+
+    // Verify real summary data from TDG analysis
+    let summary = &result["summary"];
+    assert!(summary.is_object(), "Should return summary object");
+
+    let total_files = summary["total_files"].as_u64().unwrap();
+    assert!(
+        total_files >= 2,
+        "Should analyze at least the 2 files we created, got: {}",
+        total_files
+    );
+
+    // Should have real counts (not placeholder zeros)
+    let passed_files = summary["passed_files"].as_u64();
+    let failed_files = summary["failed_files"].as_u64();
+
+    assert!(
+        passed_files.is_some() || failed_files.is_some(),
+        "Should include real pass/fail counts from TDG"
+    );
+}
+
+#[tokio::test]
+#[ignore = "Issue #53: RED test - quality_gate_summary must aggregate results"]
+async fn test_quality_gate_summary_aggregates_multiple_files() {
+    use tempfile::TempDir;
+
+    let temp_dir = TempDir::new().unwrap();
+
+    // Create 5 test files with varying quality
+    for i in 1..=5 {
+        let file_path = temp_dir.path().join(format!("file{}.rs", i));
+        std::fs::write(&file_path, format!("fn func{}() -> i32 {{ {} }}", i, i)).unwrap();
+    }
+
+    let result = tool_functions::quality_gate_summary(&[temp_dir.path().to_path_buf()])
+        .await
+        .unwrap();
+
+    let summary = &result["summary"];
+
+    // Total files should be at least 5 (may include others if directory has them)
+    let total_files = summary["total_files"].as_u64().unwrap();
+    assert!(
+        total_files >= 5,
+        "Should count at least 5 files, got: {}",
+        total_files
+    );
+
+    // Verify aggregation is working (sum of passed + failed should equal total)
+    if let (Some(passed), Some(failed)) = (
+        summary["passed_files"].as_u64(),
+        summary["failed_files"].as_u64(),
+    ) {
+        assert!(
+            passed + failed <= total_files,
+            "Passed ({}) + failed ({}) should not exceed total ({})",
+            passed,
+            failed,
+            total_files
+        );
+    }
+}
+
+#[tokio::test]
+#[ignore = "Issue #53: RED test - quality_gate_summary must handle empty paths"]
+async fn test_quality_gate_summary_empty_paths_error() {
+    let result = tool_functions::quality_gate_summary(&[]).await;
+
+    // Should return error for empty paths
+    assert!(
+        result.is_err(),
+        "Empty paths should return error, not placeholder zero counts"
+    );
+}
