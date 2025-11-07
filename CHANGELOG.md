@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Repository Cleanup & Optimization**
+  - Removed 55+ cruft files (~30MB) from repository root
+  - Purged temporal documentation from git history using git-filter-repo
+  - Reduced repository size from 104MB to 75MB (30% reduction)
+  - Updated .gitignore with comprehensive cruft prevention patterns
+  - Files removed: mutation testing artifacts, build artifacts, old session/sprint/issue docs
+  - Removed temporal status files: NEXT-STEPS.md, WHATS_NEXT.md, QUALITY_STATUS.md, etc.
+
+- **bashrs Update & Makefile Quality Improvements**
+  - Updated bashrs to v6.32.1 (latest from crates.io)
+  - Fixed SC2299 errors in Makefile (parameter expansion syntax)
+  - Fixed MAKE008 errors (.PHONY continuation line formatting)
+  - Improved test-property and test-property-slow targets for cleaner shell logic
+  - Result: 0 errors (down from 5), 100 style warnings only
+
+### Fixed
+- **Compilation Errors in Tests and Examples**
+  - Fixed irrefutable if let pattern in debug_handlers.rs (line 99)
+  - Fixed cargo_mutants_backend_demo.rs type mismatch (PathBuf → Path)
+  - Updated to use from_output_dir() instead of deprecated from_json()
+  - Fixed 22 MutateArgs initialization errors in mutation_integration_tests.rs
+  - Added 5 missing fields to all MutateArgs initializations:
+    * use_cargo_mutants, features, all_features, no_default_features, no_shuffle
+  - All tests now compile successfully
+
+### Technical Details
+- Repository optimization using git-filter-repo for history rewriting
+- bashrs linting integration verified with make lint-makefile
+- cargo-mutants v25.3.1 API updates properly integrated
+- Pre-commit hooks continue to enforce quality standards
+
 ## [2.192.0] - 2025-11-01
 
 ### Added - Issue #53 Complete: MCP Tool Placeholder Elimination (16/16, 100%)
