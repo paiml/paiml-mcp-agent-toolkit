@@ -16,12 +16,13 @@ fn test_parse_debug_serve_with_port() {
         command: DebugCommands::Serve {
             port: 5678,
             host: "127.0.0.1".to_string(),
+            record_dir: None,
         },
     };
 
     match command {
         Commands::Debug {
-            command: DebugCommands::Serve { port, host },
+            command: DebugCommands::Serve { port, host, .. },
         } => {
             assert_eq!(port, 5678);
             assert_eq!(host, "127.0.0.1");
@@ -38,6 +39,7 @@ fn test_parse_debug_serve_default_port() {
         command: DebugCommands::Serve {
             port: 5678,  // Default
             host: "127.0.0.1".to_string(),  // Default
+            record_dir: None,
         },
     };
 
