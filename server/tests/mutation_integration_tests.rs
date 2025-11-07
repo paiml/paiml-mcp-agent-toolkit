@@ -61,6 +61,11 @@ fn test_multiply() {
         output: None,
         threshold: None,
         failures_only: false,
+        use_cargo_mutants: false,
+        features: None,
+        all_features: false,
+        no_default_features: false,
+        no_shuffle: false,
     };
     let server = Arc::new(StatelessTemplateServer::new().unwrap());
 
@@ -111,6 +116,11 @@ def test_multiply():
         output: None,
         threshold: None,
         failures_only: false,
+        use_cargo_mutants: false,
+        features: None,
+        all_features: false,
+        no_default_features: false,
+        no_shuffle: false,
     };
     let server = Arc::new(StatelessTemplateServer::new().unwrap());
 
@@ -179,6 +189,11 @@ describe('Math functions', () => {
         output: None,
         threshold: None,
         failures_only: false,
+        use_cargo_mutants: false,
+        features: None,
+        all_features: false,
+        no_default_features: false,
+        no_shuffle: false,
     };
     let server = Arc::new(StatelessTemplateServer::new().unwrap());
 
@@ -244,6 +259,11 @@ describe('Math functions', () => {
         output: None,
         threshold: None,
         failures_only: false,
+        use_cargo_mutants: false,
+        features: None,
+        all_features: false,
+        no_default_features: false,
+        no_shuffle: false,
     };
     let server = Arc::new(StatelessTemplateServer::new().unwrap());
 
@@ -306,6 +326,11 @@ func main() {
         output: None,
         threshold: None,
         failures_only: false,
+        use_cargo_mutants: false,
+        features: None,
+        all_features: false,
+        no_default_features: false,
+        no_shuffle: false,
     };
     let server = Arc::new(StatelessTemplateServer::new().unwrap());
 
@@ -367,6 +392,11 @@ int main() {
         output: None,
         threshold: None,
         failures_only: false,
+        use_cargo_mutants: false,
+        features: None,
+        all_features: false,
+        no_default_features: false,
+        no_shuffle: false,
     };
     let server = Arc::new(StatelessTemplateServer::new().unwrap());
 
@@ -441,6 +471,11 @@ pub fn divide(a: i32, b: i32) -> i32 {
             output: None,
             threshold: None,
             failures_only: false,
+        use_cargo_mutants: false,
+        features: None,
+        all_features: false,
+        no_default_features: false,
+        no_shuffle: false,
         };
         let server = Arc::new(StatelessTemplateServer::new().unwrap());
 
@@ -497,6 +532,11 @@ fn test_add() {
         output: None,
         threshold: None,
         failures_only: false,
+        use_cargo_mutants: false,
+        features: None,
+        all_features: false,
+        no_default_features: false,
+        no_shuffle: false,
     };
     let server = Arc::new(StatelessTemplateServer::new().unwrap());
 
@@ -544,6 +584,11 @@ fn function_{}(a: i32, b: i32) -> i32 {{
         output: None,
         threshold: None,
         failures_only: true, // Reduce output volume
+        use_cargo_mutants: false,
+        features: None,
+        all_features: false,
+        no_default_features: false,
+        no_shuffle: false,
     };
     let server = Arc::new(StatelessTemplateServer::new().unwrap());
 
@@ -603,6 +648,11 @@ async fn test_many_mutants_handling() {
         output: None,
         threshold: None,
         failures_only: true,
+        use_cargo_mutants: false,
+        features: None,
+        all_features: false,
+        no_default_features: false,
+        no_shuffle: false,
     };
     let server = Arc::new(StatelessTemplateServer::new().unwrap());
 
@@ -655,6 +705,11 @@ fn div(a: i32, b: i32) -> i32 { a / b }
             output: None,
             threshold: None,
             failures_only: false,
+        use_cargo_mutants: false,
+        features: None,
+        all_features: false,
+        no_default_features: false,
+        no_shuffle: false,
         };
         let server = Arc::new(StatelessTemplateServer::new().unwrap());
 
@@ -707,6 +762,11 @@ fn compute(n: i32) -> i32 {
         output: None,
         threshold: None,
         failures_only: false,
+        use_cargo_mutants: false,
+        features: None,
+        all_features: false,
+        no_default_features: false,
+        no_shuffle: false,
     };
     let server = Arc::new(StatelessTemplateServer::new().unwrap());
 
@@ -755,6 +815,11 @@ async fn test_memory_usage_bounds() {
         output: None,
         threshold: None,
         failures_only: true, // Reduce memory footprint
+        use_cargo_mutants: false,
+        features: None,
+        all_features: false,
+        no_default_features: false,
+        no_shuffle: false,
     };
     let server = Arc::new(StatelessTemplateServer::new().unwrap());
 
@@ -802,6 +867,11 @@ fn sub(a: i32, b: i32) -> i32 { a - b }
         output: None,
         threshold: None,
         failures_only: false,
+        use_cargo_mutants: false,
+        features: None,
+        all_features: false,
+        no_default_features: false,
+        no_shuffle: false,
     };
     let server = Arc::new(StatelessTemplateServer::new().unwrap());
 
@@ -843,6 +913,11 @@ async fn test_parallel_mutant_execution_correctness() {
         output: None,
         threshold: None,
         failures_only: false,
+        use_cargo_mutants: false,
+        features: None,
+        all_features: false,
+        no_default_features: false,
+        no_shuffle: false,
     };
     let server = Arc::new(StatelessTemplateServer::new().unwrap());
     let result = handle(args, server).await;
@@ -874,6 +949,11 @@ async fn test_race_condition_handling() {
             output: None,
             threshold: None,
             failures_only: false,
+        use_cargo_mutants: false,
+        features: None,
+        all_features: false,
+        no_default_features: false,
+        no_shuffle: false,
         };
         let server = Arc::new(StatelessTemplateServer::new().unwrap());
         let _ = handle(args, server).await;
@@ -896,6 +976,11 @@ async fn test_resource_contention() {
         output: None,
         threshold: None,
         failures_only: true,
+        use_cargo_mutants: false,
+        features: None,
+        all_features: false,
+        no_default_features: false,
+        no_shuffle: false,
     };
     let server = Arc::new(StatelessTemplateServer::new().unwrap());
     let result = handle(args, server).await;
@@ -925,6 +1010,11 @@ async fn test_graceful_shutdown_on_error() {
         output: None,
         threshold: None,
         failures_only: false,
+        use_cargo_mutants: false,
+        features: None,
+        all_features: false,
+        no_default_features: false,
+        no_shuffle: false,
     };
     let server = Arc::new(StatelessTemplateServer::new().unwrap());
     let result = handle(args, server).await;
@@ -953,6 +1043,11 @@ async fn test_mutation_of_actual_pmat_code() {
         output: None,
         threshold: None,
         failures_only: true,
+        use_cargo_mutants: false,
+        features: None,
+        all_features: false,
+        no_default_features: false,
+        no_shuffle: false,
     };
     let server = Arc::new(StatelessTemplateServer::new().unwrap());
     let result = handle(args, server).await;
@@ -990,6 +1085,11 @@ fn test_add() { assert_eq!(buggy_add(2, 3), 5); }
         output: None,
         threshold: None,
         failures_only: false,
+        use_cargo_mutants: false,
+        features: None,
+        all_features: false,
+        no_default_features: false,
+        no_shuffle: false,
     };
     let server = Arc::new(StatelessTemplateServer::new().unwrap());
     let _ = handle(args, server).await;
@@ -1011,6 +1111,11 @@ async fn test_mutation_with_no_tests() {
         output: None,
         threshold: None,
         failures_only: false,
+        use_cargo_mutants: false,
+        features: None,
+        all_features: false,
+        no_default_features: false,
+        no_shuffle: false,
     };
     let server = Arc::new(StatelessTemplateServer::new().unwrap());
     let result = handle(args, server).await;
@@ -1045,6 +1150,11 @@ fn test_flaky() { assert!(time_dependent() || !time_dependent()); }
         output: None,
         threshold: None,
         failures_only: true,
+        use_cargo_mutants: false,
+        features: None,
+        all_features: false,
+        no_default_features: false,
+        no_shuffle: false,
     };
     let server = Arc::new(StatelessTemplateServer::new().unwrap());
     let _ = handle(args, server).await;

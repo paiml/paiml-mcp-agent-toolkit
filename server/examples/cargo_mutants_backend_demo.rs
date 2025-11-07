@@ -93,11 +93,11 @@ fn main() {
     let result = cargo_mutants_backend::execute(config);
 
     match result {
-        Ok(json) => {
+        Ok(output_dir) => {
             println!("✅ cargo-mutants executed successfully!\n");
 
             // Parse and display results
-            match CargoMutantsReport::from_json(&json) {
+            match CargoMutantsReport::from_output_dir(&output_dir) {
                 Ok(report) => {
                     cargo_mutants_backend::display_statistics(&report);
                 }

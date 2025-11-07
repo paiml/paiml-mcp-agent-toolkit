@@ -95,10 +95,8 @@ pub async fn handle_debug_replay(
 
     // Format timestamp
     use std::time::{Duration, UNIX_EPOCH};
-    if let Some(datetime) = UNIX_EPOCH.checked_add(Duration::from_millis(metadata.timestamp)) {
-        if let Ok(system_time) = std::time::SystemTime::try_from(datetime) {
-            println!("   Recorded: {:?}", system_time);
-        }
+    if let Some(system_time) = UNIX_EPOCH.checked_add(Duration::from_millis(metadata.timestamp)) {
+        println!("   Recorded: {:?}", system_time);
     }
 
     if !metadata.environment.is_empty() {
