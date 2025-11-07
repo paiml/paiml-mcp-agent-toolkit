@@ -28,6 +28,7 @@ async fn test_tdg_command_config_structure() -> Result<()> {
         include_components: false,
         min_grade: None,
         output: None,
+        with_git_context: false,
     };
 
     let _result = handle_tdg_command(config).await;
@@ -61,6 +62,7 @@ async fn test_subcommand_patterns() -> Result<()> {
         include_components: false,
         min_grade: None,
         output: None,
+        with_git_context: false,
     };
 
     let _compare_result = handle_tdg_command(compare_config).await;
@@ -89,6 +91,7 @@ async fn test_grade_checking_patterns() -> Result<()> {
         include_components: false,
         min_grade: Some("A+".to_string()), // High grade requirement
         output: None,
+        with_git_context: false,
     };
 
     let _result = handle_tdg_command(config_with_grade).await;
@@ -117,6 +120,7 @@ async fn test_output_formatting_patterns() -> Result<()> {
         include_components: false,
         min_grade: None,
         output: None,
+        with_git_context: false,
     };
 
     let _quiet_result = handle_tdg_command(quiet_config).await;
@@ -131,6 +135,7 @@ async fn test_output_formatting_patterns() -> Result<()> {
         include_components: true, // Include components
         min_grade: None,
         output: None,
+        with_git_context: false,
     };
 
     let _components_result = handle_tdg_command(components_config).await;
@@ -158,6 +163,7 @@ async fn test_handle_tdg_command_structure() -> Result<()> {
         include_components: true,
         min_grade: Some("B".to_string()),
         output: None,
+        with_git_context: false,
     };
 
     let _result = handle_tdg_command(config).await;

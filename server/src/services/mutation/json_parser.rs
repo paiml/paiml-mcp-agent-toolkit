@@ -358,6 +358,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[allow(deprecated)]
     fn test_parse_simple_json() {
         let json = r#"{"mutants": []}"#;
         let report = CargoMutantsReport::from_json(json).unwrap();
@@ -365,6 +366,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_outcome_deserialization() {
         let json = r#"{"mutants": [
             {"outcome": "caught", "file": "src/lib.rs", "line": 10},
@@ -382,6 +384,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_to_pmat_conversion() {
         let json = r#"{"mutants": [
             {"outcome": "caught", "file": "src/lib.rs", "line": 10}
