@@ -177,5 +177,59 @@ proptest-regressions/
 # Mutation testing output
 mutants.out/
 mutants.out.old/
+mutants-out/
 mutation_results/
+mutation_test_results/
+mutants-run.log
+mutants-skip.log
+mutation_test_output.txt
 *.deb
+
+# Generated analysis reports
+complexity_report*.json
+dead_code_report*.json
+satd_report*.json
+hallucination_report*.json
+hallucination_junit.xml
+
+# Session, sprint, and issue tracking docs (use GitHub issues/PRs instead)
+SESSION_SUMMARY*.md
+SPRINT-*.md
+SPRINT[0-9]*.md
+ISSUE-*.md
+DOGFOODING_RESULTS*.md
+AST_REPLACEMENT_RESULTS.md
+FIVE_WHYS_ANALYSIS.md
+HANDOFF.md
+MUTATION_FIX_SUMMARY.md
+MUTATION_TESTING_STATUS.md
+P2_ANALYSIS*.md
+PFORGE_BENCHMARK_RESULTS.md
+PYTHON-PARSER-EVALUATION.md
+SDL_FIX_RESULTS.md
+SDL_RETURN_VALUE_FIX.md
+SECURITY-AUDIT.md
+TICKET-*.md
+WASM_VERIFICATION.md
+RELEASE_v*.md
+RELEASE-v*.md
+RELEASE-VERIFICATION.md
+RELEASE_NOTES*.md
+ROADMAP-UPDATE-*.md
+CLAUDE_INTEGRATION_STATUS.md
+
+# Miscellaneous cruft
+Makefile.backup
+json
+text
+test_typescript_mutations.rs
+server.json
+
+# Build artifacts
+pmat_*.deb
+pmat-*.tar.gz
+*-x86_64-unknown-linux-gnu.tar.gz
+*-aarch64-unknown-linux-gnu.tar.gz
+*-x86_64-pc-windows-gnu.tar.gz
+*-x86_64-apple-darwin.tar.gz
+*-aarch64-apple-darwin.tar.gz
