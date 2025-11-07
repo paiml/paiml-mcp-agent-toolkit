@@ -120,7 +120,11 @@ test-performance:
 
 test-property:
 	@echo "🎲 Running property-based tests..."
-	@THREADS=$${PROPTEST_THREADS:-$$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)} && \
+	@if [ -z "$${PROPTEST_THREADS}" ]; then \
+		THREADS=$$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4); \
+	else \
+		THREADS=$${PROPTEST_THREADS}; \
+	fi && \
 	echo "  Running all property test modules with $${THREADS} threads..." && \
 	echo "  (Override with PROPTEST_THREADS=n make test-property)" && \
 	echo "  Note: Slow cache tests are skipped. Run 'make test-property-slow' to include them." && \
@@ -132,7 +136,11 @@ test-property:
 # Run property tests including slow ones
 test-property-slow:
 	@echo "🐌 Running ALL property-based tests (including slow ones)..."
-	@THREADS=$${PROPTEST_THREADS:-$$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)} && \
+	@if [ -z "$${PROPTEST_THREADS}" ]; then \
+		THREADS=$$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4); \
+	else \
+		THREADS=$${PROPTEST_THREADS}; \
+	fi && \
 	echo "  Running with $${THREADS} threads..." && \
 	cargo test --manifest-path server/Cargo.toml --lib -- property_tests --test-threads=$${THREADS} --include-ignored && \
 	cargo test --manifest-path server/Cargo.toml --lib -- prop_ --test-threads=$${THREADS} --include-ignored && \
@@ -312,9 +320,9 @@ test-mutation-clean:
 	@echo "✅ Mutation artifacts cleaned!"
 
 .PHONY: test-mutation-pmat-quick test-mutation-pmat-full \
-        test-mutation-cargo-quick test-mutation-cargo-full \
-        test-mutation-dual test-mutation-ci \
-        test-mutation-summary test-mutation-clean
+test-mutation-cargo-quick test-mutation-cargo-full \
+test-mutation-dual test-mutation-ci \
+test-mutation-summary test-mutation-clean
 
 # Run all stratified tests in parallel
 test-all: 
