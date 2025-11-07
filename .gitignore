@@ -218,6 +218,15 @@ RELEASE_NOTES*.md
 ROADMAP-UPDATE-*.md
 CLAUDE_INTEGRATION_STATUS.md
 
+# Temporal status/planning docs (use GitHub issues/milestones instead)
+NEXT-STEPS.md
+WHATS_NEXT.md
+QUALITY_STATUS.md
+RELEASE_READINESS.md
+ROADMAP_STATUS.md
+*-STATUS.md
+*-READINESS.md
+
 # Miscellaneous cruft
 Makefile.backup
 json
