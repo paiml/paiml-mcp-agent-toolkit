@@ -7,11 +7,9 @@
 //!
 //! Strategy: Test highest-complexity functions first (TDG-driven)
 
-use anyhow::Result;
 use pmat::mcp_pmcp::tool_functions::*;
-use serde_json::Value;
 use std::path::PathBuf;
-use tempfile::{tempdir, NamedTempFile};
+use tempfile::tempdir;
 use std::fs;
 
 // ============================================================================

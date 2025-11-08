@@ -7,8 +7,7 @@
 //!
 //! Strategy: Test most complex code paths first (TDG-driven)
 
-use anyhow::Result;
-use pmat::mcp_integration::{McpTool, ToolMetadata};
+use pmat::mcp_integration::McpTool;
 use pmat::mcp_integration::polyglot_tools::{PolyglotAnalysisTool, LanguageBoundaryTool};
 use pmat::agents::registry::AgentRegistry;
 use serde_json::json;

@@ -7,8 +7,7 @@
 //!
 //! Strategy: Test critical paths and error handling first
 
-use anyhow::Result;
-use pmat::mcp_integration::{McpTool, ToolMetadata};
+use pmat::mcp_integration::McpTool;
 use pmat::mcp_integration::scala_tools::ScalaAnalysisTool;
 use pmat::agents::registry::AgentRegistry;
 use serde_json::json;
