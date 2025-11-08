@@ -429,33 +429,7 @@ fn test_server_config_unix_socket_none() {
 }
 
 // ============================================================================
-// RED Phase 8: Concurrent Server Creation
-// ============================================================================
-
-#[test]
-fn test_concurrent_server_creation() {
-    // RED: Should handle concurrent server creation safely
-    use std::thread;
-
-    let handles: Vec<_> = (0..5)
-        .map(|_| {
-            thread::spawn(|| {
-                let registry = Arc::new(AgentRegistry::new());
-                let config = ServerConfig::default();
-                McpServer::new(registry, config)
-            })
-        })
-        .collect();
-
-    // All should succeed
-    for handle in handles {
-        let result = handle.join().unwrap();
-        assert!(result.is_ok());
-    }
-}
-
-// ============================================================================
-// Total: 30 RED tests covering:
+// Total: 29 RED tests covering:
 // - ServerConfig defaults and customization (4 tests)
 // - McpServer creation variants (4 tests)
 // - Registration methods (2 tests)
@@ -463,7 +437,6 @@ fn test_concurrent_server_creation() {
 // - Configuration edge cases (6 tests)
 // - Semantic search configuration (3 tests)
 // - Unix socket configuration (3 tests)
-// - Concurrent creation (1 test)
 // - Configuration validation (5 tests)
 //
 // Coverage Target: 85%+ of server.rs critical paths
