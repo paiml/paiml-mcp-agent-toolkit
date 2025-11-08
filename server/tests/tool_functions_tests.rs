@@ -317,7 +317,7 @@ async fn test_quality_gate_baseline_empty_paths() {
 #[tokio::test]
 async fn test_generate_context_empty_paths() {
     // RED: Should error on empty paths
-    let result = generate_context(&[], None, None).await;
+    let result = generate_context(&[], None, false).await;
 
     assert!(result.is_err());
     let err = result.unwrap_err();
@@ -327,7 +327,7 @@ async fn test_generate_context_empty_paths() {
 #[tokio::test]
 async fn test_generate_deep_context_empty_paths() {
     // RED: Should error on empty paths
-    let result = generate_deep_context(&[], None, None).await;
+    let result = generate_deep_context(&[], None).await;
 
     assert!(result.is_err());
     let err = result.unwrap_err();
