@@ -361,7 +361,7 @@ async fn test_context_summary_empty_paths() {
 #[tokio::test]
 async fn test_analyze_tdg_empty_paths() {
     // RED: Should error on empty paths
-    let result = analyze_tdg(&[], None, None, None).await;
+    let result = analyze_tdg(&[], None, None, None, None).await;
 
     assert!(result.is_err());
     let err = result.unwrap_err();
@@ -369,17 +369,16 @@ async fn test_analyze_tdg_empty_paths() {
 }
 
 #[tokio::test]
-async fn test_analyze_tdg_with_output_path() {
-    // RED: Should accept output path parameter
+async fn test_analyze_tdg_with_threshold() {
+    // RED: Should accept threshold parameter
     let temp_dir = tempdir().unwrap();
     let rust_file = temp_dir.path().join("test.rs");
-    let output_file = temp_dir.path().join("tdg_output.json");
 
     fs::write(&rust_file, "fn test() {}").unwrap();
 
-    let result = analyze_tdg(&[rust_file], Some(output_file.as_path()), None, None).await;
+    let result = analyze_tdg(&[rust_file], Some(0.8), None, None, None).await;
 
-    // Should process with output parameter
+    // Should process with threshold parameter
     match result {
         Ok(_) | Err(_) => {}, // Both acceptable
     }
