@@ -1,3 +1,5 @@
+#![cfg(feature = "tui")]
+
 // Sprint 78: TUI-005 RED phase - Keyboard Shortcut Handler Tests
 //
 // Tests for keyboard shortcut system in timeline TUI.

@@ -1,3 +1,5 @@
+#![cfg(feature = "tui")]
+
 // Sprint 78: TUI-006 RED phase - CLI Integration Tests
 //
 // Tests for CLI integration with --interactive flag.

@@ -1,3 +1,5 @@
+#![cfg(feature = "tui")]
+
 // Sprint 78: TUI-003 RED phase - Variable Inspector View Tests
 //
 // Tests for scrollable variable inspector in timeline TUI.
