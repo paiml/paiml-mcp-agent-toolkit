@@ -19,7 +19,7 @@ async fn test_debug_serve_handler_exists() {
 
     // Spawn handler in background task (server runs indefinitely)
     let handler_task = tokio::spawn(async move {
-        pmat::cli::handlers::debug_handlers::handle_debug_serve(port, host).await
+        pmat::cli::handlers::debug_handlers::handle_debug_serve(port, host, None).await
     });
 
     // Give server time to start
