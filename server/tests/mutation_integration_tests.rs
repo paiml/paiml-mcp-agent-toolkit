@@ -7,9 +7,8 @@ use pmat::cli::commands::MutateArgs;
 use pmat::cli::handlers::mutate::handle;
 use pmat::stateless_server::StatelessTemplateServer;
 use std::fs;
-use std::path::PathBuf;
 use std::sync::Arc;
-use tempfile::{tempdir, NamedTempFile};
+use tempfile::tempdir;
 
 // ============================================================================
 // Category 1: End-to-End Workflow Tests (8 tests)

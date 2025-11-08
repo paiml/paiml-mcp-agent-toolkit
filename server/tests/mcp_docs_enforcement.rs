@@ -17,7 +17,6 @@
 
 use pmat::docs_enforcement::generic_detector::is_generic_description;
 use pmat::docs_enforcement::mcp_checker::{load_mcp_tool_definitions, McpToolDefinition};
-use serde_json::json;
 
 // ============================================================================
 // Category 1: Tool Description Completeness

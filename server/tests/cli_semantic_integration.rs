@@ -217,7 +217,7 @@ fn test_embed_clear_requires_confirm() {
 // Test 14: pmat semantic search with invalid mode shows error
 #[ignore]
 #[test]
-#[ignore] // Requires API key and database
+ // Requires API key and database
 fn test_semantic_search_invalid_mode() {
     let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.arg("semantic")

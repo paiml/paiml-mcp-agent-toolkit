@@ -4,7 +4,7 @@
 // Tests for semantic search tool adapters in MCP integration framework
 
 use pmat::mcp_integration::tools::*;
-use pmat::mcp_integration::{McpError, McpTool, ToolMetadata};
+use pmat::mcp_integration::McpTool;
 use pmat::services::semantic::HybridSearchEngine;
 use serde_json::json;
 use std::sync::Arc;

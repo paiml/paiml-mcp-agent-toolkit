@@ -11,14 +11,13 @@
 //! 3. REFACTOR: Clean up implementation
 //! 4. COMMIT: Single atomic commit with fix
 
-use anyhow::Result;
 use tempfile::TempDir;
 
 // Import the actual implementation
 use pmat::services::enhanced_language_detection::{
     detect_all_languages, detect_project_language_enhanced,
     detect_project_language_with_timeout, override_language_detection,
-    override_multiple_languages, LanguageDetection, LanguageInfo, MultiLanguageDetection,
+    override_multiple_languages,
 };
 
 // =============================================================================
