@@ -1,3 +1,5 @@
+#![cfg(feature = "tui")]
+
 // Sprint 78: TUI-004 RED phase - Stack Frame Navigator Tests
 //
 // Tests for interactive stack frame navigation in timeline TUI.

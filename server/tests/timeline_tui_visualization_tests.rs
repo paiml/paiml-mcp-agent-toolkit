@@ -1,3 +1,5 @@
+#![cfg(feature = "tui")]
+
 // Sprint 78: TUI-002 RED phase - Timeline Visualization Tests
 //
 // Tests for timeline TUI rendering with ratatui.
