@@ -379,16 +379,21 @@ test-doc:
 
 # Coverage analysis (EXACT pforge pattern)
 coverage:
-	@echo "📊 Running comprehensive test coverage analysis..."
+	@echo "📊 Running FAST test coverage analysis (<5 min target)..."
 	@echo "🔍 Checking for cargo-llvm-cov and cargo-nextest..."
 	@command -v cargo-llvm-cov > /dev/null 2>&1 || (echo "📦 Installing cargo-llvm-cov..." && cargo install cargo-llvm-cov --locked)
 	@command -v cargo-nextest > /dev/null 2>&1 || (echo "📦 Installing cargo-nextest..." && cargo install cargo-nextest --locked)
 	@echo "🧹 Cleaning old coverage data..."
 	@cargo llvm-cov clean --workspace
 	@mkdir -p target/coverage
-	@echo "🧪 Phase 1: Running tests with instrumentation (no report)..."
-	@cargo llvm-cov --no-report nextest --no-tests=warn --no-fail-fast --features skip-slow-tests --workspace
-	@echo "📊 Phase 2: Generating coverage reports..."
+	@echo "🧪 Running tests with instrumentation..."
+	@cargo llvm-cov --no-report nextest \
+		--no-tests=warn \
+		--fail-fast \
+		--test-threads=8 \
+		--features skip-slow-tests \
+		--workspace
+	@echo "📊 Generating coverage reports..."
 	@cargo llvm-cov report --html --output-dir target/coverage/html
 	@cargo llvm-cov report --lcov --output-path target/coverage/lcov.info
 	@echo ""
