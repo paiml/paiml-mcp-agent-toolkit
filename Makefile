@@ -91,6 +91,13 @@ test-fast:
 	@timeout 300 cargo nextest run --workspace --features skip-slow-tests --profile fast
 	@echo "✅ Fast tests completed!"
 
+# Pre-commit fast tests (type checking only) - Target <30s, allows 60s for build scripts
+test-pre-commit-fast:
+	@echo "⚡ Running pre-commit fast validation (<60s with build scripts)..."
+	@echo "   (Type checking only - no test execution)"
+	@timeout 60 cargo check --workspace
+	@echo "✅ Pre-commit validation completed!"
+
 # Stratified test targets for distributed test architecture
 test-unit:
 	@echo "🚀 Running unit tests (<10s feedback)..."
