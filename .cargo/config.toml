@@ -12,14 +12,14 @@ include = [
 ]
 
 [target.x86_64-unknown-linux-gnu]
-# Override global mold linker config to use gcc as linker for this project
-linker = "gcc"
-rustflags = []
+# Use mold linker for 10-50x faster linking (critical for large projects)
+linker = "clang"
+rustflags = ["-C", "link-arg=-fuse-ld=mold"]
 
 [profile.test]
 # Optimize for speed during test compilation
 opt-level = 0
-codegen-units = 256  # Maximize parallelism
+codegen-units = 128  # Balance parallelism vs overhead (256 was too high)
 incremental = true   # Enable incremental compilation for faster rebuilds
 
 [env]
@@ -42,7 +42,7 @@ opt-level = 0
 debug = 0
 strip = "none"
 lto = "off"
-codegen-units = 256
+codegen-units = 128  # Balance parallelism vs overhead (256 was too high)
 incremental = true
 
 # Coverage profile (per COVERAGE.md specification)
