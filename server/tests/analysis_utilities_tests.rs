@@ -377,7 +377,7 @@ async fn test_handle_analyze_satd_with_todo_comments() {
 mod churn_formatter_comprehensive {
     use super::*;
     use pmat::models::churn::{CodeChurnAnalysis, ChurnSummary, FileChurnMetrics};
-    use pmat::cli::analysis_utilities::*;
+    
     use std::path::PathBuf;
     use std::collections::HashMap;
     use chrono::Utc;
@@ -878,7 +878,7 @@ more random text
 // ============================================================================
 
 mod dead_code_formatter_comprehensive {
-    use super::*;
+    
     use pmat::models::dead_code::{DeadCodeResult, DeadCodeSummary, FileDeadCodeMetrics, ConfidenceLevel};
     use pmat::cli::dead_code_formatter::{DeadCodeFormatter, SummaryFormatter, JsonFormatter, MarkdownFormatter};
 
@@ -1075,7 +1075,7 @@ mod dead_code_formatter_comprehensive {
 // ============================================================================
 
 mod defect_prediction_formatter_comprehensive {
-    use super::*;
+    
     use pmat::cli::analysis_utilities::{DefectPredictionReport, FilePrediction, format_defect_summary};
 
     fn create_sample_file_prediction(path: &str, risk_score: f32, risk_level: &str) -> FilePrediction {
@@ -1235,7 +1235,7 @@ mod defect_prediction_formatter_comprehensive {
 // ============================================================================
 
 mod coverage_formatter_comprehensive {
-    use super::*;
+    
     use pmat::cli::analysis_utilities::{
         format_incremental_coverage_summary, FileCoverageMetrics, CoverageSummary,
         IncrementalCoverageReport,
@@ -1466,7 +1466,7 @@ mod coverage_formatter_comprehensive {
 // Location: analysis_utilities.rs:2723, 6806
 
 mod satd_helpers {
-    use super::*;
+    
     use pmat::cli::analysis_utilities::{apply_satd_filters, determine_satd_severity};
     use pmat::cli::enums::SatdSeverity;
     use pmat::services::satd_detector::{DebtCategory, Severity, TechnicalDebt};
@@ -1648,7 +1648,7 @@ mod satd_helpers {
 // Location: analysis_utilities.rs:907, 917, 930, 1140, 1258, 1292
 
 mod tdg_utility_helpers {
-    use super::*;
+    
     use pmat::cli::analysis_utilities::{
         estimate_refactoring_hours, get_gcc_level, get_sarif_level, get_severity_display,
         identify_primary_factor, percentile,
@@ -1858,9 +1858,9 @@ mod tdg_utility_helpers {
 // Location: analysis_utilities.rs:4536, 5252, 7342, 7378, 7385
 
 mod path_display_utilities {
-    use super::*;
+    
     use pmat::cli::analysis_utilities::{
-        calculate_content_hash, calculate_files_to_show, extract_filename,
+        calculate_content_hash, extract_filename,
         get_coverage_emoji, is_build_artifact,
     };
     use std::path::Path;
@@ -2076,7 +2076,7 @@ mod path_display_utilities {
 // ============================================================================
 
 mod file_type_and_content_validators {
-    use super::*;
+    
     use pmat::cli::analysis_utilities::{
         get_severity_icon, is_benchmark_file, is_example_or_demo_file,
         is_excluded_directory, is_mock_or_stub_file, is_test_file, normalize_code_content,
