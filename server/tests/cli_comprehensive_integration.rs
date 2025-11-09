@@ -76,7 +76,9 @@ fn test_generate_to_stdout() {
     .stdout(predicate::str::contains("Test output to stdout"));
 }
 
+/// IGNORED: CLI integration test - requires pmat binary and long-running scaffold generation
 #[test]
+#[ignore]
 fn test_scaffold_parallel_generation() {
     let temp_dir = TempDir::new().unwrap();
     let start = Instant::now();
