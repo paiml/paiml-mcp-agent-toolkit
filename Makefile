@@ -389,8 +389,9 @@ coverage:
 	@echo "🧪 Running tests with instrumentation..."
 	@cargo llvm-cov --no-report nextest \
 		--no-tests=warn \
-		--fail-fast \
+		--no-fail-fast \
 		--test-threads=8 \
+		--failure-output=immediate-final \
 		--features skip-slow-tests \
 		--workspace
 	@echo "📊 Generating coverage reports..."
