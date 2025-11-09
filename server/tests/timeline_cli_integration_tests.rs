@@ -66,7 +66,7 @@ fn test_timeline_loads_recording() {
 /// - Player has access to all snapshots
 #[test]
 fn test_timeline_creates_player() {
-    use pmat::services::dap::{Recording, TimelinePlayer};
+    use pmat::services::dap::TimelinePlayer;
 
     let recording = create_test_recording("test", 10);
     let player = TimelinePlayer::new(recording);

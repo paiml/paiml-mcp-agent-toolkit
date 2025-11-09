@@ -83,7 +83,7 @@ fn test_capture_snapshot() {
 // RED Test 5: Multiple snapshots
 #[test]
 fn test_multiple_snapshots() {
-    let mut dap_server = DapServer::new();
+    let dap_server = DapServer::new();
 
     // Initialize and launch
     let init_request = serde_json::json!({
@@ -198,7 +198,7 @@ fn test_snapshot_captures_call_stack() {
 // RED Test 8: Save recording to file
 #[test]
 fn test_save_recording_to_file() {
-    let mut dap_server = DapServer::new();
+    let dap_server = DapServer::new();
 
     // Initialize and launch
     let init_request = serde_json::json!({
@@ -248,7 +248,7 @@ fn test_save_recording_to_file() {
 // RED Test 9: Load recording from file
 #[test]
 fn test_load_recording_from_file() {
-    let mut dap_server = DapServer::new();
+    let dap_server = DapServer::new();
 
     // Initialize and launch
     let init_request = serde_json::json!({

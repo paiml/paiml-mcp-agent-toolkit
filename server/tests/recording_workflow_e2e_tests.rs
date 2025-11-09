@@ -4,8 +4,6 @@
 //! Tests drive the complete end-to-end workflow from `pmat debug serve` with
 //! recording enabled through to `pmat debug replay` of the captured session.
 
-use std::path::PathBuf;
-use std::time::Instant;
 
 // RED Test 1: End-to-end workflow (serve → capture → replay)
 #[test]

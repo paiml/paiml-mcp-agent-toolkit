@@ -12,7 +12,7 @@ use serde_json::json;
 // RED Test 1: Language Detection - Rust Files
 #[test]
 fn test_dap_detects_rust_language() {
-    let mut server = pmat::services::dap::DapServer::new();
+    let server = pmat::services::dap::DapServer::new();
 
     // Initialize server
     let init_request = json!({
@@ -48,7 +48,7 @@ fn test_dap_detects_rust_language() {
 // RED Test 2: Language Detection - Python Files
 #[test]
 fn test_dap_detects_python_language() {
-    let mut server = pmat::services::dap::DapServer::new();
+    let server = pmat::services::dap::DapServer::new();
 
     // Initialize and launch
     let init_request = json!({
@@ -93,7 +93,7 @@ fn test_dap_no_language_before_launch() {
 // RED Test 4: AST Caching - Stores AST After Launch
 #[test]
 fn test_dap_caches_ast_after_launch() {
-    let mut server = pmat::services::dap::DapServer::new();
+    let server = pmat::services::dap::DapServer::new();
 
     // Initialize and launch
     let init_request = json!({
@@ -136,7 +136,7 @@ fn test_dap_no_ast_before_launch() {
 // RED Test 6: AST Caching - Multiple Files
 #[test]
 fn test_dap_caches_ast_for_multiple_files() {
-    let mut server = pmat::services::dap::DapServer::new();
+    let server = pmat::services::dap::DapServer::new();
 
     // Initialize
     let init_request = json!({
@@ -184,7 +184,7 @@ fn test_dap_caches_ast_for_multiple_files() {
 // RED Test 7: Variable Inspection - Extract Variables at Breakpoint
 #[test]
 fn test_dap_extracts_variables_at_breakpoint() {
-    let mut server = pmat::services::dap::DapServer::new();
+    let server = pmat::services::dap::DapServer::new();
 
     // Initialize and launch
     let init_request = json!({
@@ -244,7 +244,7 @@ fn test_dap_extracts_variables_at_breakpoint() {
 // RED Test 8: Variable Inspection - Returns Empty for No Variables
 #[test]
 fn test_dap_returns_empty_variables_when_none_exist() {
-    let mut server = pmat::services::dap::DapServer::new();
+    let server = pmat::services::dap::DapServer::new();
 
     // Initialize and launch
     let init_request = json!({
@@ -279,7 +279,7 @@ fn test_dap_returns_empty_variables_when_none_exist() {
 // RED Test 9: Variable Inspection - Handles Shadowing
 #[test]
 fn test_dap_handles_variable_shadowing() {
-    let mut server = pmat::services::dap::DapServer::new();
+    let server = pmat::services::dap::DapServer::new();
 
     // Initialize and launch
     let init_request = json!({
@@ -319,7 +319,7 @@ fn test_dap_handles_variable_shadowing() {
 // RED Test 10: Variable Inspection - Python Support
 #[test]
 fn test_dap_extracts_python_variables() {
-    let mut server = pmat::services::dap::DapServer::new();
+    let server = pmat::services::dap::DapServer::new();
 
     // Initialize and launch Python file
     let init_request = json!({

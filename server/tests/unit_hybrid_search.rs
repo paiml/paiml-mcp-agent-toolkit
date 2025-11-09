@@ -128,7 +128,7 @@ async fn test_keyword_search_no_results() {
 
 #[ignore]
 #[tokio::test]
-#[ignore] // Requires OpenAI API
+ // Requires OpenAI API
 async fn test_vector_only_search() {
     let (engine, temp_dir) = setup_hybrid_engine().await;
     index_test_code(&engine, temp_dir.path()).await;

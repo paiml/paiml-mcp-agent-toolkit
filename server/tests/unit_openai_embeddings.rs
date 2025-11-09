@@ -13,7 +13,6 @@ use pmat::services::semantic::openai_embeddings::*;
 // ============================================================================
 
 #[ignore]
-#[ignore]
 #[tokio::test]
 async fn test_embed_single_text() {
     let client = OpenAIEmbeddingsClient::new("test-api-key").unwrap();
@@ -31,7 +30,6 @@ async fn test_embed_single_text() {
 // ============================================================================
 
 #[ignore]
-#[ignore]
 #[tokio::test]
 async fn test_embed_batch() {
     let client = OpenAIEmbeddingsClient::new("test-api-key").unwrap();
@@ -47,7 +45,6 @@ async fn test_embed_batch() {
     assert!(result.tokens_used > 0);
 }
 
-#[ignore]
 #[ignore]
 #[tokio::test]
 async fn test_batch_size_limit() {
@@ -65,7 +62,6 @@ async fn test_batch_size_limit() {
 }
 
 #[ignore]
-#[ignore]
 #[tokio::test]
 async fn test_batch_empty() {
     let client = OpenAIEmbeddingsClient::new("test-api-key").unwrap();
@@ -80,7 +76,6 @@ async fn test_batch_empty() {
 // ============================================================================
 
 #[ignore]
-#[ignore]
 #[tokio::test]
 async fn test_empty_input() {
     let client = OpenAIEmbeddingsClient::new("test-api-key").unwrap();
@@ -89,7 +84,6 @@ async fn test_empty_input() {
     assert!(result.unwrap_err().to_string().contains("Empty text"));
 }
 
-#[ignore]
 #[ignore]
 #[tokio::test]
 async fn test_whitespace_only_input() {
@@ -102,7 +96,6 @@ async fn test_whitespace_only_input() {
 // Cost Calculation Tests (1 test)
 // ============================================================================
 
-#[ignore]
 #[ignore]
 #[tokio::test]
 async fn test_cost_calculation() {
@@ -119,7 +112,6 @@ async fn test_cost_calculation() {
 // Normalization Tests (1 test)
 // ============================================================================
 
-#[ignore]
 #[ignore]
 #[tokio::test]
 async fn test_embedding_normalization() {
@@ -139,9 +131,8 @@ async fn test_embedding_normalization() {
 // ============================================================================
 
 #[ignore]
-#[ignore]
 #[tokio::test]
-#[ignore] // Requires actual API call to test
+ // Requires actual API call to test
 async fn test_invalid_api_key() {
     let client = OpenAIEmbeddingsClient::new("sk-invalid-key").unwrap();
     let result = client.embed("fn test() {}").await;
@@ -154,7 +145,6 @@ async fn test_invalid_api_key() {
 }
 
 #[ignore]
-#[ignore]
 #[tokio::test]
 async fn test_api_key_validation() {
     // Empty API key should fail at construction
@@ -162,7 +152,6 @@ async fn test_api_key_validation() {
     assert!(result.is_err());
 }
 
-#[ignore]
 #[ignore]
 #[tokio::test]
 async fn test_model_name_validation() {
@@ -175,7 +164,6 @@ async fn test_model_name_validation() {
 // ============================================================================
 
 #[ignore]
-#[ignore]
 #[tokio::test]
 async fn test_retry_configuration() {
     let client = OpenAIEmbeddingsClient::new("test-api-key").unwrap();
@@ -185,9 +173,8 @@ async fn test_retry_configuration() {
 }
 
 #[ignore]
-#[ignore]
 #[tokio::test]
-#[ignore] // Requires mocking to test retry behavior
+ // Requires mocking to test retry behavior
 async fn test_retry_on_rate_limit() {
     let client = OpenAIEmbeddingsClient::new("test-api-key").unwrap();
     // Would need to mock 429 response to test this properly
@@ -200,7 +187,6 @@ async fn test_retry_on_rate_limit() {
 // ============================================================================
 
 #[ignore]
-#[ignore]
 #[test]
 fn test_api_key_format_validation() {
     // OpenAI API keys start with "sk-"
@@ -212,7 +198,6 @@ fn test_api_key_format_validation() {
         .contains("API key must start with 'sk-'"));
 }
 
-#[ignore]
 #[ignore]
 #[test]
 fn test_api_key_length_validation() {

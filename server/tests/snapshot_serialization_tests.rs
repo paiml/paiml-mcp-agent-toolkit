@@ -7,7 +7,6 @@
 //! - Performance benchmarks
 //! - Memory efficiency validation
 
-use std::collections::HashMap;
 
 // RED Test 1: Streaming serialization with writer
 #[test]
