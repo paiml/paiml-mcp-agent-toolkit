@@ -4,7 +4,6 @@
 //! Tests drive the specification of the .pmat file format for time-travel debugging recordings.
 //! Following Extreme TDD: Write failing tests first, then implement format in GREEN phase.
 
-use std::io::Cursor;
 
 // RED Test 1: Magic header validation
 #[test]

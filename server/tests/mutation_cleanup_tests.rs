@@ -10,7 +10,6 @@
 use pmat::services::mutation::{
     Mutant, MutantExecutor, MutantStatus, MutationOperatorType, SourceLocation,
 };
-use std::path::PathBuf;
 use std::time::Duration;
 use tokio::time::timeout;
 

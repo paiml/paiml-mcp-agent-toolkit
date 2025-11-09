@@ -4,8 +4,6 @@
 //! Tests drive integration of .pmat deserialization with CLI replay handler.
 //! Ensures recording files can be loaded and replayed correctly.
 
-use std::collections::HashMap;
-use std::io::Cursor;
 
 // RED Test 1: Load recording from file
 #[test]
