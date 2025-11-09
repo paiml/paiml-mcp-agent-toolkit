@@ -78,7 +78,7 @@ check: check-scripts
 	@cargo check --manifest-path server/Cargo.toml --all-targets --all-features
 	@echo "✅ All type checks passed!"
 
-# Fast tests without coverage (optimized for speed) - MUST complete under 3 minutes
+# Fast tests without coverage (optimized for speed) - MUST complete under 5 minutes
 test-fast:
 	@echo "⚡ Running fast tests with cargo-nextest..."
 	@echo "   (Leveraging incremental compilation and optimal parallelism)"
@@ -88,7 +88,7 @@ test-fast:
 		echo "📦 Installing cargo-nextest for optimal performance..."; \
 		cargo install cargo-nextest; \
 	fi
-	@cargo nextest run --workspace --features skip-slow-tests --profile fast
+	@timeout 300 cargo nextest run --workspace --features skip-slow-tests --profile fast
 	@echo "✅ Fast tests completed!"
 
 # Stratified test targets for distributed test architecture
@@ -379,7 +379,7 @@ test-doc:
 
 # Coverage analysis (EXACT pforge pattern)
 coverage:
-	@echo "📊 Running FAST test coverage analysis (<5 min target)..."
+	@echo "📊 Running test coverage analysis (<10 min target)..."
 	@echo "🔍 Checking for cargo-llvm-cov and cargo-nextest..."
 	@command -v cargo-llvm-cov > /dev/null 2>&1 || (echo "📦 Installing cargo-llvm-cov..." && cargo install cargo-llvm-cov --locked)
 	@command -v cargo-nextest > /dev/null 2>&1 || (echo "📦 Installing cargo-nextest..." && cargo install cargo-nextest --locked)
@@ -387,7 +387,7 @@ coverage:
 	@cargo llvm-cov clean --workspace
 	@mkdir -p target/coverage
 	@echo "🧪 Running tests with instrumentation..."
-	@cargo llvm-cov --no-report nextest \
+	@timeout 600 cargo llvm-cov --no-report nextest \
 		--no-tests=warn \
 		--no-fail-fast \
 		--test-threads=8 \

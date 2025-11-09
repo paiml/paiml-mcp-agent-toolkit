@@ -21,13 +21,23 @@ mermaid/
 Simple 5-component system architecture
 
 ```mermaid
+graph TD
+    cache[Cache Layer]
+    analyzer[Code Analyzer]
+    mcp_server[MCP Server]
+    handlers[Protocol Handlers]
+    templates[Template Engine]
 
+    mcp_server --- handlers
+    handlers --> analyzer
+    handlers --> templates
+    analyzer --- cache
 ```
 
 **Metrics:**
-- Nodes: 0
-- Edges: 0
-- Max depth: 0
+- Nodes: 5
+- Edges: 4
+- Max depth: 1
 
 ## Non-Code Styled Diagrams
 
@@ -135,4 +145,4 @@ All diagrams are automatically validated for:
 - ✓ Proper labeling (no empty nodes)
 - ✓ Category-appropriate styling
 
-Last validated: 2025-11-08 10:53:31 UTC
+Last validated: 2025-11-09 12:49:35 UTC

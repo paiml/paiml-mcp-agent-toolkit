@@ -904,7 +904,7 @@ fn format_sarif_output(summary: &crate::models::tdg::TDGSummary) -> String {
 
 // Helper functions
 
-fn percentile(sorted_values: &[f64], p: f64) -> f64 {
+pub fn percentile(sorted_values: &[f64], p: f64) -> f64 {
     if sorted_values.is_empty() {
         return 0.0;
     }
@@ -914,7 +914,7 @@ fn percentile(sorted_values: &[f64], p: f64) -> f64 {
     sorted_values[index]
 }
 
-fn identify_primary_factor(components: &crate::models::tdg::TDGComponents) -> String {
+pub fn identify_primary_factor(components: &crate::models::tdg::TDGComponents) -> String {
     let mut factors = [
         (components.complexity * 0.30, "High Complexity"),
         (components.churn * 0.35, "Frequent Changes"),
@@ -927,7 +927,7 @@ fn identify_primary_factor(components: &crate::models::tdg::TDGComponents) -> St
     factors[0].1.to_string()
 }
 
-fn estimate_refactoring_hours(tdg_score: f64) -> f64 {
+pub fn estimate_refactoring_hours(tdg_score: f64) -> f64 {
     // Empirical formula: hours = base * multiplier^tdg
     let base_hours = 2.0;
     let multiplier: f64 = 1.8;
@@ -1137,7 +1137,7 @@ fn write_makefile_violations_table(
 }
 
 // Helper: Get severity display string
-fn get_severity_display(severity: &makefile_linter::Severity) -> &'static str {
+pub fn get_severity_display(severity: &makefile_linter::Severity) -> &'static str {
     match severity {
         makefile_linter::Severity::Error => "❌ Error",
         makefile_linter::Severity::Warning => "⚠️ Warning",
@@ -1255,7 +1255,7 @@ fn build_sarif_results(
 }
 
 // Helper: Get SARIF level
-fn get_sarif_level(severity: &makefile_linter::Severity) -> &'static str {
+pub fn get_sarif_level(severity: &makefile_linter::Severity) -> &'static str {
     match severity {
         makefile_linter::Severity::Error => "error",
         makefile_linter::Severity::Warning => "warning",
@@ -1289,7 +1289,7 @@ fn format_makefile_as_gcc(
 }
 
 // Helper: Get GCC level
-fn get_gcc_level(severity: &makefile_linter::Severity) -> &'static str {
+pub fn get_gcc_level(severity: &makefile_linter::Severity) -> &'static str {
     match severity {
         makefile_linter::Severity::Error => "error",
         makefile_linter::Severity::Warning => "warning",
@@ -2720,7 +2720,7 @@ async fn analyze_satd_items(
 }
 
 /// Toyota Way: Extract Method - apply SATD filters (complexity ≤8)
-fn apply_satd_filters(
+pub fn apply_satd_filters(
     mut satd_items: Vec<crate::services::satd_detector::TechnicalDebt>,
     severity: Option<SatdSeverity>,
     critical_only: bool,
@@ -2733,7 +2733,9 @@ fn apply_satd_filters(
             SatdSeverity::Medium => crate::services::satd_detector::Severity::Medium,
             SatdSeverity::Low => crate::services::satd_detector::Severity::Low,
         };
-        satd_items.retain(|item| item.severity as u8 >= min_sev as u8);
+        // BUG FIX: Severity enum has Critical=0 (highest), Low=3 (lowest)
+        // Filter should keep items with severity <= threshold (numerically)
+        satd_items.retain(|item| item.severity as u8 <= min_sev as u8);
     }
 
     // Filter for critical items only if requested
@@ -4531,7 +4533,7 @@ fn is_test_filename(path: &Path) -> bool {
 }
 
 /// Check if path is a build artifact that should be excluded from duplicate detection
-fn is_build_artifact(path: &Path) -> bool {
+pub fn is_build_artifact(path: &Path) -> bool {
     let path_str = path.to_string_lossy();
     path_str.contains("/target/")
         || path_str.contains("/build/")
@@ -5234,7 +5236,7 @@ fn format_file_list(paths: &[PathBuf]) -> String {
 }
 
 // Helper function to normalize code content
-fn normalize_code_content(content: &str) -> String {
+pub fn normalize_code_content(content: &str) -> String {
     content
         .lines()
         .filter(|line| {
@@ -5247,7 +5249,7 @@ fn normalize_code_content(content: &str) -> String {
 }
 
 // Helper function to calculate content hash
-fn calculate_content_hash(content: &str) -> u64 {
+pub fn calculate_content_hash(content: &str) -> u64 {
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
 
@@ -6086,7 +6088,7 @@ fn is_excluded_path(path: &Path) -> bool {
 }
 
 /// Check if path contains excluded directories
-fn is_excluded_directory(path_str: &str) -> bool {
+pub fn is_excluded_directory(path_str: &str) -> bool {
     // Normalize path for consistent matching
     let normalized = path_str.replace('\\', "/");
 
@@ -6187,7 +6189,7 @@ pub fn is_excluded_filename(filename: &str) -> bool {
 }
 
 /// Check if filename is a test file (cognitive complexity ≤6)
-fn is_test_file(filename: &str) -> bool {
+pub fn is_test_file(filename: &str) -> bool {
     const TEST_SUFFIXES: &[&str] = &["_test.rs", "_tests.rs", "tests.rs"];
     const TEST_PREFIXES: &[&str] = &["test_", "tests_"];
     const TEST_CONTAINS: &[&str] = &[
@@ -6206,7 +6208,7 @@ fn is_test_file(filename: &str) -> bool {
 }
 
 /// Check if filename is an example or demo file (cognitive complexity ≤4)
-fn is_example_or_demo_file(filename: &str) -> bool {
+pub fn is_example_or_demo_file(filename: &str) -> bool {
     const EXAMPLE_DEMO_PREFIXES: &[&str] = &["example_", "demo_"];
     const EXAMPLE_DEMO_CONTAINS: &[&str] = &["_example", "_demo"];
 
@@ -6217,7 +6219,7 @@ fn is_example_or_demo_file(filename: &str) -> bool {
 }
 
 /// Check if filename is a benchmark file (cognitive complexity ≤4)
-fn is_benchmark_file(filename: &str) -> bool {
+pub fn is_benchmark_file(filename: &str) -> bool {
     const BENCH_SUFFIXES: &[&str] = &["_bench.rs", "_benchmark.rs"];
     const BENCH_CONTAINS: &[&str] = &["bench_", "benchmark_"];
 
@@ -6226,7 +6228,7 @@ fn is_benchmark_file(filename: &str) -> bool {
 }
 
 /// Check if filename is a mock or stub file (cognitive complexity ≤4)
-fn is_mock_or_stub_file(filename: &str) -> bool {
+pub fn is_mock_or_stub_file(filename: &str) -> bool {
     const MOCK_STUB_PREFIXES: &[&str] = &["mock_", "stub_", "stubs_"];
     const MOCK_STUB_CONTAINS: &[&str] = &["_mock", "_stub", "_stubs"];
 
@@ -6803,7 +6805,7 @@ fn process_satd_match(
 }
 
 /// Extract Method: Determine SATD severity based on type
-fn determine_satd_severity(satd_type: &str) -> &'static str {
+pub fn determine_satd_severity(satd_type: &str) -> &'static str {
     match satd_type {
         "HACK" | "XXX" => "high",
         "FIXME" | "REFACTOR" => "medium",
@@ -7048,31 +7050,31 @@ fn write_comp_duplicates_section(output: &mut String, duplicates: &DuplicateRepo
 // Incremental coverage stub data structures
 #[derive(Debug, Serialize)]
 pub struct IncrementalCoverageReport {
-    base_branch: String,
-    target_branch: String,
-    coverage_threshold: f64,
-    files: Vec<FileCoverageMetrics>,
-    summary: CoverageSummary,
+    pub base_branch: String,
+    pub target_branch: String,
+    pub coverage_threshold: f64,
+    pub files: Vec<FileCoverageMetrics>,
+    pub summary: CoverageSummary,
 }
 
 #[derive(Debug, Serialize, Clone)]
 pub struct FileCoverageMetrics {
-    path: PathBuf,
-    base_coverage: f64,
-    target_coverage: f64,
-    coverage_delta: f64,
-    lines_added: usize,
-    lines_covered: usize,
-    lines_uncovered: usize,
+    pub path: PathBuf,
+    pub base_coverage: f64,
+    pub target_coverage: f64,
+    pub coverage_delta: f64,
+    pub lines_added: usize,
+    pub lines_covered: usize,
+    pub lines_uncovered: usize,
 }
 
 #[derive(Debug, Serialize)]
 pub struct CoverageSummary {
-    total_files_changed: usize,
-    files_improved: usize,
-    files_degraded: usize,
-    overall_delta: f64,
-    meets_threshold: bool,
+    pub total_files_changed: usize,
+    pub files_improved: usize,
+    pub files_degraded: usize,
+    pub overall_delta: f64,
+    pub meets_threshold: bool,
 }
 
 /// Convert real coverage data to report format expected by formatting functions
@@ -7337,7 +7339,7 @@ fn write_coverage_file_details(
 }
 
 /// Calculate the number of files to display based on parameters
-fn calculate_files_to_show(files: &[FileCoverageMetrics], top_files: usize) -> usize {
+pub fn calculate_files_to_show(files: &[FileCoverageMetrics], top_files: usize) -> usize {
     if top_files == 0 {
         files.len()
     } else {
@@ -7373,14 +7375,14 @@ fn write_file_entries(
 }
 
 /// Extract filename from path for display
-fn extract_filename(path: &std::path::Path) -> &str {
+pub fn extract_filename(path: &std::path::Path) -> &str {
     path.file_name()
         .and_then(|n| n.to_str())
         .unwrap_or("unknown")
 }
 
 /// Get appropriate emoji for coverage delta
-fn get_coverage_emoji(delta: f64) -> &'static str {
+pub fn get_coverage_emoji(delta: f64) -> &'static str {
     if delta > 0.0 {
         "📈"
     } else {
@@ -9935,7 +9937,7 @@ fn format_single_violation(output: &mut String, violation: &QualityViolation) {
 }
 
 /// Get the appropriate icon for violation severity
-fn get_severity_icon(severity: &str) -> &'static str {
+pub fn get_severity_icon(severity: &str) -> &'static str {
     match severity {
         "error" => "🔴",
         "warning" => "🟡",
