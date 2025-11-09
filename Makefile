@@ -78,7 +78,7 @@ check: check-scripts
 	@cargo check --manifest-path server/Cargo.toml --all-targets --all-features
 	@echo "✅ All type checks passed!"
 
-# Fast tests without coverage (optimized for speed) - MUST complete under 5 minutes
+# Fast tests without coverage (optimized for speed) - Test execution MUST complete under 5 minutes
 test-fast:
 	@echo "⚡ Running fast tests with cargo-nextest..."
 	@echo "   (Leveraging incremental compilation and optimal parallelism)"
@@ -88,7 +88,10 @@ test-fast:
 		echo "📦 Installing cargo-nextest for optimal performance..."; \
 		cargo install cargo-nextest; \
 	fi
-	@timeout 300 cargo nextest run --workspace --features skip-slow-tests --profile fast
+	@echo "🔨 Compiling tests (no timeout)..."
+	@cargo nextest run --no-run --workspace --features skip-slow-tests --profile fast
+	@echo "🧪 Running tests (5-minute timeout)..."
+	@timeout 300 cargo nextest run --no-fail-fast --workspace --features skip-slow-tests --profile fast
 	@echo "✅ Fast tests completed!"
 
 # Pre-commit fast tests (type checking only) - Target <30s, allows 60s for build scripts
