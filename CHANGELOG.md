@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.193.0] - 2025-11-10
+
 ### Added
 - **Repository Health Scoring System (`pmat repo-score`)**
   - Quantitative repository assessment on 0-110 scale (100 base + 10 bonus points)

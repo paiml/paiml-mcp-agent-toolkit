@@ -3,7 +3,7 @@
 [![Documentation](https://img.shields.io/badge/docs-pmat--book-blue)](https://paiml.github.io/pmat-book/)
 [![Crates.io](https://img.shields.io/crates/v/pmat.svg)](https://crates.io/crates/pmat)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-2.192.0-green)](https://github.com/paiml/paiml-mcp-agent-toolkit/releases/tag/v2.192.0)
+[![Version](https://img.shields.io/badge/version-2.193.0-green)](https://github.com/paiml/paiml-mcp-agent-toolkit/releases/tag/v2.193.0)
 
 **Zero-configuration AI context generation** for any codebase. Analyze code quality, complexity, and technical debt across 17+ programming languages with extreme quality enforcement and Toyota Way standards.
 
