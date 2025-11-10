@@ -1,0 +1,35 @@
+name: mutation-testing
+description: Run mutation testing on high-complexity/low-coverage code
+category: testing
+priority: high
+methodology: EXTREME TDD + Mutation Testing
+constraints:
+  - make coverage <10min
+  - make test-fast <5min
+  - pre-commit test <30s
+prompt: |
+  Run mutation testing on code with high complexity or low coverage using EXTREME TDD approach.
+
+  Steps:
+  1. Run pmat analyze to find high-complexity functions
+  2. Run pmat tdg to identify low TDG scores
+  3. Prioritize files with complexity >10 or TDG <50
+  4. Run pmat mutate --files <high-priority-files>
+  5. For each surviving mutant:
+     a. Write RED test that kills the mutant
+     b. Verify GREEN test kills mutant
+     c. REFACTOR for clarity
+  6. Repeat until mutation score >80%
+
+  Quality Gates:
+  - Mutation score >80%
+  - All critical paths have mutant-killing tests
+  - make test-fast <5min
+
+  If you spot a defect due to unimplemented or partially implemented functionality, STOP THE LINE and
+  implement using EXTREME TDD. The concept of "pre-existing failure" is irrelevant, fix.
+mutation_targets:
+  complexity: ">10"
+  coverage: "<85%"
+  tdg_score: "<50"
+mutation_score_target: 80

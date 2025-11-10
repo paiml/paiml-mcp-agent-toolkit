@@ -1,0 +1,53 @@
+name: refactor-hotspots
+description: Refactor high-TDG/low-coverage code using EXTREME TDD
+category: refactoring
+priority: high
+methodology: EXTREME TDD + TDG Analysis
+constraints:
+  - make coverage <10min
+  - make test-fast <5min
+  - pre-commit test <30s
+heuristics:
+  - high TDG score (>80)
+  - low coverage (<85%)
+  - high complexity (>15)
+prompt: |
+  Refactor code hotspots using EXTREME TDD methodology.
+
+  Hotspot Identification:
+  1. Run pmat tdg to find high TDG scores (>80)
+  2. Run pmat analyze to find high complexity (>15)
+  3. Run make coverage to find low coverage (<85%)
+  4. Prioritize files that are in ALL three categories
+
+  Refactoring Process (EXTREME TDD):
+  1. Write RED tests for current behavior (characterization tests)
+  2. Verify GREEN (tests pass with current implementation)
+  3. REFACTOR in small steps:
+     a. Extract function
+     b. Run tests (must stay GREEN)
+     c. Extract another function
+     d. Run tests (must stay GREEN)
+     e. Simplify logic
+     f. Run tests (must stay GREEN)
+  4. Add property-based tests for invariants
+  5. Run mutation testing to verify test quality
+  6. Verify TDG score improved by at least 20 points
+
+  Quality Gates:
+  - All tests pass throughout refactoring
+  - Coverage increases or stays at 85%+
+  - Complexity decreases by at least 30%
+  - TDG score improves by at least 20 points
+  - make test-fast <5min
+
+  If you spot a defect due to unimplemented or partially implemented functionality, STOP THE LINE and
+  implement using EXTREME TDD. The concept of "pre-existing failure" is irrelevant, fix.
+refactoring_targets:
+  tdg_score: ">80"
+  coverage: "<85%"
+  complexity: ">15"
+improvement_goals:
+  tdg_improvement: "+20 points"
+  complexity_reduction: "-30%"
+  coverage_target: ">85%"

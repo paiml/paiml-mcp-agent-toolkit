@@ -1,0 +1,33 @@
+name: code-coverage
+description: Ensure code coverage >85% using EXTREME TDD
+category: quality
+priority: critical
+methodology: EXTREME TDD
+constraints:
+  - make coverage <10min
+  - make test-fast <5min
+  - pre-commit test <30s
+heuristics:
+  - uncovered code first
+  - low coverage with low TDG score
+coverage_target: 85
+testing_approaches:
+  - mutation testing
+  - property-based testing
+  - cargo run --example
+  - pmat tdg enhanced testing
+prompt: |
+  All code coverage must be greater than 85%. Continue next best recommended step or roadmap using EXTREME TDD
+  (mutation/property/cargo run --example, pmat tdg enhanced testing) that respects (make coverage <10min,
+  make test-fast under <5 min, and pre-commit test < 30 seconds).
+
+  Use Heuristic:
+  1. Uncovered code
+  2. Low coverage with low TDG score
+
+  If you spot a defect due to unimplemented or partially implemented functionality, STOP THE LINE and implement
+  using EXTREME TDD. The concept of "pre-existing failure" is irrelevant, fix.
+toyota_way_principles:
+  jidoka: stop_the_line
+  andon_cord: true
+  genchi_genbutsu: verify_actual_state

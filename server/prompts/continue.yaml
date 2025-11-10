@@ -1,0 +1,27 @@
+name: continue
+description: Continue next best recommended step using EXTREME TDD
+category: workflow
+priority: high
+methodology: EXTREME TDD
+constraints:
+  - make coverage <10min
+  - make test-fast <5min
+  - pre-commit test <30s
+prompt: |
+  Continue next best recommended step or roadmap using EXTREME TDD (mutation/property/cargo run --example,
+  pmat tdg enhanced testing) that respects (make coverage <10min, make test-fast under <5 min, and
+  pre-commit test < 30 seconds).
+
+  If you spot a defect due to unimplemented or partially implemented functionality, STOP THE LINE and
+  implement using EXTREME TDD. The concept of "pre-existing failure" is irrelevant, fix.
+
+  Workflow:
+  1. Run pmat analyze to identify issues
+  2. Run pmat tdg to find highest debt
+  3. Prioritize using heuristics (uncovered, low-coverage+low-TDG)
+  4. Implement fix using RED-GREEN-REFACTOR
+  5. Verify all quality gates pass
+  6. Commit with descriptive message
+toyota_way_principles:
+  kaizen: continuous_improvement
+  pdca_cycle: plan_do_check_act

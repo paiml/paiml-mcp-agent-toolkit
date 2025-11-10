@@ -1,0 +1,52 @@
+name: security-audit
+description: Run security analysis and fix vulnerabilities with EXTREME TDD
+category: security
+priority: critical
+methodology: EXTREME TDD + Security Analysis
+constraints:
+  - make coverage <10min
+  - make test-fast <5min
+  - pre-commit test <30s
+prompt: |
+  Run security audit and fix all vulnerabilities using EXTREME TDD methodology.
+
+  Security Checks:
+  1. Run cargo audit to check for known vulnerabilities
+  2. Run bashrs lint to check for shell injection issues
+  3. Run pmat analyze to find potential security issues:
+     - SQL injection points
+     - Command injection
+     - Path traversal
+     - Unsafe deserialization
+     - Unvalidated input
+  4. Run clippy with security lints enabled
+
+  Fix Process (EXTREME TDD):
+  1. For each vulnerability:
+     a. Write RED test that exploits the vulnerability
+     b. Verify test fails (demonstrates vulnerability)
+     c. Implement GREEN fix (secure code)
+     d. Verify test passes (vulnerability fixed)
+     e. REFACTOR for clarity
+     f. Add fuzzing/property tests for security properties
+  2. Update dependencies: cargo update
+  3. Re-run all security checks
+  4. Document security fixes in CHANGELOG
+
+  Security Standards:
+  - Zero known vulnerabilities (cargo audit)
+  - Zero shell injection issues (bashrs)
+  - All user input validated
+  - All file paths sanitized
+  - All SQL/command execution parameterized
+  - All sensitive data encrypted
+  - All secrets in environment variables (not code)
+
+  Quality Gate: Zero security vulnerabilities allowed.
+security_tools:
+  - cargo audit
+  - bashrs lint
+  - clippy security lints
+  - cargo-crev
+  - cargo-geiger
+vulnerability_tolerance: 0

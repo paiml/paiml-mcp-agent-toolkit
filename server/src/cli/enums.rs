@@ -101,6 +101,24 @@ impl fmt::Display for RefactorOutputFormat {
     }
 }
 
+/// Prompt output format
+#[derive(Clone, Debug, ValueEnum, PartialEq)]
+pub enum PromptOutputFormat {
+    Yaml,
+    Json,
+    Text,
+}
+
+impl fmt::Display for PromptOutputFormat {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            PromptOutputFormat::Yaml => write!(f, "yaml"),
+            PromptOutputFormat::Json => write!(f, "json"),
+            PromptOutputFormat::Text => write!(f, "text"),
+        }
+    }
+}
+
 /// Refactor mode
 #[derive(Clone, Debug, ValueEnum, PartialEq)]
 pub enum RefactorMode {

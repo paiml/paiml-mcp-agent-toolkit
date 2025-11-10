@@ -1,0 +1,27 @@
+name: clean-repo-cruft
+description: Remove all temporary files from repository root
+category: maintenance
+priority: medium
+prompt: |
+  Remove all temporary files from root of repository and add these patterns to .gitignore:
+  - defect-report-*.txt
+  - defect-report-*.json
+  - defect-report-*.csv
+  - defect-report-*.md
+  - *.tmp
+  - *.bak
+  - .DS_Store
+  - Thumbs.db
+
+  Steps:
+  1. Identify all temporary files in repo root and server/ directory
+  2. Review files to ensure they're safe to delete
+  3. Delete temporary files
+  4. Update .gitignore with patterns
+  5. Verify git status shows clean working tree
+  6. Commit and push all changes
+
+  Quality Gate: Verify no temporary files remain after cleanup.
+validation:
+  - git status --short | wc -l == 0
+  - git ls-files --others --exclude-standard | wc -l == 0
