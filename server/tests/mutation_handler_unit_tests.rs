@@ -11,6 +11,8 @@
 //! Sprint 64: Testing Infrastructure
 //! Target: >50 unit tests, >85% coverage
 
+#![cfg(not(feature = "skip-slow-tests"))]
+
 use pmat::cli::commands::MutateArgs;
 use pmat::cli::handlers::mutate::handle;
 use pmat::stateless_server::StatelessTemplateServer;
