@@ -80,19 +80,30 @@ check: check-scripts
 
 # Fast tests without coverage (optimized for speed) - Test execution MUST complete under 5 minutes
 test-fast:
-	@echo "⚡ Running fast tests with cargo-nextest..."
-	@echo "   (Leveraging incremental compilation and optimal parallelism)"
-	@# This simplified target relies on .cargo/config.toml for optimizations
-	@# and lets nextest handle job management.
+	@echo "⚡ Running UNIT TESTS ONLY (4600 tests in 1 binary, <3 min)..."
+	@echo "   (Use 'make test-all' for +171 integration test binaries)"
 	@if ! command -v cargo-nextest >/dev/null 2>&1; then \
 		echo "📦 Installing cargo-nextest for optimal performance..."; \
 		cargo install cargo-nextest; \
 	fi
-	@echo "🔨 Compiling tests (no timeout)..."
+	@echo "🔨 Compiling unit tests (<1 min with incremental)..."
+	@cargo nextest run --no-run --lib --features skip-slow-tests --profile fast
+	@echo "🧪 Running unit tests (3-minute timeout)..."
+	@timeout 180 cargo nextest run --no-fail-fast --lib --features skip-slow-tests --profile fast
+	@echo "✅ Unit tests completed!"
+
+# Run ALL tests (unit + integration) - slower but comprehensive
+test-all:
+	@echo "⚡ Running ALL tests (unit + 171 integration binaries)..."
+	@if ! command -v cargo-nextest >/dev/null 2>&1; then \
+		echo "📦 Installing cargo-nextest for optimal performance..."; \
+		cargo install cargo-nextest; \
+	fi
+	@echo "🔨 Compiling all tests (no timeout)..."
 	@cargo nextest run --no-run --workspace --features skip-slow-tests --profile fast
-	@echo "🧪 Running tests (5-minute timeout)..."
+	@echo "🧪 Running all tests (5-minute timeout)..."
 	@timeout 300 cargo nextest run --no-fail-fast --workspace --features skip-slow-tests --profile fast
-	@echo "✅ Fast tests completed!"
+	@echo "✅ All tests completed!"
 
 # Pre-commit fast tests (type checking only) - Target <30s, allows 60s for build scripts
 test-pre-commit-fast:
