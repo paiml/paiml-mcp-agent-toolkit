@@ -1,0 +1,108 @@
+name: Enforce Zero Branching Policy
+
+# Triggers on push to ANY branch except master
+on:
+  push:
+    branches-ignore:
+      - master
+
+# Delete unauthorized branches automatically
+jobs:
+  delete-unauthorized-branch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Required to delete branches
+
+    steps:
+      - name: Get branch name
+        id: branch
+        run: echo "name=${GITHUB_REF#refs/heads/}" >> $GITHUB_OUTPUT
+
+      - name: Delete unauthorized branch
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const branchName = '${{ steps.branch.outputs.name }}';
+
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            console.log('❌ ZERO BRANCHING POLICY VIOLATION');
+            console.log(`   Branch: ${branchName}`);
+            console.log(`   Policy: Only 'master' branch allowed`);
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            console.log('');
+            console.log('🔧 AUTO-FIX: Deleting unauthorized branch...');
+
+            try {
+              await github.rest.git.deleteRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: `heads/${branchName}`
+              });
+
+              console.log('✅ Branch deleted successfully');
+              console.log('');
+              console.log('📖 Policy: See docs/ZERO_BRANCHING_ENFORCEMENT.md');
+              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+              core.setFailed(
+                `Branch '${branchName}' violated zero-branching policy and was auto-deleted. ` +
+                `All work must be done on 'master' branch. See docs/ZERO_BRANCHING_ENFORCEMENT.md`
+              );
+            } catch (error) {
+              console.log(`❌ Failed to delete branch: ${error.message}`);
+              core.setFailed(`Failed to delete branch '${branchName}': ${error.message}`);
+            }
+
+      - name: Notify via comment (if PR exists)
+        uses: actions/github-script@v7
+        if: always()
+        with:
+          script: |
+            const branchName = '${{ steps.branch.outputs.name }}';
+
+            // Try to find PR for this branch
+            const { data: prs } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              head: `${context.repo.owner}:${branchName}`,
+              state: 'open'
+            });
+
+            if (prs.length > 0) {
+              const pr = prs[0];
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                body: `## ❌ Zero Branching Policy Violation
+
+This PR violated the repository's **ZERO BRANCHING** policy.
+
+**Branch \`${branchName}\` has been automatically deleted.**
+
+### Policy
+- ✅ All work must be done on \`master\` branch
+- ❌ Feature branches are NOT allowed
+- 🔧 Violations are auto-deleted by GitHub Actions
+
+### What to do
+1. Switch to \`master\` branch: \`git checkout master\`
+2. Make your changes directly on \`master\`
+3. Push to \`master\`: \`git push origin master\`
+
+See [\`docs/ZERO_BRANCHING_ENFORCEMENT.md\`](../blob/master/docs/ZERO_BRANCHING_ENFORCEMENT.md) for details.
+
+---
+🤖 Enforced by [Zero Branching GitHub Action](.github/workflows/enforce-zero-branching.yml)`
+              });
+
+              // Close the PR
+              await github.rest.pulls.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pr.number,
+                state: 'closed'
+              });
+
+              console.log(`✅ Commented on and closed PR #${pr.number}`);
+            }
