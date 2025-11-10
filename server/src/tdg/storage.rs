@@ -167,7 +167,9 @@ impl TieredStore {
         self.hot.insert(hash, hot_entry);
 
         // Warm storage - compress with LZ4 for space efficiency
-        let serialized = bincode::serialize(&record)?;
+        // NOTE: Using serde_json instead of bincode due to incompatibility with FullTdgRecord
+        // (see git commit 46968e5f - bincode causes "unexpected end of file" errors)
+        let serialized = serde_json::to_vec(&record)?;
         let compressed = compress_prepend_size(&serialized);
         self.warm_backend.put(hash.as_bytes(), &compressed)?;
 
@@ -190,12 +192,14 @@ impl TieredStore {
         // Check warm storage first (compressed but fast)
         if let Some(compressed) = self.warm_backend.get(hash.as_bytes())? {
             let decompressed = decompress_size_prepended(&compressed)?;
-            return Ok(Some(bincode::deserialize(&decompressed)?));
+            // NOTE: Using serde_json instead of bincode (see store() method)
+            return Ok(Some(serde_json::from_slice(&decompressed)?));
         }
 
         // Check cold storage (full historical records)
         if let Some(archived) = self.cold_backend.get(hash.as_bytes())? {
-            return Ok(Some(bincode::deserialize(&archived)?));
+            // NOTE: Using serde_json instead of bincode (see store() method)
+            return Ok(Some(serde_json::from_slice(&archived)?));
         }
 
         Ok(None)
@@ -219,7 +223,8 @@ impl TieredStore {
         let hash = record.identity.content_hash;
 
         // Store in cold storage (uncompressed for long-term access)
-        let serialized = bincode::serialize(&record)?;
+        // NOTE: Using serde_json instead of bincode (see store() method)
+        let serialized = serde_json::to_vec(&record)?;
         self.cold_backend.put(hash.as_bytes(), &serialized)?;
 
         // Remove from warm storage to save space
@@ -339,7 +344,8 @@ impl TieredStore {
         for item in self.warm_backend.iter()? {
             let (_key, value) = item?;
             let decompressed = decompress_size_prepended(&value)?;
-            if let Ok(record) = bincode::deserialize::<FullTdgRecord>(&decompressed) {
+            // NOTE: Using serde_json instead of bincode (see store() method)
+            if let Ok(record) = serde_json::from_slice::<FullTdgRecord>(&decompressed) {
                 if let Some(git_ctx) = &record.git_context {
                     if git_ctx.commit_sha == commit_ref
                         || git_ctx.commit_sha_short == commit_ref
@@ -354,7 +360,8 @@ impl TieredStore {
         // Search cold storage
         for item in self.cold_backend.iter()? {
             let (_key, value) = item?;
-            if let Ok(record) = bincode::deserialize::<FullTdgRecord>(&value) {
+            // NOTE: Using serde_json instead of bincode (see store() method)
+            if let Ok(record) = serde_json::from_slice::<FullTdgRecord>(&value) {
                 if let Some(git_ctx) = &record.git_context {
                     if git_ctx.commit_sha == commit_ref
                         || git_ctx.commit_sha_short == commit_ref
@@ -380,7 +387,8 @@ impl TieredStore {
         for item in self.warm_backend.iter()? {
             let (_key, value) = item?;
             let decompressed = decompress_size_prepended(&value)?;
-            if let Ok(record) = bincode::deserialize::<FullTdgRecord>(&decompressed) {
+            // NOTE: Using serde_json instead of bincode (see store() method)
+            if let Ok(record) = serde_json::from_slice::<FullTdgRecord>(&decompressed) {
                 if record.git_context.is_some() {
                     results.push(record);
                 }
@@ -390,7 +398,8 @@ impl TieredStore {
         // Search cold storage
         for item in self.cold_backend.iter()? {
             let (_key, value) = item?;
-            if let Ok(record) = bincode::deserialize::<FullTdgRecord>(&value) {
+            // NOTE: Using serde_json instead of bincode (see store() method)
+            if let Ok(record) = serde_json::from_slice::<FullTdgRecord>(&value) {
                 if record.git_context.is_some() {
                     results.push(record);
                 }
@@ -425,7 +434,8 @@ impl TieredStore {
         for item in self.warm_backend.iter()? {
             let (_key, value) = item?;
             let decompressed = decompress_size_prepended(&value)?;
-            if let Ok(record) = bincode::deserialize::<FullTdgRecord>(&decompressed) {
+            // NOTE: Using serde_json instead of bincode (see store() method)
+            if let Ok(record) = serde_json::from_slice::<FullTdgRecord>(&decompressed) {
                 if record.identity.path == target_path {
                     results.push(record);
                 }
@@ -435,7 +445,8 @@ impl TieredStore {
         // Search cold storage
         for item in self.cold_backend.iter()? {
             let (_key, value) = item?;
-            if let Ok(record) = bincode::deserialize::<FullTdgRecord>(&value) {
+            // NOTE: Using serde_json instead of bincode (see store() method)
+            if let Ok(record) = serde_json::from_slice::<FullTdgRecord>(&value) {
                 if record.identity.path == target_path {
                     results.push(record);
                 }
