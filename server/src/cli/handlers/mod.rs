@@ -7,6 +7,7 @@ pub mod advanced_analysis_handlers;
 pub mod agent_handlers;
 pub mod analysis;
 pub mod analysis_handlers;
+pub mod prompt_handlers;
 #[cfg(test)]
 pub mod annotation_tdd_tests;
 pub mod big_o_handlers;
@@ -114,6 +115,7 @@ pub use incremental_coverage_handler::handle_analyze_incremental_coverage;
 pub use lint_hotspot_handlers::handle_analyze_lint_hotspot;
 pub use memory::handle_memory_command;
 pub use name_similarity_analysis::handle_analyze_name_similarity;
+pub use prompt_handlers::handle_prompt;
 pub use provability_handler::handle_analyze_provability;
 pub use quality_gates_handler::handle_quality_gates_command; // TICKET-PMAT-5023
 pub use readme_validate_handlers::ValidateReadmeCmd; // Sprint 38: Hallucination detection CLI

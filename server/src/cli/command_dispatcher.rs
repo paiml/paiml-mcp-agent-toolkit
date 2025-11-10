@@ -154,6 +154,14 @@ impl CommandDispatcher {
                 }
                 Ok(())
             }
+            Commands::Prompt {
+                name,
+                list,
+                show_variables,
+                set,
+                format,
+                output,
+            } => handlers::handle_prompt(name, list, show_variables, set, format, output).await,
             Commands::QualityGate {
                 project_path,
                 file,

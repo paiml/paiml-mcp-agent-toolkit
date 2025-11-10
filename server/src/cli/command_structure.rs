@@ -445,6 +445,16 @@ impl CommandExecutor {
                 }
                 Ok(())
             }
+            Commands::Prompt {
+                name,
+                list,
+                show_variables,
+                set,
+                format,
+                output,
+            } => {
+                crate::cli::handlers::handle_prompt(name, list, show_variables, set, format, output).await
+            }
             Commands::QualityGates {
                 command,
                 config,

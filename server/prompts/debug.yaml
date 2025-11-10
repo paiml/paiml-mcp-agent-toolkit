@@ -1,0 +1,41 @@
+name: debug
+description: Debug using Five Whys and implement root cause fix with EXTREME TDD
+category: debugging
+priority: critical
+methodology: EXTREME TDD + Five Whys
+constraints:
+  - make coverage <10min
+  - make test-fast <5min
+  - pre-commit test <30s
+heuristics:
+  - uncovered code first
+  - low coverage with low TDG score
+prompt: |
+  Debug this issue using Five Whys root cause analysis and a permanent fix that solves root cause using
+  EXTREME TDD (mutation/property/cargo run --example, pmat tdg enhanced testing) that respects
+  (make coverage <10min, make test-fast under <5 min, and pre-commit test < 30 seconds).
+
+  Use Heuristic:
+  1. Uncovered code
+  2. Low coverage with low TDG score
+
+  Five Whys Process:
+  1. Why did this problem occur? [Surface symptom]
+  2. Why did that happen? [Immediate cause]
+  3. Why did that happen? [Underlying cause]
+  4. Why did that happen? [Systemic issue]
+  5. Why did that happen? [ROOT CAUSE]
+
+  Implementation:
+  1. Write RED test that reproduces the issue
+  2. Apply Five Whys to find root cause
+  3. Implement GREEN fix that addresses root cause (not symptom)
+  4. REFACTOR to prevent recurrence
+  5. Add regression test
+  6. Document root cause in commit message
+
+  Quality Gate: Issue must not recur under any circumstances.
+toyota_way_principles:
+  five_whys: true
+  root_cause_analysis: required
+  genchi_genbutsu: go_to_the_source

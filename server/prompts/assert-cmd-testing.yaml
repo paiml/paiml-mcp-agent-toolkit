@@ -1,0 +1,35 @@
+name: assert-cmd-testing
+description: Count and verify all CLI variations are tested with assert_cmd
+category: testing
+priority: high
+methodology: EXTREME TDD
+constraints:
+  - make coverage <10min
+  - make test-fast <5min
+  - pre-commit test <30s
+heuristics:
+  - uncovered code first
+  - low coverage with low TDG score
+prompt: |
+  Count all variations of CLI options, flags and arguments, then verify all are covered using assert_cmd
+  style testing. Use EXTREME TDD (mutation/property/cargo run --example, pmat tdg enhanced testing) that
+  respects (make coverage <10min, make test-fast under <5 min, and pre-commit test < 30 seconds).
+
+  Use Heuristic:
+  1. Uncovered code
+  2. Low coverage with low TDG score
+
+  Steps:
+  1. Parse CLI definition (clap, structopt, etc.)
+  2. Count total combinations (commands × subcommands × flags × options)
+  3. Count existing assert_cmd tests
+  4. Generate RED tests for missing coverage
+  5. Implement GREEN code to pass tests
+  6. Refactor and optimize
+
+  If you spot a defect due to unimplemented or partially implemented functionality, STOP THE LINE and
+  implement using EXTREME TDD. The concept of "pre-existing failure" is irrelevant, fix.
+quality_gates:
+  - all CLI paths tested
+  - 100% command coverage
+  - 100% flag/option coverage

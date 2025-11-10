@@ -1,0 +1,59 @@
+name: quality-enforcement
+description: Run all quality gates and enforce extreme quality standards
+category: quality
+priority: critical
+methodology: EXTREME TDD + Toyota Way
+constraints:
+  - make coverage <10min
+  - make test-fast <5min
+  - pre-commit test <30s
+prompt: |
+  Run all quality gates and enforce extreme quality standards using EXTREME TDD methodology.
+
+  Quality Gates:
+  1. Compilation: cargo build --all-features
+  2. Linting: cargo clippy --all-targets --all-features -- -D warnings
+  3. Formatting: cargo fmt -- --check
+  4. Tests: make test-fast (must pass 100%)
+  5. Coverage: make coverage (must be >85%)
+  6. Mutation: pmat mutate (score >80%)
+  7. Complexity: pmat analyze (max complexity <15)
+  8. TDG: pmat tdg (average score >60)
+  9. Documentation: pmat validate-docs (no broken links)
+  10. README: pmat validate-readme (no hallucinations)
+  11. Book: make validate-book (all tests pass)
+  12. Bash: bashrs lint Makefile scripts/*.sh
+
+  Enforcement Process:
+  1. Run all quality gates
+  2. If ANY gate fails, STOP THE LINE (Toyota Way - Andon Cord)
+  3. Apply Five Whys to find root cause
+  4. Fix using EXTREME TDD (RED-GREEN-REFACTOR)
+  5. Re-run all gates
+  6. Repeat until ALL gates pass
+  7. Only then commit and push
+
+  Zero Tolerance Policy:
+  - Compilation warnings: 0
+  - Clippy warnings: 0
+  - Test failures: 0
+  - Coverage: <85% rejected
+  - Broken links: 0
+  - Hallucinations: 0
+
+  Quality Gate: ALL gates must pass before any commit.
+toyota_way_principles:
+  jidoka: built_in_quality
+  andon_cord: stop_if_quality_issue
+  poka_yoke: mistake_proofing
+  genchi_genbutsu: verify_actual_state
+quality_gates:
+  - compilation
+  - clippy
+  - fmt
+  - test_fast
+  - coverage
+  - complexity
+  - tdg
+  - docs
+  - bash_lint

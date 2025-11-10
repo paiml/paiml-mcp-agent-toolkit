@@ -1,0 +1,49 @@
+name: performance-optimization
+description: Optimize compilation and test performance using Five Whys
+category: performance
+priority: high
+methodology: Five Whys + EXTREME TDD
+constraints:
+  - make coverage <10min (TARGET)
+  - make test-fast <5min (TARGET)
+  - pre-commit test <30s (TARGET)
+prompt: |
+  Speed up compilation and test execution using Five Whys root cause analysis.
+
+  Current Targets:
+  - make coverage: <10 minutes
+  - make test-fast: <5 minutes (ideally <3 minutes)
+  - pre-commit test: <30 seconds
+
+  Five Whys Process:
+  1. Why is compilation/testing slow?
+  2. Why is that happening?
+  3. Why is that happening?
+  4. Why is that happening?
+  5. Why is that happening? [ROOT CAUSE]
+
+  Common Optimizations:
+  1. Exclude slow tests (>60s) from test-fast using #[cfg(not(feature = "skip-slow-tests"))]
+  2. Enable mold linker in .cargo/config.toml
+  3. Reduce codegen-units for faster linking
+  4. Use cargo-nextest for parallel test execution
+  5. Mark integration tests as #[ignore] if they require binary
+  6. Split large test files into smaller modules
+  7. Use feature flags to exclude optional heavy dependencies
+
+  Implementation:
+  1. Measure baseline: time make test-fast
+  2. Profile to find bottlenecks
+  3. Apply optimizations one at a time
+  4. Measure improvement after each change
+  5. Document optimization in commit message
+
+  Quality Gate: All targets must be met, all tests must still pass.
+optimization_targets:
+  compilation_time: "<2min"
+  test_execution_time: "<3min"
+  pre_commit_time: "<30s"
+tools:
+  - cargo-nextest
+  - mold linker
+  - feature flags

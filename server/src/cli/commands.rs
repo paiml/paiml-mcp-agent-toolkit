@@ -13,11 +13,11 @@ use crate::cli::{
     DuplicateType, EnforceOutputFormat, EntropyOutputFormat, EntropySeverity, ExplainLevel,
     GraphMetricType, GraphMetricsOutputFormat, IncrementalCoverageOutputFormat,
     LintHotspotOutputFormat, MakefileOutputFormat, NameSimilarityOutputFormat, OutputFormat,
-    ProofAnnotationOutputFormat, PropertyTypeFilter, ProvabilityOutputFormat, QualityCheckType,
-    QualityGateOutputFormat, QualityProfile, RefactorAutoOutputFormat, RefactorDocsOutputFormat,
-    RefactorMode, RefactorOutputFormat, ReportOutputFormat, SatdOutputFormat, SatdSeverity,
-    SearchScope, SymbolTableOutputFormat, SymbolTypeFilter, TdgOutputFormat,
-    VerificationMethodFilter, WasmOutputFormat,
+    PromptOutputFormat, ProofAnnotationOutputFormat, PropertyTypeFilter, ProvabilityOutputFormat,
+    QualityCheckType, QualityGateOutputFormat, QualityProfile, RefactorAutoOutputFormat,
+    RefactorDocsOutputFormat, RefactorMode, RefactorOutputFormat, ReportOutputFormat,
+    SatdOutputFormat, SatdSeverity, SearchScope, SymbolTableOutputFormat, SymbolTypeFilter,
+    TdgOutputFormat, VerificationMethodFilter, WasmOutputFormat,
 };
 
 #[cfg(feature = "deep-wasm")]
@@ -307,6 +307,33 @@ pub enum Commands {
     /// Validate README/documentation for hallucinations (Sprint 38)
     #[command(visible_aliases = &["readme", "hallucination"])]
     ValidateReadme(crate::cli::handlers::ValidateReadmeCmd),
+
+    /// Show workflow prompts for EXTREME TDD and Toyota Way quality practices
+    #[command(visible_aliases = &["p"])]
+    Prompt {
+        /// Prompt name to show (use --list to see all available prompts)
+        name: Option<String>,
+
+        /// List all available prompts
+        #[arg(long, conflicts_with = "name")]
+        list: bool,
+
+        /// Show prompt variables that can be customized
+        #[arg(long, requires = "name")]
+        show_variables: bool,
+
+        /// Override prompt variables (e.g., --set TEST_CMD="pytest")
+        #[arg(long, value_parser = crate::cli::args::parse_key_val, requires = "name")]
+        set: Vec<(String, Value)>,
+
+        /// Output format (yaml, json, text)
+        #[arg(long, value_enum, default_value = "yaml", requires = "name")]
+        format: PromptOutputFormat,
+
+        /// Write output to file instead of stdout
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+    },
 
     /// Run quality gate checks on the codebase
     #[command(visible_aliases = &["check", "c", "verify", "gate"])]
