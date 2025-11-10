@@ -3,7 +3,7 @@
 [![Documentation](https://img.shields.io/badge/docs-pmat--book-blue)](https://paiml.github.io/pmat-book/)
 [![Crates.io](https://img.shields.io/crates/v/pmat.svg)](https://crates.io/crates/pmat)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-2.193.0-green)](https://github.com/paiml/paiml-mcp-agent-toolkit/releases/tag/v2.193.0)
+[![Version](https://img.shields.io/badge/version-2.194.0-green)](https://github.com/paiml/paiml-mcp-agent-toolkit/releases/tag/v2.194.0)
 
 **Zero-configuration AI context generation** for any codebase. Analyze code quality, complexity, and technical debt across 17+ programming languages with extreme quality enforcement and Toyota Way standards.
 
@@ -79,6 +79,7 @@ pmat hooks install --dry-run
 - **AI-Ready Context**: Generate deep context for Claude, GPT, and other LLMs
 - **Technical Debt Grading (TDG)**: A+ through F scoring with 6 orthogonal metrics
 - **Repository Health Scoring** ✨NEW: Quantitative assessment (0-110 scale) across 6 categories + bonus features
+- **Workflow Prompts** ✨NEW: 11 pre-configured AI prompts enforcing EXTREME TDD and Toyota Way principles
 - **Git-Commit Correlation**: Track TDG scores at specific commits for quality archaeology
 - **Semantic Code Search**: Natural language code discovery with hybrid search
 - **Quality Gates**: Pre-commit hooks, CI/CD integration, mutation testing
@@ -96,6 +97,7 @@ pmat hooks install --dry-run
 - [Getting Started](https://paiml.github.io/pmat-book/ch02-00-getting-started.html)
 - [MCP Protocol](https://paiml.github.io/pmat-book/ch03-00-mcp-protocol.html)
 - [Technical Debt Grading](https://paiml.github.io/pmat-book/ch04-01-tdg.html)
+- [Workflow Prompts](https://paiml.github.io/pmat-book/ch09-01-prompt-command.html) ✨NEW
 - [Repository Health Scoring](https://paiml.github.io/pmat-book/ch31-00-repo-score.html) ✨NEW
 - [Multi-Language Examples](https://paiml.github.io/pmat-book/ch13-00-language-examples.html)
 
@@ -120,6 +122,62 @@ pmat semantic search "error handling patterns"
 # Validate documentation for hallucinations
 pmat validate-readme --targets README.md
 ```
+
+---
+
+## Workflow Prompts (v2.194.0+)
+
+Pre-configured AI workflow prompts that enforce **EXTREME TDD** and **Toyota Way** quality principles. Perfect for piping to Claude Code, ChatGPT, or other AI assistants.
+
+```bash
+# List all available prompts
+pmat prompt --list
+
+# Show specific prompt (YAML format)
+pmat prompt code-coverage
+
+# Get prompt as text for AI assistants
+pmat prompt debug --format text | pbcopy
+
+# JSON format for programmatic use
+pmat prompt quality-enforcement --format json
+
+# Customize for non-Rust projects
+pmat prompt code-coverage \
+  --set TEST_CMD="pytest" \
+  --set COVERAGE_CMD="pytest --cov"
+
+# Save to file
+pmat prompt continue -o workflow.yaml
+```
+
+**Available Prompts (11 total):**
+
+**CRITICAL Priority:**
+- `code-coverage` - Enforce 85%+ coverage using EXTREME TDD
+- `debug` - Five Whys root cause analysis
+- `quality-enforcement` - Run all quality gates (12 gates)
+- `security-audit` - Security analysis and fixes
+
+**HIGH Priority:**
+- `continue` - Continue next best step with EXTREME TDD
+- `assert-cmd-testing` - Verify CLI test coverage
+- `mutation-testing` - Run mutation testing on weak code
+- `performance-optimization` - Speed up compilation and tests
+- `refactor-hotspots` - Refactor high-TDG code
+
+**MEDIUM Priority:**
+- `clean-repo-cruft` - Remove temporary files
+- `documentation` - Update and validate docs
+
+**Key Features:**
+- Toyota Way principles (Jidoka, Andon Cord, Five Whys)
+- Variable substitution for multi-language support
+- Quality gates and time constraints
+- Zero-tolerance policies
+- Short alias: `pmat p --list`
+
+**Documentation:** [Workflow Prompts Guide](https://paiml.github.io/pmat-book/ch09-01-prompt-command.html)
 
 ---
 
