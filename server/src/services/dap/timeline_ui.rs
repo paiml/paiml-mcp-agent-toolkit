@@ -53,8 +53,43 @@ impl TimelineUI {
     ///
     /// This method is kept for backward compatibility with Sprint 73 tests.
     pub fn new(snapshots: Vec<ExecutionSnapshot>) -> Self {
-        // Create empty player for legacy compatibility
-        let recording = super::recording::Recording::new("legacy".to_string(), vec![]);
+        // Create recording and populate with converted snapshots
+        let mut recording = super::recording::Recording::new("legacy".to_string(), vec![]);
+
+        for exec_snap in &snapshots {
+            // Convert ExecutionSnapshot to Snapshot (Sprint 72 → Sprint 75)
+            let stack_frames = exec_snap
+                .call_stack
+                .iter()
+                .map(|frame| {
+                    let file = frame.source.as_ref().and_then(|s| s.path.clone());
+                    let line = if frame.line >= 0 {
+                        Some(frame.line as u32)
+                    } else {
+                        None
+                    };
+
+                    StackFrame {
+                        name: frame.name.clone(),
+                        file,
+                        line,
+                        locals: HashMap::new(),
+                    }
+                })
+                .collect();
+
+            let snapshot = Snapshot {
+                frame_id: exec_snap.sequence as u64,
+                timestamp_relative_ms: (exec_snap.timestamp / 1_000_000) as u32,
+                variables: exec_snap.variables.clone(),
+                stack_frames,
+                instruction_pointer: 0,
+                memory_snapshot: None,
+            };
+
+            recording.add_snapshot(snapshot);
+        }
+
         let player = TimelinePlayer::new(recording);
 
         Self {
@@ -154,11 +189,10 @@ impl TimelineUI {
     /// Jump to specific frame
     ///
     /// Returns a reference to the snapshot at the target frame.
-    /// For legacy compatibility, this will panic if called in legacy mode
-    /// (use jump_to_legacy instead).
+    /// Now works correctly in both legacy and modern modes (Sprint 77+).
     pub fn jump_to(&mut self, frame: usize) -> Result<&Snapshot> {
         if !self.snapshots_legacy.is_empty() {
-            // Legacy mode - update position but we can't return a proper Snapshot
+            // Legacy mode - validate against legacy snapshot count and sync state
             if frame >= self.snapshots_legacy.len() {
                 return Err(anyhow::anyhow!(
                     "Frame {} out of bounds (max: {})",
@@ -167,10 +201,9 @@ impl TimelineUI {
                 ));
             }
             self.current_position_legacy = frame;
-            // Return the current snapshot from player (empty in legacy mode)
-            return Ok(self.player.current_snapshot());
         }
 
+        // Jump in player (works for both legacy and modern modes now)
         self.player.jump_to(frame)
     }
 
