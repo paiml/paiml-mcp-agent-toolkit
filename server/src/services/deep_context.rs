@@ -3915,14 +3915,9 @@ pub async fn analyze_single_file(file_path: &std::path::Path) -> anyhow::Result<
     let path_str = file_path.to_string_lossy().to_string();
     let language = detect_language(file_path);
 
-    // Defensive programming: Check if file exists before analyzing
+    // EXTREME TDD FIX: Fail-fast for nonexistent files (RED test contract)
     if !file_path.exists() {
-        return Ok(FileContext {
-            path: path_str,
-            language,
-            items: Vec::new(),
-            complexity_metrics: None,
-        });
+        return Err(anyhow::anyhow!("File not found: {}", path_str));
     }
 
     let items = analyze_file_by_language(file_path, &language).await?;

@@ -99,12 +99,13 @@ impl std::fmt::Display for DebtCategory {
 }
 
 /// Severity levels for technical debt
+/// EXTREME TDD FIX: Reordered Low→Critical for correct derive(Ord) behavior
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum Severity {
-    Critical, // Security vulnerabilities, data loss risks
-    High,     // Defects, broken functionality
-    Medium,   // Design issues, performance problems
     Low,      // TODOs, minor enhancements
+    Medium,   // Design issues, performance problems
+    High,     // Defects, broken functionality
+    Critical, // Security vulnerabilities, data loss risks
 }
 
 impl Severity {
