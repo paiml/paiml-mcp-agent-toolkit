@@ -200,6 +200,7 @@ pub fn {}({}: i32) -> i32 {{
         }
 
         /// Test that complexity threshold is enforced
+        #[cfg(not(feature = "skip-slow-tests"))] // SLOW: 61s - excluded from fast test suite
         #[test]
         fn test_complexity_threshold_enforcement(
             file_path in "[a-z]+\\.rs",
@@ -259,6 +260,7 @@ pub fn {}({}: i32) -> i32 {{
         }
 
         /// Test that auto-fix mode attempts to fix issues
+        #[cfg(not(feature = "skip-slow-tests"))] // SLOW: 122s - excluded from fast test suite
         #[test]
         fn test_auto_fix_mode_removes_satd(
             file_path in "[a-z]+\\.rs",
@@ -407,6 +409,7 @@ pub fn {}({}: i32) -> i32 {{
         }
 
         /// Test that quality report metrics are consistent
+        #[cfg(not(feature = "skip-slow-tests"))] // SLOW: 60s - excluded from fast test suite
         #[test]
         fn test_quality_report_consistency(
             request in arb_proxy_request(),
