@@ -197,6 +197,8 @@ hallucination_junit.xml
 
 # Session, sprint, and issue tracking docs (use GitHub issues/PRs instead)
 SESSION_SUMMARY*.md
+SESSION-*.md
+SESSION_*.md
 SPRINT-*.md
 SPRINT[0-9]*.md
 ISSUE-*.md
