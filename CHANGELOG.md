@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Repository Health Scoring System (`pmat repo-score`)**
+  - Quantitative repository assessment on 0-110 scale (100 base + 10 bonus points)
+  - **6 Base Categories (100 points total):**
+    - A: Documentation Quality (20 pts) - README accuracy and comprehensiveness
+    - B: Pre-commit Hooks (20 pts) - Hook presence and performance
+    - C: Repository Hygiene (10 pts) - No cruft files or team-specific configs
+    - D: Build & Test Automation (25 pts) - Makefile with required targets
+    - E: Continuous Integration (20 pts) - GitHub Actions workflows
+    - F: PMAT Compliance (5 pts) - Quality gate configuration
+  - **4 Bonus Features (10 points total):**
+    - Property-based testing (proptest) → +3 points
+    - Fuzzing (cargo-fuzz) → +2 points
+    - Mutation testing (cargo-mutants) → +2 points
+    - Living documentation (mdBook) → +3 points
+  - **Grading System:** A+ (95-110) through F (0-49)
+  - **Score Status:** Pass (≥90%), Warning (70-89%), Fail (<70%)
+  - **Features:**
+    - Graceful degradation (missing components score 0, not error)
+    - Partial credit system (e.g., non-executable hook: 5/10 points)
+    - Prioritized recommendations (Critical → High → Medium → Low)
+    - Evidence-based findings with file locations
+    - Git context extraction (branch, commit, timestamp)
+    - Multiple output formats (text, json, junit)
+  - **Implementation:**
+    - 82/82 tests passing (100%)
+    - 3,600+ lines of production code + tests
+    - 10 modules: models, 6 scorers, bonus detector, aggregator, integration
+    - Zero new external dependencies
+    - <100ms test execution time
+  - **MCP Integration:**
+    - New `repo_score` MCP prompt for AI agents
+    - Comprehensive system prompt with all scoring rules
+    - Available to Claude Code and other MCP clients
+  - **Documentation:**
+    - Complete specification (docs/specifications/repo-score-spec.md)
+    - Implementation guide (docs/design/repo-score-implementation-complete.md)
+    - User guide: pmat-book Chapter 31 (https://paiml.github.io/pmat-book/ch31-00-repo-score.html)
+    - Command reference updated in Appendix B
+
 ### Changed
 - **Repository Cleanup & Optimization**
   - Removed 55+ cruft files (~30MB) from repository root
