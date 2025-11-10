@@ -6,6 +6,72 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [2.194.0] - 2025-11-10 - Workflow Prompts for EXTREME TDD
+
+### Added
+- **`pmat prompt` Command** - Show pre-configured workflow prompts for EXTREME TDD and Toyota Way 🎯
+  - 11 embedded workflow prompts (code-coverage, debug, continue, quality-enforcement, etc.)
+  - Multiple output formats: YAML, JSON, text
+  - Variable substitution with `${VAR}` syntax
+  - `--list` flag to see all available prompts
+  - `--show-variables` to see prompt variables
+  - `--set VAR=value` to override variables
+  - `--format yaml|json|text` for output format selection
+  - `-o FILE` to write output to file
+  - Short alias: `pmat p`
+
+### Workflow Prompts
+- **CRITICAL Priority**:
+  - `code-coverage`: Enforce 85%+ coverage using EXTREME TDD
+  - `debug`: Five Whys root cause analysis
+  - `quality-enforcement`: Run all quality gates
+  - `security-audit`: Security analysis and vulnerability fixes
+
+- **HIGH Priority**:
+  - `continue`: Continue next best step with EXTREME TDD
+  - `assert-cmd-testing`: Verify CLI test coverage
+  - `mutation-testing`: Run mutation testing workflow
+  - `performance-optimization`: Speed up compilation/tests
+  - `refactor-hotspots`: Refactor high-TDG/low-coverage code
+
+- **MEDIUM Priority**:
+  - `clean-repo-cruft`: Remove temporary files from repository
+  - `documentation`: Update and validate all documentation
+
+### Toyota Way Principles
+- All prompts enforce: Jidoka, Andon Cord, Five Whys, Genchi Genbutsu, Kaizen, PDCA
+- "STOP THE LINE" language for quality issues
+- Time constraints: `make coverage <10min`, `make test-fast <5min`
+- Zero tolerance policies for quality violations
+
+### Implementation Details
+- Added `WorkflowPrompt` model with full YAML serialization (`server/src/models/prompt_model.rs`)
+- Created prompt handler with list, show, and render capabilities (`server/src/cli/handlers/prompt_handlers.rs`)
+- Added 11 YAML prompt files in `server/prompts/`
+- Added `PromptOutputFormat` enum (yaml, json, text)
+- Marked as CLI-only command in unified protocol adapter
+
+### Testing
+- **40 tests total**: 18 unit tests + 20 integration tests + 2 property-based tests
+- All tests passing ✅
+- Zero clippy warnings in new code
+- Full assert_cmd integration test coverage
+
+### Usage Examples
+```bash
+pmat prompt --list                    # List all prompts
+pmat prompt code-coverage             # Show coverage workflow
+pmat prompt debug --format text       # Five Whys debugging
+pmat prompt continue --format json    # JSON output
+pmat p --list                         # Short alias
+```
+
+### Specification
+- Implements: `docs/specifications/prompt-spec.md`
+- Files changed: 21 files, 1,495+ insertions
+- Commit: 8438fe11
+
 ## [2.170.0] - 2025-10-22 - Sprint 46: Security, Dependencies, Binary Size, Performance
 
 ### Security
