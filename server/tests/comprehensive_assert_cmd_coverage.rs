@@ -8,6 +8,11 @@
 //! - Flag combinations
 //!
 //! Total Commands: 50+ commands × 3 test cases each = 150+ tests
+//!
+//! NOTE: These tests are SLOW (120+ seconds) because they execute the full pmat binary
+//! and analyze the entire codebase. They are excluded from fast test runs via skip-slow-tests feature.
+
+#![cfg(not(feature = "skip-slow-tests"))]
 
 use assert_cmd::Command;
 use predicates::prelude::*;
