@@ -1,3 +1,5 @@
+#![cfg(not(feature = "skip-slow-tests"))]
+
 //! Unit tests for mutation testing handler (Sprint 64 Day 1)
 //!
 //! Comprehensive test suite for `server/src/cli/handlers/mutate.rs` covering:
@@ -10,8 +12,6 @@
 //!
 //! Sprint 64: Testing Infrastructure
 //! Target: >50 unit tests, >85% coverage
-
-#![cfg(not(feature = "skip-slow-tests"))]
 
 use pmat::cli::commands::MutateArgs;
 use pmat::cli::handlers::mutate::handle;
