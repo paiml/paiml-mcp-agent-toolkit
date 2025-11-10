@@ -348,8 +348,10 @@ async fn run_integration_tests(_timeout: u64, output: Option<PathBuf>) -> Result
 
 #[cfg(test)]
 mod tests {
+    #[cfg(not(feature = "skip-slow-tests"))] // Import only needed when slow tests enabled
     use super::*;
 
+    #[cfg(not(feature = "skip-slow-tests"))] // SLOW: 60s - excluded from fast test suite
     #[tokio::test]
     async fn test_handle_test_performance() {
         // Test that performance suite can be invoked with minimal work

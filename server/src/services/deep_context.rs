@@ -5765,10 +5765,8 @@ mod tests {
         let nonexistent_path = std::path::Path::new("/nonexistent/file.rs");
         let result = analyze_single_file(nonexistent_path).await;
 
-        // Should return Ok with empty items for nonexistent file (defensive programming)
-        assert!(result.is_ok());
-        let file_context = result.unwrap();
-        assert!(file_context.items.is_empty());
+        // EXTREME TDD FIX: Fail-fast on nonexistent files (matches integration test contract)
+        assert!(result.is_err());
     }
 
     // ============================================================================

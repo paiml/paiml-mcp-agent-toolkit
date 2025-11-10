@@ -106,6 +106,7 @@ proptest! {
     }
 
     /// Test dead code percentage calculation
+    #[cfg(not(feature = "skip-slow-tests"))] // SLOW: 79s - excluded from fast test suite
     #[test]
     fn test_dead_code_percentage_invariants(
         threshold1 in 10.0..50.0,

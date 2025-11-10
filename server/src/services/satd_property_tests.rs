@@ -198,13 +198,13 @@ mod tests {
     fn test_satd_severity_ordering() {
         // Property: Severity levels maintain correct ordering
         // Note: The enum derives Ord, so ordering is based on declaration order
-        // Critical is declared first, so it has the lowest discriminant
+        // EXTREME TDD FIX: Low is declared first, so it has the lowest discriminant
         use Severity::*;
 
-        // The actual ordering based on enum declaration
-        assert!(Critical < High);
-        assert!(High < Medium);
-        assert!(Medium < Low);
+        // The actual ordering based on enum declaration (Low → Critical)
+        assert!(Low < Medium);
+        assert!(Medium < High);
+        assert!(High < Critical);
 
         // Test escalation
         assert_eq!(Low.escalate(), Medium);
