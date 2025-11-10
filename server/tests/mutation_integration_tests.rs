@@ -3,6 +3,9 @@
 /// Tests end-to-end workflows, performance, concurrency, and real-world scenarios.
 ///
 /// Sprint 64 Day 1 - Testing Infrastructure
+
+#![cfg(not(feature = "skip-slow-tests"))]
+
 use pmat::cli::commands::MutateArgs;
 use pmat::cli::handlers::mutate::handle;
 use pmat::stateless_server::StatelessTemplateServer;

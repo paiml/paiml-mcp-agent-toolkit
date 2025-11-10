@@ -525,7 +525,7 @@ impl DistributedExecutor {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(feature = "skip-slow-tests")))]
 mod tests {
     use super::*;
     use crate::services::mutation::RustAdapter;
