@@ -280,7 +280,7 @@ impl LanguageBoundaryTool {
 impl McpTool for LanguageBoundaryTool {
     fn metadata(&self) -> ToolMetadata {
         ToolMetadata {
-            name: "detect_language_boundaries".to_string(),
+            name: "analyze_language_boundaries".to_string(),
             description: "Detects language boundaries and interoperability points in a project"
                 .to_string(),
             input_schema: json!({

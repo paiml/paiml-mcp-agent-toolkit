@@ -99,7 +99,8 @@ impl LanguageRegistry {
             Language::TypeScript | Language::JavaScript => self.get_adapter("typescript"),
             Language::Go => self.get_adapter("go"),
             Language::Cpp => self.get_adapter("cpp"),
-            Language::Unsupported => None,
+            // EXTREME TDD FIX: Fall back to extension-based detection for registered adapters
+            Language::Unsupported => self.detect_language_by_extension(path),
         }
     }
 
