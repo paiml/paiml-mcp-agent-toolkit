@@ -12,7 +12,7 @@ fn test_pmat_magic_header_present() {
     // Expected: Files must start with these exact bytes
 
     let valid_header = b"PMAT";
-    let invalid_header = b"XMAT";
+    let _invalid_header = b"XMAT";
 
     // Will implement in GREEN phase:
     // assert!(pmat::services::dap::recording::validate_magic_header(valid_header));

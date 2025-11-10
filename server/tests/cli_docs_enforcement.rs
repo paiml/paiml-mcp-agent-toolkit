@@ -454,7 +454,7 @@ fn red_test_analyze_commands_documented() {
 
 /// Extract all flags from help text
 #[allow(dead_code)]
-fn extract_flags_from_help(command: &str) -> Vec<String> {
+fn extract_flags_from_help(_command: &str) -> Vec<String> {
     // TODO: Parse --help output and extract flag names
     // This will use regex or parsing to find all --flag-name entries
     unimplemented!("Will implement in Phase 2")
@@ -462,7 +462,7 @@ fn extract_flags_from_help(command: &str) -> Vec<String> {
 
 /// Extract all flags from clap command definitions
 #[allow(dead_code)]
-fn extract_flags_from_clap_definitions(command: &str) -> Vec<String> {
+fn extract_flags_from_clap_definitions(_command: &str) -> Vec<String> {
     // TODO: Parse clap #[arg(long)] definitions from source
     // This might use syn crate to parse Rust code
     unimplemented!("Will implement in Phase 2")
@@ -470,7 +470,7 @@ fn extract_flags_from_clap_definitions(command: &str) -> Vec<String> {
 
 /// Check if description is generic/placeholder
 #[allow(dead_code)]
-fn is_generic_description(desc: &str) -> bool {
+fn is_generic_description(_desc: &str) -> bool {
     // TODO: Implement generic description detection
     // Check for patterns like "The X parameter", length, etc.
     unimplemented!("Will implement in Phase 2")

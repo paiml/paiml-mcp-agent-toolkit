@@ -10,6 +10,7 @@ use pmat::services::mutation::types::MutantStatus;
 
 #[test]
 #[ignore] // Only run when cargo-mutants is installed
+#[allow(deprecated)] // Testing legacy from_json() method
 fn test_cargo_mutants_end_to_end_workflow() {
     // This test validates the complete workflow:
     // 1. Detect cargo-mutants installation
