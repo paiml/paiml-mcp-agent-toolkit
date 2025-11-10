@@ -110,13 +110,13 @@ async fn test_parallel_analysis_execution() {
     // Should use tokio::join! internally for parallel execution
     let output_file = temp_dir.path().join("context.md");
     let result = crate::cli::handlers::utility_handlers::handle_context(
-        Some("rust".to_string()),
+        None,  // toolchain - EXTREME TDD FIX: was passing "rust" to wrong parameter
         temp_dir.path().to_path_buf(),
         Some(output_file.clone()),
         crate::cli::ContextFormat::Markdown,
         false,
         false,
-        None, // language
+        Some("rust".to_string()), // language - EXTREME TDD FIX: move "rust" to correct parameter
         None, // languages
     )
     .await;
@@ -286,13 +286,13 @@ impl DataProcessor {
     let output_file = temp_dir.path().join("context.md");
 
     let result = crate::cli::handlers::utility_handlers::handle_context(
-        Some("rust".to_string()),
+        None,  // toolchain - EXTREME TDD FIX: was passing "rust" to wrong parameter
         temp_dir.path().to_path_buf(),
         Some(output_file.clone()),
         crate::cli::ContextFormat::Markdown,
         false,
         false,
-        None, // language
+        Some("rust".to_string()), // language - EXTREME TDD FIX: move "rust" to correct parameter
         None, // languages
     )
     .await;
