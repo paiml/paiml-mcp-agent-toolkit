@@ -401,15 +401,25 @@ mod tests {
         // Act
         let context = GitContext::from_current_dir(&repo_path).unwrap();
 
-        // Assert
+        // Assert - verify branch extraction works (not hardcoded to specific branch)
         assert!(
             !context.branch.is_empty(),
             "Branch name should not be empty"
         );
-        // Current repo is on master (per CLAUDE.md)
+
+        // EXTREME TDD FIX: Verify extracted branch matches actual current branch
+        // (Don't hardcode "master" - developer may be on feature branch)
+        let actual_branch = std::process::Command::new("git")
+            .args(["branch", "--show-current"])
+            .current_dir(&repo_path)
+            .output()
+            .expect("Failed to get current branch")
+            .stdout;
+        let actual_branch_name = String::from_utf8_lossy(&actual_branch).trim().to_string();
+
         assert_eq!(
-            context.branch, "master",
-            "Current repo should be on master branch"
+            context.branch, actual_branch_name,
+            "Extracted branch should match actual current branch"
         );
     }
 
