@@ -471,6 +471,9 @@ impl McpServer {
         // Register quality assessment prompt
         prompts.register(Arc::new(QualityAssessmentPrompt::new()));
 
+        // Register repository health scoring prompt
+        prompts.register(Arc::new(RepoScorePrompt::new()));
+
         Ok(())
     }
 
