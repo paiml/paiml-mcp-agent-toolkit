@@ -42,7 +42,7 @@ fn create_result(id: usize, status: MutantStatus) -> MutationResult {
 // Category 1: Invariants (4 properties)
 // ============================================================================
 
-/// Property 1: Mutation score is always between 0.0 and 1.0 (inclusive)
+// Property 1: Mutation score is always between 0.0 and 1.0 (inclusive)
 proptest! {
     #[test]
     fn mutation_score_always_bounded(
@@ -83,7 +83,7 @@ proptest! {
     }
 }
 
-/// Property 2: Killed mutant count is always less than or equal to total mutant count
+// Property 2: Killed mutant count is always less than or equal to total mutant count
 proptest! {
     #[test]
     fn killed_count_never_exceeds_total(
@@ -105,7 +105,7 @@ proptest! {
     }
 }
 
-/// Property 3: Sum of status counts equals total mutant count
+// Property 3: Sum of status counts equals total mutant count
 proptest! {
     #[test]
     fn status_counts_sum_to_total(
@@ -146,7 +146,7 @@ proptest! {
     }
 }
 
-/// Property 4: Progress percentage never exceeds 100%
+// Property 4: Progress percentage never exceeds 100%
 proptest! {
     #[test]
     fn progress_percentage_never_exceeds_100(
@@ -169,7 +169,7 @@ proptest! {
 // Category 2: Determinism (3 properties)
 // ============================================================================
 
-/// Property 5: Score calculation is deterministic for same inputs
+// Property 5: Score calculation is deterministic for same inputs
 proptest! {
     #[test]
     fn score_calculation_deterministic(
@@ -195,7 +195,7 @@ proptest! {
     }
 }
 
-/// Property 6: Mutation result order doesn't affect score
+// Property 6: Mutation result order doesn't affect score
 proptest! {
     #[test]
     fn result_order_independence(
@@ -224,7 +224,7 @@ proptest! {
     }
 }
 
-/// Property 7: Empty results produce zero score
+// Property 7: Empty results produce zero score
 proptest! {
     #[test]
     fn empty_results_produce_zero_score(_seed in 0u64..1000) {
@@ -244,13 +244,13 @@ proptest! {
 // Category 3: Output Consistency (3 properties)
 // ============================================================================
 
-/// Property 8: JSON serialization preserves all result data
+// Property 8: JSON serialization preserves all result data
 proptest! {
     #[test]
     fn json_serialization_preserves_data(
         mutant_id in 0usize..1000,
-        line in 1usize..100,
-        execution_time_ms in 0u64..5000,
+        _line in 1usize..100,
+        _execution_time_ms in 0u64..5000,
     ) {
         use serde_json;
 
@@ -269,7 +269,7 @@ proptest! {
     }
 }
 
-/// Property 9: Mutation score is commutative (order of result aggregation doesn't matter)
+// Property 9: Mutation score is commutative (order of result aggregation doesn't matter)
 proptest! {
     #[test]
     fn score_aggregation_commutative(
@@ -310,7 +310,7 @@ proptest! {
     }
 }
 
-/// Property 10: All output formats contain same mutant count
+// Property 10: All output formats contain same mutant count
 proptest! {
     #[test]
     fn output_format_mutant_count_consistency(
@@ -338,7 +338,7 @@ proptest! {
 // Category 4: Correctness (2 properties)
 // ============================================================================
 
-/// Property 11: Mutant locations are within valid bounds
+// Property 11: Mutant locations are within valid bounds
 proptest! {
     #[test]
     fn mutant_locations_valid_bounds(
@@ -384,7 +384,7 @@ proptest! {
     }
 }
 
-/// Property 12: Mutation score calculation matches mathematical definition
+// Property 12: Mutation score calculation matches mathematical definition
 proptest! {
     #[test]
     fn mutation_score_mathematical_correctness(

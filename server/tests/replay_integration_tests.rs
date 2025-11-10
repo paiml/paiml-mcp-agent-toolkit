@@ -321,13 +321,13 @@ fn test_recording_summary_statistics() {
 
 /// Helper: Create test snapshot (will be implemented in GREEN phase)
 #[allow(dead_code)]
-fn create_test_snapshot(frame_id: u64) -> () {
+fn create_test_snapshot(_frame_id: u64) -> () {
     // Placeholder
 }
 
 /// Helper: Create recording with N snapshots
 #[allow(dead_code)]
-fn create_test_recording_with_snapshots(count: usize) -> Result<(), String> {
+fn create_test_recording_with_snapshots(_count: usize) -> Result<(), String> {
     // Placeholder
     Ok(())
 }
@@ -348,7 +348,7 @@ fn create_snapshot_with_stack() -> Result<(), String> {
 
 /// Helper: Create large recording for performance tests
 #[allow(dead_code)]
-fn create_large_recording(snapshot_count: usize) -> Result<String, String> {
+fn create_large_recording(_snapshot_count: usize) -> Result<String, String> {
     // Placeholder
     Ok("test.pmat".to_string())
 }
