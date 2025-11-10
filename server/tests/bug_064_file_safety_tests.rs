@@ -75,7 +75,7 @@ fn test_original_file_never_modified() {
     let original_path = temp_file.path().to_path_buf();
     let original_metadata = fs::metadata(&original_path)
         .expect("Failed to get original metadata");
-    let original_modified_time = original_metadata.modified()
+    let _original_modified_time = original_metadata.modified()
         .expect("Failed to get modified time");
 
     // TODO: Call mutation testing on this file
@@ -97,7 +97,7 @@ fn test_original_file_never_modified() {
     // Verify file modification time unchanged (or only metadata changed, not content)
     let final_metadata = fs::metadata(&original_path)
         .expect("Failed to get final metadata");
-    let final_modified_time = final_metadata.modified()
+    let _final_modified_time = final_metadata.modified()
         .expect("Failed to get final modified time");
 
     // Content must be identical (critical check)

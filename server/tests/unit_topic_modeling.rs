@@ -47,7 +47,7 @@ async fn test_topic_result_structure() {
 
     // Verify structure
     assert_eq!(result.num_topics, 2);
-    assert!(result.total_chunks >= 0);
+    // Note: total_chunks is usize, always >= 0
 
     for topic in &result.topics {
         assert!(topic.id < result.num_topics);

@@ -167,8 +167,7 @@ async fn test_vector_only_mode_selection() {
 
     // Should not error, just return results based on vector similarity
     let results = engine.search(&query).await.unwrap();
-    // Results length depends on indexed content
-    assert!(results.len() >= 0);
+    // Results length depends on indexed content (Vec::len() always >= 0)
 }
 
 #[ignore]
