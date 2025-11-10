@@ -168,6 +168,9 @@ archive/
 
 # Additional cleanup patterns
 defect-report-*.txt
+defect-report-*.json
+defect-report-*.csv
+defect-report-*.md
 quality_report_*.md
 .pmat-cache/
 proptest-regressions/
