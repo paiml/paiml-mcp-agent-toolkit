@@ -41,6 +41,9 @@ pmat analyze complexity
 # Grade technical debt (A+ through F)
 pmat analyze tdg
 
+# Score repository health (0-110 scale)
+pmat repo-score .
+
 # Find Self-Admitted Technical Debt
 pmat analyze satd
 
@@ -75,7 +78,8 @@ pmat hooks install --dry-run
 - **17+ Languages**: Rust, TypeScript, Python, Go, Java, C/C++, Ruby, PHP, Swift, Kotlin, and more
 - **AI-Ready Context**: Generate deep context for Claude, GPT, and other LLMs
 - **Technical Debt Grading (TDG)**: A+ through F scoring with 6 orthogonal metrics
-- **Git-Commit Correlation** ✨NEW: Track TDG scores at specific commits for quality archaeology
+- **Repository Health Scoring** ✨NEW: Quantitative assessment (0-110 scale) across 6 categories + bonus features
+- **Git-Commit Correlation**: Track TDG scores at specific commits for quality archaeology
 - **Semantic Code Search**: Natural language code discovery with hybrid search
 - **Quality Gates**: Pre-commit hooks, CI/CD integration, mutation testing
 - **MCP Integration**: 19 tools for Claude Code, Cline, and other MCP clients
@@ -92,6 +96,7 @@ pmat hooks install --dry-run
 - [Getting Started](https://paiml.github.io/pmat-book/ch02-00-getting-started.html)
 - [MCP Protocol](https://paiml.github.io/pmat-book/ch03-00-mcp-protocol.html)
 - [Technical Debt Grading](https://paiml.github.io/pmat-book/ch04-01-tdg.html)
+- [Repository Health Scoring](https://paiml.github.io/pmat-book/ch31-00-repo-score.html) ✨NEW
 - [Multi-Language Examples](https://paiml.github.io/pmat-book/ch13-00-language-examples.html)
 
 ---
