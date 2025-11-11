@@ -59,10 +59,10 @@ kani-verifier = { version = "0.56", optional = true }
 levenshtein = "1.0"
 
 # Machine Learning (Pure Rust - no C++ dependencies)
-linfa = "0.8"
-linfa-trees = "0.8"
+linfa = { version = "0.8" }
+linfa-trees = { version = "0.8" }
 linfa-ensemble = { version = "0.8", features = ["serde"] }
-ndarray = "0.16"
+ndarray = { version = "0.16" }
 
 # Serialization (pinned to avoid swc_common issue with serde::__private)
 serde = { version = "=1.0.219", default-features = false, features = ["derive", "std"] }
@@ -198,8 +198,8 @@ smallvec = "1.15.0"
 
 # Unified protocol support
 axum = { version = "0.8", default-features = false, features = ["json", "tokio", "http1", "query"] }
-capnp = "0.20"
-capnpc = "0.20"
+# capnp = "0.20" # REMOVED: Unused Cap'n Proto serialization (0 references)
+# capnpc = "0.20" # REMOVED: Unused Cap'n Proto compiler (0 references)
 tower = { version = "0.5", default-features = false, features = ["util", "timeout"] }
 # Sprint 46 Phase 4: Removed "fs" feature (no ServeDir/ServeFile usage, saves 40-70 KB)
 tower-http = { version = "0.6", default-features = false, features = ["trace", "compression-gzip", "timeout", "cors"] }
@@ -219,8 +219,8 @@ pulldown-cmark = "0.13"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 
 # Prometheus metrics
-prometheus = "0.14"
-warp = "0.3"
+prometheus = { version = "0.14" }
+warp = { version = "0.3" }
 
 # Table formatting
 prettytable-rs = "0.10"
@@ -240,7 +240,7 @@ pest_derive = { version = "2.8.2", features = ["default"] }
 
 # Deep WASM inspection dependencies
 wasm-encoder = "0.239.0"
-walrus = "0.22"
+# walrus = "0.22" # REMOVED: Unused (0 references in codebase)
 object = "0.37"
 sourcemap = "9.0"
 ahash = "0.8"
@@ -269,7 +269,7 @@ flate2 = "1.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 hex = "0.4"
-capnpc = "0.20"
+# capnpc = "0.20" # REMOVED: Unused Cap'n Proto compiler
 
 [features]
 default = ["all-languages", "demo", "polyglot-ast"]
