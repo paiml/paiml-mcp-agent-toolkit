@@ -238,7 +238,14 @@ mod tests {
     use std::fs;
 
     fn create_temp_repo() -> TempDir {
-        TempDir::new().unwrap()
+        let temp_dir = TempDir::new().unwrap();
+        // Initialize git repo so ignore crate can process .gitignore
+        std::process::Command::new("git")
+            .args(["init"])
+            .current_dir(temp_dir.path())
+            .output()
+            .expect("Failed to initialize git repo");
+        temp_dir
     }
 
     fn create_file(repo_path: &Path, relative_path: &str) {
@@ -385,5 +392,155 @@ mod tests {
         let scorer = HygieneScorer::new();
         assert_eq!(scorer.category_name(), "Repository Hygiene");
         assert_eq!(scorer.max_score(), 10.0);
+    }
+
+    // Phase 1 Integration Tests: Verify .gitignore is respected
+
+    #[tokio::test]
+    async fn test_gitignored_build_artifacts_not_penalized() {
+        let temp_dir = create_temp_repo();
+        let repo_path = temp_dir.path();
+
+        // Create .gitignore with build artifacts
+        fs::write(repo_path.join(".gitignore"), "target/\n*.tmp\nnode_modules/\n").unwrap();
+
+        // Create gitignored files (should NOT be penalized)
+        create_file(repo_path, "target/release/libfoo.rlib");
+        create_file(repo_path, "target/debug/foo");
+        create_file(repo_path, "test.tmp");
+        create_file(repo_path, "node_modules/package/index.js");
+
+        // Create clean files
+        create_file(repo_path, "src/main.rs");
+        create_file(repo_path, "Cargo.toml");
+
+        let scorer = HygieneScorer::new();
+        let config = ScorerConfig::default();
+
+        let result = scorer.score(repo_path, &config).await.unwrap();
+
+        // Should score 100% because all cruft files are gitignored
+        assert_eq!(result.score, 10.0, "Gitignored files should not be penalized");
+        assert_eq!(result.percentage, 100.0);
+        assert!(result.findings.iter().any(|f| f.message.contains("No cruft files detected")));
+    }
+
+    #[tokio::test]
+    async fn test_gitignored_ide_files_not_penalized() {
+        let temp_dir = create_temp_repo();
+        let repo_path = temp_dir.path();
+
+        // Create .gitignore with IDE files
+        fs::write(repo_path.join(".gitignore"), ".idea/\n.vscode/\n*.iml\n").unwrap();
+
+        // Create gitignored IDE files (should NOT be penalized)
+        create_file(repo_path, ".idea/workspace.xml");
+        create_file(repo_path, ".idea/modules.xml");
+        create_file(repo_path, ".vscode/settings.json");
+        create_file(repo_path, "project.iml");
+
+        // Create clean files
+        create_file(repo_path, "src/lib.rs");
+
+        let scorer = HygieneScorer::new();
+        let config = ScorerConfig::default();
+
+        let result = scorer.score(repo_path, &config).await.unwrap();
+
+        // Should score 100% because all team files are gitignored
+        assert_eq!(result.score, 10.0, "Gitignored IDE files should not be penalized");
+        assert!(result.findings.iter().any(|f| f.message.contains("No team-specific files detected")));
+    }
+
+    #[tokio::test]
+    async fn test_tracked_cruft_files_are_penalized() {
+        let temp_dir = create_temp_repo();
+        let repo_path = temp_dir.path();
+
+        // Create .gitignore but DON'T ignore .tmp and .bak files
+        fs::write(repo_path.join(".gitignore"), "target/\n").unwrap();
+
+        // Create tracked cruft files (SHOULD be penalized because not gitignored)
+        // Using patterns that ARE in our cruft list: *.tmp, *.bak
+        create_file(repo_path, "errors.tmp");
+        create_file(repo_path, "debug.bak");
+
+        // Create gitignored file (should NOT be penalized)
+        create_file(repo_path, "target/release/libfoo.rlib");
+
+        let scorer = HygieneScorer::new();
+        let config = ScorerConfig::default();
+
+        let result = scorer.score(repo_path, &config).await.unwrap();
+
+        // Should lose points for .tmp/.bak files but NOT for target/
+        assert!(result.score < 10.0, "Tracked .tmp/.bak files should be penalized");
+        assert!(result.score >= 4.0, "Should only penalize tracked cruft, not gitignored files");
+
+        // Verify .tmp/.bak files are detected but target/ is not
+        let cruft_findings: Vec<_> = result.findings.iter()
+            .filter(|f| f.message.contains("Cruft file found"))
+            .collect();
+
+        assert!(!cruft_findings.is_empty(), "Should find .tmp/.bak files");
+        assert!(
+            cruft_findings.iter().any(|f| f.message.contains(".tmp") || f.message.contains(".bak")),
+            "Should detect .tmp or .bak files"
+        );
+        assert!(!cruft_findings.iter().any(|f| f.message.contains("target/")), "Should NOT detect gitignored target/");
+    }
+
+    #[tokio::test]
+    async fn test_performance_optimization_skips_heavy_dirs() {
+        let temp_dir = create_temp_repo();
+        let repo_path = temp_dir.path();
+
+        // Don't create .gitignore, so files would normally be detected
+        // But performance filter should skip these directories
+
+        // Create files in heavy build directories (should be skipped by filter)
+        create_file(repo_path, "target/CACHEDIR.TAG");  // Common in Rust target/
+        create_file(repo_path, "node_modules/.bin/eslint");
+        create_file(repo_path, "dist/bundle.js");
+
+        let scorer = HygieneScorer::new();
+        let config = ScorerConfig::default();
+
+        let result = scorer.score(repo_path, &config).await.unwrap();
+
+        // These directories are skipped by performance filter, so no penalty
+        assert_eq!(result.score, 10.0, "Performance filter should skip heavy build directories");
+    }
+
+    #[tokio::test]
+    async fn test_complex_gitignore_patterns() {
+        let temp_dir = create_temp_repo();
+        let repo_path = temp_dir.path();
+
+        // Create complex .gitignore with various patterns
+        fs::write(repo_path.join(".gitignore"),
+            "*.pyc\n\
+             __pycache__/\n\
+             .DS_Store\n\
+             *.swp\n\
+             /build/\n\
+             dist/\n"
+        ).unwrap();
+
+        // Create gitignored files matching various patterns
+        create_file(repo_path, "module.pyc");
+        create_file(repo_path, "__pycache__/foo.pyc");
+        create_file(repo_path, ".DS_Store");
+        create_file(repo_path, "temp.swp");
+        create_file(repo_path, "build/output.js");
+        create_file(repo_path, "dist/bundle.min.js");
+
+        let scorer = HygieneScorer::new();
+        let config = ScorerConfig::default();
+
+        let result = scorer.score(repo_path, &config).await.unwrap();
+
+        // All these files should be ignored by gitignore
+        assert_eq!(result.score, 10.0, "Complex .gitignore patterns should be respected");
     }
 }
