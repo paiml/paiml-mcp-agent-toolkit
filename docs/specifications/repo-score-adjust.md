@@ -1,9 +1,29 @@
 # Repository Health Scoring Adjustments
 
-**Status**: Draft Specification
+**Status**: Reviewed & Approved with Refinements
 **Created**: 2025-11-11
 **Author**: Claude Code (AI Assistant)
+**Reviewed By**: Gemini (QA Engineer) - 2025-11-11
 **Purpose**: Address false positives and improve accuracy of `pmat repo-score` hygiene scoring
+
+---
+
+## QA Review Summary (Gemini - 2025-11-11)
+
+**Review Status**: ✅ **Approved with Recommendations**
+
+**Key Findings** (Toyota Way Analysis):
+1. **Jidoka Violation Confirmed**: False positives (71% rate) erode trust in automation
+2. **Root Cause Correctly Identified**: Hygiene scorer scans filesystem without respecting `.gitignore`
+3. **Refined Prioritization**:
+   - ✅ **Solution 1 (Respect .gitignore)** = Primary fix (addresses root cause)
+   - ✅ **Solution 3 (Build directory exclusion)** = Performance optimization (not standalone fix)
+   - ✅ **Solution 4 (Configuration)** = Flexibility for edge cases
+   - ❌ **Solution 2 (Dual scoring)** = Creates Muda (waste) through over-processing
+
+**Strategic Enhancement Endorsed**: Git History Analysis proposal (15 bonus points) backed by 10 peer-reviewed sources provides evidence-based behavioral metrics beyond static analysis.
+
+**Implementation Recommendation**: Proceed with refined Phase 1 (Solution 1 + Solution 3 as optimization), then Phase 2 (Configuration), then Git History Analysis in subsequent sprints.
 
 ---
 
@@ -271,31 +291,49 @@ skip_directories = ["target", "dist", "build"]
 
 ## Recommended Implementation Plan
 
-### Phase 1: Quick Win (Sprint 48.1)
-**Implement Solution 3 (Build Directory Exclusion)**
-
-**Changes**:
-- Add `should_skip_directory()` helper
-- Update both C1 and C2 scoring to skip build directories
-- Add test case for PMAT repository
-
-**Effort**: 1 hour
-**Impact**: Eliminates 90% of false positives immediately
-**Risk**: Minimal
-
-**Expected Result**: PMAT repository scores **10.0/10.0 (100%)** on hygiene.
-
-### Phase 2: Proper Solution (Sprint 49)
+### Phase 1: Root Cause Fix (Sprint 48.1) - PRIORITY
 **Implement Solution 1 (Respect .gitignore)**
 
 **Changes**:
 - Replace `WalkDir` with `ignore::WalkBuilder`
+- Integrate Solution 3 as a **performance optimization** (explicit skip for common build dirs)
 - Add integration tests with gitignored files
 - Update documentation
 
+**Rationale** (Toyota Way - Jidoka):
+- Fixes the root cause, not symptoms
+- Respects developer intent as declared in `.gitignore`
+- Restores trust in automation by eliminating false positives
+- Solution 3 becomes an optimization layer, not a band-aid
+
+**Implementation**:
+```rust
+use ignore::WalkBuilder;
+
+// Primary: Respect .gitignore
+let walker = WalkBuilder::new(repo_path)
+    .hidden(false)           // Don't skip hidden files by default
+    .git_ignore(true)        // Respect .gitignore (ROOT CAUSE FIX)
+    .git_exclude(true)       // Respect .git/info/exclude
+    .filter_entry(|entry| {
+        // Performance optimization: Explicitly skip heavy directories
+        let skip_dirs = ["target", "node_modules", "dist", "build", ".next"];
+        !skip_dirs.iter().any(|d| entry.path().ends_with(d))
+    })
+    .build();
+```
+
 **Effort**: 4 hours
-**Impact**: Eliminates all false positives for gitignored files
+**Impact**: Eliminates 71% of false positives (proven by 7-repo testing)
 **Risk**: Low (dependency already in use)
+
+**Expected Result**:
+- PMAT repository: **10.0/10.0 (100%)** on hygiene
+- ruchy: **10.0/10.0** (up from 0.0/10.0)
+- ruchy-book: **10.0/10.0** (up from 0.0/10.0)
+
+### Phase 2: Flexibility (Sprint 49)
+**Implement Solution 4 (Configuration Option)**
 
 **Expected Result**: All repositories with proper .gitignore score accurately.
 
