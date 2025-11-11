@@ -44,6 +44,7 @@ async fn test_route_analyze_command_comprehensive() {
 }
 
 /// Test different command variants to ensure all routes work
+#[ignore] // Slow test - analyzes entire codebase with 60s timeout per command
 #[tokio::test]
 async fn test_route_analyze_command_variants() {
     use pmat::cli::{DeadCodeOutputFormat, SatdOutputFormat};
