@@ -2733,9 +2733,9 @@ pub fn apply_satd_filters(
             SatdSeverity::Medium => crate::services::satd_detector::Severity::Medium,
             SatdSeverity::Low => crate::services::satd_detector::Severity::Low,
         };
-        // BUG FIX: Severity enum has Critical=0 (highest), Low=3 (lowest)
-        // Filter should keep items with severity <= threshold (numerically)
-        satd_items.retain(|item| item.severity as u8 <= min_sev as u8);
+        // Severity enum: Low=0, Medium=1, High=2, Critical=3
+        // Filter should keep items with severity >= min_sev (show critical and above)
+        satd_items.retain(|item| item.severity as u8 >= min_sev as u8);
     }
 
     // Filter for critical items only if requested
