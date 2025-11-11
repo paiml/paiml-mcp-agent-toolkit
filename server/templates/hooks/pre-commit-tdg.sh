@@ -13,6 +13,12 @@
 
 set -e  # Exit on first error
 
+# ZERO BRANCHING ENFORCEMENT (runs FIRST, before all other checks)
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+if [ -x "${SCRIPT_DIR}/pre-commit-branch-enforcer" ]; then
+    "${SCRIPT_DIR}/pre-commit-branch-enforcer"
+fi
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -138,9 +144,60 @@ else
     fi
 fi
 
+# bashrs linting check (for bash scripts and Makefile)
+echo ""
+echo -e "${BLUE}🔍 Running bashrs linting on staged files...${NC}"
+
+# Check if bashrs is installed
+if ! command -v bashrs &> /dev/null; then
+    echo -e "${YELLOW}⚠️  bashrs not found - skipping shell linting${NC}"
+    echo "   Install bashrs: cargo install bashrs"
+else
+    # Get staged bash/Makefile files
+    STAGED_SHELL_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(sh|bash)$|^Makefile$' || true)
+
+    if [ -n "$STAGED_SHELL_FILES" ]; then
+        BASHRS_FAILED=0
+        for file in $STAGED_SHELL_FILES; do
+            if [ -f "$file" ]; then
+                echo "   Linting: $file"
+                if ! bashrs lint "$file" 2>&1 | grep -q "0 error(s)"; then
+                    # bashrs found errors - block commit
+                    echo -e "${RED}❌ bashrs found errors in $file${NC}"
+                    BASHRS_FAILED=1
+                else
+                    # Check for warnings (allowed but displayed)
+                    WARNING_COUNT=$(bashrs lint "$file" 2>&1 | grep -o '[0-9]* warning(s)' | grep -o '[0-9]*' | head -1)
+                    if [ -n "$WARNING_COUNT" ] && [ "$WARNING_COUNT" -gt 0 ]; then
+                        echo -e "${YELLOW}   ⚠️  $WARNING_COUNT warning(s) (commit allowed)${NC}"
+                    else
+                        echo -e "   ✅ No issues"
+                    fi
+                fi
+            fi
+        done
+
+        if [ $BASHRS_FAILED -eq 1 ]; then
+            echo -e "${RED}❌ bashrs linting failed - commit blocked${NC}"
+            echo ""
+            echo "To fix:"
+            echo "  1. Review bashrs errors above"
+            echo "  2. Fix shell script issues"
+            echo ""
+            echo "To bypass (NOT RECOMMENDED):"
+            echo "  git commit --no-verify"
+            exit 1
+        fi
+
+        echo -e "${GREEN}✅ bashrs linting passed${NC}"
+    else
+        echo "   No bash/Makefile files staged"
+    fi
+fi
+
 # All checks passed
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo -e "${GREEN}✅ All TDG quality gates passed${NC}"
+echo -e "${GREEN}✅ All quality gates passed (TDG + bashrs)${NC}"
 echo ""
 
 exit 0
