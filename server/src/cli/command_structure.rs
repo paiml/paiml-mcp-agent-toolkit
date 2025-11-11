@@ -351,6 +351,7 @@ impl CommandExecutor {
                 verbose,
                 failures_only,
                 output,
+                update_badge,
             } => {
                 crate::cli::handlers::repo_score_handlers::handle_repo_score(
                     &path,
@@ -358,6 +359,7 @@ impl CommandExecutor {
                     verbose,
                     failures_only,
                     output.as_deref(),
+                    update_badge,
                 )
                 .await
             }
