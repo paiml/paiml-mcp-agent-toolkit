@@ -337,7 +337,137 @@ let walker = WalkBuilder::new(repo_path)
 
 **Expected Result**: All repositories with proper .gitignore score accurately.
 
-### Phase 3: Enhancement (Sprint 50)
+### Phase 3: README Badge Maintenance (Sprint 48.2) - QUICK WIN
+**Automatic README.md Badge Generation**
+
+**Purpose**: Provide visual indicator of repository health in README.md
+
+**Changes**:
+- Add `--update-badge` flag to `pmat repo-score` command
+- Auto-generate/update badge in README.md with score and grade
+- Use shields.io format for consistency with ecosystem
+- Add badge marker comments for detection and updates
+
+**Badge Format**:
+```markdown
+<!-- PMAT-REPO-SCORE:START -->
+![Repository Health](https://img.shields.io/badge/repo%20health-99%2F110%20(A%2B)-brightgreen?style=flat-square)
+<!-- PMAT-REPO-SCORE:END -->
+```
+
+**Implementation**:
+```rust
+// In repo_score_handlers.rs
+pub async fn update_readme_badge(
+    repo_path: &Path,
+    score: &RepositoryScore,
+) -> Result<()> {
+    let readme_path = repo_path.join("README.md");
+    if !readme_path.exists() {
+        return Ok(()); // Skip if no README
+    }
+
+    let content = fs::read_to_string(&readme_path)?;
+    let badge_url = generate_badge_url(score);
+    let badge_markdown = format!(
+        "<!-- PMAT-REPO-SCORE:START -->\n![Repository Health]({})\n<!-- PMAT-REPO-SCORE:END -->",
+        badge_url
+    );
+
+    let updated = if content.contains("<!-- PMAT-REPO-SCORE:START -->") {
+        // Replace existing badge
+        replace_badge_section(&content, &badge_markdown)
+    } else {
+        // Add badge after main heading
+        insert_badge_after_title(&content, &badge_markdown)
+    };
+
+    fs::write(&readme_path, updated)?;
+    Ok(())
+}
+
+fn generate_badge_url(score: &RepositoryScore) -> String {
+    let percentage = (score.final_score / 125.0 * 100.0).round() as u8;
+    let color = match score.grade.as_str() {
+        "A+" | "A" => "brightgreen",
+        "A-" | "B+" => "green",
+        "B" | "B-" => "yellow",
+        "C+" | "C" => "orange",
+        _ => "red",
+    };
+
+    format!(
+        "https://img.shields.io/badge/repo%20health-{}%2F125%20({})-{}?style=flat-square",
+        score.final_score.round() as u8,
+        urlencoding::encode(&score.grade),
+        color
+    )
+}
+```
+
+**CLI Usage**:
+```bash
+# Update badge automatically
+pmat repo-score --update-badge
+
+# Run in CI/CD
+pmat repo-score --update-badge --format json > score.json
+git add README.md
+git commit -m "chore: Update repo health badge [skip ci]"
+```
+
+**Integration Tests**:
+```rust
+#[tokio::test]
+async fn test_badge_insertion_in_new_readme() {
+    let temp_dir = TempDir::new().unwrap();
+    let readme = temp_dir.path().join("README.md");
+    fs::write(&readme, "# My Project\n\nDescription here.").unwrap();
+
+    let score = create_test_score(99.0, "A+");
+    update_readme_badge(temp_dir.path(), &score).await.unwrap();
+
+    let content = fs::read_to_string(&readme).unwrap();
+    assert!(content.contains("<!-- PMAT-REPO-SCORE:START -->"));
+    assert!(content.contains("repo%20health-99"));
+    assert!(content.contains("brightgreen"));
+}
+
+#[tokio::test]
+async fn test_badge_replacement_in_existing_readme() {
+    let temp_dir = TempDir::new().unwrap();
+    let readme = temp_dir.path().join("README.md");
+    let initial = "# My Project\n\n<!-- PMAT-REPO-SCORE:START -->\n![Old Badge](old-url)\n<!-- PMAT-REPO-SCORE:END -->\n\nText";
+    fs::write(&readme, initial).unwrap();
+
+    let score = create_test_score(85.0, "A-");
+    update_readme_badge(temp_dir.path(), &score).await.unwrap();
+
+    let content = fs::read_to_string(&readme).unwrap();
+    assert!(!content.contains("old-url"));
+    assert!(content.contains("repo%20health-85"));
+    assert!(content.contains("green")); // A- uses "green"
+}
+```
+
+**Effort**: 3 hours
+**Impact**: Visual reinforcement of code quality, great for public repos
+**Risk**: Very low (optional feature, non-breaking)
+
+**Expected Result**:
+- Repositories can display health score prominently
+- Badge updates automatically with `pmat repo-score --update-badge`
+- CI/CD can automate badge updates on every release
+
+**Rationale**:
+- **Kaizen**: Visible quality metrics encourage continuous improvement
+- **Transparency**: Public display of health metrics builds trust
+- **Automation**: One command updates both score and badge
+- **Ecosystem Fit**: Shields.io badges are standard in open-source
+
+---
+
+### Phase 4: Configuration Flexibility (Sprint 49)
 **Implement Solution 4 (Configuration Option)**
 
 **Changes**:
