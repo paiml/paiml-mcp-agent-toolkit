@@ -457,6 +457,10 @@ pub enum Commands {
         /// Output file path
         #[arg(short = 'o', long)]
         output: Option<PathBuf>,
+
+        /// Update README.md with repository health badge
+        #[arg(long)]
+        update_badge: bool,
     },
 
     /// Start HTTP API server with WebSocket support

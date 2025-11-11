@@ -3,7 +3,7 @@
 //! Calculates repository health score (0-110 scale) across 6 categories + bonus points.
 
 use crate::cli::RepoScoreOutputFormat;
-use crate::services::repo_score::{aggregator::ScoreAggregator, scorers::ScorerConfig, RepoScore};
+use crate::services::repo_score::{aggregator::ScoreAggregator, models::Grade, scorers::ScorerConfig, RepoScore};
 use anyhow::{Context, Result};
 use std::fs;
 use std::path::Path;
@@ -15,6 +15,7 @@ pub async fn handle_repo_score(
     verbose: bool,
     failures_only: bool,
     output: Option<&Path>,
+    update_badge: bool,
 ) -> Result<()> {
     // Validate path exists
     if !path.exists() {
@@ -34,6 +35,11 @@ pub async fn handle_repo_score(
         .aggregate(path, &config)
         .await
         .context("Failed to calculate repository score")?;
+
+    // Update README badge if requested
+    if update_badge {
+        update_readme_badge(path, &score)?;
+    }
 
     // Format output
     let output_text = match format {
@@ -253,4 +259,116 @@ fn format_markdown(score: &RepoScore) -> String {
     }
 
     output
+}
+
+// ============================================================================
+// Badge Generation (Phase 3: README Badge Maintenance)
+// ============================================================================
+
+/// Update README.md with repository health badge
+fn update_readme_badge(repo_path: &Path, score: &RepoScore) -> Result<()> {
+    let readme_path = repo_path.join("README.md");
+
+    if !readme_path.exists() {
+        println!("⚠️  README.md not found - skipping badge update");
+        return Ok(());
+    }
+
+    let content = fs::read_to_string(&readme_path)
+        .context("Failed to read README.md")?;
+
+    let badge_url = generate_badge_url(score);
+    let badge_markdown = format!(
+        "<!-- PMAT-REPO-SCORE:START -->\n![Repository Health]({})\n<!-- PMAT-REPO-SCORE:END -->",
+        badge_url
+    );
+
+    let updated = if content.contains("<!-- PMAT-REPO-SCORE:START -->") {
+        // Replace existing badge
+        replace_badge_section(&content, &badge_markdown)
+    } else {
+        // Insert badge after main heading
+        insert_badge_after_title(&content, &badge_markdown)
+    };
+
+    fs::write(&readme_path, updated)
+        .context("Failed to write updated README.md")?;
+
+    println!("✅ Updated README.md with repository health badge");
+
+    Ok(())
+}
+
+/// Generate shields.io badge URL from repository score
+fn generate_badge_url(score: &RepoScore) -> String {
+    let final_score = score.final_score.round() as u8;
+    let max_score = 125; // 100 base + 25 future (Git History bonus)
+
+    let color = match score.grade {
+        Grade::APlus | Grade::A => "brightgreen",
+        Grade::AMinus | Grade::BPlus => "green",
+        Grade::B => "yellow",
+        Grade::C => "orange",
+        Grade::D | Grade::F => "red",
+    };
+
+    // URL encode the grade (e.g., "A+" -> "A%2B")
+    let grade_str = score.grade.as_str();
+    let encoded_grade = grade_str.replace('+', "%2B");
+
+    format!(
+        "https://img.shields.io/badge/repo%20health-{}%2F{}%20({})-{}?style=flat-square",
+        final_score,
+        max_score,
+        encoded_grade,
+        color
+    )
+}
+
+/// Replace existing badge section in README
+fn replace_badge_section(content: &str, new_badge: &str) -> String {
+    let start_marker = "<!-- PMAT-REPO-SCORE:START -->";
+    let end_marker = "<!-- PMAT-REPO-SCORE:END -->";
+
+    if let Some(start) = content.find(start_marker) {
+        if let Some(end) = content[start..].find(end_marker) {
+            let end_pos = start + end + end_marker.len();
+            let mut result = String::with_capacity(content.len());
+            result.push_str(&content[..start]);
+            result.push_str(new_badge);
+            result.push_str(&content[end_pos..]);
+            return result;
+        }
+    }
+
+    // Fallback: append at end if markers found but parsing failed
+    format!("{}\n\n{}", content, new_badge)
+}
+
+/// Insert badge after main title (first # heading)
+fn insert_badge_after_title(content: &str, badge: &str) -> String {
+    let lines: Vec<&str> = content.lines().collect();
+
+    // Find first heading line
+    for (i, line) in lines.iter().enumerate() {
+        if line.trim_start().starts_with("# ") {
+            // Insert badge after heading and any immediate blank lines
+            let mut insert_pos = i + 1;
+            while insert_pos < lines.len() && lines[insert_pos].trim().is_empty() {
+                insert_pos += 1;
+            }
+
+            let mut result = Vec::with_capacity(lines.len() + 3);
+            result.extend_from_slice(&lines[..insert_pos]);
+            result.push("");
+            result.push(badge);
+            result.push("");
+            result.extend_from_slice(&lines[insert_pos..]);
+
+            return result.join("\n");
+        }
+    }
+
+    // No heading found - prepend badge
+    format!("{}\n\n{}", badge, content)
 }

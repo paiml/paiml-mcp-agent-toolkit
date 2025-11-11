@@ -1,5 +1,10 @@
 # PMAT - Pragmatic AI Labs Multi-language Agent Toolkit
 
+
+<!-- PMAT-REPO-SCORE:START -->
+![Repository Health](https://img.shields.io/badge/repo%20health-104%2F125%20(A%2B)-brightgreen?style=flat-square)
+<!-- PMAT-REPO-SCORE:END -->
+
 [![Documentation](https://img.shields.io/badge/docs-pmat--book-blue)](https://paiml.github.io/pmat-book/)
 [![Crates.io](https://img.shields.io/crates/v/pmat.svg)](https://crates.io/crates/pmat)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
