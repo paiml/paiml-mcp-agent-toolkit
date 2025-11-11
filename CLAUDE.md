@@ -321,7 +321,17 @@ find scripts -name "*.sh" -exec bashrs lint {} \;
 
 ### Pre-commit Hook
 
-A git pre-commit hook is installed at `.git/hooks/pre-commit` that automatically runs bashrs on all staged bash/Makefile files.
+**AUTOMATIC INTEGRATION**: bashrs linting is automatically included when you install TDG enforcement hooks:
+
+```bash
+# Install hooks with bashrs linting automatically included
+pmat hooks install --tdg-enforcement
+
+# Or refresh existing hooks (updates bashrs integration)
+pmat hooks refresh
+```
+
+The pre-commit hook at `.git/hooks/pre-commit` automatically runs bashrs on all staged bash/Makefile files.
 
 **Hook behavior:**
 - ✅ Exits 0 (allows commit) if no errors
