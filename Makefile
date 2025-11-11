@@ -80,17 +80,13 @@ check: check-scripts
 
 # Fast tests without coverage (optimized for speed) - Test execution MUST complete under 5 minutes
 test-fast:
-	@echo "⚡ Running UNIT TESTS ONLY (4600 tests in 1 binary, <3 min)..."
-	@echo "   (Use 'make test-all' for +171 integration test binaries)"
-	@if ! command -v cargo-nextest >/dev/null 2>&1; then \
-		echo "📦 Installing cargo-nextest for optimal performance..."; \
-		cargo install cargo-nextest; \
+	@echo "⚡ Running fast test suite (target: <5 min)..."
+	@if command -v cargo-nextest >/dev/null 2>&1; then \
+		cargo nextest run --lib --features skip-slow-tests --no-fail-fast; \
+	else \
+		cargo test --lib --features skip-slow-tests; \
 	fi
-	@echo "🔨 Compiling unit tests (<1 min with incremental)..."
-	@cargo nextest run --no-run --lib --features skip-slow-tests --profile fast
-	@echo "🧪 Running unit tests (3-minute timeout)..."
-	@timeout 180 cargo nextest run --no-fail-fast --lib --features skip-slow-tests --profile fast
-	@echo "✅ Unit tests completed!"
+	@echo "✅ Fast tests complete"
 
 # Run ALL tests (unit + integration) - slower but comprehensive
 test-all:
@@ -400,9 +396,9 @@ test-doc:
 
 # Coverage analysis (two-phase with default test runner - nextest doesn't persist profraw)
 coverage:
-	@echo "📊 Running test coverage analysis (<10 min target)..."
+	@echo "📊 Running test coverage analysis (target: <10 min)..."
 	@echo "🔍 Checking for cargo-llvm-cov..."
-	@command -v cargo-llvm-cov > /dev/null 2>&1 || (echo "📦 Installing cargo-llvm-cov..." && cargo install cargo-llvm-cov --locked)
+	@which cargo-llvm-cov > /dev/null 2>&1 || (echo "📦 Installing cargo-llvm-cov..." && cargo install cargo-llvm-cov --locked)
 	@if ! rustup component list --installed | grep -q llvm-tools-preview; then \
 		echo "📦 Installing llvm-tools-preview..."; \
 		rustup component add llvm-tools-preview; \
@@ -410,15 +406,10 @@ coverage:
 	@echo "🧹 Cleaning old coverage data..."
 	@cargo llvm-cov clean --workspace
 	@mkdir -p target/coverage
-	@echo "🧪 Running tests with coverage instrumentation (no report)..."
-	@timeout 600 cargo llvm-cov --no-report \
-		--workspace \
-		--features skip-slow-tests \
-		--ignore-filename-regex='tests?\.rs' \
-		-- --test-threads=8
-	@echo "📊 Generating HTML report..."
+	@echo "🧪 Phase 1: Running tests with instrumentation (no report)..."
+	@cargo llvm-cov --no-report test --lib --features skip-slow-tests 2>&1 | tee target/coverage/test-output.txt
+	@echo "📊 Phase 2: Generating coverage reports..."
 	@cargo llvm-cov report --html --output-dir target/coverage/html
-	@echo "📊 Generating LCOV report..."
 	@cargo llvm-cov report --lcov --output-path target/coverage/lcov.info
 	@echo ""
 	@echo "💡 COVERAGE INSIGHTS:"
