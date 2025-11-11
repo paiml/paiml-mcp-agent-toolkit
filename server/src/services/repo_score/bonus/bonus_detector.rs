@@ -34,18 +34,16 @@ impl BonusDetector {
         }
 
         // Check for proptest usage in source files
-        for entry in WalkDir::new(repo_path).max_depth(10) {
-            if let Ok(entry) = entry {
-                if entry.file_type().is_file() {
-                    let path = entry.path();
-                    if let Some(ext) = path.extension() {
-                        if ext == "rs" {
-                            if let Ok(content) = tokio::fs::read_to_string(path).await {
-                                if content.contains("proptest!") || content.contains("use proptest::") {
-                                    evidence.push(format!("Property tests found in {}", path.display()));
-                                    detected = true;
-                                    break; // Found evidence, no need to scan more
-                                }
+        for entry in WalkDir::new(repo_path).max_depth(10).into_iter().flatten() {
+            if entry.file_type().is_file() {
+                let path = entry.path();
+                if let Some(ext) = path.extension() {
+                    if ext == "rs" {
+                        if let Ok(content) = tokio::fs::read_to_string(path).await {
+                            if content.contains("proptest!") || content.contains("use proptest::") {
+                                evidence.push(format!("Property tests found in {}", path.display()));
+                                detected = true;
+                                break; // Found evidence, no need to scan more
                             }
                         }
                     }
