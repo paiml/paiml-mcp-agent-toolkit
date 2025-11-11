@@ -398,7 +398,7 @@ test-doc:
 	@cargo test --doc --manifest-path server/Cargo.toml
 	@echo "✅ Doctests completed!"
 
-# Coverage analysis (single-phase - nextest two-phase doesn't generate profraw files reliably)
+# Coverage analysis (two-phase with default test runner - nextest doesn't persist profraw)
 coverage:
 	@echo "📊 Running test coverage analysis (<10 min target)..."
 	@echo "🔍 Checking for cargo-llvm-cov..."
@@ -410,14 +410,16 @@ coverage:
 	@echo "🧹 Cleaning old coverage data..."
 	@cargo llvm-cov clean --workspace
 	@mkdir -p target/coverage
-	@echo "🧪 Running tests with instrumentation and generating reports (single-phase)..."
-	@timeout 600 cargo llvm-cov \
+	@echo "🧪 Running tests with coverage instrumentation (no report)..."
+	@timeout 600 cargo llvm-cov --no-report \
 		--workspace \
 		--features skip-slow-tests \
-		--html --output-dir target/coverage/html \
-		--lcov --output-path target/coverage/lcov.info \
 		--ignore-filename-regex='tests?\.rs' \
 		-- --test-threads=8
+	@echo "📊 Generating HTML report..."
+	@cargo llvm-cov report --html --output-dir target/coverage/html
+	@echo "📊 Generating LCOV report..."
+	@cargo llvm-cov report --lcov --output-path target/coverage/lcov.info
 	@echo ""
 	@echo "💡 COVERAGE INSIGHTS:"
 	@echo "- HTML report: target/coverage/html/index.html"
