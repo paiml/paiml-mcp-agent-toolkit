@@ -1,8 +1,9 @@
-// HygieneScorer - Category C: Repository Hygiene (10 points)
+// HygieneScorer - Category C: Repository Hygiene (15 points)
 //
 // Scores based on:
 // - C1: No Cruft Files (5 points) - No temp files, caches, build artifacts
 // - C2: No Team-Specific Files (5 points) - No .idea/, .vscode/, .DS_Store
+// - C3: No Large Files in Git History (5 points) - No files >1MB in git history
 
 use super::{Scorer, ScorerConfig};
 use crate::services::repo_score::models::*;
@@ -178,6 +179,119 @@ impl HygieneScorer {
             findings,
         })
     }
+
+    /// Score absence of large files in git history (C3: 5 points)
+    async fn score_large_files(&self, repo_path: &Path) -> Result<SubcategoryScore> {
+        let mut large_files_found = vec![];
+        let mut deductions: f64 = 0.0;
+        const ONE_MB: u64 = 1024 * 1024;
+
+        // Check if this is a git repository
+        if !repo_path.join(".git").exists() {
+            // Not a git repo - give full score
+            return Ok(SubcategoryScore {
+                id: "C3".to_string(),
+                name: "No Large Files in Git History".to_string(),
+                score: 5.0,
+                max_score: 5.0,
+                findings: vec![Finding {
+                    severity: Severity::Info,
+                    category: "Hygiene".to_string(),
+                    message: "Not a git repository (skipping git history check)".to_string(),
+                    location: None,
+                    impact_points: 0.0,
+                }],
+            });
+        }
+
+        // Use git rev-list to find all objects and their sizes
+        // Command: git rev-list --objects --all | git cat-file --batch-check
+        let rev_list_output = std::process::Command::new("git")
+            .args(["rev-list", "--objects", "--all"])
+            .current_dir(repo_path)
+            .output();
+
+        if let Ok(rev_list) = rev_list_output {
+            if rev_list.status.success() {
+                let object_list = String::from_utf8_lossy(&rev_list.stdout);
+
+                // Feed to cat-file --batch-check to get sizes
+                let cat_file = std::process::Command::new("git")
+                    .args(["cat-file", "--batch-check=%(objecttype) %(objectname) %(objectsize) %(rest)"])
+                    .current_dir(repo_path)
+                    .stdin(std::process::Stdio::piped())
+                    .stdout(std::process::Stdio::piped())
+                    .spawn();
+
+                if let Ok(mut child) = cat_file {
+                    use std::io::Write;
+                    if let Some(mut stdin) = child.stdin.take() {
+                        let _ = stdin.write_all(object_list.as_bytes());
+                    }
+
+                    if let Ok(output) = child.wait_with_output() {
+                        let batch_output = String::from_utf8_lossy(&output.stdout);
+
+                        for line in batch_output.lines() {
+                            let parts: Vec<&str> = line.split_whitespace().collect();
+                            if parts.len() >= 4 && parts[0] == "blob" {
+                                if let Ok(size) = parts[2].parse::<u64>() {
+                                    if size > ONE_MB {
+                                        let filename = parts[3..].join(" ");
+                                        let size_mb = size as f64 / ONE_MB as f64;
+                                        large_files_found.push((filename.clone(), size_mb));
+                                        deductions += 1.0; // 1 point per large file, max 5
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        let score = (5.0 - deductions.min(5.0)).max(0.0);
+        let mut findings = vec![];
+
+        if large_files_found.is_empty() {
+            findings.push(Finding {
+                severity: Severity::Success,
+                category: "Hygiene".to_string(),
+                message: "No large files (>1MB) detected in git history".to_string(),
+                location: None,
+                impact_points: 0.0,
+            });
+        } else {
+            for (filename, size_mb) in large_files_found.iter().take(10) {
+                findings.push(Finding {
+                    severity: Severity::Error,
+                    category: "Hygiene".to_string(),
+                    message: format!("Large file in git history: {} ({:.2}MB)", filename, size_mb),
+                    location: Some(filename.clone()),
+                    impact_points: -1.0,
+                });
+            }
+
+            if large_files_found.len() > 10 {
+                findings.push(Finding {
+                    severity: Severity::Warning,
+                    category: "Hygiene".to_string(),
+                    message: format!("... and {} more large files (total: {} files >1MB)",
+                        large_files_found.len() - 10, large_files_found.len()),
+                    location: None,
+                    impact_points: 0.0,
+                });
+            }
+        }
+
+        Ok(SubcategoryScore {
+            id: "C3".to_string(),
+            name: "No Large Files in Git History".to_string(),
+            score,
+            max_score: 5.0,
+            findings,
+        })
+    }
 }
 
 #[async_trait]
@@ -187,22 +301,24 @@ impl Scorer for HygieneScorer {
     }
 
     fn max_score(&self) -> f64 {
-        10.0
+        15.0
     }
 
     async fn score(&self, repo_path: &Path, _config: &ScorerConfig) -> Result<CategoryScore> {
         let c1 = self.score_cruft(repo_path).await?;
         let c2 = self.score_team_files(repo_path).await?;
+        let c3 = self.score_large_files(repo_path).await?;
 
-        let total_score = c1.score + c2.score;
+        let total_score = c1.score + c2.score + c3.score;
 
         let mut findings = c1.findings.clone();
         findings.extend(c2.findings.clone());
+        findings.extend(c3.findings.clone());
 
         Ok(CategoryScore::new(
             total_score,
             self.max_score(),
-            vec![c1, c2],
+            vec![c1, c2, c3],
             findings,
         ))
     }
@@ -266,7 +382,7 @@ mod tests {
 
         let result = scorer.score(repo_path, &config).await.unwrap();
 
-        assert_eq!(result.score, 10.0);
+        assert_eq!(result.score, 15.0);
         assert_eq!(result.percentage, 100.0);
         assert_eq!(result.status, ScoreStatus::Pass);
     }
@@ -285,8 +401,8 @@ mod tests {
 
         let result = scorer.score(repo_path, &config).await.unwrap();
 
-        // Should lose 1 point (2 cruft files × 0.5 points)
-        assert!(result.score >= 8.5 && result.score <= 9.5, "Expected score 8.5-9.5, got {}", result.score);
+        // Should lose 1 point (2 cruft files × 0.5 points) out of 15 total
+        assert!(result.score >= 13.5 && result.score <= 14.5, "Expected score 13.5-14.5, got {}", result.score);
         assert!(result.findings.iter().any(|f| f.message.contains("Cruft file")));
     }
 
@@ -304,8 +420,8 @@ mod tests {
 
         let result = scorer.score(repo_path, &config).await.unwrap();
 
-        // Should lose 2 points (2 team files × 1 point)
-        assert!(result.score >= 7.5 && result.score <= 8.5);
+        // Should lose 2 points (2 team files × 1 point) out of 15 total
+        assert!(result.score >= 12.5 && result.score <= 13.5);
         assert!(result.findings.iter().any(|f| f.message.contains("Team-specific file")));
     }
 
@@ -360,7 +476,7 @@ mod tests {
         let result = scorer.score(repo_path, &config).await.unwrap();
 
         // Hidden files are skipped, so should get full score
-        assert_eq!(result.score, 10.0);
+        assert_eq!(result.score, 15.0);
     }
 
     #[tokio::test]
@@ -378,15 +494,15 @@ mod tests {
 
         let result = scorer.score(repo_path, &config).await.unwrap();
 
-        // C1 should be 0 (maxed out deductions), C2 should be 5
-        assert!(result.score >= 4.5 && result.score <= 5.5);
+        // C1 should be 0 (maxed out deductions), C2 should be 5, C3 should be 5 = 10 total
+        assert!(result.score >= 9.5 && result.score <= 10.5);
     }
 
     #[tokio::test]
     async fn test_hygiene_category_name() {
         let scorer = HygieneScorer::new();
         assert_eq!(scorer.category_name(), "Repository Hygiene");
-        assert_eq!(scorer.max_score(), 10.0);
+        assert_eq!(scorer.max_score(), 15.0);
     }
 
     // Phase 1 Integration Tests: Verify .gitignore is respected
@@ -415,7 +531,7 @@ mod tests {
         let result = scorer.score(repo_path, &config).await.unwrap();
 
         // Should score 100% because all cruft files are gitignored
-        assert_eq!(result.score, 10.0, "Gitignored files should not be penalized");
+        assert_eq!(result.score, 15.0, "Gitignored files should not be penalized");
         assert_eq!(result.percentage, 100.0);
         assert!(result.findings.iter().any(|f| f.message.contains("No cruft files detected")));
     }
@@ -443,7 +559,7 @@ mod tests {
         let result = scorer.score(repo_path, &config).await.unwrap();
 
         // Should score 100% because all team files are gitignored
-        assert_eq!(result.score, 10.0, "Gitignored IDE files should not be penalized");
+        assert_eq!(result.score, 15.0, "Gitignored IDE files should not be penalized");
         assert!(result.findings.iter().any(|f| f.message.contains("No team-specific files detected")));
     }
 
@@ -469,7 +585,7 @@ mod tests {
         let result = scorer.score(repo_path, &config).await.unwrap();
 
         // Should lose points for .tmp/.bak files but NOT for target/
-        assert!(result.score < 10.0, "Tracked .tmp/.bak files should be penalized");
+        assert!(result.score < 15.0, "Tracked .tmp/.bak files should be penalized");
         assert!(result.score >= 4.0, "Should only penalize tracked cruft, not gitignored files");
 
         // Verify .tmp/.bak files are detected but target/ is not
@@ -504,7 +620,7 @@ mod tests {
         let result = scorer.score(repo_path, &config).await.unwrap();
 
         // These directories are skipped by performance filter, so no penalty
-        assert_eq!(result.score, 10.0, "Performance filter should skip heavy build directories");
+        assert_eq!(result.score, 15.0, "Performance filter should skip heavy build directories");
     }
 
     #[tokio::test]
@@ -536,6 +652,130 @@ mod tests {
         let result = scorer.score(repo_path, &config).await.unwrap();
 
         // All these files should be ignored by gitignore
-        assert_eq!(result.score, 10.0, "Complex .gitignore patterns should be respected");
+        assert_eq!(result.score, 15.0, "Complex .gitignore patterns should be respected");
+    }
+
+    // ========================================================================
+    // RED TEST: C3 - No Large Files in Git History (5 points)
+    // ========================================================================
+
+    #[tokio::test]
+    async fn test_c3_no_large_files_in_git_history() {
+        let temp_dir = create_temp_repo();
+        let repo_path = temp_dir.path();
+
+        // Create clean small files and commit them
+        create_file(repo_path, "src/main.rs");
+        create_file(repo_path, "README.md");
+
+        // Add and commit
+        std::process::Command::new("git")
+            .args(["add", "."])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+        std::process::Command::new("git")
+            .args(["commit", "-m", "Initial commit"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+
+        let scorer = HygieneScorer::new();
+        let config = ScorerConfig::default();
+        let result = scorer.score(repo_path, &config).await.unwrap();
+
+        // Should get full score (15.0) with no large files
+        assert_eq!(result.score, 15.0, "Clean repo should score 15.0");
+
+        // Check C3 subcategory exists
+        let c3 = result.subcategories.iter().find(|s| s.id == "C3");
+        assert!(c3.is_some(), "C3 subcategory should exist");
+        let c3 = c3.unwrap();
+        assert_eq!(c3.name, "No Large Files in Git History");
+        assert_eq!(c3.score, 5.0, "C3 should score 5.0 for clean repo");
+        assert_eq!(c3.max_score, 5.0);
+    }
+
+    #[tokio::test]
+    async fn test_c3_detects_large_files_in_history() {
+        let temp_dir = create_temp_repo();
+        let repo_path = temp_dir.path();
+
+        // Create and commit a large file (>1MB)
+        let large_file_path = repo_path.join("large_file.bin");
+        let large_content = vec![0u8; 2 * 1024 * 1024]; // 2MB file
+        fs::write(&large_file_path, large_content).unwrap();
+
+        std::process::Command::new("git")
+            .args(["add", "large_file.bin"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+        std::process::Command::new("git")
+            .args(["commit", "-m", "Add large file"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+
+        let scorer = HygieneScorer::new();
+        let config = ScorerConfig::default();
+        let result = scorer.score(repo_path, &config).await.unwrap();
+
+        // Should lose points for large file
+        assert!(result.score < 15.0, "Large file should cause point deduction");
+
+        // Check C3 subcategory
+        let c3 = result.subcategories.iter().find(|s| s.id == "C3").unwrap();
+        assert!(c3.score < 5.0, "C3 should lose points for large file");
+
+        // Check findings
+        let large_file_finding = result.findings.iter()
+            .any(|f| f.message.contains("Large file") && f.message.contains("large_file.bin"));
+        assert!(large_file_finding, "Should report large file in findings");
+    }
+
+    #[tokio::test]
+    async fn test_c3_detects_deleted_large_files() {
+        let temp_dir = create_temp_repo();
+        let repo_path = temp_dir.path();
+
+        // Create and commit a large file
+        let large_file_path = repo_path.join("deleted_large.bin");
+        let large_content = vec![0u8; 3 * 1024 * 1024]; // 3MB
+        fs::write(&large_file_path, large_content).unwrap();
+
+        std::process::Command::new("git")
+            .args(["add", "deleted_large.bin"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+        std::process::Command::new("git")
+            .args(["commit", "-m", "Add file that will be deleted"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+
+        // Delete the file and commit deletion
+        fs::remove_file(&large_file_path).unwrap();
+        std::process::Command::new("git")
+            .args(["add", "-A"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+        std::process::Command::new("git")
+            .args(["commit", "-m", "Delete large file"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+
+        let scorer = HygieneScorer::new();
+        let config = ScorerConfig::default();
+        let result = scorer.score(repo_path, &config).await.unwrap();
+
+        // Should STILL penalize because file is in history (even though deleted)
+        assert!(result.score < 15.0, "Deleted large file should still be penalized (bloats git history)");
+
+        let c3 = result.subcategories.iter().find(|s| s.id == "C3").unwrap();
+        assert!(c3.score < 5.0, "C3 should detect large file in history even after deletion");
     }
 }

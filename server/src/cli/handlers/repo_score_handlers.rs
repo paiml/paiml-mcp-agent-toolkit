@@ -412,8 +412,8 @@ mod tests {
                     findings: vec![],
                 },
                 repository_hygiene: CategoryScore {
-                    score: 10.0,
-                    max_score: 10.0,
+                    score: 15.0,
+                    max_score: 15.0,
                     percentage: 100.0,
                     status: ScoreStatus::Pass,
                     subcategories: vec![],
