@@ -373,6 +373,7 @@ fn test_edge_case_handling() {
     }
 }
 
+#[ignore] // Slow test - requires network access and cloning large repo
 #[tokio::test]
 async fn test_clone_timeout() {
     let temp_dir = TempDir::new().unwrap();
