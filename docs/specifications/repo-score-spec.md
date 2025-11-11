@@ -91,10 +91,93 @@ pmat validate-docs \
 - **CLAUDE.md, GEMINI.md, AGENT.md**: AI agent instructions, workflow accuracy
 - **CHANGELOG.md**: Version consistency, release notes accuracy
 
+**Duplicate Detection (High Entropy Check):**
+```bash
+# Detect duplicate or near-duplicate documentation
+pmat analyze-docs --check-duplicates \
+    --similarity-threshold 0.85 \
+    --output json > duplicate-docs.json
+
+# Find semantically similar docs (copy-paste content)
+pmat semantic-search \
+    --query-file docs/spec1.md \
+    --search-path docs/ \
+    --threshold 0.9 \
+    --exclude-self
+
+# Hash-based exact duplicate detection
+find . -name "*.md" -not -path "./target/*" -exec md5sum {} \; | \
+    sort | uniq -w32 -d
+```
+
+**Duplicate Documentation Penalties:**
+- -1 point: 1-2 duplicate sections across docs (>85% similarity)
+- -2 points: 3-5 duplicate sections
+- -3 points: >5 duplicates OR entire files duplicated
+- **Rationale**: Duplicates create maintenance burden, version drift, conflicting info
+
+**Documentation Graph Analysis (Detect Doc Sprawl):**
+```bash
+# Analyze documentation link structure (graph theory)
+pmat graph-docs \
+    --path docs/ \
+    --output doc-graph.json \
+    --check-connectivity
+
+# Detect disconnected documentation (multiple communities)
+pmat graph-docs \
+    --path docs/ \
+    --detect-communities \
+    --ideal-communities 1 \
+    --warn-if-disconnected
+```
+
+**Graph Metrics:**
+- **Connected Components**: Number of disconnected doc clusters (ideal: 1)
+- **Orphaned Docs**: Files with 0 incoming/outgoing links
+- **Hub Docs**: Files with >10 incoming links (good navigation anchors)
+- **Dead-end Docs**: Files with 0 outgoing links (should link back to index)
+
+**Doc Sprawl Penalties:**
+- -1 point: 2-3 disconnected components (minor sprawl)
+- -2 points: 4-6 disconnected components (moderate sprawl)
+- -3 points: >6 components OR >20% orphaned docs (severe sprawl)
+
+**Healthy Documentation Graph:**
+```
+✅ Single connected component (all docs reachable)
+✅ README.md is the root hub (highest PageRank)
+✅ <10% orphaned docs (most have cross-references)
+✅ Average path length <4 hops between any two docs
+```
+
+**Example Output:**
+```
+Documentation Graph Analysis:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 Components: 1 (ideal ✅)
+📄 Total docs: 42
+🔗 Total links: 156
+👻 Orphaned: 3 (7.1% ✅)
+🌟 Hub docs: README.md (23 links), docs/architecture.md (18 links)
+📏 Avg path length: 2.4 hops
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Status: COHESIVE ✅
+```
+
+**Best Practices:**
+- Use cross-references instead of copy-paste (`See [Architecture](docs/design/architecture.md)`)
+- Single source of truth for each concept
+- Create index docs that link to all specs/designs
+- Detect with: `pmat analyze-docs --check-duplicates --fail-on-duplicates`
+- Prevent sprawl: `pmat graph-docs --detect-communities --max-components 1`
+
 **Academic Foundation:**
 - Prana et al. (2021): "What makes a good README? A study of README quality and its impact on project success" - IEEE TSE
 - Research shows high-quality READMEs correlate with 30% higher contributor engagement
 - Farquhar et al. (Nature 2024): Semantic entropy for hallucination detection in documentation
+- **High entropy in docs**: Duplicate content increases cognitive load by 40% (Nielsen Norman Group)
+- **Graph connectivity**: Disconnected docs have 60% lower discoverability (Google Dev Docs research)
 
 #### A2. README.md Comprehensiveness (5 points)
 
@@ -333,11 +416,15 @@ git commit -m "Configure Git LFS"
 
 Robust automation ensures consistent builds, fast feedback, and confidence in releases.
 
-#### D1. Makefile Quality (10 points)
+#### D1. Shell Script & Makefile Quality (10 points)
 
 **Full Score Criteria (10/10):**
 - ✅ `Makefile` present at repo root
-- ✅ Linted by bashrs (zero errors)
+- ✅ **ALL shell files linted by bashrs (zero errors)**
+  - Makefile
+  - scripts/*.sh
+  - Dockerfile (bash commands)
+  - .github/workflows/*.yml (shell commands)
 - ✅ Standard targets: `test`, `test-fast`, `lint`, `coverage`
 - ✅ Help target (`make help` documents all targets)
 - ✅ Phony targets declared (`.PHONY: test lint`)
@@ -376,17 +463,40 @@ coverage:  ## Generate coverage report (<10 min)
 ```
 
 **Scoring:**
-- 10/10: All 6 criteria met
-- 7/10: 4-5 criteria met
-- 4/10: 2-3 criteria met
-- 0/10: No Makefile OR severe bashrs errors (SEC008, DET003)
+- 10/10: All criteria met, zero bashrs errors
+- 7/10: 4-5 criteria met OR 1-3 bashrs warnings
+- 4/10: 2-3 criteria met OR 1-2 bashrs errors
+- 0/10: No Makefile OR severe bashrs errors (SEC008, DET003, IDEM002)
 
-**Validation:**
+**Validation Commands:**
 ```bash
-bashrs lint Makefile  # Must exit 0 or 1 (warnings ok)
-make help              # Must produce output
-make test-fast         # Must complete <5 min
+# Lint Makefile
+bashrs lint Makefile  # Must exit 0 or 1 (warnings ok, errors block)
+
+# Lint all shell scripts
+find . -name "*.sh" -not -path "./target/*" -exec bashrs lint {} \;
+
+# Lint Dockerfile (if present)
+bashrs lint Dockerfile
+
+# Lint GitHub Actions workflows (shell commands)
+find .github/workflows -name "*.yml" -exec bashrs lint {} \;
+
+# Comprehensive check
+make lint  # Should include bashrs for all shell files
+make help  # Must produce output
+make test-fast  # Must complete <5 min
 ```
+
+**Critical bashrs Errors to Fix:**
+- **SEC008**: Piping curl to shell (security vulnerability)
+- **SC2086**: Unquoted variable expansion (word splitting/glob)
+- **DET003**: Unordered wildcard (non-deterministic results)
+- **IDEM002**: Non-idempotent operations (breaks repeatability)
+
+**Acceptable Warnings:**
+- **SC2116**: Useless echo (cosmetic, not breaking)
+- **NC**: No color codes in output (stylistic)
 
 #### D2. Test Performance (8 points)
 
