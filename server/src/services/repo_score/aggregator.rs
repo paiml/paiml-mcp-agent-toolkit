@@ -115,8 +115,8 @@ impl ScoreAggregator {
             });
         }
 
-        if categories.repository_hygiene.status == ScoreStatus::Fail || categories.repository_hygiene.status == ScoreStatus::Warning {
-            if categories.repository_hygiene.score < 10.0 {
+        if (categories.repository_hygiene.status == ScoreStatus::Fail || categories.repository_hygiene.status == ScoreStatus::Warning)
+            && categories.repository_hygiene.score < 10.0 {
                 recommendations.push(Recommendation {
                     priority: Priority::Medium,
                     category: "Repository Hygiene".to_string(),
@@ -134,7 +134,6 @@ impl ScoreAggregator {
                     ],
                 });
             }
-        }
 
         if categories.build_test_automation.status == ScoreStatus::Fail {
             recommendations.push(Recommendation {

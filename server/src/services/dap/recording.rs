@@ -284,8 +284,10 @@ pub fn validate_magic_header(bytes: &[u8]) -> bool {
 
 /// Compression level for recording serialization
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Default)]
 pub enum CompressionLevel {
     /// No compression (fastest)
+    #[default]
     None,
     /// Fast compression (balanced)
     Fast,
@@ -293,11 +295,6 @@ pub enum CompressionLevel {
     Best,
 }
 
-impl Default for CompressionLevel {
-    fn default() -> Self {
-        CompressionLevel::None
-    }
-}
 
 /// Streaming recording writer for incremental .pmat file creation
 ///

@@ -35,7 +35,7 @@ impl BreakpointManager {
         let source = breakpoint.source.clone();
         let line = breakpoint.line;
 
-        let file_breakpoints = self.breakpoints.entry(source).or_insert_with(HashMap::new);
+        let file_breakpoints = self.breakpoints.entry(source).or_default();
 
         let metadata = BreakpointMetadata {
             breakpoint,
@@ -93,7 +93,7 @@ impl BreakpointManager {
                     .map(|metadata| metadata.breakpoint.clone())
                     .collect()
             })
-            .unwrap_or_else(Vec::new)
+            .unwrap_or_default()
     }
 
     /// Clear all breakpoints

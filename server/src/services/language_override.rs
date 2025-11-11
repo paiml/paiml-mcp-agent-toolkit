@@ -12,6 +12,7 @@ use crate::services::enhanced_language_detection::{
 
 /// Language override options
 #[derive(Debug, Clone)]
+#[derive(Default)]
 pub struct LanguageOverride {
     /// Single language override (--language)
     pub language: Option<String>,
@@ -19,14 +20,6 @@ pub struct LanguageOverride {
     pub languages: Option<Vec<String>>,
 }
 
-impl Default for LanguageOverride {
-    fn default() -> Self {
-        Self {
-            language: None,
-            languages: None,
-        }
-    }
-}
 
 /// Get effective language(s) for analysis
 ///

@@ -118,17 +118,15 @@ impl BonusDetector {
         // Check CI workflows for cargo-mutants
         let workflows_dir = repo_path.join(".github/workflows");
         if workflows_dir.exists() {
-            for entry in WalkDir::new(&workflows_dir).max_depth(1) {
-                if let Ok(entry) = entry {
-                    if entry.file_type().is_file() {
-                        if let Some(ext) = entry.path().extension() {
-                            if ext == "yml" || ext == "yaml" {
-                                if let Ok(content) = tokio::fs::read_to_string(entry.path()).await {
-                                    if content.contains("cargo-mutants") || content.contains("cargo mutants") {
-                                        evidence.push("Mutation testing in CI workflow".to_string());
-                                        detected = true;
-                                        break;
-                                    }
+            for entry in WalkDir::new(&workflows_dir).max_depth(1).into_iter().flatten() {
+                if entry.file_type().is_file() {
+                    if let Some(ext) = entry.path().extension() {
+                        if ext == "yml" || ext == "yaml" {
+                            if let Ok(content) = tokio::fs::read_to_string(entry.path()).await {
+                                if content.contains("cargo-mutants") || content.contains("cargo mutants") {
+                                    evidence.push("Mutation testing in CI workflow".to_string());
+                                    detected = true;
+                                    break;
                                 }
                             }
                         }

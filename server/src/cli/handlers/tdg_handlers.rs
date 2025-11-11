@@ -103,7 +103,7 @@ async fn handle_tdg_subcommand(
                 path.as_path(),
                 format.clone(),
                 fail_on_regression,
-                max_score_drop.clone(),
+                max_score_drop,
                 allow_grade_drop,
             )
             .await
