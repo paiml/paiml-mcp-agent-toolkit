@@ -38,7 +38,7 @@ fn main() {
     }
 
     // Compile Cap'n Proto schema for MCP server
-    compile_capnp_schema();
+    // compile_capnp_schema(); // REMOVED: Cap'n Proto dependency eliminated (unused bloat)
 
     // Generate MCP discovery optimization tables
     // Skip during coverage builds to prevent hangs
@@ -552,36 +552,12 @@ fn calculate_asset_hash() -> String {
 }
 
 /// Compiles Cap'n Proto schema for MCP server
+/// DISABLED: Cap'n Proto removed (unused bloat dependency)
+#[allow(dead_code)]
 fn compile_capnp_schema() {
-    // Only compile schema if MCP server feature is enabled or explicitly requested
-    if env::var("CARGO_FEATURE_MCP_SERVER").is_ok() || env::var("PMAT_BUILD_MCP").is_ok() {
-        let schema_path = Path::new("src/schema/refactor_state.capnp");
-
-        if schema_path.exists() {
-            println!("cargo:warning=Compiling Cap'n Proto schema for MCP server");
-
-            let out_dir = env::var("OUT_DIR").expect("OUT_DIR environment variable must be set");
-
-            // Use capnpc to compile the schema
-            match capnpc::CompilerCommand::new()
-                .src_prefix("src/schema")
-                .file("src/schema/refactor_state.capnp")
-                .output_path(&out_dir)
-                .run()
-            {
-                Ok(()) => {
-                    println!("cargo:warning=Successfully compiled Cap'n Proto schema");
-                }
-                Err(e) => {
-                    // Don't fail the build if Cap'n Proto compilation fails
-                    // The code will fall back to JSON serialization
-                    println!("cargo:warning=Failed to compile Cap'n Proto schema: {e}. Using JSON fallback.");
-                }
-            }
-        } else {
-            println!("cargo:warning=Cap'n Proto schema file not found, skipping compilation");
-        }
-    }
+    // REMOVED: capnpc dependency eliminated (unused)
+    // Reason: 0 references found in codebase, removing bloat
+    println!("cargo:warning=Cap'n Proto schema compilation skipped (dependency removed)");
 }
 
 /// Generate MCP discovery optimization tables for <10ms initialization
