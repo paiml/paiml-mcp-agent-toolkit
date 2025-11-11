@@ -1029,6 +1029,37 @@ impl fmt::Display for ReportOutputFormat {
     }
 }
 
+/// Output format for repository health score
+#[derive(Clone, Debug, ValueEnum, PartialEq)]
+pub enum RepoScoreOutputFormat {
+    /// Text format with colored output (default)
+    Text,
+    /// JSON format for programmatic use
+    Json,
+    /// Markdown format with tables
+    Markdown,
+    /// YAML format
+    Yaml,
+}
+
+impl RepoScoreOutputFormat {
+    /// Get the string representation
+    fn as_str(&self) -> &'static str {
+        match self {
+            RepoScoreOutputFormat::Text => "text",
+            RepoScoreOutputFormat::Json => "json",
+            RepoScoreOutputFormat::Markdown => "markdown",
+            RepoScoreOutputFormat::Yaml => "yaml",
+        }
+    }
+}
+
+impl fmt::Display for RepoScoreOutputFormat {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
 /// Analysis type
 #[derive(Clone, Debug, ValueEnum, PartialEq)]
 pub enum AnalysisType {

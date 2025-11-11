@@ -345,6 +345,22 @@ impl CommandExecutor {
                 )
                 .await
             }
+            Commands::RepoScore {
+                path,
+                format,
+                verbose,
+                failures_only,
+                output,
+            } => {
+                crate::cli::handlers::repo_score_handlers::handle_repo_score(
+                    &path,
+                    format,
+                    verbose,
+                    failures_only,
+                    output.as_deref(),
+                )
+                .await
+            }
             Commands::Diagnose(args) => self.registry.utility_handlers.handle_diagnose(args).await,
             Commands::Refactor(refactor_cmd) => {
                 super::handlers::route_refactor_command(refactor_cmd).await

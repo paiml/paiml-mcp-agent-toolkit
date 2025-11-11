@@ -16,8 +16,8 @@ use crate::cli::{
     PromptOutputFormat, ProofAnnotationOutputFormat, PropertyTypeFilter, ProvabilityOutputFormat,
     QualityCheckType, QualityGateOutputFormat, QualityProfile, RefactorAutoOutputFormat,
     RefactorDocsOutputFormat, RefactorMode, RefactorOutputFormat, ReportOutputFormat,
-    SatdOutputFormat, SatdSeverity, SearchScope, SymbolTableOutputFormat, SymbolTypeFilter,
-    TdgOutputFormat, VerificationMethodFilter, WasmOutputFormat,
+    RepoScoreOutputFormat, SatdOutputFormat, SatdSeverity, SearchScope, SymbolTableOutputFormat,
+    SymbolTypeFilter, TdgOutputFormat, VerificationMethodFilter, WasmOutputFormat,
 };
 
 #[cfg(feature = "deep-wasm")]
@@ -433,6 +433,30 @@ pub enum Commands {
         /// Show performance metrics
         #[arg(long)]
         perf: bool,
+    },
+
+    /// Calculate repository health score (0-110 scale)
+    #[command(name = "repo-score", visible_aliases = &["score", "health"])]
+    RepoScore {
+        /// Repository path to score (defaults to current directory)
+        #[arg(short = 'p', long, default_value = ".")]
+        path: PathBuf,
+
+        /// Output format
+        #[arg(short = 'f', long, value_enum, default_value = "text")]
+        format: RepoScoreOutputFormat,
+
+        /// Enable verbose output (show detailed scoring breakdown)
+        #[arg(short = 'v', long)]
+        verbose: bool,
+
+        /// Show only failures and warnings
+        #[arg(long)]
+        failures_only: bool,
+
+        /// Output file path
+        #[arg(short = 'o', long)]
+        output: Option<PathBuf>,
     },
 
     /// Start HTTP API server with WebSocket support

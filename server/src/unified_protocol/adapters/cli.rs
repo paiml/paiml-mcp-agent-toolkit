@@ -104,6 +104,7 @@ impl CliAdapter {
             | Commands::Maintain { .. } // TICKET-PMAT-5032
             | Commands::Hooks(_) // TICKET-PMAT-5034
             | Commands::Report { .. }
+            | Commands::RepoScore { .. } // Sprint 48: Repository health scoring (CLI-only)
             | Commands::Enforce(_)
             | Commands::Refactor(_)
             | Commands::Roadmap(_)
@@ -1770,7 +1771,7 @@ impl CliInput {
     fn get_command_category(command: &Commands) -> CommandCategory {
         match command {
             Commands::Generate { .. } | Commands::Scaffold { .. } => CommandCategory::Generation,
-            Commands::QualityGate { .. } | Commands::QualityGates { .. } | Commands::Report { .. } | Commands::ValidateDocs(_) | Commands::ValidateReadme(_) | Commands::Prompt { .. } | Commands::Embed(_) | Commands::Semantic(_) | Commands::Mutate(_) => CommandCategory::Analysis,
+            Commands::QualityGate { .. } | Commands::QualityGates { .. } | Commands::Report { .. } | Commands::RepoScore { .. } | Commands::ValidateDocs(_) | Commands::ValidateReadme(_) | Commands::Prompt { .. } | Commands::Embed(_) | Commands::Semantic(_) | Commands::Mutate(_) => CommandCategory::Analysis,
             Commands::Serve { .. }
             | Commands::Cache { .. }
             | Commands::Memory { .. }

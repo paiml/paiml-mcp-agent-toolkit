@@ -244,6 +244,16 @@ impl CommandDispatcher {
                 )
                 .await
             }
+            Commands::RepoScore {
+                path,
+                format,
+                verbose,
+                failures_only,
+                output,
+            } => {
+                handlers::handle_repo_score(&path, format, verbose, failures_only, output.as_deref())
+                    .await
+            }
             Commands::Serve {
                 port,
                 host,
