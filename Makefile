@@ -398,30 +398,26 @@ test-doc:
 	@cargo test --doc --manifest-path server/Cargo.toml
 	@echo "✅ Doctests completed!"
 
-# Coverage analysis (EXACT pforge pattern)
+# Coverage analysis (single-phase - nextest two-phase doesn't generate profraw files reliably)
 coverage:
 	@echo "📊 Running test coverage analysis (<10 min target)..."
-	@echo "🔍 Checking for cargo-llvm-cov and cargo-nextest..."
+	@echo "🔍 Checking for cargo-llvm-cov..."
 	@command -v cargo-llvm-cov > /dev/null 2>&1 || (echo "📦 Installing cargo-llvm-cov..." && cargo install cargo-llvm-cov --locked)
-	@command -v cargo-nextest > /dev/null 2>&1 || (echo "📦 Installing cargo-nextest..." && cargo install cargo-nextest --locked)
+	@if ! rustup component list --installed | grep -q llvm-tools-preview; then \
+		echo "📦 Installing llvm-tools-preview..."; \
+		rustup component add llvm-tools-preview; \
+	fi
 	@echo "🧹 Cleaning old coverage data..."
 	@cargo llvm-cov clean --workspace
 	@mkdir -p target/coverage
-	@echo "🧪 Running tests with instrumentation..."
-	@timeout 600 cargo llvm-cov --no-report nextest \
-		--no-tests=warn \
-		--no-fail-fast \
-		--test-threads=8 \
-		--failure-output=immediate-final \
+	@echo "🧪 Running tests with instrumentation and generating reports (single-phase)..."
+	@timeout 600 cargo llvm-cov \
+		--workspace \
 		--features skip-slow-tests \
-		--workspace
-	@echo "📊 Generating coverage reports..."
-	@cargo llvm-cov report --html --output-dir target/coverage/html
-	@cargo llvm-cov report --lcov --output-path target/coverage/lcov.info
-	@echo ""
-	@echo "📊 Coverage Summary:"
-	@echo "=================="
-	@cargo llvm-cov report --summary-only
+		--html --output-dir target/coverage/html \
+		--lcov --output-path target/coverage/lcov.info \
+		--ignore-filename-regex='tests?\.rs' \
+		-- --test-threads=8
 	@echo ""
 	@echo "💡 COVERAGE INSIGHTS:"
 	@echo "- HTML report: target/coverage/html/index.html"
