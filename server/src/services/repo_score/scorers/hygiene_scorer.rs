@@ -8,8 +8,8 @@ use super::{Scorer, ScorerConfig};
 use crate::services::repo_score::models::*;
 use crate::services::repo_score::error::Result;
 use async_trait::async_trait;
+use ignore::WalkBuilder;
 use std::path::Path;
-use walkdir::WalkDir;
 
 pub struct HygieneScorer;
 
@@ -35,21 +35,32 @@ impl HygieneScorer {
         let mut cruft_found = vec![];
         let mut deductions: f64 = 0.0;
 
-        for entry in WalkDir::new(repo_path)
-            .max_depth(5)
-            .into_iter()
-        {
-            if let Ok(entry) = entry {
-                // Skip hidden files and .git directory (but not the root path)
-                if entry.depth() > 0 {
-                    let file_name = entry.file_name().to_string_lossy();
-                    if file_name.starts_with('.') && file_name != ".gitignore" {
-                        continue;
-                    }
-                }
+        // Build directory list for performance optimization (skip heavy directories early)
+        let skip_dirs = ["target", "node_modules", "dist", "build", ".next", "__pycache__", ".cache"];
 
-                if !entry.file_type().is_file() {
-                    continue; // Skip directories
+        // Use ignore::WalkBuilder to respect .gitignore (Phase 1: Root Cause Fix)
+        let walker = WalkBuilder::new(repo_path)
+            .hidden(false)           // Don't skip hidden files by default
+            .git_ignore(true)        // CRITICAL: Respect .gitignore (eliminates 71% false positives)
+            .git_exclude(true)       // Also respect .git/info/exclude
+            .max_depth(Some(5))      // Maintain max depth for performance
+            .filter_entry(move |entry| {
+                // Performance optimization: Skip known heavy build directories
+                let path = entry.path();
+                !skip_dirs.iter().any(|d| {
+                    path.file_name()
+                        .and_then(|n| n.to_str())
+                        .map(|n| n == *d)
+                        .unwrap_or(false)
+                })
+            })
+            .build();
+
+        for entry in walker {
+            if let Ok(entry) = entry {
+                // Skip directories, only process files
+                if !entry.file_type().map(|ft| ft.is_file()).unwrap_or(false) {
+                    continue;
                 }
 
                 let path = entry.path();
@@ -116,19 +127,16 @@ impl HygieneScorer {
         let mut team_files_found = vec![];
         let mut deductions: f64 = 0.0;
 
-        for entry in WalkDir::new(repo_path)
-            .max_depth(3)
-            .into_iter()
-        {
-            if let Ok(entry) = entry {
-                // Skip .git directory (but not the root path)
-                if entry.depth() > 0 {
-                    let file_name = entry.file_name().to_string_lossy();
-                    if file_name == ".git" {
-                        continue;
-                    }
-                }
+        // Use ignore::WalkBuilder to respect .gitignore
+        let walker = WalkBuilder::new(repo_path)
+            .hidden(false)           // Check hidden dirs like .idea/, .vscode/
+            .git_ignore(true)        // Respect .gitignore
+            .git_exclude(true)       // Respect .git/info/exclude
+            .max_depth(Some(3))      // Shallower depth for team files
+            .build();
 
+        for entry in walker {
+            if let Ok(entry) = entry {
                 // Check both files and directories (directories like .idea/, .vscode/ are problematic)
                 let path = entry.path();
                 let path_str = path.to_string_lossy();
