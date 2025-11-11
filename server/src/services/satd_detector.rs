@@ -888,14 +888,8 @@ impl SATDDetector {
             return Vec::new();
         }
 
-        match self.extract_from_content(content, file_path) {
-            Ok(debts) => debts,
-            Err(_e) => {
-                // Silently skip files that fail parsing
-                // BUG-010: Removed noisy warning that interleaved with progress
-                Vec::new()
-            }
-        }
+        // Silently skip files that fail parsing (BUG-010: Removed noisy warning)
+        self.extract_from_content(content, file_path).unwrap_or_default()
     }
 
     /// Find all source files in a directory

@@ -56,22 +56,20 @@ impl HygieneScorer {
             })
             .build();
 
-        for entry in walker {
-            if let Ok(entry) = entry {
-                // Skip directories, only process files
-                if !entry.file_type().map(|ft| ft.is_file()).unwrap_or(false) {
-                    continue;
-                }
+        for entry in walker.flatten() {
+            // Skip directories, only process files
+            if !entry.file_type().map(|ft| ft.is_file()).unwrap_or(false) {
+                continue;
+            }
 
-                let path = entry.path();
-                let path_str = path.to_string_lossy();
+            let path = entry.path();
+            let path_str = path.to_string_lossy();
 
-                for pattern in &cruft_patterns {
-                    if matches_pattern(&path_str, pattern) {
-                        cruft_found.push(path_str.to_string());
-                        deductions += 0.5; // 0.5 points per cruft file, max 5 points
-                        break;
-                    }
+            for pattern in &cruft_patterns {
+                if matches_pattern(&path_str, pattern) {
+                    cruft_found.push(path_str.to_string());
+                    deductions += 0.5; // 0.5 points per cruft file, max 5 points
+                    break;
                 }
             }
         }
@@ -135,18 +133,16 @@ impl HygieneScorer {
             .max_depth(Some(3))      // Shallower depth for team files
             .build();
 
-        for entry in walker {
-            if let Ok(entry) = entry {
-                // Check both files and directories (directories like .idea/, .vscode/ are problematic)
-                let path = entry.path();
-                let path_str = path.to_string_lossy();
+        for entry in walker.flatten() {
+            // Check both files and directories (directories like .idea/, .vscode/ are problematic)
+            let path = entry.path();
+            let path_str = path.to_string_lossy();
 
-                for pattern in &team_patterns {
-                    if matches_pattern(&path_str, pattern) {
-                        team_files_found.push(path_str.to_string());
-                        deductions += 1.0; // 1 point per team file, max 5 points
-                        break;
-                    }
+            for pattern in &team_patterns {
+                if matches_pattern(&path_str, pattern) {
+                    team_files_found.push(path_str.to_string());
+                    deductions += 1.0; // 1 point per team file, max 5 points
+                    break;
                 }
             }
         }
