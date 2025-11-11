@@ -40,14 +40,12 @@ impl CiScorer {
 
         // Find all YAML workflow files
         let mut workflow_files = vec![];
-        for entry in WalkDir::new(&workflows_dir).max_depth(1) {
-            if let Ok(entry) = entry {
-                if entry.file_type().is_file() {
-                    let path = entry.path();
-                    let extension = path.extension().and_then(|s| s.to_str());
-                    if extension == Some("yml") || extension == Some("yaml") {
-                        workflow_files.push(path.to_path_buf());
-                    }
+        for entry in WalkDir::new(&workflows_dir).max_depth(1).into_iter().flatten() {
+            if entry.file_type().is_file() {
+                let path = entry.path();
+                let extension = path.extension().and_then(|s| s.to_str());
+                if extension == Some("yml") || extension == Some("yaml") {
+                    workflow_files.push(path.to_path_buf());
                 }
             }
         }
@@ -107,14 +105,12 @@ impl CiScorer {
 
         // Find workflow files
         let mut workflow_files = vec![];
-        for entry in WalkDir::new(&workflows_dir).max_depth(1) {
-            if let Ok(entry) = entry {
-                if entry.file_type().is_file() {
-                    let path = entry.path();
-                    let extension = path.extension().and_then(|s| s.to_str());
-                    if extension == Some("yml") || extension == Some("yaml") {
-                        workflow_files.push(path.to_path_buf());
-                    }
+        for entry in WalkDir::new(&workflows_dir).max_depth(1).into_iter().flatten() {
+            if entry.file_type().is_file() {
+                let path = entry.path();
+                let extension = path.extension().and_then(|s| s.to_str());
+                if extension == Some("yml") || extension == Some("yaml") {
+                    workflow_files.push(path.to_path_buf());
                 }
             }
         }

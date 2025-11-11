@@ -21,6 +21,7 @@ pub struct FileIdentity {
 
 /// Component-level score breakdown for detailed analysis
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default)]
 pub struct ComponentScores {
     pub complexity_breakdown: HashMap<String, f32>,
     pub duplication_sources: Vec<String>,
@@ -29,17 +30,6 @@ pub struct ComponentScores {
     pub consistency_violations: Vec<String>,
 }
 
-impl Default for ComponentScores {
-    fn default() -> Self {
-        Self {
-            complexity_breakdown: HashMap::new(),
-            duplication_sources: Vec::new(),
-            coupling_dependencies: Vec::new(),
-            doc_missing_items: Vec::new(),
-            consistency_violations: Vec::new(),
-        }
-    }
-}
 
 /// Semantic signature for efficient similarity detection
 #[derive(Debug, Clone, Serialize, Deserialize)]

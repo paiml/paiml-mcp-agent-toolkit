@@ -425,7 +425,7 @@ impl DapServer {
 
         // Get stopped location
         let stopped_file = self.current_stopped_file.lock().unwrap().clone();
-        let stopped_line = self.current_stopped_line.lock().unwrap().clone();
+        let stopped_line = *self.current_stopped_line.lock().unwrap();
 
         let variables = if let (Some(file), Some(line)) = (stopped_file, stopped_line) {
             // Use VariableInspector to get variables

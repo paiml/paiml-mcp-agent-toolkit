@@ -11,6 +11,7 @@ use std::path::Path;
 
 /// TDG hooks configuration loaded from .pmat/tdg-rules.toml
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default)]
 pub struct TdgHooksConfig {
     #[serde(default)]
     pub quality_gates: QualityGatesConfig,
@@ -67,15 +68,6 @@ impl TdgHooksConfig {
     }
 }
 
-impl Default for TdgHooksConfig {
-    fn default() -> Self {
-        Self {
-            quality_gates: QualityGatesConfig::default(),
-            baseline: BaselineConfig::default(),
-            ci_cd: CiCdConfig::default(),
-        }
-    }
-}
 
 /// Quality gates configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -221,8 +213,10 @@ impl Default for CiCdConfig {
 /// Enforcement mode for quality gates
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
+#[derive(Default)]
 pub enum EnforcementMode {
     /// Strict mode: block commits on violations
+    #[default]
     Strict,
     /// Warning mode: show warnings but allow commits
     Warning,
@@ -230,11 +224,6 @@ pub enum EnforcementMode {
     Disabled,
 }
 
-impl Default for EnforcementMode {
-    fn default() -> Self {
-        Self::Strict
-    }
-}
 
 impl std::fmt::Display for EnforcementMode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

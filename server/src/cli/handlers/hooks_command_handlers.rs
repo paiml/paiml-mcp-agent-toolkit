@@ -896,11 +896,11 @@ async fn install_tdg_hooks_wrapper() -> Result<()> {
     install_tdg_hooks(&project_root).await?;
 
     println!("✅ TDG enforcement hooks installed successfully");
-    println!("");
+    println!();
     println!("Hooks installed:");
     println!("  - .git/hooks/pre-commit (TDG quality checks)");
     println!("  - .git/hooks/post-commit (baseline auto-update)");
-    println!("");
+    println!();
     println!("Configuration: .pmat/tdg-rules.toml");
 
     Ok(())

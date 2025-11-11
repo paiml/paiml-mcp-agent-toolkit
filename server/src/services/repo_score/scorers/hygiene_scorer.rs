@@ -223,8 +223,7 @@ impl Default for HygieneScorer {
 fn matches_pattern(path: &str, pattern: &str) -> bool {
     if pattern.ends_with('/') {
         path.contains(pattern)
-    } else if pattern.starts_with('*') {
-        let ext = &pattern[1..];
+    } else if let Some(ext) = pattern.strip_prefix('*') {
         path.ends_with(ext)
     } else {
         path.contains(pattern)

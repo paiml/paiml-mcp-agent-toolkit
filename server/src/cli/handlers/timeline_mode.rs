@@ -6,10 +6,12 @@ use anyhow::Result;
 
 /// Timeline playback mode (interactive TUI vs non-interactive)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Default)]
 pub enum TimelineMode {
     /// Interactive TUI mode (requires TTY)
     Interactive,
     /// Non-interactive batch mode
+    #[default]
     NonInteractive,
 }
 
@@ -82,11 +84,6 @@ impl TimelineMode {
     }
 }
 
-impl Default for TimelineMode {
-    fn default() -> Self {
-        TimelineMode::NonInteractive
-    }
-}
 
 /// Placeholder for handle_timeline function
 /// This will be properly implemented when integrating with existing timeline command
