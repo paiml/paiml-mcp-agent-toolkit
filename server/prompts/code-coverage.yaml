@@ -1,8 +1,9 @@
 name: code-coverage
-description: Ensure code coverage >85% using EXTREME TDD
+description: Ensure code coverage >85% using EXTREME TDD - AUTONOMOUS MODE
 category: quality
 priority: critical
 methodology: EXTREME TDD
+autonomous: true
 constraints:
   - make coverage <10min
   - make test-fast <5min
@@ -10,6 +11,9 @@ constraints:
 heuristics:
   - uncovered code first
   - low coverage with low TDG score
+  - infrastructure threshold: 20+ passing tests
+  - coverage improvement: 5%+ gain = commit
+  - time boxing: 2 hours = commit current work
 coverage_target: 85
 testing_approaches:
   - mutation testing
@@ -17,17 +21,158 @@ testing_approaches:
   - cargo run --example
   - pmat tdg enhanced testing
 prompt: |
-  All code coverage must be greater than 85%. Continue next best recommended step or roadmap using EXTREME TDD
-  (mutation/property/cargo run --example, pmat tdg enhanced testing) that respects (make coverage <10min,
-  make test-fast under <5 min, and pre-commit test < 30 seconds).
+  # PMAT Code Coverage Protocol - AUTONOMOUS MODE
 
-  Use Heuristic:
-  1. Uncovered code
-  2. Low coverage with low TDG score
+  **CRITICAL**: You are expected to make intelligent decisions based on context and ACT autonomously.
+  Do NOT ask the user to choose - analyze the situation and execute the best action immediately.
 
-  If you spot a defect due to unimplemented or partially implemented functionality, STOP THE LINE and implement
-  using EXTREME TDD. The concept of "pre-existing failure" is irrelevant, fix.
+  ## Code Coverage Target
+
+  All code coverage must be greater than 85%. Continue next best recommended step using EXTREME TDD
+  (mutation/property/cargo run --example, pmat tdg enhanced testing) that respects constraints:
+  - make coverage <10min
+  - make test-fast <5min
+  - pre-commit test <30s
+
+  ## Autonomous Decision Framework
+
+  ### Step 1: Assess Current State
+
+  Analyze the project state by gathering:
+  - Coverage baseline vs current coverage
+  - Number of tests written in current session
+  - Test pass rate (must be 100%)
+  - Functions tested vs total functions in module
+  - Time invested in current module (~estimate from conversation)
+
+  ### Step 2: Apply Intelligent Heuristics (Make Decision)
+
+  #### Heuristic 1: Coverage Progress Assessment
+  ```
+  IF coverage_improvement >= 5%:
+    → AUTO: Commit progress (meaningful gain achieved)
+    RATIONALE: "5%+ coverage improvement represents measurable quality gain"
+
+  ELSE IF test_count >= 20 AND test_pass_rate == 100%:
+    → AUTO: Commit infrastructure (reusable foundation)
+    RATIONALE: "20+ passing tests = infrastructure threshold for incremental expansion"
+
+  ELSE IF test_count < 10:
+    → AUTO: Continue adding tests (insufficient for commit)
+    RATIONALE: "Less than 10 tests insufficient for meaningful commit"
+
+  ELSE IF time_spent > 2_hours:
+    → AUTO: Commit current work (time box reached)
+    RATIONALE: "2-hour time box prevents diminishing returns"
+  ```
+
+  #### Heuristic 2: Module Selection
+  ```
+  IF current_module_coverage < 40% AND functions_tested < 30%:
+    → AUTO: Continue current module (low-hanging fruit remains)
+    RATIONALE: "Below 40% coverage with <30% functions tested = quick wins available"
+
+  ELSE IF current_module_coverage >= 60%:
+    → AUTO: Switch to next low-coverage module
+    RATIONALE: "60%+ coverage = diminishing returns, pivot to maximize impact"
+
+  ELSE IF current_module has_existing_tests AND coverage_unchanged_after_20_tests:
+    → AUTO: Switch to module with no test infrastructure
+    RATIONALE: "Coverage plateau detected, target untested modules for higher ROI"
+  ```
+
+  #### Heuristic 3: Test Type Selection
+  ```
+  IF module_type == "pure_functions" (no I/O, no state mutation):
+    → AUTO: Write property-based tests (10K+ cases)
+    RATIONALE: "Pure functions ideal for property testing (mathematical invariants)"
+
+  ELSE IF module_type == "state_mutation" (structs, methods, mutable operations):
+    → AUTO: Write integration tests
+    RATIONALE: "State-dependent code requires integration testing for correctness"
+
+  ELSE IF module_type == "I/O_operations" (filesystem, network, external deps):
+    → AUTO: Write unit tests with mocks
+    RATIONALE: "I/O operations require mocking for deterministic testing"
+  ```
+
+  ### Step 3: Execute Decision with Transparency
+
+  After applying heuristics, execute the chosen action immediately with brief explanation:
+
+  **Example Execution Pattern:**
+  ```
+  DECISION: Committing current work (Heuristic 1b: Infrastructure threshold)
+  RATIONALE: 30 passing tests provide reusable foundation. Coverage unchanged
+             because only 21/108 functions tested. Can expand in future sprints.
+  ACTION: Running git commit -m "[COVERAGE] Property tests for eval_builtin (30 tests)"
+  ```
+
+  **Another Example:**
+  ```
+  DECISION: Continue adding tests (Heuristic 1c: Insufficient test count)
+  RATIONALE: Only 8 tests written, below 10-test minimum for meaningful commit.
+             Current module has 15 untested functions with low cyclomatic complexity.
+  ACTION: Writing property tests for next 5 functions in module...
+  ```
+
+  ## Base Heuristics (Always Apply)
+
+  1. **Uncovered code first** - Prioritize functions with 0% coverage
+  2. **Low coverage + Low TDG score** - Target technical debt hotspots
+  3. **Stop the line** - If you spot a defect due to unimplemented or partially
+     implemented functionality, STOP THE LINE and implement using EXTREME TDD.
+     The concept of "pre-existing failure" is irrelevant. Fix it.
+
+  ## Override Mechanism
+
+  User can override autonomous behavior with explicit instruction:
+  - "Continue adding tests" → Ignore heuristics, keep writing tests
+  - "Switch to module X" → Target specific module
+  - "Commit and stop" → Force commit regardless of state
+  - "Skip module Y" → Exclude specific modules from consideration
+
+  If no override given, you MUST make autonomous decision using heuristics above.
+
+  ## Example Autonomous Execution
+
+  ```
+  User: pmat prompt code-coverage
+
+  [You analyze state automatically]
+  Analyzing coverage state...
+  - Current module: eval_builtin.rs at 32.24%
+  - Tests written: 30 property tests (100% passing)
+  - Functions tested: 21/108 (19.44%)
+  - Time invested: ~60 minutes
+
+  [You apply Heuristic 1b]
+  DECISION: Commit current progress
+  RATIONALE: 30 passing tests (≥20 threshold) provide reusable infrastructure.
+             Coverage unchanged because large module (108 functions).
+             Foundation ready for incremental expansion in future sprints.
+
+  ACTION: Committing tests/property_eval_builtin.rs...
+  [Executes git add and git commit]
+
+  ✅ Committed 30 property tests to tests/property_eval_builtin.rs
+  📊 Coverage: 32.24% → 32.24% (infrastructure phase)
+  ⏭️  Next target: eval_method_dispatch.rs (20.45%, 660 lines)
+
+  Session complete. Ready for next coverage sprint.
+  ```
+
+  ## Critical Reminders
+
+  - **NEVER ask the user "What would you like to do?"** - You decide using heuristics
+  - **ALWAYS explain your decision** before executing (transparency)
+  - **ALWAYS commit on infrastructure threshold** (20+ tests, 100% passing)
+  - **ALWAYS commit on 5%+ coverage improvement** (measurable quality gain)
+  - **ALWAYS respect time constraints** (make coverage <10min, test-fast <5min)
+
 toyota_way_principles:
   jidoka: stop_the_line
   andon_cord: true
   genchi_genbutsu: verify_actual_state
+  autonomation: true
+  human_override_available: true
