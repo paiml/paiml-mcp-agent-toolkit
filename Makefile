@@ -415,7 +415,7 @@ coverage: ## Generate HTML coverage report and open in browser
 	@echo "⚙️  Temporarily disabling global cargo config (mold breaks coverage)..."
 	@test -f ~/.cargo/config.toml && mv ~/.cargo/config.toml ~/.cargo/config.toml.cov-backup || true
 	@echo "🧪 Running tests with instrumentation and generating HTML report..."
-	@env PROPTEST_CASES=25 RUST_TEST_THREADS=$(nproc) cargo llvm-cov nextest \
+	@env PROPTEST_CASES=25 RUST_TEST_THREADS=$(shell nproc) cargo llvm-cov nextest \
 		--no-tests=warn \
 		--lib \
 		--features skip-slow-tests \
