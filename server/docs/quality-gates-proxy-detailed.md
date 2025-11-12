@@ -6,5 +6,5 @@ Detailed documentation for quality gate proxy implementation.
 
 ## Related Documentation
 
-- [Quality Gates](../../docs/features/QUALITY_GATES.md)
+- [PMAT Book](https://paiml.github.io/pmat-book/)
 - [Server Specification](./SPECIFICATION.md)

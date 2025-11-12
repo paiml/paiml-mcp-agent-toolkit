@@ -10,7 +10,7 @@ The server implements the core analysis engine for PMAT.
 
 ## API
 
-See parent [API Reference](../../docs/API.md) for API documentation.
+See [PMAT Book - API Reference](https://paiml.github.io/pmat-book/) for API documentation.
 
 ## Related Documentation
 

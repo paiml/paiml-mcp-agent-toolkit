@@ -504,7 +504,7 @@ The mutation testing system is accessible via MCP tools:
 
 - [Mutation Testing: A Comprehensive Survey](https://arxiv.org/abs/1805.05889)
 - [Equivalent Mutant Detection](https://ieeexplore.ieee.org/document/8823896)
-- [ML for Software Testing](https://dl.acm.org/doi/10.1145/3377811.3380424) *(requires ACM subscription)*
+- ML for Software Testing (ACM Digital Library - DOI: 10.1145/3377811.3380424)
 
 ---
 

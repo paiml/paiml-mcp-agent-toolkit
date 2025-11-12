@@ -11,4 +11,4 @@ See Rust documentation: `cargo doc --open`
 ## Related Documentation
 
 - [Server Specification](./SPECIFICATION.md)
-- [Main API Reference](../../docs/API.md)
+- [PMAT Book](https://paiml.github.io/pmat-book/)

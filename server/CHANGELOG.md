@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.194.1] - 2025-11-12
+
 ## [2.194.0] - 2025-11-10 - Workflow Prompts for EXTREME TDD
 
 ### Added

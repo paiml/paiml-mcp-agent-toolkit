@@ -12,5 +12,5 @@ PMAT's agent architecture enables AI-assisted code analysis.
 
 ## Related Documentation
 
-- [MCP Integration](../../docs/mcp-integration.md)
+- [MCP Integration](https://paiml.github.io/pmat-book/ch03-00-mcp-protocol.html)
 - [Server Specification](./SPECIFICATION.md)

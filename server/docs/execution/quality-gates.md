@@ -6,9 +6,9 @@ Server-level quality gate implementation details.
 
 ## Implementation
 
-See [main Quality Gates documentation](../../../docs/features/QUALITY_GATES.md).
+See [Quality Gates documentation](https://paiml.github.io/pmat-book/).
 
 ## Related Documentation
 
-- [Quality Gates Feature](../../../docs/features/QUALITY_GATES.md)
+- [PMAT Book](https://paiml.github.io/pmat-book/)
 - [Server Specification](../SPECIFICATION.md)

@@ -6,5 +6,5 @@ Server-level implementation of cross-language analysis.
 
 ## Related Documentation
 
-- [Main Cross-Language Guide](../../docs/cross-language-analysis.md)
-- [Language Support](../../docs/languages.md)
+- [Language Support](https://paiml.github.io/pmat-book/ch13-00-language-examples.html)
+- [PMAT Book](https://paiml.github.io/pmat-book/)

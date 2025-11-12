@@ -6,5 +6,5 @@ Server-level language support implementation.
 
 ## Related Documentation
 
-- [Main Language Support](../../docs/languages.md)
+- [Language Support](https://paiml.github.io/pmat-book/ch13-00-language-examples.html)
 - [Cross-Language Analysis](./cross-language-analysis.md)

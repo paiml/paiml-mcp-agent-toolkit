@@ -6,9 +6,9 @@ Server-specific execution roadmap.
 
 ## Status
 
-See [main roadmap](../../../ROADMAP.md) and [architecture roadmap](../../../docs/architecture/execution/roadmap.md).
+See [PMAT Book](https://paiml.github.io/pmat-book/) for project roadmap and documentation.
 
 ## Related Documentation
 
-- [Main Roadmap](../../../ROADMAP.md)
-- [Architecture Roadmap](../../../docs/architecture/execution/roadmap.md)
+- [PMAT Book](https://paiml.github.io/pmat-book/)
+- [Server Specification](../SPECIFICATION.md)
