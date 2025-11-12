@@ -79,12 +79,17 @@ check: check-scripts
 	@echo "✅ All type checks passed!"
 
 # Fast tests without coverage (optimized for speed) - Test execution MUST complete under 5 minutes
+# Following bashrs next-gen testing pattern: cargo-nextest + PROPTEST_CASES + parallel execution
 test-fast:
 	@echo "⚡ Running fast test suite (target: <5 min)..."
 	@if command -v cargo-nextest >/dev/null 2>&1; then \
-		cargo nextest run --lib --features skip-slow-tests --no-fail-fast; \
+		PROPTEST_CASES=50 RUST_TEST_THREADS=$$(nproc) cargo nextest run \
+			--lib \
+			--features skip-slow-tests \
+			--status-level skip \
+			--failure-output immediate; \
 	else \
-		cargo test --lib --features skip-slow-tests; \
+		PROPTEST_CASES=50 cargo test --lib --features skip-slow-tests; \
 	fi
 	@echo "✅ Fast tests complete"
 
@@ -395,10 +400,11 @@ test-doc:
 	@echo "✅ Doctests completed!"
 
 # Coverage analysis (two-phase with default test runner - nextest doesn't persist profraw)
-coverage:
-	@echo "📊 Running test coverage analysis (target: <10 min)..."
-	@echo "🔍 Checking for cargo-llvm-cov..."
+coverage: ## Generate HTML coverage report and open in browser
+	@echo "📊 Running comprehensive test coverage analysis (target: <10 min)..."
+	@echo "🔍 Checking for cargo-llvm-cov and cargo-nextest..."
 	@which cargo-llvm-cov > /dev/null 2>&1 || (echo "📦 Installing cargo-llvm-cov..." && cargo install cargo-llvm-cov --locked)
+	@which cargo-nextest > /dev/null 2>&1 || (echo "📦 Installing cargo-nextest..." && cargo install cargo-nextest --locked)
 	@if ! rustup component list --installed | grep -q llvm-tools-preview; then \
 		echo "📦 Installing llvm-tools-preview..."; \
 		rustup component add llvm-tools-preview; \
@@ -406,16 +412,25 @@ coverage:
 	@echo "🧹 Cleaning old coverage data..."
 	@cargo llvm-cov clean --workspace
 	@mkdir -p target/coverage
+	@echo "⚙️  Temporarily disabling global cargo config (mold breaks coverage)..."
+	@test -f ~/.cargo/config.toml && mv ~/.cargo/config.toml ~/.cargo/config.toml.cov-backup || true
 	@echo "🧪 Phase 1: Running tests with instrumentation (no report)..."
-	@cargo llvm-cov --no-report test --lib --features skip-slow-tests 2>&1 | tee target/coverage/test-output.txt
+	@env PROPTEST_CASES=100 cargo llvm-cov --no-report nextest --no-tests=warn --lib --features skip-slow-tests
 	@echo "📊 Phase 2: Generating coverage reports..."
 	@cargo llvm-cov report --html --output-dir target/coverage/html
 	@cargo llvm-cov report --lcov --output-path target/coverage/lcov.info
+	@echo "⚙️  Restoring global cargo config..."
+	@test -f ~/.cargo/config.toml.cov-backup && mv ~/.cargo/config.toml.cov-backup ~/.cargo/config.toml || true
+	@echo ""
+	@echo "📊 Coverage Summary:"
+	@echo "=================="
+	@cargo llvm-cov report --summary-only
 	@echo ""
 	@echo "💡 COVERAGE INSIGHTS:"
 	@echo "- HTML report: target/coverage/html/index.html"
 	@echo "- LCOV file: target/coverage/lcov.info"
 	@echo "- Open HTML: make coverage-open"
+	@echo "- Property test cases: 100 (reduced for speed)"
 	@echo ""
 
 # CI/CD coverage - generates LCOV for external tools (Codecov, etc.)
