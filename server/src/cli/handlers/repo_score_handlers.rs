@@ -1,6 +1,6 @@
 //! CLI handler for `pmat repo-score` command
 //!
-//! Calculates repository health score (0-110 scale) across 6 categories + bonus points.
+//! Calculates repository health score (0-100 scale) across 6 categories.
 
 use crate::cli::RepoScoreOutputFormat;
 use crate::services::repo_score::{aggregator::ScoreAggregator, models::Grade, scorers::ScorerConfig, RepoScore};
