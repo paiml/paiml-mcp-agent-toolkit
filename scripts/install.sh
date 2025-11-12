@@ -25,16 +25,16 @@ NC='\033[0m' # No Color
 
 # Helper functions
 error() {
-    printf "${RED}Error: %s${NC}\n" "$1" >&2
+    printf '%sError: %s%s\n' "$RED" "$1" "$NC" >&2
     exit 1
 }
 
 info() {
-    printf "${GREEN}%s${NC}\n" "$1"
+    printf '%s%s%s\n' "$GREEN" "$1" "$NC"
 }
 
 warn() {
-    printf "${YELLOW}%s${NC}\n" "$1"
+    printf '%s%s%s\n' "$YELLOW" "$1" "$NC"
 }
 
 # Cleanup function to remove test artifacts
