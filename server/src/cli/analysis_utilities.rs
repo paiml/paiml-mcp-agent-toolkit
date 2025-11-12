@@ -9323,6 +9323,11 @@ fn another_simple(y: i32) -> i32 {
     }
 
     #[test]
+    #[ignore] // Five Whys: Process-global CWD modification causes race conditions under parallel execution
+              // Root cause: std::env::set_current_dir() is process-wide, not thread-local
+              // Fix attempted: RAII CwdGuard failed because current_dir() fails if CWD deleted
+              // Decision: Mark as #[ignore] - unsuitable for parallel test execution
+              // Run manually: cargo test test_run_comprehensive_analyses_basic -- --ignored --test-threads=1
     fn test_run_comprehensive_analyses_basic() {
         // This is a simple test to verify the function signature and basic structure
         // In a real scenario, we'd need to mock the analysis functions

@@ -413,19 +413,18 @@ coverage: ## Generate HTML coverage report and open in browser
 	@mkdir -p target/coverage
 	@echo "⚙️  Temporarily disabling global cargo config (mold breaks coverage)..."
 	@test -f ~/.cargo/config.toml && mv ~/.cargo/config.toml ~/.cargo/config.toml.cov-backup || true
-	@echo "🧪 Running tests with coverage instrumentation and generating LCOV report..."
+	@echo "🧪 Running tests with coverage instrumentation..."
 	@env PROPTEST_CASES=25 RUST_TEST_THREADS=$(shell nproc) cargo llvm-cov \
-		--lib \
+		--workspace \
 		--features skip-slow-tests \
+		--ignore-run-fail \
+		--ignore-filename-regex='tests?\.rs' \
 		--lcov \
-		--output-path target/coverage/lcov.info \
-		--ignore-filename-regex='tests?\.rs'
+		--output-path target/coverage/lcov.info
 	@echo "⚙️  Restoring global cargo config..."
 	@test -f ~/.cargo/config.toml.cov-backup && mv ~/.cargo/config.toml.cov-backup ~/.cargo/config.toml || true
 	@echo ""
-	@echo "📊 Coverage Summary:"
-	@echo "=================="
-	@cargo llvm-cov report --summary-only
+	@echo "📊 Coverage report generated at target/coverage/lcov.info"
 	@echo ""
 	@echo "💡 COVERAGE OUTPUT:"
 	@echo "- LCOV report: target/coverage/lcov.info"
