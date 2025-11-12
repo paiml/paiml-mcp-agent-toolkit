@@ -35,8 +35,8 @@ run_check() {
     local critical="${3:-true}"
     
     echo -n "🔍 $description... "
-    
-    if eval "$command" > /dev/null 2>&1; then
+
+    if bash -c "$command" > /dev/null 2>&1; then
         echo -e "${GREEN}${CHECK}${NC}"
         return 0
     else

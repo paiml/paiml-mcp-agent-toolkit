@@ -52,14 +52,14 @@ run_chapter_test() {
 
     # Reconstruct SPECIFIC_TESTS array from exported variables in subshell
     declare -A SPECIFIC_TESTS
-    eval "SPECIFIC_TESTS[13]=\"\${SPECIFIC_TESTS_13:-}\""
+    SPECIFIC_TESTS[13]="${SPECIFIC_TESTS_13:-}"
 
     # Check if we have a specific test file for this chapter
     local test_scripts=""
-    if [ -n "${SPECIFIC_TESTS[$ch]:-}" ]; then
-        test_scripts="$test_dir/${SPECIFIC_TESTS[$ch]}"
+    if [ -n "${SPECIFIC_TESTS[$ch ]:-}" ]; then
+        test_scripts="$test_dir/${SPECIFIC_TESTS[$ch ]}"
         if [ ! -f "$test_scripts" ]; then
-            echo -e "${YELLOW}⚠️  Specific test ${SPECIFIC_TESTS[$ch]} not found for Chapter $ch${NC}"
+            echo -e "${YELLOW}⚠️  Specific test ${SPECIFIC_TESTS[$ch ]} not found for Chapter $ch${NC}"
             test_scripts=""
         fi
     fi
