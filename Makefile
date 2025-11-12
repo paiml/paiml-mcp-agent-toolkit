@@ -402,9 +402,8 @@ test-doc:
 # Coverage analysis (two-phase with default test runner - nextest doesn't persist profraw)
 coverage: ## Generate HTML coverage report and open in browser
 	@echo "📊 Running comprehensive test coverage analysis (target: <10 min)..."
-	@echo "🔍 Checking for cargo-llvm-cov and cargo-nextest..."
+	@echo "🔍 Checking for cargo-llvm-cov..."
 	@which cargo-llvm-cov > /dev/null 2>&1 || (echo "📦 Installing cargo-llvm-cov..." && cargo install cargo-llvm-cov --locked)
-	@which cargo-nextest > /dev/null 2>&1 || (echo "📦 Installing cargo-nextest..." && cargo install cargo-nextest --locked)
 	@if ! rustup component list --installed | grep -q llvm-tools-preview; then \
 		echo "📦 Installing llvm-tools-preview..."; \
 		rustup component add llvm-tools-preview; \
@@ -414,17 +413,13 @@ coverage: ## Generate HTML coverage report and open in browser
 	@mkdir -p target/coverage
 	@echo "⚙️  Temporarily disabling global cargo config (mold breaks coverage)..."
 	@test -f ~/.cargo/config.toml && mv ~/.cargo/config.toml ~/.cargo/config.toml.cov-backup || true
-	@echo "🧪 Running tests with instrumentation (no report yet)..."
-	@env PROPTEST_CASES=25 RUST_TEST_THREADS=$(shell nproc) NEXTEST_EXPERIMENTAL_FILTER_EXPR='not test(cli_integration_tests)' cargo llvm-cov nextest \
-		--no-tests=warn \
+	@echo "🧪 Running tests with coverage instrumentation and generating LCOV report..."
+	@env PROPTEST_CASES=25 RUST_TEST_THREADS=$(shell nproc) cargo llvm-cov \
 		--lib \
 		--features skip-slow-tests \
-		--failure-output immediate \
-		--no-report
-	@echo "📊 Generating HTML report..."
-	@cargo llvm-cov report --html --output-dir target/coverage/html
-	@echo "📊 Generating LCOV report..."
-	@cargo llvm-cov report --lcov --output-path target/coverage/lcov.info
+		--lcov \
+		--output-path target/coverage/lcov.info \
+		--ignore-filename-regex='tests?\.rs'
 	@echo "⚙️  Restoring global cargo config..."
 	@test -f ~/.cargo/config.toml.cov-backup && mv ~/.cargo/config.toml.cov-backup ~/.cargo/config.toml || true
 	@echo ""
@@ -432,10 +427,9 @@ coverage: ## Generate HTML coverage report and open in browser
 	@echo "=================="
 	@cargo llvm-cov report --summary-only
 	@echo ""
-	@echo "💡 COVERAGE INSIGHTS:"
-	@echo "- HTML report: target/coverage/html/index.html"
-	@echo "- LCOV file: target/coverage/lcov.info"
-	@echo "- Open HTML: make coverage-open"
+	@echo "💡 COVERAGE OUTPUT:"
+	@echo "- LCOV report: target/coverage/lcov.info"
+	@echo "- For HTML view: make coverage-html"
 	@echo "- Property test cases: 25 (zero tolerance for slow tests)"
 	@echo ""
 
@@ -491,7 +485,27 @@ coverage-full:
 coverage-summary:
 	@cargo llvm-cov report --summary-only 2>/dev/null || echo "Run 'make coverage' first"
 
-# Open HTML coverage report in browser
+# Generate HTML coverage report (interactive viewing)
+coverage-html: ## Generate HTML coverage report and open in browser
+	@echo "📊 Generating HTML coverage report..."
+	@command -v cargo-llvm-cov >/dev/null 2>&1 || cargo install cargo-llvm-cov
+	@rustup component add llvm-tools-preview
+	@cargo llvm-cov clean --workspace
+	@mkdir -p target/coverage/html
+	@test -f ~/.cargo/config.toml && mv ~/.cargo/config.toml ~/.cargo/config.toml.cov-backup || true
+	@env PROPTEST_CASES=25 RUST_TEST_THREADS=$(shell nproc) cargo llvm-cov \
+		--lib \
+		--features skip-slow-tests \
+		--html \
+		--output-dir target/coverage/html \
+		--ignore-filename-regex='tests?\.rs'
+	@test -f ~/.cargo/config.toml.cov-backup && mv ~/.cargo/config.toml.cov-backup ~/.cargo/config.toml || true
+	@echo "✅ HTML report generated: target/coverage/html/index.html"
+	@xdg-open target/coverage/html/index.html 2>/dev/null || \
+		open target/coverage/html/index.html 2>/dev/null || \
+		echo "Please open: target/coverage/html/index.html"
+
+# Open HTML coverage report in browser (expects report already generated)
 coverage-open:
 	@if [ -f target/coverage/html/index.html ]; then \
 		xdg-open target/coverage/html/index.html 2>/dev/null || \
