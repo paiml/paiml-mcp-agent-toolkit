@@ -1,19 +1,24 @@
 name: code-coverage
-description: Ensure code coverage >85% using EXTREME TDD - AUTONOMOUS MODE
+description: Ensure code coverage >85% using EXTREME TDD - AUTONOMOUS MODE v2.0 (Toyota Way Validated)
 category: quality
 priority: critical
-methodology: EXTREME TDD
+methodology: EXTREME TDD + Toyota Way (Hansei, Genchi Genbutsu, Jidoka, Kaizen)
 autonomous: true
+version: 2.0
+empirical_validation: Depyler project (67.83% → 71.15%, +136 tests, 100x efficiency gain)
 constraints:
   - make coverage <10min
   - make test-fast <5min
   - pre-commit test <30s
 heuristics:
-  - uncovered code first
+  - module type classification (LOGIC vs UI/CLI)
+  - ROI tracking (tests-per-percentage)
+  - auto-pivot on diminishing returns (<0.05%/test)
+  - uncovered code first (in LOGIC modules)
   - low coverage with low TDG score
   - infrastructure threshold: 20+ passing tests
-  - coverage improvement: 5%+ gain = commit
-  - time boxing: 2 hours = commit current work
+  - coverage improvement: 2%+ gain = commit (empirically validated, not 5%)
+  - time boxing: 90 minutes = commit current work
 coverage_target: 85
 testing_approaches:
   - mutation testing
@@ -34,51 +39,117 @@ prompt: |
   - make test-fast <5min
   - pre-commit test <30s
 
-  ## Autonomous Decision Framework
+  ## Autonomous Decision Framework (v2.0 - Toyota Way Validated)
+
+  ### Step 0: Module Type Classification (NEW - Empirical Discovery)
+
+  **CRITICAL**: Before targeting any module, classify it to predict ROI potential.
+
+  **LOGIC Modules (HIGH ROI: 0.08-0.15%/test)**:
+  - Pure functions, algorithms, analysis engines
+  - No terminal interaction, no UI prompts, no pretty printing
+  - Pattern examples: `*_analysis.rs`, `*_inference.rs`, `*_optimizer.rs`, `*_engine.rs`
+  - Rust: modules with `impl` blocks but no `dialoguer`, `colored`, `comfy-table`
+  - Python: modules with functions/classes but no `rich`, `click.prompt`, `questionary`
+  - TypeScript: `.ts` files with business logic, not `.tsx` React components
+
+  **UI/CLI Modules (LOW ROI: <0.03%/test - SKIP UNLESS REQUESTED)**:
+  - Interactive prompts (dialoguer, inquire, questionary)
+  - Pretty printing and formatting (colored, rich, chalk)
+  - Terminal interaction (Confirm, MultiSelect, Select)
+  - Pattern examples: `interactive.rs`, `cli.rs`, `*_cmd.rs`, `repl.rs`
+  - Requires complex mocking (stdin/stdout), low test value
+
+  **DECISION RULE**:
+  ```
+  IF module_type == LOGIC AND coverage < 40%:
+    → PROCEED (expected ROI: HIGH)
+
+  ELSE IF module_type == UI/CLI:
+    → SKIP (expected ROI: LOW, unless explicitly requested by user)
+
+  ELSE IF module_type == LOGIC AND coverage >= 60%:
+    → PROCEED WITH CAUTION (edge cases, expected ROI: 0.02-0.05%/test)
+  ```
 
   ### Step 1: Assess Current State
 
   Analyze the project state by gathering:
+  - **Module type** (LOGIC vs UI/CLI - classify FIRST)
   - Coverage baseline vs current coverage
   - Number of tests written in current session
   - Test pass rate (must be 100%)
   - Functions tested vs total functions in module
   - Time invested in current module (~estimate from conversation)
+  - **ROI (tests-per-percentage)** for last batch (NEW - v2.0)
 
   ### Step 2: Apply Intelligent Heuristics (Make Decision)
 
-  #### Heuristic 1: Coverage Progress Assessment
+  #### Heuristic 1: Coverage Progress Assessment (v2.0 - Empirically Refined)
   ```
-  IF coverage_improvement >= 5%:
+  IF coverage_improvement >= 2%:
     → AUTO: Commit progress (meaningful gain achieved)
-    RATIONALE: "5%+ coverage improvement represents measurable quality gain"
+    RATIONALE: "2%+ coverage improvement = measurable quality gain (empirically validated)"
+    EVIDENCE: "Depyler Phase 2-1: +2.00% gain justified commit (not 5%)"
 
   ELSE IF test_count >= 20 AND test_pass_rate == 100%:
     → AUTO: Commit infrastructure (reusable foundation)
     RATIONALE: "20+ passing tests = infrastructure threshold for incremental expansion"
 
+  ELSE IF ROI < 0.05% per test FOR 2 consecutive batches:
+    → AUTO: Commit and PIVOT to new module (diminishing returns detected)
+    RATIONALE: "ROI decline signals edge case territory, pivot for better efficiency"
+    EVIDENCE: "Depyler Phase 1-3: 0.004%/test triggered pivot to 0.105%/test (26x improvement)"
+
   ELSE IF test_count < 10:
     → AUTO: Continue adding tests (insufficient for commit)
     RATIONALE: "Less than 10 tests insufficient for meaningful commit"
 
-  ELSE IF time_spent > 2_hours:
+  ELSE IF time_spent > 90_minutes:
     → AUTO: Commit current work (time box reached)
-    RATIONALE: "2-hour time box prevents diminishing returns"
+    RATIONALE: "90-minute time box prevents over-investment"
   ```
 
-  #### Heuristic 2: Module Selection
+  #### Heuristic 1b: ROI Tracking & Auto-Pivot (NEW - v2.0)
   ```
-  IF current_module_coverage < 40% AND functions_tested < 30%:
+  AFTER EVERY 15-20 TESTS (batch):
+    1. Calculate batch ROI: (current_coverage - batch_start_coverage) / test_count
+    2. Compare to previous batch ROI
+    3. Make decision:
+
+  IF batch_ROI > 0.08% per test:
+    → CONTINUE current module (excellent ROI maintained)
+
+  ELSE IF batch_ROI 0.05-0.08% per test:
+    → EVALUATE (check time spent, consider pivot if >60 minutes invested)
+
+  ELSE IF batch_ROI < 0.05% per test FOR 2 batches:
+    → AUTO-PIVOT to new module immediately
+    → Target: LOW coverage (<40%) LOGIC module
+    RATIONALE: "Diminishing returns detected, strategic pivot recovers efficiency"
+    EVIDENCE: "Depyler: 86% ROI decline over 3 batches triggered pivot, recovered 26x ROI"
+  ```
+
+  #### Heuristic 2: Module Selection (v2.0 - Module Type Aware)
+  ```
+  IF current_module_type == UI/CLI:
+    → AUTO: SKIP and switch to LOGIC module
+    RATIONALE: "UI/CLI modules require complex mocking, LOW ROI (<0.03%/test)"
+    TARGET: Find LOW coverage (<40%) LOGIC module instead
+
+  ELSE IF current_module_type == LOGIC AND coverage < 40% AND functions_tested < 30%:
     → AUTO: Continue current module (low-hanging fruit remains)
-    RATIONALE: "Below 40% coverage with <30% functions tested = quick wins available"
+    RATIONALE: "LOGIC module with <40% coverage = HIGH ROI potential (0.08-0.15%/test)"
 
   ELSE IF current_module_coverage >= 60%:
-    → AUTO: Switch to next low-coverage module
+    → AUTO: Switch to next low-coverage LOGIC module
     RATIONALE: "60%+ coverage = diminishing returns, pivot to maximize impact"
+    TARGET: Find <40% coverage LOGIC module (avoid UI/CLI)
 
   ELSE IF current_module has_existing_tests AND coverage_unchanged_after_20_tests:
     → AUTO: Switch to module with no test infrastructure
-    RATIONALE: "Coverage plateau detected, target untested modules for higher ROI"
+    RATIONALE: "Coverage plateau detected, target untested LOGIC modules for higher ROI"
+    TARGET: Find 0-test LOGIC module with <40% coverage
   ```
 
   #### Heuristic 3: Test Type Selection
@@ -162,17 +233,26 @@ prompt: |
   Session complete. Ready for next coverage sprint.
   ```
 
-  ## Critical Reminders
+  ## Critical Reminders (v2.0)
 
   - **NEVER ask the user "What would you like to do?"** - You decide using heuristics
-  - **ALWAYS explain your decision** before executing (transparency)
+  - **ALWAYS classify module type FIRST** (LOGIC vs UI/CLI - determines ROI potential)
+  - **ALWAYS track ROI** (tests-per-percentage) - auto-pivot if <0.05%/test for 2 batches
+  - **ALWAYS explain your decision** before executing (transparency + rationale + evidence)
   - **ALWAYS commit on infrastructure threshold** (20+ tests, 100% passing)
-  - **ALWAYS commit on 5%+ coverage improvement** (measurable quality gain)
-  - **ALWAYS respect time constraints** (make coverage <10min, test-fast <5min)
+  - **ALWAYS commit on 2%+ coverage improvement** (empirically validated, not 5%)
+  - **ALWAYS commit on ROI decline** (<0.05%/test for 2 batches = diminishing returns)
+  - **ALWAYS respect time constraints** (make coverage <10min, test-fast <5min, 90-min time-box)
 
 toyota_way_principles:
   jidoka: stop_the_line
   andon_cord: true
   genchi_genbutsu: verify_actual_state
+  hansei: deep_reflection_on_roi_decline
+  kaizen: continuous_improvement_via_empirical_feedback
   autonomation: true
   human_override_available: true
+empirical_evidence:
+  depyler_validation: "67.83% → 71.15%, +136 tests, 100x efficiency (Depyler project, 2025-11-12)"
+  roi_improvement: "26x ROI gain via strategic pivot (0.004%/test → 0.105%/test)"
+  module_type_discovery: "UI/CLI modules <0.03%/test, LOGIC modules 0.08-0.15%/test"
