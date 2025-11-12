@@ -684,6 +684,7 @@ impl UtilityCommandGroup {
     }
 
     /// Handle context command
+    #[allow(clippy::too_many_arguments)]
     pub async fn handle_context(
         &self,
         toolchain: Option<String>,

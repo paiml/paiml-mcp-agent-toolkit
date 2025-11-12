@@ -102,6 +102,7 @@ pub async fn handle_search(
 }
 
 /// Handle context generation command
+#[allow(clippy::too_many_arguments)]
 pub async fn handle_context(
     toolchain: Option<String>,
     project_path: PathBuf,
