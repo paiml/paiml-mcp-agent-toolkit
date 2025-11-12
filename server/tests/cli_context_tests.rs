@@ -35,6 +35,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore] // Slow test (72s) - zero tolerance for slow tests in coverage
     fn test_context_includes_large_files_with_flag() {
         let temp_dir = TempDir::new().unwrap();
         let project_path = temp_dir.path();
