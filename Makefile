@@ -81,17 +81,15 @@ check: check-scripts
 # Fast tests without coverage (optimized for speed) - Test execution MUST complete under 5 minutes
 # Following bashrs next-gen testing pattern: cargo-nextest + PROPTEST_CASES + parallel execution
 test-fast:
-	@echo "⚡ Running fast test suite (target: <5 min)..."
+	@echo "⚡ Running fast tests (target: <5 min)..."
 	@if command -v cargo-nextest >/dev/null 2>&1; then \
 		PROPTEST_CASES=50 RUST_TEST_THREADS=$$(nproc) cargo nextest run \
-			--lib \
-			--features skip-slow-tests \
+			--workspace \
 			--status-level skip \
 			--failure-output immediate; \
 	else \
-		PROPTEST_CASES=50 cargo test --lib --features skip-slow-tests; \
+		PROPTEST_CASES=50 cargo test --workspace; \
 	fi
-	@echo "✅ Fast tests complete"
 
 # Run ALL tests (unit + integration) - slower but comprehensive
 test-all:
@@ -413,23 +411,19 @@ coverage: ## Generate HTML coverage report and open in browser
 	@mkdir -p target/coverage
 	@echo "⚙️  Temporarily disabling global cargo config (mold breaks coverage)..."
 	@test -f ~/.cargo/config.toml && mv ~/.cargo/config.toml ~/.cargo/config.toml.cov-backup || true
-	@echo "🧪 Running tests with coverage instrumentation..."
-	@env PROPTEST_CASES=25 RUST_TEST_THREADS=$(shell nproc) cargo llvm-cov \
-		--workspace \
-		--features skip-slow-tests \
-		--ignore-run-fail \
-		--ignore-filename-regex='tests?\.rs' \
-		--lcov \
-		--output-path target/coverage/lcov.info
+	@echo "🔍 Checking for cargo-nextest..."
+	@which cargo-nextest > /dev/null 2>&1 || (echo "📦 Installing cargo-nextest..." && cargo install cargo-nextest --locked)
+	@echo "🧪 Phase 1: Running tests with instrumentation (no report)..."
+	@env PROPTEST_CASES=100 cargo llvm-cov --no-report nextest --no-tests=warn --workspace || true
+	@echo "📊 Phase 2: Generating coverage reports..."
+	@cargo llvm-cov report --html --output-dir target/coverage/html
+	@cargo llvm-cov report --lcov --output-path target/coverage/lcov.info
 	@echo "⚙️  Restoring global cargo config..."
 	@test -f ~/.cargo/config.toml.cov-backup && mv ~/.cargo/config.toml.cov-backup ~/.cargo/config.toml || true
 	@echo ""
-	@echo "📊 Coverage report generated at target/coverage/lcov.info"
-	@echo ""
-	@echo "💡 COVERAGE OUTPUT:"
-	@echo "- LCOV report: target/coverage/lcov.info"
-	@echo "- For HTML view: make coverage-html"
-	@echo "- Property test cases: 25 (zero tolerance for slow tests)"
+	@echo "📊 Coverage reports generated:"
+	@echo "- HTML: target/coverage/html/index.html"
+	@echo "- LCOV: target/coverage/lcov.info"
 	@echo ""
 
 # CI/CD coverage - generates LCOV for external tools (Codecov, etc.)
