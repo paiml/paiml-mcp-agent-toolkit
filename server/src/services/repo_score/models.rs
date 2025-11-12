@@ -7,12 +7,9 @@ use std::path::PathBuf;
 /// Overall repository score result
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RepoScore {
-    pub total_score: f64,          // 0-100 base score
-    pub bonus_points: f64,         // 0-10 bonus
-    pub final_score: f64,          // total + bonus (max 110)
+    pub total_score: f64,          // 0-100 score
     pub grade: Grade,              // A+, A, A-, B+, etc.
     pub categories: CategoryScores,
-    pub bonus: BonusScores,
     pub recommendations: Vec<Recommendation>,
     pub metadata: ScoreMetadata,
 }
@@ -20,7 +17,7 @@ pub struct RepoScore {
 /// Letter grade assignment
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 pub enum Grade {
-    APlus,   // 95-110
+    APlus,   // 95-100
     A,       // 90-94
     AMinus,  // 85-89
     BPlus,   // 80-84
@@ -83,9 +80,9 @@ impl CategoryScores {
 impl Default for CategoryScores {
     fn default() -> Self {
         Self {
-            documentation: CategoryScore::default_with_max(20.0),
+            documentation: CategoryScore::default_with_max(15.0),
             precommit_hooks: CategoryScore::default_with_max(20.0),
-            repository_hygiene: CategoryScore::default_with_max(10.0),
+            repository_hygiene: CategoryScore::default_with_max(15.0),
             build_test_automation: CategoryScore::default_with_max(25.0),
             continuous_integration: CategoryScore::default_with_max(20.0),
             pmat_compliance: CategoryScore::default_with_max(5.0),

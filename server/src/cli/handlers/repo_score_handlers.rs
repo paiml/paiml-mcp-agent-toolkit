@@ -73,10 +73,8 @@ fn format_text(score: &RepoScore, verbose: bool) -> String {
 
     // Summary
     output.push_str("📌  Summary\n");
-    output.push_str(&format!("  Total Score:  {:.1}/100\n", score.total_score));
-    output.push_str(&format!("  Bonus Points: {:.1}/10\n", score.bonus_points));
-    output.push_str(&format!("  Final Score:  {:.1}/110\n", score.final_score));
-    output.push_str(&format!("  Grade:        {}\n", score.grade.as_str()));
+    output.push_str(&format!("  Score: {:.1}/100\n", score.total_score));
+    output.push_str(&format!("  Grade: {}\n", score.grade.as_str()));
     output.push('\n');
 
     // Categories
@@ -112,36 +110,6 @@ fn format_text(score: &RepoScore, verbose: bool) -> String {
         verbose,
     ));
     output.push('\n');
-
-    // Bonus
-    if score.bonus_points > 0.0 {
-        output.push_str("⭐  Bonus Points\n");
-        if score.bonus.property_tests.points > 0.0 {
-            output.push_str(&format!(
-                "  Property Testing:  {:.1}/3.0\n",
-                score.bonus.property_tests.points
-            ));
-        }
-        if score.bonus.fuzzing.points > 0.0 {
-            output.push_str(&format!(
-                "  Fuzzing:           {:.1}/2.0\n",
-                score.bonus.fuzzing.points
-            ));
-        }
-        if score.bonus.mutation_testing.points > 0.0 {
-            output.push_str(&format!(
-                "  Mutation Testing:  {:.1}/2.0\n",
-                score.bonus.mutation_testing.points
-            ));
-        }
-        if score.bonus.living_docs.points > 0.0 {
-            output.push_str(&format!(
-                "  Living Docs:       {:.1}/3.0\n",
-                score.bonus.living_docs.points
-            ));
-        }
-        output.push('\n');
-    }
 
     // Recommendations
     if !score.recommendations.is_empty() {
@@ -213,9 +181,7 @@ fn format_markdown(score: &RepoScore) -> String {
     output.push_str("# Repository Health Score\n\n");
 
     output.push_str("## Summary\n\n");
-    output.push_str(&format!("- **Total Score**: {:.1}/100\n", score.total_score));
-    output.push_str(&format!("- **Bonus Points**: {:.1}/10\n", score.bonus_points));
-    output.push_str(&format!("- **Final Score**: {:.1}/110\n", score.final_score));
+    output.push_str(&format!("- **Score**: {:.1}/100\n", score.total_score));
     output.push_str(&format!("- **Grade**: {}\n\n", score.grade.as_str()));
 
     output.push_str("## Category Scores\n\n");
@@ -301,8 +267,8 @@ fn update_readme_badge(repo_path: &Path, score: &RepoScore) -> Result<()> {
 
 /// Generate shields.io badge URL from repository score
 fn generate_badge_url(score: &RepoScore) -> String {
-    let final_score = score.final_score.round() as u8;
-    let max_score = 125; // 100 base + 25 future (Git History bonus)
+    let final_score = score.total_score.round() as u8;
+    let max_score = 100;
 
     let color = match score.grade {
         Grade::APlus | Grade::A => "brightgreen",
@@ -381,23 +347,21 @@ fn insert_badge_after_title(content: &str, badge: &str) -> String {
 mod tests {
     use super::*;
     use crate::services::repo_score::{
-        BonusItem, BonusScores, CategoryScore, CategoryScores,
+        CategoryScore, CategoryScores,
         ScoreMetadata, ScoreStatus,
     };
     use std::path::PathBuf;
     use tempfile::TempDir;
 
     /// Helper to create test RepoScore
-    fn create_test_score(final_score: f64, grade: Grade) -> RepoScore {
+    fn create_test_score(total_score: f64, grade: Grade) -> RepoScore {
         RepoScore {
-            total_score: final_score - 4.0, // Assume 4 bonus points
-            bonus_points: 4.0,
-            final_score,
+            total_score,
             grade,
             categories: CategoryScores {
                 documentation: CategoryScore {
-                    score: 20.0,
-                    max_score: 20.0,
+                    score: 15.0,
+                    max_score: 15.0,
                     percentage: 100.0,
                     status: ScoreStatus::Pass,
                     subcategories: vec![],
@@ -442,32 +406,6 @@ mod tests {
                     status: ScoreStatus::Pass,
                     subcategories: vec![],
                     findings: vec![],
-                },
-            },
-            bonus: BonusScores {
-                property_tests: BonusItem {
-                    points: 2.0,
-                    max_points: 3.0,
-                    detected: true,
-                    evidence: vec![],
-                },
-                fuzzing: BonusItem {
-                    points: 0.0,
-                    max_points: 2.0,
-                    detected: false,
-                    evidence: vec![],
-                },
-                mutation_testing: BonusItem {
-                    points: 2.0,
-                    max_points: 2.0,
-                    detected: true,
-                    evidence: vec![],
-                },
-                living_docs: BonusItem {
-                    points: 0.0,
-                    max_points: 3.0,
-                    detected: false,
-                    evidence: vec![],
                 },
             },
             recommendations: vec![],

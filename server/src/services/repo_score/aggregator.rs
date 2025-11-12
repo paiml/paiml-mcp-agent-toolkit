@@ -3,7 +3,6 @@
 use crate::services::repo_score::models::*;
 use crate::services::repo_score::error::Result;
 use crate::services::repo_score::scorers::*;
-use crate::services::repo_score::bonus::BonusDetector;
 use std::path::Path;
 use std::time::Instant;
 
@@ -42,18 +41,12 @@ impl ScoreAggregator {
             pmat_compliance,
         };
 
-        // Detect bonus points
-        let bonus_detector = BonusDetector::new();
-        let bonus = bonus_detector.detect(repo_path).await?;
-
-        // Calculate final scores
+        // Calculate final score (0-100)
         let total_score = categories.total();
-        let bonus_points = bonus.total();
-        let final_score = total_score + bonus_points;
-        let grade = Grade::from_score(final_score);
+        let grade = Grade::from_score(total_score);
 
         // Generate recommendations
-        let recommendations = self.generate_recommendations(&categories, &bonus);
+        let recommendations = self.generate_recommendations(&categories);
 
         // Create metadata
         let mut metadata = ScoreMetadata::new(repo_path.to_path_buf());
@@ -69,18 +62,15 @@ impl ScoreAggregator {
 
         Ok(RepoScore {
             total_score,
-            bonus_points,
-            final_score,
             grade,
             categories,
-            bonus,
             recommendations,
             metadata,
         })
     }
 
     /// Generate recommendations based on findings
-    fn generate_recommendations(&self, categories: &CategoryScores, bonus: &BonusScores) -> Vec<Recommendation> {
+    fn generate_recommendations(&self, categories: &CategoryScores) -> Vec<Recommendation> {
         let mut recommendations = vec![];
 
         // Check each category for failures
@@ -90,7 +80,7 @@ impl ScoreAggregator {
                 category: "Documentation".to_string(),
                 title: "Add comprehensive README.md".to_string(),
                 description: "Your repository is missing a complete README.md with required sections (Overview, Installation, Usage, License, Contributing).".to_string(),
-                impact_points: 20.0 - categories.documentation.score,
+                impact_points: 15.0 - categories.documentation.score,
                 estimated_effort: "30 minutes".to_string(),
                 commands: vec![
                     "# Create README.md with all required sections".to_string(),
@@ -116,13 +106,13 @@ impl ScoreAggregator {
         }
 
         if (categories.repository_hygiene.status == ScoreStatus::Fail || categories.repository_hygiene.status == ScoreStatus::Warning)
-            && categories.repository_hygiene.score < 10.0 {
+            && categories.repository_hygiene.score < 15.0 {
                 recommendations.push(Recommendation {
                     priority: Priority::Medium,
                     category: "Repository Hygiene".to_string(),
                     title: "Clean up repository files".to_string(),
                     description: "Remove cruft files (.tmp, .bak) and team-specific files (.idea/, .vscode/). Add them to .gitignore.".to_string(),
-                    impact_points: 10.0 - categories.repository_hygiene.score,
+                    impact_points: 15.0 - categories.repository_hygiene.score,
                     estimated_effort: "10 minutes".to_string(),
                     commands: vec![
                         "# Remove temporary files".to_string(),
@@ -175,66 +165,6 @@ impl ScoreAggregator {
                 estimated_effort: "15 minutes".to_string(),
                 commands: vec![
                     "cat > .pmat-gates.toml << 'EOF'\n[complexity]\nmax_complexity = 10\n\n[coverage]\nminimum_coverage = 80.0\nEOF".to_string(),
-                ],
-            });
-        }
-
-        // Suggest bonus features if not detected
-        if !bonus.property_tests.detected {
-            recommendations.push(Recommendation {
-                priority: Priority::Low,
-                category: "Bonus: Property Testing".to_string(),
-                title: "Add property-based testing".to_string(),
-                description: "Implement property-based tests with proptest for +3 bonus points".to_string(),
-                impact_points: 3.0,
-                estimated_effort: "2 hours".to_string(),
-                commands: vec![
-                    "cargo add proptest --dev".to_string(),
-                ],
-            });
-        }
-
-        if !bonus.fuzzing.detected {
-            recommendations.push(Recommendation {
-                priority: Priority::Low,
-                category: "Bonus: Fuzzing".to_string(),
-                title: "Add fuzzing tests".to_string(),
-                description: "Set up cargo-fuzz for +2 bonus points".to_string(),
-                impact_points: 2.0,
-                estimated_effort: "1 hour".to_string(),
-                commands: vec![
-                    "cargo install cargo-fuzz".to_string(),
-                    "cargo fuzz init".to_string(),
-                ],
-            });
-        }
-
-        if !bonus.mutation_testing.detected {
-            recommendations.push(Recommendation {
-                priority: Priority::Low,
-                category: "Bonus: Mutation Testing".to_string(),
-                title: "Add mutation testing".to_string(),
-                description: "Set up cargo-mutants for +2 bonus points".to_string(),
-                impact_points: 2.0,
-                estimated_effort: "30 minutes".to_string(),
-                commands: vec![
-                    "cargo install cargo-mutants".to_string(),
-                    "cargo mutants --list".to_string(),
-                ],
-            });
-        }
-
-        if !bonus.living_docs.detected {
-            recommendations.push(Recommendation {
-                priority: Priority::Low,
-                category: "Bonus: Living Documentation".to_string(),
-                title: "Create mdBook documentation".to_string(),
-                description: "Set up mdBook for living documentation (+3 bonus points)".to_string(),
-                impact_points: 3.0,
-                estimated_effort: "2 hours".to_string(),
-                commands: vec![
-                    "cargo install mdbook".to_string(),
-                    "mdbook init".to_string(),
                 ],
             });
         }
@@ -314,7 +244,6 @@ mod tests {
 
         // Empty repo should score very low
         assert!(result.total_score < 20.0);
-        assert_eq!(result.bonus_points, 0.0);
         assert_eq!(result.grade, Grade::F);
         assert!(!result.recommendations.is_empty());
     }
@@ -349,10 +278,8 @@ mod tests {
 
         let result = aggregator.aggregate(repo_path, &config).await.unwrap();
 
-        // Should score very high (100 base + up to 10 bonus)
+        // Should score very high (100 points max)
         assert!(result.total_score >= 80.0);
-        assert!(result.bonus_points > 0.0);
-        assert!(result.final_score >= 80.0);
     }
 
     #[tokio::test]
@@ -401,23 +328,6 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_aggregator_bonus_detection() {
-        let temp_dir = create_temp_repo();
-        let repo_path = temp_dir.path();
-
-        // Add some bonus features
-        create_file(repo_path, "Cargo.toml", "[dependencies]\nproptest = \"1.0\"");
-
-        let aggregator = ScoreAggregator::new();
-        let config = ScorerConfig::default();
-
-        let result = aggregator.aggregate(repo_path, &config).await.unwrap();
-
-        assert!(result.bonus_points > 0.0);
-        assert!(result.bonus.property_tests.detected);
-    }
-
-    #[tokio::test]
     async fn test_aggregator_recommendation_priority() {
         let temp_dir = create_temp_repo();
         let repo_path = temp_dir.path();
@@ -446,6 +356,5 @@ mod tests {
         // Verify score calculation
         let calculated_total = result.categories.total();
         assert_eq!(result.total_score, calculated_total);
-        assert_eq!(result.final_score, result.total_score + result.bonus_points);
     }
 }
