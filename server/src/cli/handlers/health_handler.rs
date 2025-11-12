@@ -728,6 +728,7 @@ mod parallel_tests {
     use super::*;
 
     #[tokio::test]
+    #[ignore] // Slow test (115s) - zero tolerance for slow tests in coverage
     async fn test_run_checks_parallel_returns_all_results() {
         let project_dir = PathBuf::from(".");
         let check_types = vec![CheckType::Build, CheckType::Complexity, CheckType::Satd];

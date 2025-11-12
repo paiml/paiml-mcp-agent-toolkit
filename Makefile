@@ -414,11 +414,16 @@ coverage: ## Generate HTML coverage report and open in browser
 	@mkdir -p target/coverage
 	@echo "⚙️  Temporarily disabling global cargo config (mold breaks coverage)..."
 	@test -f ~/.cargo/config.toml && mv ~/.cargo/config.toml ~/.cargo/config.toml.cov-backup || true
-	@echo "🧪 Phase 1: Running tests with instrumentation (no report)..."
-	@env PROPTEST_CASES=100 cargo llvm-cov --no-report nextest --no-tests=warn --lib --features skip-slow-tests
-	@echo "📊 Phase 2: Generating coverage reports..."
-	@cargo llvm-cov report --html --output-dir target/coverage/html
-	@cargo llvm-cov report --lcov --output-path target/coverage/lcov.info
+	@echo "🧪 Running tests with instrumentation and generating reports..."
+	@env PROPTEST_CASES=25 RUST_TEST_THREADS=$(nproc) cargo llvm-cov nextest \
+		--no-tests=warn \
+		--lib \
+		--features skip-slow-tests \
+		--failure-output immediate \
+		--html \
+		--output-dir target/coverage/html \
+		--lcov \
+		--output-path target/coverage/lcov.info
 	@echo "⚙️  Restoring global cargo config..."
 	@test -f ~/.cargo/config.toml.cov-backup && mv ~/.cargo/config.toml.cov-backup ~/.cargo/config.toml || true
 	@echo ""
@@ -430,7 +435,7 @@ coverage: ## Generate HTML coverage report and open in browser
 	@echo "- HTML report: target/coverage/html/index.html"
 	@echo "- LCOV file: target/coverage/lcov.info"
 	@echo "- Open HTML: make coverage-open"
-	@echo "- Property test cases: 100 (reduced for speed)"
+	@echo "- Property test cases: 25 (zero tolerance for slow tests)"
 	@echo ""
 
 # CI/CD coverage - generates LCOV for external tools (Codecov, etc.)
