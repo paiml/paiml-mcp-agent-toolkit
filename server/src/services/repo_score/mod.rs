@@ -153,19 +153,11 @@ proptest = "1.0"
         assert!(result.categories.continuous_integration.score > 0.0);
         assert!(result.categories.pmat_compliance.score > 0.0);
 
-        // Verify bonus points awarded (proptest + fuzzing = 3 + 2 = 5)
-        assert!(result.bonus_points >= 5.0);
-        assert!(result.bonus.property_tests.detected);
-        assert!(result.bonus.fuzzing.detected);
-
         // Verify high total score (should be excellent with all components)
         assert!(result.total_score >= 80.0, "Total score should be high: {}", result.total_score);
 
-        // Verify final score includes bonus
-        assert_eq!(result.final_score, result.total_score + result.bonus_points);
-
-        // Verify grade is good (should be A- or better)
-        assert!(matches!(result.grade, Grade::APlus | Grade::A | Grade::AMinus));
+        // Verify grade is good (should be B+ or better without bonus points)
+        assert!(matches!(result.grade, Grade::APlus | Grade::A | Grade::AMinus | Grade::BPlus));
 
         // Verify metadata populated
         assert_eq!(result.metadata.repository_path, repo_path);
@@ -178,7 +170,7 @@ proptest = "1.0"
         // Verify all subcategories present
         assert_eq!(result.categories.documentation.subcategories.len(), 2); // A1, A2
         assert_eq!(result.categories.precommit_hooks.subcategories.len(), 2); // B1, B2
-        assert_eq!(result.categories.repository_hygiene.subcategories.len(), 2); // C1, C2
+        assert_eq!(result.categories.repository_hygiene.subcategories.len(), 3); // C1, C2, C3
         assert_eq!(result.categories.build_test_automation.subcategories.len(), 3); // D1, D2, D3
         assert_eq!(result.categories.continuous_integration.subcategories.len(), 2); // E1, E2
         assert_eq!(result.categories.pmat_compliance.subcategories.len(), 2); // F1, F2

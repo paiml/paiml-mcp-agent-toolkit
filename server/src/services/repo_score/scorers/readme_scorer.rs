@@ -1,8 +1,8 @@
-// ReadmeScorer - Category A: Documentation Quality (20 points)
+// ReadmeScorer - Category A: Documentation Quality (15 points)
 //
 // Scores based on:
-// - A1: README Accuracy (10 points) - No broken links or code examples
-// - A2: README Comprehensiveness (10 points) - Required sections present
+// - A1: README Accuracy (7.5 points) - No broken links or code examples
+// - A2: README Comprehensiveness (7.5 points) - Required sections present
 
 use super::{Scorer, ScorerConfig};
 use crate::services::repo_score::models::*;
@@ -17,7 +17,7 @@ impl ReadmeScorer {
         Self
     }
 
-    /// Score README accuracy (A1: 10 points)
+    /// Score README accuracy (A1: 7.5 points)
     async fn score_accuracy(&self, repo_path: &Path) -> Result<SubcategoryScore> {
         let readme_path = repo_path.join("README.md");
 
@@ -26,20 +26,20 @@ impl ReadmeScorer {
                 id: "A1".to_string(),
                 name: "README Accuracy".to_string(),
                 score: 0.0,
-                max_score: 10.0,
+                max_score: 7.5,
                 findings: vec![Finding {
                     severity: Severity::Error,
                     category: "Documentation".to_string(),
                     message: "README.md not found".to_string(),
                     location: Some(readme_path.display().to_string()),
-                    impact_points: -10.0,
+                    impact_points: -7.5,
                 }],
             });
         }
 
         // For now, assume no broken links (full implementation would use validate-readme)
         // TODO: Integrate with existing validate-readme functionality
-        let mut score = 10.0;
+        let mut score = 7.5;
         let mut findings = vec![Finding {
             severity: Severity::Success,
             category: "Documentation".to_string(),
@@ -57,7 +57,7 @@ impl ReadmeScorer {
                 category: "Documentation".to_string(),
                 message: "README.md is empty".to_string(),
                 location: Some(readme_path.display().to_string()),
-                impact_points: -10.0,
+                impact_points: -7.5,
             });
         }
 
@@ -65,12 +65,12 @@ impl ReadmeScorer {
             id: "A1".to_string(),
             name: "README Accuracy".to_string(),
             score,
-            max_score: 10.0,
+            max_score: 7.5,
             findings,
         })
     }
 
-    /// Score README comprehensiveness (A2: 10 points)
+    /// Score README comprehensiveness (A2: 7.5 points)
     async fn score_comprehensiveness(&self, repo_path: &Path) -> Result<SubcategoryScore> {
         let readme_path = repo_path.join("README.md");
 
@@ -79,14 +79,14 @@ impl ReadmeScorer {
                 id: "A2".to_string(),
                 name: "README Comprehensiveness".to_string(),
                 score: 0.0,
-                max_score: 10.0,
+                max_score: 7.5,
                 findings: vec![],
             });
         }
 
         let content = tokio::fs::read_to_string(&readme_path).await?;
 
-        // Required sections (2 points each, 5 sections = 10 points)
+        // Required sections (1.5 points each, 5 sections = 7.5 points)
         let required_sections = vec![
             ("Project Description", vec![
                 r"(?i)##\s*(overview|about|description)",
@@ -124,13 +124,13 @@ impl ReadmeScorer {
             }
 
             if found {
-                score += 2.0;
+                score += 1.5;
                 findings.push(Finding {
                     severity: Severity::Success,
                     category: "Documentation".to_string(),
                     message: format!("{} section found", section_name),
                     location: Some("README.md".to_string()),
-                    impact_points: 2.0,
+                    impact_points: 1.5,
                 });
             } else {
                 findings.push(Finding {
@@ -147,7 +147,7 @@ impl ReadmeScorer {
             id: "A2".to_string(),
             name: "README Comprehensiveness".to_string(),
             score,
-            max_score: 10.0,
+            max_score: 7.5,
             findings,
         })
     }
@@ -160,7 +160,7 @@ impl Scorer for ReadmeScorer {
     }
 
     fn max_score(&self) -> f64 {
-        20.0
+        15.0
     }
 
     async fn score(&self, repo_path: &Path, _config: &ScorerConfig) -> Result<CategoryScore> {
@@ -242,7 +242,7 @@ Just a title.
         let result = scorer.score(repo_path, &config).await.unwrap();
 
         assert_eq!(result.score, 0.0);
-        assert_eq!(result.max_score, 20.0);
+        assert_eq!(result.max_score, 15.0);
         assert_eq!(result.percentage, 0.0);
         assert_eq!(result.status, ScoreStatus::Fail);
         assert!(result.findings.iter().any(|f| f.message.contains("README.md not found")));
@@ -259,7 +259,7 @@ Just a title.
 
         let result = scorer.score(repo_path, &config).await.unwrap();
 
-        assert_eq!(result.score, 20.0);
+        assert_eq!(result.score, 15.0);
         assert_eq!(result.percentage, 100.0);
         assert_eq!(result.status, ScoreStatus::Pass);
         assert_eq!(result.subcategories.len(), 2);
@@ -276,10 +276,10 @@ Just a title.
 
         let result = scorer.score(repo_path, &config).await.unwrap();
 
-        // Minimal README: gets 10 points for accuracy (exists, not empty)
-        // but 0 points for comprehensiveness (no required sections)
-        // Total: 10/20 = 50% → Fail status
-        assert!(result.score >= 8.0 && result.score <= 12.0);
+        // Minimal README: gets 7.5 points for accuracy (exists, not empty)
+        // but 0-1.5 points for comprehensiveness (maybe 1 section detected)
+        // Total: 7.5-9.0/15.0 = 50-60% → Fail status
+        assert!(result.score >= 7.0 && result.score <= 10.0);
         assert_eq!(result.status, ScoreStatus::Fail);
     }
 
@@ -296,8 +296,8 @@ Just a title.
 
         let a1 = result.subcategories.iter().find(|s| s.id == "A1").unwrap();
         assert_eq!(a1.name, "README Accuracy");
-        assert_eq!(a1.score, 10.0);
-        assert_eq!(a1.max_score, 10.0);
+        assert_eq!(a1.score, 7.5);
+        assert_eq!(a1.max_score, 7.5);
     }
 
     #[tokio::test]
@@ -313,8 +313,8 @@ Just a title.
 
         let a2 = result.subcategories.iter().find(|s| s.id == "A2").unwrap();
         assert_eq!(a2.name, "README Comprehensiveness");
-        assert_eq!(a2.score, 10.0);
-        assert_eq!(a2.max_score, 10.0);
+        assert_eq!(a2.score, 7.5);
+        assert_eq!(a2.max_score, 7.5);
     }
 
     #[tokio::test]
@@ -341,9 +341,9 @@ MIT
 
         let result = scorer.score(repo_path, &config).await.unwrap();
 
-        // 3/5 sections × 2 points = 6 points (comprehensiveness)
-        // + 10 points (accuracy) = 16 total
-        assert!(result.score >= 15.0 && result.score <= 17.0);
+        // 3/5 sections × 1.5 points = 4.5 points (comprehensiveness)
+        // + 7.5 points (accuracy) = 12.0 total
+        assert!(result.score >= 11.5 && result.score <= 12.5);
     }
 
     #[tokio::test]
@@ -366,6 +366,6 @@ MIT
     async fn test_readme_category_name() {
         let scorer = ReadmeScorer::new();
         assert_eq!(scorer.category_name(), "Documentation Quality");
-        assert_eq!(scorer.max_score(), 20.0);
+        assert_eq!(scorer.max_score(), 15.0);
     }
 }
