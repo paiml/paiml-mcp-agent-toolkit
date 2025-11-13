@@ -689,14 +689,13 @@ impl RepositoryContext {
     // Helper methods
 
     fn find_git_repo(path: &Path) -> Option<PathBuf> {
-        let mut current = path;
-        loop {
-            let git_dir = current.join(".git");
-            if git_dir.exists() {
-                return Some(current.to_path_buf());
+        // Use git2's discover() to properly handle worktrees, gitlinks, etc.
+        match git2::Repository::discover(path) {
+            Ok(repo) => {
+                // Get the repository's work directory (not the .git directory)
+                repo.workdir().map(|p| p.to_path_buf())
             }
-
-            current = current.parent()?;
+            Err(_) => None,
         }
     }
 

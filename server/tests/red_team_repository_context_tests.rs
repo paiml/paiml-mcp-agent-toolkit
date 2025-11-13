@@ -171,9 +171,8 @@ fn test_code_grep_search() {
     assert_eq!(libsql_matches.len(), 1);
 }
 
-// RED Test 7: Integration test - Real repository analysis
+// Integration Test 7: Real repository analysis (GREEN phase - now enabled!)
 #[test]
-#[ignore] // Will be enabled after implementation
 fn test_analyze_current_repository() {
     // Test on the actual pmat repository
     let repo_path = Path::new(".");
