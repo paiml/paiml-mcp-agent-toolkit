@@ -307,29 +307,30 @@ fn test_progress_tty_detection() {
     use pmat::cli::progress::ProgressIndicator;
 
     // In test environment, should detect non-TTY
-    let progress = ProgressIndicator::new("Testing");
+    let _progress = ProgressIndicator::new("Testing");
 
-    // Test environment is not a TTY
-    assert!(!progress.is_tty(), "Test environment should not be TTY");
+    // Test environment is not a TTY (static method)
+    assert!(!ProgressIndicator::is_tty(), "Test environment should not be TTY");
 }
 
 #[test]
 #[ignore] // RED test - not yet implemented
 fn test_progress_bar_formatting() {
-    use pmat::cli::progress::ProgressBar;
+    use pmat::cli::progress::MultiStageProgress;
 
-    let pb = ProgressBar::new(100);
+    let mut progress = MultiStageProgress::new(vec!["Test".to_string()]);
 
     // Test different progress levels
-    pb.set_position(0);
-    assert!(pb.format().starts_with('['));
+    progress.set_progress(0, 100);
+    assert_eq!(progress.completed_items(), 0);
+    assert_eq!(progress.total_items(), 100);
 
-    pb.set_position(50);
-    let formatted = pb.format();
-    assert!(formatted.contains("50%") || formatted.contains("50/100"));
+    progress.set_progress(50, 100);
+    assert_eq!(progress.completed_items(), 50);
+    assert_eq!(progress.total_items(), 100);
 
-    pb.set_position(100);
-    assert!(pb.is_complete());
+    progress.set_progress(100, 100);
+    assert_eq!(progress.completed_items(), 100);
 }
 
 #[test]

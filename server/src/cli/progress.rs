@@ -5,7 +5,7 @@
 
 use indicatif::{ProgressBar, ProgressStyle};
 use std::io::IsTerminal;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 /// Progress indicator for long-running operations
 pub struct ProgressIndicator {
@@ -93,12 +93,208 @@ impl ProgressIndicator {
             pb.finish_and_clear();
         }
     }
+
+    /// Check if progress is enabled
+    pub fn is_enabled(&self) -> bool {
+        self.progress_bar.is_some()
+    }
+
+    /// Check if colors are being used
+    pub fn uses_color(&self) -> bool {
+        Self::should_show_progress() && std::env::var("NO_COLOR").is_err()
+    }
+
+    /// Check if running in a TTY
+    pub fn is_tty() -> bool {
+        std::io::stdout().is_terminal()
+    }
 }
 
 impl Drop for ProgressIndicator {
     /// CC=1: Simple cleanup
     fn drop(&mut self) {
         self.clear();
+    }
+}
+
+/// Multi-stage progress indicator for operations with distinct phases
+pub struct MultiStageProgress {
+    stages: Vec<String>,
+    current_stage_index: usize,
+    progress_bar: Option<ProgressBar>,
+    start_time: Instant,
+    completed_items: u64,
+    total_items: u64,
+}
+
+impl MultiStageProgress {
+    pub fn new(stages: Vec<String>) -> Self {
+        Self {
+            stages,
+            current_stage_index: 0,
+            progress_bar: None,
+            start_time: Instant::now(),
+            completed_items: 0,
+            total_items: 0,
+        }
+    }
+
+    pub fn next_stage(&mut self, _message: &str) {
+        if self.current_stage_index < self.stages.len() - 1 {
+            self.current_stage_index += 1;
+        }
+    }
+
+    pub fn current_stage(&self) -> &str {
+        &self.stages[self.current_stage_index]
+    }
+
+    pub fn current_stage_index(&self) -> usize {
+        self.current_stage_index
+    }
+
+    pub fn set_progress(&mut self, current: u64, total: u64) {
+        self.completed_items = current;
+        self.total_items = total;
+    }
+
+    pub fn completed_items(&self) -> u64 {
+        self.completed_items
+    }
+
+    pub fn total_items(&self) -> u64 {
+        self.total_items
+    }
+
+    pub fn get_eta(&self) -> Duration {
+        if self.completed_items == 0 || self.total_items == 0 {
+            return Duration::from_secs(0);
+        }
+
+        let elapsed = self.start_time.elapsed();
+        let items_remaining = self.total_items.saturating_sub(self.completed_items);
+        let time_per_item = elapsed.as_secs_f64() / self.completed_items as f64;
+        let estimated_seconds = (items_remaining as f64 * time_per_item) as u64;
+
+        Duration::from_secs(estimated_seconds)
+    }
+
+    pub fn finish(&self, _message: &str) {
+        if let Some(ref pb) = self.progress_bar {
+            pb.finish_and_clear();
+        }
+    }
+}
+
+/// Category-based progress for operations analyzing multiple categories
+pub struct CategoryProgress {
+    categories: Vec<String>,
+    current_category_index: usize,
+    files_processed: usize,
+    total_files: usize,
+    progress_bar: Option<ProgressBar>,
+    start_time: Instant,
+}
+
+impl CategoryProgress {
+    pub fn new(categories: Vec<String>) -> Self {
+        Self {
+            categories,
+            current_category_index: 0,
+            files_processed: 0,
+            total_files: 0,
+            progress_bar: None,
+            start_time: Instant::now(),
+        }
+    }
+
+    pub fn next_category(&mut self, _name: &str) {
+        if self.current_category_index < self.categories.len() - 1 {
+            self.current_category_index += 1;
+        }
+        // Reset file progress for new category
+        self.files_processed = 0;
+        self.total_files = 0;
+    }
+
+    pub fn current_category(&self) -> &str {
+        &self.categories[self.current_category_index]
+    }
+
+    pub fn current_category_index(&self) -> usize {
+        self.current_category_index
+    }
+
+    pub fn set_file_progress(&mut self, current: usize, total: usize) {
+        self.files_processed = current;
+        self.total_files = total;
+    }
+
+    pub fn files_processed(&self) -> usize {
+        self.files_processed
+    }
+
+    pub fn total_files(&self) -> usize {
+        self.total_files
+    }
+
+    pub fn category_percent(&self) -> f64 {
+        if self.total_files == 0 {
+            return 0.0;
+        }
+        (self.files_processed as f64 / self.total_files as f64) * 100.0
+    }
+
+    pub fn overall_percent(&self) -> f64 {
+        if self.categories.is_empty() {
+            return 0.0;
+        }
+
+        // Calculate progress: completed categories + current category progress
+        let completed_categories = self.current_category_index as f64;
+        let current_category_progress = self.category_percent() / 100.0;
+        let total_progress = completed_categories + current_category_progress;
+
+        (total_progress / self.categories.len() as f64) * 100.0
+    }
+
+    pub fn elapsed(&self) -> Duration {
+        self.start_time.elapsed()
+    }
+
+    pub fn finish(&self) {
+        if let Some(ref pb) = self.progress_bar {
+            pb.finish_and_clear();
+        }
+    }
+}
+
+/// Spinner animation for indeterminate progress
+pub struct Spinner {
+    frames: Vec<char>,
+    current_frame_index: usize,
+}
+
+impl Spinner {
+    pub fn new() -> Self {
+        Self {
+            frames: vec!['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'],
+            current_frame_index: 0,
+        }
+    }
+
+    pub fn tick(&mut self) {
+        self.current_frame_index = (self.current_frame_index + 1) % self.frames.len();
+    }
+
+    pub fn current_frame(&self) -> char {
+        self.frames[self.current_frame_index]
+    }
+}
+
+impl Default for Spinner {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
