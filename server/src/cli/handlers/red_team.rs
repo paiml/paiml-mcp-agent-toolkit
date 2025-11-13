@@ -3,6 +3,7 @@
 // Implements hallucination detection for commit messages, documentation, and code comments
 // Based on specification: docs/specifications/red-team-mode-spec.md v1.1
 
+use crate::cli::progress::MultiStageProgress;
 use crate::red_team::{
     Claim, ClaimExtractor, CommitInfo, EvidenceGatherer, EvidenceResult, IntentClassifier,
     RepositoryContext,
@@ -276,9 +277,26 @@ impl RedTeamCmd {
                     eprintln!("📁 Repository: {}", path.display());
                 }
 
-                let handler = RedTeamHandler::new();
+                // Initialize progress indicator (only for text output)
+                let show_progress = matches!(format, RedTeamOutputFormat::Text);
+                let mut progress = if show_progress {
+                    let stages = vec![
+                        "Building repository context".to_string(),
+                        "Extracting claims".to_string(),
+                        "Gathering evidence".to_string(),
+                        "Analyzing results".to_string(),
+                    ];
+                    Some(MultiStageProgress::new(stages))
+                } else {
+                    None
+                };
 
-                // Build real context from repository path
+                // Stage 1: Build repository context
+                if let Some(ref mut p) = progress {
+                    p.next_stage("Building repository context");
+                }
+
+                let handler = RedTeamHandler::new();
                 let context = RepositoryContext::from_path(path)
                     .context("Failed to build repository context")?;
 
@@ -288,7 +306,22 @@ impl RedTeamCmd {
                     eprintln!("📈 Coverage report: {}", if context.has_coverage_report() { "✅ Found" } else { "⚠️  None" });
                 }
 
+                // Stage 2: Extract claims
+                if let Some(ref mut p) = progress {
+                    p.next_stage("Extracting claims");
+                }
+
                 let result = handler.analyze_commit_message(message, &context);
+
+                // Stage 3: Analysis complete
+                if let Some(ref mut p) = progress {
+                    p.next_stage("Analyzing results");
+                }
+
+                // Clear progress before output
+                if let Some(p) = progress {
+                    p.finish("Analysis complete");
+                }
 
                 match format {
                     RedTeamOutputFormat::Text => {
