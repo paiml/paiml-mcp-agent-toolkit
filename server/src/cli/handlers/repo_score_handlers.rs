@@ -2,6 +2,7 @@
 //!
 //! Calculates repository health score (0-100 scale) across 6 categories.
 
+use crate::cli::progress::ProgressIndicator;
 use crate::cli::RepoScoreOutputFormat;
 use crate::services::repo_score::{aggregator::ScoreAggregator, models::Grade, scorers::ScorerConfig, RepoScore};
 use anyhow::{Context, Result};
@@ -29,12 +30,24 @@ pub async fn handle_repo_score(
         skip_slow_checks: failures_only,
     };
 
+    // Show progress indicator for long-running operation
+    let progress = if matches!(format, RepoScoreOutputFormat::Text | RepoScoreOutputFormat::Markdown) {
+        Some(ProgressIndicator::new("Analyzing repository across 6 categories..."))
+    } else {
+        None
+    };
+
     // Run scoring
     let aggregator = ScoreAggregator::new();
     let score = aggregator
         .aggregate(path, &config)
         .await
         .context("Failed to calculate repository score")?;
+
+    // Clear progress before output
+    if let Some(p) = progress {
+        p.finish_with_message("Analysis complete");
+    }
 
     // Update README badge if requested
     if update_badge {
