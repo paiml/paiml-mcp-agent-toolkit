@@ -2,6 +2,73 @@
 //!
 //! Provides spinners and progress feedback for operations >5s.
 //! Automatically detects TTY and disables in CI environments.
+//!
+//! # Usage
+//!
+//! ## Simple Progress Spinner
+//!
+//! ```rust
+//! use pmat::cli::progress::ProgressIndicator;
+//!
+//! let progress = ProgressIndicator::new("Analyzing files...");
+//! // Perform long-running operation
+//! progress.set_message("Processing results...");
+//! progress.finish_with_message("Complete");
+//! ```
+//!
+//! ## Multi-Stage Progress
+//!
+//! ```rust
+//! use pmat::cli::progress::MultiStageProgress;
+//!
+//! let stages = vec![
+//!     "Extracting data".to_string(),
+//!     "Processing".to_string(),
+//!     "Finalizing".to_string(),
+//! ];
+//! let mut progress = MultiStageProgress::new(stages);
+//!
+//! progress.next_stage("Extracting data");
+//! progress.set_progress(10, 100);  // 10% complete
+//! // ... work ...
+//!
+//! progress.next_stage("Processing");
+//! progress.set_progress(50, 100);  // 50% complete
+//! // ... work ...
+//!
+//! let eta = progress.get_eta();
+//! println!("ETA: {:?}", eta);
+//!
+//! progress.finish("Done");
+//! ```
+//!
+//! ## Category-Based Progress
+//!
+//! ```rust
+//! use pmat::cli::progress::CategoryProgress;
+//!
+//! let categories = vec![
+//!     "Code Quality".to_string(),
+//!     "Testing".to_string(),
+//!     "Documentation".to_string(),
+//! ];
+//! let mut progress = CategoryProgress::new(categories);
+//!
+//! progress.next_category("Code Quality");
+//! progress.set_file_progress(50, 100);  // 50 of 100 files
+//! println!("Category: {:.1}%", progress.category_percent());
+//! println!("Overall: {:.1}%", progress.overall_percent());
+//!
+//! progress.finish();
+//! ```
+//!
+//! ## Environment Detection
+//!
+//! Progress indicators automatically respect:
+//! - **TTY Detection**: Only shows in interactive terminals
+//! - **CI Environments**: Disabled when `CI=true`
+//! - **NO_COLOR**: Respects `NO_COLOR` environment variable
+//! - **Quiet Mode**: Disabled when `PMAT_QUIET=1`
 
 use indicatif::{ProgressBar, ProgressStyle};
 use std::io::IsTerminal;
