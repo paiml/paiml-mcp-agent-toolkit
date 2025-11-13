@@ -47,7 +47,8 @@ pmat analyze complexity
 pmat analyze tdg
 
 # Score repository health (0-110 scale)
-pmat repo-score .
+pmat repo-score .              # Fast: scans HEAD only
+pmat repo-score . --deep       # Thorough: scans entire git history
 
 # Find Self-Admitted Technical Debt
 pmat analyze satd

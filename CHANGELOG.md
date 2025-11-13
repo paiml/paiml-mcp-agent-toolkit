@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Repository Health Scoring: --deep Flag**
+  - Added `--deep` flag to `pmat repo-score` command for comprehensive git history scanning
+  - Default mode (fast): Scans HEAD only (~0.12s execution time)
+  - Deep mode (thorough): Scans entire git history across all branches (minutes on large repos)
+  - Fixes infinite hang issue on large repositories by providing sensible defaults
+  - Implementation follows churn command pattern (opt-in thoroughness)
+
+### Technical Details
+- Added `ScorerConfig.deep` field (bool, defaults to false)
+- Modified HygieneScorer to use conditional git logic (HEAD vs --all)
+- Wired --deep flag through CLI, command dispatcher, and handlers
+- All 94 repo_score unit tests pass
+- Files modified: 6 files (+25 lines, -6 lines)
+
 ## [2.194.1] - 2025-11-12
 
 ### Changed
