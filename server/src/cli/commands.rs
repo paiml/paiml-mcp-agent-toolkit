@@ -308,6 +308,10 @@ pub enum Commands {
     #[command(visible_aliases = &["readme", "hallucination"])]
     ValidateReadme(crate::cli::handlers::ValidateReadmeCmd),
 
+    /// Red Team Mode: Automated hallucination detection for commits and code
+    #[command(visible_aliases = &["rt", "hallucination-detect"])]
+    RedTeam(crate::cli::handlers::RedTeamCmd),
+
     /// Show workflow prompts for EXTREME TDD and Toyota Way quality practices
     #[command(visible_aliases = &["p"])]
     Prompt {

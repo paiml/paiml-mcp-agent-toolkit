@@ -7,7 +7,10 @@ use crate::red_team::{
     Claim, ClaimExtractor, CommitInfo, EvidenceGatherer, EvidenceResult, IntentClassifier,
     RepositoryContext,
 };
+use clap::{Parser, Subcommand, ValueEnum};
 use std::fmt;
+use std::path::PathBuf;
+use std::process::ExitCode;
 
 /// Red Team Mode handler result
 #[derive(Debug)]
@@ -204,6 +207,98 @@ impl RedTeamHandler {
 impl Default for RedTeamHandler {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+/// Output format for Red Team analysis
+#[derive(Debug, Clone, ValueEnum)]
+pub enum RedTeamOutputFormat {
+    /// Human-readable text output
+    Text,
+    /// JSON output for programmatic consumption
+    Json,
+}
+
+/// Red Team subcommands
+#[derive(Subcommand, Debug)]
+pub enum RedTeamCommands {
+    /// Analyze a commit message for hallucinations
+    Analyze {
+        /// Commit message to analyze
+        #[arg(short, long, required = true)]
+        message: String,
+
+        /// Project path (defaults to current directory)
+        #[arg(short, long, default_value = ".")]
+        path: PathBuf,
+
+        /// Output format (text or json)
+        #[arg(short = 'f', long, default_value = "text")]
+        format: RedTeamOutputFormat,
+
+        /// Verbose output
+        #[arg(short, long)]
+        verbose: bool,
+    },
+}
+
+/// Red Team Mode CLI command
+///
+/// # Example
+///
+/// ```bash
+/// # Analyze a commit message
+/// pmat red-team analyze --message "feat: All tests passing"
+///
+/// # Analyze with JSON output
+/// pmat red-team analyze --message "test: Coverage at 85%" --format json
+/// ```
+#[derive(Parser, Debug)]
+pub struct RedTeamCmd {
+    #[command(subcommand)]
+    pub command: RedTeamCommands,
+}
+
+impl RedTeamCmd {
+    /// Execute the red-team command
+    pub fn execute(&self) -> anyhow::Result<ExitCode> {
+        match &self.command {
+            RedTeamCommands::Analyze {
+                message,
+                path: _,
+                format,
+                verbose,
+            } => {
+                if *verbose {
+                    eprintln!("🔴 Red Team Mode: Analyzing commit message");
+                    eprintln!("📝 Message: {}", message);
+                }
+
+                let handler = RedTeamHandler::new();
+                let context = RepositoryContext::new_mock(); // TODO: Build real context from path
+
+                let result = handler.analyze_commit_message(message, &context);
+
+                match format {
+                    RedTeamOutputFormat::Text => {
+                        println!("{}", result.format_text());
+                    }
+                    RedTeamOutputFormat::Json => {
+                        println!(
+                            "{}",
+                            serde_json::to_string_pretty(&result.format_json())?
+                        );
+                    }
+                }
+
+                // Exit with error if hallucinations detected
+                if result.hallucinations_detected {
+                    Ok(ExitCode::from(1))
+                } else {
+                    Ok(ExitCode::SUCCESS)
+                }
+            }
+        }
     }
 }
 

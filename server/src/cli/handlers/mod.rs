@@ -121,6 +121,7 @@ pub use prompt_handlers::handle_prompt;
 pub use provability_handler::handle_analyze_provability;
 pub use quality_gates_handler::handle_quality_gates_command; // TICKET-PMAT-5023
 pub use readme_validate_handlers::ValidateReadmeCmd; // Sprint 38: Hallucination detection CLI
+pub use red_team::RedTeamCmd; // Red Team Mode: Automated hallucination detection
 pub use refactor_docs_handlers::handle_refactor_docs;
 pub use refactor_handlers::{route_refactor_command, RefactorServeParams};
 pub use repo_score_handlers::handle_repo_score; // Sprint 48: Repository health scoring

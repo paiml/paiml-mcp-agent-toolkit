@@ -463,6 +463,14 @@ impl CommandExecutor {
                 }
                 Ok(())
             }
+            Commands::RedTeam(cmd) => {
+                // Red Team Mode: Commit hallucination detection
+                let exit_code = cmd.execute()?;
+                if exit_code != std::process::ExitCode::SUCCESS {
+                    std::process::exit(1);
+                }
+                Ok(())
+            }
             Commands::Prompt {
                 name,
                 list,
