@@ -83,12 +83,13 @@ fn test_detect_test_files() {
     let temp_dir = TempDir::new().unwrap();
     let repo_path = temp_dir.path();
 
-    // Create test files
+    // Create directories and test files
     std::fs::create_dir_all(repo_path.join("tests")).unwrap();
+    std::fs::create_dir_all(repo_path.join("src")).unwrap();
     std::fs::write(repo_path.join("tests/test_foo.rs"), "// test").unwrap();
     std::fs::write(repo_path.join("src/lib.rs"), "// lib").unwrap();
 
-    // Build context (THIS WILL FAIL - not implemented yet)
+    // Build context from path
     let context = RepositoryContext::from_path(repo_path).unwrap();
 
     // Should detect test files

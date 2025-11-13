@@ -4,6 +4,8 @@
 // Implements empirical evidence gathering for 8 claim categories
 
 use serde::{Deserialize, Serialize};
+use std::path::{Path, PathBuf};
+use anyhow::{Context, Result};
 
 use super::{Claim, ClaimCategory};
 
@@ -511,6 +513,22 @@ impl Default for EvidenceGatherer {
     }
 }
 
+// Supporting types for repository context
+#[derive(Debug, Clone)]
+pub struct CommitInfo {
+    pub message: String,
+    pub timestamp: i64,
+    pub author: String,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct TestExecutionInfo {
+    pub has_results: bool,
+    pub passed_count: usize,
+    pub failed_count: usize,
+    pub ignored_count: usize,
+}
+
 // RepositoryContext: Mock-friendly context for evidence gathering
 #[derive(Debug, Clone)]
 pub struct RepositoryContext {
@@ -525,9 +543,17 @@ pub struct RepositoryContext {
     pub code_grep_results: Option<(String, usize)>, // (search_term, count)
     pub latest_commit_timestamp: Option<i64>,
     pub commit_timestamps: Option<Vec<i64>>,
+
+    // Real repository data (populated by from_path)
+    git_repo: Option<PathBuf>,
+    test_files: Vec<PathBuf>,
+    coverage_path: Option<PathBuf>,
+    test_results_path: Option<PathBuf>,
+    repo_path: PathBuf, // Original path passed to from_path
 }
 
 impl RepositoryContext {
+    /// Create a mock context for testing
     pub fn new_mock() -> Self {
         Self {
             subsequent_commits: Some(vec![]),
@@ -541,7 +567,286 @@ impl RepositoryContext {
             code_grep_results: None,
             latest_commit_timestamp: None,
             commit_timestamps: None,
+            git_repo: None,
+            test_files: vec![],
+            coverage_path: None,
+            test_results_path: None,
+            repo_path: PathBuf::from("."),
         }
+    }
+
+    /// Build repository context from actual filesystem path
+    ///
+    /// GREEN Phase: Implementation for RED tests
+    pub fn from_path(path: &Path) -> Result<Self> {
+        let repo_path = path.canonicalize()
+            .context("Failed to canonicalize path")?;
+
+        // Detect git repository
+        let git_repo = Self::find_git_repo(&repo_path);
+
+        // Scan for test files
+        let test_files = Self::scan_test_files(&repo_path)?;
+
+        // Find coverage reports
+        let coverage_path = Self::find_coverage_report(&repo_path);
+
+        // Find test results
+        let test_results_path = Self::find_test_results(&repo_path);
+
+        Ok(Self {
+            subsequent_commits: None,
+            test_results: None,
+            actual_coverage: None,
+            coverage_error: None,
+            broken_links_count: None,
+            vulnerabilities_count: None,
+            benchmark_results: None,
+            issue_status: None,
+            code_grep_results: None,
+            latest_commit_timestamp: None,
+            commit_timestamps: None,
+            git_repo,
+            test_files,
+            coverage_path,
+            test_results_path,
+            repo_path,
+        })
+    }
+
+    /// Check if repository has git history
+    pub fn has_git_history(&self) -> bool {
+        self.git_repo.is_some()
+    }
+
+    /// Get recent commits from git history
+    pub fn get_recent_commits(&self, limit: usize) -> Vec<CommitInfo> {
+        let Some(ref repo_path) = self.git_repo else {
+            return vec![];
+        };
+
+        let Ok(repo) = git2::Repository::open(repo_path) else {
+            return vec![];
+        };
+
+        let mut commits = Vec::new();
+        let mut revwalk = match repo.revwalk() {
+            Ok(w) => w,
+            Err(_) => return vec![],
+        };
+
+        if revwalk.push_head().is_err() {
+            return vec![];
+        }
+
+        for oid in revwalk.take(limit) {
+            let Ok(oid) = oid else { continue };
+            let Ok(commit) = repo.find_commit(oid) else { continue };
+
+            commits.push(CommitInfo {
+                message: commit.message().unwrap_or("").to_string(),
+                timestamp: commit.time().seconds(),
+                author: commit.author().name().unwrap_or("Unknown").to_string(),
+            });
+        }
+
+        commits
+    }
+
+    /// Get test files found in repository
+    pub fn get_test_files(&self) -> Vec<PathBuf> {
+        self.test_files.clone()
+    }
+
+    /// Check if coverage report exists
+    pub fn has_coverage_report(&self) -> bool {
+        self.coverage_path.is_some()
+    }
+
+    /// Get coverage percentage from report
+    pub fn get_coverage_percentage(&self) -> f64 {
+        let Some(ref coverage_path) = self.coverage_path else {
+            return 0.0;
+        };
+
+        Self::parse_coverage_report(coverage_path).unwrap_or(0.0)
+    }
+
+    /// Get test execution information
+    pub fn get_test_execution_info(&self) -> TestExecutionInfo {
+        let Some(ref test_results_path) = self.test_results_path else {
+            return TestExecutionInfo::default();
+        };
+
+        Self::parse_test_results(test_results_path).unwrap_or_default()
+    }
+
+    /// Search codebase for pattern using grep
+    pub fn grep_codebase(&self, pattern: &str) -> Vec<PathBuf> {
+        Self::grep_directory(&self.repo_path, pattern).unwrap_or_default()
+    }
+
+    // Helper methods
+
+    fn find_git_repo(path: &Path) -> Option<PathBuf> {
+        let mut current = path;
+        loop {
+            let git_dir = current.join(".git");
+            if git_dir.exists() {
+                return Some(current.to_path_buf());
+            }
+
+            current = current.parent()?;
+        }
+    }
+
+    fn scan_test_files(path: &Path) -> Result<Vec<PathBuf>> {
+        use walkdir::WalkDir;
+
+        let mut test_files = Vec::new();
+
+        for entry in WalkDir::new(path)
+            .follow_links(false)
+            .into_iter()
+            .filter_map(|e| e.ok())
+        {
+            let path = entry.path();
+            let file_name = path.file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("");
+
+            // Match test file patterns
+            let is_test = path.components().any(|c| c.as_os_str() == "tests")
+                || file_name.starts_with("test_")
+                || file_name.ends_with("_test.rs")
+                || file_name.ends_with("_tests.rs");
+
+            if is_test && path.is_file() {
+                test_files.push(path.to_path_buf());
+            }
+        }
+
+        Ok(test_files)
+    }
+
+    fn find_coverage_report(path: &Path) -> Option<PathBuf> {
+        // Common coverage report locations
+        let candidates = vec![
+            path.join("target/coverage/lcov.info"),
+            path.join("target/llvm-cov/lcov.info"),
+            path.join("coverage/lcov.info"),
+            path.join("lcov.info"),
+        ];
+
+        candidates.into_iter().find(|p| p.exists())
+    }
+
+    fn find_test_results(path: &Path) -> Option<PathBuf> {
+        // Common test result locations
+        let candidates = vec![
+            path.join("target/test-results/output.txt"),
+            path.join("test-results/output.txt"),
+        ];
+
+        candidates.into_iter().find(|p| p.exists())
+    }
+
+    fn parse_coverage_report(path: &Path) -> Result<f64> {
+        let content = std::fs::read_to_string(path)
+            .context("Failed to read coverage report")?;
+
+        let mut lines_found = 0;
+        let mut lines_hit = 0;
+
+        for line in content.lines() {
+            if line.starts_with("LF:") {
+                if let Some(num) = line.strip_prefix("LF:") {
+                    lines_found += num.parse::<usize>().unwrap_or(0);
+                }
+            } else if line.starts_with("LH:") {
+                if let Some(num) = line.strip_prefix("LH:") {
+                    lines_hit += num.parse::<usize>().unwrap_or(0);
+                }
+            }
+        }
+
+        if lines_found > 0 {
+            Ok((lines_hit as f64 / lines_found as f64) * 100.0)
+        } else {
+            Ok(0.0)
+        }
+    }
+
+    fn parse_test_results(path: &Path) -> Result<TestExecutionInfo> {
+        let content = std::fs::read_to_string(path)
+            .context("Failed to read test results")?;
+
+        // Parse format: "test result: ok. 10 passed; 2 failed; 3 ignored"
+        let mut info = TestExecutionInfo {
+            has_results: true,
+            ..Default::default()
+        };
+
+        for line in content.lines() {
+            if line.contains("test result:") {
+                // Extract numbers using regex-like pattern matching
+                if let Some(passed_str) = line.split("passed").next().and_then(|s| {
+                    s.split_whitespace().last()
+                }) {
+                    info.passed_count = passed_str.parse().unwrap_or(0);
+                }
+
+                if let Some(failed_str) = line.split("failed").next().and_then(|s| {
+                    s.split(';').last().and_then(|part| part.split_whitespace().last())
+                }) {
+                    info.failed_count = failed_str.parse().unwrap_or(0);
+                }
+
+                if let Some(ignored_str) = line.split("ignored").next().and_then(|s| {
+                    s.split(';').last().and_then(|part| part.split_whitespace().last())
+                }) {
+                    info.ignored_count = ignored_str.parse().unwrap_or(0);
+                }
+
+                break;
+            }
+        }
+
+        Ok(info)
+    }
+
+    fn grep_directory(path: &Path, pattern: &str) -> Result<Vec<PathBuf>> {
+        use walkdir::WalkDir;
+
+        let mut matches = Vec::new();
+
+        for entry in WalkDir::new(path)
+            .follow_links(false)
+            .into_iter()
+            .filter_map(|e| e.ok())
+        {
+            let entry_path = entry.path();
+            if !entry_path.is_file() {
+                continue;
+            }
+
+            // Skip binary files and directories
+            if let Some(ext) = entry_path.extension() {
+                let ext_str = ext.to_string_lossy();
+                if ext_str == "so" || ext_str == "a" || ext_str == "o" {
+                    continue;
+                }
+            }
+
+            // Read file and search for pattern
+            if let Ok(content) = std::fs::read_to_string(entry_path) {
+                if content.contains(pattern) {
+                    matches.push(entry_path.to_path_buf());
+                }
+            }
+        }
+
+        Ok(matches)
     }
 
     pub fn with_coverage(mut self, coverage: f64) -> Self {

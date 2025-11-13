@@ -7,6 +7,7 @@ use crate::red_team::{
     Claim, ClaimExtractor, CommitInfo, EvidenceGatherer, EvidenceResult, IntentClassifier,
     RepositoryContext,
 };
+use anyhow::Context;
 use clap::{Parser, Subcommand, ValueEnum};
 use std::fmt;
 use std::path::PathBuf;
@@ -265,17 +266,27 @@ impl RedTeamCmd {
         match &self.command {
             RedTeamCommands::Analyze {
                 message,
-                path: _,
+                path,
                 format,
                 verbose,
             } => {
                 if *verbose {
                     eprintln!("🔴 Red Team Mode: Analyzing commit message");
                     eprintln!("📝 Message: {}", message);
+                    eprintln!("📁 Repository: {}", path.display());
                 }
 
                 let handler = RedTeamHandler::new();
-                let context = RepositoryContext::new_mock(); // TODO: Build real context from path
+
+                // Build real context from repository path
+                let context = RepositoryContext::from_path(path)
+                    .context("Failed to build repository context")?;
+
+                if *verbose {
+                    eprintln!("📊 Git history: {}", if context.has_git_history() { "✅ Found" } else { "⚠️  None" });
+                    eprintln!("🧪 Test files: {} found", context.get_test_files().len());
+                    eprintln!("📈 Coverage report: {}", if context.has_coverage_report() { "✅ Found" } else { "⚠️  None" });
+                }
 
                 let result = handler.analyze_commit_message(message, &context);
 
