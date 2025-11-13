@@ -38,6 +38,9 @@ pub struct ScorerConfig {
     pub verbose: bool,
     pub timeout_seconds: u64,
     pub skip_slow_checks: bool,
+    /// Deep scan: Check entire git history (slower but more thorough)
+    /// Default: false (scan HEAD only)
+    pub deep: bool,
 }
 
 impl Default for ScorerConfig {
@@ -46,6 +49,7 @@ impl Default for ScorerConfig {
             verbose: false,
             timeout_seconds: 300,
             skip_slow_checks: false,
+            deep: false,
         }
     }
 }

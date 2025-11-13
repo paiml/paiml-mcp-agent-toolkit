@@ -16,6 +16,7 @@ pub async fn handle_repo_score(
     failures_only: bool,
     output: Option<&Path>,
     update_badge: bool,
+    deep: bool,
 ) -> Result<()> {
     // Validate path exists
     if !path.exists() {
@@ -27,6 +28,7 @@ pub async fn handle_repo_score(
         verbose,
         timeout_seconds: 300,
         skip_slow_checks: failures_only,
+        deep,
     };
 
     // Run scoring

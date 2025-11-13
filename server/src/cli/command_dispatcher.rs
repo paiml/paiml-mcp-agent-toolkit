@@ -259,8 +259,9 @@ impl CommandDispatcher {
                 failures_only,
                 output,
                 update_badge,
+                deep,
             } => {
-                handlers::handle_repo_score(&path, format, verbose, failures_only, output.as_deref(), update_badge)
+                handlers::handle_repo_score(&path, format, verbose, failures_only, output.as_deref(), update_badge, deep)
                     .await
             }
             Commands::Serve {

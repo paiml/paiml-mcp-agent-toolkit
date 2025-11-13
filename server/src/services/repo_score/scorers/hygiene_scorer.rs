@@ -201,7 +201,7 @@ impl HygieneScorer {
     }
 
     /// Score absence of large files in git history (C3: 5 points)
-    async fn score_large_files(&self, repo_path: &Path) -> Result<SubcategoryScore> {
+    async fn score_large_files(&self, repo_path: &Path, config: &ScorerConfig) -> Result<SubcategoryScore> {
         tracing::debug!("HygieneScorer::score_large_files START");
         let mut large_files_found = vec![];
         let mut deductions: f64 = 0.0;
@@ -233,12 +233,17 @@ impl HygieneScorer {
         // Use git rev-list | git cat-file --batch-check to stream efficiently
         // Default: HEAD only (fast, <1s even on large repos)
         // With --deep: --all (slow, minutes on large repos)
-        tracing::debug!("score_large_files: running piped command: git rev-list --objects HEAD | git cat-file --batch-check");
+        let rev_list_target = if config.deep { "--all" } else { "HEAD" };
+        let git_command = format!(
+            "git rev-list --objects {} | git cat-file --batch-check='%(objecttype) %(objectname) %(objectsize) %(rest)'",
+            rev_list_target
+        );
+        tracing::debug!("score_large_files: running piped command: {}", git_command);
 
         // CRITICAL: Use shell to pipe commands, avoiding Rust subprocess deadlock
         let output = std::process::Command::new("sh")
             .arg("-c")
-            .arg("git rev-list --objects HEAD | git cat-file --batch-check='%(objecttype) %(objectname) %(objectsize) %(rest)'")
+            .arg(&git_command)
             .current_dir(repo_path)
             .output();
 
@@ -322,10 +327,10 @@ impl Scorer for HygieneScorer {
         15.0
     }
 
-    async fn score(&self, repo_path: &Path, _config: &ScorerConfig) -> Result<CategoryScore> {
+    async fn score(&self, repo_path: &Path, config: &ScorerConfig) -> Result<CategoryScore> {
         let c1 = self.score_cruft(repo_path).await?;
         let c2 = self.score_team_files(repo_path).await?;
-        let c3 = self.score_large_files(repo_path).await?;
+        let c3 = self.score_large_files(repo_path, config).await?;
 
         let total_score = c1.score + c2.score + c3.score;
 

@@ -465,6 +465,11 @@ pub enum Commands {
         /// Update README.md with repository health badge
         #[arg(long)]
         update_badge: bool,
+
+        /// Deep scan: Check entire git history (slower but more thorough)
+        /// Default: Scan HEAD only (fast). Use --deep for complete history analysis.
+        #[arg(long)]
+        deep: bool,
     },
 
     /// Start HTTP API server with WebSocket support
