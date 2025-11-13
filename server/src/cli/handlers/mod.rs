@@ -50,6 +50,7 @@ pub mod quality_gate_formatter;
 pub mod quality_gate_property_tests;
 pub mod quality_gates_handler; // TICKET-PMAT-5023
 pub mod readme_validate_handlers; // Sprint 38: Hallucination detection CLI
+pub mod red_team; // Red Team Mode: Automated hallucination detection
 pub mod refactor_auto_handlers;
 #[cfg(test)]
 pub mod refactor_auto_property_tests;
