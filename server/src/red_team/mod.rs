@@ -4,10 +4,11 @@
 // Implements detection of false claims in commit messages, documentation, and code comments
 
 pub mod claim_extractor;
+pub mod evidence_gatherer;
 pub mod intent_classifier;
 
 pub use claim_extractor::{Claim, ClaimCategory, ClaimExtractor};
+pub use evidence_gatherer::{EvidenceGatherer, EvidenceResult, EvidenceSource, RepositoryContext};
 pub use intent_classifier::{
-    CommitInfo, CommitIntent, IntentClassification, IntentClassifier,
-    SignalResult, TestChanges,
+    CommitInfo, CommitIntent, IntentClassification, IntentClassifier, SignalResult, TestChanges,
 };
