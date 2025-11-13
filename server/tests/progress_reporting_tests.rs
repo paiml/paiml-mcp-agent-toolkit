@@ -122,7 +122,7 @@ fn test_red_team_eta_calculation() {
     let mut progress = MultiStageProgress::new(vec!["Test stage".to_string()]);
 
     // Simulate work over time
-    let start = Instant::now();
+    let _start = Instant::now();
     progress.set_progress(5, 10);
 
     // Simulate 1 second of work (50% complete)
@@ -132,7 +132,7 @@ fn test_red_team_eta_calculation() {
 
     // ETA should be approximately 1 second (remaining 50% at same rate)
     assert!(
-        eta.as_secs() >= 0 && eta.as_secs() <= 2,
+        eta.as_secs() <= 2,
         "ETA calculation should be reasonable: {:?}",
         eta
     );
@@ -256,7 +256,7 @@ fn test_repo_score_elapsed_time_display() {
 
     let mut progress = CategoryProgress::new(vec!["Test".to_string()]);
 
-    let start = Instant::now();
+    let _start = Instant::now();
     progress.next_category("Test");
 
     // Simulate 2 seconds of work
