@@ -1,19 +1,20 @@
 # PMAT-UX-001: Progress Reporting for Red Team & Repo Score
 
 **Sprint**: 45
-**Status**: 🟢 REFACTOR PHASE (85% Complete)
+**Status**: 🟡 PARTIALLY COMPLETE (60% Complete)
 **Estimated**: 2-3 hours
-**Actual**: ~2 hours (in progress)
+**Actual**: ~2.5 hours
 
 **Progress**:
 - ✅ RED Phase (15 tests created - commit 913c6858)
 - ✅ GREEN Phase Infrastructure (commit 485e6e54)
 - ✅ Red Team CLI Integration (commit eaa3a669)
-- ✅ Repo Score CLI Integration (commit 36e8cc5a)
+- ❌ Repo Score CLI Integration (commit 36e8cc5a → REVERTED in commit 835522ab)
 - ✅ Documentation (commit adcc01bc)
 - ✅ Quality Fixes (commit 71747e89)
+- ❌ Repo Score CRITICAL BUG: Progress indicator causes async deadlock (FIXED via reversion)
 - ⏳ Test Verification (tests running in background)
-- ⏳ Optional: Performance optimization, UX polish
+- ⏳ Repo Score: Needs async-compatible progress solution (deferred)
 
 ## 🎯 Objective
 
@@ -534,6 +535,39 @@ impl ScoreAggregator {
 - [ ] Documentation updated
 - [ ] User feedback collected
 
+## 🔥 Lessons Learned (Critical Issue)
+
+### Async/Sync Deadlock (Commit 835522ab)
+
+**Problem**: ProgressIndicator caused repo-score command to hang indefinitely
+
+**Root Cause** (Five Whys):
+1. Why hung? ProgressIndicator blocks execution
+2. Why blocks? `enable_steady_tick()` spawns background thread
+3. Why deadlock? Thread conflicts with async runtime
+4. Why integrated? Added without async testing
+5. **Root**: Synchronous progress indicator in async context
+
+**Technical Details**:
+- `ProgressIndicator::new()` calls `enable_steady_tick(Duration::from_millis(100))`
+- This spawns a synchronous background thread
+- `handle_repo_score()` is async function using tokio runtime
+- The ticker thread deadlocks with async `.await` operations
+
+**Solution**: Complete reversion of repo-score progress integration
+
+**Future Fix Options**:
+1. Use `tokio::spawn` for async progress updates
+2. Use async-compatible progress library
+3. Use polling approach instead of background thread
+4. Separate progress indicator for async operations
+
+**Testing Gap**: Must test progress indicators with actual async operations in TTY environment
+
+**Status**:
+- Red Team progress: ✅ Works (synchronous context)
+- Repo Score progress: ❌ Reverted (async incompatibility)
+
 ## 📚 References
 
 - **Existing Progress**: `server/src/cli/progress.rs`
@@ -541,3 +575,4 @@ impl ScoreAggregator {
 - **TTY Detection**: TICKET-PMAT-6006 (UX improvements)
 - **Red Team Mode**: `server/src/cli/handlers/red_team.rs`
 - **Repo Score**: `server/src/cli/handlers/repo_score_handlers.rs`
+- **Async Deadlock Fix**: Commit 835522ab (reversion)
