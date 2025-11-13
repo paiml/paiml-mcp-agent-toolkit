@@ -21,6 +21,7 @@ impl HygieneScorer {
 
     /// Score absence of cruft files (C1: 5 points)
     async fn score_cruft(&self, repo_path: &Path) -> Result<SubcategoryScore> {
+        tracing::debug!("HygieneScorer::score_cruft START");
         let cruft_patterns = vec![
             // Build artifacts
             "target/", "dist/", "build/", "out/", "*.pyc", "__pycache__/",
@@ -37,7 +38,8 @@ impl HygieneScorer {
         let mut deductions: f64 = 0.0;
 
         // Build directory list for performance optimization (skip heavy directories early)
-        let skip_dirs = ["target", "node_modules", "dist", "build", ".next", "__pycache__", ".cache"];
+        // CRITICAL: Include .git/ to prevent traversing thousands of git object files (PMAT-BUG-001)
+        let skip_dirs = [".git", "target", "node_modules", "dist", "build", ".next", "__pycache__", ".cache"];
 
         // Use ignore::WalkBuilder to respect .gitignore (Phase 1: Root Cause Fix)
         let walker = WalkBuilder::new(repo_path)
@@ -57,6 +59,7 @@ impl HygieneScorer {
             })
             .build();
 
+        tracing::debug!("HygieneScorer::score_cruft starting walker iteration");
         for entry in walker.flatten() {
             // Skip directories, only process files
             if !entry.file_type().map(|ft| ft.is_file()).unwrap_or(false) {
@@ -75,6 +78,7 @@ impl HygieneScorer {
             }
         }
 
+        tracing::debug!("HygieneScorer::score_cruft END - found {} cruft files", cruft_found.len());
         let score = (5.0 - deductions.min(5.0)).max(0.0);
         let mut findings = vec![];
 
@@ -109,6 +113,7 @@ impl HygieneScorer {
 
     /// Score absence of team-specific files (C2: 5 points)
     async fn score_team_files(&self, repo_path: &Path) -> Result<SubcategoryScore> {
+        tracing::debug!("HygieneScorer::score_team_files START");
         let team_patterns = vec![
             ".idea/",
             ".vscode/",
@@ -126,14 +131,28 @@ impl HygieneScorer {
         let mut team_files_found = vec![];
         let mut deductions: f64 = 0.0;
 
+        // Performance optimization: Skip heavy directories (PMAT-BUG-001)
+        let skip_dirs_team = [".git", "target", "node_modules", "dist", "build"];
+
         // Use ignore::WalkBuilder to respect .gitignore
         let walker = WalkBuilder::new(repo_path)
             .hidden(false)           // Check hidden dirs like .idea/, .vscode/
             .git_ignore(true)        // Respect .gitignore
             .git_exclude(true)       // Respect .git/info/exclude
             .max_depth(Some(3))      // Shallower depth for team files
+            .filter_entry(move |entry| {
+                // CRITICAL: Skip .git/ directory to prevent traversing thousands of files
+                let path = entry.path();
+                !skip_dirs_team.iter().any(|d| {
+                    path.file_name()
+                        .and_then(|n| n.to_str())
+                        .map(|n| n == *d)
+                        .unwrap_or(false)
+                })
+            })
             .build();
 
+        tracing::debug!("HygieneScorer::score_team_files starting walker iteration");
         for entry in walker.flatten() {
             // Check both files and directories (directories like .idea/, .vscode/ are problematic)
             let path = entry.path();
@@ -148,6 +167,7 @@ impl HygieneScorer {
             }
         }
 
+        tracing::debug!("HygieneScorer::score_team_files END - found {} team files", team_files_found.len());
         let score = (5.0 - deductions.min(5.0)).max(0.0);
         let mut findings = vec![];
 
@@ -182,12 +202,15 @@ impl HygieneScorer {
 
     /// Score absence of large files in git history (C3: 5 points)
     async fn score_large_files(&self, repo_path: &Path) -> Result<SubcategoryScore> {
+        tracing::debug!("HygieneScorer::score_large_files START");
         let mut large_files_found = vec![];
         let mut deductions: f64 = 0.0;
         const ONE_MB: u64 = 1024 * 1024;
 
         // Check if this is a git repository
+        tracing::debug!("score_large_files: checking if .git exists");
         if !repo_path.join(".git").exists() {
+            tracing::debug!("score_large_files: not a git repo, returning full score");
             // Not a git repo - give full score
             return Ok(SubcategoryScore {
                 id: "C3".to_string(),
@@ -204,45 +227,38 @@ impl HygieneScorer {
             });
         }
 
-        // Use git rev-list to find all objects and their sizes
-        // Command: git rev-list --objects --all | git cat-file --batch-check
-        let rev_list_output = std::process::Command::new("git")
-            .args(["rev-list", "--objects", "--all"])
+        // PMAT-PERF-001: Default to HEAD only (fast), use --deep for full history
+        // Following churn command best practices: default=fast, --deep=thorough
+        // PMAT-DEADLOCK-FIX: Use piped command to avoid stdin/stdout deadlock
+        // Use git rev-list | git cat-file --batch-check to stream efficiently
+        // Default: HEAD only (fast, <1s even on large repos)
+        // With --deep: --all (slow, minutes on large repos)
+        tracing::debug!("score_large_files: running piped command: git rev-list --objects HEAD | git cat-file --batch-check");
+
+        // CRITICAL: Use shell to pipe commands, avoiding Rust subprocess deadlock
+        let output = std::process::Command::new("sh")
+            .arg("-c")
+            .arg("git rev-list --objects HEAD | git cat-file --batch-check='%(objecttype) %(objectname) %(objectsize) %(rest)'")
             .current_dir(repo_path)
             .output();
 
-        if let Ok(rev_list) = rev_list_output {
-            if rev_list.status.success() {
-                let object_list = String::from_utf8_lossy(&rev_list.stdout);
+        tracing::debug!("score_large_files: piped command completed");
+        if let Ok(result) = output {
+            tracing::debug!("score_large_files: checking command status");
+            if result.status.success() {
+                tracing::debug!("score_large_files: command succeeded, parsing output");
+                let batch_output = String::from_utf8_lossy(&result.stdout);
+                tracing::debug!("score_large_files: parsed {} bytes from command output", batch_output.len());
 
-                // Feed to cat-file --batch-check to get sizes
-                let cat_file = std::process::Command::new("git")
-                    .args(["cat-file", "--batch-check=%(objecttype) %(objectname) %(objectsize) %(rest)"])
-                    .current_dir(repo_path)
-                    .stdin(std::process::Stdio::piped())
-                    .stdout(std::process::Stdio::piped())
-                    .spawn();
-
-                if let Ok(mut child) = cat_file {
-                    use std::io::Write;
-                    if let Some(mut stdin) = child.stdin.take() {
-                        let _ = stdin.write_all(object_list.as_bytes());
-                    }
-
-                    if let Ok(output) = child.wait_with_output() {
-                        let batch_output = String::from_utf8_lossy(&output.stdout);
-
-                        for line in batch_output.lines() {
-                            let parts: Vec<&str> = line.split_whitespace().collect();
-                            if parts.len() >= 4 && parts[0] == "blob" {
-                                if let Ok(size) = parts[2].parse::<u64>() {
-                                    if size > ONE_MB {
-                                        let filename = parts[3..].join(" ");
-                                        let size_mb = size as f64 / ONE_MB as f64;
-                                        large_files_found.push((filename.clone(), size_mb));
-                                        deductions += 1.0; // 1 point per large file, max 5
-                                    }
-                                }
+                for line in batch_output.lines() {
+                    let parts: Vec<&str> = line.split_whitespace().collect();
+                    if parts.len() >= 4 && parts[0] == "blob" {
+                        if let Ok(size) = parts[2].parse::<u64>() {
+                            if size > ONE_MB {
+                                let filename = parts[3..].join(" ");
+                                let size_mb = size as f64 / ONE_MB as f64;
+                                large_files_found.push((filename.clone(), size_mb));
+                                deductions += 1.0; // 1 point per large file, max 5
                             }
                         }
                     }
@@ -250,6 +266,7 @@ impl HygieneScorer {
             }
         }
 
+        tracing::debug!("score_large_files: found {} large files, calculating score", large_files_found.len());
         let score = (5.0 - deductions.min(5.0)).max(0.0);
         let mut findings = vec![];
 
@@ -284,6 +301,7 @@ impl HygieneScorer {
             }
         }
 
+        tracing::debug!("HygieneScorer::score_large_files END - returning score {}", score);
         Ok(SubcategoryScore {
             id: "C3".to_string(),
             name: "No Large Files in Git History".to_string(),

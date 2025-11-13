@@ -15,6 +15,7 @@ impl ScoreAggregator {
 
     /// Aggregate all scores for a repository
     pub async fn aggregate(&self, repo_path: &Path, config: &ScorerConfig) -> Result<RepoScore> {
+        tracing::debug!("ScoreAggregator::aggregate START");
         let start = Instant::now();
 
         // Run all scorers
@@ -25,12 +26,29 @@ impl ScoreAggregator {
         let ci_scorer = CiScorer::new();
         let pmat_scorer = PmatScorer::new();
 
+        tracing::debug!("Starting readme_scorer");
         let documentation = readme_scorer.score(repo_path, config).await?;
+        tracing::debug!("Finished readme_scorer");
+
+        tracing::debug!("Starting precommit_scorer");
         let precommit_hooks = precommit_scorer.score(repo_path, config).await?;
+        tracing::debug!("Finished precommit_scorer");
+
+        tracing::debug!("Starting hygiene_scorer");
         let repository_hygiene = hygiene_scorer.score(repo_path, config).await?;
+        tracing::debug!("Finished hygiene_scorer");
+
+        tracing::debug!("Starting makefile_scorer");
         let build_test_automation = makefile_scorer.score(repo_path, config).await?;
+        tracing::debug!("Finished makefile_scorer");
+
+        tracing::debug!("Starting ci_scorer");
         let continuous_integration = ci_scorer.score(repo_path, config).await?;
+        tracing::debug!("Finished ci_scorer");
+
+        tracing::debug!("Starting pmat_scorer");
         let pmat_compliance = pmat_scorer.score(repo_path, config).await?;
+        tracing::debug!("Finished pmat_scorer");
 
         let categories = CategoryScores {
             documentation,
