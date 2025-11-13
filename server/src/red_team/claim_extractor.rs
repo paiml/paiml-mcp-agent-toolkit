@@ -53,13 +53,13 @@ impl ClaimExtractor {
             // Test status patterns
             test_patterns: vec![
                 Regex::new(r"(?i)(all|every|\d+/\d+)\s+tests?\s+(passing|pass|work|succeed)").unwrap(),
-                Regex::new(r"(?i)tests?\s+(all\s+)?passing").unwrap(),
+                Regex::new(r"(?i)(most|some)?\s*tests?\s+(all\s+)?passing(\s+\((\d+)/\d+\))?").unwrap(),
                 Regex::new(r"(?i)complete\s+test\s+coverage").unwrap(),
             ],
 
             // Documentation patterns
             documentation_patterns: vec![
-                Regex::new(r"(?i)fix(ed)?\s+(all\s+)?broken\s+(links?|docs?|documentation)").unwrap(),
+                Regex::new(r"(?i)fix(ed)?\s+(all\s+)?broken\s+(documentation\s+links?|links?|docs?)").unwrap(),
                 Regex::new(r"(?i)documentation\s+(complete|ready|fixed)").unwrap(),
                 Regex::new(r"(?i)all\s+examples?\s+work").unwrap(),
             ],
@@ -87,13 +87,13 @@ impl ClaimExtractor {
             // Bug fix patterns
             bugfix_patterns: vec![
                 Regex::new(r"(?i)fix(es|ed)?\s+(bug|issue)\s+#?(\d+)").unwrap(),
-                Regex::new(r"(?i)resolve[sd]?\s+#?(\d+)").unwrap(),
+                Regex::new(r"(?i)resolve[sd]?\s+(issue\s+)?#?(\d+)").unwrap(),
                 Regex::new(r"(?i)bug\s+fixed").unwrap(),
             ],
 
             // Performance patterns
             performance_patterns: vec![
-                Regex::new(r"(?i)(\d+)%\s+(faster|slower|improvement)").unwrap(),
+                Regex::new(r"(?i)(\d+)%\s+(faster|slower|improvement)(\s+\w+)*").unwrap(),
                 Regex::new(r"(?i)performance\s+(optimized|improved)").unwrap(),
                 Regex::new(r"(?i)reduced\s+memory\s+by\s+(\d+)%").unwrap(),
             ],
@@ -124,21 +124,28 @@ impl ClaimExtractor {
     }
 
     pub fn extract(&self, commit_message: &str) -> Vec<Claim> {
-        let mut claims = Vec::new();
+        let mut claims_with_pos: Vec<(usize, Claim)> = Vec::new();
 
         // Extract test status claims
         for pattern in &self.test_patterns {
             if let Some(captures) = pattern.captures(commit_message) {
-                let text = captures.get(0).unwrap().as_str().to_string();
-                claims.push(Claim {
+                let full_match = captures.get(0).unwrap();
+                let text = full_match.as_str().to_string();
+                let position = full_match.start();
+                // Try to extract numeric value from capture group 4 (fraction numerator), then fallback to regex
+                let numeric_value = captures.get(4)
+                    .and_then(|m| m.as_str().parse::<f64>().ok())
+                    .or_else(|| self.extract_numeric_value(&text));
+
+                claims_with_pos.push((position, Claim {
                     category: ClaimCategory::TestStatus,
                     text: text.clone(),
                     is_absolute: self.is_absolute_claim(&text),
-                    numeric_value: self.extract_numeric_value(&text),
+                    numeric_value,
                     issue_number: None,
                     has_scope_qualifier: self.has_scope_qualifier(commit_message),
                     scope: self.extract_scope(commit_message),
-                });
+                }));
                 break; // Only one claim per category
             }
         }
@@ -146,8 +153,10 @@ impl ClaimExtractor {
         // Extract documentation claims
         for pattern in &self.documentation_patterns {
             if let Some(captures) = pattern.captures(commit_message) {
-                let text = captures.get(0).unwrap().as_str().to_string();
-                claims.push(Claim {
+                let full_match = captures.get(0).unwrap();
+                let text = full_match.as_str().to_string();
+                let position = full_match.start();
+                claims_with_pos.push((position, Claim {
                     category: ClaimCategory::Documentation,
                     text: text.clone(),
                     is_absolute: self.is_absolute_claim(&text),
@@ -155,7 +164,7 @@ impl ClaimExtractor {
                     issue_number: None,
                     has_scope_qualifier: self.has_scope_qualifier(commit_message),
                     scope: self.extract_scope(commit_message),
-                });
+                }));
                 break;
             }
         }
@@ -163,12 +172,14 @@ impl ClaimExtractor {
         // Extract coverage claims
         for pattern in &self.coverage_patterns {
             if let Some(captures) = pattern.captures(commit_message) {
-                let text = captures.get(0).unwrap().as_str().to_string();
+                let full_match = captures.get(0).unwrap();
+                let text = full_match.as_str().to_string();
+                let position = full_match.start();
                 let numeric_value = captures.get(1)
                     .and_then(|m| m.as_str().parse::<f64>().ok())
                     .or_else(|| captures.get(2).and_then(|m| m.as_str().parse::<f64>().ok()));
 
-                claims.push(Claim {
+                claims_with_pos.push((position, Claim {
                     category: ClaimCategory::Coverage,
                     text: text.clone(),
                     is_absolute: self.is_absolute_claim(&text),
@@ -176,33 +187,18 @@ impl ClaimExtractor {
                     issue_number: None,
                     has_scope_qualifier: self.has_scope_qualifier(commit_message),
                     scope: self.extract_scope(commit_message),
-                });
+                }));
                 break;
             }
         }
 
-        // Extract feature completion claims
-        for pattern in &self.completion_patterns {
-            if let Some(captures) = pattern.captures(commit_message) {
-                let text = captures.get(0).unwrap().as_str().to_string();
-                claims.push(Claim {
-                    category: ClaimCategory::FeatureCompletion,
-                    text: text.clone(),
-                    is_absolute: self.is_absolute_claim(&text),
-                    numeric_value: None,
-                    issue_number: None,
-                    has_scope_qualifier: self.has_scope_qualifier(commit_message),
-                    scope: self.extract_scope(commit_message),
-                });
-                break;
-            }
-        }
-
-        // Extract migration claims
+        // Extract migration claims (check before feature completion to avoid conflicts)
         for pattern in &self.migration_patterns {
             if let Some(captures) = pattern.captures(commit_message) {
-                let text = captures.get(0).unwrap().as_str().to_string();
-                claims.push(Claim {
+                let full_match = captures.get(0).unwrap();
+                let text = full_match.as_str().to_string();
+                let position = full_match.start();
+                claims_with_pos.push((position, Claim {
                     category: ClaimCategory::Migration,
                     text: text.clone(),
                     is_absolute: self.is_absolute_claim(&text),
@@ -210,7 +206,32 @@ impl ClaimExtractor {
                     issue_number: None,
                     has_scope_qualifier: self.has_scope_qualifier(commit_message),
                     scope: self.extract_scope(commit_message),
-                });
+                }));
+                break;
+            }
+        }
+
+        // Extract feature completion claims
+        for pattern in &self.completion_patterns {
+            if let Some(captures) = pattern.captures(commit_message) {
+                let full_match = captures.get(0).unwrap();
+                let text = full_match.as_str().to_string();
+                let position = full_match.start();
+
+                // Skip if we already have a claim overlapping this position (e.g., migration)
+                if claims_with_pos.iter().any(|(pos, _)| *pos == position) {
+                    break;
+                }
+
+                claims_with_pos.push((position, Claim {
+                    category: ClaimCategory::FeatureCompletion,
+                    text: text.clone(),
+                    is_absolute: self.is_absolute_claim(&text),
+                    numeric_value: None,
+                    issue_number: None,
+                    has_scope_qualifier: self.has_scope_qualifier(commit_message),
+                    scope: self.extract_scope(commit_message),
+                }));
                 break;
             }
         }
@@ -218,14 +239,16 @@ impl ClaimExtractor {
         // Extract bug fix claims
         for pattern in &self.bugfix_patterns {
             if let Some(captures) = pattern.captures(commit_message) {
-                let text = captures.get(0).unwrap().as_str().to_string();
+                let full_match = captures.get(0).unwrap();
+                let text = full_match.as_str().to_string();
+                let position = full_match.start();
                 let issue_number = if let Some(issue_match) = captures.get(captures.len() - 1) {
                     issue_match.as_str().parse::<u32>().ok()
                 } else {
                     None
                 };
 
-                claims.push(Claim {
+                claims_with_pos.push((position, Claim {
                     category: ClaimCategory::BugFix,
                     text: text.clone(),
                     is_absolute: self.is_absolute_claim(&text),
@@ -233,7 +256,7 @@ impl ClaimExtractor {
                     issue_number,
                     has_scope_qualifier: self.has_scope_qualifier(commit_message),
                     scope: self.extract_scope(commit_message),
-                });
+                }));
                 break;
             }
         }
@@ -241,11 +264,13 @@ impl ClaimExtractor {
         // Extract performance claims
         for pattern in &self.performance_patterns {
             if let Some(captures) = pattern.captures(commit_message) {
-                let text = captures.get(0).unwrap().as_str().to_string();
+                let full_match = captures.get(0).unwrap();
+                let text = full_match.as_str().to_string();
+                let position = full_match.start();
                 let numeric_value = captures.get(1)
                     .and_then(|m| m.as_str().parse::<f64>().ok());
 
-                claims.push(Claim {
+                claims_with_pos.push((position, Claim {
                     category: ClaimCategory::Performance,
                     text: text.clone(),
                     is_absolute: self.is_absolute_claim(&text),
@@ -253,7 +278,7 @@ impl ClaimExtractor {
                     issue_number: None,
                     has_scope_qualifier: self.has_scope_qualifier(commit_message),
                     scope: self.extract_scope(commit_message),
-                });
+                }));
                 break;
             }
         }
@@ -261,8 +286,10 @@ impl ClaimExtractor {
         // Extract security claims
         for pattern in &self.security_patterns {
             if let Some(captures) = pattern.captures(commit_message) {
-                let text = captures.get(0).unwrap().as_str().to_string();
-                claims.push(Claim {
+                let full_match = captures.get(0).unwrap();
+                let text = full_match.as_str().to_string();
+                let position = full_match.start();
+                claims_with_pos.push((position, Claim {
                     category: ClaimCategory::Security,
                     text: text.clone(),
                     is_absolute: self.is_absolute_claim(&text),
@@ -270,12 +297,16 @@ impl ClaimExtractor {
                     issue_number: None,
                     has_scope_qualifier: self.has_scope_qualifier(commit_message),
                     scope: self.extract_scope(commit_message),
-                });
+                }));
                 break;
             }
         }
 
-        claims
+        // Sort claims by position in message
+        claims_with_pos.sort_by_key(|(pos, _)| *pos);
+
+        // Return claims without position
+        claims_with_pos.into_iter().map(|(_, claim)| claim).collect()
     }
 
     fn is_absolute_claim(&self, text: &str) -> bool {
