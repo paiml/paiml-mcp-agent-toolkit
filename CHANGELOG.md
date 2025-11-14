@@ -7,7 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.195.0] - 2025-11-14
+
 ### Added
+- **Workflow Prompts: release-prep**
+  - Added `release-prep.yaml` workflow prompt for multi-language release preparation
+  - Comprehensive quality gates covering git cleanliness, tests, linting, documentation, and security
+  - Supports Rust, Python, TypeScript, and Go with variable substitution
+  - Integrates Toyota Way principles (Jidoka, Andon Cord, Genchi Genbutsu, Kaizen)
+  - Rollback procedures for emergency hotfixes
+
+- **Workflow Prompts: code-coverage v3.0**
+  - Upgraded `code-coverage.yaml` with compiler-grade quality standards
+  - Research validation from IEEE 2023, PLDI 2021, SQLite 2022, ICSE 2023, CC 2020
+  - Five-category decomposition (Frontend 95%, Backend 85%, Runtime 90%, API/CLI 80%, Quality 80%)
+  - Property testing with 100 cases for statistical significance (not 5)
+  - Golden file testing for compilers/transpilers
+  - Mutation testing integration (≥75% mutation score requirement)
+  - bashrs inline testing pattern (7,321 tests across 542 files, 13.5 avg per file)
+
 - **Repository Health Scoring: --deep Flag**
   - Added `--deep` flag to `pmat repo-score` command for comprehensive git history scanning
   - Default mode (fast): Scans HEAD only (~0.12s execution time)
@@ -22,7 +40,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Enables detection of false claims in commit messages by analyzing subsequent fixes/reverts
   - Implementation: `RepositoryContext::from_path_with_config(path, deep)` and `fetch_git_history()`
 
+### Fixed
+- **Code Quality Improvements**
+  - Fixed 4 clippy warnings identified during release preparation
+  - Optimized performance: Use `push(char)` instead of `push_str(str)` for single characters
+  - Improved iterator efficiency: Use `next_back()` instead of `last()` on DoubleEndedIterator
+  - Enhanced readability: Use `vec![]` macro instead of `Vec::new()` + push pattern
+  - Zero clippy warnings with `-D warnings` flag
+
 ### Technical Details
+- **Workflow Prompts:**
+  - `release-prep.yaml`: 197 lines, multi-language support via variable substitution
+  - `code-coverage.yaml`: 488 lines (upgraded from v2.0), research-backed validation
+  - Both prompts enforce EXTREME TDD and Toyota Way zero-defects quality standards
+
 - **Repository Health Scoring:**
   - Added `ScorerConfig.deep` field (bool, defaults to false)
   - Modified HygieneScorer to use conditional git logic (HEAD vs --all)
@@ -36,6 +67,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Wired --deep flag through RedTeamCmd → handler → RepositoryContext
   - Uses shell-based git commands (sh -c) for performance and reliability
   - Files modified: 2 files (+60 lines, -4 lines)
+
+- **Clippy Fixes:**
+  - Files modified: 3 files (red_team.rs, evidence_gatherer.rs, intent_classifier.rs)
+  - All quality gates passing: cargo check ✅, cargo clippy ✅, zero warnings ✅
 
 ## [2.194.1] - 2025-11-12
 
