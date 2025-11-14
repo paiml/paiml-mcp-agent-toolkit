@@ -856,13 +856,13 @@ impl RepositoryContext {
                 }
 
                 if let Some(failed_str) = line.split("failed").next().and_then(|s| {
-                    s.split(';').last().and_then(|part| part.split_whitespace().last())
+                    s.split(';').next_back().and_then(|part| part.split_whitespace().last())
                 }) {
                     info.failed_count = failed_str.parse().unwrap_or(0);
                 }
 
                 if let Some(ignored_str) = line.split("ignored").next().and_then(|s| {
-                    s.split(';').last().and_then(|part| part.split_whitespace().last())
+                    s.split(';').next_back().and_then(|part| part.split_whitespace().last())
                 }) {
                     info.ignored_count = ignored_str.parse().unwrap_or(0);
                 }

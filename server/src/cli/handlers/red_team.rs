@@ -80,7 +80,7 @@ impl RedTeamResult {
                     e.confidence
                 ));
             }
-            output.push_str("\n");
+            output.push('\n');
         }
 
         output.push_str("Verdict: POTENTIAL HALLUCINATION\n");

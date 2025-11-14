@@ -87,22 +87,18 @@ impl IntentClassifier {
         followup_commit: &CommitInfo,
     ) -> IntentClassification {
         // Multi-signal analysis
-        let mut signals = Vec::new();
-
-        // Signal 1: Commit message language analysis
-        signals.push(self.analyze_commit_message(&followup_commit.message));
-
-        // Signal 2: Issue tracker linkage
-        signals.push(self.analyze_issue_linkage(original_commit, followup_commit));
-
-        // Signal 3: Code churn analysis
-        signals.push(self.analyze_code_churn(original_commit, followup_commit));
-
-        // Signal 4: Test additions vs fixes
-        signals.push(self.analyze_test_changes(&followup_commit.test_changes));
-
-        // Signal 5: Sprint/milestone context (grace period)
-        signals.push(self.analyze_temporal_context(original_commit, followup_commit));
+        let signals = vec![
+            // Signal 1: Commit message language analysis
+            self.analyze_commit_message(&followup_commit.message),
+            // Signal 2: Issue tracker linkage
+            self.analyze_issue_linkage(original_commit, followup_commit),
+            // Signal 3: Code churn analysis
+            self.analyze_code_churn(original_commit, followup_commit),
+            // Signal 4: Test additions vs fixes
+            self.analyze_test_changes(&followup_commit.test_changes),
+            // Signal 5: Sprint/milestone context (grace period)
+            self.analyze_temporal_context(original_commit, followup_commit),
+        ];
 
         // Aggregate signals
         self.aggregate_signals(signals)
