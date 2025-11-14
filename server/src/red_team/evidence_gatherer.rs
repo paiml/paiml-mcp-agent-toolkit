@@ -579,6 +579,15 @@ impl RepositoryContext {
     ///
     /// GREEN Phase: Implementation for RED tests
     pub fn from_path(path: &Path) -> Result<Self> {
+        Self::from_path_with_config(path, false)
+    }
+
+    /// Build repository context with configuration options
+    ///
+    /// # Arguments
+    /// * `path` - Repository path
+    /// * `deep` - If true, fetch entire git history; if false, fetch recent commits only (last 30 days)
+    pub fn from_path_with_config(path: &Path, deep: bool) -> Result<Self> {
         let repo_path = path.canonicalize()
             .context("Failed to canonicalize path")?;
 
@@ -594,8 +603,15 @@ impl RepositoryContext {
         // Find test results
         let test_results_path = Self::find_test_results(&repo_path);
 
+        // Fetch git history if repository detected
+        let subsequent_commits = if git_repo.is_some() {
+            Self::fetch_git_history(&repo_path, deep)
+        } else {
+            None
+        };
+
         Ok(Self {
-            subsequent_commits: None,
+            subsequent_commits,
             test_results: None,
             actual_coverage: None,
             coverage_error: None,
@@ -696,6 +712,50 @@ impl RepositoryContext {
                 repo.workdir().map(|p| p.to_path_buf())
             }
             Err(_) => None,
+        }
+    }
+
+    /// Fetch git history commit messages
+    ///
+    /// # Arguments
+    /// * `repo_path` - Path to the repository
+    /// * `deep` - If true, fetch entire history; if false, fetch last 30 days only
+    ///
+    /// # Returns
+    /// `Some(Vec<String>)` if git repository detected, `None` otherwise
+    fn fetch_git_history(repo_path: &Path, deep: bool) -> Option<Vec<String>> {
+        // PMAT-REDTEAM-001: Default to recent commits (fast), use --deep for full history
+        let git_command = if deep {
+            // Deep mode: Get all commit messages from entire history
+            "git log --all --pretty=format:%s"
+        } else {
+            // Fast mode: Get recent commit messages only (last 30 days)
+            "git log --since='30 days ago' --pretty=format:%s"
+        };
+
+        // CRITICAL: Use shell to execute git command
+        let output = std::process::Command::new("sh")
+            .arg("-c")
+            .arg(git_command)
+            .current_dir(repo_path)
+            .output();
+
+        match output {
+            Ok(output) if output.status.success() => {
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                let commits: Vec<String> = stdout
+                    .lines()
+                    .map(|line| line.trim().to_string())
+                    .filter(|line| !line.is_empty())
+                    .collect();
+
+                if commits.is_empty() {
+                    None
+                } else {
+                    Some(commits)
+                }
+            }
+            _ => None,
         }
     }
 

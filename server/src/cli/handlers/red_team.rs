@@ -241,6 +241,11 @@ pub enum RedTeamCommands {
         /// Verbose output
         #[arg(short, long)]
         verbose: bool,
+
+        /// Deep scan: Check entire git history (slower but more thorough)
+        /// Default: false (scan recent commits only - last 30 days)
+        #[arg(short = 'd', long)]
+        deep: bool,
     },
 }
 
@@ -270,11 +275,13 @@ impl RedTeamCmd {
                 path,
                 format,
                 verbose,
+                deep,
             } => {
                 if *verbose {
                     eprintln!("🔴 Red Team Mode: Analyzing commit message");
                     eprintln!("📝 Message: {}", message);
                     eprintln!("📁 Repository: {}", path.display());
+                    eprintln!("🔍 Scan mode: {}", if *deep { "Deep (entire git history)" } else { "Fast (recent commits only)" });
                 }
 
                 // Initialize progress indicator (only for text output)
@@ -297,7 +304,7 @@ impl RedTeamCmd {
                 }
 
                 let handler = RedTeamHandler::new();
-                let context = RepositoryContext::from_path(path)
+                let context = RepositoryContext::from_path_with_config(path, *deep)
                     .context("Failed to build repository context")?;
 
                 if *verbose {

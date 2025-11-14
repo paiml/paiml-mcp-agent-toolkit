@@ -15,12 +15,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Fixes infinite hang issue on large repositories by providing sensible defaults
   - Implementation follows churn command pattern (opt-in thoroughness)
 
+- **Red Team Mode: --deep Flag**
+  - Added `--deep` flag to `pmat red-team analyze` command for comprehensive hallucination detection
+  - Default mode (fast): Checks recent git commits only (last 30 days)
+  - Deep mode (thorough): Checks entire git history across all branches for contradicting commits
+  - Enables detection of false claims in commit messages by analyzing subsequent fixes/reverts
+  - Implementation: `RepositoryContext::from_path_with_config(path, deep)` and `fetch_git_history()`
+
 ### Technical Details
-- Added `ScorerConfig.deep` field (bool, defaults to false)
-- Modified HygieneScorer to use conditional git logic (HEAD vs --all)
-- Wired --deep flag through CLI, command dispatcher, and handlers
-- All 94 repo_score unit tests pass
-- Files modified: 6 files (+25 lines, -6 lines)
+- **Repository Health Scoring:**
+  - Added `ScorerConfig.deep` field (bool, defaults to false)
+  - Modified HygieneScorer to use conditional git logic (HEAD vs --all)
+  - Wired --deep flag through CLI, command dispatcher, and handlers
+  - All 94 repo_score unit tests pass
+  - Files modified: 6 files (+25 lines, -6 lines)
+
+- **Red Team Mode:**
+  - Added `RepositoryContext::from_path_with_config(path, deep)` method
+  - Added `fetch_git_history(repo_path, deep)` helper with conditional git log strategy
+  - Wired --deep flag through RedTeamCmd → handler → RepositoryContext
+  - Uses shell-based git commands (sh -c) for performance and reliability
+  - Files modified: 2 files (+60 lines, -4 lines)
 
 ## [2.194.1] - 2025-11-12
 

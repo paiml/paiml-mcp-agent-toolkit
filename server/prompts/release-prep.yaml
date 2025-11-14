@@ -1,0 +1,196 @@
+name: release-prep
+description: Prepare project for release with comprehensive quality gates
+category: release
+priority: critical
+methodology: EXTREME TDD + Toyota Way + Zero Defects
+constraints:
+  - all tests passing
+  - no clippy warnings
+  - documentation up to date
+  - CHANGELOG.md updated
+  - version bumped
+variables:
+  TEST_CMD: "cargo test"
+  BUILD_CMD: "cargo build --release"
+  LINT_CMD: "cargo clippy -- -D warnings"
+  VERSION_FILE: "Cargo.toml"
+  CHANGELOG: "CHANGELOG.md"
+heuristics:
+  - check git status (no uncommitted changes)
+  - verify all quality gates pass
+  - ensure documentation matches code
+prompt: |
+  Prepare this project for release using EXTREME quality standards.
+
+  This is a multi-language release preparation workflow. Default commands shown are for Rust,
+  but can be customized using --set flags (e.g., --set TEST_CMD="pytest").
+
+  ## PRE-RELEASE CHECKLIST (Zero Tolerance)
+
+  ### 1. Git Cleanliness
+  - [ ] Run `git status` - ensure no uncommitted changes
+  - [ ] Run `git log --oneline -10` - review recent commits
+  - [ ] Ensure on correct branch (usually master/main)
+
+  ### 2. Code Quality Gates (ALL MUST PASS)
+  - [ ] Run `${TEST_CMD}` - all tests passing
+  - [ ] Run `${BUILD_CMD}` - clean build with no warnings
+  - [ ] Run `${LINT_CMD}` - zero linter warnings
+  - [ ] Run security audit if available (e.g., `cargo audit`)
+  - [ ] Run `pmat tdg .` - verify technical debt grade (min B+)
+  - [ ] Run `pmat repo-score .` - verify repository health
+
+  ### 3. Documentation Validation
+  - [ ] README.md is up to date with latest features
+  - [ ] ${CHANGELOG} has entry for new version
+  - [ ] All code examples in docs are tested and working
+  - [ ] API documentation is complete
+  - [ ] Breaking changes are clearly documented
+
+  ### 4. Version Management
+  - [ ] Bump version in ${VERSION_FILE}
+  - [ ] Update version references in README.md
+  - [ ] Tag format follows semantic versioning (e.g., v2.194.2)
+  - [ ] ${CHANGELOG} follows Keep a Changelog format
+
+  ### 5. Integration Testing
+  - [ ] Run full test suite with `${TEST_CMD} --all-features`
+  - [ ] Test CLI commands manually (smoke test)
+  - [ ] Verify examples work: `cargo run --example <name>` (Rust)
+  - [ ] Test installation from source
+
+  ### 6. Pre-Commit Validation
+  - [ ] Run `pmat hooks status` - verify hooks installed
+  - [ ] Run `make validate` if Makefile exists
+  - [ ] Run `pmat validate-readme` - check for hallucinations
+
+  ### 7. Red Team Mode (If Available)
+  - [ ] Run `pmat red-team analyze --message "release: v<VERSION>"`
+  - [ ] Verify no hallucinations in release notes
+
+  ## RELEASE PROCESS
+
+  ### Step 1: Update ${CHANGELOG}
+  ```
+  ## [X.Y.Z] - YYYY-MM-DD
+
+  ### Added
+  - Feature 1
+  - Feature 2
+
+  ### Changed
+  - Change 1
+
+  ### Fixed
+  - Bug fix 1
+  ```
+
+  ### Step 2: Bump Version
+  - Update ${VERSION_FILE} (e.g., version = "X.Y.Z")
+  - Update README.md badge if present
+  - Update any hardcoded version strings
+
+  ### Step 3: Commit and Tag
+  ```bash
+  git add .
+  git commit -m "chore: Release vX.Y.Z"
+  git tag -a vX.Y.Z -m "Release vX.Y.Z"
+  git push origin master
+  git push origin vX.Y.Z
+  ```
+
+  ### Step 4: Build and Publish (Language-Specific)
+
+  **Rust:**
+  ```bash
+  cargo publish --dry-run  # Test first
+  cargo publish            # Actual publish
+  ```
+
+  **Python:**
+  ```bash
+  python setup.py sdist bdist_wheel
+  twine upload dist/*
+  ```
+
+  **npm:**
+  ```bash
+  npm publish --dry-run
+  npm publish
+  ```
+
+  ### Step 5: Post-Release Verification
+  - [ ] Verify package appears on registry (crates.io, PyPI, npm, etc.)
+  - [ ] Test installation from registry: `cargo install <name>` (Rust)
+  - [ ] Create GitHub release with ${CHANGELOG} contents
+  - [ ] Update documentation site if applicable
+  - [ ] Announce release (Twitter, blog, mailing list, etc.)
+
+  ## ROLLBACK PROCEDURE (Emergency)
+
+  If critical issues discovered post-release:
+  1. Yank bad version: `cargo yank --vers X.Y.Z` (Rust)
+  2. Fix critical issue immediately
+  3. Release hotfix version: X.Y.(Z+1)
+  4. Document incident in ${CHANGELOG}
+
+  ## TOYOTA WAY PRINCIPLES
+
+  - **Jidoka (Built-in Quality)**: Every quality gate must pass
+  - **Andon Cord**: STOP if any gate fails - do not proceed
+  - **Genchi Genbutsu**: Verify release artifacts personally
+  - **Kaizen**: Document lessons learned for next release
+
+  ## QUALITY GATES (MANDATORY)
+
+  ALL of these MUST be green before release:
+  - ✅ Git status clean
+  - ✅ All tests passing
+  - ✅ Zero linter warnings
+  - ✅ Documentation updated
+  - ✅ ${CHANGELOG} updated
+  - ✅ Version bumped
+  - ✅ Examples working
+  - ✅ Clean build
+
+  If ANY gate is red, STOP and fix before proceeding.
+
+  ## TIME CONSTRAINTS
+
+  - Pre-release checklist: <30min
+  - Full quality gates: <1hr
+  - Release process: <15min
+  - Total: <2hr for complete release cycle
+
+  Use this systematic approach to ensure zero-defect releases.
+toyota_way_principles:
+  jidoka: built_in_quality
+  andon_cord: stop_on_failure
+  genchi_genbutsu: verify_personally
+  kaizen: continuous_improvement
+  zero_defects: true
+language_support:
+  rust:
+    test_cmd: "cargo test"
+    build_cmd: "cargo build --release"
+    lint_cmd: "cargo clippy -- -D warnings"
+    version_file: "Cargo.toml"
+    publish_cmd: "cargo publish"
+  python:
+    test_cmd: "pytest"
+    build_cmd: "python setup.py sdist bdist_wheel"
+    lint_cmd: "pylint src/"
+    version_file: "setup.py"
+    publish_cmd: "twine upload dist/*"
+  typescript:
+    test_cmd: "npm test"
+    build_cmd: "npm run build"
+    lint_cmd: "npm run lint"
+    version_file: "package.json"
+    publish_cmd: "npm publish"
+  go:
+    test_cmd: "go test ./..."
+    build_cmd: "go build"
+    lint_cmd: "golangci-lint run"
+    version_file: "go.mod"
+    publish_cmd: "git tag"
