@@ -77,7 +77,8 @@ run_chapter_test() {
     # Run each test script
     for script in $test_scripts; do
         local script_name=$(basename "$script")
-        if timeout 60 bash "$script" >/dev/null 2>&1; then
+        # cd to book directory before running test to ensure correct working directory
+        if (cd "$BOOK_DIR" && timeout 60 bash "$script" >/dev/null 2>&1); then
             echo -e "${GREEN}✅ Ch$ch: $script_name${NC}"
             PASSED_TESTS+=("Ch$ch:$script_name")
         else
