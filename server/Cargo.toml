@@ -18,6 +18,9 @@ name = "pmat-agent"
 path = "src/bin/pmat-agent.rs"
 
 [dependencies]
+# Organizational Intelligence Plugin - Phase 4 integration
+organizational-intelligence-plugin = { path = "../../organizational-intelligence-plugin" }
+
 # Async runtime
 # Sprint 46 Phase 4: Removed "io-std", "signal", "process" features (saves 180-280 KB)
 # Note: Code refactored to use std::io, platform-specific signal handling, and std::process::Command

@@ -473,6 +473,9 @@ impl CommandExecutor {
                 }
                 Ok(())
             }
+            Commands::Org(org_cmd) => {
+                crate::cli::handlers::handle_org_command(org_cmd).await
+            }
             Commands::Prompt(prompt_cmd) => {
                 crate::cli::handlers::handle_prompt_command(prompt_cmd).await
             }

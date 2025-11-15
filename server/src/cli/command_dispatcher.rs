@@ -162,6 +162,7 @@ impl CommandDispatcher {
                 }
                 Ok(())
             }
+            Commands::Org(org_cmd) => handlers::handle_org_command(org_cmd).await,
             Commands::Prompt(prompt_cmd) => handlers::handle_prompt_command(prompt_cmd).await,
             Commands::QualityGate {
                 project_path,

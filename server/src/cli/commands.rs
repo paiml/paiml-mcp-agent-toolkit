@@ -312,6 +312,10 @@ pub enum Commands {
     #[command(visible_aliases = &["rt", "hallucination-detect"])]
     RedTeam(crate::cli::handlers::RedTeamCmd),
 
+    /// Organizational intelligence analysis (GitHub org defect patterns)
+    #[command(subcommand, visible_aliases = &["organization"])]
+    Org(OrgCommands),
+
     /// AI prompt generation (defect-aware, ticket-based, spec-based)
     #[command(subcommand, visible_aliases = &["p"])]
     Prompt(PromptCommands),
@@ -4199,6 +4203,42 @@ pub struct MutateArgs {
     /// Example: --use-cargo-mutants --no-shuffle
     #[arg(long)]
     pub no_shuffle: bool,
+}
+
+/// Organizational intelligence subcommands (Phase 4: OIP Integration)
+#[derive(Subcommand)]
+#[cfg_attr(test, derive(Debug))]
+pub enum OrgCommands {
+    /// Analyze GitHub organization for defect patterns
+    Analyze {
+        /// GitHub organization name
+        #[arg(short, long)]
+        org: String,
+
+        /// Output file path for analysis results
+        #[arg(short, long)]
+        output: PathBuf,
+
+        /// Maximum number of concurrent repository analyses
+        #[arg(long, default_value_t = 5)]
+        max_concurrent: usize,
+
+        /// Automatically summarize results (PII-stripped)
+        #[arg(long)]
+        summarize: bool,
+
+        /// Strip PII from summary (requires --summarize)
+        #[arg(long, requires = "summarize")]
+        strip_pii: bool,
+
+        /// Top N defect categories to include in summary
+        #[arg(long, default_value_t = 10, requires = "summarize")]
+        top_n: usize,
+
+        /// Minimum frequency threshold for defect patterns
+        #[arg(long, default_value_t = 3, requires = "summarize")]
+        min_frequency: usize,
+    },
 }
 
 /// Prompt generation subcommands (Phase 4: Organizational Intelligence Integration)

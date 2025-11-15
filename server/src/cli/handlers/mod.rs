@@ -80,6 +80,7 @@ pub mod utility_handlers;
 pub mod wasm_handler;
 pub mod wasm_handlers;
 pub mod timeline_mode; // Sprint 78: TUI-006 - Timeline CLI integration
+pub mod org_handlers; // Phase 4: Organizational Intelligence Integration
 
 // Re-export handler functions
 pub use advanced_analysis_handlers::{
@@ -135,6 +136,7 @@ pub use utility_handlers::{
 };
 pub use wasm_handlers::{handle_analyze_assemblyscript, handle_analyze_webassembly};
 pub use timeline_mode::{TimelineMode, handle_timeline, get_timeline_help_text}; // Sprint 78: TUI-006
+pub use org_handlers::handle_org_command; // Phase 4: Organizational Intelligence Integration
 
 #[cfg(test)]
 mod tests {
