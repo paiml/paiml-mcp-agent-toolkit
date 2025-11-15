@@ -126,6 +126,7 @@ pub mod mcp_pmcp; // Now always available with pmcp 1.0
 pub mod mcp_server;
 pub mod models;
 pub mod modules; // Modular monolith architecture
+pub mod prompts; // AI prompt generation from organizational intelligence (Phase 4)
 pub mod protocol; // Unified protocol design per SPECIFICATION.md Section 3
 pub mod qdd; // Quality-Driven Development tool
 pub mod quality; // Quality gates and enforcement (Sprint 18: Gate executor)
