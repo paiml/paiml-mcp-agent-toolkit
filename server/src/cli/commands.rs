@@ -4212,7 +4212,7 @@ pub enum OrgCommands {
     /// Analyze GitHub organization for defect patterns
     Analyze {
         /// GitHub organization name
-        #[arg(short, long)]
+        #[arg(long)]
         org: String,
 
         /// Output file path for analysis results
