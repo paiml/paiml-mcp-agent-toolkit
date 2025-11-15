@@ -97,6 +97,7 @@ pub mod context_handlers;
 pub mod discovery;
 pub mod handlers;
 pub mod pdmt_handler;
+pub mod prompt_handlers; // Phase 4: Organizational Intelligence Integration
 pub mod quality_handlers;
 pub mod quality_proxy_handler;
 pub mod server;

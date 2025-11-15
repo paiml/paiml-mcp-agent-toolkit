@@ -688,6 +688,12 @@ fn generate_tool_registry(out_dir: &str) {
             "Comprehensive TDG system health check with recommendations",
             vec!["tdg", "health", "check", "recommendations", "status"],
         ),
+        // Phase 4: Organizational Intelligence Integration
+        (
+            "generate_defect_aware_prompt",
+            "Generate context-aware AI prompts from organizational intelligence and defect patterns",
+            vec!["prompt", "defect", "organizational", "intelligence", "oip", "ai"],
+        ),
     ];
 
     let mut registry_code = String::from(
@@ -901,6 +907,22 @@ fn generate_alias_table(out_dir: &str) {
                 "tdg check",
                 "system check",
                 "health recommendations",
+            ],
+        ),
+        // Phase 4: Organizational Intelligence Integration
+        (
+            "generate_defect_aware_prompt",
+            vec![
+                "defect aware",
+                "ai prompt",
+                "organizational intelligence",
+                "oip prompt",
+                "context prompt",
+                "defect patterns",
+                "quality prompt",
+                "intelligent prompt",
+                "org intelligence",
+                "prompt generation",
             ],
         ),
     ];

@@ -6,6 +6,7 @@ use crate::mcp_pmcp::context_handlers::{GenerateContextTool, GitTool, ScaffoldPr
 use crate::mcp_pmcp::handlers::{
     RefactorGetStateTool, RefactorNextIterationTool, RefactorStartTool, RefactorStopTool,
 };
+use crate::mcp_pmcp::prompt_handlers::GenerateDefectAwarePromptTool;
 use crate::mcp_pmcp::quality_handlers::QualityGateTool;
 use crate::mcp_pmcp::quality_proxy_handler::QualityProxyTool;
 use crate::mcp_pmcp::tdg_handlers::{
@@ -171,11 +172,13 @@ impl PmcpServer {
             .tool("tdg_performance_metrics", TdgPerformanceMetricsTool)
             .tool("tdg_configure_storage", TdgConfigureStorageTool)
             .tool("tdg_health_check", TdgHealthCheckTool)
+            // Organizational Intelligence tools (Phase 4)
+            .tool("generate_defect_aware_prompt", GenerateDefectAwarePromptTool)
             .build()?;
 
         info!(
             "PMAT MCP server ready with {} tools, listening on stdio",
-            24
+            25
         );
 
         // Run server with stdio transport

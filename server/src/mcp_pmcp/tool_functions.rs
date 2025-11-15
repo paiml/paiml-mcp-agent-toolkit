@@ -1927,6 +1927,69 @@ pub async fn quality_driven_development(
     }
 }
 
+/// Generate defect-aware AI prompts from organizational intelligence
+///
+/// This MCP tool generates context-aware AI prompts that include organizational
+/// quality standards and historical defect patterns from OIP (Organizational
+/// Intelligence Plugin) analysis.
+///
+/// # Arguments
+/// * `task` - The development task to generate a prompt for
+/// * `context` - Additional context about the task
+/// * `summary_path` - Path to OIP summary YAML file
+///
+/// # Returns
+/// JSON with generated prompt and metadata
+pub async fn generate_defect_aware_prompt(
+    task: String,
+    context: String,
+    summary_path: PathBuf,
+) -> Result<Value> {
+    use crate::prompts::DefectAwarePromptGenerator;
+
+    // Validate summary file exists
+    if !summary_path.exists() {
+        return Ok(json!({
+            "status": "failed",
+            "message": format!("Summary file not found: {}", summary_path.display()),
+            "error": "FILE_NOT_FOUND",
+            "help": "Run OIP analysis first: cd organizational-intelligence-plugin && cargo run -- analyze --org <org> --output /tmp/analysis.yaml && cargo run -- summarize --input /tmp/analysis.yaml --output summary.yaml --strip-pii"
+        }));
+    }
+
+    // Load organizational intelligence
+    let generator = match DefectAwarePromptGenerator::from_file(&summary_path) {
+        Ok(gen) => gen,
+        Err(e) => {
+            return Ok(json!({
+                "status": "failed",
+                "message": format!("Failed to load summary: {}", e),
+                "error": "PARSE_ERROR",
+                "summary_path": summary_path.display().to_string()
+            }));
+        }
+    };
+
+    // Generate prompt
+    let prompt = generator.generate_prompt(&task, &context);
+
+    Ok(json!({
+        "status": "completed",
+        "message": "Defect-aware prompt generated successfully",
+        "result_type": "defect_aware_prompt",
+        "prompt": prompt,
+        "metadata": {
+            "repositories_analyzed": generator.metadata.repositories_analyzed,
+            "commits_analyzed": generator.metadata.commits_analyzed,
+            "analysis_date": generator.metadata.analysis_date,
+            "defect_patterns_count": generator.defect_patterns.len(),
+            "prompt_length": prompt.len(),
+            "task": task,
+            "context": context
+        }
+    }))
+}
+
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

@@ -312,32 +312,9 @@ pub enum Commands {
     #[command(visible_aliases = &["rt", "hallucination-detect"])]
     RedTeam(crate::cli::handlers::RedTeamCmd),
 
-    /// Show workflow prompts for EXTREME TDD and Toyota Way quality practices
-    #[command(visible_aliases = &["p"])]
-    Prompt {
-        /// Prompt name to show (use --list to see all available prompts)
-        name: Option<String>,
-
-        /// List all available prompts
-        #[arg(long, conflicts_with = "name")]
-        list: bool,
-
-        /// Show prompt variables that can be customized
-        #[arg(long, requires = "name")]
-        show_variables: bool,
-
-        /// Override prompt variables (e.g., --set TEST_CMD="pytest")
-        #[arg(long, value_parser = crate::cli::args::parse_key_val, requires = "name")]
-        set: Vec<(String, Value)>,
-
-        /// Output format (yaml, json, text)
-        #[arg(long, value_enum, default_value = "yaml", requires = "name")]
-        format: PromptOutputFormat,
-
-        /// Write output to file instead of stdout
-        #[arg(short, long)]
-        output: Option<PathBuf>,
-    },
+    /// AI prompt generation (defect-aware, ticket-based, spec-based)
+    #[command(subcommand, visible_aliases = &["p"])]
+    Prompt(PromptCommands),
 
     /// Run quality gate checks on the codebase
     #[command(visible_aliases = &["check", "c", "verify", "gate"])]
@@ -4222,6 +4199,113 @@ pub struct MutateArgs {
     /// Example: --use-cargo-mutants --no-shuffle
     #[arg(long)]
     pub no_shuffle: bool,
+}
+
+/// Prompt generation subcommands (Phase 4: Organizational Intelligence Integration)
+#[derive(Subcommand)]
+#[cfg_attr(test, derive(Debug))]
+pub enum PromptCommands {
+    /// Show workflow prompt (original functionality - EXTREME TDD, Toyota Way, etc.)
+    Show {
+        /// Prompt name to show (use --list to see all available prompts)
+        name: Option<String>,
+
+        /// List all available prompts
+        #[arg(long, conflicts_with = "name")]
+        list: bool,
+
+        /// Show prompt variables that can be customized
+        #[arg(long, requires = "name")]
+        show_variables: bool,
+
+        /// Override prompt variables (e.g., --set TEST_CMD="pytest")
+        #[arg(long, value_parser = crate::cli::args::parse_key_val, requires = "name")]
+        set: Vec<(String, Value)>,
+
+        /// Output format (yaml, json, text)
+        #[arg(long, value_enum, default_value = "yaml", requires = "name")]
+        format: PromptOutputFormat,
+
+        /// Write output to file instead of stdout
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+    },
+
+    /// Generate defect-aware AI prompt from organizational intelligence
+    #[command(visible_aliases = &["gen", "defect"])]
+    Generate {
+        /// Development task description
+        #[arg(short, long)]
+        task: String,
+
+        /// Additional context about the task
+        #[arg(short, long)]
+        context: String,
+
+        /// Path to OIP summary YAML file
+        #[arg(short, long)]
+        summary: PathBuf,
+
+        /// Write output to file instead of stdout
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+    },
+
+    /// Generate EXTREME TDD workflow prompt for fixing a ticket
+    #[command(visible_aliases = &["tkt", "fix"])]
+    Ticket {
+        /// Ticket/issue description or ID
+        #[arg(short, long)]
+        ticket: String,
+
+        /// Path to OIP summary YAML file (optional)
+        #[arg(short, long)]
+        summary: Option<PathBuf>,
+
+        /// Write output to file instead of stdout
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+    },
+
+    /// Generate implementation prompt from specification
+    #[command(visible_aliases = &["impl", "spec"])]
+    Implement {
+        /// Path to specification file (markdown)
+        #[arg(short, long)]
+        spec: PathBuf,
+
+        /// Path to OIP summary YAML file (optional)
+        #[arg(short, long)]
+        summary: Option<PathBuf>,
+
+        /// Write output to file instead of stdout
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+    },
+
+    /// Generate prompt for scaffolding a new repository
+    #[command(visible_aliases = &["scaffold", "new"])]
+    ScaffoldNewRepo {
+        /// Path to repository specification file (markdown)
+        #[arg(short, long)]
+        spec: PathBuf,
+
+        /// Include pmat tools setup
+        #[arg(long, default_value_t = true)]
+        include_pmat: bool,
+
+        /// Include bashrs setup
+        #[arg(long, default_value_t = true)]
+        include_bashrs: bool,
+
+        /// Include roadmapping tools
+        #[arg(long, default_value_t = true)]
+        include_roadmap: bool,
+
+        /// Write output to file instead of stdout
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+    },
 }
 
 #[cfg(test)]
