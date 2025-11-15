@@ -4778,6 +4778,8 @@ checksum = "04744f49eae99ab78e0d5c0b603ab218f515ea8cfe5a456d7629ad883a3b6e7d"
 [[package]]
 name = "organizational-intelligence-plugin"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "49813203ca3cbe6b11ec0ef36938c5a645a827323d0ed94300d7670f1d49211e"
 dependencies = [
  "anyhow",
  "async-trait",

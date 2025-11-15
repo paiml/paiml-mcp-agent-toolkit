@@ -19,7 +19,7 @@ path = "src/bin/pmat-agent.rs"
 
 [dependencies]
 # Organizational Intelligence Plugin - Phase 4 integration
-organizational-intelligence-plugin = { path = "../../organizational-intelligence-plugin" }
+organizational-intelligence-plugin = { version = "0.1", optional = true }
 
 # Async runtime
 # Sprint 46 Phase 4: Removed "io-std", "signal", "process" features (saves 180-280 KB)
@@ -275,7 +275,8 @@ hex = "0.4"
 # capnpc = "0.20" # REMOVED: Unused Cap'n Proto compiler
 
 [features]
-default = ["all-languages", "demo", "polyglot-ast"]
+default = ["all-languages", "demo", "polyglot-ast", "org-intelligence"]
+org-intelligence = ["organizational-intelligence-plugin"]
 all-languages = ["rust-ast", "typescript-ast", "python-ast", "c-ast", "cpp-ast", "ruchy-ast", "go-ast", "wasm-ast", "deep-wasm", "shell-ast", "php-ast", "swift-ast", "java-ast", "csharp-ast", "ruby-ast", "scala-ast"]
 most-languages = ["rust-ast", "typescript-ast", "python-ast", "c-ast", "cpp-ast", "java-ast", "csharp-ast", "ruby-ast", "scala-ast"]
 rust-only = ["rust-ast"]

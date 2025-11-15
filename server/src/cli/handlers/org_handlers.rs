@@ -2,7 +2,10 @@
 //!
 //! This module integrates OIP (Organizational Intelligence Plugin) directly into PMAT
 //! via shared library dependency, providing seamless organizational analysis capabilities.
+//!
+//! **Feature Flag**: This module requires the `org-intelligence` feature to be enabled.
 
+#[cfg(feature = "org-intelligence")]
 use crate::cli::commands::OrgCommands;
 use anyhow::{Context, Result};
 use chrono::{Duration, Utc};
