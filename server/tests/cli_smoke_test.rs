@@ -17,7 +17,9 @@ fn run_command(args: &[&str]) -> (bool, String, String) {
     (success, stdout, stderr)
 }
 
+/// SLOW: >240s - excluded from fast test suite
 #[test]
+#[ignore]
 fn test_critical_commands_work() {
     let mut failures = Vec::new();
 

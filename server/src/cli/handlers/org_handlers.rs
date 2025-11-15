@@ -205,3 +205,55 @@ async fn handle_org_analyze(
 
     Ok(())
 }
+
+#[cfg(all(test, feature = "org-intelligence"))]
+mod tests {
+    use super::*;
+    use tempfile::NamedTempFile;
+
+    #[tokio::test]
+    async fn test_org_commands_enum_structure() {
+        // Verify OrgCommands enum can be constructed
+        let cmd = OrgCommands::Analyze {
+            org: "testorg".to_string(),
+            output: PathBuf::from("/tmp/test.yaml"),
+            max_concurrent: 5,
+            summarize: false,
+            strip_pii: false,
+            top_n: 10,
+            min_frequency: 3,
+        };
+
+        match cmd {
+            OrgCommands::Analyze { org, .. } => {
+                assert_eq!(org, "testorg");
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_handle_org_command_basic_structure() {
+        // Test that handle_org_command function exists and has correct signature
+        // This is a smoke test to ensure the function compiles
+        let temp_file = NamedTempFile::new().unwrap();
+        let cmd = OrgCommands::Analyze {
+            org: "nonexistent-test-org-12345".to_string(),
+            output: temp_file.path().to_path_buf(),
+            max_concurrent: 1,
+            summarize: false,
+            strip_pii: false,
+            top_n: 10,
+            min_frequency: 3,
+        };
+
+        // This will fail (org doesn't exist) but proves the function signature is correct
+        let result = handle_org_command(cmd).await;
+        assert!(result.is_err(), "Expected error for nonexistent org");
+    }
+
+    #[test]
+    fn test_org_handler_module_compiles() {
+        // Smoke test to ensure module compiles with feature flag
+        assert!(true);
+    }
+}

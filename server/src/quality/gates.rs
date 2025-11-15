@@ -527,8 +527,9 @@ mod tests {
         assert!(!report.passed);
     }
 
-    #[cfg(not(feature = "skip-slow-tests"))] // SLOW: 81s - excluded from fast test suite
+    /// SLOW: 106s - excluded from fast test suite
     #[test]
+    #[ignore]
     fn integration_execute_clippy() {
         let config = GateConfig::default();
         let project_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));

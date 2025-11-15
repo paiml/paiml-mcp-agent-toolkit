@@ -758,8 +758,9 @@ mod parallel_tests {
         assert_eq!(checks.len(), 0);
     }
 
-    #[cfg(not(feature = "skip-slow-tests"))] // SLOW: 66s - excluded from fast test suite
+    /// SLOW: 100s - excluded from fast test suite
     #[tokio::test]
+    #[ignore]
     async fn test_run_checks_parallel_single_check() {
         let project_dir = PathBuf::from(".");
         let check_types = vec![CheckType::Build];

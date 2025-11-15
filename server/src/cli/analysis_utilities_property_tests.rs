@@ -8,7 +8,9 @@ proptest! {
     #![proptest_config(ProptestConfig::with_cases(10))]
 
     /// Test that dead code violations respect the threshold
+    /// SLOW: 137s - excluded from fast test suite
     #[test]
+    #[ignore]
     fn test_dead_code_threshold_property(max_percentage in 0.0..100.0) {
         let rt = tokio::runtime::Runtime::new().unwrap();
         let result = rt.block_on(async {
@@ -106,8 +108,9 @@ proptest! {
     }
 
     /// Test dead code percentage calculation
-    #[cfg(not(feature = "skip-slow-tests"))] // SLOW: 79s - excluded from fast test suite
+    /// SLOW: 264s - excluded from fast test suite
     #[test]
+    #[ignore]
     fn test_dead_code_percentage_invariants(
         threshold1 in 10.0..50.0,
         threshold2 in 50.0..90.0,

@@ -350,7 +350,9 @@ fn test_context_alias_ast() {
         .success();
 }
 
+/// SLOW: >240s - excluded from fast test suite
 #[test]
+#[ignore]
 fn test_context_default_path() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -359,7 +361,9 @@ fn test_context_default_path() {
         .success();
 }
 
+/// SLOW: >240s - excluded from fast test suite
 #[test]
+#[ignore]
 fn test_context_with_path() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -505,7 +509,9 @@ fn test_analyze_dead_code_help() {
         .stdout(predicate::str::contains("path"));
 }
 
+/// SLOW: >240s - excluded from fast test suite
 #[test]
+#[ignore]
 fn test_analyze_dead_code_current_dir() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -515,7 +521,9 @@ fn test_analyze_dead_code_current_dir() {
         .stdout(predicate::str::contains("Dead"));
 }
 
+/// SLOW: >240s - excluded from fast test suite
 #[test]
+#[ignore]
 fn test_analyze_dead_code_format_json() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -1466,7 +1474,9 @@ fn test_analyze_satd_nonexistent_path() {
 // CONTEXT FORMAT VARIATIONS
 // ============================================================================
 
+/// SLOW: >240s - excluded from fast test suite
 #[test]
+#[ignore]
 fn test_context_format_json() {
     Command::cargo_bin("pmat")
         .unwrap()

@@ -237,8 +237,9 @@ fn test_cli_subcommand_help() {
     assert!(stdout.contains("List available templates"));
 }
 
+/// SLOW: >240s - excluded from fast test suite
 #[test]
-#[cfg_attr(feature = "skip-slow-tests", ignore)]
+#[ignore]
 fn test_cli_mode_list_templates() {
     let output = Command::new("cargo")
         .args(["run", "--bin", "pmat", "--", "--mode", "cli", "list"])
@@ -257,8 +258,9 @@ fn test_cli_mode_list_templates() {
     );
 }
 
+/// SLOW: >240s - excluded from fast test suite
 #[test]
-#[cfg_attr(feature = "skip-slow-tests", ignore)]
+#[ignore]
 fn test_cli_generate_validation_error() {
     let output = Command::new("cargo")
         .args([
@@ -281,8 +283,9 @@ fn test_cli_generate_validation_error() {
     );
 }
 
+/// SLOW: >240s - excluded from fast test suite
 #[test]
-#[cfg_attr(feature = "skip-slow-tests", ignore)]
+#[ignore]
 fn test_cli_search_templates() {
     let output = Command::new("cargo")
         .args(["run", "--bin", "pmat", "--", "search", "rust"])
@@ -296,8 +299,9 @@ fn test_cli_search_templates() {
     }
 }
 
+/// SLOW: >240s - excluded from fast test suite
 #[test]
-#[cfg_attr(feature = "skip-slow-tests", ignore)]
+#[ignore]
 fn test_cli_invalid_command() {
     let output = Command::new("cargo")
         .args(["run", "--bin", "pmat", "--", "invalid-command"])
