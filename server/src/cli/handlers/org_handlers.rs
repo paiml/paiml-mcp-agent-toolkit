@@ -6,6 +6,7 @@
 use crate::cli::commands::OrgCommands;
 use anyhow::{Context, Result};
 use chrono::{Duration, Utc};
+use indicatif::{ProgressBar, ProgressStyle};
 use organizational_intelligence_plugin::analyzer::OrgAnalyzer;
 use organizational_intelligence_plugin::github::GitHubMiner;
 use organizational_intelligence_plugin::report::{AnalysisMetadata, AnalysisReport, ReportGenerator};
@@ -105,32 +106,41 @@ async fn handle_org_analyze(
     let mut total_commits = 0;
     let mut repos_analyzed = 0;
 
+    // Create progress bar
+    let pb = ProgressBar::new(sorted_repos.len() as u64);
+    pb.set_style(
+        ProgressStyle::default_bar()
+            .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} {msg}")
+            .expect("Failed to set progress bar template")
+            .progress_chars("#>-"),
+    );
+
     for (i, repo) in sorted_repos.iter().enumerate() {
-        println!(
-            "   [{}/{}] Analyzing: {} (updated: {})",
-            i + 1,
-            sorted_repos.len(),
-            repo.name,
-            repo.updated_at.format("%Y-%m-%d")
-        );
+        pb.set_message(format!("Analyzing: {}", repo.name));
 
         let repo_url = format!("https://github.com/{}/{}", org, repo.name);
 
         match analyzer.analyze_repository(&repo_url, &repo.name, 100).await {
             Ok(patterns) => {
                 total_commits += 100;
+                let pattern_count = patterns.len();
                 all_patterns.extend(patterns);
                 repos_analyzed += 1;
+                pb.println(format!("   ✅ [{}/{}] {} - {} patterns found",
+                    i + 1, sorted_repos.len(), repo.name, pattern_count));
                 info!("✅ Analyzed {}", repo.name);
             }
             Err(e) => {
                 warn!("Failed to analyze {}: {}", repo.name, e);
-                println!("     ⚠️  Skipping {} (error: {})", repo.name, e);
+                pb.println(format!("   ⚠️  [{}/{}] {} - SKIPPED: {}",
+                    i + 1, sorted_repos.len(), repo.name, e));
             }
         }
+        pb.inc(1);
     }
 
-    println!("   ✅ Analysis complete!");
+    pb.finish_with_message("Analysis complete!");
+    println!();
 
     // Generate YAML report
     info!("Generating YAML report");
