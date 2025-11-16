@@ -64,6 +64,7 @@ codegen-units = 1        # Single codegen unit for maximum optimization
 panic = "abort"          # Remove unwinding machinery (~200KB savings)
 strip = "symbols"        # Strip symbols (60-80% reduction)
 overflow-checks = false  # Disable overflow checks in release
+debug = true             # Enable debug symbols for flamegraph profiling
 
 # The profile that 'cargo dist' will build with
 # Workspace-level test optimization
