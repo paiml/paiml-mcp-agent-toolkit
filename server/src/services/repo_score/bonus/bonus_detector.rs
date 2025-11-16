@@ -6,8 +6,8 @@
 // - Mutation testing (cargo-mutants) → +2 points
 // - Living documentation (mdBook) → +3 points
 
-use crate::services::repo_score::models::*;
 use crate::services::repo_score::error::Result;
+use crate::services::repo_score::models::*;
 use std::path::Path;
 use walkdir::WalkDir;
 
@@ -41,7 +41,8 @@ impl BonusDetector {
                     if ext == "rs" {
                         if let Ok(content) = tokio::fs::read_to_string(path).await {
                             if content.contains("proptest!") || content.contains("use proptest::") {
-                                evidence.push(format!("Property tests found in {}", path.display()));
+                                evidence
+                                    .push(format!("Property tests found in {}", path.display()));
                                 detected = true;
                                 break; // Found evidence, no need to scan more
                             }
@@ -108,7 +109,10 @@ impl BonusDetector {
 
         for path in mutants_toml_paths {
             if path.exists() {
-                evidence.push(format!("{} found", path.file_name().unwrap().to_string_lossy()));
+                evidence.push(format!(
+                    "{} found",
+                    path.file_name().unwrap().to_string_lossy()
+                ));
                 detected = true;
             }
         }
@@ -116,12 +120,18 @@ impl BonusDetector {
         // Check CI workflows for cargo-mutants
         let workflows_dir = repo_path.join(".github/workflows");
         if workflows_dir.exists() {
-            for entry in WalkDir::new(&workflows_dir).max_depth(1).into_iter().flatten() {
+            for entry in WalkDir::new(&workflows_dir)
+                .max_depth(1)
+                .into_iter()
+                .flatten()
+            {
                 if entry.file_type().is_file() {
                     if let Some(ext) = entry.path().extension() {
                         if ext == "yml" || ext == "yaml" {
                             if let Ok(content) = tokio::fs::read_to_string(entry.path()).await {
-                                if content.contains("cargo-mutants") || content.contains("cargo mutants") {
+                                if content.contains("cargo-mutants")
+                                    || content.contains("cargo mutants")
+                                {
                                     evidence.push("Mutation testing in CI workflow".to_string());
                                     detected = true;
                                     break;
@@ -172,17 +182,17 @@ impl BonusDetector {
         }
 
         // Check for common mdBook directories
-        let common_book_dirs = vec![
-            repo_path.join("book"),
-            repo_path.join("docs"),
-        ];
+        let common_book_dirs = vec![repo_path.join("book"), repo_path.join("docs")];
 
         for book_dir in common_book_dirs {
             if book_dir.exists() && book_dir.is_dir() {
                 // Check if it contains mdBook structure
                 let summary_path = book_dir.join("src/SUMMARY.md");
                 if summary_path.exists() {
-                    evidence.push(format!("mdBook structure in {}/", book_dir.file_name().unwrap().to_string_lossy()));
+                    evidence.push(format!(
+                        "mdBook structure in {}/",
+                        book_dir.file_name().unwrap().to_string_lossy()
+                    ));
                     detected = true;
                 }
             }
@@ -232,8 +242,8 @@ impl Default for BonusDetector {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::TempDir;
     use std::fs;
+    use tempfile::TempDir;
 
     fn create_temp_repo() -> TempDir {
         TempDir::new().unwrap()
@@ -330,7 +340,11 @@ proptest = "1.0"
         let repo_path = temp_dir.path();
 
         // Add all bonus features
-        create_file(repo_path, "Cargo.toml", "[dependencies]\nproptest = \"1.0\"");
+        create_file(
+            repo_path,
+            "Cargo.toml",
+            "[dependencies]\nproptest = \"1.0\"",
+        );
         fs::create_dir_all(repo_path.join("fuzz")).unwrap();
         create_file(repo_path, "mutants.toml", "[mutants]");
         create_file(repo_path, "book.toml", "[book]");
@@ -351,7 +365,11 @@ proptest = "1.0"
         let repo_path = temp_dir.path();
 
         // Add only property tests and fuzzing
-        create_file(repo_path, "Cargo.toml", "[dependencies]\nproptest = \"1.0\"");
+        create_file(
+            repo_path,
+            "Cargo.toml",
+            "[dependencies]\nproptest = \"1.0\"",
+        );
         fs::create_dir_all(repo_path.join("fuzz")).unwrap();
 
         let detector = BonusDetector::new();
@@ -375,7 +393,11 @@ proptest = "1.0"
         let result = detector.detect(repo_path).await.unwrap();
 
         assert!(!result.living_docs.evidence.is_empty());
-        assert!(result.living_docs.evidence.iter().any(|e| e.contains("book.toml")));
+        assert!(result
+            .living_docs
+            .evidence
+            .iter()
+            .any(|e| e.contains("book.toml")));
     }
 
     #[tokio::test]

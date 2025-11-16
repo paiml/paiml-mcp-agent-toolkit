@@ -5,7 +5,6 @@
 /// Tests end-to-end workflows, performance, concurrency, and real-world scenarios.
 ///
 /// Sprint 64 Day 1 - Testing Infrastructure
-
 use pmat::cli::commands::MutateArgs;
 use pmat::cli::handlers::mutate::handle;
 use pmat::stateless_server::StatelessTemplateServer;
@@ -487,11 +486,11 @@ pub fn divide(a: i32, b: i32) -> i32 {
             output: None,
             threshold: None,
             failures_only: false,
-        use_cargo_mutants: false,
-        features: None,
-        all_features: false,
-        no_default_features: false,
-        no_shuffle: false,
+            use_cargo_mutants: false,
+            features: None,
+            all_features: false,
+            no_default_features: false,
+            no_shuffle: false,
         };
         let server = Arc::new(StatelessTemplateServer::new().unwrap());
 
@@ -729,11 +728,11 @@ fn div(a: i32, b: i32) -> i32 { a / b }
             output: None,
             threshold: None,
             failures_only: false,
-        use_cargo_mutants: false,
-        features: None,
-        all_features: false,
-        no_default_features: false,
-        no_shuffle: false,
+            use_cargo_mutants: false,
+            features: None,
+            all_features: false,
+            no_default_features: false,
+            no_shuffle: false,
         };
         let server = Arc::new(StatelessTemplateServer::new().unwrap());
 
@@ -983,11 +982,11 @@ async fn test_race_condition_handling() {
             output: None,
             threshold: None,
             failures_only: false,
-        use_cargo_mutants: false,
-        features: None,
-        all_features: false,
-        no_default_features: false,
-        no_shuffle: false,
+            use_cargo_mutants: false,
+            features: None,
+            all_features: false,
+            no_default_features: false,
+            no_shuffle: false,
         };
         let server = Arc::new(StatelessTemplateServer::new().unwrap());
         let _ = handle(args, server).await;

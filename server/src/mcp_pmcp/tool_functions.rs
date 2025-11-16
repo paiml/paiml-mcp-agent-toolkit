@@ -72,7 +72,7 @@ pub async fn analyze_complexity(
                             "line_end": func.line_end,
                         }));
                     }
-                },
+                }
                 Err(_) => continue, // Skip files that fail to analyze
             }
         }
@@ -129,27 +129,25 @@ pub async fn analyze_satd(paths: &[PathBuf], _include_resolved: bool) -> Result<
         }
 
         match tokio::fs::read_to_string(path).await {
-            Ok(content) => {
-                match detector.extract_from_content(&content, path) {
-                    Ok(debts) => {
-                        let satd_count = debts.len();
-                        total_satd += satd_count;
+            Ok(content) => match detector.extract_from_content(&content, path) {
+                Ok(debts) => {
+                    let satd_count = debts.len();
+                    total_satd += satd_count;
 
-                        if satd_count > 0 {
-                            file_results.push(json!({
-                                "file": path.display().to_string(),
-                                "satd_count": satd_count,
-                                "debts": debts.iter().map(|debt| json!({
-                                    "line": debt.line,
-                                    "category": format!("{:?}", debt.category),
-                                    "severity": format!("{:?}", debt.severity),
-                                    "text": debt.text,
-                                })).collect::<Vec<_>>(),
-                            }));
-                        }
-                    },
-                    Err(_) => continue,
+                    if satd_count > 0 {
+                        file_results.push(json!({
+                            "file": path.display().to_string(),
+                            "satd_count": satd_count,
+                            "debts": debts.iter().map(|debt| json!({
+                                "line": debt.line,
+                                "category": format!("{:?}", debt.category),
+                                "severity": format!("{:?}", debt.severity),
+                                "text": debt.text,
+                            })).collect::<Vec<_>>(),
+                        }));
+                    }
                 }
+                Err(_) => continue,
             },
             Err(_) => continue,
         }
@@ -196,7 +194,7 @@ pub async fn analyze_dead_code(paths: &[PathBuf], _include_tests: bool) -> Resul
                         })).collect::<Vec<_>>(),
                     }));
                 }
-            },
+            }
             Err(_) => continue,
         }
     }
@@ -348,7 +346,10 @@ pub async fn analyze_coupling(paths: &[PathBuf], threshold: Option<f64>) -> Resu
     let mut all_imports: HashMap<String, Vec<String>> = HashMap::new();
     for ast_context in &context.analyses.ast_contexts {
         let file_path = ast_context.base.path.clone();
-        let imports: Vec<String> = ast_context.base.items.iter()
+        let imports: Vec<String> = ast_context
+            .base
+            .items
+            .iter()
             .filter_map(|item| match item {
                 crate::services::context::AstItem::Use { path, .. } => Some(path.clone()),
                 crate::services::context::AstItem::Import { module, .. } => Some(module.clone()),
@@ -361,7 +362,8 @@ pub async fn analyze_coupling(paths: &[PathBuf], threshold: Option<f64>) -> Resu
     // Calculate metrics
     for (file, imports) in &all_imports {
         let efferent = imports.len();
-        let afferent = all_imports.values()
+        let afferent = all_imports
+            .values()
             .filter(|deps| deps.iter().any(|d| d.contains(file) || file.contains(d)))
             .count();
         let total = afferent + efferent;
@@ -375,7 +377,8 @@ pub async fn analyze_coupling(paths: &[PathBuf], threshold: Option<f64>) -> Resu
     }
 
     // Filter by threshold and build coupling entries
-    let couplings: Vec<Value> = file_metrics.iter()
+    let couplings: Vec<Value> = file_metrics
+        .iter()
         .filter(|(_, (_, _, instability))| *instability >= threshold_value)
         .map(|(file, (afferent, efferent, instability))| {
             json!({
@@ -607,7 +610,7 @@ pub async fn quality_gate_summary(paths: &[PathBuf]) -> Result<Value> {
 pub async fn quality_gate_baseline(paths: &[PathBuf], output: Option<&Path>) -> Result<Value> {
     use crate::models::git_context::GitContext;
     use crate::tdg::analyzer_simple::TdgAnalyzer;
-    use crate::tdg::baseline::{TdgBaseline, BaselineEntry};
+    use crate::tdg::baseline::{BaselineEntry, TdgBaseline};
     use crate::tdg::storage::ComponentScores;
 
     if paths.is_empty() {
@@ -634,15 +637,14 @@ pub async fn quality_gate_baseline(paths: &[PathBuf], output: Option<&Path>) -> 
             if let Some(file_path) = &file_score.file_path {
                 // Create baseline entry
                 let mut complexity_breakdown = HashMap::new();
-                complexity_breakdown.insert("structural".to_string(), file_score.structural_complexity);
+                complexity_breakdown
+                    .insert("structural".to_string(), file_score.structural_complexity);
                 complexity_breakdown.insert("semantic".to_string(), file_score.semantic_complexity);
                 complexity_breakdown.insert("entropy".to_string(), file_score.entropy_score);
 
                 let entry = BaselineEntry {
                     content_hash: blake3::hash(
-                        std::fs::read(file_path)
-                            .unwrap_or_default()
-                            .as_slice()
+                        std::fs::read(file_path).unwrap_or_default().as_slice(),
                     ),
                     score: file_score.clone(),
                     components: ComponentScores {
@@ -668,11 +670,7 @@ pub async fn quality_gate_baseline(paths: &[PathBuf], output: Option<&Path>) -> 
         complexity_breakdown.insert("entropy".to_string(), file_score.entropy_score);
 
         let entry = BaselineEntry {
-            content_hash: blake3::hash(
-                std::fs::read(project_path)
-                    .unwrap_or_default()
-                    .as_slice()
-            ),
+            content_hash: blake3::hash(std::fs::read(project_path).unwrap_or_default().as_slice()),
             score: file_score.clone(),
             components: ComponentScores {
                 complexity_breakdown,
@@ -729,7 +727,10 @@ pub async fn quality_gate_compare(baseline: &Path, paths: &[PathBuf]) -> Result<
     }
 
     if !baseline.exists() {
-        return Err(anyhow::anyhow!("Baseline file not found: {}", baseline.display()));
+        return Err(anyhow::anyhow!(
+            "Baseline file not found: {}",
+            baseline.display()
+        ));
     }
 
     // Load existing baseline
@@ -877,10 +878,7 @@ pub async fn generate_context(
     }))
 }
 
-pub async fn generate_deep_context(
-    paths: &[PathBuf],
-    _format: Option<&str>,
-) -> Result<Value> {
+pub async fn generate_deep_context(paths: &[PathBuf], _format: Option<&str>) -> Result<Value> {
     use crate::services::deep_context::{DeepContextAnalyzer, DeepContextConfig};
 
     if paths.is_empty() {
@@ -942,28 +940,54 @@ pub async fn analyze_context(paths: &[PathBuf], analysis_types: &[String]) -> Re
 
     if requested_all || analysis_types.iter().any(|t| t == "structure") {
         let file_count = context.file_tree.total_files;
-        let function_count: usize = context.analyses.ast_contexts.iter()
-            .map(|ast| ast.base.items.iter()
-                .filter(|item| matches!(item, crate::services::context::AstItem::Function { .. }))
-                .count())
+        let function_count: usize = context
+            .analyses
+            .ast_contexts
+            .iter()
+            .map(|ast| {
+                ast.base
+                    .items
+                    .iter()
+                    .filter(|item| {
+                        matches!(item, crate::services::context::AstItem::Function { .. })
+                    })
+                    .count()
+            })
             .sum();
-        analyses.insert("structure".to_string(), json!({
-            "total_files": file_count,
-            "total_functions": function_count,
-        }));
+        analyses.insert(
+            "structure".to_string(),
+            json!({
+                "total_files": file_count,
+                "total_functions": function_count,
+            }),
+        );
     }
 
     if requested_all || analysis_types.iter().any(|t| t == "dependencies") {
-        let import_count: usize = context.analyses.ast_contexts.iter()
-            .map(|ast| ast.base.items.iter()
-                .filter(|item| matches!(item,
-                    crate::services::context::AstItem::Use { .. } |
-                    crate::services::context::AstItem::Import { .. }))
-                .count())
+        let import_count: usize = context
+            .analyses
+            .ast_contexts
+            .iter()
+            .map(|ast| {
+                ast.base
+                    .items
+                    .iter()
+                    .filter(|item| {
+                        matches!(
+                            item,
+                            crate::services::context::AstItem::Use { .. }
+                                | crate::services::context::AstItem::Import { .. }
+                        )
+                    })
+                    .count()
+            })
             .sum();
-        analyses.insert("dependencies".to_string(), json!({
-            "total_imports": import_count,
-        }));
+        analyses.insert(
+            "dependencies".to_string(),
+            json!({
+                "total_imports": import_count,
+            }),
+        );
     }
 
     Ok(json!({
@@ -1043,7 +1067,12 @@ pub async fn context_summary(paths: &[PathBuf], _level: Option<&str>) -> Result<
         Ok(())
     }
 
-    traverse_dir(project_path, &mut total_files, &mut total_lines, &mut languages)?;
+    traverse_dir(
+        project_path,
+        &mut total_files,
+        &mut total_lines,
+        &mut languages,
+    )?;
 
     let languages_vec: Vec<String> = languages.into_iter().collect();
 

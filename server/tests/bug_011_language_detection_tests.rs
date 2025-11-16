@@ -15,9 +15,8 @@ use tempfile::TempDir;
 
 // Import the actual implementation
 use pmat::services::enhanced_language_detection::{
-    detect_all_languages, detect_project_language_enhanced,
-    detect_project_language_with_timeout, override_language_detection,
-    override_multiple_languages,
+    detect_all_languages, detect_project_language_enhanced, detect_project_language_with_timeout,
+    override_language_detection, override_multiple_languages,
 };
 
 // =============================================================================
@@ -34,7 +33,10 @@ fn test_cpp_project_detected_correctly() {
     let detection = detect_project_language_enhanced(&project.path());
 
     // Assert: Should detect C++ as primary language
-    assert_eq!(detection.language, "cpp", "Should detect C++ as primary language");
+    assert_eq!(
+        detection.language, "cpp",
+        "Should detect C++ as primary language"
+    );
     assert!(
         detection.confidence > 70.0,
         "Should have high confidence (>70%) for C++ detection, got {}",
@@ -86,7 +88,10 @@ fn test_detect_all_languages_in_polyglot_project() {
 
     let rust_lang = detection.languages.iter().find(|l| l.language == "rust");
     let python_lang = detection.languages.iter().find(|l| l.language == "python");
-    let ts_lang = detection.languages.iter().find(|l| l.language == "typescript");
+    let ts_lang = detection
+        .languages
+        .iter()
+        .find(|l| l.language == "typescript");
 
     assert!(rust_lang.is_some(), "Should detect Rust");
     assert!(python_lang.is_some(), "Should detect Python");
@@ -106,7 +111,11 @@ fn test_ignore_languages_below_5_percent() {
     let detection = detect_all_languages(&project.path());
 
     // Assert: Should only include languages >5%
-    assert_eq!(detection.languages.len(), 2, "Should only detect Rust and Python (>5%)");
+    assert_eq!(
+        detection.languages.len(),
+        2,
+        "Should only detect Rust and Python (>5%)"
+    );
 
     let has_shell = detection.languages.iter().any(|l| l.language == "bash");
     assert!(!has_shell, "Shell scripts (<5%) should not be included");
@@ -150,7 +159,10 @@ fn test_cmake_indicates_cpp_project() {
 
     // Assert: Should strongly indicate C++ project
     assert_eq!(detection.language, "cpp");
-    assert!(detection.confidence >= 85.0, "CMakeLists.txt should indicate C++ with >=85% confidence");
+    assert!(
+        detection.confidence >= 85.0,
+        "CMakeLists.txt should indicate C++ with >=85% confidence"
+    );
 }
 
 // =============================================================================
@@ -171,7 +183,10 @@ fn test_discovery_completes_within_timeout() {
     let elapsed = start.elapsed();
 
     // Assert: Should complete within 5 seconds
-    assert!(elapsed < Duration::from_secs(5), "Detection should complete within timeout");
+    assert!(
+        elapsed < Duration::from_secs(5),
+        "Detection should complete within timeout"
+    );
     assert!(result.is_ok(), "Detection should succeed within timeout");
 }
 
@@ -215,7 +230,10 @@ fn test_languages_override_flag() {
     assert!(detection.languages.iter().any(|l| l.language == "python"));
 
     // Should NOT include TypeScript even if present
-    assert!(!detection.languages.iter().any(|l| l.language == "typescript"));
+    assert!(!detection
+        .languages
+        .iter()
+        .any(|l| l.language == "typescript"));
 }
 
 // =============================================================================
@@ -229,7 +247,11 @@ fn create_mock_cpp_project() -> TempDir {
     // Create C++ files (70%)
     std::fs::create_dir_all(base.join("src")).unwrap();
     for i in 0..70 {
-        std::fs::write(base.join(format!("src/module_{}.cc", i)), "int main() { return 0; }").unwrap();
+        std::fs::write(
+            base.join(format!("src/module_{}.cc", i)),
+            "int main() { return 0; }",
+        )
+        .unwrap();
         std::fs::write(base.join(format!("src/module_{}.h", i)), "#pragma once").unwrap();
     }
 
@@ -237,12 +259,17 @@ fn create_mock_cpp_project() -> TempDir {
     std::fs::write(
         base.join("CMakeLists.txt"),
         "cmake_minimum_required(VERSION 3.10)\nproject(TestProject)\n",
-    ).unwrap();
+    )
+    .unwrap();
 
     // Some Python scripts (20%)
     std::fs::create_dir_all(base.join("scripts")).unwrap();
     for i in 0..20 {
-        std::fs::write(base.join(format!("scripts/helper_{}.py", i)), "print('hello')").unwrap();
+        std::fs::write(
+            base.join(format!("scripts/helper_{}.py", i)),
+            "print('hello')",
+        )
+        .unwrap();
     }
 
     temp
@@ -266,13 +293,21 @@ fn create_polyglot_project() -> TempDir {
     // Python (30%)
     std::fs::create_dir_all(base.join("scripts")).unwrap();
     for i in 0..30 {
-        std::fs::write(base.join(format!("scripts/tool_{}.py", i)), "print('hello')").unwrap();
+        std::fs::write(
+            base.join(format!("scripts/tool_{}.py", i)),
+            "print('hello')",
+        )
+        .unwrap();
     }
 
     // TypeScript (25%)
     std::fs::create_dir_all(base.join("frontend")).unwrap();
     for i in 0..25 {
-        std::fs::write(base.join(format!("frontend/component_{}.ts", i)), "export {}").unwrap();
+        std::fs::write(
+            base.join(format!("frontend/component_{}.ts", i)),
+            "export {}",
+        )
+        .unwrap();
     }
     std::fs::write(base.join("package.json"), "{}").unwrap();
 
@@ -292,7 +327,11 @@ fn create_project_with_minor_languages() -> TempDir {
     // Python (8%)
     std::fs::create_dir_all(base.join("scripts")).unwrap();
     for i in 0..8 {
-        std::fs::write(base.join(format!("scripts/tool_{}.py", i)), "print('hello')").unwrap();
+        std::fs::write(
+            base.join(format!("scripts/tool_{}.py", i)),
+            "print('hello')",
+        )
+        .unwrap();
     }
 
     // Shell (2%) - should be ignored
@@ -312,7 +351,11 @@ fn create_mixed_project_with_cargo_toml() -> TempDir {
     std::fs::create_dir_all(base.join("scripts")).unwrap();
     for i in 0..50 {
         std::fs::write(base.join(format!("src/module_{}.rs", i)), "fn main() {}").unwrap();
-        std::fs::write(base.join(format!("scripts/tool_{}.py", i)), "print('hello')").unwrap();
+        std::fs::write(
+            base.join(format!("scripts/tool_{}.py", i)),
+            "print('hello')",
+        )
+        .unwrap();
     }
 
     // But Cargo.toml indicates Rust project
@@ -328,14 +371,19 @@ fn create_cpp_project_with_cmake() -> TempDir {
     // C++ files
     std::fs::create_dir_all(base.join("src")).unwrap();
     for i in 0..50 {
-        std::fs::write(base.join(format!("src/module_{}.cpp", i)), "int main() { return 0; }").unwrap();
+        std::fs::write(
+            base.join(format!("src/module_{}.cpp", i)),
+            "int main() { return 0; }",
+        )
+        .unwrap();
     }
 
     // CMakeLists.txt in root
     std::fs::write(
         base.join("CMakeLists.txt"),
         "cmake_minimum_required(VERSION 3.10)\nproject(TestProject)\n",
-    ).unwrap();
+    )
+    .unwrap();
 
     temp
 }

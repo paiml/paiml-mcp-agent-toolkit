@@ -49,8 +49,8 @@ impl Data{} {{
         crate::cli::ContextFormat::Markdown,
         false,
         false, // Full analysis with all annotations
-        None, // language
-        None, // languages
+        None,  // language
+        None,  // languages
     )
     .await;
 
@@ -86,17 +86,11 @@ impl Data{} {{
     );
     assert!(output.contains("[churn:"), "Missing churn annotation");
     // EXTREME TDD FIX: Check for annotation format, not raw strings
-    assert!(
-        output.contains("[satd:"),
-        "Missing SATD annotation"
-    );
+    assert!(output.contains("[satd:"), "Missing SATD annotation");
     // EXTREME TDD FIX: Graph metrics (pagerank) only present when there's a call graph
     // Simple test files with no inter-function calls won't have graph metrics - that's OK
     // Just verify TDG score is present
-    assert!(
-        output.contains("[tdg:"),
-        "Missing TDG score annotation"
-    );
+    assert!(output.contains("[tdg:"), "Missing TDG score annotation");
 }
 
 /// RED TEST: Must use parallel processing for all analyses
@@ -120,14 +114,14 @@ async fn test_parallel_analysis_execution() {
     // Should use tokio::join! internally for parallel execution
     let output_file = temp_dir.path().join("context.md");
     let result = crate::cli::handlers::utility_handlers::handle_context(
-        None,  // toolchain - EXTREME TDD FIX: was passing "rust" to wrong parameter
+        None, // toolchain - EXTREME TDD FIX: was passing "rust" to wrong parameter
         temp_dir.path().to_path_buf(),
         Some(output_file.clone()),
         crate::cli::ContextFormat::Markdown,
         false,
         false,
         Some("rust".to_string()), // language - EXTREME TDD FIX: move "rust" to correct parameter
-        None, // languages
+        None,                     // languages
     )
     .await;
 
@@ -296,14 +290,14 @@ impl DataProcessor {
     let output_file = temp_dir.path().join("context.md");
 
     let result = crate::cli::handlers::utility_handlers::handle_context(
-        None,  // toolchain - EXTREME TDD FIX: was passing "rust" to wrong parameter
+        None, // toolchain - EXTREME TDD FIX: was passing "rust" to wrong parameter
         temp_dir.path().to_path_buf(),
         Some(output_file.clone()),
         crate::cli::ContextFormat::Markdown,
         false,
         false,
         Some("rust".to_string()), // language - EXTREME TDD FIX: move "rust" to correct parameter
-        None, // languages
+        None,                     // languages
     )
     .await;
 
@@ -325,10 +319,7 @@ impl DataProcessor {
     assert!(output.contains("[big-o:"), "Missing Big-O");
     assert!(output.contains("[provability:"), "Missing provability");
     // EXTREME TDD FIX: Check for annotation format, not raw comment text
-    assert!(
-        output.contains("[satd:"),
-        "Missing SATD annotation"
-    );
+    assert!(output.contains("[satd:"), "Missing SATD annotation");
 
     // Should have proper function analysis
     assert!(

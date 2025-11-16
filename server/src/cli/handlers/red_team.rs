@@ -57,10 +57,7 @@ impl RedTeamResult {
 
         for (i, claim) in self.claims.iter().enumerate() {
             let evidence = &self.evidence_per_claim[i];
-            let contradicting: Vec<_> = evidence
-                .iter()
-                .filter(|e| !e.supports_claim)
-                .collect();
+            let contradicting: Vec<_> = evidence.iter().filter(|e| !e.supports_claim).collect();
 
             if contradicting.is_empty() {
                 continue;
@@ -87,7 +84,9 @@ impl RedTeamResult {
         output.push_str("\nRemediation:\n");
         output.push_str("  1. Run validation tests before committing\n");
         output.push_str("  2. Update commit message to reflect actual state\n");
-        output.push_str("  3. Use qualified language (\"MVP\", \"Phase 1\", etc.) for incremental work\n");
+        output.push_str(
+            "  3. Use qualified language (\"MVP\", \"Phase 1\", etc.) for incremental work\n",
+        );
 
         output
     }
@@ -281,7 +280,14 @@ impl RedTeamCmd {
                     eprintln!("🔴 Red Team Mode: Analyzing commit message");
                     eprintln!("📝 Message: {}", message);
                     eprintln!("📁 Repository: {}", path.display());
-                    eprintln!("🔍 Scan mode: {}", if *deep { "Deep (entire git history)" } else { "Fast (recent commits only)" });
+                    eprintln!(
+                        "🔍 Scan mode: {}",
+                        if *deep {
+                            "Deep (entire git history)"
+                        } else {
+                            "Fast (recent commits only)"
+                        }
+                    );
                 }
 
                 // Initialize progress indicator (only for text output)
@@ -308,9 +314,23 @@ impl RedTeamCmd {
                     .context("Failed to build repository context")?;
 
                 if *verbose {
-                    eprintln!("📊 Git history: {}", if context.has_git_history() { "✅ Found" } else { "⚠️  None" });
+                    eprintln!(
+                        "📊 Git history: {}",
+                        if context.has_git_history() {
+                            "✅ Found"
+                        } else {
+                            "⚠️  None"
+                        }
+                    );
                     eprintln!("🧪 Test files: {} found", context.get_test_files().len());
-                    eprintln!("📈 Coverage report: {}", if context.has_coverage_report() { "✅ Found" } else { "⚠️  None" });
+                    eprintln!(
+                        "📈 Coverage report: {}",
+                        if context.has_coverage_report() {
+                            "✅ Found"
+                        } else {
+                            "⚠️  None"
+                        }
+                    );
                 }
 
                 // Stage 2: Extract claims
@@ -335,10 +355,7 @@ impl RedTeamCmd {
                         println!("{}", result.format_text());
                     }
                     RedTeamOutputFormat::Json => {
-                        println!(
-                            "{}",
-                            serde_json::to_string_pretty(&result.format_json())?
-                        );
+                        println!("{}", serde_json::to_string_pretty(&result.format_json())?);
                     }
                 }
 

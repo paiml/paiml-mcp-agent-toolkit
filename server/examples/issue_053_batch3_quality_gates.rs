@@ -179,8 +179,10 @@ pub fn find_user(users: &[User], name: &str) -> Option<&User> {
         if !violations.is_empty() {
             println!("\nViolations:");
             for v in violations {
-                println!("  - {} (score: {}, grade: {})",
-                    v["file"], v["score"], v["grade"]);
+                println!(
+                    "  - {} (score: {}, grade: {})",
+                    v["file"], v["score"], v["grade"]
+                );
             }
         } else {
             println!("\n✅ No violations in standard mode");
@@ -203,8 +205,10 @@ pub fn find_user(users: &[User], name: &str) -> Option<&User> {
     if let Some(violations) = strict_result["violations"].as_array() {
         println!("\nViolations ({} files):", violations.len());
         for v in violations {
-            println!("  - {} (score: {}, grade: {})",
-                v["file"], v["score"], v["grade"]);
+            println!(
+                "  - {} (score: {}, grade: {})",
+                v["file"], v["score"], v["grade"]
+            );
         }
     }
 
@@ -228,8 +232,14 @@ pub fn find_user(users: &[User], name: &str) -> Option<&User> {
 
     if let Some(metrics) = simple_gate["metrics"].as_object() {
         println!("\nMetrics:");
-        println!("  Structural Complexity: {:.2}", metrics["structural_complexity"]);
-        println!("  Semantic Complexity: {:.2}", metrics["semantic_complexity"]);
+        println!(
+            "  Structural Complexity: {:.2}",
+            metrics["structural_complexity"]
+        );
+        println!(
+            "  Semantic Complexity: {:.2}",
+            metrics["semantic_complexity"]
+        );
         println!("  Duplication Ratio: {:.2}", metrics["duplication_ratio"]);
         println!("  Coupling Score: {:.2}", metrics["coupling_score"]);
         println!("  Documentation Coverage: {:.2}", metrics["doc_coverage"]);
@@ -249,7 +259,8 @@ pub fn find_user(users: &[User], name: &str) -> Option<&User> {
         if !violations.is_empty() {
             println!("\nQuality Violations ({}):", violations.len());
             for (i, v) in violations.iter().enumerate().take(5) {
-                println!("  {}. [{}] -{:.2} points: {}",
+                println!(
+                    "  {}. [{}] -{:.2} points: {}",
                     i + 1,
                     v["category"].as_str().unwrap_or("Unknown"),
                     v["penalty"],
@@ -270,10 +281,8 @@ pub fn find_user(users: &[User], name: &str) -> Option<&User> {
     println!("📊 Example 3: Quality Gate Summary");
     println!("─────────────────────────────────");
 
-    let summary_result = tool_functions::quality_gate_summary(
-        &[temp_dir.path().to_path_buf()],
-    )
-    .await?;
+    let summary_result =
+        tool_functions::quality_gate_summary(&[temp_dir.path().to_path_buf()]).await?;
 
     println!("Status: {}", summary_result["status"]);
     println!("Message: {}", summary_result["message"]);

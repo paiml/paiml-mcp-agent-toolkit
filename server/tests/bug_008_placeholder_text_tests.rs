@@ -304,7 +304,7 @@ fn add(a: i32, b: i32) -> i32 {
 }
 
 fn generate_context_report(path: &std::path::Path) -> Result<String, String> {
-    use pmat::cli::{ContextFormat, handlers::utility_handlers::handle_context};
+    use pmat::cli::{handlers::utility_handlers::handle_context, ContextFormat};
 
     // Run context generation using the public CLI handler
     let rt = tokio::runtime::Runtime::new().map_err(|e| e.to_string())?;
@@ -320,7 +320,8 @@ fn generate_context_report(path: &std::path::Path) -> Result<String, String> {
         false,
         None, // language
         None, // languages
-    )).map_err(|e| e.to_string())?;
+    ))
+    .map_err(|e| e.to_string())?;
 
     // Read the output file
     let output = std::fs::read_to_string(&output_file)

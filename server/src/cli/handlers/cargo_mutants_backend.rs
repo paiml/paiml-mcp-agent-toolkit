@@ -131,7 +131,11 @@ pub fn execute(config: CargoMutantsConfig) -> Result<PathBuf> {
     // Check if outcomes.json exists, if not check nested location
     let actual_output = if output_dir.join("outcomes.json").exists() {
         output_dir
-    } else if output_dir.join("mutants.out").join("outcomes.json").exists() {
+    } else if output_dir
+        .join("mutants.out")
+        .join("outcomes.json")
+        .exists()
+    {
         output_dir.join("mutants.out")
     } else {
         output_dir

@@ -157,7 +157,10 @@ fn test_display_snapshot_details() {
     );
 
     // Should show variables
-    assert!(details.contains("Variables:"), "Details should show variables section");
+    assert!(
+        details.contains("Variables:"),
+        "Details should show variables section"
+    );
     assert!(
         details.contains("counter") && details.contains("30"),
         "Details should show variable values"
@@ -178,10 +181,7 @@ fn test_display_snapshot_details() {
         details.contains("Location:") || details.contains("File:"),
         "Details should show location section"
     );
-    assert!(
-        details.contains("test.rs"),
-        "Details should show file name"
-    );
+    assert!(details.contains("test.rs"), "Details should show file name");
 }
 
 // RED Test 5: Show performance metrics
@@ -216,9 +216,7 @@ fn test_show_performance_metrics() {
 #[test]
 fn test_handle_empty_recording() {
     let empty_recording = Vec::new();
-    let result = std::panic::catch_unwind(|| {
-        pmat::services::dap::TimelineUI::new(empty_recording)
-    });
+    let result = std::panic::catch_unwind(|| pmat::services::dap::TimelineUI::new(empty_recording));
 
     // Should either panic with helpful message or return error
     // For now, we'll test that it doesn't crash silently
@@ -261,11 +259,7 @@ fn test_navigate_beyond_limits() {
         result.is_err(),
         "Should not be able to step backward from position 0"
     );
-    assert_eq!(
-        ui.current_position(),
-        0,
-        "Position should remain at 0"
-    );
+    assert_eq!(ui.current_position(), 0, "Position should remain at 0");
 
     // Jump to last position
     ui.jump_to(4).unwrap();
@@ -276,11 +270,7 @@ fn test_navigate_beyond_limits() {
         result.is_err(),
         "Should not be able to step forward from last position"
     );
-    assert_eq!(
-        ui.current_position(),
-        4,
-        "Position should remain at 4"
-    );
+    assert_eq!(ui.current_position(), 4, "Position should remain at 4");
 
     // Try to jump beyond bounds
     let result = ui.jump_to(10);

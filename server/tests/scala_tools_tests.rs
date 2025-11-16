@@ -7,13 +7,13 @@
 //!
 //! Strategy: Test critical paths and error handling first
 
-use pmat::mcp_integration::McpTool;
-use pmat::mcp_integration::scala_tools::ScalaAnalysisTool;
 use pmat::agents::registry::AgentRegistry;
+use pmat::mcp_integration::scala_tools::ScalaAnalysisTool;
+use pmat::mcp_integration::McpTool;
 use serde_json::json;
+use std::fs;
 use std::sync::Arc;
 use tempfile::tempdir;
-use std::fs;
 
 // ============================================================================
 // RED Phase 1: Metadata and Basic Structure Tests
@@ -275,13 +275,17 @@ async fn test_scala_single_file_analysis() {
     let temp_dir = tempdir().unwrap();
     let scala_file = temp_dir.path().join("Test.scala");
 
-    fs::write(&scala_file, r#"
+    fs::write(
+        &scala_file,
+        r#"
         object Test {
           def main(args: Array[String]): Unit = {
             println("Hello, Scala!")
           }
         }
-    "#).unwrap();
+    "#,
+    )
+    .unwrap();
 
     let registry = Arc::new(AgentRegistry::new());
     let tool = ScalaAnalysisTool::new(registry);
@@ -339,7 +343,7 @@ async fn test_scala_empty_directory() {
     match result {
         Ok(output) => {
             assert!(output.is_object());
-        },
+        }
         Err(_) => {}
     }
 }
@@ -444,11 +448,15 @@ async fn test_scala_simple_object() {
     let temp_dir = tempdir().unwrap();
     let scala_file = temp_dir.path().join("Simple.scala");
 
-    fs::write(&scala_file, r#"
+    fs::write(
+        &scala_file,
+        r#"
         object Simple {
           val x = 42
         }
-    "#).unwrap();
+    "#,
+    )
+    .unwrap();
 
     let registry = Arc::new(AgentRegistry::new());
     let tool = ScalaAnalysisTool::new(registry);
@@ -471,13 +479,17 @@ async fn test_scala_class_with_methods() {
     let temp_dir = tempdir().unwrap();
     let scala_file = temp_dir.path().join("Calculator.scala");
 
-    fs::write(&scala_file, r#"
+    fs::write(
+        &scala_file,
+        r#"
         class Calculator {
           def add(a: Int, b: Int): Int = a + b
           def subtract(a: Int, b: Int): Int = a - b
           def multiply(a: Int, b: Int): Int = a * b
         }
-    "#).unwrap();
+    "#,
+    )
+    .unwrap();
 
     let registry = Arc::new(AgentRegistry::new());
     let tool = ScalaAnalysisTool::new(registry);
@@ -501,7 +513,9 @@ async fn test_scala_complex_code() {
     let temp_dir = tempdir().unwrap();
     let scala_file = temp_dir.path().join("Complex.scala");
 
-    fs::write(&scala_file, r#"
+    fs::write(
+        &scala_file,
+        r#"
         object Complex {
           def fibonacci(n: Int): Int = n match {
             case 0 => 0
@@ -514,7 +528,9 @@ async fn test_scala_complex_code() {
             else n * factorial(n - 1)
           }
         }
-    "#).unwrap();
+    "#,
+    )
+    .unwrap();
 
     let registry = Arc::new(AgentRegistry::new());
     let tool = ScalaAnalysisTool::new(registry);

@@ -146,7 +146,7 @@ fn main() {
     let score = result.unwrap();
 
     // Should lose 3 points for suspicious warning
-    assert!(score.earned <= 22.0);  // Max 25 - 3
+    assert!(score.earned <= 22.0); // Max 25 - 3
 }
 
 // ============================================================================
@@ -365,9 +365,9 @@ fn main(){let x=5;println!("{}",x);}  // Bad formatting + unused warning
     // Should include specific tool suggestions
     let rec_text = recommendations.join(" ");
     assert!(
-        rec_text.contains("clippy") ||
-        rec_text.contains("rustfmt") ||
-        rec_text.contains("cargo fmt")
+        rec_text.contains("clippy")
+            || rec_text.contains("rustfmt")
+            || rec_text.contains("cargo fmt")
     );
 }
 
@@ -399,7 +399,7 @@ fn main(){let x=5;let y=10;let z=15;if x==5{}if y==10{}println!("bad");}
 
     // Should have very low score
     assert!(score.earned < score.max);
-    assert!(score.earned >= 0.0);  // Never negative
+    assert!(score.earned >= 0.0); // Never negative
 }
 
 // ============================================================================
@@ -456,8 +456,11 @@ fn test_scoring_performance() {
     assert!(result.is_ok());
 
     // Should complete in <5 seconds per specification
-    assert!(duration.as_secs() < 5,
-            "Scoring took {:?}, expected <5s", duration);
+    assert!(
+        duration.as_secs() < 5,
+        "Scoring took {:?}, expected <5s",
+        duration
+    );
 }
 
 // ============================================================================

@@ -105,9 +105,8 @@ fn test_scroll_up() {
 #[test]
 fn test_scroll_up_at_top() {
     // RED: Should not scroll past top
-    let mut inspector = VariableInspectorView::from_variables(vec![
-        ("a".to_string(), "1".to_string()),
-    ]);
+    let mut inspector =
+        VariableInspectorView::from_variables(vec![("a".to_string(), "1".to_string())]);
 
     inspector.scroll_up();
 
@@ -218,9 +217,8 @@ fn test_get_variable_at_index() {
 #[test]
 fn test_get_variable_out_of_bounds() {
     // RED: Should return None for invalid index
-    let inspector = VariableInspectorView::from_variables(vec![
-        ("x".to_string(), "42".to_string()),
-    ]);
+    let inspector =
+        VariableInspectorView::from_variables(vec![("x".to_string(), "42".to_string())]);
 
     let var = inspector.get_variable(10);
 
@@ -234,9 +232,8 @@ fn test_get_variable_out_of_bounds() {
 #[test]
 fn test_format_variable_line() {
     // RED: Should format variable as "name: value"
-    let inspector = VariableInspectorView::from_variables(vec![
-        ("counter".to_string(), "42".to_string()),
-    ]);
+    let inspector =
+        VariableInspectorView::from_variables(vec![("counter".to_string(), "42".to_string())]);
 
     let line = inspector.format_line(0);
 

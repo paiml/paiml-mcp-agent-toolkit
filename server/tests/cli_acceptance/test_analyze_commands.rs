@@ -537,8 +537,8 @@ mod integration_tests {
 
     /// Test analyze command workflow with multiple subcommands
     #[tokio::test]
-/// FAILED: Outdated acceptance test - needs CLI output update
-#[ignore]
+    /// FAILED: Outdated acceptance test - needs CLI output update
+    #[ignore]
     async fn test_analyze_workflow() -> Result<()> {
         let runner = CliTestRunner::new()?;
         let project_path = runner.create_sample_project()?;

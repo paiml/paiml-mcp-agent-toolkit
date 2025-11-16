@@ -46,8 +46,7 @@ fn main() {
     println!("{}", "-".repeat(60));
 
     let commit_message = "feat: Complete migration to libsql";
-    let context = RepositoryContext::new_mock()
-        .with_code_grep_results("sled", 15);
+    let context = RepositoryContext::new_mock().with_code_grep_results("sled", 15);
 
     let result = handler.analyze_commit_message(commit_message, &context);
     println!("{}", result.format_text());
@@ -64,5 +63,8 @@ fn main() {
     let context = RepositoryContext::new_mock().with_coverage(65.0);
 
     let result = handler.analyze_commit_message(commit_message, &context);
-    println!("{}", serde_json::to_string_pretty(&result.format_json()).unwrap());
+    println!(
+        "{}",
+        serde_json::to_string_pretty(&result.format_json()).unwrap()
+    );
 }

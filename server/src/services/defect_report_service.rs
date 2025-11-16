@@ -569,17 +569,13 @@ impl DefectReportService {
         use globset::{Glob, GlobMatcher};
 
         // Build glob matchers
-        let include_matcher: Option<GlobMatcher> = include.as_ref().and_then(|pattern| {
-            Glob::new(pattern)
-                .ok()
-                .map(|g| g.compile_matcher())
-        });
+        let include_matcher: Option<GlobMatcher> = include
+            .as_ref()
+            .and_then(|pattern| Glob::new(pattern).ok().map(|g| g.compile_matcher()));
 
-        let exclude_matcher: Option<GlobMatcher> = exclude.as_ref().and_then(|pattern| {
-            Glob::new(pattern)
-                .ok()
-                .map(|g| g.compile_matcher())
-        });
+        let exclude_matcher: Option<GlobMatcher> = exclude
+            .as_ref()
+            .and_then(|pattern| Glob::new(pattern).ok().map(|g| g.compile_matcher()));
 
         // Filter defects
         let filtered_defects: Vec<Defect> = report

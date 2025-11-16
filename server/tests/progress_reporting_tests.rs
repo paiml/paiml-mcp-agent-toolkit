@@ -17,8 +17,17 @@ fn test_red_team_shows_progress_in_tty() {
     std::env::set_var("TERM", "xterm-256color");
 
     let mut cmd = Command::new("cargo");
-    cmd.args(&["run", "--bin", "pmat", "--", "red-team", "analyze",
-               "--message", "feat: Test", "--verbose"]);
+    cmd.args(&[
+        "run",
+        "--bin",
+        "pmat",
+        "--",
+        "red-team",
+        "analyze",
+        "--message",
+        "feat: Test",
+        "--verbose",
+    ]);
 
     let output = cmd.output().unwrap();
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -39,8 +48,17 @@ fn test_red_team_shows_progress_in_tty() {
 #[ignore] // RED test - not yet implemented
 fn test_red_team_no_progress_in_quiet_mode() {
     let mut cmd = Command::new("cargo");
-    cmd.args(&["run", "--bin", "pmat", "--", "red-team", "analyze",
-               "--message", "feat: Test", "--quiet"]);
+    cmd.args(&[
+        "run",
+        "--bin",
+        "pmat",
+        "--",
+        "red-team",
+        "analyze",
+        "--message",
+        "feat: Test",
+        "--quiet",
+    ]);
 
     let output = cmd.output().unwrap();
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -95,8 +113,14 @@ fn test_red_team_evidence_source_progress() {
 
     // Simulate evidence gathering from 8 sources
     let sources = vec![
-        "GitHistory", "TestExecution", "CoverageReport", "LinkValidation",
-        "CargoAudit", "BenchmarkResults", "IssueTracker", "CodeGrep",
+        "GitHistory",
+        "TestExecution",
+        "CoverageReport",
+        "LinkValidation",
+        "CargoAudit",
+        "BenchmarkResults",
+        "IssueTracker",
+        "CodeGrep",
     ];
 
     for (idx, source) in sources.iter().enumerate() {
@@ -104,10 +128,7 @@ fn test_red_team_evidence_source_progress() {
         progress.set_progress(idx as u64 + 1, sources.len() as u64);
 
         let message = format!("{}: Processing... ({:.0}%)", source, percent);
-        assert!(
-            message.contains(source),
-            "Progress should show source name"
-        );
+        assert!(message.contains(source), "Progress should show source name");
     }
 
     assert_eq!(progress.completed_items(), 8);
@@ -148,8 +169,16 @@ fn test_repo_score_shows_category_progress() {
     std::env::set_var("TERM", "xterm-256color");
 
     let mut cmd = Command::new("cargo");
-    cmd.args(&["run", "--bin", "pmat", "--", "repo-score",
-               "--path", ".", "--verbose"]);
+    cmd.args(&[
+        "run",
+        "--bin",
+        "pmat",
+        "--",
+        "repo-score",
+        "--path",
+        ".",
+        "--verbose",
+    ]);
 
     let output = cmd.output().unwrap();
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -169,8 +198,16 @@ fn test_repo_score_shows_category_progress() {
 #[ignore] // RED test - not yet implemented
 fn test_repo_score_shows_file_progress() {
     let mut cmd = Command::new("cargo");
-    cmd.args(&["run", "--bin", "pmat", "--", "repo-score",
-               "--path", ".", "--verbose"]);
+    cmd.args(&[
+        "run",
+        "--bin",
+        "pmat",
+        "--",
+        "repo-score",
+        "--path",
+        ".",
+        "--verbose",
+    ]);
 
     let output = cmd.output().unwrap();
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -310,7 +347,10 @@ fn test_progress_tty_detection() {
     let _progress = ProgressIndicator::new("Testing");
 
     // Test environment is not a TTY (static method)
-    assert!(!ProgressIndicator::is_tty(), "Test environment should not be TTY");
+    assert!(
+        !ProgressIndicator::is_tty(),
+        "Test environment should not be TTY"
+    );
 }
 
 #[test]

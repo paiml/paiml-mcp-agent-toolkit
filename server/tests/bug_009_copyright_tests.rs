@@ -246,11 +246,14 @@ fn analyze_cpp_file_for_functions(path: &std::path::Path) -> Result<Vec<String>,
 
         let rt = tokio::runtime::Runtime::new().map_err(|e| e.to_string())?;
         let file_path = path.join("test.cpp");
-        let context = rt.block_on(analyze_cpp_file(&file_path))
+        let context = rt
+            .block_on(analyze_cpp_file(&file_path))
             .map_err(|e| e.to_string())?;
 
         // Extract function names from context
-        let functions: Vec<String> = context.items.iter()
+        let functions: Vec<String> = context
+            .items
+            .iter()
             .filter_map(|item| {
                 if let pmat::services::context::AstItem::Function { name, .. } = item {
                     Some(name.clone())
@@ -277,11 +280,14 @@ fn analyze_c_file_for_functions(path: &std::path::Path) -> Result<Vec<String>, S
 
         let rt = tokio::runtime::Runtime::new().map_err(|e| e.to_string())?;
         let file_path = path.join("test.c");
-        let context = rt.block_on(analyze_c_file(&file_path))
+        let context = rt
+            .block_on(analyze_c_file(&file_path))
             .map_err(|e| e.to_string())?;
 
         // Extract function names from context
-        let functions: Vec<String> = context.items.iter()
+        let functions: Vec<String> = context
+            .items
+            .iter()
             .filter_map(|item| {
                 if let pmat::services::context::AstItem::Function { name, .. } = item {
                     Some(name.clone())

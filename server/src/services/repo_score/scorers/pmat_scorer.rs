@@ -5,8 +5,8 @@
 // - F2: No PMAT Violations (2.5 points) - Quality gates pass
 
 use super::{Scorer, ScorerConfig};
-use crate::services::repo_score::models::*;
 use crate::services::repo_score::error::Result;
+use crate::services::repo_score::models::*;
 use async_trait::async_trait;
 use std::path::Path;
 
@@ -222,8 +222,8 @@ impl Default for PmatScorer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::TempDir;
     use std::fs;
+    use tempfile::TempDir;
 
     fn create_temp_repo() -> TempDir {
         TempDir::new().unwrap()
@@ -255,7 +255,10 @@ minimum_coverage = 80.0
 
         // F1: 0 (no config), F2: 2.5 (no violations to check) = 2.5 total
         assert!(result.score >= 2.0 && result.score <= 3.0);
-        assert!(result.findings.iter().any(|f| f.message.contains(".pmat-gates.toml not found")));
+        assert!(result
+            .findings
+            .iter()
+            .any(|f| f.message.contains(".pmat-gates.toml not found")));
     }
 
     #[tokio::test]
@@ -307,7 +310,10 @@ minimum_coverage = 80.0
 
         // F1: 0.5 (partial credit), F2: 0 (can't check) = 0.5 total
         assert!(result.score >= 0.0 && result.score <= 1.0);
-        assert!(result.findings.iter().any(|f| f.message.contains("invalid TOML")));
+        assert!(result
+            .findings
+            .iter()
+            .any(|f| f.message.contains("invalid TOML")));
     }
 
     #[tokio::test]

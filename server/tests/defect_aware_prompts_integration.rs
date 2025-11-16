@@ -29,7 +29,7 @@ fn test_integration_with_real_oip_summary() {
     // Generate a prompt for a real-world task
     let prompt = generator.generate_prompt(
         "Write a configuration parser for YAML files",
-        "Building a new config system for a microservices architecture"
+        "Building a new config system for a microservices architecture",
     );
 
     // Verify prompt contains key elements
@@ -70,14 +70,23 @@ fn test_prompt_quality_meets_requirements() {
     let generator = DefectAwarePromptGenerator::from_file(oip_summary_path).unwrap();
     let prompt = generator.generate_prompt(
         "Implement HTTP client with retry logic",
-        "Adding resilient API communication"
+        "Adding resilient API communication",
     );
 
     // Quality requirements for prompts
     assert!(prompt.len() > 100, "Prompt should be substantial");
-    assert!(prompt.contains("Quality Requirements"), "Must include quality section");
-    assert!(prompt.contains("Quality Gates"), "Must include quality gates");
-    assert!(prompt.contains("Defect Patterns"), "Must include defect patterns");
+    assert!(
+        prompt.contains("Quality Requirements"),
+        "Must include quality section"
+    );
+    assert!(
+        prompt.contains("Quality Gates"),
+        "Must include quality gates"
+    );
+    assert!(
+        prompt.contains("Defect Patterns"),
+        "Must include defect patterns"
+    );
 
     // Should only include high-frequency defects (>= 10)
     assert!(prompt.contains("ConfigurationErrors")); // frequency = 25

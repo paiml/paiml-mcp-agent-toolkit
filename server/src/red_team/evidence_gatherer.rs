@@ -3,29 +3,29 @@
 // Specification: Section 3.2 - Claim Categories
 // Implements empirical evidence gathering for 8 claim categories
 
+use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
-use anyhow::{Context, Result};
 
 use super::{Claim, ClaimCategory};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum EvidenceSource {
-    GitHistory,        // Subsequent commits contradicting claim
-    TestExecution,     // Running tests to verify claim
-    CoverageReport,    // Actual coverage vs claimed
-    LinkValidation,    // Checking documentation links
-    CargoAudit,        // Security audit results
-    BenchmarkResults,  // Performance measurements
-    IssueTracker,      // GitHub issue status
-    CodeGrep,          // Searching codebase for references
+    GitHistory,       // Subsequent commits contradicting claim
+    TestExecution,    // Running tests to verify claim
+    CoverageReport,   // Actual coverage vs claimed
+    LinkValidation,   // Checking documentation links
+    CargoAudit,       // Security audit results
+    BenchmarkResults, // Performance measurements
+    IssueTracker,     // GitHub issue status
+    CodeGrep,         // Searching codebase for references
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EvidenceResult {
     pub source: EvidenceSource,
     pub supports_claim: bool,
-    pub confidence: f64,  // 0.0 to 1.0
+    pub confidence: f64, // 0.0 to 1.0
     pub details: String,
     pub timestamp: Option<i64>,
 }
@@ -92,7 +92,8 @@ impl EvidenceGatherer {
 
         // Evidence 1: Git history - check for subsequent test fixes
         if let Some(ref commits) = context.subsequent_commits {
-            let test_fixes = commits.iter()
+            let test_fixes = commits
+                .iter()
                 .filter(|msg| {
                     let lower = msg.to_lowercase();
                     lower.contains("fix") && (lower.contains("test") || lower.contains("ignore"))
@@ -151,7 +152,8 @@ impl EvidenceGatherer {
 
         // Evidence 1: Git history - check for subsequent doc fixes
         if let Some(ref commits) = context.subsequent_commits {
-            let doc_fixes = commits.iter()
+            let doc_fixes = commits
+                .iter()
                 .filter(|msg| {
                     let lower = msg.to_lowercase();
                     lower.contains("docs") || lower.contains("link") || lower.contains("404")
@@ -202,10 +204,12 @@ impl EvidenceGatherer {
 
         // Evidence 1: Git history - check for subsequent coverage fixes
         if let Some(ref commits) = context.subsequent_commits {
-            let coverage_fixes = commits.iter()
+            let coverage_fixes = commits
+                .iter()
                 .filter(|msg| {
                     let lower = msg.to_lowercase();
-                    lower.contains("coverage") && (lower.contains("fix") || lower.contains("regress"))
+                    lower.contains("coverage")
+                        && (lower.contains("fix") || lower.contains("regress"))
                 })
                 .count();
 
@@ -264,7 +268,8 @@ impl EvidenceGatherer {
 
         // Evidence 1: Git history - check for subsequent fixes/reverts
         if let Some(ref commits) = context.subsequent_commits {
-            let fixes = commits.iter()
+            let fixes = commits
+                .iter()
                 .filter(|msg| {
                     let lower = msg.to_lowercase();
                     lower.contains("fix") || lower.contains("bug") || lower.contains("revert")
@@ -298,7 +303,8 @@ impl EvidenceGatherer {
 
         // Evidence 1: Git history - check for rollbacks
         if let Some(ref commits) = context.subsequent_commits {
-            let rollbacks = commits.iter()
+            let rollbacks = commits
+                .iter()
                 .filter(|msg| {
                     let lower = msg.to_lowercase();
                     lower.contains("revert") || lower.contains("rollback")
@@ -371,7 +377,8 @@ impl EvidenceGatherer {
 
         // Evidence 2: Git history - check for regressions
         if let Some(ref commits) = context.subsequent_commits {
-            let regressions = commits.iter()
+            let regressions = commits
+                .iter()
                 .filter(|msg| {
                     let lower = msg.to_lowercase();
                     lower.contains("regression") || lower.contains("re-fix")
@@ -429,11 +436,14 @@ impl EvidenceGatherer {
 
         // Evidence 2: Git history - check for performance regressions
         if let Some(ref commits) = context.subsequent_commits {
-            let perf_regressions = commits.iter()
+            let perf_regressions = commits
+                .iter()
                 .filter(|msg| {
                     let lower = msg.to_lowercase();
                     (lower.contains("perf") || lower.contains("performance"))
-                        && (lower.contains("regress") || lower.contains("slow") || lower.contains("timeout"))
+                        && (lower.contains("regress")
+                            || lower.contains("slow")
+                            || lower.contains("timeout"))
                 })
                 .count();
 
@@ -481,7 +491,8 @@ impl EvidenceGatherer {
 
         // Evidence 2: Git history - check for subsequent security fixes
         if let Some(ref commits) = context.subsequent_commits {
-            let security_fixes = commits.iter()
+            let security_fixes = commits
+                .iter()
                 .filter(|msg| {
                     let lower = msg.to_lowercase();
                     lower.contains("security") || lower.contains("vuln") || lower.contains("cve")
@@ -588,8 +599,7 @@ impl RepositoryContext {
     /// * `path` - Repository path
     /// * `deep` - If true, fetch entire git history; if false, fetch recent commits only (last 30 days)
     pub fn from_path_with_config(path: &Path, deep: bool) -> Result<Self> {
-        let repo_path = path.canonicalize()
-            .context("Failed to canonicalize path")?;
+        let repo_path = path.canonicalize().context("Failed to canonicalize path")?;
 
         // Detect git repository
         let git_repo = Self::find_git_repo(&repo_path);
@@ -657,7 +667,9 @@ impl RepositoryContext {
 
         for oid in revwalk.take(limit) {
             let Ok(oid) = oid else { continue };
-            let Ok(commit) = repo.find_commit(oid) else { continue };
+            let Ok(commit) = repo.find_commit(oid) else {
+                continue;
+            };
 
             commits.push(CommitInfo {
                 message: commit.message().unwrap_or("").to_string(),
@@ -770,9 +782,7 @@ impl RepositoryContext {
             .filter_map(|e| e.ok())
         {
             let path = entry.path();
-            let file_name = path.file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or("");
+            let file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
             // Match test file patterns
             let is_test = path.components().any(|c| c.as_os_str() == "tests")
@@ -811,8 +821,7 @@ impl RepositoryContext {
     }
 
     fn parse_coverage_report(path: &Path) -> Result<f64> {
-        let content = std::fs::read_to_string(path)
-            .context("Failed to read coverage report")?;
+        let content = std::fs::read_to_string(path).context("Failed to read coverage report")?;
 
         let mut lines_found = 0;
         let mut lines_hit = 0;
@@ -837,8 +846,7 @@ impl RepositoryContext {
     }
 
     fn parse_test_results(path: &Path) -> Result<TestExecutionInfo> {
-        let content = std::fs::read_to_string(path)
-            .context("Failed to read test results")?;
+        let content = std::fs::read_to_string(path).context("Failed to read test results")?;
 
         // Parse format: "test result: ok. 10 passed; 2 failed; 3 ignored"
         let mut info = TestExecutionInfo {
@@ -849,20 +857,26 @@ impl RepositoryContext {
         for line in content.lines() {
             if line.contains("test result:") {
                 // Extract numbers using regex-like pattern matching
-                if let Some(passed_str) = line.split("passed").next().and_then(|s| {
-                    s.split_whitespace().last()
-                }) {
+                if let Some(passed_str) = line
+                    .split("passed")
+                    .next()
+                    .and_then(|s| s.split_whitespace().last())
+                {
                     info.passed_count = passed_str.parse().unwrap_or(0);
                 }
 
                 if let Some(failed_str) = line.split("failed").next().and_then(|s| {
-                    s.split(';').next_back().and_then(|part| part.split_whitespace().last())
+                    s.split(';')
+                        .next_back()
+                        .and_then(|part| part.split_whitespace().last())
                 }) {
                     info.failed_count = failed_str.parse().unwrap_or(0);
                 }
 
                 if let Some(ignored_str) = line.split("ignored").next().and_then(|s| {
-                    s.split(';').next_back().and_then(|part| part.split_whitespace().last())
+                    s.split(';')
+                        .next_back()
+                        .and_then(|part| part.split_whitespace().last())
                 }) {
                     info.ignored_count = ignored_str.parse().unwrap_or(0);
                 }

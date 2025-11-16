@@ -5,8 +5,8 @@
 // - E2: Workflows Configured Properly (10 points) - Valid YAML with standard jobs
 
 use super::{Scorer, ScorerConfig};
-use crate::services::repo_score::models::*;
 use crate::services::repo_score::error::Result;
+use crate::services::repo_score::models::*;
 use async_trait::async_trait;
 use std::path::Path;
 use walkdir::WalkDir;
@@ -40,7 +40,11 @@ impl CiScorer {
 
         // Find all YAML workflow files
         let mut workflow_files = vec![];
-        for entry in WalkDir::new(&workflows_dir).max_depth(1).into_iter().flatten() {
+        for entry in WalkDir::new(&workflows_dir)
+            .max_depth(1)
+            .into_iter()
+            .flatten()
+        {
             if entry.file_type().is_file() {
                 let path = entry.path();
                 let extension = path.extension().and_then(|s| s.to_str());
@@ -74,7 +78,10 @@ impl CiScorer {
             findings.push(Finding {
                 severity: Severity::Success,
                 category: "CI".to_string(),
-                message: format!("Workflow found: {}", workflow_path.file_name().unwrap().to_string_lossy()),
+                message: format!(
+                    "Workflow found: {}",
+                    workflow_path.file_name().unwrap().to_string_lossy()
+                ),
                 location: Some(workflow_path.display().to_string()),
                 impact_points: 3.0,
             });
@@ -105,7 +112,11 @@ impl CiScorer {
 
         // Find workflow files
         let mut workflow_files = vec![];
-        for entry in WalkDir::new(&workflows_dir).max_depth(1).into_iter().flatten() {
+        for entry in WalkDir::new(&workflows_dir)
+            .max_depth(1)
+            .into_iter()
+            .flatten()
+        {
             if entry.file_type().is_file() {
                 let path = entry.path();
                 let extension = path.extension().and_then(|s| s.to_str());
@@ -144,7 +155,10 @@ impl CiScorer {
                 findings.push(Finding {
                     severity: Severity::Success,
                     category: "CI".to_string(),
-                    message: format!("Workflow properly configured: {}", workflow_path.file_name().unwrap().to_string_lossy()),
+                    message: format!(
+                        "Workflow properly configured: {}",
+                        workflow_path.file_name().unwrap().to_string_lossy()
+                    ),
                     location: Some(workflow_path.display().to_string()),
                     impact_points: 3.0,
                 });
@@ -152,7 +166,10 @@ impl CiScorer {
                 findings.push(Finding {
                     severity: Severity::Warning,
                     category: "CI".to_string(),
-                    message: format!("Workflow incomplete: {}", workflow_path.file_name().unwrap().to_string_lossy()),
+                    message: format!(
+                        "Workflow incomplete: {}",
+                        workflow_path.file_name().unwrap().to_string_lossy()
+                    ),
                     location: Some(workflow_path.display().to_string()),
                     impact_points: 0.0,
                 });
@@ -160,8 +177,12 @@ impl CiScorer {
 
             // Bonus: Check for common CI patterns
             let content_lower = content.to_lowercase();
-            let has_testing = content_lower.contains("test") || content_lower.contains("cargo test") || content_lower.contains("npm test");
-            let has_linting = content_lower.contains("lint") || content_lower.contains("clippy") || content_lower.contains("eslint");
+            let has_testing = content_lower.contains("test")
+                || content_lower.contains("cargo test")
+                || content_lower.contains("npm test");
+            let has_linting = content_lower.contains("lint")
+                || content_lower.contains("clippy")
+                || content_lower.contains("eslint");
 
             if has_testing {
                 total_score += 1.0;
@@ -220,8 +241,8 @@ impl Default for CiScorer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::TempDir;
     use std::fs;
+    use tempfile::TempDir;
 
     fn create_temp_repo() -> TempDir {
         TempDir::new().unwrap()

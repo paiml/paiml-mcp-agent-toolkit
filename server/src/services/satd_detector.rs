@@ -889,7 +889,8 @@ impl SATDDetector {
         }
 
         // Silently skip files that fail parsing (BUG-010: Removed noisy warning)
-        self.extract_from_content(content, file_path).unwrap_or_default()
+        self.extract_from_content(content, file_path)
+            .unwrap_or_default()
     }
 
     /// Find all source files in a directory

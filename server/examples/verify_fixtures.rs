@@ -12,8 +12,8 @@ fn main() {
         ("some-missed", 5, 80.0),
         ("all-caught", 5, 100.0),
         ("empty", 0, 0.0),
-        ("with-timeout", 5, 60.0),  // 3 caught out of 5
-        ("unviable", 5, 60.0),      // 3 caught out of 5
+        ("with-timeout", 5, 60.0), // 3 caught out of 5
+        ("unviable", 5, 60.0),     // 3 caught out of 5
     ];
 
     let mut passed = 0;

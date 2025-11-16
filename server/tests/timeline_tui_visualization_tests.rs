@@ -10,7 +10,7 @@
 // - Timeline scrubber for seeking
 // - Keyboard shortcuts hint display
 
-use pmat::services::dap::timeline_tui::{TimelineRenderer, PlaybackState};
+use pmat::services::dap::timeline_tui::{PlaybackState, TimelineRenderer};
 
 // ============================================================================
 // Test 1: TimelineRenderer Creation

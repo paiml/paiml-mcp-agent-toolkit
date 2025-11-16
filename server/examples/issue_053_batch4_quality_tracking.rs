@@ -60,33 +60,59 @@ pub fn format_number(n: i32) -> String {
     println!("📸 Example 1: Creating Quality Gate Baseline (Version 1)");
     println!("────────────────────────────────────────────────────────");
 
-    let result_v1 = tool_functions::quality_gate_baseline(
-        &[temp_dir.path().to_path_buf()],
-        Some(&baseline_v1),
-    )
-    .await?;
+    let result_v1 =
+        tool_functions::quality_gate_baseline(&[temp_dir.path().to_path_buf()], Some(&baseline_v1))
+            .await?;
 
     println!("Status: {}", result_v1["status"]);
     println!("Message: {}", result_v1["message"]);
 
     if let Some(baseline) = result_v1["baseline"].as_object() {
         println!("\nBaseline Details:");
-        println!("  File: {}", baseline.get("file_path").unwrap_or(&serde_json::json!("unknown")));
-        println!("  Timestamp: {}", baseline.get("timestamp").unwrap_or(&serde_json::json!("unknown")));
+        println!(
+            "  File: {}",
+            baseline
+                .get("file_path")
+                .unwrap_or(&serde_json::json!("unknown"))
+        );
+        println!(
+            "  Timestamp: {}",
+            baseline
+                .get("timestamp")
+                .unwrap_or(&serde_json::json!("unknown"))
+        );
 
         if let Some(summary) = baseline.get("summary").and_then(|s| s.as_object()) {
             println!("\n  Summary:");
-            println!("    Total Files: {}", summary.get("total_files").unwrap_or(&serde_json::json!(0)));
+            println!(
+                "    Total Files: {}",
+                summary.get("total_files").unwrap_or(&serde_json::json!(0))
+            );
             if let Some(avg_score) = summary.get("average_score").and_then(|s| s.as_f64()) {
                 println!("    Average Score: {:.2}", avg_score);
             }
-            println!("    Average Grade: {}", summary.get("average_grade").unwrap_or(&serde_json::json!("N/A")));
+            println!(
+                "    Average Grade: {}",
+                summary
+                    .get("average_grade")
+                    .unwrap_or(&serde_json::json!("N/A"))
+            );
         }
 
         if let Some(git_context) = baseline.get("git_context").and_then(|g| g.as_object()) {
             println!("\n  Git Context (from baseline):");
-            println!("    Branch: {}", git_context.get("branch").unwrap_or(&serde_json::json!("N/A")));
-            println!("    Commit: {}", git_context.get("commit_sha_short").unwrap_or(&serde_json::json!("N/A")));
+            println!(
+                "    Branch: {}",
+                git_context
+                    .get("branch")
+                    .unwrap_or(&serde_json::json!("N/A"))
+            );
+            println!(
+                "    Commit: {}",
+                git_context
+                    .get("commit_sha_short")
+                    .unwrap_or(&serde_json::json!("N/A"))
+            );
         }
     }
 
@@ -140,11 +166,9 @@ pub fn complex_calculation(data: Vec<i32>) -> i32 {
     println!("  - Expected: Lower quality score, potential regression\n");
 
     // Create baseline v2 with modified code
-    let result_v2 = tool_functions::quality_gate_baseline(
-        &[temp_dir.path().to_path_buf()],
-        Some(&baseline_v2),
-    )
-    .await?;
+    let result_v2 =
+        tool_functions::quality_gate_baseline(&[temp_dir.path().to_path_buf()], Some(&baseline_v2))
+            .await?;
 
     println!("Status: {}", result_v2["status"]);
     if let Some(baseline) = result_v2["baseline"].as_object() {
@@ -153,7 +177,12 @@ pub fn complex_calculation(data: Vec<i32>) -> i32 {
             if let Some(avg_score) = summary.get("average_score").and_then(|s| s.as_f64()) {
                 println!("  Average Score: {:.2}", avg_score);
             }
-            println!("  Average Grade: {}", summary.get("average_grade").unwrap_or(&serde_json::json!("N/A")));
+            println!(
+                "  Average Grade: {}",
+                summary
+                    .get("average_grade")
+                    .unwrap_or(&serde_json::json!("N/A"))
+            );
         }
     }
 
@@ -165,11 +194,9 @@ pub fn complex_calculation(data: Vec<i32>) -> i32 {
     println!("🔍 Example 3: Comparing Baselines (Detecting Regressions)");
     println!("─────────────────────────────────────────────────────────");
 
-    let comparison_result = tool_functions::quality_gate_compare(
-        &baseline_v1,
-        &[temp_dir.path().to_path_buf()],
-    )
-    .await?;
+    let comparison_result =
+        tool_functions::quality_gate_compare(&baseline_v1, &[temp_dir.path().to_path_buf()])
+            .await?;
 
     println!("Status: {}", comparison_result["status"]);
     println!("Message: {}", comparison_result["message"]);
@@ -189,11 +216,24 @@ pub fn complex_calculation(data: Vec<i32>) -> i32 {
                 println!("\n  Regressed Files (Quality Decreased):");
                 for file in regressed.iter().take(3) {
                     if let Some(file_obj) = file.as_object() {
-                        println!("    - {} (Δ{:.2} points, old: {}, new: {})",
-                            file_obj.get("file").and_then(|v| v.as_str()).unwrap_or("unknown"),
-                            file_obj.get("delta").and_then(|v| v.as_f64()).unwrap_or(0.0),
-                            file_obj.get("old_grade").and_then(|v| v.as_str()).unwrap_or("?"),
-                            file_obj.get("new_grade").and_then(|v| v.as_str()).unwrap_or("?")
+                        println!(
+                            "    - {} (Δ{:.2} points, old: {}, new: {})",
+                            file_obj
+                                .get("file")
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("unknown"),
+                            file_obj
+                                .get("delta")
+                                .and_then(|v| v.as_f64())
+                                .unwrap_or(0.0),
+                            file_obj
+                                .get("old_grade")
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("?"),
+                            file_obj
+                                .get("new_grade")
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("?")
                         );
                     }
                 }
@@ -205,11 +245,24 @@ pub fn complex_calculation(data: Vec<i32>) -> i32 {
                 println!("\n  Improved Files (Quality Increased):");
                 for file in improved.iter().take(3) {
                     if let Some(file_obj) = file.as_object() {
-                        println!("    - {} (+{:.2} points, old: {}, new: {})",
-                            file_obj.get("file").and_then(|v| v.as_str()).unwrap_or("unknown"),
-                            file_obj.get("delta").and_then(|v| v.as_f64()).unwrap_or(0.0),
-                            file_obj.get("old_grade").and_then(|v| v.as_str()).unwrap_or("?"),
-                            file_obj.get("new_grade").and_then(|v| v.as_str()).unwrap_or("?")
+                        println!(
+                            "    - {} (+{:.2} points, old: {}, new: {})",
+                            file_obj
+                                .get("file")
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("unknown"),
+                            file_obj
+                                .get("delta")
+                                .and_then(|v| v.as_f64())
+                                .unwrap_or(0.0),
+                            file_obj
+                                .get("old_grade")
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("?"),
+                            file_obj
+                                .get("new_grade")
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("?")
                         );
                     }
                 }
@@ -238,20 +291,58 @@ pub fn complex_calculation(data: Vec<i32>) -> i32 {
 
     if let Some(git_status) = git_result["git_status"].as_object() {
         println!("\nGit Repository Status:");
-        println!("  Branch: {}", git_status.get("branch").unwrap_or(&serde_json::json!("unknown")));
-        println!("  Commit SHA (short): {}", git_status.get("commit_sha_short").unwrap_or(&serde_json::json!("unknown")));
-        println!("  Commit SHA (full): {}", git_status.get("commit_sha").unwrap_or(&serde_json::json!("unknown")));
-        println!("  Author: {}", git_status.get("author_name").unwrap_or(&serde_json::json!("unknown")));
-        println!("  Timestamp: {}", git_status.get("commit_timestamp").unwrap_or(&serde_json::json!("unknown")));
-        println!("  Is Clean: {}", git_status.get("is_clean").unwrap_or(&serde_json::json!(false)));
-        println!("  Uncommitted Files: {}", git_status.get("uncommitted_files").unwrap_or(&serde_json::json!(0)));
+        println!(
+            "  Branch: {}",
+            git_status
+                .get("branch")
+                .unwrap_or(&serde_json::json!("unknown"))
+        );
+        println!(
+            "  Commit SHA (short): {}",
+            git_status
+                .get("commit_sha_short")
+                .unwrap_or(&serde_json::json!("unknown"))
+        );
+        println!(
+            "  Commit SHA (full): {}",
+            git_status
+                .get("commit_sha")
+                .unwrap_or(&serde_json::json!("unknown"))
+        );
+        println!(
+            "  Author: {}",
+            git_status
+                .get("author_name")
+                .unwrap_or(&serde_json::json!("unknown"))
+        );
+        println!(
+            "  Timestamp: {}",
+            git_status
+                .get("commit_timestamp")
+                .unwrap_or(&serde_json::json!("unknown"))
+        );
+        println!(
+            "  Is Clean: {}",
+            git_status
+                .get("is_clean")
+                .unwrap_or(&serde_json::json!(false))
+        );
+        println!(
+            "  Uncommitted Files: {}",
+            git_status
+                .get("uncommitted_files")
+                .unwrap_or(&serde_json::json!(0))
+        );
 
         if let Some(tags) = git_status.get("tags").and_then(|t| t.as_array()) {
             if !tags.is_empty() {
-                println!("  Tags: {}", tags.iter()
-                    .filter_map(|t| t.as_str())
-                    .collect::<Vec<_>>()
-                    .join(", "));
+                println!(
+                    "  Tags: {}",
+                    tags.iter()
+                        .filter_map(|t| t.as_str())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                );
             }
         }
 

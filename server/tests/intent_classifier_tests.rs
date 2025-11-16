@@ -56,7 +56,7 @@ fn test_detect_hallucination_fix_via_keyword() {
         None,
         "feature/auth",
         0,
-        5,  // Fixed 5 tests
+        5, // Fixed 5 tests
     );
 
     let result = classifier.classify(&original, &followup);
@@ -88,7 +88,7 @@ fn test_detect_planned_iteration_via_keyword() {
         None,
         None,
         "feature/auth",
-        3,  // Added 3 tests
+        3, // Added 3 tests
         0,
     );
 
@@ -119,7 +119,7 @@ fn test_issue_created_after_commit_indicates_hallucination() {
         5000,
         vec!["src/lib.rs"],
         Some(42),
-        Some(2000),  // Issue created at 2000, after original commit at 1000
+        Some(2000), // Issue created at 2000, after original commit at 1000
         "master",
         0,
         1,
@@ -128,7 +128,7 @@ fn test_issue_created_after_commit_indicates_hallucination() {
     let result = classifier.classify(&original, &followup);
 
     assert_eq!(result.intent, CommitIntent::HallucinationFix);
-    assert!(result.confidence > 0.7);  // High confidence from issue tracker signal
+    assert!(result.confidence > 0.7); // High confidence from issue tracker signal
 }
 
 // RED Test 4: Pre-existing issue = planned work
@@ -152,7 +152,7 @@ fn test_preexisting_issue_indicates_planned_work() {
         10000,
         vec!["src/feature_x.rs"],
         Some(42),
-        Some(1000),  // Issue created at 1000, before original commit at 5000
+        Some(1000), // Issue created at 1000, before original commit at 5000
         "feature/x",
         2,
         0,
@@ -181,14 +181,14 @@ fn test_high_file_overlap_indicates_hallucination_fix() {
     );
 
     let followup = create_commit(
-        "fix: Correct module logic",  // Hallucination keyword
-        1000 + (100 * 3600),  // After grace period
-        vec!["src/mod1.rs", "src/mod2.rs"],  // 100% of followup files overlap
+        "fix: Correct module logic",        // Hallucination keyword
+        1000 + (100 * 3600),                // After grace period
+        vec!["src/mod1.rs", "src/mod2.rs"], // 100% of followup files overlap
         None,
         None,
-        "hotfix/module-bug",  // Different branch
+        "hotfix/module-bug", // Different branch
         0,
-        2,  // Fixed tests
+        2, // Fixed tests
     );
 
     let result = classifier.classify(&original, &followup);
@@ -216,11 +216,17 @@ fn test_low_file_overlap_indicates_planned_iteration() {
     let followup = create_commit(
         "feat: Add module B",
         2000,
-        vec!["src/mod_b.rs", "src/mod_c.rs", "src/mod_d.rs", "src/mod_e.rs", "src/mod_f.rs"],
+        vec![
+            "src/mod_b.rs",
+            "src/mod_c.rs",
+            "src/mod_d.rs",
+            "src/mod_e.rs",
+            "src/mod_f.rs",
+        ],
         None,
         None,
         "feature/modules",
-        10,  // Added tests
+        10, // Added tests
         0,
     );
 
@@ -253,8 +259,8 @@ fn test_test_fixes_indicate_hallucination() {
         None,
         None,
         "master",
-        1,   // Added 1 test
-        10,  // Fixed 10 tests
+        1,  // Added 1 test
+        10, // Fixed 10 tests
     );
 
     let result = classifier.classify(&original, &followup);
@@ -285,8 +291,8 @@ fn test_test_additions_indicate_planned_iteration() {
         None,
         None,
         "feature/new",
-        15,  // Added 15 tests
-        2,   // Fixed 2 tests
+        15, // Added 15 tests
+        2,  // Fixed 2 tests
     );
 
     let result = classifier.classify(&original, &followup);
@@ -311,13 +317,13 @@ fn test_grace_period_indicates_planned_iteration() {
     );
 
     let followup = create_commit(
-        "refactor: Improve error handling in feature X",  // Iteration keyword
-        1000 + (24 * 3600),  // 24 hours later (within 48-hour grace period)
-        vec!["src/feature_x.rs", "src/feature_x_errors.rs"],  // Some overlap, some new
+        "refactor: Improve error handling in feature X", // Iteration keyword
+        1000 + (24 * 3600), // 24 hours later (within 48-hour grace period)
+        vec!["src/feature_x.rs", "src/feature_x_errors.rs"], // Some overlap, some new
         None,
         None,
-        "feature/x",  // Same branch
-        5,  // Adding tests
+        "feature/x", // Same branch
+        5,           // Adding tests
         0,
     );
 
@@ -345,11 +351,11 @@ fn test_after_grace_period_different_branch_indicates_hallucination() {
 
     let followup = create_commit(
         "fix: Bug in feature X",
-        1000 + (72 * 3600),  // 72 hours later (after 48-hour grace period)
+        1000 + (72 * 3600), // 72 hours later (after 48-hour grace period)
         vec!["src/feature_x.rs"],
         None,
         None,
-        "hotfix/feature-x-bug",  // Different branch
+        "hotfix/feature-x-bug", // Different branch
         0,
         3,
     );
@@ -382,7 +388,7 @@ fn test_same_branch_indicates_planned_iteration() {
         vec!["src/lib.rs"],
         None,
         None,
-        "feature/new-module",  // Same branch
+        "feature/new-module", // Same branch
         3,
         0,
     );
@@ -410,14 +416,14 @@ fn test_mixed_signals_result_in_uncertain() {
     );
 
     let followup = create_commit(
-        "chore: Update code",  // Neutral keyword
+        "chore: Update code", // Neutral keyword
         1000 + (100 * 3600),  // After grace period
-        vec!["src/other.rs"],  // No file overlap
+        vec!["src/other.rs"], // No file overlap
         None,
         None,
-        "master",  // Different branch
-        5,  // Equal additions
-        5,  // and fixes
+        "master", // Different branch
+        5,        // Equal additions
+        5,        // and fixes
     );
 
     let result = classifier.classify(&original, &followup);
@@ -444,19 +450,19 @@ fn test_unanimous_hallucination_signals_high_confidence() {
 
     let followup = create_commit(
         "fix: Critical bug in lib.rs (fixes #123)",
-        1000 + (100 * 3600),  // After grace period
-        vec!["src/lib.rs", "src/mod.rs"],  // 100% overlap
+        1000 + (100 * 3600),              // After grace period
+        vec!["src/lib.rs", "src/mod.rs"], // 100% overlap
         Some(123),
-        Some(5000),  // Issue created after original commit
-        "hotfix/critical-bug",  // Different branch
+        Some(5000),            // Issue created after original commit
+        "hotfix/critical-bug", // Different branch
         0,
-        10,  // Fixed many tests
+        10, // Fixed many tests
     );
 
     let result = classifier.classify(&original, &followup);
 
     assert_eq!(result.intent, CommitIntent::HallucinationFix);
-    assert!(result.confidence > 0.75);  // High confidence when all signals agree
+    assert!(result.confidence > 0.75); // High confidence when all signals agree
 }
 
 // RED Test 14: Confidence score is between 0 and 1
@@ -525,7 +531,11 @@ fn test_classification_includes_all_signals() {
     // 1. commit_message, 2. issue_linkage, 3. code_churn, 4. test_changes, 5. temporal_context
     assert_eq!(result.signals.len(), 5);
 
-    let signal_names: Vec<_> = result.signals.iter().map(|s| s.signal_name.as_str()).collect();
+    let signal_names: Vec<_> = result
+        .signals
+        .iter()
+        .map(|s| s.signal_name.as_str())
+        .collect();
     assert!(signal_names.contains(&"commit_message"));
     assert!(signal_names.contains(&"issue_linkage"));
     assert!(signal_names.contains(&"code_churn"));

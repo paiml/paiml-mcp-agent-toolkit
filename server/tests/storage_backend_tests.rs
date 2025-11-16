@@ -95,7 +95,8 @@ fn test_bincode_blake3hash_serialization() {
     let serialized = bincode::serialize(&hash).expect("Failed to serialize Blake3Hash");
     println!("DEBUG: Blake3Hash serialized to {} bytes", serialized.len());
 
-    let deserialized: blake3::Hash = bincode::deserialize(&serialized).expect("Failed to deserialize Blake3Hash");
+    let deserialized: blake3::Hash =
+        bincode::deserialize(&serialized).expect("Failed to deserialize Blake3Hash");
     assert_eq!(hash, deserialized);
 }
 
@@ -108,9 +109,13 @@ fn test_bincode_systemtime_serialization() {
     let serialized = bincode::serialize(&now).expect("Failed to serialize SystemTime");
     println!("DEBUG: SystemTime serialized to {} bytes", serialized.len());
 
-    let deserialized: SystemTime = bincode::deserialize(&serialized).expect("Failed to deserialize SystemTime");
+    let deserialized: SystemTime =
+        bincode::deserialize(&serialized).expect("Failed to deserialize SystemTime");
     // SystemTime may not implement Eq, so just check it doesn't panic
-    println!("DEBUG: SystemTime deserialized successfully: {:?}", deserialized);
+    println!(
+        "DEBUG: SystemTime deserialized successfully: {:?}",
+        deserialized
+    );
 }
 
 #[test]
@@ -138,7 +143,8 @@ fn test_bincode_tdgscore_serialization() {
     let serialized = bincode::serialize(&score).expect("Failed to serialize TdgScore");
     println!("DEBUG: TdgScore serialized to {} bytes", serialized.len());
 
-    let deserialized: TdgScore = bincode::deserialize(&serialized).expect("Failed to deserialize TdgScore");
+    let deserialized: TdgScore =
+        bincode::deserialize(&serialized).expect("Failed to deserialize TdgScore");
     assert_eq!(deserialized.total, score.total);
     println!("DEBUG: TdgScore deserialized successfully");
 }
@@ -161,9 +167,13 @@ fn test_bincode_fileidentity_serialization() {
     };
 
     let serialized = bincode::serialize(&identity).expect("Failed to serialize FileIdentity");
-    println!("DEBUG: FileIdentity serialized to {} bytes", serialized.len());
+    println!(
+        "DEBUG: FileIdentity serialized to {} bytes",
+        serialized.len()
+    );
 
-    let deserialized: FileIdentity = bincode::deserialize(&serialized).expect("Failed to deserialize FileIdentity");
+    let deserialized: FileIdentity =
+        bincode::deserialize(&serialized).expect("Failed to deserialize FileIdentity");
     assert_eq!(deserialized.size_bytes, identity.size_bytes);
     println!("DEBUG: FileIdentity deserialized successfully");
 }

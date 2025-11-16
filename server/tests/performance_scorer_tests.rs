@@ -252,7 +252,11 @@ debug = true
 
     // src/ directory already exists from create_test_project()
     // Just update lib.rs
-    std::fs::write(temp.path().join("src").join("lib.rs"), "pub fn example() {}").unwrap();
+    std::fs::write(
+        temp.path().join("src").join("lib.rs"),
+        "pub fn example() {}",
+    )
+    .unwrap();
 
     let scorer = PerformanceScorer::new();
     let result = scorer.score(temp.path());
@@ -572,7 +576,11 @@ debug = true
 
     // src/ directory already exists from create_test_project()
     // Just update lib.rs
-    std::fs::write(temp.path().join("src").join("lib.rs"), "pub fn example() {}").unwrap();
+    std::fs::write(
+        temp.path().join("src").join("lib.rs"),
+        "pub fn example() {}",
+    )
+    .unwrap();
 
     let scorer = PerformanceScorer::new();
     let result = scorer.score(temp.path()).unwrap();

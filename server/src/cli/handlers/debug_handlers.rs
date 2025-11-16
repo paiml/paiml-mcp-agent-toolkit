@@ -81,8 +81,7 @@ pub async fn handle_debug_replay(
     println!();
 
     // Load recording (Sprint 75 - REPLAY-003)
-    let loaded = Recording::load_from_file(&recording)
-        .context("Failed to load recording file")?;
+    let loaded = Recording::load_from_file(&recording).context("Failed to load recording file")?;
 
     // Display recording metadata
     println!("📋 Recording Metadata:");
@@ -123,7 +122,10 @@ pub async fn handle_debug_replay(
 
         println!("   Frame ID: {}", snapshot.frame_id);
         println!("   Timestamp: {}ms", snapshot.timestamp_relative_ms);
-        println!("   Instruction Pointer: 0x{:x}", snapshot.instruction_pointer);
+        println!(
+            "   Instruction Pointer: 0x{:x}",
+            snapshot.instruction_pointer
+        );
 
         if !snapshot.variables.is_empty() {
             println!("   Variables: {}", snapshot.variables.len());
@@ -145,7 +147,10 @@ pub async fn handle_debug_replay(
                 println!("      #{} {}{}", i, frame.name, location);
             }
             if snapshot.stack_frames.len() > 3 {
-                println!("      ... and {} more frames", snapshot.stack_frames.len() - 3);
+                println!(
+                    "      ... and {} more frames",
+                    snapshot.stack_frames.len() - 3
+                );
             }
         }
 
@@ -189,8 +194,7 @@ pub async fn handle_debug_timeline(recording: PathBuf) -> Result<()> {
     println!();
 
     // Load recording
-    let loaded = Recording::load_from_file(&recording)
-        .context("Failed to load recording file")?;
+    let loaded = Recording::load_from_file(&recording).context("Failed to load recording file")?;
 
     // Display recording metadata
     println!("📋 Recording Metadata:");
@@ -267,14 +271,20 @@ pub async fn handle_debug_compare(recording_a: PathBuf, recording_b: PathBuf) ->
     println!();
 
     // Load both recordings
-    let loaded_a = Recording::load_from_file(&recording_a)
-        .context("Failed to load recording A")?;
-    let loaded_b = Recording::load_from_file(&recording_b)
-        .context("Failed to load recording B")?;
+    let loaded_a = Recording::load_from_file(&recording_a).context("Failed to load recording A")?;
+    let loaded_b = Recording::load_from_file(&recording_b).context("Failed to load recording B")?;
 
     println!("📋 Recording Metadata:");
-    println!("   Recording A: {} ({} snapshots)", loaded_a.metadata().program, loaded_a.snapshot_count());
-    println!("   Recording B: {} ({} snapshots)", loaded_b.metadata().program, loaded_b.snapshot_count());
+    println!(
+        "   Recording A: {} ({} snapshots)",
+        loaded_a.metadata().program,
+        loaded_a.snapshot_count()
+    );
+    println!(
+        "   Recording B: {} ({} snapshots)",
+        loaded_b.metadata().program,
+        loaded_b.snapshot_count()
+    );
     println!();
 
     // Create ComparisonView

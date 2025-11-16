@@ -11,11 +11,7 @@ use crossterm::{
     terminal::{self, EnterAlternateScreen, LeaveAlternateScreen},
     ExecutableCommand,
 };
-use std::{
-    collections::VecDeque,
-    io::stdout,
-    time::Duration,
-};
+use std::{collections::VecDeque, io::stdout, time::Duration};
 
 // ============================================================================
 // Public Types
@@ -413,9 +409,7 @@ impl VariableInspectorView {
     /// Get all visible lines
     pub fn visible_lines(&self) -> Vec<String> {
         let (start, end) = self.visible_range();
-        (start..end)
-            .filter_map(|i| self.format_line(i))
-            .collect()
+        (start..end).filter_map(|i| self.format_line(i)).collect()
     }
 }
 
@@ -652,10 +646,7 @@ impl KeyboardHandler {
 
     /// List all current bindings
     pub fn list_bindings(&self) -> Vec<(KeyCode, TuiAction)> {
-        self.bindings
-            .iter()
-            .map(|(k, a)| (*k, *a))
-            .collect()
+        self.bindings.iter().map(|(k, a)| (*k, *a)).collect()
     }
 
     /// Generate help text for all bindings

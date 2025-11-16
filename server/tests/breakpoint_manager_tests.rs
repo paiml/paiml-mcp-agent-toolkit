@@ -21,7 +21,10 @@ fn test_set_breakpoint_in_rust_file() {
     let result = mgr.set_breakpoint(bp.clone());
     assert!(result.is_ok(), "Setting valid breakpoint should succeed");
     assert_eq!(mgr.count(), 1, "Should have 1 breakpoint");
-    assert!(mgr.has_breakpoint(&bp.source, bp.line), "Should find breakpoint at line 10");
+    assert!(
+        mgr.has_breakpoint(&bp.source, bp.line),
+        "Should find breakpoint at line 10"
+    );
 }
 
 // RED Phase Test 2: Remove Breakpoint
@@ -40,9 +43,15 @@ fn test_remove_breakpoint() {
     assert_eq!(mgr.count(), 1);
 
     let result = mgr.remove_breakpoint(&bp.source, bp.line);
-    assert!(result.is_ok(), "Removing existing breakpoint should succeed");
+    assert!(
+        result.is_ok(),
+        "Removing existing breakpoint should succeed"
+    );
     assert_eq!(mgr.count(), 0, "Should have 0 breakpoints after removal");
-    assert!(!mgr.has_breakpoint(&bp.source, bp.line), "Should not find breakpoint after removal");
+    assert!(
+        !mgr.has_breakpoint(&bp.source, bp.line),
+        "Should not find breakpoint after removal"
+    );
 }
 
 // RED Phase Test 3: Multiple Breakpoints in Same File
@@ -109,14 +118,16 @@ fn test_clear_all_breakpoints() {
         line: 10,
         column: None,
         condition: None,
-    }).unwrap();
+    })
+    .unwrap();
 
     mgr.set_breakpoint(pmat::services::dap::Breakpoint {
         source: "src/lib.rs".to_string(),
         line: 15,
         column: None,
         condition: None,
-    }).unwrap();
+    })
+    .unwrap();
 
     assert_eq!(mgr.count(), 2);
 
@@ -134,18 +145,24 @@ fn test_clear_file_breakpoints() {
         line: 10,
         column: None,
         condition: None,
-    }).unwrap();
+    })
+    .unwrap();
 
     mgr.set_breakpoint(pmat::services::dap::Breakpoint {
         source: "src/lib.rs".to_string(),
         line: 15,
         column: None,
         condition: None,
-    }).unwrap();
+    })
+    .unwrap();
 
     mgr.clear_file("src/main.rs");
 
-    assert_eq!(mgr.count(), 1, "Should have 1 breakpoint after clearing main.rs");
+    assert_eq!(
+        mgr.count(),
+        1,
+        "Should have 1 breakpoint after clearing main.rs"
+    );
     assert_eq!(mgr.breakpoints_in_file("src/lib.rs").len(), 1);
     assert_eq!(mgr.breakpoints_in_file("src/main.rs").len(), 0);
 }
@@ -198,7 +215,10 @@ fn test_conditional_breakpoint_evaluation() {
     });
 
     let should_not_break = mgr.should_break(&bp.source, bp.line, Some(&variables2));
-    assert!(!should_not_break, "Should not break when condition is false");
+    assert!(
+        !should_not_break,
+        "Should not break when condition is false"
+    );
 }
 
 // RED Phase Test 9: Unconditional Breakpoint Always Breaks
@@ -217,11 +237,17 @@ fn test_unconditional_breakpoint_always_breaks() {
 
     // Should always break regardless of variables
     let should_break1 = mgr.should_break(&bp.source, bp.line, None);
-    assert!(should_break1, "Unconditional breakpoint should always break (no vars)");
+    assert!(
+        should_break1,
+        "Unconditional breakpoint should always break (no vars)"
+    );
 
     let variables = json!({"x": 10});
     let should_break2 = mgr.should_break(&bp.source, bp.line, Some(&variables));
-    assert!(should_break2, "Unconditional breakpoint should always break (with vars)");
+    assert!(
+        should_break2,
+        "Unconditional breakpoint should always break (with vars)"
+    );
 }
 
 // RED Phase Test 10: Hit Count Tracking
@@ -308,7 +334,11 @@ fn test_concurrent_breakpoint_access() {
     }
 
     let mgr = mgr.lock().unwrap();
-    assert_eq!(mgr.count(), 10, "Should have 10 breakpoints from concurrent access");
+    assert_eq!(
+        mgr.count(),
+        10,
+        "Should have 10 breakpoints from concurrent access"
+    );
 }
 
 // RED Phase Test 13: Get All Breakpoints
@@ -321,14 +351,16 @@ fn test_get_all_breakpoints() {
         line: 10,
         column: None,
         condition: None,
-    }).unwrap();
+    })
+    .unwrap();
 
     mgr.set_breakpoint(pmat::services::dap::Breakpoint {
         source: "src/lib.rs".to_string(),
         line: 15,
         column: None,
         condition: Some("x > 0".to_string()),
-    }).unwrap();
+    })
+    .unwrap();
 
     let all_bps = mgr.all_breakpoints();
     assert_eq!(all_bps.len(), 2, "Should return all breakpoints");
@@ -358,7 +390,11 @@ fn test_duplicate_breakpoint_handling() {
     };
 
     mgr.set_breakpoint(bp_updated.clone()).unwrap();
-    assert_eq!(mgr.count(), 1, "Should still have 1 breakpoint (updated, not duplicated)");
+    assert_eq!(
+        mgr.count(),
+        1,
+        "Should still have 1 breakpoint (updated, not duplicated)"
+    );
 
     // Check condition was updated
     let retrieved = mgr.get_breakpoint(&bp.source, bp.line);

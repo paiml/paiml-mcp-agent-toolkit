@@ -8,10 +8,10 @@
 //! Strategy: Test critical handlers, formatters, and utility functions
 
 use pmat::cli::analysis_utilities::*;
-use pmat::cli::{TdgOutputFormat, SatdOutputFormat, QualityGateOutputFormat};
+use pmat::cli::{QualityGateOutputFormat, SatdOutputFormat, TdgOutputFormat};
+use std::fs;
 use std::path::PathBuf;
 use tempfile::tempdir;
-use std::fs;
 
 // ============================================================================
 // RED Phase 1: Utility Function Tests
@@ -197,12 +197,7 @@ fn test_get_file_extensions_none() {
 #[test]
 fn test_should_analyze_file_included_extension() {
     // RED: Should analyze files with included extensions
-    let result = should_analyze_file(
-        &PathBuf::from("test.rs"),
-        &PathBuf::from("."),
-        &["rs"],
-        &[]
-    );
+    let result = should_analyze_file(&PathBuf::from("test.rs"), &PathBuf::from("."), &["rs"], &[]);
     assert!(result);
 }
 
@@ -214,7 +209,7 @@ fn test_should_analyze_file_excluded_directory() {
         &PathBuf::from("target/debug/test.rs"),
         &PathBuf::from("."),
         &["rs"],
-        &[] // Empty include means use default exclusions
+        &[], // Empty include means use default exclusions
     );
     assert!(!result); // target/ is excluded by default
 }
@@ -226,7 +221,7 @@ fn test_should_analyze_file_include_pattern_override() {
         &PathBuf::from("src/test.rs"),
         &PathBuf::from("."),
         &["rs"],
-        &[String::from("src/**")]
+        &[String::from("src/**")],
     );
     assert!(result);
 }
@@ -252,7 +247,8 @@ async fn test_handle_analyze_tdg_nonexistent_path() {
         false,
         vec![],
         false,
-    ).await;
+    )
+    .await;
 
     // Graceful handling: succeeds with 0 files
     assert!(result.is_ok());
@@ -273,11 +269,12 @@ async fn test_handle_analyze_satd_empty_directory() {
         30,
         false,
         None,
-    ).await;
+    )
+    .await;
 
     // Should succeed with no SATD found
     match result {
-        Ok(_) | Err(_) => {}, // Both acceptable
+        Ok(_) | Err(_) => {} // Both acceptable
     }
 }
 
@@ -296,7 +293,8 @@ async fn test_handle_quality_gate_nonexistent_path() {
         false,
         None,
         false,
-    ).await;
+    )
+    .await;
 
     assert!(result.is_err());
 }
@@ -311,11 +309,15 @@ async fn test_handle_analyze_tdg_with_simple_file() {
     let temp_dir = tempdir().unwrap();
     let rust_file = temp_dir.path().join("simple.rs");
 
-    fs::write(&rust_file, r#"
+    fs::write(
+        &rust_file,
+        r#"
         fn simple_function() {
             println!("Hello, world!");
         }
-    "#).unwrap();
+    "#,
+    )
+    .unwrap();
 
     let result = handle_analyze_tdg(
         temp_dir.path().to_path_buf(),
@@ -330,11 +332,12 @@ async fn test_handle_analyze_tdg_with_simple_file() {
         false,
         vec![],
         false,
-    ).await;
+    )
+    .await;
 
     // Should complete (may or may not find violations)
     match result {
-        Ok(_) | Err(_) => {},
+        Ok(_) | Err(_) => {}
     }
 }
 
@@ -344,13 +347,17 @@ async fn test_handle_analyze_satd_with_todo_comments() {
     let temp_dir = tempdir().unwrap();
     let rust_file = temp_dir.path().join("test.rs");
 
-    fs::write(&rust_file, r#"
+    fs::write(
+        &rust_file,
+        r#"
         // TODO: Implement this feature
         fn placeholder() {}
 
         // FIXME: This is broken
         fn broken() {}
-    "#).unwrap();
+    "#,
+    )
+    .unwrap();
 
     let result = handle_analyze_satd(
         temp_dir.path().to_path_buf(),
@@ -362,7 +369,8 @@ async fn test_handle_analyze_satd_with_todo_comments() {
         30,
         false,
         None,
-    ).await;
+    )
+    .await;
 
     // Should find SATD
     if let Ok(()) = result {
@@ -376,21 +384,24 @@ async fn test_handle_analyze_satd_with_todo_comments() {
 
 mod churn_formatter_comprehensive {
     use super::*;
-    use pmat::models::churn::{CodeChurnAnalysis, ChurnSummary, FileChurnMetrics};
-    
-    use std::path::PathBuf;
-    use std::collections::HashMap;
+    use pmat::models::churn::{ChurnSummary, CodeChurnAnalysis, FileChurnMetrics};
+
     use chrono::Utc;
+    use std::collections::HashMap;
+    use std::path::PathBuf;
 
     fn create_sample_file_churn(path: &str, commits: usize, score: f32) -> FileChurnMetrics {
         FileChurnMetrics {
             path: PathBuf::from(path),
             relative_path: path.to_string(),
             commit_count: commits,
-            unique_authors: vec!["alice@example.com".to_string(), "bob@example.com".to_string()]
-                .into_iter()
-                .take(commits.min(2))
-                .collect(),
+            unique_authors: vec![
+                "alice@example.com".to_string(),
+                "bob@example.com".to_string(),
+            ]
+            .into_iter()
+            .take(commits.min(2))
+            .collect(),
             churn_score: score,
             additions: commits * 50,
             deletions: commits * 30,
@@ -401,11 +412,13 @@ mod churn_formatter_comprehensive {
 
     fn create_sample_analysis(file_count: usize) -> CodeChurnAnalysis {
         let files: Vec<FileChurnMetrics> = (0..file_count)
-            .map(|i| create_sample_file_churn(
-                &format!("src/file_{}.rs", i),
-                (i + 1) * 2,
-                (i + 1) as f32 * 1.5
-            ))
+            .map(|i| {
+                create_sample_file_churn(
+                    &format!("src/file_{}.rs", i),
+                    (i + 1) * 2,
+                    (i + 1) as f32 * 1.5,
+                )
+            })
             .collect();
 
         let mut author_contributions = HashMap::new();
@@ -670,24 +683,15 @@ pub trait Processable {
 
         let identifiers = extract_identifiers(content);
 
-        let structs: Vec<_> = identifiers
-            .iter()
-            .filter(|i| i.kind == "struct")
-            .collect();
+        let structs: Vec<_> = identifiers.iter().filter(|i| i.kind == "struct").collect();
         assert_eq!(structs.len(), 1);
         assert_eq!(structs[0].name, "User");
 
-        let enums: Vec<_> = identifiers
-            .iter()
-            .filter(|i| i.kind == "enum")
-            .collect();
+        let enums: Vec<_> = identifiers.iter().filter(|i| i.kind == "enum").collect();
         assert_eq!(enums.len(), 1);
         assert_eq!(enums[0].name, "Status");
 
-        let traits: Vec<_> = identifiers
-            .iter()
-            .filter(|i| i.kind == "trait")
-            .collect();
+        let traits: Vec<_> = identifiers.iter().filter(|i| i.kind == "trait").collect();
         assert_eq!(traits.len(), 1);
         assert_eq!(traits[0].name, "Processable");
     }
@@ -706,10 +710,7 @@ class DataProcessor {
 
         let identifiers = extract_identifiers(content);
 
-        let classes: Vec<_> = identifiers
-            .iter()
-            .filter(|i| i.kind == "class")
-            .collect();
+        let classes: Vec<_> = identifiers.iter().filter(|i| i.kind == "class").collect();
         assert_eq!(classes.len(), 2);
 
         let names: Vec<_> = classes.iter().map(|c| c.name.as_str()).collect();
@@ -845,10 +846,7 @@ type UserId = string;
         assert_eq!(interfaces.len(), 1);
         assert_eq!(interfaces[0].name, "UserInterface");
 
-        let types: Vec<_> = identifiers
-            .iter()
-            .filter(|i| i.kind == "type")
-            .collect();
+        let types: Vec<_> = identifiers.iter().filter(|i| i.kind == "type").collect();
         assert_eq!(types.len(), 1);
         assert_eq!(types[0].name, "UserId");
     }
@@ -878,11 +876,19 @@ more random text
 // ============================================================================
 
 mod dead_code_formatter_comprehensive {
-    
-    use pmat::models::dead_code::{DeadCodeResult, DeadCodeSummary, FileDeadCodeMetrics, ConfidenceLevel};
-    use pmat::cli::dead_code_formatter::{DeadCodeFormatter, SummaryFormatter, JsonFormatter, MarkdownFormatter};
 
-    fn create_sample_file_metrics(path: &str, dead_lines: usize, total_lines: usize) -> FileDeadCodeMetrics {
+    use pmat::cli::dead_code_formatter::{
+        DeadCodeFormatter, JsonFormatter, MarkdownFormatter, SummaryFormatter,
+    };
+    use pmat::models::dead_code::{
+        ConfidenceLevel, DeadCodeResult, DeadCodeSummary, FileDeadCodeMetrics,
+    };
+
+    fn create_sample_file_metrics(
+        path: &str,
+        dead_lines: usize,
+        total_lines: usize,
+    ) -> FileDeadCodeMetrics {
         let mut metrics = FileDeadCodeMetrics::new(path.to_string());
         metrics.dead_lines = dead_lines;
         metrics.total_lines = total_lines;
@@ -897,11 +903,13 @@ mod dead_code_formatter_comprehensive {
 
     fn create_sample_result(file_count: usize) -> DeadCodeResult {
         let files: Vec<FileDeadCodeMetrics> = (0..file_count)
-            .map(|i| create_sample_file_metrics(
-                &format!("src/file_{}.rs", i),
-                (i + 1) * 10,
-                (i + 1) * 100,
-            ))
+            .map(|i| {
+                create_sample_file_metrics(
+                    &format!("src/file_{}.rs", i),
+                    (i + 1) * 10,
+                    (i + 1) * 100,
+                )
+            })
             .collect();
 
         let total_dead_lines: usize = files.iter().map(|f| f.dead_lines).sum();
@@ -1075,18 +1083,21 @@ mod dead_code_formatter_comprehensive {
 // ============================================================================
 
 mod defect_prediction_formatter_comprehensive {
-    
-    use pmat::cli::analysis_utilities::{DefectPredictionReport, FilePrediction, format_defect_summary};
 
-    fn create_sample_file_prediction(path: &str, risk_score: f32, risk_level: &str) -> FilePrediction {
+    use pmat::cli::analysis_utilities::{
+        format_defect_summary, DefectPredictionReport, FilePrediction,
+    };
+
+    fn create_sample_file_prediction(
+        path: &str,
+        risk_score: f32,
+        risk_level: &str,
+    ) -> FilePrediction {
         FilePrediction {
             file_path: path.to_string(),
             risk_score,
             risk_level: risk_level.to_string(),
-            factors: vec![
-                "High complexity".to_string(),
-                "Recent churn".to_string(),
-            ],
+            factors: vec!["High complexity".to_string(), "Recent churn".to_string()],
         }
     }
 
@@ -1235,9 +1246,9 @@ mod defect_prediction_formatter_comprehensive {
 // ============================================================================
 
 mod coverage_formatter_comprehensive {
-    
+
     use pmat::cli::analysis_utilities::{
-        format_incremental_coverage_summary, FileCoverageMetrics, CoverageSummary,
+        format_incremental_coverage_summary, CoverageSummary, FileCoverageMetrics,
         IncrementalCoverageReport,
     };
     use std::path::PathBuf;
@@ -1310,9 +1321,13 @@ mod coverage_formatter_comprehensive {
 
     #[test]
     fn test_format_coverage_summary_with_degradations() {
-        let files = vec![
-            create_sample_file_metrics("src/bad.rs", 80.0, 70.0, 100, 70),
-        ];
+        let files = vec![create_sample_file_metrics(
+            "src/bad.rs",
+            80.0,
+            70.0,
+            100,
+            70,
+        )];
         let summary = create_sample_summary(1, 0, 1, -10.0, false);
         let report = create_sample_report(files, summary);
 
@@ -1339,7 +1354,13 @@ mod coverage_formatter_comprehensive {
 
     #[test]
     fn test_format_coverage_meets_threshold() {
-        let files = vec![create_sample_file_metrics("src/good.rs", 70.0, 90.0, 100, 90)];
+        let files = vec![create_sample_file_metrics(
+            "src/good.rs",
+            70.0,
+            90.0,
+            100,
+            90,
+        )];
         let summary = create_sample_summary(1, 1, 0, 20.0, true);
         let report = create_sample_report(files, summary);
 
@@ -1352,7 +1373,13 @@ mod coverage_formatter_comprehensive {
 
     #[test]
     fn test_format_coverage_fails_threshold() {
-        let files = vec![create_sample_file_metrics("src/low.rs", 50.0, 55.0, 100, 55)];
+        let files = vec![create_sample_file_metrics(
+            "src/low.rs",
+            50.0,
+            55.0,
+            100,
+            55,
+        )];
         let summary = create_sample_summary(1, 1, 0, 5.0, false);
         let report = create_sample_report(files, summary);
 
@@ -1386,15 +1413,7 @@ mod coverage_formatter_comprehensive {
     #[test]
     fn test_format_coverage_top_files_truncation() {
         let files: Vec<FileCoverageMetrics> = (0..20)
-            .map(|i| {
-                create_sample_file_metrics(
-                    &format!("src/file_{}.rs", i),
-                    70.0,
-                    75.0,
-                    100,
-                    75,
-                )
-            })
+            .map(|i| create_sample_file_metrics(&format!("src/file_{}.rs", i), 70.0, 75.0, 100, 75))
             .collect();
 
         let summary = create_sample_summary(20, 20, 0, 5.0, true);
@@ -1411,7 +1430,13 @@ mod coverage_formatter_comprehensive {
 
     #[test]
     fn test_format_coverage_shows_delta() {
-        let files = vec![create_sample_file_metrics("src/delta.rs", 50.0, 75.0, 100, 75)];
+        let files = vec![create_sample_file_metrics(
+            "src/delta.rs",
+            50.0,
+            75.0,
+            100,
+            75,
+        )];
         let summary = create_sample_summary(1, 1, 0, 25.0, true);
         let report = create_sample_report(files, summary);
 
@@ -1444,7 +1469,13 @@ mod coverage_formatter_comprehensive {
 
     #[test]
     fn test_format_coverage_structure_validation() {
-        let files = vec![create_sample_file_metrics("src/test.rs", 60.0, 70.0, 100, 70)];
+        let files = vec![create_sample_file_metrics(
+            "src/test.rs",
+            60.0,
+            70.0,
+            100,
+            70,
+        )];
         let summary = create_sample_summary(1, 1, 0, 10.0, true);
         let report = create_sample_report(files, summary);
 
@@ -1466,7 +1497,7 @@ mod coverage_formatter_comprehensive {
 // Location: analysis_utilities.rs:2723, 6806
 
 mod satd_helpers {
-    
+
     use pmat::cli::analysis_utilities::{apply_satd_filters, determine_satd_severity};
     use pmat::cli::enums::SatdSeverity;
     use pmat::services::satd_detector::{DebtCategory, Severity, TechnicalDebt};
@@ -1600,10 +1631,9 @@ mod satd_helpers {
 
         let result = apply_satd_filters(items, None, true);
         assert_eq!(result.len(), 2); // Critical and High only
-        assert!(result.iter().all(|d| matches!(
-            d.severity,
-            Severity::Critical | Severity::High
-        )));
+        assert!(result
+            .iter()
+            .all(|d| matches!(d.severity, Severity::Critical | Severity::High)));
     }
 
     #[test]
@@ -1629,9 +1659,11 @@ mod satd_helpers {
 
     #[test]
     fn test_filter_preserves_debt_data() {
-        let items = vec![
-            create_debt(Severity::Critical, DebtCategory::Security, "Security vulnerability"),
-        ];
+        let items = vec![create_debt(
+            Severity::Critical,
+            DebtCategory::Security,
+            "Security vulnerability",
+        )];
 
         let result = apply_satd_filters(items, None, false);
         assert_eq!(result.len(), 1);
@@ -1648,7 +1680,7 @@ mod satd_helpers {
 // Location: analysis_utilities.rs:907, 917, 930, 1140, 1258, 1292
 
 mod tdg_utility_helpers {
-    
+
     use pmat::cli::analysis_utilities::{
         estimate_refactoring_hours, get_gcc_level, get_sarif_level, get_severity_display,
         identify_primary_factor, percentile,
@@ -1858,10 +1890,9 @@ mod tdg_utility_helpers {
 // Location: analysis_utilities.rs:4536, 5252, 7342, 7378, 7385
 
 mod path_display_utilities {
-    
+
     use pmat::cli::analysis_utilities::{
-        calculate_content_hash, extract_filename,
-        get_coverage_emoji, is_build_artifact,
+        calculate_content_hash, extract_filename, get_coverage_emoji, is_build_artifact,
     };
     use std::path::Path;
 
@@ -1878,9 +1909,7 @@ mod path_display_utilities {
         assert!(is_build_artifact(Path::new(
             "/project/node_modules/package/index.js"
         )));
-        assert!(is_build_artifact(Path::new(
-            "/node_modules/lib/file.js"
-        )));
+        assert!(is_build_artifact(Path::new("/node_modules/lib/file.js")));
     }
 
     #[test]
@@ -1946,7 +1975,11 @@ mod path_display_utilities {
     #[test]
     fn test_calculate_files_to_show_zero_limit() {
         let files: Vec<u8> = vec![];
-        let result = if 0 == 0 { files.len() } else { 0.min(files.len()) };
+        let result = if 0 == 0 {
+            files.len()
+        } else {
+            0.min(files.len())
+        };
         assert_eq!(result, 0);
     }
 
@@ -1975,7 +2008,11 @@ mod path_display_utilities {
     #[test]
     fn test_calculate_files_to_show_exact_limit() {
         let files: Vec<u8> = vec![1, 2, 3, 4, 5];
-        let result = if 5 == 0 { files.len() } else { 5.min(files.len()) };
+        let result = if 5 == 0 {
+            files.len()
+        } else {
+            5.min(files.len())
+        };
         assert_eq!(result, 5);
     }
 
@@ -2076,10 +2113,10 @@ mod path_display_utilities {
 // ============================================================================
 
 mod file_type_and_content_validators {
-    
+
     use pmat::cli::analysis_utilities::{
-        get_severity_icon, is_benchmark_file, is_example_or_demo_file,
-        is_excluded_directory, is_mock_or_stub_file, is_test_file, normalize_code_content,
+        get_severity_icon, is_benchmark_file, is_example_or_demo_file, is_excluded_directory,
+        is_mock_or_stub_file, is_test_file, normalize_code_content,
     };
 
     // === Tests for is_test_file (5 tests) ===

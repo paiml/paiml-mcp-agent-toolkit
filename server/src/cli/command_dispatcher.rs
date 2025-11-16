@@ -255,8 +255,16 @@ impl CommandDispatcher {
                 update_badge,
                 deep,
             } => {
-                handlers::handle_repo_score(&path, format, verbose, failures_only, output.as_deref(), update_badge, deep)
-                    .await
+                handlers::handle_repo_score(
+                    &path,
+                    format,
+                    verbose,
+                    failures_only,
+                    output.as_deref(),
+                    update_badge,
+                    deep,
+                )
+                .await
             }
             Commands::RustProjectScore {
                 path,
@@ -266,8 +274,15 @@ impl CommandDispatcher {
                 output,
                 full,
             } => {
-                handlers::handle_rust_project_score(&path, &format, verbose, failures_only, output.as_deref(), full)
-                    .await
+                handlers::handle_rust_project_score(
+                    &path,
+                    &format,
+                    verbose,
+                    failures_only,
+                    output.as_deref(),
+                    full,
+                )
+                .await
             }
             Commands::Serve {
                 port,
@@ -421,10 +436,18 @@ impl CommandDispatcher {
                 // TODO: Implement debug handlers in DEBUG-002 and DEBUG-003
                 use crate::cli::commands::DebugCommands;
                 match command {
-                    DebugCommands::Serve { port, host, record_dir } => {
+                    DebugCommands::Serve {
+                        port,
+                        host,
+                        record_dir,
+                    } => {
                         anyhow::bail!("Debug serve command not yet implemented (DEBUG-002). Port: {}, Host: {}, Record Dir: {:?}", port, host, record_dir)
                     }
-                    DebugCommands::Replay { recording, position, interactive } => {
+                    DebugCommands::Replay {
+                        recording,
+                        position,
+                        interactive,
+                    } => {
                         anyhow::bail!("Debug replay command not yet implemented (DEBUG-003). Recording: {:?}, Position: {:?}, Interactive: {}", recording, position, interactive)
                     }
                 }

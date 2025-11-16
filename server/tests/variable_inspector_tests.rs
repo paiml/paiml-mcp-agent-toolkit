@@ -214,7 +214,11 @@ fn main() {
 
     assert!(result.is_ok());
     let variables = result.unwrap();
-    assert_eq!(variables.len(), 0, "Should find no variables in empty scope");
+    assert_eq!(
+        variables.len(),
+        0,
+        "Should find no variables in empty scope"
+    );
 }
 
 // RED Phase Test 9: Invalid Line Number
@@ -271,7 +275,11 @@ fn main() {
 
     // Should find x only once (most recent binding)
     let x_vars: Vec<_> = variables.iter().filter(|v| v.name == "x").collect();
-    assert_eq!(x_vars.len(), 1, "Should find 'x' only once despite multiple assignments");
+    assert_eq!(
+        x_vars.len(),
+        1,
+        "Should find 'x' only once despite multiple assignments"
+    );
 }
 
 // RED Phase Test 12: Variable Shadowing

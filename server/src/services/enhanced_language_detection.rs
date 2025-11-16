@@ -90,8 +90,10 @@ pub fn detect_project_language_enhanced(path: &Path) -> LanguageDetection {
 
         if let Some(lang) = extension_to_language(ext) {
             *scores.entry(lang.to_string()).or_insert(0.0) += percentage;
-            debug!("Extension {} ({} files, {:.1}%) maps to {}, adding {:.1} to score",
-                ext, count, percentage, lang, percentage);
+            debug!(
+                "Extension {} ({} files, {:.1}%) maps to {}, adding {:.1} to score",
+                ext, count, percentage, lang, percentage
+            );
         }
     }
 
@@ -150,7 +152,9 @@ pub fn detect_all_languages(path: &Path) -> MultiLanguageDetection {
                 confidence += 10.0;
             } else if (lang == "cpp" || lang == "c") && path.join("CMakeLists.txt").exists() {
                 confidence += 10.0;
-            } else if (lang == "javascript" || lang == "typescript") && path.join("package.json").exists() {
+            } else if (lang == "javascript" || lang == "typescript")
+                && path.join("package.json").exists()
+            {
                 confidence += 5.0;
             }
 
@@ -171,7 +175,11 @@ pub fn detect_all_languages(path: &Path) -> MultiLanguageDetection {
         .map(|l| l.language.clone())
         .unwrap_or_else(|| "unknown".to_string());
 
-    debug!("Detected {} languages, primary: {}", languages.len(), primary);
+    debug!(
+        "Detected {} languages, primary: {}",
+        languages.len(),
+        primary
+    );
 
     MultiLanguageDetection { languages, primary }
 }
@@ -195,10 +203,7 @@ pub fn override_language_detection(_path: &Path, language: &str) -> LanguageDete
 }
 
 /// Override with multiple languages
-pub fn override_multiple_languages(
-    path: &Path,
-    languages: Vec<String>,
-) -> MultiLanguageDetection {
+pub fn override_multiple_languages(path: &Path, languages: Vec<String>) -> MultiLanguageDetection {
     let file_counts = count_files_by_extension(path);
     let total_files: usize = file_counts.values().sum();
 
@@ -208,7 +213,9 @@ pub fn override_multiple_languages(
             // Calculate actual file count for this language
             let count = file_counts
                 .iter()
-                .filter(|(ext, _)| extension_to_language(ext).map(|s| s.to_string()) == Some(lang.clone()))
+                .filter(|(ext, _)| {
+                    extension_to_language(ext).map(|s| s.to_string()) == Some(lang.clone())
+                })
                 .map(|(_, c)| *c)
                 .sum();
 
@@ -305,7 +312,11 @@ mod tests {
     #[test]
     fn test_detect_rust_project_with_cargo_toml() {
         let temp = TempDir::new().unwrap();
-        std::fs::write(temp.path().join("Cargo.toml"), "[package]\nname = \"test\"\n").unwrap();
+        std::fs::write(
+            temp.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"\n",
+        )
+        .unwrap();
         std::fs::create_dir_all(temp.path().join("src")).unwrap();
         std::fs::write(temp.path().join("src/main.rs"), "fn main() {}").unwrap();
 
@@ -337,12 +348,20 @@ mod tests {
 
         // Create 50 Rust files
         for i in 0..50 {
-            std::fs::write(temp.path().join(format!("src/file_{}.rs", i)), "fn main() {}").unwrap();
+            std::fs::write(
+                temp.path().join(format!("src/file_{}.rs", i)),
+                "fn main() {}",
+            )
+            .unwrap();
         }
 
         // Create 30 Python files
         for i in 0..30 {
-            std::fs::write(temp.path().join(format!("src/tool_{}.py", i)), "print('hello')").unwrap();
+            std::fs::write(
+                temp.path().join(format!("src/tool_{}.py", i)),
+                "print('hello')",
+            )
+            .unwrap();
         }
 
         let detection = detect_all_languages(temp.path());

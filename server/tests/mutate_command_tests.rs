@@ -97,8 +97,7 @@ fn test_cargo_mutants_backend_parses_some_missed_fixture() {
 
     // Use real cargo-mutants output fixture
     let fixture = PathBuf::from("tests/fixtures/cargo-mutants-output/some-missed");
-    let report = CargoMutantsReport::from_output_dir(&fixture)
-        .expect("Should parse fixture");
+    let report = CargoMutantsReport::from_output_dir(&fixture).expect("Should parse fixture");
 
     // Verify mutant counts
     assert_eq!(report.mutants.len(), 5, "Should have 5 mutants");
@@ -195,8 +194,7 @@ fn test_cargo_mutants_backend_calculates_statistics() {
     use pmat::services::mutation::json_parser::MutantOutcome;
 
     let fixture = PathBuf::from("tests/fixtures/cargo-mutants-output/with-timeout");
-    let report = CargoMutantsReport::from_output_dir(&fixture)
-        .expect("Should parse fixture");
+    let report = CargoMutantsReport::from_output_dir(&fixture).expect("Should parse fixture");
 
     // Test utility methods
     assert_eq!(report.mutants.len(), 5, "Should have 5 mutants");
@@ -264,8 +262,7 @@ fn test_empty_project_no_mutants() {
     // Expected: 0 mutants, 0% score
 
     let fixture = PathBuf::from("tests/fixtures/cargo-mutants-output/empty");
-    let report = CargoMutantsReport::from_output_dir(&fixture)
-        .expect("Should parse empty fixture");
+    let report = CargoMutantsReport::from_output_dir(&fixture).expect("Should parse empty fixture");
 
     assert_eq!(report.mutants.len(), 0, "Should have 0 mutants");
     assert_eq!(report.mutation_score(), 0.0, "Score should be 0%");
@@ -279,8 +276,8 @@ fn test_all_mutants_caught_perfect_score() {
     use pmat::services::mutation::json_parser::MutantOutcome;
 
     let fixture = PathBuf::from("tests/fixtures/cargo-mutants-output/all-caught");
-    let report = CargoMutantsReport::from_output_dir(&fixture)
-        .expect("Should parse all-caught fixture");
+    let report =
+        CargoMutantsReport::from_output_dir(&fixture).expect("Should parse all-caught fixture");
 
     assert_eq!(report.mutants.len(), 5, "Should have 5 mutants");
     assert_eq!(
@@ -304,8 +301,8 @@ fn test_unviable_mutants_handling() {
     use pmat::services::mutation::json_parser::MutantOutcome;
 
     let fixture = PathBuf::from("tests/fixtures/cargo-mutants-output/unviable");
-    let report = CargoMutantsReport::from_output_dir(&fixture)
-        .expect("Should parse unviable fixture");
+    let report =
+        CargoMutantsReport::from_output_dir(&fixture).expect("Should parse unviable fixture");
 
     assert!(
         report.count_by_outcome(MutantOutcome::Unviable) > 0,
@@ -322,15 +319,19 @@ fn test_timeout_mutants_handling() {
     use pmat::services::mutation::json_parser::MutantOutcome;
 
     let fixture = PathBuf::from("tests/fixtures/cargo-mutants-output/with-timeout");
-    let report = CargoMutantsReport::from_output_dir(&fixture)
-        .expect("Should parse timeout fixture");
+    let report =
+        CargoMutantsReport::from_output_dir(&fixture).expect("Should parse timeout fixture");
 
     assert!(
         report.count_by_outcome(MutantOutcome::Timeout) > 0,
         "Should have timeout mutants"
     );
     // Timeouts don't count toward mutation score (only caught vs missed)
-    assert_eq!(report.mutation_score(), 60.0, "Score based on caught mutants");
+    assert_eq!(
+        report.mutation_score(),
+        60.0,
+        "Score based on caught mutants"
+    );
 }
 
 #[test]
@@ -343,8 +344,7 @@ fn test_parsing_performance_reasonable() {
     let fixture = PathBuf::from("tests/fixtures/cargo-mutants-output/some-missed");
 
     let start = Instant::now();
-    let report = CargoMutantsReport::from_output_dir(&fixture)
-        .expect("Should parse fixture");
+    let report = CargoMutantsReport::from_output_dir(&fixture).expect("Should parse fixture");
     let elapsed = start.elapsed();
 
     assert_eq!(report.mutants.len(), 5);

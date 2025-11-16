@@ -51,8 +51,7 @@ impl PerformanceScorer {
 
                         // Check for Criterion usage in file
                         if let Ok(content) = std::fs::read_to_string(&path) {
-                            if content.contains("use criterion")
-                                || content.contains("criterion::")
+                            if content.contains("use criterion") || content.contains("criterion::")
                             {
                                 has_criterion_usage = true;
                             }

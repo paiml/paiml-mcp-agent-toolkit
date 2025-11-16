@@ -5,11 +5,11 @@
 // - B2: Hook Execution Time (10 points) - Runs in <30 seconds
 
 use super::{Scorer, ScorerConfig};
-use crate::services::repo_score::models::*;
 use crate::services::repo_score::error::Result;
+use crate::services::repo_score::models::*;
 use async_trait::async_trait;
-use std::path::Path;
 use std::os::unix::fs::PermissionsExt;
+use std::path::Path;
 
 pub struct PrecommitScorer;
 
@@ -97,7 +97,11 @@ impl PrecommitScorer {
     }
 
     /// Score hook execution time (B2: 10 points)
-    async fn score_hook_performance(&self, repo_path: &Path, config: &ScorerConfig) -> Result<SubcategoryScore> {
+    async fn score_hook_performance(
+        &self,
+        repo_path: &Path,
+        config: &ScorerConfig,
+    ) -> Result<SubcategoryScore> {
         let precommit_path = repo_path.join(".git/hooks/pre-commit");
 
         if !precommit_path.exists() {
@@ -234,8 +238,8 @@ impl Default for PrecommitScorer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::TempDir;
     use std::fs;
+    use tempfile::TempDir;
 
     fn create_temp_repo() -> TempDir {
         TempDir::new().unwrap()
@@ -312,7 +316,10 @@ cargo clippy -- -D warnings
 
         // B1: 5 (not executable), B2: 10 (skip slow) = 15 total
         assert!(result.score >= 14.0 && result.score <= 16.0);
-        assert!(result.findings.iter().any(|f| f.message.contains("not executable")));
+        assert!(result
+            .findings
+            .iter()
+            .any(|f| f.message.contains("not executable")));
     }
 
     #[tokio::test]

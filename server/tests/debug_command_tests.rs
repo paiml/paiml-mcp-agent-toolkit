@@ -37,8 +37,8 @@ fn test_parse_debug_serve_default_port() {
     // Default DAP port should be 5678
     let command = Commands::Debug {
         command: DebugCommands::Serve {
-            port: 5678,  // Default
-            host: "127.0.0.1".to_string(),  // Default
+            port: 5678,                    // Default
+            host: "127.0.0.1".to_string(), // Default
             record_dir: None,
         },
     };

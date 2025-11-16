@@ -4,22 +4,22 @@
 // Specification: docs/specifications/repo-score-spec.md
 // Design: docs/design/repo-score-implementation.md
 
+pub mod aggregator;
+pub mod bonus;
+pub mod error;
 pub mod models;
 pub mod scorers;
-pub mod bonus;
-pub mod aggregator;
-pub mod error;
 
-pub use models::*;
 pub use error::RepoScoreError;
+pub use models::*;
 
 #[cfg(test)]
 mod integration_tests {
     use super::*;
     use aggregator::ScoreAggregator;
     use scorers::ScorerConfig;
-    use tempfile::TempDir;
     use std::fs;
+    use tempfile::TempDir;
 
     fn create_realistic_repo() -> TempDir {
         let temp_dir = TempDir::new().unwrap();
@@ -154,10 +154,17 @@ proptest = "1.0"
         assert!(result.categories.pmat_compliance.score > 0.0);
 
         // Verify high total score (should be excellent with all components)
-        assert!(result.total_score >= 80.0, "Total score should be high: {}", result.total_score);
+        assert!(
+            result.total_score >= 80.0,
+            "Total score should be high: {}",
+            result.total_score
+        );
 
         // Verify grade is good (should be B+ or better without bonus points)
-        assert!(matches!(result.grade, Grade::APlus | Grade::A | Grade::AMinus | Grade::BPlus));
+        assert!(matches!(
+            result.grade,
+            Grade::APlus | Grade::A | Grade::AMinus | Grade::BPlus
+        ));
 
         // Verify metadata populated
         assert_eq!(result.metadata.repository_path, repo_path);
@@ -171,8 +178,14 @@ proptest = "1.0"
         assert_eq!(result.categories.documentation.subcategories.len(), 2); // A1, A2
         assert_eq!(result.categories.precommit_hooks.subcategories.len(), 2); // B1, B2
         assert_eq!(result.categories.repository_hygiene.subcategories.len(), 3); // C1, C2, C3
-        assert_eq!(result.categories.build_test_automation.subcategories.len(), 3); // D1, D2, D3
-        assert_eq!(result.categories.continuous_integration.subcategories.len(), 2); // E1, E2
+        assert_eq!(
+            result.categories.build_test_automation.subcategories.len(),
+            3
+        ); // D1, D2, D3
+        assert_eq!(
+            result.categories.continuous_integration.subcategories.len(),
+            2
+        ); // E1, E2
         assert_eq!(result.categories.pmat_compliance.subcategories.len(), 2); // F1, F2
     }
 }

@@ -195,7 +195,9 @@ fn test_multiple_claims_mixed_validity() {
     assert_eq!(claims.len(), 4); // FeatureCompletion, TestStatus, Coverage, Security
 
     // All claims are absolute
-    assert!(claims.iter().all(|c| c.is_absolute || c.numeric_value.is_some()));
+    assert!(claims
+        .iter()
+        .all(|c| c.is_absolute || c.numeric_value.is_some()));
 
     // Follow-up commit fixes multiple issues
     let followup_commit = create_commit(
@@ -286,12 +288,12 @@ fn test_grace_period_prevents_false_positive() {
     // Quick follow-up within grace period (developer catches issue immediately)
     let followup_commit = create_commit(
         "chore: Polish feature Y implementation", // Neutral keyword (not "fix")
-        1000 + (6 * 3600), // 6 hours later (within 48-hour grace period)
+        1000 + (6 * 3600),                        // 6 hours later (within 48-hour grace period)
         vec!["src/feature_y.rs", "src/feature_y_utils.rs"], // Some new files
         None,
         None,
         "feature/y", // Same branch
-        2, // Adding tests
+        2,           // Adding tests
         0,
     );
 

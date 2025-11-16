@@ -3,7 +3,7 @@
 // Integration tests for the Red Team Mode hallucination detection system
 // Specification: docs/specifications/red-team-mode-spec.md v1.1
 
-use pmat::red_team::{ClaimExtractor, Claim, ClaimCategory};
+use pmat::red_team::{Claim, ClaimCategory, ClaimExtractor};
 
 // RED Test 1: Extract "all tests passing" claim
 #[test]

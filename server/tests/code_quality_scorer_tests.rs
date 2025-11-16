@@ -494,10 +494,10 @@ fn unused() {}
 
     let rec_text = recommendations.join(" ");
     assert!(
-        rec_text.contains("complexity") ||
-        rec_text.contains("unsafe") ||
-        rec_text.contains("dead code") ||
-        rec_text.contains("mutation")
+        rec_text.contains("complexity")
+            || rec_text.contains("unsafe")
+            || rec_text.contains("dead code")
+            || rec_text.contains("mutation")
     );
 }
 

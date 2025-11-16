@@ -5,8 +5,7 @@
 use anyhow::Result;
 
 /// Timeline playback mode (interactive TUI vs non-interactive)
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum TimelineMode {
     /// Interactive TUI mode (requires TTY)
     Interactive,
@@ -78,12 +77,13 @@ impl TimelineMode {
     #[cfg(not(feature = "tui"))]
     pub fn check_feature_availability(&self) -> Result<()> {
         if self.is_interactive() {
-            anyhow::bail!("Interactive mode requires the 'tui' feature. Rebuild with --features tui");
+            anyhow::bail!(
+                "Interactive mode requires the 'tui' feature. Rebuild with --features tui"
+            );
         }
         Ok(())
     }
 }
-
 
 /// Placeholder for handle_timeline function
 /// This will be properly implemented when integrating with existing timeline command

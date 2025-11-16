@@ -77,10 +77,7 @@ impl BreakpointManager {
 
     /// Get total count of breakpoints
     pub fn count(&self) -> usize {
-        self.breakpoints
-            .values()
-            .map(|file_bp| file_bp.len())
-            .sum()
+        self.breakpoints.values().map(|file_bp| file_bp.len()).sum()
     }
 
     /// Get all breakpoints in a specific file
@@ -110,11 +107,7 @@ impl BreakpointManager {
     pub fn all_breakpoints(&self) -> Vec<Breakpoint> {
         self.breakpoints
             .values()
-            .flat_map(|file_bp| {
-                file_bp
-                    .values()
-                    .map(|metadata| metadata.breakpoint.clone())
-            })
+            .flat_map(|file_bp| file_bp.values().map(|metadata| metadata.breakpoint.clone()))
             .collect()
     }
 

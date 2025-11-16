@@ -10,9 +10,7 @@
 // - Integration between EventLoop and handlers
 // - All key bindings work correctly
 
-use pmat::services::dap::timeline_tui::{
-    KeyboardHandler, TuiAction, KeyCode, TerminalEvent,
-};
+use pmat::services::dap::timeline_tui::{KeyCode, KeyboardHandler, TerminalEvent, TuiAction};
 
 // ============================================================================
 // Test 1: TuiAction Enum

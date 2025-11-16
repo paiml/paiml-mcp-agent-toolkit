@@ -116,9 +116,9 @@ pub mod dag_builder;
 pub mod dead_code_analyzer;
 #[cfg(test)]
 mod dead_code_analyzer_tests;
+pub mod dead_code_multi_language; // BUG-004: Multi-language dead code analysis
 #[cfg(test)]
 mod dead_code_property_tests;
-pub mod dead_code_multi_language; // BUG-004: Multi-language dead code analysis
 pub mod dead_code_prover;
 pub mod deep_context;
 pub mod defect_analyzer;
@@ -135,7 +135,6 @@ mod duplicate_detector_property_tests;
 pub mod embedded_templates;
 pub mod enhanced_ast_visitor;
 pub mod enhanced_language_detection; // BUG-011: Multi-language detection with confidence
-pub mod language_override; // BUG-012: CLI language override support
 #[cfg(test)]
 pub mod enhanced_naming_tests;
 pub mod enhanced_python_visitor;
@@ -152,6 +151,7 @@ pub mod github_integration;
 pub mod hallucination_detector; // Sprint 37: Semantic entropy-based hallucination detection
 pub mod incremental_churn;
 pub mod incremental_coverage_analyzer;
+pub mod language_override; // BUG-012: CLI language override support
 pub mod lightweight_provability_analyzer;
 pub mod makefile_compressor;
 pub mod makefile_linter;

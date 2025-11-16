@@ -8,9 +8,9 @@
 //! Strategy: Test configuration, analyzer lifecycle, language support, formatters
 
 use pmat::services::deep_context::*;
+use std::fs;
 use std::path::PathBuf;
 use tempfile::tempdir;
-use std::fs;
 
 // ============================================================================
 // RED Phase 1: Configuration Tests
@@ -58,7 +58,18 @@ fn test_analysis_type_enum_variants() {
     // RED: Should have all expected analysis types
     use AnalysisType::*;
 
-    let types = vec![Ast, Complexity, Churn, Dag, DeadCode, DuplicateCode, Satd, Provability, TechnicalDebtGradient, BigO];
+    let types = vec![
+        Ast,
+        Complexity,
+        Churn,
+        Dag,
+        DeadCode,
+        DuplicateCode,
+        Satd,
+        Provability,
+        TechnicalDebtGradient,
+        BigO,
+    ];
     assert_eq!(types.len(), 10);
 }
 
@@ -117,7 +128,7 @@ fn test_deep_context_analyzer_creation_minimal_config() {
     // RED: Should handle minimal analysis configuration
     let config = DeepContextConfig {
         max_depth: Some(1),
-        include_analyses: vec![],  // Empty - minimal analysis
+        include_analyses: vec![], // Empty - minimal analysis
         period_days: 1,
         parallel: 1,
         ..DeepContextConfig::default()
@@ -150,7 +161,9 @@ async fn test_analyze_project_empty_directory() {
     let config = DeepContextConfig::default();
     let analyzer = DeepContextAnalyzer::new(config);
 
-    let result = analyzer.analyze_project(&temp_dir.path().to_path_buf()).await;
+    let result = analyzer
+        .analyze_project(&temp_dir.path().to_path_buf())
+        .await;
 
     // Should succeed with no files analyzed
     match result {
@@ -164,20 +177,26 @@ async fn test_analyze_project_with_single_file() {
     let temp_dir = tempdir().unwrap();
     let rust_file = temp_dir.path().join("main.rs");
 
-    fs::write(&rust_file, r#"
+    fs::write(
+        &rust_file,
+        r#"
         fn main() {
             println!("Hello, world!");
         }
-    "#).unwrap();
+    "#,
+    )
+    .unwrap();
 
     let config = DeepContextConfig::default();
     let analyzer = DeepContextAnalyzer::new(config);
 
-    let result = analyzer.analyze_project(&temp_dir.path().to_path_buf()).await;
+    let result = analyzer
+        .analyze_project(&temp_dir.path().to_path_buf())
+        .await;
 
     // Should successfully analyze the project (or error gracefully)
     match result {
-        Ok(_) => {},
+        Ok(_) => {}
         Err(_) => {}
     }
 }
@@ -202,11 +221,15 @@ async fn test_analyze_single_file_rust() {
     let temp_dir = tempdir().unwrap();
     let rust_file = temp_dir.path().join("test.rs");
 
-    fs::write(&rust_file, r#"
+    fs::write(
+        &rust_file,
+        r#"
         pub fn add(a: i32, b: i32) -> i32 {
             a + b
         }
-    "#).unwrap();
+    "#,
+    )
+    .unwrap();
 
     let result = analyze_single_file(&rust_file).await;
 
@@ -241,7 +264,9 @@ async fn test_analyze_rust_language() {
     let temp_dir = tempdir().unwrap();
     let rust_file = temp_dir.path().join("lib.rs");
 
-    fs::write(&rust_file, r#"
+    fs::write(
+        &rust_file,
+        r#"
         pub struct Calculator {
             value: i32,
         }
@@ -255,7 +280,9 @@ async fn test_analyze_rust_language() {
                 self.value += n;
             }
         }
-    "#).unwrap();
+    "#,
+    )
+    .unwrap();
 
     let result = analyze_rust_language(&rust_file).await;
 
@@ -263,7 +290,7 @@ async fn test_analyze_rust_language() {
         Ok(items) => {
             // Should find struct and methods
             assert!(items.len() > 0);
-        },
+        }
         Err(_) => {}
     }
 }
@@ -274,7 +301,9 @@ async fn test_analyze_python_language() {
     let temp_dir = tempdir().unwrap();
     let py_file = temp_dir.path().join("test.py");
 
-    fs::write(&py_file, r#"
+    fs::write(
+        &py_file,
+        r#"
 class Calculator:
     def __init__(self):
         self.value = 0
@@ -282,14 +311,16 @@ class Calculator:
     def add(self, n):
         self.value += n
         return self.value
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     let result = analyze_python_language(&py_file).await;
 
     match result {
         Ok(items) => {
             assert!(items.len() > 0);
-        },
+        }
         Err(_) => {}
     }
 }
@@ -300,7 +331,9 @@ async fn test_analyze_typescript_language() {
     let temp_dir = tempdir().unwrap();
     let ts_file = temp_dir.path().join("test.ts");
 
-    fs::write(&ts_file, r#"
+    fs::write(
+        &ts_file,
+        r#"
 interface Calculator {
     value: number;
     add(n: number): number;
@@ -314,14 +347,16 @@ class SimpleCalculator implements Calculator {
         return this.value;
     }
 }
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     let result = analyze_typescript_language(&ts_file).await;
 
     match result {
         Ok(items) => {
             assert!(items.len() > 0);
-        },
+        }
         Err(_) => {}
     }
 }
@@ -425,8 +460,8 @@ async fn test_format_as_json_empty_context() {
     match result {
         Ok(json) => {
             assert!(!json.is_empty());
-            assert!(json.contains("{"));  // Valid JSON
-        },
+            assert!(json.contains("{")); // Valid JSON
+        }
         Err(_) => {}
     }
 }
@@ -445,7 +480,7 @@ async fn test_format_as_sarif_empty_context() {
         Ok(sarif) => {
             assert!(!sarif.is_empty());
             assert!(sarif.contains("sarif") || sarif.contains("version"));
-        },
+        }
         Err(_) => {}
     }
 }
@@ -465,7 +500,7 @@ async fn test_format_as_comprehensive_markdown() {
             assert!(!markdown.is_empty());
             // Should contain markdown formatting
             assert!(markdown.contains("#") || markdown.contains("##"));
-        },
+        }
         Err(_) => {}
     }
 }
@@ -524,7 +559,9 @@ async fn test_analyze_project_max_depth_zero() {
     };
     let analyzer = DeepContextAnalyzer::new(config);
 
-    let result = analyzer.analyze_project(&temp_dir.path().to_path_buf()).await;
+    let result = analyzer
+        .analyze_project(&temp_dir.path().to_path_buf())
+        .await;
 
     // Should handle zero depth
     match result {
@@ -539,7 +576,9 @@ async fn test_analyze_single_file_very_large_file() {
     let large_file = temp_dir.path().join("large.rs");
 
     // Create a large file (1000 lines)
-    let content = (0..1000).map(|i| format!("fn func_{}() {{}}\n", i)).collect::<String>();
+    let content = (0..1000)
+        .map(|i| format!("fn func_{}() {{}}\n", i))
+        .collect::<String>();
     fs::write(&large_file, content).unwrap();
 
     let result = analyze_single_file(&large_file).await;

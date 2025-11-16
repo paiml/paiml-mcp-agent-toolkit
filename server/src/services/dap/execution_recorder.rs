@@ -176,16 +176,22 @@ impl<W: Write> ExecutionRecorder<W> {
             return Err("Not recording".to_string());
         }
 
-        let dap = self.dap_server.lock().map_err(|e| format!("Failed to lock DAP server: {}", e))?;
+        let dap = self
+            .dap_server
+            .lock()
+            .map_err(|e| format!("Failed to lock DAP server: {}", e))?;
 
         // Get current stopped file and line
-        let stopped_file = dap.current_stopped_file()
+        let stopped_file = dap
+            .current_stopped_file()
             .ok_or_else(|| "No file currently stopped at".to_string())?;
-        let stopped_line = dap.current_stopped_line()
+        let stopped_line = dap
+            .current_stopped_line()
             .ok_or_else(|| "No line currently stopped at".to_string())?;
 
         // Get variables at current line
-        let variables_vec = dap.get_variables_at_line(&stopped_file, stopped_line)
+        let variables_vec = dap
+            .get_variables_at_line(&stopped_file, stopped_line)
             .map_err(|e| format!("Failed to get variables: {}", e))?;
 
         // Convert Vec<Variable> to HashMap
@@ -196,23 +202,21 @@ impl<W: Write> ExecutionRecorder<W> {
                 serde_json::json!({
                     "value": var.value,
                     "type": var.type_info
-                })
+                }),
             );
         }
 
         // Create placeholder call stack (simplified for now)
-        let call_stack = vec![
-            StackFrame {
-                id: 1,
-                name: "main".to_string(),
-                source: Some(super::types::Source {
-                    name: Some(stopped_file.clone()),
-                    path: Some(stopped_file.clone()),
-                }),
-                line: stopped_line as i64,
-                column: 0,
-            }
-        ];
+        let call_stack = vec![StackFrame {
+            id: 1,
+            name: "main".to_string(),
+            source: Some(super::types::Source {
+                name: Some(stopped_file.clone()),
+                path: Some(stopped_file.clone()),
+            }),
+            line: stopped_line as i64,
+            column: 0,
+        }];
 
         // Create snapshot
         let snapshot = ExecutionSnapshot {
@@ -234,7 +238,8 @@ impl<W: Write> ExecutionRecorder<W> {
         // Sprint 76: Write to .pmat file if writer is present
         if let Some(ref mut writer) = self.writer {
             let recording_snapshot = Self::convert_to_recording_snapshot(&snapshot);
-            writer.write_snapshot(&recording_snapshot)
+            writer
+                .write_snapshot(&recording_snapshot)
                 .map_err(|e| format!("Failed to write snapshot to recording: {}", e))?;
         }
 
@@ -248,8 +253,7 @@ impl<W: Write> ExecutionRecorder<W> {
         let json = serde_json::to_string_pretty(&self.snapshots)
             .map_err(|e| format!("Failed to serialize: {}", e))?;
 
-        std::fs::write(path, json)
-            .map_err(|e| format!("Failed to write file: {}", e))?;
+        std::fs::write(path, json).map_err(|e| format!("Failed to write file: {}", e))?;
 
         Ok(())
     }
@@ -270,11 +274,11 @@ impl ExecutionRecorder<std::io::Sink> {
 
     /// Load recording from file (Sprint 72 JSON format)
     pub fn load_from_file(path: &str) -> Result<Self, String> {
-        let json = std::fs::read_to_string(path)
-            .map_err(|e| format!("Failed to read file: {}", e))?;
+        let json =
+            std::fs::read_to_string(path).map_err(|e| format!("Failed to read file: {}", e))?;
 
-        let snapshots: Vec<ExecutionSnapshot> = serde_json::from_str(&json)
-            .map_err(|e| format!("Failed to deserialize: {}", e))?;
+        let snapshots: Vec<ExecutionSnapshot> =
+            serde_json::from_str(&json).map_err(|e| format!("Failed to deserialize: {}", e))?;
 
         // Create a dummy DAP server for loaded recordings
         let dap_server = Arc::new(Mutex::new(DapServer::new()));

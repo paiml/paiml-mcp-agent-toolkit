@@ -1116,11 +1116,11 @@ async fn test_failures_only_all_formats() {
             output: None,
             threshold: None,
             failures_only: true,
-        use_cargo_mutants: false,
-        features: None,
-        all_features: false,
-        no_default_features: false,
-        no_shuffle: false,
+            use_cargo_mutants: false,
+            features: None,
+            all_features: false,
+            no_default_features: false,
+            no_shuffle: false,
         };
         let server = Arc::new(StatelessTemplateServer::new().unwrap());
 
@@ -1401,11 +1401,11 @@ async fn test_progress_all_formats() {
             output: None,
             threshold: None,
             failures_only: false,
-        use_cargo_mutants: false,
-        features: None,
-        all_features: false,
-        no_default_features: false,
-        no_shuffle: false,
+            use_cargo_mutants: false,
+            features: None,
+            all_features: false,
+            no_default_features: false,
+            no_shuffle: false,
         };
         let server = Arc::new(StatelessTemplateServer::new().unwrap());
 
@@ -1640,11 +1640,11 @@ async fn test_code_snippets_all_formats() {
             output: None,
             threshold: None,
             failures_only: false,
-        use_cargo_mutants: false,
-        features: None,
-        all_features: false,
-        no_default_features: false,
-        no_shuffle: false,
+            use_cargo_mutants: false,
+            features: None,
+            all_features: false,
+            no_default_features: false,
+            no_shuffle: false,
         };
         let server = Arc::new(StatelessTemplateServer::new().unwrap());
 

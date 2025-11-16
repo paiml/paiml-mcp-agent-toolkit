@@ -126,7 +126,7 @@ fn main() -> Result<()> {
     println!("   When both --language and --languages are specified:\n");
 
     let override_opts = LanguageOverride {
-        language: Some("c".to_string()),         // Higher priority
+        language: Some("c".to_string()),           // Higher priority
         languages: Some(vec!["rust".to_string()]), // Ignored
     };
 
@@ -181,16 +181,10 @@ fn create_demo_project() -> Result<TempDir> {
 
     // Create Python files
     fs::write(base.join("script.py"), "print('Hello from Python')")?;
-    fs::write(
-        base.join("pyproject.toml"),
-        "[project]\nname = \"demo\"\n",
-    )?;
+    fs::write(base.join("pyproject.toml"), "[project]\nname = \"demo\"\n")?;
 
     // Create TypeScript files
-    fs::write(
-        base.join("app.ts"),
-        "console.log('Hello from TypeScript');",
-    )?;
+    fs::write(base.join("app.ts"), "console.log('Hello from TypeScript');")?;
     fs::write(base.join("package.json"), "{\"name\": \"demo\"}")?;
 
     Ok(temp)

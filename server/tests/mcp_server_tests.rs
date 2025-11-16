@@ -7,8 +7,8 @@
 //!
 //! Strategy: Test server lifecycle, configuration, registration, error paths
 
-use pmat::mcp_integration::server::{McpServer, ServerConfig};
 use pmat::agents::registry::AgentRegistry;
+use pmat::mcp_integration::server::{McpServer, ServerConfig};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -161,15 +161,15 @@ async fn test_register_defaults() {
 
     // Should succeed (may return Ok or Err depending on environment)
     match result {
-        Ok(_) => {},
+        Ok(_) => {}
         Err(e) => {
             // Acceptable if certain dependencies not available
             let err_str = e.to_string();
             assert!(
-                err_str.contains("tool") ||
-                err_str.contains("resource") ||
-                err_str.contains("prompt") ||
-                err_str.contains("agent")
+                err_str.contains("tool")
+                    || err_str.contains("resource")
+                    || err_str.contains("prompt")
+                    || err_str.contains("agent")
             );
         }
     }
@@ -187,8 +187,8 @@ async fn test_register_defaults_idempotent() {
 
     // Both should complete (success or consistent error)
     match (result1, result2) {
-        (Ok(_), Ok(_)) => {},
-        (Err(_), Err(_)) => {},
+        (Ok(_), Ok(_)) => {}
+        (Err(_), Err(_)) => {}
         _ => {
             // Both should have same outcome
         }

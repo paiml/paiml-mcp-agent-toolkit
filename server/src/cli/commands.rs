@@ -15,8 +15,8 @@ use crate::cli::{
     LintHotspotOutputFormat, MakefileOutputFormat, NameSimilarityOutputFormat, OutputFormat,
     PromptOutputFormat, ProofAnnotationOutputFormat, PropertyTypeFilter, ProvabilityOutputFormat,
     QualityCheckType, QualityGateOutputFormat, QualityProfile, RefactorAutoOutputFormat,
-    RefactorDocsOutputFormat, RefactorMode, RefactorOutputFormat, ReportOutputFormat,
-    RepoScoreOutputFormat, SatdOutputFormat, SatdSeverity, SearchScope, SymbolTableOutputFormat,
+    RefactorDocsOutputFormat, RefactorMode, RefactorOutputFormat, RepoScoreOutputFormat,
+    ReportOutputFormat, SatdOutputFormat, SatdSeverity, SearchScope, SymbolTableOutputFormat,
     SymbolTypeFilter, TdgOutputFormat, VerificationMethodFilter, WasmOutputFormat,
 };
 

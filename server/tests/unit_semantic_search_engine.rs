@@ -72,7 +72,7 @@ class Calculator:
 
 #[ignore]
 #[tokio::test]
- // Requires actual OpenAI API
+// Requires actual OpenAI API
 async fn test_search_by_query() {
     let (engine, temp_dir) = setup_test_engine().await;
     let fixtures_dir = temp_dir.path().join("fixtures");

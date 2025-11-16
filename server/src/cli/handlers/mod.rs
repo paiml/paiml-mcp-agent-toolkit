@@ -7,7 +7,6 @@ pub mod advanced_analysis_handlers;
 pub mod agent_handlers;
 pub mod analysis;
 pub mod analysis_handlers;
-pub mod prompt_handlers;
 #[cfg(test)]
 pub mod annotation_tdd_tests;
 pub mod big_o_handlers;
@@ -42,6 +41,8 @@ pub mod mutate;
 pub mod mutation_handlers;
 pub mod name_similarity_analysis;
 pub mod new_tdg_handler;
+pub mod org_handlers;
+pub mod prompt_handlers;
 pub mod proof_annotations_handler;
 pub mod provability_handler;
 pub mod qdd_handlers;
@@ -57,8 +58,8 @@ pub mod refactor_auto_property_tests;
 pub mod refactor_docs_handlers;
 pub mod refactor_handlers;
 pub mod repo_score_handlers; // Sprint 48: Repository health scoring
-pub mod rust_project_score_handlers; // Sprint 3: Rust Project Score v1.1
 pub mod roadmap_handler;
+pub mod rust_project_score_handlers; // Sprint 3: Rust Project Score v1.1
 pub mod satd_handler;
 pub mod similarity_handler;
 pub mod subagent_handlers;
@@ -71,6 +72,7 @@ pub mod tdg_handlers;
 pub mod tdg_history_tests; // Sprint 65 Phase 3: TDG History Commands
 pub mod telemetry_handlers;
 pub mod test_handlers;
+pub mod timeline_mode; // Sprint 78: TUI-006 - Timeline CLI integration
 pub mod unified_context_advanced;
 #[cfg(test)]
 pub mod unified_context_advanced_tests;
@@ -79,9 +81,7 @@ pub mod unified_context_builder;
 pub mod unified_context_property_tests;
 pub mod utility_handlers;
 pub mod wasm_handler;
-pub mod wasm_handlers;
-pub mod timeline_mode; // Sprint 78: TUI-006 - Timeline CLI integration
-pub mod org_handlers; // Phase 4: Organizational Intelligence Integration
+pub mod wasm_handlers; // Phase 4: Organizational Intelligence Integration
 
 // Re-export handler functions
 pub use advanced_analysis_handlers::{
@@ -119,6 +119,7 @@ pub use incremental_coverage_handler::handle_analyze_incremental_coverage;
 pub use lint_hotspot_handlers::handle_analyze_lint_hotspot;
 pub use memory::handle_memory_command;
 pub use name_similarity_analysis::handle_analyze_name_similarity;
+pub use org_handlers::handle_org_command;
 pub use prompt_handlers::{handle_prompt, handle_prompt_command};
 pub use provability_handler::handle_analyze_provability;
 pub use quality_gates_handler::handle_quality_gates_command; // TICKET-PMAT-5023
@@ -127,18 +128,17 @@ pub use red_team::RedTeamCmd; // Red Team Mode: Automated hallucination detectio
 pub use refactor_docs_handlers::handle_refactor_docs;
 pub use refactor_handlers::{route_refactor_command, RefactorServeParams};
 pub use repo_score_handlers::handle_repo_score; // Sprint 48: Repository health scoring
-pub use rust_project_score_handlers::handle_rust_project_score; // Sprint 3: Rust Project Score v1.1
 pub use roadmap_handler::handle_maintain_roadmap; // TICKET-PMAT-5032
+pub use rust_project_score_handlers::handle_rust_project_score; // Sprint 3: Rust Project Score v1.1
 pub use satd_handler::handle_analyze_satd;
 pub use tdg_handlers::handle_tdg_command;
 pub use telemetry_handlers::handle_telemetry;
 pub use test_handlers::handle_test;
+pub use timeline_mode::{get_timeline_help_text, handle_timeline, TimelineMode}; // Sprint 78: TUI-006
 pub use utility_handlers::{
     handle_context, handle_diagnose, handle_list, handle_search, handle_serve,
 };
-pub use wasm_handlers::{handle_analyze_assemblyscript, handle_analyze_webassembly};
-pub use timeline_mode::{TimelineMode, handle_timeline, get_timeline_help_text}; // Sprint 78: TUI-006
-pub use org_handlers::handle_org_command; // Phase 4: Organizational Intelligence Integration
+pub use wasm_handlers::{handle_analyze_assemblyscript, handle_analyze_webassembly}; // Phase 4: Organizational Intelligence Integration
 
 #[cfg(test)]
 mod tests {

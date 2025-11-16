@@ -26,7 +26,10 @@ fn test_create_recorder_with_writer() {
 
     assert!(recorder.is_ok(), "Should create recorder with writer");
     let recorder = recorder.unwrap();
-    assert!(!recorder.is_recording(), "Should not be recording initially");
+    assert!(
+        !recorder.is_recording(),
+        "Should not be recording initially"
+    );
     assert_eq!(recorder.snapshot_count(), 0, "Should have zero snapshots");
 }
 
@@ -76,11 +79,16 @@ fn test_finalize_creates_valid_pmat_file() {
         "test_program".to_string(),
         vec!["arg1".to_string()],
         dap,
-    ).expect("Should create recorder");
+    )
+    .expect("Should create recorder");
 
     // Finalize should complete successfully even with no snapshots
     let result = recorder.finalize();
-    assert!(result.is_ok(), "Finalize should succeed: {:?}", result.err());
+    assert!(
+        result.is_ok(),
+        "Finalize should succeed: {:?}",
+        result.err()
+    );
 }
 
 // RED Test 4: Multiple snapshots written sequentially
@@ -232,7 +240,10 @@ fn test_memory_only_mode_backward_compatible() {
     let mut recorder = ExecutionRecorder::new(dap);
 
     // Memory-only recorder should work as before
-    assert!(!recorder.is_recording(), "Should not be recording initially");
+    assert!(
+        !recorder.is_recording(),
+        "Should not be recording initially"
+    );
 
     recorder.start_recording();
     assert!(recorder.is_recording(), "Should be recording after start");
@@ -249,12 +260,9 @@ fn test_metadata_updates_environment_variables() {
     // GREEN: Verify add_environment() method works
     let buffer = Cursor::new(Vec::new());
     let dap = Arc::new(Mutex::new(DapServer::new()));
-    let mut recorder = ExecutionRecorder::with_writer(
-        buffer,
-        "test_program".to_string(),
-        vec![],
-        dap,
-    ).expect("Should create recorder");
+    let mut recorder =
+        ExecutionRecorder::with_writer(buffer, "test_program".to_string(), vec![], dap)
+            .expect("Should create recorder");
 
     // Add environment variables - should not panic
     recorder.add_environment("PATH", "/usr/bin:/bin");
@@ -263,7 +271,10 @@ fn test_metadata_updates_environment_variables() {
 
     // Finalize should succeed
     let result = recorder.finalize();
-    assert!(result.is_ok(), "Finalize should succeed with environment variables");
+    assert!(
+        result.is_ok(),
+        "Finalize should succeed with environment variables"
+    );
 }
 
 // RED Test 10: Concurrent snapshot recording (thread safety)
@@ -359,14 +370,12 @@ fn create_large_test_snapshot() -> Snapshot {
         variables.insert(format!("var_{}", i), serde_json::json!(i));
     }
 
-    let stack_frames = vec![
-        StackFrame {
-            name: "deep_recursion".to_string(),
-            file: Some("recursive.rs".to_string()),
-            line: Some(500),
-            locals: variables.clone(),
-        },
-    ];
+    let stack_frames = vec![StackFrame {
+        name: "deep_recursion".to_string(),
+        file: Some("recursive.rs".to_string()),
+        line: Some(500),
+        locals: variables.clone(),
+    }];
 
     Snapshot {
         frame_id: 9999,

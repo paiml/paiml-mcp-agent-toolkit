@@ -153,8 +153,8 @@ fn test_integration_with_empty_project() {
     use std::path::PathBuf;
 
     let fixture = PathBuf::from("tests/fixtures/cargo-mutants-output/empty");
-    let report = CargoMutantsReport::from_output_dir(&fixture)
-        .expect("Failed to parse empty fixture");
+    let report =
+        CargoMutantsReport::from_output_dir(&fixture).expect("Failed to parse empty fixture");
 
     assert_eq!(report.mutants.len(), 0, "Should parse 0 mutants");
 
@@ -177,8 +177,7 @@ fn test_integration_outcome_counts() {
     use std::path::PathBuf;
 
     let fixture = PathBuf::from("tests/fixtures/cargo-mutants-output/some-missed");
-    let report = CargoMutantsReport::from_output_dir(&fixture)
-        .expect("Failed to parse fixture");
+    let report = CargoMutantsReport::from_output_dir(&fixture).expect("Failed to parse fixture");
 
     let caught_count = report.count_by_outcome(MutantOutcome::Caught);
     let missed_count = report.count_by_outcome(MutantOutcome::Missed);

@@ -5,7 +5,7 @@
 
 use super::types::Variable;
 use std::path::Path;
-use tree_sitter::{Parser, Node, Tree};
+use tree_sitter::{Node, Parser, Tree};
 
 /// Variable Inspector for extracting variables from source code
 #[derive(Debug)]
@@ -63,8 +63,8 @@ impl VariableInspector {
 
     /// Inspect variables from a file
     pub fn inspect_file(&self, path: &Path, line: usize) -> Result<Vec<Variable>, String> {
-        let source = std::fs::read_to_string(path)
-            .map_err(|e| format!("Failed to read file: {}", e))?;
+        let source =
+            std::fs::read_to_string(path).map_err(|e| format!("Failed to read file: {}", e))?;
 
         // Detect language from file extension
         let ext = path
@@ -82,7 +82,12 @@ impl VariableInspector {
     }
 
     /// Extract variables from Rust AST
-    fn extract_variables_rust(&self, tree: &Tree, source: &str, target_line: usize) -> Result<Vec<Variable>, String> {
+    fn extract_variables_rust(
+        &self,
+        tree: &Tree,
+        source: &str,
+        target_line: usize,
+    ) -> Result<Vec<Variable>, String> {
         let root_node = tree.root_node();
         let bytes = source.as_bytes();
 
@@ -92,7 +97,11 @@ impl VariableInspector {
         // Validate line number is within bounds
         let max_line = root_node.end_position().row;
         if target_line_idx > max_line {
-            return Err(format!("Line {} is out of bounds (file has {} lines)", target_line, max_line + 1));
+            return Err(format!(
+                "Line {} is out of bounds (file has {} lines)",
+                target_line,
+                max_line + 1
+            ));
         }
 
         // Find the scope containing the target line
@@ -122,7 +131,12 @@ impl VariableInspector {
     }
 
     /// Extract variables from TypeScript AST
-    fn extract_variables_typescript(&self, tree: &Tree, source: &str, target_line: usize) -> Result<Vec<Variable>, String> {
+    fn extract_variables_typescript(
+        &self,
+        tree: &Tree,
+        source: &str,
+        target_line: usize,
+    ) -> Result<Vec<Variable>, String> {
         let root_node = tree.root_node();
         let bytes = source.as_bytes();
         let target_line_idx = if target_line > 0 { target_line - 1 } else { 0 };
@@ -130,7 +144,11 @@ impl VariableInspector {
         // Validate line number is within bounds
         let max_line = root_node.end_position().row;
         if target_line_idx > max_line {
-            return Err(format!("Line {} is out of bounds (file has {} lines)", target_line, max_line + 1));
+            return Err(format!(
+                "Line {} is out of bounds (file has {} lines)",
+                target_line,
+                max_line + 1
+            ));
         }
 
         let scope_node = self.find_scope_at_line(root_node, target_line_idx);
@@ -158,7 +176,12 @@ impl VariableInspector {
     }
 
     /// Extract variables from Python AST
-    fn extract_variables_python(&self, tree: &Tree, source: &str, target_line: usize) -> Result<Vec<Variable>, String> {
+    fn extract_variables_python(
+        &self,
+        tree: &Tree,
+        source: &str,
+        target_line: usize,
+    ) -> Result<Vec<Variable>, String> {
         let root_node = tree.root_node();
         let bytes = source.as_bytes();
         let target_line_idx = if target_line > 0 { target_line - 1 } else { 0 };
@@ -166,7 +189,11 @@ impl VariableInspector {
         // Validate line number is within bounds
         let max_line = root_node.end_position().row;
         if target_line_idx > max_line {
-            return Err(format!("Line {} is out of bounds (file has {} lines)", target_line, max_line + 1));
+            return Err(format!(
+                "Line {} is out of bounds (file has {} lines)",
+                target_line,
+                max_line + 1
+            ));
         }
 
         let scope_node = self.find_scope_at_line(root_node, target_line_idx);
@@ -251,7 +278,13 @@ impl VariableInspector {
     }
 
     /// Extract Rust let bindings
-    fn extract_rust_let_bindings(&self, node: Node, bytes: &[u8], variables: &mut Vec<Variable>, target_line: usize) {
+    fn extract_rust_let_bindings(
+        &self,
+        node: Node,
+        bytes: &[u8],
+        variables: &mut Vec<Variable>,
+        target_line: usize,
+    ) {
         let mut cursor = node.walk();
 
         for child in node.children(&mut cursor) {
@@ -271,7 +304,8 @@ impl VariableInspector {
                         "identifier" if var_name.is_empty() => {
                             var_name = decl_child.utf8_text(bytes).unwrap_or("").to_string();
                         }
-                        "integer_literal" | "float_literal" | "string_literal" | "boolean_literal" | "true" | "false" => {
+                        "integer_literal" | "float_literal" | "string_literal"
+                        | "boolean_literal" | "true" | "false" => {
                             value_node = Some(decl_child);
                         }
                         _ => {}
@@ -300,7 +334,12 @@ impl VariableInspector {
     }
 
     /// Extract Rust function parameters
-    fn extract_rust_function_params(&self, func_node: Node, bytes: &[u8], variables: &mut Vec<Variable>) {
+    fn extract_rust_function_params(
+        &self,
+        func_node: Node,
+        bytes: &[u8],
+        variables: &mut Vec<Variable>,
+    ) {
         if let Some(params_node) = func_node.child_by_field_name("parameters") {
             let mut cursor = params_node.walk();
             for param in params_node.children(&mut cursor) {
@@ -316,7 +355,10 @@ impl VariableInspector {
                                 name = param_child.utf8_text(bytes).unwrap_or("").to_string();
                             }
                             "primitive_type" | "type_identifier" => {
-                                type_info = param_child.utf8_text(bytes).unwrap_or("unknown").to_string();
+                                type_info = param_child
+                                    .utf8_text(bytes)
+                                    .unwrap_or("unknown")
+                                    .to_string();
                             }
                             _ => {}
                         }
@@ -347,7 +389,13 @@ impl VariableInspector {
     }
 
     /// Extract TypeScript variable declarations
-    fn extract_ts_variable_declarations(&self, node: Node, bytes: &[u8], variables: &mut Vec<Variable>, target_line: usize) {
+    fn extract_ts_variable_declarations(
+        &self,
+        node: Node,
+        bytes: &[u8],
+        variables: &mut Vec<Variable>,
+        target_line: usize,
+    ) {
         let mut cursor = node.walk();
 
         for child in node.children(&mut cursor) {
@@ -385,7 +433,12 @@ impl VariableInspector {
     }
 
     /// Extract TypeScript function parameters
-    fn extract_ts_function_params(&self, func_node: Node, bytes: &[u8], variables: &mut Vec<Variable>) {
+    fn extract_ts_function_params(
+        &self,
+        func_node: Node,
+        bytes: &[u8],
+        variables: &mut Vec<Variable>,
+    ) {
         // Try field-based access first (regular functions)
         let params_node_opt = if let Some(params) = func_node.child_by_field_name("parameters") {
             Some(params)
@@ -439,7 +492,13 @@ impl VariableInspector {
     }
 
     /// Extract Python assignments
-    fn extract_python_assignments(&self, node: Node, bytes: &[u8], variables: &mut Vec<Variable>, target_line: usize) {
+    fn extract_python_assignments(
+        &self,
+        node: Node,
+        bytes: &[u8],
+        variables: &mut Vec<Variable>,
+        target_line: usize,
+    ) {
         let mut cursor = node.walk();
 
         for child in node.children(&mut cursor) {
@@ -471,7 +530,12 @@ impl VariableInspector {
     }
 
     /// Extract Python function parameters
-    fn extract_python_function_params(&self, func_node: Node, bytes: &[u8], variables: &mut Vec<Variable>) {
+    fn extract_python_function_params(
+        &self,
+        func_node: Node,
+        bytes: &[u8],
+        variables: &mut Vec<Variable>,
+    ) {
         if let Some(params_node) = func_node.child_by_field_name("parameters") {
             let mut cursor = params_node.walk();
             for param in params_node.children(&mut cursor) {
@@ -528,7 +592,9 @@ mod tests {
         let source = "fn main() { let x = 1; }";
 
         let mut parser = Parser::new();
-        parser.set_language(&tree_sitter_rust::LANGUAGE.into()).unwrap();
+        parser
+            .set_language(&tree_sitter_rust::LANGUAGE.into())
+            .unwrap();
         let tree = parser.parse(source, None).unwrap();
 
         let scope = inspector.find_scope_at_line(tree.root_node(), 0);

@@ -30,12 +30,19 @@ fn test_c_project_dead_code_without_cargo_toml() {
     let result = analyze_dead_code_multi_language(project.path());
 
     // Assert: Should succeed and detect C language
-    assert!(result.is_ok(), "Should succeed on C project without Cargo.toml");
+    assert!(
+        result.is_ok(),
+        "Should succeed on C project without Cargo.toml"
+    );
     let result = result.unwrap();
 
     assert_eq!(result.language, "c", "Should detect C language");
     assert_eq!(result.total_functions, 2, "Should find 2 functions total");
-    assert_eq!(result.dead_functions.len(), 1, "Should find 1 dead function");
+    assert_eq!(
+        result.dead_functions.len(),
+        1,
+        "Should find 1 dead function"
+    );
 
     let dead_fn = &result.dead_functions[0];
     assert_eq!(dead_fn.name, "unused_function");
@@ -56,7 +63,10 @@ fn test_cpp_project_dead_code_with_cmake() {
     let result = result.unwrap();
 
     assert_eq!(result.language, "cpp", "Should detect C++ language");
-    assert!(result.dead_functions.len() > 0, "Should find dead C++ functions");
+    assert!(
+        result.dead_functions.len() > 0,
+        "Should find dead C++ functions"
+    );
 }
 
 // =============================================================================
@@ -73,16 +83,28 @@ fn test_python_project_dead_code_without_cargo_toml() {
     let result = analyze_dead_code_multi_language(project.path());
 
     // Assert: Should succeed and detect Python language
-    assert!(result.is_ok(), "Should succeed on Python project without Cargo.toml");
+    assert!(
+        result.is_ok(),
+        "Should succeed on Python project without Cargo.toml"
+    );
     let result = result.unwrap();
 
     assert_eq!(result.language, "python", "Should detect Python language");
-    assert!(result.total_functions >= 2, "Should find at least 2 functions");
-    assert!(result.dead_functions.len() >= 1, "Should find at least 1 dead function");
+    assert!(
+        result.total_functions >= 2,
+        "Should find at least 2 functions"
+    );
+    assert!(
+        result.dead_functions.len() >= 1,
+        "Should find at least 1 dead function"
+    );
 
     // Check that unused_function is detected as dead
     assert!(
-        result.dead_functions.iter().any(|f| f.name.contains("unused")),
+        result
+            .dead_functions
+            .iter()
+            .any(|f| f.name.contains("unused")),
         "Should detect unused_function as dead code"
     );
 }
@@ -105,7 +127,10 @@ fn test_rust_project_dead_code_still_works() {
     let result = result.unwrap();
 
     assert_eq!(result.language, "rust", "Should detect Rust language");
-    assert!(result.dead_functions.len() > 0, "Should find dead Rust functions");
+    assert!(
+        result.dead_functions.len() > 0,
+        "Should find dead Rust functions"
+    );
 }
 
 // =============================================================================
@@ -122,7 +147,10 @@ fn test_unsupported_language_returns_error() {
     let result = analyze_dead_code_multi_language(project.path());
 
     // Assert: Should return error with helpful message
-    assert!(result.is_err(), "Should return error for unsupported language");
+    assert!(
+        result.is_err(),
+        "Should return error for unsupported language"
+    );
     let error = result.unwrap_err().to_string();
     assert!(
         error.contains("not supported") || error.contains("unsupported"),
@@ -170,7 +198,11 @@ fn test_dead_code_percentage_calculation() {
 
     // Assert: Should calculate percentage correctly
     assert_eq!(result.total_functions, 3, "Should find 3 total functions");
-    assert_eq!(result.dead_functions.len(), 1, "Should find 1 dead function");
+    assert_eq!(
+        result.dead_functions.len(),
+        1,
+        "Should find 1 dead function"
+    );
 
     let expected_percentage = (1.0 / 3.0) * 100.0;
     assert!(
@@ -242,11 +274,7 @@ void unused_function();
     .unwrap();
 
     // Makefile (C projects often use Make instead of CMake)
-    fs::write(
-        base.join("Makefile"),
-        "CC=gcc\nCFLAGS=-Wall\n\nall: main\n",
-    )
-    .unwrap();
+    fs::write(base.join("Makefile"), "CC=gcc\nCFLAGS=-Wall\n\nall: main\n").unwrap();
 
     temp
 }
@@ -326,11 +354,7 @@ def unused_function():
     .unwrap();
 
     // pyproject.toml
-    fs::write(
-        base.join("pyproject.toml"),
-        "[project]\nname = \"test\"\n",
-    )
-    .unwrap();
+    fs::write(base.join("pyproject.toml"), "[project]\nname = \"test\"\n").unwrap();
 
     temp
 }
@@ -411,11 +435,7 @@ fn create_polyglot_project() -> TempDir {
 
     // Python files (secondary)
     for i in 0..30 {
-        fs::write(
-            base.join(format!("src/tool_{}.py", i)),
-            "print('hello')",
-        )
-        .unwrap();
+        fs::write(base.join(format!("src/tool_{}.py", i)), "print('hello')").unwrap();
     }
 
     // CMakeLists.txt (indicates C++ primary)

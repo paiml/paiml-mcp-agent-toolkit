@@ -69,11 +69,11 @@ pub struct DefectAwarePromptGenerator {
 impl DefectAwarePromptGenerator {
     /// Load OIP analysis summary from file
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
-        let content = std::fs::read_to_string(path.as_ref())
-            .context("Failed to read OIP summary file")?;
+        let content =
+            std::fs::read_to_string(path.as_ref()).context("Failed to read OIP summary file")?;
 
-        let summary: OipSummary = serde_yaml::from_str(&content)
-            .context("Failed to parse OIP summary YAML")?;
+        let summary: OipSummary =
+            serde_yaml::from_str(&content).context("Failed to parse OIP summary YAML")?;
 
         Ok(Self {
             defect_patterns: summary.organizational_insights.top_defect_categories,

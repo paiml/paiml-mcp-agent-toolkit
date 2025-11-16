@@ -132,7 +132,7 @@ async fn test_embedding_normalization() {
 
 #[ignore]
 #[tokio::test]
- // Requires actual API call to test
+// Requires actual API call to test
 async fn test_invalid_api_key() {
     let client = OpenAIEmbeddingsClient::new("sk-invalid-key").unwrap();
     let result = client.embed("fn test() {}").await;
@@ -174,7 +174,7 @@ async fn test_retry_configuration() {
 
 #[ignore]
 #[tokio::test]
- // Requires mocking to test retry behavior
+// Requires mocking to test retry behavior
 async fn test_retry_on_rate_limit() {
     let client = OpenAIEmbeddingsClient::new("test-api-key").unwrap();
     // Would need to mock 429 response to test this properly

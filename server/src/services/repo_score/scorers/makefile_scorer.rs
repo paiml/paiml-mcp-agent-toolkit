@@ -6,8 +6,8 @@
 // - D3: Target Performance (5 points) - Fast targets complete quickly
 
 use super::{Scorer, ScorerConfig};
-use crate::services::repo_score::models::*;
 use crate::services::repo_score::error::Result;
+use crate::services::repo_score::models::*;
 use async_trait::async_trait;
 use std::path::Path;
 
@@ -155,7 +155,11 @@ impl MakefileScorer {
     }
 
     /// Score target performance (D3: 5 points)
-    async fn score_target_performance(&self, repo_path: &Path, config: &ScorerConfig) -> Result<SubcategoryScore> {
+    async fn score_target_performance(
+        &self,
+        repo_path: &Path,
+        config: &ScorerConfig,
+    ) -> Result<SubcategoryScore> {
         let makefile_path = repo_path.join("Makefile");
 
         if !makefile_path.exists() {
@@ -265,8 +269,8 @@ impl Default for MakefileScorer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::TempDir;
     use std::fs;
+    use tempfile::TempDir;
 
     fn create_temp_repo() -> TempDir {
         TempDir::new().unwrap()

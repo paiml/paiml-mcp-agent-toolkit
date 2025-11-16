@@ -1,7 +1,7 @@
 // Score aggregation and recommendation generation
 
-use crate::services::repo_score::models::*;
 use crate::services::repo_score::error::Result;
+use crate::services::repo_score::models::*;
 use crate::services::repo_score::scorers::*;
 use std::path::Path;
 use std::time::Instant;
@@ -123,9 +123,11 @@ impl ScoreAggregator {
             });
         }
 
-        if (categories.repository_hygiene.status == ScoreStatus::Fail || categories.repository_hygiene.status == ScoreStatus::Warning)
-            && categories.repository_hygiene.score < 15.0 {
-                recommendations.push(Recommendation {
+        if (categories.repository_hygiene.status == ScoreStatus::Fail
+            || categories.repository_hygiene.status == ScoreStatus::Warning)
+            && categories.repository_hygiene.score < 15.0
+        {
+            recommendations.push(Recommendation {
                     priority: Priority::Medium,
                     category: "Repository Hygiene".to_string(),
                     title: "Clean up repository files".to_string(),
@@ -141,7 +143,7 @@ impl ScoreAggregator {
                         "echo '.vscode/' >> .gitignore".to_string(),
                     ],
                 });
-            }
+        }
 
         if categories.build_test_automation.status == ScoreStatus::Fail {
             recommendations.push(Recommendation {
@@ -163,7 +165,8 @@ impl ScoreAggregator {
                 priority: Priority::High,
                 category: "CI/CD".to_string(),
                 title: "Add GitHub Actions workflow".to_string(),
-                description: "Create a CI workflow to run tests and linting on every push".to_string(),
+                description: "Create a CI workflow to run tests and linting on every push"
+                    .to_string(),
                 impact_points: 20.0 - categories.continuous_integration.score,
                 estimated_effort: "30 minutes".to_string(),
                 commands: vec![
@@ -235,8 +238,8 @@ impl Default for ScoreAggregator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::TempDir;
     use std::fs;
+    use tempfile::TempDir;
 
     fn create_temp_repo() -> TempDir {
         TempDir::new().unwrap()
@@ -272,12 +275,28 @@ mod tests {
         let repo_path = temp_dir.path();
 
         // Create perfect repository structure
-        create_file(repo_path, "README.md", "# Project\n## Overview\n## Installation\n## Usage\n## License\n## Contributing");
-        create_file(repo_path, ".git/hooks/pre-commit", "#!/bin/bash\ncargo clippy");
+        create_file(
+            repo_path,
+            "README.md",
+            "# Project\n## Overview\n## Installation\n## Usage\n## License\n## Contributing",
+        );
+        create_file(
+            repo_path,
+            ".git/hooks/pre-commit",
+            "#!/bin/bash\ncargo clippy",
+        );
         create_file(repo_path, "Makefile", ".PHONY: test-fast test lint coverage\ntest-fast:\n\tcargo test\ntest:\n\tcargo test\nlint:\n\tcargo clippy\ncoverage:\n\tcargo llvm-cov");
         create_file(repo_path, ".github/workflows/ci.yml", "name: CI\non: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: cargo test");
-        create_file(repo_path, ".pmat-gates.toml", "[complexity]\nmax_complexity = 10");
-        create_file(repo_path, "Cargo.toml", "[dependencies]\nproptest = \"1.0\"");
+        create_file(
+            repo_path,
+            ".pmat-gates.toml",
+            "[complexity]\nmax_complexity = 10",
+        );
+        create_file(
+            repo_path,
+            "Cargo.toml",
+            "[dependencies]\nproptest = \"1.0\"",
+        );
         create_file(repo_path, "book.toml", "[book]");
         fs::create_dir_all(repo_path.join("fuzz")).unwrap();
         create_file(repo_path, "mutants.toml", "[mutants]");
@@ -327,7 +346,10 @@ mod tests {
 
         // Should have recommendations for missing components
         assert!(!result.recommendations.is_empty());
-        assert!(result.recommendations.iter().any(|r| r.category.contains("Documentation")));
+        assert!(result
+            .recommendations
+            .iter()
+            .any(|r| r.category.contains("Documentation")));
     }
 
     #[tokio::test]

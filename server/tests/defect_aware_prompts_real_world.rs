@@ -18,11 +18,14 @@ fn test_real_world_paiml_analysis() {
     }
 
     // Load real paiml data
-    let generator = DefectAwarePromptGenerator::from_file(summary_path)
-        .expect("Failed to load paiml summary");
+    let generator =
+        DefectAwarePromptGenerator::from_file(summary_path).expect("Failed to load paiml summary");
 
     println!("\n📊 Real PAIML Organization Data:");
-    println!("   Repositories: {}", generator.metadata.repositories_analyzed);
+    println!(
+        "   Repositories: {}",
+        generator.metadata.repositories_analyzed
+    );
     println!("   Commits: {}", generator.metadata.commits_analyzed);
     println!("   Defect patterns: {}", generator.defect_patterns.len());
 
@@ -38,13 +41,21 @@ fn test_real_world_paiml_analysis() {
 
     // Validate prompt quality
     assert!(prompt.contains(task), "Prompt must include task");
-    assert!(prompt.contains(&generator.metadata.repositories_analyzed.to_string()),
-            "Prompt must include repo count");
-    assert!(prompt.contains("Quality Requirements"), "Must have quality section");
+    assert!(
+        prompt.contains(&generator.metadata.repositories_analyzed.to_string()),
+        "Prompt must include repo count"
+    );
+    assert!(
+        prompt.contains("Quality Requirements"),
+        "Must have quality section"
+    );
     assert!(prompt.contains("Quality Gates"), "Must have quality gates");
 
     // Should include high-frequency defects from paiml
-    assert!(prompt.contains("Common Defect Patterns"), "Must have defect patterns section");
+    assert!(
+        prompt.contains("Common Defect Patterns"),
+        "Must have defect patterns section"
+    );
 
     // Generate prevention prompt for integration failures (common in paiml)
     if let Some(prevention) = generator.generate_prevention_prompt("IntegrationFailures") {
@@ -70,12 +81,16 @@ fn test_paiml_defect_patterns() {
     let generator = DefectAwarePromptGenerator::from_file(summary_path).unwrap();
 
     println!("\n📋 PAIML Defect Patterns (frequency >= 10):");
-    for pattern in generator.defect_patterns.iter().filter(|p| p.frequency >= 10) {
+    for pattern in generator
+        .defect_patterns
+        .iter()
+        .filter(|p| p.frequency >= 10)
+    {
         let avg_tdg = pattern.quality_signals.avg_tdg_score.unwrap_or(0.0);
-        println!("   • {} (freq: {}, TDG: {:.1})",
-                 pattern.category,
-                 pattern.frequency,
-                 avg_tdg);
+        println!(
+            "   • {} (freq: {}, TDG: {:.1})",
+            pattern.category, pattern.frequency, avg_tdg
+        );
     }
 
     // Validate that prompts only include high-frequency defects
@@ -83,11 +98,17 @@ fn test_paiml_defect_patterns() {
 
     for pattern in generator.defect_patterns.iter() {
         if pattern.frequency >= 10 {
-            assert!(prompt.contains(&pattern.category),
-                    "High-frequency defect {} should be in prompt", pattern.category);
+            assert!(
+                prompt.contains(&pattern.category),
+                "High-frequency defect {} should be in prompt",
+                pattern.category
+            );
         } else {
-            assert!(!prompt.contains(&pattern.category),
-                    "Low-frequency defect {} should NOT be in prompt", pattern.category);
+            assert!(
+                !prompt.contains(&pattern.category),
+                "Low-frequency defect {} should NOT be in prompt",
+                pattern.category
+            );
         }
     }
 }
@@ -107,7 +128,10 @@ fn test_paiml_vs_test_data_comparison() {
 
     println!("\n🔍 Comparison: Test Data vs Real PAIML Data\n");
     println!("   PAIML:");
-    println!("      Repositories: {}", paiml_gen.metadata.repositories_analyzed);
+    println!(
+        "      Repositories: {}",
+        paiml_gen.metadata.repositories_analyzed
+    );
     println!("      Commits: {}", paiml_gen.metadata.commits_analyzed);
     println!("      Patterns: {}", paiml_gen.defect_patterns.len());
     println!("      Analysis Date: {}", paiml_gen.metadata.analysis_date);
@@ -115,7 +139,10 @@ fn test_paiml_vs_test_data_comparison() {
     if std::path::Path::new(test_baseline).exists() {
         let test_gen = DefectAwarePromptGenerator::from_file(test_baseline).unwrap();
         println!("\n   Test Baseline:");
-        println!("      Repositories: {}", test_gen.metadata.repositories_analyzed);
+        println!(
+            "      Repositories: {}",
+            test_gen.metadata.repositories_analyzed
+        );
         println!("      Commits: {}", test_gen.metadata.commits_analyzed);
         println!("      Patterns: {}", test_gen.defect_patterns.len());
 

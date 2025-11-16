@@ -18,12 +18,9 @@ async fn test_replay_handler_exists() {
     let interactive = false;
 
     // Try to call the handler (will fail until GREEN phase)
-    let result = pmat::cli::handlers::debug_handlers::handle_debug_replay(
-        recording,
-        position,
-        interactive,
-    )
-    .await;
+    let result =
+        pmat::cli::handlers::debug_handlers::handle_debug_replay(recording, position, interactive)
+            .await;
 
     // Handler should either succeed or return a meaningful error
     // (not panic or fail to compile)
@@ -41,12 +38,9 @@ async fn test_replay_validates_file_exists() {
 
     let nonexistent = PathBuf::from("/nonexistent/recording.pmat");
 
-    let result = pmat::cli::handlers::debug_handlers::handle_debug_replay(
-        nonexistent.clone(),
-        None,
-        false,
-    )
-    .await;
+    let result =
+        pmat::cli::handlers::debug_handlers::handle_debug_replay(nonexistent.clone(), None, false)
+            .await;
 
     // Should return an error for nonexistent file
     assert!(result.is_err(), "Should fail for nonexistent file");
@@ -75,12 +69,8 @@ async fn test_replay_accepts_position() {
     std::fs::write(&recording, b"mock_recording_data").expect("Failed to write mock data");
 
     let position = Some(5);
-    let result = pmat::cli::handlers::debug_handlers::handle_debug_replay(
-        recording,
-        position,
-        false,
-    )
-    .await;
+    let result =
+        pmat::cli::handlers::debug_handlers::handle_debug_replay(recording, position, false).await;
 
     // Handler should accept the position parameter
     // (may fail for invalid format, but shouldn't panic)
@@ -104,12 +94,9 @@ async fn test_replay_interactive_mode() {
     std::fs::write(&recording, b"mock_recording_data").expect("Failed to write mock data");
 
     let interactive = true;
-    let result = pmat::cli::handlers::debug_handlers::handle_debug_replay(
-        recording,
-        None,
-        interactive,
-    )
-    .await;
+    let result =
+        pmat::cli::handlers::debug_handlers::handle_debug_replay(recording, None, interactive)
+            .await;
 
     // Handler should accept the interactive parameter
     assert!(
@@ -131,12 +118,8 @@ async fn test_replay_displays_timeline() {
     // Write minimal recording data (should be valid format)
     std::fs::write(&recording, b"mock_recording_data").expect("Failed to write mock data");
 
-    let result = pmat::cli::handlers::debug_handlers::handle_debug_replay(
-        recording,
-        None,
-        false,
-    )
-    .await;
+    let result =
+        pmat::cli::handlers::debug_handlers::handle_debug_replay(recording, None, false).await;
 
     // Handler should attempt to display Timeline UI
     // (may fail for invalid format, but function should exist)

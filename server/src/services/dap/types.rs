@@ -34,7 +34,12 @@ pub struct DapResponse {
 
 impl DapResponse {
     /// Create a successful response
-    pub fn success(request_seq: i64, seq: i64, command: String, body: Option<serde_json::Value>) -> Self {
+    pub fn success(
+        request_seq: i64,
+        seq: i64,
+        command: String,
+        body: Option<serde_json::Value>,
+    ) -> Self {
         Self {
             seq,
             type_field: "response".to_string(),

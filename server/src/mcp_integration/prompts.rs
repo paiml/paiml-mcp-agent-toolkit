@@ -173,7 +173,9 @@ impl McpPrompt for RepoScorePrompt {
     fn metadata(&self) -> PromptMetadata {
         PromptMetadata {
             name: "repo_score".to_string(),
-            description: Some("Assess repository health with quantitative scoring (0-110 scale)".to_string()),
+            description: Some(
+                "Assess repository health with quantitative scoring (0-110 scale)".to_string(),
+            ),
             arguments: Some(vec![
                 PromptArgument {
                     name: "repository_path".to_string(),
@@ -208,8 +210,8 @@ impl McpPrompt for RepoScorePrompt {
         Ok(vec![
             PromptMessage {
                 role: "system".to_string(),
-                content: PromptContent::Text(
-                    format!(r#"You are a repository health assessment expert using PMAT's repo-score system.
+                content: PromptContent::Text(format!(
+                    r#"You are a repository health assessment expert using PMAT's repo-score system.
 
 **Repository Scoring System (0-110 scale):**
 - **100 base points** across 6 categories (A-F)
@@ -285,14 +287,16 @@ pmat repo-score {} --format {}
 - 🟡 MEDIUM: Nice-to-have (Hygiene, PMAT config)
 - 🟢 LOW: Enhancements (Bonus features)
 
-Provide comprehensive repository health assessment with actionable recommendations."#, repo_path, repo_path, format)
-                ),
+Provide comprehensive repository health assessment with actionable recommendations."#,
+                    repo_path, repo_path, format
+                )),
             },
             PromptMessage {
                 role: "user".to_string(),
-                content: PromptContent::Text(
-                    format!("Please assess the repository health at: {}", repo_path)
-                ),
+                content: PromptContent::Text(format!(
+                    "Please assess the repository health at: {}",
+                    repo_path
+                )),
             },
         ])
     }

@@ -95,18 +95,18 @@ pub fn format_number(n: i32) -> String {
     println!("📍 Example 1: Analyzing Lint Hotspots (TDG-based)");
     println!("────────────────────────────────────────────────");
 
-    let hotspots_result = tool_functions::analyze_lint_hotspots(
-        &[temp_dir.path().to_path_buf()],
-        Some(3),
-    )
-    .await?;
+    let hotspots_result =
+        tool_functions::analyze_lint_hotspots(&[temp_dir.path().to_path_buf()], Some(3)).await?;
 
     println!("Status: {}", hotspots_result["status"]);
     println!("Message: {}", hotspots_result["message"]);
 
     if let Some(results) = hotspots_result["results"].as_object() {
         println!("\nResults:");
-        println!("  Total Files Analyzed: {}", results["total_files_analyzed"]);
+        println!(
+            "  Total Files Analyzed: {}",
+            results["total_files_analyzed"]
+        );
         println!("  Top Files Limit: {}", results["top_files_limit"]);
 
         if let Some(hotspots) = results["hotspots"].as_array() {
@@ -205,11 +205,8 @@ pub fn format_number(n: i32) -> String {
     println!("📊 Example 4: Generating Context Summary");
     println!("───────────────────────────────────────");
 
-    let summary_result = tool_functions::context_summary(
-        &[temp_dir.path().to_path_buf()],
-        Some("detailed"),
-    )
-    .await?;
+    let summary_result =
+        tool_functions::context_summary(&[temp_dir.path().to_path_buf()], Some("detailed")).await?;
 
     println!("Status: {}", summary_result["status"]);
     println!("Message: {}", summary_result["message"]);
@@ -253,7 +250,9 @@ pub fn format_number(n: i32) -> String {
     println!("  ✅ Batch 2: generate_context, generate_deep_context, analyze_churn");
     println!("  ✅ Batch 3: check_quality_gates, check_quality_gate_file, quality_gate_summary");
     println!("  ✅ Batch 4: quality_gate_baseline, quality_gate_compare, git_status");
-    println!("  ✅ Batch 5: analyze_lint_hotspots, analyze_coupling, analyze_context, context_summary");
+    println!(
+        "  ✅ Batch 5: analyze_lint_hotspots, analyze_coupling, analyze_context, context_summary"
+    );
     println!();
     println!("No more placeholder responses - all functions use real services!");
     println!();

@@ -58,7 +58,11 @@ fn test_detect_changed_variables() {
     assert_eq!(x_change.new_value, serde_json::json!(15));
 
     // Variable "y" unchanged (should not appear in diff)
-    assert_eq!(diff.unchanged.len(), 1, "Should detect 1 unchanged variable");
+    assert_eq!(
+        diff.unchanged.len(),
+        1,
+        "Should detect 1 unchanged variable"
+    );
     assert!(
         diff.unchanged.iter().any(|s| s == "y"),
         "Unchanged variables should include 'y'"
@@ -81,7 +85,10 @@ fn test_detect_new_variables() {
 
     // New variable "z" added
     assert_eq!(diff.added.len(), 1, "Should detect 1 new variable");
-    assert!(diff.added.contains_key("z"), "New variables should include 'z'");
+    assert!(
+        diff.added.contains_key("z"),
+        "New variables should include 'z'"
+    );
     assert_eq!(diff.added["z"], serde_json::json!(30));
 }
 
@@ -131,13 +138,22 @@ fn test_render_diff_colored() {
     );
 
     // Should show changed variables
-    assert!(output.contains("x"), "Output should show changed variable 'x'");
+    assert!(
+        output.contains("x"),
+        "Output should show changed variable 'x'"
+    );
 
     // Should show added variables
-    assert!(output.contains("z"), "Output should show added variable 'z'");
+    assert!(
+        output.contains("z"),
+        "Output should show added variable 'z'"
+    );
 
     // Should show removed variables
-    assert!(output.contains("y"), "Output should show removed variable 'y'");
+    assert!(
+        output.contains("y"),
+        "Output should show removed variable 'y'"
+    );
 }
 
 // RED Test 5: Side-by-side diff display
@@ -315,8 +331,8 @@ fn test_export_diff_to_json() {
     let json_output = diff.to_json();
 
     // Should parse as valid JSON
-    let parsed: serde_json::Value = serde_json::from_str(&json_output)
-        .expect("Diff JSON output should be valid JSON");
+    let parsed: serde_json::Value =
+        serde_json::from_str(&json_output).expect("Diff JSON output should be valid JSON");
 
     // Should contain diff sections
     assert!(

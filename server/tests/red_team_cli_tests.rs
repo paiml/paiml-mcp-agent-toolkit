@@ -88,7 +88,10 @@ fn test_full_pipeline_hallucination_detection() {
     let followup_commit = pmat::red_team::CommitInfo {
         message: followup_message.to_string(),
         timestamp_seconds: 1000 + (100 * 3600), // 100 hours later
-        modified_files: vec!["src/feature_x.rs".to_string(), "tests/feature_x_tests.rs".to_string()],
+        modified_files: vec![
+            "src/feature_x.rs".to_string(),
+            "tests/feature_x_tests.rs".to_string(),
+        ],
         issue_number: Some(42),
         issue_created_timestamp: Some(5000), // Created after original
         branch: "hotfix/feature-x-tests".to_string(),

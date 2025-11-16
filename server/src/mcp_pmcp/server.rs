@@ -173,7 +173,10 @@ impl PmcpServer {
             .tool("tdg_configure_storage", TdgConfigureStorageTool)
             .tool("tdg_health_check", TdgHealthCheckTool)
             // Organizational Intelligence tools (Phase 4)
-            .tool("generate_defect_aware_prompt", GenerateDefectAwarePromptTool)
+            .tool(
+                "generate_defect_aware_prompt",
+                GenerateDefectAwarePromptTool,
+            )
             .build()?;
 
         info!(

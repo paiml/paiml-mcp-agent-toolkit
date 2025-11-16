@@ -20,8 +20,7 @@ pub struct FileIdentity {
 }
 
 /// Component-level score breakdown for detailed analysis
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ComponentScores {
     pub complexity_breakdown: HashMap<String, f32>,
     pub duplication_sources: Vec<String>,
@@ -29,7 +28,6 @@ pub struct ComponentScores {
     pub doc_missing_items: Vec<String>,
     pub consistency_violations: Vec<String>,
 }
-
 
 /// Semantic signature for efficient similarity detection
 #[derive(Debug, Clone, Serialize, Deserialize)]

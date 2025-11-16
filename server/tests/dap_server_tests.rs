@@ -67,10 +67,15 @@ fn test_dap_server_initialization() {
     // Verify capabilities are returned
     let body = &response["body"];
     assert!(body.is_object(), "Response body should be an object");
-    assert!(body["supportsConfigurationDoneRequest"].as_bool().unwrap_or(false));
+    assert!(body["supportsConfigurationDoneRequest"]
+        .as_bool()
+        .unwrap_or(false));
 
     // Server should be in initialized state
-    assert!(server.is_initialized(), "Server should be initialized after initialize request");
+    assert!(
+        server.is_initialized(),
+        "Server should be initialized after initialize request"
+    );
 }
 
 // RED Phase Test 2: DAP Launch Request
@@ -102,7 +107,10 @@ fn test_dap_server_launch_request() {
     assert_eq!(response["success"], true);
 
     // Server should have loaded the program
-    assert!(server.has_program_loaded(), "Server should have program loaded");
+    assert!(
+        server.has_program_loaded(),
+        "Server should have program loaded"
+    );
     assert_eq!(
         server.current_program().unwrap(),
         "tests/fixtures/sample.rs",
@@ -170,8 +178,14 @@ fn test_dap_server_state_machine() {
     let server = pmat::services::dap::DapServer::new();
 
     // Initial state should be uninitialized
-    assert!(!server.is_initialized(), "Server should start uninitialized");
-    assert!(!server.is_running(), "Server should not be running initially");
+    assert!(
+        !server.is_initialized(),
+        "Server should start uninitialized"
+    );
+    assert!(
+        !server.is_running(),
+        "Server should not be running initially"
+    );
 
     // Initialize
     let init_req = create_initialize_request();
@@ -190,7 +204,10 @@ fn test_dap_server_state_machine() {
     // Disconnect
     let disconnect = json!({"seq": 4, "type": "request", "command": "disconnect"});
     server.handle_request(disconnect);
-    assert!(!server.is_running(), "Server should not be running after disconnect");
+    assert!(
+        !server.is_running(),
+        "Server should not be running after disconnect"
+    );
 }
 
 // RED Phase Test 6: DAP Protocol Compliance
@@ -203,11 +220,26 @@ fn test_dap_protocol_compliance() {
     let response = server.handle_request(init_req);
 
     // All responses must have these fields
-    assert!(response.get("seq").is_some(), "Response must have 'seq' field");
-    assert!(response.get("type").is_some(), "Response must have 'type' field");
-    assert!(response.get("request_seq").is_some(), "Response must have 'request_seq' field");
-    assert!(response.get("success").is_some(), "Response must have 'success' field");
-    assert!(response.get("command").is_some(), "Response must have 'command' field");
+    assert!(
+        response.get("seq").is_some(),
+        "Response must have 'seq' field"
+    );
+    assert!(
+        response.get("type").is_some(),
+        "Response must have 'type' field"
+    );
+    assert!(
+        response.get("request_seq").is_some(),
+        "Response must have 'request_seq' field"
+    );
+    assert!(
+        response.get("success").is_some(),
+        "Response must have 'success' field"
+    );
+    assert!(
+        response.get("command").is_some(),
+        "Response must have 'command' field"
+    );
 
     // Type must be "response"
     assert_eq!(response["type"], "response", "Type must be 'response'");
@@ -293,7 +325,10 @@ fn test_dap_server_error_recovery() {
     // Server should still handle valid requests after error
     let valid_req = create_initialize_request();
     let valid_response = server.handle_request(valid_req);
-    assert_eq!(valid_response["success"], true, "Server should recover from errors");
+    assert_eq!(
+        valid_response["success"], true,
+        "Server should recover from errors"
+    );
 }
 
 // RED Phase Test 10: Performance Requirements

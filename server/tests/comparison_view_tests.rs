@@ -65,8 +65,8 @@ fn test_render_split_view() {
 
     assert!(output.contains("Recording A"));
     assert!(output.contains("Recording B"));
-    assert!(output.contains("Frame 0/5"));  // Both at frame 0
-    assert!(output.contains("|"));  // Divider
+    assert!(output.contains("Frame 0/5")); // Both at frame 0
+    assert!(output.contains("|")); // Divider
 }
 
 /// RED Test 3: Navigation syncs both recordings (by frame number)
@@ -223,7 +223,7 @@ fn test_handle_different_lengths() {
 
     // Advance frame-by-frame until A is exhausted
     for _ in 0..5 {
-        comparison.next_frame().ok();  // Advance both
+        comparison.next_frame().ok(); // Advance both
     }
 
     // Now A should be exhausted (past last frame), B should not
@@ -231,7 +231,7 @@ fn test_handle_different_lengths() {
     assert!(!comparison.recording_b_exhausted());
 
     let output = comparison.render_split();
-    assert!(output.contains("END"));  // Recording A marker
+    assert!(output.contains("END")); // Recording A marker
 }
 
 /// RED Test 9: Handle recordings with different variable sets
@@ -283,9 +283,11 @@ fn test_diff_performance() {
     let duration = start.elapsed();
 
     // Basic performance check (should be very fast with 2 variables)
-    assert!(duration.as_millis() < 10,
+    assert!(
+        duration.as_millis() < 10,
         "Diff calculation took {}ms, expected <10ms",
-        duration.as_millis());
+        duration.as_millis()
+    );
 }
 
 // ============================================================================
@@ -294,7 +296,10 @@ fn test_diff_performance() {
 
 /// Helper: Create test recording with N snapshots
 #[allow(dead_code)]
-fn create_test_recording(name: &str, snapshot_count: usize) -> pmat::services::dap::recording::Recording {
+fn create_test_recording(
+    name: &str,
+    snapshot_count: usize,
+) -> pmat::services::dap::recording::Recording {
     use pmat::services::dap::recording::{Recording, Snapshot, StackFrame};
     use std::collections::HashMap;
 

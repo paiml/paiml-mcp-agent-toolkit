@@ -12,7 +12,9 @@ use chrono::{Duration, Utc};
 use indicatif::{ProgressBar, ProgressStyle};
 use organizational_intelligence_plugin::analyzer::OrgAnalyzer;
 use organizational_intelligence_plugin::github::GitHubMiner;
-use organizational_intelligence_plugin::report::{AnalysisMetadata, AnalysisReport, ReportGenerator};
+use organizational_intelligence_plugin::report::{
+    AnalysisMetadata, AnalysisReport, ReportGenerator,
+};
 use organizational_intelligence_plugin::summarizer::{ReportSummarizer, SummaryConfig};
 use std::env;
 use std::path::PathBuf;
@@ -100,7 +102,10 @@ async fn handle_org_analyze(
     }
 
     // Analyze repositories
-    println!("\n🔍 Analyzing defect patterns in {} repositories...", sorted_repos.len());
+    println!(
+        "\n🔍 Analyzing defect patterns in {} repositories...",
+        sorted_repos.len()
+    );
 
     let temp_dir = TempDir::new()?;
     let analyzer = OrgAnalyzer::new(temp_dir.path());
@@ -123,20 +128,33 @@ async fn handle_org_analyze(
 
         let repo_url = format!("https://github.com/{}/{}", org, repo.name);
 
-        match analyzer.analyze_repository(&repo_url, &repo.name, 100).await {
+        match analyzer
+            .analyze_repository(&repo_url, &repo.name, 100)
+            .await
+        {
             Ok(patterns) => {
                 total_commits += 100;
                 let pattern_count = patterns.len();
                 all_patterns.extend(patterns);
                 repos_analyzed += 1;
-                pb.println(format!("   ✅ [{}/{}] {} - {} patterns found",
-                    i + 1, sorted_repos.len(), repo.name, pattern_count));
+                pb.println(format!(
+                    "   ✅ [{}/{}] {} - {} patterns found",
+                    i + 1,
+                    sorted_repos.len(),
+                    repo.name,
+                    pattern_count
+                ));
                 info!("✅ Analyzed {}", repo.name);
             }
             Err(e) => {
                 warn!("Failed to analyze {}: {}", repo.name, e);
-                pb.println(format!("   ⚠️  [{}/{}] {} - SKIPPED: {}",
-                    i + 1, sorted_repos.len(), repo.name, e));
+                pb.println(format!(
+                    "   ⚠️  [{}/{}] {} - SKIPPED: {}",
+                    i + 1,
+                    sorted_repos.len(),
+                    repo.name,
+                    e
+                ));
             }
         }
         pb.inc(1);
@@ -187,13 +205,16 @@ async fn handle_org_analyze(
             include_examples: false, // No examples for PMAT prompts
         };
 
-        let summary = ReportSummarizer::summarize(output, config)
-            .context("Failed to generate summary")?;
+        let summary =
+            ReportSummarizer::summarize(output, config).context("Failed to generate summary")?;
 
         ReportSummarizer::save_to_file(&summary, &summary_path)?;
 
         println!("\n✅ Summary Complete:");
-        println!("   Defect patterns: {}", summary.organizational_insights.top_defect_categories.len());
+        println!(
+            "   Defect patterns: {}",
+            summary.organizational_insights.top_defect_categories.len()
+        );
         println!("   Output: {:?}", summary_path);
         println!(
             "\n💡 Use with: pmat prompt generate --task \"<task>\" --context \"<context>\" --summary {:?}",

@@ -10,8 +10,7 @@ use std::fs;
 use std::path::Path;
 
 /// TDG hooks configuration loaded from .pmat/tdg-rules.toml
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct TdgHooksConfig {
     #[serde(default)]
     pub quality_gates: QualityGatesConfig,
@@ -67,7 +66,6 @@ impl TdgHooksConfig {
         Ok(())
     }
 }
-
 
 /// Quality gates configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -223,7 +221,6 @@ pub enum EnforcementMode {
     /// Disabled: no enforcement
     Disabled,
 }
-
 
 impl std::fmt::Display for EnforcementMode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

@@ -11,15 +11,13 @@ use crate::services::enhanced_language_detection::{
 };
 
 /// Language override options
-#[derive(Debug, Clone)]
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 pub struct LanguageOverride {
     /// Single language override (--language)
     pub language: Option<String>,
     /// Multiple languages (--languages)
     pub languages: Option<Vec<String>>,
 }
-
 
 /// Get effective language(s) for analysis
 ///
@@ -163,10 +161,7 @@ mod tests {
     fn test_validate_unsupported_language() {
         let result = validate_language_support("fortran");
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("not supported"));
+        assert!(result.unwrap_err().to_string().contains("not supported"));
     }
 
     #[test]

@@ -166,8 +166,8 @@ impl Struct{} {{
             crate::cli::ContextFormat::Markdown,
             false, // include_large_files
             false, // skip_expensive_metrics = FALSE (full analysis)
-            None, // language
-            None, // languages
+            None,  // language
+            None,  // languages
         )
         .await
     })

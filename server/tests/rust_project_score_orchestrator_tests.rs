@@ -174,10 +174,7 @@ fn test_max_points_distribution() {
         max_points_by_category.get("Performance & Benchmarking"),
         Some(&10.0)
     );
-    assert_eq!(
-        max_points_by_category.get("Dependency Health"),
-        Some(&12.0)
-    );
+    assert_eq!(max_points_by_category.get("Dependency Health"), Some(&12.0));
 }
 
 // ==================== Scoring Tests ====================
@@ -382,8 +379,7 @@ fn test_percentage_calculation() {
     assert!(project_score.percentage <= 100.0);
 
     // Verify percentage matches earned/possible ratio
-    let expected_percentage =
-        (project_score.total_earned / project_score.total_possible) * 100.0;
+    let expected_percentage = (project_score.total_earned / project_score.total_possible) * 100.0;
     assert!((project_score.percentage - expected_percentage).abs() < 0.01);
 }
 
@@ -398,11 +394,7 @@ fn test_score_monotonicity() {
     let minimal_score = orchestrator.score(minimal.path()).unwrap().total_earned;
 
     // Add README (should increase Documentation score)
-    fs::write(
-        minimal.path().join("README.md"),
-        "# Test\n\nDocumentation",
-    )
-    .unwrap();
+    fs::write(minimal.path().join("README.md"), "# Test\n\nDocumentation").unwrap();
     let with_readme_score = orchestrator.score(minimal.path()).unwrap().total_earned;
 
     assert!(
@@ -437,7 +429,11 @@ fn test_category_scores_sum_to_total() {
     let project_score = result.unwrap();
 
     // Sum of category earned scores should equal total earned
-    let category_sum: f64 = project_score.categories.values().map(|cat| cat.earned).sum();
+    let category_sum: f64 = project_score
+        .categories
+        .values()
+        .map(|cat| cat.earned)
+        .sum();
 
     assert!(
         (category_sum - project_score.total_earned).abs() < 0.01,

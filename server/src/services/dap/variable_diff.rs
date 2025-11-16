@@ -52,8 +52,8 @@ impl VariableDiff {
             if let Some(new_value) = after.variables.get(name) {
                 if old_value != new_value {
                     // Variable changed
-                    let type_changed = Self::value_type_name(old_value)
-                        != Self::value_type_name(new_value);
+                    let type_changed =
+                        Self::value_type_name(old_value) != Self::value_type_name(new_value);
 
                     changed.insert(
                         name.clone(),
@@ -321,10 +321,14 @@ mod tests {
     #[test]
     fn test_basic_diff_computation() {
         let mut before = create_test_snapshot(0);
-        before.variables.insert("x".to_string(), serde_json::json!(10));
+        before
+            .variables
+            .insert("x".to_string(), serde_json::json!(10));
 
         let mut after = create_test_snapshot(1);
-        after.variables.insert("x".to_string(), serde_json::json!(15));
+        after
+            .variables
+            .insert("x".to_string(), serde_json::json!(15));
 
         let diff = VariableDiff::compute(&before, &after);
 

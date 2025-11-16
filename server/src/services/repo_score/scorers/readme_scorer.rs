@@ -5,8 +5,8 @@
 // - A2: README Comprehensiveness (7.5 points) - Required sections present
 
 use super::{Scorer, ScorerConfig};
-use crate::services::repo_score::models::*;
 use crate::services::repo_score::error::Result;
+use crate::services::repo_score::models::*;
 use async_trait::async_trait;
 use std::path::Path;
 
@@ -88,25 +88,26 @@ impl ReadmeScorer {
 
         // Required sections (1.5 points each, 5 sections = 7.5 points)
         let required_sections = vec![
-            ("Project Description", vec![
-                r"(?i)##\s*(overview|about|description)",
-                r"(?i)#\s+[^#\n]+\n\n[^#]", // Project title followed by description
-            ]),
-            ("Installation", vec![
-                r"(?i)##\s*install(ation)?",
-            ]),
-            ("Usage", vec![
-                r"(?i)##\s*(usage|getting\s+started|quick\s*start)",
-            ]),
-            ("License", vec![
-                r"(?i)##\s*license",
-                r"(?i)\bMIT\b",
-                r"(?i)\bApache\b",
-            ]),
-            ("Contributing", vec![
-                r"(?i)##\s*contribut(ing|e)",
-                r"(?i)CONTRIBUTING\.md",
-            ]),
+            (
+                "Project Description",
+                vec![
+                    r"(?i)##\s*(overview|about|description)",
+                    r"(?i)#\s+[^#\n]+\n\n[^#]", // Project title followed by description
+                ],
+            ),
+            ("Installation", vec![r"(?i)##\s*install(ation)?"]),
+            (
+                "Usage",
+                vec![r"(?i)##\s*(usage|getting\s+started|quick\s*start)"],
+            ),
+            (
+                "License",
+                vec![r"(?i)##\s*license", r"(?i)\bMIT\b", r"(?i)\bApache\b"],
+            ),
+            (
+                "Contributing",
+                vec![r"(?i)##\s*contribut(ing|e)", r"(?i)CONTRIBUTING\.md"],
+            ),
         ];
 
         let mut score = 0.0;
@@ -190,8 +191,8 @@ impl Default for ReadmeScorer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::TempDir;
     use std::fs;
+    use tempfile::TempDir;
 
     fn create_temp_repo() -> TempDir {
         TempDir::new().unwrap()
@@ -245,7 +246,10 @@ Just a title.
         assert_eq!(result.max_score, 15.0);
         assert_eq!(result.percentage, 0.0);
         assert_eq!(result.status, ScoreStatus::Fail);
-        assert!(result.findings.iter().any(|f| f.message.contains("README.md not found")));
+        assert!(result
+            .findings
+            .iter()
+            .any(|f| f.message.contains("README.md not found")));
     }
 
     #[tokio::test]

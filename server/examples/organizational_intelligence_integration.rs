@@ -70,7 +70,7 @@ fn demonstrate_mcp_usage() -> Result<()> {
 
     let prompt = generator.generate_prompt(
         "Fix a performance bottleneck in API response",
-        "Users reporting 5+ second response times"
+        "Users reporting 5+ second response times",
     );
 
     let mcp_response = serde_json::json!({
@@ -84,7 +84,10 @@ fn demonstrate_mcp_usage() -> Result<()> {
     });
 
     println!("MCP Response (metadata only):");
-    println!("{}\n", serde_json::to_string_pretty(&mcp_response["metadata"])?);
+    println!(
+        "{}\n",
+        serde_json::to_string_pretty(&mcp_response["metadata"])?
+    );
 
     Ok(())
 }
@@ -143,7 +146,10 @@ fn demonstrate_end_to_end_workflow() -> Result<()> {
     let generator = DefectAwarePromptGenerator::from_file(summary_path)?;
 
     println!("✅ Loaded organizational intelligence:");
-    println!("   Repositories: {}", generator.metadata.repositories_analyzed);
+    println!(
+        "   Repositories: {}",
+        generator.metadata.repositories_analyzed
+    );
     println!("   Commits: {}", generator.metadata.commits_analyzed);
     println!("   Defect patterns: {}\n", generator.defect_patterns.len());
 
@@ -151,32 +157,43 @@ fn demonstrate_end_to_end_workflow() -> Result<()> {
     println!("Example 1: Develop HTTP Client");
     let prompt1 = generator.generate_prompt(
         "Implement HTTP client with retry logic",
-        "External API integration for payment processing"
+        "External API integration for payment processing",
     );
     println!("  Prompt length: {} chars", prompt1.len());
-    println!("  Contains IntegrationFailures warning: {}",
-             prompt1.contains("IntegrationFailures"));
-    println!("  Contains quality gates: {}\n",
-             prompt1.contains("Quality Gates"));
+    println!(
+        "  Contains IntegrationFailures warning: {}",
+        prompt1.contains("IntegrationFailures")
+    );
+    println!(
+        "  Contains quality gates: {}\n",
+        prompt1.contains("Quality Gates")
+    );
 
     // Example 2: Configuration Parser
     println!("Example 2: Build Configuration Parser");
     let prompt2 = generator.generate_prompt(
         "Create YAML configuration parser",
-        "Microservices configuration management"
+        "Microservices configuration management",
     );
     println!("  Prompt length: {} chars", prompt2.len());
-    println!("  Contains ConfigurationErrors warning: {}",
-             prompt2.contains("ConfigurationErrors"));
-    println!("  Contains TDG threshold: {}\n",
-             prompt2.contains("TDG Score: 85"));
+    println!(
+        "  Contains ConfigurationErrors warning: {}",
+        prompt2.contains("ConfigurationErrors")
+    );
+    println!(
+        "  Contains TDG threshold: {}\n",
+        prompt2.contains("TDG Score: 85")
+    );
 
     // Example 3: Prevention Prompts
     println!("Example 3: Category-Specific Prevention");
     if let Some(prevention) = generator.generate_prevention_prompt("IntegrationFailures") {
         println!("  Prevention prompt for IntegrationFailures:");
         println!("  Length: {} chars", prevention.len());
-        println!("  Contains frequency: {}", prevention.contains("Historical Frequency"));
+        println!(
+            "  Contains frequency: {}",
+            prevention.contains("Historical Frequency")
+        );
         println!("  Contains TDG score: {}\n", prevention.contains("TDG"));
     }
 

@@ -7,7 +7,6 @@
 //! - Performance benchmarks
 //! - Memory efficiency validation
 
-
 // RED Test 1: Streaming serialization with writer
 #[test]
 fn test_streaming_serialization_to_writer() {
@@ -246,7 +245,10 @@ fn test_serialize_1000_snapshots_performance() {
     //     elapsed.as_millis()
     // );
 
-    assert!(true, "Performance: 1000 snapshots must serialize in < 100ms");
+    assert!(
+        true,
+        "Performance: 1000 snapshots must serialize in < 100ms"
+    );
 }
 
 // RED Test 8: Memory efficiency - bounded allocations

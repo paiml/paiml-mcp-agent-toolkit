@@ -476,9 +476,9 @@ fn test_dap_variables_request_returns_inspected_variables() {
 
     // Check for specific variable
     let vars_array = variables.unwrap();
-    let has_deeply_nested = vars_array.iter().any(|v| {
-        v["name"].as_str() == Some("deeply_nested")
-    });
+    let has_deeply_nested = vars_array
+        .iter()
+        .any(|v| v["name"].as_str() == Some("deeply_nested"));
     assert!(
         has_deeply_nested,
         "Should include 'deeply_nested' variable. Got: {:?}",

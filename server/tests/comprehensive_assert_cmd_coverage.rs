@@ -429,7 +429,14 @@ fn test_analyze_complexity_current_dir() {
 fn test_analyze_complexity_format_json() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["analyze", "complexity", "--project-path", ".", "--format", "json"])
+        .args(&[
+            "analyze",
+            "complexity",
+            "--project-path",
+            ".",
+            "--format",
+            "json",
+        ])
         .assert()
         .success();
 }
@@ -439,7 +446,14 @@ fn test_analyze_complexity_format_json() {
 fn test_analyze_complexity_format_text() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["analyze", "complexity", "--project-path", ".", "--format", "text"])
+        .args(&[
+            "analyze",
+            "complexity",
+            "--project-path",
+            ".",
+            "--format",
+            "text",
+        ])
         .assert()
         .success();
 }
@@ -448,7 +462,14 @@ fn test_analyze_complexity_format_text() {
 fn test_analyze_complexity_format_sarif() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["analyze", "complexity", "--project-path", ".", "--format", "sarif"])
+        .args(&[
+            "analyze",
+            "complexity",
+            "--project-path",
+            ".",
+            "--format",
+            "sarif",
+        ])
         .assert()
         .success();
 }
@@ -1431,7 +1452,14 @@ fn test_analyze_cluster_help() {
 fn test_complexity_format_csv() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["analyze", "complexity", "--project-path", ".", "--format", "csv"])
+        .args(&[
+            "analyze",
+            "complexity",
+            "--project-path",
+            ".",
+            "--format",
+            "csv",
+        ])
         .assert()
         .success();
 }
@@ -1455,7 +1483,12 @@ fn test_satd_format_csv() {
 fn test_analyze_complexity_nonexistent_path() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["analyze", "complexity", "--project-path", "/nonexistent/path"])
+        .args(&[
+            "analyze",
+            "complexity",
+            "--project-path",
+            "/nonexistent/path",
+        ])
         .assert()
         .failure();
 }

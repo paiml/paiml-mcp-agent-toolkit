@@ -9,7 +9,7 @@
 
 #![cfg(feature = "tui")]
 
-use pmat::services::dap::timeline_tui::{EventLoop, TerminalEvent, KeyCode};
+use pmat::services::dap::timeline_tui::{EventLoop, KeyCode, TerminalEvent};
 
 // ============================================================================
 // Test 1: Event Loop Creation
@@ -248,9 +248,18 @@ fn test_event_queue_multiple_events_fifo() {
     event_loop.queue_event(TerminalEvent::Key(KeyCode::Left));
     event_loop.queue_event(TerminalEvent::Key(KeyCode::Char('q')));
 
-    assert_eq!(event_loop.next_queued_event(), Some(TerminalEvent::Key(KeyCode::Right)));
-    assert_eq!(event_loop.next_queued_event(), Some(TerminalEvent::Key(KeyCode::Left)));
-    assert_eq!(event_loop.next_queued_event(), Some(TerminalEvent::Key(KeyCode::Char('q'))));
+    assert_eq!(
+        event_loop.next_queued_event(),
+        Some(TerminalEvent::Key(KeyCode::Right))
+    );
+    assert_eq!(
+        event_loop.next_queued_event(),
+        Some(TerminalEvent::Key(KeyCode::Left))
+    );
+    assert_eq!(
+        event_loop.next_queued_event(),
+        Some(TerminalEvent::Key(KeyCode::Char('q')))
+    );
     assert_eq!(event_loop.next_queued_event(), None);
 }
 

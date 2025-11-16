@@ -19,13 +19,19 @@ fn test_gather_test_status_evidence() {
     assert!(evidence.len() >= 2);
 
     // Should include git history check
-    assert!(evidence.iter().any(|e| e.source == EvidenceSource::GitHistory));
+    assert!(evidence
+        .iter()
+        .any(|e| e.source == EvidenceSource::GitHistory));
 
     // Should include test execution
-    assert!(evidence.iter().any(|e| e.source == EvidenceSource::TestExecution));
+    assert!(evidence
+        .iter()
+        .any(|e| e.source == EvidenceSource::TestExecution));
 
     // Each evidence should have confidence score
-    assert!(evidence.iter().all(|e| e.confidence >= 0.0 && e.confidence <= 1.0));
+    assert!(evidence
+        .iter()
+        .all(|e| e.confidence >= 0.0 && e.confidence <= 1.0));
 }
 
 // RED Test 2: Evidence supports claim (positive case)
@@ -41,7 +47,8 @@ fn test_evidence_supports_claim() {
     let evidence = gatherer.gather_evidence(&claim, &context);
 
     // Should find supporting evidence
-    let coverage_evidence = evidence.iter()
+    let coverage_evidence = evidence
+        .iter()
         .find(|e| e.source == EvidenceSource::CoverageReport)
         .expect("Coverage evidence should exist");
 
@@ -62,7 +69,8 @@ fn test_evidence_contradicts_claim() {
     let evidence = gatherer.gather_evidence(&claim, &context);
 
     // Should find contradicting evidence
-    let coverage_evidence = evidence.iter()
+    let coverage_evidence = evidence
+        .iter()
         .find(|e| e.source == EvidenceSource::CoverageReport)
         .expect("Coverage evidence should exist");
 
@@ -86,7 +94,8 @@ fn test_git_history_evidence_subsequent_fixes() {
 
     let evidence = gatherer.gather_evidence(&claim, &context);
 
-    let git_evidence = evidence.iter()
+    let git_evidence = evidence
+        .iter()
         .find(|e| e.source == EvidenceSource::GitHistory)
         .expect("Git history evidence should exist");
 
@@ -123,7 +132,8 @@ fn test_documentation_link_evidence() {
 
     let evidence = gatherer.gather_evidence(&claim, &context);
 
-    let link_evidence = evidence.iter()
+    let link_evidence = evidence
+        .iter()
         .find(|e| e.source == EvidenceSource::LinkValidation)
         .expect("Link validation evidence should exist");
 
@@ -143,7 +153,8 @@ fn test_security_audit_evidence() {
 
     let evidence = gatherer.gather_evidence(&claim, &context);
 
-    let audit_evidence = evidence.iter()
+    let audit_evidence = evidence
+        .iter()
         .find(|e| e.source == EvidenceSource::CargoAudit)
         .expect("Cargo audit evidence should exist");
 
@@ -163,7 +174,8 @@ fn test_performance_benchmark_evidence() {
 
     let evidence = gatherer.gather_evidence(&claim, &context);
 
-    let benchmark_evidence = evidence.iter()
+    let benchmark_evidence = evidence
+        .iter()
         .find(|e| e.source == EvidenceSource::BenchmarkResults)
         .expect("Benchmark evidence should exist");
 
@@ -183,7 +195,8 @@ fn test_bug_fix_issue_tracker_evidence() {
 
     let evidence = gatherer.gather_evidence(&claim, &context);
 
-    let issue_evidence = evidence.iter()
+    let issue_evidence = evidence
+        .iter()
         .find(|e| e.source == EvidenceSource::IssueTracker)
         .expect("Issue tracker evidence should exist");
 
@@ -203,7 +216,8 @@ fn test_migration_evidence_old_system_referenced() {
 
     let evidence = gatherer.gather_evidence(&claim, &context);
 
-    let migration_evidence = evidence.iter()
+    let migration_evidence = evidence
+        .iter()
         .find(|e| e.source == EvidenceSource::CodeGrep)
         .expect("Code grep evidence should exist");
 
@@ -227,8 +241,8 @@ fn test_aggregate_evidence_confidence() {
     // When all sources contradict, aggregate confidence should be high
     let all_contradict = evidence.iter().all(|e| !e.supports_claim);
     if all_contradict {
-        let avg_confidence: f64 = evidence.iter().map(|e| e.confidence).sum::<f64>()
-            / evidence.len() as f64;
+        let avg_confidence: f64 =
+            evidence.iter().map(|e| e.confidence).sum::<f64>() / evidence.len() as f64;
         assert!(avg_confidence > 0.7);
     }
 }
@@ -263,7 +277,8 @@ fn test_evidence_includes_timestamps() {
     let evidence = gatherer.gather_evidence(&claim, &context);
 
     // Git history evidence should include timestamps
-    let git_evidence = evidence.iter()
+    let git_evidence = evidence
+        .iter()
         .find(|e| e.source == EvidenceSource::GitHistory);
 
     if let Some(git_ev) = git_evidence {
@@ -284,7 +299,8 @@ fn test_evidence_gathering_error_handling() {
     let evidence = gatherer.gather_evidence(&claim, &context);
 
     // Should still return evidence (with error details)
-    let coverage_evidence = evidence.iter()
+    let coverage_evidence = evidence
+        .iter()
         .find(|e| e.source == EvidenceSource::CoverageReport);
 
     if let Some(cov_ev) = coverage_evidence {
@@ -417,9 +433,8 @@ fn create_mock_context_with_coverage(coverage: f64) -> RepositoryContext {
 }
 
 fn create_mock_context_with_subsequent_fixes(fixes: Vec<&str>) -> RepositoryContext {
-    RepositoryContext::new_mock().with_subsequent_commits(
-        fixes.iter().map(|s| s.to_string()).collect()
-    )
+    RepositoryContext::new_mock()
+        .with_subsequent_commits(fixes.iter().map(|s| s.to_string()).collect())
 }
 
 fn create_mock_context_clean() -> RepositoryContext {

@@ -8,9 +8,9 @@
 //! Strategy: Test metrics calculation, thresholds, formatters, aggregation
 
 use pmat::services::complexity::*;
+use std::fs;
 use std::path::PathBuf;
 use tempfile::tempdir;
-use std::fs;
 
 // ============================================================================
 // RED Phase 1: ComplexityMetrics Construction Tests
@@ -163,7 +163,7 @@ fn test_halstead_metrics_new() {
     assert_eq!(metrics.operands_unique, 6);
     assert_eq!(metrics.operators_total, 20);
     assert_eq!(metrics.operands_total, 15);
-    assert_eq!(metrics.volume, 0.0);  // Not calculated yet
+    assert_eq!(metrics.volume, 0.0); // Not calculated yet
 }
 
 #[test]
@@ -271,7 +271,7 @@ fn test_format_as_sarif() {
         Ok(sarif) => {
             assert!(!sarif.is_empty());
             assert!(sarif.contains("sarif") || sarif.contains("{"));
-        },
+        }
         Err(_) => panic!("Should not error on default report"),
     }
 }
@@ -290,7 +290,7 @@ async fn test_analyze_file_complexity_uncached_empty_file() {
     let result = analyze_file_complexity_uncached(&empty_file, None).await;
 
     match result {
-        Ok(_) | Err(_) => {}, // Both acceptable for empty file
+        Ok(_) | Err(_) => {} // Both acceptable for empty file
     }
 }
 
@@ -300,11 +300,15 @@ async fn test_analyze_file_complexity_uncached_simple_rust() {
     let temp_dir = tempdir().unwrap();
     let rust_file = temp_dir.path().join("simple.rs");
 
-    fs::write(&rust_file, r#"
+    fs::write(
+        &rust_file,
+        r#"
         fn simple() {
             println!("Hello");
         }
-    "#).unwrap();
+    "#,
+    )
+    .unwrap();
 
     let result = analyze_file_complexity_uncached(&rust_file, None).await;
 
@@ -312,8 +316,8 @@ async fn test_analyze_file_complexity_uncached_simple_rust() {
         Ok(metrics) => {
             // Should have found at least one function
             assert!(metrics.functions.len() > 0);
-        },
-        Err(_) => {},
+        }
+        Err(_) => {}
     }
 }
 

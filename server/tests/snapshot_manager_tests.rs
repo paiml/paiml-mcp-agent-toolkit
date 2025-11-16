@@ -80,7 +80,7 @@ fn test_compute_delta_removed_variables() {
 
     let mut vars2 = HashMap::new();
     vars2.insert("x".to_string(), serde_json::json!(10)); // Unchanged
-    // y and z removed
+                                                          // y and z removed
 
     let snapshot1 = create_snapshot_with_vars(0, vars1);
     let snapshot2 = create_snapshot_with_vars(1, vars2);

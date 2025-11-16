@@ -247,10 +247,7 @@ fn test_min_lines_threshold_filters_small_files() {
 
     // Apply min_lines filter: 50 lines minimum
     let filtered = pmat::services::defect_report_service::DefectReportService::filter_by_pattern(
-        &report,
-        None,
-        None,
-        50, // min_lines threshold
+        &report, None, None, 50, // min_lines threshold
     );
 
     // Verification depends on actual file line counts

@@ -94,13 +94,10 @@ impl ToolHandler for DefectAwarePromptTool {
 
         let summary_path = PathBuf::from(params.summary_path);
 
-        let results = tool_functions::generate_defect_aware_prompt(
-            params.task,
-            params.context,
-            summary_path,
-        )
-        .await
-        .map_err(|e| Error::internal(format!("Prompt generation failed: {e}")))?;
+        let results =
+            tool_functions::generate_defect_aware_prompt(params.task, params.context, summary_path)
+                .await
+                .map_err(|e| Error::internal(format!("Prompt generation failed: {e}")))?;
 
         Ok(results)
     }

@@ -241,10 +241,7 @@ impl TestingScorer {
                         .and_then(|s| s.parse::<f64>().ok())
                         .unwrap_or(0.0);
 
-                    let total = stdout
-                        .lines()
-                        .filter(|l| l.contains("mutant"))
-                        .count() as f64;
+                    let total = stdout.lines().filter(|l| l.contains("mutant")).count() as f64;
 
                     if total > 0.0 {
                         let ratio = caught / total;
@@ -339,7 +336,8 @@ impl Scorer for TestingScorer {
         if let Ok(score) = self.score_coverage(project_path) {
             if score < 8.0 {
                 recommendations.push(
-                    "Improve test coverage: Install cargo-llvm-cov and aim for ≥85% line coverage".to_string(),
+                    "Improve test coverage: Install cargo-llvm-cov and aim for ≥85% line coverage"
+                        .to_string(),
                 );
             }
         }
@@ -348,7 +346,8 @@ impl Scorer for TestingScorer {
         if let Ok(score) = self.score_integration_tests(project_path) {
             if score < 4.0 {
                 recommendations.push(
-                    "Add integration tests: Create tests/ directory with end-to-end test files".to_string(),
+                    "Add integration tests: Create tests/ directory with end-to-end test files"
+                        .to_string(),
                 );
             }
         }
@@ -357,7 +356,8 @@ impl Scorer for TestingScorer {
         if let Ok(score) = self.score_doc_tests(project_path) {
             if score < 3.0 {
                 recommendations.push(
-                    "Add doc tests: Include runnable examples in /// documentation comments".to_string(),
+                    "Add doc tests: Include runnable examples in /// documentation comments"
+                        .to_string(),
                 );
             }
         }
@@ -366,7 +366,8 @@ impl Scorer for TestingScorer {
         if let Ok(score) = self.score_mutation(project_path) {
             if score < 5.0 {
                 recommendations.push(
-                    "Improve test quality: Install cargo-mutants and aim for ≥80% mutation score".to_string(),
+                    "Improve test quality: Install cargo-mutants and aim for ≥80% mutation score"
+                        .to_string(),
                 );
             }
         }

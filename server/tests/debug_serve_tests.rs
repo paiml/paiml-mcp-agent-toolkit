@@ -45,9 +45,8 @@ async fn test_dap_server_starts_on_port() {
     let port = 15679;
 
     // Spawn server in background task
-    let server_handle = tokio::spawn(async move {
-        server.run(port, "127.0.0.1".to_string()).await
-    });
+    let server_handle =
+        tokio::spawn(async move { server.run(port, "127.0.0.1".to_string()).await });
 
     // Give server time to start
     tokio::time::sleep(Duration::from_millis(100)).await;
@@ -55,8 +54,9 @@ async fn test_dap_server_starts_on_port() {
     // Verify port is listening by attempting to connect
     let connect_result = timeout(
         Duration::from_millis(500),
-        TcpListener::bind(format!("127.0.0.1:{}", port))
-    ).await;
+        TcpListener::bind(format!("127.0.0.1:{}", port)),
+    )
+    .await;
 
     // Port should be in use (connection attempt fails with "already in use")
     assert!(
@@ -90,9 +90,9 @@ async fn test_server_handles_port_in_use() {
 
     let error_msg = result.unwrap_err().to_string();
     assert!(
-        error_msg.contains("address already in use") ||
-        error_msg.contains("in use") ||
-        error_msg.contains("bind"),
+        error_msg.contains("address already in use")
+            || error_msg.contains("in use")
+            || error_msg.contains("bind"),
         "Error should indicate port/address conflict: {}",
         error_msg
     );
@@ -108,9 +108,8 @@ async fn test_server_graceful_shutdown() {
     let port = 15681;
 
     // Start server
-    let server_handle = tokio::spawn(async move {
-        server.run(port, "127.0.0.1".to_string()).await
-    });
+    let server_handle =
+        tokio::spawn(async move { server.run(port, "127.0.0.1".to_string()).await });
 
     // Give server time to start
     tokio::time::sleep(Duration::from_millis(100)).await;

@@ -4,7 +4,6 @@
 //! Tests drive the complete end-to-end workflow from `pmat debug serve` with
 //! recording enabled through to `pmat debug replay` of the captured session.
 
-
 // RED Test 1: End-to-end workflow (serve → capture → replay)
 #[test]
 fn test_end_to_end_serve_capture_replay() {
@@ -34,7 +33,10 @@ fn test_end_to_end_serve_capture_replay() {
     // let recording = Recording::load_from_file(&recording_path).unwrap();
     // assert_eq!(recording.snapshot_count(), 3, "Should have 3 snapshots");
 
-    assert!(true, "Must support end-to-end serve → capture → replay workflow");
+    assert!(
+        true,
+        "Must support end-to-end serve → capture → replay workflow"
+    );
 }
 
 // RED Test 2: Recording metadata matches session
@@ -119,7 +121,10 @@ fn test_variable_values_match_execution() {
     // let snapshot = recording.get_snapshot(0).unwrap();
     // assert_eq!(snapshot.variables.get("x"), Some(&serde_json::json!(42)));
 
-    assert!(true, "Variable values in recording must match execution state");
+    assert!(
+        true,
+        "Variable values in recording must match execution state"
+    );
 }
 
 // RED Test 5: Stack frames match execution
@@ -179,7 +184,10 @@ fn test_recording_file_size_reasonable() {
     // const MAX_SIZE_BYTES: u64 = 10 * 1024 * 1024; // 10MB
     // assert!(file_size < MAX_SIZE_BYTES, "Recording size {} bytes exceeds 10MB limit", file_size);
 
-    assert!(true, "Recording file size must be reasonable (<10MB for 1000 snapshots)");
+    assert!(
+        true,
+        "Recording file size must be reasonable (<10MB for 1000 snapshots)"
+    );
 }
 
 // RED Test 7: Replay displays correct snapshot count
@@ -277,7 +285,10 @@ fn test_multiple_sessions_separate_recordings() {
     // assert!(recording1.exists());
     // assert!(recording2.exists());
 
-    assert!(true, "Multiple sessions must create separate recording files");
+    assert!(
+        true,
+        "Multiple sessions must create separate recording files"
+    );
 }
 
 // RED Test 10: Performance - snapshot capture overhead

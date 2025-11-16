@@ -17,7 +17,11 @@ fn test_create_execution_recorder() {
         !recorder.is_recording(),
         "New recorder should not be recording"
     );
-    assert_eq!(recorder.snapshot_count(), 0, "New recorder should have 0 snapshots");
+    assert_eq!(
+        recorder.snapshot_count(),
+        0,
+        "New recorder should have 0 snapshots"
+    );
 }
 
 // RED Test 2: Start recording
@@ -39,7 +43,10 @@ fn test_stop_recording() {
     recorder.start_recording();
     recorder.stop_recording();
 
-    assert!(!recorder.is_recording(), "Should not be recording after stop");
+    assert!(
+        !recorder.is_recording(),
+        "Should not be recording after stop"
+    );
 }
 
 // RED Test 4: Capture snapshot
@@ -70,10 +77,18 @@ fn test_capture_snapshot() {
     let mut recorder = ExecutionRecorder::new(dap);
 
     recorder.start_recording();
-    let snapshot = recorder.capture_snapshot().expect("Should capture snapshot");
+    let snapshot = recorder
+        .capture_snapshot()
+        .expect("Should capture snapshot");
 
-    assert_eq!(snapshot.sequence, 0, "First snapshot should have sequence 0");
-    assert!(snapshot.timestamp > 0, "Snapshot should have valid timestamp");
+    assert_eq!(
+        snapshot.sequence, 0,
+        "First snapshot should have sequence 0"
+    );
+    assert!(
+        snapshot.timestamp > 0,
+        "Snapshot should have valid timestamp"
+    );
     assert_eq!(
         snapshot.location.line, 3,
         "Snapshot should capture correct line"
@@ -113,7 +128,9 @@ fn test_multiple_snapshots() {
             let mut server = dap.lock().unwrap();
             server.simulate_stop_at_line("tests/fixtures/sample.rs", i);
         }
-        recorder.capture_snapshot().expect("Should capture snapshot");
+        recorder
+            .capture_snapshot()
+            .expect("Should capture snapshot");
     }
 
     assert_eq!(
@@ -151,7 +168,9 @@ fn test_snapshot_captures_variables() {
     let mut recorder = ExecutionRecorder::new(dap);
 
     recorder.start_recording();
-    let snapshot = recorder.capture_snapshot().expect("Should capture snapshot");
+    let snapshot = recorder
+        .capture_snapshot()
+        .expect("Should capture snapshot");
 
     assert!(
         !snapshot.variables.is_empty(),
@@ -187,7 +206,9 @@ fn test_snapshot_captures_call_stack() {
     let mut recorder = ExecutionRecorder::new(dap);
 
     recorder.start_recording();
-    let snapshot = recorder.capture_snapshot().expect("Should capture snapshot");
+    let snapshot = recorder
+        .capture_snapshot()
+        .expect("Should capture snapshot");
 
     assert!(
         !snapshot.call_stack.is_empty(),
@@ -228,7 +249,9 @@ fn test_save_recording_to_file() {
             let mut server = dap.lock().unwrap();
             server.simulate_stop_at_line("tests/fixtures/sample.rs", i);
         }
-        recorder.capture_snapshot().expect("Should capture snapshot");
+        recorder
+            .capture_snapshot()
+            .expect("Should capture snapshot");
     }
 
     let output_path = "/tmp/test_recording.pmat";
@@ -278,11 +301,15 @@ fn test_load_recording_from_file() {
             let mut server = dap.lock().unwrap();
             server.simulate_stop_at_line("tests/fixtures/sample.rs", i);
         }
-        recorder.capture_snapshot().expect("Should capture snapshot");
+        recorder
+            .capture_snapshot()
+            .expect("Should capture snapshot");
     }
 
     let file_path = "/tmp/test_load.pmat";
-    recorder.save_to_file(file_path).expect("Should save to file");
+    recorder
+        .save_to_file(file_path)
+        .expect("Should save to file");
 
     // Now load it
     let loaded_recorder =

@@ -3,7 +3,9 @@
 // Test-Driven Development for `pmat red-team analyze` command handler
 // Specification: Section 4.2 - CLI Interface
 
-use pmat::red_team::{ClaimExtractor, CommitInfo, EvidenceGatherer, IntentClassifier, RepositoryContext, TestChanges};
+use pmat::red_team::{
+    ClaimExtractor, CommitInfo, EvidenceGatherer, IntentClassifier, RepositoryContext, TestChanges,
+};
 
 // RED Test 1: Handler analyzes commit message and detects hallucination
 #[test]
@@ -66,7 +68,10 @@ fn test_handler_analyze_commit_pair() {
     let classifier = IntentClassifier::new();
     let classification = classifier.classify(&original, &followup);
 
-    assert_eq!(classification.intent, pmat::red_team::CommitIntent::HallucinationFix);
+    assert_eq!(
+        classification.intent,
+        pmat::red_team::CommitIntent::HallucinationFix
+    );
     assert!(classification.confidence > 0.7);
 }
 
@@ -98,7 +103,9 @@ fn test_handler_generates_human_readable_report() {
     // Verify evidence exists and can be formatted
     assert!(evidence.len() >= 2);
     assert!(evidence.iter().all(|e| !e.details.is_empty()));
-    assert!(evidence.iter().all(|e| e.confidence >= 0.0 && e.confidence <= 1.0));
+    assert!(evidence
+        .iter()
+        .all(|e| e.confidence >= 0.0 && e.confidence <= 1.0));
 }
 
 // RED Test 4: Handler supports multiple output formats
@@ -115,8 +122,7 @@ fn test_handler_supports_output_formats() {
     assert_eq!(claims.len(), 1);
 
     // Mock: old system still referenced
-    let context = RepositoryContext::new_mock()
-        .with_code_grep_results("sled", 15);
+    let context = RepositoryContext::new_mock().with_code_grep_results("sled", 15);
 
     let gatherer = EvidenceGatherer::new();
     let evidence = gatherer.gather_evidence(&claims[0], &context);

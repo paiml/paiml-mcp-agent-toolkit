@@ -8,9 +8,9 @@
 //! Strategy: Test highest-complexity functions first (TDG-driven)
 
 use pmat::mcp_pmcp::tool_functions::*;
+use std::fs;
 use std::path::PathBuf;
 use tempfile::tempdir;
-use std::fs;
 
 // ============================================================================
 // RED Phase 1: Error Handling Tests (Highest Priority - Critical Paths)
@@ -126,13 +126,17 @@ async fn test_analyze_complexity_with_threshold() {
     let temp_dir = tempdir().unwrap();
     let rust_file = temp_dir.path().join("test.rs");
 
-    fs::write(&rust_file, r#"
+    fs::write(
+        &rust_file,
+        r#"
         fn simple() { }
         fn complex() {
             if true { if false { } }
             match 42 { 1 => {}, _ => {} }
         }
-    "#).unwrap();
+    "#,
+    )
+    .unwrap();
 
     let result = analyze_complexity(&[rust_file], None, Some(5)).await;
 
@@ -149,11 +153,15 @@ async fn test_analyze_complexity_with_top_files() {
     let temp_dir = tempdir().unwrap();
     let rust_file = temp_dir.path().join("test.rs");
 
-    fs::write(&rust_file, r#"
+    fs::write(
+        &rust_file,
+        r#"
         fn a() { }
         fn b() { if true {} }
         fn c() { if true { if false {} } }
-    "#).unwrap();
+    "#,
+    )
+    .unwrap();
 
     let result = analyze_complexity(&[rust_file], Some(2), None).await;
 
@@ -191,7 +199,7 @@ async fn test_analyze_coupling_threshold_parameter() {
 
     // Should process with specified threshold
     match result {
-        Ok(_) | Err(_) => {}, // Both outcomes acceptable (depends on git repo)
+        Ok(_) | Err(_) => {} // Both outcomes acceptable (depends on git repo)
     }
 }
 
@@ -205,13 +213,17 @@ async fn test_analyze_satd_detects_todo_comments() {
     let temp_dir = tempdir().unwrap();
     let rust_file = temp_dir.path().join("test.rs");
 
-    fs::write(&rust_file, r#"
+    fs::write(
+        &rust_file,
+        r#"
         // TODO: Implement this feature
         fn placeholder() { }
 
         // FIXME: This is broken
         fn broken() { }
-    "#).unwrap();
+    "#,
+    )
+    .unwrap();
 
     let result = analyze_satd(&[rust_file], false).await;
 
@@ -227,11 +239,15 @@ async fn test_analyze_satd_no_markers() {
     let temp_dir = tempdir().unwrap();
     let rust_file = temp_dir.path().join("test.rs");
 
-    fs::write(&rust_file, r#"
+    fs::write(
+        &rust_file,
+        r#"
         fn clean_code() {
             println!("No technical debt here!");
         }
-    "#).unwrap();
+    "#,
+    )
+    .unwrap();
 
     let result = analyze_satd(&[rust_file], false).await;
 
@@ -378,7 +394,7 @@ async fn test_analyze_tdg_with_threshold() {
 
     // Should process with threshold parameter
     match result {
-        Ok(_) | Err(_) => {}, // Both acceptable
+        Ok(_) | Err(_) => {} // Both acceptable
     }
 }
 
@@ -475,7 +491,7 @@ async fn test_analyze_coupling_threshold_zero() {
 
     // Should process with zero threshold
     match result {
-        Ok(_) | Err(_) => {},
+        Ok(_) | Err(_) => {}
     }
 }
 
@@ -490,7 +506,7 @@ async fn test_analyze_coupling_threshold_one() {
 
     // Should process with maximum threshold
     match result {
-        Ok(_) | Err(_) => {},
+        Ok(_) | Err(_) => {}
     }
 }
 

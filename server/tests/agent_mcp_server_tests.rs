@@ -7,7 +7,9 @@
 //!
 //! Strategy: Test agent configuration, server lifecycle, monitoring
 
-use pmat::agent::mcp_server::{AgentConfig, ClaudeCodeAgentMcpServer, MonitoredProject, ProjectAnalysisResult};
+use pmat::agent::mcp_server::{
+    AgentConfig, ClaudeCodeAgentMcpServer, MonitoredProject, ProjectAnalysisResult,
+};
 use std::path::PathBuf;
 
 // ============================================================================
@@ -389,9 +391,7 @@ fn test_analysis_result_very_poor_score() {
 #[test]
 fn test_analysis_result_many_recommendations() {
     // RED: Should handle many recommendations
-    let recommendations: Vec<String> = (0..100)
-        .map(|i| format!("Recommendation {}", i))
-        .collect();
+    let recommendations: Vec<String> = (0..100).map(|i| format!("Recommendation {}", i)).collect();
 
     let result = ProjectAnalysisResult {
         timestamp: "2025-01-01T00:00:00Z".to_string(),

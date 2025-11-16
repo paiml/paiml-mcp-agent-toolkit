@@ -68,14 +68,14 @@ fn test_original_file_never_modified() {
     // - Mutations work on temp files only
     // - No backup files left behind
 
-    let (temp_file, original_content) = create_test_source_file()
-        .expect("Failed to create test file");
+    let (temp_file, original_content) =
+        create_test_source_file().expect("Failed to create test file");
 
     // Record original file metadata
     let original_path = temp_file.path().to_path_buf();
-    let original_metadata = fs::metadata(&original_path)
-        .expect("Failed to get original metadata");
-    let _original_modified_time = original_metadata.modified()
+    let original_metadata = fs::metadata(&original_path).expect("Failed to get original metadata");
+    let _original_modified_time = original_metadata
+        .modified()
         .expect("Failed to get modified time");
 
     // TODO: Call mutation testing on this file
@@ -87,17 +87,16 @@ fn test_original_file_never_modified() {
     // let _result = execute_mutant_safely(&mutant).await;
 
     // CRITICAL: Verify original file was NOT modified
-    let final_content = fs::read_to_string(&original_path)
-        .expect("Failed to read final content");
+    let final_content = fs::read_to_string(&original_path).expect("Failed to read final content");
     assert_eq!(
         final_content, original_content,
         "CRITICAL SAFETY VIOLATION: Original file content changed during mutation testing!"
     );
 
     // Verify file modification time unchanged (or only metadata changed, not content)
-    let final_metadata = fs::metadata(&original_path)
-        .expect("Failed to get final metadata");
-    let _final_modified_time = final_metadata.modified()
+    let final_metadata = fs::metadata(&original_path).expect("Failed to get final metadata");
+    let _final_modified_time = final_metadata
+        .modified()
         .expect("Failed to get final modified time");
 
     // Content must be identical (critical check)
@@ -108,8 +107,7 @@ fn test_original_file_never_modified() {
 
     // Check for orphaned backup files
     let dir = original_path.parent().expect("Failed to get parent dir");
-    let backups = check_for_backup_files(dir)
-        .expect("Failed to check for backups");
+    let backups = check_for_backup_files(dir).expect("Failed to check for backups");
     assert!(
         backups.is_empty(),
         "Found orphaned backup files: {:?}",
@@ -131,8 +129,8 @@ fn test_no_backup_files_created() {
     // - Mutations use temp files in /tmp
     // - Clean separation: original vs mutated
 
-    let (temp_file, _original_content) = create_test_source_file()
-        .expect("Failed to create test file");
+    let (temp_file, _original_content) =
+        create_test_source_file().expect("Failed to create test file");
     let original_path = temp_file.path().to_path_buf();
     let dir = original_path.parent().expect("Failed to get parent dir");
 
@@ -141,8 +139,7 @@ fn test_no_backup_files_created() {
     // let _result = execute_mutant_safely(&mutant).await;
 
     // Verify no backup files exist
-    let backups = check_for_backup_files(dir)
-        .expect("Failed to check for backups");
+    let backups = check_for_backup_files(dir).expect("Failed to check for backups");
     assert!(
         backups.is_empty(),
         "GREEN phase should not create backup files. Found: {:?}",
@@ -155,7 +152,8 @@ fn test_no_backup_files_created() {
         .expect("Failed to read dir")
         .flatten()
         .filter(|entry| {
-            entry.file_name()
+            entry
+                .file_name()
                 .to_string_lossy()
                 .contains(&format!("pmat_backup_{}", pid))
         })
@@ -180,8 +178,8 @@ fn test_mutations_use_temp_files() {
     // 4. Clean up temp file
     // 5. Original file never touched
 
-    let (temp_file, original_content) = create_test_source_file()
-        .expect("Failed to create test file");
+    let (temp_file, original_content) =
+        create_test_source_file().expect("Failed to create test file");
     let original_path = temp_file.path().to_path_buf();
 
     // TODO: Implement mutation with temp file tracking
@@ -189,8 +187,7 @@ fn test_mutations_use_temp_files() {
     // let _result = execute_mutant_safely(&mutant).await;
 
     // For now, verify original file unchanged
-    let final_content = fs::read_to_string(&original_path)
-        .expect("Failed to read final content");
+    let final_content = fs::read_to_string(&original_path).expect("Failed to read final content");
     assert_eq!(
         final_content, original_content,
         "Original file must remain unchanged"
@@ -218,8 +215,8 @@ fn test_timeout_does_not_corrupt_file() {
     // - Temp file automatically cleaned up
     // - No backup files left behind
 
-    let (temp_file, original_content) = create_test_source_file()
-        .expect("Failed to create test file");
+    let (temp_file, original_content) =
+        create_test_source_file().expect("Failed to create test file");
     let original_path = temp_file.path().to_path_buf();
 
     // TODO: Simulate timeout during mutation
@@ -229,16 +226,14 @@ fn test_timeout_does_not_corrupt_file() {
     // 3. Verify file safety
 
     // For now, verify current state
-    let final_content = fs::read_to_string(&original_path)
-        .expect("Failed to read final content");
+    let final_content = fs::read_to_string(&original_path).expect("Failed to read final content");
     assert_eq!(
         final_content, original_content,
         "Timeout must not corrupt original file"
     );
 
     let dir = original_path.parent().expect("Failed to get parent dir");
-    let backups = check_for_backup_files(dir)
-        .expect("Failed to check for backups");
+    let backups = check_for_backup_files(dir).expect("Failed to check for backups");
     assert!(
         backups.is_empty(),
         "Timeout must not leave orphaned backup files: {:?}",
@@ -257,8 +252,8 @@ fn test_panic_does_not_corrupt_file() {
     // - Temp file cleaned up by RAII (WorkerTempFile Drop)
     // - No backup files left behind
 
-    let (temp_file, original_content) = create_test_source_file()
-        .expect("Failed to create test file");
+    let (temp_file, original_content) =
+        create_test_source_file().expect("Failed to create test file");
     let original_path = temp_file.path().to_path_buf();
 
     // TODO: Test panic safety
@@ -268,8 +263,7 @@ fn test_panic_does_not_corrupt_file() {
     // 3. Verify file safety after panic
 
     // For now, document expected behavior
-    let final_content = fs::read_to_string(&original_path)
-        .expect("Failed to read final content");
+    let final_content = fs::read_to_string(&original_path).expect("Failed to read final content");
     assert_eq!(
         final_content, original_content,
         "Panic must not corrupt original file"

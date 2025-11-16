@@ -21,7 +21,10 @@ fn test_timeline_mode_enum_variants() {
     let interactive = TimelineMode::Interactive;
     let non_interactive = TimelineMode::NonInteractive;
 
-    assert_ne!(format!("{:?}", interactive), format!("{:?}", non_interactive));
+    assert_ne!(
+        format!("{:?}", interactive),
+        format!("{:?}", non_interactive)
+    );
 }
 
 // ============================================================================

@@ -79,9 +79,13 @@ pub fn analyze_dead_code_multi_language(path: &Path) -> Result<DeadCodeResult> {
     info!("Starting multi-language dead code analysis at: {:?}", path);
 
     // Step 1: Detect language using enhanced detection from BUG-011
-    let detection = crate::services::enhanced_language_detection::detect_project_language_enhanced(path);
+    let detection =
+        crate::services::enhanced_language_detection::detect_project_language_enhanced(path);
 
-    debug!("Detected language: {} (confidence: {:.1}%)", detection.language, detection.confidence);
+    debug!(
+        "Detected language: {} (confidence: {:.1}%)",
+        detection.language, detection.confidence
+    );
 
     // Step 2: Select appropriate strategy
     let strategy: Box<dyn DeadCodeStrategy> = match detection.language.as_str() {
@@ -327,7 +331,7 @@ fn analyze_c_files(files: &[std::path::PathBuf]) -> Result<(Vec<FunctionInfo>, H
                         defined_functions.push(FunctionInfo {
                             name: func_name,
                             file: file.display().to_string(),
-                            line: line_idx + 2,  // Next line, not current
+                            line: line_idx + 2, // Next line, not current
                         });
                         // Skip processing the next line since we've already handled it
                         skip_next_line = true;
@@ -341,27 +345,36 @@ fn analyze_c_files(files: &[std::path::PathBuf]) -> Result<(Vec<FunctionInfo>, H
             // For lines with inline bodies like: int main() { used_function(); }
             // Extract the part after the opening brace FIRST (before skipping declarations)
             let code_to_scan = if let Some(brace_pos) = line.find('{') {
-                &line[brace_pos+1..]  // Scan content after the '{'
+                &line[brace_pos + 1..] // Scan content after the '{'
             } else {
                 // Skip function declarations (lines that start with return type and have no body)
                 if C_DECLARATION_REGEX.is_match(line) {
                     continue;
                 }
-                line  // Scan entire line
+                line // Scan entire line
             };
 
             // Find all function calls
             for cap in C_CALL_REGEX.captures_iter(code_to_scan) {
                 let func_name = cap.get(1).unwrap().as_str().to_string();
                 // Filter out common keywords that look like function calls
-                if !["if", "while", "for", "switch", "sizeof", "return", "printf", "include", "define"].contains(&func_name.as_str()) {
+                if ![
+                    "if", "while", "for", "switch", "sizeof", "return", "printf", "include",
+                    "define",
+                ]
+                .contains(&func_name.as_str())
+                {
                     called_functions.insert(func_name);
                 }
             }
         }
     }
 
-    debug!("Found {} defined functions, {} unique calls", defined_functions.len(), called_functions.len());
+    debug!(
+        "Found {} defined functions, {} unique calls",
+        defined_functions.len(),
+        called_functions.len()
+    );
 
     Ok((defined_functions, called_functions))
 }
@@ -373,7 +386,9 @@ fn analyze_cpp_files(files: &[std::path::PathBuf]) -> Result<(Vec<FunctionInfo>,
 }
 
 /// Analyze Python files
-fn analyze_python_files(files: &[std::path::PathBuf]) -> Result<(Vec<FunctionInfo>, HashSet<String>)> {
+fn analyze_python_files(
+    files: &[std::path::PathBuf],
+) -> Result<(Vec<FunctionInfo>, HashSet<String>)> {
     let mut defined_functions = Vec::new();
     let mut called_functions = HashSet::new();
 
@@ -407,14 +422,23 @@ fn analyze_python_files(files: &[std::path::PathBuf]) -> Result<(Vec<FunctionInf
             for cap in PY_CALL_REGEX.captures_iter(line) {
                 let func_name = cap.get(1).unwrap().as_str().to_string();
                 // Filter out Python keywords
-                if !["if", "while", "for", "print", "range", "len", "str", "int", "list", "dict", "set", "def"].contains(&func_name.as_str()) {
+                if ![
+                    "if", "while", "for", "print", "range", "len", "str", "int", "list", "dict",
+                    "set", "def",
+                ]
+                .contains(&func_name.as_str())
+                {
                     called_functions.insert(func_name);
                 }
             }
         }
     }
 
-    debug!("Found {} defined Python functions, {} unique calls", defined_functions.len(), called_functions.len());
+    debug!(
+        "Found {} defined Python functions, {} unique calls",
+        defined_functions.len(),
+        called_functions.len()
+    );
 
     Ok((defined_functions, called_functions))
 }
@@ -458,7 +482,9 @@ fn count_rust_functions(path: &Path) -> Result<usize> {
 }
 
 /// Analyze Rust files
-fn analyze_rust_files(files: &[std::path::PathBuf]) -> Result<(Vec<FunctionInfo>, HashSet<String>)> {
+fn analyze_rust_files(
+    files: &[std::path::PathBuf],
+) -> Result<(Vec<FunctionInfo>, HashSet<String>)> {
     let mut defined_functions = Vec::new();
     let mut called_functions = HashSet::new();
 
@@ -492,14 +518,23 @@ fn analyze_rust_files(files: &[std::path::PathBuf]) -> Result<(Vec<FunctionInfo>
             for cap in RUST_CALL_REGEX.captures_iter(line) {
                 let func_name = cap.get(1).unwrap().as_str().to_string();
                 // Filter out Rust keywords
-                if !["if", "while", "for", "match", "return", "let", "mut", "use", "mod", "fn", "println", "vec", "Some", "None", "Ok", "Err"].contains(&func_name.as_str()) {
+                if ![
+                    "if", "while", "for", "match", "return", "let", "mut", "use", "mod", "fn",
+                    "println", "vec", "Some", "None", "Ok", "Err",
+                ]
+                .contains(&func_name.as_str())
+                {
                     called_functions.insert(func_name);
                 }
             }
         }
     }
 
-    debug!("Found {} defined Rust functions, {} unique calls", defined_functions.len(), called_functions.len());
+    debug!(
+        "Found {} defined Rust functions, {} unique calls",
+        defined_functions.len(),
+        called_functions.len()
+    );
 
     Ok((defined_functions, called_functions))
 }
@@ -518,8 +553,15 @@ mod tests {
         eprintln!("Dead functions: {:?}", result.dead_functions);
 
         assert_eq!(result.language, "c");
-        assert_eq!(result.total_functions, 2, "Should find 2 functions: used_function and unused_function");
-        assert_eq!(result.dead_functions.len(), 1, "Should find 1 dead function");
+        assert_eq!(
+            result.total_functions, 2,
+            "Should find 2 functions: used_function and unused_function"
+        );
+        assert_eq!(
+            result.dead_functions.len(),
+            1,
+            "Should find 1 dead function"
+        );
         assert_eq!(result.dead_functions[0].name, "unused_function");
     }
 
@@ -547,7 +589,11 @@ mod tests {
             temp.path().join("main.py"),
             "def main():\n    used_function()\n\ndef used_function():\n    pass\n\ndef unused_function():\n    pass\n",
         ).unwrap();
-        std::fs::write(temp.path().join("pyproject.toml"), "[project]\nname=\"test\"\n").unwrap();
+        std::fs::write(
+            temp.path().join("pyproject.toml"),
+            "[project]\nname=\"test\"\n",
+        )
+        .unwrap();
         temp
     }
 }

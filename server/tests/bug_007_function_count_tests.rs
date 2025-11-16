@@ -168,7 +168,11 @@ fn create_rust_file_with_functions(count: usize) -> TempDir {
     }
 
     fs::write(temp.path().join("main.rs"), code).unwrap();
-    fs::write(temp.path().join("Cargo.toml"), "[package]\nname = \"test\"\n").unwrap();
+    fs::write(
+        temp.path().join("Cargo.toml"),
+        "[package]\nname = \"test\"\n",
+    )
+    .unwrap();
 
     temp
 }
@@ -188,7 +192,11 @@ fn create_rust_file_no_functions() -> TempDir {
     "#;
 
     fs::write(temp.path().join("constants.rs"), code).unwrap();
-    fs::write(temp.path().join("Cargo.toml"), "[package]\nname = \"test\"\n").unwrap();
+    fs::write(
+        temp.path().join("Cargo.toml"),
+        "[package]\nname = \"test\"\n",
+    )
+    .unwrap();
 
     temp
 }
@@ -216,7 +224,11 @@ fn create_multi_file_project() -> TempDir {
     "#;
     fs::write(temp.path().join("src/file2.rs"), file2).unwrap();
 
-    fs::write(temp.path().join("Cargo.toml"), "[package]\nname = \"test\"\n").unwrap();
+    fs::write(
+        temp.path().join("Cargo.toml"),
+        "[package]\nname = \"test\"\n",
+    )
+    .unwrap();
 
     temp
 }
@@ -248,20 +260,23 @@ fn create_rust_file_with_various_functions() -> TempDir {
     "#;
 
     fs::write(temp.path().join("main.rs"), code).unwrap();
-    fs::write(temp.path().join("Cargo.toml"), "[package]\nname = \"test\"\n").unwrap();
+    fs::write(
+        temp.path().join("Cargo.toml"),
+        "[package]\nname = \"test\"\n",
+    )
+    .unwrap();
 
     temp
 }
 
 fn generate_context_markdown(path: &std::path::Path) -> Result<String, String> {
-    use pmat::services::deep_context::{DeepContextAnalyzer, DeepContextConfig, AnalysisType, CacheStrategy, DagType};
+    use pmat::services::deep_context::{
+        AnalysisType, CacheStrategy, DagType, DeepContextAnalyzer, DeepContextConfig,
+    };
 
     // Configure minimal analysis for testing
     let config = DeepContextConfig {
-        include_analyses: vec![
-            AnalysisType::Ast,
-            AnalysisType::Complexity,
-        ],
+        include_analyses: vec![AnalysisType::Ast, AnalysisType::Complexity],
         period_days: 7,
         dag_type: DagType::CallGraph,
         complexity_thresholds: None,
@@ -277,7 +292,8 @@ fn generate_context_markdown(path: &std::path::Path) -> Result<String, String> {
     let analyzer = DeepContextAnalyzer::new(config);
     let rt = tokio::runtime::Runtime::new().map_err(|e| e.to_string())?;
     let path_buf = path.to_path_buf();
-    let context = rt.block_on(analyzer.analyze_project(&path_buf))
+    let context = rt
+        .block_on(analyzer.analyze_project(&path_buf))
         .map_err(|e| e.to_string())?;
 
     // Generate markdown that matches the real output format
@@ -286,7 +302,9 @@ fn generate_context_markdown(path: &std::path::Path) -> Result<String, String> {
     // Process each file from the complexity report
     if let Some(complexity_report) = &context.analyses.complexity_report {
         // Add total function count at the top (for simple test assertions)
-        let total_functions: usize = complexity_report.files.iter()
+        let total_functions: usize = complexity_report
+            .files
+            .iter()
             .map(|f| f.functions.len())
             .sum();
         output.push_str(&format!("Functions: {}\n\n", total_functions));
@@ -303,13 +321,17 @@ fn generate_context_markdown(path: &std::path::Path) -> Result<String, String> {
                 .unwrap_or(&file.path);
 
             output.push_str(&format!("### {}\n\n", filename));
-            output.push_str(&format!("File Complexity: {} | Functions: {}\n\n",
-                total_complexity, function_count));
+            output.push_str(&format!(
+                "File Complexity: {} | Functions: {}\n\n",
+                total_complexity, function_count
+            ));
 
             // Add function details
             for func in &file.functions {
-                output.push_str(&format!("- **Function**: `{}` [complexity: {}]\n",
-                    func.name, func.metrics.cyclomatic));
+                output.push_str(&format!(
+                    "- **Function**: `{}` [complexity: {}]\n",
+                    func.name, func.metrics.cyclomatic
+                ));
             }
 
             output.push_str("\n");
@@ -337,5 +359,8 @@ fn count_functions_in_section(output: &str, filename: &str) -> usize {
         .and_then(|s| s.split("###").next())
         .unwrap_or("");
 
-    section.lines().filter(|line| line.contains("**Function**")).count()
+    section
+        .lines()
+        .filter(|line| line.contains("**Function**"))
+        .count()
 }

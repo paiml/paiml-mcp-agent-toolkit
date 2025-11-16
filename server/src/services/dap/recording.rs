@@ -156,8 +156,8 @@ impl Recording {
         buffer.write_all(&[FORMAT_VERSION])?;
 
         // Serialize metadata with MessagePack
-        let metadata_bytes = rmp_serde::to_vec(&self.metadata)
-            .context("Failed to serialize metadata")?;
+        let metadata_bytes =
+            rmp_serde::to_vec(&self.metadata).context("Failed to serialize metadata")?;
         buffer.write_all(&metadata_bytes)?;
 
         // Write snapshot count (u32 little-endian)
@@ -165,8 +165,8 @@ impl Recording {
         buffer.write_all(&snapshot_count.to_le_bytes())?;
 
         // Serialize snapshots with MessagePack
-        let snapshots_bytes = rmp_serde::to_vec(&self.snapshots)
-            .context("Failed to serialize snapshots")?;
+        let snapshots_bytes =
+            rmp_serde::to_vec(&self.snapshots).context("Failed to serialize snapshots")?;
         buffer.write_all(&snapshots_bytes)?;
 
         Ok(buffer)
@@ -180,7 +180,8 @@ impl Recording {
 
         // Validate magic header
         let mut magic = [0u8; 4];
-        cursor.read_exact(&mut magic)
+        cursor
+            .read_exact(&mut magic)
             .context("Failed to read magic header (file too short or corrupted)")?;
 
         if &magic != MAGIC_HEADER {
@@ -193,7 +194,8 @@ impl Recording {
 
         // Read and validate version
         let mut version_buf = [0u8; 1];
-        cursor.read_exact(&mut version_buf)
+        cursor
+            .read_exact(&mut version_buf)
             .context("Failed to read format version")?;
         let version = version_buf[0];
 
@@ -207,13 +209,14 @@ impl Recording {
 
         // Read remaining bytes for MessagePack parsing
         let mut remaining = Vec::new();
-        cursor.read_to_end(&mut remaining)
+        cursor
+            .read_to_end(&mut remaining)
             .context("Failed to read remaining data")?;
 
         // Parse metadata
         let mut mp_cursor = Cursor::new(&remaining);
-        let metadata: RecordingMetadata = rmp_serde::from_read(&mut mp_cursor)
-            .context("Failed to deserialize metadata")?;
+        let metadata: RecordingMetadata =
+            rmp_serde::from_read(&mut mp_cursor).context("Failed to deserialize metadata")?;
 
         // Calculate position after metadata
         let metadata_end = mp_cursor.position() as usize;
@@ -240,8 +243,8 @@ impl Recording {
 
         // Parse snapshots
         let snapshots_bytes = &after_metadata[4..];
-        let snapshots: Vec<Snapshot> = rmp_serde::from_slice(snapshots_bytes)
-            .context("Failed to deserialize snapshots")?;
+        let snapshots: Vec<Snapshot> =
+            rmp_serde::from_slice(snapshots_bytes).context("Failed to deserialize snapshots")?;
 
         // Verify snapshot count matches array length
         if snapshots.len() != snapshot_count as usize {
@@ -267,8 +270,9 @@ impl Recording {
 
     /// Load recording from file
     pub fn load_from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
-        let bytes = std::fs::read(&path)
-            .with_context(|| format!("Failed to read recording file: {}", path.as_ref().display()))?;
+        let bytes = std::fs::read(&path).with_context(|| {
+            format!("Failed to read recording file: {}", path.as_ref().display())
+        })?;
         Self::from_bytes(&bytes)
     }
 }
@@ -283,8 +287,7 @@ pub fn validate_magic_header(bytes: &[u8]) -> bool {
 //
 
 /// Compression level for recording serialization
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum CompressionLevel {
     /// No compression (fastest)
     #[default]
@@ -294,7 +297,6 @@ pub enum CompressionLevel {
     /// Best compression (slowest)
     Best,
 }
-
 
 /// Streaming recording writer for incremental .pmat file creation
 ///
@@ -373,8 +375,7 @@ impl<W: Write> RecordingWriter<W> {
         }
 
         // Serialize snapshot to MessagePack
-        let snapshot_bytes = rmp_serde::to_vec(snapshot)
-            .context("Failed to serialize snapshot")?;
+        let snapshot_bytes = rmp_serde::to_vec(snapshot).context("Failed to serialize snapshot")?;
 
         // Accumulate in buffer
         self.snapshots_buffer.extend_from_slice(&snapshot_bytes);
@@ -395,8 +396,8 @@ impl<W: Write> RecordingWriter<W> {
         }
 
         // Serialize metadata
-        let metadata_bytes = rmp_serde::to_vec(&self.metadata)
-            .context("Failed to serialize metadata")?;
+        let metadata_bytes =
+            rmp_serde::to_vec(&self.metadata).context("Failed to serialize metadata")?;
         self.writer.write_all(&metadata_bytes)?;
 
         // Write snapshot count
@@ -413,8 +414,8 @@ impl<W: Write> RecordingWriter<W> {
             snapshots_vec.push(snapshot);
         }
 
-        let snapshots_array_bytes = rmp_serde::to_vec(&snapshots_vec)
-            .context("Failed to serialize snapshots array")?;
+        let snapshots_array_bytes =
+            rmp_serde::to_vec(&snapshots_vec).context("Failed to serialize snapshots array")?;
 
         self.writer.write_all(&snapshots_array_bytes)?;
 
@@ -643,7 +644,10 @@ mod tests {
         // Attempt to write after finalize should fail
         // Note: writer is consumed by finalize(), so we can't actually call write_snapshot
         // This test documents the API design
-        assert!(true, "finalize() consumes writer, preventing further writes");
+        assert!(
+            true,
+            "finalize() consumes writer, preventing further writes"
+        );
     }
 
     #[test]

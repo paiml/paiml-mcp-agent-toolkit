@@ -308,9 +308,8 @@ impl Scorer for RustToolingScorer {
         // Check cargo-audit
         if let Ok(score) = self.score_cargo_audit(project_path) {
             if score < 7.0 {
-                recommendations.push(
-                    "Run 'cargo audit' and update vulnerable dependencies".to_string(),
-                );
+                recommendations
+                    .push("Run 'cargo audit' and update vulnerable dependencies".to_string());
             }
         }
 

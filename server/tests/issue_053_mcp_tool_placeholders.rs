@@ -777,9 +777,10 @@ fn complex_function(x: i32) -> i32 {
     .unwrap();
 
     // Non-strict mode - might pass with warning
-    let result_lenient = tool_functions::check_quality_gates(&[temp_dir.path().to_path_buf()], false)
-        .await
-        .unwrap();
+    let result_lenient =
+        tool_functions::check_quality_gates(&[temp_dir.path().to_path_buf()], false)
+            .await
+            .unwrap();
 
     // Strict mode - should enforce higher standards
     let result_strict = tool_functions::check_quality_gates(&[temp_dir.path().to_path_buf()], true)
@@ -1044,30 +1045,41 @@ async fn test_quality_gate_baseline_calls_real_service() {
 
     // Create a test file
     let file_path = temp_dir.path().join("test.rs");
-    std::fs::write(&file_path, r#"
+    std::fs::write(
+        &file_path,
+        r#"
 fn simple_function(x: i32) -> i32 {
     x + 1
 }
-"#).unwrap();
-
-    let result = tool_functions::quality_gate_baseline(
-        &[temp_dir.path().to_path_buf()],
-        Some(&output_path)
+"#,
     )
-    .await
     .unwrap();
+
+    let result =
+        tool_functions::quality_gate_baseline(&[temp_dir.path().to_path_buf()], Some(&output_path))
+            .await
+            .unwrap();
 
     // Verify NOT a placeholder response
     let message = result["message"].as_str().unwrap();
-    assert!(!message.contains("placeholder"), "Response should NOT contain 'placeholder' keyword");
+    assert!(
+        !message.contains("placeholder"),
+        "Response should NOT contain 'placeholder' keyword"
+    );
 
     // Verify real baseline data is returned
     assert!(result["status"].is_string(), "Should have status field");
-    assert!(result.get("baseline").is_some(), "Should have baseline field from real TDG analysis");
+    assert!(
+        result.get("baseline").is_some(),
+        "Should have baseline field from real TDG analysis"
+    );
 
     // Verify baseline file was actually created
     if let Some(path) = result["baseline"]["file_path"].as_str() {
-        assert!(std::path::Path::new(path).exists(), "Baseline file should exist on disk");
+        assert!(
+            std::path::Path::new(path).exists(),
+            "Baseline file should exist on disk"
+        );
     }
 }
 
@@ -1083,21 +1095,28 @@ async fn test_quality_gate_baseline_contains_metrics() {
     let file_path = temp_dir.path().join("test.rs");
     std::fs::write(&file_path, "fn test() {}\n").unwrap();
 
-    let result = tool_functions::quality_gate_baseline(
-        &[temp_dir.path().to_path_buf()],
-        Some(&output_path)
-    )
-    .await
-    .unwrap();
+    let result =
+        tool_functions::quality_gate_baseline(&[temp_dir.path().to_path_buf()], Some(&output_path))
+            .await
+            .unwrap();
 
     // Verify baseline has real metrics (not placeholder empty object)
     let baseline = &result["baseline"];
     assert!(baseline.get("timestamp").is_some(), "Should have timestamp");
-    assert!(baseline.get("summary").is_some(), "Should have summary from real TDG analysis");
+    assert!(
+        baseline.get("summary").is_some(),
+        "Should have summary from real TDG analysis"
+    );
 
     let summary = &baseline["summary"];
-    assert!(summary.get("total_files").is_some(), "Should have file count");
-    assert!(summary.get("avg_score").is_some(), "Should have average score");
+    assert!(
+        summary.get("total_files").is_some(),
+        "Should have file count"
+    );
+    assert!(
+        summary.get("avg_score").is_some(),
+        "Should have average score"
+    );
 }
 
 // Test 3: quality_gate_compare - Compare current vs baseline
@@ -1113,32 +1132,42 @@ async fn test_quality_gate_compare_calls_real_service() {
     let file_path = temp_dir.path().join("test.rs");
     std::fs::write(&file_path, "fn test() {}\n").unwrap();
 
-    tool_functions::quality_gate_baseline(
-        &[temp_dir.path().to_path_buf()],
-        Some(&baseline_path)
-    )
-    .await
-    .unwrap();
+    tool_functions::quality_gate_baseline(&[temp_dir.path().to_path_buf()], Some(&baseline_path))
+        .await
+        .unwrap();
 
     // Now compare against it
-    let result = tool_functions::quality_gate_compare(
-        &baseline_path,
-        &[temp_dir.path().to_path_buf()]
-    )
-    .await
-    .unwrap();
+    let result =
+        tool_functions::quality_gate_compare(&baseline_path, &[temp_dir.path().to_path_buf()])
+            .await
+            .unwrap();
 
     // Verify NOT a placeholder response
     let message = result["message"].as_str().unwrap();
-    assert!(!message.contains("placeholder"), "Response should NOT contain 'placeholder' keyword");
+    assert!(
+        !message.contains("placeholder"),
+        "Response should NOT contain 'placeholder' keyword"
+    );
 
     // Verify real comparison data is returned
-    assert!(result.get("comparison").is_some(), "Should have comparison field");
+    assert!(
+        result.get("comparison").is_some(),
+        "Should have comparison field"
+    );
 
     let comparison = &result["comparison"];
-    assert!(comparison.get("improved").is_some(), "Should have improved count");
-    assert!(comparison.get("regressed").is_some(), "Should have regressed count");
-    assert!(comparison.get("unchanged").is_some(), "Should have unchanged count");
+    assert!(
+        comparison.get("improved").is_some(),
+        "Should have improved count"
+    );
+    assert!(
+        comparison.get("regressed").is_some(),
+        "Should have regressed count"
+    );
+    assert!(
+        comparison.get("unchanged").is_some(),
+        "Should have unchanged count"
+    );
 }
 
 // Test 4: quality_gate_compare - Detect quality regressions
@@ -1153,15 +1182,14 @@ async fn test_quality_gate_compare_detects_regressions() {
 
     // Create simple file and baseline
     std::fs::write(&file_path, "fn test() {}\n").unwrap();
-    tool_functions::quality_gate_baseline(
-        &[temp_dir.path().to_path_buf()],
-        Some(&baseline_path)
-    )
-    .await
-    .unwrap();
+    tool_functions::quality_gate_baseline(&[temp_dir.path().to_path_buf()], Some(&baseline_path))
+        .await
+        .unwrap();
 
     // Make file more complex (should regress quality)
-    std::fs::write(&file_path, r#"
+    std::fs::write(
+        &file_path,
+        r#"
 fn complex_function(x: i32) -> i32 {
     // TODO: This is complex
     if x > 0 {
@@ -1178,14 +1206,14 @@ fn complex_function(x: i32) -> i32 {
         0
     }
 }
-"#).unwrap();
-
-    let result = tool_functions::quality_gate_compare(
-        &baseline_path,
-        &[temp_dir.path().to_path_buf()]
+"#,
     )
-    .await
     .unwrap();
+
+    let result =
+        tool_functions::quality_gate_compare(&baseline_path, &[temp_dir.path().to_path_buf()])
+            .await
+            .unwrap();
 
     // Verify comparison has real data (not placeholder zeros)
     let comparison = &result["comparison"];
@@ -1210,21 +1238,34 @@ async fn test_git_status_calls_real_service() {
     // Use git repository root (parent of server directory)
     let repo_path = env::current_dir().unwrap().parent().unwrap().to_path_buf();
 
-    let result = tool_functions::git_status(&repo_path)
-        .await
-        .unwrap();
+    let result = tool_functions::git_status(&repo_path).await.unwrap();
 
     // Verify NOT a placeholder response
     let message = result["message"].as_str().unwrap();
-    assert!(!message.contains("placeholder"), "Response should NOT contain 'placeholder' keyword");
+    assert!(
+        !message.contains("placeholder"),
+        "Response should NOT contain 'placeholder' keyword"
+    );
 
     // Verify real git status data is returned
-    assert!(result.get("git_status").is_some(), "Should have git_status field");
+    assert!(
+        result.get("git_status").is_some(),
+        "Should have git_status field"
+    );
 
     let git_status = &result["git_status"];
-    assert!(git_status.get("branch").is_some(), "Should have branch name");
-    assert!(git_status.get("commit_sha").is_some(), "Should have commit SHA from real git");
-    assert!(git_status.get("is_clean").is_some(), "Should have clean status");
+    assert!(
+        git_status.get("branch").is_some(),
+        "Should have branch name"
+    );
+    assert!(
+        git_status.get("commit_sha").is_some(),
+        "Should have commit SHA from real git"
+    );
+    assert!(
+        git_status.get("is_clean").is_some(),
+        "Should have clean status"
+    );
 }
 
 // Test 6: git_status - Extract real commit information
@@ -1236,21 +1277,25 @@ async fn test_git_status_extracts_commit_details() {
     // Use git repository root (parent of server directory)
     let repo_path = env::current_dir().unwrap().parent().unwrap().to_path_buf();
 
-    let result = tool_functions::git_status(&repo_path)
-        .await
-        .unwrap();
+    let result = tool_functions::git_status(&repo_path).await.unwrap();
 
     let git_status = &result["git_status"];
 
     // Verify commit SHA is not placeholder
     let commit_sha = git_status["commit_sha"].as_str().unwrap();
-    assert!(commit_sha.len() >= 7, "Should have real commit SHA (at least 7 chars)");
+    assert!(
+        commit_sha.len() >= 7,
+        "Should have real commit SHA (at least 7 chars)"
+    );
     assert_ne!(commit_sha, "abc123", "Should not be placeholder commit SHA");
 
     // Verify branch is not placeholder
     let branch = git_status["branch"].as_str().unwrap();
     assert!(!branch.is_empty(), "Should have real branch name");
-    assert_ne!(branch, "placeholder", "Branch should be real, not placeholder");
+    assert_ne!(
+        branch, "placeholder",
+        "Branch should be real, not placeholder"
+    );
 }
 
 // Test 7: git_status - Handle non-git directory
@@ -1378,10 +1423,9 @@ pub fn function_b() {
     )
     .unwrap();
 
-    let result =
-        tool_functions::analyze_coupling(&[temp_dir.path().to_path_buf()], Some(0.5))
-            .await
-            .unwrap();
+    let result = tool_functions::analyze_coupling(&[temp_dir.path().to_path_buf()], Some(0.5))
+        .await
+        .unwrap();
 
     // Verify NOT a placeholder response
     let message = result["message"].as_str().unwrap();
@@ -1414,10 +1458,9 @@ async fn test_analyze_coupling_returns_real_metrics() {
     let file = temp_dir.path().join("test.rs");
     std::fs::write(&file, "pub fn test() {}").unwrap();
 
-    let result =
-        tool_functions::analyze_coupling(&[temp_dir.path().to_path_buf()], None)
-            .await
-            .unwrap();
+    let result = tool_functions::analyze_coupling(&[temp_dir.path().to_path_buf()], None)
+        .await
+        .unwrap();
 
     let results = &result["results"];
     let couplings = results["couplings"].as_array().unwrap();
@@ -1509,10 +1552,12 @@ pub fn function_two() {}
     )
     .unwrap();
 
-    let result =
-        tool_functions::analyze_context(&[temp_dir.path().to_path_buf()], &["structure".to_string()])
-            .await
-            .unwrap();
+    let result = tool_functions::analyze_context(
+        &[temp_dir.path().to_path_buf()],
+        &["structure".to_string()],
+    )
+    .await
+    .unwrap();
 
     // Verify context data has structure
     assert!(
@@ -1606,7 +1651,8 @@ async fn test_context_summary_detects_languages() {
 
     // Verify language detection includes expected language
     let has_rust = languages.iter().any(|lang| {
-        lang.as_str().map_or(false, |s| s.to_lowercase().contains("rust"))
+        lang.as_str()
+            .map_or(false, |s| s.to_lowercase().contains("rust"))
             || lang
                 .as_object()
                 .and_then(|o| o.get("name"))

@@ -104,7 +104,9 @@ fn main() {
         complexity_result["results"]["total_complexity"]
     );
 
-    let violations = complexity_result["results"]["violations"].as_array().unwrap();
+    let violations = complexity_result["results"]["violations"]
+        .as_array()
+        .unwrap();
     println!("Violations (CC >= 5): {}", violations.len());
 
     for violation in violations {
@@ -133,7 +135,10 @@ fn main() {
 
     println!("Status: {}", satd_result["status"]);
     println!("Message: {}", satd_result["message"]);
-    println!("Total SATD comments: {}", satd_result["results"]["total_satd"]);
+    println!(
+        "Total SATD comments: {}",
+        satd_result["results"]["total_satd"]
+    );
 
     let satd_files = satd_result["results"]["files"].as_array().unwrap();
     for file in satd_files {

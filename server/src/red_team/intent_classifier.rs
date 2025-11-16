@@ -8,9 +8,9 @@ use std::collections::HashSet;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum CommitIntent {
-    HallucinationFix,  // Fixing a false claim from previous commit
-    PlannedIteration,  // Expected follow-up work
-    Uncertain,         // Cannot determine with confidence
+    HallucinationFix, // Fixing a false claim from previous commit
+    PlannedIteration, // Expected follow-up work
+    Uncertain,        // Cannot determine with confidence
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -34,7 +34,7 @@ pub struct TestChanges {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IntentClassification {
     pub intent: CommitIntent,
-    pub confidence: f64,  // 0.0 to 1.0
+    pub confidence: f64, // 0.0 to 1.0
     pub signals: Vec<SignalResult>,
     pub reasoning: String,
 }
@@ -107,11 +107,15 @@ impl IntentClassifier {
     fn analyze_commit_message(&self, message: &str) -> SignalResult {
         let message_lower = message.to_lowercase();
 
-        let hallucination_count = self.hallucination_keywords.iter()
+        let hallucination_count = self
+            .hallucination_keywords
+            .iter()
             .filter(|kw| message_lower.contains(kw.as_str()))
             .count();
 
-        let iteration_count = self.iteration_keywords.iter()
+        let iteration_count = self
+            .iteration_keywords
+            .iter()
             .filter(|kw| message_lower.contains(kw.as_str()))
             .count();
 
@@ -200,7 +204,10 @@ impl IntentClassifier {
                 signal_name: "code_churn".to_string(),
                 vote: CommitIntent::HallucinationFix,
                 confidence: 0.8,
-                evidence: format!("{:.0}% file overlap suggests fixing same code", overlap_ratio * 100.0),
+                evidence: format!(
+                    "{:.0}% file overlap suggests fixing same code",
+                    overlap_ratio * 100.0
+                ),
             }
         } else if overlap_ratio < 0.2 {
             SignalResult {
@@ -225,16 +232,20 @@ impl IntentClassifier {
                 signal_name: "test_changes".to_string(),
                 vote: CommitIntent::PlannedIteration,
                 confidence: 0.7,
-                evidence: format!("{} added vs {} fixed - expanding coverage",
-                    test_changes.added_tests, test_changes.fixed_tests),
+                evidence: format!(
+                    "{} added vs {} fixed - expanding coverage",
+                    test_changes.added_tests, test_changes.fixed_tests
+                ),
             }
         } else if test_changes.fixed_tests > test_changes.added_tests {
             SignalResult {
                 signal_name: "test_changes".to_string(),
                 vote: CommitIntent::HallucinationFix,
                 confidence: 0.8,
-                evidence: format!("{} fixed vs {} added - fixing broken tests",
-                    test_changes.fixed_tests, test_changes.added_tests),
+                evidence: format!(
+                    "{} fixed vs {} added - fixing broken tests",
+                    test_changes.fixed_tests, test_changes.added_tests
+                ),
             }
         } else {
             SignalResult {
@@ -251,22 +262,28 @@ impl IntentClassifier {
         original_commit: &CommitInfo,
         followup_commit: &CommitInfo,
     ) -> SignalResult {
-        let time_diff_hours = (followup_commit.timestamp_seconds - original_commit.timestamp_seconds) / 3600;
+        let time_diff_hours =
+            (followup_commit.timestamp_seconds - original_commit.timestamp_seconds) / 3600;
 
         if time_diff_hours < self.grace_period_hours {
             SignalResult {
                 signal_name: "temporal_context".to_string(),
                 vote: CommitIntent::PlannedIteration,
-                confidence: 0.8,  // Strong signal for grace period
-                evidence: format!("Within {}-hour grace period ({}h elapsed)",
-                    self.grace_period_hours, time_diff_hours),
+                confidence: 0.8, // Strong signal for grace period
+                evidence: format!(
+                    "Within {}-hour grace period ({}h elapsed)",
+                    self.grace_period_hours, time_diff_hours
+                ),
             }
         } else if original_commit.branch == followup_commit.branch {
             SignalResult {
                 signal_name: "temporal_context".to_string(),
                 vote: CommitIntent::PlannedIteration,
-                confidence: 0.6,  // Moderate signal for same branch
-                evidence: format!("Same branch '{}' suggests related work", original_commit.branch),
+                confidence: 0.6, // Moderate signal for same branch
+                evidence: format!(
+                    "Same branch '{}' suggests related work",
+                    original_commit.branch
+                ),
             }
         } else {
             SignalResult {
@@ -300,10 +317,14 @@ impl IntentClassifier {
         } else if iteration_ratio > 0.45 {
             (CommitIntent::PlannedIteration, iteration_ratio)
         } else {
-            (CommitIntent::Uncertain, 1.0 - (hallucination_ratio.max(iteration_ratio)))
+            (
+                CommitIntent::Uncertain,
+                1.0 - (hallucination_ratio.max(iteration_ratio)),
+            )
         };
 
-        let reasoning = signals.iter()
+        let reasoning = signals
+            .iter()
             .map(|s| format!("{}: {}", s.signal_name, s.evidence))
             .collect::<Vec<_>>()
             .join("; ");

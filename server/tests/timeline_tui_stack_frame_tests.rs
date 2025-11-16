@@ -61,9 +61,7 @@ fn test_set_selected_index() {
 #[test]
 fn test_selection_bounds_enforcement() {
     // RED: Should enforce selection bounds (0 to frame_count-1)
-    let frames = vec![
-        ("main".to_string(), "main.rs".to_string(), 10),
-    ];
+    let frames = vec![("main".to_string(), "main.rs".to_string(), 10)];
     let mut navigator = StackFrameNavigator::from_frames(frames);
 
     navigator.set_selected_index(10); // Out of bounds
@@ -127,9 +125,7 @@ fn test_select_next_at_bottom() {
 #[test]
 fn test_select_previous_at_top() {
     // RED: Should not move past top frame
-    let frames = vec![
-        ("main".to_string(), "main.rs".to_string(), 10),
-    ];
+    let frames = vec![("main".to_string(), "main.rs".to_string(), 10)];
     let mut navigator = StackFrameNavigator::from_frames(frames);
 
     navigator.select_previous();
@@ -162,9 +158,7 @@ fn test_get_frame_at_index() {
 #[test]
 fn test_get_frame_out_of_bounds() {
     // RED: Should return None for invalid index
-    let frames = vec![
-        ("main".to_string(), "main.rs".to_string(), 10),
-    ];
+    let frames = vec![("main".to_string(), "main.rs".to_string(), 10)];
     let navigator = StackFrameNavigator::from_frames(frames);
 
     let frame = navigator.get_frame(10);
@@ -198,9 +192,7 @@ fn test_get_selected_frame() {
 #[test]
 fn test_format_frame_line() {
     // RED: Should format frame as "function @ file:line"
-    let frames = vec![
-        ("main".to_string(), "main.rs".to_string(), 10),
-    ];
+    let frames = vec![("main".to_string(), "main.rs".to_string(), 10)];
     let navigator = StackFrameNavigator::from_frames(frames);
 
     let line = navigator.format_frame_line(0);
@@ -211,9 +203,7 @@ fn test_format_frame_line() {
 #[test]
 fn test_format_frame_line_out_of_bounds() {
     // RED: Should return None for invalid index
-    let frames = vec![
-        ("main".to_string(), "main.rs".to_string(), 10),
-    ];
+    let frames = vec![("main".to_string(), "main.rs".to_string(), 10)];
     let navigator = StackFrameNavigator::from_frames(frames);
 
     let line = navigator.format_frame_line(10);

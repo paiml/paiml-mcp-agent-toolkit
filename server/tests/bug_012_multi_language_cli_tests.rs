@@ -46,7 +46,10 @@ fn test_languages_override_multiple() {
     let result = run_context_with_languages_flag(project.path(), vec!["rust", "python"]);
 
     // Assert: Should analyze Rust and Python, skip TypeScript
-    assert!(result.is_ok(), "Should succeed with --languages rust,python");
+    assert!(
+        result.is_ok(),
+        "Should succeed with --languages rust,python"
+    );
     let output = result.unwrap();
 
     assert!(output.contains("rust"), "Output should mention Rust");
@@ -155,13 +158,11 @@ fn create_polyglot_project() -> TempDir {
         "fn main() { println!(\"Hello\"); }",
     )
     .unwrap();
-    fs::write(base.join("Cargo.toml"), "[package]\nname = \"test\"\n")
-        .unwrap();
+    fs::write(base.join("Cargo.toml"), "[package]\nname = \"test\"\n").unwrap();
 
     // Create Python files
     fs::write(base.join("script.py"), "print('Hello')").unwrap();
-    fs::write(base.join("pyproject.toml"), "[project]\nname = \"test\"\n")
-        .unwrap();
+    fs::write(base.join("pyproject.toml"), "[project]\nname = \"test\"\n").unwrap();
 
     temp
 }
@@ -175,8 +176,7 @@ fn create_polyglot_project_three_langs() -> TempDir {
     // Rust
     fs::create_dir_all(base.join("src")).unwrap();
     fs::write(base.join("src/main.rs"), "fn main() {}").unwrap();
-    fs::write(base.join("Cargo.toml"), "[package]\nname = \"test\"\n")
-        .unwrap();
+    fs::write(base.join("Cargo.toml"), "[package]\nname = \"test\"\n").unwrap();
 
     // Python
     fs::write(base.join("script.py"), "print('test')").unwrap();
@@ -193,8 +193,7 @@ fn create_rust_project() -> TempDir {
 
     let temp = TempDir::new().unwrap();
     fs::create_dir_all(temp.path().join("src")).unwrap();
-    fs::write(temp.path().join("src/main.rs"), "fn main() {}")
-        .unwrap();
+    fs::write(temp.path().join("src/main.rs"), "fn main() {}").unwrap();
     fs::write(
         temp.path().join("Cargo.toml"),
         "[package]\nname = \"test\"\n",

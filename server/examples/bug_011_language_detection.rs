@@ -32,15 +32,15 @@ async fn main() -> Result<()> {
     println!("\n🔍 Detecting project language...");
 
     // This should timeout because the current implementation hangs
-    let detection_result = timeout(
-        Duration::from_secs(5),
-        detect_project_language(&test_dir),
-    )
-    .await;
+    let detection_result =
+        timeout(Duration::from_secs(5), detect_project_language(&test_dir)).await;
 
     match detection_result {
         Ok(Ok(detection)) => {
-            println!("✅ Detected: {} (confidence: {:.1}%)", detection.language, detection.confidence);
+            println!(
+                "✅ Detected: {} (confidence: {:.1}%)",
+                detection.language, detection.confidence
+            );
 
             // BUG: This shows wrong language
             if detection.language == "python-uv" {

@@ -11,8 +11,8 @@
 //! 3. REFACTOR: Ensure clean code
 //! 4. COMMIT: Single atomic commit with fix
 
-use tempfile::TempDir;
 use std::process::{Command, Stdio};
+use tempfile::TempDir;
 
 // =============================================================================
 // RED TEST 1: Progress Should Not Create Multiple Lines
@@ -26,7 +26,15 @@ fn test_progress_uses_single_line() {
 
     // Act: Run context command and capture stderr
     let output = Command::new("cargo")
-        .args(["run", "--bin", "pmat", "--", "context", "--language", "rust"])
+        .args([
+            "run",
+            "--bin",
+            "pmat",
+            "--",
+            "context",
+            "--language",
+            "rust",
+        ])
         .current_dir(project.path())
         .stderr(Stdio::piped())
         .output()
@@ -38,10 +46,7 @@ fn test_progress_uses_single_line() {
     // Count lines that start with progress indicators
     let progress_lines: Vec<&str> = stderr
         .lines()
-        .filter(|line| {
-            line.contains("Auto-detecting") ||
-            line.contains("Detected:")
-        })
+        .filter(|line| line.contains("Auto-detecting") || line.contains("Detected:"))
         .collect();
 
     // Should only show final "Detected:" line, not "Auto-detecting" + "Detected:"
@@ -66,7 +71,15 @@ fn test_progress_uses_ansi_codes() {
 
     // Act: Run context command and capture raw stderr
     let output = Command::new("cargo")
-        .args(["run", "--bin", "pmat", "--", "context", "--language", "rust"])
+        .args([
+            "run",
+            "--bin",
+            "pmat",
+            "--",
+            "context",
+            "--language",
+            "rust",
+        ])
         .current_dir(project.path())
         .stderr(Stdio::piped())
         .output()
@@ -96,7 +109,15 @@ fn test_auto_detecting_line_overwritten() {
 
     // Act: Run context command
     let output = Command::new("cargo")
-        .args(["run", "--bin", "pmat", "--", "context", "--language", "rust"])
+        .args([
+            "run",
+            "--bin",
+            "pmat",
+            "--",
+            "context",
+            "--language",
+            "rust",
+        ])
         .current_dir(project.path())
         .stderr(Stdio::piped())
         .output()
@@ -108,16 +129,15 @@ fn test_auto_detecting_line_overwritten() {
     // Because the "Auto-detecting" line should have been overwritten
     if stderr.contains("Detected:") {
         // Split by carriage returns to see actual visible output
-        let visible_lines: Vec<&str> = stderr
-            .split('\n')
-            .filter(|line| !line.is_empty())
-            .collect();
+        let visible_lines: Vec<&str> = stderr.split('\n').filter(|line| !line.is_empty()).collect();
 
-        let auto_detect_count = visible_lines.iter()
+        let auto_detect_count = visible_lines
+            .iter()
             .filter(|line| line.contains("Auto-detecting"))
             .count();
 
-        let detected_count = visible_lines.iter()
+        let detected_count = visible_lines
+            .iter()
             .filter(|line| line.contains("Detected:"))
             .count();
 
@@ -127,7 +147,8 @@ fn test_auto_detecting_line_overwritten() {
             "Bug: Both 'Auto-detecting' and 'Detected:' visible on separate lines\n\
              Expected: 'Auto-detecting' should be overwritten by 'Detected:'\n\
              Found {} 'Auto-detecting' and {} 'Detected:' lines",
-            auto_detect_count, detected_count
+            auto_detect_count,
+            detected_count
         );
     }
 }
@@ -144,7 +165,15 @@ fn test_no_visual_corruption() {
 
     // Act: Run context command
     let output = Command::new("cargo")
-        .args(["run", "--bin", "pmat", "--", "context", "--language", "rust"])
+        .args([
+            "run",
+            "--bin",
+            "pmat",
+            "--",
+            "context",
+            "--language",
+            "rust",
+        ])
         .current_dir(project.path())
         .stderr(Stdio::piped())
         .output()
@@ -156,9 +185,8 @@ fn test_no_visual_corruption() {
     // This is hard to test directly, but we can check for common corruption patterns
     for line in stderr.lines() {
         // Check for multiple progress indicators on same line (corruption)
-        let indicator_count = line.matches("🔍").count() +
-                            line.matches("✅").count() +
-                            line.matches("⚠️").count();
+        let indicator_count =
+            line.matches("🔍").count() + line.matches("✅").count() + line.matches("⚠️").count();
 
         assert!(
             indicator_count <= 1,
@@ -180,7 +208,15 @@ fn test_final_output_is_clean() {
 
     // Act: Run context command
     let output = Command::new("cargo")
-        .args(["run", "--bin", "pmat", "--", "context", "--language", "rust"])
+        .args([
+            "run",
+            "--bin",
+            "pmat",
+            "--",
+            "context",
+            "--language",
+            "rust",
+        ])
         .current_dir(project.path())
         .stderr(Stdio::piped())
         .output()
@@ -190,11 +226,12 @@ fn test_final_output_is_clean() {
 
     // Assert: Final visible output should be clean
     // Count total lines that contain progress indicators
-    let progress_line_count = stderr.lines()
+    let progress_line_count = stderr
+        .lines()
         .filter(|line| {
-            line.contains("Auto-detecting") ||
-            line.contains("Detected:") ||
-            line.contains("Discovering")
+            line.contains("Auto-detecting")
+                || line.contains("Detected:")
+                || line.contains("Discovering")
         })
         .count();
 

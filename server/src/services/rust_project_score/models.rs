@@ -256,11 +256,7 @@ impl ScoreVelocity {
             (delta / previous) * 100.0
         };
 
-        let points_per_day = if days == 0 {
-            0.0
-        } else {
-            delta / days as f64
-        };
+        let points_per_day = if days == 0 { 0.0 } else { delta / days as f64 };
 
         Self {
             current,

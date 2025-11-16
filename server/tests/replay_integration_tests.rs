@@ -4,7 +4,6 @@
 //! Tests drive integration of .pmat deserialization with CLI replay handler.
 //! Ensures recording files can be loaded and replayed correctly.
 
-
 // RED Test 1: Load recording from file
 #[test]
 fn test_load_recording_from_file() {
@@ -166,7 +165,10 @@ fn test_interactive_replay_mode() {
     // engine.jump_to(5)?;
     // assert_eq!(engine.current_position(), 5);
 
-    assert!(true, "Interactive mode must support stepping through snapshots");
+    assert!(
+        true,
+        "Interactive mode must support stepping through snapshots"
+    );
 }
 
 // RED Test 7: Display snapshot variables
@@ -275,7 +277,10 @@ fn test_load_large_recording_performance() {
     //     elapsed.as_millis()
     // );
 
-    assert!(true, "Must load large recordings quickly (< 500ms for 1000 snapshots)");
+    assert!(
+        true,
+        "Must load large recordings quickly (< 500ms for 1000 snapshots)"
+    );
 }
 
 // RED Test 12: Snapshot iteration

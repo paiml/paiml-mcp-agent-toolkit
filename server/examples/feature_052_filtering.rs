@@ -29,23 +29,15 @@ fn main() {
     // Example 1: Include only src/*.rs files
     println!("\n=== Example 1: Include Pattern ===");
     println!("Pattern: --include 'src/*.rs'");
-    let filtered = DefectReportService::filter_by_pattern(
-        &report,
-        Some("src/*.rs".to_string()),
-        None,
-        0,
-    );
+    let filtered =
+        DefectReportService::filter_by_pattern(&report, Some("src/*.rs".to_string()), None, 0);
     print_report_summary(&filtered);
 
     // Example 2: Exclude tests/* files
     println!("\n=== Example 2: Exclude Pattern ===");
     println!("Pattern: --exclude 'tests/*'");
-    let filtered = DefectReportService::filter_by_pattern(
-        &report,
-        None,
-        Some("tests/*".to_string()),
-        0,
-    );
+    let filtered =
+        DefectReportService::filter_by_pattern(&report, None, Some("tests/*".to_string()), 0);
     print_report_summary(&filtered);
 
     // Example 3: Combined include + exclude
@@ -62,17 +54,15 @@ fn main() {
     // Example 4: Recursive glob pattern
     println!("\n=== Example 4: Recursive Glob Pattern ===");
     println!("Pattern: --include 'src/**/*.rs'");
-    let filtered = DefectReportService::filter_by_pattern(
-        &report,
-        Some("src/**/*.rs".to_string()),
-        None,
-        0,
-    );
+    let filtered =
+        DefectReportService::filter_by_pattern(&report, Some("src/**/*.rs".to_string()), None, 0);
     print_report_summary(&filtered);
 
     println!("\n✅ Feature #52 demonstration complete!");
     println!("\n💡 Use in CLI:");
-    println!("   pmat analyze comprehensive --include 'src/*.rs' --exclude 'tests/*' --min-lines 50");
+    println!(
+        "   pmat analyze comprehensive --include 'src/*.rs' --exclude 'tests/*' --min-lines 50"
+    );
 }
 
 /// Create a sample defect report for demonstration

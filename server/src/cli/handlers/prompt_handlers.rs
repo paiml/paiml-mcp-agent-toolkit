@@ -22,10 +22,7 @@ const PROMPTS: &[(&str, &str)] = &[
         "clean-repo-cruft",
         include_str!("../../../prompts/clean-repo-cruft.yaml"),
     ),
-    (
-        "continue",
-        include_str!("../../../prompts/continue.yaml"),
-    ),
+    ("continue", include_str!("../../../prompts/continue.yaml")),
     (
         "assert-cmd-testing",
         include_str!("../../../prompts/assert-cmd-testing.yaml"),
@@ -90,10 +87,7 @@ fn list_prompts() {
     for (name, yaml) in PROMPTS {
         // Parse to get description
         if let Ok(prompt) = WorkflowPrompt::from_yaml(yaml) {
-            println!(
-                "  {} - {} [{}]",
-                name, prompt.description, prompt.priority
-            );
+            println!("  {} - {} [{}]", name, prompt.description, prompt.priority);
         } else {
             println!("  {} - (parse error)", name);
         }
@@ -207,7 +201,10 @@ mod tests {
                 !prompt.priority.is_empty(),
                 "Prompt {name} missing priority"
             );
-            assert!(!prompt.prompt.is_empty(), "Prompt {name} missing prompt text");
+            assert!(
+                !prompt.prompt.is_empty(),
+                "Prompt {name} missing prompt text"
+            );
         }
     }
 
@@ -225,15 +222,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_handle_prompt_list() {
-        let result = handle_prompt(
-            None,
-            true,
-            false,
-            vec![],
-            PromptOutputFormat::Yaml,
-            None,
-        )
-        .await;
+        let result = handle_prompt(None, true, false, vec![], PromptOutputFormat::Yaml, None).await;
         assert!(result.is_ok());
     }
 
@@ -374,29 +363,23 @@ pub async fn handle_prompt_command(prompt_cmd: PromptCommands) -> Result<()> {
             set,
             format,
             output,
-        } => {
-            handle_prompt(
-                name,
-                list,
-                show_variables,
-                set,
-                format,
-                output,
-            )
-            .await
-        }
+        } => handle_prompt(name, list, show_variables, set, format, output).await,
         PromptCommands::Generate {
             task,
             context,
             summary,
             output,
         } => handle_generate_prompt(&task, &context, &summary, &output).await,
-        PromptCommands::Ticket { ticket, summary, output } => {
-            handle_ticket_prompt(&ticket, summary.as_ref(), &output).await
-        }
-        PromptCommands::Implement { spec, summary, output } => {
-            handle_implement_prompt(&spec, summary.as_ref(), &output).await
-        }
+        PromptCommands::Ticket {
+            ticket,
+            summary,
+            output,
+        } => handle_ticket_prompt(&ticket, summary.as_ref(), &output).await,
+        PromptCommands::Implement {
+            spec,
+            summary,
+            output,
+        } => handle_implement_prompt(&spec, summary.as_ref(), &output).await,
         PromptCommands::ScaffoldNewRepo {
             spec,
             include_pmat,
@@ -471,8 +454,7 @@ async fn handle_ticket_prompt(
                 "## Organizational Intelligence\n\
                  Based on analysis of {} repositories with {} commits:\n\n\
                  ### Common Defect Patterns to Avoid\n",
-                generator.metadata.repositories_analyzed,
-                generator.metadata.commits_analyzed
+                generator.metadata.repositories_analyzed, generator.metadata.commits_analyzed
             ));
 
             for pattern in generator.defect_patterns.iter().take(5) {
@@ -506,8 +488,10 @@ async fn handle_implement_prompt(
     summary_path: Option<&PathBuf>,
     output: &Option<PathBuf>,
 ) -> Result<()> {
-    let spec_content = std::fs::read_to_string(spec_path)
-        .context(format!("Failed to read specification file: {:?}", spec_path))?;
+    let spec_content = std::fs::read_to_string(spec_path).context(format!(
+        "Failed to read specification file: {:?}",
+        spec_path
+    ))?;
 
     let mut prompt = format!(
         "# Implementation from Specification\n\n\
@@ -533,8 +517,7 @@ async fn handle_implement_prompt(
             prompt.push_str(&format!(
                 "## Organizational Quality Standards\n\
                  Based on {} repositories, {} commits:\n\n",
-                generator.metadata.repositories_analyzed,
-                generator.metadata.commits_analyzed
+                generator.metadata.repositories_analyzed, generator.metadata.commits_analyzed
             ));
 
             for pattern in generator.defect_patterns.iter().take(3) {
@@ -567,8 +550,10 @@ async fn handle_scaffold_repo_prompt(
     include_roadmap: bool,
     output: &Option<PathBuf>,
 ) -> Result<()> {
-    let spec_content = std::fs::read_to_string(spec_path)
-        .context(format!("Failed to read specification file: {:?}", spec_path))?;
+    let spec_content = std::fs::read_to_string(spec_path).context(format!(
+        "Failed to read specification file: {:?}",
+        spec_path
+    ))?;
 
     let mut prompt = format!(
         "# Scaffold New Repository\n\n\

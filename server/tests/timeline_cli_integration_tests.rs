@@ -227,7 +227,10 @@ fn test_commands_show_help() {
 // ============================================================================
 
 /// Helper: Create test recording with N snapshots
-fn create_test_recording(name: &str, snapshot_count: usize) -> pmat::services::dap::recording::Recording {
+fn create_test_recording(
+    name: &str,
+    snapshot_count: usize,
+) -> pmat::services::dap::recording::Recording {
     use pmat::services::dap::recording::{Recording, Snapshot, StackFrame};
     use std::collections::HashMap;
 

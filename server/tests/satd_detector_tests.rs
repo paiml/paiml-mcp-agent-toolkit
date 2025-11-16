@@ -8,9 +8,9 @@
 //! Strategy: Test pattern matching, classification, severity adjustment, analysis
 
 use pmat::services::satd_detector::*;
+use std::fs;
 use std::path::PathBuf;
 use tempfile::tempdir;
-use std::fs;
 
 // ============================================================================
 // RED Phase 1: Severity Enum Tests
@@ -260,7 +260,7 @@ fn test_adjust_severity_high_complexity_escalates() {
     let context = AstContext {
         node_type: AstNodeType::Regular,
         parent_function: "process_data".to_string(),
-        complexity: 25,  // High complexity
+        complexity: 25, // High complexity
         siblings_count: 10,
         nesting_depth: 5,
         surrounding_statements: vec![],
@@ -354,9 +354,11 @@ fn test_extract_from_content_with_todo() {
         Ok(debts) => {
             assert!(debts.len() > 0);
             // Should find the TODO
-            let has_todo = debts.iter().any(|d| d.category == DebtCategory::Requirement);
+            let has_todo = debts
+                .iter()
+                .any(|d| d.category == DebtCategory::Requirement);
             assert!(has_todo);
-        },
+        }
         Err(_) => panic!("Should not error"),
     }
 }
@@ -381,8 +383,8 @@ fn test_extract_from_content_with_fixme() {
             assert!(debts.len() > 0);
             let has_defect = debts.iter().any(|d| d.category == DebtCategory::Defect);
             assert!(has_defect);
-        },
-        Err(_) => {},
+        }
+        Err(_) => {}
     }
 }
 
@@ -411,8 +413,8 @@ fn test_extract_from_content_multiple_debts() {
         Ok(debts) => {
             // Should find at least the 3 explicit markers
             assert!(debts.len() >= 3);
-        },
-        Err(_) => {},
+        }
+        Err(_) => {}
     }
 }
 
@@ -440,8 +442,8 @@ fn test_extract_from_content_excludes_test_blocks() {
         Ok(debts) => {
             // Should find production TODO but not test TODO
             assert!(debts.len() <= 1);
-        },
-        Err(_) => {},
+        }
+        Err(_) => {}
     }
 }
 
@@ -461,8 +463,8 @@ async fn test_analyze_directory_empty() {
         Ok(analysis) => {
             assert_eq!(analysis.items.len(), 0);
             assert_eq!(analysis.total_files_analyzed, 0);
-        },
-        Err(_) => {},
+        }
+        Err(_) => {}
     }
 }
 
@@ -472,12 +474,16 @@ async fn test_analyze_directory_with_rust_file() {
     let temp_dir = tempdir().unwrap();
     let rust_file = temp_dir.path().join("main.rs");
 
-    fs::write(&rust_file, r#"
+    fs::write(
+        &rust_file,
+        r#"
         fn main() {
             // TODO: add error handling
             println!("Hello");
         }
-    "#).unwrap();
+    "#,
+    )
+    .unwrap();
 
     let detector = SATDDetector::new();
     let result = detector.analyze_project(temp_dir.path(), false).await;
@@ -487,8 +493,8 @@ async fn test_analyze_directory_with_rust_file() {
             assert!(analysis.total_files_analyzed > 0);
             // Should find the TODO
             assert!(analysis.items.len() > 0);
-        },
-        Err(_) => {},
+        }
+        Err(_) => {}
     }
 }
 
@@ -508,8 +514,8 @@ async fn test_analyze_directory_with_multiple_files() {
         Ok(analysis) => {
             assert!(analysis.total_files_analyzed >= 3);
             assert!(analysis.items.len() >= 2); // TODO and FIXME
-        },
-        Err(_) => {},
+        }
+        Err(_) => {}
     }
 }
 

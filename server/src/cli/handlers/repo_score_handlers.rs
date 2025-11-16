@@ -3,7 +3,9 @@
 //! Calculates repository health score (0-100 scale) across 6 categories.
 
 use crate::cli::RepoScoreOutputFormat;
-use crate::services::repo_score::{aggregator::ScoreAggregator, models::Grade, scorers::ScorerConfig, RepoScore};
+use crate::services::repo_score::{
+    aggregator::ScoreAggregator, models::Grade, scorers::ScorerConfig, RepoScore,
+};
 use anyhow::{Context, Result};
 use std::fs;
 use std::path::Path;
@@ -140,7 +142,11 @@ fn format_text(score: &RepoScore, verbose: bool) -> String {
 }
 
 /// Format a single category
-fn format_category(name: &str, category: &crate::services::repo_score::CategoryScore, verbose: bool) -> String {
+fn format_category(
+    name: &str,
+    category: &crate::services::repo_score::CategoryScore,
+    verbose: bool,
+) -> String {
     let mut output = String::new();
     let status_icon = match category.status {
         crate::services::repo_score::ScoreStatus::Pass => "✅",
@@ -150,11 +156,7 @@ fn format_category(name: &str, category: &crate::services::repo_score::CategoryS
 
     output.push_str(&format!(
         "  {} {:<25} {:.1}/{:.1} ({:.1}%)\n",
-        status_icon,
-        name,
-        category.score,
-        category.max_score,
-        category.percentage
+        status_icon, name, category.score, category.max_score, category.percentage
     ));
 
     if verbose && !category.findings.is_empty() {
@@ -242,8 +244,7 @@ fn update_readme_badge(repo_path: &Path, score: &RepoScore) -> Result<()> {
         return Ok(());
     }
 
-    let content = fs::read_to_string(&readme_path)
-        .context("Failed to read README.md")?;
+    let content = fs::read_to_string(&readme_path).context("Failed to read README.md")?;
 
     let badge_url = generate_badge_url(score);
     let badge_markdown = format!(
@@ -259,8 +260,7 @@ fn update_readme_badge(repo_path: &Path, score: &RepoScore) -> Result<()> {
         insert_badge_after_title(&content, &badge_markdown)
     };
 
-    fs::write(&readme_path, updated)
-        .context("Failed to write updated README.md")?;
+    fs::write(&readme_path, updated).context("Failed to write updated README.md")?;
 
     println!("✅ Updated README.md with repository health badge");
 
@@ -286,10 +286,7 @@ fn generate_badge_url(score: &RepoScore) -> String {
 
     format!(
         "https://img.shields.io/badge/repo%20health-{}%2F{}%20({})-{}?style=flat-square",
-        final_score,
-        max_score,
-        encoded_grade,
-        color
+        final_score, max_score, encoded_grade, color
     )
 }
 
@@ -348,10 +345,7 @@ fn insert_badge_after_title(content: &str, badge: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::services::repo_score::{
-        CategoryScore, CategoryScores,
-        ScoreMetadata, ScoreStatus,
-    };
+    use crate::services::repo_score::{CategoryScore, CategoryScores, ScoreMetadata, ScoreStatus};
     use std::path::PathBuf;
     use tempfile::TempDir;
 
@@ -509,7 +503,10 @@ mod tests {
         // Test A+ grade
         let score_a_plus = create_test_score(110.0, Grade::APlus);
         let url_a_plus = generate_badge_url(&score_a_plus);
-        assert!(url_a_plus.contains("brightgreen"), "A+ should be brightgreen");
+        assert!(
+            url_a_plus.contains("brightgreen"),
+            "A+ should be brightgreen"
+        );
         assert!(url_a_plus.contains("A%2B"), "A+ should be URL-encoded");
 
         // Test B grade
@@ -550,10 +547,7 @@ mod tests {
         let content = fs::read_to_string(&readme).unwrap();
 
         // Badge should be inserted after blank lines following heading
-        assert!(
-            content.contains("# My Project"),
-            "Heading should remain"
-        );
+        assert!(content.contains("# My Project"), "Heading should remain");
         assert!(
             content.contains("<!-- PMAT-REPO-SCORE:START -->"),
             "Badge should be inserted"

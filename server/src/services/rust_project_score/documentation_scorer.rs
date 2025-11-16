@@ -100,7 +100,11 @@ impl DocumentationScorer {
             let line = lines[i].trim();
 
             // Check for pub items
-            if line.starts_with("pub fn") || line.starts_with("pub struct") || line.starts_with("pub enum") || line.starts_with("pub trait") {
+            if line.starts_with("pub fn")
+                || line.starts_with("pub struct")
+                || line.starts_with("pub enum")
+                || line.starts_with("pub trait")
+            {
                 *total += 1;
 
                 // Check if previous lines contain doc comments (/// or //!)
@@ -111,7 +115,10 @@ impl DocumentationScorer {
                         has_doc_comment = true;
                         break;
                     }
-                    if !prev_line.is_empty() && !prev_line.starts_with("//") && !prev_line.starts_with("#[") {
+                    if !prev_line.is_empty()
+                        && !prev_line.starts_with("//")
+                        && !prev_line.starts_with("#[")
+                    {
                         break;
                     }
                 }
@@ -142,17 +149,25 @@ impl DocumentationScorer {
 
         // Check for important sections (more lenient matching)
         let content_lower = content.to_lowercase();
-        let has_installation = content_lower.contains("installation") || content_lower.contains("install");
+        let has_installation =
+            content_lower.contains("installation") || content_lower.contains("install");
         let has_usage = content_lower.contains("usage") || content_lower.contains("use");
         let has_examples = content_lower.contains("example") || content_lower.contains("```");
         let has_license = content_lower.contains("license");
         let has_features = content_lower.contains("feature");
         let has_api = content_lower.contains("api");
 
-        let section_count = [has_installation, has_usage, has_examples, has_license, has_features, has_api]
-            .iter()
-            .filter(|&&x| x)
-            .count();
+        let section_count = [
+            has_installation,
+            has_usage,
+            has_examples,
+            has_license,
+            has_features,
+            has_api,
+        ]
+        .iter()
+        .filter(|&&x| x)
+        .count();
 
         // Tiered scoring based on README quality
         // Prioritize section count over word count for structured READMEs
@@ -187,7 +202,10 @@ impl DocumentationScorer {
         let version_count = content
             .lines()
             .filter(|line| {
-                line.contains("[0.") || line.contains("[1.") || line.contains("## 0.") || line.contains("## 1.")
+                line.contains("[0.")
+                    || line.contains("[1.")
+                    || line.contains("## 0.")
+                    || line.contains("## 1.")
             })
             .count();
 
@@ -269,7 +287,8 @@ impl Scorer for DocumentationScorer {
         if let Ok(score) = self.score_readme(project_path) {
             if score < 5.0 {
                 recommendations.push(
-                    "Improve README: Add Installation, Usage, Examples, and License sections".to_string(),
+                    "Improve README: Add Installation, Usage, Examples, and License sections"
+                        .to_string(),
                 );
             }
         }
@@ -278,7 +297,8 @@ impl Scorer for DocumentationScorer {
         if let Ok(score) = self.score_changelog(project_path) {
             if score < 3.0 {
                 recommendations.push(
-                    "Add CHANGELOG.md: Document version history and changes between releases".to_string(),
+                    "Add CHANGELOG.md: Document version history and changes between releases"
+                        .to_string(),
                 );
             }
         }

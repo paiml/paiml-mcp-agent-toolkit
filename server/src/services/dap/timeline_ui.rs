@@ -4,7 +4,7 @@
 // Terminal-based UI for visualizing execution timeline and navigating snapshots.
 // Integrates with TimelinePlayer for recording playback control.
 
-use super::recording::{StackFrame, Snapshot};
+use super::recording::{Snapshot, StackFrame};
 use super::timeline_player::TimelinePlayer;
 use super::types::ExecutionSnapshot;
 use anyhow::Result;

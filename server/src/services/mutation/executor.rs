@@ -567,24 +567,20 @@ impl MutantExecutor {
 
         // Flush and sync to ensure data is on disk
         file.flush().await.context("Failed to flush temp file")?;
-        file.sync_all()
-            .await
-            .context("Failed to sync temp file")?;
+        file.sync_all().await.context("Failed to sync temp file")?;
 
         // Close the file explicitly
         drop(file);
 
         // Atomically rename temp file to target
         // This is atomic on Unix - either succeeds completely or fails completely
-        tokio::fs::rename(&temp_path, path)
-            .await
-            .with_context(|| {
-                format!(
-                    "Failed to atomically rename {} to {}",
-                    temp_path.display(),
-                    path.display()
-                )
-            })?;
+        tokio::fs::rename(&temp_path, path).await.with_context(|| {
+            format!(
+                "Failed to atomically rename {} to {}",
+                temp_path.display(),
+                path.display()
+            )
+        })?;
 
         Ok(())
     }
@@ -759,8 +755,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_atomic_write_basic() {
-        use tempfile::NamedTempFile;
         use std::fs;
+        use tempfile::NamedTempFile;
 
         // Create a temp file for testing
         let temp_file = NamedTempFile::new().unwrap();
@@ -773,7 +769,10 @@ mod tests {
         let executor = MutantExecutor::new(PathBuf::from("."));
         let new_content = "new content that should be atomic";
 
-        executor.atomic_write(&test_path, new_content).await.unwrap();
+        executor
+            .atomic_write(&test_path, new_content)
+            .await
+            .unwrap();
 
         // Verify content was written correctly
         let final_content = fs::read_to_string(&test_path).unwrap();
@@ -786,8 +785,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_atomic_write_preserves_on_error() {
-        use tempfile::TempDir;
         use std::fs;
+        use tempfile::TempDir;
 
         // Create a temp directory
         let temp_dir = TempDir::new().unwrap();
@@ -804,10 +803,16 @@ mod tests {
         let result = executor.atomic_write(&bad_path, "new content").await;
 
         // Verify operation failed
-        assert!(result.is_err(), "Should fail to write to nonexistent directory");
+        assert!(
+            result.is_err(),
+            "Should fail to write to nonexistent directory"
+        );
 
         // Verify original file unchanged
         let final_content = fs::read_to_string(&test_path).unwrap();
-        assert_eq!(final_content, "original content", "Original file should be unchanged");
+        assert_eq!(
+            final_content, "original content",
+            "Original file should be unchanged"
+        );
     }
 }

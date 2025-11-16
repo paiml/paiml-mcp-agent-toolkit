@@ -54,7 +54,7 @@ metadata:
 
         let prompt = generator.generate_prompt(
             "Write a configuration parser for YAML files",
-            "Building a new config system"
+            "Building a new config system",
         );
 
         // Must include task

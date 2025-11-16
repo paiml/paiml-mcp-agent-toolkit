@@ -4,7 +4,6 @@
 //! Tests drive the specification of the .pmat file format for time-travel debugging recordings.
 //! Following Extreme TDD: Write failing tests first, then implement format in GREEN phase.
 
-
 // RED Test 1: Magic header validation
 #[test]
 fn test_pmat_magic_header_present() {
@@ -19,7 +18,11 @@ fn test_pmat_magic_header_present() {
     // assert!(!pmat::services::dap::recording::validate_magic_header(invalid_header));
 
     // For now, this test documents the requirement
-    assert_eq!(valid_header.len(), 4, "Magic header must be exactly 4 bytes");
+    assert_eq!(
+        valid_header.len(),
+        4,
+        "Magic header must be exactly 4 bytes"
+    );
     assert_eq!(valid_header, b"PMAT", "Magic header must spell PMAT");
 }
 
@@ -53,7 +56,10 @@ fn test_recording_metadata_structure() {
     // };
 
     // For now, document the requirement
-    assert!(true, "Metadata must include: timestamp, program, args, environment");
+    assert!(
+        true,
+        "Metadata must include: timestamp, program, args, environment"
+    );
 }
 
 // RED Test 4: Snapshot structure
@@ -73,7 +79,10 @@ fn test_snapshot_structure() {
     // };
 
     // For now, document the requirement
-    assert!(true, "Snapshot must include: frame_id, timestamp, variables, stack_frames, instruction_pointer");
+    assert!(
+        true,
+        "Snapshot must include: frame_id, timestamp, variables, stack_frames, instruction_pointer"
+    );
 }
 
 // RED Test 5: Empty recording is valid
@@ -174,7 +183,10 @@ fn test_messagepack_encoding() {
     // // Verify MessagePack magic bytes (first byte indicates fixmap/fixarray/etc)
     // assert!(!buf.is_empty(), "MessagePack should produce bytes");
 
-    assert!(true, "Must use MessagePack for metadata and snapshot encoding");
+    assert!(
+        true,
+        "Must use MessagePack for metadata and snapshot encoding"
+    );
 }
 
 // RED Test 10: Snapshot count validation
@@ -214,7 +226,10 @@ fn test_reject_unreasonable_snapshot_count() {
     // let err = result.unwrap_err();
     // assert!(err.to_string().contains("snapshot count"), "Error should mention count");
 
-    assert!(unreasonable_count > 1_000_000, "Test uses unreasonable count");
+    assert!(
+        unreasonable_count > 1_000_000,
+        "Test uses unreasonable count"
+    );
 }
 
 // RED Test 12: File format documentation

@@ -14,9 +14,9 @@
 //! 3. REFACTOR: Ensure clean code
 //! 4. COMMIT: Single atomic commit with fix
 
-use tempfile::TempDir;
 use std::fs;
 use std::path::Path;
+use tempfile::TempDir;
 
 // =============================================================================
 // RED TEST 1: All 8 Analyses Should Actually Run
@@ -85,10 +85,7 @@ fn test_progress_bar_count_matches_analyses() {
     // let pb = self.create_progress_bar("Running analyses", ANALYSIS_COUNT);
 
     // For now, this test documents the requirement
-    assert!(
-        true,
-        "GREEN phase should introduce ANALYSIS_COUNT constant"
-    );
+    assert!(true, "GREEN phase should introduce ANALYSIS_COUNT constant");
 }
 
 // =============================================================================
@@ -160,7 +157,11 @@ fn test_all_analyses_complete_successfully() {
     let result = run_context_generation(project.path());
 
     // Assert: Should complete without errors
-    assert!(result.is_ok(), "All analyses should complete: {:?}", result.err());
+    assert!(
+        result.is_ok(),
+        "All analyses should complete: {:?}",
+        result.err()
+    );
 
     let output = result.unwrap();
 
@@ -206,7 +207,8 @@ name = "test"
 version = "0.1.0"
 edition = "2021"
 "#,
-    ).unwrap();
+    )
+    .unwrap();
 
     temp
 }
@@ -256,14 +258,15 @@ name = "test_complex"
 version = "0.1.0"
 edition = "2021"
 "#,
-    ).unwrap();
+    )
+    .unwrap();
 
     temp
 }
 
 fn run_context_generation(project_path: &Path) -> Result<String, String> {
-    use std::process::Command;
     use std::env;
+    use std::process::Command;
 
     // Get workspace root (parent of server/ directory)
     let workspace_root = env::current_dir()
@@ -283,7 +286,11 @@ fn run_context_generation(project_path: &Path) -> Result<String, String> {
             "--language",
             "rust",
         ])
-        .arg(project_path.to_str().ok_or_else(|| "Invalid path".to_string())?)
+        .arg(
+            project_path
+                .to_str()
+                .ok_or_else(|| "Invalid path".to_string())?,
+        )
         .current_dir(&workspace_root)
         .output()
         .map_err(|e| format!("Failed to run pmat: {}", e))?;

@@ -50,9 +50,7 @@ pub async fn handle_rust_project_score(
 
     // Format output
     let output_text = match format {
-        RepoScoreOutputFormat::Text => {
-            format_text(&project_score, &recommendations, verbose)
-        }
+        RepoScoreOutputFormat::Text => format_text(&project_score, &recommendations, verbose),
         RepoScoreOutputFormat::Json => format_json(&project_score, &recommendations)?,
         RepoScoreOutputFormat::Markdown => {
             format_markdown(&project_score, &recommendations, verbose)

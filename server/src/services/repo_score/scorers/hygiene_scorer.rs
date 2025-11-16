@@ -6,8 +6,8 @@
 // - C3: No Large Files in Git History (5 points) - No files >1MB in git history
 
 use super::{Scorer, ScorerConfig};
-use crate::services::repo_score::models::*;
 use crate::services::repo_score::error::Result;
+use crate::services::repo_score::models::*;
 use async_trait::async_trait;
 use ignore::WalkBuilder;
 use std::path::Path;
@@ -24,14 +24,27 @@ impl HygieneScorer {
         tracing::debug!("HygieneScorer::score_cruft START");
         let cruft_patterns = vec![
             // Build artifacts
-            "target/", "dist/", "build/", "out/", "*.pyc", "__pycache__/",
-            "node_modules/", ".next/", ".cache/",
+            "target/",
+            "dist/",
+            "build/",
+            "out/",
+            "*.pyc",
+            "__pycache__/",
+            "node_modules/",
+            ".next/",
+            ".cache/",
             // Temp files
-            "*.tmp", "*.swp", "*.swo", "*~",
+            "*.tmp",
+            "*.swp",
+            "*.swo",
+            "*~",
             // OS files (not in .gitignore)
-            ".DS_Store", "Thumbs.db", "desktop.ini",
+            ".DS_Store",
+            "Thumbs.db",
+            "desktop.ini",
             // Editor backups
-            "*.bak", "*.orig",
+            "*.bak",
+            "*.orig",
         ];
 
         let mut cruft_found = vec![];
@@ -39,14 +52,23 @@ impl HygieneScorer {
 
         // Build directory list for performance optimization (skip heavy directories early)
         // CRITICAL: Include .git/ to prevent traversing thousands of git object files (PMAT-BUG-001)
-        let skip_dirs = [".git", "target", "node_modules", "dist", "build", ".next", "__pycache__", ".cache"];
+        let skip_dirs = [
+            ".git",
+            "target",
+            "node_modules",
+            "dist",
+            "build",
+            ".next",
+            "__pycache__",
+            ".cache",
+        ];
 
         // Use ignore::WalkBuilder to respect .gitignore (Phase 1: Root Cause Fix)
         let walker = WalkBuilder::new(repo_path)
-            .hidden(false)           // Don't skip hidden files by default
-            .git_ignore(true)        // CRITICAL: Respect .gitignore (eliminates 71% false positives)
-            .git_exclude(true)       // Also respect .git/info/exclude
-            .max_depth(Some(5))      // Maintain max depth for performance
+            .hidden(false) // Don't skip hidden files by default
+            .git_ignore(true) // CRITICAL: Respect .gitignore (eliminates 71% false positives)
+            .git_exclude(true) // Also respect .git/info/exclude
+            .max_depth(Some(5)) // Maintain max depth for performance
             .filter_entry(move |entry| {
                 // Performance optimization: Skip known heavy build directories
                 let path = entry.path();
@@ -78,7 +100,10 @@ impl HygieneScorer {
             }
         }
 
-        tracing::debug!("HygieneScorer::score_cruft END - found {} cruft files", cruft_found.len());
+        tracing::debug!(
+            "HygieneScorer::score_cruft END - found {} cruft files",
+            cruft_found.len()
+        );
         let score = (5.0 - deductions.min(5.0)).max(0.0);
         let mut findings = vec![];
 
@@ -136,10 +161,10 @@ impl HygieneScorer {
 
         // Use ignore::WalkBuilder to respect .gitignore
         let walker = WalkBuilder::new(repo_path)
-            .hidden(false)           // Check hidden dirs like .idea/, .vscode/
-            .git_ignore(true)        // Respect .gitignore
-            .git_exclude(true)       // Respect .git/info/exclude
-            .max_depth(Some(3))      // Shallower depth for team files
+            .hidden(false) // Check hidden dirs like .idea/, .vscode/
+            .git_ignore(true) // Respect .gitignore
+            .git_exclude(true) // Respect .git/info/exclude
+            .max_depth(Some(3)) // Shallower depth for team files
             .filter_entry(move |entry| {
                 // CRITICAL: Skip .git/ directory to prevent traversing thousands of files
                 let path = entry.path();
@@ -167,7 +192,10 @@ impl HygieneScorer {
             }
         }
 
-        tracing::debug!("HygieneScorer::score_team_files END - found {} team files", team_files_found.len());
+        tracing::debug!(
+            "HygieneScorer::score_team_files END - found {} team files",
+            team_files_found.len()
+        );
         let score = (5.0 - deductions.min(5.0)).max(0.0);
         let mut findings = vec![];
 
@@ -201,7 +229,11 @@ impl HygieneScorer {
     }
 
     /// Score absence of large files in git history (C3: 5 points)
-    async fn score_large_files(&self, repo_path: &Path, config: &ScorerConfig) -> Result<SubcategoryScore> {
+    async fn score_large_files(
+        &self,
+        repo_path: &Path,
+        config: &ScorerConfig,
+    ) -> Result<SubcategoryScore> {
         tracing::debug!("HygieneScorer::score_large_files START");
         let mut large_files_found = vec![];
         let mut deductions: f64 = 0.0;
@@ -253,7 +285,10 @@ impl HygieneScorer {
             if result.status.success() {
                 tracing::debug!("score_large_files: command succeeded, parsing output");
                 let batch_output = String::from_utf8_lossy(&result.stdout);
-                tracing::debug!("score_large_files: parsed {} bytes from command output", batch_output.len());
+                tracing::debug!(
+                    "score_large_files: parsed {} bytes from command output",
+                    batch_output.len()
+                );
 
                 for line in batch_output.lines() {
                     let parts: Vec<&str> = line.split_whitespace().collect();
@@ -271,7 +306,10 @@ impl HygieneScorer {
             }
         }
 
-        tracing::debug!("score_large_files: found {} large files, calculating score", large_files_found.len());
+        tracing::debug!(
+            "score_large_files: found {} large files, calculating score",
+            large_files_found.len()
+        );
         let score = (5.0 - deductions.min(5.0)).max(0.0);
         let mut findings = vec![];
 
@@ -298,15 +336,21 @@ impl HygieneScorer {
                 findings.push(Finding {
                     severity: Severity::Warning,
                     category: "Hygiene".to_string(),
-                    message: format!("... and {} more large files (total: {} files >1MB)",
-                        large_files_found.len() - 10, large_files_found.len()),
+                    message: format!(
+                        "... and {} more large files (total: {} files >1MB)",
+                        large_files_found.len() - 10,
+                        large_files_found.len()
+                    ),
                     location: None,
                     impact_points: 0.0,
                 });
             }
         }
 
-        tracing::debug!("HygieneScorer::score_large_files END - returning score {}", score);
+        tracing::debug!(
+            "HygieneScorer::score_large_files END - returning score {}",
+            score
+        );
         Ok(SubcategoryScore {
             id: "C3".to_string(),
             name: "No Large Files in Git History".to_string(),
@@ -368,8 +412,8 @@ fn matches_pattern(path: &str, pattern: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::TempDir;
     use std::fs;
+    use tempfile::TempDir;
 
     fn create_temp_repo() -> TempDir {
         let temp_dir = TempDir::new().unwrap();
@@ -425,8 +469,15 @@ mod tests {
         let result = scorer.score(repo_path, &config).await.unwrap();
 
         // Should lose 1 point (2 cruft files × 0.5 points) out of 15 total
-        assert!(result.score >= 13.5 && result.score <= 14.5, "Expected score 13.5-14.5, got {}", result.score);
-        assert!(result.findings.iter().any(|f| f.message.contains("Cruft file")));
+        assert!(
+            result.score >= 13.5 && result.score <= 14.5,
+            "Expected score 13.5-14.5, got {}",
+            result.score
+        );
+        assert!(result
+            .findings
+            .iter()
+            .any(|f| f.message.contains("Cruft file")));
     }
 
     #[tokio::test]
@@ -445,7 +496,10 @@ mod tests {
 
         // Should lose 2 points (2 team files × 1 point) out of 15 total
         assert!(result.score >= 12.5 && result.score <= 13.5);
-        assert!(result.findings.iter().any(|f| f.message.contains("Team-specific file")));
+        assert!(result
+            .findings
+            .iter()
+            .any(|f| f.message.contains("Team-specific file")));
     }
 
     #[tokio::test]
@@ -536,7 +590,11 @@ mod tests {
         let repo_path = temp_dir.path();
 
         // Create .gitignore with build artifacts
-        fs::write(repo_path.join(".gitignore"), "target/\n*.tmp\nnode_modules/\n").unwrap();
+        fs::write(
+            repo_path.join(".gitignore"),
+            "target/\n*.tmp\nnode_modules/\n",
+        )
+        .unwrap();
 
         // Create gitignored files (should NOT be penalized)
         create_file(repo_path, "target/release/libfoo.rlib");
@@ -554,9 +612,15 @@ mod tests {
         let result = scorer.score(repo_path, &config).await.unwrap();
 
         // Should score 100% because all cruft files are gitignored
-        assert_eq!(result.score, 15.0, "Gitignored files should not be penalized");
+        assert_eq!(
+            result.score, 15.0,
+            "Gitignored files should not be penalized"
+        );
         assert_eq!(result.percentage, 100.0);
-        assert!(result.findings.iter().any(|f| f.message.contains("No cruft files detected")));
+        assert!(result
+            .findings
+            .iter()
+            .any(|f| f.message.contains("No cruft files detected")));
     }
 
     #[tokio::test]
@@ -582,8 +646,14 @@ mod tests {
         let result = scorer.score(repo_path, &config).await.unwrap();
 
         // Should score 100% because all team files are gitignored
-        assert_eq!(result.score, 15.0, "Gitignored IDE files should not be penalized");
-        assert!(result.findings.iter().any(|f| f.message.contains("No team-specific files detected")));
+        assert_eq!(
+            result.score, 15.0,
+            "Gitignored IDE files should not be penalized"
+        );
+        assert!(result
+            .findings
+            .iter()
+            .any(|f| f.message.contains("No team-specific files detected")));
     }
 
     #[tokio::test]
@@ -608,20 +678,33 @@ mod tests {
         let result = scorer.score(repo_path, &config).await.unwrap();
 
         // Should lose points for .tmp/.bak files but NOT for target/
-        assert!(result.score < 15.0, "Tracked .tmp/.bak files should be penalized");
-        assert!(result.score >= 4.0, "Should only penalize tracked cruft, not gitignored files");
+        assert!(
+            result.score < 15.0,
+            "Tracked .tmp/.bak files should be penalized"
+        );
+        assert!(
+            result.score >= 4.0,
+            "Should only penalize tracked cruft, not gitignored files"
+        );
 
         // Verify .tmp/.bak files are detected but target/ is not
-        let cruft_findings: Vec<_> = result.findings.iter()
+        let cruft_findings: Vec<_> = result
+            .findings
+            .iter()
             .filter(|f| f.message.contains("Cruft file found"))
             .collect();
 
         assert!(!cruft_findings.is_empty(), "Should find .tmp/.bak files");
         assert!(
-            cruft_findings.iter().any(|f| f.message.contains(".tmp") || f.message.contains(".bak")),
+            cruft_findings
+                .iter()
+                .any(|f| f.message.contains(".tmp") || f.message.contains(".bak")),
             "Should detect .tmp or .bak files"
         );
-        assert!(!cruft_findings.iter().any(|f| f.message.contains("target/")), "Should NOT detect gitignored target/");
+        assert!(
+            !cruft_findings.iter().any(|f| f.message.contains("target/")),
+            "Should NOT detect gitignored target/"
+        );
     }
 
     #[tokio::test]
@@ -633,7 +716,7 @@ mod tests {
         // But performance filter should skip these directories
 
         // Create files in heavy build directories (should be skipped by filter)
-        create_file(repo_path, "target/CACHEDIR.TAG");  // Common in Rust target/
+        create_file(repo_path, "target/CACHEDIR.TAG"); // Common in Rust target/
         create_file(repo_path, "node_modules/.bin/eslint");
         create_file(repo_path, "dist/bundle.js");
 
@@ -643,7 +726,10 @@ mod tests {
         let result = scorer.score(repo_path, &config).await.unwrap();
 
         // These directories are skipped by performance filter, so no penalty
-        assert_eq!(result.score, 15.0, "Performance filter should skip heavy build directories");
+        assert_eq!(
+            result.score, 15.0,
+            "Performance filter should skip heavy build directories"
+        );
     }
 
     #[tokio::test]
@@ -652,14 +738,16 @@ mod tests {
         let repo_path = temp_dir.path();
 
         // Create complex .gitignore with various patterns
-        fs::write(repo_path.join(".gitignore"),
+        fs::write(
+            repo_path.join(".gitignore"),
             "*.pyc\n\
              __pycache__/\n\
              .DS_Store\n\
              *.swp\n\
              /build/\n\
-             dist/\n"
-        ).unwrap();
+             dist/\n",
+        )
+        .unwrap();
 
         // Create gitignored files matching various patterns
         create_file(repo_path, "module.pyc");
@@ -675,7 +763,10 @@ mod tests {
         let result = scorer.score(repo_path, &config).await.unwrap();
 
         // All these files should be ignored by gitignore
-        assert_eq!(result.score, 15.0, "Complex .gitignore patterns should be respected");
+        assert_eq!(
+            result.score, 15.0,
+            "Complex .gitignore patterns should be respected"
+        );
     }
 
     // ========================================================================
@@ -745,14 +836,19 @@ mod tests {
         let result = scorer.score(repo_path, &config).await.unwrap();
 
         // Should lose points for large file
-        assert!(result.score < 15.0, "Large file should cause point deduction");
+        assert!(
+            result.score < 15.0,
+            "Large file should cause point deduction"
+        );
 
         // Check C3 subcategory
         let c3 = result.subcategories.iter().find(|s| s.id == "C3").unwrap();
         assert!(c3.score < 5.0, "C3 should lose points for large file");
 
         // Check findings
-        let large_file_finding = result.findings.iter()
+        let large_file_finding = result
+            .findings
+            .iter()
             .any(|f| f.message.contains("Large file") && f.message.contains("large_file.bin"));
         assert!(large_file_finding, "Should report large file in findings");
     }
@@ -796,9 +892,15 @@ mod tests {
         let result = scorer.score(repo_path, &config).await.unwrap();
 
         // Should STILL penalize because file is in history (even though deleted)
-        assert!(result.score < 15.0, "Deleted large file should still be penalized (bloats git history)");
+        assert!(
+            result.score < 15.0,
+            "Deleted large file should still be penalized (bloats git history)"
+        );
 
         let c3 = result.subcategories.iter().find(|s| s.id == "C3").unwrap();
-        assert!(c3.score < 5.0, "C3 should detect large file in history even after deletion");
+        assert!(
+            c3.score < 5.0,
+            "C3 should detect large file in history even after deletion"
+        );
     }
 }

@@ -103,14 +103,7 @@ fn test_embed_status_with_table_format() {
     // Act: Run with explicit --format table
     let output = Command::new("cargo")
         .args([
-            "run",
-            "--bin",
-            "pmat",
-            "--",
-            "embed",
-            "status",
-            "--format",
-            "table",
+            "run", "--bin", "pmat", "--", "embed", "status", "--format", "table",
         ])
         .output()
         .expect("Failed to run pmat embed status");

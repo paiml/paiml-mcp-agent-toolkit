@@ -7,13 +7,13 @@
 //!
 //! Strategy: Test most complex code paths first (TDG-driven)
 
-use pmat::mcp_integration::McpTool;
-use pmat::mcp_integration::polyglot_tools::{PolyglotAnalysisTool, LanguageBoundaryTool};
 use pmat::agents::registry::AgentRegistry;
+use pmat::mcp_integration::polyglot_tools::{LanguageBoundaryTool, PolyglotAnalysisTool};
+use pmat::mcp_integration::McpTool;
 use serde_json::json;
+use std::fs;
 use std::sync::Arc;
 use tempfile::tempdir;
-use std::fs;
 
 // ============================================================================
 // RED Phase 1: PolyglotAnalysisTool Metadata Tests
@@ -121,7 +121,7 @@ async fn test_polyglot_valid_languages_parameter() {
 
     // Should succeed or fail for valid reason (not language parsing)
     match result {
-        Ok(_) => {},
+        Ok(_) => {}
         Err(e) => {
             // Error should not be about language parsing
             assert!(!e.message.to_lowercase().contains("language"));
@@ -311,7 +311,7 @@ async fn test_polyglot_empty_directory() {
     match result {
         Ok(output) => {
             assert!(output.is_object());
-        },
+        }
         Err(_) => {
             // Or fail gracefully
         }
@@ -371,13 +371,17 @@ async fn test_polyglot_with_java_files() {
 
     // Create sample Java file
     let java_file = temp_dir.path().join("Main.java");
-    fs::write(&java_file, r#"
+    fs::write(
+        &java_file,
+        r#"
         public class Main {
             public static void main(String[] args) {
                 System.out.println("Hello");
             }
         }
-    "#).unwrap();
+    "#,
+    )
+    .unwrap();
 
     let registry = Arc::new(AgentRegistry::new());
     let tool = PolyglotAnalysisTool::new(registry);

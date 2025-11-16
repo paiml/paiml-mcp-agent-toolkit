@@ -205,10 +205,7 @@ impl CodeQualityScorer {
                         .and_then(|s| s.parse::<f64>().ok())
                         .unwrap_or(0.0);
 
-                    let total = stdout
-                        .lines()
-                        .filter(|l| l.contains("mutant"))
-                        .count() as f64;
+                    let total = stdout.lines().filter(|l| l.contains("mutant")).count() as f64;
 
                     if total > 0.0 {
                         let ratio = caught / total;
@@ -404,7 +401,8 @@ impl Scorer for CodeQualityScorer {
         if let Ok(score) = self.score_mutation(project_path) {
             if score < 8.0 {
                 recommendations.push(
-                    "Improve test quality: install cargo-mutants and aim for ≥80% mutation score".to_string(),
+                    "Improve test quality: install cargo-mutants and aim for ≥80% mutation score"
+                        .to_string(),
                 );
             }
         }

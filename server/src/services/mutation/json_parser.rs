@@ -212,7 +212,9 @@ impl CargoMutantsReport {
     /// let report = CargoMutantsReport::from_json(json)?;
     /// assert_eq!(report.mutants.len(), 0);
     /// ```
-    #[deprecated(note = "Use from_output_dir() instead - matches actual cargo-mutants v25.3.1 format")]
+    #[deprecated(
+        note = "Use from_output_dir() instead - matches actual cargo-mutants v25.3.1 format"
+    )]
     pub fn from_json(json: &str) -> Result<Self> {
         serde_json::from_str(json)
             .map_err(|e| format!("Failed to parse cargo-mutants JSON: {}", e).into())

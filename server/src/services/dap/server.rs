@@ -320,7 +320,8 @@ impl DapServer {
     /// Handle setBreakpoints request
     fn handle_set_breakpoints(&self, request: DapRequest) -> Value {
         // Parse setBreakpoints arguments
-        let args: SetBreakpointsArguments = match serde_json::from_value(request.arguments.clone()) {
+        let args: SetBreakpointsArguments = match serde_json::from_value(request.arguments.clone())
+        {
             Ok(args) => args,
             Err(e) => {
                 let seq = self.next_seq();
@@ -432,14 +433,18 @@ impl DapServer {
             match self.get_variables_at_line(&file, line) {
                 Ok(vars) => {
                     // Convert Variable to DAP variable format
-                    vars.iter().map(|v| json!({
-                        "name": v.name,
-                        "value": v.value,
-                        "type": v.type_info,
-                        "variablesReference": 0
-                    })).collect()
+                    vars.iter()
+                        .map(|v| {
+                            json!({
+                                "name": v.name,
+                                "value": v.value,
+                                "type": v.type_info,
+                                "variablesReference": 0
+                            })
+                        })
+                        .collect()
                 }
-                Err(_) => vec![]
+                Err(_) => vec![],
             }
         } else {
             vec![]
@@ -538,7 +543,8 @@ impl DapServer {
             .map_err(|e| format!("Failed to read file {}: {}", path, e))?;
 
         // Detect language from path
-        let language = self.detect_language_from_path(Path::new(path))
+        let language = self
+            .detect_language_from_path(Path::new(path))
             .ok_or_else(|| format!("Could not detect language for {}", path))?;
 
         // Use VariableInspector to extract variables
@@ -548,7 +554,10 @@ impl DapServer {
                 self.variable_inspector.inspect_typescript(&source, line)
             }
             Language::Python => self.variable_inspector.inspect_python(&source, line),
-            _ => Err(format!("Language {:?} not supported for variable inspection", language)),
+            _ => Err(format!(
+                "Language {:?} not supported for variable inspection",
+                language
+            )),
         }
     }
 
@@ -588,34 +597,41 @@ impl DapServer {
     /// Parse and cache AST for a file
     fn parse_and_cache_ast(&self, path: &Path) -> Result<(), String> {
         // Read source
-        let source = std::fs::read_to_string(path)
-            .map_err(|e| format!("Failed to read file: {}", e))?;
+        let source =
+            std::fs::read_to_string(path).map_err(|e| format!("Failed to read file: {}", e))?;
 
         // Detect language
-        let language = self.detect_language_from_path(path)
+        let language = self
+            .detect_language_from_path(path)
             .ok_or_else(|| format!("Could not detect language for {:?}", path))?;
 
         // Parse using tree-sitter
         let tree = match language {
             Language::Rust => {
                 let mut parser = tree_sitter::Parser::new();
-                parser.set_language(&tree_sitter_rust::LANGUAGE.into())
+                parser
+                    .set_language(&tree_sitter_rust::LANGUAGE.into())
                     .map_err(|e| format!("Failed to set Rust language: {}", e))?;
-                parser.parse(&source, None)
+                parser
+                    .parse(&source, None)
                     .ok_or_else(|| "Failed to parse Rust source".to_string())?
             }
             Language::Python => {
                 let mut parser = tree_sitter::Parser::new();
-                parser.set_language(&tree_sitter_python::LANGUAGE.into())
+                parser
+                    .set_language(&tree_sitter_python::LANGUAGE.into())
                     .map_err(|e| format!("Failed to set Python language: {}", e))?;
-                parser.parse(&source, None)
+                parser
+                    .parse(&source, None)
                     .ok_or_else(|| "Failed to parse Python source".to_string())?
             }
             Language::TypeScript | Language::JavaScript => {
                 let mut parser = tree_sitter::Parser::new();
-                parser.set_language(&tree_sitter_typescript::LANGUAGE_TYPESCRIPT.into())
+                parser
+                    .set_language(&tree_sitter_typescript::LANGUAGE_TYPESCRIPT.into())
                     .map_err(|e| format!("Failed to set TypeScript language: {}", e))?;
-                parser.parse(&source, None)
+                parser
+                    .parse(&source, None)
                     .ok_or_else(|| "Failed to parse TypeScript source".to_string())?
             }
             _ => return Err(format!("Language {:?} not supported for parsing", language)),
@@ -640,10 +656,7 @@ impl DapServer {
 
         let recording_dir = self.recording_dir.as_ref()?;
 
-        let timestamp = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .ok()?
-            .as_secs();
+        let timestamp = SystemTime::now().duration_since(UNIX_EPOCH).ok()?.as_secs();
 
         Some(recording_dir.join(format!("session-{}.pmat", timestamp)))
     }
@@ -665,7 +678,8 @@ impl DapServer {
         }
 
         // Generate recording file path
-        let recording_path = self.generate_recording_path()
+        let recording_path = self
+            .generate_recording_path()
             .ok_or_else(|| anyhow::anyhow!("Failed to generate recording path"))?;
 
         // Create recording file
@@ -674,12 +688,8 @@ impl DapServer {
 
         // Create ExecutionRecorder with writer
         let dap_server_arc = Arc::new(Mutex::new(DapServer::new()));
-        let mut recorder = ExecutionRecorder::with_writer(
-            file,
-            program.to_string(),
-            args,
-            dap_server_arc,
-        )?;
+        let mut recorder =
+            ExecutionRecorder::with_writer(file, program.to_string(), args, dap_server_arc)?;
 
         // Start recording (enables snapshot capture)
         recorder.start_recording();
@@ -749,7 +759,8 @@ impl DapServer {
 
         // Bind to TCP port
         let addr = format!("{}:{}", host, port);
-        let listener = TcpListener::bind(&addr).await
+        let listener = TcpListener::bind(&addr)
+            .await
             .map_err(|e| anyhow::anyhow!("Failed to bind to {}: {}", addr, e))?;
 
         // Server is now listening - accept connections in a loop
