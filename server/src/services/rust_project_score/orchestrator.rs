@@ -18,6 +18,7 @@ use super::performance_scorer::PerformanceScorer;
 use super::rust_tooling_scorer::RustToolingScorer;
 use super::scorer::{Scorer, ScorerError, ScorerResult};
 use super::testing_scorer::TestingScorer;
+use indicatif::{ProgressBar, ProgressStyle};
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -115,13 +116,26 @@ impl RustProjectScoreOrchestrator {
         let mut category_map: HashMap<String, CategoryScore> = HashMap::new();
         let mut all_recommendations: Vec<String> = Vec::new();
 
+        // Create progress bar
+        let pb = ProgressBar::new(self.scorers.len() as u64);
+        pb.set_style(
+            ProgressStyle::default_bar()
+                .template("[{elapsed_precise}] {bar:40.cyan/blue} {pos}/{len} {msg}")
+                .unwrap()
+                .progress_chars("█▓▒░ "),
+        );
+
         for scorer in &self.scorers {
+            pb.set_message(format!("Analyzing {}...", scorer.name()));
             let category_score = scorer.score_with_mode(project_path, full)?;
             let recommendations = scorer.recommendations(project_path);
 
             category_map.insert(scorer.name().to_string(), category_score);
             all_recommendations.extend(recommendations);
+            pb.inc(1);
         }
+
+        pb.finish_with_message("✅ Analysis complete");
 
         // Build CategoryScores struct
         let categories = category_map.clone();
