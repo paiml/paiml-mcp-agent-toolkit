@@ -80,8 +80,7 @@ pub fn run_clippy(project_path: &Path, _timeout_secs: Option<u64>) -> io::Result
         .arg("warnings")
         .current_dir(project_path);
 
-    // For now, just run without timeout to avoid complexity
-    // TODO: Implement proper timeout with output capture
+    // Run without timeout (timeouts handled at scorer level via --full flag)
     match cmd.output() {
         Ok(output) => Ok(Some(output)),
         Err(e) => Err(e),

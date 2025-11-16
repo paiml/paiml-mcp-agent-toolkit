@@ -258,6 +258,7 @@ mod tests {
             false,
             false,
             None,
+            false, // full mode
         )
         .await;
 
@@ -277,6 +278,7 @@ mod tests {
             false,
             false,
             None,
+            false, // full mode
         )
         .await;
 
@@ -294,6 +296,7 @@ mod tests {
             false,
             false,
             None,
+            false, // full mode
         )
         .await;
 
