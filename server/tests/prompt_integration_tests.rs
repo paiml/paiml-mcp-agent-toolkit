@@ -296,6 +296,7 @@ mod property_tests {
             "repo-image",
             "book-documentation",
             "comply-pmat",
+            "implement",
         ];
 
         for prompt in &prompts {
@@ -335,6 +336,7 @@ mod property_tests {
             "repo-image",
             "book-documentation",
             "comply-pmat",
+            "implement",
         ];
 
         for prompt in &prompts {
