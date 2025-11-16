@@ -38,10 +38,12 @@
 //! let score = RustProjectScore::new();
 //! ```
 
+pub mod code_quality_scorer;
 pub mod models;
 pub mod rust_tooling_scorer;
 pub mod scorer;
 
+pub use code_quality_scorer::*;
 pub use models::*;
 pub use rust_tooling_scorer::*;
 pub use scorer::*;
