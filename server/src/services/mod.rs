@@ -168,6 +168,7 @@ pub mod quality_gates;
 #[cfg(test)]
 pub mod real_world_enhanced_naming_test;
 pub mod repo_score; // Repository health scoring system
+pub mod rust_project_score; // Rust Project Score v1.1 (evidence-based quality scoring)
 pub mod similarity; // Advanced similarity and entropy detection
 pub use quality_gates as quality_gate;
 #[cfg(test)]
