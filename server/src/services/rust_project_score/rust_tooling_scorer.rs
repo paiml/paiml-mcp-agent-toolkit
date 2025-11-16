@@ -233,9 +233,55 @@ impl Scorer for RustToolingScorer {
         Ok(CategoryScore::new(total_earned, self.max_points))
     }
 
-    fn score_with_mode(&self, project_path: &Path, _full: bool) -> ScorerResult<CategoryScore> {
-        // This scorer doesn't have expensive operations, so mode doesn't affect it
-        self.score(project_path)
+    fn score_with_mode(&self, project_path: &Path, full: bool) -> ScorerResult<CategoryScore> {
+        // Verify project has Cargo.toml
+        if !project_path.join("Cargo.toml").exists() {
+            return Err(ScorerError::InvalidProject(
+                "No Cargo.toml found - not a valid Rust project".to_string(),
+            ));
+        }
+
+        let mut total_earned = 0.0;
+
+        // Score clippy (10pts) - ONLY in full mode (too slow for fast mode)
+        if full {
+            match self.score_clippy(project_path) {
+                Ok(score) => total_earned += score,
+                Err(ScorerError::ToolNotFound(_)) => {
+                    // Graceful degradation - give 50% credit if tool not found
+                    total_earned += 5.0;
+                }
+                Err(e) => return Err(e),
+            }
+        } else {
+            // Fast mode: Skip clippy (too slow - takes 60-90s on large projects)
+            // Give moderate credit (5/10 points) to avoid penalizing fast mode
+            total_earned += 5.0;
+        }
+
+        // Score rustfmt (5pts) - fast enough for both modes
+        match self.score_rustfmt(project_path) {
+            Ok(score) => total_earned += score,
+            Err(ScorerError::ToolNotFound(_)) => {
+                // Graceful degradation
+                total_earned += 2.5;
+            }
+            Err(e) => return Err(e),
+        }
+
+        // Score cargo-audit (7pts) - fast enough for both modes
+        match self.score_cargo_audit(project_path) {
+            Ok(score) => total_earned += score,
+            Err(e) => return Err(e),
+        }
+
+        // Score cargo-deny (3pts) - fast enough for both modes
+        match self.score_cargo_deny(project_path) {
+            Ok(score) => total_earned += score,
+            Err(e) => return Err(e),
+        }
+
+        Ok(CategoryScore::new(total_earned, self.max_points))
     }
 
     fn recommendations(&self, project_path: &Path) -> Vec<String> {

@@ -358,14 +358,15 @@ impl Scorer for CodeQualityScorer {
             total_earned += 4.0;
         }
 
-        // Score build time (4pts) - skip in tests to avoid slow execution
-        if cfg!(not(test)) {
+        // Score build time (4pts) - ONLY in full mode (cargo build is very slow)
+        if full && cfg!(not(test)) {
             match self.score_build_time(project_path) {
                 Ok(score) => total_earned += score,
                 Err(e) => return Err(e),
             }
         } else {
-            // Give moderate credit in test mode
+            // Fast mode or test mode: Skip build time measurement (too slow)
+            // Give moderate credit (2/4 points)
             total_earned += 2.0;
         }
 
