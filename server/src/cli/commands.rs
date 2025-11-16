@@ -475,6 +475,11 @@ pub enum Commands {
         /// Output file path
         #[arg(short = 'o', long)]
         output: Option<PathBuf>,
+
+        /// Full analysis mode (includes mutation testing, max 5 minutes)
+        /// Default mode is fast (<60 seconds) and skips expensive checks
+        #[arg(long)]
+        full: bool,
     },
 
     /// Start HTTP API server with WebSocket support

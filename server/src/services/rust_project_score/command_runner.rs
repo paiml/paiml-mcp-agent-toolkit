@@ -71,7 +71,7 @@ pub fn run_with_timeout(
 }
 
 /// Run cargo clippy with timeout
-pub fn run_clippy(project_path: &Path, timeout_secs: Option<u64>) -> io::Result<Option<Output>> {
+pub fn run_clippy(project_path: &Path, _timeout_secs: Option<u64>) -> io::Result<Option<Output>> {
     let mut cmd = Command::new("cargo");
     cmd.arg("clippy")
         .arg("--all-targets")
@@ -79,9 +79,6 @@ pub fn run_clippy(project_path: &Path, timeout_secs: Option<u64>) -> io::Result<
         .arg("-D")
         .arg("warnings")
         .current_dir(project_path);
-
-    // Use a longer timeout for clippy (it can be slow)
-    let timeout = timeout_secs.unwrap_or(60);
 
     // For now, just run without timeout to avoid complexity
     // TODO: Implement proper timeout with output capture
@@ -92,14 +89,12 @@ pub fn run_clippy(project_path: &Path, timeout_secs: Option<u64>) -> io::Result<
 }
 
 /// Run rustfmt check with timeout
-pub fn run_rustfmt_check(project_path: &Path, timeout_secs: Option<u64>) -> io::Result<Option<Output>> {
+pub fn run_rustfmt_check(project_path: &Path, _timeout_secs: Option<u64>) -> io::Result<Option<Output>> {
     let mut cmd = Command::new("cargo");
     cmd.arg("fmt")
         .arg("--")
         .arg("--check")
         .current_dir(project_path);
-
-    let timeout = timeout_secs.unwrap_or(30);
 
     // For now, just run without timeout
     match cmd.output() {
@@ -109,13 +104,11 @@ pub fn run_rustfmt_check(project_path: &Path, timeout_secs: Option<u64>) -> io::
 }
 
 /// Run cargo-audit with timeout
-pub fn run_cargo_audit(project_path: &Path, timeout_secs: Option<u64>) -> io::Result<Option<Output>> {
+pub fn run_cargo_audit(project_path: &Path, _timeout_secs: Option<u64>) -> io::Result<Option<Output>> {
     let mut cmd = Command::new("cargo");
     cmd.arg("audit")
         .arg("--json")
         .current_dir(project_path);
-
-    let timeout = timeout_secs.unwrap_or(30);
 
     match cmd.output() {
         Ok(output) => Ok(Some(output)),

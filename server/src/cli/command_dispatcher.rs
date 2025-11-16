@@ -264,8 +264,9 @@ impl CommandDispatcher {
                 verbose,
                 failures_only,
                 output,
+                full,
             } => {
-                handlers::handle_rust_project_score(&path, &format, verbose, failures_only, output.as_deref())
+                handlers::handle_rust_project_score(&path, &format, verbose, failures_only, output.as_deref(), full)
                     .await
             }
             Commands::Serve {

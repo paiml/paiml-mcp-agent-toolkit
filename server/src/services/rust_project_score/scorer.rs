@@ -39,14 +39,31 @@ pub trait Scorer: Send + Sync {
     /// Maximum possible points for this category
     fn max_points(&self) -> f64;
 
-    /// Analyze a Rust project and return the score for this category
+    /// Analyze a Rust project and return the score for this category (fast mode)
     ///
     /// # Arguments
     /// * `project_path` - Path to the root of the Rust project (contains Cargo.toml)
     ///
     /// # Returns
     /// * `ScorerResult<CategoryScore>` - The score earned and max possible
-    fn score(&self, project_path: &Path) -> ScorerResult<CategoryScore>;
+    fn score(&self, project_path: &Path) -> ScorerResult<CategoryScore> {
+        self.score_with_mode(project_path, false)
+    }
+
+    /// Analyze a Rust project with configurable mode
+    ///
+    /// # Arguments
+    /// * `project_path` - Path to the root of the Rust project
+    /// * `full` - If true, run full analysis (slower but comprehensive)
+    ///            If false, run fast mode (skip expensive checks like mutation testing)
+    ///
+    /// # Returns
+    /// * `ScorerResult<CategoryScore>` - The score earned and max possible
+    ///
+    /// # Performance
+    /// - Fast mode: Should complete in <10 seconds per scorer
+    /// - Full mode: May take up to 60 seconds per scorer
+    fn score_with_mode(&self, project_path: &Path, full: bool) -> ScorerResult<CategoryScore>;
 
     /// Optional: Provide detailed recommendations for improvement
     ///

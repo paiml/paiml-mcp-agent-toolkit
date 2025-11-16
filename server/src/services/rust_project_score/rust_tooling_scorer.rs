@@ -233,6 +233,11 @@ impl Scorer for RustToolingScorer {
         Ok(CategoryScore::new(total_earned, self.max_points))
     }
 
+    fn score_with_mode(&self, project_path: &Path, _full: bool) -> ScorerResult<CategoryScore> {
+        // This scorer doesn't have expensive operations, so mode doesn't affect it
+        self.score(project_path)
+    }
+
     fn recommendations(&self, project_path: &Path) -> Vec<String> {
         let mut recommendations = Vec::new();
 

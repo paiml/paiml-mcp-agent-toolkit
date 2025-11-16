@@ -15,6 +15,7 @@ pub async fn handle_rust_project_score(
     verbose: bool,
     failures_only: bool,
     output: Option<&Path>,
+    full: bool,
 ) -> Result<()> {
     // Validate path exists
     if !path.exists() {
@@ -37,7 +38,7 @@ pub async fn handle_rust_project_score(
     // Create orchestrator and run scoring
     let orchestrator = RustProjectScoreOrchestrator::new();
     let project_score = orchestrator
-        .score(path)
+        .score_with_mode(path, full)
         .context("Failed to calculate Rust project score")?;
 
     // Filter recommendations if failures_only

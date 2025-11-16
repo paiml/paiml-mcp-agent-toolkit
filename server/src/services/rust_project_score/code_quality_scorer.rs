@@ -324,7 +324,7 @@ impl Scorer for CodeQualityScorer {
         self.max_points
     }
 
-    fn score(&self, project_path: &Path) -> ScorerResult<CategoryScore> {
+    fn score_with_mode(&self, project_path: &Path, full: bool) -> ScorerResult<CategoryScore> {
         // Verify project has Cargo.toml
         if !project_path.join("Cargo.toml").exists() {
             return Err(ScorerError::InvalidProject(
@@ -346,10 +346,16 @@ impl Scorer for CodeQualityScorer {
             Err(e) => return Err(e),
         }
 
-        // Score mutation testing (8pts)
-        match self.score_mutation(project_path) {
-            Ok(score) => total_earned += score,
-            Err(e) => return Err(e),
+        // Score mutation testing (8pts) - ONLY in full mode
+        if full {
+            match self.score_mutation(project_path) {
+                Ok(score) => total_earned += score,
+                Err(e) => return Err(e),
+            }
+        } else {
+            // Fast mode: Skip mutation testing (too slow)
+            // Give moderate credit (4/8 points) to avoid penalizing fast mode too much
+            total_earned += 4.0;
         }
 
         // Score build time (4pts) - skip in tests to avoid slow execution

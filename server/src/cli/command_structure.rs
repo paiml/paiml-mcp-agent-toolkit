@@ -371,6 +371,7 @@ impl CommandExecutor {
                 verbose,
                 failures_only,
                 output,
+                full,
             } => {
                 crate::cli::handlers::rust_project_score_handlers::handle_rust_project_score(
                     &path,
@@ -378,6 +379,7 @@ impl CommandExecutor {
                     verbose,
                     failures_only,
                     output.as_deref(),
+                    full,
                 )
                 .await
             }
