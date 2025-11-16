@@ -82,25 +82,13 @@ graph TD
 Top-level module structure from AST analysis
 
 ```mermaid
-graph TD
-    cli[cli]
-    handlers[handlers]
-    lib[lib]
-    models[models]
-    services[services]
-    utils[utils]
 
-    lib --- handlers
-    handlers --- services
-    services --- models
-    cli --- services
-    services --- utils
 ```
 
 **Metrics:**
-- Nodes: 6
-- Edges: 5
-- Max depth: 1
+- Nodes: 0
+- Edges: 0
+- Max depth: 0
 
 ## AST-Generated Styled Diagrams
 
@@ -145,4 +133,4 @@ All diagrams are automatically validated for:
 - ✓ Proper labeling (no empty nodes)
 - ✓ Category-appropriate styling
 
-Last validated: 2025-11-12 12:09:22 UTC
+Last validated: 2025-11-16 08:36:16 UTC
