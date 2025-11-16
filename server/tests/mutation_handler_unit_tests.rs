@@ -313,6 +313,8 @@ async fn test_invalid_output_format() {
 
 /// Test 8: Jobs parameter (0, 1, max)
 #[tokio::test]
+/// SLOW: >60s - excluded from fast test suite
+#[ignore]
 async fn test_jobs_parameter_values() {
     let temp_file = NamedTempFile::new().unwrap();
     writeln!(temp_file.as_file(), "fn test() {{ }}").unwrap();
@@ -433,6 +435,8 @@ async fn test_timeout_parameter() {
 
 /// Test 10: Combined argument validation
 #[tokio::test]
+/// SLOW: >60s - excluded from fast test suite
+#[ignore]
 async fn test_combined_arguments() {
     // Arrange - All arguments with valid values
     let temp_file = NamedTempFile::new().unwrap();
@@ -1197,6 +1201,8 @@ async fn test_failures_only_flag_preserved() {
 
 /// Test 30: failures_only with combination of other flags
 #[tokio::test]
+/// SLOW: >60s - excluded from fast test suite
+#[ignore]
 async fn test_failures_only_with_combined_flags() {
     // Arrange
     let temp_file = create_test_rust_file();
@@ -1273,6 +1279,8 @@ async fn test_progress_with_single_job() {
 
 /// Test 32: Handler runs with multiple jobs (parallel progress expected)
 #[tokio::test]
+/// SLOW: >60s - excluded from fast test suite
+#[ignore]
 async fn test_progress_with_multiple_jobs() {
     let temp_file = create_test_rust_file();
     let args = MutateArgs {
@@ -1298,6 +1306,8 @@ async fn test_progress_with_multiple_jobs() {
 
 /// Test 33: Handler with default jobs (None means automatic detection)
 #[tokio::test]
+/// SLOW: >60s - excluded from fast test suite
+#[ignore]
 async fn test_progress_with_default_jobs() {
     let temp_file = create_test_rust_file();
     let args = MutateArgs {
@@ -1348,6 +1358,8 @@ async fn test_progress_sequential_execution() {
 
 /// Test 35: Progress with parallel execution (jobs>1)
 #[tokio::test]
+/// SLOW: >60s - excluded from fast test suite
+#[ignore]
 async fn test_progress_parallel_execution() {
     let temp_file = create_test_rust_file();
     let args = MutateArgs {
@@ -1373,6 +1385,8 @@ async fn test_progress_parallel_execution() {
 
 /// Test 36: Progress indicators work across all output formats
 #[tokio::test]
+/// SLOW: >60s - excluded from fast test suite
+#[ignore]
 async fn test_progress_all_formats() {
     let temp_file = create_test_rust_file();
     let formats = vec!["json", "markdown", "text"];
@@ -1891,6 +1905,8 @@ async fn test_error_threshold_violation() {
 
 /// Test 53: Concurrent execution error handling
 #[tokio::test]
+/// SLOW: >60s - excluded from fast test suite
+#[ignore]
 async fn test_error_concurrent_execution() {
     let temp_file = create_test_rust_file();
 

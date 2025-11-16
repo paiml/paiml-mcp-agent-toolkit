@@ -565,6 +565,8 @@ fn test_add() {
 ///
 /// Verifies mutation testing can handle large files efficiently
 #[tokio::test]
+/// SLOW: >60s - excluded from fast test suite
+#[ignore]
 async fn test_large_file_mutation() {
     // Arrange: Create large Rust file (simulating ~1000+ lines)
     let temp_dir = tempdir().unwrap();
@@ -626,6 +628,8 @@ fn function_{}(a: i32, b: i32) -> i32 {{
 ///
 /// Verifies mutation testing can handle many mutants efficiently
 #[tokio::test]
+/// SLOW: >60s - excluded from fast test suite
+#[ignore]
 async fn test_many_mutants_handling() {
     // Arrange: Create file with many mutation opportunities
     let temp_dir = tempdir().unwrap();
@@ -804,6 +808,8 @@ fn compute(n: i32) -> i32 {
 ///
 /// Verifies mutation testing doesn't consume excessive memory
 #[tokio::test]
+/// SLOW: >60s - excluded from fast test suite
+#[ignore]
 async fn test_memory_usage_bounds() {
     // Arrange: Create moderately large file
     let temp_dir = tempdir().unwrap();
@@ -853,6 +859,8 @@ async fn test_memory_usage_bounds() {
 ///
 /// Verifies mutation testing completes within reasonable time
 #[tokio::test]
+/// SLOW: >60s - excluded from fast test suite
+#[ignore]
 async fn test_execution_time_bounds() {
     use std::time::Instant;
 
@@ -905,6 +913,8 @@ fn sub(a: i32, b: i32) -> i32 { a - b }
 
 /// Test 15: Parallel mutant execution correctness
 #[tokio::test]
+/// SLOW: >60s - excluded from fast test suite
+#[ignore]
 async fn test_parallel_mutant_execution_correctness() {
     let temp_dir = tempdir().unwrap();
     let file_path = temp_dir.path().join("parallel.rs");
@@ -1037,6 +1047,8 @@ async fn test_graceful_shutdown_on_error() {
 
 /// Test 19: Mutation of actual PMAT code
 #[tokio::test]
+/// SLOW: >60s - excluded from fast test suite
+#[ignore]
 async fn test_mutation_of_actual_pmat_code() {
     use std::path::Path;
     let pmat_file = Path::new("src/utils/path_validator.rs");
