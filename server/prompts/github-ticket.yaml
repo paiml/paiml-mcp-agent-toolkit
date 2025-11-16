@@ -1,0 +1,384 @@
+name: github-ticket
+description: Implement a GitHub issue/ticket with full TDD workflow
+category: development
+priority: high
+methodology: EXTREME TDD + GitHub Issue-Driven Development
+constraints:
+  - must reference GitHub issue URL
+  - all acceptance criteria must be met
+  - tests written first (RED phase)
+  - zero regressions
+variables:
+  ISSUE_URL: ""
+  ISSUE_NUMBER: ""
+  GITHUB_ORG: ""
+  GITHUB_REPO: ""
+  TEST_CMD: "cargo test"
+  BUILD_CMD: "cargo build"
+heuristics:
+  - fetch issue details using gh CLI
+  - parse acceptance criteria from issue body
+  - create failing tests for each criterion
+  - implement until tests pass
+  - verify no regressions
+prompt: |
+  Implement GitHub issue following EXTREME TDD methodology.
+
+  ## STEP 1: FETCH ISSUE DETAILS
+
+  Use `gh` CLI to fetch the issue:
+  ```bash
+  # Fetch issue from URL or number
+  gh issue view ${ISSUE_URL} --json title,body,labels,assignees,milestone
+
+  # Or if using issue number:
+  gh issue view ${ISSUE_NUMBER} --repo ${GITHUB_ORG}/${GITHUB_REPO} --json title,body,labels,assignees
+  ```
+
+  **Parse the following from issue:**
+  - Title: What feature/bug to implement
+  - Description: Context and background
+  - Acceptance Criteria: List of requirements (usually in checklist format)
+  - Labels: Priority, type (bug/feature/enhancement)
+  - Linked PRs: Check if implementation already exists
+
+  ## STEP 2: ANALYZE ACCEPTANCE CRITERIA
+
+  **Extract acceptance criteria from issue body:**
+  - Look for sections like "Acceptance Criteria", "Requirements", "Definition of Done"
+  - Convert checklist items to test cases
+  - Identify edge cases and error conditions
+  - Note any performance requirements
+
+  **Example Issue Body:**
+  ```markdown
+  ## Problem
+  Users cannot export data to CSV format.
+
+  ## Acceptance Criteria
+  - [ ] Add --format csv flag to export command
+  - [ ] CSV output includes all required fields
+  - [ ] CSV follows RFC 4180 format
+  - [ ] Handle special characters (quotes, commas)
+  - [ ] Add error handling for file write failures
+  - [ ] Update documentation
+  ```
+
+  ## STEP 3: CREATE TEST FILE (RED PHASE)
+
+  **Create failing tests FIRST** for each acceptance criterion:
+
+  ```rust
+  // tests/github_issue_NNN_tests.rs
+
+  #[test]
+  fn test_export_command_accepts_csv_format() {
+      let mut cmd = Command::cargo_bin("myapp").unwrap();
+      cmd.args(["export", "--format", "csv"])
+          .assert()
+          .success()
+          .stdout(predicate::str::contains("exported"));
+  }
+
+  #[test]
+  fn test_csv_output_includes_all_fields() {
+      let output = export_to_csv(test_data());
+      let lines: Vec<&str> = output.lines().collect();
+
+      // Header
+      assert_eq!(lines[0], "id,name,email,created_at");
+
+      // Data row
+      assert!(lines[1].contains("\"John Doe\""));
+  }
+
+  #[test]
+  fn test_csv_handles_special_characters() {
+      let data = Data {
+          name: "O'Brien, \"The Boss\"",
+          description: "Contains, commas, and \"quotes\"",
+      };
+
+      let csv = export_to_csv(vec![data]);
+      assert!(csv.contains("\"O'Brien, \"\"The Boss\"\"\""));
+  }
+
+  #[test]
+  fn test_csv_file_write_error_handling() {
+      let result = export_to_file("/invalid/path/file.csv");
+      assert!(result.is_err());
+      assert!(result.unwrap_err().to_string().contains("permission denied"));
+  }
+  ```
+
+  **Verify tests FAIL:**
+  ```bash
+  ${TEST_CMD}  # All new tests should fail (RED phase)
+  ```
+
+  ## STEP 4: IMPLEMENT FEATURE (GREEN PHASE)
+
+  **Write minimal code to make tests pass:**
+
+  1. Add command-line flag (if CLI feature)
+  2. Implement core logic
+  3. Add error handling
+  4. Add documentation comments
+
+  **Run tests iteratively:**
+  ```bash
+  ${TEST_CMD}  # Should see tests gradually turn green
+  ```
+
+  ## STEP 5: REFACTOR PHASE
+
+  **Once all tests pass, refactor:**
+  - Extract helper functions
+  - Remove duplication
+  - Improve naming
+  - Add documentation
+  - Check complexity with `pmat complexity`
+
+  **Verify no regressions:**
+  ```bash
+  ${TEST_CMD}        # All tests still pass
+  ${BUILD_CMD}       # Clean build
+  cargo clippy       # No warnings
+  ```
+
+  ## STEP 6: DOCUMENTATION
+
+  **Update documentation to match implementation:**
+  - [ ] Update README.md with new feature
+  - [ ] Add code examples
+  - [ ] Update CLI help text
+  - [ ] Add entry to CHANGELOG.md
+
+  **Verify documentation accuracy:**
+  ```bash
+  pmat validate-readme --targets README.md --deep-context deep_context.md
+  ```
+
+  ## STEP 7: VERIFY ACCEPTANCE CRITERIA
+
+  **Go through original issue checklist:**
+  - Re-read each acceptance criterion
+  - Verify test coverage for each
+  - Test manually if needed
+  - Update issue with progress
+
+  **Update GitHub issue:**
+  ```bash
+  gh issue comment ${ISSUE_NUMBER} --body "Implementation complete. All acceptance criteria met:
+  - ✅ Add --format csv flag to export command
+  - ✅ CSV output includes all required fields
+  - ✅ CSV follows RFC 4180 format
+  - ✅ Handle special characters
+  - ✅ Add error handling
+  - ✅ Update documentation
+
+  Tests added: tests/github_issue_${ISSUE_NUMBER}_tests.rs
+  Coverage: 95%"
+  ```
+
+  ## STEP 8: CREATE PULL REQUEST
+
+  **Commit changes with proper message:**
+  ```bash
+  git add .
+  git commit -m "$(cat <<'EOF'
+  feat: Add CSV export format (fixes #${ISSUE_NUMBER})
+
+  Implements GitHub issue #${ISSUE_NUMBER}
+
+  Changes:
+  - Add --format csv flag to export command
+  - Implement RFC 4180 compliant CSV output
+  - Handle special characters (quotes, commas)
+  - Add error handling for file operations
+  - Update documentation
+
+  Tests: tests/github_issue_${ISSUE_NUMBER}_tests.rs
+  Coverage: 95%
+
+  Closes #${ISSUE_NUMBER}
+
+  🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+  Co-Authored-By: Claude <noreply@anthropic.com>
+  EOF
+  )"
+  ```
+
+  **Create pull request:**
+  ```bash
+  gh pr create \
+    --title "feat: Add CSV export format" \
+    --body "$(cat <<'EOF'
+  Fixes #${ISSUE_NUMBER}
+
+  ## Summary
+  - Implements CSV export format with --format csv flag
+  - Follows RFC 4180 standard
+  - Handles edge cases (special characters, errors)
+
+  ## Acceptance Criteria
+  - ✅ Add --format csv flag to export command
+  - ✅ CSV output includes all required fields
+  - ✅ CSV follows RFC 4180 format
+  - ✅ Handle special characters (quotes, commas)
+  - ✅ Add error handling for file write failures
+  - ✅ Update documentation
+
+  ## Test Plan
+  - Unit tests: tests/github_issue_${ISSUE_NUMBER}_tests.rs
+  - Integration tests: All passing
+  - Manual testing: Verified with sample data
+
+  ## Checklist
+  - [x] Tests written (RED phase)
+  - [x] Implementation complete (GREEN phase)
+  - [x] Code refactored
+  - [x] Documentation updated
+  - [x] No regressions (all existing tests pass)
+  - [x] Clippy warnings fixed
+  - [x] Acceptance criteria verified
+
+  🤖 Generated with [Claude Code](https://claude.com/claude-code)
+  EOF
+  )" \
+    --assignee @me
+  ```
+
+  ## STEP 9: QUALITY GATES
+
+  **Before marking issue as complete:**
+  ```bash
+  # Run full test suite
+  make test-fast
+
+  # Check code quality
+  cargo clippy -- -D warnings
+
+  # Verify coverage
+  make coverage
+
+  # Check complexity
+  pmat complexity src/
+
+  # Repository health
+  pmat repo-score .
+
+  # Documentation accuracy
+  pmat validate-readme
+  ```
+
+  ## STEP 10: CLOSE ISSUE
+
+  **Issue will auto-close when PR merges if using "Closes #NNN" in commit/PR**
+
+  **Or manually close with summary:**
+  ```bash
+  gh issue close ${ISSUE_NUMBER} --comment "Implemented in PR #XXX. All acceptance criteria met."
+  ```
+
+  ## WORKFLOW SUMMARY
+
+  1. **Fetch**: `gh issue view ${ISSUE_URL}`
+  2. **Analyze**: Extract acceptance criteria
+  3. **RED**: Write failing tests
+  4. **GREEN**: Implement feature
+  5. **REFACTOR**: Clean up code
+  6. **Document**: Update README, help text
+  7. **Verify**: Check all acceptance criteria
+  8. **Commit**: Proper message with issue reference
+  9. **PR**: Link to issue, summarize changes
+  10. **Quality**: All gates pass before merge
+
+  ## TOYOTA WAY PRINCIPLES
+
+  - **Jidoka (Built-in Quality)**: Tests prove acceptance criteria met
+  - **Andon Cord**: Stop if acceptance criteria unclear
+  - **Genchi Genbutsu (Go & See)**: Read actual GitHub issue
+  - **Kaizen**: Document lessons learned in PR description
+  - **Zero Defects**: All existing tests must still pass
+
+  ## COMMON PATTERNS
+
+  ### Feature Request (Enhancement)
+  - Focus on user value
+  - Add examples to documentation
+  - Consider backwards compatibility
+
+  ### Bug Fix
+  - Reproduce bug with failing test first
+  - Fix until test passes
+  - Add regression test
+  - Document root cause
+
+  ### Refactoring
+  - Tests should still pass before and after
+  - No functional changes
+  - Improve code quality metrics
+
+  ## TIPS
+
+  - Use `gh issue list --assignee @me` to see your assigned issues
+  - Use `gh pr status` to check PR status
+  - Link PRs to issues with "Closes #NNN" or "Fixes #NNN"
+  - Update issue comments with progress
+  - Ask for clarification if acceptance criteria unclear
+
+  ## ERROR HANDLING
+
+  **If issue is unclear:**
+  ```bash
+  gh issue comment ${ISSUE_NUMBER} --body "Could you clarify the acceptance criteria for this feature? Specifically:
+  1. Should the CSV include headers?
+  2. What encoding should be used (UTF-8)?
+  3. Should empty fields be quoted?"
+  ```
+
+  **If implementation blocked:**
+  ```bash
+  gh issue comment ${ISSUE_NUMBER} --body "Blocked: Cannot proceed because...
+  - Dependency X needs to be updated first
+  - Waiting for API documentation
+  - Requires design decision on Y"
+  ```
+
+  This systematic approach ensures every GitHub issue is implemented with:
+  - Full test coverage
+  - Verified acceptance criteria
+  - Quality documentation
+  - Zero regressions
+toyota_way_principles:
+  jidoka: tests_prove_acceptance_criteria
+  andon_cord: stop_if_criteria_unclear
+  genchi_genbutsu: read_actual_issue
+  kaizen: document_lessons_learned
+  zero_defects: no_regressions
+github_integration:
+  cli_tool: gh
+  required_commands:
+    - "gh issue view"
+    - "gh issue comment"
+    - "gh pr create"
+    - "gh pr status"
+  commit_keywords:
+    - "Fixes #NNN"
+    - "Closes #NNN"
+    - "Resolves #NNN"
+language_support:
+  rust:
+    test_file: "tests/github_issue_NNN_tests.rs"
+    test_cmd: "cargo test"
+  python:
+    test_file: "tests/test_github_issue_NNN.py"
+    test_cmd: "pytest"
+  typescript:
+    test_file: "tests/github-issue-NNN.test.ts"
+    test_cmd: "npm test"
+  go:
+    test_file: "github_issue_NNN_test.go"
+    test_cmd: "go test"
