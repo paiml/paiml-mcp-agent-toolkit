@@ -118,7 +118,6 @@ pub fn run_cargo_audit(project_path: &Path, _timeout_secs: Option<u64>) -> io::R
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::PathBuf;
 
     #[test]
     fn test_command_runner_exists() {

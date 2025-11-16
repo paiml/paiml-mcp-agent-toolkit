@@ -82,7 +82,7 @@ impl RustProjectScoreOrchestrator {
     /// # Arguments
     /// * `project_path` - Path to Rust project
     /// * `full` - If true, run full analysis (max 5 minutes) including mutation testing
-    ///            If false, run fast mode (<60 seconds) skipping expensive checks
+    ///   If false, run fast mode (<60 seconds) skipping expensive checks
     ///
     /// # Performance Targets
     /// - Fast mode (default): <60 seconds

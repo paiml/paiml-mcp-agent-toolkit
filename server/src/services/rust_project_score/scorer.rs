@@ -55,7 +55,7 @@ pub trait Scorer: Send + Sync {
     /// # Arguments
     /// * `project_path` - Path to the root of the Rust project
     /// * `full` - If true, run full analysis (slower but comprehensive)
-    ///            If false, run fast mode (skip expensive checks like mutation testing)
+    ///   If false, run fast mode (skip expensive checks like mutation testing)
     ///
     /// # Returns
     /// * `ScorerResult<CategoryScore>` - The score earned and max possible
