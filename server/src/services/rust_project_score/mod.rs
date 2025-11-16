@@ -41,6 +41,7 @@
 pub mod code_quality_scorer;
 pub mod documentation_scorer;
 pub mod models;
+pub mod performance_scorer;
 pub mod rust_tooling_scorer;
 pub mod scorer;
 pub mod testing_scorer;
@@ -48,6 +49,7 @@ pub mod testing_scorer;
 pub use code_quality_scorer::*;
 pub use documentation_scorer::*;
 pub use models::*;
+pub use performance_scorer::*;
 pub use rust_tooling_scorer::*;
 pub use scorer::*;
 pub use testing_scorer::*;
