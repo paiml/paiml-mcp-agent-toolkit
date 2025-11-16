@@ -4,7 +4,7 @@
 [profile.default]
 # Skip tests marked with #[ignore] - includes slow/broken/external-service tests
 # Toyota Way: Fast feedback loop, zero tolerance for slow tests in test-fast
-default-filter = 'not test(::)'
+# NOTE: cargo-nextest skips #[ignore] tests by default, no filter needed
 
 [profile.ci]
 # CI runs all non-ignored tests
