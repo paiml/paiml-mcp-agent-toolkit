@@ -1,0 +1,1108 @@
+name: book-documentation
+description: Create and maintain technical book documentation with extreme rigor and test-driven validation
+category: documentation
+priority: critical
+methodology: EXTREME TDD + Documentation-as-Code + mdBook Standards
+extends: documentation
+constraints:
+  - must use mdBook format with book.toml
+  - all code examples must be tested before documenting
+  - minimum 90% pass rate for all examples
+  - SUMMARY.md must be correct and complete
+  - chapter status tracking mandatory
+  - zero vaporware tolerance
+  - no SATD comments allowed
+variables:
+  BOOK_TITLE: ""
+  BOOK_TYPE: "tutorial"  # tutorial, cookbook, reference
+  TARGET_PAGES: "400"
+  MIN_PASS_RATE: "90"
+  BUILD_TOOL: "mdBook"
+  TEST_FRAMEWORK: "bash"
+  QUALITY_TOOL: "pmat"
+heuristics:
+  - test every code example before documenting
+  - maintain chapter status blocks
+  - use consistent formatting across chapters
+  - cross-reference related chapters
+  - dogfood your own tools (if applicable)
+  - deploy to production (GitHub Pages)
+prompt: |
+  Create professional technical book documentation following mdBook standards with EXTREME test-driven rigor.
+
+  ## CRITICAL DIFFERENCES: Book vs Regular Documentation
+
+  **Books are NOT README.md files**:
+  - Sequential learning narrative (tutorial) OR self-contained recipes (cookbook)
+  - 400-1000 pages of comprehensive content
+  - mdBook build system with SUMMARY.md table of contents
+  - Chapter-based organization with clear progression
+  - Production deployment to GitHub Pages
+  - Comprehensive test suite for ALL examples
+  - Professional quality standards (print-ready)
+
+  ## STEP 1: ANALYZE BOOK TYPE AND REQUIREMENTS
+
+  Determine book type:
+
+  **Tutorial Book** (like pmat-book, ruchy-book):
+  - Sequential chapters building on each other
+  - Progressive concept introduction
+  - Teaching methodology focus
+  - 400-600 pages
+  - Chapter dependencies expected
+  - Linear reading progression
+
+  **Cookbook** (like ruchy-cookbook):
+  - Self-contained recipes (15-20 per chapter)
+  - Random-access problem/solution format
+  - Minimal cross-dependencies
+  - 1000 pages comprehensive reference
+  - Practical application focus
+  - Look-up oriented
+
+  **Reference Manual** (like ruchy-cli-tools-book):
+  - Comprehensive API documentation
+  - Tool/command reference
+  - Integration guides
+  - 500-800 pages
+  - Searchable content
+  - Quick reference oriented
+
+  ## STEP 2: SETUP BOOK INFRASTRUCTURE
+
+  ### Create mdBook Structure
+
+  ```bash
+  # Install mdBook if needed
+  cargo install mdbook
+  cargo install mdbook-linkcheck
+
+  # Initialize book
+  mdbook init ${BOOK_TITLE}
+  cd ${BOOK_TITLE}
+
+  # Create directory structure
+  mkdir -p src/{chapters,appendices}
+  mkdir -p tests/{ch01,ch02,ch03}
+  mkdir -p theme
+  mkdir -p scripts
+  mkdir -p .github/workflows
+  ```
+
+  ### Create book.toml Configuration
+
+  ```toml
+  [book]
+  title = "${BOOK_TITLE}"
+  authors = ["Your Name"]
+  description = "Comprehensive guide to [TOPIC]"
+  language = "en"
+  multilingual = false
+  src = "src"
+
+  [build]
+  build-dir = "book"
+  create-missing = false  # Prevent accidental file creation
+
+  [preprocessor.index]
+
+  [preprocessor.links]
+
+  [output.html]
+  theme = "theme"
+  default-theme = "rust"
+  preferred-dark-theme = "coal"
+  smart-punctuation = true
+  mathjax-support = false
+  copy-fonts = true
+  additional-css = ["theme/custom.css"]
+  additional-js = []
+  git-repository-url = "https://github.com/YOUR_ORG/${BOOK_TITLE}"
+  git-repository-icon = "fa-github"
+  edit-url-template = "https://github.com/YOUR_ORG/${BOOK_TITLE}/edit/main/{path}"
+  site-url = "https://YOUR_ORG.github.io/${BOOK_TITLE}/"
+
+  [output.html.print]
+  enable = true
+  page-break = true
+
+  [output.html.fold]
+  enable = true
+  level = 1
+
+  [output.html.playground]
+  editable = true
+  copyable = true
+  copy-js = true
+  line-numbers = true
+
+  [output.html.search]
+  enable = true
+  limit-results = 30
+  teaser-word-count = 30
+  use-boolean-and = true
+  boost-title = 2
+  boost-hierarchy = 1
+  boost-paragraph = 1
+  expand = true
+  heading-split-level = 3
+  copy-js = true
+  ```
+
+  ## STEP 3: CREATE SUMMARY.MD (TABLE OF CONTENTS)
+
+  **CRITICAL**: SUMMARY.md is the source of truth for book structure.
+
+  ### Tutorial Book Template
+
+  ```markdown
+  # Summary
+
+  [The Book Title](title-page.md)
+  [Foreword](foreword.md)
+  [Introduction](introduction.md)
+
+  ## Part I: Getting Started
+
+  - [Chapter 1: Installation and Setup](ch01-00-installation.md)
+    - [Installing Tool](ch01-01-installing.md)
+    - [First Example (TDD)](ch01-02-first-example-tdd.md)
+    - [Understanding Output](ch01-03-output.md)
+
+  - [Chapter 2: Core Concepts](ch02-00-core-concepts.md)
+    - [Concept 1](ch02-01-concept1.md)
+    - [Concept 2](ch02-02-concept2.md)
+
+  ## Part II: Advanced Topics
+
+  - [Chapter 3: Advanced Feature 1](ch03-00-advanced.md)
+  - [Chapter 4: Advanced Feature 2](ch04-00-advanced2.md)
+
+  ## Conclusion
+
+  - [Conclusion](conclusion.md)
+
+  ## Appendices
+
+  - [Appendix A: Installation Guide](appendix-a-installation.md)
+  - [Appendix B: Command Reference](appendix-b-commands.md)
+  - [Appendix C: Troubleshooting](appendix-d-troubleshooting.md)
+  ```
+
+  ### Cookbook Template
+
+  ```markdown
+  # Summary
+
+  [The Cookbook Title](title-page.md)
+  [Introduction](introduction.md)
+
+  ## Chapter 1: Basic Patterns
+  - [Recipe 1.1: Basic Task](ch01-recipe-001.md)
+  - [Recipe 1.2: Common Pattern](ch01-recipe-002.md)
+  - [Recipe 1.3: Best Practice](ch01-recipe-003.md)
+
+  ## Chapter 2: Intermediate Techniques
+  - [Recipe 2.1: Technique 1](ch02-recipe-001.md)
+  - [Recipe 2.2: Technique 2](ch02-recipe-002.md)
+
+  ## Chapter 3: Advanced Recipes
+  - [Recipe 3.1: Complex Pattern](ch03-recipe-001.md)
+  ```
+
+  ## STEP 4: CHAPTER STATUS TRACKING (MANDATORY)
+
+  **EVERY chapter must include status block at top:**
+
+  ```markdown
+  <!-- DOC_STATUS_START -->
+  **Chapter Status**: ✅ 100% Working (5/5 examples)
+
+  | Status | Count | Examples |
+  |--------|-------|----------|
+  | ✅ Working | 5 | Ready for production use |
+  | ⚠️ Not Implemented | 0 | Planned for future versions |
+  | ❌ Broken | 0 | Known issues, needs fixing |
+  | 📋 Planned | 0 | Future roadmap features |
+
+  *Last updated: 2025-11-16*
+  *Tool version: ${BOOK_TITLE} 1.0.0*
+  <!-- DOC_STATUS_END -->
+  ```
+
+  **Update status blocks after every change!**
+
+  ## STEP 5: TEST-DRIVEN DOCUMENTATION (MANDATORY)
+
+  **CRITICAL**: Code examples MUST be tested BEFORE documentation is written.
+
+  ### Create Test Directory Structure
+
+  ```bash
+  # Chapter-based test structure
+  tests/
+  ├── ch01/
+  │   ├── test_installation.sh
+  │   ├── test_first_example.sh
+  │   └── test_output_format.sh
+  ├── ch02/
+  │   ├── test_core_concepts.sh
+  │   └── test_advanced_usage.sh
+  └── common/
+      ├── test_utils.sh
+      └── setup.sh
+  ```
+
+  ### Test Script Template (MANDATORY FORMAT)
+
+  ```bash
+  #!/bin/bash
+  # TDD Test: Chapter X - Feature Name
+  # Tests ACTUAL tool behavior, not hypothetical examples
+  # EXTREME TDD with NASA-style quality verification
+
+  # Note: Using manual error handling instead of set -e for better test output
+
+  echo "=== Testing Chapter X: Feature Name ==="
+
+  PASS_COUNT=0
+  FAIL_COUNT=0
+
+  test_pass() {
+      echo "✅ PASS: $1"
+      PASS_COUNT=$((PASS_COUNT + 1))
+  }
+
+  test_fail() {
+      echo "❌ FAIL: $1"
+      FAIL_COUNT=$((FAIL_COUNT + 1))
+  }
+
+  # Verify tool is available
+  if ! command -v tool &> /dev/null; then
+      echo "❌ FATAL: tool binary not found in PATH"
+      exit 1
+  fi
+
+  echo "Using tool version: $(tool --version)"
+
+  # Test 1: Basic functionality
+  echo "Test 1: Basic functionality validation"
+  TEST_DIR=$(mktemp -d)
+  cd "$TEST_DIR"
+
+  # Create test environment
+  cat > test_input.txt << 'EOF'
+  Test content here
+  EOF
+
+  # Run actual tool command
+  OUTPUT=$(tool analyze test_input.txt --format json 2>&1 | grep -A 10000 '^{')
+
+  # Validate JSON output
+  if echo "$OUTPUT" | jq -e '.summary' &> /dev/null; then
+      RESULT=$(echo "$OUTPUT" | jq -r '.summary.status')
+      if [ "$RESULT" == "success" ]; then
+          test_pass "Basic functionality: Tool executed successfully"
+      else
+          test_fail "Basic functionality: Expected success, got: $RESULT"
+      fi
+  else
+      test_fail "Basic functionality: Tool failed or produced invalid JSON"
+  fi
+
+  # Cleanup
+  cd /
+  rm -rf "$TEST_DIR"
+
+  # Summary
+  echo ""
+  echo "=== Chapter X Test Summary ==="
+  echo "Passed: $PASS_COUNT"
+  echo "Failed: $FAIL_COUNT"
+
+  if [ $FAIL_COUNT -eq 0 ]; then
+      echo "✅ All tests passed! Chapter X VALIDATED"
+      exit 0
+  else
+      echo "❌ Some tests failed - STOP THE LINE"
+      exit 1
+  fi
+  ```
+
+  ## STEP 6: TDD WORKFLOW (MANDATORY PROCESS)
+
+  **DO NOT SKIP THESE STEPS:**
+
+  1. **Write Tests First** (RED phase):
+     ```bash
+     # Create test file for chapter
+     vim tests/ch01/test_installation.sh
+
+     # Make executable
+     chmod +x tests/ch01/test_installation.sh
+
+     # Run - MUST FAIL initially
+     bash tests/ch01/test_installation.sh
+     # Expected: ❌ Tests fail (no documentation yet)
+     ```
+
+  2. **Write Documentation** (GREEN phase):
+     ```bash
+     # Write chapter content with working examples
+     vim src/ch01-01-installing.md
+
+     # Run tests - MUST PASS now
+     bash tests/ch01/test_installation.sh
+     # Expected: ✅ All tests passed
+     ```
+
+  3. **Update Status Blocks**:
+     ```bash
+     # Update chapter status to reflect test results
+     # Update SUMMARY.md if needed
+     ```
+
+  4. **Validate Quality**:
+     ```bash
+     # Run all chapter tests
+     make test-ch01
+
+     # Run book quality checks
+     make validate
+
+     # Build book locally
+     make build
+     ```
+
+  5. **Commit Only When Tests Pass**:
+     ```bash
+     git add src/ch01-01-installing.md tests/ch01/test_installation.sh
+     git commit -m "docs: Add Chapter 1.1 - Installation
+
+     - All examples tested and working
+     - Test coverage: 100%
+     - Pass rate: 5/5 (100%)
+     - Status: ✅ Production ready"
+     ```
+
+  ## STEP 7: MAKEFILE AUTOMATION
+
+  **Create comprehensive Makefile:**
+
+  ```makefile
+  .PHONY: all build serve test clean lint validate help
+
+  all: validate build
+
+  help:
+  	@echo "${BOOK_TITLE} Development Commands:"
+  	@echo ""
+  	@echo "📚 BOOK OPERATIONS:"
+  	@echo "  make build             - Build the book with mdBook"
+  	@echo "  make serve             - Serve the book locally (port 3000)"
+  	@echo "  make clean             - Remove all build artifacts"
+  	@echo ""
+  	@echo "🧪 TESTING OPERATIONS:"
+  	@echo "  make test              - Test all code examples"
+  	@echo "  make test-ch01         - Test Chapter 1 examples"
+  	@echo "  make test-all-chapters - Run ALL chapter tests"
+  	@echo ""
+  	@echo "🎨 CODE QUALITY:"
+  	@echo "  make lint              - Lint all code examples"
+  	@echo "  make lint-markdown     - Validate markdown links"
+  	@echo "  make dogfood           - Run tool analysis on book itself"
+  	@echo "  make quality-gate      - Check quality gates"
+  	@echo "  make validate          - Run ALL quality checks"
+  	@echo ""
+
+  install-deps:
+  	@command -v mdbook >/dev/null 2>&1 || cargo install mdbook
+  	@command -v mdbook-linkcheck >/dev/null 2>&1 || cargo install mdbook-linkcheck
+
+  build: install-deps
+  	@echo "📚 Building ${BOOK_TITLE}..."
+  	@mdbook build
+  	@echo "✅ Book built successfully: book/index.html"
+
+  serve: install-deps
+  	@echo "🌐 Serving ${BOOK_TITLE} at http://localhost:3000"
+  	@mdbook serve --port 3000
+
+  clean:
+  	@rm -rf book/
+  	@echo "✅ Build artifacts cleaned"
+
+  # Test individual chapters
+  test-ch01:
+  	@echo "Testing Chapter 1..."
+  	@bash tests/ch01/*.sh
+
+  test-ch02:
+  	@echo "Testing Chapter 2..."
+  	@bash tests/ch02/*.sh
+
+  # Test all chapters
+  test-all-chapters:
+  	@echo "Testing all chapters..."
+  	@for dir in tests/ch*/; do \
+  		echo "Testing $${dir}..."; \
+  		for test in $${dir}*.sh; do \
+  			bash "$$test" || exit 1; \
+  		done \
+  	done
+
+  test: test-all-chapters
+  	@echo "✅ All tests passed!"
+
+  lint-markdown:
+  	@mdbook build
+  	@echo "✅ Markdown links validated"
+
+  dogfood:
+  	@${QUALITY_TOOL} analyze . --min-grade B+
+  	@echo "✅ Quality gate passed"
+
+  validate: test lint-markdown dogfood
+  	@echo "✅ All quality checks passed!"
+  ```
+
+  ## STEP 8: CODE EXAMPLE FORMAT (MANDATORY)
+
+  **Every code example must follow this structure:**
+
+  ```markdown
+  ### Example: Analyzing a Repository
+
+  \`\`\`bash
+  # CLI usage with clear comments
+  tool analyze /path/to/repo --format json
+  \`\`\`
+
+  **Expected Output:**
+  \`\`\`json
+  {
+    "files": 100,
+    "lines": 5000,
+    "languages": ["rust", "python"]
+  }
+  \`\`\`
+
+  **Explanation:**
+  - The `analyze` command scans the repository
+  - `--format json` outputs structured data
+  - Results include file count, line count, and detected languages
+
+  **Common Issues:**
+  - ❌ **Error**: "Repository not found"
+    - **Solution**: Verify path exists and is a valid repository
+  - ❌ **Error**: "Permission denied"
+    - **Solution**: Check file permissions with `ls -la`
+  ```
+
+  ## STEP 9: CHAPTER TEMPLATE (MANDATORY FORMAT)
+
+  ```markdown
+  # Chapter X: Chapter Title
+
+  <!-- DOC_STATUS_START -->
+  **Chapter Status**: ✅ 100% Working (X/X examples)
+  [Status table]
+  <!-- DOC_STATUS_END -->
+
+  ## The Problem
+
+  [What problem does this chapter solve? Why should reader care?]
+
+  ## Core Concepts
+
+  [Key ideas and terminology - define everything]
+
+  ## Prerequisites
+
+  [What reader needs to know before reading this chapter]
+
+  ## Practical Examples
+
+  ### Example 1: Basic Usage
+
+  [Working code example with output]
+
+  ### Example 2: Advanced Usage
+
+  [Working code example with output]
+
+  ## Common Patterns
+
+  [Best practices and idioms]
+
+  ## Troubleshooting
+
+  | Error | Cause | Solution |
+  |-------|-------|----------|
+  | "X not found" | Missing dependency | Install with `command` |
+  | "Permission denied" | File permissions | Run `chmod +x file` |
+
+  ## See Also
+
+  - [Chapter Y: Related Topic](ch0Y-00-topic.md)
+  - [Appendix A: Reference](appendix-a-reference.md)
+
+  ## Summary
+
+  - Key takeaway 1
+  - Key takeaway 2
+  - Key takeaway 3
+
+  ## Exercises
+
+  1. **Basic**: [Exercise description]
+  2. **Intermediate**: [Exercise description]
+  3. **Advanced**: [Exercise description]
+  ```
+
+  ## STEP 10: COOKBOOK-SPECIFIC RECIPE FORMAT
+
+  **If writing a cookbook, use this recipe format:**
+
+  ```markdown
+  ## Recipe X.Y: Solve Specific Problem
+
+  **Difficulty**: Beginner | Intermediate | Advanced | Expert
+  **Time**: 5-10 minutes
+  **Prerequisites**: Chapter A, Recipe B.C
+
+  ### Problem
+
+  [Clear, specific problem statement in 1-2 sentences]
+
+  ### Solution
+
+  \`\`\`language
+  // Complete, working code that solves the problem
+  // Must compile and run without errors
+  \`\`\`
+
+  ### Discussion
+
+  **How it works:**
+  1. Step 1 explanation
+  2. Step 2 explanation
+  3. Step 3 explanation
+
+  **Why this approach:**
+  - Reason 1
+  - Reason 2
+
+  **Performance characteristics:**
+  - Time complexity: O(n)
+  - Space complexity: O(1)
+  - Typical use cases: X, Y, Z
+
+  ### Variations
+
+  **Variation 1: Alternative Approach**
+  \`\`\`language
+  // Alternative implementation
+  \`\`\`
+
+  **When to use:**
+  - Use Case 1
+  - Use Case 2
+
+  **Variation 2: Optimized Version**
+  \`\`\`language
+  // Optimized implementation
+  \`\`\`
+
+  **Trade-offs:**
+  - Pros: Faster, more efficient
+  - Cons: More complex, harder to maintain
+
+  ### See Also
+
+  - Recipe X.Y: Related Recipe
+  - Chapter Z: Related Concept
+  - [External Resource](https://example.com)
+
+  ### Tests
+
+  This recipe is fully tested. See `tests/chX/recipe-Y.sh` for test suite.
+  ```
+
+  ## STEP 11: GITHUB ACTIONS CI/CD (MANDATORY)
+
+  **Create `.github/workflows/test.yml`:**
+
+  ```yaml
+  name: Test and Deploy Book
+
+  on:
+    push:
+      branches: [ main ]
+    pull_request:
+      branches: [ main ]
+
+  jobs:
+    test:
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v3
+
+        - name: Install Dependencies
+          run: |
+            cargo install mdbook
+            cargo install mdbook-linkcheck
+
+        - name: Test All Chapters
+          run: make test-all-chapters
+
+        - name: Validate Quality
+          run: make validate
+
+        - name: Build Book
+          run: make build
+
+        - name: Upload Test Results
+          if: always()
+          uses: actions/upload-artifact@v3
+          with:
+            name: test-results
+            path: test-results/
+
+    deploy:
+      needs: test
+      runs-on: ubuntu-latest
+      if: github.ref == 'refs/heads/main'
+      steps:
+        - uses: actions/checkout@v3
+
+        - name: Install mdBook
+          run: cargo install mdbook
+
+        - name: Build Book
+          run: mdbook build
+
+        - name: Deploy to GitHub Pages
+          uses: peaceiris/actions-gh-pages@v3
+          with:
+            github_token: ${{ secrets.GITHUB_TOKEN }}
+            publish_dir: ./book
+  ```
+
+  ## STEP 12: QUALITY GATES (BLOCKING)
+
+  **Before ANY commit, verify:**
+
+  ```bash
+  # 1. All tests pass
+  make test-all-chapters
+  # Expected: ✅ X/X chapters passing (100%)
+
+  # 2. Minimum pass rate achieved
+  # Calculate: (passing_examples / total_examples) >= ${MIN_PASS_RATE}%
+
+  # 3. No broken links
+  make lint-markdown
+  # Expected: ✅ All links valid
+
+  # 4. No vaporware
+  grep -r "coming soon\|not yet implemented\|TODO\|FIXME" src/
+  # Expected: No matches (or only in properly marked sections)
+
+  # 5. Quality tool analysis (if applicable)
+  make dogfood
+  # Expected: ✅ Quality grade B+ or higher
+
+  # 6. Book builds successfully
+  make build
+  # Expected: ✅ Book built: book/index.html
+
+  # 7. Local preview works
+  make serve
+  # Expected: Book accessible at http://localhost:3000
+  ```
+
+  ## STEP 13: ZERO VAPORWARE POLICY (CRITICAL)
+
+  **NEVER document features that don't exist or don't work.**
+
+  ❌ **WRONG** (Vaporware):
+  ```markdown
+  ### Example: Advanced Feature (Coming Soon)
+
+  This feature will allow you to...
+  (Documentation for unimplemented feature)
+  ```
+
+  ✅ **CORRECT** (Documented reality):
+  ```markdown
+  ### Example: Working Feature
+
+  \`\`\`bash
+  # This command was tested and works
+  tool feature --flag value
+  \`\`\`
+
+  **Output:**
+  \`\`\`
+  (Actual output from running command)
+  \`\`\`
+  ```
+
+  **If feature is planned but not implemented:**
+  - Document in ROADMAP.md
+  - Create GitHub issue
+  - DO NOT include in main book content
+  - Optional: Add to "Future Features" appendix with clear "NOT YET AVAILABLE" warning
+
+  ## STEP 14: CROSS-REFERENCING (BEST PRACTICE)
+
+  **Link related content extensively:**
+
+  ```markdown
+  As discussed in [Chapter 2: Core Concepts](ch02-00-core-concepts.md), we can...
+
+  For more details, see:
+  - [Recipe 3.5: Related Pattern](ch03-recipe-005.md)
+  - [Appendix B: Command Reference](appendix-b-commands.md)
+
+  **Prerequisites**: Readers should understand [Type Systems](ch01-03-types.md) before proceeding.
+  ```
+
+  ## STEP 15: DEPLOYMENT (PRODUCTION)
+
+  ### GitHub Pages Deployment
+
+  ```bash
+  # Build book
+  make build
+
+  # Create gh-pages branch (first time only)
+  git checkout --orphan gh-pages
+  git reset --hard
+  cp -r book/* .
+  git add .
+  git commit -m "docs: Deploy book to GitHub Pages"
+  git push origin gh-pages --force
+
+  # Return to main
+  git checkout main
+
+  # Enable GitHub Pages in repository settings
+  # Source: gh-pages branch, / (root)
+  ```
+
+  ### Custom Domain (Optional)
+
+  ```bash
+  # Add CNAME file to book output
+  echo "book.yourdomain.com" > book/CNAME
+
+  # Update book.toml
+  # site-url = "https://book.yourdomain.com/"
+  # cname = "book.yourdomain.com"
+  ```
+
+  ## STEP 16: VERSION CONSISTENCY
+
+  **Track tool version in all chapters:**
+
+  ```markdown
+  <!-- DOC_STATUS_START -->
+  *Tool version: tool 1.2.3*
+  <!-- DOC_STATUS_END -->
+  ```
+
+  **Update all chapters when tool version changes:**
+
+  ```bash
+  # Find all version references
+  grep -r "Tool version:" src/
+
+  # Update systematically
+  # Add Makefile target:
+  sync-version:
+  	find src -name "*.md" -exec sed -i 's/tool [0-9.]*$$/tool 1.3.0/g' {} +
+  ```
+
+  ## STEP 17: COMMON BOOK ISSUES (FIXED PATTERNS)
+
+  ### Issue 1: Broken Example Code
+
+  **Problem**: Examples don't compile/run
+  **Fix**: Test BEFORE documenting
+
+  ```bash
+  # RED phase
+  bash tests/ch01/test_example.sh  # FAILS
+
+  # GREEN phase (write working code)
+  # Document only after test passes
+  bash tests/ch01/test_example.sh  # PASSES
+  ```
+
+  ### Issue 2: Outdated Examples
+
+  **Problem**: Tool evolved, examples broke
+  **Fix**: Automated testing catches regressions
+
+  ```yaml
+  # GitHub Actions runs tests on every push
+  # Catches breakage immediately
+  ```
+
+  ### Issue 3: Inconsistent Formatting
+
+  **Problem**: Different example styles across chapters
+  **Fix**: Use chapter template, enforce in review
+
+  ### Issue 4: Missing Test Coverage
+
+  **Problem**: Some examples untested
+  **Fix**: Calculate pass rate, enforce minimum
+
+  ```bash
+  # Pass rate calculation in Makefile
+  test-all-chapters:
+  	@total=0; passed=0; \
+  	for test in tests/**/*.sh; do \
+  		total=$$((total + 1)); \
+  		if bash "$$test"; then passed=$$((passed + 1)); fi \
+  	done; \
+  	rate=$$((passed * 100 / total)); \
+  	if [ $$rate -lt ${MIN_PASS_RATE} ]; then \
+  		echo "❌ Pass rate $$rate% below minimum ${MIN_PASS_RATE}%"; \
+  		exit 1; \
+  	fi
+  ```
+
+  ### Issue 5: Broken Internal Links
+
+  **Problem**: Links to non-existent chapters
+  **Fix**: mdbook-linkcheck catches this
+
+  ```bash
+  make lint-markdown  # Validates all links
+  ```
+
+  ### Issue 6: SATD Comments in Examples
+
+  **Problem**: TODO, FIXME in code examples
+  **Fix**: Pre-commit hook catches SATD
+
+  ```bash
+  # Pre-commit hook
+  if grep -r "TODO\|FIXME\|HACK" src/; then
+      echo "❌ SATD comments found - file GitHub issues instead"
+      exit 1
+  fi
+  ```
+
+  ## STEP 18: BOOK-SPECIFIC CLAUDE.MD
+
+  **Create comprehensive CLAUDE.md for book:**
+
+  ```markdown
+  # CLAUDE.md
+
+  ## Prime Directive
+
+  **Generate correct documentation where every example works on first attempt. Quality is built-in, not bolted-on.**
+
+  ## MANDATORY Development Approach (BLOCKING)
+
+  ### A. Test-Driven Documentation (TDD)
+  - **ALL work must be TDD**: Every example written test-first
+  - **NO exceptions**: Documentation follows working code
+  - **Immediate feedback**: Tests run continuously
+
+  ### B. Quality Gates with ${QUALITY_TOOL}
+  - **Minimum grade**: B+ required on all examples
+  - **BLOCKING gate**: No commits without quality approval
+  - **Automated**: Pre-commit hooks enforce standards
+
+  ### C. ${MIN_PASS_RATE}% Pass Rate Mandatory
+  - **Minimum pass rate**: ${MIN_PASS_RATE}% of all examples must pass
+  - **Test coverage**: Every code example has automated test
+  - **No partial examples**: All examples complete and working
+
+  ## Quality Standards (BLOCKING)
+
+  - Test Coverage: 100% of examples
+  - Pass Rate: ≥${MIN_PASS_RATE}%
+  - Link Validation: All links valid
+  - SATD Count: 0
+  - Vaporware: 0 unimplemented features documented
+  - Build Success: mdBook builds without errors
+
+  ## TDD Workflow (MANDATORY)
+
+  1. Write test FIRST (RED phase)
+  2. Write documentation with working example (GREEN phase)
+  3. Update chapter status blocks
+  4. Run quality gates
+  5. Commit only when all tests pass
+  ```
+
+  ## TOYOTA WAY PRINCIPLES FOR BOOKS
+
+  - **Jidoka (Built-in Quality)**: Automated tests prove examples work
+  - **Andon Cord**: Stop immediately when examples break
+  - **Genchi Genbutsu (Go & See)**: Test every example in real environment
+  - **Kaizen**: Continuously improve documentation based on user feedback
+  - **Zero Defects**: No broken examples in production book
+
+  ## WORKFLOW SUMMARY FOR BOOKS
+
+  1. **Setup**: mdBook structure + book.toml + SUMMARY.md
+  2. **Test Infrastructure**: tests/ directory with chapter-based tests
+  3. **TDD Loop**:
+     - Write test (RED)
+     - Write documentation with working example (GREEN)
+     - Update status blocks
+     - Validate quality
+  4. **Quality Gates**: All tests pass, minimum pass rate, no vaporware
+  5. **Build**: `make build` produces book/index.html
+  6. **Deploy**: GitHub Actions → GitHub Pages
+  7. **Version**: Track tool version in all chapters
+
+  ## BOOK SUCCESS CRITERIA
+
+  - ✅ All code examples tested before documenting
+  - ✅ Minimum ${MIN_PASS_RATE}% pass rate achieved
+  - ✅ SUMMARY.md complete and accurate
+  - ✅ Chapter status blocks up to date
+  - ✅ No vaporware (zero unimplemented features)
+  - ✅ No SATD comments (TODO, FIXME, HACK)
+  - ✅ All internal links valid
+  - ✅ Book builds successfully with mdBook
+  - ✅ Deployed to GitHub Pages
+  - ✅ CI/CD pipeline green
+
+  ## ERROR HANDLING FOR BOOKS
+
+  **If tests fail**:
+  ```bash
+  # DON'T document the broken example
+  # FIX the code first, then update documentation
+  bash tests/ch01/test_example.sh  # MUST pass before documenting
+  ```
+
+  **If pass rate below minimum**:
+  ```bash
+  # Add more tests or fix broken examples
+  # DO NOT lower the minimum pass rate
+  make test-all-chapters  # Keep running until ≥${MIN_PASS_RATE}%
+  ```
+
+  This systematic approach ensures every technical book is:
+  - Comprehensive (400-1000 pages)
+  - Accurate (all examples tested)
+  - Production-ready (deployed to GitHub Pages)
+  - Professional quality (print-ready standards)
+  - Zero defects (TDD prevents broken examples)
+
+toyota_way_principles:
+  jidoka: automated_tests_prove_examples_work
+  andon_cord: stop_when_examples_break
+  genchi_genbutsu: test_every_example_in_real_environment
+  kaizen: continuously_improve_based_on_feedback
+  zero_defects: no_broken_examples_in_production
+book_types:
+  tutorial:
+    characteristics:
+      - sequential_chapters
+      - progressive_concepts
+      - chapter_dependencies
+      - teaching_focus
+    page_count: 400-600
+    examples:
+      - pmat-book
+      - ruchy-book
+  cookbook:
+    characteristics:
+      - self_contained_recipes
+      - random_access_lookup
+      - minimal_dependencies
+      - practical_focus
+    page_count: 1000
+    examples:
+      - ruchy-cookbook
+  reference:
+    characteristics:
+      - comprehensive_api_docs
+      - tool_command_reference
+      - integration_guides
+      - searchable_content
+    page_count: 500-800
+    examples:
+      - ruchy-cli-tools-book
+quality_gates:
+  mandatory:
+    - test_coverage: "100% of code examples"
+    - pass_rate: ">=${MIN_PASS_RATE}%"
+    - link_validation: "all links valid"
+    - satd_count: 0
+    - vaporware_count: 0
+    - build_success: true
+    - deployment_success: true
+mdbook_structure:
+  required_files:
+    - book.toml
+    - src/SUMMARY.md
+    - src/title-page.md
+    - src/introduction.md
+    - Makefile
+    - CLAUDE.md
+  required_directories:
+    - src/
+    - tests/
+    - theme/
+    - .github/workflows/
+test_infrastructure:
+  test_script_template: |
+    #!/bin/bash
+    echo "=== Testing Chapter X: Feature Name ==="
+    PASS_COUNT=0
+    FAIL_COUNT=0
+
+    test_pass() { echo "✅ PASS: $1"; PASS_COUNT=$((PASS_COUNT + 1)); }
+    test_fail() { echo "❌ FAIL: $1"; FAIL_COUNT=$((FAIL_COUNT + 1)); }
+
+    # Verify tool availability
+    if ! command -v tool &> /dev/null; then
+        echo "❌ FATAL: tool not found"
+        exit 1
+    fi
+
+    # Run tests...
+
+    # Summary
+    if [ $FAIL_COUNT -eq 0 ]; then
+        echo "✅ All tests passed!"
+        exit 0
+    else
+        echo "❌ $FAIL_COUNT tests failed"
+        exit 1
+    fi
+common_issues:
+  broken_examples:
+    problem: "Examples don't compile/run"
+    solution: "Test BEFORE documenting (TDD)"
+  outdated_examples:
+    problem: "Tool evolved, examples broke"
+    solution: "Automated testing catches regressions"
+  inconsistent_formatting:
+    problem: "Different styles across chapters"
+    solution: "Use chapter template, enforce in review"
+  missing_tests:
+    problem: "Some examples untested"
+    solution: "Calculate pass rate, enforce minimum"
+  broken_links:
+    problem: "Links to non-existent chapters"
+    solution: "mdbook-linkcheck validates all links"
+  satd_comments:
+    problem: "TODO, FIXME in examples"
+    solution: "Pre-commit hook catches SATD"
