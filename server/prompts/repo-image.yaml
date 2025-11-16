@@ -1,0 +1,631 @@
+name: repo-image
+description: Create professional repository documentation with badges, series links, and polish
+category: documentation
+priority: high
+methodology: Professional Repository Presentation
+constraints:
+  - comprehensive README.md
+  - professional badges
+  - clear value proposition
+  - course/series links if applicable
+variables:
+  REPO_NAME: ""
+  REPO_DESCRIPTION: ""
+  GITHUB_ORG: "paiml"
+  PRIMARY_LANGUAGE: "Rust"
+  COURSE_SERIES: "false"
+  SERIES_NUMBER: ""
+  LICENSE: "MIT"
+heuristics:
+  - analyze existing README for content
+  - detect course series pattern
+  - generate appropriate badges
+  - create professional structure
+prompt: |
+  Create professional repository documentation following PAIML standards.
+
+  ## INSPIRATION: GitHub Copilot Course Series
+
+  Reference repositories with excellent "repo image":
+  - https://github.com/paiml/advanced-prompting-with-github-copilot
+  - https://github.com/paiml/ghcp-for-systems-level-development
+  - https://github.com/paiml/responsible-ai-development-with-github-copilot
+  - https://github.com/paiml/capstone-building-production-features-with-copilot
+
+  ## STEP 1: ANALYZE REPOSITORY
+
+  **Gather information about this repository:**
+  ```bash
+  # Get repository details
+  gh repo view --json name,description,primaryLanguage,licenseInfo,stargazerCount
+
+  # Check for existing README
+  cat README.md 2>/dev/null || echo "No README found"
+
+  # Detect course series pattern (if applicable)
+  ls -la | grep -E "lesson|chapter|module|course" || echo "Not a course repo"
+
+  # Get repository statistics
+  gh repo view --json openIssuesCount,forkCount,watchers
+  ```
+
+  ## STEP 2: DESIGN README STRUCTURE
+
+  **Professional README template:**
+
+  ```markdown
+  # ${REPO_NAME}
+
+  > ${REPO_DESCRIPTION}
+
+  <!-- Badges Section -->
+  ![GitHub stars](https://img.shields.io/github/stars/${GITHUB_ORG}/${REPO_NAME}?style=social)
+  ![GitHub forks](https://img.shields.io/github/forks/${GITHUB_ORG}/${REPO_NAME}?style=social)
+  ![GitHub issues](https://img.shields.io/github/issues/${GITHUB_ORG}/${REPO_NAME})
+  ![License](https://img.shields.io/github/license/${GITHUB_ORG}/${REPO_NAME})
+  ![Language](https://img.shields.io/github/languages/top/${GITHUB_ORG}/${REPO_NAME})
+
+  ## 🎯 Overview
+
+  [Brief description of what this repository does and who it's for]
+
+  ## ✨ Features
+
+  - Feature 1: Description
+  - Feature 2: Description
+  - Feature 3: Description
+
+  ## 📚 Table of Contents
+
+  - [Overview](#-overview)
+  - [Features](#-features)
+  - [Installation](#-installation)
+  - [Quick Start](#-quick-start)
+  - [Usage](#-usage)
+  - [Examples](#-examples)
+  - [Documentation](#-documentation)
+  - [Contributing](#-contributing)
+  - [License](#-license)
+
+  ## 🚀 Installation
+
+  ### Prerequisites
+
+  - Prerequisite 1 (version X.Y+)
+  - Prerequisite 2
+  - Prerequisite 3
+
+  ### Install from Source
+
+  \`\`\`bash
+  git clone https://github.com/${GITHUB_ORG}/${REPO_NAME}.git
+  cd ${REPO_NAME}
+
+  # Language-specific installation
+  # Rust:
+  cargo build --release
+  cargo install --path .
+
+  # Python:
+  # pip install -e .
+
+  # npm:
+  # npm install
+  \`\`\`
+
+  ### Install from Package Manager
+
+  \`\`\`bash
+  # Rust:
+  cargo install ${REPO_NAME}
+
+  # Python:
+  # pip install ${REPO_NAME}
+
+  # npm:
+  # npm install ${REPO_NAME}
+  \`\`\`
+
+  ## ⚡ Quick Start
+
+  \`\`\`bash
+  # Example command
+  ${REPO_NAME} --help
+
+  # Basic usage
+  ${REPO_NAME} command --option value
+  \`\`\`
+
+  ## 📖 Usage
+
+  ### Basic Examples
+
+  \`\`\`bash
+  # Example 1: Simple use case
+  ${REPO_NAME} analyze .
+
+  # Example 2: With options
+  ${REPO_NAME} analyze . --format json --output results.json
+
+  # Example 3: Advanced usage
+  ${REPO_NAME} analyze . --deep --exclude tests/
+  \`\`\`
+
+  ### Configuration
+
+  Create a configuration file at \`~/.config/${REPO_NAME}/config.yaml\`:
+
+  \`\`\`yaml
+  option1: value1
+  option2: value2
+  \`\`\`
+
+  ## 💡 Examples
+
+  ### Example 1: [Use Case Name]
+
+  \`\`\`bash
+  # Description of what this example does
+  ${REPO_NAME} command --flag
+
+  # Expected output:
+  # Success: Operation completed
+  \`\`\`
+
+  ### Example 2: [Another Use Case]
+
+  \`\`\`rust
+  // Code example if applicable
+  use ${REPO_NAME}::Module;
+
+  fn main() {
+      let result = Module::new().process();
+      println!("{:?}", result);
+  }
+  \`\`\`
+
+  ## 📚 Documentation
+
+  - [User Guide](docs/user-guide.md)
+  - [API Reference](docs/api-reference.md)
+  - [Architecture](docs/architecture.md)
+  - [Contributing Guide](CONTRIBUTING.md)
+
+  ## 🤝 Contributing
+
+  Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md) first.
+
+  ### Development Setup
+
+  \`\`\`bash
+  git clone https://github.com/${GITHUB_ORG}/${REPO_NAME}.git
+  cd ${REPO_NAME}
+
+  # Install dependencies
+  cargo build
+
+  # Run tests
+  cargo test
+
+  # Run linter
+  cargo clippy
+  \`\`\`
+
+  ## 📄 License
+
+  This project is licensed under the ${LICENSE} License - see the [LICENSE](LICENSE) file for details.
+
+  ## 🙏 Acknowledgments
+
+  - Inspired by [Project Name](https://example.com)
+  - Built with [Technology Stack]
+  - Thanks to all contributors!
+
+  ## 📞 Contact
+
+  - GitHub: [@${GITHUB_ORG}](https://github.com/${GITHUB_ORG})
+  - Issues: [GitHub Issues](https://github.com/${GITHUB_ORG}/${REPO_NAME}/issues)
+
+  ---
+
+  Made with ❤️ by [${GITHUB_ORG}](https://github.com/${GITHUB_ORG})
+  ```
+
+  ## STEP 3: COURSE SERIES TEMPLATE (If Applicable)
+
+  **If this is part of a course series (${COURSE_SERIES}=true):**
+
+  Add this section at the top of README after the title:
+
+  ```markdown
+  # ${REPO_NAME}
+
+  > ${REPO_DESCRIPTION}
+
+  <!-- Badges -->
+  [Badges here]
+
+  ## 📚 Course Series
+
+  This course is **Course ${SERIES_NUMBER}** in a 4-course series:
+
+  1. 📚 [Course 1 Name](https://github.com/${GITHUB_ORG}/course-1-repo) - Repository
+  2. 🔧 [Course 2 Name](https://github.com/${GITHUB_ORG}/course-2-repo) **(this course)** - Repository
+  3. 🛡️ [Course 3 Name](https://github.com/${GITHUB_ORG}/course-3-repo) - Repository
+  4. 🏆 [Course 4 Name](https://github.com/${GITHUB_ORG}/course-4-repo) - Repository
+
+  ### What You'll Learn
+
+  - Learning objective 1
+  - Learning objective 2
+  - Learning objective 3
+
+  ### Prerequisites
+
+  - Prerequisite 1 (Course 1 completion recommended)
+  - Prerequisite 2
+  - Prerequisite 3
+
+  ## 📖 Course Structure
+
+  ### Module 1: [Module Name]
+  - Lesson 1.1: Topic
+  - Lesson 1.2: Topic
+  - Lab 1: Hands-on exercise
+
+  ### Module 2: [Module Name]
+  - Lesson 2.1: Topic
+  - Lesson 2.2: Topic
+  - Lab 2: Hands-on exercise
+
+  [Continue with course content...]
+  ```
+
+  ## STEP 4: GENERATE BADGES
+
+  **Essential badges for professional repos:**
+
+  ```markdown
+  <!-- Build Status -->
+  ![Build](https://github.com/${GITHUB_ORG}/${REPO_NAME}/actions/workflows/ci.yml/badge.svg)
+
+  <!-- Code Coverage -->
+  ![Coverage](https://codecov.io/gh/${GITHUB_ORG}/${REPO_NAME}/branch/main/graph/badge.svg)
+
+  <!-- Version -->
+  ![Version](https://img.shields.io/crates/v/${REPO_NAME})  # Rust
+  <!-- ![Version](https://img.shields.io/pypi/v/${REPO_NAME})  # Python -->
+  <!-- ![Version](https://img.shields.io/npm/v/${REPO_NAME})  # npm -->
+
+  <!-- Downloads -->
+  ![Downloads](https://img.shields.io/crates/d/${REPO_NAME})  # Rust
+  <!-- ![Downloads](https://img.shields.io/pypi/dm/${REPO_NAME})  # Python -->
+
+  <!-- License -->
+  ![License](https://img.shields.io/github/license/${GITHUB_ORG}/${REPO_NAME})
+
+  <!-- Stars -->
+  ![Stars](https://img.shields.io/github/stars/${GITHUB_ORG}/${REPO_NAME}?style=social)
+
+  <!-- Language -->
+  ![Language](https://img.shields.io/github/languages/top/${GITHUB_ORG}/${REPO_NAME})
+
+  <!-- Issues -->
+  ![Issues](https://img.shields.io/github/issues/${GITHUB_ORG}/${REPO_NAME})
+
+  <!-- PRs Welcome -->
+  ![PRs](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)
+  ```
+
+  ## STEP 5: CREATE SUPPORTING FILES
+
+  **Generate essential repository files:**
+
+  ### 1. CONTRIBUTING.md
+
+  \`\`\`bash
+  cat > CONTRIBUTING.md <<'EOF'
+  # Contributing to ${REPO_NAME}
+
+  Thank you for your interest in contributing!
+
+  ## How to Contribute
+
+  1. Fork the repository
+  2. Create a feature branch: \`git checkout -b feature/amazing-feature\`
+  3. Make your changes
+  4. Run tests: \`cargo test\`
+  5. Commit: \`git commit -m 'feat: Add amazing feature'\`
+  6. Push: \`git push origin feature/amazing-feature\`
+  7. Open a Pull Request
+
+  ## Code Style
+
+  - Follow language-specific style guides
+  - Run linter before committing
+  - Add tests for new features
+  - Update documentation
+
+  ## Commit Messages
+
+  Follow Conventional Commits format:
+  - \`feat:\` New feature
+  - \`fix:\` Bug fix
+  - \`docs:\` Documentation
+  - \`test:\` Tests
+  - \`refactor:\` Code refactoring
+
+  ## Code of Conduct
+
+  Please be respectful and follow our Code of Conduct.
+  EOF
+  \`\`\`
+
+  ### 2. LICENSE (MIT)
+
+  \`\`\`bash
+  cat > LICENSE <<'EOF'
+  MIT License
+
+  Copyright (c) $(date +%Y) ${GITHUB_ORG}
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+
+  [Full MIT License text...]
+  EOF
+  \`\`\`
+
+  ### 3. .github/ISSUE_TEMPLATE/bug_report.md
+
+  \`\`\`markdown
+  ---
+  name: Bug Report
+  about: Report a bug
+  title: '[BUG] '
+  labels: bug
+  ---
+
+  ## Describe the bug
+  A clear description of what the bug is.
+
+  ## To Reproduce
+  Steps to reproduce:
+  1. Run command '...'
+  2. See error
+
+  ## Expected behavior
+  What you expected to happen.
+
+  ## Environment
+  - OS: [e.g., Ubuntu 22.04]
+  - Version: [e.g., 1.0.0]
+  \`\`\`
+
+  ### 4. .github/PULL_REQUEST_TEMPLATE.md
+
+  \`\`\`markdown
+  ## Description
+  Describe your changes here.
+
+  ## Type of Change
+  - [ ] Bug fix
+  - [ ] New feature
+  - [ ] Breaking change
+  - [ ] Documentation update
+
+  ## Checklist
+  - [ ] Tests pass locally
+  - [ ] Documentation updated
+  - [ ] Code follows style guide
+  - [ ] Commit messages follow conventions
+  \`\`\`
+
+  ## STEP 6: ADD VISUAL ELEMENTS
+
+  **Make README visually appealing:**
+
+  ### Screenshots
+
+  \`\`\`markdown
+  ## 📸 Screenshots
+
+  ### Feature Demo
+  ![Demo](docs/images/demo.gif)
+
+  ### Example Output
+  \`\`\`bash
+  $ ${REPO_NAME} analyze .
+
+  ✓ Analyzing project structure...
+  ✓ Running quality checks...
+  ✓ Generating report...
+
+  Score: 95/100 (A+)
+  \`\`\`
+  \`\`\`
+
+  ### Architecture Diagram
+
+  \`\`\`markdown
+  ## 🏗️ Architecture
+
+  \`\`\`mermaid
+  graph TD
+      A[User Input] --> B[Parser]
+      B --> C[Analyzer]
+      C --> D[Report Generator]
+      D --> E[Output]
+  \`\`\`
+  \`\`\`
+
+  ## STEP 7: QUALITY CHECKS
+
+  **Before finalizing, verify:**
+
+  ```bash
+  # Check README renders correctly
+  gh repo view --web
+
+  # Validate markdown
+  pmat validate-readme --targets README.md
+
+  # Check for broken links
+  markdown-link-check README.md
+
+  # Verify badges load
+  curl -I "https://img.shields.io/github/stars/${GITHUB_ORG}/${REPO_NAME}"
+  ```
+
+  ## STEP 8: COMMIT AND PUSH
+
+  **Update repository:**
+
+  ```bash
+  git add README.md CONTRIBUTING.md LICENSE .github/
+  git commit -m "docs: Create professional repository documentation
+
+  - Add comprehensive README with badges
+  - Create CONTRIBUTING.md guide
+  - Add MIT LICENSE
+  - Create GitHub issue/PR templates
+  - Add course series links (if applicable)
+  - Include architecture diagrams
+  - Add screenshots and examples
+
+  Follows PAIML repository standards for professional presentation.
+
+  🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+  Co-Authored-By: Claude <noreply@anthropic.com>"
+
+  git push origin master
+  ```
+
+  ## EXAMPLES: PAIML COURSE SERIES
+
+  ### Advanced Prompting with GitHub Copilot
+
+  **Repository**: https://github.com/paiml/advanced-prompting-with-github-copilot
+
+  **Key Elements**:
+  - Clear course series navigation
+  - Emoji icons for each course (📚 🔧 🛡️ 🏆)
+  - Module structure breakdown
+  - Learning objectives
+  - Prerequisites
+  - Hands-on labs
+
+  ### System-Level Development
+
+  **Repository**: https://github.com/paiml/ghcp-for-systems-level-development
+
+  **Key Elements**:
+  - "(this course)" marker for current course
+  - Consistent naming pattern
+  - Professional badges
+  - Clear navigation
+
+  ## CUSTOMIZATION VARIABLES
+
+  **Set these when running the prompt:**
+
+  ```bash
+  # Basic repository
+  pmat prompt repo-image \
+    --set REPO_NAME="my-awesome-tool" \
+    --set REPO_DESCRIPTION="A tool for doing awesome things" \
+    --set PRIMARY_LANGUAGE="Rust"
+
+  # Course series (Course 2 of 4)
+  pmat prompt repo-image \
+    --set REPO_NAME="intermediate-copilot-course" \
+    --set COURSE_SERIES="true" \
+    --set SERIES_NUMBER="2" \
+    --set GITHUB_ORG="paiml"
+  ```
+
+  ## BADGE CUSTOMIZATION
+
+  **Language-specific badges:**
+
+  ```markdown
+  <!-- Rust -->
+  ![Crates.io](https://img.shields.io/crates/v/${REPO_NAME})
+  ![docs.rs](https://docs.rs/${REPO_NAME}/badge.svg)
+
+  <!-- Python -->
+  ![PyPI](https://img.shields.io/pypi/v/${REPO_NAME})
+  ![Python](https://img.shields.io/pypi/pyversions/${REPO_NAME})
+
+  <!-- TypeScript/npm -->
+  ![npm](https://img.shields.io/npm/v/${REPO_NAME})
+  ![TypeScript](https://img.shields.io/npm/types/${REPO_NAME})
+
+  <!-- Go -->
+  ![Go Version](https://img.shields.io/github/go-mod/go-version/${GITHUB_ORG}/${REPO_NAME})
+  ![Go Report](https://goreportcard.com/badge/github.com/${GITHUB_ORG}/${REPO_NAME})
+  ```
+
+  ## REPOSITORY IMAGE CHECKLIST
+
+  - [ ] Professional title and description
+  - [ ] Comprehensive badge set
+  - [ ] Clear overview section
+  - [ ] Feature list with emoji icons
+  - [ ] Table of contents
+  - [ ] Installation instructions (multiple methods)
+  - [ ] Quick start guide
+  - [ ] Usage examples with code blocks
+  - [ ] Documentation links
+  - [ ] Contributing guide
+  - [ ] License information
+  - [ ] Contact/support information
+  - [ ] Course series navigation (if applicable)
+  - [ ] Screenshots/demos
+  - [ ] Architecture diagrams
+  - [ ] CONTRIBUTING.md file
+  - [ ] LICENSE file
+  - [ ] Issue templates
+  - [ ] PR template
+  - [ ] Acknowledgments section
+
+  ## QUALITY STANDARDS
+
+  - **Readability**: Use headings, emojis, code blocks
+  - **Completeness**: Cover all common questions
+  - **Professionalism**: Proper grammar, formatting
+  - **Maintainability**: Easy to update
+  - **Accessibility**: Clear navigation, good structure
+
+  This prompt ensures your repository makes an excellent first impression!
+inspiration_repos:
+  - "https://github.com/paiml/advanced-prompting-with-github-copilot"
+  - "https://github.com/paiml/ghcp-for-systems-level-development"
+  - "https://github.com/paiml/responsible-ai-development-with-github-copilot"
+  - "https://github.com/paiml/capstone-building-production-features-with-copilot"
+badge_types:
+  build: "GitHub Actions workflow status"
+  coverage: "Code coverage percentage"
+  version: "Package version (crates.io, PyPI, npm)"
+  downloads: "Download count"
+  license: "License type"
+  stars: "GitHub stars (social proof)"
+  language: "Primary language"
+  issues: "Open issues count"
+  prs_welcome: "PRs welcome badge"
+course_series_pattern:
+  emoji_icons:
+    - "📚 - Learning/Documentation"
+    - "🔧 - Technical/Hands-on"
+    - "🛡️ - Security/Best Practices"
+    - "🏆 - Capstone/Advanced"
+  navigation:
+    - "List all courses in series"
+    - "Mark current course with '(this course)'"
+    - "Link to each repository"
+    - "Maintain consistent naming"
