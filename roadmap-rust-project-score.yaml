@@ -1,0 +1,103 @@
+project: rust-project-score
+version: 1.1.0
+start_date: 2025-11-16
+methodology: EXTREME TDD + Spec-Driven Development
+
+objectives:
+  - title: "Implement Rust Project Score v1.1"
+    description: "Comprehensive Rust project quality scoring extending repo-score with evidence-based refinements"
+    metrics:
+      - "106-point scoring system implemented"
+      - "6 scoring categories functional"
+      - "CLI integration complete"
+      - "Score velocity tracking operational"
+
+milestones:
+  - name: "Sprint 1: Core Data Structures"
+    target_date: 2025-11-18
+    objectives:
+      - "Define core scoring types and models"
+    deliverables:
+      - "RustProjectScore struct"
+      - "CategoryScores enum"
+      - "Grade calculation logic"
+      - "RED tests written"
+    acceptance_criteria:
+      - "All core types compile"
+      - "RED tests fail as expected"
+      - "Zero clippy warnings"
+
+  - name: "Sprint 2: Scoring Logic Implementation"
+    target_date: 2025-11-20
+    objectives:
+      - "Implement 6 scoring categories"
+    deliverables:
+      - "RustToolingScorer (25pts)"
+      - "CodeQualityScorer (26pts)"
+      - "TestingScorer (20pts)"
+      - "DocumentationScorer (15pts)"
+      - "PerformanceScorer (10pts)"
+      - "DependencyScorer (12pts)"
+      - "All RED tests GREEN"
+    acceptance_criteria:
+      - "All unit tests pass"
+      - "≥85% coverage"
+      - "Zero regressions"
+
+  - name: "Sprint 3: CLI Integration & Features"
+    target_date: 2025-11-22
+    objectives:
+      - "CLI command integration"
+      - "Score velocity tracking"
+      - "Trend visualization"
+    deliverables:
+      - "`pmat rust-project-score` command"
+      - "Baseline storage/comparison"
+      - "ASCII trend charts"
+      - "JSON/YAML output formats"
+    acceptance_criteria:
+      - "CLI tests pass"
+      - "Baseline persistence works"
+      - "Velocity calculation accurate"
+
+  - name: "Sprint 4: Quality & Documentation"
+    target_date: 2025-11-24
+    objectives:
+      - "Production-ready release"
+    deliverables:
+      - "All quality gates pass"
+      - "Documentation complete"
+      - "README examples validated"
+    acceptance_criteria:
+      - "Zero SATD comments"
+      - "README accurate (pmat validate-readme)"
+      - "≥80% mutation score"
+
+quality_gates:
+  pre_commit:
+    - "clippy --all-targets -- -D warnings"
+    - "fmt --check"
+    - "pmat analyze tdg (no regressions)"
+
+  pre_release:
+    - "coverage ≥85%"
+    - "mutation score ≥80%"
+    - "all tests pass"
+    - "pmat validate-readme"
+    - "pmat repo-score ≥80/100"
+
+risks:
+  - risk: "Complex scoring algorithms may be difficult to test"
+    mitigation: "Property-based testing, extensive unit tests"
+    status: "monitoring"
+
+  - risk: "Clippy/cargo-audit integration may be fragile"
+    mitigation: "Mock external tools, integration tests"
+    status: "monitoring"
+
+toyota_way_principles:
+  jidoka: "Automated quality gates, CI enforcement"
+  andon_cord: "Pre-commit hooks block bad code"
+  genchi_genbutsu: "Evidence-based scoring from peer-reviewed research"
+  kaizen: "Score velocity tracking for continuous improvement"
+  zero_defects: "100% test pass rate, zero regressions"
