@@ -292,6 +292,10 @@ mod property_tests {
             "quality-enforcement",
             "refactor-hotspots",
             "security-audit",
+            "github-ticket",
+            "repo-image",
+            "book-documentation",
+            "comply-pmat",
         ];
 
         for prompt in &prompts {
@@ -327,6 +331,10 @@ mod property_tests {
             "quality-enforcement",
             "refactor-hotspots",
             "security-audit",
+            "github-ticket",
+            "repo-image",
+            "book-documentation",
+            "comply-pmat",
         ];
 
         for prompt in &prompts {
