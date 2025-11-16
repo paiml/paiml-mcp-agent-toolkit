@@ -39,6 +39,7 @@
 //! ```
 
 pub mod code_quality_scorer;
+pub mod dependency_scorer;
 pub mod documentation_scorer;
 pub mod models;
 pub mod performance_scorer;
@@ -47,6 +48,7 @@ pub mod scorer;
 pub mod testing_scorer;
 
 pub use code_quality_scorer::*;
+pub use dependency_scorer::*;
 pub use documentation_scorer::*;
 pub use models::*;
 pub use performance_scorer::*;
