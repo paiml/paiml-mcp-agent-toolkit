@@ -1,0 +1,865 @@
+name: comply-pmat
+description: Fix all drift from PMAT's rigid quality processes and restore compliance
+category: quality
+priority: critical
+methodology: Toyota Way + PMAT Compliance Enforcement + Zero Tolerance
+constraints:
+  - must verify all quality gates active
+  - must restore all pre-commit hooks
+  - must sync with roadmap
+  - must achieve minimum quality grades
+  - zero tolerance for drift
+  - all fixes must be automated
+variables:
+  MIN_GRADE: "B+"
+  BASELINE_PATH: ".pmat/baseline.json"
+  ROADMAP_PATH: "roadmap.yaml"
+  HOOKS_DIR: ".git/hooks"
+heuristics:
+  - check for missing or broken pre-commit hooks
+  - verify TDG baseline exists and is current
+  - validate roadmap is up-to-date
+  - detect and fix quality regressions
+  - restore all PMAT enforcement mechanisms
+  - verify pmat-book synchronization
+prompt: |
+  Restore full PMAT compliance by fixing all drift from rigid quality processes.
+
+  ## CRITICAL: ANDON CORD - STOP THE LINE
+
+  **This prompt pulls the Andon Cord (Toyota Way) when quality processes have drifted.**
+
+  Signs of drift:
+  - Pre-commit hooks missing or broken
+  - Quality grades below minimum
+  - Roadmap out of sync with actual work
+  - TDG baseline missing or outdated
+  - pmat-book commits unpushed
+  - Documentation hallucinations present
+  - SATD comments (TODO, FIXME, HACK) in code
+  - Test coverage below thresholds
+
+  ## STEP 1: COMPREHENSIVE COMPLIANCE AUDIT
+
+  Run a complete audit of all PMAT processes:
+
+  ```bash
+  echo "🔍 PMAT COMPLIANCE AUDIT"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+  # 1. Check pre-commit hooks
+  echo ""
+  echo "1. Pre-commit Hooks:"
+  if [ -f .git/hooks/pre-commit ]; then
+      echo "   ✅ Pre-commit hook exists"
+      if grep -q "TDG Enforcement" .git/hooks/pre-commit; then
+          echo "   ✅ TDG enforcement enabled"
+      else
+          echo "   ❌ TDG enforcement MISSING"
+      fi
+  else
+      echo "   ❌ Pre-commit hook MISSING"
+  fi
+
+  # 2. Check pre-push hooks (pmat-book synchronization)
+  echo ""
+  echo "2. Pre-push Hooks (Book Sync):"
+  if [ -f .git/hooks/pre-push ]; then
+      echo "   ✅ Pre-push hook exists"
+      if grep -q "pmat-book" .git/hooks/pre-push; then
+          echo "   ✅ Book synchronization enforced"
+      else
+          echo "   ❌ Book synchronization NOT enforced"
+      fi
+  else
+      echo "   ❌ Pre-push hook MISSING"
+  fi
+
+  # 3. Check TDG baseline
+  echo ""
+  echo "3. TDG Baseline:"
+  if [ -f ${BASELINE_PATH} ]; then
+      echo "   ✅ Baseline exists: ${BASELINE_PATH}"
+      BASELINE_AGE=$(find ${BASELINE_PATH} -mtime +7 2>/dev/null)
+      if [ -n "$BASELINE_AGE" ]; then
+          echo "   ⚠️  Baseline older than 7 days (may be stale)"
+      fi
+  else
+      echo "   ❌ Baseline MISSING: ${BASELINE_PATH}"
+  fi
+
+  # 4. Check roadmap
+  echo ""
+  echo "4. Roadmap:"
+  if [ -f ${ROADMAP_PATH} ]; then
+      echo "   ✅ Roadmap exists: ${ROADMAP_PATH}"
+  else
+      echo "   ❌ Roadmap MISSING: ${ROADMAP_PATH}"
+  fi
+  if [ -f ROADMAP.md ]; then
+      echo "   ✅ ROADMAP.md exists"
+  else
+      echo "   ⚠️  ROADMAP.md missing"
+  fi
+
+  # 5. Check .pmat directory
+  echo ""
+  echo "5. PMAT Configuration:"
+  if [ -d .pmat ]; then
+      echo "   ✅ .pmat/ directory exists"
+      ls -la .pmat/
+  else
+      echo "   ❌ .pmat/ directory MISSING"
+  fi
+
+  # 6. Check for SATD comments
+  echo ""
+  echo "6. SATD Detection (TODO/FIXME/HACK):"
+  SATD_COUNT=$(grep -r "TODO\|FIXME\|HACK" server/src/ 2>/dev/null | wc -l)
+  if [ "$SATD_COUNT" -eq 0 ]; then
+      echo "   ✅ Zero SATD comments"
+  else
+      echo "   ❌ Found $SATD_COUNT SATD comments"
+      echo "   Top 5:"
+      grep -rn "TODO\|FIXME\|HACK" server/src/ 2>/dev/null | head -5
+  fi
+
+  # 7. Check quality grades
+  echo ""
+  echo "7. Quality Grades:"
+  if command -v pmat &> /dev/null; then
+      echo "   Running pmat analyze..."
+      pmat analyze . --min-grade ${MIN_GRADE} --format json > /tmp/pmat-audit.json 2>&1
+      if [ $? -eq 0 ]; then
+          echo "   ✅ Quality grade meets minimum ${MIN_GRADE}"
+      else
+          echo "   ❌ Quality grade BELOW minimum ${MIN_GRADE}"
+      fi
+  else
+      echo "   ❌ pmat binary NOT found in PATH"
+  fi
+
+  # 8. Check test coverage
+  echo ""
+  echo "8. Test Coverage:"
+  if command -v cargo &> /dev/null; then
+      echo "   Running cargo nextest..."
+      cargo nextest run --no-fail-fast 2>&1 | tail -5
+  fi
+
+  # 9. Check pmat-book synchronization
+  echo ""
+  echo "9. pmat-book Synchronization:"
+  if [ -d ../pmat-book ]; then
+      cd ../pmat-book
+      UNPUSHED=$(git log origin/main..main --oneline 2>/dev/null | wc -l)
+      if [ "$UNPUSHED" -eq 0 ]; then
+          echo "   ✅ pmat-book fully synchronized"
+      else
+          echo "   ❌ pmat-book has $UNPUSHED unpushed commits"
+          git log origin/main..main --oneline | head -5
+      fi
+      cd - > /dev/null
+  else
+      echo "   ⚠️  pmat-book repository not found at ../pmat-book"
+  fi
+
+  # 10. Check bashrs integration (if applicable)
+  echo ""
+  echo "10. bashrs Integration:"
+  if command -v bashrs &> /dev/null; then
+      echo "   ✅ bashrs installed"
+      BASH_FILES=$(find . -name "*.sh" -o -name "Makefile" | wc -l)
+      echo "   Found $BASH_FILES bash/Makefile files"
+  else
+      echo "   ⚠️  bashrs not installed (optional)"
+  fi
+
+  echo ""
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "Audit complete. Review results above."
+  ```
+
+  ## STEP 2: FIX PRE-COMMIT HOOKS
+
+  **CRITICAL**: Pre-commit hooks are the first line of defense.
+
+  ### Install/Refresh TDG Enforcement Hooks
+
+  ```bash
+  # Use pmat to install hooks with TDG enforcement
+  pmat hooks install --tdg-enforcement
+
+  # Verify installation
+  if [ -f .git/hooks/pre-commit ]; then
+      echo "✅ Pre-commit hook installed"
+
+      # Verify it contains TDG enforcement
+      if grep -q "TDG Enforcement" .git/hooks/pre-commit; then
+          echo "✅ TDG enforcement enabled"
+      else
+          echo "❌ TDG enforcement NOT found - reinstall hooks"
+          pmat hooks refresh
+      fi
+  else
+      echo "❌ Pre-commit hook installation FAILED"
+      exit 1
+  fi
+
+  # Verify zero branching enforcement
+  if [ -f .git/hooks/pre-commit-branch-enforcer ]; then
+      echo "✅ Zero branching enforcement installed"
+  else
+      echo "⚠️  Zero branching enforcement missing (optional)"
+  fi
+
+  # Make all hooks executable
+  chmod +x .git/hooks/pre-commit
+  chmod +x .git/hooks/pre-push 2>/dev/null || true
+  chmod +x .git/hooks/post-commit 2>/dev/null || true
+  ```
+
+  ### Install Pre-Push Hook (pmat-book Synchronization)
+
+  If not present, create `.git/hooks/pre-push`:
+
+  ```bash
+  #!/usr/bin/env bash
+  #
+  # Pre-push hook: Enforce pmat-book synchronization
+  # Blocks push if pmat-book has unpushed commits
+  #
+
+  set -e
+
+  RED='\033[0;31m'
+  GREEN='\033[0;32m'
+  YELLOW='\033[1;33m'
+  NC='\033[0m'
+
+  echo -e "${GREEN}🔍 Checking pmat-book synchronization...${NC}"
+
+  # Check if pmat-book exists
+  if [ ! -d ../pmat-book ]; then
+      echo -e "${YELLOW}⚠️  pmat-book not found at ../pmat-book${NC}"
+      echo "   Skipping book synchronization check"
+      exit 0
+  fi
+
+  # Check for unpushed commits
+  cd ../pmat-book
+  git fetch origin main 2>/dev/null || true
+  UNPUSHED=$(git log origin/main..main --oneline 2>/dev/null)
+
+  if [ -n "$UNPUSHED" ]; then
+      echo -e "${RED}❌ BLOCKING: pmat-book has unpushed commits${NC}"
+      echo ""
+      echo "Unpushed commits:"
+      echo "$UNPUSHED"
+      echo ""
+      echo "To fix:"
+      echo "  cd ../pmat-book"
+      echo "  git push origin main"
+      echo ""
+      echo "This ensures documentation stays in sync with code."
+      exit 1
+  fi
+
+  cd - > /dev/null
+  echo -e "${GREEN}✅ pmat-book synchronized${NC}"
+  exit 0
+  ```
+
+  ```bash
+  chmod +x .git/hooks/pre-push
+  ```
+
+  ## STEP 3: RESTORE TDG BASELINE
+
+  **Create or refresh TDG baseline:**
+
+  ```bash
+  # Create .pmat directory if missing
+  mkdir -p .pmat
+
+  # Create fresh baseline
+  echo "📊 Creating TDG baseline..."
+  pmat tdg baseline create \
+      --output ${BASELINE_PATH} \
+      --path . \
+      --format json
+
+  if [ -f ${BASELINE_PATH} ]; then
+      echo "✅ Baseline created: ${BASELINE_PATH}"
+
+      # Show baseline summary
+      echo ""
+      echo "Baseline Summary:"
+      jq -r '.files | length' ${BASELINE_PATH} | xargs -I {} echo "  Files analyzed: {}"
+      jq -r '.summary.average_score // "N/A"' ${BASELINE_PATH} | xargs -I {} echo "  Average score: {}"
+  else
+      echo "❌ Baseline creation FAILED"
+      exit 1
+  fi
+  ```
+
+  ## STEP 4: FIX QUALITY REGRESSIONS
+
+  **Analyze and fix quality issues:**
+
+  ```bash
+  echo "🔍 Checking for quality regressions..."
+
+  # Run regression check
+  if pmat tdg check-regression \
+      --baseline ${BASELINE_PATH} \
+      --path . \
+      --max-score-drop 5 \
+      --fail-on-regression; then
+      echo "✅ No quality regressions"
+  else
+      echo "❌ Quality regressions detected"
+      echo ""
+      echo "Run detailed analysis:"
+      echo "  pmat tdg check-regression --baseline ${BASELINE_PATH} --path . --format table"
+      echo ""
+      echo "Fix regressions before proceeding."
+      exit 1
+  fi
+
+  # Check quality grades
+  echo ""
+  echo "🎯 Checking quality grades..."
+  pmat analyze . --min-grade ${MIN_GRADE}
+
+  if [ $? -ne 0 ]; then
+      echo "❌ Files below minimum grade ${MIN_GRADE}"
+      echo ""
+      echo "To identify low-quality files:"
+      echo "  pmat analyze . --format json | jq '.files[] | select(.grade < \"${MIN_GRADE}\") | {path, grade}'"
+      exit 1
+  fi
+
+  echo "✅ All files meet minimum grade ${MIN_GRADE}"
+  ```
+
+  ## STEP 5: ELIMINATE SATD COMMENTS
+
+  **Find and eliminate all SATD comments:**
+
+  ```bash
+  echo "🔍 Detecting SATD comments..."
+
+  # Find all SATD comments
+  SATD_FILES=$(grep -rl "TODO\|FIXME\|HACK" server/src/ 2>/dev/null || true)
+
+  if [ -z "$SATD_FILES" ]; then
+      echo "✅ Zero SATD comments"
+  else
+      echo "❌ SATD comments found in:"
+      echo "$SATD_FILES"
+      echo ""
+      echo "Options:"
+      echo "  1. Fix the issue and remove comment"
+      echo "  2. Create GitHub issue and remove comment:"
+      echo "     gh issue create --title \"[Task] Description\" --body \"Details\""
+      echo "  3. Document in roadmap and remove comment"
+      echo ""
+      echo "SATD comments are BLOCKING. Fix before proceeding."
+      exit 1
+  fi
+  ```
+
+  ## STEP 6: SYNC WITH ROADMAP
+
+  **Verify roadmap is current:**
+
+  ```bash
+  echo "📋 Checking roadmap synchronization..."
+
+  # Check if roadmap exists
+  if [ ! -f ${ROADMAP_PATH} ]; then
+      echo "❌ Roadmap missing: ${ROADMAP_PATH}"
+      echo ""
+      echo "Create roadmap:"
+      echo "  pmat roadmap init"
+      exit 1
+  fi
+
+  echo "✅ Roadmap exists: ${ROADMAP_PATH}"
+
+  # Validate roadmap structure
+  if command -v yq &> /dev/null; then
+      echo ""
+      echo "Roadmap Summary:"
+      yq eval '.milestones | length' ${ROADMAP_PATH} | xargs -I {} echo "  Milestones: {}"
+      yq eval '.epics | length' ${ROADMAP_PATH} | xargs -I {} echo "  Epics: {}"
+  fi
+
+  # Check for outdated items
+  echo ""
+  echo "⚠️  Review roadmap for:"
+  echo "  - Completed items still marked as 'in_progress'"
+  echo "  - Items blocked for >30 days"
+  echo "  - Missing dependencies"
+  echo ""
+  echo "To update:"
+  echo "  vim ${ROADMAP_PATH}"
+  ```
+
+  ## STEP 7: VALIDATE DOCUMENTATION ACCURACY
+
+  **Check for documentation hallucinations:**
+
+  ```bash
+  echo "📚 Validating documentation accuracy..."
+
+  # Generate deep context
+  echo "Generating deep context..."
+  pmat context --output deep_context.md --format llm-optimized
+
+  if [ ! -f deep_context.md ]; then
+      echo "❌ Failed to generate deep context"
+      exit 1
+  fi
+
+  echo "✅ Deep context generated"
+
+  # Validate documentation files
+  echo ""
+  echo "Validating README.md, CLAUDE.md, GEMINI.md, AGENT.md..."
+
+  DOCS_TO_VALIDATE=""
+  [ -f README.md ] && DOCS_TO_VALIDATE="$DOCS_TO_VALIDATE README.md"
+  [ -f CLAUDE.md ] && DOCS_TO_VALIDATE="$DOCS_TO_VALIDATE CLAUDE.md"
+  [ -f GEMINI.md ] && DOCS_TO_VALIDATE="$DOCS_TO_VALIDATE GEMINI.md"
+  [ -f AGENT.md ] && DOCS_TO_VALIDATE="$DOCS_TO_VALIDATE AGENT.md"
+
+  if [ -n "$DOCS_TO_VALIDATE" ]; then
+      pmat validate-readme \
+          --targets $DOCS_TO_VALIDATE \
+          --deep-context deep_context.md \
+          --fail-on-contradiction \
+          --verbose
+
+      if [ $? -ne 0 ]; then
+          echo "❌ Documentation hallucinations detected"
+          echo ""
+          echo "Fix contradictions before proceeding."
+          exit 1
+      fi
+
+      echo "✅ All documentation verified"
+  else
+      echo "⚠️  No documentation files to validate"
+  fi
+
+  # Cleanup
+  rm -f deep_context.md
+  ```
+
+  ## STEP 8: VERIFY PMAT-BOOK SYNCHRONIZATION
+
+  **Ensure pmat-book is synchronized:**
+
+  ```bash
+  echo "📖 Checking pmat-book synchronization..."
+
+  if [ ! -d ../pmat-book ]; then
+      echo "⚠️  pmat-book not found at ../pmat-book"
+      echo "   Skipping book validation"
+  else
+      cd ../pmat-book
+
+      # Check for unpushed commits
+      git fetch origin main 2>/dev/null || true
+      UNPUSHED=$(git log origin/main..main --oneline 2>/dev/null | wc -l)
+
+      if [ "$UNPUSHED" -gt 0 ]; then
+          echo "❌ pmat-book has $UNPUSHED unpushed commits"
+          echo ""
+          echo "Unpushed commits:"
+          git log origin/main..main --oneline
+          echo ""
+          echo "To fix:"
+          echo "  cd ../pmat-book"
+          echo "  git push origin main"
+          echo ""
+          echo "This is BLOCKING for compliance."
+          cd - > /dev/null
+          exit 1
+      fi
+
+      echo "✅ pmat-book synchronized"
+
+      # Run book validation tests
+      echo ""
+      echo "Running book validation..."
+      if [ -f Makefile ] && grep -q "validate-book" Makefile; then
+          make validate-book
+
+          if [ $? -ne 0 ]; then
+              echo "❌ Book validation tests FAILED"
+              echo ""
+              echo "Fix tests before proceeding."
+              cd - > /dev/null
+              exit 1
+          fi
+
+          echo "✅ Book validation passed"
+      else
+          echo "⚠️  No book validation target in Makefile"
+      fi
+
+      cd - > /dev/null
+  fi
+  ```
+
+  ## STEP 9: LINT BASH SCRIPTS (bashrs)
+
+  **If using bashrs, lint all bash scripts:**
+
+  ```bash
+  echo "🔧 Linting bash scripts with bashrs..."
+
+  if ! command -v bashrs &> /dev/null; then
+      echo "⚠️  bashrs not installed - skipping"
+  else
+      # Find all bash scripts
+      BASH_FILES=$(find . -name "*.sh" -type f)
+
+      if [ -z "$BASH_FILES" ]; then
+          echo "ℹ️  No bash scripts found"
+      else
+          echo "Found $(echo "$BASH_FILES" | wc -l) bash scripts"
+
+          # Lint each file
+          LINT_FAILED=0
+          for file in $BASH_FILES; do
+              bashrs lint "$file" > /dev/null 2>&1
+              if [ $? -ne 0 ]; then
+                  echo "❌ Lint failed: $file"
+                  bashrs lint "$file"
+                  LINT_FAILED=1
+              fi
+          done
+
+          if [ "$LINT_FAILED" -eq 0 ]; then
+              echo "✅ All bash scripts pass bashrs linting"
+          else
+              echo ""
+              echo "Fix bashrs linting errors before proceeding."
+              exit 1
+          fi
+      fi
+
+      # Lint Makefiles
+      if [ -f Makefile ]; then
+          echo ""
+          echo "Linting Makefile..."
+          bashrs lint Makefile > /dev/null 2>&1
+          if [ $? -eq 0 ]; then
+              echo "✅ Makefile passes bashrs linting"
+          else
+              echo "❌ Makefile linting failed:"
+              bashrs lint Makefile
+              exit 1
+          fi
+      fi
+  fi
+  ```
+
+  ## STEP 10: RUN FULL TEST SUITE
+
+  **Verify all tests pass:**
+
+  ```bash
+  echo "🧪 Running full test suite..."
+
+  # Run test-fast (should be <5 minutes)
+  if [ -f Makefile ] && grep -q "test-fast" Makefile; then
+      echo "Running make test-fast..."
+      make test-fast
+
+      if [ $? -ne 0 ]; then
+          echo "❌ Tests FAILED"
+          echo ""
+          echo "Fix test failures before proceeding."
+          exit 1
+      fi
+
+      echo "✅ All tests passed"
+  else
+      # Fallback to cargo test
+      echo "Running cargo nextest run..."
+      cargo nextest run --no-fail-fast
+
+      if [ $? -ne 0 ]; then
+          echo "❌ Tests FAILED"
+          exit 1
+      fi
+
+      echo "✅ All tests passed"
+  fi
+  ```
+
+  ## STEP 11: GENERATE COMPLIANCE REPORT
+
+  **Create summary report:**
+
+  ```bash
+  echo ""
+  echo "📊 PMAT COMPLIANCE REPORT"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+
+  # Compliance checklist
+  cat > /tmp/pmat-compliance-report.md << 'EOF'
+  # PMAT Compliance Report
+
+  ## Quality Gates
+
+  - [ ] Pre-commit hooks installed and working
+  - [ ] Pre-push hooks installed (pmat-book sync)
+  - [ ] TDG baseline created and current
+  - [ ] Zero quality regressions
+  - [ ] All files meet minimum grade ${MIN_GRADE}
+  - [ ] Zero SATD comments
+  - [ ] Roadmap synchronized with actual work
+  - [ ] Documentation accuracy validated (zero hallucinations)
+  - [ ] pmat-book synchronized (zero unpushed commits)
+  - [ ] pmat-book validation tests passing
+  - [ ] bashrs linting passing (if applicable)
+  - [ ] All tests passing
+
+  ## Next Steps
+
+  1. Review this checklist
+  2. Fix any remaining issues
+  3. Commit changes with "chore: Restore PMAT compliance"
+  4. Verify pre-commit hooks run successfully
+
+  ## Toyota Way Principles Applied
+
+  - **Jidoka (Built-in Quality)**: Automated hooks prevent defects
+  - **Andon Cord**: Stop the line when quality issues found
+  - **Genchi Genbutsu**: Go and see actual state of processes
+  - **Kaizen**: Continuous improvement through compliance
+  - **Zero Defects**: No tolerance for drift from standards
+
+  ## Enforcement
+
+  All quality gates are now enforced via:
+  - Pre-commit hooks (TDG, bashrs)
+  - Pre-push hooks (pmat-book sync)
+  - CI/CD pipelines
+  - Manual review
+
+  EOF
+
+  cat /tmp/pmat-compliance-report.md
+
+  echo ""
+  echo "Report saved to: /tmp/pmat-compliance-report.md"
+  ```
+
+  ## STEP 12: COMMIT COMPLIANCE FIXES
+
+  **Commit all fixes atomically:**
+
+  ```bash
+  # Stage all compliance fixes
+  git add .git/hooks/
+  git add .pmat/
+  git add ${ROADMAP_PATH}
+
+  # Commit with clear message
+  git commit -m "chore: Restore PMAT compliance
+
+  Applied comply-pmat prompt to fix all drift from quality processes.
+
+  Fixes:
+  - ✅ Pre-commit hooks installed (TDG enforcement)
+  - ✅ Pre-push hooks installed (pmat-book sync)
+  - ✅ TDG baseline created/refreshed
+  - ✅ Quality regressions eliminated
+  - ✅ SATD comments removed
+  - ✅ Documentation hallucinations fixed
+  - ✅ pmat-book synchronized
+  - ✅ All tests passing
+
+  Quality gates enforced:
+  - Minimum grade: ${MIN_GRADE}
+  - Zero SATD tolerance
+  - Zero hallucination tolerance
+  - Zero regression tolerance
+
+  Toyota Way principles applied:
+  - Jidoka: Quality built-in via automated hooks
+  - Andon Cord: Immediate stop when issues found
+  - Genchi Genbutsu: Audited actual state
+  - Kaizen: Process improvement through compliance
+  - Zero Defects: No tolerance for drift
+
+  🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+  Co-Authored-By: Claude <noreply@anthropic.com>"
+
+  echo ""
+  echo "✅ Compliance fixes committed"
+  ```
+
+  ## STEP 13: VERIFY HOOKS WORK
+
+  **Test pre-commit hook:**
+
+  ```bash
+  echo "🧪 Testing pre-commit hook..."
+
+  # Create test file with intentional issue
+  echo "// TODO: Remove this test" > /tmp/test-satd.rs
+
+  # Try to commit (should fail due to SATD)
+  git add /tmp/test-satd.rs
+  git commit -m "test: Verify pre-commit hook" 2>&1 | tee /tmp/hook-test.log
+
+  # Check if hook blocked commit
+  if grep -q "SATD\|TODO" /tmp/hook-test.log; then
+      echo "✅ Pre-commit hook working (blocked SATD comment)"
+  else
+      echo "⚠️  Pre-commit hook may not be detecting SATD"
+  fi
+
+  # Cleanup
+  git reset HEAD /tmp/test-satd.rs
+  rm -f /tmp/test-satd.rs /tmp/hook-test.log
+  ```
+
+  ## CONTINUOUS COMPLIANCE
+
+  **Maintain compliance going forward:**
+
+  ### Daily Checks
+
+  ```bash
+  # Run quick compliance check
+  pmat tdg check-regression --baseline ${BASELINE_PATH} --path .
+  pmat analyze . --min-grade ${MIN_GRADE}
+  make test-fast
+  ```
+
+  ### Weekly Checks
+
+  ```bash
+  # Refresh TDG baseline
+  pmat tdg baseline create --output ${BASELINE_PATH} --path .
+
+  # Update roadmap
+  vim ${ROADMAP_PATH}
+
+  # Validate documentation
+  pmat validate-readme --targets README.md CLAUDE.md --deep-context deep_context.md
+
+  # Run full test suite
+  make test
+  ```
+
+  ### Before Releases
+
+  ```bash
+  # Run complete compliance check
+  pmat prompt comply-pmat
+
+  # Verify pmat-book synchronized
+  cd ../pmat-book && git status && cd -
+
+  # Run book validation
+  cd ../pmat-book && make validate-book && cd -
+
+  # Verify all quality gates
+  make validate
+  ```
+
+  ## TOYOTA WAY PRINCIPLES
+
+  - **Jidoka (Built-in Quality)**: Automated hooks enforce quality at source
+  - **Andon Cord**: Stop immediately when drift detected
+  - **Genchi Genbutsu (Go & See)**: Audit actual state, not assumptions
+  - **Kaizen**: Continuous improvement through process compliance
+  - **Zero Defects**: Zero tolerance for process drift
+  - **Poka-Yoke**: Error-proofing via automated enforcement
+
+  ## ERROR HANDLING
+
+  **If compliance restoration fails:**
+
+  1. **Review audit output** from Step 1
+  2. **Address each failure** systematically
+  3. **Re-run compliance check** after each fix
+  4. **Ask for help** if stuck:
+     ```bash
+     gh issue create --title "[Compliance] Issue with X" --body "Details..."
+     ```
+
+  **If hooks still broken after reinstall:**
+
+  ```bash
+  # Nuclear option: Remove and reinstall
+  rm -rf .git/hooks
+  pmat hooks install --tdg-enforcement --force
+
+  # Verify
+  ls -la .git/hooks/
+  cat .git/hooks/pre-commit | head -20
+  ```
+
+  This systematic approach ensures PMAT compliance is restored and maintained with zero tolerance for drift.
+
+toyota_way_principles:
+  jidoka: quality_built_in_via_automated_hooks
+  andon_cord: immediate_stop_when_drift_detected
+  genchi_genbutsu: audit_actual_state_not_assumptions
+  kaizen: continuous_improvement_through_compliance
+  zero_defects: zero_tolerance_for_process_drift
+  poka_yoke: error_proofing_via_automation
+quality_gates:
+  pre_commit:
+    - tdg_enforcement
+    - zero_branching
+    - bashrs_linting
+    - satd_detection
+  pre_push:
+    - pmat_book_synchronization
+  continuous:
+    - minimum_grade_enforcement
+    - regression_prevention
+    - documentation_accuracy
+    - test_coverage
+compliance_checklist:
+  infrastructure:
+    - pre_commit_hooks_installed
+    - pre_push_hooks_installed
+    - tdg_baseline_current
+    - pmat_directory_configured
+  quality:
+    - zero_quality_regressions
+    - minimum_grade_achieved
+    - zero_satd_comments
+    - zero_documentation_hallucinations
+  synchronization:
+    - pmat_book_synchronized
+    - pmat_book_tests_passing
+    - roadmap_current
+  testing:
+    - all_tests_passing
+    - test_coverage_adequate
+    - bashrs_linting_passing
+enforcement_mechanisms:
+  automated:
+    - pre_commit_hooks
+    - pre_push_hooks
+    - ci_cd_pipelines
+  manual:
+    - daily_checks
+    - weekly_audits
+    - pre_release_validation
