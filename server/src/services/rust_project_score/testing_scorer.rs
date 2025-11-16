@@ -324,9 +324,56 @@ impl Scorer for TestingScorer {
         Ok(CategoryScore::new(total_earned, self.max_points))
     }
 
-    fn score_with_mode(&self, project_path: &Path, _full: bool) -> ScorerResult<CategoryScore> {
-        // This scorer doesn't have expensive operations, so mode doesn't affect it
-        self.score(project_path)
+    fn score_with_mode(&self, project_path: &Path, full: bool) -> ScorerResult<CategoryScore> {
+        // Verify project has Cargo.toml
+        if !project_path.join("Cargo.toml").exists() {
+            return Err(ScorerError::InvalidProject(
+                "No Cargo.toml found - not a valid Rust project".to_string(),
+            ));
+        }
+
+        let mut total_earned = 0.0;
+
+        // Score coverage (8pts)
+        // FAST MODE: Skip expensive cargo llvm-cov, use fallback
+        if full {
+            match self.score_coverage(project_path) {
+                Ok(score) => total_earned += score,
+                Err(e) => return Err(e),
+            }
+        } else {
+            // Fast mode: Use fallback (file system check only)
+            match self.score_coverage_fallback(project_path) {
+                Ok(score) => total_earned += score,
+                Err(e) => return Err(e),
+            }
+        }
+
+        // Score integration tests (4pts) - Fast (filesystem check)
+        match self.score_integration_tests(project_path) {
+            Ok(score) => total_earned += score,
+            Err(e) => return Err(e),
+        }
+
+        // Score doc tests (3pts) - Fast (filesystem check)
+        match self.score_doc_tests(project_path) {
+            Ok(score) => total_earned += score,
+            Err(e) => return Err(e),
+        }
+
+        // Score mutation testing (5pts)
+        // FAST MODE: Skip expensive cargo mutants
+        if full {
+            match self.score_mutation(project_path) {
+                Ok(score) => total_earned += score,
+                Err(e) => return Err(e),
+            }
+        } else {
+            // Fast mode: Give moderate credit (2.5pts) without running
+            total_earned += 2.5;
+        }
+
+        Ok(CategoryScore::new(total_earned, self.max_points))
     }
 
     fn recommendations(&self, project_path: &Path) -> Vec<String> {

@@ -259,7 +259,7 @@ impl Scorer for RustToolingScorer {
             total_earned += 5.0;
         }
 
-        // Score rustfmt (5pts) - fast enough for both modes
+        // Score rustfmt (5pts) - fast enough for both modes (~5 seconds)
         match self.score_rustfmt(project_path) {
             Ok(score) => total_earned += score,
             Err(ScorerError::ToolNotFound(_)) => {
@@ -269,10 +269,16 @@ impl Scorer for RustToolingScorer {
             Err(e) => return Err(e),
         }
 
-        // Score cargo-audit (7pts) - fast enough for both modes
-        match self.score_cargo_audit(project_path) {
-            Ok(score) => total_earned += score,
-            Err(e) => return Err(e),
+        // Score cargo-audit (7pts) - ONLY in full mode (network calls ~30s)
+        if full {
+            match self.score_cargo_audit(project_path) {
+                Ok(score) => total_earned += score,
+                Err(e) => return Err(e),
+            }
+        } else {
+            // Fast mode: Skip cargo-audit (network calls too slow)
+            // Give moderate credit (3.5/7 points) to avoid penalizing fast mode
+            total_earned += 3.5;
         }
 
         // Score cargo-deny (3pts) - fast enough for both modes
