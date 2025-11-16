@@ -39,7 +39,9 @@
 //! ```
 
 pub mod models;
+pub mod rust_tooling_scorer;
 pub mod scorer;
 
 pub use models::*;
+pub use rust_tooling_scorer::*;
 pub use scorer::*;
