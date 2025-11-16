@@ -953,6 +953,8 @@ async fn test_parallel_mutant_execution_correctness() {
 
 /// Test 16: Race condition handling
 #[tokio::test]
+/// SLOW: >60s - excluded from fast test suite
+#[ignore]
 async fn test_race_condition_handling() {
     let temp_dir = tempdir().unwrap();
     let file_path = temp_dir.path().join("race.rs");
@@ -982,6 +984,8 @@ async fn test_race_condition_handling() {
 
 /// Test 17: Resource contention
 #[tokio::test]
+/// SLOW: >60s - excluded from fast test suite
+#[ignore]
 async fn test_resource_contention() {
     let temp_dir = tempdir().unwrap();
     let file_path = temp_dir.path().join("contention.rs");

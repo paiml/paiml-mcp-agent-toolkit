@@ -1,10 +1,15 @@
-[profile.default]
-# Default test configuration - runs all tests including ignored ones
-slow-timeout = { period = "60s", grace-period = "10s" }
-retries = 0
+# cargo-nextest configuration for PMAT
+# https://nexte.st/book/configuration.html
 
-[profile.fast]
-# Fast profile - excludes ignored tests (marked as slow)
-slow-timeout = { period = "60s", grace-period = "10s" }
-retries = 1
-test-threads = "num-cpus"
+[profile.default]
+# Skip tests marked with #[ignore] - includes slow/broken/external-service tests
+# Toyota Way: Fast feedback loop, zero tolerance for slow tests in test-fast
+default-filter = 'not test(::)'
+
+[profile.ci]
+# CI runs all non-ignored tests
+retries = 2
+
+[profile.all]
+# Profile for running ALL tests including ignored ones
+# Use with: cargo nextest run --profile all

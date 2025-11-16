@@ -80,15 +80,22 @@ check: check-scripts
 
 # Fast tests without coverage (optimized for speed) - Test execution MUST complete under 5 minutes
 # Following bashrs next-gen testing pattern: cargo-nextest + PROPTEST_CASES + parallel execution
+# Toyota Way: cargo-nextest AUTOMATICALLY SKIPS #[ignore] tests by default
+# This excludes slow tests (>60s), broken tests, and tests requiring external services
 test-fast:
-	@echo "⚡ Running fast tests (target: <5 min)..."
+	@echo "⚡ Running fast tests (target: <5 min, auto-excludes #[ignore] tests)..."
 	@if command -v cargo-nextest >/dev/null 2>&1; then \
 		PROPTEST_CASES=50 RUST_TEST_THREADS=$$(nproc) cargo nextest run \
 			--workspace \
 			--status-level skip \
 			--failure-output immediate; \
 	else \
-		PROPTEST_CASES=50 cargo test --workspace; \
+		echo "⚠️  cargo-nextest not found. Installing..."; \
+		cargo install cargo-nextest; \
+		PROPTEST_CASES=50 RUST_TEST_THREADS=$$(nproc) cargo nextest run \
+			--workspace \
+			--status-level skip \
+			--failure-output immediate; \
 	fi
 
 # Run ALL tests (unit + integration) - slower but comprehensive
