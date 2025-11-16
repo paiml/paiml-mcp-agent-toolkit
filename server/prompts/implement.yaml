@@ -1,0 +1,1009 @@
+name: implement
+description: Implement a specification using PMAT EXTREME TDD methodology
+category: development
+priority: critical
+methodology: EXTREME TDD + Spec-Driven Development + Toyota Way
+constraints:
+  - specification document required
+  - roadmap creation mandatory
+  - tests written first (RED phase)
+  - zero regressions
+  - quality gates must pass
+variables:
+  SPEC_PATH: ""
+  PROJECT_TYPE: "existing"  # "new" or "existing"
+  PROJECT_NAME: ""
+  TEST_CMD: "cargo test"
+  BUILD_CMD: "cargo build"
+  MIN_COVERAGE: "85"
+  MIN_MUTATION_SCORE: "80"
+heuristics:
+  - analyze specification completely
+  - create roadmap from spec requirements
+  - scaffold new repo if needed
+  - write failing tests first
+  - implement incrementally
+  - verify quality gates
+prompt: |
+  Implement a specification following PMAT EXTREME TDD methodology.
+
+  ## STEP 0: UNDERSTAND THE SPECIFICATION
+
+  **Read the specification document:**
+  ```bash
+  # Specification location: ${SPEC_PATH}
+  cat ${SPEC_PATH}
+  ```
+
+  **Extract key information:**
+  - [ ] Purpose: What problem does this solve?
+  - [ ] Scope: What's included/excluded?
+  - [ ] Requirements: What are the acceptance criteria?
+  - [ ] Dependencies: What external systems/libraries needed?
+  - [ ] Performance targets: Any speed/memory constraints?
+  - [ ] Quality targets: Coverage, mutation score, complexity limits
+
+  **Document understanding:**
+  Create a brief summary of the spec in your own words to verify comprehension.
+
+  ## STEP 1: PROJECT SETUP
+
+  ### If ${PROJECT_TYPE} == "new" (New Repository)
+
+  **Create project structure:**
+  ```bash
+  # Rust project
+  cargo new ${PROJECT_NAME}
+  cd ${PROJECT_NAME}
+
+  # Initialize git
+  git init
+  git add .
+  git commit -m "chore: Initial project scaffold"
+
+  # Create standard directories
+  mkdir -p {docs,tests,benches,examples,.github/workflows}
+  mkdir -p docs/specifications
+  ```
+
+  **Create foundational files:**
+
+  **README.md:**
+  ```markdown
+  # ${PROJECT_NAME}
+
+  [Brief description from spec]
+
+  ## Features
+
+  - [ ] Feature 1 (from spec)
+  - [ ] Feature 2 (from spec)
+
+  ## Installation
+
+  \`\`\`bash
+  cargo install ${PROJECT_NAME}
+  \`\`\`
+
+  ## Usage
+
+  \`\`\`bash
+  ${PROJECT_NAME} --help
+  \`\`\`
+
+  ## Development
+
+  ### Prerequisites
+  - Rust 1.75+
+  - cargo-nextest
+  - cargo-llvm-cov
+
+  ### Build
+  \`\`\`bash
+  cargo build --release
+  \`\`\`
+
+  ### Test
+  \`\`\`bash
+  make test-fast
+  \`\`\`
+
+  ## Quality Standards
+
+  - Test Coverage: ≥${MIN_COVERAGE}%
+  - Mutation Score: ≥${MIN_MUTATION_SCORE}%
+  - Clippy: Zero warnings
+  - Complexity: All functions ≤20
+
+  ## License
+
+  MIT OR Apache-2.0
+  ```
+
+  **Cargo.toml (for Rust projects):**
+  ```toml
+  [package]
+  name = "${PROJECT_NAME}"
+  version = "0.1.0"
+  edition = "2021"
+  rust-version = "1.75"
+  authors = ["PMAT Team"]
+  license = "MIT OR Apache-2.0"
+  description = "[From spec]"
+  repository = "https://github.com/paiml/${PROJECT_NAME}"
+  keywords = []
+  categories = []
+
+  [dependencies]
+  # Add from spec requirements
+
+  [dev-dependencies]
+  assert_cmd = "2.0"
+  predicates = "3.0"
+  proptest = "1.0"
+  criterion = "0.5"
+
+  [[bench]]
+  name = "benchmarks"
+  harness = false
+
+  [profile.release]
+  lto = true
+  codegen-units = 1
+  ```
+
+  **Makefile:**
+  ```makefile
+  .PHONY: test test-fast coverage build clean
+
+  test-fast:
+  \tif command -v cargo-nextest >/dev/null 2>&1; then \
+  \t\tcargo nextest run --workspace; \
+  \telse \
+  \t\tcargo test --workspace; \
+  \tfi
+
+  coverage:
+  \tcargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
+  \tcargo llvm-cov report
+
+  build:
+  \tcargo build --release
+
+  clean:
+  \tcargo clean
+
+  lint:
+  \tcargo clippy --all-targets --all-features -- -D warnings
+
+  format:
+  \tcargo fmt --all -- --check
+
+  quality-gate: lint format test-fast coverage
+  \t@echo "All quality gates passed!"
+  ```
+
+  **.gitignore:**
+  ```
+  target/
+  Cargo.lock
+  *.swp
+  .DS_Store
+  lcov.info
+  ```
+
+  **CI Pipeline (.github/workflows/ci.yml):**
+  ```yaml
+  name: CI
+
+  on: [push, pull_request]
+
+  jobs:
+    test:
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v4
+        - uses: dtolnay/rust-toolchain@stable
+        - run: cargo test --all-features
+
+    quality:
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v4
+        - uses: dtolnay/rust-toolchain@stable
+        - run: cargo clippy -- -D warnings
+        - run: cargo fmt -- --check
+  ```
+
+  **PMAT Configuration:**
+  ```bash
+  # Install TDG enforcement hooks
+  pmat hooks install --tdg-enforcement
+
+  # Create initial TDG baseline
+  pmat analyze tdg --path . --output .pmat/baseline.json
+
+  # Verify installation
+  ls -la .git/hooks/pre-commit
+  ls -la .pmat/baseline.json
+  ```
+
+  ### If ${PROJECT_TYPE} == "existing" (Existing PMAT Project)
+
+  **Verify PMAT setup:**
+  ```bash
+  # Check for PMAT infrastructure
+  ls -la .pmat/baseline.json
+  ls -la .git/hooks/pre-commit
+  ls -la roadmap.yaml
+
+  # If missing, initialize
+  pmat hooks install --tdg-enforcement
+  pmat analyze tdg --path . --output .pmat/baseline.json
+  ```
+
+  ## STEP 2: CREATE ROADMAP FROM SPECIFICATION
+
+  **Analyze specification requirements:**
+
+  Break down the specification into concrete, testable milestones.
+
+  **Create roadmap.yaml:**
+
+  ```yaml
+  project: ${PROJECT_NAME}
+  version: 0.1.0
+  start_date: $(date +%Y-%m-%d)
+  methodology: EXTREME TDD + Spec-Driven Development
+
+  objectives:
+    - title: "[Objective 1 from spec]"
+      description: "[Details]"
+      metrics:
+        - "Acceptance criterion 1"
+        - "Acceptance criterion 2"
+
+  milestones:
+    - name: "Sprint 1: Core Infrastructure"
+      target_date: $(date -d '+2 weeks' +%Y-%m-%d)
+      objectives:
+        - "[First objective from spec]"
+      deliverables:
+        - "Data structures defined"
+        - "Core API designed"
+        - "RED tests written"
+      acceptance_criteria:
+        - "All core types compile"
+        - "RED tests fail as expected"
+        - "Zero clippy warnings"
+
+    - name: "Sprint 2: Core Implementation"
+      target_date: $(date -d '+4 weeks' +%Y-%m-%d)
+      objectives:
+        - "[Second objective from spec]"
+      deliverables:
+        - "Core logic implemented"
+        - "All RED tests GREEN"
+        - "Integration tests added"
+      acceptance_criteria:
+        - "All unit tests pass"
+        - "≥${MIN_COVERAGE}% coverage"
+        - "Zero regressions"
+
+    - name: "Sprint 3: Advanced Features"
+      target_date: $(date -d '+6 weeks' +%Y-%m-%d)
+      objectives:
+        - "[Third objective from spec]"
+      deliverables:
+        - "Advanced features implemented"
+        - "Performance benchmarks added"
+        - "Documentation complete"
+      acceptance_criteria:
+        - "All acceptance criteria met"
+        - "≥${MIN_MUTATION_SCORE}% mutation score"
+        - "Benchmarks baseline established"
+
+    - name: "Sprint 4: Quality & Release"
+      target_date: $(date -d '+8 weeks' +%Y-%m-%d)
+      objectives:
+        - "Production-ready release"
+      deliverables:
+        - "All quality gates pass"
+        - "Documentation validated"
+        - "Release 0.1.0"
+      acceptance_criteria:
+        - "Zero SATD comments"
+        - "README accurate (pmat validate-readme)"
+        - "crates.io publish ready"
+
+  quality_gates:
+    pre_commit:
+      - "clippy --all-targets -- -D warnings"
+      - "fmt --check"
+      - "pmat analyze tdg (no regressions)"
+
+    pre_release:
+      - "coverage ≥${MIN_COVERAGE}%"
+      - "mutation score ≥${MIN_MUTATION_SCORE}%"
+      - "all tests pass"
+      - "pmat validate-readme"
+      - "pmat repo-score ≥80/100"
+
+  risks:
+    - risk: "Performance targets not met"
+      mitigation: "Early benchmarking, profiling"
+      status: "monitoring"
+
+    - risk: "External dependency breaking changes"
+      mitigation: "Version pinning, CI alerts"
+      status: "monitoring"
+
+  toyota_way_principles:
+    jidoka: "Automated quality gates, CI enforcement"
+    andon_cord: "Pre-commit hooks block bad code"
+    genchi_genbutsu: "Data-driven decisions from benchmarks"
+    kaizen: "Continuous iteration, roadmap updates"
+    zero_defects: "100% test pass rate, zero regressions"
+  ```
+
+  **Commit roadmap:**
+  ```bash
+  git add roadmap.yaml
+  git commit -m "$(cat <<'EOF'
+  docs: Add roadmap for spec implementation
+
+  Created comprehensive roadmap with 4 sprints:
+  - Sprint 1: Core infrastructure
+  - Sprint 2: Core implementation
+  - Sprint 3: Advanced features
+  - Sprint 4: Quality & release
+
+  Quality Gates:
+  - Coverage ≥${MIN_COVERAGE}%
+  - Mutation ≥${MIN_MUTATION_SCORE}%
+  - Zero regressions
+
+  🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+  Co-Authored-By: Claude <noreply@anthropic.com>
+  EOF
+  )"
+  ```
+
+  ## STEP 3: SPRINT 1 - CORE INFRASTRUCTURE (RED PHASE)
+
+  ### Design Core Data Structures
+
+  **From specification, identify:**
+  - Core domain types (structs, enums)
+  - Error types
+  - Configuration types
+  - Input/Output formats
+
+  **Create type definitions (RED tests first):**
+
+  **Example: tests/core_types_tests.rs**
+  ```rust
+  //! Core type tests - RED phase
+
+  use ${PROJECT_NAME}::*;
+
+  #[test]
+  fn test_core_type_creation() {
+      let instance = CoreType::new("test");
+      assert_eq!(instance.name(), "test");
+  }
+
+  #[test]
+  fn test_error_type_implements_error_trait() {
+      let err = CustomError::new("test error");
+      let _: &dyn std::error::Error = &err;
+  }
+
+  #[test]
+  fn test_config_from_file() {
+      let config = Config::from_file("test.toml");
+      assert!(config.is_ok());
+  }
+  ```
+
+  **Run tests (should FAIL):**
+  ```bash
+  cargo test
+  # Expected: compilation errors (types don't exist yet)
+  ```
+
+  **Create minimal type stubs (still RED):**
+
+  **src/lib.rs:**
+  ```rust
+  //! ${PROJECT_NAME}
+  //!
+  //! [Description from spec]
+
+  #![deny(missing_docs)]
+  #![deny(clippy::all)]
+
+  pub mod types;
+  pub mod errors;
+  pub mod config;
+
+  pub use types::*;
+  pub use errors::*;
+  pub use config::*;
+  ```
+
+  **src/types.rs:**
+  ```rust
+  //! Core domain types
+
+  /// Core type for [purpose from spec]
+  pub struct CoreType {
+      name: String,
+  }
+
+  impl CoreType {
+      /// Create new instance
+      pub fn new(name: impl Into<String>) -> Self {
+          Self { name: name.into() }
+      }
+
+      /// Get name
+      pub fn name(&self) -> &str {
+          &self.name
+      }
+  }
+  ```
+
+  **Run tests again:**
+  ```bash
+  cargo test
+  # Tests should compile but some may still fail (RED phase complete)
+  ```
+
+  **Verify RED phase:**
+  - [ ] Tests compile
+  - [ ] Tests fail as expected
+  - [ ] Zero clippy warnings
+  - [ ] Code is minimal (no premature implementation)
+
+  ## STEP 4: SPRINT 1 - IMPLEMENT CORE (GREEN PHASE)
+
+  **Implement functionality to make tests pass:**
+
+  **Iterate on each failing test:**
+  ```bash
+  # 1. Identify failing test
+  cargo test --lib | grep FAILED
+
+  # 2. Implement minimal code to fix
+  # (Edit src/*.rs)
+
+  # 3. Re-run test
+  cargo test test_name
+
+  # 4. Repeat until all tests GREEN
+  ```
+
+  **Example implementation:**
+
+  ```rust
+  // src/errors.rs
+  use std::fmt;
+
+  #[derive(Debug)]
+  pub struct CustomError {
+      message: String,
+  }
+
+  impl CustomError {
+      pub fn new(message: impl Into<String>) -> Self {
+          Self { message: message.into() }
+      }
+  }
+
+  impl fmt::Display for CustomError {
+      fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+          write!(f, "{}", self.message)
+      }
+  }
+
+  impl std::error::Error for CustomError {}
+  ```
+
+  **Verify GREEN phase:**
+  ```bash
+  cargo test        # All tests pass
+  cargo clippy      # Zero warnings
+  cargo build       # Clean build
+  ```
+
+  ## STEP 5: SPRINT 1 - REFACTOR
+
+  **Once all tests GREEN, refactor:**
+
+  - Extract common patterns
+  - Remove duplication
+  - Improve naming
+  - Add documentation
+  - Optimize performance (if needed)
+
+  **Example refactoring:**
+  ```rust
+  // Before
+  impl CoreType {
+      pub fn process(&self) -> String {
+          let mut result = String::new();
+          result.push_str(&self.name);
+          result.push_str("_processed");
+          result
+      }
+  }
+
+  // After (more idiomatic)
+  impl CoreType {
+      pub fn process(&self) -> String {
+          format!("{}_processed", self.name)
+      }
+  }
+  ```
+
+  **Verify refactoring didn't break tests:**
+  ```bash
+  cargo test --workspace
+  # All tests still pass
+  ```
+
+  **Check code quality:**
+  ```bash
+  # Complexity check
+  pmat analyze complexity --path src/ --threshold 20
+
+  # SATD check
+  grep -r "TODO\|FIXME\|HACK" src/
+  # Should be zero or all linked to GitHub issues
+
+  # Coverage
+  make coverage
+  # Should be ≥${MIN_COVERAGE}%
+  ```
+
+  ## STEP 6: SPRINT 2 - ADVANCED FEATURES
+
+  **From specification, implement remaining features:**
+
+  **For each feature:**
+  1. **RED**: Write failing tests
+  2. **GREEN**: Implement minimal code
+  3. **REFACTOR**: Clean up
+  4. **VERIFY**: Quality gates
+
+  **Example: CLI Integration**
+
+  **RED tests (tests/cli_tests.rs):**
+  ```rust
+  use assert_cmd::Command;
+  use predicates::prelude::*;
+
+  #[test]
+  fn test_cli_help() {
+      let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
+      cmd.arg("--help")
+          .assert()
+          .success()
+          .stdout(predicate::str::contains("Usage:"));
+  }
+
+  #[test]
+  fn test_cli_version() {
+      let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
+      cmd.arg("--version")
+          .assert()
+          .success()
+          .stdout(predicate::str::contains(env!("CARGO_PKG_VERSION")));
+  }
+  ```
+
+  **GREEN implementation (src/main.rs):**
+  ```rust
+  use clap::Parser;
+
+  #[derive(Parser)]
+  #[command(name = env!("CARGO_PKG_NAME"))]
+  #[command(version = env!("CARGO_PKG_VERSION"))]
+  #[command(about = env!("CARGO_PKG_DESCRIPTION"))]
+  struct Cli {
+      // Add from spec requirements
+  }
+
+  fn main() {
+      let _cli = Cli::parse();
+      // Implementation
+  }
+  ```
+
+  ## STEP 7: PROPERTY-BASED TESTING
+
+  **Add proptest for robustness:**
+
+  ```rust
+  use proptest::prelude::*;
+
+  proptest! {
+      #[test]
+      fn test_core_type_handles_arbitrary_strings(s in "\\PC*") {
+          let instance = CoreType::new(s.clone());
+          assert_eq!(instance.name(), s);
+      }
+
+      #[test]
+      fn test_process_always_appends_suffix(s in "\\PC*") {
+          let instance = CoreType::new(s.clone());
+          let processed = instance.process();
+          assert!(processed.ends_with("_processed"));
+      }
+  }
+  ```
+
+  ## STEP 8: BENCHMARKING
+
+  **From spec, identify performance-critical paths:**
+
+  **benches/benchmarks.rs:**
+  ```rust
+  use criterion::{black_box, criterion_group, criterion_main, Criterion};
+  use ${PROJECT_NAME}::*;
+
+  fn benchmark_core_operation(c: &mut Criterion) {
+      c.bench_function("core_operation", |b| {
+          b.iter(|| {
+              let instance = CoreType::new(black_box("test"));
+              instance.process()
+          });
+      });
+  }
+
+  criterion_group!(benches, benchmark_core_operation);
+  criterion_main!(benches);
+  ```
+
+  **Run benchmarks:**
+  ```bash
+  cargo bench
+  # Save baseline
+  cargo bench --save-baseline initial
+  ```
+
+  ## STEP 9: DOCUMENTATION
+
+  **Update README with actual usage:**
+  ```bash
+  # Generate example output
+  cargo run -- --help > /tmp/help.txt
+
+  # Update README.md with real examples
+  ```
+
+  **Verify documentation accuracy:**
+  ```bash
+  # Generate deep context
+  pmat context --output deep_context.md --format llm-optimized
+
+  # Validate README
+  pmat validate-readme \
+      --targets README.md \
+      --deep-context deep_context.md \
+      --fail-on-contradiction
+  ```
+
+  **Add rustdoc examples:**
+  ```rust
+  /// Process the core type
+  ///
+  /// # Examples
+  ///
+  /// ```
+  /// use ${PROJECT_NAME}::CoreType;
+  ///
+  /// let instance = CoreType::new("example");
+  /// let result = instance.process();
+  /// assert_eq!(result, "example_processed");
+  /// ```
+  pub fn process(&self) -> String {
+      format!("{}_processed", self.name)
+  }
+  ```
+
+  **Run doc tests:**
+  ```bash
+  cargo test --doc
+  ```
+
+  ## STEP 10: MUTATION TESTING
+
+  **Verify test quality with mutation testing:**
+
+  ```bash
+  # Install cargo-mutants
+  cargo install cargo-mutants
+
+  # Run mutation testing
+  cargo mutants --all-features
+
+  # Target: ≥${MIN_MUTATION_SCORE}% mutation score
+  ```
+
+  **If mutation score too low:**
+  - Identify surviving mutants
+  - Add tests to catch mutations
+  - Re-run until ≥${MIN_MUTATION_SCORE}%
+
+  ## STEP 11: QUALITY GATES (FINAL VERIFICATION)
+
+  **Run all quality checks:**
+
+  ```bash
+  # 1. Linting
+  cargo clippy --all-targets --all-features -- -D warnings
+
+  # 2. Formatting
+  cargo fmt --all -- --check
+
+  # 3. Tests
+  make test-fast
+
+  # 4. Coverage
+  make coverage
+  # Verify ≥${MIN_COVERAGE}%
+
+  # 5. Mutation testing
+  cargo mutants --all-features
+  # Verify ≥${MIN_MUTATION_SCORE}%
+
+  # 6. Complexity
+  pmat analyze complexity --path src/ --threshold 20
+  # All functions ≤20
+
+  # 7. SATD
+  grep -r "TODO\|FIXME\|HACK" src/
+  # Zero or all linked to issues
+
+  # 8. Documentation
+  pmat validate-readme --targets README.md --deep-context deep_context.md
+
+  # 9. Benchmarks
+  cargo bench
+
+  # 10. Repo score
+  pmat repo-score --path .
+  # Target: ≥80/100
+  ```
+
+  ## STEP 12: RELEASE PREPARATION
+
+  **Update version in Cargo.toml:**
+  ```toml
+  [package]
+  version = "0.1.0"
+  ```
+
+  **Create CHANGELOG.md:**
+  ```markdown
+  # Changelog
+
+  ## [0.1.0] - $(date +%Y-%m-%d)
+
+  ### Added
+  - Initial implementation of [feature from spec]
+  - [Feature 2 from spec]
+  - Comprehensive test suite (${MIN_COVERAGE}% coverage)
+  - Benchmarks for performance tracking
+
+  ### Quality Metrics
+  - Test Coverage: [actual]%
+  - Mutation Score: [actual]%
+  - Clippy Warnings: 0
+  - Repo Score: [actual]/100
+  ```
+
+  **Tag release:**
+  ```bash
+  git add .
+  git commit -m "chore: Release v0.1.0"
+  git tag -a v0.1.0 -m "Release v0.1.0"
+  ```
+
+  **Publish (if applicable):**
+  ```bash
+  # Dry run
+  cargo publish --dry-run
+
+  # Actual publish
+  cargo publish
+  ```
+
+  ## STEP 13: POST-IMPLEMENTATION VALIDATION
+
+  **Verify specification compliance:**
+
+  Go through specification document section by section:
+  - [ ] All requirements implemented
+  - [ ] All acceptance criteria met
+  - [ ] All performance targets achieved
+  - [ ] All quality gates pass
+  - [ ] Documentation complete and accurate
+
+  **Create compliance report:**
+
+  ```markdown
+  # Specification Compliance Report
+
+  **Specification**: ${SPEC_PATH}
+  **Implementation**: ${PROJECT_NAME} v0.1.0
+  **Date**: $(date +%Y-%m-%d)
+
+  ## Requirements Compliance
+
+  | Requirement | Status | Evidence |
+  |-------------|--------|----------|
+  | [Req 1] | ✅ PASS | tests/test_req1.rs:45 |
+  | [Req 2] | ✅ PASS | tests/test_req2.rs:78 |
+
+  ## Quality Metrics
+
+  - Test Coverage: [actual]% (target: ${MIN_COVERAGE}%)
+  - Mutation Score: [actual]% (target: ${MIN_MUTATION_SCORE}%)
+  - Clippy Warnings: 0
+  - Complexity: Max 15 (target: ≤20)
+  - SATD Comments: 0
+  - Repo Score: [actual]/100 (target: ≥80)
+
+  ## Performance Benchmarks
+
+  | Operation | Time | Target |
+  |-----------|------|--------|
+  | [Op 1] | [time] | [target] |
+
+  ## Conclusion
+
+  ✅ All specification requirements met
+  ✅ All quality gates pass
+  ✅ Ready for production use
+  ```
+
+  ## TOYOTA WAY PRINCIPLES APPLIED
+
+  ### Jidoka (Built-in Quality)
+  - Pre-commit hooks enforce quality
+  - CI pipeline catches issues early
+  - Automated testing at every stage
+
+  ### Andon Cord (Stop the Line)
+  - Quality gates block bad code
+  - Pre-commit hooks prevent regressions
+  - Mutation testing ensures test quality
+
+  ### Genchi Genbutsu (Go and See)
+  - Benchmarks provide real performance data
+  - Coverage reports show actual test coverage
+  - Complexity analysis identifies hotspots
+
+  ### Kaizen (Continuous Improvement)
+  - Roadmap guides iterative development
+  - Refactor phase in every sprint
+  - Quality metrics tracked over time
+
+  ### Zero Defects
+  - 100% test pass rate
+  - Zero clippy warnings
+  - Zero regressions (TDG enforcement)
+
+  ## COMMON PATTERNS
+
+  ### Pattern: Feature Implementation
+  ```
+  1. RED: Write failing test
+  2. GREEN: Implement minimal code
+  3. REFACTOR: Clean up
+  4. VERIFY: Quality gates
+  5. DOCUMENT: Add rustdoc + README
+  6. BENCHMARK: Add performance test
+  ```
+
+  ### Pattern: Bug Fix
+  ```
+  1. Reproduce bug with failing test
+  2. Fix until test passes
+  3. Add regression test
+  4. Verify no new regressions
+  ```
+
+  ### Pattern: Performance Optimization
+  ```
+  1. Benchmark current performance
+  2. Identify bottleneck (profiling)
+  3. Optimize
+  4. Verify improvement (benchmark comparison)
+  5. Ensure no test regressions
+  ```
+
+  ## TIPS
+
+  - Keep commits small and atomic
+  - Run tests frequently (after every change)
+  - Don't skip the RED phase (proves test works)
+  - Refactor continuously (don't accumulate debt)
+  - Update roadmap as you learn
+  - Celebrate milestones (Toyota Way: Kaizen)
+
+  ## ERROR HANDLING
+
+  **If tests won't compile:**
+  - Fix compilation errors first
+  - Then worry about test failures
+
+  **If tests pass but shouldn't (false GREEN):**
+  - Delete implementation, verify test fails (RED)
+  - Re-implement correctly
+
+  **If mutation score too low:**
+  - Review surviving mutants
+  - Add tests for uncovered scenarios
+  - Use property-based tests for edge cases
+
+  **If performance targets not met:**
+  - Profile to find bottlenecks
+  - Optimize hot paths
+  - Consider algorithmic improvements
+  - Update spec if targets unrealistic
+
+  This systematic approach ensures every specification is implemented with:
+  - Full test coverage
+  - Verified quality
+  - Complete documentation
+  - Zero regressions
+toyota_way_principles:
+  jidoka: automated_quality_gates_at_every_step
+  andon_cord: pre_commit_hooks_block_bad_code
+  genchi_genbutsu: data_driven_decisions_from_benchmarks
+  kaizen: iterative_development_with_roadmap
+  zero_defects: 100_percent_test_pass_rate
+methodology_integration:
+  extreme_tdd:
+    - red_phase_first
+    - green_phase_minimal
+    - refactor_phase_continuous
+  spec_driven:
+    - roadmap_from_spec
+    - compliance_verification
+    - acceptance_criteria_tracking
+quality_enforcement:
+  pre_commit:
+    - clippy_zero_warnings
+    - fmt_check
+    - tdg_no_regressions
+  pre_release:
+    - coverage_minimum
+    - mutation_score_minimum
+    - complexity_limits
+    - satd_zero
+    - readme_validation
+scaffolding_templates:
+  rust:
+    files:
+      - Cargo.toml
+      - src/lib.rs
+      - src/main.rs
+      - tests/
+      - benches/
+      - Makefile
+      - .github/workflows/ci.yml
+    structure: "standard cargo workspace"
+  python:
+    files:
+      - pyproject.toml
+      - src/
+      - tests/
+      - Makefile
+      - .github/workflows/ci.yml
+    structure: "modern python with uv"
