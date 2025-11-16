@@ -39,6 +39,7 @@
 //! ```
 
 pub mod code_quality_scorer;
+pub mod command_runner;
 pub mod dependency_scorer;
 pub mod documentation_scorer;
 pub mod models;

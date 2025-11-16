@@ -453,6 +453,30 @@ pub enum Commands {
         deep: bool,
     },
 
+    /// Calculate Rust project quality score (0-106 scale)
+    #[command(name = "rust-project-score", visible_aliases = &["rust-score"])]
+    RustProjectScore {
+        /// Rust project path to score (defaults to current directory)
+        #[arg(short = 'p', long, default_value = ".")]
+        path: PathBuf,
+
+        /// Output format
+        #[arg(short = 'f', long, value_enum, default_value = "text")]
+        format: RepoScoreOutputFormat,
+
+        /// Enable verbose output (show detailed scoring breakdown)
+        #[arg(short = 'v', long)]
+        verbose: bool,
+
+        /// Show only failures and warnings
+        #[arg(long)]
+        failures_only: bool,
+
+        /// Output file path
+        #[arg(short = 'o', long)]
+        output: Option<PathBuf>,
+    },
+
     /// Start HTTP API server with WebSocket support
     #[command(visible_aliases = &["server", "api"])]
     Serve {

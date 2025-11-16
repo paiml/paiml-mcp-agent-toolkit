@@ -258,6 +258,16 @@ impl CommandDispatcher {
                 handlers::handle_repo_score(&path, format, verbose, failures_only, output.as_deref(), update_badge, deep)
                     .await
             }
+            Commands::RustProjectScore {
+                path,
+                format,
+                verbose,
+                failures_only,
+                output,
+            } => {
+                handlers::handle_rust_project_score(&path, &format, verbose, failures_only, output.as_deref())
+                    .await
+            }
             Commands::Serve {
                 port,
                 host,

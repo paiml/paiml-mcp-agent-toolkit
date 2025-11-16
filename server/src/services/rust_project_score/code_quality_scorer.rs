@@ -37,12 +37,8 @@ impl CodeQualityScorer {
     /// Score cyclomatic complexity (3pts)
     /// All functions must be ≤20 complexity
     fn score_complexity(&self, project_path: &Path) -> ScorerResult<f64> {
-        // Use PMAT's own complexity analyzer
-        let output = Command::new("cargo")
-            .arg("run")
-            .arg("--bin")
-            .arg("pmat")
-            .arg("--")
+        // Try to use pmat binary if available (not cargo run to avoid recursion)
+        let output = Command::new("pmat")
             .arg("analyze")
             .arg("complexity")
             .arg("--path")
@@ -76,8 +72,8 @@ impl CodeQualityScorer {
                 }
             }
             Err(_) => {
-                // If pmat not available, use simpler heuristic
-                // Count nested control flow in source files
+                // If pmat binary not available, use simpler heuristic
+                // (avoids recursive cargo run execution)
                 self.score_complexity_simple(project_path)
             }
         }
