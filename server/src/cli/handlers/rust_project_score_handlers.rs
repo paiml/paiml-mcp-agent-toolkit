@@ -10,6 +10,50 @@ use std::fs;
 use std::path::Path;
 
 /// Handle the rust-project-score command
+///
+/// Analyzes a Rust project and calculates a comprehensive quality score (0-106 scale)
+/// across six categories: Rust Tooling Compliance, Code Quality, Testing Excellence,
+/// Documentation, Performance & Benchmarking, and Dependency Health.
+///
+/// # Arguments
+///
+/// * `path` - Path to the Rust project root (must contain Cargo.toml)
+/// * `format` - Output format (Text, Json, Markdown, or Yaml)
+/// * `verbose` - Include detailed breakdown in output
+/// * `failures_only` - Show only failing checks (recommendations)
+/// * `output` - Optional file path to write results to (stdout if None)
+/// * `full` - Use full mode (comprehensive checks) vs fast mode (skips slow checks)
+///
+/// # Examples
+///
+/// ```no_run
+/// use pmat::cli::handlers::rust_project_score_handlers::handle_rust_project_score;
+/// use pmat::cli::RepoScoreOutputFormat;
+/// use std::path::Path;
+///
+/// # async fn example() -> anyhow::Result<()> {
+/// // Analyze current project in fast mode (default)
+/// handle_rust_project_score(
+///     Path::new("."),
+///     &RepoScoreOutputFormat::Text,
+///     false,  // verbose
+///     false,  // failures_only
+///     None,   // output to stdout
+///     false,  // fast mode
+/// ).await?;
+///
+/// // Full analysis with JSON output to file
+/// handle_rust_project_score(
+///     Path::new("/path/to/rust/project"),
+///     &RepoScoreOutputFormat::Json,
+///     true,   // verbose
+///     false,  // show all checks
+///     Some(Path::new("score.json")),  // write to file
+///     true,   // full mode
+/// ).await?;
+/// # Ok(())
+/// # }
+/// ```
 pub async fn handle_rust_project_score(
     path: &Path,
     format: &RepoScoreOutputFormat,

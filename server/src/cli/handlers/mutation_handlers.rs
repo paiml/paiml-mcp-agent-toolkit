@@ -54,7 +54,72 @@ impl MutationTestConfig {
 
 /// Handle mutation testing command
 ///
-/// Refactored to reduce complexity from 25 to <20 by extracting helper functions
+/// Performs mutation testing on Rust source files to measure test suite quality.
+/// Generates mutants (small code changes), runs tests, and reports the mutation score.
+///
+/// # Arguments
+///
+/// * `path` - Path to Rust source file or directory to mutate
+/// * `config` - Mutation testing configuration (operators, workers, etc.)
+/// * `format` - Output format (Text, Json, Markdown, or Yaml)
+/// * `output` - Optional file path to write results to (stdout if None)
+///
+/// # Examples
+///
+/// ```no_run
+/// use pmat::cli::handlers::mutation_handlers::{handle_mutate, MutationTestConfig};
+/// use pmat::cli::OutputFormat;
+/// use std::path::PathBuf;
+///
+/// # async fn example() -> anyhow::Result<()> {
+/// // Basic mutation testing with default settings
+/// let config = MutationTestConfig::new(
+///     None,    // operators (use all)
+///     false,   // ml_predict
+///     false,   // distributed
+///     4,       // workers
+///     true,    // progress
+///     None,    // min_score
+///     false,   // ci_learning
+///     None,    // ci_provider
+///     100,     // auto_train_threshold
+/// );
+/// handle_mutate(
+///     PathBuf::from("src/lib.rs"),
+///     config,
+///     OutputFormat::Text,
+///     None,
+/// ).await?;
+///
+/// // Mutation testing with minimum score threshold
+/// let config = MutationTestConfig::new(
+///     Some(vec!["ArithOp".to_string(), "BoolLit".to_string()]),
+///     true,    // ml_predict
+///     true,    // distributed
+///     8,       // workers
+///     true,    // progress
+///     Some(0.8),  // min_score (80%)
+///     false,   // ci_learning
+///     None,    // ci_provider
+///     100,     // auto_train_threshold
+/// );
+/// handle_mutate(
+///     PathBuf::from("src/main.rs"),
+///     config,
+///     OutputFormat::Json,
+///     Some(PathBuf::from("mutation-results.json")),
+/// ).await?;
+/// # Ok(())
+/// # }
+/// ```
+///
+/// # Returns
+///
+/// Returns `Ok(())` if mutation testing completes successfully, or an error if:
+/// - Path doesn't exist or isn't accessible
+/// - No mutants can be generated
+/// - Mutation score is below `min_score` threshold (if specified)
+/// - Tests fail to execute
 pub async fn handle_mutate(
     path: PathBuf,
     config: MutationTestConfig,
