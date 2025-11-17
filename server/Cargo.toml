@@ -67,6 +67,9 @@ linfa-trees = { version = "0.8" }
 linfa-ensemble = { version = "0.8", features = ["serde"] }
 ndarray = { version = "0.16" }
 
+# High-Performance Compute (SIMD/GPU)
+trueno = { version = "0.2", path = "../../trueno", optional = true }
+
 # Serialization (pinned to avoid swc_common issue with serde::__private)
 serde = { version = "=1.0.219", default-features = false, features = ["derive", "std"] }
 serde_json = { version = "1.0", default-features = false, features = ["std"] }
@@ -337,6 +340,9 @@ perf-tests = []
 rocksdb-backend = ["rocksdb"]
 # Sled storage backend (deprecated - unmaintained, opt-in only for backward compat)
 sled-backend = ["sled"]
+# High-performance compute features (Trueno)
+simd = ["trueno"]
+gpu = ["trueno", "trueno/gpu"]
 
 
 [[bin]]
