@@ -340,11 +340,8 @@ async fn test_scala_empty_directory() {
     let result = tool.execute(params).await;
 
     // Should succeed with no files found
-    match result {
-        Ok(output) => {
-            assert!(output.is_object());
-        }
-        Err(_) => {}
+    if let Ok(output) = result {
+        assert!(output.is_object());
     }
 }
 

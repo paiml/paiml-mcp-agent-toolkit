@@ -10,8 +10,7 @@
 //! Evidence-based refinement (arXiv 2024): Complexity weight reduced from 8→3pts
 //! due to low correlation with bugs. Unsafe and mutation weights increased.
 
-use pmat::services::rust_project_score::{CategoryScore, CodeQualityScorer, Scorer};
-use std::path::Path;
+use pmat::services::rust_project_score::{CodeQualityScorer, Scorer};
 
 // Test fixture: Create temporary test project
 fn create_test_project() -> tempfile::TempDir {
@@ -605,7 +604,7 @@ fn test_category_score_structure() {
 
     // Test percentage calculation
     let percentage = result.percentage();
-    assert!(percentage >= 0.0 && percentage <= 100.0);
+    assert!((0.0..=100.0).contains(&percentage));
 }
 
 // ============================================================================

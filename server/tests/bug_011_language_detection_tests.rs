@@ -30,7 +30,7 @@ fn test_cpp_project_detected_correctly() {
     let project = create_mock_cpp_project();
 
     // Act: Detect language
-    let detection = detect_project_language_enhanced(&project.path());
+    let detection = detect_project_language_enhanced(project.path());
 
     // Assert: Should detect C++ as primary language
     assert_eq!(
@@ -51,7 +51,7 @@ fn test_confidence_calculation_cpp_vs_python() {
     let project = create_mock_cpp_with_python_scripts();
 
     // Act: Detect language
-    let detection = detect_project_language_enhanced(&project.path());
+    let detection = detect_project_language_enhanced(project.path());
 
     // Assert: C++ should have higher confidence than Python
     assert_eq!(
@@ -81,7 +81,7 @@ fn test_detect_all_languages_in_polyglot_project() {
     let project = create_polyglot_project();
 
     // Act: Detect all languages
-    let detection = detect_all_languages(&project.path());
+    let detection = detect_all_languages(project.path());
 
     // Assert: Should detect all three languages
     assert_eq!(detection.languages.len(), 3, "Should detect 3 languages");
@@ -108,7 +108,7 @@ fn test_ignore_languages_below_5_percent() {
     let project = create_project_with_minor_languages();
 
     // Act: Detect all languages
-    let detection = detect_all_languages(&project.path());
+    let detection = detect_all_languages(project.path());
 
     // Assert: Should only include languages >5%
     assert_eq!(
@@ -132,7 +132,7 @@ fn test_primary_indicators_boost_confidence() {
     let project = create_mixed_project_with_cargo_toml();
 
     // Act: Detect language
-    let detection = detect_project_language_enhanced(&project.path());
+    let detection = detect_project_language_enhanced(project.path());
 
     // Assert: Rust should win due to Cargo.toml presence
     assert_eq!(
@@ -155,7 +155,7 @@ fn test_cmake_indicates_cpp_project() {
     let project = create_cpp_project_with_cmake();
 
     // Act: Detect language
-    let detection = detect_project_language_enhanced(&project.path());
+    let detection = detect_project_language_enhanced(project.path());
 
     // Assert: Should strongly indicate C++ project
     assert_eq!(detection.language, "cpp");
@@ -179,7 +179,7 @@ fn test_discovery_completes_within_timeout() {
 
     // Act: Detect with timeout
     let start = Instant::now();
-    let result = detect_project_language_with_timeout(&project.path(), Duration::from_secs(5));
+    let result = detect_project_language_with_timeout(project.path(), Duration::from_secs(5));
     let elapsed = start.elapsed();
 
     // Assert: Should complete within 5 seconds
@@ -201,7 +201,7 @@ fn test_language_override_flag() {
     let project = create_python_project();
 
     // Act: Override language detection
-    let detection = override_language_detection(&project.path(), "cpp");
+    let detection = override_language_detection(project.path(), "cpp");
 
     // Assert: Should use overridden language
     assert_eq!(
@@ -222,7 +222,7 @@ fn test_languages_override_flag() {
 
     // Act: Override with specific languages
     let languages = vec!["rust".to_string(), "python".to_string()];
-    let detection = override_multiple_languages(&project.path(), languages);
+    let detection = override_multiple_languages(project.path(), languages);
 
     // Assert: Should analyze only specified languages
     assert_eq!(detection.languages.len(), 2);

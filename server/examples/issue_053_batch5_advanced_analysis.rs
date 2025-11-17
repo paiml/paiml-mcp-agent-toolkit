@@ -15,7 +15,6 @@
 //! ```
 
 use pmat::mcp_pmcp::tool_functions;
-use std::path::PathBuf;
 use tempfile::TempDir;
 
 #[tokio::main]

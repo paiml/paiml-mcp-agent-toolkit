@@ -326,7 +326,7 @@ fn test_recording_summary_statistics() {
 
 /// Helper: Create test snapshot (will be implemented in GREEN phase)
 #[allow(dead_code)]
-fn create_test_snapshot(_frame_id: u64) -> () {
+fn create_test_snapshot(_frame_id: u64) {
     // Placeholder
 }
 

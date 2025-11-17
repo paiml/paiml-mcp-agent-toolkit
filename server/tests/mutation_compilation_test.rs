@@ -40,7 +40,7 @@ mod tests {
 
     let mutants = engine.generate_mutants_from_file(&temp_path).await.unwrap();
 
-    assert!(mutants.len() > 0, "Should generate at least 1 mutant");
+    assert!(!mutants.is_empty(), "Should generate at least 1 mutant");
 
     // Check that mutated source is a complete file, not just an expression
     let first_mutant = &mutants[0];
@@ -253,7 +253,7 @@ mod tests {
 
     let mutants = engine.generate_mutants_from_file(&temp_path).await.unwrap();
 
-    assert!(mutants.len() > 0);
+    assert!(!mutants.is_empty());
 
     // Try to execute the first mutant
     let work_dir = temp_path.parent().unwrap().to_path_buf();

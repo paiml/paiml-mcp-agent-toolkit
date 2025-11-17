@@ -92,7 +92,7 @@ async fn test_search_by_query() {
     };
 
     let results = engine.search(&query).await.unwrap();
-    assert!(results.len() > 0);
+    assert!(!results.is_empty());
     assert!(results[0].similarity_score > 0.7);
 }
 
@@ -156,7 +156,7 @@ async fn test_find_similar_code() {
         .unwrap();
 
     // Should find at least 1 result (the file itself)
-    assert!(results.len() > 0);
+    assert!(!results.is_empty());
 
     // Results should be sorted by similarity (descending)
     for i in 1..results.len() {

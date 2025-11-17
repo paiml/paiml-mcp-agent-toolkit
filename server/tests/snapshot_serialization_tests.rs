@@ -429,13 +429,13 @@ fn test_compression_level_affects_output_size() {
 
 /// Helper: Create test snapshot (will be implemented in GREEN phase)
 #[allow(dead_code)]
-fn create_test_snapshot(_frame_id: u64) -> () {
+fn create_test_snapshot(_frame_id: u64) {
     // Placeholder - will return Snapshot in GREEN phase
 }
 
 /// Helper: Create large snapshot for compression tests
 #[allow(dead_code)]
-fn create_large_snapshot() -> () {
+fn create_large_snapshot() {
     // Placeholder - will return Snapshot with large data
 }
 

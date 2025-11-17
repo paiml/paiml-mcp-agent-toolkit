@@ -90,7 +90,7 @@ fn test_cache_strategy_variants() {
     // RED: Should support multiple caching strategies
     use CacheStrategy::*;
 
-    let strategies = vec![Normal, ForceRefresh, Offline];
+    let strategies = [Normal, ForceRefresh, Offline];
     assert_eq!(strategies.len(), 3);
 }
 
@@ -195,10 +195,7 @@ async fn test_analyze_project_with_single_file() {
         .await;
 
     // Should successfully analyze the project (or error gracefully)
-    match result {
-        Ok(_) => {}
-        Err(_) => {}
-    }
+    if let Ok(_) = result {}
 }
 
 // ============================================================================
@@ -286,12 +283,9 @@ async fn test_analyze_rust_language() {
 
     let result = analyze_rust_language(&rust_file).await;
 
-    match result {
-        Ok(items) => {
-            // Should find struct and methods
-            assert!(items.len() > 0);
-        }
-        Err(_) => {}
+    if let Ok(items) = result {
+        // Should find struct and methods
+        assert!(!items.is_empty());
     }
 }
 
@@ -317,11 +311,8 @@ class Calculator:
 
     let result = analyze_python_language(&py_file).await;
 
-    match result {
-        Ok(items) => {
-            assert!(items.len() > 0);
-        }
-        Err(_) => {}
+    if let Ok(items) = result {
+        assert!(!items.is_empty());
     }
 }
 
@@ -353,11 +344,8 @@ class SimpleCalculator implements Calculator {
 
     let result = analyze_typescript_language(&ts_file).await;
 
-    match result {
-        Ok(items) => {
-            assert!(items.len() > 0);
-        }
-        Err(_) => {}
+    if let Ok(items) = result {
+        assert!(!items.is_empty());
     }
 }
 
@@ -411,7 +399,7 @@ async fn test_analyze_churn_non_git_repo() {
     // RED: Should handle non-git directory
     let temp_dir = tempdir().unwrap();
 
-    let result = analyze_churn(&temp_dir.path(), 30).await;
+    let result = analyze_churn(temp_dir.path(), 30).await;
 
     // Should error or return empty results
     match result {
@@ -424,7 +412,7 @@ async fn test_analyze_churn_zero_days() {
     // RED: Should handle edge case of 0 days
     let temp_dir = tempdir().unwrap();
 
-    let result = analyze_churn(&temp_dir.path(), 0).await;
+    let result = analyze_churn(temp_dir.path(), 0).await;
 
     match result {
         Ok(_) | Err(_) => {}
@@ -436,7 +424,7 @@ async fn test_analyze_churn_very_large_days() {
     // RED: Should handle very large day count
     let temp_dir = tempdir().unwrap();
 
-    let result = analyze_churn(&temp_dir.path(), u32::MAX).await;
+    let result = analyze_churn(temp_dir.path(), u32::MAX).await;
 
     match result {
         Ok(_) | Err(_) => {}
@@ -457,12 +445,9 @@ async fn test_format_as_json_empty_context() {
 
     let result = analyzer.format_as_json(&empty_context);
 
-    match result {
-        Ok(json) => {
-            assert!(!json.is_empty());
-            assert!(json.contains("{")); // Valid JSON
-        }
-        Err(_) => {}
+    if let Ok(json) = result {
+        assert!(!json.is_empty());
+        assert!(json.contains("{")); // Valid JSON
     }
 }
 
@@ -476,12 +461,9 @@ async fn test_format_as_sarif_empty_context() {
 
     let result = analyzer.format_as_sarif(&empty_context);
 
-    match result {
-        Ok(sarif) => {
-            assert!(!sarif.is_empty());
-            assert!(sarif.contains("sarif") || sarif.contains("version"));
-        }
-        Err(_) => {}
+    if let Ok(sarif) = result {
+        assert!(!sarif.is_empty());
+        assert!(sarif.contains("sarif") || sarif.contains("version"));
     }
 }
 
@@ -495,13 +477,10 @@ async fn test_format_as_comprehensive_markdown() {
 
     let result = analyzer.format_as_comprehensive_markdown_legacy(&empty_context);
 
-    match result {
-        Ok(markdown) => {
-            assert!(!markdown.is_empty());
-            // Should contain markdown formatting
-            assert!(markdown.contains("#") || markdown.contains("##"));
-        }
-        Err(_) => {}
+    if let Ok(markdown) = result {
+        assert!(!markdown.is_empty());
+        // Should contain markdown formatting
+        assert!(markdown.contains("#") || markdown.contains("##"));
     }
 }
 
@@ -514,7 +493,7 @@ fn test_confidence_level_variants() {
     // RED: Should have confidence level variants
     use ConfidenceLevel::*;
 
-    let levels = vec![High, Medium, Low];
+    let levels = [High, Medium, Low];
     assert_eq!(levels.len(), 3);
 }
 
@@ -523,7 +502,7 @@ fn test_priority_enum_variants() {
     // RED: Should have priority levels
     use Priority::*;
 
-    let priorities = vec![Critical, High, Medium, Low];
+    let priorities = [Critical, High, Medium, Low];
     assert_eq!(priorities.len(), 4);
 }
 
@@ -532,7 +511,7 @@ fn test_impact_enum_variants() {
     // RED: Should have impact levels
     use Impact::*;
 
-    let impacts = vec![High, Medium, Low];
+    let impacts = [High, Medium, Low];
     assert_eq!(impacts.len(), 3);
 }
 
@@ -541,7 +520,7 @@ fn test_node_type_enum_variants() {
     // RED: Should have all node types
     use NodeType::*;
 
-    let types = vec![File, Directory];
+    let types = [File, Directory];
     assert_eq!(types.len(), 2);
 }
 

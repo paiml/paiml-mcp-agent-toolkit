@@ -9,8 +9,7 @@
 //! Evidence-based refinement: Coverage threshold based on empirical research
 //! showing ≥85% coverage correlates with significantly fewer production bugs.
 
-use pmat::services::rust_project_score::{CategoryScore, Scorer, TestingScorer};
-use std::path::Path;
+use pmat::services::rust_project_score::{Scorer, TestingScorer};
 
 // Test fixture: Create temporary test project
 fn create_test_project() -> tempfile::TempDir {
@@ -563,7 +562,7 @@ fn test_category_score_structure() {
 
     // Test percentage calculation
     let percentage = result.percentage();
-    assert!(percentage >= 0.0 && percentage <= 100.0);
+    assert!((0.0..=100.0).contains(&percentage));
 }
 
 // ============================================================================

@@ -250,7 +250,7 @@ fn main() {
 
     // Should either return error or empty variables, but not panic
     match result {
-        Ok(vars) => assert!(vars.is_empty() || vars.len() > 0),
+        Ok(vars) => assert!(vars.is_empty() || !vars.is_empty()),
         Err(_) => { /* Expected behavior */ }
     }
 }

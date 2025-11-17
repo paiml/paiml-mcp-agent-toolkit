@@ -734,13 +734,13 @@ pub const THRESHOLD: f32 = 0.5;
             .iter()
             .filter(|i| i.kind == "constant")
             .collect();
-        assert!(constants.len() >= 1);
+        assert!(!constants.is_empty());
 
         let variables: Vec<_> = identifiers
             .iter()
             .filter(|i| i.kind == "variable")
             .collect();
-        assert!(variables.len() >= 1);
+        assert!(!variables.is_empty());
     }
 
     #[test]

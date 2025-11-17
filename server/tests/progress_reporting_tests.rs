@@ -17,7 +17,7 @@ fn test_red_team_shows_progress_in_tty() {
     std::env::set_var("TERM", "xterm-256color");
 
     let mut cmd = Command::new("cargo");
-    cmd.args(&[
+    cmd.args([
         "run",
         "--bin",
         "pmat",
@@ -48,7 +48,7 @@ fn test_red_team_shows_progress_in_tty() {
 #[ignore] // RED test - not yet implemented
 fn test_red_team_no_progress_in_quiet_mode() {
     let mut cmd = Command::new("cargo");
-    cmd.args(&[
+    cmd.args([
         "run",
         "--bin",
         "pmat",
@@ -112,16 +112,14 @@ fn test_red_team_evidence_source_progress() {
     let mut progress = MultiStageProgress::new(vec!["Gathering evidence".to_string()]);
 
     // Simulate evidence gathering from 8 sources
-    let sources = vec![
-        "GitHistory",
+    let sources = ["GitHistory",
         "TestExecution",
         "CoverageReport",
         "LinkValidation",
         "CargoAudit",
         "BenchmarkResults",
         "IssueTracker",
-        "CodeGrep",
-    ];
+        "CodeGrep"];
 
     for (idx, source) in sources.iter().enumerate() {
         let percent = ((idx + 1) as f64 / sources.len() as f64) * 100.0;
@@ -169,7 +167,7 @@ fn test_repo_score_shows_category_progress() {
     std::env::set_var("TERM", "xterm-256color");
 
     let mut cmd = Command::new("cargo");
-    cmd.args(&[
+    cmd.args([
         "run",
         "--bin",
         "pmat",
@@ -198,7 +196,7 @@ fn test_repo_score_shows_category_progress() {
 #[ignore] // RED test - not yet implemented
 fn test_repo_score_shows_file_progress() {
     let mut cmd = Command::new("cargo");
-    cmd.args(&[
+    cmd.args([
         "run",
         "--bin",
         "pmat",

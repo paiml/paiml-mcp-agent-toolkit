@@ -68,7 +68,7 @@ fn test_full_pipeline_hallucination_detection() {
 
     // Extract claims from original
     let claims = extractor.extract(original_message);
-    assert!(claims.len() >= 1);
+    assert!(!claims.is_empty());
 
     // Create commit info structs
     let original_commit = pmat::red_team::CommitInfo {
@@ -120,8 +120,7 @@ fn test_cli_output_formatting() {
 
     // Simulate CLI output for hallucination report
     let claim_text = "all tests passing";
-    let evidence = vec![
-        EvidenceResult {
+    let evidence = [EvidenceResult {
             source: EvidenceSource::TestExecution,
             supports_claim: false,
             confidence: 0.9,
@@ -134,8 +133,7 @@ fn test_cli_output_formatting() {
             confidence: 0.85,
             details: "2 subsequent test fixes found".to_string(),
             timestamp: Some(2000),
-        },
-    ];
+        }];
 
     // Check that evidence is present and properly formatted
     assert_eq!(evidence.len(), 2);

@@ -61,7 +61,7 @@ fn test_invalid_command() {
 fn test_verbose_flag() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["--verbose", "--help"])
+        .args(["--verbose", "--help"])
         .assert()
         .success();
 }
@@ -70,7 +70,7 @@ fn test_verbose_flag() {
 fn test_quiet_flag() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["--quiet", "--help"])
+        .args(["--quiet", "--help"])
         .assert()
         .success();
 }
@@ -79,7 +79,7 @@ fn test_quiet_flag() {
 fn test_debug_flag() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["--debug", "--help"])
+        .args(["--debug", "--help"])
         .assert()
         .success();
 }
@@ -88,7 +88,7 @@ fn test_debug_flag() {
 fn test_trace_flag() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["--trace", "--help"])
+        .args(["--trace", "--help"])
         .assert()
         .success();
 }
@@ -97,7 +97,7 @@ fn test_trace_flag() {
 fn test_trace_filter() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["--trace-filter", "pmat=debug", "--help"])
+        .args(["--trace-filter", "pmat=debug", "--help"])
         .assert()
         .success();
 }
@@ -106,7 +106,7 @@ fn test_trace_filter() {
 fn test_color_auto() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["--color", "auto", "--help"])
+        .args(["--color", "auto", "--help"])
         .assert()
         .success();
 }
@@ -115,7 +115,7 @@ fn test_color_auto() {
 fn test_color_always() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["--color", "always", "--help"])
+        .args(["--color", "always", "--help"])
         .assert()
         .success();
 }
@@ -124,7 +124,7 @@ fn test_color_always() {
 fn test_color_never() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["--color", "never", "--help"])
+        .args(["--color", "never", "--help"])
         .assert()
         .success();
 }
@@ -137,7 +137,7 @@ fn test_color_never() {
 fn test_generate_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["generate", "--help"])
+        .args(["generate", "--help"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Template category"));
@@ -147,7 +147,7 @@ fn test_generate_help() {
 fn test_generate_alias_gen() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["gen", "--help"])
+        .args(["gen", "--help"])
         .assert()
         .success();
 }
@@ -156,7 +156,7 @@ fn test_generate_alias_gen() {
 fn test_generate_alias_g() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["g", "--help"])
+        .args(["g", "--help"])
         .assert()
         .success();
 }
@@ -179,7 +179,7 @@ fn test_generate_missing_args() {
 fn test_scaffold_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["scaffold", "--help"])
+        .args(["scaffold", "--help"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Commands:"));
@@ -189,7 +189,7 @@ fn test_scaffold_help() {
 fn test_scaffold_alias_sc() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["sc", "--help"])
+        .args(["sc", "--help"])
         .assert()
         .success();
 }
@@ -202,7 +202,7 @@ fn test_scaffold_alias_sc() {
 fn test_list_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["list", "--help"])
+        .args(["list", "--help"])
         .assert()
         .success()
         .stdout(predicate::str::contains("toolchain"));
@@ -212,7 +212,7 @@ fn test_list_help() {
 fn test_list_alias_ls() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["ls", "--help"])
+        .args(["ls", "--help"])
         .assert()
         .success();
 }
@@ -221,7 +221,7 @@ fn test_list_alias_ls() {
 fn test_list_format_table() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["list", "--format", "table"])
+        .args(["list", "--format", "table"])
         .assert()
         .success();
 }
@@ -230,7 +230,7 @@ fn test_list_format_table() {
 fn test_list_format_json() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["list", "--format", "json"])
+        .args(["list", "--format", "json"])
         .assert()
         .success();
 }
@@ -239,7 +239,7 @@ fn test_list_format_json() {
 fn test_list_format_yaml() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["list", "--format", "yaml"])
+        .args(["list", "--format", "yaml"])
         .assert()
         .success();
 }
@@ -252,7 +252,7 @@ fn test_list_format_yaml() {
 fn test_search_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["search", "--help"])
+        .args(["search", "--help"])
         .assert()
         .success()
         .stdout(predicate::str::contains("query"));
@@ -262,7 +262,7 @@ fn test_search_help() {
 fn test_search_alias_find() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["find", "--help"])
+        .args(["find", "--help"])
         .assert()
         .success();
 }
@@ -271,7 +271,7 @@ fn test_search_alias_find() {
 fn test_search_alias_s() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["s", "--help"])
+        .args(["s", "--help"])
         .assert()
         .success();
 }
@@ -280,7 +280,7 @@ fn test_search_alias_s() {
 fn test_search_with_query() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["search", "rust"])
+        .args(["search", "rust"])
         .assert()
         .success();
 }
@@ -289,7 +289,7 @@ fn test_search_with_query() {
 fn test_search_with_limit() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["search", "test", "--limit", "5"])
+        .args(["search", "test", "--limit", "5"])
         .assert()
         .success();
 }
@@ -303,7 +303,7 @@ fn test_search_with_limit() {
 fn test_validate_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["validate", "--help"])
+        .args(["validate", "--help"])
         .assert()
         .success()
         .stdout(predicate::str::contains("uri"));
@@ -326,7 +326,7 @@ fn test_validate_missing_uri() {
 fn test_context_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["context", "--help"])
+        .args(["context", "--help"])
         .assert()
         .success()
         .stdout(predicate::str::contains("project-path"));
@@ -336,7 +336,7 @@ fn test_context_help() {
 fn test_context_alias_ctx() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["ctx", "--help"])
+        .args(["ctx", "--help"])
         .assert()
         .success();
 }
@@ -345,7 +345,7 @@ fn test_context_alias_ctx() {
 fn test_context_alias_ast() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["ast", "--help"])
+        .args(["ast", "--help"])
         .assert()
         .success();
 }
@@ -367,7 +367,7 @@ fn test_context_default_path() {
 fn test_context_with_path() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["context", "--project-path", "."])
+        .args(["context", "--project-path", "."])
         .assert()
         .success();
 }
@@ -380,7 +380,7 @@ fn test_context_with_path() {
 fn test_analyze_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["analyze", "--help"])
+        .args(["analyze", "--help"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Commands:"))
@@ -409,7 +409,7 @@ fn test_analyze_missing_subcommand() {
 fn test_analyze_complexity_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["analyze", "complexity", "--help"])
+        .args(["analyze", "complexity", "--help"])
         .assert()
         .success()
         .stdout(predicate::str::contains("project-path"));
@@ -419,7 +419,7 @@ fn test_analyze_complexity_help() {
 fn test_analyze_complexity_current_dir() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["analyze", "complexity", "--project-path", "."])
+        .args(["analyze", "complexity", "--project-path", "."])
         .assert()
         .success()
         .stdout(predicate::str::contains("Files analyzed"));
@@ -429,7 +429,7 @@ fn test_analyze_complexity_current_dir() {
 fn test_analyze_complexity_format_json() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&[
+        .args([
             "analyze",
             "complexity",
             "--project-path",
@@ -446,7 +446,7 @@ fn test_analyze_complexity_format_json() {
 fn test_analyze_complexity_format_text() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&[
+        .args([
             "analyze",
             "complexity",
             "--project-path",
@@ -462,7 +462,7 @@ fn test_analyze_complexity_format_text() {
 fn test_analyze_complexity_format_sarif() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&[
+        .args([
             "analyze",
             "complexity",
             "--project-path",
@@ -482,7 +482,7 @@ fn test_analyze_complexity_format_sarif() {
 fn test_analyze_satd_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["analyze", "satd", "--help"])
+        .args(["analyze", "satd", "--help"])
         .assert()
         .success()
         .stdout(predicate::str::contains("path"));
@@ -492,7 +492,7 @@ fn test_analyze_satd_help() {
 fn test_analyze_satd_current_dir() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["analyze", "satd", "--path", "."])
+        .args(["analyze", "satd", "--path", "."])
         .assert()
         .success()
         .stdout(predicate::str::contains("SATD"));
@@ -502,7 +502,7 @@ fn test_analyze_satd_current_dir() {
 fn test_analyze_satd_format_json() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["analyze", "satd", "--path", ".", "--format", "json"])
+        .args(["analyze", "satd", "--path", ".", "--format", "json"])
         .assert()
         .success();
 }
@@ -511,7 +511,7 @@ fn test_analyze_satd_format_json() {
 fn test_analyze_satd_format_summary() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["analyze", "satd", "--path", ".", "--format", "summary"])
+        .args(["analyze", "satd", "--path", ".", "--format", "summary"])
         .assert()
         .success();
 }
@@ -524,7 +524,7 @@ fn test_analyze_satd_format_summary() {
 fn test_analyze_dead_code_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["analyze", "dead-code", "--help"])
+        .args(["analyze", "dead-code", "--help"])
         .assert()
         .success()
         .stdout(predicate::str::contains("path"));
@@ -536,7 +536,7 @@ fn test_analyze_dead_code_help() {
 fn test_analyze_dead_code_current_dir() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["analyze", "dead-code", "--path", "."])
+        .args(["analyze", "dead-code", "--path", "."])
         .assert()
         .success()
         .stdout(predicate::str::contains("Dead"));
@@ -548,7 +548,7 @@ fn test_analyze_dead_code_current_dir() {
 fn test_analyze_dead_code_format_json() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["analyze", "dead-code", "--path", ".", "--format", "json"])
+        .args(["analyze", "dead-code", "--path", ".", "--format", "json"])
         .assert()
         .success();
 }
@@ -561,7 +561,7 @@ fn test_analyze_dead_code_format_json() {
 fn test_analyze_churn_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["analyze", "churn", "--help"])
+        .args(["analyze", "churn", "--help"])
         .assert()
         .success()
         .stdout(predicate::str::contains("path"));
@@ -572,7 +572,7 @@ fn test_analyze_churn_help() {
 fn test_analyze_churn_current_dir() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["analyze", "churn", "--path", "."])
+        .args(["analyze", "churn", "--path", "."])
         .assert()
         .success();
 }
@@ -582,7 +582,7 @@ fn test_analyze_churn_current_dir() {
 fn test_analyze_churn_format_json() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["analyze", "churn", "--path", ".", "--format", "json"])
+        .args(["analyze", "churn", "--path", ".", "--format", "json"])
         .assert()
         .success();
 }
@@ -592,7 +592,7 @@ fn test_analyze_churn_format_json() {
 fn test_analyze_churn_with_days() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["analyze", "churn", "--path", ".", "--days", "30"])
+        .args(["analyze", "churn", "--path", ".", "--days", "30"])
         .assert()
         .success();
 }
@@ -605,7 +605,7 @@ fn test_analyze_churn_with_days() {
 fn test_analyze_dag_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["analyze", "dag", "--help"])
+        .args(["analyze", "dag", "--help"])
         .assert()
         .success();
 }
@@ -615,7 +615,7 @@ fn test_analyze_dag_help() {
 fn test_analyze_dag_current_dir() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["analyze", "dag", "--path", "."])
+        .args(["analyze", "dag", "--path", "."])
         .assert()
         .success();
 }
@@ -628,7 +628,7 @@ fn test_analyze_dag_current_dir() {
 fn test_analyze_tdg_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["analyze", "tdg", "--help"])
+        .args(["analyze", "tdg", "--help"])
         .assert()
         .success();
 }
@@ -637,7 +637,7 @@ fn test_analyze_tdg_help() {
 fn test_analyze_tdg_current_dir() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["analyze", "tdg", "--path", "."])
+        .args(["analyze", "tdg", "--path", "."])
         .assert()
         .success();
 }
@@ -646,7 +646,7 @@ fn test_analyze_tdg_current_dir() {
 fn test_analyze_tdg_format_json() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["analyze", "tdg", "--path", ".", "--format", "json"])
+        .args(["analyze", "tdg", "--path", ".", "--format", "json"])
         .assert()
         .success();
 }
@@ -659,7 +659,7 @@ fn test_analyze_tdg_format_json() {
 fn test_analyze_deep_context_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["analyze", "deep-context", "--help"])
+        .args(["analyze", "deep-context", "--help"])
         .assert()
         .success();
 }
@@ -669,7 +669,7 @@ fn test_analyze_deep_context_help() {
 fn test_analyze_deep_context_current_dir() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["analyze", "deep-context", "--path", "."])
+        .args(["analyze", "deep-context", "--path", "."])
         .assert()
         .success();
 }
@@ -682,7 +682,7 @@ fn test_analyze_deep_context_current_dir() {
 fn test_analyze_duplicates_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["analyze", "duplicates", "--help"])
+        .args(["analyze", "duplicates", "--help"])
         .assert()
         .success();
 }
@@ -692,7 +692,7 @@ fn test_analyze_duplicates_help() {
 fn test_analyze_duplicates_current_dir() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["analyze", "duplicates", "--path", "."])
+        .args(["analyze", "duplicates", "--path", "."])
         .assert()
         .success();
 }
@@ -705,7 +705,7 @@ fn test_analyze_duplicates_current_dir() {
 fn test_analyze_provability_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["analyze", "provability", "--help"])
+        .args(["analyze", "provability", "--help"])
         .assert()
         .success();
 }
@@ -715,7 +715,7 @@ fn test_analyze_provability_help() {
 fn test_analyze_provability_current_dir() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["analyze", "provability", "--path", "."])
+        .args(["analyze", "provability", "--path", "."])
         .assert()
         .success();
 }
@@ -728,7 +728,7 @@ fn test_analyze_provability_current_dir() {
 fn test_analyze_makefile_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["analyze", "makefile", "--help"])
+        .args(["analyze", "makefile", "--help"])
         .assert()
         .success();
 }
@@ -741,7 +741,7 @@ fn test_analyze_makefile_help() {
 fn test_analyze_lint_hotspot_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["analyze", "lint-hotspot", "--help"])
+        .args(["analyze", "lint-hotspot", "--help"])
         .assert()
         .success();
 }
@@ -754,7 +754,7 @@ fn test_analyze_lint_hotspot_help() {
 fn test_analyze_comprehensive_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["analyze", "comprehensive", "--help"])
+        .args(["analyze", "comprehensive", "--help"])
         .assert()
         .success();
 }
@@ -764,7 +764,7 @@ fn test_analyze_comprehensive_help() {
 fn test_analyze_comprehensive_current_dir() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["analyze", "comprehensive", "--path", "."])
+        .args(["analyze", "comprehensive", "--path", "."])
         .assert()
         .success();
 }
@@ -777,7 +777,7 @@ fn test_analyze_comprehensive_current_dir() {
 fn test_analyze_graph_metrics_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["analyze", "graph-metrics", "--help"])
+        .args(["analyze", "graph-metrics", "--help"])
         .assert()
         .success();
 }
@@ -790,7 +790,7 @@ fn test_analyze_graph_metrics_help() {
 fn test_analyze_name_similarity_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["analyze", "name-similarity", "--help"])
+        .args(["analyze", "name-similarity", "--help"])
         .assert()
         .success();
 }
@@ -804,7 +804,7 @@ fn test_analyze_name_similarity_help() {
 fn test_analyze_symbol_table_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["analyze", "symbol-table", "--help"])
+        .args(["analyze", "symbol-table", "--help"])
         .assert()
         .success();
 }
@@ -817,7 +817,7 @@ fn test_analyze_symbol_table_help() {
 fn test_analyze_big_o_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["analyze", "big-o", "--help"])
+        .args(["analyze", "big-o", "--help"])
         .assert()
         .success();
 }
@@ -830,7 +830,7 @@ fn test_analyze_big_o_help() {
 fn test_analyze_entropy_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["analyze", "entropy", "--help"])
+        .args(["analyze", "entropy", "--help"])
         .assert()
         .success();
 }
@@ -843,7 +843,7 @@ fn test_analyze_entropy_help() {
 fn test_analyze_clippy_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["analyze", "clippy", "--help"])
+        .args(["analyze", "clippy", "--help"])
         .assert()
         .success();
 }
@@ -857,7 +857,7 @@ fn test_analyze_clippy_help() {
 fn test_quality_gate_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["quality-gate", "--help"])
+        .args(["quality-gate", "--help"])
         .assert()
         .success()
         .stdout(predicate::str::contains("strict"));
@@ -876,7 +876,7 @@ fn test_quality_gate_default() {
 fn test_quality_gate_strict() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["quality-gate", "--strict"])
+        .args(["quality-gate", "--strict"])
         .assert()
         .code(predicate::in_iter([0, 1, 2]));
 }
@@ -889,7 +889,7 @@ fn test_quality_gate_strict() {
 fn test_demo_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["demo", "--help"])
+        .args(["demo", "--help"])
         .assert()
         .success()
         .stdout(predicate::str::contains("protocol"));
@@ -903,7 +903,7 @@ fn test_demo_help() {
 fn test_diagnose_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["diagnose", "--help"])
+        .args(["diagnose", "--help"])
         .assert()
         .success();
 }
@@ -916,7 +916,7 @@ fn test_diagnose_help() {
 fn test_memory_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["memory", "--help"])
+        .args(["memory", "--help"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Commands:"));
@@ -930,7 +930,7 @@ fn test_memory_help() {
 fn test_cache_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["cache", "--help"])
+        .args(["cache", "--help"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Commands:"));
@@ -944,7 +944,7 @@ fn test_cache_help() {
 fn test_agent_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["agent", "--help"])
+        .args(["agent", "--help"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Commands:"));
@@ -959,7 +959,7 @@ fn test_agent_help() {
 fn test_config_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["config", "--help"])
+        .args(["config", "--help"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Commands:"));
@@ -973,7 +973,7 @@ fn test_config_help() {
 fn test_tdg_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["tdg", "--help"])
+        .args(["tdg", "--help"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Commands:"));
@@ -987,7 +987,7 @@ fn test_tdg_help() {
 fn test_hooks_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["hooks", "--help"])
+        .args(["hooks", "--help"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Commands:"));
@@ -1001,7 +1001,7 @@ fn test_hooks_help() {
 fn test_embed_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["embed", "--help"])
+        .args(["embed", "--help"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Commands:"));
@@ -1015,7 +1015,7 @@ fn test_embed_help() {
 fn test_semantic_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["semantic", "--help"])
+        .args(["semantic", "--help"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Commands:"));
@@ -1029,7 +1029,7 @@ fn test_semantic_help() {
 fn test_refactor_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["refactor", "--help"])
+        .args(["refactor", "--help"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Commands:"));
@@ -1043,7 +1043,7 @@ fn test_refactor_help() {
 fn test_report_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["report", "--help"])
+        .args(["report", "--help"])
         .assert()
         .success();
 }
@@ -1056,7 +1056,7 @@ fn test_report_help() {
 fn test_validate_docs_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["validate-docs", "--help"])
+        .args(["validate-docs", "--help"])
         .assert()
         .success();
 }
@@ -1069,7 +1069,7 @@ fn test_validate_docs_help() {
 fn test_validate_readme_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["validate-readme", "--help"])
+        .args(["validate-readme", "--help"])
         .assert()
         .success();
 }
@@ -1082,7 +1082,7 @@ fn test_validate_readme_help() {
 fn test_roadmap_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["roadmap", "--help"])
+        .args(["roadmap", "--help"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Commands:"));
@@ -1096,7 +1096,7 @@ fn test_roadmap_help() {
 fn test_qdd_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["qdd", "--help"])
+        .args(["qdd", "--help"])
         .assert()
         .success();
 }
@@ -1109,7 +1109,7 @@ fn test_qdd_help() {
 fn test_enforce_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["enforce", "--help"])
+        .args(["enforce", "--help"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Commands:"));
@@ -1123,7 +1123,7 @@ fn test_enforce_help() {
 fn test_memory_stats_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["memory", "stats", "--help"])
+        .args(["memory", "stats", "--help"])
         .assert()
         .success();
 }
@@ -1132,7 +1132,7 @@ fn test_memory_stats_help() {
 fn test_memory_cleanup_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["memory", "cleanup", "--help"])
+        .args(["memory", "cleanup", "--help"])
         .assert()
         .success();
 }
@@ -1142,7 +1142,7 @@ fn test_memory_cleanup_help() {
 fn test_memory_flush_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["memory", "flush", "--help"])
+        .args(["memory", "flush", "--help"])
         .assert()
         .success();
 }
@@ -1156,7 +1156,7 @@ fn test_memory_flush_help() {
 fn test_cache_clear_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["cache", "clear", "--help"])
+        .args(["cache", "clear", "--help"])
         .assert()
         .success();
 }
@@ -1166,7 +1166,7 @@ fn test_cache_clear_help() {
 fn test_cache_diagnostics_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["cache", "diagnostics", "--help"])
+        .args(["cache", "diagnostics", "--help"])
         .assert()
         .success();
 }
@@ -1180,7 +1180,7 @@ fn test_cache_diagnostics_help() {
 fn test_config_get_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["config", "get", "--help"])
+        .args(["config", "get", "--help"])
         .assert()
         .success();
 }
@@ -1193,7 +1193,7 @@ fn test_config_get_help() {
 fn test_tdg_baseline_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["tdg", "baseline", "--help"])
+        .args(["tdg", "baseline", "--help"])
         .assert()
         .success();
 }
@@ -1202,7 +1202,7 @@ fn test_tdg_baseline_help() {
 fn test_tdg_check_regression_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["tdg", "check-regression", "--help"])
+        .args(["tdg", "check-regression", "--help"])
         .assert()
         .success();
 }
@@ -1211,7 +1211,7 @@ fn test_tdg_check_regression_help() {
 fn test_tdg_check_quality_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["tdg", "check-quality", "--help"])
+        .args(["tdg", "check-quality", "--help"])
         .assert()
         .success();
 }
@@ -1224,7 +1224,7 @@ fn test_tdg_check_quality_help() {
 fn test_agent_start_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["agent", "start", "--help"])
+        .args(["agent", "start", "--help"])
         .assert()
         .success();
 }
@@ -1237,7 +1237,7 @@ fn test_agent_start_help() {
 fn test_telemetry_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["telemetry", "--help"])
+        .args(["telemetry", "--help"])
         .assert()
         .success();
 }
@@ -1250,7 +1250,7 @@ fn test_telemetry_help() {
 fn test_test_command_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["test", "--help"])
+        .args(["test", "--help"])
         .assert()
         .success();
 }
@@ -1263,7 +1263,7 @@ fn test_test_command_help() {
 fn test_serve_command_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["serve", "--help"])
+        .args(["serve", "--help"])
         .assert()
         .success();
 }
@@ -1276,7 +1276,7 @@ fn test_serve_command_help() {
 fn test_mutate_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["mutate", "--help"])
+        .args(["mutate", "--help"])
         .assert()
         .success();
 }
@@ -1289,7 +1289,7 @@ fn test_mutate_help() {
 fn test_debug_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["debug", "--help"])
+        .args(["debug", "--help"])
         .assert()
         .success();
 }
@@ -1303,7 +1303,7 @@ fn test_debug_help() {
 fn test_replay_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["replay", "--help"])
+        .args(["replay", "--help"])
         .assert()
         .success();
 }
@@ -1317,7 +1317,7 @@ fn test_replay_help() {
 fn test_init_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["init", "--help"])
+        .args(["init", "--help"])
         .assert()
         .success();
 }
@@ -1330,7 +1330,7 @@ fn test_init_help() {
 fn test_show_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["show", "--help"])
+        .args(["show", "--help"])
         .assert()
         .success();
 }
@@ -1344,7 +1344,7 @@ fn test_show_help() {
 fn test_health_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["health", "--help"])
+        .args(["health", "--help"])
         .assert()
         .success();
 }
@@ -1357,7 +1357,7 @@ fn test_health_help() {
 fn test_quality_gates_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["quality-gates", "--help"])
+        .args(["quality-gates", "--help"])
         .assert()
         .success();
 }
@@ -1370,7 +1370,7 @@ fn test_quality_gates_help() {
 fn test_maintain_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["maintain", "--help"])
+        .args(["maintain", "--help"])
         .assert()
         .success();
 }
@@ -1383,7 +1383,7 @@ fn test_maintain_help() {
 fn test_analyze_defect_prediction_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["analyze", "defect-prediction", "--help"])
+        .args(["analyze", "defect-prediction", "--help"])
         .assert()
         .success();
 }
@@ -1392,7 +1392,7 @@ fn test_analyze_defect_prediction_help() {
 fn test_analyze_proof_annotations_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["analyze", "proof-annotations", "--help"])
+        .args(["analyze", "proof-annotations", "--help"])
         .assert()
         .success();
 }
@@ -1401,7 +1401,7 @@ fn test_analyze_proof_annotations_help() {
 fn test_analyze_incremental_coverage_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["analyze", "incremental-coverage", "--help"])
+        .args(["analyze", "incremental-coverage", "--help"])
         .assert()
         .success();
 }
@@ -1410,7 +1410,7 @@ fn test_analyze_incremental_coverage_help() {
 fn test_analyze_assembly_script_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["analyze", "assembly-script", "--help"])
+        .args(["analyze", "assembly-script", "--help"])
         .assert()
         .success();
 }
@@ -1420,7 +1420,7 @@ fn test_analyze_assembly_script_help() {
 fn test_analyze_webassembly_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["analyze", "webassembly", "--help"])
+        .args(["analyze", "webassembly", "--help"])
         .assert()
         .success();
 }
@@ -1429,7 +1429,7 @@ fn test_analyze_webassembly_help() {
 fn test_analyze_topics_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["analyze", "topics", "--help"])
+        .args(["analyze", "topics", "--help"])
         .assert()
         .success();
 }
@@ -1438,7 +1438,7 @@ fn test_analyze_topics_help() {
 fn test_analyze_cluster_help() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["analyze", "cluster", "--help"])
+        .args(["analyze", "cluster", "--help"])
         .assert()
         .success();
 }
@@ -1452,7 +1452,7 @@ fn test_analyze_cluster_help() {
 fn test_complexity_format_csv() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&[
+        .args([
             "analyze",
             "complexity",
             "--project-path",
@@ -1469,7 +1469,7 @@ fn test_complexity_format_csv() {
 fn test_satd_format_csv() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["analyze", "satd", "--path", ".", "--format", "csv"])
+        .args(["analyze", "satd", "--path", ".", "--format", "csv"])
         .assert()
         .success();
 }
@@ -1483,7 +1483,7 @@ fn test_satd_format_csv() {
 fn test_analyze_complexity_nonexistent_path() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&[
+        .args([
             "analyze",
             "complexity",
             "--project-path",
@@ -1498,7 +1498,7 @@ fn test_analyze_complexity_nonexistent_path() {
 fn test_analyze_satd_nonexistent_path() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["analyze", "satd", "--path", "/nonexistent/path"])
+        .args(["analyze", "satd", "--path", "/nonexistent/path"])
         .assert()
         .failure();
 }
@@ -1513,7 +1513,7 @@ fn test_analyze_satd_nonexistent_path() {
 fn test_context_format_json() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["context", "--project-path", ".", "--format", "json"])
+        .args(["context", "--project-path", ".", "--format", "json"])
         .assert()
         .success();
 }
@@ -1523,7 +1523,7 @@ fn test_context_format_json() {
 fn test_context_format_yaml() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["context", "--project-path", ".", "--format", "yaml"])
+        .args(["context", "--project-path", ".", "--format", "yaml"])
         .assert()
         .success();
 }
@@ -1536,7 +1536,7 @@ fn test_context_format_yaml() {
 fn test_verbose_debug_combination() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["--verbose", "--debug", "--help"])
+        .args(["--verbose", "--debug", "--help"])
         .assert()
         .success();
 }
@@ -1546,7 +1546,7 @@ fn test_verbose_debug_combination() {
 fn test_quiet_conflicts_with_verbose() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["--quiet", "--verbose", "--help"])
+        .args(["--quiet", "--verbose", "--help"])
         .assert()
         .failure()
         .stderr(predicate::str::contains("cannot be used with"));
@@ -1562,7 +1562,7 @@ fn test_all_find_aliases_work() {
     for alias in &["search", "find", "s"] {
         Command::cargo_bin("pmat")
             .unwrap()
-            .args(&[alias, "--help"])
+            .args([alias, "--help"])
             .assert()
             .success();
     }
@@ -1574,7 +1574,7 @@ fn test_all_generate_aliases_work() {
     for alias in &["generate", "gen", "g"] {
         Command::cargo_bin("pmat")
             .unwrap()
-            .args(&[alias, "--help"])
+            .args([alias, "--help"])
             .assert()
             .success();
     }
@@ -1586,7 +1586,7 @@ fn test_all_context_aliases_work() {
     for alias in &["context", "ctx", "ast"] {
         Command::cargo_bin("pmat")
             .unwrap()
-            .args(&[alias, "--help"])
+            .args([alias, "--help"])
             .assert()
             .success();
     }
@@ -1600,7 +1600,7 @@ fn test_all_context_aliases_work() {
 fn test_analyze_complexity_with_all_options() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&[
+        .args([
             "--verbose",
             "analyze",
             "complexity",
@@ -1617,7 +1617,7 @@ fn test_analyze_complexity_with_all_options() {
 fn test_quality_gate_with_debug() {
     Command::cargo_bin("pmat")
         .unwrap()
-        .args(&["--debug", "quality-gate"])
+        .args(["--debug", "quality-gate"])
         .assert()
         .code(predicate::in_iter([0, 1, 2]));
 }

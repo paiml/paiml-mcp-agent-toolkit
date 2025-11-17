@@ -207,7 +207,7 @@ fn test_show_performance_metrics() {
     // Should show compression ratio if available
     // (This depends on whether snapshots have delta field populated)
     assert!(
-        metrics.contains("ratio") || metrics.contains("Ratio") || metrics.len() > 0,
+        metrics.contains("ratio") || metrics.contains("Ratio") || !metrics.is_empty(),
         "Metrics should show compression info or other stats"
     );
 }
@@ -290,7 +290,7 @@ fn test_color_coded_timeline() {
 
     // Should contain ANSI color codes
     assert!(
-        colored_output.contains("\x1b[") || colored_output.len() > 0,
+        colored_output.contains("\x1b[") || !colored_output.is_empty(),
         "Colored output should contain ANSI escape codes or content"
     );
 

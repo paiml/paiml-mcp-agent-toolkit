@@ -43,7 +43,7 @@ fn test_chunk_rust_impl_blocks() {
     "#;
 
     let chunks = chunk_code(source, Language::Rust).unwrap();
-    assert!(chunks.len() >= 1);
+    assert!(!chunks.is_empty());
     // Should extract impl block or individual methods
     let has_impl_or_methods = chunks
         .iter()
@@ -60,7 +60,7 @@ fn test_chunk_rust_modules() {
     "#;
 
     let chunks = chunk_code(source, Language::Rust).unwrap();
-    assert!(chunks.len() >= 1);
+    assert!(!chunks.is_empty());
     // Should extract module or functions within
     let has_content = chunks
         .iter()
@@ -232,7 +232,7 @@ def outer(x):
 
     let chunks = chunk_code(source, Language::Python).unwrap();
     // Should extract outer function (may or may not extract inner)
-    assert!(chunks.len() >= 1);
+    assert!(!chunks.is_empty());
     assert!(chunks.iter().any(|c| c.chunk_name == "outer"));
 }
 
@@ -348,7 +348,7 @@ fn test_chunk_go_struct() {
 
     let chunks = chunk_code(source, Language::Go).unwrap();
     // Should extract struct and/or methods
-    assert!(chunks.len() >= 1);
+    assert!(!chunks.is_empty());
     let has_struct_or_method = chunks
         .iter()
         .any(|c| c.chunk_name == "Calculator" || c.chunk_name == "Add");
@@ -382,7 +382,7 @@ fn test_chunk_go_package() {
     "#;
 
     let chunks = chunk_code(source, Language::Go).unwrap();
-    assert!(chunks.len() >= 1);
+    assert!(!chunks.is_empty());
     assert!(chunks.iter().any(|c| c.chunk_name == "Add"));
 }
 

@@ -16,19 +16,19 @@ fn test_build_context_from_git_repo() {
 
     // Initialize git repo
     std::process::Command::new("git")
-        .args(&["init"])
+        .args(["init"])
         .current_dir(repo_path)
         .output()
         .unwrap();
 
     std::process::Command::new("git")
-        .args(&["config", "user.email", "test@example.com"])
+        .args(["config", "user.email", "test@example.com"])
         .current_dir(repo_path)
         .output()
         .unwrap();
 
     std::process::Command::new("git")
-        .args(&["config", "user.name", "Test User"])
+        .args(["config", "user.name", "Test User"])
         .current_dir(repo_path)
         .output()
         .unwrap();
@@ -37,13 +37,13 @@ fn test_build_context_from_git_repo() {
     std::fs::write(repo_path.join("test.txt"), "Hello").unwrap();
 
     std::process::Command::new("git")
-        .args(&["add", "."])
+        .args(["add", "."])
         .current_dir(repo_path)
         .output()
         .unwrap();
 
     std::process::Command::new("git")
-        .args(&["commit", "-m", "feat: Initial commit"])
+        .args(["commit", "-m", "feat: Initial commit"])
         .current_dir(repo_path)
         .output()
         .unwrap();
@@ -185,9 +185,9 @@ fn test_analyze_current_repository() {
 
     // Should have commits
     let commits = context.get_recent_commits(10);
-    assert!(commits.len() > 0);
+    assert!(!commits.is_empty());
 
     // Should find test files
     let test_files = context.get_test_files();
-    assert!(test_files.len() > 0);
+    assert!(!test_files.is_empty());
 }

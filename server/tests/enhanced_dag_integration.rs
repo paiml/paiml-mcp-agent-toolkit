@@ -7,7 +7,6 @@ use tempfile::TempDir;
 #[test]
 #[ignore]
 /// FAILED: Broken integration test - needs fixing
-#[ignore]
 fn test_enhanced_dag_analysis() {
     let temp_dir = TempDir::new().unwrap();
     let output_path = temp_dir.path().join("enhanced-dag.mmd");
@@ -41,7 +40,6 @@ fn test_enhanced_dag_analysis() {
 #[test]
 #[ignore]
 /// FAILED: Broken integration test - needs fixing
-#[ignore]
 fn test_enhanced_analysis_backward_compatibility() {
     let temp_dir = TempDir::new().unwrap();
     let output_path = temp_dir.path().join("regular-dag.mmd");

@@ -228,7 +228,7 @@ fn test_dap_extracts_variables_at_breakpoint() {
 
     let vars = variables.unwrap();
     assert!(
-        vars.len() > 0,
+        !vars.is_empty(),
         "Should find variables at line 11 (deeply_nested scope)"
     );
 
@@ -400,7 +400,7 @@ fn test_dap_scopes_request_integrates_with_variable_inspector() {
     let scopes = response["body"]["scopes"].as_array();
     assert!(scopes.is_some(), "Should return scopes array");
     assert!(
-        scopes.unwrap().len() > 0,
+        !scopes.unwrap().is_empty(),
         "Should have at least one scope (locals)"
     );
 
@@ -470,7 +470,7 @@ fn test_dap_variables_request_returns_inspected_variables() {
     let variables = response["body"]["variables"].as_array();
     assert!(variables.is_some(), "Should return variables array");
     assert!(
-        variables.unwrap().len() > 0,
+        !variables.unwrap().is_empty(),
         "Should have variables at line 11"
     );
 

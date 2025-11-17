@@ -312,12 +312,9 @@ async fn test_analyze_file_complexity_uncached_simple_rust() {
 
     let result = analyze_file_complexity_uncached(&rust_file, None).await;
 
-    match result {
-        Ok(metrics) => {
-            // Should have found at least one function
-            assert!(metrics.functions.len() > 0);
-        }
-        Err(_) => {}
+    if let Ok(metrics) = result {
+        // Should have found at least one function
+        assert!(!metrics.functions.is_empty());
     }
 }
 

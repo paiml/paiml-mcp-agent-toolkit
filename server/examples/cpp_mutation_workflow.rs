@@ -279,8 +279,7 @@ async fn test_mutant(
             .await
     } else {
         // Build failed, treat as killed mutant
-        Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
+        Err(std::io::Error::other(
             "Build failed",
         ))
     };

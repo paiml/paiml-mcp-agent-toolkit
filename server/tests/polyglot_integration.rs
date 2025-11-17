@@ -861,7 +861,7 @@ impl UnifiedNodeExt for UnifiedNode {
     ) {
         let reference = NodeReference {
             kind,
-            target_id: target_id.unwrap_or_else(|| "".to_string()),
+            target_id: target_id.unwrap_or_default(),
             target_name,
             target_language: None,
         };

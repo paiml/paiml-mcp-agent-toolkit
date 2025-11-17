@@ -38,17 +38,15 @@ fn main() {
     println!();
 
     println!("5. Display statistics:");
-    println!("   - Total mutants: {}", "<from report.mutants.len()>");
-    println!("   - Mutation score: {}", "<from report.mutation_score()>");
-    println!("   - Caught: {}", "<from report.count_by_outcome(Caught)>");
-    println!("   - Missed: {}", "<from report.count_by_outcome(Missed)>");
+    println!("   - Total mutants: <from report.mutants.len()>");
+    println!("   - Mutation score: <from report.mutation_score()>");
+    println!("   - Caught: <from report.count_by_outcome(Caught)>");
+    println!("   - Missed: <from report.count_by_outcome(Missed)>");
     println!(
-        "   - Timeout: {}",
-        "<from report.count_by_outcome(Timeout)>"
+        "   - Timeout: <from report.count_by_outcome(Timeout)>"
     );
     println!(
-        "   - Unviable: {}",
-        "<from report.count_by_outcome(Unviable)>"
+        "   - Unviable: <from report.count_by_outcome(Unviable)>"
     );
     println!();
 

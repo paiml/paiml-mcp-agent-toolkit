@@ -77,7 +77,7 @@ async fn test_keyword_only_search() {
     };
 
     let results = engine.search(&query).await.unwrap();
-    assert!(results.len() > 0);
+    assert!(!results.is_empty());
     assert!(results[0].keyword_score > 0.0);
     assert_eq!(results[0].vector_score, 0.0);
 }
@@ -144,7 +144,7 @@ async fn test_vector_only_search() {
     };
 
     let results = engine.search(&query).await.unwrap();
-    assert!(results.len() > 0);
+    assert!(!results.is_empty());
     assert!(results[0].vector_score > 0.0);
     assert_eq!(results[0].keyword_score, 0.0);
 }
@@ -212,7 +212,7 @@ async fn test_hybrid_search() {
     };
 
     let results = engine.search(&query).await.unwrap();
-    assert!(results.len() > 0);
+    assert!(!results.is_empty());
     // In hybrid mode, at least one score type should be > 0
     assert!(results[0].keyword_score > 0.0 || results[0].vector_score > 0.0);
     assert!(results[0].hybrid_score > 0.0);
@@ -433,7 +433,7 @@ async fn test_weight_adjustment_keyword_heavy() {
     };
 
     let results = engine.search(&query).await.unwrap();
-    assert!(results.len() > 0);
+    assert!(!results.is_empty());
 
     // Hybrid score should be dominated by keyword score
     if results[0].keyword_score > 0.0 {
@@ -460,7 +460,7 @@ async fn test_weight_adjustment_vector_heavy() {
     };
 
     let results = engine.search(&query).await.unwrap();
-    assert!(results.len() > 0);
+    assert!(!results.is_empty());
 }
 
 #[ignore]

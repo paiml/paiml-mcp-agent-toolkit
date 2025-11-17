@@ -9,7 +9,6 @@
 //! support issues and faster onboarding (GitHub State of the Octoverse 2024).
 
 use pmat::services::rust_project_score::{DocumentationScorer, Scorer};
-use std::path::Path;
 
 // Test fixture: Create temporary test project
 fn create_test_project() -> tempfile::TempDir {
@@ -525,7 +524,7 @@ fn test_category_score_structure() {
 
     // Test percentage calculation
     let percentage = result.percentage();
-    assert!(percentage >= 0.0 && percentage <= 100.0);
+    assert!((0.0..=100.0).contains(&percentage));
 }
 
 // ============================================================================

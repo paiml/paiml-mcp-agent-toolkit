@@ -334,7 +334,7 @@ fn generate_context_markdown(path: &std::path::Path) -> Result<String, String> {
                 ));
             }
 
-            output.push_str("\n");
+            output.push('\n');
         }
     } else {
         output.push_str("Functions: 0\n\n");

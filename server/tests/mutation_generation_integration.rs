@@ -47,7 +47,7 @@ fn validate(x: bool) -> bool {
 
     // Should generate at least 1 mutant for the ! operator
     assert!(
-        mutants.len() > 0,
+        !mutants.is_empty(),
         "Expected at least 1 mutant for unary negation (!), got 0"
     );
 
@@ -123,7 +123,7 @@ fn validate(s: &str) -> bool {
 
     // Should generate at least 1 mutant for !s.is_empty()
     assert!(
-        mutants.len() > 0,
+        !mutants.is_empty(),
         "Expected at least 1 mutant for !s.is_empty(), got 0"
     );
 }
