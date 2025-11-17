@@ -233,7 +233,11 @@ impl Scorer for RustToolingScorer {
         Ok(CategoryScore::new(total_earned, self.max_points))
     }
 
-    fn score_with_mode(&self, project_path: &Path, mode: ScoringMode) -> ScorerResult<CategoryScore> {
+    fn score_with_mode(
+        &self,
+        project_path: &Path,
+        mode: ScoringMode,
+    ) -> ScorerResult<CategoryScore> {
         // Verify project has Cargo.toml
         if !project_path.join("Cargo.toml").exists() {
             return Err(ScorerError::InvalidProject(
@@ -308,18 +312,15 @@ impl Scorer for RustToolingScorer {
         let mut recommendations = Vec::new();
 
         // Check clippy - SKIP subprocess, always recommend
-        recommendations.push(
-            "Run 'cargo clippy --fix' to automatically fix clippy warnings".to_string(),
-        );
+        recommendations
+            .push("Run 'cargo clippy --fix' to automatically fix clippy warnings".to_string());
 
         // Check rustfmt - SKIP subprocess, always recommend
-        recommendations.push(
-            "Run 'cargo fmt' to format code according to Rust style guidelines".to_string(),
-        );
+        recommendations
+            .push("Run 'cargo fmt' to format code according to Rust style guidelines".to_string());
 
         // Check cargo-audit - SKIP subprocess, always recommend
-        recommendations
-            .push("Run 'cargo audit' and update vulnerable dependencies".to_string());
+        recommendations.push("Run 'cargo audit' and update vulnerable dependencies".to_string());
 
         // Check cargo-deny - Fast filesystem check is ok
         if let Ok(score) = self.score_cargo_deny(project_path) {

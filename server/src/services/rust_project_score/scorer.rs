@@ -63,7 +63,11 @@ pub trait Scorer: Send + Sync {
     /// - Quick mode: <10s - Filesystem only, no subprocesses
     /// - Fast mode: <60s - Skip expensive cargo operations (default)
     /// - Full mode: <5m - All checks including mutation testing
-    fn score_with_mode(&self, project_path: &Path, mode: ScoringMode) -> ScorerResult<CategoryScore>;
+    fn score_with_mode(
+        &self,
+        project_path: &Path,
+        mode: ScoringMode,
+    ) -> ScorerResult<CategoryScore>;
 
     /// Optional: Provide detailed recommendations for improvement
     ///

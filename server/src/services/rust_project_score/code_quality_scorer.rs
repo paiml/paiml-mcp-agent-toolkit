@@ -321,7 +321,11 @@ impl Scorer for CodeQualityScorer {
         self.max_points
     }
 
-    fn score_with_mode(&self, project_path: &Path, mode: ScoringMode) -> ScorerResult<CategoryScore> {
+    fn score_with_mode(
+        &self,
+        project_path: &Path,
+        mode: ScoringMode,
+    ) -> ScorerResult<CategoryScore> {
         // Verify project has Cargo.toml
         if !project_path.join("Cargo.toml").exists() {
             return Err(ScorerError::InvalidProject(
@@ -367,12 +371,10 @@ impl Scorer for CodeQualityScorer {
                 // Give moderate credit (4/8 points) to avoid penalizing fast mode too much
                 total_earned += 4.0;
             }
-            ScoringMode::Full => {
-                match self.score_mutation(project_path) {
-                    Ok(score) => total_earned += score,
-                    Err(e) => return Err(e),
-                }
-            }
+            ScoringMode::Full => match self.score_mutation(project_path) {
+                Ok(score) => total_earned += score,
+                Err(e) => return Err(e),
+            },
         }
 
         // Score build time (4pts) - ONLY in full mode (cargo build is very slow)
@@ -386,12 +388,10 @@ impl Scorer for CodeQualityScorer {
                 // Give moderate credit (2/4 points)
                 total_earned += 2.0;
             }
-            ScoringMode::Full if !cfg!(test) => {
-                match self.score_build_time(project_path) {
-                    Ok(score) => total_earned += score,
-                    Err(e) => return Err(e),
-                }
-            }
+            ScoringMode::Full if !cfg!(test) => match self.score_build_time(project_path) {
+                Ok(score) => total_earned += score,
+                Err(e) => return Err(e),
+            },
             ScoringMode::Full => {
                 // Test mode: Skip build time
                 total_earned += 2.0;

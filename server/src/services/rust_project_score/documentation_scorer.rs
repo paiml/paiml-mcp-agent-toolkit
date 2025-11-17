@@ -266,7 +266,11 @@ impl Scorer for DocumentationScorer {
         Ok(CategoryScore::new(total_earned, self.max_points))
     }
 
-    fn score_with_mode(&self, project_path: &Path, _mode: ScoringMode) -> ScorerResult<CategoryScore> {
+    fn score_with_mode(
+        &self,
+        project_path: &Path,
+        _mode: ScoringMode,
+    ) -> ScorerResult<CategoryScore> {
         // This scorer doesn't have expensive operations, so mode doesn't affect it
         self.score(project_path)
     }

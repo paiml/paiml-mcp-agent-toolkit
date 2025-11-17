@@ -88,7 +88,11 @@ impl RustProjectScoreOrchestrator {
     /// - Quick mode: <10 seconds - Filesystem only
     /// - Fast mode (default): <60 seconds - Skip expensive cargo operations
     /// - Full mode: <5 minutes (300 seconds) - Complete analysis
-    pub fn score_with_mode(&self, project_path: &Path, mode: ScoringMode) -> ScorerResult<ProjectScore> {
+    pub fn score_with_mode(
+        &self,
+        project_path: &Path,
+        mode: ScoringMode,
+    ) -> ScorerResult<ProjectScore> {
         // Verify project has Cargo.toml
         if !project_path.join("Cargo.toml").exists() {
             return Err(ScorerError::InvalidProject(

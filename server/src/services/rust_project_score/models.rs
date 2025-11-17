@@ -22,6 +22,7 @@ use std::fmt;
 /// - Fast:  <60s - Lightweight checks, minimal subprocess calls (default)
 /// - Full:  <5m  - All checks including mutation testing, cargo audit, etc.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Default)]
 pub enum ScoringMode {
     /// Quick mode: <10 seconds
     /// - Only filesystem-based heuristics
@@ -34,6 +35,7 @@ pub enum ScoringMode {
     /// - Skip expensive cargo operations (llvm-cov, mutants, clippy, audit)
     /// - Use heuristics where possible
     /// - Moderate credit for skipped checks
+    #[default]
     Fast,
 
     /// Full mode: <5 minutes
@@ -60,11 +62,6 @@ impl ScoringMode {
     }
 }
 
-impl Default for ScoringMode {
-    fn default() -> Self {
-        ScoringMode::Fast
-    }
-}
 
 impl fmt::Display for ScoringMode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
