@@ -930,6 +930,11 @@ impl UnifiedAstNode {
     /// Get the complexity score for this node
     #[must_use]
     pub fn complexity(&self) -> u32 {
+        // SAFETY: Accessing the complexity field of the metadata union.
+        // This is safe because:
+        // 1. The metadata union is properly initialized in all constructors
+        // 2. We only read the lower 32 bits which are always valid u32 values
+        // 3. The bit mask (0xFFFFFFFF) ensures we only access the complexity portion
         unsafe { (self.metadata.complexity & 0xFFFFFFFF) as u32 }
     }
 
@@ -1029,6 +1034,11 @@ impl std::fmt::Debug for UnifiedAstNode {
             .field("semantic_hash", &self.semantic_hash)
             .field("structural_hash", &self.structural_hash)
             .field("name_vector", &self.name_vector)
+            // SAFETY: Accessing the raw field of the metadata union for debug output.
+            // This is safe because:
+            // 1. We only read the raw bytes for display purposes
+            // 2. The metadata union is properly initialized
+            // 3. Reading raw bytes does not violate memory safety
             .field("metadata_raw", &unsafe { self.metadata.raw })
             .field("proof_annotations", &self.proof_annotations)
             .finish()
