@@ -218,11 +218,7 @@ impl DocumentationScorer {
     /// Checks for CHANGELOG.md with version history
     ///
     /// **Kaizen Round 4**: Cache-aware - uses FileCache if available for CHANGELOG.md
-    fn score_changelog(
-        &self,
-        project_path: &Path,
-        cache: Option<&FileCache>,
-    ) -> ScorerResult<f64> {
+    fn score_changelog(&self, project_path: &Path, cache: Option<&FileCache>) -> ScorerResult<f64> {
         let changelog_path = project_path.join("CHANGELOG.md");
 
         if !changelog_path.exists() {

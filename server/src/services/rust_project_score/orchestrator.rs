@@ -144,7 +144,10 @@ impl RustProjectScoreOrchestrator {
 
         // Create progress spinner (simpler for parallel execution)
         let pb = ProgressBar::new_spinner();
-        pb.set_message(format!("Analyzing {} categories in parallel...", self.scorers.len()));
+        pb.set_message(format!(
+            "Analyzing {} categories in parallel...",
+            self.scorers.len()
+        ));
         pb.enable_steady_tick(std::time::Duration::from_millis(100));
 
         // Run scorers in parallel using rayon
@@ -152,7 +155,8 @@ impl RustProjectScoreOrchestrator {
             .scorers
             .par_iter()
             .map(|scorer| {
-                let category_score = scorer.score_with_cache(project_path, mode, file_cache.as_ref())?;
+                let category_score =
+                    scorer.score_with_cache(project_path, mode, file_cache.as_ref())?;
                 let recommendations = scorer.recommendations(project_path);
                 Ok((scorer.name().to_string(), category_score, recommendations))
             })

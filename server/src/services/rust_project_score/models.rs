@@ -6,8 +6,8 @@
 //! Evidence-based design from 15 peer-reviewed papers (2022-2025)
 
 use rayon::prelude::*;
+use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::fmt;
 use std::path::{Path, PathBuf};
 
@@ -24,8 +24,7 @@ use std::path::{Path, PathBuf};
 /// - Quick: <10s - Filesystem only, no subprocesses, no external tools
 /// - Fast:  <60s - Lightweight checks, minimal subprocess calls (default)
 /// - Full:  <5m  - All checks including mutation testing, cargo audit, etc.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum ScoringMode {
     /// Quick mode: <10 seconds
     /// - Only filesystem-based heuristics
@@ -64,7 +63,6 @@ impl ScoringMode {
         matches!(self, ScoringMode::Full)
     }
 }
-
 
 impl fmt::Display for ScoringMode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -191,9 +189,7 @@ impl FileCache {
         }
 
         // Collect file paths and subdirectories separately
-        let entries: Vec<_> = std::fs::read_dir(dir)?
-            .filter_map(|e| e.ok())
-            .collect();
+        let entries: Vec<_> = std::fs::read_dir(dir)?.filter_map(|e| e.ok()).collect();
 
         let mut rs_files = Vec::new();
         let mut subdirs = Vec::new();
@@ -247,7 +243,7 @@ impl FileCache {
         self.files
             .iter()
             .filter(|(path, _)| {
-                path.starts_with(dir) && path.extension().map_or(false, |e| e == "rs")
+                path.starts_with(dir) && path.extension().is_some_and(|e| e == "rs")
             })
             .collect()
     }

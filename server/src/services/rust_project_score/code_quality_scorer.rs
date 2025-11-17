@@ -193,9 +193,9 @@ impl CodeQualityScorer {
 
                                         // Check for SAFETY comment in previous 5 lines
                                         let start = i.saturating_sub(5);
-                                        let has_safety = lines[start..=i]
-                                            .iter()
-                                            .any(|l| l.contains("SAFETY:") || l.contains("Safety:"));
+                                        let has_safety = lines[start..=i].iter().any(|l| {
+                                            l.contains("SAFETY:") || l.contains("Safety:")
+                                        });
 
                                         if has_safety {
                                             documented_unsafe += 1;
@@ -325,11 +325,7 @@ impl CodeQualityScorer {
     /// Score dead code detection (2pts)
     ///
     /// **Kaizen Round 4**: Cache-aware - uses FileCache if available for src/*.rs
-    fn score_dead_code(
-        &self,
-        project_path: &Path,
-        cache: Option<&FileCache>,
-    ) -> ScorerResult<f64> {
+    fn score_dead_code(&self, project_path: &Path, cache: Option<&FileCache>) -> ScorerResult<f64> {
         let src_path = project_path.join("src");
         if !src_path.exists() {
             return Ok(2.0);

@@ -73,7 +73,7 @@ impl PerformanceScorer {
 
         // Try cache first, fall back to filesystem
         let content_result = if let Some(cache) = cache {
-            cache.get(&cargo_toml_path).map(|s| s.to_string()).ok_or_else(|| ())
+            cache.get(&cargo_toml_path).map(|s| s.to_string()).ok_or(())
         } else {
             std::fs::read_to_string(&cargo_toml_path).map_err(|_| ())
         };
@@ -100,11 +100,7 @@ impl PerformanceScorer {
     /// Checks for flamegraph/perf integration
     ///
     /// **Kaizen Round 4**: Cache-aware - uses FileCache if available for Cargo.toml
-    fn score_profiling(
-        &self,
-        project_path: &Path,
-        cache: Option<&FileCache>,
-    ) -> ScorerResult<f64> {
+    fn score_profiling(&self, project_path: &Path, cache: Option<&FileCache>) -> ScorerResult<f64> {
         let mut profiling_indicators = 0;
         let mut has_flamegraph_artifact = false;
 
@@ -124,7 +120,7 @@ impl PerformanceScorer {
 
         // Try cache first, fall back to filesystem
         let content_result = if let Some(cache) = cache {
-            cache.get(&cargo_toml_path).map(|s| s.to_string()).ok_or_else(|| ())
+            cache.get(&cargo_toml_path).map(|s| s.to_string()).ok_or(())
         } else {
             std::fs::read_to_string(&cargo_toml_path).map_err(|_| ())
         };

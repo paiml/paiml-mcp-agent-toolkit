@@ -184,11 +184,7 @@ impl TestingScorer {
     /// Checks for rustdoc examples in source files
     ///
     /// **Kaizen Round 4**: Cache-aware - uses FileCache if available for src/*.rs
-    fn score_doc_tests(
-        &self,
-        project_path: &Path,
-        cache: Option<&FileCache>,
-    ) -> ScorerResult<f64> {
+    fn score_doc_tests(&self, project_path: &Path, cache: Option<&FileCache>) -> ScorerResult<f64> {
         let src_path = project_path.join("src");
         if !src_path.exists() {
             return Ok(0.0);
