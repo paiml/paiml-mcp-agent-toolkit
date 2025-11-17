@@ -776,11 +776,13 @@ mod parallel_tests {
     #[test]
     fn test_check_type_coverage() {
         // Verify CheckType enum has all expected variants
-        let types = [CheckType::Build,
+        let types = [
+            CheckType::Build,
             CheckType::Tests,
             CheckType::Coverage,
             CheckType::Complexity,
-            CheckType::Satd];
+            CheckType::Satd,
+        ];
 
         // If this compiles, all types exist
         assert_eq!(types.len(), 5);

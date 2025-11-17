@@ -113,10 +113,7 @@ PMAT cannot compile code - it only analyzes existing source.
         // Claim 3: Negative capability
         let claim3 = &claims[2];
         assert_eq!(claim3.claim_type, ClaimType::Capability);
-        assert!(
-            claim3.is_negative,
-            "Should detect negative capability"
-        );
+        assert!(claim3.is_negative, "Should detect negative capability");
     }
 
     /// RED TEST 2: CodeFactDatabase must load AST facts from deep context

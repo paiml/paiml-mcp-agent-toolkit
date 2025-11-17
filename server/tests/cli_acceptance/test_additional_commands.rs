@@ -573,7 +573,7 @@ mod integration_tests {
     /// FAILED: Outdated acceptance test - needs CLI output update
     #[ignore]
     /// FAILED: Outdated acceptance test - needs CLI output update
-    
+
     async fn test_full_command_workflow() -> Result<()> {
         let runner = CliTestRunner::new()?;
         let project_path = runner.create_sample_project()?;

@@ -461,11 +461,13 @@ mod tests {
     /// PROPERTY TEST: Any command with "$${" should NEVER trigger shell injection
     #[test]
     fn property_test_double_dollar_brace_always_safe() {
-        let test_cases = [r#"echo "$${foo}""#,
+        let test_cases = [
+            r#"echo "$${foo}""#,
             r#"echo "$${output}" | grep test"#,
             r#"rm -rf "$${tmpdir}""#,
             r#"find "$${path}" -name '*.rs'"#,
-            r#"curl "$${url}" -o file"#];
+            r#"curl "$${url}" -o file"#,
+        ];
 
         for (i, cmd) in test_cases.iter().enumerate() {
             let content = format!("test:\n\t{}\n", cmd);
@@ -488,10 +490,12 @@ mod tests {
     /// PROPERTY TEST: Any command with "$$(" should NEVER trigger shell injection
     #[test]
     fn property_test_double_dollar_paren_always_safe() {
-        let test_cases = [r#"output="$$(ls)""#,
+        let test_cases = [
+            r#"output="$$(ls)""#,
             r#"count="$$(echo "$${var}" | wc -l)""#,
             r#"rm -rf "$$(pwd)/tmp""#,
-            r#"tar xzf "$$(find . -name '*.tar.gz')""#];
+            r#"tar xzf "$$(find . -name '*.tar.gz')""#,
+        ];
 
         for (i, cmd) in test_cases.iter().enumerate() {
             let content = format!("test:\n\t{}\n", cmd);

@@ -674,6 +674,9 @@ mod tests {
         let first_pattern = &patterns.as_array().unwrap()[0];
         assert_eq!(first_pattern["language_pair"], "Java-Kotlin");
         assert!(first_pattern["recommendations"].is_array());
-        assert!(!first_pattern["recommendations"].as_array().unwrap().is_empty());
+        assert!(!first_pattern["recommendations"]
+            .as_array()
+            .unwrap()
+            .is_empty());
     }
 }
