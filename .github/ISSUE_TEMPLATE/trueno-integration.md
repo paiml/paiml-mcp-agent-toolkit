@@ -74,8 +74,20 @@ If applicable:
 - No meaningful performance benefit
 - Complexity outweighs gains
 
+## Production Example: Renacer v0.2.0
+
+**Renacer** (syscall tracer) successfully uses Trueno SIMD for statistics mode:
+- **Published**: https://crates.io/crates/renacer v0.2.0
+- **Use Case**: SIMD-accelerated syscall statistics aggregation
+- **Quality**: 91.21% coverage, 94.2/100 TDG score
+- **Performance**: Trueno provides 5-340% speedup for aggregate operations
+- **Architecture**: Demonstrates Trueno production readiness
+
+**Key Insight**: Renacer proves Trueno is production-ready for high-performance data aggregation.
+
 ## Related
 
 - Kaizen optimization philosophy (continuous improvement)
 - Toyota Way principles (evidence-based decisions)
 - Trueno README: `/home/noah/src/trueno/README.md`
+- Renacer (reference implementation): https://github.com/paiml/renacer
