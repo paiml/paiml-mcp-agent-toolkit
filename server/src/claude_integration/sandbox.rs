@@ -59,6 +59,9 @@ impl BridgeSandbox {
     fn apply_linux_security(&self, cmd: &mut Command) -> io::Result<()> {
         use std::os::unix::process::CommandExt;
 
+        // SAFETY: pre_exec is unsafe because it runs in the child process before exec.
+        // Our closure only calls prctl::set_no_new_privs which is a safe wrapper around libc::prctl.
+        // The closure does not access any shared state or perform operations that could cause UB.
         unsafe {
             cmd.pre_exec(|| {
                 // Set no new privileges
@@ -103,6 +106,9 @@ mod prctl {
     use std::io;
 
     pub fn set_no_new_privs(val: bool) -> io::Result<()> {
+        // SAFETY: libc::prctl is an FFI call to the Linux kernel's prctl syscall.
+        // PR_SET_NO_NEW_PRIVS is a well-defined operation that prevents privilege escalation.
+        // All arguments are valid: option (PR_SET_NO_NEW_PRIVS), arg2 (0 or 1), and unused args (0,0,0).
         let ret =
             unsafe { libc::prctl(libc::PR_SET_NO_NEW_PRIVS, if val { 1 } else { 0 }, 0, 0, 0) };
 

@@ -552,6 +552,9 @@ impl DeadCodeAnalyzer {
     #[inline]
     fn mark_reachable_vectorized(&mut self) {
         #[cfg(target_arch = "x86_64")]
+        // SAFETY: AVX2 SIMD instructions are only enabled on x86_64 targets where they are supported.
+        // The function mark_reachable_vectorized_avx2() operates on properly aligned data structures
+        // and does not access memory outside of allocated bounds.
         unsafe {
             self.mark_reachable_vectorized_avx2();
         }
