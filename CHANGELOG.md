@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.196.0] - 2025-11-17
+
 ### Performance
 - **Kaizen Round 4: FileCache Optimization** - 41.3% performance improvement for rust-project-score
   - **Before**: 230ms (after Round 3)
