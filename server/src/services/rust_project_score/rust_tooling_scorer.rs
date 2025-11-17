@@ -259,14 +259,28 @@ impl Scorer for RustToolingScorer {
             total_earned += 5.0;
         }
 
-        // Score rustfmt (5pts) - fast enough for both modes (~5 seconds)
-        match self.score_rustfmt(project_path) {
-            Ok(score) => total_earned += score,
-            Err(ScorerError::ToolNotFound(_)) => {
-                // Graceful degradation
+        // Score rustfmt (5pts)
+        // KAIZEN: Skip in fast mode - takes 30-60s on large projects (145 files)
+        if full {
+            match self.score_rustfmt(project_path) {
+                Ok(score) => total_earned += score,
+                Err(ScorerError::ToolNotFound(_)) => {
+                    // Graceful degradation
+                    total_earned += 2.5;
+                }
+                Err(e) => return Err(e),
+            }
+        } else {
+            // Fast mode: Check for rustfmt.toml existence as proxy
+            // If rustfmt.toml exists, assume formatting is configured (give 3/5 pts)
+            // If not, give moderate credit (2.5/5 pts)
+            if project_path.join("rustfmt.toml").exists()
+                || project_path.join(".rustfmt.toml").exists()
+            {
+                total_earned += 3.0;
+            } else {
                 total_earned += 2.5;
             }
-            Err(e) => return Err(e),
         }
 
         // Score cargo-audit (7pts) - ONLY in full mode (network calls ~30s)
