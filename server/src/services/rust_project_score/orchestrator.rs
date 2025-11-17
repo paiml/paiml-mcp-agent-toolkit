@@ -18,7 +18,8 @@ use super::performance_scorer::PerformanceScorer;
 use super::rust_tooling_scorer::RustToolingScorer;
 use super::scorer::{Scorer, ScorerError, ScorerResult};
 use super::testing_scorer::TestingScorer;
-use indicatif::{ProgressBar, ProgressStyle};
+use indicatif::ProgressBar;
+use rayon::prelude::*;
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -137,29 +138,34 @@ impl RustProjectScoreOrchestrator {
         };
 
         // Run all scorers and collect results
+        // **Kaizen Round 5**: Parallel scorer execution for 2-3x speedup
         let mut category_map: HashMap<String, CategoryScore> = HashMap::new();
         let mut all_recommendations: Vec<String> = Vec::new();
 
-        // Create progress bar
-        let pb = ProgressBar::new(self.scorers.len() as u64);
-        pb.set_style(
-            ProgressStyle::default_bar()
-                .template("[{elapsed_precise}] {bar:40.cyan/blue} {pos}/{len} {msg}")
-                .unwrap()
-                .progress_chars("█▓▒░ "),
-        );
+        // Create progress spinner (simpler for parallel execution)
+        let pb = ProgressBar::new_spinner();
+        pb.set_message(format!("Analyzing {} categories in parallel...", self.scorers.len()));
+        pb.enable_steady_tick(std::time::Duration::from_millis(100));
 
-        for scorer in &self.scorers {
-            pb.set_message(format!("Analyzing {}...", scorer.name()));
-            let category_score = scorer.score_with_cache(project_path, mode, file_cache.as_ref())?;
-            let recommendations = scorer.recommendations(project_path);
-
-            category_map.insert(scorer.name().to_string(), category_score);
-            all_recommendations.extend(recommendations);
-            pb.inc(1);
-        }
+        // Run scorers in parallel using rayon
+        let results: Result<Vec<_>, ScorerError> = self
+            .scorers
+            .par_iter()
+            .map(|scorer| {
+                let category_score = scorer.score_with_cache(project_path, mode, file_cache.as_ref())?;
+                let recommendations = scorer.recommendations(project_path);
+                Ok((scorer.name().to_string(), category_score, recommendations))
+            })
+            .collect();
 
         pb.finish_with_message("✅ Analysis complete");
+
+        // Unpack parallel results
+        let results = results?;
+        for (name, score, recs) in results {
+            category_map.insert(name, score);
+            all_recommendations.extend(recs);
+        }
 
         // Build CategoryScores struct
         let categories = category_map.clone();
