@@ -44,7 +44,7 @@ These distributions have automated package updates but require one-time manual s
 - **Workflow**: `.github/workflows/multi-ecosystem-release.yml`
 - **Automation**: Formula auto-updated with SHA256
 - **Manual Step**: Submit PR to homebrew-core (one-time)
-- **Files**: `homebrew/pmat.rb`, `homebrew/SUBMIT_TO_CORE.md`
+- **Files**: `Formula/pmat.rb`, `Formula/SUBMIT_TO_CORE.md`
 - **Post-Submission**: Fully automated forever
 
 #### 🔄 Arch Linux AUR

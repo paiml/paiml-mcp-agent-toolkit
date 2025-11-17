@@ -101,19 +101,19 @@ jobs:
       run: |
         VERSION="${{ needs.prepare.outputs.version }}"
         SHA256="${{ needs.prepare.outputs.sha256 }}"
-        
+
         # Update formula with new version and SHA256
-        sed -i "s|archive/v.*\.tar\.gz|archive/v${VERSION}.tar.gz|" homebrew/pmat.rb
-        sed -i "s|sha256 \".*\"|sha256 \"${SHA256}\"|" homebrew/pmat.rb
-        
+        sed -i "s|archive/v.*\.tar\.gz|archive/v${VERSION}.tar.gz|" Formula/pmat.rb
+        sed -i "s|sha256 \".*\"|sha256 \"${SHA256}\"|" Formula/pmat.rb
+
         echo "Updated Homebrew formula:"
-        cat homebrew/pmat.rb | grep -E "(url|sha256|version)"
+        cat Formula/pmat.rb | grep -E "(url|sha256|version)"
         
     - name: Commit Homebrew updates
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        git add homebrew/pmat.rb
+        git add Formula/pmat.rb
         git commit -m "homebrew: Update to v${{ needs.prepare.outputs.version }}" || exit 0
         git push
 

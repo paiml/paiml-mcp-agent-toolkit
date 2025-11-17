@@ -43,17 +43,17 @@ jobs:
         SHA256="${{ steps.sha256.outputs.sha256 }}"
         
         # Update formula with new version and SHA256
-        sed -i "s|archive/v.*\.tar\.gz|archive/v${VERSION}.tar.gz|" homebrew/pmat.rb
-        sed -i "s|sha256 \".*\"|sha256 \"${SHA256}\"|" homebrew/pmat.rb
-        
+        sed -i "s|archive/v.*\.tar\.gz|archive/v${VERSION}.tar.gz|" Formula/pmat.rb
+        sed -i "s|sha256 \".*\"|sha256 \"${SHA256}\"|" Formula/pmat.rb
+
         echo "Updated formula:"
-        cat homebrew/pmat.rb | grep -E "(url|sha256)"
+        cat Formula/pmat.rb | grep -E "(url|sha256)"
         
     - name: Commit updated formula
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        git add homebrew/pmat.rb
+        git add Formula/pmat.rb
         git commit -m "homebrew: Update formula to v${{ steps.version.outputs.version }}" || exit 0
         git push
         
@@ -61,9 +61,9 @@ jobs:
       run: |
         echo "📝 Manual step required:"
         echo "1. Fork https://github.com/Homebrew/homebrew-core"
-        echo "2. Copy updated homebrew/pmat.rb to Formula/pmat.rb"
+        echo "2. Copy updated Formula/pmat.rb to Formula/pmat.rb"
         echo "3. Test with: brew install --build-from-source Formula/pmat.rb"
         echo "4. Submit PR with title: 'pmat ${{ steps.version.outputs.version }}'"
         echo ""
-        echo "Formula ready at: homebrew/pmat.rb"
+        echo "Formula ready at: Formula/pmat.rb"
         echo "SHA256: ${{ steps.sha256.outputs.sha256 }}"
