@@ -354,13 +354,15 @@ fn warn_ignored_parameters(_config: &ComprehensiveConfig) {
 
 /// Find the project root by looking for Cargo.toml
 fn find_project_root(start_path: &Path) -> Result<PathBuf> {
-    let mut current = if start_path.is_file() {
+    let start_dir = if start_path.is_file() {
         start_path
             .parent()
             .context("File has no parent directory")?
     } else {
         start_path
     };
+
+    let mut current = start_dir;
 
     loop {
         let cargo_toml = current.join("Cargo.toml");
@@ -375,11 +377,8 @@ fn find_project_root(start_path: &Path) -> Result<PathBuf> {
         }
     }
 
-    // If no Cargo.toml found, return the original directory
-    Ok(start_path
-        .parent()
-        .unwrap_or_else(|| Path::new("."))
-        .to_path_buf())
+    // If no Cargo.toml found, return the directory where we started searching
+    Ok(start_dir.to_path_buf())
 }
 
 #[cfg(test)]
