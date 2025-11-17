@@ -1313,6 +1313,173 @@ let p99_tdg = self.percentile(&tdg_values, 0.99);
 
 ---
 
+## Learnings from Renacer HPU/ML/DL Profiling (2025-11-17)
+
+**Source**: `/home/noah/src/renacer/docs/specifications/HPU-ML-DL-profiling-spec.md` (1,641 lines)
+
+The Renacer project provides critical learnings for Trueno SIMD/GPU integration based on their multi-backend (CPU SIMD, HPU, GPU) profiling system. These learnings inform PMAT's Phase 2-3 implementation strategy.
+
+### 1. Adaptive Backend Selection (Critical for Phase 3 GPU)
+
+**Renacer Finding**: GPU acceleration only provides net benefit when compute gains exceed data transfer overhead.
+
+**Adaptive Selection Logic** (Renacer lines 192-216):
+```rust
+fn select_backend(trace_size: usize) -> BackendChoice {
+    let transfer_cost_ms = estimate_transfer_cost(trace_size);
+    let gpu_compute_ms = estimate_gpu_compute(trace_size);
+    let cpu_compute_ms = estimate_cpu_simd_compute(trace_size);
+
+    // Only offload to GPU if net benefit exists
+    if (gpu_compute_ms + transfer_cost_ms) < cpu_compute_ms {
+        BackendChoice::GPU
+    } else {
+        BackendChoice::CPUMultiThreadedSIMD
+    }
+}
+```
+
+**Data Size Thresholds** (Renacer empirical findings):
+- **< 1,000 elements**: CPU SIMD (lowest latency, no transfer cost)
+- **1,000-10,000 elements**: Profile first run, cache decision
+- **> 10,000 elements**: GPU acceleration (amortized transfer cost)
+
+**PMAT Application**:
+- Phase 2 (SIMD): Focus on similarity.rs with typical workloads of 100-1,000 token vectors
+- Phase 3 (GPU): Only implement if profiling shows datasets > 10,000 elements are common
+- Add `--backend` CLI flag: `auto` (default), `cpu`, `simd`, `gpu`
+- Implement runtime profiling to cache backend decisions per file size
+
+### 2. Realistic Timeline Estimates (Toyota Way - Kaizen)
+
+**Renacer Finding**: Initial 12-week estimate revised to 16-19 weeks after empirical validation.
+
+**Renacer Timeline** (lines 1458-1520):
+- Phase 1 (Basic Profiling): 2 weeks (actual: 3 weeks due to API design iterations)
+- Phase 2 (HPU Integration): 4 weeks (actual: 5 weeks due to driver compatibility)
+- Phase 3 (ML Models): 6 weeks (actual: 8 weeks due to model tuning)
+- **Lesson**: Add 25-50% buffer for unforeseen integration challenges
+
+**PMAT Revised Timeline**:
+- **Phase 2 (SIMD)**: 1-2 weeks (not "days")
+  - Week 1: Implementation + benchmarking (similarity.rs)
+  - Week 2: Property testing, edge case handling, documentation
+- **Phase 3 (GPU)**: 2-3 weeks (if approved after Phase 2 profiling)
+  - Week 1: GPU backend integration (wgpu setup)
+  - Week 2: Data transfer optimization, adaptive selection
+  - Week 3: Comprehensive benchmarking across dataset sizes
+
+### 3. Data Transfer Overhead Mitigation
+
+**Renacer Finding**: Naive GPU offloading can be 2-3x **slower** than CPU SIMD for small datasets due to PCI-e transfer latency.
+
+**Mitigation Strategies** (Renacer lines 845-920):
+1. **Batch Processing**: Amortize transfer cost across multiple operations
+2. **Pinned Memory**: Use `wgpu::BufferUsages::MAP_READ` for zero-copy when possible
+3. **Async Transfers**: Pipeline CPU work during GPU data transfer
+4. **Persistent Buffers**: Reuse GPU buffers across multiple analysis passes
+
+**PMAT Application**:
+- Phase 2: Benchmark SIMD vs scalar to establish CPU baseline
+- Phase 3: Only proceed to GPU if:
+  - Dataset size analysis shows > 10,000 element workloads are common (≥20% of usage)
+  - Transfer overhead profiling confirms net speedup
+- Implement batch mode: `pmat analyze --batch <files>` to amortize GPU setup
+
+### 4. Progressive Disclosure UX ("Pit of Success")
+
+**Renacer Design** (lines 1215-1240):
+- **Level 1 (Auto)**: `hpu-profiler trace.json` - automatic backend selection
+- **Level 2 (Deep)**: `hpu-profiler trace.json --deep` - show backend decision rationale
+- **Level 3 (Full)**: `hpu-profiler trace.json --backend gpu --show-transfers` - expert control
+
+**PMAT Application**:
+```bash
+# Level 1: Auto mode (default)
+pmat analyze . --simd             # Enables SIMD if available, silent fallback
+
+# Level 2: Deep mode (explain decisions)
+pmat analyze . --simd --deep      # Shows: "Using AVX2 (detected), 4.2x speedup"
+
+# Level 3: Full control (expert mode)
+pmat analyze . --backend avx512   # Force specific SIMD ISA
+pmat analyze . --backend scalar   # Disable SIMD for comparison
+pmat analyze . --backend gpu      # Force GPU (Phase 3 only)
+```
+
+**Rationale**: Users shouldn't need to understand SIMD/GPU details to benefit from speedups.
+
+### 5. Benchmark Validation Requirements
+
+**Renacer Finding**: Unit tests validate correctness, but benchmarks must validate **real-world performance** under production conditions.
+
+**Renacer Benchmark Suite** (lines 1385-1425):
+- **Synthetic**: Isolated operations (e.g., dot product on 1000-element vectors)
+- **Representative**: Realistic workloads (e.g., full trace analysis on 50KB JSON)
+- **Stress**: Pathological cases (e.g., 10MB trace with 100,000 events)
+
+**PMAT Phase 2 Benchmark Requirements** (similarity.rs):
+1. **Baseline**: Scalar implementation on realistic token vectors (100-1,000 tokens)
+2. **SIMD**: Trueno-accelerated implementation, same workloads
+3. **Success Criteria**: ≥4x speedup on median workload (500-token vectors)
+4. **Edge Cases**:
+   - Small vectors (< 10 tokens) - SIMD overhead may dominate
+   - Large vectors (> 10,000 tokens) - memory bandwidth limits
+5. **Validation**: Property test that SIMD results match scalar (within floating-point tolerance)
+
+**Implementation**:
+- `benches/similarity_ops.rs` - criterion benchmarks with real-world token distributions
+- Use actual PMAT codebases as benchmark corpus (not synthetic data)
+- Measure both throughput (ops/sec) and latency (ms/op)
+
+### 6. Risk Mitigation Strategies
+
+**Renacer Risks & Mitigations** (lines 1550-1610):
+
+| Risk | Renacer Mitigation | PMAT Application |
+|------|-------------------|------------------|
+| **SIMD correctness** | Property tests: SIMD == scalar | Phase 2: Proptest with 1000+ random inputs |
+| **GPU driver crashes** | Graceful fallback to CPU | Phase 3: Catch wgpu errors, log, use CPU SIMD |
+| **Performance regression** | Continuous benchmarking in CI | Add `make bench-ci` target, track over time |
+| **Feature flag explosion** | Single `compute` feature with sub-features | Use `simd` and `gpu` features independently |
+| **User confusion** | Progressive disclosure UX | Default to auto mode, hide complexity |
+
+**PMAT Risk Register**:
+1. **Risk**: SIMD produces different floating-point results than scalar
+   - **Mitigation**: Property test with `approx::assert_relative_eq!` (ε = 1e-6)
+   - **Acceptance**: Differences < 0.0001% are acceptable for similarity scores
+
+2. **Risk**: SIMD slower than scalar on small workloads
+   - **Mitigation**: Adaptive threshold - only use SIMD if dataset > 100 elements
+   - **Detection**: Benchmark suite includes small/medium/large workloads
+
+3. **Risk**: GPU integration delays Phase 2 SIMD work
+   - **Mitigation**: Strict phase separation - GPU is Phase 3, blocked on Phase 2 approval
+   - **STOP THE LINE**: Do not start GPU work until SIMD validates ≥4x speedup
+
+### 7. Updated Phase 2 Implementation Checklist
+
+Based on Renacer learnings, Phase 2 **must** include:
+
+- [ ] Implement SIMD for `cosine_similarity()` (similarity.rs:724-745)
+- [ ] Implement SIMD for `calculate_entropy()` (similarity.rs:756-773)
+- [ ] Create `benches/similarity_ops.rs` with realistic workloads
+  - [ ] Benchmark on actual PMAT codebase token vectors (not synthetic)
+  - [ ] Measure small (< 100 tokens), medium (100-1,000), large (> 1,000)
+- [ ] Property tests: SIMD results ≈ scalar results (1000+ random inputs)
+- [ ] Adaptive threshold: Only use SIMD if vector length > 100 elements
+- [ ] CLI flag: `--backend simd|scalar|auto` (default: auto)
+- [ ] Documentation: CLAUDE.md section on SIMD usage and performance
+- [ ] Validation: Measure actual speedup ≥4x on median workload (500-token vectors)
+
+**Success Criteria** (Toyota Way - Genchi Genbutsu):
+1. ✅ Functional: All tests pass (unit + property + integration)
+2. ✅ Performance: ≥4x speedup on realistic workloads (criterion benchmarks)
+3. ✅ Correctness: SIMD results match scalar within 1e-6 tolerance
+4. ✅ Usability: Auto mode "just works" without user configuration
+
+---
+
 **Status**: Phase 1 COMPLETE ✅ | Phase 2 EXPLORATION COMPLETE 🔍 | Phase 2 IMPLEMENTATION PENDING 🚧
 **Approval Required**: PAIML Team Lead for Phase 2 implementation
 **Target Start Date**: Sprint 45 (Week of 2025-11-18)
