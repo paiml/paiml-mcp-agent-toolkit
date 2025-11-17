@@ -247,7 +247,8 @@ fn test_recommendation_creation() {
 
 #[test]
 fn test_recommendation_sorting() {
-    let mut recs = [Recommendation::new(
+    let mut recs = [
+        Recommendation::new(
             "Testing".to_string(),
             "Fix".to_string(),
             RecommendationPriority::High,
@@ -264,7 +265,8 @@ fn test_recommendation_sorting() {
             "Fix".to_string(),
             RecommendationPriority::Medium,
             2.0,
-        )];
+        ),
+    ];
     recs.sort_by(|a, b| b.priority.cmp(&a.priority));
     assert_eq!(recs[0].priority, RecommendationPriority::Critical);
     assert_eq!(recs[1].priority, RecommendationPriority::High);

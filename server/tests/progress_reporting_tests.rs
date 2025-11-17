@@ -112,14 +112,16 @@ fn test_red_team_evidence_source_progress() {
     let mut progress = MultiStageProgress::new(vec!["Gathering evidence".to_string()]);
 
     // Simulate evidence gathering from 8 sources
-    let sources = ["GitHistory",
+    let sources = [
+        "GitHistory",
         "TestExecution",
         "CoverageReport",
         "LinkValidation",
         "CargoAudit",
         "BenchmarkResults",
         "IssueTracker",
-        "CodeGrep"];
+        "CodeGrep",
+    ];
 
     for (idx, source) in sources.iter().enumerate() {
         let percent = ((idx + 1) as f64 / sources.len() as f64) * 100.0;

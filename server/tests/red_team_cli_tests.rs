@@ -120,7 +120,8 @@ fn test_cli_output_formatting() {
 
     // Simulate CLI output for hallucination report
     let claim_text = "all tests passing";
-    let evidence = [EvidenceResult {
+    let evidence = [
+        EvidenceResult {
             source: EvidenceSource::TestExecution,
             supports_claim: false,
             confidence: 0.9,
@@ -133,7 +134,8 @@ fn test_cli_output_formatting() {
             confidence: 0.85,
             details: "2 subsequent test fixes found".to_string(),
             timestamp: Some(2000),
-        }];
+        },
+    ];
 
     // Check that evidence is present and properly formatted
     assert_eq!(evidence.len(), 2);

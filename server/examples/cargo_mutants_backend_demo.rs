@@ -42,12 +42,8 @@ fn main() {
     println!("   - Mutation score: <from report.mutation_score()>");
     println!("   - Caught: <from report.count_by_outcome(Caught)>");
     println!("   - Missed: <from report.count_by_outcome(Missed)>");
-    println!(
-        "   - Timeout: <from report.count_by_outcome(Timeout)>"
-    );
-    println!(
-        "   - Unviable: <from report.count_by_outcome(Unviable)>"
-    );
+    println!("   - Timeout: <from report.count_by_outcome(Timeout)>");
+    println!("   - Unviable: <from report.count_by_outcome(Unviable)>");
     println!();
 
     println!("6. Optionally save to file:");
