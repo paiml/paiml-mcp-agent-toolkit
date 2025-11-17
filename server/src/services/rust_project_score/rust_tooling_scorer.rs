@@ -9,7 +9,7 @@
 //! - cargo-audit (security): 7pts (risk-based scoring)
 //! - cargo-deny (policy): 3pts
 
-use super::models::CategoryScore;
+use super::models::{CategoryScore, ScoringMode};
 use super::scorer::{Scorer, ScorerError, ScorerResult};
 use std::path::Path;
 use std::process::Command;
@@ -233,7 +233,7 @@ impl Scorer for RustToolingScorer {
         Ok(CategoryScore::new(total_earned, self.max_points))
     }
 
-    fn score_with_mode(&self, project_path: &Path, full: bool) -> ScorerResult<CategoryScore> {
+    fn score_with_mode(&self, project_path: &Path, mode: ScoringMode) -> ScorerResult<CategoryScore> {
         // Verify project has Cargo.toml
         if !project_path.join("Cargo.toml").exists() {
             return Err(ScorerError::InvalidProject(
@@ -244,7 +244,7 @@ impl Scorer for RustToolingScorer {
         let mut total_earned = 0.0;
 
         // Score clippy (10pts) - ONLY in full mode (too slow for fast mode)
-        if full {
+        if mode.is_full() {
             match self.score_clippy(project_path) {
                 Ok(score) => total_earned += score,
                 Err(ScorerError::ToolNotFound(_)) => {
@@ -261,7 +261,7 @@ impl Scorer for RustToolingScorer {
 
         // Score rustfmt (5pts)
         // KAIZEN: Skip in fast mode - takes 30-60s on large projects (145 files)
-        if full {
+        if mode.is_full() {
             match self.score_rustfmt(project_path) {
                 Ok(score) => total_earned += score,
                 Err(ScorerError::ToolNotFound(_)) => {
@@ -284,7 +284,7 @@ impl Scorer for RustToolingScorer {
         }
 
         // Score cargo-audit (7pts) - ONLY in full mode (network calls ~30s)
-        if full {
+        if mode.is_full() {
             match self.score_cargo_audit(project_path) {
                 Ok(score) => total_earned += score,
                 Err(e) => return Err(e),
@@ -307,33 +307,21 @@ impl Scorer for RustToolingScorer {
     fn recommendations(&self, project_path: &Path) -> Vec<String> {
         let mut recommendations = Vec::new();
 
-        // Check clippy
-        if let Ok(score) = self.score_clippy(project_path) {
-            if score < 10.0 {
-                recommendations.push(
-                    "Run 'cargo clippy --fix' to automatically fix clippy warnings".to_string(),
-                );
-            }
-        }
+        // Check clippy - SKIP subprocess, always recommend
+        recommendations.push(
+            "Run 'cargo clippy --fix' to automatically fix clippy warnings".to_string(),
+        );
 
-        // Check rustfmt
-        if let Ok(score) = self.score_rustfmt(project_path) {
-            if score < 5.0 {
-                recommendations.push(
-                    "Run 'cargo fmt' to format code according to Rust style guidelines".to_string(),
-                );
-            }
-        }
+        // Check rustfmt - SKIP subprocess, always recommend
+        recommendations.push(
+            "Run 'cargo fmt' to format code according to Rust style guidelines".to_string(),
+        );
 
-        // Check cargo-audit
-        if let Ok(score) = self.score_cargo_audit(project_path) {
-            if score < 7.0 {
-                recommendations
-                    .push("Run 'cargo audit' and update vulnerable dependencies".to_string());
-            }
-        }
+        // Check cargo-audit - SKIP subprocess, always recommend
+        recommendations
+            .push("Run 'cargo audit' and update vulnerable dependencies".to_string());
 
-        // Check cargo-deny
+        // Check cargo-deny - Fast filesystem check is ok
         if let Ok(score) = self.score_cargo_deny(project_path) {
             if score < 3.0 {
                 recommendations.push(

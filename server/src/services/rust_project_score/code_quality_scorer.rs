@@ -10,7 +10,7 @@
 //! Evidence-based refinement (arXiv 2024): Complexity weight reduced from 8→3pts
 //! due to low correlation with bugs. Unsafe and mutation weights increased.
 
-use super::models::CategoryScore;
+use super::models::{CategoryScore, ScoringMode};
 use super::scorer::{Scorer, ScorerError, ScorerResult};
 use std::path::Path;
 use std::process::Command;
@@ -321,7 +321,7 @@ impl Scorer for CodeQualityScorer {
         self.max_points
     }
 
-    fn score_with_mode(&self, project_path: &Path, full: bool) -> ScorerResult<CategoryScore> {
+    fn score_with_mode(&self, project_path: &Path, mode: ScoringMode) -> ScorerResult<CategoryScore> {
         // Verify project has Cargo.toml
         if !project_path.join("Cargo.toml").exists() {
             return Err(ScorerError::InvalidProject(
@@ -332,42 +332,73 @@ impl Scorer for CodeQualityScorer {
         let mut total_earned = 0.0;
 
         // Score complexity (3pts)
-        match self.score_complexity(project_path) {
-            Ok(score) => total_earned += score,
-            Err(e) => return Err(e),
+        // KAIZEN: In Quick/Fast mode, skip subprocess and use heuristic
+        match mode {
+            ScoringMode::Quick | ScoringMode::Fast => {
+                // Skip subprocess `pmat analyze complexity` - use heuristic instead
+                match self.score_complexity_simple(project_path) {
+                    Ok(score) => total_earned += score,
+                    Err(e) => return Err(e),
+                }
+            }
+            ScoringMode::Full => {
+                // Full mode: Use subprocess for accurate complexity analysis
+                match self.score_complexity(project_path) {
+                    Ok(score) => total_earned += score,
+                    Err(e) => return Err(e),
+                }
+            }
         }
 
-        // Score unsafe code (9pts)
+        // Score unsafe code (9pts) - Always fast (filesystem only)
         match self.score_unsafe(project_path) {
             Ok(score) => total_earned += score,
             Err(e) => return Err(e),
         }
 
         // Score mutation testing (8pts) - ONLY in full mode
-        if full {
-            match self.score_mutation(project_path) {
-                Ok(score) => total_earned += score,
-                Err(e) => return Err(e),
+        match mode {
+            ScoringMode::Quick => {
+                // Quick mode: Skip, give minimal credit
+                total_earned += 3.0;
             }
-        } else {
-            // Fast mode: Skip mutation testing (too slow)
-            // Give moderate credit (4/8 points) to avoid penalizing fast mode too much
-            total_earned += 4.0;
+            ScoringMode::Fast => {
+                // Fast mode: Skip mutation testing (too slow)
+                // Give moderate credit (4/8 points) to avoid penalizing fast mode too much
+                total_earned += 4.0;
+            }
+            ScoringMode::Full => {
+                match self.score_mutation(project_path) {
+                    Ok(score) => total_earned += score,
+                    Err(e) => return Err(e),
+                }
+            }
         }
 
         // Score build time (4pts) - ONLY in full mode (cargo build is very slow)
-        if full && cfg!(not(test)) {
-            match self.score_build_time(project_path) {
-                Ok(score) => total_earned += score,
-                Err(e) => return Err(e),
+        match mode {
+            ScoringMode::Quick => {
+                // Quick mode: Skip, give minimal credit
+                total_earned += 1.0;
             }
-        } else {
-            // Fast mode or test mode: Skip build time measurement (too slow)
-            // Give moderate credit (2/4 points)
-            total_earned += 2.0;
+            ScoringMode::Fast => {
+                // Fast mode: Skip build time measurement (too slow)
+                // Give moderate credit (2/4 points)
+                total_earned += 2.0;
+            }
+            ScoringMode::Full if !cfg!(test) => {
+                match self.score_build_time(project_path) {
+                    Ok(score) => total_earned += score,
+                    Err(e) => return Err(e),
+                }
+            }
+            ScoringMode::Full => {
+                // Test mode: Skip build time
+                total_earned += 2.0;
+            }
         }
 
-        // Score dead code (2pts)
+        // Score dead code (2pts) - Always fast (filesystem only)
         match self.score_dead_code(project_path) {
             Ok(score) => total_earned += score,
             Err(e) => return Err(e),

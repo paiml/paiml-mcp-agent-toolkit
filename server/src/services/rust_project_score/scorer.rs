@@ -3,7 +3,7 @@
 //! Defines the common interface for all 6 scoring category analyzers.
 //! Each scorer analyzes a Rust project and returns a CategoryScore.
 
-use super::models::CategoryScore;
+use super::models::{CategoryScore, ScoringMode};
 use std::path::Path;
 
 /// Result type for scoring operations
@@ -39,7 +39,7 @@ pub trait Scorer: Send + Sync {
     /// Maximum possible points for this category
     fn max_points(&self) -> f64;
 
-    /// Analyze a Rust project and return the score for this category (fast mode)
+    /// Analyze a Rust project and return the score for this category (default: Fast mode)
     ///
     /// # Arguments
     /// * `project_path` - Path to the root of the Rust project (contains Cargo.toml)
@@ -47,23 +47,23 @@ pub trait Scorer: Send + Sync {
     /// # Returns
     /// * `ScorerResult<CategoryScore>` - The score earned and max possible
     fn score(&self, project_path: &Path) -> ScorerResult<CategoryScore> {
-        self.score_with_mode(project_path, false)
+        self.score_with_mode(project_path, ScoringMode::default())
     }
 
-    /// Analyze a Rust project with configurable mode
+    /// Analyze a Rust project with configurable scoring mode
     ///
     /// # Arguments
     /// * `project_path` - Path to the root of the Rust project
-    /// * `full` - If true, run full analysis (slower but comprehensive)
-    ///   If false, run fast mode (skip expensive checks like mutation testing)
+    /// * `mode` - Scoring mode (Quick/<10s, Fast/<60s, Full/<5m)
     ///
     /// # Returns
     /// * `ScorerResult<CategoryScore>` - The score earned and max possible
     ///
     /// # Performance
-    /// - Fast mode: Should complete in <10 seconds per scorer
-    /// - Full mode: May take up to 60 seconds per scorer
-    fn score_with_mode(&self, project_path: &Path, full: bool) -> ScorerResult<CategoryScore>;
+    /// - Quick mode: <10s - Filesystem only, no subprocesses
+    /// - Fast mode: <60s - Skip expensive cargo operations (default)
+    /// - Full mode: <5m - All checks including mutation testing
+    fn score_with_mode(&self, project_path: &Path, mode: ScoringMode) -> ScorerResult<CategoryScore>;
 
     /// Optional: Provide detailed recommendations for improvement
     ///

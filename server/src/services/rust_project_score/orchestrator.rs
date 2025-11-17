@@ -75,20 +75,20 @@ impl RustProjectScoreOrchestrator {
     ///
     /// Runs all 6 category scorers and aggregates results
     pub fn score(&self, project_path: &Path) -> ScorerResult<ProjectScore> {
-        self.score_with_mode(project_path, false)
+        self.score_with_mode(project_path, ScoringMode::default())
     }
 
     /// Score a Rust project with configurable mode
     ///
     /// # Arguments
     /// * `project_path` - Path to Rust project
-    /// * `full` - If true, run full analysis (max 5 minutes) including mutation testing
-    ///   If false, run fast mode (<60 seconds) skipping expensive checks
+    /// * `mode` - Scoring mode (Quick/<10s, Fast/<60s, Full/<5m)
     ///
     /// # Performance Targets
-    /// - Fast mode (default): <60 seconds
-    /// - Full mode (--full): <5 minutes (300 seconds)
-    pub fn score_with_mode(&self, project_path: &Path, full: bool) -> ScorerResult<ProjectScore> {
+    /// - Quick mode: <10 seconds - Filesystem only
+    /// - Fast mode (default): <60 seconds - Skip expensive cargo operations
+    /// - Full mode: <5 minutes (300 seconds) - Complete analysis
+    pub fn score_with_mode(&self, project_path: &Path, mode: ScoringMode) -> ScorerResult<ProjectScore> {
         // Verify project has Cargo.toml
         if !project_path.join("Cargo.toml").exists() {
             return Err(ScorerError::InvalidProject(
@@ -127,7 +127,7 @@ impl RustProjectScoreOrchestrator {
 
         for scorer in &self.scorers {
             pb.set_message(format!("Analyzing {}...", scorer.name()));
-            let category_score = scorer.score_with_mode(project_path, full)?;
+            let category_score = scorer.score_with_mode(project_path, mode)?;
             let recommendations = scorer.recommendations(project_path);
 
             category_map.insert(scorer.name().to_string(), category_score);

@@ -9,7 +9,7 @@
 //! Evidence-based refinement: Coverage threshold based on empirical research
 //! showing ≥85% coverage correlates with significantly fewer production bugs.
 
-use super::models::CategoryScore;
+use super::models::{CategoryScore, ScoringMode};
 use super::scorer::{Scorer, ScorerError, ScorerResult};
 use std::path::Path;
 use std::process::Command;
@@ -324,7 +324,7 @@ impl Scorer for TestingScorer {
         Ok(CategoryScore::new(total_earned, self.max_points))
     }
 
-    fn score_with_mode(&self, project_path: &Path, full: bool) -> ScorerResult<CategoryScore> {
+    fn score_with_mode(&self, project_path: &Path, mode: ScoringMode) -> ScorerResult<CategoryScore> {
         // Verify project has Cargo.toml
         if !project_path.join("Cargo.toml").exists() {
             return Err(ScorerError::InvalidProject(
@@ -336,7 +336,7 @@ impl Scorer for TestingScorer {
 
         // Score coverage (8pts)
         // FAST MODE: Skip expensive cargo llvm-cov, use fallback
-        if full {
+        if mode.is_full() {
             match self.score_coverage(project_path) {
                 Ok(score) => total_earned += score,
                 Err(e) => return Err(e),
@@ -363,7 +363,7 @@ impl Scorer for TestingScorer {
 
         // Score mutation testing (5pts)
         // FAST MODE: Skip expensive cargo mutants
-        if full {
+        if mode.is_full() {
             match self.score_mutation(project_path) {
                 Ok(score) => total_earned += score,
                 Err(e) => return Err(e),
@@ -379,8 +379,8 @@ impl Scorer for TestingScorer {
     fn recommendations(&self, project_path: &Path) -> Vec<String> {
         let mut recommendations = Vec::new();
 
-        // Check coverage
-        if let Ok(score) = self.score_coverage(project_path) {
+        // Check coverage - USE FALLBACK (no subprocess)
+        if let Ok(score) = self.score_coverage_fallback(project_path) {
             if score < 8.0 {
                 recommendations.push(
                     "Improve test coverage: Install cargo-llvm-cov and aim for ≥85% line coverage"
@@ -409,15 +409,11 @@ impl Scorer for TestingScorer {
             }
         }
 
-        // Check mutation testing
-        if let Ok(score) = self.score_mutation(project_path) {
-            if score < 5.0 {
-                recommendations.push(
-                    "Improve test quality: Install cargo-mutants and aim for ≥80% mutation score"
-                        .to_string(),
-                );
-            }
-        }
+        // Check mutation testing - SKIP subprocess, always recommend
+        recommendations.push(
+            "Improve test quality: Install cargo-mutants and aim for ≥80% mutation score"
+                .to_string(),
+        );
 
         recommendations
     }

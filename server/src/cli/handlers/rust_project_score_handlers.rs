@@ -3,6 +3,7 @@
 //! Calculates Rust project quality score (0-106 scale) across 6 categories.
 
 use crate::cli::RepoScoreOutputFormat;
+use crate::services::rust_project_score::models::ScoringMode;
 use crate::services::rust_project_score::orchestrator::RustProjectScoreOrchestrator;
 use anyhow::{Context, Result};
 use std::fs;
@@ -37,8 +38,13 @@ pub async fn handle_rust_project_score(
 
     // Create orchestrator and run scoring
     let orchestrator = RustProjectScoreOrchestrator::new();
+    let mode = if full {
+        ScoringMode::Full
+    } else {
+        ScoringMode::Fast
+    };
     let project_score = orchestrator
-        .score_with_mode(path, full)
+        .score_with_mode(path, mode)
         .context("Failed to calculate Rust project score")?;
 
     // Filter recommendations if failures_only
