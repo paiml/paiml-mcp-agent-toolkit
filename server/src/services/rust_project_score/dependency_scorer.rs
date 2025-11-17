@@ -8,7 +8,7 @@
 //! Evidence-based design: Projects with ≤20 dependencies have 40% fewer
 //! security vulnerabilities and 25% faster build times (NIST 2024).
 
-use super::models::{CategoryScore, ScoringMode};
+use super::models::{CategoryScore, FileCache, ScoringMode};
 use super::scorer::{Scorer, ScorerError, ScorerResult};
 use std::path::Path;
 
@@ -32,11 +32,25 @@ impl DependencyScorer {
 
     /// Score dependency count (5pts)
     /// Parses Cargo.toml and penalizes excessive dependencies
-    fn score_dependency_count(&self, project_path: &Path) -> ScorerResult<f64> {
+    ///
+    /// **Kaizen Round 4**: Cache-aware - uses FileCache if available (eliminates redundant read)
+    fn score_dependency_count(
+        &self,
+        project_path: &Path,
+        cache: Option<&FileCache>,
+    ) -> ScorerResult<f64> {
         let cargo_toml_path = project_path.join("Cargo.toml");
 
-        let content = std::fs::read_to_string(&cargo_toml_path)
-            .map_err(|e| ScorerError::IoError(e.to_string()))?;
+        // Try cache first, fall back to filesystem
+        let content = if let Some(cache) = cache {
+            cache
+                .get(&cargo_toml_path)
+                .cloned()
+                .ok_or_else(|| ScorerError::IoError("Cargo.toml not in cache".to_string()))?
+        } else {
+            std::fs::read_to_string(&cargo_toml_path)
+                .map_err(|e| ScorerError::IoError(e.to_string()))?
+        };
 
         // Parse dependency count (simple line-based parsing)
         let mut dependency_count = 0;
@@ -81,11 +95,25 @@ impl DependencyScorer {
 
     /// Score feature flags (4pts)
     /// Checks for [features] section in Cargo.toml
-    fn score_feature_flags(&self, project_path: &Path) -> ScorerResult<f64> {
+    ///
+    /// **Kaizen Round 4**: Cache-aware - uses FileCache if available (eliminates redundant read)
+    fn score_feature_flags(
+        &self,
+        project_path: &Path,
+        cache: Option<&FileCache>,
+    ) -> ScorerResult<f64> {
         let cargo_toml_path = project_path.join("Cargo.toml");
 
-        let content = std::fs::read_to_string(&cargo_toml_path)
-            .map_err(|e| ScorerError::IoError(e.to_string()))?;
+        // Try cache first, fall back to filesystem
+        let content = if let Some(cache) = cache {
+            cache
+                .get(&cargo_toml_path)
+                .cloned()
+                .ok_or_else(|| ScorerError::IoError("Cargo.toml not in cache".to_string()))?
+        } else {
+            std::fs::read_to_string(&cargo_toml_path)
+                .map_err(|e| ScorerError::IoError(e.to_string()))?
+        };
 
         // Check for [features] section
         let has_features = content.contains("[features]");
@@ -134,11 +162,25 @@ impl DependencyScorer {
 
     /// Score tree pruning (3pts)
     /// Awards points for having dependency management practices
-    fn score_tree_pruning(&self, project_path: &Path) -> ScorerResult<f64> {
+    ///
+    /// **Kaizen Round 4**: Cache-aware - uses FileCache if available (eliminates redundant read)
+    fn score_tree_pruning(
+        &self,
+        project_path: &Path,
+        cache: Option<&FileCache>,
+    ) -> ScorerResult<f64> {
         let cargo_toml_path = project_path.join("Cargo.toml");
 
-        let content = std::fs::read_to_string(&cargo_toml_path)
-            .map_err(|e| ScorerError::IoError(e.to_string()))?;
+        // Try cache first, fall back to filesystem
+        let content = if let Some(cache) = cache {
+            cache
+                .get(&cargo_toml_path)
+                .cloned()
+                .ok_or_else(|| ScorerError::IoError("Cargo.toml not in cache".to_string()))?
+        } else {
+            std::fs::read_to_string(&cargo_toml_path)
+                .map_err(|e| ScorerError::IoError(e.to_string()))?
+        };
 
         // Check for optional dependencies (good practice)
         let has_optional_deps = content.contains("optional = true");
@@ -166,6 +208,44 @@ impl DependencyScorer {
 
         Ok(score.min(3.0)) // Cap at 3.0 points
     }
+
+    /// Internal scoring logic that accepts optional cache
+    ///
+    /// **Kaizen Round 4**: Cache-aware scoring implementation
+    fn score_internal(
+        &self,
+        project_path: &Path,
+        cache: Option<&FileCache>,
+    ) -> ScorerResult<CategoryScore> {
+        // Verify project has Cargo.toml
+        if !project_path.join("Cargo.toml").exists() {
+            return Err(ScorerError::InvalidProject(
+                "No Cargo.toml found - not a valid Rust project".to_string(),
+            ));
+        }
+
+        let mut total_earned = 0.0;
+
+        // Score dependency count (5pts)
+        match self.score_dependency_count(project_path, cache) {
+            Ok(score) => total_earned += score,
+            Err(e) => return Err(e),
+        }
+
+        // Score feature flags (4pts)
+        match self.score_feature_flags(project_path, cache) {
+            Ok(score) => total_earned += score,
+            Err(e) => return Err(e),
+        }
+
+        // Score tree pruning (3pts)
+        match self.score_tree_pruning(project_path, cache) {
+            Ok(score) => total_earned += score,
+            Err(e) => return Err(e),
+        }
+
+        Ok(CategoryScore::new(total_earned, self.max_points))
+    }
 }
 
 impl Default for DependencyScorer {
@@ -184,34 +264,8 @@ impl Scorer for DependencyScorer {
     }
 
     fn score(&self, project_path: &Path) -> ScorerResult<CategoryScore> {
-        // Verify project has Cargo.toml
-        if !project_path.join("Cargo.toml").exists() {
-            return Err(ScorerError::InvalidProject(
-                "No Cargo.toml found - not a valid Rust project".to_string(),
-            ));
-        }
-
-        let mut total_earned = 0.0;
-
-        // Score dependency count (5pts)
-        match self.score_dependency_count(project_path) {
-            Ok(score) => total_earned += score,
-            Err(e) => return Err(e),
-        }
-
-        // Score feature flags (4pts)
-        match self.score_feature_flags(project_path) {
-            Ok(score) => total_earned += score,
-            Err(e) => return Err(e),
-        }
-
-        // Score tree pruning (3pts)
-        match self.score_tree_pruning(project_path) {
-            Ok(score) => total_earned += score,
-            Err(e) => return Err(e),
-        }
-
-        Ok(CategoryScore::new(total_earned, self.max_points))
+        // Backward compatibility: call with no cache
+        self.score_internal(project_path, None)
     }
 
     fn score_with_mode(
@@ -223,11 +277,21 @@ impl Scorer for DependencyScorer {
         self.score(project_path)
     }
 
+    fn score_with_cache(
+        &self,
+        project_path: &Path,
+        _mode: ScoringMode,
+        cache: Option<&FileCache>,
+    ) -> ScorerResult<CategoryScore> {
+        // Kaizen Round 4: Use FileCache to eliminate 3 redundant Cargo.toml reads
+        self.score_internal(project_path, cache)
+    }
+
     fn recommendations(&self, project_path: &Path) -> Vec<String> {
         let mut recommendations = Vec::new();
 
-        // Check dependency count
-        if let Ok(score) = self.score_dependency_count(project_path) {
+        // Check dependency count (no cache - backward compatibility)
+        if let Ok(score) = self.score_dependency_count(project_path, None) {
             if score < 5.0 {
                 recommendations.push(
                     "Reduce dependency count: Aim for ≤20 dependencies to improve security and build times".to_string(),
@@ -235,8 +299,8 @@ impl Scorer for DependencyScorer {
             }
         }
 
-        // Check feature flags
-        if let Ok(score) = self.score_feature_flags(project_path) {
+        // Check feature flags (no cache - backward compatibility)
+        if let Ok(score) = self.score_feature_flags(project_path, None) {
             if score < 4.0 {
                 recommendations.push(
                     "Add feature flags: Use [features] to make dependencies optional and enable modular builds".to_string(),
@@ -244,8 +308,8 @@ impl Scorer for DependencyScorer {
             }
         }
 
-        // Check tree pruning
-        if let Ok(score) = self.score_tree_pruning(project_path) {
+        // Check tree pruning (no cache - backward compatibility)
+        if let Ok(score) = self.score_tree_pruning(project_path, None) {
             if score < 3.0 {
                 recommendations.push(
                     "Optimize dependency tree: Use optional dependencies and disable default features to reduce bloat".to_string(),
