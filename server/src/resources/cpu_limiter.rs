@@ -59,6 +59,12 @@ impl CpuLimiter {
 
             let num_cores = (cores.ceil() as usize).min(num_cpus::get());
 
+            // SAFETY: Setting CPU affinity via libc system calls.
+            // This is safe because:
+            // 1. mem::zeroed() creates a valid zero-initialized cpu_set_t struct
+            // 2. CPU_ZERO and CPU_SET are well-defined libc macros for cpu_set_t manipulation
+            // 3. sched_setaffinity is a standard POSIX system call with proper error handling
+            // 4. We validate the return code and propagate errors appropriately
             unsafe {
                 let mut set: cpu_set_t = mem::zeroed();
                 CPU_ZERO(&mut set);
@@ -92,6 +98,12 @@ impl CpuLimiter {
             use libc::{cpu_set_t, sched_getaffinity, CPU_ISSET};
             use std::mem;
 
+            // SAFETY: Getting current CPU affinity via libc system calls.
+            // This is safe because:
+            // 1. mem::zeroed() creates a valid zero-initialized cpu_set_t struct
+            // 2. sched_getaffinity is a standard POSIX system call that fills the cpu_set_t
+            // 3. CPU_ISSET is a well-defined libc macro for reading cpu_set_t
+            // 4. We validate the return code and handle errors by returning None
             unsafe {
                 let mut set: cpu_set_t = mem::zeroed();
                 let result = sched_getaffinity(0, mem::size_of::<cpu_set_t>(), &mut set);
@@ -124,6 +136,12 @@ impl CpuLimiter {
 
             let nice = priority.max(-20).min(19);
 
+            // SAFETY: Setting process priority via libc system call.
+            // This is safe because:
+            // 1. setpriority is a standard POSIX system call
+            // 2. The nice value is clamped to valid range [-20, 19]
+            // 3. We validate the return code and propagate errors appropriately
+            // 4. PRIO_PROCESS and self.pid are valid parameters
             unsafe {
                 let result = setpriority(libc::PRIO_PROCESS, self.pid, nice);
                 if result != 0 {
@@ -325,6 +343,13 @@ impl ResourceController for CpuLimiter {
                 use libc::{cpu_set_t, sched_setaffinity, CPU_SET, CPU_ZERO};
                 use std::mem;
 
+                // SAFETY: Restoring original CPU affinity via libc system calls.
+                // This is safe because:
+                // 1. mem::zeroed() creates a valid zero-initialized cpu_set_t struct
+                // 2. CPU_ZERO and CPU_SET are well-defined libc macros
+                // 3. sched_setaffinity is a standard POSIX system call
+                // 4. Cores are from original_affinity which was saved during initialization
+                // 5. Error handling is intentionally omitted in Drop (best-effort cleanup)
                 unsafe {
                     let mut set: cpu_set_t = mem::zeroed();
                     CPU_ZERO(&mut set);

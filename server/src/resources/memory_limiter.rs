@@ -68,6 +68,12 @@ impl MemoryLimiter {
                 rlim_max: limit_bytes as libc::rlim_t,
             };
 
+            // SAFETY: Setting address space (RSS) memory limit via libc system call.
+            // This is safe because:
+            // 1. setrlimit is a standard POSIX system call for resource limits
+            // 2. The rlimit struct is properly initialized with valid values
+            // 3. RLIMIT_AS is a valid resource limit constant
+            // 4. We validate the return code and propagate errors appropriately
             unsafe {
                 let result = setrlimit(RLIMIT_AS, &limit);
                 if result != 0 {
@@ -92,6 +98,12 @@ impl MemoryLimiter {
                 rlim_max: limit_bytes as libc::rlim_t,
             };
 
+            // SAFETY: Setting heap (data segment) memory limit via libc system call.
+            // This is safe because:
+            // 1. setrlimit is a standard POSIX system call for resource limits
+            // 2. The rlimit struct is properly initialized with valid values
+            // 3. RLIMIT_DATA is a valid resource limit constant for heap memory
+            // 4. We validate the return code and propagate errors appropriately
             unsafe {
                 let result = setrlimit(RLIMIT_DATA, &limit);
                 if result != 0 {
@@ -116,6 +128,12 @@ impl MemoryLimiter {
                 rlim_max: limit_bytes as libc::rlim_t,
             };
 
+            // SAFETY: Setting stack memory limit via libc system call.
+            // This is safe because:
+            // 1. setrlimit is a standard POSIX system call for resource limits
+            // 2. The rlimit struct is properly initialized with valid values
+            // 3. RLIMIT_STACK is a valid resource limit constant for stack memory
+            // 4. We validate the return code and propagate errors appropriately
             unsafe {
                 let result = setrlimit(RLIMIT_STACK, &limit);
                 if result != 0 {
@@ -239,6 +257,12 @@ impl ResourceController for MemoryLimiter {
                 rlim_max: RLIM_INFINITY,
             };
 
+            // SAFETY: Removing address space memory limit via libc system call.
+            // This is safe because:
+            // 1. setrlimit is a standard POSIX system call for resource limits
+            // 2. The rlimit struct is properly initialized with RLIM_INFINITY
+            // 3. RLIMIT_AS is a valid resource limit constant
+            // 4. Error handling is intentionally omitted in Drop (best-effort cleanup)
             unsafe {
                 setrlimit(RLIMIT_AS, &unlimited);
             }
