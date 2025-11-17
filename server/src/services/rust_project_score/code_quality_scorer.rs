@@ -10,7 +10,7 @@
 //! Evidence-based refinement (arXiv 2024): Complexity weight reduced from 8→3pts
 //! due to low correlation with bugs. Unsafe and mutation weights increased.
 
-use super::models::{CategoryScore, ScoringMode};
+use super::models::{CategoryScore, FileCache, ScoringMode};
 use super::scorer::{Scorer, ScorerError, ScorerResult};
 use std::path::Path;
 use std::process::Command;
@@ -74,13 +74,19 @@ impl CodeQualityScorer {
             Err(_) => {
                 // If pmat binary not available, use simpler heuristic
                 // (avoids recursive cargo run execution)
-                self.score_complexity_simple(project_path)
+                self.score_complexity_simple(project_path, None)
             }
         }
     }
 
     /// Simple complexity heuristic when pmat not available
-    fn score_complexity_simple(&self, project_path: &Path) -> ScorerResult<f64> {
+    ///
+    /// **Kaizen Round 4**: Cache-aware - uses FileCache if available for src/*.rs
+    fn score_complexity_simple(
+        &self,
+        project_path: &Path,
+        cache: Option<&FileCache>,
+    ) -> ScorerResult<f64> {
         let src_path = project_path.join("src");
         if !src_path.exists() {
             return Ok(3.0); // No code = no complexity issues
@@ -89,17 +95,33 @@ impl CodeQualityScorer {
         // Walk source files and count deep nesting
         let mut deep_nesting_count = 0;
 
-        if let Ok(entries) = std::fs::read_dir(&src_path) {
-            for entry in entries.flatten() {
-                if let Some(ext) = entry.path().extension() {
-                    if ext == "rs" {
-                        if let Ok(content) = std::fs::read_to_string(entry.path()) {
-                            // Simple heuristic: count deeply nested blocks
-                            for line in content.lines() {
-                                let indent = line.chars().take_while(|c| c.is_whitespace()).count();
-                                if indent > 32 {
-                                    // More than 8 levels of nesting (4 spaces each)
-                                    deep_nesting_count += 1;
+        if let Some(cache) = cache {
+            // Use cache: get all .rs files in src/ directory
+            for (_path, content) in cache.get_rust_files_in_dir(&src_path) {
+                // Simple heuristic: count deeply nested blocks
+                for line in content.lines() {
+                    let indent = line.chars().take_while(|c| c.is_whitespace()).count();
+                    if indent > 32 {
+                        // More than 8 levels of nesting (4 spaces each)
+                        deep_nesting_count += 1;
+                    }
+                }
+            }
+        } else {
+            // Fallback: read from filesystem
+            if let Ok(entries) = std::fs::read_dir(&src_path) {
+                for entry in entries.flatten() {
+                    if let Some(ext) = entry.path().extension() {
+                        if ext == "rs" {
+                            if let Ok(content) = std::fs::read_to_string(entry.path()) {
+                                // Simple heuristic: count deeply nested blocks
+                                for line in content.lines() {
+                                    let indent =
+                                        line.chars().take_while(|c| c.is_whitespace()).count();
+                                    if indent > 32 {
+                                        // More than 8 levels of nesting (4 spaces each)
+                                        deep_nesting_count += 1;
+                                    }
                                 }
                             }
                         }
@@ -121,7 +143,9 @@ impl CodeQualityScorer {
 
     /// Score unsafe code usage (9pts)
     /// Checks for SAFETY comments and unsafe ratio
-    fn score_unsafe(&self, project_path: &Path) -> ScorerResult<f64> {
+    ///
+    /// **Kaizen Round 4**: Cache-aware - uses FileCache if available for src/*.rs
+    fn score_unsafe(&self, project_path: &Path, cache: Option<&FileCache>) -> ScorerResult<f64> {
         let src_path = project_path.join("src");
         if !src_path.exists() {
             return Ok(9.0); // No code = no unsafe
@@ -131,26 +155,51 @@ impl CodeQualityScorer {
         let mut unsafe_blocks = 0;
         let mut documented_unsafe = 0;
 
-        if let Ok(entries) = std::fs::read_dir(&src_path) {
-            for entry in entries.flatten() {
-                if let Some(ext) = entry.path().extension() {
-                    if ext == "rs" {
-                        if let Ok(content) = std::fs::read_to_string(entry.path()) {
-                            let lines: Vec<&str> = content.lines().collect();
-                            _total_lines += lines.len();
+        if let Some(cache) = cache {
+            // Use cache: get all .rs files in src/ directory
+            for (_path, content) in cache.get_rust_files_in_dir(&src_path) {
+                let lines: Vec<&str> = content.lines().collect();
+                _total_lines += lines.len();
 
-                            for (i, line) in lines.iter().enumerate() {
-                                if line.contains("unsafe") && line.contains("{") {
-                                    unsafe_blocks += 1;
+                for (i, line) in lines.iter().enumerate() {
+                    if line.contains("unsafe") && line.contains("{") {
+                        unsafe_blocks += 1;
 
-                                    // Check for SAFETY comment in previous 5 lines
-                                    let start = i.saturating_sub(5);
-                                    let has_safety = lines[start..=i]
-                                        .iter()
-                                        .any(|l| l.contains("SAFETY:") || l.contains("Safety:"));
+                        // Check for SAFETY comment in previous 5 lines
+                        let start = i.saturating_sub(5);
+                        let has_safety = lines[start..=i]
+                            .iter()
+                            .any(|l| l.contains("SAFETY:") || l.contains("Safety:"));
 
-                                    if has_safety {
-                                        documented_unsafe += 1;
+                        if has_safety {
+                            documented_unsafe += 1;
+                        }
+                    }
+                }
+            }
+        } else {
+            // Fallback: read from filesystem
+            if let Ok(entries) = std::fs::read_dir(&src_path) {
+                for entry in entries.flatten() {
+                    if let Some(ext) = entry.path().extension() {
+                        if ext == "rs" {
+                            if let Ok(content) = std::fs::read_to_string(entry.path()) {
+                                let lines: Vec<&str> = content.lines().collect();
+                                _total_lines += lines.len();
+
+                                for (i, line) in lines.iter().enumerate() {
+                                    if line.contains("unsafe") && line.contains("{") {
+                                        unsafe_blocks += 1;
+
+                                        // Check for SAFETY comment in previous 5 lines
+                                        let start = i.saturating_sub(5);
+                                        let has_safety = lines[start..=i]
+                                            .iter()
+                                            .any(|l| l.contains("SAFETY:") || l.contains("Safety:"));
+
+                                        if has_safety {
+                                            documented_unsafe += 1;
+                                        }
                                     }
                                 }
                             }
@@ -274,7 +323,13 @@ impl CodeQualityScorer {
     }
 
     /// Score dead code detection (2pts)
-    fn score_dead_code(&self, project_path: &Path) -> ScorerResult<f64> {
+    ///
+    /// **Kaizen Round 4**: Cache-aware - uses FileCache if available for src/*.rs
+    fn score_dead_code(
+        &self,
+        project_path: &Path,
+        cache: Option<&FileCache>,
+    ) -> ScorerResult<f64> {
         let src_path = project_path.join("src");
         if !src_path.exists() {
             return Ok(2.0);
@@ -282,14 +337,24 @@ impl CodeQualityScorer {
 
         let mut dead_code_count = 0;
 
-        if let Ok(entries) = std::fs::read_dir(&src_path) {
-            for entry in entries.flatten() {
-                if let Some(ext) = entry.path().extension() {
-                    if ext == "rs" {
-                        if let Ok(content) = std::fs::read_to_string(entry.path()) {
-                            // Count allow(dead_code) attributes
-                            dead_code_count += content.matches("#[allow(dead_code)]").count();
-                            dead_code_count += content.matches("#![allow(dead_code)]").count();
+        if let Some(cache) = cache {
+            // Use cache: get all .rs files in src/ directory
+            for (_path, content) in cache.get_rust_files_in_dir(&src_path) {
+                // Count allow(dead_code) attributes
+                dead_code_count += content.matches("#[allow(dead_code)]").count();
+                dead_code_count += content.matches("#![allow(dead_code)]").count();
+            }
+        } else {
+            // Fallback: read from filesystem
+            if let Ok(entries) = std::fs::read_dir(&src_path) {
+                for entry in entries.flatten() {
+                    if let Some(ext) = entry.path().extension() {
+                        if ext == "rs" {
+                            if let Ok(content) = std::fs::read_to_string(entry.path()) {
+                                // Count allow(dead_code) attributes
+                                dead_code_count += content.matches("#[allow(dead_code)]").count();
+                                dead_code_count += content.matches("#![allow(dead_code)]").count();
+                            }
                         }
                     }
                 }
@@ -303,6 +368,75 @@ impl CodeQualityScorer {
         } else {
             Ok(0.0)
         }
+    }
+
+    /// Internal scoring logic that accepts optional cache
+    ///
+    /// **Kaizen Round 4**: Cache-aware scoring implementation
+    fn score_internal(
+        &self,
+        project_path: &Path,
+        mode: ScoringMode,
+        cache: Option<&FileCache>,
+    ) -> ScorerResult<CategoryScore> {
+        // Verify project has Cargo.toml
+        if !project_path.join("Cargo.toml").exists() {
+            return Err(ScorerError::InvalidProject(
+                "No Cargo.toml found - not a valid Rust project".to_string(),
+            ));
+        }
+
+        let mut total_earned = 0.0;
+
+        // In Fast/Quick mode: use lightweight heuristics (no subprocesses)
+        // In Full mode: use comprehensive tooling
+
+        // Complexity (3pts) - Use simple heuristic in Fast mode
+        match self.score_complexity_simple(project_path, cache) {
+            Ok(score) => total_earned += score,
+            Err(e) => return Err(e),
+        }
+
+        // Unsafe code (9pts) - Always check
+        match self.score_unsafe(project_path, cache) {
+            Ok(score) => total_earned += score,
+            Err(e) => return Err(e),
+        }
+
+        // Mutation testing (8pts) - Only in Full mode
+        if mode.is_full() {
+            match self.score_mutation(project_path) {
+                Ok(score) => total_earned += score,
+                Err(_) => {
+                    // Award moderate credit for skipped check
+                    total_earned += 4.0;
+                }
+            }
+        } else {
+            // Fast mode: skip mutation testing, award moderate credit
+            total_earned += 4.0;
+        }
+
+        // Build time (4pts) - Only in Full mode
+        if mode.is_full() {
+            match self.score_build_time(project_path) {
+                Ok(score) => total_earned += score,
+                Err(_) => {
+                    total_earned += 2.0;
+                }
+            }
+        } else {
+            // Fast mode: skip build time measurement
+            total_earned += 2.0;
+        }
+
+        // Dead code (2pts) - Always check
+        match self.score_dead_code(project_path, cache) {
+            Ok(score) => total_earned += score,
+            Err(e) => return Err(e),
+        }
+
+        Ok(CategoryScore::new(total_earned, self.max_points))
     }
 }
 
@@ -326,92 +460,25 @@ impl Scorer for CodeQualityScorer {
         project_path: &Path,
         mode: ScoringMode,
     ) -> ScorerResult<CategoryScore> {
-        // Verify project has Cargo.toml
-        if !project_path.join("Cargo.toml").exists() {
-            return Err(ScorerError::InvalidProject(
-                "No Cargo.toml found - not a valid Rust project".to_string(),
-            ));
-        }
+        // Backward compatibility: call without cache
+        self.score_internal(project_path, mode, None)
+    }
 
-        let mut total_earned = 0.0;
-
-        // Score complexity (3pts)
-        // KAIZEN: In Quick/Fast mode, skip subprocess and use heuristic
-        match mode {
-            ScoringMode::Quick | ScoringMode::Fast => {
-                // Skip subprocess `pmat analyze complexity` - use heuristic instead
-                match self.score_complexity_simple(project_path) {
-                    Ok(score) => total_earned += score,
-                    Err(e) => return Err(e),
-                }
-            }
-            ScoringMode::Full => {
-                // Full mode: Use subprocess for accurate complexity analysis
-                match self.score_complexity(project_path) {
-                    Ok(score) => total_earned += score,
-                    Err(e) => return Err(e),
-                }
-            }
-        }
-
-        // Score unsafe code (9pts) - Always fast (filesystem only)
-        match self.score_unsafe(project_path) {
-            Ok(score) => total_earned += score,
-            Err(e) => return Err(e),
-        }
-
-        // Score mutation testing (8pts) - ONLY in full mode
-        match mode {
-            ScoringMode::Quick => {
-                // Quick mode: Skip, give minimal credit
-                total_earned += 3.0;
-            }
-            ScoringMode::Fast => {
-                // Fast mode: Skip mutation testing (too slow)
-                // Give moderate credit (4/8 points) to avoid penalizing fast mode too much
-                total_earned += 4.0;
-            }
-            ScoringMode::Full => match self.score_mutation(project_path) {
-                Ok(score) => total_earned += score,
-                Err(e) => return Err(e),
-            },
-        }
-
-        // Score build time (4pts) - ONLY in full mode (cargo build is very slow)
-        match mode {
-            ScoringMode::Quick => {
-                // Quick mode: Skip, give minimal credit
-                total_earned += 1.0;
-            }
-            ScoringMode::Fast => {
-                // Fast mode: Skip build time measurement (too slow)
-                // Give moderate credit (2/4 points)
-                total_earned += 2.0;
-            }
-            ScoringMode::Full if !cfg!(test) => match self.score_build_time(project_path) {
-                Ok(score) => total_earned += score,
-                Err(e) => return Err(e),
-            },
-            ScoringMode::Full => {
-                // Test mode: Skip build time
-                total_earned += 2.0;
-            }
-        }
-
-        // Score dead code (2pts) - Always fast (filesystem only)
-        match self.score_dead_code(project_path) {
-            Ok(score) => total_earned += score,
-            Err(e) => return Err(e),
-        }
-
-        Ok(CategoryScore::new(total_earned, self.max_points))
+    fn score_with_cache(
+        &self,
+        project_path: &Path,
+        mode: ScoringMode,
+        cache: Option<&FileCache>,
+    ) -> ScorerResult<CategoryScore> {
+        // Kaizen Round 4: Use FileCache to eliminate 3 redundant src/*.rs reads
+        self.score_internal(project_path, mode, cache)
     }
 
     fn recommendations(&self, project_path: &Path) -> Vec<String> {
         let mut recommendations = Vec::new();
 
-        // Check complexity - USE SIMPLE FALLBACK (no subprocess)
-        if let Ok(score) = self.score_complexity_simple(project_path) {
+        // Check complexity - USE SIMPLE FALLBACK (no subprocess, no cache)
+        if let Ok(score) = self.score_complexity_simple(project_path, None) {
             if score < 3.0 {
                 recommendations.push(
                     "Reduce cyclomatic complexity: refactor functions with >20 complexity into smaller units".to_string(),
@@ -419,8 +486,8 @@ impl Scorer for CodeQualityScorer {
             }
         }
 
-        // Check unsafe - Fast (filesystem only)
-        if let Ok(score) = self.score_unsafe(project_path) {
+        // Check unsafe - Fast (filesystem only, no cache)
+        if let Ok(score) = self.score_unsafe(project_path, None) {
             if score < 9.0 {
                 recommendations.push(
                     "Add SAFETY comments for all unsafe blocks explaining invariants".to_string(),
@@ -434,8 +501,8 @@ impl Scorer for CodeQualityScorer {
                 .to_string(),
         );
 
-        // Check dead code - Fast (filesystem only)
-        if let Ok(score) = self.score_dead_code(project_path) {
+        // Check dead code - Fast (filesystem only, no cache)
+        if let Ok(score) = self.score_dead_code(project_path, None) {
             if score < 2.0 {
                 recommendations.push(
                     "Remove dead code: delete or document unused functions with #[allow(dead_code)]".to_string(),
