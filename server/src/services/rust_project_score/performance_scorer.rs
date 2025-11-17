@@ -7,7 +7,7 @@
 //! Evidence-based design: Projects with benchmarks are 35% more likely to
 //! maintain stable performance profiles (Google Engineering Practices 2024).
 
-use super::models::{CategoryScore, ScoringMode};
+use super::models::{CategoryScore, FileCache, ScoringMode};
 use super::scorer::{Scorer, ScorerError, ScorerResult};
 use std::path::Path;
 
@@ -31,7 +31,13 @@ impl PerformanceScorer {
 
     /// Score Criterion benchmarks (5pts)
     /// Checks for benches/ directory with Criterion integration
-    fn score_benchmarks(&self, project_path: &Path) -> ScorerResult<f64> {
+    ///
+    /// **Kaizen Round 4**: Cache-aware - uses FileCache if available for Cargo.toml
+    fn score_benchmarks(
+        &self,
+        project_path: &Path,
+        cache: Option<&FileCache>,
+    ) -> ScorerResult<f64> {
         let benches_dir = project_path.join("benches");
 
         if !benches_dir.exists() {
@@ -65,7 +71,14 @@ impl PerformanceScorer {
         let cargo_toml_path = project_path.join("Cargo.toml");
         let mut has_bench_config = false;
 
-        if let Ok(content) = std::fs::read_to_string(&cargo_toml_path) {
+        // Try cache first, fall back to filesystem
+        let content_result = if let Some(cache) = cache {
+            cache.get(&cargo_toml_path).map(|s| s.to_string()).ok_or_else(|| ())
+        } else {
+            std::fs::read_to_string(&cargo_toml_path).map_err(|_| ())
+        };
+
+        if let Ok(content) = content_result {
             if content.contains("[[bench]]") || content.contains("criterion") {
                 has_bench_config = true;
             }
@@ -85,7 +98,13 @@ impl PerformanceScorer {
 
     /// Score profiling data (5pts)
     /// Checks for flamegraph/perf integration
-    fn score_profiling(&self, project_path: &Path) -> ScorerResult<f64> {
+    ///
+    /// **Kaizen Round 4**: Cache-aware - uses FileCache if available for Cargo.toml
+    fn score_profiling(
+        &self,
+        project_path: &Path,
+        cache: Option<&FileCache>,
+    ) -> ScorerResult<f64> {
         let mut profiling_indicators = 0;
         let mut has_flamegraph_artifact = false;
 
@@ -102,7 +121,15 @@ impl PerformanceScorer {
 
         // Check Cargo.toml for flamegraph profile configuration
         let cargo_toml_path = project_path.join("Cargo.toml");
-        if let Ok(content) = std::fs::read_to_string(&cargo_toml_path) {
+
+        // Try cache first, fall back to filesystem
+        let content_result = if let Some(cache) = cache {
+            cache.get(&cargo_toml_path).map(|s| s.to_string()).ok_or_else(|| ())
+        } else {
+            std::fs::read_to_string(&cargo_toml_path).map_err(|_| ())
+        };
+
+        if let Ok(content) = content_result {
             // Check for [profile.release] with debug = true (flamegraph-friendly)
             if content.contains("[profile.release]") && content.contains("debug = true") {
                 profiling_indicators += 1;
@@ -126,6 +153,38 @@ impl PerformanceScorer {
             Ok(0.0) // No profiling detected
         }
     }
+
+    /// Internal scoring logic that accepts optional cache
+    ///
+    /// **Kaizen Round 4**: Cache-aware scoring implementation
+    fn score_internal(
+        &self,
+        project_path: &Path,
+        cache: Option<&FileCache>,
+    ) -> ScorerResult<CategoryScore> {
+        // Verify project has Cargo.toml
+        if !project_path.join("Cargo.toml").exists() {
+            return Err(ScorerError::InvalidProject(
+                "No Cargo.toml found - not a valid Rust project".to_string(),
+            ));
+        }
+
+        let mut total_earned = 0.0;
+
+        // Score benchmarks (5pts)
+        match self.score_benchmarks(project_path, cache) {
+            Ok(score) => total_earned += score,
+            Err(e) => return Err(e),
+        }
+
+        // Score profiling (5pts)
+        match self.score_profiling(project_path, cache) {
+            Ok(score) => total_earned += score,
+            Err(e) => return Err(e),
+        }
+
+        Ok(CategoryScore::new(total_earned, self.max_points))
+    }
 }
 
 impl Default for PerformanceScorer {
@@ -144,28 +203,8 @@ impl Scorer for PerformanceScorer {
     }
 
     fn score(&self, project_path: &Path) -> ScorerResult<CategoryScore> {
-        // Verify project has Cargo.toml
-        if !project_path.join("Cargo.toml").exists() {
-            return Err(ScorerError::InvalidProject(
-                "No Cargo.toml found - not a valid Rust project".to_string(),
-            ));
-        }
-
-        let mut total_earned = 0.0;
-
-        // Score benchmarks (5pts)
-        match self.score_benchmarks(project_path) {
-            Ok(score) => total_earned += score,
-            Err(e) => return Err(e),
-        }
-
-        // Score profiling (5pts)
-        match self.score_profiling(project_path) {
-            Ok(score) => total_earned += score,
-            Err(e) => return Err(e),
-        }
-
-        Ok(CategoryScore::new(total_earned, self.max_points))
+        // Backward compatibility: call with no cache
+        self.score_internal(project_path, None)
     }
 
     fn score_with_mode(
@@ -177,11 +216,21 @@ impl Scorer for PerformanceScorer {
         self.score(project_path)
     }
 
+    fn score_with_cache(
+        &self,
+        project_path: &Path,
+        _mode: ScoringMode,
+        cache: Option<&FileCache>,
+    ) -> ScorerResult<CategoryScore> {
+        // Kaizen Round 4: Use FileCache to eliminate 2 redundant Cargo.toml reads
+        self.score_internal(project_path, cache)
+    }
+
     fn recommendations(&self, project_path: &Path) -> Vec<String> {
         let mut recommendations = Vec::new();
 
-        // Check benchmarks
-        if let Ok(score) = self.score_benchmarks(project_path) {
+        // Check benchmarks (no cache - backward compatibility)
+        if let Ok(score) = self.score_benchmarks(project_path, None) {
             if score < 5.0 {
                 recommendations.push(
                     "Add Criterion benchmarks: Create benches/ directory with criterion-based performance tests".to_string(),
@@ -189,8 +238,8 @@ impl Scorer for PerformanceScorer {
             }
         }
 
-        // Check profiling
-        if let Ok(score) = self.score_profiling(project_path) {
+        // Check profiling (no cache - backward compatibility)
+        if let Ok(score) = self.score_profiling(project_path, None) {
             if score < 5.0 {
                 recommendations.push(
                     "Enable profiling: Add [profile.release] debug = true to Cargo.toml for flamegraph support".to_string(),
