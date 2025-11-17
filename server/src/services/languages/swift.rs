@@ -389,7 +389,7 @@ class Calculator {
             .filter(|item| matches!(item, AstItem::Struct { .. }))
             .collect();
 
-        assert!(class_items.len() >= 1, "Should extract Calculator class");
+        assert!(!class_items.is_empty(), "Should extract Calculator class");
 
         let method_items: Vec<_> = items
             .iter()

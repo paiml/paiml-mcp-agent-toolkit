@@ -521,7 +521,7 @@ fn test_category_score_structure() {
 
     // Test percentage calculation
     let percentage = result.percentage();
-    assert!(percentage >= 0.0 && percentage <= 100.0);
+    assert!((0.0..=100.0).contains(&percentage));
 }
 
 // ============================================================================

@@ -34,52 +34,7 @@ impl CodeQualityScorer {
         }
     }
 
-    /// Score cyclomatic complexity (3pts)
-    /// All functions must be ≤20 complexity
-    fn score_complexity(&self, project_path: &Path) -> ScorerResult<f64> {
-        // Try to use pmat binary if available (not cargo run to avoid recursion)
-        let output = Command::new("pmat")
-            .arg("analyze")
-            .arg("complexity")
-            .arg("--path")
-            .arg(project_path)
-            .arg("--threshold")
-            .arg("20")
-            .current_dir(project_path)
-            .output();
-
-        match output {
-            Ok(result) => {
-                if result.status.success() {
-                    // All functions ≤20 complexity
-                    Ok(3.0)
-                } else {
-                    // Some functions exceed threshold
-                    let stderr = String::from_utf8_lossy(&result.stderr);
-
-                    // Count violations (simplified heuristic)
-                    let violations = stderr.matches("exceeds").count();
-
-                    if violations == 0 {
-                        Ok(3.0)
-                    } else if violations <= 3 {
-                        Ok(2.0)
-                    } else if violations <= 10 {
-                        Ok(1.0)
-                    } else {
-                        Ok(0.0)
-                    }
-                }
-            }
-            Err(_) => {
-                // If pmat binary not available, use simpler heuristic
-                // (avoids recursive cargo run execution)
-                self.score_complexity_simple(project_path, None)
-            }
-        }
-    }
-
-    /// Simple complexity heuristic when pmat not available
+    /// Simple complexity heuristic for scoring
     ///
     /// **Kaizen Round 4**: Cache-aware - uses FileCache if available for src/*.rs
     fn score_complexity_simple(

@@ -1569,7 +1569,7 @@ pub fn function_two() {}
     let has_data = if let Some(analyses) = result.get("analyses") {
         !analyses.as_object().unwrap().is_empty()
     } else if let Some(context) = result.get("context") {
-        context.as_str().map_or(false, |s| !s.is_empty())
+        context.as_str().is_some_and(|s| !s.is_empty())
     } else {
         false
     };
@@ -1652,12 +1652,12 @@ async fn test_context_summary_detects_languages() {
     // Verify language detection includes expected language
     let has_rust = languages.iter().any(|lang| {
         lang.as_str()
-            .map_or(false, |s| s.to_lowercase().contains("rust"))
+            .is_some_and(|s| s.to_lowercase().contains("rust"))
             || lang
                 .as_object()
                 .and_then(|o| o.get("name"))
                 .and_then(|n| n.as_str())
-                .map_or(false, |s| s.to_lowercase().contains("rust"))
+                .is_some_and(|s| s.to_lowercase().contains("rust"))
     });
 
     assert!(

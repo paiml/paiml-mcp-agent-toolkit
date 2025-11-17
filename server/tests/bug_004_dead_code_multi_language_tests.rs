@@ -64,7 +64,7 @@ fn test_cpp_project_dead_code_with_cmake() {
 
     assert_eq!(result.language, "cpp", "Should detect C++ language");
     assert!(
-        result.dead_functions.len() > 0,
+        !result.dead_functions.is_empty(),
         "Should find dead C++ functions"
     );
 }
@@ -95,7 +95,7 @@ fn test_python_project_dead_code_without_cargo_toml() {
         "Should find at least 2 functions"
     );
     assert!(
-        result.dead_functions.len() >= 1,
+        !result.dead_functions.is_empty(),
         "Should find at least 1 dead function"
     );
 
@@ -128,7 +128,7 @@ fn test_rust_project_dead_code_still_works() {
 
     assert_eq!(result.language, "rust", "Should detect Rust language");
     assert!(
-        result.dead_functions.len() > 0,
+        !result.dead_functions.is_empty(),
         "Should find dead Rust functions"
     );
 }

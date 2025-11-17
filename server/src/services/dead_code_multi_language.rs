@@ -571,7 +571,7 @@ mod tests {
         let result = analyze_dead_code_multi_language(temp.path()).unwrap();
 
         assert_eq!(result.language, "python");
-        assert!(result.dead_functions.len() > 0);
+        assert!(!result.dead_functions.is_empty());
     }
 
     fn create_test_c_project() -> TempDir {

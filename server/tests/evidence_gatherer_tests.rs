@@ -263,7 +263,7 @@ fn test_qualified_claim_evidence_gathering() {
 
     // Qualified claims should still gather evidence but interpret it differently
     // (This is tested in interpretation, not gathering)
-    assert!(evidence.len() >= 1);
+    assert!(!evidence.is_empty());
 }
 
 // RED Test 13: Evidence includes timestamps for temporal analysis

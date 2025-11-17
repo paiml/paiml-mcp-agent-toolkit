@@ -388,6 +388,6 @@ mod tests {
     #[test]
     fn test_claim_extractor_compiles() {
         let extractor = ClaimExtractor::new();
-        assert!(extractor.test_patterns.len() > 0);
+        assert!(!extractor.test_patterns.is_empty());
     }
 }

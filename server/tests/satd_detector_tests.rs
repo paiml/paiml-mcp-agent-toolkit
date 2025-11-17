@@ -352,7 +352,7 @@ fn test_extract_from_content_with_todo() {
 
     match result {
         Ok(debts) => {
-            assert!(debts.len() > 0);
+            assert!(!debts.is_empty());
             // Should find the TODO
             let has_todo = debts
                 .iter()
@@ -378,13 +378,10 @@ fn test_extract_from_content_with_fixme() {
 
     let result = detector.extract_from_content(content, &path);
 
-    match result {
-        Ok(debts) => {
-            assert!(debts.len() > 0);
-            let has_defect = debts.iter().any(|d| d.category == DebtCategory::Defect);
-            assert!(has_defect);
-        }
-        Err(_) => {}
+    if let Ok(debts) = result {
+        assert!(!debts.is_empty());
+        let has_defect = debts.iter().any(|d| d.category == DebtCategory::Defect);
+        assert!(has_defect);
     }
 }
 
@@ -409,12 +406,9 @@ fn test_extract_from_content_multiple_debts() {
 
     let result = detector.extract_from_content(content, &path);
 
-    match result {
-        Ok(debts) => {
-            // Should find at least the 3 explicit markers
-            assert!(debts.len() >= 3);
-        }
-        Err(_) => {}
+    if let Ok(debts) = result {
+        // Should find at least the 3 explicit markers
+        assert!(debts.len() >= 3);
     }
 }
 
@@ -438,12 +432,9 @@ fn test_extract_from_content_excludes_test_blocks() {
 
     let result = detector.extract_from_content(content, &path);
 
-    match result {
-        Ok(debts) => {
-            // Should find production TODO but not test TODO
-            assert!(debts.len() <= 1);
-        }
-        Err(_) => {}
+    if let Ok(debts) = result {
+        // Should find production TODO but not test TODO
+        assert!(debts.len() <= 1);
     }
 }
 
@@ -459,12 +450,9 @@ async fn test_analyze_directory_empty() {
 
     let result = detector.analyze_project(temp_dir.path(), false).await;
 
-    match result {
-        Ok(analysis) => {
-            assert_eq!(analysis.items.len(), 0);
-            assert_eq!(analysis.total_files_analyzed, 0);
-        }
-        Err(_) => {}
+    if let Ok(analysis) = result {
+        assert_eq!(analysis.items.len(), 0);
+        assert_eq!(analysis.total_files_analyzed, 0);
     }
 }
 
@@ -488,13 +476,10 @@ async fn test_analyze_directory_with_rust_file() {
     let detector = SATDDetector::new();
     let result = detector.analyze_project(temp_dir.path(), false).await;
 
-    match result {
-        Ok(analysis) => {
-            assert!(analysis.total_files_analyzed > 0);
-            // Should find the TODO
-            assert!(analysis.items.len() > 0);
-        }
-        Err(_) => {}
+    if let Ok(analysis) = result {
+        assert!(analysis.total_files_analyzed > 0);
+        // Should find the TODO
+        assert!(!analysis.items.is_empty());
     }
 }
 
@@ -510,12 +495,9 @@ async fn test_analyze_directory_with_multiple_files() {
     let detector = SATDDetector::new();
     let result = detector.analyze_project(temp_dir.path(), false).await;
 
-    match result {
-        Ok(analysis) => {
-            assert!(analysis.total_files_analyzed >= 3);
-            assert!(analysis.items.len() >= 2); // TODO and FIXME
-        }
-        Err(_) => {}
+    if let Ok(analysis) = result {
+        assert!(analysis.total_files_analyzed >= 3);
+        assert!(analysis.items.len() >= 2); // TODO and FIXME
     }
 }
 

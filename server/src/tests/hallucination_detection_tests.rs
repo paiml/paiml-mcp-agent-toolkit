@@ -11,6 +11,53 @@
 use crate::services::hallucination_detector::*;
 use std::path::PathBuf;
 
+// ============================================================================
+// Test Fixture Helpers
+// ============================================================================
+
+fn create_test_code_facts_with_typescript() -> CodeFactDatabase {
+    let markdown = r#"
+Supported languages:
+- TypeScript
+- JavaScript
+- Rust
+    "#;
+    CodeFactDatabase::from_markdown(markdown).unwrap()
+}
+
+fn create_test_code_facts_analysis_only() -> CodeFactDatabase {
+    let mut db = CodeFactDatabase::new();
+    db.add_capability("analyze".to_string());
+    db
+}
+
+fn create_test_code_facts_no_haskell() -> CodeFactDatabase {
+    let markdown = r#"
+Supported languages:
+- Rust
+- TypeScript
+- Python
+    "#;
+    CodeFactDatabase::from_markdown(markdown).unwrap()
+}
+
+fn create_test_code_facts_realistic() -> CodeFactDatabase {
+    let markdown = r#"
+Supported languages:
+- Rust
+- TypeScript
+- Python
+
+Functions:
+- analyze()
+- detect()
+- validate()
+    "#;
+    let mut db = CodeFactDatabase::from_markdown(markdown).unwrap();
+    db.add_capability("analyze".to_string());
+    db
+}
+
 #[cfg(test)]
 mod green_phase_tests {
     use super::*;
@@ -66,8 +113,8 @@ PMAT cannot compile code - it only analyzes existing source.
         // Claim 3: Negative capability
         let claim3 = &claims[2];
         assert_eq!(claim3.claim_type, ClaimType::Capability);
-        assert_eq!(
-            claim3.is_negative, true,
+        assert!(
+            claim3.is_negative,
             "Should detect negative capability"
         );
     }
@@ -344,51 +391,4 @@ PMAT can compile Rust code to WebAssembly.
             "Should detect contradiction"
         );
     }
-}
-
-// ============================================================================
-// Test Fixture Helpers
-// ============================================================================
-
-fn create_test_code_facts_with_typescript() -> CodeFactDatabase {
-    let markdown = r#"
-Supported languages:
-- TypeScript
-- JavaScript
-- Rust
-    "#;
-    CodeFactDatabase::from_markdown(markdown).unwrap()
-}
-
-fn create_test_code_facts_analysis_only() -> CodeFactDatabase {
-    let mut db = CodeFactDatabase::new();
-    db.add_capability("analyze".to_string());
-    db
-}
-
-fn create_test_code_facts_no_haskell() -> CodeFactDatabase {
-    let markdown = r#"
-Supported languages:
-- Rust
-- TypeScript
-- Python
-    "#;
-    CodeFactDatabase::from_markdown(markdown).unwrap()
-}
-
-fn create_test_code_facts_realistic() -> CodeFactDatabase {
-    let markdown = r#"
-Supported languages:
-- Rust
-- TypeScript
-- Python
-
-Functions:
-- analyze()
-- detect()
-- validate()
-    "#;
-    let mut db = CodeFactDatabase::from_markdown(markdown).unwrap();
-    db.add_capability("analyze".to_string());
-    db
 }

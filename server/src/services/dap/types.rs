@@ -327,7 +327,7 @@ mod tests {
         );
 
         assert_eq!(response.type_field, "response");
-        assert_eq!(response.success, true);
+        assert!(response.success);
         assert_eq!(response.command, "initialize");
         assert!(response.message.is_none());
         assert!(response.body.is_some());
@@ -343,7 +343,7 @@ mod tests {
         );
 
         assert_eq!(response.type_field, "response");
-        assert_eq!(response.success, false);
+        assert!(!response.success);
         assert_eq!(response.command, "unknown");
         assert_eq!(response.message, Some("Command not supported".to_string()));
         assert!(response.body.is_none());

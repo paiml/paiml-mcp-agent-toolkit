@@ -423,7 +423,7 @@ mod tests {
         let _metadata = create_test_metadata();
         let mutant = create_test_mutant();
 
-        let results = vec![MutationResult {
+        let results = [MutationResult {
             mutant,
             status: MutantStatus::Killed,
             test_failures: vec!["test1".to_string()],

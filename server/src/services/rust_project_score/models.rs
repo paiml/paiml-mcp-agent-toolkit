@@ -174,11 +174,6 @@ impl FileCache {
         Ok(cache)
     }
 
-    /// Recursively walk directory and cache all .rs files
-    fn walk_and_cache_rs_files(&mut self, dir: &Path) -> std::io::Result<()> {
-        Self::walk_and_cache_rs_files_static(dir, &mut self.files)
-    }
-
     /// Static version for parallel execution (Kaizen Round 6 + Round 7)
     ///
     /// Recursively walk directory and cache all .rs files into provided FxHashMap

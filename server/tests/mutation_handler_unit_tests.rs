@@ -1687,7 +1687,7 @@ async fn test_error_invalid_rust_syntax() {
     if let Err(e) = result {
         let msg = e.to_string();
         // If it errors, should be about parsing/mutant generation
-        assert!(msg.len() > 0, "Error message should not be empty");
+        assert!(!msg.is_empty(), "Error message should not be empty");
     }
 }
 

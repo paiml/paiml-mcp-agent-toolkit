@@ -1186,7 +1186,7 @@ mod property_tests {
 
             // Property: Must extract at least 1 function (the method)
             prop_assert!(
-                functions.len() >= 1,
+                !functions.is_empty(),
                 "Class with method must extract at least 1 function, found {}. Content: {}",
                 functions.len(),
                 content
@@ -1238,7 +1238,7 @@ mod property_tests {
 
             // Property: Static methods must be detected
             prop_assert!(
-                functions.len() >= 1,
+                !functions.is_empty(),
                 "Static method in class '{}' must be detected. Found {} functions",
                 class_name,
                 functions.len()

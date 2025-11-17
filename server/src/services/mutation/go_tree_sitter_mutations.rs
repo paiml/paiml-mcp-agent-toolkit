@@ -495,7 +495,7 @@ mod tests {
                     "Should generate mutations for '+' operator"
                 );
 
-                let expected_ops = vec!["-", "*", "/", "%"];
+                let expected_ops = ["-", "*", "/", "%"];
                 assert_eq!(mutations.len(), expected_ops.len());
 
                 for (i, mutation) in mutations.iter().enumerate() {
@@ -542,7 +542,7 @@ mod tests {
                 let mutations = operator.mutate(node, source);
                 assert!(!mutations.is_empty(), "Should generate mutations");
 
-                let expected_ops = vec!["<", ">=", "<=", "==", "!="];
+                let expected_ops = ["<", ">=", "<=", "==", "!="];
                 assert!(mutations.len() >= 3, "Should generate at least 3 mutants");
 
                 return true;
@@ -619,7 +619,7 @@ mod tests {
                 let mutations = operator.mutate(node, source);
                 assert!(!mutations.is_empty());
 
-                let expected = vec!["|", "^", "<<", ">>"];
+                let expected = ["|", "^", "<<", ">>"];
                 assert!(mutations.len() >= 2);
 
                 return true;
@@ -696,7 +696,7 @@ mod tests {
                 let mutations = operator.mutate(node, source);
                 assert!(!mutations.is_empty());
 
-                let expected = vec!["-=", "*=", "/="];
+                let expected = ["-=", "*=", "/="];
                 assert!(mutations.len() >= 2);
 
                 return true;

@@ -26,7 +26,7 @@ fn get_pmat_binary() -> String {
           // Run manually: cargo build --bin pmat && cargo test test_scaffold_agent_dry_run -- --ignored
 fn test_scaffold_agent_dry_run() {
     let output = Command::new(get_pmat_binary())
-        .args(&[
+        .args([
             "scaffold",
             "agent",
             "--name",
@@ -49,7 +49,7 @@ fn test_scaffold_agent_dry_run() {
           // Run manually: cargo build --bin pmat && cargo test test_scaffold_agent_list_templates -- --ignored
 fn test_scaffold_agent_list_templates() {
     let output = Command::new(get_pmat_binary())
-        .args(&["scaffold", "list-templates"])
+        .args(["scaffold", "list-templates"])
         .output()
         .expect("Failed to execute command");
 
@@ -63,7 +63,7 @@ fn test_scaffold_agent_list_templates() {
           // Run manually: cargo build --bin pmat && cargo test test_scaffold_agent_invalid_template -- --ignored
 fn test_scaffold_agent_invalid_template() {
     let output = Command::new(get_pmat_binary())
-        .args(&[
+        .args([
             "scaffold",
             "agent",
             "--name",
@@ -84,7 +84,7 @@ fn test_scaffold_agent_invalid_template() {
           // Run manually: cargo build --bin pmat && cargo test test_scaffold_agent_with_features -- --ignored
 fn test_scaffold_agent_with_features() {
     let output = Command::new(get_pmat_binary())
-        .args(&[
+        .args([
             "scaffold",
             "agent",
             "--name",
@@ -109,7 +109,7 @@ fn test_scaffold_agent_with_features() {
 fn test_scaffold_agent_quality_levels() {
     for quality in &["standard", "strict", "extreme"] {
         let output = Command::new(get_pmat_binary())
-            .args(&[
+            .args([
                 "scaffold",
                 "agent",
                 "--name",
@@ -134,7 +134,7 @@ fn test_scaffold_agent_quality_levels() {
           // Run manually: cargo build --bin pmat && cargo test test_scaffold_wasm_dry_run -- --ignored
 fn test_scaffold_wasm_dry_run() {
     let output = Command::new(get_pmat_binary())
-        .args(&[
+        .args([
             "scaffold",
             "wasm",
             "--name",
@@ -158,7 +158,7 @@ fn test_scaffold_wasm_dry_run() {
 fn test_scaffold_wasm_frameworks() {
     for framework in &["wasm-labs", "pure-wasm"] {
         let output = Command::new(get_pmat_binary())
-            .args(&[
+            .args([
                 "scaffold",
                 "wasm",
                 "--name",
@@ -183,7 +183,7 @@ fn test_scaffold_wasm_frameworks() {
           // Run manually: cargo build --bin pmat && cargo test test_scaffold_wasm_invalid_framework -- --ignored
 fn test_scaffold_wasm_invalid_framework() {
     let output = Command::new(get_pmat_binary())
-        .args(&[
+        .args([
             "scaffold",
             "wasm",
             "--name",
@@ -210,7 +210,7 @@ fn test_maintain_health_no_project() {
     let temp_dir = TempDir::new().unwrap();
 
     let output = Command::new(get_pmat_binary())
-        .args(&["maintain", "health", "--quick"])
+        .args(["maintain", "health", "--quick"])
         .current_dir(temp_dir.path())
         .output()
         .expect("Failed to execute command");
@@ -224,7 +224,7 @@ fn test_maintain_health_no_project() {
           // Run manually: cargo build --bin pmat && cargo test test_maintain_health_quick_flag -- --ignored
 fn test_maintain_health_quick_flag() {
     let output = Command::new(get_pmat_binary())
-        .args(&["maintain", "health", "--quick"])
+        .args(["maintain", "health", "--quick"])
         .current_dir(std::env::current_dir().unwrap())
         .output()
         .expect("Failed to execute command");
@@ -239,7 +239,7 @@ fn test_maintain_health_quick_flag() {
           // Run manually: cargo build --bin pmat && cargo test test_maintain_health_individual_checks -- --ignored
 fn test_maintain_health_individual_checks() {
     let output = Command::new(get_pmat_binary())
-        .args(&["maintain", "health", "--check-build"])
+        .args(["maintain", "health", "--check-build"])
         .current_dir(std::env::current_dir().unwrap())
         .output()
         .expect("Failed to execute command");
@@ -257,7 +257,7 @@ fn test_maintain_roadmap_missing_file() {
     let temp_dir = TempDir::new().unwrap();
 
     let output = Command::new(get_pmat_binary())
-        .args(&["maintain", "roadmap"])
+        .args(["maintain", "roadmap"])
         .current_dir(temp_dir.path())
         .output()
         .expect("Failed to execute command");
@@ -274,7 +274,7 @@ fn test_maintain_roadmap_missing_file() {
 fn test_maintain_roadmap_with_file() {
     // Test with actual ROADMAP.md
     let output = Command::new(get_pmat_binary())
-        .args(&["maintain", "roadmap"])
+        .args(["maintain", "roadmap"])
         .current_dir(std::env::current_dir().unwrap())
         .output()
         .expect("Failed to execute command");
@@ -293,13 +293,13 @@ fn test_hooks_status() {
 
     // Initialize git repo first (hooks status requires .git directory)
     Command::new("git")
-        .args(&["init"])
+        .args(["init"])
         .current_dir(temp_dir.path())
         .output()
         .expect("Failed to init git");
 
     let output = Command::new(get_pmat_binary())
-        .args(&["hooks", "status"])
+        .args(["hooks", "status"])
         .current_dir(temp_dir.path())
         .output()
         .expect("Failed to execute command");
@@ -324,7 +324,7 @@ fn test_hooks_status() {
           // Run manually: cargo build --bin pmat && cargo test test_version_flag -- --ignored
 fn test_version_flag() {
     let output = Command::new(get_pmat_binary())
-        .args(&["--version"])
+        .args(["--version"])
         .output()
         .expect("Failed to execute command");
 
@@ -338,7 +338,7 @@ fn test_version_flag() {
           // Run manually: cargo build --bin pmat && cargo test test_help_flag -- --ignored
 fn test_help_flag() {
     let output = Command::new(get_pmat_binary())
-        .args(&["--help"])
+        .args(["--help"])
         .output()
         .expect("Failed to execute command");
 
@@ -352,7 +352,7 @@ fn test_help_flag() {
           // Run manually: cargo build --bin pmat && cargo test test_scaffold_help -- --ignored
 fn test_scaffold_help() {
     let output = Command::new(get_pmat_binary())
-        .args(&["scaffold", "--help"])
+        .args(["scaffold", "--help"])
         .output()
         .expect("Failed to execute command");
 
@@ -366,7 +366,7 @@ fn test_scaffold_help() {
           // Run manually: cargo build --bin pmat && cargo test test_maintain_help -- --ignored
 fn test_maintain_help() {
     let output = Command::new(get_pmat_binary())
-        .args(&["maintain", "--help"])
+        .args(["maintain", "--help"])
         .output()
         .expect("Failed to execute command");
 
@@ -387,7 +387,7 @@ fn test_error_messages_are_helpful() {
     std::fs::create_dir(&test_path).unwrap();
 
     let output = Command::new(get_pmat_binary())
-        .args(&[
+        .args([
             "scaffold",
             "agent",
             "--name",
@@ -409,7 +409,7 @@ fn test_error_messages_are_helpful() {
           // Run manually: cargo build --bin pmat && cargo test test_invalid_command_suggestions -- --ignored
 fn test_invalid_command_suggestions() {
     let output = Command::new(get_pmat_binary())
-        .args(&["scafold"]) // Typo
+        .args(["scafold"]) // Typo
         .output()
         .expect("Failed to execute command");
 
@@ -432,7 +432,7 @@ mod property_tests {
         fn test_scaffold_names_are_validated(name in "[a-z_][a-z0-9_]{0,20}") {
             // Valid names should work with dry-run
             let output = std::process::Command::new(super::get_pmat_binary())
-                .args(&["scaffold", "agent", "--name", &name, "--template", "basic", "--dry-run"])
+                .args(["scaffold", "agent", "--name", &name, "--template", "basic", "--dry-run"])
                 .output()
                 .expect("Failed to execute");
 

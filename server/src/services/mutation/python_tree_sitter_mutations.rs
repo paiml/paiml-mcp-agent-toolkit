@@ -448,7 +448,7 @@ mod tests {
                 );
 
                 // Verify mutations replace + with -, *, /, //, %, **
-                let expected_ops = vec!["-", "*", "/", "//", "%", "**"];
+                let expected_ops = ["-", "*", "/", "//", "%", "**"];
                 assert_eq!(mutations.len(), expected_ops.len());
 
                 for (i, mutation) in mutations.iter().enumerate() {
@@ -499,7 +499,7 @@ mod tests {
                 );
 
                 // Verify mutations replace > with <, >=, <=, ==, !=
-                let expected_ops = vec!["<", ">=", "<=", "==", "!="];
+                let expected_ops = ["<", ">=", "<=", "==", "!="];
                 assert_eq!(mutations.len(), expected_ops.len());
                 return true;
             }

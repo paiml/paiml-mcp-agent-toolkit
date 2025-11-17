@@ -8,7 +8,6 @@
 //! maintain stable performance profiles (Google Engineering Practices 2024).
 
 use pmat::services::rust_project_score::{PerformanceScorer, Scorer};
-use std::path::Path;
 
 // Test fixture: Create temporary test project
 fn create_test_project() -> tempfile::TempDir {
@@ -423,7 +422,7 @@ fn test_category_score_structure() {
 
     // Test percentage calculation
     let percentage = result.percentage();
-    assert!(percentage >= 0.0 && percentage <= 100.0);
+    assert!((0.0..=100.0).contains(&percentage));
 }
 
 // ============================================================================

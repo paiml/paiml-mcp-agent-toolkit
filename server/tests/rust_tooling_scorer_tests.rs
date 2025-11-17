@@ -11,8 +11,7 @@
 //!
 //! These tests define the requirements for RustToolingScorer before implementation.
 
-use pmat::services::rust_project_score::{CategoryScore, Scorer, ScorerError};
-use std::path::Path;
+use pmat::services::rust_project_score::{Scorer, ScorerError};
 
 // Test fixture: Create temporary test project
 fn create_test_project() -> tempfile::TempDir {
@@ -483,7 +482,7 @@ fn test_category_score_structure() {
 
     // Test percentage calculation
     let percentage = result.percentage();
-    assert!(percentage >= 0.0 && percentage <= 100.0);
+    assert!((0.0..=100.0).contains(&percentage));
 }
 
 // ============================================================================

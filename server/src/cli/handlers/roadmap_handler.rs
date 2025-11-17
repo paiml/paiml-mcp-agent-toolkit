@@ -665,7 +665,7 @@ mod property_tests {
                 0.0
             };
 
-            prop_assert!(progress >= 0.0 && progress <= 100.0);
+            prop_assert!((0.0..=100.0).contains(&progress));
         }
     }
 }
