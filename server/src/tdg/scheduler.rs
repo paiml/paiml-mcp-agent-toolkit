@@ -88,6 +88,10 @@ impl SimpleFairScheduler {
         let permit = self.high_priority.acquire().await?;
 
         // Convert to 'static lifetime for SchedulePermit
+        // SAFETY: Transmuting SemaphorePermit lifetime from '_ to 'static is safe because:
+        // 1. The permit is immediately moved into ScheduleGuard which owns it
+        // 2. ScheduleGuard's Drop impl ensures the permit is properly released
+        // 3. The semaphore (high_priority) outlives all permits by Arc ownership
         let static_permit = unsafe {
             std::mem::transmute::<
                 tokio::sync::SemaphorePermit<'_>,
@@ -139,6 +143,10 @@ impl SimpleFairScheduler {
         let permit = self.low_priority.acquire().await?;
 
         // Convert to 'static lifetime
+        // SAFETY: Transmuting SemaphorePermit lifetime from '_ to 'static is safe because:
+        // 1. The permit is immediately moved into ScheduleGuard which owns it
+        // 2. ScheduleGuard's Drop impl ensures the permit is properly released
+        // 3. The semaphore (low_priority) outlives all permits by Arc ownership
         let static_permit = unsafe {
             std::mem::transmute::<
                 tokio::sync::SemaphorePermit<'_>,
