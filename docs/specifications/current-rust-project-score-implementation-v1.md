@@ -806,23 +806,137 @@ fn bench_fast_mode(b: &mut Bencher) {
 
 ### High Priority
 
-1. **Workspace Support**
+**Priority order revised based on team code review 2025-11-17**
+
+1. **Caching (HIGHEST PRIORITY)** ⚡
+   - **Target**: Sub-100ms on repeated runs (currently 230ms)
+   - **Rationale**: Fast feedback loops keep developers in flow state (Beller et al., 2017)
+   - Implementation:
+     ```rust
+     // .pmat-cache/rust-project-score.db
+     struct CacheEntry {
+         file_hash: Blake3,           // Content-addressable
+         last_modified: SystemTime,
+         score: CategoryScore,
+         mode: ScoringMode,
+     }
+     ```
+   - Cache invalidation: Hash-based (Blake3 for speed)
+   - Persistence: SQLite or bincode serialization
+
+2. **Property-Based Testing (ELEVATED FROM MEDIUM)** 🧪
+   - **Rationale**: Harden scorer logic against edge cases (Claessen & Hughes, 2000)
+   - **Critical for robustness**: Current unit tests check expected outputs, but PBT uncovers unexpected inputs
+   - Implementation with proptest:
+     ```rust
+     proptest! {
+         #[test]
+         fn score_is_deterministic(files in project_generator()) {
+             let score1 = score(&files);
+             let score2 = score(&files);
+             assert_eq!(score1, score2);
+         }
+
+         #[test]
+         fn score_increases_with_quality(
+             before in project_generator(),
+             improvement in improvement_generator()
+         ) {
+             let score_before = score(&before);
+             let after = apply_improvement(before, improvement);
+             let score_after = score(&after);
+             assert!(score_after >= score_before);
+         }
+     }
+     ```
+   - Test properties: Determinism, monotonicity, bounds checking
+   - Edge cases: Unicode paths, empty files, malformed TOML
+
+3. **Dependency Freshness Scoring (NEW - FROM CODE REVIEW)** 🔒
+   - **Rationale**: Supply chain security (OWASP, NIST); outdated deps = known vulnerabilities
+   - Add to DependencyScorer (12pts → 15pts):
+     - Dependency count: 5pts (existing)
+     - Feature flags: 4pts (existing)
+     - Tree pruning: 3pts (existing)
+     - **Freshness: 3pts (NEW)**
+   - Implementation:
+     ```rust
+     fn score_dependency_freshness(&self) -> f64 {
+         // 1. Parse cargo metadata for current versions
+         // 2. Query crates.io API (or cargo-outdated)
+         // 3. Calculate versions behind:
+         //    - Major: -1pt each
+         //    - Minor: -0.5pt each
+         //    - Patch: -0.1pt each
+         // 4. Score: 3pts - deductions (min 0)
+     }
+     ```
+   - Performance: Cache crates.io responses (1 hour TTL)
+   - Research: Couto et al. (2019) - dependency issues → build failures
+
+4. **Complexity + Churn Hotspot Analysis (NEW - FROM CODE REVIEW)** 🔥
+   - **Rationale**: Complexity alone weak predictor; complexity + churn strong (Menzies et al., 2010)
+   - Enhance CodeQualityScorer in Full mode:
+     ```rust
+     fn score_complexity_with_churn(&self) -> f64 {
+         // 1. Run pmat analyze complexity (per-file)
+         // 2. Run git log --stat --numstat --since="1 year ago"
+         // 3. Calculate churn: lines_added + lines_deleted
+         // 4. Identify hotspots: complexity > 15 AND churn > 500
+         // 5. Weight score by hotspot severity
+     }
+     ```
+   - Integrates with Historical Tracking (#7 below)
+   - Aligns with Microsoft defect prediction models
+
+5. **Enhanced Error Handling (NEW - FROM CODE REVIEW)** 🚨
+   - **Current issue**: `ToolNotFound` doesn't distinguish "not installed" from "failed to run"
+   - **Proposed**:
+     ```rust
+     enum ScorerError {
+         ToolNotFound(String),
+         ToolFailed {
+             tool: String,
+             exit_code: i32,
+             stderr: String,
+             hint: String,  // Actionable guidance
+         },
+         ProjectError(String),
+         ConfigError(String),
+     }
+     ```
+   - Better user feedback: "clippy failed (exit 101) due to compilation errors in src/main.rs"
+   - Research: Habib & Pradel (2018) - actionable feedback increases tool adoption
+
+6. **Mutation Testing Optimization - Test Selection (NEW - FROM CODE REVIEW)** ⚡
+   - **Current**: cargo mutants on entire codebase (hours)
+   - **Proposed**: Incremental mutation testing
+     ```bash
+     # Only mutate changed files since last analysis
+     git diff --name-only $(git merge-base HEAD origin/master) HEAD \
+       | grep '\.rs$' \
+       | xargs cargo mutants --timeout 300
+     ```
+   - **Research**: Regression Test Selection (RTS) shows 10-100x speedup
+   - Implementation: Cache last mutation results, only re-run on changed files
+   - Integrates with caching (#1)
+
+7. **Workspace Support**
    - Add `--package` flag to score specific workspace members
    - Add `--workspace` flag to score all members and aggregate
 
-2. **Caching**
-   - Cache cargo metadata (avoid repeated `cargo metadata` calls)
-   - Cache file hashes (skip re-analysis of unchanged files)
-   - Target: Sub-100ms on repeated runs
-
-3. **Parallel Scorer Execution**
+8. **Parallel Scorer Execution**
    - Run 6 scorers in parallel with Rayon
    - Estimated improvement: 2-3x faster in Full mode
+   - **Design consideration**: Static dispatch with generics instead of `Box<dyn Scorer>`
+     - Trade-off: Faster execution vs more complex code
+     - Decision: Explore in v1.2 when implementing parallelization
 
-4. **Historical Tracking**
+9. **Historical Tracking**
    - Store scores in `.pmat-cache/scores.db`
    - Track score velocity (kaizen improvement over time)
    - Generate trend charts
+   - Integrates with Complexity + Churn (#4)
 
 ### Medium Priority
 
@@ -982,10 +1096,64 @@ The scoring methodology is grounded in 15 peer-reviewed papers:
 
 ---
 
+## Code Review Record
+
+### Review #1: 2025-11-17 (Post-Kaizen Optimization)
+
+**Reviewer**: Engineering team lead
+**Review Type**: Architecture, scoring methodology, future roadmap
+**Status**: Accepted with enhancement proposals
+
+#### Commendations
+
+1. **Performance Journey**: Exceptional documentation of 996x improvement with renacer evidence
+2. **Evidence-Based Scoring**: Grounding in 15+ academic papers elevates tool from linter to assessment framework
+3. **Three-Tiered ScoringMode**: Elegant solution to speed/accuracy tradeoff
+
+#### Enhancement Proposals (All Accepted)
+
+1. **Trait Objects → Generics**: Explore static dispatch for parallelization (v1.2)
+2. **Error Granularity**: Distinguish `ToolNotFound` from `ToolFailed` (High Priority #5)
+3. **Dependency Freshness**: Add supply chain security scoring (High Priority #3)
+4. **Complexity + Churn**: Combine metrics for better defect prediction (High Priority #4)
+5. **Mutation Test Selection**: Incremental testing for 10-100x speedup (High Priority #6)
+6. **Caching Priority**: Elevate to #1 for sub-100ms repeated runs (High Priority #1)
+7. **Property-Based Testing**: Elevate from Medium to High priority (High Priority #2)
+
+#### Academic Grounding (New Citations)
+
+| Citation | Contribution to Design |
+|----------|------------------------|
+| Beller et al. (2017) | Fast feedback → flow state → productivity |
+| Couto et al. (2019) | Dependency issues → build failures |
+| Martini et al. (2018) | Technical debt distribution in OSS |
+| Menzies et al. (2010) | Complexity + churn > complexity alone |
+| Habib & Pradel (2018) | Actionable feedback → tool adoption |
+| Offutt et al. (1996) | Mutation testing for OOP |
+| Gallagher et al. (2016) | Build-level caching speedups |
+| Claessen & Hughes (2000) | Property-based testing (QuickCheck) |
+| Bosu et al. (2015) | Modern code review expectations |
+| Tom et al. (2013) | Technical debt → software quality |
+
+#### Actions Taken
+
+- ✅ Updated Future Improvements section with revised priorities
+- ✅ Added 4 new high-priority items from review feedback
+- ✅ Integrated 10 new academic citations
+- ✅ Documented design trade-offs (trait objects vs generics)
+- ✅ Added implementation details for each proposed enhancement
+- 📋 TODO: Create GitHub issues for High Priority items #1-#6
+
+---
+
 ## Document Changelog
 
 - **2025-11-17 v1.0**: Initial documentation after Kaizen optimization rounds
-- Future: Will update with team code review feedback and additional improvements
+- **2025-11-17 v1.1**: Updated with team code review feedback and academic citations
+  - Added 6 new high-priority items
+  - Revised priority order (caching → #1)
+  - Integrated 10 academic references
+  - Documented review process for future audits
 
 ---
 
