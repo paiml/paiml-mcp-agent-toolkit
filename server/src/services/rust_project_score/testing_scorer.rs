@@ -9,7 +9,7 @@
 //! Evidence-based refinement: Coverage threshold based on empirical research
 //! showing ≥85% coverage correlates with significantly fewer production bugs.
 
-use super::models::{CategoryScore, ScoringMode};
+use super::models::{CategoryScore, FileCache, ScoringMode};
 use super::scorer::{Scorer, ScorerError, ScorerResult};
 use std::path::Path;
 use std::process::Command;
@@ -75,14 +75,20 @@ impl TestingScorer {
             }
             Err(_) => {
                 // cargo-llvm-cov not installed
-                // Fallback: check for presence of tests
-                self.score_coverage_fallback(project_path)
+                // Fallback: check for presence of tests (no cache)
+                self.score_coverage_fallback(project_path, None)
             }
         }
     }
 
     /// Fallback coverage scoring when cargo-llvm-cov not available
-    fn score_coverage_fallback(&self, project_path: &Path) -> ScorerResult<f64> {
+    ///
+    /// **Kaizen Round 4**: Cache-aware - uses FileCache if available for src/*.rs
+    fn score_coverage_fallback(
+        &self,
+        project_path: &Path,
+        cache: Option<&FileCache>,
+    ) -> ScorerResult<f64> {
         let src_path = project_path.join("src");
         if !src_path.exists() {
             return Ok(0.0);
@@ -91,14 +97,25 @@ impl TestingScorer {
         let mut has_tests = false;
 
         // Check for #[cfg(test)] modules in source files
-        if let Ok(entries) = std::fs::read_dir(&src_path) {
-            for entry in entries.flatten() {
-                if let Some(ext) = entry.path().extension() {
-                    if ext == "rs" {
-                        if let Ok(content) = std::fs::read_to_string(entry.path()) {
-                            if content.contains("#[cfg(test)]") || content.contains("#[test]") {
-                                has_tests = true;
-                                break;
+        if let Some(cache) = cache {
+            // Use cache: get all .rs files in src/ directory
+            for (_path, content) in cache.get_rust_files_in_dir(&src_path) {
+                if content.contains("#[cfg(test)]") || content.contains("#[test]") {
+                    has_tests = true;
+                    break;
+                }
+            }
+        } else {
+            // Fallback: read from filesystem
+            if let Ok(entries) = std::fs::read_dir(&src_path) {
+                for entry in entries.flatten() {
+                    if let Some(ext) = entry.path().extension() {
+                        if ext == "rs" {
+                            if let Ok(content) = std::fs::read_to_string(entry.path()) {
+                                if content.contains("#[cfg(test)]") || content.contains("#[test]") {
+                                    has_tests = true;
+                                    break;
+                                }
                             }
                         }
                     }
@@ -165,7 +182,13 @@ impl TestingScorer {
 
     /// Score doc tests (3pts)
     /// Checks for rustdoc examples in source files
-    fn score_doc_tests(&self, project_path: &Path) -> ScorerResult<f64> {
+    ///
+    /// **Kaizen Round 4**: Cache-aware - uses FileCache if available for src/*.rs
+    fn score_doc_tests(
+        &self,
+        project_path: &Path,
+        cache: Option<&FileCache>,
+    ) -> ScorerResult<f64> {
         let src_path = project_path.join("src");
         if !src_path.exists() {
             return Ok(0.0);
@@ -174,7 +197,7 @@ impl TestingScorer {
         let mut doc_test_count = 0;
 
         // Recursively walk src directory
-        self.count_doc_tests(&src_path, &mut doc_test_count)?;
+        self.count_doc_tests(&src_path, &mut doc_test_count, cache)?;
 
         // Scoring based on number of doc tests
         if doc_test_count >= 5 {
@@ -189,25 +212,50 @@ impl TestingScorer {
     }
 
     /// Count doc tests in directory (recursive)
-    fn count_doc_tests(&self, dir: &Path, count: &mut usize) -> ScorerResult<()> {
-        if let Ok(entries) = std::fs::read_dir(dir) {
-            for entry in entries.flatten() {
-                let path = entry.path();
+    ///
+    /// **Kaizen Round 4**: Cache-aware - uses FileCache if available
+    fn count_doc_tests(
+        &self,
+        dir: &Path,
+        count: &mut usize,
+        cache: Option<&FileCache>,
+    ) -> ScorerResult<()> {
+        if let Some(cache) = cache {
+            // Use cache: get all .rs files in directory
+            for (_path, content) in cache.get_rust_files_in_dir(dir) {
+                // Count occurrences of "```" in doc comments
+                for line in content.lines() {
+                    let trimmed = line.trim();
 
-                if path.is_dir() {
-                    self.count_doc_tests(&path, count)?;
-                } else if let Some(ext) = path.extension() {
-                    if ext == "rs" {
-                        if let Ok(content) = std::fs::read_to_string(&path) {
-                            // Count occurrences of "```" in doc comments
-                            for line in content.lines() {
-                                let trimmed = line.trim();
+                    // Check if we're in a doc comment
+                    if (trimmed.starts_with("///") || trimmed.starts_with("//!"))
+                        && trimmed.contains("```")
+                    {
+                        *count += 1;
+                    }
+                }
+            }
+        } else {
+            // Fallback: read from filesystem
+            if let Ok(entries) = std::fs::read_dir(dir) {
+                for entry in entries.flatten() {
+                    let path = entry.path();
 
-                                // Check if we're in a doc comment
-                                if (trimmed.starts_with("///") || trimmed.starts_with("//!"))
-                                    && trimmed.contains("```")
-                                {
-                                    *count += 1;
+                    if path.is_dir() {
+                        self.count_doc_tests(&path, count, None)?;
+                    } else if let Some(ext) = path.extension() {
+                        if ext == "rs" {
+                            if let Ok(content) = std::fs::read_to_string(&path) {
+                                // Count occurrences of "```" in doc comments
+                                for line in content.lines() {
+                                    let trimmed = line.trim();
+
+                                    // Check if we're in a doc comment
+                                    if (trimmed.starts_with("///") || trimmed.starts_with("//!"))
+                                        && trimmed.contains("```")
+                                    {
+                                        *count += 1;
+                                    }
                                 }
                             }
                         }
@@ -216,6 +264,66 @@ impl TestingScorer {
             }
         }
         Ok(())
+    }
+
+    /// Internal scoring logic that accepts optional cache
+    ///
+    /// **Kaizen Round 4**: Cache-aware scoring implementation
+    fn score_internal(
+        &self,
+        project_path: &Path,
+        mode: ScoringMode,
+        cache: Option<&FileCache>,
+    ) -> ScorerResult<CategoryScore> {
+        // Verify project has Cargo.toml
+        if !project_path.join("Cargo.toml").exists() {
+            return Err(ScorerError::InvalidProject(
+                "No Cargo.toml found - not a valid Rust project".to_string(),
+            ));
+        }
+
+        let mut total_earned = 0.0;
+
+        // Score coverage (8pts)
+        // FAST MODE: Skip expensive cargo llvm-cov, use fallback
+        if mode.is_full() {
+            match self.score_coverage(project_path) {
+                Ok(score) => total_earned += score,
+                Err(e) => return Err(e),
+            }
+        } else {
+            // Fast mode: Use fallback with cache (filesystem check only)
+            match self.score_coverage_fallback(project_path, cache) {
+                Ok(score) => total_earned += score,
+                Err(e) => return Err(e),
+            }
+        }
+
+        // Score integration tests (4pts) - Fast (filesystem check, no cache benefit)
+        match self.score_integration_tests(project_path) {
+            Ok(score) => total_earned += score,
+            Err(e) => return Err(e),
+        }
+
+        // Score doc tests (3pts) - Fast (filesystem check with cache)
+        match self.score_doc_tests(project_path, cache) {
+            Ok(score) => total_earned += score,
+            Err(e) => return Err(e),
+        }
+
+        // Score mutation testing (5pts)
+        // FAST MODE: Skip expensive cargo mutants
+        if mode.is_full() {
+            match self.score_mutation(project_path) {
+                Ok(score) => total_earned += score,
+                Err(e) => return Err(e),
+            }
+        } else {
+            // Fast mode: Give moderate credit (2.5pts) without running
+            total_earned += 2.5;
+        }
+
+        Ok(CategoryScore::new(total_earned, self.max_points))
     }
 
     /// Score mutation testing (5pts)
@@ -288,40 +396,8 @@ impl Scorer for TestingScorer {
     }
 
     fn score(&self, project_path: &Path) -> ScorerResult<CategoryScore> {
-        // Verify project has Cargo.toml
-        if !project_path.join("Cargo.toml").exists() {
-            return Err(ScorerError::InvalidProject(
-                "No Cargo.toml found - not a valid Rust project".to_string(),
-            ));
-        }
-
-        let mut total_earned = 0.0;
-
-        // Score coverage (8pts)
-        match self.score_coverage(project_path) {
-            Ok(score) => total_earned += score,
-            Err(e) => return Err(e),
-        }
-
-        // Score integration tests (4pts)
-        match self.score_integration_tests(project_path) {
-            Ok(score) => total_earned += score,
-            Err(e) => return Err(e),
-        }
-
-        // Score doc tests (3pts)
-        match self.score_doc_tests(project_path) {
-            Ok(score) => total_earned += score,
-            Err(e) => return Err(e),
-        }
-
-        // Score mutation testing (5pts)
-        match self.score_mutation(project_path) {
-            Ok(score) => total_earned += score,
-            Err(e) => return Err(e),
-        }
-
-        Ok(CategoryScore::new(total_earned, self.max_points))
+        // Backward compatibility: call with default mode and no cache
+        self.score_internal(project_path, ScoringMode::default(), None)
     }
 
     fn score_with_mode(
@@ -329,62 +405,25 @@ impl Scorer for TestingScorer {
         project_path: &Path,
         mode: ScoringMode,
     ) -> ScorerResult<CategoryScore> {
-        // Verify project has Cargo.toml
-        if !project_path.join("Cargo.toml").exists() {
-            return Err(ScorerError::InvalidProject(
-                "No Cargo.toml found - not a valid Rust project".to_string(),
-            ));
-        }
+        // Backward compatibility: call with no cache
+        self.score_internal(project_path, mode, None)
+    }
 
-        let mut total_earned = 0.0;
-
-        // Score coverage (8pts)
-        // FAST MODE: Skip expensive cargo llvm-cov, use fallback
-        if mode.is_full() {
-            match self.score_coverage(project_path) {
-                Ok(score) => total_earned += score,
-                Err(e) => return Err(e),
-            }
-        } else {
-            // Fast mode: Use fallback (file system check only)
-            match self.score_coverage_fallback(project_path) {
-                Ok(score) => total_earned += score,
-                Err(e) => return Err(e),
-            }
-        }
-
-        // Score integration tests (4pts) - Fast (filesystem check)
-        match self.score_integration_tests(project_path) {
-            Ok(score) => total_earned += score,
-            Err(e) => return Err(e),
-        }
-
-        // Score doc tests (3pts) - Fast (filesystem check)
-        match self.score_doc_tests(project_path) {
-            Ok(score) => total_earned += score,
-            Err(e) => return Err(e),
-        }
-
-        // Score mutation testing (5pts)
-        // FAST MODE: Skip expensive cargo mutants
-        if mode.is_full() {
-            match self.score_mutation(project_path) {
-                Ok(score) => total_earned += score,
-                Err(e) => return Err(e),
-            }
-        } else {
-            // Fast mode: Give moderate credit (2.5pts) without running
-            total_earned += 2.5;
-        }
-
-        Ok(CategoryScore::new(total_earned, self.max_points))
+    fn score_with_cache(
+        &self,
+        project_path: &Path,
+        mode: ScoringMode,
+        cache: Option<&FileCache>,
+    ) -> ScorerResult<CategoryScore> {
+        // Kaizen Round 4: Use FileCache to eliminate 2 redundant src/*.rs reads
+        self.score_internal(project_path, mode, cache)
     }
 
     fn recommendations(&self, project_path: &Path) -> Vec<String> {
         let mut recommendations = Vec::new();
 
-        // Check coverage - USE FALLBACK (no subprocess)
-        if let Ok(score) = self.score_coverage_fallback(project_path) {
+        // Check coverage - USE FALLBACK (no subprocess, no cache - backward compatibility)
+        if let Ok(score) = self.score_coverage_fallback(project_path, None) {
             if score < 8.0 {
                 recommendations.push(
                     "Improve test coverage: Install cargo-llvm-cov and aim for ≥85% line coverage"
@@ -403,8 +442,8 @@ impl Scorer for TestingScorer {
             }
         }
 
-        // Check doc tests
-        if let Ok(score) = self.score_doc_tests(project_path) {
+        // Check doc tests (no cache - backward compatibility)
+        if let Ok(score) = self.score_doc_tests(project_path, None) {
             if score < 3.0 {
                 recommendations.push(
                     "Add doc tests: Include runnable examples in /// documentation comments"
