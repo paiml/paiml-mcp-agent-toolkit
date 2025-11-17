@@ -12,7 +12,7 @@ server/assets/vendor/
 **/target/
 **/*.rs.bk
 *.pdb
-Cargo.lock
+# Cargo.lock - TRACKED for binary crates (reproducible builds)
 # Cargo Lambda
 .aws-sam/
 samconfig.toml
