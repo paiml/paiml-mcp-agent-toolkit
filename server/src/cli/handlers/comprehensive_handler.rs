@@ -362,6 +362,8 @@ fn find_project_root(start_path: &Path) -> Result<PathBuf> {
         start_path
     };
 
+    // Preserve original directory before loop mutates current
+    let original_dir = start_dir.to_path_buf();
     let mut current = start_dir;
 
     loop {
@@ -372,13 +374,22 @@ fn find_project_root(start_path: &Path) -> Result<PathBuf> {
 
         // Move up one directory
         match current.parent() {
-            Some(parent) => current = parent,
+            Some(parent) => {
+                // Stop at system directories to avoid false positives from test pollution
+                if parent == Path::new("/tmp")
+                    || parent == Path::new("/")
+                    || parent == Path::new("/home")
+                {
+                    break;
+                }
+                current = parent;
+            }
             None => break,
         }
     }
 
-    // If no Cargo.toml found, return the directory where we started searching
-    Ok(start_dir.to_path_buf())
+    // If no Cargo.toml found, return the preserved original directory
+    Ok(original_dir)
 }
 
 #[cfg(test)]
