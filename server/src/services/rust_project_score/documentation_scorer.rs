@@ -8,7 +8,7 @@
 //! Evidence-based design: Well-documented projects have 30-40% fewer
 //! support issues and faster onboarding (GitHub State of the Octoverse 2024).
 
-use super::models::{CategoryScore, ScoringMode};
+use super::models::{CategoryScore, FileCache, ScoringMode};
 use super::scorer::{Scorer, ScorerError, ScorerResult};
 use std::path::Path;
 
@@ -32,7 +32,9 @@ impl DocumentationScorer {
 
     /// Score rustdoc coverage (7pts)
     /// Checks for public API documentation with examples
-    fn score_rustdoc(&self, project_path: &Path) -> ScorerResult<f64> {
+    ///
+    /// **Kaizen Round 4**: Cache-aware - uses FileCache if available for src/*.rs
+    fn score_rustdoc(&self, project_path: &Path, cache: Option<&FileCache>) -> ScorerResult<f64> {
         let src_path = project_path.join("src");
         if !src_path.exists() {
             return Ok(0.0);
@@ -42,7 +44,12 @@ impl DocumentationScorer {
         let mut documented_items = 0;
 
         // Walk src directory
-        self.count_documented_items(&src_path, &mut total_public_items, &mut documented_items)?;
+        self.count_documented_items(
+            &src_path,
+            &mut total_public_items,
+            &mut documented_items,
+            cache,
+        )?;
 
         if total_public_items == 0 {
             // No public API = moderate score
@@ -67,22 +74,33 @@ impl DocumentationScorer {
     }
 
     /// Count documented public items in directory (recursive)
+    ///
+    /// **Kaizen Round 4**: Cache-aware - uses FileCache if available
     fn count_documented_items(
         &self,
         dir: &Path,
         total: &mut usize,
         documented: &mut usize,
+        cache: Option<&FileCache>,
     ) -> ScorerResult<()> {
-        if let Ok(entries) = std::fs::read_dir(dir) {
-            for entry in entries.flatten() {
-                let path = entry.path();
+        if let Some(cache) = cache {
+            // Use cache: get all .rs files in directory
+            for (_path, content) in cache.get_rust_files_in_dir(dir) {
+                self.analyze_doc_coverage(content, total, documented);
+            }
+        } else {
+            // Fallback: read from filesystem
+            if let Ok(entries) = std::fs::read_dir(dir) {
+                for entry in entries.flatten() {
+                    let path = entry.path();
 
-                if path.is_dir() {
-                    self.count_documented_items(&path, total, documented)?;
-                } else if let Some(ext) = path.extension() {
-                    if ext == "rs" {
-                        if let Ok(content) = std::fs::read_to_string(&path) {
-                            self.analyze_doc_coverage(&content, total, documented);
+                    if path.is_dir() {
+                        self.count_documented_items(&path, total, documented, None)?;
+                    } else if let Some(ext) = path.extension() {
+                        if ext == "rs" {
+                            if let Ok(content) = std::fs::read_to_string(&path) {
+                                self.analyze_doc_coverage(&content, total, documented);
+                            }
                         }
                     }
                 }
@@ -134,15 +152,25 @@ impl DocumentationScorer {
 
     /// Score README quality (5pts)
     /// Checks for comprehensive README with key sections
-    fn score_readme(&self, project_path: &Path) -> ScorerResult<f64> {
+    ///
+    /// **Kaizen Round 4**: Cache-aware - uses FileCache if available for README.md
+    fn score_readme(&self, project_path: &Path, cache: Option<&FileCache>) -> ScorerResult<f64> {
         let readme_path = project_path.join("README.md");
 
         if !readme_path.exists() {
             return Ok(0.0);
         }
 
-        let content = std::fs::read_to_string(&readme_path)
-            .map_err(|e| ScorerError::IoError(e.to_string()))?;
+        // Try cache first, fall back to filesystem
+        let content = if let Some(cache) = cache {
+            cache
+                .get(&readme_path)
+                .cloned()
+                .ok_or_else(|| ScorerError::IoError("README.md not in cache".to_string()))?
+        } else {
+            std::fs::read_to_string(&readme_path)
+                .map_err(|e| ScorerError::IoError(e.to_string()))?
+        };
 
         // Check word count
         let word_count = content.split_whitespace().count();
@@ -188,15 +216,29 @@ impl DocumentationScorer {
 
     /// Score changelog presence (3pts)
     /// Checks for CHANGELOG.md with version history
-    fn score_changelog(&self, project_path: &Path) -> ScorerResult<f64> {
+    ///
+    /// **Kaizen Round 4**: Cache-aware - uses FileCache if available for CHANGELOG.md
+    fn score_changelog(
+        &self,
+        project_path: &Path,
+        cache: Option<&FileCache>,
+    ) -> ScorerResult<f64> {
         let changelog_path = project_path.join("CHANGELOG.md");
 
         if !changelog_path.exists() {
             return Ok(0.0);
         }
 
-        let content = std::fs::read_to_string(&changelog_path)
-            .map_err(|e| ScorerError::IoError(e.to_string()))?;
+        // Try cache first, fall back to filesystem
+        let content = if let Some(cache) = cache {
+            cache
+                .get(&changelog_path)
+                .cloned()
+                .ok_or_else(|| ScorerError::IoError("CHANGELOG.md not in cache".to_string()))?
+        } else {
+            std::fs::read_to_string(&changelog_path)
+                .map_err(|e| ScorerError::IoError(e.to_string()))?
+        };
 
         // Check for version entries (e.g., [0.1.0], ## 0.1.0)
         let version_count = content
@@ -218,6 +260,44 @@ impl DocumentationScorer {
             Ok(1.0) // CHANGELOG exists but minimal content
         }
     }
+
+    /// Internal scoring logic that accepts optional cache
+    ///
+    /// **Kaizen Round 4**: Cache-aware scoring implementation
+    fn score_internal(
+        &self,
+        project_path: &Path,
+        cache: Option<&FileCache>,
+    ) -> ScorerResult<CategoryScore> {
+        // Verify project has Cargo.toml
+        if !project_path.join("Cargo.toml").exists() {
+            return Err(ScorerError::InvalidProject(
+                "No Cargo.toml found - not a valid Rust project".to_string(),
+            ));
+        }
+
+        let mut total_earned = 0.0;
+
+        // Rustdoc coverage (7pts)
+        match self.score_rustdoc(project_path, cache) {
+            Ok(score) => total_earned += score,
+            Err(e) => return Err(e),
+        }
+
+        // README quality (5pts)
+        match self.score_readme(project_path, cache) {
+            Ok(score) => total_earned += score,
+            Err(e) => return Err(e),
+        }
+
+        // Changelog presence (3pts)
+        match self.score_changelog(project_path, cache) {
+            Ok(score) => total_earned += score,
+            Err(e) => return Err(e),
+        }
+
+        Ok(CategoryScore::new(total_earned, self.max_points))
+    }
 }
 
 impl Default for DocumentationScorer {
@@ -236,34 +316,8 @@ impl Scorer for DocumentationScorer {
     }
 
     fn score(&self, project_path: &Path) -> ScorerResult<CategoryScore> {
-        // Verify project has Cargo.toml
-        if !project_path.join("Cargo.toml").exists() {
-            return Err(ScorerError::InvalidProject(
-                "No Cargo.toml found - not a valid Rust project".to_string(),
-            ));
-        }
-
-        let mut total_earned = 0.0;
-
-        // Score rustdoc coverage (7pts)
-        match self.score_rustdoc(project_path) {
-            Ok(score) => total_earned += score,
-            Err(e) => return Err(e),
-        }
-
-        // Score README quality (5pts)
-        match self.score_readme(project_path) {
-            Ok(score) => total_earned += score,
-            Err(e) => return Err(e),
-        }
-
-        // Score changelog presence (3pts)
-        match self.score_changelog(project_path) {
-            Ok(score) => total_earned += score,
-            Err(e) => return Err(e),
-        }
-
-        Ok(CategoryScore::new(total_earned, self.max_points))
+        // Backward compatibility: call without cache
+        self.score_internal(project_path, None)
     }
 
     fn score_with_mode(
@@ -275,11 +329,21 @@ impl Scorer for DocumentationScorer {
         self.score(project_path)
     }
 
+    fn score_with_cache(
+        &self,
+        project_path: &Path,
+        _mode: ScoringMode,
+        cache: Option<&FileCache>,
+    ) -> ScorerResult<CategoryScore> {
+        // Kaizen Round 4: Use FileCache for README, CHANGELOG, and src/*.rs
+        self.score_internal(project_path, cache)
+    }
+
     fn recommendations(&self, project_path: &Path) -> Vec<String> {
         let mut recommendations = Vec::new();
 
-        // Check rustdoc
-        if let Ok(score) = self.score_rustdoc(project_path) {
+        // Check rustdoc (no cache - backward compatibility)
+        if let Ok(score) = self.score_rustdoc(project_path, None) {
             if score < 7.0 {
                 recommendations.push(
                     "Improve rustdoc coverage: Add /// documentation to public API items with examples".to_string(),
@@ -287,8 +351,8 @@ impl Scorer for DocumentationScorer {
             }
         }
 
-        // Check README
-        if let Ok(score) = self.score_readme(project_path) {
+        // Check README (no cache - backward compatibility)
+        if let Ok(score) = self.score_readme(project_path, None) {
             if score < 5.0 {
                 recommendations.push(
                     "Improve README: Add Installation, Usage, Examples, and License sections"
@@ -297,8 +361,8 @@ impl Scorer for DocumentationScorer {
             }
         }
 
-        // Check changelog
-        if let Ok(score) = self.score_changelog(project_path) {
+        // Check changelog (no cache - backward compatibility)
+        if let Ok(score) = self.score_changelog(project_path, None) {
             if score < 3.0 {
                 recommendations.push(
                     "Add CHANGELOG.md: Document version history and changes between releases"
