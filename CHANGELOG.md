@@ -87,6 +87,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Commit**: 21af738a
   - **Build Time**: 6m 23s
 
+- **Kaizen Round 9: HashMap Capacity Pre-Allocation (REVERTED)** - Failed optimization experiment
+  - **Implementation**:
+    - Added count_rs_files_recursive() to count .rs files before reading
+    - Pre-allocated FxHashMap capacity using reserve() to avoid rehashing
+    - Goal: Eliminate 2-4 HashMap resize/rehash operations per directory
+  - **Expected**: 5-10% improvement from eliminating rehashing overhead
+  - **Actual Results**: 65.3ms ± 1.0ms (vs 63.2ms ± 0.8ms baseline)
+  - **Performance Impact**: -2.1ms (**3.3% REGRESSION**)
+  - **Root Cause Analysis** (Evidence-Based Learning):
+    - Counting pass adds directory tree walk overhead (2.1ms cost)
+    - Rehashing was never a bottleneck (confirmed Round 8 finding)
+    - Memory-bandwidth limitation means I/O dominates, not HashMap ops
+    - Counting cost > rehashing savings (negative ROI)
+  - **Verdict**: **REVERTED** - Optimization hurts performance
+  - **Kaizen Learning**:
+    - Pre-optimization profiling is critical (confirms Round 8's memory-bandwidth finding)
+    - Adding work to avoid work can backfire when avoiding non-work
+    - Failed experiments are valuable data - document and learn
+    - Evidence-based optimization prevents accumulating harmful "optimizations"
+  - **Files Modified**: models.rs (reverted)
+  - **Benchmark Time**: 12m 43s build + benchmark
+  - **Outcome**: Confirmed Round 8's bottleneck analysis, stopped Kaizen iteration at optimal point
+
 - **Combined Performance (Rounds 5+6+7+8)**:
   - **Before (Round 4)**: 135.1ms ± 3.2ms
   - **After (Round 8)**: 63.2ms ± 0.8ms (hyperfine benchmark, 10 runs)
