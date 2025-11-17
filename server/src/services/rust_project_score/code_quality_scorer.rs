@@ -410,8 +410,8 @@ impl Scorer for CodeQualityScorer {
     fn recommendations(&self, project_path: &Path) -> Vec<String> {
         let mut recommendations = Vec::new();
 
-        // Check complexity
-        if let Ok(score) = self.score_complexity(project_path) {
+        // Check complexity - USE SIMPLE FALLBACK (no subprocess)
+        if let Ok(score) = self.score_complexity_simple(project_path) {
             if score < 3.0 {
                 recommendations.push(
                     "Reduce cyclomatic complexity: refactor functions with >20 complexity into smaller units".to_string(),
@@ -419,7 +419,7 @@ impl Scorer for CodeQualityScorer {
             }
         }
 
-        // Check unsafe
+        // Check unsafe - Fast (filesystem only)
         if let Ok(score) = self.score_unsafe(project_path) {
             if score < 9.0 {
                 recommendations.push(
@@ -428,17 +428,13 @@ impl Scorer for CodeQualityScorer {
             }
         }
 
-        // Check mutation
-        if let Ok(score) = self.score_mutation(project_path) {
-            if score < 8.0 {
-                recommendations.push(
-                    "Improve test quality: install cargo-mutants and aim for ≥80% mutation score"
-                        .to_string(),
-                );
-            }
-        }
+        // Check mutation - SKIP subprocess, always recommend
+        recommendations.push(
+            "Improve test quality: install cargo-mutants and aim for ≥80% mutation score"
+                .to_string(),
+        );
 
-        // Check dead code
+        // Check dead code - Fast (filesystem only)
         if let Ok(score) = self.score_dead_code(project_path) {
             if score < 2.0 {
                 recommendations.push(
