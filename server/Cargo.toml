@@ -362,6 +362,10 @@ harness = false
 name = "performance"
 harness = false
 
+[[bench]]
+name = "dead_code_ops"
+harness = false
+
 [[test]]
 name = "unit_core"
 path = "tests/unit/core.rs"
