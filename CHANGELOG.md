@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Performance
+- **Kaizen Round 4: FileCache Optimization** - 41.3% performance improvement for rust-project-score
+  - **Before**: 230ms (after Round 3)
+  - **After**: 135.1ms ± 3.2ms (hyperfine benchmark, 10 runs)
+  - **Improvement**: 94.9ms saved, 1.7x faster
+  - **Implementation**:
+    - Added FileCache struct: In-memory HashMap<PathBuf, String> for caching file reads
+    - Updated RustProjectScoreOrchestrator to populate cache once, share across all 6 scorers
+    - Extended Scorer trait with `score_with_cache()` method
+    - Updated all 6 category scorers to support FileCache:
+      - **DependencyScorer**: Eliminated 3 redundant Cargo.toml reads
+      - **PerformanceScorer**: Eliminated 2 redundant Cargo.toml reads
+      - **CodeQualityScorer**: Eliminated 3 redundant src/*.rs directory walks
+      - **DocumentationScorer**: Eliminated README.md, CHANGELOG.md, src/*.rs reads
+      - **TestingScorer**: Eliminated 2 redundant src/*.rs directory walks
+      - **RustToolingScorer**: API consistency (no file reads to optimize)
+  - **Total Impact**: 22 redundant filesystem operations eliminated
+  - **Overall Journey**: 3m 49s → 135ms (1,700x faster across all Kaizen rounds)
+  - **Files Modified**: 8 files (models.rs, orchestrator.rs, scorer.rs, 6 scorer implementations)
+  - **Commits**: 6 production commits (5c83a6aa, 13457efc, b91790ef, etc.)
+
 ## [2.195.0] - 2025-11-14
 
 ### Added
