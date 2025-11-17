@@ -9,7 +9,7 @@
 //! - cargo-audit (security): 7pts (risk-based scoring)
 //! - cargo-deny (policy): 3pts
 
-use super::models::{CategoryScore, ScoringMode};
+use super::models::{CategoryScore, FileCache, ScoringMode};
 use super::scorer::{Scorer, ScorerError, ScorerResult};
 use std::path::Path;
 use std::process::Command;
@@ -171,72 +171,17 @@ impl RustToolingScorer {
             Ok(0.0)
         }
     }
-}
 
-impl Default for RustToolingScorer {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl Scorer for RustToolingScorer {
-    fn name(&self) -> &str {
-        &self.name
-    }
-
-    fn max_points(&self) -> f64 {
-        self.max_points
-    }
-
-    fn score(&self, project_path: &Path) -> ScorerResult<CategoryScore> {
-        // Verify project has Cargo.toml
-        if !project_path.join("Cargo.toml").exists() {
-            return Err(ScorerError::InvalidProject(
-                "No Cargo.toml found - not a valid Rust project".to_string(),
-            ));
-        }
-
-        let mut total_earned = 0.0;
-
-        // Score clippy (10pts)
-        match self.score_clippy(project_path) {
-            Ok(score) => total_earned += score,
-            Err(ScorerError::ToolNotFound(_)) => {
-                // Graceful degradation - give 50% credit if tool not found
-                total_earned += 5.0;
-            }
-            Err(e) => return Err(e),
-        }
-
-        // Score rustfmt (5pts)
-        match self.score_rustfmt(project_path) {
-            Ok(score) => total_earned += score,
-            Err(ScorerError::ToolNotFound(_)) => {
-                // Graceful degradation
-                total_earned += 2.5;
-            }
-            Err(e) => return Err(e),
-        }
-
-        // Score cargo-audit (7pts)
-        match self.score_cargo_audit(project_path) {
-            Ok(score) => total_earned += score,
-            Err(e) => return Err(e),
-        }
-
-        // Score cargo-deny (3pts)
-        match self.score_cargo_deny(project_path) {
-            Ok(score) => total_earned += score,
-            Err(e) => return Err(e),
-        }
-
-        Ok(CategoryScore::new(total_earned, self.max_points))
-    }
-
-    fn score_with_mode(
+    /// Internal scoring logic that accepts optional cache
+    ///
+    /// **Kaizen Round 4**: Cache-aware scoring implementation
+    /// Note: This scorer only does file existence checks and subprocess calls,
+    /// so cache is not used (no file reads to optimize)
+    fn score_internal(
         &self,
         project_path: &Path,
         mode: ScoringMode,
+        _cache: Option<&FileCache>,
     ) -> ScorerResult<CategoryScore> {
         // Verify project has Cargo.toml
         if !project_path.join("Cargo.toml").exists() {
@@ -306,6 +251,48 @@ impl Scorer for RustToolingScorer {
         }
 
         Ok(CategoryScore::new(total_earned, self.max_points))
+    }
+}
+
+impl Default for RustToolingScorer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Scorer for RustToolingScorer {
+    fn name(&self) -> &str {
+        &self.name
+    }
+
+    fn max_points(&self) -> f64 {
+        self.max_points
+    }
+
+    fn score(&self, project_path: &Path) -> ScorerResult<CategoryScore> {
+        // Backward compatibility: call with default mode and no cache
+        self.score_internal(project_path, ScoringMode::default(), None)
+    }
+
+    fn score_with_mode(
+        &self,
+        project_path: &Path,
+        mode: ScoringMode,
+    ) -> ScorerResult<CategoryScore> {
+        // Backward compatibility: call with no cache
+        self.score_internal(project_path, mode, None)
+    }
+
+    fn score_with_cache(
+        &self,
+        project_path: &Path,
+        mode: ScoringMode,
+        cache: Option<&FileCache>,
+    ) -> ScorerResult<CategoryScore> {
+        // Kaizen Round 4: Cache support added for API consistency
+        // Note: This scorer only does file existence checks and subprocess calls,
+        // so cache is not actually used (no file reads to optimize)
+        self.score_internal(project_path, mode, cache)
     }
 
     fn recommendations(&self, project_path: &Path) -> Vec<String> {
