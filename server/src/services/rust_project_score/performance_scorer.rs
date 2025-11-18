@@ -100,6 +100,7 @@ impl PerformanceScorer {
     /// Checks for flamegraph/perf integration
     ///
     /// **Kaizen Round 4**: Cache-aware - uses FileCache if available for Cargo.toml
+    /// **Kaizen Round 6**: Proper workspace root detection for monorepos
     fn score_profiling(&self, project_path: &Path, cache: Option<&FileCache>) -> ScorerResult<f64> {
         let mut profiling_indicators = 0;
         let mut has_flamegraph_artifact = false;
@@ -115,17 +116,35 @@ impl PerformanceScorer {
             profiling_indicators += 1;
         }
 
-        // Check Cargo.toml for flamegraph profile configuration
-        // Also check workspace root Cargo.toml for monorepo structures
-        let cargo_toml_path = project_path.join("Cargo.toml");
-        let workspace_cargo_toml = project_path.parent().map(|p| p.join("Cargo.toml"));
-
         // Helper to check profile content
         let check_profile_config = |content: &str| -> (bool, bool) {
             let has_debug = content.contains("[profile.release]") && content.contains("debug = true");
             let has_bench = content.contains("[profile.bench]");
             (has_debug, has_bench)
         };
+
+        // Helper to find workspace root by walking up directory tree
+        let find_workspace_root = |start: &Path| -> Option<std::path::PathBuf> {
+            // Canonicalize path to handle relative paths like "."
+            let abs_start = start.canonicalize().ok()?;
+            let mut current = abs_start.parent();
+            while let Some(dir) = current {
+                let cargo_toml = dir.join("Cargo.toml");
+                if cargo_toml.exists() {
+                    if let Ok(content) = std::fs::read_to_string(&cargo_toml) {
+                        if content.contains("[workspace]") {
+                            return Some(cargo_toml);
+                        }
+                    }
+                }
+                current = dir.parent();
+            }
+            None
+        };
+
+        let cargo_toml_path = project_path.join("Cargo.toml");
+        let mut found_debug = false;
+        let mut found_bench = false;
 
         // Try project Cargo.toml first
         let content_result = if let Some(cache) = cache {
@@ -134,21 +153,19 @@ impl PerformanceScorer {
             std::fs::read_to_string(&cargo_toml_path).map_err(|_| ())
         };
 
-        let mut found_debug = false;
-        let mut found_bench = false;
-
         if let Ok(content) = content_result {
             let (has_debug, has_bench) = check_profile_config(&content);
             found_debug = has_debug;
             found_bench = has_bench;
         }
 
-        // Also check workspace root Cargo.toml for profile configuration
-        if let Some(ws_path) = workspace_cargo_toml {
-            if ws_path.exists() && !found_debug {
-                if let Ok(ws_content) = std::fs::read_to_string(&ws_path) {
+        // Check workspace root Cargo.toml for profile configuration
+        // This handles monorepo structures where profiles are defined at workspace level
+        if !found_debug || !found_bench {
+            if let Some(ws_cargo_toml) = find_workspace_root(project_path) {
+                if let Ok(ws_content) = std::fs::read_to_string(&ws_cargo_toml) {
                     let (has_debug, has_bench) = check_profile_config(&ws_content);
-                    if has_debug {
+                    if has_debug && !found_debug {
                         found_debug = true;
                     }
                     if has_bench && !found_bench {
