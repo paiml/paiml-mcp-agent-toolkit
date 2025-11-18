@@ -170,7 +170,7 @@ impl RustToolingScorer {
             if let Some(vulns) = json.get("vulnerabilities").and_then(|v| v.get("list")) {
                 if let Some(vuln_array) = vulns.as_array() {
                     for vuln in vuln_array {
-                        // Each vulnerability has an "advisory" with "severity"
+                        // Extract advisory.severity from each item
                         if let Some(severity) = vuln
                             .get("advisory")
                             .and_then(|a| a.get("severity"))
