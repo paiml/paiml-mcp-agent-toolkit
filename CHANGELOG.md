@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.197.0] - 2025-11-18
+
+### Added
+- **Rust Project Score v1.2: Formal Verification** - 7th category scorer (Sprint 5 & 6)
+  - **New Category**: Formal Verification (8 points max)
+    - Miri Integration (3 points): Undefined behavior detection for unsafe code
+    - Kani Formal Verification (5 points): Mathematical proof of correctness
+  - **Total Points**: 114 (up from 106)
+  - **Implementation**:
+    - Added FormalVerificationScorer with Miri and Kani support
+    - Detects unsafe blocks and runs `cargo miri test` for UB validation
+    - Detects `#[kani::proof]` attributes and runs `cargo kani` for formal verification
+    - Integrated into RustProjectScoreOrchestrator as 7th parallel scorer
+    - FileCache optimization support for efficient unsafe block counting
+  - **Toyota Way Principles**:
+    - **Jidoka** (自働化): Stop the line when undefined behavior detected
+    - **Genchi Genbutsu**: Empirical UB detection via Miri runtime analysis
+    - **Kaizen**: Incremental improvement (+8 points to scoring system)
+  - **Files Added**: `server/src/services/rust_project_score/formal_verification_scorer.rs` (467 lines)
+  - **Files Modified**: 2 files (orchestrator.rs, mod.rs)
+  - **Tests**: 7 unit tests, 3 orchestrator tests (10 passing)
+  - **Commit**: f4880266
+  - **Documentation**: Sprint 5 & 6 spec in roadmap
+
 ## [2.196.0] - 2025-11-17
 
 ### Performance

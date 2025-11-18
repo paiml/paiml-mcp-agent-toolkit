@@ -542,7 +542,7 @@ mod tests {
 
         // CRITICAL: Complexity 9 with threshold 10 should NOT be a violation
         // (violation means strictly greater than threshold)
-        let has_violation = has_complexity_violations(&[file.clone()], Some(10), None);
+        let has_violation = has_complexity_violations(std::slice::from_ref(&file), Some(10), None);
 
         assert!(
             !has_violation,

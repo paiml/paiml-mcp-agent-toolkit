@@ -273,6 +273,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::assertions_on_constants)]
     fn test_org_handler_module_compiles() {
         // Smoke test to ensure module compiles with feature flag
         assert!(true);

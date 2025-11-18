@@ -119,6 +119,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::field_reassign_with_default)]
     fn test_validate_invalid_coverage_too_high() {
         let mut config = GateConfig::default();
         config.min_coverage = 150.0;
@@ -132,6 +133,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::field_reassign_with_default)]
     fn test_validate_invalid_coverage_negative() {
         let mut config = GateConfig::default();
         config.min_coverage = -10.0;

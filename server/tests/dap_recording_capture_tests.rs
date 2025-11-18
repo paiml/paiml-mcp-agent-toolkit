@@ -5,6 +5,9 @@
 //! Each debug session should create a unique .pmat file with snapshots captured
 //! on breakpoint hits and step commands.
 
+#![allow(clippy::assertions_on_constants)]
+#![allow(clippy::ptr_arg)]
+
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 

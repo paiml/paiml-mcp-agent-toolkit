@@ -157,7 +157,7 @@ fn test_function_count_in_summary() {
 fn create_rust_file_with_functions(count: usize) -> TempDir {
     use std::fs;
 
-    let temp = TempDir::new().unwrap();
+    let temp_dir = TempDir::new().unwrap();
     let mut code = String::from("// Test file\n\n");
 
     for i in 0..count {
@@ -167,20 +167,20 @@ fn create_rust_file_with_functions(count: usize) -> TempDir {
         ));
     }
 
-    fs::write(temp.path().join("main.rs"), code).unwrap();
+    fs::write(temp_dir.path().join("main.rs"), code).unwrap();
     fs::write(
-        temp.path().join("Cargo.toml"),
+        temp_dir.path().join("Cargo.toml"),
         "[package]\nname = \"test\"\n",
     )
     .unwrap();
 
-    temp
+    temp_dir
 }
 
 fn create_rust_file_no_functions() -> TempDir {
     use std::fs;
 
-    let temp = TempDir::new().unwrap();
+    let temp_dir = TempDir::new().unwrap();
     let code = r#"
         // File with no functions
         const VALUE: i32 = 42;
@@ -191,28 +191,28 @@ fn create_rust_file_no_functions() -> TempDir {
         }
     "#;
 
-    fs::write(temp.path().join("constants.rs"), code).unwrap();
+    fs::write(temp_dir.path().join("constants.rs"), code).unwrap();
     fs::write(
-        temp.path().join("Cargo.toml"),
+        temp_dir.path().join("Cargo.toml"),
         "[package]\nname = \"test\"\n",
     )
     .unwrap();
 
-    temp
+    temp_dir
 }
 
 fn create_multi_file_project() -> TempDir {
     use std::fs;
 
-    let temp = TempDir::new().unwrap();
-    fs::create_dir_all(temp.path().join("src")).unwrap();
+    let temp_dir = TempDir::new().unwrap();
+    fs::create_dir_all(temp_dir.path().join("src")).unwrap();
 
     // file1.rs: 2 functions
     let file1 = r#"
         pub fn func1() { }
         pub fn func2() { }
     "#;
-    fs::write(temp.path().join("src/file1.rs"), file1).unwrap();
+    fs::write(temp_dir.path().join("src/file1.rs"), file1).unwrap();
 
     // file2.rs: 5 functions
     let file2 = r#"
@@ -222,21 +222,21 @@ fn create_multi_file_project() -> TempDir {
         pub fn func4() { }
         pub fn func5() { }
     "#;
-    fs::write(temp.path().join("src/file2.rs"), file2).unwrap();
+    fs::write(temp_dir.path().join("src/file2.rs"), file2).unwrap();
 
     fs::write(
-        temp.path().join("Cargo.toml"),
+        temp_dir.path().join("Cargo.toml"),
         "[package]\nname = \"test\"\n",
     )
     .unwrap();
 
-    temp
+    temp_dir
 }
 
 fn create_rust_file_with_various_functions() -> TempDir {
     use std::fs;
 
-    let temp = TempDir::new().unwrap();
+    let temp_dir = TempDir::new().unwrap();
     let code = r#"
         // Standalone function
         pub fn standalone_fn() { }
@@ -259,14 +259,14 @@ fn create_rust_file_with_various_functions() -> TempDir {
         pub async fn async_fn() { }
     "#;
 
-    fs::write(temp.path().join("main.rs"), code).unwrap();
+    fs::write(temp_dir.path().join("main.rs"), code).unwrap();
     fs::write(
-        temp.path().join("Cargo.toml"),
+        temp_dir.path().join("Cargo.toml"),
         "[package]\nname = \"test\"\n",
     )
     .unwrap();
 
-    temp
+    temp_dir
 }
 
 fn generate_context_markdown(path: &std::path::Path) -> Result<String, String> {
