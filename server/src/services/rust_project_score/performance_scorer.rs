@@ -118,7 +118,8 @@ impl PerformanceScorer {
 
         // Helper to check profile content
         let check_profile_config = |content: &str| -> (bool, bool) {
-            let has_debug = content.contains("[profile.release]") && content.contains("debug = true");
+            let has_debug =
+                content.contains("[profile.release]") && content.contains("debug = true");
             let has_bench = content.contains("[profile.bench]");
             (has_debug, has_bench)
         };

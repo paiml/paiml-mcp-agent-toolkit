@@ -15,10 +15,7 @@ fn variance_scalar(values: &[u32]) -> f64 {
     }
     let sum: u32 = values.iter().sum();
     let mean = f64::from(sum) / values.len() as f64;
-    let squared_diff_sum: f64 = values
-        .iter()
-        .map(|&c| (f64::from(c) - mean).powi(2))
-        .sum();
+    let squared_diff_sum: f64 = values.iter().map(|&c| (f64::from(c) - mean).powi(2)).sum();
     squared_diff_sum / values.len() as f64
 }
 

@@ -1243,10 +1243,7 @@ mod simd_equivalence_tests {
         }
         let sum: u32 = values.iter().sum();
         let mean = f64::from(sum) / values.len() as f64;
-        let squared_diff_sum: f64 = values
-            .iter()
-            .map(|&c| (f64::from(c) - mean).powi(2))
-            .sum();
+        let squared_diff_sum: f64 = values.iter().map(|&c| (f64::from(c) - mean).powi(2)).sum();
         squared_diff_sum / values.len() as f64
     }
 
@@ -1358,7 +1355,7 @@ mod simd_equivalence_tests {
     #[test]
     #[cfg(feature = "simd")]
     fn simd_variance_matches_scalar() {
-        use proptest::test_runner::{TestRunner, Config};
+        use proptest::test_runner::{Config, TestRunner};
 
         let mut runner = TestRunner::new(Config::with_cases(1000));
 
@@ -1386,7 +1383,7 @@ mod simd_equivalence_tests {
     #[test]
     #[cfg(feature = "simd")]
     fn simd_gini_matches_scalar() {
-        use proptest::test_runner::{TestRunner, Config};
+        use proptest::test_runner::{Config, TestRunner};
 
         let mut runner = TestRunner::new(Config::with_cases(1000));
 
@@ -1456,7 +1453,11 @@ mod simd_equivalence_tests {
         let var = variance_scalar(&values);
         // Known variance for 1..=1000: sum = 500500, mean = 500.5
         // Var = sum((x - 500.5)^2) / 1000
-        assert!(var > 80000.0 && var < 84000.0, "Variance out of expected range: {}", var);
+        assert!(
+            var > 80000.0 && var < 84000.0,
+            "Variance out of expected range: {}",
+            var
+        );
     }
 
     #[test]
@@ -1464,6 +1465,10 @@ mod simd_equivalence_tests {
         let values: Vec<u32> = (1..=1000).collect();
         let gini = gini_scalar(&values);
         // Gini for uniform distribution should be moderate
-        assert!(gini > 0.0 && gini < 1.0, "Gini out of expected range: {}", gini);
+        assert!(
+            gini > 0.0 && gini < 1.0,
+            "Gini out of expected range: {}",
+            gini
+        );
     }
 }

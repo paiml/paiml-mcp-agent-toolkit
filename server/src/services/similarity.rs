@@ -920,10 +920,10 @@ mod property_tests {
 
         // Generate non-zero vectors for cosine similarity
         fn non_zero_vector(size: usize) -> impl Strategy<Value = Vec<f64>> {
-            prop::collection::vec(-100.0f64..100.0, size..=size).prop_filter(
-                "at least one non-zero element",
-                |v| v.iter().any(|&x| x.abs() > 1e-10),
-            )
+            prop::collection::vec(-100.0f64..100.0, size..=size)
+                .prop_filter("at least one non-zero element", |v| {
+                    v.iter().any(|&x| x.abs() > 1e-10)
+                })
         }
 
         proptest! {
@@ -982,23 +982,26 @@ mod property_tests {
         #[test]
         #[cfg(feature = "simd")]
         fn simd_cosine_similarity_matches_scalar() {
-            use proptest::test_runner::{TestRunner, Config};
+            use proptest::test_runner::{Config, TestRunner};
 
             let mut runner = TestRunner::new(Config::with_cases(1000));
 
-            runner.run(
-                &(non_zero_vector(256), non_zero_vector(256)),
-                |(v1, v2)| {
+            runner
+                .run(&(non_zero_vector(256), non_zero_vector(256)), |(v1, v2)| {
                     let scalar_result = cosine_similarity_scalar(&v1, &v2);
                     let simd_result = cosine_similarity_simd(&v1, &v2);
 
                     let diff = (scalar_result - simd_result).abs();
-                    prop_assert!(diff < EPSILON,
+                    prop_assert!(
+                        diff < EPSILON,
                         "SIMD/scalar mismatch: scalar={}, simd={}, diff={}",
-                        scalar_result, simd_result, diff);
+                        scalar_result,
+                        simd_result,
+                        diff
+                    );
                     Ok(())
-                },
-            ).expect("SIMD cosine similarity must match scalar within epsilon");
+                })
+                .expect("SIMD cosine similarity must match scalar within epsilon");
         }
 
         /// GREEN TEST: SIMD entropy must match scalar
@@ -1006,23 +1009,26 @@ mod property_tests {
         #[test]
         #[cfg(feature = "simd")]
         fn simd_entropy_matches_scalar() {
-            use proptest::test_runner::{TestRunner, Config};
+            use proptest::test_runner::{Config, TestRunner};
 
             let mut runner = TestRunner::new(Config::with_cases(1000));
 
-            runner.run(
-                &probability_distribution(256),
-                |probs| {
+            runner
+                .run(&probability_distribution(256), |probs| {
                     let scalar_result = entropy_scalar(&probs);
                     let simd_result = entropy_simd(&probs);
 
                     let diff = (scalar_result - simd_result).abs();
-                    prop_assert!(diff < EPSILON,
+                    prop_assert!(
+                        diff < EPSILON,
                         "SIMD/scalar mismatch: scalar={}, simd={}, diff={}",
-                        scalar_result, simd_result, diff);
+                        scalar_result,
+                        simd_result,
+                        diff
+                    );
                     Ok(())
-                },
-            ).expect("SIMD entropy must match scalar within epsilon");
+                })
+                .expect("SIMD entropy must match scalar within epsilon");
         }
 
         /// Test various vector sizes for SIMD alignment edge cases
@@ -1040,8 +1046,13 @@ mod property_tests {
                 let scalar = cosine_similarity_scalar(&v1, &v2);
                 let simd = cosine_similarity_simd(&v1, &v2);
 
-                assert!((scalar - simd).abs() < EPSILON,
-                    "Cosine size {} mismatch: scalar={}, simd={}", size, scalar, simd);
+                assert!(
+                    (scalar - simd).abs() < EPSILON,
+                    "Cosine size {} mismatch: scalar={}, simd={}",
+                    size,
+                    scalar,
+                    simd
+                );
 
                 // Test entropy with various sizes
                 let raw: Vec<f64> = (0..size).map(|i| (i as f64 + 1.0)).collect();
@@ -1051,8 +1062,13 @@ mod property_tests {
                 let scalar_entropy = entropy_scalar(&probs);
                 let simd_entropy = entropy_simd(&probs);
 
-                assert!((scalar_entropy - simd_entropy).abs() < EPSILON,
-                    "Entropy size {} mismatch: scalar={}, simd={}", size, scalar_entropy, simd_entropy);
+                assert!(
+                    (scalar_entropy - simd_entropy).abs() < EPSILON,
+                    "Entropy size {} mismatch: scalar={}, simd={}",
+                    size,
+                    scalar_entropy,
+                    simd_entropy
+                );
             }
         }
 
@@ -1070,11 +1086,17 @@ mod property_tests {
 
             // Orthogonal vectors
             let orth = cosine_similarity_scalar(&[1.0, 0.0], &[0.0, 1.0]);
-            assert!(orth.abs() < EPSILON, "Orthogonal vectors should have ~0 similarity");
+            assert!(
+                orth.abs() < EPSILON,
+                "Orthogonal vectors should have ~0 similarity"
+            );
 
             // Opposite vectors
             let opp = cosine_similarity_scalar(&[1.0, 1.0], &[-1.0, -1.0]);
-            assert!((opp + 1.0).abs() < EPSILON, "Opposite vectors should have -1 similarity");
+            assert!(
+                (opp + 1.0).abs() < EPSILON,
+                "Opposite vectors should have -1 similarity"
+            );
         }
 
         /// Benchmark-ready function that can be used to measure SIMD vs scalar performance
