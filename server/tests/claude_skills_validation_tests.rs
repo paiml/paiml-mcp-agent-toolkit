@@ -613,7 +613,7 @@ mod phase_2_all_skills_validation_tests {
         for skill_name in &skills {
             let skill_path = skills_dir.join(skill_name).join("skill.md");
             let skill = parse_skill_file(&skill_path)
-                .expect(&format!("Failed to parse {} skill", skill_name));
+                .unwrap_or_else(|_| panic!("Failed to parse {} skill", skill_name));
 
             let full_text =
                 format!("{} {}", skill.description, skill.prompt_content).to_lowercase();
@@ -642,7 +642,7 @@ mod phase_2_all_skills_validation_tests {
         for skill_name in &skills {
             let skill_path = skills_dir.join(skill_name).join("skill.md");
             let skill = parse_skill_file(&skill_path)
-                .expect(&format!("Failed to parse {} skill", skill_name));
+                .unwrap_or_else(|_| panic!("Failed to parse {} skill", skill_name));
 
             let content_lower = skill.prompt_content.to_lowercase();
             assert!(
@@ -670,7 +670,7 @@ mod phase_2_all_skills_validation_tests {
         for skill_name in &skills {
             let skill_path = skills_dir.join(skill_name).join("skill.md");
             let skill = parse_skill_file(&skill_path)
-                .expect(&format!("Failed to parse {} skill", skill_name));
+                .unwrap_or_else(|_| panic!("Failed to parse {} skill", skill_name));
 
             let full_text =
                 format!("{} {}", skill.description, skill.prompt_content).to_lowercase();
