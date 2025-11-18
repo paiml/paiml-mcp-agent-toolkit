@@ -217,7 +217,7 @@ fn bench_entropy(c: &mut Criterion) {
 
     for size in sizes {
         // Generate valid probability distribution
-        let raw: Vec<f64> = (0..size).map(|i| (i as f64 + 1.0)).collect();
+        let raw: Vec<f64> = (0..size).map(|i| i as f64 + 1.0).collect();
         let sum: f64 = raw.iter().sum();
         let probs: Vec<f64> = raw.iter().map(|&x| x / sum).collect();
 

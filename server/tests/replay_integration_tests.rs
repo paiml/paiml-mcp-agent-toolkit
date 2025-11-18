@@ -4,6 +4,9 @@
 //! Tests drive integration of .pmat deserialization with CLI replay handler.
 //! Ensures recording files can be loaded and replayed correctly.
 
+// RED phase tests use placeholder assertions - allow these intentionally
+#![allow(clippy::assertions_on_constants)]
+
 // RED Test 1: Load recording from file
 #[test]
 fn test_load_recording_from_file() {

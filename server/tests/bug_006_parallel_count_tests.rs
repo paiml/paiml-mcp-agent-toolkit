@@ -72,6 +72,7 @@ fn test_all_eight_analyses_run() {
 
 #[test]
 #[ignore = "BUG-006: RED test - will fail if count is hardcoded"]
+#[allow(clippy::assertions_on_constants)]
 fn test_progress_bar_count_matches_analyses() {
     // This test verifies the count is correct
     // Currently: hardcoded "8" in deep_context_concurrent.rs:84
@@ -94,6 +95,7 @@ fn test_progress_bar_count_matches_analyses() {
 
 #[test]
 #[ignore = "BUG-006: RED test - will fail because progress increments all at once"]
+#[allow(clippy::assertions_on_constants)]
 fn test_progress_updates_incrementally() {
     // Arrange: Create a simple project
     let _project = create_simple_rust_project();
@@ -128,6 +130,7 @@ fn test_progress_updates_incrementally() {
 
 #[test]
 #[ignore = "BUG-006: RED test - verifies count isn't magic number"]
+#[allow(clippy::assertions_on_constants)]
 fn test_count_is_not_hardcoded() {
     // This test verifies that if we add a 9th analysis in the future,
     // the count will automatically update

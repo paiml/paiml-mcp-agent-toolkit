@@ -954,7 +954,7 @@ mod property_tests {
                 v2 in non_zero_vector(100)
             ) {
                 let sim = cosine_similarity_scalar(&v1, &v2);
-                prop_assert!(sim >= -1.0 - EPSILON && sim <= 1.0 + EPSILON,
+                prop_assert!((-1.0 - EPSILON..=1.0 + EPSILON).contains(&sim),
                     "Similarity out of bounds: {}", sim);
             }
 

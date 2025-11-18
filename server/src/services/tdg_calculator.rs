@@ -1350,7 +1350,7 @@ mod simd_equivalence_tests {
         fn gini_bounded(values in complexity_vec(100)) {
             let gini = gini_scalar(&values);
             // Gini coefficient should be bounded
-            prop_assert!(gini >= -1.0 && gini <= 1.0, "Gini should be bounded: {}", gini);
+            prop_assert!((-1.0..=1.0).contains(&gini), "Gini should be bounded: {}", gini);
         }
     }
 
