@@ -417,6 +417,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "aprender"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "57b644b2f4083f3a8435308def0b240fa9175e477cc3fc96e7770f78e3f4398f"
+
+[[package]]
 name = "ar_archive_writer"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5761,6 +5767,7 @@ dependencies = [
  "actix-test",
  "ahash 0.8.12",
  "anyhow",
+ "aprender",
  "arc-swap",
  "assert_cmd",
  "async-raft",
@@ -9681,7 +9688,7 @@ dependencies = [
  "js-sys",
  "log",
  "naga",
- "parking_lot 0.11.2",
+ "parking_lot 0.12.5",
  "profiling",
  "raw-window-handle",
  "smallvec",
@@ -9709,7 +9716,7 @@ dependencies = [
  "log",
  "naga",
  "once_cell",
- "parking_lot 0.11.2",
+ "parking_lot 0.12.5",
  "profiling",
  "raw-window-handle",
  "rustc-hash 1.1.0",
@@ -9750,7 +9757,7 @@ dependencies = [
  "ndk-sys",
  "objc",
  "once_cell",
- "parking_lot 0.11.2",
+ "parking_lot 0.12.5",
  "profiling",
  "range-alloc",
  "raw-window-handle",
