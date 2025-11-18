@@ -4375,6 +4375,106 @@ pub enum PromptCommands {
         #[arg(short, long)]
         output: Option<PathBuf>,
     },
+
+    /// Fix all drift from PMAT's rigid quality processes and restore compliance
+    #[command(visible_aliases = &["compliance"])]
+    Comply {
+        /// Minimum acceptable quality grade (default: B+)
+        #[arg(long, default_value = "B+")]
+        min_grade: String,
+
+        /// Path to baseline quality metrics (default: .pmat/baseline.json)
+        #[arg(long)]
+        baseline: Option<PathBuf>,
+
+        /// Path to roadmap file (default: roadmap.yaml)
+        #[arg(long)]
+        roadmap: Option<PathBuf>,
+
+        /// Write output to file instead of stdout
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+    },
+
+    /// Create and maintain technical book documentation with EXTREME TDD validation
+    #[command(visible_aliases = &["docs", "mdbook"])]
+    Book {
+        /// Book title
+        #[arg(long)]
+        title: Option<String>,
+
+        /// Book type (tutorial, cookbook, reference)
+        #[arg(long, default_value = "tutorial")]
+        book_type: String,
+
+        /// Target page count
+        #[arg(long, default_value_t = 400)]
+        target_pages: u32,
+
+        /// Minimum test pass rate (0-100)
+        #[arg(long, default_value_t = 90)]
+        min_pass_rate: u8,
+
+        /// Write output to file instead of stdout
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+    },
+
+    /// Generate professional repository documentation with badges and polish
+    #[command(visible_aliases = &["readme", "image"])]
+    RepoImage {
+        /// Repository name
+        #[arg(long)]
+        repo_name: Option<String>,
+
+        /// Repository description
+        #[arg(long)]
+        description: Option<String>,
+
+        /// GitHub organization (default: paiml)
+        #[arg(long, default_value = "paiml")]
+        github_org: String,
+
+        /// Primary programming language
+        #[arg(long)]
+        language: Option<String>,
+
+        /// Is this a course series repository?
+        #[arg(long)]
+        course_series: bool,
+
+        /// Write output to file instead of stdout
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+    },
+
+    /// Implement GitHub issue/ticket with full EXTREME TDD workflow
+    #[command(visible_aliases = &["issue", "gh"])]
+    GithubIssue {
+        /// GitHub issue URL or issue number
+        #[arg(short, long)]
+        issue: String,
+
+        /// GitHub organization (required if using issue number)
+        #[arg(long)]
+        org: Option<String>,
+
+        /// GitHub repository (required if using issue number)
+        #[arg(long)]
+        repo: Option<String>,
+
+        /// Test command (default: cargo test)
+        #[arg(long, default_value = "cargo test")]
+        test_cmd: String,
+
+        /// Build command (default: cargo build)
+        #[arg(long, default_value = "cargo build")]
+        build_cmd: String,
+
+        /// Write output to file instead of stdout
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+    },
 }
 
 #[cfg(test)]
