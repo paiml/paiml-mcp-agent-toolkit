@@ -875,16 +875,41 @@ mod property_tests {
         }
 
         /// SIMD implementation of entropy using Trueno
-        /// Note: Entropy calculation requires element-wise log2, which Trueno doesn't directly
-        /// support. We use scalar entropy but with SIMD-accelerated sum validation.
-        /// Future: Add element-wise operations to Trueno for full SIMD entropy.
+        /// Uses Trueno's Vector::log2() for vectorized Shannon entropy calculation.
+        /// H = -Σ p * log2(p)
         #[cfg(feature = "simd")]
         fn entropy_simd(probabilities: &[f64]) -> f64 {
-            // For now, use scalar implementation as entropy requires log2
-            // which isn't directly supported by Trueno's Vector operations.
-            // The main SIMD benefit would come from vectorized -p*log2(p),
-            // but Trueno focuses on linear algebra ops (dot, norm).
-            entropy_scalar(probabilities)
+            use trueno::Vector;
+
+            if probabilities.is_empty() {
+                return 0.0;
+            }
+
+            // Convert to f32, replacing zeros with 1.0 (so log2(1) = 0, contributing nothing)
+            let probs_f32: Vec<f32> = probabilities
+                .iter()
+                .map(|&p| if p > 0.0 { p as f32 } else { 1.0 })
+                .collect();
+
+            let probs_vec = Vector::from_slice(&probs_f32);
+
+            // Compute log2(p) for all elements
+            let log2_vec = match probs_vec.log2() {
+                Ok(v) => v,
+                Err(_) => return entropy_scalar(probabilities),
+            };
+
+            // Compute p * log2(p)
+            let p_log_p = match probs_vec.mul(&log2_vec) {
+                Ok(v) => v,
+                Err(_) => return entropy_scalar(probabilities),
+            };
+
+            // Sum and negate: H = -Σ p * log2(p)
+            match p_log_p.sum() {
+                Ok(sum) => -(sum as f64),
+                Err(_) => entropy_scalar(probabilities),
+            }
         }
 
         // Generate valid probability distributions
@@ -978,8 +1003,8 @@ mod property_tests {
             ).expect("SIMD cosine similarity must match scalar within epsilon");
         }
 
-        /// RED TEST: SIMD entropy must match scalar
-        /// This test will FAIL until Trueno SIMD is implemented
+        /// GREEN TEST: SIMD entropy must match scalar
+        /// Now passes with Trueno v0.2.1's log2() support
         #[test]
         #[cfg(feature = "simd")]
         fn simd_entropy_matches_scalar() {
@@ -1010,6 +1035,7 @@ mod property_tests {
             let sizes = [1, 3, 5, 7, 15, 17, 31, 33, 63, 65, 127, 129, 255, 257];
 
             for &size in &sizes {
+                // Test cosine similarity
                 let v1: Vec<f64> = (0..size).map(|i| (i as f64).sin()).collect();
                 let v2: Vec<f64> = (0..size).map(|i| (i as f64).cos()).collect();
 
@@ -1017,7 +1043,18 @@ mod property_tests {
                 let simd = cosine_similarity_simd(&v1, &v2);
 
                 assert!((scalar - simd).abs() < EPSILON,
-                    "Size {} mismatch: scalar={}, simd={}", size, scalar, simd);
+                    "Cosine size {} mismatch: scalar={}, simd={}", size, scalar, simd);
+
+                // Test entropy with various sizes
+                let raw: Vec<f64> = (0..size).map(|i| (i as f64 + 1.0)).collect();
+                let sum: f64 = raw.iter().sum();
+                let probs: Vec<f64> = raw.iter().map(|&x| x / sum).collect();
+
+                let scalar_entropy = entropy_scalar(&probs);
+                let simd_entropy = entropy_simd(&probs);
+
+                assert!((scalar_entropy - simd_entropy).abs() < EPSILON,
+                    "Entropy size {} mismatch: scalar={}, simd={}", size, scalar_entropy, simd_entropy);
             }
         }
 

@@ -69,6 +69,53 @@ fn cosine_similarity_simd(v1: &[f64], v2: &[f64]) -> f64 {
     }
 }
 
+/// Scalar implementation of entropy
+fn entropy_scalar(probabilities: &[f64]) -> f64 {
+    let mut entropy = 0.0;
+    for &p in probabilities {
+        if p > 0.0 {
+            entropy -= p * p.log2();
+        }
+    }
+    entropy
+}
+
+/// SIMD implementation of entropy using Trueno's log2()
+#[cfg(feature = "simd")]
+fn entropy_simd(probabilities: &[f64]) -> f64 {
+    use trueno::Vector;
+
+    if probabilities.is_empty() {
+        return 0.0;
+    }
+
+    // Convert to f32, replacing zeros with 1.0 (so log2(1) = 0)
+    let probs_f32: Vec<f32> = probabilities
+        .iter()
+        .map(|&p| if p > 0.0 { p as f32 } else { 1.0 })
+        .collect();
+
+    let probs_vec = Vector::from_slice(&probs_f32);
+
+    // Compute log2(p) for all elements
+    let log2_vec = match probs_vec.log2() {
+        Ok(v) => v,
+        Err(_) => return entropy_scalar(probabilities),
+    };
+
+    // Compute p * log2(p)
+    let p_log_p = match probs_vec.mul(&log2_vec) {
+        Ok(v) => v,
+        Err(_) => return entropy_scalar(probabilities),
+    };
+
+    // Sum and negate: H = -Σ p * log2(p)
+    match p_log_p.sum() {
+        Ok(sum) => -(sum as f64),
+        Err(_) => entropy_scalar(probabilities),
+    }
+}
+
 /// Benchmark cosine similarity at different vector sizes
 fn bench_cosine_similarity(c: &mut Criterion) {
     let sizes = [100, 500, 1000, 5000, 10000];
@@ -166,7 +213,7 @@ fn bench_batch_cosine_similarity(c: &mut Criterion) {
 fn bench_entropy(c: &mut Criterion) {
     let mut group = c.benchmark_group("entropy");
 
-    let sizes = [100, 500, 1000];
+    let sizes = [100, 500, 1000, 5000, 10000];
 
     for size in sizes {
         // Generate valid probability distribution
@@ -174,18 +221,61 @@ fn bench_entropy(c: &mut Criterion) {
         let sum: f64 = raw.iter().sum();
         let probs: Vec<f64> = raw.iter().map(|&x| x / sum).collect();
 
+        // Benchmark scalar
         group.bench_with_input(BenchmarkId::new("scalar", size), &size, |b, _| {
-            b.iter(|| {
-                let mut entropy = 0.0;
-                for &p in black_box(&probs) {
-                    if p > 0.0 {
-                        entropy -= p * p.log2();
-                    }
-                }
-                entropy
-            })
+            b.iter(|| entropy_scalar(black_box(&probs)))
+        });
+
+        // Benchmark SIMD (only when feature is enabled)
+        #[cfg(feature = "simd")]
+        group.bench_with_input(BenchmarkId::new("simd", size), &size, |b, _| {
+            b.iter(|| entropy_simd(black_box(&probs)))
         });
     }
+
+    group.finish();
+}
+
+/// Benchmark for batch entropy calculations
+fn bench_batch_entropy(c: &mut Criterion) {
+    let mut group = c.benchmark_group("batch_entropy");
+
+    let num_batches = 100;
+    let vector_size = 1000;
+
+    // Generate test probability distributions
+    let batches: Vec<Vec<f64>> = (0..num_batches)
+        .map(|i| {
+            let raw: Vec<f64> = (0..vector_size)
+                .map(|j| ((i * vector_size + j) % 100 + 1) as f64)
+                .collect();
+            let sum: f64 = raw.iter().sum();
+            raw.iter().map(|&x| x / sum).collect()
+        })
+        .collect();
+
+    // Benchmark scalar batch
+    group.bench_function("scalar_batch_100x1000", |b| {
+        b.iter(|| {
+            let mut results = Vec::with_capacity(num_batches);
+            for probs in &batches {
+                results.push(entropy_scalar(black_box(probs)));
+            }
+            results
+        })
+    });
+
+    // Benchmark SIMD batch
+    #[cfg(feature = "simd")]
+    group.bench_function("simd_batch_100x1000", |b| {
+        b.iter(|| {
+            let mut results = Vec::with_capacity(num_batches);
+            for probs in &batches {
+                results.push(entropy_simd(black_box(probs)));
+            }
+            results
+        })
+    });
 
     group.finish();
 }
@@ -196,7 +286,8 @@ criterion_group!(
     bench_cosine_similarity,
     bench_conversion_overhead,
     bench_batch_cosine_similarity,
-    bench_entropy
+    bench_entropy,
+    bench_batch_entropy
 );
 
 #[cfg(not(feature = "simd"))]
@@ -204,7 +295,8 @@ criterion_group!(
     benches,
     bench_cosine_similarity,
     bench_batch_cosine_similarity,
-    bench_entropy
+    bench_entropy,
+    bench_batch_entropy
 );
 
 criterion_main!(benches);
