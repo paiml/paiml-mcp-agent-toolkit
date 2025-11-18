@@ -51,7 +51,7 @@ mod ml_predictor_red_tests {
         let _ = features.control_flow_count;
 
         // Must identify code patterns
-        assert!(features.has_loops || !features.has_loops); // Boolean exists
+        let _ = features.has_loops; // Boolean field exists
     }
 
     #[test]

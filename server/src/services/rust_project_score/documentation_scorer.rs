@@ -12,6 +12,21 @@ use super::models::{CategoryScore, FileCache, ScoringMode};
 use super::scorer::{Scorer, ScorerError, ScorerResult};
 use std::path::Path;
 
+/// Count version entries in changelog content (e.g., [0.1.0], ## 0.1.0)
+fn count_version_entries(content: &str) -> usize {
+    content
+        .lines()
+        .filter(|line| {
+            line.contains("[0.")
+                || line.contains("[1.")
+                || line.contains("[2.")
+                || line.contains("## 0.")
+                || line.contains("## 1.")
+                || line.contains("## 2.")
+        })
+        .count()
+}
+
 /// Documentation scorer
 #[derive(Debug, Clone)]
 pub struct DocumentationScorer {
@@ -218,34 +233,58 @@ impl DocumentationScorer {
     /// Checks for CHANGELOG.md with version history
     ///
     /// **Kaizen Round 4**: Cache-aware - uses FileCache if available for CHANGELOG.md
+    /// **Kaizen Round 5**: Also checks workspace root for monorepo structures
     fn score_changelog(&self, project_path: &Path, cache: Option<&FileCache>) -> ScorerResult<f64> {
         let changelog_path = project_path.join("CHANGELOG.md");
 
-        if !changelog_path.exists() {
-            return Ok(0.0);
-        }
+        // Also check workspace root (parent directory) for monorepo structures
+        let workspace_changelog = project_path.parent().map(|p| p.join("CHANGELOG.md"));
 
-        // Try cache first, fall back to filesystem
-        let content = if let Some(cache) = cache {
-            cache
-                .get(&changelog_path)
-                .cloned()
-                .ok_or_else(|| ScorerError::IoError("CHANGELOG.md not in cache".to_string()))?
+        // Find the best CHANGELOG.md to use
+        let (actual_path, content) = if changelog_path.exists() {
+            // Project CHANGELOG exists - use it
+            let content = if let Some(cache) = cache {
+                cache
+                    .get(&changelog_path)
+                    .cloned()
+                    .ok_or_else(|| ScorerError::IoError("CHANGELOG.md not in cache".to_string()))?
+            } else {
+                std::fs::read_to_string(&changelog_path)
+                    .map_err(|e| ScorerError::IoError(e.to_string()))?
+            };
+            (changelog_path.clone(), content)
+        } else if let Some(ws_path) = workspace_changelog.as_ref() {
+            if ws_path.exists() {
+                // Workspace CHANGELOG exists - use it
+                let content = std::fs::read_to_string(ws_path)
+                    .map_err(|e| ScorerError::IoError(e.to_string()))?;
+                (ws_path.clone(), content)
+            } else {
+                return Ok(0.0);
+            }
         } else {
-            std::fs::read_to_string(&changelog_path)
-                .map_err(|e| ScorerError::IoError(e.to_string()))?
+            return Ok(0.0);
         };
 
+        // If project CHANGELOG exists but is minimal, also check workspace root
+        let mut best_content = content;
+        if let Some(ws_path) = workspace_changelog {
+            if ws_path.exists() && actual_path != ws_path {
+                if let Ok(ws_content) = std::fs::read_to_string(&ws_path) {
+                    // Use workspace content if it has more version entries
+                    let proj_versions = count_version_entries(&best_content);
+                    let ws_versions = count_version_entries(&ws_content);
+                    if ws_versions > proj_versions {
+                        best_content = ws_content;
+                    }
+                }
+            }
+        }
+
+        let content = best_content;
+
         // Check for version entries (e.g., [0.1.0], ## 0.1.0)
-        let version_count = content
-            .lines()
-            .filter(|line| {
-                line.contains("[0.")
-                    || line.contains("[1.")
-                    || line.contains("## 0.")
-                    || line.contains("## 1.")
-            })
-            .count();
+        let version_count = count_version_entries(&content);
 
         // Tiered scoring based on changelog quality
         if version_count >= 2 {

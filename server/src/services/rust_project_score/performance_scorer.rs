@@ -116,25 +116,53 @@ impl PerformanceScorer {
         }
 
         // Check Cargo.toml for flamegraph profile configuration
+        // Also check workspace root Cargo.toml for monorepo structures
         let cargo_toml_path = project_path.join("Cargo.toml");
+        let workspace_cargo_toml = project_path.parent().map(|p| p.join("Cargo.toml"));
 
-        // Try cache first, fall back to filesystem
+        // Helper to check profile content
+        let check_profile_config = |content: &str| -> (bool, bool) {
+            let has_debug = content.contains("[profile.release]") && content.contains("debug = true");
+            let has_bench = content.contains("[profile.bench]");
+            (has_debug, has_bench)
+        };
+
+        // Try project Cargo.toml first
         let content_result = if let Some(cache) = cache {
             cache.get(&cargo_toml_path).map(|s| s.to_string()).ok_or(())
         } else {
             std::fs::read_to_string(&cargo_toml_path).map_err(|_| ())
         };
 
-        if let Ok(content) = content_result {
-            // Check for [profile.release] with debug = true (flamegraph-friendly)
-            if content.contains("[profile.release]") && content.contains("debug = true") {
-                profiling_indicators += 1;
-            }
+        let mut found_debug = false;
+        let mut found_bench = false;
 
-            // Check for [profile.bench] configuration
-            if content.contains("[profile.bench]") {
-                profiling_indicators += 1;
+        if let Ok(content) = content_result {
+            let (has_debug, has_bench) = check_profile_config(&content);
+            found_debug = has_debug;
+            found_bench = has_bench;
+        }
+
+        // Also check workspace root Cargo.toml for profile configuration
+        if let Some(ws_path) = workspace_cargo_toml {
+            if ws_path.exists() && !found_debug {
+                if let Ok(ws_content) = std::fs::read_to_string(&ws_path) {
+                    let (has_debug, has_bench) = check_profile_config(&ws_content);
+                    if has_debug {
+                        found_debug = true;
+                    }
+                    if has_bench && !found_bench {
+                        found_bench = true;
+                    }
+                }
             }
+        }
+
+        if found_debug {
+            profiling_indicators += 1;
+        }
+        if found_bench {
+            profiling_indicators += 1;
         }
 
         // Tiered scoring based on profiling indicators
