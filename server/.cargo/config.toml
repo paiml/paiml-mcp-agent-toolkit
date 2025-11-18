@@ -1,14 +1,17 @@
-# Performance Optimization: Reduce Parallel Build Jobs
-# 
-# Renacer Analysis (2025-11-18): 99.67% of compile time spent in futex (thread synchronization)
-# Evidence: 164.7s out of 165.3s total (2m 45s) spent waiting on locks
-# 
-# Fix: Limit parallel build jobs to reduce lock contention
-# Expected Impact: 30-50% reduction in build time
+# Performance Optimization: Parallel Build Jobs
+#
+# Renacer Analysis (2025-11-18): Empirical testing revealed optimization paradox
+# Evidence:
+#   - Baseline (default parallelism): 2m 45s (165s)
+#   - jobs=4: 4m 58s (298s) - 81% SLOWER
+#   - Conclusion: Futex time was productive parallel compilation, not contention
+#
+# Fix: Remove parallelism limit to restore baseline performance
+# Expected Impact: Restore 2m 45s build time
 #
 # References:
-# - /tmp/pmat-performance-analysis.md
+# - docs/performance-analysis-2025-11-18.md
 # - /tmp/renacer-compile-analysis.txt
 
 [build]
-jobs = 4  # Reduce from default (likely 16+) to minimize futex contention
+# Removed jobs limit - default parallelism is optimal
