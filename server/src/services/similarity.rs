@@ -10,8 +10,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
-// Test module removed - tests were broken TDD stubs
-
 /// Configuration for similarity detection
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SimilarityConfig {
