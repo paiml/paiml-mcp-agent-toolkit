@@ -1219,3 +1219,248 @@ mod property_tests {
         }
     }
 }
+
+/// SIMD/Scalar equivalence property tests for Trueno integration
+/// RED phase tests - verify SIMD implementations match scalar
+#[cfg(test)]
+mod simd_equivalence_tests {
+    use proptest::prelude::*;
+
+    const EPSILON: f64 = 1e-5;
+
+    /// Generate non-empty vector of complexities (u32)
+    fn complexity_vec(max_len: usize) -> impl Strategy<Value = Vec<u32>> {
+        prop::collection::vec(1u32..1000, 1..=max_len)
+    }
+
+    /// Scalar implementation of variance for complexity values
+    fn variance_scalar(values: &[u32]) -> f64 {
+        if values.is_empty() {
+            return 0.0;
+        }
+        let sum: u32 = values.iter().sum();
+        let mean = f64::from(sum) / values.len() as f64;
+        let squared_diff_sum: f64 = values
+            .iter()
+            .map(|&c| (f64::from(c) - mean).powi(2))
+            .sum();
+        squared_diff_sum / values.len() as f64
+    }
+
+    /// SIMD implementation of variance using Trueno
+    #[cfg(feature = "simd")]
+    fn variance_simd(values: &[u32]) -> f64 {
+        use trueno::Vector;
+
+        if values.is_empty() {
+            return 0.0;
+        }
+
+        // Convert u32 to f32 for Trueno
+        let values_f32: Vec<f32> = values.iter().map(|&x| x as f32).collect();
+        let vec = Vector::from_slice(&values_f32);
+
+        match vec.variance() {
+            Ok(var) => var as f64,
+            Err(_) => 0.0,
+        }
+    }
+
+    /// Scalar implementation of Gini coefficient
+    fn gini_scalar(values: &[u32]) -> f64 {
+        if values.is_empty() {
+            return 0.0;
+        }
+
+        let sum: u32 = values.iter().sum();
+        if sum == 0 {
+            return 0.0;
+        }
+
+        let mut sorted = values.to_vec();
+        sorted.sort_unstable();
+
+        let n = sorted.len() as f64;
+        let mut gini_sum = 0.0;
+        for (i, &value) in sorted.iter().enumerate() {
+            gini_sum += (2.0 * (i + 1) as f64 - n - 1.0) * f64::from(value);
+        }
+
+        gini_sum / (n * f64::from(sum))
+    }
+
+    /// SIMD implementation of Gini coefficient using Trueno
+    #[cfg(feature = "simd")]
+    fn gini_simd(values: &[u32]) -> f64 {
+        use trueno::Vector;
+
+        if values.is_empty() {
+            return 0.0;
+        }
+
+        let sum: u32 = values.iter().sum();
+        if sum == 0 {
+            return 0.0;
+        }
+
+        let mut sorted = values.to_vec();
+        sorted.sort_unstable();
+
+        let n = sorted.len();
+
+        // Create weights vector: (2*(i+1) - n - 1) for i in 0..n
+        let weights: Vec<f32> = (0..n)
+            .map(|i| 2.0 * (i + 1) as f32 - n as f32 - 1.0)
+            .collect();
+        let values_f32: Vec<f32> = sorted.iter().map(|&x| x as f32).collect();
+
+        let weights_vec = Vector::from_slice(&weights);
+        let values_vec = Vector::from_slice(&values_f32);
+
+        // Element-wise multiply and sum
+        match weights_vec.mul(&values_vec) {
+            Ok(product) => match product.sum() {
+                Ok(gini_sum) => (gini_sum as f64) / (n as f64 * f64::from(sum)),
+                Err(_) => gini_scalar(values),
+            },
+            Err(_) => gini_scalar(values),
+        }
+    }
+
+    // Property tests for scalar implementations
+    proptest! {
+        #[test]
+        fn variance_non_negative(values in complexity_vec(100)) {
+            let var = variance_scalar(&values);
+            prop_assert!(var >= 0.0, "Variance must be non-negative: {}", var);
+        }
+
+        #[test]
+        fn variance_zero_for_uniform(value in 1u32..1000) {
+            // All same values should have zero variance
+            let values = vec![value; 10];
+            let var = variance_scalar(&values);
+            prop_assert!(var.abs() < EPSILON, "Uniform values should have zero variance: {}", var);
+        }
+
+        #[test]
+        fn gini_bounded(values in complexity_vec(100)) {
+            let gini = gini_scalar(&values);
+            // Gini coefficient should be bounded
+            prop_assert!(gini >= -1.0 && gini <= 1.0, "Gini should be bounded: {}", gini);
+        }
+    }
+
+    // SIMD equivalence tests
+    #[test]
+    #[cfg(feature = "simd")]
+    fn simd_variance_matches_scalar() {
+        use proptest::test_runner::{TestRunner, Config};
+
+        let mut runner = TestRunner::new(Config::with_cases(1000));
+
+        runner
+            .run(&complexity_vec(256), |values| {
+                let scalar_result = variance_scalar(&values);
+                let simd_result = variance_simd(&values);
+
+                let diff = (scalar_result - simd_result).abs();
+                // Allow larger epsilon due to f32 precision in Trueno
+                let tolerance = scalar_result.abs() * 0.01 + 1e-3;
+
+                prop_assert!(
+                    diff < tolerance,
+                    "Variance mismatch: scalar={}, simd={}, diff={}",
+                    scalar_result,
+                    simd_result,
+                    diff
+                );
+                Ok(())
+            })
+            .expect("SIMD variance must match scalar within tolerance");
+    }
+
+    #[test]
+    #[cfg(feature = "simd")]
+    fn simd_gini_matches_scalar() {
+        use proptest::test_runner::{TestRunner, Config};
+
+        let mut runner = TestRunner::new(Config::with_cases(1000));
+
+        runner
+            .run(&complexity_vec(256), |values| {
+                let scalar_result = gini_scalar(&values);
+                let simd_result = gini_simd(&values);
+
+                let diff = (scalar_result - simd_result).abs();
+                // Allow larger epsilon due to f32 precision
+                let tolerance = 0.01;
+
+                prop_assert!(
+                    diff < tolerance,
+                    "Gini mismatch: scalar={}, simd={}, diff={}",
+                    scalar_result,
+                    simd_result,
+                    diff
+                );
+                Ok(())
+            })
+            .expect("SIMD Gini must match scalar within tolerance");
+    }
+
+    #[test]
+    #[cfg(feature = "simd")]
+    fn simd_handles_various_sizes() {
+        let test_cases = vec![
+            vec![1, 2, 3],
+            vec![10, 20, 30, 40, 50],
+            vec![1; 100],
+            vec![1, 100, 1, 100, 1, 100],
+            (1..=256).collect::<Vec<u32>>(),
+        ];
+
+        for values in test_cases {
+            let scalar_var = variance_scalar(&values);
+            let simd_var = variance_simd(&values);
+            let var_diff = (scalar_var - simd_var).abs();
+
+            let scalar_gini = gini_scalar(&values);
+            let simd_gini = gini_simd(&values);
+            let gini_diff = (scalar_gini - simd_gini).abs();
+
+            assert!(
+                var_diff < scalar_var.abs() * 0.01 + 1e-3,
+                "Variance mismatch for size {}: scalar={}, simd={}",
+                values.len(),
+                scalar_var,
+                simd_var
+            );
+
+            assert!(
+                gini_diff < 0.01,
+                "Gini mismatch for size {}: scalar={}, simd={}",
+                values.len(),
+                scalar_gini,
+                simd_gini
+            );
+        }
+    }
+
+    // Baseline performance tests (scalar)
+    #[test]
+    fn baseline_variance_performance() {
+        let values: Vec<u32> = (1..=1000).collect();
+        let var = variance_scalar(&values);
+        // Known variance for 1..=1000: sum = 500500, mean = 500.5
+        // Var = sum((x - 500.5)^2) / 1000
+        assert!(var > 80000.0 && var < 84000.0, "Variance out of expected range: {}", var);
+    }
+
+    #[test]
+    fn baseline_gini_performance() {
+        let values: Vec<u32> = (1..=1000).collect();
+        let gini = gini_scalar(&values);
+        // Gini for uniform distribution should be moderate
+        assert!(gini > 0.0 && gini < 1.0, "Gini out of expected range: {}", gini);
+    }
+}
