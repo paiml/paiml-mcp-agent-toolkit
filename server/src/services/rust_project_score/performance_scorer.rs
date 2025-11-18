@@ -263,8 +263,10 @@ impl Scorer for PerformanceScorer {
         }
 
         // Check profiling (no cache - backward compatibility)
+        // Only recommend if no profiling setup at all (0.0) or minimal (< 3.0)
+        // Projects with debug=true already have partial profiling (3.0+ points)
         if let Ok(score) = self.score_profiling(project_path, None) {
-            if score < 5.0 {
+            if score < 3.0 {
                 recommendations.push(
                     "Enable profiling: Add [profile.release] debug = true to Cargo.toml for flamegraph support".to_string(),
                 );
