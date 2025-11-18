@@ -45,6 +45,9 @@ mod tests {
             hotspot_files: vec![files[0].path.clone()],
             stable_files: vec![files[1].path.clone()],
             author_contributions,
+            mean_churn_score: 0.0,
+            variance_churn_score: 0.0,
+            stddev_churn_score: 0.0,
         };
 
         CodeChurnAnalysis {

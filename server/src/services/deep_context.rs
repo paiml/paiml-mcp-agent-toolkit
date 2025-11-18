@@ -4712,6 +4712,9 @@ pub async fn analyze_churn(path: &std::path::Path, days: u32) -> anyhow::Result<
                     hotspot_files: Vec::new(),
                     stable_files: Vec::new(),
                     author_contributions: std::collections::HashMap::new(),
+                    mean_churn_score: 0.0,
+                    variance_churn_score: 0.0,
+                    stddev_churn_score: 0.0,
                 },
             })
         }

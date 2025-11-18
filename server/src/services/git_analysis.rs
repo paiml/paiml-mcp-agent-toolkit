@@ -228,12 +228,28 @@ impl GitAnalysisService {
             .map(|f| f.path.clone())
             .collect();
 
+        // Calculate churn score statistics
+        let (mean_churn_score, variance_churn_score, stddev_churn_score) = if files.is_empty() {
+            (0.0, 0.0, 0.0)
+        } else {
+            let scores: Vec<f64> = files.iter().map(|f| f64::from(f.churn_score)).collect();
+            let n = scores.len() as f64;
+            let sum: f64 = scores.iter().sum();
+            let mean = sum / n;
+            let variance = scores.iter().map(|&s| (s - mean).powi(2)).sum::<f64>() / n;
+            let stddev = variance.sqrt();
+            (mean, variance, stddev)
+        };
+
         ChurnSummary {
             total_commits,
             total_files_changed: files.len(),
             hotspot_files,
             stable_files,
             author_contributions,
+            mean_churn_score,
+            variance_churn_score,
+            stddev_churn_score,
         }
     }
 }

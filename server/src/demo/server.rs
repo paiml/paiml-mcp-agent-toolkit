@@ -1167,6 +1167,9 @@ impl Default for crate::models::churn::CodeChurnAnalysis {
                 hotspot_files: vec![],
                 stable_files: vec![],
                 author_contributions: std::collections::HashMap::new(),
+                mean_churn_score: 0.0,
+                variance_churn_score: 0.0,
+                stddev_churn_score: 0.0,
             },
         }
     }

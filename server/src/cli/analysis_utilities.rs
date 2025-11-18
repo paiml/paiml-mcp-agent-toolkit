@@ -8171,6 +8171,9 @@ fn another_simple(y: i32) -> i32 {
                 map.insert("bob".to_string(), 3);
                 map
             },
+            mean_churn_score: 0.0,
+            variance_churn_score: 0.0,
+            stddev_churn_score: 0.0,
         };
 
         write_markdown_summary_table(&mut output, &summary)?;
@@ -8201,6 +8204,9 @@ fn another_simple(y: i32) -> i32 {
             hotspot_files: vec![],
             stable_files: vec![],
             author_contributions: HashMap::new(),
+            mean_churn_score: 0.0,
+            variance_churn_score: 0.0,
+            stddev_churn_score: 0.0,
         };
 
         write_markdown_summary_table(&mut output, &empty_summary)?;
@@ -8230,6 +8236,9 @@ fn another_simple(y: i32) -> i32 {
                 map.insert("dev".to_string(), 1);
                 map
             },
+            mean_churn_score: 0.0,
+            variance_churn_score: 0.0,
+            stddev_churn_score: 0.0,
         };
 
         write_markdown_summary_table(&mut output, &summary)?;
@@ -9267,6 +9276,9 @@ fn another_simple(y: i32) -> i32 {
                 author_contributions: HashMap::new(),
                 hotspot_files: vec![],
                 stable_files: vec![],
+                mean_churn_score: 0.0,
+                variance_churn_score: 0.0,
+                stddev_churn_score: 0.0,
             },
         };
 
@@ -9300,6 +9312,9 @@ fn another_simple(y: i32) -> i32 {
                 author_contributions: HashMap::new(),
                 hotspot_files: vec![],
                 stable_files: vec![],
+                mean_churn_score: 0.0,
+                variance_churn_score: 0.0,
+                stddev_churn_score: 0.0,
             },
         };
 

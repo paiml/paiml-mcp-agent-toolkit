@@ -110,6 +110,9 @@ mod export_integration_tests {
                 hotspot_files: vec![],
                 stable_files: vec![],
                 author_contributions: HashMap::new(),
+                mean_churn_score: 0.0,
+                variance_churn_score: 0.0,
+                stddev_churn_score: 0.0,
             },
         }
     }
@@ -381,6 +384,9 @@ mod export_integration_tests {
                 hotspot_files: vec![std::path::PathBuf::from("src/main.rs")],
                 stable_files: vec![std::path::PathBuf::from("src/config.rs")],
                 author_contributions: HashMap::new(),
+                mean_churn_score: 0.0,
+                variance_churn_score: 0.0,
+                stddev_churn_score: 0.0,
             },
         };
 

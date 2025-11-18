@@ -305,6 +305,9 @@ enum TestEnum {
                 hotspot_files: vec![PathBuf::from("test.rs")],
                 stable_files: vec![PathBuf::from("README.md")],
                 author_contributions: std::collections::HashMap::new(),
+                mean_churn_score: 0.0,
+                variance_churn_score: 0.0,
+                stddev_churn_score: 0.0,
             },
             files: vec![],
         };

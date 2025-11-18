@@ -32,6 +32,12 @@ pub struct ChurnSummary {
     pub hotspot_files: Vec<PathBuf>,
     pub stable_files: Vec<PathBuf>,
     pub author_contributions: HashMap<String, usize>,
+    /// Mean of churn scores across all files
+    pub mean_churn_score: f64,
+    /// Variance of churn scores (population variance)
+    pub variance_churn_score: f64,
+    /// Standard deviation of churn scores
+    pub stddev_churn_score: f64,
 }
 
 impl FileChurnMetrics {
@@ -186,6 +192,9 @@ mod tests {
                 hotspot_files: vec![],
                 stable_files: vec![],
                 author_contributions: HashMap::new(),
+                mean_churn_score: 0.0,
+                variance_churn_score: 0.0,
+                stddev_churn_score: 0.0,
             },
         };
 
@@ -206,6 +215,9 @@ mod tests {
             hotspot_files: vec![PathBuf::from("hot1.rs"), PathBuf::from("hot2.rs")],
             stable_files: vec![PathBuf::from("stable1.rs")],
             author_contributions,
+            mean_churn_score: 0.0,
+            variance_churn_score: 0.0,
+            stddev_churn_score: 0.0,
         };
 
         assert_eq!(summary.total_commits, 80);

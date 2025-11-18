@@ -436,6 +436,9 @@ mod churn_formatter_comprehensive {
                 hotspot_files: vec![PathBuf::from("src/hotspot.rs")],
                 stable_files: vec![PathBuf::from("src/stable.rs")],
                 author_contributions,
+                mean_churn_score: 0.0,
+                variance_churn_score: 0.0,
+                stddev_churn_score: 0.0,
             },
         }
     }
