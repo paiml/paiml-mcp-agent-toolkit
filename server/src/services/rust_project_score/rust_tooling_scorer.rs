@@ -14,6 +14,15 @@ use super::scorer::{Scorer, ScorerError, ScorerResult};
 use std::path::Path;
 use std::process::Command;
 
+/// Count of vulnerabilities by severity level
+#[derive(Debug, Default)]
+struct VulnerabilityCount {
+    critical: u32,
+    high: u32,
+    medium: u32,
+    low: u32,
+}
+
 /// Rust Tooling Compliance scorer
 #[derive(Debug, Clone)]
 pub struct RustToolingScorer {
@@ -116,37 +125,28 @@ impl RustToolingScorer {
 
     /// Run cargo-audit and calculate risk-based score
     fn score_cargo_audit(&self, project_path: &Path) -> ScorerResult<f64> {
-        // Run cargo-audit
+        // Run cargo-audit with JSON output for proper parsing
         let output = Command::new("cargo")
-            .arg("audit")
+            .args(["audit", "--json"])
             .current_dir(project_path)
             .output();
 
         match output {
             Ok(result) => {
-                // If audit passes (no vulnerabilities), give full 7 points
-                if result.status.success() {
-                    Ok(7.0)
-                } else {
-                    // Parse output to determine vulnerability severity
-                    let stdout = String::from_utf8_lossy(&result.stdout);
+                let stdout = String::from_utf8_lossy(&result.stdout);
 
-                    let mut score: f64 = 7.0;
+                // Parse JSON output to count vulnerabilities by severity
+                let vuln_counts = self.parse_audit_json(&stdout);
 
-                    // Risk-based scoring:
-                    // Critical: -7pts, High: -5pts, Medium: -3pts, Low: -1pt
-                    if stdout.contains("critical") {
-                        score -= 7.0;
-                    } else if stdout.contains("high") {
-                        score -= 5.0;
-                    } else if stdout.contains("medium") {
-                        score -= 3.0;
-                    } else if stdout.contains("low") {
-                        score -= 1.0;
-                    }
+                // Risk-based scoring (cumulative deductions):
+                // Each Critical: -3.5pts, High: -2pts, Medium: -1pt, Low: -0.5pt
+                let mut deduction: f64 = 0.0;
+                deduction += vuln_counts.critical as f64 * 3.5;
+                deduction += vuln_counts.high as f64 * 2.0;
+                deduction += vuln_counts.medium as f64 * 1.0;
+                deduction += vuln_counts.low as f64 * 0.5;
 
-                    Ok(score.max(0.0))
-                }
+                Ok((7.0 - deduction).max(0.0))
             }
             Err(e) => {
                 if e.kind() == std::io::ErrorKind::NotFound {
@@ -158,6 +158,38 @@ impl RustToolingScorer {
                 }
             }
         }
+    }
+
+    /// Parse cargo-audit JSON output to count vulnerabilities by severity
+    fn parse_audit_json(&self, json_str: &str) -> VulnerabilityCount {
+        let mut counts = VulnerabilityCount::default();
+
+        // Try to parse as JSON
+        if let Ok(json) = serde_json::from_str::<serde_json::Value>(json_str) {
+            // cargo-audit JSON format: { "vulnerabilities": { "list": [...] } }
+            if let Some(vulns) = json.get("vulnerabilities").and_then(|v| v.get("list")) {
+                if let Some(vuln_array) = vulns.as_array() {
+                    for vuln in vuln_array {
+                        // Each vulnerability has an "advisory" with "severity"
+                        if let Some(severity) = vuln
+                            .get("advisory")
+                            .and_then(|a| a.get("severity"))
+                            .and_then(|s| s.as_str())
+                        {
+                            match severity.to_lowercase().as_str() {
+                                "critical" => counts.critical += 1,
+                                "high" => counts.high += 1,
+                                "medium" => counts.medium += 1,
+                                "low" => counts.low += 1,
+                                _ => {} // Ignore unknown severities
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        counts
     }
 
     /// Check for cargo-deny configuration and calculate score
