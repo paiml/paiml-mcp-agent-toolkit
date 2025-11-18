@@ -366,6 +366,10 @@ harness = false
 name = "dead_code_ops"
 harness = false
 
+[[bench]]
+name = "similarity_ops"
+harness = false
+
 [[test]]
 name = "unit_core"
 path = "tests/unit/core.rs"
