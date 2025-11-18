@@ -62,12 +62,8 @@ kani-verifier = { version = "0.56", optional = true }
 levenshtein = "1.0"
 
 # Machine Learning (Pure Rust - no C++ dependencies)
-# TODO: Gradual migration from linfa to aprender (PAIML next-gen ML library)
+# Migration to aprender complete (Sprint 45)
 # See: docs/specifications/aprender-ml-integration.md
-linfa = { version = "0.8" }
-linfa-trees = { version = "0.8" }
-linfa-ensemble = { version = "0.8", features = ["serde"] }
-ndarray = { version = "0.16" }
 aprender = { version = "0.1.0" }  # PAIML next-gen ML (TDG 94.1/100, zero deps)
 
 # High-Performance Compute (SIMD/GPU)
