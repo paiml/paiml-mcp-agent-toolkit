@@ -5,6 +5,7 @@
 use crate::cli::commands::SyncDirection;
 use crate::models::roadmap::{ItemStatus, Priority, RoadmapItem};
 use crate::services::github_client::GitHubClient;
+use crate::services::hook_manager;
 use crate::services::roadmap_service::RoadmapService;
 use anyhow::{Context, Result};
 use std::path::PathBuf;
@@ -49,6 +50,18 @@ pub async fn handle_work_init(
     service.initialize(repo.clone())?;
 
     println!("✅ Created roadmap: {}", roadmap_path.display());
+
+    // Install commit-msg hook
+    match hook_manager::install_commit_msg_hook(&project_path) {
+        Ok(()) => {
+            println!("✅ Installed commit-msg hook");
+        }
+        Err(e) => {
+            println!("⚠️  Failed to install commit-msg hook: {}", e);
+            println!("   Workflow will work, but commit messages won't be validated");
+        }
+    }
+
     println!();
 
     // Display configuration

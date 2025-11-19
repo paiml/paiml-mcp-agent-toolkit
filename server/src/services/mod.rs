@@ -222,6 +222,7 @@ mod quality_proxy_property_tests;
 pub mod telemetry_service;
 pub mod roadmap_service;
 pub mod github_client; // Issue #75: GitHub API integration
+pub mod hook_manager; // Issue #75 Phase 6: Git hooks for workflow
 
 #[cfg(test)]
 mod tests {

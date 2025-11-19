@@ -1,0 +1,84 @@
+roadmap_version: '1.0'
+github_enabled: true
+github_repo: paiml/paiml-mcp-agent-toolkit
+roadmap:
+- id: ml-model-serialization
+  github_issue: null
+  item_type: task
+  title: 'New task: ml-model-serialization'
+  status: completed
+  priority: medium
+  assigned_to: null
+  created: 2025-11-19T10:38:55.353875636+00:00
+  updated: 2025-11-19T10:39:28.001928745+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+- id: GH-75
+  github_issue: 75
+  item_type: task
+  title: Unify pmat roadmap, GitHub issues, and EXTREME TDD workflow with automated tracking
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2025-11-19T10:39:53.011510597+00:00
+  updated: 2025-11-19T10:39:53.011510597+00:00
+  spec: null
+  acceptance_criteria:
+  - Design YAML schema for roadmap.yaml
+  - Implement YAML parser/writer with serde
+  - Design `pmat work` command structure (clap subcommands)
+  - 'Add configuration: `pmat config set github.enabled true/false`'
+  - Write unit tests for YAML operations
+  - Implement `pmat work start <id>` (GitHub and YAML)
+  - Implement `pmat work continue <id>` with progress tracking
+  - Implement `pmat work complete <id>` with quality gates
+  - Implement write-through logic (update both systems)
+  - Add `--with-spec` flag for specification creation
+  - GitHub API client (octocrab crate)
+  - Fetch issue details from GitHub
+  - Create GitHub issues from YAML tickets
+  - Update GitHub issues (status, labels, comments)
+  - Handle GitHub API errors gracefully
+  - Implement `pmat work sync --yaml-to-github`
+  - Implement `pmat work sync --github-to-yaml`
+  - Implement `pmat work sync --full` (bidirectional)
+  - Conflict resolution (prompt user)
+  - Sync status reporting
+  - Epic ticket support in YAML schema
+  - '`pmat work start <id> --epic` flag'
+  - Create GitHub epic with subtasks
+  - Epic progress tracking (aggregate subtasks)
+  - Epic visualization
+  - Filename convention (NNN-name.md or ID-name.md)
+  - Spec template generation
+  - Bidirectional linking (spec ↔ issue/ticket)
+  - '`pmat spec create/validate/list` commands'
+  - Spec status tracking
+  - '`pmat work init` installer'
+  - 'Hook validates "Refs #N" or "Refs ID"'
+  - Hook verifies issue/ticket exists
+  - Hook runs quality gates (tier 2)
+  - Hook updates YAML on commit
+  - Auto-update CHANGELOG.md from issue labels
+  - Detect documentation changes
+  - Prompt for rustdoc updates
+  - Prompt for book validation
+  - Generate commit messages
+  - Parse acceptance criteria from issues/YAML
+  - Track completion percentage
+  - Weighted progress with in-progress tasks
+  - Display progress in all commands
+  - Store state in `.pmat/state/`
+  - Comprehensive error messages
+  - Offline mode handling
+  - Tutorial documentation
+  - Video guide
+  - Migration guide for existing projects
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
