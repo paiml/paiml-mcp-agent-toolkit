@@ -94,7 +94,7 @@ pub async fn handle_work_init(
 pub async fn handle_work_start(
     id: String,
     with_spec: bool,
-    _epic: bool,
+    epic: bool,
     path: Option<PathBuf>,
     create_github: bool,
 ) -> Result<()> {
@@ -113,7 +113,7 @@ pub async fn handle_work_start(
     // Determine if this is a GitHub issue or YAML ticket
     let is_github_issue = id.parse::<u64>().is_ok();
 
-    let item = if is_github_issue {
+    let mut item = if is_github_issue {
         let issue_num: u64 = id.parse()?;
         println!("📋 Type: GitHub issue #{}", issue_num);
 
@@ -191,6 +191,13 @@ pub async fn handle_work_start(
             item
         }
     };
+
+    // Set as epic if --epic flag is used
+    if epic {
+        item.item_type = crate::models::roadmap::ItemType::Epic;
+        println!("📦 Created as epic: {}", item.title);
+        println!("   Add subtasks manually to roadmap.yaml or use future commands");
+    }
 
     // Update roadmap
     roadmap.upsert_item(item.clone());
