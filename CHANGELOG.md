@@ -7,6 +7,72 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.198.0] - 2025-11-19
+
+### Added
+- **Unified GitHub/YAML Workflow System** (Issue #75) - Complete workflow management integration
+  - **New Commands**:
+    - `pmat work init`: Initialize workflow with auto-detected GitHub repository
+    - `pmat work start <id>`: Start work on GitHub issue or YAML ticket
+    - `pmat work continue <id>`: Resume work with progress display
+    - `pmat work complete <id>`: Complete work with quality gates
+    - `pmat work status [<id>]`: View all work items and progress
+    - `pmat work sync`: Sync between GitHub and YAML (planned)
+  - **Hybrid Architecture**:
+    - Write-through to both GitHub Issues and YAML (docs/roadmaps/roadmap.yaml)
+    - Auto-detection of GitHub repository from git remote
+    - Works offline without GitHub token (YAML-only mode)
+    - Graceful degradation (authenticated → unauthenticated → offline)
+  - **GitHub Integration** (Phase 5):
+    - Fetch issue metadata via GitHub API (octocrab v0.40)
+    - Extract acceptance criteria from issue body (markdown checklists)
+    - Create GitHub issues from YAML tickets
+    - Auto-link issues with `GH-<number>` identifiers
+  - **Quality Gates Integration** (Phase 8):
+    - Automatic quality validation on `pmat work complete`
+    - Runs `cargo test --lib` and `cargo clippy --lib`
+    - `--skip-quality` flag for bypassing gates
+    - Beautiful CLI output with pass/fail indicators
+  - **Pre-commit Hooks** (Phase 6):
+    - Automatic git commit-msg hook installation
+    - Validates commit messages reference work items ("Refs #123" or "Refs TICKET-ID")
+    - Verifies work items exist in roadmap
+    - Backup existing hooks before installation
+    - Idempotent installation (safe to run multiple times)
+  - **CHANGELOG Automation** (Phase 7):
+    - Automatic CHANGELOG.md updates on work completion
+    - Category inference from GitHub labels (feature→Added, bug→Fixed, etc.)
+    - Keep a Changelog format compliance
+    - Creates CHANGELOG.md if missing
+  - **Epic Support** (Phase 9):
+    - `--epic` flag for creating epic work items
+    - Subtask tracking with automatic progress aggregation
+    - Epic/subtask visualization in continue and status commands
+  - **ML Model Serialization Integration**:
+    - Upgraded aprender to v0.3.0 with SafeTensors support
+    - Model serialization for aprender ML predictor
+    - Dogfooded workflow on ML serialization task
+  - **Documentation**:
+    - Chapter 34 added to pmat-book (663 lines)
+    - Comprehensive examples for GitHub, YAML-only, and hybrid workflows
+    - Troubleshooting guide
+    - Best practices and EXTREME TDD integration
+  - **Implementation**:
+    - 3 new services: github_client, hook_manager, changelog_manager
+    - 1,000+ lines of production code
+    - 13+ new tests (all passing)
+    - Zero clippy warnings
+    - Beautiful emoji-enhanced CLI output
+  - **Files Added**:
+    - `server/src/models/roadmap.rs` (340 lines, 9 tests)
+    - `server/src/services/roadmap_service.rs` (230 lines, 8 tests)
+    - `server/src/services/github_client.rs` (260 lines, 3 tests)
+    - `server/src/services/hook_manager.rs` (178 lines, 4 tests)
+    - `server/src/services/changelog_manager.rs` (307 lines, 6 tests)
+    - `server/src/cli/handlers/work_handlers.rs` (770 lines, 3 tests)
+    - `../pmat-book/src/ch34-00-workflow-management.md` (663 lines)
+  - **Commits**: 7fe8d583, cbc92c01, a34eba5e, aa58ab47, ee5ae165, cf0fd949
+
 ## [2.197.0] - 2025-11-18
 
 ### Added
