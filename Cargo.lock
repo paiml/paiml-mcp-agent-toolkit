@@ -418,9 +418,16 @@ dependencies = [
 
 [[package]]
 name = "aprender"
-version = "0.1.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "57b644b2f4083f3a8435308def0b240fa9175e477cc3fc96e7770f78e3f4398f"
+checksum = "f8bdce6b9ca0c80626d4fd10cb8f01fe787b1a5235042543e25654f48df2b93c"
+dependencies = [
+ "bincode",
+ "rand 0.8.5",
+ "serde",
+ "serde_json",
+ "trueno 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
 [[package]]
 name = "ar_archive_writer"
@@ -5811,7 +5818,7 @@ dependencies = [
  "tree-sitter-scala",
  "tree-sitter-swift",
  "tree-sitter-typescript",
- "trueno",
+ "trueno 0.2.2",
  "ureq",
  "url",
  "uuid",
@@ -8747,6 +8754,15 @@ dependencies = [
  "pollster",
  "thiserror 2.0.17",
  "wgpu",
+]
+
+[[package]]
+name = "trueno"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "985cb970d326d4ece7d97bc6a2f6ff8c6a86bd9faa7dd4d11acaa06d0b76cb37"
+dependencies = [
+ "thiserror 2.0.17",
 ]
 
 [[package]]

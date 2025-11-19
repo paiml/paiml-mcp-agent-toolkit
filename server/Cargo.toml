@@ -64,7 +64,7 @@ levenshtein = "1.0"
 # Machine Learning (Pure Rust - no C++ dependencies)
 # Migration to aprender complete (Sprint 45)
 # See: docs/specifications/aprender-ml-integration.md
-aprender = { version = "0.1.0" }  # PAIML next-gen ML (TDG 94.1/100, zero deps)
+aprender = "0.3.0"  # PAIML next-gen ML (TDG 94.1/100, zero deps, SafeTensors support)
 
 # High-Performance Compute (SIMD/GPU)
 trueno = { version = "0.2", path = "../../trueno", optional = true }
