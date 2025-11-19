@@ -4,6 +4,7 @@
 
 use crate::cli::commands::SyncDirection;
 use crate::models::roadmap::{ItemStatus, Priority, RoadmapItem};
+use crate::services::github_client::GitHubClient;
 use crate::services::roadmap_service::RoadmapService;
 use anyhow::{Context, Result};
 use std::path::PathBuf;
@@ -102,9 +103,40 @@ pub async fn handle_work_start(
         let issue_num: u64 = id.parse()?;
         println!("📋 Type: GitHub issue #{}", issue_num);
 
-        // TODO: Fetch from GitHub API
-        // For now, create placeholder
-        let mut item = RoadmapItem::from_github_issue(issue_num, format!("Issue #{}", issue_num));
+        // Fetch from GitHub API if repo is configured
+        let mut item = if let Some(ref repo) = roadmap.github_repo {
+            match fetch_github_issue(repo, issue_num).await {
+                Ok(gh_issue) => {
+                    println!("   ✅ Fetched from GitHub: {}", gh_issue.title);
+
+                    // Extract labels
+                    let labels: Vec<String> = gh_issue
+                        .labels
+                        .iter()
+                        .map(|l| l.name.clone())
+                        .collect();
+
+                    let mut item = RoadmapItem::from_github_issue(issue_num, gh_issue.title.clone());
+                    item.labels = labels;
+
+                    // Parse acceptance criteria from issue body if present
+                    if let Some(body) = &gh_issue.body {
+                        item.acceptance_criteria = parse_acceptance_criteria(body);
+                    }
+
+                    item
+                }
+                Err(e) => {
+                    println!("   ⚠️  Failed to fetch from GitHub: {}", e);
+                    println!("   Creating placeholder (will sync later)");
+                    RoadmapItem::from_github_issue(issue_num, format!("Issue #{}", issue_num))
+                }
+            }
+        } else {
+            println!("   ℹ️  GitHub not configured, creating placeholder");
+            RoadmapItem::from_github_issue(issue_num, format!("Issue #{}", issue_num))
+        };
+
         item.status = ItemStatus::InProgress;
         item
     } else {
@@ -124,8 +156,22 @@ pub async fn handle_work_start(
             item.priority = Priority::Medium;
 
             if create_github {
-                println!("   TODO: Create GitHub issue");
-                // TODO: Create GitHub issue and link
+                if let Some(ref repo) = roadmap.github_repo {
+                    println!("   🔄 Creating GitHub issue...");
+                    match create_github_issue_from_item(repo, &item).await {
+                        Ok(gh_issue) => {
+                            println!("   ✅ Created GitHub issue #{}", gh_issue.number);
+                            item.github_issue = Some(gh_issue.number);
+                            item.id = format!("GH-{}", gh_issue.number);
+                        }
+                        Err(e) => {
+                            println!("   ⚠️  Failed to create GitHub issue: {}", e);
+                            println!("   Continuing with YAML-only ticket");
+                        }
+                    }
+                } else {
+                    println!("   ⚠️  GitHub not configured, skipping issue creation");
+                }
             }
 
             item
@@ -411,6 +457,79 @@ pub async fn handle_work_sync(
 
     println!();
     Ok(())
+}
+
+/// Fetch GitHub issue details
+async fn fetch_github_issue(repo: &str, issue_num: u64) -> Result<octocrab::models::issues::Issue> {
+    // Try authenticated client first, fall back to unauthenticated
+    let client = match GitHubClient::new(repo) {
+        Ok(c) => c,
+        Err(_) => {
+            // GITHUB_TOKEN not set, try unauthenticated
+            GitHubClient::new_unauthenticated(repo)?
+        }
+    };
+
+    let issue = client.fetch_issue(issue_num).await?;
+    Ok(issue)
+}
+
+/// Create GitHub issue from roadmap item
+async fn create_github_issue_from_item(
+    repo: &str,
+    item: &RoadmapItem,
+) -> Result<octocrab::models::issues::Issue> {
+    // Requires authentication
+    let client = GitHubClient::new(repo)?;
+
+    // Build issue body from acceptance criteria
+    let body = if !item.acceptance_criteria.is_empty() {
+        let criteria_md: Vec<String> = item
+            .acceptance_criteria
+            .iter()
+            .map(|c| format!("- [ ] {}", c))
+            .collect();
+
+        format!(
+            "## Acceptance Criteria\n\n{}\n\n---\n\n*Created via `pmat work start --create-github`*",
+            criteria_md.join("\n")
+        )
+    } else {
+        format!("*Created via `pmat work start --create-github`*")
+    };
+
+    let labels = if item.labels.is_empty() {
+        None
+    } else {
+        Some(item.labels.clone())
+    };
+
+    let issue = client.create_issue(&item.title, &body, labels).await?;
+    Ok(issue)
+}
+
+/// Parse acceptance criteria from GitHub issue body
+///
+/// Looks for markdown checklists in the body and extracts them as criteria.
+fn parse_acceptance_criteria(body: &str) -> Vec<String> {
+    let mut criteria = Vec::new();
+
+    for line in body.lines() {
+        let trimmed = line.trim();
+        // Match markdown checkboxes: - [ ] or - [x]
+        if trimmed.starts_with("- [ ]") || trimmed.starts_with("- [x]") {
+            let criterion = trimmed
+                .trim_start_matches("- [ ]")
+                .trim_start_matches("- [x]")
+                .trim()
+                .to_string();
+            if !criterion.is_empty() {
+                criteria.push(criterion);
+            }
+        }
+    }
+
+    criteria
 }
 
 /// Detect GitHub repository from git remote
