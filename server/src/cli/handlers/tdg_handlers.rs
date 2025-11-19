@@ -17,6 +17,12 @@ pub struct TdgCommandConfig {
     pub output: Option<PathBuf>,
     /// Sprint 65: Include git context (commit SHA, branch, author)
     pub with_git_context: bool,
+    /// Issue #78: Enable detailed explanation mode with function-level breakdown
+    pub explain: bool,
+    /// Issue #78: Complexity threshold for filtering functions in --explain mode
+    pub threshold: u32,
+    /// Issue #78: Baseline git ref for progress tracking in --explain mode
+    pub baseline: Option<String>,
 }
 
 /// Handle TDG command execution

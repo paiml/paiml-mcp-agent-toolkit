@@ -652,6 +652,18 @@ pub enum Commands {
         /// Include git context (commit SHA, branch, author) - Sprint 65
         #[arg(long)]
         with_git_context: bool,
+
+        /// Enable detailed explanation mode with function-level breakdown (Issue #78)
+        #[arg(long)]
+        explain: bool,
+
+        /// Complexity threshold for filtering functions in --explain mode (Issue #78)
+        #[arg(long, default_value = "10")]
+        threshold: u32,
+
+        /// Baseline git ref (commit/branch/tag) for progress tracking in --explain mode (Issue #78)
+        #[arg(long)]
+        baseline: Option<String>,
     },
 
     /// Run quality gates on the current project (TICKET-PMAT-5023, TICKET-PMAT-5024)

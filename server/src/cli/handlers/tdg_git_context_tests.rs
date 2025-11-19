@@ -37,7 +37,10 @@ mod tests {
             include_components: false,
             min_grade: None,
             output: None,
-            with_git_context: true, // NEW FIELD (should fail until implemented)
+            with_git_context: true, // Sprint 65
+            explain: false,          // Issue #78
+            threshold: 10,           // Issue #78
+            baseline: None,          // Issue #78
         };
 
         // Act & Assert
@@ -63,6 +66,9 @@ mod tests {
             min_grade: None,
             output: None,
             with_git_context: false, // Should default to false (backward compat)
+            explain: false,          // Issue #78
+            threshold: 10,           // Issue #78
+            baseline: None,          // Issue #78
         };
 
         // Act & Assert

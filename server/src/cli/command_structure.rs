@@ -454,6 +454,9 @@ impl CommandExecutor {
                 min_grade,
                 output,
                 with_git_context,
+                explain,
+                threshold,
+                baseline,
             } => {
                 let tdg_config = super::handlers::tdg_handlers::TdgCommandConfig {
                     path,
@@ -465,6 +468,9 @@ impl CommandExecutor {
                     min_grade,
                     output,
                     with_git_context,
+                    explain,
+                    threshold,
+                    baseline,
                 };
                 super::handlers::handle_tdg_command(tdg_config).await
             }
