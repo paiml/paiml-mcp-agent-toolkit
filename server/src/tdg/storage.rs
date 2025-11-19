@@ -215,7 +215,10 @@ impl TieredStore {
         let serialized = serde_json::to_vec(&record)?;
         self.cold_backend.put(hash.as_bytes(), &serialized)?;
 
-        // Remove from warm storage to save space
+        // OLAP-Compatible Pattern (Issue #79, P0-4):
+        // Remove from warm storage to save space (data lifecycle management)
+        // This is NOT an OLTP update - we're moving data between storage tiers
+        // The record remains immutable; we're just changing its storage location
         self.warm_backend.delete(hash.as_bytes())?;
 
         Ok(())

@@ -1,5 +1,46 @@
 /// Storage backend abstraction for flexible persistence options
 ///
+/// ## OLAP Design Pattern (Issue #79, P0-4)
+///
+/// This storage backend follows OLAP (Online Analytical Processing) principles:
+/// - **Append-only writes**: Use `put()` to insert new records
+/// - **No single-row updates**: Records are immutable once written
+/// - **Batch operations**: Prefer bulk inserts over individual puts
+/// - **Read-optimized**: Designed for analytical queries over large datasets
+///
+/// ### OLAP vs OLTP
+///
+/// **OLAP (Analytical)**: Columnar storage, append-only, batch inserts
+/// - Used for: TDG score storage, analytics, time-series data
+/// - Operations: INSERT (append), SELECT (read), bulk DELETE (archival)
+///
+/// **OLTP (Transactional)**: Row-oriented, UPDATE/DELETE, ACID transactions
+/// - Used for: User accounts, shopping carts, real-time updates
+/// - Operations: INSERT, UPDATE, DELETE, complex transactions
+///
+/// ### Why OLAP for TDG Storage?
+///
+/// 1. **Performance**: Columnar storage is 10-100x faster for analytics
+/// 2. **Immutability**: TDG scores are historical facts, never updated
+/// 3. **Compression**: Columnar data compresses better (5-10x)
+/// 4. **Vectorization**: SIMD operations work best on columnar data
+///
+/// ### delete() Method - OLAP-Compatible Usage
+///
+/// The `delete()` method exists for tiered storage management (warm → cold),
+/// NOT for updating records. This is an OLAP-compatible pattern:
+/// - Data lifecycle management (archive old records to cold storage)
+/// - Testing/cleanup (clear all data between test runs)
+///
+/// **Anti-pattern (OLTP)**: `update_single(id, new_value)` - NEVER DO THIS
+/// **Correct pattern (OLAP)**: `put(new_record)` then `delete(old_key)` for archival
+///
+/// ### Academic References
+///
+/// - Stonebraker et al. (2005): "C-Store: A Column-oriented DBMS" (VLDB)
+/// - Abadi et al. (2013): "The Design and Implementation of Modern Column-Oriented Database Systems"
+/// - MonetDB: Vectorized query processing with columnar storage
+///
 /// Supports multiple backend implementations:
 /// - Libsql: Modern SQLite-compatible embedded database (default)
 /// - Sled: Embedded database (deprecated - unmaintained)
@@ -19,14 +60,31 @@ pub type KeyValuePair = (Vec<u8>, Vec<u8>);
 pub type StorageIterator<'a> = Box<dyn Iterator<Item = Result<KeyValuePair>> + 'a>;
 
 /// Trait for storage backend implementations
+///
+/// ## OLAP Usage Guidelines
+///
+/// - **put()**: Append-only writes (insert new records)
+/// - **get()**: Read operations (retrieve records)
+/// - **delete()**: ONLY for tiered storage management (warm → cold archival)
+/// - **clear()**: ONLY for testing/cleanup
+///
+/// ⚠️  **NEVER use delete() to update records** - use put() with a new key instead
 pub trait StorageBackend: Send + Sync {
-    /// Store a key-value pair
+    /// Store a key-value pair (append-only operation)
+    ///
+    /// OLAP pattern: Insert new records, never update existing ones
     fn put(&self, key: &[u8], value: &[u8]) -> Result<()>;
 
-    /// Retrieve a value by key
+    /// Retrieve a value by key (read operation)
     fn get(&self, key: &[u8]) -> Result<Option<Vec<u8>>>;
 
     /// Delete a key-value pair
+    ///
+    /// ⚠️ **OLAP Usage Only**: Use this ONLY for:
+    /// - Tiered storage management (moving data from warm → cold storage)
+    /// - Testing/cleanup (clear all data between test runs)
+    ///
+    /// **NEVER use delete() to update records** - this violates OLAP principles
     fn delete(&self, key: &[u8]) -> Result<()>;
 
     /// Check if a key exists
