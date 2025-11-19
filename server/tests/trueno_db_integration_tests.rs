@@ -254,14 +254,27 @@ mod p0_3_statistical_equivalence {
         let diff = (gpu_mean - simd_mean).abs();
         let combined_sigma = (gpu_std.powi(2) + simd_std.powi(2)).sqrt();
 
-        assert!(
-            diff < SIGMA_THRESHOLD * combined_sigma,
-            "GPU mean={}, SIMD mean={}, diff={}, 6σ={}",
-            gpu_mean,
-            simd_mean,
-            diff,
-            SIGMA_THRESHOLD * combined_sigma
-        );
+        // Special case: If both backends are deterministic (σ ≈ 0), they should be identical
+        // This occurs when GPU backend falls back to CPU (no GPU compute shader implemented yet)
+        if combined_sigma < 1e-10 {
+            assert!(
+                diff < 1e-10,
+                "Deterministic backends should produce identical results: GPU mean={}, SIMD mean={}, diff={}",
+                gpu_mean,
+                simd_mean,
+                diff
+            );
+        } else {
+            // Statistical equivalence test (6-sigma threshold)
+            assert!(
+                diff < SIGMA_THRESHOLD * combined_sigma,
+                "GPU mean={}, SIMD mean={}, diff={}, 6σ={}",
+                gpu_mean,
+                simd_mean,
+                diff,
+                SIGMA_THRESHOLD * combined_sigma
+            );
+        }
     }
 }
 
