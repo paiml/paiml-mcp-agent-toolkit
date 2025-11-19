@@ -69,6 +69,12 @@ aprender = "0.4.1"  # PAIML next-gen ML (TDG 94.1/100, zero deps, SafeTensors su
 # High-Performance Compute (SIMD/GPU)
 trueno = { version = "0.4.0", optional = true }
 
+# Analytics GPU dependencies (optional, gated by analytics-gpu feature)
+# Issue #79: Feature-gated architecture to prevent +3.8 MB binary bloat
+wgpu = { version = "24.0", optional = true }
+arrow = { version = "54.0", optional = true, default-features = false }
+parquet = { version = "54.0", optional = true, default-features = false }
+
 # Serialization (pinned to avoid swc_common issue with serde::__private)
 serde = { version = "=1.0.219", default-features = false, features = ["derive", "std"] }
 serde_json = { version = "1.0", default-features = false, features = ["std"] }
@@ -280,7 +286,7 @@ hex = "0.4"
 # capnpc = "0.20" # REMOVED: Unused Cap'n Proto compiler
 
 [features]
-default = ["all-languages", "demo", "polyglot-ast", "org-intelligence", "tdg-explain"]
+default = ["all-languages", "demo", "polyglot-ast", "org-intelligence", "tdg-explain", "analytics-simd"]
 org-intelligence = ["organizational-intelligence-plugin"]
 all-languages = ["rust-ast", "typescript-ast", "python-ast", "c-ast", "cpp-ast", "ruchy-ast", "go-ast", "wasm-ast", "deep-wasm", "shell-ast", "php-ast", "swift-ast", "java-ast", "csharp-ast", "ruby-ast", "scala-ast"]
 most-languages = ["rust-ast", "typescript-ast", "python-ast", "c-ast", "cpp-ast", "java-ast", "csharp-ast", "ruby-ast", "scala-ast"]
@@ -345,6 +351,13 @@ sled-backend = ["sled"]
 # High-performance compute features (Trueno)
 simd = ["trueno"]
 gpu = ["trueno", "trueno/gpu"]
+
+# Analytics features (Issue #79: Feature-gated architecture)
+# Default: SIMD-only (7.8 MB, 18s compile, ≤30 transitive deps)
+analytics-simd = ["trueno"]
+# GPU-enabled: +wgpu +arrow +parquet (11.6 MB, 63s compile, ≤95 transitive deps)
+analytics-gpu = ["analytics-simd", "wgpu", "arrow", "parquet"]
+
 # TDG explain mode with function-level analysis (Issue #78)
 # Uses tree-sitter-rust for custom function-level complexity analysis
 tdg-explain = ["rust-ast"]
