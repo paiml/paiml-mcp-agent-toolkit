@@ -67,7 +67,7 @@ levenshtein = "1.0"
 aprender = "0.3.0"  # PAIML next-gen ML (TDG 94.1/100, zero deps, SafeTensors support)
 
 # High-Performance Compute (SIMD/GPU)
-trueno = { version = "0.2", path = "../../trueno", optional = true }
+trueno = { version = "0.4.0", optional = true }
 
 # Serialization (pinned to avoid swc_common issue with serde::__private)
 serde = { version = "=1.0.219", default-features = false, features = ["derive", "std"] }
@@ -280,7 +280,7 @@ hex = "0.4"
 # capnpc = "0.20" # REMOVED: Unused Cap'n Proto compiler
 
 [features]
-default = ["all-languages", "demo", "polyglot-ast", "org-intelligence"]
+default = ["all-languages", "demo", "polyglot-ast", "org-intelligence", "tdg-explain"]
 org-intelligence = ["organizational-intelligence-plugin"]
 all-languages = ["rust-ast", "typescript-ast", "python-ast", "c-ast", "cpp-ast", "ruchy-ast", "go-ast", "wasm-ast", "deep-wasm", "shell-ast", "php-ast", "swift-ast", "java-ast", "csharp-ast", "ruby-ast", "scala-ast"]
 most-languages = ["rust-ast", "typescript-ast", "python-ast", "c-ast", "cpp-ast", "java-ast", "csharp-ast", "ruby-ast", "scala-ast"]
@@ -345,6 +345,9 @@ sled-backend = ["sled"]
 # High-performance compute features (Trueno)
 simd = ["trueno"]
 gpu = ["trueno", "trueno/gpu"]
+# TDG explain mode with function-level analysis (Issue #78)
+# Uses tree-sitter-rust for custom function-level complexity analysis
+tdg-explain = ["rust-ast"]
 
 
 [[bin]]
