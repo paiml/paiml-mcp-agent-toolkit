@@ -230,14 +230,13 @@ fn test_generate_recommendations_from_complexity() {
     assert_eq!(recommendations[0].priority, 1, "Highest impact should be priority 1");
 }
 
-/// RED TEST 4: Baseline comparison tracking
+/// GREEN TEST 4: Baseline comparison tracking
 ///
 /// Verifies that the BaselineAnalyzer can compare current state against
 /// a baseline and track progress.
 ///
-/// Expected to FAIL: BaselineAnalyzer not implemented yet
+/// GREEN: BaselineAnalyzer now implemented
 #[test]
-#[ignore] // RED: Will fail until BaselineAnalyzer is implemented
 fn test_baseline_comparison() {
     let test_code = r#"
         fn refactored_function() -> i32 {
@@ -444,19 +443,8 @@ fn detect_dispatch_pattern(_file: &PathBuf) -> Result<Vec<DispatchPattern>, Stri
 
 /// Compare with baseline git ref
 ///
-/// RED: Not implemented - this is the interface we need to create
-#[allow(dead_code)]
-struct BaselineComparison {
-    baseline_ref: String,
-    delta: f64,
-    completed: Vec<String>,
-    pending: Vec<String>,
-}
-
-fn compare_with_baseline(_file: &PathBuf, _baseline_ref: &str) -> Result<BaselineComparison, String> {
-    // RED: Compilation will fail here - function not implemented
-    unimplemented!("RED PHASE: compare_with_baseline not implemented yet")
-}
+/// GREEN: Now implemented in baseline_analyzer module
+use pmat::tdg::baseline_analyzer::compare_with_baseline;
 
 // ============================================================================
 // RED Phase Summary

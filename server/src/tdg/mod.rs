@@ -7,6 +7,7 @@ pub mod alerts;
 pub mod analyzer_ast;
 pub mod analyzer_simple;
 pub mod baseline;
+pub mod baseline_analyzer;
 pub mod config;
 pub mod diagnostics;
 pub mod explain;
