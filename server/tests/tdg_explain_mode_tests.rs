@@ -170,15 +170,16 @@ fn test_detect_dispatch_pattern() {
     );
 }
 
-/// RED TEST 3: Generate actionable recommendations
+/// GREEN TEST 3: Generate actionable recommendations
 ///
 /// Verifies that the RecommendationEngine can generate specific, actionable
 /// recommendations with estimated impact and effort.
 ///
-/// Expected to FAIL: RecommendationEngine not implemented yet
+/// GREEN: RecommendationEngine now implemented
 #[test]
-#[ignore] // RED: Will fail until RecommendationEngine is implemented
 fn test_generate_recommendations_from_complexity() {
+    use pmat::tdg::generate_recommendations;
+
     // Create ExplainedTDGScore with high-complexity functions
     let mut explained = ExplainedTDGScore::new(pmat::tdg::TdgScore::default());
 
@@ -200,8 +201,8 @@ fn test_generate_recommendations_from_complexity() {
         severity: ComplexitySeverity::Critical,
     });
 
-    // RED: This should fail - generate_recommendations doesn't exist yet
-    let recommendations = generate_recommendations(&explained).unwrap();
+    // GREEN: generate_recommendations now works!
+    let recommendations = generate_recommendations(&explained);
 
     // Should generate recommendations for high complexity
     assert!(
@@ -439,16 +440,6 @@ struct DispatchPattern {
 fn detect_dispatch_pattern(_file: &PathBuf) -> Result<Vec<DispatchPattern>, String> {
     // RED: Compilation will fail here - function not implemented
     unimplemented!("RED PHASE: detect_dispatch_pattern not implemented yet")
-}
-
-/// Generate recommendations from explained TDG score
-///
-/// RED: Not implemented - this is the interface we need to create
-fn generate_recommendations(
-    _explained: &ExplainedTDGScore,
-) -> Result<Vec<ActionableRecommendation>, String> {
-    // RED: Compilation will fail here - function not implemented
-    unimplemented!("RED PHASE: generate_recommendations not implemented yet")
 }
 
 /// Compare with baseline git ref

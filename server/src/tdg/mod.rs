@@ -13,6 +13,7 @@ pub mod explain;
 pub mod explain_formatters;
 pub mod function_analyzer;
 pub mod hooks_config;
+pub mod recommendation_engine;
 pub mod quality_gate;
 // Temporarily disable export to fix circular dependency
 // pub mod export;
@@ -57,6 +58,7 @@ pub use explain::{
 };
 pub use explain_formatters::{format_explain_json, format_explain_text};
 pub use function_analyzer::FunctionAnalyzer;
+pub use recommendation_engine::generate_recommendations;
 pub use formatters::{format_human, format_json, format_markdown};
 pub use hooks_config::{
     BaselineConfig, CiCdConfig, EnforcementMode, QualityGatesConfig, TdgHooksConfig,
