@@ -305,9 +305,23 @@ pub async fn handle_work_complete(
     // Run quality gates unless skipped
     if !skip_quality {
         println!("🔍 Running quality gates...");
-        // TODO: Run actual quality gates
-        println!("   ⚠️  Quality gates not yet implemented");
         println!();
+
+        match run_quality_gates(&project_path).await {
+            Ok(passed) => {
+                if passed {
+                    println!("✅ All quality gates passed");
+                    println!();
+                } else {
+                    anyhow::bail!("Quality gates failed. Fix issues or use --skip-quality to bypass.");
+                }
+            }
+            Err(e) => {
+                println!("⚠️  Quality gates error: {}", e);
+                println!("   Continuing (use strict mode to block on errors)");
+                println!();
+            }
+        }
     }
 
     // Mark as completed
@@ -675,6 +689,55 @@ pub struct Example {{
 
     fs::write(spec_path, template)?;
     Ok(())
+}
+
+/// Run quality gates (tests, clippy, etc.)
+///
+/// Returns Ok(true) if all gates pass, Ok(false) if any fail, or Err on execution failure.
+async fn run_quality_gates(project_path: &PathBuf) -> Result<bool> {
+    use std::process::Command;
+
+    let mut all_passed = true;
+
+    // 1. Run cargo test
+    println!("   🧪 Running tests...");
+    let test_status = Command::new("cargo")
+        .arg("test")
+        .arg("--lib")
+        .arg("--quiet")
+        .current_dir(project_path)
+        .status()
+        .context("Failed to run cargo test")?;
+
+    if test_status.success() {
+        println!("      ✅ Tests passed");
+    } else {
+        println!("      ❌ Tests failed");
+        all_passed = false;
+    }
+
+    // 2. Run cargo clippy
+    println!("   📎 Running clippy...");
+    let clippy_status = Command::new("cargo")
+        .arg("clippy")
+        .arg("--lib")
+        .arg("--quiet")
+        .arg("--")
+        .arg("-D")
+        .arg("warnings")
+        .current_dir(project_path)
+        .status()
+        .context("Failed to run cargo clippy")?;
+
+    if clippy_status.success() {
+        println!("      ✅ No clippy warnings");
+    } else {
+        println!("      ❌ Clippy warnings found");
+        all_passed = false;
+    }
+
+    println!();
+    Ok(all_passed)
 }
 
 #[cfg(test)]
