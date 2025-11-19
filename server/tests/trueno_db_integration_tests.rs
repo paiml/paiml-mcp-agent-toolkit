@@ -167,11 +167,74 @@ mod p0_2_top_k_selection {
 /// Prevents flaky CI tests due to GPU non-associativity.
 /// Reference: Higham (1993) SIAM, Whitehead & Fit-Florea (2011) NVIDIA
 #[cfg(test)]
+#[cfg(feature = "analytics-simd")]
 mod p0_3_statistical_equivalence {
-    /// RED TEST: GPU and SIMD means within 6-sigma
+    use pmat::services::analytics_backend::{Backend, stats::{generate_test_dataset, compute_avg, mean_and_std}};
+
+    /// GREEN TEST: SIMD statistical properties
+    ///
+    /// Tests SIMD backend statistical properties. GPU testing requires hardware.
     #[test]
-    #[ignore]  // Expensive: 100 runs
-    fn test_statistical_equivalence() {
+    fn test_simd_statistical_properties() {
+        const RUNS: usize = 10;  // Reduced for unit test
+
+        let dataset = generate_test_dataset(10_000);
+
+        let mut simd_results = Vec::with_capacity(RUNS);
+
+        for _ in 0..RUNS {
+            simd_results.push(compute_avg(&dataset, Backend::Simd).unwrap());
+        }
+
+        let (mean, std) = mean_and_std(&simd_results);
+
+        // SIMD should be deterministic (std ~0)
+        assert!(std < 1e-10, "SIMD results should be deterministic, got std={}", std);
+
+        // Mean should be consistent
+        assert!(mean.is_finite(), "Mean should be finite");
+    }
+
+    /// GREEN TEST: Scalar vs SIMD equivalence
+    ///
+    /// Validates that SIMD and Scalar backends produce equivalent results
+    #[test]
+    fn test_scalar_simd_equivalence() {
+        const RUNS: usize = 10;
+
+        let dataset = generate_test_dataset(10_000);
+
+        let mut scalar_results = Vec::with_capacity(RUNS);
+        let mut simd_results = Vec::with_capacity(RUNS);
+
+        for _ in 0..RUNS {
+            scalar_results.push(compute_avg(&dataset, Backend::Scalar).unwrap());
+            simd_results.push(compute_avg(&dataset, Backend::Simd).unwrap());
+        }
+
+        let (scalar_mean, _scalar_std) = mean_and_std(&scalar_results);
+        let (simd_mean, _simd_std) = mean_and_std(&simd_results);
+
+        let diff = (scalar_mean - simd_mean).abs();
+
+        // Both should be deterministic, so diff should be ~0
+        assert!(
+            diff < 1e-10,
+            "Scalar and SIMD should produce identical results: scalar={}, simd={}, diff={}",
+            scalar_mean,
+            simd_mean,
+            diff
+        );
+    }
+
+    /// IGNORED TEST: GPU and SIMD means within 6-sigma
+    ///
+    /// This test requires GPU hardware and is ignored by default.
+    /// Run with: cargo test --features analytics-gpu -- --ignored
+    #[test]
+    #[ignore]  // Requires GPU hardware
+    #[cfg(feature = "analytics-gpu")]
+    fn test_gpu_simd_statistical_equivalence() {
         const RUNS: usize = 100;
         const SIGMA_THRESHOLD: f64 = 6.0;
 
@@ -181,9 +244,8 @@ mod p0_3_statistical_equivalence {
         let mut simd_results = Vec::with_capacity(RUNS);
 
         for _ in 0..RUNS {
-            // FAIL: Backend enum doesn't exist yet
-            gpu_results.push(compute_avg(&dataset, Backend::Gpu));
-            simd_results.push(compute_avg(&dataset, Backend::Simd));
+            gpu_results.push(compute_avg(&dataset, Backend::Gpu).unwrap());
+            simd_results.push(compute_avg(&dataset, Backend::Simd).unwrap());
         }
 
         let (gpu_mean, gpu_std) = mean_and_std(&gpu_results);
@@ -200,31 +262,6 @@ mod p0_3_statistical_equivalence {
             diff,
             SIGMA_THRESHOLD * combined_sigma
         );
-    }
-
-    /// RED: Backend enum doesn't exist yet
-    enum Backend {
-        Gpu,
-        Simd,
-    }
-
-    /// RED: Helper functions don't exist yet
-    fn generate_test_dataset(_size: usize) -> Vec<f64> {
-        panic!("generate_test_dataset not implemented (RED phase)");
-    }
-
-    fn compute_avg(_dataset: &[f64], _backend: Backend) -> f64 {
-        panic!("compute_avg not implemented (RED phase)");
-    }
-
-    fn mean_and_std(values: &[f64]) -> (f64, f64) {
-        let mean = values.iter().sum::<f64>() / values.len() as f64;
-        let variance = values
-            .iter()
-            .map(|v| (v - mean).powi(2))
-            .sum::<f64>()
-            / values.len() as f64;
-        (mean, variance.sqrt())
     }
 }
 

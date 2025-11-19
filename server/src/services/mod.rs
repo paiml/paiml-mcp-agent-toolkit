@@ -72,6 +72,8 @@ pub mod service_registry;
 
 pub mod accurate_complexity_analyzer;
 #[cfg(feature = "analytics-simd")]
+pub mod analytics_backend; // Issue #79: Backend selection (GPU/SIMD/Scalar) and statistical helpers
+#[cfg(feature = "analytics-simd")]
 pub mod analytics_top_k; // Issue #79: Top-K selection algorithm (O(N) vs O(N log N))
 pub mod artifact_writer;
 #[cfg(feature = "c-ast")]
