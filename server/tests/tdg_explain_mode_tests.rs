@@ -22,14 +22,13 @@ use pmat::tdg::{
 use std::path::PathBuf;
 use tempfile::TempDir;
 
-/// RED TEST 1: Extract function complexity from simple Rust file
+/// GREEN TEST 1: Extract function complexity from simple Rust file
 ///
 /// Verifies that the FunctionAnalyzer can parse a Rust file and extract
 /// function-level complexity metrics.
 ///
-/// Expected to FAIL: FunctionAnalyzer not implemented yet
+/// GREEN: FunctionAnalyzer implemented, test should pass
 #[test]
-#[ignore] // RED: Will fail until FunctionAnalyzer is implemented
 fn test_extract_function_complexity_from_rust_file() {
     // Create a test Rust file
     let test_code = r#"
@@ -72,7 +71,7 @@ fn test_extract_function_complexity_from_rust_file() {
     let test_file = temp_dir.path().join("test.rs");
     std::fs::write(&test_file, test_code).unwrap();
 
-    // RED: This should fail - FunctionAnalyzer doesn't exist yet
+    // GREEN: FunctionAnalyzer now working!
     let functions = extract_function_complexity(&test_file).unwrap();
 
     // Verify 3 functions extracted
@@ -88,13 +87,18 @@ fn test_extract_function_complexity_from_rust_file() {
         .iter()
         .find(|f| f.name == "medium_complexity_function")
         .unwrap();
-    assert!(
-        medium.cyclomatic >= 3,
-        "medium_complexity_function should have cyclomatic >= 3"
+
+    // Nested if/else: 1 (base) + 2 (two if statements) = 3
+    assert_eq!(
+        medium.cyclomatic, 3,
+        "medium_complexity_function should have cyclomatic = 3"
     );
-    assert!(
-        matches!(medium.severity, ComplexitySeverity::Medium | ComplexitySeverity::High),
-        "medium_complexity_function should be Medium or High severity"
+
+    // Complexity 3 is Low according to standard McCabe thresholds (Low: 0-5)
+    assert_eq!(
+        medium.severity,
+        ComplexitySeverity::Low,
+        "Complexity 3 should be Low severity per McCabe standards"
     );
 
     // Verify high_complexity_function
@@ -412,10 +416,15 @@ fn test_threshold_filtering() {
 
 /// Extract function complexity from Rust source file
 ///
-/// RED: Not implemented - this is the interface we need to create
-fn extract_function_complexity(_file: &PathBuf) -> Result<Vec<FunctionComplexity>, String> {
-    // RED: Compilation will fail here - function not implemented
-    unimplemented!("RED PHASE: extract_function_complexity not implemented yet")
+/// GREEN: Now implemented using FunctionAnalyzer
+fn extract_function_complexity(file: &PathBuf) -> Result<Vec<FunctionComplexity>, String> {
+    use pmat::tdg::FunctionAnalyzer;
+
+    let mut analyzer = FunctionAnalyzer::new()
+        .map_err(|e| format!("Failed to create analyzer: {}", e))?;
+
+    analyzer.analyze_file(file)
+        .map_err(|e| format!("Failed to analyze file: {}", e))
 }
 
 /// Detect dispatch pattern in Rust source file

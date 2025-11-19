@@ -10,6 +10,7 @@ pub mod baseline;
 pub mod config;
 pub mod diagnostics;
 pub mod explain;
+pub mod function_analyzer;
 pub mod hooks_config;
 pub mod quality_gate;
 // Temporarily disable export to fix circular dependency
@@ -53,6 +54,7 @@ pub use explain::{
     ActionableRecommendation, ComplexitySeverity, ExplainBaselineComparison, ExplainedTDGScore,
     FunctionComplexity, RecommendationType,
 };
+pub use function_analyzer::FunctionAnalyzer;
 pub use formatters::{format_human, format_json, format_markdown};
 pub use hooks_config::{
     BaselineConfig, CiCdConfig, EnforcementMode, QualityGatesConfig, TdgHooksConfig,
