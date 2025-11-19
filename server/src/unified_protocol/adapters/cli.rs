@@ -125,6 +125,7 @@ impl CliAdapter {
             | Commands::Semantic(_) // PMAT-SEARCH-011
             | Commands::Mutate(_) // Sprint 61: Mutation testing
             | Commands::Debug { .. } // Sprint 74: Time-travel debugging (CLI-only)
+            | Commands::Work { .. } // Issue #75: Unified GitHub/YAML workflow (CLI-only)
             => Self::cli_only_command_error(),
         }
     }
@@ -1801,6 +1802,9 @@ impl CliInput {
             Commands::Qdd(_) => {
                 unreachable!("QDD commands handled by get_qdd_command_name")
             }
+            Commands::Work { .. } => {
+                CommandCategory::Workflow // Issue #75: Unified GitHub/YAML workflow
+            }
         }
     }
 
@@ -1840,6 +1844,9 @@ impl CliInput {
             Commands::Test { .. } => "test",
             Commands::Roadmap(_) => "roadmap",
             Commands::Validate { .. } => "validate",
+            Commands::Maintain { .. } => "maintain",
+            Commands::Hooks(_) => "hooks",
+            Commands::Work { .. } => "work",
             _ => unreachable!("Non-workflow command passed to workflow command name extractor"),
         }
     }

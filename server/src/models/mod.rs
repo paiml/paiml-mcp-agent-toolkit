@@ -62,6 +62,7 @@ pub mod prompt_model;
 pub mod proxy;
 pub mod quality_gate;
 pub mod refactor;
+pub mod roadmap;
 pub mod tdg;
 pub mod template;
 pub mod unified_ast;

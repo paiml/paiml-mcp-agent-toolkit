@@ -611,6 +611,10 @@ impl CommandExecutor {
                     }
                 }
             }
+            // Issue #75: Unified GitHub/YAML workflow
+            Commands::Work { command } => {
+                anyhow::bail!("Work command not yet implemented in command structure: {:?}", command)
+            }
         }
     }
 }

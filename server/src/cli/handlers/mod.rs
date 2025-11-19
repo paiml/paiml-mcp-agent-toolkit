@@ -82,6 +82,7 @@ pub mod unified_context_property_tests;
 pub mod utility_handlers;
 pub mod wasm_handler;
 pub mod wasm_handlers; // Phase 4: Organizational Intelligence Integration
+pub mod work_handlers; // Issue #75: Unified GitHub/YAML workflow
 
 // Re-export handler functions
 pub use advanced_analysis_handlers::{

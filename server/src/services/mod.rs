@@ -220,6 +220,8 @@ mod git_clone_property_tests;
 mod quality_proxy_property_tests;
 
 pub mod telemetry_service;
+pub mod roadmap_service;
+pub mod github_client; // Issue #75: GitHub API integration
 
 #[cfg(test)]
 mod tests {

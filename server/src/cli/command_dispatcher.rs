@@ -452,6 +452,10 @@ impl CommandDispatcher {
                     }
                 }
             }
+            Commands::Work { command } => {
+                // Issue #75: Unified GitHub/YAML workflow
+                Self::execute_work_command(&command).await
+            }
         }
     }
 
@@ -1603,6 +1607,47 @@ mod tests {
     fn test_command_dispatcher_basic() {
         // Basic test
         assert_eq!(1 + 1, 2);
+    }
+}
+
+impl CommandDispatcher {
+    /// Execute work command (Issue #75: Unified GitHub/YAML workflow)
+    async fn execute_work_command(command: &crate::cli::commands::WorkCommands) -> anyhow::Result<()> {
+        use crate::cli::commands::WorkCommands;
+        use crate::cli::handlers::work_handlers;
+
+        match command {
+            WorkCommands::Init { github_repo, no_github, path } => {
+                work_handlers::handle_work_init(
+                    github_repo.clone(),
+                    *no_github,
+                    path.clone(),
+                )
+                .await
+            }
+            WorkCommands::Start { id, with_spec, epic, path, create_github } => {
+                work_handlers::handle_work_start(
+                    id.clone(),
+                    *with_spec,
+                    *epic,
+                    path.clone(),
+                    *create_github,
+                )
+                .await
+            }
+            WorkCommands::Continue { id, path } => {
+                work_handlers::handle_work_continue(id.clone(), path.clone()).await
+            }
+            WorkCommands::Complete { id, skip_quality, path } => {
+                work_handlers::handle_work_complete(id.clone(), *skip_quality, path.clone()).await
+            }
+            WorkCommands::Status { id, path, active } => {
+                work_handlers::handle_work_status(id.clone(), path.clone(), *active).await
+            }
+            WorkCommands::Sync { direction, path, dry_run } => {
+                work_handlers::handle_work_sync(*direction, path.clone(), *dry_run).await
+            }
+        }
     }
 }
 

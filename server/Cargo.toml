@@ -128,6 +128,9 @@ bincode = "1.3"
 # Async utilities
 futures = "0.3"
 
+# GitHub API client (Issue #75: Unified GitHub/YAML workflow)
+octocrab = "0.40"
+
 # File watching for configuration hot-reload
 notify = "8.0"
 

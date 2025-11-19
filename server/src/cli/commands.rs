@@ -707,6 +707,13 @@ pub enum Commands {
         #[command(subcommand)]
         command: DebugCommands,
     },
+
+    /// Unified GitHub/YAML workflow commands (Issue #75)
+    #[command(visible_aliases = &["w"])]
+    Work {
+        #[command(subcommand)]
+        command: WorkCommands,
+    },
 }
 
 /// Debug subcommands (Sprint 74 - TRACE-001 through TRACE-003)
@@ -4494,4 +4501,115 @@ mod property_tests {
             prop_assert!(_x < 1001);
         }
     }
+}
+
+/// Work subcommands for unified GitHub/YAML workflow (Issue #75)
+#[derive(Debug, Clone, Subcommand)]
+pub enum WorkCommands {
+    /// Start work on a GitHub issue or YAML ticket
+    #[command(visible_aliases = &["begin", "s"])]
+    Start {
+        /// Issue number (e.g., "8", "42") or YAML ticket ID (e.g., "PERF-001")
+        id: String,
+
+        /// Create specification file (docs/specifications/NNN-name.md)
+        #[arg(long)]
+        with_spec: bool,
+
+        /// Create as epic with subtasks
+        #[arg(long)]
+        epic: bool,
+
+        /// Project path (default: current directory)
+        #[arg(short, long)]
+        path: Option<PathBuf>,
+
+        /// Force create GitHub issue for YAML ticket
+        #[arg(long)]
+        create_github: bool,
+    },
+
+    /// Continue work on existing issue/ticket
+    #[command(visible_aliases = &["cont", "c", "resume"])]
+    Continue {
+        /// Issue number or ticket ID
+        id: String,
+
+        /// Project path (default: current directory)
+        #[arg(short, long)]
+        path: Option<PathBuf>,
+    },
+
+    /// Complete work on issue/ticket
+    #[command(visible_aliases = &["done", "finish", "f"])]
+    Complete {
+        /// Issue number or ticket ID
+        id: String,
+
+        /// Skip quality gates (not recommended)
+        #[arg(long)]
+        skip_quality: bool,
+
+        /// Project path (default: current directory)
+        #[arg(short, long)]
+        path: Option<PathBuf>,
+    },
+
+    /// Show work status
+    #[command(visible_aliases = &["st", "stat"])]
+    Status {
+        /// Issue number or ticket ID (default: all)
+        id: Option<String>,
+
+        /// Project path (default: current directory)
+        #[arg(short, long)]
+        path: Option<PathBuf>,
+
+        /// Show only active items
+        #[arg(long)]
+        active: bool,
+    },
+
+    /// Synchronize GitHub and YAML
+    #[command(visible_aliases = &["sy"])]
+    Sync {
+        /// Sync direction
+        #[arg(long, value_enum, default_value = "full")]
+        direction: SyncDirection,
+
+        /// Project path (default: current directory)
+        #[arg(short, long)]
+        path: Option<PathBuf>,
+
+        /// Dry run (show what would be synced)
+        #[arg(long)]
+        dry_run: bool,
+    },
+
+    /// Initialize roadmap and hooks
+    #[command(visible_aliases = &["setup", "ini"])]
+    Init {
+        /// GitHub repository (owner/repo)
+        #[arg(long)]
+        github_repo: Option<String>,
+
+        /// Disable GitHub integration
+        #[arg(long)]
+        no_github: bool,
+
+        /// Project path (default: current directory)
+        #[arg(short, long)]
+        path: Option<PathBuf>,
+    },
+}
+
+/// Sync direction for work sync command
+#[derive(Debug, Clone, Copy, clap::ValueEnum, PartialEq)]
+pub enum SyncDirection {
+    /// Sync YAML → GitHub
+    YamlToGithub,
+    /// Sync GitHub → YAML
+    GithubToYaml,
+    /// Full bidirectional sync
+    Full,
 }

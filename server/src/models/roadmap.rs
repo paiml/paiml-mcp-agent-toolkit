@@ -1,0 +1,418 @@
+// Roadmap data models for unified GitHub/YAML workflow
+//
+// Supports both GitHub-first and YAML-first workflows with write-through synchronization.
+
+use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
+
+/// Roadmap YAML schema version
+pub const ROADMAP_VERSION: &str = "1.0";
+
+/// Main roadmap structure
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct Roadmap {
+    /// Schema version
+    pub roadmap_version: String,
+
+    /// GitHub integration enabled
+    #[serde(default = "default_github_enabled")]
+    pub github_enabled: bool,
+
+    /// GitHub repository (owner/repo)
+    pub github_repo: Option<String>,
+
+    /// List of roadmap items (tickets)
+    #[serde(default)]
+    pub roadmap: Vec<RoadmapItem>,
+}
+
+fn default_github_enabled() -> bool {
+    true
+}
+
+impl Default for Roadmap {
+    fn default() -> Self {
+        Self {
+            roadmap_version: ROADMAP_VERSION.to_string(),
+            github_enabled: true,
+            github_repo: None,
+            roadmap: Vec::new(),
+        }
+    }
+}
+
+/// Individual roadmap item (ticket/issue)
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct RoadmapItem {
+    /// Unique ID (e.g., "GH-8", "PERF-001", "EPIC-001")
+    pub id: String,
+
+    /// GitHub issue number (null if YAML-only)
+    pub github_issue: Option<u64>,
+
+    /// Item type (task, epic, bug, etc.)
+    #[serde(default = "default_item_type")]
+    pub item_type: ItemType,
+
+    /// Title
+    pub title: String,
+
+    /// Current status
+    pub status: ItemStatus,
+
+    /// Priority level
+    #[serde(default)]
+    pub priority: Priority,
+
+    /// Assigned to (GitHub username with @)
+    pub assigned_to: Option<String>,
+
+    /// Created timestamp (ISO 8601)
+    pub created: String,
+
+    /// Last updated timestamp (ISO 8601)
+    pub updated: String,
+
+    /// Path to specification file
+    pub spec: Option<PathBuf>,
+
+    /// Acceptance criteria (checklist)
+    #[serde(default)]
+    pub acceptance_criteria: Vec<String>,
+
+    /// Phases (for multi-phase work)
+    #[serde(default)]
+    pub phases: Vec<Phase>,
+
+    /// Subtasks (for epic items)
+    #[serde(default)]
+    pub subtasks: Vec<Subtask>,
+
+    /// Estimated effort (human-readable)
+    pub estimated_effort: Option<String>,
+
+    /// Labels/tags
+    #[serde(default)]
+    pub labels: Vec<String>,
+}
+
+fn default_item_type() -> ItemType {
+    ItemType::Task
+}
+
+/// Item type enumeration
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum ItemType {
+    Task,
+    Epic,
+    Bug,
+    Feature,
+    Enhancement,
+    Documentation,
+    Refactor,
+}
+
+/// Item status enumeration
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum ItemStatus {
+    Planned,
+    InProgress,
+    Blocked,
+    Review,
+    Completed,
+    Cancelled,
+}
+
+/// Priority enumeration
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+#[serde(rename_all = "lowercase")]
+pub enum Priority {
+    Low,
+    Medium,
+    High,
+    Critical,
+}
+
+impl Default for Priority {
+    fn default() -> Self {
+        Self::Medium
+    }
+}
+
+/// Phase within a roadmap item
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct Phase {
+    /// Phase name
+    pub name: String,
+
+    /// Phase status
+    pub status: ItemStatus,
+
+    /// Estimated effort
+    pub estimated_effort: Option<String>,
+
+    /// Completion percentage (0-100)
+    #[serde(default)]
+    pub completion: u8,
+}
+
+/// Subtask within an epic
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct Subtask {
+    /// Subtask ID
+    pub id: String,
+
+    /// GitHub issue number (if synced)
+    pub github_issue: Option<u64>,
+
+    /// Subtask title
+    pub title: String,
+
+    /// Subtask status
+    pub status: ItemStatus,
+
+    /// Completion percentage (0-100)
+    #[serde(default)]
+    pub completion: u8,
+}
+
+impl Roadmap {
+    /// Create a new empty roadmap
+    pub fn new(github_repo: Option<String>) -> Self {
+        Self {
+            roadmap_version: ROADMAP_VERSION.to_string(),
+            github_enabled: true,
+            github_repo,
+            roadmap: Vec::new(),
+        }
+    }
+
+    /// Find item by ID
+    pub fn find_item(&self, id: &str) -> Option<&RoadmapItem> {
+        self.roadmap.iter().find(|item| item.id == id)
+    }
+
+    /// Find item by GitHub issue number
+    pub fn find_item_by_github_issue(&self, issue: u64) -> Option<&RoadmapItem> {
+        self.roadmap.iter().find(|item| item.github_issue == Some(issue))
+    }
+
+    /// Find item by ID (mutable)
+    pub fn find_item_mut(&mut self, id: &str) -> Option<&mut RoadmapItem> {
+        self.roadmap.iter_mut().find(|item| item.id == id)
+    }
+
+    /// Add or update item
+    pub fn upsert_item(&mut self, item: RoadmapItem) {
+        if let Some(existing) = self.find_item_mut(&item.id) {
+            *existing = item;
+        } else {
+            self.roadmap.push(item);
+        }
+    }
+
+    /// Remove item by ID
+    pub fn remove_item(&mut self, id: &str) -> Option<RoadmapItem> {
+        if let Some(pos) = self.roadmap.iter().position(|item| item.id == id) {
+            Some(self.roadmap.remove(pos))
+        } else {
+            None
+        }
+    }
+
+    /// Get items without GitHub sync
+    pub fn yaml_only_items(&self) -> Vec<&RoadmapItem> {
+        self.roadmap.iter().filter(|item| item.github_issue.is_none()).collect()
+    }
+
+    /// Get epic items
+    pub fn epic_items(&self) -> Vec<&RoadmapItem> {
+        self.roadmap.iter().filter(|item| item.item_type == ItemType::Epic).collect()
+    }
+}
+
+impl RoadmapItem {
+    /// Create a new roadmap item
+    pub fn new(id: String, title: String) -> Self {
+        let now = chrono::Utc::now().to_rfc3339();
+        Self {
+            id,
+            github_issue: None,
+            item_type: ItemType::Task,
+            title,
+            status: ItemStatus::Planned,
+            priority: Priority::Medium,
+            assigned_to: None,
+            created: now.clone(),
+            updated: now,
+            spec: None,
+            acceptance_criteria: Vec::new(),
+            phases: Vec::new(),
+            subtasks: Vec::new(),
+            estimated_effort: None,
+            labels: Vec::new(),
+        }
+    }
+
+    /// Create from GitHub issue
+    pub fn from_github_issue(issue_number: u64, title: String) -> Self {
+        let id = format!("GH-{}", issue_number);
+        let mut item = Self::new(id, title);
+        item.github_issue = Some(issue_number);
+        item
+    }
+
+    /// Calculate overall completion percentage
+    pub fn completion_percentage(&self) -> u8 {
+        if !self.subtasks.is_empty() {
+            // Epic: weighted average of subtasks
+            let total: u16 = self.subtasks.iter().map(|st| st.completion as u16).sum();
+            (total / self.subtasks.len() as u16) as u8
+        } else if !self.phases.is_empty() {
+            // Multi-phase: weighted average of phases
+            let total: u16 = self.phases.iter().map(|p| p.completion as u16).sum();
+            (total / self.phases.len() as u16) as u8
+        } else if !self.acceptance_criteria.is_empty() {
+            // Count completed criteria (basic heuristic)
+            0 // TODO: Track individual criteria completion
+        } else {
+            match self.status {
+                ItemStatus::Planned => 0,
+                ItemStatus::InProgress => 50,
+                ItemStatus::Review => 90,
+                ItemStatus::Completed => 100,
+                ItemStatus::Cancelled => 0,
+                ItemStatus::Blocked => 0,
+            }
+        }
+    }
+
+    /// Check if item is synced with GitHub
+    pub fn is_github_synced(&self) -> bool {
+        self.github_issue.is_some()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_roadmap_creation() {
+        let roadmap = Roadmap::new(Some("paiml/pmat".to_string()));
+        assert_eq!(roadmap.roadmap_version, ROADMAP_VERSION);
+        assert!(roadmap.github_enabled);
+        assert_eq!(roadmap.github_repo, Some("paiml/pmat".to_string()));
+        assert!(roadmap.roadmap.is_empty());
+    }
+
+    #[test]
+    fn test_roadmap_item_creation() {
+        let item = RoadmapItem::new("TEST-001".to_string(), "Test task".to_string());
+        assert_eq!(item.id, "TEST-001");
+        assert_eq!(item.title, "Test task");
+        assert_eq!(item.status, ItemStatus::Planned);
+        assert_eq!(item.priority, Priority::Medium);
+        assert!(item.github_issue.is_none());
+    }
+
+    #[test]
+    fn test_roadmap_item_from_github() {
+        let item = RoadmapItem::from_github_issue(42, "GitHub issue".to_string());
+        assert_eq!(item.id, "GH-42");
+        assert_eq!(item.github_issue, Some(42));
+        assert_eq!(item.title, "GitHub issue");
+    }
+
+    #[test]
+    fn test_roadmap_upsert() {
+        let mut roadmap = Roadmap::default();
+        let item1 = RoadmapItem::new("TEST-001".to_string(), "Task 1".to_string());
+        roadmap.upsert_item(item1.clone());
+        assert_eq!(roadmap.roadmap.len(), 1);
+
+        // Update existing
+        let mut item1_updated = item1.clone();
+        item1_updated.title = "Task 1 Updated".to_string();
+        roadmap.upsert_item(item1_updated);
+        assert_eq!(roadmap.roadmap.len(), 1);
+        assert_eq!(roadmap.roadmap[0].title, "Task 1 Updated");
+    }
+
+    #[test]
+    fn test_roadmap_find() {
+        let mut roadmap = Roadmap::default();
+        let item = RoadmapItem::from_github_issue(42, "Test".to_string());
+        roadmap.upsert_item(item.clone());
+
+        assert!(roadmap.find_item("GH-42").is_some());
+        assert!(roadmap.find_item("NONEXISTENT").is_none());
+        assert!(roadmap.find_item_by_github_issue(42).is_some());
+        assert!(roadmap.find_item_by_github_issue(999).is_none());
+    }
+
+    #[test]
+    fn test_completion_percentage() {
+        let mut item = RoadmapItem::new("TEST-001".to_string(), "Test".to_string());
+
+        // Planned task
+        assert_eq!(item.completion_percentage(), 0);
+
+        // In progress
+        item.status = ItemStatus::InProgress;
+        assert_eq!(item.completion_percentage(), 50);
+
+        // Completed
+        item.status = ItemStatus::Completed;
+        assert_eq!(item.completion_percentage(), 100);
+    }
+
+    #[test]
+    fn test_completion_with_subtasks() {
+        let mut item = RoadmapItem::new("EPIC-001".to_string(), "Epic".to_string());
+        item.item_type = ItemType::Epic;
+        item.subtasks = vec![
+            Subtask {
+                id: "SUB-1".to_string(),
+                github_issue: None,
+                title: "Subtask 1".to_string(),
+                status: ItemStatus::Completed,
+                completion: 100,
+            },
+            Subtask {
+                id: "SUB-2".to_string(),
+                github_issue: None,
+                title: "Subtask 2".to_string(),
+                status: ItemStatus::InProgress,
+                completion: 50,
+            },
+        ];
+
+        // Average: (100 + 50) / 2 = 75
+        assert_eq!(item.completion_percentage(), 75);
+    }
+
+    #[test]
+    fn test_yaml_only_items() {
+        let mut roadmap = Roadmap::default();
+        roadmap.upsert_item(RoadmapItem::from_github_issue(42, "GitHub".to_string()));
+        roadmap.upsert_item(RoadmapItem::new("YAML-001".to_string(), "YAML only".to_string()));
+
+        let yaml_only = roadmap.yaml_only_items();
+        assert_eq!(yaml_only.len(), 1);
+        assert_eq!(yaml_only[0].id, "YAML-001");
+    }
+
+    #[test]
+    fn test_serde_roundtrip() {
+        let mut roadmap = Roadmap::new(Some("paiml/pmat".to_string()));
+        let item = RoadmapItem::from_github_issue(42, "Test issue".to_string());
+        roadmap.upsert_item(item);
+
+        let yaml = serde_yaml::to_string(&roadmap).unwrap();
+        let deserialized: Roadmap = serde_yaml::from_str(&yaml).unwrap();
+        assert_eq!(roadmap, deserialized);
+    }
+}
