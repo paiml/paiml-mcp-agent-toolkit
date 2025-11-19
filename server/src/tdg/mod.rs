@@ -10,6 +10,7 @@ pub mod baseline;
 pub mod config;
 pub mod diagnostics;
 pub mod explain;
+pub mod explain_formatters;
 pub mod function_analyzer;
 pub mod hooks_config;
 pub mod quality_gate;
@@ -54,6 +55,7 @@ pub use explain::{
     ActionableRecommendation, ComplexitySeverity, ExplainBaselineComparison, ExplainedTDGScore,
     FunctionComplexity, RecommendationType,
 };
+pub use explain_formatters::{format_explain_json, format_explain_text};
 pub use function_analyzer::FunctionAnalyzer;
 pub use formatters::{format_human, format_json, format_markdown};
 pub use hooks_config::{

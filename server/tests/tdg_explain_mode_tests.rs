@@ -281,15 +281,16 @@ fn test_baseline_comparison() {
     );
 }
 
-/// RED TEST 5: Text output formatting
+/// GREEN TEST 5: Text output formatting
 ///
 /// Verifies that the explain mode produces human-readable text output
 /// with function breakdown and recommendations.
 ///
-/// Expected to FAIL: format_explain_text doesn't exist yet
+/// GREEN: format_explain_text now implemented
 #[test]
-#[ignore] // RED: Will fail until formatters are implemented
 fn test_explain_text_output_format() {
+    use pmat::tdg::format_explain_text;
+
     let mut explained = ExplainedTDGScore::new(pmat::tdg::TdgScore::default());
 
     explained.add_function(FunctionComplexity {
@@ -311,7 +312,7 @@ fn test_explain_text_output_format() {
         pattern: "match_dispatch".to_string(),
     });
 
-    // RED: This should fail - format_explain_text doesn't exist yet
+    // GREEN: format_explain_text now works!
     let output = format_explain_text(&explained).unwrap();
 
     // Verify output contains key sections
@@ -327,15 +328,16 @@ fn test_explain_text_output_format() {
     assert!(output.contains("Extract dispatch pattern"), "Should show action");
 }
 
-/// RED TEST 6: JSON output formatting
+/// GREEN TEST 6: JSON output formatting
 ///
 /// Verifies that the explain mode produces valid JSON output
 /// suitable for CI/CD integration.
 ///
-/// Expected to FAIL: format_explain_json doesn't exist yet
+/// GREEN: format_explain_json now implemented
 #[test]
-#[ignore] // RED: Will fail until formatters are implemented
 fn test_explain_json_output_format() {
+    use pmat::tdg::format_explain_json;
+
     let mut explained = ExplainedTDGScore::new(pmat::tdg::TdgScore::default());
 
     explained.add_function(FunctionComplexity {
@@ -347,7 +349,7 @@ fn test_explain_json_output_format() {
         severity: ComplexitySeverity::High,
     });
 
-    // RED: This should fail - format_explain_json doesn't exist yet
+    // GREEN: format_explain_json now works!
     let output = format_explain_json(&explained).unwrap();
 
     // Parse JSON to verify structure
@@ -463,22 +465,6 @@ struct BaselineComparison {
 fn compare_with_baseline(_file: &PathBuf, _baseline_ref: &str) -> Result<BaselineComparison, String> {
     // RED: Compilation will fail here - function not implemented
     unimplemented!("RED PHASE: compare_with_baseline not implemented yet")
-}
-
-/// Format explained TDG score as human-readable text
-///
-/// RED: Not implemented - this is the interface we need to create
-fn format_explain_text(_explained: &ExplainedTDGScore) -> Result<String, String> {
-    // RED: Compilation will fail here - function not implemented
-    unimplemented!("RED PHASE: format_explain_text not implemented yet")
-}
-
-/// Format explained TDG score as JSON
-///
-/// RED: Not implemented - this is the interface we need to create
-fn format_explain_json(_explained: &ExplainedTDGScore) -> Result<String, String> {
-    // RED: Compilation will fail here - function not implemented
-    unimplemented!("RED PHASE: format_explain_json not implemented yet")
 }
 
 // ============================================================================
