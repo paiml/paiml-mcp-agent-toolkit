@@ -365,14 +365,13 @@ fn test_explain_json_output_format() {
     assert_eq!(func["tdg_impact"].as_f64().unwrap(), 3.2);
 }
 
-/// RED TEST 7: Threshold filtering
+/// GREEN TEST 7: Threshold filtering
 ///
 /// Verifies that --threshold flag correctly filters functions
 /// based on cyclomatic complexity.
 ///
-/// Expected to FAIL: threshold filtering not implemented yet
+/// GREEN: Functionality already implemented in explain.rs data model
 #[test]
-#[ignore] // RED: Will fail until threshold filtering is implemented
 fn test_threshold_filtering() {
     let mut explained = ExplainedTDGScore::new(pmat::tdg::TdgScore::default());
 
