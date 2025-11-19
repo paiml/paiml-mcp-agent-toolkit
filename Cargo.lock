@@ -418,15 +418,17 @@ dependencies = [
 
 [[package]]
 name = "aprender"
-version = "0.3.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f8bdce6b9ca0c80626d4fd10cb8f01fe787b1a5235042543e25654f48df2b93c"
+checksum = "ed909243e45848ae08aee3a1c5d95ccd8f56aac61cdec2a2067a9a5345e13518"
 dependencies = [
  "bincode",
+ "nalgebra 0.33.2",
  "rand 0.8.5",
+ "rayon",
  "serde",
  "serde_json",
- "trueno 0.2.2",
+ "trueno",
 ]
 
 [[package]]
@@ -4762,6 +4764,22 @@ dependencies = [
 
 [[package]]
 name = "nalgebra"
+version = "0.33.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "26aecdf64b707efd1310e3544d709c5c0ac61c13756046aaaba41be5c4f66a3b"
+dependencies = [
+ "approx",
+ "matrixmultiply",
+ "nalgebra-macros 0.2.2",
+ "num-complex",
+ "num-rational",
+ "num-traits",
+ "simba",
+ "typenum",
+]
+
+[[package]]
+name = "nalgebra"
 version = "0.34.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c4d5b3eff5cd580f93da45e64715e8c20a3996342f1e466599cf7a267a0c2f5f"
@@ -4784,12 +4802,23 @@ dependencies = [
  "glam 0.29.3",
  "glam 0.30.9",
  "matrixmultiply",
- "nalgebra-macros",
+ "nalgebra-macros 0.3.0",
  "num-complex",
  "num-rational",
  "num-traits",
  "simba",
  "typenum",
+]
+
+[[package]]
+name = "nalgebra-macros"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "254a5372af8fc138e36684761d3c0cdb758a4410e938babcff1c860ce14ddbfc"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.110",
 ]
 
 [[package]]
@@ -4809,7 +4838,7 @@ version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "df054d7815152d4e66955fc59a1f97f4036e5103134a381b6b54ec55babfa6b7"
 dependencies = [
- "nalgebra",
+ "nalgebra 0.34.1",
  "num-traits",
 ]
 
@@ -5858,7 +5887,7 @@ dependencies = [
  "tree-sitter-scala",
  "tree-sitter-swift",
  "tree-sitter-typescript",
- "trueno 0.4.0",
+ "trueno",
  "ureq",
  "url",
  "uuid",
@@ -8783,15 +8812,6 @@ checksum = "dd69c5aa8f924c7519d6372789a74eac5b94fb0f8fcf0d4a97eb0bfc3e785f39"
 dependencies = [
  "serde",
  "stable_deref_trait",
-]
-
-[[package]]
-name = "trueno"
-version = "0.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "985cb970d326d4ece7d97bc6a2f6ff8c6a86bd9faa7dd4d11acaa06d0b76cb37"
-dependencies = [
- "thiserror 2.0.17",
 ]
 
 [[package]]
