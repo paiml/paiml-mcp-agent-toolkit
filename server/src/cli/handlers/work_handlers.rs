@@ -4,6 +4,7 @@
 
 use crate::cli::commands::SyncDirection;
 use crate::models::roadmap::{ItemStatus, Priority, RoadmapItem};
+use crate::services::changelog_manager::{ChangeCategory, ChangelogEntry};
 use crate::services::github_client::GitHubClient;
 use crate::services::hook_manager;
 use crate::services::roadmap_service::RoadmapService;
@@ -348,6 +349,30 @@ pub async fn handle_work_complete(
 
     println!("✅ Marked as complete: {}", item.title);
     println!("✅ Updated roadmap: {}", roadmap_path.display());
+
+    // Update CHANGELOG.md if labels are available
+    if !item.labels.is_empty() {
+        if let Some(category) = ChangeCategory::from_labels(&item.labels) {
+            let entry = ChangelogEntry::new(
+                category,
+                item.title.clone(),
+                item.github_issue,
+            );
+
+            match crate::services::changelog_manager::add_to_changelog(&project_path, entry) {
+                Ok(()) => {
+                    println!("✅ Updated CHANGELOG.md");
+                }
+                Err(e) => {
+                    println!("⚠️  Failed to update CHANGELOG.md: {}", e);
+                    println!("   You may need to update it manually");
+                }
+            }
+        } else {
+            println!("ℹ️  No changelog category inferred from labels");
+        }
+    }
+
     println!();
 
     // Next steps
