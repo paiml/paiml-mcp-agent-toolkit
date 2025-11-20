@@ -711,6 +711,7 @@ pub enum Commands {
     Semantic(SemanticCommands),
 
     /// Run mutation testing on specified files (Sprint 61)
+    #[cfg(feature = "mutation-testing")]
     Mutate(MutateArgs),
 
     /// Time-travel debugging commands (Sprint 74)
@@ -2364,6 +2365,7 @@ pub enum AnalyzeCommands {
     ///
     /// Note: 20× faster than cargo-mutants with smart test filtering.
     /// Generates properly formatted mutants using prettyplease.
+    #[cfg(feature = "mutation-testing")]
     Mutate {
         /// Path to source code to mutate
         #[arg(short = 'p', long)]
@@ -4172,6 +4174,7 @@ pub enum ClusterMethod {
 }
 
 /// Mutation testing arguments (Sprint 61 + Sprint 70)
+#[cfg(feature = "mutation-testing")]
 #[derive(Args, Debug, Clone)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct MutateArgs {

@@ -11,6 +11,7 @@ pub mod analysis_handlers;
 pub mod annotation_tdd_tests;
 pub mod big_o_handlers;
 pub mod cache;
+#[cfg(feature = "mutation-testing")]
 pub mod cargo_mutants_backend; // Sprint 70: cargo-mutants wrapper
 pub mod churn_formatter;
 pub mod complexity_handlers;
@@ -37,7 +38,9 @@ pub mod lint_hotspot_handlers;
 #[cfg(test)]
 pub mod lint_hotspot_property_tests;
 pub mod memory;
+#[cfg(feature = "mutation-testing")]
 pub mod mutate;
+#[cfg(feature = "mutation-testing")]
 pub mod mutation_handlers;
 pub mod name_similarity_analysis;
 pub mod new_tdg_handler;

@@ -172,7 +172,8 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
         #[cfg(feature = "deep-wasm")]
         AnalyzeCommands::DeepWasm { .. } => route_deep_wasm_analysis(cmd).await,
 
-        // Mutation testing
+        // Mutation testing (feature-gated)
+        #[cfg(feature = "mutation-testing")]
         AnalyzeCommands::Mutate { .. } => route_mutation_testing(cmd).await,
 
         // System commands
@@ -1068,7 +1069,8 @@ async fn route_deep_wasm_analysis(cmd: AnalyzeCommands) -> Result<()> {
     }
 }
 
-/// Route Mutation Testing command
+/// Route Mutation Testing command (feature-gated)
+#[cfg(feature = "mutation-testing")]
 async fn route_mutation_testing(cmd: AnalyzeCommands) -> Result<()> {
     if let AnalyzeCommands::Mutate {
         path,
