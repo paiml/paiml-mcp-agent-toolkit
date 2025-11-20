@@ -290,13 +290,15 @@ hex = "0.4"
 
 [features]
 default = ["all-languages", "demo", "polyglot-ast", "org-intelligence", "tdg-explain", "analytics-simd"]
-# Phase 2 Note: Attempted to use "most-languages" but discovered unconditional dependencies
-# in bash.rs, php.rs, unified_go_analyzer.rs require refactoring before T1 parsers can be optional
-# TODO: Add proper feature gates to language analyzer modules before changing default
+# Phase 2 Progress (2025-11-20):
+# ✅ FIXED (commit b721a174): Module-level feature gates for unified_go_analyzer, unified_wasm_analyzer,
+#    org_handlers, language_mapper (Java/Scala)
+# ⚠️  REMAINING: Deeper conditional compilation issues in function bodies (TypeScript/SWC dependencies)
+# TODO: Continue Phase 2 refactoring to enable minimal builds with reduced language support
 org-intelligence = ["organizational-intelligence-plugin"]
 all-languages = ["rust-ast", "typescript-ast", "python-ast", "c-ast", "cpp-ast", "ruchy-ast", "go-ast", "wasm-ast", "deep-wasm", "shell-ast", "php-ast", "swift-ast", "java-ast", "csharp-ast", "ruby-ast", "scala-ast"]
 most-languages = ["rust-ast", "typescript-ast", "python-ast", "c-ast", "cpp-ast", "java-ast", "csharp-ast", "ruby-ast", "scala-ast", "go-ast", "shell-ast"]
-# Note: go-ast and shell-ast added due to unconditional dependencies in unified_go_analyzer.rs and bash.rs
+# Note: go-ast and shell-ast kept in most-languages (unified_go_analyzer.rs now has proper feature gates)
 rust-only = ["rust-ast"]
 # Polyglot AST meta-feature for cross-language analysis
 polyglot-ast = []
