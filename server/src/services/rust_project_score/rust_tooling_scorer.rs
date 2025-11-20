@@ -41,7 +41,7 @@ impl RustToolingScorer {
     pub fn new() -> Self {
         Self {
             name: "Rust Tooling & CI/CD".to_string(),
-            max_points: 119.0, // v2.0: 25 + 12 (lints) + 37 (CI/CD) + 35 (metadata) + 10 (MSRV)
+            max_points: 130.0, // v2.0: 25 + 12 (lints) + 37 (CI/CD) + 35 (metadata) + 10 (MSRV) + 11 (profiles)
         }
     }
 
@@ -694,6 +694,110 @@ impl RustToolingScorer {
         Ok(score)
     }
 
+    /// Score release profile optimizations
+    ///
+    /// Based on "Learn from Rust Giants" specification (TPS-reviewed):
+    /// - +4pts: [profile.release] with LTO enabled
+    /// - +3pts: codegen-units = 1 for maximum optimization (release only)
+    /// - +2pts: panic = "abort" for smaller binaries (release)
+    /// - +2pts: [profile.dev] with panic = "abort" (faster testing)
+    /// - -3pts penalty if LTO enabled in dev or test profiles (slows TDD loop)
+    ///
+    /// Total possible: 11 points (can go negative with penalties)
+    ///
+    /// References:
+    /// - Beller et al. 2017 MSR: Builds >10min correlate with 42% fewer local test runs
+    fn score_release_profiles(&self, project_path: &Path, cache: Option<&FileCache>) -> ScorerResult<f64> {
+        let mut score = 0.0;
+
+        let cargo_toml_path = project_path.join("Cargo.toml");
+        if !cargo_toml_path.exists() {
+            return Ok(0.0);
+        }
+
+        // Use cache if available, otherwise read file
+        let cargo_toml_content = if let Some(cache) = cache {
+            cache
+                .get(&cargo_toml_path)
+                .ok_or_else(|| ScorerError::IoError("Cargo.toml not in cache".to_string()))?
+                .clone()
+        } else {
+            std::fs::read_to_string(&cargo_toml_path)
+                .map_err(|e| ScorerError::IoError(e.to_string()))?
+        };
+
+        // Parse profile sections
+        let has_release_profile = cargo_toml_content.contains("[profile.release]");
+        let has_dev_profile = cargo_toml_content.contains("[profile.dev]");
+        let has_test_profile = cargo_toml_content.contains("[profile.test]");
+
+        // Check 1: LTO in release profile (+4pts)
+        if has_release_profile {
+            // Find release profile section
+            if let Some(release_start) = cargo_toml_content.find("[profile.release]") {
+                let release_section = &cargo_toml_content[release_start..];
+                let release_end = release_section.find("\n[").unwrap_or(release_section.len());
+                let release_content = &release_section[..release_end];
+
+                // Check for lto = true or lto = "thin" or lto = "fat"
+                if release_content.contains("lto = true") ||
+                   release_content.contains("lto = \"thin\"") ||
+                   release_content.contains("lto = \"fat\"") ||
+                   release_content.contains("lto = 'thin'") ||
+                   release_content.contains("lto = 'fat'") {
+                    score += 4.0;
+                }
+
+                // Check 2: codegen-units = 1 (+3pts)
+                if release_content.contains("codegen-units = 1") {
+                    score += 3.0;
+                }
+
+                // Check 3: panic = "abort" in release (+2pts)
+                if release_content.contains("panic = \"abort\"") || release_content.contains("panic = 'abort'") {
+                    score += 2.0;
+                }
+            }
+        }
+
+        // Check 4: panic = "abort" in dev profile (+2pts)
+        if has_dev_profile {
+            if let Some(dev_start) = cargo_toml_content.find("[profile.dev]") {
+                let dev_section = &cargo_toml_content[dev_start..];
+                let dev_end = dev_section.find("\n[").unwrap_or(dev_section.len());
+                let dev_content = &dev_section[..dev_end];
+
+                if dev_content.contains("panic = \"abort\"") || dev_content.contains("panic = 'abort'") {
+                    score += 2.0;
+                }
+
+                // Penalty: LTO in dev profile (-3pts) - slows TDD
+                if dev_content.contains("lto = true") ||
+                   dev_content.contains("lto = \"") ||
+                   dev_content.contains("lto = '") {
+                    score -= 3.0;
+                }
+            }
+        }
+
+        // Penalty: LTO in test profile (-3pts) - slows TDD
+        if has_test_profile {
+            if let Some(test_start) = cargo_toml_content.find("[profile.test]") {
+                let test_section = &cargo_toml_content[test_start..];
+                let test_end = test_section.find("\n[").unwrap_or(test_section.len());
+                let test_content = &test_section[..test_end];
+
+                if test_content.contains("lto = true") ||
+                   test_content.contains("lto = \"") ||
+                   test_content.contains("lto = '") {
+                    score -= 3.0;
+                }
+            }
+        }
+
+        Ok(score)
+    }
+
     /// Internal scoring logic that accepts optional cache
     ///
     /// **Kaizen Round 4**: Cache-aware scoring implementation
@@ -808,6 +912,12 @@ impl RustToolingScorer {
             Err(e) => return Err(e),
         }
 
+        // Score release profiles (11pts) - Phase 1 remaining (fast, just file reads)
+        match self.score_release_profiles(project_path, _cache) {
+            Ok(score) => total_earned += score,
+            Err(e) => return Err(e),
+        }
+
         Ok(CategoryScore::new(total_earned, self.max_points))
     }
 }
@@ -918,7 +1028,7 @@ mod tests {
     fn test_scorer_creation() {
         let scorer = RustToolingScorer::new();
         assert_eq!(scorer.name(), "Rust Tooling & CI/CD");
-        assert_eq!(scorer.max_points(), 119.0); // v2.0: 25 + 12 + 37 + 35 + 10 (MSRV)
+        assert_eq!(scorer.max_points(), 130.0); // v2.0: 25 + 12 + 37 + 35 + 10 + 11 (profiles)
     }
 
     #[test]
@@ -1658,5 +1768,116 @@ rust-version = "1.68"
 
         let score = scorer.score_msrv_tracking(temp_dir.path(), None).unwrap();
         assert_eq!(score, 0.0, "Should get 0pts without rust-version field");
+    }
+
+    // Release Profile Optimization Tests (11pts total)
+
+    #[test]
+    fn test_release_profiles_full_score() {
+        let scorer = RustToolingScorer::new();
+        let temp_dir = TempDir::new().unwrap();
+
+        let cargo_toml = temp_dir.path().join("Cargo.toml");
+        std::fs::write(&cargo_toml, r#"
+[package]
+name = "test-crate"
+
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"
+
+[profile.dev]
+panic = "abort"
+"#).unwrap();
+
+        let score = scorer.score_release_profiles(temp_dir.path(), None).unwrap();
+        // +4 for LTO in release
+        // +3 for codegen-units = 1
+        // +2 for panic = "abort" in release
+        // +2 for panic = "abort" in dev
+        assert_eq!(score, 11.0, "Should get full 11 points for optimized release profiles");
+    }
+
+    #[test]
+    fn test_release_profiles_release_only() {
+        let scorer = RustToolingScorer::new();
+        let temp_dir = TempDir::new().unwrap();
+
+        let cargo_toml = temp_dir.path().join("Cargo.toml");
+        std::fs::write(&cargo_toml, r#"
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"
+"#).unwrap();
+
+        let score = scorer.score_release_profiles(temp_dir.path(), None).unwrap();
+        assert_eq!(score, 9.0, "Should get 9pts (4+3+2 for release profile only)");
+    }
+
+    #[test]
+    fn test_release_profiles_lto_penalty() {
+        let scorer = RustToolingScorer::new();
+        let temp_dir = TempDir::new().unwrap();
+
+        let cargo_toml = temp_dir.path().join("Cargo.toml");
+        std::fs::write(&cargo_toml, r#"
+[profile.release]
+lto = true
+
+[profile.dev]
+lto = true
+"#).unwrap();
+
+        let score = scorer.score_release_profiles(temp_dir.path(), None).unwrap();
+        // +4 for LTO in release
+        // -3 penalty for LTO in dev (slows TDD)
+        assert_eq!(score, 1.0, "Should get 1pt (4 - 3 penalty for LTO in dev)");
+    }
+
+    #[test]
+    fn test_release_profiles_lto_in_test_penalty() {
+        let scorer = RustToolingScorer::new();
+        let temp_dir = TempDir::new().unwrap();
+
+        let cargo_toml = temp_dir.path().join("Cargo.toml");
+        std::fs::write(&cargo_toml, r#"
+[profile.release]
+lto = true
+
+[profile.test]
+lto = true
+"#).unwrap();
+
+        let score = scorer.score_release_profiles(temp_dir.path(), None).unwrap();
+        assert_eq!(score, 1.0, "Should get 1pt (4 - 3 penalty for LTO in test)");
+    }
+
+    #[test]
+    fn test_release_profiles_no_optimizations() {
+        let scorer = RustToolingScorer::new();
+        let temp_dir = TempDir::new().unwrap();
+
+        let cargo_toml = temp_dir.path().join("Cargo.toml");
+        std::fs::write(&cargo_toml, "[package]\nname = \"test\"").unwrap();
+
+        let score = scorer.score_release_profiles(temp_dir.path(), None).unwrap();
+        assert_eq!(score, 0.0, "Should get 0pts with no profile optimizations");
+    }
+
+    #[test]
+    fn test_release_profiles_partial() {
+        let scorer = RustToolingScorer::new();
+        let temp_dir = TempDir::new().unwrap();
+
+        let cargo_toml = temp_dir.path().join("Cargo.toml");
+        std::fs::write(&cargo_toml, r#"
+[profile.release]
+lto = "thin"
+"#).unwrap();
+
+        let score = scorer.score_release_profiles(temp_dir.path(), None).unwrap();
+        assert_eq!(score, 4.0, "Should get 4pts for LTO (thin counts)");
     }
 }

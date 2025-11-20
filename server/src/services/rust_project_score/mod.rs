@@ -5,8 +5,8 @@
 //!
 //! ## Scoring System
 //!
-//! Total: 200 points across 6 categories:
-//! - **Rust Tooling & CI/CD (119pts)**: Clippy, rustfmt, cargo-audit, cargo-deny, workspace lints, CI/CD integration, advanced metadata, **MSRV tracking (NEW)**
+//! Total: 211 points across 6 categories:
+//! - **Rust Tooling & CI/CD (130pts)**: Clippy, rustfmt, cargo-audit, cargo-deny, workspace lints, CI/CD integration, advanced metadata, MSRV tracking, **release profiles (NEW)**
 //! - Code Quality (26pts): Complexity 3pts, Unsafe 9pts, Mutation 8pts, Build time 4pts
 //! - Testing Excellence (20pts): Coverage, integration, doc tests, mutation
 //! - Documentation (15pts): Rustdoc, README, changelog
@@ -84,6 +84,18 @@
 //!
 //! **Academic Foundation**:
 //! - Decan et al. 2019 EMSE: Rust ecosystem has lowest dependency conflict rate (3.2%) vs npm (18.7%)
+//!
+//! ### Release Profile Optimization (+11pts)
+//!
+//! Based on "Learn from Rust Giants" specification:
+//! - [profile.release] with LTO enabled: 4pts
+//! - codegen-units = 1 (maximum optimization): 3pts
+//! - panic = "abort" for smaller binaries (release): 2pts
+//! - [profile.dev] with panic = "abort" (faster testing): 2pts
+//! - -3pts penalty if LTO in dev/test profiles (slows TDD loop)
+//!
+//! **Academic Foundation**:
+//! - Beller et al. 2017 MSR: Builds >10min correlate with 42% fewer local test runs
 //!
 //! ## Evidence-Based Design
 //!
