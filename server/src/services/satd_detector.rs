@@ -1211,6 +1211,11 @@ impl SATDDetector {
                 || comment_text.contains("single file")
                 || (comment_text.contains("broken") && comment_text.contains("links"))
                 || (comment_text.contains("bug") && comment_text.contains("report"))
+                // False positive fixes: Comments describing bug-related functionality
+                || (comment_text.contains("broken") && comment_text.contains("dep"))
+                || (comment_text.contains("bug") && comment_text.contains("fix") && comment_text.contains("pattern"))
+                || (comment_text.contains("bug") && comment_text.contains("fix") && comment_text.contains("claim"))
+                || (comment_text.contains("extract") && comment_text.contains("bug"))
         } else {
             false
         }
