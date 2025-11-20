@@ -632,18 +632,27 @@ touch src/main.rs && time cargo build --release
   - [x] Baseline metrics (see docs/phase1-baseline-metrics.md)
   - [x] Dependency classification (T1-T5) - Complete
   - [x] cargo-hakari configuration - Complete (194 unified dependencies)
-- [ ] Phase 2: T1 → Optional (Weeks 2-3)
-  - [ ] tree-sitter → ast-analysis
-  - [ ] axum → web-ui
-  - [ ] proptest → mutation-testing
-  - [ ] Verify each with hakari
+- [ ] Phase 2: T1 → Optional (Weeks 2-3) - **BLOCKED** ⚠️
+  - [x] Architecture assessment - 50% complete
+    - ✅ All tree-sitter dependencies already `optional = true`
+    - ✅ Feature flags already defined (csharp-ast, java-ast, ruby-ast, scala-ast, swift-ast)
+    - ✅ Meta-features exist: `all-languages`, `most-languages`
+  - [ ] **BLOCKER**: Unconditional dependencies require refactoring
+    - ❌ `server/src/services/unified_go_analyzer.rs:20` - uses GoAstVisitor without feature gate
+    - ❌ `server/src/services/languages/bash.rs:12` - uses AstItem without proper import
+    - ❌ `server/src/services/languages/php.rs:12` - uses AstItem without proper import
+  - [ ] Add `#[cfg(feature = "...")]` gates to blocking modules
+  - [ ] Change default from `all-languages` to `most-languages`
+  - [ ] Regenerate hakari with new defaults
+  - [ ] Verify compilation and tests pass
+  - [ ] Measure build time improvement
 - [ ] Phase 3: T2 → PAIML (Week 4)
   - [ ] Evaluate aprender (maintenance_cost < 2.0?)
 - [ ] Phase 4: T3 → Dev-only (Week 5)
 - [ ] Phase 5: T4 → Consolidate (Week 6)
 - [ ] Phase 6: T5 → Remove (Week 7)
 
-**Current Status**: Phase 1 - 100% complete ✅. Ready for Phase 2.
+**Current Status**: Phase 1 - 100% complete ✅. Phase 2 - BLOCKED by unconditional dependencies ⚠️
 
 **Phase 1 Achievements** (Completed 2025-11-20):
 - ✅ All tooling installed and operational
@@ -652,7 +661,15 @@ touch src/main.rs && time cargo build --release
 - ✅ cargo-hakari workspace-hack configured with 194 unified dependencies
 - ✅ Foundation for 30-40% compilation speedup established
 
-**Next Phase**: Phase 2 - T1 Language Features → Optional (tree-sitter feature flags)
+**Phase 2 Discovery** (2025-11-20):
+- ✅ Architecture is 50% complete (optional deps + feature flags exist)
+- ⚠️ **BLOCKER**: Several modules have unconditional imports of feature-gated types
+- ⚠️ Attempted to change default features from `all-languages` to `most-languages`
+- ⚠️ Compilation failed due to missing feature gates in 3 modules
+- ⚠️ Reverted to `all-languages` and documented blocker in `server/Cargo.toml`
+- 📋 **Action Required**: Refactor blocking modules before Phase 2 can proceed
+
+**Next Phase**: Phase 2 refactoring OR evaluate alternative Phase 3/4 work
 
 **Expert Review Status**: ✅ Approved with constraints. Proceed to Phase 1, pause before Phase 3 for specific candidate review.
 
