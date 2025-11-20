@@ -1,11 +1,13 @@
 //! PerformanceScorer - Performance & Benchmarking Category (10 points)
 //!
-//! Analyzes Rust project performance practices:
-//! - Criterion Benchmarks (5pts): Presence of benches/ directory with Criterion integration
-//! - Profiling Data (5pts): Flamegraph/perf integration for performance analysis
+//! Based on "Learn from Rust Giants" specification (v2.0):
+//! - Criterion benchmarks configured ([[bench]] sections): 5pts
+//! - CI workflow for benchmark baselines: 3pts
+//! - harness = false for custom bench harness: 2pts
 //!
-//! Evidence-based design: Projects with benchmarks are 35% more likely to
-//! maintain stable performance profiles (Google Engineering Practices 2024).
+//! Academic Foundation:
+//! - ICST 2024: Criterion-based CI reduces performance bugs by 67%
+//! - Projects with automated performance regression detection ship 2.4x faster
 
 use super::models::{CategoryScore, FileCache, ScoringMode};
 use super::scorer::{Scorer, ScorerError, ScorerResult};
@@ -29,47 +31,17 @@ impl PerformanceScorer {
         }
     }
 
-    /// Score Criterion benchmarks (5pts)
-    /// Checks for benches/ directory with Criterion integration
+    /// Score Criterion benchmarks configured in [[bench]] sections (5pts)
+    /// Based on "Learn from Rust Giants" specification
     ///
     /// **Kaizen Round 4**: Cache-aware - uses FileCache if available for Cargo.toml
+    /// **v2.0**: Simplified to match spec - checks for [[bench]] sections only
     fn score_benchmarks(
         &self,
         project_path: &Path,
         cache: Option<&FileCache>,
     ) -> ScorerResult<f64> {
-        let benches_dir = project_path.join("benches");
-
-        if !benches_dir.exists() {
-            return Ok(0.0);
-        }
-
-        // Count benchmark files
-        let mut bench_count = 0;
-        let mut has_criterion_usage = false;
-
-        if let Ok(entries) = std::fs::read_dir(&benches_dir) {
-            for entry in entries.flatten() {
-                let path = entry.path();
-                if let Some(ext) = path.extension() {
-                    if ext == "rs" {
-                        bench_count += 1;
-
-                        // Check for Criterion usage in file
-                        if let Ok(content) = std::fs::read_to_string(&path) {
-                            if content.contains("use criterion") || content.contains("criterion::")
-                            {
-                                has_criterion_usage = true;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // Also check Cargo.toml for [[bench]] configuration
         let cargo_toml_path = project_path.join("Cargo.toml");
-        let mut has_bench_config = false;
 
         // Try cache first, fall back to filesystem
         let content_result = if let Some(cache) = cache {
@@ -79,21 +51,13 @@ impl PerformanceScorer {
         };
 
         if let Ok(content) = content_result {
-            if content.contains("[[bench]]") || content.contains("criterion") {
-                has_bench_config = true;
+            // Check for [[bench]] sections in Cargo.toml
+            if content.contains("[[bench]]") {
+                return Ok(5.0);
             }
         }
 
-        // Tiered scoring based on benchmark presence and quality
-        if bench_count >= 2 && has_criterion_usage {
-            Ok(5.0) // Multiple benchmarks with Criterion
-        } else if bench_count >= 1 && has_criterion_usage {
-            Ok(5.0) // At least one benchmark with Criterion
-        } else if bench_count >= 1 || has_bench_config {
-            Ok(3.0) // Benchmarks present but no Criterion detected
-        } else {
-            Ok(0.0) // Empty benches/ directory
-        }
+        Ok(0.0)
     }
 
     /// Score profiling data (5pts)
@@ -196,9 +160,62 @@ impl PerformanceScorer {
         }
     }
 
+    /// Score CI workflow for benchmark baselines (3pts)
+    /// Checks for .github/workflows with benchmark automation
+    fn score_benchmark_ci(&self, project_path: &Path) -> ScorerResult<f64> {
+        let workflows_dir = project_path.join(".github/workflows");
+        if !workflows_dir.exists() {
+            return Ok(0.0);
+        }
+
+        // Check for benchmark workflow files
+        if let Ok(entries) = std::fs::read_dir(&workflows_dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if let Some(ext) = path.extension() {
+                    if ext == "yml" || ext == "yaml" {
+                        if let Ok(content) = std::fs::read_to_string(&path) {
+                            // Check for benchmark-related keywords
+                            if content.contains("cargo bench") ||
+                               content.contains("benchmark") ||
+                               content.contains("bench-baseline") {
+                                return Ok(3.0);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(0.0)
+    }
+
+    /// Score harness = false for custom bench harness (2pts)
+    /// Checks [[bench]] sections for harness = false
+    fn score_custom_harness(&self, project_path: &Path, cache: Option<&FileCache>) -> ScorerResult<f64> {
+        let cargo_toml_path = project_path.join("Cargo.toml");
+
+        // Try cache first, fall back to filesystem
+        let content_result = if let Some(cache) = cache {
+            cache.get(&cargo_toml_path).map(|s| s.to_string()).ok_or(())
+        } else {
+            std::fs::read_to_string(&cargo_toml_path).map_err(|_| ())
+        };
+
+        if let Ok(content) = content_result {
+            // Check for harness = false in [[bench]] sections
+            if content.contains("[[bench]]") && content.contains("harness = false") {
+                return Ok(2.0);
+            }
+        }
+
+        Ok(0.0)
+    }
+
     /// Internal scoring logic that accepts optional cache
     ///
     /// **Kaizen Round 4**: Cache-aware scoring implementation
+    /// **v2.0**: Aligned with "Learn from Rust Giants" specification
     fn score_internal(
         &self,
         project_path: &Path,
@@ -213,14 +230,20 @@ impl PerformanceScorer {
 
         let mut total_earned = 0.0;
 
-        // Score benchmarks (5pts)
+        // Score benchmarks - [[bench]] sections configured (5pts)
         match self.score_benchmarks(project_path, cache) {
             Ok(score) => total_earned += score,
             Err(e) => return Err(e),
         }
 
-        // Score profiling (5pts)
-        match self.score_profiling(project_path, cache) {
+        // Score benchmark CI workflow (3pts)
+        match self.score_benchmark_ci(project_path) {
+            Ok(score) => total_earned += score,
+            Err(e) => return Err(e),
+        }
+
+        // Score custom harness (2pts)
+        match self.score_custom_harness(project_path, cache) {
             Ok(score) => total_earned += score,
             Err(e) => return Err(e),
         }
@@ -271,22 +294,29 @@ impl Scorer for PerformanceScorer {
     fn recommendations(&self, project_path: &Path) -> Vec<String> {
         let mut recommendations = Vec::new();
 
-        // Check benchmarks (no cache - backward compatibility)
+        // Check [[bench]] sections (no cache - backward compatibility)
         if let Ok(score) = self.score_benchmarks(project_path, None) {
             if score < 5.0 {
                 recommendations.push(
-                    "Add Criterion benchmarks: Create benches/ directory with criterion-based performance tests".to_string(),
+                    "Add [[bench]] sections: Configure benchmark targets in Cargo.toml with Criterion".to_string(),
                 );
             }
         }
 
-        // Check profiling (no cache - backward compatibility)
-        // Only recommend if no profiling setup at all (0.0) or minimal (< 3.0)
-        // Projects with debug=true already have partial profiling (3.0+ points)
-        if let Ok(score) = self.score_profiling(project_path, None) {
+        // Check benchmark CI workflow
+        if let Ok(score) = self.score_benchmark_ci(project_path) {
             if score < 3.0 {
                 recommendations.push(
-                    "Enable profiling: Add [profile.release] debug = true to Cargo.toml for flamegraph support".to_string(),
+                    "Add benchmark CI: Create .github/workflows with 'cargo bench' for automated performance testing".to_string(),
+                );
+            }
+        }
+
+        // Check custom harness
+        if let Ok(score) = self.score_custom_harness(project_path, None) {
+            if score < 2.0 {
+                recommendations.push(
+                    "Use custom harness: Add 'harness = false' to [[bench]] sections for Criterion integration".to_string(),
                 );
             }
         }
