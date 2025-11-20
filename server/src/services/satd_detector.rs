@@ -1085,6 +1085,7 @@ impl SATDDetector {
             || self.is_assignment_with_satd(trimmed)
             || self.is_format_string(trimmed)
             || self.is_url_or_path(trimmed)
+            || self.is_markdown_header(trimmed)
             || self.is_security_documentation(trimmed)
             || self.is_pattern_definition(trimmed)
             || self.is_enum_or_struct_field(trimmed)
@@ -1165,6 +1166,31 @@ impl SATDDetector {
         // Enum variants or struct fields that mention SATD concepts
         (trimmed.contains("Security") || trimmed.contains("Design") || trimmed.contains("Defect"))
             && (trimmed.contains(',') || trimmed.contains('=') || trimmed.contains("::"))
+    }
+
+    fn is_markdown_header(&self, trimmed: &str) -> bool {
+        // Markdown headers: # Security, ## Security, ### Security, etc.
+        // Common in CHANGELOG.md, README.md, and documentation templates
+        let starts_with_hash = trimmed.starts_with('#');
+        if !starts_with_hash {
+            return false;
+        }
+
+        // Remove leading # symbols and whitespace to get header content
+        let content = trimmed.trim_start_matches('#').trim();
+
+        // Check if it's a common section header (especially CHANGELOG sections)
+        // or a version header pattern like [1.0.0]
+        content == "Security"
+            || content == "Added"
+            || content == "Changed"
+            || content == "Deprecated"
+            || content == "Removed"
+            || content == "Fixed"
+            || content == "Unreleased"
+            || content == "Changelog"
+            || content == "CHANGELOG"
+            || content.starts_with('[') // [Unreleased], [1.0.0], etc.
     }
 
     fn is_functional_description(&self, trimmed: &str) -> bool {
@@ -2902,6 +2928,67 @@ def test_something():
         assert!(files.iter().any(|f| f.ends_with("mod.rs")));
         assert!(files.iter().any(|f| f.ends_with("string.rs")));
         assert!(files.iter().any(|f| f.ends_with("user.rs")));
+    }
+
+    /// RED TEST: Toyota Way - Stop the Line
+    /// Markdown headers (### Security, ## Security, # Security) should NOT be flagged as SATD
+    /// Found bug: changelog_manager.rs line 133 "### Security" flagged as Critical Security SATD
+    #[tokio::test]
+    async fn test_markdown_headers_not_flagged_as_satd() {
+        let detector = SATDDetector::new();
+        let temp_dir = TempDir::new().unwrap();
+
+        // Test case 1: CHANGELOG template with ### Security header
+        let changelog_template = r#"
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+## [Unreleased]
+
+### Added
+
+### Changed
+
+### Deprecated
+
+### Removed
+
+### Fixed
+
+### Security
+"#;
+
+        let changelog_file = temp_dir.path().join("CHANGELOG.md");
+        fs::write(&changelog_file, changelog_template).unwrap();
+
+        // Test case 2: Rust code with CHANGELOG template string literal
+        let changelog_manager_code = r###"
+const CHANGELOG_TEMPLATE: &str = r#"
+### Added
+
+### Security
+"#;
+"###;
+        let manager_file = temp_dir.path().join("changelog_manager").with_extension("rs");
+        fs::write(&manager_file, changelog_manager_code).unwrap();
+
+        let result = detector.analyze_project(temp_dir.path(), false).await.unwrap();
+
+        // RED: This will FAIL initially - markdown headers are currently detected as SATD
+        // Expected: 0 Security SATD items (markdown headers should be filtered)
+        // Actual: 2 Security SATD items (false positives)
+        let security_count = result
+            .items
+            .iter()
+            .filter(|item| matches!(item.category, DebtCategory::Security))
+            .count();
+
+        assert_eq!(
+            security_count, 0,
+            "Markdown headers like ### Security should NOT be flagged as SATD. Found {} false positives",
+            security_count
+        );
     }
 }
 
