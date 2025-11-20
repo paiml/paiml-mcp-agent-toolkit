@@ -10,11 +10,15 @@ use crate::cli::commands::OrgCommands;
 use anyhow::{Context, Result};
 use chrono::{Duration, Utc};
 use indicatif::{ProgressBar, ProgressStyle};
+#[cfg(feature = "org-intelligence")]
 use organizational_intelligence_plugin::analyzer::OrgAnalyzer;
+#[cfg(feature = "org-intelligence")]
 use organizational_intelligence_plugin::github::GitHubMiner;
+#[cfg(feature = "org-intelligence")]
 use organizational_intelligence_plugin::report::{
     AnalysisMetadata, AnalysisReport, ReportGenerator,
 };
+#[cfg(feature = "org-intelligence")]
 use organizational_intelligence_plugin::summarizer::{ReportSummarizer, SummaryConfig};
 use std::env;
 use std::path::PathBuf;

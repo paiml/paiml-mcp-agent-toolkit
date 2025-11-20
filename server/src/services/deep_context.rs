@@ -69,12 +69,14 @@ use crate::services::{
     satd_detector::SATDAnalysisResult,
     tdg_calculator::TDGCalculator,
     unified_bash_analyzer::UnifiedBashAnalyzer,
-    unified_go_analyzer::UnifiedGoAnalyzer,
     unified_python_analyzer::UnifiedPythonAnalyzer,
     unified_rust_analyzer::UnifiedRustAnalyzer,
     unified_typescript_analyzer::UnifiedTypeScriptAnalyzer,
-    unified_wasm_analyzer::UnifiedWasmAnalyzer,
 };
+#[cfg(feature = "go-ast")]
+use crate::services::unified_go_analyzer::UnifiedGoAnalyzer;
+#[cfg(feature = "wasm-ast")]
+use crate::services::unified_wasm_analyzer::UnifiedWasmAnalyzer;
 use chrono::{DateTime, Utc};
 use rayon::prelude::*;
 use rustc_hash::FxHashMap;

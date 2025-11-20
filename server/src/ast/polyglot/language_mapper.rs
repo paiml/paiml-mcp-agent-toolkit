@@ -222,8 +222,10 @@ impl LanguageMapper for JavaMapper {
     }
 
     async fn map_source(&self, source: &str, path: &Path) -> Result<Vec<UnifiedNode>> {
+        #[cfg(feature = "java-ast")]
         use crate::services::languages::java::JavaAstVisitor;
 
+        #[cfg(feature = "java-ast")]
         let visitor = JavaAstVisitor::new(path);
         match visitor.analyze_java_source(source) {
             Ok(items) => {
@@ -363,8 +365,10 @@ impl LanguageMapper for ScalaMapper {
     }
 
     async fn map_source(&self, source: &str, path: &Path) -> Result<Vec<UnifiedNode>> {
+        #[cfg(feature = "scala-ast")]
         use crate::services::languages::scala::ScalaAstVisitor;
 
+        #[cfg(feature = "scala-ast")]
         let visitor = ScalaAstVisitor::new(path);
         match visitor.analyze_scala_source(source) {
             Ok(items) => {

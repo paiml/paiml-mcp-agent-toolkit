@@ -199,12 +199,14 @@ pub mod tdg_calculator;
 pub mod template_service;
 pub mod unified_ast_engine; // Stub for backward compatibility
 pub mod unified_bash_analyzer; // TICKET-3006: Single-pass Bash/Shell analyzer
-pub mod unified_go_analyzer; // TICKET-3004: Single-pass Go analyzer
+#[cfg(feature = "go-ast")]
+pub mod unified_go_analyzer; // TICKET-3004: Single-pass Go analyzer (requires go-ast feature)
 pub mod unified_python_analyzer; // TICKET-3003: Single-pass Python analyzer
 pub mod unified_refactor_analyzer; // Stub for backward compatibility
 pub mod unified_rust_analyzer; // TICKET-3001: Single-pass AST+Complexity analyzer
 pub mod unified_typescript_analyzer; // TICKET-3002: Single-pass TypeScript/JavaScript analyzer
-pub mod unified_wasm_analyzer; // TICKET-3005: Single-pass WebAssembly analyzer
+#[cfg(feature = "wasm-ast")]
+pub mod unified_wasm_analyzer; // TICKET-3005: Single-pass WebAssembly analyzer (requires wasm-ast feature)
 pub mod verified_complexity;
 pub mod wasm;
 
