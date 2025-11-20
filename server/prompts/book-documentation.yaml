@@ -1040,14 +1040,13 @@ book_types:
     examples:
       - ruchy-cli-tools-book
 quality_gates:
-  mandatory:
-    - test_coverage: "100% of code examples"
-    - pass_rate: ">=${MIN_PASS_RATE}%"
-    - link_validation: "all links valid"
-    - satd_count: 0
-    - vaporware_count: 0
-    - build_success: true
-    - deployment_success: true
+  - test_coverage
+  - pass_rate
+  - link_validation
+  - satd_count
+  - vaporware_count
+  - build_success
+  - deployment_success
 mdbook_structure:
   required_files:
     - book.toml

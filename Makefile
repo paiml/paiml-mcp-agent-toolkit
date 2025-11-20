@@ -404,59 +404,29 @@ test-doc:
 	@cargo test --doc --manifest-path server/Cargo.toml
 	@echo "✅ Doctests completed!"
 
-# Coverage analysis (two-phase with default test runner - nextest doesn't persist profraw)
-coverage: ## Generate HTML coverage report and open in browser
-	@echo "📊 Running comprehensive test coverage analysis (target: <10 min)..."
-	@echo "🔍 Checking for cargo-llvm-cov..."
-	@which cargo-llvm-cov > /dev/null 2>&1 || (echo "📦 Installing cargo-llvm-cov..." && cargo install cargo-llvm-cov --locked)
-	@if ! rustup component list --installed | grep -q llvm-tools-preview; then \
-		echo "📦 Installing llvm-tools-preview..."; \
-		rustup component add llvm-tools-preview; \
-	fi
-	@echo "🧹 Cleaning old coverage data..."
-	@cargo llvm-cov clean --workspace
-	@mkdir -p target/coverage
+# Coverage analysis - Two-tier approach (idiomatic for large Rust projects)
+coverage: ## Generate coverage report (lib only, fast: 5-10 min)
+	@echo "📊 Running developer coverage (lib only, target: 5-10 min)..."
 	@echo "⚙️  Temporarily disabling global cargo config (mold breaks coverage)..."
 	@test -f ~/.cargo/config.toml && mv ~/.cargo/config.toml ~/.cargo/config.toml.cov-backup || true
-	@echo "🔍 Checking for cargo-nextest..."
-	@which cargo-nextest > /dev/null 2>&1 || (echo "📦 Installing cargo-nextest..." && cargo install cargo-nextest --locked)
-	@echo "🧪 Phase 1: Running tests with instrumentation (no report)..."
-	@env PROPTEST_CASES=100 cargo llvm-cov --no-report nextest --no-tests=warn --workspace || true
-	@echo "📊 Phase 2: Generating coverage reports..."
+	@cargo llvm-cov --lib --lcov --output-path lcov.info
 	@cargo llvm-cov report --html --output-dir target/coverage/html
-	@cargo llvm-cov report --lcov --output-path target/coverage/lcov.info
 	@echo "⚙️  Restoring global cargo config..."
 	@test -f ~/.cargo/config.toml.cov-backup && mv ~/.cargo/config.toml.cov-backup ~/.cargo/config.toml || true
-	@echo ""
-	@echo "📊 Coverage reports generated:"
-	@echo "- HTML: target/coverage/html/index.html"
-	@echo "- LCOV: target/coverage/lcov.info"
-	@echo ""
+	@echo "✅ Coverage report: target/coverage/html/index.html"
+	@cargo llvm-cov report | grep TOTAL
 
-# CI/CD coverage - generates LCOV for external tools (Codecov, etc.)
-coverage-ci:
-	@echo "📊 Generating CI/CD coverage (LCOV format)..."
-	@if ! command -v cargo-llvm-cov >/dev/null 2>&1; then \
-		echo "📦 Installing cargo-llvm-cov..."; \
-		cargo install cargo-llvm-cov --locked; \
-	fi
-	@if ! rustup component list --installed | grep -q llvm-tools-preview; then \
-		echo "📦 Installing llvm-tools-preview..."; \
-		rustup component add llvm-tools-preview; \
-	fi
-	@echo "   (Excluding c-ast/cpp-ast features to avoid clang-sys dependency)"
-	@cargo llvm-cov --workspace --lcov \
-		--features "skip-slow-tests" \
-		--output-path lcov.info \
-		--ignore-filename-regex='tests?\.rs'
-	@echo "📁 LCOV report: lcov.info"
-	@echo ""
-	@echo "📈 Coverage Summary:"
-	@cargo llvm-cov --workspace --summary-only \
-		--features "skip-slow-tests" \
-		--ignore-filename-regex='tests?\.rs'
-	@echo ""
-	@echo "✅ CI coverage complete! Upload lcov.info to coverage services."
+# CI/CD coverage - comprehensive workspace coverage (20-30 min)
+coverage-ci: ## Generate comprehensive coverage (workspace, CI: 20-30 min)
+	@echo "📊 Running CI coverage (workspace, target: 20-30 min)..."
+	@echo "⚙️  Temporarily disabling global cargo config (mold breaks coverage)..."
+	@test -f ~/.cargo/config.toml && mv ~/.cargo/config.toml ~/.cargo/config.toml.cov-backup || true
+	@cargo llvm-cov --workspace --lcov --output-path lcov.info
+	@cargo llvm-cov report --html --output-dir target/coverage/html
+	@echo "⚙️  Restoring global cargo config..."
+	@test -f ~/.cargo/config.toml.cov-backup && mv ~/.cargo/config.toml.cov-backup ~/.cargo/config.toml || true
+	@echo "✅ Coverage report: target/coverage/html/index.html"
+	@cargo llvm-cov report | grep TOTAL
 
 # Comprehensive coverage - includes all tests (skips C/C++ AST features)
 coverage-full:

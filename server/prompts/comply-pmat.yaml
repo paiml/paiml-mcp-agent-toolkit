@@ -823,18 +823,15 @@ toyota_way_principles:
   zero_defects: zero_tolerance_for_process_drift
   poka_yoke: error_proofing_via_automation
 quality_gates:
-  pre_commit:
-    - tdg_enforcement
-    - zero_branching
-    - bashrs_linting
-    - satd_detection
-  pre_push:
-    - pmat_book_synchronization
-  continuous:
-    - minimum_grade_enforcement
-    - regression_prevention
-    - documentation_accuracy
-    - test_coverage
+  - tdg_enforcement
+  - zero_branching
+  - bashrs_linting
+  - satd_detection
+  - pmat_book_synchronization
+  - minimum_grade_enforcement
+  - regression_prevention
+  - documentation_accuracy
+  - test_coverage
 compliance_checklist:
   infrastructure:
     - pre_commit_hooks_installed

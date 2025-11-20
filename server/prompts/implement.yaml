@@ -317,17 +317,14 @@ prompt: |
         - "crates.io publish ready"
 
   quality_gates:
-    pre_commit:
-      - "clippy --all-targets -- -D warnings"
-      - "fmt --check"
-      - "pmat analyze tdg (no regressions)"
-
-    pre_release:
-      - "coverage ≥${MIN_COVERAGE}%"
-      - "mutation score ≥${MIN_MUTATION_SCORE}%"
-      - "all tests pass"
-      - "pmat validate-readme"
-      - "pmat repo-score ≥80/100"
+    - clippy
+    - fmt
+    - tdg_no_regressions
+    - coverage
+    - mutation_score
+    - all_tests_pass
+    - validate_readme
+    - repo_score
 
   risks:
     - risk: "Performance targets not met"
