@@ -48,6 +48,7 @@ http = { version = "1" }
 httparse = { version = "1" }
 hyper = { version = "1", features = ["full"] }
 hyper-util = { version = "0.1", features = ["full"] }
+indexmap = { version = "2", features = ["serde"] }
 itertools = { version = "0.13" }
 libc = { version = "0.2" }
 libgit2-sys = { version = "0.18", default-features = false, features = ["https", "ssh"] }
@@ -107,6 +108,7 @@ getrandom-6f8ce4dd05d13bba = { package = "getrandom", version = "0.2", default-f
 hashbrown-3575ec1268b04181 = { package = "hashbrown", version = "0.15", features = ["serde"] }
 http = { version = "1" }
 httparse = { version = "1" }
+indexmap = { version = "2", features = ["serde"] }
 itertools = { version = "0.13" }
 libc = { version = "0.2" }
 log = { version = "0.4", default-features = false, features = ["std"] }
@@ -135,6 +137,7 @@ bytemuck = { version = "1", default-features = false, features = ["min_const_gen
 hyper-rustls = { version = "0.27", default-features = false, features = ["http1", "http2", "ring", "tls12", "webpki-tokio"] }
 libc = { version = "0.2", default-features = false, features = ["extra_traits"] }
 linux-raw-sys = { version = "0.11", default-features = false, features = ["auxvec", "elf", "errno", "general", "ioctl", "no_std", "prctl"] }
+nix = { version = "0.30", features = ["feature", "fs", "ioctl", "poll", "signal", "term"] }
 ring = { version = "0.17", features = ["std"] }
 rustix-d585fab2519d2d1 = { package = "rustix", version = "0.38", default-features = false, features = ["fs", "std", "stdio", "termios"] }
 rustix-dff4ba8e3ae991db = { package = "rustix", version = "1", features = ["fs", "mm", "param", "process", "stdio", "termios", "thread", "time"] }
@@ -153,6 +156,7 @@ syn-dff4ba8e3ae991db = { package = "syn", version = "1", features = ["extra-trai
 [target.x86_64-apple-darwin.dependencies]
 hyper-rustls = { version = "0.27", default-features = false, features = ["http1", "http2", "ring", "tls12", "webpki-tokio"] }
 libc = { version = "0.2", default-features = false, features = ["extra_traits"] }
+nix = { version = "0.30", features = ["feature", "fs", "ioctl", "poll", "signal", "term"] }
 ring = { version = "0.17", features = ["std"] }
 rustix-d585fab2519d2d1 = { package = "rustix", version = "0.38", default-features = false, features = ["fs", "std", "stdio", "termios"] }
 rustix-dff4ba8e3ae991db = { package = "rustix", version = "1", features = ["fs", "mm", "param", "process", "stdio", "termios", "thread"] }
@@ -171,6 +175,7 @@ rustls = { version = "0.23", default-features = false, features = ["logging", "r
 [target.aarch64-apple-darwin.dependencies]
 hyper-rustls = { version = "0.27", default-features = false, features = ["http1", "http2", "ring", "tls12", "webpki-tokio"] }
 libc = { version = "0.2", default-features = false, features = ["extra_traits"] }
+nix = { version = "0.30", features = ["feature", "fs", "ioctl", "poll", "signal", "term"] }
 ring = { version = "0.17", features = ["std"] }
 rustix-d585fab2519d2d1 = { package = "rustix", version = "0.38", default-features = false, features = ["fs", "std", "stdio", "termios"] }
 rustix-dff4ba8e3ae991db = { package = "rustix", version = "1", features = ["fs", "mm", "param", "process", "stdio", "termios", "thread"] }
