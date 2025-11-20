@@ -261,6 +261,7 @@ object = "0.37"
 sourcemap = "9.0"
 ahash = "0.8"
 prettyplease = "0.2.37"
+workspace-hack = { version = "0.1", path = "../workspace-hack" }
 
 [dev-dependencies]
 mockall = "0.13"

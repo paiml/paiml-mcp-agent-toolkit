@@ -1,5 +1,5 @@
 [workspace]
-members = ["server"]
+members = ["server","workspace-hack"]
 exclude = ["fuzz"]
 resolver = "2"
 
