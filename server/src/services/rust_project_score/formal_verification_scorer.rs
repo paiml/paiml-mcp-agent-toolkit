@@ -157,8 +157,8 @@ impl FormalVerificationScorer {
         // Parse Kani results
         let verified = stdout.contains("VERIFICATION:- SUCCESSFUL")
             || stdout.contains("Verification succeeded");
-        let has_failures = stdout.contains("VERIFICATION:- FAILED")
-            || stderr.contains("VERIFICATION FAILED");
+        let has_failures =
+            stdout.contains("VERIFICATION:- FAILED") || stderr.contains("VERIFICATION FAILED");
 
         Ok(KaniResult {
             all_verified: verified && !has_failures,
@@ -364,11 +364,7 @@ mod tests {
         std::fs::create_dir_all(&src_dir).unwrap();
 
         // Create a safe Rust file
-        std::fs::write(
-            src_dir.join("lib.rs"),
-            "pub fn safe_fn() -> i32 { 42 }\n",
-        )
-        .unwrap();
+        std::fs::write(src_dir.join("lib.rs"), "pub fn safe_fn() -> i32 { 42 }\n").unwrap();
 
         // Create Cargo.toml
         std::fs::write(

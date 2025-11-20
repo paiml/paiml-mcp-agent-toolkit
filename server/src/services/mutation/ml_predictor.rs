@@ -372,7 +372,10 @@ impl SurvivabilityPredictor {
             }
             Err(e) => {
                 // Matrix creation failed
-                eprintln!("Warning: Matrix creation failed ({}), using statistical baseline only", e);
+                eprintln!(
+                    "Warning: Matrix creation failed ({}), using statistical baseline only",
+                    e
+                );
                 self.model = None;
             }
         }

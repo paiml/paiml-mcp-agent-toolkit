@@ -1246,7 +1246,8 @@ impl SATDDetector {
             return true;
         }
         // Pattern 3: "BUG-XXX FIX:" or "BUG-XXX:" at start
-        if text_lower.contains("bug-") && (text_lower.contains(" fix:") || text_lower.contains(":")) {
+        if text_lower.contains("bug-") && (text_lower.contains(" fix:") || text_lower.contains(":"))
+        {
             return true;
         }
         false
@@ -1265,7 +1266,9 @@ impl SATDDetector {
             return true;
         }
         // Pattern 3: "This ensures..." after "Bug: ..." (describing fix)
-        if text_lower.contains("bug:") && (text_lower.contains("ensure") || text_lower.contains("prevent")) {
+        if text_lower.contains("bug:")
+            && (text_lower.contains("ensure") || text_lower.contains("prevent"))
+        {
             return true;
         }
         // Pattern 4: "Root cause:" explanations (often follow bug IDs)
@@ -3029,10 +3032,16 @@ const CHANGELOG_TEMPLATE: &str = r#"
 ### Security
 "#;
 "###;
-        let manager_file = temp_dir.path().join("changelog_manager").with_extension("rs");
+        let manager_file = temp_dir
+            .path()
+            .join("changelog_manager")
+            .with_extension("rs");
         fs::write(&manager_file, changelog_manager_code).unwrap();
 
-        let result = detector.analyze_project(temp_dir.path(), false).await.unwrap();
+        let result = detector
+            .analyze_project(temp_dir.path(), false)
+            .await
+            .unwrap();
 
         // RED: This will FAIL initially - markdown headers are currently detected as SATD
         // Expected: 0 Security SATD items (markdown headers should be filtered)
@@ -3114,7 +3123,10 @@ fn halstead_metrics() {}
         let functionality_file = temp_dir.path().join("functionality").with_extension("rs");
         fs::write(&functionality_file, functionality_code).unwrap();
 
-        let result = detector.analyze_project(temp_dir.path(), false).await.unwrap();
+        let result = detector
+            .analyze_project(temp_dir.path(), false)
+            .await
+            .unwrap();
 
         // All these comments describe bug tracking IDs, fixed bugs, or bug-related functionality
         // They are NOT self-admitted technical debt (TODO/FIXME for future work)

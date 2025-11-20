@@ -5,9 +5,9 @@
 use anyhow::{Context, Result};
 use std::path::Path;
 
+use super::explain::ExplainedTDGScore;
 use super::function_analyzer::FunctionAnalyzer;
 use super::recommendation_engine::generate_recommendations;
-use super::explain::ExplainedTDGScore;
 use super::TdgScore;
 
 /// Baseline comparison result
@@ -46,15 +46,12 @@ pub struct BaselineComparison {
 /// 3. Returns plausible completed/pending recommendations
 ///
 /// Full git integration will be added in REFACTOR phase.
-pub fn compare_with_baseline(
-    file_path: &Path,
-    baseline_ref: &str,
-) -> Result<BaselineComparison> {
+pub fn compare_with_baseline(file_path: &Path, baseline_ref: &str) -> Result<BaselineComparison> {
     // Analyze current state
-    let mut analyzer = FunctionAnalyzer::new()
-        .context("Failed to create FunctionAnalyzer")?;
+    let mut analyzer = FunctionAnalyzer::new().context("Failed to create FunctionAnalyzer")?;
 
-    let functions = analyzer.analyze_file(file_path)
+    let functions = analyzer
+        .analyze_file(file_path)
         .context("Failed to analyze current file")?;
 
     // Create ExplainedTDGScore for current state
@@ -67,9 +64,7 @@ pub fn compare_with_baseline(
     let current_recommendations = generate_recommendations(&current_state);
 
     // Calculate current TDG score (simplified: sum of all function impacts)
-    let current_score: f64 = functions.iter()
-        .map(|f| f.tdg_impact)
-        .sum();
+    let current_score: f64 = functions.iter().map(|f| f.tdg_impact).sum();
 
     // Simulate baseline state (GREEN phase simplification)
     // Assume baseline had 20% higher complexity on average
@@ -82,7 +77,8 @@ pub fn compare_with_baseline(
     // If we improved (delta > 0), assume some functions were refactored
     let completed = if delta > 0.0 {
         // Find simple functions that might have been refactored
-        functions.iter()
+        functions
+            .iter()
             .filter(|f| f.cyclomatic <= 5)
             .take(1) // Take at least one as "completed"
             .map(|f| format!("Refactored '{}' from high complexity", f.name))
@@ -92,7 +88,8 @@ pub fn compare_with_baseline(
     };
 
     // Pending recommendations = current recommendations
-    let mut pending: Vec<String> = current_recommendations.iter()
+    let mut pending: Vec<String> = current_recommendations
+        .iter()
         .map(|r| r.action.clone())
         .collect();
 
@@ -188,7 +185,9 @@ mod tests {
         assert!(comparison.delta > 0.0, "Should show improvement");
 
         // Should have at least one completed recommendation
-        assert!(!comparison.completed.is_empty(),
-            "Should track completed refactorings");
+        assert!(
+            !comparison.completed.is_empty(),
+            "Should track completed refactorings"
+        );
     }
 }

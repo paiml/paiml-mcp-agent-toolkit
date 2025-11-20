@@ -33,8 +33,8 @@
 //! assert_eq!(top_3, vec![9, 8, 7]);  // Top 3 in descending order
 //! ```
 
-use std::collections::BinaryHeap;
 use std::cmp::Reverse;
+use std::collections::BinaryHeap;
 
 /// Top-K selector using min-heap for O(N) average-case selection
 ///

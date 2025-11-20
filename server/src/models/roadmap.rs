@@ -126,8 +126,7 @@ pub enum ItemStatus {
 }
 
 /// Priority enumeration
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum Priority {
     Low,
@@ -192,7 +191,9 @@ impl Roadmap {
 
     /// Find item by GitHub issue number
     pub fn find_item_by_github_issue(&self, issue: u64) -> Option<&RoadmapItem> {
-        self.roadmap.iter().find(|item| item.github_issue == Some(issue))
+        self.roadmap
+            .iter()
+            .find(|item| item.github_issue == Some(issue))
     }
 
     /// Find item by ID (mutable)
@@ -220,12 +221,18 @@ impl Roadmap {
 
     /// Get items without GitHub sync
     pub fn yaml_only_items(&self) -> Vec<&RoadmapItem> {
-        self.roadmap.iter().filter(|item| item.github_issue.is_none()).collect()
+        self.roadmap
+            .iter()
+            .filter(|item| item.github_issue.is_none())
+            .collect()
     }
 
     /// Get epic items
     pub fn epic_items(&self) -> Vec<&RoadmapItem> {
-        self.roadmap.iter().filter(|item| item.item_type == ItemType::Epic).collect()
+        self.roadmap
+            .iter()
+            .filter(|item| item.item_type == ItemType::Epic)
+            .collect()
     }
 }
 
@@ -394,7 +401,10 @@ mod tests {
     fn test_yaml_only_items() {
         let mut roadmap = Roadmap::default();
         roadmap.upsert_item(RoadmapItem::from_github_issue(42, "GitHub".to_string()));
-        roadmap.upsert_item(RoadmapItem::new("YAML-001".to_string(), "YAML only".to_string()));
+        roadmap.upsert_item(RoadmapItem::new(
+            "YAML-001".to_string(),
+            "YAML only".to_string(),
+        ));
 
         let yaml_only = roadmap.yaml_only_items();
         assert_eq!(yaml_only.len(), 1);

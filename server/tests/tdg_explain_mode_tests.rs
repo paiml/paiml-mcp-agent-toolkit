@@ -78,8 +78,14 @@ fn test_extract_function_complexity_from_rust_file() {
     assert_eq!(functions.len(), 3, "Should extract 3 functions");
 
     // Verify simple_function
-    let simple = functions.iter().find(|f| f.name == "simple_function").unwrap();
-    assert_eq!(simple.cyclomatic, 1, "simple_function should have cyclomatic complexity 1");
+    let simple = functions
+        .iter()
+        .find(|f| f.name == "simple_function")
+        .unwrap();
+    assert_eq!(
+        simple.cyclomatic, 1,
+        "simple_function should have cyclomatic complexity 1"
+    );
     assert_eq!(simple.severity, ComplexitySeverity::Low);
 
     // Verify medium_complexity_function
@@ -227,7 +233,10 @@ fn test_generate_recommendations_from_complexity() {
         recommendations[0].estimated_hours > 0.0,
         "Should have estimated effort"
     );
-    assert_eq!(recommendations[0].priority, 1, "Highest impact should be priority 1");
+    assert_eq!(
+        recommendations[0].priority, 1,
+        "Highest impact should be priority 1"
+    );
 }
 
 /// GREEN TEST 4: Baseline comparison tracking
@@ -316,16 +325,28 @@ fn test_explain_text_output_format() {
     let output = format_explain_text(&explained).unwrap();
 
     // Verify output contains key sections
-    assert!(output.contains("Function-Level Complexity"), "Should have function section");
-    assert!(output.contains("test_function"), "Should show function name");
+    assert!(
+        output.contains("Function-Level Complexity"),
+        "Should have function section"
+    );
+    assert!(
+        output.contains("test_function"),
+        "Should show function name"
+    );
     assert!(output.contains("line 42"), "Should show line number");
-    assert!(output.contains("Complexity: 15"), "Should show cyclomatic complexity");
+    assert!(
+        output.contains("Complexity: 15"),
+        "Should show cyclomatic complexity"
+    );
     assert!(
         output.contains("Recommendations"),
         "Should have recommendations section"
     );
     assert!(output.contains("[+8.5 pts]"), "Should show expected impact");
-    assert!(output.contains("Extract dispatch pattern"), "Should show action");
+    assert!(
+        output.contains("Extract dispatch pattern"),
+        "Should show action"
+    );
 }
 
 /// GREEN TEST 6: JSON output formatting
@@ -356,7 +377,10 @@ fn test_explain_json_output_format() {
     let json: serde_json::Value = serde_json::from_str(&output).unwrap();
 
     // Verify JSON structure
-    assert!(json.get("functions").is_some(), "Should have functions array");
+    assert!(
+        json.get("functions").is_some(),
+        "Should have functions array"
+    );
     let functions = json["functions"].as_array().unwrap();
     assert_eq!(functions.len(), 1, "Should have 1 function");
 
@@ -398,7 +422,11 @@ fn test_threshold_filtering() {
     // Apply threshold of 10 (should filter out simple function)
     explained.filter_functions_by_threshold(10);
 
-    assert_eq!(explained.total_functions(), 1, "Should have 1 function after filtering");
+    assert_eq!(
+        explained.total_functions(),
+        1,
+        "Should have 1 function after filtering"
+    );
     assert_eq!(
         explained.functions[0].name, "complex",
         "Should keep only complex function"
@@ -421,10 +449,11 @@ fn test_threshold_filtering() {
 fn extract_function_complexity(file: &PathBuf) -> Result<Vec<FunctionComplexity>, String> {
     use pmat::tdg::FunctionAnalyzer;
 
-    let mut analyzer = FunctionAnalyzer::new()
-        .map_err(|e| format!("Failed to create analyzer: {}", e))?;
+    let mut analyzer =
+        FunctionAnalyzer::new().map_err(|e| format!("Failed to create analyzer: {}", e))?;
 
-    analyzer.analyze_file(file)
+    analyzer
+        .analyze_file(file)
         .map_err(|e| format!("Failed to analyze file: {}", e))
 }
 

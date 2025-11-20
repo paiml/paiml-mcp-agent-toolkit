@@ -67,7 +67,14 @@ pub async fn handle_work_init(
 
     // Display configuration
     println!("📋 Configuration:");
-    println!("   GitHub integration: {}", if github_enabled { "✅ enabled" } else { "❌ disabled" });
+    println!(
+        "   GitHub integration: {}",
+        if github_enabled {
+            "✅ enabled"
+        } else {
+            "❌ disabled"
+        }
+    );
     if let Some(r) = &repo {
         println!("   GitHub repository: {}", r);
     }
@@ -124,13 +131,11 @@ pub async fn handle_work_start(
                     println!("   ✅ Fetched from GitHub: {}", gh_issue.title);
 
                     // Extract labels
-                    let labels: Vec<String> = gh_issue
-                        .labels
-                        .iter()
-                        .map(|l| l.name.clone())
-                        .collect();
+                    let labels: Vec<String> =
+                        gh_issue.labels.iter().map(|l| l.name.clone()).collect();
 
-                    let mut item = RoadmapItem::from_github_issue(issue_num, gh_issue.title.clone());
+                    let mut item =
+                        RoadmapItem::from_github_issue(issue_num, gh_issue.title.clone());
                     item.labels = labels;
 
                     // Parse acceptance criteria from issue body if present
@@ -208,7 +213,10 @@ pub async fn handle_work_start(
     // Create specification if requested
     if with_spec {
         let spec_path = if is_github_issue {
-            project_path.join(format!("docs/specifications/{:03}-spec.md", item.github_issue.unwrap()))
+            project_path.join(format!(
+                "docs/specifications/{:03}-spec.md",
+                item.github_issue.unwrap()
+            ))
         } else {
             project_path.join(format!("docs/specifications/{}-spec.md", id.to_lowercase()))
         };
@@ -334,7 +342,9 @@ pub async fn handle_work_complete(
                     println!("✅ All quality gates passed");
                     println!();
                 } else {
-                    anyhow::bail!("Quality gates failed. Fix issues or use --skip-quality to bypass.");
+                    anyhow::bail!(
+                        "Quality gates failed. Fix issues or use --skip-quality to bypass."
+                    );
                 }
             }
             Err(e) => {
@@ -360,11 +370,7 @@ pub async fn handle_work_complete(
     // Update CHANGELOG.md if labels are available
     if !item.labels.is_empty() {
         if let Some(category) = ChangeCategory::from_labels(&item.labels) {
-            let entry = ChangelogEntry::new(
-                category,
-                item.title.clone(),
-                item.github_issue,
-            );
+            let entry = ChangelogEntry::new(category, item.title.clone(), item.github_issue);
 
             match crate::services::changelog_manager::add_to_changelog(&project_path, entry) {
                 Ok(()) => {
@@ -384,9 +390,15 @@ pub async fn handle_work_complete(
 
     // Next steps
     println!("🎯 Next steps:");
-    println!("   1. Create commit: git commit -m \"feat: {} (Refs {})\"", item.title, id);
+    println!(
+        "   1. Create commit: git commit -m \"feat: {} (Refs {})\"",
+        item.title, id
+    );
     if item.is_github_synced() {
-        println!("   2. Close GitHub issue: gh issue close {}", item.github_issue.unwrap());
+        println!(
+            "   2. Close GitHub issue: gh issue close {}",
+            item.github_issue.unwrap()
+        );
     }
     println!();
 
@@ -461,10 +473,7 @@ pub async fn handle_work_status(
             };
 
             let progress = item.completion_percentage();
-            println!(
-                "   {} {} - {} ({}%)",
-                emoji, item.id, item.title, progress
-            );
+            println!("   {} {} - {} ({}%)", emoji, item.id, item.title, progress);
             if item.is_github_synced() {
                 println!("      GitHub: #{}", item.github_issue.unwrap());
             }
@@ -646,7 +655,10 @@ fn create_specification_template(spec_path: &PathBuf, item: &RoadmapItem) -> Res
     }
 
     let github_link = if let Some(issue) = item.github_issue {
-        format!("**GitHub Issue**: [#{}](https://github.com/YOUR_ORG/YOUR_REPO/issues/{})", issue, issue)
+        format!(
+            "**GitHub Issue**: [#{}](https://github.com/YOUR_ORG/YOUR_REPO/issues/{})",
+            issue, issue
+        )
     } else {
         format!("**Ticket ID**: {}", item.id)
     };
@@ -724,12 +736,7 @@ pub struct Example {{
 
 - [Related documentation]
 "#,
-        item.title,
-        item.id,
-        item.created,
-        item.updated,
-        item.title,
-        github_link
+        item.title, item.id, item.created, item.updated, item.title, github_link
     );
 
     fs::write(spec_path, template)?;

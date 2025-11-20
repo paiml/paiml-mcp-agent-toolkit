@@ -76,9 +76,10 @@ impl PerformanceScorer {
                     if ext == "yml" || ext == "yaml" {
                         if let Ok(content) = std::fs::read_to_string(&path) {
                             // Check for benchmark-related keywords
-                            if content.contains("cargo bench") ||
-                               content.contains("benchmark") ||
-                               content.contains("bench-baseline") {
+                            if content.contains("cargo bench")
+                                || content.contains("benchmark")
+                                || content.contains("bench-baseline")
+                            {
                                 return Ok(3.0);
                             }
                         }
@@ -92,7 +93,11 @@ impl PerformanceScorer {
 
     /// Score harness = false for custom bench harness (2pts)
     /// Checks [[bench]] sections for harness = false
-    fn score_custom_harness(&self, project_path: &Path, cache: Option<&FileCache>) -> ScorerResult<f64> {
+    fn score_custom_harness(
+        &self,
+        project_path: &Path,
+        cache: Option<&FileCache>,
+    ) -> ScorerResult<f64> {
         let cargo_toml_path = project_path.join("Cargo.toml");
 
         // Try cache first, fall back to filesystem

@@ -38,9 +38,9 @@ mod tests {
             min_grade: None,
             output: None,
             with_git_context: true, // Sprint 65
-            explain: false,          // Issue #78
-            threshold: 10,           // Issue #78
-            baseline: None,          // Issue #78
+            explain: false,         // Issue #78
+            threshold: 10,          // Issue #78
+            baseline: None,         // Issue #78
         };
 
         // Act & Assert

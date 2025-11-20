@@ -1618,20 +1618,27 @@ mod tests {
 
 impl CommandDispatcher {
     /// Execute work command (Issue #75: Unified GitHub/YAML workflow)
-    async fn execute_work_command(command: &crate::cli::commands::WorkCommands) -> anyhow::Result<()> {
+    async fn execute_work_command(
+        command: &crate::cli::commands::WorkCommands,
+    ) -> anyhow::Result<()> {
         use crate::cli::commands::WorkCommands;
         use crate::cli::handlers::work_handlers;
 
         match command {
-            WorkCommands::Init { github_repo, no_github, path } => {
-                work_handlers::handle_work_init(
-                    github_repo.clone(),
-                    *no_github,
-                    path.clone(),
-                )
-                .await
+            WorkCommands::Init {
+                github_repo,
+                no_github,
+                path,
+            } => {
+                work_handlers::handle_work_init(github_repo.clone(), *no_github, path.clone()).await
             }
-            WorkCommands::Start { id, with_spec, epic, path, create_github } => {
+            WorkCommands::Start {
+                id,
+                with_spec,
+                epic,
+                path,
+                create_github,
+            } => {
                 work_handlers::handle_work_start(
                     id.clone(),
                     *with_spec,
@@ -1644,15 +1651,19 @@ impl CommandDispatcher {
             WorkCommands::Continue { id, path } => {
                 work_handlers::handle_work_continue(id.clone(), path.clone()).await
             }
-            WorkCommands::Complete { id, skip_quality, path } => {
-                work_handlers::handle_work_complete(id.clone(), *skip_quality, path.clone()).await
-            }
+            WorkCommands::Complete {
+                id,
+                skip_quality,
+                path,
+            } => work_handlers::handle_work_complete(id.clone(), *skip_quality, path.clone()).await,
             WorkCommands::Status { id, path, active } => {
                 work_handlers::handle_work_status(id.clone(), path.clone(), *active).await
             }
-            WorkCommands::Sync { direction, path, dry_run } => {
-                work_handlers::handle_work_sync(*direction, path.clone(), *dry_run).await
-            }
+            WorkCommands::Sync {
+                direction,
+                path,
+                dry_run,
+            } => work_handlers::handle_work_sync(*direction, path.clone(), *dry_run).await,
         }
     }
 }

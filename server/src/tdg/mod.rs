@@ -14,8 +14,8 @@ pub mod explain;
 pub mod explain_formatters;
 pub mod function_analyzer;
 pub mod hooks_config;
-pub mod recommendation_engine;
 pub mod quality_gate;
+pub mod recommendation_engine;
 // Temporarily disable export to fix circular dependency
 // pub mod export;
 pub mod formatters;
@@ -58,9 +58,8 @@ pub use explain::{
     FunctionComplexity, RecommendationType,
 };
 pub use explain_formatters::{format_explain_json, format_explain_text};
-pub use function_analyzer::FunctionAnalyzer;
-pub use recommendation_engine::generate_recommendations;
 pub use formatters::{format_human, format_json, format_markdown};
+pub use function_analyzer::FunctionAnalyzer;
 pub use hooks_config::{
     BaselineConfig, CiCdConfig, EnforcementMode, QualityGatesConfig, TdgHooksConfig,
 };
@@ -69,6 +68,7 @@ pub use quality_gate::{
     GateConfig, GateResult, MinimumGradeGate, NewFileGate, QualityGate, RegressionGate, Severity,
     Violation, ViolationType,
 };
+pub use recommendation_engine::generate_recommendations;
 pub use resource_control::{
     OperationPriority, OperationType as ResourceOperationType, PlatformResourceController,
     ResourceAction, ResourceAllocation, ResourceControllerFactory, ResourceEnforcementStats,

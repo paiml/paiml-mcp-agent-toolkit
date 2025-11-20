@@ -24,10 +24,7 @@ mod p0_1_feature_gates {
         {
             // If analytics-gpu is NOT enabled, wgpu should not be available
             // This is the default configuration
-            assert!(
-                true,
-                "SIMD-only build (default): wgpu excluded"
-            );
+            assert!(true, "SIMD-only build (default): wgpu excluded");
         }
 
         #[cfg(feature = "analytics-gpu")]
@@ -44,10 +41,7 @@ mod p0_1_feature_gates {
     fn test_feature_gate_gpu_enabled() {
         // FAIL: This will fail until we add analytics-gpu feature
         // When built with --features analytics-gpu, this test should pass
-        assert!(
-            true,
-            "GPU-enabled build: wgpu included"
-        );
+        assert!(true, "GPU-enabled build: wgpu included");
     }
 
     /// RED TEST: Dependency count regression
@@ -100,7 +94,7 @@ mod p0_1_feature_gates {
     fn count_transitive_dependencies() -> usize {
         // FAIL: Not implemented
         // Will use cargo tree parsing in GREEN phase
-        0  // Placeholder
+        0 // Placeholder
     }
 }
 
@@ -123,7 +117,7 @@ mod p0_2_top_k_selection {
         let result = selector.select(&data);
 
         assert_eq!(result.len(), k);
-        assert_eq!(result, vec![9, 8, 7]);  // Top 3 in descending order
+        assert_eq!(result, vec![9, 8, 7]); // Top 3 in descending order
     }
 
     /// GREEN TEST: Top-K is faster than sort for large datasets
@@ -131,7 +125,7 @@ mod p0_2_top_k_selection {
     /// Note: This test should be run in release mode for accurate performance measurement
     /// Debug mode lacks optimizations and will show misleading results
     #[test]
-    #[ignore]  // Performance test - run with `cargo test --release -- --ignored`
+    #[ignore] // Performance test - run with `cargo test --release -- --ignored`
     fn test_top_k_performance() {
         let data: Vec<u32> = (0..1_000_000).collect();
         let k = 10;
@@ -169,14 +163,17 @@ mod p0_2_top_k_selection {
 #[cfg(test)]
 #[cfg(feature = "analytics-simd")]
 mod p0_3_statistical_equivalence {
-    use pmat::services::analytics_backend::{Backend, stats::{generate_test_dataset, compute_avg, mean_and_std}};
+    use pmat::services::analytics_backend::{
+        stats::{compute_avg, generate_test_dataset, mean_and_std},
+        Backend,
+    };
 
     /// GREEN TEST: SIMD statistical properties
     ///
     /// Tests SIMD backend statistical properties. GPU testing requires hardware.
     #[test]
     fn test_simd_statistical_properties() {
-        const RUNS: usize = 10;  // Reduced for unit test
+        const RUNS: usize = 10; // Reduced for unit test
 
         let dataset = generate_test_dataset(10_000);
 
@@ -189,7 +186,11 @@ mod p0_3_statistical_equivalence {
         let (mean, std) = mean_and_std(&simd_results);
 
         // SIMD should be deterministic (std ~0)
-        assert!(std < 1e-10, "SIMD results should be deterministic, got std={}", std);
+        assert!(
+            std < 1e-10,
+            "SIMD results should be deterministic, got std={}",
+            std
+        );
 
         // Mean should be consistent
         assert!(mean.is_finite(), "Mean should be finite");
@@ -232,7 +233,7 @@ mod p0_3_statistical_equivalence {
     /// This test requires GPU hardware and is ignored by default.
     /// Run with: cargo test --features analytics-gpu -- --ignored
     #[test]
-    #[ignore]  // Requires GPU hardware
+    #[ignore] // Requires GPU hardware
     #[cfg(feature = "analytics-gpu")]
     fn test_gpu_simd_statistical_equivalence() {
         const RUNS: usize = 100;
@@ -292,8 +293,7 @@ mod p0_4_olap_validation {
         let storage_files = find_tdg_storage_files();
 
         for file in storage_files {
-            let content = std::fs::read_to_string(&file)
-                .expect("Failed to read file");
+            let content = std::fs::read_to_string(&file).expect("Failed to read file");
 
             // FAIL: Will fail if any code calls deprecated update_single()
             assert!(
@@ -317,13 +317,12 @@ mod p0_4_olap_validation {
         let storage_files = find_tdg_storage_files();
 
         for file in storage_files {
-            let content = std::fs::read_to_string(&file)
-                .expect("Failed to read file");
+            let content = std::fs::read_to_string(&file).expect("Failed to read file");
 
             // Verify append_batch or similar batch operations exist
             let has_batch_operation = content.contains("append_batch")
                 || content.contains("store_tdg_batch")
-                || content.contains("INSERT INTO");  // Batch inserts OK
+                || content.contains("INSERT INTO"); // Batch inserts OK
 
             assert!(
                 has_batch_operation,
@@ -357,7 +356,7 @@ mod p0_5_pcie_calibration {
 
     /// RED TEST: Calibration measures bandwidth within reasonable range
     #[test]
-    #[ignore]  // Requires GPU hardware
+    #[ignore] // Requires GPU hardware
     fn test_pcie_calibration_accuracy() {
         // FAIL: GpuDevice doesn't exist yet
         let device = create_test_gpu_device();
@@ -373,7 +372,7 @@ mod p0_5_pcie_calibration {
 
         // Should be at least 50% of theoretical max
         // (accounting for driver overhead)
-        let theoretical_max = 32.0;  // Assume Gen4 x16
+        let theoretical_max = 32.0; // Assume Gen4 x16
         assert!(
             bandwidth > theoretical_max * 0.5,
             "Bandwidth {} GB/s is <50% of theoretical {} GB/s",
@@ -384,7 +383,7 @@ mod p0_5_pcie_calibration {
 
     /// RED TEST: Calibration completes in reasonable time
     #[test]
-    #[ignore]  // Requires GPU hardware
+    #[ignore] // Requires GPU hardware
     fn test_pcie_calibration_performance() {
         let device = create_test_gpu_device();
 

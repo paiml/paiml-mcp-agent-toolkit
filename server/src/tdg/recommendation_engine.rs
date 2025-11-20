@@ -2,7 +2,9 @@
 //!
 //! Generates actionable refactoring recommendations based on function complexity analysis.
 
-use super::explain::{ActionableRecommendation, ComplexitySeverity, ExplainedTDGScore, RecommendationType};
+use super::explain::{
+    ActionableRecommendation, ComplexitySeverity, ExplainedTDGScore, RecommendationType,
+};
 
 /// Generate actionable recommendations from complexity analysis
 ///
@@ -49,15 +51,12 @@ pub fn generate_recommendations(explained: &ExplainedTDGScore) -> Vec<Actionable
     }
 
     // Sort by priority (ascending), then by expected impact (descending)
-    recommendations.sort_by(|a, b| {
-        match a.priority.cmp(&b.priority) {
-            std::cmp::Ordering::Equal => {
-                b.expected_impact
-                    .partial_cmp(&a.expected_impact)
-                    .unwrap_or(std::cmp::Ordering::Equal)
-            }
-            other => other,
-        }
+    recommendations.sort_by(|a, b| match a.priority.cmp(&b.priority) {
+        std::cmp::Ordering::Equal => b
+            .expected_impact
+            .partial_cmp(&a.expected_impact)
+            .unwrap_or(std::cmp::Ordering::Equal),
+        other => other,
     });
 
     recommendations
@@ -85,10 +84,10 @@ fn estimate_impact(tdg_impact: f64, cyclomatic: u32) -> f64 {
 /// Formula: More complex functions need more refactoring time
 fn estimate_effort(cyclomatic: u32) -> f64 {
     match cyclomatic {
-        0..=10 => 2.0,    // Medium: 2 hours
-        11..=20 => 4.0,   // High: 4 hours
-        21..=30 => 8.0,   // Critical: 8 hours
-        _ => 12.0,        // Very critical: 12+ hours
+        0..=10 => 2.0,  // Medium: 2 hours
+        11..=20 => 4.0, // High: 4 hours
+        21..=30 => 8.0, // Critical: 8 hours
+        _ => 12.0,      // Very critical: 12+ hours
     }
 }
 
@@ -131,7 +130,10 @@ mod tests {
         let recommendations = generate_recommendations(&explained);
 
         assert_eq!(recommendations.len(), 1);
-        assert_eq!(recommendations[0].rec_type, RecommendationType::ReduceComplexity);
+        assert_eq!(
+            recommendations[0].rec_type,
+            RecommendationType::ReduceComplexity
+        );
         assert!(recommendations[0].lines.contains(&100));
         assert!(recommendations[0].expected_impact > 0.0);
         assert!(recommendations[0].estimated_hours > 0.0);
@@ -153,7 +155,11 @@ mod tests {
 
         let recommendations = generate_recommendations(&explained);
 
-        assert_eq!(recommendations.len(), 0, "Should not recommend for low complexity");
+        assert_eq!(
+            recommendations.len(),
+            0,
+            "Should not recommend for low complexity"
+        );
     }
 
     #[test]
@@ -191,10 +197,10 @@ mod tests {
 
     #[test]
     fn test_effort_estimation() {
-        assert_eq!(estimate_effort(8), 2.0);    // Medium
-        assert_eq!(estimate_effort(15), 4.0);   // High
-        assert_eq!(estimate_effort(25), 8.0);   // Critical
-        assert_eq!(estimate_effort(35), 12.0);  // Very critical
+        assert_eq!(estimate_effort(8), 2.0); // Medium
+        assert_eq!(estimate_effort(15), 4.0); // High
+        assert_eq!(estimate_effort(25), 8.0); // Critical
+        assert_eq!(estimate_effort(35), 12.0); // Very critical
     }
 
     #[test]

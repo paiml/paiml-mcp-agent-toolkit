@@ -62,6 +62,10 @@ use crate::models::{
     tdg::{TDGScore, TDGSeverity, TDGSummary},
 };
 use crate::services::context::FileContext;
+#[cfg(feature = "go-ast")]
+use crate::services::unified_go_analyzer::UnifiedGoAnalyzer;
+#[cfg(feature = "wasm-ast")]
+use crate::services::unified_wasm_analyzer::UnifiedWasmAnalyzer;
 use crate::services::{
     complexity::{ComplexityReport, FileComplexityMetrics},
     file_classifier::FileClassifierConfig,
@@ -73,10 +77,6 @@ use crate::services::{
     unified_rust_analyzer::UnifiedRustAnalyzer,
     unified_typescript_analyzer::UnifiedTypeScriptAnalyzer,
 };
-#[cfg(feature = "go-ast")]
-use crate::services::unified_go_analyzer::UnifiedGoAnalyzer;
-#[cfg(feature = "wasm-ast")]
-use crate::services::unified_wasm_analyzer::UnifiedWasmAnalyzer;
 use chrono::{DateTime, Utc};
 use rayon::prelude::*;
 use rustc_hash::FxHashMap;

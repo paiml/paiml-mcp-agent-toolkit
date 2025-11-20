@@ -79,14 +79,14 @@ impl BackendSelector {
     /// Check if SIMD backend is available
     #[cfg(feature = "analytics-simd")]
     pub fn is_simd_available() -> bool {
-        true  // Always available when feature is enabled
+        true // Always available when feature is enabled
     }
 }
 
 /// Statistical helper functions for equivalence testing
 pub mod stats {
-    use anyhow::Result;
     use super::Backend;
+    use anyhow::Result;
 
     /// Generate test dataset for statistical validation
     ///
@@ -195,18 +195,12 @@ pub mod stats {
 
         match backend {
             #[cfg(feature = "analytics-gpu")]
-            Backend::Gpu => {
-                compute_avg_gpu(dataset)
-            }
+            Backend::Gpu => compute_avg_gpu(dataset),
 
             #[cfg(feature = "analytics-simd")]
-            Backend::Simd => {
-                compute_avg_simd(dataset)
-            }
+            Backend::Simd => compute_avg_simd(dataset),
 
-            Backend::Scalar => {
-                compute_avg_scalar(dataset)
-            }
+            Backend::Scalar => compute_avg_scalar(dataset),
         }
     }
 
@@ -234,7 +228,8 @@ pub mod stats {
         let device = GpuDevice::get_or_init()?;
 
         // Dispatch GPU compute
-        device.compute_sum(dataset)
+        device
+            .compute_sum(dataset)
             .map(|sum| sum / dataset.len() as f64)
     }
 }
@@ -245,7 +240,7 @@ pub mod stats {
 /// Provides PCIe bandwidth calibration for cost-based query optimization.
 #[cfg(feature = "analytics-gpu")]
 pub mod gpu {
-    use anyhow::{Result, Context, bail};
+    use anyhow::{bail, Context, Result};
     use std::sync::Once;
     use wgpu::util::DeviceExt;
 
@@ -270,16 +265,14 @@ pub mod gpu {
         #[allow(static_mut_refs)]
         pub fn get_or_init() -> Result<&'static GpuDevice> {
             unsafe {
-                INIT.call_once(|| {
-                    match Self::new() {
-                        Ok(device) => GPU_DEVICE = Some(device),
-                        Err(e) => panic!("Failed to initialize GPU: {}", e),
-                    }
+                INIT.call_once(|| match Self::new() {
+                    Ok(device) => GPU_DEVICE = Some(device),
+                    Err(e) => panic!("Failed to initialize GPU: {}", e),
                 });
 
-                GPU_DEVICE.as_ref().ok_or_else(|| {
-                    anyhow::anyhow!("GPU device not initialized")
-                })
+                GPU_DEVICE
+                    .as_ref()
+                    .ok_or_else(|| anyhow::anyhow!("GPU device not initialized"))
             }
         }
 
@@ -292,16 +285,20 @@ pub mod gpu {
             });
 
             // Request adapter (GPU device)
-            let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
-                power_preference: wgpu::PowerPreference::HighPerformance,
-                force_fallback_adapter: false,
-                compatible_surface: None,
-            }))
-            .context("Failed to find GPU adapter. Ensure GPU drivers are installed.")?;
+            let adapter =
+                pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
+                    power_preference: wgpu::PowerPreference::HighPerformance,
+                    force_fallback_adapter: false,
+                    compatible_surface: None,
+                }))
+                .context("Failed to find GPU adapter. Ensure GPU drivers are installed.")?;
 
             // Get adapter info for logging
             let adapter_info = adapter.get_info();
-            eprintln!("🔍 GPU Detected: {} ({:?})", adapter_info.name, adapter_info.backend);
+            eprintln!(
+                "🔍 GPU Detected: {} ({:?})",
+                adapter_info.name, adapter_info.backend
+            );
 
             // Request device and queue
             let (device, queue) = pollster::block_on(adapter.request_device(
@@ -358,7 +355,13 @@ pub mod gpu {
             let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("PCIe Calibration Encoder"),
             });
-            encoder.copy_buffer_to_buffer(&gpu_buffer, 0, &staging_buffer, 0, test_bytes.len() as u64);
+            encoder.copy_buffer_to_buffer(
+                &gpu_buffer,
+                0,
+                &staging_buffer,
+                0,
+                test_bytes.len() as u64,
+            );
             queue.submit(std::iter::once(encoder.finish()));
 
             // Wait for GPU operations to complete
@@ -368,7 +371,8 @@ pub mod gpu {
                 tx.send(result).ok();
             });
             device.poll(wgpu::Maintain::Wait);
-            rx.recv().context("Failed to map buffer")?
+            rx.recv()
+                .context("Failed to map buffer")?
                 .context("Buffer mapping failed")?;
 
             let elapsed = start.elapsed();
@@ -409,7 +413,10 @@ pub mod gpu {
                 );
             }
 
-            eprintln!("📊 PCIe Bandwidth: {:.2} GB/s (calibrated in {:?})", bandwidth_gbps, elapsed);
+            eprintln!(
+                "📊 PCIe Bandwidth: {:.2} GB/s (calibrated in {:?})",
+                bandwidth_gbps, elapsed
+            );
 
             // Drop buffers to free GPU memory
             drop(gpu_buffer);
@@ -440,8 +447,8 @@ pub mod gpu {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::stats::*;
+    use super::*;
 
     #[test]
     fn test_backend_auto_select() {

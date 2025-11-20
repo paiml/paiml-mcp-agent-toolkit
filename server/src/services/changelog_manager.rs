@@ -86,10 +86,7 @@ impl ChangelogEntry {
 }
 
 /// Add entry to CHANGELOG.md
-pub fn add_to_changelog(
-    project_path: &PathBuf,
-    entry: ChangelogEntry,
-) -> Result<()> {
+pub fn add_to_changelog(project_path: &PathBuf, entry: ChangelogEntry) -> Result<()> {
     let changelog_path = project_path.join("CHANGELOG.md");
 
     // Create CHANGELOG.md if it doesn't exist
@@ -97,14 +94,12 @@ pub fn add_to_changelog(
         create_changelog(&changelog_path)?;
     }
 
-    let content = fs::read_to_string(&changelog_path)
-        .context("Failed to read CHANGELOG.md")?;
+    let content = fs::read_to_string(&changelog_path).context("Failed to read CHANGELOG.md")?;
 
     // Find or create Unreleased section
     let updated_content = insert_entry(&content, &entry)?;
 
-    fs::write(&changelog_path, updated_content)
-        .context("Failed to write CHANGELOG.md")?;
+    fs::write(&changelog_path, updated_content).context("Failed to write CHANGELOG.md")?;
 
     Ok(())
 }
@@ -217,18 +212,11 @@ mod tests {
 
     #[test]
     fn test_entry_to_markdown() {
-        let entry = ChangelogEntry::new(
-            ChangeCategory::Added,
-            "New feature".to_string(),
-            Some(123),
-        );
+        let entry =
+            ChangelogEntry::new(ChangeCategory::Added, "New feature".to_string(), Some(123));
         assert_eq!(entry.to_markdown(), "- New feature (#123)");
 
-        let entry2 = ChangelogEntry::new(
-            ChangeCategory::Fixed,
-            "Bug fix".to_string(),
-            None,
-        );
+        let entry2 = ChangelogEntry::new(ChangeCategory::Fixed, "Bug fix".to_string(), None);
         assert_eq!(entry2.to_markdown(), "- Bug fix");
     }
 
@@ -251,11 +239,8 @@ mod tests {
         let temp = TempDir::new().unwrap();
         let project_path = temp.path().to_path_buf();
 
-        let entry = ChangelogEntry::new(
-            ChangeCategory::Added,
-            "Test feature".to_string(),
-            Some(42),
-        );
+        let entry =
+            ChangelogEntry::new(ChangeCategory::Added, "Test feature".to_string(), Some(42));
 
         add_to_changelog(&project_path, entry.clone()).unwrap();
 
@@ -277,11 +262,7 @@ mod tests {
 ### Fixed
 "#;
 
-        let entry = ChangelogEntry::new(
-            ChangeCategory::Added,
-            "New feature".to_string(),
-            Some(10),
-        );
+        let entry = ChangelogEntry::new(ChangeCategory::Added, "New feature".to_string(), Some(10));
 
         let result = insert_entry(content, &entry).unwrap();
         assert!(result.contains("- New feature (#10)"));
@@ -292,16 +273,8 @@ mod tests {
         let temp = TempDir::new().unwrap();
         let project_path = temp.path().to_path_buf();
 
-        let entry1 = ChangelogEntry::new(
-            ChangeCategory::Fixed,
-            "Fix bug 1".to_string(),
-            Some(1),
-        );
-        let entry2 = ChangelogEntry::new(
-            ChangeCategory::Fixed,
-            "Fix bug 2".to_string(),
-            Some(2),
-        );
+        let entry1 = ChangelogEntry::new(ChangeCategory::Fixed, "Fix bug 1".to_string(), Some(1));
+        let entry2 = ChangelogEntry::new(ChangeCategory::Fixed, "Fix bug 2".to_string(), Some(2));
 
         add_to_changelog(&project_path, entry1).unwrap();
         add_to_changelog(&project_path, entry2).unwrap();

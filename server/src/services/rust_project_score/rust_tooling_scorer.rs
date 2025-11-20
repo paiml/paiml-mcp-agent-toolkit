@@ -220,7 +220,11 @@ impl RustToolingScorer {
     /// References:
     /// - Johnson et al. 2013 ICSE: Quality over quantity (avoid warning blindness)
     /// - Bacchelli & Bird 2013 ICSE: Automated style enforcement reduces review waste
-    fn score_workspace_lints(&self, project_path: &Path, cache: Option<&FileCache>) -> ScorerResult<f64> {
+    fn score_workspace_lints(
+        &self,
+        project_path: &Path,
+        cache: Option<&FileCache>,
+    ) -> ScorerResult<f64> {
         let mut score = 0.0;
 
         // Read Cargo.toml
@@ -250,12 +254,11 @@ impl RustToolingScorer {
 
         // Check 2: High-value lint categories (+4pts)
         // Look for key lints that indicate quality focus (not just quantity)
-        let has_high_value_lints =
-            cargo_toml_content.contains("unsafe_op_in_unsafe_fn") || // Safety-critical
+        let has_high_value_lints = cargo_toml_content.contains("unsafe_op_in_unsafe_fn") || // Safety-critical
             cargo_toml_content.contains("unreachable_pub") ||        // API clarity
             cargo_toml_content.contains("unused_lifetimes") ||       // Code quality
             cargo_toml_content.contains("checked_conversions") ||    // Correctness
-            cargo_toml_content.contains("fallible_impl_from");       // Correctness
+            cargo_toml_content.contains("fallible_impl_from"); // Correctness
 
         if has_high_value_lints {
             score += 4.0;
@@ -311,7 +314,11 @@ impl RustToolingScorer {
     /// - Hilton et al. 2016 ASE: CI adoption correlates with faster releases
     /// - Memon et al. 2017 ICSE-SEIP: Flaky tests reduce productivity by 16%
     /// - McIntosh et al. 2015 ICSE: Build system maintenance overhead
-    fn score_ci_cd_integration(&self, project_path: &Path, _cache: Option<&FileCache>) -> ScorerResult<f64> {
+    fn score_ci_cd_integration(
+        &self,
+        project_path: &Path,
+        _cache: Option<&FileCache>,
+    ) -> ScorerResult<f64> {
         let mut score = 0.0;
 
         // Check if .github/workflows directory exists
@@ -322,7 +329,9 @@ impl RustToolingScorer {
                 .map_err(|e| ScorerError::IoError(e.to_string()))?
                 .filter_map(|entry| entry.ok())
                 .filter(|entry| {
-                    entry.path().extension()
+                    entry
+                        .path()
+                        .extension()
                         .and_then(|ext| ext.to_str())
                         .map(|ext| ext == "yml" || ext == "yaml")
                         .unwrap_or(false)
@@ -341,9 +350,12 @@ impl RustToolingScorer {
             }
 
             // Multi-Platform CI checks
-            let has_ubuntu = all_workflow_content.contains("ubuntu-latest") || all_workflow_content.contains("ubuntu-");
-            let has_windows = all_workflow_content.contains("windows-latest") || all_workflow_content.contains("windows-");
-            let has_macos = all_workflow_content.contains("macos-latest") || all_workflow_content.contains("macos-");
+            let has_ubuntu = all_workflow_content.contains("ubuntu-latest")
+                || all_workflow_content.contains("ubuntu-");
+            let has_windows = all_workflow_content.contains("windows-latest")
+                || all_workflow_content.contains("windows-");
+            let has_macos = all_workflow_content.contains("macos-latest")
+                || all_workflow_content.contains("macos-");
 
             // Check 1: Multi-platform testing (+6pts)
             if has_ubuntu && has_windows && has_macos {
@@ -351,11 +363,10 @@ impl RustToolingScorer {
             }
 
             // Check 2: Feature matrix testing (+4pts)
-            let has_feature_matrix =
-                (all_workflow_content.contains("minimal") ||
-                 all_workflow_content.contains("default") ||
-                 all_workflow_content.contains("full")) &&
-                all_workflow_content.contains("features:");
+            let has_feature_matrix = (all_workflow_content.contains("minimal")
+                || all_workflow_content.contains("default")
+                || all_workflow_content.contains("full"))
+                && all_workflow_content.contains("features:");
 
             if has_feature_matrix {
                 score += 4.0;
@@ -392,7 +403,9 @@ impl RustToolingScorer {
             let has_lint_workflow = workflow_files.iter().any(|entry| {
                 let filename = entry.file_name();
                 let filename_str = filename.to_string_lossy().to_lowercase();
-                filename_str.contains("lint") || filename_str.contains("clippy") || filename_str.contains("spell")
+                filename_str.contains("lint")
+                    || filename_str.contains("clippy")
+                    || filename_str.contains("spell")
             });
 
             if has_lint_workflow {
@@ -444,7 +457,8 @@ impl RustToolingScorer {
         if has_build_automation {
             let has_build = build_file_content.contains("build:");
             let has_test = build_file_content.contains("test:");
-            let has_lint = build_file_content.contains("lint:") || build_file_content.contains("clippy:");
+            let has_lint =
+                build_file_content.contains("lint:") || build_file_content.contains("clippy:");
             let has_bench = build_file_content.contains("bench:");
 
             if has_build && has_test && has_lint && has_bench {
@@ -468,7 +482,11 @@ impl RustToolingScorer {
     ///
     /// References:
     /// - Aghajani et al. 2019 ICSE: 57% of docs outdated within 6 months
-    fn score_docs_rs_metadata(&self, project_path: &Path, cache: Option<&FileCache>) -> ScorerResult<f64> {
+    fn score_docs_rs_metadata(
+        &self,
+        project_path: &Path,
+        cache: Option<&FileCache>,
+    ) -> ScorerResult<f64> {
         let mut score = 0.0;
 
         let cargo_toml_path = project_path.join("Cargo.toml");
@@ -517,7 +535,11 @@ impl RustToolingScorer {
     ///
     /// References:
     /// - Build System Evolution ICSE 2024: Workspace projects have 34% fewer dependency conflicts
-    fn score_workspace_organization(&self, project_path: &Path, cache: Option<&FileCache>) -> ScorerResult<f64> {
+    fn score_workspace_organization(
+        &self,
+        project_path: &Path,
+        cache: Option<&FileCache>,
+    ) -> ScorerResult<f64> {
         let mut score = 0.0;
 
         let cargo_toml_path = project_path.join("Cargo.toml");
@@ -541,7 +563,9 @@ impl RustToolingScorer {
             score += 6.0;
 
             // Check 2: resolver = "2" (+3pts)
-            if cargo_toml_content.contains("resolver = \"2\"") || cargo_toml_content.contains("resolver = '2'") {
+            if cargo_toml_content.contains("resolver = \"2\"")
+                || cargo_toml_content.contains("resolver = '2'")
+            {
                 score += 3.0;
             }
 
@@ -571,7 +595,11 @@ impl RustToolingScorer {
     ///
     /// References:
     /// - FSE 2022: Manual release processes have 3.8x higher error rate
-    fn score_release_automation(&self, project_path: &Path, cache: Option<&FileCache>) -> ScorerResult<f64> {
+    fn score_release_automation(
+        &self,
+        project_path: &Path,
+        cache: Option<&FileCache>,
+    ) -> ScorerResult<f64> {
         let mut score = 0.0;
 
         let cargo_toml_path = project_path.join("Cargo.toml");
@@ -595,8 +623,9 @@ impl RustToolingScorer {
             score += 5.0;
 
             // Check 2: CHANGELOG.md automation (+3pts)
-            if cargo_toml_content.contains("pre-release-replacements") &&
-               cargo_toml_content.contains("CHANGELOG.md") {
+            if cargo_toml_content.contains("pre-release-replacements")
+                && cargo_toml_content.contains("CHANGELOG.md")
+            {
                 score += 3.0;
             }
 
@@ -626,7 +655,11 @@ impl RustToolingScorer {
     ///
     /// References:
     /// - Decan et al. 2019 EMSE: Rust ecosystem has lowest dependency conflict rate (3.2%)
-    fn score_msrv_tracking(&self, project_path: &Path, cache: Option<&FileCache>) -> ScorerResult<f64> {
+    fn score_msrv_tracking(
+        &self,
+        project_path: &Path,
+        cache: Option<&FileCache>,
+    ) -> ScorerResult<f64> {
         let mut score = 0.0;
 
         let cargo_toml_path = project_path.join("Cargo.toml");
@@ -659,7 +692,9 @@ impl RustToolingScorer {
                         .trim()
                         .trim_matches(|c| c == '"' || c == '\'')
                         .split_once('.')
-                        .map(|(major, minor)| format!("{}.{}", major, minor.split('.').next().unwrap_or(minor)))
+                        .map(|(major, minor)| {
+                            format!("{}.{}", major, minor.split('.').next().unwrap_or(minor))
+                        })
                 });
 
             // Check 2: CI tests against MSRV (+3pts)
@@ -707,7 +742,11 @@ impl RustToolingScorer {
     ///
     /// References:
     /// - Beller et al. 2017 MSR: Builds >10min correlate with 42% fewer local test runs
-    fn score_release_profiles(&self, project_path: &Path, cache: Option<&FileCache>) -> ScorerResult<f64> {
+    fn score_release_profiles(
+        &self,
+        project_path: &Path,
+        cache: Option<&FileCache>,
+    ) -> ScorerResult<f64> {
         let mut score = 0.0;
 
         let cargo_toml_path = project_path.join("Cargo.toml");
@@ -740,11 +779,12 @@ impl RustToolingScorer {
                 let release_content = &release_section[..release_end];
 
                 // Check for lto = true or lto = "thin" or lto = "fat"
-                if release_content.contains("lto = true") ||
-                   release_content.contains("lto = \"thin\"") ||
-                   release_content.contains("lto = \"fat\"") ||
-                   release_content.contains("lto = 'thin'") ||
-                   release_content.contains("lto = 'fat'") {
+                if release_content.contains("lto = true")
+                    || release_content.contains("lto = \"thin\"")
+                    || release_content.contains("lto = \"fat\"")
+                    || release_content.contains("lto = 'thin'")
+                    || release_content.contains("lto = 'fat'")
+                {
                     score += 4.0;
                 }
 
@@ -754,7 +794,9 @@ impl RustToolingScorer {
                 }
 
                 // Check 3: panic = "abort" in release (+2pts)
-                if release_content.contains("panic = \"abort\"") || release_content.contains("panic = 'abort'") {
+                if release_content.contains("panic = \"abort\"")
+                    || release_content.contains("panic = 'abort'")
+                {
                     score += 2.0;
                 }
             }
@@ -767,14 +809,17 @@ impl RustToolingScorer {
                 let dev_end = dev_section.find("\n[").unwrap_or(dev_section.len());
                 let dev_content = &dev_section[..dev_end];
 
-                if dev_content.contains("panic = \"abort\"") || dev_content.contains("panic = 'abort'") {
+                if dev_content.contains("panic = \"abort\"")
+                    || dev_content.contains("panic = 'abort'")
+                {
                     score += 2.0;
                 }
 
                 // Penalty: LTO in dev profile (-3pts) - slows TDD
-                if dev_content.contains("lto = true") ||
-                   dev_content.contains("lto = \"") ||
-                   dev_content.contains("lto = '") {
+                if dev_content.contains("lto = true")
+                    || dev_content.contains("lto = \"")
+                    || dev_content.contains("lto = '")
+                {
                     score -= 3.0;
                 }
             }
@@ -787,9 +832,10 @@ impl RustToolingScorer {
                 let test_end = test_section.find("\n[").unwrap_or(test_section.len());
                 let test_content = &test_section[..test_end];
 
-                if test_content.contains("lto = true") ||
-                   test_content.contains("lto = \"") ||
-                   test_content.contains("lto = '") {
+                if test_content.contains("lto = true")
+                    || test_content.contains("lto = \"")
+                    || test_content.contains("lto = '")
+                {
                     score -= 3.0;
                 }
             }
@@ -991,13 +1037,16 @@ impl Scorer for RustToolingScorer {
             if lint_score < 12.0 {
                 if !project_path.join("Cargo.toml").exists() {
                     // Skip workspace lint recommendations if not a Rust project
-                } else if let Ok(content) = std::fs::read_to_string(project_path.join("Cargo.toml")) {
+                } else if let Ok(content) = std::fs::read_to_string(project_path.join("Cargo.toml"))
+                {
                     if !content.contains("[workspace.lints") {
                         recommendations.push(
                             "Add [workspace.lints.rust] and [workspace.lints.clippy] to Cargo.toml for consistent linting across all crates".to_string(),
                         );
                     }
-                    if !content.contains("unsafe_op_in_unsafe_fn") && !content.contains("checked_conversions") {
+                    if !content.contains("unsafe_op_in_unsafe_fn")
+                        && !content.contains("checked_conversions")
+                    {
                         recommendations.push(
                             "Enable high-value lint categories (unsafe_op_in_unsafe_fn, unreachable_pub, checked_conversions) for better code quality".to_string(),
                         );
@@ -1047,7 +1096,10 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
 
         let score = scorer.score_workspace_lints(temp_dir.path(), None).unwrap();
-        assert_eq!(score, 0.0, "Should return 0 points when Cargo.toml doesn't exist");
+        assert_eq!(
+            score, 0.0,
+            "Should return 0 points when Cargo.toml doesn't exist"
+        );
     }
 
     #[test]
@@ -1057,15 +1109,22 @@ mod tests {
 
         // Create Cargo.toml without workspace lints
         let cargo_toml = temp_dir.path().join("Cargo.toml");
-        std::fs::write(&cargo_toml, r#"
+        std::fs::write(
+            &cargo_toml,
+            r#"
 [package]
 name = "test"
 version = "0.1.0"
 edition = "2021"
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
         let score = scorer.score_workspace_lints(temp_dir.path(), None).unwrap();
-        assert_eq!(score, 0.0, "Should return 0 points when no workspace lints configured");
+        assert_eq!(
+            score, 0.0,
+            "Should return 0 points when no workspace lints configured"
+        );
     }
 
     #[test]
@@ -1074,14 +1133,21 @@ edition = "2021"
         let temp_dir = TempDir::new().unwrap();
 
         let cargo_toml = temp_dir.path().join("Cargo.toml");
-        std::fs::write(&cargo_toml, r#"
+        std::fs::write(
+            &cargo_toml,
+            r#"
 [workspace.lints.rust]
 rust_2018_idioms = { level = "warn", priority = -1 }
 unreachable_pub = "warn"
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
         let score = scorer.score_workspace_lints(temp_dir.path(), None).unwrap();
-        assert_eq!(score, 9.0, "Should get 5pts (workspace lints) + 4pts (high-value: unreachable_pub)");
+        assert_eq!(
+            score, 9.0,
+            "Should get 5pts (workspace lints) + 4pts (high-value: unreachable_pub)"
+        );
     }
 
     #[test]
@@ -1090,11 +1156,15 @@ unreachable_pub = "warn"
         let temp_dir = TempDir::new().unwrap();
 
         let cargo_toml = temp_dir.path().join("Cargo.toml");
-        std::fs::write(&cargo_toml, r#"
+        std::fs::write(
+            &cargo_toml,
+            r#"
 [workspace.lints.clippy]
 checked_conversions = "warn"
 fallible_impl_from = "warn"
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
         let score = scorer.score_workspace_lints(temp_dir.path(), None).unwrap();
         assert_eq!(score, 9.0, "Should get 5pts (workspace lints) + 4pts (high-value: checked_conversions, fallible_impl_from)");
@@ -1106,17 +1176,24 @@ fallible_impl_from = "warn"
         let temp_dir = TempDir::new().unwrap();
 
         let cargo_toml = temp_dir.path().join("Cargo.toml");
-        std::fs::write(&cargo_toml, r#"
+        std::fs::write(
+            &cargo_toml,
+            r#"
 [workspace.lints.rust]
 unsafe_op_in_unsafe_fn = "warn"
 unused_lifetimes = "warn"
 
 [workspace.lints.clippy]
 checked_conversions = "warn"
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
         let score = scorer.score_workspace_lints(temp_dir.path(), None).unwrap();
-        assert_eq!(score, 9.0, "Should get 5pts (workspace lints) + 4pts (high-value lints)");
+        assert_eq!(
+            score, 9.0,
+            "Should get 5pts (workspace lints) + 4pts (high-value lints)"
+        );
     }
 
     #[test]
@@ -1125,20 +1202,31 @@ checked_conversions = "warn"
         let temp_dir = TempDir::new().unwrap();
 
         let cargo_toml = temp_dir.path().join("Cargo.toml");
-        std::fs::write(&cargo_toml, r#"
+        std::fs::write(
+            &cargo_toml,
+            r#"
 [workspace.lints.clippy]
 checked_conversions = "warn"
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
         let clippy_toml = temp_dir.path().join(".clippy.toml");
-        std::fs::write(&clippy_toml, r#"
+        std::fs::write(
+            &clippy_toml,
+            r#"
 disallowed-methods = [
     { path = "std::option::Option::map_or", reason = "prefer map(..).unwrap_or(..)" },
 ]
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
         let score = scorer.score_workspace_lints(temp_dir.path(), None).unwrap();
-        assert_eq!(score, 12.0, "Should get 5pts + 4pts + 3pts (clippy.toml) = 12pts");
+        assert_eq!(
+            score, 12.0,
+            "Should get 5pts + 4pts + 3pts (clippy.toml) = 12pts"
+        );
     }
 
     #[test]
@@ -1148,7 +1236,9 @@ disallowed-methods = [
 
         // Create Cargo.toml with workspace lints (like clap/tokio)
         let cargo_toml = temp_dir.path().join("Cargo.toml");
-        std::fs::write(&cargo_toml, r#"
+        std::fs::write(
+            &cargo_toml,
+            r#"
 [workspace.lints.rust]
 rust_2018_idioms = { level = "warn", priority = -1 }
 unreachable_pub = "warn"
@@ -1158,17 +1248,23 @@ unused_lifetimes = "warn"
 [workspace.lints.clippy]
 checked_conversions = "warn"
 fallible_impl_from = "warn"
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
         // Create .clippy.toml with disallowed-methods
         let clippy_toml = temp_dir.path().join(".clippy.toml");
-        std::fs::write(&clippy_toml, r#"
+        std::fs::write(
+            &clippy_toml,
+            r#"
 allow-print-in-tests = true
 disallowed-methods = [
     { path = "std::option::Option::map_or", reason = "prefer map(..).unwrap_or(..)" },
     { path = "std::iter::Iterator::for_each", reason = "prefer for loops" },
 ]
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
         let score = scorer.score_workspace_lints(temp_dir.path(), None).unwrap();
         assert_eq!(score, 12.0, "Should get full 12 points: 5 + 4 + 3");
@@ -1180,14 +1276,21 @@ disallowed-methods = [
         let temp_dir = TempDir::new().unwrap();
 
         let cargo_toml = temp_dir.path().join("Cargo.toml");
-        std::fs::write(&cargo_toml, r#"
+        std::fs::write(
+            &cargo_toml,
+            r#"
 [workspace.lints.clippy]
 # Low-value lints only (no correctness/safety lints)
 bool_assert_comparison = "allow"
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
         let score = scorer.score_workspace_lints(temp_dir.path(), None).unwrap();
-        assert_eq!(score, 5.0, "Should get 5pts (workspace section exists) but not 4pts (no high-value lints)");
+        assert_eq!(
+            score, 5.0,
+            "Should get 5pts (workspace section exists) but not 4pts (no high-value lints)"
+        );
     }
 
     // =====================================================================
@@ -1207,7 +1310,9 @@ bool_assert_comparison = "allow"
 
         // Create ci.yml with multi-platform matrix (like clap/tokio)
         let ci_workflow = workflows_dir.join("ci.yml");
-        std::fs::write(&ci_workflow, r#"
+        std::fs::write(
+            &ci_workflow,
+            r#"
 name: CI
 
 on: [push, pull_request]
@@ -1222,11 +1327,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: cargo test --features ${{ matrix.features }}
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
         // Create audit.yml workflow (security)
         let audit_workflow = workflows_dir.join("audit.yml");
-        std::fs::write(&audit_workflow, r#"
+        std::fs::write(
+            &audit_workflow,
+            r#"
 name: Security Audit
 
 on:
@@ -1239,11 +1348,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: cargo audit
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
         // Create bench.yml workflow (benchmarks)
         let bench_workflow = workflows_dir.join("bench.yml");
-        std::fs::write(&bench_workflow, r#"
+        std::fs::write(
+            &bench_workflow,
+            r#"
 name: Benchmarks
 
 on: [push]
@@ -1254,11 +1367,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: cargo bench
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
         // Create justfile (Rust-native build automation)
         let justfile = temp_dir.path().join("justfile");
-        std::fs::write(&justfile, r#"
+        std::fs::write(
+            &justfile,
+            r#"
 # Build commands
 build:
     cargo build --release
@@ -1274,9 +1391,13 @@ lint:
 # Benchmark commands
 bench:
     cargo bench
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
-        let score = scorer.score_ci_cd_integration(temp_dir.path(), None).unwrap();
+        let score = scorer
+            .score_ci_cd_integration(temp_dir.path(), None)
+            .unwrap();
 
         // Expected score:
         // Multi-platform: +6 (Linux+Windows+Mac)
@@ -1301,15 +1422,21 @@ bench:
 
         // Only multi-platform CI, no other workflows
         let ci_workflow = workflows_dir.join("ci.yml");
-        std::fs::write(&ci_workflow, r#"
+        std::fs::write(
+            &ci_workflow,
+            r#"
 jobs:
   test:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
-        let score = scorer.score_ci_cd_integration(temp_dir.path(), None).unwrap();
+        let score = scorer
+            .score_ci_cd_integration(temp_dir.path(), None)
+            .unwrap();
         assert_eq!(score, 6.0, "Should get 6pts for Linux+Windows+Mac");
     }
 
@@ -1322,15 +1449,21 @@ jobs:
         std::fs::create_dir_all(&workflows_dir).unwrap();
 
         let ci_workflow = workflows_dir.join("ci.yml");
-        std::fs::write(&ci_workflow, r#"
+        std::fs::write(
+            &ci_workflow,
+            r#"
 jobs:
   test:
     strategy:
       matrix:
         features: [minimal, default, full]
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
-        let score = scorer.score_ci_cd_integration(temp_dir.path(), None).unwrap();
+        let score = scorer
+            .score_ci_cd_integration(temp_dir.path(), None)
+            .unwrap();
         assert_eq!(score, 4.0, "Should get 4pts for feature matrix testing");
     }
 
@@ -1347,9 +1480,14 @@ jobs:
         std::fs::write(workflows_dir.join("test.yml"), "name: Test").unwrap();
         std::fs::write(workflows_dir.join("lint.yml"), "name: Lint").unwrap();
 
-        let score = scorer.score_ci_cd_integration(temp_dir.path(), None).unwrap();
+        let score = scorer
+            .score_ci_cd_integration(temp_dir.path(), None)
+            .unwrap();
         // +6 for ≥3 workflows + +2 for dedicated lint workflow = 8 total
-        assert_eq!(score, 8.0, "Should get 8pts (6 for ≥3 workflows + 2 for lint workflow)");
+        assert_eq!(
+            score, 8.0,
+            "Should get 8pts (6 for ≥3 workflows + 2 for lint workflow)"
+        );
     }
 
     #[test]
@@ -1361,15 +1499,21 @@ jobs:
         std::fs::create_dir_all(&workflows_dir).unwrap();
 
         let audit_workflow = workflows_dir.join("audit.yml");
-        std::fs::write(&audit_workflow, r#"
+        std::fs::write(
+            &audit_workflow,
+            r#"
 name: Security Audit
 jobs:
   audit:
     steps:
       - run: cargo audit
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
-        let score = scorer.score_ci_cd_integration(temp_dir.path(), None).unwrap();
+        let score = scorer
+            .score_ci_cd_integration(temp_dir.path(), None)
+            .unwrap();
         assert_eq!(score, 4.0, "Should get 4pts for dedicated audit workflow");
     }
 
@@ -1382,16 +1526,25 @@ jobs:
         std::fs::create_dir_all(&workflows_dir).unwrap();
 
         let bench_workflow = workflows_dir.join("bench.yml");
-        std::fs::write(&bench_workflow, r#"
+        std::fs::write(
+            &bench_workflow,
+            r#"
 name: Benchmarks
 jobs:
   benchmark:
     steps:
       - run: cargo bench
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
-        let score = scorer.score_ci_cd_integration(temp_dir.path(), None).unwrap();
-        assert_eq!(score, 3.0, "Should get 3pts for dedicated benchmark workflow");
+        let score = scorer
+            .score_ci_cd_integration(temp_dir.path(), None)
+            .unwrap();
+        assert_eq!(
+            score, 3.0,
+            "Should get 3pts for dedicated benchmark workflow"
+        );
     }
 
     #[test]
@@ -1401,7 +1554,9 @@ jobs:
 
         // Create justfile with common targets
         let justfile = temp_dir.path().join("justfile");
-        std::fs::write(&justfile, r#"
+        std::fs::write(
+            &justfile,
+            r#"
 build:
     cargo build
 
@@ -1413,10 +1568,17 @@ lint:
 
 bench:
     cargo bench
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
-        let score = scorer.score_ci_cd_integration(temp_dir.path(), None).unwrap();
-        assert_eq!(score, 8.0, "Should get 5pts for justfile + 3pts for common targets");
+        let score = scorer
+            .score_ci_cd_integration(temp_dir.path(), None)
+            .unwrap();
+        assert_eq!(
+            score, 8.0,
+            "Should get 5pts for justfile + 3pts for common targets"
+        );
     }
 
     #[test]
@@ -1426,16 +1588,25 @@ bench:
 
         // Create Makefile (downgraded to 3pts per TPS review)
         let makefile = temp_dir.path().join("Makefile");
-        std::fs::write(&makefile, r#"
+        std::fs::write(
+            &makefile,
+            r#"
 build:
 	cargo build
 
 test:
 	cargo test
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
-        let score = scorer.score_ci_cd_integration(temp_dir.path(), None).unwrap();
-        assert_eq!(score, 3.0, "Should get 3pts for Makefile (downgraded, Windows-problematic)");
+        let score = scorer
+            .score_ci_cd_integration(temp_dir.path(), None)
+            .unwrap();
+        assert_eq!(
+            score, 3.0,
+            "Should get 3pts for Makefile (downgraded, Windows-problematic)"
+        );
     }
 
     #[test]
@@ -1443,7 +1614,9 @@ test:
         let scorer = RustToolingScorer::new();
         let temp_dir = TempDir::new().unwrap();
 
-        let score = scorer.score_ci_cd_integration(temp_dir.path(), None).unwrap();
+        let score = scorer
+            .score_ci_cd_integration(temp_dir.path(), None)
+            .unwrap();
         assert_eq!(score, 0.0, "Should get 0pts with no CI/CD infrastructure");
     }
 
@@ -1457,16 +1630,25 @@ test:
 
         // Only Linux and Windows (no Mac)
         let ci_workflow = workflows_dir.join("ci.yml");
-        std::fs::write(&ci_workflow, r#"
+        std::fs::write(
+            &ci_workflow,
+            r#"
 jobs:
   test:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
-        let score = scorer.score_ci_cd_integration(temp_dir.path(), None).unwrap();
-        assert_eq!(score, 0.0, "Should get 0pts - all 3 platforms required (Linux+Windows+Mac)");
+        let score = scorer
+            .score_ci_cd_integration(temp_dir.path(), None)
+            .unwrap();
+        assert_eq!(
+            score, 0.0,
+            "Should get 0pts - all 3 platforms required (Linux+Windows+Mac)"
+        );
     }
 
     // =====================================================================
@@ -1483,7 +1665,9 @@ jobs:
         let temp_dir = TempDir::new().unwrap();
 
         let cargo_toml = temp_dir.path().join("Cargo.toml");
-        std::fs::write(&cargo_toml, r#"
+        std::fs::write(
+            &cargo_toml,
+            r#"
 [package]
 name = "test-crate"
 version = "1.0.0"
@@ -1491,13 +1675,20 @@ version = "1.0.0"
 [package.metadata.docs.rs]
 all-features = true
 rustdoc-args = ["--cfg", "docsrs", "--generate-link-to-definition"]
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
-        let score = scorer.score_docs_rs_metadata(temp_dir.path(), None).unwrap();
+        let score = scorer
+            .score_docs_rs_metadata(temp_dir.path(), None)
+            .unwrap();
         // +5 for [package.metadata.docs.rs]
         // +3 for all-features = true
         // +2 for --generate-link-to-definition
-        assert_eq!(score, 10.0, "Should get full 10 points for complete docs.rs config");
+        assert_eq!(
+            score, 10.0,
+            "Should get full 10 points for complete docs.rs config"
+        );
     }
 
     #[test]
@@ -1506,15 +1697,21 @@ rustdoc-args = ["--cfg", "docsrs", "--generate-link-to-definition"]
         let temp_dir = TempDir::new().unwrap();
 
         let cargo_toml = temp_dir.path().join("Cargo.toml");
-        std::fs::write(&cargo_toml, r#"
+        std::fs::write(
+            &cargo_toml,
+            r#"
 [package]
 name = "test-crate"
 
 [package.metadata.docs.rs]
 features = ["std"]
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
-        let score = scorer.score_docs_rs_metadata(temp_dir.path(), None).unwrap();
+        let score = scorer
+            .score_docs_rs_metadata(temp_dir.path(), None)
+            .unwrap();
         assert_eq!(score, 5.0, "Should get 5pts for basic docs.rs metadata");
     }
 
@@ -1526,7 +1723,9 @@ features = ["std"]
         let cargo_toml = temp_dir.path().join("Cargo.toml");
         std::fs::write(&cargo_toml, "[package]\nname = \"test\"").unwrap();
 
-        let score = scorer.score_docs_rs_metadata(temp_dir.path(), None).unwrap();
+        let score = scorer
+            .score_docs_rs_metadata(temp_dir.path(), None)
+            .unwrap();
         assert_eq!(score, 0.0, "Should get 0pts with no docs.rs metadata");
     }
 
@@ -1538,7 +1737,9 @@ features = ["std"]
         let temp_dir = TempDir::new().unwrap();
 
         let cargo_toml = temp_dir.path().join("Cargo.toml");
-        std::fs::write(&cargo_toml, r#"
+        std::fs::write(
+            &cargo_toml,
+            r#"
 [workspace]
 members = ["crate-a", "crate-b"]
 resolver = "2"
@@ -1552,14 +1753,21 @@ version = "1.0.0"
 edition = "2021"
 license = "MIT"
 authors = ["Test Author"]
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
-        let score = scorer.score_workspace_organization(temp_dir.path(), None).unwrap();
+        let score = scorer
+            .score_workspace_organization(temp_dir.path(), None)
+            .unwrap();
         // +6 for [workspace] section
         // +3 for resolver = "2"
         // +2 for [workspace.dependencies]
         // +2 for [workspace.package]
-        assert_eq!(score, 13.0, "Should get full 13 points for complete workspace config");
+        assert_eq!(
+            score, 13.0,
+            "Should get full 13 points for complete workspace config"
+        );
     }
 
     #[test]
@@ -1568,12 +1776,18 @@ authors = ["Test Author"]
         let temp_dir = TempDir::new().unwrap();
 
         let cargo_toml = temp_dir.path().join("Cargo.toml");
-        std::fs::write(&cargo_toml, r#"
+        std::fs::write(
+            &cargo_toml,
+            r#"
 [workspace]
 members = ["crate-a"]
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
-        let score = scorer.score_workspace_organization(temp_dir.path(), None).unwrap();
+        let score = scorer
+            .score_workspace_organization(temp_dir.path(), None)
+            .unwrap();
         assert_eq!(score, 6.0, "Should get 6pts for basic workspace");
     }
 
@@ -1583,14 +1797,23 @@ members = ["crate-a"]
         let temp_dir = TempDir::new().unwrap();
 
         let cargo_toml = temp_dir.path().join("Cargo.toml");
-        std::fs::write(&cargo_toml, r#"
+        std::fs::write(
+            &cargo_toml,
+            r#"
 [workspace]
 members = ["crate-a"]
 resolver = "2"
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
-        let score = scorer.score_workspace_organization(temp_dir.path(), None).unwrap();
-        assert_eq!(score, 9.0, "Should get 9pts (6 for workspace + 3 for resolver)");
+        let score = scorer
+            .score_workspace_organization(temp_dir.path(), None)
+            .unwrap();
+        assert_eq!(
+            score, 9.0,
+            "Should get 9pts (6 for workspace + 3 for resolver)"
+        );
     }
 
     #[test]
@@ -1601,8 +1824,13 @@ resolver = "2"
         let cargo_toml = temp_dir.path().join("Cargo.toml");
         std::fs::write(&cargo_toml, "[package]\nname = \"single-crate\"").unwrap();
 
-        let score = scorer.score_workspace_organization(temp_dir.path(), None).unwrap();
-        assert_eq!(score, 0.0, "Should get 0pts for single-crate project (no workspace)");
+        let score = scorer
+            .score_workspace_organization(temp_dir.path(), None)
+            .unwrap();
+        assert_eq!(
+            score, 0.0,
+            "Should get 0pts for single-crate project (no workspace)"
+        );
     }
 
     // Release Automation Tests (12pts total)
@@ -1613,7 +1841,9 @@ resolver = "2"
         let temp_dir = TempDir::new().unwrap();
 
         let cargo_toml = temp_dir.path().join("Cargo.toml");
-        std::fs::write(&cargo_toml, r#"
+        std::fs::write(
+            &cargo_toml,
+            r#"
 [package]
 name = "test-crate"
 
@@ -1626,24 +1856,35 @@ tag-name = "v{{version}}"
 pre-release-replacements = [
   {file="CHANGELOG.md", search="Unreleased", replace="{{version}}", min=1},
 ]
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
         // Create post-release workflow
         let workflows_dir = temp_dir.path().join(".github/workflows");
         std::fs::create_dir_all(&workflows_dir).unwrap();
-        std::fs::write(workflows_dir.join("post-release.yml"), r#"
+        std::fs::write(
+            workflows_dir.join("post-release.yml"),
+            r#"
 name: Post-Release
 on:
   release:
     types: [published]
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
-        let score = scorer.score_release_automation(temp_dir.path(), None).unwrap();
+        let score = scorer
+            .score_release_automation(temp_dir.path(), None)
+            .unwrap();
         // +5 for [package.metadata.release]
         // +3 for CHANGELOG.md automation (pre-release-replacements)
         // +2 for shared-version (workspace version sync)
         // +2 for post-release.yml workflow
-        assert_eq!(score, 12.0, "Should get full 12 points for complete release automation");
+        assert_eq!(
+            score, 12.0,
+            "Should get full 12 points for complete release automation"
+        );
     }
 
     #[test]
@@ -1652,12 +1893,18 @@ on:
         let temp_dir = TempDir::new().unwrap();
 
         let cargo_toml = temp_dir.path().join("Cargo.toml");
-        std::fs::write(&cargo_toml, r#"
+        std::fs::write(
+            &cargo_toml,
+            r#"
 [package.metadata.release]
 tag-name = "v{{version}}"
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
-        let score = scorer.score_release_automation(temp_dir.path(), None).unwrap();
+        let score = scorer
+            .score_release_automation(temp_dir.path(), None)
+            .unwrap();
         assert_eq!(score, 5.0, "Should get 5pts for basic release metadata");
     }
 
@@ -1667,15 +1914,24 @@ tag-name = "v{{version}}"
         let temp_dir = TempDir::new().unwrap();
 
         let cargo_toml = temp_dir.path().join("Cargo.toml");
-        std::fs::write(&cargo_toml, r#"
+        std::fs::write(
+            &cargo_toml,
+            r#"
 [package.metadata.release]
 pre-release-replacements = [
   {file="CHANGELOG.md", search="Unreleased", replace="{{version}}"},
 ]
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
-        let score = scorer.score_release_automation(temp_dir.path(), None).unwrap();
-        assert_eq!(score, 8.0, "Should get 8pts (5 for metadata + 3 for changelog automation)");
+        let score = scorer
+            .score_release_automation(temp_dir.path(), None)
+            .unwrap();
+        assert_eq!(
+            score, 8.0,
+            "Should get 8pts (5 for metadata + 3 for changelog automation)"
+        );
     }
 
     #[test]
@@ -1686,7 +1942,9 @@ pre-release-replacements = [
         let cargo_toml = temp_dir.path().join("Cargo.toml");
         std::fs::write(&cargo_toml, "[package]\nname = \"test\"").unwrap();
 
-        let score = scorer.score_release_automation(temp_dir.path(), None).unwrap();
+        let score = scorer
+            .score_release_automation(temp_dir.path(), None)
+            .unwrap();
         assert_eq!(score, 0.0, "Should get 0pts with no release automation");
     }
 
@@ -1699,11 +1957,15 @@ pre-release-replacements = [
 
         // Create Cargo.toml with rust-version
         let cargo_toml = temp_dir.path().join("Cargo.toml");
-        std::fs::write(&cargo_toml, r#"
+        std::fs::write(
+            &cargo_toml,
+            r#"
 [package]
 name = "test-crate"
 rust-version = "1.74"
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
         // Create README with MSRV documentation
         let readme = temp_dir.path().join("README.md");
@@ -1712,19 +1974,26 @@ rust-version = "1.74"
         // Create CI workflow testing MSRV
         let workflows_dir = temp_dir.path().join(".github/workflows");
         std::fs::create_dir_all(&workflows_dir).unwrap();
-        std::fs::write(workflows_dir.join("ci.yml"), r#"
+        std::fs::write(
+            workflows_dir.join("ci.yml"),
+            r#"
 jobs:
   test:
     strategy:
       matrix:
         rust: [1.74, stable]
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
         let score = scorer.score_msrv_tracking(temp_dir.path(), None).unwrap();
         // +5 for rust-version field
         // +3 for CI testing MSRV
         // +2 for README documentation
-        assert_eq!(score, 10.0, "Should get full 10 points for complete MSRV tracking");
+        assert_eq!(
+            score, 10.0,
+            "Should get full 10 points for complete MSRV tracking"
+        );
     }
 
     #[test]
@@ -1733,10 +2002,14 @@ jobs:
         let temp_dir = TempDir::new().unwrap();
 
         let cargo_toml = temp_dir.path().join("Cargo.toml");
-        std::fs::write(&cargo_toml, r#"
+        std::fs::write(
+            &cargo_toml,
+            r#"
 [package]
 rust-version = "1.68"
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
         let score = scorer.score_msrv_tracking(temp_dir.path(), None).unwrap();
         assert_eq!(score, 5.0, "Should get 5pts for rust-version field only");
@@ -1778,7 +2051,9 @@ rust-version = "1.68"
         let temp_dir = TempDir::new().unwrap();
 
         let cargo_toml = temp_dir.path().join("Cargo.toml");
-        std::fs::write(&cargo_toml, r#"
+        std::fs::write(
+            &cargo_toml,
+            r#"
 [package]
 name = "test-crate"
 
@@ -1789,14 +2064,21 @@ panic = "abort"
 
 [profile.dev]
 panic = "abort"
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
-        let score = scorer.score_release_profiles(temp_dir.path(), None).unwrap();
+        let score = scorer
+            .score_release_profiles(temp_dir.path(), None)
+            .unwrap();
         // +4 for LTO in release
         // +3 for codegen-units = 1
         // +2 for panic = "abort" in release
         // +2 for panic = "abort" in dev
-        assert_eq!(score, 11.0, "Should get full 11 points for optimized release profiles");
+        assert_eq!(
+            score, 11.0,
+            "Should get full 11 points for optimized release profiles"
+        );
     }
 
     #[test]
@@ -1805,15 +2087,24 @@ panic = "abort"
         let temp_dir = TempDir::new().unwrap();
 
         let cargo_toml = temp_dir.path().join("Cargo.toml");
-        std::fs::write(&cargo_toml, r#"
+        std::fs::write(
+            &cargo_toml,
+            r#"
 [profile.release]
 lto = true
 codegen-units = 1
 panic = "abort"
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
-        let score = scorer.score_release_profiles(temp_dir.path(), None).unwrap();
-        assert_eq!(score, 9.0, "Should get 9pts (4+3+2 for release profile only)");
+        let score = scorer
+            .score_release_profiles(temp_dir.path(), None)
+            .unwrap();
+        assert_eq!(
+            score, 9.0,
+            "Should get 9pts (4+3+2 for release profile only)"
+        );
     }
 
     #[test]
@@ -1822,15 +2113,21 @@ panic = "abort"
         let temp_dir = TempDir::new().unwrap();
 
         let cargo_toml = temp_dir.path().join("Cargo.toml");
-        std::fs::write(&cargo_toml, r#"
+        std::fs::write(
+            &cargo_toml,
+            r#"
 [profile.release]
 lto = true
 
 [profile.dev]
 lto = true
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
-        let score = scorer.score_release_profiles(temp_dir.path(), None).unwrap();
+        let score = scorer
+            .score_release_profiles(temp_dir.path(), None)
+            .unwrap();
         // +4 for LTO in release
         // -3 penalty for LTO in dev (slows TDD)
         assert_eq!(score, 1.0, "Should get 1pt (4 - 3 penalty for LTO in dev)");
@@ -1842,15 +2139,21 @@ lto = true
         let temp_dir = TempDir::new().unwrap();
 
         let cargo_toml = temp_dir.path().join("Cargo.toml");
-        std::fs::write(&cargo_toml, r#"
+        std::fs::write(
+            &cargo_toml,
+            r#"
 [profile.release]
 lto = true
 
 [profile.test]
 lto = true
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
-        let score = scorer.score_release_profiles(temp_dir.path(), None).unwrap();
+        let score = scorer
+            .score_release_profiles(temp_dir.path(), None)
+            .unwrap();
         assert_eq!(score, 1.0, "Should get 1pt (4 - 3 penalty for LTO in test)");
     }
 
@@ -1862,7 +2165,9 @@ lto = true
         let cargo_toml = temp_dir.path().join("Cargo.toml");
         std::fs::write(&cargo_toml, "[package]\nname = \"test\"").unwrap();
 
-        let score = scorer.score_release_profiles(temp_dir.path(), None).unwrap();
+        let score = scorer
+            .score_release_profiles(temp_dir.path(), None)
+            .unwrap();
         assert_eq!(score, 0.0, "Should get 0pts with no profile optimizations");
     }
 
@@ -1872,12 +2177,18 @@ lto = true
         let temp_dir = TempDir::new().unwrap();
 
         let cargo_toml = temp_dir.path().join("Cargo.toml");
-        std::fs::write(&cargo_toml, r#"
+        std::fs::write(
+            &cargo_toml,
+            r#"
 [profile.release]
 lto = "thin"
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
-        let score = scorer.score_release_profiles(temp_dir.path(), None).unwrap();
+        let score = scorer
+            .score_release_profiles(temp_dir.path(), None)
+            .unwrap();
         assert_eq!(score, 4.0, "Should get 4pts for LTO (thin counts)");
     }
 }

@@ -96,7 +96,11 @@ impl FunctionAnalyzer {
         });
 
         // Sort by TDG impact (descending)
-        functions.sort_by(|a, b| b.tdg_impact.partial_cmp(&a.tdg_impact).unwrap_or(std::cmp::Ordering::Equal));
+        functions.sort_by(|a, b| {
+            b.tdg_impact
+                .partial_cmp(&a.tdg_impact)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         Ok(functions)
     }
@@ -148,12 +152,11 @@ impl FunctionAnalyzer {
     /// Extract function name from function_item node
     fn extract_function_name(&self, node: Node, source_code: &str) -> Option<String> {
         // function_item has a "name" field with identifier
-        node.child_by_field_name("name")
-            .and_then(|name_node| {
-                let start = name_node.start_byte();
-                let end = name_node.end_byte();
-                source_code.get(start..end).map(|s| s.to_string())
-            })
+        node.child_by_field_name("name").and_then(|name_node| {
+            let start = name_node.start_byte();
+            let end = name_node.end_byte();
+            source_code.get(start..end).map(|s| s.to_string())
+        })
     }
 
     /// Calculate cyclomatic complexity for a function
@@ -174,7 +177,7 @@ impl FunctionAnalyzer {
             match n.kind() {
                 // Conditionals
                 "if_expression" => complexity += 1,
-                "else" => {}, // Don't count else separately (already counted with if)
+                "else" => {} // Don't count else separately (already counted with if)
 
                 // Match expression (count each arm)
                 "match_arm" => complexity += 1,
@@ -263,7 +266,10 @@ mod tests {
 
         assert_eq!(functions.len(), 1);
         assert_eq!(functions[0].name, "conditional_function");
-        assert_eq!(functions[0].cyclomatic, 3, "Should have 3 complexity (2 if statements + base)");
+        assert_eq!(
+            functions[0].cyclomatic, 3,
+            "Should have 3 complexity (2 if statements + base)"
+        );
         // Complexity 3 is Low per McCabe standards (Low: 0-5)
         assert_eq!(functions[0].severity, ComplexitySeverity::Low);
     }
@@ -290,7 +296,10 @@ mod tests {
         assert_eq!(functions.len(), 1);
         assert_eq!(functions[0].name, "match_function");
         // Match with 7 arms = 7 decision points + 1 base = 8
-        assert_eq!(functions[0].cyclomatic, 8, "Should count match arms (7 arms + 1 base)");
+        assert_eq!(
+            functions[0].cyclomatic, 8,
+            "Should count match arms (7 arms + 1 base)"
+        );
         // Complexity 8 is Medium per McCabe standards (Medium: 6-10)
         assert_eq!(functions[0].severity, ComplexitySeverity::Medium);
     }
@@ -330,16 +339,25 @@ mod tests {
 
         // Simple function (complexity 1)
         let impact_simple = analyzer.estimate_tdg_impact(1, 1);
-        assert!(impact_simple < 0.5, "Simple function should have low impact");
+        assert!(
+            impact_simple < 0.5,
+            "Simple function should have low impact"
+        );
 
         // Medium complexity (10)
         let impact_medium = analyzer.estimate_tdg_impact(10, 10);
-        assert!(impact_medium >= 0.5 && impact_medium <= 3.0, "Medium complexity should have moderate impact");
+        assert!(
+            impact_medium >= 0.5 && impact_medium <= 3.0,
+            "Medium complexity should have moderate impact"
+        );
 
         // High complexity (25/30)
         // Formula: (25/10)*0.6 + (30/15)*0.4 = 2.5*0.6 + 2.0*0.4 = 1.5 + 0.8 = 2.3
         let impact_high = analyzer.estimate_tdg_impact(25, 30);
-        assert!(impact_high >= 2.0 && impact_high <= 2.5, "High complexity should have impact ~2.3");
+        assert!(
+            impact_high >= 2.0 && impact_high <= 2.5,
+            "High complexity should have impact ~2.3"
+        );
     }
 
     #[test]

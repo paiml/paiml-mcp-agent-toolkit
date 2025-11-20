@@ -215,20 +215,22 @@ impl ExplainedTDGScore {
     /// Sort functions by TDG impact (descending)
     pub fn sort_functions_by_impact(&mut self) {
         self.functions.sort_by(|a, b| {
-            b.tdg_impact.partial_cmp(&a.tdg_impact).unwrap_or(std::cmp::Ordering::Equal)
+            b.tdg_impact
+                .partial_cmp(&a.tdg_impact)
+                .unwrap_or(std::cmp::Ordering::Equal)
         });
     }
 
     /// Sort recommendations by priority (ascending) and expected impact (descending)
     pub fn sort_recommendations(&mut self) {
-        self.recommendations.sort_by(|a, b| {
-            match a.priority.cmp(&b.priority) {
-                std::cmp::Ordering::Equal => {
-                    b.expected_impact.partial_cmp(&a.expected_impact).unwrap_or(std::cmp::Ordering::Equal)
-                }
+        self.recommendations
+            .sort_by(|a, b| match a.priority.cmp(&b.priority) {
+                std::cmp::Ordering::Equal => b
+                    .expected_impact
+                    .partial_cmp(&a.expected_impact)
+                    .unwrap_or(std::cmp::Ordering::Equal),
                 other => other,
-            }
-        });
+            });
     }
 
     /// Filter functions by complexity threshold
@@ -253,10 +255,22 @@ mod tests {
 
     #[test]
     fn test_complexity_severity_classification() {
-        assert_eq!(ComplexitySeverity::from_cyclomatic(3), ComplexitySeverity::Low);
-        assert_eq!(ComplexitySeverity::from_cyclomatic(7), ComplexitySeverity::Medium);
-        assert_eq!(ComplexitySeverity::from_cyclomatic(15), ComplexitySeverity::High);
-        assert_eq!(ComplexitySeverity::from_cyclomatic(25), ComplexitySeverity::Critical);
+        assert_eq!(
+            ComplexitySeverity::from_cyclomatic(3),
+            ComplexitySeverity::Low
+        );
+        assert_eq!(
+            ComplexitySeverity::from_cyclomatic(7),
+            ComplexitySeverity::Medium
+        );
+        assert_eq!(
+            ComplexitySeverity::from_cyclomatic(15),
+            ComplexitySeverity::High
+        );
+        assert_eq!(
+            ComplexitySeverity::from_cyclomatic(25),
+            ComplexitySeverity::Critical
+        );
     }
 
     #[test]

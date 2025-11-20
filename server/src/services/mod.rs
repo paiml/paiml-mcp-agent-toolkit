@@ -226,11 +226,11 @@ mod git_clone_property_tests;
 #[cfg(test)]
 mod quality_proxy_property_tests;
 
-pub mod telemetry_service;
-pub mod roadmap_service;
+pub mod changelog_manager;
 pub mod github_client; // Issue #75: GitHub API integration
 pub mod hook_manager; // Issue #75 Phase 6: Git hooks for workflow
-pub mod changelog_manager; // Issue #75 Phase 7: CHANGELOG automation
+pub mod roadmap_service;
+pub mod telemetry_service; // Issue #75 Phase 7: CHANGELOG automation
 
 #[cfg(test)]
 mod tests {

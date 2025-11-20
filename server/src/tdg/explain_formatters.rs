@@ -66,10 +66,7 @@ pub fn format_explain_text(explained: &ExplainedTDGScore) -> Result<String> {
         output.push_str("No functions analyzed.\n");
     } else {
         for func in &explained.functions {
-            output.push_str(&format!(
-                "{} (line {})\n",
-                func.name, func.line_number
-            ));
+            output.push_str(&format!("{} (line {})\n", func.name, func.line_number));
             output.push_str(&format!("  Complexity: {}\n", func.cyclomatic));
             output.push_str(&format!("  Cognitive: {}\n", func.cognitive));
             output.push_str(&format!("  TDG Impact: {:.2}\n", func.tdg_impact));
