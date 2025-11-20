@@ -1,20 +1,22 @@
 //! RustProjectScore Orchestrator
 //!
-//! Aggregates all 7 category scorers into a unified project score.
+//! Aggregates all 8 category scorers into a unified project score.
 //!
-//! Categories (114 points total):
+//! Categories (134 points total):
 //! - Rust Tooling Compliance (25pts)
 //! - Code Quality (26pts)
 //! - Testing Excellence (20pts)
 //! - Documentation (15pts)
 //! - Performance & Benchmarking (10pts)
 //! - Dependency Health (12pts)
-//! - Formal Verification (8pts) - NEW in v1.2
+//! - Formal Verification (8pts)
+//! - Known Defects (20pts) - NEW in v2.1
 
 use super::code_quality_scorer::CodeQualityScorer;
 use super::dependency_scorer::DependencyScorer;
 use super::documentation_scorer::DocumentationScorer;
 use super::formal_verification_scorer::FormalVerificationScorer;
+use super::known_defects_scorer::KnownDefectsScorer;
 use super::models::*;
 use super::performance_scorer::PerformanceScorer;
 use super::rust_tooling_scorer::RustToolingScorer;
@@ -25,14 +27,14 @@ use rayon::prelude::*;
 use std::collections::HashMap;
 use std::path::Path;
 
-/// Orchestrates all 7 category scorers to produce unified project score
+/// Orchestrates all 8 category scorers to produce unified project score
 pub struct RustProjectScoreOrchestrator {
-    /// All 7 category scorers
+    /// All 8 category scorers
     scorers: Vec<Box<dyn Scorer>>,
 }
 
 impl RustProjectScoreOrchestrator {
-    /// Create a new orchestrator with all 7 scorers
+    /// Create a new orchestrator with all 8 scorers
     pub fn new() -> Self {
         let scorers: Vec<Box<dyn Scorer>> = vec![
             Box::new(RustToolingScorer::new()),
@@ -42,6 +44,7 @@ impl RustProjectScoreOrchestrator {
             Box::new(PerformanceScorer::new()),
             Box::new(DependencyScorer::new()),
             Box::new(FormalVerificationScorer::new()),
+            Box::new(KnownDefectsScorer::new()),
         ];
 
         Self { scorers }
@@ -49,12 +52,12 @@ impl RustProjectScoreOrchestrator {
 
     /// Get orchestrator name
     pub fn name(&self) -> &str {
-        "Rust Project Score v1.1"
+        "Rust Project Score v2.1"
     }
 
-    /// Get maximum possible points (114)
+    /// Get maximum possible points (134)
     pub fn max_points(&self) -> f64 {
-        114.0
+        134.0
     }
 
     /// Get all scorer names
@@ -77,7 +80,7 @@ impl RustProjectScoreOrchestrator {
 
     /// Score a Rust project with fast mode (default, <60 seconds)
     ///
-    /// Runs all 6 category scorers and aggregates results
+    /// Runs all 8 category scorers and aggregates results
     pub fn score(&self, project_path: &Path) -> ScorerResult<ProjectScore> {
         self.score_with_mode(project_path, ScoringMode::default())
     }
@@ -218,7 +221,7 @@ pub struct ProjectScore {
     /// Total points earned
     pub total_earned: f64,
 
-    /// Total possible points (114) - 7 categories
+    /// Total possible points (134) - 8 categories
     pub total_possible: f64,
 
     /// Percentage (0-100)
@@ -245,14 +248,14 @@ mod tests {
     #[test]
     fn test_orchestrator_creation() {
         let orch = RustProjectScoreOrchestrator::new();
-        assert_eq!(orch.name(), "Rust Project Score v1.1");
-        assert_eq!(orch.max_points(), 114.0);
+        assert_eq!(orch.name(), "Rust Project Score v2.1");
+        assert_eq!(orch.max_points(), 134.0);
     }
 
     #[test]
     fn test_scorer_count() {
         let orch = RustProjectScoreOrchestrator::new();
-        assert_eq!(orch.scorers.len(), 7);
+        assert_eq!(orch.scorers.len(), 8);
     }
 
     #[test]
@@ -260,5 +263,12 @@ mod tests {
         let orch = RustProjectScoreOrchestrator::new();
         let names: Vec<&str> = orch.scorer_names();
         assert!(names.contains(&"Formal Verification"));
+    }
+
+    #[test]
+    fn test_known_defects_scorer_present() {
+        let orch = RustProjectScoreOrchestrator::new();
+        let names: Vec<&str> = orch.scorer_names();
+        assert!(names.contains(&"Known Defects"));
     }
 }

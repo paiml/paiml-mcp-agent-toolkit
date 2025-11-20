@@ -242,6 +242,13 @@ impl FileCache {
         self.files.get(path)
     }
 
+    /// Iterate over all files in cache
+    ///
+    /// Returns iterator over (path, content) pairs
+    pub fn iter(&self) -> impl Iterator<Item = (&PathBuf, &String)> {
+        self.files.iter()
+    }
+
     /// Get all .rs files in a specific directory from cache
     ///
     /// Returns iterator over (path, content) pairs

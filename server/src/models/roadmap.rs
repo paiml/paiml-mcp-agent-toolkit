@@ -30,6 +30,10 @@ fn default_github_enabled() -> bool {
     true
 }
 
+fn default_timestamp() -> String {
+    "1970-01-01T00:00:00Z".to_string()
+}
+
 impl Default for Roadmap {
     fn default() -> Self {
         Self {
@@ -68,9 +72,11 @@ pub struct RoadmapItem {
     pub assigned_to: Option<String>,
 
     /// Created timestamp (ISO 8601)
+    #[serde(default = "default_timestamp")]
     pub created: String,
 
     /// Last updated timestamp (ISO 8601)
+    #[serde(default = "default_timestamp")]
     pub updated: String,
 
     /// Path to specification file
