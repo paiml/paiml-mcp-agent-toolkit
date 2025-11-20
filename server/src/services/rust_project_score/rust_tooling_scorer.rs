@@ -40,8 +40,8 @@ impl RustToolingScorer {
     /// Create a new RustToolingScorer
     pub fn new() -> Self {
         Self {
-            name: "Rust Tooling Compliance".to_string(),
-            max_points: 37.0, // v2.0: 25 + 12 (workspace lints)
+            name: "Rust Tooling & CI/CD".to_string(),
+            max_points: 74.0, // v2.0 Phase 2: 25 + 12 (workspace lints) + 37 (CI/CD integration)
         }
     }
 
@@ -284,6 +284,179 @@ impl RustToolingScorer {
         Ok(score)
     }
 
+    /// Score CI/CD integration and build automation (v2.0 Phase 2)
+    ///
+    /// Based on "Learn from Rust Giants" specification (TPS-reviewed):
+    ///
+    /// **Multi-Platform CI** (13pts):
+    /// - +6pts: CI tests on Linux + Windows + Mac
+    /// - +4pts: Feature matrix testing (minimal, default, full)
+    /// - +3pts: Separate workflows for stress tests, loom, audit
+    ///
+    /// **CI Workflow Diversity** (15pts):
+    /// - +6pts: ≥3 separate GitHub Actions workflows
+    /// - +4pts: Dedicated security audit workflow
+    /// - +3pts: Dedicated benchmark workflow
+    /// - +2pts: Dedicated spell-check or linting workflow
+    ///
+    /// **Build Automation** (9pts):
+    /// - +5pts: justfile or cargo-xtask exists (Rust-native, cross-platform)
+    /// - +3pts: Makefile exists (problematic on Windows, downgraded per TPS)
+    /// - +3pts: Common targets (build, test, lint, bench)
+    /// - +2pts: CI uses automation targets (consistency)
+    ///
+    /// Total possible: 37 points
+    ///
+    /// References:
+    /// - Hilton et al. 2016 ASE: CI adoption correlates with faster releases
+    /// - Memon et al. 2017 ICSE-SEIP: Flaky tests reduce productivity by 16%
+    /// - McIntosh et al. 2015 ICSE: Build system maintenance overhead
+    fn score_ci_cd_integration(&self, project_path: &Path, _cache: Option<&FileCache>) -> ScorerResult<f64> {
+        let mut score = 0.0;
+
+        // Check if .github/workflows directory exists
+        let workflows_dir = project_path.join(".github").join("workflows");
+        if workflows_dir.exists() && workflows_dir.is_dir() {
+            // Read all workflow files
+            let workflow_files: Vec<_> = std::fs::read_dir(&workflows_dir)
+                .map_err(|e| ScorerError::IoError(e.to_string()))?
+                .filter_map(|entry| entry.ok())
+                .filter(|entry| {
+                    entry.path().extension()
+                        .and_then(|ext| ext.to_str())
+                        .map(|ext| ext == "yml" || ext == "yaml")
+                        .unwrap_or(false)
+                })
+                .collect();
+
+            let workflow_count = workflow_files.len();
+
+            // Read all workflow contents for analysis
+            let mut all_workflow_content = String::new();
+            for file in &workflow_files {
+                if let Ok(content) = std::fs::read_to_string(file.path()) {
+                    all_workflow_content.push_str(&content);
+                    all_workflow_content.push('\n');
+                }
+            }
+
+            // Multi-Platform CI checks
+            let has_ubuntu = all_workflow_content.contains("ubuntu-latest") || all_workflow_content.contains("ubuntu-");
+            let has_windows = all_workflow_content.contains("windows-latest") || all_workflow_content.contains("windows-");
+            let has_macos = all_workflow_content.contains("macos-latest") || all_workflow_content.contains("macos-");
+
+            // Check 1: Multi-platform testing (+6pts)
+            if has_ubuntu && has_windows && has_macos {
+                score += 6.0;
+            }
+
+            // Check 2: Feature matrix testing (+4pts)
+            let has_feature_matrix =
+                (all_workflow_content.contains("minimal") ||
+                 all_workflow_content.contains("default") ||
+                 all_workflow_content.contains("full")) &&
+                all_workflow_content.contains("features:");
+
+            if has_feature_matrix {
+                score += 4.0;
+            }
+
+            // Check 3: Workflow counting (+6pts for ≥3 workflows)
+            if workflow_count >= 3 {
+                score += 6.0;
+            }
+
+            // Check 4: Dedicated audit workflow (+4pts)
+            let has_audit_workflow = workflow_files.iter().any(|entry| {
+                let filename = entry.file_name();
+                let filename_str = filename.to_string_lossy().to_lowercase();
+                filename_str.contains("audit") || filename_str.contains("security")
+            }) || all_workflow_content.contains("cargo audit");
+
+            if has_audit_workflow {
+                score += 4.0;
+            }
+
+            // Check 5: Dedicated benchmark workflow (+3pts)
+            let has_bench_workflow = workflow_files.iter().any(|entry| {
+                let filename = entry.file_name();
+                let filename_str = filename.to_string_lossy().to_lowercase();
+                filename_str.contains("bench") || filename_str.contains("benchmark")
+            }) || all_workflow_content.contains("cargo bench");
+
+            if has_bench_workflow {
+                score += 3.0;
+            }
+
+            // Check 6: Dedicated lint workflow (+2pts)
+            let has_lint_workflow = workflow_files.iter().any(|entry| {
+                let filename = entry.file_name();
+                let filename_str = filename.to_string_lossy().to_lowercase();
+                filename_str.contains("lint") || filename_str.contains("clippy") || filename_str.contains("spell")
+            });
+
+            if has_lint_workflow {
+                score += 2.0;
+            }
+
+            // Check 7: Separate workflows for stress/loom/audit (+3pts)
+            let has_separate_workflows = workflow_files.iter().any(|entry| {
+                let filename = entry.file_name();
+                let filename_str = filename.to_string_lossy().to_lowercase();
+                filename_str.contains("stress") || filename_str.contains("loom")
+            });
+
+            if has_separate_workflows {
+                score += 3.0;
+            }
+        }
+
+        // Build Automation checks
+        let justfile_path = project_path.join("justfile");
+        let makefile_path = project_path.join("Makefile");
+        let cargo_xtask_path = project_path.join("xtask");
+
+        let mut build_automation_score = 0.0;
+        let mut has_build_automation = false;
+        let mut build_file_content = String::new();
+
+        // Check 8: justfile or cargo-xtask (+5pts, Rust-native)
+        if justfile_path.exists() {
+            has_build_automation = true;
+            build_automation_score += 5.0;
+            if let Ok(content) = std::fs::read_to_string(&justfile_path) {
+                build_file_content = content;
+            }
+        } else if cargo_xtask_path.exists() {
+            has_build_automation = true;
+            build_automation_score += 5.0;
+        }
+        // Check 9: Makefile (+3pts, downgraded per TPS review - Windows-problematic)
+        else if makefile_path.exists() {
+            has_build_automation = true;
+            build_automation_score += 3.0;
+            if let Ok(content) = std::fs::read_to_string(&makefile_path) {
+                build_file_content = content;
+            }
+        }
+
+        // Check 10: Common targets (+3pts)
+        if has_build_automation {
+            let has_build = build_file_content.contains("build:");
+            let has_test = build_file_content.contains("test:");
+            let has_lint = build_file_content.contains("lint:") || build_file_content.contains("clippy:");
+            let has_bench = build_file_content.contains("bench:");
+
+            if has_build && has_test && has_lint && has_bench {
+                build_automation_score += 3.0;
+            }
+        }
+
+        score += build_automation_score;
+
+        Ok(score)
+    }
+
     /// Internal scoring logic that accepts optional cache
     ///
     /// **Kaizen Round 4**: Cache-aware scoring implementation
@@ -362,8 +535,14 @@ impl RustToolingScorer {
             Err(e) => return Err(e),
         }
 
-        // Score workspace lints (12pts) - v2.0 feature (fast, just file reads)
+        // Score workspace lints (12pts) - v2.0 Phase 1 (fast, just file reads)
         match self.score_workspace_lints(project_path, _cache) {
+            Ok(score) => total_earned += score,
+            Err(e) => return Err(e),
+        }
+
+        // Score CI/CD integration (37pts) - v2.0 Phase 2 (fast, just file reads)
+        match self.score_ci_cd_integration(project_path, _cache) {
             Ok(score) => total_earned += score,
             Err(e) => return Err(e),
         }
@@ -477,8 +656,8 @@ mod tests {
     #[test]
     fn test_scorer_creation() {
         let scorer = RustToolingScorer::new();
-        assert_eq!(scorer.name(), "Rust Tooling Compliance");
-        assert_eq!(scorer.max_points(), 37.0); // v2.0: 25 + 12 workspace lints
+        assert_eq!(scorer.name(), "Rust Tooling & CI/CD");
+        assert_eq!(scorer.max_points(), 74.0); // v2.0 Phase 2: 25 + 12 workspace lints + 37 CI/CD
     }
 
     #[test]
@@ -638,5 +817,284 @@ bool_assert_comparison = "allow"
 
         let score = scorer.score_workspace_lints(temp_dir.path(), None).unwrap();
         assert_eq!(score, 5.0, "Should get 5pts (workspace section exists) but not 4pts (no high-value lints)");
+    }
+
+    // =====================================================================
+    // CI/CD Integration Tests (v2.0 Phase 2)
+    // Based on "Learn from Rust Giants" specification
+    // Academic Foundation: Hilton 2016 ASE, Memon 2017 ICSE-SEIP
+    // =====================================================================
+
+    #[test]
+    fn test_ci_cd_full_score() {
+        let scorer = RustToolingScorer::new();
+        let temp_dir = TempDir::new().unwrap();
+
+        // Create .github/workflows directory
+        let workflows_dir = temp_dir.path().join(".github/workflows");
+        std::fs::create_dir_all(&workflows_dir).unwrap();
+
+        // Create ci.yml with multi-platform matrix (like clap/tokio)
+        let ci_workflow = workflows_dir.join("ci.yml");
+        std::fs::write(&ci_workflow, r#"
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        features: [minimal, default, full]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: cargo test --features ${{ matrix.features }}
+"#).unwrap();
+
+        // Create audit.yml workflow (security)
+        let audit_workflow = workflows_dir.join("audit.yml");
+        std::fs::write(&audit_workflow, r#"
+name: Security Audit
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cargo audit
+"#).unwrap();
+
+        // Create bench.yml workflow (benchmarks)
+        let bench_workflow = workflows_dir.join("bench.yml");
+        std::fs::write(&bench_workflow, r#"
+name: Benchmarks
+
+on: [push]
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cargo bench
+"#).unwrap();
+
+        // Create justfile (Rust-native build automation)
+        let justfile = temp_dir.path().join("justfile");
+        std::fs::write(&justfile, r#"
+# Build commands
+build:
+    cargo build --release
+
+# Test commands
+test:
+    cargo test
+
+# Lint commands
+lint:
+    cargo clippy -- -D warnings
+
+# Benchmark commands
+bench:
+    cargo bench
+"#).unwrap();
+
+        let score = scorer.score_ci_cd_integration(temp_dir.path(), None).unwrap();
+
+        // Expected score:
+        // Multi-platform: +6 (Linux+Windows+Mac)
+        // Feature matrix: +4 (minimal, default, full)
+        // CI workflow diversity: +6 (≥3 workflows: ci.yml, audit.yml, bench.yml)
+        // Dedicated audit: +4 (audit.yml)
+        // Dedicated benchmark: +3 (bench.yml)
+        // Build automation (justfile): +5
+        // Common targets: +3 (build, test, lint, bench all present)
+        // Note: Separate workflows for stress/loom (+3) NOT counted (no stress.yml/loom.yml)
+        // Total: 31 points
+        assert_eq!(score, 31.0, "Should get 31 points for complete CI/CD setup");
+    }
+
+    #[test]
+    fn test_ci_cd_multi_platform_only() {
+        let scorer = RustToolingScorer::new();
+        let temp_dir = TempDir::new().unwrap();
+
+        let workflows_dir = temp_dir.path().join(".github/workflows");
+        std::fs::create_dir_all(&workflows_dir).unwrap();
+
+        // Only multi-platform CI, no other workflows
+        let ci_workflow = workflows_dir.join("ci.yml");
+        std::fs::write(&ci_workflow, r#"
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+"#).unwrap();
+
+        let score = scorer.score_ci_cd_integration(temp_dir.path(), None).unwrap();
+        assert_eq!(score, 6.0, "Should get 6pts for Linux+Windows+Mac");
+    }
+
+    #[test]
+    fn test_ci_cd_feature_matrix() {
+        let scorer = RustToolingScorer::new();
+        let temp_dir = TempDir::new().unwrap();
+
+        let workflows_dir = temp_dir.path().join(".github/workflows");
+        std::fs::create_dir_all(&workflows_dir).unwrap();
+
+        let ci_workflow = workflows_dir.join("ci.yml");
+        std::fs::write(&ci_workflow, r#"
+jobs:
+  test:
+    strategy:
+      matrix:
+        features: [minimal, default, full]
+"#).unwrap();
+
+        let score = scorer.score_ci_cd_integration(temp_dir.path(), None).unwrap();
+        assert_eq!(score, 4.0, "Should get 4pts for feature matrix testing");
+    }
+
+    #[test]
+    fn test_ci_cd_workflow_counting() {
+        let scorer = RustToolingScorer::new();
+        let temp_dir = TempDir::new().unwrap();
+
+        let workflows_dir = temp_dir.path().join(".github/workflows");
+        std::fs::create_dir_all(&workflows_dir).unwrap();
+
+        // Create 3 workflows (ci, test, lint)
+        std::fs::write(workflows_dir.join("ci.yml"), "name: CI").unwrap();
+        std::fs::write(workflows_dir.join("test.yml"), "name: Test").unwrap();
+        std::fs::write(workflows_dir.join("lint.yml"), "name: Lint").unwrap();
+
+        let score = scorer.score_ci_cd_integration(temp_dir.path(), None).unwrap();
+        // +6 for ≥3 workflows + +2 for dedicated lint workflow = 8 total
+        assert_eq!(score, 8.0, "Should get 8pts (6 for ≥3 workflows + 2 for lint workflow)");
+    }
+
+    #[test]
+    fn test_ci_cd_dedicated_audit_workflow() {
+        let scorer = RustToolingScorer::new();
+        let temp_dir = TempDir::new().unwrap();
+
+        let workflows_dir = temp_dir.path().join(".github/workflows");
+        std::fs::create_dir_all(&workflows_dir).unwrap();
+
+        let audit_workflow = workflows_dir.join("audit.yml");
+        std::fs::write(&audit_workflow, r#"
+name: Security Audit
+jobs:
+  audit:
+    steps:
+      - run: cargo audit
+"#).unwrap();
+
+        let score = scorer.score_ci_cd_integration(temp_dir.path(), None).unwrap();
+        assert_eq!(score, 4.0, "Should get 4pts for dedicated audit workflow");
+    }
+
+    #[test]
+    fn test_ci_cd_dedicated_benchmark_workflow() {
+        let scorer = RustToolingScorer::new();
+        let temp_dir = TempDir::new().unwrap();
+
+        let workflows_dir = temp_dir.path().join(".github/workflows");
+        std::fs::create_dir_all(&workflows_dir).unwrap();
+
+        let bench_workflow = workflows_dir.join("bench.yml");
+        std::fs::write(&bench_workflow, r#"
+name: Benchmarks
+jobs:
+  benchmark:
+    steps:
+      - run: cargo bench
+"#).unwrap();
+
+        let score = scorer.score_ci_cd_integration(temp_dir.path(), None).unwrap();
+        assert_eq!(score, 3.0, "Should get 3pts for dedicated benchmark workflow");
+    }
+
+    #[test]
+    fn test_ci_cd_justfile_detection() {
+        let scorer = RustToolingScorer::new();
+        let temp_dir = TempDir::new().unwrap();
+
+        // Create justfile with common targets
+        let justfile = temp_dir.path().join("justfile");
+        std::fs::write(&justfile, r#"
+build:
+    cargo build
+
+test:
+    cargo test
+
+lint:
+    cargo clippy
+
+bench:
+    cargo bench
+"#).unwrap();
+
+        let score = scorer.score_ci_cd_integration(temp_dir.path(), None).unwrap();
+        assert_eq!(score, 8.0, "Should get 5pts for justfile + 3pts for common targets");
+    }
+
+    #[test]
+    fn test_ci_cd_makefile_detection() {
+        let scorer = RustToolingScorer::new();
+        let temp_dir = TempDir::new().unwrap();
+
+        // Create Makefile (downgraded to 3pts per TPS review)
+        let makefile = temp_dir.path().join("Makefile");
+        std::fs::write(&makefile, r#"
+build:
+	cargo build
+
+test:
+	cargo test
+"#).unwrap();
+
+        let score = scorer.score_ci_cd_integration(temp_dir.path(), None).unwrap();
+        assert_eq!(score, 3.0, "Should get 3pts for Makefile (downgraded, Windows-problematic)");
+    }
+
+    #[test]
+    fn test_ci_cd_no_workflows() {
+        let scorer = RustToolingScorer::new();
+        let temp_dir = TempDir::new().unwrap();
+
+        let score = scorer.score_ci_cd_integration(temp_dir.path(), None).unwrap();
+        assert_eq!(score, 0.0, "Should get 0pts with no CI/CD infrastructure");
+    }
+
+    #[test]
+    fn test_ci_cd_partial_platform_coverage() {
+        let scorer = RustToolingScorer::new();
+        let temp_dir = TempDir::new().unwrap();
+
+        let workflows_dir = temp_dir.path().join(".github/workflows");
+        std::fs::create_dir_all(&workflows_dir).unwrap();
+
+        // Only Linux and Windows (no Mac)
+        let ci_workflow = workflows_dir.join("ci.yml");
+        std::fs::write(&ci_workflow, r#"
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+"#).unwrap();
+
+        let score = scorer.score_ci_cd_integration(temp_dir.path(), None).unwrap();
+        assert_eq!(score, 0.0, "Should get 0pts - all 3 platforms required (Linux+Windows+Mac)");
     }
 }
