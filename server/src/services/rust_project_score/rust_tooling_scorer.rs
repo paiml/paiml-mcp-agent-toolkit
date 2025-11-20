@@ -41,7 +41,7 @@ impl RustToolingScorer {
     pub fn new() -> Self {
         Self {
             name: "Rust Tooling & CI/CD".to_string(),
-            max_points: 109.0, // v2.0 Phase 3: 25 + 12 (workspace lints) + 37 (CI/CD) + 35 (advanced metadata)
+            max_points: 119.0, // v2.0: 25 + 12 (lints) + 37 (CI/CD) + 35 (metadata) + 10 (MSRV)
         }
     }
 
@@ -615,6 +615,85 @@ impl RustToolingScorer {
         Ok(score)
     }
 
+    /// Score MSRV (Minimum Supported Rust Version) tracking
+    ///
+    /// Based on "Learn from Rust Giants" specification (TPS-reviewed):
+    /// - +5pts: `rust-version` field in Cargo.toml
+    /// - +3pts: CI tests against MSRV (not just stable)
+    /// - +2pts: MSRV documented in README
+    ///
+    /// Total possible: 10 points
+    ///
+    /// References:
+    /// - Decan et al. 2019 EMSE: Rust ecosystem has lowest dependency conflict rate (3.2%)
+    fn score_msrv_tracking(&self, project_path: &Path, cache: Option<&FileCache>) -> ScorerResult<f64> {
+        let mut score = 0.0;
+
+        let cargo_toml_path = project_path.join("Cargo.toml");
+        if !cargo_toml_path.exists() {
+            return Ok(0.0);
+        }
+
+        // Use cache if available, otherwise read file
+        let cargo_toml_content = if let Some(cache) = cache {
+            cache
+                .get(&cargo_toml_path)
+                .ok_or_else(|| ScorerError::IoError("Cargo.toml not in cache".to_string()))?
+                .clone()
+        } else {
+            std::fs::read_to_string(&cargo_toml_path)
+                .map_err(|e| ScorerError::IoError(e.to_string()))?
+        };
+
+        // Check 1: rust-version field exists (+5pts)
+        if cargo_toml_content.contains("rust-version") {
+            score += 5.0;
+
+            // Extract MSRV for CI check (e.g., "1.74" from `rust-version = "1.74"`)
+            let msrv_version = cargo_toml_content
+                .lines()
+                .find(|line| line.contains("rust-version"))
+                .and_then(|line| {
+                    line.split('=')
+                        .nth(1)?
+                        .trim()
+                        .trim_matches(|c| c == '"' || c == '\'')
+                        .split_once('.')
+                        .map(|(major, minor)| format!("{}.{}", major, minor.split('.').next().unwrap_or(minor)))
+                });
+
+            // Check 2: CI tests against MSRV (+3pts)
+            let workflows_dir = project_path.join(".github/workflows");
+            if workflows_dir.exists() {
+                if let Ok(entries) = std::fs::read_dir(&workflows_dir) {
+                    for entry in entries.filter_map(|e| e.ok()) {
+                        if let Ok(content) = std::fs::read_to_string(entry.path()) {
+                            // Check if workflow contains MSRV version in rust matrix
+                            if let Some(ref msrv) = msrv_version {
+                                if content.contains(msrv) && content.contains("rust:") {
+                                    score += 3.0;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Check 3: MSRV documented in README (+2pts)
+            let readme_path = project_path.join("README.md");
+            if readme_path.exists() {
+                if let Ok(readme_content) = std::fs::read_to_string(&readme_path) {
+                    if readme_content.to_lowercase().contains("msrv") {
+                        score += 2.0;
+                    }
+                }
+            }
+        }
+
+        Ok(score)
+    }
+
     /// Internal scoring logic that accepts optional cache
     ///
     /// **Kaizen Round 4**: Cache-aware scoring implementation
@@ -719,6 +798,12 @@ impl RustToolingScorer {
 
         // Score release automation (12pts) - v2.0 Phase 3 (fast, just file reads)
         match self.score_release_automation(project_path, _cache) {
+            Ok(score) => total_earned += score,
+            Err(e) => return Err(e),
+        }
+
+        // Score MSRV tracking (10pts) - Phase 1 remaining (fast, just file reads)
+        match self.score_msrv_tracking(project_path, _cache) {
             Ok(score) => total_earned += score,
             Err(e) => return Err(e),
         }
@@ -833,7 +918,7 @@ mod tests {
     fn test_scorer_creation() {
         let scorer = RustToolingScorer::new();
         assert_eq!(scorer.name(), "Rust Tooling & CI/CD");
-        assert_eq!(scorer.max_points(), 109.0); // v2.0 Phase 3: 25 + 12 + 37 + 35 (advanced metadata)
+        assert_eq!(scorer.max_points(), 119.0); // v2.0: 25 + 12 + 37 + 35 + 10 (MSRV)
     }
 
     #[test]
@@ -1493,5 +1578,85 @@ pre-release-replacements = [
 
         let score = scorer.score_release_automation(temp_dir.path(), None).unwrap();
         assert_eq!(score, 0.0, "Should get 0pts with no release automation");
+    }
+
+    // MSRV Tracking Tests (10pts total)
+
+    #[test]
+    fn test_msrv_tracking_full_score() {
+        let scorer = RustToolingScorer::new();
+        let temp_dir = TempDir::new().unwrap();
+
+        // Create Cargo.toml with rust-version
+        let cargo_toml = temp_dir.path().join("Cargo.toml");
+        std::fs::write(&cargo_toml, r#"
+[package]
+name = "test-crate"
+rust-version = "1.74"
+"#).unwrap();
+
+        // Create README with MSRV documentation
+        let readme = temp_dir.path().join("README.md");
+        std::fs::write(&readme, "MSRV: 1.74").unwrap();
+
+        // Create CI workflow testing MSRV
+        let workflows_dir = temp_dir.path().join(".github/workflows");
+        std::fs::create_dir_all(&workflows_dir).unwrap();
+        std::fs::write(workflows_dir.join("ci.yml"), r#"
+jobs:
+  test:
+    strategy:
+      matrix:
+        rust: [1.74, stable]
+"#).unwrap();
+
+        let score = scorer.score_msrv_tracking(temp_dir.path(), None).unwrap();
+        // +5 for rust-version field
+        // +3 for CI testing MSRV
+        // +2 for README documentation
+        assert_eq!(score, 10.0, "Should get full 10 points for complete MSRV tracking");
+    }
+
+    #[test]
+    fn test_msrv_tracking_cargo_toml_only() {
+        let scorer = RustToolingScorer::new();
+        let temp_dir = TempDir::new().unwrap();
+
+        let cargo_toml = temp_dir.path().join("Cargo.toml");
+        std::fs::write(&cargo_toml, r#"
+[package]
+rust-version = "1.68"
+"#).unwrap();
+
+        let score = scorer.score_msrv_tracking(temp_dir.path(), None).unwrap();
+        assert_eq!(score, 5.0, "Should get 5pts for rust-version field only");
+    }
+
+    #[test]
+    fn test_msrv_tracking_with_ci() {
+        let scorer = RustToolingScorer::new();
+        let temp_dir = TempDir::new().unwrap();
+
+        let cargo_toml = temp_dir.path().join("Cargo.toml");
+        std::fs::write(&cargo_toml, "[package]\nrust-version = \"1.70\"").unwrap();
+
+        let workflows_dir = temp_dir.path().join(".github/workflows");
+        std::fs::create_dir_all(&workflows_dir).unwrap();
+        std::fs::write(workflows_dir.join("msrv.yml"), "rust: [1.70, stable]").unwrap();
+
+        let score = scorer.score_msrv_tracking(temp_dir.path(), None).unwrap();
+        assert_eq!(score, 8.0, "Should get 8pts (5 for field + 3 for CI)");
+    }
+
+    #[test]
+    fn test_msrv_tracking_no_rust_version() {
+        let scorer = RustToolingScorer::new();
+        let temp_dir = TempDir::new().unwrap();
+
+        let cargo_toml = temp_dir.path().join("Cargo.toml");
+        std::fs::write(&cargo_toml, "[package]\nname = \"test\"").unwrap();
+
+        let score = scorer.score_msrv_tracking(temp_dir.path(), None).unwrap();
+        assert_eq!(score, 0.0, "Should get 0pts without rust-version field");
     }
 }
