@@ -1216,9 +1216,63 @@ impl SATDDetector {
                 || (comment_text.contains("bug") && comment_text.contains("fix") && comment_text.contains("pattern"))
                 || (comment_text.contains("bug") && comment_text.contains("fix") && comment_text.contains("claim"))
                 || (comment_text.contains("extract") && comment_text.contains("bug"))
+                // Bug tracking ID patterns (BUG-XXX, PMAT-BUG-XXX like JIRA tickets)
+                || self.is_bug_tracking_id(&comment_text)
+                // Fixed bug descriptions ("Bug: Previously...", "BUG-064 FIX:")
+                || self.is_fixed_bug_description(&comment_text)
+                // Bug estimation/metrics functionality
+                || (comment_text.contains("bug") && comment_text.contains("estimate"))
         } else {
             false
         }
+    }
+
+    /// Check if comment contains bug tracking ID (like JIRA tickets)
+    /// Patterns: BUG-123, PMAT-BUG-456, Issue-789
+    fn is_bug_tracking_id(&self, text: &str) -> bool {
+        let text_lower = text.to_lowercase();
+        // Pattern 1: BUG-XXX (where XXX is digits)
+        if text_lower.contains("bug-") {
+            // Check if followed by digits
+            if let Some(pos) = text_lower.find("bug-") {
+                let after_dash = &text[pos + 4..];
+                if after_dash.chars().take(3).all(|c| c.is_ascii_digit()) {
+                    return true;
+                }
+            }
+        }
+        // Pattern 2: PMAT-BUG-XXX, PROJECT-BUG-XXX
+        if text_lower.contains("-bug-") {
+            return true;
+        }
+        // Pattern 3: "BUG-XXX FIX:" or "BUG-XXX:" at start
+        if text_lower.contains("bug-") && (text_lower.contains(" fix:") || text_lower.contains(":")) {
+            return true;
+        }
+        false
+    }
+
+    /// Check if comment describes a FIXED bug (not a current bug)
+    /// Patterns: "Bug: Previously...", "CRITICAL FIX:", "Root cause:", etc.
+    fn is_fixed_bug_description(&self, text: &str) -> bool {
+        let text_lower = text.to_lowercase();
+        // Pattern 1: "Bug: Previously..." - past tense description
+        if text_lower.starts_with("bug:") && text_lower.contains("previous") {
+            return true;
+        }
+        // Pattern 2: "CRITICAL FIX:", "BUG FIX:"
+        if text_lower.contains(" fix:") {
+            return true;
+        }
+        // Pattern 3: "This ensures..." after "Bug: ..." (describing fix)
+        if text_lower.contains("bug:") && (text_lower.contains("ensure") || text_lower.contains("prevent")) {
+            return true;
+        }
+        // Pattern 4: "Root cause:" explanations (often follow bug IDs)
+        if text_lower.contains("root cause") {
+            return true;
+        }
+        false
     }
 
     /// Check if line is documentation, test, or metadata about SATD
@@ -2993,6 +3047,87 @@ const CHANGELOG_TEMPLATE: &str = r#"
             security_count, 0,
             "Markdown headers like ### Security should NOT be flagged as SATD. Found {} false positives",
             security_count
+        );
+    }
+
+    /// RED TEST: Bug tracking ID references should NOT be flagged as SATD
+    /// Real-world patterns from codebase:
+    /// - "BUG-012: Apply language override if specified"
+    /// - "BUG-064 FIX: Uses atomic write operations"
+    /// - "Bug: Previously used walkdir directly"
+    /// - "PMAT-BUG-001: TypeScript detection must work"
+    #[tokio::test]
+    async fn test_bug_tracking_ids_not_flagged_as_satd() {
+        let detector = SATDDetector::new();
+        let temp_dir = TempDir::new().unwrap();
+
+        // Test case 1: Bug tracking IDs (like JIRA tickets)
+        let bug_tracking_code = r#"
+    // BUG-012: Apply language override if specified
+    let override_opts = LanguageOverride {
+        language,
+        languages,
+    };
+
+    // BUG-064 FIX: Uses atomic write operations to prevent file corruption
+    fn atomic_write(path: &Path, content: &str) -> Result<()> {
+        Ok(())
+    }
+
+    // PMAT-BUG-001: TypeScript class methods must be extracted
+    // Root cause: JavaScriptAnalyzer uses regex/heuristic parsing
+    fn extract_methods() {}
+"#;
+        let tracking_file = temp_dir.path().join("tracking").with_extension("rs");
+        fs::write(&tracking_file, bug_tracking_code).unwrap();
+
+        // Test case 2: Fixed bug descriptions
+        let fixed_bug_code = r#"
+    // Bug: Previously used walkdir directly, bypassing ignore file support
+    let discovery_config = FileDiscoveryConfig {
+        respect_gitignore: true,
+    };
+
+    // CRITICAL FIX: Use ProjectFileDiscovery instead of WalkDir
+    // This ensures .pmatignore and .paimlignore files are respected
+    // Bug: Previously used walkdir directly
+    fn use_project_discovery() {}
+"#;
+        let fixed_file = temp_dir.path().join("fixed").with_extension("rs");
+        fs::write(&fixed_file, fixed_bug_code).unwrap();
+
+        // Test case 3: Bug-related functionality descriptions
+        let functionality_code = r#"
+// Bug fix patterns
+fn extract_patterns() {
+    // This describes functionality for detecting bug fix commits
+}
+
+// Extract bug fix claims
+fn analyze_commits() {
+    // Extracting bug information from commit messages
+}
+
+/// Computes volume, difficulty, effort, programming time, and bug estimates
+fn halstead_metrics() {}
+"#;
+        let functionality_file = temp_dir.path().join("functionality").with_extension("rs");
+        fs::write(&functionality_file, functionality_code).unwrap();
+
+        let result = detector.analyze_project(temp_dir.path(), false).await.unwrap();
+
+        // All these comments describe bug tracking IDs, fixed bugs, or bug-related functionality
+        // They are NOT self-admitted technical debt (TODO/FIXME for future work)
+        let defect_count = result
+            .items
+            .iter()
+            .filter(|item| matches!(item.category, DebtCategory::Defect))
+            .count();
+
+        assert_eq!(
+            defect_count, 0,
+            "Bug tracking IDs and fixed bug descriptions should NOT be flagged as SATD. Found {} false positives",
+            defect_count
         );
     }
 }
