@@ -85,6 +85,7 @@ pmat hooks install --dry-run
 - **AI-Ready Context**: Generate deep context for Claude, GPT, and other LLMs
 - **Technical Debt Grading (TDG)**: A+ through F scoring with 6 orthogonal metrics
 - **Repository Health Scoring** ✨NEW: Quantitative assessment (0-110 scale) across 6 categories + bonus features
+- **Rust Project Score (v2.0)** ✨NEW: Evidence-based Rust quality scoring (0-211 scale) with CI/CD integration
 - **Workflow Prompts** ✨NEW: 11 pre-configured AI prompts enforcing EXTREME TDD and Toyota Way principles
 - **Git-Commit Correlation**: Track TDG scores at specific commits for quality archaeology
 - **Semantic Code Search**: Natural language code discovery with hybrid search
@@ -312,6 +313,146 @@ cp templates/ci/Jenkinsfile-tdg Jenkinsfile
 ```
 
 **See Complete Guide**: `docs/guides/ci-cd-tdg-integration.md`
+
+---
+
+## Rust Project Score v2.0 (NEW)
+
+**Evidence-based Rust project quality scoring** (0-211 points) inspired by elite projects (tokio, serde, clap, syn, regex) with academic foundation from 15+ peer-reviewed papers.
+
+### Quick Start
+
+```bash
+# Fast mode analysis (~3 minutes)
+pmat rust-project-score
+
+# Full mode with comprehensive checks (~10-15 minutes)
+pmat rust-project-score --full
+
+# Specific project path with JSON output
+pmat rust-project-score --path /path/to/rust/project --format json
+
+# Markdown report for documentation
+pmat rust-project-score --verbose --format markdown --output SCORE.md
+```
+
+### Scoring Categories (211 points total)
+
+1. **Rust Tooling & CI/CD** (130pts)
+   - Clippy (tiered: correctness > suspicious > pedantic): 10pts
+   - Rustfmt compliance: 5pts
+   - cargo-audit (risk-based scoring): 7pts
+   - cargo-deny policy enforcement: 3pts
+   - **Workspace-level lints**: 12pts
+   - **CI/CD Integration** (multi-platform, workflows, build automation): 37pts
+   - **Advanced Metadata** (docs.rs, workspace, release automation): 35pts
+   - **MSRV Tracking**: 10pts
+   - **Release Profile Optimization**: 11pts
+
+2. **Code Quality** (26pts)
+   - Cyclomatic Complexity (≤20): 3pts
+   - Unsafe Code Documentation: 9pts
+   - Mutation Testing (≥80%): 8pts
+   - Build Time (<5min): 4pts
+   - Dead Code Detection: 2pts
+
+3. **Testing Excellence** (20pts)
+   - Coverage (≥85%): 8pts
+   - Integration Tests: 4pts
+   - Doc Tests: 3pts
+   - Mutation Coverage: 5pts
+
+4. **Documentation** (15pts)
+   - Rustdoc Coverage: 7pts
+   - README Quality: 5pts
+   - Changelog Maintenance: 3pts
+
+5. **Performance & Benchmarking** (10pts)
+   - Criterion Benchmarks: 5pts
+   - CI Benchmark Workflows: 3pts
+   - Custom Harness: 2pts
+
+6. **Dependency Health** (12pts)
+   - Dependency Count: 5pts
+   - Feature Flags: 4pts
+   - Tree Pruning: 3pts
+
+7. **Formal Verification** (8pts - bonus category)
+
+### Example Output
+
+```
+🦀  Rust Project Score v2.0
+
+📌  Summary
+  Score: 100.5/211
+  Percentage: 47.6%
+  Grade: B
+
+📂  Categories
+  ✅ Rust Tooling & CI/CD: 56.0/130 (43.1%)
+  ⚠️  Code Quality: 20.0/26 (76.9%)
+  ❌ Testing Excellence: 5.5/20 (27.5%)
+  ...
+
+💡  Recommendations
+  • Run 'cargo clippy --fix' to automatically fix warnings
+  • Add workspace-level lints to Cargo.toml
+  • Create .github/workflows for multi-platform CI
+  • Configure docs.rs metadata for better documentation
+  ...
+```
+
+### Academic Foundation
+
+**15+ Peer-Reviewed References** (IEEE, ACM, arXiv 2013-2025):
+- **Complexity Weight Reduced** (8→3pts): No bug correlation (arXiv 2024)
+- **Unsafe Code Emphasis** (6→9pts): Memory safety critical in Rust
+- **Mutation Testing** (5→8pts): Test quality validation (ICST 2024)
+- **CI/CD Integration**: Faster releases (Hilton 2016 ASE)
+- **Build Time Impact**: Developer productivity (Beller 2017 MSR)
+- **Workspace Benefits**: Fewer conflicts (ICSE 2024)
+
+### CI/CD Integration
+
+```yaml
+# .github/workflows/rust-quality.yml
+name: Rust Quality Score
+on: [push, pull_request]
+
+jobs:
+  rust-score:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cargo install pmat
+      - run: pmat rust-project-score --format json --output score.json
+      - name: Check minimum score
+        run: |
+          SCORE=$(jq '.total_earned' score.json)
+          if (( $(echo "$SCORE < 80" | bc -l) )); then
+            echo "Score $SCORE below threshold"
+            exit 1
+          fi
+```
+
+### Fast vs Full Mode
+
+**Fast Mode** (default, ~3 minutes):
+- Skips: clippy, mutation testing, build time measurement
+- Provides: Moderate credit for skipped checks
+- Use case: Quick CI checks, development feedback
+
+**Full Mode** (--full, ~10-15 minutes):
+- Runs: All checks comprehensively
+- Provides: Evidence-based, peer-reviewed scoring
+- Use case: Release validation, comprehensive audits
+
+### Documentation
+
+- **Specification**: `docs/specifications/learn-from-rust-giants-spec.md`
+- **Implementation Status**: `docs/implementation-status-rust-project-score.md`
+- **CLAUDE.md**: Comprehensive usage guide with 200+ lines
 
 ---
 
