@@ -289,7 +289,7 @@ hex = "0.4"
 # capnpc = "0.20" # REMOVED: Unused Cap'n Proto compiler
 
 [features]
-default = ["all-languages", "demo", "polyglot-ast", "org-intelligence", "tdg-explain", "analytics-simd"]
+default = ["all-languages", "demo", "polyglot-ast", "org-intelligence", "tdg-explain", "analytics-simd", "mutation-testing"]
 # Phase 2 Progress (2025-11-20):
 # ✅ FIXED (commit b721a174): Module-level feature gates for unified_go_analyzer, unified_wasm_analyzer,
 #    org_handlers, language_mapper (Java/Scala)
@@ -371,6 +371,11 @@ analytics-gpu = ["analytics-simd", "trueno-db/gpu", "wgpu", "pollster", "bytemuc
 # TDG explain mode with function-level analysis (Issue #78)
 # Uses tree-sitter-rust for custom function-level complexity analysis
 tdg-explain = ["rust-ast"]
+
+# Mutation testing (Phase 2 - Optional)
+# Enables multi-language mutation testing with tree-sitter parsers
+# Depends on all language ASTs used by mutation generators
+mutation-testing = ["rust-ast", "python-ast", "typescript-ast", "cpp-ast", "go-ast"]
 
 
 [[bin]]

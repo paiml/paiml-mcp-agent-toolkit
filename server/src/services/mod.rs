@@ -210,7 +210,8 @@ pub mod unified_wasm_analyzer; // TICKET-3005: Single-pass WebAssembly analyzer 
 pub mod verified_complexity;
 pub mod wasm;
 
-// Mutation testing engine (Phase 1 foundation)
+// Mutation testing engine (Phase 1 foundation - Phase 2: Optional)
+#[cfg(feature = "mutation-testing")]
 pub mod mutation;
 
 #[cfg(test)]
