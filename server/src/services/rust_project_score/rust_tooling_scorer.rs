@@ -1,4 +1,4 @@
-//! RustToolingScorer - Rust Tooling Compliance Category (25 points)
+//! RustToolingScorer - Rust Tooling Compliance Category (37 points)
 //!
 //! Analyzes Rust project compliance with standard tooling:
 //! - Clippy (tiered scoring): 10pts
@@ -8,6 +8,10 @@
 //! - rustfmt compliance: 5pts
 //! - cargo-audit (security): 7pts (risk-based scoring)
 //! - cargo-deny (policy): 3pts
+//! - **v2.0 Workspace Lints (12pts)**: Based on "Learn from Rust Giants" spec
+//!   - Workspace-level lints configured: 5pts
+//!   - High-value lint categories (correctness, suspicious, perf): 4pts
+//!   - .clippy.toml with disallowed-methods: 3pts
 
 use super::models::{CategoryScore, FileCache, ScoringMode};
 use super::scorer::{Scorer, ScorerError, ScorerResult};
@@ -37,7 +41,7 @@ impl RustToolingScorer {
     pub fn new() -> Self {
         Self {
             name: "Rust Tooling Compliance".to_string(),
-            max_points: 25.0,
+            max_points: 37.0, // v2.0: 25 + 12 (workspace lints)
         }
     }
 
@@ -204,6 +208,82 @@ impl RustToolingScorer {
         }
     }
 
+    /// Score workspace-level lint configuration (v2.0 feature)
+    ///
+    /// Based on "Learn from Rust Giants" specification (TPS-reviewed):
+    /// - +5pts: Workspace-level lints configured ([workspace.lints])
+    /// - +4pts: High-value lint categories enabled (correctness, suspicious, perf)
+    /// - +3pts: .clippy.toml with disallowed-methods
+    ///
+    /// Total possible: 12 points
+    ///
+    /// References:
+    /// - Johnson et al. 2013 ICSE: Quality over quantity (avoid warning blindness)
+    /// - Bacchelli & Bird 2013 ICSE: Automated style enforcement reduces review waste
+    fn score_workspace_lints(&self, project_path: &Path, cache: Option<&FileCache>) -> ScorerResult<f64> {
+        let mut score = 0.0;
+
+        // Read Cargo.toml
+        let cargo_toml_path = project_path.join("Cargo.toml");
+        if !cargo_toml_path.exists() {
+            return Ok(0.0); // No Cargo.toml, can't have workspace lints
+        }
+
+        // Use cache if available, otherwise read file
+        let cargo_toml_content = if let Some(cache) = cache {
+            cache
+                .get(&cargo_toml_path)
+                .ok_or_else(|| ScorerError::IoError("Cargo.toml not in cache".to_string()))?
+                .clone()
+        } else {
+            std::fs::read_to_string(&cargo_toml_path)
+                .map_err(|e| ScorerError::IoError(e.to_string()))?
+        };
+
+        // Check 1: Workspace-level lints configured (+5pts)
+        let has_workspace_rust_lints = cargo_toml_content.contains("[workspace.lints.rust]");
+        let has_workspace_clippy_lints = cargo_toml_content.contains("[workspace.lints.clippy]");
+
+        if has_workspace_rust_lints || has_workspace_clippy_lints {
+            score += 5.0;
+        }
+
+        // Check 2: High-value lint categories (+4pts)
+        // Look for key lints that indicate quality focus (not just quantity)
+        let has_high_value_lints =
+            cargo_toml_content.contains("unsafe_op_in_unsafe_fn") || // Safety-critical
+            cargo_toml_content.contains("unreachable_pub") ||        // API clarity
+            cargo_toml_content.contains("unused_lifetimes") ||       // Code quality
+            cargo_toml_content.contains("checked_conversions") ||    // Correctness
+            cargo_toml_content.contains("fallible_impl_from");       // Correctness
+
+        if has_high_value_lints {
+            score += 4.0;
+        }
+
+        // Check 3: .clippy.toml with disallowed-methods (+3pts)
+        let clippy_toml_path = project_path.join(".clippy.toml");
+        if clippy_toml_path.exists() {
+            // Use cache if available
+            let clippy_toml_content = if let Some(cache) = cache {
+                cache
+                    .get(&clippy_toml_path)
+                    .ok_or_else(|| ScorerError::IoError(".clippy.toml not in cache".to_string()))?
+                    .clone()
+            } else {
+                std::fs::read_to_string(&clippy_toml_path)
+                    .map_err(|e| ScorerError::IoError(e.to_string()))?
+            };
+
+            // Check for disallowed-methods section with actual content
+            if clippy_toml_content.contains("disallowed-methods") {
+                score += 3.0;
+            }
+        }
+
+        Ok(score)
+    }
+
     /// Internal scoring logic that accepts optional cache
     ///
     /// **Kaizen Round 4**: Cache-aware scoring implementation
@@ -282,6 +362,12 @@ impl RustToolingScorer {
             Err(e) => return Err(e),
         }
 
+        // Score workspace lints (12pts) - v2.0 feature (fast, just file reads)
+        match self.score_workspace_lints(project_path, _cache) {
+            Ok(score) => total_earned += score,
+            Err(e) => return Err(e),
+        }
+
         Ok(CategoryScore::new(total_earned, self.max_points))
     }
 }
@@ -350,6 +436,31 @@ impl Scorer for RustToolingScorer {
             }
         }
 
+        // v2.0: Check workspace lints
+        if let Ok(lint_score) = self.score_workspace_lints(project_path, None) {
+            if lint_score < 12.0 {
+                if !project_path.join("Cargo.toml").exists() {
+                    // Skip workspace lint recommendations if not a Rust project
+                } else if let Ok(content) = std::fs::read_to_string(project_path.join("Cargo.toml")) {
+                    if !content.contains("[workspace.lints") {
+                        recommendations.push(
+                            "Add [workspace.lints.rust] and [workspace.lints.clippy] to Cargo.toml for consistent linting across all crates".to_string(),
+                        );
+                    }
+                    if !content.contains("unsafe_op_in_unsafe_fn") && !content.contains("checked_conversions") {
+                        recommendations.push(
+                            "Enable high-value lint categories (unsafe_op_in_unsafe_fn, unreachable_pub, checked_conversions) for better code quality".to_string(),
+                        );
+                    }
+                }
+                if !project_path.join(".clippy.toml").exists() {
+                    recommendations.push(
+                        "Create .clippy.toml with disallowed-methods to enforce project-specific style preferences".to_string(),
+                    );
+                }
+            }
+        }
+
         recommendations
     }
 }
@@ -361,17 +472,171 @@ unsafe impl Sync for RustToolingScorer {}
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tempfile::TempDir;
 
     #[test]
     fn test_scorer_creation() {
         let scorer = RustToolingScorer::new();
         assert_eq!(scorer.name(), "Rust Tooling Compliance");
-        assert_eq!(scorer.max_points(), 25.0);
+        assert_eq!(scorer.max_points(), 37.0); // v2.0: 25 + 12 workspace lints
     }
 
     #[test]
     fn test_scorer_implements_trait() {
         let scorer = RustToolingScorer::new();
         let _trait_obj: &dyn Scorer = &scorer;
+    }
+
+    // ============================================================================
+    // v2.0 Workspace Lints Tests (RED phase - following EXTREME TDD)
+    // ============================================================================
+
+    #[test]
+    fn test_workspace_lints_no_cargo_toml() {
+        let scorer = RustToolingScorer::new();
+        let temp_dir = TempDir::new().unwrap();
+
+        let score = scorer.score_workspace_lints(temp_dir.path(), None).unwrap();
+        assert_eq!(score, 0.0, "Should return 0 points when Cargo.toml doesn't exist");
+    }
+
+    #[test]
+    fn test_workspace_lints_no_workspace_section() {
+        let scorer = RustToolingScorer::new();
+        let temp_dir = TempDir::new().unwrap();
+
+        // Create Cargo.toml without workspace lints
+        let cargo_toml = temp_dir.path().join("Cargo.toml");
+        std::fs::write(&cargo_toml, r#"
+[package]
+name = "test"
+version = "0.1.0"
+edition = "2021"
+"#).unwrap();
+
+        let score = scorer.score_workspace_lints(temp_dir.path(), None).unwrap();
+        assert_eq!(score, 0.0, "Should return 0 points when no workspace lints configured");
+    }
+
+    #[test]
+    fn test_workspace_lints_rust_only() {
+        let scorer = RustToolingScorer::new();
+        let temp_dir = TempDir::new().unwrap();
+
+        let cargo_toml = temp_dir.path().join("Cargo.toml");
+        std::fs::write(&cargo_toml, r#"
+[workspace.lints.rust]
+rust_2018_idioms = { level = "warn", priority = -1 }
+unreachable_pub = "warn"
+"#).unwrap();
+
+        let score = scorer.score_workspace_lints(temp_dir.path(), None).unwrap();
+        assert_eq!(score, 9.0, "Should get 5pts (workspace lints) + 4pts (high-value: unreachable_pub)");
+    }
+
+    #[test]
+    fn test_workspace_lints_clippy_only() {
+        let scorer = RustToolingScorer::new();
+        let temp_dir = TempDir::new().unwrap();
+
+        let cargo_toml = temp_dir.path().join("Cargo.toml");
+        std::fs::write(&cargo_toml, r#"
+[workspace.lints.clippy]
+checked_conversions = "warn"
+fallible_impl_from = "warn"
+"#).unwrap();
+
+        let score = scorer.score_workspace_lints(temp_dir.path(), None).unwrap();
+        assert_eq!(score, 9.0, "Should get 5pts (workspace lints) + 4pts (high-value: checked_conversions, fallible_impl_from)");
+    }
+
+    #[test]
+    fn test_workspace_lints_both_rust_and_clippy() {
+        let scorer = RustToolingScorer::new();
+        let temp_dir = TempDir::new().unwrap();
+
+        let cargo_toml = temp_dir.path().join("Cargo.toml");
+        std::fs::write(&cargo_toml, r#"
+[workspace.lints.rust]
+unsafe_op_in_unsafe_fn = "warn"
+unused_lifetimes = "warn"
+
+[workspace.lints.clippy]
+checked_conversions = "warn"
+"#).unwrap();
+
+        let score = scorer.score_workspace_lints(temp_dir.path(), None).unwrap();
+        assert_eq!(score, 9.0, "Should get 5pts (workspace lints) + 4pts (high-value lints)");
+    }
+
+    #[test]
+    fn test_workspace_lints_with_clippy_toml() {
+        let scorer = RustToolingScorer::new();
+        let temp_dir = TempDir::new().unwrap();
+
+        let cargo_toml = temp_dir.path().join("Cargo.toml");
+        std::fs::write(&cargo_toml, r#"
+[workspace.lints.clippy]
+checked_conversions = "warn"
+"#).unwrap();
+
+        let clippy_toml = temp_dir.path().join(".clippy.toml");
+        std::fs::write(&clippy_toml, r#"
+disallowed-methods = [
+    { path = "std::option::Option::map_or", reason = "prefer map(..).unwrap_or(..)" },
+]
+"#).unwrap();
+
+        let score = scorer.score_workspace_lints(temp_dir.path(), None).unwrap();
+        assert_eq!(score, 12.0, "Should get 5pts + 4pts + 3pts (clippy.toml) = 12pts");
+    }
+
+    #[test]
+    fn test_workspace_lints_full_score() {
+        let scorer = RustToolingScorer::new();
+        let temp_dir = TempDir::new().unwrap();
+
+        // Create Cargo.toml with workspace lints (like clap/tokio)
+        let cargo_toml = temp_dir.path().join("Cargo.toml");
+        std::fs::write(&cargo_toml, r#"
+[workspace.lints.rust]
+rust_2018_idioms = { level = "warn", priority = -1 }
+unreachable_pub = "warn"
+unsafe_op_in_unsafe_fn = "warn"
+unused_lifetimes = "warn"
+
+[workspace.lints.clippy]
+checked_conversions = "warn"
+fallible_impl_from = "warn"
+"#).unwrap();
+
+        // Create .clippy.toml with disallowed-methods
+        let clippy_toml = temp_dir.path().join(".clippy.toml");
+        std::fs::write(&clippy_toml, r#"
+allow-print-in-tests = true
+disallowed-methods = [
+    { path = "std::option::Option::map_or", reason = "prefer map(..).unwrap_or(..)" },
+    { path = "std::iter::Iterator::for_each", reason = "prefer for loops" },
+]
+"#).unwrap();
+
+        let score = scorer.score_workspace_lints(temp_dir.path(), None).unwrap();
+        assert_eq!(score, 12.0, "Should get full 12 points: 5 + 4 + 3");
+    }
+
+    #[test]
+    fn test_workspace_lints_no_high_value_lints() {
+        let scorer = RustToolingScorer::new();
+        let temp_dir = TempDir::new().unwrap();
+
+        let cargo_toml = temp_dir.path().join("Cargo.toml");
+        std::fs::write(&cargo_toml, r#"
+[workspace.lints.clippy]
+# Low-value lints only (no correctness/safety lints)
+bool_assert_comparison = "allow"
+"#).unwrap();
+
+        let score = scorer.score_workspace_lints(temp_dir.path(), None).unwrap();
+        assert_eq!(score, 5.0, "Should get 5pts (workspace section exists) but not 4pts (no high-value lints)");
     }
 }

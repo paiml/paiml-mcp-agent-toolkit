@@ -1,17 +1,28 @@
-//! Rust Project Score v1.1
+//! Rust Project Score v2.0 (Phase 1: Workspace Lints)
 //!
 //! Comprehensive Rust project quality scoring extending repo-score
 //! with evidence-based refinements from 15 peer-reviewed papers (2022-2025).
 //!
 //! ## Scoring System
 //!
-//! Total: 106 points across 6 categories:
-//! - Rust Tooling Compliance (25pts): Clippy, rustfmt, cargo-audit, cargo-deny
+//! Total: 118 points across 6 categories:
+//! - Rust Tooling Compliance (37pts): Clippy, rustfmt, cargo-audit, cargo-deny, **workspace lints (NEW)**
 //! - Code Quality (26pts): Complexity 3pts, Unsafe 9pts, Mutation 8pts, Build time 4pts
 //! - Testing Excellence (20pts): Coverage, integration, doc tests, mutation
 //! - Documentation (15pts): Rustdoc, README, changelog
 //! - Performance & Benchmarking (10pts): Criterion, profiling
 //! - Dependency Health (12pts): Count, feature flags, tree pruning
+//!
+//! ### v2.0 Phase 1: Workspace-Level Lints (+12pts)
+//!
+//! Based on "Learn from Rust Giants" TPS-reviewed specification:
+//! - Workspace-level lints configured: 5pts
+//! - High-value lint categories (correctness, suspicious, perf): 4pts
+//! - .clippy.toml with disallowed-methods: 3pts
+//!
+//! **Academic Foundation**:
+//! - Johnson et al. 2013 ICSE: Quality over quantity (avoid warning blindness)
+//! - Bacchelli & Bird 2013 ICSE: Automated style enforcement reduces review waste
 //!
 //! ## Evidence-Based Design
 //!
