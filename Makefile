@@ -407,11 +407,13 @@ test-doc:
 # Coverage analysis - Two-tier approach (idiomatic for large Rust projects)
 coverage: ## Generate coverage report (lib only, fast: 5-10 min)
 	@echo "📊 Running developer coverage (lib only, target: 5-10 min)..."
-	@echo "⚙️  Temporarily disabling global cargo config (mold breaks coverage)..."
+	@echo "⚙️  Temporarily disabling cargo configs (RUSTFLAGS breaks llvm-cov)..."
 	@test -f ~/.cargo/config.toml && mv ~/.cargo/config.toml ~/.cargo/config.toml.cov-backup || true
+	@test -f .cargo/config.toml && mv .cargo/config.toml .cargo/config.toml.cov-backup || true
 	@cargo llvm-cov --lib --lcov --output-path lcov.info
 	@cargo llvm-cov report --html --output-dir target/coverage/html
-	@echo "⚙️  Restoring global cargo config..."
+	@echo "⚙️  Restoring cargo configs..."
+	@test -f .cargo/config.toml.cov-backup && mv .cargo/config.toml.cov-backup .cargo/config.toml || true
 	@test -f ~/.cargo/config.toml.cov-backup && mv ~/.cargo/config.toml.cov-backup ~/.cargo/config.toml || true
 	@echo "✅ Coverage report: target/coverage/html/index.html"
 	@cargo llvm-cov report | grep TOTAL
@@ -419,11 +421,13 @@ coverage: ## Generate coverage report (lib only, fast: 5-10 min)
 # CI/CD coverage - comprehensive workspace coverage (20-30 min)
 coverage-ci: ## Generate comprehensive coverage (workspace, CI: 20-30 min)
 	@echo "📊 Running CI coverage (workspace, target: 20-30 min)..."
-	@echo "⚙️  Temporarily disabling global cargo config (mold breaks coverage)..."
+	@echo "⚙️  Temporarily disabling cargo configs (RUSTFLAGS breaks llvm-cov)..."
 	@test -f ~/.cargo/config.toml && mv ~/.cargo/config.toml ~/.cargo/config.toml.cov-backup || true
+	@test -f .cargo/config.toml && mv .cargo/config.toml .cargo/config.toml.cov-backup || true
 	@cargo llvm-cov --workspace --lcov --output-path lcov.info
 	@cargo llvm-cov report --html --output-dir target/coverage/html
-	@echo "⚙️  Restoring global cargo config..."
+	@echo "⚙️  Restoring cargo configs..."
+	@test -f .cargo/config.toml.cov-backup && mv .cargo/config.toml.cov-backup .cargo/config.toml || true
 	@test -f ~/.cargo/config.toml.cov-backup && mv ~/.cargo/config.toml.cov-backup ~/.cargo/config.toml || true
 	@echo "✅ Coverage report: target/coverage/html/index.html"
 	@cargo llvm-cov report | grep TOTAL
