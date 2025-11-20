@@ -143,6 +143,13 @@ impl FileCache {
             cache.files.insert(changelog, content);
         }
 
+        // Read .clippy.toml (v2.0 workspace lints feature)
+        let clippy_toml = project_path.join(".clippy.toml");
+        if clippy_toml.exists() {
+            let content = std::fs::read_to_string(&clippy_toml)?;
+            cache.files.insert(clippy_toml, content);
+        }
+
         // **Kaizen Round 6**: Parallel directory walking for 2-3x speedup
         // Collect directories to walk
         let dirs_to_walk: Vec<PathBuf> = vec![

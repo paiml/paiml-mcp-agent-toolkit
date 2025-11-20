@@ -407,6 +407,14 @@ harness = false
 name = "tdg_ops"
 harness = false
 
+[[bench]]
+name = "storage_backend_bench"
+harness = false
+
+[[bench]]
+name = "claude_integration_bench"
+harness = false
+
 [[test]]
 name = "unit_core"
 path = "tests/unit/core.rs"

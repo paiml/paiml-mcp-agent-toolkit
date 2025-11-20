@@ -1,0 +1,36 @@
+# Clippy configuration for PMAT (v2.0)
+# Based on: Learn from Rust Giants specification
+# Elite projects analyzed: tokio, serde, clap, syn, regex
+
+# Disallowed methods - enforce project-specific style preferences
+disallowed-methods = [
+    # Prefer expect() with descriptive messages over unwrap()
+    { path = "std::option::Option::unwrap", reason = "use `.expect()` with a descriptive message instead" },
+    { path = "std::result::Result::unwrap", reason = "use `.expect()` or proper error handling" },
+    { path = "std::result::Result::unwrap_err", reason = "use `.expect_err()` with a descriptive message" },
+
+    # Avoid println! in library code - use tracing/logging instead
+    { path = "std::println", reason = "use tracing macros (info!, warn!, debug!) instead for library code" },
+    { path = "std::eprintln", reason = "use tracing macros (error!, warn!) instead for library code" },
+
+    # Remove debug statements before production
+    { path = "std::dbg", reason = "remove debug statements or use proper logging" },
+
+    # Extremely unsafe - almost always a code smell
+    { path = "std::mem::transmute", reason = "transmute is extremely unsafe - find a safer alternative" },
+]
+
+# Cognitive complexity threshold (warn if function exceeds 25)
+cognitive-complexity-threshold = 25
+
+# Maximum cyclomatic complexity before warning
+cyclomatic-complexity-threshold = 20
+
+# Type complexity limit
+type-complexity-threshold = 250
+
+# Maximum line length
+max-fn-params-bools = 3
+
+# Allow certain lints for specific cases
+# (These can be overridden in individual files with #[allow(...)])

@@ -10,6 +10,29 @@ authors = ["Pragmatic AI Labs"]
 homepage = "https://paiml.com"
 repository = "https://github.com/paiml/paiml-mcp-agent-toolkit"
 
+# Workspace-level lints (v2.0 - Learn from Rust Giants)
+# Source: Elite Rust projects (tokio, serde, clap, syn, regex)
+[workspace.lints.rust]
+unsafe_op_in_unsafe_fn = "warn"     # Require unsafe blocks inside unsafe functions
+unreachable_pub = "warn"             # Warn on pub items not reachable from crate root
+missing_docs = "allow"               # Allow missing docs (too noisy for internal crates)
+
+[workspace.lints.clippy]
+# Correctness lints (high priority)
+correctness = { level = "deny", priority = -1 }
+# Suspicious patterns (high priority)
+suspicious = { level = "warn", priority = -1 }
+# Performance improvements
+perf = { level = "warn", priority = -1 }
+# Style preferences
+style = "warn"
+# Pedantic lints (lower priority)
+pedantic = { level = "allow", priority = -1 }
+# Complexity analysis
+complexity = "warn"
+# Checked conversions (prevent overflow)
+checked_conversions = "warn"
+
 # Config for cargo-release
 [workspace.metadata.release]
 # Sign commits and tags
