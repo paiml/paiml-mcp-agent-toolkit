@@ -147,7 +147,7 @@ fn insert_entry(content: &str, entry: &ChangelogEntry) -> Result<String> {
 
     let section_header = entry.category.section_header();
 
-    for (_i, line) in lines.iter().enumerate() {
+    for line in lines.iter() {
         // Check if we're entering Unreleased section
         if line.starts_with("## [Unreleased]") {
             in_unreleased = true;

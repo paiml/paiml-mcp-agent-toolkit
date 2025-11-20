@@ -130,7 +130,7 @@ where
         // For remaining elements: if element > heap_min, replace heap_min
         for item in data.iter().skip(self.k) {
             // Peek at minimum element (top of min-heap)
-            if let Some(&Reverse(ref min)) = heap.peek() {
+            if let Some(Reverse(min)) = heap.peek() {
                 if item > min {
                     heap.pop(); // Remove minimum
                     heap.push(Reverse(item.clone())); // Insert new element

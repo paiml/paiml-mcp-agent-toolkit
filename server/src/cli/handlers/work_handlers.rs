@@ -554,7 +554,7 @@ async fn create_github_issue_from_item(
             criteria_md.join("\n")
         )
     } else {
-        format!("*Created via `pmat work start --create-github`*")
+        "*Created via `pmat work start --create-github`*".to_string()
     };
 
     let labels = if item.labels.is_empty() {

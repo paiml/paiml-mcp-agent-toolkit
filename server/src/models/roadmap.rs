@@ -127,18 +127,14 @@ pub enum ItemStatus {
 
 /// Priority enumeration
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Default)]
 #[serde(rename_all = "lowercase")]
 pub enum Priority {
     Low,
+    #[default]
     Medium,
     High,
     Critical,
-}
-
-impl Default for Priority {
-    fn default() -> Self {
-        Self::Medium
-    }
 }
 
 /// Phase within a roadmap item

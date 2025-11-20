@@ -74,7 +74,7 @@ pub fn format_explain_text(explained: &ExplainedTDGScore) -> Result<String> {
             output.push_str(&format!("  Cognitive: {}\n", func.cognitive));
             output.push_str(&format!("  TDG Impact: {:.2}\n", func.tdg_impact));
             output.push_str(&format!("  Severity: {}\n", func.severity));
-            output.push_str("\n");
+            output.push('\n');
         }
     }
 
@@ -91,7 +91,7 @@ pub fn format_explain_text(explained: &ExplainedTDGScore) -> Result<String> {
             output.push_str(&format!("  Lines: {:?}\n", rec.lines));
             output.push_str(&format!("  Effort: {:.1} hours\n", rec.estimated_hours));
             output.push_str(&format!("  Priority: {}\n", rec.priority));
-            output.push_str("\n");
+            output.push('\n');
         }
     }
 
