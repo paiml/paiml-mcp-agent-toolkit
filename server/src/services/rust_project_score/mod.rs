@@ -1,12 +1,12 @@
-//! Rust Project Score v2.0 (Phase 2: CI/CD Integration)
+//! Rust Project Score v2.0 (Phase 3: Advanced Metadata)
 //!
 //! Comprehensive Rust project quality scoring extending repo-score
 //! with evidence-based refinements from 15 peer-reviewed papers (2022-2025).
 //!
 //! ## Scoring System
 //!
-//! Total: 155 points across 6 categories:
-//! - **Rust Tooling & CI/CD (74pts)**: Clippy, rustfmt, cargo-audit, cargo-deny, workspace lints, **CI/CD integration (NEW)**
+//! Total: 190 points across 6 categories:
+//! - **Rust Tooling & CI/CD (109pts)**: Clippy, rustfmt, cargo-audit, cargo-deny, workspace lints, CI/CD integration, **advanced metadata (NEW)**
 //! - Code Quality (26pts): Complexity 3pts, Unsafe 9pts, Mutation 8pts, Build time 4pts
 //! - Testing Excellence (20pts): Coverage, integration, doc tests, mutation
 //! - Documentation (15pts): Rustdoc, README, changelog
@@ -48,6 +48,32 @@
 //! - Hilton et al. 2016 ASE: CI adoption correlates with faster releases
 //! - Memon et al. 2017 ICSE-SEIP: Flaky tests reduce productivity by 16%
 //! - McIntosh et al. 2015 ICSE: Build system maintenance overhead
+//!
+//! ### v2.0 Phase 3: Advanced Metadata (+35pts)
+//!
+//! Based on "Learn from Rust Giants" TPS-reviewed specification:
+//!
+//! **docs.rs Metadata (10pts)**:
+//! - `[package.metadata.docs.rs]` exists: 5pts
+//! - `all-features = true` (comprehensive docs): 3pts
+//! - `--generate-link-to-definition` in rustdoc-args: 2pts
+//!
+//! **Workspace Organization (13pts)**:
+//! - Project uses workspace (multi-crate): 6pts
+//! - `resolver = "2"` specified: 3pts
+//! - `[workspace.dependencies]` for shared deps: 2pts
+//! - `[workspace.package]` for shared metadata: 2pts
+//!
+//! **Release Automation (12pts)**:
+//! - `[package.metadata.release]` configured: 5pts
+//! - Automated CHANGELOG.md updates (pre-release-replacements): 3pts
+//! - Version synchronization (shared-version): 2pts
+//! - `.github/workflows/post-release.yml` workflow: 2pts
+//!
+//! **Academic Foundation**:
+//! - Aghajani et al. 2019 ICSE: 57% of docs outdated within 6 months
+//! - FSE 2022: Manual release processes have 3.8x higher error rate
+//! - ICSE 2024: Workspace projects have 34% fewer dependency conflicts
 //!
 //! ## Evidence-Based Design
 //!

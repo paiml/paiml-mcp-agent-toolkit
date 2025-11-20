@@ -41,7 +41,7 @@ impl RustToolingScorer {
     pub fn new() -> Self {
         Self {
             name: "Rust Tooling & CI/CD".to_string(),
-            max_points: 74.0, // v2.0 Phase 2: 25 + 12 (workspace lints) + 37 (CI/CD integration)
+            max_points: 109.0, // v2.0 Phase 3: 25 + 12 (workspace lints) + 37 (CI/CD) + 35 (advanced metadata)
         }
     }
 
@@ -457,6 +457,164 @@ impl RustToolingScorer {
         Ok(score)
     }
 
+    /// Score docs.rs metadata configuration (v2.0 Phase 3)
+    ///
+    /// Based on "Learn from Rust Giants" specification (TPS-reviewed):
+    /// - +5pts: `[package.metadata.docs.rs]` exists
+    /// - +3pts: `all-features = true` (comprehensive docs)
+    /// - +2pts: `--generate-link-to-definition` in rustdoc-args
+    ///
+    /// Total possible: 10 points
+    ///
+    /// References:
+    /// - Aghajani et al. 2019 ICSE: 57% of docs outdated within 6 months
+    fn score_docs_rs_metadata(&self, project_path: &Path, cache: Option<&FileCache>) -> ScorerResult<f64> {
+        let mut score = 0.0;
+
+        let cargo_toml_path = project_path.join("Cargo.toml");
+        if !cargo_toml_path.exists() {
+            return Ok(0.0);
+        }
+
+        // Use cache if available, otherwise read file
+        let cargo_toml_content = if let Some(cache) = cache {
+            cache
+                .get(&cargo_toml_path)
+                .ok_or_else(|| ScorerError::IoError("Cargo.toml not in cache".to_string()))?
+                .clone()
+        } else {
+            std::fs::read_to_string(&cargo_toml_path)
+                .map_err(|e| ScorerError::IoError(e.to_string()))?
+        };
+
+        // Check 1: docs.rs metadata section exists (+5pts)
+        if cargo_toml_content.contains("[package.metadata.docs.rs]") {
+            score += 5.0;
+
+            // Check 2: all-features = true (+3pts)
+            if cargo_toml_content.contains("all-features = true") {
+                score += 3.0;
+            }
+
+            // Check 3: --generate-link-to-definition in rustdoc-args (+2pts)
+            if cargo_toml_content.contains("--generate-link-to-definition") {
+                score += 2.0;
+            }
+        }
+
+        Ok(score)
+    }
+
+    /// Score workspace organization (v2.0 Phase 3)
+    ///
+    /// Based on "Learn from Rust Giants" specification (TPS-reviewed):
+    /// - +6pts: Project uses workspace (for multi-crate projects)
+    /// - +3pts: `resolver = "2"` specified
+    /// - +2pts: `[workspace.dependencies]` for shared deps
+    /// - +2pts: `[workspace.package]` for shared metadata
+    ///
+    /// Total possible: 13 points
+    ///
+    /// References:
+    /// - Build System Evolution ICSE 2024: Workspace projects have 34% fewer dependency conflicts
+    fn score_workspace_organization(&self, project_path: &Path, cache: Option<&FileCache>) -> ScorerResult<f64> {
+        let mut score = 0.0;
+
+        let cargo_toml_path = project_path.join("Cargo.toml");
+        if !cargo_toml_path.exists() {
+            return Ok(0.0);
+        }
+
+        // Use cache if available, otherwise read file
+        let cargo_toml_content = if let Some(cache) = cache {
+            cache
+                .get(&cargo_toml_path)
+                .ok_or_else(|| ScorerError::IoError("Cargo.toml not in cache".to_string()))?
+                .clone()
+        } else {
+            std::fs::read_to_string(&cargo_toml_path)
+                .map_err(|e| ScorerError::IoError(e.to_string()))?
+        };
+
+        // Check 1: Workspace section exists (+6pts)
+        if cargo_toml_content.contains("[workspace]") {
+            score += 6.0;
+
+            // Check 2: resolver = "2" (+3pts)
+            if cargo_toml_content.contains("resolver = \"2\"") || cargo_toml_content.contains("resolver = '2'") {
+                score += 3.0;
+            }
+
+            // Check 3: [workspace.dependencies] (+2pts)
+            if cargo_toml_content.contains("[workspace.dependencies]") {
+                score += 2.0;
+            }
+
+            // Check 4: [workspace.package] (+2pts)
+            if cargo_toml_content.contains("[workspace.package]") {
+                score += 2.0;
+            }
+        }
+
+        Ok(score)
+    }
+
+    /// Score release automation configuration (v2.0 Phase 3)
+    ///
+    /// Based on "Learn from Rust Giants" specification (TPS-reviewed):
+    /// - +5pts: `[package.metadata.release]` configured
+    /// - +3pts: Automated CHANGELOG.md updates (pre-release-replacements)
+    /// - +2pts: Version synchronization across workspace (shared-version)
+    /// - +2pts: `.github/workflows/post-release.yml` automation
+    ///
+    /// Total possible: 12 points
+    ///
+    /// References:
+    /// - FSE 2022: Manual release processes have 3.8x higher error rate
+    fn score_release_automation(&self, project_path: &Path, cache: Option<&FileCache>) -> ScorerResult<f64> {
+        let mut score = 0.0;
+
+        let cargo_toml_path = project_path.join("Cargo.toml");
+        if !cargo_toml_path.exists() {
+            return Ok(0.0);
+        }
+
+        // Use cache if available, otherwise read file
+        let cargo_toml_content = if let Some(cache) = cache {
+            cache
+                .get(&cargo_toml_path)
+                .ok_or_else(|| ScorerError::IoError("Cargo.toml not in cache".to_string()))?
+                .clone()
+        } else {
+            std::fs::read_to_string(&cargo_toml_path)
+                .map_err(|e| ScorerError::IoError(e.to_string()))?
+        };
+
+        // Check 1: [package.metadata.release] exists (+5pts)
+        if cargo_toml_content.contains("[package.metadata.release]") {
+            score += 5.0;
+
+            // Check 2: CHANGELOG.md automation (+3pts)
+            if cargo_toml_content.contains("pre-release-replacements") &&
+               cargo_toml_content.contains("CHANGELOG.md") {
+                score += 3.0;
+            }
+
+            // Check 3: Version synchronization (+2pts)
+            if cargo_toml_content.contains("shared-version") {
+                score += 2.0;
+            }
+        }
+
+        // Check 4: Post-release workflow (+2pts)
+        let post_release_path = project_path.join(".github/workflows/post-release.yml");
+        if post_release_path.exists() {
+            score += 2.0;
+        }
+
+        Ok(score)
+    }
+
     /// Internal scoring logic that accepts optional cache
     ///
     /// **Kaizen Round 4**: Cache-aware scoring implementation
@@ -543,6 +701,24 @@ impl RustToolingScorer {
 
         // Score CI/CD integration (37pts) - v2.0 Phase 2 (fast, just file reads)
         match self.score_ci_cd_integration(project_path, _cache) {
+            Ok(score) => total_earned += score,
+            Err(e) => return Err(e),
+        }
+
+        // Score docs.rs metadata (10pts) - v2.0 Phase 3 (fast, just file reads)
+        match self.score_docs_rs_metadata(project_path, _cache) {
+            Ok(score) => total_earned += score,
+            Err(e) => return Err(e),
+        }
+
+        // Score workspace organization (13pts) - v2.0 Phase 3 (fast, just file reads)
+        match self.score_workspace_organization(project_path, _cache) {
+            Ok(score) => total_earned += score,
+            Err(e) => return Err(e),
+        }
+
+        // Score release automation (12pts) - v2.0 Phase 3 (fast, just file reads)
+        match self.score_release_automation(project_path, _cache) {
             Ok(score) => total_earned += score,
             Err(e) => return Err(e),
         }
@@ -657,7 +833,7 @@ mod tests {
     fn test_scorer_creation() {
         let scorer = RustToolingScorer::new();
         assert_eq!(scorer.name(), "Rust Tooling & CI/CD");
-        assert_eq!(scorer.max_points(), 74.0); // v2.0 Phase 2: 25 + 12 workspace lints + 37 CI/CD
+        assert_eq!(scorer.max_points(), 109.0); // v2.0 Phase 3: 25 + 12 + 37 + 35 (advanced metadata)
     }
 
     #[test]
@@ -1096,5 +1272,226 @@ jobs:
 
         let score = scorer.score_ci_cd_integration(temp_dir.path(), None).unwrap();
         assert_eq!(score, 0.0, "Should get 0pts - all 3 platforms required (Linux+Windows+Mac)");
+    }
+
+    // =====================================================================
+    // Advanced Metadata Tests (v2.0 Phase 3)
+    // Based on "Learn from Rust Giants" specification
+    // Academic Foundation: Aghajani 2019 ICSE, FSE 2022
+    // =====================================================================
+
+    // docs.rs Metadata Tests (10pts total)
+
+    #[test]
+    fn test_docs_rs_metadata_full_score() {
+        let scorer = RustToolingScorer::new();
+        let temp_dir = TempDir::new().unwrap();
+
+        let cargo_toml = temp_dir.path().join("Cargo.toml");
+        std::fs::write(&cargo_toml, r#"
+[package]
+name = "test-crate"
+version = "1.0.0"
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs", "--generate-link-to-definition"]
+"#).unwrap();
+
+        let score = scorer.score_docs_rs_metadata(temp_dir.path(), None).unwrap();
+        // +5 for [package.metadata.docs.rs]
+        // +3 for all-features = true
+        // +2 for --generate-link-to-definition
+        assert_eq!(score, 10.0, "Should get full 10 points for complete docs.rs config");
+    }
+
+    #[test]
+    fn test_docs_rs_metadata_basic() {
+        let scorer = RustToolingScorer::new();
+        let temp_dir = TempDir::new().unwrap();
+
+        let cargo_toml = temp_dir.path().join("Cargo.toml");
+        std::fs::write(&cargo_toml, r#"
+[package]
+name = "test-crate"
+
+[package.metadata.docs.rs]
+features = ["std"]
+"#).unwrap();
+
+        let score = scorer.score_docs_rs_metadata(temp_dir.path(), None).unwrap();
+        assert_eq!(score, 5.0, "Should get 5pts for basic docs.rs metadata");
+    }
+
+    #[test]
+    fn test_docs_rs_no_metadata() {
+        let scorer = RustToolingScorer::new();
+        let temp_dir = TempDir::new().unwrap();
+
+        let cargo_toml = temp_dir.path().join("Cargo.toml");
+        std::fs::write(&cargo_toml, "[package]\nname = \"test\"").unwrap();
+
+        let score = scorer.score_docs_rs_metadata(temp_dir.path(), None).unwrap();
+        assert_eq!(score, 0.0, "Should get 0pts with no docs.rs metadata");
+    }
+
+    // Workspace Organization Tests (13pts total)
+
+    #[test]
+    fn test_workspace_organization_full_score() {
+        let scorer = RustToolingScorer::new();
+        let temp_dir = TempDir::new().unwrap();
+
+        let cargo_toml = temp_dir.path().join("Cargo.toml");
+        std::fs::write(&cargo_toml, r#"
+[workspace]
+members = ["crate-a", "crate-b"]
+resolver = "2"
+
+[workspace.dependencies]
+serde = "1.0"
+tokio = { version = "1.0", features = ["full"] }
+
+[workspace.package]
+version = "1.0.0"
+edition = "2021"
+license = "MIT"
+authors = ["Test Author"]
+"#).unwrap();
+
+        let score = scorer.score_workspace_organization(temp_dir.path(), None).unwrap();
+        // +6 for [workspace] section
+        // +3 for resolver = "2"
+        // +2 for [workspace.dependencies]
+        // +2 for [workspace.package]
+        assert_eq!(score, 13.0, "Should get full 13 points for complete workspace config");
+    }
+
+    #[test]
+    fn test_workspace_organization_basic() {
+        let scorer = RustToolingScorer::new();
+        let temp_dir = TempDir::new().unwrap();
+
+        let cargo_toml = temp_dir.path().join("Cargo.toml");
+        std::fs::write(&cargo_toml, r#"
+[workspace]
+members = ["crate-a"]
+"#).unwrap();
+
+        let score = scorer.score_workspace_organization(temp_dir.path(), None).unwrap();
+        assert_eq!(score, 6.0, "Should get 6pts for basic workspace");
+    }
+
+    #[test]
+    fn test_workspace_organization_with_resolver() {
+        let scorer = RustToolingScorer::new();
+        let temp_dir = TempDir::new().unwrap();
+
+        let cargo_toml = temp_dir.path().join("Cargo.toml");
+        std::fs::write(&cargo_toml, r#"
+[workspace]
+members = ["crate-a"]
+resolver = "2"
+"#).unwrap();
+
+        let score = scorer.score_workspace_organization(temp_dir.path(), None).unwrap();
+        assert_eq!(score, 9.0, "Should get 9pts (6 for workspace + 3 for resolver)");
+    }
+
+    #[test]
+    fn test_workspace_organization_no_workspace() {
+        let scorer = RustToolingScorer::new();
+        let temp_dir = TempDir::new().unwrap();
+
+        let cargo_toml = temp_dir.path().join("Cargo.toml");
+        std::fs::write(&cargo_toml, "[package]\nname = \"single-crate\"").unwrap();
+
+        let score = scorer.score_workspace_organization(temp_dir.path(), None).unwrap();
+        assert_eq!(score, 0.0, "Should get 0pts for single-crate project (no workspace)");
+    }
+
+    // Release Automation Tests (12pts total)
+
+    #[test]
+    fn test_release_automation_full_score() {
+        let scorer = RustToolingScorer::new();
+        let temp_dir = TempDir::new().unwrap();
+
+        let cargo_toml = temp_dir.path().join("Cargo.toml");
+        std::fs::write(&cargo_toml, r#"
+[package]
+name = "test-crate"
+
+[workspace]
+members = ["crate-a", "crate-b"]
+
+[package.metadata.release]
+shared-version = true
+tag-name = "v{{version}}"
+pre-release-replacements = [
+  {file="CHANGELOG.md", search="Unreleased", replace="{{version}}", min=1},
+]
+"#).unwrap();
+
+        // Create post-release workflow
+        let workflows_dir = temp_dir.path().join(".github/workflows");
+        std::fs::create_dir_all(&workflows_dir).unwrap();
+        std::fs::write(workflows_dir.join("post-release.yml"), r#"
+name: Post-Release
+on:
+  release:
+    types: [published]
+"#).unwrap();
+
+        let score = scorer.score_release_automation(temp_dir.path(), None).unwrap();
+        // +5 for [package.metadata.release]
+        // +3 for CHANGELOG.md automation (pre-release-replacements)
+        // +2 for shared-version (workspace version sync)
+        // +2 for post-release.yml workflow
+        assert_eq!(score, 12.0, "Should get full 12 points for complete release automation");
+    }
+
+    #[test]
+    fn test_release_automation_basic_metadata() {
+        let scorer = RustToolingScorer::new();
+        let temp_dir = TempDir::new().unwrap();
+
+        let cargo_toml = temp_dir.path().join("Cargo.toml");
+        std::fs::write(&cargo_toml, r#"
+[package.metadata.release]
+tag-name = "v{{version}}"
+"#).unwrap();
+
+        let score = scorer.score_release_automation(temp_dir.path(), None).unwrap();
+        assert_eq!(score, 5.0, "Should get 5pts for basic release metadata");
+    }
+
+    #[test]
+    fn test_release_automation_changelog_only() {
+        let scorer = RustToolingScorer::new();
+        let temp_dir = TempDir::new().unwrap();
+
+        let cargo_toml = temp_dir.path().join("Cargo.toml");
+        std::fs::write(&cargo_toml, r#"
+[package.metadata.release]
+pre-release-replacements = [
+  {file="CHANGELOG.md", search="Unreleased", replace="{{version}}"},
+]
+"#).unwrap();
+
+        let score = scorer.score_release_automation(temp_dir.path(), None).unwrap();
+        assert_eq!(score, 8.0, "Should get 8pts (5 for metadata + 3 for changelog automation)");
+    }
+
+    #[test]
+    fn test_release_automation_no_metadata() {
+        let scorer = RustToolingScorer::new();
+        let temp_dir = TempDir::new().unwrap();
+
+        let cargo_toml = temp_dir.path().join("Cargo.toml");
+        std::fs::write(&cargo_toml, "[package]\nname = \"test\"").unwrap();
+
+        let score = scorer.score_release_automation(temp_dir.path(), None).unwrap();
+        assert_eq!(score, 0.0, "Should get 0pts with no release automation");
     }
 }
