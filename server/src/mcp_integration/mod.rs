@@ -3,6 +3,7 @@ pub mod ast_item_helpers;
 #[cfg(feature = "deep-wasm")]
 pub mod deep_wasm_tools;
 pub mod hallucination_detection_tools;
+#[cfg(feature = "mutation-testing")]
 pub mod mutation_tools;
 pub mod prompts;
 pub mod resources;
