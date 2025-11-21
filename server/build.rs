@@ -305,7 +305,7 @@ fn generate_template_output(compressed: &[u8], template_count: usize) -> String 
 
 /// Write compressed templates to output file (cognitive complexity ≤2)
 fn write_compressed_templates_file(template_code: &str) {
-    let out_dir = env::var("OUT_DIR").unwrap();
+    let out_dir = env::var("OUT_DIR").expect("OUT_DIR environment variable must be set by Cargo during build");
     let dest_path = Path::new(&out_dir).join("compressed_templates.rs");
     let _ = fs::write(dest_path, template_code);
 }
