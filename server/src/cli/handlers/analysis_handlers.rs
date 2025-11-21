@@ -139,6 +139,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
         AnalyzeCommands::Complexity { .. }
         | AnalyzeCommands::Churn { .. }
         | AnalyzeCommands::DeadCode { .. }
+        | AnalyzeCommands::Defects { .. }
         | AnalyzeCommands::Dag { .. }
         | AnalyzeCommands::Satd { .. } => route_core_analysis(cmd).await,
 
@@ -192,6 +193,7 @@ async fn route_core_analysis(cmd: AnalyzeCommands) -> Result<()> {
         AnalyzeCommands::Complexity { .. } => route_complexity_analysis(cmd).await,
         AnalyzeCommands::Churn { .. } => route_churn_analysis(cmd).await,
         AnalyzeCommands::DeadCode { .. } => route_dead_code_analysis(cmd).await,
+        AnalyzeCommands::Defects { .. } => route_defects_analysis(cmd).await,
         AnalyzeCommands::Dag { .. } => route_dag_analysis(cmd).await,
         AnalyzeCommands::Satd { .. } => route_satd_analysis(cmd).await,
         _ => unreachable!("Expected core analysis command"),
@@ -358,6 +360,56 @@ async fn route_dead_code_analysis(cmd: AnalyzeCommands) -> Result<()> {
         .await
     } else {
         unreachable!("Expected DeadCode command")
+    }
+}
+
+/// Route defects analysis command
+async fn route_defects_analysis(cmd: AnalyzeCommands) -> Result<()> {
+    use crate::cli::handlers::analyze_defects_handler::{handle_analyze_defects, OutputFormat};
+    use crate::services::defect_detector::Severity;
+
+    if let AnalyzeCommands::Defects {
+        path,
+        file,
+        severity,
+        format,
+        output: _,
+    } = cmd
+    {
+        // Convert format enum to handler's OutputFormat
+        let output_format = match format {
+            cli::DefectsOutputFormat::Text => OutputFormat::Text,
+            cli::DefectsOutputFormat::Json => OutputFormat::Json,
+            cli::DefectsOutputFormat::Junit => OutputFormat::Junit,
+        };
+
+        // Parse severity filter if provided
+        let severity_filter = severity
+            .as_deref()
+            .and_then(|s| match s.to_lowercase().as_str() {
+                "critical" => Some(Severity::Critical),
+                "high" => Some(Severity::High),
+                "medium" => Some(Severity::Medium),
+                "low" => Some(Severity::Low),
+                _ => None,
+            });
+
+        let exit_code = handle_analyze_defects(
+            path.as_deref(),
+            file.as_deref(),
+            severity_filter,
+            output_format,
+        )
+        .await?;
+
+        // Exit with the handler's exit code (1 if critical defects found)
+        if exit_code != 0 {
+            std::process::exit(exit_code);
+        }
+
+        Ok(())
+    } else {
+        unreachable!("Expected Defects command")
     }
 }
 

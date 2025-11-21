@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
 
 use crate::entropy::EntropyAnalyzer;
+use crate::services::defect_detector::{RustDefectDetector, Severity as DefectSeverity};
 use crate::tdg::{
     config::TdgConfig, AdaptiveThresholdFactory, AdaptiveThresholdManager, AnalysisMetadata,
     ComponentScores, FileIdentity, FullTdgRecord, Grade, Language, MetricCategory,
@@ -455,6 +456,25 @@ impl TdgAnalyzerAst {
         }
 
         score.penalties_applied = tracker.get_attributions();
+
+        // Known Defects v2.1: Detect critical defects for auto-fail
+        if language == Language::Rust {
+            if let Some(ref path) = score.file_path {
+                let detector = RustDefectDetector::new();
+                let defects = detector.detect(source, path);
+
+                // Count critical defects
+                let critical_count: usize = defects
+                    .iter()
+                    .filter(|d| d.severity == DefectSeverity::Critical)
+                    .map(|d| d.instances.len())
+                    .sum();
+
+                score.critical_defects_count = critical_count;
+                score.has_critical_defects = critical_count > 0;
+            }
+        }
+
         score.calculate_total();
 
         Ok(score)

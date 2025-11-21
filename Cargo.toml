@@ -25,13 +25,17 @@ suspicious = { level = "warn", priority = -1 }
 # Performance improvements
 perf = { level = "warn", priority = -1 }
 # Style preferences
-style = "warn"
+style = { level = "warn", priority = -1 }
 # Pedantic lints (lower priority)
 pedantic = { level = "allow", priority = -1 }
 # Complexity analysis
-complexity = "warn"
+complexity = { level = "warn", priority = -1 }
 # Checked conversions (prevent overflow)
 checked_conversions = "warn"
+# Known Defects v2.1: Ban unwrap() (Cloudflare-class defect - causes production panics)
+# TODO: Upgrade to "deny" after fixing all 3940 unwrap() calls
+unwrap_used = "warn"
+expect_used = "allow"
 
 # Config for cargo-release
 [workspace.metadata.release]

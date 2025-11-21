@@ -1921,6 +1921,7 @@ impl CliAdapter {
             AnalyzeCommands::Churn { .. }
             | AnalyzeCommands::Complexity { .. }
             | AnalyzeCommands::DeadCode { .. }
+            | AnalyzeCommands::Defects { .. }
             | AnalyzeCommands::Satd { .. }
             | AnalyzeCommands::Tdg { .. }
             | AnalyzeCommands::LintHotspot { .. }

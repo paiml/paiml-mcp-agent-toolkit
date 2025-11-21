@@ -92,6 +92,18 @@ pub fn format_explain_text(explained: &ExplainedTDGScore) -> Result<String> {
         }
     }
 
+    // Known Defects v2.1: Show defect information
+    if explained.score.has_critical_defects {
+        output.push_str("\n🔴 CRITICAL DEFECTS DETECTED\n");
+        output.push_str("===========================\n\n");
+        output.push_str(&format!(
+            "Critical Defects: {}\n",
+            explained.score.critical_defects_count
+        ));
+        output.push_str("Status: AUTO-FAIL (Score: 0.0, Grade: F)\n\n");
+        output.push_str("Run 'pmat analyze defects' for detailed defect report.\n");
+    }
+
     Ok(output)
 }
 

@@ -138,6 +138,8 @@ fn test_bincode_tdgscore_serialization() {
         language: Language::Rust,
         file_path: Some(PathBuf::from("test.rs")),
         penalties_applied: Vec::new(),
+        critical_defects_count: 0,
+        has_critical_defects: false,
     };
 
     let serialized = bincode::serialize(&score).expect("Failed to serialize TdgScore");
@@ -214,6 +216,8 @@ async fn test_tiered_storage_with_backends() {
             language: Language::Rust,
             file_path: Some(PathBuf::from("test.rs")),
             penalties_applied: Vec::new(),
+            critical_defects_count: 0,
+            has_critical_defects: false,
         },
         components: ComponentScores {
             complexity_breakdown: HashMap::new(),

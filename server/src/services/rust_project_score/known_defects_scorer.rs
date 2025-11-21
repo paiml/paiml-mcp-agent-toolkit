@@ -73,8 +73,13 @@ impl KnownDefectsScorer {
     /// Count unwrap() calls in production code (excluding tests)
     ///
     /// Returns (production_unwraps, test_unwraps)
-    fn count_unwraps(&self, project_path: &Path, cache: Option<&FileCache>) -> ScorerResult<(usize, usize)> {
-        let unwrap_regex = Regex::new(r"\.unwrap\(\)").map_err(|e| ScorerError::IoError(e.to_string()))?;
+    fn count_unwraps(
+        &self,
+        project_path: &Path,
+        cache: Option<&FileCache>,
+    ) -> ScorerResult<(usize, usize)> {
+        let unwrap_regex =
+            Regex::new(r"\.unwrap\(\)").map_err(|e| ScorerError::IoError(e.to_string()))?;
 
         let mut production_count = 0;
         let mut test_count = 0;
@@ -214,7 +219,8 @@ impl Scorer for KnownDefectsScorer {
                     production_unwraps
                 ));
                 recommendations.push(
-                    "Run: cargo clippy -- -D clippy::disallowed-methods to enforce unwrap() ban".to_string()
+                    "Run: cargo clippy -- -D clippy::disallowed-methods to enforce unwrap() ban"
+                        .to_string(),
                 );
                 recommendations.push(
                     "See Cloudflare outage 2025-11-18: unwrap() panic caused 3+ hour network outage".to_string()
@@ -233,8 +239,8 @@ unsafe impl Sync for KnownDefectsScorer {}
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::TempDir;
     use std::fs;
+    use tempfile::TempDir;
 
     #[test]
     fn test_scorer_creation() {
@@ -251,7 +257,8 @@ mod tests {
         fs::write(
             temp_dir.path().join("Cargo.toml"),
             "[package]\nname = \"test\"\nversion = \"0.1.0\"",
-        ).expect("write cargo.toml");
+        )
+        .expect("write cargo.toml");
 
         // Create src directory with clean code
         fs::create_dir_all(temp_dir.path().join("src")).expect("create src");
@@ -262,7 +269,8 @@ mod tests {
                 Ok(42)
             }
             "#,
-        ).expect("write lib.rs");
+        )
+        .expect("write lib.rs");
 
         let scorer = KnownDefectsScorer::new();
         let score = scorer.score(temp_dir.path()).expect("score project");
@@ -277,7 +285,8 @@ mod tests {
         fs::write(
             temp_dir.path().join("Cargo.toml"),
             "[package]\nname = \"test\"\nversion = \"0.1.0\"",
-        ).expect("write cargo.toml");
+        )
+        .expect("write cargo.toml");
 
         fs::create_dir_all(temp_dir.path().join("src")).expect("create src");
 
@@ -302,21 +311,24 @@ mod tests {
         fs::write(
             temp_dir.path().join("Cargo.toml"),
             "[package]\nname = \"test\"\nversion = \"0.1.0\"",
-        ).expect("write cargo.toml");
+        )
+        .expect("write cargo.toml");
 
         // Tests directory with unwraps (should not count)
         fs::create_dir_all(temp_dir.path().join("tests")).expect("create tests");
         fs::write(
             temp_dir.path().join("tests/integration.rs"),
             "fn test() { Some(42).unwrap(); Some(42).unwrap(); }",
-        ).expect("write test");
+        )
+        .expect("write test");
 
         // Production code - clean
         fs::create_dir_all(temp_dir.path().join("src")).expect("create src");
         fs::write(
             temp_dir.path().join("src/lib.rs"),
             "pub fn safe() -> i32 { 42 }",
-        ).expect("write lib.rs");
+        )
+        .expect("write lib.rs");
 
         let scorer = KnownDefectsScorer::new();
         let score = scorer.score(temp_dir.path()).expect("score project");
@@ -331,7 +343,8 @@ mod tests {
         fs::write(
             temp_dir.path().join("Cargo.toml"),
             "[package]\nname = \"test\"\nversion = \"0.1.0\"",
-        ).expect("write cargo.toml");
+        )
+        .expect("write cargo.toml");
 
         fs::create_dir_all(temp_dir.path().join("src")).expect("create src");
 
@@ -356,19 +369,30 @@ mod tests {
         fs::write(
             temp_dir.path().join("Cargo.toml"),
             "[package]\nname = \"test\"\nversion = \"0.1.0\"",
-        ).expect("write cargo.toml");
+        )
+        .expect("write cargo.toml");
 
         fs::create_dir_all(temp_dir.path().join("src")).expect("create src");
         fs::write(
             temp_dir.path().join("src/lib.rs"),
             "let x = Some(42).unwrap();",
-        ).expect("write lib.rs");
+        )
+        .expect("write lib.rs");
 
         let scorer = KnownDefectsScorer::new();
         let recommendations = scorer.recommendations(temp_dir.path());
 
-        assert!(!recommendations.is_empty(), "Should generate recommendations");
-        assert!(recommendations[0].contains("CRITICAL"), "Should be marked critical");
-        assert!(recommendations[0].contains("Cloudflare"), "Should reference incident");
+        assert!(
+            !recommendations.is_empty(),
+            "Should generate recommendations"
+        );
+        assert!(
+            recommendations[0].contains("CRITICAL"),
+            "Should be marked critical"
+        );
+        assert!(
+            recommendations[0].contains("Cloudflare"),
+            "Should reference incident"
+        );
     }
 }

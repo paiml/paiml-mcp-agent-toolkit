@@ -54,6 +54,29 @@ completed_sprints:
       - "GitHub issues filed for all 3 PAIML projects"
       - "Mutation testing enhancement specification (952 lines)"
 
+  - id: sprint-71
+    name: "Known Defects v2.1: Zero Tolerance Production Defects"
+    status: "✅ COMPLETE"
+    version: "v2.199.0"
+    date: "November 21, 2025"
+    deliverables:
+      - "TDG Auto-Fail: Files with critical defects get Score: 0.0, Grade: F"
+      - "pmat analyze defects: Multi-format CLI (text/json/junit)"
+      - "RustDefectDetector: RUST-UNWRAP-001 pattern with Cloudflare evidence"
+      - "Test code exclusion: tests/, benches/, #[cfg(test)]"
+      - "Exit code semantics: 1 for critical defects (CI/CD integration)"
+      - "pmat-book updates: Chapter 4.1 (TDG), Chapter 5 (Analyze Suite)"
+      - "Cross-references: TDG ↔ analyze defects ↔ rust-project-score"
+    evidence:
+      - "Cloudflare outage 2025-11-18 (3+ hours global disruption from .unwrap())"
+      - "server/src/services/defect_detector.rs (207 lines)"
+      - "server/src/cli/handlers/analyze_defects_handler.rs (261 lines)"
+      - "TdgScore fields: critical_defects_count, has_critical_defects"
+    testing:
+      - "All library tests passing (4841 tests)"
+      - "Test path exclusion verified (tests/integration_test.rs)"
+      - "TdgScore struct fields added to all test initializations"
+
 # ACTIVE SPRINTS
 sprints:
   # SPRINT 70: cargo-mutants Wrapper (CURRENT)

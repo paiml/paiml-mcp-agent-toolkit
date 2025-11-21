@@ -406,6 +406,8 @@ mod tests {
                     language: Language::Rust,
                     file_path: Some(path.clone()),
                     penalties_applied: Vec::new(),
+                    critical_defects_count: 0,
+                    has_critical_defects: false,
                 },
                 components: ComponentScores::default(),
                 git_context: None,

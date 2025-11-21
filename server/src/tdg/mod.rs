@@ -108,6 +108,8 @@ pub struct TdgScore {
     pub language: Language,
     pub file_path: Option<PathBuf>,
     pub penalties_applied: Vec<PenaltyAttribution>,
+    pub critical_defects_count: usize, // Known Defects v2.1: Count of critical defects
+    pub has_critical_defects: bool,    // Known Defects v2.1: Auto-fail flag
 }
 
 impl Default for TdgScore {
@@ -126,6 +128,8 @@ impl Default for TdgScore {
             language: Language::Unknown,
             file_path: None,
             penalties_applied: Vec::new(),
+            critical_defects_count: 0,
+            has_critical_defects: false,
         }
     }
 }
@@ -167,7 +171,13 @@ impl TdgScore {
             self.total = (raw_total / THEORETICAL_MAX * 100.0).clamp(0.0, 100.0);
         }
 
-        self.grade = Grade::from_score(self.total);
+        // Known Defects v2.1: Auto-fail if critical defects detected
+        if self.has_critical_defects {
+            self.total = 0.0;
+            self.grade = Grade::F;
+        } else {
+            self.grade = Grade::from_score(self.total);
+        }
     }
 
     pub fn set_metric(&mut self, category: MetricCategory, value: f32) {

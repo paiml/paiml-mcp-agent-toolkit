@@ -7,6 +7,7 @@ pub mod advanced_analysis_handlers;
 pub mod agent_handlers;
 pub mod analysis;
 pub mod analysis_handlers;
+pub mod analyze_defects_handler; // Known Defects: Project-wide defect scanning
 #[cfg(test)]
 pub mod annotation_tdd_tests;
 pub mod big_o_handlers;

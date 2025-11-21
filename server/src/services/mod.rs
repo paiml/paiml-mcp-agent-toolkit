@@ -127,6 +127,7 @@ pub mod dead_code_prover;
 pub mod deep_context;
 pub mod defect_analyzer;
 pub mod defect_analyzers;
+pub mod defect_detector; // Known Defects detection (Sprint: Known Defects v2.1)
 pub mod defect_report_service;
 // pub mod deep_context_orchestrator; // TRACKED: Fix AST node compatibility
 pub mod defect_probability;

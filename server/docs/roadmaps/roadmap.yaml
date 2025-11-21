@@ -17,3 +17,48 @@ roadmap:
   subtasks: []
   estimated_effort: null
   labels: []
+- id: Rebuild pmat binary with Known Defects v2.1 and validate scoring
+  github_issue: null
+  item_type: task
+  title: 'New task: Rebuild pmat binary with Known Defects v2.1 and validate scoring'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2025-11-21T07:02:24.965876204+00:00
+  updated: 2025-11-21T07:02:24.965876204+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+- id: 'Complete Known Defects v2.1: TDG auto-fail + analyze defects CLI'
+  github_issue: null
+  item_type: task
+  title: 'New task: Complete Known Defects v2.1: TDG auto-fail + analyze defects CLI'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2025-11-21T07:57:49.728723346+00:00
+  updated: 2025-11-21T07:57:49.728723346+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+- id: 'Fix rust-project-score defects: unwrap() elimination and tooling compliance'
+  github_issue: null
+  item_type: task
+  title: 'New task: Fix rust-project-score defects: unwrap() elimination and tooling compliance'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2025-11-21T12:16:58.839751300+00:00
+  updated: 2025-11-21T12:16:58.839751300+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []

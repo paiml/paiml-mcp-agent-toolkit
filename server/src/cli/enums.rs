@@ -614,6 +614,24 @@ impl fmt::Display for DeadCodeOutputFormat {
     }
 }
 
+/// Known Defects output format
+#[derive(Clone, Debug, ValueEnum, PartialEq)]
+pub enum DefectsOutputFormat {
+    Text,
+    Json,
+    Junit,
+}
+
+impl fmt::Display for DefectsOutputFormat {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            DefectsOutputFormat::Text => write!(f, "text"),
+            DefectsOutputFormat::Json => write!(f, "json"),
+            DefectsOutputFormat::Junit => write!(f, "junit"),
+        }
+    }
+}
+
 /// SATD output format
 #[derive(Clone, Debug, ValueEnum, PartialEq)]
 pub enum SatdOutputFormat {

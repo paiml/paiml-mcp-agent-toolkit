@@ -9,15 +9,16 @@ use crate::cli::handlers::memory::MemoryCommand;
 use crate::cli::{
     AnalysisType, BigOOutputFormat, ComplexityOutputFormat, ComprehensiveOutputFormat,
     ContextFormat, DagType, DeadCodeOutputFormat, DeepContextCacheStrategy, DeepContextDagType,
-    DeepContextOutputFormat, DefectPredictionOutputFormat, DemoProtocol, DuplicateOutputFormat,
-    DuplicateType, EnforceOutputFormat, EntropyOutputFormat, EntropySeverity, ExplainLevel,
-    GraphMetricType, GraphMetricsOutputFormat, IncrementalCoverageOutputFormat,
-    LintHotspotOutputFormat, MakefileOutputFormat, NameSimilarityOutputFormat, OutputFormat,
-    PromptOutputFormat, ProofAnnotationOutputFormat, PropertyTypeFilter, ProvabilityOutputFormat,
-    QualityCheckType, QualityGateOutputFormat, QualityProfile, RefactorAutoOutputFormat,
-    RefactorDocsOutputFormat, RefactorMode, RefactorOutputFormat, RepoScoreOutputFormat,
-    ReportOutputFormat, SatdOutputFormat, SatdSeverity, SearchScope, SymbolTableOutputFormat,
-    SymbolTypeFilter, TdgOutputFormat, VerificationMethodFilter, WasmOutputFormat,
+    DeepContextOutputFormat, DefectPredictionOutputFormat, DefectsOutputFormat, DemoProtocol,
+    DuplicateOutputFormat, DuplicateType, EnforceOutputFormat, EntropyOutputFormat,
+    EntropySeverity, ExplainLevel, GraphMetricType, GraphMetricsOutputFormat,
+    IncrementalCoverageOutputFormat, LintHotspotOutputFormat, MakefileOutputFormat,
+    NameSimilarityOutputFormat, OutputFormat, PromptOutputFormat, ProofAnnotationOutputFormat,
+    PropertyTypeFilter, ProvabilityOutputFormat, QualityCheckType, QualityGateOutputFormat,
+    QualityProfile, RefactorAutoOutputFormat, RefactorDocsOutputFormat, RefactorMode,
+    RefactorOutputFormat, RepoScoreOutputFormat, ReportOutputFormat, SatdOutputFormat,
+    SatdSeverity, SearchScope, SymbolTableOutputFormat, SymbolTypeFilter, TdgOutputFormat,
+    VerificationMethodFilter, WasmOutputFormat,
 };
 
 #[cfg(feature = "deep-wasm")]
@@ -1349,6 +1350,30 @@ pub enum AnalyzeCommands {
         /// Maximum directory traversal depth (default: 8 levels)
         #[arg(long, default_value = "8")]
         max_depth: usize,
+    },
+
+    /// Scan project for known defect patterns (e.g., .unwrap() calls in Rust)
+    #[command(name = "defects", visible_aliases = &["known-defects"])]
+    Defects {
+        /// Path to analyze (defaults to current directory)
+        #[arg(long, short = 'p', default_value = ".")]
+        path: Option<PathBuf>,
+
+        /// Analyze a specific file instead of the whole project
+        #[arg(long, conflicts_with = "path")]
+        file: Option<PathBuf>,
+
+        /// Filter by severity level (critical, high, medium, low)
+        #[arg(long)]
+        severity: Option<String>,
+
+        /// Output format
+        #[arg(long, value_enum, default_value = "text")]
+        format: DefectsOutputFormat,
+
+        /// Output file path
+        #[arg(short, long)]
+        output: Option<PathBuf>,
     },
 
     /// Analyze Self-Admitted Technical Debt (SATD) in comments
