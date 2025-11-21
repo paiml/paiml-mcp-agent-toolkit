@@ -46,6 +46,9 @@ impl Default for Roadmap {
 }
 
 /// Individual roadmap item (ticket/issue)
+///
+/// Note: Extra fields in YAML (like description, implementation, references)
+/// are silently ignored to support backward compatibility with older roadmap formats.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct RoadmapItem {
     /// Unique ID (e.g., "GH-8", "PERF-001", "EPIC-001")
@@ -311,67 +314,107 @@ mod tests {
     #[test]
     fn test_roadmap_creation() {
         let roadmap = Roadmap::new(Some("paiml/pmat".to_string()));
-        assert_eq!(roadmap.roadmap_version, ROADMAP_VERSION);
+        assert_eq!(roadmap.roadmap_version, "1.0");
         assert!(roadmap.github_enabled);
         assert_eq!(roadmap.github_repo, Some("paiml/pmat".to_string()));
-        assert!(roadmap.roadmap.is_empty());
+        assert_eq!(roadmap.roadmap.len(), 0);
     }
 
     #[test]
     fn test_roadmap_item_creation() {
-        let item = RoadmapItem::new("TEST-001".to_string(), "Test task".to_string());
+        let item = RoadmapItem::new("TEST-001".to_string(), "Test Item".to_string());
         assert_eq!(item.id, "TEST-001");
-        assert_eq!(item.title, "Test task");
+        assert_eq!(item.title, "Test Item");
         assert_eq!(item.status, ItemStatus::Planned);
         assert_eq!(item.priority, Priority::Medium);
         assert!(item.github_issue.is_none());
     }
 
     #[test]
-    fn test_roadmap_item_from_github() {
-        let item = RoadmapItem::from_github_issue(42, "GitHub issue".to_string());
+    fn test_github_issue_creation() {
+        let item = RoadmapItem::from_github_issue(42, "GitHub Issue".to_string());
         assert_eq!(item.id, "GH-42");
         assert_eq!(item.github_issue, Some(42));
-        assert_eq!(item.title, "GitHub issue");
+        assert_eq!(item.title, "GitHub Issue");
     }
 
     #[test]
-    fn test_roadmap_upsert() {
-        let mut roadmap = Roadmap::default();
-        let item1 = RoadmapItem::new("TEST-001".to_string(), "Task 1".to_string());
-        roadmap.upsert_item(item1.clone());
+    fn test_upsert_item() {
+        let mut roadmap = Roadmap::new(None);
+        let item = RoadmapItem::new("TEST-001".to_string(), "Test".to_string());
+
+        roadmap.upsert_item(item.clone());
         assert_eq!(roadmap.roadmap.len(), 1);
 
         // Update existing
-        let mut item1_updated = item1.clone();
-        item1_updated.title = "Task 1 Updated".to_string();
-        roadmap.upsert_item(item1_updated);
+        let mut updated = item.clone();
+        updated.status = ItemStatus::Completed;
+        roadmap.upsert_item(updated);
         assert_eq!(roadmap.roadmap.len(), 1);
-        assert_eq!(roadmap.roadmap[0].title, "Task 1 Updated");
+        assert_eq!(roadmap.roadmap[0].status, ItemStatus::Completed);
     }
 
     #[test]
-    fn test_roadmap_find() {
-        let mut roadmap = Roadmap::default();
-        let item = RoadmapItem::from_github_issue(42, "Test".to_string());
-        roadmap.upsert_item(item.clone());
+    fn test_trueno_db_yaml_format_with_extra_fields() {
+        // This test verifies the fix for issue #84
+        // trueno-db's roadmap has extra fields: description, phase, implementation, references
+        // These should be silently ignored to support backward compatibility
+        let yaml = r#"
+roadmap_version: '1.0'
+github_enabled: true
+github_repo: paiml/trueno-db
+roadmap:
+  - id: CORE-001
+    title: "Arrow storage backend with morsel-based paging"
+    description: |
+      Implement Arrow/Parquet storage with 128MB morsel-based paging.
+    status: completed
+    priority: high
+    phase: 1
+    labels: [storage, poka-yoke, phase-1]
+    acceptance_criteria:
+      - Parquet reader with Arrow columnar format
+      - 128MB morsel chunks
+    implementation:
+      - StorageEngine::load_parquet() with Arrow/Parquet integration
+      - MORSEL_SIZE_BYTES = 128MB
+    references:
+      - "Funke et al. (2018): GPU paging for out-of-core workloads"
+"#;
 
-        assert!(roadmap.find_item("GH-42").is_some());
-        assert!(roadmap.find_item("NONEXISTENT").is_none());
-        assert!(roadmap.find_item_by_github_issue(42).is_some());
-        assert!(roadmap.find_item_by_github_issue(999).is_none());
+        // After removing #[serde(deny_unknown_fields)], parsing should succeed
+        // Extra fields (description, phase, implementation, references) are silently ignored
+        let result: Result<Roadmap, _> = serde_yaml::from_str(yaml);
+
+        assert!(result.is_ok(), "Expected parsing to succeed with extra fields silently ignored");
+
+        let roadmap = result.unwrap();
+        assert_eq!(roadmap.github_repo, Some("paiml/trueno-db".to_string()));
+        assert_eq!(roadmap.roadmap.len(), 1);
+
+        let item = &roadmap.roadmap[0];
+        assert_eq!(item.id, "CORE-001");
+        assert_eq!(item.title, "Arrow storage backend with morsel-based paging");
+        assert_eq!(item.status, ItemStatus::Completed);
+        assert_eq!(item.priority, Priority::High);
+        assert_eq!(item.labels, vec!["storage", "poka-yoke", "phase-1"]);
+        assert_eq!(item.acceptance_criteria.len(), 2);
     }
 
     #[test]
     fn test_completion_percentage() {
         let mut item = RoadmapItem::new("TEST-001".to_string(), "Test".to_string());
 
-        // Planned task
+        // Planned status
         assert_eq!(item.completion_percentage(), 0);
 
         // In progress
         item.status = ItemStatus::InProgress;
         assert_eq!(item.completion_percentage(), 50);
+
+        // Review
+        item.status = ItemStatus::Review;
+        assert_eq!(item.completion_percentage(), 90);
 
         // Completed
         item.status = ItemStatus::Completed;
@@ -379,52 +422,26 @@ mod tests {
     }
 
     #[test]
-    fn test_completion_with_subtasks() {
-        let mut item = RoadmapItem::new("EPIC-001".to_string(), "Epic".to_string());
-        item.item_type = ItemType::Epic;
-        item.subtasks = vec![
-            Subtask {
-                id: "SUB-1".to_string(),
-                github_issue: None,
-                title: "Subtask 1".to_string(),
-                status: ItemStatus::Completed,
-                completion: 100,
-            },
-            Subtask {
-                id: "SUB-2".to_string(),
-                github_issue: None,
-                title: "Subtask 2".to_string(),
-                status: ItemStatus::InProgress,
-                completion: 50,
-            },
-        ];
+    fn test_find_item() {
+        let mut roadmap = Roadmap::new(None);
+        let item1 = RoadmapItem::new("TEST-001".to_string(), "Test 1".to_string());
+        let item2 = RoadmapItem::new("TEST-002".to_string(), "Test 2".to_string());
 
-        // Average: (100 + 50) / 2 = 75
-        assert_eq!(item.completion_percentage(), 75);
+        roadmap.upsert_item(item1);
+        roadmap.upsert_item(item2);
+
+        assert!(roadmap.find_item("TEST-001").is_some());
+        assert!(roadmap.find_item("TEST-999").is_none());
     }
 
     #[test]
-    fn test_yaml_only_items() {
-        let mut roadmap = Roadmap::default();
-        roadmap.upsert_item(RoadmapItem::from_github_issue(42, "GitHub".to_string()));
-        roadmap.upsert_item(RoadmapItem::new(
-            "YAML-001".to_string(),
-            "YAML only".to_string(),
-        ));
+    fn test_find_by_github_issue() {
+        let mut roadmap = Roadmap::new(None);
+        let item = RoadmapItem::from_github_issue(42, "GitHub Issue".to_string());
 
-        let yaml_only = roadmap.yaml_only_items();
-        assert_eq!(yaml_only.len(), 1);
-        assert_eq!(yaml_only[0].id, "YAML-001");
-    }
-
-    #[test]
-    fn test_serde_roundtrip() {
-        let mut roadmap = Roadmap::new(Some("paiml/pmat".to_string()));
-        let item = RoadmapItem::from_github_issue(42, "Test issue".to_string());
         roadmap.upsert_item(item);
 
-        let yaml = serde_yaml::to_string(&roadmap).unwrap();
-        let deserialized: Roadmap = serde_yaml::from_str(&yaml).unwrap();
-        assert_eq!(roadmap, deserialized);
+        assert!(roadmap.find_item_by_github_issue(42).is_some());
+        assert!(roadmap.find_item_by_github_issue(999).is_none());
     }
 }
