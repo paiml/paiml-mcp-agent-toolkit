@@ -36,11 +36,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'New task: Complete Known Defects v2.1: TDG auto-fail + analyze defects CLI'
-  status: inprogress
+  status: completed
   priority: medium
   assigned_to: null
   created: 2025-11-21T07:57:49.728723346+00:00
-  updated: 2025-11-21T07:57:49.728723346+00:00
+  updated: 2025-11-21T14:24:04.062035530+00:00
   spec: null
   acceptance_criteria: []
   phases: []
