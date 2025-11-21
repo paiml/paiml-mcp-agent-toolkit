@@ -432,8 +432,8 @@ fn analyze_python_files(
                     let func_name = func_name_match.as_str().to_string();
                     // Filter out Python keywords
                     if ![
-                        "if", "while", "for", "print", "range", "len", "str", "int", "list", "dict",
-                        "set", "def",
+                        "if", "while", "for", "print", "range", "len", "str", "int", "list",
+                        "dict", "set", "def",
                     ]
                     .contains(&func_name.as_str())
                     {

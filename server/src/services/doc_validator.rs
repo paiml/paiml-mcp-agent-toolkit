@@ -206,7 +206,13 @@ pub fn classify_link(target: &str) -> LinkType {
     } else if target.starts_with("mailto:") {
         LinkType::Email
     } else if target.contains("://") {
-        LinkType::Other(target.split("://").next().expect("split should have at least one element").to_string())
+        LinkType::Other(
+            target
+                .split("://")
+                .next()
+                .expect("split should have at least one element")
+                .to_string(),
+        )
     } else {
         LinkType::Internal
     }
@@ -308,7 +314,11 @@ impl DocValidator {
         link: &Link,
     ) -> (ValidationStatus, Option<String>, Option<u16>) {
         // Remove anchor from target
-        let target = link.target.split('#').next().expect("split should have at least one element");
+        let target = link
+            .target
+            .split('#')
+            .next()
+            .expect("split should have at least one element");
 
         // Skip empty targets (pure anchors)
         if target.is_empty() {

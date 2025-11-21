@@ -246,7 +246,9 @@ impl TdgAnalyzerAst {
                 },
                 semantic_sig: SemanticSignature {
                     ast_structure_hash: u64::from_le_bytes(
-                        content_hash.as_bytes()[0..8].try_into().expect("slice with incorrect length"),
+                        content_hash.as_bytes()[0..8]
+                            .try_into()
+                            .expect("slice with incorrect length"),
                     ),
                     identifier_pattern: String::new(),
                     control_flow_pattern: String::new(),

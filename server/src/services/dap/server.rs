@@ -219,7 +219,10 @@ impl DapServer {
             request.seq,
             seq,
             request.command,
-            Some(serde_json::to_value(&self.capabilities).expect("DAP capabilities should be serializable")),
+            Some(
+                serde_json::to_value(&self.capabilities)
+                    .expect("DAP capabilities should be serializable"),
+            ),
         );
 
         serde_json::to_value(&response).expect("DapResponse should be serializable")
@@ -238,7 +241,8 @@ impl DapServer {
                     request.command,
                     format!("Invalid launch arguments: {}", e),
                 );
-                return serde_json::to_value(&response).expect("DapResponse should be serializable");
+                return serde_json::to_value(&response)
+                    .expect("DapResponse should be serializable");
             }
         };
 

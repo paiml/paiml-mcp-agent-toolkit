@@ -64,10 +64,7 @@ async fn check_for_critical_defects(path: &Path) -> Result<()> {
                 if let Some(instance) = defect.instances.first() {
                     eprintln!(
                         "❌ CRITICAL DEFECT: {} in {}:{}:{}",
-                        defect.name,
-                        instance.file,
-                        instance.line,
-                        instance.column
+                        defect.name, instance.file, instance.line, instance.column
                     );
                     eprintln!("   Code: {}", instance.code_snippet);
                 }
@@ -76,9 +73,15 @@ async fn check_for_critical_defects(path: &Path) -> Result<()> {
     }
 
     if critical_defects_found {
-        eprintln!("\n⛔ TDG ANALYSIS FAILED: Found {} critical defect(s)", critical_count);
+        eprintln!(
+            "\n⛔ TDG ANALYSIS FAILED: Found {} critical defect(s)",
+            critical_count
+        );
         eprintln!("   Critical defects must be fixed before deployment.");
-        eprintln!("   Run: pmat analyze defects --path {} --format text", path.display());
+        eprintln!(
+            "   Run: pmat analyze defects --path {} --format text",
+            path.display()
+        );
         anyhow::bail!("TDG auto-fail: Critical defects detected")
     }
 
