@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.200.0] - 2025-11-21
+
+### Added
+- **Known Defects v2.1: TDG Auto-Fail + Defect Analysis CLI**
+  - **New Command**: `pmat analyze defects` for project-wide defect scanning
+    - Detects critical defect patterns (e.g., `.unwrap()` calls in production code)
+    - Multiple output formats: text, JSON, JUnit XML
+    - Comprehensive test exclusion (tests/, _tests.rs, #[cfg(test)])
+    - Exit code 1 for critical defects, 0 for clean projects
+  - **TDG Integration**: Auto-fail on critical defects
+    - Integrated defect checking into `pmat analyze tdg` command
+    - Scans all Rust files using RustDefectDetector
+    - Reports defects with file:line:column information
+    - Suggests running `pmat analyze defects` for full report
+    - Zero tolerance for production-breaking patterns
+  - **Defect Detection**:
+    - RUST-UNWRAP-001 (Critical severity): `.unwrap()` calls
+    - Evidence-based: Cloudflare outage 2025-11-18 (3+ hour network outage)
+    - Fix recommendation: Use `.expect()` with descriptive messages or `?` operator
+    - Proper test code exclusion (no false positives in test files)
+  - **Implementation**:
+    - RustDefectDetector service: Regex-based pattern detection
+    - Test exclusion: Path patterns + content markers (#[cfg(test)])
+    - CLI handlers: analyze defects + TDG auto-fail integration
+    - 70 lines of production code added
+  - **Zero Critical Defects**: Current codebase has 0 critical defects (verified)
+  - **Files Added**: `server/src/cli/handlers/new_tdg_handler.rs` (check_for_critical_defects)
+  - **Commits**: cac2f448, ed5cbd4e
+
 ## [2.198.0] - 2025-11-19
 
 ### Added
