@@ -357,11 +357,17 @@ impl FuzzMutationStrategy {
             let engine = self.mutation_engine.clone(); // Clone for thread safety
 
             let task = tokio::spawn(async move {
-                let _permit = sem.acquire().await.unwrap();
+                let _permit = sem
+                    .acquire()
+                    .await
+                    .expect("Semaphore must not be closed during fuzzing");
 
                 // Create temporary strategy for this mutant
                 let strategy = FuzzMutationStrategy::new(engine, config);
-                let fuzz_result = strategy.fuzz_mutant(&mutant).await.unwrap();
+                let fuzz_result = strategy
+                    .fuzz_mutant(&mutant)
+                    .await
+                    .expect("Fuzz mutant operation must succeed");
 
                 (mutant, fuzz_result)
             });

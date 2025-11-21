@@ -233,7 +233,7 @@ impl ConcurrentDeepContextAnalyzer {
         pb.set_style(
             ProgressStyle::default_bar()
                 .template("{spinner:.green} {msg} [{bar:40.cyan/blue}] {pos}/{len} ({eta})")
-                .unwrap()
+                .expect("Progress bar template must be valid")
                 .progress_chars("#>-"),
         );
         pb.set_message(message.to_string());

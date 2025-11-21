@@ -69,10 +69,7 @@ impl RustDefectDetector {
     /// Check if a file should be excluded from defect detection
     fn should_exclude_file(&self, file_path: &Path) -> bool {
         let path_str = file_path.to_string_lossy();
-        let file_name = file_path
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("");
+        let file_name = file_path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
         // Exclude test directories
         if path_str.contains("/tests/")
