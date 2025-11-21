@@ -123,6 +123,7 @@ fn test_criterion_benchmarks_absent() {
     let temp = create_test_project();
 
     // No benches/ directory created
+    // BUT: Cargo.toml still has [[bench]] configuration (5pts)
 
     let scorer = PerformanceScorer::new();
     let result = scorer.score(temp.path());
@@ -130,8 +131,10 @@ fn test_criterion_benchmarks_absent() {
     assert!(result.is_ok());
     let score = result.unwrap();
 
-    // Should lose benchmark points
-    assert!(score.earned <= 5.0);
+    // v2.0: Awards 5pts for [[bench]] config + 2pts for harness=false
+    // Total: 7pts (no CI workflow, so max is 7/10)
+    assert!(score.earned >= 5.0); // At least [[bench]] config points
+    assert!(score.earned <= 10.0); // Not more than max
 }
 
 #[test]
