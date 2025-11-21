@@ -20,6 +20,72 @@ pub struct TdgAnalysisConfig {
     pub verbose: bool,
 }
 
+/// Check for critical defects in the project (Known Defects v2.1)
+/// Auto-fails TDG analysis if critical defects are found
+async fn check_for_critical_defects(path: &Path) -> Result<()> {
+    use crate::services::defect_detector::{RustDefectDetector, Severity};
+    use walkdir::WalkDir;
+
+    let detector = RustDefectDetector::new();
+    let mut critical_defects_found = false;
+    let mut critical_count = 0;
+
+    eprintln!("🔍 Checking for critical defects...");
+
+    // Scan Rust files in the project
+    for entry in WalkDir::new(path)
+        .follow_links(true)
+        .into_iter()
+        .filter_map(|e| e.ok())
+    {
+        let file_path = entry.path();
+
+        // Only process Rust files
+        if !file_path.is_file() || file_path.extension() != Some(std::ffi::OsStr::new("rs")) {
+            continue;
+        }
+
+        // Read file content
+        let content = match tokio::fs::read_to_string(file_path).await {
+            Ok(c) => c,
+            Err(_) => continue, // Skip files we can't read
+        };
+
+        // Detect defects
+        let defects = detector.detect(&content, file_path);
+
+        // Count critical defects
+        for defect in &defects {
+            if defect.severity == Severity::Critical {
+                critical_defects_found = true;
+                critical_count += defect.instances.len();
+
+                // Print first occurrence for visibility
+                if let Some(instance) = defect.instances.first() {
+                    eprintln!(
+                        "❌ CRITICAL DEFECT: {} in {}:{}:{}",
+                        defect.name,
+                        instance.file,
+                        instance.line,
+                        instance.column
+                    );
+                    eprintln!("   Code: {}", instance.code_snippet);
+                }
+            }
+        }
+    }
+
+    if critical_defects_found {
+        eprintln!("\n⛔ TDG ANALYSIS FAILED: Found {} critical defect(s)", critical_count);
+        eprintln!("   Critical defects must be fixed before deployment.");
+        eprintln!("   Run: pmat analyze defects --path {} --format text", path.display());
+        anyhow::bail!("TDG auto-fail: Critical defects detected")
+    }
+
+    eprintln!("✅ No critical defects found");
+    Ok(())
+}
+
 pub async fn handle_analyze_tdg(config: TdgAnalysisConfig) -> Result<()> {
     eprintln!("🔍 Starting TDG (Technical Debt Grading) analysis...");
 
@@ -34,6 +100,10 @@ pub async fn handle_analyze_tdg(config: TdgAnalysisConfig) -> Result<()> {
     };
 
     write_or_print_result(&result, config.output).await?;
+
+    // KNOWN DEFECTS v2.1: Check for critical defects and auto-fail
+    check_for_critical_defects(&config.path).await?;
+
     eprintln!("✅ TDG analysis complete");
     Ok(())
 }
