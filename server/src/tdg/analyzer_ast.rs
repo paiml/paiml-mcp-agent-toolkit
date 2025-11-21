@@ -246,7 +246,7 @@ impl TdgAnalyzerAst {
                 },
                 semantic_sig: SemanticSignature {
                     ast_structure_hash: u64::from_le_bytes(
-                        content_hash.as_bytes()[0..8].try_into().unwrap(),
+                        content_hash.as_bytes()[0..8].try_into().expect("slice with incorrect length"),
                     ),
                     identifier_pattern: String::new(),
                     control_flow_pattern: String::new(),
@@ -1500,6 +1500,7 @@ impl TdgAnalyzerAst {
                     | "vendor"
                     | ".idea"
                     | ".vscode"
+                    | "tests"
             )
         } else {
             false
@@ -1976,17 +1977,17 @@ impl TdgAnalyzerAst {
 
         // Check for consistent naming patterns
         let snake_case_functions = regex::Regex::new(r"fun [a-z][a-z0-9_]*\(")
-            .unwrap()
+            .expect("Invalid regex")
             .find_iter(source)
             .count();
 
         let pascal_case_types = regex::Regex::new(r"(struct|enum|actor) [A-Z][A-Za-z0-9]*")
-            .unwrap()
+            .expect("Invalid regex")
             .find_iter(source)
             .count();
 
         let snake_case_vars = regex::Regex::new(r"let [a-z][a-z0-9_]* =")
-            .unwrap()
+            .expect("Invalid regex")
             .find_iter(source)
             .count();
 
@@ -1994,9 +1995,9 @@ impl TdgAnalyzerAst {
 
         // Reduce score for inconsistent naming
         if total_identifiers > 0 {
-            let fun_upper_regex = regex::Regex::new(r"fun [A-Z]").unwrap();
-            let struct_lower_regex = regex::Regex::new(r"struct [a-z]").unwrap();
-            let let_upper_regex = regex::Regex::new(r"let [A-Z]").unwrap();
+            let fun_upper_regex = regex::Regex::new(r"fun [A-Z]").expect("Invalid regex");
+            let struct_lower_regex = regex::Regex::new(r"struct [a-z]").expect("Invalid regex");
+            let let_upper_regex = regex::Regex::new(r"let [A-Z]").expect("Invalid regex");
 
             let inconsistent_count = fun_upper_regex.find_iter(source).count()
                 + struct_lower_regex.find_iter(source).count()

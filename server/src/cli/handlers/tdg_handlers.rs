@@ -27,6 +27,16 @@ pub struct TdgCommandConfig {
 
 /// Handle TDG command execution
 pub async fn handle_tdg_command(config: TdgCommandConfig) -> Result<()> {
+    if config.path.is_file() {
+        let path_str = config.path.to_string_lossy();
+        if path_str.contains("/tests/") || path_str.contains("/benches/") {
+            if !config.quiet {
+                println!("Skipping test file: {}", config.path.display());
+            }
+            return Ok(());
+        }
+    }
+
     let tdg_config = load_tdg_configuration(&config)?;
     let mut analyzer = TdgAnalyzer::with_storage(tdg_config)?;
 
