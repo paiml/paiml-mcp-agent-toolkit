@@ -73,11 +73,20 @@ impl RustDefectDetector {
 
         // Check if this is test code (should be excluded)
         let path_str = file_path.to_string_lossy();
-        let is_test = path_str.contains("/tests/")
+
+        // Check for test-related file paths
+        let is_test_path = path_str.contains("/tests/")
             || path_str.starts_with("tests/")
             || path_str.contains("/benches/")
-            || path_str.starts_with("benches/")
-            || content.contains("#[cfg(test)]");
+            || path_str.starts_with("benches/");
+
+        // Check for test-related cfg attributes
+        // Matches: #[cfg(test)], #[cfg(all(test, ...))], #[cfg(any(test, ...))]
+        let is_test_cfg = content.contains("#[cfg(test)]")
+            || content.contains("#[cfg(all(test,")
+            || content.contains("#[cfg(any(test,");
+
+        let is_test = is_test_path || is_test_cfg;
 
         if is_test {
             return defects; // No defects in test code
