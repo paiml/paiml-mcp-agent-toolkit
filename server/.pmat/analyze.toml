@@ -1,0 +1,118 @@
+# PMAT Quality Configuration
+# Version: v2.200.0
+# Project: paiml-mcp-agent-toolkit
+
+[general]
+# Zero-tolerance quality policy
+fail_on_critical_defects = true
+min_tdg_score = 90.0
+min_rust_project_score = 80.0
+
+[defects]
+# Known Defects v2.1: Zero-tolerance for production-breaking patterns
+enabled = true
+fail_on_critical = true
+output_format = "text"
+
+# Defect patterns to detect
+[[defects.patterns]]
+id = "RUST-UNWRAP-001"
+severity = "critical"
+description = "Unwrap calls that can panic in production"
+pattern = ".unwrap()"
+fix = "Use .expect() with descriptive messages or proper error handling with ?"
+evidence = "Cloudflare outage 2025-11-18 (3+ hour network outage)"
+
+[defects.exclusions]
+# Exclude test code, examples, and build scripts from defect analysis
+paths = [
+    "tests/",
+    "benches/",
+    "examples/",
+    "build.rs",
+    "fuzz/",
+]
+attributes = ["#[test]", "#[cfg(test)]"]
+
+[tdg]
+# Technical Debt Grading with auto-fail on critical defects
+enabled = true
+fail_on_critical_defects = true
+output_format = "table"
+min_score = 90.0
+grade_threshold = "A"
+
+[tdg.complexity]
+# Complexity thresholds (evidence-based from arXiv 2024)
+max_cyclomatic = 20
+max_cognitive = 25
+warn_on_high = true
+
+[rust_project_score]
+# Comprehensive Rust project quality scoring
+enabled = true
+mode = "fast"  # Use fast mode by default (skip clippy, mutation testing)
+min_score = 80.0
+min_grade = "B+"
+output_format = "text"
+
+[rust_project_score.categories]
+# Category-specific thresholds
+code_quality_min = 20.0      # 26 points available
+testing_min = 17.0            # 20 points available
+documentation_min = 12.0      # 15 points available
+tooling_min = 100.0           # 130 points available
+dependency_health_min = 9.0   # 12 points available
+performance_min = 7.0         # 10 points available
+
+[coverage]
+# Test coverage requirements
+enabled = true
+min_line_coverage = 85.0
+min_branch_coverage = 80.0
+tool = "cargo-llvm-cov"
+
+[mutation]
+# Mutation testing for test quality
+enabled = false  # Disabled by default (slow)
+min_mutation_score = 80.0
+tool = "cargo-mutants"
+timeout_per_mutant = 60  # seconds
+
+[ci_cd]
+# CI/CD integration settings
+fail_fast = true
+exit_on_failure = true
+parallel_analysis = true
+
+[ci_cd.quality_gates]
+# Quality gate checks (run in order)
+gates = [
+    "defects",      # CRITICAL: Must pass
+    "tdg",          # CRITICAL: Must pass
+    "clippy",       # Must pass
+    "rustfmt",      # Must pass
+    "tests",        # Must pass
+    "coverage",     # Must pass (if enabled)
+    "rust_score",   # Must achieve min score
+]
+
+[hooks]
+# Pre-commit hook configuration
+enabled = true
+run_on_commit = ["defects", "tdg", "clippy", "rustfmt"]
+run_on_push = ["defects", "tdg", "rust_score", "tests"]
+fail_on_error = true
+
+[output]
+# Output formatting
+colored = true
+verbose = false
+failures_only = false
+format = "text"  # text, json, junit, markdown, yaml
+
+[experimental]
+# Experimental features
+semantic_entropy = false       # Hallucination detection (Sprint 38)
+formal_verification = false    # Kani/Miri integration
+enhanced_naming = false        # Deep context enhancements

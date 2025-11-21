@@ -86,11 +86,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'New task: GH-78'
-  status: inprogress
+  status: completed
   priority: medium
   assigned_to: null
   created: 2025-11-19T15:51:41.224328584+00:00
-  updated: 2025-11-19T18:54:45.988091421+00:00
+  updated: 2025-11-21T16:51:07.183146276+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -106,6 +106,21 @@ roadmap:
   assigned_to: null
   created: 2025-11-19T17:15:45.907017935+00:00
   updated: 2025-11-19T18:26:26.095231711+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+- id: Rebuild and validate v2.200.0 binary with TDG auto-fail using EXTREME TDD
+  github_issue: null
+  item_type: task
+  title: 'New task: Rebuild and validate v2.200.0 binary with TDG auto-fail using EXTREME TDD'
+  status: completed
+  priority: medium
+  assigned_to: null
+  created: 2025-11-21T14:59:32.618321511+00:00
+  updated: 2025-11-21T16:20:28.930943215+00:00
   spec: null
   acceptance_criteria: []
   phases: []
