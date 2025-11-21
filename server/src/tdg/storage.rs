@@ -663,7 +663,7 @@ mod tests {
             total_score: 75.0,
             timestamp: (SystemTime::now()
                 .duration_since(UNIX_EPOCH)
-                .unwrap()
+                .unwrap_or_default()
                 .as_secs() as i64)
                 - 3600, // 1 hour ago
         };
@@ -844,15 +844,13 @@ mod git_context_integration_tests {
         // Assert: Deserialize back
         let deserialized: FullTdgRecord = serde_json::from_str(&json).unwrap();
 
-        if git_context.is_some() {
-            assert!(
-                deserialized.git_context.is_some(),
-                "Git context should round-trip through JSON"
-            );
-            let orig = git_context.as_ref().unwrap();
-            let deser = deserialized.git_context.as_ref().unwrap();
-            assert_eq!(orig.commit_sha, deser.commit_sha, "Commit SHA should match");
-            assert_eq!(orig.branch, deser.branch, "Branch should match");
+        if let Some(orig) = git_context.as_ref() {
+            if let Some(deser) = deserialized.git_context.as_ref() {
+                assert_eq!(orig.commit_sha, deser.commit_sha, "Commit SHA should match");
+                assert_eq!(orig.branch, deser.branch, "Branch should match");
+            } else {
+                panic!("Git context should round-trip through JSON");
+            }
         }
     }
 

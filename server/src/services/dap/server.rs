@@ -219,10 +219,10 @@ impl DapServer {
             request.seq,
             seq,
             request.command,
-            Some(serde_json::to_value(&self.capabilities).unwrap()),
+            Some(serde_json::to_value(&self.capabilities).expect("DAP capabilities should be serializable")),
         );
 
-        serde_json::to_value(&response).unwrap()
+        serde_json::to_value(&response).expect("DapResponse should be serializable")
     }
 
     /// Handle launch request
@@ -238,7 +238,7 @@ impl DapServer {
                     request.command,
                     format!("Invalid launch arguments: {}", e),
                 );
-                return serde_json::to_value(&response).unwrap();
+                return serde_json::to_value(&response).expect("DapResponse should be serializable");
             }
         };
 
@@ -275,14 +275,14 @@ impl DapServer {
         let seq = self.next_seq();
         let response = DapResponse::success(request.seq, seq, request.command, None);
 
-        serde_json::to_value(&response).unwrap()
+        serde_json::to_value(&response).expect("DapResponse should be serializable")
     }
 
     /// Handle configurationDone request
     fn handle_configuration_done(&self, request: DapRequest) -> Value {
         let seq = self.next_seq();
         let response = DapResponse::success(request.seq, seq, request.command, None);
-        serde_json::to_value(&response).unwrap()
+        serde_json::to_value(&response).expect("DapResponse should be serializable")
     }
 
     /// Handle disconnect request
@@ -298,7 +298,7 @@ impl DapServer {
 
         let seq = self.next_seq();
         let response = DapResponse::success(request.seq, seq, request.command, None);
-        serde_json::to_value(&response).unwrap()
+        serde_json::to_value(&response).expect("DapResponse should be serializable")
     }
 
     /// Handle terminate request
@@ -314,7 +314,7 @@ impl DapServer {
 
         let seq = self.next_seq();
         let response = DapResponse::success(request.seq, seq, request.command, None);
-        serde_json::to_value(&response).unwrap()
+        serde_json::to_value(&response).expect("DapResponse should be serializable")
     }
 
     /// Handle setBreakpoints request
@@ -359,7 +359,7 @@ impl DapServer {
             Some(json!({"breakpoints": []})),
         );
 
-        serde_json::to_value(&response).unwrap()
+        serde_json::to_value(&response).expect("DapResponse should be serializable")
     }
 
     /// Handle threads request
@@ -375,7 +375,7 @@ impl DapServer {
             request.command,
             Some(json!({"threads": threads})),
         );
-        serde_json::to_value(&response).unwrap()
+        serde_json::to_value(&response).expect("DapResponse should be serializable")
     }
 
     /// Handle stackTrace request
@@ -387,7 +387,7 @@ impl DapServer {
             request.command,
             Some(json!({"stackFrames": [], "totalFrames": 0})),
         );
-        serde_json::to_value(&response).unwrap()
+        serde_json::to_value(&response).expect("DapResponse should be serializable")
     }
 
     /// Handle scopes request
@@ -416,7 +416,7 @@ impl DapServer {
             request.command,
             Some(json!({"scopes": scopes})),
         );
-        serde_json::to_value(&response).unwrap()
+        serde_json::to_value(&response).expect("DapResponse should be serializable")
     }
 
     /// Handle variables request
@@ -456,7 +456,7 @@ impl DapServer {
             request.command,
             Some(json!({"variables": variables})),
         );
-        serde_json::to_value(&response).unwrap()
+        serde_json::to_value(&response).expect("DapResponse should be serializable")
     }
 
     /// Handle continue request
@@ -468,7 +468,7 @@ impl DapServer {
             request.command,
             Some(json!({"allThreadsContinued": true})),
         );
-        serde_json::to_value(&response).unwrap()
+        serde_json::to_value(&response).expect("DapResponse should be serializable")
     }
 
     /// Handle next request (step over)
@@ -478,7 +478,7 @@ impl DapServer {
 
         let seq = self.next_seq();
         let response = DapResponse::success(request.seq, seq, request.command, None);
-        serde_json::to_value(&response).unwrap()
+        serde_json::to_value(&response).expect("DapResponse should be serializable")
     }
 
     /// Handle stepIn request
@@ -488,7 +488,7 @@ impl DapServer {
 
         let seq = self.next_seq();
         let response = DapResponse::success(request.seq, seq, request.command, None);
-        serde_json::to_value(&response).unwrap()
+        serde_json::to_value(&response).expect("DapResponse should be serializable")
     }
 
     /// Handle stepOut request
@@ -498,14 +498,14 @@ impl DapServer {
 
         let seq = self.next_seq();
         let response = DapResponse::success(request.seq, seq, request.command, None);
-        serde_json::to_value(&response).unwrap()
+        serde_json::to_value(&response).expect("DapResponse should be serializable")
     }
 
     /// Handle pause request
     fn handle_pause(&self, request: DapRequest) -> Value {
         let seq = self.next_seq();
         let response = DapResponse::success(request.seq, seq, request.command, None);
-        serde_json::to_value(&response).unwrap()
+        serde_json::to_value(&response).expect("DapResponse should be serializable")
     }
 
     /// Handle unknown command
@@ -517,7 +517,7 @@ impl DapServer {
             request.command,
             "Command not supported".to_string(),
         );
-        serde_json::to_value(&response).unwrap()
+        serde_json::to_value(&response).expect("DapResponse should be serializable")
     }
 
     // ========================================================================

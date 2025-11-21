@@ -102,8 +102,8 @@ impl MakefileCompressor {
         Self {
             critical_targets,
             critical_vars,
-            var_pattern: Regex::new(r"^([A-Z_][A-Z0-9_]*)\s*[:?]?=").unwrap(),
-            target_pattern: Regex::new(r"^([a-zA-Z0-9_\-\.]+):").unwrap(),
+            var_pattern: Regex::new(r"^([A-Z_][A-Z0-9_]*)\s*[:?]?=").expect("Invalid regex"),
+            target_pattern: Regex::new(r"^([a-zA-Z0-9_\-\.]+):").expect("Invalid regex"),
         }
     }
 
@@ -114,9 +114,11 @@ impl MakefileCompressor {
         for line in content.lines() {
             let trimmed = line.trim();
             if let Some(caps) = self.var_pattern.captures(trimmed) {
-                let var_name = caps.get(1).unwrap().as_str();
-                if self.critical_vars.contains(var_name) || var_name.starts_with("PROJECT_") {
-                    result.variables.push(line.to_string());
+                if let Some(var_name_match) = caps.get(1) {
+                    let var_name = var_name_match.as_str();
+                    if self.critical_vars.contains(var_name) || var_name.starts_with("PROJECT_") {
+                        result.variables.push(line.to_string());
+                    }
                 }
             }
         }
@@ -161,29 +163,31 @@ impl MakefileCompressor {
 
             // Check for target definition
             if let Some(caps) = self.target_pattern.captures(line) {
-                let target_name = caps.get(1).unwrap().as_str().to_string();
+                if let Some(target_name_match) = caps.get(1) {
+                    let target_name = target_name_match.as_str().to_string();
 
-                // Extract dependencies
-                let deps = line
-                    .split(':')
-                    .nth(1)
-                    .map(|d| {
-                        d.split_whitespace()
-                            .map(std::string::ToString::to_string)
-                            .collect::<Vec<_>>()
-                    })
-                    .unwrap_or_default();
+                    // Extract dependencies
+                    let deps = line
+                        .split(':')
+                        .nth(1)
+                        .map(|d| {
+                            d.split_whitespace()
+                                .map(std::string::ToString::to_string)
+                                .collect::<Vec<_>>()
+                        })
+                        .unwrap_or_default();
 
-                targets.insert(
-                    target_name.clone(),
-                    ParsedTarget {
-                        dependencies: deps,
-                        recipe: Vec::new(),
-                    },
-                );
+                    targets.insert(
+                        target_name.clone(),
+                        ParsedTarget {
+                            dependencies: deps,
+                            recipe: Vec::new(),
+                        },
+                    );
 
-                current_target = Some(target_name);
-                in_recipe = true;
+                    current_target = Some(target_name);
+                    in_recipe = true;
+                }
             } else if in_recipe {
                 // Check if line starts with tab or spaces (recipe line)
                 if line.starts_with('\t') || line.starts_with("    ") {

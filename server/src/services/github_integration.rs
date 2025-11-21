@@ -250,11 +250,11 @@ fn extract_file_paths(text: &str) -> Vec<String> {
     // Match common file path patterns
     let patterns = vec![
         // Backtick-quoted paths: `src/file.rs`
-        Regex::new(r"`([a-zA-Z0-9_\-./]+\.[a-zA-Z0-9]+)`").unwrap(),
+        Regex::new(r"`([a-zA-Z0-9_\-./]+\.[a-zA-Z0-9]+)`").expect("Invalid regex"),
         // Explicit paths: src/services/file.rs or server/src/handlers/mod.rs
-        Regex::new(r"\b(?:[a-zA-Z0-9_\-]+/)*[a-zA-Z0-9_\-]+\.[a-zA-Z0-9]+\b").unwrap(),
+        Regex::new(r"\b(?:[a-zA-Z0-9_\-]+/)*[a-zA-Z0-9_\-]+\.[a-zA-Z0-9]+\b").expect("Invalid regex"),
         // Module paths: services::complexity::analyze
-        Regex::new(r"\b[a-zA-Z0-9_]+(?:::[a-zA-Z0-9_]+)+\b").unwrap(),
+        Regex::new(r"\b[a-zA-Z0-9_]+(?:::[a-zA-Z0-9_]+)+\b").expect("Invalid regex"),
     ];
 
     for pattern in patterns {

@@ -19,33 +19,33 @@ lazy_static! {
     // C function definition regex
     static ref C_DEF_REGEX: Regex = Regex::new(
         r"(?m)^\s*(?:static\s+)?(?:inline\s+)?(?:void|int|char|float|double|long|short|unsigned|struct\s+\w+|enum\s+\w+|\w+\s+\*?)\s+(\w+)\s*\([^)]*\)\s*(?:\{|$)"
-    ).unwrap();
+    ).expect("Invalid regex");
 
     // C function call regex
-    static ref C_CALL_REGEX: Regex = Regex::new(r"\b(\w+)\s*\(").unwrap();
+    static ref C_CALL_REGEX: Regex = Regex::new(r"\b(\w+)\s*\(").expect("Invalid regex");
 
     // C function declaration regex
     static ref C_DECLARATION_REGEX: Regex = Regex::new(
         r"^\s*(?:static\s+)?(?:inline\s+)?(?:extern\s+)?(?:void|int|char|float|double|long|short|unsigned|struct\s+\w+|enum\s+\w+|\w+\s+\*?)\s+\w+\s*\("
-    ).unwrap();
+    ).expect("Invalid regex");
 
     // Python function definition regex
-    static ref PY_DEF_REGEX: Regex = Regex::new(r"(?m)^\s*def\s+(\w+)\s*\(").unwrap();
+    static ref PY_DEF_REGEX: Regex = Regex::new(r"(?m)^\s*def\s+(\w+)\s*\(").expect("Invalid regex");
 
     // Python function call regex
-    static ref PY_CALL_REGEX: Regex = Regex::new(r"\b(\w+)\s*\(").unwrap();
+    static ref PY_CALL_REGEX: Regex = Regex::new(r"\b(\w+)\s*\(").expect("Invalid regex");
 
     // Python def check regex
-    static ref PY_DEF_CHECK_REGEX: Regex = Regex::new(r"^\s*def\s+\w+\s*\(").unwrap();
+    static ref PY_DEF_CHECK_REGEX: Regex = Regex::new(r"^\s*def\s+\w+\s*\(").expect("Invalid regex");
 
     // Rust function definition regex
-    static ref RUST_DEF_REGEX: Regex = Regex::new(r"(?m)^\s*(?:pub\s+)?(?:async\s+)?fn\s+(\w+)\s*[<(]").unwrap();
+    static ref RUST_DEF_REGEX: Regex = Regex::new(r"(?m)^\s*(?:pub\s+)?(?:async\s+)?fn\s+(\w+)\s*[<(]").expect("Invalid regex");
 
     // Rust function call regex
-    static ref RUST_CALL_REGEX: Regex = Regex::new(r"\b(\w+)\s*[!]?\(").unwrap();
+    static ref RUST_CALL_REGEX: Regex = Regex::new(r"\b(\w+)\s*[!]?\(").expect("Invalid regex");
 
     // Rust fn definition check regex
-    static ref RUST_FN_DEF_REGEX: Regex = Regex::new(r"^\s*(?:pub\s+)?(?:async\s+)?fn\s+\w+").unwrap();
+    static ref RUST_FN_DEF_REGEX: Regex = Regex::new(r"^\s*(?:pub\s+)?(?:async\s+)?fn\s+\w+").expect("Invalid regex");
 }
 
 /// Dead code analysis result
@@ -311,30 +311,34 @@ fn analyze_c_files(files: &[std::path::PathBuf]) -> Result<(Vec<FunctionInfo>, H
 
             // Check current line
             if let Some(cap) = C_DEF_REGEX.captures(line) {
-                let func_name = cap.get(1).unwrap().as_str().to_string();
+                if let Some(func_name_match) = cap.get(1) {
+                    let func_name = func_name_match.as_str().to_string();
 
-                // Skip main and common library functions
-                if func_name != "main" && !func_name.starts_with("_") {
-                    defined_functions.push(FunctionInfo {
-                        name: func_name,
-                        file: file.display().to_string(),
-                        line: line_idx + 1,
-                    });
+                    // Skip main and common library functions
+                    if func_name != "main" && !func_name.starts_with("_") {
+                        defined_functions.push(FunctionInfo {
+                            name: func_name,
+                            file: file.display().to_string(),
+                            line: line_idx + 1,
+                        });
+                    }
                 }
             } else if line_idx + 1 < lines.len() {
                 // Check if next line has opening brace (multiline function definition)
                 let combined = format!("{} {}", line, lines[line_idx + 1].trim());
                 if let Some(cap) = C_DEF_REGEX.captures(&combined) {
-                    let func_name = cap.get(1).unwrap().as_str().to_string();
-                    if func_name != "main" && !func_name.starts_with("_") {
-                        // Add function at the NEXT line (where the actual definition is)
-                        defined_functions.push(FunctionInfo {
-                            name: func_name,
-                            file: file.display().to_string(),
-                            line: line_idx + 2, // Next line, not current
-                        });
-                        // Skip processing the next line since we've already handled it
-                        skip_next_line = true;
+                    if let Some(func_name_match) = cap.get(1) {
+                        let func_name = func_name_match.as_str().to_string();
+                        if func_name != "main" && !func_name.starts_with("_") {
+                            // Add function at the NEXT line (where the actual definition is)
+                            defined_functions.push(FunctionInfo {
+                                name: func_name,
+                                file: file.display().to_string(),
+                                line: line_idx + 2, // Next line, not current
+                            });
+                            // Skip processing the next line since we've already handled it
+                            skip_next_line = true;
+                        }
                     }
                 }
             }
@@ -356,15 +360,17 @@ fn analyze_c_files(files: &[std::path::PathBuf]) -> Result<(Vec<FunctionInfo>, H
 
             // Find all function calls
             for cap in C_CALL_REGEX.captures_iter(code_to_scan) {
-                let func_name = cap.get(1).unwrap().as_str().to_string();
-                // Filter out common keywords that look like function calls
-                if ![
-                    "if", "while", "for", "switch", "sizeof", "return", "printf", "include",
-                    "define",
-                ]
-                .contains(&func_name.as_str())
-                {
-                    called_functions.insert(func_name);
+                if let Some(func_name_match) = cap.get(1) {
+                    let func_name = func_name_match.as_str().to_string();
+                    // Filter out common keywords that look like function calls
+                    if ![
+                        "if", "while", "for", "switch", "sizeof", "return", "printf", "include",
+                        "define",
+                    ]
+                    .contains(&func_name.as_str())
+                    {
+                        called_functions.insert(func_name);
+                    }
                 }
             }
         }
@@ -399,15 +405,17 @@ fn analyze_python_files(
         // Find function definitions: def function_name(args):
         for (line_idx, line) in content.lines().enumerate() {
             if let Some(cap) = PY_DEF_REGEX.captures(line) {
-                let func_name = cap.get(1).unwrap().as_str().to_string();
+                if let Some(func_name_match) = cap.get(1) {
+                    let func_name = func_name_match.as_str().to_string();
 
-                // Skip main and special methods
-                if func_name != "main" && !func_name.starts_with("__") {
-                    defined_functions.push(FunctionInfo {
-                        name: func_name,
-                        file: file.display().to_string(),
-                        line: line_idx + 1,
-                    });
+                    // Skip main and special methods
+                    if func_name != "main" && !func_name.starts_with("__") {
+                        defined_functions.push(FunctionInfo {
+                            name: func_name,
+                            file: file.display().to_string(),
+                            line: line_idx + 1,
+                        });
+                    }
                 }
             }
         }
@@ -420,15 +428,17 @@ fn analyze_python_files(
             }
 
             for cap in PY_CALL_REGEX.captures_iter(line) {
-                let func_name = cap.get(1).unwrap().as_str().to_string();
-                // Filter out Python keywords
-                if ![
-                    "if", "while", "for", "print", "range", "len", "str", "int", "list", "dict",
-                    "set", "def",
-                ]
-                .contains(&func_name.as_str())
-                {
-                    called_functions.insert(func_name);
+                if let Some(func_name_match) = cap.get(1) {
+                    let func_name = func_name_match.as_str().to_string();
+                    // Filter out Python keywords
+                    if ![
+                        "if", "while", "for", "print", "range", "len", "str", "int", "list", "dict",
+                        "set", "def",
+                    ]
+                    .contains(&func_name.as_str())
+                    {
+                        called_functions.insert(func_name);
+                    }
                 }
             }
         }
@@ -495,15 +505,17 @@ fn analyze_rust_files(
         // Find function definitions: fn function_name(
         for (line_idx, line) in content.lines().enumerate() {
             if let Some(cap) = RUST_DEF_REGEX.captures(line) {
-                let func_name = cap.get(1).unwrap().as_str().to_string();
+                if let Some(func_name_match) = cap.get(1) {
+                    let func_name = func_name_match.as_str().to_string();
 
-                // Skip main and test functions
-                if func_name != "main" && !func_name.starts_with("test_") {
-                    defined_functions.push(FunctionInfo {
-                        name: func_name,
-                        file: file.display().to_string(),
-                        line: line_idx + 1,
-                    });
+                    // Skip main and test functions
+                    if func_name != "main" && !func_name.starts_with("test_") {
+                        defined_functions.push(FunctionInfo {
+                            name: func_name,
+                            file: file.display().to_string(),
+                            line: line_idx + 1,
+                        });
+                    }
                 }
             }
         }
@@ -516,15 +528,17 @@ fn analyze_rust_files(
             }
 
             for cap in RUST_CALL_REGEX.captures_iter(line) {
-                let func_name = cap.get(1).unwrap().as_str().to_string();
-                // Filter out Rust keywords
-                if ![
-                    "if", "while", "for", "match", "return", "let", "mut", "use", "mod", "fn",
-                    "println", "vec", "Some", "None", "Ok", "Err",
-                ]
-                .contains(&func_name.as_str())
-                {
-                    called_functions.insert(func_name);
+                if let Some(func_name_match) = cap.get(1) {
+                    let func_name = func_name_match.as_str().to_string();
+                    // Filter out Rust keywords
+                    if ![
+                        "if", "while", "for", "match", "return", "let", "mut", "use", "mod", "fn",
+                        "println", "vec", "Some", "None", "Ok", "Err",
+                    ]
+                    .contains(&func_name.as_str())
+                    {
+                        called_functions.insert(func_name);
+                    }
                 }
             }
         }
