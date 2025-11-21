@@ -27,6 +27,10 @@ use rayon::prelude::*;
 use std::collections::HashMap;
 use std::path::Path;
 
+/// Rust Project Score specification version
+/// This tracks the scoring methodology version, not the PMAT binary version
+pub const SPEC_VERSION: &str = "2.1";
+
 /// Orchestrates all 8 category scorers to produce unified project score
 pub struct RustProjectScoreOrchestrator {
     /// All 8 category scorers
@@ -50,9 +54,9 @@ impl RustProjectScoreOrchestrator {
         Self { scorers }
     }
 
-    /// Get orchestrator name
-    pub fn name(&self) -> &str {
-        "Rust Project Score v2.1"
+    /// Get orchestrator name with spec version
+    pub fn name(&self) -> String {
+        format!("Rust Project Score v{}", SPEC_VERSION)
     }
 
     /// Get maximum possible points (134)
@@ -248,7 +252,7 @@ mod tests {
     #[test]
     fn test_orchestrator_creation() {
         let orch = RustProjectScoreOrchestrator::new();
-        assert_eq!(orch.name(), "Rust Project Score v2.1");
+        assert_eq!(orch.name(), format!("Rust Project Score v{}", SPEC_VERSION));
         assert_eq!(orch.max_points(), 134.0);
     }
 

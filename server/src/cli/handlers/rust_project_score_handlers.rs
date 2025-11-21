@@ -126,11 +126,13 @@ fn format_text(
     recommendations: &[String],
     _verbose: bool,
 ) -> String {
+    use crate::services::rust_project_score::orchestrator::SPEC_VERSION;
+
     let mut output = String::new();
 
     // Header
     output.push_str("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
-    output.push_str("🦀  Rust Project Score v1.1\n");
+    output.push_str(&format!("🦀  Rust Project Score v{}\n", SPEC_VERSION));
     output.push_str("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
     output.push('\n');
 
@@ -215,10 +217,12 @@ fn format_markdown(
     recommendations: &[String],
     _verbose: bool,
 ) -> String {
+    use crate::services::rust_project_score::orchestrator::SPEC_VERSION;
+
     let mut output = String::new();
 
     // Header
-    output.push_str("# 🦀 Rust Project Score v1.1\n\n");
+    output.push_str(&format!("# 🦀 Rust Project Score v{}\n\n", SPEC_VERSION));
 
     // Summary
     output.push_str("## 📌 Summary\n\n");
