@@ -6,11 +6,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'New task: Fix SATD false positive and validate Known Defects scoring'
-  status: inprogress
+  status: completed
   priority: medium
   assigned_to: null
   created: 2025-11-21T06:53:20.226128437+00:00
-  updated: 2025-11-21T06:53:20.226128437+00:00
+  updated: 2025-11-21T14:08:25.475620550+00:00
   spec: null
   acceptance_criteria: []
   phases: []
