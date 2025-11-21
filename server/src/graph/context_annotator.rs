@@ -75,8 +75,12 @@ impl GraphContextAnnotator {
             }
         }
 
-        // Sort by importance
-        annotations.sort_by(|a, b| b.importance_score.partial_cmp(&a.importance_score).unwrap());
+        // Sort by importance (NaN values sorted last)
+        annotations.sort_by(|a, b| {
+            b.importance_score
+                .partial_cmp(&a.importance_score)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         annotations
     }

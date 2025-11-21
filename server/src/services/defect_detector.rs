@@ -66,30 +66,62 @@ impl RustDefectDetector {
         }
     }
 
+    /// Check if a file should be excluded from defect detection
+    fn should_exclude_file(&self, file_path: &Path) -> bool {
+        let path_str = file_path.to_string_lossy();
+        let file_name = file_path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("");
+
+        // Exclude test directories
+        if path_str.contains("/tests/")
+            || path_str.starts_with("tests/")
+            || path_str.contains("/benches/")
+            || path_str.starts_with("benches/")
+        {
+            return true;
+        }
+
+        // Exclude test file patterns
+        if file_name.ends_with("_tests.rs")
+            || file_name.ends_with("_test.rs")
+            || file_name.starts_with("test_")
+        {
+            return true;
+        }
+
+        false
+    }
+
+    /// Check if content contains test-related markers
+    fn has_test_markers(&self, content: &str) -> bool {
+        // Check for test cfg attributes
+        let has_cfg_test = content.contains("#[cfg(test)]")
+            || content.contains("#[cfg(all(test,")
+            || content.contains("#[cfg(any(test,");
+
+        // Check for test function attributes
+        let has_test_attr = content.contains("#[test]")
+            || content.contains("#[tokio::test]")
+            || content.contains("#[async_test]");
+
+        has_cfg_test || has_test_attr
+    }
+
     /// Detect all defects in Rust source code
     /// Returns vector of detected defect patterns with instances
     pub fn detect(&self, content: &str, file_path: &Path) -> Vec<DefectPattern> {
         let mut defects = Vec::new();
 
-        // Check if this is test code (should be excluded)
-        let path_str = file_path.to_string_lossy();
+        // Exclude test files entirely
+        if self.should_exclude_file(file_path) {
+            return defects;
+        }
 
-        // Check for test-related file paths
-        let is_test_path = path_str.contains("/tests/")
-            || path_str.starts_with("tests/")
-            || path_str.contains("/benches/")
-            || path_str.starts_with("benches/");
-
-        // Check for test-related cfg attributes
-        // Matches: #[cfg(test)], #[cfg(all(test, ...))], #[cfg(any(test, ...))]
-        let is_test_cfg = content.contains("#[cfg(test)]")
-            || content.contains("#[cfg(all(test,")
-            || content.contains("#[cfg(any(test,");
-
-        let is_test = is_test_path || is_test_cfg;
-
-        if is_test {
-            return defects; // No defects in test code
+        // Exclude files with test markers
+        if self.has_test_markers(content) {
+            return defects;
         }
 
         // Detect .unwrap() calls
