@@ -23,9 +23,6 @@ disallowed-methods = [
 # Cognitive complexity threshold (warn if function exceeds 25)
 cognitive-complexity-threshold = 25
 
-# Maximum cyclomatic complexity before warning
-cyclomatic-complexity-threshold = 20
-
 # Type complexity limit
 type-complexity-threshold = 250
 
