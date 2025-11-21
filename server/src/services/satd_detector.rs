@@ -1213,8 +1213,10 @@ impl SATDDetector {
                 || (comment_text.contains("bug") && comment_text.contains("report"))
                 // False positive fixes: Comments describing bug-related functionality
                 || (comment_text.contains("broken") && comment_text.contains("dep"))
-                || (comment_text.contains("bug") && comment_text.contains("fix") && comment_text.contains("pattern"))
-                || (comment_text.contains("bug") && comment_text.contains("fix") && comment_text.contains("claim"))
+                || (comment_text.contains("bug") && comment_text.contains("fix") && (comment_text.contains("pattern") || comment_text.contains("patterns")))
+                || (comment_text.contains("bug") && comment_text.contains("fix") && (comment_text.contains("claim") || comment_text.contains("claims")))
+                || (comment_text.contains("bug") && comment_text.contains("fix") && comment_text.contains("commit"))
+                || (comment_text.contains("describes functionality") && comment_text.contains("bug"))
                 || (comment_text.contains("extract") && comment_text.contains("bug"))
                 // Bug tracking ID patterns (BUG-XXX, PMAT-BUG-XXX like JIRA tickets)
                 || self.is_bug_tracking_id(&comment_text)
