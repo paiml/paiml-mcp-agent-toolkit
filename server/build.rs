@@ -134,18 +134,26 @@ fn process_assets(assets: &[(&str, &str)]) {
     for (url, filename) in assets {
         let path = vendor_dir.join(filename);
         let gz_path = vendor_dir.join(format!("{filename}.gz"));
+        let hash_path = vendor_dir.join(format!("{filename}.hash"));
 
-        if should_skip_asset(&gz_path) {
+        if should_skip_asset(&path, &gz_path, &hash_path) {
+            println!("cargo:warning=Skipping unchanged asset: {filename} (O(1) hash check)");
             continue;
         }
 
         ensure_asset_downloaded(&path, &gz_path, url, filename);
-        compress_asset(&path, &gz_path, filename);
+        compress_asset(&path, &gz_path, &hash_path, filename);
     }
 }
 
-fn should_skip_asset(gz_path: &Path) -> bool {
-    gz_path.exists()
+fn should_skip_asset(source_path: &Path, gz_path: &Path, hash_path: &Path) -> bool {
+    // O(1) optimization: Skip if output exists AND source hasn't changed
+    if !gz_path.exists() || !source_path.exists() {
+        return false;
+    }
+
+    // Hash-based check: O(1) for unchanged files
+    !has_file_changed(source_path, hash_path)
 }
 
 fn ensure_asset_downloaded(path: &Path, gz_path: &Path, url: &str, filename: &str) {
@@ -190,7 +198,7 @@ fn handle_download_failure(e: &ureq::Error, path: &Path, filename: &str) {
     let _ = fs::write(path, b"/* Asset download failed during build */");
 }
 
-fn compress_asset(path: &Path, gz_path: &Path, filename: &str) {
+fn compress_asset(path: &Path, gz_path: &Path, hash_path: &Path, filename: &str) {
     if !path.exists() {
         return;
     }
@@ -202,6 +210,11 @@ fn compress_asset(path: &Path, gz_path: &Path, filename: &str) {
     };
 
     write_compressed_file(gz_path, &compressed, filename, input.len());
+
+    // Save hash for O(1) skip detection on next build
+    if let Some(hash) = calculate_file_hash(path) {
+        let _ = write_hash_file(hash_path, &hash);
+    }
 }
 
 fn create_compressed_data(input: &[u8]) -> Option<Vec<u8>> {
@@ -243,14 +256,61 @@ fn compress_templates() {
         return;
     }
 
-    let (templates, total_original) = load_all_templates(templates_dir);
+    // O(1) optimization: Skip if templates haven't changed
+    let out_dir = env::var("OUT_DIR").expect("OUT_DIR must be set");
+    let hash_path = Path::new(&out_dir).join("templates.hash");
 
-    if templates.is_empty() {
-        println!("cargo:warning=No templates found for compression");
-        return;
+    if let Some(current_hash) = calculate_templates_hash(templates_dir) {
+        if hash_path.exists() {
+            if let Some(stored_hash) = read_stored_hash(&hash_path) {
+                if current_hash == stored_hash {
+                    println!("cargo:warning=Skipping unchanged templates (O(1) hash check)");
+                    return;
+                }
+            }
+        }
+
+        let (templates, total_original) = load_all_templates(templates_dir);
+
+        if templates.is_empty() {
+            println!("cargo:warning=No templates found for compression");
+            return;
+        }
+
+        compress_and_save_templates(&templates, total_original);
+
+        // Save hash for O(1) skip detection on next build
+        let _ = write_hash_file(&hash_path, &current_hash);
+    }
+}
+
+/// Calculate combined hash of all template files
+fn calculate_templates_hash(templates_dir: &Path) -> Option<String> {
+    use sha2::{Digest, Sha256};
+
+    let mut hasher = Sha256::new();
+    let mut file_count = 0;
+
+    if let Ok(files) = collect_template_files(templates_dir) {
+        // Sort files for deterministic hashing
+        let mut sorted_files = files;
+        sorted_files.sort();
+
+        for file in sorted_files {
+            if let Ok(content) = fs::read(&file) {
+                // Include filename in hash for renames
+                hasher.update(file.to_string_lossy().as_bytes());
+                hasher.update(&content);
+                file_count += 1;
+            }
+        }
     }
 
-    compress_and_save_templates(&templates, total_original);
+    if file_count == 0 {
+        return None;
+    }
+
+    Some(format!("{:x}", hasher.finalize()))
 }
 
 /// Validate templates directory exists (cognitive complexity ≤2)
@@ -422,6 +482,16 @@ fn minify_js_file(input_path: &Path, output_path: &Path) {
         return;
     }
 
+    // O(1) optimization: Skip if unchanged
+    let hash_path = output_path.with_file_name(format!("{}.hash", output_path.file_name().unwrap().to_string_lossy()));
+    if output_path.exists() && !has_file_changed(input_path, &hash_path) {
+        println!(
+            "cargo:warning=Skipping unchanged JavaScript: {} (O(1) hash check)",
+            input_path.display()
+        );
+        return;
+    }
+
     let content = match fs::read_to_string(input_path) {
         Ok(content) => content,
         Err(e) => {
@@ -435,6 +505,11 @@ fn minify_js_file(input_path: &Path, output_path: &Path) {
     if let Err(e) = fs::write(output_path, &minified) {
         println!("cargo:warning=Failed to write minified JS: {e}");
         return;
+    }
+
+    // Save hash for O(1) skip detection on next build
+    if let Some(hash) = calculate_file_hash(input_path) {
+        let _ = write_hash_file(&hash_path, &hash);
     }
 
     #[allow(clippy::cast_precision_loss)]
@@ -453,6 +528,16 @@ fn minify_css_file(input_path: &Path, output_path: &Path) {
         return;
     }
 
+    // O(1) optimization: Skip if unchanged
+    let hash_path = output_path.with_file_name(format!("{}.hash", output_path.file_name().unwrap().to_string_lossy()));
+    if output_path.exists() && !has_file_changed(input_path, &hash_path) {
+        println!(
+            "cargo:warning=Skipping unchanged CSS: {} (O(1) hash check)",
+            input_path.display()
+        );
+        return;
+    }
+
     let content = match fs::read_to_string(input_path) {
         Ok(content) => content,
         Err(e) => {
@@ -466,6 +551,11 @@ fn minify_css_file(input_path: &Path, output_path: &Path) {
     if let Err(e) = fs::write(output_path, &minified) {
         println!("cargo:warning=Failed to write minified CSS: {e}");
         return;
+    }
+
+    // Save hash for O(1) skip detection on next build
+    if let Some(hash) = calculate_file_hash(input_path) {
+        let _ = write_hash_file(&hash_path, &hash);
     }
 
     #[allow(clippy::cast_precision_loss)]
@@ -550,6 +640,46 @@ fn calculate_asset_hash() -> String {
     }
 
     format!("{:x}", hasher.finish())
+}
+
+/// Calculate SHA256 hash of a file for change detection
+fn calculate_file_hash(path: &Path) -> Option<String> {
+    use sha2::{Digest, Sha256};
+
+    let content = fs::read(path).ok()?;
+    let mut hasher = Sha256::new();
+    hasher.update(&content);
+    Some(format!("{:x}", hasher.finalize()))
+}
+
+/// Read stored hash from .hash file
+fn read_stored_hash(hash_path: &Path) -> Option<String> {
+    fs::read_to_string(hash_path).ok().map(|s| s.trim().to_string())
+}
+
+/// Write hash to .hash file
+fn write_hash_file(hash_path: &Path, hash: &str) -> bool {
+    fs::write(hash_path, hash).is_ok()
+}
+
+/// Check if source file has changed by comparing hashes
+fn has_file_changed(source_path: &Path, hash_path: &Path) -> bool {
+    // If hash file doesn't exist, file has "changed" (needs processing)
+    if !hash_path.exists() {
+        return true;
+    }
+
+    // Calculate current hash
+    let Some(current_hash) = calculate_file_hash(source_path) else {
+        return true; // Can't read source, assume changed
+    };
+
+    // Compare with stored hash
+    let Some(stored_hash) = read_stored_hash(hash_path) else {
+        return true; // Can't read stored hash, assume changed
+    };
+
+    current_hash != stored_hash
 }
 
 /// Compiles Cap'n Proto schema for MCP server
