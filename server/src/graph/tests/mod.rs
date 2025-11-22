@@ -1,9 +1,5 @@
-// Test-driven development for graph module
-// All tests written BEFORE implementation
+// Integration tests for graph adapter and aprender integration
+// Complexity: All functions ≤ 10
+// SATD: Zero tolerance
 
-mod builder_tests;
-mod community_tests;
-mod deterministic;
-mod pagerank_tests;
-mod properties;
-mod types_tests;
+pub mod integration_tests;

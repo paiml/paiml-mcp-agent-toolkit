@@ -7,6 +7,9 @@ use super::TursoVectorDB;
 use std::collections::HashMap;
 use std::sync::Arc;
 
+// Import aprender for ML algorithms (Phase 2 migration)
+use aprender::prelude::*;
+
 /// Clustering engine
 pub struct ClusteringEngine {
     #[allow(dead_code)] // Reserved for future clustering Phase 2 integration
@@ -117,6 +120,22 @@ impl ClusteringEngine {
         })
     }
 
+    /// Convert Vec<Vec<f32>> to aprender Matrix
+    /// Helper for Phase 2 migration to aprender
+    fn vectors_to_matrix(vectors: &[Vec<f32>]) -> Result<Matrix<f32>, String> {
+        if vectors.is_empty() {
+            return Err("Cannot convert empty vector set".to_string());
+        }
+
+        let rows = vectors.len();
+        let cols = vectors[0].len();
+
+        // Flatten to 1D vector for Matrix::from_vec
+        let data: Vec<f32> = vectors.iter().flat_map(|v| v.iter().copied()).collect();
+
+        Matrix::from_vec(rows, cols, data).map_err(|e| format!("Matrix conversion error: {e:?}"))
+    }
+
     /// K-means clustering implementation
     ///
     /// # Arguments
@@ -132,6 +151,7 @@ impl ClusteringEngine {
         k: usize,
         max_iterations: usize,
     ) -> Result<Vec<usize>, String> {
+        // Phase 2: Use aprender for KMeans clustering (replaced custom implementation)
         if vectors.is_empty() {
             return Err("Cannot cluster empty vector set".to_string());
         }
@@ -149,27 +169,17 @@ impl ClusteringEngine {
             return Ok(vec![0; vectors.len()]);
         }
 
-        // k-means++ initialization
-        let centroids = self.kmeans_plusplus_init(vectors, k);
+        // Convert to aprender Matrix
+        let matrix = Self::vectors_to_matrix(vectors)?;
 
-        // Lloyd's algorithm
-        let mut labels = vec![0; vectors.len()];
-        let mut current_centroids = centroids;
+        // Use aprender KMeans
+        let mut kmeans = KMeans::new(k).with_max_iter(max_iterations);
 
-        for _ in 0..max_iterations {
-            // Assignment step
-            let new_labels = self.assign_to_nearest_centroid(vectors, &current_centroids);
+        kmeans
+            .fit(&matrix)
+            .map_err(|e| format!("KMeans fit error: {e:?}"))?;
 
-            // Check for convergence
-            if new_labels == labels {
-                return Ok(labels);
-            }
-
-            labels = new_labels;
-
-            // Update step
-            current_centroids = self.recompute_centroids(vectors, &labels, k)?;
-        }
+        let labels = kmeans.predict(&matrix);
 
         Ok(labels)
     }
@@ -180,105 +190,48 @@ impl ClusteringEngine {
         vectors: &[Vec<f32>],
         k: usize,
         max_iterations: usize,
-        _seed: u64,
+        seed: u64,
     ) -> Result<Vec<usize>, String> {
-        // For now, just call regular kmeans
-        // TODO: Use seed for deterministic initialization
-        self.kmeans(vectors, k, max_iterations)
-    }
-
-    /// k-means++ initialization
-    fn kmeans_plusplus_init(&self, vectors: &[Vec<f32>], k: usize) -> Vec<Vec<f32>> {
-        let mut centroids = Vec::new();
-
-        // Choose first centroid randomly (for now, just take the first vector)
-        centroids.push(vectors[0].clone());
-
-        // Choose remaining centroids
-        for _ in 1..k {
-            let mut max_dist = 0.0;
-            let mut farthest_idx = 0;
-
-            // Find vector farthest from all existing centroids
-            for (i, vec) in vectors.iter().enumerate() {
-                let mut min_dist = f64::MAX;
-                for centroid in &centroids {
-                    let dist = self.euclidean_distance(vec, centroid);
-                    if dist < min_dist {
-                        min_dist = dist;
-                    }
-                }
-
-                if min_dist > max_dist {
-                    max_dist = min_dist;
-                    farthest_idx = i;
-                }
-            }
-
-            centroids.push(vectors[farthest_idx].clone());
+        // Phase 2: Use aprender with seed for deterministic results
+        if vectors.is_empty() {
+            return Err("Cannot cluster empty vector set".to_string());
         }
 
-        centroids
-    }
-
-    /// Assign each vector to nearest centroid
-    fn assign_to_nearest_centroid(
-        &self,
-        vectors: &[Vec<f32>],
-        centroids: &[Vec<f32>],
-    ) -> Vec<usize> {
-        vectors
-            .iter()
-            .map(|vec| {
-                let mut min_dist = f64::MAX;
-                let mut nearest = 0;
-
-                for (i, centroid) in centroids.iter().enumerate() {
-                    let dist = self.euclidean_distance(vec, centroid);
-                    if dist < min_dist {
-                        min_dist = dist;
-                        nearest = i;
-                    }
-                }
-
-                nearest
-            })
-            .collect()
-    }
-
-    /// Recompute centroids as mean of assigned points
-    fn recompute_centroids(
-        &self,
-        vectors: &[Vec<f32>],
-        labels: &[usize],
-        k: usize,
-    ) -> Result<Vec<Vec<f32>>, String> {
-        let dim = vectors[0].len();
-        let mut centroids = vec![vec![0.0; dim]; k];
-        let mut counts = vec![0; k];
-
-        // Sum vectors in each cluster
-        for (vec, &label) in vectors.iter().zip(labels.iter()) {
-            for (i, &val) in vec.iter().enumerate() {
-                centroids[label][i] += val;
-            }
-            counts[label] += 1;
+        if k == 0 {
+            return Err("k must be greater than 0".to_string());
         }
 
-        // Divide by count to get mean
-        for (centroid, &count) in centroids.iter_mut().zip(counts.iter()) {
-            if count == 0 {
-                return Err("Empty cluster detected".to_string());
-            }
-            for val in centroid.iter_mut() {
-                *val /= count as f32;
-            }
+        if k > vectors.len() {
+            return Err("Cannot have more clusters than points".to_string());
         }
 
-        Ok(centroids)
+        // Special case: single cluster
+        if k == 1 {
+            return Ok(vec![0; vectors.len()]);
+        }
+
+        // Convert to aprender Matrix
+        let matrix = Self::vectors_to_matrix(vectors)?;
+
+        // Use aprender KMeans with seed
+        let mut kmeans = KMeans::new(k)
+            .with_max_iter(max_iterations)
+            .with_random_state(seed);
+
+        kmeans
+            .fit(&matrix)
+            .map_err(|e| format!("KMeans fit error: {e:?}"))?;
+
+        let labels = kmeans.predict(&matrix);
+
+        Ok(labels)
     }
 
     /// Hierarchical clustering
+    ///
+    /// Note: This uses a custom implementation (not aprender) because it returns
+    /// a Dendrogram structure showing the merge history, which is useful for
+    /// visualization. aprender's HierarchicalClustering returns cluster labels only.
     pub fn hierarchical(
         &self,
         vectors: &[Vec<f32>],
@@ -382,84 +335,38 @@ impl ClusteringEngine {
     }
 
     /// DBSCAN clustering
+    ///
+    /// # Arguments
+    /// * `vectors` - Array of vectors to cluster
+    /// * `epsilon` - Maximum distance for neighborhood
+    /// * `min_samples` - Minimum points for core point
+    ///
+    /// # Returns
+    /// Array of cluster labels (-1 for noise, 0+ for clusters)
     pub fn dbscan(
         &self,
         vectors: &[Vec<f32>],
         epsilon: f64,
         min_samples: usize,
     ) -> Result<Vec<i32>, String> {
+        // Phase 2: Use aprender for DBSCAN clustering (replaced custom implementation)
         if vectors.is_empty() {
             return Err("Cannot cluster empty vector set".to_string());
         }
 
-        let n = vectors.len();
-        let mut labels = vec![-1; n]; // -1 = noise
-        let mut cluster_id = 0;
+        // Convert to aprender Matrix
+        let matrix = Self::vectors_to_matrix(vectors)?;
 
-        for i in 0..n {
-            if labels[i] != -1 {
-                continue; // Already processed
-            }
+        // Use aprender DBSCAN (cast epsilon to f32 for aprender API)
+        let mut dbscan = DBSCAN::new(epsilon as f32, min_samples);
 
-            // Find neighbors
-            let neighbors = self.find_neighbors(vectors, i, epsilon);
+        dbscan
+            .fit(&matrix)
+            .map_err(|e| format!("DBSCAN fit error: {e:?}"))?;
 
-            if neighbors.len() < min_samples {
-                labels[i] = -1; // Mark as noise
-                continue;
-            }
-
-            // Start new cluster
-            self.expand_cluster(vectors, &mut labels, i, cluster_id, epsilon, min_samples);
-            cluster_id += 1;
-        }
+        let labels = dbscan.predict(&matrix);
 
         Ok(labels)
-    }
-
-    /// Find neighbors within epsilon distance
-    fn find_neighbors(&self, vectors: &[Vec<f32>], point_idx: usize, epsilon: f64) -> Vec<usize> {
-        let mut neighbors = Vec::new();
-
-        for (i, vec) in vectors.iter().enumerate() {
-            let dist = self.euclidean_distance(&vectors[point_idx], vec);
-            if dist <= epsilon {
-                neighbors.push(i);
-            }
-        }
-
-        neighbors
-    }
-
-    /// Expand cluster from seed point
-    fn expand_cluster(
-        &self,
-        vectors: &[Vec<f32>],
-        labels: &mut [i32],
-        seed_idx: usize,
-        cluster_id: i32,
-        epsilon: f64,
-        min_samples: usize,
-    ) {
-        let mut seeds = vec![seed_idx];
-        labels[seed_idx] = cluster_id;
-
-        let mut i = 0;
-        while i < seeds.len() {
-            let current = seeds[i];
-            let neighbors = self.find_neighbors(vectors, current, epsilon);
-
-            if neighbors.len() >= min_samples {
-                for &neighbor in &neighbors {
-                    if labels[neighbor] == -1 {
-                        labels[neighbor] = cluster_id;
-                        seeds.push(neighbor);
-                    }
-                }
-            }
-
-            i += 1;
-        }
     }
 
     /// Compute silhouette score for clustering quality

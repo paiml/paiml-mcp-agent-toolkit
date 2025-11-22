@@ -1,7 +1,8 @@
-// PageRank algorithm implementation
+// PageRank algorithm implementation using aprender v0.5.0
 // Following Google's original algorithm with power iteration
-// Complexity: All functions ≤ 9
+// Implements Task 4.1 (Phase 4: Graph Migration)
 
+use super::aprender_adapter::to_aprender_graph;
 use super::*;
 
 pub struct PageRankComputer {
@@ -30,102 +31,68 @@ impl PageRankComputer {
         self
     }
 
-    /// Compute PageRank using power iteration
-    /// Complexity: 9 (initialization + iteration loop)
-    pub fn compute(&self, matrices: &GraphMatrices) -> Vec<f64> {
-        let n = matrices.node_count;
-        if n == 0 {
+    /// Compute PageRank using aprender v0.5.0.
+    ///
+    /// # Arguments
+    /// * `graph` - PMAT dependency graph
+    ///
+    /// # Returns
+    /// PageRank scores (Vec<f64>) or error fallback (zeros)
+    ///
+    /// # Algorithm
+    /// - Power iteration with damping factor (default: 0.85)
+    /// - Handles dangling nodes (no outgoing edges)
+    /// - Convergence tolerance: 1e-6
+    pub fn compute(&self, graph: &DependencyGraph) -> Vec<f64> {
+        if graph.node_count() == 0 {
             return Vec::new();
         }
 
-        // Initialize PageRank values uniformly
-        let mut pr = vec![1.0 / n as f64; n];
-        let mut new_pr = vec![0.0; n];
+        // Convert to aprender graph (directed=true for PageRank)
+        let aprender_graph = to_aprender_graph(graph, true);
 
-        // Compute out-degree for each node
-        let out_degrees = self.compute_out_degrees(matrices);
-
-        // Power iteration
-        for _ in 0..self.max_iterations {
-            // Store old values for convergence check
-            let old_pr = pr.clone();
-
-            // Compute new PageRank values
-            self.iterate_pagerank(&pr, &mut new_pr, &out_degrees, matrices);
-
-            // Swap vectors
-            std::mem::swap(&mut pr, &mut new_pr);
-
-            // Check convergence
-            if self.has_converged(&pr, &old_pr) {
-                break;
-            }
-        }
-
-        pr
+        // Compute PageRank using aprender
+        aprender_graph
+            .pagerank(self.damping, self.max_iterations, self.tolerance)
+            .unwrap_or_else(|_| vec![0.0; aprender_graph.num_nodes()])
     }
 
-    /// Compute out-degree for each node
-    /// Complexity: 3
-    fn compute_out_degrees(&self, matrices: &GraphMatrices) -> Vec<usize> {
-        let mut out_degrees = vec![0; matrices.node_count];
+    /// Compute PageRank from legacy GraphMatrices (backward compatibility).
+    ///
+    /// This method is deprecated and will be removed in a future version.
+    /// Use `compute(&DependencyGraph)` instead.
+    #[deprecated(since = "2.201.0", note = "Use compute(&DependencyGraph) instead")]
+    pub fn compute_legacy(&self, matrices: &GraphMatrices) -> Vec<f64> {
+        // Build temporary DependencyGraph from GraphMatrices
+        let mut graph = DependencyGraph::new();
 
-        for (from, _to, _weight) in &matrices.edges {
-            out_degrees[*from] += 1;
+        // Add nodes
+        for _ in 0..matrices.node_count {
+            graph.add_node(NodeData {
+                path: std::path::PathBuf::from("legacy"),
+                module: "legacy".to_string(),
+                symbols: vec![],
+                loc: 0,
+                complexity: 0.0,
+                ast_hash: 0,
+            });
         }
 
-        out_degrees
-    }
-
-    /// Single PageRank iteration
-    /// Complexity: 8
-    fn iterate_pagerank(
-        &self,
-        pr: &[f64],
-        new_pr: &mut [f64],
-        out_degrees: &[usize],
-        matrices: &GraphMatrices,
-    ) {
-        let n = pr.len();
-
-        // Reset new PageRank values
-        for i in 0..n {
-            new_pr[i] = (1.0 - self.damping) / n as f64;
-        }
-
-        // Sum of dangling node contributions
-        let mut dangling_sum = 0.0;
-        for i in 0..n {
-            if out_degrees[i] == 0 {
-                dangling_sum += pr[i];
-            }
-        }
-        dangling_sum *= self.damping / n as f64;
-
-        // Add dangling node contribution to all nodes
-        for i in 0..n {
-            new_pr[i] += dangling_sum;
-        }
-
-        // Add edge contributions
+        // Add edges
         for (from, to, weight) in &matrices.edges {
-            if out_degrees[*from] > 0 {
-                // Normalize by out-degree and apply damping
-                let contribution = self.damping * pr[*from] * weight / out_degrees[*from] as f64;
-                new_pr[*to] += contribution;
-            }
-        }
-    }
+            let from_idx = petgraph::graph::NodeIndex::new(*from);
+            let to_idx = petgraph::graph::NodeIndex::new(*to);
 
-    /// Check convergence using L1 norm
-    /// Complexity: 3
-    fn has_converged(&self, pr: &[f64], old_pr: &[f64]) -> bool {
-        let mut diff = 0.0;
-
-        for i in 0..pr.len() {
-            diff += (pr[i] - old_pr[i]).abs();
+            graph.add_edge(
+                from_idx,
+                to_idx,
+                EdgeData::Import {
+                    weight: *weight,
+                    visibility: Visibility::Public,
+                },
+            );
         }
 
-        diff < self.tolerance
+        self.compute(&graph)
     }
 }

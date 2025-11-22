@@ -46,10 +46,9 @@ impl GraphContextAnnotator {
         // Convert to undirected for community detection
         let undirected = self.convert_to_undirected(graph);
 
-        // Calculate PageRank for importance
-        let matrices = GraphMatrices::from(graph);
+        // Calculate PageRank for importance using aprender
         let pagerank = PageRankComputer::default();
-        let importance_scores = pagerank.compute(&matrices);
+        let importance_scores = pagerank.compute(graph);
 
         // Detect communities
         let mut community_detector = LouvainDetector::default();

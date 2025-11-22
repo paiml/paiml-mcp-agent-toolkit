@@ -1,6 +1,7 @@
 // Graph analysis module for PMAT
 // Following extreme TDD with zero SATD tolerance
 
+pub mod aprender_adapter;
 pub mod builder;
 pub mod centrality;
 pub mod community;

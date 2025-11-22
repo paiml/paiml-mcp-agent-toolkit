@@ -1,7 +1,8 @@
-// Community detection algorithms using Louvain method
+// Community detection algorithms using Louvain method (aprender v0.5.0)
 // Following Newman-Girvan modularity optimization
-// Complexity: All functions ≤ 10
+// Implements Task 4.3 (Phase 4: Graph Migration)
 
+use super::aprender_adapter::to_aprender_graph_undirected;
 use super::*;
 use petgraph::visit::EdgeRef;
 use std::collections::HashMap;
@@ -31,128 +32,42 @@ impl LouvainDetector {
         self
     }
 
-    /// Detect communities using Louvain algorithm
-    /// Complexity: 10 (initialization + main loop)
+    /// Detect communities using aprender's Louvain algorithm.
+    ///
+    /// # Arguments
+    /// * `graph` - Undirected PMAT graph
+    ///
+    /// # Returns
+    /// Community assignment vector (node_id -> community_id)
+    ///
+    /// # Algorithm
+    /// - aprender Louvain with Newman-Girvan modularity
+    /// - Output converted from Vec<Vec<NodeId>> to Vec<usize>
     pub fn detect_communities(&mut self, graph: &UndirectedGraph) -> Vec<usize> {
         let n = graph.node_count();
         if n == 0 {
             return Vec::new();
         }
 
-        // Initialize each node as its own community
-        let mut communities: Vec<usize> = (0..n).collect();
-        let mut node_weights = vec![0.0; n];
-        let mut total_weight = 0.0;
+        // Convert to aprender graph (undirected for Louvain)
+        let aprender_graph = to_aprender_graph_undirected(graph);
 
-        // Calculate node weights and total weight
-        for edge in graph.edge_references() {
-            let weight = edge.weight();
-            node_weights[edge.source().index()] += weight;
-            node_weights[edge.target().index()] += weight;
-            total_weight += weight * 2.0; // Each edge counted twice
-        }
+        // Run aprender Louvain
+        let communities_vec = aprender_graph.louvain();
 
-        let mut improved = true;
-        let mut iterations = 0;
-
-        // Main Louvain loop
-        while improved && iterations < self.max_iterations {
-            improved = false;
-            iterations += 1;
-
-            for node_idx in 0..n {
-                let best_community = self.find_best_community(
-                    graph,
-                    node_idx,
-                    &communities,
-                    &node_weights,
-                    total_weight,
-                );
-
-                if best_community != communities[node_idx] {
-                    communities[node_idx] = best_community;
-                    improved = true;
+        // Convert from Vec<Vec<NodeId>> to Vec<usize>
+        // communities_vec[i] = list of node IDs in community i
+        // We need: assignments[node_id] = community_id
+        let mut assignments = vec![0; n];
+        for (community_id, community_nodes) in communities_vec.iter().enumerate() {
+            for &node_id in community_nodes {
+                if node_id < n {
+                    assignments[node_id] = community_id;
                 }
             }
         }
 
-        communities
-    }
-
-    /// Find the best community for a node
-    /// Complexity: 8 (neighbor iteration + gain calculation)
-    fn find_best_community(
-        &self,
-        graph: &UndirectedGraph,
-        node_idx: usize,
-        communities: &[usize],
-        node_weights: &[f64],
-        total_weight: f64,
-    ) -> usize {
-        let current_community = communities[node_idx];
-        let mut best_community = current_community;
-        let mut best_gain = 0.0;
-
-        // Check all neighboring communities
-        let mut neighbor_communities = HashMap::new();
-
-        // Get edges for this node
-        if let Some(node) = graph.node_indices().nth(node_idx) {
-            for edge in graph.edges(node) {
-                let neighbor_idx = edge.target().index();
-                let neighbor_community = communities[neighbor_idx];
-                *neighbor_communities
-                    .entry(neighbor_community)
-                    .or_insert(0.0) += edge.weight();
-            }
-        }
-
-        // Test moving to each neighbor community
-        for (&community, &edge_weight) in &neighbor_communities {
-            if community != current_community {
-                let gain = self.calculate_modularity_gain(
-                    node_idx,
-                    community,
-                    edge_weight,
-                    communities,
-                    node_weights,
-                    total_weight,
-                );
-
-                if gain > best_gain {
-                    best_gain = gain;
-                    best_community = community;
-                }
-            }
-        }
-
-        best_community
-    }
-
-    /// Calculate modularity gain from moving node to community
-    /// Complexity: 6 (community weight calculation)
-    fn calculate_modularity_gain(
-        &self,
-        node_idx: usize,
-        target_community: usize,
-        edge_weight_to_community: f64,
-        communities: &[usize],
-        node_weights: &[f64],
-        total_weight: f64,
-    ) -> f64 {
-        let node_degree = node_weights[node_idx];
-
-        // Calculate community weight
-        let mut community_weight = 0.0;
-        for (i, &community) in communities.iter().enumerate() {
-            if community == target_community {
-                community_weight += node_weights[i];
-            }
-        }
-
-        // Modularity gain formula
-
-        edge_weight_to_community - self.resolution * (node_degree * community_weight) / total_weight
+        assignments
     }
 
     /// Calculate modularity of community assignment
