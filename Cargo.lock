@@ -6499,6 +6499,7 @@ dependencies = [
  "tree-sitter-typescript",
  "trueno 0.6.0",
  "trueno-db 0.3.1",
+ "trueno-graph",
  "ureq",
  "url",
  "uuid",
@@ -9645,6 +9646,22 @@ dependencies = [
  "wasm-bindgen",
  "web-sys",
  "wgpu 22.1.0",
+]
+
+[[package]]
+name = "trueno-graph"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d194bef8b3fafa78d6c4c5168225bdf966bee17686c8564f9606e282c6a9f60e"
+dependencies = [
+ "anyhow",
+ "aprender 0.7.0",
+ "arrow",
+ "parquet",
+ "thiserror 1.0.69",
+ "tokio",
+ "trueno 0.7.0",
+ "trueno-db 0.3.1",
 ]
 
 [[package]]

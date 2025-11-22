@@ -70,6 +70,7 @@ aprender = "0.7.0"  # PAIML next-gen ML (TDG 94.1/100, zero deps, SafeTensors su
 # High-Performance Compute (SIMD/GPU)
 trueno = { version = "0.6.0", optional = true }
 trueno-db = { version = "0.3.1", optional = true, default-features = false }
+trueno-graph = { version = "0.1.0", optional = true }  # GPU-first graph database (CSR, PageRank)
 renacer = { version = "0.6.1", optional = true }  # Pure Rust system call tracer
 
 # Analytics GPU dependencies (optional, gated by analytics-gpu feature)
@@ -368,7 +369,7 @@ gpu = ["trueno", "trueno/gpu"]
 
 # Analytics features (Issue #79: Feature-gated architecture)
 # Default: SIMD-only (7.8 MB, 18s compile, ≤30 transitive deps)
-analytics-simd = ["trueno", "trueno-db", "trueno-db/simd", "arrow"]
+analytics-simd = ["trueno", "trueno-db", "trueno-db/simd", "trueno-graph", "arrow"]
 # GPU-enabled: +wgpu (11.6 MB, 63s compile, ≤95 transitive deps)
 # Note: arrow/parquet pulled in transitively via trueno-db/gpu
 analytics-gpu = ["analytics-simd", "trueno-db/gpu", "wgpu", "pollster", "bytemuck"]

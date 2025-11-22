@@ -20,4 +20,5 @@ Thumbs.db
 
 # Temporary files
 *.tmp
-*.bak*.hash
+*.bak
+*.hash
