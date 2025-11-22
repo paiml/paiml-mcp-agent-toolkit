@@ -103,6 +103,10 @@ pub struct RoadmapItem {
     /// Labels/tags
     #[serde(default)]
     pub labels: Vec<String>,
+
+    /// Additional notes/documentation (markdown)
+    #[serde(default)]
+    pub notes: Option<String>,
 }
 
 fn default_item_type() -> ItemType {
@@ -265,6 +269,7 @@ impl RoadmapItem {
             subtasks: Vec::new(),
             estimated_effort: None,
             labels: Vec::new(),
+            notes: None,
         }
     }
 
