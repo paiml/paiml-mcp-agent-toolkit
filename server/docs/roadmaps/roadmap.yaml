@@ -190,23 +190,37 @@ roadmap:
   priority: high
   assigned_to: null
   created: 2025-11-22T12:20:00.000000000+00:00
-  updated: 2025-11-22T12:20:00.000000000+00:00
+  updated: 2025-11-22T13:47:00.000000000+00:00
   spec: docs/specifications/integrate-ml-trueno-latest-spec.md
   acceptance_criteria:
   - Implement trueno-db Top-K query acceleration (5-28x faster)
   - Implement OLAP-only storage backend for analytics
-  - Add hybrid SQLite + Trueno storage strategy  
+  - Add hybrid SQLite + Trueno storage strategy
   - Benchmark Top-K: 1M rows with SIMD/GPU backends
   - Add aggregation acceleration (SUM, AVG, MIN, MAX)
   - Performance target: SIMD 2.78x, GPU 33.3x faster
   phases: []
   subtasks:
-  - Task 5.1 - Implement Top-K Query Acceleration
-  - Task 5.2 - Implement OLAP Storage Backend
-  - Task 5.3 - Add Hybrid SQLite + Trueno Storage
-  - Task 5.4 - Benchmark and validate performance
+  - Task 5.1 - Implement Top-K Query Acceleration (✅ COMPLETE - commit 6b1683ef)
+  - Task 5.2 - Implement OLAP Storage Backend (🚫 BLOCKED - trueno-db#3)
+  - Task 5.3 - Add Hybrid SQLite + Trueno Storage (🚫 BLOCKED - trueno-db#3)
+  - Task 5.4 - Benchmark and validate performance (⏳ IN PROGRESS - commit 6a2d3d6b, running)
   estimated_effort: 7 days
   labels:
   - ml-integration
   - olap
   - trueno-db
+  notes: |
+    **Progress (2025-11-22)**:
+    - ✅ Task 5.1: Arrow adapter for Top-K (33 LOC thin adapter, 2/2 tests passing)
+    - ✅ Task 5.4: Criterion benchmarks implemented (heap vs Arrow, 4 scales: 1K-1M rows)
+    - 🚫 Tasks 5.2/5.3: BLOCKED on trueno-db SQL support (https://github.com/paiml/trueno-db/issues/3)
+    - ⏳ Benchmarks: Compiling in background (analytics-simd feature)
+
+    **Commits**:
+    - 6b1683ef: feat(olap): Add trueno-db Arrow backend for Top-K selection
+    - 6a2d3d6b: feat(bench): Add Top-K benchmarks for heap vs Arrow backends
+
+    **Dependencies**:
+    - trueno-db v0.2.1 (QueryBuilder API needed for Tasks 5.2/5.3)
+    - Issue: https://github.com/paiml/trueno-db/issues/3
