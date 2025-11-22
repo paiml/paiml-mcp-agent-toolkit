@@ -157,3 +157,33 @@ roadmap:
   subtasks: []
   estimated_effort: null
   labels: []
+- id: GH-84
+  github_issue: null
+  item_type: task
+  title: 'New task: GH-84'
+  status: completed
+  priority: medium
+  assigned_to: null
+  created: 2025-11-22T08:20:55.488299790+00:00
+  updated: 2025-11-22T08:27:05.812725182+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+- id: DEPYLER-0438
+  github_issue: null
+  item_type: task
+  title: 'New task: DEPYLER-0438'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2025-11-22T12:13:05.190013847+00:00
+  updated: 2025-11-22T12:13:05.190013847+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []

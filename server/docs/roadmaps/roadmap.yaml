@@ -186,11 +186,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'Phase 5: OLAP Analytics - Integrate trueno-db for Top-K and Aggregations'
-  status: inprogress
+  status: blocked
   priority: high
   assigned_to: null
   created: 2025-11-22T12:20:00.000000000+00:00
-  updated: 2025-11-22T13:47:00.000000000+00:00
+  updated: 2025-11-22T14:00:00.000000000+00:00
   spec: docs/specifications/integrate-ml-trueno-latest-spec.md
   acceptance_criteria:
   - Implement trueno-db Top-K query acceleration (5-28x faster)
@@ -204,18 +204,31 @@ roadmap:
   - Task 5.1 - Implement Top-K Query Acceleration (✅ COMPLETE - commit 6b1683ef)
   - Task 5.2 - Implement OLAP Storage Backend (🚫 BLOCKED - trueno-db#3)
   - Task 5.3 - Add Hybrid SQLite + Trueno Storage (🚫 BLOCKED - trueno-db#3)
-  - Task 5.4 - Benchmark and validate performance (⏳ IN PROGRESS - commit 6a2d3d6b, running)
+  - Task 5.4 - Benchmark and validate performance (⚠️ COMPLETE - PERFORMANCE REGRESSION)
   estimated_effort: 7 days
   labels:
   - ml-integration
   - olap
   - trueno-db
+  - performance-issue
   notes: |
     **Progress (2025-11-22)**:
     - ✅ Task 5.1: Arrow adapter for Top-K (33 LOC thin adapter, 2/2 tests passing)
-    - ✅ Task 5.4: Criterion benchmarks implemented (heap vs Arrow, 4 scales: 1K-1M rows)
+    - ✅ Task 5.4: Criterion benchmarks COMPLETE - CRITICAL FINDING
     - 🚫 Tasks 5.2/5.3: BLOCKED on trueno-db SQL support (https://github.com/paiml/trueno-db/issues/3)
-    - ⏳ Benchmarks: Compiling in background (analytics-simd feature)
+
+    **⚠️ CRITICAL PERFORMANCE ISSUE (Task 5.4)**:
+    Arrow backend is 2.5-4.2x SLOWER than heap baseline (opposite of 5-28x speedup target):
+    - 1K rows: Heap 938ns vs Arrow 2.4µs → 2.5x slower
+    - 10K rows: Heap 3.7µs vs Arrow 12.6µs → 3.4x slower
+    - 100K rows: Heap 32µs vs Arrow 118µs → 3.7x slower
+    - 1M rows: Heap 304µs vs Arrow 1.3ms → 4.2x slower
+
+    **Root Cause**: Conversion overhead (Vec → RecordBatch → TopKSelection → RecordBatch → Vec)
+    dominates any SIMD benefits. trueno-db TopKSelection doesn't provide expected acceleration.
+
+    **Impact**: Current Arrow integration does NOT meet performance requirements.
+    Tasks 5.2/5.3 implementation strategy needs revision. Need Bitonic Top-K in trueno-db.
 
     **Commits**:
     - 6b1683ef: feat(olap): Add trueno-db Arrow backend for Top-K selection
@@ -224,3 +237,4 @@ roadmap:
     **Dependencies**:
     - trueno-db v0.2.1 (QueryBuilder API needed for Tasks 5.2/5.3)
     - Issue: https://github.com/paiml/trueno-db/issues/3
+    - Need: Bitonic Top-K implementation in trueno-db for performance target

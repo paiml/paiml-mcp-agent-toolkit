@@ -16,8 +16,9 @@
 //! - Medium (10-100K): Arrow 2-5x faster (SIMD kicks in)
 //! - Large (1M): Arrow 5-28x faster (full SIMD/GPU utilization)
 
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use pmat::services::analytics_top_k::TopKSelector;
+use std::hint::black_box;
 
 /// Generate dataset for benchmarking
 fn generate_dataset(size: usize) -> Vec<i64> {
