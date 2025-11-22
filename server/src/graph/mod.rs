@@ -7,7 +7,8 @@ pub mod centrality;
 pub mod community;
 pub mod context_annotator;
 pub mod pagerank;
-// pub mod storage;  // Phase 7.1: WIP - requires trueno-db v0.3.1 full integration
+#[cfg(feature = "analytics-simd")]
+pub mod storage;  // Phase 7.1: Hybrid graph storage with trueno-db + aprender
 pub mod structure;
 pub mod symbol_table;
 pub mod types;

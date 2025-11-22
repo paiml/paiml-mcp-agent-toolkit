@@ -154,6 +154,17 @@ pub struct TruenoOlapAnalytics {
 }
 
 #[cfg(feature = "analytics-simd")]
+impl std::fmt::Debug for TruenoOlapAnalytics {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("TruenoOlapAnalytics")
+            .field("storage", &"<Mutex<StorageEngine>>")
+            .field("query_engine", &"<QueryEngine>")
+            .field("executor", &"<QueryExecutor>")
+            .finish()
+    }
+}
+
+#[cfg(feature = "analytics-simd")]
 impl TruenoOlapAnalytics {
     /// Create a new trueno-db analytics backend
     ///

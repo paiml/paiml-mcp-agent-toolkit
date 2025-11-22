@@ -6,132 +6,190 @@
 //! - PMAT = Orchestration layer
 //!
 //! **NO graph features in trueno-db** - separation of concerns principle.
+//!
+//! # Implementation Status
+//!
+//! **Phase 7.1 Foundation (MVP)**:
+//! - ✅ Architecture defined (trueno-db + aprender + PMAT orchestration)
+//! - ✅ Separation of concerns validated
+//! - ⚠️  Full SQL query integration pending (trueno-db v0.3.1 API stabilization)
+//!
+//! **Current Approach**:
+//! - Minimal viable structure demonstrating architectural pattern
+//! - Uses existing PMAT graph types (DependencyGraph, etc.)
+//! - Ready for trueno-db integration when API is finalized
 
-use crate::tdg::olap_analytics::TruenoOlapAnalytics;
 use anyhow::Result;
 
-/// Graph storage using trueno-db columnar backend + aprender algorithms
+/// Graph storage using hybrid trueno-db + aprender architecture
 ///
-/// Implements Phase 7.1 hybrid storage:
-/// - Edges/nodes stored in trueno-db as Parquet (columnar, disk-backed)
-/// - Graph algorithms via aprender (CPU/GPU computation)
-/// - PMAT orchestrates queries between both
-#[derive(Debug)]
+/// **Architectural Pattern (Phase 7.1)**:
+///
+/// ```text
+/// ┌─────────────────────────────────────┐
+/// │  PMAT GraphStorage (Orchestration)  │
+/// └──────────┬──────────────────────────┘
+///            │
+///      ┌─────┴─────┐
+///      │           │
+///      ▼           ▼
+/// ┌─────────┐  ┌──────────┐
+/// │ trueno- │  │ aprender │
+/// │   db    │  │  graph   │
+/// │(storage)│  │ (algos)  │
+/// └─────────┘  └──────────┘
+/// ```
+///
+/// # Design Principles
+///
+/// 1. **Separation of Concerns**: trueno-db handles OLAP storage only, no graph logic
+/// 2. **Algorithm Delegation**: aprender provides graph algorithms (PageRank, BFS)
+/// 3. **Orchestration Layer**: PMAT coordinates between storage and computation
+///
+/// # Current Implementation
+///
+/// This is a **minimal viable structure** demonstrating the architectural pattern.
+/// Full SQL integration with trueno-db pending API stabilization.
+///
+/// # Example Usage
+///
+/// ```rust,ignore
+/// use pmat::graph::storage::GraphStorage;
+///
+/// // Phase 7.1 MVP: Architecture demonstration
+/// let storage = GraphStorage::new();
+///
+/// // Future (when trueno-db SQL is ready):
+/// // let callers = storage.find_callers(node_id).await?;
+/// // let scores = storage.pagerank().await?;
+/// ```
+#[derive(Debug, Default)]
 pub struct GraphStorage {
-    /// Edge list stored in trueno-db (source_id, target_id, weight)
-    edges_olap: TruenoOlapAnalytics,
+    /// Marker for future trueno-db edge table integration
+    _edges_backend: (),
 
-    /// Node attributes in trueno-db (node_id, name, complexity, embeddings)
-    nodes_olap: TruenoOlapAnalytics,
+    /// Marker for future trueno-db node table integration
+    _nodes_backend: (),
 }
 
 impl GraphStorage {
-    /// Create new graph storage from trueno-db OLAP backends
+    /// Create new graph storage (MVP constructor)
     ///
-    /// # Arguments
-    /// * `edges_olap` - trueno-db instance for edge table
-    /// * `nodes_olap` - trueno-db instance for node table
-    pub fn new(edges_olap: TruenoOlapAnalytics, nodes_olap: TruenoOlapAnalytics) -> Self {
+    /// **Phase 7.1 Status**: Minimal implementation
+    ///
+    /// **Future**: Will accept trueno-db OLAP backends for edges/nodes
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use pmat::graph::storage::GraphStorage;
+    ///
+    /// let storage = GraphStorage::new();
+    /// ```
+    #[must_use]
+    pub fn new() -> Self {
         Self {
-            edges_olap,
-            nodes_olap,
+            _edges_backend: (),
+            _nodes_backend: (),
         }
     }
 
     /// Find all callers of a given node (incoming edges)
     ///
-    /// Uses SQL query on trueno-db edge table:
-    /// `SELECT source FROM edges WHERE target = node_id`
+    /// **Phase 7.1 Status**: Placeholder implementation
+    ///
+    /// **Future SQL Query** (when trueno-db API ready):
+    /// ```sql
+    /// SELECT source FROM edges WHERE target = ?
+    /// ```
     ///
     /// # Performance Target
     /// - Current (grep): 500ms
     /// - Goal (trueno-db SQL): 50ms (10x speedup)
     ///
     /// # Arguments
-    /// * `node_id` - Target node to find callers for
+    /// * `_node_id` - Target node to find callers for
     ///
     /// # Returns
     /// List of node IDs that call the target node
-    pub async fn find_callers(&self, node_id: u32) -> Result<Vec<u32>> {
-        // Query trueno-db for incoming edges
-        let query = format!("SELECT source FROM edges WHERE target = {}", node_id);
-        let edges = self.edges_olap.query(&query).await?;
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use pmat::graph::storage::GraphStorage;
+    ///
+    /// # tokio_test::block_on(async {
+    /// let storage = GraphStorage::new();
+    /// let callers = storage.find_callers(42).await;
+    /// assert!(callers.is_ok());
+    /// # });
+    /// ```
+    pub async fn find_callers(&self, _node_id: u32) -> Result<Vec<u32>> {
+        // TODO: Integrate with trueno-db SQL query when API is stable
+        // let query = format!("SELECT source FROM edges WHERE target = {}", node_id);
+        // let edges = self.edges_backend.query(&query).await?;
 
-        // Extract source node IDs
-        Ok(edges.iter().map(|e| e.source).collect())
+        Ok(vec![]) // Placeholder
     }
 
     /// Compute PageRank scores for all nodes
     ///
-    /// Algorithm flow:
+    /// **Phase 7.1 Status**: Placeholder implementation
+    ///
+    /// **Algorithm Flow** (when implemented):
     /// 1. Query all edges from trueno-db (columnar batch)
-    /// 2. Convert to sparse adjacency matrix (aprender)
-    /// 3. Run PageRank on GPU (aprender kernel)
+    /// 2. Convert to sparse adjacency matrix
+    /// 3. Run aprender::graph::PageRank
     /// 4. Return importance scores
     ///
     /// # Performance Target
-    /// - Current: N/A (not implemented)
-    /// - Goal (GPU): 4ms for 1K nodes (25x vs CPU)
+    /// - Goal (aprender CPU): 100ms for 1K nodes
+    /// - Goal (aprender GPU): 4ms for 1K nodes (25x speedup)
     ///
     /// # Returns
     /// Vec of PageRank scores (one per node, indexed by node_id)
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use pmat::graph::storage::GraphStorage;
+    ///
+    /// # tokio_test::block_on(async {
+    /// let storage = GraphStorage::new();
+    /// let scores = storage.pagerank().await;
+    /// assert!(scores.is_ok());
+    /// # });
+    /// ```
     pub async fn pagerank(&self) -> Result<Vec<f32>> {
-        // 1. Load all edges from trueno-db (batch query)
-        let edges = self.edges_olap.query("SELECT * FROM edges").await?;
+        // TODO: Integrate with aprender::graph::PageRank when API is available
+        // 1. let edges = self.edges_backend.query("SELECT * FROM edges").await?;
+        // 2. let graph = aprender::graph::Graph::from_edges(&edges)?;
+        // 3. let scores = graph.pagerank(iterations=20)?;
 
-        // 2. Convert to sparse matrix (aprender-compatible format)
-        let graph_matrix = edges_to_sparse_matrix(&edges)?;
-
-        // 3. Run PageRank (aprender GPU kernel)
-        // TODO: Integrate with aprender::graph::PageRank once API is available
-        let scores = vec![1.0; self.node_count().await?];
-
-        Ok(scores)
+        Ok(vec![]) // Placeholder
     }
 
     /// Get total number of nodes in graph
-    async fn node_count(&self) -> Result<usize> {
-        let result = self.nodes_olap.query("SELECT COUNT(*) FROM nodes").await?;
-        Ok(result.len())
+    ///
+    /// **Phase 7.1 Status**: Placeholder implementation
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use pmat::graph::storage::GraphStorage;
+    ///
+    /// # tokio_test::block_on(async {
+    /// let storage = GraphStorage::new();
+    /// let count = storage.node_count().await;
+    /// assert_eq!(count.unwrap(), 0); // Placeholder returns 0
+    /// # });
+    /// ```
+    pub async fn node_count(&self) -> Result<usize> {
+        // TODO: Integrate with trueno-db SQL query
+        // let result = self.nodes_backend.query("SELECT COUNT(*) FROM nodes").await?;
+
+        Ok(0) // Placeholder
     }
-}
-
-/// Convert edge list to sparse matrix format (CSR)
-///
-/// CSR (Compressed Sparse Row) format required by GraphBLAST (Yang et al. 2022)
-/// for efficient GPU graph algorithms.
-///
-/// # Arguments
-/// * `edges` - Edge list from trueno-db query
-///
-/// # Returns
-/// Sparse matrix representation (placeholder until aprender integration)
-fn edges_to_sparse_matrix(edges: &[Edge]) -> Result<SparseMatrix> {
-    // TODO: Convert to aprender sparse matrix format
-    // For now, return placeholder
-    Ok(SparseMatrix {
-        row_offsets: vec![],
-        col_indices: vec![],
-        values: vec![],
-    })
-}
-
-/// Edge structure from trueno-db query
-#[derive(Debug, Clone)]
-struct Edge {
-    source: u32,
-    target: u32,
-    weight: f32,
-}
-
-/// Sparse matrix representation (CSR format)
-///
-/// Used by GraphBLAST for GPU graph algorithms
-#[derive(Debug)]
-struct SparseMatrix {
-    row_offsets: Vec<u32>,
-    col_indices: Vec<u32>,
-    values: Vec<f32>,
 }
 
 #[cfg(test)]
@@ -140,36 +198,39 @@ mod tests {
 
     #[test]
     fn test_graph_storage_creation() {
-        // RED test: GraphStorage should be constructible
-        // This test will fail until we implement proper initialization
-
-        // Mock OLAP backends (will need actual trueno-db instances)
-        // For now, this is a placeholder showing intent
-        assert!(true, "Placeholder: need trueno-db test fixtures");
+        // Phase 7.1 MVP: GraphStorage should be constructible
+        let storage = GraphStorage::new();
+        assert!(format!("{:?}", storage).contains("GraphStorage"));
     }
 
     #[tokio::test]
-    async fn test_find_callers_empty_graph() {
-        // RED test: find_callers should return empty vec for nonexistent node
+    async fn test_find_callers_placeholder() {
+        // Phase 7.1 MVP: Method exists and returns Ok
+        let storage = GraphStorage::new();
+        let result = storage.find_callers(999).await;
 
-        // TODO: Create test fixture with empty graph
-        // let storage = create_test_graph(&[]).await?;
-        // let callers = storage.find_callers(999).await?;
-        // assert_eq!(callers, vec![]);
-
-        assert!(true, "Placeholder: need test fixture setup");
+        assert!(result.is_ok());
+        let callers = result.unwrap();
+        assert_eq!(callers.len(), 0); // Placeholder returns empty
     }
 
     #[tokio::test]
-    async fn test_pagerank_trivial_graph() {
-        // RED test: pagerank should return uniform scores for disconnected graph
+    async fn test_pagerank_placeholder() {
+        // Phase 7.1 MVP: Method exists and returns Ok
+        let storage = GraphStorage::new();
+        let result = storage.pagerank().await;
 
-        // TODO: Create test fixture with 3 isolated nodes
-        // let storage = create_test_graph_isolated(3).await?;
-        // let scores = storage.pagerank().await?;
-        // assert_eq!(scores.len(), 3);
-        // assert!(scores.iter().all(|&s| (s - 1.0).abs() < 0.01));
+        assert!(result.is_ok());
+        let scores = result.unwrap();
+        assert_eq!(scores.len(), 0); // Placeholder returns empty
+    }
 
-        assert!(true, "Placeholder: need test fixture setup");
+    #[tokio::test]
+    async fn test_node_count_placeholder() {
+        // Phase 7.1 MVP: Method exists and returns Ok
+        let storage = GraphStorage::new();
+        let count = storage.node_count().await.unwrap();
+
+        assert_eq!(count, 0); // Placeholder returns 0
     }
 }
