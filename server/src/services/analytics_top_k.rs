@@ -150,6 +150,62 @@ where
     }
 }
 
+/// Unified Top-K selection with automatic backend selection
+///
+/// Automatically chooses between heap-based and Arrow-based backends based on data size.
+/// Uses empirical threshold of 10,000 elements for backend selection.
+///
+/// # Backend Selection Logic
+///
+/// - `data.len() < 10,000`: Heap-based (minimal overhead, O(N) avg case)
+/// - `data.len() >= 10,000`: Arrow-based if available (5-28x faster for large datasets)
+/// - Falls back to heap if Arrow backend unavailable
+///
+/// # Arguments
+///
+/// * `data` - Slice of i64 elements
+/// * `k` - Number of top elements to select
+///
+/// # Returns
+///
+/// Vec of K largest elements in descending order
+///
+/// # Errors
+///
+/// Returns error if Arrow conversion fails (only when using Arrow backend)
+///
+/// # Example
+///
+/// ```rust
+/// use pmat::services::analytics_top_k::select_top_k;
+///
+/// let data: Vec<i64> = (0..100_000).collect();
+/// let top_10 = select_top_k(&data, 10).expect("Top-K selection failed");
+/// assert_eq!(top_10.len(), 10);
+/// assert_eq!(top_10[0], 99_999);
+/// ```
+pub fn select_top_k(data: &[i64], k: usize) -> Result<Vec<i64>, Box<dyn std::error::Error>> {
+    const ARROW_THRESHOLD: usize = 10_000;
+
+    if data.len() < ARROW_THRESHOLD {
+        // Small dataset: use heap-based approach (minimal overhead)
+        let selector = TopKSelector::new(k);
+        Ok(selector.select(data))
+    } else {
+        // Large dataset: try Arrow backend, fall back to heap
+        #[cfg(feature = "analytics-simd")]
+        {
+            select_top_k_arrow(data, k)
+        }
+
+        #[cfg(not(feature = "analytics-simd"))]
+        {
+            let selector = TopKSelector::new(k);
+            Ok(selector.select(data))
+        }
+    }
+}
+
 /// Select top K using trueno-db Arrow backend (28.75x faster for large datasets)
 ///
 /// Thin adapter to trueno-db's `TopKSelection` trait. All heavy lifting in trueno-db.
@@ -290,5 +346,103 @@ mod tests {
         assert_eq!(result.len(), 100);
         assert_eq!(result[0], 99_999);
         assert_eq!(result[99], 99_900);
+    }
+
+    // Backend Selection Tests
+
+    #[test]
+    fn test_unified_backend_small_dataset() {
+        // Small dataset (< 10K) should use heap backend
+        let data: Vec<i64> = (0..1000).collect();
+        let result = select_top_k(&data, 10).expect("Top-K failed");
+
+        assert_eq!(result.len(), 10);
+        assert_eq!(result[0], 999);
+        assert_eq!(result[9], 990);
+    }
+
+    #[test]
+    #[cfg(feature = "analytics-simd")]
+    fn test_unified_backend_large_dataset() {
+        // Large dataset (>= 10K) should use Arrow backend
+        let data: Vec<i64> = (0..50_000).collect();
+        let result = select_top_k(&data, 20).expect("Top-K failed");
+
+        assert_eq!(result.len(), 20);
+        assert_eq!(result[0], 49_999);
+        assert_eq!(result[19], 49_980);
+    }
+
+    #[test]
+    fn test_unified_backend_equivalence() {
+        // Results should be identical regardless of backend
+        let data: Vec<i64> = (0..20_000).collect();
+        let k = 50;
+
+        // Unified backend (auto-selection)
+        let unified_result = select_top_k(&data, k).expect("Unified Top-K failed");
+
+        // Explicit heap backend
+        let selector = TopKSelector::new(k);
+        let heap_result = selector.select(&data);
+
+        // Results must match
+        assert_eq!(
+            unified_result, heap_result,
+            "Unified backend must produce same results as heap"
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "analytics-simd")]
+    fn test_unified_backend_arrow_equivalence() {
+        // Verify Arrow backend produces same results through unified API
+        let data: Vec<i64> = (0..15_000).collect();
+        let k = 100;
+
+        // Unified backend (should select Arrow)
+        let unified_result = select_top_k(&data, k).expect("Unified Top-K failed");
+
+        // Direct Arrow backend
+        let arrow_result = select_top_k_arrow(&data, k).expect("Arrow Top-K failed");
+
+        // Results must match
+        assert_eq!(
+            unified_result, arrow_result,
+            "Unified backend must produce same results as Arrow"
+        );
+    }
+
+    #[test]
+    fn test_unified_backend_empty_data() {
+        let data: Vec<i64> = vec![];
+        let result = select_top_k(&data, 10).expect("Empty data failed");
+        assert_eq!(result, Vec::<i64>::new());
+    }
+
+    #[test]
+    fn test_unified_backend_k_larger_than_data() {
+        let data: Vec<i64> = vec![5, 2, 8, 1, 9];
+        let result = select_top_k(&data, 100).expect("K > N failed");
+        assert_eq!(result, vec![9, 8, 5, 2, 1]);
+    }
+
+    #[test]
+    fn test_unified_backend_threshold_boundary() {
+        // Test exactly at 10K threshold
+        let data: Vec<i64> = (0..10_000).collect();
+        let result = select_top_k(&data, 5).expect("Threshold boundary failed");
+
+        assert_eq!(result.len(), 5);
+        assert_eq!(result[0], 9_999);
+        assert_eq!(result[4], 9_995);
+    }
+
+    #[test]
+    fn test_unified_backend_duplicates() {
+        // Test with duplicate values
+        let data: Vec<i64> = vec![5, 9, 3, 9, 2, 9, 1, 8, 7, 9];
+        let result = select_top_k(&data, 5).expect("Duplicates failed");
+        assert_eq!(result, vec![9, 9, 9, 9, 8]);
     }
 }

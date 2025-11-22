@@ -26,6 +26,7 @@ pub mod resource_control;
 pub mod scheduler;
 pub mod storage;
 pub mod storage_backend;
+pub mod olap_analytics;
 pub mod web_dashboard;
 
 #[cfg(test)]
@@ -87,6 +88,9 @@ pub use storage_backend::SledBackend;
 pub use storage_backend::{
     InMemoryBackend, StorageBackend, StorageBackendFactory, StorageBackendType, StorageConfig,
 };
+pub use olap_analytics::{AggOp, OlapAnalytics};
+#[cfg(feature = "analytics-simd")]
+pub use olap_analytics::TruenoOlapAnalytics;
 pub use web_dashboard::{
     create_dashboard_router, start_dashboard_server, DashboardState,
     HealthStatus as DashboardHealthStatus, PerformanceMetrics as DashboardPerformanceMetrics,

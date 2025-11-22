@@ -17,6 +17,7 @@ roadmap:
   subtasks: []
   estimated_effort: null
   labels: []
+  notes: null
 - id: GH-75
   github_issue: 75
   item_type: task
@@ -82,6 +83,7 @@ roadmap:
   subtasks: []
   estimated_effort: null
   labels: []
+  notes: null
 - id: GH-78
   github_issue: null
   item_type: task
@@ -97,6 +99,7 @@ roadmap:
   subtasks: []
   estimated_effort: null
   labels: []
+  notes: null
 - id: GH-79
   github_issue: null
   item_type: task
@@ -112,6 +115,7 @@ roadmap:
   subtasks: []
   estimated_effort: null
   labels: []
+  notes: null
 - id: Rebuild and validate v2.200.0 binary with TDG auto-fail using EXTREME TDD
   github_issue: null
   item_type: task
@@ -127,6 +131,7 @@ roadmap:
   subtasks: []
   estimated_effort: null
   labels: []
+  notes: null
 - id: Fix critical unwrap() defects found in quality baseline assessment
   github_issue: null
   item_type: task
@@ -142,6 +147,7 @@ roadmap:
   subtasks: []
   estimated_effort: null
   labels: []
+  notes: null
 - id: 'Improve Code Quality score: unsafe docs + complexity reduction (target 20.0/26)'
   github_issue: null
   item_type: task
@@ -157,6 +163,7 @@ roadmap:
   subtasks: []
   estimated_effort: null
   labels: []
+  notes: null
 - id: GH-84
   github_issue: null
   item_type: task
@@ -172,6 +179,7 @@ roadmap:
   subtasks: []
   estimated_effort: null
   labels: []
+  notes: null
 - id: DEPYLER-0438
   github_issue: null
   item_type: task
@@ -187,3 +195,52 @@ roadmap:
   subtasks: []
   estimated_effort: null
   labels: []
+  notes: null
+- id: DEPYLER-REARCH-001
+  github_issue: null
+  item_type: task
+  title: 'New task: DEPYLER-REARCH-001'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2025-11-22T13:08:43.861956836+00:00
+  updated: 2025-11-22T13:08:43.861956836+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: ML-PHASE-5-TOPK-001
+  github_issue: null
+  item_type: task
+  title: 'New task: ML-PHASE-5-TOPK-001'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2025-11-22T13:51:02.762360014+00:00
+  updated: 2025-11-22T13:51:02.762360014+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: ML-PHASE-7.1-GRAPH
+  github_issue: null
+  item_type: task
+  title: 'New task: ML-PHASE-7.1-GRAPH'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2025-11-22T15:58:48.836126708+00:00
+  updated: 2025-11-22T15:58:48.836126708+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
