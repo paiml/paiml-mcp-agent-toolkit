@@ -471,7 +471,7 @@ dependencies = [
 
 [[package]]
 name = "aprender"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "bincode",
  "nalgebra 0.33.2",
@@ -6362,7 +6362,7 @@ dependencies = [
  "actix-test",
  "ahash 0.8.12",
  "anyhow",
- "aprender 0.5.1",
+ "aprender 0.6.0",
  "arc-swap",
  "arrow",
  "assert_cmd",
