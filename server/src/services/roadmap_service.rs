@@ -4,7 +4,8 @@
 
 use crate::models::roadmap::{Roadmap, RoadmapItem};
 use anyhow::{Context, Result};
-use std::fs;
+use fs2::FileExt;
+use std::fs::{self, File, OpenOptions};
 use std::path::{Path, PathBuf};
 
 /// Default roadmap file location
@@ -28,8 +29,63 @@ impl RoadmapService {
         Self::new(DEFAULT_ROADMAP_PATH)
     }
 
-    /// Load roadmap from file
+    /// Get lock file path
+    fn lock_file_path(&self) -> PathBuf {
+        let mut lock_path = self.roadmap_path.clone();
+        lock_path.set_extension("yaml.lock");
+        lock_path
+    }
+
+    /// Acquire exclusive lock for writing
+    fn acquire_write_lock(&self) -> Result<File> {
+        let lock_path = self.lock_file_path();
+
+        // Create parent directory if needed
+        if let Some(parent) = lock_path.parent() {
+            fs::create_dir_all(parent)
+                .with_context(|| format!("Failed to create lock directory: {:?}", parent))?;
+        }
+
+        let lock_file = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .open(&lock_path)
+            .with_context(|| format!("Failed to open lock file: {:?}", lock_path))?;
+
+        lock_file.lock_exclusive()
+            .with_context(|| format!("Failed to acquire exclusive lock: {:?}", lock_path))?;
+
+        Ok(lock_file)
+    }
+
+    /// Acquire shared lock for reading
+    fn acquire_read_lock(&self) -> Result<File> {
+        let lock_path = self.lock_file_path();
+
+        // Create parent directory if needed
+        if let Some(parent) = lock_path.parent() {
+            fs::create_dir_all(parent)
+                .with_context(|| format!("Failed to create lock directory: {:?}", parent))?;
+        }
+
+        let lock_file = OpenOptions::new()
+            .create(true)
+            .read(true)
+            .write(true)  // Need write permission to create file
+            .open(&lock_path)
+            .with_context(|| format!("Failed to open lock file: {:?}", lock_path))?;
+
+        lock_file.lock_shared()
+            .with_context(|| format!("Failed to acquire shared lock: {:?}", lock_path))?;
+
+        Ok(lock_file)
+    }
+
+    /// Load roadmap from file (with shared lock)
     pub fn load(&self) -> Result<Roadmap> {
+        // Acquire shared lock (allows multiple concurrent readers)
+        let _lock = self.acquire_read_lock()?;
+
         if !self.roadmap_path.exists() {
             // Return empty roadmap if file doesn't exist
             return Ok(Roadmap::default());
@@ -42,10 +98,14 @@ impl RoadmapService {
             .with_context(|| format!("Failed to parse roadmap YAML: {:?}", self.roadmap_path))?;
 
         Ok(roadmap)
+        // Lock released automatically when _lock goes out of scope
     }
 
-    /// Save roadmap to file
+    /// Save roadmap to file (with exclusive lock)
     pub fn save(&self, roadmap: &Roadmap) -> Result<()> {
+        // Acquire exclusive lock (blocks all other readers and writers)
+        let _lock = self.acquire_write_lock()?;
+
         // Create parent directory if it doesn't exist
         if let Some(parent) = self.roadmap_path.parent() {
             fs::create_dir_all(parent)
@@ -59,22 +119,71 @@ impl RoadmapService {
             .with_context(|| format!("Failed to write roadmap file: {:?}", self.roadmap_path))?;
 
         Ok(())
+        // Lock released automatically when _lock goes out of scope
     }
 
-    /// Add or update an item in the roadmap
+    /// Add or update an item in the roadmap (atomic read-modify-write with exclusive lock)
     pub fn upsert_item(&self, item: RoadmapItem) -> Result<()> {
-        let mut roadmap = self.load()?;
+        // Acquire exclusive lock for entire read-modify-write operation
+        let _lock = self.acquire_write_lock()?;
+
+        // Load roadmap (no lock needed - we already have exclusive lock)
+        let mut roadmap = if self.roadmap_path.exists() {
+            let contents = fs::read_to_string(&self.roadmap_path)
+                .with_context(|| format!("Failed to read roadmap file: {:?}", self.roadmap_path))?;
+            serde_yaml::from_str(&contents)
+                .with_context(|| format!("Failed to parse roadmap YAML: {:?}", self.roadmap_path))?
+        } else {
+            Roadmap::default()
+        };
+
+        // Modify
         roadmap.upsert_item(item);
-        self.save(&roadmap)?;
+
+        // Save (no lock needed - we already have exclusive lock)
+        if let Some(parent) = self.roadmap_path.parent() {
+            fs::create_dir_all(parent)
+                .with_context(|| format!("Failed to create directory: {:?}", parent))?;
+        }
+        let yaml = serde_yaml::to_string(&roadmap)
+            .with_context(|| "Failed to serialize roadmap to YAML")?;
+        fs::write(&self.roadmap_path, yaml)
+            .with_context(|| format!("Failed to write roadmap file: {:?}", self.roadmap_path))?;
+
         Ok(())
+        // Lock released automatically
     }
 
-    /// Remove an item from the roadmap
+    /// Remove an item from the roadmap (atomic read-modify-write with exclusive lock)
     pub fn remove_item(&self, id: &str) -> Result<Option<RoadmapItem>> {
-        let mut roadmap = self.load()?;
+        // Acquire exclusive lock for entire read-modify-write operation
+        let _lock = self.acquire_write_lock()?;
+
+        // Load roadmap (no lock needed - we already have exclusive lock)
+        let mut roadmap = if self.roadmap_path.exists() {
+            let contents = fs::read_to_string(&self.roadmap_path)
+                .with_context(|| format!("Failed to read roadmap file: {:?}", self.roadmap_path))?;
+            serde_yaml::from_str(&contents)
+                .with_context(|| format!("Failed to parse roadmap YAML: {:?}", self.roadmap_path))?
+        } else {
+            Roadmap::default()
+        };
+
+        // Modify
         let removed = roadmap.remove_item(id);
-        self.save(&roadmap)?;
+
+        // Save (no lock needed - we already have exclusive lock)
+        if let Some(parent) = self.roadmap_path.parent() {
+            fs::create_dir_all(parent)
+                .with_context(|| format!("Failed to create directory: {:?}", parent))?;
+        }
+        let yaml = serde_yaml::to_string(&roadmap)
+            .with_context(|| "Failed to serialize roadmap to YAML")?;
+        fs::write(&self.roadmap_path, yaml)
+            .with_context(|| format!("Failed to write roadmap file: {:?}", self.roadmap_path))?;
+
         Ok(removed)
+        // Lock released automatically
     }
 
     /// Find an item by ID
@@ -242,5 +351,304 @@ mod tests {
         assert!(contents.contains("github_repo:"));
         assert!(contents.contains("- id: GH-42"));
         assert!(contents.contains("title: Test issue"));
+    }
+
+    // Property-based tests using proptest
+    mod property_tests {
+        use super::*;
+        use crate::models::roadmap::{ItemStatus, Priority};
+        use proptest::prelude::*;
+
+        // Custom strategy for ItemStatus (proptest doesn't auto-derive for our enums)
+        fn arb_item_status() -> impl Strategy<Value = ItemStatus> {
+            prop_oneof![
+                Just(ItemStatus::Planned),
+                Just(ItemStatus::InProgress),
+                Just(ItemStatus::Blocked),
+                Just(ItemStatus::Review),
+                Just(ItemStatus::Completed),
+                Just(ItemStatus::Cancelled),
+            ]
+        }
+
+        // Custom strategy for Priority
+        fn arb_priority() -> impl Strategy<Value = Priority> {
+            prop_oneof![
+                Just(Priority::Low),
+                Just(Priority::Medium),
+                Just(Priority::High),
+                Just(Priority::Critical),
+            ]
+        }
+
+        // Generate arbitrary roadmap items for testing
+        fn arb_roadmap_item() -> impl Strategy<Value = RoadmapItem> {
+            (
+                "[A-Z]{2,4}-[0-9]{1,4}",           // id
+                proptest::option::of(1u64..1000),  // github_issue
+                any::<String>(),                   // title (any valid string)
+                arb_item_status(),                 // status
+                arb_priority(),                    // priority
+            )
+                .prop_map(|(id, github_issue, title, status, priority)| {
+                    let mut item = RoadmapItem::new(id, title);
+                    item.github_issue = github_issue;
+                    item.status = status;
+                    item.priority = priority;
+                    item
+                })
+        }
+
+        proptest! {
+            #[test]
+            fn prop_roundtrip_serialization(item in arb_roadmap_item()) {
+                let (_temp, service) = setup_temp_service();
+
+                // Save item
+                service.upsert_item(item.clone()).unwrap();
+
+                // Load and verify
+                let loaded = service.find_item(&item.id).unwrap().unwrap();
+                assert_eq!(loaded.id, item.id);
+                assert_eq!(loaded.title, item.title);
+                assert_eq!(loaded.status, item.status);
+                assert_eq!(loaded.priority, item.priority);
+                assert_eq!(loaded.github_issue, item.github_issue);
+            }
+
+            #[test]
+            fn prop_multiple_items_preserved(items in prop::collection::vec(arb_roadmap_item(), 1..20)) {
+                let (_temp, service) = setup_temp_service();
+
+                // Ensure unique IDs
+                let mut unique_items = Vec::new();
+                let mut seen_ids = std::collections::HashSet::new();
+                for item in items {
+                    if seen_ids.insert(item.id.clone()) {
+                        unique_items.push(item);
+                    }
+                }
+
+                // Save all items
+                for item in &unique_items {
+                    service.upsert_item(item.clone()).unwrap();
+                }
+
+                // Load and verify count
+                let roadmap = service.load().unwrap();
+                assert_eq!(roadmap.roadmap.len(), unique_items.len());
+
+                // Verify each item can be found
+                for item in &unique_items {
+                    let found = service.find_item(&item.id).unwrap();
+                    assert!(found.is_some());
+                }
+            }
+
+            #[test]
+            fn prop_upsert_is_idempotent(item in arb_roadmap_item()) {
+                let (_temp, service) = setup_temp_service();
+
+                // Insert multiple times
+                for _ in 0..5 {
+                    service.upsert_item(item.clone()).unwrap();
+                }
+
+                // Should only have one item
+                let roadmap = service.load().unwrap();
+                assert_eq!(roadmap.roadmap.len(), 1);
+            }
+
+            #[test]
+            fn prop_remove_actually_removes(item in arb_roadmap_item()) {
+                let (_temp, service) = setup_temp_service();
+
+                // Add item
+                service.upsert_item(item.clone()).unwrap();
+                assert!(service.find_item(&item.id).unwrap().is_some());
+
+                // Remove item
+                let removed = service.remove_item(&item.id).unwrap();
+                assert!(removed.is_some());
+
+                // Verify it's gone
+                assert!(service.find_item(&item.id).unwrap().is_none());
+            }
+
+            #[test]
+            fn prop_yaml_always_valid(items in prop::collection::vec(arb_roadmap_item(), 0..10)) {
+                let (_temp, service) = setup_temp_service();
+
+                let mut roadmap = Roadmap::new(Some("test/test".to_string()));
+                for item in items {
+                    roadmap.upsert_item(item);
+                }
+
+                // Save should never fail for valid items
+                service.save(&roadmap).unwrap();
+
+                // Load should always succeed
+                let loaded = service.load().unwrap();
+                assert_eq!(loaded.roadmap.len(), roadmap.roadmap.len());
+
+                // YAML should be parseable by external parser
+                let yaml_content = fs::read_to_string(service.path()).unwrap();
+                let _: serde_yaml::Value = serde_yaml::from_str(&yaml_content).unwrap();
+            }
+        }
+    }
+
+    // Edge case tests
+    mod edge_cases {
+        use super::*;
+
+        #[test]
+        fn test_empty_title_allowed() {
+            let (_temp, service) = setup_temp_service();
+            let item = RoadmapItem::new("TEST-001".to_string(), "".to_string());
+            service.upsert_item(item.clone()).unwrap();
+
+            let loaded = service.find_item("TEST-001").unwrap().unwrap();
+            assert_eq!(loaded.title, "");
+        }
+
+        #[test]
+        fn test_special_characters_in_title() {
+            let (_temp, service) = setup_temp_service();
+            let special_title = "Test: \"quotes\", 'apostrophes', <html>, & ampersands, 日本語";
+            let item = RoadmapItem::new("TEST-001".to_string(), special_title.to_string());
+            service.upsert_item(item.clone()).unwrap();
+
+            let loaded = service.find_item("TEST-001").unwrap().unwrap();
+            assert_eq!(loaded.title, special_title);
+        }
+
+        #[test]
+        fn test_multiline_title() {
+            let (_temp, service) = setup_temp_service();
+            let multiline = "Line 1\nLine 2\nLine 3";
+            let item = RoadmapItem::new("TEST-001".to_string(), multiline.to_string());
+            service.upsert_item(item.clone()).unwrap();
+
+            let loaded = service.find_item("TEST-001").unwrap().unwrap();
+            assert_eq!(loaded.title, multiline);
+        }
+
+        #[test]
+        fn test_very_long_title() {
+            let (_temp, service) = setup_temp_service();
+            let long_title = "A".repeat(10000);
+            let item = RoadmapItem::new("TEST-001".to_string(), long_title.clone());
+            service.upsert_item(item.clone()).unwrap();
+
+            let loaded = service.find_item("TEST-001").unwrap().unwrap();
+            assert_eq!(loaded.title, long_title);
+        }
+
+        #[test]
+        fn test_concurrent_operations() {
+            use std::sync::Arc;
+            use std::thread;
+
+            let temp_dir = TempDir::new().unwrap();
+            let roadmap_path = temp_dir.path().join("roadmap.yaml");
+            let service = Arc::new(RoadmapService::new(&roadmap_path));
+
+            // Initialize empty roadmap
+            service.initialize(None).unwrap();
+
+            // Test concurrent WRITES (should be safe with file locking)
+            let mut handles = vec![];
+            for i in 0..10 {
+                let svc = Arc::clone(&service);
+                let handle = thread::spawn(move || {
+                    let item = RoadmapItem::new(
+                        format!("THREAD-{:03}", i),
+                        format!("Item from thread {}", i),
+                    );
+                    // This will acquire an exclusive lock, preventing race conditions
+                    svc.upsert_item(item).unwrap();
+                });
+                handles.push(handle);
+            }
+
+            // Wait for all threads to complete
+            for handle in handles {
+                handle.join().unwrap();
+            }
+
+            // Verify ALL 10 items were added (proves no race conditions)
+            let roadmap = service.load().unwrap();
+            assert_eq!(
+                roadmap.roadmap.len(),
+                10,
+                "All 10 concurrent writes should succeed with file locking"
+            );
+
+            // Verify each item exists
+            for i in 0..10 {
+                let item_id = format!("THREAD-{:03}", i);
+                let found = service.find_item(&item_id).unwrap();
+                assert!(
+                    found.is_some(),
+                    "Item {} should exist after concurrent write",
+                    item_id
+                );
+            }
+        }
+
+        #[test]
+        fn test_malformed_yaml_recovery() {
+            let temp_dir = TempDir::new().unwrap();
+            let roadmap_path = temp_dir.path().join("roadmap.yaml");
+            let service = RoadmapService::new(&roadmap_path);
+
+            // Write malformed YAML
+            let malformed = "roadmap_version: '1.0'\ninvalid: yaml: structure:";
+            fs::write(&roadmap_path, malformed).unwrap();
+
+            // Load should fail gracefully
+            let result = service.load();
+            assert!(result.is_err());
+            assert!(result.unwrap_err().to_string().contains("Failed to parse roadmap YAML"));
+        }
+
+        #[test]
+        fn test_missing_parent_directory() {
+            let temp_dir = TempDir::new().unwrap();
+            let nested_path = temp_dir.path().join("a").join("b").join("c").join("roadmap.yaml");
+            let service = RoadmapService::new(&nested_path);
+
+            // Should create parent directories
+            let roadmap = Roadmap::new(None);
+            service.save(&roadmap).unwrap();
+
+            assert!(nested_path.exists());
+        }
+
+        #[test]
+        fn test_github_issue_search() {
+            let (_temp, service) = setup_temp_service();
+
+            // Add multiple items with GitHub issues
+            service
+                .upsert_item(RoadmapItem::from_github_issue(42, "Issue 42".to_string()))
+                .unwrap();
+            service
+                .upsert_item(RoadmapItem::from_github_issue(100, "Issue 100".to_string()))
+                .unwrap();
+            service
+                .upsert_item(RoadmapItem::new("YAML-001".to_string(), "No GitHub".to_string()))
+                .unwrap();
+
+            // Search by GitHub issue
+            assert!(service.find_item_by_github_issue(42).unwrap().is_some());
+            assert!(service.find_item_by_github_issue(100).unwrap().is_some());
+            assert!(service.find_item_by_github_issue(999).unwrap().is_none());
+
+            // Verify roadmap has 3 items
+            let roadmap = service.load().unwrap();
+            assert_eq!(roadmap.roadmap.len(), 3);
+        }
     }
 }
