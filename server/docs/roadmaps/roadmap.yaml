@@ -182,3 +182,31 @@ roadmap:
   - ml-integration
   - statistics
   - aprender
+- id: ML-PHASE-5-OLAP
+  github_issue: null
+  item_type: task
+  title: 'Phase 5: OLAP Analytics - Integrate trueno-db for Top-K and Aggregations'
+  status: inprogress
+  priority: high
+  assigned_to: null
+  created: 2025-11-22T12:20:00.000000000+00:00
+  updated: 2025-11-22T12:20:00.000000000+00:00
+  spec: docs/specifications/integrate-ml-trueno-latest-spec.md
+  acceptance_criteria:
+  - Implement trueno-db Top-K query acceleration (5-28x faster)
+  - Implement OLAP-only storage backend for analytics
+  - Add hybrid SQLite + Trueno storage strategy  
+  - Benchmark Top-K: 1M rows with SIMD/GPU backends
+  - Add aggregation acceleration (SUM, AVG, MIN, MAX)
+  - Performance target: SIMD 2.78x, GPU 33.3x faster
+  phases: []
+  subtasks:
+  - Task 5.1 - Implement Top-K Query Acceleration
+  - Task 5.2 - Implement OLAP Storage Backend
+  - Task 5.3 - Add Hybrid SQLite + Trueno Storage
+  - Task 5.4 - Benchmark and validate performance
+  estimated_effort: 7 days
+  labels:
+  - ml-integration
+  - olap
+  - trueno-db
