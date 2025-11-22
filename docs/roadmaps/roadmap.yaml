@@ -215,12 +215,12 @@ roadmap:
 - id: ML-PHASE-5-TOPK-001
   github_issue: null
   item_type: task
-  title: 'New task: ML-PHASE-5-TOPK-001'
-  status: inprogress
+  title: 'Phase 5.1: Top-K Query Acceleration with Unified Backend Selection'
+  status: completed
   priority: medium
   assigned_to: null
   created: 2025-11-22T13:51:02.762360014+00:00
-  updated: 2025-11-22T13:51:02.762360014+00:00
+  updated: 2025-11-22T22:38:00.000000000+00:00
   spec: null
   acceptance_criteria: []
   phases: []
