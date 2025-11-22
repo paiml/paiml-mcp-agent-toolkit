@@ -397,7 +397,7 @@ impl OlapAnalytics for TruenoOlapAnalytics {
         // trueno-db doesn't need table name in storage (single table model)
         // So we parse but ignore table name
         let plan = self.query_engine.parse(&query)?;
-        let result_batch = self.executor.execute(&plan, &*storage)?;
+        let result_batch = self.executor.execute(&plan, &storage)?;
 
         self.arrow_to_scores(result_batch)
     }
@@ -417,7 +417,7 @@ impl OlapAnalytics for TruenoOlapAnalytics {
             .map_err(|e| anyhow::anyhow!("Failed to acquire storage lock: {}", e))?;
 
         let plan = self.query_engine.parse(&query)?;
-        let result_batch = self.executor.execute(&plan, &*storage)?;
+        let result_batch = self.executor.execute(&plan, &storage)?;
 
         // Extract scalar result from RecordBatch
         if result_batch.num_rows() == 0 {
@@ -448,7 +448,7 @@ impl OlapAnalytics for TruenoOlapAnalytics {
             .map_err(|e| anyhow::anyhow!("Failed to acquire storage lock: {}", e))?;
 
         let plan = self.query_engine.parse(&query)?;
-        let result_batch = self.executor.execute(&plan, &*storage)?;
+        let result_batch = self.executor.execute(&plan, &storage)?;
 
         self.arrow_to_scores(result_batch)
     }
