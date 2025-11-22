@@ -144,28 +144,28 @@ pub mod stats {
     /// assert!((mean - 3.0).abs() < 0.01);
     /// ```
     pub fn mean_and_std(values: &[f64]) -> (f64, f64) {
+        use aprender::primitives::Vector;
+
         if values.is_empty() {
             return (0.0, 0.0);
         }
 
-        // Welford's online algorithm for numerical stability
-        let mut mean = 0.0;
-        let mut m2 = 0.0;
+        // Convert f64 to f32 for aprender (Phase 3: Statistics Migration)
+        let values_f32: Vec<f32> = values.iter().map(|&x| x as f32).collect();
+        let vec = Vector::from_slice(&values_f32);
 
-        for (i, &value) in values.iter().enumerate() {
-            let delta = value - mean;
-            mean += delta / (i + 1) as f64;
-            let delta2 = value - mean;
-            m2 += delta * delta2;
-        }
+        let mean = vec.mean() as f64;
 
-        let variance = if values.len() > 1 {
-            m2 / (values.len() - 1) as f64
+        // aprender computes population variance (dividing by n)
+        // Convert to sample variance (dividing by n-1) for Bessel's correction
+        let population_variance = vec.variance() as f64;
+        let sample_variance = if values.len() > 1 {
+            population_variance * values.len() as f64 / (values.len() - 1) as f64
         } else {
             0.0
         };
 
-        (mean, variance.sqrt())
+        (mean, sample_variance.sqrt())
     }
 
     /// Compute average of dataset using specified backend

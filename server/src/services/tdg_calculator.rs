@@ -1236,38 +1236,27 @@ mod simd_equivalence_tests {
         prop::collection::vec(1u32..1000, 1..=max_len)
     }
 
-    /// Scalar implementation of variance for complexity values
-    fn variance_scalar(values: &[u32]) -> f64 {
-        if values.is_empty() {
-            return 0.0;
-        }
-        let sum: u32 = values.iter().sum();
-        let mean = f64::from(sum) / values.len() as f64;
-        let squared_diff_sum: f64 = values.iter().map(|&c| (f64::from(c) - mean).powi(2)).sum();
-        squared_diff_sum / values.len() as f64
-    }
-
-    /// SIMD implementation of variance using Trueno
-    #[cfg(feature = "simd")]
-    fn variance_simd(values: &[u32]) -> f64 {
-        use trueno::Vector;
+    /// Unified variance implementation using aprender
+    /// Replaces variance_scalar and variance_simd (Phase 3: Statistics Migration)
+    fn variance(values: &[u32]) -> f64 {
+        use aprender::primitives::Vector;
 
         if values.is_empty() {
             return 0.0;
         }
 
-        // Convert u32 to f32 for Trueno
+        // Convert u32 to f32 for aprender
         let values_f32: Vec<f32> = values.iter().map(|&x| x as f32).collect();
         let vec = Vector::from_slice(&values_f32);
 
-        match vec.variance() {
-            Ok(var) => var as f64,
-            Err(_) => 0.0,
-        }
+        vec.variance() as f64
     }
 
-    /// Scalar implementation of Gini coefficient
-    fn gini_scalar(values: &[u32]) -> f64 {
+    /// Unified Gini coefficient implementation using aprender
+    /// Replaces gini_scalar and gini_simd (Phase 3: Statistics Migration)
+    fn gini(values: &[u32]) -> f64 {
+        use aprender::primitives::Vector;
+
         if values.is_empty() {
             return 0.0;
         }
@@ -1277,54 +1266,30 @@ mod simd_equivalence_tests {
             return 0.0;
         }
 
-        let mut sorted = values.to_vec();
-        sorted.sort_unstable();
+        // Convert u32 to f32 for aprender
+        let values_f32: Vec<f32> = values.iter().map(|&x| x as f32).collect();
+        let vec = Vector::from_slice(&values_f32);
 
-        let n = sorted.len() as f64;
-        let mut gini_sum = 0.0;
-        for (i, &value) in sorted.iter().enumerate() {
-            gini_sum += (2.0 * (i + 1) as f64 - n - 1.0) * f64::from(value);
-        }
-
-        gini_sum / (n * f64::from(sum))
+        vec.gini_coefficient() as f64
     }
 
-    /// SIMD implementation of Gini coefficient using Trueno
+    // Legacy aliases for backward compatibility with existing tests
+    fn variance_scalar(values: &[u32]) -> f64 {
+        variance(values)
+    }
+
+    #[cfg(feature = "simd")]
+    fn variance_simd(values: &[u32]) -> f64 {
+        variance(values)
+    }
+
+    fn gini_scalar(values: &[u32]) -> f64 {
+        gini(values)
+    }
+
     #[cfg(feature = "simd")]
     fn gini_simd(values: &[u32]) -> f64 {
-        use trueno::Vector;
-
-        if values.is_empty() {
-            return 0.0;
-        }
-
-        let sum: u32 = values.iter().sum();
-        if sum == 0 {
-            return 0.0;
-        }
-
-        let mut sorted = values.to_vec();
-        sorted.sort_unstable();
-
-        let n = sorted.len();
-
-        // Create weights vector: (2*(i+1) - n - 1) for i in 0..n
-        let weights: Vec<f32> = (0..n)
-            .map(|i| 2.0 * (i + 1) as f32 - n as f32 - 1.0)
-            .collect();
-        let values_f32: Vec<f32> = sorted.iter().map(|&x| x as f32).collect();
-
-        let weights_vec = Vector::from_slice(&weights);
-        let values_vec = Vector::from_slice(&values_f32);
-
-        // Element-wise multiply and sum
-        match weights_vec.mul(&values_vec) {
-            Ok(product) => match product.sum() {
-                Ok(gini_sum) => (gini_sum as f64) / (n as f64 * f64::from(sum)),
-                Err(_) => gini_scalar(values),
-            },
-            Err(_) => gini_scalar(values),
-        }
+        gini(values)
     }
 
     // Property tests for scalar implementations

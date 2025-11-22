@@ -81,14 +81,104 @@ roadmap:
   github_issue: 84
   item_type: task
   title: 'Issue #84'
-  status: inprogress
+  status: completed
   priority: medium
   assigned_to: null
   created: 2025-11-21T18:37:55.293231075+00:00
-  updated: 2025-11-21T18:37:55.293231075+00:00
+  updated: 2025-11-22T09:06:36.558847171+00:00
   spec: null
   acceptance_criteria: []
   phases: []
   subtasks: []
   estimated_effort: null
   labels: []
+- id: 'Phase 1: Update dependencies (aprender v0.4.1 + trueno-db v0.2.0)'
+  github_issue: null
+  item_type: task
+  title: 'New task: Phase 1: Update dependencies (aprender v0.4.1 + trueno-db v0.2.0)'
+  status: completed
+  priority: medium
+  assigned_to: null
+  created: 2025-11-21T19:26:18.513154754+00:00
+  updated: 2025-11-21T19:32:40.879382381+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+- id: 'Phase 2: ML migration - Replace custom ML with aprender (RandomForest, KMeans, DBSCAN)'
+  github_issue: null
+  item_type: task
+  title: 'New task: Phase 2: ML migration - Replace custom ML with aprender (RandomForest, KMeans, DBSCAN)'
+  status: completed
+  priority: medium
+  assigned_to: null
+  created: 2025-11-21T21:45:30.594578470+00:00
+  updated: 2025-11-22T08:58:46.307264515+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+- id: ML-PHASE-4-GRAPH
+  github_issue: null
+  item_type: task
+  title: 'Phase 4: Graph Migration - Implement aprender graph algorithms'
+  status: completed
+  priority: high
+  assigned_to: null
+  created: 2025-11-22T11:10:00.000000000+00:00
+  updated: 2025-11-22T11:32:00.000000000+00:00
+  spec: docs/specifications/integrate-ml-trueno-latest-spec.md
+  acceptance_criteria:
+  - Create PMAT → aprender graph adapter (convert DependencyGraph to aprender::graph::Graph)
+  - Replace src/graph/centrality.rs placeholders with aprender calls
+  - Replace src/graph/structure.rs placeholders with aprender calls
+  - Implement PageRank using aprender::graph::pagerank()
+  - Implement Betweenness Centrality using aprender::graph::betweenness_centrality()
+  - Implement Louvain community detection using aprender::graph::louvain()
+  - Add comprehensive integration tests (≥80% coverage)
+  - Benchmark performance vs previous placeholder implementations
+  phases: []
+  subtasks:
+  - Task 4.1 - Implement PageRank
+  - Task 4.2 - Implement Betweenness Centrality  
+  - Task 4.3 - Implement Community Detection
+  - Task 4.4 - Implement Closeness Centrality
+  - Task 4.5 - Implement Eigenvector Centrality
+  - Task 4.6 - Implement Structural Statistics (density, diameter, clustering, assortativity)
+  estimated_effort: 1 week
+  labels:
+  - ml-integration
+  - graph-algorithms
+  - aprender
+- id: ML-PHASE-3-STATS
+  github_issue: null
+  item_type: task
+  title: 'Phase 3: Statistics Migration - Replace custom stats with aprender'
+  status: inprogress
+  priority: high
+  assigned_to: null
+  created: 2025-11-22T11:35:00.000000000+00:00
+  updated: 2025-11-22T11:35:00.000000000+00:00
+  spec: docs/specifications/integrate-ml-trueno-latest-spec.md
+  acceptance_criteria:
+  - Add Gini coefficient to aprender stats module
+  - Replace variance_scalar/variance_simd with aprender
+  - Replace gini_scalar/gini_simd with aprender
+  - Replace mean_and_std in analytics_backend
+  - Add property-based tests for statistical equivalence
+  - Remove ~200 LOC of custom stats code
+  phases: []
+  subtasks:
+  - Task 3.1 - Add Gini coefficient to aprender
+  - Task 3.2 - Migrate TDG calculator statistics
+  - Task 3.3 - Migrate analytics backend statistics
+  - Task 3.4 - Add statistical equivalence tests
+  estimated_effort: 3 days
+  labels:
+  - ml-integration
+  - statistics
+  - aprender
