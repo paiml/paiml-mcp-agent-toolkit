@@ -419,6 +419,10 @@ harness = false
 name = "claude_integration_bench"
 harness = false
 
+[[bench]]
+name = "topk_selection"
+harness = false
+
 [[test]]
 name = "unit_core"
 path = "tests/unit/core.rs"
