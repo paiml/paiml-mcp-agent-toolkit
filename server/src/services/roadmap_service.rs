@@ -49,6 +49,7 @@ impl RoadmapService {
         let lock_file = OpenOptions::new()
             .create(true)
             .write(true)
+            .truncate(true)
             .open(&lock_path)
             .with_context(|| format!("Failed to open lock file: {:?}", lock_path))?;
 
@@ -72,9 +73,11 @@ impl RoadmapService {
             .create(true)
             .read(true)
             .write(true)  // Need write permission to create file
+            .truncate(false)  // Don't truncate lock file
             .open(&lock_path)
             .with_context(|| format!("Failed to open lock file: {:?}", lock_path))?;
 
+        #[allow(clippy::incompatible_msrv)]  // lock_shared() available in Rust 1.89.0
         lock_file.lock_shared()
             .with_context(|| format!("Failed to acquire shared lock: {:?}", lock_path))?;
 
