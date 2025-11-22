@@ -77,7 +77,8 @@ renacer = { version = "0.6.1", optional = true }  # Pure Rust system call tracer
 wgpu = { version = "24.0", optional = true, features = ["wgsl"] }
 pollster = { version = "0.3", optional = true }  # Async runtime for wgpu
 bytemuck = { version = "1.14", optional = true }  # Safe cast for GPU buffers
-# Note: arrow and parquet are managed by trueno-db dependency
+arrow = { version = "53", optional = true }  # Arrow columnar format (required for direct arrow API usage)
+# Note: parquet is managed by trueno-db dependency
 
 # Serialization (pinned to avoid swc_common issue with serde::__private)
 serde = { version = "=1.0.219", default-features = false, features = ["derive", "std"] }
@@ -366,7 +367,7 @@ gpu = ["trueno", "trueno/gpu"]
 
 # Analytics features (Issue #79: Feature-gated architecture)
 # Default: SIMD-only (7.8 MB, 18s compile, ≤30 transitive deps)
-analytics-simd = ["trueno", "trueno-db", "trueno-db/simd"]
+analytics-simd = ["trueno", "trueno-db", "trueno-db/simd", "arrow"]
 # GPU-enabled: +wgpu (11.6 MB, 63s compile, ≤95 transitive deps)
 # Note: arrow/parquet pulled in transitively via trueno-db/gpu
 analytics-gpu = ["analytics-simd", "trueno-db/gpu", "wgpu", "pollster", "bytemuck"]

@@ -470,6 +470,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "aprender"
+version = "0.5.1"
+dependencies = [
+ "bincode",
+ "nalgebra 0.33.2",
+ "rand 0.8.5",
+ "rayon",
+ "serde",
+ "serde_json",
+ "trueno 0.6.0",
+]
+
+[[package]]
 name = "ar_archive_writer"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6349,8 +6362,9 @@ dependencies = [
  "actix-test",
  "ahash 0.8.12",
  "anyhow",
- "aprender",
+ "aprender 0.5.1",
  "arc-swap",
+ "arrow",
  "assert_cmd",
  "async-raft",
  "async-trait",
@@ -7342,7 +7356,7 @@ checksum = "fcd5b0b94a957eb8395361b6d69e08694c3163c4d4c1f767d4078646e29ebd1d"
 dependencies = [
  "addr2line 0.24.2",
  "anyhow",
- "aprender",
+ "aprender 0.4.2",
  "backtrace",
  "clap",
  "fnv",
