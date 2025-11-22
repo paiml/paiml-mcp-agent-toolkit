@@ -158,11 +158,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'Phase 3: Statistics Migration - Replace custom stats with aprender'
-  status: inprogress
+  status: completed
   priority: high
   assigned_to: null
   created: 2025-11-22T11:35:00.000000000+00:00
-  updated: 2025-11-22T11:35:00.000000000+00:00
+  updated: 2025-11-22T12:05:00.000000000+00:00
   spec: docs/specifications/integrate-ml-trueno-latest-spec.md
   acceptance_criteria:
   - Add Gini coefficient to aprender stats module
