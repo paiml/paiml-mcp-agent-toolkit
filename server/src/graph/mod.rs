@@ -8,7 +8,7 @@ pub mod community;
 pub mod context_annotator;
 pub mod pagerank;
 #[cfg(feature = "analytics-simd")]
-pub mod storage;  // Phase 7.1: Hybrid graph storage with trueno-db + aprender
+pub mod storage; // Phase 7.1: Hybrid graph storage with trueno-db + aprender
 pub mod structure;
 pub mod symbol_table;
 pub mod types;

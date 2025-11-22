@@ -21,12 +21,12 @@ pub mod recommendation_engine;
 pub mod formatters;
 pub mod language_simple;
 pub mod metrics_aggregator;
+pub mod olap_analytics;
 pub mod profiler;
 pub mod resource_control;
 pub mod scheduler;
 pub mod storage;
 pub mod storage_backend;
-pub mod olap_analytics;
 pub mod web_dashboard;
 
 #[cfg(test)]
@@ -65,6 +65,9 @@ pub use hooks_config::{
     BaselineConfig, CiCdConfig, EnforcementMode, QualityGatesConfig, TdgHooksConfig,
 };
 pub use language_simple::{Language, LanguageRules};
+#[cfg(feature = "analytics-simd")]
+pub use olap_analytics::TruenoOlapAnalytics;
+pub use olap_analytics::{AggOp, OlapAnalytics};
 pub use quality_gate::{
     GateConfig, GateResult, MinimumGradeGate, NewFileGate, QualityGate, RegressionGate, Severity,
     Violation, ViolationType,
@@ -88,9 +91,6 @@ pub use storage_backend::SledBackend;
 pub use storage_backend::{
     InMemoryBackend, StorageBackend, StorageBackendFactory, StorageBackendType, StorageConfig,
 };
-pub use olap_analytics::{AggOp, OlapAnalytics};
-#[cfg(feature = "analytics-simd")]
-pub use olap_analytics::TruenoOlapAnalytics;
 pub use web_dashboard::{
     create_dashboard_router, start_dashboard_server, DashboardState,
     HealthStatus as DashboardHealthStatus, PerformanceMetrics as DashboardPerformanceMetrics,

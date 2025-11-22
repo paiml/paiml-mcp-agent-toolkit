@@ -243,7 +243,11 @@ pub fn select_top_k_arrow(data: &[i64], k: usize) -> Result<Vec<i64>, Box<dyn st
 
     // Convert to Arrow RecordBatch
     let array = Arc::new(Int64Array::from(data.to_vec()));
-    let schema = Arc::new(Schema::new(vec![Field::new("value", DataType::Int64, false)]));
+    let schema = Arc::new(Schema::new(vec![Field::new(
+        "value",
+        DataType::Int64,
+        false,
+    )]));
     let batch = RecordBatch::try_new(schema, vec![array])?;
 
     // Use trueno-db TopKSelection
@@ -333,7 +337,10 @@ mod tests {
         let arrow_result = select_top_k_arrow(&data, 10).expect("Arrow selection failed");
 
         // Results must match
-        assert_eq!(heap_result, arrow_result, "Arrow backend must produce same results as heap");
+        assert_eq!(
+            heap_result, arrow_result,
+            "Arrow backend must produce same results as heap"
+        );
     }
 
     #[test]

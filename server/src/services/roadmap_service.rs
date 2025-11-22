@@ -53,7 +53,8 @@ impl RoadmapService {
             .open(&lock_path)
             .with_context(|| format!("Failed to open lock file: {:?}", lock_path))?;
 
-        lock_file.lock_exclusive()
+        lock_file
+            .lock_exclusive()
             .with_context(|| format!("Failed to acquire exclusive lock: {:?}", lock_path))?;
 
         Ok(lock_file)
@@ -72,13 +73,14 @@ impl RoadmapService {
         let lock_file = OpenOptions::new()
             .create(true)
             .read(true)
-            .write(true)  // Need write permission to create file
-            .truncate(false)  // Don't truncate lock file
+            .write(true) // Need write permission to create file
+            .truncate(false) // Don't truncate lock file
             .open(&lock_path)
             .with_context(|| format!("Failed to open lock file: {:?}", lock_path))?;
 
-        #[allow(clippy::incompatible_msrv)]  // lock_shared() available in Rust 1.89.0
-        lock_file.lock_shared()
+        #[allow(clippy::incompatible_msrv)] // lock_shared() available in Rust 1.89.0
+        lock_file
+            .lock_shared()
             .with_context(|| format!("Failed to acquire shared lock: {:?}", lock_path))?;
 
         Ok(lock_file)
@@ -387,11 +389,11 @@ mod tests {
         // Generate arbitrary roadmap items for testing
         fn arb_roadmap_item() -> impl Strategy<Value = RoadmapItem> {
             (
-                "[A-Z]{2,4}-[0-9]{1,4}",           // id
-                proptest::option::of(1u64..1000),  // github_issue
-                any::<String>(),                   // title (any valid string)
-                arb_item_status(),                 // status
-                arb_priority(),                    // priority
+                "[A-Z]{2,4}-[0-9]{1,4}",          // id
+                proptest::option::of(1u64..1000), // github_issue
+                any::<String>(),                  // title (any valid string)
+                arb_item_status(),                // status
+                arb_priority(),                   // priority
             )
                 .prop_map(|(id, github_issue, title, status, priority)| {
                     let mut item = RoadmapItem::new(id, title);
@@ -613,13 +615,21 @@ mod tests {
             // Load should fail gracefully
             let result = service.load();
             assert!(result.is_err());
-            assert!(result.unwrap_err().to_string().contains("Failed to parse roadmap YAML"));
+            assert!(result
+                .unwrap_err()
+                .to_string()
+                .contains("Failed to parse roadmap YAML"));
         }
 
         #[test]
         fn test_missing_parent_directory() {
             let temp_dir = TempDir::new().unwrap();
-            let nested_path = temp_dir.path().join("a").join("b").join("c").join("roadmap.yaml");
+            let nested_path = temp_dir
+                .path()
+                .join("a")
+                .join("b")
+                .join("c")
+                .join("roadmap.yaml");
             let service = RoadmapService::new(&nested_path);
 
             // Should create parent directories
@@ -641,7 +651,10 @@ mod tests {
                 .upsert_item(RoadmapItem::from_github_issue(100, "Issue 100".to_string()))
                 .unwrap();
             service
-                .upsert_item(RoadmapItem::new("YAML-001".to_string(), "No GitHub".to_string()))
+                .upsert_item(RoadmapItem::new(
+                    "YAML-001".to_string(),
+                    "No GitHub".to_string(),
+                ))
                 .unwrap();
 
             // Search by GitHub issue

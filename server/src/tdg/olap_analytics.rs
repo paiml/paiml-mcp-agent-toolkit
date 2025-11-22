@@ -113,8 +113,11 @@ pub trait OlapAnalytics: Send + Sync {
     /// # Returns
     ///
     /// Vec of TDG scores matching the language filter
-    async fn query_by_language(&self, language: Language, limit: Option<usize>)
-        -> Result<Vec<TdgScore>>;
+    async fn query_by_language(
+        &self,
+        language: Language,
+        limit: Option<usize>,
+    ) -> Result<Vec<TdgScore>>;
 
     /// Get total number of records in analytics store
     async fn count(&self) -> Result<usize>;
@@ -233,17 +236,20 @@ impl TruenoOlapAnalytics {
 
     /// Convert TdgScore to Arrow RecordBatch for trueno-db
     fn scores_to_arrow(&self, scores: &[TdgScore]) -> Result<arrow::record_batch::RecordBatch> {
-        use arrow::array::{Float32Array, StringArray, RecordBatch};
+        use arrow::array::{Float32Array, RecordBatch, StringArray};
         use arrow::datatypes::{DataType, Field, Schema};
         use std::sync::Arc;
 
         // Extract fields into columnar arrays
         let file_paths: Vec<String> = scores
             .iter()
-            .map(|s| s.file_path.as_ref()
-                .and_then(|p| p.to_str())
-                .unwrap_or("")
-                .to_string())
+            .map(|s| {
+                s.file_path
+                    .as_ref()
+                    .and_then(|p| p.to_str())
+                    .unwrap_or("")
+                    .to_string()
+            })
             .collect();
 
         let structural: Vec<f32> = scores.iter().map(|s| s.structural_complexity).collect();
@@ -256,10 +262,7 @@ impl TruenoOlapAnalytics {
         let total: Vec<f32> = scores.iter().map(|s| s.total).collect();
         let confidence: Vec<f32> = scores.iter().map(|s| s.confidence).collect();
 
-        let languages: Vec<String> = scores
-            .iter()
-            .map(|s| format!("{:?}", s.language))
-            .collect();
+        let languages: Vec<String> = scores.iter().map(|s| format!("{:?}", s.language)).collect();
 
         // Create Arrow schema
         let schema = Arc::new(Schema::new(vec![
@@ -307,27 +310,60 @@ impl TruenoOlapAnalytics {
         }
 
         // Extract columns (matching scores_to_arrow schema)
-        let file_paths = batch.column(0).as_any().downcast_ref::<StringArray>()
+        let file_paths = batch
+            .column(0)
+            .as_any()
+            .downcast_ref::<StringArray>()
             .ok_or_else(|| anyhow::anyhow!("Expected StringArray for file_path column"))?;
-        let structural = batch.column(1).as_any().downcast_ref::<Float32Array>()
+        let structural = batch
+            .column(1)
+            .as_any()
+            .downcast_ref::<Float32Array>()
             .ok_or_else(|| anyhow::anyhow!("Expected Float32Array for structural_complexity"))?;
-        let semantic = batch.column(2).as_any().downcast_ref::<Float32Array>()
+        let semantic = batch
+            .column(2)
+            .as_any()
+            .downcast_ref::<Float32Array>()
             .ok_or_else(|| anyhow::anyhow!("Expected Float32Array for semantic_complexity"))?;
-        let duplication = batch.column(3).as_any().downcast_ref::<Float32Array>()
+        let duplication = batch
+            .column(3)
+            .as_any()
+            .downcast_ref::<Float32Array>()
             .ok_or_else(|| anyhow::anyhow!("Expected Float32Array for duplication_ratio"))?;
-        let coupling = batch.column(4).as_any().downcast_ref::<Float32Array>()
+        let coupling = batch
+            .column(4)
+            .as_any()
+            .downcast_ref::<Float32Array>()
             .ok_or_else(|| anyhow::anyhow!("Expected Float32Array for coupling_score"))?;
-        let doc = batch.column(5).as_any().downcast_ref::<Float32Array>()
+        let doc = batch
+            .column(5)
+            .as_any()
+            .downcast_ref::<Float32Array>()
             .ok_or_else(|| anyhow::anyhow!("Expected Float32Array for doc_coverage"))?;
-        let consistency = batch.column(6).as_any().downcast_ref::<Float32Array>()
+        let consistency = batch
+            .column(6)
+            .as_any()
+            .downcast_ref::<Float32Array>()
             .ok_or_else(|| anyhow::anyhow!("Expected Float32Array for consistency_score"))?;
-        let entropy = batch.column(7).as_any().downcast_ref::<Float32Array>()
+        let entropy = batch
+            .column(7)
+            .as_any()
+            .downcast_ref::<Float32Array>()
             .ok_or_else(|| anyhow::anyhow!("Expected Float32Array for entropy_score"))?;
-        let total = batch.column(8).as_any().downcast_ref::<Float32Array>()
+        let total = batch
+            .column(8)
+            .as_any()
+            .downcast_ref::<Float32Array>()
             .ok_or_else(|| anyhow::anyhow!("Expected Float32Array for total"))?;
-        let confidence = batch.column(9).as_any().downcast_ref::<Float32Array>()
+        let confidence = batch
+            .column(9)
+            .as_any()
+            .downcast_ref::<Float32Array>()
             .ok_or_else(|| anyhow::anyhow!("Expected Float32Array for confidence"))?;
-        let languages = batch.column(10).as_any().downcast_ref::<StringArray>()
+        let languages = batch
+            .column(10)
+            .as_any()
+            .downcast_ref::<StringArray>()
             .ok_or_else(|| anyhow::anyhow!("Expected StringArray for language column"))?;
 
         // Reconstruct TdgScore objects
@@ -357,7 +393,11 @@ impl TruenoOlapAnalytics {
             let grade = crate::tdg::Grade::from_score(total_score);
 
             scores.push(TdgScore {
-                file_path: if file_path_str.is_empty() { None } else { Some(PathBuf::from(file_path_str)) },
+                file_path: if file_path_str.is_empty() {
+                    None
+                } else {
+                    Some(PathBuf::from(file_path_str))
+                },
                 structural_complexity: structural.value(i),
                 semantic_complexity: semantic.value(i),
                 duplication_ratio: duplication.value(i),
@@ -370,8 +410,8 @@ impl TruenoOlapAnalytics {
                 language,
                 confidence: confidence.value(i),
                 penalties_applied: Vec::new(), // Not stored in OLAP (metadata loss acceptable for analytics)
-                critical_defects_count: 0, // Not stored in OLAP
-                has_critical_defects: false, // Not stored in OLAP
+                critical_defects_count: 0,     // Not stored in OLAP
+                has_critical_defects: false,   // Not stored in OLAP
             });
         }
 
@@ -391,7 +431,9 @@ impl OlapAnalytics for TruenoOlapAnalytics {
         let batch = self.scores_to_arrow(scores)?;
 
         // Append to trueno-db (OLAP append-only pattern)
-        let mut storage = self.storage.lock()
+        let mut storage = self
+            .storage
+            .lock()
             .map_err(|e| anyhow::anyhow!("Failed to acquire storage lock: {}", e))?;
         storage.append_batch(batch)?;
 
@@ -400,9 +442,14 @@ impl OlapAnalytics for TruenoOlapAnalytics {
 
     async fn query_top_k(&self, k: usize, order_by: &str) -> Result<Vec<TdgScore>> {
         // Use trueno-db SQL Top-K optimization (ORDER BY + LIMIT)
-        let query = format!("SELECT * FROM tdg_scores ORDER BY {} DESC LIMIT {}", order_by, k);
+        let query = format!(
+            "SELECT * FROM tdg_scores ORDER BY {} DESC LIMIT {}",
+            order_by, k
+        );
 
-        let storage = self.storage.lock()
+        let storage = self
+            .storage
+            .lock()
             .map_err(|e| anyhow::anyhow!("Failed to acquire storage lock: {}", e))?;
 
         // trueno-db doesn't need table name in storage (single table model)
@@ -424,7 +471,9 @@ impl OlapAnalytics for TruenoOlapAnalytics {
         };
         let query = format!("SELECT {}({}) FROM tdg_scores", op_str, column);
 
-        let storage = self.storage.lock()
+        let storage = self
+            .storage
+            .lock()
             .map_err(|e| anyhow::anyhow!("Failed to acquire storage lock: {}", e))?;
 
         let plan = self.query_engine.parse(&query)?;
@@ -436,9 +485,13 @@ impl OlapAnalytics for TruenoOlapAnalytics {
         }
 
         let column = result_batch.column(0);
-        let value = if let Some(float_array) = column.as_any().downcast_ref::<arrow::array::Float32Array>() {
+        let value = if let Some(float_array) =
+            column.as_any().downcast_ref::<arrow::array::Float32Array>()
+        {
             float_array.value(0) as f64
-        } else if let Some(float_array) = column.as_any().downcast_ref::<arrow::array::Float64Array>() {
+        } else if let Some(float_array) =
+            column.as_any().downcast_ref::<arrow::array::Float64Array>()
+        {
             float_array.value(0)
         } else if let Some(int_array) = column.as_any().downcast_ref::<arrow::array::Int64Array>() {
             int_array.value(0) as f64
@@ -449,13 +502,22 @@ impl OlapAnalytics for TruenoOlapAnalytics {
         Ok(value)
     }
 
-    async fn query_by_language(&self, language: Language, limit: Option<usize>) -> Result<Vec<TdgScore>> {
+    async fn query_by_language(
+        &self,
+        language: Language,
+        limit: Option<usize>,
+    ) -> Result<Vec<TdgScore>> {
         // Use SQL WHERE filtering
         let lang_str = format!("{:?}", language);
         let limit_clause = limit.map(|l| format!(" LIMIT {}", l)).unwrap_or_default();
-        let query = format!("SELECT * FROM tdg_scores WHERE language = '{}'{}",lang_str, limit_clause);
+        let query = format!(
+            "SELECT * FROM tdg_scores WHERE language = '{}'{}",
+            lang_str, limit_clause
+        );
 
-        let storage = self.storage.lock()
+        let storage = self
+            .storage
+            .lock()
             .map_err(|e| anyhow::anyhow!("Failed to acquire storage lock: {}", e))?;
 
         let plan = self.query_engine.parse(&query)?;
@@ -465,7 +527,9 @@ impl OlapAnalytics for TruenoOlapAnalytics {
     }
 
     async fn count(&self) -> Result<usize> {
-        let storage = self.storage.lock()
+        let storage = self
+            .storage
+            .lock()
             .map_err(|e| anyhow::anyhow!("Failed to acquire storage lock: {}", e))?;
 
         // Sum rows across all batches
@@ -474,7 +538,9 @@ impl OlapAnalytics for TruenoOlapAnalytics {
     }
 
     async fn clear(&self) -> Result<()> {
-        let mut storage = self.storage.lock()
+        let mut storage = self
+            .storage
+            .lock()
             .map_err(|e| anyhow::anyhow!("Failed to acquire storage lock: {}", e))?;
 
         // Clear all batches (OLAP: recreate storage)

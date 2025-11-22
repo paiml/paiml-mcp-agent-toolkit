@@ -112,7 +112,10 @@ fn main() -> Result<()> {
         println!("\n   📋 {}", item.id);
         println!("      Title: {}", item.title);
         println!("      Status: {:?}", item.status);
-        println!("      Acceptance Criteria: {}", item.acceptance_criteria.len());
+        println!(
+            "      Acceptance Criteria: {}",
+            item.acceptance_criteria.len()
+        );
     }
 
     // === Example 5: Find specific items ===
@@ -124,7 +127,10 @@ fn main() -> Result<()> {
     }
 
     if let Some(found) = service.find_item_by_github_issue(42)? {
-        println!("\n✅ Found by GitHub issue: #{}", found.github_issue.unwrap());
+        println!(
+            "\n✅ Found by GitHub issue: #{}",
+            found.github_issue.unwrap()
+        );
         println!("   ID: {}", found.id);
         println!("   Title: {}", found.title);
     }

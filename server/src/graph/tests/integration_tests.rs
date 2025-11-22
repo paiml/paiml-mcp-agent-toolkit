@@ -27,10 +27,10 @@ fn create_node(name: &str, complexity: f64) -> NodeData {
 fn test_centrality_integration_star_graph() {
     // Create star graph: central node connected to 4 periphery nodes
     let mut graph = DependencyGraph::new();
-    
+
     let center = graph.add_node(create_node("center", 5.0));
     let mut periphery = Vec::new();
-    
+
     for i in 0..4 {
         let node = graph.add_node(create_node(&format!("node_{}", i), 2.0));
         periphery.push(node);
@@ -45,11 +45,11 @@ fn test_centrality_integration_star_graph() {
             },
         );
     }
-    
+
     // Compute centrality metrics
     let computer = CentralityComputer::new(true, false);
     let metrics = computer.compute_all(&graph);
-    
+
     // Verify metrics dimensions
     assert_eq!(metrics.degree.len(), 5);
     assert_eq!(metrics.betweenness.len(), 5);
@@ -57,7 +57,7 @@ fn test_centrality_integration_star_graph() {
     assert_eq!(metrics.eigenvector.len(), 5);
     assert_eq!(metrics.katz.len(), 5);
     assert_eq!(metrics.harmonic.len(), 5);
-    
+
     // Center should have higher degree centrality than periphery
     let center_idx = center.index();
     for &p in &periphery {
@@ -75,11 +75,11 @@ fn test_centrality_integration_star_graph() {
 fn test_structural_integration_small_graph() {
     // Create small directed graph with known properties
     let mut graph = DependencyGraph::new();
-    
+
     let n0 = graph.add_node(create_node("mod_a", 3.0));
     let n1 = graph.add_node(create_node("mod_b", 4.0));
     let n2 = graph.add_node(create_node("mod_c", 2.0));
-    
+
     graph.add_edge(
         n0,
         n1,
@@ -104,20 +104,23 @@ fn test_structural_integration_small_graph() {
             direction: FlowDirection::Forward,
         },
     );
-    
+
     // Analyze structure
     let analyzer = StructuralAnalyzer::new(true);
     let metrics = analyzer.analyze(&graph);
-    
+
     // Verify basic properties
     assert!(metrics.density > 0.0, "Density should be positive");
-    assert!(metrics.average_degree > 0.0, "Average degree should be positive");
+    assert!(
+        metrics.average_degree > 0.0,
+        "Average degree should be positive"
+    );
     assert_eq!(metrics.is_cyclic, true, "Graph should be cyclic");
     assert_eq!(
         metrics.strongly_connected_components, 1,
         "Should have 1 SCC (all nodes in cycle)"
     );
-    
+
     // Verify clustering coefficient is computed
     assert!(
         metrics.clustering_coefficient >= 0.0,
@@ -129,7 +132,7 @@ fn test_structural_integration_small_graph() {
 fn test_disconnected_graph_components() {
     // Create graph with 2 disconnected components
     let mut graph = DependencyGraph::new();
-    
+
     // Component 1
     let c1_n0 = graph.add_node(create_node("comp1_a", 2.0));
     let c1_n1 = graph.add_node(create_node("comp1_b", 3.0));
@@ -141,15 +144,15 @@ fn test_disconnected_graph_components() {
             async_call: false,
         },
     );
-    
+
     // Component 2 (isolated)
     let _c2_n0 = graph.add_node(create_node("comp2_a", 1.0));
     let _c2_n1 = graph.add_node(create_node("comp2_b", 1.0));
-    
+
     // Analyze structure
     let analyzer = StructuralAnalyzer::new(true);
     let metrics = analyzer.analyze(&graph);
-    
+
     // Should detect 3 strongly connected components (1 edge + 2 isolated nodes)
     assert!(
         metrics.strongly_connected_components >= 2,
@@ -162,13 +165,13 @@ fn test_large_graph_performance() {
     // Create larger graph to verify performance
     let mut graph = DependencyGraph::new();
     let mut nodes = Vec::new();
-    
+
     // Add 20 nodes
     for i in 0..20 {
         let node = graph.add_node(create_node(&format!("node_{}", i), i as f64));
         nodes.push(node);
     }
-    
+
     // Add edges forming a chain
     for i in 0..19 {
         graph.add_edge(
@@ -180,14 +183,14 @@ fn test_large_graph_performance() {
             },
         );
     }
-    
+
     // Compute centrality (should complete quickly)
     let computer = CentralityComputer::new(true, false);
     let metrics = computer.compute_all(&graph);
-    
+
     assert_eq!(metrics.degree.len(), 20);
     assert_eq!(metrics.betweenness.len(), 20);
-    
+
     // Middle nodes should have higher betweenness
     let mid_idx = nodes[10].index();
     let end_idx = nodes[0].index();
@@ -201,11 +204,11 @@ fn test_large_graph_performance() {
 fn test_adapter_preserves_graph_structure() {
     // Verify adapter preserves edge count and node count
     let mut graph = DependencyGraph::new();
-    
+
     let n0 = graph.add_node(create_node("a", 1.0));
     let n1 = graph.add_node(create_node("b", 2.0));
     let n2 = graph.add_node(create_node("c", 3.0));
-    
+
     graph.add_edge(
         n0,
         n1,
@@ -222,10 +225,10 @@ fn test_adapter_preserves_graph_structure() {
             async_call: true,
         },
     );
-    
+
     // Convert to aprender
     let aprender_graph = crate::graph::aprender_adapter::to_aprender_graph(&graph, true);
-    
+
     // Verify structure preserved
     assert_eq!(aprender_graph.num_nodes(), 3, "Node count should match");
     assert_eq!(aprender_graph.num_edges(), 2, "Edge count should match");
@@ -236,10 +239,10 @@ fn test_adapter_preserves_graph_structure() {
 fn test_reciprocity_computation() {
     // Test reciprocity on bidirectional graph
     let mut graph = DependencyGraph::new();
-    
+
     let n0 = graph.add_node(create_node("a", 1.0));
     let n1 = graph.add_node(create_node("b", 2.0));
-    
+
     // Add bidirectional edges
     graph.add_edge(
         n0,
@@ -257,13 +260,16 @@ fn test_reciprocity_computation() {
             visibility: Visibility::Public,
         },
     );
-    
+
     // Analyze structure
     let analyzer = StructuralAnalyzer::new(true);
     let metrics = analyzer.analyze(&graph);
-    
+
     // Reciprocity should be 1.0 (all edges are reciprocal)
-    assert!(metrics.reciprocity.is_some(), "Reciprocity should be computed");
+    assert!(
+        metrics.reciprocity.is_some(),
+        "Reciprocity should be computed"
+    );
     let reciprocity = metrics.reciprocity.unwrap();
     assert!(
         (reciprocity - 1.0).abs() < 0.01,

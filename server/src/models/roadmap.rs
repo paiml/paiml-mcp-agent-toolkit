@@ -391,7 +391,10 @@ roadmap:
         // Extra fields (description, phase, implementation, references) are silently ignored
         let result: Result<Roadmap, _> = serde_yaml::from_str(yaml);
 
-        assert!(result.is_ok(), "Expected parsing to succeed with extra fields silently ignored");
+        assert!(
+            result.is_ok(),
+            "Expected parsing to succeed with extra fields silently ignored"
+        );
 
         let roadmap = result.unwrap();
         assert_eq!(roadmap.github_repo, Some("paiml/trueno-db".to_string()));

@@ -104,27 +104,19 @@ fn bench_topk_comparison(c: &mut Criterion) {
         let data = generate_dataset(size);
         let selector = TopKSelector::new(100);
 
-        group.bench_with_input(
-            BenchmarkId::new("heap", size),
-            &data,
-            |b, data| {
-                b.iter(|| {
-                    let result = selector.select(black_box(data));
-                    black_box(result);
-                });
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("heap", size), &data, |b, data| {
+            b.iter(|| {
+                let result = selector.select(black_box(data));
+                black_box(result);
+            });
+        });
 
-        group.bench_with_input(
-            BenchmarkId::new("arrow", size),
-            &data,
-            |b, data| {
-                b.iter(|| {
-                    let result = select_top_k_arrow(black_box(data), 100).unwrap();
-                    black_box(result);
-                });
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("arrow", size), &data, |b, data| {
+            b.iter(|| {
+                let result = select_top_k_arrow(black_box(data), 100).unwrap();
+                black_box(result);
+            });
+        });
     }
 
     group.finish();
