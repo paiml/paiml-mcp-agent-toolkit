@@ -148,7 +148,11 @@ impl LocalDemoServer {
                 tokio::select! {
                     accept_result = listener.accept() => {
                         if let Ok((stream, _)) = accept_result {
-                            let permit = semaphore.clone().acquire_owned().await.unwrap();
+                            let permit = semaphore
+                                .clone()
+                                .acquire_owned()
+                                .await
+                                .expect("Semaphore should always be available");
                             let state = Arc::clone(&state);
 
                             tokio::spawn(async move {
@@ -318,7 +322,7 @@ pub(crate) fn serve_dashboard(state: &Arc<RwLock<DemoState>>) -> Response<Bytes>
         .header("Content-Type", "text/html; charset=utf-8")
         .header("Cache-Control", "no-cache")
         .body(Bytes::from(html))
-        .unwrap()
+        .expect("HTTP response construction cannot fail")
 }
 
 #[cfg(feature = "demo")]
@@ -330,12 +334,12 @@ pub(crate) fn serve_static_asset(path: &str) -> Response<Bytes> {
             .header("Content-Type", asset.content_type)
             .header("Cache-Control", "public, max-age=3600")
             .body(Bytes::from(content.into_owned()))
-            .unwrap()
+            .expect("HTTP response construction cannot fail")
     } else {
         Response::builder()
             .status(StatusCode::NOT_FOUND)
             .body(Bytes::from_static(b"404 Not Found"))
-            .unwrap()
+            .expect("HTTP response construction cannot fail")
     }
 }
 
@@ -345,7 +349,7 @@ pub(crate) fn serve_static_asset(_path: &str) -> Response<Bytes> {
     Response::builder()
         .status(StatusCode::NOT_FOUND)
         .body(Bytes::from_static(b"Demo mode disabled"))
-        .unwrap()
+        .expect("HTTP response construction cannot fail")
 }
 
 // Disabled demo mode stubs for new endpoints
@@ -357,7 +361,7 @@ pub(crate) fn serve_architecture_analysis(
     Response::builder()
         .status(StatusCode::NOT_FOUND)
         .body(Bytes::from_static(b"Demo mode disabled"))
-        .unwrap()
+        .expect("HTTP response construction cannot fail")
 }
 
 #[cfg(not(feature = "demo"))]
@@ -368,7 +372,7 @@ pub(crate) fn serve_defect_analysis(
     Response::builder()
         .status(StatusCode::NOT_FOUND)
         .body(Bytes::from_static(b"Demo mode disabled"))
-        .unwrap()
+        .expect("HTTP response construction cannot fail")
 }
 
 #[cfg(not(feature = "demo"))]
@@ -379,7 +383,7 @@ pub(crate) fn serve_statistics_analysis(
     Response::builder()
         .status(StatusCode::NOT_FOUND)
         .body(Bytes::from_static(b"Demo mode disabled"))
-        .unwrap()
+        .expect("HTTP response construction cannot fail")
 }
 
 #[cfg(not(feature = "demo"))]
@@ -390,7 +394,7 @@ pub(crate) fn serve_system_diagram(
     Response::builder()
         .status(StatusCode::NOT_FOUND)
         .body(Bytes::from_static(b"Demo mode disabled"))
-        .unwrap()
+        .expect("HTTP response construction cannot fail")
 }
 
 #[cfg(not(feature = "demo"))]
@@ -401,7 +405,7 @@ pub(crate) fn serve_analysis_stream(
     Response::builder()
         .status(StatusCode::NOT_FOUND)
         .body(Bytes::from_static(b"Demo mode disabled"))
-        .unwrap()
+        .expect("HTTP response construction cannot fail")
 }
 
 #[cfg(not(feature = "demo"))]
@@ -412,7 +416,7 @@ pub(crate) fn serve_recommendations_json(
     Response::builder()
         .status(StatusCode::NOT_FOUND)
         .body(Bytes::from_static(b"Demo mode disabled"))
-        .unwrap()
+        .expect("HTTP response construction cannot fail")
 }
 
 #[cfg(not(feature = "demo"))]
@@ -423,7 +427,7 @@ pub(crate) fn serve_polyglot_analysis(
     Response::builder()
         .status(StatusCode::NOT_FOUND)
         .body(Bytes::from_static(b"Demo mode disabled"))
-        .unwrap()
+        .expect("HTTP response construction cannot fail")
 }
 
 #[cfg(not(feature = "demo"))]
@@ -434,7 +438,7 @@ pub(crate) fn serve_showcase_gallery(
     Response::builder()
         .status(StatusCode::NOT_FOUND)
         .body(Bytes::from_static(b"Demo mode disabled"))
-        .unwrap()
+        .expect("HTTP response construction cannot fail")
 }
 
 #[cfg(not(feature = "demo"))]
@@ -457,7 +461,7 @@ pub(crate) fn serve_analysis_data(
     Response::builder()
         .status(StatusCode::NOT_FOUND)
         .body(Bytes::from_static(b"Demo mode disabled"))
-        .unwrap()
+        .expect("HTTP response construction cannot fail")
 }
 
 // API endpoints
@@ -480,8 +484,8 @@ pub(crate) fn serve_summary_json(state: &Arc<RwLock<DemoState>>) -> Response<Byt
     Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "application/json")
-        .body(Bytes::from(serde_json::to_vec(&summary).unwrap()))
-        .unwrap()
+        .body(Bytes::from(serde_json::to_vec(&summary).expect("JSON serialization cannot fail for DemoContent")))
+        .expect("HTTP response construction cannot fail")
 }
 
 #[cfg(feature = "demo")]
@@ -496,8 +500,8 @@ pub(crate) fn serve_metrics_json(state: &Arc<RwLock<DemoState>>) -> Response<Byt
     Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "application/json")
-        .body(Bytes::from(serde_json::to_vec(&metrics).unwrap()))
-        .unwrap()
+        .body(Bytes::from(serde_json::to_vec(&metrics).expect("JSON serialization cannot fail for metrics")))
+        .expect("HTTP response construction cannot fail")
 }
 
 #[cfg(feature = "demo")]
@@ -516,8 +520,8 @@ pub(crate) fn serve_recommendations_json(state: &Arc<RwLock<DemoState>>) -> Resp
     Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "application/json")
-        .body(Bytes::from(serde_json::to_vec(&recommendations).unwrap()))
-        .unwrap()
+        .body(Bytes::from(serde_json::to_vec(&recommendations).expect("JSON serialization cannot fail for recommendations")))
+        .expect("HTTP response construction cannot fail")
 }
 
 #[cfg(feature = "demo")]
@@ -556,8 +560,8 @@ pub(crate) fn serve_polyglot_analysis(state: &Arc<RwLock<DemoState>>) -> Respons
     Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "application/json")
-        .body(Bytes::from(serde_json::to_vec(&polyglot_data).unwrap()))
-        .unwrap()
+        .body(Bytes::from(serde_json::to_vec(&polyglot_data).expect("JSON serialization cannot fail for polyglot data")))
+        .expect("HTTP response construction cannot fail")
 }
 
 #[cfg(feature = "demo")]
@@ -574,8 +578,8 @@ pub(crate) fn serve_showcase_gallery(_state: &Arc<RwLock<DemoState>>) -> Respons
     Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "application/json")
-        .body(Bytes::from(serde_json::to_vec(&showcase_data).unwrap()))
-        .unwrap()
+        .body(Bytes::from(serde_json::to_vec(&showcase_data).expect("JSON serialization cannot fail for showcase data")))
+        .expect("HTTP response construction cannot fail")
 }
 
 #[cfg(feature = "demo")]
@@ -660,14 +664,14 @@ pub(crate) fn serve_hotspots_table(state: &Arc<RwLock<DemoState>>) -> Response<B
     }
 
     // Serialize with minimal allocations
-    let json = serde_json::to_vec(&hotspots).unwrap();
+    let json = serde_json::to_vec(&hotspots).expect("JSON serialization cannot fail for hotspots");
 
     Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "application/json")
         .header("Cache-Control", "max-age=60")
         .body(Bytes::from(json))
-        .unwrap()
+        .expect("HTTP response construction cannot fail")
 }
 
 #[cfg(feature = "demo")]
@@ -737,7 +741,7 @@ pub(crate) fn serve_dag_mermaid(state: &Arc<RwLock<DemoState>>) -> Response<Byte
         .header("Content-Type", "text/plain")
         .header("Cache-Control", "max-age=60")
         .body(Bytes::from(diagram))
-        .unwrap()
+        .expect("HTTP response construction cannot fail")
 }
 
 #[cfg(feature = "demo")]
@@ -780,7 +784,7 @@ pub(crate) fn serve_system_diagram_mermaid(state: &Arc<RwLock<DemoState>>) -> Re
         .header("Content-Type", "text/plain")
         .header("Cache-Control", "max-age=60")
         .body(Bytes::from(system_diagram))
-        .unwrap()
+        .expect("HTTP response construction cannot fail")
 }
 
 // Enhanced API endpoints following the specification
@@ -809,12 +813,12 @@ pub(crate) fn serve_architecture_analysis(state: &Arc<RwLock<DemoState>>) -> Res
             .status(StatusCode::OK)
             .header("Content-Type", "application/json")
             .header("Cache-Control", "max-age=60")
-            .body(Bytes::from(serde_json::to_vec(&result).unwrap()))
-            .unwrap(),
+            .body(Bytes::from(serde_json::to_vec(&result).expect("JSON serialization cannot fail for result")))
+            .expect("HTTP response construction cannot fail"),
         Err(_) => Response::builder()
             .status(StatusCode::INTERNAL_SERVER_ERROR)
             .body(Bytes::from_static(b"Architecture analysis failed"))
-            .unwrap(),
+            .expect("HTTP response construction cannot fail"),
     }
 }
 
@@ -841,8 +845,8 @@ pub(crate) fn serve_defect_analysis(state: &Arc<RwLock<DemoState>>) -> Response<
         .status(StatusCode::OK)
         .header("Content-Type", "application/json")
         .header("Cache-Control", "max-age=60")
-        .body(Bytes::from(serde_json::to_vec(&placeholder).unwrap()))
-        .unwrap()
+        .body(Bytes::from(serde_json::to_vec(&placeholder).expect("JSON serialization cannot fail for placeholder")))
+        .expect("HTTP response construction cannot fail")
 }
 
 #[cfg(feature = "demo")]
@@ -875,8 +879,8 @@ pub(crate) fn serve_statistics_analysis(state: &Arc<RwLock<DemoState>>) -> Respo
         .status(StatusCode::OK)
         .header("Content-Type", "application/json")
         .header("Cache-Control", "max-age=60")
-        .body(Bytes::from(serde_json::to_vec(&stats).unwrap()))
-        .unwrap()
+        .body(Bytes::from(serde_json::to_vec(&stats).expect("JSON serialization cannot fail for stats")))
+        .expect("HTTP response construction cannot fail")
 }
 
 #[cfg(feature = "demo")]
@@ -895,7 +899,7 @@ pub(crate) fn serve_analysis_stream(_state: &Arc<RwLock<DemoState>>) -> Response
         .body(Bytes::from_static(
             b"data: {\"event\":\"complete\",\"result\":\"Analysis complete\"}\n\n",
         ))
-        .unwrap()
+        .expect("HTTP response construction cannot fail")
 }
 
 // Grid.js API endpoint for file analysis data
@@ -1006,8 +1010,8 @@ pub(crate) fn serve_analysis_data(state: &Arc<RwLock<DemoState>>) -> Response<By
         .status(StatusCode::OK)
         .header("Content-Type", "application/json")
         .header("Cache-Control", "max-age=60")
-        .body(Bytes::from(serde_json::to_vec(&response_data).unwrap()))
-        .unwrap()
+        .body(Bytes::from(serde_json::to_vec(&response_data).expect("JSON serialization cannot fail for response data")))
+        .expect("HTTP response construction cannot fail")
 }
 
 // Helper function removed - using TDG scores instead of defect probability

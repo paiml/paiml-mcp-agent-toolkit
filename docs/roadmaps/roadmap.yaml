@@ -420,3 +420,19 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: Fix file_discovery.rs (46 unwrap calls - 2nd biggest offender)
+  github_issue: null
+  item_type: task
+  title: 'New task: Fix file_discovery.rs (46 unwrap calls - 2nd biggest offender)'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2025-11-23T16:40:02.211378973+00:00
+  updated: 2025-11-23T16:40:02.211378973+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
