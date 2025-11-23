@@ -281,8 +281,12 @@ mod tests {
 
     #[test]
     fn test_metric_trend_store_creation() {
-        let store = MetricTrendStore::new();
+        // Use temp directory for testing (avoid .pmat-metrics/ creation in test env)
+        let temp_dir = std::env::temp_dir().join("pmat-test-trends-creation");
+        let store = MetricTrendStore::from_path(&temp_dir);
         assert!(store.is_ok());
+        // Cleanup
+        let _ = std::fs::remove_dir_all(&temp_dir);
     }
 
     #[test]
