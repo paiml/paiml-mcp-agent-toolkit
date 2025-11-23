@@ -65,21 +65,21 @@ impl ProjectMetaDetector {
     pub fn new() -> Self {
         Self {
             patterns: vec![
-                (Regex::new(r"^Makefile$").unwrap(), MetaFileType::Makefile),
-                (Regex::new(r"^makefile$").unwrap(), MetaFileType::Makefile),
+                (Regex::new(r"^Makefile$").expect("static regex pattern '^Makefile$' is valid"), MetaFileType::Makefile),
+                (Regex::new(r"^makefile$").expect("static regex pattern '^makefile$' is valid"), MetaFileType::Makefile),
                 (
-                    Regex::new(r"^GNUmakefile$").unwrap(),
+                    Regex::new(r"^GNUmakefile$").expect("static regex pattern '^GNUmakefile$' is valid"),
                     MetaFileType::Makefile,
                 ),
-                (Regex::new(r"^README\.md$").unwrap(), MetaFileType::Readme),
+                (Regex::new(r"^README\.md$").expect("static regex pattern '^README\\.md$' is valid"), MetaFileType::Readme),
                 (
-                    Regex::new(r"^README\.markdown$").unwrap(),
+                    Regex::new(r"^README\.markdown$").expect("static regex pattern '^README\\.markdown$' is valid"),
                     MetaFileType::Readme,
                 ),
-                (Regex::new(r"^README\.rst$").unwrap(), MetaFileType::Readme),
-                (Regex::new(r"^README\.txt$").unwrap(), MetaFileType::Readme),
-                (Regex::new(r"^README$").unwrap(), MetaFileType::Readme),
-                (Regex::new(r"^readme\.md$").unwrap(), MetaFileType::Readme),
+                (Regex::new(r"^README\.rst$").expect("static regex pattern '^README\\.rst$' is valid"), MetaFileType::Readme),
+                (Regex::new(r"^README\.txt$").expect("static regex pattern '^README\\.txt$' is valid"), MetaFileType::Readme),
+                (Regex::new(r"^README$").expect("static regex pattern '^README$' is valid"), MetaFileType::Readme),
+                (Regex::new(r"^readme\.md$").expect("static regex pattern '^readme\\.md$' is valid"), MetaFileType::Readme),
             ],
         }
     }
@@ -293,6 +293,113 @@ mod tests {
 
         // Should successfully read the file
         assert_eq!(files.len(), 1);
+    }
+
+    /// Test that all regex patterns in ProjectMetaDetector::new() compile successfully
+    /// Validates expect() calls at lines 68-82 (regex initialization)
+    #[test]
+    fn test_regex_patterns_compile_successfully() {
+        // This test ensures that all static regex patterns compile without panicking
+        let detector = ProjectMetaDetector::new();
+
+        // Verify all patterns were initialized (9 total)
+        assert_eq!(detector.patterns.len(), 9);
+
+        // Verify Makefile patterns (3 patterns)
+        let makefile_patterns: Vec<_> = detector
+            .patterns
+            .iter()
+            .filter(|(_, ft)| matches!(ft, MetaFileType::Makefile))
+            .collect();
+        assert_eq!(makefile_patterns.len(), 3);
+
+        // Verify README patterns (6 patterns)
+        let readme_patterns: Vec<_> = detector
+            .patterns
+            .iter()
+            .filter(|(_, ft)| matches!(ft, MetaFileType::Readme))
+            .collect();
+        assert_eq!(readme_patterns.len(), 6);
+    }
+
+    /// Test that regex patterns match expected filenames correctly
+    /// Validates the correctness of patterns initialized with expect() at lines 68-82
+    #[test]
+    fn test_regex_patterns_match_correctly() {
+        let detector = ProjectMetaDetector::new();
+
+        // Test Makefile pattern matching
+        assert!(detector.patterns.iter().any(|(regex, ft)| {
+            matches!(ft, MetaFileType::Makefile) && regex.is_match("Makefile")
+        }));
+        assert!(detector.patterns.iter().any(|(regex, ft)| {
+            matches!(ft, MetaFileType::Makefile) && regex.is_match("makefile")
+        }));
+        assert!(detector.patterns.iter().any(|(regex, ft)| {
+            matches!(ft, MetaFileType::Makefile) && regex.is_match("GNUmakefile")
+        }));
+
+        // Test README pattern matching
+        assert!(detector.patterns.iter().any(|(regex, ft)| {
+            matches!(ft, MetaFileType::Readme) && regex.is_match("README.md")
+        }));
+        assert!(detector.patterns.iter().any(|(regex, ft)| {
+            matches!(ft, MetaFileType::Readme) && regex.is_match("README.markdown")
+        }));
+        assert!(detector.patterns.iter().any(|(regex, ft)| {
+            matches!(ft, MetaFileType::Readme) && regex.is_match("readme.md")
+        }));
+
+        // Verify patterns DON'T match non-target files
+        assert!(!detector.patterns.iter().any(|(regex, _)| {
+            regex.is_match("Makefile.bak") || regex.is_match("README.mdx")
+        }));
+    }
+
+    /// Test that detector initialization is stable and doesn't panic
+    /// Validates the expect() calls at lines 68-82 never panic with valid patterns
+    #[test]
+    fn test_detector_initialization_stability() {
+        // Create multiple instances to ensure initialization is deterministic
+        for _ in 0..10 {
+            let detector = ProjectMetaDetector::new();
+            assert_eq!(detector.patterns.len(), 9);
+        }
+
+        // Test default() method
+        let default_detector = ProjectMetaDetector::default();
+        assert_eq!(default_detector.patterns.len(), 9);
+
+        // Verify default and new produce equivalent results
+        let detector1 = ProjectMetaDetector::new();
+        let detector2 = ProjectMetaDetector::default();
+        assert_eq!(detector1.patterns.len(), detector2.patterns.len());
+    }
+
+    /// Test that regex patterns are anchored correctly (use ^ and $)
+    /// Validates that patterns don't accidentally match substrings
+    #[test]
+    fn test_regex_patterns_are_anchored() {
+        let detector = ProjectMetaDetector::new();
+
+        // Patterns should NOT match filenames with extra characters
+        for (regex, _) in &detector.patterns {
+            // Should not match filenames with prefix/suffix
+            assert!(!regex.is_match("prefix_Makefile"));
+            assert!(!regex.is_match("Makefile_suffix"));
+            assert!(!regex.is_match("prefix_README.md"));
+            assert!(!regex.is_match("README.md_suffix"));
+        }
+
+        // Patterns SHOULD match exact filenames
+        assert!(detector
+            .patterns
+            .iter()
+            .any(|(regex, _)| regex.is_match("Makefile")));
+        assert!(detector
+            .patterns
+            .iter()
+            .any(|(regex, _)| regex.is_match("README.md")));
     }
 }
 
