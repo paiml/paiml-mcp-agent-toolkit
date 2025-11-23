@@ -248,3 +248,4 @@ pmat-*.tar.gz
 *-x86_64-apple-darwin.tar.gz
 *-aarch64-apple-darwin.tar.gz
 /.pmat-metrics/
+.pmat/baseline.json

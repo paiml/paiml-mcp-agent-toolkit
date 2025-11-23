@@ -2511,3 +2511,34 @@ bench-all: bench-baseline ## Run all dependency reduction benchmarks
 	@echo "📊 Results in benchmarks/results/"
 	@echo "📖 Review latest: ls -lt benchmarks/results/ | head -2"
 
+## PMAT Integration (Dogfooding O(1) Quality Gates)
+
+.PHONY: pmat-validate-docs
+pmat-validate-docs: ## Validate documentation accuracy (hallucination detection - Phase 3.5)
+	@echo "📚 Validating documentation accuracy (Phase 3.5)..."
+	@which pmat > /dev/null 2>&1 || { echo "❌ PMAT not found! Install with: cargo install --path server"; exit 1; }
+	@cargo run --release --bin pmat -- context --output deep_context.md --format llm-optimized
+	@cargo run --release --bin pmat -- validate-readme \
+		--targets README.md CLAUDE.md AGENT.md \
+		--deep-context deep_context.md \
+		--fail-on-contradiction \
+		--verbose || { \
+		echo "❌ Documentation validation failed!"; \
+		exit 1; \
+	}
+	@echo "✅ Documentation validation complete - zero hallucinations!"
+
+.PHONY: pmat-quality-gate
+pmat-quality-gate: ## Run PMAT quality gates (O(1) validation)
+	@echo "🔍 Running PMAT quality gates (dogfooding)..."
+	@which pmat > /dev/null 2>&1 || { echo "❌ PMAT not found! Install with: cargo install --path server"; exit 1; }
+	@cargo run --release --bin pmat -- quality-gate --check-metrics --check-tdg
+	@echo "✅ PMAT quality gates passed!"
+
+.PHONY: pmat-rust-score
+pmat-rust-score: ## Run Rust Project Score assessment (dogfooding)
+	@echo "🦀 Running Rust Project Score assessment (dogfooding)..."
+	@which pmat > /dev/null 2>&1 || { echo "❌ PMAT not found! Install with: cargo install --path server"; exit 1; }
+	@cargo run --release --bin pmat -- rust-project-score --verbose
+	@echo "✅ Rust Project Score complete!"
+

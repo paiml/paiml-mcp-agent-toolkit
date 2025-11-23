@@ -67,6 +67,26 @@ jobs:
           echo "duration=$DURATION" >> $GITHUB_OUTPUT
           pmat record-metric test-fast $DURATION
 
+      - name: Record coverage metric
+        id: coverage
+        run: |
+          cargo install cargo-llvm-cov --locked || true
+          START=$(date +%s%3N)
+          cargo llvm-cov clean --workspace --quiet
+          cargo llvm-cov --all-features --workspace --quiet --html --output-dir target/coverage/html || true
+          END=$(date +%s%3N)
+          DURATION=$((END - START))
+          echo "duration=$DURATION" >> $GITHUB_OUTPUT
+          pmat record-metric coverage $DURATION
+
+      - name: Record binary size metric
+        id: binary-size
+        run: |
+          cargo build --release --quiet || true
+          BINARY_SIZE=$(find target/release -maxdepth 1 -type f -executable -name "pmat" -exec stat -c%s {} \; 2>/dev/null || echo "0")
+          echo "size=$BINARY_SIZE" >> $GITHUB_OUTPUT
+          pmat record-metric binary-size $BINARY_SIZE
+
       - name: Upload metrics artifact
         uses: actions/upload-artifact@v3
         with:
@@ -106,19 +126,24 @@ jobs:
       - name: Generate metric report
         if: always()
         run: |
-          echo "## 📊 Quality Metrics Report" > metrics-report.md
+          echo "## 📊 PMAT O(1) Quality Metrics Report" > metrics-report.md
           echo "" >> metrics-report.md
           echo "**Commit**: \`${{ github.sha }}\`" >> metrics-report.md
           echo "**Branch**: \`${{ github.ref_name }}\`" >> metrics-report.md
+          echo "**Date**: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> metrics-report.md
           echo "" >> metrics-report.md
 
           echo "### Current Metrics" >> metrics-report.md
           echo "" >> metrics-report.md
-          echo "- **Lint**: ${{ steps.lint.outputs.duration }}ms" >> metrics-report.md
-          echo "- **Test (fast)**: ${{ steps.test-fast.outputs.duration }}ms" >> metrics-report.md
+          echo "| Metric | Value | Threshold | Status |" >> metrics-report.md
+          echo "|--------|-------|-----------|--------|" >> metrics-report.md
+          echo "| Lint | ${{ steps.lint.outputs.duration }}ms | 30,000ms | $([ "${{ steps.lint.outputs.duration }}" -lt "30000" ] && echo "✅" || echo "❌") |" >> metrics-report.md
+          echo "| Test (fast) | ${{ steps.test-fast.outputs.duration }}ms | 300,000ms | $([ "${{ steps.test-fast.outputs.duration }}" -lt "300000" ] && echo "✅" || echo "❌") |" >> metrics-report.md
+          echo "| Coverage | ${{ steps.coverage.outputs.duration }}ms | 600,000ms | $([ "${{ steps.coverage.outputs.duration }}" -lt "600000" ] && echo "✅" || echo "❌") |" >> metrics-report.md
+          echo "| Binary Size | ${{ steps.binary-size.outputs.size }} bytes | 50,000,000 bytes | $([ "${{ steps.binary-size.outputs.size }}" -lt "50000000" ] && echo "✅" || echo "❌") |" >> metrics-report.md
           echo "" >> metrics-report.md
 
-          echo "### Trend Analysis" >> metrics-report.md
+          echo "### Trend Analysis (30 days)" >> metrics-report.md
           echo "" >> metrics-report.md
           pmat show-metrics --trend >> metrics-report.md || true
 
@@ -128,6 +153,23 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v3
         with:
-          name: metrics-report
+          name: o1-metrics-report
           path: metrics-report.md
+          retention-days: 90
+
+      - name: Run rust-project-score (weekly/main only)
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+        run: |
+          # Run comprehensive rust-project-score on main branch pushes
+          pmat rust-project-score --full --format markdown --output rust-score-o1.md
+
+          echo "## 🦀 Rust Project Score (O(1) Metrics)" >> metrics-report.md
+          cat rust-score-o1.md >> metrics-report.md
+
+      - name: Upload rust-project-score
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+        uses: actions/upload-artifact@v3
+        with:
+          name: rust-project-score-o1
+          path: rust-score-o1.md
           retention-days: 90

@@ -30,3 +30,19 @@ enabled = true
 retention_days = 90
 alert_on_regression = true
 regression_threshold_pct = 10.0   # Alert if >10% slower
+
+# PMAT-specific quality gates
+[quality_gates]
+# Target quality standards for PMAT itself (dogfooding)
+min_coverage_pct = 85.0           # Target: ≥85% line coverage (NASA standard)
+min_mutation_score_pct = 80.0     # Target: ≥80% mutation score
+max_cyclomatic_complexity = 15    # Target: ≤15 per function
+min_tdg_grade = "A-"              # Target: A- or better (≥88)
+max_unwrap_calls = 100            # Current: 570 (CRITICAL - must reduce!)
+
+# Performance budgets (PMAT operation targets)
+[performance]
+# PMAT command execution targets
+min_tdg_analysis_throughput = 1000   # 1000+ lines/sec
+max_memory_usage_mb = 512            # ≤512MB for typical projects
+max_regression_pct = 5.0             # ≤5% performance regression allowed
