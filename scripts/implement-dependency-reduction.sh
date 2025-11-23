@@ -89,6 +89,7 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 for lang in c_sharp java ruby scala swift; do
     echo -e "${YELLOW}→ Checking tree-sitter-${lang} usage...${NC}"
     usage_count=$(rg "tree_sitter_${lang}::" server/src/ 2>/dev/null | wc -l || echo "0")
+    usage_count=$(echo "$usage_count" | tr -d '[:space:]')  # Remove whitespace/newlines
 
     if [ "$usage_count" -eq 0 ]; then
         echo -e "${GREEN}✓ tree-sitter-${lang}: 0 references (SAFE TO REMOVE)${NC}"
@@ -166,6 +167,7 @@ $(cat /tmp/pmat-tdg-languages.log)
 |------------|-----------|--------|
 $(for lang in c_sharp java ruby scala swift; do
     count=$(rg "tree_sitter_${lang}::" server/src/ 2>/dev/null | wc -l || echo "0")
+    count=$(echo "$count" | tr -d '[:space:]')  # Remove whitespace/newlines
     if [ "$count" -eq 0 ]; then
         echo "| tree-sitter-${lang} | ${count} | ✅ Safe to remove |"
     else
