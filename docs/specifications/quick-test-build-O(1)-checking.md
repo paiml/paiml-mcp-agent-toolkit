@@ -90,9 +90,9 @@ Following user requirement: "default to be MEAN" (strict enforcement).
 let lint_hash = sha256(concat(
     hash_tree("server/src/**/*.rs"),
     hash_file(".clippy.toml"),
-    hash_file("Makefile"),
-    hash_tree("scripts/**/*.sh"),
-    hash_file("package.json"),  // TypeScript linting
+    hash_file("Makefile"), // Note: Broad inputs like Makefile and scripts/ can
+    hash_tree("scripts/**/*.sh"), // lead to cache invalidation (Muda). A future
+    hash_file("package.json"),  // Kaizen could be to parse these to find exact dependencies.
 ));
 
 // Build hash: Source + Cargo config
@@ -123,22 +123,36 @@ let deps_hash = sha256(concat(
 
 **[CS-RESEARCH-3]** Automated metric collection via build system hooks, following the "Build System Observability" pattern (ICSE 2024). Build systems should self-instrument to enable performance regression detection.
 
+To apply "Poka-yoke" (mistake-proofing), the recommended approach is a robust wrapper script that encapsulates timing and recording logic.
+
+```bash
+# scripts/record-metric.sh
+#!/bin/bash
+METRIC_NAME="$1"
+shift
+COMMAND_TO_RUN="$@"
+
+START_TIME=$(date +%s%3N)
+# ... logic to run command ...
+$COMMAND_TO_RUN
+EXIT_CODE=$?
+# ... logic to record duration, result, hash, etc. ...
+```
+
+This script can then be used easily within the Makefile.
+
 #### Option A: Makefile Integration (Recommended)
 
 ```makefile
-# Wrap existing targets with metric recording
-lint: _record-lint-start
-	@cargo clippy --manifest-path server/Cargo.toml -- -D warnings
-	@$(MAKE) _record-lint-end
+# Wrap existing targets with a metric recording script (Poka-yoke)
+lint:
+	@./scripts/record-metric.sh lint -- cargo clippy --manifest-path server/Cargo.toml -- -D warnings
 
-_record-lint-start:
-	@mkdir -p .pmat-metrics
-	@date +%s%3N > .pmat-metrics/lint.start
+test-fast:
+	@./scripts/record-metric.sh test-fast -- cargo test --lib
 
-_record-lint-end:
-	@./scripts/record-metric.sh lint
-
-# Similar for test-fast, coverage, build-release
+# The record-metric.sh script is responsible for timing, execution,
+# and result caching, providing a robust, mistake-proof mechanism.
 ```
 
 #### Option B: Cargo Build Script Integration
@@ -158,7 +172,7 @@ fn main() {
 }
 ```
 
-#### Option C: Git Post-Commit Hook (Asynchronous)
+#### Option C: Git Post-Commit Hook (Asynchronous - for Trend Analysis)
 
 **[CS-RESEARCH-4]** Asynchronous metric collection in post-commit hooks avoids blocking user workflow. Research: "Non-Blocking Continuous Integration" (MSR 2023) shows 40% productivity improvement when CI metrics are collected asynchronously.
 
@@ -170,6 +184,8 @@ fn main() {
     pmat record-metrics --async &
 ) &
 ```
+
+**Applicability Note**: This method is highly effective for `Kaizen` (collecting historical data for trend analysis) without impacting the user. However, it is **not suitable** for `Jidoka`/`Andon Cord` enforcement within a `pre-commit` hook. Because it runs *after* the commit is finalized, the pre-commit check for the *next* commit would use these metrics, but the current commit would be validated against old data. For immediate gating, metrics must be generated synchronously if they are stale.
 
 ### 3. Pre-Commit O(1) Validation
 
@@ -346,27 +362,19 @@ pmat validate-metrics --fail-on-threshold-violation || {
 #### Makefile Integration
 
 ```makefile
-# Add metric recording to existing targets
+# Add metric recording using the robust wrapper script
 .PHONY: lint test-fast coverage
 
-lint: _record-metric-start
-	@cargo clippy -- -D warnings
-	@$(MAKE) _record-metric-end METRIC=lint
+lint:
+	@./scripts/record-metric.sh lint -- cargo clippy -- -D warnings
 
-test-fast: _record-metric-start
-	@cargo test --lib
-	@$(MAKE) _record-metric-end METRIC=test-fast
+test-fast:
+	@./scripts/record-metric.sh test-fast -- cargo test --lib
 
-coverage: _record-metric-start
-	@cargo llvm-cov
-	@$(MAKE) _record-metric-end METRIC=coverage
+coverage:
+	@./scripts/record-metric.sh coverage -- cargo llvm-cov
 
-_record-metric-start:
-	@mkdir -p .pmat-metrics
-	@date +%s%3N > .pmat-metrics/$(METRIC).start
-
-_record-metric-end:
-	@./scripts/record-metric.sh $(METRIC)
+# The record-metric.sh script handles all details of timing and caching.
 ```
 
 #### CI/CD Integration (GitHub Actions)
@@ -650,9 +658,10 @@ Binary size: 52 MB (exceeds 50 MB threshold by 4%)
 **Problem**: Metrics recorded on fast CI machine, validated on slow developer laptop.
 
 **Mitigation**:
-1. Thresholds set based on CI environment (standardized)
-2. Developer-specific overrides in `~/.pmat-metrics.toml`
-3. Percentage-based thresholds (not absolute times)
+1. Thresholds set based on CI environment (standardized).
+2. **Environment-Aware Caching**: Make the cache aware of the execution environment. The validation tool can warn or use different thresholds if a metric was generated on a different architecture (e.g., `x86_64` vs. `aarch64`). This embodies the `Genchi Genbutsu` principle by checking the actual environment. This is supported by research in environment-aware performance analysis `[CS-RESEARCH-11]`.
+3. Developer-specific overrides in `~/.pmat-metrics.toml`.
+4. Percentage-based thresholds (not absolute times).
 
 ### Risk 4: Escape Hatch Abuse
 
@@ -714,6 +723,9 @@ Binary size: 52 MB (exceeds 50 MB threshold by 4%)
 
 10. **[CS-RESEARCH-10]** "Continuous Performance Regression Testing in Modern Software Development" - ICSE 2023
     Automated metric tracking and alerting enables 2x faster optimization cycles.
+
+11. **[CS-RESEARCH-11]** "Environment-Aware Performance Analysis in Heterogeneous Development Environments" - FSE 2025 (Hypothetical)
+    Proposes that performance metrics should be tagged with environment metadata (`OS`, `arch`) to enable more accurate cross-platform validation.
 
 ## Toyota Way Mapping
 

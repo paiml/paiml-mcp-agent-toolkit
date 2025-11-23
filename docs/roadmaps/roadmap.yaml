@@ -184,11 +184,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'New task: DEPYLER-0438'
-  status: inprogress
+  status: completed
   priority: medium
   assigned_to: null
   created: 2025-11-22T12:13:05.190013847+00:00
-  updated: 2025-11-22T12:13:05.190013847+00:00
+  updated: 2025-11-23T10:22:44.400186390+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -237,6 +237,22 @@ roadmap:
   assigned_to: null
   created: 2025-11-22T15:58:48.836126708+00:00
   updated: 2025-11-22T22:10:26.834681148+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: QUAL-O1-PHASE1
+  github_issue: null
+  item_type: task
+  title: 'New task: QUAL-O1-PHASE1'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2025-11-23T10:23:09.999496668+00:00
+  updated: 2025-11-23T10:23:09.999496668+00:00
   spec: null
   acceptance_criteria: []
   phases: []
