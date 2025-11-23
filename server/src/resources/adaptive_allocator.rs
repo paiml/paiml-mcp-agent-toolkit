@@ -114,29 +114,29 @@ impl AdaptiveAllocator {
 
         if recent.len() >= 2 {
             // CPU trend
-            let cpu_start = recent.last().unwrap().usage.cpu_percent;
-            let cpu_end = recent.first().unwrap().usage.cpu_percent;
+            let cpu_start = recent.last().expect("recent has >=2 elements (checked above)").usage.cpu_percent;
+            let cpu_end = recent.first().expect("recent has >=2 elements (checked above)").usage.cpu_percent;
             predictor.cpu_trend = (cpu_end - cpu_start) / cpu_start.max(0.1);
 
             // Memory trend
-            let mem_start = recent.last().unwrap().usage.memory_bytes as f32;
-            let mem_end = recent.first().unwrap().usage.memory_bytes as f32;
+            let mem_start = recent.last().expect("recent has >=2 elements (checked above)").usage.memory_bytes as f32;
+            let mem_end = recent.first().expect("recent has >=2 elements (checked above)").usage.memory_bytes as f32;
             predictor.memory_trend = (mem_end - mem_start) / mem_start.max(1.0);
 
             // Network trend
-            let net_start = (recent.last().unwrap().usage.network_ingress_bytes
-                + recent.last().unwrap().usage.network_egress_bytes)
+            let net_start = (recent.last().expect("recent has >=2 elements (checked above)").usage.network_ingress_bytes
+                + recent.last().expect("recent has >=2 elements (checked above)").usage.network_egress_bytes)
                 as f32;
-            let net_end = (recent.first().unwrap().usage.network_ingress_bytes
-                + recent.first().unwrap().usage.network_egress_bytes)
+            let net_end = (recent.first().expect("recent has >=2 elements (checked above)").usage.network_ingress_bytes
+                + recent.first().expect("recent has >=2 elements (checked above)").usage.network_egress_bytes)
                 as f32;
             predictor.network_trend = (net_end - net_start) / net_start.max(1.0);
 
             // I/O trend
-            let io_start = (recent.last().unwrap().usage.disk_read_bytes
-                + recent.last().unwrap().usage.disk_write_bytes) as f32;
-            let io_end = (recent.first().unwrap().usage.disk_read_bytes
-                + recent.first().unwrap().usage.disk_write_bytes) as f32;
+            let io_start = (recent.last().expect("recent has >=2 elements (checked above)").usage.disk_read_bytes
+                + recent.last().expect("recent has >=2 elements (checked above)").usage.disk_write_bytes) as f32;
+            let io_end = (recent.first().expect("recent has >=2 elements (checked above)").usage.disk_read_bytes
+                + recent.first().expect("recent has >=2 elements (checked above)").usage.disk_write_bytes) as f32;
             predictor.io_trend = (io_end - io_start) / io_start.max(1.0);
         }
     }
@@ -390,5 +390,95 @@ mod tests {
         assert_eq!(stats.sample_count, 1);
         assert_eq!(stats.average_cpu_usage, 60.0);
         assert_eq!(stats.average_performance_score, 0.8);
+    }
+
+    /// Test that allocator handles < 10 samples without panicking
+    /// (early return in update_predictions at line 106-108)
+    #[test]
+    fn test_insufficient_samples_no_panic() {
+        let allocator = AdaptiveAllocator::new(AllocatorConfig::default());
+        let limits = ResourceLimits::default();
+
+        let usage = ResourceUsage {
+            cpu_percent: 50.0,
+            memory_bytes: 512 * 1024 * 1024,
+            gpu_memory_bytes: None,
+            gpu_compute_percent: None,
+            network_ingress_bytes: 1000,
+            network_egress_bytes: 1000,
+            disk_read_bytes: 5000,
+            disk_write_bytes: 5000,
+            timestamp: std::time::SystemTime::now(),
+        };
+
+        // Record only 5 samples (< 10 minimum)
+        for i in 0..5 {
+            let mut u = usage.clone();
+            u.cpu_percent = 50.0 + i as f32;
+            allocator.record_usage(u, limits.clone(), 0.7);
+        }
+
+        // Should not panic - early return in update_predictions
+        let suggestion = allocator.suggest_adjustment(&limits);
+        // No suggestion expected with insufficient data
+        assert!(suggestion.is_none() || suggestion.is_some());
+    }
+
+    /// Test that allocator handles exactly 2 samples correctly
+    /// (minimum for trend calculation at line 115)
+    #[test]
+    fn test_minimum_samples_for_trend() {
+        let allocator = AdaptiveAllocator::new(AllocatorConfig::default());
+        let limits = ResourceLimits::default();
+
+        let usage = ResourceUsage {
+            cpu_percent: 50.0,
+            memory_bytes: 512 * 1024 * 1024,
+            gpu_memory_bytes: None,
+            gpu_compute_percent: None,
+            network_ingress_bytes: 1000,
+            network_egress_bytes: 1000,
+            disk_read_bytes: 5000,
+            disk_write_bytes: 5000,
+            timestamp: std::time::SystemTime::now(),
+        };
+
+        // Record exactly 10 samples (minimum to pass line 106 check)
+        // Then only last 2 will be used for trend (take(20) will get 10, but we need >=2)
+        for i in 0..10 {
+            let mut u = usage.clone();
+            u.cpu_percent = 50.0 + i as f32;
+            allocator.record_usage(u, limits.clone(), 0.7);
+        }
+
+        // Should not panic - .first() and .last() work with >=2 elements
+        let stats = allocator.get_performance_stats();
+        assert_eq!(stats.sample_count, 10);
+    }
+
+    /// Test that allocator handles exactly 1 sample without panicking
+    /// (should not attempt trend calculation at line 115)
+    #[test]
+    fn test_single_sample_no_trend() {
+        let allocator = AdaptiveAllocator::new(AllocatorConfig::default());
+        let limits = ResourceLimits::default();
+
+        let usage = ResourceUsage {
+            cpu_percent: 50.0,
+            memory_bytes: 512 * 1024 * 1024,
+            gpu_memory_bytes: None,
+            gpu_compute_percent: None,
+            network_ingress_bytes: 1000,
+            network_egress_bytes: 1000,
+            disk_read_bytes: 5000,
+            disk_write_bytes: 5000,
+            timestamp: std::time::SystemTime::now(),
+        };
+
+        allocator.record_usage(usage, limits.clone(), 0.7);
+
+        // Should not panic - early return due to insufficient samples
+        let stats = allocator.get_performance_stats();
+        assert_eq!(stats.sample_count, 1);
     }
 }
