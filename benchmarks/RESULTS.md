@@ -24,15 +24,37 @@ cargo tree --all-features | wc -l
 
 #### Build Times
 
-**Status**: TBD - Run `make bench-build-times`
+**Tool**: bashrs bench (v6.25.0) - Scientific rigor with warmup iterations
+
+**Commands**:
+```bash
+./benchmarks/bench-build.sh  # Uses bashrs bench for all build configs
+```
+
+**Results**: JSON output in `benchmarks/results/`
+- Dev build: `dev-TIMESTAMP.json`
+- Release build: `release-TIMESTAMP.json`
+- Minimal build: `minimal-TIMESTAMP.json`
+
+**Status**: ✅ Framework ready - Run `./benchmarks/bench-build.sh`
 
 #### Binary Sizes
 
-**Status**: TBD - Run `make bench-binary-size`
+**Measurement**: `stat --format=%s target/release/pmat`
+
+**Status**: TBD - Add to bench-build.sh script
 
 #### Runtime Performance
 
-**Status**: TBD - Run `make bench-runtime` (when Criterion benchmarks implemented)
+**Tool**: renacer v0.5.0 (syscall tracing + timing mode)
+
+**Usage**:
+```bash
+renacer -T pmat context --output /tmp/ctx.md  # Timing mode
+renacer -c pmat context --output /tmp/ctx.md  # Statistics mode
+```
+
+**Status**: ✅ Available - Use renacer for detailed profiling
 
 ## Historical Data
 
