@@ -89,17 +89,10 @@ impl KnownDefectsScorer {
             for (path, content) in cache.iter() {
                 if let Some(ext) = path.extension() {
                     if ext == "rs" {
-                        let is_test = path.to_string_lossy().contains("/tests/")
-                            || path.to_string_lossy().contains("/benches/")
-                            || content.contains("#[cfg(test)]");
-
-                        let count = unwrap_regex.find_iter(content).count();
-
-                        if is_test {
-                            test_count += count;
-                        } else {
-                            production_count += count;
-                        }
+                        let (prod, test) =
+                            Self::count_unwraps_in_file(path, content, &unwrap_regex);
+                        production_count += prod;
+                        test_count += test;
                     }
                 }
             }
@@ -116,17 +109,10 @@ impl KnownDefectsScorer {
                 if let Some(ext) = path.extension() {
                     if ext == "rs" {
                         if let Ok(content) = std::fs::read_to_string(path) {
-                            let is_test = path.to_string_lossy().contains("/tests/")
-                                || path.to_string_lossy().contains("/benches/")
-                                || content.contains("#[cfg(test)]");
-
-                            let count = unwrap_regex.find_iter(&content).count();
-
-                            if is_test {
-                                test_count += count;
-                            } else {
-                                production_count += count;
-                            }
+                            let (prod, test) =
+                                Self::count_unwraps_in_file(path, &content, &unwrap_regex);
+                            production_count += prod;
+                            test_count += test;
                         }
                     }
                 }
@@ -134,6 +120,88 @@ impl KnownDefectsScorer {
         }
 
         Ok((production_count, test_count))
+    }
+
+    /// Count unwrap() calls in a single file, separating production from test code
+    ///
+    /// Returns (production_unwraps, test_unwraps)
+    fn count_unwraps_in_file(path: &Path, content: &str, unwrap_regex: &Regex) -> (usize, usize) {
+        // Check if entire file is test code
+        if Self::is_test_file(path) {
+            let test_count = unwrap_regex.find_iter(content).count();
+            return (0, test_count);
+        }
+
+        // Production file - check for #[cfg(test)] module
+        // Find first occurrence of test module marker
+        let test_module_start = content
+            .find("#[cfg(test)]")
+            .or_else(|| {
+                // Also look for #[test] or mod tests patterns
+                content.find("#[test]")
+            })
+            .or_else(|| {
+                // Look for "mod tests {" pattern (common idiom)
+                if let Some(pos) = content.find("mod tests") {
+                    // Verify it's followed by whitespace and {
+                    if content[pos..].starts_with("mod tests {") {
+                        return Some(pos);
+                    }
+                }
+                None
+            });
+
+        match test_module_start {
+            Some(start_pos) => {
+                // Split content at test module boundary
+                let production_code = &content[..start_pos];
+                let test_code = &content[start_pos..];
+
+                let production_count = unwrap_regex.find_iter(production_code).count();
+                let test_count = unwrap_regex.find_iter(test_code).count();
+
+                (production_count, test_count)
+            }
+            None => {
+                // No test module found - all production code
+                let production_count = unwrap_regex.find_iter(content).count();
+                (production_count, 0)
+            }
+        }
+    }
+
+    /// Determine if a file is a test file
+    ///
+    /// **Heuristics:**
+    /// 1. Path contains `/tests/` or `/benches/` directory
+    /// 2. Filename ends with `_test.rs`, `_tests.rs`, or `tests.rs`
+    ///
+    /// **Note:** This does NOT check for `#[cfg(test)]` modules within production files.
+    /// Trade-off: unwrap() calls inside `#[cfg(test)]` modules in production files
+    /// will be counted as production code. This is acceptable because:
+    /// - It's rare (best practice is separate test files)
+    /// - It's conservative (better to over-count than miss production unwraps)
+    /// - It encourages proper test organization
+    fn is_test_file(path: &Path) -> bool {
+        let path_str = path.to_string_lossy();
+
+        // Check 1: Directory structure
+        if path_str.contains("/tests/") || path_str.contains("/benches/") {
+            return true;
+        }
+
+        // Check 2: Filename patterns
+        if let Some(filename) = path.file_name() {
+            let filename_str = filename.to_string_lossy();
+            if filename_str.ends_with("_test.rs")
+                || filename_str.ends_with("_tests.rs")
+                || filename_str == "tests.rs"
+            {
+                return true;
+            }
+        }
+
+        false
     }
 
     /// Calculate score based on unwrap count
