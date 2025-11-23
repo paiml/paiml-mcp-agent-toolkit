@@ -415,7 +415,7 @@ impl DemoRunner {
         let request = self.build_mcp_request(
             "generate_context",
             json!({
-                "project_path": path.to_str().unwrap(),
+                "project_path": path.to_str().expect("Path must be valid UTF-8"),
                 "toolchain": "rust",
                 "format": "json"
             }),
@@ -450,7 +450,7 @@ impl DemoRunner {
         let request = self.build_mcp_request(
             "analyze_complexity",
             json!({
-                "project_path": path.to_str().unwrap(),
+                "project_path": path.to_str().expect("Path must be valid UTF-8"),
                 "toolchain": "rust",
                 "format": "summary",
                 "max_cyclomatic": 20,
@@ -494,7 +494,7 @@ impl DemoRunner {
         let request = self.build_mcp_request(
             "analyze_dag",
             json!({
-                "project_path": path.to_str().unwrap(),
+                "project_path": path.to_str().expect("Path must be valid UTF-8"),
                 "dag_type": "import-graph",
                 "filter_external": true,
                 "show_complexity": true,
@@ -541,7 +541,7 @@ impl DemoRunner {
         let request = self.build_mcp_request(
             "analyze_code_churn",
             json!({
-                "project_path": path.to_str().unwrap(),
+                "project_path": path.to_str().expect("Path must be valid UTF-8"),
                 "period_days": 30,
                 "format": "summary"
             }),
@@ -584,7 +584,7 @@ impl DemoRunner {
         let request = self.build_mcp_request(
             "analyze_system_architecture",
             json!({
-                "project_path": path.to_str().unwrap(),
+                "project_path": path.to_str().expect("Path must be valid UTF-8"),
                 "format": "mermaid",
                 "show_complexity": true
             }),
@@ -630,7 +630,7 @@ impl DemoRunner {
         let request = self.build_mcp_request(
             "analyze_defect_probability",
             json!({
-                "project_path": path.to_str().unwrap(),
+                "project_path": path.to_str().expect("Path must be valid UTF-8"),
                 "toolchain": "rust",
                 "format": "summary"
             }),
@@ -730,16 +730,16 @@ impl DemoReport {
     pub fn render(&self, mode: ExecutionMode) -> String {
         match mode {
             ExecutionMode::Cli => self.render_cli(),
-            ExecutionMode::Mcp => serde_json::to_string_pretty(self).unwrap(),
+            ExecutionMode::Mcp => serde_json::to_string_pretty(self).expect("JSON serialization cannot fail for DemoResult"),
         }
     }
 
     fn render_cli(&self) -> String {
         let mut output = String::with_capacity(4096);
 
-        writeln!(&mut output, "\n🎯 PAIML MCP Agent Toolkit Demo Complete").unwrap();
-        writeln!(&mut output, "Repository: {}", self.repository).unwrap();
-        writeln!(&mut output, "\n📊 Capabilities Demonstrated:\n").unwrap();
+        writeln!(&mut output, "\n🎯 PAIML MCP Agent Toolkit Demo Complete").expect("Writing to String buffer cannot fail");
+        writeln!(&mut output, "Repository: {}", self.repository).expect("Writing to String buffer cannot fail");
+        writeln!(&mut output, "\n📊 Capabilities Demonstrated:\n").expect("Writing to String buffer cannot fail");
 
         for (idx, step) in self.steps.iter().enumerate() {
             writeln!(
@@ -749,7 +749,7 @@ impl DemoReport {
                 step.capability,
                 step.elapsed_ms
             )
-            .unwrap();
+            .expect("Writing to String buffer cannot fail");
 
             // Extract key metrics from response
             if let Some(result) = &step.response.result {
@@ -762,57 +762,57 @@ impl DemoReport {
             "\n⏱️  Total execution time: {} ms",
             self.total_time_ms
         )
-        .unwrap();
+        .expect("Writing to String buffer cannot fail");
 
         // Add system diagram if available
         if let Some(ref diagram) = self.system_diagram {
-            writeln!(&mut output, "\n🌍 System Architecture:").unwrap();
-            writeln!(&mut output, "```mermaid").unwrap();
-            writeln!(&mut output, "{diagram}").unwrap();
-            writeln!(&mut output, "```").unwrap();
+            writeln!(&mut output, "\n🌍 System Architecture:").expect("Writing to String buffer cannot fail");
+            writeln!(&mut output, "```mermaid").expect("Writing to String buffer cannot fail");
+            writeln!(&mut output, "{diagram}").expect("Writing to String buffer cannot fail");
+            writeln!(&mut output, "```").expect("Writing to String buffer cannot fail");
         }
 
         writeln!(
             &mut output,
             "\n🚀 Get started with PAIML MCP Agent Toolkit:"
         )
-        .unwrap();
+        .expect("Writing to String buffer cannot fail");
         writeln!(
             &mut output,
             "   - Generate templates: paiml-mcp-agent-toolkit scaffold <toolchain>"
         )
-        .unwrap();
+        .expect("Writing to String buffer cannot fail");
         writeln!(
             &mut output,
             "   - Analyze complexity: paiml-mcp-agent-toolkit analyze complexity"
         )
-        .unwrap();
+        .expect("Writing to String buffer cannot fail");
         writeln!(
             &mut output,
             "   - View code churn: paiml-mcp-agent-toolkit analyze churn"
         )
-        .unwrap();
+        .expect("Writing to String buffer cannot fail");
         writeln!(
             &mut output,
             "   - Create DAGs: paiml-mcp-agent-toolkit analyze dag"
         )
-        .unwrap();
+        .expect("Writing to String buffer cannot fail");
         writeln!(
             &mut output,
             "   - System architecture: paiml-mcp-agent-toolkit analyze architecture"
         )
-        .unwrap();
+        .expect("Writing to String buffer cannot fail");
         writeln!(
             &mut output,
             "   - Defect probability: paiml-mcp-agent-toolkit analyze defects"
         )
-        .unwrap();
-        writeln!(&mut output).unwrap();
+        .expect("Writing to String buffer cannot fail");
+        writeln!(&mut output).expect("Writing to String buffer cannot fail");
         writeln!(
             &mut output,
             "📊 To view Mermaid diagrams: https://mermaid.live"
         )
-        .unwrap();
+        .expect("Writing to String buffer cannot fail");
 
         output
     }
@@ -830,7 +830,7 @@ impl DemoReport {
                             output,
                             "      Functions: {total}, Warnings: {warnings}, Errors: {errors}"
                         )
-                        .unwrap();
+                        .expect("Writing to String buffer cannot fail");
                     }
                 }
             }
@@ -840,7 +840,7 @@ impl DemoReport {
                         if let (Some(nodes), Some(edges)) = (stats.get("nodes"), stats.get("edges"))
                         {
                             writeln!(output, "      Graph size: {nodes} nodes, {edges} edges")
-                                .unwrap();
+                                .expect("Writing to String buffer cannot fail");
                         }
                     }
                 }
@@ -855,7 +855,7 @@ impl DemoReport {
                             output,
                             "      Files analyzed: {files}, Total churn: {total_churn}"
                         )
-                        .unwrap();
+                        .expect("Writing to String buffer cannot fail");
                     }
                 }
             }
@@ -866,7 +866,7 @@ impl DemoReport {
                             (metadata.get("nodes"), metadata.get("edges"))
                         {
                             writeln!(output, "      Components: {nodes}, Relationships: {edges}")
-                                .unwrap();
+                                .expect("Writing to String buffer cannot fail");
                         }
                     }
                 }
@@ -883,7 +883,7 @@ impl DemoReport {
                             high_risk.as_array().map_or(0, std::vec::Vec::len),
                             avg_prob.as_f64().unwrap_or(0.0)
                         )
-                        .unwrap();
+                        .expect("Writing to String buffer cannot fail");
                     }
                 }
             }
@@ -979,7 +979,7 @@ fn try_local_path(repo_spec: &str) -> Option<Result<PathBuf>> {
 /// Try to resolve GitHub shorthand format (gh:owner/repo) (cognitive complexity ≤2)
 fn try_github_shorthand(repo_spec: &str) -> Option<Result<PathBuf>> {
     if repo_spec.starts_with("gh:") {
-        let repo_name = repo_spec.strip_prefix("gh:").unwrap();
+        let repo_name = repo_spec.strip_prefix("gh:").expect("Writing to String buffer cannot fail");
         let github_url = format!("https://github.com/{repo_name}");
         Some(Ok(PathBuf::from(github_url)))
     } else {

@@ -5,54 +5,54 @@ use regex::Regex;
 lazy_static! {
     // Rust patterns
     pub static ref RUST_FUNCTION_PATTERNS: Vec<Regex> = vec![
-        Regex::new(r"(?:pub\s+)?(?:async\s+)?fn\s+(\w+)").unwrap(),
-        Regex::new(r"impl\s+(?:\w+\s+for\s+)?(\w+)").unwrap(),
+        Regex::new(r"(?:pub\s+)?(?:async\s+)?fn\s+(\w+)").expect("Hardcoded regex pattern must be valid"),
+        Regex::new(r"impl\s+(?:\w+\s+for\s+)?(\w+)").expect("Hardcoded regex pattern must be valid"),
     ];
     
     pub static ref RUST_TYPE_PATTERNS: Vec<Regex> = vec![
-        Regex::new(r"(?:pub\s+)?struct\s+(\w+)").unwrap(),
-        Regex::new(r"(?:pub\s+)?enum\s+(\w+)").unwrap(),
-        Regex::new(r"(?:pub\s+)?trait\s+(\w+)").unwrap(),
-        Regex::new(r"(?:pub\s+)?type\s+(\w+)").unwrap(),
+        Regex::new(r"(?:pub\s+)?struct\s+(\w+)").expect("Hardcoded regex pattern must be valid"),
+        Regex::new(r"(?:pub\s+)?enum\s+(\w+)").expect("Hardcoded regex pattern must be valid"),
+        Regex::new(r"(?:pub\s+)?trait\s+(\w+)").expect("Hardcoded regex pattern must be valid"),
+        Regex::new(r"(?:pub\s+)?type\s+(\w+)").expect("Hardcoded regex pattern must be valid"),
     ];
     
     pub static ref RUST_VARIABLE_PATTERN: Regex = 
-        Regex::new(r"let\s+(?:mut\s+)?(\w+)").unwrap();
+        Regex::new(r"let\s+(?:mut\s+)?(\w+)").expect("Hardcoded regex pattern must be valid");
     
     // JavaScript/TypeScript patterns
     pub static ref JS_FUNCTION_PATTERNS: Vec<Regex> = vec![
-        Regex::new(r"function\s+(\w+)").unwrap(),
-        Regex::new(r"(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?\s*(?:function|\(.*?\)\s*=>)").unwrap(),
-        Regex::new(r"(\w+)\s*:\s*(?:async\s+)?function").unwrap(),
+        Regex::new(r"function\s+(\w+)").expect("Hardcoded regex pattern must be valid"),
+        Regex::new(r"(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?\s*(?:function|\(.*?\)\s*=>)").expect("Hardcoded regex pattern must be valid"),
+        Regex::new(r"(\w+)\s*:\s*(?:async\s+)?function").expect("Hardcoded regex pattern must be valid"),
     ];
     
     pub static ref JS_TYPE_PATTERNS: Vec<Regex> = vec![
-        Regex::new(r"class\s+(\w+)").unwrap(),
-        Regex::new(r"interface\s+(\w+)").unwrap(),
-        Regex::new(r"type\s+(\w+)\s*=").unwrap(),
+        Regex::new(r"class\s+(\w+)").expect("Hardcoded regex pattern must be valid"),
+        Regex::new(r"interface\s+(\w+)").expect("Hardcoded regex pattern must be valid"),
+        Regex::new(r"type\s+(\w+)\s*=").expect("Hardcoded regex pattern must be valid"),
     ];
     
     pub static ref JS_VARIABLE_PATTERN: Regex = 
-        Regex::new(r"(?:const|let|var)\s+(\w+)").unwrap();
+        Regex::new(r"(?:const|let|var)\s+(\w+)").expect("Hardcoded regex pattern must be valid");
     
     // Python patterns
     pub static ref PYTHON_FUNCTION_PATTERN: Regex = 
-        Regex::new(r"def\s+(\w+)").unwrap();
+        Regex::new(r"def\s+(\w+)").expect("Hardcoded regex pattern must be valid");
     
     pub static ref PYTHON_CLASS_PATTERN: Regex = 
-        Regex::new(r"class\s+(\w+)").unwrap();
+        Regex::new(r"class\s+(\w+)").expect("Hardcoded regex pattern must be valid");
     
     pub static ref PYTHON_VARIABLE_PATTERN: Regex = 
-        Regex::new(r"(\w+)\s*=").unwrap();
+        Regex::new(r"(\w+)\s*=").expect("Hardcoded regex pattern must be valid");
     
     // C/C++ patterns
     pub static ref C_FUNCTION_PATTERN: Regex = 
-        Regex::new(r"(?:static\s+)?(?:inline\s+)?(?:\w+\s+)*(\w+)\s*\([^)]*\)\s*\{").unwrap();
+        Regex::new(r"(?:static\s+)?(?:inline\s+)?(?:\w+\s+)*(\w+)\s*\([^)]*\)\s*\{").expect("Hardcoded regex pattern must be valid");
     
     pub static ref C_TYPE_PATTERNS: Vec<Regex> = vec![
-        Regex::new(r"struct\s+(\w+)").unwrap(),
-        Regex::new(r"typedef\s+struct\s*\{[^}]*\}\s*(\w+)").unwrap(),
-        Regex::new(r"typedef\s+(?:struct\s+)?(\w+)").unwrap(),
+        Regex::new(r"struct\s+(\w+)").expect("Hardcoded regex pattern must be valid"),
+        Regex::new(r"typedef\s+struct\s*\{[^}]*\}\s*(\w+)").expect("Hardcoded regex pattern must be valid"),
+        Regex::new(r"typedef\s+(?:struct\s+)?(\w+)").expect("Hardcoded regex pattern must be valid"),
     ];
 }
 #[cfg(test)]

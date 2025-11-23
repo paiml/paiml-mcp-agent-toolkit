@@ -141,32 +141,32 @@ impl DapServer {
 
     /// Get next response sequence number
     fn next_seq(&self) -> i64 {
-        let mut seq = self.response_seq.lock().unwrap();
+        let mut seq = self.response_seq.lock().expect("Mutex should not be poisoned");
         *seq += 1;
         *seq
     }
 
     /// Check if server is initialized
     pub fn is_initialized(&self) -> bool {
-        let state = self.state.lock().unwrap();
+        let state = self.state.lock().expect("Mutex should not be poisoned");
         *state != ServerState::Uninitialized
     }
 
     /// Check if server is running
     pub fn is_running(&self) -> bool {
-        let state = self.state.lock().unwrap();
+        let state = self.state.lock().expect("Mutex should not be poisoned");
         *state == ServerState::Running
     }
 
     /// Check if program is loaded
     pub fn has_program_loaded(&self) -> bool {
-        let program = self.program.lock().unwrap();
+        let program = self.program.lock().expect("Mutex should not be poisoned");
         program.is_some()
     }
 
     /// Get current program path
     pub fn current_program(&self) -> Option<String> {
-        let program = self.program.lock().unwrap();
+        let program = self.program.lock().expect("Mutex should not be poisoned");
         program.clone()
     }
 
@@ -210,7 +210,7 @@ impl DapServer {
 
     /// Handle initialize request
     fn handle_initialize(&self, request: DapRequest) -> Value {
-        let mut state = self.state.lock().unwrap();
+        let mut state = self.state.lock().expect("Mutex should not be poisoned");
         *state = ServerState::Initialized;
         drop(state);
 
@@ -247,7 +247,7 @@ impl DapServer {
         };
 
         // Store program
-        let mut program = self.program.lock().unwrap();
+        let mut program = self.program.lock().expect("Mutex should not be poisoned");
         *program = Some(args.program.clone());
         drop(program);
 
@@ -256,7 +256,7 @@ impl DapServer {
 
         // Detect language
         if let Some(language) = self.detect_language_from_path(program_path) {
-            let mut lang = self.current_language.lock().unwrap();
+            let mut lang = self.current_language.lock().expect("Mutex should not be poisoned");
             *lang = Some(language);
         }
 
@@ -272,7 +272,7 @@ impl DapServer {
         }
 
         // Update state
-        let mut state = self.state.lock().unwrap();
+        let mut state = self.state.lock().expect("Mutex should not be poisoned");
         *state = ServerState::Running;
         drop(state);
 
@@ -291,7 +291,7 @@ impl DapServer {
 
     /// Handle disconnect request
     fn handle_disconnect(&self, request: DapRequest) -> Value {
-        let mut state = self.state.lock().unwrap();
+        let mut state = self.state.lock().expect("Mutex should not be poisoned");
         *state = ServerState::Stopped;
         drop(state);
 
@@ -307,7 +307,7 @@ impl DapServer {
 
     /// Handle terminate request
     fn handle_terminate(&self, request: DapRequest) -> Value {
-        let mut state = self.state.lock().unwrap();
+        let mut state = self.state.lock().expect("Mutex should not be poisoned");
         *state = ServerState::Stopped;
         drop(state);
 
@@ -335,13 +335,13 @@ impl DapServer {
                     request.command,
                     format!("Invalid setBreakpoints arguments: {}", e),
                 );
-                return serde_json::to_value(&response).unwrap();
+                return serde_json::to_value(&response).expect("JSON serialization cannot fail");
             }
         };
 
         // Store breakpoints
         let source_path = args.source.path.unwrap_or_else(|| "unknown".to_string());
-        let mut breakpoints_map = self.breakpoints.lock().unwrap();
+        let mut breakpoints_map = self.breakpoints.lock().expect("Mutex should not be poisoned");
 
         if let Some(bps) = args.breakpoints {
             let lines: HashSet<i64> = bps.iter().map(|bp| bp.line).collect();
@@ -400,8 +400,8 @@ impl DapServer {
         let seq = self.next_seq();
 
         // Check if we're stopped at a line
-        let stopped_file = self.current_stopped_file.lock().unwrap();
-        let stopped_line = self.current_stopped_line.lock().unwrap();
+        let stopped_file = self.current_stopped_file.lock().expect("Mutex should not be poisoned");
+        let stopped_line = self.current_stopped_line.lock().expect("Mutex should not be poisoned");
 
         let scopes = if stopped_file.is_some() && stopped_line.is_some() {
             // Return Locals scope with variablesReference = 1
@@ -429,8 +429,8 @@ impl DapServer {
         let seq = self.next_seq();
 
         // Get stopped location
-        let stopped_file = self.current_stopped_file.lock().unwrap().clone();
-        let stopped_line = *self.current_stopped_line.lock().unwrap();
+        let stopped_file = self.current_stopped_file.lock().expect("Mutex should not be poisoned").clone();
+        let stopped_line = *self.current_stopped_line.lock().expect("Mutex should not be poisoned");
 
         let variables = if let (Some(file), Some(line)) = (stopped_file, stopped_line) {
             // Use VariableInspector to get variables
@@ -530,13 +530,13 @@ impl DapServer {
 
     /// Get the current detected language
     pub fn current_language(&self) -> Option<Language> {
-        let lang = self.current_language.lock().unwrap();
+        let lang = self.current_language.lock().expect("Mutex should not be poisoned");
         *lang
     }
 
     /// Check if AST is cached for a given file path
     pub fn has_ast_for(&self, path: &str) -> bool {
-        let cache = self.ast_cache.lock().unwrap();
+        let cache = self.ast_cache.lock().expect("Mutex should not be poisoned");
         cache.contains_key(Path::new(path))
     }
 
@@ -567,22 +567,22 @@ impl DapServer {
 
     /// Simulate stopping at a specific line (for testing)
     pub fn simulate_stop_at_line(&mut self, path: &str, line: usize) {
-        let mut stopped_file = self.current_stopped_file.lock().unwrap();
+        let mut stopped_file = self.current_stopped_file.lock().expect("Mutex should not be poisoned");
         *stopped_file = Some(path.to_string());
         drop(stopped_file);
 
-        let mut stopped_line = self.current_stopped_line.lock().unwrap();
+        let mut stopped_line = self.current_stopped_line.lock().expect("Mutex should not be poisoned");
         *stopped_line = Some(line);
     }
 
     /// Get current stopped file (TRACE-005)
     pub fn current_stopped_file(&self) -> Option<String> {
-        self.current_stopped_file.lock().unwrap().clone()
+        self.current_stopped_file.lock().expect("Mutex should not be poisoned").clone()
     }
 
     /// Get current stopped line (TRACE-005)
     pub fn current_stopped_line(&self) -> Option<usize> {
-        *self.current_stopped_line.lock().unwrap()
+        *self.current_stopped_line.lock().expect("Mutex should not be poisoned")
     }
 
     /// Detect language from file path
@@ -642,7 +642,7 @@ impl DapServer {
         };
 
         // Cache the tree
-        let mut cache = self.ast_cache.lock().unwrap();
+        let mut cache = self.ast_cache.lock().expect("Mutex should not be poisoned");
         cache.insert(path.to_path_buf(), tree);
 
         Ok(())
@@ -699,8 +699,8 @@ impl DapServer {
         recorder.start_recording();
 
         // Store recorder and path
-        *self.execution_recorder.lock().unwrap() = Some(recorder);
-        *self.recording_path.lock().unwrap() = Some(recording_path);
+        *self.execution_recorder.lock().expect("Mutex should not be poisoned") = Some(recorder);
+        *self.recording_path.lock().expect("Mutex should not be poisoned") = Some(recording_path);
 
         Ok(())
     }
@@ -709,12 +709,12 @@ impl DapServer {
     ///
     /// Called on disconnect or terminate to complete the .pmat file
     fn finalize_recording(&self) -> anyhow::Result<Option<PathBuf>> {
-        let mut recorder_guard = self.execution_recorder.lock().unwrap();
+        let mut recorder_guard = self.execution_recorder.lock().expect("Mutex should not be poisoned");
         let recorder = recorder_guard.take();
 
         if let Some(recorder) = recorder {
             recorder.finalize()?;
-            let path = self.recording_path.lock().unwrap().clone();
+            let path = self.recording_path.lock().expect("Mutex should not be poisoned").clone();
             return Ok(path);
         }
 

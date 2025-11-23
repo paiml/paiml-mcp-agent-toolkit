@@ -53,10 +53,10 @@ impl ClaimExtractor {
             // Test status patterns
             test_patterns: vec![
                 Regex::new(r"(?i)(all|every|\d+/\d+)\s+tests?\s+(passing|pass|work|succeed)")
-                    .unwrap(),
+                    .expect("Hardcoded regex pattern must be valid"),
                 Regex::new(r"(?i)(most|some)?\s*tests?\s+(all\s+)?passing(\s+\((\d+)/\d+\))?")
-                    .unwrap(),
-                Regex::new(r"(?i)complete\s+test\s+coverage").unwrap(),
+                    .expect("Hardcoded regex pattern must be valid"),
+                Regex::new(r"(?i)complete\s+test\s+coverage").expect("Hardcoded regex pattern must be valid"),
             ],
 
             // Documentation patterns
@@ -64,50 +64,50 @@ impl ClaimExtractor {
                 Regex::new(
                     r"(?i)fix(ed)?\s+(all\s+)?broken\s+(documentation\s+links?|links?|docs?)",
                 )
-                .unwrap(),
-                Regex::new(r"(?i)documentation\s+(complete|ready|fixed)").unwrap(),
-                Regex::new(r"(?i)all\s+examples?\s+work").unwrap(),
+                .expect("Hardcoded regex pattern must be valid"),
+                Regex::new(r"(?i)documentation\s+(complete|ready|fixed)").expect("Hardcoded regex pattern must be valid"),
+                Regex::new(r"(?i)all\s+examples?\s+work").expect("Hardcoded regex pattern must be valid"),
             ],
 
             // Coverage patterns
             coverage_patterns: vec![
-                Regex::new(r"(?i)coverage\s+(stable|at|achieved?)\s+(?:at\s+)?(\d+)%").unwrap(),
-                Regex::new(r"(?i)(\d+)%\s+coverage").unwrap(),
+                Regex::new(r"(?i)coverage\s+(stable|at|achieved?)\s+(?:at\s+)?(\d+)%").expect("Hardcoded regex pattern must be valid"),
+                Regex::new(r"(?i)(\d+)%\s+coverage").expect("Hardcoded regex pattern must be valid"),
             ],
 
             // Feature completion patterns
             completion_patterns: vec![
-                Regex::new(r"(?i)complete\s+(\w+(\s+\w+)*)").unwrap(),
-                Regex::new(r"(?i)(\w+(\s+\w+)*)\s+(ready|complete|done)").unwrap(),
-                Regex::new(r"(?i)fully\s+functional").unwrap(),
+                Regex::new(r"(?i)complete\s+(\w+(\s+\w+)*)").expect("Hardcoded regex pattern must be valid"),
+                Regex::new(r"(?i)(\w+(\s+\w+)*)\s+(ready|complete|done)").expect("Hardcoded regex pattern must be valid"),
+                Regex::new(r"(?i)fully\s+functional").expect("Hardcoded regex pattern must be valid"),
             ],
 
             // Migration patterns
             migration_patterns: vec![
-                Regex::new(r"(?i)(complete\s+)?migration\s+to\s+(\w+)").unwrap(),
-                Regex::new(r"(?i)fully\s+migrated\s+to\s+(\w+)").unwrap(),
-                Regex::new(r"(?i)deprecated\s+(\w+)\s+removed").unwrap(),
+                Regex::new(r"(?i)(complete\s+)?migration\s+to\s+(\w+)").expect("Hardcoded regex pattern must be valid"),
+                Regex::new(r"(?i)fully\s+migrated\s+to\s+(\w+)").expect("Hardcoded regex pattern must be valid"),
+                Regex::new(r"(?i)deprecated\s+(\w+)\s+removed").expect("Hardcoded regex pattern must be valid"),
             ],
 
             // Bug fix patterns
             bugfix_patterns: vec![
-                Regex::new(r"(?i)fix(es|ed)?\s+(bug|issue)\s+#?(\d+)").unwrap(),
-                Regex::new(r"(?i)resolve[sd]?\s+(issue\s+)?#?(\d+)").unwrap(),
-                Regex::new(r"(?i)bug\s+fixed").unwrap(),
+                Regex::new(r"(?i)fix(es|ed)?\s+(bug|issue)\s+#?(\d+)").expect("Hardcoded regex pattern must be valid"),
+                Regex::new(r"(?i)resolve[sd]?\s+(issue\s+)?#?(\d+)").expect("Hardcoded regex pattern must be valid"),
+                Regex::new(r"(?i)bug\s+fixed").expect("Hardcoded regex pattern must be valid"),
             ],
 
             // Performance patterns
             performance_patterns: vec![
-                Regex::new(r"(?i)(\d+)%\s+(faster|slower|improvement)(\s+\w+)*").unwrap(),
-                Regex::new(r"(?i)performance\s+(optimized|improved)").unwrap(),
-                Regex::new(r"(?i)reduced\s+memory\s+by\s+(\d+)%").unwrap(),
+                Regex::new(r"(?i)(\d+)%\s+(faster|slower|improvement)(\s+\w+)*").expect("Hardcoded regex pattern must be valid"),
+                Regex::new(r"(?i)performance\s+(optimized|improved)").expect("Hardcoded regex pattern must be valid"),
+                Regex::new(r"(?i)reduced\s+memory\s+by\s+(\d+)%").expect("Hardcoded regex pattern must be valid"),
             ],
 
             // Security patterns
             security_patterns: vec![
-                Regex::new(r"(?i)zero\s+vulnerabilities").unwrap(),
-                Regex::new(r"(?i)all\s+deps?\s+updated").unwrap(),
-                Regex::new(r"(?i)security\s+audit\s+passed").unwrap(),
+                Regex::new(r"(?i)zero\s+vulnerabilities").expect("Hardcoded regex pattern must be valid"),
+                Regex::new(r"(?i)all\s+deps?\s+updated").expect("Hardcoded regex pattern must be valid"),
+                Regex::new(r"(?i)security\s+audit\s+passed").expect("Hardcoded regex pattern must be valid"),
             ],
 
             // Absolute claim keywords
@@ -122,8 +122,8 @@ impl ClaimExtractor {
 
             // Scope qualifier patterns
             scope_patterns: vec![
-                Regex::new(r"(?i)(MVP|Alpha|Beta|Phase\s+\d+|Sprint\s+\d+)").unwrap(),
-                Regex::new(r"\(([^)]*(?:MVP|Phase|Sprint|Alpha|Beta)[^)]*)\)").unwrap(),
+                Regex::new(r"(?i)(MVP|Alpha|Beta|Phase\s+\d+|Sprint\s+\d+)").expect("Hardcoded regex pattern must be valid"),
+                Regex::new(r"\(([^)]*(?:MVP|Phase|Sprint|Alpha|Beta)[^)]*)\)").expect("Hardcoded regex pattern must be valid"),
             ],
         }
     }
@@ -134,7 +134,7 @@ impl ClaimExtractor {
         // Extract test status claims
         for pattern in &self.test_patterns {
             if let Some(captures) = pattern.captures(commit_message) {
-                let full_match = captures.get(0).unwrap();
+                let full_match = captures.get(0).expect("Match group 0 always exists for successful regex match");
                 let text = full_match.as_str().to_string();
                 let position = full_match.start();
                 // Try to extract numeric value from capture group 4 (fraction numerator), then fallback to regex
@@ -162,7 +162,7 @@ impl ClaimExtractor {
         // Extract documentation claims
         for pattern in &self.documentation_patterns {
             if let Some(captures) = pattern.captures(commit_message) {
-                let full_match = captures.get(0).unwrap();
+                let full_match = captures.get(0).expect("Match group 0 always exists for successful regex match");
                 let text = full_match.as_str().to_string();
                 let position = full_match.start();
                 claims_with_pos.push((
@@ -184,7 +184,7 @@ impl ClaimExtractor {
         // Extract coverage claims
         for pattern in &self.coverage_patterns {
             if let Some(captures) = pattern.captures(commit_message) {
-                let full_match = captures.get(0).unwrap();
+                let full_match = captures.get(0).expect("Match group 0 always exists for successful regex match");
                 let text = full_match.as_str().to_string();
                 let position = full_match.start();
                 let numeric_value = captures
@@ -211,7 +211,7 @@ impl ClaimExtractor {
         // Extract migration claims (check before feature completion to avoid conflicts)
         for pattern in &self.migration_patterns {
             if let Some(captures) = pattern.captures(commit_message) {
-                let full_match = captures.get(0).unwrap();
+                let full_match = captures.get(0).expect("Match group 0 always exists for successful regex match");
                 let text = full_match.as_str().to_string();
                 let position = full_match.start();
                 claims_with_pos.push((
@@ -233,7 +233,7 @@ impl ClaimExtractor {
         // Extract feature completion claims
         for pattern in &self.completion_patterns {
             if let Some(captures) = pattern.captures(commit_message) {
-                let full_match = captures.get(0).unwrap();
+                let full_match = captures.get(0).expect("Match group 0 always exists for successful regex match");
                 let text = full_match.as_str().to_string();
                 let position = full_match.start();
 
@@ -261,7 +261,7 @@ impl ClaimExtractor {
         // Extract bug fix claims
         for pattern in &self.bugfix_patterns {
             if let Some(captures) = pattern.captures(commit_message) {
-                let full_match = captures.get(0).unwrap();
+                let full_match = captures.get(0).expect("Match group 0 always exists for successful regex match");
                 let text = full_match.as_str().to_string();
                 let position = full_match.start();
                 let issue_number = if let Some(issue_match) = captures.get(captures.len() - 1) {
@@ -289,7 +289,7 @@ impl ClaimExtractor {
         // Extract performance claims
         for pattern in &self.performance_patterns {
             if let Some(captures) = pattern.captures(commit_message) {
-                let full_match = captures.get(0).unwrap();
+                let full_match = captures.get(0).expect("Match group 0 always exists for successful regex match");
                 let text = full_match.as_str().to_string();
                 let position = full_match.start();
                 let numeric_value = captures.get(1).and_then(|m| m.as_str().parse::<f64>().ok());
@@ -313,7 +313,7 @@ impl ClaimExtractor {
         // Extract security claims
         for pattern in &self.security_patterns {
             if let Some(captures) = pattern.captures(commit_message) {
-                let full_match = captures.get(0).unwrap();
+                let full_match = captures.get(0).expect("Match group 0 always exists for successful regex match");
                 let text = full_match.as_str().to_string();
                 let position = full_match.start();
                 claims_with_pos.push((
@@ -350,7 +350,7 @@ impl ClaimExtractor {
     }
 
     fn extract_numeric_value(&self, text: &str) -> Option<f64> {
-        let num_pattern = Regex::new(r"(\d+)").unwrap();
+        let num_pattern = Regex::new(r"(\d+)").expect("Hardcoded regex pattern must be valid");
         num_pattern
             .captures(text)
             .and_then(|c| c.get(1))
