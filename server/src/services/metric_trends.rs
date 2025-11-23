@@ -477,7 +477,10 @@ impl MetricTrendStore {
 
         Ok(PredictionResult {
             metric: metric.to_string(),
-            current_value: observations.last().unwrap().value,
+            current_value: observations
+                .last()
+                .expect("observations has >=7 elements (checked at line 440)")
+                .value,
             threshold,
             breach_in_days,
             predicted_value,
@@ -545,7 +548,10 @@ impl MetricTrendStore {
             slope,
             intercept,
             r_squared,
-            last_timestamp: observations.last().unwrap().timestamp,
+            last_timestamp: observations
+                .last()
+                .expect("observations passed to train_linear_model has >=7 elements (validated in predict_breach)")
+                .timestamp,
         })
     }
 
@@ -1079,5 +1085,73 @@ mod tests {
                 .any(|r| r.contains("dependencies") || r.contains("clippy")),
             "Should have lint-specific recommendations"
         );
+    }
+
+    /// Test that predict_threshold_breach rejects insufficient observations (<7)
+    /// Tests guard at line 440-442
+    #[test]
+    fn test_predict_breach_insufficient_observations() {
+        let mut store = MetricTrendStore::from_path("/tmp/pmat-test-insufficient").unwrap();
+
+        // Record only 5 observations (< 7 minimum)
+        let now = chrono::Utc::now().timestamp();
+        for i in 0..5 {
+            let ts = now - ((4 - i) * 86400); // 5 days back
+            store.record("lint", 1000.0 + (i as f64 * 100.0), ts).unwrap();
+        }
+
+        // Should fail with insufficient observations
+        let result = store.predict_threshold_breach("lint", 5000.0, 30);
+        assert!(result.is_err(), "Should fail with < 7 observations");
+        assert!(
+            result.unwrap_err().to_string().contains("at least 7"),
+            "Error should mention minimum observations"
+        );
+    }
+
+    /// Test that predict_threshold_breach rejects insufficient recent observations
+    /// Tests guard at line 454-456 (last 90 days)
+    #[test]
+    fn test_predict_breach_insufficient_recent_observations() {
+        let mut store = MetricTrendStore::from_path("/tmp/pmat-test-insufficient-recent").unwrap();
+
+        // Record 10 observations, but all > 90 days old
+        let now = chrono::Utc::now().timestamp();
+        let old_base = now - (100 * 86400); // 100 days ago
+        for i in 0..10 {
+            let ts = old_base + (i * 86400); // 10 consecutive days, all > 90 days ago
+            store.record("lint", 1000.0 + (i as f64 * 100.0), ts).unwrap();
+        }
+
+        // Should fail - no recent observations in last 90 days
+        let result = store.predict_threshold_breach("lint", 5000.0, 30);
+        assert!(result.is_err(), "Should fail with no recent observations");
+        assert!(
+            result.unwrap_err().to_string().contains("in last 90 days"),
+            "Error should mention 90-day window"
+        );
+    }
+
+    /// Test that predict_threshold_breach works with exactly 7 observations (minimum)
+    /// Tests boundary condition for guards at lines 440-442 and 454-456
+    #[test]
+    fn test_predict_breach_exactly_7_observations() {
+        let mut store = MetricTrendStore::from_path("/tmp/pmat-test-exactly-7").unwrap();
+
+        // Record exactly 7 observations (minimum required)
+        let now = chrono::Utc::now().timestamp();
+        for i in 0..7 {
+            let ts = now - ((6 - i) * 86400); // Last 7 days
+            store.record("lint", 1000.0 + (i as f64 * 200.0), ts).unwrap();
+        }
+
+        // Should succeed with exactly 7 observations
+        let result = store.predict_threshold_breach("lint", 5000.0, 30);
+        assert!(result.is_ok(), "Should succeed with exactly 7 observations");
+
+        let prediction = result.unwrap();
+        assert_eq!(prediction.metric, "lint");
+        // Should have valid current_value (tests .last().expect() at line 480-483)
+        assert!(prediction.current_value > 0.0, "Should have valid current value");
     }
 }
