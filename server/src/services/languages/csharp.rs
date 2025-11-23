@@ -284,6 +284,7 @@ impl Default for CSharpComplexityAnalyzer {
     }
 }
 
+#[cfg(feature = "csharp-ast")]
 impl CSharpComplexityAnalyzer {
     /// Creates a new C# complexity analyzer
     #[must_use]

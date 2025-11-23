@@ -243,7 +243,7 @@ impl McpServer {
     ///
     /// Both tools are feature-gated behind the "java-ast" and "scala-ast" features.
     async fn register_jvm_tools(&self) -> Result<(), Box<dyn std::error::Error>> {
-        let mut tools = self.context.tools.write();
+        let mut _tools = self.context.tools.write();
         let mut registered_tools = 0;
 
         // Register Java analysis tools if feature is enabled

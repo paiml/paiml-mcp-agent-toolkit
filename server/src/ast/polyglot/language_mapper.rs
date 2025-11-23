@@ -221,24 +221,28 @@ impl LanguageMapper for JavaMapper {
         self.base.map_directory(path, recursive).await
     }
 
-    async fn map_source(&self, source: &str, path: &Path) -> Result<Vec<UnifiedNode>> {
+    async fn map_source(&self, _source: &str, _path: &Path) -> Result<Vec<UnifiedNode>> {
         #[cfg(feature = "java-ast")]
-        use crate::services::languages::java::JavaAstVisitor;
-
-        #[cfg(feature = "java-ast")]
-        let visitor = JavaAstVisitor::new(path);
-        match visitor.analyze_java_source(source) {
-            Ok(items) => {
-                let mut nodes = self.convert_ast_items(&items, path);
-                self.process_java_specific(&mut nodes);
-                Ok(nodes)
+        {
+            use crate::services::languages::java::JavaAstVisitor;
+            let visitor = JavaAstVisitor::new(_path);
+            match visitor.analyze_java_source(_source) {
+                Ok(items) => {
+                    let mut nodes = self.convert_ast_items(&items, _path);
+                    self.process_java_specific(&mut nodes);
+                    Ok(nodes)
+                }
+                Err(e) => Err(anyhow!("Failed to analyze Java source: {}", e)),
             }
-            Err(e) => Err(anyhow!("Failed to analyze Java source: {}", e)),
+        }
+        #[cfg(not(feature = "java-ast"))]
+        {
+            Err(anyhow!("Java AST support not enabled (feature 'java-ast' required)"))
         }
     }
 
-    fn convert_ast_items(&self, items: &[AstItem], path: &Path) -> Vec<UnifiedNode> {
-        self.base.convert_ast_items(items, path)
+    fn convert_ast_items(&self, items: &[AstItem], _path: &Path) -> Vec<UnifiedNode> {
+        self.base.convert_ast_items(items, _path)
     }
 
     fn clone_box(&self) -> Box<dyn LanguageMapper> {
@@ -364,24 +368,28 @@ impl LanguageMapper for ScalaMapper {
         self.base.map_directory(path, recursive).await
     }
 
-    async fn map_source(&self, source: &str, path: &Path) -> Result<Vec<UnifiedNode>> {
+    async fn map_source(&self, _source: &str, _path: &Path) -> Result<Vec<UnifiedNode>> {
         #[cfg(feature = "scala-ast")]
-        use crate::services::languages::scala::ScalaAstVisitor;
-
-        #[cfg(feature = "scala-ast")]
-        let visitor = ScalaAstVisitor::new(path);
-        match visitor.analyze_scala_source(source) {
-            Ok(items) => {
-                let mut nodes = self.convert_ast_items(&items, path);
-                self.process_scala_specific(&mut nodes);
-                Ok(nodes)
+        {
+            use crate::services::languages::scala::ScalaAstVisitor;
+            let visitor = ScalaAstVisitor::new(_path);
+            match visitor.analyze_scala_source(_source) {
+                Ok(items) => {
+                    let mut nodes = self.convert_ast_items(&items, _path);
+                    self.process_scala_specific(&mut nodes);
+                    Ok(nodes)
+                }
+                Err(e) => Err(anyhow!("Failed to analyze Scala source: {}", e)),
             }
-            Err(e) => Err(anyhow!("Failed to analyze Scala source: {}", e)),
+        }
+        #[cfg(not(feature = "scala-ast"))]
+        {
+            Err(anyhow!("Scala AST support not enabled (feature 'scala-ast' required)"))
         }
     }
 
-    fn convert_ast_items(&self, items: &[AstItem], path: &Path) -> Vec<UnifiedNode> {
-        self.base.convert_ast_items(items, path)
+    fn convert_ast_items(&self, items: &[AstItem], _path: &Path) -> Vec<UnifiedNode> {
+        self.base.convert_ast_items(items, _path)
     }
 
     fn clone_box(&self) -> Box<dyn LanguageMapper> {

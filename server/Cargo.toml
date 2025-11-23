@@ -173,16 +173,17 @@ tree-sitter = { version = "0.23", optional = true }
 tree-sitter-c = { version = "0.23", optional = true }
 tree-sitter-cpp = { version = "0.23", optional = true }
 tree-sitter-go = { version = "0.23", optional = true }
-tree-sitter-java = { version = "0.23", optional = true }
 tree-sitter-javascript = { version = "0.23", optional = true }
 tree-sitter-typescript = { version = "0.23", optional = true }
 tree-sitter-python = { version = "0.23", optional = true }
-tree-sitter-c-sharp = { version = "0.23", optional = true }
 tree-sitter-kotlin-ng = { version = "1.1", optional = true }
-tree-sitter-swift = { version = "0.7", optional = true }
-tree-sitter-ruby = { version = "0.23", optional = true }
 tree-sitter-rust = { version = "0.23", optional = true }
-tree-sitter-scala = { version = "0.20.0", optional = true }
+# Sprint 46 Phase 6: Removed unused tree-sitter parsers (0 references - cargo-machete verified)
+# tree-sitter-c-sharp = { version = "0.23", optional = true }  # 0 references
+# tree-sitter-java = { version = "0.23", optional = true }      # 0 references
+# tree-sitter-ruby = { version = "0.23", optional = true }      # 0 references
+# tree-sitter-scala = { version = "0.20.0", optional = true }   # 0 references
+# tree-sitter-swift = { version = "0.7", optional = true }      # 0 references
 # Sprint 46 Phase 5: Removed unused language parsers (1.25 MB release binary savings)
 # tree-sitter-erlang = { version = "0.15", optional = true }
 # tree-sitter-elixir = { version = "0.3", optional = true }
@@ -302,28 +303,31 @@ default = ["all-languages", "demo", "polyglot-ast", "org-intelligence", "tdg-exp
 # ⚠️  REMAINING: Deeper conditional compilation issues in function bodies (TypeScript/SWC dependencies)
 # TODO: Continue Phase 2 refactoring to enable minimal builds with reduced language support
 org-intelligence = ["organizational-intelligence-plugin"]
-all-languages = ["rust-ast", "typescript-ast", "python-ast", "c-ast", "cpp-ast", "ruchy-ast", "go-ast", "wasm-ast", "deep-wasm", "shell-ast", "php-ast", "swift-ast", "java-ast", "csharp-ast", "ruby-ast", "scala-ast"]
-most-languages = ["rust-ast", "typescript-ast", "python-ast", "c-ast", "cpp-ast", "java-ast", "csharp-ast", "ruby-ast", "scala-ast", "go-ast", "shell-ast"]
+all-languages = ["rust-ast", "typescript-ast", "python-ast", "c-ast", "cpp-ast", "ruchy-ast", "go-ast", "wasm-ast", "deep-wasm", "shell-ast", "php-ast", "swift-ast"]
+most-languages = ["rust-ast", "typescript-ast", "python-ast", "c-ast", "cpp-ast", "go-ast", "shell-ast"]
+# Sprint 46 Phase 6: Removed java-ast, csharp-ast, ruby-ast, scala-ast (0 references)
 # Note: go-ast and shell-ast kept in most-languages (unified_go_analyzer.rs now has proper feature gates)
 rust-only = ["rust-ast"]
 # Polyglot AST meta-feature for cross-language analysis
 polyglot-ast = []
 ruchy-ast = ["ruchy", "logos"]
 go-ast = ["tree-sitter", "tree-sitter-go"]
-java-ast = ["tree-sitter", "tree-sitter-java", "polyglot-java"]
-csharp-ast = ["tree-sitter", "tree-sitter-c-sharp", "polyglot-csharp"]
 kotlin-ast = ["tree-sitter", "tree-sitter-kotlin-ng", "polyglot-kotlin"]
-ruby-ast = ["tree-sitter", "tree-sitter-ruby", "polyglot-ruby"]
-scala-ast = ["tree-sitter", "tree-sitter-scala", "polyglot-scala"]
+# Sprint 46 Phase 6: Removed unused AST features (0 references)
+# java-ast = ["tree-sitter", "tree-sitter-java", "polyglot-java"]
+# csharp-ast = ["tree-sitter", "tree-sitter-c-sharp", "polyglot-csharp"]
+# ruby-ast = ["tree-sitter", "tree-sitter-ruby", "polyglot-ruby"]
+# scala-ast = ["tree-sitter", "tree-sitter-scala", "polyglot-scala"]
 
 # Polyglot language-specific features
-polyglot-java = ["polyglot-ast"]
 polyglot-kotlin = ["polyglot-ast"]
-polyglot-scala = ["polyglot-ast"]
 polyglot-typescript = ["polyglot-ast"]
 polyglot-javascript = ["polyglot-ast"]
-polyglot-csharp = ["polyglot-ast"]
-polyglot-ruby = ["polyglot-ast"]
+# Sprint 46 Phase 6: Removed unused polyglot features (0 references)
+# polyglot-java = ["polyglot-ast"]
+# polyglot-scala = ["polyglot-ast"]
+# polyglot-csharp = ["polyglot-ast"]
+# polyglot-ruby = ["polyglot-ast"]
 # Sprint 46 Phase 5: Removed unused language feature definitions
 # erlang-ast = ["tree-sitter", "tree-sitter-erlang"]
 # elixir-ast = ["tree-sitter", "tree-sitter-elixir"]

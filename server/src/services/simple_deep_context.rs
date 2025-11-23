@@ -661,6 +661,7 @@ impl SimpleDeepContext {
             // Use C# AST analysis
             use tokio::fs;
 
+            #[allow(unused_variables)] // content only used in feature-gated blocks
             match fs::read_to_string(file_path).await {
                 Ok(content) => {
                     #[cfg(feature = "csharp-ast")]

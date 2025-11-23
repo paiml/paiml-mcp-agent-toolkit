@@ -269,6 +269,7 @@ impl Default for JavaComplexityAnalyzer {
     }
 }
 
+#[cfg(feature = "java-ast")]
 impl JavaComplexityAnalyzer {
     /// Creates a new Java complexity analyzer
     #[must_use]

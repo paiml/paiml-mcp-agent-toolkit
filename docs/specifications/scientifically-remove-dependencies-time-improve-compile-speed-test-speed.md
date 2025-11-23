@@ -33,6 +33,8 @@ Modern software projects accumulate dependencies over time, leading to:
 - tree-sitter language parsers (5) unused in codebase
 - Build script processes assets O(N) → fixed to O(1) in v2.202.0
 
+> **Reviewer's Annotation (Genchi Genbutsu - Go and See):** The baseline metrics are from v2.202.0. Before starting this initiative, it is crucial to re-validate these baseline metrics (`Compile time`, `Test time`, `Binary size`) on the current `main` branch. This ensures we are working with the real, current state, not an outdated snapshot. Any recent, unrelated changes could have altered these figures.
+
 ## 2. Scientific Foundation
 
 ### 2.1 Empirical Evidence Base
@@ -65,6 +67,8 @@ Modern software projects accumulate dependencies over time, leading to:
 - Test suite uses #[ignore] for 94 tests (see CLAUDE.md)
 - cargo-nextest excludes ignored tests by default
 - Removing unused deps → faster test initialization
+
+> **Reviewer's Annotation:** The analysis correctly notes that removing dependencies reduces test initialization overhead. However, Gao et al. [2] focus heavily on non-determinism in *user-interactive* tests. While the principle of reducing overhead is universally applicable, the dramatic time savings they observed may not fully translate to PMAT's unit and integration test suite. We should set expectations accordingly and focus on the measurable impact on dependency graph complexity during the test build phase.
 
 ---
 
@@ -214,10 +218,13 @@ graph TD
     H --> I{Tests Pass?}
     I -->|Yes| J[Measure Impact]
     I -->|No| K[Investigate Errors]
-    K --> L[Fix or Revert]
+    K --> K_RCA[Root Cause Analysis]
+    K_RCA --> L[Fix or Revert]
     L --> H
     J --> M[Commit Changes]
 ```
+
+> **Reviewer's Annotation (Poka-yoke - Mistake-Proofing):** The process flow for handling a failed test (`I --> K`) is reactive. To prevent recurrence, a "Root Cause Analysis" step should be formally inserted between "Investigate Errors" and "Fix or Revert". Why did the static analysis miss this? Was it a feature flag interaction? A dynamic load? Documenting this prevents the same class of error in the future. The diagram has been updated to reflect this.
 
 ### 3.2 Verification Steps
 
@@ -245,6 +252,8 @@ done
 
 # Expected output: 0 for unused dependencies
 ```
+
+> **Reviewer's Annotation:** The `rg` command is a good first-pass check. To be more thorough, especially against usages hidden behind feature flags, supplement this with `cargo-public-api`. It reveals the public API of a crate; if an allegedly unused dependency's types appear in the public API of our crates (e.g., as function arguments or return types), it is not truly unused from an external consumer's perspective, even if not used internally. This strengthens the verification process.
 
 #### Step 3: Feature Flag Verification
 ```bash
@@ -364,6 +373,8 @@ grep "finished in" test_after.log
 - Or implement stub analyzers for these languages
 - Defer to Phase 2
 
+> **Reviewer's Annotation (Genchi Genbutsu):** A check of the filesystem confirms the "Blockers" are real. For example, `src/services/languages/csharp.rs` exists. To understand the *intent*, a `git log -- src/services/languages/` should be run. This will reveal if these are legacy scaffolding for future work or remnants of a removed feature. This historical context is vital before deciding whether to feature-gate or remove these modules entirely.
+
 ---
 
 ### 4.2 Phase 2: Feature-Gated Removals
@@ -419,6 +430,8 @@ grep "finished in" test_after.log
    - Alternative: ureq (already in build-dependencies)
    - Consideration: reqwest needed for async HTTP
 
+> **Reviewer's Annotation:** The document correctly identifies the async vs. sync trade-off. Instead of a wholesale replacement, consider a hybrid strategy. Mandate `ureq` for all *new* synchronous HTTP calls (e.g., via a lint or `cargo-deny` policy) and restrict `reqwest` usage to existing async code paths. This provides an incremental path to reducing the `reqwest` footprint without a disruptive, high-risk refactoring effort.
+
 3. **swc alternatives for TypeScript?**
    - Current: swc_ecma_parser, swc_ecma_ast, swc_ecma_visit
    - Alternative: tree-sitter-typescript (already in dependencies)
@@ -468,6 +481,8 @@ make test-fast
 make test-all
 ```
 
+> **Reviewer's Annotation:** The mitigation plan is robust for single-feature testing. However, it understates the risk of feature interactions, as highlighted by Meinicke et al. [8]. A dependency might be correctly used by Feature A and Feature B individually, but removing it could cause a runtime crash only when both are enabled. **Mitigation:** The test plan should include running a core set of integration tests (`make test-integration`) with common and 'kitchen-sink' feature flag combinations, not just with `--all-features`.
+
 ---
 
 ### 5.3 Performance Regressions
@@ -515,6 +530,8 @@ critcmp before after
 | **Test Time (fast)** | <5 min | <4 min | `time make test-fast` |
 | **Dependency Count** | ~250 | <200 | `cargo tree --depth 0 \| wc -l` |
 
+> **Reviewer's Annotation:** While absolute targets are useful, a more Kaizen-focused metric would be the *ratio* of direct dependencies to transitive dependencies, or a "Dependency Bloat Factor". A target of `<200` total dependencies can be gamed and may not reflect improved modularity. Tracking a ratio encourages selecting dependencies with smaller, more controlled footprints, directly addressing the findings of Decan et al. [6] regarding transitive explosion.
+
 ### 6.2 Secondary Metrics
 
 | Metric | Baseline | Target | Measurement |
@@ -549,6 +566,8 @@ if [ $dep_count -gt 200 ]; then
     echo "⚠️  Warning: High dependency count ($dep_count > 200)"
 fi
 ```
+
+> **Reviewer's Annotation (Continuous Improvement):** The pre-commit hook's warning-only approach can lead to "alert fatigue" and be ignored. A stronger Poka-yoke (mistake-proofing) mechanism would be to fail the commit *only if the number of `cargo-machete` findings increases*. This allows developers to proceed while there is existing debt but prevents the problem from getting worse, enforcing a "stop the line" culture for new issues.
 
 **CI/CD Pipeline**:
 ```yaml
@@ -715,6 +734,8 @@ jobs:
 - Security exposure (vulnerability surface area)
 
 **Tool**: `cargo-impact` (hypothetical)
+
+> **Reviewer's Annotation:** The hypothetical `cargo-impact` tool is a good long-term goal. A more pragmatic, immediate step can be taken. The CI pipeline (Section 7.1) can be enhanced to use `cargo-bloat` and `cargo-llvm-cov` to report on the binary size and test coverage impact of a Pull Request. This makes the "cost" of a dependency immediately visible to reviewers, directly influencing behavior without needing a new tool. This aligns with the principle of making problems visible.
 
 ---
 

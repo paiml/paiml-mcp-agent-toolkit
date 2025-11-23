@@ -4451,22 +4451,13 @@ async fn analyze_ruby_file(
     }
     #[cfg(not(feature = "ruby-ast"))]
     {
-        // Fall back to ruchy parser
+        // Fall back to ruchy parser - TODO: Implement proper ruchy integration
+        // Ruchy API requires parsed Expr, not source string - need to refactor
         #[cfg(feature = "ruchy-ast")]
         {
-            use crate::services::languages::ruchy::RuchyAnalyzer;
-            use std::fs;
-
-            match fs::read_to_string(_file_path) {
-                Ok(source) => {
-                    let analyzer = RuchyAnalyzer::new(_file_path);
-                    match analyzer.analyze_ruby_source(&source) {
-                        Ok(items) => Ok(items),
-                        Err(_) => Ok(Vec::new()),
-                    }
-                }
-                Err(_) => Ok(Vec::new()),
-            }
+            // RuchyAstAnalyzer API incompatible with this code path
+            // Would require parsing source to Expr first
+            Ok(Vec::new())
         }
         #[cfg(not(feature = "ruchy-ast"))]
         Ok(Vec::new())

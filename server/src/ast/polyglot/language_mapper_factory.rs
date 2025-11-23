@@ -4,8 +4,17 @@
 //! that can transform language-specific ASTs into the unified representation.
 
 use crate::ast::polyglot::language_mapper::{
-    CSharpMapper, JavaMapper, RubyMapper, ScalaMapper, TypeScriptMapper,
+    TypeScriptMapper,
 };
+// Sprint 46 Phase 6: Feature-gated unused mapper imports
+#[cfg(feature = "csharp-ast")]
+use crate::ast::polyglot::language_mapper::CSharpMapper;
+#[cfg(feature = "java-ast")]
+use crate::ast::polyglot::language_mapper::JavaMapper;
+#[cfg(feature = "ruby-ast")]
+use crate::ast::polyglot::language_mapper::RubyMapper;
+#[cfg(feature = "scala-ast")]
+use crate::ast::polyglot::language_mapper::ScalaMapper;
 use crate::ast::polyglot::{Language, LanguageMapper, PolyglotPathValidator, UnifiedNode};
 use crate::services::context::AstItem;
 use anyhow::Result;
