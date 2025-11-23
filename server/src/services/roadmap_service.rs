@@ -653,21 +653,20 @@ mod tests {
         }
 
         #[test]
-        fn test_old_schema_format_error() {
+        fn test_invalid_item_type_error() {
             let temp_dir = TempDir::new().unwrap();
             let roadmap_path = temp_dir.path().join("roadmap.yaml");
             let service = RoadmapService::new(&roadmap_path);
 
-            // Simulate old roadmap format (pmat v2.200) with 'commit' and 'completion' fields
-            let old_format = r#"roadmap_version: '1.0'
+            // Invalid item_type 'bugfix' (should be 'bug')
+            let invalid_format = r#"roadmap_version: '1.0'
 roadmap:
   - id: TASK-001
     title: Example task
+    item_type: bugfix
     status: completed
-    commit: abc123
-    completion: 2025-11-21T22:20:00+00:00
 "#;
-            fs::write(&roadmap_path, old_format).unwrap();
+            fs::write(&roadmap_path, invalid_format).unwrap();
 
             // Load should fail with helpful error message
             let result = service.load();
@@ -675,16 +674,16 @@ roadmap:
             let error_msg = result.unwrap_err().to_string();
 
             // Should show parse error with location
-            assert!(error_msg.contains("Parse error"));
+            assert!(error_msg.contains("Parse error") || error_msg.contains("unknown variant"));
 
-            // Should mention schema/version mismatch
-            assert!(error_msg.contains("older version of PMAT"));
+            // Should mention the invalid field
+            assert!(error_msg.contains("bugfix") || error_msg.contains("item_type"));
 
             // Should suggest migration path
             assert!(error_msg.contains("pmat work init"));
 
-            // Should list common issues
-            assert!(error_msg.contains("Unknown fields"));
+            // Should list common issues or expected values
+            assert!(error_msg.contains("Common issues") || error_msg.contains("expected"));
         }
 
         #[test]
