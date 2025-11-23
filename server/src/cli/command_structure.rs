@@ -625,6 +625,10 @@ impl CommandExecutor {
             Commands::PredictQuality { .. } => {
                 anyhow::bail!("PredictQuality command should be handled by command_dispatcher.rs")
             }
+            // Phase 3.4: O(1) Quality Gates - CI/CD Integration
+            Commands::RecordMetric { .. } => {
+                anyhow::bail!("RecordMetric command should be handled by command_dispatcher.rs")
+            }
             // Issue #75: Unified GitHub/YAML workflow
             Commands::Work { command } => {
                 anyhow::bail!(

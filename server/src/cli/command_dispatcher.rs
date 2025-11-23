@@ -370,6 +370,14 @@ impl CommandDispatcher {
                 .await
             }
 
+            Commands::RecordMetric {
+                metric,
+                value,
+                timestamp,
+            } => {
+                Self::execute_record_metric_command(metric, value, timestamp).await
+            }
+
             Commands::Agent { command } => handlers::handle_agent_command(command).await,
 
             Commands::Tdg {
@@ -1302,6 +1310,33 @@ impl CommandDispatcher {
                     }
                 }
             }
+        }
+
+        Ok(())
+    }
+
+    /// Execute record-metric command (Phase 3.4 O(1) Quality Gates - CI/CD)
+    async fn execute_record_metric_command(
+        metric: String,
+        value: f64,
+        timestamp: Option<i64>,
+    ) -> anyhow::Result<()> {
+        use crate::services::metric_trends::MetricTrendStore;
+
+        let mut store = MetricTrendStore::new()?;
+
+        // Use provided timestamp or current time
+        let ts = timestamp.unwrap_or_else(|| chrono::Utc::now().timestamp());
+
+        // Record the observation
+        store.record(&metric, value, ts)?;
+
+        println!("✅ Recorded {} = {:.2} at timestamp {}", metric, value, ts);
+
+        // Show quick stats
+        if let Ok(trend_analysis) = store.trend(&metric, 30) {
+            println!("   Last 30 days: mean={:.2}, slope={:.2}/day",
+                trend_analysis.mean, trend_analysis.slope);
         }
 
         Ok(())

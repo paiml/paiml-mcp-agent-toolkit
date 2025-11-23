@@ -372,3 +372,19 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: 'Phase 3.4: CI/CD integration for metric tracking'
+  github_issue: null
+  item_type: task
+  title: 'New task: Phase 3.4: CI/CD integration for metric tracking'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2025-11-23T13:44:39.677871699+00:00
+  updated: 2025-11-23T13:44:39.677871699+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null

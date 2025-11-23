@@ -1,0 +1,133 @@
+# O(1) Quality Gates - Metric Tracking Workflow
+# Tracks quality metrics over time and posts regression warnings to PRs
+
+name: Quality Metrics Tracking
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  track-metrics:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for trend analysis
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Cache cargo registry
+        uses: actions/cache@v3
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo index
+        uses: actions/cache@v3
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-git-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo build
+        uses: actions/cache@v3
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install PMAT
+        run: cargo install --path server --force
+
+      - name: Record lint metric
+        id: lint
+        run: |
+          START=$(date +%s%3N)
+          make lint || true
+          END=$(date +%s%3N)
+          DURATION=$((END - START))
+          echo "duration=$DURATION" >> $GITHUB_OUTPUT
+          pmat record-metric lint $DURATION
+
+      - name: Record test-fast metric
+        id: test-fast
+        run: |
+          START=$(date +%s%3N)
+          make test-fast || true
+          END=$(date +%s%3N)
+          DURATION=$((END - START))
+          echo "duration=$DURATION" >> $GITHUB_OUTPUT
+          pmat record-metric test-fast $DURATION
+
+      - name: Upload metrics artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: quality-metrics
+          path: .pmat-metrics/
+          retention-days: 90
+
+      - name: Analyze metric trends
+        id: trends
+        run: |
+          pmat show-metrics --trend --format json > metrics-trend.json
+          cat metrics-trend.json
+
+      - name: Check for regressions (PRs only)
+        if: github.event_name == 'pull_request'
+        run: |
+          # Compare PR metrics against master baseline
+          pmat predict-quality --all --failures-only --format json > regressions.json
+
+          # Check if any metrics are regressing
+          if [ -s regressions.json ]; then
+            echo "⚠️ Quality metric regressions detected"
+            cat regressions.json
+
+            # Post comment to PR (requires GH_TOKEN)
+            if [ -n "${{ secrets.GITHUB_TOKEN }}" ]; then
+              gh pr comment ${{ github.event.pull_request.number }} \
+                --body "$(cat regressions.json | jq -r '.[] | "⚠️ **\(.metric)**: Predicted threshold breach in \(.breach_in_days // "unknown") days\n\(.recommendations | join("\n"))"')" \
+                || echo "Failed to post PR comment (requires GH_TOKEN)"
+            fi
+          else
+            echo "✅ No quality metric regressions detected"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate metric report
+        if: always()
+        run: |
+          echo "## 📊 Quality Metrics Report" > metrics-report.md
+          echo "" >> metrics-report.md
+          echo "**Commit**: \`${{ github.sha }}\`" >> metrics-report.md
+          echo "**Branch**: \`${{ github.ref_name }}\`" >> metrics-report.md
+          echo "" >> metrics-report.md
+
+          echo "### Current Metrics" >> metrics-report.md
+          echo "" >> metrics-report.md
+          echo "- **Lint**: ${{ steps.lint.outputs.duration }}ms" >> metrics-report.md
+          echo "- **Test (fast)**: ${{ steps.test-fast.outputs.duration }}ms" >> metrics-report.md
+          echo "" >> metrics-report.md
+
+          echo "### Trend Analysis" >> metrics-report.md
+          echo "" >> metrics-report.md
+          pmat show-metrics --trend >> metrics-report.md || true
+
+          cat metrics-report.md
+
+      - name: Upload metrics report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: metrics-report
+          path: metrics-report.md
+          retention-days: 90

@@ -659,6 +659,20 @@ pub enum Commands {
         failures_only: bool,
     },
 
+    /// Record a quality metric observation (Phase 3.4 O(1) Quality Gates - CI/CD)
+    #[command(visible_aliases = &["record"])]
+    RecordMetric {
+        /// Metric name (lint, test-fast, coverage, build-release)
+        metric: String,
+
+        /// Metric value (duration in ms or size in bytes)
+        value: f64,
+
+        /// Custom timestamp (Unix timestamp, default: now)
+        #[arg(long)]
+        timestamp: Option<i64>,
+    },
+
     /// Start Claude Code background agent for continuous quality monitoring
     #[command(visible_aliases = &["ag"])]
     Agent {
