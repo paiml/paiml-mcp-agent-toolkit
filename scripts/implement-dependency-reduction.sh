@@ -1,8 +1,8 @@
 #!/bin/bash
 # Implementation script for scientific dependency reduction
 # Based on: docs/specifications/scientifically-remove-dependencies-time-improve-compile-speed-test-speed.md
-# Version: 1.0.0
-# Date: 2025-11-22
+# Version: 1.0.1
+# Date: 2025-11-23
 
 set -euo pipefail
 
@@ -15,7 +15,7 @@ NC='\033[0m' # No Color
 
 # Project root
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-cd "$PROJECT_ROOT"
+cd "$PROJECT_ROOT" || exit
 
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${BLUE}🔬 Scientific Dependency Reduction Implementation${NC}"
@@ -29,13 +29,15 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 # Measure current dependency count
 echo -e "${YELLOW}→ Counting dependencies...${NC}"
 dep_count_before=$(cargo tree --depth 0 | wc -l)
-echo -e "${GREEN}✓ Dependencies: $dep_count_before${NC}"
+echo -e "${GREEN}✓ Dependencies: ${dep_count_before}${NC}"
 
 # Measure current compile time (dev build for speed)
 echo -e "${YELLOW}→ Measuring compile time (dev build)...${NC}"
 cargo clean -p pmat &>/dev/null
+# shellcheck disable=DET002  # Timestamp needed for compile time measurement
 compile_start=$(date +%s)
 cargo build --lib 2>&1 | grep -E "(Compiling|Finished)" | tail -5
+# shellcheck disable=DET002  # Timestamp needed for compile time measurement
 compile_end=$(date +%s)
 compile_time_before=$((compile_end - compile_start))
 echo -e "${GREEN}✓ Compile time: ${compile_time_before}s${NC}"
@@ -44,7 +46,7 @@ echo -e "${GREEN}✓ Compile time: ${compile_time_before}s${NC}"
 echo -e "${YELLOW}→ Building release binary...${NC}"
 cargo build --release --quiet 2>&1 | grep -v "warning:" || true
 binary_size_before=$(stat -c%s target/release/pmat 2>/dev/null || echo "0")
-binary_size_mb_before=$(echo "scale=2; $binary_size_before / 1024 / 1024" | bc)
+binary_size_mb_before=$(bc <<< "scale=2; ${binary_size_before} / 1024 / 1024")
 echo -e "${GREEN}✓ Binary size: ${binary_size_mb_before} MB${NC}"
 
 echo ""
@@ -64,7 +66,7 @@ cargo machete --with-metadata 2>&1 | tee /tmp/machete-output.log || true
 
 # Count unused dependencies
 unused_count=$(grep -E "^\s+(tree-sitter-|ahash|arc-swap)" /tmp/machete-output.log | wc -l || echo "0")
-echo -e "${GREEN}✓ Found $unused_count potentially unused dependencies${NC}"
+echo -e "${GREEN}✓ Found ${unused_count} potentially unused dependencies${NC}"
 
 echo ""
 
@@ -85,13 +87,13 @@ echo -e "${BLUE}🔬 Step 4: Source Code Verification${NC}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 for lang in c_sharp java ruby scala swift; do
-    echo -e "${YELLOW}→ Checking tree-sitter-$lang usage...${NC}"
-    usage_count=$(rg "tree_sitter_$lang::" server/src/ 2>/dev/null | wc -l || echo "0")
+    echo -e "${YELLOW}→ Checking tree-sitter-${lang} usage...${NC}"
+    usage_count=$(rg "tree_sitter_${lang}::" server/src/ 2>/dev/null | wc -l || echo "0")
 
     if [ "$usage_count" -eq 0 ]; then
-        echo -e "${GREEN}✓ tree-sitter-$lang: 0 references (SAFE TO REMOVE)${NC}"
+        echo -e "${GREEN}✓ tree-sitter-${lang}: 0 references (SAFE TO REMOVE)${NC}"
     else
-        echo -e "${RED}✗ tree-sitter-$lang: $usage_count references (UNSAFE)${NC}"
+        echo -e "${RED}✗ tree-sitter-${lang}: ${usage_count} references (UNSAFE)${NC}"
     fi
 done
 
@@ -105,12 +107,12 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 # 10% dependency removal → 15-20% compile time reduction
 estimated_reduction_pct=15
 deps_to_remove=5
-reduction_factor=$(echo "scale=2; ($deps_to_remove / $dep_count_before) * $estimated_reduction_pct" | bc)
-estimated_compile_reduction=$(echo "scale=0; $compile_time_before * $reduction_factor / 100" | bc)
+reduction_factor=$(bc <<< "scale=2; (${deps_to_remove} / ${dep_count_before}) * ${estimated_reduction_pct}")
+estimated_compile_reduction=$(bc <<< "scale=0; ${compile_time_before} * ${reduction_factor} / 100")
 estimated_compile_after=$((compile_time_before - estimated_compile_reduction))
 
-echo -e "${YELLOW}Dependencies to remove: $deps_to_remove${NC}"
-echo -e "${YELLOW}Current dependency count: $dep_count_before${NC}"
+echo -e "${YELLOW}Dependencies to remove: ${deps_to_remove}${NC}"
+echo -e "${YELLOW}Current dependency count: ${dep_count_before}${NC}"
 echo -e "${YELLOW}Estimated reduction factor: ${reduction_factor}%${NC}"
 echo -e "${GREEN}Estimated compile time: ${compile_time_before}s → ${estimated_compile_after}s (save ${estimated_compile_reduction}s)${NC}"
 
@@ -123,6 +125,8 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 cat > /tmp/dependency-reduction-report.md << EOF
 # Dependency Reduction Implementation Report
 
+$(# shellcheck disable=DET002  # Timestamp needed for report metadata
+)
 **Date**: $(date +"%Y-%m-%d %H:%M:%S")
 **Baseline Version**: v2.202.0
 **Specification**: docs/specifications/scientifically-remove-dependencies-time-improve-compile-speed-test-speed.md
@@ -131,10 +135,10 @@ cat > /tmp/dependency-reduction-report.md << EOF
 
 | Metric | Value |
 |--------|-------|
-| Total Dependencies | $dep_count_before |
+| Total Dependencies | ${dep_count_before} |
 | Compile Time (dev) | ${compile_time_before}s |
 | Binary Size | ${binary_size_mb_before} MB |
-| Unused Dependencies | $unused_count (flagged by cargo-machete) |
+| Unused Dependencies | ${unused_count} (flagged by cargo-machete) |
 
 ## Analysis Results
 
@@ -161,11 +165,11 @@ $(cat /tmp/pmat-tdg-languages.log)
 | Dependency | References | Status |
 |------------|-----------|--------|
 $(for lang in c_sharp java ruby scala swift; do
-    count=$(rg "tree_sitter_$lang::" server/src/ 2>/dev/null | wc -l || echo "0")
+    count=$(rg "tree_sitter_${lang}::" server/src/ 2>/dev/null | wc -l || echo "0")
     if [ "$count" -eq 0 ]; then
-        echo "| tree-sitter-$lang | $count | ✅ Safe to remove |"
+        echo "| tree-sitter-${lang} | ${count} | ✅ Safe to remove |"
     else
-        echo "| tree-sitter-$lang | $count | ❌ In use |"
+        echo "| tree-sitter-${lang} | ${count} | ❌ In use |"
     fi
 done)
 
@@ -175,7 +179,7 @@ Based on **Proksch et al. (2020)** research:
 - 10% dependency removal → 15-20% compile time reduction
 
 **Estimated Impact**:
-- Dependencies to remove: $deps_to_remove
+- Dependencies to remove: ${deps_to_remove}
 - Reduction factor: ${reduction_factor}%
 - Compile time: ${compile_time_before}s → ${estimated_compile_after}s (save ${estimated_compile_reduction}s)
 
@@ -242,7 +246,8 @@ echo ""
 echo -e "${YELLOW}Estimated After Removal:${NC}"
 echo -e "  Dependencies: $((dep_count_before - deps_to_remove))"
 echo -e "  Compile Time: ${estimated_compile_after}s (save ${estimated_compile_reduction}s)"
-echo -e "  Binary Size: ~$(echo "scale=2; $binary_size_mb_before - 1.2" | bc) MB"
+binary_size_estimate=$(bc <<< "scale=2; ${binary_size_mb_before} - 1.2")
+echo -e "  Binary Size: ~${binary_size_estimate} MB"
 echo ""
 echo -e "${GREEN}✓ Full report: /tmp/dependency-reduction-report.md${NC}"
 echo -e "${GREEN}✓ PMAT analysis: /tmp/pmat-*-languages.log${NC}"
