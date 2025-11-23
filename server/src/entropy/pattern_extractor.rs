@@ -278,7 +278,7 @@ impl PatternExtractor {
         use regex::Regex;
 
         // Pattern: Result<T, E> handling
-        let result_pattern = Regex::new(r"(?m)^\s*(match|if let)\s+.*Result\s*<.*>\s*\{").unwrap();
+        let result_pattern = Regex::new(r"(?m)^\s*(match|if let)\s+.*Result\s*<.*>\s*\{").expect("Hardcoded regex pattern must be valid");
         let matches: Vec<_> = result_pattern.find_iter(content).collect();
 
         if matches.len() > 1 {
@@ -329,8 +329,9 @@ impl PatternExtractor {
         use regex::Regex;
 
         // Pattern: Input validation (is_empty, len, contains checks)
+        // Note: Use \( instead of \(\) to match methods with or without arguments
         let validation_pattern =
-            Regex::new(r"(?m)if\s+.*\.(is_empty|len|contains|starts_with|ends_with)\(\)").unwrap();
+            Regex::new(r"(?m)if\s+.*\.(is_empty|len|contains|starts_with|ends_with)\(").expect("Hardcoded regex pattern must be valid");
         let matches: Vec<_> = validation_pattern.find_iter(content).collect();
 
         if matches.len() > 2 {
@@ -380,7 +381,7 @@ impl PatternExtractor {
 
         // Pattern: File/resource management (open/close, lock/unlock)
         let resource_pattern =
-            Regex::new(r"(?m)\.(open|close|lock|unlock|acquire|release)\(\)").unwrap();
+            Regex::new(r"(?m)\.(open|close|lock|unlock|acquire|release)\(\)").expect("Hardcoded regex pattern must be valid");
         let matches: Vec<_> = resource_pattern.find_iter(content).collect();
 
         if matches.len() > 1 {
@@ -429,7 +430,7 @@ impl PatternExtractor {
         use regex::Regex;
 
         // Pattern: Complex if-else chains
-        let if_else_pattern = Regex::new(r"(?m)^\s*}\s*else\s+if\s+").unwrap();
+        let if_else_pattern = Regex::new(r"(?m)^\s*}\s*else\s+if\s+").expect("Hardcoded regex pattern must be valid");
         let matches: Vec<_> = if_else_pattern.find_iter(content).collect();
 
         if matches.len() > 2 {
@@ -475,7 +476,7 @@ impl PatternExtractor {
         use regex::Regex;
 
         // Pattern: Iterator chains (map, filter, collect)
-        let iter_pattern = Regex::new(r"\.(map|filter|collect|fold|reduce)\(").unwrap();
+        let iter_pattern = Regex::new(r"\.(map|filter|collect|fold|reduce)\(").expect("Hardcoded regex pattern must be valid");
         let matches: Vec<_> = iter_pattern.find_iter(content).collect();
 
         if matches.len() > 3 {
@@ -523,7 +524,7 @@ impl PatternExtractor {
         // Pattern: HTTP/API calls (reqwest, fetch, etc.)
         let api_pattern =
             Regex::new(r"(?m)(client\.|http\.|fetch\(|\.get\(|\.post\(|\.put\(|\.delete\()")
-                .unwrap();
+                .expect("Hardcoded regex pattern must be valid");
         let matches: Vec<_> = api_pattern.find_iter(content).collect();
 
         if matches.len() > 1 {
@@ -659,8 +660,8 @@ impl PatternExtractor {
         use regex::Regex;
 
         // Pattern: actor definitions with receive handlers
-        let actor_pattern = Regex::new(r"(?m)^\s*actor\s+\w+\s*\{").unwrap();
-        let receive_pattern = Regex::new(r"(?m)^\s*receive\s+\w+\(").unwrap();
+        let actor_pattern = Regex::new(r"(?m)^\s*actor\s+\w+\s*\{").expect("Hardcoded regex pattern must be valid");
+        let receive_pattern = Regex::new(r"(?m)^\s*receive\s+\w+\(").expect("Hardcoded regex pattern must be valid");
 
         let actor_matches: Vec<_> = actor_pattern.find_iter(content).collect();
         let receive_matches: Vec<_> = receive_pattern.find_iter(content).collect();
@@ -716,7 +717,7 @@ impl PatternExtractor {
         use regex::Regex;
 
         // Pattern: pipeline operators |>
-        let pipeline_pattern = Regex::new(r"(?m)\s*\|\>\s*\w+\(").unwrap();
+        let pipeline_pattern = Regex::new(r"(?m)\s*\|\>\s*\w+\(").expect("Hardcoded regex pattern must be valid");
         let matches: Vec<_> = pipeline_pattern.find_iter(content).collect();
 
         if matches.len() > 3 {
@@ -771,9 +772,9 @@ impl PatternExtractor {
         use regex::Regex;
 
         // Pattern: actor message passing <- and <?
-        let send_pattern = Regex::new(r"(?m)\w+\s*<-\s*\w+\(").unwrap();
-        let query_pattern = Regex::new(r"(?m)\w+\s*<\?\s*\w+\(").unwrap();
-        let spawn_pattern = Regex::new(r"(?m)spawn\s+\w+\s*\{").unwrap();
+        let send_pattern = Regex::new(r"(?m)\w+\s*<-\s*\w+\(").expect("Hardcoded regex pattern must be valid");
+        let query_pattern = Regex::new(r"(?m)\w+\s*<\?\s*\w+\(").expect("Hardcoded regex pattern must be valid");
+        let spawn_pattern = Regex::new(r"(?m)spawn\s+\w+\s*\{").expect("Hardcoded regex pattern must be valid");
 
         let send_matches: Vec<_> = send_pattern.find_iter(content).collect();
         let query_matches: Vec<_> = query_pattern.find_iter(content).collect();
@@ -833,7 +834,7 @@ impl PatternExtractor {
         use regex::Regex;
 
         // Pattern: Result<T, E> with match statements (Ruchy style)
-        let result_match_pattern = Regex::new(r"(?m)match\s+.*Result\s*<.*>\s*\{").unwrap();
+        let result_match_pattern = Regex::new(r"(?m)match\s+.*Result\s*<.*>\s*\{").expect("Hardcoded regex pattern must be valid");
         let matches: Vec<_> = result_match_pattern.find_iter(content).collect();
 
         if matches.len() > 1 {
@@ -883,9 +884,9 @@ impl PatternExtractor {
         use regex::Regex;
 
         // Pattern: enum matching with => arrows
-        let enum_pattern = Regex::new(r"(?m)enum\s+\w+\s*\{").unwrap();
-        let match_pattern = Regex::new(r"(?m)match\s+\w+\s*\{").unwrap();
-        let arrow_pattern = Regex::new(r"(?m)\w+::\w+\s*=>\s*").unwrap();
+        let enum_pattern = Regex::new(r"(?m)enum\s+\w+\s*\{").expect("Hardcoded regex pattern must be valid");
+        let match_pattern = Regex::new(r"(?m)match\s+\w+\s*\{").expect("Hardcoded regex pattern must be valid");
+        let arrow_pattern = Regex::new(r"(?m)\w+::\w+\s*=>\s*").expect("Hardcoded regex pattern must be valid");
 
         let enum_matches: Vec<_> = enum_pattern.find_iter(content).collect();
         let match_matches: Vec<_> = match_pattern.find_iter(content).collect();
@@ -1042,6 +1043,7 @@ struct ProjectContext {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::PathBuf;
 
     #[test]
     fn test_pattern_type_equality() {
@@ -1068,6 +1070,201 @@ mod tests {
         let summary = collection.summary();
         assert_eq!(summary.repetitions, 3);
         assert_eq!(summary.pattern_type, PatternType::ErrorHandling);
+    }
+
+    #[test]
+    fn test_extract_error_handling_patterns() {
+        let extractor = PatternExtractor::new(EntropyConfig::default());
+        let file_path = PathBuf::from("test.rs");
+        let content = r#"
+            fn foo() -> Result<(), Error> {
+match bar() -> Result<i32, Error> {
+    Ok(x) => Ok(x),
+    Err(e) => Err(e),
+}
+            }
+            fn baz() {
+match qux() -> Result<String, Error> {
+    Ok(s) => println!("{}", s),
+    Err(_) => (),
+}
+            }
+        "#;
+
+        let mut collection = PatternCollection::new();
+        extractor
+            .extract_error_handling_patterns(&file_path, content, &mut collection)
+            .expect("Pattern extraction should succeed");
+
+        assert!(!collection.patterns.is_empty(), "Should extract error handling patterns with >1 Result matches");
+    }
+
+    #[test]
+    fn test_extract_control_flow_patterns() {
+        let extractor = PatternExtractor::new(EntropyConfig::default());
+        let file_path = PathBuf::from("test.rs");
+        // Need >2 else-if to trigger pattern (threshold check at line 435)
+        let content = r#"
+            fn foo(x: i32) {
+                if x > 10 {
+                    // ...
+                } else if x > 5 {
+                    // ...
+                } else if x > 0 {
+                    // ...
+                } else {
+                    // ...
+                }
+            }
+            fn bar(y: i32) {
+                if y < 0 {
+                    // ...
+                } else if y == 0 {
+                    // ...
+                } else if y < 10 {
+                    // ...
+                }
+            }
+        "#;
+
+        let mut collection = PatternCollection::new();
+        extractor
+            .extract_control_flow_patterns(&file_path, content, &mut collection)
+            .expect("Pattern extraction should succeed");
+
+        // Should detect pattern when >2 else-if chains found
+        assert!(!collection.patterns.is_empty(), "Should extract control flow patterns with >2 else-if chains");
+    }
+
+    #[test]
+    fn test_extract_data_transformation_patterns() {
+        let extractor = PatternExtractor::new(EntropyConfig::default());
+        let file_path = PathBuf::from("test.rs");
+        let content = r#"
+            fn process(items: Vec<i32>) -> Vec<String> {
+                items.iter().filter(|&x| *x > 0).map(|x| x.to_string()).collect()
+            }
+            fn another() {
+                data.map(|x| x * 2).filter(|x| x < 100).collect()
+            }
+        "#;
+
+        let mut collection = PatternCollection::new();
+        extractor
+            .extract_data_transformation_patterns(&file_path, content, &mut collection)
+            .expect("Pattern extraction should succeed");
+
+        assert!(!collection.patterns.is_empty(), "Should extract data transformation patterns with >3 method calls");
+    }
+
+    #[test]
+    fn test_extract_api_call_patterns() {
+        let extractor = PatternExtractor::new(EntropyConfig::default());
+        let file_path = PathBuf::from("test.rs");
+        let content = r#"
+            async fn fetch_data() {
+                let response = client.get("https://api.example.com").await;
+                let data = http.post("/endpoint", body).await;
+            }
+        "#;
+
+        let mut collection = PatternCollection::new();
+        extractor
+            .extract_api_call_patterns(&file_path, content, &mut collection)
+            .expect("Pattern extraction should succeed");
+
+        assert!(!collection.patterns.is_empty(), "Should extract API call patterns");
+    }
+
+    #[test]
+    fn test_extract_resource_management_patterns() {
+        let extractor = PatternExtractor::new(EntropyConfig::default());
+        let file_path = PathBuf::from("test.rs");
+        let content = r#"
+            fn foo() {
+                let lock = mutex.lock();
+                let file = resource.open();
+                file.close();
+            }
+        "#;
+
+        let mut collection = PatternCollection::new();
+        extractor
+            .extract_resource_management_patterns(&file_path, content, &mut collection)
+            .expect("Pattern extraction should succeed");
+
+        assert!(!collection.patterns.is_empty(), "Should extract resource management patterns with >1 lock/open/close calls");
+    }
+
+    #[test]
+    fn test_extract_data_validation_patterns() {
+        let extractor = PatternExtractor::new(EntropyConfig::default());
+        let file_path = PathBuf::from("test.rs");
+        // Need >2 validation checks to trigger pattern (threshold at line 337)
+        // Regex matches: if\s+.*\.(is_empty|len|contains|starts_with|ends_with)\(
+        // Note: Uses \( to match methods with or without arguments (e.g., contains("x"))
+        let content = r#"
+            fn validate(input: &str) -> bool {
+                if input.is_empty() {
+                    return false;
+                }
+                if input.len() > 100 {
+                    return false;
+                }
+                if input.contains("bad") {
+                    return false;
+                }
+                if input.starts_with("test") {
+                    return false;
+                }
+                true
+            }
+        "#;
+
+        let mut collection = PatternCollection::new();
+        extractor
+            .extract_data_validation_patterns(&file_path, content, &mut collection)
+            .expect("Pattern extraction should succeed");
+
+        // Should detect pattern when >2 validation checks found
+        assert!(!collection.patterns.is_empty(), "Should extract data validation patterns with >2 validation checks");
+    }
+
+    #[test]
+    fn test_pattern_collection_get_patterns_for_file() {
+        let mut collection = PatternCollection::new();
+        let file_path = PathBuf::from("test.rs");
+
+        let pattern = AstPattern {
+            pattern_type: PatternType::ErrorHandling,
+            pattern_hash: "hash1".to_string(),
+            frequency: 5,
+            locations: vec![],
+            variation_score: 0.3,
+            example_code: "test code".to_string(),
+            estimated_loc: 20,
+        };
+
+        collection.add_pattern(pattern);
+        collection.file_patterns.insert(file_path.clone(), vec!["hash1".to_string()]);
+
+        let patterns = collection.get_patterns_for_file(&file_path);
+        assert_eq!(patterns.len(), 1, "Should retrieve pattern for file");
+        assert_eq!(patterns[0].pattern_hash, "hash1");
+    }
+
+    #[test]
+    fn test_empty_content_no_patterns() {
+        let extractor = PatternExtractor::new(EntropyConfig::default());
+        let file_path = PathBuf::from("empty.rs");
+        let content = "";
+
+        let mut collection = PatternCollection::new();
+        extractor
+            .extract_error_handling_patterns(&file_path, content, &mut collection)
+            .expect("Should handle empty content");
+
+        assert!(collection.patterns.is_empty(), "Empty content should produce no patterns");
     }
 }
 #[cfg(test)]
