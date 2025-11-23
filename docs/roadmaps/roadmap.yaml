@@ -296,11 +296,27 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'New task: QUAL-O1-PHASE3.1'
-  status: inprogress
+  status: completed
   priority: medium
   assigned_to: null
   created: 2025-11-23T11:01:50.867055909+00:00
-  updated: 2025-11-23T11:01:50.867055909+00:00
+  updated: 2025-11-23T11:38:36.051612399+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: 'Phase 3.2: O(1) Quality Gates - trueno-graph Integration (CSR Storage)'
+  github_issue: null
+  item_type: task
+  title: 'New task: Phase 3.2: O(1) Quality Gates - trueno-graph Integration (CSR Storage)'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2025-11-23T11:38:48.121341456+00:00
+  updated: 2025-11-23T11:38:48.121341456+00:00
   spec: null
   acceptance_criteria: []
   phases: []
