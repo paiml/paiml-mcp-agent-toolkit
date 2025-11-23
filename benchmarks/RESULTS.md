@@ -3,17 +3,17 @@
 **Pattern**: Modeled after trueno-db competitive benchmarking methodology
 **Spec**: `docs/specifications/dependency-reduction-benchmarking-framework.md`
 
-## Current Baseline (v2.202.0 - Sprint 46 Phase 6)
+## Current Baseline (v2.203.0 - Sprint 46 Phase 7: Dependency Cleanup)
 
 ### Date: 2025-11-23
 
 #### Dependency Counts
 
-| Configuration | Count | Delta from Default |
-|---------------|-------|-------------------|
-| Minimal (rust-only) | 2,260 | -699 (-23.6%) |
-| Default | 2,959 | baseline |
-| All features | 3,292 | +333 (+11.3%) |
+| Configuration | Count | Delta from Default | Change from v2.202.0 |
+|---------------|-------|-------------------|----------------------|
+| Minimal (rust-only) | 2,055 | -699 (-25.4%) | -205 (-9.1%) |
+| Default | 2,754 | baseline | -205 (-6.9%) |
+| All features | 2,937 | +183 (+6.6%) | -355 (-10.8%) |
 
 **Commands used**:
 ```bash
@@ -57,6 +57,41 @@ renacer -c pmat context --output /tmp/ctx.md  # Statistics mode
 **Status**: ✅ Available - Use renacer for detailed profiling
 
 ## Historical Data
+
+### Sprint 46 Phase 7 (Dependency Cleanup - 2025-11-23)
+
+**Changes**:
+- Removed 11 unused dependencies (9 regular + 2 dev dependencies)
+- Dependencies identified via cargo-machete analysis
+- All removals verified via manual grep analysis
+
+**Dependencies Removed**:
+
+*Regular dependencies (9):*
+1. `arc-swap` - Lock-free atomic pointer swapping
+2. `bolero` - Property-based fuzzing framework
+3. `kani-verifier` - Formal verification tool
+4. `memmap2` - Memory-mapped file I/O
+5. `num-traits` - Numeric trait abstractions
+6. `renacer` - System call tracer
+7. `rkyv` - Zero-copy deserialization
+8. `tokio-util` - Tokio utility library
+9. `zstd` - Zstandard compression
+
+*Dev dependencies (2):*
+1. `actix-test` - Actix testing utilities
+2. `mockall` - Mock object library
+
+**Results**:
+- Dependency reduction:
+  - Minimal (rust-only): -205 (-9.1%)
+  - Default: -205 (-6.9%)
+  - All features: -355 (-10.8%)
+- ✅ Build verification: `cargo check --lib` passed
+- ✅ cargo-machete verification: Zero unused dependencies remaining
+
+**Commits**:
+- TBD - Remove 11 unused dependencies
 
 ### Sprint 46 Phase 6 (Tree-Sitter Removal)
 
