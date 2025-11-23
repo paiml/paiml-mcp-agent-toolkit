@@ -62,8 +62,8 @@ fix: format
 
 # Run linting in all projects
 lint: lint-scripts lint-makefile
-	@echo "🔍 Linting Rust code..."
-	@cargo check --manifest-path server/Cargo.toml
+	@echo "🔍 Linting Rust code (strict mode: warnings = errors)..."
+	@cargo clippy --manifest-path server/Cargo.toml -- -D warnings
 	@echo "✅ All linting checks passed!"
 
 # Lint only main code (skip tests)
