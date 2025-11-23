@@ -86,6 +86,42 @@ impl RoadmapService {
         Ok(lock_file)
     }
 
+    /// Parse YAML with enhanced error reporting
+    fn parse_roadmap_yaml(&self, contents: &str) -> Result<Roadmap> {
+        serde_yaml::from_str(contents).map_err(|e| {
+            // Extract line/column info if available
+            let location_info = if let Some(location) = e.location() {
+                format!(" at line {}, column {}", location.line(), location.column())
+            } else {
+                String::new()
+            };
+
+            // Build enhanced error message
+            let error_msg = format!(
+                "Failed to parse roadmap YAML: {:?}\n\
+                 Parse error: {}{}\n\
+                 \n\
+                 This roadmap may be from an older version of PMAT or have invalid syntax.\n\
+                 \n\
+                 Troubleshooting steps:\n\
+                 1. Check YAML syntax: python3 -c \"import yaml; yaml.safe_load(open('{path}'))\"\n\
+                 2. Validate against current schema (see docs/roadmap-schema.md)\n\
+                 3. If migrating from old version, run: pmat work init (creates new format)\n\
+                 \n\
+                 Common issues:\n\
+                 - Unknown fields (e.g., 'commit', 'completion' at phase level)\n\
+                 - Missing required fields (e.g., 'roadmap_version')\n\
+                 - Incorrect field types",
+                self.roadmap_path.display(),
+                e,
+                location_info,
+                path = self.roadmap_path.display()
+            );
+
+            anyhow::anyhow!(error_msg)
+        })
+    }
+
     /// Load roadmap from file (with shared lock)
     pub fn load(&self) -> Result<Roadmap> {
         // Acquire shared lock (allows multiple concurrent readers)
@@ -99,10 +135,7 @@ impl RoadmapService {
         let contents = fs::read_to_string(&self.roadmap_path)
             .with_context(|| format!("Failed to read roadmap file: {:?}", self.roadmap_path))?;
 
-        let roadmap: Roadmap = serde_yaml::from_str(&contents)
-            .with_context(|| format!("Failed to parse roadmap YAML: {:?}", self.roadmap_path))?;
-
-        Ok(roadmap)
+        self.parse_roadmap_yaml(&contents)
         // Lock released automatically when _lock goes out of scope
     }
 
@@ -136,8 +169,7 @@ impl RoadmapService {
         let mut roadmap = if self.roadmap_path.exists() {
             let contents = fs::read_to_string(&self.roadmap_path)
                 .with_context(|| format!("Failed to read roadmap file: {:?}", self.roadmap_path))?;
-            serde_yaml::from_str(&contents)
-                .with_context(|| format!("Failed to parse roadmap YAML: {:?}", self.roadmap_path))?
+            self.parse_roadmap_yaml(&contents)?
         } else {
             Roadmap::default()
         };
@@ -168,8 +200,7 @@ impl RoadmapService {
         let mut roadmap = if self.roadmap_path.exists() {
             let contents = fs::read_to_string(&self.roadmap_path)
                 .with_context(|| format!("Failed to read roadmap file: {:?}", self.roadmap_path))?;
-            serde_yaml::from_str(&contents)
-                .with_context(|| format!("Failed to parse roadmap YAML: {:?}", self.roadmap_path))?
+            self.parse_roadmap_yaml(&contents)?
         } else {
             Roadmap::default()
         };
@@ -612,13 +643,48 @@ mod tests {
             let malformed = "roadmap_version: '1.0'\ninvalid: yaml: structure:";
             fs::write(&roadmap_path, malformed).unwrap();
 
-            // Load should fail gracefully
+            // Load should fail gracefully with enhanced error message
             let result = service.load();
             assert!(result.is_err());
-            assert!(result
-                .unwrap_err()
-                .to_string()
-                .contains("Failed to parse roadmap YAML"));
+            let error_msg = result.unwrap_err().to_string();
+            assert!(error_msg.contains("Failed to parse roadmap YAML"));
+            // Enhanced error should include troubleshooting steps
+            assert!(error_msg.contains("Troubleshooting steps"));
+        }
+
+        #[test]
+        fn test_old_schema_format_error() {
+            let temp_dir = TempDir::new().unwrap();
+            let roadmap_path = temp_dir.path().join("roadmap.yaml");
+            let service = RoadmapService::new(&roadmap_path);
+
+            // Simulate old roadmap format (pmat v2.200) with 'commit' and 'completion' fields
+            let old_format = r#"roadmap_version: '1.0'
+roadmap:
+  - id: TASK-001
+    title: Example task
+    status: completed
+    commit: abc123
+    completion: 2025-11-21T22:20:00+00:00
+"#;
+            fs::write(&roadmap_path, old_format).unwrap();
+
+            // Load should fail with helpful error message
+            let result = service.load();
+            assert!(result.is_err());
+            let error_msg = result.unwrap_err().to_string();
+
+            // Should show parse error with location
+            assert!(error_msg.contains("Parse error"));
+
+            // Should mention schema/version mismatch
+            assert!(error_msg.contains("older version of PMAT"));
+
+            // Should suggest migration path
+            assert!(error_msg.contains("pmat work init"));
+
+            // Should list common issues
+            assert!(error_msg.contains("Unknown fields"));
         }
 
         #[test]

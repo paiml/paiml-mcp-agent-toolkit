@@ -113,9 +113,7 @@ pub async fn handle_work_start(
     println!();
 
     // Load roadmap
-    let mut roadmap = service
-        .load()
-        .context("Failed to load roadmap. Run `pmat work init` first.")?;
+    let mut roadmap = service.load()?;
 
     // Determine if this is a GitHub issue or YAML ticket
     let is_github_issue = id.parse::<u64>().is_ok();
@@ -415,9 +413,7 @@ pub async fn handle_work_status(
     let roadmap_path = project_path.join("docs/roadmaps/roadmap.yaml");
     let service = RoadmapService::new(&roadmap_path);
 
-    let roadmap = service
-        .load()
-        .context("Failed to load roadmap. Run `pmat work init` first.")?;
+    let roadmap = service.load()?;
 
     if let Some(item_id) = id {
         // Show specific item
@@ -498,9 +494,7 @@ pub async fn handle_work_sync(
     println!("🔄 {} roadmap...", action);
     println!();
 
-    let roadmap = service
-        .load()
-        .context("Failed to load roadmap. Run `pmat work init` first.")?;
+    let roadmap = service.load()?;
 
     match direction {
         SyncDirection::YamlToGithub => {
