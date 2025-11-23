@@ -2454,3 +2454,48 @@ help-toyota-way:
 	@echo "  - Documentation synchronization enforced"
 	@echo "  - Quality built-in at source"
 	@echo ""
+## Dependency Reduction Benchmarking
+## Pattern: Modeled after trueno-db competitive benchmarking methodology
+## Spec: docs/specifications/dependency-reduction-benchmarking-framework.md
+
+bench-baseline: ## Measure current baseline (build times, binary size, dependencies)
+	@echo "📊 Measuring baseline metrics..."
+	@echo "📖 Spec: docs/specifications/dependency-reduction-benchmarking-framework.md"
+	@./benchmarks/measure-baseline.sh
+
+bench-deps: ## Count dependencies across configurations
+	@echo "📦 Dependency counts:"
+	@echo "  Minimal (rust-only): $$(cargo tree --no-default-features --features rust-only 2>/dev/null | wc -l)"
+	@echo "  Default: $$(cargo tree 2>/dev/null | wc -l)"
+	@echo "  All features: $$(cargo tree --all-features 2>/dev/null | wc -l)"
+
+bench-binary-size: ## Measure binary sizes across configurations
+	@echo "📏 Measuring binary sizes..."
+	@cargo build --release --no-default-features --features rust-only > /dev/null 2>&1
+	@echo "  Minimal (rust-only): $$(ls -lh target/release/pmat | awk '{print $$5}')"
+	@cargo build --release > /dev/null 2>&1
+	@echo "  Default: $$(ls -lh target/release/pmat | awk '{print $$5}')"
+	@cargo build --release --all-features > /dev/null 2>&1
+	@echo "  All features: $$(ls -lh target/release/pmat | awk '{print $$5}')"
+
+bench-build-times: ## Measure build times across configurations (takes ~10-15 minutes)
+	@echo "⏱️  Benchmarking build times (this will take 10-15 minutes)..."
+	@echo "  Testing: minimal (rust-only)"
+	@cargo clean > /dev/null 2>&1
+	@time cargo build --release --no-default-features --features rust-only
+	@echo "  Testing: default"
+	@cargo clean > /dev/null 2>&1
+	@time cargo build --release
+	@echo "  Testing: all-features"
+	@cargo clean > /dev/null 2>&1
+	@time cargo build --release --all-features
+	@echo "✅ Build time benchmarks complete"
+
+bench-quick: bench-deps bench-binary-size ## Quick benchmark (deps + binary size, ~1-2 minutes)
+	@echo "✅ Quick benchmarks complete"
+
+bench-all: bench-baseline ## Run all dependency reduction benchmarks
+	@echo "✅ All benchmarks complete"
+	@echo "📊 Results in benchmarks/results/"
+	@echo "📖 Review latest: ls -lt benchmarks/results/ | head -2"
+
