@@ -300,21 +300,22 @@ polyglot-ast = []
 ruchy-ast = ["ruchy", "logos"]
 go-ast = ["tree-sitter", "tree-sitter-go"]
 kotlin-ast = ["tree-sitter", "tree-sitter-kotlin-ng", "polyglot-kotlin"]
-# Sprint 46 Phase 6: Removed unused AST features (0 references)
-# java-ast = ["tree-sitter", "tree-sitter-java", "polyglot-java"]
-# csharp-ast = ["tree-sitter", "tree-sitter-c-sharp", "polyglot-csharp"]
-# ruby-ast = ["tree-sitter", "tree-sitter-ruby", "polyglot-ruby"]
-# scala-ast = ["tree-sitter", "tree-sitter-scala", "polyglot-scala"]
+# Sprint 46 Phase 6/7: Empty feature declarations for backward compat (cfg checks)
+# Dependencies removed but feature flags kept to satisfy #[cfg(feature = "...")] guards
+java-ast = []
+csharp-ast = []
+ruby-ast = []
+scala-ast = []
 
 # Polyglot language-specific features
 polyglot-kotlin = ["polyglot-ast"]
 polyglot-typescript = ["polyglot-ast"]
 polyglot-javascript = ["polyglot-ast"]
-# Sprint 46 Phase 6: Removed unused polyglot features (0 references)
-# polyglot-java = ["polyglot-ast"]
-# polyglot-scala = ["polyglot-ast"]
-# polyglot-csharp = ["polyglot-ast"]
-# polyglot-ruby = ["polyglot-ast"]
+# Sprint 46 Phase 6/7: Empty polyglot feature declarations for backward compat (cfg checks)
+polyglot-java = []
+polyglot-scala = []
+polyglot-csharp = []
+polyglot-ruby = []
 # Sprint 46 Phase 5: Removed unused language feature definitions
 # erlang-ast = ["tree-sitter", "tree-sitter-erlang"]
 # elixir-ast = ["tree-sitter", "tree-sitter-elixir"]

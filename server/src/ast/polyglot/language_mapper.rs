@@ -186,6 +186,7 @@ impl JavaMapper {
     }
 
     /// Process Java-specific nodes
+    #[allow(dead_code)]
     fn process_java_specific(&self, nodes: &mut [UnifiedNode]) {
         for node in nodes.iter_mut() {
             // Add Java-specific metadata
@@ -334,6 +335,7 @@ impl ScalaMapper {
     }
 
     /// Process Scala-specific nodes
+    #[allow(dead_code)]
     fn process_scala_specific(&self, nodes: &mut [UnifiedNode]) {
         for node in nodes.iter_mut() {
             // Add Scala-specific metadata
