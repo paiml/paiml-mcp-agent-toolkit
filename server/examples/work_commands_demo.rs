@@ -61,6 +61,7 @@ fn main() -> Result<()> {
         subtasks: vec![],
         estimated_effort: Some("2 days".to_string()),
         labels: vec!["performance".to_string(), "optimization".to_string()],
+        notes: None,
     };
 
     roadmap.roadmap.push(item1.clone());
@@ -88,6 +89,7 @@ fn main() -> Result<()> {
         subtasks: vec![],
         estimated_effort: Some("1 day".to_string()),
         labels: vec!["bug".to_string(), "robustness".to_string()],
+        notes: None,
     };
 
     roadmap.roadmap.push(item2.clone());
