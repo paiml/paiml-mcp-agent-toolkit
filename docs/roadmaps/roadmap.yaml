@@ -276,3 +276,19 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: QUAL-O1-PHASE3
+  github_issue: null
+  item_type: task
+  title: 'New task: QUAL-O1-PHASE3'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2025-11-23T10:48:17.591378184+00:00
+  updated: 2025-11-23T10:48:17.591378184+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
