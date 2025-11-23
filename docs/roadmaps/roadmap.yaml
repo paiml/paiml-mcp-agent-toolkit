@@ -392,11 +392,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'New task: Reduce unwrap() calls from 570 to <100 (CRITICAL reliability)'
-  status: inprogress
+  status: completed
   priority: medium
   assigned_to: null
   created: 2025-11-23T16:17:00.647764140+00:00
-  updated: 2025-11-23T16:17:00.647764140+00:00
+  updated: 2025-11-23T18:35:33.299168994+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -445,6 +445,22 @@ roadmap:
   assigned_to: null
   created: 2025-11-23T16:44:36.534847591+00:00
   updated: 2025-11-23T16:44:36.534847591+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: 'Continue unwrap elimination: Target 60 total eliminated (30 more files with TDD)'
+  github_issue: null
+  item_type: task
+  title: 'New task: Continue unwrap elimination: Target 60 total eliminated (30 more files with TDD)'
+  status: completed
+  priority: medium
+  assigned_to: null
+  created: 2025-11-23T18:36:58.349358792+00:00
+  updated: 2025-11-23T20:40:02.633449160+00:00
   spec: null
   acceptance_criteria: []
   phases: []
