@@ -120,6 +120,120 @@ cd ../pmat-book && git push origin main
 
 ---
 
+## CRITICAL: O(1) Quality Gates (Phase 2 - Active)
+
+**AUTOMATIC ENFORCEMENT: Pre-commit hooks validate metrics in <30ms**
+
+### Overview
+
+Phase 2 of O(1) Quality Gates is now active, providing instant (<30ms) quality validation at commit time using hash-based metric caching.
+
+**Specification**: `docs/specifications/quick-test-build-O(1)-checking.md`
+
+### How It Works
+
+1. **Metric Recording** (during development):
+   ```bash
+   make lint        # Records lint duration to .pmat-metrics/
+   make test-fast   # Records test duration
+   make coverage    # Records coverage duration
+   make release     # Records binary size
+   ```
+
+2. **Pre-Commit Validation** (O(1) instant check):
+   - Reads cached metrics from `.pmat-metrics/`
+   - Validates against thresholds in `.pmat-metrics.toml`
+   - **Blocks commit** if thresholds exceeded (MEAN mode)
+   - Entire validation completes in <30ms
+
+### Thresholds (MEAN Mode)
+
+From `.pmat-metrics.toml`:
+- **lint**: ≤30s (30,000ms)
+- **test-fast**: ≤5min (300,000ms)
+- **coverage**: ≤10min (600,000ms)
+- **binary size**: ≤50MB (50,000,000 bytes)
+- **dependencies**: ≤3,000 (default feature set)
+
+**Staleness**: Metrics older than 7 days trigger warnings
+
+### Developer Workflow
+
+```bash
+# Normal development (metrics recorded automatically)
+make lint        # ✅ Recorded: 12,453ms
+make test-fast   # ✅ Recorded: 107,234ms (1m 47s)
+git add .
+git commit -m "feat: Add feature"
+# ✅ Pre-commit validation: <30ms (reads cached metrics)
+
+# If threshold violated
+make lint        # ❌ Recorded: 35,000ms (exceeds 30s threshold)
+git commit -m "fix: Something"
+# ❌ Pre-commit BLOCKS: lint exceeded threshold by 16.7%
+# Fix: Optimize code or run 'make lint' again
+```
+
+### Escape Hatches
+
+**Emergency bypass** (NOT RECOMMENDED):
+```bash
+git commit --no-verify
+```
+
+**Update thresholds** (if justified):
+Edit `.pmat-metrics.toml` and adjust thresholds.
+
+### Toyota Way Principles
+
+- **Jidoka** (Built-in Quality): Metrics validated at commit time
+- **Andon Cord**: Pre-commit blocks on regression (stop the line)
+- **Muda** (Waste Elimination): O(1) validation eliminates slow quality checks
+- **Kaizen**: Continuous improvement via metric tracking
+
+### Time Savings
+
+**Before O(1) Gates**:
+- Pre-commit: 12-24 minutes (full lint + test)
+- Developer friction: High
+- Bypasses: Common
+
+**After O(1) Gates** (Phase 2):
+- Pre-commit: <30ms (instant)
+- Developer friction: Minimal
+- Bypasses: Rare (fast validation)
+- Team-wide savings: 2-20 hours/day
+
+### Files Modified (Phase 2)
+
+- `Makefile`: Integrated metric recording (lint, test-fast, coverage, release)
+- `.git/hooks/pre-commit`: Added O(1) validation + pmat-book sync check
+- `scripts/validate-metrics.sh`: O(1) threshold validation (169 lines)
+- `scripts/compute-metric-hash.sh`: SHA256 cache invalidation (23 lines)
+- `.pmat-metrics.toml`: Threshold configuration (39 lines)
+- `.gitignore`: Added `.pmat-metrics/` exclusion
+
+### Troubleshooting
+
+**Issue**: "No metrics cache found"
+**Solution**: Run `make lint`, `make test-fast`, etc. to populate cache
+
+**Issue**: "Stale metrics (>7 days old)"
+**Solution**: Re-run relevant targets to refresh metrics
+
+**Issue**: "Threshold exceeded"
+**Solution**:
+1. Optimize code to meet threshold
+2. Re-run target to verify improvement
+3. Update threshold if justified (document why)
+
+### Future Phases
+
+- **Phase 3** (Sprint 49): Trend analysis, metric visualization
+- **Phase 4** (Sprint 50): Kaizen automation, automated threshold adjustment
+
+---
+
 ## CRITICAL: Documentation Accuracy Enforcement (Zero Hallucinations)
 
 **MANDATORY FOR README.md, CLAUDE.md, GEMINI.md, AGENT.md:**

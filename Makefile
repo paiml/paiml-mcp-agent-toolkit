@@ -62,9 +62,12 @@ fix: format
 
 # Run linting in all projects
 lint: lint-scripts lint-makefile
+	@mkdir -p .pmat-metrics
+	@date +%s%3N > .pmat-metrics/lint.start
 	@echo "🔍 Linting Rust code (strict mode: warnings = errors)..."
 	@cargo clippy --manifest-path server/Cargo.toml -- -D warnings
 	@echo "✅ All linting checks passed!"
+	@./scripts/record-metric.sh lint
 
 # Lint only main code (skip tests)
 lint-main: lint-scripts lint-makefile
@@ -83,6 +86,8 @@ check: check-scripts
 # Toyota Way: cargo-nextest AUTOMATICALLY SKIPS #[ignore] tests by default
 # This excludes slow tests (>60s), broken tests, and tests requiring external services
 test-fast:
+	@mkdir -p .pmat-metrics
+	@date +%s%3N > .pmat-metrics/test-fast.start
 	@echo "⚡ Running fast tests (target: <5 min, auto-excludes #[ignore] tests)..."
 	@if command -v cargo-nextest >/dev/null 2>&1; then \
 		PROPTEST_CASES=50 RUST_TEST_THREADS=$$(nproc) cargo nextest run \
@@ -97,6 +102,7 @@ test-fast:
 			--status-level skip \
 			--failure-output immediate; \
 	fi
+	@./scripts/record-metric.sh test-fast
 
 # Run ALL tests (unit + integration) - slower but comprehensive
 test-all:
@@ -406,6 +412,8 @@ test-doc:
 
 # Coverage analysis - Two-tier approach (idiomatic for large Rust projects)
 coverage: ## Generate coverage report (lib only, fast: 5-10 min)
+	@mkdir -p .pmat-metrics
+	@date +%s%3N > .pmat-metrics/coverage.start
 	@echo "📊 Running developer coverage (lib only, target: 5-10 min)..."
 	@echo "⚙️  Temporarily disabling cargo configs (RUSTFLAGS breaks llvm-cov)..."
 	@test -f ~/.cargo/config.toml && mv ~/.cargo/config.toml ~/.cargo/config.toml.cov-backup || true
@@ -417,6 +425,7 @@ coverage: ## Generate coverage report (lib only, fast: 5-10 min)
 	@test -f ~/.cargo/config.toml.cov-backup && mv ~/.cargo/config.toml.cov-backup ~/.cargo/config.toml || true
 	@echo "✅ Coverage report: target/coverage/html/index.html"
 	@cargo llvm-cov report | grep TOTAL
+	@./scripts/record-metric.sh coverage
 
 # CI/CD coverage - comprehensive workspace coverage (20-30 min)
 coverage-ci: ## Generate comprehensive coverage (workspace, CI: 20-30 min)
@@ -1247,6 +1256,8 @@ server-build-release:
 
 # Build optimized release binary (workspace-wide)
 release:
+	@mkdir -p .pmat-metrics
+	@date +%s%3N > .pmat-metrics/build-release.start
 	@echo "🚀 Building optimized release binary for Rust workspace..."
 	@echo "📁 Workspace structure:"
 	@echo "   - Root workspace: Cargo.toml (workspace configuration)"
@@ -1258,6 +1269,7 @@ release:
 	@echo "✅ Release binary built successfully!"
 	@echo "📍 Binary location: ./target/release/pmat"
 	@echo "📊 Binary size: $$(du -h ./target/release/pmat | cut -f1)"
+	@./scripts/record-metric.sh build-release
 	@echo ""
 	@echo "💡 Tips for binary size optimization (future improvements):"
 	@echo "   - Strip debug symbols: cargo build --release --config 'profile.release.strip=true'"
