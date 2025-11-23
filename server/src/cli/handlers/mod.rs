@@ -46,6 +46,7 @@ pub mod mutation_handlers;
 pub mod name_similarity_analysis;
 pub mod new_tdg_handler;
 pub mod org_handlers;
+pub mod predict_quality_handlers; // Phase 4.1: Predictive Quality Gates CLI
 pub mod prompt_handlers;
 pub mod proof_annotations_handler;
 pub mod provability_handler;

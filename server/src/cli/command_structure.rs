@@ -621,6 +621,10 @@ impl CommandExecutor {
             Commands::ShowMetrics { .. } => {
                 anyhow::bail!("ShowMetrics command should be handled by command_dispatcher.rs")
             }
+            // Phase 4.1: O(1) Quality Gates - Predictive CLI
+            Commands::PredictQuality { .. } => {
+                anyhow::bail!("PredictQuality command should be handled by command_dispatcher.rs")
+            }
             // Issue #75: Unified GitHub/YAML workflow
             Commands::Work { command } => {
                 anyhow::bail!(

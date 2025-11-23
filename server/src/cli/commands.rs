@@ -631,6 +631,34 @@ pub enum Commands {
         failures_only: bool,
     },
 
+    /// Predict when quality metrics will exceed thresholds (Phase 4 O(1) Quality Gates)
+    #[command(visible_aliases = &["predict"])]
+    PredictQuality {
+        /// Specific metric to predict (lint, test-fast, coverage, build-release)
+        #[arg(long)]
+        metric: Option<String>,
+
+        /// Threshold value (ms or bytes)
+        #[arg(long)]
+        threshold: Option<f64>,
+
+        /// Days to forecast (default: 30)
+        #[arg(long, default_value_t = 30)]
+        days: usize,
+
+        /// Output format
+        #[arg(long, value_enum, default_value = "table")]
+        format: OutputFormat,
+
+        /// Predict all metrics
+        #[arg(long)]
+        all: bool,
+
+        /// Show only metrics at risk of breach
+        #[arg(long)]
+        failures_only: bool,
+    },
+
     /// Start Claude Code background agent for continuous quality monitoring
     #[command(visible_aliases = &["ag"])]
     Agent {

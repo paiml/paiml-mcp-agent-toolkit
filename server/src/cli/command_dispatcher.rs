@@ -351,6 +351,25 @@ impl CommandDispatcher {
                 Self::execute_show_metrics_command(trend, days, metric, format, failures_only).await
             }
 
+            Commands::PredictQuality {
+                metric,
+                threshold,
+                days,
+                format,
+                all,
+                failures_only,
+            } => {
+                handlers::predict_quality_handlers::handle_predict_quality(
+                    metric,
+                    threshold,
+                    days,
+                    format,
+                    all,
+                    failures_only,
+                )
+                .await
+            }
+
             Commands::Agent { command } => handlers::handle_agent_command(command).await,
 
             Commands::Tdg {
