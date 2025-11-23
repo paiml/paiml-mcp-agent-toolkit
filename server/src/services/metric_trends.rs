@@ -200,6 +200,11 @@ impl MetricTrendStore {
 
     /// Add observation to CSR graph (Phase 3.2)
     fn add_to_graph(&mut self, obs: &MetricObservation) -> Result<()> {
+        // Check if this observation is already in the graph (prevent duplicates)
+        if self.node_map.contains_key(&obs.timestamp) {
+            return Ok(()); // Already added
+        }
+
         // Create node for this observation
         let node_id = NodeId(self.next_node_id);
         self.next_node_id += 1;
@@ -680,7 +685,34 @@ impl MetricTrendStore {
         if path.exists() {
             let json = std::fs::read_to_string(&path)?;
             let observations: Vec<MetricObservation> = serde_json::from_str(&json)?;
-            self.cache.insert(metric.to_string(), observations);
+
+            // Insert into cache FIRST (so add_to_graph can find previous observations)
+            self.cache.insert(metric.to_string(), observations.clone());
+
+            // Then add observations to graph for PageRank (in order)
+            for (idx, obs) in observations.iter().enumerate() {
+                // Check if this observation is already in the graph (prevent duplicates)
+                if self.node_map.contains_key(&obs.timestamp) {
+                    continue;
+                }
+
+                // Create node for this observation
+                let node_id = NodeId(self.next_node_id);
+                self.next_node_id += 1;
+
+                // Store mapping
+                self.node_map.insert(obs.timestamp, node_id);
+                self.reverse_node_map.insert(node_id, obs.timestamp);
+
+                // Create temporal edge from previous observation (if any)
+                if idx > 0 {
+                    let prev_obs = &observations[idx - 1];
+                    if let Some(prev_node_id) = self.node_map.get(&prev_obs.timestamp) {
+                        let delta_t = (obs.timestamp - prev_obs.timestamp) as f32;
+                        self.graph.add_edge(*prev_node_id, node_id, delta_t)?;
+                    }
+                }
+            }
         }
         Ok(())
     }

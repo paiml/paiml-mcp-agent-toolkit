@@ -312,11 +312,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'New task: Phase 3.2: O(1) Quality Gates - trueno-graph Integration (CSR Storage)'
-  status: inprogress
+  status: completed
   priority: medium
   assigned_to: null
   created: 2025-11-23T11:38:48.121341456+00:00
-  updated: 2025-11-23T11:38:48.121341456+00:00
+  updated: 2025-11-23T12:31:05.441451255+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -328,11 +328,43 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'New task: Phase 4: O(1) Quality Gates - Predictive Quality Gates (ML-based)'
-  status: inprogress
+  status: completed
   priority: medium
   assigned_to: null
   created: 2025-11-23T11:54:52.424839363+00:00
-  updated: 2025-11-23T11:54:52.424839363+00:00
+  updated: 2025-11-23T12:05:50.339847538+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: 'Phase 4.1: O(1) Quality Gates - Predictive CLI (predict-quality command)'
+  github_issue: null
+  item_type: task
+  title: 'New task: Phase 4.1: O(1) Quality Gates - Predictive CLI (predict-quality command)'
+  status: completed
+  priority: medium
+  assigned_to: null
+  created: 2025-11-23T12:05:56.159998297+00:00
+  updated: 2025-11-23T12:31:10.564319305+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: 'Phase 3.3: show-metrics --trend visualization'
+  github_issue: null
+  item_type: task
+  title: 'New task: Phase 3.3: show-metrics --trend visualization'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2025-11-23T12:31:36.669616444+00:00
+  updated: 2025-11-23T12:31:36.669616444+00:00
   spec: null
   acceptance_criteria: []
   phases: []
