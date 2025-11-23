@@ -49,6 +49,16 @@ fi
 if [ ! -f "${BASELINE_PATH}" ]; then
     echo -e "${YELLOW}⚠️  No baseline found at ${BASELINE_PATH}${NC}"
     echo "   Creating initial baseline..."
+
+    # Create parent directory if it doesn't exist (fixes issue #88)
+    BASELINE_DIR="$(dirname "${BASELINE_PATH}")"
+    if [ ! -d "${BASELINE_DIR}" ]; then
+        mkdir -p "${BASELINE_DIR}" || {
+            echo -e "${RED}❌ Failed to create directory: ${BASELINE_DIR}${NC}"
+            exit 1
+        }
+    fi
+
     pmat tdg baseline create --output "${BASELINE_PATH}" --path .
 
     if [ $? -eq 0 ]; then
