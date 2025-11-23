@@ -96,7 +96,12 @@ fn to_snake_case(s: &str) -> String {
         if ch.is_uppercase() && i > 0 && !prev_is_upper {
             result.push('_');
         }
-        result.push(ch.to_lowercase().next().unwrap());
+        // to_lowercase() always returns at least one character for any valid char
+        result.push(
+            ch.to_lowercase()
+                .next()
+                .expect("to_lowercase() always yields at least one char"),
+        );
         prev_is_upper = ch.is_uppercase();
     }
 
@@ -240,6 +245,69 @@ mod tests {
         let data = json!({"number": 123});
         let result = handlebars.render_template(template, &data);
         assert!(result.is_err());
+    }
+
+    /// Test that to_snake_case handles Unicode characters correctly
+    /// Validates expect() at line 99-104 (to_lowercase() always yields at least one char)
+    #[test]
+    fn test_to_snake_case_unicode() {
+        // Latin characters with diacritics
+        assert_eq!(to_snake_case("CaféName"), "café_name");
+        // Ü is uppercase, so it triggers underscore insertion
+        assert_eq!(to_snake_case("ÜberDriver"), "über_driver");
+
+        // Greek letters - uppercase Greek letters trigger underscore
+        assert_eq!(to_snake_case("ΑlphaΒeta"), "αlpha_βeta");
+
+        // Emoji (should pass through - not uppercase)
+        assert_eq!(to_snake_case("MyProject🚀Name"), "my_project🚀_name");
+
+        // Mix of ASCII and Unicode (CJK characters are not uppercase)
+        assert_eq!(to_snake_case("日本語Name"), "日本語_name");
+    }
+
+    /// Test that to_snake_case handles special characters
+    /// Validates the expect() message and character iteration (line 95-106)
+    #[test]
+    fn test_to_snake_case_special_chars() {
+        // Numbers and symbols
+        assert_eq!(to_snake_case("V8Engine"), "v8_engine");
+        assert_eq!(to_snake_case("C++Parser"), "c++_parser");
+
+        // Consecutive uppercase letters
+        assert_eq!(to_snake_case("HTTPSConnection"), "httpsconnection");
+        assert_eq!(to_snake_case("URLParser"), "urlparser");
+
+        // Single character
+        assert_eq!(to_snake_case("A"), "a");
+        assert_eq!(to_snake_case("Z"), "z");
+    }
+
+    /// Test that to_snake_case handles boundary cases
+    /// Validates the character loop logic (lines 95-106)
+    #[test]
+    fn test_to_snake_case_boundaries() {
+        // Empty string
+        assert_eq!(to_snake_case(""), "");
+
+        // Single lowercase
+        assert_eq!(to_snake_case("a"), "a");
+
+        // Single uppercase
+        assert_eq!(to_snake_case("A"), "a");
+
+        // All lowercase
+        assert_eq!(to_snake_case("alllowercase"), "alllowercase");
+
+        // All uppercase
+        assert_eq!(to_snake_case("ALLUPPERCASE"), "alluppercase");
+
+        // Very long string (test capacity allocation)
+        let mut long_name = "A".repeat(500);
+        long_name.push_str(&"B".repeat(500));
+        let result = to_snake_case(&long_name);
+        assert!(result.len() > 500);
+        assert!(result.chars().all(|c| c == 'a' || c == 'b'));
     }
 }
 
