@@ -617,6 +617,10 @@ impl CommandExecutor {
                     }
                 }
             }
+            // Phase 3.1: O(1) Quality Gates - CLI Integration
+            Commands::ShowMetrics { .. } => {
+                anyhow::bail!("ShowMetrics command should be handled by command_dispatcher.rs")
+            }
             // Issue #75: Unified GitHub/YAML workflow
             Commands::Work { command } => {
                 anyhow::bail!(

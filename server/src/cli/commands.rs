@@ -607,6 +607,30 @@ pub enum Commands {
         config_path: Option<PathBuf>,
     },
 
+    /// Show quality metrics and trends (Phase 3 O(1) Quality Gates)
+    #[command(visible_aliases = &["metrics", "trends"])]
+    ShowMetrics {
+        /// Show metric trends over time
+        #[arg(long)]
+        trend: bool,
+
+        /// Number of days to analyze (default: 30)
+        #[arg(long, default_value_t = 30)]
+        days: usize,
+
+        /// Specific metric to analyze (lint, test-fast, coverage, build-release)
+        #[arg(long)]
+        metric: Option<String>,
+
+        /// Output format
+        #[arg(long, value_enum, default_value = "table")]
+        format: OutputFormat,
+
+        /// Show only failures (regressions)
+        #[arg(long)]
+        failures_only: bool,
+    },
+
     /// Start Claude Code background agent for continuous quality monitoring
     #[command(visible_aliases = &["ag"])]
     Agent {

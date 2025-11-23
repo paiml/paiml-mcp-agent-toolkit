@@ -341,6 +341,16 @@ impl CommandDispatcher {
                 .await
             }
 
+            Commands::ShowMetrics {
+                trend,
+                days,
+                metric,
+                format,
+                failures_only,
+            } => {
+                Self::execute_show_metrics_command(trend, days, metric, format, failures_only).await
+            }
+
             Commands::Agent { command } => handlers::handle_agent_command(command).await,
 
             Commands::Tdg {
@@ -1158,8 +1168,72 @@ impl CommandDispatcher {
         .await
     }
 
-    /// Execute config command (extracted for complexity reduction)
-    #[allow(clippy::too_many_arguments)]
+    /// Execute show-metrics command (Phase 3.1 O(1) Quality Gates)
+    async fn execute_show_metrics_command(
+        trend: bool,
+        days: usize,
+        metric: Option<String>,
+        format: OutputFormat,
+        failures_only: bool,
+    ) -> anyhow::Result<()> {
+        use crate::services::metric_trends::{MetricTrendStore, TrendDirection};
+
+        if !trend {
+            anyhow::bail!("Only --trend mode is currently supported");
+        }
+
+        let mut store = MetricTrendStore::new()?;
+        let metrics = if let Some(m) = metric {
+            vec![m]
+        } else {
+            store.metrics()?
+        };
+
+        match format {
+            OutputFormat::Json => {
+                let mut results = serde_json::Map::new();
+                for metric_name in metrics {
+                    if let Ok(trend_analysis) = store.trend(&metric_name, days) {
+                        if failures_only && trend_analysis.direction != TrendDirection::Regressing {
+                            continue;
+                        }
+                        results.insert(metric_name, serde_json::to_value(trend_analysis)?);
+                    }
+                }
+                println!("{}", serde_json::to_string_pretty(&results)?);
+            }
+            _ => {
+                // Table output (default)
+                println!("\n\x1b[1;34m📊 Quality Metrics Trends ({} days)\x1b[0m\n", days);
+
+                for metric_name in metrics {
+                    if let Ok(trend_analysis) = store.trend(&metric_name, days) {
+                        if failures_only && trend_analysis.direction != TrendDirection::Regressing {
+                            continue;
+                        }
+
+                        let direction_symbol = match trend_analysis.direction {
+                            TrendDirection::Improving => "\x1b[32m↓ Improving\x1b[0m",
+                            TrendDirection::Stable => "\x1b[33m→ Stable\x1b[0m",
+                            TrendDirection::Regressing => "\x1b[31m↑ Regressing\x1b[0m",
+                        };
+
+                        println!("\x1b[1m{}\x1b[0m", metric_name);
+                        println!("  Direction: {}", direction_symbol);
+                        println!("  Mean: {:.2}", trend_analysis.mean);
+                        println!("  Std Dev: {:.2}", trend_analysis.std_dev);
+                        println!("  Min/Max: {:.2} / {:.2}", trend_analysis.min, trend_analysis.max);
+                        println!("  Slope: {:.2}/day", trend_analysis.slope);
+                        println!("  Observations: {}", trend_analysis.count);
+                        println!();
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
     async fn execute_config_command(
         show: bool,
         edit: bool,
