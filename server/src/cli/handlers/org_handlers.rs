@@ -7,8 +7,11 @@
 
 #[cfg(feature = "org-intelligence")]
 use crate::cli::commands::OrgCommands;
+#[cfg(feature = "org-intelligence")]
 use anyhow::{Context, Result};
+#[cfg(feature = "org-intelligence")]
 use chrono::{Duration, Utc};
+#[cfg(feature = "org-intelligence")]
 use indicatif::{ProgressBar, ProgressStyle};
 #[cfg(feature = "org-intelligence")]
 use organizational_intelligence_plugin::analyzer::OrgAnalyzer;
@@ -20,12 +23,17 @@ use organizational_intelligence_plugin::report::{
 };
 #[cfg(feature = "org-intelligence")]
 use organizational_intelligence_plugin::summarizer::{ReportSummarizer, SummaryConfig};
+#[cfg(feature = "org-intelligence")]
 use std::env;
+#[cfg(feature = "org-intelligence")]
 use std::path::PathBuf;
+#[cfg(feature = "org-intelligence")]
 use tempfile::TempDir;
+#[cfg(feature = "org-intelligence")]
 use tracing::{info, warn};
 
 /// Handle organizational intelligence commands
+#[cfg(feature = "org-intelligence")]
 pub async fn handle_org_command(org_cmd: OrgCommands) -> Result<()> {
     match org_cmd {
         OrgCommands::Analyze {
@@ -52,6 +60,7 @@ pub async fn handle_org_command(org_cmd: OrgCommands) -> Result<()> {
 }
 
 /// Handle organizational analysis
+#[cfg(feature = "org-intelligence")]
 async fn handle_org_analyze(
     org: &str,
     output: &PathBuf,

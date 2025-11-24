@@ -162,7 +162,16 @@ impl CommandDispatcher {
                 }
                 Ok(())
             }
-            Commands::Org(org_cmd) => handlers::handle_org_command(org_cmd).await,
+            Commands::Org(_org_cmd) => {
+                #[cfg(feature = "org-intelligence")]
+                {
+                    handlers::handle_org_command(_org_cmd).await
+                }
+                #[cfg(not(feature = "org-intelligence"))]
+                {
+                    anyhow::bail!("Organizational intelligence feature is not enabled. Rebuild with --features org-intelligence")
+                }
+            }
             Commands::Prompt(prompt_cmd) => handlers::handle_prompt_command(prompt_cmd).await,
             Commands::QualityGate {
                 project_path,
@@ -498,6 +507,27 @@ impl CommandDispatcher {
             Commands::Work { command } => {
                 // Issue #75: Unified GitHub/YAML workflow
                 Self::execute_work_command(&command).await
+            }
+            Commands::DebugFiveWhys {
+                issue,
+                depth,
+                format,
+                output,
+                path,
+                context,
+                auto_analyze,
+            } => {
+                // Five Whys root cause analysis (Toyota Way)
+                crate::cli::handlers::five_whys_handlers::handle_debug(
+                    &issue,
+                    depth,
+                    format,
+                    output.as_deref(),
+                    &path,
+                    context.as_deref(),
+                    auto_analyze,
+                )
+                .await
             }
         }
     }

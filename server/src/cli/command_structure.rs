@@ -497,7 +497,16 @@ impl CommandExecutor {
                 }
                 Ok(())
             }
-            Commands::Org(org_cmd) => crate::cli::handlers::handle_org_command(org_cmd).await,
+            Commands::Org(_org_cmd) => {
+                #[cfg(feature = "org-intelligence")]
+                {
+                    crate::cli::handlers::handle_org_command(_org_cmd).await
+                }
+                #[cfg(not(feature = "org-intelligence"))]
+                {
+                    anyhow::bail!("Organizational intelligence feature is not enabled. Rebuild with --features org-intelligence")
+                }
+            }
             Commands::Prompt(prompt_cmd) => {
                 crate::cli::handlers::handle_prompt_command(prompt_cmd).await
             }
@@ -635,6 +644,10 @@ impl CommandExecutor {
                     "Work command not yet implemented in command structure: {:?}",
                     command
                 )
+            }
+            // Five Whys root cause analysis - handled by command_dispatcher.rs
+            Commands::DebugFiveWhys { .. } => {
+                anyhow::bail!("DebugFiveWhys command should be handled by command_dispatcher.rs")
             }
         }
     }
