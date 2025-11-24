@@ -532,3 +532,19 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: GH-92
+  github_issue: null
+  item_type: task
+  title: 'New task: GH-92'
+  status: completed
+  priority: medium
+  assigned_to: null
+  created: 2025-11-24T17:05:47.549686200+00:00
+  updated: 2025-11-24T17:11:53.934522864+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null

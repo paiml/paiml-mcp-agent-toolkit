@@ -104,16 +104,19 @@ jobs:
           exit 1
         }
 
+    - name: Install cargo-nextest
+      uses: taiki-e/install-action@cargo-nextest
+
     # Quality Gate 5: Tests (BLOCKING)
     - name: "Gate 5: Run tests"
       working-directory: ./server
       run: |
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        echo "🧪 GATE 5: Unit & Integration Tests"
+        echo "🧪 GATE 5: Unit & Integration Tests (Parallel with nextest)"
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        cargo test --lib --release || {
+        cargo nextest run --lib --release --profile ci || {
           echo "❌ TESTS FAILED - Build blocked"
-          echo "Run: cargo test --lib"
+          echo "Run: cargo nextest run --lib"
           exit 1
         }
 

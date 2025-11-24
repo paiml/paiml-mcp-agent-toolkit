@@ -418,8 +418,14 @@ coverage: ## Generate coverage report (lib only, fast: 5-10 min)
 	@echo "⚙️  Temporarily disabling cargo configs (RUSTFLAGS breaks llvm-cov)..."
 	@test -f ~/.cargo/config.toml && mv ~/.cargo/config.toml ~/.cargo/config.toml.cov-backup || true
 	@test -f .cargo/config.toml && mv .cargo/config.toml .cargo/config.toml.cov-backup || true
-	@cargo llvm-cov --lib --lcov --output-path lcov.info
-	@cargo llvm-cov report --html --output-dir target/coverage/html
+	@if command -v cargo-nextest >/dev/null 2>&1; then \
+		cargo llvm-cov nextest --lib --lcov --output-path lcov.info; \
+		cargo llvm-cov report --html --output-dir target/coverage/html; \
+	else \
+		echo "⚠️  cargo-nextest not found, using standard coverage (slower)"; \
+		cargo llvm-cov --lib --lcov --output-path lcov.info; \
+		cargo llvm-cov report --html --output-dir target/coverage/html; \
+	fi
 	@echo "⚙️  Restoring cargo configs..."
 	@test -f .cargo/config.toml.cov-backup && mv .cargo/config.toml.cov-backup .cargo/config.toml || true
 	@test -f ~/.cargo/config.toml.cov-backup && mv ~/.cargo/config.toml.cov-backup ~/.cargo/config.toml || true
@@ -433,8 +439,14 @@ coverage-ci: ## Generate comprehensive coverage (workspace, CI: 20-30 min)
 	@echo "⚙️  Temporarily disabling cargo configs (RUSTFLAGS breaks llvm-cov)..."
 	@test -f ~/.cargo/config.toml && mv ~/.cargo/config.toml ~/.cargo/config.toml.cov-backup || true
 	@test -f .cargo/config.toml && mv .cargo/config.toml .cargo/config.toml.cov-backup || true
-	@cargo llvm-cov --workspace --lcov --output-path lcov.info
-	@cargo llvm-cov report --html --output-dir target/coverage/html
+	@if command -v cargo-nextest >/dev/null 2>&1; then \
+		cargo llvm-cov nextest --workspace --lcov --output-path lcov.info; \
+		cargo llvm-cov report --html --output-dir target/coverage/html; \
+	else \
+		echo "⚠️  cargo-nextest not found, using standard coverage (slower)"; \
+		cargo llvm-cov --workspace --lcov --output-path lcov.info; \
+		cargo llvm-cov report --html --output-dir target/coverage/html; \
+	fi
 	@echo "⚙️  Restoring cargo configs..."
 	@test -f .cargo/config.toml.cov-backup && mv .cargo/config.toml.cov-backup .cargo/config.toml || true
 	@test -f ~/.cargo/config.toml.cov-backup && mv ~/.cargo/config.toml.cov-backup ~/.cargo/config.toml || true
@@ -476,12 +488,21 @@ coverage-html: ## Generate HTML coverage report and open in browser
 	@cargo llvm-cov clean --workspace
 	@mkdir -p target/coverage/html
 	@test -f ~/.cargo/config.toml && mv ~/.cargo/config.toml ~/.cargo/config.toml.cov-backup || true
-	@env PROPTEST_CASES=25 RUST_TEST_THREADS=$(shell nproc) cargo llvm-cov \
-		--lib \
-		--features skip-slow-tests \
-		--html \
-		--output-dir target/coverage/html \
-		--ignore-filename-regex='tests?\.rs'
+	@if command -v cargo-nextest >/dev/null 2>&1; then \
+		env PROPTEST_CASES=25 RUST_TEST_THREADS=$(shell nproc) cargo llvm-cov nextest \
+			--lib \
+			--features skip-slow-tests \
+			--html \
+			--output-dir target/coverage/html \
+			--ignore-filename-regex='tests?\.rs'; \
+	else \
+		env PROPTEST_CASES=25 RUST_TEST_THREADS=$(shell nproc) cargo llvm-cov \
+			--lib \
+			--features skip-slow-tests \
+			--html \
+			--output-dir target/coverage/html \
+			--ignore-filename-regex='tests?\.rs'; \
+	fi
 	@test -f ~/.cargo/config.toml.cov-backup && mv ~/.cargo/config.toml.cov-backup ~/.cargo/config.toml || true
 	@echo "✅ HTML report generated: target/coverage/html/index.html"
 	@xdg-open target/coverage/html/index.html 2>/dev/null || \
