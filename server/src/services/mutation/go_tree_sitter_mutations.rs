@@ -64,7 +64,8 @@ impl TreeSitterMutationOperator for GoBinaryOpMutation {
                 mutated.splice(operator_node.byte_range(), new_op.bytes());
 
                 MutatedSource {
-                    source: String::from_utf8(mutated).unwrap(),
+                    source: String::from_utf8(mutated)
+                    .expect("mutated source is valid UTF-8 (original source + ASCII operators)"),
                     description: format!("{} → {}", op_text, new_op),
                     location: SourceLocation {
                         line: operator_node.start_position().row + 1,
@@ -141,7 +142,8 @@ impl TreeSitterMutationOperator for GoRelationalOpMutation {
                 mutated.splice(operator_node.byte_range(), new_op.bytes());
 
                 MutatedSource {
-                    source: String::from_utf8(mutated).unwrap(),
+                    source: String::from_utf8(mutated)
+                    .expect("mutated source is valid UTF-8 (original source + ASCII operators)"),
                     description: format!("{} → {}", op_text, new_op),
                     location: SourceLocation {
                         line: operator_node.start_position().row + 1,
@@ -211,7 +213,8 @@ impl TreeSitterMutationOperator for GoLogicalOpMutation {
         mutated.splice(operator_node.byte_range(), replacement.bytes());
 
         vec![MutatedSource {
-            source: String::from_utf8(mutated).unwrap(),
+            source: String::from_utf8(mutated)
+                    .expect("mutated source is valid UTF-8 (original source + ASCII operators)"),
             description: format!("{} → {}", op_text, replacement),
             location: SourceLocation {
                 line: operator_node.start_position().row + 1,
@@ -285,7 +288,8 @@ impl TreeSitterMutationOperator for GoBitwiseOpMutation {
                 mutated.splice(operator_node.byte_range(), new_op.bytes());
 
                 MutatedSource {
-                    source: String::from_utf8(mutated).unwrap(),
+                    source: String::from_utf8(mutated)
+                    .expect("mutated source is valid UTF-8 (original source + ASCII operators)"),
                     description: format!("{} → {}", op_text, new_op),
                     location: SourceLocation {
                         line: operator_node.start_position().row + 1,
@@ -359,7 +363,8 @@ impl TreeSitterMutationOperator for GoUnaryOpMutation {
                 mutated.splice(operator_node.byte_range(), new_op.bytes());
 
                 MutatedSource {
-                    source: String::from_utf8(mutated).unwrap(),
+                    source: String::from_utf8(mutated)
+                    .expect("mutated source is valid UTF-8 (original source + ASCII operators)"),
                     description: format!("{} → {}", op_text, new_op),
                     location: SourceLocation {
                         line: operator_node.start_position().row + 1,
@@ -444,7 +449,8 @@ impl TreeSitterMutationOperator for GoAssignmentOpMutation {
                 mutated.splice(operator_node.byte_range(), new_op.bytes());
 
                 MutatedSource {
-                    source: String::from_utf8(mutated).unwrap(),
+                    source: String::from_utf8(mutated)
+                    .expect("mutated source is valid UTF-8 (original source + ASCII operators)"),
                     description: format!("{} → {}", op_text, new_op),
                     location: SourceLocation {
                         line: operator_node.start_position().row + 1,
@@ -712,5 +718,103 @@ mod tests {
         }
 
         assert!(find_and_test(&root, source, &operator));
+    }
+
+    /// Test UTF-8 validity after Go mutation (validates expect() at lines 67, 144, 214, 288, 362, 447)
+    #[test]
+    fn test_utf8_validity_after_go_mutation() {
+        let source = b"result := a + b - c * d / e";
+
+        let mut parser = tree_sitter::Parser::new();
+        parser
+            .set_language(&tree_sitter_go::LANGUAGE.into())
+            .expect("Failed to set Go language");
+
+        let tree = parser.parse(source, None).expect("Failed to parse");
+        let root = tree.root_node();
+
+        fn collect_mutations(node: &tree_sitter::Node, source: &[u8]) -> Vec<MutatedSource> {
+            let mut all_mutations = Vec::new();
+
+            if let "binary_expression" = node.kind() {
+                let operator = GoBinaryOpMutation;
+                if operator.can_mutate(node, source) {
+                    all_mutations.extend(operator.mutate(node, source));
+                }
+            }
+
+            let mut cursor = node.walk();
+            for child in node.children(&mut cursor) {
+                all_mutations.extend(collect_mutations(&child, source));
+            }
+
+            all_mutations
+        }
+
+        let mutations = collect_mutations(&root, source);
+
+        // All mutations must be valid UTF-8
+        for mutation in &mutations {
+            assert!(!mutation.source.is_empty());
+            assert!(std::str::from_utf8(mutation.source.as_bytes()).is_ok());
+        }
+
+        assert!(!mutations.is_empty());
+    }
+
+    /// Test all Go operators produce valid UTF-8
+    #[test]
+    fn test_all_go_operators_produce_valid_utf8() {
+        let test_cases = vec![
+            b"a + b".as_slice(),
+            b"x == y".as_slice(),
+            b"a && b".as_slice(),
+            b"x += y".as_slice(),
+        ];
+
+        for source in test_cases {
+            let mut parser = tree_sitter::Parser::new();
+            parser
+                .set_language(&tree_sitter_go::LANGUAGE.into())
+                .expect("Failed to set Go language");
+
+            let tree = parser.parse(source, None).expect("Failed to parse");
+            let root = tree.root_node();
+
+            fn collect_all(node: &tree_sitter::Node, source: &[u8]) -> Vec<MutatedSource> {
+                let mut mutations = Vec::new();
+
+                let operators: Vec<Box<dyn TreeSitterMutationOperator>> = vec![
+                    Box::new(GoBinaryOpMutation),
+                    Box::new(GoRelationalOpMutation),
+                    Box::new(GoLogicalOpMutation),
+                    Box::new(GoAssignmentOpMutation),
+                ];
+
+                for op in operators {
+                    if op.can_mutate(node, source) {
+                        mutations.extend(op.mutate(node, source));
+                    }
+                }
+
+                let mut cursor = node.walk();
+                for child in node.children(&mut cursor) {
+                    mutations.extend(collect_all(&child, source));
+                }
+
+                mutations
+            }
+
+            let mutations = collect_all(&root, source);
+
+            for mutation in &mutations {
+                assert!(!mutation.source.is_empty());
+                assert!(
+                    std::str::from_utf8(mutation.source.as_bytes()).is_ok(),
+                    "Mutation should produce valid UTF-8: {}",
+                    mutation.description
+                );
+            }
+        }
     }
 }
