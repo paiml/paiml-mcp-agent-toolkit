@@ -126,7 +126,8 @@ impl MermaidGenerator {
                 NodeType::Interface => format!("{sanitized_id}(({escaped_label}))"),
             };
 
-            writeln!(output, "    {node_def}").unwrap();
+            writeln!(output, "    {node_def}")
+                .expect("writing to String never fails");
         }
 
         // Add blank line between nodes and edges
@@ -142,7 +143,7 @@ impl MermaidGenerator {
                 arrow,
                 self.sanitize_id(&edge.to)
             )
-            .unwrap();
+            .expect("writing to String never fails");
         }
 
         // Add styling based on complexity if enabled
@@ -160,7 +161,7 @@ impl MermaidGenerator {
                     stroke_style,
                     stroke_width
                 )
-                .unwrap();
+                .expect("writing to String never fails");
             }
         }
 
@@ -214,7 +215,8 @@ impl MermaidGenerator {
                 }
             };
 
-            writeln!(output, "    {node_def}").unwrap();
+            writeln!(output, "    {node_def}")
+                .expect("writing to String never fails");
         }
     }
 
@@ -246,7 +248,7 @@ impl MermaidGenerator {
                     arrow,
                     self.sanitize_id(&edge.to)
                 )
-                .unwrap();
+                .expect("writing to String never fails");
             }
         }
     }
@@ -288,7 +290,7 @@ impl MermaidGenerator {
                 stroke_style,
                 stroke_width
             )
-            .unwrap();
+            .expect("writing to String never fails");
         }
     }
 
@@ -346,7 +348,12 @@ impl MermaidGenerator {
         // Ensure it starts with a letter or underscore
         if sanitized.is_empty() {
             "_empty".to_string()
-        } else if sanitized.chars().next().unwrap().is_numeric() {
+        } else if sanitized
+            .chars()
+            .next()
+            .expect("sanitized is non-empty (checked at line 347)")
+            .is_numeric()
+        {
             format!("_{sanitized}")
         } else {
             sanitized
@@ -1189,6 +1196,256 @@ mod tests {
             assert!(output.contains("#FFD700")); // Gold for medium complexity
             assert!(output.contains("#FFA500")); // Orange for high complexity
         }
+    }
+
+    /// Test that writeln! to String never fails (validates expect() at lines 130, 146, 164, 219, 251, 293)
+    #[test]
+    fn test_string_write_never_fails() {
+        let generator = MermaidGenerator::new(MermaidOptions {
+            show_complexity: true,
+            ..Default::default()
+        });
+
+        let mut nodes = FxHashMap::default();
+        nodes.insert(
+            "test::module::function".to_string(),
+            NodeInfo {
+                id: "test::module::function".to_string(),
+                label: "test::module::function".to_string(),
+                node_type: NodeType::Function,
+                file_path: "test.rs".to_string(),
+                line_number: 1,
+                complexity: 10,
+                metadata: FxHashMap::default(),
+            },
+        );
+
+        let graph = DependencyGraph {
+            nodes,
+            edges: vec![],
+        };
+
+        // This exercises all writeln! operations which should never fail
+        let output = generator.generate(&graph);
+
+        // Verify the string was created successfully
+        assert!(output.contains("graph TD"));
+        assert!(output.contains("test_module_function"));
+        assert!(output.contains("style ")); // Complexity styling enabled
+    }
+
+    /// Test sanitize_id with empty input and numeric prefixes (validates expect() at line 354)
+    #[test]
+    fn test_sanitize_id_edge_cases() {
+        let generator = MermaidGenerator::default();
+
+        // Empty input should return "_empty"
+        assert_eq!(generator.sanitize_id(""), "_empty");
+
+        // Numeric prefix should be prefixed with underscore
+        assert_eq!(generator.sanitize_id("123module"), "_123module");
+        assert_eq!(generator.sanitize_id("0start"), "_0start");
+
+        // Valid identifier should pass through
+        assert_eq!(generator.sanitize_id("validModule"), "validModule");
+        assert_eq!(generator.sanitize_id("_underscore"), "_underscore");
+
+        // Special characters should be replaced (:: becomes single _ via replace)
+        assert_eq!(generator.sanitize_id("my::module"), "my_module");
+        assert_eq!(generator.sanitize_id("path/to/file"), "path_to_file");
+    }
+
+    /// Test Mermaid generation with complex module names (exercises all unwrap fixes)
+    #[test]
+    fn test_complex_module_names() {
+        let generator = MermaidGenerator::new(MermaidOptions {
+            show_complexity: true,
+            ..Default::default()
+        });
+
+        let mut nodes = FxHashMap::default();
+
+        // Node with colons (tests writeln! at lines 130, 146, 164)
+        nodes.insert(
+            "std::collections::HashMap".to_string(),
+            NodeInfo {
+                id: "std::collections::HashMap".to_string(),
+                label: "std::collections::HashMap".to_string(),
+                node_type: NodeType::Class,
+                file_path: "std.rs".to_string(),
+                line_number: 1,
+                complexity: 15,
+                metadata: FxHashMap::default(),
+            },
+        );
+
+        // Node with numeric prefix (tests expect() at line 354)
+        nodes.insert(
+            "123_numeric_start".to_string(),
+            NodeInfo {
+                id: "123_numeric_start".to_string(),
+                label: "123_numeric_start".to_string(),
+                node_type: NodeType::Function,
+                file_path: "test.rs".to_string(),
+                line_number: 5,
+                complexity: 5,
+                metadata: FxHashMap::default(),
+            },
+        );
+
+        // Empty node name (tests "_empty" path at line 350)
+        nodes.insert(
+            "".to_string(),
+            NodeInfo {
+                id: "".to_string(),
+                label: "".to_string(),
+                node_type: NodeType::Module,
+                file_path: "empty.rs".to_string(),
+                line_number: 1,
+                complexity: 1,
+                metadata: FxHashMap::default(),
+            },
+        );
+
+        let graph = DependencyGraph {
+            nodes,
+            edges: vec![
+                Edge {
+                    from: "std::collections::HashMap".to_string(),
+                    to: "123_numeric_start".to_string(),
+                    edge_type: EdgeType::Calls,
+                    weight: 1,
+                },
+                Edge {
+                    from: "123_numeric_start".to_string(),
+                    to: "".to_string(),
+                    edge_type: EdgeType::Uses,
+                    weight: 1,
+                },
+            ],
+        };
+
+        // This exercises ALL unwrap fixes: 6x writeln! + 1x chars().next()
+        let output = generator.generate(&graph);
+
+        // Verify all nodes present with correct sanitization
+        assert!(output.contains("std_collections_HashMap")); // :: -> _
+        assert!(output.contains("_123_numeric_start")); // Numeric prefix gets _
+        assert!(output.contains("_empty")); // Empty -> "_empty"
+
+        // Verify styling (tests writeln! at line 293)
+        assert!(output.contains("style "));
+
+        // Verify edges (tests writeln! at lines 146, 251)
+        assert!(output.contains("-->") || output.contains("---"));
+    }
+
+    /// Test edge generation with various edge types (validates writeln! at lines 146, 251)
+    #[test]
+    fn test_edge_generation() {
+        let generator = MermaidGenerator::default();
+
+        let mut nodes = FxHashMap::default();
+        nodes.insert(
+            "node1".to_string(),
+            NodeInfo {
+                id: "node1".to_string(),
+                label: "Node 1".to_string(),
+                node_type: NodeType::Function,
+                file_path: "test.rs".to_string(),
+                line_number: 1,
+                complexity: 5,
+                metadata: FxHashMap::default(),
+            },
+        );
+        nodes.insert(
+            "node2".to_string(),
+            NodeInfo {
+                id: "node2".to_string(),
+                label: "Node 2".to_string(),
+                node_type: NodeType::Function,
+                file_path: "test.rs".to_string(),
+                line_number: 10,
+                complexity: 5,
+                metadata: FxHashMap::default(),
+            },
+        );
+
+        let graph = DependencyGraph {
+            nodes,
+            edges: vec![
+                Edge {
+                    from: "node1".to_string(),
+                    to: "node2".to_string(),
+                    edge_type: EdgeType::Calls,
+                    weight: 1,
+                },
+                Edge {
+                    from: "node2".to_string(),
+                    to: "node1".to_string(),
+                    edge_type: EdgeType::Imports,
+                    weight: 1,
+                },
+            ],
+        };
+
+        let output = generator.generate(&graph);
+
+        // Verify both edge types present
+        assert!(output.contains("-->")); // Calls arrow
+        assert!(output.contains("-.->") || output.contains("Imports")); // Imports arrow
+    }
+
+    /// Test styling generation with complexity-based colors (validates writeln! at lines 164, 293)
+    #[test]
+    fn test_styling_generation() {
+        let generator = MermaidGenerator::new(MermaidOptions {
+            show_complexity: true,
+            ..Default::default()
+        });
+
+        let mut nodes = FxHashMap::default();
+
+        // Low complexity node
+        nodes.insert(
+            "low".to_string(),
+            NodeInfo {
+                id: "low".to_string(),
+                label: "Low Complexity".to_string(),
+                node_type: NodeType::Function,
+                file_path: "test.rs".to_string(),
+                line_number: 1,
+                complexity: 5,
+                metadata: FxHashMap::default(),
+            },
+        );
+
+        // High complexity node
+        nodes.insert(
+            "high".to_string(),
+            NodeInfo {
+                id: "high".to_string(),
+                label: "High Complexity".to_string(),
+                node_type: NodeType::Function,
+                file_path: "test.rs".to_string(),
+                line_number: 20,
+                complexity: 25,
+                metadata: FxHashMap::default(),
+            },
+        );
+
+        let graph = DependencyGraph {
+            nodes,
+            edges: vec![],
+        };
+
+        let output = generator.generate(&graph);
+
+        // Verify complexity-based styling present
+        assert!(output.contains("style low"));
+        assert!(output.contains("style high"));
+        assert!(output.contains("#90EE90") || output.contains("#FFD700")); // Green or gold
+        assert!(output.contains("#FF6347") || output.contains("#FFA500")); // Red or orange
     }
 }
 
