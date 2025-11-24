@@ -1,8 +1,8 @@
 # PMAT Bug Reports - Index
 
-**Generated**: 2025-10-31
-**Source**: User feedback from production testing
-**Total Bugs**: 12
+**Generated**: 2025-11-24
+**Source**: User feedback from production testing + Enhancement proposals
+**Total Issues**: 13 (12 bugs + 1 enhancement)
 
 ---
 
@@ -157,6 +157,26 @@ Warning: Error processing file ./pybind/.../gateway_pb2.py: Parameter validation
 9. **#003**: Fix embed examples
 10. **#006**: Fix parallel analysis count
 11. **#010**: Improve warning display
+
+---
+
+## Enhancements (1 proposal)
+
+### [#013: Use Aprender ML for Accurate Quality Metric Calculations](./013-use-aprender-ml-for-accurate-calculations.md)
+**Component**: Quality metrics, TDG scoring, complexity calculation
+**Impact**: Replace arbitrary heuristics with data-driven ML models
+
+Current PMAT uses hardcoded formulas for complexity, TDG, and repo scoring. These are arbitrary, inaccurate, and brittle. Proposal: train ML models using `../aprender` (LinearRegression, LogisticRegression) on 1000+ real projects with known outcomes.
+
+**Expected Improvements**:
+- 65% better complexity predictions (MAE: 5.2 → 1.8)
+- 93% higher TDG correlation (R²: 0.45 → 0.87)
+- 40% improved health classification (F1: 0.65 → 0.91)
+- 68% reduction in false positives (25% → 8%)
+
+**Dependencies**: aprender v0.3.0 (LinearRegression available now)
+
+**Timeline**: 5 weeks (data collection → training → integration → testing → deployment)
 
 ---
 
