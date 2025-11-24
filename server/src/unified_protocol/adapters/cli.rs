@@ -126,6 +126,7 @@ impl CliAdapter {
             | Commands::Debug { .. } // Sprint 74: Time-travel debugging (CLI-only)
             | Commands::Work { .. } // Issue #75: Unified GitHub/YAML workflow (CLI-only)
             | Commands::Comply { .. } // GH-96: PMAT compliance and migration system (CLI-only)
+            | Commands::TestDiscovery { .. } // GH-98: Systematic test discovery and fixing (CLI-only)
             | Commands::DebugFiveWhys { .. } // Five Whys root cause analysis (CLI-only)
             | Commands::ShowMetrics { .. } // Phase 3.1: O(1) Quality Gates CLI (CLI-only)
             | Commands::PredictQuality { .. } // Phase 4.1: Predictive Quality Gates CLI (CLI-only)
@@ -1816,6 +1817,9 @@ impl CliInput {
             }
             Commands::Comply { .. } => {
                 CommandCategory::Analysis // GH-96: PMAT compliance and migration system
+            }
+            Commands::TestDiscovery { .. } => {
+                CommandCategory::Analysis // GH-98: Systematic test discovery and fixing
             }
             Commands::DebugFiveWhys { .. } => {
                 CommandCategory::Analysis // Five Whys root cause analysis

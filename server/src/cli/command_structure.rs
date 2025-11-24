@@ -650,6 +650,12 @@ impl CommandExecutor {
             Commands::Comply { .. } => {
                 anyhow::bail!("Comply command should be handled by command_dispatcher.rs")
             }
+
+            // GH-98: Systematic test discovery and fixing - handled by command_dispatcher.rs
+            Commands::TestDiscovery { .. } => {
+                anyhow::bail!("TestDiscovery command should be handled by command_dispatcher.rs")
+            }
+
             // Five Whys root cause analysis - handled by command_dispatcher.rs
             Commands::DebugFiveWhys { .. } => {
                 anyhow::bail!("DebugFiveWhys command should be handled by command_dispatcher.rs")

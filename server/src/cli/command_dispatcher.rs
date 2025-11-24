@@ -513,6 +513,12 @@ impl CommandDispatcher {
                 // GH-96: PMAT compliance and migration system
                 handlers::comply_handlers::handle_comply_command(command).await
             }
+
+            Commands::TestDiscovery { command } => {
+                // GH-98: Systematic test discovery and fixing
+                handlers::test_discovery_handlers::handle_test_discovery_command(command).await
+            }
+
             Commands::DebugFiveWhys {
                 issue,
                 depth,
