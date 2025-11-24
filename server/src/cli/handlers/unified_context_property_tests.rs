@@ -112,6 +112,7 @@ mod extreme_tdd_tests {
     }
 
     #[tokio::test]
+    #[cfg(feature = "wasm-ast")]
     async fn test_wasm_function_extraction() {
         // Test WASM function extraction as requested
         let temp_dir = TempDir::new().unwrap();
