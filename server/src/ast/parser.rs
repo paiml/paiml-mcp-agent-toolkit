@@ -65,6 +65,62 @@ impl Default for UnifiedParser {
 }
 
 #[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parser_new() {
+        let parser = UnifiedParser::new();
+        assert!(parser.config.include_comments == false);
+        assert!(parser.config.include_docs == false);
+        assert!(parser.config.max_depth.is_none());
+        assert!(parser.config.calculate_complexity == false);
+    }
+
+    #[test]
+    fn test_parser_default() {
+        let parser = UnifiedParser::default();
+        assert!(parser.config.include_comments == false);
+    }
+
+    #[test]
+    fn test_parser_with_config() {
+        let config = ParserConfig {
+            include_comments: true,
+            include_docs: true,
+            max_depth: Some(10),
+            calculate_complexity: true,
+        };
+        let parser = UnifiedParser::with_config(config);
+        assert!(parser.config.include_comments);
+        assert!(parser.config.include_docs);
+        assert_eq!(parser.config.max_depth, Some(10));
+        assert!(parser.config.calculate_complexity);
+    }
+
+    #[test]
+    fn test_parser_capabilities() {
+        let parser = UnifiedParser::new();
+        let caps = parser.capabilities();
+        assert_eq!(caps.languages.len(), 3);
+        assert!(caps.languages.contains(&Language::Rust));
+        assert!(caps.languages.contains(&Language::Python));
+        assert!(caps.languages.contains(&Language::TypeScript));
+        assert!(!caps.incremental);
+        assert!(caps.error_recovery);
+    }
+
+    #[test]
+    fn test_parser_config_default() {
+        let config = ParserConfig::default();
+        assert!(!config.include_comments);
+        assert!(!config.include_docs);
+        assert!(config.max_depth.is_none());
+        assert!(!config.calculate_complexity);
+    }
+}
+
+#[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;
 
