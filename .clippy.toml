@@ -10,11 +10,12 @@ disallowed-methods = [
     { path = "std::result::Result::unwrap_err", reason = "use `.expect_err()` with a descriptive message" },
 
     # Avoid println! in library code - use tracing/logging instead
-    { path = "std::println", reason = "use tracing macros (info!, warn!, debug!) instead for library code" },
-    { path = "std::eprintln", reason = "use tracing macros (error!, warn!) instead for library code" },
+    # Note: allow-invalid = true suppresses "path is not a valid method" warnings for macros
+    { path = "std::println", reason = "use tracing macros (info!, warn!, debug!) instead for library code", allow-invalid = true },
+    { path = "std::eprintln", reason = "use tracing macros (error!, warn!) instead for library code", allow-invalid = true },
 
     # Remove debug statements before production
-    { path = "std::dbg", reason = "remove debug statements or use proper logging" },
+    { path = "std::dbg", reason = "remove debug statements or use proper logging", allow-invalid = true },
 
     # Extremely unsafe - almost always a code smell
     { path = "std::mem::transmute", reason = "transmute is extremely unsafe - find a safer alternative" },

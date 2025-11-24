@@ -181,14 +181,15 @@ impl FormalVerificationScorer {
 
         // --- Miri Scoring (3 points) ---
         if has_unsafe {
-            if mode == ScoringMode::Quick {
-                // Quick mode: Just check for unsafe, give partial credit
+            if mode == ScoringMode::Quick || mode == ScoringMode::Fast {
+                // Quick/Fast mode: Just check for unsafe, give partial credit
+                // Skip subprocess calls (cargo miri --version can hang)
                 score += MIRI_POINTS * 0.3;
             } else if !self.is_miri_available() {
                 // Tool not available, give moderate credit
                 score += MIRI_POINTS * 0.5;
             } else {
-                // Run Miri
+                // Run Miri (Full mode only)
                 match self.run_miri_tests(project_path) {
                     Ok(result) => {
                         if result.passed {
@@ -214,14 +215,15 @@ impl FormalVerificationScorer {
         let kani_proofs = self.count_kani_proofs(project_path, cache);
 
         if kani_proofs > 0 {
-            if mode == ScoringMode::Quick {
-                // Quick mode: Just count proofs
+            if mode == ScoringMode::Quick || mode == ScoringMode::Fast {
+                // Quick/Fast mode: Just count proofs, give partial credit
+                // Skip subprocess calls (cargo kani --version can hang)
                 score += KANI_POINTS * 0.4;
             } else if !self.is_kani_available() {
                 // Tool not available
                 score += KANI_POINTS * 0.3;
             } else {
-                // Run Kani verification
+                // Run Kani verification (Full mode only)
                 match self.run_kani_verification(project_path) {
                     Ok(result) => {
                         if result.all_verified {

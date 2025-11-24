@@ -489,6 +489,66 @@ path = "examples/similarity_demo.rs"
 name = "context_analysis_demo"
 path = "examples/context_analysis_demo.rs"
 
+[[example]]
+name = "rust_mutation_workflow"
+path = "examples/rust_mutation_workflow.rs"
+required-features = ["mutation-testing"]
+
+[[example]]
+name = "cargo_mutants_backend_demo"
+path = "examples/cargo_mutants_backend_demo.rs"
+required-features = ["mutation-testing"]
+
+[[example]]
+name = "go_mutation_workflow"
+path = "examples/go_mutation_workflow.rs"
+required-features = ["mutation-testing"]
+
+[[example]]
+name = "parse_cargo_mutants_json"
+path = "examples/parse_cargo_mutants_json.rs"
+required-features = ["mutation-testing"]
+
+[[example]]
+name = "dogfood_types"
+path = "examples/dogfood_types.rs"
+required-features = ["mutation-testing"]
+
+[[example]]
+name = "typescript_mutation_workflow_parallel"
+path = "examples/typescript_mutation_workflow_parallel.rs"
+required-features = ["mutation-testing"]
+
+[[example]]
+name = "typescript_mutation_workflow"
+path = "examples/typescript_mutation_workflow.rs"
+required-features = ["mutation-testing"]
+
+[[example]]
+name = "test_typescript_mutations"
+path = "examples/test_typescript_mutations.rs"
+required-features = ["mutation-testing"]
+
+[[example]]
+name = "cargo_mutants_detect"
+path = "examples/cargo_mutants_detect.rs"
+required-features = ["mutation-testing"]
+
+[[example]]
+name = "cpp_mutation_workflow"
+path = "examples/cpp_mutation_workflow.rs"
+required-features = ["mutation-testing"]
+
+[[example]]
+name = "verify_fixtures"
+path = "examples/verify_fixtures.rs"
+required-features = ["mutation-testing"]
+
+[[example]]
+name = "python_mutation_workflow"
+path = "examples/python_mutation_workflow.rs"
+required-features = ["mutation-testing"]
+
 # Profile configuration moved to workspace root
 
 [package.metadata.docs.rs]

@@ -41,6 +41,7 @@ impl CStrategy {
     }
 
     #[cfg(not(feature = "c-ast"))]
+    #[allow(dead_code)]
     fn parse_with_tree_sitter(&self, _content: &str) -> Result<()> {
         Err(anyhow::anyhow!(
             "C AST parsing not available - compile with 'c-ast' feature"
@@ -163,6 +164,7 @@ impl CppStrategy {
     }
 
     #[cfg(not(feature = "cpp-ast"))]
+    #[allow(dead_code)]
     fn parse_with_tree_sitter(&self, _content: &str) -> Result<()> {
         Err(anyhow::anyhow!(
             "C++ AST parsing not available - compile with 'cpp-ast' feature"
@@ -223,6 +225,7 @@ impl LanguageStrategy for CppStrategy {
 }
 
 /// Tree-sitter visitor for C/C++ AST conversion
+#[allow(dead_code)]
 struct CTreeSitterVisitor<'a> {
     dag: &'a mut AstDag,
     #[allow(dead_code)]
@@ -231,6 +234,7 @@ struct CTreeSitterVisitor<'a> {
     current_parent: Option<u32>,
 }
 
+#[allow(dead_code)]
 impl<'a> CTreeSitterVisitor<'a> {
     fn new(dag: &'a mut AstDag, content: &'a str, language: Language) -> Self {
         Self {

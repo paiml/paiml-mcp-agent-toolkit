@@ -4350,6 +4350,7 @@ async fn analyze_python_file(
 }
 
 /// Simple Go file analysis
+#[allow(dead_code)]
 async fn analyze_go_file(
     _file_path: &Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
@@ -4415,6 +4416,7 @@ async fn analyze_bash_file(
 }
 
 #[cfg(not(feature = "shell-ast"))]
+#[allow(dead_code)]
 async fn analyze_bash_file(
     _file_path: &Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
@@ -4545,6 +4547,7 @@ async fn analyze_ocaml_file(
 }
 
 /// Simple WebAssembly file analysis
+#[allow(dead_code)]
 async fn analyze_wasm_file(
     _file_path: &Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
@@ -4620,6 +4623,7 @@ async fn analyze_files_complexity(
         .await
 }
 
+#[allow(clippy::manual_map)] // Complex async + feature-gate pattern, not easily simplified
 async fn analyze_single_file_complexity(
     file_path: &std::path::Path,
 ) -> Option<crate::services::complexity::FileComplexityMetrics> {

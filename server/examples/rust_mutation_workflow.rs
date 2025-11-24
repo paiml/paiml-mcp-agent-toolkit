@@ -1,5 +1,5 @@
 // Rust mutation testing workflow example
-// Run with: cargo run --example rust_mutation_workflow --features rust-ast
+// Run with: cargo run --example rust_mutation_workflow --features mutation-testing
 //
 // Demonstrates:
 // 1. Generating mutants from Rust source

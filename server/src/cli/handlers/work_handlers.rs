@@ -332,7 +332,7 @@ async fn capture_commit_metadata(
     use std::process::Command;
 
     let short_sha = Command::new("git")
-        .args(&["rev-parse", "--short", "HEAD"])
+        .args(["rev-parse", "--short", "HEAD"])
         .current_dir(project_path)
         .output()?;
     let short_sha = String::from_utf8_lossy(&short_sha.stdout).trim().to_string();
@@ -482,7 +482,7 @@ pub async fn handle_work_complete(
         println!("      ✅ Rust Project Score: {:.1}/134", rust_score);
     }
     let meta_file = project_path.join(".pmat-metrics")
-        .join(format!("commit-*-meta.json"));
+        .join("commit-*-meta.json");
     println!("✅ Commit metadata: {}", meta_file.display());
 
     // Update CHANGELOG.md if labels are available
@@ -943,7 +943,7 @@ async fn run_quality_gates(project_path: &PathBuf) -> Result<bool> {
         if examples_dir.exists() && examples_dir.is_dir() {
             println!("      📦 Checking examples...");
             let examples_status = Command::new("cargo")
-                .args(&["test", "--examples", "--no-run"])
+                .args(["test", "--examples", "--no-run"])
                 .current_dir(project_path)
                 .status()
                 .context("Failed to run cargo test --examples")?;
@@ -961,7 +961,7 @@ async fn run_quality_gates(project_path: &PathBuf) -> Result<bool> {
         // Capture rust-project-score (O(1) from cache)
         println!("      📊 Capturing rust-project-score...");
         match Command::new("pmat")
-            .args(&["rust-project-score", "--format", "json"])
+            .args(["rust-project-score", "--format", "json"])
             .current_dir(project_path)
             .output()
         {
@@ -989,7 +989,7 @@ async fn run_quality_gates(project_path: &PathBuf) -> Result<bool> {
         println!("   🎯 Golden traces detected...");
 
         match Command::new("renacer")
-            .args(&["validate", "--all"])
+            .args(["validate", "--all"])
             .current_dir(project_path)
             .status()
         {

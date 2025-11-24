@@ -22,11 +22,11 @@ roadmap:
   github_issue: 75
   item_type: task
   title: Unify pmat roadmap, GitHub issues, and EXTREME TDD workflow with automated tracking
-  status: completed
+  status: inprogress
   priority: medium
   assigned_to: null
   created: 2025-11-19T10:39:53.011510597+00:00
-  updated: 2025-11-19T11:36:03.898596226+00:00
+  updated: 2025-11-24T14:29:07.503389892+00:00
   spec: null
   acceptance_criteria:
   - Design YAML schema for roadmap.yaml
@@ -493,6 +493,38 @@ roadmap:
   assigned_to: null
   created: 2025-11-24T10:01:26.467552108+00:00
   updated: 2025-11-24T10:33:59.256080954+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-93
+  github_issue: null
+  item_type: task
+  title: 'New task: GH-93'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2025-11-24T14:28:59.782172792+00:00
+  updated: 2025-11-24T14:28:59.782172792+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-89
+  github_issue: null
+  item_type: task
+  title: 'New task: GH-89'
+  status: completed
+  priority: medium
+  assigned_to: null
+  created: 2025-11-24T14:36:22.483170414+00:00
+  updated: 2025-11-24T16:57:18.260997975+00:00
   spec: null
   acceptance_criteria: []
   phases: []
