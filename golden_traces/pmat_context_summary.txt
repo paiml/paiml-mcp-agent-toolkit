@@ -1,0 +1,54 @@
+
+Usage: pmat context [OPTIONS]
+
+For more information, try '--help'.
+
+EXAMPLES:
+# Analyze code complexity
+pmat analyze complexity --project-path .
+
+# Find technical debt
+pmat analyze satd --path .
+
+# Find dead code
+pmat analyze dead-code --path .
+
+# Generate project context
+pmat context
+
+# Run quality gates
+pmat quality-gate --strict
+
+# Start agent daemon
+pmat agent start
+% time     seconds  usecs/call     calls    errors syscall
+------ ----------- ----------- --------- --------- ----------------
+ 13.98    0.000632           6        97           rt_sigprocmask
+ 17.54    0.000793          10        79           mmap
+ 14.40    0.000651          11        59           mprotect
+ 20.30    0.000918          19        48           clone3
+  5.62    0.000254           8        31           futex
+  5.09    0.000230          12        19         7 openat
+  7.12    0.000322          16        19           read
+  4.25    0.000192          10        19           brk
+  2.32    0.000105           8        12           close
+  1.66    0.000075           7        10           unknown
+  1.66    0.000075           9         8           newfstatat
+  0.86    0.000039           6         6           rt_sigaction
+  0.57    0.000026           6         4           pread64
+  0.49    0.000022           7         3           sigaltstack
+  0.64    0.000029           9         3           statx
+  0.40    0.000018           9         2         1 arch_prctl
+  0.35    0.000016           8         2           lseek
+  0.31    0.000014           7         2           getrandom
+  0.29    0.000013           6         2           fcntl
+  0.42    0.000019           9         2           write
+  0.55    0.000025          12         2           munmap
+  0.29    0.000013          13         1           socketpair
+  0.20    0.000009           9         1         1 ioctl
+  0.13    0.000006           6         1           set_tid_address
+  0.27    0.000012          12         1         1 access
+  0.18    0.000008           8         1           poll
+  0.13    0.000006           6         1           set_robust_list
+------ ----------- ----------- --------- --------- ----------------
+100.00    0.004522          10       435        10 total

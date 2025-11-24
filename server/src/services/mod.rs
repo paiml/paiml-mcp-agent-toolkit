@@ -150,6 +150,8 @@ pub mod file_classifier;
 #[cfg(test)]
 mod file_classifier_property_tests;
 pub mod file_discovery;
+pub mod five_whys_analyzer;
+pub mod debug_formatters;
 pub mod fixed_graph_builder;
 pub mod git_analysis;
 pub mod git_clone;

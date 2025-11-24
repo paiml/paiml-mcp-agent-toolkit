@@ -1,0 +1,44 @@
+│                   Name                   │ Toolchain │ Category  │                         Description                          │
+├──────────────────────────────────────────┼───────────┼───────────┼──────────────────────────────────────────────────────────────┤
+│ Rust CLI Makefile                        │ rust      │ Makefile  │ Makefile for building Rust command-line applications with ca... │
+│ Rust CLI README                          │ rust      │ Readme    │ README template for Rust command-line applications           │
+│ Rust CLI .gitignore                      │ rust      │ Gitignore │ Gitignore template for Rust CLI projects                     │
+│ Deno TypeScript CLI Application Makefile │ deno      │ Makefile  │ Makefile for Deno TypeScript CLI applications                │
+│ Deno CLI Application README              │ deno      │ Readme    │ README template for Deno CLI applications                    │
+│ Deno CLI Application .gitignore          │ deno      │ Gitignore │ .gitignore template for Deno projects                        │
+│ Python UV CLI Application Makefile       │ python-uv │ Makefile  │ Makefile for Python CLI applications using UV package manage... │
+│ Python UV CLI Application README         │ python-uv │ Readme    │ README template for Python UV CLI applications               │
+│ Python UV CLI Application .gitignore     │ python-uv │ Gitignore │ .gitignore template for Python UV projects                   │
+└──────────────────────────────────────────┴───────────┴───────────┴──────────────────────────────────────────────────────────────┘
+% time     seconds  usecs/call     calls    errors syscall
+------ ----------- ----------- --------- --------- ----------------
+ 10.97    0.000690           7        97           rt_sigprocmask
+ 20.68    0.001301          15        84           futex
+ 13.99    0.000880          11        79           mmap
+ 10.54    0.000663          11        59           mprotect
+ 17.28    0.001087          22        48           clone3
+  6.39    0.000402          12        31           munmap
+  4.64    0.000292          15        19           read
+  3.69    0.000232          12        19         7 openat
+  2.08    0.000131           8        16           brk
+  1.75    0.000110           7        14           write
+  1.68    0.000106           8        12           close
+  1.19    0.000075           7        10           unknown
+  1.27    0.000080          10         8           newfstatat
+  0.67    0.000042           7         6           rt_sigaction
+  0.41    0.000026           6         4           pread64
+  0.32    0.000020           6         3           sigaltstack
+  0.62    0.000039          13         3           statx
+  0.21    0.000013           6         2         1 arch_prctl
+  0.22    0.000014           7         2           lseek
+  0.24    0.000015           7         2           getrandom
+  0.22    0.000014           7         2           fcntl
+  0.10    0.000006           6         1           set_robust_list
+  0.13    0.000008           8         1           poll
+  0.10    0.000006           6         1           set_tid_address
+  0.13    0.000008           8         1         1 access
+  0.11    0.000007           7         1         1 ioctl
+  0.27    0.000017          17         1           socketpair
+  0.11    0.000007           7         1           sched_yield
+------ ----------- ----------- --------- --------- ----------------
+100.00    0.006291          11       527        10 total

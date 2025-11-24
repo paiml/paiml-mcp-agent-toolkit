@@ -48,6 +48,7 @@
 pub mod churn;
 pub mod complexity_bound;
 pub mod dag;
+pub mod debug_analysis;
 #[cfg(test)]
 pub mod dag_property_tests;
 pub mod dead_code;

@@ -1,0 +1,99 @@
+# Renacer Performance Assertions for paiml-mcp-agent-toolkit
+#
+# These assertions enforce performance budgets for PMAT CLI operations.
+# Assertions run at build time (via cargo test) and fail CI if violated.
+#
+# Toyota Way Principle: Andon (stop the line when defects detected)
+
+[[assertion]]
+name = "cli_startup_latency"
+type = "critical_path"
+max_duration_ms = 50  # CLI must start and complete basic commands in <50ms
+fail_on_violation = true
+enabled = true
+
+[[assertion]]
+name = "max_syscall_budget"
+type = "span_count"
+max_spans = 600  # Limit syscall overhead for CLI operations (PMAT averages ~500 syscalls)
+fail_on_violation = true
+enabled = true
+
+[[assertion]]
+name = "memory_allocation_budget"
+type = "memory_usage"
+max_bytes = 52428800  # 50MB maximum memory allocations for CLI operations
+tracking_mode = "allocations"
+fail_on_violation = true
+enabled = true
+
+[[assertion]]
+name = "prevent_god_process"
+type = "anti_pattern"
+pattern = "GodProcess"
+threshold = 0.8  # 80% confidence threshold
+fail_on_violation = false  # Warning only (not blocking)
+enabled = true
+
+[[assertion]]
+name = "detect_tight_loops"
+type = "anti_pattern"
+pattern = "TightLoop"
+threshold = 0.7
+fail_on_violation = false  # Warning only
+enabled = true
+
+# Disabled assertion (example - can be enabled for stricter checking)
+[[assertion]]
+name = "ultra_strict_latency"
+type = "critical_path"
+max_duration_ms = 20  # <20ms startup (very aggressive)
+fail_on_violation = true
+enabled = false  # Disabled by default
+
+# ==============================================================================
+# Golden Trace Semantic Equivalence Validation
+# ==============================================================================
+# Validates that CLI operations produce consistent syscall patterns
+# and meet performance baselines using golden traces.
+
+[semantic_equivalence]
+enabled = true
+baseline_dir = "golden_traces/baseline"
+min_confidence = 0.90  # 90% confidence required for PASS
+
+# Validation checks
+check_write_patterns = true          # Output correctness (most critical)
+check_file_operations = true         # I/O behavior equivalence
+check_output_correctness = true      # Exact output matching
+check_memory_allocations = false     # Expect variations between runs
+
+# Performance expectations
+expected_speedup_min = 1.0           # Baseline comparison (1× = same performance)
+expected_speedup_max = 2.0           # Sanity check (>2× may indicate measurement error)
+
+# Lamport clock configuration
+[lamport_clock]
+enabled = true
+propagate_across_fork = true
+propagate_across_exec = true
+env_var = "RENACER_LAMPORT_CLOCK"
+
+# Trace compression
+[compression]
+enabled = true
+algorithm = "rle"  # Run-length encoding
+min_file_size_kb = 100  # Only compress traces >100KB
+
+# OpenTelemetry export (optional - for Jaeger/Grafana integration)
+[otlp]
+enabled = false  # Enable when observability stack available
+endpoint = "http://localhost:4317"
+service_name = "pmat-cli"
+
+# CI/CD integration
+[ci]
+fail_fast = true  # Stop on first assertion failure (Andon principle)
+export_format = "json"
+export_path = "target/renacer-reports"
+compare_with_baseline = true

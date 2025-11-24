@@ -468,3 +468,19 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: 'Continue unwrap elimination: 27 more unwraps to reach 60-unwrap milestone (EXTREME TDD)'
+  github_issue: null
+  item_type: task
+  title: 'New task: Continue unwrap elimination: 27 more unwraps to reach 60-unwrap milestone (EXTREME TDD)'
+  status: completed
+  priority: medium
+  assigned_to: null
+  created: 2025-11-23T20:41:04.631442428+00:00
+  updated: 2025-11-24T08:55:31.668592594+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null

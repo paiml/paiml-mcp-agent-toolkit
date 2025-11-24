@@ -143,12 +143,6 @@ roadmap:
   - Benchmark performance vs previous placeholder implementations
   phases: []
   subtasks:
-  - Task 4.1 - Implement PageRank
-  - Task 4.2 - Implement Betweenness Centrality  
-  - Task 4.3 - Implement Community Detection
-  - Task 4.4 - Implement Closeness Centrality
-  - Task 4.5 - Implement Eigenvector Centrality
-  - Task 4.6 - Implement Structural Statistics (density, diameter, clustering, assortativity)
   estimated_effort: 1 week
   labels:
   - ml-integration
@@ -173,10 +167,6 @@ roadmap:
   - Remove ~200 LOC of custom stats code
   phases: []
   subtasks:
-  - Task 3.1 - Add Gini coefficient to aprender
-  - Task 3.2 - Migrate TDG calculator statistics
-  - Task 3.3 - Migrate analytics backend statistics
-  - Task 3.4 - Add statistical equivalence tests
   estimated_effort: 3 days
   labels:
   - ml-integration
@@ -201,10 +191,6 @@ roadmap:
   - Performance target: SIMD 2.78x, GPU 33.3x faster
   phases: []
   subtasks:
-  - Task 5.1 - Implement Top-K Query Acceleration (✅ COMPLETE - commit 6b1683ef)
-  - Task 5.2 - Implement OLAP Storage Backend (🚫 BLOCKED - trueno-db#3)
-  - Task 5.3 - Add Hybrid SQLite + Trueno Storage (🚫 BLOCKED - trueno-db#3)
-  - Task 5.4 - Benchmark and validate performance (⚠️ COMPLETE - PERFORMANCE REGRESSION)
   estimated_effort: 7 days
   labels:
   - ml-integration

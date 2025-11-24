@@ -920,6 +920,73 @@ Scoring weights based on peer-reviewed research:
 
 ---
 
+## CRITICAL: Five Whys - ONLY Debugging Method
+
+**MANDATORY**: Five Whys is the ONLY acceptable debugging approach.
+
+**NEVER**:
+- ❌ Random print statements
+- ❌ Guessing root cause
+- ❌ Applying fixes without root cause analysis
+
+**ALWAYS**:
+```bash
+# For ANY bug/error, ask "Why?" 5 times to reach root cause
+
+# Example:
+Issue: "stack overflow in test_multiple_parameter_types"
+
+Why 1: Test recursion exceeds stack limit
+Why 2: Deep AST traversal without tail recursion
+Why 3: Parser generates deeply nested nodes
+Why 4: Grammar allows unlimited nesting
+Why 5: No max depth validation
+
+Root Cause: Parser lacks max_depth parameter
+Fix: Add max_depth: 1000 to parser config
+```
+
+**Enforcement**: Document Five Whys in commit messages when debugging.
+
+---
+
+## CRITICAL: Renacer Golden Tracing - Transpile/Distributed Projects
+
+**MANDATORY for**:
+- Transpilers (Rust→JS, Python→C)
+- Distributed systems
+- Multi-process workflows
+- Cross-language integrations
+
+**Golden Tracing** = Record expected execution, validate future runs
+
+```toml
+# renacer.toml (project root)
+[golden_traces]
+enabled = true
+trace_dir = "golden_traces/"
+
+[[golden_traces.scenarios]]
+name = "transpile_rust_to_js"
+command = "pmat transpile --input test.rs --output test.js"
+golden_trace = "golden_traces/transpile_rust_to_js.trace"
+```
+
+**Usage**:
+```bash
+# Capture golden trace (first time or after intentional behavior change)
+renacer capture --scenario transpile_rust_to_js
+
+# Validate before commits
+renacer validate --all
+# ✅ All traces match (100%)
+# ❌ Diverged at step 42: Expected ACK, got timeout
+```
+
+**When**: Always validate golden traces before completing work.
+
+---
+
 ## DETERMINISTIC Agent Instructions
 
 When implementing fixes or responding to UX issues, follow DETERMINISTIC instructions in:
@@ -940,6 +1007,12 @@ These documents provide:
    - Status display improvements
    - Quality gate optimizations
    - Short ID generation
+
+2. **`pmat-work-quality-principles.md`** - MANDATORY quality principles for `pmat work`
+   - Five Whys (ONLY debugging method)
+   - Renacer golden tracing (transpile/distributed)
+   - Rust project requirements (examples, scores)
+   - Commit metadata linking (O(1) capture)
 
 ### Agent Workflow:
 
