@@ -31,6 +31,58 @@ impl Default for AstEngine {
 }
 
 #[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_engine_new() {
+        let _engine = AstEngine::new();
+        // Engine created successfully
+    }
+
+    #[test]
+    fn test_engine_default() {
+        let _engine = AstEngine::default();
+        // Default engine created successfully
+    }
+
+    #[test]
+    fn test_analysis_result_creation() {
+        let result = AstAnalysisResult {
+            functions: vec!["main".to_string(), "helper".to_string()],
+            types: vec!["Message".to_string()],
+            imports: vec!["std::io".to_string()],
+            cyclomatic_complexity: 5,
+            cognitive_complexity: 3,
+            line_count: 100,
+        };
+
+        assert_eq!(result.functions.len(), 2);
+        assert_eq!(result.types.len(), 1);
+        assert_eq!(result.imports.len(), 1);
+        assert_eq!(result.cyclomatic_complexity, 5);
+        assert_eq!(result.cognitive_complexity, 3);
+        assert_eq!(result.line_count, 100);
+    }
+
+    #[test]
+    fn test_analysis_result_clone() {
+        let result1 = AstAnalysisResult {
+            functions: vec!["test".to_string()],
+            types: vec![],
+            imports: vec![],
+            cyclomatic_complexity: 1,
+            cognitive_complexity: 1,
+            line_count: 10,
+        };
+
+        let result2 = result1.clone();
+        assert_eq!(result2.functions, result1.functions);
+        assert_eq!(result2.cyclomatic_complexity, result1.cyclomatic_complexity);
+    }
+}
+
+#[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;
 
