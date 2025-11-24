@@ -755,7 +755,7 @@ pub enum Commands {
         json: bool,
 
         /// Project directory
-        #[arg(long, default_value = ".")]
+        #[arg(long, default_value = ".", global = true)]
         project_dir: PathBuf,
     },
 
