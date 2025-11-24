@@ -176,10 +176,13 @@ impl UnifiedCache {
     /// ```
     #[must_use]
     pub fn new(capacity: usize) -> Self {
+        // Default to capacity 1 if 0 is provided (NonZeroUsize requirement)
+        let capacity = std::num::NonZeroUsize::new(capacity)
+            .unwrap_or(std::num::NonZeroUsize::new(1)
+                .expect("1 is non-zero (const)"));
+
         Self {
-            cache: Arc::new(RwLock::new(lru::LruCache::new(
-                std::num::NonZeroUsize::new(capacity).unwrap(),
-            ))),
+            cache: Arc::new(RwLock::new(lru::LruCache::new(capacity))),
         }
     }
 
@@ -856,6 +859,110 @@ mod tests {
 
         assert_eq!(nodes, 0);
         assert_eq!(gen, 0);
+    }
+
+    /// Test UnifiedCache with zero capacity (validates unwrap fix at line 180)
+    #[tokio::test]
+    async fn test_unified_cache_zero_capacity() {
+        // Zero capacity should default to 1 (NonZeroUsize requirement)
+        let cache = UnifiedCache::new(0);
+
+        let report = AnalysisReport {
+            duplicates: None,
+            dead_code: None,
+            complexity_metrics: None,
+            dependency_graph: None,
+            defect_predictions: None,
+            graph_metrics: None,
+            timestamp: Utc::now(),
+        };
+
+        // Cache should work with capacity 1 (defaulted from 0)
+        cache.put("key1".to_string(), report.clone()).await;
+
+        // First item should be retrievable
+        assert!(cache.get("key1").await.is_some());
+
+        // Adding second item should evict first (LRU with capacity 1)
+        let report2 = AnalysisReport {
+            duplicates: None,
+            dead_code: None,
+            complexity_metrics: None,
+            dependency_graph: None,
+            defect_predictions: None,
+            graph_metrics: None,
+            timestamp: Utc::now(),
+        };
+        cache.put("key2".to_string(), report2).await;
+
+        // First item should be evicted
+        assert!(cache.get("key1").await.is_none());
+        // Second item should be present
+        assert!(cache.get("key2").await.is_some());
+    }
+
+    /// Test UnifiedCache with valid non-zero capacities
+    #[tokio::test]
+    async fn test_unified_cache_valid_capacities() {
+        // Test capacity 1
+        let cache1 = UnifiedCache::new(1);
+        let report = AnalysisReport {
+            duplicates: None,
+            dead_code: None,
+            complexity_metrics: None,
+            dependency_graph: None,
+            defect_predictions: None,
+            graph_metrics: None,
+            timestamp: Utc::now(),
+        };
+        cache1.put("test".to_string(), report.clone()).await;
+        assert!(cache1.get("test").await.is_some());
+
+        // Test capacity 100
+        let cache100 = UnifiedCache::new(100);
+        cache100.put("test".to_string(), report.clone()).await;
+        assert!(cache100.get("test").await.is_some());
+
+        // Test large capacity
+        let cache_large = UnifiedCache::new(10_000);
+        cache_large.put("test".to_string(), report).await;
+        assert!(cache_large.get("test").await.is_some());
+    }
+
+    /// Test UnifiedCache LRU eviction behavior
+    #[tokio::test]
+    async fn test_unified_cache_lru_eviction() {
+        let cache = UnifiedCache::new(2); // Capacity 2
+
+        let report1 = AnalysisReport {
+            duplicates: None,
+            dead_code: None,
+            complexity_metrics: None,
+            dependency_graph: None,
+            defect_predictions: None,
+            graph_metrics: None,
+            timestamp: Utc::now(),
+        };
+
+        let report2 = report1.clone();
+        let report3 = report1.clone();
+
+        // Fill cache to capacity
+        cache.put("key1".to_string(), report1).await;
+        cache.put("key2".to_string(), report2).await;
+
+        // Both should be present
+        assert!(cache.get("key1").await.is_some());
+        assert!(cache.get("key2").await.is_some());
+
+        // Add third item - should evict least recently used (key1)
+        cache.put("key3".to_string(), report3).await;
+
+        // key1 should be evicted
+        assert!(cache.get("key1").await.is_none());
+        // key2 and key3 should be present
+        assert!(cache.get("key2").await.is_some());
+        assert!(cache.get("key3").await.is_some());
     }
 }
 
