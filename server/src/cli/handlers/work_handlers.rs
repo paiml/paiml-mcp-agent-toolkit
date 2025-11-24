@@ -469,7 +469,18 @@ pub async fn handle_work_status(
             };
 
             let progress = item.completion_percentage();
-            println!("   {} {} - {} ({}%)", emoji, item.id, item.title, progress);
+
+            // Truncate long IDs for display (show first 30 chars + "...")
+            let display_id = if item.id.len() > 30 {
+                format!("{}...", &item.id[..30])
+            } else {
+                item.id.clone()
+            };
+
+            println!(
+                "   {} [{}] {} ({}%)",
+                emoji, display_id, item.title, progress
+            );
             if item.is_github_synced() {
                 println!("      GitHub: #{}", item.github_issue.unwrap());
             }
