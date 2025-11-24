@@ -1129,6 +1129,7 @@ mod enhanced_typescript_naming_tests {
 }
 
 #[cfg(test)]
+#[cfg(feature = "wasm-ast")]
 mod enhanced_wasm_naming_tests {
     use crate::services::context::AstItem;
     use crate::services::languages::wasm::WasmModuleAnalyzer;

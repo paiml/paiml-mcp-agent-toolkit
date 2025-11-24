@@ -50,7 +50,6 @@ pub async fn handle_debug(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::PathBuf;
 
     #[tokio::test]
     async fn test_handle_debug_basic() {
