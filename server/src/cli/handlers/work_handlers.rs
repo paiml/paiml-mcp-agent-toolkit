@@ -756,15 +756,41 @@ async fn run_quality_gates(project_path: &PathBuf) -> Result<bool> {
 
     let mut all_passed = true;
 
-    // 1. Run cargo test
+    // 1. Run cargo test (git-aware: only test changed modules)
     println!("   🧪 Running tests...");
-    let test_status = Command::new("cargo")
-        .arg("test")
-        .arg("--lib")
-        .arg("--quiet")
-        .current_dir(project_path)
-        .status()
-        .context("Failed to run cargo test")?;
+
+    // Extract test modules from changed files
+    let modules =
+        crate::services::git_test_filter::extract_test_modules_from_changed_files(project_path)?;
+
+    let test_status = if modules.is_empty() {
+        // No Rust files changed - skip tests
+        println!("      ℹ️  No Rust files changed, skipping tests");
+        std::process::ExitStatus::default()
+    } else {
+        // Run tests for changed modules only
+        let module_list = modules.join(", ");
+        println!(
+            "      📋 Testing changed modules: {}",
+            if module_list.len() > 60 {
+                format!("{}...", &module_list[..60])
+            } else {
+                module_list
+            }
+        );
+
+        let test_cmd =
+            crate::services::git_test_filter::build_test_command(&modules).unwrap_or_else(|| {
+                vec!["test".to_string(), "--lib".to_string(), "--quiet".to_string()]
+            });
+
+        Command::new("cargo")
+            .args(&test_cmd)
+            .arg("--quiet")
+            .current_dir(project_path)
+            .status()
+            .context("Failed to run cargo test")?
+    };
 
     if test_status.success() {
         println!("      ✅ Tests passed");

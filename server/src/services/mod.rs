@@ -153,6 +153,7 @@ pub mod file_discovery;
 pub mod fixed_graph_builder;
 pub mod git_analysis;
 pub mod git_clone;
+pub mod git_test_filter; // Git-aware test filtering for targeted quality gates
 pub mod github_integration;
 pub mod hallucination_detector; // Sprint 37: Semantic entropy-based hallucination detection
 pub mod incremental_churn;
