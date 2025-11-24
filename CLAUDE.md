@@ -35,17 +35,7 @@ bash tests/ch13/test_language_examples.sh  # Multi-language support
 - Never commit broken functionality
 - Apply Toyota Way Andon Cord: STOP if quality issues found
 
-**Rationale (Toyota Way - Jidoka):**
-- **Built-in Quality**: Book validation catches regressions before release
-- **Genchi Genbutsu**: Tests verify actual CLI behavior, not just unit tests
-- **Andon Cord**: Stop the line if book validation fails
-- **Kaizen**: Continuous validation improves quality over time
-- **Muda** (Waste Elimination): Fast parallel execution minimizes validation time
-
-**Enforcement**:
-- Automatically enforced via pre-commit hook (`.git/hooks/pre-commit`)
-- Also part of `make validate` target
-- This is a QUALITY GATE. Do not bypass.
+**Rationale**: Toyota Way Jidoka - built-in quality, catches regressions, enforced via pre-commit hook.
 
 ---
 
@@ -72,27 +62,7 @@ The 404 issue occurred because pmat-book commits were made locally but never pus
 
 ### Workflow
 
-```bash
-# 1. Make code changes
-vim server/src/some_file.rs
-
-# 2. Update pmat-book
-cd ../pmat-book
-# ... update book chapters ...
-git add .
-git commit -m "docs: Update for new feature"
-
-# 3. MUST push book first
-git push origin main  # This deploys book to GitHub Pages
-
-# 4. Now push code
-cd ../paiml-mcp-agent-toolkit
-git add .
-git commit -m "feat: Add new feature"  # Warning shown about book sync
-git push origin master  # Will succeed because book is pushed
-
-# ❌ If you forget step 3, step 4 will FAIL with clear instructions
-```
+Update pmat-book → push to main (deploys GitHub Pages) → push code. Pre-push hook blocks if book commits unpushed.
 
 ### Special Cases
 
@@ -112,11 +82,7 @@ git push --no-verify
 cd ../pmat-book && git push origin main
 ```
 
-### Rationale
-- **Zero Tolerance for Drift**: Code and documentation must stay synchronized
-- **User Experience**: Users should never encounter 404s or outdated documentation
-- **Release Quality**: crates.io releases must have matching documentation
-- **GitHub Pages**: Book deploys automatically when pushed to main branch
+**Rationale**: Zero tolerance for code/docs drift. Prevents 404s and ensures crates.io releases have matching documentation.
 
 ---
 
@@ -157,80 +123,7 @@ From `.pmat-metrics.toml`:
 
 **Staleness**: Metrics older than 7 days trigger warnings
 
-### Developer Workflow
-
-```bash
-# Normal development (metrics recorded automatically)
-make lint        # ✅ Recorded: 12,453ms
-make test-fast   # ✅ Recorded: 107,234ms (1m 47s)
-git add .
-git commit -m "feat: Add feature"
-# ✅ Pre-commit validation: <30ms (reads cached metrics)
-
-# If threshold violated
-make lint        # ❌ Recorded: 35,000ms (exceeds 30s threshold)
-git commit -m "fix: Something"
-# ❌ Pre-commit BLOCKS: lint exceeded threshold by 16.7%
-# Fix: Optimize code or run 'make lint' again
-```
-
-### Escape Hatches
-
-**Emergency bypass** (NOT RECOMMENDED):
-```bash
-git commit --no-verify
-```
-
-**Update thresholds** (if justified):
-Edit `.pmat-metrics.toml` and adjust thresholds.
-
-### Toyota Way Principles
-
-- **Jidoka** (Built-in Quality): Metrics validated at commit time
-- **Andon Cord**: Pre-commit blocks on regression (stop the line)
-- **Muda** (Waste Elimination): O(1) validation eliminates slow quality checks
-- **Kaizen**: Continuous improvement via metric tracking
-
-### Time Savings
-
-**Before O(1) Gates**:
-- Pre-commit: 12-24 minutes (full lint + test)
-- Developer friction: High
-- Bypasses: Common
-
-**After O(1) Gates** (Phase 2):
-- Pre-commit: <30ms (instant)
-- Developer friction: Minimal
-- Bypasses: Rare (fast validation)
-- Team-wide savings: 2-20 hours/day
-
-### Files Modified (Phase 2)
-
-- `Makefile`: Integrated metric recording (lint, test-fast, coverage, release)
-- `.git/hooks/pre-commit`: Added O(1) validation + pmat-book sync check
-- `scripts/validate-metrics.sh`: O(1) threshold validation (169 lines)
-- `scripts/compute-metric-hash.sh`: SHA256 cache invalidation (23 lines)
-- `.pmat-metrics.toml`: Threshold configuration (39 lines)
-- `.gitignore`: Added `.pmat-metrics/` exclusion
-
-### Troubleshooting
-
-**Issue**: "No metrics cache found"
-**Solution**: Run `make lint`, `make test-fast`, etc. to populate cache
-
-**Issue**: "Stale metrics (>7 days old)"
-**Solution**: Re-run relevant targets to refresh metrics
-
-**Issue**: "Threshold exceeded"
-**Solution**:
-1. Optimize code to meet threshold
-2. Re-run target to verify improvement
-3. Update threshold if justified (document why)
-
-### Future Phases
-
-- **Phase 3** (Sprint 49): Trend analysis, metric visualization
-- **Phase 4** (Sprint 50): Kaizen automation, automated threshold adjustment
+**Benefits**: Pre-commit <30ms (vs 12-24min), Toyota Way Jidoka/Andon Cord enforcement, team savings 2-20hrs/day. Emergency bypass: `git commit --no-verify`. Troubleshooting: Run `make lint/test-fast` to populate cache.
 
 ---
 
@@ -307,68 +200,7 @@ pmat validate-readme \
 
 ### Scientific Foundation
 
-Based on peer-reviewed research (2024-2025):
-
-1. **Semantic Entropy** (Farquhar et al., Nature 2024)
-   - Detects confabulations via entropy-based uncertainty estimation
-   - Measures semantic consistency between claims and ground truth
-
-2. **Internal Representation Analysis** (IJCAI 2025)
-   - MIND framework for hallucination detection
-   - EigenScore for semantic information validation
-
-3. **Unified Detection Framework** (Complex & Intelligent Systems 2025)
-   - Output parser → Reference parser → Fact verifier → Mitigator
-   - End-to-end validation pipeline
-
-### Validation Process
-
-```mermaid
-graph LR
-    A[Documentation] --> B[Extract Claims]
-    B --> C[Build Code Facts DB]
-    C --> D[Semantic Similarity]
-    D --> E{Verify}
-    E -->|High Entropy| F[Unverified/Hallucination]
-    E -->|Low Entropy + High Similarity| G[Verified]
-    E -->|Low Similarity| H[Contradiction]
-```
-
-### Example Violations
-
-**FAIL - Hallucinated Capability:**
-```markdown
-❌ CLAUDE.md:42
-   Claim: "PMAT can compile Rust code to native binaries"
-   Status: Contradiction
-   Confidence: 0.12
-   Error: PMAT analyzes code but does not compile it
-```
-
-**FAIL - Broken Reference:**
-```markdown
-❌ README.md:100
-   Claim: "See server/src/compiler/optimizer.rs for details"
-   Status: NotFound
-   Error: File not found in codebase
-```
-
-**FAIL - 404 Error:**
-```markdown
-❌ AGENT.md:55
-   Claim: "[Documentation](https://example.com/nonexistent)"
-   Status: NotFound
-   Error: HTTP 404: https://example.com/nonexistent
-```
-
-**PASS - Verified Claim:**
-```markdown
-✅ README.md:10
-   Claim: "PMAT can analyze TypeScript complexity"
-   Status: Verified
-   Confidence: 0.94
-   Evidence: server/src/cli/language_analyzer.rs:150
-```
+Uses Semantic Entropy (Nature 2024), MIND framework (IJCAI 2025), and Unified Detection (Complex & Intelligent Systems 2025) to validate claims against codebase via confidence scoring.
 
 ### Rationale (Scientific Quality Assurance)
 
@@ -399,15 +231,7 @@ Full specification: `docs/specifications/documentation-accuracy-enforcement.md`
 
 **MANDATORY: All bash scripts and Makefiles must pass bashrs linting.**
 
-### Overview
-
-bashrs is a bidirectional shell safety tool developed by PAIML that lints bash scripts and Makefiles for safety issues, including:
-- **SC2086**: Unquoted variable expansion (prevents word splitting & glob expansion)
-- **SC2046**: Unquoted command substitution
-- **SC2116**: Useless echo in command substitution
-- **DET003**: Unordered wildcard (non-deterministic results)
-- **IDEM002**: Non-idempotent operations
-- **SEC008**: Security issues (e.g., piping curl to shell)
+bashrs (PAIML) lints bash/Makefiles for SC2086/SC2046/SC2116, DET003 (non-determinism), IDEM002 (idempotency), SEC008 (security).
 
 ### Bug Reports and Feature Requests
 
@@ -433,69 +257,7 @@ bashrs lint Makefile
 find scripts -name "*.sh" -exec bashrs lint {} \;
 ```
 
-### Pre-commit Hook
-
-**AUTOMATIC INTEGRATION**: bashrs linting is automatically included when you install TDG enforcement hooks:
-
-```bash
-# Install hooks with bashrs linting automatically included
-pmat hooks install --tdg-enforcement
-
-# Or refresh existing hooks (updates bashrs integration)
-pmat hooks refresh
-```
-
-The pre-commit hook at `.git/hooks/pre-commit` automatically runs bashrs on all staged bash/Makefile files.
-
-**Hook behavior:**
-- ✅ Exits 0 (allows commit) if no errors
-- ⚠️  Exits 0 (allows commit) with warnings (displayed to user)
-- ❌ Exits 1 (blocks commit) if errors found
-
-**Bypass hook** (NOT RECOMMENDED):
-```bash
-git commit --no-verify
-```
-
-### Installation
-
-bashrs is located in the parent directory (`../bashrs`) and is already installed:
-
-```bash
-# Check installation
-which bashrs  # Should show: /home/noah/.cargo/bin/bashrs
-
-# Build from source if needed
-cd ../bashrs && cargo build --release
-```
-
-### Exit Codes
-
-- `0` - No issues found
-- `1` - Warnings detected (commit allowed)
-- `2` - Errors detected (commit blocked)
-
-### Example Output
-
-```bash
-$ bashrs lint scripts/install.sh
-Issues found in scripts/install.sh:
-
-⚠ 28:28-32 [warning] SC2086: Double quote to prevent globbing and word splitting on ${NC}
-  Fix: "${NC}"
-
-✗ 8:106-109 [error] SEC008: CRITICAL: Piping curl/wget to shell - download and inspect first
-
-Summary: 2 error(s), 35 warning(s), 0 info(s)
-```
-
-### Rationale
-
-- **Safety First**: Prevents shell injection, word splitting, and glob expansion vulnerabilities
-- **Deterministic**: Catches non-deterministic patterns that cause flaky behavior
-- **Zero Dependencies**: Native Rust implementation, no ShellCheck installation required
-- **Fast**: <2ms per file
-- **Auto-fixable**: Many issues have suggested fixes (auto-fix coming in bashrs v1.2)
+**Installation**: `pmat hooks install --tdg-enforcement` (auto-includes bashrs). Pre-commit hook runs bashrs on staged bash/Makefile files. Exit codes: 0 (pass), 1 (warnings), 2 (errors/blocks). Fast (<2ms/file), prevents shell injection, catches non-determinism.
 
 ---
 
@@ -673,45 +435,95 @@ Root cause: Test execution ordering/concurrency, NOT broken functionality
 
 **Total: 94 tests ignored (down from 117 on October 21, 2025)**
 
-**Note**: This count tracks manually-curated important test categories documented below. The codebase contains ~309 total `#[ignore]` annotations (82 in server/src, 227 in server/tests), many of which are external-dependency tests (OpenAI, embeddings, semantic search services) not included in this systematic tracking.
-
-October 21, 2025 changes (Session 1 - Test Re-enabling):
-- **Re-enabled 23 tests** via systematic verification (100% passing)
-- **8 storage backend tests** - `server/tests/storage_backend_tests.rs`
-- **6 TDG storage tests** - `server/tests/tdg_score_storage_test.rs`
-- **4 complexity analysis tests** - `server/tests/{complexity_analyzer_tests,complexity_threshold_filtering}.rs`
-- **4 path validation tests** - `server/src/utils/path_validator.rs`
-- **1 analyze exit status test** - `server/tests/analyze_exit_status.rs`
-- **Ignored tests**: 117 → 94 (-23, -19.7%)
-- **Pattern validated**: All 23 re-enabled tests passing (100% success rate)
-
-October 21, 2025 changes (Session 2 - Quality & Security):
-- **Security**: Eliminated 2 RUSTSEC warnings (sled → libsql migration, sled now optional feature)
-- **Code Quality**: Fixed all 18 clippy warnings (18 → 0, 12 auto-fixed + 6 manual)
-- **Tooling**: Fixed hallucination detector false positives (markdown code block skipping)
-- **Documentation**: Added bashrs bug reporting policy (https://github.com/paiml/bashrs/issues)
-- **Quality Gates**: ✅ pmat-book validation, ✅ clippy, ✅ compilation, ✅ 200+ tests, ✅ docs accuracy
-- **Commits**: 4 production-ready commits (ba5d7d7f, 94ba7f7c, c8d0e91d, 83b493c9)
-
-Sprint 44 changes (October 19, 2025):
-- **Re-enabled 20 tests** via Five Whys empirical verification (100% passing)
-- **16 mutation tests** (CRITICAL for FAST methodology) - `server/src/services/mutation/rust_tree_sitter_mutations.rs`
-- **2 graph tests** (integration tests) - `server/src/graph/tests/builder_tests.rs`
-- **2 service tests** (core functionality) - `server/src/services/{context,deep_context}.rs`
-- **Ignored tests**: 137 → 117 (-20, -14.6%)
-- **Pattern validated**: Sprint 42/43/44 all show 100% pass rate for verified ignored tests
-
-Sprint 36 changes:
-- Added 4 new language regression tests (Bash, C++, PHP, Swift)
-- Implemented Bash AST parser - test now PASSING ✅
-- Implemented PHP AST parser - test now PASSING ✅
-- Implemented Swift AST parser - test now PASSING ✅
-- Fixed C++ regex to detect class methods - test now PASSING ✅
-- Net change: 0 ignored tests (ALL 6 REGRESSION TESTS PASSING! 100% coverage achieved 🎯)
+**Note**: ~309 total `#[ignore]` annotations (82 in server/src, 227 in server/tests). Recent re-enabling: Sprint 44 (20 tests), Oct 21 (23 tests) - all verified passing. Ignored tests: 137→94 (-43, -31.4%). Sprint 36: Implemented Bash/PHP/Swift AST parsers, all 6 regression tests passing.
 
 These tests can be re-enabled by removing the `#[ignore]` attribute when they are fixed.
 Known failures are pre-existing and unrelated to Sprint 19 work.
 - always walk of master.  we don't do branching
+---
+
+## PMAT Five Whys Root Cause Analysis (Toyota Way)
+
+**IMPLEMENTED**: REFACTOR phase complete (2025-11-24)
+**Command**: `pmat five-whys` (aliases: `why`, `debug-whys`)
+**Status**: Production-ready, fully functional
+
+### Overview
+
+Evidence-based root cause analysis using the Toyota Way Five Whys methodology. Automatically gathers evidence from PMAT services (complexity, SATD, dead code, git churn, TDG) to identify root causes through iterative questioning.
+
+**This is the ONLY acceptable debugging method per CLAUDE.md policy.**
+
+### Quick Start
+
+```bash
+# Basic usage (5 iterations, text output)
+pmat five-whys "Stack overflow in parser"
+
+# Short alias with custom depth
+pmat why "Memory leak in cache" --depth 3
+
+# JSON output to file
+pmat five-whys "Test failures" --format json --output analysis.json
+
+# Markdown report with auto-analysis
+pmat five-whys "Performance regression" --format markdown --auto-analyze
+```
+
+### Command Syntax
+
+```bash
+pmat five-whys <ISSUE> [OPTIONS]
+
+Arguments:
+  <ISSUE>  Issue description (symptom to analyze)
+
+Options:
+  -d, --depth <DEPTH>         Number of "Why" iterations [default: 5, range: 1-10]
+  -f, --format <FORMAT>       Output format: text, json, markdown [default: text]
+  -o, --output <FILE>         Write output to file
+  -p, --path <PATH>           Project path to analyze [default: .]
+  -c, --context <FILE>        Use deep context file for enhanced analysis
+  -a, --auto-analyze          Automatically analyze suspected files with PMAT tools
+  -h, --help                  Print help
+```
+
+### Output Formats
+
+**Text** (terminal), **JSON** (CI/CD), **Markdown** (docs) - includes questions, hypotheses, evidence, confidence scores, root cause, and prioritized recommendations.
+
+### Evidence Sources
+
+Five Whys automatically gathers evidence from:
+
+1. **Complexity Analysis**: Cyclomatic complexity violations (threshold: 20)
+2. **SATD Detection**: TODO/FIXME/HACK markers indicating technical debt
+3. **TDG Scoring**: Test-Driven Grade (coverage, quality)
+4. **Git Churn**: Commit frequency indicating instability
+5. **Dead Code**: Unused functions and modules
+
+### Confidence Scoring
+
+Confidence scores (0.0-1.0) are calculated using weighted evidence:
+- **Complexity**: 25% weight × severity multiplier
+- **TDG**: 25% weight × severity multiplier
+- **SATD**: 20% weight × severity multiplier
+- **Git Churn**: 20% weight × severity multiplier
+- **Dead Code**: 10% weight
+- **Manual Inspection**: 15% weight
+
+Higher confidence = stronger evidence-backed hypothesis.
+
+### Toyota Way Principles
+
+**Genchi Genbutsu** (evidence-driven), **Jidoka** (automated evidence gathering), **Kaizen** (learn from root causes), **Nemawashi** (transparent reasoning).
+
+### Implementation
+
+**Spec**: `docs/specifications/pmat-debug-five-whys.md`
+**Core**: `server/src/services/five_whys_analyzer.rs`, `server/src/models/debug_analysis.rs`
+**Methodology**: EXTREME TDD (26 tests, 100% passing), evidence-based (no guessing)
+
 ---
 
 ## Rust Project Score v1.1 - Evidence-Based Quality Scoring
@@ -782,42 +594,7 @@ pmat rust-project-score --failures-only
 
 ### Output Formats
 
-**Text** (default - colored terminal output):
-```
-🦀 Rust Project Score v1.1
-
-Overall Score: 82.5/106 (77.8%) - Grade: B
-
-📊 Category Breakdown:
-  ✅ Rust Tooling Compliance: 25/25 (100%) - Grade: A
-  ⚠️  Code Quality: 18/26 (69.2%) - Grade: C
-  ✅ Testing Excellence: 18/20 (90.0%) - Grade: A
-  ...
-```
-
-**JSON** (for CI/CD integration):
-```json
-{
-  "total_earned": 82.5,
-  "total_possible": 106.0,
-  "percentage": 77.8,
-  "grade": "B",
-  "categories": {
-    "Rust Tooling Compliance": {"earned": 25, "max": 25},
-    ...
-  },
-  "recommendations": [...]
-}
-```
-
-**Markdown** (for GitHub/documentation):
-- GitHub-friendly report with tables
-- Category breakdowns with emoji indicators
-- Actionable recommendations
-
-**YAML** (for config-based workflows):
-- YAML format with full score details
-- Easy integration with CI/CD pipelines
+Supports **text** (terminal), **json** (CI/CD), **markdown** (docs), and **yaml** (config) formats with scores, grades, and recommendations.
 
 ### Fast vs Full Mode
 
@@ -833,43 +610,13 @@ Overall Score: 82.5/106 (77.8%) - Grade: B
 - Provides: Evidence-based, peer-reviewed scoring
 - Use case: Release validation, comprehensive audits
 
-### Performance Characteristics
+### Performance
 
-**What's Fast** (<10 seconds):
-- File-based analysis (dead code, unsafe detection)
-- Dependency counting
-- README/Changelog validation
-
-**What's Moderate** (10-60 seconds):
-- cargo-audit (security scanning)
-- cargo-deny (policy enforcement)
-- rustfmt (formatting check)
-
-**What's Slow** (minutes to hours):
-- clippy (60-90s on 50K+ projects) - **Skipped in fast mode**
-- cargo test + coverage (2-5 minutes) - **Runs in both modes**
-- Mutation testing (hours) - **Skipped in fast mode**
-- cargo build --release (minutes) - **Skipped in fast mode**
+Fast mode (~2-3min) skips clippy, mutation testing, and build time. Full mode (~10-15min) runs all checks comprehensively.
 
 ### Evidence-Based Design
 
-Scoring weights based on peer-reviewed research:
-
-1. **Complexity Weight Reduced** (8pts → 3pts)
-   - Source: arXiv 2024 - "Empirical Investigation of Correlation between Code Complexity and Bugs"
-   - Finding: "No correlation between complexity and presence of bugs"
-
-2. **Unsafe Code Weight Increased** (6pts → 9pts)
-   - Rationale: Memory safety is Rust's core value proposition
-   - Emphasis on proper `unsafe` documentation
-
-3. **Mutation Testing Weight Increased** (5pts → 8pts)
-   - Source: ICST 2024 Mutation Workshop
-   - Finding: Developers find mutation testing highly valuable
-
-4. **Clippy Tiered Scoring** (NEW in v1.1)
-   - Source: 2023 - "Unleashing the Power of Clippy in Real-World Rust Projects"
-   - Differentiate: correctness > suspicious > pedantic
+Scoring based on 15 peer-reviewed papers (2022-2025): reduced complexity weight (8→3pts, no bug correlation), increased unsafe code (6→9pts, Rust's core value), increased mutation testing (5→8pts, high developer value), tiered clippy scoring (correctness > suspicious > pedantic).
 
 ### CI/CD Integration
 
@@ -886,67 +633,11 @@ Scoring weights based on peer-reviewed research:
     fi
 ```
 
-### Troubleshooting
+### Implementation
 
-**Issue**: Command takes too long
-**Solution**: Use fast mode (default) or skip specific checks
-
-**Issue**: External tools not found (clippy, cargo-audit, etc.)
-**Solution**: Tool automatically provides moderate credit and continues
-
-**Issue**: OOM on large projects  
-**Solution**: This was fixed in Sprint 3 - use direct binary, not `cargo run`
-
-### Implementation Details
-
-- **Location**: `server/src/services/rust_project_score/`
-- **Handler**: `server/src/cli/handlers/rust_project_score_handlers.rs`
-- **Specification**: `docs/specifications/rust-project-score-v1.1-update.md`
-- **Status**: `docs/implementation-status-rust-project-score.md`
-- **Roadmap**: `roadmap-rust-project-score.yaml`
-
-### Academic Foundation
-
-15 peer-reviewed references (IEEE, ACM, arXiv 2022-2025):
-- Empirical software engineering research
-- Mutation testing effectiveness studies
-- Code complexity and bug correlation analysis
-- Static analysis tool effectiveness
-- Evidence-based scoring methodology
-
-**Methodology**: PMAT EXTREME TDD + Spec-Driven Development
-**Quality**: Zero SATD, zero clippy warnings, all tests passing
-**Commits**: 4 production commits, 1,201 lines of code
-
----
-
-## CRITICAL: Five Whys - ONLY Debugging Method
-
-**MANDATORY**: Five Whys is the ONLY acceptable debugging approach.
-
-**NEVER**:
-- ❌ Random print statements
-- ❌ Guessing root cause
-- ❌ Applying fixes without root cause analysis
-
-**ALWAYS**:
-```bash
-# For ANY bug/error, ask "Why?" 5 times to reach root cause
-
-# Example:
-Issue: "stack overflow in test_multiple_parameter_types"
-
-Why 1: Test recursion exceeds stack limit
-Why 2: Deep AST traversal without tail recursion
-Why 3: Parser generates deeply nested nodes
-Why 4: Grammar allows unlimited nesting
-Why 5: No max depth validation
-
-Root Cause: Parser lacks max_depth parameter
-Fix: Add max_depth: 1000 to parser config
-```
-
-**Enforcement**: Document Five Whys in commit messages when debugging.
+**Location**: `server/src/services/rust_project_score/`
+**Spec**: `docs/specifications/rust-project-score-v1.1-update.md`
+**Methodology**: EXTREME TDD with 15 peer-reviewed references (IEEE, ACM, arXiv 2022-2025)
 
 ---
 

@@ -8,9 +8,9 @@ use crate::cli::handlers::cache::CacheCommand;
 use crate::cli::handlers::memory::MemoryCommand;
 use crate::cli::{
     AnalysisType, BigOOutputFormat, ComplexityOutputFormat, ComprehensiveOutputFormat,
-    ContextFormat, DagType, DeadCodeOutputFormat, DeepContextCacheStrategy, DeepContextDagType,
-    DeepContextOutputFormat, DefectPredictionOutputFormat, DefectsOutputFormat, DemoProtocol,
-    DuplicateOutputFormat, DuplicateType, EnforceOutputFormat, EntropyOutputFormat,
+    ContextFormat, DagType, DeadCodeOutputFormat, DebugOutputFormat, DeepContextCacheStrategy,
+    DeepContextDagType, DeepContextOutputFormat, DefectPredictionOutputFormat, DefectsOutputFormat,
+    DemoProtocol, DuplicateOutputFormat, DuplicateType, EnforceOutputFormat, EntropyOutputFormat,
     EntropySeverity, ExplainLevel, GraphMetricType, GraphMetricsOutputFormat,
     IncrementalCoverageOutputFormat, LintHotspotOutputFormat, MakefileOutputFormat,
     NameSimilarityOutputFormat, OutputFormat, PromptOutputFormat, ProofAnnotationOutputFormat,
@@ -24,7 +24,9 @@ use crate::cli::{
 #[cfg(feature = "deep-wasm")]
 use crate::cli::{DeepWasmFocus, DeepWasmLanguage, DeepWasmOutputFormat};
 use crate::models::churn::ChurnOutputFormat;
-use clap::{Args, Parser, Subcommand};
+#[cfg(feature = "mutation-testing")]
+use clap::Args;
+use clap::{Parser, Subcommand};
 use serde_json::Value;
 use std::path::PathBuf;
 
@@ -793,6 +795,38 @@ pub enum Commands {
     Work {
         #[command(subcommand)]
         command: WorkCommands,
+    },
+
+    /// Five Whys root cause analysis (Toyota Way methodology)
+    /// This is the ONLY acceptable debugging method per CLAUDE.md policy
+    #[command(name = "five-whys", visible_aliases = &["why", "debug-whys"])]
+    DebugFiveWhys {
+        /// Issue description (symptom to analyze)
+        issue: String,
+
+        /// Number of "Why" iterations (1-10)
+        #[arg(short = 'd', long = "depth", default_value = "5")]
+        depth: u8,
+
+        /// Output format: text, json, markdown
+        #[arg(short = 'f', long = "format", default_value = "text")]
+        format: DebugOutputFormat,
+
+        /// Write output to file
+        #[arg(short = 'o', long = "output")]
+        output: Option<PathBuf>,
+
+        /// Project path to analyze
+        #[arg(short = 'p', long = "path", default_value = ".")]
+        path: PathBuf,
+
+        /// Use deep context file for enhanced analysis
+        #[arg(short = 'c', long = "context")]
+        context: Option<PathBuf>,
+
+        /// Automatically analyze suspected files with PMAT tools
+        #[arg(short = 'a', long = "auto-analyze")]
+        auto_analyze: bool,
     },
 }
 

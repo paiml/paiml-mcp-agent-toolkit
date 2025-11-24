@@ -348,6 +348,7 @@ fn chunk_python_file(source: &str) -> Result<Vec<CodeChunk>, String> {
 }
 
 /// Parse Python source code
+#[cfg(feature = "python-ast")]
 fn parse_python(source: &str) -> Result<Tree, String> {
     let mut parser = Parser::new();
     parser
@@ -356,6 +357,11 @@ fn parse_python(source: &str) -> Result<Tree, String> {
     parser
         .parse(source, None)
         .ok_or_else(|| "Failed to parse Python source".to_string())
+}
+
+#[cfg(not(feature = "python-ast"))]
+fn parse_python(_source: &str) -> Result<Tree, String> {
+    Err("python-ast feature is disabled".to_string())
 }
 
 /// Extract items from Python AST
@@ -418,6 +424,7 @@ fn chunk_c_file(source: &str) -> Result<Vec<CodeChunk>, String> {
 }
 
 /// Parse C source code
+#[cfg(feature = "c-ast")]
 fn parse_c(source: &str) -> Result<Tree, String> {
     let mut parser = Parser::new();
     parser
@@ -426,6 +433,11 @@ fn parse_c(source: &str) -> Result<Tree, String> {
     parser
         .parse(source, None)
         .ok_or_else(|| "Failed to parse C source".to_string())
+}
+
+#[cfg(not(feature = "c-ast"))]
+fn parse_c(_source: &str) -> Result<Tree, String> {
+    Err("c-ast feature is disabled".to_string())
 }
 
 /// Extract items from C AST
@@ -488,6 +500,7 @@ fn chunk_cpp_file(source: &str) -> Result<Vec<CodeChunk>, String> {
 }
 
 /// Parse C++ source code
+#[cfg(feature = "cpp-ast")]
 fn parse_cpp(source: &str) -> Result<Tree, String> {
     let mut parser = Parser::new();
     parser
@@ -496,6 +509,11 @@ fn parse_cpp(source: &str) -> Result<Tree, String> {
     parser
         .parse(source, None)
         .ok_or_else(|| "Failed to parse C++ source".to_string())
+}
+
+#[cfg(not(feature = "cpp-ast"))]
+fn parse_cpp(_source: &str) -> Result<Tree, String> {
+    Err("cpp-ast feature is disabled".to_string())
 }
 
 /// Extract items from C++ AST
@@ -593,6 +611,7 @@ fn chunk_go_file(source: &str) -> Result<Vec<CodeChunk>, String> {
 }
 
 /// Parse Go source code
+#[cfg(feature = "go-ast")]
 fn parse_go(source: &str) -> Result<Tree, String> {
     let mut parser = Parser::new();
     parser
@@ -601,6 +620,11 @@ fn parse_go(source: &str) -> Result<Tree, String> {
     parser
         .parse(source, None)
         .ok_or_else(|| "Failed to parse Go source".to_string())
+}
+
+#[cfg(not(feature = "go-ast"))]
+fn parse_go(_source: &str) -> Result<Tree, String> {
+    Err("go-ast feature is disabled".to_string())
 }
 
 /// Extract items from Go AST

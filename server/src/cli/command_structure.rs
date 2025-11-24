@@ -593,6 +593,7 @@ impl CommandExecutor {
             }
 
             // Mutation testing command (Sprint 61)
+            #[cfg(feature = "mutation-testing")]
             Commands::Mutate(args) => {
                 super::handlers::mutate::handle(args, self.server.clone()).await
             }

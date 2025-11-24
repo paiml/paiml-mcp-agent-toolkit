@@ -3,18 +3,29 @@
 //! This module provides language detection and analysis capabilities
 //! for multiple programming languages.
 
+#[cfg(feature = "shell-ast")]
 pub mod bash;
+#[cfg(feature = "csharp-ast")]
 pub mod csharp;
+#[cfg(feature = "go-ast")]
 pub mod go;
+#[cfg(feature = "java-ast")]
 pub mod java;
 pub mod javascript;
+#[cfg(feature = "kotlin-ast")]
 pub mod kotlin;
+#[cfg(feature = "php-ast")]
 pub mod php;
+#[cfg(feature = "ruchy-ast")]
 pub mod ruchy;
+#[cfg(feature = "ruchy-ast")]
 pub mod ruchy_ml;
+#[cfg(feature = "scala-ast")]
 pub mod scala;
+#[cfg(feature = "swift-ast")]
 pub mod swift;
 pub mod typescript;
+#[cfg(feature = "wasm-ast")]
 pub mod wasm;
 
 use std::path::Path;

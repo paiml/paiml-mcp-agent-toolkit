@@ -621,13 +621,20 @@ impl DapServer {
                     .ok_or_else(|| "Failed to parse Rust source".to_string())?
             }
             Language::Python => {
-                let mut parser = tree_sitter::Parser::new();
-                parser
-                    .set_language(&tree_sitter_python::LANGUAGE.into())
-                    .map_err(|e| format!("Failed to set Python language: {}", e))?;
-                parser
-                    .parse(&source, None)
-                    .ok_or_else(|| "Failed to parse Python source".to_string())?
+                #[cfg(feature = "python-ast")]
+                {
+                    let mut parser = tree_sitter::Parser::new();
+                    parser
+                        .set_language(&tree_sitter_python::LANGUAGE.into())
+                        .map_err(|e| format!("Failed to set Python language: {}", e))?;
+                    parser
+                        .parse(&source, None)
+                        .ok_or_else(|| "Failed to parse Python source".to_string())?
+                }
+                #[cfg(not(feature = "python-ast"))]
+                {
+                    return Err("python-ast feature is disabled".to_string());
+                }
             }
             Language::TypeScript | Language::JavaScript => {
                 let mut parser = tree_sitter::Parser::new();

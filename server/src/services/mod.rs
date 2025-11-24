@@ -203,9 +203,11 @@ pub mod symbol_table;
 pub mod tdg_calculator;
 pub mod template_service;
 pub mod unified_ast_engine; // Stub for backward compatibility
+#[cfg(feature = "shell-ast")]
 pub mod unified_bash_analyzer; // TICKET-3006: Single-pass Bash/Shell analyzer
 #[cfg(feature = "go-ast")]
 pub mod unified_go_analyzer; // TICKET-3004: Single-pass Go analyzer (requires go-ast feature)
+#[cfg(feature = "python-ast")]
 pub mod unified_python_analyzer; // TICKET-3003: Single-pass Python analyzer
 pub mod unified_refactor_analyzer; // Stub for backward compatibility
 pub mod unified_rust_analyzer; // TICKET-3001: Single-pass AST+Complexity analyzer

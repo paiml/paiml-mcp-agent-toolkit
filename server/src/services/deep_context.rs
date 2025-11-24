@@ -66,14 +66,16 @@ use crate::services::context::FileContext;
 use crate::services::unified_go_analyzer::UnifiedGoAnalyzer;
 #[cfg(feature = "wasm-ast")]
 use crate::services::unified_wasm_analyzer::UnifiedWasmAnalyzer;
+#[cfg(feature = "shell-ast")]
+use crate::services::unified_bash_analyzer::UnifiedBashAnalyzer;
+#[cfg(feature = "python-ast")]
+use crate::services::unified_python_analyzer::UnifiedPythonAnalyzer;
 use crate::services::{
     complexity::{ComplexityReport, FileComplexityMetrics},
     file_classifier::FileClassifierConfig,
     quality_gates::{QAVerification, QAVerificationResult},
     satd_detector::SATDAnalysisResult,
     tdg_calculator::TDGCalculator,
-    unified_bash_analyzer::UnifiedBashAnalyzer,
-    unified_python_analyzer::UnifiedPythonAnalyzer,
     unified_rust_analyzer::UnifiedRustAnalyzer,
     unified_typescript_analyzer::UnifiedTypeScriptAnalyzer,
 };
@@ -4020,6 +4022,7 @@ pub async fn analyze_typescript_language(
 
 /// Toyota Way Single Responsibility: Handle Python file analysis
 /// OPTIMIZATION: Uses UnifiedPythonAnalyzer to parse file once and extract both AST and complexity
+#[cfg(feature = "python-ast")]
 pub async fn analyze_python_language(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
@@ -4040,8 +4043,17 @@ pub async fn analyze_python_language(
     Ok(analysis.ast_items)
 }
 
+#[cfg(not(feature = "python-ast"))]
+pub async fn analyze_python_language(
+    _file_path: &std::path::Path,
+) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
+    // python-ast feature is disabled
+    Ok(Vec::new())
+}
+
 /// Toyota Way Single Responsibility: Handle Go file analysis
 /// TICKET-3004: Now uses unified parser to eliminate double parsing
+#[allow(unused_variables)]
 pub async fn analyze_go_language(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
@@ -4123,6 +4135,7 @@ pub async fn analyze_kotlin_language(
 
 /// Toyota Way Single Responsibility: Handle Bash script file analysis
 /// TICKET-3006: Now uses unified parser to eliminate double parsing
+#[cfg(feature = "shell-ast")]
 pub async fn analyze_bash_language(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
@@ -4148,6 +4161,14 @@ pub async fn analyze_bash_language(
             Ok(items)
         }
     }
+}
+
+#[cfg(not(feature = "shell-ast"))]
+pub async fn analyze_bash_language(
+    _file_path: &std::path::Path,
+) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
+    // shell-ast feature is disabled
+    Ok(Vec::new())
 }
 
 /// Toyota Way Single Responsibility: Handle Java file analysis
@@ -4208,6 +4229,7 @@ pub async fn analyze_ocaml_language(
 
 /// Toyota Way Single Responsibility: Handle WebAssembly file analysis
 /// TICKET-3005: Now uses unified parser to eliminate double parsing
+#[allow(unused_variables)]
 pub async fn analyze_wasm_language(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
@@ -4373,6 +4395,7 @@ async fn analyze_kotlin_file(
 }
 
 /// Simple Bash script file analysis
+#[cfg(feature = "shell-ast")]
 async fn analyze_bash_file(
     file_path: &Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
@@ -4389,6 +4412,14 @@ async fn analyze_bash_file(
         }
         Err(_) => Ok(Vec::new()), // Return empty vec on file read error
     }
+}
+
+#[cfg(not(feature = "shell-ast"))]
+async fn analyze_bash_file(
+    _file_path: &Path,
+) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
+    // shell-ast feature is disabled
+    Ok(Vec::new())
 }
 
 /// Simple Java file analysis

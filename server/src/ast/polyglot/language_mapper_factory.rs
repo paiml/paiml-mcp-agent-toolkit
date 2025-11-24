@@ -11,6 +11,10 @@ use crate::ast::polyglot::language_mapper::{
 use crate::ast::polyglot::language_mapper::CSharpMapper;
 #[cfg(feature = "java-ast")]
 use crate::ast::polyglot::language_mapper::JavaMapper;
+#[cfg(feature = "javascript-ast")]
+use crate::ast::polyglot::language_mapper::JavaScriptMapper;
+#[cfg(feature = "kotlin-ast")]
+use crate::ast::polyglot::language_mapper::KotlinMapper;
 #[cfg(feature = "ruby-ast")]
 use crate::ast::polyglot::language_mapper::RubyMapper;
 #[cfg(feature = "scala-ast")]

@@ -14,10 +14,10 @@ use std::path::Path;
 use tree_sitter::{Parser as TsParser, Tree};
 
 use super::LanguageStrategy;
-use crate::ast::core::{
-    AstDag, AstKind, ClassKind, FunctionKind, ImportKind, Language, NodeFlags, StmtKind,
-    UnifiedAstNode,
-};
+use crate::ast::core::{AstDag, AstKind, Language, NodeFlags, UnifiedAstNode};
+
+#[cfg(feature = "python-ast")]
+use crate::ast::core::{ClassKind, FunctionKind, ImportKind, StmtKind};
 
 /// Python language parsing strategy
 pub struct PythonStrategy {
@@ -78,7 +78,7 @@ impl PythonStrategy {
     }
 
     #[cfg(not(feature = "python-ast"))]
-    fn parse_with_tree_sitter(&self, _content: &str) -> Result<Tree> {
+    fn parse_with_tree_sitter(&self, _content: &str) -> Result<()> {
         Err(anyhow::anyhow!(
             "Python AST parsing not available - compile with 'python-ast' feature"
         ))
@@ -115,7 +115,23 @@ impl LanguageStrategy for PythonStrategy {
             .is_some_and(|ext| ext == "py" || ext == "pyi")
     }
 
+    #[cfg(feature = "python-ast")]
     async fn parse_file(&self, _path: &Path, content: &str) -> Result<AstDag> {
+        // Use tree-sitter-python (modern approach)
+        let tree = self.parse_with_tree_sitter(content)?;
+        Ok(self.convert_tree_to_dag(&tree, content))
+    }
+
+    #[cfg(not(feature = "python-ast"))]
+    async fn parse_file(&self, _path: &Path, _content: &str) -> Result<AstDag> {
+        Err(anyhow::anyhow!(
+            "Python AST parsing not available - compile with 'python-ast' feature"
+        ))
+    }
+
+    // Below is legacy code (not currently used)
+    #[cfg(feature = "python-ast")]
+    async fn _parse_file_legacy(&self, _path: &Path, content: &str) -> Result<AstDag> {
         // Use tree-sitter-python (modern approach)
         let tree = self.parse_with_tree_sitter(content)?;
         Ok(self.convert_tree_to_dag(&tree, content))

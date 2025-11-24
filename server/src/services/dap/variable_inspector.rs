@@ -48,6 +48,7 @@ impl VariableInspector {
     }
 
     /// Inspect variables in Python source at the given line
+    #[cfg(feature = "python-ast")]
     pub fn inspect_python(&self, source: &str, line: usize) -> Result<Vec<Variable>, String> {
         let mut parser = Parser::new();
         parser
@@ -59,6 +60,11 @@ impl VariableInspector {
             .ok_or_else(|| "Failed to parse Python source".to_string())?;
 
         self.extract_variables_python(&tree, source, line)
+    }
+
+    #[cfg(not(feature = "python-ast"))]
+    pub fn inspect_python(&self, _source: &str, _line: usize) -> Result<Vec<Variable>, String> {
+        Err("python-ast feature is disabled".to_string())
     }
 
     /// Inspect variables from a file

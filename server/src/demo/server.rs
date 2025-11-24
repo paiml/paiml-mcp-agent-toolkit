@@ -1,5 +1,6 @@
 #[cfg(feature = "demo")]
 use crate::demo::assets::{decompress_asset, get_asset};
+#[cfg(feature = "demo")]
 use crate::demo::showcase::ShowcaseGallery;
 use crate::models::dag::DependencyGraph;
 use crate::services::mermaid_generator::{MermaidGenerator, MermaidOptions};

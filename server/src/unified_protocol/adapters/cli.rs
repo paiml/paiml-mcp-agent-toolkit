@@ -123,13 +123,16 @@ impl CliAdapter {
             | Commands::Prompt(_) // Phase 4: Prompt generation (CLI-only)
             | Commands::Embed(_) // PMAT-SEARCH-011
             | Commands::Semantic(_) // PMAT-SEARCH-011
-            | Commands::Mutate(_) // Sprint 61: Mutation testing
             | Commands::Debug { .. } // Sprint 74: Time-travel debugging (CLI-only)
             | Commands::Work { .. } // Issue #75: Unified GitHub/YAML workflow (CLI-only)
+            | Commands::DebugFiveWhys { .. } // Five Whys root cause analysis (CLI-only)
             | Commands::ShowMetrics { .. } // Phase 3.1: O(1) Quality Gates CLI (CLI-only)
             | Commands::PredictQuality { .. } // Phase 4.1: Predictive Quality Gates CLI (CLI-only)
             | Commands::RecordMetric { .. } // Phase 3.4: O(1) Quality Gates CI/CD (CLI-only)
             => Self::cli_only_command_error(),
+
+            #[cfg(feature = "mutation-testing")]
+            Commands::Mutate(_) => Self::cli_only_command_error(),
         }
     }
 
@@ -1778,7 +1781,9 @@ impl CliInput {
     fn get_command_category(command: &Commands) -> CommandCategory {
         match command {
             Commands::Generate { .. } | Commands::Scaffold { .. } => CommandCategory::Generation,
-            Commands::QualityGate { .. } | Commands::QualityGates { .. } | Commands::Report { .. } | Commands::RepoScore { .. } | Commands::RustProjectScore { .. } | Commands::ValidateDocs(_) | Commands::ValidateReadme(_) | Commands::RedTeam(_) | Commands::Org(_) | Commands::Prompt(_) | Commands::Embed(_) | Commands::Semantic(_) | Commands::Mutate(_) | Commands::ShowMetrics { .. } | Commands::PredictQuality { .. } | Commands::RecordMetric { .. } => CommandCategory::Analysis,
+            Commands::QualityGate { .. } | Commands::QualityGates { .. } | Commands::Report { .. } | Commands::RepoScore { .. } | Commands::RustProjectScore { .. } | Commands::ValidateDocs(_) | Commands::ValidateReadme(_) | Commands::RedTeam(_) | Commands::Org(_) | Commands::Prompt(_) | Commands::Embed(_) | Commands::Semantic(_) | Commands::ShowMetrics { .. } | Commands::PredictQuality { .. } | Commands::RecordMetric { .. } => CommandCategory::Analysis,
+            #[cfg(feature = "mutation-testing")]
+            Commands::Mutate(_) => CommandCategory::Analysis,
             Commands::Serve { .. }
             | Commands::Cache { .. }
             | Commands::Memory { .. }
@@ -1808,6 +1813,9 @@ impl CliInput {
             Commands::Work { .. } => {
                 CommandCategory::Workflow // Issue #75: Unified GitHub/YAML workflow
             }
+            Commands::DebugFiveWhys { .. } => {
+                CommandCategory::Analysis // Five Whys root cause analysis
+            }
         }
     }
 
@@ -1825,6 +1833,7 @@ impl CliInput {
         match command {
             Commands::QualityGate { .. } => "quality-gate",
             Commands::Report { .. } => "report",
+            Commands::DebugFiveWhys { .. } => "five-whys",
             _ => unreachable!("Non-analysis command passed to analysis command name extractor"),
         }
     }
@@ -1952,10 +1961,12 @@ impl CliAdapter {
             | AnalyzeCommands::AssemblyScript { .. }
             | AnalyzeCommands::WebAssembly { .. }
             | AnalyzeCommands::Wasm { .. }
-            | AnalyzeCommands::Mutate { .. }
             | AnalyzeCommands::Cluster { .. } // PMAT-SEARCH-011
             | AnalyzeCommands::Topics { .. } // PMAT-SEARCH-011
             => AnalyzeCommandCategory::Specialized,
+
+            #[cfg(feature = "mutation-testing")]
+            AnalyzeCommands::Mutate { .. } => AnalyzeCommandCategory::Specialized,
 
             #[cfg(feature = "deep-wasm")]
             AnalyzeCommands::DeepWasm { .. } => AnalyzeCommandCategory::Specialized,

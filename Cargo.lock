@@ -87,17 +87,6 @@ dependencies = [
 
 [[package]]
 name = "ahash"
-version = "0.7.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "891477e0c6a8957309ee5c45a6368af3ae14bb510732d2684ffa19af310920f9"
-dependencies = [
- "getrandom 0.2.16",
- "once_cell",
- "version_check",
-]
-
-[[package]]
-name = "ahash"
 version = "0.8.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5a15f179cd60c4584b8a8c596927aadc462e27f2ca70c04e0071964a73ba7a75"
@@ -317,7 +306,7 @@ version = "53.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7845c32b41f7053e37a075b3c2f29c6f5ea1b3ca6e5df7a2d325ee6e1b4a63cf"
 dependencies = [
- "ahash 0.8.12",
+ "ahash",
  "arrow-buffer",
  "arrow-data",
  "arrow-schema",
@@ -444,7 +433,7 @@ version = "53.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "da30e9d10e9c52f09ea0cf15086d6d785c11ae8dcc3ea5f16d402221b6ac7735"
 dependencies = [
- "ahash 0.8.12",
+ "ahash",
  "arrow-array",
  "arrow-buffer",
  "arrow-data",
@@ -464,7 +453,7 @@ version = "53.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "92fc337f01635218493c23da81a364daf38c694b05fc20569c3193c11c561984"
 dependencies = [
- "ahash 0.8.12",
+ "ahash",
  "arrow-array",
  "arrow-buffer",
  "arrow-data",
@@ -2029,7 +2018,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.111",
- "unicode-xid",
 ]
 
 [[package]]
@@ -3017,9 +3005,6 @@ name = "hashbrown"
 version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8a9ee70c43aaf417c914396645a0fa852624801b24ebb7ae78fe8272889ac888"
-dependencies = [
- "ahash 0.7.8",
-]
 
 [[package]]
 name = "hashbrown"
@@ -3027,7 +3012,7 @@ version = "0.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "43a3c133739dddd0d2990f9a4bdf8eb4b21ef50e4851ca85ab661199821d510e"
 dependencies = [
- "ahash 0.8.12",
+ "ahash",
 ]
 
 [[package]]
@@ -3036,7 +3021,7 @@ version = "0.14.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e5274423e17b7c9fc20b6e7e208532f9b19825d82dfd615708b70edd83df41f1"
 dependencies = [
- "ahash 0.8.12",
+ "ahash",
  "allocator-api2",
 ]
 
@@ -3871,7 +3856,7 @@ version = "0.32.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "24690c68dfcdde5980d676b0f1820981841016b1f29eecb4c42ad48ab4118681"
 dependencies = [
- "ahash 0.8.12",
+ "ahash",
  "base64 0.22.1",
  "bytecount",
  "email_address",
@@ -5340,7 +5325,7 @@ version = "53.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2f8cf58b29782a7add991f655ff42929e31a7859f5319e53db9e39a714cb113c"
 dependencies = [
- "ahash 0.8.12",
+ "ahash",
  "arrow-array",
  "arrow-buffer",
  "arrow-cast",
@@ -5577,11 +5562,11 @@ dependencies = [
 
 [[package]]
 name = "pmat"
-version = "2.204.0"
+version = "2.205.0"
 dependencies = [
  "actix",
  "actix-rt",
- "ahash 0.8.12",
+ "ahash",
  "anyhow",
  "aprender",
  "arrow",
@@ -5704,7 +5689,7 @@ dependencies = [
  "tree-sitter-rust",
  "tree-sitter-typescript",
  "trueno 0.6.0",
- "trueno-db 0.3.1",
+ "trueno-db",
  "trueno-graph",
  "ureq",
  "url",
@@ -6415,7 +6400,7 @@ version = "0.32.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7a3d769362109497b240e66462606bc28af68116436c8669bac17069533b908e"
 dependencies = [
- "ahash 0.8.12",
+ "ahash",
  "fluent-uri",
  "once_cell",
  "parking_lot 0.12.5",
@@ -8508,19 +8493,6 @@ dependencies = [
 
 [[package]]
 name = "trueno"
-version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0279db5799d3d86af3ab8c16295be4fa9c2a7fbc612cd4883a9a44ec1e36e8c4"
-dependencies = [
- "bytemuck",
- "futures-intrusive",
- "pollster",
- "thiserror 2.0.17",
- "wgpu 22.1.0",
-]
-
-[[package]]
-name = "trueno"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b8c98b9aef7ce98ccf2cf7b37c5d55cbc6392567ca92dc4d350ef8c2011fae08"
@@ -8539,28 +8511,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "17f5dc2b1913e0ab2851c9139f3e2972a2bdcb7ad4579ae01ec248abe07a82f7"
 dependencies = [
  "thiserror 2.0.17",
-]
-
-[[package]]
-name = "trueno-db"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8f6ffef5a21517d50ae977d45251560d9b5ffb67715a1b7ac8ec9f6ce2cceb20"
-dependencies = [
- "anyhow",
- "arrow",
- "console_error_panic_hook",
- "parquet",
- "rayon",
- "sqlparser",
- "thiserror 2.0.17",
- "tokio",
- "tracing",
- "tracing-subscriber",
- "trueno 0.4.1",
- "wasm-bindgen",
- "web-sys",
- "wgpu 22.1.0",
 ]
 
 [[package]]
@@ -8600,7 +8550,7 @@ dependencies = [
  "thiserror 1.0.69",
  "tokio",
  "trueno 0.7.0",
- "trueno-db 0.3.1",
+ "trueno-db",
 ]
 
 [[package]]
@@ -10216,7 +10166,7 @@ dependencies = [
 name = "workspace-hack"
 version = "0.1.0"
 dependencies = [
- "ahash 0.8.12",
+ "ahash",
  "aho-corasick",
  "anstream",
  "arrayvec",
@@ -10234,19 +10184,14 @@ dependencies = [
  "clap_builder",
  "cranelift-bitset",
  "crossbeam-epoch",
- "derive_more 2.0.1",
- "derive_more-impl",
  "either",
  "fallible-iterator 0.3.0",
  "fixedbitset",
- "foldhash",
  "futures-channel",
  "futures-util",
  "getrandom 0.2.16",
  "getrandom 0.3.4",
  "git2",
- "half",
- "hashbrown 0.12.3",
  "hashbrown 0.15.5",
  "http 1.3.1",
  "httparse",
@@ -10263,9 +10208,7 @@ dependencies = [
  "memchr",
  "mime_guess",
  "mio",
- "nix 0.30.1",
  "num-bigint",
- "num-rational",
  "num-traits",
  "object 0.37.3",
  "once_cell",
@@ -10290,23 +10233,18 @@ dependencies = [
  "serde_json",
  "smallvec",
  "stable_deref_trait",
- "syn 1.0.109",
  "syn 2.0.111",
  "tokio",
  "tokio-util",
- "toml_datetime 0.6.11",
  "tower 0.4.13",
  "tower 0.5.2",
  "tower-http 0.5.2",
  "tower-http 0.6.6",
- "trueno 0.4.1",
- "trueno-db 0.1.0",
+ "trueno 0.6.0",
+ "trueno-db",
  "uncased",
  "wasmparser 0.239.0",
  "zerocopy 0.8.28",
- "zstd",
- "zstd-safe",
- "zstd-sys",
 ]
 
 [[package]]

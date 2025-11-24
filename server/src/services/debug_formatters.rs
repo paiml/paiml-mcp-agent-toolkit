@@ -53,7 +53,7 @@ pub fn format_text(analysis: &DebugAnalysis) -> Result<String> {
             };
             output.push_str(&format!("   {}. [{}] {}\n", i + 1, priority, rec.action));
         }
-        output.push_str("\n");
+        output.push('\n');
     }
 
     // Evidence Summary
@@ -112,7 +112,7 @@ pub fn format_markdown(analysis: &DebugAnalysis) -> Result<String> {
                     evidence.file.display()
                 ));
             }
-            output.push_str("\n");
+            output.push('\n');
         }
 
         output.push_str("---\n\n");
@@ -136,7 +136,7 @@ pub fn format_markdown(analysis: &DebugAnalysis) -> Result<String> {
             };
             output.push_str(&format!("{}. {}: {}\n", i + 1, priority, rec.action));
         }
-        output.push_str("\n");
+        output.push('\n');
     }
 
     // Evidence Summary

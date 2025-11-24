@@ -671,18 +671,22 @@ mod tests {
     mod unified_typescript_analyzer_tests;
 
     // TICKET-3003: Unified Python Analyzer (EXTREME TDD - RED Phase)
+    #[cfg(feature = "python-ast")]
     #[path = "../tests/unified_python_analyzer_tests.rs"]
     mod unified_python_analyzer_tests;
 
     // TICKET-3004: Unified Go Analyzer (EXTREME TDD - RED Phase)
+    #[cfg(feature = "go-ast")]
     #[path = "../tests/unified_go_analyzer_tests.rs"]
     mod unified_go_analyzer_tests;
 
     // TICKET-3005: Unified WebAssembly Analyzer (EXTREME TDD - RED Phase)
+    #[cfg(feature = "wasm-ast")]
     #[path = "../tests/unified_wasm_analyzer_tests.rs"]
     mod unified_wasm_analyzer_tests;
 
     // TICKET-3006: Unified Bash/Shell Analyzer (EXTREME TDD - RED Phase)
+    #[cfg(feature = "shell-ast")]
     #[path = "../tests/unified_bash_analyzer_tests.rs"]
     mod unified_bash_analyzer_tests;
 }

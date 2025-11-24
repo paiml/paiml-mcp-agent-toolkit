@@ -420,7 +420,7 @@ mod tests {
 
         // Empty evidence
         let confidence = analyzer.calculate_confidence(&[]).unwrap();
-        assert!(confidence >= 0.0 && confidence <= 1.0);
+        assert!((0.0..=1.0).contains(&confidence));
 
         // With evidence
         let evidence = vec![Evidence::new(

@@ -31,19 +31,15 @@ clap = { version = "4", features = ["derive", "env"] }
 clap_builder = { version = "4", default-features = false, features = ["color", "env", "help", "std", "suggestions", "usage"] }
 cranelift-bitset = { version = "0.125", default-features = false, features = ["enable-serde"] }
 crossbeam-epoch = { version = "0.9" }
-derive_more = { version = "2", features = ["as_ref", "deref", "deref_mut", "display", "error", "from", "is_variant"] }
 either = { version = "1", features = ["use_std"] }
 fallible-iterator = { version = "0.3", features = ["std"] }
 fixedbitset = { version = "0.5" }
-foldhash = { version = "0.1" }
 futures-channel = { version = "0.3", features = ["sink"] }
 futures-util = { version = "0.3", features = ["channel", "io", "sink"] }
 getrandom-468e82937335b1c9 = { package = "getrandom", version = "0.3", default-features = false, features = ["std"] }
 getrandom-6f8ce4dd05d13bba = { package = "getrandom", version = "0.2", default-features = false, features = ["std"] }
 git2 = { version = "0.20" }
-half = { version = "2", default-features = false, features = ["num-traits"] }
-hashbrown-3575ec1268b04181 = { package = "hashbrown", version = "0.15", features = ["serde"] }
-hashbrown-5ef9efb8ec2df382 = { package = "hashbrown", version = "0.12", features = ["raw"] }
+hashbrown = { version = "0.15", features = ["serde"] }
 http = { version = "1" }
 httparse = { version = "1" }
 hyper = { version = "1", features = ["full"] }
@@ -56,9 +52,7 @@ log = { version = "0.4", default-features = false, features = ["std"] }
 lz4_flex = { version = "0.11" }
 memchr = { version = "2" }
 mime_guess = { version = "2" }
-mio = { version = "1", features = ["net", "os-ext"] }
 num-bigint = { version = "0.4", features = ["serde"] }
-num-rational = { version = "0.4", default-features = false, features = ["num-bigint-std", "std"] }
 num-traits = { version = "0.2", features = ["i128", "libm"] }
 object = { version = "0.37", features = ["write"] }
 once_cell = { version = "1" }
@@ -78,21 +72,17 @@ serde = { version = "1", features = ["alloc", "derive", "rc"] }
 serde_json = { version = "1", features = ["float_roundtrip", "preserve_order", "raw_value"] }
 smallvec = { version = "1", default-features = false, features = ["const_new", "serde", "union"] }
 stable_deref_trait = { version = "1", default-features = false, features = ["std"] }
-syn-f595c2ba2a3f28df = { package = "syn", version = "2", features = ["extra-traits", "fold", "full", "visit", "visit-mut"] }
+syn = { version = "2", features = ["extra-traits", "fold", "full", "visit", "visit-mut"] }
 tokio = { version = "1", features = ["full", "test-util"] }
 tokio-util = { version = "0.7", features = ["codec", "io-util", "rt"] }
-toml_datetime = { version = "0.6", default-features = false, features = ["serde"] }
 tower-9fbad63c4bcf4a8f = { package = "tower", version = "0.4", features = ["balance", "buffer", "limit", "retry", "timeout", "util"] }
 tower-d8f496e17d97b5cb = { package = "tower", version = "0.5", default-features = false, features = ["log", "make", "timeout", "util"] }
 tower-http-d8f496e17d97b5cb = { package = "tower-http", version = "0.5", features = ["cors", "follow-redirect", "fs", "map-response-body", "set-header", "trace"] }
-trueno = { version = "0.4", features = ["gpu"] }
-trueno-db = { version = "0.1", default-features = false, features = ["gpu", "simd"] }
+trueno = { version = "0.6", features = ["gpu"] }
+trueno-db = { version = "0.3", features = ["gpu"] }
 uncased = { version = "0.9" }
 wasmparser = { version = "0.239" }
 zerocopy = { version = "0.8", default-features = false, features = ["derive", "simd"] }
-zstd = { version = "0.13" }
-zstd-safe = { version = "7", default-features = false, features = ["arrays", "legacy", "std", "zdict_builder"] }
-zstd-sys = { version = "2", default-features = false, features = ["legacy", "std", "zdict_builder"] }
 
 [build-dependencies]
 aho-corasick = { version = "1" }
@@ -101,11 +91,9 @@ bumpalo = { version = "3", features = ["allocator-api2"] }
 bytes = { version = "1", features = ["serde"] }
 clang-sys = { version = "1", default-features = false, features = ["clang_11_0", "runtime"] }
 cranelift-bitset = { version = "0.125", default-features = false, features = ["enable-serde"] }
-derive_more-impl = { version = "2", features = ["as_ref", "deref", "deref_mut", "display", "error", "from", "is_variant"] }
 either = { version = "1", features = ["use_std"] }
-foldhash = { version = "0.1" }
 getrandom-6f8ce4dd05d13bba = { package = "getrandom", version = "0.2", default-features = false, features = ["std"] }
-hashbrown-3575ec1268b04181 = { package = "hashbrown", version = "0.15", features = ["serde"] }
+hashbrown = { version = "0.15", features = ["serde"] }
 http = { version = "1" }
 httparse = { version = "1" }
 indexmap = { version = "2", features = ["serde"] }
@@ -126,8 +114,7 @@ regex-syntax = { version = "0.8" }
 semver = { version = "1", features = ["serde"] }
 serde = { version = "1", features = ["alloc", "derive", "rc"] }
 serde_json = { version = "1", features = ["float_roundtrip", "preserve_order", "raw_value"] }
-syn-f595c2ba2a3f28df = { package = "syn", version = "2", features = ["extra-traits", "fold", "full", "visit", "visit-mut"] }
-toml_datetime = { version = "0.6", default-features = false, features = ["serde"] }
+syn = { version = "2", features = ["extra-traits", "fold", "full", "visit", "visit-mut"] }
 uncased = { version = "0.9" }
 wasmparser = { version = "0.239" }
 zerocopy = { version = "0.8", default-features = false, features = ["derive", "simd"] }
@@ -137,7 +124,7 @@ bytemuck = { version = "1", default-features = false, features = ["min_const_gen
 hyper-rustls = { version = "0.27", default-features = false, features = ["http1", "http2", "ring", "tls12", "webpki-tokio"] }
 libc = { version = "0.2", default-features = false, features = ["extra_traits"] }
 linux-raw-sys = { version = "0.11", default-features = false, features = ["auxvec", "elf", "errno", "general", "ioctl", "no_std", "prctl"] }
-nix = { version = "0.30", features = ["feature", "fs", "ioctl", "poll", "signal", "term"] }
+mio = { version = "1", features = ["net", "os-ext"] }
 ring = { version = "0.17", features = ["std"] }
 rustix-d585fab2519d2d1 = { package = "rustix", version = "0.38", default-features = false, features = ["fs", "std", "stdio", "termios"] }
 rustix-dff4ba8e3ae991db = { package = "rustix", version = "1", features = ["fs", "mm", "param", "process", "stdio", "termios", "thread", "time"] }
@@ -151,12 +138,11 @@ libc = { version = "0.2", default-features = false, features = ["extra_traits"] 
 ring = { version = "0.17", features = ["std"] }
 rustix-d585fab2519d2d1 = { package = "rustix", version = "0.38", default-features = false, features = ["fs", "std", "stdio", "termios"] }
 rustls = { version = "0.23", default-features = false, features = ["logging", "ring", "std", "tls12"] }
-syn-dff4ba8e3ae991db = { package = "syn", version = "1", features = ["extra-traits", "full"] }
 
 [target.x86_64-apple-darwin.dependencies]
 hyper-rustls = { version = "0.27", default-features = false, features = ["http1", "http2", "ring", "tls12", "webpki-tokio"] }
 libc = { version = "0.2", default-features = false, features = ["extra_traits"] }
-nix = { version = "0.30", features = ["feature", "fs", "ioctl", "poll", "signal", "term"] }
+mio = { version = "1", features = ["net", "os-ext"] }
 ring = { version = "0.17", features = ["std"] }
 rustix-d585fab2519d2d1 = { package = "rustix", version = "0.38", default-features = false, features = ["fs", "std", "stdio", "termios"] }
 rustix-dff4ba8e3ae991db = { package = "rustix", version = "1", features = ["fs", "mm", "param", "process", "stdio", "termios", "thread"] }
@@ -175,7 +161,7 @@ rustls = { version = "0.23", default-features = false, features = ["logging", "r
 [target.aarch64-apple-darwin.dependencies]
 hyper-rustls = { version = "0.27", default-features = false, features = ["http1", "http2", "ring", "tls12", "webpki-tokio"] }
 libc = { version = "0.2", default-features = false, features = ["extra_traits"] }
-nix = { version = "0.30", features = ["feature", "fs", "ioctl", "poll", "signal", "term"] }
+mio = { version = "1", features = ["net", "os-ext"] }
 ring = { version = "0.17", features = ["std"] }
 rustix-d585fab2519d2d1 = { package = "rustix", version = "0.38", default-features = false, features = ["fs", "std", "stdio", "termios"] }
 rustix-dff4ba8e3ae991db = { package = "rustix", version = "1", features = ["fs", "mm", "param", "process", "stdio", "termios", "thread"] }

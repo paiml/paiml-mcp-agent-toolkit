@@ -489,6 +489,7 @@ impl SimpleDeepContext {
             use tokio::fs;
 
             // Try to read as text first, then as binary for WASM files
+            #[allow(unused_variables)]
             let content = if extension == "wasm" {
                 // Binary WASM - read as bytes then convert
                 match fs::read(file_path).await {
@@ -595,6 +596,7 @@ impl SimpleDeepContext {
             // Use Go AST analysis
             use tokio::fs;
             match fs::read_to_string(file_path).await {
+                #[allow(unused_variables)]
                 Ok(content) => {
                     #[cfg(feature = "go-ast")]
                     {
@@ -800,6 +802,7 @@ impl SimpleDeepContext {
             // Use Bash AST analysis
             use tokio::fs;
             match fs::read_to_string(file_path).await {
+                #[allow(unused_variables)]
                 Ok(content) => {
                     #[cfg(feature = "shell-ast")]
                     {
@@ -861,6 +864,7 @@ impl SimpleDeepContext {
             // Use PHP AST analysis
             use tokio::fs;
             match fs::read_to_string(file_path).await {
+                #[allow(unused_variables)]
                 Ok(content) => {
                     #[cfg(feature = "php-ast")]
                     {
@@ -922,6 +926,7 @@ impl SimpleDeepContext {
             // Use Swift AST analysis
             use tokio::fs;
             match fs::read_to_string(file_path).await {
+                #[allow(unused_variables)]
                 Ok(content) => {
                     #[cfg(feature = "swift-ast")]
                     {

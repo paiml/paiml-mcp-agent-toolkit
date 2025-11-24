@@ -41,12 +41,13 @@ impl CStrategy {
     }
 
     #[cfg(not(feature = "c-ast"))]
-    fn parse_with_tree_sitter(&self, _content: &str) -> Result<Tree> {
+    fn parse_with_tree_sitter(&self, _content: &str) -> Result<()> {
         Err(anyhow::anyhow!(
             "C AST parsing not available - compile with 'c-ast' feature"
         ))
     }
 
+    #[cfg(feature = "c-ast")]
     fn convert_to_dag(&self, tree: &Tree, content: &str) -> AstDag {
         let mut dag = AstDag::new();
         let root = tree.root_node();
@@ -68,9 +69,17 @@ impl LanguageStrategy for CStrategy {
             .is_some_and(|ext| matches!(ext, "c" | "h"))
     }
 
+    #[cfg(feature = "c-ast")]
     async fn parse_file(&self, _path: &Path, content: &str) -> Result<AstDag> {
         let tree = self.parse_with_tree_sitter(content)?;
         Ok(self.convert_to_dag(&tree, content))
+    }
+
+    #[cfg(not(feature = "c-ast"))]
+    async fn parse_file(&self, _path: &Path, _content: &str) -> Result<AstDag> {
+        Err(anyhow::anyhow!(
+            "C AST parsing not available - compile with 'c-ast' feature"
+        ))
     }
 
     fn extract_imports(&self, ast: &AstDag) -> Vec<String> {
@@ -141,6 +150,7 @@ impl CppStrategy {
         Self
     }
 
+    #[cfg(feature = "cpp-ast")]
     fn parse_with_tree_sitter(&self, content: &str) -> Result<Tree> {
         let mut parser = TsParser::new();
         parser
@@ -152,6 +162,14 @@ impl CppStrategy {
             .ok_or_else(|| anyhow::anyhow!("Failed to parse C++ code"))
     }
 
+    #[cfg(not(feature = "cpp-ast"))]
+    fn parse_with_tree_sitter(&self, _content: &str) -> Result<()> {
+        Err(anyhow::anyhow!(
+            "C++ AST parsing not available - compile with 'cpp-ast' feature"
+        ))
+    }
+
+    #[cfg(feature = "cpp-ast")]
     fn convert_to_dag(&self, tree: &Tree, content: &str) -> AstDag {
         let mut dag = AstDag::new();
         let root = tree.root_node();
@@ -173,9 +191,17 @@ impl LanguageStrategy for CppStrategy {
             .is_some_and(|ext| matches!(ext, "cpp" | "cc" | "cxx" | "hpp" | "hh" | "hxx"))
     }
 
+    #[cfg(feature = "cpp-ast")]
     async fn parse_file(&self, _path: &Path, content: &str) -> Result<AstDag> {
         let tree = self.parse_with_tree_sitter(content)?;
         Ok(self.convert_to_dag(&tree, content))
+    }
+
+    #[cfg(not(feature = "cpp-ast"))]
+    async fn parse_file(&self, _path: &Path, _content: &str) -> Result<AstDag> {
+        Err(anyhow::anyhow!(
+            "C++ AST parsing not available - compile with 'cpp-ast' feature"
+        ))
     }
 
     // Delegate to C strategy since the AST structure is similar

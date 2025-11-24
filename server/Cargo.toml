@@ -283,12 +283,24 @@ sha2 = "0.10"  # For O(1) build artifact hash caching
 # capnpc = "0.20" # REMOVED: Unused Cap'n Proto compiler
 
 [features]
-default = ["all-languages", "demo", "polyglot-ast", "org-intelligence", "tdg-explain", "analytics-simd", "mutation-testing"]
-# Phase 2 Progress (2025-11-20):
-# ✅ FIXED (commit b721a174): Module-level feature gates for unified_go_analyzer, unified_wasm_analyzer,
-#    org_handlers, language_mapper (Java/Scala)
-# ⚠️  REMAINING: Deeper conditional compilation issues in function bodies (TypeScript/SWC dependencies)
-# TODO: Continue Phase 2 refactoring to enable minimal builds with reduced language support
+# Phase 2 Build Performance (Issue #89): Minimal defaults for fast builds
+# Default: Rust + TypeScript/JavaScript (most common use case)
+# - Opt-in for other languages: --features extended-languages or all-languages
+# - Opt-in for advanced analysis: --features analytics-simd, mutation-testing, demo
+# - Full suite: --features full (equivalent to old defaults)
+default = ["core-languages"]
+
+# Convenience bundles
+core-languages = ["rust-ast", "typescript-ast", "javascript-ast"]  # Most common: Rust + JS/TS
+extended-languages = ["python-ast", "go-ast", "c-ast", "cpp-ast", "shell-ast", "php-ast", "swift-ast"]  # Additional languages
+advanced-analysis = ["analytics-simd", "mutation-testing", "tdg-explain", "demo"]  # Heavy features
+full = ["all-languages", "polyglot-ast", "advanced-analysis"]  # Equivalent to old defaults
+
+# Phase 1 Build Performance (Issue #89): Removed "org-intelligence" from default
+# - Eliminates octocrab v0.39.0 duplicate (we have v0.40.0)
+# - Eliminates trueno-db v0.1.0 duplicate (we have v0.3.1)
+# - Reduces build time and dependency count
+# - org-intelligence now opt-in via --features org-intelligence
 org-intelligence = ["organizational-intelligence-plugin"]
 all-languages = ["rust-ast", "typescript-ast", "python-ast", "c-ast", "cpp-ast", "ruchy-ast", "go-ast", "wasm-ast", "deep-wasm", "shell-ast", "php-ast", "swift-ast"]
 most-languages = ["rust-ast", "typescript-ast", "python-ast", "c-ast", "cpp-ast", "go-ast", "shell-ast"]

@@ -481,6 +481,7 @@ impl CommandDispatcher {
 
             Commands::Hooks(hooks_cmd) => handlers::handle_hooks_command(&hooks_cmd).await,
 
+            #[cfg(feature = "mutation-testing")]
             Commands::Mutate(args) => handlers::mutate::handle(args, server).await,
 
             Commands::Debug { command } => {

@@ -1380,3 +1380,21 @@ mod property_tests {
         }
     }
 }
+
+/// Output format for Five Whys debug analysis
+#[derive(Clone, Debug, ValueEnum, PartialEq)]
+pub enum DebugOutputFormat {
+    Text,
+    Json,
+    Markdown,
+}
+
+impl fmt::Display for DebugOutputFormat {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            DebugOutputFormat::Text => write!(f, "text"),
+            DebugOutputFormat::Json => write!(f, "json"),
+            DebugOutputFormat::Markdown => write!(f, "markdown"),
+        }
+    }
+}

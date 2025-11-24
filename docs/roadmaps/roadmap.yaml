@@ -484,3 +484,19 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: 'Implement pmat debug command (REFACTOR phase: CLI integration)'
+  github_issue: null
+  item_type: task
+  title: 'New task: Implement pmat debug command (REFACTOR phase: CLI integration)'
+  status: completed
+  priority: medium
+  assigned_to: null
+  created: 2025-11-24T10:01:26.467552108+00:00
+  updated: 2025-11-24T10:33:59.256080954+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null

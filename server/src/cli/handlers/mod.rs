@@ -88,6 +88,7 @@ pub mod utility_handlers;
 pub mod wasm_handler;
 pub mod wasm_handlers; // Phase 4: Organizational Intelligence Integration
 pub mod work_handlers; // Issue #75: Unified GitHub/YAML workflow
+pub mod five_whys_handlers; // Five Whys root cause analysis (Toyota Way)
 
 // Re-export handler functions
 pub use advanced_analysis_handlers::{
@@ -125,6 +126,7 @@ pub use incremental_coverage_handler::handle_analyze_incremental_coverage;
 pub use lint_hotspot_handlers::handle_analyze_lint_hotspot;
 pub use memory::handle_memory_command;
 pub use name_similarity_analysis::handle_analyze_name_similarity;
+#[cfg(feature = "org-intelligence")]
 pub use org_handlers::handle_org_command;
 pub use prompt_handlers::{handle_prompt, handle_prompt_command};
 pub use provability_handler::handle_analyze_provability;
