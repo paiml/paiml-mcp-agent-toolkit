@@ -934,7 +934,57 @@ async fn run_quality_gates(project_path: &PathBuf) -> Result<bool> {
         all_passed = false;
     }
 
-    // 2. Run cargo clippy
+    // 2. Rust project-specific checks (if Cargo.toml exists)
+    if project_path.join("Cargo.toml").exists() {
+        println!("   🦀 Rust project detected...");
+
+        // Check if examples directory exists
+        let examples_dir = project_path.join("examples");
+        if examples_dir.exists() && examples_dir.is_dir() {
+            println!("      📦 Checking examples...");
+            let examples_status = Command::new("cargo")
+                .args(&["test", "--examples", "--no-run"])
+                .current_dir(project_path)
+                .status()
+                .context("Failed to run cargo test --examples")?;
+
+            if examples_status.success() {
+                println!("      ✅ Examples compile");
+            } else {
+                println!("      ❌ Examples failed to compile");
+                all_passed = false;
+            }
+        } else {
+            println!("      ℹ️  No examples directory found, skipping example checks");
+        }
+
+        // Capture rust-project-score (O(1) from cache)
+        println!("      📊 Capturing rust-project-score...");
+        match Command::new("pmat")
+            .args(&["rust-project-score", "--format", "json"])
+            .current_dir(project_path)
+            .output()
+        {
+            Ok(output) if output.status.success() => {
+                // Parse score and display
+                if let Ok(score_json) = std::str::from_utf8(&output.stdout) {
+                    if let Ok(json) = serde_json::from_str::<serde_json::Value>(score_json) {
+                        if let Some(score) = json.get("total_earned").and_then(|v| v.as_f64()) {
+                            println!("      ✅ Rust Project Score: {:.1}/134", score);
+                        }
+                    }
+                }
+            }
+            Ok(_) => {
+                println!("      ⚠️  Failed to capture rust-project-score (continuing)");
+            }
+            Err(_) => {
+                println!("      ⚠️  pmat rust-project-score not available (continuing)");
+            }
+        }
+    }
+
+    // 3. Run cargo clippy
     println!("   📎 Running clippy...");
     let clippy_status = Command::new("cargo")
         .arg("clippy")
