@@ -1,0 +1,131 @@
+id: PMAT-COVERAGE-002
+title: "Phase 2: PMAT Integration for `pmat coverage improve` Command"
+description: |
+  Implement the 5 TODO methods to enable fully autonomous coverage improvement
+  using PMAT's own tools (complexity, SATD, dead-code, churn analysis).
+
+  Phase 1 (COMPLETE): Framework with CLI, handlers, output formats, property tests
+  Phase 2 (THIS TICKET): Real PMAT tool integration for autonomous operation
+
+status: pending
+priority: high
+labels:
+  - coverage
+  - autonomous
+  - dogfooding
+  - extreme-tdd
+
+acceptance_criteria:
+  - "measure_baseline_coverage() parses `make coverage` output (16.15% currently)"
+  - "prioritize_targets() calls PMAT analyze (complexity, SATD, dead-code, churn)"
+  - "generate_property_tests() creates proptest templates from Rust AST"
+  - "run_mutation_testing() executes cargo-mutants and parses results"
+  - "measure_coverage_gain() re-runs coverage and calculates delta"
+  - "Full workflow tested: PMAT improves its own coverage from 16.15% → 95%"
+  - "Property tests for all 5 methods (Extreme TDD)"
+  - "Integration tests with real PMAT project"
+  - "Error handling for tool failures"
+  - "Performance: Complete iteration in <5 minutes"
+
+tasks:
+  - task: "Implement measure_baseline_coverage() - Parse make coverage"
+    status: pending
+    estimated_hours: 1
+    details: |
+      - Run `make coverage` command via tokio::process::Command
+      - Parse stdout for TOTAL line: "TOTAL ... 16.15%"
+      - Extract percentage (last column)
+      - Add property tests for parser
+      - Error handling: coverage tool not found, parse failures
+
+  - task: "Implement prioritize_targets() - PMAT complexity/SATD/dead-code/churn"
+    status: pending
+    estimated_hours: 2
+    details: |
+      - Call `pmat analyze complexity --format json`
+      - Call `pmat analyze satd --format json`
+      - Call `pmat analyze dead-code --format json`
+      - Call `pmat analyze churn --format json`
+      - Combine results: score = complexity_weight * 0.4 + satd_weight * 0.3 + dead_code_weight * 0.2 + churn_weight * 0.1
+      - Sort by score descending
+      - Return top N files (configurable, default: 10)
+      - Property tests: scoring algorithm, sorting
+
+  - task: "Implement generate_property_tests() - Proptest templates from AST"
+    status: pending
+    estimated_hours: 3
+    details: |
+      - Parse Rust files using syn crate
+      - Extract function signatures
+      - Generate proptest templates for each function
+      - Support common patterns: String, i32, Vec<T>, Option<T>
+      - Write generated tests to tests/ directory
+      - Property tests: template generation, valid Rust syntax
+      - This is the most complex method
+
+  - task: "Implement run_mutation_testing() - Execute cargo-mutants"
+    status: pending
+    estimated_hours: 2
+    details: |
+      - Run `cargo mutants --in-diff` for changed files only
+      - Parse JSON output for mutation score
+      - Extract: total_mutants, caught, missed, score
+      - Return mutation score percentage
+      - Property tests: JSON parsing
+      - Error handling: cargo-mutants not installed, timeout
+
+  - task: "Implement measure_coverage_gain() - Calculate delta"
+    status: pending
+    estimated_hours: 1
+    details: |
+      - Call measure_baseline_coverage() again
+      - Calculate: new_coverage - previous_coverage
+      - Return delta as f64
+      - Property tests: delta calculation
+      - Handle edge cases: coverage decrease, no change
+
+  - task: "Integration testing - Full workflow on PMAT"
+    status: pending
+    estimated_hours: 2
+    details: |
+      - Run full command: pmat coverage improve --target 95
+      - Verify all 5 methods execute correctly
+      - Check coverage actually improves
+      - Verify mutation testing runs
+      - Verify property tests are generated
+      - Create integration test in tests/
+
+  - task: "Error handling and edge cases"
+    status: pending
+    estimated_hours: 1
+    details: |
+      - Handle tool not found errors gracefully
+      - Handle parse failures
+      - Handle timeout scenarios
+      - Handle no files to target
+      - Handle coverage tools failure
+      - Add user-friendly error messages
+
+dependencies:
+  - PMAT-COVERAGE-001  # Phase 1 framework (COMPLETE)
+
+related_files:
+  - server/src/services/coverage_improvement_service.rs
+  - server/src/cli/handlers/coverage_improve_handler.rs
+  - docs/specifications/pmat-coverage-improve-command.md
+
+estimated_total_hours: 12
+actual_hours: 0
+
+notes: |
+  This implements the generalizable methodology that works on ANY Rust project.
+  Once complete, PMAT can dogfood itself to achieve 95% coverage autonomously.
+
+  Key design decisions:
+  - Use tokio::process::Command for all external tool calls
+  - Parse JSON output where available (PMAT analyze commands)
+  - Use regex for coverage parsing (text output)
+  - Generate proptest templates using syn crate AST parsing
+  - Focus on incremental improvement (one iteration at a time)
+
+  Success metric: PMAT coverage improves from 16.15% to 95% in <10 iterations
