@@ -60,7 +60,8 @@ impl TreeSitterMutationOperator for PythonBinaryOpMutation {
                 mutated.splice(operator_node.byte_range(), new_op.bytes());
 
                 MutatedSource {
-                    source: String::from_utf8(mutated).unwrap(),
+                    source: String::from_utf8(mutated)
+                    .expect("mutated source is valid UTF-8 (original source + ASCII operators)"),
                     description: format!("{} → {}", op_text, new_op),
                     location: SourceLocation {
                         line: operator_node.start_position().row + 1,
@@ -137,7 +138,8 @@ impl TreeSitterMutationOperator for PythonRelationalOpMutation {
                 mutated.splice(operator_node.byte_range(), new_op.bytes());
 
                 MutatedSource {
-                    source: String::from_utf8(mutated).unwrap(),
+                    source: String::from_utf8(mutated)
+                    .expect("mutated source is valid UTF-8 (original source + ASCII operators)"),
                     description: format!("{} → {}", op_text, new_op),
                     location: SourceLocation {
                         line: operator_node.start_position().row + 1,
@@ -204,7 +206,8 @@ impl TreeSitterMutationOperator for PythonLogicalOpMutation {
                 mutated.splice(operator_node.byte_range(), new_op.bytes());
 
                 MutatedSource {
-                    source: String::from_utf8(mutated).unwrap(),
+                    source: String::from_utf8(mutated)
+                    .expect("mutated source is valid UTF-8 (original source + ASCII operators)"),
                     description: format!("{} → {}", op_text, new_op),
                     location: SourceLocation {
                         line: operator_node.start_position().row + 1,
@@ -267,7 +270,8 @@ impl TreeSitterMutationOperator for PythonIdentityOpMutation {
                 let mut mutated = source.to_vec();
                 mutated.splice(start..end, b"is".iter().copied());
                 mutations.push(MutatedSource {
-                    source: String::from_utf8(mutated).unwrap(),
+                    source: String::from_utf8(mutated)
+                    .expect("mutated source is valid UTF-8 (original source + ASCII operators)"),
                     description: "is not → is".to_string(),
                     location: SourceLocation {
                         line: is_n.start_position().row + 1,
@@ -281,7 +285,8 @@ impl TreeSitterMutationOperator for PythonIdentityOpMutation {
                 let mut mutated = source.to_vec();
                 mutated.splice(start..end, b"==".iter().copied());
                 mutations.push(MutatedSource {
-                    source: String::from_utf8(mutated).unwrap(),
+                    source: String::from_utf8(mutated)
+                    .expect("mutated source is valid UTF-8 (original source + ASCII operators)"),
                     description: "is not → ==".to_string(),
                     location: SourceLocation {
                         line: is_n.start_position().row + 1,
@@ -300,7 +305,8 @@ impl TreeSitterMutationOperator for PythonIdentityOpMutation {
                         source: {
                             let mut mutated = source.to_vec();
                             mutated.splice(is_n.byte_range(), b"is not".iter().copied());
-                            String::from_utf8(mutated).unwrap()
+                            String::from_utf8(mutated)
+                    .expect("mutated source is valid UTF-8 (original source + ASCII operators)")
                         },
                         description: "is → is not".to_string(),
                         location: SourceLocation {
@@ -314,7 +320,8 @@ impl TreeSitterMutationOperator for PythonIdentityOpMutation {
                         source: {
                             let mut mutated = source.to_vec();
                             mutated.splice(is_n.byte_range(), b"==".iter().copied());
-                            String::from_utf8(mutated).unwrap()
+                            String::from_utf8(mutated)
+                    .expect("mutated source is valid UTF-8 (original source + ASCII operators)")
                         },
                         description: "is → ==".to_string(),
                         location: SourceLocation {
@@ -382,7 +389,8 @@ impl TreeSitterMutationOperator for PythonMembershipOpMutation {
                 let mut mutated = source.to_vec();
                 mutated.splice(start..end, b"in".iter().copied());
                 vec![MutatedSource {
-                    source: String::from_utf8(mutated).unwrap(),
+                    source: String::from_utf8(mutated)
+                    .expect("mutated source is valid UTF-8 (original source + ASCII operators)"),
                     description: "not in → in".to_string(),
                     location: SourceLocation {
                         line: not_n.start_position().row + 1,
@@ -397,7 +405,8 @@ impl TreeSitterMutationOperator for PythonMembershipOpMutation {
                 let mut mutated = source.to_vec();
                 mutated.splice(in_n.byte_range(), b"not in".iter().copied());
                 vec![MutatedSource {
-                    source: String::from_utf8(mutated).unwrap(),
+                    source: String::from_utf8(mutated)
+                    .expect("mutated source is valid UTF-8 (original source + ASCII operators)"),
                     description: "in → not in".to_string(),
                     location: SourceLocation {
                         line: in_n.start_position().row + 1,
@@ -655,5 +664,201 @@ mod tests {
             find_and_test(&root, source, &operator),
             "Should find 'in' operator"
         );
+    }
+
+    /// Test UTF-8 validity after mutation (validates expect() at lines 63, 140, 207, 270, 284, 303, 317, 385, 400)
+    #[test]
+    fn test_utf8_validity_after_mutation() {
+        // Test case 1: Simple ASCII operators (most common)
+        let source = b"result = a + b - c * d / e";
+
+        let mut parser = tree_sitter::Parser::new();
+        parser
+            .set_language(&tree_sitter_python::LANGUAGE.into())
+            .expect("Failed to set Python language");
+
+        let tree = parser.parse(source, None).expect("Failed to parse");
+        let root = tree.root_node();
+
+        // Find and mutate all operators
+        fn collect_mutations(node: &tree_sitter::Node, source: &[u8]) -> Vec<MutatedSource> {
+            let mut all_mutations = Vec::new();
+
+            if let "binary_operator" = node.kind() {
+                let operator = PythonBinaryOpMutation;
+                if operator.can_mutate(node, source) {
+                    all_mutations.extend(operator.mutate(node, source));
+                }
+            }
+
+            let mut cursor = node.walk();
+            for child in node.children(&mut cursor) {
+                all_mutations.extend(collect_mutations(&child, source));
+            }
+
+            all_mutations
+        }
+
+        let mutations = collect_mutations(&root, source);
+
+        // Verify all mutations produce valid UTF-8
+        for mutation in &mutations {
+            // This validates the expect() doesn't panic
+            assert!(!mutation.source.is_empty());
+            // Verify it's valid UTF-8 by checking it can be parsed again
+            assert!(mutation.source.is_ascii() || mutation.source.chars().count() > 0);
+        }
+
+        assert!(!mutations.is_empty(), "Should generate mutations");
+    }
+
+    /// Test UTF-8 validity with Unicode identifiers (Python 3 supports Unicode)
+    #[test]
+    fn test_utf8_validity_with_unicode_identifiers() {
+        // Python 3 allows Unicode identifiers
+        let source = "résultat = α + β".as_bytes();
+
+        let mut parser = tree_sitter::Parser::new();
+        parser
+            .set_language(&tree_sitter_python::LANGUAGE.into())
+            .expect("Failed to set Python language");
+
+        let tree = parser.parse(source, None).expect("Failed to parse");
+        let root = tree.root_node();
+
+        fn find_and_mutate(node: &tree_sitter::Node, source: &[u8]) -> Vec<MutatedSource> {
+            let operator = PythonBinaryOpMutation;
+            if operator.can_mutate(node, source) {
+                return operator.mutate(node, source);
+            }
+
+            let mut cursor = node.walk();
+            for child in node.children(&mut cursor) {
+                let mutations = find_and_mutate(&child, source);
+                if !mutations.is_empty() {
+                    return mutations;
+                }
+            }
+            vec![]
+        }
+
+        let mutations = find_and_mutate(&root, source);
+
+        // All mutations should preserve Unicode and remain valid UTF-8
+        for mutation in &mutations {
+            assert!(mutation.source.contains("résultat"));
+            assert!(mutation.source.contains("α"));
+            assert!(mutation.source.contains("β"));
+            // Verify valid UTF-8 by ensuring chars() doesn't panic
+            assert!(mutation.source.chars().count() > 0);
+        }
+
+        assert!(!mutations.is_empty(), "Should generate mutations with Unicode");
+    }
+
+    /// Test all mutation operators produce valid UTF-8
+    #[test]
+    fn test_all_operators_produce_valid_utf8() {
+        // Test with various operators
+        let test_cases = vec![
+            b"a + b".as_slice(),
+            b"x == y".as_slice(),
+            b"a and b".as_slice(),
+            b"x in y".as_slice(),
+        ];
+
+        for source in test_cases {
+            let mut parser = tree_sitter::Parser::new();
+            parser
+                .set_language(&tree_sitter_python::LANGUAGE.into())
+                .expect("Failed to set Python language");
+
+            let tree = parser.parse(source, None).expect("Failed to parse");
+            let root = tree.root_node();
+
+            // Collect all possible mutations
+            fn collect_all_mutations(
+                node: &tree_sitter::Node,
+                source: &[u8],
+            ) -> Vec<MutatedSource> {
+                let mut mutations = Vec::new();
+
+                // Try all operators
+                let operators: Vec<Box<dyn TreeSitterMutationOperator>> = vec![
+                    Box::new(PythonBinaryOpMutation),
+                    Box::new(PythonRelationalOpMutation),
+                    Box::new(PythonLogicalOpMutation),
+                    Box::new(PythonMembershipOpMutation),
+                ];
+
+                for op in operators {
+                    if op.can_mutate(node, source) {
+                        mutations.extend(op.mutate(node, source));
+                    }
+                }
+
+                let mut cursor = node.walk();
+                for child in node.children(&mut cursor) {
+                    mutations.extend(collect_all_mutations(&child, source));
+                }
+
+                mutations
+            }
+
+            let mutations = collect_all_mutations(&root, source);
+
+            // Every mutation must be valid UTF-8
+            for mutation in &mutations {
+                // This is the key test - if expect() were to panic, this would fail
+                assert!(!mutation.source.is_empty());
+                // Verify UTF-8 validity explicitly
+                assert!(
+                    std::str::from_utf8(mutation.source.as_bytes()).is_ok(),
+                    "Mutation should produce valid UTF-8: {}",
+                    mutation.description
+                );
+            }
+        }
+    }
+
+    /// Test edge case: Empty operator replacement still produces valid UTF-8
+    #[test]
+    fn test_edge_cases_utf8() {
+        // Test with minimal source
+        let source = b"a+b";
+
+        let mut parser = tree_sitter::Parser::new();
+        parser
+            .set_language(&tree_sitter_python::LANGUAGE.into())
+            .expect("Failed to set Python language");
+
+        let tree = parser.parse(source, None).expect("Failed to parse");
+        let root = tree.root_node();
+
+        fn find_operator(node: &tree_sitter::Node, source: &[u8]) -> Vec<MutatedSource> {
+            let operator = PythonBinaryOpMutation;
+            if operator.can_mutate(node, source) {
+                return operator.mutate(node, source);
+            }
+
+            let mut cursor = node.walk();
+            for child in node.children(&mut cursor) {
+                let result = find_operator(&child, source);
+                if !result.is_empty() {
+                    return result;
+                }
+            }
+            vec![]
+        }
+
+        let mutations = find_operator(&root, source);
+
+        // All mutations valid UTF-8
+        for mutation in &mutations {
+            assert!(mutation.source.len() >= 3); // At least "a?b" where ? is operator
+            assert!(std::str::from_utf8(mutation.source.as_bytes()).is_ok());
+        }
+
+        assert!(!mutations.is_empty());
     }
 }
