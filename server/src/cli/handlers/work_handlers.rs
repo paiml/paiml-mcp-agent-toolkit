@@ -984,7 +984,30 @@ async fn run_quality_gates(project_path: &PathBuf) -> Result<bool> {
         }
     }
 
-    // 3. Run cargo clippy
+    // 3. Renacer golden tracing validation (if renacer.toml exists)
+    if project_path.join("renacer.toml").exists() {
+        println!("   🎯 Golden traces detected...");
+
+        match Command::new("renacer")
+            .args(&["validate", "--all"])
+            .current_dir(project_path)
+            .status()
+        {
+            Ok(status) if status.success() => {
+                println!("      ✅ Golden traces match");
+            }
+            Ok(_) => {
+                println!("      ❌ Golden traces diverged");
+                all_passed = false;
+            }
+            Err(_) => {
+                println!("      ⚠️  renacer not installed (skipping golden trace validation)");
+                println!("         Install: cargo install renacer");
+            }
+        }
+    }
+
+    // 4. Run cargo clippy
     println!("   📎 Running clippy...");
     let clippy_status = Command::new("cargo")
         .arg("clippy")
