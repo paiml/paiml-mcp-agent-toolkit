@@ -5,7 +5,9 @@ use std::fs;
 use tempfile::TempDir;
 
 /// TICKET-2001: RED TEST - C# support in deep_context pipeline
+/// NOTE: csharp-ast feature was removed in Sprint 46 Phase 6 (0 references)
 #[tokio::test]
+#[ignore = "csharp-ast feature removed in Sprint 46 Phase 6"]
 async fn test_csharp_deep_context_analysis() {
     // ARRANGE: Create C# file with known complexity
     let temp_dir = TempDir::new().unwrap();
@@ -110,6 +112,7 @@ namespace TestApp
 
 /// TICKET-2002: RED TEST - Go support in deep_context pipeline
 #[tokio::test]
+#[cfg(feature = "go-ast")]
 async fn test_go_deep_context_analysis() {
     // ARRANGE: Create Go file with known complexity
     let temp_dir = TempDir::new().unwrap();

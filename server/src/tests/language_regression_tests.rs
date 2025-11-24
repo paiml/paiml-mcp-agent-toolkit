@@ -206,6 +206,7 @@ public:
 /// Regression Test: Bash language support in deep_context pipeline
 /// Uses BashScriptAnalyzer to extract function definitions
 #[tokio::test]
+#[cfg(feature = "shell-ast")]
 async fn test_bash_deep_context_analysis() {
     // ARRANGE: Create Bash file with known complexity
     let temp_dir = TempDir::with_prefix("pmat_test_bash_").unwrap();
@@ -305,6 +306,7 @@ main "$@"
 /// Regression Test: PHP language support in deep_context pipeline
 /// PHP AST parser is implemented and integrated into the deep_context pipeline
 #[tokio::test]
+#[cfg(feature = "php-ast")]
 async fn test_php_deep_context_analysis() {
     // ARRANGE: Create PHP file with known complexity
     let temp_dir = TempDir::with_prefix("pmat_test_php_").unwrap();
@@ -417,6 +419,7 @@ class Calculator {
 /// Regression Test: Swift language support in deep_context pipeline
 /// Swift AST parser is implemented and integrated into the deep_context pipeline
 #[tokio::test]
+#[cfg(feature = "swift-ast")]
 async fn test_swift_deep_context_analysis() {
     // ARRANGE: Create Swift file with known complexity
     let temp_dir = TempDir::with_prefix("pmat_test_swift_").unwrap();
@@ -528,6 +531,7 @@ class Calculator {
 
 /// Regression Test: WASM language support in deep_context pipeline
 #[tokio::test]
+#[cfg(feature = "wasm-ast")]
 async fn test_wasm_deep_context_analysis() {
     // ARRANGE: Create WAT (WebAssembly Text) file with known complexity
     let temp_dir = TempDir::with_prefix("pmat_test_wasm_").unwrap();
