@@ -19,6 +19,7 @@ pub mod intelligence;
 pub mod metrics;
 pub mod onboarding;
 pub mod performance;
+#[cfg(feature = "prometheus-metrics")]
 pub mod prometheus_exporter;
 
 use anyhow::Result;

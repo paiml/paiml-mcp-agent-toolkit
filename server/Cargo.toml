@@ -228,9 +228,9 @@ pulldown-cmark = "0.13"
 # HTTP client for GitHub API
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 
-# Prometheus metrics
-prometheus = { version = "0.14" }
-warp = { version = "0.3" }
+# Prometheus metrics (optional - rarely used)
+prometheus = { version = "0.14", optional = true }
+warp = { version = "0.3", optional = true }
 
 # Table formatting
 prettytable-rs = "0.10"
@@ -391,6 +391,11 @@ mutation-testing = ["rust-ast", "python-ast", "typescript-ast", "cpp-ast", "go-a
 # Enables distributed consensus using async-raft
 # Note: raft_consensus module currently commented out due to API compatibility
 raft-consensus = ["async-raft"]
+
+# Prometheus metrics (Optional - rarely used)
+# Enables Prometheus metrics export via warp HTTP server
+# Note: prometheus_exporter module in unified_quality
+prometheus-metrics = ["prometheus", "warp"]
 
 
 [[bin]]
