@@ -918,3 +918,40 @@ Scoring weights based on peer-reviewed research:
 **Quality**: Zero SATD, zero clippy warnings, all tests passing
 **Commits**: 4 production commits, 1,201 lines of code
 
+---
+
+## DETERMINISTIC Agent Instructions
+
+When implementing fixes or responding to UX issues, follow DETERMINISTIC instructions in:
+
+**`docs/agent-instructions/`**
+
+These documents provide:
+- Step-by-step fix procedures
+- Exact file locations and line numbers
+- Before/after code examples
+- Test cases to verify fixes
+- Priority ordering for multiple issues
+
+### Available Instructions:
+
+1. **`pmat-work-ux-fixes.md`** - Fixes for `pmat work` command UX issues
+   - Fuzzy ID matching (partial/case-insensitive)
+   - Status display improvements
+   - Quality gate optimizations
+   - Short ID generation
+
+### Agent Workflow:
+
+```bash
+# 1. User reports UX issue
+# 2. Read relevant instruction doc:
+cat docs/agent-instructions/pmat-work-ux-fixes.md
+
+# 3. Apply DETERMINISTIC fixes in priority order
+# 4. Test each fix independently
+# 5. Commit atomically with reference to instruction doc
+```
+
+**Rationale**: DETERMINISTIC instructions reduce hallucination risk and ensure consistent, high-quality fixes across agent sessions.
+

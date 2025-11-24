@@ -197,9 +197,49 @@ impl Roadmap {
         }
     }
 
-    /// Find item by ID
+    /// Find item by ID with fuzzy matching
+    ///
+    /// Matching strategy (in order):
+    /// 1. Exact match (case-sensitive)
+    /// 2. Case-insensitive match
+    /// 3. Prefix match (starts_with, case-insensitive)
+    /// 4. Contains match (partial, case-insensitive)
+    ///
+    /// This allows users to type:
+    /// - Full ID: "Continue unwrap elimination: 27 more unwraps..."
+    /// - Partial: "unwrap elimination"
+    /// - Short: "unwrap"
+    /// - Any case: "UNWRAP"
     pub fn find_item(&self, id: &str) -> Option<&RoadmapItem> {
-        self.roadmap.iter().find(|item| item.id == id)
+        let id_lower = id.to_lowercase();
+
+        // 1. Exact match (fastest, case-sensitive)
+        if let Some(item) = self.roadmap.iter().find(|item| item.id == id) {
+            return Some(item);
+        }
+
+        // 2. Case-insensitive exact match
+        if let Some(item) = self
+            .roadmap
+            .iter()
+            .find(|item| item.id.to_lowercase() == id_lower)
+        {
+            return Some(item);
+        }
+
+        // 3. Prefix match (starts_with)
+        if let Some(item) = self
+            .roadmap
+            .iter()
+            .find(|item| item.id.to_lowercase().starts_with(&id_lower))
+        {
+            return Some(item);
+        }
+
+        // 4. Contains match (last resort)
+        self.roadmap
+            .iter()
+            .find(|item| item.id.to_lowercase().contains(&id_lower))
     }
 
     /// Find item by GitHub issue number
@@ -357,6 +397,60 @@ mod tests {
         roadmap.upsert_item(updated);
         assert_eq!(roadmap.roadmap.len(), 1);
         assert_eq!(roadmap.roadmap[0].status, ItemStatus::Completed);
+    }
+
+    /// Test fuzzy ID matching for improved UX
+    #[test]
+    fn test_fuzzy_id_matching() {
+        let mut roadmap = Roadmap::new(None);
+
+        // Add test items
+        roadmap.upsert_item(RoadmapItem::new(
+            "Continue unwrap elimination: 27 more unwraps to reach 60-unwrap milestone (EXTREME TDD)".to_string(),
+            "Unwrap work".to_string(),
+        ));
+        roadmap.upsert_item(RoadmapItem::new(
+            "Fix critical bugs in parser".to_string(),
+            "Parser fixes".to_string(),
+        ));
+
+        // Test 1: Exact match (case-sensitive)
+        assert!(roadmap
+            .find_item("Continue unwrap elimination: 27 more unwraps to reach 60-unwrap milestone (EXTREME TDD)")
+            .is_some());
+
+        // Test 2: Case-insensitive exact match
+        assert!(roadmap
+            .find_item("continue unwrap elimination: 27 more unwraps to reach 60-unwrap milestone (extreme tdd)")
+            .is_some());
+
+        // Test 3: Partial match (prefix)
+        let found = roadmap.find_item("Continue unwrap");
+        assert!(found.is_some());
+        assert_eq!(found.unwrap().title, "Unwrap work");
+
+        // Test 4: Contains match (not at start)
+        let found = roadmap.find_item("unwrap elimination");
+        assert!(found.is_some());
+        assert_eq!(found.unwrap().title, "Unwrap work");
+
+        // Test 5: Single word match
+        let found = roadmap.find_item("unwrap");
+        assert!(found.is_some());
+        assert_eq!(found.unwrap().title, "Unwrap work");
+
+        // Test 6: Case-insensitive partial
+        let found = roadmap.find_item("UNWRAP");
+        assert!(found.is_some());
+        assert_eq!(found.unwrap().title, "Unwrap work");
+
+        // Test 7: Different item
+        let found = roadmap.find_item("parser");
+        assert!(found.is_some());
+        assert_eq!(found.unwrap().title, "Parser fixes");
+
+        // Test 8: No match
+        assert!(roadmap.find_item("nonexistent").is_none());
     }
 
     #[test]
