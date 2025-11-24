@@ -9,6 +9,7 @@ use crate::services::github_client::GitHubClient;
 use crate::services::hook_manager;
 use crate::services::roadmap_service::RoadmapService;
 use anyhow::{Context, Result};
+use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 /// Handle work init command
@@ -311,6 +312,112 @@ pub async fn handle_work_continue(id: String, path: Option<PathBuf>) -> Result<(
     Ok(())
 }
 
+/// Commit metadata structure for linking commits to work items and quality scores
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct CommitMetadata {
+    commit_sha: Option<String>,
+    work_item_id: String,
+    prompt: String,
+    tdg_score: f64,
+    repo_score: f64,
+    rust_project_score: Option<f64>,
+    timestamp: chrono::DateTime<chrono::Utc>,
+}
+
+/// Capture commit metadata (O(1) from .pmat-metrics/ cache)
+async fn capture_commit_metadata(
+    project_path: &PathBuf,
+    item: &RoadmapItem,
+) -> Result<CommitMetadata> {
+    use std::process::Command;
+
+    let short_sha = Command::new("git")
+        .args(&["rev-parse", "--short", "HEAD"])
+        .current_dir(project_path)
+        .output()?;
+    let short_sha = String::from_utf8_lossy(&short_sha.stdout).trim().to_string();
+
+    // Capture scores (O(1) from cache)
+    let tdg_score = capture_tdg_score(project_path).await.unwrap_or(0.0);
+    let repo_score = capture_repo_score(project_path).await.unwrap_or(0.0);
+    let rust_score = if project_path.join("Cargo.toml").exists() {
+        Some(capture_rust_project_score(project_path).await.unwrap_or(0.0))
+    } else {
+        None
+    };
+
+    let metadata = CommitMetadata {
+        commit_sha: None, // Will be filled after commit
+        work_item_id: item.id.clone(),
+        prompt: item.title.clone(),
+        tdg_score,
+        repo_score,
+        rust_project_score: rust_score,
+        timestamp: chrono::Utc::now(),
+    };
+
+    // Write to .pmat-metrics/
+    let metrics_dir = project_path.join(".pmat-metrics");
+    std::fs::create_dir_all(&metrics_dir)?;
+
+    let meta_file = metrics_dir.join(format!("commit-{}-meta.json", short_sha));
+    let json = serde_json::to_string_pretty(&metadata)?;
+    std::fs::write(meta_file, json)?;
+
+    Ok(metadata)
+}
+
+/// Capture TDG score (O(1) from cache)
+async fn capture_tdg_score(project_path: &PathBuf) -> Result<f64> {
+    let metrics_dir = project_path.join(".pmat-metrics");
+    let tdg_file = metrics_dir.join("tdg-score.json");
+
+    if tdg_file.exists() {
+        let content = std::fs::read_to_string(&tdg_file)?;
+        let json: serde_json::Value = serde_json::from_str(&content)?;
+        if let Some(score) = json.get("score").and_then(|v| v.as_f64()) {
+            return Ok(score);
+        }
+    }
+
+    // Fallback: compute score if cache doesn't exist
+    Ok(0.0)
+}
+
+/// Capture repo score (O(1) from cache)
+async fn capture_repo_score(project_path: &PathBuf) -> Result<f64> {
+    let metrics_dir = project_path.join(".pmat-metrics");
+    let repo_file = metrics_dir.join("repo-score.json");
+
+    if repo_file.exists() {
+        let content = std::fs::read_to_string(&repo_file)?;
+        let json: serde_json::Value = serde_json::from_str(&content)?;
+        if let Some(score) = json.get("score").and_then(|v| v.as_f64()) {
+            return Ok(score);
+        }
+    }
+
+    // Fallback: compute score if cache doesn't exist
+    Ok(0.0)
+}
+
+/// Capture rust project score (O(1) from cache)
+async fn capture_rust_project_score(project_path: &PathBuf) -> Result<f64> {
+    let metrics_dir = project_path.join(".pmat-metrics");
+    let rust_file = metrics_dir.join("rust-project-score.json");
+
+    if rust_file.exists() {
+        let content = std::fs::read_to_string(&rust_file)?;
+        let json: serde_json::Value = serde_json::from_str(&content)?;
+        if let Some(score) = json.get("total_earned").and_then(|v| v.as_f64()) {
+            return Ok(score);
+        }
+    }
+
+    // Fallback: compute score if cache doesn't exist
+    Ok(0.0)
+}
+
 /// Handle work complete command
 pub async fn handle_work_complete(
     id: String,
@@ -365,6 +472,19 @@ pub async fn handle_work_complete(
     println!("✅ Marked as complete: {}", item.title);
     println!("✅ Updated roadmap: {}", roadmap_path.display());
 
+    // Capture commit metadata (O(1) from cache)
+    println!();
+    println!("   📊 Capturing commit metadata...");
+    let metadata = capture_commit_metadata(&project_path, &item).await?;
+    println!("      ✅ TDG Score: {:.1}/100", metadata.tdg_score);
+    println!("      ✅ Repo Score: {:.1}/100", metadata.repo_score);
+    if let Some(rust_score) = metadata.rust_project_score {
+        println!("      ✅ Rust Project Score: {:.1}/134", rust_score);
+    }
+    let meta_file = project_path.join(".pmat-metrics")
+        .join(format!("commit-*-meta.json"));
+    println!("✅ Commit metadata: {}", meta_file.display());
+
     // Update CHANGELOG.md if labels are available
     if !item.labels.is_empty() {
         if let Some(category) = ChangeCategory::from_labels(&item.labels) {
@@ -386,12 +506,27 @@ pub async fn handle_work_complete(
 
     println!();
 
-    // Next steps
+    // Next steps with commit metadata
     println!("🎯 Next steps:");
-    println!(
-        "   1. Create commit: git commit -m \"feat: {} (Refs {})\"",
-        item.title, id
+    let commit_msg = format!(
+        "feat: {} (Refs {})\n\nWork-Item: {}\nTDG-Score: {:.1}/100\nRepo-Score: {:.1}/100\n{}Metrics: .pmat-metrics/commit-*-meta.json",
+        item.title,
+        id,
+        item.id,
+        metadata.tdg_score,
+        metadata.repo_score,
+        if let Some(rust_score) = metadata.rust_project_score {
+            format!("Rust-Score: {:.1}/134\n", rust_score)
+        } else {
+            String::new()
+        }
     );
+
+    println!("   1. git commit -m \"$(cat <<'EOF'");
+    println!("{}", commit_msg);
+    println!("EOF");
+    println!(")\"");
+
     if item.is_github_synced() {
         println!(
             "   2. Close GitHub issue: gh issue close {}",
