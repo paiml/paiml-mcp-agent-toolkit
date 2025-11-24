@@ -828,6 +828,120 @@ pub enum Commands {
         #[arg(short = 'a', long = "auto-analyze")]
         auto_analyze: bool,
     },
+
+    /// PMAT compliance and migration system (GH-96)
+    #[command(visible_aliases = &["compliance"])]
+    Comply {
+        #[command(subcommand)]
+        command: ComplyCommands,
+    },
+}
+
+/// Comply subcommands for PMAT compliance checking and migration (GH-96)
+#[derive(Debug, Clone, Subcommand)]
+pub enum ComplyCommands {
+    /// Check project compliance with current PMAT version
+    #[command(visible_aliases = &["status"])]
+    Check {
+        /// Project path (defaults to current directory)
+        #[arg(short = 'p', long = "path", default_value = ".")]
+        path: PathBuf,
+
+        /// Exit with error if non-compliant
+        #[arg(long)]
+        strict: bool,
+
+        /// Show only failures (breaking changes/incompatibilities)
+        #[arg(long)]
+        failures_only: bool,
+
+        /// Output format
+        #[arg(short = 'f', long = "format", value_enum, default_value = "text")]
+        format: ComplyOutputFormat,
+    },
+
+    /// Migrate project to latest PMAT standards
+    Migrate {
+        /// Project path (defaults to current directory)
+        #[arg(short = 'p', long = "path", default_value = ".")]
+        path: PathBuf,
+
+        /// Target PMAT version (defaults to current binary version)
+        #[arg(long)]
+        version: Option<String>,
+
+        /// Dry run (show what would be migrated without changing files)
+        #[arg(long)]
+        dry_run: bool,
+
+        /// Skip backup creation (NOT RECOMMENDED)
+        #[arg(long)]
+        no_backup: bool,
+
+        /// Force migration even if breaking changes detected
+        #[arg(long)]
+        force: bool,
+    },
+
+    /// Show changelog since project's PMAT version
+    Diff {
+        /// Project path (defaults to current directory)
+        #[arg(short = 'p', long = "path", default_value = ".")]
+        path: PathBuf,
+
+        /// Start version for changelog (defaults to project version)
+        #[arg(long)]
+        from: Option<String>,
+
+        /// End version for changelog (defaults to current binary)
+        #[arg(long)]
+        to: Option<String>,
+
+        /// Show only breaking changes
+        #[arg(long)]
+        breaking_only: bool,
+    },
+
+    /// Update hooks and configs to latest versions
+    Update {
+        /// Project path (defaults to current directory)
+        #[arg(short = 'p', long = "path", default_value = ".")]
+        path: PathBuf,
+
+        /// Update only hooks
+        #[arg(long)]
+        hooks: bool,
+
+        /// Update only configs
+        #[arg(long)]
+        config: bool,
+
+        /// Dry run (show what would be updated)
+        #[arg(long)]
+        dry_run: bool,
+    },
+
+    /// Initialize .pmat/project.toml with current version
+    Init {
+        /// Project path (defaults to current directory)
+        #[arg(short = 'p', long = "path", default_value = ".")]
+        path: PathBuf,
+
+        /// Force overwrite existing project.toml
+        #[arg(long)]
+        force: bool,
+    },
+}
+
+/// Comply output formats (GH-96)
+#[derive(Debug, Clone, clap::ValueEnum, PartialEq)]
+pub enum ComplyOutputFormat {
+    /// Human-readable text format
+    Text,
+    /// JSON format for CI/CD
+    Json,
+    /// Markdown report format
+    Markdown,
 }
 
 /// Debug subcommands (Sprint 74 - TRACE-001 through TRACE-003)

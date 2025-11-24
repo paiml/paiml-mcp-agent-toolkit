@@ -646,6 +646,10 @@ impl CommandExecutor {
                     command
                 )
             }
+            // GH-96: PMAT compliance and migration system - handled by command_dispatcher.rs
+            Commands::Comply { .. } => {
+                anyhow::bail!("Comply command should be handled by command_dispatcher.rs")
+            }
             // Five Whys root cause analysis - handled by command_dispatcher.rs
             Commands::DebugFiveWhys { .. } => {
                 anyhow::bail!("DebugFiveWhys command should be handled by command_dispatcher.rs")

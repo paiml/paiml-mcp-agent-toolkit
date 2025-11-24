@@ -59,6 +59,7 @@ pub mod git_context;
 pub mod mcp;
 pub mod pdmt;
 pub mod project_meta;
+pub mod project_metadata;
 pub mod prompt_model;
 pub mod proxy;
 pub mod quality_gate;

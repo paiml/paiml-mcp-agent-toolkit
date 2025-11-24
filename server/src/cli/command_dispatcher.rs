@@ -509,6 +509,10 @@ impl CommandDispatcher {
                 // Issue #75: Unified GitHub/YAML workflow
                 Self::execute_work_command(&command).await
             }
+            Commands::Comply { command } => {
+                // GH-96: PMAT compliance and migration system
+                handlers::comply_handlers::handle_comply_command(command).await
+            }
             Commands::DebugFiveWhys {
                 issue,
                 depth,
