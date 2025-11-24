@@ -34,8 +34,8 @@ actix-rt = "2.10"
 # State management
 # crdt = "0.5" # Too old, will implement our own
 
-# Consensus
-async-raft = "0.6"
+# Consensus (opt-in - raft_consensus module currently disabled)
+async-raft = { version = "0.6", optional = true }
 
 # Message passing
 # bytes = "1.10" # Already defined below
@@ -386,6 +386,11 @@ tdg-explain = ["rust-ast"]
 # Enables multi-language mutation testing with tree-sitter parsers
 # Depends on all language ASTs used by mutation generators
 mutation-testing = ["rust-ast", "python-ast", "typescript-ast", "cpp-ast", "go-ast"]
+
+# Raft consensus (Optional - currently disabled)
+# Enables distributed consensus using async-raft
+# Note: raft_consensus module currently commented out due to API compatibility
+raft-consensus = ["async-raft"]
 
 
 [[bin]]
