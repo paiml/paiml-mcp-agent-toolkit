@@ -510,7 +510,7 @@ impl CoverageImprovementService {
     /// Generate a proptest module for the given functions
     fn generate_proptest_module(
         &self,
-        _target: &PathBuf,
+        target: &PathBuf,
         functions: &[syn::ItemFn],
     ) -> Result<String> {
         let mut module = String::from(
@@ -522,32 +522,116 @@ use proptest::prelude::*;
 "#,
         );
 
+        // Add module import for the target file
+        let module_name = target
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("target");
+        module.push_str(&format!("use crate::{}::*;\n\n", module_name));
+
         for func in functions {
             let func_name = &func.sig.ident;
             let test_name = format!("proptest_{}", func_name);
 
-            // Generate proptest based on function signature
-            module.push_str(&format!(
-                r#"proptest! {{
+            // Extract parameters and generate strategies
+            let mut param_strategies = Vec::new();
+            let mut param_names = Vec::new();
+
+            for input in &func.sig.inputs {
+                if let syn::FnArg::Typed(pat_type) = input {
+                    if let syn::Pat::Ident(pat_ident) = &*pat_type.pat {
+                        let param_name = pat_ident.ident.to_string();
+                        let strategy = self.generate_strategy_for_type(&pat_type.ty);
+
+                        param_names.push(param_name.clone());
+                        param_strategies.push(format!("{} in {}", param_name, strategy));
+                    }
+                }
+            }
+
+            // Generate the proptest
+            if param_strategies.is_empty() {
+                // No parameters - simple test
+                module.push_str(&format!(
+                    r#"#[test]
+fn {}() {{
+    // Function has no parameters
+    let _result = {}();
+    // Add assertions based on expected behavior
+}}
+
+"#,
+                    test_name, func_name
+                ));
+            } else {
+                // Has parameters - property test
+                let params_str = param_strategies.join(",\n        ");
+                let call_params = param_names.join(", ");
+
+                module.push_str(&format!(
+                    r#"proptest! {{
     #[test]
     fn {}(
-        // TODO: Add appropriate strategy parameters based on function signature
-        s in ".*",
-        n in 0i32..100i32,
+        {}
     ) {{
-        // TODO: Call the function with generated values
-        // Example: let result = {}(s, n);
-        // Example: prop_assert!(result.is_ok());
-        prop_assert!(true); // Placeholder assertion
+        // Property test for {}
+        let _result = {}({});
+        // Basic invariant: function should not panic
+        prop_assert!(true);
     }}
 }}
 
 "#,
-                test_name, func_name
-            ));
+                    test_name, params_str, func_name, func_name, call_params
+                ));
+            }
         }
 
         Ok(module)
+    }
+
+    /// Generate a proptest strategy for a given type
+    fn generate_strategy_for_type(&self, ty: &syn::Type) -> String {
+        match ty {
+            syn::Type::Path(type_path) => {
+                let type_str = type_path
+                    .path
+                    .segments
+                    .last()
+                    .map(|seg| seg.ident.to_string())
+                    .unwrap_or_else(|| "unknown".to_string());
+
+                match type_str.as_str() {
+                    "i8" => "any::<i8>()".to_string(),
+                    "i16" => "any::<i16>()".to_string(),
+                    "i32" => "any::<i32>()".to_string(),
+                    "i64" => "any::<i64>()".to_string(),
+                    "u8" => "any::<u8>()".to_string(),
+                    "u16" => "any::<u16>()".to_string(),
+                    "u32" => "any::<u32>()".to_string(),
+                    "u64" => "any::<u64>()".to_string(),
+                    "usize" => "any::<usize>()".to_string(),
+                    "isize" => "any::<isize>()".to_string(),
+                    "f32" => "any::<f32>()".to_string(),
+                    "f64" => "any::<f64>()".to_string(),
+                    "bool" => "any::<bool>()".to_string(),
+                    "char" => "any::<char>()".to_string(),
+                    "String" => r#"".*""#.to_string(),
+                    "str" => r#"".*""#.to_string(),
+                    "Vec" => "prop::collection::vec(any::<i32>(), 0..100)".to_string(),
+                    "Option" => "prop::option::of(any::<i32>())".to_string(),
+                    "Result" => "any::<i32>()".to_string(), // Simplified
+                    "PathBuf" => r#""[a-z0-9/]+""#.to_string(),
+                    "Path" => r#""[a-z0-9/]+""#.to_string(),
+                    _ => "any::<i32>()".to_string(), // Default fallback
+                }
+            }
+            syn::Type::Reference(type_ref) => {
+                // For references, generate strategy for the inner type
+                self.generate_strategy_for_type(&type_ref.elem)
+            }
+            _ => "any::<i32>()".to_string(), // Default fallback
+        }
     }
 
     /// Run mutation testing on generated tests
