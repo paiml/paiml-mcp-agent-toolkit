@@ -1966,6 +1966,7 @@ impl CliAdapter {
             | AnalyzeCommands::Provability { .. }
             | AnalyzeCommands::ProofAnnotations { .. }
             | AnalyzeCommands::IncrementalCoverage { .. }
+            | AnalyzeCommands::CoverageImprove { .. }
             | AnalyzeCommands::AssemblyScript { .. }
             | AnalyzeCommands::WebAssembly { .. }
             | AnalyzeCommands::Wasm { .. }

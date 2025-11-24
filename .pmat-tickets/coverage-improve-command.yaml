@@ -1,0 +1,115 @@
+id: PMAT-COVERAGE-001
+title: "Implement `pmat coverage improve` First-Class Command"
+description: |
+  Build a first-class CLI command that autonomously improves test coverage to a target percentage
+  using PMAT's own analysis tools and Extreme TDD methodology.
+
+  This is a HARD-CODED feature (like `pmat analyze complexity`) that should work on ANY Rust project.
+
+priority: high
+type: feature
+status: todo
+
+specification: docs/specifications/pmat-coverage-improve-command.md
+
+objectives:
+  - Implement CoverageImprovementService in server/src/services/
+  - Wire command into CLI (commands.rs + command_dispatcher.rs)
+  - Create handler in server/src/cli/handlers/coverage_improve_handler.rs
+  - Add property-based tests + mutation testing validation
+  - Dogfood on PMAT itself to reach 95% coverage
+  - Document as generalizable methodology for ANY Rust project
+
+acceptance_criteria:
+  - Command exists: `pmat coverage improve --target 95`
+  - Uses PMAT tools: complexity, SATD, dead-code, churn analysis
+  - Generates property-based tests (proptest), not basic assertions
+  - Validates with mutation testing (>=80% mutation score)
+  - Reaches target coverage (default 95%)
+  - Works on PMAT itself (dogfooding proof)
+  - Works on ANY Rust project (generalizable)
+
+workflow:
+  phase_1:
+    name: "Measure Baseline"
+    tasks:
+      - Run make coverage to get current coverage percentage
+      - Identify files with coverage below target
+
+  phase_2:
+    name: "Prioritize Targets (PMAT Tools)"
+    tasks:
+      - Use pmat analyze complexity to find high-complexity functions
+      - Use pmat analyze satd to find TODO/FIXME markers
+      - Use pmat analyze dead-code to exclude dead code
+      - Use pmat analyze churn to prioritize frequently-changed files
+
+  phase_3:
+    name: "Generate Property-Based Tests"
+    tasks:
+      - Parse AST to extract function signatures
+      - Generate proptest templates based on types and complexity
+      - Write tests with clear names
+
+  phase_4:
+    name: "Validate with Mutation Testing"
+    tasks:
+      - Run cargo nextest run on new tests
+      - Run cargo mutants on tested code
+      - If mutation score < 80%, refine tests using Five Whys
+      - Repeat until mutation score >= 80%
+
+  phase_5:
+    name: "Iterate"
+    tasks:
+      - Re-measure coverage with make coverage
+      - If coverage < target, return to phase_2
+      - If coverage >= target, generate completion report
+
+implementation:
+  files_to_create:
+    - server/src/services/coverage_improvement_service.rs
+    - server/src/cli/handlers/coverage_improve_handler.rs
+    - server/src/models/coverage_improvement.rs
+
+  files_to_modify:
+    - server/src/cli/commands.rs (add CoverageImprove command)
+    - server/src/cli/command_dispatcher.rs (wire handler)
+    - server/src/cli/enums.rs (add CoverageImproveOutputFormat if needed)
+    - server/src/services/mod.rs (export new service)
+
+  dependencies:
+    - Existing: server/src/services/complexity_analyzer.rs
+    - Existing: server/src/services/satd_detector.rs
+    - Existing: server/src/services/dead_code_analyzer.rs
+    - Existing: server/src/services/churn_analyzer.rs
+    - External: cargo-llvm-cov (already used via make coverage)
+    - External: cargo-mutants (mutation testing)
+    - External: proptest (property-based testing)
+
+current_status:
+  baseline_coverage: 49.87%
+  target_coverage: 95.0%
+  gap: 45.13%
+  tests_passing: 3602/4279 (84%)
+  blocking_issues:
+    - Stack overflow in Clap parsing (ignored 1 test)
+    - 677 tests not run due to test failures
+
+extreme_tdd_requirements:
+  - All new code must have property-based tests
+  - Mutation score must be >= 80%
+  - Coverage must reach 95% minimum
+  - Use Five Whys for debugging coverage plateaus
+
+references:
+  - CLAUDE.md: Extreme TDD policy (95% coverage + mutation testing)
+  - Specification: docs/specifications/pmat-coverage-improve-command.md
+  - Existing coverage: pmat analyze incremental-coverage (measures only)
+  - Toyota Way: Jidoka (built-in quality, not manual labor)
+
+success_criteria:
+  - pmat coverage improve works on PMAT (reaches 95%)
+  - Command is generalizable (works on ANY Rust project)
+  - Property tests + mutation tests validate all new code
+  - Documentation explains reusable methodology

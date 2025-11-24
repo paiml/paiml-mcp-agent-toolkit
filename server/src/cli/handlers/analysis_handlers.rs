@@ -161,6 +161,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
         | AnalyzeCommands::NameSimilarity { .. }
         | AnalyzeCommands::ProofAnnotations { .. }
         | AnalyzeCommands::IncrementalCoverage { .. }
+        | AnalyzeCommands::CoverageImprove { .. }
         | AnalyzeCommands::SymbolTable { .. }
         | AnalyzeCommands::BigO { .. } => route_specialized_analysis(cmd).await,
 
@@ -231,6 +232,30 @@ async fn route_specialized_analysis(cmd: AnalyzeCommands) -> Result<()> {
         AnalyzeCommands::ProofAnnotations { .. } => route_proof_annotations_analysis(cmd).await,
         AnalyzeCommands::IncrementalCoverage { .. } => {
             route_incremental_coverage_analysis(cmd).await
+        }
+        AnalyzeCommands::CoverageImprove {
+            project_path,
+            target,
+            max_iterations,
+            fast,
+            mutation_threshold,
+            focus,
+            exclude,
+            output,
+            format,
+        } => {
+            crate::cli::handlers::coverage_improve_handler::handle_coverage_improve(
+                project_path,
+                target,
+                max_iterations,
+                fast,
+                mutation_threshold,
+                focus,
+                exclude,
+                output,
+                format,
+            )
+            .await
         }
         AnalyzeCommands::SymbolTable { .. } => route_symbol_table_analysis(cmd).await,
         AnalyzeCommands::BigO { .. } => route_big_o_analysis(cmd).await,

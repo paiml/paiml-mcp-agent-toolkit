@@ -6,6 +6,7 @@
 use crate::cli::diagnose::DiagnoseArgs;
 use crate::cli::handlers::cache::CacheCommand;
 use crate::cli::handlers::memory::MemoryCommand;
+use crate::cli::handlers::coverage_improve_handler::CoverageImproveOutputFormat;
 use crate::cli::{
     AnalysisType, BigOOutputFormat, ComplexityOutputFormat, ComprehensiveOutputFormat,
     ContextFormat, DagType, DeadCodeOutputFormat, DebugOutputFormat, DeepContextCacheStrategy,
@@ -2282,6 +2283,46 @@ pub enum AnalyzeCommands {
         /// Number of top files to show (0 = all)
         #[arg(long, default_value = "10")]
         top_files: usize,
+    },
+
+    /// Improve test coverage to target percentage using PMAT tools and Extreme TDD
+    #[command(visible_aliases = &["improve-coverage", "cov-improve"])]
+    CoverageImprove {
+        /// Project path to analyze (defaults to current directory)
+        #[arg(long, short = 'p', default_value = ".")]
+        project_path: PathBuf,
+
+        /// Target coverage percentage (0-100)
+        #[arg(long, short = 't', default_value = "95.0")]
+        target: f64,
+
+        /// Maximum improvement iterations
+        #[arg(long, default_value = "10")]
+        max_iterations: usize,
+
+        /// Skip mutation testing (faster but lower quality)
+        #[arg(long)]
+        fast: bool,
+
+        /// Minimum mutation score threshold (0-100)
+        #[arg(long, default_value = "80.0")]
+        mutation_threshold: f64,
+
+        /// Focus on specific files/modules (glob patterns)
+        #[arg(long)]
+        focus: Vec<String>,
+
+        /// Exclude files/modules (glob patterns)
+        #[arg(long)]
+        exclude: Vec<String>,
+
+        /// Output file path
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+
+        /// Output format
+        #[arg(long, short = 'f', value_enum, default_value = "text")]
+        format: CoverageImproveOutputFormat,
     },
 
     /// Analyze symbol table with cross-references and usage patterns

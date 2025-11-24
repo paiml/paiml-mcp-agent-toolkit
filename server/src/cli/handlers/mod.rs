@@ -19,6 +19,7 @@ pub mod complexity_handlers;
 pub mod comprehensive_analysis_handler;
 pub mod comprehensive_handler;
 pub mod comply_handlers; // GH-96: PMAT compliance and migration system
+pub mod coverage_improve_handler;
 pub mod test_discovery_handlers; // GH-98: Systematic test discovery and fixing
 pub mod config_command_handlers;
 pub mod configuration_handlers;

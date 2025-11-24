@@ -116,6 +116,7 @@ pub mod complexity_patterns;
 mod complexity_property_tests;
 pub mod configuration_service;
 pub mod context;
+pub mod coverage_improvement_service;
 pub mod coupling_analyzer;
 pub mod dag_builder;
 pub mod dead_code_analyzer;
