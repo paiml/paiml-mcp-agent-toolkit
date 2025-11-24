@@ -45,7 +45,7 @@ impl ProgressTracker {
         pb.set_style(
             ProgressStyle::default_spinner()
                 .template("{spinner:.green} {msg}")
-                .unwrap()
+                .expect("hardcoded template is valid")
                 .tick_strings(&["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]),
         );
         pb.set_message(message.to_string());
@@ -66,7 +66,7 @@ impl ProgressTracker {
                 .template(
                     "{msg} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} ({percent}%) {per_sec}",
                 )
-                .unwrap()
+                .expect("hardcoded template is valid")
                 .progress_chars("█▉▊▋▌▍▎▏  "),
         );
         pb.set_message(message.to_string());
@@ -86,7 +86,7 @@ impl ProgressTracker {
                 .template(
                     "{msg} [{elapsed_precise}] [{bar:40.cyan/blue}] {bytes}/{total_bytes} ({percent}%)",
                 )
-                .unwrap()
+                .expect("hardcoded template is valid")
                 .progress_chars("█▉▊▋▌▍▎▏  "),
         );
         pb.set_message(message.to_string());
@@ -182,6 +182,25 @@ impl FileClassificationReporter {
             .load(std::sync::atomic::Ordering::Relaxed);
         let files = self.large_files_skipped.lock().unwrap().clone();
         (count, files)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Test that hardcoded templates are valid (validates expect() at lines 48, 69, 89)
+    #[test]
+    fn test_progress_templates_valid() {
+        let progress = ProgressTracker::new(true);
+
+        // If these calls don't panic, the templates are valid (expect() succeeded)
+        let _spinner = progress.create_spinner("Test");
+        let _file_progress = progress.create_file_progress(100, "Files");
+        let _bytes_progress = progress.create_bytes_progress(1000, "Bytes");
+
+        // All three templates compiled successfully (expect() didn't panic)
+        assert!(true);
     }
 }
 
