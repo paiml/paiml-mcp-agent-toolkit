@@ -632,11 +632,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: Implement O(1) Context and TDG with trueno-graph
-  status: inprogress
+  status: completed
   priority: high
   assigned_to: null
   created: 2025-11-25T16:00:00.000000000+00:00
-  updated: 2025-11-25T10:22:56.996271930+00:00
+  updated: 2025-11-25T12:41:29.300966866+00:00
   spec: null
   acceptance_criteria:
   - Context generation uses trueno-graph CSR for O(1) function/symbol lookups
