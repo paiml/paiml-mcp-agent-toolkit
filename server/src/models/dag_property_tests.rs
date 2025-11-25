@@ -269,6 +269,7 @@ mod tests {
             let project = ProjectContext {
                 project_type: "rust".to_string(),
                 files: file_contexts,
+                graph: None,
                 summary: ProjectSummary {
                     total_files: files.len(),
                     total_functions,

@@ -100,6 +100,7 @@ impl AdvancedUnifiedContextBuilder {
         Ok(ProjectContext {
             project_type: "rust".to_string(), // Default to rust
             files: vec![],                    // Would need to be populated from analysis_report
+            graph: None,
             summary: ProjectSummary {
                 total_files: analysis_report.file_count,
                 total_functions: analysis_report.complexity_metrics.total_functions,

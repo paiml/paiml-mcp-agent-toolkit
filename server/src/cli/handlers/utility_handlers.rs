@@ -698,6 +698,7 @@ fn build_project_context_from_simple(
     let project_context = ProjectContext {
         project_type: detected_toolchain,
         files: vec![], // Simple context doesn't use file-based approach
+        graph: None,
         summary: ProjectSummary {
             total_files: analysis_report.file_count,
             total_functions: analysis_report.complexity_metrics.total_functions, // This is the working count!
@@ -723,6 +724,7 @@ fn build_project_context(
     let mut project_context = ProjectContext {
         project_type: detected_toolchain,
         files: vec![],
+        graph: None,
         summary: ProjectSummary {
             total_files: 0,
             total_functions: 0,

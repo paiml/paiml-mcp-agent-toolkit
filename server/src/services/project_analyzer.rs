@@ -116,6 +116,7 @@ impl Project {
         let project_context = ProjectContext {
             project_type: "rust".to_string(), // Project type detection implemented elsewhere
             files: vec![],                    // Files converted via FileContext::from_path
+            graph: None,
             summary: ProjectSummary {
                 total_files: files.len(),
                 total_functions: 0,

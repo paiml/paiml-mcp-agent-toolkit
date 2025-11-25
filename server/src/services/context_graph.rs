@@ -54,6 +54,7 @@ use trueno_graph::{CsrGraph, NodeId, pagerank};
 /// CSR-backed project context for O(1) symbol lookups
 ///
 /// Uses trueno-graph for fast access and PageRank-based importance scoring.
+#[derive(Debug, Clone)]
 pub struct ProjectContextGraph {
     /// In-memory cache (symbol_name → AstItem)
     cache: HashMap<String, AstItem>,
@@ -216,9 +217,12 @@ impl ProjectContextGraph {
     }
 
     /// Get number of nodes in graph
+    ///
+    /// Returns the count of nodes we've added to the graph (tracked via node_map),
+    /// not the CSR graph's node count (which only tracks nodes with edges).
     #[must_use]
     pub fn num_nodes(&self) -> usize {
-        self.graph.num_nodes()
+        self.node_map.len()
     }
 
     /// Get number of edges in graph
