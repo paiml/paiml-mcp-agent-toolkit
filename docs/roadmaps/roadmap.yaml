@@ -628,3 +628,46 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: trueno-o1-context-tdg
+  github_issue: null
+  item_type: task
+  title: Implement O(1) Context and TDG with trueno-graph
+  status: inprogress
+  priority: high
+  assigned_to: null
+  created: 2025-11-25T16:00:00.000000000+00:00
+  updated: 2025-11-25T10:22:56.996271930+00:00
+  spec: null
+  acceptance_criteria:
+  - Context generation uses trueno-graph CSR for O(1) function/symbol lookups
+  - TDG analysis uses trueno-graph for dependency tracking and PageRank scoring
+  - Add PageRank to identify hot code paths in context generation
+  - Benchmark context generation current 8ms target under 5ms
+  - Benchmark TDG analysis current 15ms target under 10ms
+  - All existing tests pass
+  - Add performance regression tests
+  - Update documentation with performance metrics
+  - Integrate trueno-graph CSR into server/src/services/context.rs
+  - Add O(1) function lookup using CSR node mapping
+  - Implement PageRank for prioritizing important functions
+  - Add performance benchmarks for context generation
+  - Integrate trueno-graph into server/src/tdg/ modules
+  - Use CSR for dependency tracking between functions
+  - Implement PageRank to identify critical test targets
+  - Add performance benchmarks for TDG analysis
+  - Run full test suite
+  - Validate performance improvements with benchmarks
+  - Update CLAUDE.md with trueno-graph usage proof
+  - Document O(1) architecture in specifications
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - performance
+  - o1-quality-gates
+  - trueno-graph
+  notes: |
+    User discovered trueno-graph is ONLY used in metric_trends.rs.
+    Need to integrate into context.rs and TDG for real performance.
+    Current: metric_trends.rs only. Missing: context.rs and tdg/*.rs
+    Expected: Context 8ms to under 5ms, TDG 15ms to under 10ms
