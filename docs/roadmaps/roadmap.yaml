@@ -440,7 +440,7 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'New task: Comprehensive scan: Find all remaining production unwrap() calls'
-  status: inprogress
+  status: completed
   priority: medium
   assigned_to: null
   created: 2025-11-23T16:44:36.534847591+00:00
