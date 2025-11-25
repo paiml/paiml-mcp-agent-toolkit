@@ -965,7 +965,7 @@ fn build_context_graph(
             let symbol_name = item.display_name();
 
             // Skip if already added (duplicates from multiple files)
-            if graph.get_item(&symbol_name).is_some() {
+            if graph.get_item(symbol_name).is_some() {
                 continue;
             }
 
