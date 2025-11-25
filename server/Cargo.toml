@@ -19,7 +19,7 @@ path = "src/bin/pmat-agent.rs"
 
 [dependencies]
 # Organizational Intelligence Plugin - Phase 4 integration
-organizational-intelligence-plugin = { version = "0.1", optional = true }
+organizational-intelligence-plugin = { version = "0.2.0", optional = true }
 
 # Async runtime
 # Sprint 46 Phase 4: Removed "io-std", "signal", "process" features (saves 180-280 KB)

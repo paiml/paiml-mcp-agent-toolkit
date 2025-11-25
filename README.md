@@ -91,6 +91,7 @@ pmat hooks install --dry-run
 - **Semantic Code Search**: Natural language code discovery with hybrid search
 - **Quality Gates**: Pre-commit hooks, CI/CD integration, mutation testing
 - **MCP Integration**: 19 tools for Claude Code, Cline, and other MCP clients
+- **Organizational Intelligence** ✨NEW: Context-aware AI prompts from historical defect patterns (`--features org-intelligence`)
 - **Zero Configuration**: Works out of the box on any codebase
 
 ---
