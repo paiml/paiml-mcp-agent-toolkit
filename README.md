@@ -24,14 +24,9 @@
 # Rust (recommended)
 cargo install pmat
 
-# macOS/Linux
-brew install pmat
-
-# Windows
-choco install pmat
-
-# npm (global)
-npm install -g pmat-agent
+# From source (latest)
+git clone https://github.com/paiml/paiml-mcp-agent-toolkit
+cd paiml-mcp-agent-toolkit && cargo install --path server
 ```
 
 ### Basic Usage
