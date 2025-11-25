@@ -156,7 +156,7 @@ roadmap:
   priority: medium
   assigned_to: null
   created: 2025-11-21T17:48:38.986292903+00:00
-  updated: 2025-11-21T17:48:38.986292903+00:00
+  updated: 2025-11-25T12:51:39.149548802+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -636,7 +636,7 @@ roadmap:
   priority: high
   assigned_to: null
   created: 2025-11-25T16:00:00.000000000+00:00
-  updated: 2025-11-25T12:41:29.300966866+00:00
+  updated: 2025-11-25T13:31:39.545696374+00:00
   spec: null
   acceptance_criteria:
   - Context generation uses trueno-graph CSR for O(1) function/symbol lookups
