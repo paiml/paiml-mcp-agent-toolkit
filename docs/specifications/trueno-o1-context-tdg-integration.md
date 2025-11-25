@@ -229,8 +229,13 @@ pub struct TdgGraph {
 - **Commit**: 9a34bd4b
 
 ### Step 4: TDG Integration - IN PROGRESS
-- [ ] Create `TdgGraph` structure
-- [ ] Integrate into `tdg/analyzer.rs`
+- [x] Create `TdgGraph` structure (GREEN phase complete)
+  * Created `server/src/tdg/tdg_graph.rs` with trueno-graph CSR
+  * O(1) function lookups using HashMap + CSR
+  * PageRank identifies critical functions (high in-degree)
+  * 7/7 tests passing
+  * **Commit**: 82d25b7e
+- [ ] Integrate into `tdg/analyzer.rs` (REFACTOR phase)
 - [ ] Use PageRank for test prioritization
 - [ ] Add O(1) coverage lookups
 

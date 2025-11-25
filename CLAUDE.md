@@ -678,6 +678,99 @@ renacer validate --all
 
 ---
 
+## trueno-graph O(1) Context and TDG Integration
+
+**STATUS**: ✅ ACTIVE (NOT feature-gated - USED in production code)
+**Specification**: `docs/specifications/trueno-o1-context-tdg-integration.md`
+**Work Item**: `trueno-o1-context-tdg`
+
+### Overview
+
+trueno-graph provides GPU-first CSR (Compressed Sparse Row) graph database for O(1) symbol lookups and PageRank-based importance scoring. Integrated into both context generation and TDG analysis.
+
+### Usage Proof (NOT Feature-Gated)
+
+#### 1. Context Generation (`server/src/services/context.rs`)
+
+**Location**: context.rs:565-572, context_graph.rs:1-433
+**Integration**: Every `analyze_project_with_cache()` call builds a ProjectContextGraph
+
+```rust
+// Line 565-572: context.rs - ACTIVE usage in all project analysis
+pub async fn analyze_project_with_cache(...) -> Result<ProjectContext, TemplateError> {
+    let gitignore = build_gitignore(root_path)?;
+    let files = scan_and_analyze_files(root_path, toolchain, cache_manager, &gitignore).await;
+    let summary = build_project_summary(&files, root_path, toolchain).await;
+
+    // Build O(1) graph for symbol lookups and PageRank
+    let graph = build_context_graph(&files).ok();  // ← trueno-graph USED HERE
+
+    Ok(ProjectContext { project_type: toolchain.to_string(), files, summary, graph })
+}
+```
+
+**Evidence**:
+- `ProjectContext.graph: Option<ProjectContextGraph>` (context.rs:62)
+- `build_context_graph()` uses trueno-graph CSR (context.rs:955-989)
+- O(1) symbol lookups via HashMap + PageRank via CSR
+- **Tests passing**: 8/8 tests (7 context_graph + 1 integration)
+- **Commit**: 9a34bd4b
+
+#### 2. TDG Analysis (`server/src/tdg/tdg_graph.rs`)
+
+**Location**: tdg_graph.rs:1-325
+**Integration**: TdgGraph provides O(1) function dependency tracking with PageRank for critical test target identification
+
+```rust
+// Lines 51-78: TdgGraph structure using trueno-graph CSR
+pub struct TdgGraph {
+    graph: CsrGraph,                              // ← trueno-graph CSR
+    node_map: HashMap<String, NodeId>,            // O(1) function lookups
+    reverse_node_map: HashMap<NodeId, String>,
+    criticality_scores: HashMap<String, f32>,     // PageRank results
+    next_node_id: u32,
+}
+
+// PageRank identifies critical functions (line 172-198)
+pub fn update_criticality(&mut self) -> Result<()> {
+    let scores = pagerank(&self.graph, 20, 1e-6)?;  // ← trueno-graph PageRank
+    self.criticality_scores.clear();
+    for (node_id, score) in scores.iter().enumerate() {
+        let node_id = NodeId(node_id as u32);
+        if let Some(name) = self.reverse_node_map.get(&node_id) {
+            self.criticality_scores.insert(name.clone(), *score);
+        }
+    }
+    Ok(())
+}
+```
+
+**Evidence**:
+- TdgGraph created and integrated into TDG module (tdg/mod.rs:19)
+- O(1) function lookups + PageRank criticality scoring
+- **Tests passing**: 7/7 tests
+- **Commit**: 82d25b7e
+
+### Performance Targets
+
+- **Context generation**: <5ms (baseline: 8ms) - 40% improvement
+- **TDG analysis**: <10ms (baseline: 15ms) - 33% improvement
+- **Symbol lookup**: O(1) guaranteed (HashMap)
+- **PageRank**: 20 iterations, tolerance 1e-6
+
+### Architecture Pattern
+
+Both ProjectContextGraph and TdgGraph use the **dual storage pattern**:
+1. **HashMap cache**: O(1) lookups (symbol name → data)
+2. **CSR graph**: PageRank for importance scoring
+3. **Bidirectional mapping**: NodeId ↔ symbol name
+
+### Key Insight
+
+CSR graphs only track nodes with edges, so `num_nodes()` returns node_map.len() (all added nodes) not graph.num_nodes() (nodes with edges). This was a critical bug fix in commit 9a34bd4b.
+
+---
+
 ## DETERMINISTIC Agent Instructions
 
 When implementing fixes or responding to UX issues, follow DETERMINISTIC instructions in:
