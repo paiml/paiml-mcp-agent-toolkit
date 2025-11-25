@@ -5494,7 +5494,6 @@ dependencies = [
  "webbrowser",
  "wgpu 24.0.5",
  "which",
- "workspace-hack",
  "xxhash-rust",
 ]
 
