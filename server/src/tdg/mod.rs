@@ -16,6 +16,7 @@ pub mod function_analyzer;
 pub mod hooks_config;
 pub mod quality_gate;
 pub mod recommendation_engine;
+pub mod tdg_graph;
 // Temporarily disable export to fix circular dependency
 // pub mod export;
 pub mod formatters;
