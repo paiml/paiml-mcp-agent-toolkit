@@ -600,7 +600,7 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'New task: .pmat-tickets/coverage-improve-phase2-integration.yaml'
-  status: inprogress
+  status: completed
   priority: medium
   assigned_to: null
   created: 2025-11-24T22:45:50.665833463+00:00
