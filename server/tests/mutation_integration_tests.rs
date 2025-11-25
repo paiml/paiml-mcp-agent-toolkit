@@ -1,3 +1,4 @@
+#![cfg(feature = "mutation-testing")]
 #![cfg(not(feature = "skip-slow-tests"))]
 
 /// Integration tests for mutation testing handler

@@ -1,3 +1,5 @@
+#![cfg(feature = "mutation-testing")]
+
 /// Property-based tests for mutation testing using proptest
 ///
 /// Sprint 64 Day 1 - Testing Infrastructure

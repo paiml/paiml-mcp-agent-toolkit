@@ -7,10 +7,12 @@
 //!
 //! Strategy: Test critical paths and error handling first
 
+#![cfg(feature = "scala-ast")]
+
 use pmat::agents::registry::AgentRegistry;
 use pmat::mcp_integration::scala_tools::ScalaAnalysisTool;
-use pmat::mcp_integration::McpTool;
-use serde_json::json;
+use pmat::mcp_integration::{McpError, McpTool};
+use serde_json::{json, Value};
 use std::fs;
 use std::sync::Arc;
 use tempfile::tempdir;

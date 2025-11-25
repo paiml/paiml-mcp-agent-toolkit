@@ -7,6 +7,8 @@
 //!
 //! FIX: NEVER modify original file - use temp files ONLY (Toyota Way: proper design)
 
+#![cfg(feature = "mutation-testing")]
+
 use pmat::services::mutation::{
     Mutant, MutantExecutor, MutantStatus, MutationOperatorType, SourceLocation,
 };

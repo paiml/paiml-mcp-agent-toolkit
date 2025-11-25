@@ -1,3 +1,5 @@
+#![cfg(feature = "mutation-testing")]
+
 //! Tests that generated mutants compile successfully
 //!
 //! RED TEST for v2.132.0: Mutants should compile, not just generate

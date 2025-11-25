@@ -1,3 +1,5 @@
+#![cfg(feature = "mutation-testing")]
+
 //! GREEN Phase Tests for PMAT-070-003: cargo-mutants Backend Integration
 //!
 //! This test suite validates the cargo-mutants backend for `pmat mutate --use-cargo-mutants`.

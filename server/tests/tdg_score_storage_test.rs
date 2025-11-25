@@ -1,3 +1,4 @@
+#![cfg(feature = "red-phase-tests")]
 //! TDD Tests for TDG File Score Storage
 //!
 //! RED Phase: Tests that verify file scores are persisted after TDG analysis

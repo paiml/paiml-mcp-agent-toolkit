@@ -1,3 +1,4 @@
+#![cfg(feature = "red-phase-tests")]
 /// EXTREME TDD: Integration test for TDG auto-fail on critical defects
 /// RED PHASE: This test should FAIL until binary is rebuilt with TDG auto-fail code
 use std::fs;

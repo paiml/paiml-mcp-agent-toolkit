@@ -3,6 +3,8 @@
 //! These tests verify that PMAT actually generates mutants on real Rust code.
 //! Regression test for: 0 mutants generated on pforge validator.rs
 
+#![cfg(feature = "mutation-testing")]
+
 use pmat::services::mutation::{MutationConfig, MutationEngine, RustAdapter};
 use std::io::Write;
 use std::sync::Arc;

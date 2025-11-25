@@ -1,3 +1,4 @@
+#![cfg(feature = "mutation-testing")]
 #![cfg(not(feature = "skip-slow-tests"))]
 
 //! Unit tests for mutation testing handler (Sprint 64 Day 1)

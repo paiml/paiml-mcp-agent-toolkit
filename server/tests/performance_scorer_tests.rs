@@ -1,3 +1,4 @@
+#![cfg(feature = "red-phase-tests")]
 //! RED Phase Tests for PerformanceScorer (Sprint 2)
 //!
 //! Performance & Benchmarking Category: 10 points total

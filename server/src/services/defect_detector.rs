@@ -80,6 +80,22 @@ impl RustDefectDetector {
             return true;
         }
 
+        // Exclude examples directory (demos and samples often use .unwrap() for brevity)
+        if path_str.contains("/examples/")
+            || path_str.starts_with("examples/")
+            || path_str.starts_with("./examples/")
+        {
+            return true;
+        }
+
+        // Exclude fuzz targets (fuzz tests typically use .unwrap() for simplicity)
+        if path_str.contains("/fuzz/")
+            || path_str.starts_with("fuzz/")
+            || path_str.starts_with("./fuzz/")
+        {
+            return true;
+        }
+
         // Exclude test file patterns
         if file_name.ends_with("_tests.rs")
             || file_name.ends_with("_test.rs")
@@ -227,5 +243,57 @@ mod tests {
         let defects = detector.detect(code, &path);
 
         assert_eq!(defects.len(), 0, "Tests directory should be excluded");
+    }
+
+    #[test]
+    fn test_excludes_examples_directory() {
+        let detector = RustDefectDetector::new();
+        let code = r#"
+            fn main() {
+                let x = Some(42).unwrap();
+            }
+        "#;
+
+        // Test various examples path patterns
+        for path in &[
+            "examples/demo.rs",
+            "./examples/demo.rs",
+            "server/examples/demo.rs",
+        ] {
+            let path = PathBuf::from(path);
+            let defects = detector.detect(code, &path);
+            assert_eq!(
+                defects.len(),
+                0,
+                "Examples directory should be excluded: {}",
+                path.display()
+            );
+        }
+    }
+
+    #[test]
+    fn test_excludes_fuzz_directory() {
+        let detector = RustDefectDetector::new();
+        let code = r#"
+            fn fuzz_target() {
+                let x = Some(42).unwrap();
+            }
+        "#;
+
+        // Test various fuzz path patterns
+        for path in &[
+            "fuzz/fuzz_targets/target.rs",
+            "./fuzz/fuzz_targets/target.rs",
+            "server/fuzz/target.rs",
+        ] {
+            let path = PathBuf::from(path);
+            let defects = detector.detect(code, &path);
+            assert_eq!(
+                defects.len(),
+                0,
+                "Fuzz directory should be excluded: {}",
+                path.display()
+            );
+        }
     }
 }

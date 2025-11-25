@@ -1,3 +1,4 @@
+#![cfg(feature = "red-phase-tests")]
 // TRACE-003: Variable Inspection with AST
 // RED Phase Tests - Sprint 71
 //

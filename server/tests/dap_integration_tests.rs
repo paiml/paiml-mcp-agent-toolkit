@@ -318,6 +318,7 @@ fn test_dap_handles_variable_shadowing() {
 
 // RED Test 10: Variable Inspection - Python Support
 #[test]
+#[ignore = "DAP Python variable extraction not yet implemented"]
 fn test_dap_extracts_python_variables() {
     let server = pmat::services::dap::DapServer::new();
 

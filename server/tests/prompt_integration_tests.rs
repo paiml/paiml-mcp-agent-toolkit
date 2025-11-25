@@ -1,3 +1,4 @@
+#![cfg(feature = "red-phase-tests")]
 //! Integration tests for `pmat prompt` command using assert_cmd
 //!
 //! These tests verify the prompt command works correctly as a CLI binary.

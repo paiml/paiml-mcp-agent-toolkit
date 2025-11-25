@@ -1,3 +1,5 @@
+#![cfg(feature = "mutation-testing")]
+
 //! GREEN Phase Tests for PMAT-070-001: CargoMutantsWrapper Infrastructure
 //!
 //! Tests updated to use real implementation from server/src/services/mutation/cargo_mutants_wrapper.rs

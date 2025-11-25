@@ -612,3 +612,19 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: .pmat-tickets/coverage-improve-phase2-integration.yaml
+  github_issue: null
+  item_type: task
+  title: 'New task: .pmat-tickets/coverage-improve-phase2-integration.yaml'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2025-11-24T22:45:50.665833463+00:00
+  updated: 2025-11-24T22:45:50.665833463+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null

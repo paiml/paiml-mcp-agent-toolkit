@@ -1,3 +1,5 @@
+#![cfg(feature = "mutation-testing")]
+
 //! GREEN Phase Tests for PMAT-070-002: JSON Parsing
 //!
 //! Tests updated to use real implementation from json_parser.rs

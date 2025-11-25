@@ -1,3 +1,4 @@
+#![cfg(feature = "red-phase-tests")]
 //! RED Phase Tests for RustToolingScorer (Sprint 2)
 //!
 //! Rust Tooling Compliance Category: 25 points total

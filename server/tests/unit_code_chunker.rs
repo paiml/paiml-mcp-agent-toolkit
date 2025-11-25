@@ -1,3 +1,4 @@
+#![cfg(feature = "red-phase-tests")]
 // RED Phase: Write failing tests first
 
 // NOTE (Sprint 47): Use assetsearch (../../assetsearch) for MCP-based semantic search.

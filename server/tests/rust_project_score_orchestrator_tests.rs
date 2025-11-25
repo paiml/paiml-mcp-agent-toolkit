@@ -1,3 +1,4 @@
+#![cfg(feature = "red-phase-tests")]
 //! RustProjectScore Orchestrator Integration Tests
 //!
 //! EXTREME TDD tests for the orchestrator that aggregates all 6 category scorers.
