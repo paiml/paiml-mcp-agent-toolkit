@@ -93,6 +93,7 @@ impl ProjectContextGraph {
     /// Add AstItem to graph (O(1))
     ///
     /// Creates a new node in the CSR graph and stores mappings for fast lookups.
+    /// Also calls `graph.set_node_name()` for consistency with trueno-graph patterns.
     ///
     /// # Arguments
     ///
@@ -119,7 +120,10 @@ impl ProjectContextGraph {
         // Store mappings
         self.node_map.insert(name.clone(), node_id);
         self.reverse_node_map.insert(node_id, name.clone());
-        self.cache.insert(name, item);
+        self.cache.insert(name.clone(), item);
+
+        // Set node name in graph (trueno-graph pattern from examples)
+        self.graph.set_node_name(node_id, name);
 
         Ok(())
     }
