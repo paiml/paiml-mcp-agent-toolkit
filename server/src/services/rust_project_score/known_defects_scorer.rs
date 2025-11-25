@@ -173,7 +173,7 @@ impl KnownDefectsScorer {
     /// Determine if a file is a test file
     ///
     /// **Heuristics:**
-    /// 1. Path contains `/tests/` or `/benches/` directory
+    /// 1. Path contains `/tests/`, `/benches/`, or `/src/tests/` directory
     /// 2. Filename ends with `_test.rs`, `_tests.rs`, or `tests.rs`
     ///
     /// **Note:** This does NOT check for `#[cfg(test)]` modules within production files.
@@ -186,7 +186,10 @@ impl KnownDefectsScorer {
         let path_str = path.to_string_lossy();
 
         // Check 1: Directory structure
-        if path_str.contains("/tests/") || path_str.contains("/benches/") {
+        // Note: /src/tests/ is common in pmat (contains test modules)
+        if path_str.contains("/tests/")
+            || path_str.contains("/benches/")
+            || path_str.contains("/src/tests/") {
             return true;
         }
 
@@ -402,6 +405,38 @@ mod tests {
         let score = scorer.score(temp_dir.path()).expect("score project");
 
         assert_eq!(score.earned, 20.0, "Test unwraps don't count against score");
+    }
+
+    #[test]
+    fn test_src_tests_exemption() {
+        // RED test for /src/tests/ pattern (currently fails - false positive bug)
+        let temp_dir = TempDir::new().expect("create temp dir");
+
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"\nversion = \"0.1.0\"",
+        )
+        .expect("write cargo.toml");
+
+        // src/tests/ directory with unwraps (should not count - common pattern in pmat)
+        fs::create_dir_all(temp_dir.path().join("src/tests")).expect("create src/tests");
+        fs::write(
+            temp_dir.path().join("src/tests/unit_tests.rs"),
+            "fn test() { Some(42).unwrap(); Some(42).unwrap(); Some(42).unwrap(); }",
+        )
+        .expect("write test");
+
+        // Production code - clean
+        fs::write(
+            temp_dir.path().join("src/lib.rs"),
+            "pub fn safe() -> i32 { 42 }",
+        )
+        .expect("write lib.rs");
+
+        let scorer = KnownDefectsScorer::new();
+        let score = scorer.score(temp_dir.path()).expect("score project");
+
+        assert_eq!(score.earned, 20.0, "src/tests/ unwraps should not count");
     }
 
     #[test]
