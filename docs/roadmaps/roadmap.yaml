@@ -196,22 +196,6 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
-- id: DEPYLER-REARCH-001
-  github_issue: null
-  item_type: task
-  title: 'New task: DEPYLER-REARCH-001'
-  status: inprogress
-  priority: medium
-  assigned_to: null
-  created: 2025-11-22T13:08:43.861956836+00:00
-  updated: 2025-11-22T13:08:43.861956836+00:00
-  spec: null
-  acceptance_criteria: []
-  phases: []
-  subtasks: []
-  estimated_effort: null
-  labels: []
-  notes: null
 - id: ML-PHASE-5-TOPK-001
   github_issue: null
   item_type: task
