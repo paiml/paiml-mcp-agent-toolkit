@@ -22,7 +22,7 @@ roadmap:
   github_issue: 75
   item_type: task
   title: Unify pmat roadmap, GitHub issues, and EXTREME TDD workflow with automated tracking
-  status: inprogress
+  status: completed
   priority: medium
   assigned_to: null
   created: 2025-11-19T10:39:53.011510597+00:00
