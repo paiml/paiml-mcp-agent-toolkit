@@ -125,6 +125,10 @@ impl KnownDefectsScorer {
     /// Count unwrap() calls in a single file, separating production from test code
     ///
     /// Returns (production_unwraps, test_unwraps)
+    ///
+    /// **Fixes for GitHub Issues #99 and #100:**
+    /// - #99: Excludes doc comments (`///`, `//!`, `//`, `/* */`)
+    /// - #100: Properly detects inline `#[cfg(test)]` modules
     fn count_unwraps_in_file(path: &Path, content: &str, unwrap_regex: &Regex) -> (usize, usize) {
         // Check if entire file is test code
         if Self::is_test_file(path) {
@@ -132,30 +136,18 @@ impl KnownDefectsScorer {
             return (0, test_count);
         }
 
+        // Strip comments before counting (fixes #99 - doc comment false positives)
+        let code_only = Self::strip_comments(content);
+
         // Production file - check for #[cfg(test)] module
-        // Find first occurrence of test module marker
-        let test_module_start = content
-            .find("#[cfg(test)]")
-            .or_else(|| {
-                // Also look for #[test] or mod tests patterns
-                content.find("#[test]")
-            })
-            .or_else(|| {
-                // Look for "mod tests {" pattern (common idiom)
-                if let Some(pos) = content.find("mod tests") {
-                    // Verify it's followed by whitespace and {
-                    if content[pos..].starts_with("mod tests {") {
-                        return Some(pos);
-                    }
-                }
-                None
-            });
+        // Find the #[cfg(test)] marker (the ONLY reliable test module indicator)
+        let test_module_start = code_only.find("#[cfg(test)]");
 
         match test_module_start {
             Some(start_pos) => {
                 // Split content at test module boundary
-                let production_code = &content[..start_pos];
-                let test_code = &content[start_pos..];
+                let production_code = &code_only[..start_pos];
+                let test_code = &code_only[start_pos..];
 
                 let production_count = unwrap_regex.find_iter(production_code).count();
                 let test_count = unwrap_regex.find_iter(test_code).count();
@@ -164,10 +156,84 @@ impl KnownDefectsScorer {
             }
             None => {
                 // No test module found - all production code
-                let production_count = unwrap_regex.find_iter(content).count();
+                let production_count = unwrap_regex.find_iter(&code_only).count();
                 (production_count, 0)
             }
         }
+    }
+
+    /// Strip comments from Rust source code (fixes #99)
+    ///
+    /// Removes:
+    /// - Line comments: `//` (including doc comments `///` and `//!`)
+    /// - Block comments: `/* */` (including doc comments `/** */`)
+    fn strip_comments(content: &str) -> String {
+        let mut result = String::with_capacity(content.len());
+        let mut chars = content.chars().peekable();
+        let mut in_block_comment = false;
+        let mut in_string = false;
+        let mut escape_next = false;
+
+        while let Some(c) = chars.next() {
+            if escape_next {
+                escape_next = false;
+                if !in_block_comment {
+                    result.push(c);
+                }
+                continue;
+            }
+
+            if c == '\\' && in_string {
+                escape_next = true;
+                result.push(c);
+                continue;
+            }
+
+            if c == '"' && !in_block_comment {
+                in_string = !in_string;
+                result.push(c);
+                continue;
+            }
+
+            if in_string {
+                result.push(c);
+                continue;
+            }
+
+            if in_block_comment {
+                if c == '*' && chars.peek() == Some(&'/') {
+                    chars.next(); // consume '/'
+                    in_block_comment = false;
+                }
+                continue;
+            }
+
+            if c == '/' {
+                match chars.peek() {
+                    Some(&'/') => {
+                        // Line comment - skip to end of line
+                        while let Some(nc) = chars.next() {
+                            if nc == '\n' {
+                                result.push('\n');
+                                break;
+                            }
+                        }
+                    }
+                    Some(&'*') => {
+                        // Block comment
+                        chars.next(); // consume '*'
+                        in_block_comment = true;
+                    }
+                    _ => {
+                        result.push(c);
+                    }
+                }
+            } else {
+                result.push(c);
+            }
+        }
+
+        result
     }
 
     /// Determine if a file is a test file
