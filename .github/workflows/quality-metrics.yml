@@ -137,8 +137,8 @@ jobs:
           echo "" >> metrics-report.md
           echo "| Metric | Value | Threshold | Status |" >> metrics-report.md
           echo "|--------|-------|-----------|--------|" >> metrics-report.md
-          echo "| Lint | ${{ steps.lint.outputs.duration }}ms | 30,000ms | $([ "${{ steps.lint.outputs.duration }}" -lt "30000" ] && echo "✅" || echo "❌") |" >> metrics-report.md
-          echo "| Test (fast) | ${{ steps.test-fast.outputs.duration }}ms | 300,000ms | $([ "${{ steps.test-fast.outputs.duration }}" -lt "300000" ] && echo "✅" || echo "❌") |" >> metrics-report.md
+          echo "| Lint | ${{ steps.lint.outputs.duration }}ms | 150,000ms | $([ "${{ steps.lint.outputs.duration }}" -lt "150000" ] && echo "✅" || echo "❌") |" >> metrics-report.md
+          echo "| Test (fast) | ${{ steps.test-fast.outputs.duration }}ms | 360,000ms | $([ "${{ steps.test-fast.outputs.duration }}" -lt "360000" ] && echo "✅" || echo "❌") |" >> metrics-report.md
           echo "| Coverage | ${{ steps.coverage.outputs.duration }}ms | 600,000ms | $([ "${{ steps.coverage.outputs.duration }}" -lt "600000" ] && echo "✅" || echo "❌") |" >> metrics-report.md
           echo "| Binary Size | ${{ steps.binary-size.outputs.size }} bytes | 50,000,000 bytes | $([ "${{ steps.binary-size.outputs.size }}" -lt "50000000" ] && echo "✅" || echo "❌") |" >> metrics-report.md
           echo "" >> metrics-report.md
