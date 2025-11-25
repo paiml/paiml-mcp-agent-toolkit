@@ -152,11 +152,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'New task: Improve Code Quality score: unsafe docs + complexity reduction (target 20.0/26)'
-  status: inprogress
+  status: completed
   priority: medium
   assigned_to: null
   created: 2025-11-21T17:48:38.986292903+00:00
-  updated: 2025-11-25T12:51:39.149548802+00:00
+  updated: 2025-11-25T14:16:06.242672939+00:00
   spec: null
   acceptance_criteria: []
   phases: []
