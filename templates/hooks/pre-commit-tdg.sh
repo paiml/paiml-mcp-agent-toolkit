@@ -52,6 +52,13 @@ if [ ! -f "${BASELINE_PATH}" ]; then
 
     # Create parent directory if it doesn't exist (fixes issue #88)
     BASELINE_DIR="$(dirname "${BASELINE_PATH}")"
+    # SEC010: Validate path doesn't contain traversal
+    case "${BASELINE_DIR}" in
+        *..* | /*)
+            echo -e "${RED}❌ Invalid baseline path (traversal detected): ${BASELINE_DIR}${NC}"
+            exit 1
+            ;;
+    esac
     if [ ! -d "${BASELINE_DIR}" ]; then
         mkdir -p "${BASELINE_DIR}" || {
             echo -e "${RED}❌ Failed to create directory: ${BASELINE_DIR}${NC}"
@@ -61,14 +68,14 @@ if [ ! -f "${BASELINE_PATH}" ]; then
 
     pmat tdg baseline create --output "${BASELINE_PATH}" --path .
 
+    # shellcheck disable=SC2181
     if [ $? -eq 0 ]; then
         echo -e "${GREEN}✅ Initial baseline created${NC}"
         echo "   Future commits will be checked against this baseline"
         exit 0
-    else
-        echo -e "${RED}❌ Failed to create baseline${NC}"
-        exit 1
     fi
+    echo -e "${RED}❌ Failed to create baseline${NC}"
+    exit 1
 fi
 
 # Run regression check
@@ -88,6 +95,7 @@ if [ "${BLOCK_ON_REGRESSION}" = "true" ] && [ "${MODE}" = "strict" ]; then
     REGRESSION_FLAGS="${REGRESSION_FLAGS} --fail-on-regression"
 fi
 
+# shellcheck disable=SC2086 (intentional word splitting for flags)
 if pmat tdg check-regression ${REGRESSION_FLAGS}; then
     echo -e "${GREEN}✅ No quality regressions detected${NC}"
 else
@@ -107,7 +115,7 @@ else
         echo ""
         echo "To bypass (NOT RECOMMENDED):"
         echo "  git commit --no-verify"
-        exit ${REGRESSION_EXIT}
+        exit "${REGRESSION_EXIT}"
     fi
 fi
 
@@ -125,6 +133,7 @@ if [ "${BLOCK_ON_NEW_FILES}" = "true" ] && [ "${MODE}" = "strict" ]; then
     QUALITY_FLAGS="${QUALITY_FLAGS} --fail-on-violation"
 fi
 
+# shellcheck disable=SC2086 (intentional word splitting for flags)
 if pmat tdg check-quality ${QUALITY_FLAGS}; then
     echo -e "${GREEN}✅ All new/modified files meet quality standards${NC}"
 else
@@ -144,7 +153,7 @@ else
         echo ""
         echo "To bypass (NOT RECOMMENDED):"
         echo "  git commit --no-verify"
-        exit ${QUALITY_EXIT}
+        exit "${QUALITY_EXIT}"
     fi
 fi
 
