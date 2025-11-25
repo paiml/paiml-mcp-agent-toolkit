@@ -337,6 +337,7 @@ async fn test_individual_file_analysis() {
             total_impls: 0,
             dependencies: vec![],
         },
+        graph: None,
     };
 
     let dag = DagBuilder::build_from_project(&project_context);
