@@ -305,27 +305,156 @@ async fn run_coverage_check(project_dir: &PathBuf) -> Result<HealthCheck> {
 }
 
 /// Run complexity health check
-async fn run_complexity_check(_project_dir: &PathBuf) -> Result<HealthCheck> {
-    // Simplified: Just return skip for now
-    // Full implementation would use complexity analysis service
-    Ok(HealthCheck {
-        name: "Complexity".to_string(),
-        status: CheckStatus::Skip,
-        message: "Complexity check not yet implemented".to_string(),
-        details: Some("Use 'pmat analyze complexity' for detailed analysis".to_string()),
-    })
+async fn run_complexity_check(project_dir: &PathBuf) -> Result<HealthCheck> {
+    use crate::cli::progress::ProgressIndicator;
+
+    let progress = ProgressIndicator::new("Running complexity check...");
+    let start = std::time::Instant::now();
+
+    // Detect project toolchain
+    let toolchain = super::super::analysis_utilities::detect_toolchain(project_dir);
+
+    // Analyze project files with default thresholds
+    let include: Vec<String> = Vec::new();
+    let metrics = super::super::analysis_utilities::analyze_project_files(
+        project_dir,
+        toolchain.as_deref(),
+        &include,
+        20, // cyclomatic threshold
+        15, // cognitive threshold
+    ).await;
+
+    let duration = start.elapsed();
+
+    match metrics {
+        Ok(file_metrics) => {
+            // Count functions exceeding threshold (cyclomatic > 20)
+            let mut total_functions = 0;
+            let mut violations = 0;
+            let mut max_complexity: u16 = 0;
+
+            for file in &file_metrics {
+                for func in &file.functions {
+                    total_functions += 1;
+                    if func.metrics.cyclomatic > max_complexity {
+                        max_complexity = func.metrics.cyclomatic;
+                    }
+                    if func.metrics.cyclomatic > 20 {
+                        violations += 1;
+                    }
+                }
+            }
+
+            let status = if violations == 0 {
+                CheckStatus::Pass
+            } else if violations <= 5 {
+                CheckStatus::Warn
+            } else {
+                CheckStatus::Fail
+            };
+
+            progress.finish_with_message(&format!(
+                "Complexity: {} functions, {} violations ({:.1}s)",
+                total_functions,
+                violations,
+                duration.as_secs_f64()
+            ));
+
+            Ok(HealthCheck {
+                name: "Complexity".to_string(),
+                status,
+                message: format!(
+                    "{} functions analyzed, {} exceed threshold (max: {})",
+                    total_functions, violations, max_complexity
+                ),
+                details: if violations > 0 {
+                    Some(format!(
+                        "Run 'pmat analyze complexity' for detailed report"
+                    ))
+                } else {
+                    None
+                },
+            })
+        }
+        Err(_) => {
+            progress.finish_with_message("Complexity check skipped");
+            Ok(HealthCheck {
+                name: "Complexity".to_string(),
+                status: CheckStatus::Skip,
+                message: "Could not analyze project complexity".to_string(),
+                details: Some("Use 'pmat analyze complexity' for detailed analysis".to_string()),
+            })
+        }
+    }
 }
 
 /// Run SATD health check
-async fn run_satd_check(_project_dir: &PathBuf) -> Result<HealthCheck> {
-    // Simplified: Just return skip for now
-    // Full implementation would use SATD detection service
-    Ok(HealthCheck {
-        name: "SATD".to_string(),
-        status: CheckStatus::Skip,
-        message: "SATD check not yet implemented".to_string(),
-        details: Some("Use 'pmat analyze satd' for detailed analysis".to_string()),
-    })
+async fn run_satd_check(project_dir: &PathBuf) -> Result<HealthCheck> {
+    use crate::cli::progress::ProgressIndicator;
+    use crate::services::detection::satd::Severity;
+    use crate::services::detection::UnifiedDetectionProcessor;
+
+    let progress = ProgressIndicator::new("Running SATD check...");
+    let start = std::time::Instant::now();
+
+    // Use unified detection processor for SATD analysis
+    let processor = UnifiedDetectionProcessor::new();
+    let result = processor.detect_satd(project_dir).await;
+
+    let duration = start.elapsed();
+
+    match result {
+        Ok(satd_result) => {
+            // Count SATD items by severity
+            let total_items = satd_result.items.len();
+            let high_severity = satd_result
+                .items
+                .iter()
+                .filter(|m| matches!(m.severity, Severity::High | Severity::Critical))
+                .count();
+
+            let status = if total_items == 0 {
+                CheckStatus::Pass
+            } else if high_severity == 0 {
+                CheckStatus::Warn
+            } else {
+                CheckStatus::Fail
+            };
+
+            progress.finish_with_message(&format!(
+                "SATD: {} items found ({} high severity) ({:.1}s)",
+                total_items,
+                high_severity,
+                duration.as_secs_f64()
+            ));
+
+            Ok(HealthCheck {
+                name: "SATD".to_string(),
+                status,
+                message: format!(
+                    "{} technical debt items ({} high severity)",
+                    total_items, high_severity
+                ),
+                details: if total_items > 0 {
+                    Some(format!(
+                        "Files with debt: {}. Run 'pmat analyze satd' for details",
+                        satd_result.files_with_debt
+                    ))
+                } else {
+                    None
+                },
+            })
+        }
+        Err(_) => {
+            progress.finish_with_message("SATD check skipped");
+            Ok(HealthCheck {
+                name: "SATD".to_string(),
+                status: CheckStatus::Skip,
+                message: "Could not analyze technical debt".to_string(),
+                details: Some("Use 'pmat analyze satd' for detailed analysis".to_string()),
+            })
+        }
+    }
 }
 
 /// Run multiple health checks in parallel (TICKET-PMAT-6010)
