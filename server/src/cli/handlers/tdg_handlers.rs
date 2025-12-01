@@ -64,6 +64,11 @@ pub async fn handle_tdg_command(config: TdgCommandConfig) -> Result<()> {
         return handle_tdg_subcommand(cmd.clone(), &analyzer, &config).await;
     }
 
+    // Issue #78: Handle explain mode with function-level breakdown
+    if config.explain {
+        return handle_explain_mode(&analyzer, &config).await;
+    }
+
     let score = execute_tdg_analysis(&analyzer, &config).await?;
     validate_minimum_grade(&score, &config)?;
 
@@ -1197,6 +1202,140 @@ fn parse_grade(s: &str) -> Result<crate::tdg::Grade> {
         _ => Err(anyhow::anyhow!(
             "Invalid grade: {s}. Valid grades: A+, A, A-, B+, B, B-, C+, C, C-, D, F"
         )),
+    }
+}
+
+/// Handle TDG explain mode with function-level complexity breakdown (Issue #78)
+async fn handle_explain_mode(analyzer: &TdgAnalyzer, config: &TdgCommandConfig) -> Result<()> {
+    use crate::tdg::explain::ExplainedTDGScore;
+    use crate::tdg::function_analyzer::FunctionAnalyzer;
+    use crate::tdg::recommendation_engine::generate_recommendations;
+
+    // First get the base TDG score
+    let score = execute_tdg_analysis(analyzer, config).await?;
+
+    // Create explained score
+    let mut explained = ExplainedTDGScore::new(score.clone());
+
+    // Analyze function-level complexity (only for single files)
+    if config.path.is_file() && config.path.extension().is_some_and(|e| e == "rs") {
+        let mut func_analyzer = FunctionAnalyzer::new()?;
+        let functions = func_analyzer.analyze_file(&config.path)?;
+
+        for func in functions {
+            explained.add_function(func);
+        }
+
+        // Apply threshold filter
+        explained.filter_functions_by_threshold(config.threshold);
+        explained.sort_functions_by_impact();
+
+        // Generate recommendations
+        let recommendations = generate_recommendations(&explained);
+        for rec in recommendations {
+            explained.add_recommendation(rec);
+        }
+        explained.sort_recommendations();
+    }
+
+    // Format and output
+    let output_str = format_explain_output(&explained, config)?;
+    write_tdg_output(&output_str, config)?;
+
+    Ok(())
+}
+
+/// Format explain mode output (Issue #78)
+fn format_explain_output(explained: &crate::tdg::explain::ExplainedTDGScore, config: &TdgCommandConfig) -> Result<String> {
+    match config.format {
+        TdgOutputFormat::Json => {
+            Ok(serde_json::to_string_pretty(explained)?)
+        }
+        TdgOutputFormat::Markdown => {
+            // Markdown format uses same structure as table but in markdown
+            let json = serde_json::to_string_pretty(explained)?;
+            Ok(format!("```json\n{}\n```", json))
+        }
+        _ => {
+            // Table/text format
+            let mut output = String::new();
+
+            // Header
+            output.push_str("╭───────────────────────────────────────────────────────────────╮\n");
+            output.push_str("│  TDG Explain Report (Issue #78)                               │\n");
+            output.push_str("├───────────────────────────────────────────────────────────────┤\n");
+
+            // Overall score
+            output.push_str(&format!(
+                "│  Score: {:.1}/100 ({})                                         │\n",
+                explained.score.total,
+                format_grade(explained.score.grade)
+            ));
+            output.push_str("│                                                               │\n");
+
+            // Function breakdown
+            if !explained.functions.is_empty() {
+                output.push_str(&format!(
+                    "│  📊 Functions by Complexity (threshold: {:2})                  │\n",
+                    config.threshold
+                ));
+                output.push_str("├───────────────────────────────────────────────────────────────┤\n");
+
+                for func in explained.functions.iter().take(10) {
+                    let severity_icon = match func.severity {
+                        crate::tdg::explain::ComplexitySeverity::Low => "🟢",
+                        crate::tdg::explain::ComplexitySeverity::Medium => "🟡",
+                        crate::tdg::explain::ComplexitySeverity::High => "🟠",
+                        crate::tdg::explain::ComplexitySeverity::Critical => "🔴",
+                    };
+                    output.push_str(&format!(
+                        "│  {} {:30} [line {:4}] CC={:2} TDG={:.1} │\n",
+                        severity_icon,
+                        truncate_string(&func.name, 30),
+                        func.line_number,
+                        func.cyclomatic,
+                        func.tdg_impact
+                    ));
+                }
+
+                if explained.functions.len() > 10 {
+                    output.push_str(&format!(
+                        "│  ... and {} more functions                                    │\n",
+                        explained.functions.len() - 10
+                    ));
+                }
+            } else {
+                output.push_str("│  ✅ No functions above complexity threshold                   │\n");
+            }
+
+            // Recommendations
+            if !explained.recommendations.is_empty() {
+                output.push_str("│                                                               │\n");
+                output.push_str("│  💡 Recommendations                                           │\n");
+                output.push_str("├───────────────────────────────────────────────────────────────┤\n");
+
+                for (i, rec) in explained.recommendations.iter().take(5).enumerate() {
+                    output.push_str(&format!(
+                        "│  {}. [+{:.1} pts] {}                     │\n",
+                        i + 1,
+                        rec.expected_impact,
+                        truncate_string(&rec.action, 40)
+                    ));
+                }
+            }
+
+            output.push_str("╰───────────────────────────────────────────────────────────────╯\n");
+            Ok(output)
+        }
+    }
+}
+
+/// Truncate string to max length with ellipsis
+fn truncate_string(s: &str, max_len: usize) -> String {
+    if s.len() <= max_len {
+        format!("{:width$}", s, width = max_len)
+    } else {
+        format!("{}...", &s[..max_len - 3])
     }
 }
 
