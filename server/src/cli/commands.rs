@@ -1123,6 +1123,26 @@ pub enum MaintainCommands {
         #[arg(long)]
         check_satd: bool,
     },
+
+    /// Create bug report from captured error (GH-81)
+    #[command(visible_aliases = &["bug", "report"])]
+    BugReport {
+        /// Custom issue title
+        #[arg(long)]
+        title: Option<String>,
+
+        /// Preview issue without creating (dry-run)
+        #[arg(long)]
+        dry_run: bool,
+
+        /// Interactive confirmation before creating
+        #[arg(long, short)]
+        interactive: bool,
+
+        /// Clear captured error without creating report
+        #[arg(long)]
+        clear: bool,
+    },
 }
 
 /// Diagnostic output format

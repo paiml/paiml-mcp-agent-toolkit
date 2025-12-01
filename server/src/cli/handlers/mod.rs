@@ -11,6 +11,7 @@ pub mod analyze_defects_handler; // Known Defects: Project-wide defect scanning
 #[cfg(test)]
 pub mod annotation_tdd_tests;
 pub mod big_o_handlers;
+pub mod bug_report_handler; // Issue #81: Auto GitHub bug reports from errors
 pub mod cache;
 #[cfg(feature = "mutation-testing")]
 pub mod cargo_mutants_backend; // Sprint 70: cargo-mutants wrapper

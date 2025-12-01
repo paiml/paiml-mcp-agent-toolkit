@@ -148,6 +148,7 @@ pub mod enhanced_naming_tests;
 pub mod enhanced_python_visitor;
 pub mod enhanced_reporting;
 pub mod enhanced_typescript_visitor;
+pub mod error_capture; // Issue #81: Bug report error capture
 pub mod file_classifier;
 #[cfg(test)]
 mod file_classifier_property_tests;

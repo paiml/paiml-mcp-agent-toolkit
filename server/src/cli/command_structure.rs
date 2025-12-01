@@ -578,6 +578,20 @@ impl CommandExecutor {
                         );
                         super::handlers::handle_maintain_health(project_dir, format, config).await
                     }
+                    MaintainCommands::BugReport {
+                        title,
+                        dry_run,
+                        interactive,
+                        clear,
+                    } => {
+                        super::handlers::bug_report_handler::handle_bug_report(
+                            title.as_deref(),
+                            dry_run,
+                            interactive,
+                            clear,
+                        )
+                        .await
+                    }
                 }
             }
 
