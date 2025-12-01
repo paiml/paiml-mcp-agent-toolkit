@@ -212,7 +212,7 @@ impl KnownDefectsScorer {
                 match chars.peek() {
                     Some(&'/') => {
                         // Line comment - skip to end of line
-                        while let Some(nc) = chars.next() {
+                        for nc in chars.by_ref() {
                             if nc == '\n' {
                                 result.push('\n');
                                 break;
