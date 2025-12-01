@@ -678,6 +678,10 @@ impl CommandExecutor {
                     command
                 )
             }
+            // GH-102: QA Work - Toyota Way quality validation
+            Commands::QaWork { .. } => {
+                anyhow::bail!("QaWork command should be handled by command_dispatcher.rs")
+            }
             // GH-96: PMAT compliance and migration system - handled by command_dispatcher.rs
             Commands::Comply { .. } => {
                 anyhow::bail!("Comply command should be handled by command_dispatcher.rs")

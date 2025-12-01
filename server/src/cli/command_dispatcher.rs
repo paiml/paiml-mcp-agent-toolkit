@@ -541,6 +541,10 @@ impl CommandDispatcher {
                 // Issue #75: Unified GitHub/YAML workflow
                 Self::execute_work_command(&command).await
             }
+            Commands::QaWork { command } => {
+                // GH-102: Toyota Way quality validation
+                handlers::qa_work_handler::handle_qa_work_command(command).await
+            }
             Commands::Comply { command } => {
                 // GH-96: PMAT compliance and migration system
                 handlers::comply_handlers::handle_comply_command(command).await

@@ -798,6 +798,13 @@ pub enum Commands {
         command: WorkCommands,
     },
 
+    /// QA validation after work completion - Toyota Way quality gates (GH-102)
+    #[command(name = "qa-work", visible_aliases = &["qa", "quality"])]
+    QaWork {
+        #[command(subcommand)]
+        command: QaWorkCommands,
+    },
+
     /// Five Whys root cause analysis (Toyota Way methodology)
     /// This is the ONLY acceptable debugging method per CLAUDE.md policy
     #[command(name = "five-whys", visible_aliases = &["why", "debug-whys"])]
@@ -5054,6 +5061,112 @@ pub enum SyncDirection {
     GithubToYaml,
     /// Full bidirectional sync
     Full,
+}
+
+/// QA Work subcommands for Toyota Way quality validation (GH-102)
+#[derive(Debug, Clone, Subcommand)]
+pub enum QaWorkCommands {
+    /// Generate QA checklist for a task
+    #[command(visible_aliases = &["checklist", "cl"])]
+    GenerateChecklist {
+        /// Task/ticket ID (GitHub issue number or YAML ticket ID)
+        task_id: String,
+
+        /// Task type for checklist customization
+        #[arg(long, value_enum, default_value = "feature")]
+        task_type: QaTaskType,
+
+        /// Project path (default: current directory)
+        #[arg(short = 'p', long = "path", default_value = ".")]
+        path: PathBuf,
+
+        /// Output file for checklist (YAML format)
+        #[arg(short = 'o', long = "output")]
+        output: Option<PathBuf>,
+    },
+
+    /// Run automated QA validation
+    #[command(visible_aliases = &["check", "v"])]
+    Validate {
+        /// Task/ticket ID to validate
+        task_id: String,
+
+        /// Project path (default: current directory)
+        #[arg(short = 'p', long = "path", default_value = ".")]
+        path: PathBuf,
+
+        /// Fail on any warning (strict mode)
+        #[arg(long)]
+        strict: bool,
+
+        /// Output format
+        #[arg(short = 'f', long = "format", value_enum, default_value = "text")]
+        format: QaOutputFormat,
+    },
+
+    /// Generate QA report for audit trail
+    #[command(visible_aliases = &["r"])]
+    Report {
+        /// Task/ticket ID for report
+        task_id: String,
+
+        /// Project path (default: current directory)
+        #[arg(short = 'p', long = "path", default_value = ".")]
+        path: PathBuf,
+
+        /// Include evidence (coverage reports, test results)
+        #[arg(long)]
+        with_evidence: bool,
+
+        /// Output file for report
+        #[arg(short = 'o', long = "output")]
+        output: Option<PathBuf>,
+
+        /// Output format
+        #[arg(short = 'f', long = "format", value_enum, default_value = "markdown")]
+        format: QaOutputFormat,
+    },
+
+    /// Show QA status summary
+    #[command(visible_aliases = &["st", "status"])]
+    Summary {
+        /// Task/ticket ID (optional, shows all if omitted)
+        task_id: Option<String>,
+
+        /// Project path (default: current directory)
+        #[arg(short = 'p', long = "path", default_value = ".")]
+        path: PathBuf,
+    },
+}
+
+/// Task type for QA checklist customization
+#[derive(Debug, Clone, Copy, clap::ValueEnum, PartialEq)]
+pub enum QaTaskType {
+    /// New feature implementation
+    Feature,
+    /// Bug fix
+    Bugfix,
+    /// Code refactoring
+    Refactor,
+    /// Documentation update
+    Docs,
+    /// Performance optimization
+    Performance,
+    /// Security fix
+    Security,
+}
+
+/// Output format for QA commands
+#[derive(Debug, Clone, Copy, clap::ValueEnum, PartialEq)]
+pub enum QaOutputFormat {
+    /// Human-readable text
+    Text,
+    /// JSON for CI/CD
+    Json,
+    /// YAML config format
+    Yaml,
+    /// Markdown documentation
+    Markdown,
 }
 
 /// Test discovery subcommands for systematic test fixing (GH-98)

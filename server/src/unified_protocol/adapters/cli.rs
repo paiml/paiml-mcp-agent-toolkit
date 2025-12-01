@@ -132,6 +132,7 @@ impl CliAdapter {
             | Commands::ShowMetrics { .. } // Phase 3.1: O(1) Quality Gates CLI (CLI-only)
             | Commands::PredictQuality { .. } // Phase 4.1: Predictive Quality Gates CLI (CLI-only)
             | Commands::RecordMetric { .. } // Phase 3.4: O(1) Quality Gates CI/CD (CLI-only)
+            | Commands::QaWork { .. } // GH-102: Toyota Way QA validation (CLI-only)
             => Self::cli_only_command_error(),
 
             #[cfg(feature = "mutation-testing")]
@@ -1827,6 +1828,9 @@ impl CliInput {
             }
             Commands::Localize { .. } => {
                 CommandCategory::Analysis // GH-103: Tarantula fault localization
+            }
+            Commands::QaWork { .. } => {
+                CommandCategory::Workflow // GH-102: Toyota Way QA validation
             }
         }
     }
