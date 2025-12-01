@@ -357,6 +357,12 @@ impl DocValidator {
             }
         };
 
+        // Issue #101: Handle crates.io URLs specially - they block programmatic access
+        // Use the crates.io API instead of scraping the web page
+        if let Some(crate_name) = Self::extract_crates_io_crate_name(&link.target) {
+            return self.validate_crates_io_crate(client, &crate_name).await;
+        }
+
         let mut retries = 0;
 
         loop {
@@ -396,6 +402,71 @@ impl DocValidator {
                     .await;
                 }
             }
+        }
+    }
+
+    /// Extract crate name from crates.io URL (Issue #101)
+    /// Handles: https://crates.io/crates/{crate_name}
+    fn extract_crates_io_crate_name(url: &str) -> Option<String> {
+        // Match patterns like:
+        // - https://crates.io/crates/trueno
+        // - http://crates.io/crates/trueno
+        // - https://crates.io/crates/trueno/versions
+        let patterns = [
+            "https://crates.io/crates/",
+            "http://crates.io/crates/",
+        ];
+
+        for pattern in patterns {
+            if let Some(rest) = url.strip_prefix(pattern) {
+                // Get the crate name (up to the next / or end)
+                let crate_name = rest.split('/').next()?;
+                if !crate_name.is_empty() {
+                    return Some(crate_name.to_string());
+                }
+            }
+        }
+        None
+    }
+
+    /// Validate a crate exists using the crates.io API (Issue #101)
+    async fn validate_crates_io_crate(
+        &self,
+        client: &reqwest::Client,
+        crate_name: &str,
+    ) -> (ValidationStatus, Option<String>, Option<u16>) {
+        // Use the crates.io API which accepts programmatic access
+        let api_url = format!("https://crates.io/api/v1/crates/{}", crate_name);
+
+        match client
+            .get(&api_url)
+            .header("User-Agent", "pmat-doc-validator/1.0")
+            .send()
+            .await
+        {
+            Ok(response) => {
+                let status_code = response.status().as_u16();
+                if status_code == 200 {
+                    (ValidationStatus::Valid, None, Some(status_code))
+                } else if status_code == 404 {
+                    (
+                        ValidationStatus::NotFound,
+                        Some(format!("Crate not found on crates.io: {}", crate_name)),
+                        Some(status_code),
+                    )
+                } else {
+                    (
+                        ValidationStatus::HttpError(status_code),
+                        Some(format!("crates.io API error {}: {}", status_code, crate_name)),
+                        Some(status_code),
+                    )
+                }
+            }
+            Err(e) => (
+                ValidationStatus::NetworkError,
+                Some(format!("crates.io API error: {}", e)),
+                None,
+            ),
         }
     }
 
@@ -693,6 +764,89 @@ mod unit_tests {
         assert_eq!(summary.total_files, 2);
         assert_eq!(summary.valid_links, 1);
         assert_eq!(summary.broken_links, 0); // archive's broken link should be excluded
+    }
+
+    // Issue #101: Tests for crates.io URL handling
+    #[test]
+    fn test_extract_crates_io_crate_name_basic() {
+        assert_eq!(
+            DocValidator::extract_crates_io_crate_name("https://crates.io/crates/trueno"),
+            Some("trueno".to_string())
+        );
+        assert_eq!(
+            DocValidator::extract_crates_io_crate_name("https://crates.io/crates/aprender"),
+            Some("aprender".to_string())
+        );
+    }
+
+    #[test]
+    fn test_extract_crates_io_crate_name_with_subpath() {
+        assert_eq!(
+            DocValidator::extract_crates_io_crate_name("https://crates.io/crates/serde/versions"),
+            Some("serde".to_string())
+        );
+        assert_eq!(
+            DocValidator::extract_crates_io_crate_name("https://crates.io/crates/tokio/1.0.0"),
+            Some("tokio".to_string())
+        );
+    }
+
+    #[test]
+    fn test_extract_crates_io_crate_name_http() {
+        assert_eq!(
+            DocValidator::extract_crates_io_crate_name("http://crates.io/crates/serde"),
+            Some("serde".to_string())
+        );
+    }
+
+    #[test]
+    fn test_extract_crates_io_crate_name_non_crates_io() {
+        assert_eq!(
+            DocValidator::extract_crates_io_crate_name("https://github.com/rust-lang/rust"),
+            None
+        );
+        assert_eq!(
+            DocValidator::extract_crates_io_crate_name("https://docs.rs/serde"),
+            None
+        );
+        assert_eq!(
+            DocValidator::extract_crates_io_crate_name("https://crates.io/"),
+            None
+        );
+    }
+
+    #[tokio::test]
+    #[ignore] // Requires network access
+    async fn test_validate_crates_io_existing_crate() {
+        let link = Link {
+            text: "trueno".to_string(),
+            target: "https://crates.io/crates/serde".to_string(), // Use well-known crate
+            source_file: PathBuf::from("test.md"),
+            line_number: 1,
+            link_type: LinkType::ExternalHttp,
+        };
+
+        let validator = DocValidator::default();
+        let result = validator.validate_link(&link).await.unwrap();
+
+        assert_eq!(result.status, ValidationStatus::Valid);
+    }
+
+    #[tokio::test]
+    #[ignore] // Requires network access
+    async fn test_validate_crates_io_nonexistent_crate() {
+        let link = Link {
+            text: "nonexistent".to_string(),
+            target: "https://crates.io/crates/this-crate-definitely-does-not-exist-12345".to_string(),
+            source_file: PathBuf::from("test.md"),
+            line_number: 1,
+            link_type: LinkType::ExternalHttp,
+        };
+
+        let validator = DocValidator::default();
+        let result = validator.validate_link(&link).await.unwrap();
+
+        assert_eq!(result.status, ValidationStatus::NotFound);
     }
 }
 
