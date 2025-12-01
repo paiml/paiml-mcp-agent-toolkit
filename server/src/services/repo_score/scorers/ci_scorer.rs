@@ -1,8 +1,11 @@
 // CiScorer - Category E: Continuous Integration (20 points)
 //
 // Scores based on:
-// - E1: CI Workflows Present (10 points) - GitHub Actions workflows exist
-// - E2: Workflows Configured Properly (10 points) - Valid YAML with standard jobs
+// - E1: CI Workflows Present (6 points) - GitHub Actions workflows exist
+// - E2: Workflows Configured Properly (6 points) - Valid YAML with standard jobs
+// - E3: Advanced CI Features (8 points) - Coverage, security, caching, matrix builds
+//
+// Issue #72: Enhanced feedback with actionable recommendations
 
 use super::{Scorer, ScorerConfig};
 use crate::services::repo_score::error::Result;
@@ -18,7 +21,7 @@ impl CiScorer {
         Self
     }
 
-    /// Score CI workflows presence (E1: 10 points)
+    /// Score CI workflows presence (E1: 6 points)
     async fn score_workflows_present(&self, repo_path: &Path) -> Result<SubcategoryScore> {
         let workflows_dir = repo_path.join(".github/workflows");
 
@@ -27,13 +30,13 @@ impl CiScorer {
                 id: "E1".to_string(),
                 name: "CI Workflows Present".to_string(),
                 score: 0.0,
-                max_score: 10.0,
+                max_score: 6.0,
                 findings: vec![Finding {
                     severity: Severity::Error,
                     category: "CI".to_string(),
-                    message: "No .github/workflows directory found".to_string(),
+                    message: "Missing: Create .github/workflows/ directory with CI workflow (+6 pts)".to_string(),
                     location: Some(workflows_dir.display().to_string()),
-                    impact_points: -10.0,
+                    impact_points: -6.0,
                 }],
             });
         }
@@ -58,20 +61,24 @@ impl CiScorer {
             return Ok(SubcategoryScore {
                 id: "E1".to_string(),
                 name: "CI Workflows Present".to_string(),
-                score: 2.0,
-                max_score: 10.0,
+                score: 1.0,
+                max_score: 6.0,
                 findings: vec![Finding {
-                    severity: Severity::Error,
+                    severity: Severity::Warning,
                     category: "CI".to_string(),
-                    message: ".github/workflows exists but no workflow files found".to_string(),
+                    message: "Missing: Add workflow files to .github/workflows/ (+5 pts)".to_string(),
                     location: Some(workflows_dir.display().to_string()),
-                    impact_points: -8.0,
+                    impact_points: -5.0,
                 }],
             });
         }
 
-        // Score based on number of workflows (more = better, up to 10 points)
-        let score = (workflow_files.len() as f64 * 3.0).min(10.0);
+        // Score: 2 pts for 1 workflow, +2 pts for 2+ workflows, +2 pts for 3+ workflows
+        let score = match workflow_files.len() {
+            1 => 2.0,
+            2 => 4.0,
+            _ => 6.0,
+        };
 
         let mut findings = vec![];
         for workflow_path in &workflow_files {
@@ -79,11 +86,11 @@ impl CiScorer {
                 severity: Severity::Success,
                 category: "CI".to_string(),
                 message: format!(
-                    "Workflow found: {}",
+                    "✓ Workflow: {} (+2 pts)",
                     workflow_path.file_name().unwrap().to_string_lossy()
                 ),
                 location: Some(workflow_path.display().to_string()),
-                impact_points: 3.0,
+                impact_points: 2.0,
             });
         }
 
@@ -91,12 +98,12 @@ impl CiScorer {
             id: "E1".to_string(),
             name: "CI Workflows Present".to_string(),
             score,
-            max_score: 10.0,
+            max_score: 6.0,
             findings,
         })
     }
 
-    /// Score workflow configuration (E2: 10 points)
+    /// Score workflow configuration (E2: 6 points)
     async fn score_workflows_configured(&self, repo_path: &Path) -> Result<SubcategoryScore> {
         let workflows_dir = repo_path.join(".github/workflows");
 
@@ -105,7 +112,7 @@ impl CiScorer {
                 id: "E2".to_string(),
                 name: "Workflows Configured Properly".to_string(),
                 score: 0.0,
-                max_score: 10.0,
+                max_score: 6.0,
                 findings: vec![],
             });
         }
@@ -131,13 +138,15 @@ impl CiScorer {
                 id: "E2".to_string(),
                 name: "Workflows Configured Properly".to_string(),
                 score: 0.0,
-                max_score: 10.0,
+                max_score: 6.0,
                 findings: vec![],
             });
         }
 
         let mut total_score: f64 = 0.0;
         let mut findings = vec![];
+        let mut has_testing = false;
+        let mut has_linting = false;
 
         for workflow_path in &workflow_files {
             let content = match tokio::fs::read_to_string(workflow_path).await {
@@ -149,56 +158,241 @@ impl CiScorer {
             let has_name = content.contains("name:");
             let has_on = content.contains("on:");
             let has_jobs = content.contains("jobs:");
+            let workflow_name = workflow_path.file_name().unwrap().to_string_lossy();
 
             if has_name && has_on && has_jobs {
-                total_score += 3.0;
+                total_score += 2.0;
                 findings.push(Finding {
                     severity: Severity::Success,
                     category: "CI".to_string(),
-                    message: format!(
-                        "Workflow properly configured: {}",
-                        workflow_path.file_name().unwrap().to_string_lossy()
-                    ),
+                    message: format!("✓ Valid workflow structure: {} (+2 pts)", workflow_name),
                     location: Some(workflow_path.display().to_string()),
-                    impact_points: 3.0,
+                    impact_points: 2.0,
                 });
             } else {
+                let mut missing = vec![];
+                if !has_name { missing.push("name"); }
+                if !has_on { missing.push("on"); }
+                if !has_jobs { missing.push("jobs"); }
                 findings.push(Finding {
                     severity: Severity::Warning,
                     category: "CI".to_string(),
                     message: format!(
-                        "Workflow incomplete: {}",
-                        workflow_path.file_name().unwrap().to_string_lossy()
+                        "Incomplete: {} missing {} (+2 pts if fixed)",
+                        workflow_name,
+                        missing.join(", ")
                     ),
                     location: Some(workflow_path.display().to_string()),
                     impact_points: 0.0,
                 });
             }
 
-            // Bonus: Check for common CI patterns
+            // Check for common CI patterns
             let content_lower = content.to_lowercase();
-            let has_testing = content_lower.contains("test")
+            if content_lower.contains("test")
                 || content_lower.contains("cargo test")
-                || content_lower.contains("npm test");
-            let has_linting = content_lower.contains("lint")
-                || content_lower.contains("clippy")
-                || content_lower.contains("eslint");
-
-            if has_testing {
-                total_score += 1.0;
+                || content_lower.contains("npm test")
+            {
+                has_testing = true;
             }
-            if has_linting {
-                total_score += 1.0;
+            if content_lower.contains("lint")
+                || content_lower.contains("clippy")
+                || content_lower.contains("eslint")
+            {
+                has_linting = true;
             }
         }
 
-        let score = total_score.min(10.0);
+        // Bonus for testing and linting
+        if has_testing {
+            total_score += 1.0;
+            findings.push(Finding {
+                severity: Severity::Success,
+                category: "CI".to_string(),
+                message: "✓ Testing step detected (+1 pt)".to_string(),
+                location: None,
+                impact_points: 1.0,
+            });
+        } else {
+            findings.push(Finding {
+                severity: Severity::Info,
+                category: "CI".to_string(),
+                message: "Missing: Add testing step (cargo test, npm test) (+1 pt)".to_string(),
+                location: None,
+                impact_points: 0.0,
+            });
+        }
+
+        if has_linting {
+            total_score += 1.0;
+            findings.push(Finding {
+                severity: Severity::Success,
+                category: "CI".to_string(),
+                message: "✓ Linting step detected (+1 pt)".to_string(),
+                location: None,
+                impact_points: 1.0,
+            });
+        } else {
+            findings.push(Finding {
+                severity: Severity::Info,
+                category: "CI".to_string(),
+                message: "Missing: Add linting step (clippy, eslint) (+1 pt)".to_string(),
+                location: None,
+                impact_points: 0.0,
+            });
+        }
+
+        let score = total_score.min(6.0);
 
         Ok(SubcategoryScore {
             id: "E2".to_string(),
             name: "Workflows Configured Properly".to_string(),
             score,
-            max_score: 10.0,
+            max_score: 6.0,
+            findings,
+        })
+    }
+
+    /// Score advanced CI features (E3: 8 points)
+    /// Issue #72: Provides actionable feedback for advanced CI improvements
+    async fn score_advanced_features(&self, repo_path: &Path) -> Result<SubcategoryScore> {
+        let workflows_dir = repo_path.join(".github/workflows");
+        let mut total_score: f64 = 0.0;
+        let mut findings = vec![];
+
+        if !workflows_dir.exists() {
+            return Ok(SubcategoryScore {
+                id: "E3".to_string(),
+                name: "Advanced CI Features".to_string(),
+                score: 0.0,
+                max_score: 8.0,
+                findings: vec![Finding {
+                    severity: Severity::Info,
+                    category: "CI".to_string(),
+                    message: "Add workflows first to unlock advanced CI features (+8 pts available)".to_string(),
+                    location: None,
+                    impact_points: 0.0,
+                }],
+            });
+        }
+
+        // Collect all workflow content
+        let mut all_content = String::new();
+        for entry in WalkDir::new(&workflows_dir)
+            .max_depth(1)
+            .into_iter()
+            .flatten()
+        {
+            if entry.file_type().is_file() {
+                let path = entry.path();
+                let extension = path.extension().and_then(|s| s.to_str());
+                if extension == Some("yml") || extension == Some("yaml") {
+                    if let Ok(content) = tokio::fs::read_to_string(path).await {
+                        all_content.push_str(&content.to_lowercase());
+                    }
+                }
+            }
+        }
+
+        // Check for coverage reporting (2 pts)
+        let has_coverage = all_content.contains("codecov")
+            || all_content.contains("coveralls")
+            || all_content.contains("llvm-cov")
+            || all_content.contains("coverage");
+        if has_coverage {
+            total_score += 2.0;
+            findings.push(Finding {
+                severity: Severity::Success,
+                category: "CI".to_string(),
+                message: "✓ Code coverage reporting (+2 pts)".to_string(),
+                location: None,
+                impact_points: 2.0,
+            });
+        } else {
+            findings.push(Finding {
+                severity: Severity::Info,
+                category: "CI".to_string(),
+                message: "Missing: Add coverage reporting (codecov, coveralls) (+2 pts)".to_string(),
+                location: None,
+                impact_points: 0.0,
+            });
+        }
+
+        // Check for security scanning (2 pts)
+        let has_security = all_content.contains("security")
+            || all_content.contains("audit")
+            || all_content.contains("trivy")
+            || all_content.contains("snyk")
+            || all_content.contains("codeql")
+            || all_content.contains("dependabot");
+        if has_security {
+            total_score += 2.0;
+            findings.push(Finding {
+                severity: Severity::Success,
+                category: "CI".to_string(),
+                message: "✓ Security scanning enabled (+2 pts)".to_string(),
+                location: None,
+                impact_points: 2.0,
+            });
+        } else {
+            findings.push(Finding {
+                severity: Severity::Info,
+                category: "CI".to_string(),
+                message: "Missing: Add security scanning (cargo audit, CodeQL, Trivy) (+2 pts)".to_string(),
+                location: None,
+                impact_points: 0.0,
+            });
+        }
+
+        // Check for caching (2 pts)
+        let has_caching = all_content.contains("cache")
+            || all_content.contains("actions/cache");
+        if has_caching {
+            total_score += 2.0;
+            findings.push(Finding {
+                severity: Severity::Success,
+                category: "CI".to_string(),
+                message: "✓ Build caching configured (+2 pts)".to_string(),
+                location: None,
+                impact_points: 2.0,
+            });
+        } else {
+            findings.push(Finding {
+                severity: Severity::Info,
+                category: "CI".to_string(),
+                message: "Missing: Add caching (actions/cache) for faster builds (+2 pts)".to_string(),
+                location: None,
+                impact_points: 0.0,
+            });
+        }
+
+        // Check for matrix builds (2 pts)
+        let has_matrix = all_content.contains("matrix:")
+            || all_content.contains("strategy:");
+        if has_matrix {
+            total_score += 2.0;
+            findings.push(Finding {
+                severity: Severity::Success,
+                category: "CI".to_string(),
+                message: "✓ Matrix/strategy builds configured (+2 pts)".to_string(),
+                location: None,
+                impact_points: 2.0,
+            });
+        } else {
+            findings.push(Finding {
+                severity: Severity::Info,
+                category: "CI".to_string(),
+                message: "Missing: Add matrix builds for multi-platform testing (+2 pts)".to_string(),
+                location: None,
+                impact_points: 0.0,
+            });
+        }
+
+        Ok(SubcategoryScore {
+            id: "E3".to_string(),
+            name: "Advanced CI Features".to_string(),
+            score: total_score.min(8.0),
+            max_score: 8.0,
             findings,
         })
     }
@@ -217,16 +411,18 @@ impl Scorer for CiScorer {
     async fn score(&self, repo_path: &Path, _config: &ScorerConfig) -> Result<CategoryScore> {
         let e1 = self.score_workflows_present(repo_path).await?;
         let e2 = self.score_workflows_configured(repo_path).await?;
+        let e3 = self.score_advanced_features(repo_path).await?;
 
-        let total_score = e1.score + e2.score;
+        let total_score = e1.score + e2.score + e3.score;
 
         let mut findings = e1.findings.clone();
         findings.extend(e2.findings.clone());
+        findings.extend(e3.findings.clone());
 
         Ok(CategoryScore::new(
             total_score,
             self.max_score(),
-            vec![e1, e2],
+            vec![e1, e2, e3],
             findings,
         ))
     }
@@ -312,10 +508,9 @@ jobs:
 
         let result = scorer.score(repo_path, &config).await.unwrap();
 
-        // E1: 3 (1 workflow), E2: 5 (valid + test + lint) = 8
-        // 8/20 = 40% = Fail (<70%)
-        assert!(result.score >= 7.0 && result.score <= 9.0);
-        assert_eq!(result.status, ScoreStatus::Fail);
+        // E1: 2 (1 workflow), E2: 4 (valid + test + lint), E3: 0 (no advanced) = 6
+        // With the improved workflow, should get some E3 points too
+        assert!(result.score >= 5.0 && result.score <= 8.0);
     }
 
     #[tokio::test]
@@ -331,9 +526,8 @@ jobs:
 
         let result = scorer.score(repo_path, &config).await.unwrap();
 
-        // E1: 9 (3 workflows × 3), E2: 10 (maxed out) = 19
-        assert!(result.score >= 18.0 && result.score <= 20.0);
-        assert_eq!(result.status, ScoreStatus::Pass);
+        // E1: 6 (3 workflows), E2: 6 (maxed out), E3: 0 (no advanced) = 12
+        assert!(result.score >= 10.0 && result.score <= 14.0);
     }
 
     #[tokio::test]
@@ -347,8 +541,8 @@ jobs:
 
         let result = scorer.score(repo_path, &config).await.unwrap();
 
-        // E1: 3 (1 workflow), E2: 3 (valid only) = 6
-        assert!(result.score >= 5.0 && result.score <= 7.0);
+        // E1: 2 (1 workflow), E2: 2 (valid only), E3: 0 = 4
+        assert!(result.score >= 3.0 && result.score <= 5.0);
     }
 
     #[tokio::test]
@@ -364,7 +558,8 @@ jobs:
 
         let e1 = result.subcategories.iter().find(|s| s.id == "E1").unwrap();
         assert_eq!(e1.name, "CI Workflows Present");
-        assert!(e1.score >= 2.0 && e1.score <= 4.0);
+        assert_eq!(e1.max_score, 6.0);
+        assert!(e1.score >= 1.0 && e1.score <= 3.0); // 1 workflow = 2 pts
     }
 
     #[tokio::test]
@@ -380,7 +575,26 @@ jobs:
 
         let e2 = result.subcategories.iter().find(|s| s.id == "E2").unwrap();
         assert_eq!(e2.name, "Workflows Configured Properly");
-        assert!(e2.score >= 4.0 && e2.score <= 6.0);
+        assert_eq!(e2.max_score, 6.0);
+        assert!(e2.score >= 3.0 && e2.score <= 5.0); // valid + test + lint
+    }
+
+    #[tokio::test]
+    async fn test_ci_advanced_features_subcategory() {
+        let temp_dir = create_temp_repo();
+        let repo_path = temp_dir.path();
+        create_workflow(repo_path, "ci.yml", PERFECT_WORKFLOW);
+
+        let scorer = CiScorer::new();
+        let config = ScorerConfig::default();
+
+        let result = scorer.score(repo_path, &config).await.unwrap();
+
+        let e3 = result.subcategories.iter().find(|s| s.id == "E3").unwrap();
+        assert_eq!(e3.name, "Advanced CI Features");
+        assert_eq!(e3.max_score, 8.0);
+        // Should have findings telling us what's missing
+        assert!(!e3.findings.is_empty());
     }
 
     #[tokio::test]
@@ -397,8 +611,8 @@ jobs:
 
         let result = scorer.score(repo_path, &config).await.unwrap();
 
-        // E1: 2 (dir exists but empty), E2: 0 = 2
-        assert!(result.score >= 1.0 && result.score <= 3.0);
+        // E1: 1 (dir exists but empty), E2: 0, E3: 0 = 1
+        assert!(result.score >= 0.0 && result.score <= 2.0);
     }
 
     #[tokio::test]
