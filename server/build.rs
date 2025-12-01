@@ -483,7 +483,11 @@ fn minify_js_file(input_path: &Path, output_path: &Path) {
     }
 
     // O(1) optimization: Skip if unchanged
-    let hash_path = output_path.with_file_name(format!("{}.hash", output_path.file_name().unwrap().to_string_lossy()));
+    let Some(file_name) = output_path.file_name() else {
+        println!("cargo:warning=Invalid output path: no file name");
+        return;
+    };
+    let hash_path = output_path.with_file_name(format!("{}.hash", file_name.to_string_lossy()));
     if output_path.exists() && !has_file_changed(input_path, &hash_path) {
         println!(
             "cargo:warning=Skipping unchanged JavaScript: {} (O(1) hash check)",
@@ -529,7 +533,11 @@ fn minify_css_file(input_path: &Path, output_path: &Path) {
     }
 
     // O(1) optimization: Skip if unchanged
-    let hash_path = output_path.with_file_name(format!("{}.hash", output_path.file_name().unwrap().to_string_lossy()));
+    let Some(file_name) = output_path.file_name() else {
+        println!("cargo:warning=Invalid output path: no file name");
+        return;
+    };
+    let hash_path = output_path.with_file_name(format!("{}.hash", file_name.to_string_lossy()));
     if output_path.exists() && !has_file_changed(input_path, &hash_path) {
         println!(
             "cargo:warning=Skipping unchanged CSS: {} (O(1) hash check)",
