@@ -26,7 +26,7 @@ use organizational_intelligence_plugin::summarizer::{ReportSummarizer, SummaryCo
 #[cfg(feature = "org-intelligence")]
 use std::env;
 #[cfg(feature = "org-intelligence")]
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 #[cfg(feature = "org-intelligence")]
 use tempfile::TempDir;
 #[cfg(feature = "org-intelligence")]
@@ -53,6 +53,36 @@ pub async fn handle_org_command(org_cmd: OrgCommands) -> Result<()> {
                 strip_pii,
                 top_n,
                 min_frequency,
+            )
+            .await
+        }
+        OrgCommands::Localize {
+            passed_coverage,
+            failed_coverage,
+            passed_count,
+            failed_count,
+            formula,
+            top_n,
+            output,
+            ensemble,
+            calibrated,
+            confidence_threshold,
+            enrich_tdg,
+            repo,
+        } => {
+            handle_fault_localization(
+                &passed_coverage,
+                &failed_coverage,
+                passed_count,
+                failed_count,
+                &formula,
+                top_n,
+                output.as_deref(),
+                ensemble,
+                calibrated,
+                confidence_threshold,
+                enrich_tdg,
+                &repo,
             )
             .await
         }
@@ -235,6 +265,92 @@ async fn handle_org_analyze(
         );
     } else {
         println!("\n💡 To generate summary: pmat org analyze --org {} --output {:?} --summarize --strip-pii", org, output);
+    }
+
+    Ok(())
+}
+
+/// Handle fault localization using OIP's Tarantula implementation
+#[cfg(feature = "org-intelligence")]
+#[allow(clippy::too_many_arguments)]
+async fn handle_fault_localization(
+    passed_coverage: &Path,
+    failed_coverage: &Path,
+    passed_count: usize,
+    failed_count: usize,
+    formula: &str,
+    top_n: usize,
+    output: Option<&Path>,
+    ensemble: bool,
+    calibrated: bool,
+    confidence_threshold: f32,
+    enrich_tdg: bool,
+    repo: &Path,
+) -> Result<()> {
+    use std::process::Command;
+
+    println!("\n🔍 Tarantula Fault Localization (via OIP)");
+    println!("   Formula: {}", formula);
+    println!("   Passed tests: {}", passed_count);
+    println!("   Failed tests: {}", failed_count);
+    println!("   Top-N: {}", top_n);
+
+    // Build oip localize command
+    let mut cmd = Command::new("oip");
+    cmd.arg("localize")
+        .arg("--passed-coverage")
+        .arg(passed_coverage)
+        .arg("--failed-coverage")
+        .arg(failed_coverage)
+        .arg("--passed-count")
+        .arg(passed_count.to_string())
+        .arg("--failed-count")
+        .arg(failed_count.to_string())
+        .arg("--formula")
+        .arg(formula)
+        .arg("--top-n")
+        .arg(top_n.to_string())
+        .arg("--format")
+        .arg("terminal");
+
+    if let Some(out_path) = output {
+        cmd.arg("--output").arg(out_path);
+    }
+
+    if ensemble {
+        cmd.arg("--ensemble");
+        println!("   Ensemble: enabled (Phase 6)");
+    }
+
+    if calibrated {
+        cmd.arg("--calibrated")
+            .arg("--confidence-threshold")
+            .arg(confidence_threshold.to_string());
+        println!(
+            "   Calibrated: enabled (Phase 7, threshold: {:.0}%)",
+            confidence_threshold * 100.0
+        );
+    }
+
+    if enrich_tdg {
+        cmd.arg("--enrich-tdg").arg("--repo").arg(repo);
+        println!("   TDG enrichment: enabled");
+    }
+
+    println!();
+
+    // Execute oip localize
+    let status = cmd.status().context("Failed to execute oip localize")?;
+
+    if !status.success() {
+        anyhow::bail!(
+            "oip localize failed with exit code: {}",
+            status.code().unwrap_or(-1)
+        );
+    }
+
+    if let Some(out_path) = output {
+        println!("\n📄 Report written to: {:?}", out_path);
     }
 
     Ok(())

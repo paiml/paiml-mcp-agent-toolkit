@@ -4581,6 +4581,57 @@ pub enum OrgCommands {
         #[arg(long, default_value_t = 3, requires = "summarize")]
         min_frequency: usize,
     },
+
+    /// Fault localization using Tarantula SBFL algorithm (Phase 5-7)
+    Localize {
+        /// Path to coverage file for passing tests (LCOV format)
+        #[arg(long)]
+        passed_coverage: PathBuf,
+
+        /// Path to coverage file for failing tests (LCOV format)
+        #[arg(long)]
+        failed_coverage: PathBuf,
+
+        /// Number of passing test cases
+        #[arg(long)]
+        passed_count: usize,
+
+        /// Number of failing test cases
+        #[arg(long)]
+        failed_count: usize,
+
+        /// SBFL formula to use
+        #[arg(long, default_value = "tarantula")]
+        formula: String,
+
+        /// Top N suspicious statements to report
+        #[arg(long, default_value_t = 10)]
+        top_n: usize,
+
+        /// Output file path
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+
+        /// Enable weighted ensemble model (Phase 6)
+        #[arg(long)]
+        ensemble: bool,
+
+        /// Enable calibrated defect prediction (Phase 7)
+        #[arg(long)]
+        calibrated: bool,
+
+        /// Confidence threshold for calibrated predictions (0.0-1.0)
+        #[arg(long, default_value_t = 0.5)]
+        confidence_threshold: f32,
+
+        /// Enrich with TDG scores from pmat
+        #[arg(long)]
+        enrich_tdg: bool,
+
+        /// Repository path for TDG enrichment
+        #[arg(long, default_value = ".")]
+        repo: PathBuf,
+    },
 }
 
 /// Prompt generation subcommands (Phase 4: Organizational Intelligence Integration)
