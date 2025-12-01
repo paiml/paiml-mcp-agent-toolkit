@@ -274,6 +274,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "Requires HOME directory to be set"]
     fn test_error_capture_path() {
         let path = get_error_capture_path();
         assert!(path.is_ok());
