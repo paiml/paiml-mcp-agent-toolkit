@@ -592,6 +592,24 @@ impl CommandExecutor {
                         )
                         .await
                     }
+                    MaintainCommands::CleanupResources {
+                        project_dir,
+                        targets,
+                        execute,
+                        exclude,
+                        min_age_days,
+                        format,
+                    } => {
+                        super::handlers::cleanup_resources_handler::handle_cleanup_resources(
+                            &project_dir,
+                            &targets,
+                            execute,
+                            &exclude,
+                            min_age_days,
+                            format,
+                        )
+                        .await
+                    }
                 }
             }
 

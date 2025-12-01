@@ -1143,6 +1143,34 @@ pub enum MaintainCommands {
         #[arg(long)]
         clear: bool,
     },
+
+    /// Clean up development artifacts and caches (GH-86)
+    #[command(visible_aliases = &["clean", "cleanup", "purge"])]
+    CleanupResources {
+        /// Project directory to scan
+        #[arg(long, default_value = ".")]
+        project_dir: PathBuf,
+
+        /// Cleanup targets: rust, docker, node, git, logs, caches, all
+        #[arg(long, value_delimiter = ',', default_value = "rust")]
+        targets: Vec<String>,
+
+        /// Actually execute cleanup (default is dry-run)
+        #[arg(long)]
+        execute: bool,
+
+        /// Exclude patterns (glob syntax)
+        #[arg(long)]
+        exclude: Vec<String>,
+
+        /// Minimum age in days for cleanup candidates
+        #[arg(long, default_value = "0")]
+        min_age_days: u32,
+
+        /// Output format
+        #[arg(long, value_enum, default_value = "table")]
+        format: OutputFormat,
+    },
 }
 
 /// Diagnostic output format
