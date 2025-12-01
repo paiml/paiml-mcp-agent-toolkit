@@ -270,7 +270,7 @@ async fn handle_org_analyze(
     Ok(())
 }
 
-/// Handle fault localization using OIP's Tarantula implementation
+/// Handle fault localization using native Tarantula implementation (Issue #103)
 #[cfg(feature = "org-intelligence")]
 #[allow(clippy::too_many_arguments)]
 async fn handle_fault_localization(
@@ -281,76 +281,63 @@ async fn handle_fault_localization(
     formula: &str,
     top_n: usize,
     output: Option<&Path>,
-    ensemble: bool,
-    calibrated: bool,
-    confidence_threshold: f32,
-    enrich_tdg: bool,
-    repo: &Path,
+    _ensemble: bool,
+    _calibrated: bool,
+    _confidence_threshold: f32,
+    _enrich_tdg: bool,
+    _repo: &Path,
 ) -> Result<()> {
-    use std::process::Command;
+    use crate::services::fault_localization::{
+        FaultLocalizer, LcovParser, ReportFormat, SbflFormula,
+    };
 
-    println!("\n🔍 Tarantula Fault Localization (via OIP)");
+    println!("\n🔍 Tarantula Fault Localization (native implementation)");
     println!("   Formula: {}", formula);
     println!("   Passed tests: {}", passed_count);
     println!("   Failed tests: {}", failed_count);
     println!("   Top-N: {}", top_n);
-
-    // Build oip localize command
-    let mut cmd = Command::new("oip");
-    cmd.arg("localize")
-        .arg("--passed-coverage")
-        .arg(passed_coverage)
-        .arg("--failed-coverage")
-        .arg(failed_coverage)
-        .arg("--passed-count")
-        .arg(passed_count.to_string())
-        .arg("--failed-count")
-        .arg(failed_count.to_string())
-        .arg("--formula")
-        .arg(formula)
-        .arg("--top-n")
-        .arg(top_n.to_string())
-        .arg("--format")
-        .arg("terminal");
-
-    if let Some(out_path) = output {
-        cmd.arg("--output").arg(out_path);
-    }
-
-    if ensemble {
-        cmd.arg("--ensemble");
-        println!("   Ensemble: enabled (Phase 6)");
-    }
-
-    if calibrated {
-        cmd.arg("--calibrated")
-            .arg("--confidence-threshold")
-            .arg(confidence_threshold.to_string());
-        println!(
-            "   Calibrated: enabled (Phase 7, threshold: {:.0}%)",
-            confidence_threshold * 100.0
-        );
-    }
-
-    if enrich_tdg {
-        cmd.arg("--enrich-tdg").arg("--repo").arg(repo);
-        println!("   TDG enrichment: enabled");
-    }
-
     println!();
 
-    // Execute oip localize
-    let status = cmd.status().context("Failed to execute oip localize")?;
+    // Parse LCOV files
+    let passed_data = LcovParser::parse_file(passed_coverage)
+        .context("Failed to parse passed coverage LCOV file")?;
+    let failed_data = LcovParser::parse_file(failed_coverage)
+        .context("Failed to parse failed coverage LCOV file")?;
 
-    if !status.success() {
-        anyhow::bail!(
-            "oip localize failed with exit code: {}",
-            status.code().unwrap_or(-1)
-        );
-    }
+    // Parse formula
+    let sbfl_formula: SbflFormula = formula
+        .parse()
+        .unwrap_or(SbflFormula::Tarantula);
 
+    // Run localization
+    let result = FaultLocalizer::run_localization(
+        &passed_data,
+        &failed_data,
+        passed_count,
+        failed_count,
+        sbfl_formula,
+        top_n,
+    );
+
+    // Determine output format
+    let format = if output.map(|p| p.extension().and_then(|e| e.to_str()) == Some("json")).unwrap_or(false) {
+        ReportFormat::Json
+    } else if output.map(|p| p.extension().and_then(|e| e.to_str()) == Some("yaml")).unwrap_or(false) {
+        ReportFormat::Yaml
+    } else {
+        ReportFormat::Terminal
+    };
+
+    // Generate report
+    let report = FaultLocalizer::generate_report(&result, format)?;
+
+    // Output
     if let Some(out_path) = output {
-        println!("\n📄 Report written to: {:?}", out_path);
+        std::fs::write(out_path, &report)
+            .context("Failed to write output file")?;
+        println!("📄 Report written to: {:?}", out_path);
+    } else {
+        println!("{}", report);
     }
 
     Ok(())

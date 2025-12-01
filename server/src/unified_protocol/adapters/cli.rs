@@ -128,6 +128,7 @@ impl CliAdapter {
             | Commands::Comply { .. } // GH-96: PMAT compliance and migration system (CLI-only)
             | Commands::TestDiscovery { .. } // GH-98: Systematic test discovery and fixing (CLI-only)
             | Commands::DebugFiveWhys { .. } // Five Whys root cause analysis (CLI-only)
+            | Commands::Localize { .. } // GH-103: Tarantula fault localization (CLI-only)
             | Commands::ShowMetrics { .. } // Phase 3.1: O(1) Quality Gates CLI (CLI-only)
             | Commands::PredictQuality { .. } // Phase 4.1: Predictive Quality Gates CLI (CLI-only)
             | Commands::RecordMetric { .. } // Phase 3.4: O(1) Quality Gates CI/CD (CLI-only)
@@ -1823,6 +1824,9 @@ impl CliInput {
             }
             Commands::DebugFiveWhys { .. } => {
                 CommandCategory::Analysis // Five Whys root cause analysis
+            }
+            Commands::Localize { .. } => {
+                CommandCategory::Analysis // GH-103: Tarantula fault localization
             }
         }
     }

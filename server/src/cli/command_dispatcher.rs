@@ -540,6 +540,30 @@ impl CommandDispatcher {
                 )
                 .await
             }
+
+            Commands::Localize {
+                passed_coverage,
+                failed_coverage,
+                passed_count,
+                failed_count,
+                formula,
+                top_n,
+                output,
+                format,
+            } => {
+                // Fault localization using Tarantula SBFL (GH-103)
+                crate::cli::handlers::localize_handlers::handle_localize(
+                    &passed_coverage,
+                    &failed_coverage,
+                    passed_count,
+                    failed_count,
+                    &formula,
+                    top_n,
+                    output.as_deref(),
+                    &format,
+                )
+                .await
+            }
         }
     }
 

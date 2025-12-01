@@ -151,6 +151,7 @@ pub mod enhanced_typescript_visitor;
 pub mod file_classifier;
 #[cfg(test)]
 mod file_classifier_property_tests;
+pub mod fault_localization; // Issue #103: Tarantula SBFL fault localization
 pub mod file_discovery;
 pub mod five_whys_analyzer;
 pub mod debug_formatters;

@@ -660,6 +660,11 @@ impl CommandExecutor {
             Commands::DebugFiveWhys { .. } => {
                 anyhow::bail!("DebugFiveWhys command should be handled by command_dispatcher.rs")
             }
+
+            // Fault localization - handled by command_dispatcher.rs (GH-103)
+            Commands::Localize { .. } => {
+                anyhow::bail!("Localize command should be handled by command_dispatcher.rs")
+            }
         }
     }
 }

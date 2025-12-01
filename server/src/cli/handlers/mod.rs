@@ -92,6 +92,7 @@ pub mod wasm_handler;
 pub mod wasm_handlers; // Phase 4: Organizational Intelligence Integration
 pub mod work_handlers; // Issue #75: Unified GitHub/YAML workflow
 pub mod five_whys_handlers; // Five Whys root cause analysis (Toyota Way)
+pub mod localize_handlers; // GH-103: Tarantula fault localization
 
 // Re-export handler functions
 pub use advanced_analysis_handlers::{

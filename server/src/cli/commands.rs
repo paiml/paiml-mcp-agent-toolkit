@@ -843,6 +843,43 @@ pub enum Commands {
         #[command(subcommand)]
         command: TestDiscoveryCommands,
     },
+
+    /// Fault localization using Tarantula SBFL algorithm (GH-103)
+    /// Identify suspicious code locations based on test coverage data
+    #[command(name = "localize", visible_aliases = &["fault", "fl"])]
+    Localize {
+        /// Path to coverage file for passing tests (LCOV format)
+        #[arg(long)]
+        passed_coverage: PathBuf,
+
+        /// Path to coverage file for failing tests (LCOV format)
+        #[arg(long)]
+        failed_coverage: PathBuf,
+
+        /// Number of passing test cases
+        #[arg(long)]
+        passed_count: usize,
+
+        /// Number of failing test cases
+        #[arg(long)]
+        failed_count: usize,
+
+        /// SBFL formula: tarantula, ochiai, dstar2, dstar3
+        #[arg(long, default_value = "tarantula")]
+        formula: String,
+
+        /// Top N suspicious statements to report
+        #[arg(long, default_value_t = 10)]
+        top_n: usize,
+
+        /// Output file path (extension determines format: .json, .yaml, or text)
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+
+        /// Output format: terminal, json, yaml
+        #[arg(short = 'f', long, default_value = "terminal")]
+        format: String,
+    },
 }
 
 /// Comply subcommands for PMAT compliance checking and migration (GH-96)
