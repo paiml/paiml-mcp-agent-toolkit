@@ -1540,9 +1540,9 @@ checksum = "7c74b8349d32d297c9134b8c88677813a227df8f779daa29bfc29c183fe3dca6"
 
 [[package]]
 name = "convert_case"
-version = "0.7.1"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bb402b8d4c85569410425650ce3eddc7d698ed96d39a73f941b08fb63082f1e7"
+checksum = "633458d4ef8c78b72454de2d54fd6ab2e60f9e02be22f3c6104cdc8a4e0fceb9"
 dependencies = [
  "unicode-segmentation",
 ]
@@ -1994,7 +1994,7 @@ checksum = "d8b9f2e4c67f833b660cdb0a3523065869fb35570177239812ed4c905aeff87b"
 dependencies = [
  "bitflags 2.9.4",
  "crossterm_winapi",
- "derive_more 2.0.1",
+ "derive_more 2.1.0",
  "document-features",
  "mio",
  "parking_lot 0.12.5",
@@ -2240,22 +2240,23 @@ dependencies = [
 
 [[package]]
 name = "derive_more"
-version = "2.0.1"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "093242cf7570c207c83073cf82f79706fe7b8317e98620a47d5be7c3d8497678"
+checksum = "10b768e943bed7bf2cab53df09f4bc34bfd217cdb57d971e769874c9a6710618"
 dependencies = [
  "derive_more-impl",
 ]
 
 [[package]]
 name = "derive_more-impl"
-version = "2.0.1"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bda628edc44c4bb645fbe0f758797143e4e07926f7ebf4e9bdfbd3d2ce621df3"
+checksum = "6d286bfdaf75e988b4a78e013ecd79c581e06399ab53fbacd2d916c2f904f30b"
 dependencies = [
  "convert_case",
  "proc-macro2",
  "quote",
+ "rustc_version",
  "syn 2.0.111",
 ]
 
@@ -4359,9 +4360,9 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.177"
+version = "0.2.178"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2874a2af47a2325c2001a6e6fad9b16a53b802102b528163885171cf92b15976"
+checksum = "37c93d8daa9d8a012fd8ab92f088405fb202ea0b6ab73ee2482ae66af4f42091"
 
 [[package]]
 name = "libgit2-sys"
@@ -5399,9 +5400,9 @@ dependencies = [
 
 [[package]]
 name = "octocrab"
-version = "0.48.0"
+version = "0.48.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "03c4c16af97628682471056f83897a89e84238cc422a2af37c367acb3206a4b8"
+checksum = "c5930b376c98c438a4f4259a760cda2c198efea3b82de8f8a2aff0c00a8b7c1c"
 dependencies = [
  "arc-swap",
  "async-trait",
@@ -5551,7 +5552,7 @@ dependencies = [
  "tracing-subscriber",
  "trueno 0.7.3",
  "trueno-db",
- "trueno-graph 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "trueno-graph",
  "wgpu 0.19.4",
 ]
 
@@ -5900,7 +5901,7 @@ dependencies = [
 
 [[package]]
 name = "pmat"
-version = "2.206.0"
+version = "2.207.0"
 dependencies = [
  "actix",
  "actix-rt",
@@ -5959,7 +5960,7 @@ dependencies = [
  "notify",
  "num_cpus",
  "object 0.37.3",
- "octocrab 0.48.0",
+ "octocrab 0.48.1",
  "once_cell",
  "organizational-intelligence-plugin",
  "parking_lot 0.12.5",
@@ -6027,7 +6028,7 @@ dependencies = [
  "tree-sitter-typescript",
  "trueno 0.6.0",
  "trueno-db",
- "trueno-graph 0.1.2",
+ "trueno-graph",
  "trueno-rag",
  "ureq",
  "url",
@@ -8889,20 +8890,6 @@ dependencies = [
 [[package]]
 name = "trueno-graph"
 version = "0.1.2"
-dependencies = [
- "anyhow",
- "aprender 0.14.0",
- "arrow 54.2.1",
- "parquet",
- "thiserror 1.0.69",
- "tokio",
- "trueno 0.7.3",
- "trueno-db",
-]
-
-[[package]]
-name = "trueno-graph"
-version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f94d040235744a91e756fc23f16dcc0ead90cbd6effe0f3d2144cc95e0c27d32"
 dependencies = [
@@ -8919,6 +8906,8 @@ dependencies = [
 [[package]]
 name = "trueno-rag"
 version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3512c6f2637f4c04a81933fb24c17647dd2d13b6dbdd761af3e8ffc4c0d38b2c"
 dependencies = [
  "async-trait",
  "serde",
