@@ -184,8 +184,8 @@ proptest = "1.0"
         ); // D1, D2, D3
         assert_eq!(
             result.categories.continuous_integration.subcategories.len(),
-            2
-        ); // E1, E2
+            3
+        ); // E1, E2, E3
         assert_eq!(result.categories.pmat_compliance.subcategories.len(), 2); // F1, F2
     }
 }
