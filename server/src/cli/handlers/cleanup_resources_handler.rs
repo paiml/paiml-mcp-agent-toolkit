@@ -20,7 +20,7 @@ pub enum CleanupTarget {
 }
 
 impl CleanupTarget {
-    pub fn from_str(s: &str) -> Option<Self> {
+    pub fn parse(s: &str) -> Option<Self> {
         match s.to_lowercase().as_str() {
             "rust" => Some(Self::Rust),
             "docker" => Some(Self::Docker),
@@ -67,7 +67,7 @@ pub async fn handle_cleanup_resources(
     // Parse targets
     let parsed_targets: Vec<CleanupTarget> = targets
         .iter()
-        .filter_map(|t| CleanupTarget::from_str(t))
+        .filter_map(|t| CleanupTarget::parse(t))
         .collect();
 
     if parsed_targets.is_empty() {
@@ -527,11 +527,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_cleanup_target_from_str() {
-        assert_eq!(CleanupTarget::from_str("rust"), Some(CleanupTarget::Rust));
-        assert_eq!(CleanupTarget::from_str("DOCKER"), Some(CleanupTarget::Docker));
-        assert_eq!(CleanupTarget::from_str("all"), Some(CleanupTarget::All));
-        assert_eq!(CleanupTarget::from_str("invalid"), None);
+    fn test_cleanup_target_parse() {
+        assert_eq!(CleanupTarget::parse("rust"), Some(CleanupTarget::Rust));
+        assert_eq!(CleanupTarget::parse("DOCKER"), Some(CleanupTarget::Docker));
+        assert_eq!(CleanupTarget::parse("all"), Some(CleanupTarget::All));
+        assert_eq!(CleanupTarget::parse("invalid"), None);
     }
 
     #[test]

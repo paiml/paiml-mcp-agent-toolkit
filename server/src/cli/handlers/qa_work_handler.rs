@@ -778,7 +778,7 @@ async fn run_process_checks(project_path: &Path, task_id: &str) -> CategoryResul
 fn print_validation_text(result: &QaValidationResult) {
     println!("Validating {}...\n", result.task_id);
 
-    for (_, category) in &result.categories {
+    for category in result.categories.values() {
         let status = if category.passed == category.total {
             "\x1b[32m✓\x1b[0m"
         } else if category.passed > 0 {
@@ -826,7 +826,7 @@ fn print_validation_markdown(result: &QaValidationResult) {
     println!("**Date**: {}", result.timestamp.format("%Y-%m-%d %H:%M:%S UTC"));
     println!("**Score**: {:.1}%\n", result.overall_score);
 
-    for (_, category) in &result.categories {
+    for category in result.categories.values() {
         println!("## {} ({}/{})\n", category.name, category.passed, category.total);
 
         for item in &category.items {
@@ -899,7 +899,7 @@ async fn handle_report(
             md.push_str(&format!("- **Date**: {}\n\n", result.timestamp.format("%Y-%m-%d")));
 
             md.push_str("## Checklist Results\n\n");
-            for (_, category) in &result.categories {
+            for category in result.categories.values() {
                 md.push_str(&format!("### {} ({}/{})\n\n", category.name, category.passed, category.total));
                 for item in &category.items {
                     let status_icon = match item.status {

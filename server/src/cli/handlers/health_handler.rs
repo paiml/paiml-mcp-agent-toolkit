@@ -368,9 +368,7 @@ async fn run_complexity_check(project_dir: &PathBuf) -> Result<HealthCheck> {
                     total_functions, violations, max_complexity
                 ),
                 details: if violations > 0 {
-                    Some(format!(
-                        "Run 'pmat analyze complexity' for detailed report"
-                    ))
+                    Some("Run 'pmat analyze complexity' for detailed report".to_string())
                 } else {
                     None
                 },

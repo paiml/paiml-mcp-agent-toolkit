@@ -557,7 +557,7 @@ impl FaultLocalizer {
 
         for ranking in &result.rankings {
             let bar_len = (ranking.suspiciousness * 20.0).min(20.0) as usize;
-            let bar = format!("{}{}", "█".repeat(bar_len), "░".repeat(20 - bar_len));
+            let progress_bar = format!("{}{}", "█".repeat(bar_len), "░".repeat(20 - bar_len));
 
             // Truncate file path for display
             let file_display = ranking.statement.file.display().to_string();
@@ -572,7 +572,7 @@ impl FaultLocalizer {
                 ranking.rank,
                 file_short,
                 ranking.statement.line,
-                bar,
+                progress_bar,
                 ranking.suspiciousness
             ));
         }

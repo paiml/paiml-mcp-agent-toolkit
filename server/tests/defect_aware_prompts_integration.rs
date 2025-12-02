@@ -4,6 +4,7 @@
 use pmat::prompts::DefectAwarePromptGenerator;
 
 #[test]
+#[ignore = "Requires external OIP test baseline file"]
 fn test_integration_with_real_oip_summary() {
     // Use test baseline from OIP project
     let oip_summary_path = "/tmp/oip-test-baseline.yaml";

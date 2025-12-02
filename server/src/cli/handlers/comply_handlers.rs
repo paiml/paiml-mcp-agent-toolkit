@@ -140,18 +140,13 @@ async fn handle_check(
     let project_version = &config.pmat.version;
 
     // Run compliance checks
-    let mut checks = vec![];
-
-    // Check 1: Version currency
-    checks.push(check_version_currency(project_version));
-    // Check 2: Config file presence
-    checks.push(check_config_files(project_path));
-    // Check 3: Hooks installation
-    checks.push(check_hooks_installed(project_path));
-    // Check 4: Quality thresholds
-    checks.push(check_quality_thresholds(project_path));
-    // Check 5: Deprecated features
-    checks.push(check_deprecated_features(project_path));
+    let checks = vec![
+        check_version_currency(project_version),
+        check_config_files(project_path),
+        check_hooks_installed(project_path),
+        check_quality_thresholds(project_path),
+        check_deprecated_features(project_path),
+    ];
 
     // Calculate compliance
     let failures = checks.iter().filter(|c| c.status == CheckStatus::Fail).count();

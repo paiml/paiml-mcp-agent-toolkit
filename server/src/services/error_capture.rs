@@ -153,7 +153,7 @@ pub fn generate_issue_markdown(error: &CapturedError, title: Option<&str>) -> St
     if let Some(ref path) = error.project_path {
         md.push_str(&format!("- **Project Path**: `{}`\n", path));
     }
-    md.push_str("\n");
+    md.push('\n');
 
     // Command section
     md.push_str("## Command Executed\n\n");
