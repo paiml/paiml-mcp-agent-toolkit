@@ -2810,7 +2810,7 @@ pub enum AnalyzeCommands {
         language: Option<String>,
 
         /// Output format
-        #[arg(long, value_enum, default_value = "summary")]
+        #[arg(long, value_enum, default_value = "table")]
         format: OutputFormat,
     },
 
@@ -2825,7 +2825,7 @@ pub enum AnalyzeCommands {
         language: Option<String>,
 
         /// Output format
-        #[arg(long, value_enum, default_value = "summary")]
+        #[arg(long, value_enum, default_value = "table")]
         format: OutputFormat,
     },
 }

@@ -207,21 +207,6 @@ dependencies = [
 
 [[package]]
 name = "aprender"
-version = "0.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "444858eca984a7bed8261ab5b9ba5543973c9d23fa5b1af5eecabf79322a83b2"
-dependencies = [
- "bincode",
- "nalgebra 0.33.2",
- "rand 0.8.5",
- "rayon",
- "serde",
- "serde_json",
- "trueno 0.7.3",
-]
-
-[[package]]
-name = "aprender"
 version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "00f7444e7188aa5d066ed38f7810634f30c19afd736fd244c54dd33f54ade90a"
@@ -5566,7 +5551,7 @@ dependencies = [
  "tracing-subscriber",
  "trueno 0.7.3",
  "trueno-db",
- "trueno-graph",
+ "trueno-graph 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "wgpu 0.19.4",
 ]
 
@@ -5921,7 +5906,7 @@ dependencies = [
  "actix-rt",
  "ahash",
  "anyhow",
- "aprender 0.7.1",
+ "aprender 0.14.0",
  "arrow 53.4.1",
  "assert_cmd",
  "async-raft",
@@ -6042,7 +6027,8 @@ dependencies = [
  "tree-sitter-typescript",
  "trueno 0.6.0",
  "trueno-db",
- "trueno-graph",
+ "trueno-graph 0.1.2",
+ "trueno-rag",
  "ureq",
  "url",
  "uuid",
@@ -8903,6 +8889,20 @@ dependencies = [
 [[package]]
 name = "trueno-graph"
 version = "0.1.2"
+dependencies = [
+ "anyhow",
+ "aprender 0.14.0",
+ "arrow 54.2.1",
+ "parquet",
+ "thiserror 1.0.69",
+ "tokio",
+ "trueno 0.7.3",
+ "trueno-db",
+]
+
+[[package]]
+name = "trueno-graph"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f94d040235744a91e756fc23f16dcc0ead90cbd6effe0f3d2144cc95e0c27d32"
 dependencies = [
@@ -8914,6 +8914,20 @@ dependencies = [
  "tokio",
  "trueno 0.7.3",
  "trueno-db",
+]
+
+[[package]]
+name = "trueno-rag"
+version = "0.1.2"
+dependencies = [
+ "async-trait",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.17",
+ "tokio",
+ "trueno 0.7.3",
+ "trueno-db",
+ "uuid",
 ]
 
 [[package]]

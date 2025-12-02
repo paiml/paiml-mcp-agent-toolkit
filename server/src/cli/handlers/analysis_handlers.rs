@@ -1485,87 +1485,140 @@ fn output_entropy_results(output: Option<std::path::PathBuf>, content: &str) -> 
 }
 
 /// Route semantic analysis commands (PMAT-SEARCH-011)
+/// Uses local aprender-based analysis - NO external API required
 async fn route_semantic_analysis(cmd: AnalyzeCommands) -> Result<()> {
-    use crate::cli::semantic_commands::SemanticCli;
-    use crate::services::configuration_service::ConfigurationService;
-
-    // Load configuration with environment variable fallbacks
-    let config_service = ConfigurationService::new(None);
-    let semantic_config = config_service.get_semantic_config_with_env_fallback()?;
-
-    // Check if semantic search is enabled
-    if !semantic_config.enabled {
-        anyhow::bail!(
-            "Semantic search is not enabled.\n\
-             To enable, set semantic.enabled = true in config file or provide OPENAI_API_KEY environment variable.\n\
-             See: docs/sprints/SPRINT-32-IMPLEMENTATION-NOTES.md"
-        );
-    }
-
-    // Get API key
-    let api_key = semantic_config.openai_api_key.ok_or_else(|| {
-        anyhow::anyhow!(
-            "OpenAI API key not configured.\n\
-             Set OPENAI_API_KEY environment variable or semantic.openai_api_key in config file."
-        )
-    })?;
-
-    // Get database path
-    let db_path = semantic_config.vector_db_path.unwrap_or_else(|| {
-        dirs::home_dir()
-            .map(|h| {
-                h.join(".pmat")
-                    .join("embeddings.db")
-                    .to_string_lossy()
-                    .to_string()
-            })
-            .unwrap_or_else(|| "embeddings.db".to_string())
-    });
+    use crate::services::local_semantic::LocalSemanticEngine;
 
     // Get workspace path
-    let workspace = semantic_config
-        .workspace_path
-        .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
+    let workspace = std::env::current_dir().unwrap_or_default();
 
-    // Initialize semantic CLI
-    let semantic_cli = SemanticCli::new(&db_path, &api_key, &workspace)
-        .await
-        .map_err(|e| anyhow::anyhow!(e))?;
+    // Initialize local semantic engine (pure Rust, no API keys needed)
+    let mut engine = LocalSemanticEngine::new();
 
     match cmd {
         AnalyzeCommands::Cluster {
             method,
             k,
             language,
-            format: _,
+            format,
         } => {
-            // Convert ClusterMethod to string for semantic_cli interface
+            // Convert ClusterMethod to string
             let method_str = match method {
                 crate::cli::commands::ClusterMethod::Kmeans => "kmeans",
                 crate::cli::commands::ClusterMethod::Hierarchical => "hierarchical",
                 crate::cli::commands::ClusterMethod::Dbscan => "dbscan",
             };
 
-            let result = semantic_cli
-                .analyze_cluster(method_str, k)
-                .await
-                .map_err(|e| anyhow::anyhow!(e))?;
+            // Index the workspace
+            println!("🔍 Indexing source files...");
+            let num_docs = engine
+                .index_directory(&workspace, language.as_deref())
+                .map_err(|e| anyhow::anyhow!("Failed to index directory: {}", e))?;
 
-            println!("{}", result);
-            println!("Language filter: {:?}", language);
+            if num_docs == 0 {
+                anyhow::bail!("No source files found to analyze");
+            }
+
+            println!("📁 Indexed {} source files", num_docs);
+            println!("🧮 Running {} clustering...", method_str);
+
+            let result = engine
+                .cluster(method_str, k)
+                .map_err(|e| anyhow::anyhow!("Clustering failed: {}", e))?;
+
+            // Output results
+            match format {
+                crate::cli::enums::OutputFormat::Json => {
+                    let json_output = serde_json::json!({
+                        "method": result.method,
+                        "num_documents": result.num_documents,
+                        "num_clusters": result.clusters.len(),
+                        "clusters": result.clusters.iter().map(|c| {
+                            serde_json::json!({
+                                "id": c.id,
+                                "size": c.size,
+                                "files": c.files.iter().map(|f| f.display().to_string()).collect::<Vec<_>>()
+                            })
+                        }).collect::<Vec<_>>()
+                    });
+                    println!("{}", serde_json::to_string_pretty(&json_output)?);
+                }
+                _ => {
+                    println!("\n📊 Clustering Results ({}):", result.method);
+                    println!("   Documents: {}", result.num_documents);
+                    println!("   Clusters: {}\n", result.clusters.len());
+
+                    for cluster in &result.clusters {
+                        println!("   Cluster {} ({} files):", cluster.id, cluster.size);
+                        for file in cluster.files.iter().take(5) {
+                            println!("     - {}", file.display());
+                        }
+                        if cluster.files.len() > 5 {
+                            println!("     ... and {} more", cluster.files.len() - 5);
+                        }
+                        println!();
+                    }
+                }
+            }
+
             Ok(())
         }
         AnalyzeCommands::Topics {
             num_topics,
             language,
-            format: _,
+            format,
         } => {
-            let result = semantic_cli
-                .analyze_topics(num_topics, language)
-                .await
-                .map_err(|e| anyhow::anyhow!(e))?;
+            // Index the workspace
+            println!("🔍 Indexing source files...");
+            let num_docs = engine
+                .index_directory(&workspace, language.as_deref())
+                .map_err(|e| anyhow::anyhow!("Failed to index directory: {}", e))?;
 
-            println!("{}", result);
+            if num_docs == 0 {
+                anyhow::bail!("No source files found to analyze");
+            }
+
+            println!("📁 Indexed {} source files", num_docs);
+            println!("🔬 Extracting {} topics using LDA...", num_topics);
+
+            let result = engine
+                .extract_topics(num_topics, language)
+                .map_err(|e| anyhow::anyhow!("Topic extraction failed: {}", e))?;
+
+            // Output results
+            match format {
+                crate::cli::enums::OutputFormat::Json => {
+                    let json_output = serde_json::json!({
+                        "num_documents": result.num_documents,
+                        "num_topics": result.topics.len(),
+                        "topics": result.topics.iter().map(|t| {
+                            serde_json::json!({
+                                "id": t.id,
+                                "document_count": t.document_count,
+                                "top_terms": t.top_terms.iter().map(|(term, weight)| {
+                                    serde_json::json!({"term": term, "weight": weight})
+                                }).collect::<Vec<_>>()
+                            })
+                        }).collect::<Vec<_>>()
+                    });
+                    println!("{}", serde_json::to_string_pretty(&json_output)?);
+                }
+                _ => {
+                    println!("\n📊 Topic Extraction Results:");
+                    println!("   Documents: {}", result.num_documents);
+                    println!("   Topics: {}\n", result.topics.len());
+
+                    for topic in &result.topics {
+                        println!("   Topic {} ({} documents):", topic.id, topic.document_count);
+                        println!("     Top terms:");
+                        for (term, weight) in topic.top_terms.iter().take(10) {
+                            println!("       - {} ({:.3})", term, weight);
+                        }
+                        println!();
+                    }
+                }
+            }
+
             Ok(())
         }
         _ => unreachable!("Expected semantic analysis command"),

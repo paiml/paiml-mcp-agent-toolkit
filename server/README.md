@@ -32,10 +32,10 @@
 > **🧠 v2.158.0 Release**: **Semantic Code Search System!** AI-powered code discovery with natural language:
 > - **🔍 Hybrid Search**: Combines keyword matching (ripgrep) + vector similarity with RRF algorithm
 > - **🧬 AST-Aware Chunking**: Semantic code extraction for 5 languages (Rust, TypeScript, Python, C/C++, Go)
-> - **🌐 OpenAI Embeddings**: 1536-dimensional vectors with incremental updates (text-embedding-3-small)
-> - **📊 Code Analytics**: K-means, hierarchical, DBSCAN clustering + topic modeling with LDA
+> - **🌐 OpenAI Embeddings**: 1536-dimensional vectors with incremental updates (optional, for `pmat semantic search`)
+> - **📊 Code Analytics**: K-means, DBSCAN, hierarchical clustering + LDA topics via **aprender** (no API keys!)
 > - **🤖 MCP Integration**: 4 new tools - `semantic_search`, `find_similar_code`, `cluster_code`, `analyze_topics`
-> - **⚡ Production Ready**: 149 tests, <150ms search, $0.10-$1 for typical projects
+> - **⚡ Production Ready**: 149 tests, <150ms search, pure Rust ML for clustering/topics
 > - **💻 CLI Commands**: `pmat embed sync`, `pmat semantic search`, `pmat analyze cluster/topics`
 
 > **🎯 v2.88.0 Release**: **Technical Debt Grading (TDG) System!** Complete code quality scoring with 6 orthogonal metrics:
@@ -199,9 +199,9 @@ make sprint-close
 ### 🧠 Semantic Search Engine (NEW!)
 - **Hybrid Search**: Combines keyword (ripgrep) + vector similarity with Reciprocal Rank Fusion (RRF)
 - **AST-Aware Chunking**: Semantic code extraction for 5 languages using tree-sitter
-- **OpenAI Embeddings**: 1536-dimensional vectors with incremental SHA256-based updates
+- **OpenAI Embeddings**: 1536-dimensional vectors with incremental SHA256-based updates (optional, for `pmat semantic search`)
 - **Vector Database**: Local SQLite storage with cosine similarity search (<100ms)
-- **Code Analytics**: K-means, hierarchical, DBSCAN clustering + LDA topic modeling
+- **Code Analytics**: K-means, hierarchical, DBSCAN clustering + LDA topic modeling via **aprender** (pure Rust, no API keys required)
 - **Natural Language Queries**: Find "error handling patterns" across different terminology
 - **Similarity Detection**: Discover code duplicates and refactoring opportunities
 - **Architecture Insights**: Cluster-based pattern discovery and topic extraction

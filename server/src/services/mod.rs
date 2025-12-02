@@ -202,6 +202,7 @@ pub mod rust_wasm_analyzer;
 pub mod satd_detector;
 pub mod semantic; // PMAT-SEARCH-001: Semantic code search services
 pub mod semantic_naming;
+pub mod local_semantic; // Local semantic analysis using aprender (no external API required)
 pub mod simple_deep_context;
 pub mod symbol_table;
 pub mod tdg_calculator;
