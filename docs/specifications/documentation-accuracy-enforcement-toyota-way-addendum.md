@@ -21,6 +21,9 @@ This addendum enhances the Documentation Accuracy Enforcement specification by a
 
 **Toyota Way Principle**: Base management decisions on a long-term philosophy, even at the expense of short-term financial goals.
 
+> **Reviewer Note (Principle 1: Long-Term Philosophy):** The recursive validation strategy aligns well with Liker's 1st Principle. By ensuring the tool validates itself, we invest in the long-term stability of the meta-tooling, preventing "tool rot."
+> *Citation:* Liker, J. K. (2004). *The Toyota Way: 14 Management Principles from the World's Greatest Manufacturer*. McGraw-Hill.
+
 #### Solution: Validator Self-Validation
 
 ```rust
@@ -176,6 +179,9 @@ fi
 
 **Toyota Way Principle**: Create continuous process flow to bring problems to the surface (Jidoka).
 
+> **Reviewer Note (Principle 5: Jidoka):** This mechanism effectively implements *Jidoka* (automation with a human touch) by automatically "stopping the line" (pre-commit failure) when defects (inaccurate docs) are detected. This prevents downstream propagation of error.
+> *Citation:* Ohno, T. (1988). *Toyota Production System: Beyond Large-Scale Production*. Productivity Press.
+
 #### Solution: Dependency-Based Validation
 
 ```rust
@@ -305,10 +311,10 @@ impl DeepContextData {
 CHANGED_FILES=$(git diff --cached --name-only)
 
 # Identify code changes
-CODE_CHANGES=$(echo "$CHANGED_FILES" | grep -E '\\.(rs|ts|js|py)$' || true)
+CODE_CHANGES=$(echo "$CHANGED_FILES" | grep -E '\.(rs|ts|js|py)$' || true)
 
 # Identify doc changes
-DOC_CHANGES=$(echo "$CHANGED_FILES" | grep -E '(README|CLAUDE|GEMINI|AGENT)\\.md$' || true)
+DOC_CHANGES=$(echo "$CHANGED_FILES" | grep -E '(README|CLAUDE|GEMINI|AGENT)\.md$' || true)
 
 # If code changed, find affected documentation
 if [ -n "$CODE_CHANGES" ]; then
@@ -317,7 +323,7 @@ if [ -n "$CODE_CHANGES" ]; then
     AFFECTED_DOCS=$(pmat analyze-doc-deps --changed-files $CODE_CHANGES)
 
     # Combine explicitly changed docs with dependency-affected docs
-    ALL_DOCS_TO_VALIDATE=$(echo -e "$DOC_CHANGES\\n$AFFECTED_DOCS" | sort -u)
+    ALL_DOCS_TO_VALIDATE=$(echo -e "$DOC_CHANGES\n$AFFECTED_DOCS" | sort -u)
 
     if [ -n "$ALL_DOCS_TO_VALIDATE" ]; then
         echo "📚 Re-validating affected documentation:"
@@ -335,6 +341,9 @@ fi
 **Problem**: Waiting for pre-commit hook provides late feedback.
 
 **Toyota Way Principle**: Build in quality at the source (Jidoka), with immediate feedback like an andon cord.
+
+> **Reviewer Note (Principle 5: Build Quality In):** Moving validation to the IDE via LSP corresponds to "Poka-Yoke" (mistake-proofing). It prevents the error from being created in the first place by alerting the developer immediately.
+> *Citation:* Shingo, S. (1986). *Zero Quality Control: Source Inspection and the Poka-Yoke System*. Productivity Press.
 
 #### Solution: Language Server Protocol (LSP) Integration
 
@@ -438,6 +447,9 @@ export function activate(context: vscode.ExtensionContext) {
 **Problem**: AST alone doesn't capture performance, behavior, or non-functional requirements.
 
 **Toyota Way Principle**: "Go and see" to thoroughly understand the situation - gather evidence from multiple sources.
+
+> **Reviewer Note (Principle 12: Genchi Genbutsu):** Relying on a single source (AST) is insufficient. Genchi Genbutsu requires gathering direct facts from the source. Integrating benchmarks and coverage reports aligns with the empirical evidence requirements in software engineering.
+> *Citation:* Basili, V. R., & Selby, R. W. (1987). "Comparing the Effectiveness of Software Testing Strategies". *IEEE Transactions on Software Engineering*, SE-13(12), 1278-1296.
 
 #### Solution: Multi-Source Evidence Integration
 
@@ -727,6 +739,9 @@ pub struct ComprehensiveValidationResult {
 
 **Toyota Way Principle**: Become a learning organization through relentless reflection (Hansei) and continuous improvement (Kaizen).
 
+> **Reviewer Note (Principle 14: Continuous Improvement):** The "Hansei" loop is critical. By analyzing trend data, we move from simple "bug fixing" to "process improvement," a core tenet of Lean.
+> *Citation:* Rother, M. (2009). *Toyota Kata: Managing People for Improvement, Adaptability and Superior Results*. McGraw-Hill.
+
 #### Solution: Validation Metrics & Trend Dashboard
 
 ```rust
@@ -937,26 +952,17 @@ impl ValidationMetrics {
             match category {
                 ErrorCategory::OutdatedApiSignature => {
                     recommendations.push(
-                        "High rate of outdated API signatures detected. Consider: \n\
-                         1. Implementing automated API change detection\n\
-                         2. Adding refactoring notifications to documentation\n\
-                         3. Running doc validation more frequently".to_string()
+                        "High rate of outdated API signatures detected. Consider: \n\         1. Implementing automated API change detection\n\         2. Adding refactoring notifications to documentation\n\         3. Running doc validation more frequently".to_string()
                     );
                 }
                 ErrorCategory::HallucinatedCapability => {
                     recommendations.push(
-                        "Hallucinated capabilities detected. Consider: \n\
-                         1. Strengthening claim extraction patterns\n\
-                         2. Lowering semantic similarity threshold\n\
-                         3. Reviewing documentation writing guidelines".to_string()
+                        "Hallucinated capabilities detected. Consider: \n\         1. Strengthening claim extraction patterns\n\         2. Lowering semantic similarity threshold\n\         3. Reviewing documentation writing guidelines".to_string()
                     );
                 }
                 ErrorCategory::BrokenInternalReference => {
                     recommendations.push(
-                        "Broken internal references detected. Consider: \n\
-                         1. Implementing file move detection\n\
-                         2. Auto-updating references on refactoring\n\
-                         3. Using IDE refactoring tools more consistently".to_string()
+                        "Broken internal references detected. Consider: \n\         1. Implementing file move detection\n\         2. Auto-updating references on refactoring\n\         3. Using IDE refactoring tools more consistently".to_string()
                     );
                 }
                 _ => {}
@@ -965,10 +971,7 @@ impl ValidationMetrics {
 
         if matches!(trend, TrendDirection::Declining) {
             recommendations.push(
-                "Quality is declining. Consider: \n\
-                 1. Running team retrospective on documentation practices\n\
-                 2. Increasing validation frequency\n\
-                 3. Adding documentation review to PR process".to_string()
+                "Quality is declining. Consider: \n\         1. Running team retrospective on documentation practices\n\         2. Increasing validation frequency\n\         3. Adding documentation review to PR process".to_string()
             );
         }
 
@@ -1028,6 +1031,9 @@ pmat validate-readme --metrics --period 30d
 **Problem**: Teams have project-specific documentation conventions that aren't covered by default patterns.
 
 **Toyota Way Principle**: Respect for people - empower teams to improve the process.
+
+> **Reviewer Note (Principle 9: Grow Leaders/Respect People):** This enhancement reflects the Lean principle of "Respect for People". By allowing teams to configure their own patterns, we acknowledge that the people doing the work know best how to standardize their own documentation.
+> *Citation:* Poppendieck, M. & Poppendieck, T. (2003). *Lean Software Development: An Agile Toolkit*. Addison-Wesley.
 
 #### Solution: Configurable Claim Patterns
 
@@ -1180,7 +1186,7 @@ entity_groups = [
 
 [[patterns]]
 name = "api_contract"
-pattern = "API contract: `([a-zA-Z_]+)\\(([^)]+)\\) -> ([^`]+)`"
+pattern = "API contract: `([a-zA-Z_]+)\(([^)]+)\) -> ([^`]+)`"
 claim_type = "Api"
 text_group = 0
 entity_groups = [
@@ -1195,6 +1201,9 @@ entity_groups = [
 **Problem**: Current confidence score doesn't reflect the quality and type of evidence.
 
 **Toyota Way Principle**: Base decisions on thorough data analysis (evidence quality matters).
+
+> **Reviewer Note (Principle 12: Genchi Genbutsu):** The weighting of evidence types ensures we don't treat all facts equally. "Hard" data (benchmarks) should outweigh "soft" data (semantic similarity). This aligns with the principle of making decisions based on verified facts.
+> *Citation:* Parnas, D. L. (2010). "Precise Documentation: The First Step". *2010 IEEE International Conference on Software Science, Technology and Engineering*.
 
 #### Solution: Multi-Factor Confidence Scoring
 
@@ -1400,22 +1409,58 @@ struct AstConfidence {
 
 Based on Toyota Way impact:
 
-1. **P0 - Immediate**: Self-Validation (Enhancement 1)
-2. **P0 - Immediate**: Intelligent Re-Validation (Enhancement 2)
-3. **P1 - Sprint 1**: Extended Code Facts Database (Enhancement 4)
-4. **P1 - Sprint 1**: Refined Confidence Scoring (Enhancement 7)
-5. **P2 - Sprint 2**: Trend Analysis (Enhancement 5)
-6. **P2 - Sprint 2**: Extensible Patterns (Enhancement 6)
-7. **P3 - Future**: IDE Integration (Enhancement 3)
+1.  **P0 - Immediate**: Self-Validation (Enhancement 1)
+2.  **P0 - Immediate**: Intelligent Re-Validation (Enhancement 2)
+3.  **P1 - Sprint 1**: Extended Code Facts Database (Enhancement 4)
+4.  **P1 - Sprint 1**: Refined Confidence Scoring (Enhancement 7)
+5.  **P2 - Sprint 2**: Trend Analysis (Enhancement 5)
+6.  **P2 - Sprint 2**: Extensible Patterns (Enhancement 6)
+7.  **P3 - Future**: IDE Integration (Enhancement 3)
 
 ## Success Metrics
 
-- **Jidoka**: 100% of documentation changes validated before commit
-- **Genchi Genbutsu**: 3+ evidence sources per validation
-- **Hansei**: Monthly trend reports reviewed in retrospectives
-- **Kaizen**: Declining error rate month-over-month
-- **Respect**: Teams contribute 5+ custom patterns within 3 months
+-   **Jidoka**: 100% of documentation changes validated before commit
+-   **Genchi Genbutsu**: 3+ evidence sources per validation
+-   **Hansei**: Monthly trend reports reviewed in retrospectives
+-   **Kaizen**: Declining error rate month-over-month
+-   **Respect**: Teams contribute 5+ custom patterns within 3 months
 
 ---
 
 **Next Steps**: Incorporate these enhancements into the main specification and implementation roadmap.
+
+---
+
+# Peer Review: Toyota Way Analysis & Citations
+
+This section provides a structured peer review of the proposed enhancements through the lens of the Toyota Production System (TPS) principles, supported by relevant academic literature.
+
+## 1. Jidoka (Automation with a Human Touch)
+The proposed **Enhancement 2 (Intelligent Re-Validation)** and **Enhancement 3 (Real-Time IDE Feedback)** are excellent applications of Jidoka. They detect abnormalities (inaccurate documentation) immediately and stop the process (build failure or IDE warning) to prevent defects from passing downstream.
+
+*   **Citation:** Ohno, T. (1988). *Toyota Production System: Beyond Large-Scale Production*. Productivity Press.
+*   **Citation:** Shingo, S. (1986). *Zero Quality Control: Source Inspection and the Poka-Yoke System*. Productivity Press.
+
+## 2. Genchi Genbutsu (Go and See)
+**Enhancement 4 (Extended Code Facts Database)** and **Enhancement 7 (Refined Confidence Scoring)** move beyond theoretical validation (AST matching) to empirical validation (Benchmarks, Coverage). This aligns with the scientific method in software engineering.
+
+*   **Citation:** Basili, V. R., & Selby, R. W. (1987). "Comparing the Effectiveness of Software Testing Strategies". *IEEE Transactions on Software Engineering*, SE-13(12), 1278-1296.
+*   **Citation:** Knuth, D. E. (1984). "Literate Programming". *The Computer Journal*, 27(2), 97-111.
+
+## 3. Hansei (Relentless Reflection) & Kaizen (Continuous Improvement)
+**Enhancement 5 (Trend Analysis)** is crucial for transforming the tool from a simple checker into a process improvement engine. Without historical data, "Hansei" is impossible.
+
+*   **Citation:** Rother, M. (2009). *Toyota Kata: Managing People for Improvement, Adaptability and Superior Results*. McGraw-Hill.
+*   **Citation:** Womack, J. P., Jones, D. T., & Roos, D. (1990). *The Machine That Changed the World*. Rawson Associates.
+
+## 4. Respect for People
+**Enhancement 6 (Extensible Claim Extraction)** empowers the teams closest to the work to define their own standards. In TPS, the worker is the expert.
+
+*   **Citation:** Poppendieck, M. & Poppendieck, T. (2003). *Lean Software Development: An Agile Toolkit*. Addison-Wesley.
+*   **Citation:** Liker, J. K. (2004). *The Toyota Way: 14 Management Principles from the World's Greatest Manufacturer*. McGraw-Hill.
+
+## 5. Long-Term Philosophy
+**Enhancement 1 (Self-Validation)** demonstrates a commitment to long-term quality over short-term speed.
+
+*   **Citation:** Parnas, D. L. (2010). "Precise Documentation: The First Step". *2010 IEEE International Conference on Software Science, Technology and Engineering*, 1-4.
+*   **Citation:** Fagan, M. E. (1976). "Design and Code Inspections to Reduce Errors in Program Development". *IBM Systems Journal*, 15(3), 182-211.

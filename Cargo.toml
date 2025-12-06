@@ -1,5 +1,5 @@
 [workspace]
-members = ["server","workspace-hack"]
+members = ["server", "workspace-hack", "crates/pmat-dashboard"]
 exclude = ["fuzz"]
 resolver = "2"
 
