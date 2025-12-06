@@ -21,7 +21,7 @@
 #
 # This design eliminates confusion and ensures consistent behavior across all environments.
 
-.PHONY: all validate format lint lint-main check test test-doc test-fast coverage coverage-ci coverage-summary coverage-open coverage-clean clean-coverage build release clean clean-tmp install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts test-scripts lint-makefile fix validate-docs ci-status validate-naming validate-book context setup audit docs run-mcp run-mcp-test test-actions install-act check-act deps-validate dogfood dogfood-ci update-rust-docs size-report size-track size-check size-compare test-all-interfaces test-feature-all-interfaces test-interface-consistency benchmark-all-interfaces load-test-interfaces context-json context-sarif context-llm context-legacy context-benchmark analyze-top-files analyze-composite analyze-health-dashboard profile-binary-performance profile-deep-context analyze-memory-usage analyze-scaling kaizen test-slow-integration test-safe test-dogfood test-critical-scripts coverage-scripts test-workflow-dag test-workflow-dag-verbose context-root context-simple context-json-root context-benchmark-legacy local-install server-build-binary server-build-docker server-run-mcp server-run-mcp-test server-benchmark server-test server-test-all server-outdated server-tokei build-target cargo-doc cargo-geiger update-deps update-deps-aggressive update-deps-security upgrade-deps audit-fix benchmark coverage-report outdated test-all-features clippy-strict server-build-release create-release test-curl-install cargo-rustdoc install-dev-tools tokei quickstart context-fast clear-swap config-swap overnight-improve overnight-monitor overnight-swap-cron test-unit test-services test-protocols test-e2e test-performance test-property test-property-slow test-all test-stratified coverage-stratified crate-release crate-docs dev commit sprint-close setup-quality quality-gate-full help-toyota-way test-examples examples example clean-quick clean-deep validate-doc-links validate-contracts release-dry release-verify
+.PHONY: all validate format lint lint-main check test test-doc test-fast coverage coverage-ci coverage-summary coverage-open coverage-clean clean-coverage build release clean clean-tmp install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts test-scripts lint-makefile fix validate-docs ci-status validate-naming validate-book context setup audit docs run-mcp run-mcp-test test-actions install-act check-act deps-validate dogfood dogfood-ci update-rust-docs size-report size-track size-check size-compare test-all-interfaces test-feature-all-interfaces test-interface-consistency benchmark-all-interfaces load-test-interfaces context-json context-sarif context-llm context-legacy context-benchmark analyze-top-files analyze-composite analyze-health-dashboard profile-binary-performance profile-deep-context analyze-memory-usage analyze-scaling kaizen test-slow-integration test-safe test-dogfood test-critical-scripts coverage-scripts test-workflow-dag test-workflow-dag-verbose context-root context-simple context-json-root context-benchmark-legacy local-install server-build-binary server-build-docker server-run-mcp server-run-mcp-test server-benchmark server-test server-test-all server-outdated server-tokei build-target cargo-doc cargo-geiger update-deps update-deps-aggressive update-deps-security upgrade-deps audit-fix benchmark coverage-report outdated test-all-features clippy-strict server-build-release create-release test-curl-install cargo-rustdoc install-dev-tools tokei quickstart context-fast clear-swap config-swap overnight-improve overnight-monitor overnight-swap-cron test-unit test-services test-protocols test-e2e test-performance test-property test-property-slow test-all test-stratified coverage-stratified crate-release crate-docs dev commit sprint-close setup-quality quality-gate-full help-toyota-way test-examples examples example clean-quick clean-deep validate-doc-links validate-contracts release-dry release-verify coverage-fast coverage-invalidate
 
 # Define sub-projects
 # NOTE: client project will be added when implemented
@@ -447,6 +447,32 @@ coverage-clean: ## Clean coverage artifacts
 	@echo "✓ Coverage artifacts cleaned"
 
 clean-coverage: coverage-clean ## Alias for coverage-clean
+
+# bashrs-style O(1) cached coverage check (target: <30ms cache hit)
+# Uses git tree hash for O(1) lookup, falls back to file hashing if not in git
+coverage-fast: ## Hash-based cached coverage (O(1) on cache hit)
+	@mkdir -p .pmat-metrics/coverage
+	@if git rev-parse --git-dir > /dev/null 2>&1; then \
+		HASH=$$(git ls-tree -r HEAD server/src 2>/dev/null | sha256sum | cut -c1-16); \
+	else \
+		HASH=$$(find server/src -name "*.rs" -type f -exec sha256sum {} \; 2>/dev/null | sort | sha256sum | cut -c1-16); \
+	fi; \
+	CACHE_FILE=".pmat-metrics/coverage/$$HASH.txt"; \
+	if [ -f "$$CACHE_FILE" ] && [ -s "$$CACHE_FILE" ]; then \
+		echo "✅ Coverage cache hit (hash: $$HASH)"; \
+		tail -5 "$$CACHE_FILE"; \
+	else \
+		echo "⏳ Coverage cache miss - running full coverage..."; \
+		cargo llvm-cov clean --workspace 2>/dev/null || true; \
+		env PROPTEST_CASES=100 cargo llvm-cov --no-report nextest --no-tests=warn --workspace; \
+		cargo llvm-cov report --summary-only 2>&1 | tee "$$CACHE_FILE"; \
+		echo ""; \
+		echo "📁 Cached to: $$CACHE_FILE"; \
+	fi
+
+coverage-invalidate: ## Invalidate coverage cache
+	@rm -rf .pmat-metrics/coverage
+	@echo "✓ Coverage cache invalidated"
 
 # Run security audit on all projects
 audit:
