@@ -16,33 +16,34 @@
     # - Blocks commits that violate configured thresholds
 % time     seconds  usecs/call     calls    errors syscall
 ------ ----------- ----------- --------- --------- ----------------
- 11.20    0.000713           7        97           rt_sigprocmask
- 20.47    0.001303          15        85         1 futex
- 12.41    0.000790          10        79           mmap
- 10.04    0.000639          10        59           mprotect
- 17.72    0.001128          23        48           clone3
-  5.88    0.000374          12        31           munmap
-  4.81    0.000306          12        25           read
-  3.83    0.000244          11        22         7 openat
-  2.12    0.000135           7        17           write
-  2.15    0.000137           8        16           brk
-  2.18    0.000139           9        15           close
-  1.67    0.000106          10        10           statx
-  1.30    0.000083           8        10           unknown
-  0.88    0.000056           7         8           newfstatat
-  0.66    0.000042           7         6           rt_sigaction
-  0.44    0.000028           7         4           pread64
-  0.30    0.000019           6         3           sigaltstack
-  0.30    0.000019           9         2           getrandom
-  0.20    0.000013           6         2           lseek
-  0.20    0.000013           6         2           fcntl
-  0.24    0.000015           7         2         1 arch_prctl
-  0.19    0.000012          12         1           poll
-  0.22    0.000014          14         1           socketpair
-  0.11    0.000007           7         1           set_tid_address
-  0.14    0.000009           9         1           getcwd
-  0.11    0.000007           7         1         1 ioctl
-  0.11    0.000007           7         1         1 access
-  0.11    0.000007           7         1           set_robust_list
+ 11.63    0.000655           6        97           rt_sigprocmask
+ 18.07    0.001018          12        80         1 futex
+ 12.96    0.000730           9        79           mmap
+ 11.00    0.000620          10        59           mprotect
+ 16.63    0.000937          19        48           clone3
+  6.85    0.000386          12        31           munmap
+  5.56    0.000313          12        25           read
+  3.82    0.000215           9        22         7 openat
+  2.13    0.000120           7        17           write
+  2.20    0.000124           7        16           brk
+  1.86    0.000105           7        15           close
+  1.26    0.000071           7        10           unknown
+  1.47    0.000083           8        10           statx
+  0.98    0.000055           6         8           newfstatat
+  0.66    0.000037           6         6           rt_sigaction
+  0.46    0.000026           6         4           pread64
+  0.35    0.000020           6         3           sigaltstack
+  0.25    0.000014           7         2           getrandom
+  0.21    0.000012           6         2           lseek
+  0.21    0.000012           6         2           fcntl
+  0.23    0.000013           6         2         1 arch_prctl
+  0.16    0.000009           9         1           poll
+  0.12    0.000007           7         1           sched_yield
+  0.11    0.000006           6         1           set_robust_list
+  0.14    0.000008           8         1           ioctl
+  0.16    0.000009           9         1           getcwd
+  0.12    0.000007           7         1         1 access
+  0.28    0.000016          16         1           socketpair
+  0.11    0.000006           6         1           set_tid_address
 ------ ----------- ----------- --------- --------- ----------------
-100.00    0.006365          11       550        11 total
+100.00    0.005634          10       546        10 total

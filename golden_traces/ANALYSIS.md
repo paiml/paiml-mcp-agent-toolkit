@@ -8,17 +8,17 @@ This directory contains golden traces captured from paiml-mcp-agent-toolkit (PMA
 
 | File | Description | Format |
 |------|-------------|--------|
-| `pmat_version.json` | Minimal startup (`--version`) | JSON |
-| `pmat_version_summary.txt` | Version syscall summary | Text |
-| `pmat_version_source.json` | Version with source locations | JSON |
-| `pmat_help.json` | Help text generation | JSON |
-| `pmat_help_summary.txt` | Help syscall summary | Text |
-| `pmat_context.json` | AST context generation | JSON |
-| `pmat_context_summary.txt` | Context syscall summary | Text |
-| `pmat_list.json` | Template listing | JSON |
-| `pmat_list_summary.txt` | List syscall summary | Text |
-| `pmat_hooks_status.json` | Hook status trace | JSON |
-| `pmat_hooks_status_summary.txt` | Hooks syscall summary | Text |
+| pmat_version.json | Minimal startup (--version) | JSON |
+| pmat_version_summary.txt | Version syscall summary | Text |
+| pmat_version_source.json | Version with source locations | JSON |
+| pmat_help.json | Help text generation | JSON |
+| pmat_help_summary.txt | Help syscall summary | Text |
+| pmat_context.json | AST context generation | JSON |
+| pmat_context_summary.txt | Context syscall summary | Text |
+| pmat_list.json | Template listing | JSON |
+| pmat_list_summary.txt | List syscall summary | Text |
+| pmat_hooks_status.json | Hook status trace | JSON |
+| pmat_hooks_status_summary.txt | Hooks syscall summary | Text |
 
 ## How to Use These Traces
 
@@ -51,7 +51,7 @@ cat golden_traces/pmat_version_summary.txt
 
 ### 3. CI/CD Integration
 
-Add to `.github/workflows/ci.yml`:
+Add to .github/workflows/ci.yml:
 
 ```yaml
 - name: Validate Performance
@@ -90,10 +90,10 @@ Add to `.github/workflows/ci.yml`:
 ```
 
 **Key metrics:**
-- `% time`: Percentage of total runtime spent in this syscall
-- `usecs/call`: Average latency per call (microseconds)
-- `calls`: Total number of invocations
-- `errors`: Number of failed calls
+- % time: Percentage of total runtime spent in this syscall
+- usecs/call: Average latency per call (microseconds)
+- calls: Total number of invocations
+- errors: Number of failed calls
 
 ## Baseline Performance Metrics
 
@@ -101,21 +101,16 @@ From initial golden trace capture:
 
 | Operation | Runtime | Syscalls | Notes |
 |-----------|---------|----------|-------|
-| `pmat --version` | 4.061ms | 436 | Minimal startup path ✅ |
-| `pmat --help` | 5.145ms | 488 | Help text generation ✅ |
-| `pmat context <file>` | 4.522ms | 435 | AST context generation ✅ |
-| `pmat list` | 6.291ms | 527 | Template listing ✅ |
-| `pmat hooks status` | 6.365ms | 550 | Hook management ✅ |
-
-**Performance Budget Compliance:**
-- ✅ All operations complete in <10ms (well under 50ms budget)
-- ✅ All operations use <600 syscalls (well under 300 budget - needs adjustment)
-- ✅ PMAT demonstrates excellent startup performance for a complex toolkit
+| pmat --version | TBD | TBD | Minimal startup path |
+| pmat --help | TBD | TBD | Help text generation |
+| pmat context file | TBD | TBD | AST context generation |
+| pmat list | TBD | TBD | Template listing |
+| pmat hooks status | TBD | TBD | Hook management |
 
 ## Next Steps
 
 1. **Set performance baselines** using these golden traces
-2. **Add assertions** in `renacer.toml` for automated checking
+2. **Add assertions** in renacer.toml for automated checking
 3. **Integrate with CI** to prevent regressions
 4. **Compare across versions** to track performance improvements
 5. **Monitor syscall patterns** for unexpected behavior changes

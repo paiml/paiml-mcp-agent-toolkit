@@ -23,32 +23,33 @@ pmat quality-gate --strict
 pmat agent start
 % time     seconds  usecs/call     calls    errors syscall
 ------ ----------- ----------- --------- --------- ----------------
- 13.98    0.000632           6        97           rt_sigprocmask
- 17.54    0.000793          10        79           mmap
- 14.40    0.000651          11        59           mprotect
- 20.30    0.000918          19        48           clone3
-  5.62    0.000254           8        31           futex
-  5.09    0.000230          12        19         7 openat
-  7.12    0.000322          16        19           read
-  4.25    0.000192          10        19           brk
-  2.32    0.000105           8        12           close
-  1.66    0.000075           7        10           unknown
-  1.66    0.000075           9         8           newfstatat
-  0.86    0.000039           6         6           rt_sigaction
-  0.57    0.000026           6         4           pread64
-  0.49    0.000022           7         3           sigaltstack
-  0.64    0.000029           9         3           statx
-  0.40    0.000018           9         2         1 arch_prctl
-  0.35    0.000016           8         2           lseek
-  0.31    0.000014           7         2           getrandom
-  0.29    0.000013           6         2           fcntl
-  0.42    0.000019           9         2           write
-  0.55    0.000025          12         2           munmap
-  0.29    0.000013          13         1           socketpair
-  0.20    0.000009           9         1         1 ioctl
-  0.13    0.000006           6         1           set_tid_address
-  0.27    0.000012          12         1         1 access
-  0.18    0.000008           8         1           poll
-  0.13    0.000006           6         1           set_robust_list
+ 17.02    0.000828           8        97           rt_sigprocmask
+ 16.86    0.000820          10        79           mmap
+ 14.82    0.000721          12        59           mprotect
+ 19.96    0.000971          20        48           clone3
+  6.02    0.000293           9        31           futex
+  4.87    0.000237          12        19         7 openat
+  5.67    0.000276          14        19           read
+  3.52    0.000171           9        18           brk
+  1.97    0.000096           8        12           close
+  1.62    0.000079           7        10           unknown
+  1.17    0.000057           7         8           newfstatat
+  0.84    0.000041           6         6           rt_sigaction
+  0.56    0.000027           6         4           pread64
+  0.43    0.000021           7         3           sched_yield
+  0.78    0.000038          12         3           statx
+  0.43    0.000021           7         3           sigaltstack
+  0.27    0.000013           6         2           lseek
+  0.51    0.000025          12         2           write
+  0.29    0.000014           7         2           fcntl
+  0.53    0.000026          13         2           munmap
+  0.29    0.000014           7         2           getrandom
+  0.33    0.000016           8         2         1 arch_prctl
+  0.35    0.000017          17         1           socketpair
+  0.16    0.000008           8         1           ioctl
+  0.16    0.000008           8         1           set_tid_address
+  0.16    0.000008           8         1           set_robust_list
+  0.16    0.000008           8         1         1 access
+  0.21    0.000010          10         1           poll
 ------ ----------- ----------- --------- --------- ----------------
-100.00    0.004522          10       435        10 total
+100.00    0.004864          11       437         9 total

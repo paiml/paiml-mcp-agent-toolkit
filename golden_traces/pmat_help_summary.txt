@@ -31,6 +31,8 @@ Commands:
   telemetry           Telemetry and system monitoring
   config              Configuration management and settings
   show-metrics        Show quality metrics and trends (Phase 3 O(1) Quality Gates) [aliases: metrics, trends]
+  predict-quality     Predict when quality metrics will exceed thresholds (Phase 4 O(1) Quality Gates) [aliases: predict]
+  record-metric       Record a quality metric observation (Phase 3.4 O(1) Quality Gates - CI/CD) [aliases: record]
   agent               Start Claude Code background agent for continuous quality monitoring [aliases: ag]
   tdg                 Grade technical debt and code quality (TDG - Technical Debt Grading) [aliases: grade, debt-grade]
   quality-gates       Run quality gates on the current project (TICKET-PMAT-5023, TICKET-PMAT-5024) [aliases: gates, qg]
@@ -38,9 +40,13 @@ Commands:
   hooks               Pre-commit hook management (TICKET-PMAT-5034) [aliases: hook, h]
   embed               Manage semantic search embeddings (PMAT-SEARCH-011) [aliases: emb]
   semantic            Semantic code search (PMAT-SEARCH-011) [aliases: sem, find-code]
-  mutate              Run mutation testing on specified files (Sprint 61)
   debug               Time-travel debugging commands (Sprint 74) [aliases: dbg]
   work                Unified GitHub/YAML workflow commands (Issue #75) [aliases: w]
+  qa-work             QA validation after work completion - Toyota Way quality gates (GH-102) [aliases: qa, quality]
+  five-whys           Five Whys root cause analysis (Toyota Way methodology) This is the ONLY acceptable debugging method per CLAUDE.md policy [aliases: why, debug-whys]
+  comply              PMAT compliance and migration system (GH-96) [aliases: compliance]
+  test-discovery      Systematic test discovery and fixing (GH-98) [aliases: test-fix, fix-tests]
+  localize            Fault localization using Tarantula SBFL algorithm (GH-103) Identify suspicious code locations based on test coverage data [aliases: fault, fl]
   help                Print this message or the help of the given subcommand(s)
 
 Options:
@@ -102,33 +108,33 @@ pmat quality-gate --strict
 pmat agent start
 % time     seconds  usecs/call     calls    errors syscall
 ------ ----------- ----------- --------- --------- ----------------
- 12.26    0.000631           6        97           rt_sigprocmask
- 14.73    0.000758           9        79           mmap
- 12.85    0.000661          11        59           mprotect
-  9.27    0.000477           8        56           write
- 19.32    0.000994          20        48           clone3
-  4.82    0.000248           8        31           futex
-  6.63    0.000341          17        19           read
-  4.49    0.000231          12        19         7 openat
-  3.75    0.000193          12        16           brk
-  2.00    0.000103           8        12           close
-  1.73    0.000089           8        10           unknown
-  1.36    0.000070           8         8           newfstatat
-  1.11    0.000057           9         6           rt_sigaction
-  0.51    0.000026           6         4           pread64
-  0.41    0.000021           7         3           sigaltstack
-  0.74    0.000038          12         3           statx
-  0.27    0.000014           7         2           lseek
-  0.27    0.000014           7         2           fcntl
-  0.39    0.000020          10         2         1 arch_prctl
-  0.27    0.000014           7         2           sched_yield
-  1.05    0.000054          27         2           munmap
-  0.47    0.000024          12         2           getrandom
-  0.12    0.000006           6         1           set_tid_address
-  0.37    0.000019          19         1           poll
-  0.31    0.000016          16         1           socketpair
-  0.14    0.000007           7         1         1 ioctl
-  0.12    0.000006           6         1           set_robust_list
-  0.25    0.000013          13         1         1 access
+ 13.12    0.000613           6        97           rt_sigprocmask
+ 15.82    0.000739           9        79           mmap
+  8.67    0.000405           6        62           write
+ 13.23    0.000618          10        59           mprotect
+ 19.67    0.000919          19        48           clone3
+  5.67    0.000265           7        34           futex
+  4.67    0.000218          11        19         7 openat
+  5.74    0.000268          14        19           read
+  2.91    0.000136           8        17           brk
+  1.99    0.000093           7        12           close
+  1.58    0.000074           7        10           unknown
+  1.16    0.000054           6         8           newfstatat
+  0.81    0.000038           6         6           rt_sigaction
+  0.62    0.000029           7         4           pread64
+  0.60    0.000028           9         3           statx
+  0.49    0.000023           7         3           sigaltstack
+  0.30    0.000014           7         2         1 arch_prctl
+  0.30    0.000014           7         2           getrandom
+  0.28    0.000013           6         2           lseek
+  0.26    0.000012           6         2           fcntl
+  0.69    0.000032          16         2           munmap
+  0.30    0.000014           7         2           sched_yield
+  0.17    0.000008           8         1         1 access
+  0.19    0.000009           9         1           ioctl
+  0.30    0.000014          14         1           socketpair
+  0.13    0.000006           6         1           set_robust_list
+  0.15    0.000007           7         1           set_tid_address
+  0.17    0.000008           8         1           poll
 ------ ----------- ----------- --------- --------- ----------------
-100.00    0.005145          10       488        10 total
+100.00    0.004671           9       498         9 total
