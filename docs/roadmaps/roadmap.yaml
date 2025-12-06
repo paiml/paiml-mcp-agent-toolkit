@@ -488,11 +488,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'New task: GH-93'
-  status: completed
+  status: inprogress
   priority: medium
   assigned_to: null
   created: 2025-11-24T14:28:59.782172792+00:00
-  updated: 2025-11-24T17:00:23.077597441+00:00
+  updated: 2025-12-05T19:05:07.697549126+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -552,11 +552,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'New task: GH-96'
-  status: completed
+  status: inprogress
   priority: medium
   assigned_to: null
   created: 2025-11-24T17:19:17.895031651+00:00
-  updated: 2025-11-24T17:46:31.752873836+00:00
+  updated: 2025-12-05T19:05:06.909977630+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -568,11 +568,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'New task: GH-98'
-  status: completed
+  status: inprogress
   priority: medium
   assigned_to: null
   created: 2025-11-24T19:46:26.821013875+00:00
-  updated: 2025-11-24T20:00:58.458448390+00:00
+  updated: 2025-12-05T19:05:03.894489293+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -655,3 +655,35 @@ roadmap:
     Need to integrate into context.rs and TDG for real performance.
     Current: metric_trends.rs only. Missing: context.rs and tdg/*.rs
     Expected: Context 8ms to under 5ms, TDG 15ms to under 10ms
+- id: GH-102
+  github_issue: null
+  item_type: task
+  title: 'New task: GH-102'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2025-12-05T19:05:02.965640330+00:00
+  updated: 2025-12-05T19:05:02.965640330+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-97
+  github_issue: null
+  item_type: task
+  title: 'New task: GH-97'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2025-12-05T19:05:05.468021960+00:00
+  updated: 2025-12-05T19:05:05.468021960+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null

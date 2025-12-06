@@ -461,7 +461,7 @@ mod tests {
     use tokio::time::{sleep, Duration};
 
     #[tokio::test]
-    #[ignore]
+    #[ignore] // SQLite database lock issues in concurrent tests
     async fn test_dashboard_state_creation() {
         let result = DashboardState::new().await;
         assert!(result.is_ok());
@@ -472,7 +472,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
+    #[ignore] // SQLite database lock issues in concurrent tests
     async fn test_metrics_update() {
         let state = DashboardState::new().await.unwrap();
         let result = state.update_metrics().await;
@@ -483,7 +483,7 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
+    #[ignore] // SQLite database lock issues in concurrent tests
     fn test_router_creation() {
         tokio::runtime::Runtime::new().unwrap().block_on(async {
             let state = DashboardState::new().await.unwrap();
@@ -493,7 +493,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
+    #[ignore] // SQLite database lock issues in concurrent tests
     async fn test_background_metrics_updates() {
         let state = DashboardState::new().await.unwrap();
 

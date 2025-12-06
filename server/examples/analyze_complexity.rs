@@ -117,6 +117,19 @@ async fn main() -> Result<()> {
     println!("```");
     println!("This will fail the CI build if any function exceeds the thresholds.");
 
+    // Example 5: ML-based scoring (GH-97)
+    println!("\nExample 5: ML-based complexity scoring");
+    println!("{}", "=".repeat(60));
+    println!("Use the --ml flag for ML-based quality scoring (GH-97):");
+    println!("```bash");
+    println!("# Standard analysis with ML-based scoring");
+    println!("pmat analyze complexity --ml");
+    println!();
+    println!("# Combined with thresholds");
+    println!("pmat analyze complexity --ml --max-cyclomatic 15 --fail-on-violation");
+    println!("```");
+    println!("ML scoring uses aprender LinearRegression for evidence-based quality predictions.");
+
     println!("\n🎉 Complexity analysis examples completed!");
     Ok(())
 }

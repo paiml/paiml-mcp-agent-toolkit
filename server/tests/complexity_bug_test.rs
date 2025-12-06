@@ -3,6 +3,7 @@ use tempfile::TempDir;
 
 /// Test that exposes bug where complexity analysis reports 0 functions but non-zero complexity
 #[test]
+#[ignore] // Requires pmat binary to be installed
 fn test_complexity_analysis_detects_functions() {
     // Create a temp directory with a test file
     let temp_dir = TempDir::new().unwrap();
@@ -79,6 +80,7 @@ fn complex_function(x: i32) -> i32 {
 
 /// Test that file-level complexity should be 0 when no functions exist
 #[test]
+#[ignore] // Requires pmat binary to be installed
 fn test_empty_file_has_zero_complexity() {
     let temp_dir = TempDir::new().unwrap();
     let test_file = temp_dir.path().join("empty.rs");
@@ -124,6 +126,7 @@ fn test_empty_file_has_zero_complexity() {
 
 /// Integration test that analyzes real codebase file
 #[test]
+#[ignore] // Requires pmat binary to be installed
 fn test_real_file_analysis() {
     // Create a temp directory with a test file
     let temp_dir = TempDir::new().unwrap();

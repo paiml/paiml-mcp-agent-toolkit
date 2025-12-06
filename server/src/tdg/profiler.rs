@@ -433,7 +433,7 @@ mod tests {
     use tokio::time::Duration;
 
     #[tokio::test]
-    #[ignore]
+    #[ignore] // Timing-sensitive test - needs investigation
     async fn test_operation_profiling() {
         let profiler = PerformanceProfiler::new(ProfilerConfig::default());
 
@@ -452,7 +452,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     async fn test_bottleneck_detection() {
         let profiler = PerformanceProfiler::new(ProfilerConfig::default());
 
@@ -483,7 +482,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
+    #[ignore] // Timing-sensitive test - needs investigation
     async fn test_flame_graph_generation() {
         let profiler = PerformanceProfiler::new(ProfilerConfig::default());
 

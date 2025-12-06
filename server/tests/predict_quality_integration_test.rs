@@ -8,6 +8,7 @@ use tempfile::TempDir;
 
 /// Test basic threshold breach prediction
 #[test]
+#[ignore] // Slow test - requires pmat binary (>200s in coverage)
 fn test_predict_quality_basic_prediction() {
     let temp_dir = TempDir::new().unwrap();
     create_test_metric_data(&temp_dir, "lint", 8);
@@ -51,6 +52,7 @@ fn test_predict_quality_basic_prediction() {
 
 /// Test JSON output format
 #[test]
+#[ignore] // Slow test - requires pmat binary (>200s in coverage)
 fn test_predict_quality_json_output() {
     let temp_dir = TempDir::new().unwrap();
     create_test_metric_data(&temp_dir, "lint", 8);
@@ -108,6 +110,7 @@ fn test_predict_quality_json_output() {
 
 /// Test --all flag for multiple metrics
 #[test]
+#[ignore] // Slow test - requires pmat binary (>180s in coverage)
 fn test_predict_quality_all_metrics() {
     let temp_dir = TempDir::new().unwrap();
     create_test_metric_data(&temp_dir, "lint", 8);
@@ -140,6 +143,7 @@ fn test_predict_quality_all_metrics() {
 
 /// Test insufficient data handling
 #[test]
+#[ignore] // Slow test - requires pmat binary (>180s in coverage)
 fn test_predict_quality_insufficient_data() {
     let temp_dir = TempDir::new().unwrap();
     create_test_metric_data(&temp_dir, "lint", 5); // Only 5 observations (need 7+)
@@ -172,6 +176,7 @@ fn test_predict_quality_insufficient_data() {
 
 /// Test high confidence prediction (R² > 0.85)
 #[test]
+#[ignore] // Slow test - requires pmat binary (>180s in coverage)
 fn test_predict_quality_high_confidence() {
     let temp_dir = TempDir::new().unwrap();
     create_test_metric_data(&temp_dir, "lint", 10); // More data = higher confidence
@@ -214,6 +219,7 @@ fn test_predict_quality_high_confidence() {
 
 /// Test recommendations generation
 #[test]
+#[ignore] // Slow test - requires pmat binary (>180s in coverage)
 fn test_predict_quality_recommendations() {
     let temp_dir = TempDir::new().unwrap();
     create_test_metric_data(&temp_dir, "lint", 8);

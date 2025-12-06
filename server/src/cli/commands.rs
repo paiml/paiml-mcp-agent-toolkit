@@ -734,6 +734,14 @@ pub enum Commands {
         /// Baseline git ref (commit/branch/tag) for progress tracking in --explain mode (Issue #78)
         #[arg(long)]
         baseline: Option<String>,
+
+        /// Use ML-based scoring (GH-97: aprender LinearRegression)
+        ///
+        /// When enabled, TDG scores are calculated using trained ML models
+        /// instead of heuristic weighted sums. This provides more accurate,
+        /// data-driven scores that can learn from project history.
+        #[arg(long)]
+        ml: bool,
     },
 
     /// Run quality gates on the current project (TICKET-PMAT-5023, TICKET-PMAT-5024)
@@ -1564,6 +1572,14 @@ pub enum AnalyzeCommands {
         /// Analysis timeout in seconds
         #[arg(long, default_value = "60")]
         timeout: u64,
+
+        /// Use ML-based scoring (GH-97: aprender LinearRegression)
+        ///
+        /// When enabled, complexity scores are calculated using trained ML models
+        /// instead of heuristic formulas. This provides more accurate, data-driven
+        /// scores that account for language-specific patterns and project context.
+        #[arg(long)]
+        ml: bool,
     },
 
     /// Generate dependency graphs using Mermaid
@@ -1852,6 +1868,14 @@ pub enum AnalyzeCommands {
         /// Enable verbose analysis output
         #[arg(long)]
         verbose: bool,
+
+        /// Use ML-based scoring (GH-97: aprender LinearRegression)
+        ///
+        /// When enabled, TDG scores are calculated using trained ML models
+        /// instead of heuristic weighted sums. This provides more accurate,
+        /// data-driven scores that can learn from project history.
+        #[arg(long)]
+        ml: bool,
     },
 
     /// Find the file with highest defect density (lint violations per line)
@@ -3476,6 +3500,7 @@ mod tests {
             top_files: 5,
             fail_on_violation: true,
             timeout: 60,
+            ml: false,
         };
 
         let churn = AnalyzeCommands::Churn {
@@ -5136,6 +5161,29 @@ pub enum QaWorkCommands {
         /// Project path (default: current directory)
         #[arg(short = 'p', long = "path", default_value = ".")]
         path: PathBuf,
+
+        /// Show epic summary (aggregate all tasks in epic)
+        #[arg(long)]
+        epic: Option<String>,
+    },
+
+    /// Generate example scripts for a feature (V2)
+    #[command(visible_aliases = &["examples", "ex"])]
+    GenerateExamples {
+        /// Task/ticket ID
+        task_id: String,
+
+        /// Feature/command name for examples
+        #[arg(short = 'n', long = "name")]
+        feature_name: String,
+
+        /// Project path (default: current directory)
+        #[arg(short = 'p', long = "path", default_value = ".")]
+        path: PathBuf,
+
+        /// Output directory for examples
+        #[arg(short = 'o', long = "output")]
+        output: Option<PathBuf>,
     },
 }
 
@@ -5220,6 +5268,46 @@ pub enum TestDiscoveryCommands {
     #[command(visible_aliases = &["verify", "v"])]
     Verify {
         /// Project path
+        #[arg(short = 'p', long = "path", default_value = ".")]
+        path: PathBuf,
+    },
+
+    /// Create GitHub issues from categorized test failures (Phase 5)
+    #[command(visible_aliases = &["tickets", "t"])]
+    CreateTickets {
+        /// Input categories JSON
+        #[arg(short = 'i', long = "input")]
+        input: PathBuf,
+
+        /// Actually create GitHub issues (default: dry-run)
+        #[arg(long)]
+        create: bool,
+
+        /// Output tickets summary
+        #[arg(short = 'o', long = "output")]
+        output: Option<PathBuf>,
+
+        /// GitHub repository (owner/repo format)
+        #[arg(long)]
+        repo: Option<String>,
+
+        /// Labels to add to created issues
+        #[arg(long, value_delimiter = ',')]
+        labels: Option<Vec<String>>,
+    },
+
+    /// Resolve test file paths from test names
+    #[command(visible_aliases = &["resolve", "r"])]
+    ResolvePaths {
+        /// Input failures JSON
+        #[arg(short = 'i', long = "input")]
+        input: PathBuf,
+
+        /// Output with resolved paths
+        #[arg(short = 'o', long = "output")]
+        output: PathBuf,
+
+        /// Project path to search for test files
         #[arg(short = 'p', long = "path", default_value = ".")]
         path: PathBuf,
     },

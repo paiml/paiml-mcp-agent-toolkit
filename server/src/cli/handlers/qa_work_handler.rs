@@ -24,6 +24,37 @@ pub struct QaChecklist {
     pub categories: ChecklistCategories,
 }
 
+/// Example script for QA validation (V2 feature)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExampleScript {
+    pub name: String,
+    pub content: String,
+    pub description: String,
+}
+
+/// Epic QA summary status
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum EpicStatus {
+    /// All tasks complete (100%)
+    Complete,
+    /// At least one task in progress
+    InProgress,
+    /// No tasks started
+    Pending,
+}
+
+/// Epic QA summary aggregation
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EpicSummary {
+    pub epic_id: String,
+    pub total_tasks: usize,
+    pub total_checks: u32,
+    pub passed_checks: u32,
+    pub overall_score: f64,
+    pub status: EpicStatus,
+    pub task_scores: Vec<(String, f64)>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChecklistCategories {
     pub safety_ethics: Vec<ChecklistItem>,
@@ -105,7 +136,16 @@ pub async fn handle_qa_work_command(command: QaWorkCommands) -> Result<()> {
             format,
         } => handle_report(&task_id, &path, with_evidence, output.as_deref(), format).await,
 
-        QaWorkCommands::Summary { task_id, path } => handle_summary(task_id.as_deref(), &path).await,
+        QaWorkCommands::Summary { task_id, path, epic } => {
+            handle_summary(task_id.as_deref(), &path, epic.as_deref()).await
+        }
+
+        QaWorkCommands::GenerateExamples {
+            task_id,
+            feature_name,
+            path,
+            output,
+        } => handle_generate_examples(&task_id, &feature_name, &path, output.as_deref()).await,
     }
 }
 
@@ -937,12 +977,17 @@ async fn handle_report(
 }
 
 /// Show QA status summary
-async fn handle_summary(task_id: Option<&str>, project_path: &Path) -> Result<()> {
+async fn handle_summary(task_id: Option<&str>, project_path: &Path, epic_id: Option<&str>) -> Result<()> {
     let qa_dir = project_path.join(".pmat-qa");
 
     if !qa_dir.exists() {
         println!("No QA data found. Run 'pmat qa-work generate-checklist <TASK-ID>' first.");
         return Ok(());
+    }
+
+    // Handle epic summary
+    if let Some(epic) = epic_id {
+        return handle_epic_summary(epic, &qa_dir);
     }
 
     println!("QA Status Summary\n");
@@ -969,6 +1014,269 @@ async fn handle_summary(task_id: Option<&str>, project_path: &Path) -> Result<()
     }
 
     Ok(())
+}
+
+/// Handle epic summary aggregation (V2)
+fn handle_epic_summary(epic_id: &str, qa_dir: &Path) -> Result<()> {
+    println!("Epic Summary: {}\n", epic_id);
+
+    // Collect all task scores
+    let mut tasks: Vec<(String, u32, u32)> = Vec::new();
+
+    for entry in fs::read_dir(qa_dir)? {
+        let entry = entry?;
+        if entry.file_type()?.is_dir() {
+            let task_id = entry.file_name().to_string_lossy().to_string();
+            let checklist_path = entry.path().join("checklist.yaml");
+
+            if checklist_path.exists() {
+                let content = fs::read_to_string(&checklist_path)?;
+                let checklist: QaChecklist = serde_yaml::from_str(&content)?;
+
+                // Count items
+                let all_items: Vec<&ChecklistItem> = checklist.categories.safety_ethics.iter()
+                    .chain(checklist.categories.code_quality.iter())
+                    .chain(checklist.categories.testing.iter())
+                    .chain(checklist.categories.documentation.iter())
+                    .chain(checklist.categories.process.iter())
+                    .collect();
+
+                let checked = all_items.iter().filter(|i| i.checked).count() as u32;
+                let total = all_items.len() as u32;
+
+                tasks.push((task_id, checked, total));
+            }
+        }
+    }
+
+    if tasks.is_empty() {
+        println!("No tasks found for epic: {}", epic_id);
+        return Ok(());
+    }
+
+    let summary = calculate_epic_summary(epic_id, &tasks);
+
+    // Print progress bars
+    for (task_id, score) in &summary.task_scores {
+        let bar_len = 20;
+        let filled = ((*score / 100.0) * bar_len as f64) as usize;
+        let progress_bar: String = format!("{}{}", "█".repeat(filled), "░".repeat(bar_len - filled));
+        let status = if *score >= 100.0 { "✓" } else { " " };
+        println!("{} {:<20} {} {:.0}%", status, task_id, progress_bar, score);
+    }
+
+    println!();
+    println!("Total: {}/{} checks passed", summary.passed_checks, summary.total_checks);
+    println!("Overall Score: {:.1}%", summary.overall_score);
+    println!("Status: {:?}", summary.status);
+
+    Ok(())
+}
+
+/// Generate example scripts (V2)
+async fn handle_generate_examples(
+    task_id: &str,
+    feature_name: &str,
+    project_path: &Path,
+    output: Option<&Path>,
+) -> Result<()> {
+    println!("Generating example scripts for: {} ({})", feature_name, task_id);
+
+    let examples = generate_example_scripts(task_id, feature_name);
+
+    // Determine output directory
+    let output_dir = output
+        .map(PathBuf::from)
+        .unwrap_or_else(|| project_path.join("examples").join(feature_name));
+
+    fs::create_dir_all(&output_dir)?;
+
+    // Write each example
+    for example in &examples {
+        let path = output_dir.join(&example.name);
+        fs::write(&path, &example.content)?;
+
+        // Make executable on Unix
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut perms = fs::metadata(&path)?.permissions();
+            perms.set_mode(0o755);
+            fs::set_permissions(&path, perms)?;
+        }
+
+        println!("  ✓ Created: {}", path.display());
+    }
+
+    println!("\n{} example scripts generated in: {}", examples.len(), output_dir.display());
+    println!("\nNext steps:");
+    println!("  1. Review and customize the examples");
+    println!("  2. Run: bash {}/{}",
+        output_dir.display(),
+        examples.first().map(|e| e.name.as_str()).unwrap_or("basic.sh")
+    );
+    println!("  3. Add more edge cases as needed");
+
+    Ok(())
+}
+
+/// Generate example scripts for a feature (V2)
+/// Creates basic, error handling, and edge case examples
+pub fn generate_example_scripts(task_id: &str, feature_name: &str) -> Vec<ExampleScript> {
+    let sanitized_name = feature_name.replace('-', "_").to_lowercase();
+
+    vec![
+        ExampleScript {
+            name: format!("{}_basic.sh", sanitized_name),
+            content: format!(
+                r#"#!/bin/bash
+# Basic usage example for {} (Task: {})
+# Generated by pmat qa-work generate-examples
+
+set -euo pipefail
+
+# Basic invocation
+pmat {} --path .
+
+echo "✓ Basic example completed successfully"
+"#,
+                feature_name, task_id, feature_name
+            ),
+            description: format!("Basic usage example for {}", feature_name),
+        },
+        ExampleScript {
+            name: format!("{}_error_handling.sh", sanitized_name),
+            content: format!(
+                r#"#!/bin/bash
+# Error handling example for {} (Task: {})
+# Generated by pmat qa-work generate-examples
+
+set -euo pipefail
+
+# Test with non-existent path (should fail gracefully)
+if pmat {} --path /nonexistent/path 2>/dev/null; then
+    echo "✗ Should have failed for non-existent path"
+    exit 1
+else
+    echo "✓ Correctly handled non-existent path"
+fi
+
+echo "✓ Error handling example completed successfully"
+"#,
+                feature_name, task_id, feature_name
+            ),
+            description: format!("Error handling example for {}", feature_name),
+        },
+        ExampleScript {
+            name: format!("{}_edge_empty.sh", sanitized_name),
+            content: format!(
+                r#"#!/bin/bash
+# Edge case: empty directory for {} (Task: {})
+# Generated by pmat qa-work generate-examples
+
+set -euo pipefail
+
+# Create temporary empty directory
+TEMP_DIR=$(mktemp -d)
+trap "rm -rf $TEMP_DIR" EXIT
+
+# Test with empty directory
+pmat {} --path "$TEMP_DIR"
+
+echo "✓ Edge case (empty) example completed successfully"
+"#,
+                feature_name, task_id, feature_name
+            ),
+            description: format!("Edge case example for {} with empty input", feature_name),
+        },
+        ExampleScript {
+            name: format!("{}_verbose.sh", sanitized_name),
+            content: format!(
+                r#"#!/bin/bash
+# Verbose output example for {} (Task: {})
+# Generated by pmat qa-work generate-examples
+
+set -euo pipefail
+
+# Run with verbose output
+pmat {} --path . --verbose
+
+echo "✓ Verbose example completed successfully"
+"#,
+                feature_name, task_id, feature_name
+            ),
+            description: format!("Verbose output example for {}", feature_name),
+        },
+        ExampleScript {
+            name: format!("{}_json_output.sh", sanitized_name),
+            content: format!(
+                r#"#!/bin/bash
+# JSON output example for {} (Task: {})
+# Generated by pmat qa-work generate-examples
+
+set -euo pipefail
+
+# Run with JSON output and validate
+OUTPUT=$(pmat {} --path . --format json 2>/dev/null || echo "{{}}")
+
+# Verify valid JSON
+echo "$OUTPUT" | jq . > /dev/null
+
+echo "✓ JSON output example completed successfully"
+"#,
+                feature_name, task_id, feature_name
+            ),
+            description: format!("JSON output example for {}", feature_name),
+        },
+    ]
+}
+
+/// Calculate epic summary from task scores (V2)
+/// Aggregates QA scores across all tasks in an epic
+pub fn calculate_epic_summary(epic_id: &str, tasks: &[(String, u32, u32)]) -> EpicSummary {
+    let total_tasks = tasks.len();
+    let total_checks: u32 = tasks.iter().map(|(_, _, total)| total).sum();
+    let passed_checks: u32 = tasks.iter().map(|(_, passed, _)| passed).sum();
+
+    let overall_score = if total_checks > 0 {
+        (passed_checks as f64 / total_checks as f64) * 100.0
+    } else {
+        0.0
+    };
+
+    // Calculate individual task scores
+    let task_scores: Vec<(String, f64)> = tasks
+        .iter()
+        .map(|(id, passed, total)| {
+            let score = if *total > 0 {
+                (*passed as f64 / *total as f64) * 100.0
+            } else {
+                0.0
+            };
+            (id.clone(), score)
+        })
+        .collect();
+
+    // Determine status
+    let status = if tasks.is_empty() {
+        EpicStatus::Pending
+    } else if tasks.iter().all(|(_, passed, total)| passed == total) {
+        EpicStatus::Complete
+    } else if tasks.iter().any(|(_, passed, _)| *passed > 0) {
+        EpicStatus::InProgress
+    } else {
+        EpicStatus::Pending
+    };
+
+    EpicSummary {
+        epic_id: epic_id.to_string(),
+        total_tasks,
+        total_checks,
+        passed_checks,
+        overall_score,
+        status,
+        task_scores,
+    }
 }
 
 fn print_task_status(task_id: &str, task_dir: &Path) -> Result<()> {
@@ -1056,5 +1364,63 @@ mod tests {
         assert!(!item.checked);
         assert!(item.automated);
         assert!(item.evidence.is_none());
+    }
+
+    // V2 Feature Tests (EXTREME TDD - RED phase)
+
+    #[test]
+    fn test_generate_examples_creates_script_files() {
+        let examples = generate_example_scripts("TEST-001", "my-feature");
+        assert!(!examples.is_empty());
+        assert!(examples.iter().any(|e| e.name.contains("basic")));
+        assert!(examples.iter().any(|e| e.name.contains("error")));
+    }
+
+    #[test]
+    fn test_generate_examples_includes_edge_cases() {
+        let examples = generate_example_scripts("TEST-001", "analyze");
+        // Must have edge case examples
+        assert!(examples.iter().any(|e| e.name.contains("edge") || e.name.contains("empty")));
+    }
+
+    #[test]
+    fn test_example_script_structure() {
+        let examples = generate_example_scripts("TEST-001", "context");
+        for example in &examples {
+            assert!(!example.name.is_empty());
+            assert!(!example.content.is_empty());
+            assert!(example.content.contains("pmat") || example.content.contains("#!"));
+        }
+    }
+
+    #[test]
+    fn test_epic_aggregation_calculates_totals() {
+        let tasks = vec![
+            ("TASK-1".to_string(), 20, 25), // 80%
+            ("TASK-2".to_string(), 25, 25), // 100%
+            ("TASK-3".to_string(), 15, 25), // 60%
+        ];
+        let summary = calculate_epic_summary("EPIC-001", &tasks);
+        assert_eq!(summary.total_tasks, 3);
+        assert_eq!(summary.total_checks, 75);
+        assert_eq!(summary.passed_checks, 60);
+        assert!((summary.overall_score - 80.0).abs() < 0.1);
+    }
+
+    #[test]
+    fn test_epic_summary_status() {
+        let tasks = vec![
+            ("TASK-1".to_string(), 25, 25),
+            ("TASK-2".to_string(), 25, 25),
+        ];
+        let summary = calculate_epic_summary("EPIC-001", &tasks);
+        assert_eq!(summary.status, EpicStatus::Complete);
+
+        let partial_tasks = vec![
+            ("TASK-1".to_string(), 20, 25),
+            ("TASK-2".to_string(), 25, 25),
+        ];
+        let partial_summary = calculate_epic_summary("EPIC-002", &partial_tasks);
+        assert_eq!(partial_summary.status, EpicStatus::InProgress);
     }
 }

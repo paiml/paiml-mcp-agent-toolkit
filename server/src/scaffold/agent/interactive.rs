@@ -125,7 +125,7 @@ impl InteractiveScaffolder {
         let selection = Select::with_theme(&self.theme)
             .with_prompt("Select template type")
             .items(
-                &items
+                items
                     .iter()
                     .map(|(name, desc)| format!("{name}\n   {desc}"))
                     .collect::<Vec<_>>(),
@@ -241,7 +241,7 @@ impl InteractiveScaffolder {
         let selection = Select::with_theme(&self.theme)
             .with_prompt("Quality level")
             .items(
-                &items
+                items
                     .iter()
                     .map(|(name, desc)| format!("{name}\n   {desc}"))
                     .collect::<Vec<_>>(),
@@ -265,7 +265,7 @@ impl InteractiveScaffolder {
 
         let verification_idx = Select::with_theme(&self.theme)
             .with_prompt("Verification method")
-            .items(&verification_items)
+            .items(verification_items)
             .default(0)
             .interact()?;
 
@@ -305,7 +305,7 @@ impl InteractiveScaffolder {
 
         let model_idx = Select::with_theme(&self.theme)
             .with_prompt("AI model type")
-            .items(&model_items)
+            .items(model_items)
             .default(0)
             .interact()?;
 
@@ -325,7 +325,7 @@ impl InteractiveScaffolder {
 
         let fallback_idx = Select::with_theme(&self.theme)
             .with_prompt("Fallback strategy")
-            .items(&fallback_items)
+            .items(fallback_items)
             .default(0)
             .interact()?;
 

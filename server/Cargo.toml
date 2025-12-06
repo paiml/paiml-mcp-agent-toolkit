@@ -42,7 +42,7 @@ async-raft = { version = "0.6", optional = true }
 crossbeam = "0.8"
 
 # Resource management
-sysinfo = "0.32"
+sysinfo = "0.37"  # Updated for reduced duplicates
 libc = "0.2"
 
 # Property testing
@@ -117,9 +117,9 @@ rayon = "1.10"
 git2 = { version = "0.20", default-features = false, features = ["https"] }
 
 # CLI utilities
-dialoguer = "0.11"
-console = "0.15"
-indicatif = "0.17"
+dialoguer = "0.12"  # Updated for thiserror v2 compatibility
+console = "0.16"
+indicatif = "0.18"
 url = "2.5"
 
 # Storage
@@ -551,6 +551,10 @@ required-features = ["mutation-testing"]
 name = "python_mutation_workflow"
 path = "examples/python_mutation_workflow.rs"
 required-features = ["mutation-testing"]
+
+[[example]]
+name = "verus_verification_demo"
+path = "examples/verus_verification_demo.rs"
 
 # Profile configuration moved to workspace root
 

@@ -543,6 +543,7 @@ fn test_analyze_complexity_full_options() {
             top_files,
             fail_on_violation: _,
             timeout: _,
+            ml: _,
         }) => {
             assert_eq!(path, PathBuf::from("/workspace"));
             assert_eq!(project_path, None);

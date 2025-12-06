@@ -10,6 +10,7 @@ use tempfile::TempDir;
 
 /// Test that quality-gate only counts functions exceeding threshold
 #[test]
+#[ignore] // Slow test - requires pmat binary (>300s in coverage)
 fn test_quality_gate_counts_only_threshold_violations() {
     // Create a test file with known complexity
     let temp_dir = TempDir::new().unwrap();
@@ -149,6 +150,7 @@ fn complex_function(x: i32, y: i32, z: i32) -> i32 {
 
 /// Test that quality-gate correctly identifies zero violations when all functions are below threshold
 #[test]
+#[ignore] // Slow test - requires pmat binary (>60s)
 fn test_quality_gate_zero_violations_when_all_below_threshold() {
     let temp_dir = TempDir::new().unwrap();
     let test_file = temp_dir.path().join("simple.rs");

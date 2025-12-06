@@ -21,7 +21,7 @@
 #
 # This design eliminates confusion and ensures consistent behavior across all environments.
 
-.PHONY: all validate format lint lint-main check test test-doc test-fast coverage coverage-ci coverage-summary coverage-open coverage-clean clean-coverage build release clean clean-tmp install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts test-scripts lint-makefile fix validate-docs ci-status validate-naming validate-book context setup audit docs run-mcp run-mcp-test test-actions install-act check-act deps-validate dogfood dogfood-ci update-rust-docs size-report size-track size-check size-compare test-all-interfaces test-feature-all-interfaces test-interface-consistency benchmark-all-interfaces load-test-interfaces context-json context-sarif context-llm context-legacy context-benchmark analyze-top-files analyze-composite analyze-health-dashboard profile-binary-performance profile-deep-context analyze-memory-usage analyze-scaling kaizen test-slow-integration test-safe test-dogfood test-critical-scripts coverage-scripts test-workflow-dag test-workflow-dag-verbose context-root context-simple context-json-root context-benchmark-legacy local-install server-build-binary server-build-docker server-run-mcp server-run-mcp-test server-benchmark server-test server-test-all server-outdated server-tokei build-target cargo-doc cargo-geiger update-deps update-deps-aggressive update-deps-security upgrade-deps audit-fix benchmark coverage-report outdated test-all-features clippy-strict server-build-release create-release test-curl-install cargo-rustdoc install-dev-tools tokei quickstart context-fast clear-swap config-swap overnight-improve overnight-monitor overnight-swap-cron test-unit test-services test-protocols test-e2e test-performance test-property test-property-slow test-all test-stratified coverage-stratified crate-release crate-docs dev commit sprint-close setup-quality quality-gate-full help-toyota-way test-examples clean-quick clean-deep validate-doc-links validate-contracts release-dry release-verify
+.PHONY: all validate format lint lint-main check test test-doc test-fast coverage coverage-ci coverage-summary coverage-open coverage-clean clean-coverage build release clean clean-tmp install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts test-scripts lint-makefile fix validate-docs ci-status validate-naming validate-book context setup audit docs run-mcp run-mcp-test test-actions install-act check-act deps-validate dogfood dogfood-ci update-rust-docs size-report size-track size-check size-compare test-all-interfaces test-feature-all-interfaces test-interface-consistency benchmark-all-interfaces load-test-interfaces context-json context-sarif context-llm context-legacy context-benchmark analyze-top-files analyze-composite analyze-health-dashboard profile-binary-performance profile-deep-context analyze-memory-usage analyze-scaling kaizen test-slow-integration test-safe test-dogfood test-critical-scripts coverage-scripts test-workflow-dag test-workflow-dag-verbose context-root context-simple context-json-root context-benchmark-legacy local-install server-build-binary server-build-docker server-run-mcp server-run-mcp-test server-benchmark server-test server-test-all server-outdated server-tokei build-target cargo-doc cargo-geiger update-deps update-deps-aggressive update-deps-security upgrade-deps audit-fix benchmark coverage-report outdated test-all-features clippy-strict server-build-release create-release test-curl-install cargo-rustdoc install-dev-tools tokei quickstart context-fast clear-swap config-swap overnight-improve overnight-monitor overnight-swap-cron test-unit test-services test-protocols test-e2e test-performance test-property test-property-slow test-all test-stratified coverage-stratified crate-release crate-docs dev commit sprint-close setup-quality quality-gate-full help-toyota-way test-examples examples example clean-quick clean-deep validate-doc-links validate-contracts release-dry release-verify
 
 # Define sub-projects
 # NOTE: client project will be added when implemented
@@ -385,6 +385,13 @@ test-examples:
 		fi \
 	done
 	@echo "✅ All examples completed successfully!"
+
+# Alias for running examples (cargo run --example)
+examples: test-examples
+
+# Run a specific example: make example NAME=complexity_demo
+example:
+	@cd server && cargo run --example $(NAME)
 
 # Main test target - runs all required tests
 test: test-fast test-doc test-property test-examples

@@ -145,4 +145,4 @@ All diagrams are automatically validated for:
 - ✓ Proper labeling (no empty nodes)
 - ✓ Category-appropriate styling
 
-Last validated: 2025-11-25 09:08:13 UTC
+Last validated: 2025-12-06 10:34:17 UTC

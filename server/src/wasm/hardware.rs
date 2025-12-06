@@ -284,20 +284,186 @@ impl HardwareProfile {
     }
 }
 #[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_core_class_from_count() {
+        assert_eq!(CoreClass::from_count(1), CoreClass::Single);
+        assert_eq!(CoreClass::from_count(2), CoreClass::Dual);
+        assert_eq!(CoreClass::from_count(3), CoreClass::Quad);
+        assert_eq!(CoreClass::from_count(4), CoreClass::Quad);
+        assert_eq!(CoreClass::from_count(5), CoreClass::Octa);
+        assert_eq!(CoreClass::from_count(8), CoreClass::Octa);
+        assert_eq!(CoreClass::from_count(16), CoreClass::Many);
+    }
+
+    #[test]
+    fn test_core_class_distance() {
+        assert_eq!(CoreClass::Single.distance(&CoreClass::Single), 0);
+        assert_eq!(CoreClass::Single.distance(&CoreClass::Dual), 1);
+        assert_eq!(CoreClass::Single.distance(&CoreClass::Many), 4);
+        assert_eq!(CoreClass::Quad.distance(&CoreClass::Octa), 1);
+    }
+
+    #[test]
+    fn test_core_class_speedup() {
+        assert!((CoreClass::Single.speedup() - 1.0).abs() < f64::EPSILON);
+        assert!((CoreClass::Dual.speedup() - 1.8).abs() < f64::EPSILON);
+        assert!(CoreClass::Octa.speedup() > CoreClass::Quad.speedup());
+    }
+
+    #[test]
+    fn test_core_class_representative_count() {
+        assert_eq!(CoreClass::Single.representative_count(), 1);
+        assert_eq!(CoreClass::Dual.representative_count(), 2);
+        assert_eq!(CoreClass::Quad.representative_count(), 4);
+        assert_eq!(CoreClass::Octa.representative_count(), 8);
+        assert_eq!(CoreClass::Many.representative_count(), 16);
+    }
+
+    #[test]
+    fn test_cache_class_distance() {
+        assert_eq!(CacheClass::Small.distance(&CacheClass::Small), 0);
+        assert_eq!(CacheClass::Small.distance(&CacheClass::Medium), 1);
+        assert_eq!(CacheClass::Small.distance(&CacheClass::Huge), 3);
+    }
+
+    #[test]
+    fn test_cache_class_mb() {
+        assert!(CacheClass::Small.mb() < CacheClass::Medium.mb());
+        assert!(CacheClass::Medium.mb() < CacheClass::Large.mb());
+        assert!(CacheClass::Large.mb() < CacheClass::Huge.mb());
+    }
+
+    #[test]
+    fn test_cpu_family_compatibility() {
+        assert!(CpuFamily::IntelCore.compatible_with(&CpuFamily::IntelXeon));
+        assert!(CpuFamily::IntelXeon.compatible_with(&CpuFamily::IntelCore));
+        assert!(CpuFamily::AmdRyzen.compatible_with(&CpuFamily::AmdEpyc));
+        assert!(CpuFamily::AppleSilicon.compatible_with(&CpuFamily::ArmCortex));
+        assert!(CpuFamily::IntelCore.compatible_with(&CpuFamily::IntelCore));
+        assert!(!CpuFamily::IntelCore.compatible_with(&CpuFamily::AmdRyzen));
+    }
+
+    #[test]
+    fn test_hardware_class_similarity() {
+        let hw1 = HardwareClass {
+            cpu_family: CpuFamily::IntelCore,
+            core_count_class: CoreClass::Octa,
+            cache_class: CacheClass::Medium,
+        };
+        let hw2 = HardwareClass {
+            cpu_family: CpuFamily::IntelCore,
+            core_count_class: CoreClass::Octa,
+            cache_class: CacheClass::Medium,
+        };
+        assert!((hw1.similarity(&hw2) - 1.0).abs() < f64::EPSILON);
+
+        let hw3 = HardwareClass {
+            cpu_family: CpuFamily::AmdRyzen,
+            core_count_class: CoreClass::Single,
+            cache_class: CacheClass::Small,
+        };
+        assert!(hw1.similarity(&hw3) < 0.5);
+    }
+
+    #[test]
+    fn test_hardware_class_performance_factor() {
+        let baseline = HardwareClass {
+            cpu_family: CpuFamily::IntelCore,
+            core_count_class: CoreClass::Quad,
+            cache_class: CacheClass::Medium,
+        };
+        let faster = HardwareClass {
+            cpu_family: CpuFamily::IntelCore,
+            core_count_class: CoreClass::Octa,
+            cache_class: CacheClass::Large,
+        };
+        assert!(faster.performance_factor(&baseline) > 1.0);
+    }
+
+    #[test]
+    fn test_hardware_class_from_system() {
+        let hw = HardwareClass::from_system();
+        // Should always return valid values
+        assert!(hw.core_count_class.speedup() > 0.0);
+    }
+
+    #[test]
+    fn test_hardware_profile_from_system() {
+        let profile = HardwareProfile::from_system();
+        assert!(profile.logical_cores > 0);
+        assert!(profile.physical_cores > 0);
+        assert!(profile.logical_cores >= profile.physical_cores);
+    }
+
+    #[test]
+    fn test_hardware_class_display() {
+        let hw = HardwareClass {
+            cpu_family: CpuFamily::IntelCore,
+            core_count_class: CoreClass::Octa,
+            cache_class: CacheClass::Medium,
+        };
+        let display = format!("{}", hw);
+        assert!(display.contains("IntelCore"));
+        assert!(display.contains("Octa"));
+        assert!(display.contains("Medium"));
+    }
+
+    #[test]
+    fn test_cache_class_detect() {
+        let cache = CacheClass::detect();
+        // Should return Medium as default
+        assert_eq!(cache, CacheClass::Medium);
+    }
+
+    #[test]
+    fn test_cpu_family_detect() {
+        let cpu = CpuFamily::detect();
+        // Should return valid CPU family
+        assert!(cpu != CpuFamily::Unknown || cfg!(not(any(target_arch = "x86_64", target_arch = "aarch64"))));
+    }
+}
+
+#[cfg(test)]
 mod property_tests {
+    use super::*;
     use proptest::prelude::*;
 
     proptest! {
         #[test]
-        fn basic_property_stability(_input in ".*") {
-            // Basic property test for coverage
-            prop_assert!(true);
+        fn core_class_distance_symmetric(a in 0usize..5, b in 0usize..5) {
+            let classes = [CoreClass::Single, CoreClass::Dual, CoreClass::Quad, CoreClass::Octa, CoreClass::Many];
+            let class_a = &classes[a];
+            let class_b = &classes[b];
+            prop_assert_eq!(class_a.distance(class_b), class_b.distance(class_a));
         }
 
         #[test]
-        fn module_consistency_check(_x in 0u32..1000) {
-            // Module consistency verification
-            prop_assert!(_x < 1001);
+        fn cache_class_distance_symmetric(a in 0usize..4, b in 0usize..4) {
+            let classes = [CacheClass::Small, CacheClass::Medium, CacheClass::Large, CacheClass::Huge];
+            let class_a = &classes[a];
+            let class_b = &classes[b];
+            prop_assert_eq!(class_a.distance(class_b), class_b.distance(class_a));
+        }
+
+        #[test]
+        fn hardware_similarity_symmetric(core_a in 0usize..5, core_b in 0usize..5) {
+            let core_classes = [CoreClass::Single, CoreClass::Dual, CoreClass::Quad, CoreClass::Octa, CoreClass::Many];
+            let hw1 = HardwareClass {
+                cpu_family: CpuFamily::IntelCore,
+                core_count_class: core_classes[core_a].clone(),
+                cache_class: CacheClass::Medium,
+            };
+            let hw2 = HardwareClass {
+                cpu_family: CpuFamily::IntelCore,
+                core_count_class: core_classes[core_b].clone(),
+                cache_class: CacheClass::Medium,
+            };
+            let sim1 = hw1.similarity(&hw2);
+            let sim2 = hw2.similarity(&hw1);
+            prop_assert!((sim1 - sim2).abs() < 0.001);
         }
     }
 }

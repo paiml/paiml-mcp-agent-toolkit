@@ -298,6 +298,7 @@ async fn route_complexity_analysis(cmd: AnalyzeCommands) -> Result<()> {
         top_files,
         fail_on_violation,
         timeout,
+        ml: _, // GH-97: ML flag (not yet implemented in handler)
     } = cmd
     {
         route_complexity_command(
@@ -590,6 +591,7 @@ async fn route_tdg_analysis(cmd: AnalyzeCommands) -> Result<()> {
         output,
         critical_only,
         verbose,
+        ml: _, // GH-97: ML flag (not yet implemented in handler)
     } = cmd
     {
         use super::new_tdg_handler::TdgAnalysisConfig;

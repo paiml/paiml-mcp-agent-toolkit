@@ -17,6 +17,7 @@ roadmap:
   subtasks: []
   estimated_effort: null
   labels: []
+  notes: null
 - id: Rebuild pmat binary with Known Defects v2.1 and validate scoring
   github_issue: null
   item_type: task
@@ -32,6 +33,7 @@ roadmap:
   subtasks: []
   estimated_effort: null
   labels: []
+  notes: null
 - id: 'Complete Known Defects v2.1: TDG auto-fail + analyze defects CLI'
   github_issue: null
   item_type: task
@@ -47,6 +49,7 @@ roadmap:
   subtasks: []
   estimated_effort: null
   labels: []
+  notes: null
 - id: 'Fix rust-project-score defects: unwrap() elimination and tooling compliance'
   github_issue: null
   item_type: task
@@ -62,6 +65,7 @@ roadmap:
   subtasks: []
   estimated_effort: null
   labels: []
+  notes: null
 - id: Implement comprehensive test exclusion for defect detection
   github_issue: null
   item_type: task
@@ -77,6 +81,7 @@ roadmap:
   subtasks: []
   estimated_effort: null
   labels: []
+  notes: null
 - id: GH-84
   github_issue: 84
   item_type: task
@@ -92,6 +97,7 @@ roadmap:
   subtasks: []
   estimated_effort: null
   labels: []
+  notes: null
 - id: 'Phase 1: Update dependencies (aprender v0.4.1 + trueno-db v0.2.0)'
   github_issue: null
   item_type: task
@@ -107,6 +113,7 @@ roadmap:
   subtasks: []
   estimated_effort: null
   labels: []
+  notes: null
 - id: 'Phase 2: ML migration - Replace custom ML with aprender (RandomForest, KMeans, DBSCAN)'
   github_issue: null
   item_type: task
@@ -122,6 +129,7 @@ roadmap:
   subtasks: []
   estimated_effort: null
   labels: []
+  notes: null
 - id: ML-PHASE-4-GRAPH
   github_issue: null
   item_type: task
@@ -142,12 +150,13 @@ roadmap:
   - Add comprehensive integration tests (≥80% coverage)
   - Benchmark performance vs previous placeholder implementations
   phases: []
-  subtasks:
+  subtasks: []
   estimated_effort: 1 week
   labels:
   - ml-integration
   - graph-algorithms
   - aprender
+  notes: null
 - id: ML-PHASE-3-STATS
   github_issue: null
   item_type: task
@@ -166,12 +175,13 @@ roadmap:
   - Add property-based tests for statistical equivalence
   - Remove ~200 LOC of custom stats code
   phases: []
-  subtasks:
+  subtasks: []
   estimated_effort: 3 days
   labels:
   - ml-integration
   - statistics
   - aprender
+  notes: null
 - id: ML-PHASE-5-OLAP
   github_issue: null
   item_type: task
@@ -182,16 +192,10 @@ roadmap:
   created: 2025-11-22T12:20:00.000000000+00:00
   updated: 2025-11-22T14:00:00.000000000+00:00
   spec: docs/specifications/integrate-ml-trueno-latest-spec.md
-  acceptance_criteria:
-  - Implement trueno-db Top-K query acceleration (5-28x faster)
-  - Implement OLAP-only storage backend for analytics
-  - Add hybrid SQLite + Trueno storage strategy
-  - Benchmark Top-K: 1M rows with SIMD/GPU backends
-  - Add aggregation acceleration (SUM, AVG, MIN, MAX)
-  - Performance target: SIMD 2.78x, GPU 33.3x faster
+  acceptance_criteria: []
   phases: []
-  subtasks:
-  estimated_effort: 7 days
+  subtasks: []
+  estimated_effort: null
   labels:
   - ml-integration
   - olap
@@ -224,3 +228,51 @@ roadmap:
     - trueno-db v0.2.1 (QueryBuilder API needed for Tasks 5.2/5.3)
     - Issue: https://github.com/paiml/trueno-db/issues/3
     - Need: Bitonic Top-K implementation in trueno-db for performance target
+- id: GH-102
+  github_issue: null
+  item_type: task
+  title: 'New task: GH-102'
+  status: completed
+  priority: medium
+  assigned_to: null
+  created: 2025-12-05T19:43:45.588922748+00:00
+  updated: 2025-12-05T19:45:44.542791419+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-98
+  github_issue: null
+  item_type: task
+  title: 'New task: GH-98'
+  status: completed
+  priority: medium
+  assigned_to: null
+  created: 2025-12-05T22:05:21.265618524+00:00
+  updated: 2025-12-05T22:17:44.647234199+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-97
+  github_issue: null
+  item_type: task
+  title: 'New task: GH-97'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2025-12-05T22:18:58.241991503+00:00
+  updated: 2025-12-05T22:18:58.241991503+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null

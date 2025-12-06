@@ -206,6 +206,7 @@ pub mod local_semantic; // Local semantic analysis using aprender (no external A
 pub mod simple_deep_context;
 pub mod symbol_table;
 pub mod tdg_calculator;
+pub mod ml_quality_scorer; // GH-97: ML-based quality scoring using aprender
 pub mod template_service;
 pub mod unified_ast_engine; // Stub for backward compatibility
 #[cfg(feature = "shell-ast")]

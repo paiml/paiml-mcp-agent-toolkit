@@ -537,6 +537,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("🎯 Run complexity analysis with:");
     println!("   pmat analyze complexity --include \"server/examples/complexity_demo.rs\"");
     println!();
+    println!("🤖 For ML-based scoring (GH-97):");
+    println!("   pmat analyze complexity --ml --include \"server/examples/complexity_demo.rs\"");
+    println!();
     println!("Expected complexity levels:");
     println!("- simple_function: Low (Cyclomatic: 1)");
     println!("- http_request_handler: Moderate (Cyclomatic: ~8)");

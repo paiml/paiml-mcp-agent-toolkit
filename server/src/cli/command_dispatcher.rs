@@ -402,6 +402,7 @@ impl CommandDispatcher {
                 explain,
                 threshold,
                 baseline,
+                ml: _, // GH-97: ML flag (not yet implemented in handler)
             } => {
                 let tdg_config = handlers::tdg_handlers::TdgCommandConfig {
                     path,

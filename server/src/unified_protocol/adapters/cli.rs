@@ -294,6 +294,7 @@ impl CliAdapter {
                 top_files,
                 fail_on_violation: _,
                 timeout: _,
+                ml: _, // GH-97: ML flag
             } => Self::decode_analyze_complexity_with_migration(
                 path,
                 project_path,
@@ -369,6 +370,7 @@ impl CliAdapter {
                 output,
                 critical_only,
                 verbose,
+                ml: _, // GH-97: ML flag
             } => Self::decode_analyze_tdg(
                 path,
                 output,
@@ -2403,6 +2405,7 @@ mod tests {
             top_files: 0,
             fail_on_violation: false,
             timeout: 60,
+            ml: false,
         });
 
         let input = CliInput::from_commands(command);
@@ -2890,6 +2893,7 @@ mod tests {
             output: None,
             critical_only: false,
             verbose: false,
+            ml: false,
         });
 
         let input = CliInput::from_commands(command);
@@ -2984,6 +2988,7 @@ mod tests {
             top_files: 0,
             fail_on_violation: false,
             timeout: 60,
+            ml: false,
         };
 
         let result = CliAdapter::dispatch_basic_analysis(&command);

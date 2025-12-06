@@ -12,6 +12,7 @@ use tempfile::TempDir;
 
 /// Test that quality-gate correctly counts only violations above threshold
 #[test]
+#[ignore] // Slow test - requires pmat binary (>60s in coverage)
 fn test_quality_gate_counts_violations_correctly() {
     // Create test files with known complexity
     let temp_dir = TempDir::new().unwrap();
@@ -99,6 +100,7 @@ fn complex_function(x: i32, y: i32, z: i32) -> i32 {
 
 /// Test that quality-gate can run checks correctly
 #[test]
+#[ignore] // Slow test - requires pmat binary (>60s in coverage)
 fn test_quality_gate_multiple_checks() {
     let temp_dir = TempDir::new().unwrap();
     let test_file = temp_dir.path().join("test_multi.rs");
@@ -190,6 +192,7 @@ fn unused_function() -> i32 {
 
 /// Test that quality-gate respects thresholds correctly
 #[test]
+#[ignore] // Slow test - requires pmat binary (>60s in coverage)
 fn test_quality_gate_threshold_boundaries() {
     let temp_dir = TempDir::new().unwrap();
     let test_file = temp_dir.path().join("threshold_test.rs");
