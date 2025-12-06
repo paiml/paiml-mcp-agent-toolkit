@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 140">
+  <defs>
+    <!-- Primary gradient: Professional blue -->
+    <linearGradient id="pmat-grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6366F1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#4F46E5;stop-opacity:1" />
+    </linearGradient>
+    <!-- Secondary gradient: Teal accent -->
+    <linearGradient id="pmat-grad2" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#14B8A6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0D9488;stop-opacity:1" />
+    </linearGradient>
+    <!-- Quality gradient: Gold -->
+    <linearGradient id="pmat-grad3" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#F59E0B;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#D97706;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- AST/Code Analysis Visual -->
+  <g transform="translate(25, 20)">
+    <!-- Root node (code file) -->
+    <rect x="35" y="5" width="30" height="20" rx="4" fill="url(#pmat-grad1)"/>
+    <text x="50" y="19" font-family="monospace" font-size="10" fill="white" text-anchor="middle">{}</text>
+
+    <!-- Branch lines -->
+    <line x1="50" y1="25" x2="25" y2="40" stroke="#6366F1" stroke-width="2" opacity="0.7"/>
+    <line x1="50" y1="25" x2="50" y2="40" stroke="#6366F1" stroke-width="2" opacity="0.7"/>
+    <line x1="50" y1="25" x2="75" y2="40" stroke="#6366F1" stroke-width="2" opacity="0.7"/>
+
+    <!-- Function nodes -->
+    <circle cx="25" cy="50" r="10" fill="url(#pmat-grad2)"/>
+    <text x="25" y="54" font-family="monospace" font-size="9" fill="white" text-anchor="middle">fn</text>
+
+    <circle cx="50" cy="50" r="10" fill="url(#pmat-grad2)"/>
+    <text x="50" y="54" font-family="monospace" font-size="9" fill="white" text-anchor="middle">fn</text>
+
+    <circle cx="75" cy="50" r="10" fill="url(#pmat-grad2)"/>
+    <text x="75" y="54" font-family="monospace" font-size="9" fill="white" text-anchor="middle">fn</text>
+
+    <!-- Metric indicators -->
+    <line x1="25" y1="60" x2="25" y2="75" stroke="#14B8A6" stroke-width="2" opacity="0.6"/>
+    <line x1="50" y1="60" x2="50" y2="75" stroke="#14B8A6" stroke-width="2" opacity="0.6"/>
+    <line x1="75" y1="60" x2="75" y2="75" stroke="#14B8A6" stroke-width="2" opacity="0.6"/>
+
+    <!-- Quality scores (TDG) -->
+    <rect x="15" y="78" width="20" height="14" rx="2" fill="url(#pmat-grad3)"/>
+    <text x="25" y="89" font-family="monospace" font-size="8" fill="white" text-anchor="middle">A+</text>
+
+    <rect x="40" y="78" width="20" height="14" rx="2" fill="#22C55E"/>
+    <text x="50" y="89" font-family="monospace" font-size="8" fill="white" text-anchor="middle">B</text>
+
+    <rect x="65" y="78" width="20" height="14" rx="2" fill="url(#pmat-grad3)"/>
+    <text x="75" y="89" font-family="monospace" font-size="8" fill="white" text-anchor="middle">A</text>
+
+    <!-- Analysis arrow -->
+    <path d="M 90 50 L 105 50" stroke="#6366F1" stroke-width="2.5" fill="none"/>
+    <polygon points="105,50 100,46 100,54" fill="#6366F1"/>
+  </g>
+
+  <!-- Title -->
+  <text x="145" y="55" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="800" fill="#1a1a2e">
+    PMAT
+  </text>
+
+  <!-- Subtitle -->
+  <text x="145" y="82" font-family="system-ui, -apple-system, sans-serif" font-size="14" fill="#64748B" letter-spacing="0.5">
+    Multi-language Agent Toolkit
+  </text>
+
+  <!-- Version badge -->
+  <rect x="145" y="95" width="55" height="20" rx="4" fill="url(#pmat-grad1)"/>
+  <text x="172" y="110" font-family="monospace" font-size="11" fill="white" text-anchor="middle">v2.209</text>
+
+  <!-- Rust badge -->
+  <rect x="205" y="95" width="45" height="20" rx="4" fill="#DEA584"/>
+  <text x="227" y="110" font-family="monospace" font-size="11" fill="white" text-anchor="middle">Rust</text>
+
+  <!-- 17+ Languages badge -->
+  <rect x="255" y="95" width="75" height="20" rx="4" fill="url(#pmat-grad2)"/>
+  <text x="292" y="110" font-family="monospace" font-size="10" fill="white" text-anchor="middle">17+ langs</text>
+
+  <!-- Features on right side -->
+  <g transform="translate(360, 25)">
+    <text x="0" y="12" font-family="system-ui" font-size="11" fill="#64748B">Context Generation</text>
+    <text x="0" y="30" font-family="system-ui" font-size="11" fill="#64748B">Technical Debt Grading</text>
+    <text x="0" y="48" font-family="system-ui" font-size="11" fill="#64748B">Mutation Testing</text>
+    <text x="0" y="66" font-family="system-ui" font-size="11" fill="#64748B">MCP Integration</text>
+    <text x="0" y="84" font-family="system-ui" font-size="11" fill="#64748B">Toyota Way Quality</text>
+  </g>
+
+  <!-- Decorative dots -->
+  <circle cx="355" cy="31" r="3" fill="#6366F1"/>
+  <circle cx="355" cy="49" r="3" fill="#14B8A6"/>
+  <circle cx="355" cy="67" r="3" fill="#F59E0B"/>
+  <circle cx="355" cy="85" r="3" fill="#22C55E"/>
+  <circle cx="355" cy="103" r="3" fill="#EF4444"/>
+</svg>
