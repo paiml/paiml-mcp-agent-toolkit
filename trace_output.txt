@@ -1,5 +1,0 @@
-Failed to exec ./target/release/pmat: No such file or directory (os error 2)
-Error: Failed to set ptrace options
-
-Caused by:
-    ESRCH: No such process
