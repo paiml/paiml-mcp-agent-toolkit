@@ -227,6 +227,12 @@ pub mod wasm;
 #[cfg(feature = "mutation-testing")]
 pub mod mutation;
 
+// PMAT Oracle - PDCA loop for automated quality improvement
+pub mod oracle;
+
+// PMAT-REPORT-V1: Universal Rich Reporting with Data Science and ASCII Visualization
+pub mod rich_reporter;
+
 #[cfg(test)]
 mod satd_property_tests;
 

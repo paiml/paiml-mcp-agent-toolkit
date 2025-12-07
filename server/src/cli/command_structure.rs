@@ -702,6 +702,11 @@ impl CommandExecutor {
             Commands::Localize { .. } => {
                 anyhow::bail!("Localize command should be handled by command_dispatcher.rs")
             }
+
+            // PMAT Oracle - handled by command_dispatcher.rs
+            Commands::Oracle { .. } => {
+                anyhow::bail!("Oracle command should be handled by command_dispatcher.rs")
+            }
         }
     }
 }

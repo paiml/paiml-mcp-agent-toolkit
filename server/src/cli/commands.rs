@@ -845,6 +845,14 @@ pub enum Commands {
         auto_analyze: bool,
     },
 
+    /// PMAT Oracle - PDCA loop for automated quality improvement (Toyota Way)
+    /// Converges ANY Rust project toward perfect quality using CITL signals
+    #[command(name = "oracle", visible_aliases = &["fix", "pdca"])]
+    Oracle {
+        #[command(subcommand)]
+        command: OracleCommands,
+    },
+
     /// PMAT compliance and migration system (GH-96)
     #[command(visible_aliases = &["compliance"])]
     Comply {
@@ -895,6 +903,83 @@ pub enum Commands {
         #[arg(short = 'f', long, default_value = "terminal")]
         format: String,
     },
+}
+
+/// Oracle subcommands for PDCA loop automated quality improvement
+#[derive(Debug, Clone, Subcommand)]
+#[cfg_attr(test, derive(PartialEq))]
+pub enum OracleCommands {
+    /// Run PDCA fix loop to converge toward perfect project quality
+    /// Uses CITL (Compiler-In-The-Loop) signals from rustc, clippy, cargo test
+    #[command(visible_aliases = &["f", "run"])]
+    Fix {
+        /// Project path (defaults to current directory)
+        #[arg(short = 'p', long = "path", default_value = ".")]
+        path: PathBuf,
+
+        /// Maximum iterations (1-100, default 10)
+        #[arg(short = 'n', long = "max-iterations", default_value = "10")]
+        max_iterations: usize,
+
+        /// Confidence threshold for auto-apply (0.0-1.0)
+        #[arg(long, default_value = "0.9")]
+        auto_apply_threshold: f32,
+
+        /// Confidence threshold for human review (0.0-1.0)
+        #[arg(long, default_value = "0.7")]
+        review_threshold: f32,
+
+        /// Dry run (analyze only, don't apply fixes)
+        #[arg(long)]
+        dry_run: bool,
+
+        /// Output format: text, json, markdown
+        #[arg(short = 'f', long = "format", default_value = "text")]
+        format: OracleOutputFormat,
+
+        /// Write output to file
+        #[arg(short = 'o', long = "output")]
+        output: Option<PathBuf>,
+    },
+
+    /// Show current project quality status against convergence targets
+    #[command(visible_aliases = &["s"])]
+    Status {
+        /// Project path (defaults to current directory)
+        #[arg(short = 'p', long = "path", default_value = ".")]
+        path: PathBuf,
+
+        /// Output format: text, json, markdown
+        #[arg(short = 'f', long = "format", default_value = "text")]
+        format: OracleOutputFormat,
+    },
+
+    /// Run a single PDCA iteration (for CI/CD integration)
+    Single {
+        /// Project path (defaults to current directory)
+        #[arg(short = 'p', long = "path", default_value = ".")]
+        path: PathBuf,
+
+        /// Output format: text, json, markdown
+        #[arg(short = 'f', long = "format", default_value = "text")]
+        format: OracleOutputFormat,
+
+        /// Write output to file
+        #[arg(short = 'o', long = "output")]
+        output: Option<PathBuf>,
+    },
+}
+
+/// Output format for Oracle command
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, clap::ValueEnum)]
+pub enum OracleOutputFormat {
+    /// Human-readable text output
+    #[default]
+    Text,
+    /// JSON for programmatic consumption
+    Json,
+    /// Markdown for documentation
+    Markdown,
 }
 
 /// Comply subcommands for PMAT compliance checking and migration (GH-96)

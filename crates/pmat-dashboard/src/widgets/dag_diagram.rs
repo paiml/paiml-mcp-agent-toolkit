@@ -52,7 +52,11 @@ pub enum NodeType {
 /// DAG edge
 #[derive(Debug, Clone)]
 pub struct DagEdge {
+    /// Source node ID (used for graph traversal)
+    #[allow(dead_code)]
     from: String,
+    /// Target node ID (used for graph traversal)
+    #[allow(dead_code)]
     to: String,
     label: Option<String>,
     edge_type: EdgeType,
@@ -97,6 +101,8 @@ pub struct DagDiagram {
     edges: Vec<DagEdge>,
     zoom_config: Option<ZoomConfig>,
     current_zoom: f32,
+    /// Pan offset for viewport scrolling (reserved for rendering)
+    #[allow(dead_code)]
     pan_offset: (f32, f32),
     click_handler: Option<fn(&str)>,
 }

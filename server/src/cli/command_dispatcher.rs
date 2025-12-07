@@ -578,6 +578,11 @@ impl CommandDispatcher {
                 .await
             }
 
+            Commands::Oracle { command } => {
+                // PMAT Oracle - PDCA loop for automated quality improvement (Toyota Way)
+                crate::cli::handlers::oracle_handlers::handle_oracle_command(command).await
+            }
+
             Commands::Localize {
                 passed_coverage,
                 failed_coverage,

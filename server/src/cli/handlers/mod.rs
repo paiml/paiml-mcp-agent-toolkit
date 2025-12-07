@@ -95,6 +95,7 @@ pub mod wasm_handlers; // Phase 4: Organizational Intelligence Integration
 pub mod work_handlers; // Issue #75: Unified GitHub/YAML workflow
 pub mod five_whys_handlers; // Five Whys root cause analysis (Toyota Way)
 pub mod localize_handlers; // GH-103: Tarantula fault localization
+pub mod oracle_handlers; // PMAT Oracle - PDCA loop for automated quality improvement
 pub mod qa_work_handler; // GH-102: Toyota Way QA validation
 
 // Re-export handler functions
