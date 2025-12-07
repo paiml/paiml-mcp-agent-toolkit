@@ -1,10 +1,19 @@
 # Demo and Book Quality Scoring Specification
 
-**Version**: 1.0.0-draft
-**Status**: Awaiting Review
+**Version**: 1.1.0-draft
+**Status**: Merged with Category G Proposal
 **Author**: Claude Code
 **Date**: 2025-12-07
-**Ticket**: PMAT-DEMO-BOOK-001
+**Ticket**: PMAT-DEMO-BOOK-001, PMAT-DEMO-BOOK-002
+
+---
+
+## Change History
+
+| Version | Date | Changes |
+|---------|------|---------|
+| 1.1.0 | 2025-12-07 | Merged Category G (Demo Runtime Quality), Added org-intel integration |
+| 1.0.0 | 2025-12-07 | Initial specification |
 
 ---
 
@@ -72,7 +81,20 @@ Repositories matching **both** patterns receive combined scoring with weighted c
 
 ---
 
-## Scoring Categories (100 Points Total)
+## Scoring Categories (110 Points Total)
+
+The unified scoring system comprises **6 categories** totaling 110 points, normalized to a 100-point scale for grading:
+
+| Category | Max Points | Weight | Description |
+|----------|------------|--------|-------------|
+| A: Content Structure | 25 | 22.7% | Documentation quality and organization |
+| B: Link Integrity | 20 | 18.2% | Internal, external, and anchor link validation |
+| C: Build Verification | 25 | 22.7% | Compilation, tests, and dependency health |
+| D: Demo Validity | 20 | 18.2% | Runtime execution and cross-platform support |
+| E: Quality Standards | 10 | 9.1% | Style, structure, and accuracy |
+| F: Demo Runtime Quality | 10 | 9.1% | UX metrics: TTI, error handling, visual stability |
+
+**Normalized Score**: `(raw_score / 110) × 100`
 
 ### Category A: Content Structure (25 points)
 
@@ -132,6 +154,203 @@ Repositories matching **both** patterns receive combined scoring with weighted c
 - Version history mixed with tutorials
 - Multiple "NOTE:" or "TODO:" in published content
 - Disjointed topic transitions without connective structure
+
+### Category F: Demo Runtime Quality (10 points)
+
+*Merged from Category G Proposal - Focus on actual user experience when running demos*
+
+| Check | Points | Description | Ref |
+|-------|--------|-------------|-----|
+| F1: Time-to-Interaction (TTI) | 4 | Demo runs interactively within 5s on reference hardware | [11] |
+| F2: Error Gracefulness | 3 | Errors display actionable messages, not stack traces | [12] |
+| F3: Visual Stability | 3 | No layout shifts, flickering, or broken rendering | [13] |
+
+**F1: Time-to-Interaction (TTI)**
+
+Measures time from `cargo run --example X` to first interactive prompt or meaningful output:
+
+```rust
+/// TTI thresholds for demo scoring
+const TTI_THRESHOLDS: &[(Duration, f64)] = &[
+    (Duration::from_secs(1), 4.0),   // Excellent: < 1s = full points
+    (Duration::from_secs(3), 3.0),   // Good: < 3s = 3 points
+    (Duration::from_secs(5), 2.0),   // Acceptable: < 5s = 2 points
+    (Duration::from_secs(10), 1.0),  // Slow: < 10s = 1 point
+    // > 10s = 0 points (demo too slow for educational use)
+];
+```
+
+**F2: Error Gracefulness**
+
+Validates that when demos encounter expected errors (missing files, invalid input), they produce:
+- Human-readable error messages
+- Suggested remediation steps
+- No raw panic output or stack traces in non-debug mode
+
+```rust
+/// Error gracefulness anti-patterns
+const ERROR_ANTIPATTERNS: &[&str] = &[
+    "thread 'main' panicked",
+    "RUST_BACKTRACE=1",
+    "note: run with",
+    "stack backtrace:",
+    "Traceback (most recent call last)",
+    "at <anonymous>",
+];
+```
+
+**F3: Visual Stability**
+
+For demos with visual output (TUI, web, plots):
+- No Cumulative Layout Shift (CLS > 0.1)
+- Consistent rendering across terminal sizes
+- Graceful fallback for missing Unicode/color support
+
+**Measurement Method**: Run each demo with `timeout 30s cargo run --example X` and capture stderr/stdout for pattern analysis.
+
+---
+
+## Organizational Intelligence Plugin Integration
+
+The **organizational-intelligence-plugin** (oip) is a **first-class pmat plugin** that provides advanced defect pattern analysis, fault localization, and historical quality tracking. It integrates with the demo/book scoring system to provide deeper insights.
+
+### Plugin Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    pmat demo-score --with-oip                       │
+├─────────────────────────────────────────────────────────────────────┤
+│  ┌─────────────────────────────────────────────────────────────┐   │
+│  │                  Standard Scoring (A-F)                      │   │
+│  └─────────────────────────────────────────────────────────────┘   │
+│                              │                                      │
+│                              ▼                                      │
+│  ┌─────────────────────────────────────────────────────────────┐   │
+│  │            organizational-intelligence-plugin                │   │
+│  │  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐        │   │
+│  │  │ Tarantula    │ │ SZZ          │ │ TDG          │        │   │
+│  │  │ SBFL         │ │ Bug Origin   │ │ Integration  │        │   │
+│  │  └──────────────┘ └──────────────┘ └──────────────┘        │   │
+│  │  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐        │   │
+│  │  │ Defect       │ │ Historical   │ │ PR Review    │        │   │
+│  │  │ Classifier   │ │ Trend        │ │ Bot          │        │   │
+│  │  └──────────────┘ └──────────────┘ └──────────────┘        │   │
+│  └─────────────────────────────────────────────────────────────┘   │
+│                              │                                      │
+│                              ▼                                      │
+│  ┌─────────────────────────────────────────────────────────────┐   │
+│  │              Enhanced Scoring Report                         │   │
+│  │  • Defect hotspots in examples                              │   │
+│  │  • Bug-introducing commit analysis                           │   │
+│  │  • Quality trend over time                                   │   │
+│  └─────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### OIP Capabilities for Demo/Book Scoring
+
+| Capability | Description | Integration Point |
+|------------|-------------|-------------------|
+| **Tarantula SBFL** | Spectrum-based fault localization using test coverage | C3: Tests pass |
+| **SZZ Analysis** | Trace bug-introducing commits for examples | D1: Demos executable |
+| **TDG Integration** | Technical Debt Grade per example file | E2: Code style |
+| **Defect Classifier** | ML-based defect pattern detection | E3: No hallucinations |
+| **Historical Trends** | Quality score evolution over commits | Dashboard |
+| **PR Review Bot** | Automated review for example changes | Pre-commit |
+
+### CLI Usage with OIP
+
+```bash
+# Enable OIP integration (default when oip is installed)
+pmat demo-score --with-oip
+
+# Disable OIP even if installed
+pmat demo-score --no-oip
+
+# OIP-specific analysis
+pmat demo-score --oip-analysis fault-localization
+pmat demo-score --oip-analysis defect-patterns
+pmat demo-score --oip-analysis historical-trends
+
+# JSON output with OIP enrichment
+pmat demo-score --format json --with-oip
+```
+
+### OIP Default Enablement
+
+The organizational-intelligence-plugin is **enabled by default** when:
+
+1. The `oip` or `organizational-intelligence-plugin` binary is found in `$PATH`
+2. The crate is detected as a dependency in the workspace
+3. pmat configuration `oip.enabled = true` (default)
+
+```toml
+# ~/.config/pmat/config.toml
+[oip]
+enabled = true                    # Enable OIP by default
+binary_path = "oip"              # Path to OIP binary
+fault_localization = true         # Enable Tarantula SBFL
+szz_analysis = true              # Enable bug origin tracing
+trend_tracking = true            # Enable historical analysis
+```
+
+### Enhanced Scoring Report with OIP
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📚 Demo/Book Quality Score: apr-cookbook (with OIP Analysis)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[Standard Categories A-F: 98/110 = 89.1%]
+
+📊 OIP: Organizational Intelligence Analysis
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔍 Fault Localization (Tarantula)
+   Top suspicious files:
+   #1 examples/advanced_pipeline.rs:142  [0.92] ████████████████████░░
+   #2 examples/data_loading.rs:87        [0.71] ███████████████░░░░░░░
+   #3 src/chapter-04/snippet.rs:23       [0.45] ██████████░░░░░░░░░░░░
+
+🐛 Bug Origin (SZZ)
+   Recent bug-introducing commits:
+   └─ abc123: "refactor: update API calls" → introduced 2 regressions
+   └─ def456: "feat: add streaming" → introduced 1 edge case
+
+📈 Historical Trend
+   ┌────────────────────────────────────────┐
+   │ Score                                  │
+   │ 95 ─                           ╭──────│
+   │ 90 ─                    ╭─────╯       │
+   │ 85 ─ ────╮     ╭──────╯              │
+   │ 80 ─     ╰────╯                       │
+   │    └──────────────────────────────────│
+   │     Jan  Feb  Mar  Apr  May  Jun      │
+   └────────────────────────────────────────┘
+   Trend: ↑ +4.2 points over 6 months
+
+🏷️ Defect Patterns Detected
+   • Missing error handling in examples/stream.rs
+   • Outdated API usage in 3 files (recommend: cargo update)
+   • Similar bug pattern to issue #142 (fixed 2024-09)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+### Installation
+
+```bash
+# Install OIP as first-class pmat plugin
+cargo install organizational-intelligence-plugin
+
+# Verify installation
+oip --version
+pmat plugins list  # Should show: organizational-intelligence-plugin (active)
+
+# Or add as workspace dependency for integrated builds
+[dependencies]
+organizational-intelligence-plugin = "0.3"
+```
 
 ---
 
@@ -299,13 +518,34 @@ https://doi.org/10.1145/3571730
 https://doi.org/10.1007/BF02505024
 > Pedagogical structure requirements for effective instructional content.
 
+[11] Google Web Vitals (2020). "Time to Interactive (TTI)." *Web.dev*.
+https://web.dev/tti/
+> TTI measures responsiveness—adapted here for CLI demo startup latency.
+
+[12] Nielsen, J. (1994). "Enhancing the Explanatory Power of Usability Heuristics." *CHI '94*.
+https://doi.org/10.1145/191666.191729
+> Error messages should be expressed in plain language, precisely indicate the problem, and constructively suggest a solution.
+
+[13] Google Web Vitals (2020). "Cumulative Layout Shift (CLS)." *Web.dev*.
+https://web.dev/cls/
+> Visual stability metric—adapted for terminal/TUI output consistency.
+
+[14] Jones, J. A., & Harrold, M. J. (2005). "Empirical Evaluation of the Tarantula Automatic Fault-Localization Technique." *ASE '05*.
+https://doi.org/10.1145/1101908.1101949
+> Foundation for spectrum-based fault localization used in OIP.
+
+[15] Śliwerski, J., Zimmermann, T., & Zeller, A. (2005). "When Do Changes Induce Fixes?" *MSR '05*.
+https://doi.org/10.1145/1083142.1083147
+> SZZ algorithm for identifying bug-introducing commits.
+
 ---
 
 ## Acceptance Criteria
 
+### Core Scoring (v1.0)
 - [ ] `pmat demo-score` command implemented
 - [ ] Repository type auto-detection (book/demo/hybrid)
-- [ ] All 5 scoring categories functional
+- [ ] All 6 scoring categories functional (A-F)
 - [ ] Stream-of-consciousness detection working
 - [ ] Pre-commit hook integration documented
 - [ ] CI/CD quality gate integration
@@ -314,15 +554,42 @@ https://doi.org/10.1007/BF02505024
 - [ ] Unit tests for all scorers (≥90% coverage)
 - [ ] Integration tests on apr-cookbook, psr-cookbook
 
+### Category F: Demo Runtime Quality (v1.1)
+- [ ] F1: TTI measurement for all examples
+- [ ] F2: Error gracefulness pattern detection
+- [ ] F3: Visual stability validation (TUI demos)
+- [ ] 110-point total normalized to 100-point scale
+
+### OIP Integration (v1.1)
+- [ ] Auto-detection of `oip` binary in PATH
+- [ ] `--with-oip` and `--no-oip` flags implemented
+- [ ] Tarantula SBFL integration for fault localization
+- [ ] SZZ bug origin analysis for examples
+- [ ] Historical trend tracking and visualization
+- [ ] pmat configuration file support (`~/.config/pmat/config.toml`)
+- [ ] `pmat plugins list` shows OIP status
+
 ---
 
 ## Open Questions for Review
 
+### Core Scoring
 1. Should external link validation be cached with TTL or checked fresh each time?
 2. What timeout is appropriate for demo execution validation?
 3. Should we support custom scoring weights per repository?
 4. How do we handle intentionally incomplete "exercise" chapters?
 5. Should hallucination detection integrate with LLM fact-checking?
+
+### Category F: Demo Runtime Quality
+6. What reference hardware spec should be used for TTI benchmarking? (Proposed: GitHub Actions runner baseline)
+7. Should visual stability testing require headless browser for web demos?
+8. How do we handle demos that intentionally produce error output (e.g., error handling examples)?
+
+### OIP Integration
+9. Should OIP analysis be blocking for quality gate, or advisory only?
+10. How long should historical trends be retained? (Proposed: 1 year)
+11. Should the SZZ analysis include forks and PRs, or only main branch?
+12. What is the minimum test coverage required for meaningful Tarantula SBFL results?
 
 ---
 
@@ -373,18 +640,79 @@ E: Quality Standards                               9/10 (90.0%)
    ⚠️  E3: No hallucinations                       2/3
       └─ src/chapter-03.md: Claims "10x faster" without benchmark
 
+F: Demo Runtime Quality                            9/10 (90.0%)
+   ✅ F1: Time-to-Interaction                      4/4
+      └─ 12 demos, avg TTI: 1.2s, max: 3.1s
+   ⚠️  F2: Error gracefulness                      2/3
+      └─ examples/edge_case.rs: Shows raw panic on invalid input
+   ✅ F3: Visual stability                         3/3
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 📌 Summary
-   Score: 91/100
+   Raw Score: 100/110
+   Normalized: 90.9/100
    Grade: A
    Status: ✅ Publication Ready
 
-💡 Recommendations (4 items)
+💡 Recommendations (5 items)
    🔴 Fix TODO marker in chapter-07.md
    🟡 Update advanced_pipeline.rs for API changes
    🟡 Update hello_aprender.rs documented output
    🟡 Add benchmark citation for "10x faster" claim
+   🟡 Add error handling to examples/edge_case.rs (F2)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+---
+
+## Appendix B: OIP Integration Example
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 OIP Analysis: apr-cookbook
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔬 Tarantula Fault Localization
+   Coverage: 847 statements from 23 test files
+   Failing tests: 2 (test_pipeline_edge_case, test_async_timeout)
+
+   Suspicious Statements:
+   Rank  File:Line                        Susp.  Formula
+   ────────────────────────────────────────────────────────
+   #1    examples/advanced_pipeline.rs:142  0.94  Tarantula
+   #2    examples/data_loading.rs:87        0.78  Ochiai
+   #3    src/lib.rs:234                     0.65  DStar(2)
+
+🔍 SZZ Bug Origin Analysis
+   Tracing bug-introducing commits for 2 failing tests...
+
+   test_pipeline_edge_case (introduced: 2024-11-15)
+   └─ Commit: abc123f "refactor: update pipeline API"
+   └─ Author: dev@example.com
+   └─ Changed: examples/advanced_pipeline.rs (+15, -8)
+   └─ Confidence: HIGH (direct line trace)
+
+📈 Quality Trend (6 months)
+   Period        Score   Grade   Δ
+   ────────────────────────────────
+   2024-06       82.3    B+      -
+   2024-07       84.1    B+      +1.8
+   2024-08       86.5    A-      +2.4
+   2024-09       88.2    A-      +1.7
+   2024-10       87.9    A-      -0.3
+   2024-11       90.9    A       +3.0
+
+   Overall: ↑ +8.6 points (+10.4%)
+
+🏷️ Defect Pattern Classification
+   Pattern             Count   Severity   Trend
+   ────────────────────────────────────────────
+   Missing unwrap()    3       Medium     ↓
+   Async race cond.    1       High       NEW
+   Deprecated API      2       Low        →
+   Doc mismatch        1       Low        →
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
