@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.211.1] - 2024-12-09
+
+### Fixed
+- TdgCommandConfig test compatibility for viz/viz_theme fields
+- Repo score integration test threshold adjustments (75% min score, flexible subcategory counts)
+
 ## [2.211.0] - 2024-12-09
 
 ### Added

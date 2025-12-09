@@ -32,6 +32,8 @@ async fn test_tdg_command_config_structure() -> Result<()> {
         explain: false,
         threshold: 10,
         baseline: None,
+        viz: false,
+        viz_theme: "default".to_string(),
     };
 
     let _result = handle_tdg_command(config).await;
@@ -69,6 +71,8 @@ async fn test_subcommand_patterns() -> Result<()> {
         explain: false,
         threshold: 10,
         baseline: None,
+        viz: false,
+        viz_theme: "default".to_string(),
     };
 
     let _compare_result = handle_tdg_command(compare_config).await;
@@ -101,6 +105,8 @@ async fn test_grade_checking_patterns() -> Result<()> {
         explain: false,
         threshold: 10,
         baseline: None,
+        viz: false,
+        viz_theme: "default".to_string(),
     };
 
     let _result = handle_tdg_command(config_with_grade).await;
@@ -133,6 +139,8 @@ async fn test_output_formatting_patterns() -> Result<()> {
         explain: false,
         threshold: 10,
         baseline: None,
+        viz: false,
+        viz_theme: "default".to_string(),
     };
 
     let _quiet_result = handle_tdg_command(quiet_config).await;
@@ -151,6 +159,8 @@ async fn test_output_formatting_patterns() -> Result<()> {
         explain: false,
         threshold: 10,
         baseline: None,
+        viz: false,
+        viz_theme: "default".to_string(),
     };
 
     let _components_result = handle_tdg_command(components_config).await;
@@ -182,6 +192,8 @@ async fn test_handle_tdg_command_structure() -> Result<()> {
         explain: false,
         threshold: 10,
         baseline: None,
+        viz: false,
+        viz_theme: "default".to_string(),
     };
 
     let _result = handle_tdg_command(config).await;
