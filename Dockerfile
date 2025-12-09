@@ -1,74 +1,78 @@
-# PMAT Docker Image - Multi-stage build for minimal production image
-FROM rust:1.80-slim-bookworm as builder
+# PMAT - Pragmatic Multi-language Agent Toolkit
+# Multi-stage build for reproducible, minimal container image
+#
+# Build: docker build -t pmat .
+# Run:   docker run -v $(pwd):/workspace pmat context /workspace
 
-# Install system dependencies
+# Stage 1: Build environment
+FROM rust:1.83-slim-bookworm AS builder
+
+# Install build dependencies
 RUN apt-get update && apt-get install -y \
     pkg-config \
     libssl-dev \
-    libgit2-dev \
-    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Create app user
-RUN groupadd -r pmat && useradd -r -g pmat pmat
+WORKDIR /build
 
-# Set working directory
-WORKDIR /app
+# Copy manifests first for better layer caching
+COPY Cargo.toml Cargo.lock ./
+COPY server/Cargo.toml ./server/
+COPY crates/pmat-dashboard/Cargo.toml ./crates/pmat-dashboard/
 
-# Copy source code
-COPY . .
+# Create dummy files to build dependencies
+RUN mkdir -p server/src crates/pmat-dashboard/src && \
+    echo "fn main() {}" > server/src/main.rs && \
+    echo "" > server/src/lib.rs && \
+    echo "" > crates/pmat-dashboard/src/lib.rs
 
-# Build the application
-RUN cd server && \
-    cargo build --release && \
-    strip target/release/pmat
+# Build dependencies (cached layer)
+RUN cargo build --release --package pmat && \
+    rm -rf server/src crates/pmat-dashboard/src
 
-# Production image
-FROM debian:bookworm-slim
+# Copy actual source
+COPY server/src ./server/src
+COPY server/benches ./server/benches
+COPY server/templates ./server/templates
+COPY crates ./crates
+
+# Touch files to force rebuild
+RUN touch server/src/main.rs server/src/lib.rs
+
+# Build release binary
+RUN cargo build --release --package pmat
+
+# Stage 2: Runtime image
+FROM debian:bookworm-slim AS runtime
 
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y \
     ca-certificates \
-    libssl3 \
-    libgit2-1.5 \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-# Create app user
-RUN groupadd -r pmat && useradd -r -g pmat pmat
+# Create non-root user
+RUN useradd -m -u 1000 pmat
 
 # Copy binary from builder
-COPY --from=builder /app/server/target/release/pmat /usr/local/bin/pmat
+COPY --from=builder /build/target/release/pmat /usr/local/bin/pmat
 
-# Copy configuration files
-COPY --from=builder /app/configs /etc/pmat/
-COPY --from=builder /app/docs/CLAUDE_CODE_AGENT.md /usr/share/doc/pmat/
+# Set ownership
+RUN chown pmat:pmat /usr/local/bin/pmat
 
-# Create directories
-RUN mkdir -p /var/lib/pmat-agent /var/log/pmat-agent && \
-    chown -R pmat:pmat /var/lib/pmat-agent /var/log/pmat-agent
-
-# Set permissions
-RUN chmod +x /usr/local/bin/pmat
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD pmat --version || exit 1
-
-# Labels for Docker Hub
-LABEL org.opencontainers.image.title="PMAT"
-LABEL org.opencontainers.image.description="Zero-config AI context generation and code quality toolkit with Claude Code Agent Mode"
-LABEL org.opencontainers.image.url="https://github.com/paiml/paiml-mcp-agent-toolkit"
-LABEL org.opencontainers.image.source="https://github.com/paiml/paiml-mcp-agent-toolkit"
-LABEL org.opencontainers.image.version="2.12.0"
-LABEL org.opencontainers.image.licenses="MIT"
-LABEL org.opencontainers.image.authors="Pragmatic AI Labs <hello@paiml.com>"
-
-# Default user
 USER pmat
+WORKDIR /workspace
+
+# Verify installation
+RUN pmat --version
 
 # Default command
-CMD ["pmat", "--help"]
+ENTRYPOINT ["pmat"]
+CMD ["--help"]
 
-# Exposed ports (for web demo and metrics)
-EXPOSE 8080 9090
+# Labels for reproducibility
+LABEL org.opencontainers.image.title="PMAT"
+LABEL org.opencontainers.image.description="Pragmatic Multi-language Agent Toolkit"
+LABEL org.opencontainers.image.source="https://github.com/paiml/paiml-mcp-agent-toolkit"
+LABEL org.opencontainers.image.licenses="MIT"
+LABEL org.opencontainers.image.version="2.210.0"

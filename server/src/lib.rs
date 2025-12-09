@@ -145,6 +145,7 @@ pub mod workflow; // Workflow orchestration engine // Performance testing per SP
 pub mod unified_protocol;
 pub mod unified_quality; // Unified Quality Enforcement System
 pub mod utils;
+pub mod viz; // Terminal graph visualization (trueno-viz integration)
 pub mod wasm; // WebAssembly quality assurance module
 
 use anyhow::Result;

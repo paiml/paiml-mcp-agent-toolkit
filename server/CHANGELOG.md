@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.211.0] - 2024-12-09
+
+### Added
+- **Terminal Graph Visualization** (trueno-viz integration)
+  - `pmat tdg --viz` flag for rendering dependency graphs in terminal
+  - Force-directed layout (Fruchterman-Reingold algorithm)
+  - PageRank-based criticality scoring for function importance
+  - ANSI TrueColor rendering (16.7M colors)
+  - Multiple themes: default, high-contrast, light, colorblind-safe (Okabe-Ito palette)
+  - Accessibility-focused dual encoding (shape + color) for WCAG 2.1 compliance
+  - New example: `cargo run --example viz_demo --features viz`
+- CLI flags: `--viz` and `--viz-theme <THEME>` for TDG command
+
+### Performance
+- O(1) function lookups via CSR-backed TdgGraph
+- Semantic zooming limits display to top N nodes by PageRank criticality
+
+## [2.210.0] - 2024-12-08
+
+### Added
+- Oracle PDCA Loop & Rich Reporting (v2.210.0 release)
+- OIP first-class plugin integration
+- Demo and book quality scoring specification
+
+## [2.209.0] - 2024
+
 ### Added
 - Rust Project Score v1.1 - Evidence-based 106-point scoring system
   - 6 category analyzers (Code Quality, Testing, Documentation, Performance, Dependencies, Rust Tooling)

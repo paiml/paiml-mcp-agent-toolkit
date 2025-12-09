@@ -293,6 +293,38 @@ impl CommandDispatcher {
                 )
                 .await
             }
+            Commands::PopperScore {
+                path,
+                format,
+                verbose,
+                failures_only,
+                output,
+            } => {
+                handlers::handle_popper_score(
+                    &path,
+                    &format,
+                    verbose,
+                    failures_only,
+                    output.as_deref(),
+                )
+                .await
+            }
+            Commands::DemoScore {
+                path,
+                format,
+                verbose,
+                failures_only,
+                output,
+            } => {
+                handlers::handle_demo_score(
+                    &path,
+                    &format,
+                    verbose,
+                    failures_only,
+                    output.as_deref(),
+                )
+                .await
+            }
             Commands::Serve {
                 port,
                 host,
@@ -403,6 +435,8 @@ impl CommandDispatcher {
                 threshold,
                 baseline,
                 ml: _, // GH-97: ML flag (not yet implemented in handler)
+                viz,
+                viz_theme,
             } => {
                 let tdg_config = handlers::tdg_handlers::TdgCommandConfig {
                     path,
@@ -417,6 +451,8 @@ impl CommandDispatcher {
                     explain,
                     threshold,
                     baseline,
+                    viz,
+                    viz_theme,
                 };
                 handlers::handle_tdg_command(tdg_config).await
             }

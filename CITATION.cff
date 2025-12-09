@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+message: "If you use PMAT in your research, please cite it as below."
+type: software
+title: "PMAT: Pragmatic Multi-language Agent Toolkit"
+version: 2.210.0
+date-released: 2025-12-09
+url: "https://github.com/paiml/paiml-mcp-agent-toolkit"
+repository-code: "https://github.com/paiml/paiml-mcp-agent-toolkit"
+license: MIT
+authors:
+  - name: "PAIML Team"
+    affiliation: "PAIML"
+keywords:
+  - code-analysis
+  - technical-debt
+  - software-quality
+  - mcp
+  - ai-agents
+  - rust
+abstract: >
+  PMAT (Pragmatic Multi-language Agent Toolkit) provides zero-configuration
+  AI context generation for any codebase. It includes technical debt grading,
+  mutation testing, repository scoring, semantic search, and MCP integration
+  for AI assistants like Claude Code and Cline.

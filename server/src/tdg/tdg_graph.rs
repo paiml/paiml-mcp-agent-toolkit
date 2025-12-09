@@ -212,6 +212,67 @@ impl Default for TdgGraph {
     }
 }
 
+// ============================================================================
+// Terminal Graph Visualization (trueno-viz integration)
+// ============================================================================
+
+#[cfg(feature = "viz")]
+impl TdgGraph {
+    /// Convert to visualization graph for terminal rendering
+    ///
+    /// Creates a `VisGraph` from the TDG dependency graph with criticality scores.
+    ///
+    /// # Returns
+    ///
+    /// `VisGraph` ready for terminal visualization
+    #[must_use]
+    pub fn to_vis_graph(&self) -> crate::viz::terminal::VisGraph {
+        let mut vis = crate::viz::terminal::VisGraph::new();
+
+        // Build index mapping (function name → vis node index)
+        let mut name_to_idx: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+
+        // Add all nodes with their criticality scores
+        for (name, &_node_id) in &self.node_map {
+            let criticality = self.criticality_scores.get(name).copied().unwrap_or(0.0);
+            let idx = vis.nodes.len();
+            name_to_idx.insert(name.clone(), idx);
+            vis.add_node(name.clone(), criticality);
+        }
+
+        // Add edges by iterating over adjacency
+        for (_node_id, neighbors, _weights) in self.graph.iter_adjacency() {
+            let from_name = self.reverse_node_map.get(&_node_id);
+            if let Some(from) = from_name {
+                if let Some(&from_idx) = name_to_idx.get(from) {
+                    for &neighbor_id in neighbors {
+                        let to_node_id = NodeId(neighbor_id);
+                        if let Some(to_name) = self.reverse_node_map.get(&to_node_id) {
+                            if let Some(&to_idx) = name_to_idx.get(to_name) {
+                                vis.add_edge(from_idx, to_idx);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        vis
+    }
+}
+
+#[cfg(feature = "viz")]
+impl crate::viz::terminal::Visualizable for TdgGraph {
+    fn render_terminal(&self, config: &crate::viz::terminal::RenderConfig) -> Result<String> {
+        let vis = self.to_vis_graph();
+        vis.render_terminal(config)
+    }
+
+    fn node_count(&self) -> usize {
+        self.num_nodes()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -320,5 +381,90 @@ mod tests {
         // Empty graph should not panic
         graph.update_criticality().unwrap();
         assert_eq!(graph.critical_functions().len(), 0);
+    }
+
+    // ====================================================================
+    // Visualization tests (feature = "viz")
+    // ====================================================================
+
+    #[cfg(feature = "viz")]
+    mod viz_tests {
+        use super::*;
+        use crate::viz::terminal::{RenderConfig, Visualizable};
+
+        #[test]
+        fn test_tdg_graph_to_vis_graph() {
+            let mut graph = TdgGraph::new();
+
+            graph.add_function("main".to_string()).unwrap();
+            graph.add_function("helper".to_string()).unwrap();
+            graph.add_edge("main", "helper").unwrap();
+            graph.update_criticality().unwrap();
+
+            let vis = graph.to_vis_graph();
+
+            assert_eq!(vis.node_count(), 2);
+        }
+
+        #[test]
+        fn test_tdg_graph_render_terminal() {
+            let mut graph = TdgGraph::new();
+
+            graph.add_function("main".to_string()).unwrap();
+            graph.add_function("process".to_string()).unwrap();
+            graph.add_function("save".to_string()).unwrap();
+            graph.add_edge("main", "process").unwrap();
+            graph.add_edge("process", "save").unwrap();
+            graph.update_criticality().unwrap();
+
+            let config = RenderConfig::default();
+            let result = graph.render_terminal(&config);
+
+            assert!(result.is_ok());
+            let output = result.unwrap();
+            assert!(!output.is_empty());
+        }
+
+        #[test]
+        fn test_tdg_graph_node_count() {
+            let mut graph = TdgGraph::new();
+
+            for i in 0..10 {
+                graph.add_function(format!("func_{}", i)).unwrap();
+            }
+
+            assert_eq!(graph.node_count(), 10);
+        }
+
+        #[test]
+        fn test_tdg_graph_vis_with_criticality() {
+            let mut graph = TdgGraph::new();
+
+            // Create a hub-and-spoke pattern
+            // center is called by all others
+            graph.add_function("center".to_string()).unwrap();
+            for i in 0..5 {
+                let name = format!("spoke_{}", i);
+                graph.add_function(name.clone()).unwrap();
+                graph.add_edge(&name, "center").unwrap();
+            }
+
+            graph.update_criticality().unwrap();
+            let vis = graph.to_vis_graph();
+
+            // Find center's criticality
+            let center_idx = vis.nodes.iter().position(|n| n == "center").unwrap();
+            let center_criticality = vis.criticality[center_idx];
+
+            // Center should have highest criticality
+            for (i, &crit) in vis.criticality.iter().enumerate() {
+                if i != center_idx {
+                    assert!(
+                        center_criticality >= crit,
+                        "Center should have highest criticality"
+                    );
+                }
+            }
+        }
     }
 }

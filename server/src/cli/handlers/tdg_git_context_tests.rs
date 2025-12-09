@@ -41,6 +41,8 @@ mod tests {
             explain: false,         // Issue #78
             threshold: 10,          // Issue #78
             baseline: None,         // Issue #78
+            viz: false,             // trueno-viz integration
+            viz_theme: String::from("default"),
         };
 
         // Act & Assert
@@ -69,6 +71,8 @@ mod tests {
             explain: false,          // Issue #78
             threshold: 10,           // Issue #78
             baseline: None,          // Issue #78
+            viz: false,              // trueno-viz integration
+            viz_theme: String::from("default"),
         };
 
         // Act & Assert

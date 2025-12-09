@@ -392,11 +392,9 @@ impl ReadmeScorer {
 
         // Check if README starts with an image (within first 20 lines)
         let first_20_lines: String = content.lines().take(20).collect::<Vec<_>>().join("\n");
-        let image_at_top = regex::Regex::new(r#"<img[^>]+src=|!\[[^\]]*\]\("#)
+        regex::Regex::new(r#"<img[^>]+src=|!\[[^\]]*\]\("#)
             .map(|re| re.is_match(&first_20_lines))
-            .unwrap_or(false);
-
-        image_at_top
+            .unwrap_or(false)
     }
 }
 

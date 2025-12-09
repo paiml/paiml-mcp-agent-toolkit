@@ -1,6 +1,7 @@
 // Scorer trait and implementations
 
 pub mod ci_scorer;
+pub mod demo_scorer;
 pub mod hygiene_scorer;
 pub mod makefile_scorer;
 pub mod pmat_scorer;
@@ -8,6 +9,7 @@ pub mod precommit_scorer;
 pub mod readme_scorer;
 
 pub use ci_scorer::CiScorer;
+pub use demo_scorer::DemoScorer;
 pub use hygiene_scorer::HygieneScorer;
 pub use makefile_scorer::MakefileScorer;
 pub use pmat_scorer::PmatScorer;

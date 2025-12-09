@@ -383,6 +383,38 @@ impl CommandExecutor {
                 )
                 .await
             }
+            Commands::PopperScore {
+                path,
+                format,
+                verbose,
+                failures_only,
+                output,
+            } => {
+                crate::cli::handlers::popper_score_handlers::handle_popper_score(
+                    &path,
+                    &format,
+                    verbose,
+                    failures_only,
+                    output.as_deref(),
+                )
+                .await
+            }
+            Commands::DemoScore {
+                path,
+                format,
+                verbose,
+                failures_only,
+                output,
+            } => {
+                crate::cli::handlers::demo_score_handlers::handle_demo_score(
+                    &path,
+                    &format,
+                    verbose,
+                    failures_only,
+                    output.as_deref(),
+                )
+                .await
+            }
             Commands::Diagnose(args) => self.registry.utility_handlers.handle_diagnose(args).await,
             Commands::Refactor(refactor_cmd) => {
                 super::handlers::route_refactor_command(refactor_cmd).await
@@ -458,6 +490,8 @@ impl CommandExecutor {
                 threshold,
                 baseline,
                 ml: _, // GH-97: ML flag (not yet implemented in handler)
+                viz,
+                viz_theme,
             } => {
                 let tdg_config = super::handlers::tdg_handlers::TdgCommandConfig {
                     path,
@@ -472,6 +506,8 @@ impl CommandExecutor {
                     explain,
                     threshold,
                     baseline,
+                    viz,
+                    viz_theme,
                 };
                 super::handlers::handle_tdg_command(tdg_config).await
             }

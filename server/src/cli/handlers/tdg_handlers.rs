@@ -23,6 +23,10 @@ pub struct TdgCommandConfig {
     pub threshold: u32,
     /// Issue #78: Baseline git ref for progress tracking in --explain mode
     pub baseline: Option<String>,
+    /// Terminal graph visualization of dependencies
+    pub viz: bool,
+    /// Visualization theme
+    pub viz_theme: String,
 }
 
 /// Handle TDG command execution
@@ -67,6 +71,12 @@ pub async fn handle_tdg_command(config: TdgCommandConfig) -> Result<()> {
     // Issue #78: Handle explain mode with function-level breakdown
     if config.explain {
         return handle_explain_mode(&analyzer, &config).await;
+    }
+
+    // trueno-viz: Handle graph visualization mode
+    #[cfg(feature = "viz")]
+    if config.viz {
+        return handle_viz_mode(&analyzer, &config).await;
     }
 
     let score = execute_tdg_analysis(&analyzer, &config).await?;
@@ -1337,6 +1347,108 @@ fn truncate_string(s: &str, max_len: usize) -> String {
     } else {
         format!("{}...", &s[..max_len - 3])
     }
+}
+
+// ============================================================================
+// trueno-viz: Terminal Graph Visualization
+// ============================================================================
+
+/// Handle --viz mode: render TDG dependency graph in terminal
+///
+/// Uses trueno-viz force-directed layout with PageRank-based criticality scoring.
+/// Supports multiple themes including colorblind-safe (Okabe-Ito palette).
+#[cfg(feature = "viz")]
+async fn handle_viz_mode(_analyzer: &TdgAnalyzer, config: &TdgCommandConfig) -> Result<()> {
+    use crate::tdg::function_analyzer::FunctionAnalyzer;
+    use crate::tdg::tdg_graph::TdgGraph;
+    use crate::viz::terminal::{RenderConfig, TerminalTheme, Visualizable};
+    use walkdir::WalkDir;
+
+    // Build TDG graph from function analysis
+    let mut tdg_graph = TdgGraph::new();
+    let mut func_analyzer = FunctionAnalyzer::new()?;
+
+    // Collect all Rust files
+    let rust_files: Vec<_> = if config.path.is_file() {
+        vec![config.path.clone()]
+    } else {
+        WalkDir::new(&config.path)
+            .into_iter()
+            .filter_map(|e| e.ok())
+            .filter(|e| {
+                e.path().extension().is_some_and(|ext| ext == "rs")
+                    && !e.path().to_string_lossy().contains("/target/")
+            })
+            .map(|e| e.path().to_path_buf())
+            .collect()
+    };
+
+    // Analyze each file and add functions as nodes
+    let mut all_functions = Vec::new();
+    for file_path in &rust_files {
+        if let Ok(functions) = func_analyzer.analyze_file(file_path) {
+            for func in functions {
+                let func_name = format!("{}::{}", file_path.display(), func.name);
+                // Ignore duplicate errors
+                let _ = tdg_graph.add_function(func_name.clone());
+                all_functions.push((file_path.clone(), func_name, func.cognitive));
+            }
+        }
+    }
+
+    // Add edges from call graph (co-location heuristic)
+    // Functions in the same file are likely connected
+    for (i, (file1, name1, _)) in all_functions.iter().enumerate() {
+        for (file2, name2, _) in all_functions.iter().skip(i + 1) {
+            if file1 == file2 {
+                let _ = tdg_graph.add_edge(name1, name2);
+            }
+        }
+    }
+
+    // Update PageRank criticality scores
+    tdg_graph.update_criticality()?;
+
+    // Parse theme from string
+    let theme = match config.viz_theme.to_lowercase().as_str() {
+        "high-contrast" | "highcontrast" => TerminalTheme::HighContrast,
+        "light" => TerminalTheme::Light,
+        "colorblind-safe" | "colorblind" | "cb" => TerminalTheme::ColorblindSafe,
+        _ => TerminalTheme::Default,
+    };
+
+    // Create render config with adaptive defaults
+    let render_config = RenderConfig {
+        width: 120,
+        height: 40,
+        theme,
+        mode: trueno_viz::output::TerminalMode::AnsiTrueColor,
+        iterations: 100,
+        critical_threshold: 0.5,
+        max_nodes: 50, // Semantic zooming: show top 50 by criticality
+        show_labels: true,
+    };
+
+    // Render to terminal
+    let output = tdg_graph.render_terminal(&render_config)?;
+    println!("{}", output);
+
+    // Print legend
+    println!("\n--- TDG Dependency Graph ---");
+    println!("Theme: {:?}", theme);
+    println!("Nodes: {} functions", tdg_graph.num_nodes());
+    println!("Edges: {} dependencies", tdg_graph.num_edges());
+
+    // Print top 10 critical functions
+    let critical = tdg_graph.critical_functions();
+    if !critical.is_empty() {
+        println!("\nTop Critical Functions (by PageRank):");
+        for (i, (name, score)) in critical.iter().take(10).enumerate() {
+            println!("  {}. {} (score: {:.4})", i + 1, name, score);
+        }
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]

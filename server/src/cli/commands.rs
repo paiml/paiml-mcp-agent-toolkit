@@ -486,6 +486,63 @@ pub enum Commands {
         full: bool,
     },
 
+    /// Calculate Popper Falsifiability Score (0-100 scale)
+    ///
+    /// Evaluates repositories against Karl Popper's scientific standards of falsifiability.
+    /// Includes gateway logic: if Falsifiability (Category A) < 60%, total score is 0.
+    #[command(name = "popper-score", visible_aliases = &["popper", "falsifiability"])]
+    PopperScore {
+        /// Project path to score (defaults to current directory)
+        #[arg(short = 'p', long, default_value = ".")]
+        path: PathBuf,
+
+        /// Output format
+        #[arg(short = 'f', long, value_enum, default_value = "text")]
+        format: RepoScoreOutputFormat,
+
+        /// Enable verbose output (show detailed sub-score breakdown)
+        #[arg(short = 'v', long)]
+        verbose: bool,
+
+        /// Show only failures and recommendations
+        #[arg(long)]
+        failures_only: bool,
+
+        /// Output file path
+        #[arg(short = 'o', long)]
+        output: Option<PathBuf>,
+    },
+
+    /// Score demo/book repository quality (0-10 Category G scale)
+    ///
+    /// Evaluates educational repositories (demos, tutorials, cookbooks) for:
+    /// - G1: Time-to-Interaction (quick-start guides, examples)
+    /// - G2: Error Gracefulness (proper error handling in demos)
+    /// - G3: Visual Stability (rich terminal output)
+    /// - G4: "Wow" Factor (demo GIFs, badges, professional presentation)
+    #[command(name = "demo-score", visible_aliases = &["book-score", "score-demo"])]
+    DemoScore {
+        /// Repository path to score (defaults to current directory)
+        #[arg(short = 'p', long, default_value = ".")]
+        path: PathBuf,
+
+        /// Output format
+        #[arg(short = 'f', long, value_enum, default_value = "text")]
+        format: RepoScoreOutputFormat,
+
+        /// Enable verbose output (show detailed scoring breakdown)
+        #[arg(short = 'v', long)]
+        verbose: bool,
+
+        /// Show only failures and warnings
+        #[arg(long)]
+        failures_only: bool,
+
+        /// Output file path
+        #[arg(short = 'o', long)]
+        output: Option<PathBuf>,
+    },
+
     /// Start HTTP API server with WebSocket support
     #[command(visible_aliases = &["server", "api"])]
     Serve {
@@ -742,6 +799,18 @@ pub enum Commands {
         /// data-driven scores that can learn from project history.
         #[arg(long)]
         ml: bool,
+
+        /// Show terminal graph visualization of dependencies
+        ///
+        /// Renders a force-directed graph of function dependencies in the terminal
+        /// using trueno-viz. Critical functions are highlighted with color and size.
+        /// Supports ASCII, Unicode, and ANSI TrueColor modes.
+        #[arg(long)]
+        viz: bool,
+
+        /// Visualization theme (default, high-contrast, light, colorblind-safe)
+        #[arg(long, default_value = "default")]
+        viz_theme: String,
     },
 
     /// Run quality gates on the current project (TICKET-PMAT-5023, TICKET-PMAT-5024)

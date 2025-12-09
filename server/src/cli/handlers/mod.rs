@@ -69,6 +69,8 @@ pub mod refactor_docs_handlers;
 pub mod refactor_handlers;
 pub mod repo_score_handlers; // Sprint 48: Repository health scoring
 pub mod roadmap_handler;
+pub mod popper_score_handlers; // Popper Falsifiability Score v1.1
+pub mod demo_score_handlers; // GH-109/112: Demo Quality scoring (Category G)
 pub mod rust_project_score_handlers; // Sprint 3: Rust Project Score v1.1
 pub mod satd_handler;
 pub mod similarity_handler;
@@ -145,6 +147,8 @@ pub use refactor_docs_handlers::handle_refactor_docs;
 pub use refactor_handlers::{route_refactor_command, RefactorServeParams};
 pub use repo_score_handlers::handle_repo_score; // Sprint 48: Repository health scoring
 pub use roadmap_handler::handle_maintain_roadmap; // TICKET-PMAT-5032
+pub use popper_score_handlers::handle_popper_score; // Popper Falsifiability Score v1.1
+pub use demo_score_handlers::handle_demo_score; // GH-109/112: Demo Quality scoring
 pub use rust_project_score_handlers::handle_rust_project_score; // Sprint 3: Rust Project Score v1.1
 pub use satd_handler::handle_analyze_satd;
 pub use tdg_handlers::handle_tdg_command;

@@ -1,0 +1,39 @@
+# CODEOWNERS - GitHub Code Ownership
+# See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+#
+# Each line is a file pattern followed by one or more owners.
+# Order matters: later patterns take precedence over earlier ones.
+
+# Default owner for everything
+* @paiml/core
+
+# Core server and CLI
+/server/src/cli/ @paiml/core
+/server/src/services/ @paiml/core
+/server/src/mcp/ @paiml/core
+/server/src/tdg/ @paiml/core
+
+# Popper Falsifiability Score (scientific rigor)
+/server/src/services/popper_score/ @paiml/core
+
+# Quality enforcement
+/server/src/unified_quality/ @paiml/core
+/.pmat-metrics.toml @paiml/core
+/.pre-commit-config.yaml @paiml/core
+
+# WASM dashboard
+/crates/pmat-dashboard/ @paiml/core
+
+# Documentation (requires review before publishing)
+/README.md @paiml/core
+/CLAUDE.md @paiml/core
+/docs/ @paiml/core
+
+# CI/CD and build configuration
+/.github/ @paiml/core
+/Makefile @paiml/core
+/Cargo.toml @paiml/core
+/Cargo.lock @paiml/core
+
+# Security-sensitive files
+/server/src/services/mutation/ @paiml/security

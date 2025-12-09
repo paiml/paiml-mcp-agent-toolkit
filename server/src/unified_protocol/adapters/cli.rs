@@ -106,6 +106,8 @@ impl CliAdapter {
             | Commands::Report { .. }
             | Commands::RepoScore { .. } // Sprint 48: Repository health scoring (CLI-only)
             | Commands::RustProjectScore { .. } // Sprint 3: Rust Project Score v1.1 (CLI-only)
+            | Commands::PopperScore { .. } // Popper Falsifiability Score v1.1 (CLI-only)
+            | Commands::DemoScore { .. } // GH-109/112: Demo Quality scoring (CLI-only)
             | Commands::Enforce(_)
             | Commands::Refactor(_)
             | Commands::Roadmap(_)
@@ -1788,7 +1790,7 @@ impl CliInput {
     fn get_command_category(command: &Commands) -> CommandCategory {
         match command {
             Commands::Generate { .. } | Commands::Scaffold { .. } => CommandCategory::Generation,
-            Commands::QualityGate { .. } | Commands::QualityGates { .. } | Commands::Report { .. } | Commands::RepoScore { .. } | Commands::RustProjectScore { .. } | Commands::ValidateDocs(_) | Commands::ValidateReadme(_) | Commands::RedTeam(_) | Commands::Org(_) | Commands::Prompt(_) | Commands::Embed(_) | Commands::Semantic(_) | Commands::ShowMetrics { .. } | Commands::PredictQuality { .. } | Commands::RecordMetric { .. } => CommandCategory::Analysis,
+            Commands::QualityGate { .. } | Commands::QualityGates { .. } | Commands::Report { .. } | Commands::RepoScore { .. } | Commands::RustProjectScore { .. } | Commands::PopperScore { .. } | Commands::DemoScore { .. } | Commands::ValidateDocs(_) | Commands::ValidateReadme(_) | Commands::RedTeam(_) | Commands::Org(_) | Commands::Prompt(_) | Commands::Embed(_) | Commands::Semantic(_) | Commands::ShowMetrics { .. } | Commands::PredictQuality { .. } | Commands::RecordMetric { .. } => CommandCategory::Analysis,
             #[cfg(feature = "mutation-testing")]
             Commands::Mutate(_) => CommandCategory::Analysis,
             Commands::Serve { .. }

@@ -65,6 +65,7 @@ trueno-db = { version = "0.3.1", optional = true, default-features = false }
 # See: docs/specifications/semantic-search-feature.md
 trueno-graph = "0.1.2"  # GPU-first graph database (CSR, PageRank, Louvain)
 trueno-rag = "0.1.2"    # RAG pipeline (chunking, hybrid retrieval, RRF fusion)
+trueno-viz = { version = "0.1.4", optional = true, features = ["terminal", "graph"] }  # Terminal graph visualization
 
 # Analytics GPU dependencies (optional, gated by analytics-gpu feature)
 # Issue #79: Feature-gated architecture to prevent +3.8 MB binary bloat
@@ -291,7 +292,7 @@ sha2 = "0.10"  # For O(1) build artifact hash caching
 # - Opt-in for other languages: --features extended-languages or all-languages
 # - Opt-in for advanced analysis: --features analytics-simd, mutation-testing, demo
 # - Full suite: --features full (equivalent to old defaults)
-default = ["core-languages"]
+default = ["core-languages", "viz"]
 
 # Convenience bundles
 core-languages = ["rust-ast", "typescript-ast", "javascript-ast"]  # Most common: Rust + JS/TS
@@ -360,6 +361,9 @@ demo = []
 javascript-ast = ["typescript-ast", "polyglot-javascript"]
 # TUI mode support
 tui = ["ratatui", "crossterm"]
+# Terminal graph visualization (trueno-viz integration)
+# See: docs/specifications/integrating-graph-visualizations-spec.md
+viz = ["trueno-viz"]
 # Integration tests feature
 integration-tests = []
 # End-to-end tests feature
@@ -555,6 +559,11 @@ required-features = ["mutation-testing"]
 [[example]]
 name = "verus_verification_demo"
 path = "examples/verus_verification_demo.rs"
+
+[[example]]
+name = "viz_demo"
+path = "examples/viz_demo.rs"
+required-features = ["viz"]
 
 # Profile configuration moved to workspace root
 
