@@ -5949,7 +5949,7 @@ dependencies = [
 
 [[package]]
 name = "pmat"
-version = "2.211.0"
+version = "2.211.1"
 dependencies = [
  "actix",
  "actix-rt",
@@ -6094,7 +6094,7 @@ dependencies = [
 
 [[package]]
 name = "pmat-dashboard"
-version = "2.211.0"
+version = "2.211.1"
 dependencies = [
  "js-sys",
  "presentar-core",
