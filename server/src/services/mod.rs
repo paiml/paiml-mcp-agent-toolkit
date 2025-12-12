@@ -206,6 +206,7 @@ pub mod semantic; // PMAT-SEARCH-001: Semantic code search services
 pub mod semantic_naming;
 pub mod local_semantic; // Local semantic analysis using aprender (no external API required)
 pub mod simple_deep_context;
+pub mod spec_parser; // Part C: Specification parsing for pmat qa command
 pub mod symbol_table;
 pub mod tdg_calculator;
 pub mod ml_quality_scorer; // GH-97: ML-based quality scoring using aprender

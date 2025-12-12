@@ -5229,6 +5229,42 @@ pub enum WorkCommands {
         #[arg(short, long)]
         path: Option<PathBuf>,
     },
+
+    /// Validate roadmap.yaml syntax and content (Part B: UX Improvements)
+    #[command(visible_aliases = &["check", "lint", "v"])]
+    Validate {
+        /// Project path (default: current directory)
+        #[arg(short, long)]
+        path: Option<PathBuf>,
+
+        /// Show verbose output with suggestions
+        #[arg(long)]
+        verbose: bool,
+
+        /// Fix issues automatically where possible
+        #[arg(long)]
+        fix: bool,
+    },
+
+    /// Auto-fix common roadmap.yaml issues (Part B: UX Improvements)
+    #[command(visible_aliases = &["fix", "m"])]
+    Migrate {
+        /// Project path (default: current directory)
+        #[arg(short, long)]
+        path: Option<PathBuf>,
+
+        /// Dry run (show what would be changed)
+        #[arg(long)]
+        dry_run: bool,
+
+        /// Create backup before migration
+        #[arg(long, default_value = "true")]
+        backup: bool,
+    },
+
+    /// List all valid status values with descriptions
+    #[command(visible_aliases = &["values", "statuses"])]
+    ListStatuses,
 }
 
 /// Sync direction for work sync command
@@ -5338,6 +5374,40 @@ pub enum QaWorkCommands {
         /// Output directory for examples
         #[arg(short = 'o', long = "output")]
         output: Option<PathBuf>,
+    },
+
+    /// Validate specification with 100-point Popperian falsifiability scoring (Part D & E)
+    ///
+    /// Parses markdown specifications and validates claims through evidence.
+    /// All claims are FALSE until PROVEN true (Popperian epistemology).
+    #[command(visible_aliases = &["spec", "popper"])]
+    Spec {
+        /// Specification file or ticket ID (e.g., "docs/specifications/foo.md" or "GH-118")
+        target: String,
+
+        /// Project path (default: current directory)
+        #[arg(short = 'p', long = "path", default_value = ".")]
+        path: PathBuf,
+
+        /// Run full validation (includes mutation testing)
+        #[arg(long)]
+        full: bool,
+
+        /// Output format
+        #[arg(short = 'f', long = "format", value_enum, default_value = "text")]
+        format: QaOutputFormat,
+
+        /// Output file for results
+        #[arg(short = 'o', long = "output")]
+        output: Option<PathBuf>,
+
+        /// Fail if total score below threshold (default: 60 for gateway)
+        #[arg(long, default_value = "60")]
+        threshold: u32,
+
+        /// Fail if gateway category (Falsifiability) below threshold
+        #[arg(long, default_value = "15")]
+        gateway_threshold: u32,
     },
 }
 

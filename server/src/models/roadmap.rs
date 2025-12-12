@@ -126,8 +126,16 @@ pub enum ItemType {
     Refactor,
 }
 
-/// Item status enumeration
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+/// Item status enumeration with alias support (Part A: YAML Parsing Resilience)
+///
+/// Supports multiple aliases for user-friendly YAML input:
+/// - completed: "done", "finished", "closed"
+/// - inprogress: "in_progress", "in-progress", "wip", "active", "started"
+/// - planned: "todo", "open", "pending", "new"
+/// - blocked: "stuck", "waiting", "on-hold"
+/// - review: "reviewing", "pr", "pending-review"
+/// - cancelled: "canceled", "dropped", "wontfix"
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum ItemStatus {
     Planned,
@@ -136,6 +144,102 @@ pub enum ItemStatus {
     Review,
     Completed,
     Cancelled,
+}
+
+impl<'de> serde::Deserialize<'de> for ItemStatus {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        ItemStatus::from_string(&s).map_err(|e| serde::de::Error::custom(e))
+    }
+}
+
+impl ItemStatus {
+    /// Parse status from string with alias support
+    ///
+    /// Returns helpful error messages with suggestions for typos
+    pub fn from_string(s: &str) -> Result<Self, String> {
+        // Normalize: lowercase, remove hyphens/underscores, trim whitespace
+        let normalized = s.to_lowercase().replace(['-', '_'], "").trim().to_string();
+
+        match normalized.as_str() {
+            // Completed aliases
+            "completed" | "done" | "finished" | "closed" => Ok(Self::Completed),
+
+            // InProgress aliases
+            "inprogress" | "wip" | "active" | "started" | "working" => Ok(Self::InProgress),
+
+            // Planned aliases
+            "planned" | "todo" | "open" | "pending" | "new" => Ok(Self::Planned),
+
+            // Blocked aliases
+            "blocked" | "stuck" | "waiting" | "onhold" => Ok(Self::Blocked),
+
+            // Review aliases
+            "review" | "reviewing" | "pr" | "pendingreview" => Ok(Self::Review),
+
+            // Cancelled aliases
+            "cancelled" | "canceled" | "dropped" | "wontfix" => Ok(Self::Cancelled),
+
+            _ => {
+                // Provide helpful suggestion using Levenshtein distance
+                let valid_statuses = ["completed", "done", "inprogress", "wip", "planned",
+                                      "todo", "blocked", "stuck", "review", "cancelled"];
+                let suggestion = valid_statuses
+                    .iter()
+                    .min_by_key(|v| levenshtein_distance(&normalized, v))
+                    .map(|s| format!(" (did you mean '{}'?)", s))
+                    .unwrap_or_default();
+
+                Err(format!(
+                    "unknown status '{}'{}\n\nValid values: completed, done, inprogress, wip, planned, todo, blocked, review, cancelled",
+                    s, suggestion
+                ))
+            }
+        }
+    }
+
+    /// Get all valid status strings for help text
+    pub fn valid_values() -> &'static [&'static str] {
+        &[
+            "completed", "done", "finished", "closed",
+            "inprogress", "in_progress", "wip", "active",
+            "planned", "todo", "open", "pending",
+            "blocked", "stuck", "waiting",
+            "review", "reviewing", "pr",
+            "cancelled", "canceled", "dropped",
+        ]
+    }
+}
+
+/// Simple Levenshtein distance for typo suggestions
+fn levenshtein_distance(a: &str, b: &str) -> usize {
+    let a_chars: Vec<char> = a.chars().collect();
+    let b_chars: Vec<char> = b.chars().collect();
+    let a_len = a_chars.len();
+    let b_len = b_chars.len();
+
+    if a_len == 0 { return b_len; }
+    if b_len == 0 { return a_len; }
+
+    let mut matrix = vec![vec![0usize; b_len + 1]; a_len + 1];
+
+    for i in 0..=a_len { matrix[i][0] = i; }
+    for j in 0..=b_len { matrix[0][j] = j; }
+
+    for i in 1..=a_len {
+        for j in 1..=b_len {
+            let cost = if a_chars[i - 1] == b_chars[j - 1] { 0 } else { 1 };
+            matrix[i][j] = std::cmp::min(
+                std::cmp::min(matrix[i - 1][j] + 1, matrix[i][j - 1] + 1),
+                matrix[i - 1][j - 1] + cost,
+            );
+        }
+    }
+
+    matrix[a_len][b_len]
 }
 
 /// Priority enumeration
@@ -545,5 +649,102 @@ roadmap:
 
         assert!(roadmap.find_item_by_github_issue(42).is_some());
         assert!(roadmap.find_item_by_github_issue(999).is_none());
+    }
+
+    // Part A: YAML Parsing Resilience - Status Alias Tests
+    mod status_alias_tests {
+        use super::*;
+
+        #[test]
+        fn test_completed_aliases() {
+            assert_eq!(ItemStatus::from_string("completed").unwrap(), ItemStatus::Completed);
+            assert_eq!(ItemStatus::from_string("done").unwrap(), ItemStatus::Completed);
+            assert_eq!(ItemStatus::from_string("finished").unwrap(), ItemStatus::Completed);
+            assert_eq!(ItemStatus::from_string("closed").unwrap(), ItemStatus::Completed);
+            // Case insensitive
+            assert_eq!(ItemStatus::from_string("DONE").unwrap(), ItemStatus::Completed);
+            assert_eq!(ItemStatus::from_string("Done").unwrap(), ItemStatus::Completed);
+        }
+
+        #[test]
+        fn test_inprogress_aliases() {
+            assert_eq!(ItemStatus::from_string("inprogress").unwrap(), ItemStatus::InProgress);
+            assert_eq!(ItemStatus::from_string("in_progress").unwrap(), ItemStatus::InProgress);
+            assert_eq!(ItemStatus::from_string("in-progress").unwrap(), ItemStatus::InProgress);
+            assert_eq!(ItemStatus::from_string("wip").unwrap(), ItemStatus::InProgress);
+            assert_eq!(ItemStatus::from_string("active").unwrap(), ItemStatus::InProgress);
+            assert_eq!(ItemStatus::from_string("started").unwrap(), ItemStatus::InProgress);
+            assert_eq!(ItemStatus::from_string("WIP").unwrap(), ItemStatus::InProgress);
+        }
+
+        #[test]
+        fn test_planned_aliases() {
+            assert_eq!(ItemStatus::from_string("planned").unwrap(), ItemStatus::Planned);
+            assert_eq!(ItemStatus::from_string("todo").unwrap(), ItemStatus::Planned);
+            assert_eq!(ItemStatus::from_string("open").unwrap(), ItemStatus::Planned);
+            assert_eq!(ItemStatus::from_string("pending").unwrap(), ItemStatus::Planned);
+            assert_eq!(ItemStatus::from_string("new").unwrap(), ItemStatus::Planned);
+        }
+
+        #[test]
+        fn test_blocked_aliases() {
+            assert_eq!(ItemStatus::from_string("blocked").unwrap(), ItemStatus::Blocked);
+            assert_eq!(ItemStatus::from_string("stuck").unwrap(), ItemStatus::Blocked);
+            assert_eq!(ItemStatus::from_string("waiting").unwrap(), ItemStatus::Blocked);
+            assert_eq!(ItemStatus::from_string("on-hold").unwrap(), ItemStatus::Blocked);
+            assert_eq!(ItemStatus::from_string("on_hold").unwrap(), ItemStatus::Blocked);
+        }
+
+        #[test]
+        fn test_review_aliases() {
+            assert_eq!(ItemStatus::from_string("review").unwrap(), ItemStatus::Review);
+            assert_eq!(ItemStatus::from_string("reviewing").unwrap(), ItemStatus::Review);
+            assert_eq!(ItemStatus::from_string("pr").unwrap(), ItemStatus::Review);
+            assert_eq!(ItemStatus::from_string("pending-review").unwrap(), ItemStatus::Review);
+        }
+
+        #[test]
+        fn test_cancelled_aliases() {
+            assert_eq!(ItemStatus::from_string("cancelled").unwrap(), ItemStatus::Cancelled);
+            assert_eq!(ItemStatus::from_string("canceled").unwrap(), ItemStatus::Cancelled);
+            assert_eq!(ItemStatus::from_string("dropped").unwrap(), ItemStatus::Cancelled);
+            assert_eq!(ItemStatus::from_string("wontfix").unwrap(), ItemStatus::Cancelled);
+        }
+
+        #[test]
+        fn test_invalid_status_with_suggestion() {
+            let err = ItemStatus::from_string("compl").unwrap_err();
+            assert!(err.contains("did you mean"));
+            assert!(err.contains("completed"));
+
+            let err = ItemStatus::from_string("progres").unwrap_err();
+            assert!(err.contains("did you mean"));
+        }
+
+        #[test]
+        fn test_yaml_parsing_with_aliases() {
+            let yaml = r#"
+roadmap_version: '1.0'
+github_enabled: true
+roadmap:
+  - id: TEST-001
+    title: "Test with done status"
+    status: done
+    priority: high
+  - id: TEST-002
+    title: "Test with wip status"
+    status: wip
+    priority: medium
+  - id: TEST-003
+    title: "Test with stuck status"
+    status: stuck
+    priority: low
+"#;
+            let roadmap: Roadmap = serde_yaml::from_str(yaml).expect("Should parse with aliases");
+            assert_eq!(roadmap.roadmap.len(), 3);
+            assert_eq!(roadmap.roadmap[0].status, ItemStatus::Completed);
+            assert_eq!(roadmap.roadmap[1].status, ItemStatus::InProgress);
+            assert_eq!(roadmap.roadmap[2].status, ItemStatus::Blocked);
+        }
     }
 }

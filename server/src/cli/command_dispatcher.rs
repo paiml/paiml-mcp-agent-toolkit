@@ -2048,6 +2048,15 @@ impl CommandDispatcher {
                 path,
                 dry_run,
             } => work_handlers::handle_work_sync(*direction, path.clone(), *dry_run).await,
+            WorkCommands::Validate { path, verbose, fix } => {
+                work_handlers::handle_work_validate(path.clone(), *verbose, *fix).await
+            }
+            WorkCommands::Migrate {
+                path,
+                dry_run,
+                backup,
+            } => work_handlers::handle_work_migrate(path.clone(), *dry_run, *backup).await,
+            WorkCommands::ListStatuses => work_handlers::handle_work_list_statuses().await,
         }
     }
 }
