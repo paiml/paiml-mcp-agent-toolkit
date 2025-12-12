@@ -687,3 +687,19 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: GH-118
+  github_issue: 118
+  item_type: task
+  title: Unified CLI/MCP/Help Integration with Dynamic --help Generation
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2025-12-12T21:14:08.467212514+00:00
+  updated: 2025-12-12T21:14:08.467212514+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null

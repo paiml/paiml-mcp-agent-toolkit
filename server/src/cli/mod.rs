@@ -13,6 +13,7 @@ pub mod commands;
 pub mod coverage_helpers;
 pub mod dead_code_formatter;
 pub mod defect_formatter;
+pub mod drift_detector;
 pub mod defect_helpers;
 pub mod defect_prediction_helpers;
 pub mod diagnose;
@@ -20,15 +21,19 @@ pub mod enums;
 pub mod error_context;
 pub mod formatting_helpers;
 pub mod handlers;
+pub mod help_generator;
 pub mod language_analyzer;
+pub mod mcp_schema_generator;
 pub mod name_similarity_helpers;
 pub mod progress;
 pub mod proof_annotation_formatter;
 pub mod proof_annotation_helpers;
 pub mod provability_helpers;
+pub mod registry;
 pub mod semantic_commands;
 pub mod symbol_table_helpers;
 pub mod tdg_helpers;
+pub mod unified_help;
 
 // Re-export commonly used types from submodules
 pub use commands::{
@@ -36,6 +41,10 @@ pub use commands::{
 };
 pub use enums::*;
 pub use handlers::get_timeline_help_text; // Sprint 78: TUI-006
+pub use registry::{CommandRegistry, CommandMetadata, ArgumentMetadata, ExampleMetadata, McpToolMetadata}; // Issue #118
+pub use help_generator::HelpGenerator; // Issue #118
+pub use mcp_schema_generator::McpSchemaGenerator; // Issue #118
+pub use unified_help::{UnifiedHelpService, HelpSearchResult, HelpResponse}; // Issue #118
 
 // Type definitions for handler compatibility
 #[derive(Debug, Clone)]
