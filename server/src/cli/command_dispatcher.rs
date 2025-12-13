@@ -619,6 +619,31 @@ impl CommandDispatcher {
                 crate::cli::handlers::oracle_handlers::handle_oracle_command(command).await
             }
 
+            Commands::PerfectionScore {
+                path,
+                breakdown,
+                target,
+                format,
+                output,
+                fast,
+            } => {
+                // Unified 200-point Perfection Score (master-plan-pmat-work-system.md)
+                handlers::perfection_score_handlers::handle_perfection_score(
+                    &path,
+                    breakdown,
+                    target,
+                    format,
+                    output.as_deref(),
+                    fast,
+                )
+                .await
+            }
+
+            Commands::Spec { command } => {
+                // Specification management (master-plan-pmat-work-system.md)
+                Self::handle_spec_command(command).await
+            }
+
             Commands::Localize {
                 passed_coverage,
                 failed_coverage,
@@ -2057,6 +2082,50 @@ impl CommandDispatcher {
                 backup,
             } => work_handlers::handle_work_migrate(path.clone(), *dry_run, *backup).await,
             WorkCommands::ListStatuses => work_handlers::handle_work_list_statuses().await,
+        }
+    }
+
+    /// Execute spec command (master-plan-pmat-work-system.md S-001 to S-010)
+    async fn handle_spec_command(
+        command: crate::cli::commands::SpecCommands,
+    ) -> anyhow::Result<()> {
+        use crate::cli::commands::SpecCommands;
+        use crate::cli::handlers::spec_handlers;
+
+        match command {
+            SpecCommands::Score {
+                spec,
+                format,
+                output,
+                verbose,
+            } => {
+                spec_handlers::handle_spec_score(&spec, format, output.as_deref(), verbose).await
+            }
+            SpecCommands::Comply {
+                spec,
+                dry_run,
+                format,
+            } => spec_handlers::handle_spec_comply(&spec, dry_run, format).await,
+            SpecCommands::Create {
+                name,
+                issue,
+                epic,
+                output,
+            } => {
+                spec_handlers::handle_spec_create(
+                    &name,
+                    issue.as_deref(),
+                    epic.as_deref(),
+                    output.as_deref(),
+                )
+                .await
+            }
+            SpecCommands::List {
+                path,
+                min_score,
+                failing_only,
+                format,
+            } => spec_handlers::handle_spec_list(&path, min_score, failing_only, format).await,
         }
     }
 }

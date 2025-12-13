@@ -276,3 +276,19 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: Implement master-plan-pmat-work-system.md remaining items
+  github_issue: null
+  item_type: task
+  title: 'New task: Implement master-plan-pmat-work-system.md remaining items'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2025-12-13T10:18:49.330970264+00:00
+  updated: 2025-12-13T10:18:49.330970264+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null

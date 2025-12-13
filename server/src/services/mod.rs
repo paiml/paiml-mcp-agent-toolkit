@@ -63,6 +63,7 @@ pub mod memory_manager;
 #[cfg(test)]
 pub mod memory_property_tests;
 pub mod metric_trends; // Phase 3: O(1) Quality Gates trend analysis
+pub mod perfection_score; // master-plan-pmat-work-system.md: 200-point unified quality score
 pub mod quality_gate_service;
 pub mod service_adapter;
 pub mod service_base;

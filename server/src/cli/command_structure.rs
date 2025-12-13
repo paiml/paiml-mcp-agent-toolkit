@@ -743,6 +743,16 @@ impl CommandExecutor {
             Commands::Oracle { .. } => {
                 anyhow::bail!("Oracle command should be handled by command_dispatcher.rs")
             }
+
+            // master-plan-pmat-work-system.md: 200-point unified score - handled by command_dispatcher.rs
+            Commands::PerfectionScore { .. } => {
+                anyhow::bail!("PerfectionScore command should be handled by command_dispatcher.rs")
+            }
+
+            // master-plan-pmat-work-system.md: Spec management - handled by command_dispatcher.rs
+            Commands::Spec { .. } => {
+                anyhow::bail!("Spec command should be handled by command_dispatcher.rs")
+            }
         }
     }
 }

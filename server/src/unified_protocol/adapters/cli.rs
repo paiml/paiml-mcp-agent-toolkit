@@ -136,6 +136,8 @@ impl CliAdapter {
             | Commands::PredictQuality { .. } // Phase 4.1: Predictive Quality Gates CLI (CLI-only)
             | Commands::RecordMetric { .. } // Phase 3.4: O(1) Quality Gates CI/CD (CLI-only)
             | Commands::QaWork { .. } // GH-102: Toyota Way QA validation (CLI-only)
+            | Commands::PerfectionScore { .. } // master-plan-pmat-work-system.md: 200-point score (CLI-only)
+            | Commands::Spec { .. } // master-plan-pmat-work-system.md: Spec management (CLI-only)
             => Self::cli_only_command_error(),
 
             #[cfg(feature = "mutation-testing")]
@@ -1839,6 +1841,12 @@ impl CliInput {
             }
             Commands::QaWork { .. } => {
                 CommandCategory::Workflow // GH-102: Toyota Way QA validation
+            }
+            Commands::PerfectionScore { .. } => {
+                CommandCategory::Analysis // master-plan-pmat-work-system.md: 200-point unified score
+            }
+            Commands::Spec { .. } => {
+                CommandCategory::Workflow // master-plan-pmat-work-system.md: Spec management
             }
         }
     }

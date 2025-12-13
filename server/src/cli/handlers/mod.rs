@@ -69,9 +69,11 @@ pub mod refactor_docs_handlers;
 pub mod refactor_handlers;
 pub mod repo_score_handlers; // Sprint 48: Repository health scoring
 pub mod roadmap_handler;
+pub mod perfection_score_handlers; // master-plan-pmat-work-system.md: 200-point unified score
 pub mod popper_score_handlers; // Popper Falsifiability Score v1.1
 pub mod demo_score_handlers; // GH-109/112: Demo Quality scoring (Category G)
 pub mod rust_project_score_handlers; // Sprint 3: Rust Project Score v1.1
+pub mod spec_handlers; // master-plan-pmat-work-system.md: Spec management commands
 pub mod satd_handler;
 pub mod similarity_handler;
 pub mod subagent_handlers;

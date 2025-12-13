@@ -922,6 +922,42 @@ pub enum Commands {
         command: OracleCommands,
     },
 
+    /// Unified 200-point Perfection Score (master-plan-pmat-work-system.md)
+    /// Aggregates TDG, Repo Score, Rust Score, Coverage, Mutation, Docs, Performance
+    #[command(name = "perfection-score", visible_aliases = &["perfection", "perfect", "ps"])]
+    PerfectionScore {
+        /// Project path (defaults to current directory)
+        #[arg(short = 'p', long = "path", default_value = ".")]
+        path: PathBuf,
+
+        /// Show detailed category breakdown
+        #[arg(long)]
+        breakdown: bool,
+
+        /// Set target score and show gap analysis
+        #[arg(long)]
+        target: Option<u16>,
+
+        /// Output format: text, json, markdown
+        #[arg(short = 'f', long = "format", value_enum, default_value = "text")]
+        format: PerfectionScoreOutputFormat,
+
+        /// Write output to file
+        #[arg(short = 'o', long = "output")]
+        output: Option<PathBuf>,
+
+        /// Skip slow checks (mutation testing, full coverage)
+        #[arg(long)]
+        fast: bool,
+    },
+
+    /// Specification management and validation (master-plan-pmat-work-system.md)
+    #[command(name = "spec", visible_aliases = &["specification"])]
+    Spec {
+        #[command(subcommand)]
+        command: SpecCommands,
+    },
+
     /// PMAT compliance and migration system (GH-96)
     #[command(visible_aliases = &["compliance"])]
     Comply {
@@ -1145,12 +1181,154 @@ pub enum ComplyCommands {
         #[arg(long)]
         force: bool,
     },
+
+    /// Install git hooks for mandatory work tracking (W-006)
+    /// Blocks commits without active tickets per master-plan-pmat-work-system.md
+    #[command(visible_aliases = &["install", "hooks"])]
+    Enforce {
+        /// Project path (defaults to current directory)
+        #[arg(short = 'p', long = "path", default_value = ".")]
+        path: PathBuf,
+
+        /// Skip confirmation prompt
+        #[arg(short = 'y', long = "yes")]
+        yes: bool,
+
+        /// Remove all PMAT hooks (disable enforcement)
+        #[arg(long)]
+        disable: bool,
+
+        /// Output format
+        #[arg(short = 'f', long = "format", value_enum, default_value = "text")]
+        format: ComplyOutputFormat,
+    },
+
+    /// Generate compliance report (W-009)
+    Report {
+        /// Project path (defaults to current directory)
+        #[arg(short = 'p', long = "path", default_value = ".")]
+        path: PathBuf,
+
+        /// Include ticket history
+        #[arg(long)]
+        include_history: bool,
+
+        /// Output format
+        #[arg(short = 'f', long = "format", value_enum, default_value = "markdown")]
+        format: ComplyOutputFormat,
+
+        /// Write output to file
+        #[arg(short = 'o', long = "output")]
+        output: Option<PathBuf>,
+    },
 }
 
 /// Comply output formats (GH-96)
 #[derive(Debug, Clone, clap::ValueEnum, PartialEq)]
 pub enum ComplyOutputFormat {
     /// Human-readable text format
+    Text,
+    /// JSON format for CI/CD
+    Json,
+    /// Markdown report format
+    Markdown,
+}
+
+/// Output format for perfection score (master-plan-pmat-work-system.md)
+#[derive(Debug, Clone, Copy, Default, clap::ValueEnum)]
+pub enum PerfectionScoreOutputFormat {
+    /// Human-readable text format
+    #[default]
+    Text,
+    /// JSON format for CI/CD
+    Json,
+    /// Markdown report format
+    Markdown,
+}
+
+/// Spec subcommands (master-plan-pmat-work-system.md S-001 to S-010)
+#[derive(Debug, Clone, Subcommand)]
+pub enum SpecCommands {
+    /// Validate specification with 100-point Popperian score (S-001)
+    /// Requires ≥95 points to be worked on
+    #[command(visible_aliases = &["validate", "v"])]
+    Score {
+        /// Specification file path
+        spec: PathBuf,
+
+        /// Output format: text, json, markdown
+        #[arg(short = 'f', long = "format", value_enum, default_value = "text")]
+        format: SpecOutputFormat,
+
+        /// Write output to file
+        #[arg(short = 'o', long = "output")]
+        output: Option<PathBuf>,
+
+        /// Show verbose claim validation
+        #[arg(short = 'v', long = "verbose")]
+        verbose: bool,
+    },
+
+    /// Auto-fix spec issues to meet 95-point threshold (S-003)
+    #[command(visible_aliases = &["fix", "c"])]
+    Comply {
+        /// Specification file path
+        spec: PathBuf,
+
+        /// Dry run (show what would be fixed without changing file)
+        #[arg(long)]
+        dry_run: bool,
+
+        /// Output format
+        #[arg(short = 'f', long = "format", value_enum, default_value = "text")]
+        format: SpecOutputFormat,
+    },
+
+    /// Create new specification from template
+    #[command(visible_aliases = &["new", "n"])]
+    Create {
+        /// Specification name (will be slugified)
+        name: String,
+
+        /// Issue reference (e.g., "GH-123" or "#123")
+        #[arg(long)]
+        issue: Option<String>,
+
+        /// Epic to associate with
+        #[arg(long)]
+        epic: Option<String>,
+
+        /// Output directory (defaults to docs/specifications/)
+        #[arg(short = 'o', long = "output")]
+        output: Option<PathBuf>,
+    },
+
+    /// List all specifications with their scores
+    #[command(visible_aliases = &["ls", "l"])]
+    List {
+        /// Specifications directory (defaults to docs/specifications/)
+        #[arg(short = 'p', long = "path", default_value = "docs/specifications")]
+        path: PathBuf,
+
+        /// Filter by minimum score
+        #[arg(long)]
+        min_score: Option<u8>,
+
+        /// Show only specs below 95 threshold
+        #[arg(long)]
+        failing_only: bool,
+
+        /// Output format
+        #[arg(short = 'f', long = "format", value_enum, default_value = "text")]
+        format: SpecOutputFormat,
+    },
+}
+
+/// Output format for spec commands
+#[derive(Debug, Clone, Copy, Default, clap::ValueEnum)]
+pub enum SpecOutputFormat {
+    /// Human-readable text format
+    #[default]
     Text,
     /// JSON format for CI/CD
     Json,

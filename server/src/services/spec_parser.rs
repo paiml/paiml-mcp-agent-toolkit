@@ -330,6 +330,42 @@ impl SpecParser {
                 });
             }
 
+            // Extract Falsification Conditions (explicit falsifiability claims)
+            // Format: "- If X, Y is falsified" or "- X is falsified when Y"
+            if line.starts_with("- ") && line.to_lowercase().contains("falsified") {
+                let claim_text = line.trim_start_matches("- ").trim().to_string();
+                spec.claims.push(ValidationClaim {
+                    id: format!("FC-{}", spec.claims.len() + 1),
+                    text: claim_text,
+                    line: line_num,
+                    category: ClaimCategory::Falsifiability,
+                    automatable: false, // Manual verification required
+                    validation_cmd: None,
+                    expected_pattern: None,
+                });
+            }
+
+            // Extract Documentation requirements from bullet points in doc sections
+            // Format: "- **Key**: Description" in Documentation sections
+            if (current_section.to_lowercase().contains("documentation")
+                || current_section.to_lowercase().contains("open science"))
+                && line.starts_with("- ")
+                && !line.contains("[ ]")
+            {
+                let claim_text = line.trim_start_matches("- ").trim().to_string();
+                if !claim_text.is_empty() {
+                    spec.claims.push(ValidationClaim {
+                        id: format!("DOC-{}", spec.claims.len() + 1),
+                        text: claim_text,
+                        line: line_num,
+                        category: ClaimCategory::Documentation,
+                        automatable: false,
+                        validation_cmd: None,
+                        expected_pattern: None,
+                    });
+                }
+            }
+
             // Extract MUST/SHALL/SHOULD claims
             if let Some(caps) = self.claim_regex.captures(line) {
                 let verb = caps.get(1).map(|m| m.as_str().to_uppercase()).unwrap_or_default();
