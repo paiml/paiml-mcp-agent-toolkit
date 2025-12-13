@@ -1259,7 +1259,7 @@ pub async fn handle_work_migrate(
 /// Lists all valid status values with descriptions and aliases.
 pub async fn handle_work_list_statuses() -> Result<()> {
     println!("📋 Valid Status Values\n");
-    println!("{:<15} {:<25} {}", "STATUS", "ALIASES", "DESCRIPTION");
+    println!("{:<15} {:<25} DESCRIPTION", "STATUS", "ALIASES");
     println!("{}", "-".repeat(70));
 
     let statuses = [

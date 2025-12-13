@@ -164,8 +164,6 @@ pub struct SpecParser {
     frontmatter_regex: Regex,
     /// Regex for checkbox items
     checkbox_regex: Regex,
-    /// Regex for code blocks
-    code_block_regex: Regex,
     /// Regex for issue references
     issue_ref_regex: Regex,
     /// Regex for claims (numbered items, MUST/SHALL/SHOULD)
@@ -183,7 +181,6 @@ impl SpecParser {
         Self {
             frontmatter_regex: Regex::new(r"(?s)^---\n(.*?)\n---").unwrap(),
             checkbox_regex: Regex::new(r"^\s*-\s*\[([ xX])\]\s*(.+)$").unwrap(),
-            code_block_regex: Regex::new(r"```(\w*)\n([\s\S]*?)```").unwrap(),
             issue_ref_regex: Regex::new(r"(?:#(\d+)|GH-(\d+)|Issue\s+#?(\d+))").unwrap(),
             claim_regex: Regex::new(r"(?i)(must|shall|should|will)\s+(.+)").unwrap(),
         }
@@ -441,10 +438,8 @@ impl SpecParser {
             }
         } else if dir.is_dir() {
             let pattern = dir.join("**/*.md");
-            for entry in glob::glob(pattern.to_str().unwrap_or(""))? {
-                if let Ok(path) = entry {
-                    specs.push(path);
-                }
+            for path in glob::glob(pattern.to_str().unwrap_or(""))?.flatten() {
+                specs.push(path);
             }
         }
 

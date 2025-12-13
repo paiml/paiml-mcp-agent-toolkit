@@ -152,7 +152,7 @@ impl<'de> serde::Deserialize<'de> for ItemStatus {
         D: serde::Deserializer<'de>,
     {
         let s = String::deserialize(deserializer)?;
-        ItemStatus::from_string(&s).map_err(|e| serde::de::Error::custom(e))
+        ItemStatus::from_string(&s).map_err(serde::de::Error::custom)
     }
 }
 
