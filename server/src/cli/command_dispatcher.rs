@@ -415,9 +415,7 @@ impl CommandDispatcher {
                 metric,
                 value,
                 timestamp,
-            } => {
-                Self::execute_record_metric_command(metric, value, timestamp).await
-            }
+            } => Self::execute_record_metric_command(metric, value, timestamp).await,
 
             Commands::Agent { command } => handlers::handle_agent_command(command).await,
 
@@ -1403,7 +1401,10 @@ impl CommandDispatcher {
                 for (name, score) in hot_metrics {
                     hot_map.insert(name, serde_json::json!(score));
                 }
-                results.insert("hot_metrics".to_string(), serde_json::Value::Object(hot_map));
+                results.insert(
+                    "hot_metrics".to_string(),
+                    serde_json::Value::Object(hot_map),
+                );
 
                 // Add trend analysis
                 for metric_name in metrics {
@@ -1418,7 +1419,10 @@ impl CommandDispatcher {
             }
             _ => {
                 // Table output (default)
-                println!("\n\x1b[1;34m📊 Quality Metrics Trends ({} days)\x1b[0m\n", days);
+                println!(
+                    "\n\x1b[1;34m📊 Quality Metrics Trends ({} days)\x1b[0m\n",
+                    days
+                );
 
                 // Show hot metrics ranking (PageRank)
                 let hot_metrics = store.hot_metrics();
@@ -1434,7 +1438,8 @@ impl CommandDispatcher {
                 let mut sorted_metrics: Vec<(String, f32)> = metrics
                     .iter()
                     .map(|m| {
-                        let score = hot_metrics.iter()
+                        let score = hot_metrics
+                            .iter()
                             .find(|(name, _)| name == m)
                             .map(|(_, s)| *s)
                             .unwrap_or(0.0);
@@ -1459,13 +1464,19 @@ impl CommandDispatcher {
                         println!("  Direction: {}", direction_symbol);
                         println!("  Mean: {:.2}", trend_analysis.mean);
                         println!("  Std Dev: {:.2}", trend_analysis.std_dev);
-                        println!("  Min/Max: {:.2} / {:.2}", trend_analysis.min, trend_analysis.max);
+                        println!(
+                            "  Min/Max: {:.2} / {:.2}",
+                            trend_analysis.min, trend_analysis.max
+                        );
                         println!("  Slope: {:.2}/day", trend_analysis.slope);
                         println!("  Observations: {}", trend_analysis.count);
 
                         // Add recommendations for regressing metrics
                         if trend_analysis.direction == TrendDirection::Regressing {
-                            let recommendations = Self::generate_metric_recommendations(&metric_name, trend_analysis.slope);
+                            let recommendations = Self::generate_metric_recommendations(
+                                &metric_name,
+                                trend_analysis.slope,
+                            );
                             if !recommendations.is_empty() {
                                 println!("  \x1b[1;33mRecommendations:\x1b[0m");
                                 for rec in recommendations {
@@ -1503,8 +1514,10 @@ impl CommandDispatcher {
 
         // Show quick stats
         if let Ok(trend_analysis) = store.trend(&metric, 30) {
-            println!("   Last 30 days: mean={:.2}, slope={:.2}/day",
-                trend_analysis.mean, trend_analysis.slope);
+            println!(
+                "   Last 30 days: mean={:.2}, slope={:.2}/day",
+                trend_analysis.mean, trend_analysis.slope
+            );
         }
 
         Ok(())
@@ -1539,14 +1552,18 @@ impl CommandDispatcher {
         };
 
         if days_to_critical < 30.0 {
-            recommendations.push(format!("⚠️  WARNING: Approaching threshold in ~{:.0} days", days_to_critical));
+            recommendations.push(format!(
+                "⚠️  WARNING: Approaching threshold in ~{:.0} days",
+                days_to_critical
+            ));
         }
 
         match metric {
             "lint" => {
                 recommendations.push("Remove unused dependencies (saves ~2-3s)".to_string());
                 recommendations.push("Enable incremental clippy analysis".to_string());
-                recommendations.push("Review enabled lints (disable pedantic if not needed)".to_string());
+                recommendations
+                    .push("Review enabled lints (disable pedantic if not needed)".to_string());
             }
             "test-fast" => {
                 recommendations.push("Add #[ignore] to slow integration tests".to_string());
@@ -1556,11 +1573,13 @@ impl CommandDispatcher {
             "coverage" => {
                 recommendations.push("Exclude slow tests from coverage run".to_string());
                 recommendations.push("Use cargo-llvm-cov with --skip-functions flag".to_string());
-                recommendations.push("Consider sampling-based coverage for large projects".to_string());
+                recommendations
+                    .push("Consider sampling-based coverage for large projects".to_string());
             }
             "build-release" => {
                 recommendations.push("Enable sccache for distributed caching".to_string());
-                recommendations.push("Review feature flags (disable optional features)".to_string());
+                recommendations
+                    .push("Review feature flags (disable optional features)".to_string());
                 recommendations.push("Use lld linker for faster linking".to_string());
             }
             _ => {}
@@ -2098,9 +2117,7 @@ impl CommandDispatcher {
                 format,
                 output,
                 verbose,
-            } => {
-                spec_handlers::handle_spec_score(&spec, format, output.as_deref(), verbose).await
-            }
+            } => spec_handlers::handle_spec_score(&spec, format, output.as_deref(), verbose).await,
             SpecCommands::Comply {
                 spec,
                 dry_run,

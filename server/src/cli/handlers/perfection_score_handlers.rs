@@ -68,7 +68,8 @@ fn format_text(result: &PerfectionScoreResult, breakdown: bool) -> String {
         out.push_str("═══════════════════════════════════════════════════════\n\n");
 
         for cat in &result.categories {
-            let progress_bar = create_progress_bar(cat.earned_points, f64::from(cat.max_points), 20);
+            let progress_bar =
+                create_progress_bar(cat.earned_points, f64::from(cat.max_points), 20);
             out.push_str(&format!(
                 "  {:25} {} {:.1}/{} pts ({})\n",
                 cat.name, progress_bar, cat.earned_points, cat.max_points, cat.grade
@@ -174,9 +175,7 @@ mod tests {
 
     #[test]
     fn test_format_text_output() {
-        let categories = vec![
-            CategoryScore::new("Test Category", 80.0, 40),
-        ];
+        let categories = vec![CategoryScore::new("Test Category", 80.0, 40)];
         let result = PerfectionScoreResult::new(categories);
         let text = format_text(&result, true);
 
@@ -186,9 +185,7 @@ mod tests {
 
     #[test]
     fn test_format_json_output() {
-        let categories = vec![
-            CategoryScore::new("Test", 75.0, 30),
-        ];
+        let categories = vec![CategoryScore::new("Test", 75.0, 30)];
         let result = PerfectionScoreResult::new(categories);
         let json = format_json(&result).unwrap();
 
@@ -198,9 +195,7 @@ mod tests {
 
     #[test]
     fn test_format_markdown_output() {
-        let categories = vec![
-            CategoryScore::new("Test", 70.0, 25),
-        ];
+        let categories = vec![CategoryScore::new("Test", 70.0, 25)];
         let result = PerfectionScoreResult::new(categories);
         let md = format_markdown(&result, true);
 

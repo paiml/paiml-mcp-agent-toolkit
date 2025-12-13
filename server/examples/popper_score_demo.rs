@@ -43,8 +43,18 @@ fn main() -> Result<()> {
 }
 
 fn print_score_summary(score: &PopperScore) {
-    println!("  Gateway Status: {}", if score.gateway_passed { "✅ PASSED" } else { "❌ FAILED" });
-    println!("  Raw Score: {:.1}/{:.0}", score.raw_score, score.max_available);
+    println!(
+        "  Gateway Status: {}",
+        if score.gateway_passed {
+            "✅ PASSED"
+        } else {
+            "❌ FAILED"
+        }
+    );
+    println!(
+        "  Raw Score: {:.1}/{:.0}",
+        score.raw_score, score.max_available
+    );
     println!("  Normalized: {:.1}%", score.normalized_score);
     println!("  Grade: {}", score.grade);
     println!("  Verdict: {}", score.analysis.verdict);
@@ -53,7 +63,8 @@ fn print_score_summary(score: &PopperScore) {
 fn demonstrate_gateway(score: &PopperScore) {
     let falsifiability_pct = score.categories.falsifiability.percentage();
 
-    println!("  Falsifiability Score: {:.1}/{:.0} ({:.1}%)",
+    println!(
+        "  Falsifiability Score: {:.1}/{:.0} ({:.1}%)",
         score.categories.falsifiability.earned,
         score.categories.falsifiability.max,
         falsifiability_pct
@@ -65,10 +76,16 @@ fn demonstrate_gateway(score: &PopperScore) {
     println!("   is non-scientific.\" (The Logic of Scientific Discovery)\n");
 
     if score.gateway_passed {
-        println!("  ✅ Your project passes the gateway ({:.1}% >= 60%)", falsifiability_pct);
+        println!(
+            "  ✅ Your project passes the gateway ({:.1}% >= 60%)",
+            falsifiability_pct
+        );
         println!("     The final score reflects all categories.");
     } else {
-        println!("  ❌ Your project fails the gateway ({:.1}% < 60%)", falsifiability_pct);
+        println!(
+            "  ❌ Your project fails the gateway ({:.1}% < 60%)",
+            falsifiability_pct
+        );
         println!("     The final score is 0 until falsifiability improves.");
         println!("\n  To improve, add:");
         println!("     - Explicit falsifiable claims in README");
@@ -79,12 +96,36 @@ fn demonstrate_gateway(score: &PopperScore) {
 
 fn print_categories(score: &PopperScore) {
     let categories = [
-        ("A. Falsifiability & Testability", &score.categories.falsifiability, true),
-        ("B. Reproducibility Infrastructure", &score.categories.reproducibility, false),
-        ("C. Transparency & Openness", &score.categories.transparency, false),
-        ("D. Statistical Rigor", &score.categories.statistical_rigor, false),
-        ("E. Historical Integrity", &score.categories.historical_integrity, false),
-        ("F. ML/AI Reproducibility", &score.categories.ml_reproducibility, false),
+        (
+            "A. Falsifiability & Testability",
+            &score.categories.falsifiability,
+            true,
+        ),
+        (
+            "B. Reproducibility Infrastructure",
+            &score.categories.reproducibility,
+            false,
+        ),
+        (
+            "C. Transparency & Openness",
+            &score.categories.transparency,
+            false,
+        ),
+        (
+            "D. Statistical Rigor",
+            &score.categories.statistical_rigor,
+            false,
+        ),
+        (
+            "E. Historical Integrity",
+            &score.categories.historical_integrity,
+            false,
+        ),
+        (
+            "F. ML/AI Reproducibility",
+            &score.categories.ml_reproducibility,
+            false,
+        ),
     ];
 
     for (name, category, is_gateway) in categories {
@@ -94,11 +135,19 @@ fn print_categories(score: &PopperScore) {
         }
 
         let pct = category.percentage();
-        let icon = if pct >= 80.0 { "✅" } else if pct >= 60.0 { "⚠️" } else { "❌" };
+        let icon = if pct >= 80.0 {
+            "✅"
+        } else if pct >= 60.0 {
+            "⚠️"
+        } else {
+            "❌"
+        };
         let gateway_marker = if is_gateway { " [GATEWAY]" } else { "" };
 
-        println!("  {} {}: {:.1}/{:.0} ({:.1}%){}",
-            icon, name, category.earned, category.max, pct, gateway_marker);
+        println!(
+            "  {} {}: {:.1}/{:.0} ({:.1}%){}",
+            icon, name, category.earned, category.max, pct, gateway_marker
+        );
     }
 }
 

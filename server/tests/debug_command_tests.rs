@@ -3,10 +3,10 @@
 // Tests now use real implementations from GREEN phase
 
 use pmat::models::debug_analysis::*;
+use pmat::services::debug_formatters::{format_json, format_markdown, format_text};
 use pmat::services::five_whys_analyzer::FiveWhysAnalyzer;
-use pmat::services::debug_formatters::{format_text, format_json, format_markdown};
-use std::path::Path;
 use serde_json::json;
+use std::path::Path;
 
 // Helper function for creating test evidence
 fn create_test_evidence(source: EvidenceSource, value: serde_json::Value) -> Evidence {
@@ -28,11 +28,7 @@ fn create_test_evidence(source: EvidenceSource, value: serde_json::Value) -> Evi
 async fn test_01_five_whys_executes_with_default_depth() {
     let analyzer = FiveWhysAnalyzer::new();
     let result = analyzer
-        .analyze(
-            "Stack overflow in parser",
-            Path::new("."),
-            5,
-        )
+        .analyze("Stack overflow in parser", Path::new("."), 5)
         .await;
 
     assert!(result.is_ok());
@@ -101,11 +97,7 @@ async fn test_04_why_iteration_has_required_fields() {
 async fn test_05_gathers_evidence_from_services() {
     let analyzer = FiveWhysAnalyzer::new();
     let result = analyzer
-        .analyze(
-            "High complexity",
-            Path::new("."),
-            5,
-        )
+        .analyze("High complexity", Path::new("."), 5)
         .await
         .unwrap();
 
@@ -118,10 +110,7 @@ async fn test_05_gathers_evidence_from_services() {
 #[tokio::test]
 async fn test_06_09_evidence_gathering() {
     let analyzer = FiveWhysAnalyzer::new();
-    let result = analyzer
-        .analyze("Issue", Path::new("."), 3)
-        .await
-        .unwrap();
+    let result = analyzer.analyze("Issue", Path::new("."), 3).await.unwrap();
 
     // Verify evidence has required fields
     for why in &result.whys {
@@ -141,9 +130,10 @@ async fn test_06_09_evidence_gathering() {
 async fn test_10_confidence_increases_with_evidence() {
     let analyzer = FiveWhysAnalyzer::new();
 
-    let evidence_few = vec![
-        create_test_evidence(EvidenceSource::Complexity, json!({"value": 30}))
-    ];
+    let evidence_few = vec![create_test_evidence(
+        EvidenceSource::Complexity,
+        json!({"value": 30}),
+    )];
     let confidence_few = analyzer.calculate_confidence(&evidence_few).unwrap();
 
     let evidence_many = vec![
@@ -162,15 +152,17 @@ async fn test_11_high_severity_increases_confidence() {
     let analyzer = FiveWhysAnalyzer::new();
 
     // Low complexity
-    let evidence_low = vec![
-        create_test_evidence(EvidenceSource::Complexity, json!({"value": 10, "threshold": 20}))
-    ];
+    let evidence_low = vec![create_test_evidence(
+        EvidenceSource::Complexity,
+        json!({"value": 10, "threshold": 20}),
+    )];
     let confidence_low = analyzer.calculate_confidence(&evidence_low).unwrap();
 
     // High complexity
-    let evidence_high = vec![
-        create_test_evidence(EvidenceSource::Complexity, json!({"value": 50, "threshold": 20}))
-    ];
+    let evidence_high = vec![create_test_evidence(
+        EvidenceSource::Complexity,
+        json!({"value": 50, "threshold": 20}),
+    )];
     let confidence_high = analyzer.calculate_confidence(&evidence_high).unwrap();
 
     assert!(confidence_high >= confidence_low);
@@ -202,14 +194,11 @@ async fn test_12_confidence_bounded() {
 #[tokio::test]
 async fn test_13_17_root_cause_and_recommendations() {
     let analyzer = FiveWhysAnalyzer::new();
-    let result = analyzer
-        .analyze("Issue", Path::new("."), 5)
-        .await
-        .unwrap();
+    let result = analyzer.analyze("Issue", Path::new("."), 5).await.unwrap();
 
     assert!(result.root_cause.is_some());
     assert!(!result.recommendations.is_empty());
-    
+
     // Check recommendations have required fields
     for rec in &result.recommendations {
         assert!(!rec.action.is_empty());
@@ -239,9 +228,9 @@ async fn test_19_formats_json_output() {
     let analyzer = FiveWhysAnalyzer::new();
     let analysis = analyzer.analyze("Test", Path::new("."), 3).await.unwrap();
     let output = format_json(&analysis).unwrap();
-    
+
     let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
-    
+
     assert!(parsed["issue"].is_string());
     assert!(parsed["whys"].is_array());
 }

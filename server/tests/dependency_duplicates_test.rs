@@ -27,56 +27,45 @@ const CRITICAL_DUPLICATES: &[&str] = &[
 /// Last verified: Dec 2024
 const KNOWN_UNAVOIDABLE: &[&str] = &[
     // Arrow/Parquet ecosystem (used by trueno-db)
-    "bitflags",       // arrow/flatbuffers uses v1, we use v2
-    "object",         // different versions for different toolchains
-
+    "bitflags", // arrow/flatbuffers uses v1, we use v2
+    "object",   // different versions for different toolchains
     // Cryptography (jsonwebtoken/rsa for octocrab)
-    "digest",         // crypto crates have tight version requirements
-    "generic-array",  // crypto dependency
-    "sha2",           // crypto dependency
-
+    "digest",        // crypto crates have tight version requirements
+    "generic-array", // crypto dependency
+    "sha2",          // crypto dependency
     // Random number generation
-    "rand",           // RSA/jsonwebtoken/octocrab chain uses v0.8
-    "rand_core",      // comes with rand
-    "rand_chacha",    // comes with rand
-    "getrandom",      // OS random source
-
+    "rand",        // RSA/jsonwebtoken/octocrab chain uses v0.8
+    "rand_core",   // comes with rand
+    "rand_chacha", // comes with rand
+    "getrandom",   // OS random source
     // Error handling
     "thiserror",      // trueno-graph uses v1, we use v2
     "thiserror-impl", // comes with thiserror
-
     // Platform abstraction
-    "rustix",         // different crates have different version needs
-    "linux-raw-sys",  // comes with rustix
-
+    "rustix",        // different crates have different version needs
+    "linux-raw-sys", // comes with rustix
     // Serialization (serde versions are usually compatible)
-    "serde",          // minor version differences
-    "serde_json",     // minor version differences
-
+    "serde",      // minor version differences
+    "serde_json", // minor version differences
     // Logging ecosystem
-    "log",            // different crates use different log versions
-    "env_logger",     // test dependencies
-
+    "log",        // different crates use different log versions
+    "env_logger", // test dependencies
     // Numeric/algebra
-    "nalgebra",       // different versions for different features
+    "nalgebra",        // different versions for different features
     "nalgebra-macros", // comes with nalgebra
-
     // Parsing infrastructure
-    "syn",            // proc-macro ecosystem
-    "itertools",      // different versions in dependency tree
-    "phf_shared",     // perfect hash function
-
+    "syn",        // proc-macro ecosystem
+    "itertools",  // different versions in dependency tree
+    "phf_shared", // perfect hash function
     // HTTP
-    "http",           // axum/hyper versions
-    "httparse",       // HTTP parsing
-
+    "http",     // axum/hyper versions
+    "httparse", // HTTP parsing
     // Hashing
-    "siphasher",      // different versions
-    "hashbrown",      // hash map implementations
-    "twox-hash",      // xxhash versions
-
+    "siphasher", // different versions
+    "hashbrown", // hash map implementations
+    "twox-hash", // xxhash versions
     // Text/Unicode
-    "unicode-width",  // text display widths
+    "unicode-width", // text display widths
 ];
 
 #[test]
@@ -93,11 +82,7 @@ fn test_duplicate_package_count_under_threshold() {
     // Count unique duplicate packages (lines starting with package name)
     let duplicate_packages: Vec<&str> = stdout
         .lines()
-        .filter(|line| {
-            line.chars()
-                .next()
-                .is_some_and(|c| c.is_ascii_lowercase())
-        })
+        .filter(|line| line.chars().next().is_some_and(|c| c.is_ascii_lowercase()))
         .filter_map(|line| line.split_whitespace().next())
         .collect::<std::collections::HashSet<_>>()
         .into_iter()
@@ -164,21 +149,14 @@ fn test_document_unavoidable_duplicates() {
     // Extract actual duplicates
     let actual_duplicates: std::collections::HashSet<&str> = stdout
         .lines()
-        .filter(|line| {
-            line.chars()
-                .next()
-                .is_some_and(|c| c.is_ascii_lowercase())
-        })
+        .filter(|line| line.chars().next().is_some_and(|c| c.is_ascii_lowercase()))
         .filter_map(|line| line.split_whitespace().next())
         .collect();
 
     // Check if any new duplicates appeared that aren't documented
     let known_set: std::collections::HashSet<&str> = KNOWN_UNAVOIDABLE.iter().copied().collect();
 
-    let undocumented: Vec<&str> = actual_duplicates
-        .difference(&known_set)
-        .copied()
-        .collect();
+    let undocumented: Vec<&str> = actual_duplicates.difference(&known_set).copied().collect();
 
     if !undocumented.is_empty() {
         println!(
@@ -188,10 +166,8 @@ fn test_document_unavoidable_duplicates() {
     }
 
     // Check if any documented duplicates are no longer present (cleanup opportunity)
-    let no_longer_duplicate: Vec<&str> = known_set
-        .difference(&actual_duplicates)
-        .copied()
-        .collect();
+    let no_longer_duplicate: Vec<&str> =
+        known_set.difference(&actual_duplicates).copied().collect();
 
     if !no_longer_duplicate.is_empty() {
         println!(

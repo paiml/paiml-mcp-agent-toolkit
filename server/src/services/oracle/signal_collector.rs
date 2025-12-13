@@ -158,7 +158,14 @@ impl SignalCollector for TestCollector {
 
     async fn collect(&self, project_path: &Path) -> Result<Vec<SignalEvidence>> {
         let output = Command::new("cargo")
-            .args(["test", "--no-fail-fast", "--", "--format=json", "-Z", "unstable-options"])
+            .args([
+                "test",
+                "--no-fail-fast",
+                "--",
+                "--format=json",
+                "-Z",
+                "unstable-options",
+            ])
             .current_dir(project_path)
             .output()?;
 
@@ -231,11 +238,7 @@ impl AggregatedCollector {
                 Ok(signals) => all_signals.extend(signals),
                 Err(e) => {
                     // Log but continue with other collectors (Jidoka - don't stop entirely)
-                    eprintln!(
-                        "Warning: {:?} collector failed: {}",
-                        collector.source(),
-                        e
-                    );
+                    eprintln!("Warning: {:?} collector failed: {}", collector.source(), e);
                 }
             }
         }

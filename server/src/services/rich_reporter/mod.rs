@@ -207,7 +207,8 @@ impl RichReporter {
             if trend.direction == TrendDirection::Degrading && trend.change_percent.abs() > 10.0 {
                 self.report.recommendations.push(format!(
                     "Address {} regression: {:.1}% degradation over window",
-                    trend.name, trend.change_percent.abs()
+                    trend.name,
+                    trend.change_percent.abs()
                 ));
             }
         }
@@ -622,7 +623,11 @@ mod tests {
         reporter.analyze();
 
         // Should have assigned cluster IDs
-        assert!(reporter.report.findings.iter().all(|f| f.cluster_id.is_some()));
+        assert!(reporter
+            .report
+            .findings
+            .iter()
+            .all(|f| f.cluster_id.is_some()));
     }
 
     #[test]
@@ -684,12 +689,16 @@ mod tests {
         assert_eq!(report.andon_status, AndonStatus::Green);
 
         // High finding = Yellow
-        report.findings.push(create_test_finding("1", "Test", Severity::High));
+        report
+            .findings
+            .push(create_test_finding("1", "Test", Severity::High));
         report.calculate_andon_status();
         assert_eq!(report.andon_status, AndonStatus::Yellow);
 
         // Critical finding = Red
-        report.findings.push(create_test_finding("2", "Test", Severity::Critical));
+        report
+            .findings
+            .push(create_test_finding("2", "Test", Severity::Critical));
         report.calculate_andon_status();
         assert_eq!(report.andon_status, AndonStatus::Red);
     }

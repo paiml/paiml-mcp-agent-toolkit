@@ -185,8 +185,18 @@ impl ItemStatus {
 
             _ => {
                 // Provide helpful suggestion using Levenshtein distance
-                let valid_statuses = ["completed", "done", "inprogress", "wip", "planned",
-                                      "todo", "blocked", "stuck", "review", "cancelled"];
+                let valid_statuses = [
+                    "completed",
+                    "done",
+                    "inprogress",
+                    "wip",
+                    "planned",
+                    "todo",
+                    "blocked",
+                    "stuck",
+                    "review",
+                    "cancelled",
+                ];
                 let suggestion = valid_statuses
                     .iter()
                     .min_by_key(|v| levenshtein_distance(&normalized, v))
@@ -204,12 +214,27 @@ impl ItemStatus {
     /// Get all valid status strings for help text
     pub fn valid_values() -> &'static [&'static str] {
         &[
-            "completed", "done", "finished", "closed",
-            "inprogress", "in_progress", "wip", "active",
-            "planned", "todo", "open", "pending",
-            "blocked", "stuck", "waiting",
-            "review", "reviewing", "pr",
-            "cancelled", "canceled", "dropped",
+            "completed",
+            "done",
+            "finished",
+            "closed",
+            "inprogress",
+            "in_progress",
+            "wip",
+            "active",
+            "planned",
+            "todo",
+            "open",
+            "pending",
+            "blocked",
+            "stuck",
+            "waiting",
+            "review",
+            "reviewing",
+            "pr",
+            "cancelled",
+            "canceled",
+            "dropped",
         ]
     }
 }
@@ -221,17 +246,29 @@ fn levenshtein_distance(a: &str, b: &str) -> usize {
     let a_len = a_chars.len();
     let b_len = b_chars.len();
 
-    if a_len == 0 { return b_len; }
-    if b_len == 0 { return a_len; }
+    if a_len == 0 {
+        return b_len;
+    }
+    if b_len == 0 {
+        return a_len;
+    }
 
     let mut matrix = vec![vec![0usize; b_len + 1]; a_len + 1];
 
-    for i in 0..=a_len { matrix[i][0] = i; }
-    for j in 0..=b_len { matrix[0][j] = j; }
+    for i in 0..=a_len {
+        matrix[i][0] = i;
+    }
+    for j in 0..=b_len {
+        matrix[0][j] = j;
+    }
 
     for i in 1..=a_len {
         for j in 1..=b_len {
-            let cost = if a_chars[i - 1] == b_chars[j - 1] { 0 } else { 1 };
+            let cost = if a_chars[i - 1] == b_chars[j - 1] {
+                0
+            } else {
+                1
+            };
             matrix[i][j] = std::cmp::min(
                 std::cmp::min(matrix[i - 1][j] + 1, matrix[i][j - 1] + 1),
                 matrix[i - 1][j - 1] + cost,
@@ -657,58 +694,145 @@ roadmap:
 
         #[test]
         fn test_completed_aliases() {
-            assert_eq!(ItemStatus::from_string("completed").unwrap(), ItemStatus::Completed);
-            assert_eq!(ItemStatus::from_string("done").unwrap(), ItemStatus::Completed);
-            assert_eq!(ItemStatus::from_string("finished").unwrap(), ItemStatus::Completed);
-            assert_eq!(ItemStatus::from_string("closed").unwrap(), ItemStatus::Completed);
+            assert_eq!(
+                ItemStatus::from_string("completed").unwrap(),
+                ItemStatus::Completed
+            );
+            assert_eq!(
+                ItemStatus::from_string("done").unwrap(),
+                ItemStatus::Completed
+            );
+            assert_eq!(
+                ItemStatus::from_string("finished").unwrap(),
+                ItemStatus::Completed
+            );
+            assert_eq!(
+                ItemStatus::from_string("closed").unwrap(),
+                ItemStatus::Completed
+            );
             // Case insensitive
-            assert_eq!(ItemStatus::from_string("DONE").unwrap(), ItemStatus::Completed);
-            assert_eq!(ItemStatus::from_string("Done").unwrap(), ItemStatus::Completed);
+            assert_eq!(
+                ItemStatus::from_string("DONE").unwrap(),
+                ItemStatus::Completed
+            );
+            assert_eq!(
+                ItemStatus::from_string("Done").unwrap(),
+                ItemStatus::Completed
+            );
         }
 
         #[test]
         fn test_inprogress_aliases() {
-            assert_eq!(ItemStatus::from_string("inprogress").unwrap(), ItemStatus::InProgress);
-            assert_eq!(ItemStatus::from_string("in_progress").unwrap(), ItemStatus::InProgress);
-            assert_eq!(ItemStatus::from_string("in-progress").unwrap(), ItemStatus::InProgress);
-            assert_eq!(ItemStatus::from_string("wip").unwrap(), ItemStatus::InProgress);
-            assert_eq!(ItemStatus::from_string("active").unwrap(), ItemStatus::InProgress);
-            assert_eq!(ItemStatus::from_string("started").unwrap(), ItemStatus::InProgress);
-            assert_eq!(ItemStatus::from_string("WIP").unwrap(), ItemStatus::InProgress);
+            assert_eq!(
+                ItemStatus::from_string("inprogress").unwrap(),
+                ItemStatus::InProgress
+            );
+            assert_eq!(
+                ItemStatus::from_string("in_progress").unwrap(),
+                ItemStatus::InProgress
+            );
+            assert_eq!(
+                ItemStatus::from_string("in-progress").unwrap(),
+                ItemStatus::InProgress
+            );
+            assert_eq!(
+                ItemStatus::from_string("wip").unwrap(),
+                ItemStatus::InProgress
+            );
+            assert_eq!(
+                ItemStatus::from_string("active").unwrap(),
+                ItemStatus::InProgress
+            );
+            assert_eq!(
+                ItemStatus::from_string("started").unwrap(),
+                ItemStatus::InProgress
+            );
+            assert_eq!(
+                ItemStatus::from_string("WIP").unwrap(),
+                ItemStatus::InProgress
+            );
         }
 
         #[test]
         fn test_planned_aliases() {
-            assert_eq!(ItemStatus::from_string("planned").unwrap(), ItemStatus::Planned);
-            assert_eq!(ItemStatus::from_string("todo").unwrap(), ItemStatus::Planned);
-            assert_eq!(ItemStatus::from_string("open").unwrap(), ItemStatus::Planned);
-            assert_eq!(ItemStatus::from_string("pending").unwrap(), ItemStatus::Planned);
+            assert_eq!(
+                ItemStatus::from_string("planned").unwrap(),
+                ItemStatus::Planned
+            );
+            assert_eq!(
+                ItemStatus::from_string("todo").unwrap(),
+                ItemStatus::Planned
+            );
+            assert_eq!(
+                ItemStatus::from_string("open").unwrap(),
+                ItemStatus::Planned
+            );
+            assert_eq!(
+                ItemStatus::from_string("pending").unwrap(),
+                ItemStatus::Planned
+            );
             assert_eq!(ItemStatus::from_string("new").unwrap(), ItemStatus::Planned);
         }
 
         #[test]
         fn test_blocked_aliases() {
-            assert_eq!(ItemStatus::from_string("blocked").unwrap(), ItemStatus::Blocked);
-            assert_eq!(ItemStatus::from_string("stuck").unwrap(), ItemStatus::Blocked);
-            assert_eq!(ItemStatus::from_string("waiting").unwrap(), ItemStatus::Blocked);
-            assert_eq!(ItemStatus::from_string("on-hold").unwrap(), ItemStatus::Blocked);
-            assert_eq!(ItemStatus::from_string("on_hold").unwrap(), ItemStatus::Blocked);
+            assert_eq!(
+                ItemStatus::from_string("blocked").unwrap(),
+                ItemStatus::Blocked
+            );
+            assert_eq!(
+                ItemStatus::from_string("stuck").unwrap(),
+                ItemStatus::Blocked
+            );
+            assert_eq!(
+                ItemStatus::from_string("waiting").unwrap(),
+                ItemStatus::Blocked
+            );
+            assert_eq!(
+                ItemStatus::from_string("on-hold").unwrap(),
+                ItemStatus::Blocked
+            );
+            assert_eq!(
+                ItemStatus::from_string("on_hold").unwrap(),
+                ItemStatus::Blocked
+            );
         }
 
         #[test]
         fn test_review_aliases() {
-            assert_eq!(ItemStatus::from_string("review").unwrap(), ItemStatus::Review);
-            assert_eq!(ItemStatus::from_string("reviewing").unwrap(), ItemStatus::Review);
+            assert_eq!(
+                ItemStatus::from_string("review").unwrap(),
+                ItemStatus::Review
+            );
+            assert_eq!(
+                ItemStatus::from_string("reviewing").unwrap(),
+                ItemStatus::Review
+            );
             assert_eq!(ItemStatus::from_string("pr").unwrap(), ItemStatus::Review);
-            assert_eq!(ItemStatus::from_string("pending-review").unwrap(), ItemStatus::Review);
+            assert_eq!(
+                ItemStatus::from_string("pending-review").unwrap(),
+                ItemStatus::Review
+            );
         }
 
         #[test]
         fn test_cancelled_aliases() {
-            assert_eq!(ItemStatus::from_string("cancelled").unwrap(), ItemStatus::Cancelled);
-            assert_eq!(ItemStatus::from_string("canceled").unwrap(), ItemStatus::Cancelled);
-            assert_eq!(ItemStatus::from_string("dropped").unwrap(), ItemStatus::Cancelled);
-            assert_eq!(ItemStatus::from_string("wontfix").unwrap(), ItemStatus::Cancelled);
+            assert_eq!(
+                ItemStatus::from_string("cancelled").unwrap(),
+                ItemStatus::Cancelled
+            );
+            assert_eq!(
+                ItemStatus::from_string("canceled").unwrap(),
+                ItemStatus::Cancelled
+            );
+            assert_eq!(
+                ItemStatus::from_string("dropped").unwrap(),
+                ItemStatus::Cancelled
+            );
+            assert_eq!(
+                ItemStatus::from_string("wontfix").unwrap(),
+                ItemStatus::Cancelled
+            );
         }
 
         #[test]

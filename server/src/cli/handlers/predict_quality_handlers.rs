@@ -151,7 +151,8 @@ mod tests {
     #[tokio::test]
     async fn test_predict_quality_no_metric() {
         // Should fail if no metric specified and --all not set
-        let result = handle_predict_quality(None, None, 30, OutputFormat::Table, false, false).await;
+        let result =
+            handle_predict_quality(None, None, 30, OutputFormat::Table, false, false).await;
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("Must specify"));
     }

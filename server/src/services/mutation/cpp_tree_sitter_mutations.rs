@@ -72,8 +72,9 @@ impl TreeSitterMutationOperator for CppBinaryOpMutation {
                 mutated.splice(operator_node.byte_range(), new_op.bytes());
 
                 MutatedSource {
-                    source: String::from_utf8(mutated)
-                    .expect("mutated source is valid UTF-8 (original source + ASCII operators)"),
+                    source: String::from_utf8(mutated).expect(
+                        "mutated source is valid UTF-8 (original source + ASCII operators)",
+                    ),
                     description: format!("{} → {}", op_text, new_op),
                     location: SourceLocation {
                         line: operator_node.start_position().row + 1,
@@ -152,8 +153,9 @@ impl TreeSitterMutationOperator for CppRelationalOpMutation {
                 mutated.splice(operator_node.byte_range(), new_op.bytes());
 
                 MutatedSource {
-                    source: String::from_utf8(mutated)
-                    .expect("mutated source is valid UTF-8 (original source + ASCII operators)"),
+                    source: String::from_utf8(mutated).expect(
+                        "mutated source is valid UTF-8 (original source + ASCII operators)",
+                    ),
                     description: format!("{} → {}", op_text, new_op),
                     location: SourceLocation {
                         line: operator_node.start_position().row + 1,
@@ -226,7 +228,7 @@ impl TreeSitterMutationOperator for CppLogicalOpMutation {
 
         vec![MutatedSource {
             source: String::from_utf8(mutated)
-                    .expect("mutated source is valid UTF-8 (original source + ASCII operators)"),
+                .expect("mutated source is valid UTF-8 (original source + ASCII operators)"),
             description: format!("{} → {}", op_text, new_op),
             location: SourceLocation {
                 line: operator_node.start_position().row + 1,
@@ -327,8 +329,9 @@ impl TreeSitterMutationOperator for CppBitwiseOpMutation {
                 mutated.splice(operator_node.byte_range(), new_op.bytes());
 
                 MutatedSource {
-                    source: String::from_utf8(mutated)
-                    .expect("mutated source is valid UTF-8 (original source + ASCII operators)"),
+                    source: String::from_utf8(mutated).expect(
+                        "mutated source is valid UTF-8 (original source + ASCII operators)",
+                    ),
                     description: format!("{} → {}", op_text, new_op),
                     location: SourceLocation {
                         line: operator_node.start_position().row + 1,
@@ -418,8 +421,9 @@ impl TreeSitterMutationOperator for CppUnaryOpMutation {
                 mutated.splice(operator_node.byte_range(), new_op.bytes());
 
                 MutatedSource {
-                    source: String::from_utf8(mutated)
-                    .expect("mutated source is valid UTF-8 (original source + ASCII operators)"),
+                    source: String::from_utf8(mutated).expect(
+                        "mutated source is valid UTF-8 (original source + ASCII operators)",
+                    ),
                     description: format!("{} → {}", op_text, new_op),
                     location: SourceLocation {
                         line: operator_node.start_position().row + 1,
@@ -924,13 +928,7 @@ mod tests {
     /// Test all C++ operators produce valid UTF-8
     #[test]
     fn test_all_cpp_operators_utf8() {
-        let test_cases = vec![
-            "a + b",
-            "x == y",
-            "a && b",
-            "a += b",
-            "ptr->field",
-        ];
+        let test_cases = vec!["a + b", "x == y", "a && b", "a += b", "ptr->field"];
 
         for source in test_cases {
             let tree = parse_cpp(source);

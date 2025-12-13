@@ -77,8 +77,7 @@ impl PdcaLoop {
             // Check for stagnation (Andon principle)
             if defects.len() == previous_defect_count {
                 stagnation_count += 1;
-                if stagnation_count >= self.config.stagnation_threshold
-                    && self.config.andon_enabled
+                if stagnation_count >= self.config.stagnation_threshold && self.config.andon_enabled
                 {
                     eprintln!(
                         "ANDON: Stagnation detected after {} iterations with {} defects",
@@ -204,11 +203,7 @@ impl PdcaLoop {
     }
 
     /// Apply fixes for defects
-    async fn apply_fixes(
-        &self,
-        defects: &[&DefectReport],
-        project_path: &Path,
-    ) -> Result<usize> {
+    async fn apply_fixes(&self, defects: &[&DefectReport], project_path: &Path) -> Result<usize> {
         let mut fixed_count = 0;
 
         for defect in defects {
@@ -227,8 +222,7 @@ impl PdcaLoop {
                     }
                     FixType::Replacement { old, new } => {
                         // Apply text replacement
-                        let content =
-                            std::fs::read_to_string(&defect.location.file_path)?;
+                        let content = std::fs::read_to_string(&defect.location.file_path)?;
                         let updated = content.replace(old, new);
                         std::fs::write(&defect.location.file_path, updated)?;
                         fixed_count += 1;
@@ -244,11 +238,7 @@ impl PdcaLoop {
     }
 
     /// Check for regression after applying fixes
-    fn check_regression(
-        &self,
-        before: &ProjectMetrics,
-        after: &ProjectMetrics,
-    ) -> Result<()> {
+    fn check_regression(&self, before: &ProjectMetrics, after: &ProjectMetrics) -> Result<()> {
         // Coverage should not decrease significantly
         if after.test_coverage < before.test_coverage - 0.01 {
             bail!(

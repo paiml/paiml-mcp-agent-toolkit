@@ -15,14 +15,14 @@
 //! - **Kaizen**: Incremental migration in 4 phases
 //! - **Muda Elimination**: Removes 3.1 MB of JavaScript vendor code
 
+pub mod accessibility;
+pub mod app;
+pub mod protocol;
 pub mod state;
 pub mod widgets;
-pub mod protocol;
-pub mod app;
-pub mod accessibility;
 
-pub use state::{DashboardState, DashboardMessage};
 pub use app::PmatDashboard;
+pub use state::{DashboardMessage, DashboardState};
 
 /// Dashboard configuration
 #[derive(Debug, Clone)]
@@ -47,8 +47,8 @@ impl Default for DashboardConfig {
 
 // Re-export types used in public API
 pub use state::{
-    SystemMetrics, Hotspot, TabId, LayoutConfig, SortDirection,
-    AnimationConfig, ZoomConfig, Color, ExportFormat, Command
+    AnimationConfig, Color, Command, ExportFormat, Hotspot, LayoutConfig, SortDirection,
+    SystemMetrics, TabId, ZoomConfig,
 };
 
 #[cfg(test)]
@@ -125,7 +125,7 @@ mod tests {
 
     mod phase1_websocket_protocol {
         use super::*;
-        use crate::protocol::{WsMessage, WsCommand};
+        use crate::protocol::{WsCommand, WsMessage};
 
         #[test]
         fn test_ws_message_deserialize() {
@@ -136,7 +136,9 @@ mod tests {
 
         #[test]
         fn test_ws_command_serialize() {
-            let cmd = WsCommand::Subscribe { channel: "metrics".to_string() };
+            let cmd = WsCommand::Subscribe {
+                channel: "metrics".to_string(),
+            };
             let json = serde_json::to_string(&cmd).expect("serialize");
             assert!(json.contains("subscribe"));
         }
@@ -161,8 +163,18 @@ mod tests {
         #[test]
         fn test_hotspot_table_sorting() {
             let table = HotspotTable::new(vec![
-                Hotspot { file: "a.rs".into(), complexity: 10, churn: 5, score: 50.0 },
-                Hotspot { file: "b.rs".into(), complexity: 20, churn: 3, score: 60.0 },
+                Hotspot {
+                    file: "a.rs".into(),
+                    complexity: 10,
+                    churn: 5,
+                    score: 50.0,
+                },
+                Hotspot {
+                    file: "b.rs".into(),
+                    complexity: 20,
+                    churn: 3,
+                    score: 60.0,
+                },
             ]);
             let sorted = table.sort_by("complexity", SortDirection::Descending);
             assert_eq!(sorted.rows()[0].file, "b.rs");
@@ -185,18 +197,24 @@ mod tests {
 
         #[test]
         fn test_hotspot_table_keyboard_nav() {
-            let table = HotspotTable::new(vec![
-                Hotspot { file: "a.rs".into(), complexity: 10, churn: 5, score: 50.0 },
-            ]);
+            let table = HotspotTable::new(vec![Hotspot {
+                file: "a.rs".into(),
+                complexity: 10,
+                churn: 5,
+                score: 50.0,
+            }]);
             let table = table.with_keyboard_navigation(true);
             assert!(table.is_focusable());
         }
 
         #[test]
         fn test_hotspot_table_export_json() {
-            let table = HotspotTable::new(vec![
-                Hotspot { file: "a.rs".into(), complexity: 10, churn: 5, score: 50.0 },
-            ]);
+            let table = HotspotTable::new(vec![Hotspot {
+                file: "a.rs".into(),
+                complexity: 10,
+                churn: 5,
+                score: 50.0,
+            }]);
             let json = table.export_json();
             assert!(json.contains("a.rs"));
         }
@@ -208,29 +226,30 @@ mod tests {
 
     mod phase3_charts {
         use super::*;
-        use crate::widgets::{MetricsChart, ChartType};
+        use crate::widgets::{ChartType, MetricsChart};
 
         #[test]
         fn test_metrics_chart_line() {
-            let chart = MetricsChart::new(ChartType::Line)
-                .with_data_points(vec![1.0, 2.0, 3.0, 4.0]);
+            let chart =
+                MetricsChart::new(ChartType::Line).with_data_points(vec![1.0, 2.0, 3.0, 4.0]);
             assert_eq!(chart.chart_type(), ChartType::Line);
         }
 
         #[test]
         fn test_chart_realtime_update() {
-            let mut chart = MetricsChart::new(ChartType::Line)
-                .with_data_points(vec![1.0, 2.0]);
+            let mut chart = MetricsChart::new(ChartType::Line).with_data_points(vec![1.0, 2.0]);
             chart.push_data_point(3.0);
             assert_eq!(chart.data_points().len(), 3);
         }
 
         #[test]
         fn test_chart_frame_time() {
-            let chart = MetricsChart::new(ChartType::Line)
-                .with_data_points(vec![1.0; 1000]);
+            let chart = MetricsChart::new(ChartType::Line).with_data_points(vec![1.0; 1000]);
             let frame_time_ms = chart.measure_frame_time();
-            assert!(frame_time_ms < 16.0, "Frame time {frame_time_ms}ms exceeds 16ms (60fps)");
+            assert!(
+                frame_time_ms < 16.0,
+                "Frame time {frame_time_ms}ms exceeds 16ms (60fps)"
+            );
         }
 
         #[test]
@@ -247,7 +266,7 @@ mod tests {
 
     mod phase4_flowdiagram {
         use super::*;
-        use crate::widgets::{DagDiagram, DagNode, DagEdge};
+        use crate::widgets::{DagDiagram, DagEdge, DagNode};
 
         #[test]
         fn test_dag_diagram_nodes() {
@@ -268,8 +287,7 @@ mod tests {
 
         #[test]
         fn test_dag_diagram_pan_zoom() {
-            let mut dag = DagDiagram::new()
-                .with_zoom(ZoomConfig { min: 0.5, max: 2.0 });
+            let mut dag = DagDiagram::new().with_zoom(ZoomConfig { min: 0.5, max: 2.0 });
             dag.zoom_to(1.5);
             assert_eq!(dag.current_zoom(), 1.5);
         }
@@ -297,8 +315,7 @@ mod tests {
 
         #[test]
         fn test_accessible_names() {
-            let table = HotspotTable::new(vec![])
-                .with_accessible_name("Hotspot Analysis Results");
+            let table = HotspotTable::new(vec![]).with_accessible_name("Hotspot Analysis Results");
             assert!(table.accessible_name().is_some());
         }
 
@@ -312,8 +329,7 @@ mod tests {
 
         #[test]
         fn test_focus_indicators() {
-            let button = widgets::DashboardButton::new("Refresh")
-                .with_focus_indicator(true);
+            let button = widgets::DashboardButton::new("Refresh").with_focus_indicator(true);
             assert!(button.has_focus_indicator());
         }
     }

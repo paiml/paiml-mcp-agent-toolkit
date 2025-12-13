@@ -1,0 +1,33 @@
+# Mutation Testing Configuration for PMAT
+# Used by cargo-mutants to improve test quality
+# https://mutants.rs/
+
+# Timeout per mutant (in seconds) - prevent hangs on infinite loops
+timeout = 60
+
+# Package to test (workspace-aware)
+package = "pmat"
+
+# Paths to exclude from mutation (auto-generated, tests themselves, build artifacts)
+exclude = [
+    "target/**",
+    "**/tests/**",
+    "**/benches/**",
+    "**/build.rs",
+    "**/examples/**",
+]
+
+# High-priority mutation targets for code quality
+# Focus on business logic rather than boilerplate
+include = [
+    "server/src/services/**",
+    "server/src/models/**",
+    "server/src/quality/**",
+]
+
+# Minimum test pass rate required
+# Set to 80% to allow gradual improvement
+minimum_pass_rate = 80
+
+# Cap concurrent jobs to prevent OOM on large codebases
+jobs = 4

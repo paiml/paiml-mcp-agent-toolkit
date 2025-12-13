@@ -29,7 +29,12 @@ impl ConvergenceTracker {
     }
 
     /// Record a new iteration
-    pub fn record(&mut self, metrics: ProjectMetrics, defects_remaining: usize, targets: &ConvergenceTargets) {
+    pub fn record(
+        &mut self,
+        metrics: ProjectMetrics,
+        defects_remaining: usize,
+        targets: &ConvergenceTargets,
+    ) {
         self.iterations += 1;
         let status = targets.check(&metrics);
 

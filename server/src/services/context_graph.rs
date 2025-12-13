@@ -49,7 +49,7 @@
 use crate::services::context::AstItem;
 use anyhow::{Context as _, Result};
 use std::collections::HashMap;
-use trueno_graph::{CsrGraph, NodeId, pagerank};
+use trueno_graph::{pagerank, CsrGraph, NodeId};
 
 /// CSR-backed project context for O(1) symbol lookups
 ///

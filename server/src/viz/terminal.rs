@@ -37,9 +37,9 @@ impl TerminalTheme {
     #[must_use]
     pub fn critical_color(&self) -> Rgba {
         match self {
-            Self::Default => Rgba::new(255, 87, 34, 255),       // Deep Orange
-            Self::HighContrast => Rgba::new(255, 255, 0, 255),  // Yellow
-            Self::Light => Rgba::new(244, 67, 54, 255),         // Red
+            Self::Default => Rgba::new(255, 87, 34, 255), // Deep Orange
+            Self::HighContrast => Rgba::new(255, 255, 0, 255), // Yellow
+            Self::Light => Rgba::new(244, 67, 54, 255),   // Red
             Self::ColorblindSafe => Rgba::new(230, 159, 0, 255), // Orange (Okabe-Ito)
         }
     }
@@ -48,9 +48,9 @@ impl TerminalTheme {
     #[must_use]
     pub fn normal_color(&self) -> Rgba {
         match self {
-            Self::Default => Rgba::new(66, 133, 244, 255),      // Blue
+            Self::Default => Rgba::new(66, 133, 244, 255), // Blue
             Self::HighContrast => Rgba::new(255, 255, 255, 255), // White
-            Self::Light => Rgba::new(33, 150, 243, 255),        // Light Blue
+            Self::Light => Rgba::new(33, 150, 243, 255),   // Light Blue
             Self::ColorblindSafe => Rgba::new(0, 114, 178, 255), // Blue (Okabe-Ito)
         }
     }
@@ -264,7 +264,8 @@ impl Visualizable for VisGraph {
             .enumerate()
             .map(|(i, &c)| (i, c))
             .collect();
-        indexed_criticality.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        indexed_criticality
+            .sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
         let visible_indices: std::collections::HashSet<usize> = indexed_criticality
             .iter()
@@ -296,10 +297,7 @@ impl Visualizable for VisGraph {
             // Dual encoding: critical nodes are larger
             let radius = if is_critical { 12.0 } else { 8.0 };
 
-            let node = GraphNode::new(idx)
-                .label(name)
-                .color(color)
-                .radius(radius);
+            let node = GraphNode::new(idx).label(name).color(color).radius(radius);
 
             fg = fg.add_node(node);
         }
@@ -314,7 +312,9 @@ impl Visualizable for VisGraph {
 
         // Build and render
         let built = fg.build().context("Failed to build force graph")?;
-        let fb = built.to_framebuffer().context("Failed to create framebuffer")?;
+        let fb = built
+            .to_framebuffer()
+            .context("Failed to create framebuffer")?;
 
         let encoder = TerminalEncoder::new()
             .mode(config.mode)
@@ -576,9 +576,9 @@ mod tests {
         graph.add_node("main".to_string(), 0.1);
         graph.add_node("config".to_string(), 0.3);
         graph.add_node("database".to_string(), 0.8); // Critical
-        graph.add_node("cache".to_string(), 0.7);    // Critical
+        graph.add_node("cache".to_string(), 0.7); // Critical
         graph.add_node("api".to_string(), 0.4);
-        graph.add_node("utils".to_string(), 0.9);    // Most critical
+        graph.add_node("utils".to_string(), 0.9); // Most critical
 
         // main depends on most things
         graph.add_edge(0, 1); // main -> config

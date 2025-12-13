@@ -132,7 +132,12 @@ pub fn clear_error() -> Result<()> {
 pub fn generate_issue_markdown(error: &CapturedError, title: Option<&str>) -> String {
     let default_title = format!(
         "Bug: {} fails with error",
-        error.command.split_whitespace().take(2).collect::<Vec<_>>().join(" ")
+        error
+            .command
+            .split_whitespace()
+            .take(2)
+            .collect::<Vec<_>>()
+            .join(" ")
     );
     let title = title.unwrap_or(&default_title);
 
@@ -216,7 +221,11 @@ mod tests {
 
     #[test]
     fn test_captured_error_new() {
-        let error = CapturedError::new("pmat", &["work".to_string(), "status".to_string()], "Failed to load roadmap");
+        let error = CapturedError::new(
+            "pmat",
+            &["work".to_string(), "status".to_string()],
+            "Failed to load roadmap",
+        );
 
         assert_eq!(error.command, "pmat");
         assert_eq!(error.args, vec!["work", "status"]);
@@ -228,16 +237,14 @@ mod tests {
 
     #[test]
     fn test_captured_error_with_backtrace() {
-        let error = CapturedError::new("pmat", &[], "error")
-            .with_backtrace("backtrace here");
+        let error = CapturedError::new("pmat", &[], "error").with_backtrace("backtrace here");
 
         assert_eq!(error.backtrace, Some("backtrace here".to_string()));
     }
 
     #[test]
     fn test_captured_error_with_exit_code() {
-        let error = CapturedError::new("pmat", &[], "error")
-            .with_exit_code(1);
+        let error = CapturedError::new("pmat", &[], "error").with_exit_code(1);
 
         assert_eq!(error.exit_code, Some(1));
     }
@@ -254,7 +261,11 @@ mod tests {
 
     #[test]
     fn test_generate_issue_markdown() {
-        let error = CapturedError::new("pmat", &["work".to_string(), "status".to_string()], "Failed");
+        let error = CapturedError::new(
+            "pmat",
+            &["work".to_string(), "status".to_string()],
+            "Failed",
+        );
         let md = generate_issue_markdown(&error, Some("Test Title"));
 
         assert!(md.contains("TITLE: Test Title"));

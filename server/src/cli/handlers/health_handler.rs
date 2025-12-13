@@ -322,7 +322,8 @@ async fn run_complexity_check(project_dir: &PathBuf) -> Result<HealthCheck> {
         &include,
         20, // cyclomatic threshold
         15, // cognitive threshold
-    ).await;
+    )
+    .await;
 
     let duration = start.elapsed();
 

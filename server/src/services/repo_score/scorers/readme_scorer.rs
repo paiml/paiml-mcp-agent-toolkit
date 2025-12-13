@@ -61,9 +61,14 @@ impl ReadmeScorer {
         }
 
         // Check for broken image references
-        let image_pattern = regex::Regex::new(r#"!\[[^\]]*\]\(([^)]+)\)|<img[^>]+src=["']([^"']+)["']"#).unwrap();
+        let image_pattern =
+            regex::Regex::new(r#"!\[[^\]]*\]\(([^)]+)\)|<img[^>]+src=["']([^"']+)["']"#).unwrap();
         for cap in image_pattern.captures_iter(&content) {
-            let img_path = cap.get(1).or_else(|| cap.get(2)).map(|m| m.as_str()).unwrap_or("");
+            let img_path = cap
+                .get(1)
+                .or_else(|| cap.get(2))
+                .map(|m| m.as_str())
+                .unwrap_or("");
 
             // Skip external URLs
             if img_path.starts_with("http://") || img_path.starts_with("https://") {
@@ -255,15 +260,16 @@ impl ReadmeScorer {
             findings.push(Finding {
                 severity: Severity::Warning,
                 category: "Documentation".to_string(),
-                message: "Hero image missing (add docs/hero.svg or image at top of README)".to_string(),
+                message: "Hero image missing (add docs/hero.svg or image at top of README)"
+                    .to_string(),
                 location: Some("README.md".to_string()),
                 impact_points: 0.0,
             });
         }
 
         // 2. Centered header (0.5 points)
-        let has_centered_header = content.contains("<p align=\"center\">")
-            || content.contains("<h1 align=\"center\">");
+        let has_centered_header =
+            content.contains("<p align=\"center\">") || content.contains("<h1 align=\"center\">");
         if has_centered_header {
             score += 0.5;
             findings.push(Finding {
@@ -543,7 +549,11 @@ Just a title.
         let result = scorer.score(repo_path, &config).await.unwrap();
 
         // Should get close to full score
-        assert!(result.score >= 14.0, "Professional README should score >= 14.0, got {}", result.score);
+        assert!(
+            result.score >= 14.0,
+            "Professional README should score >= 14.0, got {}",
+            result.score
+        );
         assert_eq!(result.subcategories.len(), 3);
     }
 
@@ -565,13 +575,21 @@ Just a title.
         // - Stream of consciousness pattern (-1.5)
         // A3 should score ~0.5/5.0
         let a3 = result.subcategories.iter().find(|s| s.id == "A3").unwrap();
-        assert!(a3.score <= 1.0, "Bot-generated README A3 should score <= 1.0, got {}", a3.score);
+        assert!(
+            a3.score <= 1.0,
+            "Bot-generated README A3 should score <= 1.0, got {}",
+            a3.score
+        );
 
         // Check for stream-of-consciousness warning
-        assert!(result.findings.iter().any(|f|
-            f.message.contains("Stream-of-consciousness") ||
-            f.message.contains("bot-generated")
-        ), "Should warn about bot-generated pattern");
+        assert!(
+            result
+                .findings
+                .iter()
+                .any(|f| f.message.contains("Stream-of-consciousness")
+                    || f.message.contains("bot-generated")),
+            "Should warn about bot-generated pattern"
+        );
     }
 
     #[tokio::test]
@@ -609,9 +627,13 @@ cargo install project
         let result = scorer.score(repo_path, &config).await.unwrap();
 
         // Should have finding about broken image
-        assert!(result.findings.iter().any(|f|
-            f.message.contains("Broken image link")
-        ), "Should detect broken image link");
+        assert!(
+            result
+                .findings
+                .iter()
+                .any(|f| f.message.contains("Broken image link")),
+            "Should detect broken image link"
+        );
     }
 
     #[tokio::test]
@@ -627,9 +649,13 @@ cargo install project
         let result = scorer.score(repo_path, &config).await.unwrap();
 
         // Should detect hero image from docs/hero.svg
-        assert!(result.findings.iter().any(|f|
-            f.message.contains("Hero image present")
-        ), "Should detect hero image in docs/");
+        assert!(
+            result
+                .findings
+                .iter()
+                .any(|f| f.message.contains("Hero image present")),
+            "Should detect hero image in docs/"
+        );
     }
 
     #[tokio::test]
@@ -655,9 +681,13 @@ cargo install project
         let result = scorer.score(repo_path, &config).await.unwrap();
 
         // Should detect ToC via anchor links
-        assert!(result.findings.iter().any(|f|
-            f.message.contains("Table of Contents present")
-        ), "Should detect ToC via anchor links");
+        assert!(
+            result
+                .findings
+                .iter()
+                .any(|f| f.message.contains("Table of Contents present")),
+            "Should detect ToC via anchor links"
+        );
     }
 
     #[tokio::test]

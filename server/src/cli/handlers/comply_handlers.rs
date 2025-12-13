@@ -163,8 +163,14 @@ async fn handle_check(
     ];
 
     // Calculate compliance
-    let failures = checks.iter().filter(|c| c.status == CheckStatus::Fail).count();
-    let warnings = checks.iter().filter(|c| c.status == CheckStatus::Warn).count();
+    let failures = checks
+        .iter()
+        .filter(|c| c.status == CheckStatus::Fail)
+        .count();
+    let warnings = checks
+        .iter()
+        .filter(|c| c.status == CheckStatus::Warn)
+        .count();
     let is_compliant = failures == 0;
 
     // Get breaking changes
@@ -174,7 +180,10 @@ async fn handle_check(
     // Build recommendations
     let mut recommendations = vec![];
     if versions_behind > 0 {
-        recommendations.push(format!("Run 'pmat comply migrate' to update to v{}", PMAT_VERSION));
+        recommendations.push(format!(
+            "Run 'pmat comply migrate' to update to v{}",
+            PMAT_VERSION
+        ));
     }
     if !breaking_changes.is_empty() {
         recommendations.push("Review breaking changes with 'pmat comply diff'".to_string());
@@ -186,7 +195,10 @@ async fn handle_check(
         is_compliant,
         versions_behind,
         checks: if failures_only {
-            checks.into_iter().filter(|c| c.status == CheckStatus::Fail).collect()
+            checks
+                .into_iter()
+                .filter(|c| c.status == CheckStatus::Fail)
+                .collect()
         } else {
             checks
         },
@@ -239,12 +251,17 @@ async fn handle_migrate(
 
     let breaking_changes = get_breaking_changes_since(current_version);
     if !breaking_changes.is_empty() && !force {
-        println!("\x1b[33mWarning: {} breaking changes detected:\x1b[0m", breaking_changes.len());
+        println!(
+            "\x1b[33mWarning: {} breaking changes detected:\x1b[0m",
+            breaking_changes.len()
+        );
         for change in &breaking_changes {
             println!("  - v{}: {}", change.version, change.description);
         }
         println!("\nUse --force to proceed anyway\n");
-        if !force { return Ok(()); }
+        if !force {
+            return Ok(());
+        }
     }
 
     if !no_backup && !dry_run {
@@ -254,7 +271,10 @@ async fn handle_migrate(
     }
 
     let migrations = vec![
-        ("Update project.toml version", migrate_project_version(project_path, target, dry_run)),
+        (
+            "Update project.toml version",
+            migrate_project_version(project_path, target, dry_run),
+        ),
         ("Update gitignore", migrate_gitignore(project_path, dry_run)),
     ];
 
@@ -298,12 +318,19 @@ async fn handle_diff(
             println!("  No breaking changes between these versions.");
         } else {
             for entry in breaking {
-                println!("  \x1b[31m[BREAKING]\x1b[0m v{}: {}", entry.version, entry.description);
+                println!(
+                    "  \x1b[31m[BREAKING]\x1b[0m v{}: {}",
+                    entry.version, entry.description
+                );
             }
         }
     } else {
         for entry in &changes {
-            let icon = if entry.breaking { "\x1b[31m[BREAKING]\x1b[0m" } else { "\x1b[32m[FEATURE]\x1b[0m" };
+            let icon = if entry.breaking {
+                "\x1b[31m[BREAKING]\x1b[0m"
+            } else {
+                "\x1b[32m[FEATURE]\x1b[0m"
+            };
             println!("  {} v{}: {}", icon, entry.version, entry.description);
         }
     }
@@ -362,7 +389,10 @@ async fn handle_init(project_path: &Path, force: bool) -> Result<()> {
     let content = toml::to_string_pretty(&config)?;
     fs::write(&config_path, &content)?;
 
-    println!("\x1b[32m✓\x1b[0m Initialized PMAT project at {}", config_path.display());
+    println!(
+        "\x1b[32m✓\x1b[0m Initialized PMAT project at {}",
+        config_path.display()
+    );
     println!("\nProject version: v{}", PMAT_VERSION);
     println!("\nNext steps:");
     println!("  1. Run 'pmat comply check' to verify compliance");
@@ -415,7 +445,10 @@ fn check_version_currency(project_version: &str) -> ComplianceCheck {
         ComplianceCheck {
             name: "Version Currency".to_string(),
             status: CheckStatus::Warn,
-            message: format!("{} versions behind (v{} → v{})", behind, project_version, PMAT_VERSION),
+            message: format!(
+                "{} versions behind (v{} → v{})",
+                behind, project_version, PMAT_VERSION
+            ),
             severity: Severity::Warning,
         }
     } else {
@@ -430,7 +463,11 @@ fn check_version_currency(project_version: &str) -> ComplianceCheck {
 
 fn check_config_files(project_path: &Path) -> ComplianceCheck {
     let config_files = [".pmat/project.toml", ".pmat-metrics.toml"];
-    let missing: Vec<&str> = config_files.iter().filter(|f| !project_path.join(f).exists()).copied().collect();
+    let missing: Vec<&str> = config_files
+        .iter()
+        .filter(|f| !project_path.join(f).exists())
+        .copied()
+        .collect();
 
     if missing.is_empty() {
         ComplianceCheck {
@@ -506,11 +543,20 @@ fn check_deprecated_features(_project_path: &Path) -> ComplianceCheck {
 }
 
 fn calculate_versions_behind(project_version: &str) -> u32 {
-    let current_parts: Vec<u32> = PMAT_VERSION.split('.').filter_map(|s| s.parse().ok()).collect();
-    let project_parts: Vec<u32> = project_version.split('.').filter_map(|s| s.parse().ok()).collect();
+    let current_parts: Vec<u32> = PMAT_VERSION
+        .split('.')
+        .filter_map(|s| s.parse().ok())
+        .collect();
+    let project_parts: Vec<u32> = project_version
+        .split('.')
+        .filter_map(|s| s.parse().ok())
+        .collect();
 
     if current_parts.len() >= 2 && project_parts.len() >= 2 {
-        current_parts.get(1).unwrap_or(&0).saturating_sub(*project_parts.get(1).unwrap_or(&0))
+        current_parts
+            .get(1)
+            .unwrap_or(&0)
+            .saturating_sub(*project_parts.get(1).unwrap_or(&0))
     } else {
         0
     }
@@ -548,9 +594,13 @@ fn get_changelog_entries(_from: &str, _to: &str) -> Vec<ChangelogEntry> {
 }
 
 fn migrate_project_version(project_path: &Path, target: &str, dry_run: bool) -> Result<bool> {
-    if dry_run { return Ok(true); }
+    if dry_run {
+        return Ok(true);
+    }
     let mut config = load_or_create_project_config(project_path)?;
-    if config.pmat.version == target { return Ok(false); }
+    if config.pmat.version == target {
+        return Ok(false);
+    }
     config.pmat.version = target.to_string();
     config.pmat.last_compliance_check = Some(Utc::now());
     let content = toml::to_string_pretty(&config)?;
@@ -561,7 +611,9 @@ fn migrate_project_version(project_path: &Path, target: &str, dry_run: bool) -> 
 fn migrate_gitignore(project_path: &Path, dry_run: bool) -> Result<bool> {
     let gitignore_path = project_path.join(".gitignore");
     let pmat_entries = [".pmat/backup/", ".pmat-qa/"];
-    if !gitignore_path.exists() { return Ok(false); }
+    if !gitignore_path.exists() {
+        return Ok(false);
+    }
     let content = fs::read_to_string(&gitignore_path)?;
     let mut needs_update = false;
     let mut new_entries = vec![];
@@ -573,7 +625,9 @@ fn migrate_gitignore(project_path: &Path, dry_run: bool) -> Result<bool> {
     }
     if needs_update && !dry_run {
         let mut new_content = content.clone();
-        if !new_content.ends_with('\n') { new_content.push('\n'); }
+        if !new_content.ends_with('\n') {
+            new_content.push('\n');
+        }
         new_content.push_str("\n# PMAT\n");
         for entry in new_entries {
             new_content.push_str(entry);
@@ -595,7 +649,11 @@ fn print_compliance_text(report: &ComplianceReport) {
     println!("\nProject Version: {}", report.project_version);
     println!("Current PMAT:    {}", report.current_version);
     println!("Versions Behind: {}", report.versions_behind);
-    let status = if report.is_compliant { "\x1b[32mCOMPLIANT\x1b[0m" } else { "\x1b[31mNON-COMPLIANT\x1b[0m" };
+    let status = if report.is_compliant {
+        "\x1b[32mCOMPLIANT\x1b[0m"
+    } else {
+        "\x1b[31mNON-COMPLIANT\x1b[0m"
+    };
     println!("Status:          {}\n", status);
     println!("Checks:");
     for check in &report.checks {
@@ -609,7 +667,9 @@ fn print_compliance_text(report: &ComplianceReport) {
     }
     if !report.recommendations.is_empty() {
         println!("\nRecommendations:");
-        for rec in &report.recommendations { println!("  • {}", rec); }
+        for rec in &report.recommendations {
+            println!("  • {}", rec);
+        }
     }
     println!("\n{}", "=".repeat(60));
 }
@@ -620,10 +680,22 @@ fn print_compliance_markdown(report: &ComplianceReport) {
     println!("|----------|-------|");
     println!("| Project Version | {} |", report.project_version);
     println!("| Current PMAT | {} |", report.current_version);
-    println!("| Status | {} |", if report.is_compliant { "COMPLIANT" } else { "NON-COMPLIANT" });
+    println!(
+        "| Status | {} |",
+        if report.is_compliant {
+            "COMPLIANT"
+        } else {
+            "NON-COMPLIANT"
+        }
+    );
     println!("\n## Checks\n");
     for check in &report.checks {
-        let icon = match check.status { CheckStatus::Pass => "✅", CheckStatus::Warn => "⚠️", CheckStatus::Fail => "❌", CheckStatus::Skip => "⏭️" };
+        let icon = match check.status {
+            CheckStatus::Pass => "✅",
+            CheckStatus::Warn => "⚠️",
+            CheckStatus::Fail => "❌",
+            CheckStatus::Skip => "⏭️",
+        };
         println!("- {} **{}**: {}", icon, check.name, check.message);
     }
 }
@@ -780,7 +852,14 @@ async fn handle_report(
             out.push_str(&format!("\nGenerated: {}\n", report.timestamp));
             out.push_str(&format!("Project Version: {}\n", report.project_version));
             out.push_str(&format!("Current PMAT: {}\n", report.current_version));
-            out.push_str(&format!("Status: {}\n\n", if report.is_compliant { "COMPLIANT" } else { "NON-COMPLIANT" }));
+            out.push_str(&format!(
+                "Status: {}\n\n",
+                if report.is_compliant {
+                    "COMPLIANT"
+                } else {
+                    "NON-COMPLIANT"
+                }
+            ));
 
             out.push_str("Checks:\n");
             for check in &report.checks {
@@ -800,18 +879,26 @@ async fn handle_report(
 
             out
         }
-        ComplyOutputFormat::Json => {
-            serde_json::to_string_pretty(&report)?
-        }
+        ComplyOutputFormat::Json => serde_json::to_string_pretty(&report)?,
         ComplyOutputFormat::Markdown => {
             let mut out = String::new();
             out.push_str("# PMAT Compliance Report\n\n");
             out.push_str(&format!("**Generated:** {}\n\n", report.timestamp));
             out.push_str("| Property | Value |\n");
             out.push_str("|----------|-------|\n");
-            out.push_str(&format!("| Project Version | {} |\n", report.project_version));
+            out.push_str(&format!(
+                "| Project Version | {} |\n",
+                report.project_version
+            ));
             out.push_str(&format!("| Current PMAT | {} |\n", report.current_version));
-            out.push_str(&format!("| Status | {} |\n\n", if report.is_compliant { "✅ COMPLIANT" } else { "❌ NON-COMPLIANT" }));
+            out.push_str(&format!(
+                "| Status | {} |\n\n",
+                if report.is_compliant {
+                    "✅ COMPLIANT"
+                } else {
+                    "❌ NON-COMPLIANT"
+                }
+            ));
 
             out.push_str("## Checks\n\n");
             for check in &report.checks {
@@ -821,7 +908,10 @@ async fn handle_report(
                     CheckStatus::Fail => "❌",
                     CheckStatus::Skip => "⏭️",
                 };
-                out.push_str(&format!("- {} **{}**: {}\n", icon, check.name, check.message));
+                out.push_str(&format!(
+                    "- {} **{}**: {}\n",
+                    icon, check.name, check.message
+                ));
             }
 
             out

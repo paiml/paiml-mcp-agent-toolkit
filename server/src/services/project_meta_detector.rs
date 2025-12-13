@@ -65,21 +65,48 @@ impl ProjectMetaDetector {
     pub fn new() -> Self {
         Self {
             patterns: vec![
-                (Regex::new(r"^Makefile$").expect("static regex pattern '^Makefile$' is valid"), MetaFileType::Makefile),
-                (Regex::new(r"^makefile$").expect("static regex pattern '^makefile$' is valid"), MetaFileType::Makefile),
                 (
-                    Regex::new(r"^GNUmakefile$").expect("static regex pattern '^GNUmakefile$' is valid"),
+                    Regex::new(r"^Makefile$").expect("static regex pattern '^Makefile$' is valid"),
                     MetaFileType::Makefile,
                 ),
-                (Regex::new(r"^README\.md$").expect("static regex pattern '^README\\.md$' is valid"), MetaFileType::Readme),
                 (
-                    Regex::new(r"^README\.markdown$").expect("static regex pattern '^README\\.markdown$' is valid"),
+                    Regex::new(r"^makefile$").expect("static regex pattern '^makefile$' is valid"),
+                    MetaFileType::Makefile,
+                ),
+                (
+                    Regex::new(r"^GNUmakefile$")
+                        .expect("static regex pattern '^GNUmakefile$' is valid"),
+                    MetaFileType::Makefile,
+                ),
+                (
+                    Regex::new(r"^README\.md$")
+                        .expect("static regex pattern '^README\\.md$' is valid"),
                     MetaFileType::Readme,
                 ),
-                (Regex::new(r"^README\.rst$").expect("static regex pattern '^README\\.rst$' is valid"), MetaFileType::Readme),
-                (Regex::new(r"^README\.txt$").expect("static regex pattern '^README\\.txt$' is valid"), MetaFileType::Readme),
-                (Regex::new(r"^README$").expect("static regex pattern '^README$' is valid"), MetaFileType::Readme),
-                (Regex::new(r"^readme\.md$").expect("static regex pattern '^readme\\.md$' is valid"), MetaFileType::Readme),
+                (
+                    Regex::new(r"^README\.markdown$")
+                        .expect("static regex pattern '^README\\.markdown$' is valid"),
+                    MetaFileType::Readme,
+                ),
+                (
+                    Regex::new(r"^README\.rst$")
+                        .expect("static regex pattern '^README\\.rst$' is valid"),
+                    MetaFileType::Readme,
+                ),
+                (
+                    Regex::new(r"^README\.txt$")
+                        .expect("static regex pattern '^README\\.txt$' is valid"),
+                    MetaFileType::Readme,
+                ),
+                (
+                    Regex::new(r"^README$").expect("static regex pattern '^README$' is valid"),
+                    MetaFileType::Readme,
+                ),
+                (
+                    Regex::new(r"^readme\.md$")
+                        .expect("static regex pattern '^readme\\.md$' is valid"),
+                    MetaFileType::Readme,
+                ),
             ],
         }
     }
@@ -352,9 +379,10 @@ mod tests {
         }));
 
         // Verify patterns DON'T match non-target files
-        assert!(!detector.patterns.iter().any(|(regex, _)| {
-            regex.is_match("Makefile.bak") || regex.is_match("README.mdx")
-        }));
+        assert!(!detector
+            .patterns
+            .iter()
+            .any(|(regex, _)| { regex.is_match("Makefile.bak") || regex.is_match("README.mdx") }));
     }
 
     /// Test that detector initialization is stable and doesn't panic

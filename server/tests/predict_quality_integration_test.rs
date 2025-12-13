@@ -84,28 +84,61 @@ fn test_predict_quality_json_output() {
     );
 
     // Parse JSON output
-    let predictions: serde_json::Value = serde_json::from_str(&stdout).expect("Output should be valid JSON");
+    let predictions: serde_json::Value =
+        serde_json::from_str(&stdout).expect("Output should be valid JSON");
 
     assert!(predictions.is_array(), "JSON output should be an array");
     let first_prediction = &predictions[0];
 
     // Verify required fields
-    assert!(first_prediction.get("metric").is_some(), "JSON should have 'metric' field");
-    assert!(first_prediction.get("current_value").is_some(), "JSON should have 'current_value' field");
-    assert!(first_prediction.get("threshold").is_some(), "JSON should have 'threshold' field");
-    assert!(first_prediction.get("confidence").is_some(), "JSON should have 'confidence' field");
-    assert!(first_prediction.get("recommendations").is_some(), "JSON should have 'recommendations' field");
-    assert!(first_prediction.get("forecast").is_some(), "JSON should have 'forecast' field");
+    assert!(
+        first_prediction.get("metric").is_some(),
+        "JSON should have 'metric' field"
+    );
+    assert!(
+        first_prediction.get("current_value").is_some(),
+        "JSON should have 'current_value' field"
+    );
+    assert!(
+        first_prediction.get("threshold").is_some(),
+        "JSON should have 'threshold' field"
+    );
+    assert!(
+        first_prediction.get("confidence").is_some(),
+        "JSON should have 'confidence' field"
+    );
+    assert!(
+        first_prediction.get("recommendations").is_some(),
+        "JSON should have 'recommendations' field"
+    );
+    assert!(
+        first_prediction.get("forecast").is_some(),
+        "JSON should have 'forecast' field"
+    );
 
     // Verify forecast structure
-    let forecast = first_prediction["forecast"].as_array().expect("Forecast should be an array");
+    let forecast = first_prediction["forecast"]
+        .as_array()
+        .expect("Forecast should be an array");
     assert!(forecast.len() > 0, "Forecast should have data points");
 
     let first_point = &forecast[0];
-    assert!(first_point.get("days_ahead").is_some(), "Forecast point should have 'days_ahead'");
-    assert!(first_point.get("predicted_value").is_some(), "Forecast point should have 'predicted_value'");
-    assert!(first_point.get("lower_bound").is_some(), "Forecast point should have 'lower_bound'");
-    assert!(first_point.get("upper_bound").is_some(), "Forecast point should have 'upper_bound'");
+    assert!(
+        first_point.get("days_ahead").is_some(),
+        "Forecast point should have 'days_ahead'"
+    );
+    assert!(
+        first_point.get("predicted_value").is_some(),
+        "Forecast point should have 'predicted_value'"
+    );
+    assert!(
+        first_point.get("lower_bound").is_some(),
+        "Forecast point should have 'lower_bound'"
+    );
+    assert!(
+        first_point.get("upper_bound").is_some(),
+        "Forecast point should have 'upper_bound'"
+    );
 }
 
 /// Test --all flag for multiple metrics
@@ -207,8 +240,11 @@ fn test_predict_quality_high_confidence() {
         stdout
     );
 
-    let predictions: serde_json::Value = serde_json::from_str(&stdout).expect("Output should be valid JSON");
-    let confidence = predictions[0]["confidence"].as_f64().expect("Confidence should be a number");
+    let predictions: serde_json::Value =
+        serde_json::from_str(&stdout).expect("Output should be valid JSON");
+    let confidence = predictions[0]["confidence"]
+        .as_f64()
+        .expect("Confidence should be a number");
 
     assert!(
         confidence >= 0.85,
@@ -242,7 +278,8 @@ fn test_predict_quality_recommendations() {
 
     let stdout = String::from_utf8_lossy(&output.stdout);
 
-    let predictions: serde_json::Value = serde_json::from_str(&stdout).expect("Output should be valid JSON");
+    let predictions: serde_json::Value =
+        serde_json::from_str(&stdout).expect("Output should be valid JSON");
     let recommendations = predictions[0]["recommendations"]
         .as_array()
         .expect("Recommendations should be an array");
@@ -260,7 +297,8 @@ fn test_predict_quality_recommendations() {
         .join(" ");
 
     assert!(
-        recommendations_text.contains("dependencies") || recommendations_text.contains("optimization"),
+        recommendations_text.contains("dependencies")
+            || recommendations_text.contains("optimization"),
         "Recommendations should contain actionable advice"
     );
 }

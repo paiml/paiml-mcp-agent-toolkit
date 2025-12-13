@@ -353,10 +353,7 @@ impl TableRenderer {
             })
             .collect::<Vec<_>>()
             .join(&box_drawer.v.to_string());
-        lines.push(format!(
-            "{}{}{}",
-            box_drawer.v, header_cells, box_drawer.v
-        ));
+        lines.push(format!("{}{}{}", box_drawer.v, header_cells, box_drawer.v));
 
         // Separator
         let sep: String = self

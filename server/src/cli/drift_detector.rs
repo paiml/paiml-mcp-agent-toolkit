@@ -40,9 +40,7 @@ pub enum DriftError {
         reason: String,
     },
     /// Command exists but not documented
-    UndocumentedCommand {
-        command: String,
-    },
+    UndocumentedCommand { command: String },
     /// Deprecated command still documented without warning
     DeprecatedWithoutWarning {
         command: String,
@@ -60,21 +58,47 @@ pub enum DriftError {
 impl std::fmt::Display for DriftError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::NonExistentCommand { mentioned, file, line, suggestion } => {
-                write!(f, "{}:{}: command '{}' doesn't exist", file, line, mentioned)?;
+            Self::NonExistentCommand {
+                mentioned,
+                file,
+                line,
+                suggestion,
+            } => {
+                write!(
+                    f,
+                    "{}:{}: command '{}' doesn't exist",
+                    file, line, mentioned
+                )?;
                 if let Some(s) = suggestion {
                     write!(f, " (did you mean '{}'?)", s)?;
                 }
                 Ok(())
             }
-            Self::InvalidExample { example, file, line, reason } => {
-                write!(f, "{}:{}: invalid example '{}': {}", file, line, example, reason)
+            Self::InvalidExample {
+                example,
+                file,
+                line,
+                reason,
+            } => {
+                write!(
+                    f,
+                    "{}:{}: invalid example '{}': {}",
+                    file, line, example, reason
+                )
             }
             Self::UndocumentedCommand { command } => {
                 write!(f, "command '{}' is not documented", command)
             }
-            Self::DeprecatedWithoutWarning { command, file, line } => {
-                write!(f, "{}:{}: deprecated command '{}' documented without deprecation notice", file, line, command)
+            Self::DeprecatedWithoutWarning {
+                command,
+                file,
+                line,
+            } => {
+                write!(
+                    f,
+                    "{}:{}: deprecated command '{}' documented without deprecation notice",
+                    file, line, command
+                )
             }
             Self::BrokenLink { url, file, line } => {
                 write!(f, "{}:{}: broken link '{}'", file, line, url)
@@ -118,7 +142,8 @@ impl DriftReport {
         report.push_str("Drift Detection Report\n");
         report.push_str("======================\n\n");
 
-        report.push_str(&format!("Commands: {} total, {} documented ({:.1}% coverage)\n",
+        report.push_str(&format!(
+            "Commands: {} total, {} documented ({:.1}% coverage)\n",
             self.total_commands,
             self.documented_commands.len(),
             self.coverage
@@ -161,7 +186,8 @@ impl DriftDetector {
             // Match: pmat <command> [args]
             command_regex: Regex::new(r"pmat\s+([\w\-]+(?:\s+[\w\-]+)*)").unwrap(),
             // Match: ```bash\npmat ... or $ pmat ...
-            code_block_regex: Regex::new(r"(?:```(?:bash|shell|sh)?\n|\$\s*)(pmat[^\n`]+)").unwrap(),
+            code_block_regex: Regex::new(r"(?:```(?:bash|shell|sh)?\n|\$\s*)(pmat[^\n`]+)")
+                .unwrap(),
         }
     }
 
@@ -346,7 +372,11 @@ fn levenshtein(a: &str, b: &str) -> usize {
 
     for i in 1..=a_len {
         for j in 1..=b_len {
-            let cost = if a_chars[i - 1] == b_chars[j - 1] { 0 } else { 1 };
+            let cost = if a_chars[i - 1] == b_chars[j - 1] {
+                0
+            } else {
+                1
+            };
             matrix[i][j] = std::cmp::min(
                 std::cmp::min(matrix[i - 1][j] + 1, matrix[i][j - 1] + 1),
                 matrix[i - 1][j - 1] + cost,
@@ -416,7 +446,9 @@ mod tests {
         let errors = detector.detect_in_content(content, "README.md");
 
         assert_eq!(errors.len(), 1);
-        assert!(matches!(&errors[0], DriftError::NonExistentCommand { mentioned, .. } if mentioned == "mcp"));
+        assert!(
+            matches!(&errors[0], DriftError::NonExistentCommand { mentioned, .. } if mentioned == "mcp")
+        );
     }
 
     #[test]

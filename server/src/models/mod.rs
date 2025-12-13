@@ -48,10 +48,10 @@
 pub mod churn;
 pub mod complexity_bound;
 pub mod dag;
-pub mod debug_analysis;
 #[cfg(test)]
 pub mod dag_property_tests;
 pub mod dead_code;
+pub mod debug_analysis;
 pub mod deep_context_config;
 pub mod defect_report;
 pub mod error;

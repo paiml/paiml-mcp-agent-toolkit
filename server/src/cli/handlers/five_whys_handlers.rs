@@ -3,8 +3,8 @@
 // REFACTOR PHASE: CLI integration
 
 use crate::cli::DebugOutputFormat;
+use crate::services::debug_formatters::{format_json, format_markdown, format_text};
 use crate::services::five_whys_analyzer::FiveWhysAnalyzer;
-use crate::services::debug_formatters::{format_text, format_json, format_markdown};
 use anyhow::Result;
 use std::path::Path;
 

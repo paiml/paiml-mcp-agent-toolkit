@@ -186,10 +186,7 @@ fn main() {
     println!("{}", "─".repeat(50));
     let json_output = reporter.render_json();
     // Show first 500 chars
-    println!(
-        "{}...",
-        json_output.chars().take(500).collect::<String>()
-    );
+    println!("{}...", json_output.chars().take(500).collect::<String>());
 
     // Show markdown output
     println!();
@@ -202,10 +199,25 @@ fn main() {
     println!("Demo completed successfully!");
     println!();
     println!("Key features demonstrated:");
-    println!("  - K-Means clustering grouped {} findings into clusters", reporter.report().findings.len());
+    println!(
+        "  - K-Means clustering grouped {} findings into clusters",
+        reporter.report().findings.len()
+    );
     println!("  - PageRank identified central files in dependency graph");
-    println!("  - Louvain detected {} code communities", reporter.report().communities.len());
-    println!("  - Anomaly detection found {} outliers", reporter.report().anomalies.len());
-    println!("  - Trend analysis tracked {} metrics", reporter.report().trends.len());
-    println!("  - Generated {} recommendations", reporter.report().recommendations.len());
+    println!(
+        "  - Louvain detected {} code communities",
+        reporter.report().communities.len()
+    );
+    println!(
+        "  - Anomaly detection found {} outliers",
+        reporter.report().anomalies.len()
+    );
+    println!(
+        "  - Trend analysis tracked {} metrics",
+        reporter.report().trends.len()
+    );
+    println!(
+        "  - Generated {} recommendations",
+        reporter.report().recommendations.len()
+    );
 }

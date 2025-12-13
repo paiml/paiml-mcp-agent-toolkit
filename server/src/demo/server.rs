@@ -485,7 +485,9 @@ pub(crate) fn serve_summary_json(state: &Arc<RwLock<DemoState>>) -> Response<Byt
     Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "application/json")
-        .body(Bytes::from(serde_json::to_vec(&summary).expect("JSON serialization cannot fail for DemoContent")))
+        .body(Bytes::from(
+            serde_json::to_vec(&summary).expect("JSON serialization cannot fail for DemoContent"),
+        ))
         .expect("HTTP response construction cannot fail")
 }
 
@@ -501,7 +503,9 @@ pub(crate) fn serve_metrics_json(state: &Arc<RwLock<DemoState>>) -> Response<Byt
     Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "application/json")
-        .body(Bytes::from(serde_json::to_vec(&metrics).expect("JSON serialization cannot fail for metrics")))
+        .body(Bytes::from(
+            serde_json::to_vec(&metrics).expect("JSON serialization cannot fail for metrics"),
+        ))
         .expect("HTTP response construction cannot fail")
 }
 
@@ -521,7 +525,10 @@ pub(crate) fn serve_recommendations_json(state: &Arc<RwLock<DemoState>>) -> Resp
     Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "application/json")
-        .body(Bytes::from(serde_json::to_vec(&recommendations).expect("JSON serialization cannot fail for recommendations")))
+        .body(Bytes::from(
+            serde_json::to_vec(&recommendations)
+                .expect("JSON serialization cannot fail for recommendations"),
+        ))
         .expect("HTTP response construction cannot fail")
 }
 
@@ -561,7 +568,10 @@ pub(crate) fn serve_polyglot_analysis(state: &Arc<RwLock<DemoState>>) -> Respons
     Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "application/json")
-        .body(Bytes::from(serde_json::to_vec(&polyglot_data).expect("JSON serialization cannot fail for polyglot data")))
+        .body(Bytes::from(
+            serde_json::to_vec(&polyglot_data)
+                .expect("JSON serialization cannot fail for polyglot data"),
+        ))
         .expect("HTTP response construction cannot fail")
 }
 
@@ -579,7 +589,10 @@ pub(crate) fn serve_showcase_gallery(_state: &Arc<RwLock<DemoState>>) -> Respons
     Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "application/json")
-        .body(Bytes::from(serde_json::to_vec(&showcase_data).expect("JSON serialization cannot fail for showcase data")))
+        .body(Bytes::from(
+            serde_json::to_vec(&showcase_data)
+                .expect("JSON serialization cannot fail for showcase data"),
+        ))
         .expect("HTTP response construction cannot fail")
 }
 
@@ -814,7 +827,9 @@ pub(crate) fn serve_architecture_analysis(state: &Arc<RwLock<DemoState>>) -> Res
             .status(StatusCode::OK)
             .header("Content-Type", "application/json")
             .header("Cache-Control", "max-age=60")
-            .body(Bytes::from(serde_json::to_vec(&result).expect("JSON serialization cannot fail for result")))
+            .body(Bytes::from(
+                serde_json::to_vec(&result).expect("JSON serialization cannot fail for result"),
+            ))
             .expect("HTTP response construction cannot fail"),
         Err(_) => Response::builder()
             .status(StatusCode::INTERNAL_SERVER_ERROR)
@@ -846,7 +861,10 @@ pub(crate) fn serve_defect_analysis(state: &Arc<RwLock<DemoState>>) -> Response<
         .status(StatusCode::OK)
         .header("Content-Type", "application/json")
         .header("Cache-Control", "max-age=60")
-        .body(Bytes::from(serde_json::to_vec(&placeholder).expect("JSON serialization cannot fail for placeholder")))
+        .body(Bytes::from(
+            serde_json::to_vec(&placeholder)
+                .expect("JSON serialization cannot fail for placeholder"),
+        ))
         .expect("HTTP response construction cannot fail")
 }
 
@@ -880,7 +898,9 @@ pub(crate) fn serve_statistics_analysis(state: &Arc<RwLock<DemoState>>) -> Respo
         .status(StatusCode::OK)
         .header("Content-Type", "application/json")
         .header("Cache-Control", "max-age=60")
-        .body(Bytes::from(serde_json::to_vec(&stats).expect("JSON serialization cannot fail for stats")))
+        .body(Bytes::from(
+            serde_json::to_vec(&stats).expect("JSON serialization cannot fail for stats"),
+        ))
         .expect("HTTP response construction cannot fail")
 }
 
@@ -1011,7 +1031,10 @@ pub(crate) fn serve_analysis_data(state: &Arc<RwLock<DemoState>>) -> Response<By
         .status(StatusCode::OK)
         .header("Content-Type", "application/json")
         .header("Cache-Control", "max-age=60")
-        .body(Bytes::from(serde_json::to_vec(&response_data).expect("JSON serialization cannot fail for response data")))
+        .body(Bytes::from(
+            serde_json::to_vec(&response_data)
+                .expect("JSON serialization cannot fail for response data"),
+        ))
         .expect("HTTP response construction cannot fail")
 }
 

@@ -204,8 +204,8 @@ mod tests {
 
     #[test]
     fn test_why_iteration_confidence_clamping() {
-        let why = WhyIteration::new(1, "Why?".to_string(), "Hypothesis".to_string())
-            .with_confidence(1.5);
+        let why =
+            WhyIteration::new(1, "Why?".to_string(), "Hypothesis".to_string()).with_confidence(1.5);
         assert_eq!(why.confidence, 1.0);
 
         let why = WhyIteration::new(1, "Why?".to_string(), "Hypothesis".to_string())
@@ -216,7 +216,7 @@ mod tests {
     #[test]
     fn test_evidence_summary_from_whys() {
         let mut why = WhyIteration::new(1, "Why?".to_string(), "Hypothesis".to_string());
-        
+
         why.add_evidence(Evidence::new(
             EvidenceSource::Complexity,
             PathBuf::from("test.rs"),

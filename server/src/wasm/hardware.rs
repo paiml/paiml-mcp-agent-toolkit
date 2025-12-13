@@ -422,7 +422,10 @@ mod tests {
     fn test_cpu_family_detect() {
         let cpu = CpuFamily::detect();
         // Should return valid CPU family
-        assert!(cpu != CpuFamily::Unknown || cfg!(not(any(target_arch = "x86_64", target_arch = "aarch64"))));
+        assert!(
+            cpu != CpuFamily::Unknown
+                || cfg!(not(any(target_arch = "x86_64", target_arch = "aarch64")))
+        );
     }
 }
 

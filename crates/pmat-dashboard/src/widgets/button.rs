@@ -74,15 +74,13 @@ mod tests {
 
     #[test]
     fn test_button_accessible_name() {
-        let btn = DashboardButton::new("X")
-            .with_accessible_name("Close dialog");
+        let btn = DashboardButton::new("X").with_accessible_name("Close dialog");
         assert_eq!(btn.accessible_name(), Some("Close dialog"));
     }
 
     #[test]
     fn test_button_focus_indicator() {
-        let btn = DashboardButton::new("Test")
-            .with_focus_indicator(false);
+        let btn = DashboardButton::new("Test").with_focus_indicator(false);
         assert!(!btn.has_focus_indicator());
     }
 }

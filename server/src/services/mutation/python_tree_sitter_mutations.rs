@@ -60,8 +60,9 @@ impl TreeSitterMutationOperator for PythonBinaryOpMutation {
                 mutated.splice(operator_node.byte_range(), new_op.bytes());
 
                 MutatedSource {
-                    source: String::from_utf8(mutated)
-                    .expect("mutated source is valid UTF-8 (original source + ASCII operators)"),
+                    source: String::from_utf8(mutated).expect(
+                        "mutated source is valid UTF-8 (original source + ASCII operators)",
+                    ),
                     description: format!("{} → {}", op_text, new_op),
                     location: SourceLocation {
                         line: operator_node.start_position().row + 1,
@@ -138,8 +139,9 @@ impl TreeSitterMutationOperator for PythonRelationalOpMutation {
                 mutated.splice(operator_node.byte_range(), new_op.bytes());
 
                 MutatedSource {
-                    source: String::from_utf8(mutated)
-                    .expect("mutated source is valid UTF-8 (original source + ASCII operators)"),
+                    source: String::from_utf8(mutated).expect(
+                        "mutated source is valid UTF-8 (original source + ASCII operators)",
+                    ),
                     description: format!("{} → {}", op_text, new_op),
                     location: SourceLocation {
                         line: operator_node.start_position().row + 1,
@@ -206,8 +208,9 @@ impl TreeSitterMutationOperator for PythonLogicalOpMutation {
                 mutated.splice(operator_node.byte_range(), new_op.bytes());
 
                 MutatedSource {
-                    source: String::from_utf8(mutated)
-                    .expect("mutated source is valid UTF-8 (original source + ASCII operators)"),
+                    source: String::from_utf8(mutated).expect(
+                        "mutated source is valid UTF-8 (original source + ASCII operators)",
+                    ),
                     description: format!("{} → {}", op_text, new_op),
                     location: SourceLocation {
                         line: operator_node.start_position().row + 1,
@@ -270,8 +273,9 @@ impl TreeSitterMutationOperator for PythonIdentityOpMutation {
                 let mut mutated = source.to_vec();
                 mutated.splice(start..end, b"is".iter().copied());
                 mutations.push(MutatedSource {
-                    source: String::from_utf8(mutated)
-                    .expect("mutated source is valid UTF-8 (original source + ASCII operators)"),
+                    source: String::from_utf8(mutated).expect(
+                        "mutated source is valid UTF-8 (original source + ASCII operators)",
+                    ),
                     description: "is not → is".to_string(),
                     location: SourceLocation {
                         line: is_n.start_position().row + 1,
@@ -285,8 +289,9 @@ impl TreeSitterMutationOperator for PythonIdentityOpMutation {
                 let mut mutated = source.to_vec();
                 mutated.splice(start..end, b"==".iter().copied());
                 mutations.push(MutatedSource {
-                    source: String::from_utf8(mutated)
-                    .expect("mutated source is valid UTF-8 (original source + ASCII operators)"),
+                    source: String::from_utf8(mutated).expect(
+                        "mutated source is valid UTF-8 (original source + ASCII operators)",
+                    ),
                     description: "is not → ==".to_string(),
                     location: SourceLocation {
                         line: is_n.start_position().row + 1,
@@ -305,8 +310,9 @@ impl TreeSitterMutationOperator for PythonIdentityOpMutation {
                         source: {
                             let mut mutated = source.to_vec();
                             mutated.splice(is_n.byte_range(), b"is not".iter().copied());
-                            String::from_utf8(mutated)
-                    .expect("mutated source is valid UTF-8 (original source + ASCII operators)")
+                            String::from_utf8(mutated).expect(
+                                "mutated source is valid UTF-8 (original source + ASCII operators)",
+                            )
                         },
                         description: "is → is not".to_string(),
                         location: SourceLocation {
@@ -320,8 +326,9 @@ impl TreeSitterMutationOperator for PythonIdentityOpMutation {
                         source: {
                             let mut mutated = source.to_vec();
                             mutated.splice(is_n.byte_range(), b"==".iter().copied());
-                            String::from_utf8(mutated)
-                    .expect("mutated source is valid UTF-8 (original source + ASCII operators)")
+                            String::from_utf8(mutated).expect(
+                                "mutated source is valid UTF-8 (original source + ASCII operators)",
+                            )
                         },
                         description: "is → ==".to_string(),
                         location: SourceLocation {
@@ -389,8 +396,9 @@ impl TreeSitterMutationOperator for PythonMembershipOpMutation {
                 let mut mutated = source.to_vec();
                 mutated.splice(start..end, b"in".iter().copied());
                 vec![MutatedSource {
-                    source: String::from_utf8(mutated)
-                    .expect("mutated source is valid UTF-8 (original source + ASCII operators)"),
+                    source: String::from_utf8(mutated).expect(
+                        "mutated source is valid UTF-8 (original source + ASCII operators)",
+                    ),
                     description: "not in → in".to_string(),
                     location: SourceLocation {
                         line: not_n.start_position().row + 1,
@@ -405,8 +413,9 @@ impl TreeSitterMutationOperator for PythonMembershipOpMutation {
                 let mut mutated = source.to_vec();
                 mutated.splice(in_n.byte_range(), b"not in".iter().copied());
                 vec![MutatedSource {
-                    source: String::from_utf8(mutated)
-                    .expect("mutated source is valid UTF-8 (original source + ASCII operators)"),
+                    source: String::from_utf8(mutated).expect(
+                        "mutated source is valid UTF-8 (original source + ASCII operators)",
+                    ),
                     description: "in → not in".to_string(),
                     location: SourceLocation {
                         line: in_n.start_position().row + 1,
@@ -753,7 +762,10 @@ mod tests {
             assert!(mutation.source.chars().count() > 0);
         }
 
-        assert!(!mutations.is_empty(), "Should generate mutations with Unicode");
+        assert!(
+            !mutations.is_empty(),
+            "Should generate mutations with Unicode"
+        );
     }
 
     /// Test all mutation operators produce valid UTF-8

@@ -91,10 +91,7 @@ fn format_text(score: &PopperScore, verbose: bool, failures_only: bool) -> Strin
         "  Score: {:.1}/{:.0}\n",
         score.raw_score, score.max_available
     ));
-    output.push_str(&format!(
-        "  Normalized: {:.1}%\n",
-        score.normalized_score
-    ));
+    output.push_str(&format!("  Normalized: {:.1}%\n", score.normalized_score));
     output.push_str(&format!("  Grade: {}\n", score.grade));
     output.push('\n');
 
@@ -102,12 +99,36 @@ fn format_text(score: &PopperScore, verbose: bool, failures_only: bool) -> Strin
     output.push_str("📂  Categories\n");
 
     let categories = [
-        ("A. Falsifiability & Testability", &score.categories.falsifiability, true),
-        ("B. Reproducibility Infrastructure", &score.categories.reproducibility, false),
-        ("C. Transparency & Openness", &score.categories.transparency, false),
-        ("D. Statistical Rigor", &score.categories.statistical_rigor, false),
-        ("E. Historical Integrity", &score.categories.historical_integrity, false),
-        ("F. ML/AI Reproducibility", &score.categories.ml_reproducibility, false),
+        (
+            "A. Falsifiability & Testability",
+            &score.categories.falsifiability,
+            true,
+        ),
+        (
+            "B. Reproducibility Infrastructure",
+            &score.categories.reproducibility,
+            false,
+        ),
+        (
+            "C. Transparency & Openness",
+            &score.categories.transparency,
+            false,
+        ),
+        (
+            "D. Statistical Rigor",
+            &score.categories.statistical_rigor,
+            false,
+        ),
+        (
+            "E. Historical Integrity",
+            &score.categories.historical_integrity,
+            false,
+        ),
+        (
+            "F. ML/AI Reproducibility",
+            &score.categories.ml_reproducibility,
+            false,
+        ),
     ];
 
     for (name, category, is_gateway) in categories {
@@ -224,12 +245,36 @@ fn format_markdown(score: &PopperScore, verbose: bool, _failures_only: bool) -> 
     output.push_str("|----------|-------|------------|--------|\n");
 
     let categories = [
-        ("A. Falsifiability & Testability", &score.categories.falsifiability, true),
-        ("B. Reproducibility Infrastructure", &score.categories.reproducibility, false),
-        ("C. Transparency & Openness", &score.categories.transparency, false),
-        ("D. Statistical Rigor", &score.categories.statistical_rigor, false),
-        ("E. Historical Integrity", &score.categories.historical_integrity, false),
-        ("F. ML/AI Reproducibility", &score.categories.ml_reproducibility, false),
+        (
+            "A. Falsifiability & Testability",
+            &score.categories.falsifiability,
+            true,
+        ),
+        (
+            "B. Reproducibility Infrastructure",
+            &score.categories.reproducibility,
+            false,
+        ),
+        (
+            "C. Transparency & Openness",
+            &score.categories.transparency,
+            false,
+        ),
+        (
+            "D. Statistical Rigor",
+            &score.categories.statistical_rigor,
+            false,
+        ),
+        (
+            "E. Historical Integrity",
+            &score.categories.historical_integrity,
+            false,
+        ),
+        (
+            "F. ML/AI Reproducibility",
+            &score.categories.ml_reproducibility,
+            false,
+        ),
     ];
 
     for (name, category, is_gateway) in categories {
@@ -337,14 +382,8 @@ mod tests {
         let file_path = temp.path().join("file.txt");
         std::fs::write(&file_path, "not a directory").unwrap();
 
-        let result = handle_popper_score(
-            &file_path,
-            &RepoScoreOutputFormat::Text,
-            false,
-            false,
-            None,
-        )
-        .await;
+        let result =
+            handle_popper_score(&file_path, &RepoScoreOutputFormat::Text, false, false, None).await;
 
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("not a directory"));
@@ -370,7 +409,11 @@ mod tests {
     #[tokio::test]
     async fn test_handler_json_output() {
         let temp = TempDir::new().unwrap();
-        std::fs::write(temp.path().join("README.md"), "# Test\n\nSuccess criteria: Tests pass.").unwrap();
+        std::fs::write(
+            temp.path().join("README.md"),
+            "# Test\n\nSuccess criteria: Tests pass.",
+        )
+        .unwrap();
 
         let result = handle_popper_score(
             temp.path(),

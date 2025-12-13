@@ -38,7 +38,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("{}", String::from_utf8_lossy(&output.stdout));
 
     if !output.status.success() {
-        eprintln!("Topics extraction failed: {}", String::from_utf8_lossy(&output.stderr));
+        eprintln!(
+            "Topics extraction failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
     }
 
     // Demo 2: K-means Clustering

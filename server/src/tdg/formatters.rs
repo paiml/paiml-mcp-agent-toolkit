@@ -42,7 +42,8 @@ pub fn format_human(score: &TdgScore) -> String {
         )
         .expect("Writing to String buffer cannot fail");
     } else {
-        writeln!(output, "│  TDG Score Report: Code Analysis               │").expect("Writing to String buffer cannot fail");
+        writeln!(output, "│  TDG Score Report: Code Analysis               │")
+            .expect("Writing to String buffer cannot fail");
     }
     writeln!(
         output,
@@ -144,28 +145,32 @@ pub fn format_human(score: &TdgScore) -> String {
             "│                                                 │"
         )
         .expect("Writing to String buffer cannot fail");
-        writeln!(output, "│  ✨ Excellent code quality! No major issues.   │").expect("Writing to String buffer cannot fail");
+        writeln!(output, "│  ✨ Excellent code quality! No major issues.   │")
+            .expect("Writing to String buffer cannot fail");
     } else if score.total >= 75.0 {
         writeln!(
             output,
             "│                                                 │"
         )
         .expect("Writing to String buffer cannot fail");
-        writeln!(output, "│  👍 Good code quality with minor improvements. │").expect("Writing to String buffer cannot fail");
+        writeln!(output, "│  👍 Good code quality with minor improvements. │")
+            .expect("Writing to String buffer cannot fail");
     } else if score.total >= 60.0 {
         writeln!(
             output,
             "│                                                 │"
         )
         .expect("Writing to String buffer cannot fail");
-        writeln!(output, "│  ⚠️  Code needs improvement in several areas.  │").expect("Writing to String buffer cannot fail");
+        writeln!(output, "│  ⚠️  Code needs improvement in several areas.  │")
+            .expect("Writing to String buffer cannot fail");
     } else {
         writeln!(
             output,
             "│                                                 │"
         )
         .expect("Writing to String buffer cannot fail");
-        writeln!(output, "│  🔴 Code requires significant refactoring.     │").expect("Writing to String buffer cannot fail");
+        writeln!(output, "│  🔴 Code requires significant refactoring.     │")
+            .expect("Writing to String buffer cannot fail");
     }
 
     writeln!(
@@ -226,7 +231,8 @@ pub fn format_markdown(score: &TdgScore) -> String {
     writeln!(output).expect("Writing to String buffer cannot fail");
 
     if let Some(path) = &score.file_path {
-        writeln!(output, "**File:** `{}`", path.display()).expect("Writing to String buffer cannot fail");
+        writeln!(output, "**File:** `{}`", path.display())
+            .expect("Writing to String buffer cannot fail");
     }
     writeln!(
         output,
@@ -245,8 +251,10 @@ pub fn format_markdown(score: &TdgScore) -> String {
 
     writeln!(output, "## Score Breakdown").expect("Writing to String buffer cannot fail");
     writeln!(output).expect("Writing to String buffer cannot fail");
-    writeln!(output, "| Metric | Score | Max | Percentage |").expect("Writing to String buffer cannot fail");
-    writeln!(output, "|--------|-------|-----|------------|").expect("Writing to String buffer cannot fail");
+    writeln!(output, "| Metric | Score | Max | Percentage |")
+        .expect("Writing to String buffer cannot fail");
+    writeln!(output, "|--------|-------|-----|------------|")
+        .expect("Writing to String buffer cannot fail");
     writeln!(
         output,
         "| Structural Complexity | {:.1} | 25.0 | {:.1}% |",
@@ -309,7 +317,8 @@ pub fn format_markdown(score: &TdgScore) -> String {
 
     writeln!(output, "## Grade Description").expect("Writing to String buffer cannot fail");
     writeln!(output).expect("Writing to String buffer cannot fail");
-    writeln!(output, "{}", grade_description(score.grade)).expect("Writing to String buffer cannot fail");
+    writeln!(output, "{}", grade_description(score.grade))
+        .expect("Writing to String buffer cannot fail");
 
     output
 }
@@ -481,7 +490,8 @@ pub fn format_comparison(comparison: &Comparison) -> String {
             "│                                                 │"
         )
         .expect("Writing to String buffer cannot fail");
-        writeln!(output, "│  Key Improvements:                             │").expect("Writing to String buffer cannot fail");
+        writeln!(output, "│  Key Improvements:                             │")
+            .expect("Writing to String buffer cannot fail");
         for improvement in &comparison.improvements {
             let improvement_line = format!("  • {improvement}");
             let truncated = if improvement_line.len() > 45 {
@@ -502,7 +512,8 @@ pub fn format_comparison(comparison: &Comparison) -> String {
             "│                                                 │"
         )
         .expect("Writing to String buffer cannot fail");
-        writeln!(output, "│  Minor Regressions:                            │").expect("Writing to String buffer cannot fail");
+        writeln!(output, "│  Minor Regressions:                            │")
+            .expect("Writing to String buffer cannot fail");
         for regression in &comparison.regressions {
             let regression_line = format!("  • {regression}");
             let truncated = if regression_line.len() > 45 {
@@ -553,7 +564,8 @@ pub fn format_project(project: &ProjectScore) -> String {
         "╭─────────────────────────────────────────────────╮"
     )
     .expect("Writing to String buffer cannot fail");
-    writeln!(output, "│  Project TDG Score Report                      │").expect("Writing to String buffer cannot fail");
+    writeln!(output, "│  Project TDG Score Report                      │")
+        .expect("Writing to String buffer cannot fail");
     writeln!(
         output,
         "├─────────────────────────────────────────────────┤"
@@ -577,7 +589,8 @@ pub fn format_project(project: &ProjectScore) -> String {
     )
     .expect("Writing to String buffer cannot fail");
 
-    writeln!(output, "│  Language Distribution:                        │").expect("Writing to String buffer cannot fail");
+    writeln!(output, "│  Language Distribution:                        │")
+        .expect("Writing to String buffer cannot fail");
     for (language, count) in &project.language_distribution {
         let percentage = (*count as f32 / project.total_files as f32) * 100.0;
         writeln!(
@@ -602,7 +615,8 @@ pub fn format_project(project: &ProjectScore) -> String {
         *files_by_grade.entry(score.grade).or_insert(0) += 1;
     }
 
-    writeln!(output, "│  Grade Distribution:                           │").expect("Writing to String buffer cannot fail");
+    writeln!(output, "│  Grade Distribution:                           │")
+        .expect("Writing to String buffer cannot fail");
     for (grade, count) in files_by_grade {
         let percentage = (count as f32 / project.total_files as f32) * 100.0;
         writeln!(

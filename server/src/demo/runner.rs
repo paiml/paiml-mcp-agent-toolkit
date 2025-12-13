@@ -730,16 +730,20 @@ impl DemoReport {
     pub fn render(&self, mode: ExecutionMode) -> String {
         match mode {
             ExecutionMode::Cli => self.render_cli(),
-            ExecutionMode::Mcp => serde_json::to_string_pretty(self).expect("JSON serialization cannot fail for DemoResult"),
+            ExecutionMode::Mcp => serde_json::to_string_pretty(self)
+                .expect("JSON serialization cannot fail for DemoResult"),
         }
     }
 
     fn render_cli(&self) -> String {
         let mut output = String::with_capacity(4096);
 
-        writeln!(&mut output, "\n🎯 PAIML MCP Agent Toolkit Demo Complete").expect("Writing to String buffer cannot fail");
-        writeln!(&mut output, "Repository: {}", self.repository).expect("Writing to String buffer cannot fail");
-        writeln!(&mut output, "\n📊 Capabilities Demonstrated:\n").expect("Writing to String buffer cannot fail");
+        writeln!(&mut output, "\n🎯 PAIML MCP Agent Toolkit Demo Complete")
+            .expect("Writing to String buffer cannot fail");
+        writeln!(&mut output, "Repository: {}", self.repository)
+            .expect("Writing to String buffer cannot fail");
+        writeln!(&mut output, "\n📊 Capabilities Demonstrated:\n")
+            .expect("Writing to String buffer cannot fail");
 
         for (idx, step) in self.steps.iter().enumerate() {
             writeln!(
@@ -766,7 +770,8 @@ impl DemoReport {
 
         // Add system diagram if available
         if let Some(ref diagram) = self.system_diagram {
-            writeln!(&mut output, "\n🌍 System Architecture:").expect("Writing to String buffer cannot fail");
+            writeln!(&mut output, "\n🌍 System Architecture:")
+                .expect("Writing to String buffer cannot fail");
             writeln!(&mut output, "```mermaid").expect("Writing to String buffer cannot fail");
             writeln!(&mut output, "{diagram}").expect("Writing to String buffer cannot fail");
             writeln!(&mut output, "```").expect("Writing to String buffer cannot fail");
@@ -979,7 +984,9 @@ fn try_local_path(repo_spec: &str) -> Option<Result<PathBuf>> {
 /// Try to resolve GitHub shorthand format (gh:owner/repo) (cognitive complexity ≤2)
 fn try_github_shorthand(repo_spec: &str) -> Option<Result<PathBuf>> {
     if repo_spec.starts_with("gh:") {
-        let repo_name = repo_spec.strip_prefix("gh:").expect("Writing to String buffer cannot fail");
+        let repo_name = repo_spec
+            .strip_prefix("gh:")
+            .expect("Writing to String buffer cannot fail");
         let github_url = format!("https://github.com/{repo_name}");
         Some(Ok(PathBuf::from(github_url)))
     } else {

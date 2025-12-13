@@ -188,8 +188,7 @@ impl HistoricalIntegrityScorer {
             if path.exists() {
                 if let Ok(content) = std::fs::read_to_string(&path) {
                     // Look for date patterns like 2024-01-15 or January 2024
-                    if content.contains('-')
-                        && (content.contains("202") || content.contains("201"))
+                    if content.contains('-') && (content.contains("202") || content.contains("201"))
                     {
                         earned += 1.0;
                         description.push("dated CHANGELOG");
@@ -346,11 +345,7 @@ mod tests {
         // Create .git and CODEOWNERS
         fs::create_dir_all(temp_dir.path().join(".git")).unwrap();
         fs::create_dir_all(temp_dir.path().join(".github")).unwrap();
-        fs::write(
-            temp_dir.path().join(".github/CODEOWNERS"),
-            "* @owner",
-        )
-        .unwrap();
+        fs::write(temp_dir.path().join(".github/CODEOWNERS"), "* @owner").unwrap();
 
         let scorer = HistoricalIntegrityScorer::new();
         let result = scorer.score(temp_dir.path()).unwrap();

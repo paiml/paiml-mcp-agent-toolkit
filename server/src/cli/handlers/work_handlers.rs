@@ -335,13 +335,19 @@ async fn capture_commit_metadata(
         .args(["rev-parse", "--short", "HEAD"])
         .current_dir(project_path)
         .output()?;
-    let short_sha = String::from_utf8_lossy(&short_sha.stdout).trim().to_string();
+    let short_sha = String::from_utf8_lossy(&short_sha.stdout)
+        .trim()
+        .to_string();
 
     // Capture scores (O(1) from cache)
     let tdg_score = capture_tdg_score(project_path).await.unwrap_or(0.0);
     let repo_score = capture_repo_score(project_path).await.unwrap_or(0.0);
     let rust_score = if project_path.join("Cargo.toml").exists() {
-        Some(capture_rust_project_score(project_path).await.unwrap_or(0.0))
+        Some(
+            capture_rust_project_score(project_path)
+                .await
+                .unwrap_or(0.0),
+        )
     } else {
         None
     };
@@ -481,7 +487,8 @@ pub async fn handle_work_complete(
     if let Some(rust_score) = metadata.rust_project_score {
         println!("      ✅ Rust Project Score: {:.1}/134", rust_score);
     }
-    let meta_file = project_path.join(".pmat-metrics")
+    let meta_file = project_path
+        .join(".pmat-metrics")
         .join("commit-*-meta.json");
     println!("✅ Commit metadata: {}", meta_file.display());
 
@@ -914,9 +921,13 @@ async fn run_quality_gates(project_path: &PathBuf) -> Result<bool> {
             }
         );
 
-        let test_cmd =
-            crate::services::git_test_filter::build_test_command(&modules).unwrap_or_else(|| {
-                vec!["test".to_string(), "--lib".to_string(), "--quiet".to_string()]
+        let test_cmd = crate::services::git_test_filter::build_test_command(&modules)
+            .unwrap_or_else(|| {
+                vec![
+                    "test".to_string(),
+                    "--lib".to_string(),
+                    "--quiet".to_string(),
+                ]
             });
 
         Command::new("cargo")
@@ -1034,11 +1045,7 @@ async fn run_quality_gates(project_path: &PathBuf) -> Result<bool> {
 /// Handle work validate command (Part B: UX Improvements)
 ///
 /// Validates roadmap.yaml syntax and content with actionable error messages.
-pub async fn handle_work_validate(
-    path: Option<PathBuf>,
-    verbose: bool,
-    fix: bool,
-) -> Result<()> {
+pub async fn handle_work_validate(path: Option<PathBuf>, verbose: bool, fix: bool) -> Result<()> {
     let project_path = path.unwrap_or_else(|| PathBuf::from("."));
     let roadmap_path = project_path.join("docs/roadmaps/roadmap.yaml");
 
@@ -1053,8 +1060,7 @@ pub async fn handle_work_validate(
     }
 
     // Read raw content for better error reporting
-    let content = std::fs::read_to_string(&roadmap_path)
-        .context("Failed to read roadmap file")?;
+    let content = std::fs::read_to_string(&roadmap_path).context("Failed to read roadmap file")?;
 
     // Try to parse
     match serde_yaml::from_str::<crate::models::roadmap::Roadmap>(&content) {
@@ -1062,11 +1068,14 @@ pub async fn handle_work_validate(
             println!("✅ Syntax valid");
             println!("   Version: {}", roadmap.roadmap_version);
             println!("   Items: {}", roadmap.roadmap.len());
-            println!("   GitHub: {}", if roadmap.github_enabled {
-                roadmap.github_repo.as_deref().unwrap_or("not configured")
-            } else {
-                "disabled"
-            });
+            println!(
+                "   GitHub: {}",
+                if roadmap.github_enabled {
+                    roadmap.github_repo.as_deref().unwrap_or("not configured")
+                } else {
+                    "disabled"
+                }
+            );
             println!();
 
             // Semantic validation
@@ -1077,10 +1086,7 @@ pub async fn handle_work_validate(
                 if item.acceptance_criteria.is_empty()
                     && !matches!(item.status, ItemStatus::Cancelled)
                 {
-                    warnings.push(format!(
-                        "⚠️  {} has no acceptance criteria",
-                        item.id
-                    ));
+                    warnings.push(format!("⚠️  {} has no acceptance criteria", item.id));
                 }
 
                 // Check for long IDs (UX issue from spec)
@@ -1104,10 +1110,7 @@ pub async fn handle_work_validate(
             if verbose {
                 println!("📋 Items:");
                 for item in &roadmap.roadmap {
-                    println!(
-                        "   {} [{:?}] - {}",
-                        item.id, item.status, item.title
-                    );
+                    println!("   {} [{:?}] - {}", item.id, item.status, item.title);
                 }
             }
 
@@ -1145,7 +1148,9 @@ pub async fn handle_work_validate(
 
             // Provide suggestions
             println!("💡 Common fixes:");
-            println!("   - Use valid status values: completed, done, wip, planned, blocked, review");
+            println!(
+                "   - Use valid status values: completed, done, wip, planned, blocked, review"
+            );
             println!("   - Quote strings with special characters: `:`, `<`, `>`");
             println!("   - Use proper YAML indentation (2 spaces)");
             println!();
@@ -1159,11 +1164,7 @@ pub async fn handle_work_validate(
 /// Handle work migrate command (Part B: UX Improvements)
 ///
 /// Auto-fixes common roadmap.yaml issues.
-pub async fn handle_work_migrate(
-    path: Option<PathBuf>,
-    dry_run: bool,
-    backup: bool,
-) -> Result<()> {
+pub async fn handle_work_migrate(path: Option<PathBuf>, dry_run: bool, backup: bool) -> Result<()> {
     let project_path = path.unwrap_or_else(|| PathBuf::from("."));
     let roadmap_path = project_path.join("docs/roadmaps/roadmap.yaml");
 
@@ -1209,7 +1210,9 @@ pub async fn handle_work_migrate(
     let special_chars = [':', '<', '>', '≥', '≤', '±', 'ε', '→', '↔'];
     for line in content.lines() {
         if line.trim_start().starts_with("title:") || line.trim_start().starts_with("- title:") {
-            let has_special = special_chars.iter().any(|c| line.contains(*c) && !line.contains("\""));
+            let has_special = special_chars
+                .iter()
+                .any(|c| line.contains(*c) && !line.contains("\""));
             if has_special && !line.contains("\"") {
                 // This is a simplistic check - in practice we'd need proper YAML parsing
                 changes.push(format!("Consider quoting: {}", line.trim()));
@@ -1263,12 +1266,36 @@ pub async fn handle_work_list_statuses() -> Result<()> {
     println!("{}", "-".repeat(70));
 
     let statuses = [
-        ("planned", "todo, open, pending, new", "Task not yet started"),
-        ("inprogress", "wip, active, started", "Currently being worked on"),
-        ("blocked", "stuck, waiting, on-hold", "Cannot proceed (waiting on something)"),
-        ("review", "reviewing, pr, pending-review", "Ready for or in code review"),
-        ("completed", "done, finished, closed", "Work finished successfully"),
-        ("cancelled", "canceled, dropped, wontfix", "Work abandoned or not needed"),
+        (
+            "planned",
+            "todo, open, pending, new",
+            "Task not yet started",
+        ),
+        (
+            "inprogress",
+            "wip, active, started",
+            "Currently being worked on",
+        ),
+        (
+            "blocked",
+            "stuck, waiting, on-hold",
+            "Cannot proceed (waiting on something)",
+        ),
+        (
+            "review",
+            "reviewing, pr, pending-review",
+            "Ready for or in code review",
+        ),
+        (
+            "completed",
+            "done, finished, closed",
+            "Work finished successfully",
+        ),
+        (
+            "cancelled",
+            "canceled, dropped, wontfix",
+            "Work abandoned or not needed",
+        ),
     ];
 
     for (status, aliases, description) in statuses {

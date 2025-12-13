@@ -156,10 +156,9 @@ impl DependencyGraphBuilder {
         if let Some(&existing_hash) = self.processed_hashes.get(path) {
             if existing_hash == hash {
                 // Skip if unchanged - path must exist in node_map (inserted at line 184)
-                return Ok(*self
-                    .node_map
-                    .get(path)
-                    .expect("path exists in node_map (inserted at line 184 when added to processed_hashes)"));
+                return Ok(*self.node_map.get(path).expect(
+                    "path exists in node_map (inserted at line 184 when added to processed_hashes)",
+                ));
             }
         }
 
@@ -184,7 +183,8 @@ impl DependencyGraphBuilder {
             *self
                 .graph
                 .node_weight_mut(existing_id)
-                .expect("node exists in graph (node_id came from node_map at line 184)") = node_data;
+                .expect("node exists in graph (node_id came from node_map at line 184)") =
+                node_data;
             existing_id
         } else {
             let id = self.graph.add_node(node_data);
@@ -587,7 +587,11 @@ mod tests {
         // Second analysis with same content - should return cached node_id
         let node_id_2 = builder.analyze_file(&test_file).unwrap();
         assert_eq!(node_id_1, node_id_2, "Cache hit should return same node_id");
-        assert_eq!(builder.graph.node_count(), 1, "Should not create duplicate node");
+        assert_eq!(
+            builder.graph.node_count(),
+            1,
+            "Should not create duplicate node"
+        );
     }
 
     /// Test that analyze_file updates node when content changes
@@ -605,11 +609,7 @@ mod tests {
 
         // First analysis
         let node_id_1 = builder.analyze_file(&test_file).unwrap();
-        let original_loc = builder
-            .graph
-            .node_weight(node_id_1)
-            .unwrap()
-            .loc;
+        let original_loc = builder.graph.node_weight(node_id_1).unwrap().loc;
 
         // Modify file (different content = different hash)
         fs::write(&test_file, "fn main() {}\nfn helper() {}\n").unwrap();
@@ -627,11 +627,7 @@ mod tests {
         );
 
         // Verify node was updated (LOC should increase)
-        let updated_loc = builder
-            .graph
-            .node_weight(node_id_2)
-            .unwrap()
-            .loc;
+        let updated_loc = builder.graph.node_weight(node_id_2).unwrap().loc;
         assert!(
             updated_loc > original_loc,
             "Node should be updated with new LOC"

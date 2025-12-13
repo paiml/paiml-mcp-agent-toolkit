@@ -412,10 +412,7 @@ impl DocValidator {
         // - https://crates.io/crates/trueno
         // - http://crates.io/crates/trueno
         // - https://crates.io/crates/trueno/versions
-        let patterns = [
-            "https://crates.io/crates/",
-            "http://crates.io/crates/",
-        ];
+        let patterns = ["https://crates.io/crates/", "http://crates.io/crates/"];
 
         for pattern in patterns {
             if let Some(rest) = url.strip_prefix(pattern) {
@@ -457,7 +454,10 @@ impl DocValidator {
                 } else {
                     (
                         ValidationStatus::HttpError(status_code),
-                        Some(format!("crates.io API error {}: {}", status_code, crate_name)),
+                        Some(format!(
+                            "crates.io API error {}: {}",
+                            status_code, crate_name
+                        )),
                         Some(status_code),
                     )
                 }
@@ -837,7 +837,8 @@ mod unit_tests {
     async fn test_validate_crates_io_nonexistent_crate() {
         let link = Link {
             text: "nonexistent".to_string(),
-            target: "https://crates.io/crates/this-crate-definitely-does-not-exist-12345".to_string(),
+            target: "https://crates.io/crates/this-crate-definitely-does-not-exist-12345"
+                .to_string(),
             source_file: PathBuf::from("test.md"),
             line_number: 1,
             link_type: LinkType::ExternalHttp,

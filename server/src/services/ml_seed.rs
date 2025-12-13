@@ -120,11 +120,11 @@ mod tests {
 
         set_embedding_seed(42);
         let mut rng1 = create_embedding_rng();
-        let val1: u64 = rng1.gen();
+        let val1: u64 = rng1.random();
 
         set_embedding_seed(42);
         let mut rng2 = create_embedding_rng();
-        let val2: u64 = rng2.gen();
+        let val2: u64 = rng2.random();
 
         assert_eq!(val1, val2, "Same seed must produce same sequence");
     }

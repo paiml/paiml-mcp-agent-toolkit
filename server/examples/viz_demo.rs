@@ -98,7 +98,11 @@ fn demo_simple_graph(theme_name: &str) -> Result<()> {
 
     let output = graph.render_terminal(&config)?;
     println!("{}", output);
-    println!("Nodes: {}, Edges: {}\n", graph.num_nodes(), graph.num_edges());
+    println!(
+        "Nodes: {}, Edges: {}\n",
+        graph.num_nodes(),
+        graph.num_edges()
+    );
 
     Ok(())
 }
@@ -118,7 +122,13 @@ fn demo_hub_spoke_graph(theme_name: &str) -> Result<()> {
     graph.add_function("validate_input".to_string())?;
 
     // Spoke functions that all call the hub
-    let spokes = ["parse_json", "parse_xml", "parse_yaml", "parse_toml", "parse_csv"];
+    let spokes = [
+        "parse_json",
+        "parse_xml",
+        "parse_yaml",
+        "parse_toml",
+        "parse_csv",
+    ];
     for spoke in spokes {
         graph.add_function(spoke.to_string())?;
         graph.add_edge(spoke, "validate_input")?;

@@ -170,7 +170,10 @@ impl PopperGrade {
 
     /// Check if grade meets Popperian scientific standards
     pub fn meets_standards(&self) -> bool {
-        matches!(self, PopperGrade::APlus | PopperGrade::A | PopperGrade::AMinus)
+        matches!(
+            self,
+            PopperGrade::APlus | PopperGrade::A | PopperGrade::AMinus
+        )
     }
 
     /// Get interpretation text
@@ -184,9 +187,7 @@ impl PopperGrade {
             PopperGrade::C => "Significant Reproducibility Gaps",
             PopperGrade::D => "Major Falsifiability Issues",
             PopperGrade::F => "Insufficient Rigor for Independent Verification",
-            PopperGrade::InsufficientFalsifiability => {
-                "GATEWAY FAILED - Not Evaluable as Science"
-            }
+            PopperGrade::InsufficientFalsifiability => "GATEWAY FAILED - Not Evaluable as Science",
         }
     }
 }
@@ -271,11 +272,7 @@ impl Default for PopperCategoryScores {
     fn default() -> Self {
         Self {
             falsifiability: PopperCategoryScore::new("Falsifiability & Testability", 0.0, 25.0),
-            reproducibility: PopperCategoryScore::new(
-                "Reproducibility Infrastructure",
-                0.0,
-                25.0,
-            ),
+            reproducibility: PopperCategoryScore::new("Reproducibility Infrastructure", 0.0, 25.0),
             transparency: PopperCategoryScore::new("Transparency & Openness", 0.0, 20.0),
             statistical_rigor: PopperCategoryScore::new("Statistical Rigor", 0.0, 15.0),
             historical_integrity: PopperCategoryScore::new("Historical Integrity", 0.0, 10.0),
@@ -735,12 +732,21 @@ mod tests {
 
     #[test]
     fn test_grade_thresholds() {
-        assert_eq!(PopperGrade::from_normalized_score(100.0), PopperGrade::APlus);
+        assert_eq!(
+            PopperGrade::from_normalized_score(100.0),
+            PopperGrade::APlus
+        );
         assert_eq!(PopperGrade::from_normalized_score(95.0), PopperGrade::APlus);
         assert_eq!(PopperGrade::from_normalized_score(94.9), PopperGrade::A);
         assert_eq!(PopperGrade::from_normalized_score(90.0), PopperGrade::A);
-        assert_eq!(PopperGrade::from_normalized_score(89.9), PopperGrade::AMinus);
-        assert_eq!(PopperGrade::from_normalized_score(85.0), PopperGrade::AMinus);
+        assert_eq!(
+            PopperGrade::from_normalized_score(89.9),
+            PopperGrade::AMinus
+        );
+        assert_eq!(
+            PopperGrade::from_normalized_score(85.0),
+            PopperGrade::AMinus
+        );
         assert_eq!(PopperGrade::from_normalized_score(84.9), PopperGrade::BPlus);
         assert_eq!(PopperGrade::from_normalized_score(80.0), PopperGrade::BPlus);
         assert_eq!(PopperGrade::from_normalized_score(79.9), PopperGrade::B);
@@ -796,13 +802,7 @@ mod tests {
     fn test_sub_score_accumulation() {
         let mut category = PopperCategoryScore::new("Test", 0.0, 25.0);
 
-        category.add_sub_score(PopperSubScore::new(
-            "T1",
-            "Test 1",
-            5.0,
-            8.0,
-            "First test",
-        ));
+        category.add_sub_score(PopperSubScore::new("T1", "Test 1", 5.0, 8.0, "First test"));
         category.add_sub_score(PopperSubScore::new(
             "T2",
             "Test 2",

@@ -208,7 +208,10 @@ fn format_pdca_text(
 
         // Show targets
         output.push_str("\nConvergence Targets:\n");
-        output.push_str(&format!("  Coverage: ≥{:.0}%\n", targets.test_coverage * 100.0));
+        output.push_str(&format!(
+            "  Coverage: ≥{:.0}%\n",
+            targets.test_coverage * 100.0
+        ));
         output.push_str(&format!(
             "  Mutation score: ≥{:.0}%\n",
             targets.mutation_score * 100.0
@@ -221,7 +224,10 @@ fn format_pdca_text(
             "  Clippy warnings: ≤{}\n",
             targets.max_clippy_warnings
         ));
-        output.push_str(&format!("  Test failures: ≤{}\n", targets.max_test_failures));
+        output.push_str(&format!(
+            "  Test failures: ≤{}\n",
+            targets.max_test_failures
+        ));
     }
 
     Ok(output)
@@ -480,7 +486,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_handle_oracle_status_nonexistent_path() {
-        let result = handle_oracle_status(Path::new("/nonexistent/path"), OracleOutputFormat::Text).await;
+        let result =
+            handle_oracle_status(Path::new("/nonexistent/path"), OracleOutputFormat::Text).await;
         assert!(result.is_err());
     }
 

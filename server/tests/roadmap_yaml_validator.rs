@@ -9,8 +9,7 @@ use std::fs;
 #[test]
 fn validate_roadmap_acceptance_criteria() {
     let yaml_path = "../docs/roadmaps/roadmap.yaml";
-    let yaml_content = fs::read_to_string(yaml_path)
-        .expect("Failed to read roadmap.yaml");
+    let yaml_content = fs::read_to_string(yaml_path).expect("Failed to read roadmap.yaml");
 
     // Try to deserialize - this will show the exact error
     let result: Result<Roadmap, _> = serde_yaml::from_str(&yaml_content);
@@ -23,7 +22,10 @@ fn validate_roadmap_acceptance_criteria() {
             // Manually check each item's acceptance_criteria
             for (idx, item) in roadmap.roadmap.iter().enumerate() {
                 println!("\nItem {}: {} ({})", idx, item.id, item.title);
-                println!("  acceptance_criteria count: {}", item.acceptance_criteria.len());
+                println!(
+                    "  acceptance_criteria count: {}",
+                    item.acceptance_criteria.len()
+                );
 
                 for (criteria_idx, criteria) in item.acceptance_criteria.iter().enumerate() {
                     println!("    [{}]: {}", criteria_idx, criteria);
@@ -43,18 +45,23 @@ fn validate_roadmap_acceptance_criteria() {
 fn validate_roadmap_with_raw_yaml() {
     // Parse as raw YAML first to inspect structure
     let yaml_path = "../docs/roadmaps/roadmap.yaml";
-    let yaml_content = fs::read_to_string(yaml_path)
-        .expect("Failed to read roadmap.yaml");
+    let yaml_content = fs::read_to_string(yaml_path).expect("Failed to read roadmap.yaml");
 
-    let raw_yaml: serde_yaml::Value = serde_yaml::from_str(&yaml_content)
-        .expect("Failed to parse as raw YAML");
+    let raw_yaml: serde_yaml::Value =
+        serde_yaml::from_str(&yaml_content).expect("Failed to parse as raw YAML");
 
     if let Some(roadmap_items) = raw_yaml.get("roadmap").and_then(|v| v.as_sequence()) {
-        println!("Scanning {} roadmap items for acceptance_criteria type mismatches...\n", roadmap_items.len());
+        println!(
+            "Scanning {} roadmap items for acceptance_criteria type mismatches...\n",
+            roadmap_items.len()
+        );
 
         for (idx, item) in roadmap_items.iter().enumerate() {
             if let Some(id) = item.get("id").and_then(|v| v.as_str()) {
-                if let Some(criteria) = item.get("acceptance_criteria").and_then(|v| v.as_sequence()) {
+                if let Some(criteria) = item
+                    .get("acceptance_criteria")
+                    .and_then(|v| v.as_sequence())
+                {
                     for (criteria_idx, criterion) in criteria.iter().enumerate() {
                         if !criterion.is_string() {
                             eprintln!("🔴 FOUND PROBLEM:");
@@ -65,12 +72,18 @@ fn validate_roadmap_with_raw_yaml() {
                             eprintln!("  Value: {:?}", criterion);
                             panic!("Found non-string acceptance_criteria entry");
                         } else {
-                            println!("✅ Item {}: {} - criteria[{}]: string", idx, id, criteria_idx);
+                            println!(
+                                "✅ Item {}: {} - criteria[{}]: string",
+                                idx, id, criteria_idx
+                            );
                         }
                     }
                 } else if let Some(criteria) = item.get("acceptance_criteria") {
                     if !criteria.is_sequence() && !criteria.is_null() {
-                        eprintln!("🔴 acceptance_criteria is not an array for item {}: {}", idx, id);
+                        eprintln!(
+                            "🔴 acceptance_criteria is not an array for item {}: {}",
+                            idx, id
+                        );
                         eprintln!("  Value: {:?}", criteria);
                         panic!("acceptance_criteria is not an array");
                     }

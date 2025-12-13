@@ -114,29 +114,75 @@ impl AdaptiveAllocator {
 
         if recent.len() >= 2 {
             // CPU trend
-            let cpu_start = recent.last().expect("recent has >=2 elements (checked above)").usage.cpu_percent;
-            let cpu_end = recent.first().expect("recent has >=2 elements (checked above)").usage.cpu_percent;
+            let cpu_start = recent
+                .last()
+                .expect("recent has >=2 elements (checked above)")
+                .usage
+                .cpu_percent;
+            let cpu_end = recent
+                .first()
+                .expect("recent has >=2 elements (checked above)")
+                .usage
+                .cpu_percent;
             predictor.cpu_trend = (cpu_end - cpu_start) / cpu_start.max(0.1);
 
             // Memory trend
-            let mem_start = recent.last().expect("recent has >=2 elements (checked above)").usage.memory_bytes as f32;
-            let mem_end = recent.first().expect("recent has >=2 elements (checked above)").usage.memory_bytes as f32;
+            let mem_start = recent
+                .last()
+                .expect("recent has >=2 elements (checked above)")
+                .usage
+                .memory_bytes as f32;
+            let mem_end = recent
+                .first()
+                .expect("recent has >=2 elements (checked above)")
+                .usage
+                .memory_bytes as f32;
             predictor.memory_trend = (mem_end - mem_start) / mem_start.max(1.0);
 
             // Network trend
-            let net_start = (recent.last().expect("recent has >=2 elements (checked above)").usage.network_ingress_bytes
-                + recent.last().expect("recent has >=2 elements (checked above)").usage.network_egress_bytes)
-                as f32;
-            let net_end = (recent.first().expect("recent has >=2 elements (checked above)").usage.network_ingress_bytes
-                + recent.first().expect("recent has >=2 elements (checked above)").usage.network_egress_bytes)
-                as f32;
+            let net_start = (recent
+                .last()
+                .expect("recent has >=2 elements (checked above)")
+                .usage
+                .network_ingress_bytes
+                + recent
+                    .last()
+                    .expect("recent has >=2 elements (checked above)")
+                    .usage
+                    .network_egress_bytes) as f32;
+            let net_end = (recent
+                .first()
+                .expect("recent has >=2 elements (checked above)")
+                .usage
+                .network_ingress_bytes
+                + recent
+                    .first()
+                    .expect("recent has >=2 elements (checked above)")
+                    .usage
+                    .network_egress_bytes) as f32;
             predictor.network_trend = (net_end - net_start) / net_start.max(1.0);
 
             // I/O trend
-            let io_start = (recent.last().expect("recent has >=2 elements (checked above)").usage.disk_read_bytes
-                + recent.last().expect("recent has >=2 elements (checked above)").usage.disk_write_bytes) as f32;
-            let io_end = (recent.first().expect("recent has >=2 elements (checked above)").usage.disk_read_bytes
-                + recent.first().expect("recent has >=2 elements (checked above)").usage.disk_write_bytes) as f32;
+            let io_start = (recent
+                .last()
+                .expect("recent has >=2 elements (checked above)")
+                .usage
+                .disk_read_bytes
+                + recent
+                    .last()
+                    .expect("recent has >=2 elements (checked above)")
+                    .usage
+                    .disk_write_bytes) as f32;
+            let io_end = (recent
+                .first()
+                .expect("recent has >=2 elements (checked above)")
+                .usage
+                .disk_read_bytes
+                + recent
+                    .first()
+                    .expect("recent has >=2 elements (checked above)")
+                    .usage
+                    .disk_write_bytes) as f32;
             predictor.io_trend = (io_end - io_start) / io_start.max(1.0);
         }
     }

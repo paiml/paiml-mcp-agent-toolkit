@@ -27,8 +27,10 @@ impl PmatDashboard {
             grid_columns: self.config.grid_columns,
             accessibility_enabled: self.config.accessibility_enabled,
             metrics_visible: true,
-            hotspots_visible: state.selected_tab == crate::state::TabId::Hotspots || state.selected_tab == crate::state::TabId::Overview,
-            chart_visible: state.selected_tab == crate::state::TabId::Performance || state.selected_tab == crate::state::TabId::Overview,
+            hotspots_visible: state.selected_tab == crate::state::TabId::Hotspots
+                || state.selected_tab == crate::state::TabId::Overview,
+            chart_visible: state.selected_tab == crate::state::TabId::Performance
+                || state.selected_tab == crate::state::TabId::Overview,
             dag_visible: state.selected_tab == crate::state::TabId::Dag,
         }
     }

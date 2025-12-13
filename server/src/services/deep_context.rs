@@ -62,14 +62,14 @@ use crate::models::{
     tdg::{TDGScore, TDGSeverity, TDGSummary},
 };
 use crate::services::context::FileContext;
-#[cfg(feature = "go-ast")]
-use crate::services::unified_go_analyzer::UnifiedGoAnalyzer;
-#[cfg(feature = "wasm-ast")]
-use crate::services::unified_wasm_analyzer::UnifiedWasmAnalyzer;
 #[cfg(feature = "shell-ast")]
 use crate::services::unified_bash_analyzer::UnifiedBashAnalyzer;
+#[cfg(feature = "go-ast")]
+use crate::services::unified_go_analyzer::UnifiedGoAnalyzer;
 #[cfg(feature = "python-ast")]
 use crate::services::unified_python_analyzer::UnifiedPythonAnalyzer;
+#[cfg(feature = "wasm-ast")]
+use crate::services::unified_wasm_analyzer::UnifiedWasmAnalyzer;
 use crate::services::{
     complexity::{ComplexityReport, FileComplexityMetrics},
     file_classifier::FileClassifierConfig,

@@ -329,7 +329,11 @@ impl ProjectScore {
         avg.confidence = self.files.iter().map(|s| s.confidence).sum::<f32>() / count;
 
         // Set language to the most common language in the project
-        if let Some((&lang, _)) = self.language_distribution.iter().max_by_key(|(_, &count)| count) {
+        if let Some((&lang, _)) = self
+            .language_distribution
+            .iter()
+            .max_by_key(|(_, &count)| count)
+        {
             avg.language = lang;
         }
 

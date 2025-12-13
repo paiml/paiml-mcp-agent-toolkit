@@ -102,9 +102,13 @@ impl ClaimCategory {
         let lower = section.to_lowercase();
         if lower.contains("falsif") || lower.contains("testab") || lower.contains("claim") {
             Some(Self::Falsifiability)
-        } else if lower.contains("implement") || lower.contains("code") || lower.contains("architecture") {
+        } else if lower.contains("implement")
+            || lower.contains("code")
+            || lower.contains("architecture")
+        {
             Some(Self::Implementation)
-        } else if lower.contains("test") || lower.contains("coverage") || lower.contains("mutation") {
+        } else if lower.contains("test") || lower.contains("coverage") || lower.contains("mutation")
+        {
             Some(Self::Testing)
         } else if lower.contains("doc") || lower.contains("readme") || lower.contains("changelog") {
             Some(Self::Documentation)
@@ -225,7 +229,8 @@ impl SpecParser {
 
         // Extract issue references
         for caps in self.issue_ref_regex.captures_iter(content) {
-            let issue_num = caps.get(1)
+            let issue_num = caps
+                .get(1)
                 .or_else(|| caps.get(2))
                 .or_else(|| caps.get(3))
                 .map(|m| m.as_str());
@@ -307,7 +312,10 @@ impl SpecParser {
             if let Some(caps) = self.checkbox_regex.captures(line) {
                 let checked = caps.get(1).map(|m| m.as_str()) == Some("x")
                     || caps.get(1).map(|m| m.as_str()) == Some("X");
-                let text = caps.get(2).map(|m| m.as_str().to_string()).unwrap_or_default();
+                let text = caps
+                    .get(2)
+                    .map(|m| m.as_str().to_string())
+                    .unwrap_or_default();
 
                 spec.acceptance_criteria.push(AcceptanceCriterion {
                     text: text.clone(),
@@ -368,8 +376,14 @@ impl SpecParser {
 
             // Extract MUST/SHALL/SHOULD claims
             if let Some(caps) = self.claim_regex.captures(line) {
-                let verb = caps.get(1).map(|m| m.as_str().to_uppercase()).unwrap_or_default();
-                let claim_text = caps.get(2).map(|m| m.as_str().to_string()).unwrap_or_default();
+                let verb = caps
+                    .get(1)
+                    .map(|m| m.as_str().to_uppercase())
+                    .unwrap_or_default();
+                let claim_text = caps
+                    .get(2)
+                    .map(|m| m.as_str().to_string())
+                    .unwrap_or_default();
 
                 // Content-based category detection (more accurate than section-based)
                 let category = Self::categorize_claim(&claim_text, &current_section);
@@ -409,7 +423,9 @@ impl SpecParser {
 
             // Extract test requirements
             let lower = line.to_lowercase();
-            if lower.contains("test") && (lower.contains("must") || lower.contains("should") || lower.contains("require")) {
+            if lower.contains("test")
+                && (lower.contains("must") || lower.contains("should") || lower.contains("require"))
+            {
                 let test_type = if lower.contains("unit") {
                     "unit"
                 } else if lower.contains("integration") {
@@ -439,7 +455,11 @@ impl SpecParser {
         for line in frontmatter.lines() {
             if let Some((key, value)) = line.split_once(':') {
                 let key = key.trim().to_lowercase();
-                let value = value.trim().trim_matches('"').trim_matches('\'').to_string();
+                let value = value
+                    .trim()
+                    .trim_matches('"')
+                    .trim_matches('\'')
+                    .to_string();
 
                 match key.as_str() {
                     "title" => spec.title = value,

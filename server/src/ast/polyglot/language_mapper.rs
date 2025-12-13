@@ -238,7 +238,9 @@ impl LanguageMapper for JavaMapper {
         }
         #[cfg(not(feature = "java-ast"))]
         {
-            Err(anyhow!("Java AST support not enabled (feature 'java-ast' required)"))
+            Err(anyhow!(
+                "Java AST support not enabled (feature 'java-ast' required)"
+            ))
         }
     }
 
@@ -386,7 +388,9 @@ impl LanguageMapper for ScalaMapper {
         }
         #[cfg(not(feature = "scala-ast"))]
         {
-            Err(anyhow!("Scala AST support not enabled (feature 'scala-ast' required)"))
+            Err(anyhow!(
+                "Scala AST support not enabled (feature 'scala-ast' required)"
+            ))
         }
     }
 

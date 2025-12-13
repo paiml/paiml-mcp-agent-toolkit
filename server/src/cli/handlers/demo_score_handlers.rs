@@ -96,10 +96,7 @@ fn format_text(score: &CategoryScore, verbose: bool, failures_only: bool) -> Str
         };
 
         if is_na {
-            output.push_str(&format!(
-                "  {} {}: N/A\n",
-                status, sub.name
-            ));
+            output.push_str(&format!("  {} {}: N/A\n", status, sub.name));
         } else {
             output.push_str(&format!(
                 "  {} {}: {:.1}/{:.1} ({:.0}%)\n",
@@ -109,7 +106,9 @@ fn format_text(score: &CategoryScore, verbose: bool, failures_only: bool) -> Str
 
         if verbose {
             for finding in &sub.findings {
-                if failures_only && finding.severity == crate::services::repo_score::models::Severity::Success {
+                if failures_only
+                    && finding.severity == crate::services::repo_score::models::Severity::Success
+                {
                     continue;
                 }
                 let icon = match finding.severity {
@@ -178,10 +177,7 @@ fn format_markdown(score: &CategoryScore, verbose: bool, failures_only: bool) ->
         };
 
         if is_na {
-            output.push_str(&format!(
-                "| {} {} | N/A | N/A | N/A |\n",
-                status, sub.name
-            ));
+            output.push_str(&format!("| {} {} | N/A | N/A | N/A |\n", status, sub.name));
         } else {
             output.push_str(&format!(
                 "| {} {} | {:.1} | {:.1} | {:.0}% |\n",
@@ -195,7 +191,9 @@ fn format_markdown(score: &CategoryScore, verbose: bool, failures_only: bool) ->
         for sub in &score.subcategories {
             output.push_str(&format!("### {}\n\n", sub.name));
             for finding in &sub.findings {
-                if failures_only && finding.severity == crate::services::repo_score::models::Severity::Success {
+                if failures_only
+                    && finding.severity == crate::services::repo_score::models::Severity::Success
+                {
                     continue;
                 }
                 let icon = match finding.severity {
@@ -345,14 +343,8 @@ mod tests {
         let file_path = temp_dir.path().join("file.txt");
         fs::write(&file_path, "test").unwrap();
 
-        let result = handle_demo_score(
-            &file_path,
-            &RepoScoreOutputFormat::Text,
-            false,
-            false,
-            None,
-        )
-        .await;
+        let result =
+            handle_demo_score(&file_path, &RepoScoreOutputFormat::Text, false, false, None).await;
 
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("not a directory"));

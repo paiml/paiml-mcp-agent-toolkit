@@ -4,15 +4,43 @@ use regex::Regex;
 
 static SATD_PATTERNS: Lazy<Vec<(&str, Regex)>> = Lazy::new(|| {
     vec![
-        ("TODO", Regex::new(r"\bTODO\b").expect("static regex pattern '\\bTODO\\b' is valid")),
-        ("FIXME", Regex::new(r"\bFIXME\b").expect("static regex pattern '\\bFIXME\\b' is valid")),
-        ("HACK", Regex::new(r"\bHACK\b").expect("static regex pattern '\\bHACK\\b' is valid")),
-        ("XXX", Regex::new(r"\bXXX\b").expect("static regex pattern '\\bXXX\\b' is valid")),
-        ("REFACTOR", Regex::new(r"\bREFACTOR\b").expect("static regex pattern '\\bREFACTOR\\b' is valid")),
-        ("OPTIMIZE", Regex::new(r"\bOPTIMIZE\b").expect("static regex pattern '\\bOPTIMIZE\\b' is valid")),
-        ("REVIEW", Regex::new(r"\bREVIEW\b").expect("static regex pattern '\\bREVIEW\\b' is valid")),
-        ("DEPRECATED", Regex::new(r"\bDEPRECATED\b").expect("static regex pattern '\\bDEPRECATED\\b' is valid")),
-        ("TEMPORARY", Regex::new(r"\bTEMPORARY\b").expect("static regex pattern '\\bTEMPORARY\\b' is valid")),
+        (
+            "TODO",
+            Regex::new(r"\bTODO\b").expect("static regex pattern '\\bTODO\\b' is valid"),
+        ),
+        (
+            "FIXME",
+            Regex::new(r"\bFIXME\b").expect("static regex pattern '\\bFIXME\\b' is valid"),
+        ),
+        (
+            "HACK",
+            Regex::new(r"\bHACK\b").expect("static regex pattern '\\bHACK\\b' is valid"),
+        ),
+        (
+            "XXX",
+            Regex::new(r"\bXXX\b").expect("static regex pattern '\\bXXX\\b' is valid"),
+        ),
+        (
+            "REFACTOR",
+            Regex::new(r"\bREFACTOR\b").expect("static regex pattern '\\bREFACTOR\\b' is valid"),
+        ),
+        (
+            "OPTIMIZE",
+            Regex::new(r"\bOPTIMIZE\b").expect("static regex pattern '\\bOPTIMIZE\\b' is valid"),
+        ),
+        (
+            "REVIEW",
+            Regex::new(r"\bREVIEW\b").expect("static regex pattern '\\bREVIEW\\b' is valid"),
+        ),
+        (
+            "DEPRECATED",
+            Regex::new(r"\bDEPRECATED\b")
+                .expect("static regex pattern '\\bDEPRECATED\\b' is valid"),
+        ),
+        (
+            "TEMPORARY",
+            Regex::new(r"\bTEMPORARY\b").expect("static regex pattern '\\bTEMPORARY\\b' is valid"),
+        ),
     ]
 });
 

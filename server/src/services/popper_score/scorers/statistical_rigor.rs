@@ -192,9 +192,10 @@ impl StatisticalRigorScorer {
                 let content_lower = content.to_lowercase();
 
                 // Check for performance thresholds (2 points)
-                let threshold_regex =
-                    Regex::new(r"(?i)(\d+x\s*faster|\d+%\s*(faster|slower|improvement)|\d+ms|\d+μs)")
-                        .unwrap();
+                let threshold_regex = Regex::new(
+                    r"(?i)(\d+x\s*faster|\d+%\s*(faster|slower|improvement)|\d+ms|\d+μs)",
+                )
+                .unwrap();
                 if threshold_regex.is_match(&content) {
                     earned += 2.0;
                     description.push("performance thresholds documented");

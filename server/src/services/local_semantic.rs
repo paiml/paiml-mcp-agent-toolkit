@@ -154,10 +154,7 @@ impl LocalSemanticEngine {
             }
 
             let file_path = entry.path();
-            let extension = file_path
-                .extension()
-                .and_then(|e| e.to_str())
-                .unwrap_or("");
+            let extension = file_path.extension().and_then(|e| e.to_str()).unwrap_or("");
 
             let language = match extension {
                 "rs" => "rust",
@@ -357,11 +354,7 @@ impl LocalSemanticEngine {
     ///
     /// # Returns
     /// Clustering results
-    pub fn cluster(
-        &self,
-        method: &str,
-        k: Option<usize>,
-    ) -> Result<LocalClusterResult, String> {
+    pub fn cluster(&self, method: &str, k: Option<usize>) -> Result<LocalClusterResult, String> {
         let dtm = self
             .dtm
             .as_ref()
@@ -394,14 +387,16 @@ impl LocalSemanticEngine {
                 kmeans
                     .fit(&matrix_f32)
                     .map_err(|e| format!("K-means failed: {}", e))?;
-                kmeans.predict(&matrix_f32).into_iter().map(|l| l as i32).collect()
+                kmeans
+                    .predict(&matrix_f32)
+                    .into_iter()
+                    .map(|l| l as i32)
+                    .collect()
             }
             "hierarchical" => {
                 let n_clusters = k.unwrap_or(5.min(n_rows));
-                let mut agg = AgglomerativeClustering::new(
-                    n_clusters,
-                    aprender::cluster::Linkage::Average,
-                );
+                let mut agg =
+                    AgglomerativeClustering::new(n_clusters, aprender::cluster::Linkage::Average);
                 agg.fit(&matrix_f32)
                     .map_err(|e| format!("Hierarchical clustering failed: {}", e))?;
                 agg.labels().iter().map(|&l| l as i32).collect()
@@ -531,8 +526,11 @@ mod tests {
         let temp_dir = create_test_project();
 
         // Add a Python file
-        fs::write(temp_dir.path().join("script.py"), "print('hello')\n# comment")
-            .expect("write script.py");
+        fs::write(
+            temp_dir.path().join("script.py"),
+            "print('hello')\n# comment",
+        )
+        .expect("write script.py");
 
         let mut engine = LocalSemanticEngine::new();
 

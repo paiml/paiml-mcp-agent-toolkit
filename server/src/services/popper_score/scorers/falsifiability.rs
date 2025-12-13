@@ -56,7 +56,12 @@ impl FalsifiabilityScorer {
 
                 // Check for explicit claims (2 points)
                 let claim_patterns = [
-                    "claim", "guarantee", "ensures", "provides", "achieves", "delivers",
+                    "claim",
+                    "guarantee",
+                    "ensures",
+                    "provides",
+                    "achieves",
+                    "delivers",
                 ];
                 if claim_patterns.iter().any(|p| content_lower.contains(p)) {
                     earned += 2.0;
@@ -224,15 +229,17 @@ impl FalsifiabilityScorer {
         }
 
         // Check Cargo.toml for benchmark dependencies (root and members)
-        let has_bench_dep = workspace::get_code_paths(project_path).iter().any(|member| {
-            let cargo_path = member.join("Cargo.toml");
-            if cargo_path.exists() {
-                if let Ok(content) = std::fs::read_to_string(&cargo_path) {
-                    return content.contains("criterion") || content.contains("divan");
+        let has_bench_dep = workspace::get_code_paths(project_path)
+            .iter()
+            .any(|member| {
+                let cargo_path = member.join("Cargo.toml");
+                if cargo_path.exists() {
+                    if let Ok(content) = std::fs::read_to_string(&cargo_path) {
+                        return content.contains("criterion") || content.contains("divan");
+                    }
                 }
-            }
-            false
-        });
+                false
+            });
         // Also check root Cargo.toml
         let root_cargo = project_path.join("Cargo.toml");
         let has_root_bench_dep = if root_cargo.exists() {
@@ -315,8 +322,16 @@ impl FalsifiabilityScorer {
         let mut content = String::new();
 
         // Read from tests/ and src/ across all workspace members
-        content.push_str(&workspace::read_member_dir_content(project_path, "tests", "rs"));
-        content.push_str(&workspace::read_member_dir_content(project_path, "src", "rs"));
+        content.push_str(&workspace::read_member_dir_content(
+            project_path,
+            "tests",
+            "rs",
+        ));
+        content.push_str(&workspace::read_member_dir_content(
+            project_path,
+            "src",
+            "rs",
+        ));
 
         content
     }

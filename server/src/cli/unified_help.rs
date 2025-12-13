@@ -43,16 +43,14 @@ impl HelpNlpProcessor {
         let mut stop_words = HashSet::new();
         // Common English stop words + domain-specific
         for word in &[
-            "the", "a", "an", "is", "are", "was", "were", "be", "been", "being",
-            "have", "has", "had", "do", "does", "did", "will", "would", "could",
-            "should", "may", "might", "must", "shall", "can", "to", "of", "in",
-            "for", "on", "with", "at", "by", "from", "as", "into", "through",
-            "during", "before", "after", "above", "below", "between", "under",
-            "again", "further", "then", "once", "here", "there", "when", "where",
-            "why", "how", "all", "each", "few", "more", "most", "other", "some",
-            "such", "no", "nor", "not", "only", "own", "same", "so", "than",
-            "too", "very", "just", "and", "but", "if", "or", "because", "until",
-            "while", "this", "that", "these", "those", "it", "its",
+            "the", "a", "an", "is", "are", "was", "were", "be", "been", "being", "have", "has",
+            "had", "do", "does", "did", "will", "would", "could", "should", "may", "might", "must",
+            "shall", "can", "to", "of", "in", "for", "on", "with", "at", "by", "from", "as",
+            "into", "through", "during", "before", "after", "above", "below", "between", "under",
+            "again", "further", "then", "once", "here", "there", "when", "where", "why", "how",
+            "all", "each", "few", "more", "most", "other", "some", "such", "no", "nor", "not",
+            "only", "own", "same", "so", "than", "too", "very", "just", "and", "but", "if", "or",
+            "because", "until", "while", "this", "that", "these", "those", "it", "its",
             // Domain-specific
             "pmat", "command", "run", "execute", "use", "using",
         ] {
@@ -265,7 +263,9 @@ impl CommandGraph {
 
     /// Get top-k most important commands
     pub fn top_k_important(&self, k: usize) -> Vec<(String, f32)> {
-        let mut all: Vec<_> = self.importance_scores.iter()
+        let mut all: Vec<_> = self
+            .importance_scores
+            .iter()
             .map(|(k, v)| (k.clone(), *v))
             .collect();
         all.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
@@ -304,10 +304,7 @@ pub enum HelpResponse {
     /// Exact match found
     Exact(CommandMetadata),
     /// Fuzzy match suggestion
-    DidYouMean {
-        suggestion: String,
-        confidence: f32,
-    },
+    DidYouMean { suggestion: String, confidence: f32 },
     /// Search results
     SearchResults {
         query: String,
@@ -518,7 +515,11 @@ fn levenshtein(a: &str, b: &str) -> usize {
 
     for i in 1..=a_len {
         for j in 1..=b_len {
-            let cost = if a_chars[i - 1] == b_chars[j - 1] { 0 } else { 1 };
+            let cost = if a_chars[i - 1] == b_chars[j - 1] {
+                0
+            } else {
+                1
+            };
             matrix[i][j] = std::cmp::min(
                 std::cmp::min(matrix[i - 1][j] + 1, matrix[i][j - 1] + 1),
                 matrix[i - 1][j - 1] + cost,
@@ -611,7 +612,12 @@ mod tests {
             // "code" appears three times, "analysis" once
             let code_freq = tf.get("code").unwrap_or(&0.0);
             let analysis_freq = tf.get("analysi").unwrap_or(&0.0);
-            assert!(code_freq > analysis_freq, "code freq {} should be > analysis freq {}", code_freq, analysis_freq);
+            assert!(
+                code_freq > analysis_freq,
+                "code freq {} should be > analysis freq {}",
+                code_freq,
+                analysis_freq
+            );
         }
 
         #[test]
@@ -719,8 +725,10 @@ mod tests {
             let results = help.search("complexity", 3);
             assert!(!results.is_empty());
             // First result should be related to complexity
-            assert!(results[0].command.contains("complexity") ||
-                    results[0].description.to_lowercase().contains("complex"));
+            assert!(
+                results[0].command.contains("complexity")
+                    || results[0].description.to_lowercase().contains("complex")
+            );
         }
 
         #[test]

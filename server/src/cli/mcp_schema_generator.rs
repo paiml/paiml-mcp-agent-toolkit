@@ -75,16 +75,29 @@ impl std::fmt::Display for SchemaError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::MissingSchemaProperty { tool, property } => {
-                write!(f, "Tool '{}' missing required property '{}'", tool, property)
+                write!(
+                    f,
+                    "Tool '{}' missing required property '{}'",
+                    tool, property
+                )
             }
-            Self::TypeMismatch { tool, property, expected, actual } => {
+            Self::TypeMismatch {
+                tool,
+                property,
+                expected,
+                actual,
+            } => {
                 write!(
                     f,
                     "Tool '{}' property '{}' type mismatch: expected {}, got {}",
                     tool, property, expected, actual
                 )
             }
-            Self::DuplicateToolName { tool_name, command1, command2 } => {
+            Self::DuplicateToolName {
+                tool_name,
+                command1,
+                command2,
+            } => {
                 write!(
                     f,
                     "Duplicate MCP tool name '{}' in commands '{}' and '{}'",
@@ -213,7 +226,8 @@ impl McpSchemaGenerator {
         let mut errors = Vec::new();
 
         // Check for duplicate tool names
-        let mut seen_tools: std::collections::HashMap<&str, &str> = std::collections::HashMap::new();
+        let mut seen_tools: std::collections::HashMap<&str, &str> =
+            std::collections::HashMap::new();
         for (name, cmd) in &self.registry.commands {
             if let Some(mcp) = &cmd.mcp {
                 if let Some(existing) = seen_tools.get(mcp.tool_name.as_str()) {
@@ -361,7 +375,11 @@ mod tests {
                     description: "Output format".to_string(),
                     required: false,
                     value_type: ValueType::Enum,
-                    possible_values: vec!["json".to_string(), "text".to_string(), "table".to_string()],
+                    possible_values: vec![
+                        "json".to_string(),
+                        "text".to_string(),
+                        "table".to_string(),
+                    ],
                     ..Default::default()
                 })
                 .mcp(McpToolMetadata {
@@ -424,7 +442,10 @@ mod tests {
         let tools = gen.generate_tools_list();
 
         let analyze_tool = tools.iter().find(|t| t.name == "pmat_analyze").unwrap();
-        assert_eq!(analyze_tool.description, "Run various code analysis tools on your project");
+        assert_eq!(
+            analyze_tool.description,
+            "Run various code analysis tools on your project"
+        );
         assert!(analyze_tool.input_schema.is_object());
     }
 
@@ -512,7 +533,9 @@ mod tests {
 
         assert!(result.is_err());
         let errors = result.unwrap_err();
-        assert!(errors.iter().any(|e| matches!(e, SchemaError::DuplicateToolName { .. })));
+        assert!(errors
+            .iter()
+            .any(|e| matches!(e, SchemaError::DuplicateToolName { .. })));
     }
 
     #[test]
@@ -532,7 +555,12 @@ mod tests {
         let openapi = gen.generate_openapi_schema();
 
         assert_eq!(openapi.get("openapi").unwrap(), "3.0.0");
-        assert!(openapi.get("paths").unwrap().as_object().unwrap().contains_key("/tools/pmat_analyze"));
+        assert!(openapi
+            .get("paths")
+            .unwrap()
+            .as_object()
+            .unwrap()
+            .contains_key("/tools/pmat_analyze"));
     }
 
     #[test]

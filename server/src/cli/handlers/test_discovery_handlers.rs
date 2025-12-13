@@ -84,7 +84,9 @@ pub async fn handle_test_discovery_command(command: TestDiscoveryCommands) -> Re
             output,
             repo,
             labels,
-        } => handle_create_tickets(&input, create, output.as_deref(), repo.as_deref(), labels).await,
+        } => {
+            handle_create_tickets(&input, create, output.as_deref(), repo.as_deref(), labels).await
+        }
 
         TestDiscoveryCommands::ResolvePaths {
             input,
@@ -102,7 +104,14 @@ async fn handle_discovery_run(
     timeout: u64,
 ) -> Result<()> {
     println!("🔍 Discovering test failures in {}", project_path.display());
-    println!("   Using: {}", if use_nextest { "cargo nextest" } else { "cargo test" });
+    println!(
+        "   Using: {}",
+        if use_nextest {
+            "cargo nextest"
+        } else {
+            "cargo test"
+        }
+    );
     println!("   Timeout: {}s", timeout);
     println!();
 
@@ -278,12 +287,14 @@ async fn handle_categorization(input: &Path, output: &Path) -> Result<()> {
     println!("📋 Categorizing test failures from {}", input.display());
 
     // Read discovery report
-    let content = std::fs::read_to_string(input)
-        .context("Failed to read discovery report")?;
-    let report: DiscoveryReport = serde_json::from_str(&content)
-        .context("Failed to parse discovery report")?;
+    let content = std::fs::read_to_string(input).context("Failed to read discovery report")?;
+    let report: DiscoveryReport =
+        serde_json::from_str(&content).context("Failed to parse discovery report")?;
 
-    println!("   Found {} failures to categorize", report.test_failures.len());
+    println!(
+        "   Found {} failures to categorize",
+        report.test_failures.len()
+    );
 
     // Group failures by category and pattern
     let groups = categorize_failures(&report.test_failures);
@@ -306,8 +317,12 @@ async fn handle_categorization(input: &Path, output: &Path) -> Result<()> {
 
     // Print summary
     for group in &cat_report.groups {
-        println!("   📁 {} (priority {}): {} tests",
-                 group.root_cause, group.priority, group.tests.len());
+        println!(
+            "   📁 {} (priority {}): {} tests",
+            group.root_cause,
+            group.priority,
+            group.tests.len()
+        );
         println!("      Reason: {}", group.ignore_reason);
     }
 
@@ -418,10 +433,9 @@ async fn handle_mark(input: &Path, apply: bool) -> Result<()> {
     println!();
 
     // Read categorization report
-    let content = std::fs::read_to_string(input)
-        .context("Failed to read categorization report")?;
-    let report: CategorizationReport = serde_json::from_str(&content)
-        .context("Failed to parse categorization report")?;
+    let content = std::fs::read_to_string(input).context("Failed to read categorization report")?;
+    let report: CategorizationReport =
+        serde_json::from_str(&content).context("Failed to parse categorization report")?;
 
     // Collect all edits needed
     let mut edits: Vec<TestEdit> = Vec::new();
@@ -439,7 +453,8 @@ async fn handle_mark(input: &Path, apply: bool) -> Result<()> {
     println!("   Found {} tests to mark across files", edits.len());
 
     // Group edits by file
-    let mut by_file: std::collections::HashMap<PathBuf, Vec<TestEdit>> = std::collections::HashMap::new();
+    let mut by_file: std::collections::HashMap<PathBuf, Vec<TestEdit>> =
+        std::collections::HashMap::new();
     for edit in edits {
         by_file.entry(edit.file.clone()).or_default().push(edit);
     }
@@ -475,9 +490,15 @@ async fn handle_mark(input: &Path, apply: bool) -> Result<()> {
 
     println!();
     if apply {
-        println!("✅ Marking complete: {} tests modified, {} errors", modified_count, error_count);
+        println!(
+            "✅ Marking complete: {} tests modified, {} errors",
+            modified_count, error_count
+        );
     } else {
-        println!("✅ Dry run complete: {} tests would be modified, {} errors", modified_count, error_count);
+        println!(
+            "✅ Dry run complete: {} tests would be modified, {} errors",
+            modified_count, error_count
+        );
         println!("   Run with --apply to make changes");
     }
 
@@ -606,7 +627,10 @@ pub struct TicketsReport {
 }
 
 /// Generate issue templates from categorization
-pub fn generate_issue_templates(report: &CategorizationReport, labels: Option<Vec<String>>) -> Vec<TestIssueTemplate> {
+pub fn generate_issue_templates(
+    report: &CategorizationReport,
+    labels: Option<Vec<String>>,
+) -> Vec<TestIssueTemplate> {
     let default_labels = vec!["test-quality".to_string(), "automated".to_string()];
     let extra_labels = labels.unwrap_or_default();
 
@@ -768,7 +792,10 @@ async fn handle_resolve_paths(input: &Path, output: &Path, project_path: &Path) 
     let mut report: DiscoveryReport =
         serde_json::from_str(&content).context("Failed to parse discovery report")?;
 
-    println!("   Found {} failures to resolve", report.test_failures.len());
+    println!(
+        "   Found {} failures to resolve",
+        report.test_failures.len()
+    );
 
     // Build test name -> file mapping
     let test_file_map = build_test_file_map(project_path)?;
@@ -783,7 +810,11 @@ async fn handle_resolve_paths(input: &Path, output: &Path, project_path: &Path) 
         }
     }
 
-    println!("   Resolved {} of {} paths", resolved, report.test_failures.len());
+    println!(
+        "   Resolved {} of {} paths",
+        resolved,
+        report.test_failures.len()
+    );
 
     // Write output
     let json = serde_json::to_string_pretty(&report)?;
@@ -1039,16 +1070,14 @@ mod tests {
 
     #[test]
     fn test_failure_group_priority() {
-        let failures = vec![
-            TestFailure {
-                name: "test1".to_string(),
-                file: PathBuf::from("test.rs"),
-                line: Some(10),
-                reason: "assertion failed".to_string(),
-                category: FailureCategory::AssertionFailure,
-                duration_ms: None,
-            },
-        ];
+        let failures = vec![TestFailure {
+            name: "test1".to_string(),
+            file: PathBuf::from("test.rs"),
+            line: Some(10),
+            reason: "assertion failed".to_string(),
+            category: FailureCategory::AssertionFailure,
+            duration_ms: None,
+        }];
 
         let groups = categorize_failures(&failures);
         assert_eq!(groups.len(), 1);

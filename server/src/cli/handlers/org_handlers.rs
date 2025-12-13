@@ -305,9 +305,7 @@ async fn handle_fault_localization(
         .context("Failed to parse failed coverage LCOV file")?;
 
     // Parse formula
-    let sbfl_formula: SbflFormula = formula
-        .parse()
-        .unwrap_or(SbflFormula::Tarantula);
+    let sbfl_formula: SbflFormula = formula.parse().unwrap_or(SbflFormula::Tarantula);
 
     // Run localization
     let result = FaultLocalizer::run_localization(
@@ -320,9 +318,15 @@ async fn handle_fault_localization(
     );
 
     // Determine output format
-    let format = if output.map(|p| p.extension().and_then(|e| e.to_str()) == Some("json")).unwrap_or(false) {
+    let format = if output
+        .map(|p| p.extension().and_then(|e| e.to_str()) == Some("json"))
+        .unwrap_or(false)
+    {
         ReportFormat::Json
-    } else if output.map(|p| p.extension().and_then(|e| e.to_str()) == Some("yaml")).unwrap_or(false) {
+    } else if output
+        .map(|p| p.extension().and_then(|e| e.to_str()) == Some("yaml"))
+        .unwrap_or(false)
+    {
         ReportFormat::Yaml
     } else {
         ReportFormat::Terminal
@@ -333,8 +337,7 @@ async fn handle_fault_localization(
 
     // Output
     if let Some(out_path) = output {
-        std::fs::write(out_path, &report)
-            .context("Failed to write output file")?;
+        std::fs::write(out_path, &report).context("Failed to write output file")?;
         println!("📄 Report written to: {:?}", out_path);
     } else {
         println!("{}", report);

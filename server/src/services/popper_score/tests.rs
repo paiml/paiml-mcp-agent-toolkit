@@ -12,7 +12,9 @@ use tempfile::tempdir;
 /// Test scoring on this repository (paiml-mcp-agent-toolkit)
 #[test]
 fn test_score_this_repository() {
-    let project_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+    let project_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .unwrap();
 
     let result = score_project(project_path);
     assert!(result.is_ok(), "Should be able to score this repository");
@@ -77,7 +79,8 @@ make build
 
 Run the tool with `./test-project`
 "#,
-    ).unwrap();
+    )
+    .unwrap();
 
     // Create tests
     fs::create_dir_all(temp_dir.path().join("tests")).unwrap();
@@ -90,7 +93,8 @@ fn test_basic() { assert!(true); }
 #[should_panic]
 fn test_panic() { panic!("expected"); }
 "#,
-    ).unwrap();
+    )
+    .unwrap();
 
     // Create src with inline tests
     fs::create_dir_all(temp_dir.path().join("src")).unwrap();
@@ -106,7 +110,8 @@ mod tests {
     fn test_process() {}
 }
 "#,
-    ).unwrap();
+    )
+    .unwrap();
 
     // Create Cargo.toml and lock
     fs::write(
@@ -118,14 +123,16 @@ version = "1.0.0"
 [dev-dependencies]
 criterion = "0.5"
 "#,
-    ).unwrap();
+    )
+    .unwrap();
     fs::write(temp_dir.path().join("Cargo.lock"), "# Lock file").unwrap();
 
     // Create LICENSE
     fs::write(
         temp_dir.path().join("LICENSE"),
         "MIT License\n\nCopyright (c) 2025\n",
-    ).unwrap();
+    )
+    .unwrap();
 
     // Create .git
     fs::create_dir_all(temp_dir.path().join(".git")).unwrap();
@@ -135,26 +142,30 @@ criterion = "0.5"
     fs::write(
         temp_dir.path().join(".github/workflows/ci.yml"),
         "on: push\njobs:\n  test:\n    steps:\n      - run: cargo test\n",
-    ).unwrap();
+    )
+    .unwrap();
 
     // Create Makefile
     fs::write(
         temp_dir.path().join("Makefile"),
         "build:\n\tcargo build\ntest:\n\tcargo test\n",
-    ).unwrap();
+    )
+    .unwrap();
 
     // Create benches
     fs::create_dir_all(temp_dir.path().join("benches")).unwrap();
     fs::write(
         temp_dir.path().join("benches/bench.rs"),
         "use criterion::*;\nfn bench(c: &mut Criterion) {}\n",
-    ).unwrap();
+    )
+    .unwrap();
 
     // Create CHANGELOG
     fs::write(
         temp_dir.path().join("CHANGELOG.md"),
         "# Changelog\n\n## [1.0.0] - 2025-01-15\n\n- Initial release\n",
-    ).unwrap();
+    )
+    .unwrap();
 
     let result = score_project(temp_dir.path());
     assert!(result.is_ok());
@@ -165,7 +176,11 @@ criterion = "0.5"
     assert!(score.gateway_passed);
 
     // Should have reasonable score
-    assert!(score.normalized_score > 40.0, "Score: {}", score.normalized_score);
+    assert!(
+        score.normalized_score > 40.0,
+        "Score: {}",
+        score.normalized_score
+    );
 
     // Should have analysis
     assert!(!score.analysis.verdict.is_empty());
@@ -185,7 +200,8 @@ fn test_ml_project_scoring() {
     fs::write(
         temp_dir.path().join("requirements.txt"),
         "torch==2.0.0\ntransformers\nnumpy\n",
-    ).unwrap();
+    )
+    .unwrap();
 
     fs::write(
         temp_dir.path().join("README.md"),
@@ -202,13 +218,15 @@ This model claims to achieve 95% accuracy on the benchmark dataset.
 
 The training data comes from public sources.
 "#,
-    ).unwrap();
+    )
+    .unwrap();
 
     fs::create_dir_all(temp_dir.path().join("tests")).unwrap();
     fs::write(
         temp_dir.path().join("tests/test_model.py"),
         "def test_model(): assert True\n",
-    ).unwrap();
+    )
+    .unwrap();
 
     fs::write(
         temp_dir.path().join("train.py"),
@@ -221,13 +239,15 @@ random.seed(SEED)
 np.random.seed(SEED)
 torch.manual_seed(SEED)
 "#,
-    ).unwrap();
+    )
+    .unwrap();
 
     fs::create_dir_all(temp_dir.path().join(".github/workflows")).unwrap();
     fs::write(
         temp_dir.path().join(".github/workflows/ci.yml"),
         "on: push\njobs:\n  test:\n    steps:\n      - run: pytest\n",
-    ).unwrap();
+    )
+    .unwrap();
 
     fs::write(temp_dir.path().join("dvc.yaml"), "stages:\n  train:\n").unwrap();
 
@@ -253,7 +273,8 @@ fn test_non_ml_normalization() {
     fs::write(
         temp_dir.path().join("Cargo.toml"),
         "[package]\nname = \"cli\"\nversion = \"1.0.0\"\n",
-    ).unwrap();
+    )
+    .unwrap();
 
     fs::write(
         temp_dir.path().join("README.md"),
@@ -264,13 +285,15 @@ fn test_non_ml_normalization() {
     fs::write(
         temp_dir.path().join("tests/test.rs"),
         "#[test]\nfn test() {}\n",
-    ).unwrap();
+    )
+    .unwrap();
 
     fs::create_dir_all(temp_dir.path().join(".github/workflows")).unwrap();
     fs::write(
         temp_dir.path().join(".github/workflows/ci.yml"),
         "on: push\njobs:\n  test:\n    steps:\n      - run: cargo test\n",
-    ).unwrap();
+    )
+    .unwrap();
 
     let result = score_project(temp_dir.path());
     assert!(result.is_ok());
@@ -295,19 +318,22 @@ fn test_recommendation_generation() {
     fs::write(
         temp_dir.path().join("README.md"),
         "# Project\n\nClaims 10x performance.\n\n## Success Criteria\n\nTests pass.\n",
-    ).unwrap();
+    )
+    .unwrap();
 
     fs::create_dir_all(temp_dir.path().join("tests")).unwrap();
     fs::write(
         temp_dir.path().join("tests/test.rs"),
         "#[test]\nfn test() {}\n#[test]\n#[should_panic]\nfn test_panic() { panic!(); }\n",
-    ).unwrap();
+    )
+    .unwrap();
 
     fs::create_dir_all(temp_dir.path().join(".github/workflows")).unwrap();
     fs::write(
         temp_dir.path().join(".github/workflows/ci.yml"),
         "on: push\njobs:\n  test:\n    steps:\n      - run: cargo test\n",
-    ).unwrap();
+    )
+    .unwrap();
 
     let result = score_project(temp_dir.path());
     assert!(result.is_ok());

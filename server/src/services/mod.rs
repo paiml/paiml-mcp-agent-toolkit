@@ -118,8 +118,8 @@ mod complexity_property_tests;
 pub mod configuration_service;
 pub mod context;
 pub mod context_graph; // O(1) Context Graph: trueno-graph integration for fast symbol lookups
-pub mod coverage_improvement_service;
 pub mod coupling_analyzer;
+pub mod coverage_improvement_service;
 pub mod dag_builder;
 pub mod dead_code_analyzer;
 #[cfg(test)]
@@ -134,6 +134,7 @@ pub mod defect_analyzers;
 pub mod defect_detector; // Known Defects detection (Sprint: Known Defects v2.1)
 pub mod defect_report_service;
 // pub mod deep_context_orchestrator; // TRACKED: Fix AST node compatibility
+pub mod debug_formatters;
 pub mod defect_probability;
 pub mod deterministic_mermaid_engine;
 pub mod doc_validator;
@@ -150,13 +151,12 @@ pub mod enhanced_python_visitor;
 pub mod enhanced_reporting;
 pub mod enhanced_typescript_visitor;
 pub mod error_capture; // Issue #81: Bug report error capture
+pub mod fault_localization; // Issue #103: Tarantula SBFL fault localization
 pub mod file_classifier;
 #[cfg(test)]
 mod file_classifier_property_tests;
-pub mod fault_localization; // Issue #103: Tarantula SBFL fault localization
 pub mod file_discovery;
 pub mod five_whys_analyzer;
-pub mod debug_formatters;
 pub mod fixed_graph_builder;
 pub mod git_analysis;
 pub mod git_clone;
@@ -170,10 +170,12 @@ pub mod lightweight_provability_analyzer;
 pub mod makefile_compressor;
 pub mod makefile_linter;
 pub mod mermaid_generator;
+pub mod ml_seed; // ML Reproducibility: Seed management for deterministic operations
 pub mod parallel_git;
 pub mod parsed_file_cache;
 pub mod pdmt_quality_integration;
 pub mod pdmt_service;
+pub mod popper_score; // Popper Falsifiability Score v1.1 (Popperian science standards)
 pub mod progress;
 pub mod project_analyzer;
 pub mod project_meta_detector;
@@ -183,14 +185,14 @@ pub mod quality_gates;
 pub mod real_world_enhanced_naming_test;
 pub mod repo_score; // Repository health scoring system
 pub mod rust_project_score; // Rust Project Score v1.1 (evidence-based quality scoring)
-pub mod popper_score; // Popper Falsifiability Score v1.1 (Popperian science standards)
-pub mod ml_seed; // ML Reproducibility: Seed management for deterministic operations
 pub mod similarity; // Advanced similarity and entropy detection
 pub use quality_gates as quality_gate;
 #[cfg(test)]
 mod deep_context_property_tests;
 #[cfg(feature = "deep-wasm")]
 pub mod deep_wasm;
+pub mod local_semantic; // Local semantic analysis using aprender (no external API required)
+pub mod ml_quality_scorer; // GH-97: ML-based quality scoring using aprender
 pub mod polyglot_analyzer;
 pub mod quality_proxy;
 pub mod ranking;
@@ -205,12 +207,10 @@ pub mod rust_wasm_analyzer;
 pub mod satd_detector;
 pub mod semantic; // PMAT-SEARCH-001: Semantic code search services
 pub mod semantic_naming;
-pub mod local_semantic; // Local semantic analysis using aprender (no external API required)
 pub mod simple_deep_context;
 pub mod spec_parser; // Part C: Specification parsing for pmat qa command
 pub mod symbol_table;
 pub mod tdg_calculator;
-pub mod ml_quality_scorer; // GH-97: ML-based quality scoring using aprender
 pub mod template_service;
 pub mod unified_ast_engine; // Stub for backward compatibility
 #[cfg(feature = "shell-ast")]

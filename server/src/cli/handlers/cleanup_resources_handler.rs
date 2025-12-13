@@ -82,10 +82,7 @@ pub async fn handle_cleanup_resources(
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     println!("📁 Scanning: {}", project_dir.display());
     println!("🎯 Targets: {:?}", targets);
-    println!(
-        "⚡ Mode: {}",
-        if execute { "EXECUTE" } else { "DRY-RUN" }
-    );
+    println!("⚡ Mode: {}", if execute { "EXECUTE" } else { "DRY-RUN" });
     println!();
 
     let mut result = CleanupResult::default();
@@ -202,7 +199,10 @@ fn scan_node_targets(
             let path = e.path();
             !is_hidden(path)
                 && !is_excluded(path, exclude)
-                && path.file_name().map(|n| n != "node_modules").unwrap_or(true)
+                && path
+                    .file_name()
+                    .map(|n| n != "node_modules")
+                    .unwrap_or(true)
         })
         .flatten()
     {
@@ -356,10 +356,7 @@ fn print_results(result: &CleanupResult, format: OutputFormat) -> Result<()> {
             println!("{}", serde_json::to_string_pretty(&json)?);
         }
         _ => {
-            println!(
-                "   Items found:  {}",
-                result.items_found
-            );
+            println!("   Items found:  {}", result.items_found);
             println!(
                 "   Total size:   {} MB",
                 result.total_size_bytes / (1024 * 1024)

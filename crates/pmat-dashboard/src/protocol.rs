@@ -157,7 +157,9 @@ mod tests {
 
     #[test]
     fn test_ws_command_serialize_subscribe() {
-        let cmd = WsCommand::Subscribe { channel: "metrics".to_string() };
+        let cmd = WsCommand::Subscribe {
+            channel: "metrics".to_string(),
+        };
         let json = serde_json::to_string(&cmd).unwrap();
         assert!(json.contains("subscribe"));
         assert!(json.contains("metrics"));
@@ -165,7 +167,9 @@ mod tests {
 
     #[test]
     fn test_ws_command_serialize_refresh() {
-        let cmd = WsCommand::Refresh { target: "hotspots".to_string() };
+        let cmd = WsCommand::Refresh {
+            target: "hotspots".to_string(),
+        };
         let json = serde_json::to_string(&cmd).unwrap();
         assert!(json.contains("refresh"));
     }

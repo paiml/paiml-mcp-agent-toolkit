@@ -143,11 +143,7 @@ mod defect_report_tests {
             span_end_line: None,
         };
 
-        let report = DefectReport::new(
-            DefectCategory::TypeErrors,
-            Severity::High,
-            location,
-        );
+        let report = DefectReport::new(DefectCategory::TypeErrors, Severity::High, location);
 
         assert!(!report.id.is_empty());
         assert_eq!(report.category, DefectCategory::TypeErrors);
@@ -167,11 +163,7 @@ mod defect_report_tests {
             span_end_line: None,
         };
 
-        let mut report = DefectReport::new(
-            DefectCategory::TypeErrors,
-            Severity::High,
-            location,
-        );
+        let mut report = DefectReport::new(DefectCategory::TypeErrors, Severity::High, location);
 
         report.add_signal(SignalEvidence {
             source: SignalSource::Rustc,
@@ -192,11 +184,7 @@ mod defect_report_tests {
             span_end_line: None,
         };
 
-        let mut report = DefectReport::new(
-            DefectCategory::TypeErrors,
-            Severity::High,
-            location,
-        );
+        let mut report = DefectReport::new(DefectCategory::TypeErrors, Severity::High, location);
 
         // Add high-weight signal
         report.add_signal(SignalEvidence {
@@ -221,11 +209,7 @@ mod defect_report_tests {
             span_end_line: None,
         };
 
-        let mut report = DefectReport::new(
-            DefectCategory::Configuration,
-            Severity::Low,
-            location,
-        );
+        let mut report = DefectReport::new(DefectCategory::Configuration, Severity::Low, location);
 
         // Low confidence category with low weight
         report.add_signal(SignalEvidence {

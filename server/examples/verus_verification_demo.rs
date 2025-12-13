@@ -125,7 +125,10 @@ pub fn binary_search(arr: &[i32], target: i32) -> (result: Option<usize>) {
         .expect("Scoring failed");
 
     println!("Scoring Results (Quick Mode):");
-    println!("  Earned: {:.1} / {:.1} points", quick_result.earned, quick_result.max);
+    println!(
+        "  Earned: {:.1} / {:.1} points",
+        quick_result.earned, quick_result.max
+    );
     println!("  Percentage: {:.0}%", quick_result.percentage());
     println!();
 
@@ -151,7 +154,10 @@ pub fn binary_search(arr: &[i32], target: i32) -> (result: Option<usize>) {
     println!("Points Breakdown:");
     println!("  - Miri (no unsafe): 3.0 pts (full credit for safe code)");
     println!("  - Kani (no proofs): 0.0 pts");
-    println!("  - Verus (specs found): ~{:.1} pts", quick_result.earned - 3.0);
+    println!(
+        "  - Verus (specs found): ~{:.1} pts",
+        quick_result.earned - 3.0
+    );
     println!();
 
     println!("Integration with Verus:");

@@ -156,7 +156,11 @@ impl DemoScorer {
                             count += 1;
                         }
                     }
-                } else if path.is_dir() && !path.file_name().is_some_and(|n| n.to_str().is_some_and(|s| s.starts_with('.'))) {
+                } else if path.is_dir()
+                    && !path
+                        .file_name()
+                        .is_some_and(|n| n.to_str().is_some_and(|s| s.starts_with('.')))
+                {
                     // Recursively count (but skip hidden dirs)
                     count += Box::pin(self.count_files_by_extension(&path, ext)).await;
                 }
@@ -371,7 +375,8 @@ impl DemoScorer {
         // Pre-compile regex patterns outside the loop (clippy::regex_creation_in_loops)
         let contextual_fn_pattern = regex::Regex::new(
             r"(?s)fn\s+(test_|setup|init|proof_of_concept|example_)[^{]*\{[^}]*\.unwrap\(\)",
-        ).unwrap();
+        )
+        .unwrap();
         let unwrap_pattern = regex::Regex::new(r"\.unwrap\(\)").unwrap();
         let panic_pattern = regex::Regex::new(r"panic!\(").unwrap();
         let expect_pattern = regex::Regex::new(r#"\.expect\("[^"]+"\)"#).unwrap();
@@ -548,7 +553,15 @@ impl DemoScorer {
             }
         } else if package_json.exists() {
             if let Ok(content) = tokio::fs::read_to_string(&package_json).await {
-                let rich_patterns = ["chalk", "ora", "ink", "blessed", "cli-table", "boxen", "figlet"];
+                let rich_patterns = [
+                    "chalk",
+                    "ora",
+                    "ink",
+                    "blessed",
+                    "cli-table",
+                    "boxen",
+                    "figlet",
+                ];
                 for p in rich_patterns {
                     if content.contains(p) {
                         detected_libs.push(p);
@@ -608,8 +621,8 @@ impl DemoScorer {
         for file_path in &demo_files {
             if let Ok(content) = tokio::fs::read_to_string(file_path).await {
                 let structured_patterns = [
-                    r#"println!\s*\(\s*"\s*\{"#,        // Structured println with format
-                    r#"eprintln!\s*\("#,                // Proper stderr usage
+                    r#"println!\s*\(\s*"\s*\{"#,       // Structured println with format
+                    r#"eprintln!\s*\("#,               // Proper stderr usage
                     r#"serde_json::to_string_pretty"#, // Pretty JSON output
                     r#"format!\s*\("#,                 // Formatted output
                     r#"table\.add_row"#,               // Table output
@@ -665,10 +678,19 @@ impl DemoScorer {
     /// Implements Genchi Genbutsu principle - go and see the actual usage
     async fn verify_library_usage(&self, src_path: &Path, libs: &[&str]) -> bool {
         let usage_patterns: std::collections::HashMap<&str, &[&str]> = [
-            ("indicatif", &["ProgressBar", "MultiProgress", "ProgressStyle"][..]),
+            (
+                "indicatif",
+                &["ProgressBar", "MultiProgress", "ProgressStyle"][..],
+            ),
             ("console", &["Term", "Style", "Color"][..]),
-            ("colored", &[".red()", ".green()", ".blue()", "Colorize"][..]),
-            ("termcolor", &["StandardStream", "ColorChoice", "WriteColor"][..]),
+            (
+                "colored",
+                &[".red()", ".green()", ".blue()", "Colorize"][..],
+            ),
+            (
+                "termcolor",
+                &["StandardStream", "ColorChoice", "WriteColor"][..],
+            ),
             ("ratatui", &["Terminal", "Frame", "Widget"][..]),
             ("crossterm", &["execute!", "queue!", "cursor::"][..]),
             ("comfy-table", &["Table", "Row", "Cell"][..]),
@@ -683,7 +705,9 @@ impl DemoScorer {
             ("colorama", &["Fore.", "Back.", "Style."][..]),
             ("click", &["@click.command", "click.echo"][..]),
             ("typer", &["typer.Typer", "@app.command"][..]),
-        ].into_iter().collect();
+        ]
+        .into_iter()
+        .collect();
 
         // Scan src/ files recursively
         if let Ok(entries) = std::fs::read_dir(src_path) {
@@ -791,7 +815,10 @@ impl DemoScorer {
                         findings.push(Finding {
                             severity: Severity::Success,
                             category: "Demo Quality".to_string(),
-                            message: format!("{} badges detected (professional appearance)", badge_count),
+                            message: format!(
+                                "{} badges detected (professional appearance)",
+                                badge_count
+                            ),
                             location: Some("README.md".to_string()),
                             impact_points: badge_score,
                         });
@@ -1100,12 +1127,18 @@ colored = "2.0"
         let temp_dir = create_temp_repo();
         let repo_path = temp_dir.path();
         create_examples_dir(repo_path);
-        create_readme(repo_path, "# Project\n\n## Quick Start\n\n```bash\ncargo run\n```");
+        create_readme(
+            repo_path,
+            "# Project\n\n## Quick Start\n\n```bash\ncargo run\n```",
+        );
 
         let scorer = DemoScorer::new();
         let result = scorer.score_time_to_interaction(repo_path).await.unwrap();
 
-        assert!(result.score >= 2.0, "Should score >= 2.0 with examples and quick-start");
+        assert!(
+            result.score >= 2.0,
+            "Should score >= 2.0 with examples and quick-start"
+        );
         assert_eq!(result.id, "G1");
     }
 
@@ -1143,10 +1176,7 @@ fn main() {
         // Should be penalized for raw unwraps and panic
         assert!(result.score < 3.0, "Should lose points for raw unwraps");
         assert!(
-            result
-                .findings
-                .iter()
-                .any(|f| f.message.contains("unwrap")),
+            result.findings.iter().any(|f| f.message.contains("unwrap")),
             "Should warn about unwraps"
         );
     }
@@ -1164,7 +1194,10 @@ fn main() {
             .unwrap();
 
         // G2 should be N/A for cookbooks (max_score = 0)
-        assert_eq!(result.max_score, 0.0, "Cookbook G2 max_score should be 0 (N/A)");
+        assert_eq!(
+            result.max_score, 0.0,
+            "Cookbook G2 max_score should be 0 (N/A)"
+        );
         assert_eq!(result.score, 0.0, "Cookbook G2 score should be 0 (N/A)");
         assert!(
             result.name.contains("N/A"),
@@ -1210,7 +1243,11 @@ indicatif = "0.17"
         let scorer = DemoScorer::new();
         let archetype = scorer.detect_archetype(repo_path).await;
 
-        assert_eq!(archetype, RepoArchetype::Cookbook, "Should detect cookbook by name");
+        assert_eq!(
+            archetype,
+            RepoArchetype::Cookbook,
+            "Should detect cookbook by name"
+        );
     }
 
     #[tokio::test]
@@ -1224,7 +1261,11 @@ indicatif = "0.17"
         let scorer = DemoScorer::new();
         let archetype = scorer.detect_archetype(repo_path).await;
 
-        assert_eq!(archetype, RepoArchetype::Library, "Should detect library by src/lib.rs");
+        assert_eq!(
+            archetype,
+            RepoArchetype::Library,
+            "Should detect library by src/lib.rs"
+        );
     }
 
     #[tokio::test]

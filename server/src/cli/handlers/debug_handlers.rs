@@ -3,12 +3,20 @@
 // Stub: Not yet implemented
 
 // Placeholder for DAP server handler
-pub async fn handle_debug_serve(_port: u16, _host: String, _record_dir: Option<std::path::PathBuf>) -> anyhow::Result<()> {
+pub async fn handle_debug_serve(
+    _port: u16,
+    _host: String,
+    _record_dir: Option<std::path::PathBuf>,
+) -> anyhow::Result<()> {
     anyhow::bail!("Debug serve command not yet implemented (DEBUG-002)")
 }
 
 // Placeholder for DAP replay handler
-pub async fn handle_debug_replay(_recording: std::path::PathBuf, _position: Option<usize>, _interactive: bool) -> anyhow::Result<()> {
+pub async fn handle_debug_replay(
+    _recording: std::path::PathBuf,
+    _position: Option<usize>,
+    _interactive: bool,
+) -> anyhow::Result<()> {
     anyhow::bail!("Debug replay command not yet implemented (DEBUG-003)")
 }
 

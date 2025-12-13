@@ -196,10 +196,14 @@ impl DagDiagram {
 
                     // Add nodes if not exists
                     if !diagram.nodes.contains_key(&from.0) {
-                        diagram.nodes.insert(from.0.clone(), DagNode::new(&from.0).label(&from.1));
+                        diagram
+                            .nodes
+                            .insert(from.0.clone(), DagNode::new(&from.0).label(&from.1));
                     }
                     if !diagram.nodes.contains_key(&to.0) {
-                        diagram.nodes.insert(to.0.clone(), DagNode::new(&to.0).label(&to.1));
+                        diagram
+                            .nodes
+                            .insert(to.0.clone(), DagNode::new(&to.0).label(&to.1));
                     }
 
                     // Add edge
@@ -276,8 +280,7 @@ mod tests {
 
     #[test]
     fn test_dag_zoom() {
-        let mut dag = DagDiagram::new()
-            .with_zoom(ZoomConfig { min: 0.5, max: 2.0 });
+        let mut dag = DagDiagram::new().with_zoom(ZoomConfig { min: 0.5, max: 2.0 });
         dag.zoom_to(1.5);
         assert_eq!(dag.current_zoom(), 1.5);
 
@@ -308,7 +311,13 @@ mod tests {
     #[test]
     fn test_parse_node_id() {
         assert_eq!(parse_node_id("A"), ("A".to_string(), "A".to_string()));
-        assert_eq!(parse_node_id("A[Label]"), ("A".to_string(), "Label".to_string()));
-        assert_eq!(parse_node_id("A[Multi Word]"), ("A".to_string(), "Multi Word".to_string()));
+        assert_eq!(
+            parse_node_id("A[Label]"),
+            ("A".to_string(), "Label".to_string())
+        );
+        assert_eq!(
+            parse_node_id("A[Multi Word]"),
+            ("A".to_string(), "Multi Word".to_string())
+        );
     }
 }

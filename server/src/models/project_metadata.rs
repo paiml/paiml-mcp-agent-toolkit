@@ -90,8 +90,7 @@ impl ProjectMetadata {
         let content = fs::read_to_string(&path)
             .with_context(|| format!("Failed to read {}", path.display()))?;
 
-        toml::from_str(&content)
-            .with_context(|| format!("Failed to parse {}", path.display()))
+        toml::from_str(&content).with_context(|| format!("Failed to parse {}", path.display()))
     }
 
     /// Save project metadata to .pmat/project.toml
@@ -104,11 +103,10 @@ impl ProjectMetadata {
                 .with_context(|| format!("Failed to create directory {}", parent.display()))?;
         }
 
-        let content = toml::to_string_pretty(self)
-            .context("Failed to serialize project metadata")?;
+        let content =
+            toml::to_string_pretty(self).context("Failed to serialize project metadata")?;
 
-        fs::write(&path, content)
-            .with_context(|| format!("Failed to write {}", path.display()))
+        fs::write(&path, content).with_context(|| format!("Failed to write {}", path.display()))
     }
 
     /// Check if project metadata exists
@@ -150,7 +148,9 @@ impl ProjectMetadata {
 
     /// Check if a breaking change has been accepted
     pub fn is_breaking_change_accepted(&self, version: &str) -> bool {
-        self.compliance.breaking_changes_accepted.contains(&version.to_string())
+        self.compliance
+            .breaking_changes_accepted
+            .contains(&version.to_string())
     }
 }
 

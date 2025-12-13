@@ -4,7 +4,6 @@
 /// Requires the `org-intelligence` feature to be enabled.
 ///
 /// See: ../organizational-intelligence-plugin for the underlying implementation
-
 use crate::prompts::defect_aware_prompts::DefectAwarePromptGenerator;
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
@@ -173,9 +172,7 @@ pub fn generate_prevention_prompt(
 /// # Returns
 ///
 /// Summary metrics including top defects and quality thresholds
-pub fn analyze_oip_summary(
-    request: AnalyzeOipSummaryRequest,
-) -> Result<AnalyzeOipSummaryResponse> {
+pub fn analyze_oip_summary(request: AnalyzeOipSummaryRequest) -> Result<AnalyzeOipSummaryResponse> {
     let generator = DefectAwarePromptGenerator::from_file(&request.summary_path)
         .context("Failed to load OIP summary")?;
 
@@ -285,7 +282,9 @@ mod tests {
 
         assert!(response.found);
         assert!(response.prompt.contains("ConfigurationErrors"));
-        assert!(response.prompt.contains("Historical Frequency: 25 occurrences"));
+        assert!(response
+            .prompt
+            .contains("Historical Frequency: 25 occurrences"));
 
         Ok(())
     }

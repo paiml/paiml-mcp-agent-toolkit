@@ -662,7 +662,9 @@ fn calculate_file_hash(path: &Path) -> Option<String> {
 
 /// Read stored hash from .hash file
 fn read_stored_hash(hash_path: &Path) -> Option<String> {
-    fs::read_to_string(hash_path).ok().map(|s| s.trim().to_string())
+    fs::read_to_string(hash_path)
+        .ok()
+        .map(|s| s.trim().to_string())
 }
 
 /// Write hash to .hash file

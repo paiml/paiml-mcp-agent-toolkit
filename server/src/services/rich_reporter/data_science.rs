@@ -346,12 +346,12 @@ impl DataScienceAnalyzer {
         // Build edge list for aprender
         let edges: Vec<(usize, usize)> = dependencies
             .iter()
-            .filter_map(|(from, to)| {
-                match (file_to_node.get(from), file_to_node.get(to)) {
+            .filter_map(
+                |(from, to)| match (file_to_node.get(from), file_to_node.get(to)) {
                     (Some(&from_id), Some(&to_id)) => Some((from_id, to_id)),
                     _ => None,
-                }
-            })
+                },
+            )
             .collect();
 
         // Create undirected graph from edge list
@@ -516,7 +516,10 @@ impl DataScienceAnalyzer {
             "has_fix",
         ];
 
-        for (i, (&v, (&mean, &std))) in features.iter().zip(means.iter().zip(stds.iter())).enumerate()
+        for (i, (&v, (&mean, &std))) in features
+            .iter()
+            .zip(means.iter().zip(stds.iter()))
+            .enumerate()
         {
             let z_score = (v - mean) / std;
             if z_score.abs() > 2.0 && i < feature_names.len() {
@@ -753,7 +756,9 @@ mod tests {
     #[test]
     fn test_analyze_trends_improving() {
         let analyzer = DataScienceAnalyzer::default();
-        let data: Vec<(i64, f64)> = (0..10).map(|i| (i as i64, 100.0 - i as f64 * 5.0)).collect();
+        let data: Vec<(i64, f64)> = (0..10)
+            .map(|i| (i as i64, 100.0 - i as f64 * 5.0))
+            .collect();
         let metrics = vec![("coverage".to_string(), data)];
         let trends = analyzer.analyze_trends(&metrics);
         assert_eq!(trends.len(), 1);

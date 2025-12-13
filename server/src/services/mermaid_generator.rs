@@ -126,8 +126,7 @@ impl MermaidGenerator {
                 NodeType::Interface => format!("{sanitized_id}(({escaped_label}))"),
             };
 
-            writeln!(output, "    {node_def}")
-                .expect("writing to String never fails");
+            writeln!(output, "    {node_def}").expect("writing to String never fails");
         }
 
         // Add blank line between nodes and edges
@@ -215,8 +214,7 @@ impl MermaidGenerator {
                 }
             };
 
-            writeln!(output, "    {node_def}")
-                .expect("writing to String never fails");
+            writeln!(output, "    {node_def}").expect("writing to String never fails");
         }
     }
 

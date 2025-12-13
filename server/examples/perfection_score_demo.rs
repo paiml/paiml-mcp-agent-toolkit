@@ -26,7 +26,10 @@ async fn main() -> Result<()> {
     let calculator = PerfectionScoreCalculator::new().fast_mode(true);
     let result = calculator.calculate(Path::new(".")).await?;
 
-    println!("Total Score: {:.1}/{} pts", result.total_score, result.max_score);
+    println!(
+        "Total Score: {:.1}/{} pts",
+        result.total_score, result.max_score
+    );
     println!("Grade: {}\n", result.grade);
 
     println!("Category Breakdown:");
@@ -66,11 +69,12 @@ async fn main() -> Result<()> {
     println!("  {:>5}  {:>3}  {}", "SCORE", "GRADE", "DESCRIPTION");
     println!("  {:->5}  {:->3}  {:->30}", "", "", "");
     for (score, grade, desc) in thresholds {
-        let marker = if result.total_score as u16 >= score && result.total_score < ((score + 10) as f64) {
-            " ◀ You are here"
-        } else {
-            ""
-        };
+        let marker =
+            if result.total_score as u16 >= score && result.total_score < ((score + 10) as f64) {
+                " ◀ You are here"
+            } else {
+                ""
+            };
         println!("  {:>5}+ {:>3}   {}{}", score, grade, desc, marker);
     }
 
@@ -159,21 +163,36 @@ match parser.parse(input) {
 
     // Calculate a simple score
     let mut score = 0.0;
-    if !spec.issue_refs.is_empty() { score += 10.0; }
+    if !spec.issue_refs.is_empty() {
+        score += 10.0;
+    }
     score += (spec.code_examples.len().min(5) * 4) as f64;
     score += (spec.acceptance_criteria.len().min(10) * 3) as f64;
     score += (spec.claims.len().min(20)) as f64;
-    if !spec.title.is_empty() { score += 5.0; }
+    if !spec.title.is_empty() {
+        score += 5.0;
+    }
     score += (spec.test_requirements.len().min(5) * 3) as f64;
 
     println!("\n  Calculated Score: {:.1}/100", score.min(100.0));
-    println!("  Status: {}", if score >= 95.0 { "✅ PASS" } else { "❌ FAIL (needs ≥95)" });
+    println!(
+        "  Status: {}",
+        if score >= 95.0 {
+            "✅ PASS"
+        } else {
+            "❌ FAIL (needs ≥95)"
+        }
+    );
 
     // === Example 4: Category Weight Distribution ===
     println!("\n=== Example 4: 200-Point Weight Distribution ===\n");
 
     let categories = [
-        ("TDG (Technical Debt Grade)", 40, "Code quality and debt metrics"),
+        (
+            "TDG (Technical Debt Grade)",
+            40,
+            "Code quality and debt metrics",
+        ),
         ("Repo Score", 30, "Repository health and hygiene"),
         ("Rust Project Score", 30, "Rust-specific quality"),
         ("Popper Score", 25, "Popperian falsifiability"),
@@ -183,7 +202,10 @@ match parser.parse(input) {
         ("Performance", 15, "Benchmarks and profiling"),
     ];
 
-    println!("  {:35} {:>6} {:>7}  {}", "CATEGORY", "MAX", "%", "DESCRIPTION");
+    println!(
+        "  {:35} {:>6} {:>7}  {}",
+        "CATEGORY", "MAX", "%", "DESCRIPTION"
+    );
     println!("  {:->35} {:->6} {:->7}  {:->25}", "", "", "", "");
     for (name, max, desc) in categories {
         let pct = (max as f64 / 200.0) * 100.0;

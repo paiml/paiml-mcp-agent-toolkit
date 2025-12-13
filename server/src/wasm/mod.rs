@@ -88,7 +88,10 @@ mod tests {
             calls: 10,
         };
         assert_eq!(mix.total_instructions, 100);
-        assert_eq!(mix.control_flow + mix.memory_ops + mix.arithmetic + mix.calls, 100);
+        assert_eq!(
+            mix.control_flow + mix.memory_ops + mix.arithmetic + mix.calls,
+            100
+        );
     }
 
     #[test]

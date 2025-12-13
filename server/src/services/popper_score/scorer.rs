@@ -150,11 +150,7 @@ pub mod workspace {
     }
 
     /// Read content from a specific directory across all workspace members
-    pub fn read_member_dir_content(
-        project_path: &Path,
-        dir_name: &str,
-        extension: &str,
-    ) -> String {
+    pub fn read_member_dir_content(project_path: &Path, dir_name: &str, extension: &str) -> String {
         let mut content = String::new();
 
         for member_path in get_code_paths(project_path) {

@@ -255,7 +255,8 @@ impl KnownDefectsScorer {
         // Note: /src/tests/ is common in pmat (contains test modules)
         if path_str.contains("/tests/")
             || path_str.contains("/benches/")
-            || path_str.contains("/src/tests/") {
+            || path_str.contains("/src/tests/")
+        {
             return true;
         }
 

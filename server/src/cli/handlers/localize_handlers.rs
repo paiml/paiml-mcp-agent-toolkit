@@ -4,9 +4,7 @@
 use anyhow::{Context, Result};
 use std::path::Path;
 
-use crate::services::fault_localization::{
-    FaultLocalizer, LcovParser, ReportFormat, SbflFormula,
-};
+use crate::services::fault_localization::{FaultLocalizer, LcovParser, ReportFormat, SbflFormula};
 
 /// Handle the `pmat localize` command
 #[allow(clippy::too_many_arguments)]
@@ -29,7 +27,9 @@ pub async fn handle_localize(
 
     // Check tool availability
     if !FaultLocalizer::is_coverage_tool_available() {
-        println!("⚠️  Note: cargo-llvm-cov not detected. Install with: cargo install cargo-llvm-cov");
+        println!(
+            "⚠️  Note: cargo-llvm-cov not detected. Install with: cargo install cargo-llvm-cov"
+        );
     }
 
     // Parse LCOV files
@@ -85,7 +85,10 @@ pub async fn handle_localize(
     // Summary
     if !result.rankings.is_empty() {
         println!("\n💡 Recommendation: Start debugging from the top-ranked locations.");
-        println!("   The most suspicious statement is: {}", result.rankings[0].statement);
+        println!(
+            "   The most suspicious statement is: {}",
+            result.rankings[0].statement
+        );
     }
 
     Ok(())
@@ -94,8 +97,8 @@ pub async fn handle_localize(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::NamedTempFile;
     use std::io::Write;
+    use tempfile::NamedTempFile;
 
     #[tokio::test]
     async fn test_handle_localize_basic() {
@@ -108,11 +111,7 @@ mod tests {
         .unwrap();
 
         let mut failed_file = NamedTempFile::new().unwrap();
-        writeln!(
-            failed_file,
-            "SF:src/main.rs\nDA:1,1\nDA:2,0\nend_of_record"
-        )
-        .unwrap();
+        writeln!(failed_file, "SF:src/main.rs\nDA:1,1\nDA:2,0\nend_of_record").unwrap();
 
         let result = handle_localize(
             passed_file.path(),

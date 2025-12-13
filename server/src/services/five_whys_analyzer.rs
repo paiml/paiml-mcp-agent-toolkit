@@ -10,9 +10,9 @@
 // - TDG scoring
 
 use crate::models::debug_analysis::*;
-use anyhow::{Result, bail};
-use std::path::Path;
+use anyhow::{bail, Result};
 use serde_json::json;
+use std::path::Path;
 
 /// Five Whys analyzer with PMAT tool integration
 pub struct FiveWhysAnalyzer {
@@ -50,13 +50,13 @@ impl FiveWhysAnalyzer {
         // Iterate through Why questions
         for i in 1..=depth {
             let why = self.iterate_why(issue, path, i, &analysis.whys).await?;
-            
+
             // Early termination if high confidence reached (>0.9) after at least 3 iterations
             if i >= 3 && why.confidence > 0.9 {
                 analysis.whys.push(why);
                 break;
             }
-            
+
             analysis.whys.push(why);
         }
 
@@ -64,7 +64,10 @@ impl FiveWhysAnalyzer {
         analysis.root_cause = self.extract_root_cause(&analysis.whys)?;
 
         // Generate recommendations
-        analysis.recommendations = self.generate_recommendations(&analysis.whys, &analysis.root_cause.clone().unwrap_or_default())?;
+        analysis.recommendations = self.generate_recommendations(
+            &analysis.whys,
+            &analysis.root_cause.clone().unwrap_or_default(),
+        )?;
 
         // Summarize evidence
         analysis.evidence_summary = EvidenceSummary::from_whys(&analysis.whys);
@@ -92,9 +95,8 @@ impl FiveWhysAnalyzer {
         // Calculate confidence
         let confidence = self.calculate_confidence(&evidence)?;
 
-        let mut why = WhyIteration::new(depth, question, hypothesis)
-            .with_confidence(confidence);
-        
+        let mut why = WhyIteration::new(depth, question, hypothesis).with_confidence(confidence);
+
         why.evidence = evidence;
 
         Ok(why)
@@ -180,15 +182,18 @@ impl FiveWhysAnalyzer {
         });
 
         let has_satd = evidence.iter().any(|e| e.source == EvidenceSource::SATD);
-        
-        let has_low_tdg = evidence.iter().any(|e| {
-            e.source == EvidenceSource::TDG
-                && e.value.as_f64().unwrap_or(100.0) < 50.0
-        });
+
+        let has_low_tdg = evidence
+            .iter()
+            .any(|e| e.source == EvidenceSource::TDG && e.value.as_f64().unwrap_or(100.0) < 50.0);
 
         let has_high_churn = evidence.iter().any(|e| {
             e.source == EvidenceSource::GitChurn
-                && e.value.get("commit_count").and_then(|v| v.as_u64()).unwrap_or(0) > 10
+                && e.value
+                    .get("commit_count")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(0)
+                    > 10
         });
 
         // Form hypothesis based on evidence patterns
@@ -206,7 +211,8 @@ impl FiveWhysAnalyzer {
                 if has_low_tdg {
                     "Insufficient test coverage allowed defect to slip through".to_string()
                 } else if has_high_complexity {
-                    "Complex control flow makes code difficult to understand and maintain".to_string()
+                    "Complex control flow makes code difficult to understand and maintain"
+                        .to_string()
                 } else {
                     "Code structure contributed to the problem".to_string()
                 }
@@ -220,12 +226,8 @@ impl FiveWhysAnalyzer {
                     "Architectural constraints led to current state".to_string()
                 }
             }
-            4 => {
-                "Requirements or constraints were not fully specified".to_string()
-            }
-            _ => {
-                "Root cause: Systematic process gap in development workflow".to_string()
-            }
+            4 => "Requirements or constraints were not fully specified".to_string(),
+            _ => "Root cause: Systematic process gap in development workflow".to_string(),
         };
 
         Ok(hypothesis)
@@ -243,8 +245,16 @@ impl FiveWhysAnalyzer {
         for ev in evidence {
             let (evidence_weight, severity_multiplier) = match ev.source {
                 EvidenceSource::Complexity => {
-                    let value = ev.value.get("value").and_then(|v| v.as_f64()).unwrap_or(0.0);
-                    let threshold = ev.value.get("threshold").and_then(|v| v.as_f64()).unwrap_or(20.0);
+                    let value = ev
+                        .value
+                        .get("value")
+                        .and_then(|v| v.as_f64())
+                        .unwrap_or(0.0);
+                    let threshold = ev
+                        .value
+                        .get("threshold")
+                        .and_then(|v| v.as_f64())
+                        .unwrap_or(20.0);
                     let severity = (value - threshold).max(0.0) / threshold;
                     (0.25, 1.0 + severity.min(1.0))
                 }
@@ -259,7 +269,11 @@ impl FiveWhysAnalyzer {
                     (0.25, 1.0 + severity)
                 }
                 EvidenceSource::GitChurn => {
-                    let commits = ev.value.get("commit_count").and_then(|v| v.as_u64()).unwrap_or(0);
+                    let commits = ev
+                        .value
+                        .get("commit_count")
+                        .and_then(|v| v.as_u64())
+                        .unwrap_or(0);
                     let severity = (commits as f64).min(20.0) / 20.0;
                     (0.20, 1.0 + severity)
                 }
@@ -308,23 +322,24 @@ impl FiveWhysAnalyzer {
             })
         });
 
-        let has_satd = whys.iter().any(|w| {
-            w.evidence
-                .iter()
-                .any(|e| e.source == EvidenceSource::SATD)
-        });
+        let has_satd = whys
+            .iter()
+            .any(|w| w.evidence.iter().any(|e| e.source == EvidenceSource::SATD));
 
         let has_low_tdg = whys.iter().any(|w| {
             w.evidence.iter().any(|e| {
-                e.source == EvidenceSource::TDG
-                    && e.value.as_f64().unwrap_or(100.0) < 50.0
+                e.source == EvidenceSource::TDG && e.value.as_f64().unwrap_or(100.0) < 50.0
             })
         });
 
         let has_high_churn = whys.iter().any(|w| {
             w.evidence.iter().any(|e| {
                 e.source == EvidenceSource::GitChurn
-                    && e.value.get("commit_count").and_then(|v| v.as_u64()).unwrap_or(0) > 10
+                    && e.value
+                        .get("commit_count")
+                        .and_then(|v| v.as_u64())
+                        .unwrap_or(0)
+                        > 10
             })
         });
 

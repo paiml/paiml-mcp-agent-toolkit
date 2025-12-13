@@ -305,10 +305,10 @@ impl FormalVerificationScorer {
                 // Quick/Fast mode: Just count specs, give partial credit
                 // No subprocess calls for speed
                 let spec_score = match verus_specs {
-                    0 => 0.2,        // Has vstd but no specs yet
-                    1..=5 => 0.4,   // Few specs
-                    6..=20 => 0.6,  // Moderate specs
-                    _ => 0.8,        // Many specs
+                    0 => 0.2,      // Has vstd but no specs yet
+                    1..=5 => 0.4,  // Few specs
+                    6..=20 => 0.6, // Moderate specs
+                    _ => 0.8,      // Many specs
                 };
                 score += VERUS_POINTS * spec_score;
             } else if !self.is_verus_available() {
@@ -325,10 +325,10 @@ impl FormalVerificationScorer {
                 // Note: Actually running verus verification is expensive,
                 // so we award points based on spec count
                 let spec_score = match verus_specs {
-                    0 => 0.3,        // Has vstd but no specs yet
-                    1..=5 => 0.6,   // Few specs
-                    6..=20 => 0.8,  // Moderate specs
-                    _ => 1.0,        // Many specs - full credit
+                    0 => 0.3,      // Has vstd but no specs yet
+                    1..=5 => 0.6,  // Few specs
+                    6..=20 => 0.8, // Moderate specs
+                    _ => 1.0,      // Many specs - full credit
                 };
                 score += VERUS_POINTS * spec_score;
             }
@@ -418,7 +418,8 @@ impl Scorer for FormalVerificationScorer {
             }
         } else if (verus_specs > 0 || has_vstd) && !self.is_verus_available() {
             recommendations.push(
-                "Install Verus to verify specs: https://github.com/verus-lang/verus#building".into(),
+                "Install Verus to verify specs: https://github.com/verus-lang/verus#building"
+                    .into(),
             );
         } else if verus_specs < 5 && has_vstd {
             recommendations.push(

@@ -12,15 +12,15 @@
 //! # Scientific Foundation
 //! Based on 15 peer-reviewed publications (see specification).
 
-pub mod types;
-pub mod signal_collector;
-pub mod pdca_loop;
 pub mod convergence;
+pub mod pdca_loop;
+pub mod signal_collector;
+pub mod types;
 
 #[cfg(test)]
 mod tests;
 
-pub use types::*;
-pub use signal_collector::*;
-pub use pdca_loop::*;
 pub use convergence::*;
+pub use pdca_loop::*;
+pub use signal_collector::*;
+pub use types::*;

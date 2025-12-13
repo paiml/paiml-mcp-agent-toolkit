@@ -136,9 +136,11 @@ pub async fn handle_qa_work_command(command: QaWorkCommands) -> Result<()> {
             format,
         } => handle_report(&task_id, &path, with_evidence, output.as_deref(), format).await,
 
-        QaWorkCommands::Summary { task_id, path, epic } => {
-            handle_summary(task_id.as_deref(), &path, epic.as_deref()).await
-        }
+        QaWorkCommands::Summary {
+            task_id,
+            path,
+            epic,
+        } => handle_summary(task_id.as_deref(), &path, epic.as_deref()).await,
 
         QaWorkCommands::GenerateExamples {
             task_id,
@@ -155,7 +157,18 @@ pub async fn handle_qa_work_command(command: QaWorkCommands) -> Result<()> {
             output,
             threshold,
             gateway_threshold,
-        } => handle_spec(&target, &path, full, format, output.as_deref(), threshold, gateway_threshold).await,
+        } => {
+            handle_spec(
+                &target,
+                &path,
+                full,
+                format,
+                output.as_deref(),
+                threshold,
+                gateway_threshold,
+            )
+            .await
+        }
     }
 }
 
@@ -397,12 +410,12 @@ fn generate_checklist(task_id: &str, task_type: QaTaskType) -> QaChecklist {
 /// Format checklist for text display
 fn format_checklist_text(checklist: &QaChecklist) -> String {
     let mut output = String::new();
-    output.push_str(&format!(
-        "# QA Checklist for {}\n",
-        checklist.task_id
-    ));
+    output.push_str(&format!("# QA Checklist for {}\n", checklist.task_id));
     output.push_str(&format!("Task Type: {}\n", checklist.task_type));
-    output.push_str(&format!("Generated: {}\n\n", checklist.generated.format("%Y-%m-%d %H:%M:%S UTC")));
+    output.push_str(&format!(
+        "Generated: {}\n\n",
+        checklist.generated.format("%Y-%m-%d %H:%M:%S UTC")
+    ));
 
     let categories = [
         ("Safety & Ethics", &checklist.categories.safety_ethics),
@@ -417,7 +430,10 @@ fn format_checklist_text(checklist: &QaChecklist) -> String {
         for item in items {
             let checkbox = if item.checked { "[x]" } else { "[ ]" };
             let auto = if item.automated { " (auto)" } else { "" };
-            output.push_str(&format!("  {} {}: {}{}\n", checkbox, item.id, item.description, auto));
+            output.push_str(&format!(
+                "  {} {}: {}{}\n",
+                checkbox, item.id, item.description, auto
+            ));
         }
         output.push('\n');
     }
@@ -446,7 +462,9 @@ async fn handle_validate(
 
     // Run code quality checks
     let code_quality = run_code_quality_checks(project_path).await;
-    result.categories.insert("code_quality".into(), code_quality);
+    result
+        .categories
+        .insert("code_quality".into(), code_quality);
 
     // Run testing checks
     let testing = run_testing_checks(project_path).await;
@@ -461,9 +479,10 @@ async fn handle_validate(
     result.categories.insert("process".into(), process);
 
     // Calculate overall score
-    let (total_passed, total_items) = result.categories.values().fold((0, 0), |(p, t), cat| {
-        (p + cat.passed, t + cat.total)
-    });
+    let (total_passed, total_items) = result
+        .categories
+        .values()
+        .fold((0, 0), |(p, t), cat| (p + cat.passed, t + cat.total));
     result.overall_score = if total_items > 0 {
         (total_passed as f64 / total_items as f64) * 100.0
     } else {
@@ -478,8 +497,7 @@ async fn handle_validate(
     ];
 
     // Determine pass/fail
-    result.passed = result.overall_score >= 80.0 && !strict
-        || result.overall_score >= 95.0;
+    result.passed = result.overall_score >= 80.0 && !strict || result.overall_score >= 95.0;
 
     // Output
     match format {
@@ -574,7 +592,10 @@ async fn run_code_quality_checks(project_path: &Path) -> CategoryResult {
         evidence: Some("Run: cargo mutants".into()),
     });
 
-    let passed = items.iter().filter(|i| i.status == ValidationStatus::Passed).count() as u32;
+    let passed = items
+        .iter()
+        .filter(|i| i.status == ValidationStatus::Passed)
+        .count() as u32;
     let total = items.len() as u32;
 
     CategoryResult {
@@ -647,7 +668,10 @@ async fn run_testing_checks(project_path: &Path) -> CategoryResult {
         evidence: None,
     });
 
-    let passed = items.iter().filter(|i| i.status == ValidationStatus::Passed).count() as u32;
+    let passed = items
+        .iter()
+        .filter(|i| i.status == ValidationStatus::Passed)
+        .count() as u32;
     let total = items.len() as u32;
 
     CategoryResult {
@@ -733,7 +757,10 @@ async fn run_documentation_checks(project_path: &Path, task_id: &str) -> Categor
         evidence: None,
     });
 
-    let passed = items.iter().filter(|i| i.status == ValidationStatus::Passed).count() as u32;
+    let passed = items
+        .iter()
+        .filter(|i| i.status == ValidationStatus::Passed)
+        .count() as u32;
     let total = items.len() as u32;
 
     CategoryResult {
@@ -813,7 +840,10 @@ async fn run_process_checks(project_path: &Path, task_id: &str) -> CategoryResul
         evidence: None,
     });
 
-    let passed = items.iter().filter(|i| i.status == ValidationStatus::Passed).count() as u32;
+    let passed = items
+        .iter()
+        .filter(|i| i.status == ValidationStatus::Passed)
+        .count() as u32;
     let total = items.len() as u32;
 
     CategoryResult {
@@ -837,7 +867,10 @@ fn print_validation_text(result: &QaValidationResult) {
             "\x1b[31m✗\x1b[0m"
         };
 
-        println!("{} {} ({}/{})", status, category.name, category.passed, category.total);
+        println!(
+            "{} {} ({}/{})",
+            status, category.name, category.passed, category.total
+        );
 
         for item in &category.items {
             let item_status = match item.status {
@@ -873,11 +906,17 @@ fn print_validation_text(result: &QaValidationResult) {
 /// Print validation result as markdown
 fn print_validation_markdown(result: &QaValidationResult) {
     println!("# QA Validation Report: {}\n", result.task_id);
-    println!("**Date**: {}", result.timestamp.format("%Y-%m-%d %H:%M:%S UTC"));
+    println!(
+        "**Date**: {}",
+        result.timestamp.format("%Y-%m-%d %H:%M:%S UTC")
+    );
     println!("**Score**: {:.1}%\n", result.overall_score);
 
     for category in result.categories.values() {
-        println!("## {} ({}/{})\n", category.name, category.passed, category.total);
+        println!(
+            "## {} ({}/{})\n",
+            category.name, category.passed, category.total
+        );
 
         for item in &category.items {
             let checkbox = match item.status {
@@ -920,15 +959,27 @@ async fn handle_report(
         manual_checks_required: vec![],
     };
 
-    result.categories.insert("code_quality".into(), run_code_quality_checks(project_path).await);
-    result.categories.insert("testing".into(), run_testing_checks(project_path).await);
-    result.categories.insert("documentation".into(), run_documentation_checks(project_path, task_id).await);
-    result.categories.insert("process".into(), run_process_checks(project_path, task_id).await);
+    result.categories.insert(
+        "code_quality".into(),
+        run_code_quality_checks(project_path).await,
+    );
+    result
+        .categories
+        .insert("testing".into(), run_testing_checks(project_path).await);
+    result.categories.insert(
+        "documentation".into(),
+        run_documentation_checks(project_path, task_id).await,
+    );
+    result.categories.insert(
+        "process".into(),
+        run_process_checks(project_path, task_id).await,
+    );
 
     // Calculate score
-    let (total_passed, total_items) = result.categories.values().fold((0, 0), |(p, t), cat| {
-        (p + cat.passed, t + cat.total)
-    });
+    let (total_passed, total_items) = result
+        .categories
+        .values()
+        .fold((0, 0), |(p, t), cat| (p + cat.passed, t + cat.total));
     result.overall_score = if total_items > 0 {
         (total_passed as f64 / total_items as f64) * 100.0
     } else {
@@ -944,13 +995,26 @@ async fn handle_report(
             md.push_str(&format!("# QA Report: {}\n\n", task_id));
             md.push_str("## Summary\n\n");
             md.push_str(&format!("- **Task**: {}\n", task_id));
-            md.push_str(&format!("- **Status**: {}\n", if result.passed { "PASSED" } else { "NEEDS ATTENTION" }));
+            md.push_str(&format!(
+                "- **Status**: {}\n",
+                if result.passed {
+                    "PASSED"
+                } else {
+                    "NEEDS ATTENTION"
+                }
+            ));
             md.push_str(&format!("- **Score**: {:.1}%\n", result.overall_score));
-            md.push_str(&format!("- **Date**: {}\n\n", result.timestamp.format("%Y-%m-%d")));
+            md.push_str(&format!(
+                "- **Date**: {}\n\n",
+                result.timestamp.format("%Y-%m-%d")
+            ));
 
             md.push_str("## Checklist Results\n\n");
             for category in result.categories.values() {
-                md.push_str(&format!("### {} ({}/{})\n\n", category.name, category.passed, category.total));
+                md.push_str(&format!(
+                    "### {} ({}/{})\n\n",
+                    category.name, category.passed, category.total
+                ));
                 for item in &category.items {
                     let status_icon = match item.status {
                         ValidationStatus::Passed => "✅",
@@ -959,7 +1023,10 @@ async fn handle_report(
                         ValidationStatus::Skipped => "⏭️",
                         ValidationStatus::Manual => "📝",
                     };
-                    md.push_str(&format!("- {} **{}**: {}\n", status_icon, item.id, item.description));
+                    md.push_str(&format!(
+                        "- {} **{}**: {}\n",
+                        status_icon, item.id, item.description
+                    ));
                 }
                 md.push('\n');
             }
@@ -987,7 +1054,11 @@ async fn handle_report(
 }
 
 /// Show QA status summary
-async fn handle_summary(task_id: Option<&str>, project_path: &Path, epic_id: Option<&str>) -> Result<()> {
+async fn handle_summary(
+    task_id: Option<&str>,
+    project_path: &Path,
+    epic_id: Option<&str>,
+) -> Result<()> {
     let qa_dir = project_path.join(".pmat-qa");
 
     if !qa_dir.exists() {
@@ -1044,7 +1115,10 @@ fn handle_epic_summary(epic_id: &str, qa_dir: &Path) -> Result<()> {
                 let checklist: QaChecklist = serde_yaml::from_str(&content)?;
 
                 // Count items
-                let all_items: Vec<&ChecklistItem> = checklist.categories.safety_ethics.iter()
+                let all_items: Vec<&ChecklistItem> = checklist
+                    .categories
+                    .safety_ethics
+                    .iter()
                     .chain(checklist.categories.code_quality.iter())
                     .chain(checklist.categories.testing.iter())
                     .chain(checklist.categories.documentation.iter())
@@ -1070,13 +1144,17 @@ fn handle_epic_summary(epic_id: &str, qa_dir: &Path) -> Result<()> {
     for (task_id, score) in &summary.task_scores {
         let bar_len = 20;
         let filled = ((*score / 100.0) * bar_len as f64) as usize;
-        let progress_bar: String = format!("{}{}", "█".repeat(filled), "░".repeat(bar_len - filled));
+        let progress_bar: String =
+            format!("{}{}", "█".repeat(filled), "░".repeat(bar_len - filled));
         let status = if *score >= 100.0 { "✓" } else { " " };
         println!("{} {:<20} {} {:.0}%", status, task_id, progress_bar, score);
     }
 
     println!();
-    println!("Total: {}/{} checks passed", summary.passed_checks, summary.total_checks);
+    println!(
+        "Total: {}/{} checks passed",
+        summary.passed_checks, summary.total_checks
+    );
     println!("Overall Score: {:.1}%", summary.overall_score);
     println!("Status: {:?}", summary.status);
 
@@ -1090,7 +1168,10 @@ async fn handle_generate_examples(
     project_path: &Path,
     output: Option<&Path>,
 ) -> Result<()> {
-    println!("Generating example scripts for: {} ({})", feature_name, task_id);
+    println!(
+        "Generating example scripts for: {} ({})",
+        feature_name, task_id
+    );
 
     let examples = generate_example_scripts(task_id, feature_name);
 
@@ -1118,12 +1199,20 @@ async fn handle_generate_examples(
         println!("  ✓ Created: {}", path.display());
     }
 
-    println!("\n{} example scripts generated in: {}", examples.len(), output_dir.display());
+    println!(
+        "\n{} example scripts generated in: {}",
+        examples.len(),
+        output_dir.display()
+    );
     println!("\nNext steps:");
     println!("  1. Review and customize the examples");
-    println!("  2. Run: bash {}/{}",
+    println!(
+        "  2. Run: bash {}/{}",
         output_dir.display(),
-        examples.first().map(|e| e.name.as_str()).unwrap_or("basic.sh")
+        examples
+            .first()
+            .map(|e| e.name.as_str())
+            .unwrap_or("basic.sh")
     );
     println!("  3. Add more edge cases as needed");
 
@@ -1298,7 +1387,9 @@ fn print_task_status(task_id: &str, task_dir: &Path) -> Result<()> {
 
         // Count checked items
         let categories = &checklist.categories;
-        let all_items: Vec<&ChecklistItem> = categories.safety_ethics.iter()
+        let all_items: Vec<&ChecklistItem> = categories
+            .safety_ethics
+            .iter()
             .chain(categories.code_quality.iter())
             .chain(categories.testing.iter())
             .chain(categories.documentation.iter())
@@ -1317,7 +1408,10 @@ fn print_task_status(task_id: &str, task_dir: &Path) -> Result<()> {
             "\x1b[90mPending\x1b[0m"
         };
 
-        println!("{:<15} {:<20} {:.0}% ({}/{})", task_id, status, score, checked, total);
+        println!(
+            "{:<15} {:<20} {:.0}% ({}/{})",
+            task_id, status, score, checked, total
+        );
     } else {
         println!("{:<15} \x1b[90mNo checklist\x1b[0m", task_id);
     }
@@ -1342,12 +1436,21 @@ async fn handle_spec(
     threshold: u32,
     gateway_threshold: u32,
 ) -> Result<()> {
-    use crate::services::spec_parser::{SpecParser, ClaimCategory, ValidationStatus as SpecValidationStatus};
+    use crate::services::spec_parser::{
+        ClaimCategory, SpecParser, ValidationStatus as SpecValidationStatus,
+    };
 
     println!("🔬 Popperian Specification Validation");
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     println!("Target: {}", target);
-    println!("Mode: {}", if full { "Full (with mutation testing)" } else { "Standard" });
+    println!(
+        "Mode: {}",
+        if full {
+            "Full (with mutation testing)"
+        } else {
+            "Standard"
+        }
+    );
     println!();
 
     // Resolve target to specification file
@@ -1407,7 +1510,10 @@ async fn handle_spec(
                             (SpecValidationStatus::Proven, Some(output))
                         }
                     }
-                    Err(e) => (SpecValidationStatus::Falsified, Some(format!("Error: {}", e))),
+                    Err(e) => (
+                        SpecValidationStatus::Falsified,
+                        Some(format!("Error: {}", e)),
+                    ),
                 }
             } else {
                 (SpecValidationStatus::Unfalsified, None)
@@ -1477,7 +1583,11 @@ async fn handle_spec(
             0.0
         };
 
-        let pct = if *total > 0 { (*passed as f64 / *total as f64) * 100.0 } else { 0.0 };
+        let pct = if *total > 0 {
+            (*passed as f64 / *total as f64) * 100.0
+        } else {
+            0.0
+        };
 
         if *cat == ClaimCategory::Falsifiability {
             gateway_score = cat_score;
@@ -1502,10 +1612,16 @@ async fn handle_spec(
     let final_score = if gateway_passed { total_score } else { 0.0 };
 
     if !gateway_passed {
-        println!("🚫 GATEWAY FAILED: Falsifiability score {:.1} < {} (total score forced to 0)", gateway_score, gateway_threshold);
+        println!(
+            "🚫 GATEWAY FAILED: Falsifiability score {:.1} < {} (total score forced to 0)",
+            gateway_score, gateway_threshold
+        );
         println!("   Per Popper: Without falsifiable claims, the specification is non-scientific.");
     } else {
-        println!("✅ Gateway passed: Falsifiability score {:.1} >= {}", gateway_score, gateway_threshold);
+        println!(
+            "✅ Gateway passed: Falsifiability score {:.1} >= {}",
+            gateway_score, gateway_threshold
+        );
     }
 
     println!();
@@ -1671,12 +1787,24 @@ fn format_spec_result_markdown(result: &serde_json::Value) -> String {
         result["issue_refs"],
         result["claims_total"],
         result["gateway_score"].as_f64().unwrap_or(0.0),
-        if result["gateway_passed"].as_bool().unwrap_or(false) { "PASSED" } else { "FAILED" },
+        if result["gateway_passed"].as_bool().unwrap_or(false) {
+            "PASSED"
+        } else {
+            "FAILED"
+        },
         result["total_score"].as_f64().unwrap_or(0.0),
         result["threshold"],
-        if result["passed"].as_bool().unwrap_or(false) { "✅ PASSED" } else { "❌ FAILED" },
+        if result["passed"].as_bool().unwrap_or(false) {
+            "✅ PASSED"
+        } else {
+            "❌ FAILED"
+        },
         result["gateway_score"].as_f64().unwrap_or(0.0),
-        if result["gateway_passed"].as_bool().unwrap_or(false) { "✓" } else { "✗" },
+        if result["gateway_passed"].as_bool().unwrap_or(false) {
+            "✓"
+        } else {
+            "✗"
+        },
     )
 }
 
@@ -1745,7 +1873,9 @@ mod tests {
     fn test_generate_examples_includes_edge_cases() {
         let examples = generate_example_scripts("TEST-001", "analyze");
         // Must have edge case examples
-        assert!(examples.iter().any(|e| e.name.contains("edge") || e.name.contains("empty")));
+        assert!(examples
+            .iter()
+            .any(|e| e.name.contains("edge") || e.name.contains("empty")));
     }
 
     #[test]

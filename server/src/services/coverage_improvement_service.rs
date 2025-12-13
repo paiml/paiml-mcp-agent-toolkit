@@ -128,7 +128,12 @@ impl CoverageImprovementService {
 
             // Run one iteration
             let iteration_report = self.run_iteration(iteration, current_coverage).await?;
-            current_coverage = baseline + iterations.iter().map(|i: &IterationReport| i.coverage_gain).sum::<f64>() + iteration_report.coverage_gain;
+            current_coverage = baseline
+                + iterations
+                    .iter()
+                    .map(|i: &IterationReport| i.coverage_gain)
+                    .sum::<f64>()
+                + iteration_report.coverage_gain;
             iterations.push(iteration_report);
         }
 
@@ -218,11 +223,8 @@ impl CoverageImprovementService {
                 let parts: Vec<&str> = line.split_whitespace().collect();
 
                 // Find all percentage values (contain '%')
-                let percentages: Vec<&str> = parts
-                    .iter()
-                    .filter(|s| s.contains('%'))
-                    .copied()
-                    .collect();
+                let percentages: Vec<&str> =
+                    parts.iter().filter(|s| s.contains('%')).copied().collect();
 
                 // The last percentage is line coverage
                 if let Some(last_pct) = percentages.last() {
@@ -241,7 +243,11 @@ impl CoverageImprovementService {
     }
 
     /// Run a single improvement iteration
-    async fn run_iteration(&self, iteration: usize, current_coverage: f64) -> Result<IterationReport> {
+    async fn run_iteration(
+        &self,
+        iteration: usize,
+        current_coverage: f64,
+    ) -> Result<IterationReport> {
         // Phase 2: Prioritize targets using PMAT tools
         let targets = self.prioritize_targets().await?;
 
@@ -289,7 +295,8 @@ impl CoverageImprovementService {
             tokio::try_join!(complexity_fut, satd_fut, dead_code_fut, churn_fut)?;
 
         // Parse outputs and calculate scores
-        let mut file_scores: std::collections::HashMap<PathBuf, f64> = std::collections::HashMap::new();
+        let mut file_scores: std::collections::HashMap<PathBuf, f64> =
+            std::collections::HashMap::new();
 
         // Parse complexity (40% weight)
         self.parse_and_score(&complexity_output, &mut file_scores, 0.4)?;
@@ -363,7 +370,10 @@ impl CoverageImprovementService {
             .current_dir(&self.config.project_path)
             .output()
             .await
-            .context(format!("Failed to execute `pmat analyze {}`", analysis_type))?;
+            .context(format!(
+                "Failed to execute `pmat analyze {}`",
+                analysis_type
+            ))?;
 
         if !output.status.success() {
             eprintln!(
@@ -411,7 +421,11 @@ impl CoverageImprovementService {
         match json {
             serde_json::Value::Object(map) => {
                 // Look for common field names that might contain file paths
-                if let Some(file_path) = map.get("file").or_else(|| map.get("path")).or_else(|| map.get("file_path")) {
+                if let Some(file_path) = map
+                    .get("file")
+                    .or_else(|| map.get("path"))
+                    .or_else(|| map.get("file_path"))
+                {
                     if let Some(path_str) = file_path.as_str() {
                         let path = PathBuf::from(path_str);
                         *file_scores.entry(path).or_insert(0.0) += weight;
@@ -499,10 +513,7 @@ impl CoverageImprovementService {
             // Write to tests directory
             let test_filename = format!(
                 "proptest_{}.rs",
-                target
-                    .file_stem()
-                    .unwrap_or_default()
-                    .to_string_lossy()
+                target.file_stem().unwrap_or_default().to_string_lossy()
             );
             let test_path = self.config.project_path.join("tests").join(&test_filename);
 
@@ -730,8 +741,8 @@ fn {}() {{
             .await
             .context("Failed to read mutation results")?;
 
-        let mutation_results: serde_json::Value = serde_json::from_str(&json_content)
-            .context("Failed to parse mutation results JSON")?;
+        let mutation_results: serde_json::Value =
+            serde_json::from_str(&json_content).context("Failed to parse mutation results JSON")?;
 
         // Extract mutation score
         let total_mutants = mutation_results["total_mutants"].as_u64().unwrap_or(0) as f64;
@@ -923,7 +934,10 @@ mod property_tests {
         let output = "Some other output\nwithout TOTAL line\n";
         let result = CoverageImprovementService::parse_coverage_percentage(output);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Could not find TOTAL line"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Could not find TOTAL line"));
     }
 
     #[test]

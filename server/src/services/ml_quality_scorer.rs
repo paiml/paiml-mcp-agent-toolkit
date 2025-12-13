@@ -300,10 +300,7 @@ impl MLQualityScorer {
                 }
             }
             Err(e) => {
-                eprintln!(
-                    "Warning: Matrix creation failed ({}), using heuristics",
-                    e
-                );
+                eprintln!("Warning: Matrix creation failed ({}), using heuristics", e);
                 self.complexity_model = None;
             }
         }
@@ -352,16 +349,16 @@ impl MLQualityScorer {
                         self.training_samples += n_samples;
                     }
                     Err(e) => {
-                        eprintln!("Warning: TDG model training failed ({}), using heuristics", e);
+                        eprintln!(
+                            "Warning: TDG model training failed ({}), using heuristics",
+                            e
+                        );
                         self.tdg_model = None;
                     }
                 }
             }
             Err(e) => {
-                eprintln!(
-                    "Warning: Matrix creation failed ({}), using heuristics",
-                    e
-                );
+                eprintln!("Warning: Matrix creation failed ({}), using heuristics", e);
                 self.tdg_model = None;
             }
         }
@@ -619,10 +616,7 @@ fn simple_function() -> i32 {
             "Should detect at least 2 conditionals"
         );
         assert!(features.loop_count >= 1.0, "Should detect at least 1 loop");
-        assert!(
-            features.function_count >= 2.0,
-            "Should detect 2 functions"
-        );
+        assert!(features.function_count >= 2.0, "Should detect 2 functions");
         assert_eq!(features.language_type, 1.0, "Rust should be encoded as 1.0");
     }
 
@@ -822,7 +816,10 @@ fn simple_function() -> i32 {
         let prediction = scorer.predict_tdg(&features).unwrap();
 
         assert!(prediction.score >= 0.0 && prediction.score <= 5.0);
-        assert!(!prediction.ml_used, "Should use heuristics without training");
+        assert!(
+            !prediction.ml_used,
+            "Should use heuristics without training"
+        );
     }
 
     #[test]
@@ -838,8 +835,14 @@ fn simple_function() -> i32 {
                 let target = x + x * x * 0.5;
                 QualityTrainingSample {
                     features: vec![
-                        x * 0.1, x, // nesting is dominant factor
-                        x * 0.2, x * 0.1, x * 0.15, x * 0.05, x * 0.1, 0.1,
+                        x * 0.1,
+                        x, // nesting is dominant factor
+                        x * 0.2,
+                        x * 0.1,
+                        x * 0.15,
+                        x * 0.05,
+                        x * 0.1,
+                        0.1,
                     ],
                     target_score: target,
                     weight: None,
@@ -980,10 +983,7 @@ fn simple_function() -> i32 {
 
         let prediction = scorer.predict_complexity(&extreme_features).unwrap();
 
-        assert!(
-            prediction.score <= 100.0,
-            "Score should be bounded at 100"
-        );
+        assert!(prediction.score <= 100.0, "Score should be bounded at 100");
         assert!(prediction.score >= 0.0, "Score should be non-negative");
     }
 }

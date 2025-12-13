@@ -60,7 +60,9 @@ pub async fn handle_spec_comply(
 
     // Check minimum requirements and suggest fixes
     if spec.issue_refs.is_empty() {
-        fixes.push("- Add issue_refs in YAML frontmatter (e.g., issue_refs: [\"#123\"])".to_string());
+        fixes.push(
+            "- Add issue_refs in YAML frontmatter (e.g., issue_refs: [\"#123\"])".to_string(),
+        );
     }
 
     if spec.code_examples.len() < 5 {
@@ -426,10 +428,17 @@ fn format_spec_score_markdown(spec: &ParsedSpec, score: f64) -> String {
     out.push_str(&format!("| Score | {:.1}/100 |\n", score));
     out.push_str(&format!(
         "| Status | {} |\n",
-        if score >= 95.0 { "✅ PASS" } else { "❌ FAIL" }
+        if score >= 95.0 {
+            "✅ PASS"
+        } else {
+            "❌ FAIL"
+        }
     ));
     out.push_str(&format!("| Claims | {} |\n", spec.claims.len()));
-    out.push_str(&format!("| Code Examples | {} |\n", spec.code_examples.len()));
+    out.push_str(&format!(
+        "| Code Examples | {} |\n",
+        spec.code_examples.len()
+    ));
     out.push_str(&format!(
         "| Acceptance Criteria | {} |\n",
         spec.acceptance_criteria.len()

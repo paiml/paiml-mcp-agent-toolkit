@@ -47,7 +47,11 @@ mod tests {
         let white = Color::from_hex("#ffffff").unwrap();
         let black = Color::from_hex("#000000").unwrap();
         let ratio = contrast_ratio(white, black);
-        assert!(ratio > 20.0, "White on black should have ~21:1 ratio, got {}", ratio);
+        assert!(
+            ratio > 20.0,
+            "White on black should have ~21:1 ratio, got {}",
+            ratio
+        );
     }
 
     #[test]
@@ -56,7 +60,11 @@ mod tests {
         let fg = Color::from_hex("#ffffff").unwrap();
         let bg = Color::from_hex("#1a1a2e").unwrap();
         let ratio = contrast_ratio(fg, bg);
-        assert!(ratio >= 4.5, "Dashboard theme contrast {} below 4.5:1", ratio);
+        assert!(
+            ratio >= 4.5,
+            "Dashboard theme contrast {} below 4.5:1",
+            ratio
+        );
     }
 
     #[test]

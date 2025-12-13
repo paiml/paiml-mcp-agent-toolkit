@@ -503,7 +503,11 @@ fn apply_results_filtering(
     top_files: usize,
 ) -> Vec<(crate::models::tdg::TDGScore, PathBuf)> {
     // Sort by TDG score descending
-    results.sort_unstable_by(|a, b| b.0.value.partial_cmp(&a.0.value).expect("NaN values should not occur in complexity scores"));
+    results.sort_unstable_by(|a, b| {
+        b.0.value
+            .partial_cmp(&a.0.value)
+            .expect("NaN values should not occur in complexity scores")
+    });
 
     // Apply top_files limit
     if top_files > 0 && results.len() > top_files {
@@ -574,7 +578,10 @@ fn create_summary_from_file_results(
 
     // Calculate percentiles
     let mut sorted_values = tdg_values;
-    sorted_values.sort_unstable_by(|a, b| a.partial_cmp(b).expect("NaN values should not occur in numeric data"));
+    sorted_values.sort_unstable_by(|a, b| {
+        a.partial_cmp(b)
+            .expect("NaN values should not occur in numeric data")
+    });
 
     let p95_tdg = percentile(&sorted_values, 0.95);
     let p99_tdg = percentile(&sorted_values, 0.99);
@@ -923,7 +930,10 @@ pub fn identify_primary_factor(components: &crate::models::tdg::TDGComponents) -
         (components.duplication * 0.10, "Code Duplication"),
     ];
 
-    factors.sort_unstable_by(|a, b| b.0.partial_cmp(&a.0).expect("NaN values should not occur in factor scores"));
+    factors.sort_unstable_by(|a, b| {
+        b.0.partial_cmp(&a.0)
+            .expect("NaN values should not occur in factor scores")
+    });
     factors[0].1.to_string()
 }
 
@@ -1166,7 +1176,10 @@ fn write_makefile_fix_suggestions(
                 "**Line {}** ({}): {}",
                 violation.span.line,
                 violation.rule,
-                violation.fix_hint.as_ref().expect("fix_hint must be present when accessed")
+                violation
+                    .fix_hint
+                    .as_ref()
+                    .expect("fix_hint must be present when accessed")
             )?;
         }
     }
@@ -2344,7 +2357,11 @@ fn write_markdown_file_details(
 
         // Sort by churn score descending
         let mut sorted_files = files.to_vec();
-        sorted_files.sort_unstable_by(|a, b| b.churn_score.partial_cmp(&a.churn_score).expect("NaN values should not occur in churn scores"));
+        sorted_files.sort_unstable_by(|a, b| {
+            b.churn_score
+                .partial_cmp(&a.churn_score)
+                .expect("NaN values should not occur in churn scores")
+        });
 
         for file in sorted_files.iter().take(20) {
             writeln!(
@@ -6731,9 +6748,8 @@ async fn run_satd_analysis(
     use regex::Regex;
     use walkdir::WalkDir;
 
-    let satd_pattern =
-        Regex::new(r"(?i)(TODO|FIXME|HACK|XXX|REFACTOR|DEPRECATED):\s*(.+)")
-            .expect("Hardcoded regex pattern must be valid");
+    let satd_pattern = Regex::new(r"(?i)(TODO|FIXME|HACK|XXX|REFACTOR|DEPRECATED):\s*(.+)")
+        .expect("Hardcoded regex pattern must be valid");
     let mut items = Vec::new();
     let mut by_type = HashMap::new();
     let mut by_severity = HashMap::new();
@@ -6789,8 +6805,16 @@ fn process_satd_match(
     by_type: &mut HashMap<String, usize>,
     by_severity: &mut HashMap<String, usize>,
 ) {
-    let satd_type = captures.get(1).expect("Match group 1 exists for successful regex match").as_str().to_uppercase();
-    let text = captures.get(2).expect("Match group 2 exists for successful regex match").as_str().to_string();
+    let satd_type = captures
+        .get(1)
+        .expect("Match group 1 exists for successful regex match")
+        .as_str()
+        .to_uppercase();
+    let text = captures
+        .get(2)
+        .expect("Match group 2 exists for successful regex match")
+        .as_str()
+        .to_string();
     let severity = determine_satd_severity(&satd_type);
 
     *by_type.entry(satd_type.clone()).or_insert(0) += 1;
@@ -9772,8 +9796,14 @@ async fn check_single_file_satd(
 
     for (line_no, line) in content.lines().enumerate() {
         if let Some(captures) = satd_pattern.captures(line) {
-            let satd_type = captures.get(1).expect("Match group 1 exists for successful regex match").as_str();
-            let text = captures.get(2).expect("Match group 2 exists for successful regex match").as_str();
+            let satd_type = captures
+                .get(1)
+                .expect("Match group 1 exists for successful regex match")
+                .as_str();
+            let text = captures
+                .get(2)
+                .expect("Match group 2 exists for successful regex match")
+                .as_str();
 
             violations.push(QualityViolation {
                 check_type: "satd".to_string(),

@@ -5,8 +5,8 @@
 
 use crate::cli::diagnose::DiagnoseArgs;
 use crate::cli::handlers::cache::CacheCommand;
-use crate::cli::handlers::memory::MemoryCommand;
 use crate::cli::handlers::coverage_improve_handler::CoverageImproveOutputFormat;
+use crate::cli::handlers::memory::MemoryCommand;
 use crate::cli::{
     AnalysisType, BigOOutputFormat, ComplexityOutputFormat, ComprehensiveOutputFormat,
     ContextFormat, DagType, DeadCodeOutputFormat, DebugOutputFormat, DeepContextCacheStrategy,

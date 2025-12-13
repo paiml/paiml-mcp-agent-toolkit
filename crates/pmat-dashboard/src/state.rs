@@ -60,9 +60,7 @@ impl DashboardState {
                     DashboardMessage::MetricsUpdated(SystemMetrics::default())
                 }))
             }
-            DashboardMessage::Export(format) => {
-                Command::Export { format }
-            }
+            DashboardMessage::Export(format) => Command::Export { format },
             DashboardMessage::ConnectionChanged(connected) => {
                 self.connected = connected;
                 Command::None

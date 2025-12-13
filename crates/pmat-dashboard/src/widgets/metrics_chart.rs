@@ -99,11 +99,20 @@ impl MetricsChart {
 
         // Simulate render operations
         let _: f64 = self.data_points.iter().sum();
-        let _min = self.data_points.iter().cloned().fold(f64::INFINITY, f64::min);
-        let _max = self.data_points.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+        let _min = self
+            .data_points
+            .iter()
+            .cloned()
+            .fold(f64::INFINITY, f64::min);
+        let _max = self
+            .data_points
+            .iter()
+            .cloned()
+            .fold(f64::NEG_INFINITY, f64::max);
 
         // Simulate path generation for line chart
-        let _path_points: Vec<(f64, f64)> = self.data_points
+        let _path_points: Vec<(f64, f64)> = self
+            .data_points
             .iter()
             .enumerate()
             .map(|(i, &y)| (i as f64, y))
@@ -117,8 +126,16 @@ impl MetricsChart {
         if self.data_points.is_empty() {
             return;
         }
-        let min = self.data_points.iter().cloned().fold(f64::INFINITY, f64::min);
-        let max = self.data_points.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+        let min = self
+            .data_points
+            .iter()
+            .cloned()
+            .fold(f64::INFINITY, f64::min);
+        let max = self
+            .data_points
+            .iter()
+            .cloned()
+            .fold(f64::NEG_INFINITY, f64::max);
         let range = max - min;
         self.min_y = min - range * 0.1;
         self.max_y = max + range * 0.1;
@@ -138,15 +155,13 @@ mod tests {
 
     #[test]
     fn test_chart_with_data() {
-        let chart = MetricsChart::new(ChartType::Line)
-            .with_data_points(vec![1.0, 2.0, 3.0]);
+        let chart = MetricsChart::new(ChartType::Line).with_data_points(vec![1.0, 2.0, 3.0]);
         assert_eq!(chart.data_points().len(), 3);
     }
 
     #[test]
     fn test_chart_realtime_update() {
-        let mut chart = MetricsChart::new(ChartType::Line)
-            .with_data_points(vec![1.0, 2.0]);
+        let mut chart = MetricsChart::new(ChartType::Line).with_data_points(vec![1.0, 2.0]);
         chart.push_data_point(3.0);
         assert_eq!(chart.data_points().len(), 3);
         assert_eq!(chart.data_points()[2], 3.0);
@@ -154,17 +169,20 @@ mod tests {
 
     #[test]
     fn test_chart_animation() {
-        let chart = MetricsChart::new(ChartType::Line)
-            .with_animation(AnimationConfig::spring(100.0, 20.0));
+        let chart =
+            MetricsChart::new(ChartType::Line).with_animation(AnimationConfig::spring(100.0, 20.0));
         assert!(chart.is_animated());
     }
 
     #[test]
     fn test_chart_frame_time_60fps() {
-        let chart = MetricsChart::new(ChartType::Line)
-            .with_data_points(vec![1.0; 1000]);
+        let chart = MetricsChart::new(ChartType::Line).with_data_points(vec![1.0; 1000]);
         let frame_time = chart.measure_frame_time();
         // Should be well under 16ms for 60fps
-        assert!(frame_time < 16.0, "Frame time {}ms exceeds 16ms", frame_time);
+        assert!(
+            frame_time < 16.0,
+            "Frame time {}ms exceeds 16ms",
+            frame_time
+        );
     }
 }

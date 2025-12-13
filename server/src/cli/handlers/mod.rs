@@ -13,27 +13,28 @@ pub mod annotation_tdd_tests;
 pub mod big_o_handlers;
 pub mod bug_report_handler; // Issue #81: Auto GitHub bug reports from errors
 pub mod cache;
-pub mod cleanup_resources_handler; // Issue #86: System resource cleanup
 #[cfg(feature = "mutation-testing")]
 pub mod cargo_mutants_backend; // Sprint 70: cargo-mutants wrapper
 pub mod churn_formatter;
+pub mod cleanup_resources_handler; // Issue #86: System resource cleanup
 pub mod complexity_handlers;
+pub mod comply_handlers; // GH-96: PMAT compliance and migration system
 pub mod comprehensive_analysis_handler;
 pub mod comprehensive_handler;
-pub mod comply_handlers; // GH-96: PMAT compliance and migration system
-pub mod coverage_improve_handler;
-pub mod test_discovery_handlers; // GH-98: Systematic test discovery and fixing
 pub mod config_command_handlers;
 pub mod configuration_handlers;
+pub mod coverage_improve_handler;
 pub mod debug_handlers; // Sprint 74: Time-travel debugging CLI handlers
 #[cfg(feature = "deep-wasm")]
 pub mod deep_wasm_handlers;
 pub mod defect_prediction_handler;
 pub mod demo_handlers;
+pub mod demo_score_handlers; // GH-109/112: Demo Quality scoring (Category G)
 pub mod doc_validate_handlers;
 pub mod duplication_analysis;
 pub mod enforce_handlers;
 pub mod enhanced_reporting_handlers;
+pub mod five_whys_handlers; // Five Whys root cause analysis (Toyota Way)
 pub mod generation_handlers;
 #[cfg(test)]
 pub mod graph_context_integration_tests;
@@ -43,6 +44,7 @@ pub mod incremental_coverage_handler;
 pub mod lint_hotspot_handlers;
 #[cfg(test)]
 pub mod lint_hotspot_property_tests;
+pub mod localize_handlers; // GH-103: Tarantula fault localization
 pub mod memory;
 #[cfg(feature = "mutation-testing")]
 pub mod mutate;
@@ -50,11 +52,15 @@ pub mod mutate;
 pub mod mutation_handlers;
 pub mod name_similarity_analysis;
 pub mod new_tdg_handler;
+pub mod oracle_handlers; // PMAT Oracle - PDCA loop for automated quality improvement
 pub mod org_handlers;
+pub mod perfection_score_handlers; // master-plan-pmat-work-system.md: 200-point unified score
+pub mod popper_score_handlers; // Popper Falsifiability Score v1.1
 pub mod predict_quality_handlers; // Phase 4.1: Predictive Quality Gates CLI
 pub mod prompt_handlers;
 pub mod proof_annotations_handler;
 pub mod provability_handler;
+pub mod qa_work_handler;
 pub mod qdd_handlers;
 pub mod quality_gate_formatter;
 #[cfg(test)]
@@ -69,13 +75,10 @@ pub mod refactor_docs_handlers;
 pub mod refactor_handlers;
 pub mod repo_score_handlers; // Sprint 48: Repository health scoring
 pub mod roadmap_handler;
-pub mod perfection_score_handlers; // master-plan-pmat-work-system.md: 200-point unified score
-pub mod popper_score_handlers; // Popper Falsifiability Score v1.1
-pub mod demo_score_handlers; // GH-109/112: Demo Quality scoring (Category G)
 pub mod rust_project_score_handlers; // Sprint 3: Rust Project Score v1.1
-pub mod spec_handlers; // master-plan-pmat-work-system.md: Spec management commands
 pub mod satd_handler;
 pub mod similarity_handler;
+pub mod spec_handlers; // master-plan-pmat-work-system.md: Spec management commands
 pub mod subagent_handlers;
 pub mod tdg_diagnostic_handler;
 pub mod tdg_formatter;
@@ -85,6 +88,7 @@ pub mod tdg_handlers;
 #[cfg(test)]
 pub mod tdg_history_tests; // Sprint 65 Phase 3: TDG History Commands
 pub mod telemetry_handlers;
+pub mod test_discovery_handlers; // GH-98: Systematic test discovery and fixing
 pub mod test_handlers;
 pub mod timeline_mode; // Sprint 78: TUI-006 - Timeline CLI integration
 pub mod unified_context_advanced;
@@ -96,11 +100,7 @@ pub mod unified_context_property_tests;
 pub mod utility_handlers;
 pub mod wasm_handler;
 pub mod wasm_handlers; // Phase 4: Organizational Intelligence Integration
-pub mod work_handlers; // Issue #75: Unified GitHub/YAML workflow
-pub mod five_whys_handlers; // Five Whys root cause analysis (Toyota Way)
-pub mod localize_handlers; // GH-103: Tarantula fault localization
-pub mod oracle_handlers; // PMAT Oracle - PDCA loop for automated quality improvement
-pub mod qa_work_handler; // GH-102: Toyota Way QA validation
+pub mod work_handlers; // Issue #75: Unified GitHub/YAML workflow // GH-102: Toyota Way QA validation
 
 // Re-export handler functions
 pub use advanced_analysis_handlers::{
@@ -118,6 +118,7 @@ pub use configuration_handlers::handle_configuration;
 pub use debug_handlers::{handle_debug_compare, handle_debug_timeline}; // Sprint 77: TIMELINE-004
 pub use defect_prediction_handler::handle_analyze_defect_prediction;
 pub use demo_handlers::{handle_demo, handle_quality_gate};
+pub use demo_score_handlers::handle_demo_score; // GH-109/112: Demo Quality scoring
 pub use doc_validate_handlers::ValidateDocsCmd;
 pub use duplication_analysis::handle_analyze_duplicates;
 pub use enforce_handlers::route_enforce_command;
@@ -140,6 +141,7 @@ pub use memory::handle_memory_command;
 pub use name_similarity_analysis::handle_analyze_name_similarity;
 #[cfg(feature = "org-intelligence")]
 pub use org_handlers::handle_org_command;
+pub use popper_score_handlers::handle_popper_score; // Popper Falsifiability Score v1.1
 pub use prompt_handlers::{handle_prompt, handle_prompt_command};
 pub use provability_handler::handle_analyze_provability;
 pub use quality_gates_handler::handle_quality_gates_command; // TICKET-PMAT-5023
@@ -149,8 +151,6 @@ pub use refactor_docs_handlers::handle_refactor_docs;
 pub use refactor_handlers::{route_refactor_command, RefactorServeParams};
 pub use repo_score_handlers::handle_repo_score; // Sprint 48: Repository health scoring
 pub use roadmap_handler::handle_maintain_roadmap; // TICKET-PMAT-5032
-pub use popper_score_handlers::handle_popper_score; // Popper Falsifiability Score v1.1
-pub use demo_score_handlers::handle_demo_score; // GH-109/112: Demo Quality scoring
 pub use rust_project_score_handlers::handle_rust_project_score; // Sprint 3: Rust Project Score v1.1
 pub use satd_handler::handle_analyze_satd;
 pub use tdg_handlers::handle_tdg_command;

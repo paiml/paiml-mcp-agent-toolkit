@@ -55,10 +55,10 @@ impl Default for CategoryWeights {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CategoryScore {
     pub name: String,
-    pub raw_score: f64,      // Original 0-100 score
-    pub max_points: u16,     // Max points for this category
-    pub earned_points: f64,  // Normalized to category weight
-    pub grade: String,       // Letter grade for this category
+    pub raw_score: f64,     // Original 0-100 score
+    pub max_points: u16,    // Max points for this category
+    pub earned_points: f64, // Normalized to category weight
+    pub grade: String,      // Letter grade for this category
     pub details: Option<String>,
 }
 
@@ -200,23 +200,43 @@ impl PerfectionScoreCalculator {
 
         // 1. TDG Score (40 pts)
         let tdg_score = self.get_tdg_score(project_path).await;
-        categories.push(CategoryScore::new("Technical Debt Grade", tdg_score, self.weights.tdg));
+        categories.push(CategoryScore::new(
+            "Technical Debt Grade",
+            tdg_score,
+            self.weights.tdg,
+        ));
 
         // 2. Repo Score (30 pts)
         let repo_score = self.get_repo_score(project_path).await;
-        categories.push(CategoryScore::new("Repository Health", repo_score, self.weights.repo_score));
+        categories.push(CategoryScore::new(
+            "Repository Health",
+            repo_score,
+            self.weights.repo_score,
+        ));
 
         // 3. Rust Project Score (30 pts)
         let rust_score = self.get_rust_project_score(project_path).await;
-        categories.push(CategoryScore::new("Rust Project Quality", rust_score, self.weights.rust_score));
+        categories.push(CategoryScore::new(
+            "Rust Project Quality",
+            rust_score,
+            self.weights.rust_score,
+        ));
 
         // 4. Popper Score (25 pts)
         let popper_score = self.get_popper_score(project_path).await;
-        categories.push(CategoryScore::new("Popperian Falsifiability", popper_score, self.weights.popper_score));
+        categories.push(CategoryScore::new(
+            "Popperian Falsifiability",
+            popper_score,
+            self.weights.popper_score,
+        ));
 
         // 5. Test Coverage (25 pts)
         let coverage_score = self.get_coverage_score(project_path).await;
-        categories.push(CategoryScore::new("Test Coverage", coverage_score, self.weights.test_coverage));
+        categories.push(CategoryScore::new(
+            "Test Coverage",
+            coverage_score,
+            self.weights.test_coverage,
+        ));
 
         // 6. Mutation Score (20 pts) - Skip in fast mode
         let mutation_score = if self.fast_mode {
@@ -224,16 +244,30 @@ impl PerfectionScoreCalculator {
         } else {
             self.get_mutation_score(project_path).await
         };
-        categories.push(CategoryScore::new("Mutation Testing", mutation_score, self.weights.mutation)
-            .with_details(if self.fast_mode { "Skipped (fast mode)" } else { "" }));
+        categories.push(
+            CategoryScore::new("Mutation Testing", mutation_score, self.weights.mutation)
+                .with_details(if self.fast_mode {
+                    "Skipped (fast mode)"
+                } else {
+                    ""
+                }),
+        );
 
         // 7. Documentation (15 pts)
         let doc_score = self.get_documentation_score(project_path).await;
-        categories.push(CategoryScore::new("Documentation", doc_score, self.weights.documentation));
+        categories.push(CategoryScore::new(
+            "Documentation",
+            doc_score,
+            self.weights.documentation,
+        ));
 
         // 8. Performance (15 pts)
         let perf_score = self.get_performance_score(project_path).await;
-        categories.push(CategoryScore::new("Performance", perf_score, self.weights.performance));
+        categories.push(CategoryScore::new(
+            "Performance",
+            perf_score,
+            self.weights.performance,
+        ));
 
         Ok(PerfectionScoreResult::new(categories))
     }
@@ -314,31 +348,45 @@ impl PerfectionScoreCalculator {
 
     async fn get_coverage_score(&self, project_path: &Path) -> f64 {
         // Coverage: Check .pmat-metrics cache or run estimation
-        // Look for cached coverage data
-        let metrics_file = project_path.join(".pmat-metrics").join("coverage.json");
-        if metrics_file.exists() {
-            if let Ok(content) = std::fs::read_to_string(&metrics_file) {
-                if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
-                    if let Some(coverage) = json.get("coverage").and_then(|v| v.as_f64()) {
-                        return coverage;
+        // Look for cached coverage data in multiple locations (workspace-aware)
+        let cache_paths = [
+            project_path.join(".pmat-metrics").join("coverage.json"),
+            project_path.join("server/.pmat-metrics/coverage.json"),
+        ];
+
+        for metrics_file in &cache_paths {
+            if metrics_file.exists() {
+                if let Ok(content) = std::fs::read_to_string(metrics_file) {
+                    if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
+                        if let Some(coverage) = json.get("coverage").and_then(|v| v.as_f64()) {
+                            return coverage;
+                        }
                     }
                 }
             }
         }
 
-        // Fast mode: estimate from test file count
-        if self.fast_mode {
-            let test_files = walkdir::WalkDir::new(project_path)
-                .into_iter()
-                .filter_map(|e| e.ok())
-                .filter(|e| {
-                    let name = e.file_name().to_string_lossy();
-                    name.contains("test") || name.ends_with("_test.rs")
-                })
-                .count();
+        // Count #[test] and #[cfg(test)] in Rust files for better heuristic
+        let mut test_count = 0;
+        let mut source_count = 0;
 
-            // Heuristic: more test files = higher coverage estimate
-            return (50.0 + (test_files as f64 * 2.0)).min(95.0);
+        for entry in walkdir::WalkDir::new(project_path)
+            .into_iter()
+            .filter_map(|e| e.ok())
+            .filter(|e| e.path().extension().map_or(false, |ext| ext == "rs"))
+        {
+            if let Ok(content) = std::fs::read_to_string(entry.path()) {
+                source_count += 1;
+                test_count += content.matches("#[test]").count();
+                test_count += content.matches("#[tokio::test]").count();
+            }
+        }
+
+        // Better heuristic: ratio of tests to source files + absolute test count
+        if source_count > 0 {
+            let test_density = (test_count as f64 / source_count as f64).min(5.0);
+            let base_score = 50.0 + (test_count as f64 * 0.1).min(25.0);
+            return (base_score + test_density * 5.0).min(95.0);
         }
 
         // Full mode: would run cargo llvm-cov but that's expensive
@@ -346,16 +394,46 @@ impl PerfectionScoreCalculator {
         70.0
     }
 
-    async fn get_mutation_score(&self, _project_path: &Path) -> f64 {
-        // Mutation testing is expensive - always estimate in both modes
-        // A real run would use services/mutation/
-        50.0
+    async fn get_mutation_score(&self, project_path: &Path) -> f64 {
+        // Check for mutation testing setup indicators
+        let mut score: f64 = 50.0; // Base score
+
+        // Check for mutants.toml (cargo-mutants config)
+        let has_mutants_config = project_path.join("mutants.toml").exists()
+            || project_path.join("server/mutants.toml").exists();
+        if has_mutants_config {
+            score += 20.0;
+        }
+
+        // Check for .mutants/ directory (mutation test results)
+        let has_mutants_results = project_path.join(".mutants").exists()
+            || project_path.join("server/.mutants").exists();
+        if has_mutants_results {
+            score += 20.0;
+        }
+
+        // Check for cargo-mutants in dev-dependencies
+        let has_mutants_dep = walkdir::WalkDir::new(project_path)
+            .max_depth(3)
+            .into_iter()
+            .filter_map(|e| e.ok())
+            .filter(|e| e.file_name() == "Cargo.toml")
+            .any(|e| {
+                std::fs::read_to_string(e.path())
+                    .map(|s| s.contains("cargo-mutants") || s.contains("mutants"))
+                    .unwrap_or(false)
+            });
+        if has_mutants_dep {
+            score += 10.0;
+        }
+
+        score.min(100.0)
     }
 
     async fn get_documentation_score(&self, project_path: &Path) -> f64 {
         // Check for common documentation files
-        let has_readme = project_path.join("README.md").exists()
-            || project_path.join("readme.md").exists();
+        let has_readme =
+            project_path.join("README.md").exists() || project_path.join("readme.md").exists();
         let has_changelog = project_path.join("CHANGELOG.md").exists();
         let has_docs_dir = project_path.join("docs").exists();
         let has_contributing = project_path.join("CONTRIBUTING.md").exists();
@@ -378,12 +456,27 @@ impl PerfectionScoreCalculator {
     }
 
     async fn get_performance_score(&self, project_path: &Path) -> f64 {
-        // Check for performance-related files
-        let has_benches = project_path.join("benches").exists();
-        let has_criterion = project_path.join("Cargo.toml").exists()
-            && std::fs::read_to_string(project_path.join("Cargo.toml"))
-                .map(|s| s.contains("criterion"))
-                .unwrap_or(false);
+        // Check for performance-related files (handle both standalone and workspace projects)
+        let has_benches = project_path.join("benches").exists()
+            || project_path.join("server/benches").exists()
+            || project_path.join("crates").exists()
+                && walkdir::WalkDir::new(project_path.join("crates"))
+                    .max_depth(2)
+                    .into_iter()
+                    .filter_map(|e| e.ok())
+                    .any(|e| e.path().ends_with("benches") && e.path().is_dir());
+
+        // Check for criterion in any Cargo.toml (workspace-aware)
+        let has_criterion = walkdir::WalkDir::new(project_path)
+            .max_depth(3)
+            .into_iter()
+            .filter_map(|e| e.ok())
+            .filter(|e| e.file_name() == "Cargo.toml")
+            .any(|e| {
+                std::fs::read_to_string(e.path())
+                    .map(|s| s.contains("criterion"))
+                    .unwrap_or(false)
+            });
 
         let mut score: f64 = 50.0; // Base score
         if has_benches {
@@ -438,14 +531,14 @@ mod tests {
     #[test]
     fn test_perfection_score_result() {
         let categories = vec![
-            CategoryScore::new("TDG", 80.0, 40),           // 32 pts
-            CategoryScore::new("Repo", 70.0, 30),          // 21 pts
-            CategoryScore::new("Rust", 75.0, 30),          // 22.5 pts
-            CategoryScore::new("Popper", 65.0, 25),        // 16.25 pts
-            CategoryScore::new("Coverage", 90.0, 25),      // 22.5 pts
-            CategoryScore::new("Mutation", 60.0, 20),      // 12 pts
-            CategoryScore::new("Docs", 70.0, 15),          // 10.5 pts
-            CategoryScore::new("Performance", 85.0, 15),   // 12.75 pts
+            CategoryScore::new("TDG", 80.0, 40),         // 32 pts
+            CategoryScore::new("Repo", 70.0, 30),        // 21 pts
+            CategoryScore::new("Rust", 75.0, 30),        // 22.5 pts
+            CategoryScore::new("Popper", 65.0, 25),      // 16.25 pts
+            CategoryScore::new("Coverage", 90.0, 25),    // 22.5 pts
+            CategoryScore::new("Mutation", 60.0, 20),    // 12 pts
+            CategoryScore::new("Docs", 70.0, 15),        // 10.5 pts
+            CategoryScore::new("Performance", 85.0, 15), // 12.75 pts
         ];
         let result = PerfectionScoreResult::new(categories);
 

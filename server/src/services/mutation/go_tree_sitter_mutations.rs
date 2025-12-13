@@ -64,8 +64,9 @@ impl TreeSitterMutationOperator for GoBinaryOpMutation {
                 mutated.splice(operator_node.byte_range(), new_op.bytes());
 
                 MutatedSource {
-                    source: String::from_utf8(mutated)
-                    .expect("mutated source is valid UTF-8 (original source + ASCII operators)"),
+                    source: String::from_utf8(mutated).expect(
+                        "mutated source is valid UTF-8 (original source + ASCII operators)",
+                    ),
                     description: format!("{} → {}", op_text, new_op),
                     location: SourceLocation {
                         line: operator_node.start_position().row + 1,
@@ -142,8 +143,9 @@ impl TreeSitterMutationOperator for GoRelationalOpMutation {
                 mutated.splice(operator_node.byte_range(), new_op.bytes());
 
                 MutatedSource {
-                    source: String::from_utf8(mutated)
-                    .expect("mutated source is valid UTF-8 (original source + ASCII operators)"),
+                    source: String::from_utf8(mutated).expect(
+                        "mutated source is valid UTF-8 (original source + ASCII operators)",
+                    ),
                     description: format!("{} → {}", op_text, new_op),
                     location: SourceLocation {
                         line: operator_node.start_position().row + 1,
@@ -214,7 +216,7 @@ impl TreeSitterMutationOperator for GoLogicalOpMutation {
 
         vec![MutatedSource {
             source: String::from_utf8(mutated)
-                    .expect("mutated source is valid UTF-8 (original source + ASCII operators)"),
+                .expect("mutated source is valid UTF-8 (original source + ASCII operators)"),
             description: format!("{} → {}", op_text, replacement),
             location: SourceLocation {
                 line: operator_node.start_position().row + 1,
@@ -288,8 +290,9 @@ impl TreeSitterMutationOperator for GoBitwiseOpMutation {
                 mutated.splice(operator_node.byte_range(), new_op.bytes());
 
                 MutatedSource {
-                    source: String::from_utf8(mutated)
-                    .expect("mutated source is valid UTF-8 (original source + ASCII operators)"),
+                    source: String::from_utf8(mutated).expect(
+                        "mutated source is valid UTF-8 (original source + ASCII operators)",
+                    ),
                     description: format!("{} → {}", op_text, new_op),
                     location: SourceLocation {
                         line: operator_node.start_position().row + 1,
@@ -363,8 +366,9 @@ impl TreeSitterMutationOperator for GoUnaryOpMutation {
                 mutated.splice(operator_node.byte_range(), new_op.bytes());
 
                 MutatedSource {
-                    source: String::from_utf8(mutated)
-                    .expect("mutated source is valid UTF-8 (original source + ASCII operators)"),
+                    source: String::from_utf8(mutated).expect(
+                        "mutated source is valid UTF-8 (original source + ASCII operators)",
+                    ),
                     description: format!("{} → {}", op_text, new_op),
                     location: SourceLocation {
                         line: operator_node.start_position().row + 1,
@@ -449,8 +453,9 @@ impl TreeSitterMutationOperator for GoAssignmentOpMutation {
                 mutated.splice(operator_node.byte_range(), new_op.bytes());
 
                 MutatedSource {
-                    source: String::from_utf8(mutated)
-                    .expect("mutated source is valid UTF-8 (original source + ASCII operators)"),
+                    source: String::from_utf8(mutated).expect(
+                        "mutated source is valid UTF-8 (original source + ASCII operators)",
+                    ),
                     description: format!("{} → {}", op_text, new_op),
                     location: SourceLocation {
                         line: operator_node.start_position().row + 1,

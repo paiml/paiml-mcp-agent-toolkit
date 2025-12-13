@@ -522,7 +522,10 @@ impl FaultLocalizer {
     }
 
     /// Generate report in specified format
-    pub fn generate_report(result: &FaultLocalizationResult, format: ReportFormat) -> Result<String> {
+    pub fn generate_report(
+        result: &FaultLocalizationResult,
+        format: ReportFormat,
+    ) -> Result<String> {
         match format {
             ReportFormat::Yaml => {
                 serde_yaml::to_string(result).map_err(|e| anyhow!("Failed to generate YAML: {}", e))
@@ -537,12 +540,16 @@ impl FaultLocalizer {
     pub fn format_terminal_report(result: &FaultLocalizationResult) -> String {
         let mut output = String::new();
 
-        output.push_str("╔══════════════════════════════════════════════════════════════════════════════╗\n");
+        output.push_str(
+            "╔══════════════════════════════════════════════════════════════════════════════╗\n",
+        );
         output.push_str(&format!(
             "║           FAULT LOCALIZATION REPORT - {}                              \n",
             result.formula_used
         ));
-        output.push_str("╠══════════════════════════════════════════════════════════════════════════════╣\n");
+        output.push_str(
+            "╠══════════════════════════════════════════════════════════════════════════════╣\n",
+        );
         output.push_str(&format!(
             "║ Tests: {} passed, {} failed                                                \n",
             result.total_passed_tests, result.total_failed_tests
@@ -551,9 +558,15 @@ impl FaultLocalizer {
             "║ Confidence: {:.2}                                                          \n",
             result.confidence
         ));
-        output.push_str("╠══════════════════════════════════════════════════════════════════════════════╣\n");
-        output.push_str("║  TOP SUSPICIOUS STATEMENTS                                                   ║\n");
-        output.push_str("╠══════════════════════════════════════════════════════════════════════════════╣\n");
+        output.push_str(
+            "╠══════════════════════════════════════════════════════════════════════════════╣\n",
+        );
+        output.push_str(
+            "║  TOP SUSPICIOUS STATEMENTS                                                   ║\n",
+        );
+        output.push_str(
+            "╠══════════════════════════════════════════════════════════════════════════════╣\n",
+        );
 
         for ranking in &result.rankings {
             let bar_len = (ranking.suspiciousness * 20.0).min(20.0) as usize;
@@ -577,7 +590,9 @@ impl FaultLocalizer {
             ));
         }
 
-        output.push_str("╚══════════════════════════════════════════════════════════════════════════════╝\n");
+        output.push_str(
+            "╚══════════════════════════════════════════════════════════════════════════════╝\n",
+        );
 
         // Add detailed explanations
         if !result.rankings.is_empty() {

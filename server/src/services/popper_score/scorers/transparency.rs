@@ -194,7 +194,13 @@ impl TransparencyScorer {
         let mut description: Vec<String> = Vec::new();
 
         // Check for ADR directory (4 points)
-        let adr_dirs = ["docs/adr", "docs/adrs", "adr", "decisions", "docs/decisions"];
+        let adr_dirs = [
+            "docs/adr",
+            "docs/adrs",
+            "adr",
+            "decisions",
+            "docs/decisions",
+        ];
         for adr_dir in adr_dirs {
             let path = project_path.join(adr_dir);
             if path.exists() && path.is_dir() {

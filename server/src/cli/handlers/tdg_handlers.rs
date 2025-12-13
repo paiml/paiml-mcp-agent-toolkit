@@ -1256,11 +1256,12 @@ async fn handle_explain_mode(analyzer: &TdgAnalyzer, config: &TdgCommandConfig) 
 }
 
 /// Format explain mode output (Issue #78)
-fn format_explain_output(explained: &crate::tdg::explain::ExplainedTDGScore, config: &TdgCommandConfig) -> Result<String> {
+fn format_explain_output(
+    explained: &crate::tdg::explain::ExplainedTDGScore,
+    config: &TdgCommandConfig,
+) -> Result<String> {
     match config.format {
-        TdgOutputFormat::Json => {
-            Ok(serde_json::to_string_pretty(explained)?)
-        }
+        TdgOutputFormat::Json => Ok(serde_json::to_string_pretty(explained)?),
         TdgOutputFormat::Markdown => {
             // Markdown format uses same structure as table but in markdown
             let json = serde_json::to_string_pretty(explained)?;
@@ -1289,7 +1290,9 @@ fn format_explain_output(explained: &crate::tdg::explain::ExplainedTDGScore, con
                     "│  📊 Functions by Complexity (threshold: {:2})                  │\n",
                     config.threshold
                 ));
-                output.push_str("├───────────────────────────────────────────────────────────────┤\n");
+                output.push_str(
+                    "├───────────────────────────────────────────────────────────────┤\n",
+                );
 
                 for func in explained.functions.iter().take(10) {
                     let severity_icon = match func.severity {
@@ -1315,14 +1318,22 @@ fn format_explain_output(explained: &crate::tdg::explain::ExplainedTDGScore, con
                     ));
                 }
             } else {
-                output.push_str("│  ✅ No functions above complexity threshold                   │\n");
+                output.push_str(
+                    "│  ✅ No functions above complexity threshold                   │\n",
+                );
             }
 
             // Recommendations
             if !explained.recommendations.is_empty() {
-                output.push_str("│                                                               │\n");
-                output.push_str("│  💡 Recommendations                                           │\n");
-                output.push_str("├───────────────────────────────────────────────────────────────┤\n");
+                output.push_str(
+                    "│                                                               │\n",
+                );
+                output.push_str(
+                    "│  💡 Recommendations                                           │\n",
+                );
+                output.push_str(
+                    "├───────────────────────────────────────────────────────────────┤\n",
+                );
 
                 for (i, rec) in explained.recommendations.iter().take(5).enumerate() {
                     output.push_str(&format!(

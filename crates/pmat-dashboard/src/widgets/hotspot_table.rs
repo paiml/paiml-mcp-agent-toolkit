@@ -65,25 +65,44 @@ impl HotspotTable {
             "file" => {
                 self.rows.sort_by(|a, b| {
                     let cmp = a.file.cmp(&b.file);
-                    if direction == SortDirection::Descending { cmp.reverse() } else { cmp }
+                    if direction == SortDirection::Descending {
+                        cmp.reverse()
+                    } else {
+                        cmp
+                    }
                 });
             }
             "complexity" => {
                 self.rows.sort_by(|a, b| {
                     let cmp = a.complexity.cmp(&b.complexity);
-                    if direction == SortDirection::Descending { cmp.reverse() } else { cmp }
+                    if direction == SortDirection::Descending {
+                        cmp.reverse()
+                    } else {
+                        cmp
+                    }
                 });
             }
             "churn" => {
                 self.rows.sort_by(|a, b| {
                     let cmp = a.churn.cmp(&b.churn);
-                    if direction == SortDirection::Descending { cmp.reverse() } else { cmp }
+                    if direction == SortDirection::Descending {
+                        cmp.reverse()
+                    } else {
+                        cmp
+                    }
                 });
             }
             "score" => {
                 self.rows.sort_by(|a, b| {
-                    let cmp = a.score.partial_cmp(&b.score).unwrap_or(std::cmp::Ordering::Equal);
-                    if direction == SortDirection::Descending { cmp.reverse() } else { cmp }
+                    let cmp = a
+                        .score
+                        .partial_cmp(&b.score)
+                        .unwrap_or(std::cmp::Ordering::Equal);
+                    if direction == SortDirection::Descending {
+                        cmp.reverse()
+                    } else {
+                        cmp
+                    }
                 });
             }
             _ => {}
@@ -129,14 +148,18 @@ impl HotspotTable {
         serde_json::to_string_pretty(&ExportData {
             hotspots: &self.rows,
             total: self.rows.len(),
-        }).unwrap_or_default()
+        })
+        .unwrap_or_default()
     }
 
     /// Export as CSV
     pub fn export_csv(&self) -> String {
         let mut csv = String::from("file,complexity,churn,score\n");
         for row in &self.rows {
-            csv.push_str(&format!("{},{},{},{}\n", row.file, row.complexity, row.churn, row.score));
+            csv.push_str(&format!(
+                "{},{},{},{}\n",
+                row.file, row.complexity, row.churn, row.score
+            ));
         }
         csv
     }
@@ -148,16 +171,31 @@ mod tests {
 
     fn sample_hotspots() -> Vec<Hotspot> {
         vec![
-            Hotspot { file: "b.rs".into(), complexity: 20, churn: 3, score: 60.0 },
-            Hotspot { file: "a.rs".into(), complexity: 10, churn: 5, score: 50.0 },
-            Hotspot { file: "c.rs".into(), complexity: 15, churn: 10, score: 75.0 },
+            Hotspot {
+                file: "b.rs".into(),
+                complexity: 20,
+                churn: 3,
+                score: 60.0,
+            },
+            Hotspot {
+                file: "a.rs".into(),
+                complexity: 10,
+                churn: 5,
+                score: 50.0,
+            },
+            Hotspot {
+                file: "c.rs".into(),
+                complexity: 15,
+                churn: 10,
+                score: 75.0,
+            },
         ]
     }
 
     #[test]
     fn test_sort_by_complexity() {
-        let table = HotspotTable::new(sample_hotspots())
-            .sort_by("complexity", SortDirection::Descending);
+        let table =
+            HotspotTable::new(sample_hotspots()).sort_by("complexity", SortDirection::Descending);
         assert_eq!(table.rows()[0].file, "b.rs");
         assert_eq!(table.rows()[0].complexity, 20);
     }
@@ -187,15 +225,13 @@ mod tests {
 
     #[test]
     fn test_accessible_name() {
-        let table = HotspotTable::new(vec![])
-            .with_accessible_name("Test Table");
+        let table = HotspotTable::new(vec![]).with_accessible_name("Test Table");
         assert_eq!(table.accessible_name(), Some("Test Table"));
     }
 
     #[test]
     fn test_keyboard_navigation() {
-        let table = HotspotTable::new(vec![])
-            .with_keyboard_navigation(true);
+        let table = HotspotTable::new(vec![]).with_keyboard_navigation(true);
         assert!(table.is_focusable());
     }
 }

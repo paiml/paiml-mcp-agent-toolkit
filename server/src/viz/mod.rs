@@ -32,7 +32,7 @@
 pub mod terminal;
 
 #[cfg(feature = "viz")]
-pub use terminal::{RenderConfig, TerminalTheme, Visualizable, NodeShape};
+pub use terminal::{NodeShape, RenderConfig, TerminalTheme, Visualizable};
 
 /// Fallback stub when viz feature is disabled
 #[cfg(not(feature = "viz"))]

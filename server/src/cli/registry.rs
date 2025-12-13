@@ -393,9 +393,9 @@ impl CommandMetadata {
 
     /// Find a subcommand by name
     pub fn find_subcommand(&self, name: &str) -> Option<&CommandMetadata> {
-        self.subcommands.iter().find(|sub| {
-            sub.name == name || sub.aliases.iter().any(|a| a == name)
-        })
+        self.subcommands
+            .iter()
+            .find(|sub| sub.name == name || sub.aliases.iter().any(|a| a == name))
     }
 
     /// Get full command path from root
@@ -439,7 +439,9 @@ impl CommandMetadataBuilder {
     }
 
     pub fn aliases(mut self, aliases: impl IntoIterator<Item = impl Into<String>>) -> Self {
-        self.metadata.aliases.extend(aliases.into_iter().map(Into::into));
+        self.metadata
+            .aliases
+            .extend(aliases.into_iter().map(Into::into));
         self
     }
 
@@ -530,17 +532,45 @@ pub enum RegistryError {
 impl std::fmt::Display for RegistryError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::DuplicateAlias { alias, command1, command2 } => {
-                write!(f, "Duplicate alias '{}' in commands '{}' and '{}'", alias, command1, command2)
+            Self::DuplicateAlias {
+                alias,
+                command1,
+                command2,
+            } => {
+                write!(
+                    f,
+                    "Duplicate alias '{}' in commands '{}' and '{}'",
+                    alias, command1, command2
+                )
             }
-            Self::DuplicateMcpTool { tool_name, command1, command2 } => {
-                write!(f, "Duplicate MCP tool '{}' in commands '{}' and '{}'", tool_name, command1, command2)
+            Self::DuplicateMcpTool {
+                tool_name,
+                command1,
+                command2,
+            } => {
+                write!(
+                    f,
+                    "Duplicate MCP tool '{}' in commands '{}' and '{}'",
+                    tool_name, command1, command2
+                )
             }
             Self::InvalidRelatedCommand { command, related } => {
-                write!(f, "Command '{}' references non-existent related command '{}'", command, related)
+                write!(
+                    f,
+                    "Command '{}' references non-existent related command '{}'",
+                    command, related
+                )
             }
-            Self::InvalidExample { command, example, reason } => {
-                write!(f, "Invalid example '{}' in command '{}': {}", example, command, reason)
+            Self::InvalidExample {
+                command,
+                example,
+                reason,
+            } => {
+                write!(
+                    f,
+                    "Invalid example '{}' in command '{}': {}",
+                    example, command, reason
+                )
             }
         }
     }
@@ -588,7 +618,7 @@ mod tests {
             registry.register(
                 CommandMetadata::builder("analyze")
                     .short_description("Analyze code")
-                    .build()
+                    .build(),
             );
 
             let found = registry.find_command("analyze");
@@ -603,7 +633,7 @@ mod tests {
                 CommandMetadata::builder("analyze")
                     .short_description("Analyze code")
                     .aliases(["a", "an"])
-                    .build()
+                    .build(),
             );
 
             let found = registry.find_command("a");
@@ -625,7 +655,7 @@ mod tests {
                 CommandMetadata::builder("analyze")
                     .short_description("Analyze code")
                     .subcommand(complexity_cmd)
-                    .build()
+                    .build(),
             );
 
             let found = registry.find_command("analyze complexity");
@@ -639,12 +669,12 @@ mod tests {
             registry.register(
                 CommandMetadata::builder("analyze")
                     .tags(["quality", "metrics"])
-                    .build()
+                    .build(),
             );
             registry.register(
                 CommandMetadata::builder("context")
                     .tags(["generation", "ast"])
-                    .build()
+                    .build(),
             );
 
             let quality_cmds = registry.find_by_tag("quality");
@@ -658,12 +688,12 @@ mod tests {
             registry.register(
                 CommandMetadata::builder("analyze")
                     .category("analysis")
-                    .build()
+                    .build(),
             );
             registry.register(
                 CommandMetadata::builder("scaffold")
                     .category("generation")
-                    .build()
+                    .build(),
             );
 
             let analysis_cmds = registry.find_by_category("analysis");
@@ -675,11 +705,7 @@ mod tests {
         fn test_all_command_paths() {
             let mut registry = CommandRegistry::new("1.0.0");
             let sub = CommandMetadata::builder("complexity").build();
-            registry.register(
-                CommandMetadata::builder("analyze")
-                    .subcommand(sub)
-                    .build()
-            );
+            registry.register(CommandMetadata::builder("analyze").subcommand(sub).build());
             registry.register(CommandMetadata::builder("context").build());
 
             let paths = registry.all_command_paths();
@@ -695,21 +721,19 @@ mod tests {
         #[test]
         fn test_validate_duplicate_alias() {
             let mut registry = CommandRegistry::new("1.0.0");
-            registry.register(
-                CommandMetadata::builder("analyze")
-                    .alias("a")
-                    .build()
-            );
+            registry.register(CommandMetadata::builder("analyze").alias("a").build());
             registry.register(
                 CommandMetadata::builder("agent")
-                    .alias("a")  // Duplicate!
-                    .build()
+                    .alias("a") // Duplicate!
+                    .build(),
             );
 
             let result = registry.validate();
             assert!(result.is_err());
             let errors = result.unwrap_err();
-            assert!(errors.iter().any(|e| matches!(e, RegistryError::DuplicateAlias { .. })));
+            assert!(errors
+                .iter()
+                .any(|e| matches!(e, RegistryError::DuplicateAlias { .. })));
         }
 
         #[test]
@@ -721,21 +745,23 @@ mod tests {
                         tool_name: "pmat_analyze".to_string(),
                         ..Default::default()
                     })
-                    .build()
+                    .build(),
             );
             registry.register(
                 CommandMetadata::builder("context")
                     .mcp(McpToolMetadata {
-                        tool_name: "pmat_analyze".to_string(),  // Duplicate!
+                        tool_name: "pmat_analyze".to_string(), // Duplicate!
                         ..Default::default()
                     })
-                    .build()
+                    .build(),
             );
 
             let result = registry.validate();
             assert!(result.is_err());
             let errors = result.unwrap_err();
-            assert!(errors.iter().any(|e| matches!(e, RegistryError::DuplicateMcpTool { .. })));
+            assert!(errors
+                .iter()
+                .any(|e| matches!(e, RegistryError::DuplicateMcpTool { .. })));
         }
 
         #[test]
@@ -743,29 +769,27 @@ mod tests {
             let mut registry = CommandRegistry::new("1.0.0");
             registry.register(
                 CommandMetadata::builder("analyze")
-                    .related("nonexistent")  // Invalid reference!
-                    .build()
+                    .related("nonexistent") // Invalid reference!
+                    .build(),
             );
 
             let result = registry.validate();
             assert!(result.is_err());
             let errors = result.unwrap_err();
-            assert!(errors.iter().any(|e| matches!(e, RegistryError::InvalidRelatedCommand { .. })));
+            assert!(errors
+                .iter()
+                .any(|e| matches!(e, RegistryError::InvalidRelatedCommand { .. })));
         }
 
         #[test]
         fn test_validate_success() {
             let mut registry = CommandRegistry::new("1.0.0");
-            registry.register(
-                CommandMetadata::builder("analyze")
-                    .alias("a")
-                    .build()
-            );
+            registry.register(CommandMetadata::builder("analyze").alias("a").build());
             registry.register(
                 CommandMetadata::builder("context")
                     .alias("ctx")
-                    .related("analyze")  // Valid reference
-                    .build()
+                    .related("analyze") // Valid reference
+                    .build(),
             );
 
             let result = registry.validate();
@@ -782,7 +806,7 @@ mod tests {
             registry.register(
                 CommandMetadata::builder("analyze")
                     .short_description("Analyze code")
-                    .build()
+                    .build(),
             );
 
             let json = registry.to_json().unwrap();
@@ -798,7 +822,7 @@ mod tests {
                     .short_description("Analyze code")
                     .aliases(["a", "an"])
                     .tags(["quality"])
-                    .build()
+                    .build(),
             );
 
             let json = registry.to_json().unwrap();
@@ -942,9 +966,7 @@ mod tests {
             let sub = CommandMetadata::builder("complexity")
                 .aliases(["cx"])
                 .build();
-            let cmd = CommandMetadata::builder("analyze")
-                .subcommand(sub)
-                .build();
+            let cmd = CommandMetadata::builder("analyze").subcommand(sub).build();
 
             // Find by name
             let found = cmd.find_subcommand("complexity");

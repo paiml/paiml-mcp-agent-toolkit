@@ -30,7 +30,7 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use trueno_graph::{CsrGraph, NodeId, pagerank};
+use trueno_graph::{pagerank, CsrGraph, NodeId};
 
 /// Metric observation (single data point)
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -144,8 +144,7 @@ impl MetricTrendStore {
     /// Create new trend store
     pub fn new() -> Result<Self> {
         let storage_path = PathBuf::from(".pmat-metrics/trends");
-        std::fs::create_dir_all(&storage_path)
-            .context("Failed to create trends directory")?;
+        std::fs::create_dir_all(&storage_path).context("Failed to create trends directory")?;
 
         Ok(Self {
             storage_path,
@@ -161,8 +160,7 @@ impl MetricTrendStore {
     /// Load from custom path
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self> {
         let storage_path = path.as_ref().to_path_buf();
-        std::fs::create_dir_all(&storage_path)
-            .context("Failed to create trends directory")?;
+        std::fs::create_dir_all(&storage_path).context("Failed to create trends directory")?;
 
         Ok(Self {
             storage_path,
@@ -238,10 +236,7 @@ impl MetricTrendStore {
             self.load(metric)?;
         }
 
-        let observations = self
-            .cache
-            .get(metric)
-            .context("Metric not found")?;
+        let observations = self.cache.get(metric).context("Metric not found")?;
 
         // Filter to last N days
         let now = chrono::Utc::now().timestamp();
@@ -259,11 +254,7 @@ impl MetricTrendStore {
         // Compute statistics
         let values: Vec<f64> = filtered.iter().map(|obs| obs.value).collect();
         let mean = values.iter().sum::<f64>() / values.len() as f64;
-        let variance = values
-            .iter()
-            .map(|v| (v - mean).powi(2))
-            .sum::<f64>()
-            / values.len() as f64;
+        let variance = values.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / values.len() as f64;
         let std_dev = variance.sqrt();
         let min = values.iter().cloned().fold(f64::INFINITY, f64::min);
         let max = values.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
@@ -432,13 +423,13 @@ impl MetricTrendStore {
             self.load(metric)?;
         }
 
-        let observations = self
-            .cache
-            .get(metric)
-            .context("Metric not found")?;
+        let observations = self.cache.get(metric).context("Metric not found")?;
 
         if observations.len() < 7 {
-            anyhow::bail!("Need at least 7 observations for prediction (found {})", observations.len());
+            anyhow::bail!(
+                "Need at least 7 observations for prediction (found {})",
+                observations.len()
+            );
         }
 
         // Filter to last 90 days for training
@@ -452,7 +443,10 @@ impl MetricTrendStore {
             .collect();
 
         if training_data.len() < 7 {
-            anyhow::bail!("Need at least 7 observations in last 90 days (found {})", training_data.len());
+            anyhow::bail!(
+                "Need at least 7 observations in last 90 days (found {})",
+                training_data.len()
+            );
         }
 
         // Train linear model
@@ -618,8 +612,9 @@ impl MetricTrendStore {
         // Add urgency-based recommendations
         if let Some(days) = breach_in_days {
             if days <= 7 {
-                recommendations
-                    .push("⚠️ URGENT: Threshold breach imminent - prioritize optimization".to_string());
+                recommendations.push(
+                    "⚠️ URGENT: Threshold breach imminent - prioritize optimization".to_string(),
+                );
             } else if days <= 14 {
                 recommendations.push(
                     "⚠️ WARNING: Threshold breach in 2 weeks - schedule optimization".to_string(),
@@ -637,23 +632,21 @@ impl MetricTrendStore {
             "lint" => {
                 recommendations.push("Remove unused dependencies (saves ~2-3s)".to_string());
                 recommendations.push("Enable incremental clippy analysis".to_string());
-                recommendations
-                    .push("Review enabled clippy lints (disable pedantic if not needed)".to_string());
+                recommendations.push(
+                    "Review enabled clippy lints (disable pedantic if not needed)".to_string(),
+                );
                 recommendations.push("Use cargo-cache to clean old artifacts".to_string());
             }
             "test-fast" => {
-                recommendations
-                    .push("Parallelize test execution (use --test-threads)".to_string());
+                recommendations.push("Parallelize test execution (use --test-threads)".to_string());
                 recommendations.push("Use #[ignore] for slow property tests".to_string());
-                recommendations
-                    .push("Implement test fixtures to reduce setup time".to_string());
+                recommendations.push("Implement test fixtures to reduce setup time".to_string());
                 recommendations.push("Profile tests to identify slowest ones".to_string());
             }
             "coverage" => {
                 recommendations.push("Run coverage only in CI (skip locally)".to_string());
                 recommendations.push("Use --exclude for non-critical modules".to_string());
-                recommendations
-                    .push("Skip expensive property-based tests in coverage".to_string());
+                recommendations.push("Skip expensive property-based tests in coverage".to_string());
                 recommendations.push("Consider sampling coverage (not 100% runs)".to_string());
             }
             "build-release" => {
@@ -679,8 +672,7 @@ impl MetricTrendStore {
         if let Some(observations) = self.cache.get(metric) {
             let path = self.storage_path.join(format!("{}.json", metric));
             let json = serde_json::to_string_pretty(observations)?;
-            std::fs::write(&path, json)
-                .context("Failed to write metric observations")?;
+            std::fs::write(&path, json).context("Failed to write metric observations")?;
         }
         Ok(())
     }
@@ -802,11 +794,19 @@ mod tests {
         }
 
         // Verify graph has nodes
-        assert_eq!(store.graph.num_nodes(), 5, "Should have 5 nodes in CSR graph");
+        assert_eq!(
+            store.graph.num_nodes(),
+            5,
+            "Should have 5 nodes in CSR graph"
+        );
 
         // Verify node mappings
         assert_eq!(store.node_map.len(), 5, "Should have 5 node mappings");
-        assert_eq!(store.reverse_node_map.len(), 5, "Should have 5 reverse mappings");
+        assert_eq!(
+            store.reverse_node_map.len(),
+            5,
+            "Should have 5 reverse mappings"
+        );
 
         // Verify next_node_id incremented
         assert_eq!(store.next_node_id, 5, "Next node ID should be 5");
@@ -853,17 +853,14 @@ mod tests {
 
         // Verify at least one metric has a PageRank score
         assert!(
-            hot.iter().any(|(name, _)| name == "lint" || name == "coverage"),
+            hot.iter()
+                .any(|(name, _)| name == "lint" || name == "coverage"),
             "Should include at least one of lint or coverage"
         );
 
         // Verify scores are non-zero
         for (name, score) in &hot {
-            assert!(
-                *score > 0.0,
-                "{} should have non-zero PageRank score",
-                name
-            );
+            assert!(*score > 0.0, "{} should have non-zero PageRank score", name);
         }
     }
 
@@ -953,10 +950,7 @@ mod tests {
             .predict_threshold_breach("lint", 30_000.0, 30)
             .unwrap();
 
-        assert!(
-            prediction.breach_in_days.is_some(),
-            "Should predict breach"
-        );
+        assert!(prediction.breach_in_days.is_some(), "Should predict breach");
 
         let days = prediction.breach_in_days.unwrap();
         assert!(
@@ -1029,7 +1023,11 @@ mod tests {
             .unwrap();
 
         // Verify forecast has 30 points
-        assert_eq!(prediction.forecast.len(), 30, "Should have 30 forecast points");
+        assert_eq!(
+            prediction.forecast.len(),
+            30,
+            "Should have 30 forecast points"
+        );
 
         // Verify forecast values are increasing
         for (i, point) in prediction.forecast.iter().enumerate() {
@@ -1097,7 +1095,9 @@ mod tests {
         let now = chrono::Utc::now().timestamp();
         for i in 0..5 {
             let ts = now - ((4 - i) * 86400); // 5 days back
-            store.record("lint", 1000.0 + (i as f64 * 100.0), ts).unwrap();
+            store
+                .record("lint", 1000.0 + (i as f64 * 100.0), ts)
+                .unwrap();
         }
 
         // Should fail with insufficient observations
@@ -1120,7 +1120,9 @@ mod tests {
         let old_base = now - (100 * 86400); // 100 days ago
         for i in 0..10 {
             let ts = old_base + (i * 86400); // 10 consecutive days, all > 90 days ago
-            store.record("lint", 1000.0 + (i as f64 * 100.0), ts).unwrap();
+            store
+                .record("lint", 1000.0 + (i as f64 * 100.0), ts)
+                .unwrap();
         }
 
         // Should fail - no recent observations in last 90 days
@@ -1142,7 +1144,9 @@ mod tests {
         let now = chrono::Utc::now().timestamp();
         for i in 0..7 {
             let ts = now - ((6 - i) * 86400); // Last 7 days
-            store.record("lint", 1000.0 + (i as f64 * 200.0), ts).unwrap();
+            store
+                .record("lint", 1000.0 + (i as f64 * 200.0), ts)
+                .unwrap();
         }
 
         // Should succeed with exactly 7 observations
@@ -1152,6 +1156,9 @@ mod tests {
         let prediction = result.unwrap();
         assert_eq!(prediction.metric, "lint");
         // Should have valid current_value (tests .last().expect() at line 480-483)
-        assert!(prediction.current_value > 0.0, "Should have valid current value");
+        assert!(
+            prediction.current_value > 0.0,
+            "Should have valid current value"
+        );
     }
 }

@@ -1611,7 +1611,10 @@ async fn route_semantic_analysis(cmd: AnalyzeCommands) -> Result<()> {
                     println!("   Topics: {}\n", result.topics.len());
 
                     for topic in &result.topics {
-                        println!("   Topic {} ({} documents):", topic.id, topic.document_count);
+                        println!(
+                            "   Topic {} ({} documents):",
+                            topic.id, topic.document_count
+                        );
                         println!("     Top terms:");
                         for (term, weight) in topic.top_terms.iter().take(10) {
                             println!("       - {} ({:.3})", term, weight);

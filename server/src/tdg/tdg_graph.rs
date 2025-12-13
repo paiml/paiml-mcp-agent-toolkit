@@ -36,7 +36,7 @@
 
 use anyhow::{Context as _, Result};
 use std::collections::HashMap;
-use trueno_graph::{CsrGraph, NodeId, pagerank};
+use trueno_graph::{pagerank, CsrGraph, NodeId};
 
 /// CSR-backed TDG dependency graph for O(1) function lookups
 ///
@@ -230,7 +230,8 @@ impl TdgGraph {
         let mut vis = crate::viz::terminal::VisGraph::new();
 
         // Build index mapping (function name → vis node index)
-        let mut name_to_idx: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+        let mut name_to_idx: std::collections::HashMap<String, usize> =
+            std::collections::HashMap::new();
 
         // Add all nodes with their criticality scores
         for (name, &_node_id) in &self.node_map {

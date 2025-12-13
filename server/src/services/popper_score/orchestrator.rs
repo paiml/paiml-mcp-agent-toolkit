@@ -71,10 +71,8 @@ impl PopperOrchestrator {
                 'F' => {
                     // Handle ML category's is_applicable flag
                     result.categories.ml_reproducibility = category_score;
-                    result
-                        .categories
-                        .ml_reproducibility
-                        .is_not_applicable = !result.categories.ml_reproducibility.is_applicable;
+                    result.categories.ml_reproducibility.is_not_applicable =
+                        !result.categories.ml_reproducibility.is_applicable;
                 }
                 _ => {
                     return Err(PopperScorerError::InvalidProject(format!(
@@ -357,9 +355,17 @@ fn test_panic() { panic!("expected"); }
 "#,
         )
         .unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"\nversion = \"1.0.0\"").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"\nversion = \"1.0.0\"",
+        )
+        .unwrap();
         fs::write(temp_dir.path().join("Cargo.lock"), "# Lock file").unwrap();
-        fs::write(temp_dir.path().join("LICENSE"), "MIT License\n\nCopyright (c) 2025").unwrap();
+        fs::write(
+            temp_dir.path().join("LICENSE"),
+            "MIT License\n\nCopyright (c) 2025",
+        )
+        .unwrap();
         fs::create_dir_all(temp_dir.path().join(".git")).unwrap();
         fs::create_dir_all(temp_dir.path().join(".github/workflows")).unwrap();
         fs::write(
@@ -371,7 +377,8 @@ fn test_panic() { panic!("expected"); }
         fs::write(
             temp_dir.path().join("benches/bench.rs"),
             "use criterion::*;\nfn bench(c: &mut Criterion) {}\n",
-        ).unwrap();
+        )
+        .unwrap();
 
         let orchestrator = PopperOrchestrator::new();
         let result = orchestrator.score(temp_dir.path()).unwrap();
@@ -402,7 +409,8 @@ fn test_panic() { panic!("expected"); }
         fs::write(
             temp_dir.path().join(".github/workflows/ci.yml"),
             "on: push\njobs:\n  test:\n    steps:\n      - run: cargo test",
-        ).unwrap();
+        )
+        .unwrap();
 
         let orchestrator = PopperOrchestrator::new();
         let result = orchestrator.score(temp_dir.path()).unwrap();
@@ -438,7 +446,8 @@ fn test_panic() { panic!("expected"); }
         fs::write(
             temp_dir.path().join(".github/workflows/ci.yml"),
             "on: push\njobs:\n  test:\n    steps:\n      - run: pytest",
-        ).unwrap();
+        )
+        .unwrap();
 
         let orchestrator = PopperOrchestrator::new();
         let result = orchestrator.score(temp_dir.path()).unwrap();
@@ -453,7 +462,11 @@ fn test_panic() { panic!("expected"); }
         let temp_dir = tempdir().unwrap();
 
         // Create non-ML project
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"cli\"").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"cli\"",
+        )
+        .unwrap();
         fs::write(
             temp_dir.path().join("README.md"),
             "# CLI Tool\n\nProvides command-line utilities. Success Criteria: All tests pass.",
@@ -469,7 +482,8 @@ fn test_panic() { panic!("expected"); }
         fs::write(
             temp_dir.path().join(".github/workflows/ci.yml"),
             "on: push\njobs:\n  test:\n    steps:\n      - run: cargo test",
-        ).unwrap();
+        )
+        .unwrap();
 
         let orchestrator = PopperOrchestrator::new();
         let result = orchestrator.score(temp_dir.path()).unwrap();

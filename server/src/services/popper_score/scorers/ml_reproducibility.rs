@@ -426,7 +426,11 @@ mod tests {
         let temp_dir = tempdir().unwrap();
 
         // Create a non-ML project
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"cli\"").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"cli\"",
+        )
+        .unwrap();
         fs::write(temp_dir.path().join("README.md"), "# CLI Tool").unwrap();
 
         let scorer = MLReproducibilityScorer::new();

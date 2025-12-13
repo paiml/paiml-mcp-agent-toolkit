@@ -173,11 +173,7 @@ pub struct DefectReport {
 
 impl DefectReport {
     /// Create a new defect report
-    pub fn new(
-        category: DefectCategory,
-        severity: Severity,
-        location: CodeLocation,
-    ) -> Self {
+    pub fn new(category: DefectCategory, severity: Severity, location: CodeLocation) -> Self {
         Self {
             id: uuid::Uuid::new_v4().to_string(),
             category,
@@ -372,7 +368,9 @@ impl ConvergenceTargets {
         if failures.is_empty() {
             ConvergenceStatus::Converged
         } else {
-            ConvergenceStatus::NotConverged { remaining: failures }
+            ConvergenceStatus::NotConverged {
+                remaining: failures,
+            }
         }
     }
 }

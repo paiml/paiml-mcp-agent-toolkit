@@ -85,17 +85,39 @@ fn format_text(report: &CoverageImprovementReport) -> String {
     output.push_str(&format!("Baseline:  {:.2}%\n", report.baseline_coverage));
     output.push_str(&format!("Target:    {:.2}%\n", report.target_coverage));
     output.push_str(&format!("Final:     {:.2}%\n", report.final_coverage));
-    output.push_str(&format!("Gain:      +{:.2}%\n\n", report.final_coverage - report.baseline_coverage));
+    output.push_str(&format!(
+        "Gain:      +{:.2}%\n\n",
+        report.final_coverage - report.baseline_coverage
+    ));
 
     for iteration in &report.iterations {
         output.push_str(&format!("Iteration {}:\n", iteration.iteration));
-        output.push_str(&format!("  Files targeted: {}\n", iteration.files_targeted.len()));
-        output.push_str(&format!("  Tests generated: {}\n", iteration.tests_generated));
-        output.push_str(&format!("  Coverage gain: +{:.2}%\n", iteration.coverage_gain));
-        output.push_str(&format!("  Mutation score: {:.1}%\n\n", iteration.mutation_score));
+        output.push_str(&format!(
+            "  Files targeted: {}\n",
+            iteration.files_targeted.len()
+        ));
+        output.push_str(&format!(
+            "  Tests generated: {}\n",
+            iteration.tests_generated
+        ));
+        output.push_str(&format!(
+            "  Coverage gain: +{:.2}%\n",
+            iteration.coverage_gain
+        ));
+        output.push_str(&format!(
+            "  Mutation score: {:.1}%\n\n",
+            iteration.mutation_score
+        ));
     }
 
-    output.push_str(&format!("Status: {}\n", if report.success { "SUCCESS" } else { "INCOMPLETE" }));
+    output.push_str(&format!(
+        "Status: {}\n",
+        if report.success {
+            "SUCCESS"
+        } else {
+            "INCOMPLETE"
+        }
+    ));
     output.push_str(&format!("Reason: {}\n", report.stop_reason));
 
     output
@@ -112,10 +134,22 @@ fn format_markdown(report: &CoverageImprovementReport) -> String {
     output.push_str("# Coverage Improvement Report\n\n");
 
     output.push_str("## Summary\n\n");
-    output.push_str(&format!("- **Baseline Coverage**: {:.2}%\n", report.baseline_coverage));
-    output.push_str(&format!("- **Target Coverage**: {:.2}%\n", report.target_coverage));
-    output.push_str(&format!("- **Final Coverage**: {:.2}%\n", report.final_coverage));
-    output.push_str(&format!("- **Total Gain**: +{:.2}%\n\n", report.final_coverage - report.baseline_coverage));
+    output.push_str(&format!(
+        "- **Baseline Coverage**: {:.2}%\n",
+        report.baseline_coverage
+    ));
+    output.push_str(&format!(
+        "- **Target Coverage**: {:.2}%\n",
+        report.target_coverage
+    ));
+    output.push_str(&format!(
+        "- **Final Coverage**: {:.2}%\n",
+        report.final_coverage
+    ));
+    output.push_str(&format!(
+        "- **Total Gain**: +{:.2}%\n\n",
+        report.final_coverage - report.baseline_coverage
+    ));
 
     output.push_str("## Iterations\n\n");
     output.push_str("| Iteration | Files | Tests | Coverage Gain | Mutation Score |\n");
@@ -132,7 +166,14 @@ fn format_markdown(report: &CoverageImprovementReport) -> String {
         ));
     }
 
-    output.push_str(&format!("\n## Result\n\n**Status**: {}\n\n", if report.success { "✅ SUCCESS" } else { "⚠️ INCOMPLETE" }));
+    output.push_str(&format!(
+        "\n## Result\n\n**Status**: {}\n\n",
+        if report.success {
+            "✅ SUCCESS"
+        } else {
+            "⚠️ INCOMPLETE"
+        }
+    ));
     output.push_str(&format!("**Reason**: {}\n", report.stop_reason));
 
     output
@@ -143,7 +184,10 @@ fn print_summary(report: &CoverageImprovementReport) {
     eprintln!("\n📊 Summary:");
     eprintln!("   Baseline:  {:.2}%", report.baseline_coverage);
     eprintln!("   Final:     {:.2}%", report.final_coverage);
-    eprintln!("   Gain:      +{:.2}%", report.final_coverage - report.baseline_coverage);
+    eprintln!(
+        "   Gain:      +{:.2}%",
+        report.final_coverage - report.baseline_coverage
+    );
     eprintln!("   Iterations: {}", report.iterations.len());
 
     if report.success {

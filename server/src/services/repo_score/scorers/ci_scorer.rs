@@ -34,7 +34,9 @@ impl CiScorer {
                 findings: vec![Finding {
                     severity: Severity::Error,
                     category: "CI".to_string(),
-                    message: "Missing: Create .github/workflows/ directory with CI workflow (+6 pts)".to_string(),
+                    message:
+                        "Missing: Create .github/workflows/ directory with CI workflow (+6 pts)"
+                            .to_string(),
                     location: Some(workflows_dir.display().to_string()),
                     impact_points: -6.0,
                 }],
@@ -66,7 +68,8 @@ impl CiScorer {
                 findings: vec![Finding {
                     severity: Severity::Warning,
                     category: "CI".to_string(),
-                    message: "Missing: Add workflow files to .github/workflows/ (+5 pts)".to_string(),
+                    message: "Missing: Add workflow files to .github/workflows/ (+5 pts)"
+                        .to_string(),
                     location: Some(workflows_dir.display().to_string()),
                     impact_points: -5.0,
                 }],
@@ -171,9 +174,15 @@ impl CiScorer {
                 });
             } else {
                 let mut missing = vec![];
-                if !has_name { missing.push("name"); }
-                if !has_on { missing.push("on"); }
-                if !has_jobs { missing.push("jobs"); }
+                if !has_name {
+                    missing.push("name");
+                }
+                if !has_on {
+                    missing.push("on");
+                }
+                if !has_jobs {
+                    missing.push("jobs");
+                }
                 findings.push(Finding {
                     severity: Severity::Warning,
                     category: "CI".to_string(),
@@ -269,7 +278,9 @@ impl CiScorer {
                 findings: vec![Finding {
                     severity: Severity::Info,
                     category: "CI".to_string(),
-                    message: "Add workflows first to unlock advanced CI features (+8 pts available)".to_string(),
+                    message:
+                        "Add workflows first to unlock advanced CI features (+8 pts available)"
+                            .to_string(),
                     location: None,
                     impact_points: 0.0,
                 }],
@@ -312,7 +323,8 @@ impl CiScorer {
             findings.push(Finding {
                 severity: Severity::Info,
                 category: "CI".to_string(),
-                message: "Missing: Add coverage reporting (codecov, coveralls) (+2 pts)".to_string(),
+                message: "Missing: Add coverage reporting (codecov, coveralls) (+2 pts)"
+                    .to_string(),
                 location: None,
                 impact_points: 0.0,
             });
@@ -338,15 +350,15 @@ impl CiScorer {
             findings.push(Finding {
                 severity: Severity::Info,
                 category: "CI".to_string(),
-                message: "Missing: Add security scanning (cargo audit, CodeQL, Trivy) (+2 pts)".to_string(),
+                message: "Missing: Add security scanning (cargo audit, CodeQL, Trivy) (+2 pts)"
+                    .to_string(),
                 location: None,
                 impact_points: 0.0,
             });
         }
 
         // Check for caching (2 pts)
-        let has_caching = all_content.contains("cache")
-            || all_content.contains("actions/cache");
+        let has_caching = all_content.contains("cache") || all_content.contains("actions/cache");
         if has_caching {
             total_score += 2.0;
             findings.push(Finding {
@@ -360,15 +372,15 @@ impl CiScorer {
             findings.push(Finding {
                 severity: Severity::Info,
                 category: "CI".to_string(),
-                message: "Missing: Add caching (actions/cache) for faster builds (+2 pts)".to_string(),
+                message: "Missing: Add caching (actions/cache) for faster builds (+2 pts)"
+                    .to_string(),
                 location: None,
                 impact_points: 0.0,
             });
         }
 
         // Check for matrix builds (2 pts)
-        let has_matrix = all_content.contains("matrix:")
-            || all_content.contains("strategy:");
+        let has_matrix = all_content.contains("matrix:") || all_content.contains("strategy:");
         if has_matrix {
             total_score += 2.0;
             findings.push(Finding {
@@ -382,7 +394,8 @@ impl CiScorer {
             findings.push(Finding {
                 severity: Severity::Info,
                 category: "CI".to_string(),
-                message: "Missing: Add matrix builds for multi-platform testing (+2 pts)".to_string(),
+                message: "Missing: Add matrix builds for multi-platform testing (+2 pts)"
+                    .to_string(),
                 location: None,
                 impact_points: 0.0,
             });
