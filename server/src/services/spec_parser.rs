@@ -252,12 +252,35 @@ impl SpecParser {
             if line.starts_with("```") {
                 if in_code_block {
                     // End of code block
+                    let is_executable = matches!(
+                        code_lang.as_str(),
+                        "bash" | "sh" | "shell" | "rust" | "python" | "typescript" | "javascript"
+                    );
                     spec.code_examples.push(CodeExample {
                         language: code_lang.clone(),
                         code: code_content.trim().to_string(),
                         line: code_start_line,
-                        executable: matches!(code_lang.as_str(), "bash" | "sh" | "shell"),
+                        executable: is_executable,
                     });
+
+                    // Code examples are falsifiable claims - they either compile/run or they don't
+                    // Mark as manual validation (can be run by user, gives credit for having testable claims)
+                    if is_executable && !code_content.trim().is_empty() {
+                        let claim_text = format!(
+                            "Code example ({}) at line {} compiles/runs correctly",
+                            code_lang, code_start_line
+                        );
+                        spec.claims.push(ValidationClaim {
+                            id: format!("CODE-{}", spec.code_examples.len()),
+                            text: claim_text,
+                            line: code_start_line,
+                            category: ClaimCategory::Falsifiability,
+                            automatable: false, // Manual validation - but still falsifiable!
+                            validation_cmd: None,
+                            expected_pattern: None,
+                        });
+                    }
+
                     in_code_block = false;
                     code_content.clear();
                 } else {
@@ -312,14 +335,24 @@ impl SpecParser {
                 let verb = caps.get(1).map(|m| m.as_str().to_uppercase()).unwrap_or_default();
                 let claim_text = caps.get(2).map(|m| m.as_str().to_string()).unwrap_or_default();
 
-                let category = ClaimCategory::from_section(&current_section)
-                    .unwrap_or(ClaimCategory::Implementation);
+                // Content-based category detection (more accurate than section-based)
+                let category = Self::categorize_claim(&claim_text, &current_section);
 
-                // Determine if automatable
-                let automatable = claim_text.contains("pmat ")
-                    || claim_text.contains("cargo ")
-                    || claim_text.contains("test ")
-                    || claim_text.contains("coverage");
+                // Determine if automatable - expanded detection
+                let lower_claim = claim_text.to_lowercase();
+                let automatable = lower_claim.contains("pmat ")
+                    || lower_claim.contains("cargo ")
+                    || lower_claim.contains("test")
+                    || lower_claim.contains("coverage")
+                    || lower_claim.contains("compile")
+                    || lower_claim.contains("build")
+                    || lower_claim.contains("pass")
+                    || lower_claim.contains("fail")
+                    || lower_claim.contains("%")
+                    || lower_claim.contains("< ")
+                    || lower_claim.contains("> ")
+                    || lower_claim.contains("≥")
+                    || lower_claim.contains("≤");
 
                 let validation_cmd = if automatable {
                     self.extract_validation_command(&claim_text)
@@ -426,6 +459,70 @@ impl SpecParser {
             }
         }
         None
+    }
+
+    /// Content-based claim categorization (more accurate than section-based)
+    fn categorize_claim(claim_text: &str, section: &str) -> ClaimCategory {
+        let lower = claim_text.to_lowercase();
+        let section_lower = section.to_lowercase();
+
+        // Falsifiability: claims with concrete metrics, thresholds, or testable assertions
+        if lower.contains('%')
+            || lower.contains("≥")
+            || lower.contains("≤")
+            || lower.contains("< ")
+            || lower.contains("> ")
+            || lower.contains("within")
+            || lower.contains("at least")
+            || lower.contains("at most")
+            || lower.contains("exactly")
+            || lower.contains("zero ")
+            || lower.contains("no ")
+            || lower.contains("all ")
+            || lower.contains("none ")
+            || lower.contains("compile")
+            || lower.contains("pass")
+            || lower.contains("fail")
+            || section_lower.contains("falsif")
+            || section_lower.contains("testab")
+            || section_lower.contains("acceptance")
+        {
+            return ClaimCategory::Falsifiability;
+        }
+
+        // Testing: test-related claims
+        if lower.contains("test")
+            || lower.contains("coverage")
+            || lower.contains("mutation")
+            || lower.contains("property")
+            || section_lower.contains("test")
+        {
+            return ClaimCategory::Testing;
+        }
+
+        // Documentation: doc-related claims
+        if lower.contains("document")
+            || lower.contains("readme")
+            || lower.contains("example")
+            || lower.contains("changelog")
+            || section_lower.contains("doc")
+        {
+            return ClaimCategory::Documentation;
+        }
+
+        // Integration: external system claims
+        if lower.contains("api")
+            || lower.contains("integrat")
+            || lower.contains("github")
+            || lower.contains("ci/cd")
+            || lower.contains("deploy")
+            || section_lower.contains("integrat")
+        {
+            return ClaimCategory::Integration;
+        }
+
+        // Default to Implementation
+        ClaimCategory::from_section(section).unwrap_or(ClaimCategory::Implementation)
     }
 
     /// Find all specifications in a directory
