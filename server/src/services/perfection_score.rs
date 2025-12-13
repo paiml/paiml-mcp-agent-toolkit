@@ -82,15 +82,20 @@ impl CategoryScore {
     }
 
     fn calculate_grade(score: f64) -> String {
+        // Standard academic grading scale (F-A)
         match score as u8 {
-            95..=100 => "S+".to_string(),
-            90..=94 => "S".to_string(),
-            85..=89 => "A+".to_string(),
-            80..=84 => "A".to_string(),
-            75..=79 => "B+".to_string(),
-            70..=74 => "B".to_string(),
-            60..=69 => "C".to_string(),
-            50..=59 => "D".to_string(),
+            97..=100 => "A+".to_string(),
+            93..=96 => "A".to_string(),
+            90..=92 => "A-".to_string(),
+            87..=89 => "B+".to_string(),
+            83..=86 => "B".to_string(),
+            80..=82 => "B-".to_string(),
+            77..=79 => "C+".to_string(),
+            73..=76 => "C".to_string(),
+            70..=72 => "C-".to_string(),
+            67..=69 => "D+".to_string(),
+            63..=66 => "D".to_string(),
+            60..=62 => "D-".to_string(),
             _ => "F".to_string(),
         }
     }
@@ -130,15 +135,20 @@ impl PerfectionScoreResult {
     }
 
     fn calculate_overall_grade(score: f64) -> String {
+        // Standard academic grading scale (F-A) for 200-point scale
         match score as u16 {
-            190..=200 => "S+".to_string(),
-            180..=189 => "S".to_string(),
-            170..=179 => "A+".to_string(),
-            160..=169 => "A".to_string(),
-            150..=159 => "B+".to_string(),
-            140..=149 => "B".to_string(),
-            120..=139 => "C".to_string(),
-            100..=119 => "D".to_string(),
+            194..=200 => "A+".to_string(),
+            186..=193 => "A".to_string(),
+            180..=185 => "A-".to_string(),
+            174..=179 => "B+".to_string(),
+            166..=173 => "B".to_string(),
+            160..=165 => "B-".to_string(),
+            154..=159 => "C+".to_string(),
+            146..=153 => "C".to_string(),
+            140..=145 => "C-".to_string(),
+            134..=139 => "D+".to_string(),
+            126..=133 => "D".to_string(),
+            120..=125 => "D-".to_string(),
             _ => "F".to_string(),
         }
     }
@@ -512,20 +522,25 @@ mod tests {
     fn test_category_score_calculation() {
         let score = CategoryScore::new("Test", 80.0, 40);
         assert_eq!(score.earned_points, 32.0);
-        assert_eq!(score.grade, "A");
+        assert_eq!(score.grade, "B-"); // 80 is in B- range (80-82)
     }
 
     #[test]
     fn test_overall_grade_thresholds() {
-        assert_eq!(PerfectionScoreResult::calculate_overall_grade(195.0), "S+");
-        assert_eq!(PerfectionScoreResult::calculate_overall_grade(185.0), "S");
-        assert_eq!(PerfectionScoreResult::calculate_overall_grade(175.0), "A+");
-        assert_eq!(PerfectionScoreResult::calculate_overall_grade(165.0), "A");
-        assert_eq!(PerfectionScoreResult::calculate_overall_grade(155.0), "B+");
-        assert_eq!(PerfectionScoreResult::calculate_overall_grade(145.0), "B");
-        assert_eq!(PerfectionScoreResult::calculate_overall_grade(130.0), "C");
-        assert_eq!(PerfectionScoreResult::calculate_overall_grade(110.0), "D");
-        assert_eq!(PerfectionScoreResult::calculate_overall_grade(90.0), "F");
+        // Standard academic grading scale (F-A) for 200-point scale
+        assert_eq!(PerfectionScoreResult::calculate_overall_grade(198.0), "A+"); // 194-200
+        assert_eq!(PerfectionScoreResult::calculate_overall_grade(190.0), "A");  // 186-193
+        assert_eq!(PerfectionScoreResult::calculate_overall_grade(182.0), "A-"); // 180-185
+        assert_eq!(PerfectionScoreResult::calculate_overall_grade(176.0), "B+"); // 174-179
+        assert_eq!(PerfectionScoreResult::calculate_overall_grade(170.0), "B");  // 166-173
+        assert_eq!(PerfectionScoreResult::calculate_overall_grade(162.0), "B-"); // 160-165
+        assert_eq!(PerfectionScoreResult::calculate_overall_grade(156.0), "C+"); // 154-159
+        assert_eq!(PerfectionScoreResult::calculate_overall_grade(150.0), "C");  // 146-153
+        assert_eq!(PerfectionScoreResult::calculate_overall_grade(142.0), "C-"); // 140-145
+        assert_eq!(PerfectionScoreResult::calculate_overall_grade(136.0), "D+"); // 134-139
+        assert_eq!(PerfectionScoreResult::calculate_overall_grade(130.0), "D");  // 126-133
+        assert_eq!(PerfectionScoreResult::calculate_overall_grade(122.0), "D-"); // 120-125
+        assert_eq!(PerfectionScoreResult::calculate_overall_grade(100.0), "F");  // 0-119
     }
 
     #[test]
@@ -544,7 +559,7 @@ mod tests {
 
         // Total: 32 + 21 + 22.5 + 16.25 + 22.5 + 12 + 10.5 + 12.75 = 149.5
         assert!((result.total_score - 149.5).abs() < 0.01);
-        assert_eq!(result.grade, "B");
+        assert_eq!(result.grade, "C"); // 149.5 is in C range (146-153)
     }
 
     #[tokio::test]
