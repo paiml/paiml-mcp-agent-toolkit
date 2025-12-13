@@ -573,3 +573,7 @@ features = ["default"]
 # Set DOCS_RS environment variable to skip network operations
 rustdoc-args = ["--cfg", "docsrs"]
 rustc-args = ["--cfg", "docsrs"]
+
+# Inherit workspace lints for consistent code quality across crates
+[lints]
+workspace = true

@@ -10,11 +10,13 @@
 //! - Documentation (15 pts)
 //! - Performance (15 pts)
 
+use crate::models::tdg::TDGConfig;
 use crate::services::popper_score::orchestrator::PopperOrchestrator;
 use crate::services::repo_score::aggregator::ScoreAggregator;
 use crate::services::repo_score::scorers::ScorerConfig;
 use crate::services::rust_project_score::models::ScoringMode;
 use crate::services::rust_project_score::orchestrator::RustProjectScoreOrchestrator;
+use crate::services::tdg_calculator::TDGCalculator;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
@@ -237,10 +239,24 @@ impl PerfectionScoreCalculator {
     }
 
     async fn get_tdg_score(&self, project_path: &Path) -> f64 {
-        // TDG score: Calculate from repo structure and code quality
-        // For now, use repo score as a proxy (full TDG integration is complex)
-        // A proper TDG would use services/tdg_calculator.rs
-        self.get_repo_score(project_path).await
+        // TDG score: 0-5 scale where 0 = excellent, 5 = critical
+        // Convert to 0-100 scale where 100 = excellent
+        let config = TDGConfig::default();
+        let calculator = TDGCalculator::with_config(config);
+
+        match calculator.analyze_directory(project_path).await {
+            Ok(summary) => {
+                // Convert TDG scale (0-5, lower is better) to 0-100 (higher is better)
+                // TDG 0 -> 100, TDG 2.5 -> 50, TDG 5 -> 0
+                let normalized = 100.0 - (summary.average_tdg * 20.0);
+                normalized.clamp(0.0, 100.0)
+            }
+            Err(e) => {
+                eprintln!("⚠️  TDG calculation failed: {}", e);
+                // Fall back to repo score as proxy
+                self.get_repo_score(project_path).await
+            }
+        }
     }
 
     async fn get_repo_score(&self, project_path: &Path) -> f64 {

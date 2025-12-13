@@ -105,7 +105,7 @@ impl BridgeSandbox {
 mod prctl {
     use std::io;
 
-    pub fn set_no_new_privs(val: bool) -> io::Result<()> {
+    pub(super) fn set_no_new_privs(val: bool) -> io::Result<()> {
         // SAFETY: libc::prctl is an FFI call to the Linux kernel's prctl syscall.
         // PR_SET_NO_NEW_PRIVS is a well-defined operation that prevents privilege escalation.
         // All arguments are valid: option (PR_SET_NO_NEW_PRIVS), arg2 (0 or 1), and unused args (0,0,0).

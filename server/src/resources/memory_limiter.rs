@@ -287,6 +287,8 @@ impl LimitedAllocator {
     }
 }
 
+// SAFETY: LimitedAllocator delegates to System allocator with additional memory tracking.
+// All unsafe operations are properly contained in unsafe blocks per Rust 2024 requirements.
 unsafe impl GlobalAlloc for LimitedAllocator {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         let size = layout.size();
@@ -296,8 +298,8 @@ unsafe impl GlobalAlloc for LimitedAllocator {
             return std::ptr::null_mut();
         }
 
-        // Perform actual allocation
-        let ptr = self.inner.alloc(layout);
+        // SAFETY: Delegating to System allocator which is guaranteed to be sound
+        let ptr = unsafe { self.inner.alloc(layout) };
 
         if !ptr.is_null() {
             self.limiter.record_allocation(size);
@@ -308,7 +310,8 @@ unsafe impl GlobalAlloc for LimitedAllocator {
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
         self.limiter.record_deallocation(layout.size());
-        self.inner.dealloc(ptr, layout);
+        // SAFETY: Delegating to System allocator which is guaranteed to be sound
+        unsafe { self.inner.dealloc(ptr, layout) };
     }
 
     unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
@@ -322,7 +325,8 @@ unsafe impl GlobalAlloc for LimitedAllocator {
             }
         }
 
-        let new_ptr = self.inner.realloc(ptr, layout, new_size);
+        // SAFETY: Delegating to System allocator which is guaranteed to be sound
+        let new_ptr = unsafe { self.inner.realloc(ptr, layout, new_size) };
 
         if !new_ptr.is_null() {
             if new_size > old_size {

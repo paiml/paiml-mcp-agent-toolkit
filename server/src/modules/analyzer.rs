@@ -29,13 +29,13 @@ mod internal {
     }
 
     impl AnalyzerCore {
-        pub fn new() -> Self {
+        pub(super) fn new() -> Self {
             Self {
                 _cache: lru::LruCache::new(std::num::NonZeroUsize::new(100).unwrap()),
             }
         }
 
-        pub fn analyze_ast(&mut self, ast: &syn::File) -> Metrics {
+        pub(super) fn analyze_ast(&mut self, ast: &syn::File) -> Metrics {
             let mut metrics = Metrics {
                 complexity: 1,
                 lines_of_code: 0,
