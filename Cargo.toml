@@ -1,6 +1,6 @@
 [workspace]
-members = ["server", "workspace-hack", "crates/pmat-dashboard"]
-exclude = ["fuzz"]
+members = ["server", "workspace-hack"]
+exclude = ["fuzz", "crates/pmat-dashboard"]  # pmat-dashboard excluded until presentar crate available
 resolver = "2"
 
 [workspace.package]

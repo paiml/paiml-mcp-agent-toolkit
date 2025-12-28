@@ -2,13 +2,13 @@
 # See: docs/specifications/build-performance-optimization-v1.0.md
 
 [build]
-# Use all available CPU cores (0 = auto-detect)
-jobs = 0
+# Use all available CPU cores
+# Note: 0 is invalid, removed to use default (auto-detect)
 
 [target.x86_64-unknown-linux-gnu]
-# Use faster linker (lld via clang)
+# Use faster linker (mold via clang)
 linker = "clang"
-rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+rustflags = ["-C", "link-arg=-fuse-ld=mold"]
 
 [profile.dev]
 # Optimize dependencies (but not our code) for faster builds
