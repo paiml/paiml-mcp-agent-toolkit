@@ -1578,6 +1578,7 @@ impl CommandDispatcher {
             }
             "build-release" => {
                 recommendations.push("Enable sccache with CARGO_INCREMENTAL=0 (required for cache hits)".to_string());
+                recommendations.push("Use per-project target dirs (avoid shared CARGO_TARGET_DIR lock contention)".to_string());
                 recommendations
                     .push("Review feature flags (disable optional features)".to_string());
                 recommendations.push("Use mold/lld linker for faster linking".to_string());
