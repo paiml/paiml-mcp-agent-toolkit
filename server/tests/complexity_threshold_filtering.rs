@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 //! Integration tests for complexity threshold filtering
 //!
 //! These tests verify that the --max-cyclomatic and --max-cognitive flags

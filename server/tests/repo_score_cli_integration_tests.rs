@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 //! Integration tests for `pmat repo-score` CLI command using assert_cmd
 //!
 //! RED PHASE: These tests MUST fail initially to prove EXTREME TDD methodology

@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 //! Integration tests for --include pattern filtering
 
 use assert_cmd::Command;

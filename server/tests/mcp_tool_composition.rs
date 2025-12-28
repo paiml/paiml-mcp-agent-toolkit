@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 //! Tests for MCP-native tool composition
 //!
 //! These tests verify that commands can work together by passing file lists

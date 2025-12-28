@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 //! Integration tests for refactor auto with property-based testing
 //!
 //! These tests verify that the refactor auto command correctly generates

@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 #![cfg(feature = "red-phase-tests")]
 //! Integration tests for `pmat prompt` command using assert_cmd
 //!

@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 //! Comprehensive assert_cmd Coverage for ALL CLI Commands
 //!
 //! Strategy: 100% command surface coverage using assert_cmd

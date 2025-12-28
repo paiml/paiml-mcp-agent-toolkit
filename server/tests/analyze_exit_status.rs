@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 //! Integration tests for analyze command exit status (Issue #28)
 //!
 //! These tests verify that analyze commands return non-zero exit status

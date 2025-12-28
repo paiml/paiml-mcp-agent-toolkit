@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 //! Integration tests for analyze deep-context CLI command (Issue #33)
 //!
 //! These tests verify that the analyze deep-context command properly finds

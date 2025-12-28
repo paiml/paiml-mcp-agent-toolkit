@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 // CLI Semantic Search Integration Tests
 // Sprint 33 (PMAT-SEARCH-011)
 //

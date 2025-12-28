@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 //! Integration tests for quality gate command
 //!
 //! Tests that quality gate properly fails when metrics exceed thresholds

@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 //! Integration tests for context command with large file handling
 //!
 //! This module tests the context command with the new --include-large-files flag

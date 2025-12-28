@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 //! CLI integration tests for similarity detection
 //!
 //! Tests the analyze duplicates command with entropy detection

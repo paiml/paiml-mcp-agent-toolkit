@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 //! CLI Documentation Enforcement Tests (EXTREME TDD - RED Phase)
 //!
 //! TICKET: PMAT-7001
