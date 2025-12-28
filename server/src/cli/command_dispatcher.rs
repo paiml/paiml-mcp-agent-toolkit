@@ -1577,10 +1577,10 @@ impl CommandDispatcher {
                     .push("Consider sampling-based coverage for large projects".to_string());
             }
             "build-release" => {
-                recommendations.push("Enable sccache for distributed caching".to_string());
+                recommendations.push("Enable sccache with CARGO_INCREMENTAL=0 (required for cache hits)".to_string());
                 recommendations
                     .push("Review feature flags (disable optional features)".to_string());
-                recommendations.push("Use lld linker for faster linking".to_string());
+                recommendations.push("Use mold/lld linker for faster linking".to_string());
             }
             _ => {}
         }

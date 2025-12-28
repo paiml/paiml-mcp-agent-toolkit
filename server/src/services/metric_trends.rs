@@ -652,7 +652,7 @@ impl MetricTrendStore {
             "build-release" => {
                 recommendations.push("Enable LTO only in final release builds".to_string());
                 recommendations.push("Reduce codegen-units for faster linking".to_string());
-                recommendations.push("Use sccache for distributed compilation".to_string());
+                recommendations.push("Use sccache with CARGO_INCREMENTAL=0 (incremental builds cannot be cached)".to_string());
                 recommendations.push("Review dependency tree for bloat".to_string());
             }
             _ => {
