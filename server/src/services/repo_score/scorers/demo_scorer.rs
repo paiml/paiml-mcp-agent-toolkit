@@ -376,10 +376,10 @@ impl DemoScorer {
         let contextual_fn_pattern = regex::Regex::new(
             r"(?s)fn\s+(test_|setup|init|proof_of_concept|example_)[^{]*\{[^}]*\.unwrap\(\)",
         )
-        .unwrap();
-        let unwrap_pattern = regex::Regex::new(r"\.unwrap\(\)").unwrap();
-        let panic_pattern = regex::Regex::new(r"panic!\(").unwrap();
-        let expect_pattern = regex::Regex::new(r#"\.expect\("[^"]+"\)"#).unwrap();
+        .expect("internal error");
+        let unwrap_pattern = regex::Regex::new(r"\.unwrap\(\)").expect("internal error");
+        let panic_pattern = regex::Regex::new(r"panic!\(").expect("internal error");
+        let expect_pattern = regex::Regex::new(r#"\.expect\("[^"]+"\)"#).expect("internal error");
 
         for file_path in &demo_files {
             if let Ok(content) = tokio::fs::read_to_string(file_path).await {
@@ -1007,17 +1007,17 @@ mod tests {
     use tempfile::TempDir;
 
     fn create_temp_repo() -> TempDir {
-        TempDir::new().unwrap()
+        TempDir::new().expect("internal error")
     }
 
     fn create_readme(repo_path: &std::path::Path, content: &str) {
         let readme_path = repo_path.join("README.md");
-        fs::write(readme_path, content).unwrap();
+        fs::write(readme_path, content).expect("internal error");
     }
 
     fn create_examples_dir(repo_path: &std::path::Path) {
         let examples_dir = repo_path.join("examples");
-        fs::create_dir_all(&examples_dir).unwrap();
+        fs::create_dir_all(&examples_dir).expect("internal error");
 
         // Create a sample example file
         fs::write(
@@ -1033,11 +1033,11 @@ fn do_something() -> Result<i32, String> {
 }
 "#,
         )
-        .unwrap();
+        .expect("internal error");
     }
 
     fn create_cargo_toml(repo_path: &std::path::Path, content: &str) {
-        fs::write(repo_path.join("Cargo.toml"), content).unwrap();
+        fs::write(repo_path.join("Cargo.toml"), content).expect("internal error");
     }
 
     const PROFESSIONAL_README: &str = r#"# Project
@@ -1092,7 +1092,7 @@ colored = "2.0"
         let scorer = DemoScorer::new();
         let config = ScorerConfig::default();
 
-        let result = scorer.score(repo_path, &config).await.unwrap();
+        let result = scorer.score(repo_path, &config).await.expect("internal error");
 
         // Should get a good score with professional setup
         assert!(
@@ -1112,7 +1112,7 @@ colored = "2.0"
         let scorer = DemoScorer::new();
         let config = ScorerConfig::default();
 
-        let result = scorer.score(repo_path, &config).await.unwrap();
+        let result = scorer.score(repo_path, &config).await.expect("internal error");
 
         // Minimal repo should get lower score
         assert!(
@@ -1133,7 +1133,7 @@ colored = "2.0"
         );
 
         let scorer = DemoScorer::new();
-        let result = scorer.score_time_to_interaction(repo_path).await.unwrap();
+        let result = scorer.score_time_to_interaction(repo_path).await.expect("internal error");
 
         assert!(
             result.score >= 2.0,
@@ -1147,31 +1147,31 @@ colored = "2.0"
         let temp_dir = create_temp_repo();
         let repo_path = temp_dir.path();
         let examples_dir = repo_path.join("examples");
-        fs::create_dir_all(&examples_dir).unwrap();
+        fs::create_dir_all(&examples_dir).expect("internal error");
 
         // Create file with many unwraps
         fs::write(
             examples_dir.join("bad.rs"),
             r#"
 fn main() {
-    let x = get_value().unwrap();
-    let y = parse().unwrap();
-    let z = read().unwrap();
-    let a = write().unwrap();
-    let b = compute().unwrap();
-    let c = process().unwrap();
+    let x = get_value().expect("internal error");
+    let y = parse().expect("internal error");
+    let z = read().expect("internal error");
+    let a = write().expect("internal error");
+    let b = compute().expect("internal error");
+    let c = process().expect("internal error");
     panic!("Something went wrong");
 }
 "#,
         )
-        .unwrap();
+        .expect("internal error");
 
         let scorer = DemoScorer::new();
         // Use DemoApp archetype for standard error gracefulness scoring
         let result = scorer
             .score_error_gracefulness(repo_path, RepoArchetype::DemoApp)
             .await
-            .unwrap();
+            .expect("internal error");
 
         // Should be penalized for raw unwraps and panic
         assert!(result.score < 3.0, "Should lose points for raw unwraps");
@@ -1191,7 +1191,7 @@ fn main() {
         let result = scorer
             .score_error_gracefulness(repo_path, RepoArchetype::Cookbook)
             .await
-            .unwrap();
+            .expect("internal error");
 
         // G2 should be N/A for cookbooks (max_score = 0)
         assert_eq!(
@@ -1222,7 +1222,7 @@ indicatif = "0.17"
         );
 
         let scorer = DemoScorer::new();
-        let result = scorer.score_visual_stability(repo_path).await.unwrap();
+        let result = scorer.score_visual_stability(repo_path).await.expect("internal error");
 
         // Should at least get partial credit for having the library in manifest
         assert!(result.score >= 0.5, "Should detect rich output library");
@@ -1237,7 +1237,7 @@ indicatif = "0.17"
 
     #[tokio::test]
     async fn test_archetype_detection_cookbook() {
-        let temp_dir = TempDir::with_prefix("my-cookbook").unwrap();
+        let temp_dir = TempDir::with_prefix("my-cookbook").expect("internal error");
         let repo_path = temp_dir.path();
 
         let scorer = DemoScorer::new();
@@ -1255,8 +1255,8 @@ indicatif = "0.17"
         let temp_dir = create_temp_repo();
         let repo_path = temp_dir.path();
         let src_dir = repo_path.join("src");
-        fs::create_dir_all(&src_dir).unwrap();
-        fs::write(src_dir.join("lib.rs"), "pub fn hello() {}").unwrap();
+        fs::create_dir_all(&src_dir).expect("internal error");
+        fs::write(src_dir.join("lib.rs"), "pub fn hello() {}").expect("internal error");
 
         let scorer = DemoScorer::new();
         let archetype = scorer.detect_archetype(repo_path).await;
@@ -1288,7 +1288,7 @@ indicatif = "0.17"
         );
 
         let scorer = DemoScorer::new();
-        let result = scorer.score_wow_factor(repo_path).await.unwrap();
+        let result = scorer.score_wow_factor(repo_path).await.expect("internal error");
 
         assert!(result.score >= 1.0, "Should detect demo GIF");
         assert!(
@@ -1312,7 +1312,7 @@ indicatif = "0.17"
         let scorer = DemoScorer::new();
         let config = ScorerConfig::default();
 
-        let result = scorer.score(repo_path, &config).await.unwrap();
+        let result = scorer.score(repo_path, &config).await.expect("internal error");
 
         // Empty repo should still return a valid score
         assert!(result.score >= 0.0);

@@ -363,7 +363,7 @@ impl RefactorStateMachine {
             to: new_state.clone(),
             timestamp: SystemTime::now()
                 .duration_since(UNIX_EPOCH)
-                .unwrap()
+                .expect("internal error")
                 .as_secs(),
             metrics_before: MetricSet::default(),
             metrics_after: None,
@@ -430,7 +430,7 @@ impl RefactorStateMachine {
             dead_symbols: 0,
             timestamp: SystemTime::now()
                 .duration_since(UNIX_EPOCH)
-                .unwrap()
+                .expect("internal error")
                 .as_secs(),
             severity_flags: 0,
             refactor_available: true,

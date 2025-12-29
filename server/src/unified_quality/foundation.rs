@@ -140,7 +140,7 @@ impl QualityMonitor {
     /// Analyze incremental changes with O(log n) complexity
     pub fn analyze_incremental(&self, change: FileChange) -> Result<Metrics> {
         // Use real tree-sitter incremental parsing
-        let mut parser = self.parser.lock().unwrap();
+        let mut parser = self.parser.lock().expect("internal error");
         parser.parse_incremental(&change.path, &change.content)
     }
 
@@ -337,7 +337,7 @@ mod tests {
         let path = PathBuf::from("test.rs");
         let code = "fn main() { if true { } }";
 
-        let metrics = parser.parse_incremental(&path, code).unwrap();
+        let metrics = parser.parse_incremental(&path, code).expect("internal error");
         assert!(metrics.complexity > 0);
         assert!(metrics.functions > 0);
     }
@@ -345,7 +345,7 @@ mod tests {
     #[tokio::test]
     async fn test_quality_monitor_creation() {
         let config = MonitorConfig::default();
-        let monitor = QualityMonitor::new(config).unwrap();
+        let monitor = QualityMonitor::new(config).expect("internal error");
         assert_eq!(monitor.metrics.len(), 0);
     }
 }
@@ -417,7 +417,7 @@ mod property_tests {
             let monitor_result = QualityMonitor::new(config);
             prop_assert!(monitor_result.is_ok());
 
-            let monitor = monitor_result.unwrap();
+            let monitor = monitor_result.expect("internal error");
             prop_assert_eq!(monitor.metrics.len(), 0);
         }
 
@@ -500,8 +500,8 @@ mod property_tests {
             if !complexity_values.is_empty() {
                 let sum: u32 = complexity_values.iter().sum();
                 let avg = sum as f64 / complexity_values.len() as f64;
-                let max = *complexity_values.iter().max().unwrap();
-                let min = *complexity_values.iter().min().unwrap();
+                let max = *complexity_values.iter().max().expect("internal error");
+                let min = *complexity_values.iter().min().expect("internal error");
 
                 prop_assert!(avg >= min as f64);
                 prop_assert!(avg <= max as f64);

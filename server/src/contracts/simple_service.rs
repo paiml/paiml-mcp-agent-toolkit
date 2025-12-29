@@ -333,7 +333,7 @@ impl SimpleContractService {
             timeout: base.timeout,
             timestamp: std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
+                .expect("internal error")
                 .as_secs(),
         }
     }

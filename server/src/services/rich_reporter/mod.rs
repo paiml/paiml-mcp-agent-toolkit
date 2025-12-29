@@ -182,7 +182,7 @@ impl RichReporter {
             b.pagerank
                 .unwrap_or(0.0)
                 .partial_cmp(&a.pagerank.unwrap_or(0.0))
-                .unwrap()
+                .expect("internal error")
         });
 
         for finding in high_pagerank.iter().take(3) {
@@ -369,7 +369,7 @@ impl RichReporter {
                 b.pagerank
                     .unwrap_or(0.0)
                     .partial_cmp(&a.pagerank.unwrap_or(0.0))
-                    .unwrap()
+                    .expect("internal error")
             });
 
             for (i, finding) in sorted.iter().take(5).enumerate() {

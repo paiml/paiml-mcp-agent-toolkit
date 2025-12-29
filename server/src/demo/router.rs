@@ -129,7 +129,7 @@ mod implementation {
             Response::builder()
                 .status(StatusCode::NOT_FOUND)
                 .body(Bytes::from_static(b"404 Not Found"))
-                .unwrap()
+                .expect("internal error")
         }
     }
 
@@ -261,7 +261,7 @@ pub fn handle_request(
     http::Response::builder()
         .status(http::StatusCode::NOT_FOUND)
         .body(bytes::Bytes::from_static(b"Demo mode disabled"))
-        .unwrap()
+        .expect("internal error")
 }
 
 #[cfg(test)]

@@ -117,7 +117,7 @@ impl VariableInspector {
             return Ok(Vec::new());
         }
 
-        let scope = scope_node.unwrap();
+        let scope = scope_node.expect("internal error");
         let mut variables = Vec::new();
 
         // Find the parent function to get the scope we should search from
@@ -162,7 +162,7 @@ impl VariableInspector {
             return Ok(Vec::new());
         }
 
-        let scope = scope_node.unwrap();
+        let scope = scope_node.expect("internal error");
         let mut variables = Vec::new();
 
         // Find the parent function to get the scope we should search from
@@ -208,7 +208,7 @@ impl VariableInspector {
             return Ok(Vec::new());
         }
 
-        let scope = scope_node.unwrap();
+        let scope = scope_node.expect("internal error");
         let mut variables = Vec::new();
 
         // Find the parent function to get the scope we should search from
@@ -603,8 +603,8 @@ mod tests {
         let mut parser = Parser::new();
         parser
             .set_language(&tree_sitter_rust::LANGUAGE.into())
-            .unwrap();
-        let tree = parser.parse(source, None).unwrap();
+            .expect("internal error");
+        let tree = parser.parse(source, None).expect("internal error");
 
         let scope = inspector.find_scope_at_line(tree.root_node(), 0);
         assert!(scope.is_some());

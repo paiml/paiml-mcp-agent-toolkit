@@ -50,7 +50,7 @@ pub async fn handle_analyze_name_similarity(
 
     // Take top K matches
     let mut top_matches = matches;
-    top_matches.sort_by(|a, b| b.similarity_score.partial_cmp(&a.similarity_score).unwrap());
+    top_matches.sort_by(|a, b| b.similarity_score.partial_cmp(&a.similarity_score).expect("internal error"));
     top_matches.truncate(top_k);
 
     let result = NameSimilarityResult {
@@ -492,7 +492,7 @@ mod tests {
     #[test]
     fn test_extract_names() {
         let content = "fn test_function() {}\nstruct TestStruct {}";
-        let names = extract_names(content, "test.rs", crate::cli::SearchScope::All).unwrap();
+        let names = extract_names(content, "test.rs", crate::cli::SearchScope::All).expect("internal error");
         assert_eq!(names.len(), 2);
         assert_eq!(names[0].0, "test_function");
         assert_eq!(names[1].0, "TestStruct");
@@ -521,7 +521,7 @@ mod tests {
             ),
         ];
 
-        let matches = find_similar_names("test_fun", candidates, 0.5, false, false, false).unwrap();
+        let matches = find_similar_names("test_fun", candidates, 0.5, false, false, false).expect("internal error");
 
         assert!(matches.len() >= 2);
         assert!(matches.iter().any(|m| m.name == "test_function"));

@@ -537,7 +537,7 @@ where
                 CacheTier::L2 => Duration::from_secs(1800), // 30 minutes
                 CacheTier::L3 => Duration::from_secs(3600), // 1 hour
             };
-            Some(Utc::now() + chrono::Duration::from_std(ttl).unwrap())
+            Some(Utc::now() + chrono::Duration::from_std(ttl).expect("internal error"))
         } else {
             None
         }
@@ -865,7 +865,7 @@ mod tests {
         cache.put("key1".to_string(), "value1".to_string()).await?;
         let result = cache.get(&"key1".to_string()).await;
         assert!(result.is_some());
-        assert_eq!(result.unwrap().as_ref(), "value1");
+        assert_eq!(result.expect("internal error").as_ref(), "value1");
 
         Ok(())
     }

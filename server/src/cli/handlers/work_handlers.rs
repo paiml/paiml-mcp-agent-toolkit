@@ -214,7 +214,7 @@ pub async fn handle_work_start(
         let spec_path = if is_github_issue {
             project_path.join(format!(
                 "docs/specifications/{:03}-spec.md",
-                item.github_issue.unwrap()
+                item.github_issue.expect("internal error")
             ))
         } else {
             project_path.join(format!("docs/specifications/{}-spec.md", id.to_lowercase()))
@@ -537,7 +537,7 @@ pub async fn handle_work_complete(
     if item.is_github_synced() {
         println!(
             "   2. Close GitHub issue: gh issue close {}",
-            item.github_issue.unwrap()
+            item.github_issue.expect("internal error")
         );
     }
     println!();
@@ -624,7 +624,7 @@ pub async fn handle_work_status(
                 emoji, display_id, item.title, progress
             );
             if item.is_github_synced() {
-                println!("      GitHub: #{}", item.github_issue.unwrap());
+                println!("      GitHub: #{}", item.github_issue.expect("internal error"));
             }
         }
         println!();

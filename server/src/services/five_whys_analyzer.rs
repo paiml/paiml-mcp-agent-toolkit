@@ -302,7 +302,7 @@ impl FiveWhysAnalyzer {
         }
 
         // Root cause is the hypothesis from the final Why
-        let last_why = whys.last().unwrap();
+        let last_why = whys.last().expect("internal error");
         Ok(Some(last_why.hypothesis.clone()))
     }
 
@@ -434,7 +434,7 @@ mod tests {
         let analyzer = FiveWhysAnalyzer::new();
 
         // Empty evidence
-        let confidence = analyzer.calculate_confidence(&[]).unwrap();
+        let confidence = analyzer.calculate_confidence(&[]).expect("internal error");
         assert!((0.0..=1.0).contains(&confidence));
 
         // With evidence
@@ -445,7 +445,7 @@ mod tests {
             json!({"value": 50, "threshold": 20}),
             "High".to_string(),
         )];
-        let confidence = analyzer.calculate_confidence(&evidence).unwrap();
+        let confidence = analyzer.calculate_confidence(&evidence).expect("internal error");
         assert!(confidence > 0.3);
         assert!(confidence <= 1.0);
     }
@@ -456,7 +456,7 @@ mod tests {
         let result = analyzer
             .analyze("Test issue", Path::new("."), 5)
             .await
-            .unwrap();
+            .expect("internal error");
 
         assert_eq!(result.issue, "Test issue");
         assert!(!result.whys.is_empty());

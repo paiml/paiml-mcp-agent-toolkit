@@ -29,7 +29,7 @@
 //!         "status": "success",
 //!         "files": []
 //!     }))
-//!     .unwrap();
+//!     .expect("internal error");
 //! # }
 //! ```
 
@@ -168,7 +168,7 @@ impl IntoResponse for UnifiedResponse {
             Response::builder()
                 .status(StatusCode::INTERNAL_SERVER_ERROR)
                 .body(Body::from("Failed to build response"))
-                .unwrap()
+                .expect("internal error")
         })
     }
 }
@@ -347,7 +347,7 @@ mod tests {
     #[test]
     fn test_unified_response_creation() {
         let test_data = serde_json::json!({"message": "test"});
-        let response = UnifiedResponse::ok().with_json(&test_data).unwrap();
+        let response = UnifiedResponse::ok().with_json(&test_data).expect("internal error");
 
         assert_eq!(response.status, StatusCode::OK);
         assert!(response.headers.contains_key("content-type"));

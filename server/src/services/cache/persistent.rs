@@ -42,7 +42,7 @@ impl<V> PersistentCacheEntry<V> {
 
     fn into_cache_entry(self) -> CacheEntry<V> {
         let age = self.age();
-        let created = Instant::now().checked_sub(age).unwrap();
+        let created = Instant::now().checked_sub(age).expect("internal error");
 
         CacheEntry {
             value: Arc::new(self.value),
@@ -445,7 +445,7 @@ mod tests {
 
     #[test]
     fn test_cache_file_path() {
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new().expect("internal error");
         // We can't easily test PersistentCache without a proper CacheStrategy implementation
         // but we can at least test the basic structure compiles
         assert!(temp_dir.path().exists());

@@ -70,7 +70,7 @@ impl FalsifiabilityScorer {
 
                 // Check for measurable thresholds (2 points)
                 let threshold_regex =
-                    Regex::new(r"(?i)(>|<|>=|<=|≥|≤)\s*\d+|(\d+%|\d+ms|\d+s|\d+x)").unwrap();
+                    Regex::new(r"(?i)(>|<|>=|<=|≥|≤)\s*\d+|(\d+%|\d+ms|\d+s|\d+x)").expect("internal error");
                 if threshold_regex.is_match(&content) {
                     earned += 2.0;
                     description.push("measurable thresholds found".to_string());
@@ -463,33 +463,33 @@ mod tests {
 
     #[test]
     fn test_empty_project_low_score() {
-        let temp_dir = tempdir().unwrap();
+        let temp_dir = tempdir().expect("internal error");
         let scorer = FalsifiabilityScorer::new();
 
-        let result = scorer.score(temp_dir.path()).unwrap();
+        let result = scorer.score(temp_dir.path()).expect("internal error");
         assert!(result.earned < 15.0); // Should fail gateway
     }
 
     #[test]
     fn test_project_with_tests_higher_score() {
-        let temp_dir = tempdir().unwrap();
+        let temp_dir = tempdir().expect("internal error");
 
         // Create tests directory
-        fs::create_dir_all(temp_dir.path().join("tests")).unwrap();
+        fs::create_dir_all(temp_dir.path().join("tests")).expect("internal error");
         fs::write(
             temp_dir.path().join("tests/test_main.rs"),
             "#[test]\nfn test_example() {}",
         )
-        .unwrap();
+        .expect("internal error");
 
         // Create README with claims
         fs::write(
             temp_dir.path().join("README.md"),
             "# Project\n\nThis project claims to provide >10x performance improvement.\n\n## Success Criteria\n\n- All tests pass",
-        ).unwrap();
+        ).expect("internal error");
 
         let scorer = FalsifiabilityScorer::new();
-        let result = scorer.score(temp_dir.path()).unwrap();
+        let result = scorer.score(temp_dir.path()).expect("internal error");
 
         // Should have earned some points
         assert!(result.earned > 0.0);
@@ -498,15 +498,15 @@ mod tests {
 
     #[test]
     fn test_project_with_criterion_benchmarks() {
-        let temp_dir = tempdir().unwrap();
+        let temp_dir = tempdir().expect("internal error");
 
         // Create benches directory with Criterion
-        fs::create_dir_all(temp_dir.path().join("benches")).unwrap();
+        fs::create_dir_all(temp_dir.path().join("benches")).expect("internal error");
         fs::write(
             temp_dir.path().join("benches/bench.rs"),
             "use criterion::{criterion_group, criterion_main, Criterion};",
         )
-        .unwrap();
+        .expect("internal error");
 
         // Create Cargo.toml
         fs::write(
@@ -515,13 +515,13 @@ mod tests {
 criterion = "0.5"
 "#,
         )
-        .unwrap();
+        .expect("internal error");
 
         let scorer = FalsifiabilityScorer::new();
-        let result = scorer.score(temp_dir.path()).unwrap();
+        let result = scorer.score(temp_dir.path()).expect("internal error");
 
         // Should have benchmark points
-        let a3 = result.sub_scores.iter().find(|s| s.id == "A3").unwrap();
+        let a3 = result.sub_scores.iter().find(|s| s.id == "A3").expect("internal error");
         assert!(a3.earned > 0.0);
     }
 }

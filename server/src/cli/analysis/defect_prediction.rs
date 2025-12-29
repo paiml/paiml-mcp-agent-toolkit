@@ -138,7 +138,7 @@ fn filter_and_sort_predictions(
         predictions.retain(|(_, score)| score.confidence > confidence_threshold);
     }
 
-    predictions.sort_by(|a, b| b.1.probability.partial_cmp(&a.1.probability).unwrap());
+    predictions.sort_by(|a, b| b.1.probability.partial_cmp(&a.1.probability).expect("internal error"));
 
     if top_files > 0 && predictions.len() > top_files {
         predictions.truncate(top_files);

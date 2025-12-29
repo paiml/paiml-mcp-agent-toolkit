@@ -696,7 +696,7 @@ fn {}() {{
             .output()
             .await;
 
-        if check_output.is_err() || !check_output.unwrap().status.success() {
+        if check_output.is_err() || !check_output.expect("internal error").status.success() {
             eprintln!("⚠️  cargo-mutants not installed, skipping mutation testing");
             eprintln!("   Install with: cargo install cargo-mutants");
             return Ok(0.0);
@@ -813,7 +813,7 @@ mod tests {
             ..Default::default()
         };
         let service = CoverageImprovementService::new(config);
-        let report = service.improve_coverage().await.unwrap();
+        let report = service.improve_coverage().await.expect("internal error");
 
         assert!(report.success);
         assert_eq!(report.iterations.len(), 0);
@@ -829,7 +829,7 @@ mod tests {
             ..Default::default()
         };
         let service = CoverageImprovementService::new(config);
-        let report = service.improve_coverage().await.unwrap();
+        let report = service.improve_coverage().await.expect("internal error");
 
         // Should run some iterations
         assert!(!report.iterations.is_empty());
@@ -880,7 +880,7 @@ mod property_tests {
             prop_assert!(result.is_ok());
 
             // Should extract the line coverage (last percentage)
-            let coverage = result.unwrap();
+            let coverage = result.expect("internal error");
             prop_assert!((coverage - line_pct).abs() < 0.01, "Expected {}, got {}", line_pct, coverage);
         }
 
@@ -901,7 +901,7 @@ mod property_tests {
 
             let result = CoverageImprovementService::parse_coverage_percentage(&total_line);
             prop_assert!(result.is_ok());
-            let coverage = result.unwrap();
+            let coverage = result.expect("internal error");
             prop_assert!((coverage - pct).abs() < 0.01);
         }
 
@@ -946,7 +946,7 @@ mod property_tests {
         let result = CoverageImprovementService::parse_coverage_percentage(output);
         // Should still work - extracts the last valid percentage
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), 50.0);
+        assert_eq!(result.expect("internal error"), 50.0);
     }
 
     #[test]
@@ -959,7 +959,7 @@ TOTAL   241150  203105  15.78%  17533  14596  16.75%  173884  145810  16.15%  0 
 "#;
         let result = CoverageImprovementService::parse_coverage_percentage(output);
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), 16.15);
+        assert_eq!(result.expect("internal error"), 16.15);
     }
 
     #[test]
@@ -968,12 +968,12 @@ TOTAL   241150  203105  15.78%  17533  14596  16.75%  173884  145810  16.15%  0 
         let output = "TOTAL   100  100  0.00%  10  10  0.00%  50  50  0.00%  0  0  -";
         let result = CoverageImprovementService::parse_coverage_percentage(output);
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), 0.0);
+        assert_eq!(result.expect("internal error"), 0.0);
 
         // 100% coverage
         let output = "TOTAL   100  0  100.00%  10  0  100.00%  50  0  100.00%  0  0  -";
         let result = CoverageImprovementService::parse_coverage_percentage(output);
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), 100.0);
+        assert_eq!(result.expect("internal error"), 100.0);
     }
 }

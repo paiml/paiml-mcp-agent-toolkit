@@ -341,7 +341,7 @@ impl AlertManager {
                 rule.id,
                 SystemTime::now()
                     .duration_since(SystemTime::UNIX_EPOCH)
-                    .unwrap()
+                    .expect("internal error")
                     .as_millis()
             ),
             rule_id: rule.id.clone(),
@@ -620,7 +620,7 @@ mod tests {
         };
 
         // Test rule addition (no metric update to avoid hanging evaluation)
-        manager.add_rule(rule).await.unwrap();
+        manager.add_rule(rule).await.expect("internal error");
 
         // Verify manager state without triggering complex operations
         assert_eq!(manager.get_active_alerts().await.len(), 0);

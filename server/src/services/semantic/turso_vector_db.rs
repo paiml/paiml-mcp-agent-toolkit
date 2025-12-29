@@ -114,7 +114,7 @@ impl TursoVectorDB {
 
         let timestamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
+            .expect("internal error")
             .as_secs() as i64;
 
         let conn = self
@@ -320,7 +320,7 @@ impl TursoVectorDB {
         }
 
         // Sort by similarity (descending)
-        result_vec.sort_by(|a, b| b.similarity.partial_cmp(&a.similarity).unwrap());
+        result_vec.sort_by(|a, b| b.similarity.partial_cmp(&a.similarity).expect("internal error"));
 
         // Apply limit
         result_vec.truncate(limit);
@@ -402,8 +402,8 @@ mod tests {
     #[test]
     fn test_embedding_serialization() {
         let embedding = vec![0.1, 0.2, 0.3];
-        let json = serde_json::to_string(&embedding).unwrap();
-        let deserialized: Vec<f32> = serde_json::from_str(&json).unwrap();
+        let json = serde_json::to_string(&embedding).expect("internal error");
+        let deserialized: Vec<f32> = serde_json::from_str(&json).expect("internal error");
         assert_eq!(embedding, deserialized);
     }
 }

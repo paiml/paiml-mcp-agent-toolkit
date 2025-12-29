@@ -667,7 +667,7 @@ impl DataScienceAnalyzer {
         }
 
         if denominator == 0.0 {
-            return Some(*values.last().unwrap());
+            return Some(*values.last().expect("internal error"));
         }
 
         let slope = numerator / denominator;
@@ -782,7 +782,7 @@ mod tests {
         let forecast = analyzer.forecast_next(&values);
         assert!(forecast.is_some());
         // Linear trend should predict ~30
-        assert!((forecast.unwrap() - 30.0).abs() < 1.0);
+        assert!((forecast.expect("internal error") - 30.0).abs() < 1.0);
     }
 
     #[test]

@@ -296,7 +296,7 @@ impl UnifiedEngine {
     /// use std::time::Duration;
     ///
     /// let ast_engine = Arc::new(UnifiedAstEngine::new());
-    /// let cache = Arc::new(UnifiedCacheManager::new(UnifiedCacheConfig::default()).unwrap());
+    /// let cache = Arc::new(UnifiedCacheManager::new(UnifiedCacheConfig::default()).expect("internal error"));
     /// let config = RefactorConfig::default();
     /// let targets = vec![PathBuf::from("src/main.rs")];
     ///
@@ -370,7 +370,7 @@ impl UnifiedEngine {
     ///
     /// # tokio_test::block_on(async {
     /// let ast_engine = Arc::new(UnifiedAstEngine::new());
-    /// let cache = Arc::new(UnifiedCacheManager::new(UnifiedCacheConfig::default()).unwrap());
+    /// let cache = Arc::new(UnifiedCacheManager::new(UnifiedCacheConfig::default()).expect("internal error"));
     /// let config = RefactorConfig::default();
     /// let targets = vec![PathBuf::from("src/example.rs")];
     ///
@@ -869,7 +869,7 @@ impl UnifiedEngine {
             dead_symbols: 0,
             timestamp: std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
+                .expect("internal error")
                 .as_secs(),
             severity_flags: 0,
             refactor_available: true,
@@ -986,13 +986,13 @@ mod tests {
         let verbose = ExplainLevel::Verbose;
 
         // Test serialization
-        let brief_json = serde_json::to_string(&brief).unwrap();
+        let brief_json = serde_json::to_string(&brief).expect("internal error");
         assert!(brief_json.contains("Brief"));
 
-        let detailed_json = serde_json::to_string(&detailed).unwrap();
+        let detailed_json = serde_json::to_string(&detailed).expect("internal error");
         assert!(detailed_json.contains("Detailed"));
 
-        let verbose_json = serde_json::to_string(&verbose).unwrap();
+        let verbose_json = serde_json::to_string(&verbose).expect("internal error");
         assert!(verbose_json.contains("Verbose"));
     }
 

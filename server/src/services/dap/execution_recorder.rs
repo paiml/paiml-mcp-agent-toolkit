@@ -55,18 +55,18 @@ impl<W: Write> ExecutionRecorder<W> {
     /// use std::sync::{Arc, Mutex};
     /// use pmat::services::dap::{ExecutionRecorder, DapServer};
     ///
-    /// let file = File::create("session.pmat").unwrap();
+    /// let file = File::create("session.pmat").expect("internal error");
     /// let dap = Arc::new(Mutex::new(DapServer::new()));
     /// let mut recorder = ExecutionRecorder::with_writer(
     ///     file,
     ///     "my_program".to_string(),
     ///     vec!["arg1".to_string(), "arg2".to_string()],
     ///     dap,
-    /// ).unwrap();
+    /// ).expect("internal error");
     ///
     /// recorder.start_recording();
     /// // ... capture snapshots during execution ...
-    /// recorder.finalize().unwrap();
+    /// recorder.finalize().expect("internal error");
     /// ```
     pub fn with_writer(
         writer: W,
@@ -222,7 +222,7 @@ impl<W: Write> ExecutionRecorder<W> {
         let snapshot = ExecutionSnapshot {
             timestamp: SystemTime::now()
                 .duration_since(UNIX_EPOCH)
-                .unwrap()
+                .expect("internal error")
                 .as_nanos() as u64,
             sequence: self.snapshots.len(),
             variables,

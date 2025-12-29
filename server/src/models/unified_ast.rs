@@ -620,12 +620,12 @@ impl QualifiedName {
     /// use pmat::models::unified_ast::QualifiedName;
     ///
     /// // Simple name without module path
-    /// let simple = QualifiedName::from_string("main").unwrap();
+    /// let simple = QualifiedName::from_string("main").expect("internal error");
     /// assert_eq!(simple.name, "main");
     /// assert!(simple.module_path.is_empty());
     ///
     /// // Fully qualified name
-    /// let qualified = QualifiedName::from_string("std::collections::HashMap").unwrap();
+    /// let qualified = QualifiedName::from_string("std::collections::HashMap").expect("internal error");
     /// assert_eq!(qualified.module_path, vec!["std", "collections"]);
     /// assert_eq!(qualified.name, "HashMap");
     ///
@@ -638,7 +638,7 @@ impl QualifiedName {
         }
 
         let parts: Vec<&str> = qualified_str.split("::").collect();
-        let name = (*parts.last().unwrap()).to_string();
+        let name = (*parts.last().expect("internal error")).to_string();
         if name.is_empty() {
             return Err("Empty qualified name");
         }
@@ -1210,8 +1210,8 @@ impl AstDag {
     /// assert!(dirty.contains(&class_key));
     ///
     /// // Nodes can be retrieved by key
-    /// assert!(dag.nodes.get(func_key).unwrap().is_function());
-    /// assert!(dag.nodes.get(class_key).unwrap().is_type_definition());
+    /// assert!(dag.nodes.get(func_key).expect("internal error").is_function());
+    /// assert!(dag.nodes.get(class_key).expect("internal error").is_type_definition());
     /// ```
     pub fn add_node(&mut self, node: UnifiedAstNode) -> NodeKey {
         let key = self.nodes.push(node);

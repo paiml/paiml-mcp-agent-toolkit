@@ -198,8 +198,8 @@ impl ConvergenceTracker {
             return 0.0;
         }
 
-        let first_defects = recent.last().unwrap().defects_remaining as f32;
-        let last_defects = recent.first().unwrap().defects_remaining as f32;
+        let first_defects = recent.last().expect("internal error").defects_remaining as f32;
+        let last_defects = recent.first().expect("internal error").defects_remaining as f32;
 
         if first_defects == 0.0 {
             return 0.0;

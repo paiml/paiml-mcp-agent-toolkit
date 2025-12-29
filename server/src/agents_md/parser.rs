@@ -123,9 +123,9 @@ impl AgentsMdParser {
     /// Initialize command detection patterns
     fn init_command_patterns() -> Vec<Regex> {
         vec![
-            Regex::new(r"^```(?:bash|sh|shell)\n(.*?)\n```").unwrap(),
-            Regex::new(r"^\$ (.+)$").unwrap(),
-            Regex::new(r"^> (.+)$").unwrap(),
+            Regex::new(r"^```(?:bash|sh|shell)\n(.*?)\n```").expect("internal error"),
+            Regex::new(r"^\$ (.+)$").expect("internal error"),
+            Regex::new(r"^> (.+)$").expect("internal error"),
         ]
     }
 
@@ -481,8 +481,8 @@ impl AgentsMdParser {
         let mut found_rules = false;
 
         // Compile regex patterns once before the loop
-        let complexity_regex = Regex::new(r"complexity.*?(\d+)").unwrap();
-        let coverage_regex = Regex::new(r"coverage.*?(\d+)").unwrap();
+        let complexity_regex = Regex::new(r"complexity.*?(\d+)").expect("internal error");
+        let coverage_regex = Regex::new(r"coverage.*?(\d+)").expect("internal error");
 
         for section in sections {
             let content = &section.content.to_lowercase();
@@ -548,7 +548,7 @@ mod tests {
         let parser = AgentsMdParser::new();
         let result = parser.parse("");
         assert!(result.is_ok());
-        let doc = result.unwrap();
+        let doc = result.expect("internal error");
         assert!(doc.sections.is_empty());
         assert!(doc.commands.is_empty());
     }
@@ -573,7 +573,7 @@ Run `cargo test` to execute tests.
         let result = parser.parse(content);
         assert!(result.is_ok());
 
-        let doc = result.unwrap();
+        let doc = result.expect("internal error");
         assert_eq!(doc.sections.len(), 4); // Including the AGENTS.md header section
 
         // Check section types
@@ -612,7 +612,7 @@ cargo run --release
         let result = parser.parse(content);
         assert!(result.is_ok());
 
-        let doc = result.unwrap();
+        let doc = result.expect("internal error");
         assert_eq!(doc.commands.len(), 3);
         assert_eq!(doc.commands[0].command, "cargo build --all");
         assert_eq!(doc.commands[1].command, "cargo test");
@@ -634,7 +634,7 @@ cargo run --release
         let result = parser.parse(content);
         assert!(result.is_ok());
 
-        let doc = result.unwrap();
+        let doc = result.expect("internal error");
         assert_eq!(doc.guidelines.len(), 4);
 
         // Check priorities
@@ -671,10 +671,10 @@ Technical debt is not allowed in production code.
         let result = parser.parse(content);
         assert!(result.is_ok());
 
-        let doc = result.unwrap();
+        let doc = result.expect("internal error");
         assert!(doc.quality_rules.is_some());
 
-        let rules = doc.quality_rules.unwrap();
+        let rules = doc.quality_rules.expect("internal error");
         assert_eq!(rules.max_complexity, Some(10));
         assert_eq!(rules.min_coverage, Some(80.0));
         assert!(!rules.satd_allowed);
@@ -689,8 +689,8 @@ Technical debt is not allowed in production code.
         });
 
         let content = "## Code Style\nUse rustfmt";
-        let doc = parser.parse(content).unwrap();
-        let report = parser.validate(&doc).unwrap();
+        let doc = parser.parse(content).expect("internal error");
+        let report = parser.validate(&doc).expect("internal error");
 
         assert!(!report.valid);
         assert_eq!(report.errors.len(), 2);

@@ -100,7 +100,7 @@ pub fn detect_project_language_enhanced(path: &Path) -> LanguageDetection {
     // Find highest score
     let (best_lang, best_score) = scores
         .iter()
-        .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
+        .max_by(|a, b| a.1.partial_cmp(b.1).expect("internal error"))
         .map(|(lang, score)| (lang.clone(), *score))
         .unwrap_or_else(|| ("unknown".to_string(), 0.0));
 
@@ -168,7 +168,7 @@ pub fn detect_all_languages(path: &Path) -> MultiLanguageDetection {
     }
 
     // Sort by percentage (descending)
-    languages.sort_by(|a, b| b.percentage.partial_cmp(&a.percentage).unwrap());
+    languages.sort_by(|a, b| b.percentage.partial_cmp(&a.percentage).expect("internal error"));
 
     let primary = languages
         .first()
@@ -311,14 +311,14 @@ mod tests {
 
     #[test]
     fn test_detect_rust_project_with_cargo_toml() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new().expect("internal error");
         std::fs::write(
             temp.path().join("Cargo.toml"),
             "[package]\nname = \"test\"\n",
         )
-        .unwrap();
-        std::fs::create_dir_all(temp.path().join("src")).unwrap();
-        std::fs::write(temp.path().join("src/main.rs"), "fn main() {}").unwrap();
+        .expect("internal error");
+        std::fs::create_dir_all(temp.path().join("src")).expect("internal error");
+        std::fs::write(temp.path().join("src/main.rs"), "fn main() {}").expect("internal error");
 
         let detection = detect_project_language_enhanced(temp.path());
         assert_eq!(detection.language, "rust");
@@ -327,14 +327,14 @@ mod tests {
 
     #[test]
     fn test_detect_cpp_project_with_cmake() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new().expect("internal error");
         std::fs::write(
             temp.path().join("CMakeLists.txt"),
             "cmake_minimum_required(VERSION 3.10)\n",
         )
-        .unwrap();
-        std::fs::create_dir_all(temp.path().join("src")).unwrap();
-        std::fs::write(temp.path().join("src/main.cpp"), "int main() {}").unwrap();
+        .expect("internal error");
+        std::fs::create_dir_all(temp.path().join("src")).expect("internal error");
+        std::fs::write(temp.path().join("src/main.cpp"), "int main() {}").expect("internal error");
 
         let detection = detect_project_language_enhanced(temp.path());
         assert_eq!(detection.language, "cpp");
@@ -343,8 +343,8 @@ mod tests {
 
     #[test]
     fn test_multi_language_detection() {
-        let temp = TempDir::new().unwrap();
-        std::fs::create_dir_all(temp.path().join("src")).unwrap();
+        let temp = TempDir::new().expect("internal error");
+        std::fs::create_dir_all(temp.path().join("src")).expect("internal error");
 
         // Create 50 Rust files
         for i in 0..50 {
@@ -352,7 +352,7 @@ mod tests {
                 temp.path().join(format!("src/file_{}.rs", i)),
                 "fn main() {}",
             )
-            .unwrap();
+            .expect("internal error");
         }
 
         // Create 30 Python files
@@ -361,7 +361,7 @@ mod tests {
                 temp.path().join(format!("src/tool_{}.py", i)),
                 "print('hello')",
             )
-            .unwrap();
+            .expect("internal error");
         }
 
         let detection = detect_all_languages(temp.path());

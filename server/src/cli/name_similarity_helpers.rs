@@ -122,7 +122,7 @@ pub fn calculate_similarities(
         }
     }
 
-    similarities.sort_by(|a, b| b.similarity.partial_cmp(&a.similarity).unwrap());
+    similarities.sort_by(|a, b| b.similarity.partial_cmp(&a.similarity).expect("internal error"));
     similarities
 }
 
@@ -247,7 +247,7 @@ fn format_summary_output(
                 i + 1,
                 sim.name,
                 sim.similarity,
-                sim.file_path.file_name().unwrap().to_string_lossy(),
+                sim.file_path.file_name().expect("internal error").to_string_lossy(),
                 sim.line
             ));
         }
@@ -322,7 +322,7 @@ fn format_markdown_output(
                 sim.name,
                 sim.similarity,
                 sim.kind,
-                sim.file_path.file_name().unwrap().to_string_lossy(),
+                sim.file_path.file_name().expect("internal error").to_string_lossy(),
                 sim.line
             ));
         }
@@ -361,35 +361,35 @@ mod tests {
 
     #[test]
     fn test_discover_source_files_empty_directory() {
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new().expect("internal error");
         let result = discover_source_files(temp_dir.path().to_path_buf(), &None, &None);
 
         assert!(result.is_ok());
-        let files = result.unwrap();
+        let files = result.expect("internal error");
         assert!(files.is_empty());
     }
 
     #[test]
     fn test_discover_source_files_with_files() {
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new().expect("internal error");
         let test_file = temp_dir.path().join("test.rs");
-        std::fs::write(&test_file, "fn main() {}").unwrap();
+        std::fs::write(&test_file, "fn main() {}").expect("internal error");
 
         let result = discover_source_files(temp_dir.path().to_path_buf(), &None, &None);
 
         assert!(result.is_ok());
-        let files = result.unwrap();
+        let files = result.expect("internal error");
         assert_eq!(files.len(), 1);
         assert_eq!(files[0].1, "fn main() {}");
     }
 
     #[test]
     fn test_discover_source_files_with_include_filter() {
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new().expect("internal error");
         let rust_file = temp_dir.path().join("test.rs");
         let js_file = temp_dir.path().join("test.js");
-        std::fs::write(&rust_file, "fn main() {}").unwrap();
-        std::fs::write(&js_file, "function main() {}").unwrap();
+        std::fs::write(&rust_file, "fn main() {}").expect("internal error");
+        std::fs::write(&js_file, "function main() {}").expect("internal error");
 
         let result = discover_source_files(
             temp_dir.path().to_path_buf(),
@@ -398,7 +398,7 @@ mod tests {
         );
 
         assert!(result.is_ok());
-        let files = result.unwrap();
+        let files = result.expect("internal error");
         assert_eq!(files.len(), 1);
         assert!(files[0].0.to_string_lossy().contains(".rs"));
     }

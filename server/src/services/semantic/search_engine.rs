@@ -278,11 +278,11 @@ impl SemanticSearchEngine {
                 // Check if chunk already exists with same checksum
                 let existing = self
                     .vector_db
-                    .query_by_file(file_path.to_str().unwrap())
+                    .query_by_file(file_path.to_str().expect("internal error"))
                     .await?;
 
                 let should_skip = existing.iter().any(|e| {
-                    e.chunk_name == chunk.chunk_name && e.file_path == file_path.to_str().unwrap()
+                    e.chunk_name == chunk.chunk_name && e.file_path == file_path.to_str().expect("internal error")
                 });
 
                 if should_skip {
@@ -296,7 +296,7 @@ impl SemanticSearchEngine {
 
                 // Store in database
                 let entry = EmbeddingEntry {
-                    file_path: file_path.to_str().unwrap().to_string(),
+                    file_path: file_path.to_str().expect("internal error").to_string(),
                     chunk_name: chunk.chunk_name,
                     chunk_type: format!("{:?}", chunk.chunk_type).to_lowercase(),
                     language: chunk.language,

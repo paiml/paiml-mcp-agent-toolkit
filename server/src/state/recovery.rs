@@ -412,7 +412,7 @@ impl<S: AgentState> ParallelRecovery<S> {
         }
 
         let mut states_iter = states.into_iter();
-        let mut merged = states_iter.next().unwrap().state;
+        let mut merged = states_iter.next().expect("internal error").state;
 
         for restored in states_iter {
             merged.merge_partition(restored.state);
@@ -429,8 +429,8 @@ mod tests {
 
     #[actix_rt::test]
     async fn test_recovery_manager() {
-        let temp_dir = TempDir::new().unwrap();
-        let path = temp_dir.path().to_str().unwrap();
+        let temp_dir = TempDir::new().expect("internal error");
+        let path = temp_dir.path().to_str().expect("internal error");
 
         let event_config = EventStoreConfig {
             persistence_enabled: false,
@@ -440,10 +440,10 @@ mod tests {
         let manager =
             RecoveryManager::<ExampleState>::new(event_config, SnapshotConfig::default(), path)
                 .await
-                .unwrap();
+                .expect("internal error");
 
         let initial = ExampleState::default();
-        let restored = manager.recover_state(initial, None).await.unwrap();
+        let restored = manager.recover_state(initial, None).await.expect("internal error");
 
         assert_eq!(restored.events_to_replay, 0);
     }
@@ -487,8 +487,8 @@ mod tests {
 
     #[actix_rt::test]
     async fn test_parallel_recovery() {
-        let temp_dir = TempDir::new().unwrap();
-        let path = temp_dir.path().to_str().unwrap();
+        let temp_dir = TempDir::new().expect("internal error");
+        let path = temp_dir.path().to_str().expect("internal error");
 
         let event_config = EventStoreConfig {
             persistence_enabled: false,
@@ -498,16 +498,16 @@ mod tests {
         let parallel =
             ParallelRecovery::<ExampleState>::new(4, event_config, SnapshotConfig::default(), path)
                 .await
-                .unwrap();
+                .expect("internal error");
 
         let states = parallel
             .recover_all_partitions(ExampleState::default)
             .await
-            .unwrap();
+            .expect("internal error");
 
         assert_eq!(states.len(), 4);
 
-        let merged = parallel.merge_partitions(states).await.unwrap();
+        let merged = parallel.merge_partitions(states).await.expect("internal error");
         assert_eq!(merged.last_event_id, 0);
     }
 }

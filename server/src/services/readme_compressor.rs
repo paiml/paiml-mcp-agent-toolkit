@@ -27,7 +27,7 @@
 //! use pmat::services::readme_compressor::ReadmeCompressor;
 //!
 //! let compressor = ReadmeCompressor::new();
-//! let readme_content = std::fs::read_to_string("README.md").unwrap();
+//! let readme_content = std::fs::read_to_string("README.md").expect("internal error");
 //!
 //! let compressed = compressor.compress(&readme_content);
 //!
@@ -109,7 +109,7 @@ impl ReadmeCompressor {
         }
 
         // Phase 2: Sort by importance
-        scored_sections.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+        scored_sections.sort_by(|a, b| b.1.partial_cmp(&a.1).expect("internal error"));
 
         // Phase 3: Allocate token budget
         let mut token_budget = 2000; // Target ~2KB compressed
@@ -526,7 +526,7 @@ MIT
         assert!(result
             .project_description
             .as_ref()
-            .unwrap()
+            .expect("internal error")
             .contains("A powerful tool for developers"));
 
         // Should extract key features
@@ -554,7 +554,7 @@ MIT
             .sections
             .iter()
             .find(|s| s.title == "Architecture")
-            .unwrap();
+            .expect("internal error");
         assert!(arch_section.content.contains("modular architecture"));
         assert!(arch_section.content.contains("Core Engine"));
     }
@@ -649,7 +649,7 @@ This is the main project description that explains what this project does.
 
 ## Installation
 "#;
-        let desc = compressor.extract_project_description(content).unwrap();
+        let desc = compressor.extract_project_description(content).expect("internal error");
         assert!(desc.contains("This is the main project description"));
 
         // Test without badges
@@ -659,7 +659,7 @@ A simple tool for doing things efficiently.
 
 ## Features
 "#;
-        let desc2 = compressor.extract_project_description(content2).unwrap();
+        let desc2 = compressor.extract_project_description(content2).expect("internal error");
         assert!(desc2.contains("A simple tool for doing things"));
 
         // Test empty content
@@ -714,7 +714,7 @@ fn main() {
         let subsection = sections
             .iter()
             .find(|s| s.title == "Subsection 1.1")
-            .unwrap();
+            .expect("internal error");
         assert_eq!(subsection.lists.len(), 1);
         assert_eq!(subsection.lists[0].items.len(), 3);
         assert_eq!(subsection.lists[0].items[0], "Item 1");

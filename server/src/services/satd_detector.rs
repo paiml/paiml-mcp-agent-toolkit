@@ -637,7 +637,7 @@ impl SATDDetector {
         hasher.update(content.as_bytes());
 
         let hash = hasher.finalize();
-        hash.as_bytes()[..16].try_into().unwrap()
+        hash.as_bytes()[..16].try_into().expect("internal error")
     }
 
     /// Analyze project for SATD patterns
@@ -1868,7 +1868,7 @@ mod tests {
         assert_eq!(
             detector
                 .extract_comment_content("    // TODO: fix this")
-                .unwrap(),
+                .expect("internal error"),
             Some("TODO: fix this".to_string())
         );
 
@@ -1876,7 +1876,7 @@ mod tests {
         assert_eq!(
             detector
                 .extract_comment_content("    # FIXME: broken")
-                .unwrap(),
+                .expect("internal error"),
             Some("FIXME: broken".to_string())
         );
 
@@ -1884,7 +1884,7 @@ mod tests {
         assert_eq!(
             detector
                 .extract_comment_content("/* TODO: implement */")
-                .unwrap(),
+                .expect("internal error"),
             Some("TODO: implement".to_string())
         );
 
@@ -1892,21 +1892,21 @@ mod tests {
         assert_eq!(
             detector
                 .extract_comment_content("<!-- HACK: workaround -->")
-                .unwrap(),
+                .expect("internal error"),
             Some("HACK: workaround".to_string())
         );
 
         // Test no comment
         assert_eq!(
-            detector.extract_comment_content("let x = 42;").unwrap(),
+            detector.extract_comment_content("let x = 42;").expect("internal error"),
             None
         );
 
         // Test empty line
-        assert_eq!(detector.extract_comment_content("").unwrap(), None);
+        assert_eq!(detector.extract_comment_content("").expect("internal error"), None);
 
         // Test line with only whitespace
-        assert_eq!(detector.extract_comment_content("    ").unwrap(), None);
+        assert_eq!(detector.extract_comment_content("    ").expect("internal error"), None);
 
         // Test very long line (should return error)
         let long_line = "a".repeat(11000);
@@ -1974,7 +1974,7 @@ fn helper() {
 
         let debts = detector
             .extract_from_content(content, Path::new("test.rs"))
-            .unwrap();
+            .expect("internal error");
         assert_eq!(debts.len(), 5);
 
         // Check they are sorted by line number
@@ -2021,7 +2021,7 @@ mod tests {{
 
         let debts = detector
             .extract_from_content(&content, Path::new("test.rs"))
-            .unwrap();
+            .expect("internal error");
         assert_eq!(debts.len(), 3);
 
         // Verify test block TODOs are excluded
@@ -2173,24 +2173,24 @@ mod tests {{
 
     #[tokio::test]
     async fn test_find_source_files_excludes_common_dirs() {
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new().expect("internal error");
         let root = temp_dir.path();
 
         // Create source files
-        fs::write(root.join("main.rs"), "// TODO: test").unwrap();
+        fs::write(root.join("main.rs"), "// TODO: test").expect("internal error");
 
         // Create files in excluded directories
-        fs::create_dir(root.join("target")).unwrap();
-        fs::write(root.join("target").join("debug.rs"), "// TODO: ignore").unwrap();
+        fs::create_dir(root.join("target")).expect("internal error");
+        fs::write(root.join("target").join("debug.rs"), "// TODO: ignore").expect("internal error");
 
-        fs::create_dir(root.join("node_modules")).unwrap();
-        fs::write(root.join("node_modules").join("lib.js"), "// TODO: ignore").unwrap();
+        fs::create_dir(root.join("node_modules")).expect("internal error");
+        fs::write(root.join("node_modules").join("lib.js"), "// TODO: ignore").expect("internal error");
 
-        fs::create_dir(root.join(".git")).unwrap();
-        fs::write(root.join(".git").join("config"), "// TODO: ignore").unwrap();
+        fs::create_dir(root.join(".git")).expect("internal error");
+        fs::write(root.join(".git").join("config"), "// TODO: ignore").expect("internal error");
 
         let detector = SATDDetector::new();
-        let files = detector.find_source_files(root).await.unwrap();
+        let files = detector.find_source_files(root).await.expect("internal error");
 
         assert_eq!(files.len(), 1);
         assert!(files[0].ends_with("main.rs"));
@@ -2233,7 +2233,7 @@ mod tests {{
 
     #[tokio::test]
     async fn test_analyze_directory() {
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new().expect("internal error");
         let root = temp_dir.path();
 
         // Create test files
@@ -2246,7 +2246,7 @@ fn main() {{
 "#,
             "TODO", "FIXME"
         );
-        fs::write(root.join("main.rs"), main_content).unwrap();
+        fs::write(root.join("main.rs"), main_content).expect("internal error");
 
         let helper_content = format!(
             r#"
@@ -2257,25 +2257,25 @@ fn helper_test() {{
 "#,
             "TODO"
         );
-        fs::write(root.join("helper_test.rs"), helper_content).unwrap();
+        fs::write(root.join("helper_test.rs"), helper_content).expect("internal error");
 
         let detector = SATDDetector::new();
 
         // Test without test files
-        let debts = detector.analyze_directory(root).await.unwrap();
+        let debts = detector.analyze_directory(root).await.expect("internal error");
         assert_eq!(debts.len(), 2); // Only from main.rs
 
         // Test with test files
         let debts_with_tests = detector
             .analyze_directory_with_tests(root, true)
             .await
-            .unwrap();
+            .expect("internal error");
         assert_eq!(debts_with_tests.len(), 2); // Test file might not be processed due to filtering
     }
 
     #[tokio::test]
     async fn test_analyze_project() {
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new().expect("internal error");
         let root = temp_dir.path();
 
         // Create test files
@@ -2286,7 +2286,7 @@ fn helper_test() {{
 "#,
             "TODO", "FIXME"
         );
-        fs::write(root.join("file1.rs"), file1_content).unwrap();
+        fs::write(root.join("file1.rs"), file1_content).expect("internal error");
 
         let file2_content = format!(
             r#"
@@ -2295,16 +2295,16 @@ fn helper_test() {{
 "#,
             "HACK", "SECURITY"
         );
-        fs::write(root.join("file2.rs"), file2_content).unwrap();
+        fs::write(root.join("file2.rs"), file2_content).expect("internal error");
 
         fs::write(
             root.join("empty.rs"),
             "// Just a normal comment\nfn main() {}\n",
         )
-        .unwrap();
+        .expect("internal error");
 
         let detector = SATDDetector::new();
-        let result = detector.analyze_project(root, false).await.unwrap();
+        let result = detector.analyze_project(root, false).await.expect("internal error");
 
         assert_eq!(result.total_files_analyzed, 3);
         assert_eq!(result.files_with_debt, 2); // Only 2 files have actual debt
@@ -2326,15 +2326,15 @@ fn helper_test() {{
 
     #[tokio::test]
     async fn test_large_file_handling() {
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new().expect("internal error");
         let root = temp_dir.path();
 
         // Create a large file (over 10MB limit)
         let large_content = format!("// {}", "a".repeat(11_000_000));
-        fs::write(root.join("large.rs"), large_content).unwrap();
+        fs::write(root.join("large.rs"), large_content).expect("internal error");
 
         let detector = SATDDetector::new();
-        let debts = detector.analyze_directory(root).await.unwrap();
+        let debts = detector.analyze_directory(root).await.expect("internal error");
 
         // Should skip the large file
         assert_eq!(debts.len(), 0);
@@ -2347,13 +2347,13 @@ fn helper_test() {{
         // Test with valid inputs
         let result = detector
             .extract_from_line("// TODO: fix", Path::new("test.rs"), 1)
-            .unwrap();
+            .expect("internal error");
         assert!(result.is_some());
 
         // Test with empty line
         let result = detector
             .extract_from_line("", Path::new("test.rs"), 1)
-            .unwrap();
+            .expect("internal error");
         assert!(result.is_none());
     }
 
@@ -2397,7 +2397,7 @@ fn helper_test() {{
         assert_eq!(metrics.critical_debts.len(), 1);
         assert_eq!(metrics.by_category.len(), 2);
 
-        let design_metrics = metrics.by_category.get("Design").unwrap();
+        let design_metrics = metrics.by_category.get("Design").expect("internal error");
         assert_eq!(design_metrics.count, 2);
         assert_eq!(design_metrics.files.len(), 2);
 
@@ -2534,7 +2534,7 @@ fn helper_test() {{
 
         let result = detector.extract_from_content(empty_content, Path::new("empty.rs"));
         assert!(result.is_ok());
-        assert_eq!(result.unwrap().len(), 0);
+        assert_eq!(result.expect("internal error").len(), 0);
     }
 
     #[test]
@@ -2552,7 +2552,7 @@ fn helper_test() {{
 
         let result = detector.extract_from_content(clean_content, Path::new("clean.rs"));
         assert!(result.is_ok());
-        assert_eq!(result.unwrap().len(), 0);
+        assert_eq!(result.expect("internal error").len(), 0);
     }
 
     #[test]
@@ -2567,7 +2567,7 @@ fn helper_test() {{
 
         let result = detector.extract_from_content(content_with_todo, Path::new("todo.rs"));
         assert!(result.is_ok());
-        let debts = result.unwrap();
+        let debts = result.expect("internal error");
         assert_eq!(debts.len(), 1);
         assert_eq!(debts[0].category, DebtCategory::Requirement);
         assert!(debts[0].text.contains("Implement error handling"));
@@ -2588,7 +2588,7 @@ fn helper_test() {{
 
         let result = detector.extract_from_content(mixed_content, Path::new("mixed.rs"));
         assert!(result.is_ok());
-        let debts = result.unwrap();
+        let debts = result.expect("internal error");
         assert_eq!(debts.len(), 4);
 
         // Check different debt types are detected
@@ -2615,58 +2615,58 @@ fn helper_test() {{
 
         let result = detector.extract_from_content(case_content, Path::new("case.rs"));
         assert!(result.is_ok());
-        let debts = result.unwrap();
+        let debts = result.expect("internal error");
         assert_eq!(debts.len(), 4); // All variations should be detected
     }
 
     #[tokio::test]
     async fn test_analyze_directory_empty() {
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new().expect("internal error");
         let detector = SATDDetector::new();
 
         let result = detector.analyze_directory(temp_dir.path()).await;
         assert!(result.is_ok());
 
-        let debts = result.unwrap();
+        let debts = result.expect("internal error");
         assert_eq!(debts.len(), 0);
     }
 
     #[tokio::test]
     async fn test_analyze_directory_with_rust_files() {
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new().expect("internal error");
         let detector = SATDDetector::new();
 
         // Create files without "test" in their names
         let file1 = temp_dir.path().join("file1.rs");
-        fs::write(&file1, "// TODO: Test debt in file 1\nfn main() {}").unwrap();
+        fs::write(&file1, "// TODO: Test debt in file 1\nfn main() {}").expect("internal error");
 
         let file2 = temp_dir.path().join("file2.rs");
-        fs::write(&file2, "// FIXME: Test debt in file 2\nfn helper() {}").unwrap();
+        fs::write(&file2, "// FIXME: Test debt in file 2\nfn helper() {}").expect("internal error");
 
         let result = detector.analyze_directory(temp_dir.path()).await;
         assert!(result.is_ok());
 
-        let debts = result.unwrap();
+        let debts = result.expect("internal error");
         assert_eq!(debts.len(), 2);
     }
 
     #[tokio::test]
     async fn test_analyze_directory_ignores_non_source_files() {
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new().expect("internal error");
         let detector = SATDDetector::new();
 
         // Create source file with debt
         let rust_file = temp_dir.path().join("source.rs");
-        fs::write(&rust_file, "// TODO: This should be found").unwrap();
+        fs::write(&rust_file, "// TODO: This should be found").expect("internal error");
 
         // Create non-source file with debt (should be ignored)
         let text_file = temp_dir.path().join("readme.txt");
-        fs::write(&text_file, "TODO: This should be ignored").unwrap();
+        fs::write(&text_file, "TODO: This should be ignored").expect("internal error");
 
         let result = detector.analyze_directory(temp_dir.path()).await;
         assert!(result.is_ok());
 
-        let debts = result.unwrap();
+        let debts = result.expect("internal error");
         assert_eq!(debts.len(), 1); // Only the .rs file should be analyzed
         assert!(debts[0].file.ends_with("source.rs"));
     }
@@ -2705,11 +2705,11 @@ fn helper_test() {{
         assert_eq!(metrics.by_category.len(), 2); // Design and Defect
 
         // Check category breakdown
-        let design_metrics = metrics.by_category.get("Design").unwrap();
+        let design_metrics = metrics.by_category.get("Design").expect("internal error");
         assert_eq!(design_metrics.count, 2);
         assert!((design_metrics.avg_severity - 1.5).abs() < 0.1); // (1+2)/2 = 1.5
 
-        let defect_metrics = metrics.by_category.get("Defect").unwrap();
+        let defect_metrics = metrics.by_category.get("Defect").expect("internal error");
         assert_eq!(defect_metrics.count, 2);
         assert!((defect_metrics.avg_severity - 3.5).abs() < 0.1); // (3+4)/2 = 3.5
     }
@@ -2718,25 +2718,25 @@ fn helper_test() {{
     #[tokio::test]
     async fn test_calculate_average_debt_age_empty_debts() {
         let detector = SATDDetector::new();
-        let temp_dir = tempfile::tempdir().unwrap();
+        let temp_dir = tempfile::tempdir().expect("internal error");
         let project_root = temp_dir.path();
 
         let result = detector
             .calculate_average_debt_age(&[], project_root)
             .await
-            .unwrap();
+            .expect("internal error");
         assert_eq!(result, 0.0);
     }
 
     #[tokio::test]
     async fn test_calculate_average_debt_age_no_git() {
         let detector = SATDDetector::new();
-        let temp_dir = tempfile::tempdir().unwrap();
+        let temp_dir = tempfile::tempdir().expect("internal error");
         let project_root = temp_dir.path();
 
         // Create a test file
         let test_file = project_root.join("test.rs");
-        std::fs::write(&test_file, "// TODO: test debt").unwrap();
+        std::fs::write(&test_file, "// TODO: test debt").expect("internal error");
 
         let debts = vec![create_test_debt_with_file(
             DebtCategory::Design,
@@ -2748,14 +2748,14 @@ fn helper_test() {{
         let result = detector
             .calculate_average_debt_age(&debts, project_root)
             .await
-            .unwrap();
+            .expect("internal error");
         assert_eq!(result, 0.0); // No git history, should default to 0
     }
 
     #[tokio::test]
     async fn test_calculate_average_debt_age_invalid_file_path() {
         let detector = SATDDetector::new();
-        let temp_dir = tempfile::tempdir().unwrap();
+        let temp_dir = tempfile::tempdir().expect("internal error");
         let project_root = temp_dir.path();
 
         // Create debt with path outside project root
@@ -2770,7 +2770,7 @@ fn helper_test() {{
         let result = detector
             .calculate_average_debt_age(&debts, project_root)
             .await
-            .unwrap();
+            .expect("internal error");
         assert_eq!(result, 0.0); // External files should be skipped
     }
 
@@ -2820,7 +2820,7 @@ fn main() {
 
         let debts = detector
             .extract_from_content(content, Path::new("test.rs"))
-            .unwrap();
+            .expect("internal error");
 
         // Should only find debts outside test blocks
         assert_eq!(debts.len(), 2);
@@ -2847,7 +2847,7 @@ def test_something():
 
         let debts = detector
             .extract_from_content(content, Path::new("test.py"))
-            .unwrap();
+            .expect("internal error");
 
         // Python files don't have Rust test block logic
         assert_eq!(debts.len(), 2);
@@ -2859,15 +2859,15 @@ def test_something():
     #[tokio::test]
     async fn test_collect_files_recursive_empty_directory() {
         let detector = SATDDetector::new();
-        let temp_dir = tempfile::tempdir().unwrap();
+        let temp_dir = tempfile::tempdir().expect("internal error");
         let empty_dir = temp_dir.path().join("empty");
-        std::fs::create_dir(&empty_dir).unwrap();
+        std::fs::create_dir(&empty_dir).expect("internal error");
 
         let mut files = Vec::new();
         detector
             .collect_files_recursive(&empty_dir, &mut files)
             .await
-            .unwrap();
+            .expect("internal error");
 
         assert_eq!(files.len(), 0);
     }
@@ -2875,54 +2875,54 @@ def test_something():
     #[tokio::test]
     async fn test_collect_files_recursive_with_source_files() {
         let detector = SATDDetector::new();
-        let temp_dir = tempfile::tempdir().unwrap();
+        let temp_dir = tempfile::tempdir().expect("internal error");
         let project_root = temp_dir.path();
 
         // Create source files
-        std::fs::write(project_root.join("main.rs"), "fn main() {}").unwrap();
-        std::fs::write(project_root.join("lib.py"), "def func(): pass").unwrap();
-        std::fs::write(project_root.join("script.js"), "console.log('hello');").unwrap();
-        std::fs::write(project_root.join("readme.txt"), "Not a source file").unwrap();
+        std::fs::write(project_root.join("main.rs"), "fn main() {}").expect("internal error");
+        std::fs::write(project_root.join("lib.py"), "def func(): pass").expect("internal error");
+        std::fs::write(project_root.join("script.js"), "console.log('hello');").expect("internal error");
+        std::fs::write(project_root.join("readme.txt"), "Not a source file").expect("internal error");
 
         let mut files = Vec::new();
         detector
             .collect_files_recursive(project_root, &mut files)
             .await
-            .unwrap();
+            .expect("internal error");
 
         assert_eq!(files.len(), 3); // Only source files
-        assert!(files.iter().any(|f| f.file_name().unwrap() == "main.rs"));
-        assert!(files.iter().any(|f| f.file_name().unwrap() == "lib.py"));
-        assert!(files.iter().any(|f| f.file_name().unwrap() == "script.js"));
-        assert!(!files.iter().any(|f| f.file_name().unwrap() == "readme.txt"));
+        assert!(files.iter().any(|f| f.file_name().expect("internal error") == "main.rs"));
+        assert!(files.iter().any(|f| f.file_name().expect("internal error") == "lib.py"));
+        assert!(files.iter().any(|f| f.file_name().expect("internal error") == "script.js"));
+        assert!(!files.iter().any(|f| f.file_name().expect("internal error") == "readme.txt"));
     }
 
     #[tokio::test]
     async fn test_collect_files_recursive_skips_excluded_directories() {
         let detector = SATDDetector::new();
-        let temp_dir = tempfile::tempdir().unwrap();
+        let temp_dir = tempfile::tempdir().expect("internal error");
         let project_root = temp_dir.path();
 
         // Create source files in excluded directories
-        std::fs::create_dir_all(project_root.join("target/debug")).unwrap();
-        std::fs::create_dir_all(project_root.join("node_modules/lib")).unwrap();
-        std::fs::create_dir_all(project_root.join(".git/hooks")).unwrap();
-        std::fs::create_dir_all(project_root.join("src")).unwrap();
+        std::fs::create_dir_all(project_root.join("target/debug")).expect("internal error");
+        std::fs::create_dir_all(project_root.join("node_modules/lib")).expect("internal error");
+        std::fs::create_dir_all(project_root.join(".git/hooks")).expect("internal error");
+        std::fs::create_dir_all(project_root.join("src")).expect("internal error");
 
-        std::fs::write(project_root.join("target/debug/main.rs"), "fn main() {}").unwrap();
+        std::fs::write(project_root.join("target/debug/main.rs"), "fn main() {}").expect("internal error");
         std::fs::write(
             project_root.join("node_modules/lib/index.js"),
             "console.log('test');",
         )
-        .unwrap();
-        std::fs::write(project_root.join(".git/hooks/pre-commit.sh"), "#!/bin/bash").unwrap();
-        std::fs::write(project_root.join("src/lib.rs"), "pub fn test() {}").unwrap();
+        .expect("internal error");
+        std::fs::write(project_root.join(".git/hooks/pre-commit.sh"), "#!/bin/bash").expect("internal error");
+        std::fs::write(project_root.join("src/lib.rs"), "pub fn test() {}").expect("internal error");
 
         let mut files = Vec::new();
         detector
             .collect_files_recursive(project_root, &mut files)
             .await
-            .unwrap();
+            .expect("internal error");
 
         assert_eq!(files.len(), 1); // Only src/lib.rs should be found
         assert!(files.iter().any(|f| f.ends_with("src/lib.rs")));
@@ -2931,26 +2931,26 @@ def test_something():
     #[tokio::test]
     async fn test_collect_files_recursive_skips_test_files() {
         let detector = SATDDetector::new();
-        let temp_dir = tempfile::tempdir().unwrap();
+        let temp_dir = tempfile::tempdir().expect("internal error");
         let project_root = temp_dir.path();
 
         // Create test files and regular files
-        std::fs::create_dir_all(project_root.join("src")).unwrap();
-        std::fs::create_dir_all(project_root.join("tests")).unwrap();
+        std::fs::create_dir_all(project_root.join("src")).expect("internal error");
+        std::fs::create_dir_all(project_root.join("tests")).expect("internal error");
 
-        std::fs::write(project_root.join("src/lib.rs"), "pub fn func() {}").unwrap();
-        std::fs::write(project_root.join("src/main_test.rs"), "fn test_main() {}").unwrap();
+        std::fs::write(project_root.join("src/lib.rs"), "pub fn func() {}").expect("internal error");
+        std::fs::write(project_root.join("src/main_test.rs"), "fn test_main() {}").expect("internal error");
         std::fs::write(
             project_root.join("tests/integration.rs"),
             "#[test] fn test() {}",
         )
-        .unwrap();
+        .expect("internal error");
 
         let mut files = Vec::new();
         detector
             .collect_files_recursive(project_root, &mut files)
             .await
-            .unwrap();
+            .expect("internal error");
 
         // Should only find lib.rs, not test files
         assert_eq!(files.len(), 1);
@@ -2961,31 +2961,31 @@ def test_something():
     #[tokio::test]
     async fn test_collect_files_recursive_nested_directories() {
         let detector = SATDDetector::new();
-        let temp_dir = tempfile::tempdir().unwrap();
+        let temp_dir = tempfile::tempdir().expect("internal error");
         let project_root = temp_dir.path();
 
         // Create nested directory structure
-        std::fs::create_dir_all(project_root.join("src/utils/helpers")).unwrap();
-        std::fs::create_dir_all(project_root.join("src/models")).unwrap();
+        std::fs::create_dir_all(project_root.join("src/utils/helpers")).expect("internal error");
+        std::fs::create_dir_all(project_root.join("src/models")).expect("internal error");
 
-        std::fs::write(project_root.join("src/main.rs"), "fn main() {}").unwrap();
-        std::fs::write(project_root.join("src/utils/mod.rs"), "pub mod helpers;").unwrap();
+        std::fs::write(project_root.join("src/main.rs"), "fn main() {}").expect("internal error");
+        std::fs::write(project_root.join("src/utils/mod.rs"), "pub mod helpers;").expect("internal error");
         std::fs::write(
             project_root.join("src/utils/helpers/string.rs"),
             "pub fn trim() {}",
         )
-        .unwrap();
+        .expect("internal error");
         std::fs::write(
             project_root.join("src/models/user.rs"),
             "pub struct User {}",
         )
-        .unwrap();
+        .expect("internal error");
 
         let mut files = Vec::new();
         detector
             .collect_files_recursive(project_root, &mut files)
             .await
-            .unwrap();
+            .expect("internal error");
 
         assert_eq!(files.len(), 4);
         assert!(files.iter().any(|f| f.ends_with("main.rs")));
@@ -3000,7 +3000,7 @@ def test_something():
     #[tokio::test]
     async fn test_markdown_headers_not_flagged_as_satd() {
         let detector = SATDDetector::new();
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new().expect("internal error");
 
         // Test case 1: CHANGELOG template with ### Security header
         let changelog_template = r#"
@@ -3024,7 +3024,7 @@ All notable changes to this project will be documented in this file.
 "#;
 
         let changelog_file = temp_dir.path().join("CHANGELOG.md");
-        fs::write(&changelog_file, changelog_template).unwrap();
+        fs::write(&changelog_file, changelog_template).expect("internal error");
 
         // Test case 2: Rust code with CHANGELOG template string literal
         let changelog_manager_code = r###"
@@ -3038,12 +3038,12 @@ const CHANGELOG_TEMPLATE: &str = r#"
             .path()
             .join("changelog_manager")
             .with_extension("rs");
-        fs::write(&manager_file, changelog_manager_code).unwrap();
+        fs::write(&manager_file, changelog_manager_code).expect("internal error");
 
         let result = detector
             .analyze_project(temp_dir.path(), false)
             .await
-            .unwrap();
+            .expect("internal error");
 
         // RED: This will FAIL initially - markdown headers are currently detected as SATD
         // Expected: 0 Security SATD items (markdown headers should be filtered)
@@ -3070,7 +3070,7 @@ const CHANGELOG_TEMPLATE: &str = r#"
     #[tokio::test]
     async fn test_bug_tracking_ids_not_flagged_as_satd() {
         let detector = SATDDetector::new();
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new().expect("internal error");
 
         // Test case 1: Bug tracking IDs (like JIRA tickets)
         let bug_tracking_code = r#"
@@ -3090,7 +3090,7 @@ const CHANGELOG_TEMPLATE: &str = r#"
     fn extract_methods() {}
 "#;
         let tracking_file = temp_dir.path().join("tracking").with_extension("rs");
-        fs::write(&tracking_file, bug_tracking_code).unwrap();
+        fs::write(&tracking_file, bug_tracking_code).expect("internal error");
 
         // Test case 2: Fixed bug descriptions
         let fixed_bug_code = r#"
@@ -3105,7 +3105,7 @@ const CHANGELOG_TEMPLATE: &str = r#"
     fn use_project_discovery() {}
 "#;
         let fixed_file = temp_dir.path().join("fixed").with_extension("rs");
-        fs::write(&fixed_file, fixed_bug_code).unwrap();
+        fs::write(&fixed_file, fixed_bug_code).expect("internal error");
 
         // Test case 3: Bug-related functionality descriptions
         let functionality_code = r#"
@@ -3123,12 +3123,12 @@ fn analyze_commits() {
 fn halstead_metrics() {}
 "#;
         let functionality_file = temp_dir.path().join("functionality").with_extension("rs");
-        fs::write(&functionality_file, functionality_code).unwrap();
+        fs::write(&functionality_file, functionality_code).expect("internal error");
 
         let result = detector
             .analyze_project(temp_dir.path(), false)
             .await
-            .unwrap();
+            .expect("internal error");
 
         // All these comments describe bug tracking IDs, fixed bugs, or bug-related functionality
         // They are NOT self-admitted technical debt (TODO/FIXME for future work)

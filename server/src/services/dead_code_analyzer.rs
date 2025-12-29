@@ -767,7 +767,7 @@ impl DeadCodeAnalyzer {
     ///     },
     /// };
     ///
-    /// let result = analyzer.analyze_project_context(&project_context).unwrap();
+    /// let result = analyzer.analyze_project_context(&project_context).expect("internal error");
     /// assert!(!result.dead_functions.is_empty() || !result.dead_classes.is_empty() || !result.dead_variables.is_empty());
     /// ```
     pub fn analyze_project_context(
@@ -822,7 +822,7 @@ impl DeadCodeAnalyzer {
                     if let Some(caller) = current_function {
                         // Look for function calls in this line
                         for callee_qualified in all_functions.keys() {
-                            let callee_name = callee_qualified.split("::").last().unwrap();
+                            let callee_name = callee_qualified.split("::").last().expect("internal error");
                             // More specific matching: function name followed by opening parenthesis
                             // and not part of a function definition
                             if line.contains(&format!("{callee_name}("))
@@ -866,7 +866,7 @@ impl DeadCodeAnalyzer {
 
         for (qualified_name, (file_path, line)) in &all_functions {
             if !reachable.contains(qualified_name) {
-                let function_name = qualified_name.split("::").last().unwrap().to_string();
+                let function_name = qualified_name.split("::").last().expect("internal error").to_string();
                 dead_functions.push(DeadCodeItem {
                     node_key: 0, // Not used in this implementation
                     name: function_name,
@@ -917,17 +917,17 @@ impl DeadCodeAnalyzer {
     /// use std::fs;
     ///
     /// # tokio_test::block_on(async {
-    /// let temp_dir = TempDir::new().unwrap();
+    /// let temp_dir = TempDir::new().expect("internal error");
     /// let test_file = temp_dir.path().join("test.rs");
     /// fs::write(&test_file, r#"
     /// fn used_function() -> i32 { 42 }
     /// fn unused_function() -> i32 { 100 }
     /// fn main() { println!("{}", used_function()); }
-    /// "#).unwrap();
+    /// "#).expect("internal error");
     ///
     /// let mut analyzer = DeadCodeAnalyzer::new(1000);
     /// let config = DeadCodeAnalysisConfig::default();
-    /// let result = analyzer.analyze_with_ranking(temp_dir.path(), config).await.unwrap();
+    /// let result = analyzer.analyze_with_ranking(temp_dir.path(), config).await.expect("internal error");
     ///
     /// assert!(result.summary.total_files_analyzed > 0);
     /// # });

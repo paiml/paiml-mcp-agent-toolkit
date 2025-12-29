@@ -383,7 +383,7 @@ impl PerfectionScoreCalculator {
         for entry in walkdir::WalkDir::new(project_path)
             .into_iter()
             .filter_map(|e| e.ok())
-            .filter(|e| e.path().extension().map_or(false, |ext| ext == "rs"))
+            .filter(|e| e.path().extension().is_some_and(|ext| ext == "rs"))
         {
             if let Ok(content) = std::fs::read_to_string(entry.path()) {
                 source_count += 1;

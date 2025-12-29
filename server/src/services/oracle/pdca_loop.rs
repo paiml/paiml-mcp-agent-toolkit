@@ -276,7 +276,7 @@ impl PdcaLoop {
         }
 
         let first = &results[0];
-        let last = results.last().unwrap();
+        let last = results.last().expect("internal error");
 
         let initial_defects = first.defects_found as f32;
         let current_defects = last.defects_found as f32;

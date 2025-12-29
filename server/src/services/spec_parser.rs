@@ -183,10 +183,10 @@ impl Default for SpecParser {
 impl SpecParser {
     pub fn new() -> Self {
         Self {
-            frontmatter_regex: Regex::new(r"(?s)^---\n(.*?)\n---").unwrap(),
-            checkbox_regex: Regex::new(r"^\s*-\s*\[([ xX])\]\s*(.+)$").unwrap(),
-            issue_ref_regex: Regex::new(r"(?:#(\d+)|GH-(\d+)|Issue\s+#?(\d+))").unwrap(),
-            claim_regex: Regex::new(r"(?i)(must|shall|should|will)\s+(.+)").unwrap(),
+            frontmatter_regex: Regex::new(r"(?s)^---\n(.*?)\n---").expect("internal error"),
+            checkbox_regex: Regex::new(r"^\s*-\s*\[([ xX])\]\s*(.+)$").expect("internal error"),
+            issue_ref_regex: Regex::new(r"(?:#(\d+)|GH-(\d+)|Issue\s+#?(\d+))").expect("internal error"),
+            claim_regex: Regex::new(r"(?i)(must|shall|should|will)\s+(.+)").expect("internal error"),
         }
     }
 
@@ -683,7 +683,7 @@ fn example() {
 ```
 "#;
 
-        let spec = parser.parse_content(content, Path::new("test.md")).unwrap();
+        let spec = parser.parse_content(content, Path::new("test.md")).expect("internal error");
 
         assert_eq!(spec.title, "Test Specification");
         assert_eq!(spec.status, Some("Draft".to_string()));
@@ -706,7 +706,7 @@ Coverage SHOULD be at least 95%.
 The API SHALL be backwards compatible.
 "#;
 
-        let spec = parser.parse_content(content, Path::new("test.md")).unwrap();
+        let spec = parser.parse_content(content, Path::new("test.md")).expect("internal error");
 
         assert!(spec.claims.len() >= 3);
         assert!(spec.claims.iter().any(|c| c.text.contains("MUST")));

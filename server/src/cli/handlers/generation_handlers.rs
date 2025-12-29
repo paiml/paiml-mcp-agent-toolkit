@@ -29,7 +29,7 @@ pub async fn handle_generate(
 
     if let Some(path) = output {
         if create_dirs {
-            tokio::fs::create_dir_all(path.parent().unwrap()).await?;
+            tokio::fs::create_dir_all(path.parent().expect("internal error")).await?;
         }
         tokio::fs::write(&path, &result.content).await?;
         eprintln!("✅ Generated: {}", path.display());

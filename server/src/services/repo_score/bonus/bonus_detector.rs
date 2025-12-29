@@ -111,7 +111,7 @@ impl BonusDetector {
             if path.exists() {
                 evidence.push(format!(
                     "{} found",
-                    path.file_name().unwrap().to_string_lossy()
+                    path.file_name().expect("internal error").to_string_lossy()
                 ));
                 detected = true;
             }
@@ -191,7 +191,7 @@ impl BonusDetector {
                 if summary_path.exists() {
                     evidence.push(format!(
                         "mdBook structure in {}/",
-                        book_dir.file_name().unwrap().to_string_lossy()
+                        book_dir.file_name().expect("internal error").to_string_lossy()
                     ));
                     detected = true;
                 }
@@ -246,15 +246,15 @@ mod tests {
     use tempfile::TempDir;
 
     fn create_temp_repo() -> TempDir {
-        TempDir::new().unwrap()
+        TempDir::new().expect("internal error")
     }
 
     fn create_file(repo_path: &Path, relative_path: &str, content: &str) {
         let file_path = repo_path.join(relative_path);
         if let Some(parent) = file_path.parent() {
-            fs::create_dir_all(parent).unwrap();
+            fs::create_dir_all(parent).expect("internal error");
         }
-        fs::write(file_path, content).unwrap();
+        fs::write(file_path, content).expect("internal error");
     }
 
     #[tokio::test]
@@ -263,7 +263,7 @@ mod tests {
         let repo_path = temp_dir.path();
 
         let detector = BonusDetector::new();
-        let result = detector.detect(repo_path).await.unwrap();
+        let result = detector.detect(repo_path).await.expect("internal error");
 
         assert_eq!(result.total(), 0.0);
         assert!(!result.property_tests.detected);
@@ -284,7 +284,7 @@ proptest = "1.0"
         create_file(repo_path, "Cargo.toml", cargo_toml);
 
         let detector = BonusDetector::new();
-        let result = detector.detect(repo_path).await.unwrap();
+        let result = detector.detect(repo_path).await.expect("internal error");
 
         assert_eq!(result.property_tests.points, 3.0);
         assert!(result.property_tests.detected);
@@ -296,10 +296,10 @@ proptest = "1.0"
         let repo_path = temp_dir.path();
 
         // Create fuzz directory
-        fs::create_dir_all(repo_path.join("fuzz/fuzz_targets")).unwrap();
+        fs::create_dir_all(repo_path.join("fuzz/fuzz_targets")).expect("internal error");
 
         let detector = BonusDetector::new();
-        let result = detector.detect(repo_path).await.unwrap();
+        let result = detector.detect(repo_path).await.expect("internal error");
 
         assert_eq!(result.fuzzing.points, 2.0);
         assert!(result.fuzzing.detected);
@@ -313,7 +313,7 @@ proptest = "1.0"
         create_file(repo_path, "mutants.toml", "[mutants]");
 
         let detector = BonusDetector::new();
-        let result = detector.detect(repo_path).await.unwrap();
+        let result = detector.detect(repo_path).await.expect("internal error");
 
         assert_eq!(result.mutation_testing.points, 2.0);
         assert!(result.mutation_testing.detected);
@@ -328,7 +328,7 @@ proptest = "1.0"
         create_file(repo_path, "src/SUMMARY.md", "# Summary");
 
         let detector = BonusDetector::new();
-        let result = detector.detect(repo_path).await.unwrap();
+        let result = detector.detect(repo_path).await.expect("internal error");
 
         assert_eq!(result.living_docs.points, 3.0);
         assert!(result.living_docs.detected);
@@ -345,12 +345,12 @@ proptest = "1.0"
             "Cargo.toml",
             "[dependencies]\nproptest = \"1.0\"",
         );
-        fs::create_dir_all(repo_path.join("fuzz")).unwrap();
+        fs::create_dir_all(repo_path.join("fuzz")).expect("internal error");
         create_file(repo_path, "mutants.toml", "[mutants]");
         create_file(repo_path, "book.toml", "[book]");
 
         let detector = BonusDetector::new();
-        let result = detector.detect(repo_path).await.unwrap();
+        let result = detector.detect(repo_path).await.expect("internal error");
 
         assert_eq!(result.total(), 10.0);
         assert!(result.property_tests.detected);
@@ -370,10 +370,10 @@ proptest = "1.0"
             "Cargo.toml",
             "[dependencies]\nproptest = \"1.0\"",
         );
-        fs::create_dir_all(repo_path.join("fuzz")).unwrap();
+        fs::create_dir_all(repo_path.join("fuzz")).expect("internal error");
 
         let detector = BonusDetector::new();
-        let result = detector.detect(repo_path).await.unwrap();
+        let result = detector.detect(repo_path).await.expect("internal error");
 
         assert_eq!(result.total(), 5.0); // 3 + 2
         assert!(result.property_tests.detected);
@@ -390,7 +390,7 @@ proptest = "1.0"
         create_file(repo_path, "book.toml", "[book]");
 
         let detector = BonusDetector::new();
-        let result = detector.detect(repo_path).await.unwrap();
+        let result = detector.detect(repo_path).await.expect("internal error");
 
         assert!(!result.living_docs.evidence.is_empty());
         assert!(result
@@ -404,7 +404,7 @@ proptest = "1.0"
     async fn test_bonus_max_points() {
         let detector = BonusDetector::new();
         let temp_dir = create_temp_repo();
-        let result = detector.detect(temp_dir.path()).await.unwrap();
+        let result = detector.detect(temp_dir.path()).await.expect("internal error");
 
         // Verify max points sum to 10
         assert_eq!(

@@ -68,8 +68,8 @@ fn parse_sprint_section(
     captures: &regex::Captures,
     parsers: &Parsers,
 ) -> Result<(Sprint, String, usize)> {
-    let version = captures.get(1).unwrap().as_str().to_string();
-    let title = captures.get(2).unwrap().as_str().to_string();
+    let version = captures.get(1).expect("internal error").as_str().to_string();
+    let title = captures.get(2).expect("internal error").as_str().to_string();
 
     let mut sprint = create_initial_sprint(&version, &title);
     let lines_consumed = parse_sprint_content(lines, start_idx, &mut sprint, parsers)?;
@@ -184,7 +184,7 @@ fn parse_definition_of_done(lines: &[&str], done_regex: &Regex) -> Result<(Vec<S
 
     while i < lines.len() && lines[i].starts_with("- [") {
         if let Some(captures) = done_regex.captures(lines[i]) {
-            items.push(captures.get(2).unwrap().as_str().to_string());
+            items.push(captures.get(2).expect("internal error").as_str().to_string());
         }
         i += 1;
     }
@@ -225,12 +225,12 @@ fn parse_backlog_section(
 /// Create a task from regex captures
 fn create_task_from_captures(captures: &regex::Captures) -> Task {
     Task {
-        id: captures.get(1).unwrap().as_str().to_string(),
-        description: captures.get(2).unwrap().as_str().trim().to_string(),
-        status: parse_task_status(captures.get(3).unwrap().as_str()),
-        complexity: Complexity::from_str(captures.get(4).unwrap().as_str().trim())
+        id: captures.get(1).expect("internal error").as_str().to_string(),
+        description: captures.get(2).expect("internal error").as_str().trim().to_string(),
+        status: parse_task_status(captures.get(3).expect("internal error").as_str()),
+        complexity: Complexity::from_str(captures.get(4).expect("internal error").as_str().trim())
             .unwrap_or(Complexity::Medium),
-        priority: Priority::from_str(captures.get(5).unwrap().as_str().trim())
+        priority: Priority::from_str(captures.get(5).expect("internal error").as_str().trim())
             .unwrap_or(Priority::P1),
         assignee: None,
         started_at: None,
@@ -517,13 +517,13 @@ mod tests {
         let result = parse_roadmap(SAMPLE_ROADMAP);
         assert!(result.is_ok());
 
-        let roadmap = result.unwrap();
+        let roadmap = result.expect("internal error");
         assert!(!roadmap.sprints.is_empty());
     }
 
     #[test]
     fn test_parse_current_sprint() {
-        let roadmap = parse_roadmap(SAMPLE_ROADMAP).unwrap();
+        let roadmap = parse_roadmap(SAMPLE_ROADMAP).expect("internal error");
 
         if let Some(current_version) = &roadmap.current_sprint {
             assert_eq!(current_version, "v2.42.0");
@@ -536,7 +536,7 @@ mod tests {
 
     #[test]
     fn test_parse_multiple_sprints() {
-        let roadmap = parse_roadmap(SAMPLE_ROADMAP).unwrap();
+        let roadmap = parse_roadmap(SAMPLE_ROADMAP).expect("internal error");
 
         // Should have both current and previous sprint
         assert!(!roadmap.sprints.is_empty());
@@ -566,7 +566,7 @@ mod tests {
         let result = parse_roadmap("");
         assert!(result.is_ok());
 
-        let roadmap = result.unwrap();
+        let roadmap = result.expect("internal error");
         assert!(roadmap.current_sprint.is_none());
         assert!(roadmap.sprints.is_empty());
         assert!(roadmap.backlog.is_empty());
@@ -591,7 +591,7 @@ mod tests {
 - PMAT-5678 | Another task | Medium | Planning | 4h |
 "#;
 
-        parse_roadmap(content_with_backlog).unwrap();
+        parse_roadmap(content_with_backlog).expect("internal error");
         // Should handle backlog parsing
         // Check that backlog parsing works (len() is always >= 0 for Vec)
     }
@@ -599,10 +599,10 @@ mod tests {
     #[test]
     fn test_roundtrip_parsing() {
         // Test that we can parse and serialize back
-        let roadmap = parse_roadmap(SAMPLE_ROADMAP).unwrap();
+        let roadmap = parse_roadmap(SAMPLE_ROADMAP).expect("internal error");
         // TODO: Implement serialize_roadmap
-        // let serialized = serialize_roadmap(&roadmap).unwrap();
-        // let reparsed = parse_roadmap(&serialized).unwrap();
+        // let serialized = serialize_roadmap(&roadmap).expect("internal error");
+        // let reparsed = parse_roadmap(&serialized).expect("internal error");
 
         // Basic structure should be preserved
         // assert_eq!(roadmap.sprints.len(), reparsed.sprints.len());

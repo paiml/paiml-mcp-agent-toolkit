@@ -184,10 +184,10 @@ impl DriftDetector {
         Self {
             registry,
             // Match: pmat <command> [args]
-            command_regex: Regex::new(r"pmat\s+([\w\-]+(?:\s+[\w\-]+)*)").unwrap(),
+            command_regex: Regex::new(r"pmat\s+([\w\-]+(?:\s+[\w\-]+)*)").expect("internal error"),
             // Match: ```bash\npmat ... or $ pmat ...
             code_block_regex: Regex::new(r"(?:```(?:bash|shell|sh)?\n|\$\s*)(pmat[^\n`]+)")
-                .unwrap(),
+                .expect("internal error"),
         }
     }
 
@@ -210,7 +210,7 @@ impl DriftDetector {
             let line_num = line_idx + 1;
 
             for cap in self.command_regex.captures_iter(line) {
-                let cmd_path = cap.get(1).unwrap().as_str();
+                let cmd_path = cap.get(1).expect("internal error").as_str();
 
                 // Skip if it's inside a "deprecated" context
                 let is_deprecated_context = line.to_lowercase().contains("deprecated");
@@ -237,7 +237,7 @@ impl DriftDetector {
 
         // 2. Validate code block examples
         for cap in self.code_block_regex.captures_iter(content) {
-            let example = cap.get(1).unwrap().as_str().trim();
+            let example = cap.get(1).expect("internal error").as_str().trim();
             if let Some(error) = self.validate_example(example, file_name) {
                 errors.push(error);
             }
@@ -259,7 +259,7 @@ impl DriftDetector {
 
                 // Track which commands are documented
                 for cap in self.command_regex.captures_iter(&content) {
-                    let cmd_path = cap.get(1).unwrap().as_str();
+                    let cmd_path = cap.get(1).expect("internal error").as_str();
                     if self.command_exists(cmd_path) {
                         documented_commands.insert(cmd_path.to_string());
                     }
@@ -511,7 +511,7 @@ pmat nonexistent --flag
         // Create temp file
         let temp_dir = std::env::temp_dir();
         let temp_file = temp_dir.join("test_readme.md");
-        std::fs::write(&temp_file, "Use `pmat analyze` and `pmat context`").unwrap();
+        std::fs::write(&temp_file, "Use `pmat analyze` and `pmat context`").expect("internal error");
 
         let report = detector.generate_report(&[temp_file.as_path()]);
 

@@ -76,7 +76,7 @@ impl FormalVerificationScorer {
 
     /// Count unsafe blocks in the project
     fn count_unsafe_blocks(&self, project_path: &Path, cache: Option<&FileCache>) -> usize {
-        let unsafe_pattern = Regex::new(r"\bunsafe\s*\{").unwrap();
+        let unsafe_pattern = Regex::new(r"\bunsafe\s*\{").expect("internal error");
         let mut count = 0;
         let src_path = project_path.join("src");
 
@@ -132,7 +132,7 @@ impl FormalVerificationScorer {
     /// Check for Kani proofs in the project
     fn count_kani_proofs(&self, project_path: &Path, cache: Option<&FileCache>) -> usize {
         // Look for #[kani::proof] attributes
-        let proof_pattern = Regex::new(r"#\[kani::proof\]").unwrap();
+        let proof_pattern = Regex::new(r"#\[kani::proof\]").expect("internal error");
         let mut count = 0;
         let src_path = project_path.join("src");
 
@@ -187,7 +187,7 @@ impl FormalVerificationScorer {
         // Verus uses requires/ensures/invariant attributes for specifications
         // Also check for proof blocks and spec functions
         let spec_pattern =
-            Regex::new(r"#\[(requires|ensures|invariant|decreases|recommends)\s*\(").unwrap();
+            Regex::new(r"#\[(requires|ensures|invariant|decreases|recommends)\s*\(").expect("internal error");
         let mut count = 0;
         let src_path = project_path.join("src");
 
@@ -479,12 +479,12 @@ mod tests {
 
     #[test]
     fn test_no_unsafe_gives_full_miri_credit() {
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new().expect("internal error");
         let src_dir = temp_dir.path().join("src");
-        std::fs::create_dir_all(&src_dir).unwrap();
+        std::fs::create_dir_all(&src_dir).expect("internal error");
 
         // Create a safe Rust file
-        std::fs::write(src_dir.join("lib.rs"), "pub fn safe_fn() -> i32 { 42 }\n").unwrap();
+        std::fs::write(src_dir.join("lib.rs"), "pub fn safe_fn() -> i32 { 42 }\n").expect("internal error");
 
         // Create Cargo.toml
         std::fs::write(
@@ -495,12 +495,12 @@ version = "0.1.0"
 edition = "2021"
 "#,
         )
-        .unwrap();
+        .expect("internal error");
 
         let scorer = FormalVerificationScorer::new();
         let result = scorer
             .score_with_mode(temp_dir.path(), ScoringMode::Quick)
-            .unwrap();
+            .expect("internal error");
 
         // Should get full Miri credit (3pts) for no unsafe code
         assert!(result.earned >= MIRI_POINTS);
@@ -508,9 +508,9 @@ edition = "2021"
 
     #[test]
     fn test_count_unsafe_blocks() {
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new().expect("internal error");
         let src_dir = temp_dir.path().join("src");
-        std::fs::create_dir_all(&src_dir).unwrap();
+        std::fs::create_dir_all(&src_dir).expect("internal error");
 
         // Create file with unsafe blocks
         std::fs::write(
@@ -525,7 +525,7 @@ pub fn with_unsafe() {
 }
 "#,
         )
-        .unwrap();
+        .expect("internal error");
 
         let scorer = FormalVerificationScorer::new();
         let count = scorer.count_unsafe_blocks(temp_dir.path(), None);
@@ -534,9 +534,9 @@ pub fn with_unsafe() {
 
     #[test]
     fn test_count_kani_proofs() {
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new().expect("internal error");
         let src_dir = temp_dir.path().join("src");
-        std::fs::create_dir_all(&src_dir).unwrap();
+        std::fs::create_dir_all(&src_dir).expect("internal error");
 
         // Create file with Kani proofs
         std::fs::write(
@@ -559,7 +559,7 @@ fn check_subtraction() {
 }
 "#,
         )
-        .unwrap();
+        .expect("internal error");
 
         let scorer = FormalVerificationScorer::new();
         let count = scorer.count_kani_proofs(temp_dir.path(), None);
@@ -582,9 +582,9 @@ fn check_subtraction() {
 
     #[test]
     fn test_count_verus_specs() {
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new().expect("internal error");
         let src_dir = temp_dir.path().join("src");
-        std::fs::create_dir_all(&src_dir).unwrap();
+        std::fs::create_dir_all(&src_dir).expect("internal error");
 
         // Create file with Verus specifications
         std::fs::write(
@@ -615,7 +615,7 @@ pub struct Counter {
 }
 "#,
         )
-        .unwrap();
+        .expect("internal error");
 
         let scorer = FormalVerificationScorer::new();
         let count = scorer.count_verus_specs(temp_dir.path(), None);
@@ -625,7 +625,7 @@ pub struct Counter {
 
     #[test]
     fn test_has_vstd_dependency() {
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new().expect("internal error");
 
         // Create Cargo.toml with vstd dependency
         std::fs::write(
@@ -639,7 +639,7 @@ edition = "2021"
 vstd = { path = "../vstd" }
 "#,
         )
-        .unwrap();
+        .expect("internal error");
 
         let scorer = FormalVerificationScorer::new();
         assert!(scorer.has_vstd_dependency(temp_dir.path()));
@@ -647,7 +647,7 @@ vstd = { path = "../vstd" }
 
     #[test]
     fn test_no_vstd_dependency() {
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new().expect("internal error");
 
         // Create Cargo.toml without vstd
         std::fs::write(
@@ -661,7 +661,7 @@ edition = "2021"
 serde = "1.0"
 "#,
         )
-        .unwrap();
+        .expect("internal error");
 
         let scorer = FormalVerificationScorer::new();
         assert!(!scorer.has_vstd_dependency(temp_dir.path()));
@@ -669,9 +669,9 @@ serde = "1.0"
 
     #[test]
     fn test_verus_specs_give_points() {
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new().expect("internal error");
         let src_dir = temp_dir.path().join("src");
-        std::fs::create_dir_all(&src_dir).unwrap();
+        std::fs::create_dir_all(&src_dir).expect("internal error");
 
         // Create file with Verus specifications
         std::fs::write(
@@ -682,7 +682,7 @@ serde = "1.0"
 pub fn verified_fn(x: u32) -> u32 { x }
 "#,
         )
-        .unwrap();
+        .expect("internal error");
 
         // Create Cargo.toml with vstd
         std::fs::write(
@@ -696,12 +696,12 @@ edition = "2021"
 vstd = { path = "../vstd" }
 "#,
         )
-        .unwrap();
+        .expect("internal error");
 
         let scorer = FormalVerificationScorer::new();
         let result = scorer
             .score_with_mode(temp_dir.path(), ScoringMode::Quick)
-            .unwrap();
+            .expect("internal error");
 
         // Should get Miri points (no unsafe) + some Verus points
         assert!(result.earned > MIRI_POINTS);

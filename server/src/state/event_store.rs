@@ -198,7 +198,7 @@ impl EventStore {
         let start_time = std::time::Instant::now();
 
         // Create new compacted file
-        let persistence = self.persistence.as_ref().unwrap();
+        let persistence = self.persistence.as_ref().expect("internal error");
         let events = { self.events.read().clone() };
         persistence.compact(&events).await?;
 
@@ -474,7 +474,7 @@ mod tests {
             persistence_enabled: false,
             ..Default::default()
         };
-        let store = EventStore::new(config).await.unwrap();
+        let store = EventStore::new(config).await.expect("internal error");
 
         let event = StateEvent::new(
             "partition1".to_string(),
@@ -482,10 +482,10 @@ mod tests {
             serde_json::json!({"data": "test"}),
         );
 
-        let id = store.append(event.clone()).await.unwrap();
+        let id = store.append(event.clone()).await.expect("internal error");
         assert_eq!(id, 1);
 
-        let retrieved = store.get_event(id).unwrap();
+        let retrieved = store.get_event(id).expect("internal error");
         assert_eq!(retrieved.partition_key, "partition1");
         assert_eq!(retrieved.event_type, "test_event");
     }
@@ -496,7 +496,7 @@ mod tests {
             persistence_enabled: false,
             ..Default::default()
         };
-        let store = EventStore::new(config).await.unwrap();
+        let store = EventStore::new(config).await.expect("internal error");
 
         let events = vec![
             StateEvent::new("p1".to_string(), "e1".to_string(), serde_json::json!({})),
@@ -504,7 +504,7 @@ mod tests {
             StateEvent::new("p2".to_string(), "e3".to_string(), serde_json::json!({})),
         ];
 
-        let ids = store.append_batch(events).await.unwrap();
+        let ids = store.append_batch(events).await.expect("internal error");
         assert_eq!(ids, vec![1, 2, 3]);
 
         let p1_events = store.get_partition_events("p1", None);
@@ -520,7 +520,7 @@ mod tests {
             persistence_enabled: false,
             ..Default::default()
         };
-        let store = EventStore::new(config).await.unwrap();
+        let store = EventStore::new(config).await.expect("internal error");
 
         for i in 0..10 {
             let event = StateEvent::new(
@@ -528,7 +528,7 @@ mod tests {
                 format!("event_{}", i),
                 serde_json::json!({"index": i}),
             );
-            store.append(event).await.unwrap();
+            store.append(event).await.expect("internal error");
         }
 
         let events = store.get_events_since(5, Some(3));
@@ -545,7 +545,7 @@ mod tests {
             persistence_enabled: false,
             ..Default::default()
         };
-        let store = EventStore::new(config).await.unwrap();
+        let store = EventStore::new(config).await.expect("internal error");
 
         for i in 0..10 {
             let event = StateEvent::new(
@@ -553,7 +553,7 @@ mod tests {
                 format!("event_{}", i),
                 serde_json::json!({"index": i}),
             );
-            store.append(event).await.unwrap();
+            store.append(event).await.expect("internal error");
         }
 
         let stats = store.get_statistics();

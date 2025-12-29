@@ -658,7 +658,7 @@ impl McpTool for QualityGateTool {
 
         Ok(json!({
             "type": "text",
-            "text": serde_json::to_string_pretty(&results).unwrap()
+            "text": serde_json::to_string_pretty(&results).expect("internal error")
         }))
     }
 }

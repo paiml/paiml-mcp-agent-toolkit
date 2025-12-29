@@ -188,7 +188,7 @@ pub fn filter_predictions(
     }
 
     // Sort by probability (highest first)
-    filtered_predictions.sort_by(|a, b| b.1.probability.partial_cmp(&a.1.probability).unwrap());
+    filtered_predictions.sort_by(|a, b| b.1.probability.partial_cmp(&a.1.probability).expect("internal error"));
 
     filtered_predictions
 }

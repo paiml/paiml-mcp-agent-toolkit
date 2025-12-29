@@ -47,7 +47,7 @@ pub type Result<T> = std::result::Result<T, GitError>;
 pub fn extract_ticket_ids(commit_message: &str) -> Vec<String> {
     use regex::Regex;
 
-    let re = Regex::new(r"TICKET-PMAT-\d{4}").unwrap();
+    let re = Regex::new(r"TICKET-PMAT-\d{4}").expect("internal error");
     re.find_iter(commit_message)
         .map(|m| m.as_str().to_string())
         .collect()

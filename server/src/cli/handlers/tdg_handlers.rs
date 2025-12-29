@@ -1126,7 +1126,7 @@ async fn handle_check_quality(
                 "Baseline required for --new-files-only mode"
             ));
         }
-        let baseline = TdgBaseline::load(baseline_path.unwrap())?;
+        let baseline = TdgBaseline::load(baseline_path.expect("internal error"))?;
 
         let mut config = GateConfig::default();
         if let Some(grade_str) = min_grade_str {

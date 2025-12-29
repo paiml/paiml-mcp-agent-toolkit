@@ -118,7 +118,7 @@ impl WorkflowPrompt {
 
     /// Extract variable names from the prompt text
     pub fn extract_variables(&self) -> Vec<String> {
-        let re = regex::Regex::new(r"\$\{([^}]+)\}").unwrap();
+        let re = regex::Regex::new(r"\$\{([^}]+)\}").expect("internal error");
         re.captures_iter(&self.prompt)
             .map(|cap| cap[1].to_string())
             .collect()
@@ -156,7 +156,7 @@ prompt: |
 methodology: EXTREME TDD
 "#;
 
-        let prompt = WorkflowPrompt::from_yaml(yaml).unwrap();
+        let prompt = WorkflowPrompt::from_yaml(yaml).expect("internal error");
         assert_eq!(prompt.name, "test-prompt");
         assert_eq!(prompt.description, "Test prompt");
         assert_eq!(prompt.category, "testing");
@@ -175,7 +175,7 @@ priority: high
 prompt: "Test ${VAR1} and ${VAR2}"
 "#;
 
-        let prompt = WorkflowPrompt::from_yaml(yaml).unwrap();
+        let prompt = WorkflowPrompt::from_yaml(yaml).expect("internal error");
         let mut vars = HashMap::new();
         vars.insert("VAR1".to_string(), "value1".to_string());
         vars.insert("VAR2".to_string(), "value2".to_string());
@@ -194,7 +194,7 @@ priority: high
 prompt: "Use ${TEST_CMD} and ${COVERAGE_CMD} here"
 "#;
 
-        let prompt = WorkflowPrompt::from_yaml(yaml).unwrap();
+        let prompt = WorkflowPrompt::from_yaml(yaml).expect("internal error");
         let vars = prompt.extract_variables();
         assert_eq!(vars.len(), 2);
         assert!(vars.contains(&"TEST_CMD".to_string()));
@@ -212,8 +212,8 @@ prompt: "Test prompt"
 coverage_target: 85
 "#;
 
-        let prompt = WorkflowPrompt::from_yaml(yaml).unwrap();
-        let json = prompt.to_json().unwrap();
+        let prompt = WorkflowPrompt::from_yaml(yaml).expect("internal error");
+        let json = prompt.to_json().expect("internal error");
         assert!(json.contains("\"name\": \"test\""));
         assert!(json.contains("\"coverage_target\": 85"));
     }
@@ -228,7 +228,7 @@ priority: high
 prompt: "Run ${CMD} now"
 "#;
 
-        let prompt = WorkflowPrompt::from_yaml(yaml).unwrap();
+        let prompt = WorkflowPrompt::from_yaml(yaml).expect("internal error");
         let mut vars = HashMap::new();
         vars.insert("CMD".to_string(), "cargo test".to_string());
 
@@ -252,7 +252,7 @@ category: test
 priority: high
 prompt: "Test ${VAR}"
 "#;
-            let prompt = WorkflowPrompt::from_yaml(yaml).unwrap();
+            let prompt = WorkflowPrompt::from_yaml(yaml).expect("internal error");
             let mut vars = HashMap::new();
             vars.insert("VAR".to_string(), var_value);
 
@@ -289,8 +289,8 @@ prompt: "Test ${VAR}"
                 security_tools: None,
             };
 
-            let yaml = prompt.to_yaml().unwrap();
-            let parsed = WorkflowPrompt::from_yaml(&yaml).unwrap();
+            let yaml = prompt.to_yaml().expect("internal error");
+            let parsed = WorkflowPrompt::from_yaml(&yaml).expect("internal error");
             prop_assert_eq!(parsed.name, name);
             prop_assert_eq!(parsed.description, desc);
         }

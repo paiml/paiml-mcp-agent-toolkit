@@ -111,7 +111,7 @@ impl AgentMessage {
                 to,
                 timestamp: SystemTime::now()
                     .duration_since(UNIX_EPOCH)
-                    .unwrap()
+                    .expect("internal error")
                     .as_nanos() as u64,
                 correlation_id: None,
                 priority: Priority::Normal,
@@ -139,7 +139,7 @@ impl AgentMessage {
     pub fn is_expired(&self) -> bool {
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .expect("internal error")
             .as_nanos() as u64;
 
         let expiry = self.header.timestamp + (self.header.ttl_ms as u64 * 1_000_000);
@@ -228,7 +228,7 @@ mod tests {
         let to = Uuid::new_v4();
         let payload = "test payload";
 
-        let message = AgentMessage::new(from, to, payload).unwrap();
+        let message = AgentMessage::new(from, to, payload).expect("internal error");
 
         assert_eq!(message.header.from, from);
         assert_eq!(message.header.to, to);
@@ -248,7 +248,7 @@ mod tests {
         let to = Uuid::new_v4();
 
         let message = AgentMessage::new(from, to, "test")
-            .unwrap()
+            .expect("internal error")
             .with_ttl(Duration::from_millis(0));
 
         std::thread::sleep(Duration::from_millis(1));

@@ -853,7 +853,7 @@ impl MinHashGenerator {
             }
             let hash = hasher.finalize();
             shingles.push(u64::from_le_bytes(
-                hash.as_bytes()[0..8].try_into().unwrap(),
+                hash.as_bytes()[0..8].try_into().expect("internal error"),
             ));
         }
 
@@ -994,7 +994,7 @@ impl DuplicateDetectionEngine {
         for token in &tokens {
             hasher.update(token.text.as_bytes());
         }
-        let hash = u64::from_le_bytes(hasher.finalize().as_bytes()[0..8].try_into().unwrap());
+        let hash = u64::from_le_bytes(hasher.finalize().as_bytes()[0..8].try_into().expect("internal error"));
 
         let fragment = CodeFragment {
             id,
@@ -1284,7 +1284,7 @@ impl DuplicateDetectionEngine {
             })
             .collect();
 
-        hotspots.sort_by(|a, b| b.severity.partial_cmp(&a.severity).unwrap());
+        hotspots.sort_by(|a, b| b.severity.partial_cmp(&a.severity).expect("internal error"));
         hotspots.truncate(10); // Top 10 hotspots
         hotspots
     }
@@ -1555,7 +1555,7 @@ mod tests {
             ),
         ];
 
-        let report = engine.detect_duplicates(&files).unwrap();
+        let report = engine.detect_duplicates(&files).expect("internal error");
         assert!(report.summary.clone_groups > 0);
         assert!(report.summary.duplication_ratio > 0.0);
     }
@@ -1588,7 +1588,7 @@ mod tests {
             ),
         ];
 
-        let report = engine.detect_duplicates(&files).unwrap();
+        let report = engine.detect_duplicates(&files).expect("internal error");
         assert_eq!(report.summary.total_files, 3);
     }
 
@@ -1605,7 +1605,7 @@ mod tests {
                 "fn one() { println!(\"1\"); }\n\nfn two() { println!(\"2\"); }",
                 Language::Rust,
             )
-            .unwrap();
+            .expect("internal error");
         assert!(!fragments.is_empty());
     }
 
@@ -1638,7 +1638,7 @@ mod tests {
             });
         }
 
-        let pairs = engine.find_clone_pairs(&fragments).unwrap();
+        let pairs = engine.find_clone_pairs(&fragments).expect("internal error");
         assert!(!pairs.is_empty());
     }
 
@@ -1667,7 +1667,7 @@ mod tests {
 
         let clone_pairs = vec![(1, 2, 0.9), (2, 3, 0.85), (4, 5, 0.95)];
 
-        let groups = engine.group_clones(clone_pairs).unwrap();
+        let groups = engine.group_clones(clone_pairs).expect("internal error");
         assert_eq!(groups.len(), 2); // Should form 2 groups: {1,2,3} and {4,5}
     }
 
@@ -1801,7 +1801,7 @@ mod tests {
 
         let files = vec![(PathBuf::from("empty.rs"), String::new(), Language::Rust)];
 
-        let report = engine.detect_duplicates(&files).unwrap();
+        let report = engine.detect_duplicates(&files).expect("internal error");
         assert_eq!(report.summary.total_files, 1);
         assert_eq!(report.summary.total_fragments, 0);
     }
@@ -1965,7 +1965,7 @@ mod tests {
             ),
         ];
 
-        let report = engine.detect_duplicates(&files).unwrap();
+        let report = engine.detect_duplicates(&files).expect("internal error");
         assert!(report.summary.total_fragments >= 1);
     }
 

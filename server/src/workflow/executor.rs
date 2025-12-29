@@ -369,7 +369,7 @@ impl DefaultWorkflowExecutor {
                         return Ok(serde_json::json!(format!("{:?}", result.status)));
                     } else if field.starts_with("output.") {
                         if let Some(output) = &result.output {
-                            let output_path = field.strip_prefix("output.").unwrap();
+                            let output_path = field.strip_prefix("output.").expect("internal error");
                             return Ok(output[output_path].clone());
                         }
                     }
@@ -796,7 +796,7 @@ mod tests {
         assert!(pause_result.is_ok());
 
         // Verify paused state
-        let control = executor.check_execution_control(context_clone_id).unwrap();
+        let control = executor.check_execution_control(context_clone_id).expect("internal error");
         assert_eq!(control, ExecutionControl::Paused);
 
         // Resume execution
@@ -836,7 +836,7 @@ mod tests {
         assert!(cancel_result.is_ok());
 
         // Verify cancelled state
-        let control = executor.check_execution_control(context_clone_id).unwrap();
+        let control = executor.check_execution_control(context_clone_id).expect("internal error");
         assert_eq!(control, ExecutionControl::Cancelled);
     }
 

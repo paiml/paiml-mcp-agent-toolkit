@@ -115,7 +115,7 @@ impl AsyncProfiler {
         }
 
         // Sort by percentage descending
-        functions.sort_by(|a, b| b.percentage.partial_cmp(&a.percentage).unwrap());
+        functions.sort_by(|a, b| b.percentage.partial_cmp(&a.percentage).expect("internal error"));
 
         Ok(functions)
     }

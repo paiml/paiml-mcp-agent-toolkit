@@ -55,10 +55,10 @@
 //!
 //! // Create caches for template management
 //! let metadata_cache: MetadataCache = Arc::new(RwLock::new(
-//!     LruCache::new(NonZeroUsize::new(100).unwrap())
+//!     LruCache::new(NonZeroUsize::new(100).expect("internal error"))
 //! ));
 //! let content_cache: ContentCache = Arc::new(RwLock::new(
-//!     LruCache::new(NonZeroUsize::new(50).unwrap())  
+//!     LruCache::new(NonZeroUsize::new(50).expect("internal error"))  
 //! ));
 //!
 //! // Caches are ready for use
@@ -174,7 +174,7 @@ use crate::services::renderer::TemplateRenderer;
 ///
 /// // Create a metadata cache with 100 entry capacity
 /// let cache: MetadataCache = Arc::new(RwLock::new(
-///     LruCache::new(NonZeroUsize::new(100).unwrap())
+///     LruCache::new(NonZeroUsize::new(100).expect("internal error"))
 /// ));
 ///
 /// // Cache starts empty
@@ -198,7 +198,7 @@ pub type MetadataCache = Arc<RwLock<LruCache<String, Arc<TemplateResource>>>>;
 ///
 /// // Create a content cache with 50 entry capacity
 /// let cache: ContentCache = Arc::new(RwLock::new(
-///     LruCache::new(NonZeroUsize::new(50).unwrap())
+///     LruCache::new(NonZeroUsize::new(50).expect("internal error"))
 /// ));
 ///
 /// // Insert content into cache
@@ -350,10 +350,10 @@ impl TemplateServer {
             s3_client: S3Client,
             bucket_name: "dummy".to_string(),
             metadata_cache: Arc::new(RwLock::new(LruCache::new(
-                NonZeroUsize::new(cache_size / 2).unwrap(),
+                NonZeroUsize::new(cache_size / 2).expect("internal error"),
             ))),
             content_cache: Arc::new(RwLock::new(LruCache::new(
-                NonZeroUsize::new(cache_size).unwrap(),
+                NonZeroUsize::new(cache_size).expect("internal error"),
             ))),
             renderer: TemplateRenderer::new()?,
         })

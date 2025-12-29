@@ -224,7 +224,7 @@ impl TDGCalculator {
         }
 
         // Sort for percentile calculation
-        tdg_values.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        tdg_values.sort_by(|a, b| a.partial_cmp(b).expect("internal error"));
 
         let average_tdg = if tdg_values.is_empty() {
             0.0
@@ -243,7 +243,7 @@ impl TDGCalculator {
             .map(|((idx, score), path)| (idx, score, path.clone()))
             .collect();
 
-        indexed_scores.sort_by(|a, b| b.1.value.partial_cmp(&a.1.value).unwrap());
+        indexed_scores.sort_by(|a, b| b.1.value.partial_cmp(&a.1.value).expect("internal error"));
 
         let hotspots = indexed_scores
             .iter()
@@ -703,11 +703,11 @@ impl TDGCalculator {
     /// Calculate percentiles for a batch of scores
     fn calculate_percentiles(&self, scores: &mut [TDGScore]) {
         let mut values: Vec<f64> = scores.iter().map(|s| s.value).collect();
-        values.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        values.sort_by(|a, b| a.partial_cmp(b).expect("internal error"));
 
         for score in scores.iter_mut() {
             let position = values
-                .binary_search_by(|&v| v.partial_cmp(&score.value).unwrap())
+                .binary_search_by(|&v| v.partial_cmp(&score.value).expect("internal error"))
                 .unwrap_or_else(|i| i);
             score.percentile = (position as f64 / values.len() as f64) * 100.0;
         }
@@ -749,7 +749,7 @@ impl TDGCalculator {
             ),
         ];
 
-        factors.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
+        factors.sort_by(|a, b| b.0.partial_cmp(&a.0).expect("internal error"));
         factors[0].1.to_string()
     }
 
@@ -894,7 +894,7 @@ impl TDGCalculator {
             .filter(|line| {
                 patterns
                     .iter()
-                    .any(|p| regex::Regex::new(p).unwrap().is_match(line.trim()))
+                    .any(|p| regex::Regex::new(p).expect("internal error").is_match(line.trim()))
             })
             .count()
     }
@@ -1004,7 +1004,7 @@ mod tests {
     #[tokio::test]
     async fn test_tdg_calculation() {
         let calculator = TDGCalculator::new();
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new().expect("internal error");
 
         let test_file = temp_dir.path().join("test.rs");
         tokio::fs::write(
@@ -1028,7 +1028,7 @@ mod tests {
         "#,
         )
         .await
-        .unwrap();
+        .expect("internal error");
 
         // Try to calculate the score - it may fail if no git repo
         let score_result = calculator.calculate_file(&test_file).await;
@@ -1042,7 +1042,7 @@ mod tests {
             panic!("Unexpected error: {e}");
         }
 
-        let score = score_result.unwrap();
+        let score = score_result.expect("internal error");
 
         assert!(score.value > 0.0);
         assert!(score.value <= 5.0);
@@ -1089,7 +1089,7 @@ mod tests {
     #[tokio::test]
     async fn test_tdg_variance() {
         let calculator = TDGCalculator::new();
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new().expect("internal error");
 
         // Create files with different complexity levels
         let simple_file = temp_dir.path().join("simple.rs");
@@ -1102,7 +1102,7 @@ mod tests {
             "#,
         )
         .await
-        .unwrap();
+        .expect("internal error");
 
         let complex_file = temp_dir.path().join("complex.rs");
         tokio::fs::write(
@@ -1128,7 +1128,7 @@ mod tests {
             "#,
         )
         .await
-        .unwrap();
+        .expect("internal error");
 
         let medium_file = temp_dir.path().join("medium.rs");
         tokio::fs::write(
@@ -1144,7 +1144,7 @@ mod tests {
             "#,
         )
         .await
-        .unwrap();
+        .expect("internal error");
 
         // Calculate TDG for each file
         let simple_result = calculator.calculate_file(&simple_file).await;
@@ -1158,9 +1158,9 @@ mod tests {
             }
         }
 
-        let simple_tdg = simple_result.unwrap();
-        let complex_tdg = complex_result.unwrap();
-        let medium_tdg = medium_result.unwrap();
+        let simple_tdg = simple_result.expect("internal error");
+        let complex_tdg = complex_result.expect("internal error");
+        let medium_tdg = medium_result.expect("internal error");
 
         // Verify variance - values should be different
         assert_ne!(

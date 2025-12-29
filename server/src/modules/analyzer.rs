@@ -31,7 +31,7 @@ mod internal {
     impl AnalyzerCore {
         pub(super) fn new() -> Self {
             Self {
-                _cache: lru::LruCache::new(std::num::NonZeroUsize::new(100).unwrap()),
+                _cache: lru::LruCache::new(std::num::NonZeroUsize::new(100).expect("internal error")),
             }
         }
 
@@ -141,7 +141,7 @@ mod tests {
             use std::collections::HashMap;
         "#;
 
-        let metrics = analyzer.analyze(code).await.unwrap();
+        let metrics = analyzer.analyze(code).await.expect("internal error");
         assert_eq!(metrics.functions, 1);
         assert_eq!(metrics.classes, 1);
         assert_eq!(metrics.imports, 1);

@@ -111,7 +111,7 @@ impl ProgressTracker {
         pb.set_style(
             ProgressStyle::default_bar()
                 .template("  {msg} [{bar:30.green/white}] {pos}/{len}")
-                .unwrap()
+                .expect("internal error")
                 .progress_chars("█▉▊▋▌▍▎▏  "),
         );
         pb.set_message(message.to_string());
@@ -180,7 +180,7 @@ impl FileClassificationReporter {
         let count = self
             .skipped_count
             .load(std::sync::atomic::Ordering::Relaxed);
-        let files = self.large_files_skipped.lock().unwrap().clone();
+        let files = self.large_files_skipped.lock().expect("internal error").clone();
         (count, files)
     }
 }

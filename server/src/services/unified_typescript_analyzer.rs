@@ -191,7 +191,7 @@ impl UnifiedTypeScriptAnalyzer {
         // Simple function detection (will miss some edge cases, but good enough for GREEN)
         let function_pattern = regex::Regex::new(
             r"(?:function\s+(\w+)|const\s+(\w+)\s*=\s*(?:async\s*)?\(|(\w+)\s*\(.*?\)\s*\{|async\s+function\s+(\w+))"
-        ).unwrap();
+        ).expect("internal error");
 
         for cap in function_pattern.captures_iter(content) {
             let name = cap
@@ -274,8 +274,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_parse_count_increments() {
-        let temp_file = tempfile::NamedTempFile::with_suffix(".ts").unwrap();
-        std::fs::write(temp_file.path(), "function main() {}").unwrap();
+        let temp_file = tempfile::NamedTempFile::with_suffix(".ts").expect("internal error");
+        std::fs::write(temp_file.path(), "function main() {}").expect("internal error");
 
         let analyzer = UnifiedTypeScriptAnalyzer::new(temp_file.path().to_path_buf());
 

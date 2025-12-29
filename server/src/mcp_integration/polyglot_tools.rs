@@ -94,7 +94,7 @@ impl McpTool for PolyglotAnalysisTool {
         let languages = if params["languages"].is_array() {
             let langs = params["languages"]
                 .as_array()
-                .unwrap()
+                .expect("internal error")
                 .iter()
                 .filter_map(|l| l.as_str())
                 .filter_map(|l| match l.to_lowercase().as_str() {
@@ -669,14 +669,14 @@ mod tests {
 
         // Verify results
         assert!(patterns.is_array());
-        assert_eq!(patterns.as_array().unwrap().len(), 1);
+        assert_eq!(patterns.as_array().expect("internal error").len(), 1);
 
         let first_pattern = &patterns.as_array().unwrap()[0];
         assert_eq!(first_pattern["language_pair"], "Java-Kotlin");
         assert!(first_pattern["recommendations"].is_array());
         assert!(!first_pattern["recommendations"]
             .as_array()
-            .unwrap()
+            .expect("internal error")
             .is_empty());
     }
 }

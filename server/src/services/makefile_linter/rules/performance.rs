@@ -262,7 +262,7 @@ fn process_braced_var(text: &str, start_idx: usize, vars: &mut HashSet<String>) 
 
 fn process_single_char_var(c: u8, vars: &mut HashSet<String>) {
     let byte_slice = [c];
-    let var_name = std::str::from_utf8(&byte_slice).unwrap();
+    let var_name = std::str::from_utf8(&byte_slice).expect("internal error");
     if !is_automatic_var(var_name) {
         vars.insert(var_name.to_string());
     }
@@ -349,7 +349,7 @@ mod tests {
         // Test with expensive recursive variable
         let input = "FILES = $(shell find . -name '*.c')\nall:\n\techo $(FILES)\n\techo $(FILES)";
         let mut parser = MakefileParser::new(input);
-        let ast = parser.parse().unwrap();
+        let ast = parser.parse().expect("internal error");
 
         // Debug: check what nodes were created
         for (i, node) in ast.nodes.iter().enumerate() {
@@ -419,7 +419,7 @@ target:
 	echo $(DERIVED)
 "#;
         let mut parser = MakefileParser::new(input);
-        let ast = parser.parse().unwrap();
+        let ast = parser.parse().expect("internal error");
         let rule = RecursiveExpansionRule::default();
         let violations = rule.check(&ast);
 
@@ -437,7 +437,7 @@ target1 target2 target3: $(FILES)
 	gcc -c $<
 "#;
         let mut parser = MakefileParser::new(input);
-        let ast = parser.parse().unwrap();
+        let ast = parser.parse().expect("internal error");
         let rule = RecursiveExpansionRule::default();
         let violations = rule.check(&ast);
 

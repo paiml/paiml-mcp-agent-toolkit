@@ -96,13 +96,13 @@ impl NamingStyle {
                 .all(|c| c.is_lowercase() || c == '_' || c.is_numeric()),
             NamingStyle::CamelCase => {
                 !name.is_empty()
-                    && name.chars().next().unwrap().is_lowercase()
+                    && name.chars().next().expect("internal error").is_lowercase()
                     && !name.contains('_')
                     && !name.contains('-')
             }
             NamingStyle::PascalCase => {
                 !name.is_empty()
-                    && name.chars().next().unwrap().is_uppercase()
+                    && name.chars().next().expect("internal error").is_uppercase()
                     && !name.contains('_')
                     && !name.contains('-')
             }

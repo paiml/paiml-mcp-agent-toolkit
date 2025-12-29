@@ -62,7 +62,7 @@ pub struct RustDefectDetector {
 impl RustDefectDetector {
     pub fn new() -> Self {
         Self {
-            unwrap_regex: Regex::new(r"\.unwrap\(\)").unwrap(),
+            unwrap_regex: Regex::new(r"\.unwrap\(\)").expect("internal error"),
         }
     }
 
@@ -80,7 +80,7 @@ impl RustDefectDetector {
             return true;
         }
 
-        // Exclude examples directory (demos and samples often use .unwrap() for brevity)
+        // Exclude examples directory (demos and samples often use .expect("internal error") for brevity)
         if path_str.contains("/examples/")
             || path_str.starts_with("examples/")
             || path_str.starts_with("./examples/")
@@ -88,7 +88,7 @@ impl RustDefectDetector {
             return true;
         }
 
-        // Exclude fuzz targets (fuzz tests typically use .unwrap() for simplicity)
+        // Exclude fuzz targets (fuzz tests typically use .expect("internal error") for simplicity)
         if path_str.contains("/fuzz/")
             || path_str.starts_with("fuzz/")
             || path_str.starts_with("./fuzz/")
@@ -235,7 +235,7 @@ mod tests {
         let detector = RustDefectDetector::new();
         let code = r#"
             fn test_helper() {
-                let x = Some(42).unwrap();
+                let x = Some(42).expect("internal error");
             }
         "#;
 
@@ -250,7 +250,7 @@ mod tests {
         let detector = RustDefectDetector::new();
         let code = r#"
             fn main() {
-                let x = Some(42).unwrap();
+                let x = Some(42).expect("internal error");
             }
         "#;
 
@@ -276,7 +276,7 @@ mod tests {
         let detector = RustDefectDetector::new();
         let code = r#"
             fn fuzz_target() {
-                let x = Some(42).unwrap();
+                let x = Some(42).expect("internal error");
             }
         "#;
 

@@ -55,7 +55,7 @@ pub async fn analyze_defect_probability(
     }
 
     // Sort by probability
-    predictions.sort_by(|a, b| b.1.probability.partial_cmp(&a.1.probability).unwrap());
+    predictions.sort_by(|a, b| b.1.probability.partial_cmp(&a.1.probability).expect("internal error"));
 
     Ok(predictions)
 }
@@ -79,7 +79,7 @@ pub async fn analyze_defect_probability(
 ///     })
 /// ];
 ///
-/// let json = format_defect_json(&predictions).unwrap();
+/// let json = format_defect_json(&predictions).expect("internal error");
 /// assert!(json.contains("defect_predictions"));
 /// assert!(json.contains("src/main.rs"));
 /// ```
@@ -123,7 +123,7 @@ pub fn format_defect_json(predictions: &[(String, DefectScore)]) -> Result<Strin
 ///     })
 /// ];
 ///
-/// let summary = format_defect_summary(&predictions).unwrap();
+/// let summary = format_defect_summary(&predictions).expect("internal error");
 /// assert!(summary.contains("Defect Prediction Summary"));
 /// assert!(summary.contains("**Total files analyzed**: 1"));
 /// ```

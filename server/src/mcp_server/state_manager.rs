@@ -238,13 +238,13 @@ impl StateManager {
     /// use std::path::PathBuf;
     /// use tempfile::tempdir;
     ///
-    /// let temp_dir = tempdir().unwrap();
+    /// let temp_dir = tempdir().expect("internal error");
     /// let mut manager = StateManager::with_temp_dir(temp_dir.path());
     ///
     /// // Start session first
     /// let targets = vec![PathBuf::from("/tmp/test.rs")];
     /// let config = RefactorConfig::default();
-    /// manager.start_session(targets, config).unwrap();
+    /// manager.start_session(targets, config).expect("internal error");
     ///
     /// // Advance through state machine phases
     /// let advance1 = manager.advance();
@@ -337,7 +337,7 @@ impl StateManager {
 
         let timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .expect("internal error")
             .as_millis();
 
         format!("refactor-session-{timestamp}")

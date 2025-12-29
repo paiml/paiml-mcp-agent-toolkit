@@ -156,7 +156,7 @@ fn validate_roadmap_tickets(
                 });
             } else {
                 // Cross-validate status
-                let ticket_file = ticket_map.get(&ticket.id).unwrap();
+                let ticket_file = ticket_map.get(&ticket.id).expect("internal error");
                 if !status_matches(ticket_file, ticket.completed) {
                     report.status_mismatches.push(StatusMismatch {
                         ticket_id: ticket.id.clone(),
@@ -365,13 +365,13 @@ mod tests {
     fn integration_validate_pmat_project() {
         let project_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .parent()
-            .unwrap()
+            .expect("internal error")
             .to_path_buf();
 
         let roadmap_path = project_root.join("ROADMAP.md");
         let tickets_dir = project_root.join("docs/tickets");
 
-        let report = validate_project(&roadmap_path, &tickets_dir).unwrap();
+        let report = validate_project(&roadmap_path, &tickets_dir).expect("internal error");
 
         // PMAT should have valid roadmap-ticket linkage
         println!("Validation report:\n{}", format_report(&report));

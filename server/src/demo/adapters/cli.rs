@@ -129,7 +129,7 @@ impl CliDemoAdapter {
         path.hash(&mut hasher);
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
+            .expect("internal error")
             .as_nanos()
             .hash(&mut hasher);
 

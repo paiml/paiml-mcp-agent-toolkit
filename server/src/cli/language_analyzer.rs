@@ -531,7 +531,7 @@ impl CAnalyzer {
             return false;
         }
 
-        let first = s.chars().next().unwrap();
+        let first = s.chars().next().expect("internal error");
         if !first.is_alphabetic() && first != '_' {
             return false;
         }
@@ -944,7 +944,7 @@ pub fn second_function() {
             result
         );
 
-        let metrics = result.unwrap();
+        let metrics = result.expect("internal error");
 
         // THIS MIGHT FAIL - if it does, we found the integration bug
         assert_eq!(
@@ -978,9 +978,9 @@ pub fn second_function() {
 "#;
 
         // Create a temporary directory and file
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new().expect("internal error");
         let test_file = temp_dir.path().join("test.rs");
-        fs::write(&test_file, content).unwrap();
+        fs::write(&test_file, content).expect("internal error");
 
         // Test the CLI stubs layer using analyze_project_files
         let result = crate::cli::analysis_utilities::analyze_project_files(
@@ -998,7 +998,7 @@ pub fn second_function() {
             result
         );
 
-        let file_metrics = result.unwrap();
+        let file_metrics = result.expect("internal error");
 
         // Skip test if no files were analyzed (common in test environments)
         if file_metrics.is_empty() {

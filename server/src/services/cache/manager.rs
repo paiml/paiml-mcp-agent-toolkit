@@ -324,7 +324,7 @@ impl SessionCacheManager {
             .iter()
             .map(|(name, stats)| (name.clone(), stats.hits as f64))
             .collect();
-        valuable_caches.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+        valuable_caches.sort_by(|a, b| b.1.partial_cmp(&a.1).expect("internal error"));
         valuable_caches.truncate(3);
 
         CacheEffectiveness {

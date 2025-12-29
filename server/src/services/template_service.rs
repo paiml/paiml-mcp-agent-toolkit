@@ -350,7 +350,7 @@ pub async fn search_templates<T: TemplateServerTrait>(
         .filter_map(|template| compute_template_relevance(template, &query_lower))
         .collect();
 
-    results.sort_by(|a, b| b.relevance.partial_cmp(&a.relevance).unwrap());
+    results.sort_by(|a, b| b.relevance.partial_cmp(&a.relevance).expect("internal error"));
     Ok(results)
 }
 

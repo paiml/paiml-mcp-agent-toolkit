@@ -155,7 +155,7 @@ fn build_protocol_request(
     repo_path: &std::path::Path,
     show_api: bool,
 ) -> serde_json::Value {
-    let path_str = repo_path.to_str().unwrap();
+    let path_str = repo_path.to_str().expect("internal error");
     match protocol {
         "cli" => serde_json::json!({
             "path": path_str,

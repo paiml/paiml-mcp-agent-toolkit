@@ -277,7 +277,7 @@ impl MetricsAggregator {
 
         // Calculate median
         let mut sorted = values.to_vec();
-        sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        sorted.sort_by(|a, b| a.partial_cmp(b).expect("internal error"));
         let median = if count % 2 == 0 {
             (sorted[count / 2 - 1] + sorted[count / 2]) / 2.0
         } else {
@@ -558,7 +558,7 @@ mod tests {
             aggregator
                 .record_performance_metrics(metrics)
                 .await
-                .unwrap();
+                .expect("internal error");
         }
 
         let stats = aggregator.aggregate_performance_stats().await;
@@ -582,7 +582,7 @@ mod tests {
         aggregator
             .record_performance_metrics(critical_metrics)
             .await
-            .unwrap();
+            .expect("internal error");
 
         let alerts = aggregator.get_alert_status().await;
         assert!(!alerts.is_empty());

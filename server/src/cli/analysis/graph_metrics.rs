@@ -505,7 +505,7 @@ fn filter_results(
             a.degree_centrality + a.betweenness_centrality + a.closeness_centrality + a.pagerank;
         let score_b =
             b.degree_centrality + b.betweenness_centrality + b.closeness_centrality + b.pagerank;
-        score_b.partial_cmp(&score_a).unwrap()
+        score_b.partial_cmp(&score_a).expect("internal error")
     });
 
     result.nodes.truncate(top_k);
@@ -806,7 +806,7 @@ mod tests {
     #[test]
     fn test_extract_dependencies() {
         let content = "use std::collections::HashMap;\nmod utils;";
-        let deps = extract_dependencies(content, Path::new("main.rs")).unwrap();
+        let deps = extract_dependencies(content, Path::new("main.rs")).expect("internal error");
         assert!(deps.contains(&"utils.rs".to_string()));
     }
 

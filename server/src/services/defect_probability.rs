@@ -277,7 +277,7 @@ impl DefectProbabilityCalculator {
         let mut recommendations = Vec::new();
 
         // Find the highest contributing factor
-        let max_factor = factors.iter().max_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+        let max_factor = factors.iter().max_by(|a, b| a.1.partial_cmp(&b.1).expect("internal error"));
 
         if let Some((factor_name, contribution)) = max_factor {
             if *contribution > 0.2 {
@@ -393,13 +393,13 @@ impl ProjectDefectAnalysis {
         high_risk_files.sort_by(|a, b| {
             let a_prob = file_scores.get(a).map_or(0.0, |s| s.probability);
             let b_prob = file_scores.get(b).map_or(0.0, |s| s.probability);
-            b_prob.partial_cmp(&a_prob).unwrap()
+            b_prob.partial_cmp(&a_prob).expect("internal error")
         });
 
         medium_risk_files.sort_by(|a, b| {
             let a_prob = file_scores.get(a).map_or(0.0, |s| s.probability);
             let b_prob = file_scores.get(b).map_or(0.0, |s| s.probability);
-            b_prob.partial_cmp(&a_prob).unwrap()
+            b_prob.partial_cmp(&a_prob).expect("internal error")
         });
 
         Self {
@@ -414,7 +414,7 @@ impl ProjectDefectAnalysis {
     #[must_use]
     pub fn get_top_risk_files(&self, limit: usize) -> Vec<(&String, &DefectScore)> {
         let mut all_files: Vec<_> = self.file_scores.iter().collect();
-        all_files.sort_by(|a, b| b.1.probability.partial_cmp(&a.1.probability).unwrap());
+        all_files.sort_by(|a, b| b.1.probability.partial_cmp(&a.1.probability).expect("internal error"));
         all_files.into_iter().take(limit).collect()
     }
 }

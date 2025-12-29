@@ -78,9 +78,9 @@ impl StatisticalRigorScorer {
                 }
 
                 // Check for n=30+ (power analysis standard)
-                let sample_regex = Regex::new(r"(?i)n\s*[=:]\s*(\d+)").unwrap();
+                let sample_regex = Regex::new(r"(?i)n\s*[=:]\s*(\d+)").expect("internal error");
                 if let Some(caps) = sample_regex.captures(&content) {
-                    if let Ok(n) = caps.get(1).unwrap().as_str().parse::<u32>() {
+                    if let Ok(n) = caps.get(1).expect("internal error").as_str().parse::<u32>() {
                         if n >= 30 {
                             earned += 1.0;
                             description.push("adequate sample size (n≥30)");
@@ -195,7 +195,7 @@ impl StatisticalRigorScorer {
                 let threshold_regex = Regex::new(
                     r"(?i)(\d+x\s*faster|\d+%\s*(faster|slower|improvement)|\d+ms|\d+μs)",
                 )
-                .unwrap();
+                .expect("internal error");
                 if threshold_regex.is_match(&content) {
                     earned += 2.0;
                     description.push("performance thresholds documented");
@@ -319,10 +319,10 @@ mod tests {
 
     #[test]
     fn test_project_with_criterion_benchmarks() {
-        let temp_dir = tempdir().unwrap();
+        let temp_dir = tempdir().expect("internal error");
 
         // Create benches with sample size config
-        fs::create_dir_all(temp_dir.path().join("benches")).unwrap();
+        fs::create_dir_all(temp_dir.path().join("benches")).expect("internal error");
         fs::write(
             temp_dir.path().join("benches/bench.rs"),
             r#"
@@ -335,19 +335,19 @@ mod tests {
             }
             "#,
         )
-        .unwrap();
+        .expect("internal error");
 
         let scorer = StatisticalRigorScorer::new();
-        let result = scorer.score(temp_dir.path()).unwrap();
+        let result = scorer.score(temp_dir.path()).expect("internal error");
 
         // Should have sample size points
-        let d1 = result.sub_scores.iter().find(|s| s.id == "D1").unwrap();
+        let d1 = result.sub_scores.iter().find(|s| s.id == "D1").expect("internal error");
         assert!(d1.earned >= 2.0);
     }
 
     #[test]
     fn test_project_with_statistical_readme() {
-        let temp_dir = tempdir().unwrap();
+        let temp_dir = tempdir().expect("internal error");
 
         // Create README with statistical reporting
         fs::write(
@@ -363,10 +363,10 @@ Results (n=100 runs):
 This represents a 2x faster improvement compared to the baseline implementation.
 "#,
         )
-        .unwrap();
+        .expect("internal error");
 
         let scorer = StatisticalRigorScorer::new();
-        let result = scorer.score(temp_dir.path()).unwrap();
+        let result = scorer.score(temp_dir.path()).expect("internal error");
 
         // Should have multiple points
         assert!(result.earned > 5.0);
@@ -374,10 +374,10 @@ This represents a 2x faster improvement compared to the baseline implementation.
 
     #[test]
     fn test_empty_project_low_score() {
-        let temp_dir = tempdir().unwrap();
+        let temp_dir = tempdir().expect("internal error");
 
         let scorer = StatisticalRigorScorer::new();
-        let result = scorer.score(temp_dir.path()).unwrap();
+        let result = scorer.score(temp_dir.path()).expect("internal error");
 
         // Should have low/zero score
         assert!(result.earned < 5.0);

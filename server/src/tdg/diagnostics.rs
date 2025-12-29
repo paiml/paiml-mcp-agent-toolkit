@@ -309,7 +309,7 @@ impl DiagnosticTool {
             .iter()
             .map(|s| s.response_time_ms)
             .collect();
-        response_times.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        response_times.sort_by(|a, b| a.partial_cmp(b).expect("internal error"));
 
         let len = response_times.len();
         let sum: f64 = response_times.iter().sum();

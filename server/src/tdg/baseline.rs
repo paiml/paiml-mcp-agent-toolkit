@@ -207,8 +207,8 @@ impl TdgBaseline {
         }
 
         // Sort by delta magnitude
-        improved.sort_by(|a, b| b.delta.partial_cmp(&a.delta).unwrap());
-        regressed.sort_by(|a, b| a.delta.partial_cmp(&b.delta).unwrap());
+        improved.sort_by(|a, b| b.delta.partial_cmp(&a.delta).expect("internal error"));
+        regressed.sort_by(|a, b| a.delta.partial_cmp(&b.delta).expect("internal error"));
 
         BaselineComparison {
             improved,
@@ -450,13 +450,13 @@ mod tests {
         );
 
         let temp_file = std::env::temp_dir().join("test_baseline.json");
-        baseline.save(&temp_file).unwrap();
+        baseline.save(&temp_file).expect("internal error");
 
-        let loaded = TdgBaseline::load(&temp_file).unwrap();
+        let loaded = TdgBaseline::load(&temp_file).expect("internal error");
         assert_eq!(loaded.files.len(), baseline.files.len());
         assert!((loaded.summary.avg_score - baseline.summary.avg_score).abs() < 0.01);
 
-        std::fs::remove_file(temp_file).unwrap();
+        std::fs::remove_file(temp_file).expect("internal error");
     }
 
     #[test]
@@ -480,7 +480,7 @@ mod tests {
         let baseline = TdgBaseline::new(git_context.clone());
         assert!(baseline.git_context.is_some());
         assert_eq!(
-            baseline.git_context.unwrap().commit_sha,
+            baseline.git_context.expect("internal error").commit_sha,
             "abc123def456".to_string()
         );
     }
@@ -524,12 +524,12 @@ mod tests {
             baseline
                 .files
                 .get(&PathBuf::from("file1.rs"))
-                .unwrap()
+                .expect("internal error")
                 .content_hash,
             baseline
                 .files
                 .get(&PathBuf::from("file2.rs"))
-                .unwrap()
+                .expect("internal error")
                 .content_hash
         );
     }
@@ -567,15 +567,15 @@ mod tests {
                 .summary
                 .grade_distribution
                 .get(&Grade::APLus)
-                .unwrap(),
+                .expect("internal error"),
             1
         );
         assert_eq!(
-            *baseline.summary.grade_distribution.get(&Grade::A).unwrap(),
+            *baseline.summary.grade_distribution.get(&Grade::A).expect("internal error"),
             2
         );
         assert_eq!(
-            *baseline.summary.grade_distribution.get(&Grade::B).unwrap(),
+            *baseline.summary.grade_distribution.get(&Grade::B).expect("internal error"),
             1
         );
     }
@@ -613,7 +613,7 @@ mod tests {
                 .summary
                 .languages
                 .get(&format!("{:?}", Language::Rust))
-                .unwrap(),
+                .expect("internal error"),
             2
         );
         assert_eq!(
@@ -621,7 +621,7 @@ mod tests {
                 .summary
                 .languages
                 .get(&format!("{:?}", Language::Python))
-                .unwrap(),
+                .expect("internal error"),
             1
         );
     }

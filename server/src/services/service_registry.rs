@@ -93,13 +93,13 @@ impl ServiceRegistry {
 
         // Store the service
         {
-            let mut services = self.services.write().unwrap();
+            let mut services = self.services.write().expect("internal error");
             services.insert(type_id, Box::new(Arc::new(service)));
         }
 
         // Store the service name for debugging
         {
-            let mut names = self.service_names.write().unwrap();
+            let mut names = self.service_names.write().expect("internal error");
             names.insert(type_id, service_name);
         }
 
@@ -110,7 +110,7 @@ impl ServiceRegistry {
     pub fn get<T: Service + 'static>(&self) -> Result<Arc<T>> {
         let type_id = TypeId::of::<T>();
 
-        let services = self.services.read().unwrap();
+        let services = self.services.read().expect("internal error");
         let service = services
             .get(&type_id)
             .ok_or_else(|| anyhow::anyhow!("Service not found: {}", std::any::type_name::<T>()))?;
@@ -126,14 +126,14 @@ impl ServiceRegistry {
     #[must_use]
     pub fn has<T: Service + 'static>(&self) -> bool {
         let type_id = TypeId::of::<T>();
-        let services = self.services.read().unwrap();
+        let services = self.services.read().expect("internal error");
         services.contains_key(&type_id)
     }
 
     /// Get all registered service names for debugging
     #[must_use]
     pub fn list_services(&self) -> Vec<&'static str> {
-        let names = self.service_names.read().unwrap();
+        let names = self.service_names.read().expect("internal error");
         names.values().copied().collect()
     }
 

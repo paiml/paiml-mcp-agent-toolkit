@@ -24,7 +24,7 @@ pub struct ContentCache<T: CacheStrategy> {
 impl<T: CacheStrategy> ContentCache<T> {
     pub fn new(strategy: T) -> Self {
         let max_size =
-            NonZeroUsize::new(strategy.max_size()).unwrap_or(NonZeroUsize::new(100).unwrap());
+            NonZeroUsize::new(strategy.max_size()).unwrap_or(NonZeroUsize::new(100).expect("internal error"));
 
         Self {
             cache: Arc::new(RwLock::new(LruCache::new(max_size))),
@@ -276,7 +276,7 @@ mod tests {
 
         let value = cache.get(&"key1".to_string());
         assert!(value.is_some());
-        assert_eq!(*value.unwrap(), "value1");
+        assert_eq!(*value.expect("internal error"), "value1");
     }
 
     #[test]

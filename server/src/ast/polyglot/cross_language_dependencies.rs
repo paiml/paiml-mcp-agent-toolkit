@@ -476,7 +476,7 @@ impl NameResolver for JavaKotlinResolver {
             // Check if all parts except the last match exactly
             if src_parts[0..src_parts.len() - 1] == tgt_parts[0..tgt_parts.len() - 1] {
                 // Check if the last part (class/method name) matches
-                if src_parts.last().unwrap() == tgt_parts.last().unwrap() {
+                if src_parts.last().expect("internal error") == tgt_parts.last().expect("internal error") {
                     return true;
                 }
             }
@@ -523,7 +523,7 @@ impl NameResolver for JavaScalaResolver {
             // Check if all parts except the last match exactly
             if src_parts[0..src_parts.len() - 1] == tgt_parts[0..tgt_parts.len() - 1] {
                 // Check if the last part (class/method name) matches
-                if src_parts.last().unwrap() == tgt_parts.last().unwrap() {
+                if src_parts.last().expect("internal error") == tgt_parts.last().expect("internal error") {
                     return true;
                 }
             }

@@ -48,9 +48,9 @@
 //! let context = analyzer.analyze(Path::new("src/")).await?;
 //!
 //! // Access multi-dimensional analysis results
-//! println!("Total complexity: {}", context.complexity_report.unwrap().total_complexity);
-//! println!("Code churn hotspots: {}", context.churn_analysis.unwrap().summary.hotspot_files.len());
-//! println!("Technical debt score: {:.2}", context.tdg_analysis.unwrap().summary.overall_tdg_score);
+//! println!("Total complexity: {}", context.complexity_report.expect("internal error").total_complexity);
+//! println!("Code churn hotspots: {}", context.churn_analysis.expect("internal error").summary.hotspot_files.len());
+//! println!("Technical debt score: {:.2}", context.tdg_analysis.expect("internal error").summary.overall_tdg_score);
 //! # Ok(())
 //! # }
 //! ```ignore
@@ -3197,7 +3197,7 @@ impl DeepContextAnalyzer {
             .filter(|s| matches!(s, TDGSeverity::Warning))
             .count();
 
-        tdg_values.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
+        tdg_values.sort_unstable_by(|a, b| a.partial_cmp(b).expect("internal error"));
 
         let average_tdg = if tdg_values.is_empty() {
             0.0
@@ -3229,7 +3229,7 @@ impl DeepContextAnalyzer {
                 estimated_hours: score.value * 2.0,       // Simple estimation
             })
             .collect();
-        hotspots.sort_unstable_by(|a, b| b.tdg_score.partial_cmp(&a.tdg_score).unwrap());
+        hotspots.sort_unstable_by(|a, b| b.tdg_score.partial_cmp(&a.tdg_score).expect("internal error"));
         hotspots.truncate(10);
 
         Ok(TDGSummary {
@@ -3412,7 +3412,7 @@ impl DeepContextAnalyzer {
             .collect();
 
         hotspots
-            .sort_unstable_by(|a, b| b.composite_score.partial_cmp(&a.composite_score).unwrap());
+            .sort_unstable_by(|a, b| b.composite_score.partial_cmp(&a.composite_score).expect("internal error"));
         hotspots.truncate(20);
 
         Ok(hotspots)
@@ -5303,7 +5303,7 @@ fn process_file_for_duplicate_detection(
         _ => return Ok(None),
     };
 
-    Ok(Some((file_path.to_path_buf(), content, language.unwrap())))
+    Ok(Some((file_path.to_path_buf(), content, language.expect("internal error"))))
 }
 
 fn match_extension_to_language(
@@ -5810,18 +5810,18 @@ mod tests {
         // TDD: Phase 1 (Discovery) should be extractable as independent method
         let config = DeepContextConfig::default();
         let analyzer = DeepContextAnalyzer::new(config);
-        let test_project = tempfile::tempdir().unwrap();
+        let test_project = tempfile::tempdir().expect("internal error");
         let project_path = test_project.path().to_path_buf();
 
         // Create test structure
-        std::fs::create_dir_all(project_path.join("src")).unwrap();
-        std::fs::write(project_path.join("src/main.rs"), "fn main() {}").unwrap();
+        std::fs::create_dir_all(project_path.join("src")).expect("internal error");
+        std::fs::write(project_path.join("src/main.rs"), "fn main() {}").expect("internal error");
 
         // Phase 1 should work independently
         let file_tree = analyzer
             .discover_project_structure(&project_path)
             .await
-            .unwrap();
+            .expect("internal error");
         assert!(file_tree.total_files > 0);
         assert_eq!(file_tree.root.node_type, NodeType::Directory);
     }
@@ -5831,17 +5831,17 @@ mod tests {
         // TDD: Phase 2 (Parallel Analyses) should be extractable
         let config = DeepContextConfig::default();
         let analyzer = DeepContextAnalyzer::new(config);
-        let test_project = tempfile::tempdir().unwrap();
+        let test_project = tempfile::tempdir().expect("internal error");
         let project_path = test_project.path().to_path_buf();
 
-        std::fs::create_dir_all(project_path.join("src")).unwrap();
-        std::fs::write(project_path.join("src/lib.rs"), "pub fn test() {}").unwrap();
+        std::fs::create_dir_all(project_path.join("src")).expect("internal error");
+        std::fs::write(project_path.join("src/lib.rs"), "pub fn test() {}").expect("internal error");
 
         let progress = crate::services::progress::ProgressTracker::new(false);
         let analyses = analyzer
             .execute_parallel_analyses_with_progress(&project_path, &progress)
             .await
-            .unwrap();
+            .expect("internal error");
 
         // Should complete without panicking
         assert!(analyses.ast_contexts.is_some() || analyses.complexity_report.is_some());
@@ -5857,7 +5857,7 @@ mod tests {
         let cross_refs = analyzer
             .build_cross_language_references(&analyses)
             .await
-            .unwrap();
+            .expect("internal error");
         assert!(cross_refs.is_empty() || !cross_refs.is_empty());
     }
 
@@ -5868,7 +5868,7 @@ mod tests {
         let analyzer = DeepContextAnalyzer::new(config);
         let analyses = ParallelAnalysisResults::default();
 
-        let (_, hotspots) = analyzer.correlate_defects(&analyses).await.unwrap();
+        let (_, hotspots) = analyzer.correlate_defects(&analyses).await.expect("internal error");
         // total_defects is always >= 0 for unsigned types
         assert!(hotspots.is_empty() || !hotspots.is_empty());
     }
@@ -5885,7 +5885,7 @@ mod tests {
         let quality = analyzer
             .calculate_quality_scorecard(&analyses, &defect_summary)
             .await
-            .unwrap();
+            .expect("internal error");
         assert!(quality.overall_health >= 0.0 && quality.overall_health <= 100.0);
     }
 
@@ -5917,7 +5917,7 @@ mod tests {
         let recommendations = analyzer
             .generate_recommendations(&parallel_results, &defect_summary)
             .await
-            .unwrap();
+            .expect("internal error");
         assert!(recommendations.is_empty() || !recommendations.is_empty());
     }
 
@@ -5926,16 +5926,16 @@ mod tests {
         // TDD: Phase 7.5 (Project Metadata) should be extractable
         let config = DeepContextConfig::default();
         let analyzer = DeepContextAnalyzer::new(config);
-        let test_project = tempfile::tempdir().unwrap();
+        let test_project = tempfile::tempdir().expect("internal error");
         let project_path = test_project.path().to_path_buf();
 
-        std::fs::write(project_path.join("Makefile"), "test:\n\tcargo test").unwrap();
-        std::fs::write(project_path.join("README.md"), "# Test").unwrap();
+        std::fs::write(project_path.join("Makefile"), "test:\n\tcargo test").expect("internal error");
+        std::fs::write(project_path.join("README.md"), "# Test").expect("internal error");
 
         let (build_info, overview) = analyzer
             .analyze_project_metadata(&project_path)
             .await
-            .unwrap();
+            .expect("internal error");
         assert!(build_info.is_some() || build_info.is_none());
         assert!(overview.is_some() || overview.is_none());
     }
@@ -5948,7 +5948,7 @@ mod tests {
         let mut context = DeepContext::default();
         context.metadata.project_root = PathBuf::from("/test");
 
-        let qa = analyzer.run_qa_verification(&context).await.unwrap();
+        let qa = analyzer.run_qa_verification(&context).await.expect("internal error");
         // Check that we have a valid verification result
         assert!(!qa.timestamp.is_empty());
         assert!(!qa.version.is_empty());
@@ -5959,17 +5959,17 @@ mod tests {
         // TDD: Integration test - refactored analyze_project should still work
         let config = DeepContextConfig::default();
         let analyzer = DeepContextAnalyzer::new(config);
-        let test_project = tempfile::tempdir().unwrap();
+        let test_project = tempfile::tempdir().expect("internal error");
         let project_path = test_project.path().to_path_buf();
 
-        std::fs::create_dir_all(project_path.join("src")).unwrap();
+        std::fs::create_dir_all(project_path.join("src")).expect("internal error");
         std::fs::write(
             project_path.join("src/lib.rs"),
             "//! Test\npub fn add(a: i32, b: i32) -> i32 { a + b }",
         )
-        .unwrap();
+        .expect("internal error");
 
-        let result = analyzer.analyze_project(&project_path).await.unwrap();
+        let result = analyzer.analyze_project(&project_path).await.expect("internal error");
 
         // All phases should complete successfully
         assert_eq!(result.metadata.project_root, project_path);
@@ -6006,7 +6006,7 @@ mod tests {
         let recommendations = analyzer
             .generate_recommendations(&analyses, &defect_summary)
             .await
-            .unwrap();
+            .expect("internal error");
 
         assert_eq!(recommendations.len(), 1);
         assert!(recommendations[0].title.contains("complex_fn"));
@@ -6035,7 +6035,7 @@ mod tests {
         let recommendations = analyzer
             .generate_recommendations(&analyses, &defect_summary)
             .await
-            .unwrap();
+            .expect("internal error");
 
         assert_eq!(recommendations.len(), 1);
         assert!(recommendations[0].title.contains("High defect count"));
@@ -6069,7 +6069,7 @@ mod tests {
         let recommendations = analyzer
             .generate_recommendations(&analyses, &defect_summary)
             .await
-            .unwrap();
+            .expect("internal error");
 
         assert_eq!(recommendations.len(), 1);
         assert!(recommendations[0].title.contains("Technical debt"));
@@ -6079,7 +6079,7 @@ mod tests {
     #[tokio::test]
     async fn test_analyze_complexity_function() {
         // TDD RED: Test analyze_complexity function refactoring
-        let test_project = tempfile::tempdir().unwrap();
+        let test_project = tempfile::tempdir().expect("internal error");
         let project_path = test_project.path();
 
         // Create a simple Rust file
@@ -6087,9 +6087,9 @@ mod tests {
             project_path.join("test.rs"),
             "fn simple() { println!(\"test\"); }",
         )
-        .unwrap();
+        .expect("internal error");
 
-        let result = analyze_complexity(project_path).await.unwrap();
+        let result = analyze_complexity(project_path).await.expect("internal error");
         assert_eq!(result.summary.total_files, 1);
     }
 }

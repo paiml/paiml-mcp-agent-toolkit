@@ -47,7 +47,7 @@ impl ArtifactWriter {
     /// use pmat::services::artifact_writer::ArtifactWriter;
     /// use std::path::PathBuf;
     ///
-    /// let writer = ArtifactWriter::new(PathBuf::from("/tmp/artifacts")).unwrap();
+    /// let writer = ArtifactWriter::new(PathBuf::from("/tmp/artifacts")).expect("internal error");
     /// // Writer is ready to store artifacts
     /// ```
     pub fn new(root: PathBuf) -> Result<Self, TemplateError> {
@@ -331,11 +331,11 @@ impl ArtifactWriter {
             type_stats.count += 1;
             type_stats.size += metadata.size;
 
-            if stats.oldest.is_none() || stats.oldest.as_ref().unwrap() > &metadata.generated_at {
+            if stats.oldest.is_none() || stats.oldest.as_ref().expect("internal error") > &metadata.generated_at {
                 stats.oldest = Some(metadata.generated_at);
             }
 
-            if stats.newest.is_none() || stats.newest.as_ref().unwrap() < &metadata.generated_at {
+            if stats.newest.is_none() || stats.newest.as_ref().expect("internal error") < &metadata.generated_at {
                 stats.newest = Some(metadata.generated_at);
             }
         }
@@ -428,8 +428,8 @@ mod tests {
 
     #[test]
     fn test_artifact_writer_creation() {
-        let temp_dir = TempDir::new().unwrap();
-        let writer = ArtifactWriter::new(temp_dir.path().to_path_buf()).unwrap();
+        let temp_dir = TempDir::new().expect("internal error");
+        let writer = ArtifactWriter::new(temp_dir.path().to_path_buf()).expect("internal error");
 
         assert_eq!(writer.manifest.len(), 0);
         assert!(temp_dir.path().exists());
@@ -437,9 +437,9 @@ mod tests {
 
     #[test]
     fn test_directory_structure_creation() {
-        let temp_dir = TempDir::new().unwrap();
-        let writer = ArtifactWriter::new(temp_dir.path().to_path_buf()).unwrap();
-        writer.create_directory_structure().unwrap();
+        let temp_dir = TempDir::new().expect("internal error");
+        let writer = ArtifactWriter::new(temp_dir.path().to_path_buf()).expect("internal error");
+        writer.create_directory_structure().expect("internal error");
 
         // Check that all expected directories exist
         let expected_dirs = [
@@ -460,19 +460,19 @@ mod tests {
 
     #[test]
     fn test_atomic_write_with_hash() {
-        let temp_dir = TempDir::new().unwrap();
-        let writer = ArtifactWriter::new(temp_dir.path().to_path_buf()).unwrap();
+        let temp_dir = TempDir::new().expect("internal error");
+        let writer = ArtifactWriter::new(temp_dir.path().to_path_buf()).expect("internal error");
 
         let content = "Hello, World!";
         let file_path = temp_dir.path().join("test.txt");
 
         let hash = writer
             .write_with_hash(&file_path, content, ArtifactType::DogfoodingMarkdown)
-            .unwrap();
+            .expect("internal error");
 
         // Verify file exists and content is correct
         assert!(file_path.exists());
-        let read_content = fs::read_to_string(&file_path).unwrap();
+        let read_content = fs::read_to_string(&file_path).expect("internal error");
         assert_eq!(read_content, content);
 
         // Verify hash is correct
@@ -482,8 +482,8 @@ mod tests {
 
     #[test]
     fn test_artifact_tree_writing() {
-        let temp_dir = TempDir::new().unwrap();
-        let mut writer = ArtifactWriter::new(temp_dir.path().to_path_buf()).unwrap();
+        let temp_dir = TempDir::new().expect("internal error");
+        let mut writer = ArtifactWriter::new(temp_dir.path().to_path_buf()).expect("internal error");
 
         // Create test artifact tree
         let mut dogfooding = BTreeMap::new();
@@ -518,7 +518,7 @@ mod tests {
         };
 
         // Write artifacts
-        writer.write_artifacts(&tree).unwrap();
+        writer.write_artifacts(&tree).expect("internal error");
 
         // Verify files exist
         assert!(temp_dir.path().join("dogfooding/test.md").exists());
@@ -536,15 +536,15 @@ mod tests {
 
     #[test]
     fn test_integrity_verification() {
-        let temp_dir = TempDir::new().unwrap();
-        let mut writer = ArtifactWriter::new(temp_dir.path().to_path_buf()).unwrap();
+        let temp_dir = TempDir::new().expect("internal error");
+        let mut writer = ArtifactWriter::new(temp_dir.path().to_path_buf()).expect("internal error");
 
         // Write a test file
         let content = "Test content";
         let file_path = temp_dir.path().join("test.txt");
         let hash = writer
             .write_with_hash(&file_path, content, ArtifactType::DogfoodingMarkdown)
-            .unwrap();
+            .expect("internal error");
 
         // Add to manifest
         writer.manifest.insert(
@@ -559,16 +559,16 @@ mod tests {
         );
 
         // Verify integrity - should pass
-        let report = writer.verify_integrity().unwrap();
+        let report = writer.verify_integrity().expect("internal error");
         assert_eq!(report.verified, 1);
         assert_eq!(report.failed.len(), 0);
         assert_eq!(report.missing.len(), 0);
 
         // Corrupt the file
-        fs::write(&file_path, "Corrupted content").unwrap();
+        fs::write(&file_path, "Corrupted content").expect("internal error");
 
         // Verify integrity - should fail
-        let report = writer.verify_integrity().unwrap();
+        let report = writer.verify_integrity().expect("internal error");
         assert_eq!(report.verified, 0);
         assert_eq!(report.failed.len(), 1);
         assert_eq!(report.missing.len(), 0);
@@ -576,8 +576,8 @@ mod tests {
 
     #[test]
     fn test_statistics() {
-        let temp_dir = TempDir::new().unwrap();
-        let mut writer = ArtifactWriter::new(temp_dir.path().to_path_buf()).unwrap();
+        let temp_dir = TempDir::new().expect("internal error");
+        let mut writer = ArtifactWriter::new(temp_dir.path().to_path_buf()).expect("internal error");
 
         // Add some test metadata
         writer.manifest.insert(

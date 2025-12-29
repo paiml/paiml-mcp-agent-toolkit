@@ -35,27 +35,27 @@ lazy_static! {
     /// Generic patterns that indicate placeholder text
     static ref GENERIC_PATTERNS: Vec<Regex> = vec![
         // "The X parameter"
-        Regex::new(r"^The .+ parameter").unwrap(),
+        Regex::new(r"^The .+ parameter").expect("internal error"),
 
         // "X parameter" (just noun + parameter)
-        Regex::new(r"^\w+ parameter$").unwrap(),
+        Regex::new(r"^\w+ parameter$").expect("internal error"),
 
         // "X value" patterns
-        Regex::new(r"^\w+ value$").unwrap(),
-        Regex::new(r"^Input (for|value)").unwrap(),
-        Regex::new(r"^Output (for|value)").unwrap(),
+        Regex::new(r"^\w+ value$").expect("internal error"),
+        Regex::new(r"^Input (for|value)").expect("internal error"),
+        Regex::new(r"^Output (for|value)").expect("internal error"),
 
         // Single word descriptions
-        Regex::new(r"^[A-Z][a-z]+$").unwrap(),
+        Regex::new(r"^[A-Z][a-z]+$").expect("internal error"),
 
         // "Path to X" without details
-        Regex::new(r"^Path to \w+$").unwrap(),
+        Regex::new(r"^Path to \w+$").expect("internal error"),
 
         // "Name for X" without details
-        Regex::new(r"^Name for \w+$").unwrap(),
+        Regex::new(r"^Name for \w+$").expect("internal error"),
 
         // "X for Y" without context (less than 3 words after)
-        Regex::new(r"^\w+ for \w+$").unwrap(),
+        Regex::new(r"^\w+ for \w+$").expect("internal error"),
     ];
 
     /// Words that often indicate lazy documentation

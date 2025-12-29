@@ -79,8 +79,8 @@ impl StdioTransport {
         }
 
         // Extract sequence and length
-        let _seq = u64::from_le_bytes(header[4..12].try_into().unwrap());
-        let len = u32::from_le_bytes(header[12..16].try_into().unwrap()) as usize;
+        let _seq = u64::from_le_bytes(header[4..12].try_into().expect("internal error"));
+        let len = u32::from_le_bytes(header[12..16].try_into().expect("internal error")) as usize;
 
         if len > Self::PIPE_BUF {
             return Err(io::Error::new(
@@ -141,19 +141,19 @@ mod transport_atomicity_proof {
         frame.extend_from_slice(payload);
 
         // Write frame
-        writer.write_all(&frame).await.unwrap();
+        writer.write_all(&frame).await.expect("internal error");
 
         // Read header
         let mut header = [0u8; 16];
-        reader.read_exact(&mut header).await.unwrap();
+        reader.read_exact(&mut header).await.expect("internal error");
 
         assert_eq!(&header[0..4], StdioTransport::MAGIC);
-        let len = u32::from_le_bytes(header[12..16].try_into().unwrap()) as usize;
+        let len = u32::from_le_bytes(header[12..16].try_into().expect("internal error")) as usize;
         assert_eq!(len, payload.len());
 
         // Read payload
         let mut read_payload = vec![0u8; len];
-        reader.read_exact(&mut read_payload).await.unwrap();
+        reader.read_exact(&mut read_payload).await.expect("internal error");
         assert_eq!(&read_payload, payload);
     }
 }

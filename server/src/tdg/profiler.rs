@@ -182,7 +182,7 @@ impl PerformanceProfiler {
             profile.duration_ms = Some(
                 profile
                     .end_time
-                    .unwrap()
+                    .expect("internal error")
                     .duration_since(profile.start_time)
                     .as_secs_f64()
                     * 1000.0,
@@ -337,7 +337,7 @@ impl PerformanceProfiler {
     pub async fn get_top_bottlenecks(&self, limit: usize) -> Vec<Bottleneck> {
         let bottlenecks = self.bottlenecks.read().await;
         let mut sorted: Vec<_> = bottlenecks.clone();
-        sorted.sort_by(|a, b| b.impact_ms.partial_cmp(&a.impact_ms).unwrap());
+        sorted.sort_by(|a, b| b.impact_ms.partial_cmp(&a.impact_ms).expect("internal error"));
         sorted.into_iter().take(limit).collect()
     }
 
@@ -440,11 +440,11 @@ mod tests {
         let handle = profiler
             .start_operation("test_op_1".to_string(), "analysis".to_string())
             .await
-            .unwrap();
+            .expect("internal error");
 
         tokio::time::sleep(Duration::from_millis(100)).await;
 
-        handle.complete().await.unwrap();
+        handle.complete().await.expect("internal error");
 
         let summary = profiler.get_summary().await;
         assert_eq!(summary.completed_operations, 1);
@@ -469,7 +469,7 @@ mod tests {
             metadata: HashMap::new(),
         };
 
-        profiler.detect_bottlenecks(&profile).await.unwrap();
+        profiler.detect_bottlenecks(&profile).await.expect("internal error");
 
         let bottlenecks = profiler.get_top_bottlenecks(10).await;
         assert!(!bottlenecks.is_empty());
@@ -491,13 +491,13 @@ mod tests {
             let handle = profiler
                 .start_operation(format!("op_{}", i), "test".to_string())
                 .await
-                .unwrap();
+                .expect("internal error");
 
             tokio::time::sleep(Duration::from_millis(50)).await;
-            handle.complete().await.unwrap();
+            handle.complete().await.expect("internal error");
         }
 
-        let flame_graph = profiler.generate_flame_graph().await.unwrap();
+        let flame_graph = profiler.generate_flame_graph().await.expect("internal error");
         assert_eq!(flame_graph.name, "root");
         assert_eq!(flame_graph.children.len(), 3);
     }

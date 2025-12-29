@@ -212,7 +212,7 @@ impl HistoricalIntegrityScorer {
         let cargo_toml = project_path.join("Cargo.toml");
         let package_json = project_path.join("package.json");
 
-        let semver_pattern = regex::Regex::new(r#"version\s*=\s*["']?\d+\.\d+\.\d+"#).unwrap();
+        let semver_pattern = regex::Regex::new(r#"version\s*=\s*["']?\d+\.\d+\.\d+"#).expect("internal error");
 
         if cargo_toml.exists() {
             if let Ok(content) = std::fs::read_to_string(&cargo_toml) {
@@ -325,79 +325,79 @@ mod tests {
 
     #[test]
     fn test_project_with_git() {
-        let temp_dir = tempdir().unwrap();
+        let temp_dir = tempdir().expect("internal error");
 
         // Create .git directory
-        fs::create_dir_all(temp_dir.path().join(".git")).unwrap();
+        fs::create_dir_all(temp_dir.path().join(".git")).expect("internal error");
 
         let scorer = HistoricalIntegrityScorer::new();
-        let result = scorer.score(temp_dir.path()).unwrap();
+        let result = scorer.score(temp_dir.path()).expect("internal error");
 
         // Should have git points
-        let e1 = result.sub_scores.iter().find(|s| s.id == "E1").unwrap();
+        let e1 = result.sub_scores.iter().find(|s| s.id == "E1").expect("internal error");
         assert!(e1.earned >= 1.0);
     }
 
     #[test]
     fn test_project_with_codeowners() {
-        let temp_dir = tempdir().unwrap();
+        let temp_dir = tempdir().expect("internal error");
 
         // Create .git and CODEOWNERS
-        fs::create_dir_all(temp_dir.path().join(".git")).unwrap();
-        fs::create_dir_all(temp_dir.path().join(".github")).unwrap();
-        fs::write(temp_dir.path().join(".github/CODEOWNERS"), "* @owner").unwrap();
+        fs::create_dir_all(temp_dir.path().join(".git")).expect("internal error");
+        fs::create_dir_all(temp_dir.path().join(".github")).expect("internal error");
+        fs::write(temp_dir.path().join(".github/CODEOWNERS"), "* @owner").expect("internal error");
 
         let scorer = HistoricalIntegrityScorer::new();
-        let result = scorer.score(temp_dir.path()).unwrap();
+        let result = scorer.score(temp_dir.path()).expect("internal error");
 
         // Should have CODEOWNERS points
-        let e1 = result.sub_scores.iter().find(|s| s.id == "E1").unwrap();
+        let e1 = result.sub_scores.iter().find(|s| s.id == "E1").expect("internal error");
         assert!(e1.earned >= 2.0);
     }
 
     #[test]
     fn test_project_with_design_docs() {
-        let temp_dir = tempdir().unwrap();
+        let temp_dir = tempdir().expect("internal error");
 
         // Create design documents
-        fs::create_dir_all(temp_dir.path().join("docs/specifications")).unwrap();
+        fs::create_dir_all(temp_dir.path().join("docs/specifications")).expect("internal error");
         fs::write(
             temp_dir.path().join("docs/specifications/feature.md"),
             "# Feature Spec",
         )
-        .unwrap();
+        .expect("internal error");
 
         let scorer = HistoricalIntegrityScorer::new();
-        let result = scorer.score(temp_dir.path()).unwrap();
+        let result = scorer.score(temp_dir.path()).expect("internal error");
 
         // Should have pre-registration points
-        let e2 = result.sub_scores.iter().find(|s| s.id == "E2").unwrap();
+        let e2 = result.sub_scores.iter().find(|s| s.id == "E2").expect("internal error");
         assert!(e2.earned >= 2.0);
     }
 
     #[test]
     fn test_project_with_changelog_and_semver() {
-        let temp_dir = tempdir().unwrap();
+        let temp_dir = tempdir().expect("internal error");
 
         // Create dated CHANGELOG
         fs::write(
             temp_dir.path().join("CHANGELOG.md"),
             "# Changelog\n\n## [1.0.0] - 2024-01-15\n\n- Initial release",
         )
-        .unwrap();
+        .expect("internal error");
 
         // Create Cargo.toml with version
         fs::write(
             temp_dir.path().join("Cargo.toml"),
             "[package]\nname = \"test\"\nversion = \"1.0.0\"",
         )
-        .unwrap();
+        .expect("internal error");
 
         let scorer = HistoricalIntegrityScorer::new();
-        let result = scorer.score(temp_dir.path()).unwrap();
+        let result = scorer.score(temp_dir.path()).expect("internal error");
 
         // Should have timestamping points
-        let e3 = result.sub_scores.iter().find(|s| s.id == "E3").unwrap();
+        let e3 = result.sub_scores.iter().find(|s| s.id == "E3").expect("internal error");
         assert!(e3.earned >= 2.0);
     }
 }

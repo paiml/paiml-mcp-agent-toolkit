@@ -78,7 +78,7 @@ impl ViolationDetector {
         violations = self.deduplicate_violations(violations);
 
         // Sort by priority
-        violations.sort_by(|a, b| b.priority_score.partial_cmp(&a.priority_score).unwrap());
+        violations.sort_by(|a, b| b.priority_score.partial_cmp(&a.priority_score).expect("internal error"));
 
         Ok(violations)
     }

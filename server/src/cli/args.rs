@@ -67,7 +67,7 @@ fn value_type_name(value: &Value) -> &'static str {
 #[must_use]
 pub fn expand_env_vars(template: &str) -> String {
     // Simple ${VAR} expansion
-    let re = regex::Regex::new(r"\$\{([^}]+)\}").unwrap();
+    let re = regex::Regex::new(r"\$\{([^}]+)\}").expect("internal error");
     re.replace_all(template, |caps: &regex::Captures| {
         std::env::var(&caps[1]).unwrap_or_else(|_| caps[0].to_string())
     })
@@ -88,11 +88,11 @@ pub fn parse_key_val(s: &str) -> Result<(String, Value), String> {
     let value = if val.is_empty() {
         Value::Bool(true) // Treat bare flags as true
     } else if val == "true" || val == "false" {
-        Value::Bool(val.parse().unwrap())
+        Value::Bool(val.parse().expect("internal error"))
     } else if let Ok(n) = val.parse::<i64>() {
         Value::Number(n.into())
     } else if let Ok(f) = val.parse::<f64>() {
-        Value::Number(serde_json::Number::from_f64(f).unwrap())
+        Value::Number(serde_json::Number::from_f64(f).expect("internal error"))
     } else {
         Value::String(val.to_string())
     };
@@ -268,38 +268,38 @@ mod tests {
 
     #[test]
     fn test_parse_key_val_string() {
-        let result = parse_key_val("key=value").unwrap();
+        let result = parse_key_val("key=value").expect("internal error");
         assert_eq!(result.0, "key");
         assert_eq!(result.1, Value::String("value".to_string()));
     }
 
     #[test]
     fn test_parse_key_val_boolean_true() {
-        let result = parse_key_val("flag=true").unwrap();
+        let result = parse_key_val("flag=true").expect("internal error");
         assert_eq!(result.0, "flag");
         assert_eq!(result.1, Value::Bool(true));
     }
 
     #[test]
     fn test_parse_key_val_boolean_false() {
-        let result = parse_key_val("flag=false").unwrap();
+        let result = parse_key_val("flag=false").expect("internal error");
         assert_eq!(result.0, "flag");
         assert_eq!(result.1, Value::Bool(false));
     }
 
     #[test]
     fn test_parse_key_val_integer() {
-        let result = parse_key_val("count=42").unwrap();
+        let result = parse_key_val("count=42").expect("internal error");
         assert_eq!(result.0, "count");
         assert_eq!(result.1, Value::Number(42.into()));
     }
 
     #[test]
     fn test_parse_key_val_float() {
-        let result = parse_key_val("ratio=1.234").unwrap();
+        let result = parse_key_val("ratio=1.234").expect("internal error");
         assert_eq!(result.0, "ratio");
         if let Value::Number(n) = result.1 {
-            assert_eq!(n.as_f64().unwrap(), 1.234);
+            assert_eq!(n.as_f64().expect("internal error"), 1.234);
         } else {
             panic!("Expected number");
         }
@@ -307,7 +307,7 @@ mod tests {
 
     #[test]
     fn test_parse_key_val_empty_value() {
-        let result = parse_key_val("flag=").unwrap();
+        let result = parse_key_val("flag=").expect("internal error");
         assert_eq!(result.0, "flag");
         assert_eq!(result.1, Value::Bool(true));
     }
@@ -321,7 +321,7 @@ mod tests {
 
     #[test]
     fn test_parse_key_val_complex_string() {
-        let result = parse_key_val("path=/some/complex/path").unwrap();
+        let result = parse_key_val("path=/some/complex/path").expect("internal error");
         assert_eq!(result.0, "path");
         assert_eq!(result.1, Value::String("/some/complex/path".to_string()));
     }

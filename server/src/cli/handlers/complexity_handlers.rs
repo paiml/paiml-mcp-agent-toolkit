@@ -757,7 +757,7 @@ fn write_top_files_with_satd_section(
     use std::collections::HashMap;
     use std::fmt::Write;
 
-    writeln!(output, "\n## Top Files with SATD\n").unwrap();
+    writeln!(output, "\n## Top Files with SATD\n").expect("internal error");
 
     // Group items by file and count them
     let mut file_counts: HashMap<&std::path::Path, usize> = HashMap::new();
@@ -772,7 +772,7 @@ fn write_top_files_with_satd_section(
     // Show top 10 files with their SATD counts
     for (i, (file, count)) in sorted_files.iter().take(10).enumerate() {
         let filename = file.file_name().unwrap_or_default().to_string_lossy();
-        writeln!(output, "{}. `{}` - {} SATD items", i + 1, filename, count).unwrap();
+        writeln!(output, "{}. `{}` - {} SATD items", i + 1, filename, count).expect("internal error");
     }
 }
 
@@ -783,7 +783,7 @@ fn write_critical_items_section(
 ) {
     use std::fmt::Write;
 
-    writeln!(output, "\n## Critical Items\n").unwrap();
+    writeln!(output, "\n## Critical Items\n").expect("internal error");
     for item in result
         .items
         .iter()
@@ -797,7 +797,7 @@ fn write_critical_items_section(
             item.line,
             item.text
         )
-        .unwrap();
+        .expect("internal error");
     }
 }
 
@@ -1942,37 +1942,37 @@ pub fn format_satd_summary(
     use std::fmt::Write;
     let mut output = String::new();
 
-    writeln!(&mut output, "# SATD Analysis Summary\n").unwrap();
+    writeln!(&mut output, "# SATD Analysis Summary\n").expect("internal error");
     writeln!(
         &mut output,
         "📊 **Files analyzed**: {}",
         result.total_files_analyzed
     )
-    .unwrap();
+    .expect("internal error");
     writeln!(
         &mut output,
         "📁 **Files with SATD**: {}",
         result.files_with_debt
     )
-    .unwrap();
+    .expect("internal error");
     writeln!(
         &mut output,
         "🔍 **Total SATD items**: {}",
         result.items.len()
     )
-    .unwrap();
+    .expect("internal error");
 
     if metrics && !result.summary.by_severity.is_empty() {
-        writeln!(&mut output, "\n## By Severity\n").unwrap();
+        writeln!(&mut output, "\n## By Severity\n").expect("internal error");
         for (severity, count) in &result.summary.by_severity {
-            writeln!(&mut output, "- **{severity}**: {count}").unwrap();
+            writeln!(&mut output, "- **{severity}**: {count}").expect("internal error");
         }
     }
 
     if metrics && !result.summary.by_category.is_empty() {
-        writeln!(&mut output, "\n## By Category\n").unwrap();
+        writeln!(&mut output, "\n## By Category\n").expect("internal error");
         for (category, count) in &result.summary.by_category {
-            writeln!(&mut output, "- **{category}**: {count}").unwrap();
+            writeln!(&mut output, "- **{category}**: {count}").expect("internal error");
         }
     }
 
@@ -1995,45 +1995,45 @@ fn format_satd_markdown(
     use std::fmt::Write;
     let mut output = String::new();
 
-    writeln!(&mut output, "# Self-Admitted Technical Debt Report\n").unwrap();
+    writeln!(&mut output, "# Self-Admitted Technical Debt Report\n").expect("internal error");
     writeln!(
         &mut output,
         "Generated: {}",
         result.analysis_timestamp.format("%Y-%m-%d %H:%M:%S UTC")
     )
-    .unwrap();
+    .expect("internal error");
 
-    writeln!(&mut output, "\n## Summary\n").unwrap();
-    writeln!(&mut output, "| Metric | Value |").unwrap();
-    writeln!(&mut output, "|--------|-------|").unwrap();
+    writeln!(&mut output, "\n## Summary\n").expect("internal error");
+    writeln!(&mut output, "| Metric | Value |").expect("internal error");
+    writeln!(&mut output, "|--------|-------|").expect("internal error");
     writeln!(
         &mut output,
         "| Files Analyzed | {} |",
         result.total_files_analyzed
     )
-    .unwrap();
+    .expect("internal error");
     writeln!(
         &mut output,
         "| Files with SATD | {} |",
         result.files_with_debt
     )
-    .unwrap();
-    writeln!(&mut output, "| Total SATD Items | {} |", result.items.len()).unwrap();
+    .expect("internal error");
+    writeln!(&mut output, "| Total SATD Items | {} |", result.items.len()).expect("internal error");
 
     if metrics {
-        writeln!(&mut output, "\n## Distribution\n").unwrap();
-        writeln!(&mut output, "### By Severity\n").unwrap();
-        writeln!(&mut output, "| Severity | Count |").unwrap();
-        writeln!(&mut output, "|----------|-------|").unwrap();
+        writeln!(&mut output, "\n## Distribution\n").expect("internal error");
+        writeln!(&mut output, "### By Severity\n").expect("internal error");
+        writeln!(&mut output, "| Severity | Count |").expect("internal error");
+        writeln!(&mut output, "|----------|-------|").expect("internal error");
         for (severity, count) in &result.summary.by_severity {
-            writeln!(&mut output, "| {severity} | {count} |").unwrap();
+            writeln!(&mut output, "| {severity} | {count} |").expect("internal error");
         }
 
-        writeln!(&mut output, "\n### By Category\n").unwrap();
-        writeln!(&mut output, "| Category | Count |").unwrap();
-        writeln!(&mut output, "|----------|-------|").unwrap();
+        writeln!(&mut output, "\n### By Category\n").expect("internal error");
+        writeln!(&mut output, "| Category | Count |").expect("internal error");
+        writeln!(&mut output, "|----------|-------|").expect("internal error");
         for (category, count) in &result.summary.by_category {
-            writeln!(&mut output, "| {category} | {count} |").unwrap();
+            writeln!(&mut output, "| {category} | {count} |").expect("internal error");
         }
     }
 
@@ -2047,11 +2047,11 @@ fn format_satd_markdown(
         by_file.entry(&item.file).or_default().push(item);
     }
 
-    writeln!(&mut output, "\n## SATD Items by File\n").unwrap();
+    writeln!(&mut output, "\n## SATD Items by File\n").expect("internal error");
     for (file, items) in by_file.iter().take(20) {
-        writeln!(&mut output, "### {}\n", file.display()).unwrap();
-        writeln!(&mut output, "| Line | Severity | Category | Text |").unwrap();
-        writeln!(&mut output, "|------|----------|----------|------|").unwrap();
+        writeln!(&mut output, "### {}\n", file.display()).expect("internal error");
+        writeln!(&mut output, "| Line | Severity | Category | Text |").expect("internal error");
+        writeln!(&mut output, "|------|----------|----------|------|").expect("internal error");
         for item in items {
             writeln!(
                 &mut output,
@@ -2061,9 +2061,9 @@ fn format_satd_markdown(
                 item.category,
                 item.text.replace('|', "\\|")
             )
-            .unwrap();
+            .expect("internal error");
         }
-        writeln!(&mut output).unwrap();
+        writeln!(&mut output).expect("internal error");
     }
 
     output
@@ -2082,7 +2082,7 @@ fn format_satd_markdown(
 /// use tempfile::tempdir;
 ///
 /// # tokio_test::block_on(async {
-/// let dir = tempdir().unwrap();
+/// let dir = tempdir().expect("internal error");
 ///
 /// // Generate a full dependency graph
 /// let result = handle_analyze_dag(
@@ -2247,7 +2247,7 @@ mod tests {
             analyzed_files: 5,
         };
 
-        let summary = format_dead_code_as_summary(&result).unwrap();
+        let summary = format_dead_code_as_summary(&result).expect("internal error");
 
         // Verify the summary contains the expected sections
         assert!(summary.contains("# Dead Code Analysis Summary"));
@@ -2279,7 +2279,7 @@ mod tests {
             analyzed_files: 10,
         };
 
-        let summary = format_dead_code_as_summary(&result).unwrap();
+        let summary = format_dead_code_as_summary(&result).expect("internal error");
 
         // Should not contain Top Files section when no files have dead code
         assert!(summary.contains("# Dead Code Analysis Summary"));

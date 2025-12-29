@@ -105,7 +105,7 @@ pub fn create_all_mvp_subagents(output_dir: Option<PathBuf>) -> Result<()> {
         println!(
             "  ✅ {} - {}",
             agent.name(),
-            path.file_name().unwrap().to_string_lossy()
+            path.file_name().expect("internal error").to_string_lossy()
         );
     }
 
@@ -247,7 +247,7 @@ pub fn show_tool_mapping(agent_name: Option<String>) -> Result<()> {
         println!();
 
         for agent in PmatSubAgent::all_mvp() {
-            let tools = mapping.get(&agent).unwrap();
+            let tools = mapping.get(&agent).expect("internal error");
             let status = if agent.is_mvp() { "✅" } else { "🔄" };
 
             println!("{} {}", status, agent.name());
@@ -306,7 +306,7 @@ mod tests {
 
     #[test]
     fn test_create_subagent_valid() {
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new().expect("internal error");
         let output = temp_dir.path().to_path_buf();
 
         let result = create_subagent("complexity-analyst", Some(output.clone()));
@@ -319,7 +319,7 @@ mod tests {
 
     #[test]
     fn test_create_subagent_invalid() {
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new().expect("internal error");
         let output = temp_dir.path().to_path_buf();
 
         let result = create_subagent("invalid-agent", Some(output));
@@ -328,7 +328,7 @@ mod tests {
 
     #[test]
     fn test_create_subagent_future_phase() {
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new().expect("internal error");
         let output = temp_dir.path().to_path_buf();
 
         let result = create_subagent("rust-quality-expert", Some(output));
@@ -341,7 +341,7 @@ mod tests {
 
     #[test]
     fn test_create_all_mvp() {
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new().expect("internal error");
         let output = temp_dir.path().to_path_buf();
 
         let result = create_all_mvp_subagents(Some(output.clone()));
@@ -360,11 +360,11 @@ mod tests {
 
     #[test]
     fn test_validate_valid_subagent() {
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new().expect("internal error");
         let output = temp_dir.path().to_path_buf();
 
         // Create a sub-agent first
-        create_subagent("complexity-analyst", Some(output.clone())).unwrap();
+        create_subagent("complexity-analyst", Some(output.clone())).expect("internal error");
 
         let file = output.join("complexity-analyst.md");
         let result = validate_subagent(&file);
@@ -391,7 +391,7 @@ mod tests {
 
     #[test]
     fn test_export_tool_mapping() {
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new().expect("internal error");
         let output = temp_dir.path().join("tool_mapping.json");
 
         let result = export_tool_mapping_json(&output);
@@ -399,8 +399,8 @@ mod tests {
         assert!(output.exists());
 
         // Verify JSON is valid
-        let content = std::fs::read_to_string(&output).unwrap();
-        let parsed: serde_json::Value = serde_json::from_str(&content).unwrap();
+        let content = std::fs::read_to_string(&output).expect("internal error");
+        let parsed: serde_json::Value = serde_json::from_str(&content).expect("internal error");
         assert!(parsed.is_object());
     }
 }

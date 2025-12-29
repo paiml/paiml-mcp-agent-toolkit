@@ -321,8 +321,8 @@ pub async fn test_performance_regression_detection() -> Result<()> {
 
     // Calculate statistics
     let avg_duration = durations.iter().sum::<Duration>() / ITERATIONS as u32;
-    let max_duration = durations.iter().max().unwrap();
-    let min_duration = durations.iter().min().unwrap();
+    let max_duration = durations.iter().max().expect("internal error");
+    let min_duration = durations.iter().min().expect("internal error");
 
     // Performance should be consistent (max ≤ 2x min)
     let variance_ratio = max_duration.as_millis() as f64 / min_duration.as_millis() as f64;

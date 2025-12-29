@@ -104,7 +104,7 @@ impl HelpGenerator {
         sorted_categories.sort();
 
         for category in sorted_categories {
-            let cmds = categories.get(category).unwrap();
+            let cmds = categories.get(category).expect("internal error");
             let mut sorted_cmds: Vec<_> = cmds.iter().collect();
             sorted_cmds.sort_by_key(|c| &c.name);
 

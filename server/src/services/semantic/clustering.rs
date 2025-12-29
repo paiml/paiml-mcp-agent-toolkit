@@ -324,12 +324,12 @@ impl ClusteringEngine {
         match linkage {
             Linkage::Single => *dists
                 .iter()
-                .min_by(|a, b| a.partial_cmp(b).unwrap())
-                .unwrap(),
+                .min_by(|a, b| a.partial_cmp(b).expect("internal error"))
+                .expect("internal error"),
             Linkage::Complete => *dists
                 .iter()
-                .max_by(|a, b| a.partial_cmp(b).unwrap())
-                .unwrap(),
+                .max_by(|a, b| a.partial_cmp(b).expect("internal error"))
+                .expect("internal error"),
             Linkage::Average => dists.iter().sum::<f64>() / dists.len() as f64,
         }
     }
@@ -484,7 +484,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_euclidean_distance() {
-        let db = TursoVectorDB::new_local(":memory:").await.unwrap();
+        let db = TursoVectorDB::new_local(":memory:").await.expect("internal error");
         let engine = ClusteringEngine::new(Arc::new(db));
 
         let v1 = vec![0.0, 0.0, 0.0];

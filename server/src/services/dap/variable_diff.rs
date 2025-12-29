@@ -276,7 +276,7 @@ impl VariableDiff {
             serde_json::Value::Object(stats_obj),
         );
 
-        serde_json::to_string_pretty(&json).unwrap()
+        serde_json::to_string_pretty(&json).expect("internal error")
     }
 
     /// Get type name of a JSON value

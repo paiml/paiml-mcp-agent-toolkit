@@ -360,7 +360,7 @@ impl SimilarityDetector {
     fn normalize_identifiers(&self, text: &str) -> String {
         // Simple identifier normalization - replace with placeholders
         let mut result = text.to_string();
-        let ident_pattern = regex::Regex::new(r"\b[a-zA-Z_][a-zA-Z0-9_]*\b").unwrap();
+        let ident_pattern = regex::Regex::new(r"\b[a-zA-Z_][a-zA-Z0-9_]*\b").expect("internal error");
         let mut counter = 0;
 
         for mat in ident_pattern.find_iter(text) {

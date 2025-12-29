@@ -130,7 +130,7 @@ impl DagEngine {
                     self.dfs_cycle_detection(neighbor, visited, rec_stack, path, cycles);
                 } else if rec_stack.contains(neighbor) {
                     // Found a cycle
-                    let cycle_start = path.iter().position(|n| n == neighbor).unwrap();
+                    let cycle_start = path.iter().position(|n| n == neighbor).expect("internal error");
                     let cycle = path[cycle_start..].to_vec();
                     cycles.push(cycle);
                 }
@@ -162,7 +162,7 @@ impl DagEngine {
 
         for edges in self.edges.values() {
             for to in edges {
-                *in_degree.get_mut(to).unwrap() += 1;
+                *in_degree.get_mut(to).expect("internal error") += 1;
             }
         }
 
@@ -185,7 +185,7 @@ impl DagEngine {
                     // Reduce in-degree of neighbors
                     if let Some(neighbors) = self.edges.get(&node) {
                         for neighbor in neighbors {
-                            let degree = in_degree.get_mut(neighbor).unwrap();
+                            let degree = in_degree.get_mut(neighbor).expect("internal error");
                             *degree -= 1;
                             if *degree == 0 {
                                 queue.push_back(neighbor.clone());
@@ -338,9 +338,9 @@ mod tests {
 
         engine
             .add_dependency("step1".to_string(), "step2".to_string())
-            .unwrap();
+            .expect("internal error");
 
-        assert_eq!(engine.edges.get("step1").unwrap().len(), 1);
+        assert_eq!(engine.edges.get("step1").expect("internal error").len(), 1);
     }
 
     #[test]
@@ -352,10 +352,10 @@ mod tests {
 
         engine
             .add_dependency("step1".to_string(), "step2".to_string())
-            .unwrap();
+            .expect("internal error");
         engine
             .add_dependency("step2".to_string(), "step3".to_string())
-            .unwrap();
+            .expect("internal error");
 
         let cycles = engine.detect_cycles();
         assert!(cycles.is_empty());
@@ -370,13 +370,13 @@ mod tests {
 
         engine
             .add_dependency("step1".to_string(), "step2".to_string())
-            .unwrap();
+            .expect("internal error");
         engine
             .add_dependency("step2".to_string(), "step3".to_string())
-            .unwrap();
+            .expect("internal error");
         engine
             .add_dependency("step3".to_string(), "step1".to_string())
-            .unwrap();
+            .expect("internal error");
 
         let cycles = engine.detect_cycles();
         assert!(!cycles.is_empty());
@@ -391,12 +391,12 @@ mod tests {
 
         engine
             .add_dependency("step1".to_string(), "step2".to_string())
-            .unwrap();
+            .expect("internal error");
         engine
             .add_dependency("step1".to_string(), "step3".to_string())
-            .unwrap();
+            .expect("internal error");
 
-        let order = engine.topological_sort().unwrap();
+        let order = engine.topological_sort().expect("internal error");
         assert_eq!(order.len(), 2);
         assert_eq!(order[0], vec!["step1"]);
         assert_eq!(order[1].len(), 2); // step2 and step3 can run in parallel
@@ -411,12 +411,12 @@ mod tests {
 
         engine
             .add_dependency("step1".to_string(), "step2".to_string())
-            .unwrap();
+            .expect("internal error");
         engine
             .add_dependency("step1".to_string(), "step3".to_string())
-            .unwrap();
+            .expect("internal error");
 
-        let analysis = engine.analyze().unwrap();
+        let analysis = engine.analyze().expect("internal error");
         assert!(!analysis.has_cycles);
         assert_eq!(analysis.max_parallelism, 2);
     }

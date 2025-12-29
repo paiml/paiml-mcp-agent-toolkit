@@ -36,7 +36,7 @@ impl MessageExtensions for AgentMessage {
     fn is_expired(&self) -> bool {
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .expect("internal error")
             .as_millis() as u64;
         let created = self.header.timestamp * 1000;
         let ttl = u64::from(self.header.ttl_ms);
@@ -246,10 +246,10 @@ mod tests {
         let to = Uuid::new_v4();
         let data = serde_json::json!({"test": "data"});
 
-        let msg = AgentMessage::new(from, to, data).unwrap();
+        let msg = AgentMessage::new(from, to, data).expect("internal error");
 
-        let encoded = BinaryProtocol::encode(&msg).unwrap();
-        let decoded = BinaryProtocol::decode(encoded).unwrap();
+        let encoded = BinaryProtocol::encode(&msg).expect("internal error");
+        let decoded = BinaryProtocol::decode(encoded).expect("internal error");
 
         assert_eq!(decoded.header.id, msg.header.id);
         assert_eq!(decoded.header.from, msg.header.from);
@@ -264,14 +264,14 @@ mod tests {
             let from = Uuid::new_v4();
             let to = Uuid::new_v4();
             let data = serde_json::json!({"index": i});
-            let msg = AgentMessage::new(from, to, data).unwrap();
-            batch.add(msg).unwrap();
+            let msg = AgentMessage::new(from, to, data).expect("internal error");
+            batch.add(msg).expect("internal error");
         }
 
         assert_eq!(batch.len(), 5);
 
-        let encoded = batch.encode().unwrap();
-        let decoded = MessageBatch::decode(encoded).unwrap();
+        let encoded = batch.encode().expect("internal error");
+        let decoded = MessageBatch::decode(encoded).expect("internal error");
 
         assert_eq!(decoded.len(), 5);
     }

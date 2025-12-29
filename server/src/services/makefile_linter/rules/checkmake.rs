@@ -408,7 +408,7 @@ impl<'a> VariableScanner<'a> {
         let ch = self.bytes[start + 1];
 
         if ch.is_ascii_alphanumeric() || ch == b'_' {
-            let var_name = std::str::from_utf8(&[ch]).unwrap().to_string();
+            let var_name = std::str::from_utf8(&[ch]).expect("internal error").to_string();
 
             self.position = start + 2;
 
@@ -677,7 +677,7 @@ mod tests {
         // Test with targets but no .PHONY
         let input = "all:\n\techo all\nclean:\n\trm -f *.o";
         let mut parser = MakefileParser::new(input);
-        let ast = parser.parse().unwrap();
+        let ast = parser.parse().expect("internal error");
         let violations = rule.check(&ast);
         assert_eq!(violations.len(), 2); // all and clean exist but aren't .PHONY
         assert!(violations.iter().any(|v| v.message.contains("all")));
@@ -702,7 +702,7 @@ mod tests {
         // Test with non-file targets
         let input = "install:\n\tcp prog /usr/bin/\nhelp:\n\techo help";
         let mut parser = MakefileParser::new(input);
-        let ast = parser.parse().unwrap();
+        let ast = parser.parse().expect("internal error");
         let violations = rule.check(&ast);
         assert_eq!(violations.len(), 2);
         assert!(violations.iter().all(|v| v.rule == "phonydeclared"));
@@ -719,7 +719,7 @@ mod tests {
         // Test with long recipe
         let input = "target:\n\tline1\n\tline2\n\tline3\n\tline4\n\tline5\n\tline6";
         let mut parser = MakefileParser::new(input);
-        let ast = parser.parse().unwrap();
+        let ast = parser.parse().expect("internal error");
         let violations = rule.check(&ast);
         assert_eq!(violations.len(), 1);
         assert!(violations[0].message.contains("6 lines"));
@@ -733,7 +733,7 @@ mod tests {
         // Test with immediate assignment - this is what the rule warns about
         let input = "BUILD_TIME := $(shell date)";
         let mut parser = MakefileParser::new(input);
-        let ast = parser.parse().unwrap();
+        let ast = parser.parse().expect("internal error");
         let violations = rule.check(&ast);
         assert_eq!(violations.len(), 1);
         assert!(violations[0]
@@ -743,7 +743,7 @@ mod tests {
         // Test with deferred assignment - this is the recommended approach
         let input2 = "BUILD_TIME = $(shell date)";
         let mut parser2 = MakefileParser::new(input2);
-        let ast2 = parser2.parse().unwrap();
+        let ast2 = parser2.parse().expect("internal error");
         let violations2 = rule.check(&ast2);
         assert_eq!(violations2.len(), 0);
     }
@@ -756,7 +756,7 @@ mod tests {
         // Test with undefined variable
         let input = "target:\n\techo $(UNDEFINED_VAR)";
         let mut parser = MakefileParser::new(input);
-        let ast = parser.parse().unwrap();
+        let ast = parser.parse().expect("internal error");
         let violations = rule.check(&ast);
         assert_eq!(violations.len(), 1);
         assert!(violations[0].message.contains("UNDEFINED_VAR"));
@@ -764,7 +764,7 @@ mod tests {
         // Test with defined variable
         let input2 = "VAR = value\ntarget:\n\techo $(VAR)";
         let mut parser2 = MakefileParser::new(input2);
-        let ast2 = parser2.parse().unwrap();
+        let ast2 = parser2.parse().expect("internal error");
         let violations2 = rule.check(&ast2);
         assert_eq!(violations2.len(), 0);
     }
@@ -777,7 +777,7 @@ mod tests {
         // Test with GNU-specific conditional assignment
         let input = "VAR ?= value";
         let mut parser = MakefileParser::new(input);
-        let ast = parser.parse().unwrap();
+        let ast = parser.parse().expect("internal error");
         let violations = rule.check(&ast);
         assert_eq!(violations.len(), 1);
         assert!(violations[0].message.contains("Conditional assignment"));
@@ -785,7 +785,7 @@ mod tests {
         // Test with GNU-specific shell assignment
         let input2 = "VAR != date";
         let mut parser2 = MakefileParser::new(input2);
-        let ast2 = parser2.parse().unwrap();
+        let ast2 = parser2.parse().expect("internal error");
         let violations2 = rule.check(&ast2);
         assert_eq!(violations2.len(), 1);
         assert!(violations2[0].message.contains("Shell assignment"));

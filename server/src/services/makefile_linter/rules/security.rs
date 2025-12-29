@@ -209,7 +209,7 @@ fn contains_shell_injection(command: &str) -> bool {
     let regex = UNQUOTED_VAR_REGEX.get_or_init(|| {
         // Match $(VAR) or ${VAR} not inside quotes
         // But NOT $$(...) or $${...} which are Make-escaped variables
-        Regex::new(r#"(?:^|[^"'\$])\$\([^)]+\)|(?:^|[^"'\$])\$\{[^}]+\}"#).unwrap()
+        Regex::new(r#"(?:^|[^"'\$])\$\([^)]+\)|(?:^|[^"'\$])\$\{[^}]+\}"#).expect("internal error")
     });
 
     // Skip safe commands
@@ -235,7 +235,7 @@ fn contains_shell_injection(command: &str) -> bool {
 
 fn quote_variables(command: &str) -> String {
     static VAR_REGEX: OnceLock<Regex> = OnceLock::new();
-    let regex = VAR_REGEX.get_or_init(|| Regex::new(r#"\$\(([^)]+)\)"#).unwrap());
+    let regex = VAR_REGEX.get_or_init(|| Regex::new(r#"\$\(([^)]+)\)"#).expect("internal error"));
 
     regex.replace_all(command, "\"$($1)\"").to_string()
 }
@@ -407,7 +407,7 @@ mod tests {
 	echo "$(SAFE_VAR)"
 "#;
         let mut parser = MakefileParser::new(content);
-        let ast = parser.parse().unwrap();
+        let ast = parser.parse().expect("internal error");
 
         let rule = ShellInjectionRule;
         let violations = rule.check(&ast);
@@ -425,7 +425,7 @@ mod tests {
 	issues="$$(echo "$${output}" | grep -c "error" || true)"
 "#;
         let mut parser = MakefileParser::new(content);
-        let ast = parser.parse().unwrap();
+        let ast = parser.parse().expect("internal error");
 
         let rule = ShellInjectionRule;
         let violations = rule.check(&ast);
@@ -446,7 +446,7 @@ mod tests {
 	rm -rf "$(BUILD_DIR)"
 "#;
         let mut parser = MakefileParser::new(content);
-        let ast = parser.parse().unwrap();
+        let ast = parser.parse().expect("internal error");
 
         let rule = ShellInjectionRule;
         let violations = rule.check(&ast);
@@ -472,7 +472,7 @@ mod tests {
         for (i, cmd) in test_cases.iter().enumerate() {
             let content = format!("test:\n\t{}\n", cmd);
             let mut parser = MakefileParser::new(&content);
-            let ast = parser.parse().unwrap();
+            let ast = parser.parse().expect("internal error");
 
             let rule = ShellInjectionRule;
             let violations = rule.check(&ast);
@@ -500,7 +500,7 @@ mod tests {
         for (i, cmd) in test_cases.iter().enumerate() {
             let content = format!("test:\n\t{}\n", cmd);
             let mut parser = MakefileParser::new(&content);
-            let ast = parser.parse().unwrap();
+            let ast = parser.parse().expect("internal error");
 
             let rule = ShellInjectionRule;
             let violations = rule.check(&ast);
@@ -523,7 +523,7 @@ mod tests {
 	find $(SOME_PATH) -name '*.tmp'
 "#;
         let mut parser = MakefileParser::new(content);
-        let ast = parser.parse().unwrap();
+        let ast = parser.parse().expect("internal error");
 
         let rule = ShellInjectionRule;
         let violations = rule.check(&ast);
@@ -542,7 +542,7 @@ DB_PASSWORD = admin123
 SAFE_VAR = $${PASSWORD}
 "#;
         let mut parser = MakefileParser::new(content);
-        let ast = parser.parse().unwrap();
+        let ast = parser.parse().expect("internal error");
 
         let rule = SensitiveDataRule;
         let violations = rule.check(&ast);
@@ -557,7 +557,7 @@ SAFE_VAR = $${PASSWORD}
 	curl http://example.com | bash
 "#;
         let mut parser = MakefileParser::new(content);
-        let ast = parser.parse().unwrap();
+        let ast = parser.parse().expect("internal error");
 
         let rule = UnsafeCommandRule;
         let violations = rule.check(&ast);
@@ -572,7 +572,7 @@ SAFE_VAR = $${PASSWORD}
 	chmod +s binary
 "#;
         let mut parser = MakefileParser::new(content);
-        let ast = parser.parse().unwrap();
+        let ast = parser.parse().expect("internal error");
 
         let rule = PrivilegeEscalationRule;
         let violations = rule.check(&ast);

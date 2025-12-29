@@ -322,7 +322,7 @@ impl AgentDaemon {
                 _ = async {
                     #[cfg(unix)]
                     {
-                        signal::unix::signal(signal::unix::SignalKind::terminate()).unwrap().recv().await
+                        signal::unix::signal(signal::unix::SignalKind::terminate()).expect("internal error").recv().await
                     }
                     #[cfg(not(unix))]
                     {
@@ -626,8 +626,8 @@ mod tests {
     #[test]
     fn test_daemon_status_serialization() {
         let status = DaemonStatus::Running;
-        let json = serde_json::to_string(&status).unwrap();
-        let deserialized: DaemonStatus = serde_json::from_str(&json).unwrap();
+        let json = serde_json::to_string(&status).expect("internal error");
+        let deserialized: DaemonStatus = serde_json::from_str(&json).expect("internal error");
         assert_eq!(status, deserialized);
     }
 
@@ -643,7 +643,7 @@ mod tests {
         let status = DaemonManager::get_status().await;
         assert!(status.is_ok());
 
-        let state = status.unwrap();
+        let state = status.expect("internal error");
         assert_eq!(state.status, DaemonStatus::Stopped);
         assert_eq!(state.active_projects, 0);
         assert_eq!(state.memory_usage_mb, 0);

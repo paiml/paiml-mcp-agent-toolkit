@@ -301,7 +301,7 @@ impl HybridSearchEngine {
 
         // Convert to vec and sort by hybrid score
         let mut results: Vec<HybridSearchResult> = result_map.into_values().collect();
-        results.sort_by(|a, b| b.hybrid_score.partial_cmp(&a.hybrid_score).unwrap());
+        results.sort_by(|a, b| b.hybrid_score.partial_cmp(&a.hybrid_score).expect("internal error"));
 
         results
     }

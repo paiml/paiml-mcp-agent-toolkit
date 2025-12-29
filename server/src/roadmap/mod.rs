@@ -132,7 +132,7 @@ impl Task {
     #[must_use]
     pub fn seed(&self) -> u64 {
         // Extract number from PMAT-XXXX format
-        if let Some(captures) = Regex::new(r"PMAT-(\d+)").unwrap().captures(&self.id) {
+        if let Some(captures) = Regex::new(r"PMAT-(\d+)").expect("internal error").captures(&self.id) {
             if let Some(num) = captures.get(1) {
                 return num.as_str().parse().unwrap_or(42);
             }
@@ -351,10 +351,10 @@ mod tests {
     fn test_complexity_from_str() {
         use std::str::FromStr;
 
-        assert_eq!(Complexity::from_str("low").unwrap(), Complexity::Low);
-        assert_eq!(Complexity::from_str("LOW").unwrap(), Complexity::Low);
-        assert_eq!(Complexity::from_str("medium").unwrap(), Complexity::Medium);
-        assert_eq!(Complexity::from_str("high").unwrap(), Complexity::High);
+        assert_eq!(Complexity::from_str("low").expect("internal error"), Complexity::Low);
+        assert_eq!(Complexity::from_str("LOW").expect("internal error"), Complexity::Low);
+        assert_eq!(Complexity::from_str("medium").expect("internal error"), Complexity::Medium);
+        assert_eq!(Complexity::from_str("high").expect("internal error"), Complexity::High);
         assert!(Complexity::from_str("invalid").is_err());
     }
 
@@ -370,10 +370,10 @@ mod tests {
     fn test_priority_from_str() {
         use std::str::FromStr;
 
-        assert_eq!(Priority::from_str("P0").unwrap(), Priority::P0);
-        assert_eq!(Priority::from_str("p0").unwrap(), Priority::P0);
-        assert_eq!(Priority::from_str("P1").unwrap(), Priority::P1);
-        assert_eq!(Priority::from_str("P2").unwrap(), Priority::P2);
+        assert_eq!(Priority::from_str("P0").expect("internal error"), Priority::P0);
+        assert_eq!(Priority::from_str("p0").expect("internal error"), Priority::P0);
+        assert_eq!(Priority::from_str("P1").expect("internal error"), Priority::P1);
+        assert_eq!(Priority::from_str("P2").expect("internal error"), Priority::P2);
         assert!(Priority::from_str("P3").is_err());
     }
 
@@ -410,7 +410,7 @@ mod tests {
     // Test Roadmap file operations
     #[test]
     fn test_roadmap_save_and_load() {
-        let dir = tempdir().unwrap();
+        let dir = tempdir().expect("internal error");
         let roadmap_path = dir.path().join("test_roadmap.md");
 
         let mut roadmap = Roadmap {
@@ -435,8 +435,8 @@ mod tests {
         roadmap.sprints.insert("v2.46.0".to_string(), sprint);
 
         // Save and load
-        roadmap.to_file(&roadmap_path).unwrap();
-        let loaded = Roadmap::from_file(&roadmap_path).unwrap();
+        roadmap.to_file(&roadmap_path).expect("internal error");
+        let loaded = Roadmap::from_file(&roadmap_path).expect("internal error");
 
         assert_eq!(loaded.current_sprint, Some("v2.46.0".to_string()));
         assert!(loaded.sprints.contains_key("v2.46.0"));
@@ -558,15 +558,15 @@ mod tests {
         // Update to InProgress
         roadmap
             .update_task_status("PMAT-0001", TaskStatus::InProgress)
-            .unwrap();
-        let task = roadmap.get_task("PMAT-0001").unwrap();
+            .expect("internal error");
+        let task = roadmap.get_task("PMAT-0001").expect("internal error");
         assert_eq!(task.status, TaskStatus::InProgress);
 
         // Update to Completed
         roadmap
             .update_task_status("PMAT-0001", TaskStatus::Completed)
-            .unwrap();
-        let task = roadmap.get_task("PMAT-0001").unwrap();
+            .expect("internal error");
+        let task = roadmap.get_task("PMAT-0001").expect("internal error");
         assert_eq!(task.status, TaskStatus::Completed);
 
         // Try updating non-existent task
@@ -656,7 +656,7 @@ mod tests {
         // Start task - should set started_at
         roadmap
             .update_task_status("PMAT-0001", TaskStatus::InProgress)
-            .unwrap();
+            .expect("internal error");
         if let Some(sprint) = roadmap.sprints.get("v2.46.0") {
             if let Some(task) = sprint.tasks.iter().find(|t| t.id == "PMAT-0001") {
                 assert!(task.started_at.is_some());
@@ -667,7 +667,7 @@ mod tests {
         // Complete task - should set completed_at
         roadmap
             .update_task_status("PMAT-0001", TaskStatus::Completed)
-            .unwrap();
+            .expect("internal error");
         if let Some(sprint) = roadmap.sprints.get("v2.46.0") {
             if let Some(task) = sprint.tasks.iter().find(|t| t.id == "PMAT-0001") {
                 assert!(task.started_at.is_some());

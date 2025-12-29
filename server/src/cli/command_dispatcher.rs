@@ -1446,7 +1446,7 @@ impl CommandDispatcher {
                         (m.clone(), score)
                     })
                     .collect();
-                sorted_metrics.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+                sorted_metrics.sort_by(|a, b| b.1.partial_cmp(&a.1).expect("internal error"));
 
                 for (metric_name, _hotness) in sorted_metrics {
                     if let Ok(trend_analysis) = store.trend(&metric_name, days) {
@@ -1826,7 +1826,7 @@ mod tests {
     use std::sync::Arc;
 
     fn create_test_server() -> Arc<StatelessTemplateServer> {
-        Arc::new(StatelessTemplateServer::new().unwrap())
+        Arc::new(StatelessTemplateServer::new().expect("internal error"))
     }
 
     /// Test execute_command with Generate command (tests command routing)
@@ -1914,9 +1914,9 @@ mod tests {
         use std::fs;
         use tempfile::TempDir;
 
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new().expect("internal error");
         let test_file = temp_dir.path().join("test.rs");
-        fs::write(&test_file, "fn simple() -> i32 { 42 }").unwrap();
+        fs::write(&test_file, "fn simple() -> i32 { 42 }").expect("internal error");
 
         let analyses = vec![String::from("complexity")];
 

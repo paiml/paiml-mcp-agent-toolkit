@@ -52,7 +52,7 @@ impl AgentContextBuilder {
             "hybrid" => AgentTemplate::HybridAnalyzer,
             "mcp-server" => AgentTemplate::MCPToolServer,
             path if path.starts_with("custom:") => {
-                AgentTemplate::CustomAgent(path.strip_prefix("custom:").unwrap().into())
+                AgentTemplate::CustomAgent(path.strip_prefix("custom:").expect("internal error").into())
             }
             _ => AgentTemplate::MCPToolServer,
         };
@@ -141,7 +141,7 @@ impl AgentContextBuilder {
 /// let context = create_agent_context("my_agent", "mcp-server")
 ///     .with_quality_level(QualityLevel::Extreme)
 ///     .build()
-///     .unwrap();
+///     .expect("internal error");
 ///
 /// assert_eq!(context.name, "my_agent");
 /// assert_eq!(context.quality_level, QualityLevel::Extreme);
@@ -177,7 +177,7 @@ mod tests {
             .build();
 
         assert!(result.is_ok());
-        let ctx = result.unwrap();
+        let ctx = result.expect("internal error");
         assert_eq!(ctx.name, "my_agent");
         assert_eq!(ctx.quality_level, QualityLevel::Strict);
     }

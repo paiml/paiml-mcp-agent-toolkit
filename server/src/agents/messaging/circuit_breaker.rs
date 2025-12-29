@@ -97,7 +97,7 @@ impl CircuitBreaker {
 
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .expect("internal error")
             .as_millis() as u64;
 
         now - last_failure > self.config.timeout_duration.as_millis() as u64
@@ -129,7 +129,7 @@ impl CircuitBreaker {
     fn on_failure(&self) {
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .expect("internal error")
             .as_millis() as u64;
 
         self.last_failure_time.store(now, Ordering::SeqCst);

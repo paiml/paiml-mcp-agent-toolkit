@@ -90,7 +90,7 @@ impl ProgressIndicator {
                 ProgressStyle::default_spinner()
                     .tick_chars("⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏")
                     .template("{spinner:.cyan} {msg}")
-                    .unwrap(),
+                    .expect("internal error"),
             );
             pb.set_message(message.to_string());
             pb.enable_steady_tick(Duration::from_millis(100));

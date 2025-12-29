@@ -124,11 +124,11 @@ impl ClaimExtractor {
     pub fn new() -> Self {
         let capability_patterns = vec![
             // Positive capabilities: "PMAT can analyze X"
-            Regex::new(r"(?i)PMAT can ([a-z]+)\s+(.+?)(?:\.|$)").unwrap(),
+            Regex::new(r"(?i)PMAT can ([a-z]+)\s+(.+?)(?:\.|$)").expect("internal error"),
             // Negative capabilities: "PMAT cannot compile"
-            Regex::new(r"(?i)PMAT cannot ([a-z]+)\s+(.+?)(?:\.|$)").unwrap(),
+            Regex::new(r"(?i)PMAT cannot ([a-z]+)\s+(.+?)(?:\.|$)").expect("internal error"),
             // Alternative patterns: "PMAT supports X"
-            Regex::new(r"(?i)PMAT supports? (.+?)(?:\.|$)").unwrap(),
+            Regex::new(r"(?i)PMAT supports? (.+?)(?:\.|$)").expect("internal error"),
         ];
 
         let known_languages = vec![
@@ -317,7 +317,7 @@ impl CodeFactDatabase {
         // Parse functions from "Functions:" sections
         let function_regex = Regex::new(r"(?m)^-\s+([a-zA-Z_][a-zA-Z0-9_]*)\(\)")?;
         for caps in function_regex.captures_iter(content) {
-            let function_name = caps.get(1).unwrap().as_str().to_string();
+            let function_name = caps.get(1).expect("internal error").as_str().to_string();
             db.functions
                 .entry(function_name.clone())
                 .or_default()
@@ -329,7 +329,7 @@ impl CodeFactDatabase {
             r"(?m)^-\s+(Rust|TypeScript|JavaScript|Python|C|C\+\+|Go|Java|Kotlin|Ruby|PHP|Swift|C#|Bash|WASM|Haskell|Elixir|Erlang|OCaml)",
         )?;
         for caps in language_regex.captures_iter(content) {
-            let language = caps.get(1).unwrap().as_str().to_string();
+            let language = caps.get(1).expect("internal error").as_str().to_string();
             if !db.languages.contains(&language) {
                 db.languages.push(language);
             }
@@ -717,7 +717,7 @@ Supported languages:
 - TypeScript
         "#;
 
-        let db = CodeFactDatabase::from_markdown(markdown).unwrap();
+        let db = CodeFactDatabase::from_markdown(markdown).expect("internal error");
         assert!(db.has_function("main"));
         assert!(db.has_function("run_server"));
         assert!(db.has_language_support("Rust"));
