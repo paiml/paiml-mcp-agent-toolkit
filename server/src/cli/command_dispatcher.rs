@@ -665,6 +665,32 @@ impl CommandDispatcher {
                 )
                 .await
             }
+
+            Commands::CudaTdg {
+                path,
+                command,
+                format,
+                min_score,
+                fail_on_p0,
+                simd,
+                wgpu,
+                output,
+                quiet,
+            } => {
+                // CUDA-SIMD TDG: 100-point Popper falsification scoring
+                let config = handlers::CudaTdgCommandConfig {
+                    path,
+                    command,
+                    format,
+                    min_score,
+                    fail_on_p0,
+                    simd,
+                    wgpu,
+                    output,
+                    quiet,
+                };
+                handlers::handle_cuda_tdg_command(config).await
+            }
         }
     }
 

@@ -138,6 +138,7 @@ impl CliAdapter {
             | Commands::QaWork { .. } // GH-102: Toyota Way QA validation (CLI-only)
             | Commands::PerfectionScore { .. } // master-plan-pmat-work-system.md: 200-point score (CLI-only)
             | Commands::Spec { .. } // master-plan-pmat-work-system.md: Spec management (CLI-only)
+            | Commands::CudaTdg { .. } // CUDA-SIMD TDG: 100-point Popper falsification (CLI-only)
             => Self::cli_only_command_error(),
 
             #[cfg(feature = "mutation-testing")]
@@ -1848,6 +1849,9 @@ impl CliInput {
             Commands::Spec { .. } => {
                 CommandCategory::Workflow // master-plan-pmat-work-system.md: Spec management
             }
+            Commands::CudaTdg { .. } => {
+                CommandCategory::Analysis // CUDA-SIMD TDG: 100-point Popper falsification
+            }
         }
     }
 
@@ -1968,6 +1972,7 @@ impl CliAdapter {
             | AnalyzeCommands::Defects { .. }
             | AnalyzeCommands::Satd { .. }
             | AnalyzeCommands::Tdg { .. }
+            | AnalyzeCommands::BuildTdg { .. }
             | AnalyzeCommands::LintHotspot { .. }
             | AnalyzeCommands::Clippy { .. }
             | AnalyzeCommands::Entropy { .. } => AnalyzeCommandCategory::Basic,

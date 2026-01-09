@@ -13,8 +13,8 @@ use std::process::Command;
 /// - octocrab → jsonwebtoken → rsa → rand 0.8
 /// - trueno-graph → thiserror v1 (waiting for upstream update)
 /// - arrow → flatbuffers → bitflags v1
-/// Target: ≤28 (prevent regression from current baseline)
-const MAX_DUPLICATE_PACKAGES: usize = 28;
+/// Target: ≤30 (updated after stack version updates)
+const MAX_DUPLICATE_PACKAGES: usize = 30;
 
 /// Critical duplicates that MUST be eliminated (zero tolerance)
 const CRITICAL_DUPLICATES: &[&str] = &[

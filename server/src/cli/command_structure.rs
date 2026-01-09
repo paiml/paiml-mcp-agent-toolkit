@@ -753,6 +753,11 @@ impl CommandExecutor {
             Commands::Spec { .. } => {
                 anyhow::bail!("Spec command should be handled by command_dispatcher.rs")
             }
+
+            // CUDA-SIMD TDG: 100-point Popper falsification - handled by command_dispatcher.rs
+            Commands::CudaTdg { .. } => {
+                anyhow::bail!("CudaTdg command should be handled by command_dispatcher.rs")
+            }
         }
     }
 }

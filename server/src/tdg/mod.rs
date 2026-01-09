@@ -9,6 +9,7 @@ pub mod analyzer_simple;
 pub mod baseline;
 pub mod baseline_analyzer;
 pub mod config;
+pub mod cuda_simd;
 pub mod diagnostics;
 pub mod explain;
 pub mod explain_formatters;
@@ -96,6 +97,15 @@ pub use web_dashboard::{
     create_dashboard_router, start_dashboard_server, DashboardState,
     HealthStatus as DashboardHealthStatus, PerformanceMetrics as DashboardPerformanceMetrics,
     StorageMetrics, SystemMetrics,
+};
+
+// CUDA-SIMD TDG exports (100-point Popper falsification scoring)
+pub use cuda_simd::{
+    AccessPattern, BarrierIssue, BarrierSafetyResult, CoalescingResult, CudaSimdAnalyzer,
+    CudaSimdConfig, CudaSimdTdgResult, CudaTdgGrade, DefectClass, DefectSeverity, DefectTaxonomy,
+    DetectedDefect, FalsifiabilityScore, GpuSimdSpecificScore, HistoricalIntegrityScore,
+    KaizenMetrics, MemoryAccessIssue, PopperScore, ReproducibilityScore, StatisticalRigorScore,
+    TileDimensionResult, TileIssue, TransparencyScore,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

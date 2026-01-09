@@ -1,0 +1,39 @@
+# Nextest configuration for pmat
+# Optimized for fast coverage runs (bashrs-style)
+
+[store]
+dir = "target/nextest"
+
+[profile.default]
+retries = 0
+slow-timeout = { period = "60s", terminate-after = 2 }
+fail-fast = false
+test-threads = "num-cpus"
+
+[profile.coverage]
+# Optimized for coverage runs with instrumentation
+retries = 0
+slow-timeout = { period = "60s", terminate-after = 2 }
+fail-fast = false
+test-threads = "num-cpus"
+status-level = "pass"
+
+[[profile.coverage.overrides]]
+# Integration tests are slow under instrumentation
+filter = 'test(/integration/)'
+slow-timeout = { period = "120s", terminate-after = 2 }
+
+[[profile.coverage.overrides]]
+# Property tests need more time under instrumentation
+filter = 'test(/property/)'
+slow-timeout = { period = "90s", terminate-after = 2 }
+
+[[profile.coverage.overrides]]
+# E2E tests are comprehensive
+filter = 'test(/e2e/)'
+slow-timeout = { period = "120s", terminate-after = 2 }
+
+[profile.ci]
+retries = 1
+slow-timeout = { period = "120s", terminate-after = 2 }
+fail-fast = false

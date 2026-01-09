@@ -146,6 +146,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
         // Advanced analysis commands
         AnalyzeCommands::DeepContext { .. }
         | AnalyzeCommands::Tdg { .. }
+        | AnalyzeCommands::BuildTdg { .. }
         | AnalyzeCommands::LintHotspot { .. }
         | AnalyzeCommands::Comprehensive { .. } => route_advanced_analysis(cmd).await,
 
@@ -206,6 +207,7 @@ async fn route_advanced_analysis(cmd: AnalyzeCommands) -> Result<()> {
     match cmd {
         AnalyzeCommands::DeepContext { .. } => route_deep_context_analysis(cmd).await,
         AnalyzeCommands::Tdg { .. } => route_tdg_analysis(cmd).await,
+        AnalyzeCommands::BuildTdg { .. } => route_build_tdg_analysis(cmd).await,
         AnalyzeCommands::LintHotspot { .. } => route_lint_hotspot_analysis(cmd).await,
         AnalyzeCommands::Comprehensive { .. } => route_comprehensive_analysis(cmd).await,
         _ => unreachable!("Expected advanced analysis command"),
@@ -612,6 +614,69 @@ async fn route_tdg_analysis(cmd: AnalyzeCommands) -> Result<()> {
         unreachable!("Expected Tdg command")
     }
 }
+
+/// Route build-tdg analysis command (build + TDG quality gate)
+async fn route_build_tdg_analysis(cmd: AnalyzeCommands) -> Result<()> {
+    if let AnalyzeCommands::BuildTdg {
+        path,
+        release,
+        threshold,
+        fail_on_regression,
+        tdg_only,
+        top_files,
+        format,
+        output,
+    } = cmd
+    {
+        use super::new_tdg_handler::TdgAnalysisConfig;
+        use std::process::Command;
+
+        // Step 1: Run cargo build (unless tdg_only)
+        if !tdg_only {
+            println!("📦 Building project...");
+            let mut build_cmd = Command::new("cargo");
+            build_cmd.arg("build");
+            if release {
+                build_cmd.arg("--release");
+            }
+            build_cmd.current_dir(&path);
+
+            let status = build_cmd.status()?;
+            if !status.success() {
+                anyhow::bail!("Build failed with exit code: {:?}", status.code());
+            }
+            println!("✅ Build successful\n");
+        }
+
+        // Step 2: Run TDG analysis
+        println!("📊 Running TDG analysis...");
+        let config = TdgAnalysisConfig {
+            path: path.clone(),
+            threshold: Some(threshold),
+            top_files: Some(top_files),
+            format,
+            include_components: false,
+            output,
+            critical_only: false,
+            verbose: false,
+        };
+
+        // Run TDG analysis and get score
+        let result = super::new_tdg_handler::handle_analyze_tdg(config).await;
+
+        // Step 3: Check for regression if requested
+        if fail_on_regression {
+            // TODO: Implement regression check by comparing with stored baseline
+            // For now, just check threshold
+            println!("⚠️  --fail-on-regression not yet implemented, using threshold only");
+        }
+
+        result
+    } else {
+        unreachable!("Expected BuildTdg command")
+    }
+}
+
 /// Route lint hotspot analysis command
 async fn route_lint_hotspot_analysis(cmd: AnalyzeCommands) -> Result<()> {
     if let AnalyzeCommands::LintHotspot {

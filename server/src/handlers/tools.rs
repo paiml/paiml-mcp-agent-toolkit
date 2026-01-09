@@ -74,7 +74,8 @@ async fn dispatch_tool_call<T: TemplateServerTrait>(
     }
 }
 
-fn is_template_tool(tool_name: &str) -> bool {
+/// Check if a tool name is a template tool
+pub fn is_template_tool(tool_name: &str) -> bool {
     matches!(
         tool_name,
         "generate_template"
@@ -85,7 +86,8 @@ fn is_template_tool(tool_name: &str) -> bool {
     )
 }
 
-fn is_analysis_tool(tool_name: &str) -> bool {
+/// Check if a tool name is an analysis tool
+pub fn is_analysis_tool(tool_name: &str) -> bool {
     matches!(
         tool_name,
         "analyze_code_churn"

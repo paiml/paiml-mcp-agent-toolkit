@@ -24,6 +24,7 @@ pub mod comprehensive_handler;
 pub mod config_command_handlers;
 pub mod configuration_handlers;
 pub mod coverage_improve_handler;
+pub mod cuda_tdg_handlers; // CUDA-SIMD TDG: 100-point Popper falsification scoring
 pub mod debug_handlers; // Sprint 74: Time-travel debugging CLI handlers
 #[cfg(feature = "deep-wasm")]
 pub mod deep_wasm_handlers;
@@ -161,6 +162,9 @@ pub use utility_handlers::{
     handle_context, handle_diagnose, handle_list, handle_search, handle_serve,
 };
 pub use wasm_handlers::{handle_analyze_assemblyscript, handle_analyze_webassembly}; // Phase 4: Organizational Intelligence Integration
+
+// CUDA-SIMD TDG exports (100-point Popper falsification scoring)
+pub use cuda_tdg_handlers::{handle_cuda_tdg_command, CudaTdgCommandConfig};
 
 #[cfg(test)]
 mod tests {

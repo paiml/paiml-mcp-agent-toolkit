@@ -1,8 +1,8 @@
 //! RustProjectScore Orchestrator
 //!
-//! Aggregates all 8 category scorers into a unified project score.
+//! Aggregates all 9 category scorers into a unified project score.
 //!
-//! Categories (134 points total):
+//! Categories (144 points total):
 //! - Rust Tooling Compliance (25pts)
 //! - Code Quality (26pts)
 //! - Testing Excellence (20pts)
@@ -10,12 +10,14 @@
 //! - Performance & Benchmarking (10pts)
 //! - Dependency Health (12pts)
 //! - Formal Verification (8pts)
-//! - Known Defects (20pts) - NEW in v2.1
+//! - Known Defects (20pts)
+//! - GPU/SIMD Quality (10pts) - NEW in v2.2
 
 use super::code_quality_scorer::CodeQualityScorer;
 use super::dependency_scorer::DependencyScorer;
 use super::documentation_scorer::DocumentationScorer;
 use super::formal_verification_scorer::FormalVerificationScorer;
+use super::gpu_simd_scorer::GpuSimdScorer;
 use super::known_defects_scorer::KnownDefectsScorer;
 use super::models::*;
 use super::performance_scorer::PerformanceScorer;
@@ -29,16 +31,16 @@ use std::path::Path;
 
 /// Rust Project Score specification version
 /// This tracks the scoring methodology version, not the PMAT binary version
-pub const SPEC_VERSION: &str = "2.1";
+pub const SPEC_VERSION: &str = "2.2";
 
-/// Orchestrates all 8 category scorers to produce unified project score
+/// Orchestrates all 9 category scorers to produce unified project score
 pub struct RustProjectScoreOrchestrator {
-    /// All 8 category scorers
+    /// All 9 category scorers
     scorers: Vec<Box<dyn Scorer>>,
 }
 
 impl RustProjectScoreOrchestrator {
-    /// Create a new orchestrator with all 8 scorers
+    /// Create a new orchestrator with all 9 scorers
     pub fn new() -> Self {
         let scorers: Vec<Box<dyn Scorer>> = vec![
             Box::new(RustToolingScorer::new()),
@@ -49,6 +51,7 @@ impl RustProjectScoreOrchestrator {
             Box::new(DependencyScorer::new()),
             Box::new(FormalVerificationScorer::new()),
             Box::new(KnownDefectsScorer::new()),
+            Box::new(GpuSimdScorer::new()),
         ];
 
         Self { scorers }
@@ -59,9 +62,9 @@ impl RustProjectScoreOrchestrator {
         format!("Rust Project Score v{}", SPEC_VERSION)
     }
 
-    /// Get maximum possible points (134)
+    /// Get maximum possible points (144)
     pub fn max_points(&self) -> f64 {
-        134.0
+        144.0
     }
 
     /// Get all scorer names
@@ -225,7 +228,7 @@ pub struct ProjectScore {
     /// Total points earned
     pub total_earned: f64,
 
-    /// Total possible points (134) - 8 categories
+    /// Total possible points (144) - 9 categories
     pub total_possible: f64,
 
     /// Percentage (0-100)
@@ -253,13 +256,13 @@ mod tests {
     fn test_orchestrator_creation() {
         let orch = RustProjectScoreOrchestrator::new();
         assert_eq!(orch.name(), format!("Rust Project Score v{}", SPEC_VERSION));
-        assert_eq!(orch.max_points(), 134.0);
+        assert_eq!(orch.max_points(), 144.0);
     }
 
     #[test]
     fn test_scorer_count() {
         let orch = RustProjectScoreOrchestrator::new();
-        assert_eq!(orch.scorers.len(), 8);
+        assert_eq!(orch.scorers.len(), 9);
     }
 
     #[test]
@@ -274,5 +277,12 @@ mod tests {
         let orch = RustProjectScoreOrchestrator::new();
         let names: Vec<&str> = orch.scorer_names();
         assert!(names.contains(&"Known Defects"));
+    }
+
+    #[test]
+    fn test_gpu_simd_scorer_present() {
+        let orch = RustProjectScoreOrchestrator::new();
+        let names: Vec<&str> = orch.scorer_names();
+        assert!(names.contains(&"GPU/SIMD Quality"));
     }
 }

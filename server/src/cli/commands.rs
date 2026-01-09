@@ -1008,6 +1008,149 @@ pub enum Commands {
         #[arg(short = 'f', long, default_value = "terminal")]
         format: String,
     },
+
+    /// CUDA-SIMD Technical Debt Gradient (100-point Popper falsification scoring)
+    /// Analyzes CUDA PTX, SIMD (AVX2/AVX-512/NEON), and WGPU code for defects
+    /// Integrates Toyota Production System principles with falsificationist methodology
+    #[command(name = "cuda-tdg", visible_aliases = &["gpu-tdg", "simd-tdg"])]
+    CudaTdg {
+        /// File or directory to analyze
+        #[arg(default_value = ".")]
+        path: PathBuf,
+
+        /// Subcommand for specific operations
+        #[command(subcommand)]
+        command: Option<CudaTdgCommand>,
+
+        /// Output format
+        #[arg(short = 'f', long, value_enum, default_value = "terminal")]
+        format: CudaTdgOutputFormat,
+
+        /// Minimum score to pass quality gate (0-100)
+        #[arg(long, default_value = "85")]
+        min_score: f64,
+
+        /// Fail on P0 (critical) defects
+        #[arg(long)]
+        fail_on_p0: bool,
+
+        /// Include SIMD analysis (AVX2/AVX-512/NEON)
+        #[arg(long)]
+        simd: bool,
+
+        /// Include WGPU analysis
+        #[arg(long)]
+        wgpu: bool,
+
+        /// Write output to file
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+
+        /// Quiet mode (score only, no details)
+        #[arg(short, long)]
+        quiet: bool,
+    },
+}
+
+/// CUDA-SIMD TDG output format
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, clap::ValueEnum)]
+pub enum CudaTdgOutputFormat {
+    /// Terminal output with colors
+    #[default]
+    Terminal,
+    /// JSON for programmatic consumption
+    Json,
+    /// Markdown for documentation
+    Markdown,
+    /// SARIF for IDE integration
+    Sarif,
+}
+
+/// CUDA-SIMD TDG subcommands
+#[derive(Debug, Clone, Subcommand)]
+#[cfg_attr(test, derive(PartialEq))]
+pub enum CudaTdgCommand {
+    /// Analyze a file or directory for CUDA/SIMD defects
+    Analyze {
+        /// Path to analyze
+        path: PathBuf,
+    },
+
+    /// Score codebase with 100-point Popper falsification system
+    Score {
+        /// Path to analyze
+        #[arg(default_value = ".")]
+        path: PathBuf,
+
+        /// Show detailed category breakdown
+        #[arg(long)]
+        breakdown: bool,
+    },
+
+    /// Generate detailed defect report
+    Report {
+        /// Path to analyze
+        #[arg(default_value = ".")]
+        path: PathBuf,
+
+        /// Output format (html, json, markdown)
+        #[arg(long, default_value = "markdown")]
+        format: String,
+
+        /// Output file
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+    },
+
+    /// Check barrier safety (PARITY-114 detection)
+    BarrierCheck {
+        /// PTX or CUDA file to analyze
+        path: PathBuf,
+    },
+
+    /// Validate tile dimensions for attention kernels
+    ValidateTiles {
+        /// Head dimension
+        #[arg(long)]
+        head_dim: usize,
+
+        /// Tile KV dimension
+        #[arg(long)]
+        tile_kv: usize,
+
+        /// Shared memory limit (bytes)
+        #[arg(long, default_value = "49152")]
+        shared_memory: usize,
+    },
+
+    /// Quality gate for CI/CD (exits non-zero on failure)
+    Gate {
+        /// Path to analyze
+        #[arg(default_value = ".")]
+        path: PathBuf,
+
+        /// Minimum score to pass (0-100)
+        #[arg(long, default_value = "85")]
+        min_score: f64,
+
+        /// Fail on P0 defects
+        #[arg(long)]
+        fail_on_p0: bool,
+    },
+
+    /// Generate Kaizen continuous improvement report
+    Kaizen {
+        /// Path to analyze
+        #[arg(default_value = ".")]
+        path: PathBuf,
+
+        /// Start date for analysis (YYYY-MM-DD)
+        #[arg(long)]
+        since: Option<String>,
+    },
+
+    /// Show Tauranta fault taxonomy
+    Taxonomy,
 }
 
 /// Oracle subcommands for PDCA loop automated quality improvement
@@ -2208,6 +2351,51 @@ pub enum AnalyzeCommands {
         /// data-driven scores that can learn from project history.
         #[arg(long)]
         ml: bool,
+    },
+
+    /// Build with TDG quality gate (CI/CD optimized)
+    ///
+    /// Combines `cargo build` with TDG score validation.
+    /// Fails fast if TDG score exceeds threshold (Jidoka principle).
+    ///
+    /// Examples:
+    ///   pmat analyze build-tdg                    # Build + TDG with defaults
+    ///   pmat analyze build-tdg --release          # Release build + TDG
+    ///   pmat analyze build-tdg --threshold 2.0    # Custom TDG threshold
+    ///   pmat analyze build-tdg --fail-on-regression  # Fail if TDG regressed
+    #[command(name = "build-tdg")]
+    BuildTdg {
+        /// Path to analyze (defaults to current directory)
+        #[arg(long, short = 'p', default_value = ".")]
+        path: PathBuf,
+
+        /// Build in release mode
+        #[arg(long)]
+        release: bool,
+
+        /// TDG threshold - fail if exceeded (default: 2.0)
+        #[arg(long, default_value = "2.0")]
+        threshold: f64,
+
+        /// Fail if TDG score regressed from previous build
+        #[arg(long)]
+        fail_on_regression: bool,
+
+        /// Skip build, only run TDG analysis
+        #[arg(long)]
+        tdg_only: bool,
+
+        /// Number of top files to show in TDG report
+        #[arg(long, default_value = "10")]
+        top_files: usize,
+
+        /// Output format
+        #[arg(short, long, value_enum, default_value = "table")]
+        format: TdgOutputFormat,
+
+        /// Output file path
+        #[arg(short, long)]
+        output: Option<PathBuf>,
     },
 
     /// Find the file with highest defect density (lint violations per line)

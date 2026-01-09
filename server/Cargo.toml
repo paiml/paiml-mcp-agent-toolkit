@@ -12,6 +12,9 @@ readme = "README.md"
 keywords = ["mcp", "code-analysis", "refactoring", "quality", "ai"]
 categories = ["command-line-utilities", "development-tools", "development-tools::testing"]
 exclude = ["*.log", "*.profraw", ".pmat-cache", "proptest-regressions"]
+# PERF: Disable autotest discovery - 193 .rs files = 193 binaries = slow coverage
+# Instead, use explicit [[test]] declarations for unified test binaries
+autotests = false
 
 [[bin]]
 name = "pmat-agent"
@@ -19,7 +22,7 @@ path = "src/bin/pmat-agent.rs"
 
 [dependencies]
 # Organizational Intelligence Plugin - Phase 4 integration
-organizational-intelligence-plugin = { version = "0.2.0", optional = true }
+organizational-intelligence-plugin = { version = "0.3.1", optional = true }
 
 # Async runtime
 # Sprint 46 Phase 4: Removed "io-std", "signal", "process" features (saves 180-280 KB)
@@ -55,17 +58,17 @@ levenshtein = "1.0"
 # Migration to aprender complete (Sprint 45)
 # Graph algorithms enhanced (Sprint 46) - added 8 new centrality & structural stats
 # See: docs/specifications/aprender-ml-integration.md
-aprender = "0.14.0"  # PAIML next-gen ML (TDG 94.1/100, zero deps, SafeTensors support, text vectorization, LDA topic modeling)
+aprender = "0.24.0"  # PAIML next-gen ML (TDG 94.1/100, zero deps, SafeTensors support, text vectorization, LDA topic modeling)
 
 # High-Performance Compute (SIMD/GPU)
-trueno = { version = "0.6.0", optional = true }
-trueno-db = { version = "0.3.1", optional = true, default-features = false }
+trueno = { version = "0.11.0", optional = true }
+trueno-db = { version = "0.3.10", optional = true, default-features = false }
 
 # Semantic Search Stack (Pure Rust - Zero API Keys)
 # See: docs/specifications/semantic-search-feature.md
-trueno-graph = "0.1.2"  # GPU-first graph database (CSR, PageRank, Louvain)
-trueno-rag = "0.1.2"    # RAG pipeline (chunking, hybrid retrieval, RRF fusion)
-trueno-viz = { version = "0.1.4", optional = true, features = ["terminal", "graph"] }  # Terminal graph visualization
+trueno-graph = "0.1.7"  # GPU-first graph database (CSR, PageRank, Louvain)
+# trueno-rag = "0.1.7"  # REMOVED: cargo-machete verified unused (only in comments)
+trueno-viz = { version = "0.1.17", optional = true, features = ["terminal", "graph"] }  # Terminal graph visualization
 
 # Analytics GPU dependencies (optional, gated by analytics-gpu feature)
 # Issue #79: Feature-gated architecture to prevent +3.8 MB binary bloat
@@ -85,7 +88,7 @@ handlebars = { version = "6.3", default-features = false, features = ["string_he
 
 # MCP SDK - now core dependency for MCP server functionality
 # Sprint 46 Phase 4: Switched from "full" to explicit features (saves 150-250 KB)
-pmcp = { version = "1.4.2", features = ["websocket", "http", "sse", "validation"] }
+pmcp = { version = "1.9.4", features = ["websocket", "http", "sse", "validation"] }
 
 # Caching
 lru = { version = "0.14", features = ["hashbrown"] }
@@ -206,10 +209,10 @@ xxhash-rust = { version = "0.8", features = ["xxh64"] }
 webbrowser = "1.0"
 bytes = "1.10"
 http = "1.3"
-httparse = "1.10"
+# httparse = "1.10"  # REMOVED: cargo-machete verified unused (hyper handles HTTP parsing)
 dashmap = "6.1"
 flate2 = "1.1"
-smallvec = "1.15.0"
+# smallvec = "1.15.0"  # REMOVED: cargo-machete verified unused
 
 # Unified protocol support
 axum = { version = "0.8", default-features = false, features = ["json", "tokio", "http1", "query"] }
@@ -254,11 +257,11 @@ pest = "2.8.2"
 pest_derive = { version = "2.8.2", features = ["default"] }
 
 # Deep WASM inspection dependencies
-wasm-encoder = "0.239.0"
+# wasm-encoder = "0.239.0"  # REMOVED: cargo-machete verified unused
 # walrus = "0.22" # REMOVED: Unused (0 references in codebase)
-object = "0.37"
+# object = "0.37"  # REMOVED: cargo-machete verified unused
 sourcemap = "9.0"
-ahash = "0.8"
+# ahash = "0.8"  # REMOVED: cargo-machete verified unused
 prettyplease = "0.2.37"
 fs2 = "0.4.3"
 
@@ -445,6 +448,12 @@ harness = false
 [[bench]]
 name = "topk_selection"
 harness = false
+
+# PERF: Unified test binary - 192 tests in 1 binary instead of 192 binaries
+# This dramatically reduces llvm-cov report generation time
+[[test]]
+name = "all"
+path = "tests/all.rs"
 
 [[test]]
 name = "unit_core"
