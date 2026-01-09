@@ -27,8 +27,8 @@ main() {
     version="${2:-latest}"
     
     # Platform detection
-    os=$(uname -s)
-    arch=$(uname -m)
+    os="$(uname -s)"
+    arch="$(uname -m)"
     
     case "${os}_${arch}" in
         Linux_x86_64)
@@ -50,13 +50,13 @@ main() {
     esac
     
     # Create temp directory with cleanup trap
-    temp_dir=$(mktemp -d)
-    trap 'rm -rf "$temp_dir"; cleanup_artifacts' EXIT
+    temp_dir="$(mktemp -d)"
+    trap 'rm -rf "${temp_dir:?}"; cleanup_artifacts' EXIT
     
     # Construct URLs
     if [ "$version" = "latest" ]; then
         # Get latest version from GitHub API
-        version=$(curl -sSfL "${REPO_URL}/releases/latest" | grep -o 'tag/v[0-9.]*' | head -1 | cut -d'v' -f2)
+        version="$(curl -sSfL "${REPO_URL}/releases/latest" | grep -o 'tag/v[0-9.]*' | head -1 | cut -d'v' -f2)"
     fi
     
     base_url="${REPO_URL}/releases/download"
@@ -71,8 +71,8 @@ main() {
     
     # Download and verify checksum
     echo "Verifying checksum..."
-    expected_checksum=$(curl -sSfL "$checksum_url" | cut -d' ' -f1)
-    actual_checksum=$(sha256sum "${temp_dir}/archive.tar.gz" | cut -d' ' -f1)
+    expected_checksum="$(curl -sSfL "$checksum_url" | cut -d' ' -f1)"
+    actual_checksum="$(sha256sum "${temp_dir}/archive.tar.gz" | cut -d' ' -f1)"
     
     if [ "$expected_checksum" != "$actual_checksum" ]; then
         echo "Checksum verification failed!" >&2

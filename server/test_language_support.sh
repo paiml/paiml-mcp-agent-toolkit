@@ -5,9 +5,9 @@ echo "=== Language Support Verification ==="
 echo
 
 # Create test directory
-TEST_DIR="/tmp/pmat_lang_test_$$"
+TEST_DIR="$(mktemp -d)"
 mkdir -p "$TEST_DIR"
-cd "$TEST_DIR"
+cd "$TEST_DIR" || exit 1
 
 # Create test files for each language
 cat > test.cs <<'EOF'
@@ -82,7 +82,7 @@ echo "Running pmat context analysis..."
 
 # Try with installed version first
 if command -v pmat &> /dev/null; then
-    echo "Using installed pmat $(pmat --version)"
+    echo "Using installed pmat $(pmat --version 2>/dev/null)"
     pmat context --output deep_context_test.md 2>&1 | head -30
 
     echo
@@ -116,8 +116,8 @@ else
 fi
 
 # Cleanup
-cd /
-rm -rf "$TEST_DIR"
+cd / || exit 1
+rm -rf "${TEST_DIR:?}"
 
 echo
 echo "=== Test Complete ==="
