@@ -1154,12 +1154,12 @@ colored = "2.0"
             examples_dir.join("bad.rs"),
             r#"
 fn main() {
-    let x = get_value().expect("internal error");
-    let y = parse().expect("internal error");
-    let z = read().expect("internal error");
-    let a = write().expect("internal error");
-    let b = compute().expect("internal error");
-    let c = process().expect("internal error");
+    let x = get_value().unwrap();
+    let y = parse().unwrap();
+    let z = read().unwrap();
+    let a = write().unwrap();
+    let b = compute().unwrap();
+    let c = process().unwrap();
     panic!("Something went wrong");
 }
 "#,
