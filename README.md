@@ -7,7 +7,7 @@
 
 [![Crates.io](https://img.shields.io/crates/v/pmat.svg)](https://crates.io/crates/pmat)
 [![Documentation](https://docs.rs/pmat/badge.svg)](https://docs.rs/pmat)
-[![Tests](https://img.shields.io/badge/tests-2500%2B%20passing-brightgreen)](https://github.com/paiml/paiml-mcp-agent-toolkit)
+[![Tests](https://img.shields.io/badge/tests-4600%2B%20passing-brightgreen)](https://github.com/paiml/paiml-mcp-agent-toolkit)
 [![Coverage](https://img.shields.io/badge/coverage-%3E85%25-brightgreen)](https://github.com/paiml/paiml-mcp-agent-toolkit)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Rust](https://img.shields.io/badge/rust-1.83+-orange.svg)](https://www.rust-lang.org)
@@ -208,7 +208,7 @@ pmat/
 
 | Metric | Value |
 |--------|-------|
-| Tests | 2500+ passing |
+| Tests | 4600+ passing |
 | Coverage | >85% |
 | Mutation Score | >80% |
 | Languages | 17+ supported |
@@ -297,7 +297,7 @@ Data provenance and licensing documented in [docs/ml/REPRODUCIBILITY.md](docs/ml
 | [entrenar](https://crates.io/crates/entrenar) | Training & optimization | 0.2.3 |
 | [aprender](https://crates.io/crates/aprender) | ML algorithms | 0.14.0 |
 | [realizar](https://crates.io/crates/realizar) | GGUF inference | 0.2.1 |
-| **pmat** | Code analysis toolkit | 2.209.0 |
+| **pmat** | Code analysis toolkit | 2.213.1 |
 
 ## Documentation
 
