@@ -9,6 +9,10 @@
 //! - **Kaizen**: Continuous improvement through historical Tauranta fault analysis
 //! - **Poka-Yoke**: Error-proofing through static analysis
 
+#![allow(clippy::wildcard_in_or_patterns)]
+#![allow(clippy::useless_format)]
+#![allow(clippy::single_char_add_str)]
+
 use crate::cli::commands::{CudaTdgCommand, CudaTdgOutputFormat};
 use crate::tdg::{
     CudaSimdAnalyzer, CudaSimdConfig, CudaSimdTdgResult, CudaTdgGrade, DefectSeverity,
@@ -133,7 +137,7 @@ async fn handle_report(
     let report = match format {
         "html" => format_html_report(&result)?,
         "json" => serde_json::to_string_pretty(&result)?,
-        "markdown" | _ => format_markdown_report(&result)?,
+        _ => format_markdown_report(&result)?,
     };
 
     if let Some(output_path) = output {

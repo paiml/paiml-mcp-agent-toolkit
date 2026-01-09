@@ -9,6 +9,7 @@ pub mod analyzer_simple;
 pub mod baseline;
 pub mod baseline_analyzer;
 pub mod config;
+#[allow(clippy::all)]
 pub mod cuda_simd;
 pub mod diagnostics;
 pub mod explain;

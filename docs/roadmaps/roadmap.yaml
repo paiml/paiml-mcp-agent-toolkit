@@ -719,3 +719,53 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: CB-IMPL-001
+  github_issue: null
+  item_type: epic
+  title: 'ComputeBrick Diagnostic Support (PROBAR-SPEC-009-P8)'
+  status: inprogress
+  priority: high
+  assigned_to: null
+  created: 2026-01-09T09:24:58.873088772+00:00
+  updated: 2026-01-09T09:24:58.873088772+00:00
+  spec: docs/specifications/compute-brick-support.md
+  acceptance_criteria:
+  - CB-001 through CB-022 defect patterns added to cuda_simd.rs
+  - pmat comply check --compute-brick validates ComputeBrick code
+  - pmat comply enforce --compute-brick installs git hooks
+  - probar GUI coverage >= 80% enforced
+  - No P0 defects blocks merge (Jidoka principle)
+  - 100-point Popper falsification score implemented
+  phases:
+  - name: RED
+    status: completed
+    description: Define defect taxonomy and detection patterns
+  - name: GREEN
+    status: inprogress
+    description: Implement detection and comply integration
+  - name: REFACTOR
+    status: pending
+    description: Optimize detection algorithms and add caching
+  subtasks:
+  - id: CB-IMPL-001-A
+    title: Add CB-001 to CB-022 defect patterns to DefectTaxonomy
+    status: completed
+  - id: CB-IMPL-001-B
+    title: Add check_compute_brick to comply handlers
+    status: inprogress
+  - id: CB-IMPL-001-C
+    title: Add probar coverage enforcement to comply enforce
+    status: pending
+  - id: CB-IMPL-001-D
+    title: Add ComputeBrick-specific detection algorithms
+    status: pending
+  - id: CB-IMPL-001-E
+    title: Integration tests for pmat comply --compute-brick
+    status: pending
+  estimated_effort: 4h
+  labels:
+  - cuda-tdg
+  - probar
+  - toyota-way
+  - popper-falsification
+  notes: 'Reference: Popper (1959), Liker (2004). See spec for full citations.'

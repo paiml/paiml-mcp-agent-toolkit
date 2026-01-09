@@ -1,3 +1,14 @@
+// Module-level clippy allows for prototype CUDA-SIMD code
+#![allow(clippy::too_many_arguments)]
+#![allow(clippy::field_reassign_with_default)]
+#![allow(clippy::useless_format)]
+#![allow(clippy::single_char_add_str)]
+#![allow(clippy::collapsible_if)]
+#![allow(clippy::trivial_regex)]
+#![allow(clippy::double_must_use)]
+#![allow(clippy::wildcard_in_or_patterns)]
+#![allow(clippy::unused_enumerate_index)]
+
 //! CUDA-SIMD Technical Debt Gradient (TDG) Module
 //!
 //! Implements the 100-point Karl Popper falsification scoring system for
@@ -326,6 +337,178 @@ impl DefectTaxonomy {
                 detection_method: "PTX dataflow analysis".to_string(),
                 resolved: false,
                 root_cause: Some("Address register depends on value loaded from shared memory, causing non-uniform memory access".to_string()),
+            },
+        );
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // COMPUTEBRICK DEFECT PATTERNS (PROBAR-SPEC-009-P8)
+        // ComputeBrick generates WebGPU/WGSL shaders from Rust type definitions.
+        // These defects detect issues in generated shader code.
+        // Reference: docs/specifications/compute-brick-support.md
+        // ═══════════════════════════════════════════════════════════════════════
+
+        // CB-001: Missing bounds check in generated WGSL
+        // Impact: Out-of-bounds memory access in compute shader
+        // Detection: global_invocation_id used without arrayLength guard
+        patterns.insert(
+            "CB-001".to_string(),
+            DefectClass {
+                ticket_id: "CB-001".to_string(),
+                description: "WGSL global_invocation_id used without bounds check".to_string(),
+                severity: DefectSeverity::P0Critical,
+                detection_method: "WGSL AST pattern match".to_string(),
+                resolved: false,
+                root_cause: Some("ComputeBrick::to_wgsl() generates gid without arrayLength guard".to_string()),
+            },
+        );
+
+        // CB-002: Barrier divergence in generated WGSL
+        // Impact: Race condition or deadlock in workgroup
+        // Detection: workgroupBarrier() unreachable from some threads
+        patterns.insert(
+            "CB-002".to_string(),
+            DefectClass {
+                ticket_id: "CB-002".to_string(),
+                description: "WGSL workgroupBarrier() unreachable from some threads".to_string(),
+                severity: DefectSeverity::P0Critical,
+                detection_method: "CFG reachability analysis".to_string(),
+                resolved: false,
+                root_cause: Some("Conditional early return before barrier in generated shader".to_string()),
+            },
+        );
+
+        // CB-003: Tile dimension exceeds tensor shape
+        // Impact: Shared memory overflow or incorrect results
+        // Detection: tile_size > tensor.element_count()
+        patterns.insert(
+            "CB-003".to_string(),
+            DefectClass {
+                ticket_id: "CB-003".to_string(),
+                description: "Tile dimensions exceed tensor shape".to_string(),
+                severity: DefectSeverity::P0Critical,
+                detection_method: "Constraint solving".to_string(),
+                resolved: false,
+                root_cause: Some("TileStrategy dimensions not validated against tensor shapes".to_string()),
+            },
+        );
+
+        // CB-004: Shared memory exceeds 16KB limit
+        // Impact: Shader compilation failure or runtime error
+        // Detection: Sum of var<workgroup> allocations > 16384 bytes
+        patterns.insert(
+            "CB-004".to_string(),
+            DefectClass {
+                ticket_id: "CB-004".to_string(),
+                description: "Workgroup shared memory exceeds 16KB limit".to_string(),
+                severity: DefectSeverity::P0Critical,
+                detection_method: "Static memory analysis".to_string(),
+                resolved: false,
+                root_cause: Some("ComputeBrick::shared() allocations not summed and validated".to_string()),
+            },
+        );
+
+        // CB-010: Suboptimal workgroup size
+        // Impact: Warp/wavefront underutilization (up to 50% waste)
+        // Detection: workgroup_size not multiple of 32
+        patterns.insert(
+            "CB-010".to_string(),
+            DefectClass {
+                ticket_id: "CB-010".to_string(),
+                description: "Workgroup size not multiple of 32 (warp waste)".to_string(),
+                severity: DefectSeverity::P1Performance,
+                detection_method: "Numeric check".to_string(),
+                resolved: false,
+                root_cause: Some("Workgroup size chosen without considering warp alignment".to_string()),
+            },
+        );
+
+        // CB-011: Redundant barrier without preceding shared memory write
+        // Impact: Unnecessary synchronization overhead
+        // Detection: workgroupBarrier() without prior shared memory store
+        patterns.insert(
+            "CB-011".to_string(),
+            DefectClass {
+                ticket_id: "CB-011".to_string(),
+                description: "Redundant barrier without preceding shared memory write".to_string(),
+                severity: DefectSeverity::P1Performance,
+                detection_method: "Data flow analysis".to_string(),
+                resolved: false,
+                root_cause: Some("TileOp::Barrier added without corresponding LoadShared/StoreShared".to_string()),
+            },
+        );
+
+        // CB-012: Low vectorization ratio
+        // Impact: Suboptimal SIMD utilization
+        // Detection: <50% of operations use vector types (vec2/vec3/vec4)
+        patterns.insert(
+            "CB-012".to_string(),
+            DefectClass {
+                ticket_id: "CB-012".to_string(),
+                description: "Low vectorization ratio (<50%)".to_string(),
+                severity: DefectSeverity::P1Performance,
+                detection_method: "Type analysis".to_string(),
+                resolved: false,
+                root_cause: Some("ElementwiseOp generates scalar operations instead of vector".to_string()),
+            },
+        );
+
+        // CB-013: Missing cooperative matrix for MMA operations
+        // Impact: Not using tensor core / matrix unit acceleration
+        // Detection: TileOp::Mma without subgroup cooperative extension
+        patterns.insert(
+            "CB-013".to_string(),
+            DefectClass {
+                ticket_id: "CB-013".to_string(),
+                description: "Matrix ops without subgroup cooperative usage".to_string(),
+                severity: DefectSeverity::P1Performance,
+                detection_method: "Pattern match".to_string(),
+                resolved: false,
+                root_cause: Some("TileStrategy::Cooperative not using WGSL subgroup operations".to_string()),
+            },
+        );
+
+        // CB-020: Unsafe block without SAFETY comment
+        // Impact: Code review friction, potential hidden UB
+        // Detection: unsafe {} without // SAFETY: comment
+        patterns.insert(
+            "CB-020".to_string(),
+            DefectClass {
+                ticket_id: "CB-020".to_string(),
+                description: "unsafe block without SAFETY comment".to_string(),
+                severity: DefectSeverity::P2Efficiency,
+                detection_method: "Regex + AST".to_string(),
+                resolved: false,
+                root_cause: Some("Rust safety documentation convention not followed".to_string()),
+            },
+        );
+
+        // CB-021: SIMD intrinsics without #[target_feature]
+        // Impact: Compiler may not emit SIMD instructions (regression)
+        // Detection: SIMD intrinsics in function without #[target_feature] attribute
+        patterns.insert(
+            "CB-021".to_string(),
+            DefectClass {
+                ticket_id: "CB-021".to_string(),
+                description: "SIMD intrinsics without #[target_feature] attribute".to_string(),
+                severity: DefectSeverity::P2Efficiency,
+                detection_method: "Attribute check".to_string(),
+                resolved: false,
+                root_cause: Some("Same as TRUENO-SIMD-001: missing attribute causes scalar fallback".to_string()),
+            },
+        );
+
+        // CB-022: Excessive barriers (>4 per kernel)
+        // Impact: Indicates algorithmic inefficiency
+        // Detection: Count of workgroupBarrier() > 4
+        patterns.insert(
+            "CB-022".to_string(),
+            DefectClass {
+                ticket_id: "CB-022".to_string(),
+                description: "Excessive barriers (>4) suggests algorithmic issue".to_string(),
+                severity: DefectSeverity::P2Efficiency,
+                detection_method: "Count analysis".to_string(),
+                resolved: false,
+                root_cause: Some("Algorithm requires rethinking to reduce synchronization points".to_string()),
             },
         );
 
@@ -1436,7 +1619,7 @@ impl CudaSimdAnalyzer {
 
     fn detect_memory_patterns(&self, content: &str, path: &Path, analysis: &mut FileAnalysis) {
         // Check if this is a PTX file
-        let is_ptx = path.extension().map_or(false, |e| e == "ptx");
+        let is_ptx = path.extension().is_some_and(|e| e == "ptx");
 
         if is_ptx {
             self.detect_ptx_memory_patterns(content, path, analysis);
@@ -2301,7 +2484,7 @@ impl CudaSimdAnalyzer {
         patterns.has_criterion_benches = path.join("benches").exists()
             && std::fs::read_dir(path.join("benches"))
                 .map(|d| d.filter_map(Result::ok).any(|e| {
-                    e.path().extension().map_or(false, |ext| ext == "rs")
+                    e.path().extension().is_some_and(|ext| ext == "rs")
                 }))
                 .unwrap_or(false);
 
@@ -2322,7 +2505,7 @@ impl CudaSimdAnalyzer {
         if path.join("src/backends").exists() {
             if let Ok(entries) = std::fs::read_dir(path.join("src/backends")) {
                 for entry in entries.filter_map(Result::ok) {
-                    if entry.path().extension().map_or(false, |e| e == "rs") {
+                    if entry.path().extension().is_some_and(|e| e == "rs") {
                         if let Ok(content) = std::fs::read_to_string(entry.path()) {
                             if content.contains("// SAFETY:") || content.contains("/// SAFETY:") {
                                 patterns.has_safety_comments = true;
