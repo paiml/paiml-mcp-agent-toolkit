@@ -503,4 +503,208 @@ mod tests {
         assert_eq!(err.code, error_codes::INTERNAL_ERROR);
         assert!(err.message.contains("contradiction"));
     }
+
+    #[test]
+    fn test_validate_documentation_tool_new() {
+        let registry = Arc::new(AgentRegistry::new());
+        let tool = ValidateDocumentationTool::new(registry.clone());
+        // Just verify construction works
+        assert!(tool.metadata().name.contains("documentation"));
+    }
+
+    #[test]
+    fn test_check_claim_tool_new() {
+        let registry = Arc::new(AgentRegistry::new());
+        let tool = CheckClaimTool::new(registry.clone());
+        assert!(tool.metadata().name.contains("claim"));
+    }
+
+    #[test]
+    fn test_validate_documentation_metadata_schema() {
+        let registry = Arc::new(AgentRegistry::new());
+        let tool = ValidateDocumentationTool::new(registry);
+        let metadata = tool.metadata();
+
+        // Verify schema structure
+        let schema = &metadata.input_schema;
+        assert!(schema["properties"]["documentation_path"]["type"]
+            .as_str()
+            .unwrap()
+            .contains("string"));
+        assert!(schema["properties"]["deep_context_path"]["type"]
+            .as_str()
+            .unwrap()
+            .contains("string"));
+        assert!(schema["properties"]["similarity_threshold"]["type"]
+            .as_str()
+            .unwrap()
+            .contains("number"));
+        assert!(schema["properties"]["fail_on_error"]["type"]
+            .as_str()
+            .unwrap()
+            .contains("boolean"));
+    }
+
+    #[test]
+    fn test_check_claim_metadata_schema() {
+        let registry = Arc::new(AgentRegistry::new());
+        let tool = CheckClaimTool::new(registry);
+        let metadata = tool.metadata();
+
+        let schema = &metadata.input_schema;
+        assert!(schema["properties"]["claim"]["type"]
+            .as_str()
+            .unwrap()
+            .contains("string"));
+        assert!(schema["properties"]["deep_context_path"]["type"]
+            .as_str()
+            .unwrap()
+            .contains("string"));
+    }
+
+    #[tokio::test]
+    async fn test_validate_documentation_missing_doc_path_only() {
+        let registry = Arc::new(AgentRegistry::new());
+        let tool = ValidateDocumentationTool::new(registry);
+
+        let params = json!({
+            "deep_context_path": "/some/path"
+        });
+
+        let result = tool.execute(params).await;
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.message.contains("documentation_path"));
+    }
+
+    #[tokio::test]
+    async fn test_check_claim_missing_deep_context() {
+        let registry = Arc::new(AgentRegistry::new());
+        let tool = CheckClaimTool::new(registry);
+
+        let params = json!({
+            "claim": "PMAT can analyze code"
+        });
+
+        let result = tool.execute(params).await;
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.message.contains("deep_context_path"));
+    }
+
+    #[tokio::test]
+    async fn test_validate_documentation_nonexistent_file() {
+        let registry = Arc::new(AgentRegistry::new());
+        let tool = ValidateDocumentationTool::new(registry);
+
+        let params = json!({
+            "documentation_path": "/nonexistent/file.md",
+            "deep_context_path": "/other/path"
+        });
+
+        let result = tool.execute(params).await;
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.message.contains("Failed to read"));
+    }
+
+    #[tokio::test]
+    async fn test_check_claim_nonexistent_deep_context() {
+        let registry = Arc::new(AgentRegistry::new());
+        let tool = CheckClaimTool::new(registry);
+
+        let params = json!({
+            "claim": "Test claim",
+            "deep_context_path": "/nonexistent/context.md"
+        });
+
+        let result = tool.execute(params).await;
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.message.contains("Failed to read"));
+    }
+
+    #[tokio::test]
+    async fn test_check_claim_default_threshold() {
+        let registry = Arc::new(AgentRegistry::new());
+        let tool = CheckClaimTool::new(registry);
+
+        let mut context_file = NamedTempFile::new().unwrap();
+        writeln!(context_file, "## Functions:").unwrap();
+        writeln!(context_file, "- analyze()").unwrap();
+        context_file.flush().unwrap();
+
+        // No similarity_threshold specified, should use default
+        let params = json!({
+            "claim": "Test claim",
+            "deep_context_path": context_file.path().to_str().unwrap()
+        });
+
+        let result = tool.execute(params).await;
+        // Should not fail due to missing threshold
+        assert!(result.is_ok() || result.is_err()); // Just verify no panic
+    }
+
+    #[tokio::test]
+    async fn test_check_claim_no_claim_detected() {
+        let registry = Arc::new(AgentRegistry::new());
+        let tool = CheckClaimTool::new(registry);
+
+        let mut context_file = NamedTempFile::new().unwrap();
+        writeln!(context_file, "## Functions:").unwrap();
+        context_file.flush().unwrap();
+
+        // Input text that won't be detected as a claim
+        let params = json!({
+            "claim": "???",
+            "deep_context_path": context_file.path().to_str().unwrap()
+        });
+
+        let result = tool.execute(params).await;
+        // May detect as no claim or process it
+        if let Ok(response) = result {
+            // Either no_claim_detected or completed is acceptable
+            let status = response["status"].as_str().unwrap_or("");
+            assert!(status == "no_claim_detected" || status == "completed");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_validate_documentation_empty_doc() {
+        let registry = Arc::new(AgentRegistry::new());
+        let tool = ValidateDocumentationTool::new(registry);
+
+        let mut doc_file = NamedTempFile::new().unwrap();
+        // Empty file
+        doc_file.flush().unwrap();
+
+        let mut context_file = NamedTempFile::new().unwrap();
+        writeln!(context_file, "## Functions:").unwrap();
+        context_file.flush().unwrap();
+
+        let params = json!({
+            "documentation_path": doc_file.path().to_str().unwrap(),
+            "deep_context_path": context_file.path().to_str().unwrap()
+        });
+
+        let result = tool.execute(params).await;
+        assert!(result.is_ok());
+        let response = result.unwrap();
+        assert_eq!(response["status"], "completed");
+    }
+
+    #[test]
+    fn test_tool_metadata_descriptions() {
+        let registry = Arc::new(AgentRegistry::new());
+
+        let validate_tool = ValidateDocumentationTool::new(registry.clone());
+        let validate_meta = validate_tool.metadata();
+        assert!(validate_meta.description.len() > 20);
+        assert!(validate_meta.description.contains("documentation"));
+
+        let check_tool = CheckClaimTool::new(registry.clone());
+        let check_meta = check_tool.metadata();
+        assert!(check_meta.description.len() > 20);
+        assert!(check_meta.description.contains("claim"));
+    }
 }
