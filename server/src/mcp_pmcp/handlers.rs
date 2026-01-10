@@ -241,3 +241,261 @@ mod property_tests {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::refactor::{RefactorStateMachine, State};
+
+    #[test]
+    fn test_refactor_start_args_deserialize() {
+        let json = json!({
+            "targets": ["src/main.rs", "src/lib.rs"],
+            "config": null
+        });
+
+        let args: RefactorStartArgs = serde_json::from_value(json).unwrap();
+        assert_eq!(args.targets.len(), 2);
+        assert!(args.config.is_none());
+    }
+
+    #[test]
+    fn test_refactor_start_args_with_config() {
+        let json = json!({
+            "targets": ["src/main.rs"],
+            "config": {
+                "max_complexity": 10
+            }
+        });
+
+        let args: RefactorStartArgs = serde_json::from_value(json).unwrap();
+        assert_eq!(args.targets.len(), 1);
+        assert!(args.config.is_some());
+    }
+
+    #[test]
+    fn test_refactor_start_result_serialize() {
+        let result = RefactorStartResult {
+            session_id: "test-session-123".to_string(),
+            state: json!({"current": "Scan"}),
+        };
+
+        let json = serde_json::to_value(&result).unwrap();
+        assert_eq!(json["session_id"], "test-session-123");
+        assert!(json["state"].is_object());
+    }
+
+    #[test]
+    fn test_refactor_start_tool_new() {
+        let state_manager = Arc::new(Mutex::new(StateManager::new()));
+        let tool = RefactorStartTool::new(state_manager);
+        assert!(Arc::strong_count(&tool.state_manager) == 1);
+    }
+
+    #[test]
+    fn test_refactor_next_iteration_tool_new() {
+        let state_manager = Arc::new(Mutex::new(StateManager::new()));
+        let tool = RefactorNextIterationTool::new(state_manager);
+        assert!(Arc::strong_count(&tool.state_manager) == 1);
+    }
+
+    #[test]
+    fn test_refactor_get_state_tool_new() {
+        let state_manager = Arc::new(Mutex::new(StateManager::new()));
+        let tool = RefactorGetStateTool::new(state_manager);
+        assert!(Arc::strong_count(&tool.state_manager) == 1);
+    }
+
+    #[test]
+    fn test_refactor_stop_tool_new() {
+        let state_manager = Arc::new(Mutex::new(StateManager::new()));
+        let tool = RefactorStopTool::new(state_manager);
+        assert!(Arc::strong_count(&tool.state_manager) == 1);
+    }
+
+    #[test]
+    fn test_serialize_state_scan() {
+        let state_machine = RefactorStateMachine {
+            current: State::Scan {
+                targets: vec![PathBuf::from("src/main.rs")],
+            },
+            targets: vec![PathBuf::from("src/main.rs")],
+            current_target_index: 0,
+            config: RefactorConfig::default(),
+        };
+
+        let result = serialize_state(&state_machine).unwrap();
+        assert_eq!(result["current"], "Scan");
+        assert!(result["targets"].is_array());
+    }
+
+    #[test]
+    fn test_serialize_state_analyze() {
+        let state_machine = RefactorStateMachine {
+            current: State::Analyze {
+                current: PathBuf::from("src/lib.rs"),
+            },
+            targets: vec![PathBuf::from("src/lib.rs")],
+            current_target_index: 0,
+            config: RefactorConfig::default(),
+        };
+
+        let result = serialize_state(&state_machine).unwrap();
+        assert_eq!(result["current"], "Analyze");
+        assert!(result["current_file"].is_string());
+    }
+
+    #[test]
+    fn test_serialize_state_plan() {
+        let state_machine = RefactorStateMachine {
+            current: State::Plan {
+                violations: vec![],
+            },
+            targets: vec![],
+            current_target_index: 0,
+            config: RefactorConfig::default(),
+        };
+
+        let result = serialize_state(&state_machine).unwrap();
+        assert_eq!(result["current"], "Plan");
+        assert!(result["violations"].is_array());
+    }
+
+    #[test]
+    fn test_serialize_state_refactor() {
+        let state_machine = RefactorStateMachine {
+            current: State::Refactor {
+                operation: "extract_method".to_string(),
+            },
+            targets: vec![],
+            current_target_index: 0,
+            config: RefactorConfig::default(),
+        };
+
+        let result = serialize_state(&state_machine).unwrap();
+        assert_eq!(result["current"], "Refactor");
+        assert_eq!(result["operation"], "extract_method");
+    }
+
+    #[test]
+    fn test_serialize_state_test() {
+        let state_machine = RefactorStateMachine {
+            current: State::Test {
+                command: "cargo test".to_string(),
+            },
+            targets: vec![],
+            current_target_index: 0,
+            config: RefactorConfig::default(),
+        };
+
+        let result = serialize_state(&state_machine).unwrap();
+        assert_eq!(result["current"], "Test");
+        assert_eq!(result["command"], "cargo test");
+    }
+
+    #[test]
+    fn test_serialize_state_lint() {
+        let state_machine = RefactorStateMachine {
+            current: State::Lint { strict: true },
+            targets: vec![],
+            current_target_index: 0,
+            config: RefactorConfig::default(),
+        };
+
+        let result = serialize_state(&state_machine).unwrap();
+        assert_eq!(result["current"], "Lint");
+        assert_eq!(result["strict"], true);
+    }
+
+    #[test]
+    fn test_serialize_state_emit() {
+        let state_machine = RefactorStateMachine {
+            current: State::Emit {
+                payload: json!({"diff": "..."}),
+            },
+            targets: vec![],
+            current_target_index: 0,
+            config: RefactorConfig::default(),
+        };
+
+        let result = serialize_state(&state_machine).unwrap();
+        assert_eq!(result["current"], "Emit");
+        assert!(result["payload"].is_object());
+    }
+
+    #[test]
+    fn test_serialize_state_checkpoint() {
+        let state_machine = RefactorStateMachine {
+            current: State::Checkpoint {
+                reason: "Pausing for review".to_string(),
+            },
+            targets: vec![],
+            current_target_index: 0,
+            config: RefactorConfig::default(),
+        };
+
+        let result = serialize_state(&state_machine).unwrap();
+        assert_eq!(result["current"], "Checkpoint");
+        assert_eq!(result["reason"], "Pausing for review");
+    }
+
+    #[test]
+    fn test_serialize_state_complete() {
+        let state_machine = RefactorStateMachine {
+            current: State::Complete {
+                summary: "All done".to_string(),
+            },
+            targets: vec![],
+            current_target_index: 0,
+            config: RefactorConfig::default(),
+        };
+
+        let result = serialize_state(&state_machine).unwrap();
+        assert_eq!(result["current"], "Complete");
+        assert_eq!(result["summary"], "All done");
+    }
+
+    #[test]
+    fn test_refactor_start_args_empty_targets() {
+        let json = json!({
+            "targets": []
+        });
+
+        let args: RefactorStartArgs = serde_json::from_value(json).unwrap();
+        assert!(args.targets.is_empty());
+    }
+
+    #[test]
+    fn test_shared_state_manager() {
+        let state_manager = Arc::new(Mutex::new(StateManager::new()));
+
+        let tool1 = RefactorStartTool::new(state_manager.clone());
+        let tool2 = RefactorGetStateTool::new(state_manager.clone());
+        let tool3 = RefactorStopTool::new(state_manager.clone());
+
+        // All tools share the same state manager
+        assert!(Arc::strong_count(&tool1.state_manager) == 4); // 3 tools + original
+        assert!(Arc::ptr_eq(&tool1.state_manager, &tool2.state_manager));
+        assert!(Arc::ptr_eq(&tool2.state_manager, &tool3.state_manager));
+    }
+
+    #[tokio::test]
+    async fn test_refactor_stop_tool_handle() {
+        let state_manager = Arc::new(Mutex::new(StateManager::new()));
+        let tool = RefactorStopTool::new(state_manager);
+
+        // Start a session first
+        {
+            let mut manager = tool.state_manager.lock().await;
+            let _ = manager.start_session(vec![PathBuf::from("test.rs")], RefactorConfig::default());
+        }
+
+        // Now stop it
+        let extra = RequestHandlerExtra::default();
+        let result = tool.handle(json!({}), extra).await;
+
+        assert!(result.is_ok());
+        let value = result.unwrap();
+        assert_eq!(value["status"], "stopped");
+    }
+}
