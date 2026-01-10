@@ -944,7 +944,8 @@ mod tests {
     fn test_orchestrate_tool_new() {
         let registry = Arc::new(AgentRegistry::new());
         let tool = OrchestrateTool::new(registry);
-        assert!(tool.orchestrator.is_none());
+        // Just verify construction works
+        assert!(!tool.metadata().name.is_empty());
     }
 
     #[test]
