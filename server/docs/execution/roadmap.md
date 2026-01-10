@@ -1,14 +1,18 @@
-# Server Execution Roadmap
+# PMAT Development Roadmap
 
-## Overview
+## Current Sprint: v1.0.0 Test Sprint
+- **Duration**: 2026-01-10 to 2026-01-24
+- **Priority**: P0
+- **Quality Gates**: Complexity ≤ 20, SATD = 0, Coverage ≥ 80%
 
-Server-specific execution roadmap.
+### Tasks
+| ID | Description | Status | Complexity | Priority |
+|----|-------------|--------|------------|----------|
 
-## Status
+### Definition of Done
+- [ ] All tasks completed
+- [ ] Quality gates passed
+- [ ] Documentation updated
+- [ ] Tests passing
+- [ ] Changelog updated
 
-See [PMAT Book](https://paiml.github.io/pmat-book/) for project roadmap and documentation.
-
-## Related Documentation
-
-- [PMAT Book](https://paiml.github.io/pmat-book/)
-- [Server Specification](../SPECIFICATION.md)
