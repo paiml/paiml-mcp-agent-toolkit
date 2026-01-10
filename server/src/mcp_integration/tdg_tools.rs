@@ -526,4 +526,130 @@ mod tests {
         let duplication_suggestion = generate_suggestion("Code duplication: 15.2%", "Duplication");
         assert!(duplication_suggestion.contains("reusable"));
     }
+
+    #[test]
+    fn test_analyze_technical_debt_tool_new() {
+        let registry = Arc::new(AgentRegistry::new());
+        let tool = AnalyzeTechnicalDebtTool::new(registry);
+        assert_eq!(tool.metadata().name, "analyze_technical_debt");
+    }
+
+    #[test]
+    fn test_get_quality_recommendations_tool_new() {
+        let registry = Arc::new(AgentRegistry::new());
+        let tool = GetQualityRecommendationsTool::new(registry);
+        assert_eq!(tool.metadata().name, "get_quality_recommendations");
+    }
+
+    #[test]
+    fn test_analyze_technical_debt_schema_analysis_type() {
+        let registry = Arc::new(AgentRegistry::new());
+        let tool = AnalyzeTechnicalDebtTool::new(registry);
+        let schema = tool.metadata().input_schema;
+
+        let analysis_type = &schema["properties"]["analysis_type"];
+        assert!(analysis_type["enum"].is_array());
+        let enum_vals: Vec<&str> = analysis_type["enum"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v.as_str().unwrap())
+            .collect();
+        assert!(enum_vals.contains(&"file"));
+        assert!(enum_vals.contains(&"project"));
+        assert!(enum_vals.contains(&"auto"));
+    }
+
+    #[test]
+    fn test_get_quality_recommendations_schema_defaults() {
+        let registry = Arc::new(AgentRegistry::new());
+        let tool = GetQualityRecommendationsTool::new(registry);
+        let schema = tool.metadata().input_schema;
+
+        // Check default values exist
+        assert!(schema["properties"]["max_recommendations"]["default"].is_number());
+        assert!(schema["properties"]["min_severity"]["default"].is_string());
+    }
+
+    #[tokio::test]
+    async fn test_analyze_technical_debt_auto_type() {
+        let registry = Arc::new(AgentRegistry::new());
+        let tool = AnalyzeTechnicalDebtTool::new(registry);
+
+        let mut temp_file = NamedTempFile::new().unwrap();
+        writeln!(temp_file, "fn test() {{ let x = 1; }}").unwrap();
+        temp_file.flush().unwrap();
+
+        // Default analysis_type should be "auto"
+        let result = tool
+            .execute(json!({
+                "path": temp_file.path().to_str().unwrap()
+            }))
+            .await;
+
+        // Should succeed with default options
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_get_quality_recommendations_nonexistent_path() {
+        let registry = Arc::new(AgentRegistry::new());
+        let tool = GetQualityRecommendationsTool::new(registry);
+
+        let result = tool
+            .execute(json!({
+                "path": "/nonexistent/path/file.rs"
+            }))
+            .await;
+
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.message.contains("does not exist"));
+    }
+
+    #[test]
+    fn test_severity_ordering() {
+        // Test all severity combinations
+        assert!(should_include_severity("critical", "critical"));
+        assert!(should_include_severity("critical", "high"));
+        assert!(should_include_severity("critical", "medium"));
+        assert!(should_include_severity("critical", "low"));
+
+        assert!(!should_include_severity("high", "critical"));
+        assert!(should_include_severity("high", "high"));
+        assert!(should_include_severity("high", "medium"));
+        assert!(should_include_severity("high", "low"));
+
+        assert!(!should_include_severity("medium", "critical"));
+        assert!(!should_include_severity("medium", "high"));
+        assert!(should_include_severity("medium", "medium"));
+        assert!(should_include_severity("medium", "low"));
+
+        assert!(!should_include_severity("low", "critical"));
+        assert!(!should_include_severity("low", "high"));
+        assert!(!should_include_severity("low", "medium"));
+        assert!(should_include_severity("low", "low"));
+    }
+
+    #[test]
+    fn test_generate_suggestion_unknown_category() {
+        let suggestion = generate_suggestion("Some unknown issue", "UnknownCategory");
+        // Should still produce some suggestion
+        assert!(!suggestion.is_empty());
+    }
+
+    #[test]
+    fn test_tool_descriptions_are_meaningful() {
+        let registry = Arc::new(AgentRegistry::new());
+
+        let analyze_tool = AnalyzeTechnicalDebtTool::new(registry.clone());
+        let analyze_desc = analyze_tool.metadata().description;
+        assert!(analyze_desc.len() > 30);
+        assert!(analyze_desc.contains("technical debt") || analyze_desc.contains("TDG"));
+
+        let recommend_tool = GetQualityRecommendationsTool::new(registry);
+        let recommend_desc = recommend_tool.metadata().description;
+        assert!(recommend_desc.len() > 30);
+        assert!(recommend_desc.contains("recommendations") || recommend_desc.contains("actionable"));
+    }
 }
