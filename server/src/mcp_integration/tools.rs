@@ -898,4 +898,297 @@ mod tests {
         assert_eq!(metadata.name, "validate");
         assert!(metadata.description.contains("quality standards"));
     }
+
+    #[test]
+    fn test_orchestrate_tool_metadata() {
+        let registry = Arc::new(AgentRegistry::new());
+        let tool = OrchestrateTool::new(registry);
+        let metadata = tool.metadata();
+
+        assert_eq!(metadata.name, "orchestrate");
+        assert!(!metadata.description.is_empty());
+    }
+
+    #[test]
+    fn test_quality_gate_tool_metadata() {
+        let registry = Arc::new(AgentRegistry::new());
+        let tool = QualityGateTool::new(registry);
+        let metadata = tool.metadata();
+
+        assert_eq!(metadata.name, "quality_gate");
+        assert!(!metadata.description.is_empty());
+    }
+
+    #[test]
+    fn test_analyze_tool_new() {
+        let registry = Arc::new(AgentRegistry::new());
+        let tool = AnalyzeTool::new(registry);
+        assert!(tool.analyzer.is_none());
+    }
+
+    #[test]
+    fn test_transform_tool_new() {
+        let registry = Arc::new(AgentRegistry::new());
+        let tool = TransformTool::new(registry);
+        assert!(tool.transformer.is_none());
+    }
+
+    #[test]
+    fn test_validate_tool_new() {
+        let registry = Arc::new(AgentRegistry::new());
+        let tool = ValidateTool::new(registry);
+        assert!(tool.validator.is_none());
+    }
+
+    #[test]
+    fn test_orchestrate_tool_new() {
+        let registry = Arc::new(AgentRegistry::new());
+        let tool = OrchestrateTool::new(registry);
+        assert!(tool.orchestrator.is_none());
+    }
+
+    #[test]
+    fn test_quality_gate_tool_new() {
+        let registry = Arc::new(AgentRegistry::new());
+        let tool = QualityGateTool::new(registry);
+        assert!(!tool.metadata().name.is_empty());
+    }
+
+    #[test]
+    fn test_analyze_tool_schema_has_required_fields() {
+        let registry = Arc::new(AgentRegistry::new());
+        let tool = AnalyzeTool::new(registry);
+        let metadata = tool.metadata();
+        let schema = &metadata.input_schema;
+
+        assert_eq!(schema["type"], "object");
+        assert!(schema["properties"]["code"].is_object());
+        assert!(schema["properties"]["language"].is_object());
+        assert_eq!(schema["required"], json!(["code", "language"]));
+    }
+
+    #[test]
+    fn test_transform_tool_schema_has_required_fields() {
+        let registry = Arc::new(AgentRegistry::new());
+        let tool = TransformTool::new(registry);
+        let metadata = tool.metadata();
+        let schema = &metadata.input_schema;
+
+        assert_eq!(schema["type"], "object");
+        assert!(schema["properties"]["code"].is_object());
+        assert!(schema["properties"]["transform"].is_object());
+    }
+
+    #[test]
+    fn test_validate_tool_schema_has_required_fields() {
+        let registry = Arc::new(AgentRegistry::new());
+        let tool = ValidateTool::new(registry);
+        let metadata = tool.metadata();
+        let schema = &metadata.input_schema;
+
+        assert_eq!(schema["type"], "object");
+        assert!(schema["properties"]["code"].is_object());
+    }
+
+    #[test]
+    fn test_orchestrate_tool_schema() {
+        let registry = Arc::new(AgentRegistry::new());
+        let tool = OrchestrateTool::new(registry);
+        let metadata = tool.metadata();
+        let schema = &metadata.input_schema;
+
+        assert_eq!(schema["type"], "object");
+        assert!(schema["properties"]["workflow"].is_object());
+    }
+
+    #[test]
+    fn test_quality_gate_tool_schema() {
+        let registry = Arc::new(AgentRegistry::new());
+        let tool = QualityGateTool::new(registry);
+        let metadata = tool.metadata();
+        let schema = &metadata.input_schema;
+
+        assert_eq!(schema["type"], "object");
+        assert!(schema["properties"]["path"].is_object());
+    }
+
+    #[actix_rt::test]
+    async fn test_analyze_tool_missing_code() {
+        let registry = Arc::new(AgentRegistry::new());
+        let tool = AnalyzeTool::new(registry);
+
+        let result = tool.execute(json!({ "language": "rust" })).await;
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.message.contains("code"));
+    }
+
+    #[actix_rt::test]
+    async fn test_analyze_tool_missing_language() {
+        let registry = Arc::new(AgentRegistry::new());
+        let tool = AnalyzeTool::new(registry);
+
+        let result = tool.execute(json!({ "code": "fn main() {}" })).await;
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.message.contains("language"));
+    }
+
+    #[actix_rt::test]
+    async fn test_transform_tool_missing_code() {
+        let registry = Arc::new(AgentRegistry::new());
+        let tool = TransformTool::new(registry);
+
+        let result = tool.execute(json!({ "transform": "refactor" })).await;
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.message.contains("code"));
+    }
+
+    #[actix_rt::test]
+    async fn test_transform_tool_missing_transform() {
+        let registry = Arc::new(AgentRegistry::new());
+        let tool = TransformTool::new(registry);
+
+        let result = tool.execute(json!({ "code": "fn main() {}" })).await;
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.message.contains("transform"));
+    }
+
+    #[actix_rt::test]
+    async fn test_validate_tool_missing_code() {
+        let registry = Arc::new(AgentRegistry::new());
+        let tool = ValidateTool::new(registry);
+
+        let result = tool.execute(json!({})).await;
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.message.contains("code"));
+    }
+
+    #[actix_rt::test]
+    async fn test_orchestrate_tool_missing_workflow() {
+        let registry = Arc::new(AgentRegistry::new());
+        let tool = OrchestrateTool::new(registry);
+
+        let result = tool.execute(json!({})).await;
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.message.contains("workflow"));
+    }
+
+    #[actix_rt::test]
+    async fn test_quality_gate_tool_missing_path() {
+        let registry = Arc::new(AgentRegistry::new());
+        let tool = QualityGateTool::new(registry);
+
+        let result = tool.execute(json!({})).await;
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.message.contains("path"));
+    }
+
+    #[actix_rt::test]
+    async fn test_analyze_tool_no_actor() {
+        let registry = Arc::new(AgentRegistry::new());
+        let tool = AnalyzeTool::new(registry);
+
+        let result = tool
+            .execute(json!({
+                "code": "fn main() {}",
+                "language": "rust"
+            }))
+            .await;
+
+        // Should fail because no actor is initialized
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.message.contains("not initialized"));
+    }
+
+    #[actix_rt::test]
+    async fn test_transform_tool_no_actor() {
+        let registry = Arc::new(AgentRegistry::new());
+        let tool = TransformTool::new(registry);
+
+        let result = tool
+            .execute(json!({
+                "code": "fn main() {}",
+                "transform": "refactor"
+            }))
+            .await;
+
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.message.contains("not initialized"));
+    }
+
+    #[actix_rt::test]
+    async fn test_validate_tool_no_actor() {
+        let registry = Arc::new(AgentRegistry::new());
+        let tool = ValidateTool::new(registry);
+
+        let result = tool.execute(json!({ "code": "fn main() {}" })).await;
+
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.message.contains("not initialized"));
+    }
+
+    #[actix_rt::test]
+    async fn test_orchestrate_tool_no_actor() {
+        let registry = Arc::new(AgentRegistry::new());
+        let tool = OrchestrateTool::new(registry);
+
+        let result = tool
+            .execute(json!({
+                "workflow": {
+                    "steps": []
+                }
+            }))
+            .await;
+
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.message.contains("not initialized"));
+    }
+
+    #[test]
+    fn test_tool_metadata_descriptions_not_empty() {
+        let registry = Arc::new(AgentRegistry::new());
+
+        let analyze = AnalyzeTool::new(registry.clone());
+        assert!(!analyze.metadata().description.is_empty());
+
+        let transform = TransformTool::new(registry.clone());
+        assert!(!transform.metadata().description.is_empty());
+
+        let validate = ValidateTool::new(registry.clone());
+        assert!(!validate.metadata().description.is_empty());
+
+        let orchestrate = OrchestrateTool::new(registry.clone());
+        assert!(!orchestrate.metadata().description.is_empty());
+
+        let quality_gate = QualityGateTool::new(registry);
+        assert!(!quality_gate.metadata().description.is_empty());
+    }
+
+    #[test]
+    fn test_all_tools_have_object_schema() {
+        let registry = Arc::new(AgentRegistry::new());
+
+        let tools: Vec<Box<dyn McpTool + Send + Sync>> = vec![
+            Box::new(AnalyzeTool::new(registry.clone())),
+            Box::new(TransformTool::new(registry.clone())),
+            Box::new(ValidateTool::new(registry.clone())),
+            Box::new(OrchestrateTool::new(registry.clone())),
+            Box::new(QualityGateTool::new(registry)),
+        ];
+
+        for tool in tools {
+            let metadata = tool.metadata();
+            assert_eq!(metadata.input_schema["type"], "object");
+        }
+    }
 }
