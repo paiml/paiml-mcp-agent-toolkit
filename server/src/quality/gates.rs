@@ -206,6 +206,9 @@ pub fn execute_coverage(config: &GateConfig, project_dir: &Path) -> Result<GateR
         .output()?;
     let duration = start.elapsed();
 
+    // Clean up coverage artifacts to prevent zram bloat (TICKET-PMAT-9)
+    cleanup_coverage_artifacts(project_dir);
+
     if !output.status.success() {
         return Ok(GateResult {
             name: "coverage".to_string(),
@@ -238,6 +241,64 @@ pub fn execute_coverage(config: &GateConfig, project_dir: &Path) -> Result<GateR
         duration,
         message,
     })
+}
+
+/// Clean up coverage artifacts to prevent memory bloat
+///
+/// Removes stale llvm-cov-target directories and cleans zram cache.
+/// This prevents the issue documented in TICKET-PMAT-9 where coverage
+/// artifacts in /mnt/zram accumulated to 70GB+ consuming RAM.
+///
+/// # Complexity
+/// - Time: O(n) where n is number of files to clean
+/// - Cyclomatic: 3
+fn cleanup_coverage_artifacts(project_dir: &Path) {
+    // Clean llvm-cov-target in project dir
+    let llvm_cov_target = project_dir.join("target").join("llvm-cov-target");
+    if llvm_cov_target.exists() {
+        let _ = std::fs::remove_dir_all(&llvm_cov_target);
+    }
+
+    // Clean zram coverage cache if it exists (>1 hour old)
+    let zram_coverage = Path::new("/mnt/zram/coverage");
+    if zram_coverage.exists() {
+        clean_old_files(zram_coverage, 3600); // 1 hour
+    }
+
+    // Clean zram targets cache if it exists (>1 hour old)
+    let zram_targets = Path::new("/mnt/zram/targets");
+    if zram_targets.exists() {
+        clean_old_files(zram_targets, 3600); // 1 hour
+    }
+}
+
+/// Remove files older than max_age_secs from a directory
+fn clean_old_files(dir: &Path, max_age_secs: u64) {
+    use std::time::{Duration, SystemTime};
+
+    let max_age = Duration::from_secs(max_age_secs);
+    let now = SystemTime::now();
+
+    if let Ok(entries) = std::fs::read_dir(dir) {
+        for entry in entries.flatten() {
+            if let Ok(metadata) = entry.metadata() {
+                let should_delete = metadata
+                    .modified()
+                    .ok()
+                    .and_then(|mtime| now.duration_since(mtime).ok())
+                    .is_some_and(|age| age > max_age);
+
+                if should_delete {
+                    let path = entry.path();
+                    if path.is_dir() {
+                        let _ = std::fs::remove_dir_all(&path);
+                    } else {
+                        let _ = std::fs::remove_file(&path);
+                    }
+                }
+            }
+        }
+    }
 }
 
 /// Parse coverage percentage from llvm-cov output
@@ -557,5 +618,89 @@ mod tests {
 
         let report = execute_all_gates(&config, &project_dir).unwrap();
         assert!(!report.gates.is_empty());
+    }
+
+    // Tests for cleanup_coverage_artifacts (TICKET-PMAT-9)
+
+    #[test]
+    fn test_cleanup_coverage_artifacts_nonexistent_dir() {
+        // Should not panic when directories don't exist
+        let nonexistent = PathBuf::from("/nonexistent/path/12345");
+        cleanup_coverage_artifacts(&nonexistent);
+        // Success if no panic
+    }
+
+    #[test]
+    fn test_cleanup_coverage_artifacts_current_dir() {
+        // Should not panic when run on current project
+        let project_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        cleanup_coverage_artifacts(&project_dir);
+        // Success if no panic
+    }
+
+    #[test]
+    fn test_clean_old_files_nonexistent() {
+        // Should not panic on nonexistent directory
+        let nonexistent = Path::new("/nonexistent/path/12345");
+        clean_old_files(nonexistent, 3600);
+        // Success if no panic
+    }
+
+    #[test]
+    fn test_clean_old_files_empty_dir() {
+        use std::fs;
+        use tempfile::tempdir;
+
+        let temp = tempdir().unwrap();
+        let empty_dir = temp.path().join("empty");
+        fs::create_dir(&empty_dir).unwrap();
+
+        clean_old_files(&empty_dir, 0); // 0 seconds = clean all
+                                        // Should not panic
+        assert!(empty_dir.exists()); // Directory itself should still exist
+    }
+
+    #[test]
+    fn test_clean_old_files_with_old_file() {
+        use std::fs::{self, File};
+        use std::io::Write;
+        use tempfile::tempdir;
+
+        let temp = tempdir().unwrap();
+        let test_dir = temp.path().join("test");
+        fs::create_dir(&test_dir).unwrap();
+
+        // Create a file
+        let file_path = test_dir.join("old_file.txt");
+        let mut file = File::create(&file_path).unwrap();
+        writeln!(file, "test").unwrap();
+
+        // Clean with 0 second max age (everything is old)
+        clean_old_files(&test_dir, 0);
+
+        // File should be deleted
+        assert!(!file_path.exists());
+    }
+
+    #[test]
+    fn test_clean_old_files_preserves_new_files() {
+        use std::fs::{self, File};
+        use std::io::Write;
+        use tempfile::tempdir;
+
+        let temp = tempdir().unwrap();
+        let test_dir = temp.path().join("test");
+        fs::create_dir(&test_dir).unwrap();
+
+        // Create a file
+        let file_path = test_dir.join("new_file.txt");
+        let mut file = File::create(&file_path).unwrap();
+        writeln!(file, "test").unwrap();
+
+        // Clean with very high max age (nothing is old enough)
+        clean_old_files(&test_dir, 86400 * 365); // 1 year
+
+        // File should still exist
+        assert!(file_path.exists());
     }
 }

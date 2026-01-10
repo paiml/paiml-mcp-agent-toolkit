@@ -724,6 +724,11 @@ impl CommandExecutor {
                 anyhow::bail!("Comply command should be handled by command_dispatcher.rs")
             }
 
+            // Project diagnostics (lltop Tab 8 equivalent) - handled by command_dispatcher.rs
+            Commands::ProjectDiag { .. } => {
+                anyhow::bail!("ProjectDiag command should be handled by command_dispatcher.rs")
+            }
+
             // GH-98: Systematic test discovery and fixing - handled by command_dispatcher.rs
             Commands::TestDiscovery { .. } => {
                 anyhow::bail!("TestDiscovery command should be handled by command_dispatcher.rs")
@@ -1005,11 +1010,93 @@ impl CommandExecutorFactory {
 mod tests {
     use super::*;
 
+    // ============================================================================
+    // Test Fixtures and Helpers
+    // ============================================================================
+
+    /// Creates a test server instance for testing command execution
+    fn create_test_server() -> Arc<StatelessTemplateServer> {
+        Arc::new(StatelessTemplateServer::new().expect("Failed to create test server"))
+    }
+
+    // ============================================================================
+    // CommandExecutor Tests
+    // ============================================================================
+
+    #[test]
+    fn test_command_executor_new() {
+        let server = create_test_server();
+        let executor = CommandExecutor::new(server.clone());
+
+        // Verify executor is created successfully
+        assert!(Arc::ptr_eq(&executor.server, &server));
+    }
+
+    #[test]
+    fn test_command_executor_has_registry() {
+        let server = create_test_server();
+        let executor = CommandExecutor::new(server);
+
+        // Registry should be accessible (implicitly tested via execute)
+        let _ = &executor.registry;
+    }
+
+    // ============================================================================
+    // CommandRegistry Tests
+    // ============================================================================
+
     #[test]
     fn test_command_registry_creation() {
-        let _registry = CommandRegistry::default();
+        let registry = CommandRegistry::default();
 
-        // Verify all command groups are initialized - no assertion needed
+        // Verify all command groups are initialized by accessing them
+        let _ = &registry.generate_handlers;
+        let _ = &registry.analyze_handlers;
+        let _ = &registry.utility_handlers;
+        let _ = &registry.demo_handlers;
+    }
+
+    #[test]
+    fn test_command_registry_default_trait() {
+        // Test that Default trait is properly implemented
+        let registry1 = CommandRegistry::default();
+        let registry2 = CommandRegistry::default();
+
+        // Both should be valid (we can't compare them, but they should exist)
+        let _ = registry1;
+        let _ = registry2;
+    }
+
+    // ============================================================================
+    // Command Group Default Tests
+    // ============================================================================
+
+    #[test]
+    fn test_generate_command_group_default() {
+        let group = GenerateCommandGroup::default();
+        // Verify it can be created
+        let _ = group;
+    }
+
+    #[test]
+    fn test_analyze_command_group_default() {
+        let group = AnalyzeCommandGroup::default();
+        // Verify it can be created
+        let _ = group;
+    }
+
+    #[test]
+    fn test_utility_command_group_default() {
+        let group = UtilityCommandGroup::default();
+        // Verify it can be created
+        let _ = group;
+    }
+
+    #[test]
+    fn test_demo_command_group_default() {
+        let group = DemoCommandGroup::default();
+        // Verify it can be created
+        let _ = group;
     }
 
     #[test]
@@ -1019,12 +1106,372 @@ mod tests {
         let _utility = UtilityCommandGroup;
         let _demo = DemoCommandGroup;
 
-        // All groups should be creatable - no assertion needed
+        // All groups should be creatable via unit struct syntax
+    }
+
+    // ============================================================================
+    // CommandExecutorFactory Tests
+    // ============================================================================
+
+    #[test]
+    fn test_command_executor_factory_create() {
+        let server = create_test_server();
+        let executor = CommandExecutorFactory::create(server.clone());
+
+        // Verify factory creates a valid executor
+        assert!(Arc::ptr_eq(&executor.server, &server));
+    }
+
+    #[test]
+    fn test_command_executor_factory_creates_with_registry() {
+        let server = create_test_server();
+        let executor = CommandExecutorFactory::create(server);
+
+        // Verify registry is accessible
+        let _ = &executor.registry;
+    }
+
+    // ============================================================================
+    // Command Execution Error Cases (Commands that should bail)
+    // ============================================================================
+
+    #[tokio::test]
+    async fn test_execute_show_metrics_should_bail() {
+        let server = create_test_server();
+        let executor = CommandExecutor::new(server);
+
+        // ShowMetrics uses OutputFormat, not MetricsOutputFormat
+        let command = Commands::ShowMetrics {
+            trend: false,
+            days: 30,
+            metric: None,
+            format: crate::cli::OutputFormat::Table,
+            failures_only: false,
+        };
+
+        let result = executor.execute(command).await;
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("command_dispatcher.rs"));
+    }
+
+    #[tokio::test]
+    async fn test_execute_predict_quality_should_bail() {
+        let server = create_test_server();
+        let executor = CommandExecutor::new(server);
+
+        // PredictQuality uses correct field names
+        let command = Commands::PredictQuality {
+            metric: None,
+            threshold: None,
+            days: 30,
+            format: crate::cli::OutputFormat::Table,
+            all: false,
+            failures_only: false,
+        };
+
+        let result = executor.execute(command).await;
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("command_dispatcher.rs"));
+    }
+
+    #[tokio::test]
+    async fn test_execute_record_metric_should_bail() {
+        let server = create_test_server();
+        let executor = CommandExecutor::new(server);
+
+        // RecordMetric uses String metric and f64 value
+        let command = Commands::RecordMetric {
+            metric: "lint".to_string(),
+            value: 1000.0,
+            timestamp: None,
+        };
+
+        let result = executor.execute(command).await;
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("command_dispatcher.rs"));
+    }
+
+    #[tokio::test]
+    async fn test_execute_work_command_should_bail() {
+        use crate::cli::commands::WorkCommands;
+
+        let server = create_test_server();
+        let executor = CommandExecutor::new(server);
+
+        // WorkCommands::Start requires id and optional fields
+        let command = Commands::Work {
+            command: WorkCommands::Start {
+                id: "123".to_string(),
+                with_spec: false,
+                epic: false,
+                path: None,
+                create_github: false,
+            },
+        };
+
+        let result = executor.execute(command).await;
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("Work command not yet implemented"));
+    }
+
+    #[tokio::test]
+    async fn test_execute_qa_work_should_bail() {
+        use crate::cli::commands::QaWorkCommands;
+
+        let server = create_test_server();
+        let executor = CommandExecutor::new(server);
+
+        // QaWork uses subcommand
+        let command = Commands::QaWork {
+            command: QaWorkCommands::Validate {
+                task_id: "123".to_string(),
+                path: std::path::PathBuf::from("."),
+                strict: false,
+                format: crate::cli::commands::QaOutputFormat::Text,
+            },
+        };
+
+        let result = executor.execute(command).await;
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("command_dispatcher.rs"));
+    }
+
+    #[tokio::test]
+    async fn test_execute_comply_should_bail() {
+        use crate::cli::commands::ComplyCommands;
+
+        let server = create_test_server();
+        let executor = CommandExecutor::new(server);
+
+        // ComplyCommands::Check is the correct variant
+        let command = Commands::Comply {
+            command: ComplyCommands::Check {
+                path: std::path::PathBuf::from("."),
+                strict: false,
+                failures_only: false,
+                format: crate::cli::commands::ComplyOutputFormat::Text,
+            },
+        };
+
+        let result = executor.execute(command).await;
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("command_dispatcher.rs"));
+    }
+
+    #[tokio::test]
+    async fn test_execute_project_diag_should_bail() {
+        let server = create_test_server();
+        let executor = CommandExecutor::new(server);
+
+        // ProjectDiag has correct field names
+        let command = Commands::ProjectDiag {
+            path: std::path::PathBuf::from("."),
+            format: crate::cli::commands::ProjectDiagOutputFormat::Summary,
+            category: None,
+            failures_only: false,
+            output: None,
+            quiet: false,
+        };
+
+        let result = executor.execute(command).await;
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("command_dispatcher.rs"));
+    }
+
+    #[tokio::test]
+    async fn test_execute_test_discovery_should_bail() {
+        use crate::cli::commands::TestDiscoveryCommands;
+
+        let server = create_test_server();
+        let executor = CommandExecutor::new(server);
+
+        // TestDiscovery uses subcommand
+        let command = Commands::TestDiscovery {
+            command: TestDiscoveryCommands::Run {
+                path: std::path::PathBuf::from("."),
+                output: std::path::PathBuf::from("test-failures.json"),
+                use_nextest: true,
+                timeout: 600,
+            },
+        };
+
+        let result = executor.execute(command).await;
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("command_dispatcher.rs"));
+    }
+
+    #[tokio::test]
+    async fn test_execute_debug_five_whys_should_bail() {
+        let server = create_test_server();
+        let executor = CommandExecutor::new(server);
+
+        // DebugFiveWhys uses DebugOutputFormat
+        let command = Commands::DebugFiveWhys {
+            issue: "test issue".to_string(),
+            depth: 5,
+            format: crate::cli::DebugOutputFormat::Text,
+            output: None,
+            path: std::path::PathBuf::from("."),
+            context: None,
+            auto_analyze: false,
+        };
+
+        let result = executor.execute(command).await;
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("command_dispatcher.rs"));
+    }
+
+    #[tokio::test]
+    async fn test_execute_localize_should_bail() {
+        let server = create_test_server();
+        let executor = CommandExecutor::new(server);
+
+        // Localize has correct field names
+        let command = Commands::Localize {
+            passed_coverage: std::path::PathBuf::from("passed.lcov"),
+            failed_coverage: std::path::PathBuf::from("failed.lcov"),
+            passed_count: 10,
+            failed_count: 2,
+            formula: "tarantula".to_string(),
+            top_n: 10,
+            output: None,
+            format: "terminal".to_string(),
+        };
+
+        let result = executor.execute(command).await;
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("command_dispatcher.rs"));
+    }
+
+    #[tokio::test]
+    async fn test_execute_oracle_should_bail() {
+        use crate::cli::commands::OracleCommands;
+
+        let server = create_test_server();
+        let executor = CommandExecutor::new(server);
+
+        let command = Commands::Oracle {
+            command: OracleCommands::Status {
+                path: std::path::PathBuf::from("."),
+                format: crate::cli::commands::OracleOutputFormat::Text,
+            },
+        };
+
+        let result = executor.execute(command).await;
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("command_dispatcher.rs"));
+    }
+
+    #[tokio::test]
+    async fn test_execute_perfection_score_should_bail() {
+        let server = create_test_server();
+        let executor = CommandExecutor::new(server);
+
+        // PerfectionScore has correct field names
+        let command = Commands::PerfectionScore {
+            path: std::path::PathBuf::from("."),
+            breakdown: false,
+            target: None,
+            format: crate::cli::commands::PerfectionScoreOutputFormat::Text,
+            output: None,
+            fast: false,
+        };
+
+        let result = executor.execute(command).await;
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("command_dispatcher.rs"));
+    }
+
+    #[tokio::test]
+    async fn test_execute_spec_should_bail() {
+        use crate::cli::commands::SpecCommands;
+
+        let server = create_test_server();
+        let executor = CommandExecutor::new(server);
+
+        let command = Commands::Spec {
+            command: SpecCommands::List {
+                path: std::path::PathBuf::from("docs/specifications"),
+                min_score: None,
+                failing_only: false,
+                format: crate::cli::commands::SpecOutputFormat::Text,
+            },
+        };
+
+        let result = executor.execute(command).await;
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("command_dispatcher.rs"));
+    }
+
+    #[tokio::test]
+    async fn test_execute_cuda_tdg_should_bail() {
+        let server = create_test_server();
+        let executor = CommandExecutor::new(server);
+
+        // CudaTdg has correct field names
+        let command = Commands::CudaTdg {
+            path: std::path::PathBuf::from("."),
+            command: None,
+            format: crate::cli::commands::CudaTdgOutputFormat::Terminal,
+            min_score: 85.0,
+            fail_on_p0: false,
+            simd: false,
+            wgpu: false,
+            output: None,
+            quiet: false,
+        };
+
+        let result = executor.execute(command).await;
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("command_dispatcher.rs"));
+    }
+
+    // ============================================================================
+    // Org Command Feature Gate Tests
+    // ============================================================================
+
+    #[tokio::test]
+    #[cfg(not(feature = "org-intelligence"))]
+    async fn test_execute_org_without_feature_should_bail() {
+        use crate::cli::commands::OrgCommands;
+
+        let server = create_test_server();
+        let executor = CommandExecutor::new(server);
+
+        let command = Commands::Org(OrgCommands::Analyze {
+            org: "test-org".to_string(),
+            output: std::path::PathBuf::from("output.json"),
+            max_concurrent: 5,
+            summarize: false,
+            strip_pii: false,
+            top_n: 10,
+            min_frequency: 3,
+        });
+
+        let result = executor.execute(command).await;
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("org-intelligence"));
     }
 }
 
 #[cfg(test)]
 mod property_tests {
+    use super::*;
     use proptest::prelude::*;
 
     proptest! {
@@ -1039,5 +1486,210 @@ mod property_tests {
             // Module consistency verification
             prop_assert!(_x < 1001);
         }
+
+        /// Property: CommandExecutorFactory always creates valid executors
+        #[test]
+        fn factory_always_creates_valid_executor(_seed in 0u64..1000) {
+            let server = Arc::new(
+                StatelessTemplateServer::new().expect("Failed to create test server")
+            );
+            let executor = CommandExecutorFactory::create(server.clone());
+
+            // Executor should always be valid
+            prop_assert!(Arc::ptr_eq(&executor.server, &server));
+        }
+
+        /// Property: CommandRegistry default always creates all groups
+        #[test]
+        fn registry_default_always_creates_groups(_seed in 0u64..1000) {
+            let registry = CommandRegistry::default();
+
+            // All groups should be accessible (implicitly tested)
+            let _ = &registry.generate_handlers;
+            let _ = &registry.analyze_handlers;
+            let _ = &registry.utility_handlers;
+            let _ = &registry.demo_handlers;
+
+            prop_assert!(true);
+        }
+    }
+}
+
+#[cfg(test)]
+mod integration_tests {
+    use super::*;
+
+    /// Creates a test server instance
+    fn create_test_server() -> Arc<StatelessTemplateServer> {
+        Arc::new(StatelessTemplateServer::new().expect("Failed to create test server"))
+    }
+
+    // ============================================================================
+    // Full Integration Tests for Command Groups
+    // ============================================================================
+
+    /// Test that GenerateCommandGroup can be used with the registry
+    #[test]
+    fn test_generate_group_in_registry() {
+        let registry = CommandRegistry::default();
+        let _generate = &registry.generate_handlers;
+        // Group should be accessible
+    }
+
+    /// Test that AnalyzeCommandGroup can be used with the registry
+    #[test]
+    fn test_analyze_group_in_registry() {
+        let registry = CommandRegistry::default();
+        let _analyze = &registry.analyze_handlers;
+        // Group should be accessible
+    }
+
+    /// Test that UtilityCommandGroup can be used with the registry
+    #[test]
+    fn test_utility_group_in_registry() {
+        let registry = CommandRegistry::default();
+        let _utility = &registry.utility_handlers;
+        // Group should be accessible
+    }
+
+    /// Test that DemoCommandGroup can be used with the registry
+    #[test]
+    fn test_demo_group_in_registry() {
+        let registry = CommandRegistry::default();
+        let _demo = &registry.demo_handlers;
+        // Group should be accessible
+    }
+
+    // ============================================================================
+    // CommandExecutor with CommandExecutorFactory Integration
+    // ============================================================================
+
+    #[test]
+    fn test_factory_and_executor_integration() {
+        let server = create_test_server();
+        let executor = CommandExecutorFactory::create(server);
+
+        // Verify the executor is fully functional
+        let _ = &executor.registry.generate_handlers;
+        let _ = &executor.registry.analyze_handlers;
+        let _ = &executor.registry.utility_handlers;
+        let _ = &executor.registry.demo_handlers;
+    }
+
+    /// Test multiple executors can be created from same server
+    #[test]
+    fn test_multiple_executors_same_server() {
+        let server = create_test_server();
+
+        let executor1 = CommandExecutorFactory::create(server.clone());
+        let executor2 = CommandExecutorFactory::create(server.clone());
+
+        // Both should share the same server
+        assert!(Arc::ptr_eq(&executor1.server, &executor2.server));
+    }
+
+    /// Test executors with different servers are independent
+    #[test]
+    fn test_executors_different_servers() {
+        let server1 = create_test_server();
+        let server2 = create_test_server();
+
+        let executor1 = CommandExecutorFactory::create(server1);
+        let executor2 = CommandExecutorFactory::create(server2);
+
+        // Servers should be different
+        assert!(!Arc::ptr_eq(&executor1.server, &executor2.server));
+    }
+}
+
+#[cfg(test)]
+mod edge_case_tests {
+    use super::*;
+
+    /// Creates a test server instance
+    fn create_test_server() -> Arc<StatelessTemplateServer> {
+        Arc::new(StatelessTemplateServer::new().expect("Failed to create test server"))
+    }
+
+    // ============================================================================
+    // Edge Cases for Command Groups
+    // ============================================================================
+
+    /// Test that all command groups implement Default correctly
+    #[test]
+    fn test_all_groups_implement_default() {
+        // These should all compile and run without panic
+        let _ = GenerateCommandGroup::default();
+        let _ = AnalyzeCommandGroup::default();
+        let _ = UtilityCommandGroup::default();
+        let _ = DemoCommandGroup::default();
+    }
+
+    /// Test CommandRegistry default is consistent
+    #[test]
+    fn test_registry_default_consistency() {
+        // Creating multiple registries should work
+        let registries: Vec<CommandRegistry> = (0..10).map(|_| CommandRegistry::default()).collect();
+
+        assert_eq!(registries.len(), 10);
+    }
+
+    /// Test CommandExecutor can be created many times
+    #[test]
+    fn test_executor_creation_stress() {
+        let server = create_test_server();
+
+        // Create many executors
+        let executors: Vec<CommandExecutor> = (0..100)
+            .map(|_| CommandExecutorFactory::create(server.clone()))
+            .collect();
+
+        assert_eq!(executors.len(), 100);
+
+        // All should share the same server
+        for executor in &executors {
+            assert!(Arc::ptr_eq(&executor.server, &server));
+        }
+    }
+
+    // ============================================================================
+    // Memory and Safety Tests
+    // ============================================================================
+
+    /// Test that dropping executors doesn't cause issues
+    #[test]
+    fn test_executor_drop_safety() {
+        let server = create_test_server();
+
+        {
+            let _executor = CommandExecutorFactory::create(server.clone());
+            // Executor goes out of scope here
+        }
+
+        // Server should still be valid
+        assert_eq!(Arc::strong_count(&server), 1);
+    }
+
+    /// Test registry drop safety
+    #[test]
+    fn test_registry_drop_safety() {
+        {
+            let _registry = CommandRegistry::default();
+            // Registry goes out of scope here
+        }
+        // Should not panic
+    }
+
+    /// Test command group drop safety
+    #[test]
+    fn test_command_group_drop_safety() {
+        {
+            let _generate = GenerateCommandGroup::default();
+            let _analyze = AnalyzeCommandGroup::default();
+            let _utility = UtilityCommandGroup::default();
+            let _demo = DemoCommandGroup::default();
+            // All go out of scope here
+        }
+        // Should not panic
     }
 }

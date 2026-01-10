@@ -51,9 +51,9 @@ impl AgentContextBuilder {
             "state-machine" => AgentTemplate::StateMachineWorkflow,
             "hybrid" => AgentTemplate::HybridAnalyzer,
             "mcp-server" => AgentTemplate::MCPToolServer,
-            path if path.starts_with("custom:") => {
-                AgentTemplate::CustomAgent(path.strip_prefix("custom:").expect("internal error").into())
-            }
+            path if path.starts_with("custom:") => AgentTemplate::CustomAgent(
+                path.strip_prefix("custom:").expect("internal error").into(),
+            ),
             _ => AgentTemplate::MCPToolServer,
         };
 

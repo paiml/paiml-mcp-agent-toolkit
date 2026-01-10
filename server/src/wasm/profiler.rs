@@ -115,7 +115,11 @@ impl AsyncProfiler {
         }
 
         // Sort by percentage descending
-        functions.sort_by(|a, b| b.percentage.partial_cmp(&a.percentage).expect("internal error"));
+        functions.sort_by(|a, b| {
+            b.percentage
+                .partial_cmp(&a.percentage)
+                .expect("internal error")
+        });
 
         Ok(functions)
     }
@@ -411,5 +415,531 @@ mod property_tests {
             // Module consistency verification
             prop_assert!(_x < 1001);
         }
+    }
+}
+
+#[cfg(test)]
+mod coverage_tests {
+    use super::*;
+
+    // Minimal valid WASM module (empty module with proper header)
+    fn minimal_wasm_module() -> Vec<u8> {
+        vec![
+            0x00, 0x61, 0x73, 0x6d, // WASM magic number
+            0x01, 0x00, 0x00, 0x00, // WASM version 1
+        ]
+    }
+
+    // WASM module with a function containing various instructions
+    fn mixed_instructions_wasm() -> Vec<u8> {
+        vec![
+            0x00, 0x61, 0x73, 0x6d, // magic
+            0x01, 0x00, 0x00, 0x00, // version
+            // Type section
+            0x01, 0x05, // section id 1, size 5
+            0x01, // 1 type
+            0x60, 0x00, 0x01, 0x7f, // func type: () -> i32
+            // Function section
+            0x03, 0x02, // section id 3, size 2
+            0x01, 0x00, // 1 function, type 0
+            // Memory section
+            0x05, 0x03, // section id 5, size 3
+            0x01, // 1 memory
+            0x00, 0x02, // min 2 pages, no max
+            // Code section with control flow, memory, arithmetic
+            0x0a, 0x11, // section id 10, size 17
+            0x01, // 1 function body
+            0x0f, // body size 15
+            0x00, // 0 locals
+            0x02, 0x7f, // block returning i32
+            0x41, 0x00, // i32.const 0
+            0x28, 0x02, 0x00, // i32.load
+            0x41, 0x01, // i32.const 1
+            0x6a, // i32.add
+            0x0c, 0x00, // br 0
+            0x0b, // end block
+            0x0b, // end function
+        ]
+    }
+
+    // WASM module with memory section
+    fn memory_wasm() -> Vec<u8> {
+        vec![
+            0x00, 0x61, 0x73, 0x6d, // magic
+            0x01, 0x00, 0x00, 0x00, // version
+            // Memory section
+            0x05, 0x04, // section id 5, size 4
+            0x01, // 1 memory
+            0x01, 0x02, 0x10, // min 2 pages, max 16 pages
+        ]
+    }
+
+    // WASM module with function calls
+    fn function_call_wasm() -> Vec<u8> {
+        vec![
+            0x00, 0x61, 0x73, 0x6d, // magic
+            0x01, 0x00, 0x00, 0x00, // version
+            // Type section
+            0x01, 0x04, // section id 1, size 4
+            0x01, // 1 type
+            0x60, 0x00, 0x00, // func type: () -> ()
+            // Function section
+            0x03, 0x03, // section id 3, size 3
+            0x02, 0x00, 0x00, // 2 functions, both type 0
+            // Code section
+            0x0a, 0x09, // section id 10, size 9
+            0x02, // 2 function bodies
+            // First function: calls second
+            0x04, // body size 4
+            0x00, // 0 locals
+            0x10, 0x01, // call 1
+            0x0b, // end
+            // Second function: empty
+            0x02, // body size 2
+            0x00, // 0 locals
+            0x0b, // end
+        ]
+    }
+
+    // ==================== AsyncProfiler Tests ====================
+
+    #[test]
+    fn test_async_profiler_new() {
+        let profiler = AsyncProfiler::new();
+        assert_eq!(profiler.sample_interval, Duration::from_millis(10));
+    }
+
+    #[test]
+    fn test_async_profiler_default() {
+        let profiler = AsyncProfiler::default();
+        assert_eq!(profiler.sample_interval, Duration::from_millis(10));
+    }
+
+    #[tokio::test]
+    async fn test_profile_minimal_module() {
+        let profiler = AsyncProfiler::new();
+        let result = profiler.profile_module(&minimal_wasm_module()).await;
+
+        assert!(result.is_ok());
+        let report = result.unwrap();
+        assert_eq!(report.instruction_mix.total_instructions, 0);
+    }
+
+    #[tokio::test]
+    async fn test_profile_mixed_instructions() {
+        let profiler = AsyncProfiler::new();
+        let result = profiler.profile_module(&mixed_instructions_wasm()).await;
+
+        assert!(result.is_ok());
+        let report = result.unwrap();
+        assert!(report.instruction_mix.total_instructions > 0);
+        assert!(report.instruction_mix.control_flow > 0);
+        assert!(report.instruction_mix.memory_ops > 0);
+        assert!(report.instruction_mix.arithmetic > 0);
+    }
+
+    #[tokio::test]
+    async fn test_profile_memory_section() {
+        let profiler = AsyncProfiler::new();
+        let result = profiler.profile_module(&memory_wasm()).await;
+
+        assert!(result.is_ok());
+        let report = result.unwrap();
+        // Memory section should be detected
+        assert_eq!(report.memory_usage.initial_pages, 2);
+        assert_eq!(report.memory_usage.max_pages, Some(16));
+    }
+
+    #[tokio::test]
+    async fn test_profile_function_calls() {
+        let profiler = AsyncProfiler::new();
+        let result = profiler.profile_module(&function_call_wasm()).await;
+
+        assert!(result.is_ok());
+        let report = result.unwrap();
+        assert!(report.instruction_mix.calls > 0);
+    }
+
+    #[tokio::test]
+    async fn test_profile_invalid_wasm() {
+        let profiler = AsyncProfiler::new();
+        let result = profiler.profile_module(&[0x00, 0x01, 0x02]).await;
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_analyze_instruction_mix() {
+        let profiler = AsyncProfiler::new();
+        let result = profiler.analyze_instruction_mix(&mixed_instructions_wasm());
+
+        assert!(result.is_ok());
+        let mix = result.unwrap();
+        assert!(mix.total_instructions > 0);
+    }
+
+    #[test]
+    fn test_identify_hot_functions() {
+        let profiler = AsyncProfiler::new();
+        let result = profiler.identify_hot_functions(&mixed_instructions_wasm());
+
+        assert!(result.is_ok());
+        let hot_functions = result.unwrap();
+        // Single function should be 100% of code
+        assert!(!hot_functions.is_empty());
+        // Function should be marked as hot (>5% of code)
+        assert!(hot_functions.iter().all(|f| f.percentage > 5.0));
+    }
+
+    #[test]
+    fn test_analyze_memory_usage_with_memory() {
+        let profiler = AsyncProfiler::new();
+        let result = profiler.analyze_memory_usage(&memory_wasm());
+
+        assert!(result.is_ok());
+        let memory = result.unwrap();
+        assert_eq!(memory.initial_pages, 2);
+        assert_eq!(memory.max_pages, Some(16));
+    }
+
+    #[test]
+    fn test_analyze_memory_usage_no_memory() {
+        let profiler = AsyncProfiler::new();
+        let result = profiler.analyze_memory_usage(&minimal_wasm_module());
+
+        assert!(result.is_ok());
+        let memory = result.unwrap();
+        // Default values when no memory section
+        assert_eq!(memory.initial_pages, 1);
+        assert_eq!(memory.max_pages, Some(256));
+    }
+
+    // ==================== ShadowStack Tests ====================
+
+    #[test]
+    fn test_shadow_stack_from_bytes_empty() {
+        let stack = ShadowStack::from_bytes(vec![]);
+        assert!(stack.frames.is_empty());
+    }
+
+    #[test]
+    fn test_shadow_stack_from_bytes_single_frame() {
+        // Function index 5 in little-endian
+        let bytes = vec![0x05, 0x00, 0x00, 0x00];
+        let stack = ShadowStack::from_bytes(bytes);
+        assert_eq!(stack.frames.len(), 1);
+        assert_eq!(stack.frames[0].function_index, 5);
+    }
+
+    #[test]
+    fn test_shadow_stack_from_bytes_multiple_frames() {
+        let bytes = vec![
+            0x01, 0x00, 0x00, 0x00, // func 1
+            0x02, 0x00, 0x00, 0x00, // func 2
+            0x03, 0x00, 0x00, 0x00, // func 3
+        ];
+        let stack = ShadowStack::from_bytes(bytes);
+        assert_eq!(stack.frames.len(), 3);
+        assert_eq!(stack.frames[0].function_index, 1);
+        assert_eq!(stack.frames[1].function_index, 2);
+        assert_eq!(stack.frames[2].function_index, 3);
+    }
+
+    #[test]
+    fn test_shadow_stack_from_bytes_zero_index_filtered() {
+        // Zero function index should be filtered out
+        let bytes = vec![0x00, 0x00, 0x00, 0x00];
+        let stack = ShadowStack::from_bytes(bytes);
+        assert!(stack.frames.is_empty());
+    }
+
+    #[test]
+    fn test_shadow_stack_from_bytes_partial_chunk() {
+        // Only 3 bytes, not enough for a frame
+        let bytes = vec![0x01, 0x02, 0x03];
+        let stack = ShadowStack::from_bytes(bytes);
+        assert!(stack.frames.is_empty());
+    }
+
+    #[test]
+    fn test_shadow_stack_sample() {
+        let stack = ShadowStack::sample();
+        assert_eq!(stack.frames.len(), 2);
+        assert_eq!(stack.frames[0].function_index, 1);
+        assert_eq!(stack.frames[0].instruction_offset, 10);
+        assert_eq!(stack.frames[1].function_index, 5);
+        assert_eq!(stack.frames[1].instruction_offset, 42);
+    }
+
+    #[test]
+    fn test_shadow_stack_depth() {
+        let stack = ShadowStack::sample();
+        assert_eq!(stack.depth(), 2);
+    }
+
+    #[test]
+    fn test_shadow_stack_depth_empty() {
+        let stack = ShadowStack::from_bytes(vec![]);
+        assert_eq!(stack.depth(), 0);
+    }
+
+    #[test]
+    fn test_shadow_stack_contains_function_found() {
+        let stack = ShadowStack::sample();
+        assert!(stack.contains_function(1));
+        assert!(stack.contains_function(5));
+    }
+
+    #[test]
+    fn test_shadow_stack_contains_function_not_found() {
+        let stack = ShadowStack::sample();
+        assert!(!stack.contains_function(0));
+        assert!(!stack.contains_function(999));
+    }
+
+    #[test]
+    fn test_shadow_stack_clone() {
+        let stack = ShadowStack::sample();
+        let cloned = stack.clone();
+        assert_eq!(stack.frames.len(), cloned.frames.len());
+    }
+
+    // ==================== StackFrame Tests ====================
+
+    #[test]
+    fn test_stack_frame_clone() {
+        let frame = StackFrame {
+            function_index: 42,
+            instruction_offset: 100,
+        };
+        let cloned = frame.clone();
+        assert_eq!(frame.function_index, cloned.function_index);
+        assert_eq!(frame.instruction_offset, cloned.instruction_offset);
+    }
+
+    // ==================== ProfileAggregator Tests ====================
+
+    #[test]
+    fn test_profile_aggregator_new() {
+        let aggregator = ProfileAggregator::new();
+        assert!(aggregator.profiles.is_empty());
+    }
+
+    #[test]
+    fn test_profile_aggregator_default() {
+        let aggregator = ProfileAggregator::default();
+        assert!(aggregator.profiles.is_empty());
+    }
+
+    #[test]
+    fn test_profile_aggregator_add_profile() {
+        let mut aggregator = ProfileAggregator::new();
+
+        let profile = ProfilingReport {
+            instruction_mix: InstructionMix {
+                total_instructions: 100,
+                control_flow: 20,
+                memory_ops: 30,
+                arithmetic: 40,
+                calls: 10,
+            },
+            hot_functions: vec![],
+            memory_usage: MemoryProfile {
+                initial_pages: 1,
+                max_pages: Some(10),
+                growth_events: vec![],
+            },
+        };
+
+        aggregator.add_profile(profile);
+        assert_eq!(aggregator.profiles.len(), 1);
+    }
+
+    #[test]
+    fn test_average_instruction_mix_empty() {
+        let aggregator = ProfileAggregator::new();
+        let avg = aggregator.average_instruction_mix();
+
+        assert_eq!(avg.total_instructions, 0);
+        assert_eq!(avg.control_flow, 0);
+        assert_eq!(avg.memory_ops, 0);
+        assert_eq!(avg.arithmetic, 0);
+        assert_eq!(avg.calls, 0);
+    }
+
+    #[test]
+    fn test_average_instruction_mix_single() {
+        let mut aggregator = ProfileAggregator::new();
+
+        aggregator.add_profile(ProfilingReport {
+            instruction_mix: InstructionMix {
+                total_instructions: 100,
+                control_flow: 20,
+                memory_ops: 30,
+                arithmetic: 40,
+                calls: 10,
+            },
+            hot_functions: vec![],
+            memory_usage: MemoryProfile {
+                initial_pages: 1,
+                max_pages: None,
+                growth_events: vec![],
+            },
+        });
+
+        let avg = aggregator.average_instruction_mix();
+        assert_eq!(avg.total_instructions, 100);
+        assert_eq!(avg.control_flow, 20);
+        assert_eq!(avg.memory_ops, 30);
+        assert_eq!(avg.arithmetic, 40);
+        assert_eq!(avg.calls, 10);
+    }
+
+    #[test]
+    fn test_average_instruction_mix_multiple() {
+        let mut aggregator = ProfileAggregator::new();
+
+        aggregator.add_profile(ProfilingReport {
+            instruction_mix: InstructionMix {
+                total_instructions: 100,
+                control_flow: 20,
+                memory_ops: 30,
+                arithmetic: 40,
+                calls: 10,
+            },
+            hot_functions: vec![],
+            memory_usage: MemoryProfile {
+                initial_pages: 1,
+                max_pages: None,
+                growth_events: vec![],
+            },
+        });
+
+        aggregator.add_profile(ProfilingReport {
+            instruction_mix: InstructionMix {
+                total_instructions: 200,
+                control_flow: 40,
+                memory_ops: 60,
+                arithmetic: 80,
+                calls: 20,
+            },
+            hot_functions: vec![],
+            memory_usage: MemoryProfile {
+                initial_pages: 2,
+                max_pages: None,
+                growth_events: vec![],
+            },
+        });
+
+        let avg = aggregator.average_instruction_mix();
+        assert_eq!(avg.total_instructions, 150); // (100 + 200) / 2
+        assert_eq!(avg.control_flow, 30);
+        assert_eq!(avg.memory_ops, 45);
+        assert_eq!(avg.arithmetic, 60);
+        assert_eq!(avg.calls, 15);
+    }
+
+    // ==================== categorize_for_profiling Tests ====================
+
+    #[test]
+    fn test_categorize_control_flow() {
+        use wasmparser::Operator;
+
+        assert!(matches!(
+            categorize_for_profiling(&Operator::Block {
+                blockty: wasmparser::BlockType::Empty
+            }),
+            InstructionCategory::ControlFlow
+        ));
+        assert!(matches!(
+            categorize_for_profiling(&Operator::Loop {
+                blockty: wasmparser::BlockType::Empty
+            }),
+            InstructionCategory::ControlFlow
+        ));
+        assert!(matches!(
+            categorize_for_profiling(&Operator::If {
+                blockty: wasmparser::BlockType::Empty
+            }),
+            InstructionCategory::ControlFlow
+        ));
+        assert!(matches!(
+            categorize_for_profiling(&Operator::Br { relative_depth: 0 }),
+            InstructionCategory::ControlFlow
+        ));
+        assert!(matches!(
+            categorize_for_profiling(&Operator::Return),
+            InstructionCategory::ControlFlow
+        ));
+    }
+
+    #[test]
+    fn test_categorize_memory() {
+        use wasmparser::{MemArg, Operator};
+
+        let memarg = MemArg {
+            align: 2,
+            max_align: 2,
+            offset: 0,
+            memory: 0,
+        };
+        assert!(matches!(
+            categorize_for_profiling(&Operator::I32Load { memarg }),
+            InstructionCategory::Memory
+        ));
+        assert!(matches!(
+            categorize_for_profiling(&Operator::I32Store { memarg }),
+            InstructionCategory::Memory
+        ));
+        assert!(matches!(
+            categorize_for_profiling(&Operator::MemoryGrow { mem: 0 }),
+            InstructionCategory::Memory
+        ));
+    }
+
+    #[test]
+    fn test_categorize_arithmetic() {
+        use wasmparser::Operator;
+
+        assert!(matches!(
+            categorize_for_profiling(&Operator::I32Add),
+            InstructionCategory::Arithmetic
+        ));
+        assert!(matches!(
+            categorize_for_profiling(&Operator::I32Sub),
+            InstructionCategory::Arithmetic
+        ));
+        assert!(matches!(
+            categorize_for_profiling(&Operator::I64Mul),
+            InstructionCategory::Arithmetic
+        ));
+        assert!(matches!(
+            categorize_for_profiling(&Operator::F32Div),
+            InstructionCategory::Arithmetic
+        ));
+    }
+
+    #[test]
+    fn test_categorize_call() {
+        use wasmparser::Operator;
+
+        assert!(matches!(
+            categorize_for_profiling(&Operator::Call { function_index: 0 }),
+            InstructionCategory::Call
+        ));
+    }
+
+    #[test]
+    fn test_categorize_other() {
+        use wasmparser::Operator;
+
+        assert!(matches!(
+            categorize_for_profiling(&Operator::Nop),
+            InstructionCategory::Other
+        ));
+        assert!(matches!(
+            categorize_for_profiling(&Operator::I32Const { value: 0 }),
+            InstructionCategory::Other
+        ));
     }
 }

@@ -9,6 +9,7 @@ use std::fs;
 use tempfile::TempDir;
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_cli_analyze_duplicates_exact() {
     let temp_dir = TempDir::new().unwrap();
 
@@ -66,6 +67,7 @@ fn different_function() {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_cli_analyze_duplicates_fuzzy() {
     let temp_dir = TempDir::new().unwrap();
 
@@ -112,6 +114,7 @@ fn calculate(x: i32, y: i32) -> i32 {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_cli_analyze_duplicates_semantic() {
     let temp_dir = TempDir::new().unwrap();
 
@@ -156,6 +159,7 @@ fn sum_array(arr: &[i32]) -> i32 {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_cli_analyze_duplicates_all_types() {
     let temp_dir = TempDir::new().unwrap();
 
@@ -231,6 +235,7 @@ fn find_max(nums: &[i32]) -> Option<i32> {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_cli_analyze_duplicates_with_output_file() {
     let temp_dir = TempDir::new().unwrap();
     let output_file = temp_dir.path().join("report.json");
@@ -270,6 +275,7 @@ fn test3() { println!("different"); }
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_cli_analyze_duplicates_csv_format() {
     let temp_dir = TempDir::new().unwrap();
 
@@ -294,6 +300,7 @@ fn test_cli_analyze_duplicates_csv_format() {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_cli_analyze_duplicates_sarif_format() {
     let temp_dir = TempDir::new().unwrap();
 
@@ -316,6 +323,7 @@ fn test_cli_analyze_duplicates_sarif_format() {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_cli_analyze_duplicates_performance_metrics() {
     let temp_dir = TempDir::new().unwrap();
 

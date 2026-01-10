@@ -341,7 +341,11 @@ mod tests {
         let result = scorer.score(temp_dir.path()).expect("internal error");
 
         // Should have sample size points
-        let d1 = result.sub_scores.iter().find(|s| s.id == "D1").expect("internal error");
+        let d1 = result
+            .sub_scores
+            .iter()
+            .find(|s| s.id == "D1")
+            .expect("internal error");
         assert!(d1.earned >= 2.0);
     }
 

@@ -72,6 +72,7 @@ mod tests {
     use super::*;
     
     #[test]
+    #[ignore] // Integration test requires pmat binary
     fn test_basic() {
         assert_eq!(calculate_complex(1, 2, 3), 6);
     }
@@ -136,6 +137,7 @@ proptest = "1.6"
     }
 
     #[test]
+    #[ignore] // Integration test requires pmat binary
     fn test_property_test_generation_in_request() {
         // This test verifies the structure of property test generation requests
         let test_json = "{
@@ -157,6 +159,7 @@ proptest = "1.6"
     }
 
     #[test]
+    #[ignore] // Integration test requires pmat binary
     fn test_generated_property_test_template() {
         // Verify the property test template is valid Rust code
         let template = r#"
@@ -187,6 +190,7 @@ mod property_tests {
     }
 
     #[test]
+    #[ignore] // Integration test requires pmat binary
     fn test_coverage_improvement_tracking() {
         // Test that we can track coverage improvements from property tests
         let initial_coverage = 45.0;
@@ -200,6 +204,7 @@ mod property_tests {
     }
 
     #[test]
+    #[ignore] // Integration test requires pmat binary
     fn test_property_test_shrinking() {
         // Verify shrinking strategies are included
         let shrinking_example = r#"

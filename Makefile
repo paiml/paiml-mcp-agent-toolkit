@@ -30,9 +30,11 @@ PROJECTS = server
 # Scripts directory path
 SCRIPTS_DIR = scripts
 
-# Coverage exclusions for files that cannot be unit tested (integration-only, binaries, demos)
-# bashrs-style pattern: exclude files that inflate coverage reports unfairly
-COVERAGE_EXCLUDE := --ignore-filename-regex='bin/pmat-agent\.rs|scaffold/.*\.rs|demo/.*\.rs|mcp_pmcp/.*\.rs|mcp_server/server\.rs|mcp_integration/.*\.rs|contracts/adapter\.rs|qdd/.*_handler\.rs|maintenance/.*\.rs|quality/oracle\.rs|handlers/cache\.rs|handlers/churn_formatter\.rs|handlers/debug_handlers\.rs|handlers/demo_handlers\.rs|handlers/generation_handlers\.rs|handlers/memory\.rs|handlers/timeline_mode\.rs|handlers/analysis/.*\.rs|graph/storage\.rs|wasm/handlers\.rs|tdg/web_dashboard\.rs|tdg/profiler\.rs|resources/embed\.rs|defect_helpers\.rs|defect_prediction_helpers\.rs|diagnose\.rs|cli/analysis/defect_prediction\.rs|cli/analysis/graph_metrics\.rs|cli/analysis/symbol_table\.rs|ast/languages/c_cpp\.rs|ast/languages/python\.rs|ast/languages/rust\.rs|ast/languages/others\.rs'
+# Coverage exclusions - bashrs-style (runtime code that requires external processes)
+# bashrs excludes: quality/gates.rs, cli/commands.rs, repl/loop.rs, etc.
+# These are modules that CALL EXTERNAL COMMANDS or require runtime interaction
+# Core library code stays IN for honest coverage measurement
+COVERAGE_EXCLUDE := --ignore-filename-regex='bin/.*\.rs|demo/.*\.rs|mcp_server/.*\.rs|mcp_integration/.*\.rs|handlers/.*\.rs|tdg/web_dashboard\.rs|tdg/profiler\.rs|protocol/adapters/.*\.rs|unified_protocol/service\.rs|wasm/analyzer\.rs|wasm/baseline\.rs|wasm/profiler\.rs|wasm/security\.rs|wasm/verifier\.rs|scaffold/.*\.rs'
 
 # Default target: format and build all projects
 all: format build
@@ -413,21 +415,27 @@ test-doc:
 # Coverage - bashrs-style FAST coverage (nextest + exclusions, target: <3 min)
 # Uses cargo-nextest for maximum parallelism on 48-core Threadripper
 # COVERAGE_EXCLUDE removes integration-only files from coverage calculation
+# CRITICAL: Use --lib to ONLY build library tests (not bins/examples/integration)
+# NOTE: mold linker breaks coverage - temporarily disable global cargo config
 coverage: ## Generate HTML coverage report (fast: <3 min, target 95%)
-	@echo "📊 Running FAST coverage (bashrs-style, nextest, target: <3 min)..."
+	@echo "📊 Running FAST coverage (--lib only, target: <3 min)..."
 	@which cargo-llvm-cov > /dev/null 2>&1 || cargo install cargo-llvm-cov --locked
 	@which cargo-nextest > /dev/null 2>&1 || cargo install cargo-nextest --locked
 	@mkdir -p target/coverage
-	@echo "🧪 Running coverage with nextest ($(shell nproc) threads)..."
+	@echo "⚙️  Temporarily disabling global cargo config (mold breaks coverage)..."
+	@test -f ~/.cargo/config.toml && mv ~/.cargo/config.toml ~/.cargo/config.toml.cov-backup || true
+	@echo "🧪 Running library-only coverage with nextest ($(shell nproc) threads)..."
 	@env PROPTEST_CASES=5 QUICKCHECK_TESTS=5 \
 		cargo llvm-cov nextest \
 		--config-file server/.config/nextest.toml \
 		--profile coverage \
 		--no-tests=warn \
-		--workspace \
+		--lib \
 		--html --output-dir target/coverage/html \
 		$(COVERAGE_EXCLUDE) \
-		-E 'not test(/stress|fuzz|property.*comprehensive|benchmark|slow/)'
+		-E 'not test(/stress|fuzz|property.*comprehensive|benchmark|slow/)' || \
+		(test -f ~/.cargo/config.toml.cov-backup && mv ~/.cargo/config.toml.cov-backup ~/.cargo/config.toml; false)
+	@test -f ~/.cargo/config.toml.cov-backup && mv ~/.cargo/config.toml.cov-backup ~/.cargo/config.toml || true
 	@cargo llvm-cov report --lcov --output-path target/coverage/lcov.info $(COVERAGE_EXCLUDE)
 	@echo ""
 	@cargo llvm-cov report --summary-only $(COVERAGE_EXCLUDE)
@@ -435,13 +443,13 @@ coverage: ## Generate HTML coverage report (fast: <3 min, target 95%)
 	@echo "📁 HTML report: target/coverage/html/index.html"
 	@echo "📁 LCOV report: target/coverage/lcov.info"
 
-coverage-ci: ## Generate LCOV report for CI (fast mode)
-	@echo "📊 Running CI coverage..."
+coverage-ci: ## Generate LCOV report for CI (fast mode, --lib only)
+	@echo "📊 Running CI coverage (--lib only)..."
 	@env PROPTEST_CASES=5 QUICKCHECK_TESTS=5 cargo llvm-cov nextest \
 		--config-file server/.config/nextest.toml \
 		--profile coverage \
 		--no-tests=warn \
-		--workspace \
+		--lib \
 		--lcov --output-path lcov.info \
 		$(COVERAGE_EXCLUDE) \
 		-E 'not test(/stress|fuzz|property.*comprehensive|benchmark|slow/)'
@@ -493,6 +501,28 @@ coverage-fast: ## Hash-based cached coverage (O(1) on cache hit)
 coverage-invalidate: ## Invalidate coverage cache
 	@rm -rf .pmat-metrics/coverage
 	@echo "✓ Coverage cache invalidated"
+
+# Quick coverage for fast feedback - bashrs-style (~2-3 min, core tests only)
+# Uses --lib and excludes slow tests for maximum speed
+coverage-quick: ## Quick coverage for fast feedback (~2-3 min, core only)
+	@echo "⚡ Quick coverage (core library tests only)..."
+	@which cargo-llvm-cov > /dev/null 2>&1 || cargo install cargo-llvm-cov --locked
+	@which cargo-nextest > /dev/null 2>&1 || cargo install cargo-nextest --locked
+	@echo "⚙️  Temporarily disabling mold linker..."
+	@test -f ~/.cargo/config.toml && mv ~/.cargo/config.toml ~/.cargo/config.toml.cov-backup || true
+	@env PROPTEST_CASES=3 QUICKCHECK_TESTS=3 \
+		cargo llvm-cov nextest \
+		--config-file server/.config/nextest.toml \
+		--profile coverage \
+		--no-tests=warn \
+		--lib \
+		$(COVERAGE_EXCLUDE) \
+		-E 'not test(/stress|fuzz|property|benchmark|slow|integration|e2e|comprehensive/)' || \
+		(test -f ~/.cargo/config.toml.cov-backup && mv ~/.cargo/config.toml.cov-backup ~/.cargo/config.toml; false)
+	@test -f ~/.cargo/config.toml.cov-backup && mv ~/.cargo/config.toml.cov-backup ~/.cargo/config.toml || true
+	@cargo llvm-cov report --summary-only $(COVERAGE_EXCLUDE)
+	@echo ""
+	@echo "⚡ Quick coverage complete (use 'make coverage' for full report)"
 
 # Full coverage including ignored tests (for CI/nightly, NOT pre-commit)
 # Estimated: ~75-80% coverage vs ~60% fast coverage

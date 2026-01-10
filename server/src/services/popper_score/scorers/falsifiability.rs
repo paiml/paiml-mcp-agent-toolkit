@@ -70,7 +70,8 @@ impl FalsifiabilityScorer {
 
                 // Check for measurable thresholds (2 points)
                 let threshold_regex =
-                    Regex::new(r"(?i)(>|<|>=|<=|≥|≤)\s*\d+|(\d+%|\d+ms|\d+s|\d+x)").expect("internal error");
+                    Regex::new(r"(?i)(>|<|>=|<=|≥|≤)\s*\d+|(\d+%|\d+ms|\d+s|\d+x)")
+                        .expect("internal error");
                 if threshold_regex.is_match(&content) {
                     earned += 2.0;
                     description.push("measurable thresholds found".to_string());
@@ -521,7 +522,11 @@ criterion = "0.5"
         let result = scorer.score(temp_dir.path()).expect("internal error");
 
         // Should have benchmark points
-        let a3 = result.sub_scores.iter().find(|s| s.id == "A3").expect("internal error");
+        let a3 = result
+            .sub_scores
+            .iter()
+            .find(|s| s.id == "A3")
+            .expect("internal error");
         assert!(a3.earned > 0.0);
     }
 }

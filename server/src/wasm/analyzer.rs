@@ -347,3 +347,548 @@ mod property_tests {
         }
     }
 }
+
+#[cfg(test)]
+mod coverage_tests {
+    use super::*;
+
+    // Minimal valid WASM module (empty module with proper header)
+    fn minimal_wasm_module() -> Vec<u8> {
+        vec![
+            0x00, 0x61, 0x73, 0x6d, // WASM magic number
+            0x01, 0x00, 0x00, 0x00, // WASM version 1
+        ]
+    }
+
+    // WASM module with a simple function
+    fn simple_function_wasm() -> Vec<u8> {
+        vec![
+            0x00, 0x61, 0x73, 0x6d, // magic
+            0x01, 0x00, 0x00, 0x00, // version
+            // Type section
+            0x01, 0x05, // section id 1, size 5
+            0x01, // 1 type
+            0x60, 0x00, 0x01, 0x7f, // func type: () -> i32
+            // Function section
+            0x03, 0x02, // section id 3, size 2
+            0x01, 0x00, // 1 function, type 0
+            // Code section
+            0x0a, 0x09, // section id 10, size 9
+            0x01, // 1 function body
+            0x07, // body size 7
+            0x00, // 0 locals
+            0x41, 0x01, // i32.const 1
+            0x41, 0x02, // i32.const 2
+            0x6a, // i32.add
+            0x0b, // end
+        ]
+    }
+
+    // WASM module with various instruction types
+    fn mixed_instructions_wasm() -> Vec<u8> {
+        vec![
+            0x00, 0x61, 0x73, 0x6d, // magic
+            0x01, 0x00, 0x00, 0x00, // version
+            // Type section
+            0x01, 0x05, // section id 1, size 5
+            0x01, // 1 type
+            0x60, 0x00, 0x01, 0x7f, // func type: () -> i32
+            // Function section
+            0x03, 0x02, // section id 3, size 2
+            0x01, 0x00, // 1 function, type 0
+            // Memory section
+            0x05, 0x03, // section id 5, size 3
+            0x01, // 1 memory
+            0x00, 0x01, // min 1 page, no max
+            // Code section with mixed instructions
+            0x0a, 0x11, // section id 10, size 17
+            0x01, // 1 function body
+            0x0f, // body size 15
+            0x00, // 0 locals
+            0x02, 0x7f, // block returning i32
+            0x41, 0x00, // i32.const 0
+            0x28, 0x02, 0x00, // i32.load
+            0x41, 0x01, // i32.const 1
+            0x6a, // i32.add
+            0x0c, 0x00, // br 0
+            0x0b, // end block
+            0x0b, // end function
+        ]
+    }
+
+    // ==================== WasmAnalyzer Tests ====================
+
+    #[test]
+    fn test_wasm_analyzer_new() {
+        let analyzer = WasmAnalyzer::new();
+        assert!(analyzer.is_ok());
+    }
+
+    #[test]
+    fn test_analyze_minimal_module() {
+        let analyzer = WasmAnalyzer::new().unwrap();
+        let result = analyzer.analyze(&minimal_wasm_module());
+
+        assert!(result.is_ok());
+        let analysis = result.unwrap();
+        assert_eq!(analysis.function_count, 0);
+        assert_eq!(analysis.instruction_count, 0);
+    }
+
+    #[test]
+    fn test_analyze_simple_function() {
+        let analyzer = WasmAnalyzer::new().unwrap();
+        let result = analyzer.analyze(&simple_function_wasm());
+
+        assert!(result.is_ok());
+        let analysis = result.unwrap();
+        assert!(analysis.instruction_count > 0);
+    }
+
+    #[test]
+    fn test_analyze_streaming_minimal() {
+        let analyzer = WasmAnalyzer::new().unwrap();
+        let result = analyzer.analyze_streaming(&minimal_wasm_module());
+
+        assert!(result.is_ok());
+        let analysis = result.unwrap();
+        assert_eq!(analysis.instruction_mix.total_instructions, 0);
+        assert!(analysis.vulnerability_patterns.is_empty());
+    }
+
+    #[test]
+    fn test_analyze_streaming_mixed() {
+        let analyzer = WasmAnalyzer::new().unwrap();
+        let result = analyzer.analyze_streaming(&mixed_instructions_wasm());
+
+        assert!(result.is_ok());
+        let analysis = result.unwrap();
+        assert!(analysis.instruction_mix.total_instructions > 0);
+        assert!(analysis.instruction_mix.control_flow > 0);
+        assert!(analysis.instruction_mix.memory_ops > 0);
+    }
+
+    #[test]
+    fn test_analyze_invalid_wasm() {
+        let analyzer = WasmAnalyzer::new().unwrap();
+        let result = analyzer.analyze(&[0x00, 0x01, 0x02, 0x03]);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_analyze_empty_input() {
+        let analyzer = WasmAnalyzer::new().unwrap();
+        let result = analyzer.analyze(&[]);
+
+        assert!(result.is_err());
+    }
+
+    // ==================== Analysis Tests ====================
+
+    #[test]
+    fn test_analysis_serialization() {
+        let analysis = Analysis {
+            module_info: ModuleInfo {
+                num_functions: 5,
+                num_imports: 2,
+                num_exports: 3,
+                num_tables: 1,
+                num_memories: 1,
+                num_globals: 4,
+                has_start_function: true,
+                code_size: 1000,
+            },
+            instruction_mix: InstructionMix {
+                total_instructions: 100,
+                control_flow: 20,
+                memory_ops: 30,
+                arithmetic: 40,
+                calls: 10,
+            },
+            vulnerability_patterns: vec![],
+            security_report: SecurityReport::new(),
+        };
+
+        let serialized = serde_json::to_string(&analysis).unwrap();
+        let deserialized: Analysis = serde_json::from_str(&serialized).unwrap();
+
+        assert_eq!(
+            analysis.module_info.num_functions,
+            deserialized.module_info.num_functions
+        );
+        assert_eq!(
+            analysis.instruction_mix.total_instructions,
+            deserialized.instruction_mix.total_instructions
+        );
+    }
+
+    #[test]
+    fn test_analysis_clone() {
+        let analysis = Analysis {
+            module_info: ModuleInfo::from_validator(Validator::new()),
+            instruction_mix: InstructionMix {
+                total_instructions: 50,
+                control_flow: 10,
+                memory_ops: 15,
+                arithmetic: 20,
+                calls: 5,
+            },
+            vulnerability_patterns: vec![],
+            security_report: SecurityReport::new(),
+        };
+
+        let cloned = analysis.clone();
+        assert_eq!(
+            analysis.instruction_mix.total_instructions,
+            cloned.instruction_mix.total_instructions
+        );
+    }
+
+    // ==================== AnalysisResult Tests ====================
+
+    #[test]
+    fn test_analysis_result_from_analysis() {
+        let analysis = Analysis {
+            module_info: ModuleInfo {
+                num_functions: 10,
+                num_imports: 5,
+                num_exports: 3,
+                num_tables: 1,
+                num_memories: 2,
+                num_globals: 4,
+                has_start_function: false,
+                code_size: 5000,
+            },
+            instruction_mix: InstructionMix {
+                total_instructions: 500,
+                control_flow: 100,
+                memory_ops: 150,
+                arithmetic: 200,
+                calls: 50,
+            },
+            vulnerability_patterns: vec![],
+            security_report: SecurityReport::new(),
+        };
+
+        let result = AnalysisResult::from(analysis);
+
+        assert_eq!(result.function_count, 10);
+        assert_eq!(result.instruction_count, 500);
+        assert_eq!(result.binary_size, 5000);
+        assert_eq!(result.memory_pages, 2);
+        assert_eq!(result.max_complexity, 10); // Default estimate
+    }
+
+    #[test]
+    fn test_analysis_result_serialization() {
+        let result = AnalysisResult {
+            function_count: 25,
+            instruction_count: 1000,
+            binary_size: 10000,
+            memory_pages: 4,
+            max_complexity: 15,
+        };
+
+        let serialized = serde_json::to_string(&result).unwrap();
+        let deserialized: AnalysisResult = serde_json::from_str(&serialized).unwrap();
+
+        assert_eq!(result.function_count, deserialized.function_count);
+        assert_eq!(result.instruction_count, deserialized.instruction_count);
+        assert_eq!(result.binary_size, deserialized.binary_size);
+    }
+
+    // ==================== ModuleInfo Tests ====================
+
+    #[test]
+    fn test_module_info_from_validator() {
+        let validator = Validator::new();
+        let info = ModuleInfo::from_validator(validator);
+
+        // Default values from simplified implementation
+        assert_eq!(info.num_functions, 0);
+        assert_eq!(info.num_imports, 0);
+        assert_eq!(info.num_exports, 0);
+        assert_eq!(info.num_tables, 0);
+        assert_eq!(info.num_memories, 1);
+        assert_eq!(info.num_globals, 0);
+        assert!(!info.has_start_function);
+        assert_eq!(info.code_size, 0);
+    }
+
+    #[test]
+    fn test_module_info_clone() {
+        let info = ModuleInfo {
+            num_functions: 15,
+            num_imports: 5,
+            num_exports: 8,
+            num_tables: 2,
+            num_memories: 1,
+            num_globals: 10,
+            has_start_function: true,
+            code_size: 25000,
+        };
+
+        let cloned = info.clone();
+        assert_eq!(info.num_functions, cloned.num_functions);
+        assert_eq!(info.has_start_function, cloned.has_start_function);
+    }
+
+    // ==================== InstructionProfiler Tests ====================
+
+    #[test]
+    fn test_instruction_profiler_new() {
+        let profiler = InstructionProfiler::new();
+        assert!(profiler.instruction_counts.is_empty());
+        assert_eq!(profiler.total_instructions, 0);
+    }
+
+    #[test]
+    fn test_instruction_profiler_default() {
+        let profiler = InstructionProfiler::default();
+        assert!(profiler.instruction_counts.is_empty());
+    }
+
+    #[test]
+    fn test_instruction_profiler_observe() {
+        let mut profiler = InstructionProfiler::new();
+        let wasm = simple_function_wasm();
+
+        for payload in Parser::new(0).parse_all(&wasm) {
+            if let Ok(p) = payload {
+                profiler.observe(&p);
+            }
+        }
+
+        assert!(profiler.total_instructions > 0);
+    }
+
+    #[test]
+    fn test_instruction_profiler_finalize() {
+        let mut profiler = InstructionProfiler::new();
+        let wasm = mixed_instructions_wasm();
+
+        for payload in Parser::new(0).parse_all(&wasm) {
+            if let Ok(p) = payload {
+                profiler.observe(&p);
+            }
+        }
+
+        let mix = profiler.finalize();
+        assert!(mix.total_instructions > 0);
+    }
+
+    // ==================== SecurityAuditor Tests ====================
+
+    #[test]
+    fn test_security_auditor_new() {
+        let auditor = SecurityAuditor::new();
+        assert_eq!(auditor.checks.len(), 5);
+    }
+
+    #[test]
+    fn test_security_auditor_default() {
+        let auditor = SecurityAuditor::default();
+        assert_eq!(auditor.checks.len(), 5);
+    }
+
+    #[test]
+    fn test_security_auditor_audit() {
+        let auditor = SecurityAuditor::new();
+        let result = auditor.audit(&minimal_wasm_module());
+
+        assert!(result.is_ok());
+        let report = result.unwrap();
+        // All default checks should pass on minimal module
+        assert!(report.is_safe);
+        assert!(!report.passed_checks.is_empty());
+    }
+
+    // ==================== SecurityReport Tests ====================
+
+    #[test]
+    fn test_security_report_new() {
+        let report = SecurityReport::new();
+        assert!(report.passed_checks.is_empty());
+        assert!(report.failed_checks.is_empty());
+        assert!(report.warnings.is_empty());
+        assert!(report.is_safe);
+    }
+
+    #[test]
+    fn test_security_report_default() {
+        let report = SecurityReport::default();
+        assert!(report.is_safe);
+    }
+
+    #[test]
+    fn test_security_report_add_check_passed() {
+        let mut report = SecurityReport::new();
+        report.add_check_result("test-check", true);
+
+        assert_eq!(report.passed_checks.len(), 1);
+        assert!(report.passed_checks.contains(&"test-check".to_string()));
+        assert!(report.is_safe);
+    }
+
+    #[test]
+    fn test_security_report_add_check_failed() {
+        let mut report = SecurityReport::new();
+        report.add_check_result("test-check", false);
+
+        assert_eq!(report.failed_checks.len(), 1);
+        assert!(report.failed_checks.contains(&"test-check".to_string()));
+        assert!(!report.is_safe);
+    }
+
+    #[test]
+    fn test_security_report_mixed_results() {
+        let mut report = SecurityReport::new();
+        report.add_check_result("check-1", true);
+        report.add_check_result("check-2", false);
+        report.add_check_result("check-3", true);
+
+        assert_eq!(report.passed_checks.len(), 2);
+        assert_eq!(report.failed_checks.len(), 1);
+        assert!(!report.is_safe);
+    }
+
+    #[test]
+    fn test_security_report_serialization() {
+        let mut report = SecurityReport::new();
+        report.add_check_result("memory-bounds", true);
+        report.add_check_result("integer-overflow", false);
+
+        let serialized = serde_json::to_string(&report).unwrap();
+        let deserialized: SecurityReport = serde_json::from_str(&serialized).unwrap();
+
+        assert_eq!(report.passed_checks, deserialized.passed_checks);
+        assert_eq!(report.failed_checks, deserialized.failed_checks);
+        assert_eq!(report.is_safe, deserialized.is_safe);
+    }
+
+    // ==================== SecurityCheck Tests ====================
+
+    #[test]
+    fn test_security_check_names() {
+        let checks = vec![
+            SecurityCheck::NoFilesystemAccess,
+            SecurityCheck::NoNetworkAccess,
+            SecurityCheck::MemoryBoundsChecked,
+            SecurityCheck::NoUnvalidatedIndirectCalls,
+            SecurityCheck::NoIntegerOverflow,
+        ];
+
+        let names: Vec<_> = checks.iter().map(|c| c.name()).collect();
+
+        assert!(names.contains(&"no-filesystem-access"));
+        assert!(names.contains(&"no-network-access"));
+        assert!(names.contains(&"memory-bounds-checked"));
+        assert!(names.contains(&"no-unvalidated-indirect-calls"));
+        assert!(names.contains(&"no-integer-overflow"));
+    }
+
+    #[test]
+    fn test_security_check_verify_all_pass() {
+        let checks = vec![
+            SecurityCheck::NoFilesystemAccess,
+            SecurityCheck::NoNetworkAccess,
+            SecurityCheck::MemoryBoundsChecked,
+            SecurityCheck::NoUnvalidatedIndirectCalls,
+            SecurityCheck::NoIntegerOverflow,
+        ];
+
+        let binary = minimal_wasm_module();
+
+        for check in checks {
+            assert!(check.verify(&binary));
+        }
+    }
+
+    // ==================== categorize_operator Tests ====================
+
+    #[test]
+    fn test_categorize_operator_control() {
+        use wasmparser::Operator;
+
+        assert_eq!(
+            categorize_operator(&Operator::Block {
+                blockty: wasmparser::BlockType::Empty
+            }),
+            "control"
+        );
+        assert_eq!(
+            categorize_operator(&Operator::Loop {
+                blockty: wasmparser::BlockType::Empty
+            }),
+            "control"
+        );
+        assert_eq!(
+            categorize_operator(&Operator::If {
+                blockty: wasmparser::BlockType::Empty
+            }),
+            "control"
+        );
+        assert_eq!(categorize_operator(&Operator::Else), "control");
+        assert_eq!(categorize_operator(&Operator::End), "control");
+        assert_eq!(
+            categorize_operator(&Operator::Br { relative_depth: 0 }),
+            "control"
+        );
+        assert_eq!(categorize_operator(&Operator::Return), "control");
+    }
+
+    #[test]
+    fn test_categorize_operator_memory() {
+        use wasmparser::{MemArg, Operator};
+
+        let memarg = MemArg {
+            align: 2,
+            max_align: 2,
+            offset: 0,
+            memory: 0,
+        };
+
+        assert_eq!(categorize_operator(&Operator::I32Load { memarg }), "memory");
+        assert_eq!(
+            categorize_operator(&Operator::I32Store { memarg }),
+            "memory"
+        );
+        assert_eq!(
+            categorize_operator(&Operator::MemoryGrow { mem: 0 }),
+            "memory"
+        );
+    }
+
+    #[test]
+    fn test_categorize_operator_call() {
+        use wasmparser::Operator;
+
+        assert_eq!(
+            categorize_operator(&Operator::Call { function_index: 0 }),
+            "call"
+        );
+    }
+
+    #[test]
+    fn test_categorize_operator_arithmetic() {
+        use wasmparser::Operator;
+
+        assert_eq!(categorize_operator(&Operator::I32Add), "arithmetic");
+        assert_eq!(categorize_operator(&Operator::I32Sub), "arithmetic");
+        assert_eq!(categorize_operator(&Operator::I32Mul), "arithmetic");
+        assert_eq!(categorize_operator(&Operator::F64Div), "arithmetic");
+    }
+
+    #[test]
+    fn test_categorize_operator_other() {
+        use wasmparser::Operator;
+
+        assert_eq!(categorize_operator(&Operator::Nop), "other");
+        assert_eq!(
+            categorize_operator(&Operator::I32Const { value: 0 }),
+            "other"
+        );
+        assert_eq!(categorize_operator(&Operator::Drop), "other");
+    }
+}

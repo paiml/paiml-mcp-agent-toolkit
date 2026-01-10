@@ -182,7 +182,7 @@ fn main() -> Result<()> {
     ];
 
     println!("Status aliases are now supported:");
-    for (alias, canonical) in &aliases {
+    for (alias, _canonical) in &aliases {
         match ItemStatus::from_string(alias) {
             Ok(status) => println!("   '{}' → {:?} ✅", alias, status),
             Err(e) => println!("   '{}' → Error: {} ❌", alias, e),

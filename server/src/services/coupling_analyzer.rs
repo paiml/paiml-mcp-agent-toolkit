@@ -209,3 +209,236 @@ mod property_tests {
         }
     }
 }
+
+#[cfg(test)]
+mod coverage_tests {
+    use super::*;
+    use crate::models::dag::{Edge, EdgeType, NodeInfo, NodeType};
+    use rustc_hash::FxHashMap;
+
+    fn create_node(id: &str, file_path: &str) -> NodeInfo {
+        NodeInfo {
+            id: id.to_string(),
+            label: id.to_string(),
+            node_type: NodeType::Function,
+            file_path: file_path.to_string(),
+            line_number: 1,
+            complexity: 1,
+            metadata: FxHashMap::default(),
+        }
+    }
+
+    fn create_edge(from: &str, to: &str) -> Edge {
+        Edge {
+            from: from.to_string(),
+            to: to.to_string(),
+            edge_type: EdgeType::Calls,
+            weight: 1,
+        }
+    }
+
+    #[test]
+    fn test_coupling_analyzer_new() {
+        let analyzer = CouplingAnalyzer::new();
+        // CouplingAnalyzer is a unit struct, just verify it can be created
+        let _ = analyzer;
+    }
+
+    #[test]
+    fn test_coupling_analyzer_default() {
+        let analyzer = CouplingAnalyzer::default();
+        let _ = analyzer;
+    }
+
+    #[tokio::test]
+    async fn test_analyze_empty_graph() {
+        let analyzer = CouplingAnalyzer::new();
+        let graph = DependencyGraph::new();
+
+        let report = analyzer.analyze(&graph).await.unwrap();
+
+        assert!(report.file_metrics.is_empty());
+        assert_eq!(report.project_metrics.avg_afferent, 0.0);
+        assert_eq!(report.project_metrics.avg_efferent, 0.0);
+        assert_eq!(report.project_metrics.max_afferent, 0);
+        assert_eq!(report.project_metrics.max_efferent, 0);
+    }
+
+    #[tokio::test]
+    async fn test_analyze_single_node_no_edges() {
+        let analyzer = CouplingAnalyzer::new();
+        let mut graph = DependencyGraph::new();
+
+        graph.add_node(create_node("node_a", "src/a.rs"));
+
+        let report = analyzer.analyze(&graph).await.unwrap();
+
+        assert_eq!(report.file_metrics.len(), 1);
+
+        let metrics = report.file_metrics.get(&PathBuf::from("src/a.rs")).unwrap();
+        assert_eq!(metrics.afferent_coupling, 0);
+        assert_eq!(metrics.efferent_coupling, 0);
+        assert_eq!(metrics.instability, 0.0);
+    }
+
+    #[tokio::test]
+    async fn test_analyze_two_nodes_one_edge() {
+        let analyzer = CouplingAnalyzer::new();
+        let mut graph = DependencyGraph::new();
+
+        graph.add_node(create_node("node_a", "src/a.rs"));
+        graph.add_node(create_node("node_b", "src/b.rs"));
+        graph.add_edge(create_edge("node_a", "node_b"));
+
+        let report = analyzer.analyze(&graph).await.unwrap();
+
+        assert_eq!(report.file_metrics.len(), 2);
+
+        // node_a has 1 outgoing edge (efferent = 1)
+        let metrics_a = report.file_metrics.get(&PathBuf::from("src/a.rs")).unwrap();
+        assert_eq!(metrics_a.afferent_coupling, 0);
+        assert_eq!(metrics_a.efferent_coupling, 1);
+        assert_eq!(metrics_a.instability, 1.0); // 1 / (0 + 1)
+
+        // node_b has 1 incoming edge (afferent = 1)
+        let metrics_b = report.file_metrics.get(&PathBuf::from("src/b.rs")).unwrap();
+        assert_eq!(metrics_b.afferent_coupling, 1);
+        assert_eq!(metrics_b.efferent_coupling, 0);
+        assert_eq!(metrics_b.instability, 0.0); // 0 / (1 + 0)
+    }
+
+    #[tokio::test]
+    async fn test_analyze_complex_graph() {
+        let analyzer = CouplingAnalyzer::new();
+        let mut graph = DependencyGraph::new();
+
+        // Create a hub-and-spoke pattern
+        graph.add_node(create_node("hub", "src/hub.rs"));
+        graph.add_node(create_node("spoke1", "src/spoke1.rs"));
+        graph.add_node(create_node("spoke2", "src/spoke2.rs"));
+        graph.add_node(create_node("spoke3", "src/spoke3.rs"));
+
+        // All spokes depend on hub
+        graph.add_edge(create_edge("spoke1", "hub"));
+        graph.add_edge(create_edge("spoke2", "hub"));
+        graph.add_edge(create_edge("spoke3", "hub"));
+
+        let report = analyzer.analyze(&graph).await.unwrap();
+
+        // Hub has 3 incoming edges (afferent = 3)
+        let hub_metrics = report
+            .file_metrics
+            .get(&PathBuf::from("src/hub.rs"))
+            .unwrap();
+        assert_eq!(hub_metrics.afferent_coupling, 3);
+        assert_eq!(hub_metrics.efferent_coupling, 0);
+        assert_eq!(hub_metrics.instability, 0.0); // Very stable
+
+        // Each spoke has 1 outgoing edge (efferent = 1)
+        let spoke1_metrics = report
+            .file_metrics
+            .get(&PathBuf::from("src/spoke1.rs"))
+            .unwrap();
+        assert_eq!(spoke1_metrics.efferent_coupling, 1);
+        assert_eq!(spoke1_metrics.instability, 1.0); // Very unstable
+    }
+
+    #[tokio::test]
+    async fn test_analyze_bidirectional_coupling() {
+        let analyzer = CouplingAnalyzer::new();
+        let mut graph = DependencyGraph::new();
+
+        graph.add_node(create_node("node_a", "src/a.rs"));
+        graph.add_node(create_node("node_b", "src/b.rs"));
+
+        // Bidirectional coupling
+        graph.add_edge(create_edge("node_a", "node_b"));
+        graph.add_edge(create_edge("node_b", "node_a"));
+
+        let report = analyzer.analyze(&graph).await.unwrap();
+
+        // Both nodes have afferent=1, efferent=1
+        let metrics_a = report.file_metrics.get(&PathBuf::from("src/a.rs")).unwrap();
+        assert_eq!(metrics_a.afferent_coupling, 1);
+        assert_eq!(metrics_a.efferent_coupling, 1);
+        assert_eq!(metrics_a.instability, 0.5); // 1 / (1 + 1)
+
+        let metrics_b = report.file_metrics.get(&PathBuf::from("src/b.rs")).unwrap();
+        assert_eq!(metrics_b.afferent_coupling, 1);
+        assert_eq!(metrics_b.efferent_coupling, 1);
+        assert_eq!(metrics_b.instability, 0.5);
+    }
+
+    #[test]
+    fn test_extract_file_path_with_module_separator() {
+        let result = CouplingAnalyzer::extract_file_path("src/main.rs::my_module");
+        assert_eq!(result, Some(PathBuf::from("src/main.rs")));
+    }
+
+    #[test]
+    fn test_extract_file_path_without_module_separator() {
+        let result = CouplingAnalyzer::extract_file_path("src/main.rs");
+        assert_eq!(result, Some(PathBuf::from("src/main.rs")));
+    }
+
+    #[test]
+    fn test_extract_file_path_complex_path() {
+        let result =
+            CouplingAnalyzer::extract_file_path("src/services/analyzer.rs::SubModule::method");
+        assert_eq!(result, Some(PathBuf::from("src/services/analyzer.rs")));
+    }
+
+    #[tokio::test]
+    async fn test_project_metrics_calculation() {
+        let analyzer = CouplingAnalyzer::new();
+        let mut graph = DependencyGraph::new();
+
+        graph.add_node(create_node("a", "a.rs"));
+        graph.add_node(create_node("b", "b.rs"));
+        graph.add_node(create_node("c", "c.rs"));
+
+        // a -> b, a -> c (a has efferent=2)
+        // b has afferent=1
+        // c has afferent=1
+        graph.add_edge(create_edge("a", "b"));
+        graph.add_edge(create_edge("a", "c"));
+
+        let report = analyzer.analyze(&graph).await.unwrap();
+
+        // avg_afferent = (0 + 1 + 1) / 3 = 0.667
+        assert!((report.project_metrics.avg_afferent - 0.667).abs() < 0.01);
+
+        // avg_efferent = (2 + 0 + 0) / 3 = 0.667
+        assert!((report.project_metrics.avg_efferent - 0.667).abs() < 0.01);
+
+        assert_eq!(report.project_metrics.max_afferent, 1);
+        assert_eq!(report.project_metrics.max_efferent, 2);
+    }
+
+    #[test]
+    fn test_coupling_metrics_clone() {
+        let metrics = CouplingMetrics {
+            afferent_coupling: 5,
+            efferent_coupling: 3,
+            instability: 0.375,
+        };
+
+        let cloned = metrics.clone();
+        assert_eq!(cloned.afferent_coupling, 5);
+        assert_eq!(cloned.efferent_coupling, 3);
+        assert_eq!(cloned.instability, 0.375);
+    }
+
+    #[test]
+    fn test_coupling_metrics_debug() {
+        let metrics = CouplingMetrics {
+            afferent_coupling: 5,
+            efferent_coupling: 3,
+            instability: 0.375,
+        };
+
+        let debug_str = format!("{:?}", metrics);
+        assert!(debug_str.contains("afferent_coupling"));
+        assert!(debug_str.contains("5"));
+    }
+}

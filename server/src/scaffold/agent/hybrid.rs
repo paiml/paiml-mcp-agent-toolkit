@@ -146,7 +146,7 @@ pub enum VerificationMethod {
 }
 
 /// Types of models for the probabilistic wrapper.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ModelType {
     /// `OpenAI` GPT-4.
     GPT4,
@@ -157,7 +157,7 @@ pub enum ModelType {
 }
 
 /// Fallback strategies when the model fails.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum FallbackStrategy {
     /// Fall back to deterministic implementation.
     Deterministic,

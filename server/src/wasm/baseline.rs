@@ -348,3 +348,542 @@ mod property_tests {
         }
     }
 }
+
+#[cfg(test)]
+mod coverage_tests {
+    use super::*;
+
+    fn default_metrics() -> Metrics {
+        Metrics::default()
+    }
+
+    fn custom_metrics(complexity_p90: u32, complexity_p95: u32, complexity_p99: u32) -> Metrics {
+        Metrics {
+            timestamp: Utc::now(),
+            complexity_p90,
+            complexity_p95,
+            complexity_p99,
+            binary_size: 1_000_000,
+            init_time_ms: 10,
+            memory_usage_mb: 50,
+            function_count: 100,
+            instruction_count: 10_000,
+        }
+    }
+
+    // ==================== QualityBaseline Tests ====================
+
+    #[test]
+    fn test_quality_baseline_new() {
+        let release = default_metrics();
+        let stable = default_metrics();
+        let baseline = QualityBaseline::new(release, stable);
+
+        // Verify baseline was created
+        assert!(baseline.rolling_window.data_points.is_empty());
+    }
+
+    #[test]
+    fn test_evaluate_all_passing() {
+        let release = custom_metrics(10, 15, 20);
+        let stable = custom_metrics(10, 15, 20);
+        let baseline = QualityBaseline::new(release, stable);
+
+        let current = custom_metrics(10, 15, 20);
+        let assessment = baseline.evaluate(&current);
+
+        assert!(assessment.is_passing());
+        assert!(assessment.violations.is_empty());
+        assert_eq!(assessment.overall_health, 100.0);
+    }
+
+    #[test]
+    fn test_evaluate_complexity_regression() {
+        let release = custom_metrics(10, 15, 20);
+        let stable = custom_metrics(10, 15, 20);
+        let baseline = QualityBaseline::new(release, stable);
+
+        // Current complexity_p95 (25) exceeds release_anchor.complexity_p99 (20)
+        let current = custom_metrics(10, 25, 30);
+        let assessment = baseline.evaluate(&current);
+
+        assert!(!assessment.is_passing());
+        assert!(assessment
+            .violations
+            .iter()
+            .any(|v| matches!(v, Violation::ComplexityRegression { .. })));
+    }
+
+    #[test]
+    fn test_evaluate_complexity_creep() {
+        let release = custom_metrics(10, 15, 20);
+        let stable = custom_metrics(10, 15, 20);
+        let baseline = QualityBaseline::new(release, stable);
+
+        // Current complexity_p90 (18) exceeds stable_anchor.complexity_p95 (15)
+        let current = custom_metrics(18, 19, 20);
+        let assessment = baseline.evaluate(&current);
+
+        // Complexity creep is a warning, not an error
+        assert!(assessment.is_passing());
+        assert!(assessment
+            .violations
+            .iter()
+            .any(|v| matches!(v, Violation::ComplexityCreep { .. })));
+    }
+
+    #[test]
+    fn test_evaluate_binary_size_increase() {
+        let release = Metrics {
+            binary_size: 1_000_000,
+            ..default_metrics()
+        };
+        let stable = Metrics {
+            binary_size: 1_000_000,
+            ..default_metrics()
+        };
+        let baseline = QualityBaseline::new(release, stable);
+
+        // 25% increase exceeds 20% threshold
+        let current = Metrics {
+            binary_size: 1_250_000,
+            ..default_metrics()
+        };
+        let assessment = baseline.evaluate(&current);
+
+        assert!(assessment
+            .violations
+            .iter()
+            .any(|v| matches!(v, Violation::BinarySizeIncrease { .. })));
+    }
+
+    #[test]
+    fn test_evaluate_performance_regression() {
+        let release = Metrics {
+            init_time_ms: 10,
+            ..default_metrics()
+        };
+        let stable = Metrics {
+            init_time_ms: 10,
+            ..default_metrics()
+        };
+        let baseline = QualityBaseline::new(release, stable);
+
+        // Init time 20ms is > 15ms (1.5x baseline)
+        let current = Metrics {
+            init_time_ms: 20,
+            ..default_metrics()
+        };
+        let assessment = baseline.evaluate(&current);
+
+        assert!(!assessment.is_passing());
+        assert!(assessment
+            .violations
+            .iter()
+            .any(|v| matches!(v, Violation::PerformanceRegression { .. })));
+    }
+
+    #[test]
+    fn test_add_data_point() {
+        let release = default_metrics();
+        let stable = default_metrics();
+        let mut baseline = QualityBaseline::new(release, stable);
+
+        baseline.add_data_point(default_metrics());
+        assert_eq!(baseline.rolling_window.data_points.len(), 1);
+
+        baseline.add_data_point(default_metrics());
+        assert_eq!(baseline.rolling_window.data_points.len(), 2);
+    }
+
+    #[test]
+    fn test_health_score_degradation() {
+        let release = custom_metrics(10, 15, 20);
+        let stable = custom_metrics(10, 15, 20);
+        let baseline = QualityBaseline::new(release, stable);
+
+        // Perfect score
+        let current = custom_metrics(10, 15, 20);
+        let assessment = baseline.evaluate(&current);
+        assert_eq!(assessment.overall_health, 100.0);
+
+        // Degraded complexity
+        let degraded = custom_metrics(15, 20, 25); // 50% higher
+        let assessment = baseline.evaluate(&degraded);
+        assert!(assessment.overall_health < 100.0);
+    }
+
+    #[test]
+    fn test_recommendation_no_violations() {
+        let release = default_metrics();
+        let stable = default_metrics();
+        let baseline = QualityBaseline::new(release, stable);
+
+        let current = default_metrics();
+        let assessment = baseline.evaluate(&current);
+
+        assert_eq!(
+            assessment.recommendation,
+            "Quality metrics are within acceptable bounds."
+        );
+    }
+
+    #[test]
+    fn test_recommendation_with_critical_violations() {
+        let release = Metrics {
+            init_time_ms: 10,
+            ..default_metrics()
+        };
+        let stable = Metrics {
+            init_time_ms: 10,
+            ..default_metrics()
+        };
+        let baseline = QualityBaseline::new(release, stable);
+
+        let current = Metrics {
+            init_time_ms: 100, // 10x baseline - critical performance regression
+            ..default_metrics()
+        };
+        let assessment = baseline.evaluate(&current);
+
+        assert!(assessment.recommendation.contains("critical violations"));
+    }
+
+    // ==================== Metrics Tests ====================
+
+    #[test]
+    fn test_metrics_default() {
+        let metrics = Metrics::default();
+
+        assert_eq!(metrics.complexity_p90, 10);
+        assert_eq!(metrics.complexity_p95, 15);
+        assert_eq!(metrics.complexity_p99, 20);
+        assert_eq!(metrics.binary_size, 1_000_000);
+        assert_eq!(metrics.init_time_ms, 10);
+        assert_eq!(metrics.memory_usage_mb, 50);
+        assert_eq!(metrics.function_count, 100);
+        assert_eq!(metrics.instruction_count, 10_000);
+    }
+
+    #[test]
+    fn test_metrics_serialization() {
+        let metrics = Metrics::default();
+
+        let serialized = serde_json::to_string(&metrics).unwrap();
+        let deserialized: Metrics = serde_json::from_str(&serialized).unwrap();
+
+        assert_eq!(metrics.complexity_p90, deserialized.complexity_p90);
+        assert_eq!(metrics.binary_size, deserialized.binary_size);
+    }
+
+    #[test]
+    fn test_metrics_clone() {
+        let metrics = Metrics::default();
+        let cloned = metrics.clone();
+
+        assert_eq!(metrics.complexity_p90, cloned.complexity_p90);
+        assert_eq!(metrics.init_time_ms, cloned.init_time_ms);
+    }
+
+    // ==================== RollingStats Tests ====================
+
+    #[test]
+    fn test_rolling_stats_new() {
+        let stats = RollingStats::new(30);
+        assert_eq!(stats.window_days, 30);
+        assert!(stats.data_points.is_empty());
+    }
+
+    #[test]
+    fn test_rolling_stats_add_point() {
+        let mut stats = RollingStats::new(30);
+
+        stats.add_point(default_metrics());
+        assert_eq!(stats.data_points.len(), 1);
+
+        stats.add_point(default_metrics());
+        assert_eq!(stats.data_points.len(), 2);
+    }
+
+    #[test]
+    fn test_rolling_stats_trend_slope_empty() {
+        let stats = RollingStats::new(30);
+        assert_eq!(stats.trend_slope(), 0.0);
+    }
+
+    #[test]
+    fn test_rolling_stats_trend_slope_single_point() {
+        let mut stats = RollingStats::new(30);
+        stats.add_point(default_metrics());
+
+        // Need at least 2 points for slope
+        assert_eq!(stats.trend_slope(), 0.0);
+    }
+
+    #[test]
+    fn test_rolling_stats_trend_slope_flat() {
+        let mut stats = RollingStats::new(30);
+
+        // Add identical metrics - should have zero slope
+        for _ in 0..5 {
+            stats.add_point(custom_metrics(10, 15, 20));
+        }
+
+        assert_eq!(stats.trend_slope(), 0.0);
+    }
+
+    #[test]
+    fn test_rolling_stats_trend_slope_increasing() {
+        let mut stats = RollingStats::new(30);
+
+        // Add increasing complexity - should have positive slope
+        for i in 0..5 {
+            stats.add_point(custom_metrics(10 + i, 15, 20));
+        }
+
+        assert!(stats.trend_slope() > 0.0);
+    }
+
+    #[test]
+    fn test_rolling_stats_trend_slope_decreasing() {
+        let mut stats = RollingStats::new(30);
+
+        // Add decreasing complexity - should have negative slope
+        for i in 0..5 {
+            stats.add_point(custom_metrics(20 - i, 15, 20));
+        }
+
+        assert!(stats.trend_slope() < 0.0);
+    }
+
+    // ==================== QualityAssessment Tests ====================
+
+    #[test]
+    fn test_quality_assessment_is_passing_no_violations() {
+        let assessment = QualityAssessment {
+            violations: vec![],
+            overall_health: 100.0,
+            recommendation: "All good".to_string(),
+        };
+
+        assert!(assessment.is_passing());
+    }
+
+    #[test]
+    fn test_quality_assessment_is_passing_with_warnings() {
+        let assessment = QualityAssessment {
+            violations: vec![Violation::ComplexityCreep {
+                current: 15,
+                baseline: 10,
+                severity: Severity::Warning,
+            }],
+            overall_health: 85.0,
+            recommendation: "Minor issues".to_string(),
+        };
+
+        assert!(assessment.is_passing());
+    }
+
+    #[test]
+    fn test_quality_assessment_not_passing_with_errors() {
+        let assessment = QualityAssessment {
+            violations: vec![Violation::ComplexityRegression {
+                current: 25,
+                limit: 20,
+                severity: Severity::Error,
+            }],
+            overall_health: 50.0,
+            recommendation: "Critical issues".to_string(),
+        };
+
+        assert!(!assessment.is_passing());
+    }
+
+    #[test]
+    fn test_quality_assessment_serialization() {
+        let assessment = QualityAssessment {
+            violations: vec![],
+            overall_health: 95.0,
+            recommendation: "Looking good".to_string(),
+        };
+
+        let serialized = serde_json::to_string(&assessment).unwrap();
+        let deserialized: QualityAssessment = serde_json::from_str(&serialized).unwrap();
+
+        assert_eq!(assessment.overall_health, deserialized.overall_health);
+        assert_eq!(assessment.recommendation, deserialized.recommendation);
+    }
+
+    // ==================== Violation Tests ====================
+
+    #[test]
+    fn test_violation_severity_complexity_regression() {
+        let violation = Violation::ComplexityRegression {
+            current: 25,
+            limit: 20,
+            severity: Severity::Error,
+        };
+
+        assert_eq!(violation.severity(), &Severity::Error);
+    }
+
+    #[test]
+    fn test_violation_severity_complexity_creep() {
+        let violation = Violation::ComplexityCreep {
+            current: 15,
+            baseline: 10,
+            severity: Severity::Warning,
+        };
+
+        assert_eq!(violation.severity(), &Severity::Warning);
+    }
+
+    #[test]
+    fn test_violation_severity_quality_erosion() {
+        let violation = Violation::QualityErosion {
+            slope: 0.15,
+            severity: Severity::Warning,
+        };
+
+        assert_eq!(violation.severity(), &Severity::Warning);
+    }
+
+    #[test]
+    fn test_violation_severity_binary_size() {
+        let violation = Violation::BinarySizeIncrease {
+            current: 1_500_000,
+            baseline: 1_000_000,
+            increase_percent: 50.0,
+            severity: Severity::Warning,
+        };
+
+        assert_eq!(violation.severity(), &Severity::Warning);
+    }
+
+    #[test]
+    fn test_violation_severity_performance() {
+        let violation = Violation::PerformanceRegression {
+            metric: "init_time".to_string(),
+            current: 20.0,
+            baseline: 10.0,
+            severity: Severity::Error,
+        };
+
+        assert_eq!(violation.severity(), &Severity::Error);
+    }
+
+    #[test]
+    fn test_violation_description_complexity_regression() {
+        let violation = Violation::ComplexityRegression {
+            current: 25,
+            limit: 20,
+            severity: Severity::Error,
+        };
+
+        assert_eq!(
+            violation.description(),
+            "Complexity regression: 25 exceeds limit 20"
+        );
+    }
+
+    #[test]
+    fn test_violation_description_complexity_creep() {
+        let violation = Violation::ComplexityCreep {
+            current: 15,
+            baseline: 10,
+            severity: Severity::Warning,
+        };
+
+        assert_eq!(
+            violation.description(),
+            "Complexity creep: 15 exceeds baseline 10"
+        );
+    }
+
+    #[test]
+    fn test_violation_description_quality_erosion() {
+        let violation = Violation::QualityErosion {
+            slope: 0.15,
+            severity: Severity::Warning,
+        };
+
+        assert_eq!(
+            violation.description(),
+            "Quality erosion detected with slope 0.15"
+        );
+    }
+
+    #[test]
+    fn test_violation_description_binary_size() {
+        let violation = Violation::BinarySizeIncrease {
+            current: 1_500_000,
+            baseline: 1_000_000,
+            increase_percent: 50.0,
+            severity: Severity::Warning,
+        };
+
+        assert_eq!(violation.description(), "Binary size increased by 50.0%");
+    }
+
+    #[test]
+    fn test_violation_description_performance() {
+        let violation = Violation::PerformanceRegression {
+            metric: "initialization".to_string(),
+            current: 20.0,
+            baseline: 10.0,
+            severity: Severity::Error,
+        };
+
+        assert_eq!(
+            violation.description(),
+            "initialization regression: 20.0ms exceeds baseline 10.0ms"
+        );
+    }
+
+    #[test]
+    fn test_violation_serialization() {
+        let violation = Violation::ComplexityRegression {
+            current: 25,
+            limit: 20,
+            severity: Severity::Error,
+        };
+
+        let serialized = serde_json::to_string(&violation).unwrap();
+        let deserialized: Violation = serde_json::from_str(&serialized).unwrap();
+
+        assert_eq!(violation.severity(), deserialized.severity());
+    }
+
+    // ==================== Severity Tests ====================
+
+    #[test]
+    fn test_severity_equality() {
+        assert_eq!(Severity::Info, Severity::Info);
+        assert_eq!(Severity::Warning, Severity::Warning);
+        assert_eq!(Severity::Error, Severity::Error);
+    }
+
+    #[test]
+    fn test_severity_inequality() {
+        assert_ne!(Severity::Info, Severity::Warning);
+        assert_ne!(Severity::Warning, Severity::Error);
+        assert_ne!(Severity::Info, Severity::Error);
+    }
+
+    #[test]
+    fn test_severity_serialization() {
+        let severity = Severity::Warning;
+
+        let serialized = serde_json::to_string(&severity).unwrap();
+        let deserialized: Severity = serde_json::from_str(&serialized).unwrap();
+
+        assert_eq!(severity, deserialized);
+    }
+
+    #[test]
+    fn test_severity_clone() {
+        let severity = Severity::Error;
+        let cloned = severity.clone();
+        assert_eq!(severity, cloned);
+    }
+}

@@ -73,6 +73,7 @@ fn hacky_function() {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_analyze_complexity_exits_non_zero_with_violations() {
     let temp_dir = TempDir::new().unwrap();
     create_complex_file(&temp_dir);
@@ -92,6 +93,7 @@ fn test_analyze_complexity_exits_non_zero_with_violations() {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_analyze_complexity_exits_zero_without_violations() {
     let temp_dir = TempDir::new().unwrap();
 
@@ -124,6 +126,7 @@ fn test_analyze_satd_exits_non_zero_with_violations() {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_analyze_satd_exits_zero_without_violations() {
     let temp_dir = TempDir::new().unwrap();
 
@@ -140,6 +143,7 @@ fn test_analyze_satd_exits_zero_without_violations() {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_analyze_dead_code_exit_status() {
     let temp_dir = TempDir::new().unwrap();
 

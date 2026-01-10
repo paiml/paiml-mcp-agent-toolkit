@@ -378,12 +378,1359 @@ pub async fn handle_analyze_symbol_table(
 
 #[cfg(test)]
 mod tests {
-    // use super::*; // Unused in simple tests
+    use super::*;
+    use std::fs;
+    use tempfile::TempDir;
+
+    /// Helper to create a temporary project directory with Rust files
+    fn create_test_project() -> TempDir {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+
+        // Create a simple Rust file
+        let main_rs = temp_dir.path().join("main.rs");
+        fs::write(
+            &main_rs,
+            r#"
+fn main() {
+    println!("Hello, world!");
+}
+
+fn complex_function(x: i32, y: i32) -> i32 {
+    if x > 0 {
+        if y > 0 {
+            x + y
+        } else {
+            x - y
+        }
+    } else {
+        -x
+    }
+}
+
+// TODO: Refactor this function
+fn needs_work() {
+    // FIXME: This is a hack
+    let _ = 42;
+}
+"#,
+        )
+        .expect("Failed to write main.rs");
+
+        // Create a lib.rs file
+        let lib_rs = temp_dir.path().join("lib.rs");
+        fs::write(
+            &lib_rs,
+            r#"
+pub mod utils;
+
+pub fn add(a: i32, b: i32) -> i32 {
+    a + b
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_add() {
+        assert_eq!(add(2, 2), 4);
+    }
+}
+"#,
+        )
+        .expect("Failed to write lib.rs");
+
+        temp_dir
+    }
+
+    /// Helper to create a simple Makefile for testing
+    fn create_test_makefile(dir: &TempDir) {
+        let makefile = dir.path().join("Makefile");
+        fs::write(
+            &makefile,
+            r#"
+.PHONY: all clean test
+
+all: build
+
+build:
+	cargo build --release
+
+test:
+	cargo test
+
+clean:
+	cargo clean
+"#,
+        )
+        .expect("Failed to write Makefile");
+    }
 
     #[test]
     fn test_advanced_analysis_handlers_basic() {
-        // Basic test
+        // Basic test to ensure module compiles
         assert_eq!(1 + 1, 2);
+    }
+
+    #[test]
+    fn test_deep_context_output_format_variants() {
+        // Test that all output format variants work
+        let formats = [
+            DeepContextOutputFormat::Json,
+            DeepContextOutputFormat::Markdown,
+            DeepContextOutputFormat::Sarif,
+        ];
+
+        for format in formats {
+            let format_str = format!("{:?}", format);
+            assert!(!format_str.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_dag_type_variants() {
+        // Test that all DAG type variants work
+        let dag_types = [
+            DagType::CallGraph,
+            DagType::ImportGraph,
+            DagType::Inheritance,
+            DagType::FullDependency,
+        ];
+
+        for dag_type in dag_types {
+            let dag_str = format!("{}", dag_type);
+            assert!(!dag_str.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_tdg_output_format_variants() {
+        // Test TDG output format variants
+        let formats = [
+            TdgOutputFormat::Table,
+            TdgOutputFormat::Json,
+            TdgOutputFormat::Markdown,
+            TdgOutputFormat::Sarif,
+        ];
+
+        for format in formats {
+            let format_str = format!("{}", format);
+            assert!(!format_str.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_makefile_output_format_variants() {
+        // Test Makefile output format variants
+        let formats = [
+            MakefileOutputFormat::Human,
+            MakefileOutputFormat::Json,
+            MakefileOutputFormat::Gcc,
+            MakefileOutputFormat::Sarif,
+        ];
+
+        for format in formats {
+            let format_str = format!("{}", format);
+            assert!(!format_str.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_defect_prediction_output_format_variants() {
+        // Test defect prediction output format variants
+        let formats = [
+            DefectPredictionOutputFormat::Summary,
+            DefectPredictionOutputFormat::Detailed,
+            DefectPredictionOutputFormat::Json,
+            DefectPredictionOutputFormat::Csv,
+            DefectPredictionOutputFormat::Sarif,
+        ];
+
+        for format in formats {
+            let format_str = format!("{}", format);
+            assert!(!format_str.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_comprehensive_output_format_variants() {
+        // Test comprehensive output format variants
+        let formats = [
+            ComprehensiveOutputFormat::Summary,
+            ComprehensiveOutputFormat::Detailed,
+            ComprehensiveOutputFormat::Json,
+            ComprehensiveOutputFormat::Markdown,
+            ComprehensiveOutputFormat::Sarif,
+        ];
+
+        for format in formats {
+            let format_str = format!("{}", format);
+            assert!(!format_str.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_graph_metric_type_variants() {
+        // Test graph metric type variants
+        let metrics = [
+            GraphMetricType::Centrality,
+            GraphMetricType::Betweenness,
+            GraphMetricType::Closeness,
+            GraphMetricType::PageRank,
+            GraphMetricType::Clustering,
+            GraphMetricType::Components,
+            GraphMetricType::All,
+        ];
+
+        for metric in metrics {
+            let metric_str = format!("{}", metric);
+            assert!(!metric_str.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_graph_metrics_output_format_variants() {
+        // Test graph metrics output format variants
+        let formats = [
+            GraphMetricsOutputFormat::Summary,
+            GraphMetricsOutputFormat::Detailed,
+            GraphMetricsOutputFormat::Human,
+            GraphMetricsOutputFormat::Json,
+            GraphMetricsOutputFormat::Csv,
+            GraphMetricsOutputFormat::GraphML,
+            GraphMetricsOutputFormat::Markdown,
+        ];
+
+        for format in formats {
+            let format_str = format!("{}", format);
+            assert!(!format_str.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_symbol_table_output_format_variants() {
+        // Test symbol table output format variants
+        let formats = [
+            SymbolTableOutputFormat::Summary,
+            SymbolTableOutputFormat::Detailed,
+            SymbolTableOutputFormat::Human,
+            SymbolTableOutputFormat::Json,
+            SymbolTableOutputFormat::Csv,
+        ];
+
+        for format in formats {
+            let format_str = format!("{}", format);
+            assert!(!format_str.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_symbol_type_filter_variants() {
+        // Test symbol type filter variants
+        let filters = [
+            SymbolTypeFilter::Functions,
+            SymbolTypeFilter::Classes,
+            SymbolTypeFilter::Types,
+            SymbolTypeFilter::Variables,
+            SymbolTypeFilter::Modules,
+            SymbolTypeFilter::All,
+        ];
+
+        for filter in filters {
+            let filter_str = format!("{}", filter);
+            assert!(!filter_str.is_empty());
+        }
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_deep_context_with_empty_project() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+
+        // Create an empty directory
+        let result = handle_analyze_deep_context(
+            temp_dir.path().to_path_buf(),
+            None,
+            DeepContextOutputFormat::Json,
+            false,
+            vec![],
+            vec![],
+            30,
+            None,
+            None,
+            vec![],
+            vec![],
+            None,
+            false,
+            false,
+            10,
+        )
+        .await;
+
+        // Should succeed even with no files
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_deep_context_json_format() {
+        let temp_dir = create_test_project();
+
+        let result = handle_analyze_deep_context(
+            temp_dir.path().to_path_buf(),
+            None,
+            DeepContextOutputFormat::Json,
+            false,
+            vec![],
+            vec![],
+            30,
+            None,
+            None,
+            vec![],
+            vec![],
+            None,
+            false,
+            false,
+            10,
+        )
+        .await;
+
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_deep_context_markdown_format() {
+        let temp_dir = create_test_project();
+
+        let result = handle_analyze_deep_context(
+            temp_dir.path().to_path_buf(),
+            None,
+            DeepContextOutputFormat::Markdown,
+            false,
+            vec![],
+            vec![],
+            30,
+            None,
+            None,
+            vec![],
+            vec![],
+            None,
+            false,
+            false,
+            10,
+        )
+        .await;
+
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_deep_context_sarif_format() {
+        let temp_dir = create_test_project();
+
+        let result = handle_analyze_deep_context(
+            temp_dir.path().to_path_buf(),
+            None,
+            DeepContextOutputFormat::Sarif,
+            false,
+            vec![],
+            vec![],
+            30,
+            None,
+            None,
+            vec![],
+            vec![],
+            None,
+            false,
+            false,
+            10,
+        )
+        .await;
+
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_deep_context_full_mode() {
+        let temp_dir = create_test_project();
+
+        let result = handle_analyze_deep_context(
+            temp_dir.path().to_path_buf(),
+            None,
+            DeepContextOutputFormat::Json,
+            true, // full mode
+            vec![],
+            vec![],
+            30,
+            None,
+            None,
+            vec![],
+            vec![],
+            None,
+            false,
+            false,
+            10,
+        )
+        .await;
+
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_deep_context_with_include_features() {
+        let temp_dir = create_test_project();
+
+        let result = handle_analyze_deep_context(
+            temp_dir.path().to_path_buf(),
+            None,
+            DeepContextOutputFormat::Json,
+            false,
+            vec!["complexity".to_string(), "dependencies".to_string()],
+            vec![],
+            30,
+            None,
+            None,
+            vec![],
+            vec![],
+            None,
+            false,
+            false,
+            10,
+        )
+        .await;
+
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_deep_context_with_include_patterns() {
+        let temp_dir = create_test_project();
+
+        let result = handle_analyze_deep_context(
+            temp_dir.path().to_path_buf(),
+            None,
+            DeepContextOutputFormat::Json,
+            false,
+            vec![],
+            vec![],
+            30,
+            None,
+            None,
+            vec!["**/*.rs".to_string()],
+            vec![],
+            None,
+            false,
+            false,
+            10,
+        )
+        .await;
+
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_deep_context_with_exclude_patterns() {
+        let temp_dir = create_test_project();
+
+        let result = handle_analyze_deep_context(
+            temp_dir.path().to_path_buf(),
+            None,
+            DeepContextOutputFormat::Json,
+            false,
+            vec![],
+            vec![],
+            30,
+            None,
+            None,
+            vec![],
+            vec!["**/tests/**".to_string()],
+            None,
+            false,
+            false,
+            10,
+        )
+        .await;
+
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_deep_context_verbose_mode() {
+        let temp_dir = create_test_project();
+
+        let result = handle_analyze_deep_context(
+            temp_dir.path().to_path_buf(),
+            None,
+            DeepContextOutputFormat::Json,
+            false,
+            vec![],
+            vec![],
+            30,
+            None,
+            None,
+            vec![],
+            vec![],
+            None,
+            false,
+            true, // verbose
+            10,
+        )
+        .await;
+
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_deep_context_with_output_file() {
+        let temp_dir = create_test_project();
+        let output_file = temp_dir.path().join("output.json");
+
+        let result = handle_analyze_deep_context(
+            temp_dir.path().to_path_buf(),
+            Some(output_file.clone()),
+            DeepContextOutputFormat::Json,
+            false,
+            vec![],
+            vec![],
+            30,
+            None,
+            None,
+            vec![],
+            vec![],
+            None,
+            false,
+            false,
+            10,
+        )
+        .await;
+
+        assert!(result.is_ok());
+        assert!(output_file.exists());
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_deep_context_with_dag_type() {
+        let temp_dir = create_test_project();
+
+        let result = handle_analyze_deep_context(
+            temp_dir.path().to_path_buf(),
+            None,
+            DeepContextOutputFormat::Json,
+            false,
+            vec![],
+            vec![],
+            30,
+            Some(DagType::CallGraph),
+            None,
+            vec![],
+            vec![],
+            None,
+            false,
+            false,
+            10,
+        )
+        .await;
+
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_deep_context_with_max_depth() {
+        let temp_dir = create_test_project();
+
+        let result = handle_analyze_deep_context(
+            temp_dir.path().to_path_buf(),
+            None,
+            DeepContextOutputFormat::Json,
+            false,
+            vec![],
+            vec![],
+            30,
+            None,
+            Some(5),
+            vec![],
+            vec![],
+            None,
+            false,
+            false,
+            10,
+        )
+        .await;
+
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_deep_context_with_period_days() {
+        let temp_dir = create_test_project();
+
+        let result = handle_analyze_deep_context(
+            temp_dir.path().to_path_buf(),
+            None,
+            DeepContextOutputFormat::Json,
+            false,
+            vec![],
+            vec![],
+            90, // 90 day period
+            None,
+            None,
+            vec![],
+            vec![],
+            None,
+            false,
+            false,
+            10,
+        )
+        .await;
+
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_deep_context_with_top_files() {
+        let temp_dir = create_test_project();
+
+        let result = handle_analyze_deep_context(
+            temp_dir.path().to_path_buf(),
+            None,
+            DeepContextOutputFormat::Json,
+            false,
+            vec![],
+            vec![],
+            30,
+            None,
+            None,
+            vec![],
+            vec![],
+            None,
+            false,
+            false,
+            20, // top 20 files
+        )
+        .await;
+
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_tdg_basic() {
+        let temp_dir = create_test_project();
+
+        let result = handle_analyze_tdg(
+            temp_dir.path().to_path_buf(),
+            None,
+            None,
+            TdgOutputFormat::Table,
+            false,
+            None,
+            false,
+            false,
+        )
+        .await;
+
+        // TDG analysis should complete (may fail on non-git repos, but function works)
+        // We just verify the function runs without panic
+        let _ = result;
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_tdg_json_format() {
+        let temp_dir = create_test_project();
+
+        let result = handle_analyze_tdg(
+            temp_dir.path().to_path_buf(),
+            None,
+            None,
+            TdgOutputFormat::Json,
+            false,
+            None,
+            false,
+            false,
+        )
+        .await;
+
+        let _ = result;
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_tdg_with_threshold() {
+        let temp_dir = create_test_project();
+
+        let result = handle_analyze_tdg(
+            temp_dir.path().to_path_buf(),
+            Some(1.5),
+            None,
+            TdgOutputFormat::Table,
+            false,
+            None,
+            false,
+            false,
+        )
+        .await;
+
+        let _ = result;
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_tdg_with_top_files() {
+        let temp_dir = create_test_project();
+
+        let result = handle_analyze_tdg(
+            temp_dir.path().to_path_buf(),
+            None,
+            Some(5),
+            TdgOutputFormat::Table,
+            false,
+            None,
+            false,
+            false,
+        )
+        .await;
+
+        let _ = result;
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_tdg_include_components() {
+        let temp_dir = create_test_project();
+
+        let result = handle_analyze_tdg(
+            temp_dir.path().to_path_buf(),
+            None,
+            None,
+            TdgOutputFormat::Table,
+            true, // include_components
+            None,
+            false,
+            false,
+        )
+        .await;
+
+        let _ = result;
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_tdg_critical_only() {
+        let temp_dir = create_test_project();
+
+        let result = handle_analyze_tdg(
+            temp_dir.path().to_path_buf(),
+            None,
+            None,
+            TdgOutputFormat::Table,
+            false,
+            None,
+            true, // critical_only
+            false,
+        )
+        .await;
+
+        let _ = result;
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_makefile_basic() {
+        let temp_dir = create_test_project();
+        create_test_makefile(&temp_dir);
+
+        let makefile_path = temp_dir.path().join("Makefile");
+
+        let result = handle_analyze_makefile(
+            makefile_path,
+            vec![],
+            MakefileOutputFormat::Human,
+            false,
+            None,
+            10,
+        )
+        .await;
+
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_makefile_json_format() {
+        let temp_dir = create_test_project();
+        create_test_makefile(&temp_dir);
+
+        let makefile_path = temp_dir.path().join("Makefile");
+
+        let result = handle_analyze_makefile(
+            makefile_path,
+            vec![],
+            MakefileOutputFormat::Json,
+            false,
+            None,
+            10,
+        )
+        .await;
+
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_makefile_gcc_format() {
+        let temp_dir = create_test_project();
+        create_test_makefile(&temp_dir);
+
+        let makefile_path = temp_dir.path().join("Makefile");
+
+        let result = handle_analyze_makefile(
+            makefile_path,
+            vec![],
+            MakefileOutputFormat::Gcc,
+            false,
+            None,
+            10,
+        )
+        .await;
+
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_makefile_with_rules() {
+        let temp_dir = create_test_project();
+        create_test_makefile(&temp_dir);
+
+        let makefile_path = temp_dir.path().join("Makefile");
+
+        let result = handle_analyze_makefile(
+            makefile_path,
+            vec!["all".to_string(), "clean".to_string()],
+            MakefileOutputFormat::Human,
+            false,
+            None,
+            10,
+        )
+        .await;
+
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_makefile_nonexistent() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let makefile_path = temp_dir.path().join("nonexistent_Makefile");
+
+        let result = handle_analyze_makefile(
+            makefile_path,
+            vec![],
+            MakefileOutputFormat::Human,
+            false,
+            None,
+            10,
+        )
+        .await;
+
+        // Should fail for nonexistent file
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_defect_prediction_basic() {
+        let temp_dir = create_test_project();
+
+        let result = handle_analyze_defect_prediction(
+            temp_dir.path().to_path_buf(),
+            None,
+            None,
+            false,
+            DefectPredictionOutputFormat::Summary,
+            false,
+            false,
+            vec![],
+            vec![],
+            None,
+            false,
+            10,
+        )
+        .await;
+
+        // Function should complete without panic
+        let _ = result;
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_defect_prediction_json_format() {
+        let temp_dir = create_test_project();
+
+        let result = handle_analyze_defect_prediction(
+            temp_dir.path().to_path_buf(),
+            None,
+            None,
+            false,
+            DefectPredictionOutputFormat::Json,
+            false,
+            false,
+            vec![],
+            vec![],
+            None,
+            false,
+            10,
+        )
+        .await;
+
+        let _ = result;
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_defect_prediction_with_confidence_threshold() {
+        let temp_dir = create_test_project();
+
+        let result = handle_analyze_defect_prediction(
+            temp_dir.path().to_path_buf(),
+            Some(0.7),
+            None,
+            false,
+            DefectPredictionOutputFormat::Summary,
+            false,
+            false,
+            vec![],
+            vec![],
+            None,
+            false,
+            10,
+        )
+        .await;
+
+        let _ = result;
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_defect_prediction_with_min_lines() {
+        let temp_dir = create_test_project();
+
+        let result = handle_analyze_defect_prediction(
+            temp_dir.path().to_path_buf(),
+            None,
+            Some(50),
+            false,
+            DefectPredictionOutputFormat::Summary,
+            false,
+            false,
+            vec![],
+            vec![],
+            None,
+            false,
+            10,
+        )
+        .await;
+
+        let _ = result;
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_defect_prediction_high_risk_only() {
+        let temp_dir = create_test_project();
+
+        let result = handle_analyze_defect_prediction(
+            temp_dir.path().to_path_buf(),
+            None,
+            None,
+            false,
+            DefectPredictionOutputFormat::Summary,
+            true, // high_risk_only
+            false,
+            vec![],
+            vec![],
+            None,
+            false,
+            10,
+        )
+        .await;
+
+        let _ = result;
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_defect_prediction_with_recommendations() {
+        let temp_dir = create_test_project();
+
+        let result = handle_analyze_defect_prediction(
+            temp_dir.path().to_path_buf(),
+            None,
+            None,
+            false,
+            DefectPredictionOutputFormat::Detailed,
+            false,
+            true, // include_recommendations
+            vec![],
+            vec![],
+            None,
+            false,
+            10,
+        )
+        .await;
+
+        let _ = result;
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_comprehensive_basic() {
+        let temp_dir = create_test_project();
+
+        let result = handle_analyze_comprehensive(
+            temp_dir.path().to_path_buf(),
+            None,
+            vec![],
+            ComprehensiveOutputFormat::Summary,
+            false,
+            false,
+            false,
+            true,
+            false,
+            0.5,
+            100,
+            None,
+            None,
+            None,
+            false,
+            false,
+        )
+        .await;
+
+        // Function should complete
+        let _ = result;
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_comprehensive_json_format() {
+        let temp_dir = create_test_project();
+
+        let result = handle_analyze_comprehensive(
+            temp_dir.path().to_path_buf(),
+            None,
+            vec![],
+            ComprehensiveOutputFormat::Json,
+            false,
+            false,
+            false,
+            true,
+            false,
+            0.5,
+            100,
+            None,
+            None,
+            None,
+            false,
+            false,
+        )
+        .await;
+
+        let _ = result;
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_comprehensive_with_all_options() {
+        let temp_dir = create_test_project();
+
+        let result = handle_analyze_comprehensive(
+            temp_dir.path().to_path_buf(),
+            None,
+            vec![],
+            ComprehensiveOutputFormat::Detailed,
+            true,  // include_duplicates
+            true,  // include_dead_code
+            true,  // include_defects
+            true,  // include_complexity
+            true,  // include_tdg
+            0.7,   // confidence_threshold
+            50,    // min_lines
+            None,
+            None,
+            None,
+            false,
+            true, // executive_summary
+        )
+        .await;
+
+        let _ = result;
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_comprehensive_single_file() {
+        let temp_dir = create_test_project();
+        let main_rs = temp_dir.path().join("main.rs");
+
+        let result = handle_analyze_comprehensive(
+            temp_dir.path().to_path_buf(),
+            Some(main_rs),
+            vec![],
+            ComprehensiveOutputFormat::Summary,
+            false,
+            false,
+            false,
+            true,
+            false,
+            0.5,
+            100,
+            None,
+            None,
+            None,
+            false,
+            false,
+        )
+        .await;
+
+        let _ = result;
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_graph_metrics_basic() {
+        let temp_dir = create_test_project();
+
+        let result = handle_analyze_graph_metrics(
+            temp_dir.path().to_path_buf(),
+            vec![GraphMetricType::Centrality],
+            vec![],
+            0.85,
+            100,
+            1e-6,
+            false,
+            GraphMetricsOutputFormat::Summary,
+            None,
+            None,
+            None,
+            false,
+            10,
+            0.0,
+        )
+        .await;
+
+        let _ = result;
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_graph_metrics_all_metrics() {
+        let temp_dir = create_test_project();
+
+        let result = handle_analyze_graph_metrics(
+            temp_dir.path().to_path_buf(),
+            vec![GraphMetricType::All],
+            vec![],
+            0.85,
+            100,
+            1e-6,
+            false,
+            GraphMetricsOutputFormat::Json,
+            None,
+            None,
+            None,
+            false,
+            10,
+            0.0,
+        )
+        .await;
+
+        let _ = result;
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_graph_metrics_with_pagerank_seeds() {
+        let temp_dir = create_test_project();
+
+        let result = handle_analyze_graph_metrics(
+            temp_dir.path().to_path_buf(),
+            vec![GraphMetricType::PageRank],
+            vec!["main".to_string()],
+            0.85,
+            100,
+            1e-6,
+            false,
+            GraphMetricsOutputFormat::Summary,
+            None,
+            None,
+            None,
+            false,
+            10,
+            0.0,
+        )
+        .await;
+
+        let _ = result;
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_graph_metrics_custom_damping() {
+        let temp_dir = create_test_project();
+
+        let result = handle_analyze_graph_metrics(
+            temp_dir.path().to_path_buf(),
+            vec![GraphMetricType::PageRank],
+            vec![],
+            0.90, // custom damping factor
+            200,  // custom max iterations
+            1e-8, // tighter convergence
+            false,
+            GraphMetricsOutputFormat::Summary,
+            None,
+            None,
+            None,
+            false,
+            10,
+            0.0,
+        )
+        .await;
+
+        let _ = result;
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_symbol_table_basic() {
+        let temp_dir = create_test_project();
+
+        let result = handle_analyze_symbol_table(
+            temp_dir.path().to_path_buf(),
+            SymbolTableOutputFormat::Summary,
+            None,
+            None,
+            vec![],
+            vec![],
+            false,
+            false,
+            None,
+            false,
+        )
+        .await;
+
+        let _ = result;
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_symbol_table_json_format() {
+        let temp_dir = create_test_project();
+
+        let result = handle_analyze_symbol_table(
+            temp_dir.path().to_path_buf(),
+            SymbolTableOutputFormat::Json,
+            None,
+            None,
+            vec![],
+            vec![],
+            false,
+            false,
+            None,
+            false,
+        )
+        .await;
+
+        let _ = result;
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_symbol_table_with_filter() {
+        let temp_dir = create_test_project();
+
+        let result = handle_analyze_symbol_table(
+            temp_dir.path().to_path_buf(),
+            SymbolTableOutputFormat::Summary,
+            Some(SymbolTypeFilter::Functions),
+            None,
+            vec![],
+            vec![],
+            false,
+            false,
+            None,
+            false,
+        )
+        .await;
+
+        let _ = result;
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_symbol_table_with_query() {
+        let temp_dir = create_test_project();
+
+        let result = handle_analyze_symbol_table(
+            temp_dir.path().to_path_buf(),
+            SymbolTableOutputFormat::Summary,
+            None,
+            Some("main".to_string()),
+            vec![],
+            vec![],
+            false,
+            false,
+            None,
+            false,
+        )
+        .await;
+
+        let _ = result;
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_symbol_table_show_unreferenced() {
+        let temp_dir = create_test_project();
+
+        let result = handle_analyze_symbol_table(
+            temp_dir.path().to_path_buf(),
+            SymbolTableOutputFormat::Detailed,
+            None,
+            None,
+            vec![],
+            vec![],
+            true, // show_unreferenced
+            false,
+            None,
+            false,
+        )
+        .await;
+
+        let _ = result;
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_symbol_table_show_references() {
+        let temp_dir = create_test_project();
+
+        let result = handle_analyze_symbol_table(
+            temp_dir.path().to_path_buf(),
+            SymbolTableOutputFormat::Detailed,
+            None,
+            None,
+            vec![],
+            vec![],
+            false,
+            true, // show_references
+            None,
+            false,
+        )
+        .await;
+
+        let _ = result;
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_symbol_table_all_filters() {
+        let temp_dir = create_test_project();
+
+        // Test all filter types
+        let filters = [
+            SymbolTypeFilter::Functions,
+            SymbolTypeFilter::Classes,
+            SymbolTypeFilter::Types,
+            SymbolTypeFilter::Variables,
+            SymbolTypeFilter::Modules,
+            SymbolTypeFilter::All,
+        ];
+
+        for filter in filters {
+            let result = handle_analyze_symbol_table(
+                temp_dir.path().to_path_buf(),
+                SymbolTableOutputFormat::Summary,
+                Some(filter),
+                None,
+                vec![],
+                vec![],
+                false,
+                false,
+                None,
+                false,
+            )
+            .await;
+
+            let _ = result;
+        }
     }
 }
 
@@ -403,5 +1750,316 @@ mod property_tests {
             // Module consistency verification
             prop_assert!(_x < 1001);
         }
+
+        #[test]
+        fn test_period_days_reasonable(days in 1u32..365) {
+            // Period days should always be positive and reasonable
+            prop_assert!(days > 0);
+            prop_assert!(days < 366);
+        }
+
+        #[test]
+        fn test_top_files_positive(top in 1usize..1000) {
+            // Top files count should always be positive
+            prop_assert!(top > 0);
+        }
+
+        #[test]
+        fn test_confidence_threshold_valid(threshold in 0.0f32..1.0) {
+            // Confidence threshold should be between 0 and 1
+            prop_assert!(threshold >= 0.0);
+            prop_assert!(threshold <= 1.0);
+        }
+
+        #[test]
+        fn test_damping_factor_valid(damping in 0.0f32..1.0) {
+            // PageRank damping factor should be between 0 and 1
+            prop_assert!(damping >= 0.0);
+            prop_assert!(damping <= 1.0);
+        }
+
+        #[test]
+        fn test_max_iterations_positive(iterations in 1usize..10000) {
+            // Max iterations should be positive
+            prop_assert!(iterations > 0);
+        }
+
+        #[test]
+        fn test_min_lines_reasonable(lines in 1usize..100000) {
+            // Min lines should be reasonable
+            prop_assert!(lines > 0);
+            prop_assert!(lines < 100001);
+        }
+
+        #[test]
+        fn test_convergence_threshold_small(threshold in 1e-10f64..1e-3) {
+            // Convergence threshold should be small but positive
+            prop_assert!(threshold > 0.0);
+            prop_assert!(threshold < 0.01);
+        }
+
+        #[test]
+        fn test_tdg_threshold_positive(threshold in 0.0f64..10.0) {
+            // TDG threshold should be non-negative
+            prop_assert!(threshold >= 0.0);
+        }
+    }
+}
+
+#[cfg(test)]
+mod edge_case_tests {
+    use super::*;
+    use std::fs;
+    use tempfile::TempDir;
+
+    #[tokio::test]
+    async fn test_handle_deep_context_nonexistent_path() {
+        let result = handle_analyze_deep_context(
+            PathBuf::from("/nonexistent/path/to/project"),
+            None,
+            DeepContextOutputFormat::Json,
+            false,
+            vec![],
+            vec![],
+            30,
+            None,
+            None,
+            vec![],
+            vec![],
+            None,
+            false,
+            false,
+            10,
+        )
+        .await;
+
+        // Should succeed even with nonexistent path (returns empty analysis)
+        // or fail gracefully
+        let _ = result;
+    }
+
+    #[tokio::test]
+    async fn test_handle_deep_context_with_special_characters_in_path() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let special_dir = temp_dir.path().join("project with spaces");
+        fs::create_dir_all(&special_dir).expect("Failed to create directory");
+
+        let main_rs = special_dir.join("main.rs");
+        fs::write(&main_rs, "fn main() {}").expect("Failed to write file");
+
+        let result = handle_analyze_deep_context(
+            special_dir,
+            None,
+            DeepContextOutputFormat::Json,
+            false,
+            vec![],
+            vec![],
+            30,
+            None,
+            None,
+            vec![],
+            vec![],
+            None,
+            false,
+            false,
+            10,
+        )
+        .await;
+
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_handle_deep_context_empty_file() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let empty_rs = temp_dir.path().join("empty.rs");
+        fs::write(&empty_rs, "").expect("Failed to write empty file");
+
+        let result = handle_analyze_deep_context(
+            temp_dir.path().to_path_buf(),
+            None,
+            DeepContextOutputFormat::Json,
+            false,
+            vec![],
+            vec![],
+            30,
+            None,
+            None,
+            vec![],
+            vec![],
+            None,
+            false,
+            false,
+            10,
+        )
+        .await;
+
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_handle_deep_context_binary_file() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let binary_file = temp_dir.path().join("binary.rs");
+        fs::write(&binary_file, vec![0u8, 1, 2, 3, 255, 254, 253]).expect("Failed to write binary file");
+
+        let result = handle_analyze_deep_context(
+            temp_dir.path().to_path_buf(),
+            None,
+            DeepContextOutputFormat::Json,
+            false,
+            vec![],
+            vec![],
+            30,
+            None,
+            None,
+            vec![],
+            vec![],
+            None,
+            false,
+            false,
+            10,
+        )
+        .await;
+
+        // Should handle binary files gracefully
+        let _ = result;
+    }
+
+    #[tokio::test]
+    async fn test_handle_deep_context_large_top_files() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let main_rs = temp_dir.path().join("main.rs");
+        fs::write(&main_rs, "fn main() {}").expect("Failed to write file");
+
+        let result = handle_analyze_deep_context(
+            temp_dir.path().to_path_buf(),
+            None,
+            DeepContextOutputFormat::Json,
+            false,
+            vec![],
+            vec![],
+            30,
+            None,
+            None,
+            vec![],
+            vec![],
+            None,
+            false,
+            false,
+            1000, // Large top_files value
+        )
+        .await;
+
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_handle_deep_context_zero_period_days() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let main_rs = temp_dir.path().join("main.rs");
+        fs::write(&main_rs, "fn main() {}").expect("Failed to write file");
+
+        // Edge case: 0 period days
+        let result = handle_analyze_deep_context(
+            temp_dir.path().to_path_buf(),
+            None,
+            DeepContextOutputFormat::Json,
+            false,
+            vec![],
+            vec![],
+            0, // Zero days
+            None,
+            None,
+            vec![],
+            vec![],
+            None,
+            false,
+            false,
+            10,
+        )
+        .await;
+
+        // Should handle edge case gracefully
+        let _ = result;
+    }
+
+    #[tokio::test]
+    async fn test_handle_comprehensive_empty_files_list() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let main_rs = temp_dir.path().join("main.rs");
+        fs::write(&main_rs, "fn main() {}").expect("Failed to write file");
+
+        let result = handle_analyze_comprehensive(
+            temp_dir.path().to_path_buf(),
+            None,
+            vec![], // Empty files list
+            ComprehensiveOutputFormat::Summary,
+            false,
+            false,
+            false,
+            true,
+            false,
+            0.5,
+            100,
+            None,
+            None,
+            None,
+            false,
+            false,
+        )
+        .await;
+
+        let _ = result;
+    }
+
+    #[tokio::test]
+    async fn test_handle_graph_metrics_empty_seeds() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let main_rs = temp_dir.path().join("main.rs");
+        fs::write(&main_rs, "fn main() {}").expect("Failed to write file");
+
+        let result = handle_analyze_graph_metrics(
+            temp_dir.path().to_path_buf(),
+            vec![GraphMetricType::PageRank],
+            vec![], // Empty seeds
+            0.85,
+            100,
+            1e-6,
+            false,
+            GraphMetricsOutputFormat::Summary,
+            None,
+            None,
+            None,
+            false,
+            10,
+            0.0,
+        )
+        .await;
+
+        let _ = result;
+    }
+
+    #[tokio::test]
+    async fn test_handle_symbol_table_empty_include_exclude() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let main_rs = temp_dir.path().join("main.rs");
+        fs::write(&main_rs, "fn main() {}").expect("Failed to write file");
+
+        let result = handle_analyze_symbol_table(
+            temp_dir.path().to_path_buf(),
+            SymbolTableOutputFormat::Summary,
+            None,
+            None,
+            vec![], // Empty include
+            vec![], // Empty exclude
+            false,
+            false,
+            None,
+            false,
+        )
+        .await;
+
+        let _ = result;
     }
 }

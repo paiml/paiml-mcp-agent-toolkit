@@ -90,7 +90,10 @@ impl CiScorer {
                 category: "CI".to_string(),
                 message: format!(
                     "✓ Workflow: {} (+2 pts)",
-                    workflow_path.file_name().expect("internal error").to_string_lossy()
+                    workflow_path
+                        .file_name()
+                        .expect("internal error")
+                        .to_string_lossy()
                 ),
                 location: Some(workflow_path.display().to_string()),
                 impact_points: 2.0,
@@ -161,7 +164,10 @@ impl CiScorer {
             let has_name = content.contains("name:");
             let has_on = content.contains("on:");
             let has_jobs = content.contains("jobs:");
-            let workflow_name = workflow_path.file_name().expect("internal error").to_string_lossy();
+            let workflow_name = workflow_path
+                .file_name()
+                .expect("internal error")
+                .to_string_lossy();
 
             if has_name && has_on && has_jobs {
                 total_score += 2.0;
@@ -504,7 +510,10 @@ jobs:
         let scorer = CiScorer::new();
         let config = ScorerConfig::default();
 
-        let result = scorer.score(repo_path, &config).await.expect("internal error");
+        let result = scorer
+            .score(repo_path, &config)
+            .await
+            .expect("internal error");
 
         assert_eq!(result.score, 0.0);
         assert_eq!(result.status, ScoreStatus::Fail);
@@ -519,7 +528,10 @@ jobs:
         let scorer = CiScorer::new();
         let config = ScorerConfig::default();
 
-        let result = scorer.score(repo_path, &config).await.expect("internal error");
+        let result = scorer
+            .score(repo_path, &config)
+            .await
+            .expect("internal error");
 
         // E1: 2 (1 workflow), E2: 4 (valid + test + lint), E3: 0 (no advanced) = 6
         // With the improved workflow, should get some E3 points too
@@ -537,7 +549,10 @@ jobs:
         let scorer = CiScorer::new();
         let config = ScorerConfig::default();
 
-        let result = scorer.score(repo_path, &config).await.expect("internal error");
+        let result = scorer
+            .score(repo_path, &config)
+            .await
+            .expect("internal error");
 
         // E1: 6 (3 workflows), E2: 6 (maxed out), E3: 0 (no advanced) = 12
         assert!(result.score >= 10.0 && result.score <= 14.0);
@@ -552,7 +567,10 @@ jobs:
         let scorer = CiScorer::new();
         let config = ScorerConfig::default();
 
-        let result = scorer.score(repo_path, &config).await.expect("internal error");
+        let result = scorer
+            .score(repo_path, &config)
+            .await
+            .expect("internal error");
 
         // E1: 2 (1 workflow), E2: 2 (valid only), E3: 0 = 4
         assert!(result.score >= 3.0 && result.score <= 5.0);
@@ -567,9 +585,16 @@ jobs:
         let scorer = CiScorer::new();
         let config = ScorerConfig::default();
 
-        let result = scorer.score(repo_path, &config).await.expect("internal error");
+        let result = scorer
+            .score(repo_path, &config)
+            .await
+            .expect("internal error");
 
-        let e1 = result.subcategories.iter().find(|s| s.id == "E1").expect("internal error");
+        let e1 = result
+            .subcategories
+            .iter()
+            .find(|s| s.id == "E1")
+            .expect("internal error");
         assert_eq!(e1.name, "CI Workflows Present");
         assert_eq!(e1.max_score, 6.0);
         assert!(e1.score >= 1.0 && e1.score <= 3.0); // 1 workflow = 2 pts
@@ -584,9 +609,16 @@ jobs:
         let scorer = CiScorer::new();
         let config = ScorerConfig::default();
 
-        let result = scorer.score(repo_path, &config).await.expect("internal error");
+        let result = scorer
+            .score(repo_path, &config)
+            .await
+            .expect("internal error");
 
-        let e2 = result.subcategories.iter().find(|s| s.id == "E2").expect("internal error");
+        let e2 = result
+            .subcategories
+            .iter()
+            .find(|s| s.id == "E2")
+            .expect("internal error");
         assert_eq!(e2.name, "Workflows Configured Properly");
         assert_eq!(e2.max_score, 6.0);
         assert!(e2.score >= 3.0 && e2.score <= 5.0); // valid + test + lint
@@ -601,9 +633,16 @@ jobs:
         let scorer = CiScorer::new();
         let config = ScorerConfig::default();
 
-        let result = scorer.score(repo_path, &config).await.expect("internal error");
+        let result = scorer
+            .score(repo_path, &config)
+            .await
+            .expect("internal error");
 
-        let e3 = result.subcategories.iter().find(|s| s.id == "E3").expect("internal error");
+        let e3 = result
+            .subcategories
+            .iter()
+            .find(|s| s.id == "E3")
+            .expect("internal error");
         assert_eq!(e3.name, "Advanced CI Features");
         assert_eq!(e3.max_score, 8.0);
         // Should have findings telling us what's missing
@@ -622,7 +661,10 @@ jobs:
         let scorer = CiScorer::new();
         let config = ScorerConfig::default();
 
-        let result = scorer.score(repo_path, &config).await.expect("internal error");
+        let result = scorer
+            .score(repo_path, &config)
+            .await
+            .expect("internal error");
 
         // E1: 1 (dir exists but empty), E2: 0, E3: 0 = 1
         assert!(result.score >= 0.0 && result.score <= 2.0);

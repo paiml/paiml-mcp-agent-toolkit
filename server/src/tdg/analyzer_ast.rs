@@ -63,6 +63,23 @@ impl TdgAnalyzerAst {
         })
     }
 
+    /// Create analyzer with in-memory storage for testing (no file I/O conflicts)
+    #[cfg(test)]
+    pub fn with_in_memory_storage(config: TdgConfig) -> Self {
+        let storage = TieredStorageFactory::create_in_memory();
+        let scheduler = SchedulerFactory::create_balanced();
+        let adaptive_manager = AdaptiveThresholdFactory::create_default();
+        let resource_controller = ResourceControllerFactory::create_default();
+        Self {
+            config,
+            storage: Some(storage),
+            scheduler: Some(scheduler),
+            adaptive_manager: Some(adaptive_manager),
+            resource_controller: Some(resource_controller),
+            git_context: None,
+        }
+    }
+
     /// Create analyzer with full resource management for production
     pub async fn with_full_resource_management(config: TdgConfig) -> Result<Self> {
         let storage = TieredStorageFactory::create_default()?;
@@ -2065,5 +2082,684 @@ mod property_tests {
             // Module consistency verification
             prop_assert!(_x < 1001);
         }
+    }
+}
+
+#[cfg(test)]
+mod coverage_tests {
+    use super::*;
+    use crate::tdg::{config::TdgConfig, Language, MetricCategory, PenaltyTracker};
+    use std::path::Path;
+
+    // ==========================================================================
+    // TdgAnalyzerAst Creation Tests
+    // ==========================================================================
+
+    #[test]
+    fn test_analyzer_with_config() {
+        let config = TdgConfig::default();
+        let analyzer = TdgAnalyzerAst::with_config(config).unwrap();
+        assert!(analyzer.config.weights.structural_complexity > 0.0);
+    }
+
+    #[test]
+    fn test_analyzer_with_storage() {
+        let config = TdgConfig::default();
+        // Use in-memory storage to avoid file I/O race conditions in parallel tests
+        let analyzer = TdgAnalyzerAst::with_in_memory_storage(config);
+        assert!(analyzer.storage.is_some());
+        assert!(analyzer.scheduler.is_some());
+        assert!(analyzer.adaptive_manager.is_some());
+        assert!(analyzer.resource_controller.is_some());
+    }
+
+    #[test]
+    fn test_analyzer_get_storage() {
+        let config = TdgConfig::default();
+        // Use in-memory storage to avoid file I/O race conditions in parallel tests
+        let analyzer = TdgAnalyzerAst::with_in_memory_storage(config);
+        assert!(analyzer.get_storage().is_some());
+    }
+
+    #[test]
+    fn test_analyzer_storage_method() {
+        let config = TdgConfig::default();
+        // Use in-memory storage to avoid file I/O race conditions in parallel tests
+        let analyzer = TdgAnalyzerAst::with_in_memory_storage(config);
+        assert!(analyzer.storage().is_some());
+    }
+
+    #[test]
+    fn test_analyzer_get_storage_stats() {
+        let config = TdgConfig::default();
+        // Use in-memory storage to avoid file I/O race conditions in parallel tests
+        let analyzer = TdgAnalyzerAst::with_in_memory_storage(config);
+        let stats = analyzer.get_storage_stats();
+        assert!(stats.is_some());
+    }
+
+    #[test]
+    fn test_analyzer_without_git_context() {
+        let analyzer = TdgAnalyzerAst::new().unwrap();
+        assert!(analyzer.get_git_context().is_none());
+    }
+
+    // ==========================================================================
+    // Score Calculation Tests - Structural Complexity
+    // ==========================================================================
+
+    #[test]
+    fn test_score_structural_complexity_normal() {
+        let analyzer = TdgAnalyzerAst::new().unwrap();
+        let mut tracker = PenaltyTracker::new();
+
+        let score = analyzer.score_structural_complexity(5, 5, 2, 20, &mut tracker);
+        assert!(score > 0.0);
+        assert!(tracker.get_attributions().is_empty()); // No penalties for normal values
+    }
+
+    #[test]
+    fn test_score_structural_complexity_high_cyclomatic() {
+        let analyzer = TdgAnalyzerAst::new().unwrap();
+        let mut tracker = PenaltyTracker::new();
+
+        // High cyclomatic complexity should reduce score
+        let score = analyzer.score_structural_complexity(50, 5, 2, 20, &mut tracker);
+        let max_score = analyzer.config.weights.structural_complexity;
+        assert!(score < max_score);
+    }
+
+    #[test]
+    fn test_score_structural_complexity_high_cognitive() {
+        let analyzer = TdgAnalyzerAst::new().unwrap();
+        let mut tracker = PenaltyTracker::new();
+
+        // High cognitive complexity (>15) should apply penalty
+        let score = analyzer.score_structural_complexity(5, 30, 2, 20, &mut tracker);
+        let max_score = analyzer.config.weights.structural_complexity;
+        assert!(score < max_score);
+    }
+
+    #[test]
+    fn test_score_structural_complexity_deep_nesting() {
+        let analyzer = TdgAnalyzerAst::new().unwrap();
+        let mut tracker = PenaltyTracker::new();
+
+        // Deep nesting should apply penalty
+        let score = analyzer.score_structural_complexity(5, 5, 10, 20, &mut tracker);
+        let max_score = analyzer.config.weights.structural_complexity;
+        assert!(score < max_score);
+    }
+
+    #[test]
+    fn test_score_structural_complexity_long_method() {
+        let analyzer = TdgAnalyzerAst::new().unwrap();
+        let mut tracker = PenaltyTracker::new();
+
+        // Methods > 50 lines should apply penalty
+        let score = analyzer.score_structural_complexity(5, 5, 2, 100, &mut tracker);
+        let max_score = analyzer.config.weights.structural_complexity;
+        assert!(score < max_score);
+    }
+
+    // ==========================================================================
+    // Score Calculation Tests - Semantic Complexity
+    // ==========================================================================
+
+    #[test]
+    fn test_score_semantic_complexity_normal() {
+        let analyzer = TdgAnalyzerAst::new().unwrap();
+        let mut tracker = PenaltyTracker::new();
+
+        let score = analyzer.score_semantic_complexity(3, 5, 2, &mut tracker);
+        assert!(score > 0.0);
+        assert!(tracker.get_attributions().is_empty());
+    }
+
+    #[test]
+    fn test_score_semantic_complexity_many_params() {
+        let analyzer = TdgAnalyzerAst::new().unwrap();
+        let mut tracker = PenaltyTracker::new();
+
+        // > 5 params should apply penalty
+        let score = analyzer.score_semantic_complexity(10, 5, 2, &mut tracker);
+        let max_score = analyzer.config.weights.semantic_complexity;
+        assert!(score < max_score);
+    }
+
+    #[test]
+    fn test_score_semantic_complexity_high_type_complexity() {
+        let analyzer = TdgAnalyzerAst::new().unwrap();
+        let mut tracker = PenaltyTracker::new();
+
+        // > 10 type complexity should apply penalty
+        let score = analyzer.score_semantic_complexity(3, 20, 2, &mut tracker);
+        let max_score = analyzer.config.weights.semantic_complexity;
+        assert!(score < max_score);
+    }
+
+    #[test]
+    fn test_score_semantic_complexity_deep_abstraction() {
+        let analyzer = TdgAnalyzerAst::new().unwrap();
+        let mut tracker = PenaltyTracker::new();
+
+        // > 3 abstraction levels should apply penalty
+        let score = analyzer.score_semantic_complexity(3, 5, 8, &mut tracker);
+        let max_score = analyzer.config.weights.semantic_complexity;
+        assert!(score < max_score);
+    }
+
+    // ==========================================================================
+    // Score Calculation Tests - Coupling
+    // ==========================================================================
+
+    #[test]
+    fn test_score_coupling_normal() {
+        let analyzer = TdgAnalyzerAst::new().unwrap();
+        let mut tracker = PenaltyTracker::new();
+
+        let score = analyzer.score_coupling(10, 20, 2, &mut tracker);
+        assert!(score > 0.0);
+    }
+
+    #[test]
+    fn test_score_coupling_many_imports() {
+        let analyzer = TdgAnalyzerAst::new().unwrap();
+        let mut tracker = PenaltyTracker::new();
+
+        // > 20 imports should apply penalty
+        let score = analyzer.score_coupling(50, 20, 2, &mut tracker);
+        let max_score = analyzer.config.weights.coupling;
+        assert!(score < max_score);
+    }
+
+    #[test]
+    fn test_score_coupling_many_external_calls() {
+        let analyzer = TdgAnalyzerAst::new().unwrap();
+        let mut tracker = PenaltyTracker::new();
+
+        // > 50 external calls should apply penalty
+        let score = analyzer.score_coupling(10, 100, 2, &mut tracker);
+        let max_score = analyzer.config.weights.coupling;
+        assert!(score < max_score);
+    }
+
+    // ==========================================================================
+    // Score Calculation Tests - Documentation
+    // ==========================================================================
+
+    #[test]
+    fn test_score_documentation_full_coverage() {
+        let analyzer = TdgAnalyzerAst::new().unwrap();
+        let mut tracker = PenaltyTracker::new();
+
+        let score = analyzer.score_documentation(10, 10, 50, 200, &mut tracker);
+        assert!(score > 0.0);
+    }
+
+    #[test]
+    fn test_score_documentation_partial_coverage() {
+        let analyzer = TdgAnalyzerAst::new().unwrap();
+        let mut tracker = PenaltyTracker::new();
+
+        let score = analyzer.score_documentation(5, 10, 20, 200, &mut tracker);
+        assert!(score > 0.0);
+    }
+
+    #[test]
+    fn test_score_documentation_no_public_items() {
+        let analyzer = TdgAnalyzerAst::new().unwrap();
+        let mut tracker = PenaltyTracker::new();
+
+        // No public items should return full documentation score
+        let score = analyzer.score_documentation(0, 0, 0, 100, &mut tracker);
+        assert_eq!(score, analyzer.config.weights.documentation);
+    }
+
+    // ==========================================================================
+    // Duplication Analysis Tests
+    // ==========================================================================
+
+    #[test]
+    fn test_analyze_duplication_ast_no_duplication() {
+        let analyzer = TdgAnalyzerAst::new().unwrap();
+        let mut tracker = PenaltyTracker::new();
+
+        let source = r#"
+            fn foo() { println!("unique line 1"); }
+            fn bar() { println!("unique line 2"); }
+            fn baz() { println!("unique line 3"); }
+        "#;
+
+        let score = analyzer.analyze_duplication_ast(source, Language::Rust, &mut tracker);
+        assert!(score > 0.0);
+    }
+
+    #[test]
+    fn test_analyze_duplication_ast_with_duplication() {
+        let analyzer = TdgAnalyzerAst::new().unwrap();
+        let mut tracker = PenaltyTracker::new();
+
+        let source = r#"
+            fn foo() { let x = calculate_something_complex(); }
+            fn bar() { let x = calculate_something_complex(); }
+            fn baz() { let x = calculate_something_complex(); }
+            fn qux() { let x = calculate_something_complex(); }
+            fn quux() { let x = calculate_something_complex(); }
+        "#;
+
+        let score = analyzer.analyze_duplication_ast(source, Language::Rust, &mut tracker);
+        // High duplication should result in penalty
+        let max_score = analyzer.config.weights.duplication;
+        assert!(score <= max_score);
+    }
+
+    #[test]
+    fn test_analyze_duplication_ast_short_source() {
+        let analyzer = TdgAnalyzerAst::new().unwrap();
+        let mut tracker = PenaltyTracker::new();
+
+        // Very short source should return full score
+        let source = "fn f() {}";
+        let score = analyzer.analyze_duplication_ast(source, Language::Rust, &mut tracker);
+        assert_eq!(score, analyzer.config.weights.duplication);
+    }
+
+    #[test]
+    fn test_analyze_duplication_ast_ignores_comments() {
+        let analyzer = TdgAnalyzerAst::new().unwrap();
+        let mut tracker = PenaltyTracker::new();
+
+        let source = r#"
+            // This is a comment
+            fn foo() { println!("line 1"); }
+            /* Block comment */
+            fn bar() { println!("line 2"); }
+            fn baz() { println!("line 3"); }
+        "#;
+
+        let score = analyzer.analyze_duplication_ast(source, Language::Rust, &mut tracker);
+        assert!(score > 0.0);
+    }
+
+    // ==========================================================================
+    // Entropy Analysis Tests
+    // ==========================================================================
+
+    #[test]
+    fn test_score_entropy_analysis() {
+        let analyzer = TdgAnalyzerAst::new().unwrap();
+        let mut tracker = PenaltyTracker::new();
+
+        let source = r#"
+            fn main() {
+                let x = 1;
+                let y = 2;
+                let z = x + y;
+            }
+        "#;
+
+        let score = analyzer.score_entropy_analysis(source, Language::Rust, &mut tracker);
+        // Score should be in 0-10 range
+        assert!(score >= 0.0 && score <= 10.0);
+    }
+
+    #[test]
+    fn test_score_entropy_analysis_with_patterns() {
+        let analyzer = TdgAnalyzerAst::new().unwrap();
+        let mut tracker = PenaltyTracker::new();
+
+        let source = r#"
+            fn main() {
+                do_something();
+                do_something();
+                do_something();
+            }
+        "#;
+
+        let score = analyzer.score_entropy_analysis(source, Language::Rust, &mut tracker);
+        // Duplicate patterns should result in lower score
+        assert!(score >= 0.0 && score <= 10.0);
+    }
+
+    // ==========================================================================
+    // Consistency Score Tests
+    // ==========================================================================
+
+    #[test]
+    fn test_score_consistency_python_spaces() {
+        let analyzer = TdgAnalyzerAst::new().unwrap();
+        let mut tracker = PenaltyTracker::new();
+
+        let source = r#"
+def foo():
+    pass
+def bar():
+    pass
+        "#;
+
+        let score = analyzer.score_consistency_python(source, &mut tracker);
+        assert!(score > 0.0);
+    }
+
+    #[test]
+    fn test_score_consistency_python_tabs() {
+        let analyzer = TdgAnalyzerAst::new().unwrap();
+        let mut tracker = PenaltyTracker::new();
+
+        let source = "def foo():\n\tpass\ndef bar():\n\tpass";
+
+        let score = analyzer.score_consistency_python(source, &mut tracker);
+        assert!(score > 0.0);
+    }
+
+    #[test]
+    fn test_score_consistency_javascript_semicolons() {
+        let analyzer = TdgAnalyzerAst::new().unwrap();
+        let mut tracker = PenaltyTracker::new();
+
+        let source = r#"
+            const x = 1;
+            const y = 2;
+            const z = 3;
+        "#;
+
+        let score = analyzer.score_consistency_javascript(source, &mut tracker);
+        assert!(score > 0.0);
+    }
+
+    #[test]
+    fn test_score_consistency_javascript_mixed_indentation() {
+        let analyzer = TdgAnalyzerAst::new().unwrap();
+        let mut tracker = PenaltyTracker::new();
+
+        let source = "  const x = 1;\n\tconst y = 2;";
+
+        let score = analyzer.score_consistency_javascript(source, &mut tracker);
+        // Mixed indentation should reduce score
+        assert!(score < 100.0);
+    }
+
+    #[test]
+    fn test_score_consistency_javascript_mixed_quotes() {
+        let analyzer = TdgAnalyzerAst::new().unwrap();
+        let mut tracker = PenaltyTracker::new();
+
+        let source = r#"const a = "double"; const b = 'single';"#;
+
+        let score = analyzer.score_consistency_javascript(source, &mut tracker);
+        assert!(score > 0.0);
+    }
+
+    // ==========================================================================
+    // Analyze Source Tests
+    // ==========================================================================
+
+    #[test]
+    fn test_analyze_source_rust() {
+        let analyzer = TdgAnalyzerAst::new().unwrap();
+
+        let source = r#"
+            fn hello() {
+                println!("Hello, world!");
+            }
+        "#;
+
+        let result = analyzer.analyze_source(source, Language::Rust, None);
+        assert!(result.is_ok());
+        let score = result.unwrap();
+        assert!(score.total > 0.0);
+    }
+
+    #[test]
+    fn test_analyze_source_python() {
+        let analyzer = TdgAnalyzerAst::new().unwrap();
+
+        let source = r#"
+def hello():
+    print("Hello, world!")
+        "#;
+
+        let result = analyzer.analyze_source(source, Language::Python, None);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_analyze_source_javascript() {
+        let analyzer = TdgAnalyzerAst::new().unwrap();
+
+        let source = r#"
+            function hello() {
+                console.log("Hello, world!");
+            }
+        "#;
+
+        let result = analyzer.analyze_source(source, Language::JavaScript, None);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_analyze_source_unknown_language() {
+        let analyzer = TdgAnalyzerAst::new().unwrap();
+
+        let source = "some unknown language code";
+
+        let result = analyzer.analyze_source(source, Language::Unknown, None);
+        assert!(result.is_ok());
+        let score = result.unwrap();
+        // Unknown language should have reduced confidence
+        assert!(score.confidence < 1.0);
+    }
+
+    // ==========================================================================
+    // File Discovery Tests
+    // ==========================================================================
+
+    #[test]
+    fn test_should_skip_directory() {
+        let analyzer = TdgAnalyzerAst::new().unwrap();
+
+        assert!(analyzer.should_skip_directory(Path::new("node_modules")));
+        assert!(analyzer.should_skip_directory(Path::new("target")));
+        assert!(analyzer.should_skip_directory(Path::new(".git")));
+        assert!(analyzer.should_skip_directory(Path::new("__pycache__")));
+        assert!(analyzer.should_skip_directory(Path::new("venv")));
+        assert!(analyzer.should_skip_directory(Path::new(".venv")));
+        assert!(analyzer.should_skip_directory(Path::new("tests"))); // Skips test directories
+        assert!(!analyzer.should_skip_directory(Path::new("src")));
+        assert!(!analyzer.should_skip_directory(Path::new("lib")));
+    }
+
+    #[test]
+    fn test_should_analyze_file() {
+        let analyzer = TdgAnalyzerAst::new().unwrap();
+
+        assert!(analyzer.should_analyze_file(Path::new("main.rs")));
+        assert!(analyzer.should_analyze_file(Path::new("script.py")));
+        assert!(analyzer.should_analyze_file(Path::new("app.js")));
+        assert!(analyzer.should_analyze_file(Path::new("types.ts")));
+        assert!(analyzer.should_analyze_file(Path::new("Component.jsx")));
+        assert!(analyzer.should_analyze_file(Path::new("Component.tsx")));
+        assert!(analyzer.should_analyze_file(Path::new("main.go")));
+        assert!(analyzer.should_analyze_file(Path::new("Main.java")));
+        assert!(analyzer.should_analyze_file(Path::new("main.c")));
+        assert!(analyzer.should_analyze_file(Path::new("main.cpp")));
+        assert!(analyzer.should_analyze_file(Path::new("header.h")));
+        assert!(analyzer.should_analyze_file(Path::new("header.hpp")));
+        assert!(analyzer.should_analyze_file(Path::new("main.swift")));
+        assert!(analyzer.should_analyze_file(Path::new("Main.kt")));
+        assert!(!analyzer.should_analyze_file(Path::new("README.md")));
+        assert!(!analyzer.should_analyze_file(Path::new("data.json")));
+    }
+
+    // ==========================================================================
+    // Language Detection Tests
+    // ==========================================================================
+
+    #[test]
+    fn test_language_from_extension_all_supported() {
+        assert_eq!(
+            Language::from_extension(Path::new("test.rs")),
+            Language::Rust
+        );
+        assert_eq!(
+            Language::from_extension(Path::new("test.py")),
+            Language::Python
+        );
+        assert_eq!(
+            Language::from_extension(Path::new("test.js")),
+            Language::JavaScript
+        );
+        assert_eq!(
+            Language::from_extension(Path::new("test.ts")),
+            Language::TypeScript
+        );
+        assert_eq!(Language::from_extension(Path::new("test.go")), Language::Go);
+        assert_eq!(
+            Language::from_extension(Path::new("test.java")),
+            Language::Java
+        );
+        assert_eq!(Language::from_extension(Path::new("test.c")), Language::C);
+        assert_eq!(
+            Language::from_extension(Path::new("test.cpp")),
+            Language::Cpp
+        );
+        assert_eq!(
+            Language::from_extension(Path::new("test.ruchy")),
+            Language::Ruchy
+        );
+    }
+
+    // ==========================================================================
+    // Penalty Tracker Tests
+    // ==========================================================================
+
+    #[test]
+    fn test_penalty_tracker_apply() {
+        let mut tracker = PenaltyTracker::new();
+
+        let applied = tracker.apply(
+            "test_penalty".to_string(),
+            MetricCategory::StructuralComplexity,
+            5.0,
+            "Test penalty reason".to_string(),
+        );
+
+        assert!(applied.is_some());
+        assert_eq!(applied.unwrap(), 5.0);
+    }
+
+    #[test]
+    fn test_penalty_tracker_duplicate_penalty() {
+        let mut tracker = PenaltyTracker::new();
+
+        // First application should succeed
+        let first = tracker.apply(
+            "same_penalty".to_string(),
+            MetricCategory::StructuralComplexity,
+            5.0,
+            "Reason 1".to_string(),
+        );
+        assert!(first.is_some());
+
+        // Second application with same ID should fail
+        let second = tracker.apply(
+            "same_penalty".to_string(),
+            MetricCategory::StructuralComplexity,
+            3.0,
+            "Reason 2".to_string(),
+        );
+        assert!(second.is_none());
+    }
+
+    #[test]
+    fn test_penalty_tracker_get_attributions() {
+        let mut tracker = PenaltyTracker::new();
+
+        tracker.apply(
+            "penalty_1".to_string(),
+            MetricCategory::StructuralComplexity,
+            5.0,
+            "Reason 1".to_string(),
+        );
+        tracker.apply(
+            "penalty_2".to_string(),
+            MetricCategory::SemanticComplexity,
+            3.0,
+            "Reason 2".to_string(),
+        );
+
+        let attributions = tracker.get_attributions();
+        assert_eq!(attributions.len(), 2);
+    }
+
+    // ==========================================================================
+    // Heuristic Analysis Tests
+    // ==========================================================================
+
+    #[test]
+    fn test_analyze_heuristic() {
+        let analyzer = TdgAnalyzerAst::new().unwrap();
+        let mut score = crate::tdg::TdgScore::default();
+        let mut tracker = PenaltyTracker::new();
+
+        let source = r#"
+            function example() {
+                if (condition) {
+                    for (let i = 0; i < 10; i++) {
+                        console.log(i);
+                    }
+                }
+            }
+        "#;
+
+        let result = analyzer.analyze_heuristic(source, &mut score, &mut tracker);
+        assert!(result.is_ok());
+        // Heuristic analysis should reduce confidence
+        assert!(score.confidence < 1.0);
+    }
+
+    // ==========================================================================
+    // Edge Case Tests
+    // ==========================================================================
+
+    #[test]
+    fn test_analyze_source_empty() {
+        let analyzer = TdgAnalyzerAst::new().unwrap();
+
+        let result = analyzer.analyze_source("", Language::Rust, None);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_score_structural_complexity_zero_values() {
+        let analyzer = TdgAnalyzerAst::new().unwrap();
+        let mut tracker = PenaltyTracker::new();
+
+        let score = analyzer.score_structural_complexity(0, 0, 0, 0, &mut tracker);
+        assert!(score >= 0.0);
+    }
+
+    #[test]
+    fn test_score_structural_complexity_max_penalty_capping() {
+        let analyzer = TdgAnalyzerAst::new().unwrap();
+        let mut tracker = PenaltyTracker::new();
+
+        // Very high values should still result in non-negative score
+        let score = analyzer.score_structural_complexity(1000, 1000, 100, 10000, &mut tracker);
+        assert!(score >= 0.0);
+    }
+
+    #[test]
+    fn test_analyze_source_with_file_path() {
+        let analyzer = TdgAnalyzerAst::new().unwrap();
+
+        let source = "fn main() {}";
+        let path = std::path::PathBuf::from("/test/path/main.rs");
+
+        let result = analyzer.analyze_source(source, Language::Rust, Some(path.clone()));
+        assert!(result.is_ok());
+        let score = result.unwrap();
+        assert_eq!(score.file_path, Some(path));
     }
 }

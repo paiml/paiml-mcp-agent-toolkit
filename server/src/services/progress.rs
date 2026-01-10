@@ -180,7 +180,11 @@ impl FileClassificationReporter {
         let count = self
             .skipped_count
             .load(std::sync::atomic::Ordering::Relaxed);
-        let files = self.large_files_skipped.lock().expect("internal error").clone();
+        let files = self
+            .large_files_skipped
+            .lock()
+            .expect("internal error")
+            .clone();
         (count, files)
     }
 }

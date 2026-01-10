@@ -172,7 +172,11 @@ impl GitAnalysisService {
             })
             .collect();
 
-        metrics.sort_by(|a, b| b.churn_score.partial_cmp(&a.churn_score).expect("internal error"));
+        metrics.sort_by(|a, b| {
+            b.churn_score
+                .partial_cmp(&a.churn_score)
+                .expect("internal error")
+        });
 
         Ok(metrics)
     }

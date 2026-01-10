@@ -1,11 +1,13 @@
 pub mod cli;
 pub mod http;
 pub mod mcp;
+#[cfg(feature = "tui")]
 pub mod tui;
 
 pub use cli::{CliDemoAdapter, CliRequest, CliResponse};
 pub use http::{HttpDemoAdapter, HttpRequest, HttpResponse};
 pub use mcp::{McpDemoAdapter, McpRequest, McpResponse};
+#[cfg(feature = "tui")]
 pub use tui::{TuiDemoAdapter, TuiRequest, TuiResponse};
 
 #[cfg(test)]

@@ -12,7 +12,7 @@ use anyhow::Result;
 use bytes::Bytes;
 use dashmap::DashMap;
 use http::{Response, StatusCode};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
 // Import the validated HTML template
@@ -54,7 +54,7 @@ pub struct DemoContent {
     pub polyglot_analysis: Option<PolyglotAnalysis>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EnhancedHotspot {
     pub function: String,
     pub file: String,
@@ -90,6 +90,17 @@ pub struct DemoState {
     pub system_diagram: Option<String>,
 }
 
+impl std::fmt::Debug for DemoState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("DemoState")
+            .field("repository", &self.repository)
+            .field("analysis_results", &"<AnalysisResults>")
+            .field("mermaid_cache", &format!("<{} entries>", self.mermaid_cache.len()))
+            .field("system_diagram", &self.system_diagram.is_some())
+            .finish()
+    }
+}
+
 #[derive(Clone, Serialize)]
 pub struct AnalysisResults {
     pub files_analyzed: usize,
@@ -104,6 +115,15 @@ pub struct AnalysisResults {
 pub struct LocalDemoServer {
     port: u16,
     shutdown_tx: tokio::sync::oneshot::Sender<()>,
+}
+
+impl std::fmt::Debug for LocalDemoServer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("LocalDemoServer")
+            .field("port", &self.port)
+            .field("shutdown_tx", &"<oneshot sender>")
+            .finish()
+    }
 }
 
 impl LocalDemoServer {

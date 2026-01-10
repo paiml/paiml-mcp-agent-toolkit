@@ -7,6 +7,7 @@ use std::fs;
 use tempfile::TempDir;
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_complexity_include_patterns() {
     // Create a temporary project structure
     let temp_dir = TempDir::new().unwrap();
@@ -54,6 +55,7 @@ pub fn simple_function() -> &'static str {
         project_path.join("tests/test.rs"),
         r#"
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_something() {
     assert_eq!(1 + 1, 2);
 }
@@ -127,6 +129,7 @@ fn main() {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_complexity_single_file_mode() {
     let temp_dir = TempDir::new().unwrap();
     let project_path = temp_dir.path();

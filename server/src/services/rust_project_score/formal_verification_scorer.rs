@@ -186,8 +186,8 @@ impl FormalVerificationScorer {
     fn count_verus_specs(&self, project_path: &Path, cache: Option<&FileCache>) -> usize {
         // Verus uses requires/ensures/invariant attributes for specifications
         // Also check for proof blocks and spec functions
-        let spec_pattern =
-            Regex::new(r"#\[(requires|ensures|invariant|decreases|recommends)\s*\(").expect("internal error");
+        let spec_pattern = Regex::new(r"#\[(requires|ensures|invariant|decreases|recommends)\s*\(")
+            .expect("internal error");
         let mut count = 0;
         let src_path = project_path.join("src");
 
@@ -484,7 +484,8 @@ mod tests {
         std::fs::create_dir_all(&src_dir).expect("internal error");
 
         // Create a safe Rust file
-        std::fs::write(src_dir.join("lib.rs"), "pub fn safe_fn() -> i32 { 42 }\n").expect("internal error");
+        std::fs::write(src_dir.join("lib.rs"), "pub fn safe_fn() -> i32 { 42 }\n")
+            .expect("internal error");
 
         // Create Cargo.toml
         std::fs::write(

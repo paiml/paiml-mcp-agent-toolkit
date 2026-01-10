@@ -212,7 +212,8 @@ impl HistoricalIntegrityScorer {
         let cargo_toml = project_path.join("Cargo.toml");
         let package_json = project_path.join("package.json");
 
-        let semver_pattern = regex::Regex::new(r#"version\s*=\s*["']?\d+\.\d+\.\d+"#).expect("internal error");
+        let semver_pattern =
+            regex::Regex::new(r#"version\s*=\s*["']?\d+\.\d+\.\d+"#).expect("internal error");
 
         if cargo_toml.exists() {
             if let Ok(content) = std::fs::read_to_string(&cargo_toml) {
@@ -334,7 +335,11 @@ mod tests {
         let result = scorer.score(temp_dir.path()).expect("internal error");
 
         // Should have git points
-        let e1 = result.sub_scores.iter().find(|s| s.id == "E1").expect("internal error");
+        let e1 = result
+            .sub_scores
+            .iter()
+            .find(|s| s.id == "E1")
+            .expect("internal error");
         assert!(e1.earned >= 1.0);
     }
 
@@ -351,7 +356,11 @@ mod tests {
         let result = scorer.score(temp_dir.path()).expect("internal error");
 
         // Should have CODEOWNERS points
-        let e1 = result.sub_scores.iter().find(|s| s.id == "E1").expect("internal error");
+        let e1 = result
+            .sub_scores
+            .iter()
+            .find(|s| s.id == "E1")
+            .expect("internal error");
         assert!(e1.earned >= 2.0);
     }
 
@@ -371,7 +380,11 @@ mod tests {
         let result = scorer.score(temp_dir.path()).expect("internal error");
 
         // Should have pre-registration points
-        let e2 = result.sub_scores.iter().find(|s| s.id == "E2").expect("internal error");
+        let e2 = result
+            .sub_scores
+            .iter()
+            .find(|s| s.id == "E2")
+            .expect("internal error");
         assert!(e2.earned >= 2.0);
     }
 
@@ -397,7 +410,11 @@ mod tests {
         let result = scorer.score(temp_dir.path()).expect("internal error");
 
         // Should have timestamping points
-        let e3 = result.sub_scores.iter().find(|s| s.id == "E3").expect("internal error");
+        let e3 = result
+            .sub_scores
+            .iter()
+            .find(|s| s.id == "E3")
+            .expect("internal error");
         assert!(e3.earned >= 2.0);
     }
 }

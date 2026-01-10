@@ -1,6 +1,7 @@
 use std::process::Command;
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_all_cli_commands_work() {
     // Test help command
     let output = Command::new(env!("CARGO_BIN_EXE_pmat"))

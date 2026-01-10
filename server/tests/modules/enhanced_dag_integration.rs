@@ -70,7 +70,7 @@ fn test_enhanced_analysis_backward_compatibility() {
 }
 
 #[test]
-#[cfg_attr(feature = "skip-slow-tests", ignore)]
+#[ignore] // Integration test requires pmat binary
 fn test_enhanced_flags_combinations() {
     let temp_dir = TempDir::new().unwrap();
 
@@ -114,7 +114,7 @@ fn test_enhanced_flags_combinations() {
 }
 
 #[test]
-#[cfg_attr(feature = "skip-slow-tests", ignore)]
+#[ignore] // Integration test requires pmat binary
 fn test_enhanced_dag_help() {
     let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.args(["analyze", "dag", "--help"]);

@@ -408,7 +408,9 @@ impl<'a> VariableScanner<'a> {
         let ch = self.bytes[start + 1];
 
         if ch.is_ascii_alphanumeric() || ch == b'_' {
-            let var_name = std::str::from_utf8(&[ch]).expect("internal error").to_string();
+            let var_name = std::str::from_utf8(&[ch])
+                .expect("internal error")
+                .to_string();
 
             self.position = start + 2;
 

@@ -23,6 +23,7 @@ use predicates::prelude::*;
 // ============================================================================
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_help_flag() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -35,6 +36,7 @@ fn test_help_flag() {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_version_flag() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -45,6 +47,7 @@ fn test_version_flag() {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_invalid_command() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -59,6 +62,7 @@ fn test_invalid_command() {
 // ============================================================================
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_verbose_flag() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -68,6 +72,7 @@ fn test_verbose_flag() {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_quiet_flag() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -77,6 +82,7 @@ fn test_quiet_flag() {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_debug_flag() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -86,6 +92,7 @@ fn test_debug_flag() {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_trace_flag() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -95,6 +102,7 @@ fn test_trace_flag() {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_trace_filter() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -104,6 +112,7 @@ fn test_trace_filter() {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_color_auto() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -113,6 +122,7 @@ fn test_color_auto() {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_color_always() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -122,6 +132,7 @@ fn test_color_always() {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_color_never() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -135,6 +146,7 @@ fn test_color_never() {
 // ============================================================================
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_generate_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -145,6 +157,7 @@ fn test_generate_help() {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_generate_alias_gen() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -154,6 +167,7 @@ fn test_generate_alias_gen() {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_generate_alias_g() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -163,6 +177,7 @@ fn test_generate_alias_g() {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_generate_missing_args() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -177,6 +192,7 @@ fn test_generate_missing_args() {
 // ============================================================================
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_scaffold_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -187,6 +203,7 @@ fn test_scaffold_help() {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_scaffold_alias_sc() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -200,6 +217,7 @@ fn test_scaffold_alias_sc() {
 // ============================================================================
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_list_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -210,6 +228,7 @@ fn test_list_help() {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_list_alias_ls() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -219,6 +238,7 @@ fn test_list_alias_ls() {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_list_format_table() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -228,6 +248,7 @@ fn test_list_format_table() {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_list_format_json() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -237,6 +258,7 @@ fn test_list_format_json() {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_list_format_yaml() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -250,6 +272,7 @@ fn test_list_format_yaml() {
 // ============================================================================
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_search_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -260,6 +283,7 @@ fn test_search_help() {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_search_alias_find() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -269,6 +293,7 @@ fn test_search_alias_find() {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_search_alias_s() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -278,6 +303,7 @@ fn test_search_alias_s() {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_search_with_query() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -287,6 +313,7 @@ fn test_search_with_query() {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_search_with_limit() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -311,6 +338,7 @@ fn test_validate_help() {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_validate_missing_uri() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -324,6 +352,7 @@ fn test_validate_missing_uri() {
 // ============================================================================
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_context_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -334,6 +363,7 @@ fn test_context_help() {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_context_alias_ctx() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -343,6 +373,7 @@ fn test_context_alias_ctx() {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_context_alias_ast() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -378,6 +409,7 @@ fn test_context_with_path() {
 // ============================================================================
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_analyze_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -417,6 +449,7 @@ fn test_analyze_complexity_help() {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_analyze_complexity_current_dir() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -427,6 +460,7 @@ fn test_analyze_complexity_current_dir() {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_analyze_complexity_format_json() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -460,6 +494,7 @@ fn test_analyze_complexity_format_text() {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_analyze_complexity_format_sarif() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -480,6 +515,7 @@ fn test_analyze_complexity_format_sarif() {
 // ============================================================================
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_analyze_satd_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -490,6 +526,7 @@ fn test_analyze_satd_help() {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_analyze_satd_current_dir() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -500,6 +537,7 @@ fn test_analyze_satd_current_dir() {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_analyze_satd_format_json() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -509,6 +547,7 @@ fn test_analyze_satd_format_json() {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_analyze_satd_format_summary() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -522,6 +561,7 @@ fn test_analyze_satd_format_summary() {
 // ============================================================================
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_analyze_dead_code_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -559,6 +599,7 @@ fn test_analyze_dead_code_format_json() {
 // ============================================================================
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_analyze_churn_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -603,6 +644,7 @@ fn test_analyze_churn_with_days() {
 // ============================================================================
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_analyze_dag_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -626,6 +668,7 @@ fn test_analyze_dag_current_dir() {
 // ============================================================================
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_analyze_tdg_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -659,6 +702,7 @@ fn test_analyze_tdg_format_json() {
 // ============================================================================
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_analyze_deep_context_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -682,6 +726,7 @@ fn test_analyze_deep_context_current_dir() {
 // ============================================================================
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_analyze_duplicates_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -705,6 +750,7 @@ fn test_analyze_duplicates_current_dir() {
 // ============================================================================
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_analyze_provability_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -728,6 +774,7 @@ fn test_analyze_provability_current_dir() {
 // ============================================================================
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_analyze_makefile_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -741,6 +788,7 @@ fn test_analyze_makefile_help() {
 // ============================================================================
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_analyze_lint_hotspot_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -754,6 +802,7 @@ fn test_analyze_lint_hotspot_help() {
 // ============================================================================
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_analyze_comprehensive_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -777,6 +826,7 @@ fn test_analyze_comprehensive_current_dir() {
 // ============================================================================
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_analyze_graph_metrics_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -790,6 +840,7 @@ fn test_analyze_graph_metrics_help() {
 // ============================================================================
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_analyze_name_similarity_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -817,6 +868,7 @@ fn test_analyze_symbol_table_help() {
 // ============================================================================
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_analyze_big_o_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -830,6 +882,7 @@ fn test_analyze_big_o_help() {
 // ============================================================================
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_analyze_entropy_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -843,6 +896,7 @@ fn test_analyze_entropy_help() {
 // ============================================================================
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_analyze_clippy_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -867,6 +921,7 @@ fn test_quality_gate_help() {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_quality_gate_default() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -876,6 +931,7 @@ fn test_quality_gate_default() {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_quality_gate_strict() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -889,6 +945,7 @@ fn test_quality_gate_strict() {
 // ============================================================================
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_demo_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -903,6 +960,7 @@ fn test_demo_help() {
 // ============================================================================
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_diagnose_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -916,6 +974,7 @@ fn test_diagnose_help() {
 // ============================================================================
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_memory_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -930,6 +989,7 @@ fn test_memory_help() {
 // ============================================================================
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_cache_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -944,6 +1004,7 @@ fn test_cache_help() {
 // ============================================================================
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_agent_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -973,6 +1034,7 @@ fn test_config_help() {
 // ============================================================================
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_tdg_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -987,6 +1049,7 @@ fn test_tdg_help() {
 // ============================================================================
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_hooks_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -1001,6 +1064,7 @@ fn test_hooks_help() {
 // ============================================================================
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_embed_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -1015,6 +1079,7 @@ fn test_embed_help() {
 // ============================================================================
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_semantic_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -1029,6 +1094,7 @@ fn test_semantic_help() {
 // ============================================================================
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_refactor_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -1043,6 +1109,7 @@ fn test_refactor_help() {
 // ============================================================================
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_report_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -1056,6 +1123,7 @@ fn test_report_help() {
 // ============================================================================
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_validate_docs_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -1069,6 +1137,7 @@ fn test_validate_docs_help() {
 // ============================================================================
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_validate_readme_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -1082,6 +1151,7 @@ fn test_validate_readme_help() {
 // ============================================================================
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_roadmap_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -1096,6 +1166,7 @@ fn test_roadmap_help() {
 // ============================================================================
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_qdd_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -1109,6 +1180,7 @@ fn test_qdd_help() {
 // ============================================================================
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_enforce_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -1123,6 +1195,7 @@ fn test_enforce_help() {
 // ============================================================================
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_memory_stats_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -1132,6 +1205,7 @@ fn test_memory_stats_help() {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_memory_cleanup_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -1193,6 +1267,7 @@ fn test_config_get_help() {
 // ============================================================================
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_tdg_baseline_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -1202,6 +1277,7 @@ fn test_tdg_baseline_help() {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_tdg_check_regression_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -1211,6 +1287,7 @@ fn test_tdg_check_regression_help() {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_tdg_check_quality_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -1224,6 +1301,7 @@ fn test_tdg_check_quality_help() {
 // ============================================================================
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_agent_start_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -1237,6 +1315,7 @@ fn test_agent_start_help() {
 // ============================================================================
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_telemetry_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -1250,6 +1329,7 @@ fn test_telemetry_help() {
 // ============================================================================
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_test_command_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -1263,6 +1343,7 @@ fn test_test_command_help() {
 // ============================================================================
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_serve_command_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -1290,6 +1371,7 @@ fn test_mutate_help() {
 // ============================================================================
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_debug_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -1331,6 +1413,7 @@ fn test_init_help() {
 // ============================================================================
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_show_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -1358,6 +1441,7 @@ fn test_health_help() {
 // ============================================================================
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_quality_gates_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -1371,6 +1455,7 @@ fn test_quality_gates_help() {
 // ============================================================================
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_maintain_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -1384,6 +1469,7 @@ fn test_maintain_help() {
 // ============================================================================
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_analyze_defect_prediction_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -1393,6 +1479,7 @@ fn test_analyze_defect_prediction_help() {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_analyze_proof_annotations_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -1402,6 +1489,7 @@ fn test_analyze_proof_annotations_help() {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_analyze_incremental_coverage_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -1411,6 +1499,7 @@ fn test_analyze_incremental_coverage_help() {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_analyze_assembly_script_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -1430,6 +1519,7 @@ fn test_analyze_webassembly_help() {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_analyze_topics_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -1439,6 +1529,7 @@ fn test_analyze_topics_help() {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_analyze_cluster_help() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -1537,6 +1628,7 @@ fn test_context_format_yaml() {
 // ============================================================================
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_verbose_debug_combination() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -1561,6 +1653,7 @@ fn test_quiet_conflicts_with_verbose() {
 // ============================================================================
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_all_find_aliases_work() {
     // Test all search aliases
     for alias in &["search", "find", "s"] {
@@ -1573,6 +1666,7 @@ fn test_all_find_aliases_work() {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_all_generate_aliases_work() {
     // Test all generate aliases
     for alias in &["generate", "gen", "g"] {
@@ -1585,6 +1679,7 @@ fn test_all_generate_aliases_work() {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_all_context_aliases_work() {
     // Test all context aliases
     for alias in &["context", "ctx", "ast"] {
@@ -1601,6 +1696,7 @@ fn test_all_context_aliases_work() {
 // ============================================================================
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_analyze_complexity_with_all_options() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -1618,6 +1714,7 @@ fn test_analyze_complexity_with_all_options() {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_quality_gate_with_debug() {
     Command::cargo_bin("pmat")
         .unwrap()

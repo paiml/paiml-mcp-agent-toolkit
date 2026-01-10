@@ -174,3 +174,303 @@ impl<'ast> Visit<'ast> for CognitiveComplexityVisitor {
         self.complexity += 1; // Continues add cognitive complexity
     }
 }
+
+#[cfg(test)]
+mod coverage_tests {
+    use super::*;
+
+    // ComplexityAnalyzer tests
+    #[test]
+    fn test_complexity_analyzer_default() {
+        let analyzer = ComplexityAnalyzer::default();
+        let _ = analyzer;
+    }
+
+    #[test]
+    fn test_complexity_analyzer_new() {
+        let analyzer = ComplexityAnalyzer::new();
+        let _ = analyzer;
+    }
+
+    #[test]
+    fn test_calculate_cyclomatic_simple_function() {
+        let analyzer = ComplexityAnalyzer::new();
+        let code = "fn simple() { let x = 1; }";
+        let ast = syn::parse_file(code).unwrap();
+        let complexity = analyzer.calculate_cyclomatic(&ast);
+        assert_eq!(complexity, 1); // Base complexity
+    }
+
+    #[test]
+    fn test_calculate_cyclomatic_with_if() {
+        let analyzer = ComplexityAnalyzer::new();
+        let code = "fn with_if() { if true { } }";
+        let ast = syn::parse_file(code).unwrap();
+        let complexity = analyzer.calculate_cyclomatic(&ast);
+        assert_eq!(complexity, 2); // Base + 1 for if
+    }
+
+    #[test]
+    fn test_calculate_cyclomatic_with_match() {
+        let analyzer = ComplexityAnalyzer::new();
+        let code = r#"
+            fn with_match() {
+                match x {
+                    1 => {},
+                    2 => {},
+                    _ => {},
+                }
+            }
+        "#;
+        let ast = syn::parse_file(code).unwrap();
+        let complexity = analyzer.calculate_cyclomatic(&ast);
+        assert_eq!(complexity, 3); // Base + 2 for arms (3-1)
+    }
+
+    #[test]
+    fn test_calculate_cyclomatic_with_for_loop() {
+        let analyzer = ComplexityAnalyzer::new();
+        let code = "fn with_for() { for i in 0..10 { } }";
+        let ast = syn::parse_file(code).unwrap();
+        let complexity = analyzer.calculate_cyclomatic(&ast);
+        assert_eq!(complexity, 2); // Base + 1 for loop
+    }
+
+    #[test]
+    fn test_calculate_cyclomatic_with_while() {
+        let analyzer = ComplexityAnalyzer::new();
+        let code = "fn with_while() { while true { } }";
+        let ast = syn::parse_file(code).unwrap();
+        let complexity = analyzer.calculate_cyclomatic(&ast);
+        assert_eq!(complexity, 2); // Base + 1 for while
+    }
+
+    #[test]
+    fn test_calculate_cyclomatic_with_loop() {
+        let analyzer = ComplexityAnalyzer::new();
+        let code = "fn with_loop() { loop { break; } }";
+        let ast = syn::parse_file(code).unwrap();
+        let complexity = analyzer.calculate_cyclomatic(&ast);
+        assert_eq!(complexity, 2); // Base + 1 for loop
+    }
+
+    #[test]
+    fn test_calculate_cyclomatic_with_and_or() {
+        let analyzer = ComplexityAnalyzer::new();
+        let code = "fn with_logic() { let x = a && b || c; }";
+        let ast = syn::parse_file(code).unwrap();
+        let complexity = analyzer.calculate_cyclomatic(&ast);
+        assert_eq!(complexity, 3); // Base + 2 for && and ||
+    }
+
+    #[test]
+    fn test_calculate_cognitive_simple() {
+        let analyzer = ComplexityAnalyzer::new();
+        let code = "fn simple() { let x = 1; }";
+        let ast = syn::parse_file(code).unwrap();
+        let cognitive = analyzer.calculate_cognitive(&ast);
+        assert_eq!(cognitive, 0); // No control flow
+    }
+
+    #[test]
+    fn test_calculate_cognitive_with_if() {
+        let analyzer = ComplexityAnalyzer::new();
+        let code = "fn with_if() { if true { } }";
+        let ast = syn::parse_file(code).unwrap();
+        let cognitive = analyzer.calculate_cognitive(&ast);
+        assert_eq!(cognitive, 1); // +1 for if at nesting 0
+    }
+
+    #[test]
+    fn test_calculate_cognitive_nested_if() {
+        let analyzer = ComplexityAnalyzer::new();
+        let code = r#"
+            fn nested() {
+                if true {
+                    if false { }
+                }
+            }
+        "#;
+        let ast = syn::parse_file(code).unwrap();
+        let cognitive = analyzer.calculate_cognitive(&ast);
+        // First if: +1 (nesting 0)
+        // Second if: +1 + 1 = +2 (nesting 1)
+        assert_eq!(cognitive, 3);
+    }
+
+    #[test]
+    fn test_calculate_cognitive_with_break() {
+        let analyzer = ComplexityAnalyzer::new();
+        let code = "fn with_break() { loop { break; } }";
+        let ast = syn::parse_file(code).unwrap();
+        let cognitive = analyzer.calculate_cognitive(&ast);
+        // +1 for break
+        assert!(cognitive >= 1);
+    }
+
+    #[test]
+    fn test_calculate_cognitive_with_continue() {
+        let analyzer = ComplexityAnalyzer::new();
+        let code = "fn with_continue() { for i in 0..10 { continue; } }";
+        let ast = syn::parse_file(code).unwrap();
+        let cognitive = analyzer.calculate_cognitive(&ast);
+        // +1 for for at nesting 0, +1 for continue
+        assert!(cognitive >= 2);
+    }
+
+    #[test]
+    fn test_analyze_string_success() {
+        let analyzer = ComplexityAnalyzer::new();
+        let code = "fn test() { if true { } }";
+        let result = analyzer.analyze_string(code);
+        assert!(result.is_ok());
+        let metrics = result.unwrap();
+        assert_eq!(metrics.cyclomatic, 2);
+        assert_eq!(metrics.cognitive, 1);
+    }
+
+    #[test]
+    fn test_analyze_string_parse_error() {
+        let analyzer = ComplexityAnalyzer::new();
+        let code = "this is not valid rust code {{{{";
+        let result = analyzer.analyze_string(code);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_calculate_shannon_entropy_uniform() {
+        let analyzer = ComplexityAnalyzer::new();
+        let code = "aaaa"; // All same characters
+        let entropy = analyzer.calculate_shannon_entropy(code);
+        assert_eq!(entropy, 0.0); // Zero entropy for uniform distribution
+    }
+
+    #[test]
+    fn test_calculate_shannon_entropy_diverse() {
+        let analyzer = ComplexityAnalyzer::new();
+        let code = "fn calculate_prime(n: u64) -> bool { if n <= 1 { false } else { true } }";
+        let entropy = analyzer.calculate_shannon_entropy(code);
+        assert!(entropy > 3.0); // High entropy for diverse code
+    }
+
+    #[test]
+    fn test_calculate_shannon_entropy_empty() {
+        let analyzer = ComplexityAnalyzer::new();
+        let entropy = analyzer.calculate_shannon_entropy("");
+        assert!(entropy.is_nan() || entropy == 0.0); // Handle empty string
+    }
+
+    // ComplexityMetrics tests
+    #[test]
+    fn test_complexity_metrics_default() {
+        let metrics = ComplexityMetrics::default();
+        assert_eq!(metrics.cyclomatic, 0);
+        assert_eq!(metrics.cognitive, 0);
+    }
+
+    #[test]
+    fn test_complexity_metrics_clone() {
+        let metrics = ComplexityMetrics {
+            cyclomatic: 5,
+            cognitive: 3,
+        };
+        let cloned = metrics.clone();
+        assert_eq!(metrics.cyclomatic, cloned.cyclomatic);
+        assert_eq!(metrics.cognitive, cloned.cognitive);
+    }
+
+    #[test]
+    fn test_complexity_metrics_serialization() {
+        let metrics = ComplexityMetrics {
+            cyclomatic: 10,
+            cognitive: 7,
+        };
+        let json = serde_json::to_string(&metrics).unwrap();
+        let deserialized: ComplexityMetrics = serde_json::from_str(&json).unwrap();
+        assert_eq!(metrics.cyclomatic, deserialized.cyclomatic);
+        assert_eq!(metrics.cognitive, deserialized.cognitive);
+    }
+
+    // Complex code tests
+    #[test]
+    fn test_complex_nested_loops() {
+        let analyzer = ComplexityAnalyzer::new();
+        let code = r#"
+            fn complex() {
+                for i in 0..10 {
+                    for j in 0..10 {
+                        for k in 0..10 {
+                            if i == j && j == k {
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        "#;
+        let ast = syn::parse_file(code).unwrap();
+        let cyclomatic = analyzer.calculate_cyclomatic(&ast);
+        let cognitive = analyzer.calculate_cognitive(&ast);
+
+        // High cyclomatic: 3 loops + 1 if + 1 && + base = 6
+        assert!(cyclomatic >= 5);
+        // High cognitive due to nesting
+        assert!(cognitive >= 10);
+    }
+
+    #[test]
+    fn test_match_with_many_arms() {
+        let analyzer = ComplexityAnalyzer::new();
+        let code = r#"
+            fn many_arms(x: i32) {
+                match x {
+                    0 => {},
+                    1 => {},
+                    2 => {},
+                    3 => {},
+                    4 => {},
+                    5 => {},
+                    _ => {},
+                }
+            }
+        "#;
+        let ast = syn::parse_file(code).unwrap();
+        let cyclomatic = analyzer.calculate_cyclomatic(&ast);
+        // 7 arms - 1 = 6, + base = 7
+        assert_eq!(cyclomatic, 7);
+    }
+
+    #[test]
+    fn test_multiple_functions() {
+        let analyzer = ComplexityAnalyzer::new();
+        let code = r#"
+            fn func1() { if true { } }
+            fn func2() { for i in 0..1 { } }
+            fn func3() { while false { } }
+        "#;
+        let ast = syn::parse_file(code).unwrap();
+        let cyclomatic = analyzer.calculate_cyclomatic(&ast);
+        // Base + if + for + while = 1 + 1 + 1 + 1 = 4
+        assert_eq!(cyclomatic, 4);
+    }
+
+    #[test]
+    fn test_empty_file() {
+        let analyzer = ComplexityAnalyzer::new();
+        let code = "";
+        let ast = syn::parse_file(code).unwrap();
+        let cyclomatic = analyzer.calculate_cyclomatic(&ast);
+        assert_eq!(cyclomatic, 1); // Base complexity
+    }
+
+    #[test]
+    fn test_only_struct_definition() {
+        let analyzer = ComplexityAnalyzer::new();
+        let code = "struct Foo { x: i32, y: String }";
+        let ast = syn::parse_file(code).unwrap();
+        let cyclomatic = analyzer.calculate_cyclomatic(&ast);
+        let cognitive = analyzer.calculate_cognitive(&ast);
+        assert_eq!(cyclomatic, 1); // No control flow
+        assert_eq!(cognitive, 0);
+    }
+}

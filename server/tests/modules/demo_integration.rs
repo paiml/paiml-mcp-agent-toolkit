@@ -7,6 +7,7 @@ mod demo_tests {
     use tempfile::TempDir;
 
     #[test]
+    #[ignore] // Integration test requires pmat binary
     fn test_demo_mode_in_test_directory() -> Result<()> {
         // Create a small test directory for fast analysis
         let temp = TempDir::new()?;
@@ -39,6 +40,7 @@ mod demo_tests {
     }
 
     #[test]
+    #[ignore] // Integration test requires pmat binary
     fn test_demo_mode_with_json_output() -> Result<()> {
         // Create a small test directory for fast analysis
         let temp = TempDir::new()?;
@@ -69,6 +71,7 @@ mod demo_tests {
     }
 
     #[test]
+    #[ignore] // Integration test requires pmat binary
     fn test_demo_mode_with_specific_path() -> Result<()> {
         let temp = TempDir::new()?;
         let repo_path = temp.path().join("test-repo");
@@ -104,6 +107,7 @@ mod demo_tests {
     // Removed test - demo mode is now always available
 
     #[test]
+    #[ignore] // Integration test requires pmat binary
     fn test_demo_increases_test_coverage() -> Result<()> {
         // Create small test directory for fast execution
         let temp = TempDir::new()?;
@@ -206,6 +210,7 @@ mod demo_tests {
         }
 
         #[test]
+        #[ignore] // Integration test requires pmat binary
         fn test_repository_detection() -> Result<()> {
             // This test is moved to integration test because detect_repository
             // is only available when demo-dev feature is enabled

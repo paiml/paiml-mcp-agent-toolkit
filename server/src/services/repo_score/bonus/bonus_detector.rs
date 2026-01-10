@@ -191,7 +191,10 @@ impl BonusDetector {
                 if summary_path.exists() {
                     evidence.push(format!(
                         "mdBook structure in {}/",
-                        book_dir.file_name().expect("internal error").to_string_lossy()
+                        book_dir
+                            .file_name()
+                            .expect("internal error")
+                            .to_string_lossy()
                     ));
                     detected = true;
                 }
@@ -404,7 +407,10 @@ proptest = "1.0"
     async fn test_bonus_max_points() {
         let detector = BonusDetector::new();
         let temp_dir = create_temp_repo();
-        let result = detector.detect(temp_dir.path()).await.expect("internal error");
+        let result = detector
+            .detect(temp_dir.path())
+            .await
+            .expect("internal error");
 
         // Verify max points sum to 10
         assert_eq!(

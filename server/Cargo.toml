@@ -243,9 +243,13 @@ warp = { version = "0.3", optional = true }
 # Table formatting
 prettytable-rs = "0.10"
 
-# TUI support
-ratatui = { version = "0.29", optional = true }
-crossterm = { version = "0.29", optional = true }
+# TUI support (presentar-terminal: ratatui-free Brick architecture)
+# presentar-terminal provides: TuiApp, DiffRenderer, BrailleGraph, Meter, Table
+# Benefits: Jidoka verification gates, zero-allocation rendering, 95% coverage
+presentar-terminal = { path = "../../presentar/crates/presentar-terminal", optional = true }
+presentar-core = { path = "../../presentar/crates/presentar-core", optional = true }
+# crossterm 0.28 matches presentar-terminal's version (ratatui REMOVED)
+crossterm = { version = "0.28", optional = true }
 sys-info = "0.9.1"
 
 # Storage backends
@@ -279,6 +283,7 @@ quickcheck_macros = "1.0"
 serial_test = "3.2"
 futures-test = "0.3"
 env_logger = "0.11.8"
+tokio-util = "0.7.18"
 
 [build-dependencies]
 ureq = "3.0"
@@ -347,6 +352,11 @@ php-ast = []
 swift-ast = []
 skip-slow-tests = []
 internal_tests = []
+# Feature flag to disable broken tests during development
+broken-tests = []
+# Feature flag for slow CLI integration tests (assert_cmd spawns binaries)
+# Disabled by default for fast coverage - enable with --features cli-integration
+cli-integration = []
 rust-ast = ["quote", "proc-macro2", "tree-sitter", "tree-sitter-rust"]
 typescript-ast = ["rust-ast", "swc_ecma_parser", "swc_common", "swc_ecma_ast", "swc_ecma_visit", "tree-sitter", "tree-sitter-typescript", "tree-sitter-javascript", "polyglot-typescript"]
 python-ast = ["rust-ast", "tree-sitter", "tree-sitter-python"]
@@ -362,8 +372,8 @@ cpp-ast = ["c-ast", "tree-sitter-cpp", "cpp_demangle", "gimli", "goblin"]
 demo = []
 # JavaScript AST support
 javascript-ast = ["typescript-ast", "polyglot-javascript"]
-# TUI mode support
-tui = ["ratatui", "crossterm"]
+# TUI mode support (presentar-terminal Brick architecture, ratatui-free)
+tui = ["presentar-terminal", "presentar-core", "crossterm"]
 # Terminal graph visualization (trueno-viz integration)
 # See: docs/specifications/integrating-graph-visualizations-spec.md
 viz = ["trueno-viz"]

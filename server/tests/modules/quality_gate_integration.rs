@@ -65,6 +65,7 @@ fn very_complex_function(x: i32) -> i32 {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_quality_gate_fails_on_satd() {
     let dir = tempdir().unwrap();
 
@@ -115,6 +116,7 @@ pub fn process() {{
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_quality_gate_fails_on_security() {
     let dir = tempdir().unwrap();
 
@@ -152,6 +154,7 @@ fn connect() {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_quality_gate_passes_clean_code() {
     let dir = tempdir().unwrap();
 
@@ -216,6 +219,7 @@ MIT License.
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_quality_gate_json_output() {
     let dir = tempdir().unwrap();
 

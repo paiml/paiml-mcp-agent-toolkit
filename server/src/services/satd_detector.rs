@@ -1898,15 +1898,27 @@ mod tests {
 
         // Test no comment
         assert_eq!(
-            detector.extract_comment_content("let x = 42;").expect("internal error"),
+            detector
+                .extract_comment_content("let x = 42;")
+                .expect("internal error"),
             None
         );
 
         // Test empty line
-        assert_eq!(detector.extract_comment_content("").expect("internal error"), None);
+        assert_eq!(
+            detector
+                .extract_comment_content("")
+                .expect("internal error"),
+            None
+        );
 
         // Test line with only whitespace
-        assert_eq!(detector.extract_comment_content("    ").expect("internal error"), None);
+        assert_eq!(
+            detector
+                .extract_comment_content("    ")
+                .expect("internal error"),
+            None
+        );
 
         // Test very long line (should return error)
         let long_line = "a".repeat(11000);
@@ -2184,13 +2196,17 @@ mod tests {{
         fs::write(root.join("target").join("debug.rs"), "// TODO: ignore").expect("internal error");
 
         fs::create_dir(root.join("node_modules")).expect("internal error");
-        fs::write(root.join("node_modules").join("lib.js"), "// TODO: ignore").expect("internal error");
+        fs::write(root.join("node_modules").join("lib.js"), "// TODO: ignore")
+            .expect("internal error");
 
         fs::create_dir(root.join(".git")).expect("internal error");
         fs::write(root.join(".git").join("config"), "// TODO: ignore").expect("internal error");
 
         let detector = SATDDetector::new();
-        let files = detector.find_source_files(root).await.expect("internal error");
+        let files = detector
+            .find_source_files(root)
+            .await
+            .expect("internal error");
 
         assert_eq!(files.len(), 1);
         assert!(files[0].ends_with("main.rs"));
@@ -2262,7 +2278,10 @@ fn helper_test() {{
         let detector = SATDDetector::new();
 
         // Test without test files
-        let debts = detector.analyze_directory(root).await.expect("internal error");
+        let debts = detector
+            .analyze_directory(root)
+            .await
+            .expect("internal error");
         assert_eq!(debts.len(), 2); // Only from main.rs
 
         // Test with test files
@@ -2304,7 +2323,10 @@ fn helper_test() {{
         .expect("internal error");
 
         let detector = SATDDetector::new();
-        let result = detector.analyze_project(root, false).await.expect("internal error");
+        let result = detector
+            .analyze_project(root, false)
+            .await
+            .expect("internal error");
 
         assert_eq!(result.total_files_analyzed, 3);
         assert_eq!(result.files_with_debt, 2); // Only 2 files have actual debt
@@ -2334,7 +2356,10 @@ fn helper_test() {{
         fs::write(root.join("large.rs"), large_content).expect("internal error");
 
         let detector = SATDDetector::new();
-        let debts = detector.analyze_directory(root).await.expect("internal error");
+        let debts = detector
+            .analyze_directory(root)
+            .await
+            .expect("internal error");
 
         // Should skip the large file
         assert_eq!(debts.len(), 0);
@@ -2881,8 +2906,10 @@ def test_something():
         // Create source files
         std::fs::write(project_root.join("main.rs"), "fn main() {}").expect("internal error");
         std::fs::write(project_root.join("lib.py"), "def func(): pass").expect("internal error");
-        std::fs::write(project_root.join("script.js"), "console.log('hello');").expect("internal error");
-        std::fs::write(project_root.join("readme.txt"), "Not a source file").expect("internal error");
+        std::fs::write(project_root.join("script.js"), "console.log('hello');")
+            .expect("internal error");
+        std::fs::write(project_root.join("readme.txt"), "Not a source file")
+            .expect("internal error");
 
         let mut files = Vec::new();
         detector
@@ -2891,10 +2918,18 @@ def test_something():
             .expect("internal error");
 
         assert_eq!(files.len(), 3); // Only source files
-        assert!(files.iter().any(|f| f.file_name().expect("internal error") == "main.rs"));
-        assert!(files.iter().any(|f| f.file_name().expect("internal error") == "lib.py"));
-        assert!(files.iter().any(|f| f.file_name().expect("internal error") == "script.js"));
-        assert!(!files.iter().any(|f| f.file_name().expect("internal error") == "readme.txt"));
+        assert!(files
+            .iter()
+            .any(|f| f.file_name().expect("internal error") == "main.rs"));
+        assert!(files
+            .iter()
+            .any(|f| f.file_name().expect("internal error") == "lib.py"));
+        assert!(files
+            .iter()
+            .any(|f| f.file_name().expect("internal error") == "script.js"));
+        assert!(!files
+            .iter()
+            .any(|f| f.file_name().expect("internal error") == "readme.txt"));
     }
 
     #[tokio::test]
@@ -2909,14 +2944,17 @@ def test_something():
         std::fs::create_dir_all(project_root.join(".git/hooks")).expect("internal error");
         std::fs::create_dir_all(project_root.join("src")).expect("internal error");
 
-        std::fs::write(project_root.join("target/debug/main.rs"), "fn main() {}").expect("internal error");
+        std::fs::write(project_root.join("target/debug/main.rs"), "fn main() {}")
+            .expect("internal error");
         std::fs::write(
             project_root.join("node_modules/lib/index.js"),
             "console.log('test');",
         )
         .expect("internal error");
-        std::fs::write(project_root.join(".git/hooks/pre-commit.sh"), "#!/bin/bash").expect("internal error");
-        std::fs::write(project_root.join("src/lib.rs"), "pub fn test() {}").expect("internal error");
+        std::fs::write(project_root.join(".git/hooks/pre-commit.sh"), "#!/bin/bash")
+            .expect("internal error");
+        std::fs::write(project_root.join("src/lib.rs"), "pub fn test() {}")
+            .expect("internal error");
 
         let mut files = Vec::new();
         detector
@@ -2938,8 +2976,10 @@ def test_something():
         std::fs::create_dir_all(project_root.join("src")).expect("internal error");
         std::fs::create_dir_all(project_root.join("tests")).expect("internal error");
 
-        std::fs::write(project_root.join("src/lib.rs"), "pub fn func() {}").expect("internal error");
-        std::fs::write(project_root.join("src/main_test.rs"), "fn test_main() {}").expect("internal error");
+        std::fs::write(project_root.join("src/lib.rs"), "pub fn func() {}")
+            .expect("internal error");
+        std::fs::write(project_root.join("src/main_test.rs"), "fn test_main() {}")
+            .expect("internal error");
         std::fs::write(
             project_root.join("tests/integration.rs"),
             "#[test] fn test() {}",
@@ -2969,7 +3009,8 @@ def test_something():
         std::fs::create_dir_all(project_root.join("src/models")).expect("internal error");
 
         std::fs::write(project_root.join("src/main.rs"), "fn main() {}").expect("internal error");
-        std::fs::write(project_root.join("src/utils/mod.rs"), "pub mod helpers;").expect("internal error");
+        std::fs::write(project_root.join("src/utils/mod.rs"), "pub mod helpers;")
+            .expect("internal error");
         std::fs::write(
             project_root.join("src/utils/helpers/string.rs"),
             "pub fn trim() {}",

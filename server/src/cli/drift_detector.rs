@@ -511,7 +511,8 @@ pmat nonexistent --flag
         // Create temp file
         let temp_dir = std::env::temp_dir();
         let temp_file = temp_dir.join("test_readme.md");
-        std::fs::write(&temp_file, "Use `pmat analyze` and `pmat context`").expect("internal error");
+        std::fs::write(&temp_file, "Use `pmat analyze` and `pmat context`")
+            .expect("internal error");
 
         let report = detector.generate_report(&[temp_file.as_path()]);
 

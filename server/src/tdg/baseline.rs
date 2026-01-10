@@ -571,11 +571,19 @@ mod tests {
             1
         );
         assert_eq!(
-            *baseline.summary.grade_distribution.get(&Grade::A).expect("internal error"),
+            *baseline
+                .summary
+                .grade_distribution
+                .get(&Grade::A)
+                .expect("internal error"),
             2
         );
         assert_eq!(
-            *baseline.summary.grade_distribution.get(&Grade::B).expect("internal error"),
+            *baseline
+                .summary
+                .grade_distribution
+                .get(&Grade::B)
+                .expect("internal error"),
             1
         );
     }

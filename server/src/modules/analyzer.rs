@@ -31,7 +31,9 @@ mod internal {
     impl AnalyzerCore {
         pub(super) fn new() -> Self {
             Self {
-                _cache: lru::LruCache::new(std::num::NonZeroUsize::new(100).expect("internal error")),
+                _cache: lru::LruCache::new(
+                    std::num::NonZeroUsize::new(100).expect("internal error"),
+                ),
             }
         }
 

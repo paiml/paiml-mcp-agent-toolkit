@@ -772,7 +772,8 @@ fn write_top_files_with_satd_section(
     // Show top 10 files with their SATD counts
     for (i, (file, count)) in sorted_files.iter().take(10).enumerate() {
         let filename = file.file_name().unwrap_or_default().to_string_lossy();
-        writeln!(output, "{}. `{}` - {} SATD items", i + 1, filename, count).expect("internal error");
+        writeln!(output, "{}. `{}` - {} SATD items", i + 1, filename, count)
+            .expect("internal error");
     }
 }
 

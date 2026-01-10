@@ -130,7 +130,10 @@ impl DagEngine {
                     self.dfs_cycle_detection(neighbor, visited, rec_stack, path, cycles);
                 } else if rec_stack.contains(neighbor) {
                     // Found a cycle
-                    let cycle_start = path.iter().position(|n| n == neighbor).expect("internal error");
+                    let cycle_start = path
+                        .iter()
+                        .position(|n| n == neighbor)
+                        .expect("internal error");
                     let cycle = path[cycle_start..].to_vec();
                     cycles.push(cycle);
                 }

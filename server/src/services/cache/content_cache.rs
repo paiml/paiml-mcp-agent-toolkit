@@ -23,8 +23,8 @@ pub struct ContentCache<T: CacheStrategy> {
 
 impl<T: CacheStrategy> ContentCache<T> {
     pub fn new(strategy: T) -> Self {
-        let max_size =
-            NonZeroUsize::new(strategy.max_size()).unwrap_or(NonZeroUsize::new(100).expect("internal error"));
+        let max_size = NonZeroUsize::new(strategy.max_size())
+            .unwrap_or(NonZeroUsize::new(100).expect("internal error"));
 
         Self {
             cache: Arc::new(RwLock::new(LruCache::new(max_size))),

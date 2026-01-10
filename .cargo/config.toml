@@ -2,13 +2,13 @@
 # See: docs/specifications/build-performance-optimization-v1.0.md
 
 [build]
-# Use all available CPU cores
-# Note: 0 is invalid, removed to use default (auto-detect)
+# Use all available CPU cores (0 = auto-detect)
+jobs = 0
 
 [target.x86_64-unknown-linux-gnu]
-# Use faster linker (mold via clang)
+# Use faster linker (lld via clang)
 linker = "clang"
-rustflags = ["-C", "link-arg=-fuse-ld=mold"]
+rustflags = ["-C", "link-arg=-fuse-ld=lld"]
 
 [profile.dev]
 # Optimize dependencies (but not our code) for faster builds
@@ -25,4 +25,3 @@ opt-level = 3
 lto = "thin"
 codegen-units = 1      # Better optimization
 strip = true           # Strip debug symbols (smaller binary)
-

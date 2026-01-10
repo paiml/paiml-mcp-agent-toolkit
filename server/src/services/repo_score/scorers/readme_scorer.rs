@@ -62,7 +62,8 @@ impl ReadmeScorer {
 
         // Check for broken image references
         let image_pattern =
-            regex::Regex::new(r#"!\[[^\]]*\]\(([^)]+)\)|<img[^>]+src=["']([^"']+)["']"#).expect("internal error");
+            regex::Regex::new(r#"!\[[^\]]*\]\(([^)]+)\)|<img[^>]+src=["']([^"']+)["']"#)
+                .expect("internal error");
         for cap in image_pattern.captures_iter(&content) {
             let img_path = cap
                 .get(1)
@@ -546,7 +547,10 @@ Just a title.
         let scorer = ReadmeScorer::new();
         let config = ScorerConfig::default();
 
-        let result = scorer.score(repo_path, &config).await.expect("internal error");
+        let result = scorer
+            .score(repo_path, &config)
+            .await
+            .expect("internal error");
 
         // Should get close to full score
         assert!(
@@ -566,7 +570,10 @@ Just a title.
         let scorer = ReadmeScorer::new();
         let config = ScorerConfig::default();
 
-        let result = scorer.score(repo_path, &config).await.expect("internal error");
+        let result = scorer
+            .score(repo_path, &config)
+            .await
+            .expect("internal error");
 
         // Bot-generated should lose points for:
         // - No hero image (-1.5)
@@ -574,7 +581,11 @@ Just a title.
         // - No ToC (-1.0)
         // - Stream of consciousness pattern (-1.5)
         // A3 should score ~0.5/5.0
-        let a3 = result.subcategories.iter().find(|s| s.id == "A3").expect("internal error");
+        let a3 = result
+            .subcategories
+            .iter()
+            .find(|s| s.id == "A3")
+            .expect("internal error");
         assert!(
             a3.score <= 1.0,
             "Bot-generated README A3 should score <= 1.0, got {}",
@@ -600,7 +611,10 @@ Just a title.
         let scorer = ReadmeScorer::new();
         let config = ScorerConfig::default();
 
-        let result = scorer.score(repo_path, &config).await.expect("internal error");
+        let result = scorer
+            .score(repo_path, &config)
+            .await
+            .expect("internal error");
 
         assert_eq!(result.score, 0.0);
         assert_eq!(result.max_score, 15.0);
@@ -624,7 +638,10 @@ cargo install project
         let scorer = ReadmeScorer::new();
         let config = ScorerConfig::default();
 
-        let result = scorer.score(repo_path, &config).await.expect("internal error");
+        let result = scorer
+            .score(repo_path, &config)
+            .await
+            .expect("internal error");
 
         // Should have finding about broken image
         assert!(
@@ -646,7 +663,10 @@ cargo install project
         let scorer = ReadmeScorer::new();
         let config = ScorerConfig::default();
 
-        let result = scorer.score(repo_path, &config).await.expect("internal error");
+        let result = scorer
+            .score(repo_path, &config)
+            .await
+            .expect("internal error");
 
         // Should detect hero image from docs/hero.svg
         assert!(
@@ -678,7 +698,10 @@ cargo install project
         let scorer = ReadmeScorer::new();
         let config = ScorerConfig::default();
 
-        let result = scorer.score(repo_path, &config).await.expect("internal error");
+        let result = scorer
+            .score(repo_path, &config)
+            .await
+            .expect("internal error");
 
         // Should detect ToC via anchor links
         assert!(

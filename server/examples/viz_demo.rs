@@ -22,10 +22,6 @@ use anyhow::Result;
 
 #[cfg(feature = "viz")]
 fn main() -> Result<()> {
-    use pmat::tdg::tdg_graph::TdgGraph;
-    use pmat::viz::terminal::{RenderConfig, TerminalTheme, Visualizable};
-    use trueno_viz::output::TerminalMode;
-
     println!("TDG Terminal Graph Visualization Demo");
     println!("======================================\n");
 
@@ -63,7 +59,7 @@ fn main() -> Result<()> {
 #[cfg(feature = "viz")]
 fn demo_simple_graph(theme_name: &str) -> Result<()> {
     use pmat::tdg::tdg_graph::TdgGraph;
-    use pmat::viz::terminal::{RenderConfig, TerminalTheme, Visualizable};
+    use pmat::viz::terminal::{RenderConfig, Visualizable};
     use trueno_viz::output::TerminalMode;
 
     println!("1. Simple Dependency Graph");

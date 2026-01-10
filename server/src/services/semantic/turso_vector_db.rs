@@ -320,7 +320,11 @@ impl TursoVectorDB {
         }
 
         // Sort by similarity (descending)
-        result_vec.sort_by(|a, b| b.similarity.partial_cmp(&a.similarity).expect("internal error"));
+        result_vec.sort_by(|a, b| {
+            b.similarity
+                .partial_cmp(&a.similarity)
+                .expect("internal error")
+        });
 
         // Apply limit
         result_vec.truncate(limit);

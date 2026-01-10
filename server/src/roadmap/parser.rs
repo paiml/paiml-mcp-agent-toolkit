@@ -68,8 +68,16 @@ fn parse_sprint_section(
     captures: &regex::Captures,
     parsers: &Parsers,
 ) -> Result<(Sprint, String, usize)> {
-    let version = captures.get(1).expect("internal error").as_str().to_string();
-    let title = captures.get(2).expect("internal error").as_str().to_string();
+    let version = captures
+        .get(1)
+        .expect("internal error")
+        .as_str()
+        .to_string();
+    let title = captures
+        .get(2)
+        .expect("internal error")
+        .as_str()
+        .to_string();
 
     let mut sprint = create_initial_sprint(&version, &title);
     let lines_consumed = parse_sprint_content(lines, start_idx, &mut sprint, parsers)?;
@@ -184,7 +192,13 @@ fn parse_definition_of_done(lines: &[&str], done_regex: &Regex) -> Result<(Vec<S
 
     while i < lines.len() && lines[i].starts_with("- [") {
         if let Some(captures) = done_regex.captures(lines[i]) {
-            items.push(captures.get(2).expect("internal error").as_str().to_string());
+            items.push(
+                captures
+                    .get(2)
+                    .expect("internal error")
+                    .as_str()
+                    .to_string(),
+            );
         }
         i += 1;
     }
@@ -225,8 +239,17 @@ fn parse_backlog_section(
 /// Create a task from regex captures
 fn create_task_from_captures(captures: &regex::Captures) -> Task {
     Task {
-        id: captures.get(1).expect("internal error").as_str().to_string(),
-        description: captures.get(2).expect("internal error").as_str().trim().to_string(),
+        id: captures
+            .get(1)
+            .expect("internal error")
+            .as_str()
+            .to_string(),
+        description: captures
+            .get(2)
+            .expect("internal error")
+            .as_str()
+            .trim()
+            .to_string(),
         status: parse_task_status(captures.get(3).expect("internal error").as_str()),
         complexity: Complexity::from_str(captures.get(4).expect("internal error").as_str().trim())
             .unwrap_or(Complexity::Medium),

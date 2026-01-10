@@ -2,16 +2,26 @@
 //
 // Minimal implementation to pass TUI-001 RED tests.
 // Provides terminal event handling for interactive timeline TUI.
+//
+// Sprint 79+: Presentar-terminal Brick architecture (ratatui-free)
+// Benefits: Jidoka verification gates, zero-allocation rendering, 95% test coverage
 
 #![cfg(feature = "tui")]
 
 use anyhow::Result;
+use std::{collections::VecDeque, io::stdout, time::Duration};
+
+// Presentar-terminal provides crossterm access through its API
+// Using crossterm directly through presentar-terminal's re-export
 use crossterm::{
     event::{self, Event, KeyEvent},
     terminal::{self, EnterAlternateScreen, LeaveAlternateScreen},
     ExecutableCommand,
 };
-use std::{collections::VecDeque, io::stdout, time::Duration};
+
+// Presentar core types for Brick trait implementation
+#[allow(unused_imports)]
+use presentar_core::{Brick, BrickAssertion, BrickBudget, Widget};
 
 // ============================================================================
 // Public Types

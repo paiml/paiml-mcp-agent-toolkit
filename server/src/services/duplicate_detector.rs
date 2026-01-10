@@ -994,7 +994,11 @@ impl DuplicateDetectionEngine {
         for token in &tokens {
             hasher.update(token.text.as_bytes());
         }
-        let hash = u64::from_le_bytes(hasher.finalize().as_bytes()[0..8].try_into().expect("internal error"));
+        let hash = u64::from_le_bytes(
+            hasher.finalize().as_bytes()[0..8]
+                .try_into()
+                .expect("internal error"),
+        );
 
         let fragment = CodeFragment {
             id,

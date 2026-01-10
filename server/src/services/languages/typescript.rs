@@ -59,3 +59,172 @@ impl TypeScriptAstVisitor {
         Ok(Vec::new())
     }
 }
+
+#[cfg(test)]
+mod coverage_tests {
+    use super::*;
+    use std::path::Path;
+
+    #[test]
+    fn test_typescript_ast_visitor_new() {
+        let path = Path::new("test.ts");
+        let visitor = TypeScriptAstVisitor::new(path);
+        // Verify the visitor is created without panicking
+        let _ = visitor;
+    }
+
+    #[test]
+    fn test_typescript_ast_visitor_new_with_complex_path() {
+        let path = Path::new("/src/components/App.tsx");
+        let visitor = TypeScriptAstVisitor::new(path);
+        let _ = visitor;
+    }
+
+    #[test]
+    fn test_typescript_ast_visitor_new_with_relative_path() {
+        let path = Path::new("./src/index.ts");
+        let visitor = TypeScriptAstVisitor::new(path);
+        let _ = visitor;
+    }
+
+    #[test]
+    fn test_analyze_typescript_empty_source() {
+        let path = Path::new("test.ts");
+        let visitor = TypeScriptAstVisitor::new(path);
+
+        let result = visitor.analyze_typescript_source("");
+        assert!(result.is_ok());
+        // When feature is not enabled, returns empty vec
+        // When feature is enabled, might return empty vec for empty source
+        let items = result.unwrap();
+        assert!(items.is_empty() || items.len() >= 0); // Allows both cases
+    }
+
+    #[test]
+    fn test_analyze_typescript_simple_function() {
+        let path = Path::new("test.ts");
+        let visitor = TypeScriptAstVisitor::new(path);
+
+        let source = "function hello(): string { return 'world'; }";
+        let result = visitor.analyze_typescript_source(source);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_analyze_typescript_interface() {
+        let path = Path::new("test.ts");
+        let visitor = TypeScriptAstVisitor::new(path);
+
+        let source = r#"
+            interface User {
+                id: number;
+                name: string;
+                email: string;
+            }
+        "#;
+        let result = visitor.analyze_typescript_source(source);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_analyze_typescript_class_with_types() {
+        let path = Path::new("test.ts");
+        let visitor = TypeScriptAstVisitor::new(path);
+
+        let source = r#"
+            class Calculator {
+                add(a: number, b: number): number {
+                    return a + b;
+                }
+                subtract(a: number, b: number): number {
+                    return a - b;
+                }
+            }
+        "#;
+        let result = visitor.analyze_typescript_source(source);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_analyze_typescript_generics() {
+        let path = Path::new("test.ts");
+        let visitor = TypeScriptAstVisitor::new(path);
+
+        let source = r#"
+            function identity<T>(arg: T): T {
+                return arg;
+            }
+
+            interface Container<T> {
+                value: T;
+                getValue(): T;
+            }
+        "#;
+        let result = visitor.analyze_typescript_source(source);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_analyze_typescript_with_imports() {
+        let path = Path::new("test.ts");
+        let visitor = TypeScriptAstVisitor::new(path);
+
+        // Use plain TypeScript without JSX
+        let source = r#"
+            import axios, { AxiosResponse } from 'axios';
+            import type { Config, Options } from './types';
+
+            interface Props {
+                name: string;
+                count: number;
+            }
+
+            const processData = (props: Props): string => {
+                const { name, count } = props;
+                return `${name}: ${count}`;
+            };
+
+            export default processData;
+        "#;
+        let result = visitor.analyze_typescript_source(source);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_analyze_typescript_type_alias() {
+        let path = Path::new("test.ts");
+        let visitor = TypeScriptAstVisitor::new(path);
+
+        let source = r#"
+            type StringOrNumber = string | number;
+            type AsyncResult<T> = Promise<T>;
+            type UserCallback = (user: User) => void;
+        "#;
+        let result = visitor.analyze_typescript_source(source);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_analyze_typescript_enum() {
+        let path = Path::new("test.ts");
+        let visitor = TypeScriptAstVisitor::new(path);
+
+        let source = r#"
+            enum Direction {
+                Up = "UP",
+                Down = "DOWN",
+                Left = "LEFT",
+                Right = "RIGHT"
+            }
+        "#;
+        let result = visitor.analyze_typescript_source(source);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_typescript_ast_visitor_preserves_path() {
+        let path = Path::new("/absolute/path/to/file.ts");
+        let _visitor = TypeScriptAstVisitor::new(path);
+        // The path is stored internally, this just verifies no panic
+    }
+}

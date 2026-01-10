@@ -122,7 +122,11 @@ pub fn calculate_similarities(
         }
     }
 
-    similarities.sort_by(|a, b| b.similarity.partial_cmp(&a.similarity).expect("internal error"));
+    similarities.sort_by(|a, b| {
+        b.similarity
+            .partial_cmp(&a.similarity)
+            .expect("internal error")
+    });
     similarities
 }
 
@@ -247,7 +251,10 @@ fn format_summary_output(
                 i + 1,
                 sim.name,
                 sim.similarity,
-                sim.file_path.file_name().expect("internal error").to_string_lossy(),
+                sim.file_path
+                    .file_name()
+                    .expect("internal error")
+                    .to_string_lossy(),
                 sim.line
             ));
         }
@@ -322,7 +329,10 @@ fn format_markdown_output(
                 sim.name,
                 sim.similarity,
                 sim.kind,
-                sim.file_path.file_name().expect("internal error").to_string_lossy(),
+                sim.file_path
+                    .file_name()
+                    .expect("internal error")
+                    .to_string_lossy(),
                 sim.line
             ));
         }

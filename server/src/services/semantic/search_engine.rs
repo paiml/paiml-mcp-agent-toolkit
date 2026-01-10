@@ -282,7 +282,8 @@ impl SemanticSearchEngine {
                     .await?;
 
                 let should_skip = existing.iter().any(|e| {
-                    e.chunk_name == chunk.chunk_name && e.file_path == file_path.to_str().expect("internal error")
+                    e.chunk_name == chunk.chunk_name
+                        && e.file_path == file_path.to_str().expect("internal error")
                 });
 
                 if should_skip {

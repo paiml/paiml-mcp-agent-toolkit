@@ -58,6 +58,7 @@ pub mod org_handlers;
 pub mod perfection_score_handlers; // master-plan-pmat-work-system.md: 200-point unified score
 pub mod popper_score_handlers; // Popper Falsifiability Score v1.1
 pub mod predict_quality_handlers; // Phase 4.1: Predictive Quality Gates CLI
+pub mod project_diag_handlers; // Project diagnostics (lltop Tab 8 equivalent)
 pub mod prompt_handlers;
 pub mod proof_annotations_handler;
 pub mod provability_handler;

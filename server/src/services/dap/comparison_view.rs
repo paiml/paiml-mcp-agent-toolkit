@@ -413,3 +413,613 @@ impl ComparisonView {
         Ok(serde_json::to_string_pretty(&report)?)
     }
 }
+
+#[cfg(test)]
+mod coverage_tests {
+    use super::*;
+    use crate::services::dap::recording::{Snapshot, StackFrame};
+
+    /// Helper: Create test recording with specified snapshots
+    fn create_test_recording(program: &str, snapshot_count: usize) -> Recording {
+        let mut recording = Recording::new(program.to_string(), vec![]);
+        for i in 0..snapshot_count {
+            let mut variables = HashMap::new();
+            variables.insert("counter".to_string(), serde_json::json!(i));
+            variables.insert("name".to_string(), serde_json::json!(format!("item_{}", i)));
+
+            let stack_frames = vec![StackFrame {
+                name: format!("func_{}", i),
+                file: Some("test.rs".to_string()),
+                line: Some(10 + i as u32),
+                locals: HashMap::new(),
+            }];
+
+            let snapshot = Snapshot {
+                frame_id: i as u64,
+                timestamp_relative_ms: (i * 100) as u32,
+                variables,
+                stack_frames,
+                instruction_pointer: 0x1000 + (i as u64 * 8),
+                memory_snapshot: None,
+            };
+            recording.add_snapshot(snapshot);
+        }
+        recording
+    }
+
+    /// Helper: Create recording with specific variables at each frame
+    fn create_recording_with_vars(
+        program: &str,
+        frames: Vec<HashMap<String, serde_json::Value>>,
+    ) -> Recording {
+        let mut recording = Recording::new(program.to_string(), vec![]);
+        for (i, variables) in frames.into_iter().enumerate() {
+            let snapshot = Snapshot {
+                frame_id: i as u64,
+                timestamp_relative_ms: (i * 100) as u32,
+                variables,
+                stack_frames: vec![StackFrame {
+                    name: "main".to_string(),
+                    file: Some("test.rs".to_string()),
+                    line: Some(i as u32),
+                    locals: HashMap::new(),
+                }],
+                instruction_pointer: 0x1000 + (i as u64 * 8),
+                memory_snapshot: None,
+            };
+            recording.add_snapshot(snapshot);
+        }
+        recording
+    }
+
+    // ========================================================================
+    // SyncMode Tests
+    // ========================================================================
+
+    #[test]
+    fn test_sync_mode_equality() {
+        assert_eq!(SyncMode::ByFrame, SyncMode::ByFrame);
+        assert_eq!(SyncMode::ByTimestamp, SyncMode::ByTimestamp);
+        assert_eq!(SyncMode::ByLocation, SyncMode::ByLocation);
+        assert_ne!(SyncMode::ByFrame, SyncMode::ByTimestamp);
+        assert_ne!(SyncMode::ByTimestamp, SyncMode::ByLocation);
+    }
+
+    #[test]
+    fn test_sync_mode_clone() {
+        let mode = SyncMode::ByFrame;
+        let cloned = mode;
+        assert_eq!(mode, cloned);
+    }
+
+    #[test]
+    fn test_sync_mode_debug() {
+        let mode = SyncMode::ByFrame;
+        let debug_str = format!("{:?}", mode);
+        assert!(debug_str.contains("ByFrame"));
+    }
+
+    #[test]
+    fn test_sync_mode_serialization() {
+        let mode = SyncMode::ByTimestamp;
+        let json = serde_json::to_string(&mode).unwrap();
+        let deserialized: SyncMode = serde_json::from_str(&json).unwrap();
+        assert_eq!(mode, deserialized);
+    }
+
+    // ========================================================================
+    // DiffStatus Tests
+    // ========================================================================
+
+    #[test]
+    fn test_diff_status_variants() {
+        assert_eq!(DiffStatus::Same, DiffStatus::Same);
+        assert_eq!(DiffStatus::Modified, DiffStatus::Modified);
+        assert_eq!(DiffStatus::Added, DiffStatus::Added);
+        assert_eq!(DiffStatus::Removed, DiffStatus::Removed);
+    }
+
+    #[test]
+    fn test_diff_status_inequality() {
+        assert_ne!(DiffStatus::Same, DiffStatus::Modified);
+        assert_ne!(DiffStatus::Added, DiffStatus::Removed);
+    }
+
+    #[test]
+    fn test_diff_status_clone() {
+        let status = DiffStatus::Modified;
+        let cloned = status.clone();
+        assert_eq!(status, cloned);
+    }
+
+    #[test]
+    fn test_diff_status_debug() {
+        let status = DiffStatus::Added;
+        let debug_str = format!("{:?}", status);
+        assert!(debug_str.contains("Added"));
+    }
+
+    #[test]
+    fn test_diff_status_serialization() {
+        let status = DiffStatus::Removed;
+        let json = serde_json::to_string(&status).unwrap();
+        let deserialized: DiffStatus = serde_json::from_str(&json).unwrap();
+        assert_eq!(status, deserialized);
+    }
+
+    // ========================================================================
+    // ComparisonView Creation Tests
+    // ========================================================================
+
+    #[test]
+    fn test_comparison_view_creation() {
+        let recording_a = create_test_recording("program_a", 5);
+        let recording_b = create_test_recording("program_b", 3);
+
+        let view = ComparisonView::new(recording_a, recording_b);
+
+        assert_eq!(view.total_frames_a(), 5);
+        assert_eq!(view.total_frames_b(), 3);
+        assert_eq!(view.current_frame_a(), 0);
+        assert_eq!(view.current_frame_b(), 0);
+    }
+
+    #[test]
+    fn test_comparison_view_empty_recordings() {
+        let recording_a = Recording::new("empty_a".to_string(), vec![]);
+        let recording_b = Recording::new("empty_b".to_string(), vec![]);
+
+        let view = ComparisonView::new(recording_a, recording_b);
+
+        assert_eq!(view.total_frames_a(), 0);
+        assert_eq!(view.total_frames_b(), 0);
+        assert!(view.recording_a_exhausted());
+        assert!(view.recording_b_exhausted());
+    }
+
+    #[test]
+    fn test_comparison_view_default_sync_mode() {
+        let recording_a = create_test_recording("a", 2);
+        let recording_b = create_test_recording("b", 2);
+
+        let view = ComparisonView::new(recording_a, recording_b);
+        assert_eq!(view.sync_mode(), SyncMode::ByFrame);
+    }
+
+    // ========================================================================
+    // Frame Navigation Tests
+    // ========================================================================
+
+    #[test]
+    fn test_total_frames_min_max() {
+        let recording_a = create_test_recording("a", 10);
+        let recording_b = create_test_recording("b", 5);
+
+        let view = ComparisonView::new(recording_a, recording_b);
+
+        assert_eq!(view.total_frames_min(), 5);
+        assert_eq!(view.total_frames_max(), 10);
+    }
+
+    #[test]
+    fn test_next_frame_navigation() {
+        let recording_a = create_test_recording("a", 3);
+        let recording_b = create_test_recording("b", 3);
+
+        let mut view = ComparisonView::new(recording_a, recording_b);
+
+        assert_eq!(view.current_frame_a(), 0);
+        assert_eq!(view.current_frame_b(), 0);
+
+        view.next_frame().unwrap();
+        assert_eq!(view.current_frame_a(), 1);
+        assert_eq!(view.current_frame_b(), 1);
+    }
+
+    #[test]
+    fn test_prev_frame_navigation() {
+        let recording_a = create_test_recording("a", 5);
+        let recording_b = create_test_recording("b", 5);
+
+        let mut view = ComparisonView::new(recording_a, recording_b);
+
+        // Move forward first
+        view.next_frame().unwrap();
+        view.next_frame().unwrap();
+        assert_eq!(view.current_frame_a(), 2);
+
+        // Now move back
+        view.prev_frame().unwrap();
+        assert_eq!(view.current_frame_a(), 1);
+    }
+
+    #[test]
+    fn test_prev_frame_at_start_error() {
+        let recording_a = create_test_recording("a", 2);
+        let recording_b = create_test_recording("b", 2);
+
+        let mut view = ComparisonView::new(recording_a, recording_b);
+
+        let result = view.prev_frame();
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("at start"));
+    }
+
+    #[test]
+    fn test_next_frame_at_end_error() {
+        let recording_a = create_test_recording("a", 2);
+        let recording_b = create_test_recording("b", 2);
+
+        let mut view = ComparisonView::new(recording_a, recording_b);
+
+        // Move to last frame
+        view.next_frame().unwrap();
+
+        // Try to move past end
+        let result = view.next_frame();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_jump_to_valid_frame() {
+        let recording_a = create_test_recording("a", 10);
+        let recording_b = create_test_recording("b", 10);
+
+        let mut view = ComparisonView::new(recording_a, recording_b);
+
+        view.jump_to(5).unwrap();
+        assert_eq!(view.current_frame_a(), 5);
+        assert_eq!(view.current_frame_b(), 5);
+    }
+
+    #[test]
+    fn test_jump_to_out_of_bounds_error() {
+        let recording_a = create_test_recording("a", 3);
+        let recording_b = create_test_recording("b", 3);
+
+        let mut view = ComparisonView::new(recording_a, recording_b);
+
+        let result = view.jump_to(100);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("out of bounds"));
+    }
+
+    #[test]
+    fn test_jump_to_asymmetric_recordings() {
+        let recording_a = create_test_recording("a", 10);
+        let recording_b = create_test_recording("b", 5);
+
+        let mut view = ComparisonView::new(recording_a, recording_b);
+
+        // Jump to frame within B's range
+        view.jump_to(3).unwrap();
+        assert_eq!(view.current_frame_a(), 3);
+        assert_eq!(view.current_frame_b(), 3);
+
+        // Jump to frame outside B's range but within A's range
+        view.jump_to(7).unwrap();
+        assert_eq!(view.current_frame_a(), 7);
+    }
+
+    // ========================================================================
+    // Exhaustion Tests
+    // ========================================================================
+
+    #[test]
+    fn test_recording_exhausted_detection() {
+        let recording_a = create_test_recording("a", 2);
+        let recording_b = create_test_recording("b", 4);
+
+        let mut view = ComparisonView::new(recording_a, recording_b);
+
+        assert!(!view.recording_a_exhausted());
+        assert!(!view.recording_b_exhausted());
+
+        // Move to end of A
+        view.next_frame().unwrap();
+        assert!(view.recording_a_exhausted());
+        assert!(!view.recording_b_exhausted());
+    }
+
+    // ========================================================================
+    // Sync Mode Tests
+    // ========================================================================
+
+    #[test]
+    fn test_set_sync_mode() {
+        let recording_a = create_test_recording("a", 2);
+        let recording_b = create_test_recording("b", 2);
+
+        let mut view = ComparisonView::new(recording_a, recording_b);
+
+        assert_eq!(view.sync_mode(), SyncMode::ByFrame);
+
+        view.set_sync_mode(SyncMode::ByTimestamp);
+        assert_eq!(view.sync_mode(), SyncMode::ByTimestamp);
+
+        view.set_sync_mode(SyncMode::ByLocation);
+        assert_eq!(view.sync_mode(), SyncMode::ByLocation);
+    }
+
+    // ========================================================================
+    // Variable Diff Tests
+    // ========================================================================
+
+    #[test]
+    fn test_variable_diff_same_values() {
+        let mut vars = HashMap::new();
+        vars.insert("x".to_string(), serde_json::json!(42));
+
+        // Need at least 2 frames so recording is not immediately exhausted
+        let recording_a = create_recording_with_vars("a", vec![vars.clone(), vars.clone()]);
+        let recording_b = create_recording_with_vars("b", vec![vars.clone(), vars]);
+
+        let view = ComparisonView::new(recording_a, recording_b);
+        let diff = view.variable_diff();
+
+        assert_eq!(diff.get("x"), Some(&DiffStatus::Same));
+    }
+
+    #[test]
+    fn test_variable_diff_modified_values() {
+        let mut vars_a = HashMap::new();
+        vars_a.insert("x".to_string(), serde_json::json!(1));
+
+        let mut vars_b = HashMap::new();
+        vars_b.insert("x".to_string(), serde_json::json!(2));
+
+        // Need at least 2 frames so recording is not immediately exhausted
+        let recording_a = create_recording_with_vars("a", vec![vars_a.clone(), vars_a]);
+        let recording_b = create_recording_with_vars("b", vec![vars_b.clone(), vars_b]);
+
+        let view = ComparisonView::new(recording_a, recording_b);
+        let diff = view.variable_diff();
+
+        assert_eq!(diff.get("x"), Some(&DiffStatus::Modified));
+    }
+
+    #[test]
+    fn test_variable_diff_added_variable() {
+        let mut vars_a = HashMap::new();
+        vars_a.insert("x".to_string(), serde_json::json!(1));
+
+        let mut vars_b = HashMap::new();
+        vars_b.insert("x".to_string(), serde_json::json!(1));
+        vars_b.insert("y".to_string(), serde_json::json!(2));
+
+        // Need at least 2 frames so recording is not immediately exhausted
+        let recording_a = create_recording_with_vars("a", vec![vars_a.clone(), vars_a]);
+        let recording_b = create_recording_with_vars("b", vec![vars_b.clone(), vars_b]);
+
+        let view = ComparisonView::new(recording_a, recording_b);
+        let diff = view.variable_diff();
+
+        assert_eq!(diff.get("x"), Some(&DiffStatus::Same));
+        assert_eq!(diff.get("y"), Some(&DiffStatus::Added));
+    }
+
+    #[test]
+    fn test_variable_diff_removed_variable() {
+        let mut vars_a = HashMap::new();
+        vars_a.insert("x".to_string(), serde_json::json!(1));
+        vars_a.insert("y".to_string(), serde_json::json!(2));
+
+        let mut vars_b = HashMap::new();
+        vars_b.insert("x".to_string(), serde_json::json!(1));
+
+        // Need at least 2 frames so recording is not immediately exhausted
+        let recording_a = create_recording_with_vars("a", vec![vars_a.clone(), vars_a]);
+        let recording_b = create_recording_with_vars("b", vec![vars_b.clone(), vars_b]);
+
+        let view = ComparisonView::new(recording_a, recording_b);
+        let diff = view.variable_diff();
+
+        assert_eq!(diff.get("x"), Some(&DiffStatus::Same));
+        assert_eq!(diff.get("y"), Some(&DiffStatus::Removed));
+    }
+
+    #[test]
+    fn test_variable_diff_exhausted_a() {
+        let vars = HashMap::new();
+        let recording_a = Recording::new("a".to_string(), vec![]);
+        let recording_b = create_recording_with_vars("b", vec![vars]);
+
+        let view = ComparisonView::new(recording_a, recording_b);
+        let diff = view.variable_diff();
+
+        // All variables in B should be marked as Added
+        assert!(diff.is_empty() || diff.values().all(|s| *s == DiffStatus::Added));
+    }
+
+    #[test]
+    fn test_variable_diff_exhausted_b() {
+        let mut vars = HashMap::new();
+        vars.insert("x".to_string(), serde_json::json!(1));
+
+        // Need at least 2 frames so recording A is not immediately exhausted
+        let recording_a = create_recording_with_vars("a", vec![vars.clone(), vars]);
+        let recording_b = Recording::new("b".to_string(), vec![]);
+
+        let view = ComparisonView::new(recording_a, recording_b);
+        let diff = view.variable_diff();
+
+        assert_eq!(diff.get("x"), Some(&DiffStatus::Removed));
+    }
+
+    #[test]
+    fn test_variable_diff_both_exhausted() {
+        let recording_a = Recording::new("a".to_string(), vec![]);
+        let recording_b = Recording::new("b".to_string(), vec![]);
+
+        let view = ComparisonView::new(recording_a, recording_b);
+        let diff = view.variable_diff();
+
+        assert!(diff.is_empty());
+    }
+
+    // ========================================================================
+    // Divergence Point Tests
+    // ========================================================================
+
+    #[test]
+    fn test_find_divergence_point_no_divergence() {
+        let recording_a = create_test_recording("a", 5);
+        let recording_b = create_test_recording("b", 5);
+
+        let view = ComparisonView::new(recording_a, recording_b);
+        // Recordings have same structure, no divergence
+        let divergence = view.find_divergence_point();
+        assert!(divergence.is_none());
+    }
+
+    #[test]
+    fn test_find_divergence_point_variable_difference() {
+        let mut vars_0 = HashMap::new();
+        vars_0.insert("x".to_string(), serde_json::json!(1));
+
+        let mut vars_1_a = HashMap::new();
+        vars_1_a.insert("x".to_string(), serde_json::json!(2));
+
+        let mut vars_1_b = HashMap::new();
+        vars_1_b.insert("x".to_string(), serde_json::json!(999)); // Different!
+
+        let recording_a = create_recording_with_vars("a", vec![vars_0.clone(), vars_1_a]);
+        let recording_b = create_recording_with_vars("b", vec![vars_0, vars_1_b]);
+
+        let view = ComparisonView::new(recording_a, recording_b);
+        let divergence = view.find_divergence_point();
+
+        assert_eq!(divergence, Some(1));
+    }
+
+    #[test]
+    fn test_find_divergence_point_empty_recordings() {
+        let recording_a = Recording::new("a".to_string(), vec![]);
+        let recording_b = Recording::new("b".to_string(), vec![]);
+
+        let view = ComparisonView::new(recording_a, recording_b);
+        assert!(view.find_divergence_point().is_none());
+    }
+
+    // ========================================================================
+    // Render Split View Tests
+    // ========================================================================
+
+    #[test]
+    fn test_render_split_basic() {
+        let recording_a = create_test_recording("program_a", 5);
+        let recording_b = create_test_recording("program_b", 3);
+
+        let view = ComparisonView::new(recording_a, recording_b);
+        let output = view.render_split();
+
+        assert!(output.contains("Recording A: program_a"));
+        assert!(output.contains("Recording B: program_b"));
+        assert!(output.contains("Frame 0/5"));
+        assert!(output.contains("Frame 0/3"));
+    }
+
+    #[test]
+    fn test_render_split_shows_end_markers() {
+        let recording_a = create_test_recording("a", 2);
+        let recording_b = create_test_recording("b", 2);
+
+        let mut view = ComparisonView::new(recording_a, recording_b);
+        view.next_frame().unwrap(); // Move to last frame
+
+        let output = view.render_split();
+        assert!(output.contains("END"));
+    }
+
+    #[test]
+    fn test_render_split_empty_recordings() {
+        let recording_a = Recording::new("empty_a".to_string(), vec![]);
+        let recording_b = Recording::new("empty_b".to_string(), vec![]);
+
+        let view = ComparisonView::new(recording_a, recording_b);
+        let output = view.render_split();
+
+        assert!(output.contains("Recording A: empty_a"));
+        assert!(output.contains("Recording B: empty_b"));
+    }
+
+    // ========================================================================
+    // Export Diff JSON Tests
+    // ========================================================================
+
+    #[test]
+    fn test_export_diff_json_structure() {
+        let recording_a = create_test_recording("a", 3);
+        let recording_b = create_test_recording("b", 3);
+
+        let view = ComparisonView::new(recording_a, recording_b);
+        let json = view.export_diff_json().unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+
+        assert!(parsed.get("metadata").is_some());
+        assert!(parsed.get("frame_diffs").is_some());
+    }
+
+    #[test]
+    fn test_export_diff_json_metadata() {
+        let recording_a = create_test_recording("prog_a", 5);
+        let recording_b = create_test_recording("prog_b", 3);
+
+        let view = ComparisonView::new(recording_a, recording_b);
+        let json = view.export_diff_json().unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+
+        let metadata = parsed.get("metadata").unwrap();
+        assert_eq!(metadata.get("recording_a_name").unwrap(), "prog_a");
+        assert_eq!(metadata.get("recording_b_name").unwrap(), "prog_b");
+        assert_eq!(metadata.get("recording_a_frames").unwrap(), 5);
+        assert_eq!(metadata.get("recording_b_frames").unwrap(), 3);
+    }
+
+    #[test]
+    fn test_export_diff_json_frame_diffs() {
+        let mut vars_a = HashMap::new();
+        vars_a.insert("x".to_string(), serde_json::json!(1));
+
+        let mut vars_b = HashMap::new();
+        vars_b.insert("x".to_string(), serde_json::json!(2));
+
+        let recording_a = create_recording_with_vars("a", vec![vars_a]);
+        let recording_b = create_recording_with_vars("b", vec![vars_b]);
+
+        let view = ComparisonView::new(recording_a, recording_b);
+        let json = view.export_diff_json().unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+
+        let frame_diffs = parsed.get("frame_diffs").unwrap().as_array().unwrap();
+        assert_eq!(frame_diffs.len(), 1);
+        assert!(frame_diffs[0].get("variable_diff").is_some());
+    }
+
+    #[test]
+    fn test_export_diff_json_empty_recordings() {
+        let recording_a = Recording::new("a".to_string(), vec![]);
+        let recording_b = Recording::new("b".to_string(), vec![]);
+
+        let view = ComparisonView::new(recording_a, recording_b);
+        let json = view.export_diff_json().unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+
+        let frame_diffs = parsed.get("frame_diffs").unwrap().as_array().unwrap();
+        assert!(frame_diffs.is_empty());
+    }
+
+    #[test]
+    fn test_export_diff_json_asymmetric_frames() {
+        let recording_a = create_test_recording("a", 5);
+        let recording_b = create_test_recording("b", 2);
+
+        let view = ComparisonView::new(recording_a, recording_b);
+        let json = view.export_diff_json().unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+
+        let frame_diffs = parsed.get("frame_diffs").unwrap().as_array().unwrap();
+        // Should have diffs for max(5, 2) = 5 frames
+        assert_eq!(frame_diffs.len(), 5);
+    }
+}

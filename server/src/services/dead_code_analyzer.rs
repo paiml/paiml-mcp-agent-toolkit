@@ -822,7 +822,8 @@ impl DeadCodeAnalyzer {
                     if let Some(caller) = current_function {
                         // Look for function calls in this line
                         for callee_qualified in all_functions.keys() {
-                            let callee_name = callee_qualified.split("::").last().expect("internal error");
+                            let callee_name =
+                                callee_qualified.split("::").last().expect("internal error");
                             // More specific matching: function name followed by opening parenthesis
                             // and not part of a function definition
                             if line.contains(&format!("{callee_name}("))
@@ -866,7 +867,11 @@ impl DeadCodeAnalyzer {
 
         for (qualified_name, (file_path, line)) in &all_functions {
             if !reachable.contains(qualified_name) {
-                let function_name = qualified_name.split("::").last().expect("internal error").to_string();
+                let function_name = qualified_name
+                    .split("::")
+                    .last()
+                    .expect("internal error")
+                    .to_string();
                 dead_functions.push(DeadCodeItem {
                     node_key: 0, // Not used in this implementation
                     name: function_name,

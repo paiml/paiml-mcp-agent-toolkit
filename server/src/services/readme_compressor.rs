@@ -649,7 +649,9 @@ This is the main project description that explains what this project does.
 
 ## Installation
 "#;
-        let desc = compressor.extract_project_description(content).expect("internal error");
+        let desc = compressor
+            .extract_project_description(content)
+            .expect("internal error");
         assert!(desc.contains("This is the main project description"));
 
         // Test without badges
@@ -659,7 +661,9 @@ A simple tool for doing things efficiently.
 
 ## Features
 "#;
-        let desc2 = compressor.extract_project_description(content2).expect("internal error");
+        let desc2 = compressor
+            .extract_project_description(content2)
+            .expect("internal error");
         assert!(desc2.contains("A simple tool for doing things"));
 
         // Test empty content

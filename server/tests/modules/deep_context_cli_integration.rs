@@ -137,6 +137,7 @@ impl ApiServer {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_analyze_deep_context_finds_relationships() {
     let temp_dir = TempDir::new().unwrap();
     create_test_project(&temp_dir);
@@ -154,6 +155,7 @@ fn test_analyze_deep_context_finds_relationships() {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_analyze_deep_context_with_specific_file() {
     let temp_dir = TempDir::new().unwrap();
     create_test_project(&temp_dir);
@@ -176,6 +178,7 @@ fn test_analyze_deep_context_with_specific_file() {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_analyze_deep_context_human_format() {
     let temp_dir = TempDir::new().unwrap();
     create_test_project(&temp_dir);
@@ -191,6 +194,7 @@ fn test_analyze_deep_context_human_format() {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_analyze_deep_context_empty_project() {
     let temp_dir = TempDir::new().unwrap();
 
@@ -205,6 +209,7 @@ fn test_analyze_deep_context_empty_project() {
 }
 
 #[test]
+#[ignore] // Integration test requires pmat binary
 fn test_analyze_deep_context_with_output_file() {
     let temp_dir = TempDir::new().unwrap();
     create_test_project(&temp_dir);

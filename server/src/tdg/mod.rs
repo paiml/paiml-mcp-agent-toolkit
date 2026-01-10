@@ -208,7 +208,9 @@ impl TdgScore {
     }
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(
+    Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash,
+)]
 pub enum Grade {
     APLus,
     A,
@@ -217,6 +219,7 @@ pub enum Grade {
     B,
     BMinus,
     CPlus,
+    #[default]
     C,
     CMinus,
     D,
@@ -278,10 +281,11 @@ pub struct PenaltyAttribution {
     pub issue: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ProjectScore {
     pub files: Vec<TdgScore>,
     pub average_score: f32,
+    #[serde(default)]
     pub average_grade: Grade,
     pub total_files: usize,
     pub language_distribution: HashMap<Language, usize>,

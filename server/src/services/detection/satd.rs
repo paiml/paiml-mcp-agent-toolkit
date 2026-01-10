@@ -261,7 +261,11 @@ impl SATDDetector {
                         }
                     }
                 } else if path.is_dir()
-                    && !path.file_name().expect("internal error").to_string_lossy().starts_with('.')
+                    && !path
+                        .file_name()
+                        .expect("internal error")
+                        .to_string_lossy()
+                        .starts_with('.')
                 {
                     // Recursively scan non-hidden subdirectories
                     let mut subdir_files = self.scan_directory_for_source_files(&path)?;

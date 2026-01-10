@@ -892,9 +892,11 @@ impl TDGCalculator {
         content
             .lines()
             .filter(|line| {
-                patterns
-                    .iter()
-                    .any(|p| regex::Regex::new(p).expect("internal error").is_match(line.trim()))
+                patterns.iter().any(|p| {
+                    regex::Regex::new(p)
+                        .expect("internal error")
+                        .is_match(line.trim())
+                })
             })
             .count()
     }

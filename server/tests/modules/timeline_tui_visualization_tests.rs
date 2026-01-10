@@ -2,7 +2,7 @@
 
 // Sprint 78: TUI-002 RED phase - Timeline Visualization Tests
 //
-// Tests for timeline TUI rendering with ratatui.
+// Tests for timeline TUI rendering with presentar-terminal.
 // These tests verify:
 // - Frame slider rendering
 // - Playback control widgets (play/pause)

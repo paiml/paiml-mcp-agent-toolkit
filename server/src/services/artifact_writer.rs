@@ -331,11 +331,15 @@ impl ArtifactWriter {
             type_stats.count += 1;
             type_stats.size += metadata.size;
 
-            if stats.oldest.is_none() || stats.oldest.as_ref().expect("internal error") > &metadata.generated_at {
+            if stats.oldest.is_none()
+                || stats.oldest.as_ref().expect("internal error") > &metadata.generated_at
+            {
                 stats.oldest = Some(metadata.generated_at);
             }
 
-            if stats.newest.is_none() || stats.newest.as_ref().expect("internal error") < &metadata.generated_at {
+            if stats.newest.is_none()
+                || stats.newest.as_ref().expect("internal error") < &metadata.generated_at
+            {
                 stats.newest = Some(metadata.generated_at);
             }
         }
@@ -483,7 +487,8 @@ mod tests {
     #[test]
     fn test_artifact_tree_writing() {
         let temp_dir = TempDir::new().expect("internal error");
-        let mut writer = ArtifactWriter::new(temp_dir.path().to_path_buf()).expect("internal error");
+        let mut writer =
+            ArtifactWriter::new(temp_dir.path().to_path_buf()).expect("internal error");
 
         // Create test artifact tree
         let mut dogfooding = BTreeMap::new();
@@ -537,7 +542,8 @@ mod tests {
     #[test]
     fn test_integrity_verification() {
         let temp_dir = TempDir::new().expect("internal error");
-        let mut writer = ArtifactWriter::new(temp_dir.path().to_path_buf()).expect("internal error");
+        let mut writer =
+            ArtifactWriter::new(temp_dir.path().to_path_buf()).expect("internal error");
 
         // Write a test file
         let content = "Test content";
@@ -577,7 +583,8 @@ mod tests {
     #[test]
     fn test_statistics() {
         let temp_dir = TempDir::new().expect("internal error");
-        let mut writer = ArtifactWriter::new(temp_dir.path().to_path_buf()).expect("internal error");
+        let mut writer =
+            ArtifactWriter::new(temp_dir.path().to_path_buf()).expect("internal error");
 
         // Add some test metadata
         writer.manifest.insert(

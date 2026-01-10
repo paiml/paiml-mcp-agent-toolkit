@@ -110,6 +110,11 @@ impl FileCache {
         }
     }
 
+    /// Insert a file into the cache (useful for testing)
+    pub fn insert(&mut self, path: PathBuf, content: String) {
+        self.files.insert(path, content);
+    }
+
     /// Populate cache by walking project directory once
     ///
     /// Reads:

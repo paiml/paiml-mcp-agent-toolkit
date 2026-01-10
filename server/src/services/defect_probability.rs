@@ -277,7 +277,9 @@ impl DefectProbabilityCalculator {
         let mut recommendations = Vec::new();
 
         // Find the highest contributing factor
-        let max_factor = factors.iter().max_by(|a, b| a.1.partial_cmp(&b.1).expect("internal error"));
+        let max_factor = factors
+            .iter()
+            .max_by(|a, b| a.1.partial_cmp(&b.1).expect("internal error"));
 
         if let Some((factor_name, contribution)) = max_factor {
             if *contribution > 0.2 {
@@ -414,7 +416,11 @@ impl ProjectDefectAnalysis {
     #[must_use]
     pub fn get_top_risk_files(&self, limit: usize) -> Vec<(&String, &DefectScore)> {
         let mut all_files: Vec<_> = self.file_scores.iter().collect();
-        all_files.sort_by(|a, b| b.1.probability.partial_cmp(&a.1.probability).expect("internal error"));
+        all_files.sort_by(|a, b| {
+            b.1.probability
+                .partial_cmp(&a.1.probability)
+                .expect("internal error")
+        });
         all_files.into_iter().take(limit).collect()
     }
 }

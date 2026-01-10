@@ -122,6 +122,7 @@
 //! let score = RustProjectScore::new();
 //! ```
 
+pub mod build_perf_scorer;
 pub mod code_quality_scorer;
 pub mod command_runner;
 pub mod dependency_scorer;
@@ -136,6 +137,7 @@ pub mod rust_tooling_scorer;
 pub mod scorer;
 pub mod testing_scorer;
 
+pub use build_perf_scorer::*;
 pub use code_quality_scorer::*;
 pub use dependency_scorer::*;
 pub use documentation_scorer::*;

@@ -168,7 +168,11 @@ pub fn detect_all_languages(path: &Path) -> MultiLanguageDetection {
     }
 
     // Sort by percentage (descending)
-    languages.sort_by(|a, b| b.percentage.partial_cmp(&a.percentage).expect("internal error"));
+    languages.sort_by(|a, b| {
+        b.percentage
+            .partial_cmp(&a.percentage)
+            .expect("internal error")
+    });
 
     let primary = languages
         .first()

@@ -443,7 +443,10 @@ mod tests {
                 .expect("internal error");
 
         let initial = ExampleState::default();
-        let restored = manager.recover_state(initial, None).await.expect("internal error");
+        let restored = manager
+            .recover_state(initial, None)
+            .await
+            .expect("internal error");
 
         assert_eq!(restored.events_to_replay, 0);
     }
@@ -507,7 +510,10 @@ mod tests {
 
         assert_eq!(states.len(), 4);
 
-        let merged = parallel.merge_partitions(states).await.expect("internal error");
+        let merged = parallel
+            .merge_partitions(states)
+            .await
+            .expect("internal error");
         assert_eq!(merged.last_event_id, 0);
     }
 }

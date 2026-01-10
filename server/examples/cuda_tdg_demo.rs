@@ -67,10 +67,7 @@ fn demonstrate_taxonomy() {
     println!("\n  P0 Critical Defects (cause crashes/incorrect results):");
     for defect in taxonomy.all() {
         if defect.severity == DefectSeverity::P0Critical {
-            println!(
-                "    - {}: {}",
-                defect.ticket_id, defect.description
-            );
+            println!("    - {}: {}", defect.ticket_id, defect.description);
             println!("      Detection: {}", defect.detection_method);
         }
     }
@@ -78,20 +75,14 @@ fn demonstrate_taxonomy() {
     println!("\n  P1 Performance Defects:");
     for defect in taxonomy.all() {
         if defect.severity == DefectSeverity::P1Performance {
-            println!(
-                "    - {}: {}",
-                defect.ticket_id, defect.description
-            );
+            println!("    - {}: {}", defect.ticket_id, defect.description);
         }
     }
 
     println!("\n  P2 Efficiency Defects:");
     for defect in taxonomy.all() {
         if defect.severity == DefectSeverity::P2Efficiency {
-            println!(
-                "    - {}: {}",
-                defect.ticket_id, defect.description
-            );
+            println!("    - {}: {}", defect.ticket_id, defect.description);
         }
     }
 }
@@ -143,7 +134,10 @@ fn print_analysis_result(result: &CudaSimdTdgResult) {
         result.cuda_files, result.simd_files, result.wgpu_files
     );
 
-    println!("\n  Score: {:.1}/100 (Grade: {})", result.score.total, result.score.grade);
+    println!(
+        "\n  Score: {:.1}/100 (Grade: {})",
+        result.score.total, result.score.grade
+    );
     println!(
         "  Gateway: {}",
         if result.score.gateway_passed {
@@ -304,13 +298,22 @@ fn demonstrate_custom_config() -> Result<()> {
         register_limit: 64,
     };
 
-    println!("    min_score: {} (quality gate threshold)", config.min_score);
+    println!(
+        "    min_score: {} (quality gate threshold)",
+        config.min_score
+    );
     println!(
         "    fail_on_p0: {} (fail on critical defects)",
         config.fail_on_p0
     );
-    println!("    analyze_simd: {} (include AVX/NEON)", config.analyze_simd);
-    println!("    analyze_wgpu: {} (include WGPU/WGSL)", config.analyze_wgpu);
+    println!(
+        "    analyze_simd: {} (include AVX/NEON)",
+        config.analyze_simd
+    );
+    println!(
+        "    analyze_wgpu: {} (include WGPU/WGSL)",
+        config.analyze_wgpu
+    );
     println!(
         "    shared_memory_limit: {} bytes",
         config.shared_memory_limit

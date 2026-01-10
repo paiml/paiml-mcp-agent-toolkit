@@ -145,7 +145,10 @@ mod transport_atomicity_proof {
 
         // Read header
         let mut header = [0u8; 16];
-        reader.read_exact(&mut header).await.expect("internal error");
+        reader
+            .read_exact(&mut header)
+            .await
+            .expect("internal error");
 
         assert_eq!(&header[0..4], StdioTransport::MAGIC);
         let len = u32::from_le_bytes(header[12..16].try_into().expect("internal error")) as usize;
@@ -153,7 +156,10 @@ mod transport_atomicity_proof {
 
         // Read payload
         let mut read_payload = vec![0u8; len];
-        reader.read_exact(&mut read_payload).await.expect("internal error");
+        reader
+            .read_exact(&mut read_payload)
+            .await
+            .expect("internal error");
         assert_eq!(&read_payload, payload);
     }
 }

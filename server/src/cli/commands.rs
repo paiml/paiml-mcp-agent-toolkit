@@ -965,6 +965,35 @@ pub enum Commands {
         command: ComplyCommands,
     },
 
+    /// Rust project diagnostics (20 checks across 5 categories)
+    /// Matches lltop Tab 8 diagnostics for any Rust project
+    #[command(name = "project-diag", visible_aliases = &["diag", "diagnose"])]
+    ProjectDiag {
+        /// Project path to analyze
+        #[arg(short = 'p', long, default_value = ".")]
+        path: PathBuf,
+
+        /// Output format: summary, json, markdown, andon
+        #[arg(short = 'f', long, value_enum, default_value = "summary")]
+        format: ProjectDiagOutputFormat,
+
+        /// Filter by category: cargo, deps, build, quality, advanced
+        #[arg(long)]
+        category: Option<String>,
+
+        /// Show only failures and warnings
+        #[arg(long)]
+        failures_only: bool,
+
+        /// Output file path
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+
+        /// Quiet mode (errors only)
+        #[arg(short, long)]
+        quiet: bool,
+    },
+
     /// Systematic test discovery and fixing (GH-98)
     #[command(name = "test-discovery", visible_aliases = &["test-fix", "fix-tests"])]
     TestDiscovery {
@@ -1375,6 +1404,20 @@ pub enum ComplyOutputFormat {
     Json,
     /// Markdown report format
     Markdown,
+}
+
+/// Project diagnostics output formats (lltop Tab 8)
+#[derive(Debug, Clone, Copy, Default, clap::ValueEnum, PartialEq, Eq)]
+pub enum ProjectDiagOutputFormat {
+    /// Human-readable summary with status icons
+    #[default]
+    Summary,
+    /// JSON format for CI/CD
+    Json,
+    /// Markdown report format
+    Markdown,
+    /// Andon-style visualization (Toyota Way)
+    Andon,
 }
 
 /// Output format for perfection score (master-plan-pmat-work-system.md)

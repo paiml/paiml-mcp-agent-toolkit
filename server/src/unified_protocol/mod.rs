@@ -347,7 +347,9 @@ mod tests {
     #[test]
     fn test_unified_response_creation() {
         let test_data = serde_json::json!({"message": "test"});
-        let response = UnifiedResponse::ok().with_json(&test_data).expect("internal error");
+        let response = UnifiedResponse::ok()
+            .with_json(&test_data)
+            .expect("internal error");
 
         assert_eq!(response.status, StatusCode::OK);
         assert!(response.headers.contains_key("content-type"));

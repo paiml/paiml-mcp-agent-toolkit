@@ -337,7 +337,11 @@ impl PerformanceProfiler {
     pub async fn get_top_bottlenecks(&self, limit: usize) -> Vec<Bottleneck> {
         let bottlenecks = self.bottlenecks.read().await;
         let mut sorted: Vec<_> = bottlenecks.clone();
-        sorted.sort_by(|a, b| b.impact_ms.partial_cmp(&a.impact_ms).expect("internal error"));
+        sorted.sort_by(|a, b| {
+            b.impact_ms
+                .partial_cmp(&a.impact_ms)
+                .expect("internal error")
+        });
         sorted.into_iter().take(limit).collect()
     }
 
@@ -469,7 +473,10 @@ mod tests {
             metadata: HashMap::new(),
         };
 
-        profiler.detect_bottlenecks(&profile).await.expect("internal error");
+        profiler
+            .detect_bottlenecks(&profile)
+            .await
+            .expect("internal error");
 
         let bottlenecks = profiler.get_top_bottlenecks(10).await;
         assert!(!bottlenecks.is_empty());
@@ -497,7 +504,10 @@ mod tests {
             handle.complete().await.expect("internal error");
         }
 
-        let flame_graph = profiler.generate_flame_graph().await.expect("internal error");
+        let flame_graph = profiler
+            .generate_flame_graph()
+            .await
+            .expect("internal error");
         assert_eq!(flame_graph.name, "root");
         assert_eq!(flame_graph.children.len(), 3);
     }

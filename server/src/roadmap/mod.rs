@@ -132,7 +132,10 @@ impl Task {
     #[must_use]
     pub fn seed(&self) -> u64 {
         // Extract number from PMAT-XXXX format
-        if let Some(captures) = Regex::new(r"PMAT-(\d+)").expect("internal error").captures(&self.id) {
+        if let Some(captures) = Regex::new(r"PMAT-(\d+)")
+            .expect("internal error")
+            .captures(&self.id)
+        {
             if let Some(num) = captures.get(1) {
                 return num.as_str().parse().unwrap_or(42);
             }
@@ -351,10 +354,22 @@ mod tests {
     fn test_complexity_from_str() {
         use std::str::FromStr;
 
-        assert_eq!(Complexity::from_str("low").expect("internal error"), Complexity::Low);
-        assert_eq!(Complexity::from_str("LOW").expect("internal error"), Complexity::Low);
-        assert_eq!(Complexity::from_str("medium").expect("internal error"), Complexity::Medium);
-        assert_eq!(Complexity::from_str("high").expect("internal error"), Complexity::High);
+        assert_eq!(
+            Complexity::from_str("low").expect("internal error"),
+            Complexity::Low
+        );
+        assert_eq!(
+            Complexity::from_str("LOW").expect("internal error"),
+            Complexity::Low
+        );
+        assert_eq!(
+            Complexity::from_str("medium").expect("internal error"),
+            Complexity::Medium
+        );
+        assert_eq!(
+            Complexity::from_str("high").expect("internal error"),
+            Complexity::High
+        );
         assert!(Complexity::from_str("invalid").is_err());
     }
 
@@ -370,10 +385,22 @@ mod tests {
     fn test_priority_from_str() {
         use std::str::FromStr;
 
-        assert_eq!(Priority::from_str("P0").expect("internal error"), Priority::P0);
-        assert_eq!(Priority::from_str("p0").expect("internal error"), Priority::P0);
-        assert_eq!(Priority::from_str("P1").expect("internal error"), Priority::P1);
-        assert_eq!(Priority::from_str("P2").expect("internal error"), Priority::P2);
+        assert_eq!(
+            Priority::from_str("P0").expect("internal error"),
+            Priority::P0
+        );
+        assert_eq!(
+            Priority::from_str("p0").expect("internal error"),
+            Priority::P0
+        );
+        assert_eq!(
+            Priority::from_str("P1").expect("internal error"),
+            Priority::P1
+        );
+        assert_eq!(
+            Priority::from_str("P2").expect("internal error"),
+            Priority::P2
+        );
         assert!(Priority::from_str("P3").is_err());
     }
 

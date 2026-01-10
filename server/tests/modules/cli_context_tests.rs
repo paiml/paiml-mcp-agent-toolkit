@@ -12,6 +12,7 @@ mod tests {
     use tempfile::TempDir;
 
     #[test]
+    #[ignore] // Integration test requires pmat binary
     fn test_context_skips_large_files_by_default() {
         let temp_dir = TempDir::new().unwrap();
         let project_path = temp_dir.path();
@@ -63,6 +64,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore] // Integration test requires pmat binary
     fn test_context_progress_bars() {
         let temp_dir = TempDir::new().unwrap();
         let project_path = temp_dir.path();
@@ -81,6 +83,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore] // Integration test requires pmat binary
     fn test_context_help_shows_include_large_files() {
         let mut cmd = Command::cargo_bin("pmat").unwrap();
         cmd.arg("context")

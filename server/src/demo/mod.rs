@@ -824,18 +824,791 @@ async fn run_tui_demo(repo_path: std::path::PathBuf) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    // use super::*; // Unused in simple tests
+    use super::*;
+    use std::path::PathBuf;
+
+    // ============================================================
+    // Protocol enum tests
+    // ============================================================
 
     #[test]
-    fn test_mod_basic() {
-        // Basic test
-        assert_eq!(1 + 1, 2);
+    fn test_protocol_cli_equality() {
+        assert_eq!(Protocol::Cli, Protocol::Cli);
+        assert_ne!(Protocol::Cli, Protocol::Http);
+    }
+
+    #[test]
+    fn test_protocol_http_equality() {
+        assert_eq!(Protocol::Http, Protocol::Http);
+        assert_ne!(Protocol::Http, Protocol::Mcp);
+    }
+
+    #[test]
+    fn test_protocol_mcp_equality() {
+        assert_eq!(Protocol::Mcp, Protocol::Mcp);
+        assert_ne!(Protocol::Mcp, Protocol::All);
+    }
+
+    #[test]
+    fn test_protocol_all_equality() {
+        assert_eq!(Protocol::All, Protocol::All);
+        assert_ne!(Protocol::All, Protocol::Cli);
+    }
+
+    #[test]
+    fn test_protocol_copy() {
+        let p = Protocol::Cli;
+        let p2 = p;
+        assert_eq!(p, p2);
+    }
+
+    #[test]
+    fn test_protocol_debug() {
+        let formatted = format!("{:?}", Protocol::Cli);
+        assert!(formatted.contains("Cli"));
+    }
+
+    // ============================================================
+    // protocol_to_string tests
+    // ============================================================
+
+    #[test]
+    fn test_protocol_to_string_cli() {
+        assert_eq!(protocol_to_string(&Protocol::Cli), "cli");
+    }
+
+    #[test]
+    fn test_protocol_to_string_http() {
+        assert_eq!(protocol_to_string(&Protocol::Http), "http");
+    }
+
+    #[test]
+    fn test_protocol_to_string_mcp() {
+        assert_eq!(protocol_to_string(&Protocol::Mcp), "mcp");
+    }
+
+    #[test]
+    fn test_protocol_to_string_all() {
+        assert_eq!(protocol_to_string(&Protocol::All), "all");
+    }
+
+    // ============================================================
+    // print_protocol_banner tests (output verification)
+    // ============================================================
+
+    #[test]
+    fn test_print_protocol_banner_cli() {
+        // Just verify it doesn't panic
+        print_protocol_banner(&Protocol::Cli);
+    }
+
+    #[test]
+    fn test_print_protocol_banner_http() {
+        print_protocol_banner(&Protocol::Http);
+    }
+
+    #[test]
+    fn test_print_protocol_banner_mcp() {
+        print_protocol_banner(&Protocol::Mcp);
+    }
+
+    #[test]
+    fn test_print_protocol_banner_all() {
+        print_protocol_banner(&Protocol::All);
+    }
+
+    // ============================================================
+    // build_protocol_request tests
+    // ============================================================
+
+    #[test]
+    fn test_build_protocol_request_cli() {
+        let path = PathBuf::from("/test/path");
+        let request = build_protocol_request("cli", &path, false);
+
+        assert_eq!(request["path"], "/test/path");
+        assert_eq!(request["show_api"], false);
+    }
+
+    #[test]
+    fn test_build_protocol_request_cli_with_show_api() {
+        let path = PathBuf::from("/test/path");
+        let request = build_protocol_request("cli", &path, true);
+
+        assert_eq!(request["path"], "/test/path");
+        assert_eq!(request["show_api"], true);
+    }
+
+    #[test]
+    fn test_build_protocol_request_http() {
+        let path = PathBuf::from("/test/repo");
+        let request = build_protocol_request("http", &path, false);
+
+        assert_eq!(request["method"], "GET");
+        assert_eq!(request["path"], "/demo/analyze");
+        assert_eq!(request["query"]["path"], "/test/repo");
+        assert_eq!(request["headers"]["Accept"], "application/json");
+    }
+
+    #[test]
+    fn test_build_protocol_request_mcp() {
+        let path = PathBuf::from("/test/project");
+        let request = build_protocol_request("mcp", &path, true);
+
+        assert_eq!(request["jsonrpc"], "2.0");
+        assert_eq!(request["method"], "demo.analyze");
+        assert_eq!(request["params"]["path"], "/test/project");
+        assert_eq!(request["params"]["include_trace"], true);
+        assert_eq!(request["id"], 1);
+    }
+
+    #[test]
+    fn test_build_protocol_request_unknown() {
+        let path = PathBuf::from("/test");
+        let request = build_protocol_request("unknown", &path, false);
+
+        assert!(request.as_object().unwrap().is_empty());
+    }
+
+    // ============================================================
+    // format_and_print_output tests
+    // ============================================================
+
+    #[test]
+    fn test_format_and_print_output_json() {
+        let response = serde_json::json!({"status": "ok", "count": 42});
+        let result = format_and_print_output(&response, &crate::cli::OutputFormat::Json);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_format_and_print_output_yaml() {
+        let response = serde_json::json!({"key": "value"});
+        let result = format_and_print_output(&response, &crate::cli::OutputFormat::Yaml);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_format_and_print_output_table() {
+        let response = serde_json::json!({"data": [1, 2, 3]});
+        let result = format_and_print_output(&response, &crate::cli::OutputFormat::Table);
+        assert!(result.is_ok());
+    }
+
+    // ============================================================
+    // generate_output tests
+    // ============================================================
+
+    #[test]
+    fn test_generate_output_web() {
+        let result = generate_output(AnalysisResults::Web, Protocol::Cli);
+        assert!(result.is_ok());
+
+        match result.unwrap() {
+            DemoOutput::Web => {}
+            _ => panic!("Expected DemoOutput::Web"),
+        }
+    }
+
+    #[test]
+    fn test_generate_output_single() {
+        let trace = ProtocolTrace {
+            protocol_name: "cli".to_string(),
+            response: serde_json::json!({"status": "ok"}),
+        };
+        let result = generate_output(AnalysisResults::Single(trace), Protocol::Cli);
+        assert!(result.is_ok());
+
+        match result.unwrap() {
+            DemoOutput::Single(t) => {
+                assert_eq!(t.protocol_name, "cli");
+            }
+            _ => panic!("Expected DemoOutput::Single"),
+        }
+    }
+
+    #[test]
+    fn test_generate_output_multiple() {
+        let traces = vec![
+            ProtocolTrace {
+                protocol_name: "cli".to_string(),
+                response: serde_json::json!({"protocol": "cli"}),
+            },
+            ProtocolTrace {
+                protocol_name: "http".to_string(),
+                response: serde_json::json!({"protocol": "http"}),
+            },
+        ];
+        let result = generate_output(AnalysisResults::Multiple(traces), Protocol::All);
+        assert!(result.is_ok());
+
+        match result.unwrap() {
+            DemoOutput::Multiple(t) => {
+                assert_eq!(t.len(), 2);
+                assert_eq!(t[0].protocol_name, "cli");
+                assert_eq!(t[1].protocol_name, "http");
+            }
+            _ => panic!("Expected DemoOutput::Multiple"),
+        }
+    }
+
+    // ============================================================
+    // DemoArgs struct tests
+    // ============================================================
+
+    #[test]
+    fn test_demo_args_default_construction() {
+        let args = DemoArgs {
+            path: None,
+            url: None,
+            repo: None,
+            format: crate::cli::OutputFormat::Json,
+            no_browser: false,
+            port: None,
+            web: false,
+            target_nodes: 10,
+            centrality_threshold: 0.5,
+            merge_threshold: 3,
+            protocol: Protocol::Cli,
+            show_api: false,
+            debug: false,
+            debug_output: None,
+            skip_vendor: false,
+            max_line_length: None,
+        };
+
+        assert!(args.path.is_none());
+        assert!(!args.web);
+        assert_eq!(args.protocol, Protocol::Cli);
+    }
+
+    #[test]
+    fn test_demo_args_with_path() {
+        let args = DemoArgs {
+            path: Some(PathBuf::from("/test/path")),
+            url: None,
+            repo: None,
+            format: crate::cli::OutputFormat::Table,
+            no_browser: true,
+            port: Some(8080),
+            web: true,
+            target_nodes: 20,
+            centrality_threshold: 0.75,
+            merge_threshold: 5,
+            protocol: Protocol::Http,
+            show_api: true,
+            debug: true,
+            debug_output: Some(PathBuf::from("/tmp/debug.log")),
+            skip_vendor: true,
+            max_line_length: Some(120),
+        };
+
+        assert_eq!(args.path, Some(PathBuf::from("/test/path")));
+        assert!(args.web);
+        assert!(args.no_browser);
+        assert_eq!(args.port, Some(8080));
+        assert_eq!(args.target_nodes, 20);
+        assert!((args.centrality_threshold - 0.75).abs() < f64::EPSILON);
+        assert_eq!(args.protocol, Protocol::Http);
+        assert!(args.show_api);
+        assert!(args.debug);
+        assert!(args.skip_vendor);
+        assert_eq!(args.max_line_length, Some(120));
+    }
+
+    #[test]
+    fn test_demo_args_clone() {
+        let args = DemoArgs {
+            path: Some(PathBuf::from("/test")),
+            url: Some("https://github.com/test/repo".to_string()),
+            repo: Some("test/repo".to_string()),
+            format: crate::cli::OutputFormat::Yaml,
+            no_browser: false,
+            port: None,
+            web: false,
+            target_nodes: 15,
+            centrality_threshold: 0.6,
+            merge_threshold: 4,
+            protocol: Protocol::Mcp,
+            show_api: false,
+            debug: false,
+            debug_output: None,
+            skip_vendor: false,
+            max_line_length: None,
+        };
+
+        let cloned = args.clone();
+        assert_eq!(args.path, cloned.path);
+        assert_eq!(args.url, cloned.url);
+        assert_eq!(args.repo, cloned.repo);
+        assert_eq!(args.protocol, cloned.protocol);
+    }
+
+    #[test]
+    fn test_demo_args_debug() {
+        let args = DemoArgs {
+            path: None,
+            url: None,
+            repo: None,
+            format: crate::cli::OutputFormat::Json,
+            no_browser: false,
+            port: None,
+            web: false,
+            target_nodes: 10,
+            centrality_threshold: 0.5,
+            merge_threshold: 3,
+            protocol: Protocol::All,
+            show_api: false,
+            debug: false,
+            debug_output: None,
+            skip_vendor: false,
+            max_line_length: None,
+        };
+
+        let debug_str = format!("{:?}", args);
+        assert!(debug_str.contains("DemoArgs"));
+    }
+
+    // ============================================================
+    // ProtocolTrace struct tests
+    // ============================================================
+
+    #[test]
+    fn test_protocol_trace_creation() {
+        let trace = ProtocolTrace {
+            protocol_name: "test".to_string(),
+            response: serde_json::json!({"result": "success"}),
+        };
+
+        assert_eq!(trace.protocol_name, "test");
+        assert_eq!(trace.response["result"], "success");
+    }
+
+    #[test]
+    fn test_protocol_trace_clone() {
+        let trace = ProtocolTrace {
+            protocol_name: "cli".to_string(),
+            response: serde_json::json!({"data": [1, 2, 3]}),
+        };
+
+        let cloned = trace.clone();
+        assert_eq!(trace.protocol_name, cloned.protocol_name);
+        assert_eq!(trace.response, cloned.response);
+    }
+
+    // ============================================================
+    // parse_dag_data tests
+    // ============================================================
+
+    #[test]
+    fn test_parse_dag_data_with_valid_data() {
+        let dag_data = serde_json::json!({
+            "nodes": 5,
+            "edges": 4
+        });
+
+        let result = parse_dag_data(&dag_data);
+        assert!(result.is_some());
+
+        let dag = result.unwrap();
+        assert_eq!(dag.nodes.len(), 5);
+        assert_eq!(dag.edges.len(), 4);
+    }
+
+    #[test]
+    fn test_parse_dag_data_with_zero_nodes() {
+        let dag_data = serde_json::json!({
+            "nodes": 0,
+            "edges": 0
+        });
+
+        let result = parse_dag_data(&dag_data);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_parse_dag_data_missing_nodes() {
+        let dag_data = serde_json::json!({
+            "edges": 3
+        });
+
+        let result = parse_dag_data(&dag_data);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_parse_dag_data_missing_edges() {
+        let dag_data = serde_json::json!({
+            "nodes": 3
+        });
+
+        let result = parse_dag_data(&dag_data);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_parse_dag_data_node_structure() {
+        let dag_data = serde_json::json!({
+            "nodes": 3,
+            "edges": 2
+        });
+
+        let result = parse_dag_data(&dag_data).unwrap();
+
+        // Verify node structure
+        for (id, node) in &result.nodes {
+            assert!(id.starts_with("node_"));
+            assert!(node.label.starts_with("Module "));
+            assert!(node.file_path.starts_with("module_"));
+            assert_eq!(node.line_number, 1);
+            assert_eq!(node.complexity, 1);
+        }
+    }
+
+    #[test]
+    fn test_parse_dag_data_edge_structure() {
+        let dag_data = serde_json::json!({
+            "nodes": 3,
+            "edges": 2
+        });
+
+        let result = parse_dag_data(&dag_data).unwrap();
+
+        // Verify edge structure
+        for edge in &result.edges {
+            assert!(edge.from.starts_with("node_"));
+            assert!(edge.to.starts_with("node_"));
+            assert_eq!(edge.weight, 1);
+        }
+    }
+
+    // ============================================================
+    // extract_complexity_from_result tests
+    // ============================================================
+
+    #[test]
+    fn test_extract_complexity_from_result_missing_report() {
+        let result = serde_json::json!({
+            "status": "ok"
+        });
+
+        let complexity = extract_complexity_from_result(&result);
+        assert!(complexity.is_none());
+    }
+
+    #[test]
+    fn test_extract_complexity_from_result_empty_object() {
+        let result = serde_json::json!({});
+        let complexity = extract_complexity_from_result(&result);
+        assert!(complexity.is_none());
+    }
+
+    // ============================================================
+    // extract_dag_from_result tests
+    // ============================================================
+
+    #[test]
+    fn test_extract_dag_from_result_valid() {
+        let result = serde_json::json!({
+            "nodes": 2,
+            "edges": 1
+        });
+
+        let dag = extract_dag_from_result(&result);
+        assert!(dag.is_some());
+    }
+
+    #[test]
+    fn test_extract_dag_from_result_invalid() {
+        let result = serde_json::json!({
+            "invalid": "data"
+        });
+
+        let dag = extract_dag_from_result(&result);
+        assert!(dag.is_none());
+    }
+
+    // ============================================================
+    // DemoConfig struct tests
+    // ============================================================
+
+    #[test]
+    fn test_demo_config_clone() {
+        // Create a mock StatelessTemplateServer
+        let server = std::sync::Arc::new(crate::stateless_server::StatelessTemplateServer::new().unwrap());
+
+        let config = DemoConfig {
+            repo_path: PathBuf::from("/test/repo"),
+            args: DemoArgs {
+                path: Some(PathBuf::from("/test")),
+                url: None,
+                repo: None,
+                format: crate::cli::OutputFormat::Json,
+                no_browser: false,
+                port: None,
+                web: false,
+                target_nodes: 10,
+                centrality_threshold: 0.5,
+                merge_threshold: 3,
+                protocol: Protocol::Cli,
+                show_api: false,
+                debug: false,
+                debug_output: None,
+                skip_vendor: false,
+                max_line_length: None,
+            },
+            server: server.clone(),
+        };
+
+        let cloned = config.clone();
+        assert_eq!(config.repo_path, cloned.repo_path);
+        assert_eq!(config.args.target_nodes, cloned.args.target_nodes);
+    }
+
+    // ============================================================
+    // Async function tests (using tokio::test)
+    // ============================================================
+
+    #[tokio::test]
+    async fn test_print_api_metadata() {
+        let result = print_api_metadata("cli").await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_print_api_metadata_http() {
+        let result = print_api_metadata("http").await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_print_api_metadata_mcp() {
+        let result = print_api_metadata("mcp").await;
+        assert!(result.is_ok());
+    }
+
+    // ============================================================
+    // create_analyzer tests
+    // ============================================================
+
+    #[test]
+    fn test_create_analyzer_registers_protocols() {
+        let server = std::sync::Arc::new(crate::stateless_server::StatelessTemplateServer::new().unwrap());
+
+        let config = DemoConfig {
+            repo_path: PathBuf::from("/test"),
+            args: DemoArgs {
+                path: None,
+                url: None,
+                repo: None,
+                format: crate::cli::OutputFormat::Json,
+                no_browser: false,
+                port: None,
+                web: false,
+                target_nodes: 10,
+                centrality_threshold: 0.5,
+                merge_threshold: 3,
+                protocol: Protocol::All,
+                show_api: false,
+                debug: false,
+                debug_output: None,
+                skip_vendor: false,
+                max_line_length: None,
+            },
+            server,
+        };
+
+        let result = create_analyzer(config);
+        assert!(result.is_ok());
+
+        let analyzer = result.unwrap();
+        let protocols = analyzer.engine.list_protocols();
+
+        assert!(protocols.contains(&"cli".to_string()));
+        assert!(protocols.contains(&"http".to_string()));
+        assert!(protocols.contains(&"mcp".to_string()));
+    }
+
+    // ============================================================
+    // AnalysisResults enum tests
+    // ============================================================
+
+    #[test]
+    fn test_analysis_results_web_variant() {
+        let result = AnalysisResults::Web;
+        match result {
+            AnalysisResults::Web => {}
+            _ => panic!("Expected Web variant"),
+        }
+    }
+
+    #[test]
+    fn test_analysis_results_single_variant() {
+        let trace = ProtocolTrace {
+            protocol_name: "test".to_string(),
+            response: serde_json::json!({}),
+        };
+        let result = AnalysisResults::Single(trace);
+
+        match result {
+            AnalysisResults::Single(t) => {
+                assert_eq!(t.protocol_name, "test");
+            }
+            _ => panic!("Expected Single variant"),
+        }
+    }
+
+    #[test]
+    fn test_analysis_results_multiple_variant() {
+        let traces = vec![
+            ProtocolTrace {
+                protocol_name: "a".to_string(),
+                response: serde_json::json!({}),
+            },
+            ProtocolTrace {
+                protocol_name: "b".to_string(),
+                response: serde_json::json!({}),
+            },
+        ];
+        let result = AnalysisResults::Multiple(traces);
+
+        match result {
+            AnalysisResults::Multiple(t) => {
+                assert_eq!(t.len(), 2);
+            }
+            _ => panic!("Expected Multiple variant"),
+        }
+    }
+
+    // ============================================================
+    // DemoOutput enum tests
+    // ============================================================
+
+    #[test]
+    fn test_demo_output_web_variant() {
+        let output = DemoOutput::Web;
+        match output {
+            DemoOutput::Web => {}
+            _ => panic!("Expected Web variant"),
+        }
+    }
+
+    #[test]
+    fn test_demo_output_single_variant() {
+        let trace = ProtocolTrace {
+            protocol_name: "demo".to_string(),
+            response: serde_json::json!({"key": "value"}),
+        };
+        let output = DemoOutput::Single(trace);
+
+        match output {
+            DemoOutput::Single(t) => {
+                assert_eq!(t.protocol_name, "demo");
+            }
+            _ => panic!("Expected Single variant"),
+        }
+    }
+
+    #[test]
+    fn test_demo_output_multiple_variant() {
+        let traces = vec![ProtocolTrace {
+            protocol_name: "test".to_string(),
+            response: serde_json::json!({}),
+        }];
+        let output = DemoOutput::Multiple(traces);
+
+        match output {
+            DemoOutput::Multiple(t) => {
+                assert_eq!(t.len(), 1);
+            }
+            _ => panic!("Expected Multiple variant"),
+        }
+    }
+
+    // ============================================================
+    // Edge case tests
+    // ============================================================
+
+    #[test]
+    fn test_build_protocol_request_empty_path() {
+        let path = PathBuf::from("");
+        let request = build_protocol_request("cli", &path, false);
+        assert_eq!(request["path"], "");
+    }
+
+    #[test]
+    fn test_build_protocol_request_special_characters_in_path() {
+        let path = PathBuf::from("/path/with spaces/and-dashes/and_underscores");
+        let request = build_protocol_request("http", &path, false);
+        assert_eq!(
+            request["query"]["path"],
+            "/path/with spaces/and-dashes/and_underscores"
+        );
+    }
+
+    #[test]
+    fn test_parse_dag_data_large_counts() {
+        let dag_data = serde_json::json!({
+            "nodes": 100,
+            "edges": 200
+        });
+
+        let result = parse_dag_data(&dag_data).unwrap();
+        assert_eq!(result.nodes.len(), 100);
+        assert_eq!(result.edges.len(), 200);
+    }
+
+    #[test]
+    fn test_parse_dag_data_with_one_node() {
+        let dag_data = serde_json::json!({
+            "nodes": 1,
+            "edges": 0
+        });
+
+        let result = parse_dag_data(&dag_data);
+        assert!(result.is_some());
+
+        let dag = result.unwrap();
+        assert_eq!(dag.nodes.len(), 1);
+        assert_eq!(dag.edges.len(), 0);
+    }
+
+    // ============================================================
+    // Integration-style tests
+    // ============================================================
+
+    #[test]
+    fn test_protocol_round_trip() {
+        // Test that protocol_to_string matches Protocol enum variants
+        let protocols = [Protocol::Cli, Protocol::Http, Protocol::Mcp, Protocol::All];
+
+        for p in protocols {
+            let name = protocol_to_string(&p);
+            assert!(!name.is_empty());
+
+            // Verify round-trip consistency
+            let name2 = protocol_to_string(&p);
+            assert_eq!(name, name2);
+        }
+    }
+
+    #[test]
+    fn test_protocol_request_consistency() {
+        let path = PathBuf::from("/consistent/test");
+
+        // All protocol requests should be valid JSON
+        for protocol in ["cli", "http", "mcp", "unknown"] {
+            let request = build_protocol_request(protocol, &path, true);
+            assert!(request.is_object() || request.as_object().unwrap().is_empty());
+        }
     }
 }
 
 #[cfg(test)]
 mod property_tests {
+    use super::*;
     use proptest::prelude::*;
+    use std::path::PathBuf;
 
     proptest! {
         #[test]
@@ -848,6 +1621,116 @@ mod property_tests {
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);
+        }
+
+        #[test]
+        fn test_protocol_to_string_never_empty(protocol_idx in 0u8..4u8) {
+            let protocol = match protocol_idx {
+                0 => Protocol::Cli,
+                1 => Protocol::Http,
+                2 => Protocol::Mcp,
+                _ => Protocol::All,
+            };
+
+            let result = protocol_to_string(&protocol);
+            prop_assert!(!result.is_empty());
+        }
+
+        #[test]
+        fn test_build_protocol_request_valid_json(
+            path_str in "[a-zA-Z0-9/._-]{0,100}",
+            protocol in prop_oneof!["cli", "http", "mcp", "unknown"],
+            show_api in any::<bool>()
+        ) {
+            let path = PathBuf::from(&path_str);
+            let request = build_protocol_request(&protocol, &path, show_api);
+
+            // Request should always be valid JSON object or empty object
+            prop_assert!(request.is_object());
+        }
+
+        #[test]
+        fn test_parse_dag_data_node_edge_relationship(
+            node_count in 1u64..50u64,
+            edge_count in 0u64..100u64
+        ) {
+            let dag_data = serde_json::json!({
+                "nodes": node_count,
+                "edges": edge_count
+            });
+
+            let result = parse_dag_data(&dag_data);
+            prop_assert!(result.is_some());
+
+            let dag = result.unwrap();
+            prop_assert_eq!(dag.nodes.len(), node_count as usize);
+            prop_assert_eq!(dag.edges.len(), edge_count as usize);
+        }
+
+        #[test]
+        fn test_demo_args_centrality_threshold_bounds(threshold in 0.0f64..=1.0f64) {
+            let args = DemoArgs {
+                path: None,
+                url: None,
+                repo: None,
+                format: crate::cli::OutputFormat::Json,
+                no_browser: false,
+                port: None,
+                web: false,
+                target_nodes: 10,
+                centrality_threshold: threshold,
+                merge_threshold: 3,
+                protocol: Protocol::Cli,
+                show_api: false,
+                debug: false,
+                debug_output: None,
+                skip_vendor: false,
+                max_line_length: None,
+            };
+
+            prop_assert!(args.centrality_threshold >= 0.0);
+            prop_assert!(args.centrality_threshold <= 1.0);
+        }
+
+        #[test]
+        fn test_demo_args_target_nodes_positive(target in 1usize..1000usize) {
+            let args = DemoArgs {
+                path: None,
+                url: None,
+                repo: None,
+                format: crate::cli::OutputFormat::Json,
+                no_browser: false,
+                port: None,
+                web: false,
+                target_nodes: target,
+                centrality_threshold: 0.5,
+                merge_threshold: 3,
+                protocol: Protocol::Cli,
+                show_api: false,
+                debug: false,
+                debug_output: None,
+                skip_vendor: false,
+                max_line_length: None,
+            };
+
+            prop_assert!(args.target_nodes > 0);
+            prop_assert_eq!(args.target_nodes, target);
+        }
+
+        #[test]
+        fn test_protocol_trace_response_preservation(
+            protocol_name in "[a-z]{1,10}",
+            key in "[a-z]{1,10}",
+            value in "[a-z0-9]{1,20}"
+        ) {
+            let response = serde_json::json!({ &key: &value });
+            let trace = ProtocolTrace {
+                protocol_name: protocol_name.clone(),
+                response: response.clone(),
+            };
+
+            prop_assert_eq!(trace.protocol_name, protocol_name);
+            prop_assert_eq!(&trace.response[&key], &value);
         }
     }
 }
