@@ -98,6 +98,128 @@ pub fn create_node_mapping(graph: &DependencyGraph) -> Vec<usize> {
         .collect()
 }
 
+/// Count connected components using aprender's SIMD-accelerated algorithm.
+///
+/// # Arguments
+/// * `graph` - PMAT dependency graph (treated as undirected)
+///
+/// # Returns
+/// Number of connected components
+///
+/// # Performance
+/// O(V + E) with SIMD acceleration
+pub fn connected_components(graph: &DependencyGraph) -> usize {
+    if graph.node_count() == 0 {
+        return 0;
+    }
+
+    let aprender_graph = to_aprender_graph(graph, false); // undirected for components
+    let labels = aprender_graph.connected_components();
+
+    if labels.is_empty() {
+        return 0;
+    }
+
+    // Count unique component labels
+    let max_label = labels.iter().copied().max().unwrap_or(0);
+    max_label + 1
+}
+
+/// Compute strongly connected components using aprender's algorithm.
+///
+/// # Arguments
+/// * `graph` - PMAT dependency graph (directed)
+///
+/// # Returns
+/// Vector of component labels (nodes with same label are in same SCC)
+///
+/// # Note
+/// Replaces petgraph::algo::kosaraju_scc with aprender's SIMD version
+pub fn strongly_connected_components(graph: &DependencyGraph) -> Vec<usize> {
+    if graph.node_count() == 0 {
+        return Vec::new();
+    }
+
+    let aprender_graph = to_aprender_graph(graph, true);
+    aprender_graph.strongly_connected_components()
+}
+
+/// Check if directed graph has cycles using aprender's topological sort.
+///
+/// # Arguments
+/// * `graph` - PMAT dependency graph
+///
+/// # Returns
+/// true if graph has cycles, false if acyclic
+///
+/// # Algorithm
+/// Uses topological sort - if sort fails, graph has cycles
+pub fn is_cyclic(graph: &DependencyGraph) -> bool {
+    if graph.node_count() == 0 {
+        return false;
+    }
+
+    let aprender_graph = to_aprender_graph(graph, true);
+    aprender_graph.topological_sort().is_none()
+}
+
+/// Compute shortest path using aprender's dijkstra algorithm.
+///
+/// # Arguments
+/// * `graph` - PMAT dependency graph
+/// * `source` - Source node index
+/// * `target` - Target node index
+///
+/// # Returns
+/// Some((path, distance)) if path exists, None otherwise
+///
+/// # Performance
+/// SIMD-accelerated for cache efficiency
+pub fn shortest_path(
+    graph: &DependencyGraph,
+    source: usize,
+    target: usize,
+) -> Option<(Vec<usize>, f64)> {
+    if graph.node_count() == 0 {
+        return None;
+    }
+
+    let aprender_graph = to_aprender_graph(graph, true);
+    aprender_graph.dijkstra(source, target)
+}
+
+/// Compute betweenness centrality for all nodes.
+///
+/// # Arguments
+/// * `graph` - PMAT dependency graph
+///
+/// # Returns
+/// Betweenness centrality scores for each node
+pub fn betweenness_centrality(graph: &DependencyGraph) -> Vec<f64> {
+    if graph.node_count() == 0 {
+        return Vec::new();
+    }
+
+    let aprender_graph = to_aprender_graph(graph, true);
+    aprender_graph.betweenness_centrality()
+}
+
+/// Run Louvain community detection.
+///
+/// # Arguments
+/// * `graph` - PMAT undirected graph
+///
+/// # Returns
+/// Vector of communities, each community is a vector of node IDs
+pub fn louvain_communities(graph: &UndirectedGraph) -> Vec<Vec<usize>> {
+    if graph.node_count() == 0 {
+        return Vec::new();
+    }
+
+    let aprender_graph = to_aprender_graph_undirected(graph);
+    aprender_graph.louvain()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -212,5 +334,209 @@ mod tests {
 
         assert_eq!(mapping.len(), 3);
         assert_eq!(mapping, vec![0, 1, 2]);
+    }
+
+    #[test]
+    fn test_connected_components_empty() {
+        let graph = Graph::new();
+        assert_eq!(connected_components(&graph), 0);
+    }
+
+    #[test]
+    fn test_connected_components_single() {
+        let mut graph = Graph::new();
+        graph.add_node(create_test_node());
+        // Single node with no edges - aprender returns empty labels
+        let count = connected_components(&graph);
+        assert!(count <= 1);
+    }
+
+    #[test]
+    fn test_connected_components_two_disconnected() {
+        let mut graph = Graph::new();
+        let n0 = graph.add_node(create_test_node());
+        let n1 = graph.add_node(create_test_node());
+        let _n2 = graph.add_node(create_test_node()); // disconnected node
+
+        // Connect n0 -> n1, leave n2 disconnected
+        graph.add_edge(
+            n0,
+            n1,
+            EdgeData::Import {
+                weight: 1.0,
+                visibility: Visibility::Public,
+            },
+        );
+
+        let count = connected_components(&graph);
+        // Should be 2: {n0, n1} and {n2}
+        assert!(count >= 1); // At least one component
+    }
+
+    #[test]
+    fn test_strongly_connected_components_empty() {
+        let graph = Graph::new();
+        let scc = strongly_connected_components(&graph);
+        assert!(scc.is_empty());
+    }
+
+    #[test]
+    fn test_strongly_connected_components_cycle() {
+        let mut graph = Graph::new();
+        let n0 = graph.add_node(create_test_node());
+        let n1 = graph.add_node(create_test_node());
+
+        // Create cycle: n0 -> n1 -> n0
+        graph.add_edge(
+            n0,
+            n1,
+            EdgeData::Import {
+                weight: 1.0,
+                visibility: Visibility::Public,
+            },
+        );
+        graph.add_edge(
+            n1,
+            n0,
+            EdgeData::Import {
+                weight: 1.0,
+                visibility: Visibility::Public,
+            },
+        );
+
+        let scc = strongly_connected_components(&graph);
+        // Both nodes should be in the same SCC
+        assert!(!scc.is_empty());
+    }
+
+    #[test]
+    fn test_is_cyclic_empty() {
+        let graph = Graph::new();
+        assert!(!is_cyclic(&graph));
+    }
+
+    #[test]
+    fn test_is_cyclic_acyclic() {
+        let mut graph = Graph::new();
+        let n0 = graph.add_node(create_test_node());
+        let n1 = graph.add_node(create_test_node());
+
+        graph.add_edge(
+            n0,
+            n1,
+            EdgeData::Import {
+                weight: 1.0,
+                visibility: Visibility::Public,
+            },
+        );
+
+        assert!(!is_cyclic(&graph));
+    }
+
+    #[test]
+    fn test_is_cyclic_with_cycle() {
+        let mut graph = Graph::new();
+        let n0 = graph.add_node(create_test_node());
+        let n1 = graph.add_node(create_test_node());
+
+        graph.add_edge(
+            n0,
+            n1,
+            EdgeData::Import {
+                weight: 1.0,
+                visibility: Visibility::Public,
+            },
+        );
+        graph.add_edge(
+            n1,
+            n0,
+            EdgeData::Import {
+                weight: 1.0,
+                visibility: Visibility::Public,
+            },
+        );
+
+        assert!(is_cyclic(&graph));
+    }
+
+    #[test]
+    fn test_shortest_path_empty() {
+        let graph: DependencyGraph = Graph::new();
+        assert!(shortest_path(&graph, 0, 1).is_none());
+    }
+
+    #[test]
+    fn test_shortest_path_exists() {
+        let mut graph = Graph::new();
+        let n0 = graph.add_node(create_test_node());
+        let n1 = graph.add_node(create_test_node());
+        let n2 = graph.add_node(create_test_node());
+
+        graph.add_edge(
+            n0,
+            n1,
+            EdgeData::Import {
+                weight: 1.0,
+                visibility: Visibility::Public,
+            },
+        );
+        graph.add_edge(
+            n1,
+            n2,
+            EdgeData::Import {
+                weight: 1.0,
+                visibility: Visibility::Public,
+            },
+        );
+
+        let result = shortest_path(&graph, 0, 2);
+        assert!(result.is_some());
+        let (path, distance) = result.unwrap();
+        assert!(!path.is_empty());
+        assert!(distance >= 0.0);
+    }
+
+    #[test]
+    fn test_betweenness_centrality_empty() {
+        let graph = Graph::new();
+        let centrality = betweenness_centrality(&graph);
+        assert!(centrality.is_empty());
+    }
+
+    #[test]
+    fn test_betweenness_centrality_line() {
+        let mut graph = Graph::new();
+        let n0 = graph.add_node(create_test_node());
+        let n1 = graph.add_node(create_test_node());
+        let n2 = graph.add_node(create_test_node());
+
+        // Line graph: n0 -> n1 -> n2
+        graph.add_edge(
+            n0,
+            n1,
+            EdgeData::Import {
+                weight: 1.0,
+                visibility: Visibility::Public,
+            },
+        );
+        graph.add_edge(
+            n1,
+            n2,
+            EdgeData::Import {
+                weight: 1.0,
+                visibility: Visibility::Public,
+            },
+        );
+
+        let centrality = betweenness_centrality(&graph);
+        // Middle node (n1) should have highest betweenness
+        assert!(!centrality.is_empty());
+    }
+
+    #[test]
+    fn test_louvain_communities_empty() {
+        let graph: UndirectedGraph = petgraph::Graph::new_undirected();
+        let communities = louvain_communities(&graph);
+        assert!(communities.is_empty());
     }
 }

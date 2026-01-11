@@ -128,7 +128,8 @@ url = "2.5"
 
 # Storage
 # libsql = "0.9.24"  # REMOVED: Not used directly (migration to rusqlite complete)
-lz4_flex = "0.11"
+lz4_flex = "0.11"  # Keep for backward compat, trueno-zram-core adapter available
+trueno-zram-core = { version = "0.3", optional = true }  # SIMD compression (sovereign stack)
 rusqlite = { version = "0.32", features = ["bundled"] }  # SQLite with bundled library
 sled = { version = "0.34", optional = true }  # DEPRECATED: Unmaintained, kept for backward compat (opt-in only)
 # rocksdb = { version = "0.22", default-features = false, features = ["zstd"] }
@@ -390,6 +391,10 @@ sled-backend = ["sled"]
 # High-performance compute features (Trueno)
 simd = ["trueno"]
 gpu = ["trueno", "trueno/gpu"]
+
+# Sovereign Stack compression (SIMD LZ4/ZSTD)
+# Replaces lz4_flex with trueno-zram-core for 2-4x speedup
+sovereign-compression = ["trueno-zram-core"]
 
 # Analytics features (Issue #79: Feature-gated architecture)
 # Default: SIMD-only (7.8 MB, 18s compile, ≤30 transitive deps)

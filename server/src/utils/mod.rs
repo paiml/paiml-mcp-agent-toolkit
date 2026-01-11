@@ -25,6 +25,7 @@ pub mod file_filter;
 pub mod helpers;
 pub mod path_validator;
 pub mod pattern_helpers;
+pub mod sovereign_compression;
 
 #[cfg(test)]
 mod pattern_helpers_integration_tests;
