@@ -260,6 +260,138 @@ mod tests {
 
         Ok(())
     }
+
+    // ============ AnalysisCapabilities Tests ============
+
+    #[test]
+    fn test_analysis_capabilities_default() {
+        let caps = AnalysisCapabilities::default();
+        assert!(caps.supports_batch);
+        assert!(!caps.supports_streaming);
+        assert!(caps.max_file_size.is_none());
+        assert!(caps.supported_languages.contains(&"rust".to_string()));
+    }
+
+    #[test]
+    fn test_analysis_capabilities_clone() {
+        let caps = AnalysisCapabilities {
+            supports_batch: false,
+            supports_streaming: true,
+            max_file_size: Some(1024),
+            supported_languages: vec!["python".to_string()],
+        };
+        let cloned = caps.clone();
+        assert!(!cloned.supports_batch);
+        assert!(cloned.supports_streaming);
+        assert_eq!(cloned.max_file_size, Some(1024));
+    }
+
+    #[test]
+    fn test_analysis_capabilities_debug() {
+        let caps = AnalysisCapabilities::default();
+        let debug = format!("{:?}", caps);
+        assert!(debug.contains("AnalysisCapabilities"));
+    }
+
+    // ============ ServiceRegistry Additional Tests ============
+
+    #[test]
+    fn test_service_registry_default() {
+        let registry = ServiceRegistry::default();
+        assert!(registry.list_services().is_empty());
+    }
+
+    #[test]
+    fn test_service_registry_has_not_registered() {
+        let registry = ServiceRegistry::new();
+        assert!(!registry.has::<TestService>());
+    }
+
+    #[test]
+    fn test_service_registry_get_not_registered() {
+        let registry = ServiceRegistry::new();
+        let result = registry.get::<TestService>();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_service_registry_multiple_services() -> Result<()> {
+        let registry = ServiceRegistry::new();
+        registry.register(TestService { name: "service1" })?;
+        registry.register(AnotherTestService { name: "service2" })?;
+
+        assert!(registry.has::<TestService>());
+        assert!(registry.has::<AnotherTestService>());
+        assert_eq!(registry.list_services().len(), 2);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_service_registry_clone() -> Result<()> {
+        let registry = ServiceRegistry::new();
+        registry.register(TestService { name: "test" })?;
+
+        let cloned = registry.clone();
+        assert!(cloned.has::<TestService>());
+        assert_eq!(cloned.list_services().len(), 1);
+
+        Ok(())
+    }
+
+    // ============ ServiceRegistryBuilder Additional Tests ============
+
+    #[test]
+    fn test_service_registry_builder_new() {
+        let builder = ServiceRegistryBuilder::new();
+        let registry = builder.build();
+        assert!(registry.list_services().is_empty());
+    }
+
+    #[test]
+    fn test_service_registry_builder_default() {
+        let builder = ServiceRegistryBuilder::default();
+        let registry = builder.build();
+        assert!(registry.list_services().is_empty());
+    }
+
+    #[test]
+    fn test_service_registry_builder_chain() -> Result<()> {
+        let registry = ServiceRegistryBuilder::new()
+            .with_service(TestService { name: "a" })?
+            .build();
+
+        assert_eq!(registry.list_services().len(), 1);
+        Ok(())
+    }
+
+    // ============ Service Trait Default Methods ============
+
+    struct DefaultMethodsService;
+
+    impl Service for DefaultMethodsService {
+        fn service_name(&self) -> &'static str {
+            "default_methods"
+        }
+    }
+
+    #[test]
+    fn test_service_health_check_default() {
+        let service = DefaultMethodsService;
+        assert!(service.health_check().is_ok());
+    }
+
+    #[test]
+    fn test_service_shutdown_default() {
+        let mut service = DefaultMethodsService;
+        assert!(service.shutdown().is_ok());
+    }
+
+    #[test]
+    fn test_service_initialize_default() {
+        let mut service = DefaultMethodsService;
+        assert!(service.initialize().is_ok());
+    }
 }
 
 #[cfg(test)]

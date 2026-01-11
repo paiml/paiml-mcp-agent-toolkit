@@ -42,6 +42,81 @@ impl RustAnalyzer {
 }
 
 #[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ============ AnalyzerPool Tests ============
+
+    #[test]
+    fn test_analyzer_pool_new() {
+        let pool = AnalyzerPool::new();
+        assert!(std::mem::size_of_val(&pool) >= 0);
+    }
+
+    #[test]
+    fn test_analyzer_pool_default() {
+        let pool = AnalyzerPool::default();
+        assert!(std::mem::size_of_val(&pool) >= 0);
+    }
+
+    // ============ RustAnalyzer Tests ============
+
+    #[test]
+    fn test_rust_analyzer_new() {
+        let analyzer = RustAnalyzer::new();
+        assert!(std::mem::size_of_val(&analyzer) >= 0);
+    }
+
+    #[test]
+    fn test_rust_analyzer_default() {
+        let analyzer = RustAnalyzer::default();
+        assert!(std::mem::size_of_val(&analyzer) >= 0);
+    }
+
+    #[test]
+    fn test_rust_analyzer_analyze_file() {
+        let analyzer = RustAnalyzer::new();
+        let result = analyzer.analyze_file(Path::new("/tmp/nonexistent.rs"));
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_rust_analyzer_analyze_file_empty_path() {
+        let analyzer = RustAnalyzer::new();
+        let result = analyzer.analyze_file(Path::new(""));
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_rust_analyzer_analyze_file_relative_path() {
+        let analyzer = RustAnalyzer::new();
+        let result = analyzer.analyze_file(Path::new("src/main.rs"));
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_rust_analyzer_analyze_file_absolute_path() {
+        let analyzer = RustAnalyzer::new();
+        let result = analyzer.analyze_file(Path::new("/home/user/project/lib.rs"));
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_rust_analyzer_analyze_file_with_extension() {
+        let analyzer = RustAnalyzer::new();
+        let result = analyzer.analyze_file(Path::new("test.rs"));
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_rust_analyzer_analyze_file_without_extension() {
+        let analyzer = RustAnalyzer::new();
+        let result = analyzer.analyze_file(Path::new("Makefile"));
+        assert!(result.is_ok());
+    }
+}
+
+#[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;
 

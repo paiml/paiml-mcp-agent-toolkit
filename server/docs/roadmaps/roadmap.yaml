@@ -296,7 +296,7 @@ roadmap:
   github_issue: null
   item_type: epic
   title: 'Epic: Expand trueno-rag integration across PMAT codebase'
-  status: in_progress
+  status: inprogress
   priority: high
   assigned_to: null
   created: 2026-01-11T12:00:00.000000000+00:00
@@ -311,17 +311,18 @@ roadmap:
   - All changes have ≥90% test coverage (Extreme TDD)
   phases:
   - name: RED
-    description: Write failing tests first
+    status: completed
+    estimated_effort: null
+    completion: 0
   - name: GREEN
-    description: Make tests pass with minimal implementation
+    status: completed
+    estimated_effort: null
+    completion: 0
   - name: REFACTOR
-    description: Clean up while keeping tests green
-  subtasks:
-  - TRUENO-RAG-1-BM25
-  - TRUENO-RAG-2-COSINE
-  - TRUENO-RAG-3-CHUNKER
-  - TRUENO-RAG-4-MINHASH
-  - TRUENO-RAG-5-TFIDF
+    status: completed
+    estimated_effort: null
+    completion: 0
+  subtasks: []
   estimated_effort: 1 week
   labels:
   - trueno-rag
@@ -335,18 +336,18 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'Task 1: Replace hybrid_search ripgrep+RRF with trueno-rag BM25Index'
-  status: in_progress
+  status: inprogress
   priority: high
   assigned_to: null
   created: 2026-01-11T12:00:00.000000000+00:00
   updated: 2026-01-11T12:00:00.000000000+00:00
   spec: null
   acceptance_criteria:
-  - RED: Write tests for BM25 scoring accuracy vs RRF heuristic
-  - RED: Write tests for term frequency and IDF calculation
-  - GREEN: Implement BM25Index integration in hybrid_search.rs
-  - GREEN: All tests pass
-  - REFACTOR: Remove ripgrep fallback for keyword search
+  - 'RED: Write tests for BM25 scoring accuracy vs RRF heuristic'
+  - 'RED: Write tests for term frequency and IDF calculation'
+  - 'GREEN: Implement BM25Index integration in hybrid_search.rs'
+  - 'GREEN: All tests pass'
+  - 'REFACTOR: Remove ripgrep fallback for keyword search'
   phases: []
   subtasks: []
   estimated_effort: 2 hours
@@ -359,18 +360,18 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'Task 2: Replace manual cosine similarity with trueno SIMD'
-  status: pending
+  status: planned
   priority: high
   assigned_to: null
   created: 2026-01-11T12:00:00.000000000+00:00
   updated: 2026-01-11T12:00:00.000000000+00:00
   spec: null
   acceptance_criteria:
-  - RED: Write property tests for SIMD vs scalar equivalence
-  - RED: Write benchmark tests for 4-8x speedup target
-  - GREEN: Replace TokenAnalyzer::cosine_similarity with trueno
-  - GREEN: All tests pass
-  - REFACTOR: Remove manual dot product loops
+  - 'RED: Write property tests for SIMD vs scalar equivalence'
+  - 'RED: Write benchmark tests for 4-8x speedup target'
+  - 'GREEN: Replace TokenAnalyzer::cosine_similarity with trueno'
+  - 'GREEN: All tests pass'
+  - 'REFACTOR: Remove manual dot product loops'
   phases: []
   subtasks: []
   estimated_effort: 1 hour
@@ -383,18 +384,18 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'Task 3: Add trueno-rag RecursiveChunker for code chunking'
-  status: pending
+  status: planned
   priority: medium
   assigned_to: null
   created: 2026-01-11T12:00:00.000000000+00:00
   updated: 2026-01-11T12:00:00.000000000+00:00
   spec: null
   acceptance_criteria:
-  - RED: Write tests for overlap between chunks (RAG requirement)
-  - RED: Write tests for semantic boundary preservation
-  - GREEN: Integrate RecursiveChunker alongside tree-sitter
-  - GREEN: All tests pass
-  - REFACTOR: Unify chunking strategies
+  - 'RED: Write tests for overlap between chunks (RAG requirement)'
+  - 'RED: Write tests for semantic boundary preservation'
+  - 'GREEN: Integrate RecursiveChunker alongside tree-sitter'
+  - 'GREEN: All tests pass'
+  - 'REFACTOR: Unify chunking strategies'
   phases: []
   subtasks: []
   estimated_effort: 2 hours
@@ -407,18 +408,18 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'Task 4: Replace MinHash manual SIMD with trueno-rag LSH'
-  status: pending
+  status: planned
   priority: medium
   assigned_to: null
   created: 2026-01-11T12:00:00.000000000+00:00
   updated: 2026-01-11T12:00:00.000000000+00:00
   spec: null
   acceptance_criteria:
-  - RED: Write tests for LSH index O(1) lookup vs O(n) scan
-  - RED: Write tests for Jaccard similarity accuracy
-  - GREEN: Replace jaccard_similarity_simd with LSH index
-  - GREEN: All tests pass
-  - REFACTOR: Remove u64→f32 conversion workaround
+  - 'RED: Write tests for LSH index O(1) lookup vs O(n) scan'
+  - 'RED: Write tests for Jaccard similarity accuracy'
+  - 'GREEN: Replace jaccard_similarity_simd with LSH index'
+  - 'GREEN: All tests pass'
+  - 'REFACTOR: Remove u64-to-f32 conversion workaround'
   phases: []
   subtasks: []
   estimated_effort: 2 hours
@@ -431,18 +432,18 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'Task 5: Unify local_semantic TF-IDF with trueno-rag'
-  status: pending
+  status: planned
   priority: medium
   assigned_to: null
   created: 2026-01-11T12:00:00.000000000+00:00
   updated: 2026-01-11T12:00:00.000000000+00:00
   spec: null
   acceptance_criteria:
-  - RED: Write tests for TF-IDF equivalence with aprender
-  - RED: Write tests for sparse matrix memory efficiency
-  - GREEN: Replace aprender TfidfVectorizer with trueno-rag
-  - GREEN: All tests pass
-  - REFACTOR: Remove duplicate vectorization code
+  - 'RED: Write tests for TF-IDF equivalence with aprender'
+  - 'RED: Write tests for sparse matrix memory efficiency'
+  - 'GREEN: Replace aprender TfidfVectorizer with trueno-rag'
+  - 'GREEN: All tests pass'
+  - 'REFACTOR: Remove duplicate vectorization code'
   phases: []
   subtasks: []
   estimated_effort: 2 hours
@@ -451,3 +452,130 @@ roadmap:
   - tfidf
   - vectorization
   notes: 'File: src/services/local_semantic.rs:201-242'
+- id: SOVEREIGN-STACK-MIGRATION
+  github_issue: null
+  item_type: epic
+  title: 'Epic: Migrate third-party deps to sovereign stack (batuta analysis)'
+  status: inprogress
+  priority: high
+  assigned_to: null
+  created: 2026-01-11T20:00:00.000000000+00:00
+  updated: 2026-01-11T20:00:00.000000000+00:00
+  spec: null
+  acceptance_criteria:
+  - Replace lz4_flex+flate2 with trueno-zram-core (SIMD compression)
+  - Migrate petgraph to aprender Graph (14 files)
+  - Create rayon compatibility with repartir
+  - Replace sysinfo with trueno-viz collectors
+  - All changes maintain 95%+ test coverage
+  phases:
+  - name: RED
+    status: inprogress
+    estimated_effort: null
+    completion: 0
+  - name: GREEN
+    status: planned
+    estimated_effort: null
+    completion: 0
+  - name: REFACTOR
+    status: planned
+    estimated_effort: null
+    completion: 0
+  subtasks: []
+  estimated_effort: 2 days
+  labels:
+  - sovereign-stack
+  - batuta
+  - performance
+  - extreme-tdd
+  notes: |
+    Based on batuta sovereign stack analysis.
+    Creating adapter layers to bridge API differences.
+- id: SOVEREIGN-1-COMPRESSION
+  github_issue: null
+  item_type: task
+  title: 'Task 1: Create trueno-zram-core adapter for variable-length compression'
+  status: inprogress
+  priority: high
+  assigned_to: null
+  created: 2026-01-11T20:00:00.000000000+00:00
+  updated: 2026-01-11T20:49:47.561659122+00:00
+  spec: null
+  acceptance_criteria:
+  - Adapter chunks variable-length data into PAGE_SIZE pages
+  - Compression/decompression roundtrip preserves data
+  - SIMD speedup verified (2-4x baseline)
+  phases: []
+  subtasks: []
+  estimated_effort: 2 hours
+  labels:
+  - compression
+  - simd
+  - trueno-zram-core
+  notes: 'Files: state/snapshot_store.rs, tdg/storage.rs, demo/assets.rs'
+- id: SOVEREIGN-2-GRAPH
+  github_issue: null
+  item_type: task
+  title: 'Task 2: Migrate petgraph to aprender Graph (14 files)'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-01-11T20:00:00.000000000+00:00
+  updated: 2026-01-11T20:00:00.000000000+00:00
+  spec: null
+  acceptance_criteria:
+  - Use aprender Graph CSR format
+  - Migrate dijkstra, connected_components, SCC algorithms
+  - All 14 files updated with minimal API changes
+  phases: []
+  subtasks: []
+  estimated_effort: 4 hours
+  labels:
+  - graph
+  - aprender
+  - petgraph
+  notes: graph/, cli/analysis/graph_metrics.rs, quality/complexity_enhanced.rs
+- id: SOVEREIGN-3-PARALLEL
+  github_issue: null
+  item_type: task
+  title: 'Task 3: Create rayon compatibility shim with repartir'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-01-11T20:00:00.000000000+00:00
+  updated: 2026-01-11T20:00:00.000000000+00:00
+  spec: null
+  acceptance_criteria:
+  - par_iter adapter using repartir Pool
+  - Maintain rayon API for backward compat
+  - Enable GPU offloading where beneficial
+  phases: []
+  subtasks: []
+  estimated_effort: 3 hours
+  labels:
+  - parallel
+  - repartir
+  - rayon
+  notes: 13 files using rayon
+- id: SOVEREIGN-4-SYSINFO
+  github_issue: null
+  item_type: task
+  title: 'Task 4: Replace sysinfo with trueno-viz collectors'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-01-11T20:00:00.000000000+00:00
+  updated: 2026-01-11T20:00:00.000000000+00:00
+  spec: null
+  acceptance_criteria:
+  - Create SystemInfo facade using trueno-viz collectors
+  - CPU, memory, process info via collector API
+  - GPU monitoring added as bonus
+  phases: []
+  subtasks: []
+  estimated_effort: 2 hours
+  labels:
+  - sysinfo
+  - monitoring
+  - trueno-viz
+  notes: resources/memory_limiter.rs, resources/cpu_limiter.rs

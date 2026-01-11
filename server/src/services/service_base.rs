@@ -269,6 +269,211 @@ mod tests {
         assert_eq!(metrics.average_duration_ms, 150);
         assert_eq!(metrics.success_rate(), 2.0 / 3.0);
     }
+
+    // ============ ValidationError Tests ============
+
+    #[test]
+    fn test_validation_error_missing_field() {
+        let err = ValidationError::MissingField {
+            field: "name".to_string(),
+        };
+        let msg = err.to_string();
+        assert!(msg.contains("Missing required field"));
+        assert!(msg.contains("name"));
+    }
+
+    #[test]
+    fn test_validation_error_invalid_value() {
+        let err = ValidationError::InvalidValue {
+            field: "age".to_string(),
+            reason: "must be positive".to_string(),
+        };
+        let msg = err.to_string();
+        assert!(msg.contains("Invalid value"));
+        assert!(msg.contains("age"));
+        assert!(msg.contains("must be positive"));
+    }
+
+    #[test]
+    fn test_validation_error_size_limit() {
+        let err = ValidationError::SizeLimit {
+            size: 10000,
+            limit: 1000,
+        };
+        let msg = err.to_string();
+        assert!(msg.contains("exceeds limit"));
+        assert!(msg.contains("10000"));
+        assert!(msg.contains("1000"));
+    }
+
+    #[test]
+    fn test_validation_error_invalid_format() {
+        let err = ValidationError::InvalidFormat("expected JSON".to_string());
+        let msg = err.to_string();
+        assert!(msg.contains("Invalid format"));
+        assert!(msg.contains("expected JSON"));
+    }
+
+    #[test]
+    fn test_validation_error_debug() {
+        let err = ValidationError::MissingField {
+            field: "test".to_string(),
+        };
+        let debug = format!("{:?}", err);
+        assert!(debug.contains("MissingField"));
+    }
+
+    // ============ ServiceMetrics Tests ============
+
+    #[test]
+    fn test_service_metrics_default() {
+        let metrics = ServiceMetrics::default();
+        assert_eq!(metrics.request_count, 0);
+        assert_eq!(metrics.success_count, 0);
+        assert_eq!(metrics.error_count, 0);
+        assert_eq!(metrics.total_duration_ms, 0);
+        assert_eq!(metrics.average_duration_ms, 0);
+        assert!(metrics.last_request_time.is_none());
+    }
+
+    #[test]
+    fn test_service_metrics_clone() {
+        let mut metrics = ServiceMetrics::default();
+        metrics.record_request(Duration::from_millis(50), true);
+        let cloned = metrics.clone();
+        assert_eq!(cloned.request_count, 1);
+        assert_eq!(cloned.success_count, 1);
+    }
+
+    #[test]
+    fn test_service_metrics_debug() {
+        let metrics = ServiceMetrics::default();
+        let debug = format!("{:?}", metrics);
+        assert!(debug.contains("ServiceMetrics"));
+    }
+
+    #[test]
+    fn test_service_metrics_serialization() {
+        let mut metrics = ServiceMetrics::default();
+        metrics.record_request(Duration::from_millis(100), true);
+        let json = serde_json::to_string(&metrics).unwrap();
+        let deserialized: ServiceMetrics = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.request_count, 1);
+        assert_eq!(deserialized.success_count, 1);
+    }
+
+    #[test]
+    fn test_service_metrics_record_success() {
+        let mut metrics = ServiceMetrics::default();
+        metrics.record_request(Duration::from_millis(100), true);
+        assert_eq!(metrics.request_count, 1);
+        assert_eq!(metrics.success_count, 1);
+        assert_eq!(metrics.error_count, 0);
+        assert!(metrics.last_request_time.is_some());
+    }
+
+    #[test]
+    fn test_service_metrics_record_failure() {
+        let mut metrics = ServiceMetrics::default();
+        metrics.record_request(Duration::from_millis(100), false);
+        assert_eq!(metrics.request_count, 1);
+        assert_eq!(metrics.success_count, 0);
+        assert_eq!(metrics.error_count, 1);
+    }
+
+    #[test]
+    fn test_service_metrics_success_rate_empty() {
+        let metrics = ServiceMetrics::default();
+        assert_eq!(metrics.success_rate(), 0.0);
+    }
+
+    #[test]
+    fn test_service_metrics_success_rate_all_success() {
+        let mut metrics = ServiceMetrics::default();
+        metrics.record_request(Duration::from_millis(10), true);
+        metrics.record_request(Duration::from_millis(10), true);
+        assert_eq!(metrics.success_rate(), 1.0);
+    }
+
+    #[test]
+    fn test_service_metrics_success_rate_all_failure() {
+        let mut metrics = ServiceMetrics::default();
+        metrics.record_request(Duration::from_millis(10), false);
+        metrics.record_request(Duration::from_millis(10), false);
+        assert_eq!(metrics.success_rate(), 0.0);
+    }
+
+    #[test]
+    fn test_service_metrics_average_duration() {
+        let mut metrics = ServiceMetrics::default();
+        metrics.record_request(Duration::from_millis(100), true);
+        metrics.record_request(Duration::from_millis(200), true);
+        // Average should be 150
+        assert_eq!(metrics.average_duration_ms, 150);
+    }
+
+    // ============ ServiceRegistry Tests ============
+
+    #[test]
+    fn test_service_registry_new() {
+        let registry = ServiceRegistry::new();
+        assert!(registry.list_services().is_empty());
+    }
+
+    #[test]
+    fn test_service_registry_default() {
+        let registry = ServiceRegistry::default();
+        assert!(registry.list_services().is_empty());
+    }
+
+    #[test]
+    fn test_service_registry_get_not_found() {
+        let registry = ServiceRegistry::new();
+        let service = registry.get::<TestService>();
+        assert!(service.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_service_registry_list_services() {
+        let registry = ServiceRegistry::new();
+        let service = TestService;
+        registry.register(service);
+
+        let list = registry.list_services();
+        assert!(!list.is_empty());
+    }
+
+    // ============ Service Trait Default Tests ============
+
+    #[tokio::test]
+    async fn test_service_validate_input_default() {
+        let service = TestService;
+        let input = TestInput { value: 42 };
+        let result = service.validate_input(&input);
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_service_metrics_from_trait() {
+        let service = TestService;
+        let metrics = service.metrics();
+        assert_eq!(metrics.request_count, 0);
+    }
+
+    #[tokio::test]
+    async fn test_service_name() {
+        let service = TestService;
+        let name = service.name();
+        assert!(!name.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_service_process() {
+        let service = TestService;
+        let input = TestInput { value: 21 };
+        let output = service.process(input).await.unwrap();
+        assert_eq!(output.result, 42);
+    }
 }
 
 #[cfg(test)]

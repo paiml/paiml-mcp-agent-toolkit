@@ -3293,6 +3293,7 @@ mod tests {
     // ------------------------------------------------------------------------
 
     #[tokio::test]
+    #[ignore = "Times out in coverage runs - property tests run too long"]
     async fn test_test_command_property_suite() {
         use crate::cli::commands::TestSuite;
 

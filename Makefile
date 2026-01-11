@@ -412,47 +412,50 @@ test-doc:
 	@cargo test --doc --manifest-path server/Cargo.toml
 	@echo "✅ Doctests completed!"
 
-# Coverage - bashrs-style FAST coverage (nextest + exclusions, target: <3 min)
-# Uses cargo-nextest for maximum parallelism on 48-core Threadripper
+# Coverage - ruchy-style FAST coverage (cargo test + exclusions, target: <5 min)
+# Uses 'cargo test' (1 profraw/binary) NOT 'nextest' (1 profraw/test)
+# This reduces 10K profraw files to ~5 files = FAST merge (ruchy approach)
 # COVERAGE_EXCLUDE removes integration-only files from coverage calculation
 # CRITICAL: Use --lib to ONLY build library tests (not bins/examples/integration)
 # NOTE: mold linker breaks coverage - temporarily disable global cargo config
-coverage: ## Generate HTML coverage report (fast: <3 min, target 95%)
-	@echo "📊 Running FAST coverage (--lib only, target: <3 min)..."
+coverage: ## Generate HTML coverage report (fast: <5 min, target 95%)
+	@echo "📊 Running FAST coverage (--lib only, target: <5 min)..."
+	@echo "   - Uses 'cargo test' (1 profraw/binary) NOT 'nextest' (1 profraw/test)"
+	@echo "   - Skips slow property/stress/fuzz tests for speed"
 	@which cargo-llvm-cov > /dev/null 2>&1 || cargo install cargo-llvm-cov --locked
-	@which cargo-nextest > /dev/null 2>&1 || cargo install cargo-nextest --locked
-	@mkdir -p target/coverage
+	@mkdir -p target/coverage/html
 	@echo "⚙️  Temporarily disabling global cargo config (mold breaks coverage)..."
 	@test -f ~/.cargo/config.toml && mv ~/.cargo/config.toml ~/.cargo/config.toml.cov-backup || true
-	@echo "🧪 Running library-only coverage with nextest ($(shell nproc) threads)..."
-	@env PROPTEST_CASES=5 QUICKCHECK_TESTS=5 \
-		cargo llvm-cov nextest \
-		--config-file server/.config/nextest.toml \
-		--profile coverage \
-		--no-tests=warn \
+	@echo "🧪 Running library-only coverage with cargo test ($(shell nproc) threads)..."
+	@env RUSTC_WRAPPER= PROPTEST_CASES=2 QUICKCHECK_TESTS=2 \
+		cargo llvm-cov test \
 		--lib \
-		--html --output-dir target/coverage/html \
+		--manifest-path server/Cargo.toml \
+		--no-report \
 		$(COVERAGE_EXCLUDE) \
-		-E 'not test(/stress|fuzz|property.*comprehensive|benchmark|slow/)' || \
+		-- --test-threads=$$(nproc) \
+		--skip property_tests --skip stress --skip fuzz --skip benchmark 2>&1 | tail -50 || \
 		(test -f ~/.cargo/config.toml.cov-backup && mv ~/.cargo/config.toml.cov-backup ~/.cargo/config.toml; false)
 	@test -f ~/.cargo/config.toml.cov-backup && mv ~/.cargo/config.toml.cov-backup ~/.cargo/config.toml || true
-	@cargo llvm-cov report --lcov --output-path target/coverage/lcov.info $(COVERAGE_EXCLUDE)
+	@echo "📊 Generating reports..."
+	@cargo llvm-cov report --manifest-path server/Cargo.toml --html --output-dir target/coverage/html $(COVERAGE_EXCLUDE)
+	@cargo llvm-cov report --manifest-path server/Cargo.toml --lcov --output-path target/coverage/lcov.info $(COVERAGE_EXCLUDE)
 	@echo ""
-	@cargo llvm-cov report --summary-only $(COVERAGE_EXCLUDE)
+	@cargo llvm-cov report --manifest-path server/Cargo.toml --summary-only $(COVERAGE_EXCLUDE)
 	@echo ""
 	@echo "📁 HTML report: target/coverage/html/index.html"
 	@echo "📁 LCOV report: target/coverage/lcov.info"
 
 coverage-ci: ## Generate LCOV report for CI (fast mode, --lib only)
 	@echo "📊 Running CI coverage (--lib only)..."
-	@env PROPTEST_CASES=5 QUICKCHECK_TESTS=5 cargo llvm-cov nextest \
-		--config-file server/.config/nextest.toml \
-		--profile coverage \
-		--no-tests=warn \
+	@echo "   - Uses 'cargo test' (1 profraw/binary) for fast merge"
+	@env RUSTC_WRAPPER= PROPTEST_CASES=2 QUICKCHECK_TESTS=2 \
+		cargo llvm-cov test \
 		--lib \
+		--manifest-path server/Cargo.toml \
 		--lcov --output-path lcov.info \
 		$(COVERAGE_EXCLUDE) \
-		-E 'not test(/stress|fuzz|property.*comprehensive|benchmark|slow/)'
+		-- --test-threads=$$(nproc) 2>&1 | tail -20
 	@echo "✓ Coverage report: lcov.info"
 
 coverage-summary: ## Show coverage summary

@@ -96,3 +96,101 @@ impl PageRankComputer {
         self.compute(&graph)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_pagerank_computer_default() {
+        let computer = PageRankComputer::default();
+        assert_eq!(computer.damping, 0.85);
+        assert_eq!(computer.tolerance, 1e-6);
+        assert_eq!(computer.max_iterations, 100);
+    }
+
+    #[test]
+    fn test_pagerank_computer_new() {
+        let computer = PageRankComputer::new();
+        assert_eq!(computer.damping, 0.85);
+    }
+
+    #[test]
+    fn test_pagerank_computer_with_damping() {
+        let computer = PageRankComputer::new().with_damping(0.9);
+        assert_eq!(computer.damping, 0.9);
+    }
+
+    #[test]
+    fn test_compute_empty_graph() {
+        let computer = PageRankComputer::new();
+        let graph = DependencyGraph::new();
+        let scores = computer.compute(&graph);
+        assert!(scores.is_empty());
+    }
+
+    #[test]
+    fn test_compute_single_node() {
+        let computer = PageRankComputer::new();
+        let mut graph = DependencyGraph::new();
+        graph.add_node(NodeData {
+            path: std::path::PathBuf::from("test.rs"),
+            module: "test".to_string(),
+            symbols: vec![],
+            loc: 100,
+            complexity: 5.0,
+            ast_hash: 12345,
+        });
+        let scores = computer.compute(&graph);
+        // Single node with no edges returns empty from aprender
+        // This is correct behavior - no edges means no PageRank
+        assert!(scores.is_empty() || scores.len() == 1);
+    }
+
+    #[test]
+    fn test_compute_two_nodes_with_edge() {
+        let computer = PageRankComputer::new();
+        let mut graph = DependencyGraph::new();
+        let n1 = graph.add_node(NodeData {
+            path: std::path::PathBuf::from("a.rs"),
+            module: "a".to_string(),
+            symbols: vec![],
+            loc: 50,
+            complexity: 2.0,
+            ast_hash: 1,
+        });
+        let n2 = graph.add_node(NodeData {
+            path: std::path::PathBuf::from("b.rs"),
+            module: "b".to_string(),
+            symbols: vec![],
+            loc: 60,
+            complexity: 3.0,
+            ast_hash: 2,
+        });
+        graph.add_edge(n1, n2, EdgeData::Import {
+            weight: 1.0,
+            visibility: Visibility::Public,
+        });
+
+        let scores = computer.compute(&graph);
+        // With edges, should have scores for nodes in connected component
+        assert!(!scores.is_empty());
+    }
+
+    #[test]
+    fn test_compute_custom_damping() {
+        let computer = PageRankComputer::new().with_damping(0.5);
+        let mut graph = DependencyGraph::new();
+        graph.add_node(NodeData {
+            path: std::path::PathBuf::from("x.rs"),
+            module: "x".to_string(),
+            symbols: vec![],
+            loc: 10,
+            complexity: 1.0,
+            ast_hash: 99,
+        });
+        let scores = computer.compute(&graph);
+        // Single node with no edges - may be empty from aprender
+        assert!(scores.is_empty() || scores.len() == 1);
+    }
+}

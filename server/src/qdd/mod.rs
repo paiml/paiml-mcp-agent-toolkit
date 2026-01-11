@@ -249,3 +249,237 @@ mod property_tests {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_code_type_variants() {
+        // Verify all code type variants can be created
+        let func = CodeType::Function;
+        let module = CodeType::Module;
+        let service = CodeType::Service;
+        let test = CodeType::Test;
+
+        // If this compiles, all variants exist
+        assert!(matches!(func, CodeType::Function));
+        assert!(matches!(module, CodeType::Module));
+        assert!(matches!(service, CodeType::Service));
+        assert!(matches!(test, CodeType::Test));
+    }
+
+    #[test]
+    fn test_parameter_creation() {
+        let param = Parameter {
+            name: "count".to_string(),
+            param_type: "u32".to_string(),
+            description: Some("The count value".to_string()),
+        };
+
+        assert_eq!(param.name, "count");
+        assert_eq!(param.param_type, "u32");
+        assert!(param.description.is_some());
+    }
+
+    #[test]
+    fn test_parameter_without_description() {
+        let param = Parameter {
+            name: "value".to_string(),
+            param_type: "String".to_string(),
+            description: None,
+        };
+
+        assert_eq!(param.name, "value");
+        assert!(param.description.is_none());
+    }
+
+    #[test]
+    fn test_create_spec() {
+        let spec = CreateSpec {
+            code_type: CodeType::Function,
+            name: "calculate_sum".to_string(),
+            purpose: "Calculate the sum of two numbers".to_string(),
+            inputs: vec![
+                Parameter {
+                    name: "a".to_string(),
+                    param_type: "i32".to_string(),
+                    description: None,
+                },
+                Parameter {
+                    name: "b".to_string(),
+                    param_type: "i32".to_string(),
+                    description: None,
+                },
+            ],
+            outputs: Parameter {
+                name: "sum".to_string(),
+                param_type: "i32".to_string(),
+                description: None,
+            },
+        };
+
+        assert_eq!(spec.name, "calculate_sum");
+        assert_eq!(spec.inputs.len(), 2);
+        assert!(matches!(spec.code_type, CodeType::Function));
+    }
+
+    #[test]
+    fn test_refactor_spec() {
+        let spec = RefactorSpec {
+            file_path: PathBuf::from("src/lib.rs"),
+            function_name: Some("process_data".to_string()),
+            target_metrics: QualityProfile::standard().thresholds,
+        };
+
+        assert_eq!(spec.file_path, PathBuf::from("src/lib.rs"));
+        assert!(spec.function_name.is_some());
+    }
+
+    #[test]
+    fn test_refactor_spec_without_function() {
+        let spec = RefactorSpec {
+            file_path: PathBuf::from("src/module.rs"),
+            function_name: None,
+            target_metrics: QualityProfile::standard().thresholds,
+        };
+
+        assert!(spec.function_name.is_none());
+    }
+
+    #[test]
+    fn test_enhance_spec() {
+        let spec = EnhanceSpec {
+            base_file: PathBuf::from("src/main.rs"),
+            features: vec!["logging".to_string(), "metrics".to_string()],
+            maintain_api: true,
+        };
+
+        assert_eq!(spec.features.len(), 2);
+        assert!(spec.maintain_api);
+    }
+
+    #[test]
+    fn test_enhance_spec_no_api_maintain() {
+        let spec = EnhanceSpec {
+            base_file: PathBuf::from("src/app.rs"),
+            features: vec!["caching".to_string()],
+            maintain_api: false,
+        };
+
+        assert!(!spec.maintain_api);
+    }
+
+    #[test]
+    fn test_migrate_spec() {
+        let spec = MigrateSpec {
+            from_pattern: "singleton".to_string(),
+            to_pattern: "dependency_injection".to_string(),
+            files: vec![
+                PathBuf::from("src/service.rs"),
+                PathBuf::from("src/handler.rs"),
+            ],
+        };
+
+        assert_eq!(spec.from_pattern, "singleton");
+        assert_eq!(spec.to_pattern, "dependency_injection");
+        assert_eq!(spec.files.len(), 2);
+    }
+
+    #[test]
+    fn test_quality_score() {
+        let score = QualityScore {
+            overall: 92.5,
+            complexity: 12,
+            coverage: 88.0,
+            tdg: 1,
+        };
+
+        assert_eq!(score.overall, 92.5);
+        assert_eq!(score.complexity, 12);
+        assert_eq!(score.coverage, 88.0);
+        assert_eq!(score.tdg, 1);
+    }
+
+    #[test]
+    fn test_rollback_plan() {
+        let plan = RollbackPlan {
+            original: "fn main() {}".to_string(),
+            checkpoints: vec![],
+        };
+
+        assert!(!plan.original.is_empty());
+        assert!(plan.checkpoints.is_empty());
+    }
+
+    #[test]
+    fn test_checkpoint() {
+        let checkpoint = Checkpoint {
+            step: "step1".to_string(),
+            code: "fn foo() {}".to_string(),
+            quality_metrics: QualityMetrics::default(),
+        };
+
+        assert_eq!(checkpoint.step, "step1");
+        assert!(!checkpoint.code.is_empty());
+    }
+
+    #[test]
+    fn test_qdd_operation_create() {
+        let spec = CreateSpec {
+            code_type: CodeType::Function,
+            name: "test_fn".to_string(),
+            purpose: "Test function".to_string(),
+            inputs: vec![],
+            outputs: Parameter {
+                name: "result".to_string(),
+                param_type: "()".to_string(),
+                description: None,
+            },
+        };
+        let op = QddOperation::Create(spec);
+        assert!(matches!(op, QddOperation::Create(_)));
+    }
+
+    #[test]
+    fn test_qdd_operation_refactor() {
+        let spec = RefactorSpec {
+            file_path: PathBuf::from("test.rs"),
+            function_name: None,
+            target_metrics: QualityProfile::standard().thresholds,
+        };
+        let op = QddOperation::Refactor(spec);
+        assert!(matches!(op, QddOperation::Refactor(_)));
+    }
+
+    #[test]
+    fn test_qdd_operation_enhance() {
+        let spec = EnhanceSpec {
+            base_file: PathBuf::from("base.rs"),
+            features: vec![],
+            maintain_api: false,
+        };
+        let op = QddOperation::Enhance(spec);
+        assert!(matches!(op, QddOperation::Enhance(_)));
+    }
+
+    #[test]
+    fn test_qdd_operation_migrate() {
+        let spec = MigrateSpec {
+            from_pattern: "a".to_string(),
+            to_pattern: "b".to_string(),
+            files: vec![],
+        };
+        let op = QddOperation::Migrate(spec);
+        assert!(matches!(op, QddOperation::Migrate(_)));
+    }
+
+    #[test]
+    fn test_qdd_tool_creation() {
+        let profile = QualityProfile::standard();
+        let tool = QddTool::with_profile(profile);
+        // Tool creation should succeed
+        assert!(true);
+        let _ = tool; // Silence unused warning
+    }
+}

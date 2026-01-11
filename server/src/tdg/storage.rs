@@ -596,7 +596,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore = "bincode deserialization issue with compressed storage - needs investigation"]
     async fn test_in_memory_storage() {
         let storage = TieredStore::in_memory();
         let record = create_test_record();
@@ -617,7 +616,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore = "bincode deserialization issue with compressed storage - needs investigation"]
     async fn test_store_and_retrieve() {
         let storage = TieredStore::in_memory();
         let record = create_test_record();
@@ -676,7 +674,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore = "bincode deserialization issue with compressed storage - needs investigation"]
     async fn test_backend_migration() {
         use crate::tdg::storage_backend::StorageBackendType;
 
@@ -711,6 +708,194 @@ mod tests {
             .await
             .unwrap();
         assert!(retrieved.is_some());
+    }
+
+    #[test]
+    fn test_storage_statistics_format_diagnostic() {
+        let stats = StorageStatistics {
+            hot_entries: 10,
+            warm_entries: 50,
+            cold_entries: 100,
+            total_entries: 160,
+            hot_memory_kb: 5,
+            compression_ratio: 0.25,
+            warm_backend: "sled".to_string(),
+            cold_backend: "sled".to_string(),
+            backend_stats: HashMap::new(),
+        };
+
+        let output = stats.format_diagnostic();
+        assert!(output.contains("Hot (memory): 10 entries"));
+        assert!(output.contains("Warm (sled backend): 50 entries"));
+        assert!(output.contains("Cold (sled backend): 100 entries"));
+        assert!(output.contains("Total: 160 entries"));
+        assert!(output.contains("25.0%"));
+    }
+
+    #[test]
+    fn test_tiered_storage_factory_in_memory() {
+        let storage = TieredStorageFactory::create_in_memory();
+        let stats = storage.get_statistics();
+        assert_eq!(stats.hot_entries, 0);
+    }
+
+    #[tokio::test]
+    async fn test_get_by_path() {
+        let storage = TieredStore::in_memory();
+        let record = create_test_record();
+        let target_path = record.identity.path.clone();
+
+        // Store record
+        storage.store(record.clone()).await.unwrap();
+
+        // Query by path
+        let results = storage.get_by_path(&target_path).await.unwrap();
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].identity.path, target_path);
+    }
+
+    #[tokio::test]
+    async fn test_retrieve_nonexistent_record() {
+        let storage = TieredStore::in_memory();
+        let fake_hash = blake3::hash(b"nonexistent");
+
+        // Should return None, not error
+        let result = storage.retrieve_full(&fake_hash).await.unwrap();
+        assert!(result.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_get_hot_nonexistent() {
+        let storage = TieredStore::in_memory();
+        let fake_hash = blake3::hash(b"nonexistent");
+
+        // Should return None
+        let result = storage.get_hot(&fake_hash);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_hot_cache_entry_from_record() {
+        let record = create_test_record();
+        let entry = HotCacheEntry::from_record(&record);
+
+        assert_eq!(entry.total_score, record.score.total);
+        assert_eq!(entry.grade, record.score.grade as u8);
+        assert!(entry.timestamp > 0);
+    }
+
+    #[test]
+    fn test_component_scores_default() {
+        let scores = ComponentScores::default();
+        assert!(scores.complexity_breakdown.is_empty());
+        assert!(scores.duplication_sources.is_empty());
+        assert!(scores.coupling_dependencies.is_empty());
+        assert!(scores.doc_missing_items.is_empty());
+        assert!(scores.consistency_violations.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_get_all_with_git_context_empty() {
+        let storage = TieredStore::in_memory();
+        let record = create_test_record(); // has git_context: None
+
+        // Store record without git context
+        storage.store(record).await.unwrap();
+
+        // Should not return records without git_context
+        let results = storage.get_all_with_git_context().await.unwrap();
+        assert!(results.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_get_by_commit_no_match() {
+        let storage = TieredStore::in_memory();
+        let record = create_test_record();
+
+        storage.store(record).await.unwrap();
+
+        // Query with non-existent commit
+        let results = storage.get_by_commit("abc1234").await.unwrap();
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn test_file_identity_clone() {
+        let content = b"test content";
+        let identity = FileIdentity {
+            path: PathBuf::from("test.rs"),
+            content_hash: blake3::hash(content),
+            size_bytes: content.len() as u64,
+            modified_time: SystemTime::now(),
+        };
+
+        let cloned = identity.clone();
+        assert_eq!(cloned.path, identity.path);
+        assert_eq!(cloned.content_hash, identity.content_hash);
+    }
+
+    #[test]
+    fn test_semantic_signature_clone() {
+        let sig = SemanticSignature {
+            ast_structure_hash: 12345,
+            identifier_pattern: "foo,bar".to_string(),
+            control_flow_pattern: "loop".to_string(),
+            import_dependencies: vec!["std".to_string()],
+        };
+
+        let cloned = sig.clone();
+        assert_eq!(cloned.ast_structure_hash, sig.ast_structure_hash);
+        assert_eq!(cloned.identifier_pattern, sig.identifier_pattern);
+    }
+
+    #[test]
+    fn test_analysis_metadata_clone() {
+        let meta = AnalysisMetadata {
+            analyzer_version: "1.0.0".to_string(),
+            analysis_duration_ms: 100,
+            language_confidence: 0.95,
+            analysis_timestamp: SystemTime::now(),
+            cache_hit: true,
+        };
+
+        let cloned = meta.clone();
+        assert_eq!(cloned.analyzer_version, meta.analyzer_version);
+        assert_eq!(cloned.cache_hit, meta.cache_hit);
+    }
+
+    #[tokio::test]
+    async fn test_flush() {
+        let storage = TieredStore::in_memory();
+        let record = create_test_record();
+
+        storage.store(record).await.unwrap();
+
+        // Flush should not error
+        let result = storage.flush();
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_hot_cache_cleanup_no_old_entries() {
+        let storage = TieredStore::in_memory();
+
+        // Add a fresh entry
+        let hash = blake3::hash(b"fresh content");
+        let entry = HotCacheEntry {
+            content_hash: *hash.as_bytes(),
+            grade: Grade::A as u8,
+            total_score: 90.0,
+            timestamp: SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs() as i64,
+        };
+        storage.hot.insert(hash, entry);
+
+        // Cleanup with 1 hour threshold should not remove fresh entry
+        let removed = storage.cleanup_hot_cache(3600);
+        assert_eq!(removed, 0);
+        assert_eq!(storage.hot.len(), 1);
     }
 }
 

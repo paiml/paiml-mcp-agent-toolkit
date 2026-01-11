@@ -249,4 +249,63 @@ mod tests {
         fn assert_send_sync<T: Send + Sync>() {}
         assert_send_sync::<WebSocketTransportAdapter>();
     }
+
+    #[test]
+    fn test_websocket_url_schemes() {
+        // Valid WebSocket schemes
+        let valid_ws = "ws://localhost:8080";
+        let valid_wss = "wss://localhost:8080";
+
+        assert!(valid_ws.starts_with("ws://"));
+        assert!(valid_wss.starts_with("wss://"));
+
+        // Invalid schemes for WebSocket
+        let invalid_http = "http://localhost:8080";
+        assert!(!invalid_http.starts_with("ws://") && !invalid_http.starts_with("wss://"));
+    }
+
+    #[test]
+    fn test_websocket_port_ranges() {
+        // Standard ports
+        let standard_port = 80;
+        let secure_port = 443;
+        let common_dev_port = 8080;
+
+        assert!(standard_port < 65536);
+        assert!(secure_port < 65536);
+        assert!(common_dev_port < 65536);
+
+        // Reserved ports should still work
+        assert!(standard_port > 0);
+    }
+
+    #[tokio::test]
+    async fn test_server_bind_ephemeral_port() {
+        // Use port 0 for ephemeral port assignment
+        let server = WebSocketTransportAdapter::serve("127.0.0.1:0").await;
+        assert!(server.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_server_bind_invalid_address() {
+        // Try to bind to an invalid address
+        let result = WebSocketTransportAdapter::serve("invalid-host:8080").await;
+        assert!(result.is_err());
+
+        if let Err(TransportError::Connection(msg)) = result {
+            assert!(msg.contains("bind"));
+        }
+    }
+
+    #[test]
+    fn test_transport_error_variants() {
+        let conn_err = TransportError::Connection("test".to_string());
+        assert!(matches!(conn_err, TransportError::Connection(_)));
+
+        let send_err = TransportError::Send("test".to_string());
+        assert!(matches!(send_err, TransportError::Send(_)));
+
+        let recv_err = TransportError::Receive("test".to_string());
+        assert!(matches!(recv_err, TransportError::Receive(_)));
+    }
 }

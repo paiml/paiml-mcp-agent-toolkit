@@ -117,3 +117,150 @@ impl LouvainDetector {
         (community_internal_weight - expected_internal) / total_weight
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_node_data() -> NodeData {
+        NodeData {
+            path: std::path::PathBuf::from("test.rs"),
+            module: "test".to_string(),
+            symbols: vec![],
+            loc: 10,
+            complexity: 1.0,
+            ast_hash: 1,
+        }
+    }
+
+    #[test]
+    fn test_louvain_detector_default() {
+        let detector = LouvainDetector::default();
+        assert_eq!(detector.resolution, 1.0);
+        assert_eq!(detector.max_iterations, 100);
+    }
+
+    #[test]
+    fn test_louvain_detector_new() {
+        let detector = LouvainDetector::new();
+        assert_eq!(detector.resolution, 1.0);
+    }
+
+    #[test]
+    fn test_louvain_detector_with_resolution() {
+        let detector = LouvainDetector::new().with_resolution(0.5);
+        assert_eq!(detector.resolution, 0.5);
+    }
+
+    #[test]
+    fn test_detect_communities_empty_graph() {
+        let mut detector = LouvainDetector::new();
+        let graph = UndirectedGraph::default();
+        let communities = detector.detect_communities(&graph);
+        assert!(communities.is_empty());
+    }
+
+    #[test]
+    fn test_detect_communities_single_node() {
+        let mut detector = LouvainDetector::new();
+        let mut graph = UndirectedGraph::default();
+        graph.add_node(make_node_data());
+        let communities = detector.detect_communities(&graph);
+        assert_eq!(communities.len(), 1);
+    }
+
+    #[test]
+    fn test_detect_communities_two_disconnected_nodes() {
+        let mut detector = LouvainDetector::new();
+        let mut graph = UndirectedGraph::default();
+        graph.add_node(make_node_data());
+        graph.add_node(make_node_data());
+        let communities = detector.detect_communities(&graph);
+        assert_eq!(communities.len(), 2);
+    }
+
+    #[test]
+    fn test_detect_communities_two_connected_nodes() {
+        let mut detector = LouvainDetector::new();
+        let mut graph = UndirectedGraph::default();
+        let n1 = graph.add_node(make_node_data());
+        let n2 = graph.add_node(make_node_data());
+        graph.add_edge(n1, n2, 1.0);
+        let communities = detector.detect_communities(&graph);
+        assert_eq!(communities.len(), 2);
+        // Connected nodes should be in the same community
+        assert_eq!(communities[0], communities[1]);
+    }
+
+    #[test]
+    fn test_calculate_modularity_empty_graph() {
+        let detector = LouvainDetector::new();
+        let graph = UndirectedGraph::default();
+        let communities: Vec<usize> = vec![];
+        let modularity = detector.calculate_modularity(&graph, &communities);
+        assert_eq!(modularity, 0.0);
+    }
+
+    #[test]
+    fn test_calculate_modularity_single_community() {
+        let detector = LouvainDetector::new();
+        let mut graph = UndirectedGraph::default();
+        let n1 = graph.add_node(make_node_data());
+        let n2 = graph.add_node(make_node_data());
+        graph.add_edge(n1, n2, 1.0);
+
+        // All nodes in same community
+        let communities = vec![0, 0];
+        let modularity = detector.calculate_modularity(&graph, &communities);
+        // With single community, modularity should be 0 or slightly positive
+        assert!(modularity >= -1.0 && modularity <= 1.0);
+    }
+
+    #[test]
+    fn test_calculate_modularity_two_communities() {
+        let detector = LouvainDetector::new();
+        let mut graph = UndirectedGraph::default();
+        let n1 = graph.add_node(make_node_data());
+        let n2 = graph.add_node(make_node_data());
+        let n3 = graph.add_node(make_node_data());
+        let n4 = graph.add_node(make_node_data());
+
+        // Two connected pairs
+        graph.add_edge(n1, n2, 1.0);
+        graph.add_edge(n3, n4, 1.0);
+
+        // Two separate communities
+        let communities = vec![0, 0, 1, 1];
+        let modularity = detector.calculate_modularity(&graph, &communities);
+        // With two perfect communities, modularity should be positive
+        assert!(modularity > 0.0);
+    }
+
+    #[test]
+    fn test_calculate_modularity_no_edges() {
+        let detector = LouvainDetector::new();
+        let mut graph = UndirectedGraph::default();
+        graph.add_node(make_node_data());
+        graph.add_node(make_node_data());
+
+        let communities = vec![0, 1];
+        let modularity = detector.calculate_modularity(&graph, &communities);
+        assert_eq!(modularity, 0.0);
+    }
+
+    #[test]
+    fn test_louvain_detector_clone() {
+        let detector = LouvainDetector::new().with_resolution(0.75);
+        let cloned = detector.clone();
+        assert_eq!(cloned.resolution, 0.75);
+        assert_eq!(cloned.max_iterations, 100);
+    }
+
+    #[test]
+    fn test_louvain_detector_debug() {
+        let detector = LouvainDetector::new();
+        let debug_str = format!("{:?}", detector);
+        assert!(debug_str.contains("LouvainDetector"));
+        assert!(debug_str.contains("resolution"));
+    }
+}

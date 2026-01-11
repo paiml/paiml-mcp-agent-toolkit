@@ -228,12 +228,14 @@ fn test_contract_error_messages() {
         max_halstead: Some(-1.0),
     };
 
-    contract.base.path = PathBuf::from("/nonexistent");
+    // Use a path that is guaranteed not to exist
+    let nonexistent_path = PathBuf::from("/___this_path_definitely_does_not_exist_pmat_test_12345___");
+    contract.base.path = nonexistent_path.clone();
     match contract.validate() {
         Err(ContractError::PathNotFound(path)) => {
-            assert_eq!(path, PathBuf::from("/nonexistent"));
+            assert_eq!(path, nonexistent_path);
         }
-        _ => panic!("Expected PathNotFound error"),
+        other => panic!("Expected PathNotFound error, got {:?}", other),
     }
 
     contract.base.path = PathBuf::from(".");

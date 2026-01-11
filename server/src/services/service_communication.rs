@@ -258,6 +258,124 @@ mod tests {
 
         assert_eq!(pubsub.subscriber_count("topic1").await, 2);
     }
+
+    // ============ ServiceMessage Tests ============
+
+    #[test]
+    fn test_service_message_clone() {
+        let msg = ServiceMessage::new(
+            "src".to_string(),
+            "dst".to_string(),
+            42,
+        );
+        let cloned = msg.clone();
+        assert_eq!(cloned.source, "src");
+        assert_eq!(cloned.destination, "dst");
+        assert_eq!(cloned.payload, 42);
+    }
+
+    #[test]
+    fn test_service_message_debug() {
+        let msg = ServiceMessage::new(
+            "a".to_string(),
+            "b".to_string(),
+            "test",
+        );
+        let debug = format!("{:?}", msg);
+        assert!(debug.contains("ServiceMessage"));
+    }
+
+    #[test]
+    fn test_service_message_serialization() {
+        let msg = ServiceMessage::new(
+            "service1".to_string(),
+            "service2".to_string(),
+            "payload".to_string(),
+        );
+        let json = serde_json::to_string(&msg).unwrap();
+        assert!(json.contains("service1"));
+        assert!(json.contains("service2"));
+        assert!(json.contains("payload"));
+    }
+
+    #[test]
+    fn test_service_message_id_unique() {
+        let msg1 = ServiceMessage::new("a".to_string(), "b".to_string(), 1);
+        let msg2 = ServiceMessage::new("a".to_string(), "b".to_string(), 1);
+        assert_ne!(msg1.id, msg2.id);
+    }
+
+    #[test]
+    fn test_service_message_correlation_id() {
+        let msg = ServiceMessage::new(
+            "src".to_string(),
+            "dst".to_string(),
+            "hello",
+        );
+        assert!(msg.correlation_id.is_none());
+        assert!(msg.reply_to.is_none());
+    }
+
+    #[test]
+    fn test_service_message_reply_correlation() {
+        let original = ServiceMessage::new(
+            "a".to_string(),
+            "b".to_string(),
+            "request",
+        );
+        let reply = original.reply("response");
+
+        assert_eq!(reply.correlation_id.as_ref().unwrap(), &original.id);
+        assert_eq!(reply.source, "b");
+        assert_eq!(reply.destination, "a");
+    }
+
+    // ============ PubSubService Tests ============
+
+    #[test]
+    fn test_pub_sub_service_new() {
+        let pubsub: PubSubService<String> = PubSubService::new();
+        assert!(std::mem::size_of_val(&pubsub) > 0);
+    }
+
+    #[test]
+    fn test_pub_sub_service_default() {
+        let pubsub: PubSubService<i32> = PubSubService::default();
+        assert!(std::mem::size_of_val(&pubsub) > 0);
+    }
+
+    #[tokio::test]
+    async fn test_pub_sub_subscriber_count_empty() {
+        let pubsub: PubSubService<String> = PubSubService::new();
+        let count = pubsub.subscriber_count("nonexistent").await;
+        assert_eq!(count, 0);
+    }
+
+    #[tokio::test]
+    async fn test_pub_sub_subscribe_creates_subscriber() {
+        let pubsub: PubSubService<String> = PubSubService::new();
+        let _sub = pubsub.subscribe("topic".to_string()).await;
+        assert_eq!(pubsub.subscriber_count("topic").await, 1);
+    }
+
+    #[tokio::test]
+    async fn test_pub_sub_publish_to_empty_topic() {
+        let pubsub: PubSubService<String> = PubSubService::new();
+        let result = pubsub.publish("empty_topic".to_string(), "msg".to_string()).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_pub_sub_multiple_topics() {
+        let pubsub: PubSubService<String> = PubSubService::new();
+
+        let _sub1 = pubsub.subscribe("topic1".to_string()).await;
+        let _sub2 = pubsub.subscribe("topic2".to_string()).await;
+        let _sub3 = pubsub.subscribe("topic1".to_string()).await;
+
+        assert_eq!(pubsub.subscriber_count("topic1").await, 2);
+        assert_eq!(pubsub.subscriber_count("topic2").await, 1);
+    }
 }
 
 #[cfg(test)]

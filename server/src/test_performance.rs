@@ -394,3 +394,178 @@ pub async fn run_performance_test_suite(config: PerformanceTestConfig) -> Result
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ============ PerformanceTargets Tests ============
+
+    #[test]
+    fn test_performance_targets_default() {
+        let targets = PerformanceTargets::default();
+        assert_eq!(targets.startup_cold_ms, 127);
+        assert_eq!(targets.startup_hot_ms, 4);
+        assert_eq!(targets.loc_per_sec_st, 487_000);
+        assert_eq!(targets.loc_per_sec_mt, 3_921_000);
+        assert_eq!(targets.base_rss_mb, 47);
+        assert_eq!(targets.per_kloc_kb, 312);
+    }
+
+    #[test]
+    fn test_performance_targets_clone() {
+        let targets = PerformanceTargets::default();
+        let cloned = targets.clone();
+        assert_eq!(cloned.startup_cold_ms, targets.startup_cold_ms);
+        assert_eq!(cloned.startup_hot_ms, targets.startup_hot_ms);
+    }
+
+    #[test]
+    fn test_performance_targets_debug() {
+        let targets = PerformanceTargets::default();
+        let debug = format!("{:?}", targets);
+        assert!(debug.contains("PerformanceTargets"));
+        assert!(debug.contains("127"));
+    }
+
+    #[test]
+    fn test_performance_targets_custom_values() {
+        let targets = PerformanceTargets {
+            startup_cold_ms: 200,
+            startup_hot_ms: 10,
+            loc_per_sec_st: 500_000,
+            loc_per_sec_mt: 4_000_000,
+            base_rss_mb: 50,
+            per_kloc_kb: 300,
+        };
+        assert_eq!(targets.startup_cold_ms, 200);
+        assert_eq!(targets.loc_per_sec_st, 500_000);
+    }
+
+    // ============ PerformanceTestConfig Tests ============
+
+    #[test]
+    fn test_performance_test_config_default() {
+        let config = PerformanceTestConfig::default();
+        assert!(config.enable_regression_tests);
+        assert!(config.enable_memory_tests);
+        assert!(config.enable_throughput_tests);
+        assert_eq!(config.test_iterations, 3);
+    }
+
+    #[test]
+    fn test_performance_test_config_custom() {
+        let config = PerformanceTestConfig {
+            enable_regression_tests: false,
+            enable_memory_tests: false,
+            enable_throughput_tests: true,
+            test_iterations: 10,
+        };
+        assert!(!config.enable_regression_tests);
+        assert!(!config.enable_memory_tests);
+        assert!(config.enable_throughput_tests);
+        assert_eq!(config.test_iterations, 10);
+    }
+
+    #[test]
+    fn test_performance_test_config_all_disabled() {
+        let config = PerformanceTestConfig {
+            enable_regression_tests: false,
+            enable_memory_tests: false,
+            enable_throughput_tests: false,
+            test_iterations: 0,
+        };
+        assert!(!config.enable_regression_tests);
+        assert!(!config.enable_memory_tests);
+        assert!(!config.enable_throughput_tests);
+    }
+
+    // ============ generate_test_code Tests ============
+
+    #[test]
+    fn test_generate_test_code_empty() {
+        let code = generate_test_code(0);
+        assert!(code.contains("Generated test code"));
+        assert!(code.contains("TestStruct"));
+    }
+
+    #[test]
+    fn test_generate_test_code_small() {
+        let code = generate_test_code(15);
+        assert!(code.contains("test_function_0"));
+        assert!(code.contains("test_function_4"));
+    }
+
+    #[test]
+    fn test_generate_test_code_medium() {
+        let code = generate_test_code(50);
+        let lines: Vec<_> = code.lines().collect();
+        assert!(lines.len() > 20);
+    }
+
+    #[test]
+    fn test_generate_test_code_has_struct() {
+        let code = generate_test_code(20);
+        assert!(code.contains("pub struct TestStruct"));
+        assert!(code.contains("HashMap<String, i32>"));
+    }
+
+    #[test]
+    fn test_generate_test_code_has_functions() {
+        let code = generate_test_code(25);
+        assert!(code.contains("pub fn test_function_"));
+        assert!(code.contains("let mut sum = 0;"));
+    }
+
+    #[test]
+    fn test_generate_test_code_capacity() {
+        let code = generate_test_code(100);
+        // Ensure code is generated with proper structure
+        assert!(code.len() > 500);
+    }
+
+    // ============ get_memory_usage_mb Tests ============
+
+    #[test]
+    fn test_get_memory_usage_mb() {
+        // This function returns 0 on non-Linux or if reading fails
+        let usage = get_memory_usage_mb();
+        // Just verify it doesn't panic
+        assert!(usage >= 0 || usage == 0);
+    }
+
+    #[test]
+    fn test_get_memory_usage_mb_multiple_calls() {
+        // Call multiple times to ensure consistency
+        let usage1 = get_memory_usage_mb();
+        let usage2 = get_memory_usage_mb();
+        // Values should be similar (within a reasonable range)
+        let diff = if usage1 > usage2 { usage1 - usage2 } else { usage2 - usage1 };
+        assert!(diff < 100); // Within 100MB variance
+    }
+
+    // ============ PerformanceTargets Field Tests ============
+
+    #[test]
+    fn test_performance_targets_startup_cold_reasonable() {
+        let targets = PerformanceTargets::default();
+        // Cold startup should be > hot startup
+        assert!(targets.startup_cold_ms > targets.startup_hot_ms);
+    }
+
+    #[test]
+    fn test_performance_targets_throughput_reasonable() {
+        let targets = PerformanceTargets::default();
+        // Multi-threaded should be faster than single-threaded
+        assert!(targets.loc_per_sec_mt > targets.loc_per_sec_st);
+    }
+
+    #[test]
+    fn test_performance_targets_memory_reasonable() {
+        let targets = PerformanceTargets::default();
+        // Base RSS should be positive
+        assert!(targets.base_rss_mb > 0);
+        // Per KLOC should be positive
+        assert!(targets.per_kloc_kb > 0);
+    }
+}

@@ -595,4 +595,131 @@ mod tests {
         assert!(result.passed);
         assert_eq!(result.violations.len(), 0);
     }
+
+    #[test]
+    fn test_gate_config_default() {
+        let config = GateConfig::default();
+        assert_eq!(config.max_score_drop, 5.0);
+        assert!(!config.allow_grade_drop);
+        assert!(config.enforce_new_files);
+        assert_eq!(config.new_file_min_grade, Grade::B);
+    }
+
+    #[test]
+    fn test_gate_config_min_grades() {
+        let config = GateConfig::default();
+        assert_eq!(config.min_grades.get("rust"), Some(&Grade::BPlus));
+        assert_eq!(config.min_grades.get("python"), Some(&Grade::B));
+        assert_eq!(config.min_grades.get("unknown"), None);
+    }
+
+    #[test]
+    fn test_violation_type_equality() {
+        assert_eq!(ViolationType::Regression, ViolationType::Regression);
+        assert_eq!(ViolationType::BelowMinimum, ViolationType::BelowMinimum);
+        assert_ne!(ViolationType::Regression, ViolationType::BelowMinimum);
+    }
+
+    #[test]
+    fn test_severity_ordering() {
+        assert!(Severity::Info < Severity::Warning);
+        assert!(Severity::Warning < Severity::Error);
+        assert!(Severity::Error < Severity::Critical);
+    }
+
+    #[test]
+    fn test_severity_equality() {
+        assert_eq!(Severity::Info, Severity::Info);
+        assert_eq!(Severity::Critical, Severity::Critical);
+    }
+
+    #[test]
+    fn test_gate_result_creation() {
+        let result = GateResult {
+            passed: true,
+            gate_name: "TestGate".to_string(),
+            violations: vec![],
+            message: "All checks passed".to_string(),
+        };
+        assert!(result.passed);
+        assert_eq!(result.gate_name, "TestGate");
+    }
+
+    #[test]
+    fn test_gate_result_with_violations() {
+        let violation = Violation {
+            path: PathBuf::from("src/test.rs"),
+            violation_type: ViolationType::Regression,
+            severity: Severity::Error,
+            message: "Score dropped".to_string(),
+            old_score: Some(90.0),
+            new_score: 75.0,
+            old_grade: Some(Grade::A),
+            new_grade: Grade::B,
+        };
+        let result = GateResult {
+            passed: false,
+            gate_name: "RegressionGate".to_string(),
+            violations: vec![violation],
+            message: "Regression detected".to_string(),
+        };
+        assert!(!result.passed);
+        assert_eq!(result.violations.len(), 1);
+    }
+
+    #[test]
+    fn test_violation_creation() {
+        let violation = Violation {
+            path: PathBuf::from("src/lib.rs"),
+            violation_type: ViolationType::NewFileBelowThreshold,
+            severity: Severity::Warning,
+            message: "New file below threshold".to_string(),
+            old_score: None,
+            new_score: 65.0,
+            old_grade: None,
+            new_grade: Grade::D,
+        };
+        assert_eq!(violation.path, PathBuf::from("src/lib.rs"));
+        assert!(violation.old_score.is_none());
+        assert_eq!(violation.new_score, 65.0);
+    }
+
+    #[test]
+    fn test_regression_gate_name() {
+        let gate = RegressionGate::with_defaults();
+        assert_eq!(gate.name(), "RegressionGate");
+    }
+
+    #[test]
+    fn test_minimum_grade_gate_name() {
+        let gate = MinimumGradeGate::with_defaults();
+        assert_eq!(gate.name(), "MinimumGradeGate");
+    }
+
+    #[test]
+    fn test_new_file_gate_name() {
+        let gate = NewFileGate::with_defaults();
+        assert_eq!(gate.name(), "NewFileGate");
+    }
+
+    #[test]
+    fn test_regression_gate_new() {
+        let config = GateConfig::default();
+        let gate = RegressionGate::new(config);
+        assert_eq!(gate.name(), "RegressionGate");
+    }
+
+    #[test]
+    fn test_minimum_grade_gate_new() {
+        let config = GateConfig::default();
+        let gate = MinimumGradeGate::new(config);
+        assert_eq!(gate.name(), "MinimumGradeGate");
+    }
+
+    #[test]
+    fn test_new_file_gate_new() {
+        let config = GateConfig::default();
+        let gate = NewFileGate::new(config);
+        assert_eq!(gate.name(), "NewFileGate");
+    }
 }

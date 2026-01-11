@@ -4589,12 +4589,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7a79a3332a6609480d7d0c9eab957bca6b455b91bb84e66d19f5ff66294b85b8"
 
 [[package]]
-name = "levenshtein"
-version = "1.0.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "db13adb97ab515a3691f56e4dbab09283d0b86cb45abd991d8634a9d6f501760"
-
-[[package]]
 name = "lexical-core"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6425,7 +6419,6 @@ dependencies = [
  "ignore",
  "indicatif",
  "lazy_static",
- "levenshtein",
  "libc",
  "logos 0.14.4",
  "lru",
@@ -6503,7 +6496,9 @@ dependencies = [
  "trueno",
  "trueno-db",
  "trueno-graph",
+ "trueno-rag",
  "trueno-viz",
+ "trueno-zram-core",
  "ureq",
  "url",
  "uuid",
@@ -9558,9 +9553,9 @@ dependencies = [
 
 [[package]]
 name = "trueno-rag"
-version = "0.1.7"
+version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "261662bdd77ad3da42e0447388c9e07e78b345406e9883c2535d60ce769c7e73"
+checksum = "933df81789ab330d5caf12f8d59dfb512ae9e5db7665a35ef9ff34722cf3730d"
 dependencies = [
  "async-trait",
  "serde",
@@ -9584,6 +9579,15 @@ dependencies = [
  "thiserror 2.0.17",
  "trueno",
  "trueno-graph",
+]
+
+[[package]]
+name = "trueno-zram-core"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dca7191b8dba48c103538578e8dc9f204be1de557ad226052c87e96a5c7d62d9"
+dependencies = [
+ "thiserror 2.0.17",
 ]
 
 [[package]]
