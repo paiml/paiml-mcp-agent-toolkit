@@ -21,10 +21,12 @@ use std::io;
 pub const PAGE_SIZE: usize = 4096;
 
 /// Magic bytes for compressed data identification
+#[cfg(feature = "sovereign-compression")]
 const MAGIC: [u8; 4] = [b'T', b'Z', b'R', b'C']; // Trueno Zram Compressed
 
 /// Header for variable-length compressed data
 /// Format: MAGIC (4) + original_len (4) + num_pages (4) + page_sizes (num_pages * 4)
+#[cfg(feature = "sovereign-compression")]
 #[derive(Debug, Clone)]
 struct CompressionHeader {
     original_len: u32,
@@ -32,6 +34,7 @@ struct CompressionHeader {
     page_sizes: Vec<u32>,
 }
 
+#[cfg(feature = "sovereign-compression")]
 impl CompressionHeader {
     fn encode(&self) -> Vec<u8> {
         let mut result = Vec::with_capacity(12 + self.page_sizes.len() * 4);
