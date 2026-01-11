@@ -292,3 +292,162 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: TRUENO-RAG-INTEGRATION
+  github_issue: null
+  item_type: epic
+  title: 'Epic: Expand trueno-rag integration across PMAT codebase'
+  status: in_progress
+  priority: high
+  assigned_to: null
+  created: 2026-01-11T12:00:00.000000000+00:00
+  updated: 2026-01-11T12:00:00.000000000+00:00
+  spec: null
+  acceptance_criteria:
+  - Replace manual cosine similarity with SIMD (4-8x speedup)
+  - Replace ripgrep+RRF with trueno-rag BM25Index
+  - Implement RecursiveChunker for code chunking
+  - Replace MinHash manual SIMD with LSH index
+  - Unify TF-IDF with trueno-rag index
+  - All changes have ≥90% test coverage (Extreme TDD)
+  phases:
+  - name: RED
+    description: Write failing tests first
+  - name: GREEN
+    description: Make tests pass with minimal implementation
+  - name: REFACTOR
+    description: Clean up while keeping tests green
+  subtasks:
+  - TRUENO-RAG-1-BM25
+  - TRUENO-RAG-2-COSINE
+  - TRUENO-RAG-3-CHUNKER
+  - TRUENO-RAG-4-MINHASH
+  - TRUENO-RAG-5-TFIDF
+  estimated_effort: 1 week
+  labels:
+  - trueno-rag
+  - simd
+  - performance
+  - extreme-tdd
+  notes: |
+    Sprint 76: Migrated TursoVectorDB from rusqlite to trueno-rag VectorStore.
+    This epic expands trueno-rag to other areas for SIMD acceleration.
+- id: TRUENO-RAG-1-BM25
+  github_issue: null
+  item_type: task
+  title: 'Task 1: Replace hybrid_search ripgrep+RRF with trueno-rag BM25Index'
+  status: in_progress
+  priority: high
+  assigned_to: null
+  created: 2026-01-11T12:00:00.000000000+00:00
+  updated: 2026-01-11T12:00:00.000000000+00:00
+  spec: null
+  acceptance_criteria:
+  - RED: Write tests for BM25 scoring accuracy vs RRF heuristic
+  - RED: Write tests for term frequency and IDF calculation
+  - GREEN: Implement BM25Index integration in hybrid_search.rs
+  - GREEN: All tests pass
+  - REFACTOR: Remove ripgrep fallback for keyword search
+  phases: []
+  subtasks: []
+  estimated_effort: 2 hours
+  labels:
+  - trueno-rag
+  - bm25
+  - search
+  notes: 'File: src/services/semantic/hybrid_search.rs:99-132'
+- id: TRUENO-RAG-2-COSINE
+  github_issue: null
+  item_type: task
+  title: 'Task 2: Replace manual cosine similarity with trueno SIMD'
+  status: pending
+  priority: high
+  assigned_to: null
+  created: 2026-01-11T12:00:00.000000000+00:00
+  updated: 2026-01-11T12:00:00.000000000+00:00
+  spec: null
+  acceptance_criteria:
+  - RED: Write property tests for SIMD vs scalar equivalence
+  - RED: Write benchmark tests for 4-8x speedup target
+  - GREEN: Replace TokenAnalyzer::cosine_similarity with trueno
+  - GREEN: All tests pass
+  - REFACTOR: Remove manual dot product loops
+  phases: []
+  subtasks: []
+  estimated_effort: 1 hour
+  labels:
+  - trueno-rag
+  - simd
+  - performance
+  notes: 'File: src/services/similarity.rs:723-744'
+- id: TRUENO-RAG-3-CHUNKER
+  github_issue: null
+  item_type: task
+  title: 'Task 3: Add trueno-rag RecursiveChunker for code chunking'
+  status: pending
+  priority: medium
+  assigned_to: null
+  created: 2026-01-11T12:00:00.000000000+00:00
+  updated: 2026-01-11T12:00:00.000000000+00:00
+  spec: null
+  acceptance_criteria:
+  - RED: Write tests for overlap between chunks (RAG requirement)
+  - RED: Write tests for semantic boundary preservation
+  - GREEN: Integrate RecursiveChunker alongside tree-sitter
+  - GREEN: All tests pass
+  - REFACTOR: Unify chunking strategies
+  phases: []
+  subtasks: []
+  estimated_effort: 2 hours
+  labels:
+  - trueno-rag
+  - chunking
+  - rag
+  notes: 'File: src/services/semantic/chunker.rs:50-72'
+- id: TRUENO-RAG-4-MINHASH
+  github_issue: null
+  item_type: task
+  title: 'Task 4: Replace MinHash manual SIMD with trueno-rag LSH'
+  status: pending
+  priority: medium
+  assigned_to: null
+  created: 2026-01-11T12:00:00.000000000+00:00
+  updated: 2026-01-11T12:00:00.000000000+00:00
+  spec: null
+  acceptance_criteria:
+  - RED: Write tests for LSH index O(1) lookup vs O(n) scan
+  - RED: Write tests for Jaccard similarity accuracy
+  - GREEN: Replace jaccard_similarity_simd with LSH index
+  - GREEN: All tests pass
+  - REFACTOR: Remove u64→f32 conversion workaround
+  phases: []
+  subtasks: []
+  estimated_effort: 2 hours
+  labels:
+  - trueno-rag
+  - minhash
+  - lsh
+  notes: 'File: src/services/duplicate_detector.rs:118-147'
+- id: TRUENO-RAG-5-TFIDF
+  github_issue: null
+  item_type: task
+  title: 'Task 5: Unify local_semantic TF-IDF with trueno-rag'
+  status: pending
+  priority: medium
+  assigned_to: null
+  created: 2026-01-11T12:00:00.000000000+00:00
+  updated: 2026-01-11T12:00:00.000000000+00:00
+  spec: null
+  acceptance_criteria:
+  - RED: Write tests for TF-IDF equivalence with aprender
+  - RED: Write tests for sparse matrix memory efficiency
+  - GREEN: Replace aprender TfidfVectorizer with trueno-rag
+  - GREEN: All tests pass
+  - REFACTOR: Remove duplicate vectorization code
+  phases: []
+  subtasks: []
+  estimated_effort: 2 hours
+  labels:
+  - trueno-rag
+  - tfidf
+  - vectorization
+  notes: 'File: src/services/local_semantic.rs:201-242'

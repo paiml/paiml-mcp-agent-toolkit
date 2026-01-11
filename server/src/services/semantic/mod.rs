@@ -21,7 +21,7 @@ pub use clustering::{
     Dendrogram, DendrogramMerge, Linkage, OutlierPoint,
 };
 pub use hybrid_search::{
-    HybridSearchEngine, HybridSearchMode, HybridSearchQuery, HybridSearchResult,
+    Bm25SearchEngine, HybridSearchEngine, HybridSearchMode, HybridSearchQuery, HybridSearchResult,
 };
 pub use openai_embeddings::{EmbeddingResult, OpenAIEmbeddingsClient};
 pub use search_engine::SearchResult; // Primary search result type
