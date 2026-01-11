@@ -289,15 +289,25 @@ PMAT does not train models but uses these data sources for evaluation:
 
 Data provenance and licensing documented in [docs/ml/REPRODUCIBILITY.md](docs/ml/REPRODUCIBILITY.md).
 
-## PAIML Stack
+## Sovereign Stack
+
+PMAT is built on the PAIML Sovereign Stack - pure-Rust, SIMD-accelerated libraries:
 
 | Library | Purpose | Version |
 |---------|---------|---------|
-| [trueno](https://crates.io/crates/trueno) | SIMD tensor operations | 0.7.3 |
-| [entrenar](https://crates.io/crates/entrenar) | Training & optimization | 0.2.3 |
-| [aprender](https://crates.io/crates/aprender) | ML algorithms | 0.14.0 |
-| [realizar](https://crates.io/crates/realizar) | GGUF inference | 0.2.1 |
-| **pmat** | Code analysis toolkit | 2.213.1 |
+| [aprender](https://crates.io/crates/aprender) | ML library (text similarity, clustering, topic modeling) | 0.24.0 |
+| [trueno](https://crates.io/crates/trueno) | SIMD compute library for matrix operations | 0.11.0 |
+| [trueno-graph](https://crates.io/crates/trueno-graph) | GPU-first graph database (PageRank, Louvain, CSR) | 0.1.7 |
+| [trueno-rag](https://crates.io/crates/trueno-rag) | RAG pipeline with VectorStore | 0.1.8 |
+| [trueno-db](https://crates.io/crates/trueno-db) | Embedded analytics database | 0.3.10 |
+| [trueno-viz](https://crates.io/crates/trueno-viz) | Terminal graph visualization | 0.1.17 |
+| [trueno-zram-core](https://crates.io/crates/trueno-zram-core) | SIMD LZ4/ZSTD compression (optional) | 0.3.0 |
+| **pmat** | Code analysis toolkit | 2.213.4 |
+
+**Key Benefits:**
+- Pure Rust (no C dependencies, no FFI)
+- SIMD-first (AVX2, AVX-512, NEON auto-detection)
+- 2-4x speedup on graph algorithms via aprender adapter
 
 ## Documentation
 
