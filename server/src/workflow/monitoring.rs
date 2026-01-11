@@ -97,3 +97,89 @@ impl WorkflowMonitor for DefaultWorkflowMonitor {
             })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_default_workflow_monitor_new() {
+        let monitor = DefaultWorkflowMonitor::new();
+        let execution_id = Uuid::new_v4();
+        let metrics = monitor.get_metrics(execution_id).await;
+        assert_eq!(metrics.state, WorkflowState::Created);
+        assert_eq!(metrics.total_steps, 0);
+    }
+
+    #[tokio::test]
+    async fn test_workflow_lifecycle() {
+        let monitor = DefaultWorkflowMonitor::new();
+        let workflow_id = Uuid::new_v4();
+        let execution_id = Uuid::new_v4();
+
+        // Start workflow
+        monitor.on_workflow_started(workflow_id, execution_id).await;
+        let metrics = monitor.get_metrics(execution_id).await;
+        assert_eq!(metrics.state, WorkflowState::Running);
+        assert_eq!(metrics.workflow_id, workflow_id);
+
+        // Start and complete a step
+        monitor.on_step_started(execution_id, "step1").await;
+        let metrics = monitor.get_metrics(execution_id).await;
+        assert_eq!(metrics.total_steps, 1);
+
+        monitor
+            .on_step_completed(execution_id, "step1", &serde_json::json!({}))
+            .await;
+        let metrics = monitor.get_metrics(execution_id).await;
+        assert_eq!(metrics.completed_steps, 1);
+
+        // Complete workflow
+        monitor
+            .on_workflow_completed(workflow_id, execution_id, &serde_json::json!({}))
+            .await;
+        let metrics = monitor.get_metrics(execution_id).await;
+        assert_eq!(metrics.state, WorkflowState::Completed);
+    }
+
+    #[tokio::test]
+    async fn test_workflow_failure() {
+        let monitor = DefaultWorkflowMonitor::new();
+        let workflow_id = Uuid::new_v4();
+        let execution_id = Uuid::new_v4();
+
+        monitor.on_workflow_started(workflow_id, execution_id).await;
+
+        // Fail a step
+        monitor.on_step_started(execution_id, "step1").await;
+        monitor
+            .on_step_failed(execution_id, "step1", "Test error")
+            .await;
+        let metrics = monitor.get_metrics(execution_id).await;
+        assert_eq!(metrics.failed_steps, 1);
+
+        // Fail workflow
+        let error = WorkflowError::StepFailed("Test failure".to_string());
+        monitor
+            .on_workflow_failed(workflow_id, execution_id, &error)
+            .await;
+        let metrics = monitor.get_metrics(execution_id).await;
+        assert_eq!(metrics.state, WorkflowState::Failed);
+    }
+
+    #[test]
+    fn test_default_trait() {
+        let monitor = DefaultWorkflowMonitor::default();
+        assert!(monitor.metrics.read().is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_get_metrics_unknown_execution() {
+        let monitor = DefaultWorkflowMonitor::new();
+        let unknown_id = Uuid::new_v4();
+        let metrics = monitor.get_metrics(unknown_id).await;
+        // Should return default metrics
+        assert_eq!(metrics.execution_id, unknown_id);
+        assert_eq!(metrics.state, WorkflowState::Created);
+    }
+}
