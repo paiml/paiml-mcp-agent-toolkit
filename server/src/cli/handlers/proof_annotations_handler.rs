@@ -107,6 +107,165 @@ mod property_tests {
     }
 }
 
+#[cfg(test)]
+mod active_tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[tokio::test]
+    async fn test_handle_analyze_proof_annotations_empty_dir() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let result = handle_analyze_proof_annotations(
+            temp_dir.path().to_path_buf(),
+            ProofAnnotationOutputFormat::Summary,
+            false,
+            false,
+            None,
+            None,
+            None,
+            false,
+            false,
+        )
+        .await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_proof_annotations_json_format() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        std::fs::write(temp_dir.path().join("lib.rs"), "fn test() {}").expect("write");
+        let result = handle_analyze_proof_annotations(
+            temp_dir.path().to_path_buf(),
+            ProofAnnotationOutputFormat::Json,
+            false,
+            true,
+            None,
+            None,
+            None,
+            false,
+            false,
+        )
+        .await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_proof_annotations_with_filters() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        std::fs::write(temp_dir.path().join("lib.rs"), "fn test() {}").expect("write");
+        let result = handle_analyze_proof_annotations(
+            temp_dir.path().to_path_buf(),
+            ProofAnnotationOutputFormat::Summary,
+            true, // high_confidence_only
+            false,
+            Some(PropertyTypeFilter::MemorySafety),
+            Some(VerificationMethodFilter::BorrowChecker),
+            None,
+            false,
+            true, // clear_cache
+        )
+        .await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_proof_annotations_with_output_file() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let output_path = temp_dir.path().join("output.json");
+        std::fs::write(temp_dir.path().join("lib.rs"), "fn test() {}").expect("write");
+        let result = handle_analyze_proof_annotations(
+            temp_dir.path().to_path_buf(),
+            ProofAnnotationOutputFormat::Json,
+            false,
+            false,
+            None,
+            None,
+            Some(output_path.clone()),
+            false,
+            false,
+        )
+        .await;
+        assert!(result.is_ok());
+        assert!(output_path.exists());
+    }
+
+    #[tokio::test]
+    async fn test_format_proof_annotations_summary() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        std::fs::write(temp_dir.path().join("lib.rs"), "pub fn exported() {}").expect("write");
+        let result = handle_analyze_proof_annotations(
+            temp_dir.path().to_path_buf(),
+            ProofAnnotationOutputFormat::Summary,
+            false,
+            false,
+            None,
+            None,
+            None,
+            false,
+            false,
+        )
+        .await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_format_proof_annotations_full() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        std::fs::write(temp_dir.path().join("main.rs"), "fn main() {}").expect("write");
+        let result = handle_analyze_proof_annotations(
+            temp_dir.path().to_path_buf(),
+            ProofAnnotationOutputFormat::Full,
+            false,
+            true,
+            None,
+            None,
+            None,
+            false,
+            false,
+        )
+        .await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_format_proof_annotations_markdown() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        std::fs::write(temp_dir.path().join("lib.rs"), "fn test() {}").expect("write");
+        let result = handle_analyze_proof_annotations(
+            temp_dir.path().to_path_buf(),
+            ProofAnnotationOutputFormat::Markdown,
+            false,
+            false,
+            None,
+            None,
+            None,
+            false,
+            false,
+        )
+        .await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_format_proof_annotations_sarif() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        std::fs::write(temp_dir.path().join("lib.rs"), "unsafe fn danger() {}").expect("write");
+        let result = handle_analyze_proof_annotations(
+            temp_dir.path().to_path_buf(),
+            ProofAnnotationOutputFormat::Sarif,
+            false,
+            true,
+            None,
+            None,
+            None,
+            false,
+            false,
+        )
+        .await;
+        assert!(result.is_ok());
+    }
+}
+
 /// NOTE: Temporarily disabled due to struct definition mismatches
 #[cfg(all(test, feature = "broken-tests"))]
 mod coverage_tests {

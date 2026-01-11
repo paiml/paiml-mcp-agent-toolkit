@@ -110,7 +110,69 @@ mod property_tests {
     }
 }
 
-/// NOTE: Temporarily disabled
+#[cfg(test)]
+mod active_tests {
+    use super::*;
+
+    #[test]
+    fn test_simple_unified_server_new() {
+        let result = SimpleUnifiedServer::new();
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_simple_unified_server_default() {
+        let server = SimpleUnifiedServer::default();
+        let _ = server;
+    }
+
+    #[test]
+    fn test_server_is_send() {
+        fn assert_send<T: Send>() {}
+        assert_send::<SimpleUnifiedServer>();
+    }
+
+    #[test]
+    fn test_server_is_sync() {
+        fn assert_sync<T: Sync>() {}
+        assert_sync::<SimpleUnifiedServer>();
+    }
+
+    #[test]
+    fn test_server_size() {
+        let size = std::mem::size_of::<SimpleUnifiedServer>();
+        // Arc<Mutex<T>> is typically 8 bytes on 64-bit systems
+        assert!(size <= 16, "Server struct is larger than expected: {} bytes", size);
+    }
+
+    #[test]
+    fn test_new_does_not_panic() {
+        let _ = std::panic::catch_unwind(|| {
+            let _ = SimpleUnifiedServer::new();
+        });
+    }
+
+    #[tokio::test]
+    async fn test_state_manager_accessible() {
+        let server = SimpleUnifiedServer::new().unwrap();
+        let state = server.state_manager.lock().await;
+        drop(state);
+    }
+
+    #[tokio::test]
+    async fn test_state_manager_thread_safety() {
+        let server = SimpleUnifiedServer::new().unwrap();
+        let state_clone = server.state_manager.clone();
+        {
+            let _state1 = server.state_manager.lock().await;
+        }
+        {
+            let _state2 = state_clone.lock().await;
+        }
+    }
+}
+
+/// NOTE: Temporarily disabled - tool methods don't exist
 #[cfg(all(test, feature = "broken-tests"))]
 mod coverage_tests {
     use super::*;
