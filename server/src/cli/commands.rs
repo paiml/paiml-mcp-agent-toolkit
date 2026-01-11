@@ -967,7 +967,7 @@ pub enum Commands {
 
     /// Rust project diagnostics (20 checks across 5 categories)
     /// Matches lltop Tab 8 diagnostics for any Rust project
-    #[command(name = "project-diag", visible_aliases = &["diag", "diagnose"])]
+    #[command(name = "project-diag", visible_aliases = &["pdiag", "proj-diag"])]
     ProjectDiag {
         /// Project path to analyze
         #[arg(short = 'p', long, default_value = ".")]

@@ -51,8 +51,8 @@ libc = "0.2"
 # Property testing
 proptest = "1.6"
 
-# Text similarity
-levenshtein = "1.0"
+# Text similarity - Now using aprender::text::similarity (edit_distance_similarity)
+# levenshtein = "1.0"  # REMOVED: Replaced by aprender sovereign stack
 
 # Machine Learning (Pure Rust - no C++ dependencies)
 # Migration to aprender complete (Sprint 45)
@@ -67,7 +67,7 @@ trueno-db = { version = "0.3.10", optional = true, default-features = false }
 # Semantic Search Stack (Pure Rust - Zero API Keys)
 # See: docs/specifications/semantic-search-feature.md
 trueno-graph = "0.1.7"  # GPU-first graph database (CSR, PageRank, Louvain)
-# trueno-rag = "0.1.7"  # REMOVED: cargo-machete verified unused (only in comments)
+trueno-rag = "0.1.8"  # Pure-Rust RAG pipeline with VectorStore (replaces TursoVectorDB rusqlite implementation)
 trueno-viz = { version = "0.1.17", optional = true, features = ["terminal", "graph"] }  # Terminal graph visualization
 
 # Analytics GPU dependencies (optional, gated by analytics-gpu feature)

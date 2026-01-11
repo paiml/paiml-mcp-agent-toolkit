@@ -547,11 +547,9 @@ impl SimilarityDetector {
     }
 
     fn calculate_similarity(&self, text1: &str, text2: &str) -> f64 {
-        let len1 = text1.len() as f64;
-        let len2 = text2.len() as f64;
-        let dist = levenshtein::levenshtein(text1, text2) as f64;
-
-        1.0 - (dist / len1.max(len2))
+        // Use aprender's edit_distance_similarity (replaces levenshtein crate)
+        // Returns normalized similarity: 1.0 = identical, 0.0 = completely different
+        aprender::text::similarity::edit_distance_similarity(text1, text2).unwrap_or(0.0)
     }
 
     fn calculate_duplication_percentage(
