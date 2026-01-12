@@ -185,12 +185,51 @@ impl DeadCodeAnalyzerFactory {
 mod tests {
     use super::*;
 
+    // === DeadCodeAnalyzer tests ===
+
     #[tokio::test]
     async fn test_dead_code_analyzer_creation() {
         let analyzer = DeadCodeAnalyzer::new();
         assert_eq!(Analyzer::name(&analyzer), "dead_code");
         assert_eq!(Analyzer::version(&analyzer), env!("CARGO_PKG_VERSION"));
     }
+
+    #[test]
+    fn test_dead_code_analyzer_new() {
+        let analyzer = DeadCodeAnalyzer::new();
+        assert_eq!(AnalyzerInfo::name(&analyzer), "dead_code");
+    }
+
+    #[test]
+    fn test_dead_code_analyzer_default() {
+        let analyzer = DeadCodeAnalyzer::default();
+        assert_eq!(AnalyzerInfo::name(&analyzer), "dead_code");
+    }
+
+    #[test]
+    fn test_dead_code_analyzer_with_capacity() {
+        let analyzer = DeadCodeAnalyzer::with_capacity(50000);
+        assert_eq!(AnalyzerInfo::name(&analyzer), "dead_code");
+    }
+
+    #[test]
+    fn test_dead_code_analyzer_with_large_capacity() {
+        let analyzer = DeadCodeAnalyzer::with_capacity(1_000_000);
+        assert_eq!(AnalyzerInfo::name(&analyzer), "dead_code");
+    }
+
+    #[test]
+    fn test_dead_code_analyzer_with_small_capacity() {
+        let analyzer = DeadCodeAnalyzer::with_capacity(100);
+        assert_eq!(AnalyzerInfo::name(&analyzer), "dead_code");
+    }
+
+    #[test]
+    fn test_dead_code_analyzer_default_capacity() {
+        assert_eq!(DeadCodeAnalyzer::DEFAULT_CAPACITY, 100_000);
+    }
+
+    // === DeadCodeConfig tests ===
 
     #[tokio::test]
     async fn test_dead_code_config_default() {
@@ -200,12 +239,113 @@ mod tests {
         assert_eq!(config.confidence_threshold, 0.7);
     }
 
+    #[test]
+    fn test_dead_code_config_custom() {
+        let config = DeadCodeConfig {
+            base: ProjectConfig::default(),
+            include_unreachable: false,
+            min_dead_lines: 10,
+            confidence_threshold: 0.9,
+        };
+
+        assert!(!config.include_unreachable);
+        assert_eq!(config.min_dead_lines, 10);
+        assert!((config.confidence_threshold - 0.9).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_dead_code_config_serialization() {
+        let config = DeadCodeConfig::default();
+        let json = serde_json::to_string(&config).unwrap();
+
+        assert!(json.contains("include_unreachable"));
+        assert!(json.contains("min_dead_lines"));
+        assert!(json.contains("confidence_threshold"));
+    }
+
+    #[test]
+    fn test_dead_code_config_deserialization() {
+        let json = r#"{
+            "base": {"include_tests": false, "max_depth": null, "parallel": false},
+            "include_unreachable": false,
+            "min_dead_lines": 20,
+            "confidence_threshold": 0.85
+        }"#;
+
+        let config: DeadCodeConfig = serde_json::from_str(json).unwrap();
+        assert!(!config.include_unreachable);
+        assert_eq!(config.min_dead_lines, 20);
+        assert!((config.confidence_threshold - 0.85).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_dead_code_config_clone() {
+        let config = DeadCodeConfig::default();
+        let cloned = config.clone();
+
+        assert_eq!(config.include_unreachable, cloned.include_unreachable);
+        assert_eq!(config.min_dead_lines, cloned.min_dead_lines);
+        assert_eq!(config.confidence_threshold, cloned.confidence_threshold);
+    }
+
+    #[test]
+    fn test_dead_code_config_debug() {
+        let config = DeadCodeConfig::default();
+        let debug_str = format!("{:?}", config);
+
+        assert!(debug_str.contains("DeadCodeConfig"));
+        assert!(debug_str.contains("include_unreachable"));
+    }
+
+    #[test]
+    fn test_dead_code_config_roundtrip() {
+        let config = DeadCodeConfig {
+            base: ProjectConfig { include_tests: true, max_depth: None, parallel: false },
+            include_unreachable: true,
+            min_dead_lines: 15,
+            confidence_threshold: 0.8,
+        };
+
+        let json = serde_json::to_string(&config).unwrap();
+        let parsed: DeadCodeConfig = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(config.include_unreachable, parsed.include_unreachable);
+        assert_eq!(config.min_dead_lines, parsed.min_dead_lines);
+    }
+
+    // === AnalyzerInfo tests ===
+
     #[tokio::test]
     async fn test_analyzer_info() {
         let analyzer = DeadCodeAnalyzer::new();
         assert_eq!(Analyzer::name(&analyzer), "dead_code");
         assert!(AnalyzerInfo::description(&analyzer).contains("unreachable"));
     }
+
+    #[test]
+    fn test_analyzer_info_name() {
+        let analyzer = DeadCodeAnalyzer::new();
+        assert_eq!(AnalyzerInfo::name(&analyzer), "dead_code");
+    }
+
+    #[test]
+    fn test_analyzer_info_version() {
+        let analyzer = DeadCodeAnalyzer::new();
+        let version = AnalyzerInfo::version(&analyzer);
+        assert!(!version.is_empty());
+        assert!(version.contains('.'));
+    }
+
+    #[test]
+    fn test_analyzer_info_description() {
+        let analyzer = DeadCodeAnalyzer::new();
+        let description = AnalyzerInfo::description(&analyzer);
+
+        assert!(description.contains("unreachable"));
+        assert!(description.contains("unused"));
+    }
+
+    // === DeadCodeAnalyzerFactory tests ===
 
     #[tokio::test]
     async fn test_factory_creation() {
@@ -214,6 +354,94 @@ mod tests {
 
         let analyzer_with_capacity = DeadCodeAnalyzerFactory::create_with_capacity(50000);
         assert_eq!(Analyzer::name(&analyzer_with_capacity), "dead_code");
+    }
+
+    #[test]
+    fn test_factory_create() {
+        let analyzer = DeadCodeAnalyzerFactory::create();
+        assert_eq!(AnalyzerInfo::name(&analyzer), "dead_code");
+    }
+
+    #[test]
+    fn test_factory_create_with_capacity() {
+        let analyzer = DeadCodeAnalyzerFactory::create_with_capacity(75000);
+        assert_eq!(AnalyzerInfo::name(&analyzer), "dead_code");
+    }
+
+    #[test]
+    fn test_factory_create_with_zero_capacity() {
+        let analyzer = DeadCodeAnalyzerFactory::create_with_capacity(0);
+        assert_eq!(AnalyzerInfo::name(&analyzer), "dead_code");
+    }
+
+    #[test]
+    fn test_factory_create_with_default_capacity() {
+        let analyzer = DeadCodeAnalyzerFactory::create_with_capacity(DeadCodeAnalyzer::DEFAULT_CAPACITY);
+        assert_eq!(AnalyzerInfo::name(&analyzer), "dead_code");
+    }
+
+    // === Analyzer trait tests ===
+
+    #[test]
+    fn test_analyzer_trait_name() {
+        let analyzer = DeadCodeAnalyzer::new();
+        let name = <DeadCodeAnalyzer as Analyzer>::name(&analyzer);
+        assert_eq!(name, "dead_code");
+    }
+
+    // === ProjectConfig integration tests ===
+
+    #[test]
+    fn test_dead_code_config_with_project_config() {
+        let project_config = ProjectConfig { include_tests: true, max_depth: None, parallel: false };
+        let config = DeadCodeConfig {
+            base: project_config,
+            include_unreachable: true,
+            min_dead_lines: 3,
+            confidence_threshold: 0.6,
+        };
+
+        assert!(config.base.include_tests);
+        assert!(config.include_unreachable);
+    }
+
+    #[test]
+    fn test_dead_code_config_confidence_bounds() {
+        // Test various confidence thresholds
+        let config_low = DeadCodeConfig {
+            base: ProjectConfig::default(),
+            include_unreachable: true,
+            min_dead_lines: 1,
+            confidence_threshold: 0.0,
+        };
+        assert!((config_low.confidence_threshold - 0.0).abs() < 0.001);
+
+        let config_high = DeadCodeConfig {
+            base: ProjectConfig::default(),
+            include_unreachable: true,
+            min_dead_lines: 1,
+            confidence_threshold: 1.0,
+        };
+        assert!((config_high.confidence_threshold - 1.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_dead_code_config_min_lines_variants() {
+        let config_zero = DeadCodeConfig {
+            base: ProjectConfig::default(),
+            include_unreachable: true,
+            min_dead_lines: 0,
+            confidence_threshold: 0.7,
+        };
+        assert_eq!(config_zero.min_dead_lines, 0);
+
+        let config_large = DeadCodeConfig {
+            base: ProjectConfig::default(),
+            include_unreachable: true,
+            min_dead_lines: 1000,
+            confidence_threshold: 0.7,
+        };
+        assert_eq!(config_large.min_dead_lines, 1000);
     }
 }
 
