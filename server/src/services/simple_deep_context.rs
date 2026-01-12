@@ -2239,6 +2239,572 @@ func helper(x int) int {
         assert!(count >= 2);
         assert!(avg >= 1.0);
     }
+
+    // ============ find_function_end Tests ============
+
+    #[test]
+    fn test_find_function_end_python() {
+        let analyzer = SimpleDeepContext;
+
+        // Test Python function detection by indentation
+        let code = r#"def my_func():
+    print("hello")
+    if True:
+        print("nested")
+    return 42
+
+def next_func():
+    pass"#;
+
+        let result = analyzer.find_function_end(code, "py");
+        assert!(result.is_some());
+        let end_pos = result.unwrap();
+        // The end should be before "def next_func"
+        assert!(end_pos < code.len());
+    }
+
+    #[test]
+    fn test_find_function_end_python_empty() {
+        let analyzer = SimpleDeepContext;
+        let code = "";
+        let result = analyzer.find_function_end(code, "py");
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_find_function_end_c_style() {
+        let analyzer = SimpleDeepContext;
+
+        let code = r#"void my_func() {
+    if (true) {
+        printf("hello");
+    }
+}
+
+void next_func() {"#;
+
+        let result = analyzer.find_function_end(code, "c");
+        assert!(result.is_some());
+        let end_pos = result.unwrap();
+        // Should end at the closing brace of my_func
+        assert!(end_pos < code.len());
+    }
+
+    #[test]
+    fn test_find_function_end_c_with_strings() {
+        let analyzer = SimpleDeepContext;
+
+        // Test handling of braces inside strings
+        let code = r#"void my_func() {
+    printf("{ this brace is in a string }");
+}
+
+void next();"#;
+
+        let result = analyzer.find_function_end(code, "cpp");
+        assert!(result.is_some());
+    }
+
+    #[test]
+    fn test_find_function_end_unmatched_braces() {
+        let analyzer = SimpleDeepContext;
+
+        // Test with unmatched braces (should return None)
+        let code = r#"void my_func() {
+    if (true) {
+        printf("hello");
+    // missing closing brace"#;
+
+        let result = analyzer.find_function_end(code, "c");
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_find_function_end_js() {
+        let analyzer = SimpleDeepContext;
+
+        let code = r#"function myFunc() {
+    const x = { nested: "object" };
+    return x;
+}
+
+const other = () => {"#;
+
+        let result = analyzer.find_function_end(code, "js");
+        assert!(result.is_some());
+    }
+
+    // ============ generate_recommendations Tests ============
+
+    #[test]
+    fn test_generate_recommendations_high_complexity() {
+        let analyzer = SimpleDeepContext;
+        let metrics = ComplexityMetrics {
+            total_functions: 10,
+            high_complexity_count: 3,
+            avg_complexity: 4.0,
+        };
+
+        let recommendations = analyzer.generate_recommendations(&metrics);
+        assert!(!recommendations.is_empty());
+        assert!(recommendations
+            .iter()
+            .any(|r| r.contains("refactoring") && r.contains("3")));
+    }
+
+    #[test]
+    fn test_generate_recommendations_high_avg_complexity() {
+        let analyzer = SimpleDeepContext;
+        let metrics = ComplexityMetrics {
+            total_functions: 10,
+            high_complexity_count: 0,
+            avg_complexity: 7.5,
+        };
+
+        let recommendations = analyzer.generate_recommendations(&metrics);
+        assert!(!recommendations.is_empty());
+        assert!(recommendations
+            .iter()
+            .any(|r| r.contains("Average") && r.contains("7.5")));
+    }
+
+    #[test]
+    fn test_generate_recommendations_no_functions() {
+        let analyzer = SimpleDeepContext;
+        let metrics = ComplexityMetrics {
+            total_functions: 0,
+            high_complexity_count: 0,
+            avg_complexity: 0.0,
+        };
+
+        let recommendations = analyzer.generate_recommendations(&metrics);
+        assert!(!recommendations.is_empty());
+        assert!(recommendations
+            .iter()
+            .any(|r| r.contains("No functions detected")));
+    }
+
+    #[test]
+    fn test_generate_recommendations_good_code() {
+        let analyzer = SimpleDeepContext;
+        let metrics = ComplexityMetrics {
+            total_functions: 20,
+            high_complexity_count: 0,
+            avg_complexity: 2.5,
+        };
+
+        let recommendations = analyzer.generate_recommendations(&metrics);
+        assert!(!recommendations.is_empty());
+        assert!(recommendations.iter().any(|r| r.contains("looks good")));
+    }
+
+    // ============ format_as_json Tests ============
+
+    #[test]
+    fn test_format_as_json_empty_report() {
+        let analyzer = SimpleDeepContext;
+        let report = SimpleAnalysisReport {
+            file_count: 0,
+            analysis_duration: std::time::Duration::from_millis(100),
+            complexity_metrics: ComplexityMetrics {
+                total_functions: 0,
+                high_complexity_count: 0,
+                avg_complexity: 0.0,
+            },
+            recommendations: vec!["No files found".to_string()],
+            file_complexity_details: vec![],
+        };
+
+        let json = analyzer.format_as_json(&report).unwrap();
+        assert!(json.contains("\"file_count\": 0"));
+        assert!(json.contains("\"total_functions\": 0"));
+        assert!(json.contains("\"recommendations\""));
+    }
+
+    #[test]
+    fn test_format_as_json_with_files() {
+        let analyzer = SimpleDeepContext;
+        let report = SimpleAnalysisReport {
+            file_count: 2,
+            analysis_duration: std::time::Duration::from_millis(500),
+            complexity_metrics: ComplexityMetrics {
+                total_functions: 15,
+                high_complexity_count: 3,
+                avg_complexity: 5.5,
+            },
+            recommendations: vec!["Consider refactoring".to_string()],
+            file_complexity_details: vec![
+                FileComplexityDetail {
+                    file_path: PathBuf::from("src/main.rs"),
+                    function_count: 10,
+                    high_complexity_functions: 2,
+                    avg_complexity: 6.0,
+                    complexity_score: 8.0,
+                    function_names: vec!["main".to_string(), "helper".to_string()],
+                },
+                FileComplexityDetail {
+                    file_path: PathBuf::from("src/lib.rs"),
+                    function_count: 5,
+                    high_complexity_functions: 1,
+                    avg_complexity: 4.5,
+                    complexity_score: 5.0,
+                    function_names: vec!["process".to_string()],
+                },
+            ],
+        };
+
+        let json = analyzer.format_as_json(&report).unwrap();
+        assert!(json.contains("\"file_count\": 2"));
+        assert!(json.contains("\"total_functions\": 15"));
+        assert!(json.contains("main.rs"));
+        assert!(json.contains("lib.rs"));
+        // Check JSON is valid by parsing it
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed["summary"]["file_count"], 2);
+    }
+
+    // ============ format_as_markdown Tests ============
+
+    #[test]
+    fn test_format_as_markdown_empty_report() {
+        let analyzer = SimpleDeepContext;
+        let report = SimpleAnalysisReport {
+            file_count: 0,
+            analysis_duration: std::time::Duration::from_millis(50),
+            complexity_metrics: ComplexityMetrics {
+                total_functions: 0,
+                high_complexity_count: 0,
+                avg_complexity: 0.0,
+            },
+            recommendations: vec!["No files found".to_string()],
+            file_complexity_details: vec![],
+        };
+
+        let markdown = analyzer.format_as_markdown(&report, 10);
+        assert!(markdown.contains("# Deep Context Analysis Report"));
+        assert!(markdown.contains("**Files Analyzed**: 0"));
+        assert!(markdown.contains("## Recommendations"));
+    }
+
+    #[test]
+    fn test_format_as_markdown_with_files() {
+        let analyzer = SimpleDeepContext;
+        let report = SimpleAnalysisReport {
+            file_count: 3,
+            analysis_duration: std::time::Duration::from_secs(1),
+            complexity_metrics: ComplexityMetrics {
+                total_functions: 30,
+                high_complexity_count: 5,
+                avg_complexity: 6.2,
+            },
+            recommendations: vec![
+                "Consider refactoring".to_string(),
+                "Add tests".to_string(),
+            ],
+            file_complexity_details: vec![
+                FileComplexityDetail {
+                    file_path: PathBuf::from("complex.rs"),
+                    function_count: 15,
+                    high_complexity_functions: 3,
+                    avg_complexity: 8.0,
+                    complexity_score: 12.0,
+                    function_names: vec![],
+                },
+                FileComplexityDetail {
+                    file_path: PathBuf::from("medium.rs"),
+                    function_count: 10,
+                    high_complexity_functions: 2,
+                    avg_complexity: 5.0,
+                    complexity_score: 7.0,
+                    function_names: vec![],
+                },
+            ],
+        };
+
+        let markdown = analyzer.format_as_markdown(&report, 10);
+        assert!(markdown.contains("**Files Analyzed**: 3"));
+        assert!(markdown.contains("**Total Functions**: 30"));
+        assert!(markdown.contains("**High Complexity Functions**: 5"));
+        assert!(markdown.contains("## Top Files by Complexity"));
+        // Check that files are sorted by complexity score (descending)
+        let complex_pos = markdown.find("complex.rs").unwrap_or(usize::MAX);
+        let medium_pos = markdown.find("medium.rs").unwrap_or(usize::MAX);
+        assert!(complex_pos < medium_pos, "Higher complexity file should appear first");
+    }
+
+    #[test]
+    fn test_format_as_markdown_zero_top_files() {
+        let analyzer = SimpleDeepContext;
+        let report = SimpleAnalysisReport {
+            file_count: 1,
+            analysis_duration: std::time::Duration::from_millis(100),
+            complexity_metrics: ComplexityMetrics {
+                total_functions: 5,
+                high_complexity_count: 1,
+                avg_complexity: 3.0,
+            },
+            recommendations: vec![],
+            file_complexity_details: vec![FileComplexityDetail {
+                file_path: PathBuf::from("test.rs"),
+                function_count: 5,
+                high_complexity_functions: 1,
+                avg_complexity: 3.0,
+                complexity_score: 5.0,
+                function_names: vec![],
+            }],
+        };
+
+        // When top_files is 0, it should default to 10
+        let markdown = analyzer.format_as_markdown(&report, 0);
+        assert!(markdown.contains("test.rs"));
+    }
+
+    // ============ extract_function_names Tests ============
+
+    #[tokio::test]
+    async fn test_extract_function_names_rust() {
+        let analyzer = SimpleDeepContext;
+        let temp_dir = TempDir::new().unwrap();
+        let test_file = temp_dir.path().join("test.rs");
+
+        fs::write(
+            &test_file,
+            r#"
+fn main() {
+    helper();
+}
+
+pub fn helper() -> i32 {
+    42
+}
+
+async fn async_func() {
+    tokio::time::sleep(Duration::from_millis(1)).await;
+}
+
+pub(crate) fn crate_visible() {}
+"#,
+        )
+        .unwrap();
+
+        let names = analyzer
+            .extract_function_names_heuristic(&test_file, "rs")
+            .await
+            .unwrap();
+        assert!(names.contains(&"main".to_string()));
+        assert!(names.contains(&"helper".to_string()));
+        assert!(names.contains(&"async_func".to_string()));
+        assert!(names.contains(&"crate_visible".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_extract_function_names_python() {
+        let analyzer = SimpleDeepContext;
+        let temp_dir = TempDir::new().unwrap();
+        let test_file = temp_dir.path().join("test.py");
+
+        fs::write(
+            &test_file,
+            r#"
+def main():
+    pass
+
+async def async_handler():
+    await something()
+
+def helper_func(x, y):
+    return x + y
+"#,
+        )
+        .unwrap();
+
+        let names = analyzer
+            .extract_function_names_heuristic(&test_file, "py")
+            .await
+            .unwrap();
+        assert!(names.contains(&"main".to_string()));
+        assert!(names.contains(&"async_handler".to_string()));
+        assert!(names.contains(&"helper_func".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_extract_function_names_kotlin() {
+        let analyzer = SimpleDeepContext;
+        let temp_dir = TempDir::new().unwrap();
+        let test_file = temp_dir.path().join("test.kt");
+
+        fs::write(
+            &test_file,
+            r#"
+fun main() {
+    println("Hello")
+}
+
+suspend fun asyncOperation() {
+    delay(100)
+}
+
+fun processData(data: String): Int {
+    return data.length
+}
+"#,
+        )
+        .unwrap();
+
+        let names = analyzer
+            .extract_function_names_heuristic(&test_file, "kt")
+            .await
+            .unwrap();
+        assert!(names.contains(&"main".to_string()));
+        assert!(names.contains(&"asyncOperation".to_string()));
+        assert!(names.contains(&"processData".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_extract_function_names_go() {
+        let analyzer = SimpleDeepContext;
+        let temp_dir = TempDir::new().unwrap();
+        let test_file = temp_dir.path().join("test.go");
+
+        fs::write(
+            &test_file,
+            r#"
+func main() {
+    fmt.Println("hello")
+}
+
+func (s *Server) HandleRequest() {
+    // method
+}
+
+func processData(data string) int {
+    return len(data)
+}
+"#,
+        )
+        .unwrap();
+
+        let names = analyzer
+            .extract_function_names_heuristic(&test_file, "go")
+            .await
+            .unwrap();
+        assert!(names.contains(&"main".to_string()));
+        assert!(names.contains(&"HandleRequest".to_string()));
+        assert!(names.contains(&"processData".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_extract_function_names_unknown_extension() {
+        let analyzer = SimpleDeepContext;
+        let temp_dir = TempDir::new().unwrap();
+        let test_file = temp_dir.path().join("test.xyz");
+
+        fs::write(&test_file, "some content").unwrap();
+
+        let names = analyzer
+            .extract_function_names_heuristic(&test_file, "xyz")
+            .await
+            .unwrap();
+        assert!(names.is_empty());
+    }
+
+    // ============ analyze_complexity Integration Tests ============
+
+    #[tokio::test]
+    async fn test_analyze_complexity_multiple_files() {
+        let analyzer = SimpleDeepContext;
+        let temp_dir = TempDir::new().unwrap();
+
+        let file1 = temp_dir.path().join("simple.rs");
+        fs::write(&file1, "fn simple() { }").unwrap();
+
+        let file2 = temp_dir.path().join("complex.rs");
+        fs::write(
+            &file2,
+            r#"
+fn complex(x: i32) -> i32 {
+    if x > 0 {
+        if x > 10 {
+            for i in 0..x {
+                if i % 2 == 0 {
+                    return i;
+                }
+            }
+        }
+    }
+    0
+}
+"#,
+        )
+        .unwrap();
+
+        let files = vec![file1, file2];
+        let (metrics, details) = analyzer.analyze_complexity(&files).await.unwrap();
+
+        assert!(metrics.total_functions >= 2);
+        assert_eq!(details.len(), 2);
+    }
+
+    // ============ SimpleAnalysisReport Tests ============
+
+    #[test]
+    fn test_simple_analysis_report_debug() {
+        let report = SimpleAnalysisReport {
+            file_count: 5,
+            analysis_duration: std::time::Duration::from_millis(250),
+            complexity_metrics: ComplexityMetrics {
+                total_functions: 25,
+                high_complexity_count: 3,
+                avg_complexity: 4.5,
+            },
+            recommendations: vec!["Test recommendation".to_string()],
+            file_complexity_details: vec![],
+        };
+
+        let debug = format!("{:?}", report);
+        assert!(debug.contains("file_count"));
+        assert!(debug.contains("5"));
+        assert!(debug.contains("complexity_metrics"));
+    }
+
+    // ============ FileComplexityMetrics Tests ============
+
+    #[test]
+    fn test_file_complexity_metrics_debug() {
+        use super::FileComplexityMetrics;
+
+        let metrics = FileComplexityMetrics {
+            function_count: 10,
+            high_complexity_functions: 2,
+            avg_complexity: 5.5,
+            function_names: vec!["func1".to_string(), "func2".to_string()],
+        };
+
+        let debug = format!("{:?}", metrics);
+        assert!(debug.contains("function_count"));
+        assert!(debug.contains("10"));
+        assert!(debug.contains("function_names"));
+    }
+
+    // ============ estimate_complexity Edge Cases ============
+
+    #[test]
+    fn test_estimate_complexity_unknown_language() {
+        let analyzer = SimpleDeepContext;
+        let code = "some random code with if and while";
+        let complexity = analyzer.estimate_complexity(code, "unknown_lang");
+        // Unknown language should return base complexity
+        assert_eq!(complexity, 1);
+    }
+
+    #[test]
+    fn test_estimate_complexity_empty_code() {
+        let analyzer = SimpleDeepContext;
+        let code = "";
+        let complexity = analyzer.estimate_complexity(code, "py");
+        // Empty code should have base complexity only
+        assert_eq!(complexity, 1);
+    }
 }
 
 #[cfg(test)]
