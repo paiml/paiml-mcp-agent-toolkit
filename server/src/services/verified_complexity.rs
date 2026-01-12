@@ -352,6 +352,57 @@ mod tests {
         }
     }
 
+    fn create_if_statement() -> UnifiedAstNode {
+        UnifiedAstNode {
+            kind: AstKind::Statement(StmtKind::If),
+            lang: crate::models::unified_ast::Language::Rust,
+            flags: NodeFlags::default(),
+            parent: 0,
+            first_child: 0,
+            next_sibling: 0,
+            source_range: 0..50,
+            semantic_hash: 0,
+            structural_hash: 0,
+            name_vector: 0,
+            metadata: crate::models::unified_ast::NodeMetadata::default(),
+            proof_annotations: None,
+        }
+    }
+
+    fn create_while_loop() -> UnifiedAstNode {
+        UnifiedAstNode {
+            kind: AstKind::Statement(StmtKind::While),
+            lang: crate::models::unified_ast::Language::Rust,
+            flags: NodeFlags::default(),
+            parent: 0,
+            first_child: 0,
+            next_sibling: 0,
+            source_range: 0..50,
+            semantic_hash: 0,
+            structural_hash: 0,
+            name_vector: 0,
+            metadata: crate::models::unified_ast::NodeMetadata::default(),
+            proof_annotations: None,
+        }
+    }
+
+    fn create_return_statement() -> UnifiedAstNode {
+        UnifiedAstNode {
+            kind: AstKind::Statement(StmtKind::Return),
+            lang: crate::models::unified_ast::Language::Rust,
+            flags: NodeFlags::default(),
+            parent: 0,
+            first_child: 0,
+            next_sibling: 0,
+            source_range: 0..20,
+            semantic_hash: 0,
+            structural_hash: 0,
+            name_vector: 0,
+            metadata: crate::models::unified_ast::NodeMetadata::default(),
+            proof_annotations: None,
+        }
+    }
+
     #[test]
     fn test_simple_function_complexity() {
         let mut analyzer = VerifiedComplexityAnalyzer::new();
@@ -395,6 +446,422 @@ mod tests {
             metrics.essential <= metrics.cyclomatic,
             "Essential must be <= cyclomatic"
         );
+    }
+
+    // Additional tests for coverage
+
+    #[test]
+    fn test_analyzer_default() {
+        let analyzer = VerifiedComplexityAnalyzer::default();
+        assert_eq!(analyzer.nesting_level, 0);
+    }
+
+    #[test]
+    fn test_halstead_metrics_default() {
+        let metrics = HalsteadMetrics::default();
+        assert_eq!(metrics.n1, 0);
+        assert_eq!(metrics.n2, 0);
+        assert_eq!(metrics.N1, 0);
+        assert_eq!(metrics.N2, 0);
+    }
+
+    #[test]
+    fn test_halstead_volume() {
+        let metrics = HalsteadMetrics {
+            n1: 5,
+            n2: 10,
+            N1: 20,
+            N2: 30,
+        };
+        let volume = metrics.volume();
+        // N * log2(n) = 50 * log2(15)
+        assert!(volume > 0.0);
+    }
+
+    #[test]
+    fn test_halstead_volume_zero() {
+        let metrics = HalsteadMetrics::default();
+        let volume = metrics.volume();
+        // 0 * log2(0) is NaN or -inf, but should handle gracefully
+        assert!(volume.is_nan() || volume.is_infinite() || volume == 0.0);
+    }
+
+    #[test]
+    fn test_halstead_difficulty() {
+        let metrics = HalsteadMetrics {
+            n1: 10,
+            n2: 5,
+            N1: 50,
+            N2: 25,
+        };
+        let difficulty = metrics.difficulty();
+        // (n1/2) * (N2/n2) = 5 * 5 = 25
+        assert!((difficulty - 25.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn test_halstead_difficulty_zero_operands() {
+        let metrics = HalsteadMetrics {
+            n1: 10,
+            n2: 0,
+            N1: 50,
+            N2: 0,
+        };
+        let difficulty = metrics.difficulty();
+        assert_eq!(difficulty, 0.0);
+    }
+
+    #[test]
+    fn test_halstead_effort() {
+        let metrics = HalsteadMetrics {
+            n1: 5,
+            n2: 5,
+            N1: 10,
+            N2: 10,
+        };
+        let effort = metrics.effort();
+        assert!(effort >= 0.0);
+    }
+
+    #[test]
+    fn test_complexity_metrics_clone() {
+        let metrics = ComplexityMetrics {
+            cyclomatic: 5,
+            cognitive: 8,
+            essential: 3,
+            halstead: HalsteadMetrics::default(),
+        };
+        let cloned = metrics;
+        assert_eq!(cloned.cyclomatic, 5);
+        assert_eq!(cloned.cognitive, 8);
+    }
+
+    #[test]
+    fn test_complexity_metrics_debug() {
+        let metrics = ComplexityMetrics {
+            cyclomatic: 10,
+            cognitive: 15,
+            essential: 5,
+            halstead: HalsteadMetrics {
+                n1: 1,
+                n2: 2,
+                N1: 3,
+                N2: 4,
+            },
+        };
+        let debug_str = format!("{:?}", metrics);
+        assert!(debug_str.contains("cyclomatic"));
+        assert!(debug_str.contains("10"));
+    }
+
+    #[test]
+    fn test_halstead_metrics_clone() {
+        let metrics = HalsteadMetrics {
+            n1: 1,
+            n2: 2,
+            N1: 3,
+            N2: 4,
+        };
+        let cloned = metrics;
+        assert_eq!(cloned.n1, 1);
+        assert_eq!(cloned.N2, 4);
+    }
+
+    #[test]
+    fn test_visit_cyclomatic_if() {
+        let analyzer = VerifiedComplexityAnalyzer::new();
+        let if_stmt = create_if_statement();
+        let mut complexity = 0;
+        analyzer.visit_cyclomatic(&if_stmt, &mut complexity);
+        assert_eq!(complexity, 1);
+    }
+
+    #[test]
+    fn test_visit_cyclomatic_while() {
+        let analyzer = VerifiedComplexityAnalyzer::new();
+        let while_loop = create_while_loop();
+        let mut complexity = 0;
+        analyzer.visit_cyclomatic(&while_loop, &mut complexity);
+        assert_eq!(complexity, 1);
+    }
+
+    #[test]
+    fn test_visit_cyclomatic_for() {
+        let analyzer = VerifiedComplexityAnalyzer::new();
+        let for_loop = UnifiedAstNode {
+            kind: AstKind::Statement(StmtKind::For),
+            lang: crate::models::unified_ast::Language::Rust,
+            flags: NodeFlags::default(),
+            parent: 0,
+            first_child: 0,
+            next_sibling: 0,
+            source_range: 0..50,
+            semantic_hash: 0,
+            structural_hash: 0,
+            name_vector: 0,
+            metadata: crate::models::unified_ast::NodeMetadata::default(),
+            proof_annotations: None,
+        };
+        let mut complexity = 0;
+        analyzer.visit_cyclomatic(&for_loop, &mut complexity);
+        assert_eq!(complexity, 1);
+    }
+
+    #[test]
+    fn test_visit_cyclomatic_switch() {
+        let analyzer = VerifiedComplexityAnalyzer::new();
+        let switch_stmt = UnifiedAstNode {
+            kind: AstKind::Statement(StmtKind::Switch),
+            lang: crate::models::unified_ast::Language::Rust,
+            flags: NodeFlags::default(),
+            parent: 0,
+            first_child: 0,
+            next_sibling: 0,
+            source_range: 0..50,
+            semantic_hash: 0,
+            structural_hash: 0,
+            name_vector: 0,
+            metadata: crate::models::unified_ast::NodeMetadata::default(),
+            proof_annotations: None,
+        };
+        let mut complexity = 0;
+        analyzer.visit_cyclomatic(&switch_stmt, &mut complexity);
+        assert_eq!(complexity, 1);
+    }
+
+    #[test]
+    fn test_visit_cyclomatic_try() {
+        let analyzer = VerifiedComplexityAnalyzer::new();
+        let try_stmt = UnifiedAstNode {
+            kind: AstKind::Statement(StmtKind::Try),
+            lang: crate::models::unified_ast::Language::Rust,
+            flags: NodeFlags::default(),
+            parent: 0,
+            first_child: 0,
+            next_sibling: 0,
+            source_range: 0..50,
+            semantic_hash: 0,
+            structural_hash: 0,
+            name_vector: 0,
+            metadata: crate::models::unified_ast::NodeMetadata::default(),
+            proof_annotations: None,
+        };
+        let mut complexity = 0;
+        analyzer.visit_cyclomatic(&try_stmt, &mut complexity);
+        assert_eq!(complexity, 1);
+    }
+
+    #[test]
+    fn test_visit_cyclomatic_binary_expr() {
+        let analyzer = VerifiedComplexityAnalyzer::new();
+        let binary_expr = UnifiedAstNode {
+            kind: AstKind::Expression(ExprKind::Binary),
+            lang: crate::models::unified_ast::Language::Rust,
+            flags: NodeFlags::default(),
+            parent: 0,
+            first_child: 0,
+            next_sibling: 0,
+            source_range: 0..20,
+            semantic_hash: 0,
+            structural_hash: 0,
+            name_vector: 0,
+            metadata: crate::models::unified_ast::NodeMetadata::default(),
+            proof_annotations: None,
+        };
+        let mut complexity = 0;
+        analyzer.visit_cyclomatic(&binary_expr, &mut complexity);
+        assert_eq!(complexity, 1);
+    }
+
+    #[test]
+    fn test_is_guard_clause() {
+        let analyzer = VerifiedComplexityAnalyzer::new();
+        let return_stmt = create_return_statement();
+        assert!(analyzer.is_guard_clause(&return_stmt));
+
+        let if_stmt = create_if_statement();
+        assert!(!analyzer.is_guard_clause(&if_stmt));
+    }
+
+    #[test]
+    fn test_count_linear_paths_if() {
+        let analyzer = VerifiedComplexityAnalyzer::new();
+        let if_stmt = create_if_statement();
+        let paths = analyzer.count_linear_paths(&if_stmt);
+        assert!(paths >= 1);
+    }
+
+    #[test]
+    fn test_count_linear_paths_return() {
+        let analyzer = VerifiedComplexityAnalyzer::new();
+        let return_stmt = create_return_statement();
+        let paths = analyzer.count_linear_paths(&return_stmt);
+        assert!(paths >= 1);
+    }
+
+    #[test]
+    fn test_children_returns_empty() {
+        let analyzer = VerifiedComplexityAnalyzer::new();
+        let func = create_test_function();
+        let children = analyzer.children(&func);
+        assert!(children.is_empty());
+    }
+
+    #[test]
+    fn test_compute_cognitive_if() {
+        let mut analyzer = VerifiedComplexityAnalyzer::new();
+        let if_stmt = create_if_statement();
+        let weight = analyzer.compute_cognitive_weight(&if_stmt);
+        assert!(weight >= 1);
+    }
+
+    #[test]
+    fn test_compute_cognitive_while() {
+        let mut analyzer = VerifiedComplexityAnalyzer::new();
+        let while_loop = create_while_loop();
+        let weight = analyzer.compute_cognitive_weight(&while_loop);
+        assert!(weight >= 1);
+    }
+
+    #[test]
+    fn test_compute_cognitive_nested() {
+        let mut analyzer = VerifiedComplexityAnalyzer::new();
+        analyzer.nesting_level = 2;
+        let if_stmt = create_if_statement();
+        let weight = analyzer.compute_cognitive_weight(&if_stmt);
+        // Should be 1 + nesting_level = 3
+        assert_eq!(weight, 3);
+    }
+
+    #[test]
+    fn test_collect_halstead_tokens() {
+        let analyzer = VerifiedComplexityAnalyzer::new();
+        let mut operators = HashMap::new();
+        let mut operands = HashMap::new();
+
+        // Test binary expression
+        let binary = UnifiedAstNode {
+            kind: AstKind::Expression(ExprKind::Binary),
+            lang: crate::models::unified_ast::Language::Rust,
+            flags: NodeFlags::default(),
+            parent: 0,
+            first_child: 0,
+            next_sibling: 0,
+            source_range: 0..10,
+            semantic_hash: 0,
+            structural_hash: 0,
+            name_vector: 0,
+            metadata: crate::models::unified_ast::NodeMetadata::default(),
+            proof_annotations: None,
+        };
+        analyzer.collect_halstead_tokens(&binary, &mut operators, &mut operands);
+        assert_eq!(operators.get("binary_op"), Some(&1));
+    }
+
+    #[test]
+    fn test_collect_halstead_unary() {
+        let analyzer = VerifiedComplexityAnalyzer::new();
+        let mut operators = HashMap::new();
+        let mut operands = HashMap::new();
+
+        let unary = UnifiedAstNode {
+            kind: AstKind::Expression(ExprKind::Unary),
+            lang: crate::models::unified_ast::Language::Rust,
+            flags: NodeFlags::default(),
+            parent: 0,
+            first_child: 0,
+            next_sibling: 0,
+            source_range: 0..10,
+            semantic_hash: 0,
+            structural_hash: 0,
+            name_vector: 0,
+            metadata: crate::models::unified_ast::NodeMetadata::default(),
+            proof_annotations: None,
+        };
+        analyzer.collect_halstead_tokens(&unary, &mut operators, &mut operands);
+        assert_eq!(operators.get("unary_op"), Some(&1));
+    }
+
+    #[test]
+    fn test_collect_halstead_identifier() {
+        let analyzer = VerifiedComplexityAnalyzer::new();
+        let mut operators = HashMap::new();
+        let mut operands = HashMap::new();
+
+        let identifier = UnifiedAstNode {
+            kind: AstKind::Expression(ExprKind::Identifier),
+            lang: crate::models::unified_ast::Language::Rust,
+            flags: NodeFlags::default(),
+            parent: 0,
+            first_child: 0,
+            next_sibling: 0,
+            source_range: 0..10,
+            semantic_hash: 0,
+            structural_hash: 0,
+            name_vector: 0,
+            metadata: crate::models::unified_ast::NodeMetadata::default(),
+            proof_annotations: None,
+        };
+        analyzer.collect_halstead_tokens(&identifier, &mut operators, &mut operands);
+        assert_eq!(operands.get("identifier"), Some(&1));
+    }
+
+    #[test]
+    fn test_collect_halstead_literal() {
+        let analyzer = VerifiedComplexityAnalyzer::new();
+        let mut operators = HashMap::new();
+        let mut operands = HashMap::new();
+
+        let literal = UnifiedAstNode {
+            kind: AstKind::Expression(ExprKind::Literal),
+            lang: crate::models::unified_ast::Language::Rust,
+            flags: NodeFlags::default(),
+            parent: 0,
+            first_child: 0,
+            next_sibling: 0,
+            source_range: 0..10,
+            semantic_hash: 0,
+            structural_hash: 0,
+            name_vector: 0,
+            metadata: crate::models::unified_ast::NodeMetadata::default(),
+            proof_annotations: None,
+        };
+        analyzer.collect_halstead_tokens(&literal, &mut operators, &mut operands);
+        assert_eq!(operands.get("literal"), Some(&1));
+    }
+
+    #[test]
+    fn test_collect_halstead_call() {
+        let analyzer = VerifiedComplexityAnalyzer::new();
+        let mut operators = HashMap::new();
+        let mut operands = HashMap::new();
+
+        let call = UnifiedAstNode {
+            kind: AstKind::Expression(ExprKind::Call),
+            lang: crate::models::unified_ast::Language::Rust,
+            flags: NodeFlags::default(),
+            parent: 0,
+            first_child: 0,
+            next_sibling: 0,
+            source_range: 0..10,
+            semantic_hash: 0,
+            structural_hash: 0,
+            name_vector: 0,
+            metadata: crate::models::unified_ast::NodeMetadata::default(),
+            proof_annotations: None,
+        };
+        analyzer.collect_halstead_tokens(&call, &mut operators, &mut operands);
+        assert_eq!(operators.get("()"), Some(&1));
+    }
+
+    #[test]
+    fn test_calculate_halstead() {
+        let analyzer = VerifiedComplexityAnalyzer::new();
+        let func = create_test_function();
+        let halstead = analyzer.calculate_halstead(&func);
+        // Empty function should have minimal metrics
+        assert_eq!(halstead.n1, 0);
+        assert_eq!(halstead.n2, 0);
     }
 }
 
