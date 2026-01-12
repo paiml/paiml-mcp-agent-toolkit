@@ -58,3 +58,87 @@ pub mod stub {
 
 #[cfg(not(feature = "viz"))]
 pub use stub::*;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[cfg(not(feature = "viz"))]
+    mod stub_tests {
+        use super::stub::*;
+
+        #[test]
+        fn test_render_config_default() {
+            let config = RenderConfig::default();
+            let _ = config;
+        }
+
+        #[test]
+        fn test_terminal_theme_default() {
+            let theme = TerminalTheme::default();
+            assert!(matches!(theme, TerminalTheme::Default));
+        }
+
+        #[test]
+        fn test_node_shape_default() {
+            let shape = NodeShape::default();
+            assert!(matches!(shape, NodeShape::Circle));
+        }
+
+        #[test]
+        fn test_render_config_debug() {
+            let config = RenderConfig::default();
+            let debug_str = format!("{:?}", config);
+            assert!(debug_str.contains("RenderConfig"));
+        }
+
+        #[test]
+        fn test_terminal_theme_debug() {
+            let theme = TerminalTheme::default();
+            let debug_str = format!("{:?}", theme);
+            assert!(debug_str.contains("Default"));
+        }
+
+        #[test]
+        fn test_node_shape_debug() {
+            let shape = NodeShape::default();
+            let debug_str = format!("{:?}", shape);
+            assert!(debug_str.contains("Circle"));
+        }
+
+        #[test]
+        fn test_render_config_clone() {
+            let config = RenderConfig::default();
+            let cloned = config.clone();
+            let _ = cloned;
+        }
+
+        #[test]
+        fn test_terminal_theme_clone() {
+            let theme = TerminalTheme::default();
+            let cloned = theme.clone();
+            assert!(matches!(cloned, TerminalTheme::Default));
+        }
+
+        #[test]
+        fn test_node_shape_clone() {
+            let shape = NodeShape::default();
+            let cloned = shape.clone();
+            assert!(matches!(cloned, NodeShape::Circle));
+        }
+
+        #[test]
+        fn test_terminal_theme_copy() {
+            let theme = TerminalTheme::default();
+            let copied: TerminalTheme = theme;
+            assert!(matches!(copied, TerminalTheme::Default));
+        }
+
+        #[test]
+        fn test_node_shape_copy() {
+            let shape = NodeShape::default();
+            let copied: NodeShape = shape;
+            assert!(matches!(copied, NodeShape::Circle));
+        }
+    }
+}

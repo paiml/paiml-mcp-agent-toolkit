@@ -133,3 +133,220 @@ fn extract_test_name_from_ctest(line: &str) -> Option<String> {
 
     None
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // =========================================================================
+    // CppAdapter Construction Tests
+    // =========================================================================
+
+    #[test]
+    fn test_cpp_adapter_new() {
+        let adapter = CppAdapter::new();
+        let _ = adapter;
+    }
+
+    #[test]
+    fn test_cpp_adapter_default() {
+        let adapter = CppAdapter::default();
+        let _ = adapter;
+    }
+
+    #[test]
+    fn test_adapter_name() {
+        let adapter = CppAdapter::new();
+        assert_eq!(adapter.name(), "cpp");
+    }
+
+    #[test]
+    fn test_adapter_extensions() {
+        let adapter = CppAdapter::new();
+        let extensions = adapter.extensions();
+        assert!(extensions.contains(&"c"));
+        assert!(extensions.contains(&"cpp"));
+        assert!(extensions.contains(&"cc"));
+        assert!(extensions.contains(&"cxx"));
+        assert!(extensions.contains(&"h"));
+        assert!(extensions.contains(&"hpp"));
+        assert_eq!(extensions.len(), 6);
+    }
+
+    #[test]
+    fn test_mutation_operators() {
+        let adapter = CppAdapter::new();
+        let operators = adapter.mutation_operators();
+        assert_eq!(operators.len(), 4);
+    }
+
+    // =========================================================================
+    // find_cmake_root Tests
+    // =========================================================================
+
+    #[test]
+    fn test_find_cmake_root_nonexistent() {
+        let path = Path::new("/nonexistent/path/to/file.cpp");
+        let result = find_cmake_root(path);
+        assert!(result.is_none());
+    }
+
+    // =========================================================================
+    // parse_test_failures Tests
+    // =========================================================================
+
+    #[test]
+    fn test_parse_test_failures_empty() {
+        let failures = parse_test_failures("", "");
+        assert!(failures.is_empty());
+    }
+
+    #[test]
+    fn test_parse_test_failures_no_failures() {
+        let stdout = "1/3 Test #1: TestAdd ..........................   Passed";
+        let failures = parse_test_failures(stdout, "");
+        assert!(failures.is_empty());
+    }
+
+    #[test]
+    fn test_parse_test_failures_single_failure() {
+        let stdout = "2/3 Test #2: TestSubtract .....................***Failed";
+        let failures = parse_test_failures(stdout, "");
+        assert_eq!(failures.len(), 1);
+        assert_eq!(failures[0], "TestSubtract");
+    }
+
+    #[test]
+    fn test_parse_test_failures_multiple_failures() {
+        let stdout = "1/3 Test #1: TestAdd ..........................   Passed\n\
+                      2/3 Test #2: TestSubtract .....................***Failed\n\
+                      3/3 Test #3: TestMultiply .....................***Failed";
+        let failures = parse_test_failures(stdout, "");
+        assert_eq!(failures.len(), 2);
+    }
+
+    #[test]
+    fn test_parse_test_failures_from_stderr() {
+        let stderr = "2/3 Test #2: TestFail .....................***Failed";
+        let failures = parse_test_failures("", stderr);
+        assert_eq!(failures.len(), 1);
+    }
+
+    #[test]
+    fn test_parse_test_failures_mixed_stdout_stderr() {
+        let stdout = "2/3 Test #2: TestFail1 .....................***Failed";
+        let stderr = "3/3 Test #3: TestFail2 .....................***Failed";
+        let failures = parse_test_failures(stdout, stderr);
+        assert_eq!(failures.len(), 2);
+    }
+
+    // =========================================================================
+    // extract_test_name_from_ctest Tests
+    // =========================================================================
+
+    #[test]
+    fn test_extract_test_name_basic() {
+        let line = "2/3 Test #2: TestSubtract .....................***Failed";
+        let result = extract_test_name_from_ctest(line);
+        assert!(result.is_some());
+        assert_eq!(result.unwrap(), "TestSubtract");
+    }
+
+    #[test]
+    fn test_extract_test_name_no_match() {
+        let line = "Passed test";
+        let result = extract_test_name_from_ctest(line);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_extract_test_name_empty_line() {
+        let line = "";
+        let result = extract_test_name_from_ctest(line);
+        assert!(result.is_none());
+    }
+
+    // =========================================================================
+    // Async Tests
+    // =========================================================================
+
+    #[tokio::test]
+    async fn test_parse_simple_source() {
+        let adapter = CppAdapter::new();
+        let source = "int main() { return 0; }";
+        let result = adapter.parse(source).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_parse_complex_source() {
+        let adapter = CppAdapter::new();
+        let source = r#"
+            #include <iostream>
+            int add(int a, int b) { return a + b; }
+            int main() {
+                std::cout << add(1, 2);
+                return 0;
+            }
+        "#;
+        let result = adapter.parse(source).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_unparse() {
+        let adapter = CppAdapter::new();
+        let ast = "int main() {}";
+        let result = adapter.unparse(ast).await;
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), ast);
+    }
+
+    #[tokio::test]
+    async fn test_run_tests() {
+        let adapter = CppAdapter::new();
+        let path = Path::new("/test/file.cpp");
+        let result = adapter.run_tests(path).await;
+        assert!(result.is_ok());
+        let test_result = result.unwrap();
+        assert!(test_result.passed);
+    }
+
+    // =========================================================================
+    // LanguageAdapter Trait Tests
+    // =========================================================================
+
+    #[test]
+    fn test_implements_language_adapter() {
+        fn _assert_adapter<T: LanguageAdapter>() {}
+        _assert_adapter::<CppAdapter>();
+    }
+
+    // =========================================================================
+    // Edge Cases
+    // =========================================================================
+
+    #[test]
+    fn test_extensions_are_complete() {
+        let adapter = CppAdapter::new();
+        let extensions = adapter.extensions();
+
+        assert!(extensions.iter().any(|e| *e == "c"), "Missing .c");
+        assert!(extensions.iter().any(|e| *e == "cpp"), "Missing .cpp");
+        assert!(extensions.iter().any(|e| *e == "h"), "Missing .h");
+        assert!(extensions.iter().any(|e| *e == "hpp"), "Missing .hpp");
+    }
+
+    #[tokio::test]
+    async fn test_run_tests_returns_test_run_result() {
+        let adapter = CppAdapter::new();
+        let path = Path::new("/test/file.cpp");
+        let result = adapter.run_tests(path).await.unwrap();
+
+        assert!(result.passed);
+        assert!(result.failures.is_empty());
+        assert_eq!(result.execution_time_ms, 0);
+        assert!(result.stdout.is_empty());
+        assert!(result.stderr.is_empty());
+    }
+}
