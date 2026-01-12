@@ -251,6 +251,27 @@ mod tests {
     // compute_reciprocity Tests
     // =========================================================================
 
+    use crate::graph::types::{EdgeData, NodeData, Visibility};
+    use std::path::PathBuf;
+
+    fn make_test_node(name: &str) -> NodeData {
+        NodeData {
+            path: PathBuf::from(format!("{}.rs", name)),
+            module: name.to_string(),
+            symbols: vec![],
+            loc: 10,
+            complexity: 1.0,
+            ast_hash: 0,
+        }
+    }
+
+    fn make_test_edge() -> EdgeData {
+        EdgeData::Import {
+            weight: 1.0,
+            visibility: Visibility::Public,
+        }
+    }
+
     #[test]
     fn test_compute_reciprocity_empty_graph() {
         let graph = DependencyGraph::new();
@@ -261,9 +282,9 @@ mod tests {
     #[test]
     fn test_compute_reciprocity_no_reciprocal_edges() {
         let mut graph = DependencyGraph::new();
-        let a = graph.add_node("a".to_string());
-        let b = graph.add_node("b".to_string());
-        graph.add_edge(a, b, ());
+        let a = graph.add_node(make_test_node("a"));
+        let b = graph.add_node(make_test_node("b"));
+        graph.add_edge(a, b, make_test_edge());
 
         let result = compute_reciprocity(&graph);
         assert!((result - 0.0).abs() < 0.001);
@@ -272,10 +293,10 @@ mod tests {
     #[test]
     fn test_compute_reciprocity_all_reciprocal() {
         let mut graph = DependencyGraph::new();
-        let a = graph.add_node("a".to_string());
-        let b = graph.add_node("b".to_string());
-        graph.add_edge(a, b, ());
-        graph.add_edge(b, a, ());
+        let a = graph.add_node(make_test_node("a"));
+        let b = graph.add_node(make_test_node("b"));
+        graph.add_edge(a, b, make_test_edge());
+        graph.add_edge(b, a, make_test_edge());
 
         let result = compute_reciprocity(&graph);
         // Both edges have reciprocal, so 2/2 = 1.0
@@ -285,12 +306,12 @@ mod tests {
     #[test]
     fn test_compute_reciprocity_partial() {
         let mut graph = DependencyGraph::new();
-        let a = graph.add_node("a".to_string());
-        let b = graph.add_node("b".to_string());
-        let c = graph.add_node("c".to_string());
-        graph.add_edge(a, b, ());
-        graph.add_edge(b, a, ());
-        graph.add_edge(b, c, ());
+        let a = graph.add_node(make_test_node("a"));
+        let b = graph.add_node(make_test_node("b"));
+        let c = graph.add_node(make_test_node("c"));
+        graph.add_edge(a, b, make_test_edge());
+        graph.add_edge(b, a, make_test_edge());
+        graph.add_edge(b, c, make_test_edge());
 
         let result = compute_reciprocity(&graph);
         // 2 out of 3 edges have reciprocal
