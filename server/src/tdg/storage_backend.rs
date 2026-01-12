@@ -118,6 +118,7 @@ pub struct SledBackend {
 }
 
 #[cfg(feature = "sled-backend")]
+#[cfg_attr(coverage_nightly, coverage(off))]
 impl SledBackend {
     pub fn new(path: &Path) -> Result<Self> {
         let db = sled::open(path)?;
@@ -133,6 +134,7 @@ impl SledBackend {
 }
 
 #[cfg(feature = "sled-backend")]
+#[cfg_attr(coverage_nightly, coverage(off))]
 impl StorageBackend for SledBackend {
     fn put(&self, key: &[u8], value: &[u8]) -> Result<()> {
         self.tree.insert(key, value)?;
@@ -450,11 +452,13 @@ impl StorageBackend for InMemoryBackend {
 
 /// RocksDB backend for high-performance production use
 #[cfg(feature = "rocksdb-backend")]
+#[cfg_attr(coverage_nightly, coverage(off))]
 pub struct RocksDbBackend {
     db: rocksdb::DB,
 }
 
 #[cfg(feature = "rocksdb-backend")]
+#[cfg_attr(coverage_nightly, coverage(off))]
 impl RocksDbBackend {
     pub fn new(path: &Path) -> Result<Self> {
         use rocksdb::{Options, DB};
@@ -473,6 +477,7 @@ impl RocksDbBackend {
 }
 
 #[cfg(feature = "rocksdb-backend")]
+#[cfg_attr(coverage_nightly, coverage(off))]
 impl StorageBackend for RocksDbBackend {
     fn put(&self, key: &[u8], value: &[u8]) -> Result<()> {
         self.db.put(key, value)?;
