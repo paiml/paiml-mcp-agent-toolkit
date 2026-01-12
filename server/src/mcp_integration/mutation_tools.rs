@@ -229,3 +229,240 @@ impl McpTool for MutationTestTool {
         Ok(report)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    fn create_test_tool() -> MutationTestTool {
+        let registry = Arc::new(AgentRegistry::new());
+        MutationTestTool::new(registry)
+    }
+
+    // =========================================================================
+    // MutationTestTool Construction Tests
+    // =========================================================================
+
+    #[test]
+    fn test_mutation_test_tool_new() {
+        let tool = create_test_tool();
+        let _ = tool;
+    }
+
+    // =========================================================================
+    // Metadata Tests
+    // =========================================================================
+
+    #[test]
+    fn test_metadata_name() {
+        let tool = create_test_tool();
+        let metadata = tool.metadata();
+        assert_eq!(metadata.name, "mutation_test");
+    }
+
+    #[test]
+    fn test_metadata_description() {
+        let tool = create_test_tool();
+        let metadata = tool.metadata();
+        assert!(metadata.description.contains("mutation testing"));
+    }
+
+    #[test]
+    fn test_metadata_input_schema_type() {
+        let tool = create_test_tool();
+        let metadata = tool.metadata();
+        assert_eq!(metadata.input_schema["type"], "object");
+    }
+
+    #[test]
+    fn test_metadata_required_path() {
+        let tool = create_test_tool();
+        let metadata = tool.metadata();
+        let required = metadata.input_schema["required"].as_array().unwrap();
+        assert!(required.iter().any(|v| v == "path"));
+    }
+
+    #[test]
+    fn test_metadata_path_property() {
+        let tool = create_test_tool();
+        let metadata = tool.metadata();
+        let path_prop = &metadata.input_schema["properties"]["path"];
+        assert_eq!(path_prop["type"], "string");
+    }
+
+    #[test]
+    fn test_metadata_operators_property() {
+        let tool = create_test_tool();
+        let metadata = tool.metadata();
+        let operators_prop = &metadata.input_schema["properties"]["operators"];
+        assert_eq!(operators_prop["type"], "array");
+    }
+
+    #[test]
+    fn test_metadata_ml_predict_property() {
+        let tool = create_test_tool();
+        let metadata = tool.metadata();
+        let ml_prop = &metadata.input_schema["properties"]["ml_predict"];
+        assert_eq!(ml_prop["type"], "boolean");
+        assert_eq!(ml_prop["default"], false);
+    }
+
+    #[test]
+    fn test_metadata_distributed_property() {
+        let tool = create_test_tool();
+        let metadata = tool.metadata();
+        let dist_prop = &metadata.input_schema["properties"]["distributed"];
+        assert_eq!(dist_prop["type"], "boolean");
+        assert_eq!(dist_prop["default"], false);
+    }
+
+    #[test]
+    fn test_metadata_workers_property() {
+        let tool = create_test_tool();
+        let metadata = tool.metadata();
+        let workers_prop = &metadata.input_schema["properties"]["workers"];
+        assert_eq!(workers_prop["type"], "integer");
+        assert_eq!(workers_prop["default"], 4);
+        assert_eq!(workers_prop["minimum"], 1);
+        assert_eq!(workers_prop["maximum"], 128);
+    }
+
+    #[test]
+    fn test_metadata_min_score_property() {
+        let tool = create_test_tool();
+        let metadata = tool.metadata();
+        let min_score_prop = &metadata.input_schema["properties"]["min_score"];
+        assert_eq!(min_score_prop["type"], "number");
+        assert_eq!(min_score_prop["minimum"], 0.0);
+        assert_eq!(min_score_prop["maximum"], 1.0);
+    }
+
+    #[test]
+    fn test_metadata_ci_learning_property() {
+        let tool = create_test_tool();
+        let metadata = tool.metadata();
+        let ci_prop = &metadata.input_schema["properties"]["ci_learning"];
+        assert_eq!(ci_prop["type"], "boolean");
+        assert_eq!(ci_prop["default"], false);
+    }
+
+    #[test]
+    fn test_metadata_ci_provider_property() {
+        let tool = create_test_tool();
+        let metadata = tool.metadata();
+        let provider_prop = &metadata.input_schema["properties"]["ci_provider"];
+        assert_eq!(provider_prop["type"], "string");
+        let enum_vals = provider_prop["enum"].as_array().unwrap();
+        assert!(enum_vals.iter().any(|v| v == "github"));
+        assert!(enum_vals.iter().any(|v| v == "gitlab"));
+        assert!(enum_vals.iter().any(|v| v == "jenkins"));
+    }
+
+    #[test]
+    fn test_metadata_auto_train_threshold_property() {
+        let tool = create_test_tool();
+        let metadata = tool.metadata();
+        let threshold_prop = &metadata.input_schema["properties"]["auto_train_threshold"];
+        assert_eq!(threshold_prop["type"], "integer");
+        assert_eq!(threshold_prop["default"], 50);
+        assert_eq!(threshold_prop["minimum"], 10);
+    }
+
+    // =========================================================================
+    // Execute Tests (Error Cases)
+    // =========================================================================
+
+    #[tokio::test]
+    async fn test_execute_missing_path() {
+        let tool = create_test_tool();
+        let params = json!({});
+
+        let result = tool.execute(params).await;
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err.code, error_codes::INVALID_PARAMS);
+        assert!(err.message.contains("path"));
+    }
+
+    #[tokio::test]
+    async fn test_execute_nonexistent_path() {
+        let tool = create_test_tool();
+        let params = json!({
+            "path": "/nonexistent/path/to/file.rs"
+        });
+
+        let result = tool.execute(params).await;
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err.code, error_codes::INVALID_PARAMS);
+        assert!(err.message.contains("does not exist"));
+    }
+
+    #[tokio::test]
+    async fn test_execute_with_operators_array() {
+        let tool = create_test_tool();
+        let params = json!({
+            "path": "/nonexistent/path/file.rs",
+            "operators": ["AOR", "ROR"]
+        });
+
+        let result = tool.execute(params).await;
+        // Will fail due to path not existing
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_execute_with_all_options() {
+        let tool = create_test_tool();
+        let params = json!({
+            "path": "/nonexistent/file.rs",
+            "operators": ["AOR"],
+            "ml_predict": true,
+            "distributed": true,
+            "workers": 8,
+            "min_score": 0.8,
+            "ci_learning": true,
+            "ci_provider": "github",
+            "auto_train_threshold": 100
+        });
+
+        let result = tool.execute(params).await;
+        assert!(result.is_err());
+    }
+
+    // =========================================================================
+    // McpTool Trait Implementation Tests
+    // =========================================================================
+
+    #[test]
+    fn test_implements_mcp_tool() {
+        fn _assert_mcp_tool<T: McpTool>() {}
+        _assert_mcp_tool::<MutationTestTool>();
+    }
+
+    // =========================================================================
+    // Integration with AgentRegistry Tests
+    // =========================================================================
+
+    #[test]
+    fn test_tool_with_registry() {
+        let registry = Arc::new(AgentRegistry::new());
+        let tool = MutationTestTool::new(Arc::clone(&registry));
+
+        // Tool should be created successfully
+        let metadata = tool.metadata();
+        assert_eq!(metadata.name, "mutation_test");
+    }
+
+    #[test]
+    fn test_tool_with_shared_registry() {
+        let registry = Arc::new(AgentRegistry::new());
+
+        // Create multiple tools sharing the same registry
+        let tool1 = MutationTestTool::new(Arc::clone(&registry));
+        let tool2 = MutationTestTool::new(Arc::clone(&registry));
+
+        assert_eq!(tool1.metadata().name, tool2.metadata().name);
+    }
+}
