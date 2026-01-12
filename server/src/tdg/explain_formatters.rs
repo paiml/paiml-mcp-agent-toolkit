@@ -129,7 +129,34 @@ struct FunctionJson {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tdg::{ComplexitySeverity, FunctionComplexity, TdgScore};
+    use crate::tdg::{ActionableRecommendation, ComplexitySeverity, FunctionComplexity, TdgScore};
+
+    // Helper to create a test score
+    fn create_test_score() -> ExplainedTDGScore {
+        ExplainedTDGScore::new(TdgScore::default())
+    }
+
+    // Helper to create a test function complexity
+    fn create_test_function(name: &str, line: usize, cyclomatic: u32, cognitive: u32) -> FunctionComplexity {
+        FunctionComplexity {
+            name: name.to_string(),
+            line_number: line,
+            cyclomatic,
+            cognitive,
+            tdg_impact: (cyclomatic as f64) * 0.5,
+            severity: if cyclomatic > 20 {
+                ComplexitySeverity::Critical
+            } else if cyclomatic > 10 {
+                ComplexitySeverity::High
+            } else if cyclomatic > 5 {
+                ComplexitySeverity::Medium
+            } else {
+                ComplexitySeverity::Low
+            },
+        }
+    }
+
+    // === JSON Formatter Tests ===
 
     #[test]
     fn test_format_explain_json() {
@@ -160,6 +187,68 @@ mod tests {
     }
 
     #[test]
+    fn test_format_explain_json_empty() {
+        let explained = create_test_score();
+        let output = format_explain_json(&explained).unwrap();
+        let json: serde_json::Value = serde_json::from_str(&output).unwrap();
+
+        assert!(json.get("functions").is_some());
+        let functions = json["functions"].as_array().unwrap();
+        assert!(functions.is_empty());
+    }
+
+    #[test]
+    fn test_format_explain_json_multiple_functions() {
+        let mut explained = create_test_score();
+
+        explained.add_function(create_test_function("func_a", 10, 5, 8));
+        explained.add_function(create_test_function("func_b", 50, 15, 20));
+        explained.add_function(create_test_function("func_c", 100, 25, 30));
+
+        let output = format_explain_json(&explained).unwrap();
+        let json: serde_json::Value = serde_json::from_str(&output).unwrap();
+
+        let functions = json["functions"].as_array().unwrap();
+        assert_eq!(functions.len(), 3);
+        assert_eq!(functions[0]["name"].as_str().unwrap(), "func_a");
+        assert_eq!(functions[1]["name"].as_str().unwrap(), "func_b");
+        assert_eq!(functions[2]["name"].as_str().unwrap(), "func_c");
+    }
+
+    #[test]
+    fn test_format_explain_json_severity_format() {
+        let mut explained = create_test_score();
+        explained.add_function(create_test_function("low_complexity", 10, 3, 4));
+
+        let output = format_explain_json(&explained).unwrap();
+        let json: serde_json::Value = serde_json::from_str(&output).unwrap();
+
+        let func = &json["functions"].as_array().unwrap()[0];
+        // Severity should be a string
+        assert!(func["severity"].as_str().is_some());
+    }
+
+    #[test]
+    fn test_format_explain_json_has_recommendations() {
+        let explained = create_test_score();
+        let output = format_explain_json(&explained).unwrap();
+        let json: serde_json::Value = serde_json::from_str(&output).unwrap();
+
+        assert!(json.get("recommendations").is_some());
+    }
+
+    #[test]
+    fn test_format_explain_json_has_score() {
+        let explained = create_test_score();
+        let output = format_explain_json(&explained).unwrap();
+        let json: serde_json::Value = serde_json::from_str(&output).unwrap();
+
+        assert!(json.get("score").is_some());
+    }
+
+    // === Text Formatter Tests ===
+
+    #[test]
     fn test_format_explain_text() {
         let mut explained = ExplainedTDGScore::new(TdgScore::default());
 
@@ -179,5 +268,154 @@ mod tests {
         assert!(output.contains("test_function"));
         assert!(output.contains("line 42"));
         assert!(output.contains("Complexity: 15"));
+    }
+
+    #[test]
+    fn test_format_explain_text_empty() {
+        let explained = create_test_score();
+        let output = format_explain_text(&explained).unwrap();
+
+        assert!(output.contains("Function-Level Complexity Breakdown"));
+        assert!(output.contains("No functions analyzed"));
+    }
+
+    #[test]
+    fn test_format_explain_text_header() {
+        let explained = create_test_score();
+        let output = format_explain_text(&explained).unwrap();
+
+        assert!(output.contains("Function-Level Complexity Breakdown"));
+        assert!(output.contains("==================================="));
+    }
+
+    #[test]
+    fn test_format_explain_text_multiple_functions() {
+        let mut explained = create_test_score();
+
+        explained.add_function(create_test_function("first_func", 10, 5, 8));
+        explained.add_function(create_test_function("second_func", 50, 15, 20));
+
+        let output = format_explain_text(&explained).unwrap();
+
+        assert!(output.contains("first_func"));
+        assert!(output.contains("line 10"));
+        assert!(output.contains("second_func"));
+        assert!(output.contains("line 50"));
+    }
+
+    #[test]
+    fn test_format_explain_text_function_details() {
+        let mut explained = create_test_score();
+        explained.add_function(FunctionComplexity {
+            name: "complex_func".to_string(),
+            line_number: 100,
+            cyclomatic: 25,
+            cognitive: 30,
+            tdg_impact: 12.5,
+            severity: ComplexitySeverity::Critical,
+        });
+
+        let output = format_explain_text(&explained).unwrap();
+
+        assert!(output.contains("Complexity: 25"));
+        assert!(output.contains("Cognitive: 30"));
+        assert!(output.contains("TDG Impact: 12.50"));
+        assert!(output.contains("Severity:"));
+    }
+
+    #[test]
+    fn test_format_explain_text_with_recommendations() {
+        let mut explained = create_test_score();
+
+        explained.add_recommendation(ActionableRecommendation {
+            rec_type: crate::tdg::RecommendationType::ExtractFunction,
+            action: "Extract complex logic into helper function".to_string(),
+            lines: vec![10, 20, 30],
+            expected_impact: 5.5,
+            estimated_hours: 2.0,
+            priority: 1,
+            pattern: "high_complexity".to_string(),
+        });
+
+        let output = format_explain_text(&explained).unwrap();
+
+        assert!(output.contains("Recommendations"));
+        assert!(output.contains("Extract complex logic"));
+        assert!(output.contains("[+5.5 pts]"));
+        assert!(output.contains("Effort: 2.0 hours"));
+        assert!(output.contains("Priority: 1"));
+    }
+
+    #[test]
+    fn test_format_explain_text_with_critical_defects() {
+        let mut score = TdgScore::default();
+        score.has_critical_defects = true;
+        score.critical_defects_count = 3;
+
+        let explained = ExplainedTDGScore::new(score);
+        let output = format_explain_text(&explained).unwrap();
+
+        assert!(output.contains("CRITICAL DEFECTS DETECTED"));
+        assert!(output.contains("Critical Defects: 3"));
+        assert!(output.contains("AUTO-FAIL"));
+        assert!(output.contains("Grade: F"));
+    }
+
+    #[test]
+    fn test_format_explain_text_no_critical_defects() {
+        let explained = create_test_score();
+        let output = format_explain_text(&explained).unwrap();
+
+        assert!(!output.contains("CRITICAL DEFECTS DETECTED"));
+    }
+
+    // === FunctionJson Tests ===
+
+    #[test]
+    fn test_function_json_serialization() {
+        let func = FunctionJson {
+            name: "test".to_string(),
+            line: 42,
+            cyclomatic: 10,
+            cognitive: 15,
+            tdg_impact: 5.0,
+            severity: "High".to_string(),
+        };
+
+        let json = serde_json::to_string(&func).unwrap();
+        assert!(json.contains("\"name\":\"test\""));
+        assert!(json.contains("\"line\":42"));
+        assert!(json.contains("\"cyclomatic\":10"));
+    }
+
+    #[test]
+    fn test_function_json_debug() {
+        let func = FunctionJson {
+            name: "test".to_string(),
+            line: 42,
+            cyclomatic: 10,
+            cognitive: 15,
+            tdg_impact: 5.0,
+            severity: "High".to_string(),
+        };
+
+        let debug = format!("{:?}", func);
+        assert!(debug.contains("FunctionJson"));
+        assert!(debug.contains("test"));
+    }
+
+    // === ExplainJsonOutput Tests ===
+
+    #[test]
+    fn test_explain_json_output_serialization() {
+        let output = ExplainJsonOutput {
+            functions: vec![],
+            recommendations: vec![],
+            score: TdgScore::default(),
+        };
+
+        let json = serde_json::to_string(&output).unwrap();
+        assert!(json.contains("\"functions\":[]"));
+        assert!(json.contains("\"recommendations\":[]"));
     }
 }
