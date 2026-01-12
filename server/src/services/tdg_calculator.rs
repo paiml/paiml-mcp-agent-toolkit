@@ -1003,6 +1003,630 @@ mod tests {
     use super::*;
     use tempfile::TempDir;
 
+    // ============ ComplexityVariance Tests ============
+
+    #[test]
+    fn test_complexity_variance_default_values() {
+        let cv = ComplexityVariance {
+            mean: 0.0,
+            variance: 0.0,
+            gini: 0.0,
+            percentile_90: 0.0,
+        };
+        assert_eq!(cv.mean, 0.0);
+        assert_eq!(cv.variance, 0.0);
+        assert_eq!(cv.gini, 0.0);
+        assert_eq!(cv.percentile_90, 0.0);
+    }
+
+    #[test]
+    fn test_complexity_variance_positive_values() {
+        let cv = ComplexityVariance {
+            mean: 10.5,
+            variance: 25.0,
+            gini: 0.35,
+            percentile_90: 20.0,
+        };
+        assert_eq!(cv.mean, 10.5);
+        assert_eq!(cv.variance, 25.0);
+        assert_eq!(cv.gini, 0.35);
+        assert_eq!(cv.percentile_90, 20.0);
+    }
+
+    #[test]
+    fn test_complexity_variance_clone() {
+        let cv = ComplexityVariance {
+            mean: 5.0,
+            variance: 10.0,
+            gini: 0.2,
+            percentile_90: 15.0,
+        };
+        let cloned = cv.clone();
+        assert_eq!(cloned.mean, cv.mean);
+        assert_eq!(cloned.variance, cv.variance);
+        assert_eq!(cloned.gini, cv.gini);
+        assert_eq!(cloned.percentile_90, cv.percentile_90);
+    }
+
+    #[test]
+    fn test_complexity_variance_debug() {
+        let cv = ComplexityVariance {
+            mean: 5.0,
+            variance: 10.0,
+            gini: 0.2,
+            percentile_90: 15.0,
+        };
+        let debug = format!("{:?}", cv);
+        assert!(debug.contains("ComplexityVariance"));
+        assert!(debug.contains("mean"));
+        assert!(debug.contains("variance"));
+    }
+
+    // ============ CouplingMetrics Tests ============
+
+    #[test]
+    fn test_coupling_metrics_default_values() {
+        let cm = CouplingMetrics {
+            afferent: 0,
+            efferent: 0,
+            instability: 0.0,
+        };
+        assert_eq!(cm.afferent, 0);
+        assert_eq!(cm.efferent, 0);
+        assert_eq!(cm.instability, 0.0);
+    }
+
+    #[test]
+    fn test_coupling_metrics_with_dependencies() {
+        let cm = CouplingMetrics {
+            afferent: 5,
+            efferent: 10,
+            instability: 0.667,
+        };
+        assert_eq!(cm.afferent, 5);
+        assert_eq!(cm.efferent, 10);
+        assert!((cm.instability - 0.667).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_coupling_metrics_clone() {
+        let cm = CouplingMetrics {
+            afferent: 3,
+            efferent: 7,
+            instability: 0.7,
+        };
+        let cloned = cm.clone();
+        assert_eq!(cloned.afferent, cm.afferent);
+        assert_eq!(cloned.efferent, cm.efferent);
+        assert_eq!(cloned.instability, cm.instability);
+    }
+
+    #[test]
+    fn test_coupling_metrics_debug() {
+        let cm = CouplingMetrics {
+            afferent: 3,
+            efferent: 7,
+            instability: 0.7,
+        };
+        let debug = format!("{:?}", cm);
+        assert!(debug.contains("CouplingMetrics"));
+        assert!(debug.contains("afferent"));
+        assert!(debug.contains("efferent"));
+    }
+
+    // ============ TDGCalculator Construction Tests ============
+
+    #[test]
+    fn test_tdg_calculator_new() {
+        let calc = TDGCalculator::new();
+        assert_eq!(calc.project_root, PathBuf::from("."));
+    }
+
+    #[test]
+    fn test_tdg_calculator_with_config() {
+        let config = TDGConfig {
+            complexity_weight: 0.5,
+            churn_weight: 0.2,
+            coupling_weight: 0.1,
+            domain_risk_weight: 0.1,
+            duplication_weight: 0.1,
+            ..Default::default()
+        };
+        let calc = TDGCalculator::with_config(config.clone());
+        assert_eq!(calc.config.complexity_weight, 0.5);
+        assert_eq!(calc.config.churn_weight, 0.2);
+    }
+
+    #[test]
+    fn test_tdg_calculator_default() {
+        let calc = TDGCalculator::default();
+        assert_eq!(calc.project_root, PathBuf::from("."));
+    }
+
+    #[test]
+    fn test_tdg_calculator_clone() {
+        let calc = TDGCalculator::new();
+        let cloned = calc.clone();
+        assert_eq!(cloned.project_root, calc.project_root);
+    }
+
+    // ============ TDGComponents Tests ============
+
+    #[test]
+    fn test_tdg_components_default() {
+        let components = TDGComponents::default();
+        assert_eq!(components.complexity, 0.0);
+        assert_eq!(components.churn, 0.0);
+        assert_eq!(components.coupling, 0.0);
+        assert_eq!(components.domain_risk, 0.0);
+        assert_eq!(components.duplication, 0.0);
+    }
+
+    #[test]
+    fn test_tdg_components_with_values() {
+        let components = TDGComponents {
+            complexity: 2.5,
+            churn: 1.5,
+            coupling: 3.0,
+            domain_risk: 1.0,
+            duplication: 0.5,
+        };
+        assert_eq!(components.complexity, 2.5);
+        assert_eq!(components.churn, 1.5);
+        assert_eq!(components.coupling, 3.0);
+        assert_eq!(components.domain_risk, 1.0);
+        assert_eq!(components.duplication, 0.5);
+    }
+
+    // ============ calculate_weighted_tdg Tests ============
+
+    #[test]
+    fn test_calculate_weighted_tdg_zero_components() {
+        let calc = TDGCalculator::new();
+        let components = TDGComponents::default();
+        let result = calc.calculate_weighted_tdg(&components, 0.0);
+        assert_eq!(result, 0.0);
+    }
+
+    #[test]
+    fn test_calculate_weighted_tdg_with_provability() {
+        let calc = TDGCalculator::new();
+        let components = TDGComponents {
+            complexity: 5.0,
+            churn: 5.0,
+            coupling: 5.0,
+            domain_risk: 5.0,
+            duplication: 5.0,
+        };
+        let result_no_prov = calc.calculate_weighted_tdg(&components, 0.0);
+        let result_with_prov = calc.calculate_weighted_tdg(&components, 1.0);
+        // Higher provability should reduce TDG
+        assert!(result_with_prov < result_no_prov);
+    }
+
+    #[test]
+    fn test_calculate_weighted_tdg_clamped() {
+        let calc = TDGCalculator::new();
+        let components = TDGComponents {
+            complexity: 10.0, // Way over max
+            churn: 10.0,
+            coupling: 10.0,
+            domain_risk: 10.0,
+            duplication: 10.0,
+        };
+        let result = calc.calculate_weighted_tdg(&components, 0.0);
+        assert!(result <= 5.0, "TDG should be clamped to 5.0");
+    }
+
+    // ============ calculate_confidence Tests ============
+
+    #[test]
+    fn test_calculate_confidence_full_data() {
+        let calc = TDGCalculator::new();
+        let components = TDGComponents {
+            complexity: 2.0,
+            churn: 1.5,
+            coupling: 1.0,
+            domain_risk: 0.5,
+            duplication: 0.3,
+        };
+        let confidence = calc.calculate_confidence(&components);
+        assert_eq!(confidence, 1.0, "Full data should have 100% confidence");
+    }
+
+    #[test]
+    fn test_calculate_confidence_missing_churn() {
+        let calc = TDGCalculator::new();
+        let components = TDGComponents {
+            complexity: 2.0,
+            churn: 0.0, // Missing
+            coupling: 1.0,
+            domain_risk: 0.5,
+            duplication: 0.3,
+        };
+        let confidence = calc.calculate_confidence(&components);
+        assert!(confidence < 1.0, "Missing churn should reduce confidence");
+        assert!((confidence - 0.8).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_calculate_confidence_missing_all() {
+        let calc = TDGCalculator::new();
+        let components = TDGComponents {
+            complexity: 2.0, // Non-zero complexity is always present
+            churn: 0.0,
+            coupling: 0.0,
+            domain_risk: 0.0,
+            duplication: 0.0,
+        };
+        let confidence = calc.calculate_confidence(&components);
+        // 0.8 * 0.9 * 0.95 = 0.684
+        assert!((confidence - 0.684).abs() < 0.01);
+    }
+
+    // ============ calculate_percentiles Tests ============
+
+    #[test]
+    fn test_calculate_percentiles_single_score() {
+        let calc = TDGCalculator::new();
+        let mut scores = vec![TDGScore {
+            value: 2.5,
+            components: TDGComponents::default(),
+            severity: TDGSeverity::Normal,
+            percentile: 0.0,
+            confidence: 1.0,
+        }];
+        calc.calculate_percentiles(&mut scores);
+        assert_eq!(scores[0].percentile, 0.0);
+    }
+
+    #[test]
+    fn test_calculate_percentiles_multiple_scores() {
+        let calc = TDGCalculator::new();
+        let mut scores = vec![
+            TDGScore {
+                value: 1.0,
+                components: TDGComponents::default(),
+                severity: TDGSeverity::Normal,
+                percentile: 0.0,
+                confidence: 1.0,
+            },
+            TDGScore {
+                value: 2.0,
+                components: TDGComponents::default(),
+                severity: TDGSeverity::Normal,
+                percentile: 0.0,
+                confidence: 1.0,
+            },
+            TDGScore {
+                value: 3.0,
+                components: TDGComponents::default(),
+                severity: TDGSeverity::Warning,
+                percentile: 0.0,
+                confidence: 1.0,
+            },
+        ];
+        calc.calculate_percentiles(&mut scores);
+        // Percentiles should be calculated relative to position
+        assert!(scores[0].percentile <= scores[1].percentile);
+        assert!(scores[1].percentile <= scores[2].percentile);
+    }
+
+    // ============ percentile Tests ============
+
+    #[test]
+    fn test_percentile_empty() {
+        let calc = TDGCalculator::new();
+        let values: Vec<f64> = vec![];
+        let result = calc.percentile(&values, 0.5);
+        assert_eq!(result, 0.0);
+    }
+
+    #[test]
+    fn test_percentile_single_value() {
+        let calc = TDGCalculator::new();
+        let values = vec![5.0];
+        assert_eq!(calc.percentile(&values, 0.5), 5.0);
+        assert_eq!(calc.percentile(&values, 0.95), 5.0);
+    }
+
+    #[test]
+    fn test_percentile_multiple_values() {
+        let calc = TDGCalculator::new();
+        let values: Vec<f64> = (1..=100).map(|x| x as f64).collect();
+        let p50 = calc.percentile(&values, 0.5);
+        let p95 = calc.percentile(&values, 0.95);
+        let p99 = calc.percentile(&values, 0.99);
+        assert!(p50 < p95);
+        assert!(p95 < p99);
+    }
+
+    // ============ identify_primary_factor Tests ============
+
+    #[test]
+    fn test_identify_primary_factor_complexity() {
+        let calc = TDGCalculator::new();
+        let components = TDGComponents {
+            complexity: 5.0,
+            churn: 1.0,
+            coupling: 1.0,
+            domain_risk: 1.0,
+            duplication: 1.0,
+        };
+        let factor = calc.identify_primary_factor(&components);
+        assert_eq!(factor, "High Complexity");
+    }
+
+    #[test]
+    fn test_identify_primary_factor_churn() {
+        let calc = TDGCalculator::new();
+        let components = TDGComponents {
+            complexity: 1.0,
+            churn: 5.0,
+            coupling: 1.0,
+            domain_risk: 1.0,
+            duplication: 1.0,
+        };
+        let factor = calc.identify_primary_factor(&components);
+        assert_eq!(factor, "Frequent Changes");
+    }
+
+    #[test]
+    fn test_identify_primary_factor_coupling() {
+        let calc = TDGCalculator::new();
+        let components = TDGComponents {
+            complexity: 1.0,
+            churn: 1.0,
+            coupling: 5.0,
+            domain_risk: 1.0,
+            duplication: 1.0,
+        };
+        let factor = calc.identify_primary_factor(&components);
+        assert_eq!(factor, "High Coupling");
+    }
+
+    #[test]
+    fn test_identify_primary_factor_domain_risk() {
+        let calc = TDGCalculator::new();
+        let components = TDGComponents {
+            complexity: 1.0,
+            churn: 1.0,
+            coupling: 1.0,
+            domain_risk: 5.0,
+            duplication: 1.0,
+        };
+        let factor = calc.identify_primary_factor(&components);
+        assert_eq!(factor, "Domain Risk");
+    }
+
+    #[test]
+    fn test_identify_primary_factor_duplication() {
+        let calc = TDGCalculator::new();
+        let components = TDGComponents {
+            complexity: 1.0,
+            churn: 1.0,
+            coupling: 1.0,
+            domain_risk: 1.0,
+            duplication: 5.0,
+        };
+        let factor = calc.identify_primary_factor(&components);
+        assert_eq!(factor, "Code Duplication");
+    }
+
+    // ============ estimate_refactoring_hours Tests ============
+
+    #[test]
+    fn test_estimate_refactoring_hours_zero() {
+        let calc = TDGCalculator::new();
+        let hours = calc.estimate_refactoring_hours(0.0);
+        assert_eq!(hours, 2.0); // base_hours
+    }
+
+    #[test]
+    fn test_estimate_refactoring_hours_low() {
+        let calc = TDGCalculator::new();
+        let hours = calc.estimate_refactoring_hours(1.0);
+        // 2.0 * 1.8^1 = 3.6
+        assert!((hours - 3.6).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_estimate_refactoring_hours_high() {
+        let calc = TDGCalculator::new();
+        let hours_low = calc.estimate_refactoring_hours(1.0);
+        let hours_high = calc.estimate_refactoring_hours(3.0);
+        assert!(hours_high > hours_low);
+    }
+
+    #[test]
+    fn test_estimate_refactoring_hours_increases_exponentially() {
+        let calc = TDGCalculator::new();
+        let hours_1 = calc.estimate_refactoring_hours(1.0);
+        let hours_2 = calc.estimate_refactoring_hours(2.0);
+        let hours_3 = calc.estimate_refactoring_hours(3.0);
+        // Exponential: ratio should be constant (1.8)
+        let ratio_1_2 = hours_2 / hours_1;
+        let ratio_2_3 = hours_3 / hours_2;
+        assert!((ratio_1_2 - ratio_2_3).abs() < 0.01);
+    }
+
+    // ============ generate_explanation Tests ============
+
+    #[test]
+    fn test_generate_explanation_normal() {
+        let calc = TDGCalculator::new();
+        let score = TDGScore {
+            value: 1.5,
+            components: TDGComponents {
+                complexity: 2.0,
+                churn: 1.5,
+                coupling: 1.0,
+                domain_risk: 0.5,
+                duplication: 0.2,
+            },
+            severity: TDGSeverity::Normal,
+            percentile: 50.0,
+            confidence: 0.9,
+        };
+        let explanation = calc.generate_explanation(&score);
+        assert!(explanation.contains("Code Quality Gradient"));
+        assert!(explanation.contains("Complexity"));
+        assert!(explanation.contains("Code Churn"));
+        assert!(explanation.contains("Coupling"));
+        assert!(explanation.contains("Domain Risk"));
+        assert!(explanation.contains("Duplication"));
+        assert!(explanation.contains("Confidence"));
+    }
+
+    #[test]
+    fn test_generate_explanation_critical() {
+        let calc = TDGCalculator::new();
+        let score = TDGScore {
+            value: 4.0,
+            components: TDGComponents {
+                complexity: 5.0,
+                churn: 4.0,
+                coupling: 3.5,
+                domain_risk: 2.0,
+                duplication: 1.5,
+            },
+            severity: TDGSeverity::Critical,
+            percentile: 95.0,
+            confidence: 1.0,
+        };
+        let explanation = calc.generate_explanation(&score);
+        assert!(explanation.contains("Critical"));
+    }
+
+    // ============ count_imports Tests ============
+
+    #[test]
+    fn test_count_imports_rust() {
+        let calc = TDGCalculator::new();
+        let content = r#"
+use std::collections::HashMap;
+use std::path::PathBuf;
+use crate::models::tdg::TDGScore;
+
+fn main() {}
+"#;
+        let count = calc.count_imports(content);
+        assert_eq!(count, 3);
+    }
+
+    #[test]
+    fn test_count_imports_python() {
+        let calc = TDGCalculator::new();
+        let content = r#"
+import os
+import sys
+from pathlib import Path
+from typing import Dict, List
+
+def main():
+    pass
+"#;
+        let count = calc.count_imports(content);
+        assert_eq!(count, 4);
+    }
+
+    #[test]
+    fn test_count_imports_javascript() {
+        let calc = TDGCalculator::new();
+        let content = r#"
+import React from 'react';
+import { useState } from 'react';
+const fs = require('fs');
+
+function App() {}
+"#;
+        let count = calc.count_imports(content);
+        assert_eq!(count, 3);
+    }
+
+    #[test]
+    fn test_count_imports_empty() {
+        let calc = TDGCalculator::new();
+        let content = "fn main() {}";
+        let count = calc.count_imports(content);
+        assert_eq!(count, 0);
+    }
+
+    // ============ calculate_distribution Tests ============
+
+    #[test]
+    fn test_calculate_distribution_empty() {
+        let calc = TDGCalculator::new();
+        let scores: Vec<TDGScore> = vec![];
+        let distribution = calc.calculate_distribution(&scores);
+        assert_eq!(distribution.total_files, 0);
+        assert!(!distribution.buckets.is_empty());
+        // All buckets should have 0 count
+        for bucket in &distribution.buckets {
+            assert_eq!(bucket.count, 0);
+        }
+    }
+
+    #[test]
+    fn test_calculate_distribution_single() {
+        let calc = TDGCalculator::new();
+        let scores = vec![TDGScore {
+            value: 2.3,
+            components: TDGComponents::default(),
+            severity: TDGSeverity::Normal,
+            percentile: 0.0,
+            confidence: 1.0,
+        }];
+        let distribution = calc.calculate_distribution(&scores);
+        assert_eq!(distribution.total_files, 1);
+        // Value 2.3 should be in bucket [2.0, 2.5)
+        let bucket = distribution.buckets.iter().find(|b| b.min == 2.0 && b.max == 2.5);
+        assert!(bucket.is_some());
+        assert_eq!(bucket.unwrap().count, 1);
+        assert_eq!(bucket.unwrap().percentage, 100.0);
+    }
+
+    #[test]
+    fn test_calculate_distribution_multiple_buckets() {
+        let calc = TDGCalculator::new();
+        let scores = vec![
+            TDGScore {
+                value: 0.3,
+                components: TDGComponents::default(),
+                severity: TDGSeverity::Normal,
+                percentile: 0.0,
+                confidence: 1.0,
+            },
+            TDGScore {
+                value: 1.2,
+                components: TDGComponents::default(),
+                severity: TDGSeverity::Normal,
+                percentile: 0.0,
+                confidence: 1.0,
+            },
+            TDGScore {
+                value: 2.7,
+                components: TDGComponents::default(),
+                severity: TDGSeverity::Warning,
+                percentile: 0.0,
+                confidence: 1.0,
+            },
+            TDGScore {
+                value: 4.1,
+                components: TDGComponents::default(),
+                severity: TDGSeverity::Critical,
+                percentile: 0.0,
+                confidence: 1.0,
+            },
+        ];
+        let distribution = calc.calculate_distribution(&scores);
+        assert_eq!(distribution.total_files, 4);
+
+        // Check percentage sum
+        let total_percentage: f64 = distribution.buckets.iter().map(|b| b.percentage).sum();
+        assert!((total_percentage - 100.0).abs() < 0.01);
+    }
+
     #[tokio::test]
     async fn test_tdg_calculation() {
         let calculator = TDGCalculator::new();
