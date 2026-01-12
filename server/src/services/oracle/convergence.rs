@@ -633,13 +633,13 @@ mod tests {
             let metrics = ProjectMetrics {
                 test_coverage: coverage,
                 mutation_score: 0.7 + (i as f32 * 0.03),
-                compiler_errors: std::cmp::max(0, 3 - i as usize),
-                clippy_warnings: std::cmp::max(0, 5 - i as usize),
-                test_failures: std::cmp::max(0, 2 - i as usize),
+                compiler_errors: 3_usize.saturating_sub(i),
+                clippy_warnings: 5_usize.saturating_sub(i),
+                test_failures: 2_usize.saturating_sub(i),
                 tdg_score: 70.0 + (i as f32 * 5.0),
                 rust_project_score: 60 + (i * 5) as u32,
-                satd_markers: std::cmp::max(0, 3 - i as usize),
-                dead_code_items: std::cmp::max(0, 5 - i as usize),
+                satd_markers: 3_usize.saturating_sub(i),
+                dead_code_items: 5_usize.saturating_sub(i),
                 ..Default::default()
             };
 

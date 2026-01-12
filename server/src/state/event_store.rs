@@ -1,18 +1,111 @@
 use super::*;
-use bincode::{deserialize, serialize};
 use crc32fast::Hasher;
 use parking_lot::RwLock;
 use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 use tokio::fs::{File, OpenOptions};
-use tokio::io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt};
+use tokio::io::AsyncWriteExt;
 
-// Append-only event log with strong ordering guarantees
-pub struct EventStore {
+// ============================================================================
+// Persistence Trait (Batuta Pattern: Trait Abstraction for Testability)
+// ============================================================================
+
+/// Trait for event persistence backends.
+/// Enables testing with InMemoryPersistence and production with JsonFilePersistence.
+#[async_trait::async_trait]
+pub trait EventPersistence: Send + Sync {
+    /// Append a single event to the persistence layer
+    async fn append_event(&self, event: &StateEvent) -> Result<(), EventStoreError>;
+
+    /// Append multiple events in a batch
+    async fn append_batch(&self, events: &[StateEvent]) -> Result<(), EventStoreError>;
+
+    /// Load all events from the persistence layer
+    async fn load_all(&self) -> Result<Vec<StateEvent>, EventStoreError>;
+
+    /// Compact the event log (rewrite with only current events)
+    async fn compact(&self, events: &BTreeMap<EventId, StateEvent>) -> Result<(), EventStoreError>;
+}
+
+// ============================================================================
+// In-Memory Persistence (For Testing - No I/O)
+// ============================================================================
+
+/// In-memory persistence backend for testing.
+/// Stores events in a Vec, no file I/O required.
+#[derive(Default)]
+pub struct InMemoryPersistence {
+    events: RwLock<Vec<StateEvent>>,
+}
+
+impl InMemoryPersistence {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Get the number of persisted events (for testing)
+    pub fn len(&self) -> usize {
+        self.events.read().len()
+    }
+
+    /// Check if empty (for testing)
+    pub fn is_empty(&self) -> bool {
+        self.events.read().is_empty()
+    }
+
+    /// Clear all persisted events (for testing)
+    pub fn clear(&self) {
+        self.events.write().clear();
+    }
+}
+
+#[async_trait::async_trait]
+impl EventPersistence for InMemoryPersistence {
+    async fn append_event(&self, event: &StateEvent) -> Result<(), EventStoreError> {
+        self.events.write().push(event.clone());
+        Ok(())
+    }
+
+    async fn append_batch(&self, events: &[StateEvent]) -> Result<(), EventStoreError> {
+        self.events.write().extend(events.iter().cloned());
+        Ok(())
+    }
+
+    async fn load_all(&self) -> Result<Vec<StateEvent>, EventStoreError> {
+        Ok(self.events.read().clone())
+    }
+
+    async fn compact(&self, events: &BTreeMap<EventId, StateEvent>) -> Result<(), EventStoreError> {
+        let mut persisted = self.events.write();
+        persisted.clear();
+        persisted.extend(events.values().cloned());
+        Ok(())
+    }
+}
+
+// ============================================================================
+// JSON File Persistence (Production - Uses serde_json instead of bincode)
+// ============================================================================
+
+/// JSON-based file persistence backend.
+/// Uses newline-delimited JSON (NDJSON) format with CRC32 checksums.
+/// Solves the bincode serialization issue with serde_json::Value.
+pub struct JsonFilePersistence {
+    log_file: Arc<tokio::sync::RwLock<File>>,
+    file_path: String,
+}
+
+// ============================================================================
+// EventStore (Main Implementation)
+// ============================================================================
+
+/// Append-only event log with strong ordering guarantees.
+/// Uses trait-based persistence for testability (Batuta pattern).
+pub struct EventStore<P: EventPersistence = JsonFilePersistence> {
     events: Arc<RwLock<BTreeMap<EventId, StateEvent>>>,
     partitions: Arc<RwLock<HashMap<String, Vec<EventId>>>>,
     next_event_id: Arc<RwLock<EventId>>,
-    persistence: Option<Arc<PersistenceLayer>>,
+    persistence: Option<Arc<P>>,
     config: EventStoreConfig,
 }
 
@@ -37,28 +130,44 @@ impl Default for EventStoreConfig {
     }
 }
 
-impl EventStore {
-    pub async fn new(config: EventStoreConfig) -> Result<Self, EventStoreError> {
-        let persistence = if config.persistence_enabled {
-            Some(Arc::new(PersistenceLayer::new("events.log").await?))
-        } else {
-            None
-        };
-
-        let mut store = Self {
+impl<P: EventPersistence> EventStore<P> {
+    /// Create a new EventStore with a custom persistence backend.
+    /// Use this for testing with InMemoryPersistence.
+    pub fn new_with_persistence(config: EventStoreConfig, persistence: Option<Arc<P>>) -> Self {
+        Self {
             events: Arc::new(RwLock::new(BTreeMap::new())),
             partitions: Arc::new(RwLock::new(HashMap::new())),
             next_event_id: Arc::new(RwLock::new(1)),
             persistence,
             config,
-        };
+        }
+    }
 
-        // Recover from persistent storage
-        if store.config.persistence_enabled {
-            store.recover_from_disk().await?;
+    /// Recover events from the persistence layer.
+    /// Call this after creating the store if persistence is enabled.
+    pub async fn recover(&mut self) -> Result<(), EventStoreError> {
+        if let Some(persistence) = &self.persistence {
+            let recovered = persistence.load_all().await?;
+
+            let mut events = self.events.write();
+            let mut partitions = self.partitions.write();
+            let mut max_id = 0;
+
+            for event in recovered {
+                max_id = max_id.max(event.id);
+
+                partitions
+                    .entry(event.partition_key.clone())
+                    .or_default()
+                    .push(event.id);
+
+                events.insert(event.id, event);
+            }
+
+            *self.next_event_id.write() = max_id + 1;
         }
 
-        Ok(store)
+        Ok(())
     }
 
     pub async fn append(&self, mut event: StateEvent) -> Result<EventId, EventStoreError> {
@@ -96,7 +205,7 @@ impl EventStore {
                 .push(event_id);
         }
 
-        // Persist to disk
+        // Persist to storage
         if let Some(persistence) = &self.persistence {
             persistence.append_event(&event).await?;
         }
@@ -143,7 +252,7 @@ impl EventStore {
             }
         }
 
-        // Persist batch to disk
+        // Persist batch to storage
         if let Some(persistence) = &self.persistence {
             persistence.append_batch(&persisted_events).await?;
         }
@@ -213,31 +322,6 @@ impl EventStore {
         })
     }
 
-    async fn recover_from_disk(&mut self) -> Result<(), EventStoreError> {
-        if let Some(persistence) = &self.persistence {
-            let recovered = persistence.load_all().await?;
-
-            let mut events = self.events.write();
-            let mut partitions = self.partitions.write();
-            let mut max_id = 0;
-
-            for event in recovered {
-                max_id = max_id.max(event.id);
-
-                partitions
-                    .entry(event.partition_key.clone())
-                    .or_default()
-                    .push(event.id);
-
-                events.insert(event.id, event);
-            }
-
-            *self.next_event_id.write() = max_id + 1;
-        }
-
-        Ok(())
-    }
-
     pub fn get_statistics(&self) -> EventStoreStats {
         let events = self.events.read();
         let partitions = self.partitions.read();
@@ -251,14 +335,40 @@ impl EventStore {
     }
 }
 
-// Persistence layer for durability
-struct PersistenceLayer {
-    log_file: Arc<RwLock<File>>,
-    file_path: String,
+// Backward-compatible constructor for JsonFilePersistence
+impl EventStore<JsonFilePersistence> {
+    /// Create a new EventStore with file-based JSON persistence.
+    /// This is the default production constructor.
+    pub async fn new(config: EventStoreConfig) -> Result<Self, EventStoreError> {
+        let persistence = if config.persistence_enabled {
+            Some(Arc::new(JsonFilePersistence::new("events.log").await?))
+        } else {
+            None
+        };
+
+        let mut store = Self {
+            events: Arc::new(RwLock::new(BTreeMap::new())),
+            partitions: Arc::new(RwLock::new(HashMap::new())),
+            next_event_id: Arc::new(RwLock::new(1)),
+            persistence,
+            config,
+        };
+
+        // Recover from persistent storage
+        if store.config.persistence_enabled {
+            store.recover().await?;
+        }
+
+        Ok(store)
+    }
 }
 
-impl PersistenceLayer {
-    async fn new(file_path: &str) -> Result<Self, EventStoreError> {
+// ============================================================================
+// JsonFilePersistence Implementation (Uses serde_json - no bincode limitation!)
+// ============================================================================
+
+impl JsonFilePersistence {
+    pub async fn new(file_path: &str) -> Result<Self, EventStoreError> {
         let file = OpenOptions::new()
             .create(true)
             .append(true)
@@ -268,59 +378,64 @@ impl PersistenceLayer {
             .map_err(|e| EventStoreError::PersistenceError(e.to_string()))?;
 
         Ok(Self {
-            log_file: Arc::new(RwLock::new(file)),
+            log_file: Arc::new(tokio::sync::RwLock::new(file)),
             file_path: file_path.to_string(),
         })
     }
 
-    #[allow(clippy::await_holding_lock)]
-    async fn append_event(&self, event: &StateEvent) -> Result<(), EventStoreError> {
-        let serialized =
-            serialize(event).map_err(|e| EventStoreError::SerializationError(e.to_string()))?;
+    /// Serialize an event to JSON with CRC32 checksum.
+    /// Format: JSON\tCHECKSUM\n (tab-separated, newline-terminated)
+    fn serialize_event(event: &StateEvent) -> Result<String, EventStoreError> {
+        let json = serde_json::to_string(event)
+            .map_err(|e| EventStoreError::SerializationError(e.to_string()))?;
 
         let mut hasher = Hasher::new();
-        hasher.update(&serialized);
+        hasher.update(json.as_bytes());
         let checksum = hasher.finalize();
 
-        let mut file = self.log_file.write();
-
-        // Write length, checksum, and data
-        file.write_all(&(serialized.len() as u32).to_le_bytes())
-            .await
-            .map_err(|e| EventStoreError::PersistenceError(e.to_string()))?;
-        file.write_all(&checksum.to_le_bytes())
-            .await
-            .map_err(|e| EventStoreError::PersistenceError(e.to_string()))?;
-        file.write_all(&serialized)
-            .await
-            .map_err(|e| EventStoreError::PersistenceError(e.to_string()))?;
-
-        file.flush()
-            .await
-            .map_err(|e| EventStoreError::PersistenceError(e.to_string()))?;
-
-        Ok(())
+        Ok(format!("{}\t{}\n", json, checksum))
     }
 
-    #[allow(clippy::await_holding_lock)]
-    async fn append_batch(&self, events: &[StateEvent]) -> Result<(), EventStoreError> {
-        let mut buffer = Vec::new();
-
-        for event in events {
-            let serialized =
-                serialize(event).map_err(|e| EventStoreError::SerializationError(e.to_string()))?;
-
-            let mut hasher = Hasher::new();
-            hasher.update(&serialized);
-            let checksum = hasher.finalize();
-
-            buffer.extend_from_slice(&(serialized.len() as u32).to_le_bytes());
-            buffer.extend_from_slice(&checksum.to_le_bytes());
-            buffer.extend_from_slice(&serialized);
+    /// Deserialize an event from a line (JSON\tCHECKSUM format).
+    fn deserialize_line(line: &str) -> Result<StateEvent, EventStoreError> {
+        let parts: Vec<&str> = line.rsplitn(2, '\t').collect();
+        if parts.len() != 2 {
+            return Err(EventStoreError::CorruptedData(
+                "Invalid line format: missing checksum".to_string(),
+            ));
         }
 
-        let mut file = self.log_file.write();
-        file.write_all(&buffer)
+        let checksum_str = parts[0].trim();
+        let json = parts[1];
+
+        // Verify checksum
+        let expected_checksum: u32 = checksum_str
+            .parse()
+            .map_err(|_| EventStoreError::CorruptedData("Invalid checksum format".to_string()))?;
+
+        let mut hasher = Hasher::new();
+        hasher.update(json.as_bytes());
+        let actual_checksum = hasher.finalize();
+
+        if expected_checksum != actual_checksum {
+            return Err(EventStoreError::CorruptedData(format!(
+                "Checksum mismatch: expected {}, got {}",
+                expected_checksum, actual_checksum
+            )));
+        }
+
+        // Deserialize JSON (works with serde_json::Value!)
+        serde_json::from_str(json).map_err(|e| EventStoreError::SerializationError(e.to_string()))
+    }
+}
+
+#[async_trait::async_trait]
+impl EventPersistence for JsonFilePersistence {
+    async fn append_event(&self, event: &StateEvent) -> Result<(), EventStoreError> {
+        let line = Self::serialize_event(event)?;
+
+        let mut file = self.log_file.write().await;
+        file.write_all(line.as_bytes())
             .await
             .map_err(|e| EventStoreError::PersistenceError(e.to_string()))?;
         file.flush()
@@ -330,54 +445,45 @@ impl PersistenceLayer {
         Ok(())
     }
 
-    #[allow(clippy::await_holding_lock)]
-    async fn load_all(&self) -> Result<Vec<StateEvent>, EventStoreError> {
-        let mut file = self.log_file.write();
-        file.seek(std::io::SeekFrom::Start(0))
+    async fn append_batch(&self, events: &[StateEvent]) -> Result<(), EventStoreError> {
+        let mut buffer = String::new();
+
+        for event in events {
+            buffer.push_str(&Self::serialize_event(event)?);
+        }
+
+        let mut file = self.log_file.write().await;
+        file.write_all(buffer.as_bytes())
+            .await
+            .map_err(|e| EventStoreError::PersistenceError(e.to_string()))?;
+        file.flush()
             .await
             .map_err(|e| EventStoreError::PersistenceError(e.to_string()))?;
 
+        Ok(())
+    }
+
+    async fn load_all(&self) -> Result<Vec<StateEvent>, EventStoreError> {
+        use tokio::io::{AsyncBufReadExt, BufReader};
+
+        // Open a fresh file handle for reading (more reliable than seeking)
+        let file = tokio::fs::File::open(&self.file_path)
+            .await
+            .map_err(|e| EventStoreError::PersistenceError(e.to_string()))?;
+
+        let reader = BufReader::new(file);
+        let mut lines = reader.lines();
         let mut events = Vec::new();
-        let mut length_buf = [0u8; 4];
-        let mut checksum_buf = [0u8; 4];
 
-        loop {
-            // Read length
-            match file.read_exact(&mut length_buf).await {
-                Ok(_) => {}
-                Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => break,
-                Err(e) => return Err(EventStoreError::PersistenceError(e.to_string())),
+        while let Some(line) = lines
+            .next_line()
+            .await
+            .map_err(|e| EventStoreError::PersistenceError(e.to_string()))?
+        {
+            if line.trim().is_empty() {
+                continue;
             }
-            let length = u32::from_le_bytes(length_buf) as usize;
-
-            // Read checksum
-            file.read_exact(&mut checksum_buf)
-                .await
-                .map_err(|e| EventStoreError::PersistenceError(e.to_string()))?;
-            let expected_checksum = u32::from_le_bytes(checksum_buf);
-
-            // Read data
-            let mut data = vec![0u8; length];
-            file.read_exact(&mut data)
-                .await
-                .map_err(|e| EventStoreError::PersistenceError(e.to_string()))?;
-
-            // Verify checksum
-            let mut hasher = Hasher::new();
-            hasher.update(&data);
-            let actual_checksum = hasher.finalize();
-
-            if expected_checksum != actual_checksum {
-                return Err(EventStoreError::CorruptedData(format!(
-                    "Checksum mismatch: expected {}, got {}",
-                    expected_checksum, actual_checksum
-                )));
-            }
-
-            // Deserialize event
-            let event: StateEvent = deserialize(&data)
-                .map_err(|e| EventStoreError::SerializationError(e.to_string()))?;
-            events.push(event);
+            events.push(Self::deserialize_line(&line)?);
         }
 
         Ok(events)
@@ -396,23 +502,9 @@ impl PersistenceLayer {
 
         // Write all events to new file
         for event in events.values() {
-            let serialized =
-                serialize(event).map_err(|e| EventStoreError::SerializationError(e.to_string()))?;
-
-            let mut hasher = Hasher::new();
-            hasher.update(&serialized);
-            let checksum = hasher.finalize();
-
+            let line = Self::serialize_event(event)?;
             temp_file
-                .write_all(&(serialized.len() as u32).to_le_bytes())
-                .await
-                .map_err(|e| EventStoreError::PersistenceError(e.to_string()))?;
-            temp_file
-                .write_all(&checksum.to_le_bytes())
-                .await
-                .map_err(|e| EventStoreError::PersistenceError(e.to_string()))?;
-            temp_file
-                .write_all(&serialized)
+                .write_all(line.as_bytes())
                 .await
                 .map_err(|e| EventStoreError::PersistenceError(e.to_string()))?;
         }
@@ -785,27 +877,18 @@ mod tests {
         assert!(stats.memory_usage_bytes > 0);
     }
 
-    // ===== Persistence Layer Tests =====
+    // ===== InMemoryPersistence Tests =====
 
-    #[actix_rt::test]
-    async fn test_persistence_layer_new() {
-        let temp_dir = tempfile::TempDir::new().unwrap();
-        let file_path = temp_dir.path().join("test_events.log");
-        let persistence = PersistenceLayer::new(file_path.to_str().unwrap()).await;
-        assert!(persistence.is_ok());
+    #[test]
+    fn test_in_memory_persistence_new() {
+        let persistence = InMemoryPersistence::new();
+        assert!(persistence.is_empty());
+        assert_eq!(persistence.len(), 0);
     }
 
-    // Note: The following persistence tests are ignored because bincode cannot serialize
-    // serde_json::Value (uses deserialize_any). The persistence layer works correctly
-    // for events with simpler data types, but our StateEvent uses serde_json::Value.
-    // See: https://github.com/bincode-org/bincode/issues/167
-
     #[actix_rt::test]
-    #[ignore = "bincode cannot serialize serde_json::Value - known limitation"]
-    async fn test_persistence_append_event() {
-        let temp_dir = tempfile::TempDir::new().unwrap();
-        let file_path = temp_dir.path().join("test_events.log");
-        let persistence = PersistenceLayer::new(file_path.to_str().unwrap()).await.unwrap();
+    async fn test_in_memory_persistence_append_event() {
+        let persistence = InMemoryPersistence::new();
 
         let event = StateEvent::new(
             "test_partition".to_string(),
@@ -815,18 +898,12 @@ mod tests {
 
         let result = persistence.append_event(&event).await;
         assert!(result.is_ok());
-
-        // Verify file was written
-        let metadata = std::fs::metadata(&file_path).unwrap();
-        assert!(metadata.len() > 0);
+        assert_eq!(persistence.len(), 1);
     }
 
     #[actix_rt::test]
-    #[ignore = "bincode cannot serialize serde_json::Value - known limitation"]
-    async fn test_persistence_append_batch() {
-        let temp_dir = tempfile::TempDir::new().unwrap();
-        let file_path = temp_dir.path().join("test_batch.log");
-        let persistence = PersistenceLayer::new(file_path.to_str().unwrap()).await.unwrap();
+    async fn test_in_memory_persistence_append_batch() {
+        let persistence = InMemoryPersistence::new();
 
         let events: Vec<StateEvent> = (0..5)
             .map(|i| StateEvent::new(
@@ -838,18 +915,12 @@ mod tests {
 
         let result = persistence.append_batch(&events).await;
         assert!(result.is_ok());
-
-        // Load and verify
-        let loaded = persistence.load_all().await.unwrap();
-        assert_eq!(loaded.len(), 5);
+        assert_eq!(persistence.len(), 5);
     }
 
     #[actix_rt::test]
-    #[ignore = "bincode cannot serialize serde_json::Value - known limitation"]
-    async fn test_persistence_load_all() {
-        let temp_dir = tempfile::TempDir::new().unwrap();
-        let file_path = temp_dir.path().join("test_load.log");
-        let persistence = PersistenceLayer::new(file_path.to_str().unwrap()).await.unwrap();
+    async fn test_in_memory_persistence_load_all() {
+        let persistence = InMemoryPersistence::new();
 
         // Append multiple events
         for i in 0..3 {
@@ -870,21 +941,140 @@ mod tests {
     }
 
     #[actix_rt::test]
-    async fn test_persistence_load_empty_file() {
+    async fn test_in_memory_persistence_compact() {
+        let persistence = InMemoryPersistence::new();
+
+        // Add some events
+        let mut events_map = BTreeMap::new();
+        for i in 1..=5 {
+            let mut event = StateEvent::new(
+                "partition".to_string(),
+                format!("event_{}", i),
+                serde_json::json!({}),
+            );
+            event.id = i;
+            events_map.insert(i, event.clone());
+            persistence.append_event(&event).await.unwrap();
+        }
+
+        // Compact (should replace all events with provided map)
+        let result = persistence.compact(&events_map).await;
+        assert!(result.is_ok());
+
+        // Load and verify
+        let loaded = persistence.load_all().await.unwrap();
+        assert_eq!(loaded.len(), 5);
+    }
+
+    #[actix_rt::test]
+    async fn test_in_memory_persistence_clear() {
+        let persistence = InMemoryPersistence::new();
+
+        for i in 0..3 {
+            let event = StateEvent::new(
+                "p".to_string(),
+                format!("e{}", i),
+                serde_json::json!({}),
+            );
+            persistence.append_event(&event).await.unwrap();
+        }
+
+        assert_eq!(persistence.len(), 3);
+        persistence.clear();
+        assert!(persistence.is_empty());
+    }
+
+    // ===== JsonFilePersistence Tests (Now work with serde_json!) =====
+
+    #[actix_rt::test]
+    async fn test_json_file_persistence_new() {
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let file_path = temp_dir.path().join("test_events.log");
+        let persistence = JsonFilePersistence::new(file_path.to_str().unwrap()).await;
+        assert!(persistence.is_ok());
+    }
+
+    #[actix_rt::test]
+    async fn test_json_file_persistence_append_event() {
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let file_path = temp_dir.path().join("test_events.log");
+        let persistence = JsonFilePersistence::new(file_path.to_str().unwrap()).await.unwrap();
+
+        let event = StateEvent::new(
+            "test_partition".to_string(),
+            "test_type".to_string(),
+            serde_json::json!({"key": "value"}),
+        );
+
+        let result = persistence.append_event(&event).await;
+        assert!(result.is_ok());
+
+        // Verify file was written
+        let metadata = std::fs::metadata(&file_path).unwrap();
+        assert!(metadata.len() > 0);
+    }
+
+    #[actix_rt::test]
+    async fn test_json_file_persistence_append_batch() {
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let file_path = temp_dir.path().join("test_batch.log");
+        let persistence = JsonFilePersistence::new(file_path.to_str().unwrap()).await.unwrap();
+
+        let events: Vec<StateEvent> = (0..5)
+            .map(|i| StateEvent::new(
+                format!("partition_{}", i),
+                format!("type_{}", i),
+                serde_json::json!({"index": i}),
+            ))
+            .collect();
+
+        let result = persistence.append_batch(&events).await;
+        assert!(result.is_ok());
+
+        // Load and verify
+        let loaded = persistence.load_all().await.unwrap();
+        assert_eq!(loaded.len(), 5);
+    }
+
+    #[actix_rt::test]
+    async fn test_json_file_persistence_load_all() {
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let file_path = temp_dir.path().join("test_load.log");
+        let persistence = JsonFilePersistence::new(file_path.to_str().unwrap()).await.unwrap();
+
+        // Append multiple events
+        for i in 0..3 {
+            let event = StateEvent::new(
+                "partition".to_string(),
+                format!("event_{}", i),
+                serde_json::json!({"data": i}),
+            );
+            persistence.append_event(&event).await.unwrap();
+        }
+
+        // Load all events
+        let loaded = persistence.load_all().await.unwrap();
+        assert_eq!(loaded.len(), 3);
+        assert_eq!(loaded[0].event_type, "event_0");
+        assert_eq!(loaded[1].event_type, "event_1");
+        assert_eq!(loaded[2].event_type, "event_2");
+    }
+
+    #[actix_rt::test]
+    async fn test_json_file_persistence_load_empty_file() {
         let temp_dir = tempfile::TempDir::new().unwrap();
         let file_path = temp_dir.path().join("empty.log");
-        let persistence = PersistenceLayer::new(file_path.to_str().unwrap()).await.unwrap();
+        let persistence = JsonFilePersistence::new(file_path.to_str().unwrap()).await.unwrap();
 
         let loaded = persistence.load_all().await.unwrap();
         assert!(loaded.is_empty());
     }
 
     #[actix_rt::test]
-    #[ignore = "bincode cannot serialize serde_json::Value - known limitation"]
-    async fn test_persistence_compact() {
+    async fn test_json_file_persistence_compact() {
         let temp_dir = tempfile::TempDir::new().unwrap();
         let file_path = temp_dir.path().join("compact.log");
-        let persistence = PersistenceLayer::new(file_path.to_str().unwrap()).await.unwrap();
+        let persistence = JsonFilePersistence::new(file_path.to_str().unwrap()).await.unwrap();
 
         // Add some events
         let mut events_map = BTreeMap::new();
@@ -909,17 +1099,45 @@ mod tests {
     }
 
     #[actix_rt::test]
-    #[ignore = "bincode cannot serialize serde_json::Value - known limitation"]
-    async fn test_event_store_with_persistence() {
+    async fn test_json_file_serialize_deserialize_roundtrip() {
         let temp_dir = tempfile::TempDir::new().unwrap();
-        let original_dir = std::env::current_dir().unwrap();
-        std::env::set_current_dir(temp_dir.path()).unwrap();
+        let file_path = temp_dir.path().join("roundtrip.log");
+        let persistence = JsonFilePersistence::new(file_path.to_str().unwrap()).await.unwrap();
 
+        // Create event with complex JSON data (this failed with bincode!)
+        let event = StateEvent::new(
+            "test_partition".to_string(),
+            "complex_event".to_string(),
+            serde_json::json!({
+                "nested": {
+                    "array": [1, 2, 3],
+                    "object": {"key": "value"},
+                    "number": 42,
+                    "boolean": true,
+                    "null": null
+                }
+            }),
+        );
+
+        persistence.append_event(&event).await.unwrap();
+        let loaded = persistence.load_all().await.unwrap();
+
+        assert_eq!(loaded.len(), 1);
+        assert_eq!(loaded[0].event_type, "complex_event");
+        assert_eq!(loaded[0].data["nested"]["array"][0], 1);
+        assert_eq!(loaded[0].data["nested"]["object"]["key"], "value");
+    }
+
+    // ===== EventStore with InMemoryPersistence Tests =====
+
+    #[actix_rt::test]
+    async fn test_event_store_with_in_memory_persistence() {
+        let persistence = Arc::new(InMemoryPersistence::new());
         let config = EventStoreConfig {
             persistence_enabled: true,
             ..Default::default()
         };
-        let store = EventStore::new(config).await.unwrap();
+        let store = EventStore::new_with_persistence(config, Some(persistence.clone()));
 
         // Add events
         for i in 0..3 {
@@ -933,22 +1151,17 @@ mod tests {
 
         let stats = store.get_statistics();
         assert_eq!(stats.total_events, 3);
-
-        std::env::set_current_dir(original_dir).unwrap();
+        assert_eq!(persistence.len(), 3);
     }
 
     #[actix_rt::test]
-    #[ignore = "bincode cannot serialize serde_json::Value - known limitation"]
-    async fn test_event_store_batch_with_persistence() {
-        let temp_dir = tempfile::TempDir::new().unwrap();
-        let original_dir = std::env::current_dir().unwrap();
-        std::env::set_current_dir(temp_dir.path()).unwrap();
-
+    async fn test_event_store_batch_with_in_memory_persistence() {
+        let persistence = Arc::new(InMemoryPersistence::new());
         let config = EventStoreConfig {
             persistence_enabled: true,
             ..Default::default()
         };
-        let store = EventStore::new(config).await.unwrap();
+        let store = EventStore::new_with_persistence(config, Some(persistence.clone()));
 
         let events: Vec<StateEvent> = (0..5)
             .map(|i| StateEvent::new(
@@ -960,22 +1173,17 @@ mod tests {
 
         let ids = store.append_batch(events).await.unwrap();
         assert_eq!(ids.len(), 5);
-
-        std::env::set_current_dir(original_dir).unwrap();
+        assert_eq!(persistence.len(), 5);
     }
 
     #[actix_rt::test]
-    #[ignore = "bincode cannot serialize serde_json::Value - known limitation"]
-    async fn test_event_store_compact_with_persistence() {
-        let temp_dir = tempfile::TempDir::new().unwrap();
-        let original_dir = std::env::current_dir().unwrap();
-        std::env::set_current_dir(temp_dir.path()).unwrap();
-
+    async fn test_event_store_compact_with_in_memory_persistence() {
+        let persistence = Arc::new(InMemoryPersistence::new());
         let config = EventStoreConfig {
             persistence_enabled: true,
             ..Default::default()
         };
-        let store = EventStore::new(config).await.unwrap();
+        let store = EventStore::new_with_persistence(config, Some(persistence.clone()));
 
         // Add events
         for i in 0..10 {
@@ -991,16 +1199,11 @@ mod tests {
         let result = store.compact().await.unwrap();
         assert_eq!(result.events_before, 10);
         assert_eq!(result.events_after, 10);
-
-        std::env::set_current_dir(original_dir).unwrap();
     }
 
     #[actix_rt::test]
-    #[ignore = "bincode cannot serialize serde_json::Value - known limitation"]
-    async fn test_event_store_recovery() {
-        let temp_dir = tempfile::TempDir::new().unwrap();
-        let original_dir = std::env::current_dir().unwrap();
-        std::env::set_current_dir(temp_dir.path()).unwrap();
+    async fn test_event_store_recovery_with_in_memory_persistence() {
+        let persistence = Arc::new(InMemoryPersistence::new());
 
         // First store - create events
         {
@@ -1008,7 +1211,7 @@ mod tests {
                 persistence_enabled: true,
                 ..Default::default()
             };
-            let store = EventStore::new(config).await.unwrap();
+            let store = EventStore::new_with_persistence(config, Some(persistence.clone()));
 
             for i in 0..5 {
                 let event = StateEvent::new(
@@ -1020,13 +1223,14 @@ mod tests {
             }
         }
 
-        // Second store - recover events
+        // Second store - recover events (same persistence instance)
         {
             let config = EventStoreConfig {
                 persistence_enabled: true,
                 ..Default::default()
             };
-            let store = EventStore::new(config).await.unwrap();
+            let mut store = EventStore::new_with_persistence(config, Some(persistence.clone()));
+            store.recover().await.unwrap();
 
             let stats = store.get_statistics();
             assert_eq!(stats.total_events, 5);
@@ -1037,8 +1241,6 @@ mod tests {
             assert!(event.is_some());
             assert_eq!(event.unwrap().event_type, "event_0");
         }
-
-        std::env::set_current_dir(original_dir).unwrap();
     }
 
     #[test]

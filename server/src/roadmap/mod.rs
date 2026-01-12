@@ -630,7 +630,8 @@ mod tests {
     fn test_git_config_defaults() {
         let config = GitConfig::default();
 
-        assert!(config.create_branches);
+        // DISABLED: per CLAUDE.md zero-branching policy
+        assert!(!config.create_branches);
         assert_eq!(config.branch_pattern, "feature/{task_id}");
         assert_eq!(config.commit_pattern, "{task_id}: {message}");
         assert!(config.require_quality_check);
