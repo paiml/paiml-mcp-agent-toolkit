@@ -722,4 +722,234 @@ mod tests {
         let gate = NewFileGate::new(config);
         assert_eq!(gate.name(), "NewFileGate");
     }
+
+    #[test]
+    fn test_format_delta_positive() {
+        assert_eq!(format_delta(5.5), "+5.5");
+        assert_eq!(format_delta(0.0), "+0.0");
+        assert_eq!(format_delta(10.0), "+10.0");
+    }
+
+    #[test]
+    fn test_format_delta_negative() {
+        assert_eq!(format_delta(-5.5), "-5.5");
+        assert_eq!(format_delta(-10.0), "-10.0");
+        assert_eq!(format_delta(-0.1), "-0.1");
+    }
+
+    #[test]
+    fn test_get_min_grade_for_rust_file() {
+        let gate = MinimumGradeGate::with_defaults();
+        let path = PathBuf::from("src/main.rs");
+        assert_eq!(gate.get_min_grade_for_file(&path), Grade::BPlus);
+    }
+
+    #[test]
+    fn test_get_min_grade_for_typescript_file() {
+        let gate = MinimumGradeGate::with_defaults();
+        let path = PathBuf::from("src/app.ts");
+        assert_eq!(gate.get_min_grade_for_file(&path), Grade::BPlus);
+
+        let tsx_path = PathBuf::from("components/App.tsx");
+        assert_eq!(gate.get_min_grade_for_file(&tsx_path), Grade::BPlus);
+    }
+
+    #[test]
+    fn test_get_min_grade_for_javascript_file() {
+        let gate = MinimumGradeGate::with_defaults();
+        let path = PathBuf::from("src/app.js");
+        assert_eq!(gate.get_min_grade_for_file(&path), Grade::B);
+
+        let jsx_path = PathBuf::from("components/App.jsx");
+        assert_eq!(gate.get_min_grade_for_file(&jsx_path), Grade::B);
+    }
+
+    #[test]
+    fn test_get_min_grade_for_python_file() {
+        let gate = MinimumGradeGate::with_defaults();
+        let path = PathBuf::from("src/main.py");
+        assert_eq!(gate.get_min_grade_for_file(&path), Grade::B);
+    }
+
+    #[test]
+    fn test_get_min_grade_for_unknown_extension() {
+        let gate = MinimumGradeGate::with_defaults();
+        let path = PathBuf::from("readme.md");
+        assert_eq!(gate.get_min_grade_for_file(&path), Grade::B); // default
+
+        let unknown = PathBuf::from("data.xyz");
+        assert_eq!(gate.get_min_grade_for_file(&unknown), Grade::B);
+    }
+
+    #[test]
+    fn test_get_min_grade_for_no_extension() {
+        let gate = MinimumGradeGate::with_defaults();
+        let path = PathBuf::from("Makefile");
+        assert_eq!(gate.get_min_grade_for_file(&path), Grade::B); // default
+    }
+
+    #[test]
+    fn test_get_min_grade_for_go_file() {
+        let gate = MinimumGradeGate::with_defaults();
+        let path = PathBuf::from("main.go");
+        assert_eq!(gate.get_min_grade_for_file(&path), Grade::B); // not in min_grades
+    }
+
+    #[test]
+    fn test_get_min_grade_for_java_file() {
+        let gate = MinimumGradeGate::with_defaults();
+        let path = PathBuf::from("Main.java");
+        assert_eq!(gate.get_min_grade_for_file(&path), Grade::B);
+    }
+
+    #[test]
+    fn test_get_min_grade_for_ruby_file() {
+        let gate = MinimumGradeGate::with_defaults();
+        let path = PathBuf::from("app.rb");
+        assert_eq!(gate.get_min_grade_for_file(&path), Grade::B);
+    }
+
+    #[test]
+    fn test_get_min_grade_for_php_file() {
+        let gate = MinimumGradeGate::with_defaults();
+        let path = PathBuf::from("index.php");
+        assert_eq!(gate.get_min_grade_for_file(&path), Grade::B);
+    }
+
+    #[test]
+    fn test_get_min_grade_for_swift_file() {
+        let gate = MinimumGradeGate::with_defaults();
+        let path = PathBuf::from("App.swift");
+        assert_eq!(gate.get_min_grade_for_file(&path), Grade::B);
+    }
+
+    #[test]
+    fn test_get_min_grade_for_kotlin_file() {
+        let gate = MinimumGradeGate::with_defaults();
+        let path = PathBuf::from("Main.kt");
+        assert_eq!(gate.get_min_grade_for_file(&path), Grade::B);
+
+        let kts_path = PathBuf::from("build.gradle.kts");
+        assert_eq!(gate.get_min_grade_for_file(&kts_path), Grade::B);
+    }
+
+    #[test]
+    fn test_new_file_gate_disabled() {
+        let mut config = GateConfig::default();
+        config.enforce_new_files = false;
+
+        let gate = NewFileGate::new(config);
+        let baseline = TdgBaseline::new(None);
+        let current = create_test_baseline(vec![
+            (PathBuf::from("src/new_bad.rs"), 50.0, Grade::D),
+        ]);
+
+        let result = gate.check(&baseline, &current).unwrap();
+        assert!(result.passed); // Should pass because enforcement is disabled
+        assert!(result.message.contains("disabled"));
+    }
+
+    #[test]
+    fn test_new_file_gate_no_new_files() {
+        let baseline = create_test_baseline(vec![
+            (PathBuf::from("src/existing.rs"), 90.0, Grade::A),
+        ]);
+        let current = create_test_baseline(vec![
+            (PathBuf::from("src/existing.rs"), 90.0, Grade::A),
+        ]);
+
+        let gate = NewFileGate::with_defaults();
+        let result = gate.check(&baseline, &current).unwrap();
+
+        assert!(result.passed);
+        assert!(result.message.contains("No new files"));
+    }
+
+    #[test]
+    fn test_gate_config_clone() {
+        let config = GateConfig::default();
+        let cloned = config.clone();
+        assert_eq!(cloned.max_score_drop, config.max_score_drop);
+        assert_eq!(cloned.allow_grade_drop, config.allow_grade_drop);
+    }
+
+    #[test]
+    fn test_gate_result_clone() {
+        let result = GateResult {
+            passed: true,
+            gate_name: "Test".to_string(),
+            violations: vec![],
+            message: "OK".to_string(),
+        };
+        let cloned = result.clone();
+        assert_eq!(cloned.passed, result.passed);
+        assert_eq!(cloned.gate_name, result.gate_name);
+    }
+
+    #[test]
+    fn test_violation_clone() {
+        let violation = Violation {
+            path: PathBuf::from("test.rs"),
+            violation_type: ViolationType::Regression,
+            severity: Severity::Error,
+            message: "Test".to_string(),
+            old_score: Some(90.0),
+            new_score: 75.0,
+            old_grade: Some(Grade::A),
+            new_grade: Grade::B,
+        };
+        let cloned = violation.clone();
+        assert_eq!(cloned.path, violation.path);
+        assert_eq!(cloned.new_score, violation.new_score);
+    }
+
+    #[test]
+    fn test_violation_type_copy() {
+        let vt = ViolationType::Regression;
+        let copied = vt;
+        assert_eq!(copied, ViolationType::Regression);
+    }
+
+    #[test]
+    fn test_severity_copy() {
+        let s = Severity::Error;
+        let copied = s;
+        assert_eq!(copied, Severity::Error);
+    }
+
+    #[test]
+    fn test_gate_result_debug() {
+        let result = GateResult {
+            passed: true,
+            gate_name: "Debug".to_string(),
+            violations: vec![],
+            message: "test".to_string(),
+        };
+        let debug_str = format!("{:?}", result);
+        assert!(debug_str.contains("passed"));
+        assert!(debug_str.contains("true"));
+    }
+
+    #[test]
+    fn test_violation_debug() {
+        let violation = Violation {
+            path: PathBuf::from("debug.rs"),
+            violation_type: ViolationType::BelowMinimum,
+            severity: Severity::Warning,
+            message: "debug".to_string(),
+            old_score: None,
+            new_score: 60.0,
+            old_grade: None,
+            new_grade: Grade::D,
+        };
+        let debug_str = format!("{:?}", violation);
+        assert!(debug_str.contains("debug.rs"));
+    }
+
+    #[test]
+    fn test_gate_config_debug() {
+        let config = GateConfig::default();
+        let debug_str = format!("{:?}", config);
+        assert!(debug_str.contains("max_score_drop"));
+    }
 }
