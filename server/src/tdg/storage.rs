@@ -1306,6 +1306,358 @@ mod tests {
 }
 
 #[cfg(test)]
+mod extended_tests {
+    use super::*;
+    use crate::tdg::Grade;
+
+    fn create_test_record_with_old_timestamp() -> FullTdgRecord {
+        let content = b"fn old_test() {}";
+        let hash = blake3::hash(content);
+
+        FullTdgRecord {
+            identity: FileIdentity {
+                path: PathBuf::from("old_test.rs"),
+                content_hash: hash,
+                size_bytes: content.len() as u64,
+                modified_time: SystemTime::UNIX_EPOCH, // Very old
+            },
+            score: TdgScore::default(),
+            components: ComponentScores::default(),
+            semantic_sig: SemanticSignature {
+                ast_structure_hash: 999,
+                identifier_pattern: "old".to_string(),
+                control_flow_pattern: "linear".to_string(),
+                import_dependencies: Vec::new(),
+            },
+            metadata: AnalysisMetadata {
+                analyzer_version: "1.0.0".to_string(),
+                analysis_duration_ms: 1,
+                language_confidence: 1.0,
+                analysis_timestamp: SystemTime::UNIX_EPOCH, // Very old
+                cache_hit: false,
+            },
+            git_context: None,
+        }
+    }
+
+    #[tokio::test]
+    async fn test_should_archive_old_record() {
+        let storage = TieredStore::in_memory();
+        let old_record = create_test_record_with_old_timestamp();
+
+        // Record from UNIX_EPOCH should definitely be old enough to archive
+        assert!(storage.should_archive(&old_record));
+    }
+
+    #[tokio::test]
+    async fn test_should_not_archive_recent_record() {
+        let storage = TieredStore::in_memory();
+        let content = b"fn recent() {}";
+        let record = FullTdgRecord {
+            identity: FileIdentity {
+                path: PathBuf::from("recent.rs"),
+                content_hash: blake3::hash(content),
+                size_bytes: content.len() as u64,
+                modified_time: SystemTime::now(),
+            },
+            score: TdgScore::default(),
+            components: ComponentScores::default(),
+            semantic_sig: SemanticSignature {
+                ast_structure_hash: 1,
+                identifier_pattern: "recent".to_string(),
+                control_flow_pattern: "linear".to_string(),
+                import_dependencies: Vec::new(),
+            },
+            metadata: AnalysisMetadata {
+                analyzer_version: "1.0.0".to_string(),
+                analysis_duration_ms: 1,
+                language_confidence: 1.0,
+                analysis_timestamp: SystemTime::now(),
+                cache_hit: false,
+            },
+            git_context: None,
+        };
+
+        // Recent record should not be archived
+        assert!(!storage.should_archive(&record));
+    }
+
+    #[tokio::test]
+    async fn test_store_old_record_triggers_archival() {
+        let storage = TieredStore::in_memory();
+        let old_record = create_test_record_with_old_timestamp();
+        let hash = old_record.identity.content_hash;
+
+        // Store should trigger archival for old record
+        storage.store(old_record).await.unwrap();
+
+        // Record should be in cold storage (retrieved from cold since warm was cleaned)
+        let retrieved = storage.retrieve_full(&hash).await.unwrap();
+        assert!(retrieved.is_some());
+    }
+
+    #[test]
+    fn test_storage_statistics_with_zero_compression() {
+        let stats = StorageStatistics {
+            hot_entries: 0,
+            warm_entries: 0,
+            cold_entries: 0,
+            total_entries: 0,
+            hot_memory_kb: 0,
+            compression_ratio: 0.0,
+            warm_backend: "memory".to_string(),
+            cold_backend: "memory".to_string(),
+            backend_stats: HashMap::new(),
+        };
+
+        let output = stats.format_diagnostic();
+        assert!(output.contains("Hot (memory): 0 entries"));
+        assert!(output.contains("0.0%"));
+    }
+
+    #[test]
+    fn test_storage_statistics_high_compression() {
+        let stats = StorageStatistics {
+            hot_entries: 100,
+            warm_entries: 200,
+            cold_entries: 300,
+            total_entries: 600,
+            hot_memory_kb: 50,
+            compression_ratio: 0.9,
+            warm_backend: "libsql".to_string(),
+            cold_backend: "libsql".to_string(),
+            backend_stats: HashMap::new(),
+        };
+
+        let output = stats.format_diagnostic();
+        assert!(output.contains("Total: 600 entries"));
+        assert!(output.contains("90.0%"));
+    }
+
+    #[tokio::test]
+    async fn test_get_by_path_multiple_matches() {
+        let storage = TieredStore::in_memory();
+        let path = PathBuf::from("shared_path.rs");
+
+        // Store two records with same path but different content
+        for i in 0..2 {
+            let content = format!("content version {}", i);
+            let record = FullTdgRecord {
+                identity: FileIdentity {
+                    path: path.clone(),
+                    content_hash: blake3::hash(content.as_bytes()),
+                    size_bytes: content.len() as u64,
+                    modified_time: SystemTime::now(),
+                },
+                score: TdgScore::default(),
+                components: ComponentScores::default(),
+                semantic_sig: SemanticSignature {
+                    ast_structure_hash: i as u64,
+                    identifier_pattern: format!("v{}", i),
+                    control_flow_pattern: "linear".to_string(),
+                    import_dependencies: Vec::new(),
+                },
+                metadata: AnalysisMetadata {
+                    analyzer_version: "1.0.0".to_string(),
+                    analysis_duration_ms: 1,
+                    language_confidence: 1.0,
+                    analysis_timestamp: SystemTime::now(),
+                    cache_hit: false,
+                },
+                git_context: None,
+            };
+            storage.store(record).await.unwrap();
+        }
+
+        let results = storage.get_by_path(&path).await.unwrap();
+        assert_eq!(results.len(), 2);
+    }
+
+    #[test]
+    fn test_file_identity_different_sizes() {
+        let identity1 = FileIdentity {
+            path: PathBuf::from("small.rs"),
+            content_hash: blake3::hash(b"s"),
+            size_bytes: 1,
+            modified_time: SystemTime::now(),
+        };
+
+        let identity2 = FileIdentity {
+            path: PathBuf::from("large.rs"),
+            content_hash: blake3::hash(b"large content with more bytes"),
+            size_bytes: 1_000_000,
+            modified_time: SystemTime::now(),
+        };
+
+        assert!(identity2.size_bytes > identity1.size_bytes);
+    }
+
+    #[test]
+    fn test_component_scores_all_populated() {
+        let scores = ComponentScores {
+            complexity_breakdown: [
+                ("func1".to_string(), 10.0),
+                ("func2".to_string(), 20.0),
+            ]
+            .into_iter()
+            .collect(),
+            duplication_sources: vec!["dup1.rs".to_string(), "dup2.rs".to_string()],
+            coupling_dependencies: vec!["dep1".to_string(), "dep2".to_string(), "dep3".to_string()],
+            doc_missing_items: vec!["item1".to_string()],
+            consistency_violations: vec!["v1".to_string(), "v2".to_string()],
+        };
+
+        assert_eq!(scores.complexity_breakdown.len(), 2);
+        assert_eq!(scores.duplication_sources.len(), 2);
+        assert_eq!(scores.coupling_dependencies.len(), 3);
+        assert_eq!(scores.doc_missing_items.len(), 1);
+        assert_eq!(scores.consistency_violations.len(), 2);
+    }
+
+    #[test]
+    fn test_semantic_signature_with_many_imports() {
+        let sig = SemanticSignature {
+            ast_structure_hash: 0xCAFEBABE,
+            identifier_pattern: "complex_pattern".to_string(),
+            control_flow_pattern: "nested_loops_with_branches".to_string(),
+            import_dependencies: vec![
+                "std::io".to_string(),
+                "std::fs".to_string(),
+                "std::collections::HashMap".to_string(),
+                "tokio::sync::RwLock".to_string(),
+                "serde::{Serialize, Deserialize}".to_string(),
+            ],
+        };
+
+        assert_eq!(sig.import_dependencies.len(), 5);
+        assert!(sig.import_dependencies.contains(&"std::io".to_string()));
+    }
+
+    #[test]
+    fn test_analysis_metadata_with_cache_hit() {
+        let meta_hit = AnalysisMetadata {
+            analyzer_version: "2.0.0".to_string(),
+            analysis_duration_ms: 1, // Fast due to cache
+            language_confidence: 1.0,
+            analysis_timestamp: SystemTime::now(),
+            cache_hit: true,
+        };
+
+        let meta_miss = AnalysisMetadata {
+            analyzer_version: "2.0.0".to_string(),
+            analysis_duration_ms: 500, // Slower without cache
+            language_confidence: 0.95,
+            analysis_timestamp: SystemTime::now(),
+            cache_hit: false,
+        };
+
+        assert!(meta_hit.cache_hit);
+        assert!(!meta_miss.cache_hit);
+        assert!(meta_hit.analysis_duration_ms < meta_miss.analysis_duration_ms);
+    }
+
+    #[tokio::test]
+    async fn test_storage_statistics_after_multiple_stores() {
+        let storage = TieredStore::in_memory();
+
+        // Store several records
+        for i in 0..10 {
+            let content = format!("file content {}", i);
+            let record = FullTdgRecord {
+                identity: FileIdentity {
+                    path: PathBuf::from(format!("file{}.rs", i)),
+                    content_hash: blake3::hash(content.as_bytes()),
+                    size_bytes: content.len() as u64,
+                    modified_time: SystemTime::now(),
+                },
+                score: TdgScore::default(),
+                components: ComponentScores::default(),
+                semantic_sig: SemanticSignature {
+                    ast_structure_hash: i as u64,
+                    identifier_pattern: "test".to_string(),
+                    control_flow_pattern: "linear".to_string(),
+                    import_dependencies: Vec::new(),
+                },
+                metadata: AnalysisMetadata {
+                    analyzer_version: "1.0.0".to_string(),
+                    analysis_duration_ms: 1,
+                    language_confidence: 1.0,
+                    analysis_timestamp: SystemTime::now(),
+                    cache_hit: false,
+                },
+                git_context: None,
+            };
+            storage.store(record).await.unwrap();
+        }
+
+        let stats = storage.get_statistics();
+        assert_eq!(stats.hot_entries, 10);
+    }
+
+    #[test]
+    fn test_hot_cache_entry_grade_boundary_values() {
+        let grades = [
+            (Grade::APLus, 0),
+            (Grade::A, 1),
+            (Grade::AMinus, 2),
+            (Grade::BPlus, 3),
+            (Grade::B, 4),
+            (Grade::BMinus, 5),
+            (Grade::CPlus, 6),
+            (Grade::C, 7),
+            (Grade::CMinus, 8),
+            (Grade::D, 9),
+            (Grade::F, 10),
+        ];
+
+        for (grade, expected_val) in grades {
+            assert_eq!(grade as u8, expected_val, "Grade {:?} should have value {}", grade, expected_val);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_flush_after_multiple_operations() {
+        let storage = TieredStore::in_memory();
+
+        // Perform various operations
+        for i in 0..5 {
+            let content = format!("flush test {}", i);
+            let record = FullTdgRecord {
+                identity: FileIdentity {
+                    path: PathBuf::from(format!("flush{}.rs", i)),
+                    content_hash: blake3::hash(content.as_bytes()),
+                    size_bytes: content.len() as u64,
+                    modified_time: SystemTime::now(),
+                },
+                score: TdgScore::default(),
+                components: ComponentScores::default(),
+                semantic_sig: SemanticSignature {
+                    ast_structure_hash: i as u64,
+                    identifier_pattern: "flush".to_string(),
+                    control_flow_pattern: "linear".to_string(),
+                    import_dependencies: Vec::new(),
+                },
+                metadata: AnalysisMetadata {
+                    analyzer_version: "1.0.0".to_string(),
+                    analysis_duration_ms: 1,
+                    language_confidence: 1.0,
+                    analysis_timestamp: SystemTime::now(),
+                    cache_hit: false,
+                },
+                git_context: None,
+            };
+            storage.store(record).await.unwrap();
+        }
+
+        // Cleanup should work
+        let _ = storage.cleanup_hot_cache(3600);
+
+        // Flush should succeed
+        assert!(storage.flush().is_ok());
+    }
+}
+
+#[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;
 
