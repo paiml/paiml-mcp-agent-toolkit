@@ -113,6 +113,80 @@ mod tests {
     use std::fs;
     use tempfile::TempDir;
 
+    // === BaselineComparison Struct Tests ===
+
+    #[test]
+    fn test_baseline_comparison_struct_creation() {
+        let comparison = BaselineComparison {
+            baseline_ref: "main".to_string(),
+            delta: 5.5,
+            completed: vec!["Refactored func_a".to_string()],
+            pending: vec!["Optimize func_b".to_string()],
+        };
+
+        assert_eq!(comparison.baseline_ref, "main");
+        assert!((comparison.delta - 5.5).abs() < f64::EPSILON);
+        assert_eq!(comparison.completed.len(), 1);
+        assert_eq!(comparison.pending.len(), 1);
+    }
+
+    #[test]
+    fn test_baseline_comparison_empty_vectors() {
+        let comparison = BaselineComparison {
+            baseline_ref: "HEAD".to_string(),
+            delta: 0.0,
+            completed: vec![],
+            pending: vec![],
+        };
+
+        assert!(comparison.completed.is_empty());
+        assert!(comparison.pending.is_empty());
+    }
+
+    #[test]
+    fn test_baseline_comparison_clone() {
+        let comparison = BaselineComparison {
+            baseline_ref: "v1.0".to_string(),
+            delta: 10.0,
+            completed: vec!["Task 1".to_string()],
+            pending: vec!["Task 2".to_string()],
+        };
+        let cloned = comparison.clone();
+
+        assert_eq!(cloned.baseline_ref, comparison.baseline_ref);
+        assert_eq!(cloned.delta, comparison.delta);
+        assert_eq!(cloned.completed, comparison.completed);
+    }
+
+    #[test]
+    fn test_baseline_comparison_debug() {
+        let comparison = BaselineComparison {
+            baseline_ref: "feature-branch".to_string(),
+            delta: -3.0,
+            completed: vec![],
+            pending: vec!["Fix regression".to_string()],
+        };
+        let debug = format!("{:?}", comparison);
+
+        assert!(debug.contains("BaselineComparison"));
+        assert!(debug.contains("feature-branch"));
+        assert!(debug.contains("-3.0") || debug.contains("-3"));
+    }
+
+    #[test]
+    fn test_baseline_comparison_negative_delta() {
+        let comparison = BaselineComparison {
+            baseline_ref: "main".to_string(),
+            delta: -10.5, // Regression
+            completed: vec![],
+            pending: vec!["Fix regression".to_string()],
+        };
+
+        assert!(comparison.delta < 0.0);
+    }
+
+    // === compare_with_baseline Function Tests ===
+
     #[test]
     fn test_baseline_comparison_with_simple_code() {
         let test_code = r#"
@@ -189,5 +263,97 @@ mod tests {
             !comparison.completed.is_empty(),
             "Should track completed refactorings"
         );
+    }
+
+    #[test]
+    fn test_baseline_comparison_various_refs() {
+        let test_code = "fn test() {}";
+
+        let temp_dir = TempDir::new().unwrap();
+        let test_file = temp_dir.path().join("test.rs");
+        fs::write(&test_file, test_code).unwrap();
+
+        // Test with various git ref formats
+        let refs = ["main", "HEAD", "HEAD~1", "origin/main", "v1.0.0"];
+
+        for git_ref in refs {
+            let comparison = compare_with_baseline(&test_file, git_ref).unwrap();
+            assert_eq!(comparison.baseline_ref, git_ref);
+        }
+    }
+
+    #[test]
+    fn test_baseline_comparison_nonexistent_file() {
+        let result = compare_with_baseline(Path::new("/nonexistent/file.rs"), "main");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_baseline_comparison_empty_file() {
+        let temp_dir = TempDir::new().unwrap();
+        let test_file = temp_dir.path().join("empty.rs");
+        fs::write(&test_file, "").unwrap();
+
+        let comparison = compare_with_baseline(&test_file, "main").unwrap();
+
+        // Empty file should have delta of 0 (no functions)
+        assert_eq!(comparison.delta, 0.0);
+    }
+
+    #[test]
+    fn test_baseline_comparison_always_has_pending_with_functions() {
+        let test_code = "fn simple() { }";
+
+        let temp_dir = TempDir::new().unwrap();
+        let test_file = temp_dir.path().join("simple.rs");
+        fs::write(&test_file, test_code).unwrap();
+
+        let comparison = compare_with_baseline(&test_file, "main").unwrap();
+
+        // Should always have at least one pending recommendation if there are functions
+        assert!(!comparison.pending.is_empty());
+    }
+
+    #[test]
+    fn test_baseline_comparison_multiple_functions() {
+        let test_code = r#"
+            fn func1() -> i32 { 1 }
+            fn func2() -> i32 { 2 }
+            fn func3() -> i32 { 3 }
+            fn func4() -> i32 { 4 }
+            fn func5() -> i32 { 5 }
+        "#;
+
+        let temp_dir = TempDir::new().unwrap();
+        let test_file = temp_dir.path().join("multi.rs");
+        fs::write(&test_file, test_code).unwrap();
+
+        let comparison = compare_with_baseline(&test_file, "main").unwrap();
+
+        // Should have processed all functions
+        assert!(comparison.delta > 0.0);
+    }
+
+    #[test]
+    fn test_baseline_comparison_delta_calculation() {
+        let test_code = r#"
+            fn medium_complexity(x: i32) -> i32 {
+                if x > 0 {
+                    x * 2
+                } else {
+                    x - 1
+                }
+            }
+        "#;
+
+        let temp_dir = TempDir::new().unwrap();
+        let test_file = temp_dir.path().join("medium.rs");
+        fs::write(&test_file, test_code).unwrap();
+
+        let comparison = compare_with_baseline(&test_file, "main").unwrap();
+
+        // Delta = baseline (current * 1.2) - current = current * 0.2
+        // So delta should be positive (baseline was worse)
+        assert!(comparison.delta >= 0.0);
     }
 }
