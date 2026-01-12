@@ -115,14 +115,17 @@ impl AgentRegistry {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use uuid::Uuid;
+    use super::super::AgentClass;
 
-    fn create_test_spec(id: AgentId) -> AgentSpec {
-        AgentSpec {
+    fn create_test_spec() -> (AgentId, AgentSpec) {
+        let id = Uuid::new_v4();
+        let spec = AgentSpec {
             id,
-            name: format!("agent_{}", id.0),
-            capabilities: vec!["analyze".to_string()],
-            priority: super::super::Priority::Normal,
-        }
+            class: AgentClass::Analyzer,
+            config: serde_json::json!({}),
+        };
+        (id, spec)
     }
 
     #[test]
@@ -140,17 +143,17 @@ mod tests {
     #[tokio::test]
     async fn test_spawn_agent() {
         let registry = AgentRegistry::new();
-        let spec = create_test_spec(AgentId(1));
+        let (expected_id, spec) = create_test_spec();
 
         let result = registry.spawn_agent(spec).await;
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), AgentId(1));
+        assert_eq!(result.unwrap(), expected_id);
     }
 
     #[tokio::test]
     async fn test_register_agent_with_name() {
         let registry = AgentRegistry::new();
-        let agent_id = AgentId(1);
+        let agent_id = Uuid::new_v4();
 
         registry.register_agent_with_name("test_agent", agent_id).await;
 
@@ -170,7 +173,7 @@ mod tests {
     #[tokio::test]
     async fn test_register_agent_with_capability() {
         let registry = AgentRegistry::new();
-        let agent_id = AgentId(2);
+        let agent_id = Uuid::new_v4();
 
         registry.register_agent_with_capability("analyze", agent_id).await;
 
@@ -190,27 +193,27 @@ mod tests {
     #[tokio::test]
     async fn test_get_agent_spec() {
         let registry = AgentRegistry::new();
-        let spec = create_test_spec(AgentId(3));
+        let (expected_id, spec) = create_test_spec();
 
         registry.spawn_agent(spec.clone()).await.unwrap();
 
-        let found = registry.get_agent_spec(AgentId(3)).await;
+        let found = registry.get_agent_spec(expected_id).await;
         assert!(found.is_some());
-        assert_eq!(found.unwrap().id, AgentId(3));
+        assert_eq!(found.unwrap().id, expected_id);
     }
 
     #[tokio::test]
     async fn test_get_agent_spec_not_found() {
         let registry = AgentRegistry::new();
 
-        let found = registry.get_agent_spec(AgentId(999)).await;
+        let found = registry.get_agent_spec(Uuid::new_v4()).await;
         assert!(found.is_none());
     }
 
     #[tokio::test]
     async fn test_remove_agent() {
         let registry = AgentRegistry::new();
-        let agent_id = AgentId(4);
+        let agent_id = Uuid::new_v4();
 
         registry.register_agent_with_name("to_remove", agent_id).await;
         assert!(registry.get_agent("to_remove").await.is_some());
@@ -257,8 +260,8 @@ mod tests {
     async fn test_list_agents_with_entries() {
         let registry = AgentRegistry::new();
 
-        registry.register_agent_with_name("agent1", AgentId(1)).await;
-        registry.register_agent_with_name("agent2", AgentId(2)).await;
+        registry.register_agent_with_name("agent1", Uuid::new_v4()).await;
+        registry.register_agent_with_name("agent2", Uuid::new_v4()).await;
 
         let agents = registry.list_agents().await;
         assert_eq!(agents.len(), 2);
