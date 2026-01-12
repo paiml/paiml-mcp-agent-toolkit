@@ -92,3 +92,171 @@ fn map_to_vec(map: &HashMap<usize, f64>, size: usize) -> Vec<f64> {
     }
     vec
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // =========================================================================
+    // CentralityMetrics Tests
+    // =========================================================================
+
+    #[test]
+    fn test_centrality_metrics_default_fields() {
+        let metrics = CentralityMetrics {
+            degree: vec![],
+            betweenness: vec![],
+            closeness: vec![],
+            eigenvector: vec![],
+            katz: vec![],
+            harmonic: vec![],
+        };
+
+        assert!(metrics.degree.is_empty());
+        assert!(metrics.betweenness.is_empty());
+        assert!(metrics.closeness.is_empty());
+        assert!(metrics.eigenvector.is_empty());
+        assert!(metrics.katz.is_empty());
+        assert!(metrics.harmonic.is_empty());
+    }
+
+    #[test]
+    fn test_centrality_metrics_with_values() {
+        let metrics = CentralityMetrics {
+            degree: vec![1.0, 2.0, 3.0],
+            betweenness: vec![0.1, 0.2, 0.3],
+            closeness: vec![0.5, 0.6, 0.7],
+            eigenvector: vec![0.9, 0.8, 0.7],
+            katz: vec![0.3, 0.4, 0.5],
+            harmonic: vec![0.2, 0.3, 0.4],
+        };
+
+        assert_eq!(metrics.degree.len(), 3);
+        assert_eq!(metrics.betweenness.len(), 3);
+    }
+
+    #[test]
+    fn test_centrality_metrics_clone() {
+        let metrics = CentralityMetrics {
+            degree: vec![1.0],
+            betweenness: vec![0.1],
+            closeness: vec![0.5],
+            eigenvector: vec![0.9],
+            katz: vec![0.3],
+            harmonic: vec![0.2],
+        };
+
+        let cloned = metrics.clone();
+        assert_eq!(cloned.degree, metrics.degree);
+    }
+
+    #[test]
+    fn test_centrality_metrics_debug() {
+        let metrics = CentralityMetrics {
+            degree: vec![1.0],
+            betweenness: vec![],
+            closeness: vec![],
+            eigenvector: vec![],
+            katz: vec![],
+            harmonic: vec![],
+        };
+
+        let debug_str = format!("{:?}", metrics);
+        assert!(debug_str.contains("CentralityMetrics"));
+    }
+
+    // =========================================================================
+    // CentralityComputer Tests
+    // =========================================================================
+
+    #[test]
+    fn test_centrality_computer_new() {
+        let computer = CentralityComputer::new(true, false);
+        assert!(computer.normalize);
+        assert!(!computer.weighted);
+    }
+
+    #[test]
+    fn test_centrality_computer_new_weighted() {
+        let computer = CentralityComputer::new(false, true);
+        assert!(!computer.normalize);
+        assert!(computer.weighted);
+    }
+
+    #[test]
+    fn test_centrality_computer_both_flags() {
+        let computer = CentralityComputer::new(true, true);
+        assert!(computer.normalize);
+        assert!(computer.weighted);
+    }
+
+    #[test]
+    fn test_centrality_computer_no_flags() {
+        let computer = CentralityComputer::new(false, false);
+        assert!(!computer.normalize);
+        assert!(!computer.weighted);
+    }
+
+    // =========================================================================
+    // map_to_vec Tests
+    // =========================================================================
+
+    #[test]
+    fn test_map_to_vec_empty() {
+        let map: HashMap<usize, f64> = HashMap::new();
+        let vec = map_to_vec(&map, 5);
+        assert_eq!(vec, vec![0.0; 5]);
+    }
+
+    #[test]
+    fn test_map_to_vec_partial() {
+        let mut map = HashMap::new();
+        map.insert(0, 1.0);
+        map.insert(2, 2.0);
+
+        let vec = map_to_vec(&map, 4);
+        assert_eq!(vec, vec![1.0, 0.0, 2.0, 0.0]);
+    }
+
+    #[test]
+    fn test_map_to_vec_full() {
+        let mut map = HashMap::new();
+        map.insert(0, 1.0);
+        map.insert(1, 2.0);
+        map.insert(2, 3.0);
+
+        let vec = map_to_vec(&map, 3);
+        assert_eq!(vec, vec![1.0, 2.0, 3.0]);
+    }
+
+    #[test]
+    fn test_map_to_vec_out_of_bounds() {
+        let mut map = HashMap::new();
+        map.insert(5, 1.0); // Out of bounds for size 3
+
+        let vec = map_to_vec(&map, 3);
+        assert_eq!(vec, vec![0.0; 3]); // Should be all zeros
+    }
+
+    #[test]
+    fn test_map_to_vec_zero_size() {
+        let map: HashMap<usize, f64> = HashMap::new();
+        let vec = map_to_vec(&map, 0);
+        assert!(vec.is_empty());
+    }
+
+    // =========================================================================
+    // Integration Tests
+    // =========================================================================
+
+    #[test]
+    fn test_compute_all_empty_graph() {
+        let computer = CentralityComputer::new(true, false);
+        let graph = DependencyGraph::new();
+
+        let metrics = computer.compute_all(&graph);
+
+        assert!(metrics.degree.is_empty());
+        assert!(metrics.betweenness.is_empty());
+    }
+}

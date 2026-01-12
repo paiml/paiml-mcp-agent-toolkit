@@ -127,3 +127,174 @@ fn compute_reciprocity(graph: &DependencyGraph) -> f64 {
     // Each reciprocal pair is counted twice, so divide by 2
     reciprocal_count as f64 / total_edges as f64
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // =========================================================================
+    // StructuralMetrics Tests
+    // =========================================================================
+
+    #[test]
+    fn test_structural_metrics_all_fields() {
+        let metrics = StructuralMetrics {
+            density: 0.5,
+            diameter: Some(3),
+            radius: Some(2),
+            average_degree: 2.5,
+            clustering_coefficient: 0.3,
+            assortativity: 0.1,
+            components: 1,
+            strongly_connected_components: 1,
+            is_cyclic: false,
+            transitivity: 0.3,
+            reciprocity: Some(0.5),
+        };
+
+        assert!((metrics.density - 0.5).abs() < 0.001);
+        assert_eq!(metrics.diameter, Some(3));
+        assert_eq!(metrics.radius, Some(2));
+        assert!(!metrics.is_cyclic);
+    }
+
+    #[test]
+    fn test_structural_metrics_none_values() {
+        let metrics = StructuralMetrics {
+            density: 0.0,
+            diameter: None,
+            radius: None,
+            average_degree: 0.0,
+            clustering_coefficient: 0.0,
+            assortativity: 0.0,
+            components: 0,
+            strongly_connected_components: 0,
+            is_cyclic: false,
+            transitivity: 0.0,
+            reciprocity: None,
+        };
+
+        assert!(metrics.diameter.is_none());
+        assert!(metrics.radius.is_none());
+        assert!(metrics.reciprocity.is_none());
+    }
+
+    #[test]
+    fn test_structural_metrics_clone() {
+        let metrics = StructuralMetrics {
+            density: 0.5,
+            diameter: Some(3),
+            radius: None,
+            average_degree: 2.0,
+            clustering_coefficient: 0.3,
+            assortativity: 0.1,
+            components: 1,
+            strongly_connected_components: 1,
+            is_cyclic: true,
+            transitivity: 0.3,
+            reciprocity: Some(0.5),
+        };
+
+        let cloned = metrics.clone();
+        assert!((cloned.density - metrics.density).abs() < 0.001);
+        assert_eq!(cloned.diameter, metrics.diameter);
+    }
+
+    #[test]
+    fn test_structural_metrics_debug() {
+        let metrics = StructuralMetrics {
+            density: 0.5,
+            diameter: None,
+            radius: None,
+            average_degree: 0.0,
+            clustering_coefficient: 0.0,
+            assortativity: 0.0,
+            components: 0,
+            strongly_connected_components: 0,
+            is_cyclic: false,
+            transitivity: 0.0,
+            reciprocity: None,
+        };
+
+        let debug_str = format!("{:?}", metrics);
+        assert!(debug_str.contains("StructuralMetrics"));
+    }
+
+    // =========================================================================
+    // StructuralAnalyzer Tests
+    // =========================================================================
+
+    #[test]
+    fn test_structural_analyzer_new_directed() {
+        let analyzer = StructuralAnalyzer::new(true);
+        assert!(analyzer.directed);
+    }
+
+    #[test]
+    fn test_structural_analyzer_new_undirected() {
+        let analyzer = StructuralAnalyzer::new(false);
+        assert!(!analyzer.directed);
+    }
+
+    #[test]
+    fn test_analyze_empty_graph() {
+        let analyzer = StructuralAnalyzer::new(true);
+        let graph = DependencyGraph::new();
+
+        let metrics = analyzer.analyze(&graph);
+
+        assert!((metrics.density - 0.0).abs() < 0.001);
+        assert!((metrics.average_degree - 0.0).abs() < 0.001);
+    }
+
+    // =========================================================================
+    // compute_reciprocity Tests
+    // =========================================================================
+
+    #[test]
+    fn test_compute_reciprocity_empty_graph() {
+        let graph = DependencyGraph::new();
+        let result = compute_reciprocity(&graph);
+        assert!((result - 0.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_reciprocity_no_reciprocal_edges() {
+        let mut graph = DependencyGraph::new();
+        let a = graph.add_node("a".to_string());
+        let b = graph.add_node("b".to_string());
+        graph.add_edge(a, b, ());
+
+        let result = compute_reciprocity(&graph);
+        assert!((result - 0.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_reciprocity_all_reciprocal() {
+        let mut graph = DependencyGraph::new();
+        let a = graph.add_node("a".to_string());
+        let b = graph.add_node("b".to_string());
+        graph.add_edge(a, b, ());
+        graph.add_edge(b, a, ());
+
+        let result = compute_reciprocity(&graph);
+        // Both edges have reciprocal, so 2/2 = 1.0
+        assert!((result - 1.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_reciprocity_partial() {
+        let mut graph = DependencyGraph::new();
+        let a = graph.add_node("a".to_string());
+        let b = graph.add_node("b".to_string());
+        let c = graph.add_node("c".to_string());
+        graph.add_edge(a, b, ());
+        graph.add_edge(b, a, ());
+        graph.add_edge(b, c, ());
+
+        let result = compute_reciprocity(&graph);
+        // 2 out of 3 edges have reciprocal
+        assert!(result > 0.0);
+        assert!(result < 1.0);
+    }
+}
