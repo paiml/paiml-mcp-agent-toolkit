@@ -111,3 +111,165 @@ impl AgentRegistry {
             .collect()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn create_test_spec(id: AgentId) -> AgentSpec {
+        AgentSpec {
+            id,
+            name: format!("agent_{}", id.0),
+            capabilities: vec!["analyze".to_string()],
+            priority: super::super::Priority::Normal,
+        }
+    }
+
+    #[test]
+    fn test_registry_new() {
+        let registry = AgentRegistry::new();
+        let _ = registry;
+    }
+
+    #[test]
+    fn test_registry_default() {
+        let registry = AgentRegistry::default();
+        let _ = registry;
+    }
+
+    #[tokio::test]
+    async fn test_spawn_agent() {
+        let registry = AgentRegistry::new();
+        let spec = create_test_spec(AgentId(1));
+
+        let result = registry.spawn_agent(spec).await;
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), AgentId(1));
+    }
+
+    #[tokio::test]
+    async fn test_register_agent_with_name() {
+        let registry = AgentRegistry::new();
+        let agent_id = AgentId(1);
+
+        registry.register_agent_with_name("test_agent", agent_id).await;
+
+        let found = registry.get_agent("test_agent").await;
+        assert!(found.is_some());
+        assert_eq!(found.unwrap(), agent_id);
+    }
+
+    #[tokio::test]
+    async fn test_get_agent_not_found() {
+        let registry = AgentRegistry::new();
+
+        let found = registry.get_agent("nonexistent").await;
+        assert!(found.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_register_agent_with_capability() {
+        let registry = AgentRegistry::new();
+        let agent_id = AgentId(2);
+
+        registry.register_agent_with_capability("analyze", agent_id).await;
+
+        let found = registry.find_agent_for_capability("analyze").await;
+        assert!(found.is_some());
+        assert_eq!(found.unwrap(), agent_id);
+    }
+
+    #[tokio::test]
+    async fn test_find_capability_not_found() {
+        let registry = AgentRegistry::new();
+
+        let found = registry.find_agent_for_capability("nonexistent").await;
+        assert!(found.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_get_agent_spec() {
+        let registry = AgentRegistry::new();
+        let spec = create_test_spec(AgentId(3));
+
+        registry.spawn_agent(spec.clone()).await.unwrap();
+
+        let found = registry.get_agent_spec(AgentId(3)).await;
+        assert!(found.is_some());
+        assert_eq!(found.unwrap().id, AgentId(3));
+    }
+
+    #[tokio::test]
+    async fn test_get_agent_spec_not_found() {
+        let registry = AgentRegistry::new();
+
+        let found = registry.get_agent_spec(AgentId(999)).await;
+        assert!(found.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_remove_agent() {
+        let registry = AgentRegistry::new();
+        let agent_id = AgentId(4);
+
+        registry.register_agent_with_name("to_remove", agent_id).await;
+        assert!(registry.get_agent("to_remove").await.is_some());
+
+        registry.remove_agent("to_remove").await;
+        assert!(registry.get_agent("to_remove").await.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_mark_agent_healthy() {
+        let registry = AgentRegistry::new();
+
+        registry.mark_agent_healthy("healthy_agent").await;
+
+        assert!(registry.is_agent_healthy("healthy_agent").await);
+    }
+
+    #[tokio::test]
+    async fn test_mark_agent_unhealthy() {
+        let registry = AgentRegistry::new();
+
+        registry.mark_agent_unhealthy("unhealthy_agent", "connection failed").await;
+
+        assert!(!registry.is_agent_healthy("unhealthy_agent").await);
+    }
+
+    #[tokio::test]
+    async fn test_is_agent_healthy_unknown() {
+        let registry = AgentRegistry::new();
+
+        // Unknown agents are considered unhealthy
+        assert!(!registry.is_agent_healthy("unknown").await);
+    }
+
+    #[tokio::test]
+    async fn test_list_agents_empty() {
+        let registry = AgentRegistry::new();
+
+        let agents = registry.list_agents().await;
+        assert!(agents.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_list_agents_with_entries() {
+        let registry = AgentRegistry::new();
+
+        registry.register_agent_with_name("agent1", AgentId(1)).await;
+        registry.register_agent_with_name("agent2", AgentId(2)).await;
+
+        let agents = registry.list_agents().await;
+        assert_eq!(agents.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn test_register_legacy_method() {
+        let registry = AgentRegistry::new();
+        let dummy_agent: Arc<dyn std::any::Any + Send + Sync> = Arc::new(());
+
+        // Should not panic
+        registry.register("legacy", dummy_agent).await;
+    }
+}
