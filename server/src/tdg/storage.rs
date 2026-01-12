@@ -897,6 +897,412 @@ mod tests {
         assert_eq!(removed, 0);
         assert_eq!(storage.hot.len(), 1);
     }
+
+    // Additional tests for uncovered code paths
+
+    #[test]
+    fn test_file_identity_debug() {
+        let content = b"debug test";
+        let identity = FileIdentity {
+            path: PathBuf::from("debug.rs"),
+            content_hash: blake3::hash(content),
+            size_bytes: content.len() as u64,
+            modified_time: SystemTime::now(),
+        };
+        let debug_str = format!("{:?}", identity);
+        assert!(debug_str.contains("FileIdentity"));
+        assert!(debug_str.contains("debug.rs"));
+    }
+
+    #[test]
+    fn test_component_scores_clone_and_debug() {
+        let mut scores = ComponentScores::default();
+        scores.complexity_breakdown.insert("func1".to_string(), 5.0);
+        scores.duplication_sources.push("dup1.rs".to_string());
+        scores.coupling_dependencies.push("dep1".to_string());
+        scores.doc_missing_items.push("missing_doc".to_string());
+        scores.consistency_violations.push("violation1".to_string());
+
+        let cloned = scores.clone();
+        assert_eq!(cloned.complexity_breakdown.get("func1"), Some(&5.0));
+        assert_eq!(cloned.duplication_sources.len(), 1);
+        assert_eq!(cloned.coupling_dependencies.len(), 1);
+
+        let debug_str = format!("{:?}", scores);
+        assert!(debug_str.contains("ComponentScores"));
+    }
+
+    #[test]
+    fn test_semantic_signature_debug() {
+        let sig = SemanticSignature {
+            ast_structure_hash: 999999,
+            identifier_pattern: "pattern".to_string(),
+            control_flow_pattern: "control".to_string(),
+            import_dependencies: vec!["dep1".to_string(), "dep2".to_string()],
+        };
+        let debug_str = format!("{:?}", sig);
+        assert!(debug_str.contains("SemanticSignature"));
+        assert!(debug_str.contains("999999"));
+    }
+
+    #[test]
+    fn test_analysis_metadata_debug() {
+        let meta = AnalysisMetadata {
+            analyzer_version: "3.0.0".to_string(),
+            analysis_duration_ms: 50,
+            language_confidence: 0.99,
+            analysis_timestamp: SystemTime::now(),
+            cache_hit: false,
+        };
+        let debug_str = format!("{:?}", meta);
+        assert!(debug_str.contains("AnalysisMetadata"));
+        assert!(debug_str.contains("3.0.0"));
+    }
+
+    #[test]
+    fn test_full_tdg_record_clone() {
+        let record = create_test_record();
+        let cloned = record.clone();
+
+        assert_eq!(cloned.identity.path, record.identity.path);
+        assert_eq!(cloned.score.total, record.score.total);
+        assert_eq!(cloned.semantic_sig.ast_structure_hash, record.semantic_sig.ast_structure_hash);
+    }
+
+    #[test]
+    fn test_full_tdg_record_debug() {
+        let record = create_test_record();
+        let debug_str = format!("{:?}", record);
+        assert!(debug_str.contains("FullTdgRecord"));
+        assert!(debug_str.contains("identity"));
+    }
+
+    #[test]
+    fn test_hot_cache_entry_copy() {
+        let hash = blake3::hash(b"copy test");
+        let entry = HotCacheEntry {
+            content_hash: *hash.as_bytes(),
+            grade: Grade::B as u8,
+            total_score: 80.0,
+            timestamp: 12345,
+        };
+        let copied = entry; // Copy trait
+        assert_eq!(copied.total_score, 80.0);
+        assert_eq!(copied.timestamp, 12345);
+    }
+
+    #[test]
+    fn test_hot_cache_entry_debug() {
+        let hash = blake3::hash(b"debug test");
+        let entry = HotCacheEntry {
+            content_hash: *hash.as_bytes(),
+            grade: Grade::A as u8,
+            total_score: 95.0,
+            timestamp: 99999,
+        };
+        let debug_str = format!("{:?}", entry);
+        assert!(debug_str.contains("HotCacheEntry"));
+        assert!(debug_str.contains("95"));
+    }
+
+    #[test]
+    fn test_storage_statistics_clone() {
+        let stats = StorageStatistics {
+            hot_entries: 5,
+            warm_entries: 10,
+            cold_entries: 20,
+            total_entries: 35,
+            hot_memory_kb: 2,
+            compression_ratio: 0.3,
+            warm_backend: "memory".to_string(),
+            cold_backend: "memory".to_string(),
+            backend_stats: HashMap::new(),
+        };
+        let cloned = stats.clone();
+        assert_eq!(cloned.hot_entries, 5);
+        assert_eq!(cloned.total_entries, 35);
+    }
+
+    #[test]
+    fn test_storage_statistics_debug() {
+        let stats = StorageStatistics {
+            hot_entries: 1,
+            warm_entries: 2,
+            cold_entries: 3,
+            total_entries: 6,
+            hot_memory_kb: 1,
+            compression_ratio: 0.5,
+            warm_backend: "test".to_string(),
+            cold_backend: "test".to_string(),
+            backend_stats: HashMap::new(),
+        };
+        let debug_str = format!("{:?}", stats);
+        assert!(debug_str.contains("StorageStatistics"));
+    }
+
+    #[test]
+    fn test_storage_statistics_serialization() {
+        let mut backend_stats = HashMap::new();
+        let mut warm_map = HashMap::new();
+        warm_map.insert("entry_count".to_string(), "100".to_string());
+        backend_stats.insert("warm".to_string(), warm_map);
+
+        let stats = StorageStatistics {
+            hot_entries: 10,
+            warm_entries: 100,
+            cold_entries: 500,
+            total_entries: 610,
+            hot_memory_kb: 5,
+            compression_ratio: 0.25,
+            warm_backend: "libsql".to_string(),
+            cold_backend: "libsql".to_string(),
+            backend_stats,
+        };
+
+        let json = serde_json::to_string(&stats).unwrap();
+        let deserialized: StorageStatistics = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.hot_entries, 10);
+        assert_eq!(deserialized.total_entries, 610);
+        assert_eq!(deserialized.warm_backend, "libsql");
+    }
+
+    #[test]
+    fn test_file_identity_serialization() {
+        let content = b"serialize test";
+        let identity = FileIdentity {
+            path: PathBuf::from("serialize.rs"),
+            content_hash: blake3::hash(content),
+            size_bytes: content.len() as u64,
+            modified_time: SystemTime::UNIX_EPOCH,
+        };
+
+        let json = serde_json::to_string(&identity).unwrap();
+        let deserialized: FileIdentity = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.path, identity.path);
+        assert_eq!(deserialized.size_bytes, identity.size_bytes);
+    }
+
+    #[test]
+    fn test_component_scores_serialization() {
+        let mut scores = ComponentScores::default();
+        scores.complexity_breakdown.insert("main".to_string(), 10.0);
+        scores.duplication_sources.push("dup.rs".to_string());
+
+        let json = serde_json::to_string(&scores).unwrap();
+        let deserialized: ComponentScores = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.complexity_breakdown.get("main"), Some(&10.0));
+        assert_eq!(deserialized.duplication_sources.len(), 1);
+    }
+
+    #[test]
+    fn test_semantic_signature_serialization() {
+        let sig = SemanticSignature {
+            ast_structure_hash: 0xDEADBEEF,
+            identifier_pattern: "id_pattern".to_string(),
+            control_flow_pattern: "cf_pattern".to_string(),
+            import_dependencies: vec!["std::io".to_string()],
+        };
+
+        let json = serde_json::to_string(&sig).unwrap();
+        let deserialized: SemanticSignature = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.ast_structure_hash, sig.ast_structure_hash);
+        assert_eq!(deserialized.import_dependencies.len(), 1);
+    }
+
+    #[test]
+    fn test_analysis_metadata_serialization() {
+        let meta = AnalysisMetadata {
+            analyzer_version: "2.0.0".to_string(),
+            analysis_duration_ms: 250,
+            language_confidence: 0.85,
+            analysis_timestamp: SystemTime::UNIX_EPOCH,
+            cache_hit: true,
+        };
+
+        let json = serde_json::to_string(&meta).unwrap();
+        let deserialized: AnalysisMetadata = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.analyzer_version, "2.0.0");
+        assert!(deserialized.cache_hit);
+    }
+
+    #[tokio::test]
+    async fn test_storage_multiple_records() {
+        let storage = TieredStore::in_memory();
+
+        // Store multiple records
+        for i in 0..5 {
+            let content = format!("content {}", i);
+            let hash = blake3::hash(content.as_bytes());
+            let record = FullTdgRecord {
+                identity: FileIdentity {
+                    path: PathBuf::from(format!("file{}.rs", i)),
+                    content_hash: hash,
+                    size_bytes: content.len() as u64,
+                    modified_time: SystemTime::now(),
+                },
+                score: TdgScore::default(),
+                components: ComponentScores::default(),
+                semantic_sig: SemanticSignature {
+                    ast_structure_hash: i as u64,
+                    identifier_pattern: format!("pattern{}", i),
+                    control_flow_pattern: "linear".to_string(),
+                    import_dependencies: Vec::new(),
+                },
+                metadata: AnalysisMetadata {
+                    analyzer_version: "1.0.0".to_string(),
+                    analysis_duration_ms: 10,
+                    language_confidence: 1.0,
+                    analysis_timestamp: SystemTime::now(),
+                    cache_hit: false,
+                },
+                git_context: None,
+            };
+            storage.store(record).await.unwrap();
+        }
+
+        let stats = storage.get_statistics();
+        assert_eq!(stats.hot_entries, 5);
+    }
+
+    #[tokio::test]
+    async fn test_get_by_path_no_match() {
+        let storage = TieredStore::in_memory();
+        let record = create_test_record();
+        storage.store(record).await.unwrap();
+
+        // Query with non-existent path
+        let results = storage.get_by_path(Path::new("nonexistent.rs")).await.unwrap();
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn test_hot_cache_cleanup_mixed_entries() {
+        let storage = TieredStore::in_memory();
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs() as i64;
+
+        // Add old entry
+        let old_hash = blake3::hash(b"old");
+        storage.hot.insert(old_hash, HotCacheEntry {
+            content_hash: *old_hash.as_bytes(),
+            grade: Grade::C as u8,
+            total_score: 70.0,
+            timestamp: now - 7200, // 2 hours ago
+        });
+
+        // Add fresh entry
+        let fresh_hash = blake3::hash(b"fresh");
+        storage.hot.insert(fresh_hash, HotCacheEntry {
+            content_hash: *fresh_hash.as_bytes(),
+            grade: Grade::A as u8,
+            total_score: 95.0,
+            timestamp: now,
+        });
+
+        // Cleanup entries older than 1 hour
+        let removed = storage.cleanup_hot_cache(3600);
+        assert_eq!(removed, 1);
+        assert_eq!(storage.hot.len(), 1);
+        assert!(storage.hot.contains_key(&fresh_hash));
+        assert!(!storage.hot.contains_key(&old_hash));
+    }
+
+    #[test]
+    fn test_storage_statistics_format_diagnostic_with_backend_stats() {
+        let mut backend_stats = HashMap::new();
+        let mut warm_map = HashMap::new();
+        warm_map.insert("entry_count".to_string(), "50".to_string());
+        warm_map.insert("size_bytes".to_string(), "1024".to_string());
+        backend_stats.insert("warm".to_string(), warm_map);
+
+        let stats = StorageStatistics {
+            hot_entries: 25,
+            warm_entries: 50,
+            cold_entries: 75,
+            total_entries: 150,
+            hot_memory_kb: 10,
+            compression_ratio: 0.4,
+            warm_backend: "libsql".to_string(),
+            cold_backend: "libsql".to_string(),
+            backend_stats,
+        };
+
+        let output = stats.format_diagnostic();
+        assert!(output.contains("Hot (memory): 25 entries"));
+        assert!(output.contains("10 KB"));
+        assert!(output.contains("libsql backend"));
+        assert!(output.contains("40.0%"));
+    }
+
+    #[tokio::test]
+    async fn test_full_tdg_record_serialization_round_trip() {
+        let record = create_test_record();
+
+        let json = serde_json::to_string(&record).unwrap();
+        let deserialized: FullTdgRecord = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.identity.path, record.identity.path);
+        assert_eq!(deserialized.score.total, record.score.total);
+        assert_eq!(
+            deserialized.semantic_sig.ast_structure_hash,
+            record.semantic_sig.ast_structure_hash
+        );
+        assert_eq!(
+            deserialized.metadata.analyzer_version,
+            record.metadata.analyzer_version
+        );
+    }
+
+    #[test]
+    fn test_hot_cache_entry_from_record_with_different_grades() {
+        use crate::tdg::Grade;
+
+        // Test with different grades
+        for (grade, expected_score) in [
+            (Grade::APLus, 100.0),
+            (Grade::A, 90.0),
+            (Grade::B, 80.0),
+            (Grade::C, 70.0),
+            (Grade::D, 60.0),
+            (Grade::F, 50.0),
+        ] {
+            let content = format!("content for grade {:?}", grade);
+            let hash = blake3::hash(content.as_bytes());
+            let mut record = create_test_record();
+            record.identity.content_hash = hash;
+            record.score.grade = grade;
+            record.score.total = expected_score;
+
+            let entry = HotCacheEntry::from_record(&record);
+            assert_eq!(entry.grade, grade as u8);
+            assert_eq!(entry.total_score, expected_score);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_storage_overwrite_same_hash() {
+        let storage = TieredStore::in_memory();
+        let mut record = create_test_record();
+        let hash = record.identity.content_hash;
+
+        // Store initial record
+        storage.store(record.clone()).await.unwrap();
+
+        // Modify and store again with same hash
+        record.score.total = 75.0;
+        storage.store(record.clone()).await.unwrap();
+
+        // Hot cache should have updated value
+        let hot_entry = storage.get_hot(&hash).unwrap();
+        assert_eq!(hot_entry.total_score, 75.0);
+    }
 }
 
 #[cfg(test)]

@@ -4,10 +4,10 @@ description: |
   Add comprehensive tests to reach the 95% code coverage target using 80/20 Pareto analysis.
 
   Current Status:
-  - Coverage: 86.03%
+  - Coverage: 86.37%
   - Target: 95%
-  - Gap: ~9% (~3,100 lines to cover)
-  - make coverage time: 2m 12s (target: 3-5 min)
+  - Gap: ~8.63% (~2,900 lines to cover)
+  - make coverage time: ~3 min (target: 3-5 min)
 
   80/20 Strategy (see docs/specifications/80-20-to-95.md):
 

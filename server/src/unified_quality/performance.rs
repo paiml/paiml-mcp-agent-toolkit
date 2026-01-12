@@ -2164,4 +2164,550 @@ mod tests {
         let _ = format!("{:?}", severe);
         let _ = format!("{:?}", critical);
     }
+
+    // ============ Async Method Tests ============
+
+    #[tokio::test]
+    async fn test_establish_baseline() {
+        let config = create_test_config();
+        let mut monitor = PerformanceMonitor::new(config);
+        let baseline = monitor.establish_baseline("test-baseline".to_string()).await;
+        assert!(baseline.is_ok());
+        let b = baseline.unwrap();
+        assert_eq!(b.id, "test-baseline");
+    }
+
+    #[tokio::test]
+    async fn test_apply_cache_optimization() {
+        let config = create_test_config();
+        let mut monitor = PerformanceMonitor::new(config);
+        let result = monitor.apply_optimization(OptimizationStrategy::CacheOptimization).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_apply_parallel_processing() {
+        let config = create_test_config();
+        let mut monitor = PerformanceMonitor::new(config);
+        let result = monitor.apply_optimization(OptimizationStrategy::ParallelProcessing).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_apply_memory_pooling() {
+        let config = create_test_config();
+        let mut monitor = PerformanceMonitor::new(config);
+        let result = monitor.apply_optimization(OptimizationStrategy::MemoryPooling).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_apply_incremental_parsing() {
+        let config = create_test_config();
+        let mut monitor = PerformanceMonitor::new(config);
+        let result = monitor.apply_optimization(OptimizationStrategy::IncrementalParsing).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_apply_io_optimization() {
+        let config = create_test_config();
+        let mut monitor = PerformanceMonitor::new(config);
+        let result = monitor.apply_optimization(OptimizationStrategy::IoOptimization).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_apply_ast_reuse() {
+        let config = create_test_config();
+        let mut monitor = PerformanceMonitor::new(config);
+        let result = monitor.apply_optimization(OptimizationStrategy::AstReuse).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_collect_system_info() {
+        let config = create_test_config();
+        let monitor = PerformanceMonitor::new(config);
+        let info = monitor.collect_system_info().await;
+        assert!(info.is_ok());
+        let sys = info.unwrap();
+        assert!(!sys.os.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_collect_codebase_info() {
+        let config = create_test_config();
+        let monitor = PerformanceMonitor::new(config);
+        let info = monitor.collect_codebase_info().await;
+        assert!(info.is_ok());
+        let cb = info.unwrap();
+        assert!(cb.total_loc > 0);
+    }
+
+    #[tokio::test]
+    async fn test_collect_baseline_measurements() {
+        let config = create_test_config();
+        let monitor = PerformanceMonitor::new(config);
+        let measurements = monitor.collect_baseline_measurements().await;
+        assert!(measurements.is_ok());
+        let m = measurements.unwrap();
+        assert!(m.contains_key("analysis_time_ms"));
+    }
+
+    #[tokio::test]
+    async fn test_collect_metrics() {
+        let config = create_test_config();
+        let mut monitor = PerformanceMonitor::new(config);
+        let result = monitor.collect_metrics().await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_check_regressions() {
+        let config = create_test_config();
+        let monitor = PerformanceMonitor::new(config);
+        let result = monitor.check_regressions().await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_auto_optimize() {
+        let config = create_test_config();
+        let mut monitor = PerformanceMonitor::new(config);
+        let result = monitor.auto_optimize().await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_cleanup_old_data() {
+        let config = create_test_config();
+        let mut monitor = PerformanceMonitor::new(config);
+        let result = monitor.cleanup_old_data().await;
+        assert!(result.is_ok());
+    }
+
+    // ============ BenchmarkReport Serialization ============
+
+    #[test]
+    fn test_benchmark_report_serialization() {
+        let report = BenchmarkReport {
+            suite_name: "test_suite".to_string(),
+            executed_at: SystemTime::now(),
+            results: vec![("test".to_string(), BenchmarkResult {
+                execution_time: Duration::from_millis(100),
+                memory_used: 1024,
+                cpu_time: Duration::from_millis(90),
+                throughput: 100.0,
+                success: true,
+                metrics: HashMap::new(),
+            })],
+            summary: BenchmarkSummary {
+                total_benchmarks: 1,
+                passed_benchmarks: 1,
+                failed_benchmarks: 0,
+                avg_execution_time: Duration::from_millis(100),
+                total_memory_used: 1024,
+                avg_throughput: 100.0,
+            },
+            regressions: vec![],
+            recommendations: vec!["Optimize caching".to_string()],
+        };
+        let json = serde_json::to_string(&report).unwrap();
+        assert!(json.contains("test_suite"));
+        let deserialized: BenchmarkReport = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.suite_name, "test_suite");
+    }
+
+    // ============ BenchmarkResult Serialization ============
+
+    #[test]
+    fn test_benchmark_result_serialization() {
+        let mut metrics = HashMap::new();
+        metrics.insert("custom_metric".to_string(), 42.0);
+        let result = BenchmarkResult {
+            execution_time: Duration::from_secs(2),
+            memory_used: 1024 * 1024,
+            cpu_time: Duration::from_millis(1800),
+            throughput: 50.0,
+            success: true,
+            metrics,
+        };
+        let json = serde_json::to_string(&result).unwrap();
+        assert!(json.contains("50.0"));
+        let deserialized: BenchmarkResult = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.throughput, 50.0);
+    }
+
+    // ============ ExpectedPerformance Serialization ============
+
+    #[test]
+    fn test_expected_performance_serialization() {
+        let expected = ExpectedPerformance {
+            max_execution_time: Duration::from_secs(10),
+            max_memory_bytes: 1024 * 1024 * 100,
+            min_throughput: 25.0,
+            regression_threshold: 0.15,
+        };
+        let json = serde_json::to_string(&expected).unwrap();
+        assert!(json.contains("25.0"));
+        let deserialized: ExpectedPerformance = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.min_throughput, 25.0);
+    }
+
+    // ============ PerformancePoint Serialization ============
+
+    #[test]
+    fn test_performance_point_serialization() {
+        let mut context = HashMap::new();
+        context.insert("key".to_string(), "value".to_string());
+        let point = PerformancePoint {
+            timestamp: SystemTime::now(),
+            metric: "latency".to_string(),
+            value: 150.0,
+            context,
+        };
+        let json = serde_json::to_string(&point).unwrap();
+        assert!(json.contains("latency"));
+        let deserialized: PerformancePoint = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.metric, "latency");
+    }
+
+    // ============ PerformanceStatistics Serialization ============
+
+    #[test]
+    fn test_performance_statistics_serialization() {
+        let stats = PerformanceStatistics::default();
+        let json = serde_json::to_string(&stats).unwrap();
+        assert!(json.contains("analysis"));
+        let deserialized: PerformanceStatistics = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.analysis.avg_analysis_time_ms, 100.0);
+    }
+
+    // ============ AnalysisStats Serialization ============
+
+    #[test]
+    fn test_analysis_stats_serialization() {
+        let stats = AnalysisStats {
+            avg_analysis_time_ms: 75.0,
+            throughput_fps: 15.0,
+            cache_hit_ratio: 0.9,
+            parser_efficiency: 0.95,
+        };
+        let json = serde_json::to_string(&stats).unwrap();
+        let deserialized: AnalysisStats = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.avg_analysis_time_ms, 75.0);
+    }
+
+    // ============ MemoryStats Serialization ============
+
+    #[test]
+    fn test_memory_stats_serialization() {
+        let stats = MemoryStats {
+            peak_memory_mb: 768.0,
+            avg_memory_mb: 384.0,
+            growth_rate_mb_per_hour: 8.0,
+            gc_impact_percent: 3.0,
+        };
+        let json = serde_json::to_string(&stats).unwrap();
+        let deserialized: MemoryStats = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.peak_memory_mb, 768.0);
+    }
+
+    // ============ IoStats Serialization ============
+
+    #[test]
+    fn test_io_stats_serialization() {
+        let stats = IoStats {
+            read_throughput_mbps: 150.0,
+            avg_read_time_ms: 8.0,
+            io_wait_percent: 4.0,
+            cache_effectiveness: 0.88,
+        };
+        let json = serde_json::to_string(&stats).unwrap();
+        let deserialized: IoStats = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.read_throughput_mbps, 150.0);
+    }
+
+    // ============ SystemStats Serialization ============
+
+    #[test]
+    fn test_system_stats_serialization() {
+        let stats = SystemStats {
+            cpu_percent: 45.0,
+            thread_count: 12,
+            load_average: 1.8,
+            network_kbps: 512.0,
+        };
+        let json = serde_json::to_string(&stats).unwrap();
+        let deserialized: SystemStats = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.thread_count, 12);
+    }
+
+    // ============ SystemInfo Serialization ============
+
+    #[test]
+    fn test_system_info_serialization() {
+        let info = SystemInfo {
+            cpu_model: "Intel Xeon".to_string(),
+            total_memory_mb: 65536,
+            os: "linux".to_string(),
+            rust_version: "1.76.0".to_string(),
+        };
+        let json = serde_json::to_string(&info).unwrap();
+        let deserialized: SystemInfo = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.cpu_model, "Intel Xeon");
+    }
+
+    // ============ CodebaseInfo Serialization ============
+
+    #[test]
+    fn test_codebase_info_serialization() {
+        let info = CodebaseInfo {
+            total_loc: 250000,
+            file_count: 1500,
+            avg_complexity: 6.5,
+            primary_language: "go".to_string(),
+        };
+        let json = serde_json::to_string(&info).unwrap();
+        let deserialized: CodebaseInfo = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.total_loc, 250000);
+    }
+
+    // ============ BaselineContext Serialization ============
+
+    #[test]
+    fn test_baseline_context_serialization() {
+        let context = BaselineContext {
+            system_info: SystemInfo {
+                cpu_model: "CPU".to_string(),
+                total_memory_mb: 4096,
+                os: "macos".to_string(),
+                rust_version: "1.70.0".to_string(),
+            },
+            codebase_info: CodebaseInfo {
+                total_loc: 10000,
+                file_count: 100,
+                avg_complexity: 4.5,
+                primary_language: "rust".to_string(),
+            },
+            config_hash: "hash123".to_string(),
+        };
+        let json = serde_json::to_string(&context).unwrap();
+        let deserialized: BaselineContext = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.config_hash, "hash123");
+    }
+
+    // ============ Baseline Serialization ============
+
+    #[test]
+    fn test_baseline_serialization() {
+        let mut measurements = HashMap::new();
+        measurements.insert("metric1".to_string(), 100.0);
+        let baseline = Baseline {
+            id: "baseline-test".to_string(),
+            measurements,
+            measured_at: SystemTime::now(),
+            context: BaselineContext {
+                system_info: SystemInfo {
+                    cpu_model: "CPU".to_string(),
+                    total_memory_mb: 8192,
+                    os: "linux".to_string(),
+                    rust_version: "1.70.0".to_string(),
+                },
+                codebase_info: CodebaseInfo {
+                    total_loc: 5000,
+                    file_count: 50,
+                    avg_complexity: 3.5,
+                    primary_language: "python".to_string(),
+                },
+                config_hash: "hash".to_string(),
+            },
+        };
+        let json = serde_json::to_string(&baseline).unwrap();
+        let deserialized: Baseline = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.id, "baseline-test");
+    }
+
+    // ============ PerformanceRegression Serialization ============
+
+    #[test]
+    fn test_performance_regression_serialization() {
+        let regression = PerformanceRegression {
+            benchmark_name: "bench1".to_string(),
+            metric_name: "latency_ms".to_string(),
+            current_value: 200.0,
+            baseline_value: 100.0,
+            regression_percent: 100.0,
+            severity: RegressionSeverity::Critical,
+        };
+        let json = serde_json::to_string(&regression).unwrap();
+        let deserialized: PerformanceRegression = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.regression_percent, 100.0);
+    }
+
+    // ============ PerformanceAlert Serialization ============
+
+    #[test]
+    fn test_performance_alert_serialization() {
+        let alert = PerformanceAlert {
+            alert_type: AlertType::HighCpuUsage,
+            message: "CPU usage exceeded threshold".to_string(),
+            severity: AlertSeverity::Warning,
+            metric_name: "cpu_percent".to_string(),
+            current_value: 95.0,
+            threshold_value: 80.0,
+            triggered_at: SystemTime::now(),
+        };
+        let json = serde_json::to_string(&alert).unwrap();
+        let deserialized: PerformanceAlert = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.current_value, 95.0);
+    }
+
+    // ============ PerformanceReport Serialization ============
+
+    #[test]
+    fn test_performance_report_serialization() {
+        let report = PerformanceReport {
+            generated_at: SystemTime::now(),
+            current_statistics: PerformanceStatistics::default(),
+            recent_benchmarks: vec![],
+            optimization_history: vec![],
+            recommendations: vec!["Recommend1".to_string()],
+            alerts: vec![],
+        };
+        let json = serde_json::to_string(&report).unwrap();
+        let deserialized: PerformanceReport = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.recommendations.len(), 1);
+    }
+
+    // ============ OptimizationConfig Serialization ============
+
+    #[test]
+    fn test_optimization_config_serialization() {
+        let config = OptimizationConfig {
+            auto_optimize: true,
+            strategies: vec![OptimizationStrategy::CacheOptimization],
+            min_improvement_percent: 7.5,
+            experimental: false,
+        };
+        let json = serde_json::to_string(&config).unwrap();
+        let deserialized: OptimizationConfig = serde_json::from_str(&json).unwrap();
+        assert!(deserialized.auto_optimize);
+    }
+
+    // ============ RetentionConfig Serialization ============
+
+    #[test]
+    fn test_retention_config_serialization() {
+        let config = RetentionConfig::default();
+        let json = serde_json::to_string(&config).unwrap();
+        let deserialized: RetentionConfig = serde_json::from_str(&json).unwrap();
+        assert!(deserialized.auto_cleanup);
+    }
+
+    // ============ Helper Method Tests ============
+
+    #[test]
+    fn test_calculate_config_hash() {
+        let config = create_test_config();
+        let monitor = PerformanceMonitor::new(config);
+        let hash = monitor.calculate_config_hash();
+        assert!(!hash.is_empty());
+    }
+
+    #[test]
+    fn test_generate_system_recommendations() {
+        let config = create_test_config();
+        let monitor = PerformanceMonitor::new(config);
+        let recommendations = monitor.generate_system_recommendations();
+        assert!(!recommendations.is_empty());
+    }
+
+    #[test]
+    fn test_generate_performance_alerts() {
+        let config = create_test_config();
+        let monitor = PerformanceMonitor::new(config);
+        let alerts = monitor.generate_performance_alerts();
+        // Empty is fine, just testing the method works
+        assert!(alerts.is_empty());
+    }
+
+    #[test]
+    fn test_calculate_summary_stats() {
+        let config = create_test_config();
+        let monitor = PerformanceMonitor::new(config);
+        let results = vec![
+            ("test1".to_string(), BenchmarkResult {
+                execution_time: Duration::from_millis(100),
+                memory_used: 1024,
+                cpu_time: Duration::from_millis(90),
+                throughput: 100.0,
+                success: true,
+                metrics: HashMap::new(),
+            })
+        ];
+        let summary = monitor.calculate_summary_stats(&results);
+        assert_eq!(summary.total_benchmarks, 10); // Stub returns 10
+    }
+
+    #[test]
+    fn test_generate_recommendations() {
+        let config = create_test_config();
+        let monitor = PerformanceMonitor::new(config);
+        let summary = BenchmarkSummary {
+            total_benchmarks: 5,
+            passed_benchmarks: 5,
+            failed_benchmarks: 0,
+            avg_execution_time: Duration::from_millis(100),
+            total_memory_used: 1024,
+            avg_throughput: 50.0,
+        };
+        let recommendations = monitor.generate_recommendations(&summary);
+        assert!(!recommendations.is_empty());
+    }
+
+    #[test]
+    fn test_get_recent_benchmark_results() {
+        let config = create_test_config();
+        let monitor = PerformanceMonitor::new(config);
+        let results = monitor.get_recent_benchmark_results(5);
+        // Stub returns empty
+        assert!(results.is_empty());
+    }
+
+    // ============ BenchmarkSuite Debug ============
+
+    #[test]
+    fn test_benchmark_suite_debug() {
+        let suite = BenchmarkSuite {
+            name: "debug_suite".to_string(),
+            benchmarks: vec![],
+            config: BenchmarkConfig::default(),
+        };
+        let debug = format!("{:?}", suite);
+        assert!(debug.contains("debug_suite"));
+    }
+
+    // ============ BenchmarkContext Debug ============
+
+    #[test]
+    fn test_benchmark_context_debug() {
+        let context = BenchmarkContext {
+            test_data: HashMap::new(),
+            temp_dir: PathBuf::from("/tmp"),
+            config: HashMap::new(),
+        };
+        let debug = format!("{:?}", context);
+        assert!(debug.contains("BenchmarkContext"));
+    }
+
+    // ============ PerformanceMetrics Debug ============
+
+    #[test]
+    fn test_performance_metrics_debug() {
+        let metrics = PerformanceMetrics::new();
+        let debug = format!("{:?}", metrics);
+        assert!(debug.contains("PerformanceMetrics"));
+    }
 }
