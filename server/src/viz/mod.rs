@@ -61,11 +61,9 @@ pub use stub::*;
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[cfg(not(feature = "viz"))]
     mod stub_tests {
-        use super::stub::*;
+        use crate::viz::stub::*;
 
         #[test]
         fn test_render_config_default() {
