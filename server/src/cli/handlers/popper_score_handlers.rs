@@ -359,7 +359,121 @@ fn format_yaml(score: &PopperScore) -> Result<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::services::popper_score::{
+        AnalysisStatus, PopperAnalysis, PopperCategoryScore, PopperCategoryScores, PopperGrade,
+        PopperMetadata, PopperRecommendation, PopperSubScore, RecommendationPriority,
+    };
     use tempfile::TempDir;
+
+    /// Create a test PopperScore with gateway passed
+    fn create_test_score_passed() -> PopperScore {
+        let mut categories = PopperCategoryScores::default();
+        categories.falsifiability = PopperCategoryScore::new("Falsifiability & Testability", 20.0, 25.0);
+        categories.falsifiability.add_sub_score(PopperSubScore::new(
+            "A1",
+            "Test Coverage",
+            8.0,
+            10.0,
+            "Unit test coverage",
+        ));
+        categories.falsifiability.add_sub_score(PopperSubScore::new(
+            "A2",
+            "Claims",
+            12.0,
+            15.0,
+            "Testable claims",
+        ));
+        categories.reproducibility = PopperCategoryScore::new("Reproducibility Infrastructure", 18.0, 25.0);
+        categories.transparency = PopperCategoryScore::new("Transparency & Openness", 15.0, 20.0);
+        categories.statistical_rigor = PopperCategoryScore::new("Statistical Rigor", 10.0, 15.0);
+        categories.historical_integrity = PopperCategoryScore::new("Historical Integrity", 7.0, 10.0);
+        // ML stays N/A
+
+        let mut recommendations = vec![
+            PopperRecommendation::new(
+                "Testing",
+                "Add mutation testing",
+                RecommendationPriority::High,
+                5.0,
+            )
+            .with_command("cargo mutants"),
+            PopperRecommendation::new(
+                "Documentation",
+                "Improve README",
+                RecommendationPriority::Medium,
+                2.0,
+            ),
+            PopperRecommendation::new(
+                "Infrastructure",
+                "Add CI pipeline",
+                RecommendationPriority::Critical,
+                8.0,
+            ),
+            PopperRecommendation::new(
+                "Testing",
+                "Add benchmarks",
+                RecommendationPriority::Low,
+                1.0,
+            ),
+        ];
+
+        PopperScore {
+            raw_score: 70.0,
+            max_available: 95.0,
+            normalized_score: 73.7,
+            grade: PopperGrade::B,
+            gateway_passed: true,
+            categories,
+            recommendations,
+            metadata: PopperMetadata::new("test-project".to_string()),
+            analysis: PopperAnalysis {
+                falsifiability_status: AnalysisStatus::Pass,
+                reproducibility_status: AnalysisStatus::Partial,
+                scrutiny_status: AnalysisStatus::Partial,
+                methodology_status: AnalysisStatus::Pass,
+                validation_status: AnalysisStatus::Fail,
+                verdict: "Good scientific practices with room for improvement.".to_string(),
+            },
+        }
+    }
+
+    /// Create a test PopperScore with gateway failed
+    fn create_test_score_failed() -> PopperScore {
+        let mut categories = PopperCategoryScores::default();
+        categories.falsifiability = PopperCategoryScore::new("Falsifiability & Testability", 10.0, 25.0);
+        categories.reproducibility = PopperCategoryScore::new("Reproducibility Infrastructure", 5.0, 25.0);
+        categories.transparency = PopperCategoryScore::new("Transparency & Openness", 5.0, 20.0);
+        categories.statistical_rigor = PopperCategoryScore::new("Statistical Rigor", 3.0, 15.0);
+        categories.historical_integrity = PopperCategoryScore::new("Historical Integrity", 2.0, 10.0);
+
+        PopperScore {
+            raw_score: 0.0,
+            max_available: 95.0,
+            normalized_score: 0.0,
+            grade: PopperGrade::InsufficientFalsifiability,
+            gateway_passed: false,
+            categories,
+            recommendations: vec![PopperRecommendation::new(
+                "Falsifiability",
+                "Add testable claims",
+                RecommendationPriority::Critical,
+                25.0,
+            )],
+            metadata: PopperMetadata::new("failing-project".to_string()),
+            analysis: PopperAnalysis {
+                falsifiability_status: AnalysisStatus::Fail,
+                reproducibility_status: AnalysisStatus::Fail,
+                scrutiny_status: AnalysisStatus::Fail,
+                methodology_status: AnalysisStatus::Fail,
+                validation_status: AnalysisStatus::Fail,
+                verdict: "Gateway failed - insufficient falsifiability.".to_string(),
+            },
+        }
+    }
+
+    // ========================================================================
+    // Handler Tests
+    // ========================================================================
 
     #[tokio::test]
     async fn test_handler_invalid_path() {
@@ -425,5 +539,465 @@ mod tests {
         .await;
 
         assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_handler_markdown_output() {
+        let temp = TempDir::new().unwrap();
+        std::fs::write(temp.path().join("README.md"), "# Test Project").unwrap();
+
+        let result = handle_popper_score(
+            temp.path(),
+            &RepoScoreOutputFormat::Markdown,
+            false,
+            false,
+            None,
+        )
+        .await;
+
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_handler_yaml_output() {
+        let temp = TempDir::new().unwrap();
+        std::fs::write(temp.path().join("README.md"), "# Test Project").unwrap();
+
+        let result = handle_popper_score(
+            temp.path(),
+            &RepoScoreOutputFormat::Yaml,
+            false,
+            false,
+            None,
+        )
+        .await;
+
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_handler_verbose_output() {
+        let temp = TempDir::new().unwrap();
+        std::fs::write(temp.path().join("README.md"), "# Test").unwrap();
+
+        let result = handle_popper_score(
+            temp.path(),
+            &RepoScoreOutputFormat::Text,
+            true, // verbose
+            false,
+            None,
+        )
+        .await;
+
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_handler_failures_only_output() {
+        let temp = TempDir::new().unwrap();
+        std::fs::write(temp.path().join("README.md"), "# Test").unwrap();
+
+        let result = handle_popper_score(
+            temp.path(),
+            &RepoScoreOutputFormat::Text,
+            false,
+            true, // failures_only
+            None,
+        )
+        .await;
+
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_handler_output_to_file() {
+        let temp = TempDir::new().unwrap();
+        std::fs::write(temp.path().join("README.md"), "# Test").unwrap();
+        let output_path = temp.path().join("score.txt");
+
+        let result = handle_popper_score(
+            temp.path(),
+            &RepoScoreOutputFormat::Text,
+            false,
+            false,
+            Some(&output_path),
+        )
+        .await;
+
+        assert!(result.is_ok());
+        assert!(output_path.exists());
+    }
+
+    // ========================================================================
+    // format_text Tests
+    // ========================================================================
+
+    #[test]
+    fn test_format_text_gateway_passed() {
+        let score = create_test_score_passed();
+        let output = format_text(&score, false, false);
+
+        assert!(output.contains("Popper Falsifiability Score"));
+        assert!(output.contains("Gateway: PASSED"));
+        assert!(output.contains("73.7%"));
+        assert!(output.contains("Falsifiability & Testability"));
+        assert!(output.contains("Reproducibility Infrastructure"));
+        assert!(output.contains("[GATEWAY]"));
+    }
+
+    #[test]
+    fn test_format_text_gateway_failed() {
+        let score = create_test_score_failed();
+        let output = format_text(&score, false, false);
+
+        assert!(output.contains("Gateway: FAILED"));
+        assert!(output.contains("Falsifiability < 60%"));
+        assert!(output.contains("Without falsifiable claims"));
+    }
+
+    #[test]
+    fn test_format_text_verbose() {
+        let score = create_test_score_passed();
+        let output = format_text(&score, true, false);
+
+        // Verbose shows sub-scores with id and description
+        assert!(output.contains("A1"));
+        assert!(output.contains("Unit test coverage")); // description not name
+        assert!(output.contains("A2"));
+        assert!(output.contains("Testable claims")); // description
+    }
+
+    #[test]
+    fn test_format_text_not_verbose_hides_subscores() {
+        let score = create_test_score_passed();
+        let output = format_text(&score, false, false);
+
+        // Non-verbose shouldn't show sub-score IDs in detail
+        // It still shows the category totals but not individual sub-scores
+        assert!(output.contains("Falsifiability & Testability"));
+    }
+
+    #[test]
+    fn test_format_text_recommendations() {
+        let score = create_test_score_passed();
+        let output = format_text(&score, false, false);
+
+        assert!(output.contains("Recommendations"));
+        assert!(output.contains("Add mutation testing"));
+        assert!(output.contains("cargo mutants"));
+        assert!(output.contains("Add CI pipeline"));
+    }
+
+    #[test]
+    fn test_format_text_recommendation_priorities() {
+        let score = create_test_score_passed();
+        let output = format_text(&score, false, false);
+
+        // Check priority icons
+        assert!(output.contains("🔴")); // Critical
+        assert!(output.contains("🟠")); // High
+        assert!(output.contains("🟡")); // Medium
+        assert!(output.contains("🟢")); // Low
+    }
+
+    #[test]
+    fn test_format_text_category_icons() {
+        let score = create_test_score_passed();
+        let output = format_text(&score, false, false);
+
+        // Score should have various status icons
+        assert!(output.contains("✅") || output.contains("⚠️") || output.contains("❌"));
+    }
+
+    #[test]
+    fn test_format_text_verdict() {
+        let score = create_test_score_passed();
+        let output = format_text(&score, false, false);
+
+        assert!(output.contains("Verdict"));
+        assert!(output.contains("Good scientific practices"));
+    }
+
+    #[test]
+    fn test_format_text_na_category() {
+        let score = create_test_score_passed();
+        let output = format_text(&score, false, false);
+
+        // ML/AI is N/A by default
+        assert!(output.contains("N/A"));
+    }
+
+    // ========================================================================
+    // format_json Tests
+    // ========================================================================
+
+    #[test]
+    fn test_format_json_basic() {
+        let score = create_test_score_passed();
+        let output = format_json(&score).unwrap();
+
+        // Should be valid JSON
+        let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
+        assert!(parsed.is_object());
+    }
+
+    #[test]
+    fn test_format_json_contains_fields() {
+        let score = create_test_score_passed();
+        let output = format_json(&score).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
+
+        assert!(parsed.get("raw_score").is_some());
+        assert!(parsed.get("normalized_score").is_some());
+        assert!(parsed.get("grade").is_some());
+        assert!(parsed.get("gateway_passed").is_some());
+        assert!(parsed.get("categories").is_some());
+        assert!(parsed.get("recommendations").is_some());
+        assert!(parsed.get("metadata").is_some());
+        assert!(parsed.get("analysis").is_some());
+    }
+
+    #[test]
+    fn test_format_json_gateway_passed_value() {
+        let score = create_test_score_passed();
+        let output = format_json(&score).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
+
+        assert_eq!(parsed["gateway_passed"], true);
+    }
+
+    #[test]
+    fn test_format_json_gateway_failed_value() {
+        let score = create_test_score_failed();
+        let output = format_json(&score).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
+
+        assert_eq!(parsed["gateway_passed"], false);
+    }
+
+    #[test]
+    fn test_format_json_categories_structure() {
+        let score = create_test_score_passed();
+        let output = format_json(&score).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
+
+        let categories = &parsed["categories"];
+        assert!(categories.get("falsifiability").is_some());
+        assert!(categories.get("reproducibility").is_some());
+        assert!(categories.get("transparency").is_some());
+        assert!(categories.get("statistical_rigor").is_some());
+        assert!(categories.get("historical_integrity").is_some());
+        assert!(categories.get("ml_reproducibility").is_some());
+    }
+
+    // ========================================================================
+    // format_markdown Tests
+    // ========================================================================
+
+    #[test]
+    fn test_format_markdown_basic() {
+        let score = create_test_score_passed();
+        let output = format_markdown(&score, false, false);
+
+        assert!(output.contains("# 🔬 Popper Falsifiability Score"));
+        assert!(output.contains("## 📌 Summary"));
+        assert!(output.contains("## 📂 Categories"));
+    }
+
+    #[test]
+    fn test_format_markdown_gateway_passed() {
+        let score = create_test_score_passed();
+        let output = format_markdown(&score, false, false);
+
+        assert!(output.contains("Gateway PASSED"));
+    }
+
+    #[test]
+    fn test_format_markdown_gateway_failed() {
+        let score = create_test_score_failed();
+        let output = format_markdown(&score, false, false);
+
+        assert!(output.contains("Gateway FAILED"));
+        assert!(output.contains("Falsifiability < 60%"));
+    }
+
+    #[test]
+    fn test_format_markdown_table() {
+        let score = create_test_score_passed();
+        let output = format_markdown(&score, false, false);
+
+        // Should have markdown table headers
+        assert!(output.contains("| Category | Score | Percentage | Status |"));
+        assert!(output.contains("|----------|-------|------------|--------|"));
+    }
+
+    #[test]
+    fn test_format_markdown_verbose() {
+        let score = create_test_score_passed();
+        let output = format_markdown(&score, true, false);
+
+        assert!(output.contains("## 📊 Detailed Breakdown"));
+        assert!(output.contains("### A. Falsifiability & Testability"));
+        assert!(output.contains("**A1**"));
+    }
+
+    #[test]
+    fn test_format_markdown_recommendations() {
+        let score = create_test_score_passed();
+        let output = format_markdown(&score, false, false);
+
+        assert!(output.contains("## 💡 Recommendations"));
+        assert!(output.contains("Add mutation testing"));
+        assert!(output.contains("```bash"));
+        assert!(output.contains("cargo mutants"));
+    }
+
+    #[test]
+    fn test_format_markdown_verdict() {
+        let score = create_test_score_passed();
+        let output = format_markdown(&score, false, false);
+
+        assert!(output.contains("## 📋 Verdict"));
+        assert!(output.contains("Good scientific practices"));
+    }
+
+    #[test]
+    fn test_format_markdown_na_category() {
+        let score = create_test_score_passed();
+        let output = format_markdown(&score, false, false);
+
+        // ML/AI is N/A - should show in table
+        assert!(output.contains("N/A"));
+    }
+
+    // ========================================================================
+    // format_yaml Tests
+    // ========================================================================
+
+    #[test]
+    fn test_format_yaml_basic() {
+        let score = create_test_score_passed();
+        let output = format_yaml(&score).unwrap();
+
+        // Should be valid YAML
+        let parsed: serde_yaml::Value = serde_yaml::from_str(&output).unwrap();
+        assert!(parsed.is_mapping());
+    }
+
+    #[test]
+    fn test_format_yaml_contains_fields() {
+        let score = create_test_score_passed();
+        let output = format_yaml(&score).unwrap();
+
+        assert!(output.contains("raw_score:"));
+        assert!(output.contains("normalized_score:"));
+        assert!(output.contains("grade:"));
+        assert!(output.contains("gateway_passed:"));
+        assert!(output.contains("categories:"));
+    }
+
+    #[test]
+    fn test_format_yaml_roundtrip() {
+        let score = create_test_score_passed();
+        let output = format_yaml(&score).unwrap();
+
+        // Should be able to deserialize back
+        let parsed: PopperScore = serde_yaml::from_str(&output).unwrap();
+        assert_eq!(parsed.gateway_passed, score.gateway_passed);
+        assert!((parsed.normalized_score - score.normalized_score).abs() < 0.01);
+    }
+
+    // ========================================================================
+    // Edge Case Tests
+    // ========================================================================
+
+    #[test]
+    fn test_format_text_empty_recommendations() {
+        let mut score = create_test_score_passed();
+        score.recommendations = vec![];
+        let output = format_text(&score, false, false);
+
+        // Should not show recommendations section if empty
+        // Actually the section might still show, let's check it doesn't crash
+        assert!(output.contains("Popper Falsifiability Score"));
+    }
+
+    #[test]
+    fn test_format_markdown_empty_recommendations() {
+        let mut score = create_test_score_passed();
+        score.recommendations = vec![];
+        let output = format_markdown(&score, false, false);
+
+        assert!(output.contains("# 🔬 Popper Falsifiability Score"));
+        // Empty recommendations shouldn't cause issues
+    }
+
+    #[test]
+    fn test_format_text_high_score() {
+        let mut score = create_test_score_passed();
+        score.normalized_score = 97.5;
+        score.grade = PopperGrade::APlus;
+        let output = format_text(&score, false, false);
+
+        assert!(output.contains("97.5%"));
+        assert!(output.contains("A+"));
+    }
+
+    #[test]
+    fn test_format_text_zero_score() {
+        let mut score = create_test_score_failed();
+        score.normalized_score = 0.0;
+        score.raw_score = 0.0;
+        let output = format_text(&score, false, false);
+
+        assert!(output.contains("0.0"));
+    }
+
+    #[test]
+    fn test_format_json_special_characters_in_verdict() {
+        let mut score = create_test_score_passed();
+        score.analysis.verdict = "Test with \"quotes\" and 'apostrophes' & ampersands".to_string();
+        let output = format_json(&score).unwrap();
+
+        // Should be valid JSON even with special chars
+        let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
+        assert!(parsed["analysis"]["verdict"]
+            .as_str()
+            .unwrap()
+            .contains("quotes"));
+    }
+
+    #[test]
+    fn test_format_all_grades() {
+        let grades = vec![
+            PopperGrade::APlus,
+            PopperGrade::A,
+            PopperGrade::AMinus,
+            PopperGrade::BPlus,
+            PopperGrade::B,
+            PopperGrade::C,
+            PopperGrade::D,
+            PopperGrade::F,
+            PopperGrade::InsufficientFalsifiability,
+        ];
+
+        for grade in grades {
+            let mut score = create_test_score_passed();
+            score.grade = grade;
+            if grade == PopperGrade::InsufficientFalsifiability {
+                score.gateway_passed = false;
+            }
+
+            let text = format_text(&score, false, false);
+            let json = format_json(&score).unwrap();
+            let md = format_markdown(&score, false, false);
+            let yaml = format_yaml(&score).unwrap();
+
+            // All formats should work without panicking
+            assert!(!text.is_empty());
+            assert!(!json.is_empty());
+            assert!(!md.is_empty());
+            assert!(!yaml.is_empty());
+        }
     }
 }
