@@ -1,58 +1,90 @@
 id: COV-95
-title: "Achieve 95% Test Coverage"
+title: "Achieve 95% Test Coverage (80/20 Strategy)"
 description: |
-  Add comprehensive tests to reach the 95% code coverage target.
+  Add comprehensive tests to reach the 95% code coverage target using 80/20 Pareto analysis.
 
   Current Status:
-  - Total tests: 16,882
-  - Estimated coverage: ~83%
+  - Coverage: 86.03%
   - Target: 95%
+  - Gap: ~9% (~3,100 lines to cover)
+  - make coverage time: 2m 12s (target: 3-5 min)
 
-  Priority Modules (0% coverage):
-  1. agent/ - daemon.rs, mcp_server.rs, quality_monitor.rs, state_persistence.rs (~4,000 lines)
-  2. state/ - event_store.rs, recovery.rs, snapshot_store.rs (~1,500 lines)
-  3. unified_protocol/ - adapters/, service.rs (~3,000 lines)
-  4. tdg/ - cuda_simd.rs, web_dashboard.rs, storage.rs (~6,000 lines)
-  5. wasm/ - analyzer.rs, baseline.rs, profiler.rs, security.rs, verifier.rs (~2,500 lines)
+  80/20 Strategy (see docs/specifications/80-20-to-95.md):
 
-  Tests Added (Recent Session):
-  - ~919 tests added across 30+ commits
-  - Fixed failing test: five_whys_handlers::test_handle_debug_empty_issue
+  Phase 1 - Very Easy Wins (104 lines, ~1 hour):
+  - services/wasm/traits.rs: 50% → 95% (3 lines)
+  - services/languages/hcl.rs: 67.69% → 95% (21 lines)
+  - services/languages/solidity.rs: 61.19% → 95% (26 lines)
+  - services/languages/zig.rs: 61.43% → 95% (27 lines)
+  - services/wasm/types.rs: 48.08% → 95% (27 lines)
+
+  Phase 2 - Easy Wins (320 lines, ~2.5 hours):
+  - unified_protocol/mod.rs: 70.14% → 90% (63 lines)
+  - tdg/language_simple.rs: 75.41% → 90% (75 lines)
+  - unified_quality/github_actions.rs: 76.49% → 90% (83 lines)
+  - services/verified_complexity.rs: 58.40% → 85% (99 lines)
+
+  Phase 3 - Medium Effort (746 lines, ~5 hours):
+  - tdg/mod.rs, metrics_aggregator.rs, diagnostics.rs, automation.rs, analyzer_simple.rs
+
+  Phase 4 - Push to 95% (1,322 lines, ~8 hours):
+  - quality_gate.rs, test_performance.rs, alerts.rs, event_store.rs, performance.rs
 
   Approach:
-  - Use EXTREME TDD methodology
-  - Add tests module by module
-  - Push at milestones (85%, 90%, 95%)
+  - EXTREME TDD methodology
+  - Focus on quick wins first
+  - Push at milestones (87%, 90%, 93%, 95%)
   - Run `make coverage` to verify progress
 
 status: in_progress
-progress: 83
+progress: 86
 priority: high
 assignee: claude
 labels:
   - testing
   - coverage
   - quality
+  - 80-20
 created: 2025-01-12
 due: 2025-01-15
 subtasks:
-  - id: COV-95-1
-    title: "Add tests to agent/ module"
+  - id: COV-95-P1
+    title: "Phase 1: wasm/traits.rs (3 lines)"
     status: pending
     progress: 0
-  - id: COV-95-2
-    title: "Add tests to state/ module"
+  - id: COV-95-P2
+    title: "Phase 1: languages/hcl.rs (21 lines)"
     status: pending
     progress: 0
-  - id: COV-95-3
-    title: "Add tests to unified_protocol/ module"
+  - id: COV-95-P3
+    title: "Phase 1: languages/solidity.rs (26 lines)"
     status: pending
     progress: 0
-  - id: COV-95-4
-    title: "Add tests to tdg/ high-priority files"
+  - id: COV-95-P4
+    title: "Phase 1: languages/zig.rs (27 lines)"
     status: pending
     progress: 0
-  - id: COV-95-5
-    title: "Add tests to wasm/ module"
+  - id: COV-95-P5
+    title: "Phase 1: wasm/types.rs (27 lines)"
+    status: pending
+    progress: 0
+  - id: COV-95-P6
+    title: "Phase 2: unified_protocol/mod.rs (63 lines)"
+    status: pending
+    progress: 0
+  - id: COV-95-P7
+    title: "Phase 2: tdg/language_simple.rs (75 lines)"
+    status: pending
+    progress: 0
+  - id: COV-95-P8
+    title: "Phase 2: github_actions.rs (83 lines)"
+    status: pending
+    progress: 0
+  - id: COV-95-P9
+    title: "Phase 2: verified_complexity.rs (99 lines)"
+    status: pending
+    progress: 0
+  - id: COV-95-P10
+    title: "Phase 3-4: Continue to 95%"
     status: pending
     progress: 0

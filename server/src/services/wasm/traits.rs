@@ -129,3 +129,108 @@ mod property_tests {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+
+    #[test]
+    fn test_parsed_ast_creation() {
+        let ast = ParsedAst {
+            language: Language::Rust,
+            dag: AstDag::default(),
+            source_file: Some(std::path::PathBuf::from("/test/file.rs")),
+            parse_errors: vec!["error1".to_string()],
+            metadata: HashMap::new(),
+        };
+        assert_eq!(ast.language, Language::Rust);
+        assert!(ast.source_file.is_some());
+        assert_eq!(ast.parse_errors.len(), 1);
+    }
+
+    #[test]
+    fn test_parsed_ast_no_source_file() {
+        let ast = ParsedAst {
+            language: Language::TypeScript,
+            dag: AstDag::default(),
+            source_file: None,
+            parse_errors: vec![],
+            metadata: HashMap::from([("key".to_string(), "value".to_string())]),
+        };
+        assert_eq!(ast.language, Language::TypeScript);
+        assert!(ast.source_file.is_none());
+        assert!(ast.parse_errors.is_empty());
+        assert_eq!(ast.metadata.get("key"), Some(&"value".to_string()));
+    }
+
+    #[test]
+    fn test_wasm_analysis_capabilities_default() {
+        let caps = WasmAnalysisCapabilities::default();
+        assert!(caps.memory_analysis);
+        assert!(caps.gas_estimation);
+        assert!(caps.security_analysis);
+        assert!(caps.optimization_hints);
+        assert!(caps.streaming_support);
+        assert!(!caps.simd_analysis);
+        assert!(!caps.multi_memory);
+        assert_eq!(caps.max_file_size, 100 * 1024 * 1024);
+    }
+
+    #[test]
+    fn test_wasm_analysis_capabilities_clone() {
+        let caps = WasmAnalysisCapabilities::default();
+        let cloned = caps.clone();
+        assert_eq!(caps.memory_analysis, cloned.memory_analysis);
+        assert_eq!(caps.max_file_size, cloned.max_file_size);
+    }
+
+    #[test]
+    fn test_wasm_analysis_capabilities_debug() {
+        let caps = WasmAnalysisCapabilities::default();
+        let debug_str = format!("{:?}", caps);
+        assert!(debug_str.contains("WasmAnalysisCapabilities"));
+        assert!(debug_str.contains("memory_analysis"));
+    }
+
+    #[test]
+    fn test_wasm_analysis_capabilities_serialization() {
+        let caps = WasmAnalysisCapabilities {
+            memory_analysis: false,
+            gas_estimation: true,
+            security_analysis: false,
+            optimization_hints: true,
+            streaming_support: false,
+            simd_analysis: true,
+            multi_memory: true,
+            max_file_size: 50 * 1024 * 1024,
+        };
+        let json = serde_json::to_string(&caps).unwrap();
+        assert!(json.contains("\"memory_analysis\":false"));
+        assert!(json.contains("\"simd_analysis\":true"));
+
+        let deserialized: WasmAnalysisCapabilities = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.memory_analysis, false);
+        assert_eq!(deserialized.simd_analysis, true);
+        assert_eq!(deserialized.max_file_size, 50 * 1024 * 1024);
+    }
+
+    #[test]
+    fn test_wasm_analysis_capabilities_custom_values() {
+        let caps = WasmAnalysisCapabilities {
+            memory_analysis: true,
+            gas_estimation: false,
+            security_analysis: true,
+            optimization_hints: false,
+            streaming_support: true,
+            simd_analysis: true,
+            multi_memory: true,
+            max_file_size: 1024,
+        };
+        assert!(caps.memory_analysis);
+        assert!(!caps.gas_estimation);
+        assert!(caps.simd_analysis);
+        assert!(caps.multi_memory);
+        assert_eq!(caps.max_file_size, 1024);
+    }
+}
