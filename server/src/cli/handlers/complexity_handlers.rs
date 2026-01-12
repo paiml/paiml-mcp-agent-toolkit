@@ -2289,6 +2289,428 @@ mod tests {
         assert!(!summary.contains("## Top Files with Dead Code"));
         assert!(!summary.contains("## Dead Code by Type"));
     }
+
+    // === ComplexityConfig tests ===
+
+    #[test]
+    fn test_complexity_config_from_args_defaults() {
+        let config = ComplexityConfig::from_args(
+            PathBuf::from("."),
+            None,
+            None,
+            None,
+            vec![],
+            60,
+            10,
+        );
+
+        assert_eq!(config.max_cyclomatic, 10);
+        assert_eq!(config.max_cognitive, 15);
+        assert!(config.include.is_empty());
+        assert_eq!(config.timeout, 60);
+        assert_eq!(config.top_files, 10);
+    }
+
+    #[test]
+    fn test_complexity_config_from_args_custom() {
+        let config = ComplexityConfig::from_args(
+            PathBuf::from("/project"),
+            Some("rust".to_string()),
+            Some(20),
+            Some(25),
+            vec!["src/".to_string()],
+            120,
+            5,
+        );
+
+        assert_eq!(config.project_path, PathBuf::from("/project"));
+        assert_eq!(config.toolchain, Some("rust".to_string()));
+        assert_eq!(config.max_cyclomatic, 20);
+        assert_eq!(config.max_cognitive, 25);
+        assert_eq!(config.include, vec!["src/".to_string()]);
+        assert_eq!(config.timeout, 120);
+        assert_eq!(config.top_files, 5);
+    }
+
+    #[test]
+    fn test_complexity_config_debug() {
+        let config = ComplexityConfig::from_args(
+            PathBuf::from("."),
+            None,
+            None,
+            None,
+            vec![],
+            60,
+            10,
+        );
+        let debug_str = format!("{:?}", config);
+        assert!(debug_str.contains("ComplexityConfig"));
+        assert!(debug_str.contains("project_path"));
+    }
+
+    #[test]
+    fn test_complexity_config_clone() {
+        let config = ComplexityConfig::from_args(
+            PathBuf::from("/test"),
+            Some("python".to_string()),
+            Some(15),
+            Some(20),
+            vec!["lib/".to_string()],
+            90,
+            3,
+        );
+        let cloned = config.clone();
+
+        assert_eq!(config.project_path, cloned.project_path);
+        assert_eq!(config.toolchain, cloned.toolchain);
+        assert_eq!(config.max_cyclomatic, cloned.max_cyclomatic);
+        assert_eq!(config.max_cognitive, cloned.max_cognitive);
+    }
+
+    // === is_source_code_file tests ===
+
+    #[test]
+    fn test_is_source_code_file_rust() {
+        assert!(is_source_code_file("main.rs"));
+        assert!(is_source_code_file("src/lib.rs"));
+        assert!(is_source_code_file("/path/to/file.rs"));
+    }
+
+    #[test]
+    fn test_is_source_code_file_typescript() {
+        assert!(is_source_code_file("app.ts"));
+        assert!(is_source_code_file("component.tsx"));
+    }
+
+    #[test]
+    fn test_is_source_code_file_javascript() {
+        assert!(is_source_code_file("app.js"));
+        assert!(is_source_code_file("component.jsx"));
+    }
+
+    #[test]
+    fn test_is_source_code_file_python() {
+        assert!(is_source_code_file("main.py"));
+        assert!(is_source_code_file("src/utils.py"));
+    }
+
+    #[test]
+    fn test_is_source_code_file_c_cpp() {
+        assert!(is_source_code_file("main.c"));
+        assert!(is_source_code_file("main.cpp"));
+        assert!(is_source_code_file("header.h"));
+        assert!(is_source_code_file("header.hpp"));
+    }
+
+    #[test]
+    fn test_is_source_code_file_non_source() {
+        assert!(!is_source_code_file("README.md"));
+        assert!(!is_source_code_file("Cargo.toml"));
+        assert!(!is_source_code_file("package.json"));
+        assert!(!is_source_code_file("image.png"));
+        assert!(!is_source_code_file(".gitignore"));
+    }
+
+    // === should_include_file tests ===
+
+    #[test]
+    fn test_should_include_file_empty_patterns() {
+        assert!(should_include_file("any/path.rs", &[]));
+        assert!(should_include_file("another/file.ts", &[]));
+    }
+
+    #[test]
+    fn test_should_include_file_matching_pattern() {
+        let patterns = vec!["src/".to_string()];
+        assert!(should_include_file("src/main.rs", &patterns));
+        assert!(should_include_file("src/lib/utils.rs", &patterns));
+        assert!(!should_include_file("tests/test.rs", &patterns));
+    }
+
+    #[test]
+    fn test_should_include_file_multiple_patterns() {
+        let patterns = vec!["src/".to_string(), "lib/".to_string()];
+        assert!(should_include_file("src/main.rs", &patterns));
+        assert!(should_include_file("lib/utils.rs", &patterns));
+        assert!(!should_include_file("tests/test.rs", &patterns));
+    }
+
+    #[test]
+    fn test_should_include_file_extension_pattern() {
+        let patterns = vec![".rs".to_string()];
+        assert!(should_include_file("src/main.rs", &patterns));
+        assert!(!should_include_file("src/main.py", &patterns));
+    }
+
+    // === should_analyze_path tests ===
+
+    #[test]
+    fn test_should_analyze_path_rust_file() {
+        let path = std::path::Path::new("src/main.rs");
+        assert!(should_analyze_path(path, &[]));
+    }
+
+    #[test]
+    fn test_should_analyze_path_non_source() {
+        let path = std::path::Path::new("README.md");
+        assert!(!should_analyze_path(path, &[]));
+    }
+
+    #[test]
+    fn test_should_analyze_path_with_pattern() {
+        let path = std::path::Path::new("src/main.rs");
+        let patterns = vec!["src/".to_string()];
+        assert!(should_analyze_path(path, &patterns));
+
+        let path2 = std::path::Path::new("tests/test.rs");
+        assert!(!should_analyze_path(path2, &patterns));
+    }
+
+    // === get_changed_paths tests ===
+
+    #[test]
+    fn test_get_changed_paths_empty() {
+        let event = Event {
+            kind: EventKind::Modify(notify::event::ModifyKind::Any),
+            paths: vec![],
+            attrs: Default::default(),
+        };
+        assert!(get_changed_paths(&event).is_none());
+    }
+
+    #[test]
+    fn test_get_changed_paths_with_paths() {
+        let event = Event {
+            kind: EventKind::Modify(notify::event::ModifyKind::Any),
+            paths: vec![PathBuf::from("src/main.rs")],
+            attrs: Default::default(),
+        };
+        let paths = get_changed_paths(&event);
+        assert!(paths.is_some());
+        assert_eq!(paths.unwrap().len(), 1);
+    }
+
+    #[test]
+    fn test_get_changed_paths_multiple() {
+        let event = Event {
+            kind: EventKind::Create(notify::event::CreateKind::Any),
+            paths: vec![
+                PathBuf::from("src/main.rs"),
+                PathBuf::from("src/lib.rs"),
+            ],
+            attrs: Default::default(),
+        };
+        let paths = get_changed_paths(&event);
+        assert!(paths.is_some());
+        assert_eq!(paths.unwrap().len(), 2);
+    }
+
+    // === apply_top_files_limit tests ===
+
+    #[test]
+    fn test_apply_top_files_limit_zero() {
+        let mut metrics = vec![
+            crate::services::complexity::FileComplexityMetrics {
+                path: "file1.rs".to_string(),
+                total_complexity: crate::services::complexity::ComplexityMetrics {
+                    cyclomatic: 10,
+                    cognitive: 5,
+                    nesting_max: 2,
+                    lines: 100,
+                    halstead: None,
+                },
+                functions: vec![],
+                classes: vec![],
+            },
+        ];
+        let original_len = metrics.len();
+        apply_top_files_limit(&mut metrics, 0);
+        assert_eq!(metrics.len(), original_len);
+    }
+
+    #[test]
+    fn test_apply_top_files_limit_empty() {
+        let mut metrics: Vec<crate::services::complexity::FileComplexityMetrics> = vec![];
+        apply_top_files_limit(&mut metrics, 5);
+        assert!(metrics.is_empty());
+    }
+
+    #[test]
+    fn test_apply_top_files_limit_truncates() {
+        let mut metrics = vec![
+            crate::services::complexity::FileComplexityMetrics {
+                path: "file1.rs".to_string(),
+                total_complexity: crate::services::complexity::ComplexityMetrics {
+                    cyclomatic: 10,
+                    cognitive: 5,
+                    nesting_max: 2,
+                    lines: 100,
+                    halstead: None,
+                },
+                functions: vec![],
+                classes: vec![],
+            },
+            crate::services::complexity::FileComplexityMetrics {
+                path: "file2.rs".to_string(),
+                total_complexity: crate::services::complexity::ComplexityMetrics {
+                    cyclomatic: 20,
+                    cognitive: 15,
+                    nesting_max: 3,
+                    lines: 200,
+                    halstead: None,
+                },
+                functions: vec![],
+                classes: vec![],
+            },
+            crate::services::complexity::FileComplexityMetrics {
+                path: "file3.rs".to_string(),
+                total_complexity: crate::services::complexity::ComplexityMetrics {
+                    cyclomatic: 5,
+                    cognitive: 3,
+                    nesting_max: 1,
+                    lines: 50,
+                    halstead: None,
+                },
+                functions: vec![],
+                classes: vec![],
+            },
+        ];
+
+        apply_top_files_limit(&mut metrics, 2);
+
+        assert_eq!(metrics.len(), 2);
+        // Should be sorted by complexity descending
+        assert_eq!(metrics[0].path, "file2.rs");
+        assert_eq!(metrics[1].path, "file1.rs");
+    }
+
+    // === apply_complexity_filters tests ===
+
+    #[test]
+    fn test_apply_complexity_filters_no_thresholds() {
+        let mut metrics = vec![
+            crate::services::complexity::FileComplexityMetrics {
+                path: "file1.rs".to_string(),
+                total_complexity: crate::services::complexity::ComplexityMetrics::default(),
+                functions: vec![crate::services::complexity::FunctionComplexity {
+                    name: "foo".to_string(),
+                    line_start: 1,
+                    line_end: 10,
+                    metrics: crate::services::complexity::ComplexityMetrics {
+                        cyclomatic: 5,
+                        cognitive: 3,
+                        nesting_max: 1,
+                        lines: 10,
+                        halstead: None,
+                    },
+                }],
+                classes: vec![],
+            },
+        ];
+        let filtered = apply_complexity_filters(&mut metrics, None, None);
+        assert_eq!(filtered, 0);
+        assert_eq!(metrics.len(), 1);
+    }
+
+    #[test]
+    fn test_apply_complexity_filters_cyclomatic_threshold() {
+        let mut metrics = vec![
+            crate::services::complexity::FileComplexityMetrics {
+                path: "file1.rs".to_string(),
+                total_complexity: crate::services::complexity::ComplexityMetrics::default(),
+                functions: vec![crate::services::complexity::FunctionComplexity {
+                    name: "complex_fn".to_string(),
+                    line_start: 1,
+                    line_end: 50,
+                    metrics: crate::services::complexity::ComplexityMetrics {
+                        cyclomatic: 15,
+                        cognitive: 10,
+                        nesting_max: 3,
+                        lines: 50,
+                        halstead: None,
+                    },
+                }],
+                classes: vec![],
+            },
+            crate::services::complexity::FileComplexityMetrics {
+                path: "file2.rs".to_string(),
+                total_complexity: crate::services::complexity::ComplexityMetrics::default(),
+                functions: vec![crate::services::complexity::FunctionComplexity {
+                    name: "simple_fn".to_string(),
+                    line_start: 1,
+                    line_end: 5,
+                    metrics: crate::services::complexity::ComplexityMetrics {
+                        cyclomatic: 2,
+                        cognitive: 1,
+                        nesting_max: 1,
+                        lines: 5,
+                        halstead: None,
+                    },
+                }],
+                classes: vec![],
+            },
+        ];
+
+        let filtered = apply_complexity_filters(&mut metrics, Some(10), None);
+        assert_eq!(filtered, 1); // file2 was filtered out
+        assert_eq!(metrics.len(), 1);
+        assert_eq!(metrics[0].path, "file1.rs");
+    }
+
+    #[test]
+    fn test_apply_complexity_filters_cognitive_threshold() {
+        let mut metrics = vec![
+            crate::services::complexity::FileComplexityMetrics {
+                path: "high_cognitive.rs".to_string(),
+                total_complexity: crate::services::complexity::ComplexityMetrics::default(),
+                functions: vec![crate::services::complexity::FunctionComplexity {
+                    name: "complex".to_string(),
+                    line_start: 1,
+                    line_end: 30,
+                    metrics: crate::services::complexity::ComplexityMetrics {
+                        cyclomatic: 5,
+                        cognitive: 20,
+                        nesting_max: 4,
+                        lines: 30,
+                        halstead: None,
+                    },
+                }],
+                classes: vec![],
+            },
+        ];
+
+        let filtered = apply_complexity_filters(&mut metrics, None, Some(15));
+        assert_eq!(filtered, 0); // File has function exceeding threshold
+        assert_eq!(metrics.len(), 1);
+    }
+
+    #[test]
+    fn test_apply_complexity_filters_both_thresholds() {
+        let mut metrics = vec![
+            crate::services::complexity::FileComplexityMetrics {
+                path: "file1.rs".to_string(),
+                total_complexity: crate::services::complexity::ComplexityMetrics::default(),
+                functions: vec![crate::services::complexity::FunctionComplexity {
+                    name: "fn1".to_string(),
+                    line_start: 1,
+                    line_end: 10,
+                    metrics: crate::services::complexity::ComplexityMetrics {
+                        cyclomatic: 12,
+                        cognitive: 8,
+                        nesting_max: 2,
+                        lines: 10,
+                        halstead: None,
+                    },
+                }],
+                classes: vec![],
+            },
+        ];
+
+        // Should keep file because cyclomatic > 10
+        let filtered = apply_complexity_filters(&mut metrics, Some(10), Some(15));
+        assert_eq!(filtered, 0);
+        assert_eq!(metrics.len(), 1);
+    }
 }
 
 #[cfg(test)]
