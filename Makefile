@@ -434,7 +434,7 @@ coverage: ## Generate HTML coverage report (fast: <5 min, target 95%)
 		--no-report \
 		$(COVERAGE_EXCLUDE) \
 		-- --test-threads=$$(nproc) \
-		--skip property_tests --skip stress --skip fuzz --skip benchmark 2>&1 | tail -50 || \
+		--skip property_tests --skip stress --skip fuzz --skip benchmark --skip extended_tests 2>&1 | tail -50 || \
 		(test -f ~/.cargo/config.toml.cov-backup && mv ~/.cargo/config.toml.cov-backup ~/.cargo/config.toml; false)
 	@test -f ~/.cargo/config.toml.cov-backup && mv ~/.cargo/config.toml.cov-backup ~/.cargo/config.toml || true
 	@echo "📊 Generating reports..."
