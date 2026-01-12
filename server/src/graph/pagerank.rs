@@ -193,4 +193,190 @@ mod tests {
         // Single node with no edges - may be empty from aprender
         assert!(scores.is_empty() || scores.len() == 1);
     }
+
+    #[test]
+    fn test_compute_chain_graph() {
+        let computer = PageRankComputer::new();
+        let mut graph = DependencyGraph::new();
+        let n1 = graph.add_node(NodeData {
+            path: std::path::PathBuf::from("a.rs"),
+            module: "a".to_string(),
+            symbols: vec![],
+            loc: 10,
+            complexity: 1.0,
+            ast_hash: 1,
+        });
+        let n2 = graph.add_node(NodeData {
+            path: std::path::PathBuf::from("b.rs"),
+            module: "b".to_string(),
+            symbols: vec![],
+            loc: 20,
+            complexity: 2.0,
+            ast_hash: 2,
+        });
+        let n3 = graph.add_node(NodeData {
+            path: std::path::PathBuf::from("c.rs"),
+            module: "c".to_string(),
+            symbols: vec![],
+            loc: 30,
+            complexity: 3.0,
+            ast_hash: 3,
+        });
+
+        // Chain: a -> b -> c
+        graph.add_edge(n1, n2, EdgeData::Import {
+            weight: 1.0,
+            visibility: Visibility::Public,
+        });
+        graph.add_edge(n2, n3, EdgeData::Import {
+            weight: 1.0,
+            visibility: Visibility::Public,
+        });
+
+        let scores = computer.compute(&graph);
+        assert!(!scores.is_empty());
+    }
+
+    #[test]
+    fn test_compute_cyclic_graph() {
+        let computer = PageRankComputer::new();
+        let mut graph = DependencyGraph::new();
+        let n1 = graph.add_node(NodeData {
+            path: std::path::PathBuf::from("a.rs"),
+            module: "a".to_string(),
+            symbols: vec![],
+            loc: 10,
+            complexity: 1.0,
+            ast_hash: 1,
+        });
+        let n2 = graph.add_node(NodeData {
+            path: std::path::PathBuf::from("b.rs"),
+            module: "b".to_string(),
+            symbols: vec![],
+            loc: 20,
+            complexity: 2.0,
+            ast_hash: 2,
+        });
+
+        // Cycle: a <-> b
+        graph.add_edge(n1, n2, EdgeData::Import {
+            weight: 1.0,
+            visibility: Visibility::Public,
+        });
+        graph.add_edge(n2, n1, EdgeData::Import {
+            weight: 1.0,
+            visibility: Visibility::Public,
+        });
+
+        let scores = computer.compute(&graph);
+        assert!(!scores.is_empty());
+        // Cyclic graphs should still compute
+        if scores.len() >= 2 {
+            // Both nodes should have similar scores in a cycle
+            assert!((scores[0] - scores[1]).abs() < 0.1);
+        }
+    }
+
+    #[test]
+    #[allow(deprecated)]
+    fn test_compute_legacy_from_graph() {
+        // Build a DependencyGraph first, then convert to GraphMatrices
+        let computer = PageRankComputer::new();
+        let mut graph = DependencyGraph::new();
+        let n1 = graph.add_node(NodeData {
+            path: std::path::PathBuf::from("legacy1.rs"),
+            module: "legacy1".to_string(),
+            symbols: vec![],
+            loc: 10,
+            complexity: 1.0,
+            ast_hash: 1,
+        });
+        let n2 = graph.add_node(NodeData {
+            path: std::path::PathBuf::from("legacy2.rs"),
+            module: "legacy2".to_string(),
+            symbols: vec![],
+            loc: 20,
+            complexity: 2.0,
+            ast_hash: 2,
+        });
+        graph.add_edge(n1, n2, EdgeData::Import {
+            weight: 1.0,
+            visibility: Visibility::Public,
+        });
+
+        // Convert to GraphMatrices using From trait
+        let matrices: GraphMatrices = GraphMatrices::from(&graph);
+
+        // Test the legacy compute method
+        let scores = computer.compute_legacy(&matrices);
+        // GraphMatrices-based compute should work
+        assert!(!scores.is_empty());
+    }
+
+    #[test]
+    fn test_pagerank_convergence_parameters() {
+        let computer = PageRankComputer {
+            damping: 0.99,
+            tolerance: 1e-10,
+            max_iterations: 1000,
+        };
+        assert_eq!(computer.damping, 0.99);
+        assert_eq!(computer.tolerance, 1e-10);
+        assert_eq!(computer.max_iterations, 1000);
+    }
+
+    #[test]
+    fn test_pagerank_with_multiple_edges() {
+        let computer = PageRankComputer::new();
+        let mut graph = DependencyGraph::new();
+        let n1 = graph.add_node(NodeData {
+            path: std::path::PathBuf::from("hub.rs"),
+            module: "hub".to_string(),
+            symbols: vec![],
+            loc: 100,
+            complexity: 10.0,
+            ast_hash: 1,
+        });
+        let n2 = graph.add_node(NodeData {
+            path: std::path::PathBuf::from("spoke1.rs"),
+            module: "spoke1".to_string(),
+            symbols: vec![],
+            loc: 10,
+            complexity: 1.0,
+            ast_hash: 2,
+        });
+        let n3 = graph.add_node(NodeData {
+            path: std::path::PathBuf::from("spoke2.rs"),
+            module: "spoke2".to_string(),
+            symbols: vec![],
+            loc: 10,
+            complexity: 1.0,
+            ast_hash: 3,
+        });
+        let n4 = graph.add_node(NodeData {
+            path: std::path::PathBuf::from("spoke3.rs"),
+            module: "spoke3".to_string(),
+            symbols: vec![],
+            loc: 10,
+            complexity: 1.0,
+            ast_hash: 4,
+        });
+
+        // Hub receives links from all spokes
+        graph.add_edge(n2, n1, EdgeData::Import {
+            weight: 1.0,
+            visibility: Visibility::Public,
+        });
+        graph.add_edge(n3, n1, EdgeData::Import {
+            weight: 1.0,
+            visibility: Visibility::Public,
+        });
+        graph.add_edge(n4, n1, EdgeData::Import {
+            weight: 1.0,
+            visibility: Visibility::Public,
+        });
+
+        let scores = computer.compute(&graph);
+        assert!(!scores.is_empty());
+    }
 }
