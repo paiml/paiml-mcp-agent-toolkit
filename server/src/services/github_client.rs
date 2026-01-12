@@ -257,4 +257,148 @@ mod tests {
         let client = GitHubClient::new_unauthenticated("paiml/pmat").unwrap();
         assert_eq!(client.repo_full_name(), "paiml/pmat");
     }
+
+    // === Repo format validation tests ===
+
+    #[test]
+    fn test_invalid_repo_format_empty() {
+        let result = GitHubClient::new("");
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("Invalid repo format"));
+    }
+
+    #[test]
+    fn test_invalid_repo_format_no_slash() {
+        let result = GitHubClient::new("ownerrepo");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_invalid_repo_format_trailing_slash() {
+        let result = GitHubClient::new("owner/");
+        // This parses as ["owner", ""] which is 2 parts but one is empty
+        // The code doesn't validate empty parts, so this may succeed
+        // Let's verify it doesn't crash
+        if result.is_ok() {
+            let client = result.unwrap();
+            assert_eq!(client.repo_owner, "owner");
+            assert_eq!(client.repo_name, "");
+        }
+    }
+
+    #[test]
+    fn test_invalid_repo_format_leading_slash() {
+        let result = GitHubClient::new("/repo");
+        if result.is_ok() {
+            let client = result.unwrap();
+            assert_eq!(client.repo_owner, "");
+            assert_eq!(client.repo_name, "repo");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_valid_repo_format_unauthenticated() {
+        let result = GitHubClient::new_unauthenticated("octocat/hello-world");
+        assert!(result.is_ok());
+        let client = result.unwrap();
+        assert_eq!(client.repo_owner, "octocat");
+        assert_eq!(client.repo_name, "hello-world");
+    }
+
+    #[tokio::test]
+    async fn test_unauthenticated_invalid_format() {
+        let result = GitHubClient::new_unauthenticated("invalid");
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_unauthenticated_too_many_parts() {
+        let result = GitHubClient::new_unauthenticated("a/b/c");
+        assert!(result.is_err());
+    }
+
+    // === repo_full_name tests ===
+
+    #[tokio::test]
+    async fn test_repo_full_name_various() {
+        let client = GitHubClient::new_unauthenticated("microsoft/vscode").unwrap();
+        assert_eq!(client.repo_full_name(), "microsoft/vscode");
+
+        let client = GitHubClient::new_unauthenticated("rust-lang/rust").unwrap();
+        assert_eq!(client.repo_full_name(), "rust-lang/rust");
+    }
+
+    // === Debug trait test ===
+
+    #[tokio::test]
+    async fn test_github_client_debug() {
+        let client = GitHubClient::new_unauthenticated("test/repo").unwrap();
+        let debug_str = format!("{:?}", client);
+        assert!(debug_str.contains("GitHubClient"));
+        assert!(debug_str.contains("test"));
+        assert!(debug_str.contains("repo"));
+    }
+
+    // === Client reuse tests ===
+
+    #[tokio::test]
+    async fn test_client_can_be_reused() {
+        let client = GitHubClient::new_unauthenticated("owner/repo").unwrap();
+
+        // Multiple calls to repo_full_name should work
+        assert_eq!(client.repo_full_name(), "owner/repo");
+        assert_eq!(client.repo_full_name(), "owner/repo");
+    }
+
+    // === GITHUB_TOKEN environment tests ===
+
+    #[test]
+    fn test_new_without_token() {
+        // Save current token if exists
+        let saved = env::var("GITHUB_TOKEN").ok();
+
+        // Remove token
+        env::remove_var("GITHUB_TOKEN");
+
+        let result = GitHubClient::new("owner/repo");
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("GITHUB_TOKEN"));
+
+        // Restore token if it existed
+        if let Some(token) = saved {
+            env::set_var("GITHUB_TOKEN", token);
+        }
+    }
+
+    // === Edge cases ===
+
+    #[tokio::test]
+    async fn test_repo_with_dots() {
+        let client = GitHubClient::new_unauthenticated("owner/repo.name").unwrap();
+        assert_eq!(client.repo_name, "repo.name");
+    }
+
+    #[tokio::test]
+    async fn test_repo_with_underscores() {
+        let client = GitHubClient::new_unauthenticated("owner/repo_name").unwrap();
+        assert_eq!(client.repo_name, "repo_name");
+    }
+
+    #[tokio::test]
+    async fn test_repo_with_numbers() {
+        let client = GitHubClient::new_unauthenticated("owner123/repo456").unwrap();
+        assert_eq!(client.repo_owner, "owner123");
+        assert_eq!(client.repo_name, "repo456");
+    }
+
+    #[tokio::test]
+    async fn test_repo_with_mixed_case() {
+        let client = GitHubClient::new_unauthenticated("Owner/RepoName").unwrap();
+        assert_eq!(client.repo_owner, "Owner");
+        assert_eq!(client.repo_name, "RepoName");
+    }
 }

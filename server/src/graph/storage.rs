@@ -233,4 +233,137 @@ mod tests {
 
         assert_eq!(count, 0); // Placeholder returns 0
     }
+
+    // === Additional tests ===
+
+    #[test]
+    fn test_graph_storage_default() {
+        let storage = GraphStorage::default();
+        assert!(format!("{:?}", storage).contains("GraphStorage"));
+    }
+
+    #[test]
+    fn test_graph_storage_debug() {
+        let storage = GraphStorage::new();
+        let debug_str = format!("{:?}", storage);
+        assert!(debug_str.contains("_edges_backend"));
+        assert!(debug_str.contains("_nodes_backend"));
+    }
+
+    #[tokio::test]
+    async fn test_find_callers_various_node_ids() {
+        let storage = GraphStorage::new();
+
+        // Test with node_id 0
+        let result = storage.find_callers(0).await;
+        assert!(result.is_ok());
+        assert!(result.unwrap().is_empty());
+
+        // Test with large node_id
+        let result = storage.find_callers(u32::MAX).await;
+        assert!(result.is_ok());
+        assert!(result.unwrap().is_empty());
+
+        // Test with typical node_id
+        let result = storage.find_callers(42).await;
+        assert!(result.is_ok());
+        assert!(result.unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_pagerank_empty_graph() {
+        let storage = GraphStorage::new();
+        let scores = storage.pagerank().await.unwrap();
+
+        // Empty graph should return empty scores
+        assert!(scores.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_node_count_empty_graph() {
+        let storage = GraphStorage::new();
+        let count = storage.node_count().await.unwrap();
+
+        // Empty graph should have 0 nodes
+        assert_eq!(count, 0);
+    }
+
+    #[tokio::test]
+    async fn test_multiple_operations_on_same_storage() {
+        let storage = GraphStorage::new();
+
+        // Perform multiple operations
+        let callers1 = storage.find_callers(1).await.unwrap();
+        let callers2 = storage.find_callers(2).await.unwrap();
+        let scores = storage.pagerank().await.unwrap();
+        let count = storage.node_count().await.unwrap();
+
+        // All should return placeholder values
+        assert!(callers1.is_empty());
+        assert!(callers2.is_empty());
+        assert!(scores.is_empty());
+        assert_eq!(count, 0);
+    }
+
+    #[tokio::test]
+    async fn test_concurrent_find_callers() {
+        let storage = std::sync::Arc::new(GraphStorage::new());
+
+        let storage1 = storage.clone();
+        let storage2 = storage.clone();
+        let storage3 = storage.clone();
+
+        let (r1, r2, r3) = tokio::join!(
+            storage1.find_callers(1),
+            storage2.find_callers(2),
+            storage3.find_callers(3),
+        );
+
+        assert!(r1.is_ok());
+        assert!(r2.is_ok());
+        assert!(r3.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_concurrent_pagerank() {
+        let storage = std::sync::Arc::new(GraphStorage::new());
+
+        let storage1 = storage.clone();
+        let storage2 = storage.clone();
+
+        let (r1, r2) = tokio::join!(storage1.pagerank(), storage2.pagerank(),);
+
+        assert!(r1.is_ok());
+        assert!(r2.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_concurrent_node_count() {
+        let storage = std::sync::Arc::new(GraphStorage::new());
+
+        let storage1 = storage.clone();
+        let storage2 = storage.clone();
+
+        let (r1, r2) = tokio::join!(storage1.node_count(), storage2.node_count(),);
+
+        assert!(r1.is_ok());
+        assert!(r2.is_ok());
+        assert_eq!(r1.unwrap(), r2.unwrap());
+    }
+
+    #[test]
+    fn test_graph_storage_clone() {
+        let storage = GraphStorage::new();
+        // GraphStorage is not Clone (by design - uses unit types as markers)
+        // This test verifies we can create multiple instances
+        let storage2 = GraphStorage::new();
+        assert!(format!("{:?}", storage).contains("GraphStorage"));
+        assert!(format!("{:?}", storage2).contains("GraphStorage"));
+    }
+
+    #[test]
+    fn test_graph_storage_send_sync() {
+        fn assert_send_sync<T: Send + Sync>() {}
+        assert_send_sync::<GraphStorage>();
+    }
 }
