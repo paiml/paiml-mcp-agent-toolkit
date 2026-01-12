@@ -6437,7 +6437,6 @@ dependencies = [
  "pollster 0.3.0",
  "predicates",
  "presentar-core",
- "presentar-terminal",
  "pretty_assertions",
  "prettyplease",
  "prettytable-rs",
@@ -6689,24 +6688,13 @@ dependencies = [
 [[package]]
 name = "presentar-core"
 version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d8ebf16fb7910c61032b1b4e72a4b867e1e7877c9466c2a8fdd8d2ccde008b6a"
 dependencies = [
  "jugar-probar",
  "serde",
  "serde_json",
  "trueno",
-]
-
-[[package]]
-name = "presentar-terminal"
-version = "0.2.0"
-dependencies = [
- "bitvec",
- "compact_str",
- "crossterm",
- "presentar-core",
- "thiserror 2.0.17",
- "unicode-segmentation",
- "unicode-width 0.2.0",
 ]
 
 [[package]]

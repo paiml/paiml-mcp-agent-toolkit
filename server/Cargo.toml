@@ -247,8 +247,8 @@ prettytable-rs = "0.10"
 # TUI support (presentar-terminal: ratatui-free Brick architecture)
 # presentar-terminal provides: TuiApp, DiffRenderer, BrailleGraph, Meter, Table
 # Benefits: Jidoka verification gates, zero-allocation rendering, 95% coverage
-presentar-terminal = { path = "../../presentar/crates/presentar-terminal", optional = true }
-presentar-core = { path = "../../presentar/crates/presentar-core", optional = true }
+# presentar-terminal = { version = "0.3.0", path = "../../presentar/crates/presentar-terminal", optional = true }  # Not yet on crates.io
+presentar-core = { version = "0.2.0", optional = true }
 # crossterm 0.28 matches presentar-terminal's version (ratatui REMOVED)
 crossterm = { version = "0.28", optional = true }
 sys-info = "0.9.1"
@@ -374,7 +374,8 @@ demo = []
 # JavaScript AST support
 javascript-ast = ["typescript-ast", "polyglot-javascript"]
 # TUI mode support (presentar-terminal Brick architecture, ratatui-free)
-tui = ["presentar-terminal", "presentar-core", "crossterm"]
+# Note: presentar-terminal disabled until published to crates.io
+tui = ["presentar-core", "crossterm"]
 # Terminal graph visualization (trueno-viz integration)
 # See: docs/specifications/integrating-graph-visualizations-spec.md
 viz = ["trueno-viz"]
