@@ -29,3 +29,22 @@ impl Handler<ValidateMessage> for ValidatorActor {
         )
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_validator_actor_default() {
+        let actor = ValidatorActor::default();
+        // Verify the validator is initialized (existence test)
+        let _ = actor.validator;
+    }
+
+    #[actix_rt::test]
+    async fn test_validator_actor_starts() {
+        let actor = ValidatorActor::default();
+        let addr = actor.start();
+        assert!(addr.connected());
+    }
+}

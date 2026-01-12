@@ -65,3 +65,41 @@ impl Handler<AnalyzeMessage> for AnalyzerActor {
         )
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_analyzer_actor_default() {
+        let actor = AnalyzerActor::default();
+        assert_eq!(actor.max_cache_size, 100);
+        assert!(actor.complexity_cache.is_empty());
+    }
+
+    #[test]
+    fn test_analyzer_actor_cache_capacity() {
+        let actor = AnalyzerActor::default();
+        assert_eq!(actor.max_cache_size, 100);
+    }
+
+    #[test]
+    fn test_analyzer_actor_empty_cache() {
+        let actor = AnalyzerActor::default();
+        assert!(actor.complexity_cache.is_empty());
+    }
+
+    #[test]
+    fn test_analyzer_actor_has_analyzer() {
+        let actor = AnalyzerActor::default();
+        // Verify the analyzer is initialized (existence test)
+        let _ = actor.analyzer;
+    }
+
+    #[actix_rt::test]
+    async fn test_analyzer_actor_starts() {
+        let actor = AnalyzerActor::default();
+        let addr = actor.start();
+        assert!(addr.connected());
+    }
+}
