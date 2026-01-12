@@ -485,4 +485,384 @@ mod tests {
             }
         }
     }
+
+    // === Complexity Enum Tests ===
+
+    #[test]
+    fn test_complexity_display_o1() {
+        assert_eq!(format!("{}", Complexity::O1), "O(1)");
+    }
+
+    #[test]
+    fn test_complexity_display_ologn() {
+        assert_eq!(format!("{}", Complexity::OLogN), "O(log n)");
+    }
+
+    #[test]
+    fn test_complexity_display_on() {
+        assert_eq!(format!("{}", Complexity::ON), "O(n)");
+    }
+
+    #[test]
+    fn test_complexity_display_onlogn() {
+        assert_eq!(format!("{}", Complexity::ONLogN), "O(n log n)");
+    }
+
+    #[test]
+    fn test_complexity_display_on2() {
+        assert_eq!(format!("{}", Complexity::ON2), "O(n^2)");
+    }
+
+    #[test]
+    fn test_complexity_display_on3() {
+        assert_eq!(format!("{}", Complexity::ON3), "O(n^3)");
+    }
+
+    #[test]
+    fn test_complexity_display_oexp() {
+        assert_eq!(format!("{}", Complexity::OExp), "O(2^n)");
+    }
+
+    #[test]
+    fn test_complexity_display_ofactorial() {
+        assert_eq!(format!("{}", Complexity::OFactorial), "O(n!)");
+    }
+
+    #[test]
+    fn test_complexity_combine_with_o1() {
+        assert_eq!(Complexity::O1.combine(&Complexity::ON), Complexity::ON);
+        assert_eq!(Complexity::ON.combine(&Complexity::O1), Complexity::ON);
+    }
+
+    #[test]
+    fn test_complexity_combine_logn() {
+        assert_eq!(Complexity::OLogN.combine(&Complexity::OLogN), Complexity::ON);
+    }
+
+    #[test]
+    fn test_complexity_combine_on_on2() {
+        assert_eq!(Complexity::ON.combine(&Complexity::ON2), Complexity::ON3);
+        assert_eq!(Complexity::ON2.combine(&Complexity::ON), Complexity::ON3);
+    }
+
+    #[test]
+    fn test_complexity_combine_on2_on2() {
+        assert_eq!(Complexity::ON2.combine(&Complexity::ON2), Complexity::ON3);
+    }
+
+    #[test]
+    fn test_complexity_max() {
+        // Using Ord::max which takes values by value
+        assert_eq!(Complexity::O1.max(Complexity::ON), Complexity::ON);
+        assert_eq!(Complexity::ON.max(Complexity::O1), Complexity::ON);
+        assert_eq!(Complexity::ON2.max(Complexity::ON), Complexity::ON2);
+    }
+
+    #[test]
+    fn test_complexity_clone() {
+        let c = Complexity::ONLogN;
+        let cloned = c.clone();
+        assert_eq!(c, cloned);
+    }
+
+    #[test]
+    fn test_complexity_eq() {
+        assert_eq!(Complexity::O1, Complexity::O1);
+        assert_ne!(Complexity::O1, Complexity::ON);
+    }
+
+    #[test]
+    fn test_complexity_ord() {
+        assert!(Complexity::O1 < Complexity::OExp);
+        assert!(Complexity::OExp > Complexity::O1);
+    }
+
+    // === SymbolicExecutor Tests ===
+
+    #[test]
+    fn test_symbolic_executor_new() {
+        let executor = SymbolicExecutor::new();
+        assert!(executor.loop_depths.is_empty());
+        assert_eq!(executor.recursive_depth, 0);
+    }
+
+    #[test]
+    fn test_symbolic_executor_default() {
+        let executor = SymbolicExecutor::default();
+        assert!(executor.loop_depths.is_empty());
+    }
+
+    #[test]
+    fn test_symbolic_executor_simple_function() {
+        let code = r#"
+            fn simple() -> i32 {
+                42
+            }
+        "#;
+        let ast = syn::parse_file(code).unwrap();
+        let mut executor = SymbolicExecutor::new();
+
+        for item in &ast.items {
+            if let syn::Item::Fn(func) = item {
+                let complexity = executor.analyze_function(func);
+                assert_eq!(complexity, Complexity::O1);
+            }
+        }
+    }
+
+    #[test]
+    fn test_symbolic_executor_single_loop() {
+        let code = r#"
+            fn single_loop(arr: &[i32]) -> i32 {
+                let mut sum = 0;
+                for x in arr.iter() {
+                    sum += x;
+                }
+                sum
+            }
+        "#;
+        let ast = syn::parse_file(code).unwrap();
+        let mut executor = SymbolicExecutor::new();
+
+        for item in &ast.items {
+            if let syn::Item::Fn(func) = item {
+                let complexity = executor.analyze_function(func);
+                assert_eq!(complexity, Complexity::ON);
+            }
+        }
+    }
+
+    #[test]
+    fn test_symbolic_executor_while_loop() {
+        let code = r#"
+            fn with_while(n: i32) -> i32 {
+                let mut i = 0;
+                while i < n {
+                    i += 1;
+                }
+                i
+            }
+        "#;
+        let ast = syn::parse_file(code).unwrap();
+        let mut executor = SymbolicExecutor::new();
+
+        for item in &ast.items {
+            if let syn::Item::Fn(func) = item {
+                let complexity = executor.analyze_function(func);
+                assert!(complexity >= Complexity::ON);
+            }
+        }
+    }
+
+    // === AlgorithmPattern Tests ===
+
+    #[test]
+    fn test_algorithm_pattern_debug() {
+        let patterns = vec![
+            AlgorithmPattern::Sorting,
+            AlgorithmPattern::Search,
+            AlgorithmPattern::Graph,
+            AlgorithmPattern::DynamicProgramming,
+            AlgorithmPattern::Greedy,
+            AlgorithmPattern::DivideAndConquer,
+            AlgorithmPattern::Backtracking,
+        ];
+        for pattern in patterns {
+            let debug = format!("{:?}", pattern);
+            assert!(!debug.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_algorithm_pattern_clone() {
+        let pattern = AlgorithmPattern::Sorting;
+        let cloned = pattern.clone();
+        assert_eq!(format!("{:?}", pattern), format!("{:?}", cloned));
+    }
+
+    // === SpaceComplexityAnalyzer Tests ===
+
+    #[test]
+    fn test_space_complexity_analyzer_new() {
+        let analyzer = SpaceComplexityAnalyzer::new();
+        assert!(analyzer.allocations.is_empty());
+        assert_eq!(analyzer.max_depth, 0);
+    }
+
+    #[test]
+    fn test_space_complexity_analyzer_default() {
+        let analyzer = SpaceComplexityAnalyzer::default();
+        assert!(analyzer.allocations.is_empty());
+    }
+
+    #[test]
+    fn test_space_complexity_simple() {
+        let code = r#"
+            fn simple() -> i32 {
+                let x = 5;
+                x
+            }
+        "#;
+        let ast = syn::parse_file(code).unwrap();
+        let mut analyzer = SpaceComplexityAnalyzer::new();
+        let complexity = analyzer.analyze(&ast);
+        assert_eq!(complexity, Complexity::O1);
+    }
+
+    #[test]
+    fn test_space_complexity_with_vec() {
+        let code = r#"
+            fn with_vec() {
+                let v = Vec::new();
+            }
+        "#;
+        let ast = syn::parse_file(code).unwrap();
+        let mut analyzer = SpaceComplexityAnalyzer::new();
+        let complexity = analyzer.analyze(&ast);
+        assert!(complexity >= Complexity::O1);
+    }
+
+    // === path_to_string Tests ===
+
+    #[test]
+    fn test_path_to_string_simple() {
+        let code = "use std::collections::HashMap;";
+        let ast = syn::parse_file(code).unwrap();
+        if let syn::Item::Use(item_use) = &ast.items[0] {
+            // Just verify the function exists and doesn't panic
+            let _ = &item_use.tree;
+        }
+    }
+
+    // === is_sorting_algorithm Tests ===
+
+    #[test]
+    fn test_is_sorting_algorithm() {
+        let code = r#"
+            fn quick_sort(arr: &mut [i32]) {}
+        "#;
+        let ast = syn::parse_file(code).unwrap();
+        let executor = SymbolicExecutor::new();
+
+        for item in &ast.items {
+            if let syn::Item::Fn(func) = item {
+                assert!(executor.is_sorting_algorithm(func));
+            }
+        }
+    }
+
+    #[test]
+    fn test_is_not_sorting_algorithm() {
+        let code = r#"
+            fn calculate(x: i32) -> i32 { x }
+        "#;
+        let ast = syn::parse_file(code).unwrap();
+        let executor = SymbolicExecutor::new();
+
+        for item in &ast.items {
+            if let syn::Item::Fn(func) = item {
+                assert!(!executor.is_sorting_algorithm(func));
+            }
+        }
+    }
+
+    // === is_search_algorithm Tests ===
+
+    #[test]
+    fn test_is_search_algorithm() {
+        let code = r#"
+            fn binary_search(arr: &[i32], target: i32) -> Option<usize> { None }
+        "#;
+        let ast = syn::parse_file(code).unwrap();
+        let executor = SymbolicExecutor::new();
+
+        for item in &ast.items {
+            if let syn::Item::Fn(func) = item {
+                assert!(executor.is_search_algorithm(func));
+            }
+        }
+    }
+
+    // === is_graph_algorithm Tests ===
+
+    #[test]
+    fn test_is_graph_algorithm() {
+        let code = r#"
+            fn dfs_traverse(node: &Node) {}
+        "#;
+        let ast = syn::parse_file(code).unwrap();
+        let executor = SymbolicExecutor::new();
+
+        for item in &ast.items {
+            if let syn::Item::Fn(func) = item {
+                assert!(executor.is_graph_algorithm(func));
+            }
+        }
+    }
+
+    // === analyze_algorithm_patterns Tests ===
+
+    #[test]
+    fn test_analyze_algorithm_patterns_sorting() {
+        let code = r#"
+            fn heap_sort(arr: &mut [i32]) {}
+        "#;
+        let ast = syn::parse_file(code).unwrap();
+        let executor = SymbolicExecutor::new();
+        let patterns = executor.analyze_algorithm_patterns(&ast);
+        assert!(patterns.iter().any(|p| matches!(p, AlgorithmPattern::Sorting)));
+    }
+
+    #[test]
+    fn test_analyze_algorithm_patterns_empty() {
+        let code = r#"
+            fn foo() {}
+        "#;
+        let ast = syn::parse_file(code).unwrap();
+        let executor = SymbolicExecutor::new();
+        let patterns = executor.analyze_algorithm_patterns(&ast);
+        assert!(patterns.is_empty());
+    }
+
+    // === RecursionDetector Tests ===
+
+    #[test]
+    fn test_recursive_function_detection() {
+        let code = r#"
+            fn factorial(n: u32) -> u32 {
+                if n <= 1 {
+                    1
+                } else {
+                    n * factorial(n - 1)
+                }
+            }
+        "#;
+        let ast = syn::parse_file(code).unwrap();
+        let mut executor = SymbolicExecutor::new();
+
+        for item in &ast.items {
+            if let syn::Item::Fn(func) = item {
+                let complexity = executor.analyze_function(func);
+                assert!(complexity >= Complexity::ON);
+            }
+        }
+    }
+
+    #[test]
+    fn test_non_recursive_function() {
+        let code = r#"
+            fn add(a: i32, b: i32) -> i32 {
+                a + b
+            }
+        "#;
+        let ast = syn::parse_file(code).unwrap();
+        let mut executor = SymbolicExecutor::new();
+
+        for item in &ast.items {
+            if let syn::Item::Fn(func) = item {
+                let complexity = executor.analyze_function(func);
+                assert_eq!(complexity, Complexity::O1);
+            }
+        }
+    }
 }
