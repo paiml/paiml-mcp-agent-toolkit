@@ -149,7 +149,7 @@ impl Default for AutomationConfig {
             enabled: false,
             require_review: true,
             safe_only: true,
-            create_branches: true,
+            create_branches: false,  // DISABLED: per CLAUDE.md zero-branching policy
         }
     }
 }

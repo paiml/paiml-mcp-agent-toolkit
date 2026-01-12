@@ -1162,7 +1162,7 @@ impl CommandDispatcher {
             },
             enforce_quality_gates: true,
             git: roadmap::GitConfig {
-                create_branches: true,
+                create_branches: false,  // DISABLED: per CLAUDE.md zero-branching policy
                 branch_pattern: "feature/{task_id}".to_string(),
                 commit_pattern: "{task_id}: {message}".to_string(),
                 require_quality_check: true,

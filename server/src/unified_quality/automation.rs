@@ -155,7 +155,7 @@ impl Default for AutomatorConfig {
             enabled: false,
             require_review: true,
             safe_only: true,
-            create_branches: true,
+            create_branches: false,  // DISABLED: per CLAUDE.md zero-branching policy
             auto_commit: false,
             max_batch_size: 10,
         }
