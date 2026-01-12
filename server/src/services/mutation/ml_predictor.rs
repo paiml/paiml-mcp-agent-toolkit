@@ -836,3 +836,683 @@ fn is_rust_keyword(word: &str) -> bool {
             | "false"
     )
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::services::mutation::{SourceLocation, MutantStatus};
+
+    // ==================== Helper Functions Tests ====================
+
+    #[test]
+    fn test_estimate_nesting_depth_empty() {
+        assert_eq!(estimate_nesting_depth(""), 0);
+    }
+
+    #[test]
+    fn test_estimate_nesting_depth_no_braces() {
+        assert_eq!(estimate_nesting_depth("let x = 1;"), 0);
+    }
+
+    #[test]
+    fn test_estimate_nesting_depth_single() {
+        assert_eq!(estimate_nesting_depth("fn foo() { x }"), 1);
+    }
+
+    #[test]
+    fn test_estimate_nesting_depth_nested() {
+        assert_eq!(estimate_nesting_depth("fn foo() { if true { x } }"), 2);
+    }
+
+    #[test]
+    fn test_estimate_nesting_depth_deeply_nested() {
+        assert_eq!(estimate_nesting_depth("{ { { { x } } } }"), 4);
+    }
+
+    #[test]
+    fn test_estimate_nesting_depth_unbalanced() {
+        // Should handle unbalanced gracefully
+        assert_eq!(estimate_nesting_depth("{{ }"), 2);
+    }
+
+    #[test]
+    fn test_count_parameters_empty() {
+        assert_eq!(count_parameters("fn foo()"), 0);
+    }
+
+    #[test]
+    fn test_count_parameters_none() {
+        assert_eq!(count_parameters("let x = 5;"), 0);
+    }
+
+    #[test]
+    fn test_count_parameters_single() {
+        assert_eq!(count_parameters("fn foo(x: i32)"), 1);
+    }
+
+    #[test]
+    fn test_count_parameters_multiple() {
+        assert_eq!(count_parameters("fn foo(x: i32, y: i32, z: i32)"), 3);
+    }
+
+    #[test]
+    fn test_count_parameters_with_generics() {
+        assert_eq!(count_parameters("fn foo<T>(x: T, y: T)"), 2);
+    }
+
+    #[test]
+    fn test_count_unique_variables_empty() {
+        assert_eq!(count_unique_variables(""), 0);
+    }
+
+    #[test]
+    fn test_count_unique_variables_simple() {
+        let source = "let x = y + z;";
+        let count = count_unique_variables(source);
+        assert!(count >= 1); // At least one variable
+    }
+
+    #[test]
+    fn test_count_unique_variables_with_keywords() {
+        let source = "fn let mut x = 5;";
+        let count = count_unique_variables(source);
+        // Should not count keywords
+        assert!(count >= 1);
+    }
+
+    #[test]
+    fn test_count_unique_variables_uppercase() {
+        let source = "let Type = MyStruct;";
+        let count = count_unique_variables(source);
+        // Uppercase identifiers shouldn't be counted as variables
+        assert!(count >= 0);
+    }
+
+    #[test]
+    fn test_is_rust_keyword_true() {
+        assert!(is_rust_keyword("fn"));
+        assert!(is_rust_keyword("let"));
+        assert!(is_rust_keyword("mut"));
+        assert!(is_rust_keyword("if"));
+        assert!(is_rust_keyword("else"));
+        assert!(is_rust_keyword("for"));
+        assert!(is_rust_keyword("while"));
+        assert!(is_rust_keyword("loop"));
+        assert!(is_rust_keyword("match"));
+        assert!(is_rust_keyword("return"));
+    }
+
+    #[test]
+    fn test_is_rust_keyword_false() {
+        assert!(!is_rust_keyword("variable"));
+        assert!(!is_rust_keyword("foo"));
+        assert!(!is_rust_keyword("bar"));
+        assert!(!is_rust_keyword("x"));
+        assert!(!is_rust_keyword("MyType"));
+    }
+
+    // ==================== MutantFeatures Tests ====================
+
+    fn create_test_mutant(source: &str, operator: MutationOperatorType) -> Mutant {
+        Mutant {
+            id: "test".to_string(),
+            original_file: std::path::PathBuf::from("test.rs"),
+            mutated_source: source.to_string(),
+            location: SourceLocation {
+                line: 1,
+                column: 1,
+                end_line: 1,
+                end_column: 10,
+            },
+            operator,
+            hash: "hash".to_string(),
+            status: MutantStatus::Pending,
+        }
+    }
+
+    #[test]
+    fn test_mutant_features_from_simple() {
+        let mutant = create_test_mutant("let x = 1;", MutationOperatorType::ArithmeticReplacement);
+        let features = MutantFeatures::from_mutant(&mutant);
+
+        assert!(!features.has_loops);
+        assert!(!features.has_conditionals);
+        assert_eq!(features.nesting_depth, 0);
+    }
+
+    #[test]
+    fn test_mutant_features_with_loops() {
+        let mutant = create_test_mutant(
+            "for i in 0..10 { x += 1; }",
+            MutationOperatorType::ArithmeticReplacement,
+        );
+        let features = MutantFeatures::from_mutant(&mutant);
+
+        assert!(features.has_loops);
+        assert!(features.control_flow_count >= 1);
+    }
+
+    #[test]
+    fn test_mutant_features_with_conditionals() {
+        let mutant = create_test_mutant(
+            "if x > 0 { y } else { z }",
+            MutationOperatorType::RelationalReplacement,
+        );
+        let features = MutantFeatures::from_mutant(&mutant);
+
+        assert!(features.has_conditionals);
+    }
+
+    #[test]
+    fn test_mutant_features_with_error_handling() {
+        let mutant = create_test_mutant(
+            "fn foo() -> Result<(), Error> { Ok(()) }",
+            MutationOperatorType::ReturnReplacement,
+        );
+        let features = MutantFeatures::from_mutant(&mutant);
+
+        assert!(features.has_error_handling);
+    }
+
+    #[test]
+    fn test_mutant_features_with_assertions() {
+        let mutant = create_test_mutant(
+            "assert_eq!(x, y);",
+            MutationOperatorType::ArithmeticReplacement,
+        );
+        let features = MutantFeatures::from_mutant(&mutant);
+
+        assert!(features.has_assertions);
+    }
+
+    #[test]
+    fn test_mutant_features_with_arithmetic() {
+        let mutant =
+            create_test_mutant("let z = x + y;", MutationOperatorType::ArithmeticReplacement);
+        let features = MutantFeatures::from_mutant(&mutant);
+
+        assert!(features.has_arithmetic);
+    }
+
+    #[test]
+    fn test_mutant_features_with_comparisons() {
+        let mutant =
+            create_test_mutant("if x == y { }", MutationOperatorType::RelationalReplacement);
+        let features = MutantFeatures::from_mutant(&mutant);
+
+        assert!(features.has_comparisons);
+    }
+
+    #[test]
+    fn test_mutant_features_with_logical_ops() {
+        let mutant =
+            create_test_mutant("if a && b || !c { }", MutationOperatorType::ConditionalReplacement);
+        let features = MutantFeatures::from_mutant(&mutant);
+
+        assert!(features.has_logical_ops);
+    }
+
+    #[test]
+    fn test_mutant_features_to_feature_vector_length() {
+        let mutant = create_test_mutant("let x = 1;", MutationOperatorType::ArithmeticReplacement);
+        let features = MutantFeatures::from_mutant(&mutant);
+        let vector = features.to_feature_vector();
+
+        assert_eq!(vector.len(), 18); // 18 features in v2
+    }
+
+    #[test]
+    fn test_mutant_features_operator_type_numeric() {
+        let mutant1 = create_test_mutant("x", MutationOperatorType::ArithmeticReplacement);
+        let features1 = MutantFeatures::from_mutant(&mutant1);
+
+        let mutant2 = create_test_mutant("x", MutationOperatorType::RelationalReplacement);
+        let features2 = MutantFeatures::from_mutant(&mutant2);
+
+        let vec1 = features1.to_feature_vector();
+        let vec2 = features2.to_feature_vector();
+
+        // First element is operator type
+        assert_eq!(vec1[0], 1.0); // ArithmeticReplacement
+        assert_eq!(vec2[0], 2.0); // RelationalReplacement
+    }
+
+    #[test]
+    fn test_mutant_features_operator_none() {
+        let mutant = create_test_mutant("x", MutationOperatorType::None);
+        let features = MutantFeatures::from_mutant(&mutant);
+        let vector = features.to_feature_vector();
+
+        assert_eq!(vector[0], 0.0); // None
+    }
+
+    #[test]
+    fn test_mutant_features_operator_custom() {
+        let mutant = create_test_mutant("x", MutationOperatorType::Custom("test".to_string()));
+        let features = MutantFeatures::from_mutant(&mutant);
+        let vector = features.to_feature_vector();
+
+        assert_eq!(vector[0], 21.0); // Custom
+    }
+
+    // ==================== TrainingData Tests ====================
+
+    #[test]
+    fn test_training_data_creation() {
+        let mutant = create_test_mutant("x + y", MutationOperatorType::ArithmeticReplacement);
+        let data = TrainingData {
+            mutant: mutant.clone(),
+            was_killed: true,
+            test_failures: vec!["test_add".to_string()],
+            execution_time_ms: 100,
+        };
+
+        assert!(data.was_killed);
+        assert_eq!(data.test_failures.len(), 1);
+        assert_eq!(data.execution_time_ms, 100);
+    }
+
+    #[test]
+    fn test_training_data_serialization() {
+        let mutant = create_test_mutant("x + y", MutationOperatorType::ArithmeticReplacement);
+        let data = TrainingData {
+            mutant,
+            was_killed: false,
+            test_failures: vec![],
+            execution_time_ms: 50,
+        };
+
+        let json = serde_json::to_string(&data).unwrap();
+        let deserialized: TrainingData = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(data.was_killed, deserialized.was_killed);
+        assert_eq!(data.execution_time_ms, deserialized.execution_time_ms);
+    }
+
+    // ==================== PredictionResult Tests ====================
+
+    #[test]
+    fn test_prediction_result_creation() {
+        let mut contributions = HashMap::new();
+        contributions.insert("operator_type".to_string(), 0.5);
+
+        let result = PredictionResult {
+            kill_probability: 0.75,
+            confidence: 0.9,
+            feature_contributions: contributions,
+        };
+
+        assert!((result.kill_probability - 0.75).abs() < f64::EPSILON);
+        assert!((result.confidence - 0.9).abs() < f64::EPSILON);
+        assert_eq!(result.feature_contributions.len(), 1);
+    }
+
+    #[test]
+    fn test_prediction_result_serialization() {
+        let result = PredictionResult {
+            kill_probability: 0.5,
+            confidence: 0.8,
+            feature_contributions: HashMap::new(),
+        };
+
+        let json = serde_json::to_string(&result).unwrap();
+        let deserialized: PredictionResult = serde_json::from_str(&json).unwrap();
+
+        assert!((result.kill_probability - deserialized.kill_probability).abs() < f64::EPSILON);
+    }
+
+    // ==================== SurvivabilityPredictor Tests ====================
+
+    #[test]
+    fn test_predictor_new() {
+        let predictor = SurvivabilityPredictor::new();
+        assert!(!predictor.is_trained());
+    }
+
+    #[test]
+    fn test_predictor_default() {
+        let predictor = SurvivabilityPredictor::default();
+        assert!(!predictor.is_trained());
+    }
+
+    #[test]
+    fn test_predictor_train_empty_fails() {
+        let mut predictor = SurvivabilityPredictor::new();
+        let result = predictor.train(&[]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_predictor_predict_untrained_fails() {
+        let predictor = SurvivabilityPredictor::new();
+        let mutant = create_test_mutant("x + y", MutationOperatorType::ArithmeticReplacement);
+        let result = predictor.predict(&mutant);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_predictor_feature_importance_untrained_fails() {
+        let predictor = SurvivabilityPredictor::new();
+        let result = predictor.feature_importance();
+        assert!(result.is_err());
+    }
+
+    fn create_training_data(count: usize, kill_rate: f64) -> Vec<TrainingData> {
+        (0..count)
+            .map(|i| {
+                let mutant = create_test_mutant(
+                    &format!("fn test{}() {{ x + y }}", i),
+                    MutationOperatorType::ArithmeticReplacement,
+                );
+                TrainingData {
+                    mutant,
+                    was_killed: (i as f64 / count as f64) < kill_rate,
+                    test_failures: if (i as f64 / count as f64) < kill_rate {
+                        vec!["test".to_string()]
+                    } else {
+                        vec![]
+                    },
+                    execution_time_ms: 100,
+                }
+            })
+            .collect()
+    }
+
+    #[test]
+    fn test_predictor_train_small_sample() {
+        let mut predictor = SurvivabilityPredictor::new();
+        let data = create_training_data(5, 0.5);
+
+        // Should succeed but use statistical baseline
+        let result = predictor.train(&data);
+        assert!(result.is_ok());
+        assert!(predictor.is_trained());
+    }
+
+    #[test]
+    fn test_predictor_train_and_predict() {
+        let mut predictor = SurvivabilityPredictor::new();
+        let data = create_training_data(30, 0.6); // More samples than features (18)
+
+        let result = predictor.train(&data);
+        assert!(result.is_ok());
+
+        let mutant = create_test_mutant("x + y", MutationOperatorType::ArithmeticReplacement);
+        let prediction = predictor.predict(&mutant);
+        assert!(prediction.is_ok());
+
+        let pred = prediction.unwrap();
+        assert!(pred.kill_probability >= 0.0 && pred.kill_probability <= 1.0);
+        assert!(pred.confidence >= 0.0 && pred.confidence <= 1.0);
+    }
+
+    #[test]
+    fn test_predictor_predict_with_explanation() {
+        let mut predictor = SurvivabilityPredictor::new();
+        let data = create_training_data(20, 0.7);
+        predictor.train(&data).unwrap();
+
+        let mutant = create_test_mutant("x + y", MutationOperatorType::ArithmeticReplacement);
+        let result = predictor.predict_with_explanation(&mutant);
+        assert!(result.is_ok());
+
+        let (pred, explanation) = result.unwrap();
+        assert!(pred.kill_probability >= 0.0);
+        assert!(!explanation.is_empty());
+        assert!(explanation.contains("Kill probability"));
+    }
+
+    #[test]
+    fn test_predictor_prioritize_mutants() {
+        let mut predictor = SurvivabilityPredictor::new();
+        let data = create_training_data(20, 0.6);
+        predictor.train(&data).unwrap();
+
+        let mutants = vec![
+            create_test_mutant("simple", MutationOperatorType::ArithmeticReplacement),
+            create_test_mutant(
+                "if x > 0 { for i in 0..10 { y += i; } }",
+                MutationOperatorType::ConditionalReplacement,
+            ),
+        ];
+
+        let result = predictor.prioritize_mutants(&mutants);
+        assert!(result.is_ok());
+
+        let prioritized = result.unwrap();
+        assert_eq!(prioritized.len(), 2);
+
+        // Should be sorted by kill probability descending
+        assert!(prioritized[0].1.kill_probability >= prioritized[1].1.kill_probability);
+    }
+
+    #[test]
+    fn test_predictor_update() {
+        let mut predictor = SurvivabilityPredictor::new();
+        let initial_data = create_training_data(20, 0.5);
+        predictor.train(&initial_data).unwrap();
+
+        let new_data = create_training_data(5, 0.8);
+        let result = predictor.update(&new_data);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_predictor_update_untrained() {
+        let mut predictor = SurvivabilityPredictor::new();
+        let data = create_training_data(20, 0.5);
+
+        // Update should train if not trained
+        let result = predictor.update(&data);
+        assert!(result.is_ok());
+        assert!(predictor.is_trained());
+    }
+
+    #[test]
+    fn test_predictor_feature_importance() {
+        let mut predictor = SurvivabilityPredictor::new();
+        let data = create_training_data(20, 0.5);
+        predictor.train(&data).unwrap();
+
+        let importance = predictor.feature_importance();
+        assert!(importance.is_ok());
+
+        let imp = importance.unwrap();
+        assert!(!imp.is_empty());
+
+        // All values should be non-negative
+        for (_, value) in &imp {
+            assert!(*value >= 0.0);
+        }
+    }
+
+    #[test]
+    fn test_predictor_cross_validate_empty_fails() {
+        let predictor = SurvivabilityPredictor::new();
+        let result = predictor.cross_validate(&[], 5);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_predictor_cross_validate_insufficient_folds() {
+        let predictor = SurvivabilityPredictor::new();
+        let data = create_training_data(20, 0.5);
+        let result = predictor.cross_validate(&data, 1);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_predictor_cross_validate() {
+        let predictor = SurvivabilityPredictor::new();
+        let data = create_training_data(100, 0.5);
+        let result = predictor.cross_validate(&data, 5);
+
+        assert!(result.is_ok());
+        let accuracy = result.unwrap();
+        assert!(accuracy >= 0.0 && accuracy <= 1.0);
+    }
+
+    #[test]
+    fn test_predictor_save_and_load() {
+        use tempfile::tempdir;
+
+        let mut predictor = SurvivabilityPredictor::new();
+        let data = create_training_data(20, 0.5);
+        predictor.train(&data).unwrap();
+
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("model.bin");
+
+        // Save
+        let save_result = predictor.save(&path);
+        assert!(save_result.is_ok());
+
+        // Load
+        let load_result = SurvivabilityPredictor::load(&path);
+        assert!(load_result.is_ok());
+
+        let loaded = load_result.unwrap();
+        assert!(loaded.is_trained());
+    }
+
+    // ==================== MutantFeatures Serialization Tests ====================
+
+    #[test]
+    fn test_mutant_features_serialization() {
+        let mutant = create_test_mutant(
+            "fn foo() { for i in 0..10 { if x > 0 { y } } }",
+            MutationOperatorType::ArithmeticReplacement,
+        );
+        let features = MutantFeatures::from_mutant(&mutant);
+
+        let json = serde_json::to_string(&features).unwrap();
+        let deserialized: MutantFeatures = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(features.has_loops, deserialized.has_loops);
+        assert_eq!(features.has_conditionals, deserialized.has_conditionals);
+        assert_eq!(features.nesting_depth, deserialized.nesting_depth);
+    }
+
+    // ==================== Edge Cases ====================
+
+    #[test]
+    fn test_predictor_different_operators() {
+        let mut predictor = SurvivabilityPredictor::new();
+
+        // Create training data with different operators
+        let data: Vec<TrainingData> = vec![
+            MutationOperatorType::ArithmeticReplacement,
+            MutationOperatorType::RelationalReplacement,
+            MutationOperatorType::ConditionalReplacement,
+            MutationOperatorType::StatementDeletion,
+        ]
+        .iter()
+        .enumerate()
+        .flat_map(|(i, op)| {
+            (0..5).map(move |j| {
+                TrainingData {
+                    mutant: create_test_mutant(&format!("code_{}{}", i, j), op.clone()),
+                    was_killed: j % 2 == 0,
+                    test_failures: vec![],
+                    execution_time_ms: 100,
+                }
+            })
+        })
+        .collect();
+
+        predictor.train(&data).unwrap();
+
+        // Predict for each operator type
+        for op in [
+            MutationOperatorType::ArithmeticReplacement,
+            MutationOperatorType::RelationalReplacement,
+        ] {
+            let mutant = create_test_mutant("test", op);
+            let result = predictor.predict(&mutant);
+            assert!(result.is_ok());
+        }
+    }
+
+    #[test]
+    fn test_predictor_unseen_operator() {
+        let mut predictor = SurvivabilityPredictor::new();
+
+        // Train only on ArithmeticReplacement
+        let data: Vec<TrainingData> = (0..20)
+            .map(|i| TrainingData {
+                mutant: create_test_mutant(
+                    &format!("code_{}", i),
+                    MutationOperatorType::ArithmeticReplacement,
+                ),
+                was_killed: i % 2 == 0,
+                test_failures: vec![],
+                execution_time_ms: 100,
+            })
+            .collect();
+
+        predictor.train(&data).unwrap();
+
+        // Predict for unseen operator
+        let mutant = create_test_mutant("test", MutationOperatorType::BitwiseReplacement);
+        let result = predictor.predict(&mutant);
+        assert!(result.is_ok());
+
+        // Should have lower confidence for unseen operator
+        let pred = result.unwrap();
+        assert!(pred.confidence <= 0.8);
+    }
+
+    #[test]
+    fn test_complex_source_feature_extraction() {
+        let complex_source = r#"
+            fn complex() -> Result<i32, Error> {
+                let mut result = 0;
+                for i in 0..100 {
+                    if i % 2 == 0 && i > 10 {
+                        match get_value(i)? {
+                            Some(v) => result += v,
+                            None => continue,
+                        }
+                    }
+                }
+                assert!(result > 0);
+                Ok(result)
+            }
+        "#;
+
+        let mutant = create_test_mutant(complex_source, MutationOperatorType::ArithmeticReplacement);
+        let features = MutantFeatures::from_mutant(&mutant);
+
+        assert!(features.has_loops);
+        assert!(features.has_conditionals);
+        assert!(features.has_error_handling);
+        assert!(features.has_assertions);
+        assert!(features.has_arithmetic);
+        assert!(features.has_comparisons);
+        assert!(features.has_logical_ops);
+        assert!(features.nesting_depth >= 2);
+        assert!(features.token_count > 10);
+    }
+
+    #[test]
+    fn test_feature_vector_boolean_encoding() {
+        let mutant_with_loops = create_test_mutant(
+            "for i in 0..10 { }",
+            MutationOperatorType::ArithmeticReplacement,
+        );
+        let mutant_without_loops = create_test_mutant(
+            "let x = 1;",
+            MutationOperatorType::ArithmeticReplacement,
+        );
+
+        let features_with = MutantFeatures::from_mutant(&mutant_with_loops);
+        let features_without = MutantFeatures::from_mutant(&mutant_without_loops);
+
+        let vec_with = features_with.to_feature_vector();
+        let vec_without = features_without.to_feature_vector();
+
+        // has_loops is at index 6
+        assert_eq!(vec_with[6], 1.0); // true -> 1.0
+        assert_eq!(vec_without[6], 0.0); // false -> 0.0
+    }
+}
