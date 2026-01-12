@@ -722,7 +722,7 @@ roadmap:
 - id: CB-IMPL-001
   github_issue: null
   item_type: epic
-  title: 'ComputeBrick Diagnostic Support (PROBAR-SPEC-009-P8)'
+  title: ComputeBrick Diagnostic Support (PROBAR-SPEC-009-P8)
   status: inprogress
   priority: high
   assigned_to: null
@@ -739,29 +739,42 @@ roadmap:
   phases:
   - name: RED
     status: completed
-    description: Define defect taxonomy and detection patterns
+    estimated_effort: null
+    completion: 0
   - name: GREEN
     status: inprogress
-    description: Implement detection and comply integration
+    estimated_effort: null
+    completion: 0
   - name: REFACTOR
-    status: pending
-    description: Optimize detection algorithms and add caching
+    status: planned
+    estimated_effort: null
+    completion: 0
   subtasks:
   - id: CB-IMPL-001-A
+    github_issue: null
     title: Add CB-001 to CB-022 defect patterns to DefectTaxonomy
     status: completed
+    completion: 0
   - id: CB-IMPL-001-B
+    github_issue: null
     title: Add check_compute_brick to comply handlers
     status: inprogress
+    completion: 0
   - id: CB-IMPL-001-C
+    github_issue: null
     title: Add probar coverage enforcement to comply enforce
-    status: pending
+    status: planned
+    completion: 0
   - id: CB-IMPL-001-D
+    github_issue: null
     title: Add ComputeBrick-specific detection algorithms
-    status: pending
+    status: planned
+    completion: 0
   - id: CB-IMPL-001-E
+    github_issue: null
     title: Integration tests for pmat comply --compute-brick
-    status: pending
+    status: planned
+    completion: 0
   estimated_effort: 4h
   labels:
   - cuda-tdg
@@ -769,3 +782,19 @@ roadmap:
   - toyota-way
   - popper-falsification
   notes: 'Reference: Popper (1959), Liker (2004). See spec for full citations.'
+- id: COV-95
+  github_issue: null
+  item_type: task
+  title: 'New task: COV-95'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-01-12T11:35:15.780721970+00:00
+  updated: 2026-01-12T11:35:15.780721970+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null

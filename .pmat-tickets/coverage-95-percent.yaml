@@ -1,0 +1,58 @@
+id: COV-95
+title: "Achieve 95% Test Coverage"
+description: |
+  Add comprehensive tests to reach the 95% code coverage target.
+
+  Current Status:
+  - Total tests: 16,882
+  - Estimated coverage: ~83%
+  - Target: 95%
+
+  Priority Modules (0% coverage):
+  1. agent/ - daemon.rs, mcp_server.rs, quality_monitor.rs, state_persistence.rs (~4,000 lines)
+  2. state/ - event_store.rs, recovery.rs, snapshot_store.rs (~1,500 lines)
+  3. unified_protocol/ - adapters/, service.rs (~3,000 lines)
+  4. tdg/ - cuda_simd.rs, web_dashboard.rs, storage.rs (~6,000 lines)
+  5. wasm/ - analyzer.rs, baseline.rs, profiler.rs, security.rs, verifier.rs (~2,500 lines)
+
+  Tests Added (Recent Session):
+  - ~919 tests added across 30+ commits
+  - Fixed failing test: five_whys_handlers::test_handle_debug_empty_issue
+
+  Approach:
+  - Use EXTREME TDD methodology
+  - Add tests module by module
+  - Push at milestones (85%, 90%, 95%)
+  - Run `make coverage` to verify progress
+
+status: in_progress
+progress: 83
+priority: high
+assignee: claude
+labels:
+  - testing
+  - coverage
+  - quality
+created: 2025-01-12
+due: 2025-01-15
+subtasks:
+  - id: COV-95-1
+    title: "Add tests to agent/ module"
+    status: pending
+    progress: 0
+  - id: COV-95-2
+    title: "Add tests to state/ module"
+    status: pending
+    progress: 0
+  - id: COV-95-3
+    title: "Add tests to unified_protocol/ module"
+    status: pending
+    progress: 0
+  - id: COV-95-4
+    title: "Add tests to tdg/ high-priority files"
+    status: pending
+    progress: 0
+  - id: COV-95-5
+    title: "Add tests to wasm/ module"
+    status: pending
+    progress: 0
