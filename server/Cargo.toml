@@ -131,7 +131,7 @@ url = "2.5"
 lz4_flex = "0.11"  # Keep for backward compat, trueno-zram-core adapter available
 trueno-zram-core = { version = "0.3", optional = true }  # SIMD compression (sovereign stack)
 rusqlite = { version = "0.32", features = ["bundled"] }  # SQLite with bundled library
-sled = { version = "0.34", optional = true }  # DEPRECATED: Unmaintained, kept for backward compat (opt-in only)
+# sled = REMOVED (unmaintained, migrated to libsql/trueno-db)
 # rocksdb = { version = "0.22", default-features = false, features = ["zstd"] }
 bincode = "1.3"
 
@@ -253,8 +253,7 @@ presentar-core = { version = "0.3", optional = true }
 crossterm = { version = "0.28", optional = true }
 sys-info = "0.9.1"
 
-# Storage backends
-rocksdb = { version = "0.24", optional = true, default-features = false, features = ["lz4", "snappy"] }
+# Storage backends (sled/rocksdb REMOVED - migrated to libsql/trueno-db)
 wasmparser = "0.239.0"
 shell-words = "1.1.0"
 crc32fast = "1.5.0"
@@ -385,10 +384,8 @@ integration-tests = []
 e2e-tests = []
 # Performance tests feature
 perf-tests = []
-# RocksDB storage backend for high-performance TDG storage
-rocksdb-backend = ["rocksdb"]
-# Sled storage backend (deprecated - unmaintained, opt-in only for backward compat)
-sled-backend = ["sled"]
+# Storage backend features (sled/rocksdb REMOVED - migrated to libsql/trueno-db)
+# rocksdb-backend and sled-backend features have been removed
 # High-performance compute features (Trueno)
 simd = ["trueno"]
 gpu = ["trueno", "trueno/gpu"]

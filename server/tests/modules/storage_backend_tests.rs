@@ -7,9 +7,6 @@ use pmat::tdg::{
 use std::path::PathBuf;
 use tempfile::TempDir;
 
-#[cfg(feature = "sled-backend")]
-use pmat::tdg::SledBackend;
-
 #[test]
 fn test_in_memory_backend_basic_operations() {
     let backend = InMemoryBackend::new();
@@ -29,26 +26,6 @@ fn test_in_memory_backend_basic_operations() {
     assert!(!backend.contains(key).unwrap());
 }
 
-#[cfg(feature = "sled-backend")]
-#[ignore]
-#[test]
-fn test_sled_backend_persistence() {
-    let temp_dir = TempDir::new().unwrap();
-    let backend = SledBackend::new(temp_dir.path()).unwrap();
-
-    // Test persistence
-    let key = b"persist_key";
-    let value = b"persist_value";
-
-    backend.put(key, value).unwrap();
-    backend.flush().unwrap();
-
-    // Reopen the same database
-    let backend2 = SledBackend::new(temp_dir.path()).unwrap();
-    let retrieved = backend2.get(key).unwrap().unwrap();
-    assert_eq!(retrieved, value);
-}
-
 #[test]
 fn test_backend_factory_creation() {
     // Test in-memory creation
@@ -64,14 +41,6 @@ fn test_backend_factory_creation() {
     };
     let backend = StorageBackendFactory::create_from_config(&config).unwrap();
     assert_eq!(backend.backend_name(), "in-memory");
-}
-
-#[cfg(feature = "sled-backend")]
-#[test]
-fn test_sled_backend_factory_creation() {
-    // Test temporary sled creation
-    let backend = StorageBackendFactory::create_sled_temporary().unwrap();
-    assert_eq!(backend.backend_name(), "sled");
 }
 
 #[test]
@@ -255,20 +224,6 @@ async fn test_tiered_storage_with_backends() {
     assert_eq!(retrieved.identity.path, record.identity.path);
 }
 
-#[cfg(feature = "sled-backend")]
-#[tokio::test]
-async fn test_storage_statistics() {
-    let temp_dir = TempDir::new().unwrap();
-    let storage = TieredStore::new(temp_dir.path()).unwrap();
-
-    let stats = storage.get_statistics();
-    assert_eq!(stats.hot_entries, 0);
-    assert_eq!(stats.warm_entries, 0);
-    assert_eq!(stats.cold_entries, 0);
-    assert_eq!(stats.warm_backend, "sled");
-    assert_eq!(stats.cold_backend, "sled");
-}
-
 #[test]
 fn test_backend_iteration() {
     let backend = InMemoryBackend::new();
@@ -306,34 +261,10 @@ fn test_backend_clear() {
     assert!(!backend.contains(b"key2").unwrap());
 }
 
-#[cfg(feature = "rocksdb-backend")]
-#[ignore]
-#[test]
-fn test_rocksdb_backend() {
-    use pmat::tdg::storage_backend::RocksDbBackend;
-
-    let temp_dir = TempDir::new().unwrap();
-    let backend = RocksDbBackend::new(temp_dir.path()).unwrap();
-
-    // Test basic operations
-    let key = b"rocks_key";
-    let value = b"rocks_value";
-
-    backend.put(key, value).unwrap();
-    assert!(backend.contains(key).unwrap());
-
-    let retrieved = backend.get(key).unwrap().unwrap();
-    assert_eq!(retrieved, value);
-
-    assert_eq!(backend.backend_name(), "rocksdb");
-}
-
 #[test]
 fn test_storage_backend_type_display() {
-    assert_eq!(format!("{}", StorageBackendType::Sled), "sled");
     assert_eq!(format!("{}", StorageBackendType::Libsql), "libsql");
     assert_eq!(format!("{}", StorageBackendType::InMemory), "in-memory");
-    assert_eq!(format!("{}", StorageBackendType::RocksDb), "rocksdb");
 }
 
 #[test]

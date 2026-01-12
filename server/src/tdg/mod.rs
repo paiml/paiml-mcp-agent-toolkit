@@ -89,8 +89,6 @@ pub use storage::{
     AnalysisMetadata, ComponentScores, FileIdentity, FullTdgRecord, HotCacheEntry,
     SemanticSignature, StorageStatistics, TieredStorageFactory, TieredStore,
 };
-#[cfg(feature = "sled-backend")]
-pub use storage_backend::SledBackend;
 pub use storage_backend::{
     InMemoryBackend, StorageBackend, StorageBackendFactory, StorageBackendType, StorageConfig,
 };

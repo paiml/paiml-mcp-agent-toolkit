@@ -259,11 +259,10 @@ fn handle_migrate(backend: &str, path: Option<&PathBuf>) -> Result<()> {
 /// Parse backend type from string
 fn parse_backend_type(backend: &str) -> Result<StorageBackendType> {
     match backend {
-        "sled" => Ok(StorageBackendType::Sled),
-        "rocksdb" => Ok(StorageBackendType::RocksDb),
+        "libsql" => Ok(StorageBackendType::Libsql),
         "inmemory" => Ok(StorageBackendType::InMemory),
         _ => Err(anyhow::anyhow!(
-            "Unknown backend type: {backend}. Valid options: sled, rocksdb, inmemory"
+            "Unknown backend type: {backend}. Valid options: libsql, inmemory"
         )),
     }
 }

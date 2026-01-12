@@ -1392,29 +1392,8 @@ fn create_storage_backend(
             let temp_path = std::env::temp_dir().join("tdg-mcp-libsql.db");
             Ok(Box::new(LibsqlBackend::new(&temp_path)?))
         }
-        #[cfg(feature = "sled-backend")]
-        Some("sled") => {
-            // Deprecated: Use libsql instead (requires sled-backend feature)
-            #[allow(deprecated)]
-            {
-                use crate::tdg::storage_backend::SledBackend;
-                let temp_path = std::env::temp_dir().join("tdg-mcp-sled");
-                Ok(Box::new(SledBackend::new(&temp_path)?))
-            }
-        }
-        #[cfg(not(feature = "sled-backend"))]
-        Some("sled") => {
-            Err(anyhow::anyhow!(
-                "Sled backend not available. Enable 'sled-backend' feature or use 'libsql' instead (default)."
-            ))
-        }
-        #[cfg(feature = "rocksdb-backend")]
-        Some("rocksdb") => {
-            let _temp_path = std::env::temp_dir().join("tdg-mcp-rocksdb");
-            Err(anyhow::anyhow!("RocksDB backend not yet implemented"))
-        }
         Some(backend) => Err(anyhow::anyhow!(
-            "Unsupported storage backend: {backend}. Supported: libsql (default), sled (deprecated), inmemory, rocksdb"
+            "Unsupported storage backend: {backend}. Supported: libsql (default), inmemory"
         )),
     }
 }
@@ -1655,14 +1634,13 @@ pub async fn tdg_configure_storage(
     compression: Option<bool>,
 ) -> Result<Value> {
     let backend_enum = match backend_type.as_str() {
-        "sled" => StorageBackendType::Sled,
+        "libsql" => StorageBackendType::Libsql,
         "inmemory" => StorageBackendType::InMemory,
-        "rocksdb" => StorageBackendType::RocksDb,
         _ => {
             return Ok(json!({
                 "status": "error",
                 "message": format!("Unsupported backend type: {}", backend_type),
-                "supported_types": ["sled", "inmemory", "rocksdb"]
+                "supported_types": ["libsql", "inmemory"]
             }))
         }
     };

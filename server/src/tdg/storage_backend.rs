@@ -109,86 +109,8 @@ pub trait StorageBackend: Send + Sync {
     fn get_stats(&self) -> HashMap<String, String>;
 }
 
-/// Sled database backend (deprecated - requires sled-backend feature)
-#[cfg(feature = "sled-backend")]
-#[cfg_attr(coverage_nightly, coverage(off))]
-pub struct SledBackend {
-    db: sled::Db,
-    tree: sled::Tree,
-}
-
-#[cfg(feature = "sled-backend")]
-#[cfg_attr(coverage_nightly, coverage(off))]
-impl SledBackend {
-    pub fn new(path: &Path) -> Result<Self> {
-        let db = sled::open(path)?;
-        let tree = db.open_tree("tdg_storage")?;
-        Ok(Self { db, tree })
-    }
-
-    pub fn new_temporary() -> Result<Self> {
-        let db = sled::Config::new().temporary(true).open()?;
-        let tree = db.open_tree("tdg_storage")?;
-        Ok(Self { db, tree })
-    }
-}
-
-#[cfg(feature = "sled-backend")]
-#[cfg_attr(coverage_nightly, coverage(off))]
-impl StorageBackend for SledBackend {
-    fn put(&self, key: &[u8], value: &[u8]) -> Result<()> {
-        self.tree.insert(key, value)?;
-        Ok(())
-    }
-
-    fn get(&self, key: &[u8]) -> Result<Option<Vec<u8>>> {
-        Ok(self.tree.get(key)?.map(|v| v.to_vec()))
-    }
-
-    fn delete(&self, key: &[u8]) -> Result<()> {
-        self.tree.remove(key)?;
-        Ok(())
-    }
-
-    fn contains(&self, key: &[u8]) -> Result<bool> {
-        Ok(self.tree.contains_key(key)?)
-    }
-
-    fn iter(&self) -> Result<StorageIterator<'_>> {
-        Ok(Box::new(self.tree.iter().map(|res| {
-            res.map(|(k, v)| (k.to_vec(), v.to_vec()))
-                .map_err(|e| anyhow::anyhow!("Iteration error: {e}"))
-        })))
-    }
-
-    fn size_on_disk(&self) -> Result<u64> {
-        Ok(self.db.size_on_disk()?)
-    }
-
-    fn flush(&self) -> Result<()> {
-        self.tree.flush()?;
-        Ok(())
-    }
-
-    fn clear(&self) -> Result<()> {
-        self.tree.clear()?;
-        Ok(())
-    }
-
-    fn backend_name(&self) -> &'static str {
-        "sled"
-    }
-
-    fn get_stats(&self) -> HashMap<String, String> {
-        let mut stats = HashMap::new();
-        stats.insert("entries".to_string(), self.tree.len().to_string());
-        if let Ok(size) = self.db.size_on_disk() {
-            stats.insert("size_bytes".to_string(), size.to_string());
-        }
-        stats.insert("tree_name".to_string(), "tdg_storage".to_string());
-        stats
-    }
-}
+// NOTE: Sled backend removed - unmaintained, replaced by LibsqlBackend (default)
+// See: https://github.com/paiml/paiml-mcp-agent-toolkit/issues/XX
 
 /// Libsql database backend (modern SQLite-compatible)
 /// Note: Uses rusqlite for synchronous API (libsql is async-first)
@@ -450,115 +372,9 @@ impl StorageBackend for InMemoryBackend {
     }
 }
 
-/// RocksDB backend for high-performance production use
-#[cfg(feature = "rocksdb-backend")]
-#[cfg_attr(coverage_nightly, coverage(off))]
-pub struct RocksDbBackend {
-    db: rocksdb::DB,
-}
-
-#[cfg(feature = "rocksdb-backend")]
-#[cfg_attr(coverage_nightly, coverage(off))]
-impl RocksDbBackend {
-    pub fn new(path: &Path) -> Result<Self> {
-        use rocksdb::{Options, DB};
-
-        let mut opts = Options::default();
-        opts.create_if_missing(true);
-        opts.set_compression_type(rocksdb::DBCompressionType::Lz4);
-        opts.set_write_buffer_size(64 * 1024 * 1024); // 64MB
-        opts.set_max_write_buffer_number(3);
-        opts.set_target_file_size_base(64 * 1024 * 1024); // 64MB
-        opts.set_level_compaction_dynamic_level_bytes(true);
-
-        let db = DB::open(&opts, path)?;
-        Ok(Self { db })
-    }
-}
-
-#[cfg(feature = "rocksdb-backend")]
-#[cfg_attr(coverage_nightly, coverage(off))]
-impl StorageBackend for RocksDbBackend {
-    fn put(&self, key: &[u8], value: &[u8]) -> Result<()> {
-        self.db.put(key, value)?;
-        Ok(())
-    }
-
-    fn get(&self, key: &[u8]) -> Result<Option<Vec<u8>>> {
-        Ok(self.db.get(key)?)
-    }
-
-    fn delete(&self, key: &[u8]) -> Result<()> {
-        self.db.delete(key)?;
-        Ok(())
-    }
-
-    fn contains(&self, key: &[u8]) -> Result<bool> {
-        Ok(self.db.get(key)?.is_some())
-    }
-
-    fn iter(&self) -> Result<StorageIterator<'_>> {
-        use rocksdb::IteratorMode;
-
-        let iter = self.db.iterator(IteratorMode::Start);
-        Ok(Box::new(iter.map(|res| {
-            res.map(|(k, v)| (k.to_vec(), v.to_vec()))
-                .map_err(|e| anyhow::anyhow!("RocksDB iteration error: {}", e))
-        })))
-    }
-
-    fn size_on_disk(&self) -> Result<u64> {
-        // Get live files size
-        let size = self
-            .db
-            .property_int_value("rocksdb.live-sst-files-size")?
-            .unwrap_or(0);
-        Ok(size)
-    }
-
-    fn flush(&self) -> Result<()> {
-        self.db.flush()?;
-        Ok(())
-    }
-
-    fn clear(&self) -> Result<()> {
-        // Delete all keys (expensive operation)
-        let keys: Vec<Vec<u8>> = self
-            .iter()?
-            .filter_map(|res| res.ok())
-            .map(|(k, _)| k)
-            .collect();
-
-        for key in keys {
-            self.delete(&key)?;
-        }
-        Ok(())
-    }
-
-    fn backend_name(&self) -> &'static str {
-        "rocksdb"
-    }
-
-    fn get_stats(&self) -> HashMap<String, String> {
-        let mut stats = HashMap::new();
-
-        // Add various RocksDB statistics
-        if let Ok(Some(v)) = self.db.property_int_value("rocksdb.estimate-num-keys") {
-            stats.insert("estimated_keys".to_string(), v.to_string());
-        }
-        if let Ok(Some(v)) = self.db.property_int_value("rocksdb.live-sst-files-size") {
-            stats.insert("sst_files_size".to_string(), v.to_string());
-        }
-        if let Ok(Some(v)) = self.db.property_int_value("rocksdb.total-sst-files-size") {
-            stats.insert("total_sst_size".to_string(), v.to_string());
-        }
-        if let Ok(Some(v)) = self.db.property_int_value("rocksdb.num-live-versions") {
-            stats.insert("live_versions".to_string(), v.to_string());
-        }
-
-        stats
-    }
-}
+// NOTE: RocksDB backend removed - C++ dependency removed in favor of pure-Rust trueno-db
+// For high-performance storage, use TruenoDbBackend (async, SIMD-accelerated)
+// See: https://crates.io/crates/trueno-db
 
 /// Storage backend factory for creating appropriate backends
 pub struct StorageBackendFactory;
@@ -585,26 +401,6 @@ impl StorageBackendFactory {
         Ok(Box::new(LibsqlBackend::new_temporary()?))
     }
 
-    /// Create sled backend (deprecated - requires sled-backend feature)
-    #[deprecated(note = "Use create_libsql instead - sled is unmaintained")]
-    #[cfg(feature = "sled-backend")]
-    pub fn create_sled(path: &Path) -> Result<Box<dyn StorageBackend>> {
-        Ok(Box::new(SledBackend::new(path)?))
-    }
-
-    /// Create temporary sled backend (deprecated - requires sled-backend feature)
-    #[deprecated(note = "Use create_libsql_temporary instead - sled is unmaintained")]
-    #[cfg(feature = "sled-backend")]
-    pub fn create_sled_temporary() -> Result<Box<dyn StorageBackend>> {
-        Ok(Box::new(SledBackend::new_temporary()?))
-    }
-
-    /// Create RocksDB backend (if feature enabled)
-    #[cfg(feature = "rocksdb-backend")]
-    pub fn create_rocksdb(path: &Path) -> Result<Box<dyn StorageBackend>> {
-        Ok(Box::new(RocksDbBackend::new(path)?))
-    }
-
     /// Create backend from configuration
     pub fn create_from_config(config: &StorageConfig) -> Result<Box<dyn StorageBackend>> {
         match config.backend_type {
@@ -615,32 +411,7 @@ impl StorageBackendFactory {
                     Self::create_libsql_temporary()
                 }
             }
-            #[cfg(feature = "sled-backend")]
-            #[allow(deprecated)]
-            StorageBackendType::Sled => {
-                if let Some(path) = &config.path {
-                    Self::create_sled(path)
-                } else {
-                    Self::create_sled_temporary()
-                }
-            }
-            #[cfg(not(feature = "sled-backend"))]
-            StorageBackendType::Sled => Err(anyhow::anyhow!(
-                "Sled backend not available. Enable 'sled-backend' feature or use 'libsql' instead."
-            )),
             StorageBackendType::InMemory => Ok(Self::create_in_memory()),
-            #[cfg(feature = "rocksdb-backend")]
-            StorageBackendType::RocksDb => {
-                if let Some(path) = &config.path {
-                    Self::create_rocksdb(path)
-                } else {
-                    Err(anyhow::anyhow!("RocksDB requires a path"))
-                }
-            }
-            #[cfg(not(feature = "rocksdb-backend"))]
-            StorageBackendType::RocksDb => Err(anyhow::anyhow!(
-                "RocksDB support not compiled in. Enable the 'rocksdb-backend' feature."
-            )),
         }
     }
 }
@@ -668,19 +439,17 @@ impl Default for StorageConfig {
 /// Available storage backend types
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 pub enum StorageBackendType {
-    Sled,
+    /// Modern SQLite-compatible backend (default, recommended)
     Libsql,
+    /// In-memory backend for testing
     InMemory,
-    RocksDb,
 }
 
 impl std::fmt::Display for StorageBackendType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            StorageBackendType::Sled => write!(f, "sled"),
             StorageBackendType::Libsql => write!(f, "libsql"),
             StorageBackendType::InMemory => write!(f, "in-memory"),
-            StorageBackendType::RocksDb => write!(f, "rocksdb"),
         }
     }
 }
@@ -708,38 +477,7 @@ mod tests {
         assert!(!backend.contains(key).unwrap());
     }
 
-    #[test]
-    #[cfg(feature = "sled-backend")]
-    fn test_sled_backend() {
-        let temp_dir = TempDir::new().unwrap();
-        let backend = SledBackend::new(temp_dir.path()).unwrap();
-
-        // Test basic operations
-        let key = b"sled_key";
-        let value = b"sled_value";
-
-        backend.put(key, value).unwrap();
-        backend.flush().unwrap();
-
-        let retrieved = backend.get(key).unwrap().unwrap();
-        assert_eq!(retrieved, value);
-
-        // Test iteration
-        let mut count = 0;
-        for result in backend.iter().unwrap() {
-            let (k, v) = result.unwrap();
-            if k == key.to_vec() {
-                assert_eq!(v, value);
-                count += 1;
-            }
-        }
-        assert_eq!(count, 1);
-
-        // Test stats
-        let stats = backend.get_stats();
-        assert!(stats.contains_key("entries"));
-        assert_eq!(stats.get("entries").unwrap(), "1");
-    }
+    // NOTE: test_sled_backend removed - Sled backend removed from codebase
 
     #[test]
     fn test_libsql_backend() {
@@ -782,14 +520,6 @@ mod tests {
         // Test temporary libsql creation
         let backend = StorageBackendFactory::create_libsql_temporary().unwrap();
         assert_eq!(backend.backend_name(), "libsql");
-
-        // Test temporary sled creation (deprecated - only if feature enabled)
-        #[cfg(feature = "sled-backend")]
-        {
-            #[allow(deprecated)]
-            let backend = StorageBackendFactory::create_sled_temporary().unwrap();
-            assert_eq!(backend.backend_name(), "sled");
-        }
 
         // Test config-based creation
         let config = StorageConfig {
@@ -1077,11 +807,6 @@ mod extended_tests {
     // ============ StorageBackendType Tests ============
 
     #[test]
-    fn test_storage_backend_type_display_sled() {
-        assert_eq!(format!("{}", StorageBackendType::Sled), "sled");
-    }
-
-    #[test]
     fn test_storage_backend_type_display_libsql() {
         assert_eq!(format!("{}", StorageBackendType::Libsql), "libsql");
     }
@@ -1092,14 +817,9 @@ mod extended_tests {
     }
 
     #[test]
-    fn test_storage_backend_type_display_rocksdb() {
-        assert_eq!(format!("{}", StorageBackendType::RocksDb), "rocksdb");
-    }
-
-    #[test]
     fn test_storage_backend_type_equality() {
-        assert_eq!(StorageBackendType::Sled, StorageBackendType::Sled);
-        assert_ne!(StorageBackendType::Sled, StorageBackendType::Libsql);
+        assert_eq!(StorageBackendType::Libsql, StorageBackendType::Libsql);
+        assert_ne!(StorageBackendType::Libsql, StorageBackendType::InMemory);
     }
 
     #[test]
@@ -1117,15 +837,15 @@ mod extended_tests {
 
     #[test]
     fn test_storage_backend_type_debug() {
-        let debug = format!("{:?}", StorageBackendType::RocksDb);
-        assert!(debug.contains("RocksDb"));
+        let debug = format!("{:?}", StorageBackendType::Libsql);
+        assert!(debug.contains("Libsql"));
     }
 
     #[test]
     fn test_storage_backend_type_copy() {
-        let backend_type = StorageBackendType::Sled;
+        let backend_type = StorageBackendType::Libsql;
         let copied = backend_type;
-        assert_eq!(copied, StorageBackendType::Sled);
+        assert_eq!(copied, StorageBackendType::Libsql);
     }
 
     // ============ StorageBackendFactory Tests ============
@@ -1195,33 +915,7 @@ mod extended_tests {
         assert_eq!(backend.backend_name(), "libsql");
     }
 
-    #[test]
-    #[cfg(not(feature = "sled-backend"))]
-    fn test_factory_create_from_config_sled_without_feature() {
-        let config = StorageConfig {
-            backend_type: StorageBackendType::Sled,
-            path: None,
-            cache_size_mb: None,
-            compression: false,
-        };
-
-        let result = StorageBackendFactory::create_from_config(&config);
-        assert!(result.is_err());
-    }
-
-    #[test]
-    #[cfg(not(feature = "rocksdb-backend"))]
-    fn test_factory_create_from_config_rocksdb_without_feature() {
-        let config = StorageConfig {
-            backend_type: StorageBackendType::RocksDb,
-            path: None,
-            cache_size_mb: None,
-            compression: false,
-        };
-
-        let result = StorageBackendFactory::create_from_config(&config);
-        assert!(result.is_err());
-    }
+    // NOTE: Sled and RocksDB tests removed - backends no longer supported
 
     // ============ Iteration Tests ============
 
@@ -1450,10 +1144,8 @@ mod extended_tests {
     #[test]
     fn test_storage_backend_type_all_variants() {
         let variants = [
-            StorageBackendType::Sled,
             StorageBackendType::Libsql,
             StorageBackendType::InMemory,
-            StorageBackendType::RocksDb,
         ];
 
         for variant in variants {
@@ -1471,7 +1163,7 @@ mod extended_tests {
     #[test]
     fn test_storage_config_with_all_fields() {
         let config = StorageConfig {
-            backend_type: StorageBackendType::RocksDb,
+            backend_type: StorageBackendType::Libsql,
             path: Some(std::path::PathBuf::from("/var/lib/tdg/data.db")),
             cache_size_mb: Some(512),
             compression: true,

@@ -520,28 +520,6 @@ impl TieredStorageFactory {
     pub fn create_in_memory() -> TieredStore {
         TieredStore::in_memory()
     }
-
-    /// Create with RocksDB backend (if feature enabled)
-    #[cfg(feature = "rocksdb-backend")]
-    pub fn create_with_rocksdb(path: impl AsRef<Path>) -> Result<TieredStore> {
-        use crate::tdg::storage_backend::StorageBackendType;
-
-        let warm_config = StorageConfig {
-            backend_type: StorageBackendType::RocksDb,
-            path: Some(path.as_ref().join(".pmat/tdg-warm-rocks")),
-            cache_size_mb: Some(256),
-            compression: true,
-        };
-
-        let cold_config = StorageConfig {
-            backend_type: StorageBackendType::RocksDb,
-            path: Some(path.as_ref().join(".pmat/tdg-cold-rocks")),
-            cache_size_mb: Some(128),
-            compression: false,
-        };
-
-        TieredStore::with_config(warm_config, cold_config)
-    }
 }
 
 #[cfg(test)]
