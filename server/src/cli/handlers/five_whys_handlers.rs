@@ -240,8 +240,8 @@ mod tests {
         )
         .await;
 
-        // Should still work with empty issue
-        assert!(result.is_ok());
+        // Empty issue should be rejected - Five Whys requires an actual issue to analyze
+        assert!(result.is_err());
     }
 
     #[tokio::test]
