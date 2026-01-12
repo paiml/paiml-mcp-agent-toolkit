@@ -1884,4 +1884,284 @@ mod tests {
         let deserialized: RegressionSeverity = serde_json::from_str(&json).unwrap();
         assert!(matches!(deserialized, RegressionSeverity::Critical));
     }
+
+    // ============ OptimizationStatus Tests ============
+
+    #[test]
+    fn test_optimization_status_analyzing() {
+        let status = OptimizationStatus::Analyzing;
+        let debug = format!("{:?}", status);
+        assert!(debug.contains("Analyzing"));
+    }
+
+    #[test]
+    fn test_optimization_status_ready() {
+        let status = OptimizationStatus::Ready;
+        let json = serde_json::to_string(&status).unwrap();
+        assert!(json.contains("Ready"));
+    }
+
+    #[test]
+    fn test_optimization_status_implementing() {
+        let status = OptimizationStatus::Implementing;
+        let cloned = status.clone();
+        assert!(matches!(cloned, OptimizationStatus::Implementing));
+    }
+
+    #[test]
+    fn test_optimization_status_testing() {
+        let status = OptimizationStatus::Testing;
+        let debug = format!("{:?}", status);
+        assert!(debug.contains("Testing"));
+    }
+
+    #[test]
+    fn test_optimization_status_applied() {
+        let status = OptimizationStatus::Applied;
+        let json = serde_json::to_string(&status).unwrap();
+        let deserialized: OptimizationStatus = serde_json::from_str(&json).unwrap();
+        assert!(matches!(deserialized, OptimizationStatus::Applied));
+    }
+
+    #[test]
+    fn test_optimization_status_failed() {
+        let status = OptimizationStatus::Failed("error message".to_string());
+        if let OptimizationStatus::Failed(msg) = status {
+            assert_eq!(msg, "error message");
+        } else {
+            panic!("Expected Failed status");
+        }
+    }
+
+    #[test]
+    fn test_optimization_status_rolled_back() {
+        let status = OptimizationStatus::RolledBack("reason".to_string());
+        let cloned = status.clone();
+        if let OptimizationStatus::RolledBack(reason) = cloned {
+            assert_eq!(reason, "reason");
+        } else {
+            panic!("Expected RolledBack status");
+        }
+    }
+
+    // ============ ActiveOptimization Extra Tests ============
+
+    #[test]
+    fn test_active_optimization_with_ready_status() {
+        let opt = ActiveOptimization {
+            strategy: OptimizationStrategy::CacheOptimization,
+            target_metric: "analysis_time".to_string(),
+            expected_improvement: 25.0,
+            status: OptimizationStatus::Ready,
+        };
+        assert_eq!(opt.target_metric, "analysis_time");
+        assert_eq!(opt.expected_improvement, 25.0);
+    }
+
+    #[test]
+    fn test_active_optimization_with_analyzing_status() {
+        let opt = ActiveOptimization {
+            strategy: OptimizationStrategy::ParallelProcessing,
+            target_metric: "throughput".to_string(),
+            expected_improvement: 50.0,
+            status: OptimizationStatus::Analyzing,
+        };
+        let cloned = opt.clone();
+        assert_eq!(cloned.target_metric, opt.target_metric);
+        assert_eq!(cloned.expected_improvement, opt.expected_improvement);
+    }
+
+    #[test]
+    fn test_active_optimization_debug_format() {
+        let opt = ActiveOptimization {
+            strategy: OptimizationStrategy::MemoryPooling,
+            target_metric: "memory".to_string(),
+            expected_improvement: 15.0,
+            status: OptimizationStatus::Testing,
+        };
+        let debug = format!("{:?}", opt);
+        assert!(debug.contains("MemoryPooling"));
+        assert!(debug.contains("memory"));
+    }
+
+    // ============ OptimizationResult Extra Tests ============
+
+    #[test]
+    fn test_optimization_result_with_io_strategy() {
+        let result = OptimizationResult {
+            strategy: OptimizationStrategy::IoOptimization,
+            improvement_percent: 30.0,
+            metrics_changed: HashMap::new(),
+            applied_at: SystemTime::now(),
+            success: true,
+        };
+        assert_eq!(result.improvement_percent, 30.0);
+        assert!(result.success);
+    }
+
+    #[test]
+    fn test_optimization_result_with_metrics() {
+        let mut metrics = HashMap::new();
+        metrics.insert("metric1".to_string(), -20.0);
+
+        let result = OptimizationResult {
+            strategy: OptimizationStrategy::AstReuse,
+            improvement_percent: 20.0,
+            metrics_changed: metrics,
+            applied_at: SystemTime::now(),
+            success: true,
+        };
+        let cloned = result.clone();
+        assert_eq!(cloned.improvement_percent, result.improvement_percent);
+        assert_eq!(cloned.metrics_changed.len(), 1);
+    }
+
+    #[test]
+    fn test_optimization_result_debug_format() {
+        let result = OptimizationResult {
+            strategy: OptimizationStrategy::IncrementalParsing,
+            improvement_percent: 10.0,
+            metrics_changed: HashMap::new(),
+            applied_at: SystemTime::now(),
+            success: false,
+        };
+        let debug = format!("{:?}", result);
+        assert!(debug.contains("IncrementalParsing"));
+    }
+
+    #[test]
+    fn test_optimization_result_json_serialization() {
+        let result = OptimizationResult {
+            strategy: OptimizationStrategy::CacheOptimization,
+            improvement_percent: 25.5,
+            metrics_changed: HashMap::new(),
+            applied_at: SystemTime::now(),
+            success: true,
+        };
+        let json = serde_json::to_string(&result).unwrap();
+        assert!(json.contains("25.5"));
+    }
+
+    // ============ BenchmarkConfig Extra Tests ============
+
+    #[test]
+    fn test_benchmark_config_clone_with_defaults() {
+        let config = BenchmarkConfig::default();
+        let cloned = config.clone();
+        assert_eq!(cloned.iterations, config.iterations);
+        assert_eq!(cloned.warmup_iterations, config.warmup_iterations);
+    }
+
+    #[test]
+    fn test_benchmark_config_debug() {
+        let config = BenchmarkConfig {
+            iterations: 50,
+            warmup_iterations: 5,
+            timeout: Duration::from_secs(30),
+            parallel: true,
+        };
+        let debug = format!("{:?}", config);
+        assert!(debug.contains("iterations"));
+    }
+
+    #[test]
+    fn test_benchmark_config_serialization() {
+        let config = BenchmarkConfig::default();
+        let json = serde_json::to_string(&config).unwrap();
+        assert!(json.contains("100"));
+        let deserialized: BenchmarkConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.iterations, 100);
+    }
+
+    // ============ PerformanceConfig Tests ============
+
+    #[test]
+    fn test_performance_config_clone() {
+        let config = create_test_config();
+        let cloned = config.clone();
+        assert_eq!(cloned.continuous_monitoring, config.continuous_monitoring);
+        assert_eq!(cloned.benchmark_interval, config.benchmark_interval);
+    }
+
+    #[test]
+    fn test_performance_config_debug() {
+        let config = create_test_config();
+        let debug = format!("{:?}", config);
+        assert!(debug.contains("continuous_monitoring"));
+    }
+
+    #[test]
+    fn test_performance_config_serialization() {
+        let config = create_test_config();
+        let json = serde_json::to_string(&config).unwrap();
+        assert!(json.contains("continuous_monitoring"));
+        let deserialized: PerformanceConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.continuous_monitoring, false);
+    }
+
+    // ============ More PerformanceStatistics Tests ============
+
+    #[test]
+    fn test_performance_statistics_clone() {
+        let stats = PerformanceStatistics::default();
+        let cloned = stats.clone();
+        assert_eq!(cloned.analysis.avg_analysis_time_ms, stats.analysis.avg_analysis_time_ms);
+    }
+
+    #[test]
+    fn test_performance_statistics_debug() {
+        let stats = PerformanceStatistics::default();
+        let debug = format!("{:?}", stats);
+        assert!(debug.contains("analysis"));
+    }
+
+    // ============ All OptimizationStrategy Variants ============
+
+    #[test]
+    fn test_all_optimization_strategies() {
+        let cache = OptimizationStrategy::CacheOptimization;
+        let parallel = OptimizationStrategy::ParallelProcessing;
+        let memory = OptimizationStrategy::MemoryPooling;
+        let incr = OptimizationStrategy::IncrementalParsing;
+        let io = OptimizationStrategy::IoOptimization;
+        let ast = OptimizationStrategy::AstReuse;
+
+        // Test serialization for all
+        let _ = serde_json::to_string(&cache).unwrap();
+        let _ = serde_json::to_string(&parallel).unwrap();
+        let _ = serde_json::to_string(&memory).unwrap();
+        let _ = serde_json::to_string(&incr).unwrap();
+        let _ = serde_json::to_string(&io).unwrap();
+        let _ = serde_json::to_string(&ast).unwrap();
+
+        // Test debug for all
+        let _ = format!("{:?}", cache);
+        let _ = format!("{:?}", parallel);
+        let _ = format!("{:?}", memory);
+        let _ = format!("{:?}", incr);
+        let _ = format!("{:?}", io);
+        let _ = format!("{:?}", ast);
+    }
+
+    // ============ All RegressionSeverity Variants ============
+
+    #[test]
+    fn test_all_regression_severities() {
+        let minor = RegressionSeverity::Minor;
+        let moderate = RegressionSeverity::Moderate;
+        let severe = RegressionSeverity::Severe;
+        let critical = RegressionSeverity::Critical;
+
+        // Test serialization for all
+        let _ = serde_json::to_string(&minor).unwrap();
+        let _ = serde_json::to_string(&moderate).unwrap();
+        let _ = serde_json::to_string(&severe).unwrap();
+        let _ = serde_json::to_string(&critical).unwrap();
+
+        // Test debug for all
+        let _ = format!("{:?}", minor);
+        let _ = format!("{:?}", moderate);
+        let _ = format!("{:?}", severe);
+        let _ = format!("{:?}", critical);
+    }
 }
