@@ -1,13 +1,33 @@
 id: COV-95
-title: "Achieve 95% Test Coverage (80/20 Strategy)"
+title: "Achieve 95% Test Coverage (80/20 Strategy + Popper Falsification)"
 description: |
   Add comprehensive tests to reach the 95% code coverage target using 80/20 Pareto analysis.
 
   Current Status:
-  - Coverage: 86.37%
+  - Coverage: 85.87%
   - Target: 95%
-  - Gap: ~8.63% (~2,900 lines to cover)
+  - Gap: ~9.13% (~3,000 lines to cover)
   - make coverage time: ~3 min (target: 3-5 min)
+  - make test-fast: ~10s (use for quick validation)
+
+  ## Karl Popper Falsification Methodology
+
+  All coverage work MUST include post-work falsification validation:
+
+  1. **Hypothesis**: Each test addition should increase coverage
+  2. **Falsification**: Run `make test-fast` to verify tests pass
+  3. **Measurement**: Run `make coverage` to verify coverage increased
+  4. **Commit Gate**: Only commit if falsification passes
+
+  Falsification Criteria:
+  - Tests must pass (falsify: no regressions introduced)
+  - Coverage must increase or stay same (falsify: no code bloat without tests)
+  - Binary size must not increase >1% (falsify: no dependency bloat)
+
+  Session Log (2026-01-13):
+  - Removed deprecated Sled/RocksDB backends (~575 lines removed)
+  - Simplified storage_backend.rs to only Libsql and InMemory
+  - All 12 storage_backend tests passing
 
   80/20 Strategy (see docs/specifications/80-20-to-95.md):
 
