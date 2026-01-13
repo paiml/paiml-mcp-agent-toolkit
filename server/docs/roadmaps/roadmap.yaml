@@ -579,3 +579,19 @@ roadmap:
   - monitoring
   - trueno-viz
   notes: resources/memory_limiter.rs, resources/cpu_limiter.rs
+- id: COV-95
+  github_issue: null
+  item_type: task
+  title: 'New task: COV-95'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-01-12T23:47:54.518396757+00:00
+  updated: 2026-01-12T23:47:54.518396757+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null

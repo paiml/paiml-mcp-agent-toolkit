@@ -1,7 +1,7 @@
 # PMAT Development Roadmap
 
 ## Current Sprint: v1.0.0 Test Sprint
-- **Duration**: 2026-01-12 to 2026-01-26
+- **Duration**: 2026-01-13 to 2026-01-27
 - **Priority**: P0
 - **Quality Gates**: Complexity ≤ 20, SATD = 0, Coverage ≥ 80%
 

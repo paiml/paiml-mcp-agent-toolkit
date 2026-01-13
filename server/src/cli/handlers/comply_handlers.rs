@@ -566,7 +566,80 @@ struct ProfilerAnomaly {
     threshold: f64,
 }
 
+/// Compute line ranges that are inside test code (#[cfg(test)] mod tests { ... })
+/// Returns a HashSet of line indices that should be skipped for production code analysis.
+fn compute_test_code_lines(lines: &[&str]) -> std::collections::HashSet<usize> {
+    let mut test_lines = std::collections::HashSet::new();
+    let mut i = 0;
+
+    while i < lines.len() {
+        let line = lines[i].trim();
+
+        // Detect #[cfg(test)] followed by mod (within next 3 lines)
+        if line.starts_with("#[cfg(test)]") {
+            // Find the mod line
+            for j in i..std::cmp::min(i + 4, lines.len()) {
+                if lines[j].contains("mod ") {
+                    // Found test module - track all lines until closing brace
+                    let mut depth = 0;
+                    for k in j..lines.len() {
+                        depth += lines[k].matches('{').count();
+                        depth = depth.saturating_sub(lines[k].matches('}').count());
+                        test_lines.insert(k);
+                        if depth == 0 && k > j && lines[k].contains('}') {
+                            break;
+                        }
+                    }
+                    // Also mark the #[cfg(test)] line
+                    test_lines.insert(i);
+                    break;
+                }
+            }
+        }
+
+        // Also detect standalone `mod tests {` without #[cfg(test)] (common pattern)
+        if (line.starts_with("mod tests") || line.starts_with("pub mod tests"))
+            && line.contains('{')
+        {
+            let mut depth = 0;
+            for k in i..lines.len() {
+                depth += lines[k].matches('{').count();
+                depth = depth.saturating_sub(lines[k].matches('}').count());
+                test_lines.insert(k);
+                if depth == 0 && k > i && lines[k].contains('}') {
+                    break;
+                }
+            }
+        }
+
+        // Detect #[test] function (individual test functions)
+        if line.starts_with("#[test]") {
+            test_lines.insert(i);
+            // Mark the function that follows
+            for j in i + 1..std::cmp::min(i + 4, lines.len()) {
+                if lines[j].contains("fn ") {
+                    let mut depth = 0;
+                    for k in j..lines.len() {
+                        depth += lines[k].matches('{').count();
+                        depth = depth.saturating_sub(lines[k].matches('}').count());
+                        test_lines.insert(k);
+                        if depth == 0 && k > j {
+                            break;
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+
+        i += 1;
+    }
+
+    test_lines
+}
+
 /// Scan Rust files for CB-020 (unsafe without SAFETY comment)
+/// NOTE: Skips test code (#[cfg(test)], mod tests, #[test]) - test code can use .unwrap() freely
 fn detect_cb020_unsafe_without_safety(project_path: &Path) -> Vec<CbPatternViolation> {
     let mut violations = Vec::new();
 
@@ -579,14 +652,22 @@ fn detect_cb020_unsafe_without_safety(project_path: &Path) -> Vec<CbPatternViola
     if let Ok(entries) = walkdir_rs_files(&src_dir) {
         for entry in entries {
             if let Ok(content) = fs::read_to_string(&entry) {
-                for (line_num, line) in content.lines().enumerate() {
+                let lines: Vec<&str> = content.lines().collect();
+                let test_lines = compute_test_code_lines(&lines);
+
+                for (line_num, line) in lines.iter().enumerate() {
+                    // Skip test code - unsafe in tests is fine
+                    if test_lines.contains(&line_num) {
+                        continue;
+                    }
+
                     let trimmed = line.trim();
                     // Check for unsafe block without preceding SAFETY comment
                     if trimmed.starts_with("unsafe {") || trimmed.starts_with("unsafe{") {
                         // Look at previous non-empty lines for SAFETY comment
-                        let prev_lines: Vec<&str> = content.lines().take(line_num).collect();
-                        let has_safety = prev_lines
+                        let has_safety = lines
                             .iter()
+                            .take(line_num)
                             .rev()
                             .take(3)
                             .any(|l| l.contains("// SAFETY:") || l.contains("// SAFETY :"));
@@ -610,6 +691,7 @@ fn detect_cb020_unsafe_without_safety(project_path: &Path) -> Vec<CbPatternViola
 }
 
 /// Scan for CB-021 (SIMD intrinsics without #[target_feature])
+/// NOTE: Skips test code (#[cfg(test)], mod tests, #[test]) - test code is exempt
 fn detect_cb021_simd_without_target_feature(project_path: &Path) -> Vec<CbPatternViolation> {
     let mut violations = Vec::new();
 
@@ -629,6 +711,7 @@ fn detect_cb021_simd_without_target_feature(project_path: &Path) -> Vec<CbPatter
         for entry in entries {
             if let Ok(content) = fs::read_to_string(&entry) {
                 let lines: Vec<&str> = content.lines().collect();
+                let test_lines = compute_test_code_lines(&lines);
 
                 // Find functions with #[target_feature] attribute
                 let mut protected_lines: std::collections::HashSet<usize> = std::collections::HashSet::new();
@@ -655,9 +738,10 @@ fn detect_cb021_simd_without_target_feature(project_path: &Path) -> Vec<CbPatter
                     }
                 }
 
-                // Check for SIMD intrinsics outside protected functions
+                // Check for SIMD intrinsics outside protected functions and test code
                 for (line_num, line) in lines.iter().enumerate() {
-                    if protected_lines.contains(&line_num) {
+                    // Skip protected functions and test code
+                    if protected_lines.contains(&line_num) || test_lines.contains(&line_num) {
                         continue;
                     }
 
