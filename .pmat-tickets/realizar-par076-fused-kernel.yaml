@@ -1,0 +1,21 @@
+id: REALIZAR-PAR076
+title: "Complete PAR-076 Fused RMSNorm+Q4K GEMV Kernel"
+description: |
+  Complete the uncommitted work in realizar/src/cuda.rs for PAR-076.
+
+  Changes needed:
+  - FusedRmsNormQ4KGemvKernel implementation
+  - New KernelType variant with K, N, epsilon parameters
+  - New executor method: fused_rmsnorm_q4k_gemv_into()
+  - Tests and benchmarks
+
+  Location: /home/noah/src/realizar/src/cuda.rs
+
+status: completed
+priority: high
+assignee: claude
+labels:
+  - realizar
+  - cuda
+  - performance
+created: 2026-01-13

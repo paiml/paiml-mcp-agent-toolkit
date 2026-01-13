@@ -1,0 +1,20 @@
+id: APRENDER-HF-001
+title: "Add HuggingFace/URL Download to apr-cli"
+description: |
+  Implement the TODO items in apr-cli for model downloading:
+
+  - apr-cli/commands/run.rs:171 - Download from HuggingFace
+  - apr-cli/commands/run.rs:182 - Download from URL
+
+  Use the hf-hub crate already in dependencies.
+
+  Location: /home/noah/src/aprender/crates/apr-cli/src/commands/run.rs
+
+status: completed
+priority: medium
+assignee: claude
+labels:
+  - aprender
+  - cli
+  - feature
+created: 2026-01-13

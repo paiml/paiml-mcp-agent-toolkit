@@ -1,0 +1,22 @@
+id: BRICK-PROF-001
+title: "Integrate BrickProfiler Across the Stack"
+description: |
+  BrickProfiler (PAR-073) is new in trueno. Integrate it across the ecosystem:
+
+  1. Add profiling hooks to realizar's transformer layers
+  2. Create unified profiling output format
+  3. Add pmat integration for tracking brick performance regressions
+
+  Key files:
+  - trueno/src/brick.rs (BrickProfiler source)
+  - realizar/src/cuda.rs (already has some integration)
+
+status: completed
+priority: medium
+assignee: claude
+labels:
+  - trueno
+  - realizar
+  - profiling
+  - integration
+created: 2026-01-13

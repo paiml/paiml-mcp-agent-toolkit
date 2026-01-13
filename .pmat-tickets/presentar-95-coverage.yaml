@@ -1,0 +1,26 @@
+id: PRESENTAR-COV95
+title: "Push presentar to 95% Coverage Target"
+description: |
+  Currently at 90-95%, targeting 95% minimum coverage.
+
+  Tasks:
+  - Identify uncovered lines in the 12 modified TUI files
+  - Add tests for new modular panel architecture:
+    - panel_cpu.rs
+    - panel_gpu.rs
+    - panel_memory.rs
+    - layout.rs
+  - Complete pixel-perfect TUI spec work
+
+  Location: /home/noah/src/presentar
+
+  NOTE: This ticket is for the presentar team to complete.
+
+status: pending
+priority: medium
+assignee: presentar-team
+labels:
+  - presentar
+  - coverage
+  - testing
+created: 2026-01-13

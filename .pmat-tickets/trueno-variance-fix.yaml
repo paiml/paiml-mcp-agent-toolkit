@@ -1,0 +1,20 @@
+id: TRUENO-VAR-001
+title: "Fix trueno variance_scaling property test floating-point precision"
+description: |
+  The test_variance_scaling property test fails due to floating-point precision issues.
+
+  Error: variance(-3.978029 * v) != (-3.978029)² * variance(v)
+  Minimal failing input: a = [-35.09344, -35.92094], k = -3.978029
+
+  Fix by adding appropriate tolerance for floating-point comparison.
+
+  Location: /home/noah/src/trueno/src/vector.rs
+
+status: completed
+priority: high
+assignee: claude
+labels:
+  - trueno
+  - testing
+  - floating-point
+created: 2026-01-13
