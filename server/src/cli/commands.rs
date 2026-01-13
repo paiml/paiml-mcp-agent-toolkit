@@ -581,6 +581,12 @@ pub enum Commands {
         /// Output file path
         #[arg(short = 'o', long)]
         output: Option<PathBuf>,
+
+        /// Hardware capability TOML file (PMAT-448)
+        /// If not specified, uses ~/.pmat/hardware.toml if it exists.
+        /// Use `trueno --detect-hardware` to generate one.
+        #[arg(long)]
+        hardware: Option<PathBuf>,
     },
 
     /// Start HTTP API server with WebSocket support

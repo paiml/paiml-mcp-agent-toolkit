@@ -945,3 +945,137 @@ roadmap:
   - tarantula
   - quality
   notes: null
+- id: PMAT-446
+  github_issue: null
+  item_type: task
+  title: 'pmat brick-score: ComputeBrick profiling integration'
+  status: inprogress
+  priority: high
+  assigned_to: null
+  created: 2026-01-13T17:25:44Z
+  updated: 2026-01-13T17:25:50.414055307+00:00
+  spec: null
+  acceptance_criteria:
+  - 'Add brick-score command for trueno/realizar ecosystem. Reads BrickProfiler JSON output and scores against 100-point framework: Performance (40pts), Efficiency (25pts), Correctness (20pts), Stability (15pts). Integrates with quality-gates for CV/efficiency thresholds.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - computebrick
+  - profiling
+  - trueno
+  notes: null
+- id: PMAT-447
+  github_issue: null
+  item_type: task
+  title: 'PMAT-447: HardwareCapability detection in trueno'
+  status: inprogress
+  priority: high
+  assigned_to: null
+  created: 2026-01-13T18:00:50Z
+  updated: 2026-01-13T18:01:03.774673401+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - trueno
+  - hardware
+  - profiling
+  notes: null
+- id: PMAT-448
+  github_issue: null
+  item_type: task
+  title: 'PMAT-448: Read hardware.toml in brick-score'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-01-13T18:00:58Z
+  updated: 2026-01-13T18:00:58Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - pmat
+  - hardware
+  - brick-score
+  notes: null
+- id: PMAT-449
+  github_issue: null
+  item_type: task
+  title: 'PMAT-449: Roofline analysis in brick-score output'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-01-13T18:00:58Z
+  updated: 2026-01-13T18:00:58Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - pmat
+  - roofline
+  - profiling
+  notes: null
+- id: PMAT-450
+  github_issue: null
+  item_type: task
+  title: 'PMAT-450: Roofline chart in cbtop TUI'
+  status: planned
+  priority: low
+  assigned_to: null
+  created: 2026-01-13T18:00:58Z
+  updated: 2026-01-13T18:00:58Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - cbtop
+  - tui
+  - visualization
+  notes: null
+- id: PMAT-451
+  github_issue: null
+  item_type: task
+  title: 'PMAT-451: Extend BrickProfiler with compression_ratio and bound'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-01-13T18:00:58Z
+  updated: 2026-01-13T18:00:58Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - trueno
+  - profiler
+  - zram
+  notes: null
+- id: PMAT-452
+  github_issue: null
+  item_type: task
+  title: 'PMAT-452: Export ByteBudget to hardware.toml format'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-01-13T18:00:58Z
+  updated: 2026-01-13T18:00:58Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - trueno
+  - zram
+  - config
+  notes: null

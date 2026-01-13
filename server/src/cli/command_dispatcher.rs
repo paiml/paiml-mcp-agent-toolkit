@@ -301,6 +301,7 @@ impl CommandDispatcher {
                 failures_only,
                 threshold,
                 output,
+                hardware,
             } => {
                 handlers::handle_brick_score(
                     &path,
@@ -310,6 +311,7 @@ impl CommandDispatcher {
                     failures_only,
                     threshold,
                     output.as_deref(),
+                    hardware.as_deref(),
                 )
                 .await
             }

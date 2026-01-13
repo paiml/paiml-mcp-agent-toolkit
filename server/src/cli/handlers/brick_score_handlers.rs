@@ -5,8 +5,8 @@
 
 use crate::cli::RepoScoreOutputFormat;
 use crate::services::brick_score::{
-    default_brick_budgets, find_profiler_files, load_profiler_json, score_brick_profiler,
-    BrickScore,
+    default_brick_budgets, find_profiler_files, load_hardware_capability, load_profiler_json,
+    scale_budgets_for_hardware, score_brick_profiler, BrickScore,
 };
 use anyhow::{Context, Result};
 use std::fs;
@@ -19,6 +19,9 @@ use std::path::Path;
 /// - Efficiency (25 pts): Backend utilization
 /// - Correctness (20 pts): Assertions passing
 /// - Stability (15 pts): CV < 5%
+///
+/// PMAT-448: If ~/.pmat/hardware.toml exists, budgets are scaled based on
+/// detected SIMD capability and memory bandwidth.
 pub async fn handle_brick_score(
     path: &Path,
     input_file: Option<&Path>,
@@ -27,11 +30,15 @@ pub async fn handle_brick_score(
     failures_only: bool,
     threshold: u32,
     output: Option<&Path>,
+    hardware_path: Option<&Path>,
 ) -> Result<()> {
     // Validate path exists
     if !path.exists() {
         anyhow::bail!("Path not found: {}", path.display());
     }
+
+    // Load hardware capability (PMAT-448)
+    let hardware = load_hardware_capability(hardware_path);
 
     // Find or use provided profiler JSON
     let profiler_output = if let Some(input) = input_file {
@@ -60,11 +67,15 @@ pub async fn handle_brick_score(
         })?
     };
 
-    // Load default budgets
-    let budgets = default_brick_budgets();
+    // Load default budgets, scaled for hardware if available
+    let base_budgets = default_brick_budgets();
+    let budgets = match &hardware {
+        Some(hw) => scale_budgets_for_hardware(&base_budgets, hw),
+        None => base_budgets,
+    };
 
     // Calculate score
-    let score = score_brick_profiler(&profiler_output, &budgets, path);
+    let score = score_brick_profiler(&profiler_output, &budgets, path, hardware.as_ref());
 
     // Format output
     let output_text = match format {
@@ -197,6 +208,41 @@ fn format_text(score: &BrickScore, verbose: bool, failures_only: bool) -> String
 
         output.push_str("  └───────────────────┴──────────┴──────────┴─────────┴───────────┘\n");
         output.push('\n');
+
+        // PMAT-449: Roofline analysis section
+        if score.brick_reports.iter().any(|b| b.bottleneck.is_some()) {
+            output.push_str("📈  Roofline Analysis (PMAT-449)\n");
+            output.push_str("  ┌───────────────────┬────────┬────────────┐\n");
+            output.push_str("  │ Brick             │ AI     │ Bottleneck │\n");
+            output.push_str("  ├───────────────────┼────────┼────────────┤\n");
+
+            for brick in &score.brick_reports {
+                let ai_str = brick
+                    .arithmetic_intensity
+                    .map(|ai| format!("{:.2}", ai))
+                    .unwrap_or_else(|| "-".to_string());
+                let bottleneck_str = brick
+                    .bottleneck
+                    .map(|b| match b {
+                        crate::services::brick_score::Bottleneck::Memory => "🔴 Memory",
+                        crate::services::brick_score::Bottleneck::Compute => "🟢 Compute",
+                    })
+                    .unwrap_or("-");
+
+                output.push_str(&format!(
+                    "  │ {:<17} │ {:>6} │ {:>10} │\n",
+                    &brick.name[..brick.name.len().min(17)],
+                    ai_str,
+                    bottleneck_str
+                ));
+            }
+
+            output.push_str("  └───────────────────┴────────┴────────────┘\n");
+            output.push_str("  AI = Arithmetic Intensity (FLOP/byte)\n");
+            output.push_str("  🔴 Memory-bound: Optimize memory access patterns\n");
+            output.push_str("  🟢 Compute-bound: Optimize SIMD/GPU utilization\n");
+            output.push('\n');
+        }
     }
 
     // Recommendations
@@ -365,7 +411,7 @@ mod tests {
     fn test_format_text() {
         let output = sample_profiler_output();
         let budgets = default_brick_budgets();
-        let score = score_brick_profiler(&output, &budgets, Path::new("."));
+        let score = score_brick_profiler(&output, &budgets, Path::new("."), None);
 
         let text = format_text(&score, true, false);
         assert!(text.contains("ComputeBrick Score"));
@@ -377,7 +423,7 @@ mod tests {
     fn test_format_json() {
         let output = sample_profiler_output();
         let budgets = default_brick_budgets();
-        let score = score_brick_profiler(&output, &budgets, Path::new("."));
+        let score = score_brick_profiler(&output, &budgets, Path::new("."), None);
 
         let json = format_json(&score).unwrap();
         assert!(json.contains("total_score"));
@@ -388,7 +434,7 @@ mod tests {
     fn test_format_markdown() {
         let output = sample_profiler_output();
         let budgets = default_brick_budgets();
-        let score = score_brick_profiler(&output, &budgets, Path::new("."));
+        let score = score_brick_profiler(&output, &budgets, Path::new("."), None);
 
         let md = format_markdown(&score, true, false);
         assert!(md.contains("# ComputeBrick Score Report"));

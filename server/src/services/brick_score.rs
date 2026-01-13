@@ -6,11 +6,273 @@
 //! - Correctness (20 pts): Assertions passing, numerical accuracy
 //! - Stability (15 pts): CV < 5%, reproducibility
 //!
+//! PMAT-448: Hardware-aware scoring via ~/.pmat/hardware.toml
+//!
 //! Reference: aprender/docs/specifications/qwen2.5-coder-showcase-demo.md §2.5
 
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+
+// ============================================================================
+// Hardware Capability Types (PMAT-448)
+// Matches trueno::hardware format for ~/.pmat/hardware.toml
+// ============================================================================
+
+/// SIMD instruction set width (matches trueno::hardware::SimdWidth)
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+pub enum SimdWidth {
+    Scalar,
+    Neon128,
+    Sse2,
+    Avx2,
+    Avx512,
+    WasmSimd128,
+}
+
+impl SimdWidth {
+    /// Number of f32 lanes
+    pub fn lanes(&self) -> usize {
+        match self {
+            SimdWidth::Scalar => 1,
+            SimdWidth::Neon128 | SimdWidth::Sse2 | SimdWidth::WasmSimd128 => 4,
+            SimdWidth::Avx2 => 8,
+            SimdWidth::Avx512 => 16,
+        }
+    }
+
+    /// Typical speedup factor (from trueno-zram measurements)
+    pub fn compute_speedup(&self) -> f64 {
+        match self {
+            SimdWidth::Scalar => 1.0,
+            SimdWidth::Neon128 | SimdWidth::Sse2 | SimdWidth::WasmSimd128 => 4.0,
+            SimdWidth::Avx2 => 10.0,  // 8-12x measured
+            SimdWidth::Avx512 => 12.0, // 8-13x measured
+        }
+    }
+}
+
+impl Default for SimdWidth {
+    fn default() -> Self {
+        SimdWidth::Scalar
+    }
+}
+
+/// GPU compute backend
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize, Default)]
+pub enum GpuBackend {
+    #[default]
+    None,
+    Cuda,
+    Wgpu,
+    Metal,
+    Vulkan,
+}
+
+/// CPU capabilities
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct CpuCapability {
+    pub vendor: String,
+    pub model: String,
+    pub cores: usize,
+    pub threads: usize,
+    pub simd: SimdWidth,
+    pub base_freq_ghz: f64,
+    pub peak_gflops: f64,
+    pub memory_bw_gbps: f64,
+}
+
+impl Default for CpuCapability {
+    fn default() -> Self {
+        Self {
+            vendor: "Unknown".to_string(),
+            model: "Unknown".to_string(),
+            cores: 1,
+            threads: 1,
+            simd: SimdWidth::Scalar,
+            base_freq_ghz: 3.0,
+            peak_gflops: 6.0, // 1 core × 1 lane × 2 FMA × 3 GHz
+            memory_bw_gbps: 25.0,
+        }
+    }
+}
+
+/// GPU capabilities
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct GpuCapability {
+    pub vendor: String,
+    pub model: String,
+    pub backend: GpuBackend,
+    pub compute_capability: Option<String>,
+    pub peak_tflops_fp32: f64,
+    pub peak_tflops_tensor: Option<f64>,
+    pub memory_bw_gbps: f64,
+    pub vram_gb: f64,
+}
+
+/// Roofline model parameters
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct RooflineParams {
+    pub cpu_arithmetic_intensity: f64,
+    pub gpu_arithmetic_intensity: Option<f64>,
+}
+
+impl Default for RooflineParams {
+    fn default() -> Self {
+        Self {
+            cpu_arithmetic_intensity: 0.24, // 6 GFLOP/s ÷ 25 GB/s
+            gpu_arithmetic_intensity: None,
+        }
+    }
+}
+
+/// Complete hardware capability profile
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct HardwareCapability {
+    pub timestamp: String,
+    pub hostname: String,
+    pub cpu: CpuCapability,
+    pub gpu: Option<GpuCapability>,
+    pub roofline: RooflineParams,
+}
+
+impl Default for HardwareCapability {
+    fn default() -> Self {
+        Self {
+            timestamp: chrono::Utc::now().to_rfc3339(),
+            hostname: "unknown".to_string(),
+            cpu: CpuCapability::default(),
+            gpu: None,
+            roofline: RooflineParams::default(),
+        }
+    }
+}
+
+/// Workload bottleneck classification
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Bottleneck {
+    Memory,
+    Compute,
+}
+
+impl HardwareCapability {
+    /// Determine if workload is memory-bound or compute-bound
+    pub fn bottleneck(&self, arithmetic_intensity: f64, use_gpu: bool) -> Bottleneck {
+        let threshold = if use_gpu {
+            self.roofline.gpu_arithmetic_intensity.unwrap_or(f64::MAX)
+        } else {
+            self.roofline.cpu_arithmetic_intensity
+        };
+
+        if arithmetic_intensity < threshold {
+            Bottleneck::Memory
+        } else {
+            Bottleneck::Compute
+        }
+    }
+}
+
+/// Default path for hardware.toml
+pub fn default_hardware_path() -> PathBuf {
+    dirs::home_dir()
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join(".pmat")
+        .join("hardware.toml")
+}
+
+/// Load hardware capability from TOML file
+pub fn load_hardware_capability(path: Option<&Path>) -> Option<HardwareCapability> {
+    let path = path
+        .map(PathBuf::from)
+        .unwrap_or_else(default_hardware_path);
+
+    if !path.exists() {
+        return None;
+    }
+
+    fs::read_to_string(&path)
+        .ok()
+        .and_then(|content| toml::from_str(&content).ok())
+}
+
+/// Scale budgets based on hardware capability
+pub fn scale_budgets_for_hardware(
+    base_budgets: &[BrickBudget],
+    hardware: &HardwareCapability,
+) -> Vec<BrickBudget> {
+    // Scale factor based on SIMD speedup
+    let simd_factor = hardware.cpu.simd.compute_speedup();
+
+    // Memory bandwidth scaling (baseline: 25 GB/s from trueno-zram)
+    let mem_bw_factor = hardware.cpu.memory_bw_gbps / 25.0;
+
+    // Combined scaling: geometric mean of SIMD and memory bandwidth factors
+    let scale_factor = (simd_factor * mem_bw_factor).sqrt();
+
+    base_budgets
+        .iter()
+        .map(|b| BrickBudget {
+            name: b.name.clone(),
+            // Faster hardware means stricter (lower) budgets
+            max_us: b.max_us / scale_factor,
+        })
+        .collect()
+}
+
+/// Estimate arithmetic intensity (FLOP/byte) for roofline analysis (PMAT-449)
+///
+/// Reference values from trueno-zram measurements and ML literature:
+/// - Memory-bound (AI < 1): RmsNorm, Residual, embedding lookup
+/// - Balanced (AI 1-10): Attention Q/K/V projections
+/// - Compute-bound (AI > 10): Matrix multiplications, convolutions
+fn estimate_arithmetic_intensity(brick_name: &str) -> f64 {
+    let name_lower = brick_name.to_lowercase();
+
+    // Memory-bound operations (AI < 1)
+    // These read/write more data than compute
+    if name_lower.contains("rmsnorm")
+        || name_lower.contains("layernorm")
+        || name_lower.contains("residual")
+        || name_lower.contains("add")
+        || name_lower.contains("embed")
+        || name_lower.contains("softmax")
+    {
+        return 0.25; // 2 FLOPs / 8 bytes = 0.25 FLOP/byte
+    }
+
+    // Elementwise activations (memory-bound)
+    if name_lower.contains("swiglu")
+        || name_lower.contains("gelu")
+        || name_lower.contains("silu")
+        || name_lower.contains("relu")
+    {
+        return 0.5; // 4 FLOPs / 8 bytes = 0.5 FLOP/byte
+    }
+
+    // RoPE (rotary position embedding) - moderate AI
+    if name_lower.contains("rope") || name_lower.contains("rotary") {
+        return 2.0; // Complex number multiply: ~16 FLOPs / 8 bytes
+    }
+
+    // Attention (compute-heavy for large sequences)
+    // AI = 2*seq_len / 4 bytes per element
+    if name_lower.contains("attention") {
+        return 8.0; // ~64 FLOPs (matmul) / 8 bytes input
+    }
+
+    // Matrix multiplications (compute-bound)
+    // FFN, QKV projections, output projections
+    if name_lower.contains("ffn")
+        || name_lower.contains("mlp")
+        || name_lower.contains("qkv")
+        || name_lower.contains("proj")
+    {
+        return 16.0; // Large matmuls: ~128 FLOPs / 8 bytes
+    }
+
+    // Default: balanced operation
+    2.0
+}
 
 /// BrickProfiler JSON input format (matches trueno::brick::BrickStats)
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -208,6 +470,12 @@ pub struct BrickReport {
     pub cv_percent: f64,
     pub throughput: f64,
     pub count: u64,
+    /// PMAT-449: Estimated arithmetic intensity (FLOP/byte)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub arithmetic_intensity: Option<f64>,
+    /// PMAT-449: Bottleneck classification (memory vs compute)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bottleneck: Option<Bottleneck>,
 }
 
 /// Score metadata
@@ -219,13 +487,29 @@ pub struct BrickScoreMetadata {
     pub hardware: Option<String>,
     pub total_bricks: usize,
     pub total_samples: u64,
+    /// PMAT-448: Detected SIMD capability
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub simd: Option<String>,
+    /// PMAT-448: Memory bandwidth in GB/s
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub memory_bw_gbps: Option<f64>,
+    /// PMAT-448: Peak GFLOP/s (CPU)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub peak_gflops: Option<f64>,
+    /// PMAT-448: Budget scaling factor applied
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub budget_scale_factor: Option<f64>,
 }
 
 /// Score a BrickProfiler output
+///
+/// PMAT-448: If hardware is provided, the score metadata will include
+/// detailed hardware info for reproducibility.
 pub fn score_brick_profiler(
     profiler_output: &BrickProfilerOutput,
     budgets: &[BrickBudget],
     project_path: &Path,
+    hardware: Option<&HardwareCapability>,
 ) -> BrickScore {
     let mut performance_checks = Vec::new();
     let mut efficiency_checks = Vec::new();
@@ -339,6 +623,14 @@ pub fn score_brick_profiler(
             },
         });
 
+        // PMAT-449: Estimate arithmetic intensity for roofline analysis
+        // AI = FLOP / bytes_transferred
+        // For typical ML operations: ~2 FLOPs per element (multiply-add)
+        // Memory: 4 bytes per f32 element (read) + 4 bytes (write) = 8 bytes
+        // Baseline AI ≈ 2 / 8 = 0.25 FLOP/byte
+        let ai = estimate_arithmetic_intensity(&brick.name);
+        let bottleneck_class = hardware.map(|hw| hw.bottleneck(ai, false));
+
         brick_reports.push(BrickReport {
             name: brick.name.clone(),
             mean_us,
@@ -347,6 +639,8 @@ pub fn score_brick_profiler(
             cv_percent: cv,
             throughput,
             count: brick.count,
+            arithmetic_intensity: Some(ai),
+            bottleneck: bottleneck_class,
         });
     }
 
@@ -440,6 +734,22 @@ pub fn score_brick_profiler(
         _ => 'F',
     };
 
+    // PMAT-448: Calculate budget scale factor if hardware is provided
+    let (simd_str, mem_bw, peak_gflops, scale_factor) = if let Some(hw) = hardware {
+        let simd = format!("{:?}", hw.cpu.simd);
+        let simd_factor = hw.cpu.simd.compute_speedup();
+        let mem_bw_factor = hw.cpu.memory_bw_gbps / 25.0;
+        let scale = (simd_factor * mem_bw_factor).sqrt();
+        (
+            Some(simd),
+            Some(hw.cpu.memory_bw_gbps),
+            Some(hw.cpu.peak_gflops),
+            Some(scale),
+        )
+    } else {
+        (None, None, None, None)
+    };
+
     BrickScore {
         performance,
         efficiency,
@@ -452,9 +762,15 @@ pub fn score_brick_profiler(
             version: "1.0.0".to_string(),
             project_path: project_path.display().to_string(),
             model: profiler_output.model.clone(),
-            hardware: profiler_output.hardware.clone(),
+            hardware: profiler_output.hardware.clone().or_else(|| {
+                hardware.map(|hw| format!("{} ({})", hw.cpu.model, hw.hostname))
+            }),
             total_bricks: profiler_output.bricks.len(),
             total_samples: profiler_output.bricks.iter().map(|b| b.count).sum(),
+            simd: simd_str,
+            memory_bw_gbps: mem_bw,
+            peak_gflops,
+            budget_scale_factor: scale_factor,
         },
     }
 }
@@ -537,10 +853,84 @@ mod tests {
         };
 
         let budgets = default_brick_budgets();
-        let score = score_brick_profiler(&output, &budgets, Path::new("."));
+        let score = score_brick_profiler(&output, &budgets, Path::new("."), None);
 
         assert!(score.total_score > 0.0);
         assert!(score.total_score <= 100.0);
         assert!(score.grade != 'F');
+    }
+
+    #[test]
+    fn test_hardware_scaling() {
+        let hw = HardwareCapability {
+            timestamp: "2026-01-13T00:00:00Z".to_string(),
+            hostname: "test-host".to_string(),
+            cpu: CpuCapability {
+                vendor: "Intel".to_string(),
+                model: "i9-14900K".to_string(),
+                cores: 24,
+                threads: 32,
+                simd: SimdWidth::Avx512,
+                base_freq_ghz: 3.2,
+                peak_gflops: 3072.0, // 24 cores × 16 lanes × 2 FMA × 3.2 GHz
+                memory_bw_gbps: 89.6,
+            },
+            gpu: None,
+            roofline: RooflineParams::default(),
+        };
+
+        let base_budgets = default_brick_budgets();
+        let scaled = scale_budgets_for_hardware(&base_budgets, &hw);
+
+        // Faster hardware = stricter (lower) budgets
+        for (base, scaled) in base_budgets.iter().zip(scaled.iter()) {
+            assert!(
+                scaled.max_us < base.max_us,
+                "Scaled budget should be stricter"
+            );
+        }
+    }
+
+    #[test]
+    fn test_simd_speedup_factors() {
+        assert_eq!(SimdWidth::Scalar.compute_speedup(), 1.0);
+        assert_eq!(SimdWidth::Avx2.compute_speedup(), 10.0);
+        assert_eq!(SimdWidth::Avx512.compute_speedup(), 12.0);
+        assert_eq!(SimdWidth::Neon128.compute_speedup(), 4.0);
+    }
+
+    #[test]
+    fn test_bottleneck_classification() {
+        let hw = HardwareCapability::default();
+
+        // Low arithmetic intensity = memory bound
+        assert_eq!(hw.bottleneck(0.1, false), Bottleneck::Memory);
+
+        // High arithmetic intensity = compute bound
+        assert_eq!(hw.bottleneck(100.0, false), Bottleneck::Compute);
+    }
+
+    #[test]
+    fn test_arithmetic_intensity_estimation() {
+        // Memory-bound operations (AI < 1)
+        assert!(estimate_arithmetic_intensity("RmsNorm") < 1.0);
+        assert!(estimate_arithmetic_intensity("LayerNorm") < 1.0);
+        assert!(estimate_arithmetic_intensity("Residual") < 1.0);
+        assert!(estimate_arithmetic_intensity("SoftMax") < 1.0);
+
+        // Elementwise activations (AI < 1)
+        assert!(estimate_arithmetic_intensity("SwiGLU") < 1.0);
+        assert!(estimate_arithmetic_intensity("GELU") < 1.0);
+
+        // Balanced operations (AI 1-10)
+        assert!(estimate_arithmetic_intensity("RoPE") >= 1.0);
+        assert!(estimate_arithmetic_intensity("RoPE") < 10.0);
+        assert!(estimate_arithmetic_intensity("Attention") >= 1.0);
+        assert!(estimate_arithmetic_intensity("Attention") <= 16.0);
+
+        // Compute-bound operations (AI > 8)
+        assert!(estimate_arithmetic_intensity("FFNGateUp") > 8.0);
+        assert!(estimate_arithmetic_intensity("QKVProj") > 8.0);
+        assert!(estimate_arithmetic_intensity("MLP") > 8.0);
     }
 }

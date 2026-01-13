@@ -391,6 +391,7 @@ impl CommandExecutor {
                 failures_only,
                 threshold,
                 output,
+                hardware,
             } => {
                 crate::cli::handlers::brick_score_handlers::handle_brick_score(
                     &path,
@@ -400,6 +401,7 @@ impl CommandExecutor {
                     failures_only,
                     threshold,
                     output.as_deref(),
+                    hardware.as_deref(),
                 )
                 .await
             }
