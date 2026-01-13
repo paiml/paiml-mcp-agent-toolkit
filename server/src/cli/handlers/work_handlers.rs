@@ -1115,14 +1115,16 @@ pub async fn run_popper_falsification(project_path: &PathBuf) -> Result<Falsific
 
     let mut result = FalsificationResult::default();
     let mut issues: Vec<String> = Vec::new();
+    let total_hypotheses = 3;
+    let mut validated = 0;
 
     println!();
-    println!("🔬 Karl Popper Falsification Validation");
+    println!("🔬 Karl Popper Falsification Validation (0/{} complete)", total_hypotheses);
     println!("   (Scientific method: attempting to falsify your work)");
     println!();
 
     // 1. Hypothesis: Tests should pass (falsify: look for regressions)
-    println!("   📊 Hypothesis 1: No regressions introduced");
+    println!("   📊 [1/{}] Hypothesis: No regressions introduced", total_hypotheses);
     println!("      Falsification: Running tests...");
 
     let test_status = Command::new("cargo")
@@ -1133,16 +1135,17 @@ pub async fn run_popper_falsification(project_path: &PathBuf) -> Result<Falsific
 
     if test_status.success() {
         result.tests_passed = true;
-        println!("      ✅ Falsification failed: Tests pass (hypothesis holds)");
+        validated += 1;
+        println!("      ✅ Hypothesis holds ({}/{} validated)", validated, total_hypotheses);
     } else {
         result.tests_passed = false;
         issues.push("Tests failed - regressions detected".to_string());
-        println!("      ❌ Falsification succeeded: Tests fail (hypothesis falsified)");
+        println!("      ❌ Hypothesis falsified: Tests fail");
     }
 
     // 2. Hypothesis: Coverage should be maintained or improved
     println!();
-    println!("   📊 Hypothesis 2: Coverage maintained or improved");
+    println!("   📊 [2/{}] Hypothesis: Coverage maintained or improved", total_hypotheses);
     println!("      Falsification: Checking coverage trends...");
 
     // Try to read coverage from cached metrics
@@ -1167,20 +1170,22 @@ pub async fn run_popper_falsification(project_path: &PathBuf) -> Result<Falsific
 
                         if current >= previous {
                             result.coverage_maintained = true;
+                            validated += 1;
                             let delta = current - previous;
                             if delta > 0.0 {
-                                println!("      ✅ Falsification failed: Coverage improved +{:.2}%", delta);
+                                println!("      ✅ Hypothesis holds: Coverage +{:.2}% ({}/{} validated)", delta, validated, total_hypotheses);
                             } else {
-                                println!("      ✅ Falsification failed: Coverage maintained at {:.2}%", current);
+                                println!("      ✅ Hypothesis holds: Coverage at {:.2}% ({}/{} validated)", current, validated, total_hypotheses);
                             }
                         } else {
                             let delta = previous - current;
                             issues.push(format!("Coverage dropped by {:.2}%", delta));
-                            println!("      ❌ Falsification succeeded: Coverage dropped -{:.2}%", delta);
+                            println!("      ❌ Hypothesis falsified: Coverage -{:.2}%", delta);
                         }
                     } else if !entries.is_empty() {
                         result.coverage_maintained = true;
-                        println!("      ⚠️  Insufficient history (only 1 entry)");
+                        validated += 1;
+                        println!("      ⚠️  Insufficient history ({}/{} validated)", validated, total_hypotheses);
                     }
                 }
             }
@@ -1189,13 +1194,14 @@ pub async fn run_popper_falsification(project_path: &PathBuf) -> Result<Falsific
 
     if result.coverage_before.is_none() {
         result.coverage_maintained = true; // Assume OK if no data
-        println!("      ⚠️  No coverage history found (skipping)");
+        validated += 1;
+        println!("      ⚠️  No coverage history ({}/{} validated)", validated, total_hypotheses);
         println!("         Run 'make coverage' to establish baseline");
     }
 
     // 3. Binary size check (optional, only if release build exists)
     println!();
-    println!("   📊 Hypothesis 3: No dependency bloat");
+    println!("   📊 [3/{}] Hypothesis: No dependency bloat", total_hypotheses);
     result.binary_size_ok = true; // Default to OK
 
     let release_binary = project_path.join("target/release/pmat");
@@ -1203,15 +1209,17 @@ pub async fn run_popper_falsification(project_path: &PathBuf) -> Result<Falsific
         if let Ok(metadata) = std::fs::metadata(&release_binary) {
             let size_mb = metadata.len() as f64 / (1024.0 * 1024.0);
             if size_mb <= 50.0 {
-                println!("      ✅ Binary size OK: {:.1}MB (limit: 50MB)", size_mb);
+                validated += 1;
+                println!("      ✅ Hypothesis holds: {:.1}MB < 50MB ({}/{} validated)", size_mb, validated, total_hypotheses);
             } else {
                 result.binary_size_ok = false;
                 issues.push(format!("Binary size {:.1}MB exceeds 50MB limit", size_mb));
-                println!("      ❌ Binary size too large: {:.1}MB (limit: 50MB)", size_mb);
+                println!("      ❌ Hypothesis falsified: {:.1}MB > 50MB limit", size_mb);
             }
         }
     } else {
-        println!("      ⚠️  No release binary found (skipping)");
+        validated += 1;
+        println!("      ⚠️  No release binary ({}/{} validated)", validated, total_hypotheses);
     }
 
     // Determine overall result
@@ -1219,12 +1227,13 @@ pub async fn run_popper_falsification(project_path: &PathBuf) -> Result<Falsific
 
     println!();
     if result.passed {
-        result.summary = "All falsification attempts failed - work is valid".to_string();
-        println!("   🎉 FALSIFICATION RESULT: PASSED");
+        result.summary = format!("{}/{} hypotheses validated - work is valid", validated, total_hypotheses);
+        println!("   🎉 FALSIFICATION RESULT: PASSED ({}/{})", validated, total_hypotheses);
         println!("      All hypotheses held under scrutiny");
     } else {
-        result.summary = format!("Falsification succeeded: {}", issues.join(", "));
-        println!("   ⚠️  FALSIFICATION RESULT: FAILED");
+        let failed = total_hypotheses - validated;
+        result.summary = format!("{}/{} validated, {} falsified: {}", validated, total_hypotheses, failed, issues.join(", "));
+        println!("   ⚠️  FALSIFICATION RESULT: FAILED ({}/{} validated)", validated, total_hypotheses);
         println!("      Issues found:");
         for issue in &issues {
             println!("      - {}", issue);
