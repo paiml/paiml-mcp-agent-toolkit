@@ -884,11 +884,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: Spec-Roadmap Bidirectional Sync
-  status: planned
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-01-13T15:54:51Z
-  updated: 2026-01-13T15:54:51Z
+  updated: 2026-01-13T16:03:50Z
   spec: null
   acceptance_criteria:
   - 'Add pmat spec sync (extract tickets from specs, update roadmap.yaml) and pmat spec drift (report orphan specs). Fix: spec **Ticket**: field should auto-update roadmap spec: field bidirectionally.'
@@ -921,4 +921,27 @@ roadmap:
   - citations
   - validation
   - popper
+  notes: null
+- id: PMAT-445
+  github_issue: null
+  item_type: task
+  title: Unified Quality Annotation for Tickets
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-01-13T16:06:51Z
+  updated: 2026-01-13T16:06:51Z
+  spec: null
+  acceptance_criteria:
+  - 'Add pmat work annotate command: auto-links spec score, TDG, churn, coverage, and Tarantula fault data to tickets. Shows unified quality view per ticket.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - work
+  - annotation
+  - tdg
+  - churn
+  - tarantula
+  - quality
   notes: null

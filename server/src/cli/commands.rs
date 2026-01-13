@@ -1570,6 +1570,18 @@ pub enum SpecOutputFormat {
     Markdown,
 }
 
+/// Output format for work annotate command
+#[derive(Debug, Clone, Copy, Default, clap::ValueEnum)]
+pub enum AnnotateOutputFormat {
+    /// Human-readable text format
+    #[default]
+    Text,
+    /// JSON format for CI/CD
+    Json,
+    /// Markdown report format
+    Markdown,
+}
+
 /// Debug subcommands (Sprint 74 - TRACE-001 through TRACE-003)
 #[derive(Debug, Clone, Subcommand)]
 pub enum DebugCommands {
@@ -5683,6 +5695,29 @@ pub enum WorkCommands {
         /// Project path (default: current directory)
         #[arg(short, long)]
         path: Option<PathBuf>,
+    },
+
+    /// Show unified quality annotations for a ticket
+    #[command(visible_aliases = &["ann", "quality", "metrics"])]
+    Annotate {
+        /// Ticket ID to annotate
+        id: String,
+
+        /// Project path (default: current directory)
+        #[arg(short, long)]
+        path: Option<PathBuf>,
+
+        /// Output format
+        #[arg(short, long, value_enum, default_value = "text")]
+        format: AnnotateOutputFormat,
+
+        /// Include churn analysis (slower)
+        #[arg(long)]
+        with_churn: bool,
+
+        /// Days for churn analysis
+        #[arg(long, default_value = "30")]
+        churn_days: u32,
     },
 
     /// Start work on a GitHub issue or YAML ticket

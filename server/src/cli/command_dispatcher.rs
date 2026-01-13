@@ -3682,6 +3682,22 @@ impl CommandDispatcher {
             WorkCommands::Delete { id, force, path } => {
                 work_handlers::handle_work_delete(id.clone(), *force, path.clone()).await
             }
+            WorkCommands::Annotate {
+                id,
+                path,
+                format,
+                with_churn,
+                churn_days,
+            } => {
+                work_handlers::handle_work_annotate(
+                    id.clone(),
+                    path.clone(),
+                    *format,
+                    *with_churn,
+                    *churn_days,
+                )
+                .await
+            }
         }
     }
 

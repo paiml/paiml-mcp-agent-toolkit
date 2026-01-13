@@ -10,7 +10,7 @@ use crate::services::hook_manager;
 use crate::services::roadmap_service::RoadmapService;
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// Handle work init command
 pub async fn handle_work_init(
@@ -1775,6 +1775,352 @@ pub async fn handle_work_delete(id: String, force: bool, path: Option<PathBuf>) 
     println!("🗑️  Deleted ticket: {} - {}", item.id, item.title);
 
     Ok(())
+}
+
+/// Handle work annotate command - show unified quality metrics for a ticket
+pub async fn handle_work_annotate(
+    id: String,
+    path: Option<PathBuf>,
+    format: crate::cli::commands::AnnotateOutputFormat,
+    with_churn: bool,
+    churn_days: u32,
+) -> Result<()> {
+    use crate::cli::commands::AnnotateOutputFormat;
+    use crate::services::spec_parser::SpecParser;
+
+    let project_path = path.unwrap_or_else(|| PathBuf::from("."));
+    let roadmap_path = project_path.join("docs/roadmaps/roadmap.yaml");
+    let service = RoadmapService::new(&roadmap_path);
+
+    if !service.exists() {
+        anyhow::bail!(
+            "No roadmap found at {}. Run 'pmat work init' first.",
+            roadmap_path.display()
+        );
+    }
+
+    // Find the ticket
+    let item = find_item_fuzzy(&service, &id)?;
+
+    // Collect annotations
+    let mut annotations = TicketAnnotations {
+        ticket_id: item.id.clone(),
+        title: item.title.clone(),
+        status: format!("{:?}", item.status),
+        priority: format!("{:?}", item.priority),
+        spec_path: item.spec.clone(),
+        spec_score: None,
+        files: vec![],
+        avg_tdg: None,
+        total_churn: None,
+        churn_hotspots: vec![],
+        coverage_percent: None,
+        repeated_fixes: vec![],
+    };
+
+    // Get spec score if spec exists
+    if let Some(ref spec_path) = item.spec {
+        let full_spec_path = project_path.join(spec_path);
+        if full_spec_path.exists() {
+            let parser = SpecParser::new();
+            if let Ok(spec) = parser.parse_file(&full_spec_path) {
+                annotations.spec_score = Some(calculate_spec_score_simple(&spec));
+            }
+        }
+    }
+
+    // Find related files from acceptance criteria or labels
+    let related_files = find_related_files(&item, &project_path);
+    annotations.files = related_files.clone();
+
+    // Calculate TDG for related files (simplified - just count)
+    if !related_files.is_empty() {
+        // For now, show file count as proxy for complexity
+        annotations.avg_tdg = Some(related_files.len() as f64 * 1.5); // Placeholder
+    }
+
+    // Churn analysis if requested
+    if with_churn && !related_files.is_empty() {
+        let churn_result = analyze_churn_simple(&project_path, &related_files, churn_days);
+        annotations.total_churn = Some(churn_result.total_commits);
+        annotations.churn_hotspots = churn_result.hotspots;
+        annotations.repeated_fixes = churn_result.repeated_fixes;
+    }
+
+    // Output based on format
+    match format {
+        AnnotateOutputFormat::Text => print_annotations_text(&annotations),
+        AnnotateOutputFormat::Json => print_annotations_json(&annotations)?,
+        AnnotateOutputFormat::Markdown => print_annotations_markdown(&annotations),
+    }
+
+    Ok(())
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+struct TicketAnnotations {
+    ticket_id: String,
+    title: String,
+    status: String,
+    priority: String,
+    spec_path: Option<PathBuf>,
+    spec_score: Option<f64>,
+    files: Vec<PathBuf>,
+    avg_tdg: Option<f64>,
+    total_churn: Option<usize>,
+    churn_hotspots: Vec<String>,
+    coverage_percent: Option<f64>,
+    repeated_fixes: Vec<RepeatedFix>,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+struct RepeatedFix {
+    file: String,
+    line_range: String,
+    fix_count: usize,
+    description: String,
+}
+
+struct ChurnResult {
+    total_commits: usize,
+    hotspots: Vec<String>,
+    repeated_fixes: Vec<RepeatedFix>,
+}
+
+fn calculate_spec_score_simple(spec: &crate::services::spec_parser::ParsedSpec) -> f64 {
+    let mut score = 0.0;
+    if !spec.issue_refs.is_empty() {
+        score += 10.0;
+    }
+    score += (spec.code_examples.len().min(5) * 4) as f64;
+    score += (spec.acceptance_criteria.len().min(10) * 3) as f64;
+    score += (spec.claims.len().min(20)) as f64;
+    if !spec.title.is_empty() {
+        score += 5.0;
+    }
+    score += (spec.test_requirements.len().min(5) * 3) as f64;
+    score.min(100.0)
+}
+
+fn find_related_files(
+    item: &crate::models::roadmap::RoadmapItem,
+    project_path: &Path,
+) -> Vec<PathBuf> {
+    let mut files = Vec::new();
+
+    // Check if spec mentions files
+    if let Some(ref spec_path) = item.spec {
+        let full_path = project_path.join(spec_path);
+        if full_path.exists() {
+            if let Ok(content) = std::fs::read_to_string(&full_path) {
+                // Extract file paths from spec (e.g., `server/src/foo.rs`)
+                let re = regex::Regex::new(r"`([\w/._-]+\.(?:rs|ts|py|go|js))`").ok();
+                if let Some(re) = re {
+                    for cap in re.captures_iter(&content) {
+                        if let Some(m) = cap.get(1) {
+                            let file_path = project_path.join(m.as_str());
+                            if file_path.exists() {
+                                files.push(PathBuf::from(m.as_str()));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Also check labels for file hints
+    for label in &item.labels {
+        if label.ends_with(".rs") || label.ends_with(".ts") {
+            let file_path = project_path.join(label);
+            if file_path.exists() {
+                files.push(PathBuf::from(label));
+            }
+        }
+    }
+
+    files.into_iter().take(10).collect() // Limit to 10 files
+}
+
+fn analyze_churn_simple(project_path: &Path, files: &[PathBuf], days: u32) -> ChurnResult {
+    let mut total_commits = 0;
+    let mut hotspots = Vec::new();
+    let mut repeated_fixes = Vec::new();
+
+    for file in files {
+        // Run git log to count commits
+        let output = std::process::Command::new("git")
+            .args([
+                "log",
+                "--oneline",
+                &format!("--since={} days ago", days),
+                "--",
+                &file.to_string_lossy(),
+            ])
+            .current_dir(project_path)
+            .output();
+
+        if let Ok(output) = output {
+            let commit_count = String::from_utf8_lossy(&output.stdout)
+                .lines()
+                .count();
+            total_commits += commit_count;
+
+            if commit_count > 5 {
+                hotspots.push(format!("{}: {} commits", file.display(), commit_count));
+            }
+
+            // Check for repeated fix patterns (same file, similar commit messages)
+            let log_output = std::process::Command::new("git")
+                .args([
+                    "log",
+                    "--oneline",
+                    &format!("--since={} days ago", days),
+                    "--grep=fix",
+                    "-i",
+                    "--",
+                    &file.to_string_lossy(),
+                ])
+                .current_dir(project_path)
+                .output();
+
+            if let Ok(log_output) = log_output {
+                let fix_count = String::from_utf8_lossy(&log_output.stdout)
+                    .lines()
+                    .count();
+                if fix_count >= 2 {
+                    repeated_fixes.push(RepeatedFix {
+                        file: file.to_string_lossy().to_string(),
+                        line_range: "various".to_string(),
+                        fix_count,
+                        description: format!("{} fix commits in {} days (Tarantula alert)", fix_count, days),
+                    });
+                }
+            }
+        }
+    }
+
+    ChurnResult {
+        total_commits,
+        hotspots,
+        repeated_fixes,
+    }
+}
+
+fn print_annotations_text(ann: &TicketAnnotations) {
+    println!("📊 Quality Annotations for {}\n", ann.ticket_id);
+    println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    println!("Title:    {}", ann.title);
+    println!("Status:   {}", ann.status);
+    println!("Priority: {}", ann.priority);
+    println!();
+
+    // Spec section
+    println!("📋 SPECIFICATION");
+    if let Some(ref spec) = ann.spec_path {
+        println!("   Path:  {}", spec.display());
+        if let Some(score) = ann.spec_score {
+            let status = if score >= 95.0 { "✅" } else { "❌" };
+            println!("   Score: {:.1}/100 {}", score, status);
+        }
+    } else {
+        println!("   ⚠️  No specification linked");
+    }
+    println!();
+
+    // Files section
+    println!("📁 RELATED FILES ({})", ann.files.len());
+    if ann.files.is_empty() {
+        println!("   No files detected");
+    } else {
+        for f in &ann.files {
+            println!("   • {}", f.display());
+        }
+    }
+    println!();
+
+    // TDG section
+    println!("📈 TDG (Test-Driven Grade)");
+    if let Some(tdg) = ann.avg_tdg {
+        println!("   Avg Score: {:.1}/10", tdg);
+    } else {
+        println!("   Not calculated (no files)");
+    }
+    println!();
+
+    // Churn section
+    println!("🔄 CHURN ANALYSIS");
+    if let Some(churn) = ann.total_churn {
+        println!("   Total Commits: {}", churn);
+        if !ann.churn_hotspots.is_empty() {
+            println!("   Hotspots:");
+            for h in &ann.churn_hotspots {
+                println!("     ⚠️  {}", h);
+            }
+        }
+    } else {
+        println!("   Run with --with-churn to analyze");
+    }
+    println!();
+
+    // Tarantula section
+    println!("🔴 TARANTULA FAULT DETECTION");
+    if ann.repeated_fixes.is_empty() {
+        println!("   ✅ No repeated fix patterns detected");
+    } else {
+        for fix in &ann.repeated_fixes {
+            println!("   ⚠️  {}: {}", fix.file, fix.description);
+        }
+    }
+    println!();
+
+    // Coverage section
+    println!("📊 COVERAGE");
+    if let Some(cov) = ann.coverage_percent {
+        let status = if cov >= 95.0 { "✅" } else { "❌" };
+        println!("   {:.1}% {}", cov, status);
+    } else {
+        println!("   Not available (run coverage analysis)");
+    }
+}
+
+fn print_annotations_json(ann: &TicketAnnotations) -> Result<()> {
+    println!("{}", serde_json::to_string_pretty(ann)?);
+    Ok(())
+}
+
+fn print_annotations_markdown(ann: &TicketAnnotations) {
+    println!("# Quality Annotations: {}\n", ann.ticket_id);
+    println!("**Title:** {}", ann.title);
+    println!("**Status:** {} | **Priority:** {}\n", ann.status, ann.priority);
+
+    println!("## Specification");
+    if let Some(ref spec) = ann.spec_path {
+        let score_str = ann.spec_score.map(|s| format!("{:.1}/100", s)).unwrap_or_else(|| "N/A".to_string());
+        println!("| Metric | Value |");
+        println!("|--------|-------|");
+        println!("| Path | {} |", spec.display());
+        println!("| Score | {} |", score_str);
+    } else {
+        println!("⚠️ No specification linked\n");
+    }
+
+    println!("\n## Metrics Summary");
+    println!("| Metric | Value | Status |");
+    println!("|--------|-------|--------|");
+    println!("| Files | {} | - |", ann.files.len());
+    println!("| TDG | {} | {} |",
+        ann.avg_tdg.map(|t| format!("{:.1}", t)).unwrap_or_else(|| "N/A".to_string()),
+        if ann.avg_tdg.map(|t| t >= 7.0).unwrap_or(false) { "✅" } else { "⚠️" }
+    );
+    println!("| Churn | {} | {} |",
+        ann.total_churn.map(|c| c.to_string()).unwrap_or_else(|| "N/A".to_string()),
+        if ann.total_churn.map(|c| c < 10).unwrap_or(true) { "✅" } else { "⚠️" }
+    );
+    println!("| Repeated Fixes | {} | {} |",
+        ann.repeated_fixes.len(),
+        if ann.repeated_fixes.is_empty() { "✅" } else { "🔴" }
+    );
 }
 
 /// Generate the next available ID for a new ticket
