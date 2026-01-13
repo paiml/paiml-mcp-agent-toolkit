@@ -464,6 +464,25 @@ pub async fn handle_work_complete(
                 println!();
             }
         }
+
+        // Run Karl Popper falsification validation
+        match run_popper_falsification(&project_path).await {
+            Ok(falsification) => {
+                if !falsification.passed {
+                    println!("⚠️  Falsification issues detected:");
+                    println!("   {}", falsification.summary);
+                    println!();
+                    println!("   This is a warning - work will still be marked complete.");
+                    println!("   Consider addressing these issues for higher confidence.");
+                    println!();
+                }
+            }
+            Err(e) => {
+                println!("⚠️  Falsification validation error: {}", e);
+                println!("   Continuing with completion...");
+                println!();
+            }
+        }
     }
 
     // Mark as completed
@@ -1043,6 +1062,177 @@ async fn run_quality_gates(project_path: &PathBuf) -> Result<bool> {
 
     println!();
     Ok(all_passed)
+}
+
+/// Karl Popper Falsification Result
+///
+/// Captures the results of post-work falsification validation.
+/// Based on the philosophy that scientific claims must be falsifiable -
+/// we validate that our work satisfies falsification criteria.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FalsificationResult {
+    /// Tests passed (falsify: no regressions introduced)
+    pub tests_passed: bool,
+    /// Coverage increased or maintained (falsify: no code bloat without tests)
+    pub coverage_maintained: bool,
+    /// Coverage percentage before work
+    pub coverage_before: Option<f32>,
+    /// Coverage percentage after work
+    pub coverage_after: Option<f32>,
+    /// Binary size within threshold (falsify: no dependency bloat)
+    pub binary_size_ok: bool,
+    /// Overall falsification passed
+    pub passed: bool,
+    /// Human-readable summary
+    pub summary: String,
+}
+
+impl Default for FalsificationResult {
+    fn default() -> Self {
+        Self {
+            tests_passed: false,
+            coverage_maintained: false,
+            coverage_before: None,
+            coverage_after: None,
+            binary_size_ok: true,
+            passed: false,
+            summary: String::new(),
+        }
+    }
+}
+
+/// Run Karl Popper Falsification Validation
+///
+/// This implements the scientific method for validating work:
+/// 1. Hypothesis: Work should not introduce regressions
+/// 2. Falsification: Run tests to attempt to falsify the hypothesis
+/// 3. Measurement: Measure coverage to verify improvements
+/// 4. Result: Pass only if falsification attempts fail (work is valid)
+///
+/// Based on: docs/specifications/80-20-to-95.md
+pub async fn run_popper_falsification(project_path: &PathBuf) -> Result<FalsificationResult> {
+    use std::process::Command;
+
+    let mut result = FalsificationResult::default();
+    let mut issues: Vec<String> = Vec::new();
+
+    println!();
+    println!("🔬 Karl Popper Falsification Validation");
+    println!("   (Scientific method: attempting to falsify your work)");
+    println!();
+
+    // 1. Hypothesis: Tests should pass (falsify: look for regressions)
+    println!("   📊 Hypothesis 1: No regressions introduced");
+    println!("      Falsification: Running tests...");
+
+    let test_status = Command::new("cargo")
+        .args(["test", "--lib", "--quiet"])
+        .current_dir(project_path)
+        .status()
+        .context("Failed to run cargo test")?;
+
+    if test_status.success() {
+        result.tests_passed = true;
+        println!("      ✅ Falsification failed: Tests pass (hypothesis holds)");
+    } else {
+        result.tests_passed = false;
+        issues.push("Tests failed - regressions detected".to_string());
+        println!("      ❌ Falsification succeeded: Tests fail (hypothesis falsified)");
+    }
+
+    // 2. Hypothesis: Coverage should be maintained or improved
+    println!();
+    println!("   📊 Hypothesis 2: Coverage maintained or improved");
+    println!("      Falsification: Checking coverage trends...");
+
+    // Try to read coverage from cached metrics
+    let metrics_dir = project_path.join(".pmat-metrics/trends");
+    if metrics_dir.exists() {
+        if let Ok(content) = std::fs::read_to_string(metrics_dir.join("test-coverage.json")) {
+            if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
+                if let Some(entries) = json.as_array() {
+                    if entries.len() >= 2 {
+                        // Compare last two entries
+                        let current = entries.last()
+                            .and_then(|e| e.get("value"))
+                            .and_then(|v| v.as_f64())
+                            .unwrap_or(0.0) as f32;
+                        let previous = entries.get(entries.len() - 2)
+                            .and_then(|e| e.get("value"))
+                            .and_then(|v| v.as_f64())
+                            .unwrap_or(0.0) as f32;
+
+                        result.coverage_before = Some(previous);
+                        result.coverage_after = Some(current);
+
+                        if current >= previous {
+                            result.coverage_maintained = true;
+                            let delta = current - previous;
+                            if delta > 0.0 {
+                                println!("      ✅ Falsification failed: Coverage improved +{:.2}%", delta);
+                            } else {
+                                println!("      ✅ Falsification failed: Coverage maintained at {:.2}%", current);
+                            }
+                        } else {
+                            let delta = previous - current;
+                            issues.push(format!("Coverage dropped by {:.2}%", delta));
+                            println!("      ❌ Falsification succeeded: Coverage dropped -{:.2}%", delta);
+                        }
+                    } else if !entries.is_empty() {
+                        result.coverage_maintained = true;
+                        println!("      ⚠️  Insufficient history (only 1 entry)");
+                    }
+                }
+            }
+        }
+    }
+
+    if result.coverage_before.is_none() {
+        result.coverage_maintained = true; // Assume OK if no data
+        println!("      ⚠️  No coverage history found (skipping)");
+        println!("         Run 'make coverage' to establish baseline");
+    }
+
+    // 3. Binary size check (optional, only if release build exists)
+    println!();
+    println!("   📊 Hypothesis 3: No dependency bloat");
+    result.binary_size_ok = true; // Default to OK
+
+    let release_binary = project_path.join("target/release/pmat");
+    if release_binary.exists() {
+        if let Ok(metadata) = std::fs::metadata(&release_binary) {
+            let size_mb = metadata.len() as f64 / (1024.0 * 1024.0);
+            if size_mb <= 50.0 {
+                println!("      ✅ Binary size OK: {:.1}MB (limit: 50MB)", size_mb);
+            } else {
+                result.binary_size_ok = false;
+                issues.push(format!("Binary size {:.1}MB exceeds 50MB limit", size_mb));
+                println!("      ❌ Binary size too large: {:.1}MB (limit: 50MB)", size_mb);
+            }
+        }
+    } else {
+        println!("      ⚠️  No release binary found (skipping)");
+    }
+
+    // Determine overall result
+    result.passed = result.tests_passed && result.coverage_maintained && result.binary_size_ok;
+
+    println!();
+    if result.passed {
+        result.summary = "All falsification attempts failed - work is valid".to_string();
+        println!("   🎉 FALSIFICATION RESULT: PASSED");
+        println!("      All hypotheses held under scrutiny");
+    } else {
+        result.summary = format!("Falsification succeeded: {}", issues.join(", "));
+        println!("   ⚠️  FALSIFICATION RESULT: FAILED");
+        println!("      Issues found:");
+        for issue in &issues {
+            println!("      - {}", issue);
+        }
+    }
+    println!();
+
+    Ok(result)
 }
 
 /// Handle work validate command (Part B: UX Improvements)
