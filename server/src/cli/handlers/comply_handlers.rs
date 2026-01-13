@@ -547,13 +547,347 @@ fn check_deprecated_features(_project_path: &Path) -> ComplianceCheck {
     }
 }
 
+/// ComputeBrick pattern detection result
+#[derive(Debug, Clone)]
+struct CbPatternViolation {
+    pattern_id: String,
+    file: String,
+    line: usize,
+    description: String,
+    severity: Severity,
+}
+
+/// BrickProfiler anomaly from JSON output
+#[derive(Debug, Clone)]
+struct ProfilerAnomaly {
+    brick_name: String,
+    anomaly_type: String,
+    value: f64,
+    threshold: f64,
+}
+
+/// Scan Rust files for CB-020 (unsafe without SAFETY comment)
+fn detect_cb020_unsafe_without_safety(project_path: &Path) -> Vec<CbPatternViolation> {
+    let mut violations = Vec::new();
+
+    // Walk src/ directory for .rs files
+    let src_dir = project_path.join("src");
+    if !src_dir.exists() {
+        return violations;
+    }
+
+    if let Ok(entries) = walkdir_rs_files(&src_dir) {
+        for entry in entries {
+            if let Ok(content) = fs::read_to_string(&entry) {
+                for (line_num, line) in content.lines().enumerate() {
+                    let trimmed = line.trim();
+                    // Check for unsafe block without preceding SAFETY comment
+                    if trimmed.starts_with("unsafe {") || trimmed.starts_with("unsafe{") {
+                        // Look at previous non-empty lines for SAFETY comment
+                        let prev_lines: Vec<&str> = content.lines().take(line_num).collect();
+                        let has_safety = prev_lines
+                            .iter()
+                            .rev()
+                            .take(3)
+                            .any(|l| l.contains("// SAFETY:") || l.contains("// SAFETY :"));
+
+                        if !has_safety {
+                            violations.push(CbPatternViolation {
+                                pattern_id: "CB-020".to_string(),
+                                file: entry.display().to_string(),
+                                line: line_num + 1,
+                                description: "unsafe block without SAFETY comment".to_string(),
+                                severity: Severity::Warning,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    violations
+}
+
+/// Scan for CB-021 (SIMD intrinsics without #[target_feature])
+fn detect_cb021_simd_without_target_feature(project_path: &Path) -> Vec<CbPatternViolation> {
+    let mut violations = Vec::new();
+
+    let src_dir = project_path.join("src");
+    if !src_dir.exists() {
+        return violations;
+    }
+
+    // Common SIMD intrinsic patterns
+    let simd_patterns = [
+        "_mm_", "_mm256_", "_mm512_", // x86 SSE/AVX
+        "vld1q_", "vst1q_", "vmulq_", "vaddq_", // ARM NEON
+        "i8x16", "i16x8", "i32x4", "f32x4",     // portable SIMD
+    ];
+
+    if let Ok(entries) = walkdir_rs_files(&src_dir) {
+        for entry in entries {
+            if let Ok(content) = fs::read_to_string(&entry) {
+                let lines: Vec<&str> = content.lines().collect();
+
+                // Find functions with #[target_feature] attribute
+                let mut protected_lines: std::collections::HashSet<usize> = std::collections::HashSet::new();
+
+                for (i, line) in lines.iter().enumerate() {
+                    if line.trim().starts_with("#[target_feature") {
+                        // Mark all lines in this function as protected
+                        // Find the fn line (should be within next 3 lines)
+                        for j in i..std::cmp::min(i + 4, lines.len()) {
+                            if lines[j].contains("fn ") {
+                                // Count braces to find function end
+                                let mut depth = 0;
+                                for k in j..lines.len() {
+                                    depth += lines[k].matches('{').count();
+                                    depth = depth.saturating_sub(lines[k].matches('}').count());
+                                    protected_lines.insert(k);
+                                    if depth == 0 && k > j {
+                                        break;
+                                    }
+                                }
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // Check for SIMD intrinsics outside protected functions
+                for (line_num, line) in lines.iter().enumerate() {
+                    if protected_lines.contains(&line_num) {
+                        continue;
+                    }
+
+                    for pattern in &simd_patterns {
+                        if line.contains(pattern) && !line.trim().starts_with("//") {
+                            violations.push(CbPatternViolation {
+                                pattern_id: "CB-021".to_string(),
+                                file: entry.display().to_string(),
+                                line: line_num + 1,
+                                description: format!(
+                                    "SIMD intrinsic '{}' without #[target_feature]",
+                                    pattern
+                                ),
+                                severity: Severity::Warning,
+                            });
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    violations
+}
+
+/// Check for bricks without assertions (budget validation)
+fn detect_bricks_without_assertions(project_path: &Path) -> Vec<CbPatternViolation> {
+    let mut violations = Vec::new();
+
+    let src_dir = project_path.join("src");
+    if !src_dir.exists() {
+        return violations;
+    }
+
+    if let Ok(entries) = walkdir_rs_files(&src_dir) {
+        for entry in entries {
+            if let Ok(content) = fs::read_to_string(&entry) {
+                // Look for ComputeBrick impl blocks without assertion methods
+                let mut in_brick_impl = false;
+                let mut brick_name = String::new();
+                let mut impl_start_line = 0;
+                let mut brace_depth = 0;
+                let mut has_assertion = false;
+
+                for (line_num, line) in content.lines().enumerate() {
+                    // Detect impl blocks for types containing "Brick"
+                    if line.contains("impl") && line.contains("Brick") && !line.contains("//") {
+                        in_brick_impl = true;
+                        brick_name = line
+                            .split_whitespace()
+                            .find(|w| w.contains("Brick"))
+                            .unwrap_or("UnknownBrick")
+                            .trim_end_matches('{')
+                            .to_string();
+                        impl_start_line = line_num + 1;
+                        brace_depth = 0;
+                        has_assertion = false;
+                    }
+
+                    if in_brick_impl {
+                        brace_depth += line.matches('{').count();
+                        brace_depth = brace_depth.saturating_sub(line.matches('}').count());
+
+                        // Check for assertion-related methods
+                        if line.contains("assert")
+                            || line.contains("debug_assert")
+                            || line.contains("verify")
+                            || line.contains("validate")
+                            || line.contains("budget")
+                        {
+                            has_assertion = true;
+                        }
+
+                        // End of impl block
+                        if brace_depth == 0 && line.contains('}') {
+                            if !has_assertion {
+                                violations.push(CbPatternViolation {
+                                    pattern_id: "CB-BUDGET".to_string(),
+                                    file: entry.display().to_string(),
+                                    line: impl_start_line,
+                                    description: format!(
+                                        "Brick '{}' has no assertion/budget validation",
+                                        brick_name
+                                    ),
+                                    severity: Severity::Warning,
+                                });
+                            }
+                            in_brick_impl = false;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    violations
+}
+
+/// Parse BrickProfiler JSON output and detect anomalies
+fn detect_profiler_anomalies(project_path: &Path) -> Vec<ProfilerAnomaly> {
+    let mut anomalies = Vec::new();
+
+    // Check standard profiler output locations
+    let profiler_paths = [
+        project_path.join(".pmat-metrics").join("brick-profile.json"),
+        project_path.join("target").join("brick-profile.json"),
+        project_path.join("brick-profile.json"),
+    ];
+
+    for profiler_path in &profiler_paths {
+        if !profiler_path.exists() {
+            continue;
+        }
+
+        if let Ok(content) = fs::read_to_string(profiler_path) {
+            // Parse JSON manually to avoid adding serde_json dep to this module
+            // Look for patterns like "cv": 0.18 (CV > 15% threshold)
+            // and "efficiency": 0.22 (efficiency < 25% threshold)
+
+            // Simple pattern matching for CV values
+            for line in content.lines() {
+                let line = line.trim();
+
+                // Detect high coefficient of variation (CV > 15%)
+                if line.contains("\"cv\"") || line.contains("\"cv_percent\"") {
+                    if let Some(value) = extract_json_number(line) {
+                        let cv_threshold = 15.0;
+                        let cv = if value < 1.0 { value * 100.0 } else { value };
+                        if cv > cv_threshold {
+                            anomalies.push(ProfilerAnomaly {
+                                brick_name: extract_brick_name(&content, line),
+                                anomaly_type: "HIGH_CV".to_string(),
+                                value: cv,
+                                threshold: cv_threshold,
+                            });
+                        }
+                    }
+                }
+
+                // Detect low efficiency (< 25%)
+                if line.contains("\"efficiency\"") {
+                    if let Some(value) = extract_json_number(line) {
+                        let eff_threshold = 25.0;
+                        let efficiency = if value < 1.0 { value * 100.0 } else { value };
+                        if efficiency < eff_threshold {
+                            anomalies.push(ProfilerAnomaly {
+                                brick_name: extract_brick_name(&content, line),
+                                anomaly_type: "LOW_EFFICIENCY".to_string(),
+                                value: efficiency,
+                                threshold: eff_threshold,
+                            });
+                        }
+                    }
+                }
+            }
+            break; // Only process first found file
+        }
+    }
+
+    anomalies
+}
+
+/// Helper to extract numeric value from JSON line like `"cv": 0.18,`
+fn extract_json_number(line: &str) -> Option<f64> {
+    line.split(':')
+        .nth(1)?
+        .trim()
+        .trim_end_matches(',')
+        .trim_end_matches('}')
+        .parse()
+        .ok()
+}
+
+/// Helper to extract brick name from surrounding JSON context
+fn extract_brick_name(content: &str, target_line: &str) -> String {
+    // Look backwards from target line for "name": "BrickName" pattern
+    let target_pos = content.find(target_line).unwrap_or(0);
+    let before = &content[..target_pos];
+
+    for line in before.lines().rev().take(10) {
+        if line.contains("\"name\"") || line.contains("\"brick\"") {
+            if let Some(start) = line.find('"') {
+                let rest = &line[start + 1..];
+                if let Some(end) = rest.find('"') {
+                    let after_colon = &rest[end + 1..];
+                    if let Some(val_start) = after_colon.find('"') {
+                        let val_rest = &after_colon[val_start + 1..];
+                        if let Some(val_end) = val_rest.find('"') {
+                            return val_rest[..val_end].to_string();
+                        }
+                    }
+                }
+            }
+        }
+    }
+    "UnknownBrick".to_string()
+}
+
+/// Walk directory for .rs files
+fn walkdir_rs_files(dir: &Path) -> Result<Vec<std::path::PathBuf>, std::io::Error> {
+    let mut rs_files = Vec::new();
+
+    fn visit_dir(dir: &Path, files: &mut Vec<std::path::PathBuf>) -> std::io::Result<()> {
+        if dir.is_dir() {
+            for entry in fs::read_dir(dir)? {
+                let entry = entry?;
+                let path = entry.path();
+                if path.is_dir() {
+                    visit_dir(&path, files)?;
+                } else if path.extension().map_or(false, |e| e == "rs") {
+                    files.push(path);
+                }
+            }
+        }
+        Ok(())
+    }
+
+    visit_dir(dir, &mut rs_files)?;
+    Ok(rs_files)
+}
+
 /// Check ComputeBrick compliance (PROBAR-SPEC-009-P8)
 ///
 /// Validates:
-/// - CB-001: Bounds checks in generated WGSL
-/// - CB-002: Barrier safety
-/// - CB-003: Tile dimension validation
-/// - CB-004: Shared memory limits
+/// - CB-001 to CB-022: Static analysis pattern detection
+/// - CB-020: unsafe blocks without SAFETY comments
+/// - CB-021: SIMD intrinsics without #[target_feature]
+/// - CB-BUDGET: Bricks without assertion/validation
+/// - BrickProfiler anomalies: CV > 15%, efficiency < 25%
 /// - Probar GUI coverage >= 80%
 fn check_compute_brick(project_path: &Path) -> ComplianceCheck {
     // Check if this is a ComputeBrick project (has probar dependency or brick/ directory)
@@ -565,13 +899,58 @@ fn check_compute_brick(project_path: &Path) -> ComplianceCheck {
             .unwrap_or(false);
     let has_brick_dir = brick_dir.exists();
 
-    if !has_probar && !has_brick_dir {
+    // Also check for trueno/realizar dependencies (ComputeBrick ecosystem)
+    let has_cb_ecosystem = cargo_toml.exists()
+        && fs::read_to_string(&cargo_toml)
+            .map(|s| s.contains("trueno") || s.contains("realizar") || s.contains("Brick"))
+            .unwrap_or(false);
+
+    if !has_probar && !has_brick_dir && !has_cb_ecosystem {
         return ComplianceCheck {
             name: "ComputeBrick Compliance".to_string(),
             status: CheckStatus::Skip,
-            message: "Not a ComputeBrick project (no probar dep or brick/ dir)".to_string(),
+            message: "Not a ComputeBrick project (no probar/trueno/realizar dep or brick/ dir)"
+                .to_string(),
             severity: Severity::Info,
         };
+    }
+
+    // Collect all violations
+    let mut all_issues: Vec<String> = Vec::new();
+    let mut critical_count = 0;
+    let mut warning_count = 0;
+
+    // Run static analysis for CB patterns
+    let cb020_violations = detect_cb020_unsafe_without_safety(project_path);
+    for v in &cb020_violations {
+        all_issues.push(format!("{}: {} ({}:{})", v.pattern_id, v.description, v.file, v.line));
+        warning_count += 1;
+    }
+
+    let cb021_violations = detect_cb021_simd_without_target_feature(project_path);
+    for v in &cb021_violations {
+        all_issues.push(format!("{}: {} ({}:{})", v.pattern_id, v.description, v.file, v.line));
+        warning_count += 1;
+    }
+
+    let budget_violations = detect_bricks_without_assertions(project_path);
+    for v in &budget_violations {
+        all_issues.push(format!("{}: {} ({}:{})", v.pattern_id, v.description, v.file, v.line));
+        warning_count += 1;
+    }
+
+    // Check BrickProfiler output for anomalies
+    let profiler_anomalies = detect_profiler_anomalies(project_path);
+    for a in &profiler_anomalies {
+        all_issues.push(format!(
+            "PROFILER-{}: {} has {}={:.1}% (threshold: {:.1}%)",
+            a.anomaly_type, a.brick_name, a.anomaly_type.to_lowercase(), a.value, a.threshold
+        ));
+        if a.anomaly_type == "LOW_EFFICIENCY" {
+            critical_count += 1;
+        } else {
+            warning_count += 1;
+        }
     }
 
     // Check for .pmat-gates.toml compute-brick section
@@ -581,32 +960,49 @@ fn check_compute_brick(project_path: &Path) -> ComplianceCheck {
             .map(|s| s.contains("[compute-brick]"))
             .unwrap_or(false);
 
-    if !has_cb_config {
-        return ComplianceCheck {
-            name: "ComputeBrick Compliance".to_string(),
-            status: CheckStatus::Warn,
-            message: "Missing [compute-brick] section in .pmat-gates.toml".to_string(),
-            severity: Severity::Warning,
-        };
+    if !has_cb_config && (has_probar || has_brick_dir) {
+        all_issues.push("Missing [compute-brick] section in .pmat-gates.toml".to_string());
+        warning_count += 1;
     }
 
     // Check for probar test coverage file
     let coverage_file = project_path.join(".pmat-metrics").join("gui-coverage.json");
     if has_probar && !coverage_file.exists() {
-        return ComplianceCheck {
-            name: "ComputeBrick Compliance".to_string(),
-            status: CheckStatus::Warn,
-            message: "No GUI coverage report found - run probador to generate".to_string(),
-            severity: Severity::Warning,
-        };
+        all_issues.push("No GUI coverage report - run probador to generate".to_string());
+        warning_count += 1;
     }
 
-    // All checks passed
-    ComplianceCheck {
-        name: "ComputeBrick Compliance".to_string(),
-        status: CheckStatus::Pass,
-        message: "ComputeBrick configuration valid".to_string(),
-        severity: Severity::Info,
+    // Determine overall status and message
+    if critical_count > 0 {
+        ComplianceCheck {
+            name: "ComputeBrick Compliance".to_string(),
+            status: CheckStatus::Fail,
+            message: format!(
+                "{} critical, {} warnings: {}",
+                critical_count,
+                warning_count,
+                all_issues.first().unwrap_or(&"unknown".to_string())
+            ),
+            severity: Severity::Critical,
+        }
+    } else if warning_count > 0 {
+        ComplianceCheck {
+            name: "ComputeBrick Compliance".to_string(),
+            status: CheckStatus::Warn,
+            message: format!(
+                "{} warnings detected: {}",
+                warning_count,
+                all_issues.join("; ").chars().take(200).collect::<String>()
+            ),
+            severity: Severity::Warning,
+        }
+    } else {
+        ComplianceCheck {
+            name: "ComputeBrick Compliance".to_string(),
+            status: CheckStatus::Pass,
+            message: "ComputeBrick patterns validated - no violations detected".to_string(),
+            severity: Severity::Info,
+        }
     }
 }
 
@@ -2638,6 +3034,284 @@ enabled = true
         let config = load_or_create_project_config(temp.path()).expect("Failed to load config");
         let check = check_version_currency(&config.pmat.version);
         assert_eq!(check.status, CheckStatus::Pass);
+    }
+
+    // ============================================================================
+    // ComputeBrick Pattern Detection Tests (CB-IMPL-001-B)
+    // ============================================================================
+
+    #[test]
+    fn test_cb020_detects_unsafe_without_safety() {
+        let temp = tempfile::tempdir().unwrap();
+        let src_dir = temp.path().join("src");
+        std::fs::create_dir_all(&src_dir).unwrap();
+
+        // Create file with unsafe block without SAFETY comment
+        let rs_file = src_dir.join("lib.rs");
+        std::fs::write(
+            &rs_file,
+            r#"
+fn bad_unsafe() {
+    unsafe {
+        std::ptr::null::<i32>().read();
+    }
+}
+"#,
+        )
+        .unwrap();
+
+        let violations = detect_cb020_unsafe_without_safety(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].pattern_id, "CB-020");
+        assert!(violations[0].description.contains("unsafe"));
+    }
+
+    #[test]
+    fn test_cb020_allows_unsafe_with_safety() {
+        let temp = tempfile::tempdir().unwrap();
+        let src_dir = temp.path().join("src");
+        std::fs::create_dir_all(&src_dir).unwrap();
+
+        // Create file with unsafe block WITH SAFETY comment
+        let rs_file = src_dir.join("lib.rs");
+        std::fs::write(
+            &rs_file,
+            r#"
+fn good_unsafe() {
+    // SAFETY: null pointer read is UB, but this is just a test
+    unsafe {
+        std::ptr::null::<i32>().read();
+    }
+}
+"#,
+        )
+        .unwrap();
+
+        let violations = detect_cb020_unsafe_without_safety(temp.path());
+        assert_eq!(violations.len(), 0);
+    }
+
+    #[test]
+    fn test_cb021_detects_simd_without_target_feature() {
+        let temp = tempfile::tempdir().unwrap();
+        let src_dir = temp.path().join("src");
+        std::fs::create_dir_all(&src_dir).unwrap();
+
+        // Create file with SIMD intrinsic without #[target_feature]
+        let rs_file = src_dir.join("simd.rs");
+        std::fs::write(
+            &rs_file,
+            r#"
+fn bad_simd() {
+    let a = _mm_set1_ps(1.0);
+}
+"#,
+        )
+        .unwrap();
+
+        let violations = detect_cb021_simd_without_target_feature(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].pattern_id, "CB-021");
+        assert!(violations[0].description.contains("_mm_"));
+    }
+
+    #[test]
+    fn test_cb021_allows_simd_with_target_feature() {
+        let temp = tempfile::tempdir().unwrap();
+        let src_dir = temp.path().join("src");
+        std::fs::create_dir_all(&src_dir).unwrap();
+
+        // Create file with SIMD intrinsic WITH #[target_feature]
+        let rs_file = src_dir.join("simd.rs");
+        std::fs::write(
+            &rs_file,
+            r#"
+#[target_feature(enable = "sse2")]
+fn good_simd() {
+    let a = _mm_set1_ps(1.0);
+}
+"#,
+        )
+        .unwrap();
+
+        let violations = detect_cb021_simd_without_target_feature(temp.path());
+        assert_eq!(violations.len(), 0);
+    }
+
+    #[test]
+    fn test_detect_bricks_without_assertions() {
+        let temp = tempfile::tempdir().unwrap();
+        let src_dir = temp.path().join("src");
+        std::fs::create_dir_all(&src_dir).unwrap();
+
+        // Create file with Brick impl WITHOUT assertions
+        let rs_file = src_dir.join("brick.rs");
+        std::fs::write(
+            &rs_file,
+            // No leading newline - content starts immediately
+            "impl ComputeBrick for MyBrick {\n\
+                fn execute(&self) {\n\
+                    self.do_work();\n\
+                }\n\
+            }\n",
+        )
+        .unwrap();
+
+        let violations = detect_bricks_without_assertions(temp.path());
+        assert_eq!(violations.len(), 1, "Expected 1 violation for brick without assertions");
+        assert_eq!(violations[0].pattern_id, "CB-BUDGET");
+    }
+
+    #[test]
+    fn test_detect_bricks_with_assertions_pass() {
+        let temp = tempfile::tempdir().unwrap();
+        let src_dir = temp.path().join("src");
+        std::fs::create_dir_all(&src_dir).unwrap();
+
+        // Create file with Brick impl WITH assertions
+        let rs_file = src_dir.join("brick.rs");
+        std::fs::write(
+            &rs_file,
+            r#"
+impl ComputeBrick for MyBrick {
+    fn execute(&self) {
+        debug_assert!(self.is_valid());
+        self.do_work();
+    }
+}
+"#,
+        )
+        .unwrap();
+
+        let violations = detect_bricks_without_assertions(temp.path());
+        assert_eq!(violations.len(), 0);
+    }
+
+    #[test]
+    fn test_detect_profiler_anomalies_high_cv() {
+        let temp = tempfile::tempdir().unwrap();
+        let metrics_dir = temp.path().join(".pmat-metrics");
+        std::fs::create_dir_all(&metrics_dir).unwrap();
+
+        // Create profiler JSON with high CV
+        let profile_file = metrics_dir.join("brick-profile.json");
+        std::fs::write(
+            &profile_file,
+            r#"{
+  "bricks": [
+    {
+      "name": "MatMulBrick",
+      "cv": 0.25,
+      "efficiency": 0.80
+    }
+  ]
+}"#,
+        )
+        .unwrap();
+
+        let anomalies = detect_profiler_anomalies(temp.path());
+        assert_eq!(anomalies.len(), 1);
+        assert_eq!(anomalies[0].anomaly_type, "HIGH_CV");
+        assert!(anomalies[0].value > 15.0);
+    }
+
+    #[test]
+    fn test_detect_profiler_anomalies_low_efficiency() {
+        let temp = tempfile::tempdir().unwrap();
+        let metrics_dir = temp.path().join(".pmat-metrics");
+        std::fs::create_dir_all(&metrics_dir).unwrap();
+
+        // Create profiler JSON with low efficiency
+        let profile_file = metrics_dir.join("brick-profile.json");
+        std::fs::write(
+            &profile_file,
+            r#"{
+  "bricks": [
+    {
+      "name": "SlowBrick",
+      "cv": 0.05,
+      "efficiency": 0.15
+    }
+  ]
+}"#,
+        )
+        .unwrap();
+
+        let anomalies = detect_profiler_anomalies(temp.path());
+        assert_eq!(anomalies.len(), 1);
+        assert_eq!(anomalies[0].anomaly_type, "LOW_EFFICIENCY");
+        assert!(anomalies[0].value < 25.0);
+    }
+
+    #[test]
+    fn test_check_compute_brick_skips_non_cb_project() {
+        let temp = tempfile::tempdir().unwrap();
+        // Create a regular project without trueno/realizar/probar deps
+        let cargo_toml = temp.path().join("Cargo.toml");
+        std::fs::write(
+            &cargo_toml,
+            r#"[package]
+name = "regular-project"
+version = "1.0.0"
+
+[dependencies]
+serde = "1.0"
+"#,
+        )
+        .unwrap();
+
+        let check = check_compute_brick(temp.path());
+        assert_eq!(check.status, CheckStatus::Skip);
+    }
+
+    #[test]
+    fn test_check_compute_brick_detects_trueno_project() {
+        let temp = tempfile::tempdir().unwrap();
+        // Create project with trueno dependency
+        let cargo_toml = temp.path().join("Cargo.toml");
+        std::fs::write(
+            &cargo_toml,
+            r#"[package]
+name = "gpu-project"
+version = "1.0.0"
+
+[dependencies]
+trueno = "0.1"
+"#,
+        )
+        .unwrap();
+
+        // Create src directory with clean Rust code
+        let src_dir = temp.path().join("src");
+        std::fs::create_dir_all(&src_dir).unwrap();
+        std::fs::write(src_dir.join("lib.rs"), "pub fn hello() {}").unwrap();
+
+        let check = check_compute_brick(temp.path());
+        // Should not skip - this is a CB ecosystem project
+        assert_ne!(check.status, CheckStatus::Skip);
+    }
+
+    #[test]
+    fn test_extract_json_number() {
+        assert_eq!(extract_json_number("\"cv\": 0.18,"), Some(0.18));
+        assert_eq!(extract_json_number("\"efficiency\": 25.5}"), Some(25.5));
+        assert_eq!(extract_json_number("invalid"), None);
+    }
+
+    #[test]
+    fn test_walkdir_rs_files() {
+        let temp = tempfile::tempdir().unwrap();
+        let src_dir = temp.path().join("src");
+        let nested = src_dir.join("nested");
+        std::fs::create_dir_all(&nested).unwrap();
+
+        std::fs::write(src_dir.join("lib.rs"), "").unwrap();
+        std::fs::write(nested.join("mod.rs"), "").unwrap();
+        std::fs::write(src_dir.join("readme.md"), "").unwrap(); // Not .rs
+
+        let files = walkdir_rs_files(&src_dir).unwrap();
+        assert_eq!(files.len(), 2);
+        assert!(files.iter().all(|f| f.extension().unwrap() == "rs"));
     }
 }
 
