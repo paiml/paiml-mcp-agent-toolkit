@@ -4,7 +4,6 @@
 
 use super::aprender_adapter::to_aprender_graph_undirected;
 use super::*;
-use petgraph::visit::EdgeRef;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
@@ -84,8 +83,8 @@ impl LouvainDetector {
         // Calculate total weight and node degrees
         for edge in graph.edge_references() {
             let weight = edge.weight();
-            let source_idx = edge.source().index();
-            let target_idx = edge.target().index();
+            let source_idx = edge.source().0 as usize;
+            let target_idx = edge.target().0 as usize;
 
             node_weights[source_idx] += weight;
             node_weights[target_idx] += weight;

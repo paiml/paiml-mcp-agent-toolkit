@@ -1,12 +1,107 @@
-use petgraph::algo::kosaraju_scc;
-use petgraph::graph::{DiGraph, NodeIndex};
 use std::collections::HashMap;
 use syn::{self, visit::Visit, File, Item};
 
+// Simple directed graph for CFG analysis (no petgraph dependency)
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct CfgNodeIndex(usize);
+
+struct SimpleDiGraph<N, E> {
+    nodes: Vec<N>,
+    edges: Vec<(CfgNodeIndex, CfgNodeIndex, E)>,
+}
+
+impl<N, E> SimpleDiGraph<N, E> {
+    fn new() -> Self {
+        Self {
+            nodes: Vec::new(),
+            edges: Vec::new(),
+        }
+    }
+
+    fn add_node(&mut self, node: N) -> CfgNodeIndex {
+        let idx = CfgNodeIndex(self.nodes.len());
+        self.nodes.push(node);
+        idx
+    }
+
+    fn add_edge(&mut self, from: CfgNodeIndex, to: CfgNodeIndex, edge: E) {
+        self.edges.push((from, to, edge));
+    }
+
+    fn node_count(&self) -> usize {
+        self.nodes.len()
+    }
+
+    fn edge_count(&self) -> usize {
+        self.edges.len()
+    }
+
+    // Simple SCC using Kosaraju's algorithm
+    fn kosaraju_scc(&self) -> Vec<Vec<CfgNodeIndex>> {
+        let n = self.nodes.len();
+        if n == 0 {
+            return Vec::new();
+        }
+
+        // Build adjacency list
+        let mut adj: Vec<Vec<usize>> = vec![Vec::new(); n];
+        let mut adj_rev: Vec<Vec<usize>> = vec![Vec::new(); n];
+
+        for (from, to, _) in &self.edges {
+            adj[from.0].push(to.0);
+            adj_rev[to.0].push(from.0);
+        }
+
+        // First DFS to get finish order
+        let mut visited = vec![false; n];
+        let mut finish_order = Vec::with_capacity(n);
+
+        for i in 0..n {
+            if !visited[i] {
+                self.dfs_finish(&adj, i, &mut visited, &mut finish_order);
+            }
+        }
+
+        // Second DFS on transpose in reverse finish order
+        let mut visited = vec![false; n];
+        let mut sccs = Vec::new();
+
+        for &node in finish_order.iter().rev() {
+            if !visited[node] {
+                let mut scc = Vec::new();
+                self.dfs_collect(&adj_rev, node, &mut visited, &mut scc);
+                sccs.push(scc.into_iter().map(CfgNodeIndex).collect());
+            }
+        }
+
+        sccs
+    }
+
+    fn dfs_finish(&self, adj: &[Vec<usize>], node: usize, visited: &mut [bool], finish: &mut Vec<usize>) {
+        visited[node] = true;
+        for &next in &adj[node] {
+            if !visited[next] {
+                self.dfs_finish(adj, next, visited, finish);
+            }
+        }
+        finish.push(node);
+    }
+
+    fn dfs_collect(&self, adj: &[Vec<usize>], node: usize, visited: &mut [bool], scc: &mut Vec<usize>) {
+        visited[node] = true;
+        scc.push(node);
+        for &next in &adj[node] {
+            if !visited[next] {
+                self.dfs_collect(adj, next, visited, scc);
+            }
+        }
+    }
+}
+
 pub struct ControlFlowGraph {
-    graph: DiGraph<CfgNode, CfgEdge>,
-    _entry: NodeIndex,
-    _exit: NodeIndex,
+    graph: SimpleDiGraph<CfgNode, CfgEdge>,
+    _entry: CfgNodeIndex,
+    _exit: CfgNodeIndex,
 }
 
 #[derive(Debug, Clone)]
@@ -28,7 +123,7 @@ pub enum CfgEdge {
 
 impl ControlFlowGraph {
     pub fn from_ast(ast: &File) -> Self {
-        let mut graph = DiGraph::new();
+        let mut graph = SimpleDiGraph::new();
         let entry = graph.add_node(CfgNode::Entry);
         let exit = graph.add_node(CfgNode::Exit);
 
@@ -55,7 +150,7 @@ impl ControlFlowGraph {
     pub fn cyclomatic_complexity(&self) -> u32 {
         let edges = self.graph.edge_count() as u32;
         let nodes = self.graph.node_count() as u32;
-        let components = kosaraju_scc(&self.graph).len() as u32;
+        let components = self.graph.kosaraju_scc().len() as u32;
 
         edges - nodes + 2 * components
     }
@@ -70,17 +165,17 @@ impl ControlFlowGraph {
 
     pub fn essential_complexity(&self) -> u32 {
         // Count strongly connected components (loops)
-        let sccs = kosaraju_scc(&self.graph);
+        let sccs = self.graph.kosaraju_scc();
         sccs.iter().filter(|scc| scc.len() > 1).count() as u32
     }
 }
 
 struct CfgBuilder {
-    graph: DiGraph<CfgNode, CfgEdge>,
-    current: NodeIndex,
-    _exit: NodeIndex,
-    break_targets: Vec<NodeIndex>,
-    continue_targets: Vec<NodeIndex>,
+    graph: SimpleDiGraph<CfgNode, CfgEdge>,
+    current: CfgNodeIndex,
+    _exit: CfgNodeIndex,
+    break_targets: Vec<CfgNodeIndex>,
+    continue_targets: Vec<CfgNodeIndex>,
 }
 
 impl<'ast> Visit<'ast> for CfgBuilder {

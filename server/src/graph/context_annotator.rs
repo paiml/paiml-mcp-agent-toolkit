@@ -3,7 +3,6 @@
 // Complexity: All functions ≤ 8
 
 use super::*;
-use petgraph::visit::EdgeRef;
 use std::collections::HashMap;
 
 /// Annotates code with graph-derived context information
@@ -87,7 +86,7 @@ impl GraphContextAnnotator {
     /// Convert directed graph to undirected for community detection
     /// Complexity: 5
     fn convert_to_undirected(&self, graph: &DependencyGraph) -> UndirectedGraph {
-        let mut undirected = petgraph::Graph::new_undirected();
+        let mut undirected = UndirectedGraph::new();
         let mut node_map = HashMap::new();
 
         // Add nodes
@@ -113,23 +112,19 @@ impl GraphContextAnnotator {
 
     /// Find related files through graph connections
     /// Complexity: 6
-    fn find_related_files(
-        &self,
-        graph: &DependencyGraph,
-        node: petgraph::graph::NodeIndex,
-    ) -> Vec<String> {
+    fn find_related_files(&self, graph: &DependencyGraph, node: NodeId) -> Vec<String> {
         let mut related = Vec::new();
 
-        // Get neighbors (both incoming and outgoing)
+        // Get neighbors (outgoing)
         for edge in graph.edges(node) {
             if let Some(neighbor_data) = graph.node_weight(edge.target()) {
                 related.push(neighbor_data.path.to_string_lossy().to_string());
             }
         }
 
-        // Get reverse neighbors
-        for edge in graph.edges_directed(node, petgraph::Direction::Incoming) {
-            if let Some(neighbor_data) = graph.node_weight(edge.source()) {
+        // Get reverse neighbors (incoming)
+        for incoming_node in graph.neighbors_directed_incoming(node) {
+            if let Some(neighbor_data) = graph.node_weight(incoming_node) {
                 related.push(neighbor_data.path.to_string_lossy().to_string());
             }
         }

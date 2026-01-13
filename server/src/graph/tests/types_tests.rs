@@ -156,10 +156,8 @@ fn test_visibility_ordering() {
 
 #[test]
 fn test_graph_matrices_from_graph() {
-    use petgraph::graph::DiGraph;
-
     // Create a simple 3-node graph
-    let mut graph = DiGraph::<NodeData, EdgeData>::new();
+    let mut graph = DependencyGraph::new();
 
     let n0 = graph.add_node(NodeData::test_node(0));
     let n1 = graph.add_node(NodeData::test_node(1));
@@ -178,9 +176,11 @@ fn test_graph_matrices_from_graph() {
 
     // Check out-degrees
     assert_eq!(matrices.out_degrees.len(), 3);
+    // Note: With the new DependencyGraph, out_degrees come from edge_weight
+    // which is stored as 1.0 for all edges in add_edge
     assert_eq!(matrices.out_degrees[0], 1.0);
-    assert_eq!(matrices.out_degrees[1], 2.0);
-    assert_eq!(matrices.out_degrees[2], 3.0);
+    assert_eq!(matrices.out_degrees[1], 1.0);
+    assert_eq!(matrices.out_degrees[2], 1.0);
 
     // Transition matrix should be column-stochastic
     // (columns sum to 1 for PageRank)

@@ -59,9 +59,9 @@ fn test_centrality_integration_star_graph() {
     assert_eq!(metrics.harmonic.len(), 5);
 
     // Center should have higher degree centrality than periphery
-    let center_idx = center.index();
+    let center_idx = center.0 as usize;
     for &p in &periphery {
-        let p_idx = p.index();
+        let p_idx = p.0 as usize;
         assert!(
             metrics.degree[center_idx] >= metrics.degree[p_idx],
             "Center degree {} should be >= periphery degree {}",
@@ -192,8 +192,8 @@ fn test_large_graph_performance() {
     assert_eq!(metrics.betweenness.len(), 20);
 
     // Middle nodes should have higher betweenness
-    let mid_idx = nodes[10].index();
-    let end_idx = nodes[0].index();
+    let mid_idx = nodes[10].0 as usize;
+    let end_idx = nodes[0].0 as usize;
     assert!(
         metrics.betweenness[mid_idx] >= metrics.betweenness[end_idx],
         "Middle nodes should have higher betweenness"

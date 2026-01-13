@@ -5479,9 +5479,9 @@ pub fn format_quality_gate_output(
         QualityGateOutputFormat::Json => format_qg_as_json(results, violations),
         QualityGateOutputFormat::Human => format_qg_as_human(results, violations),
         QualityGateOutputFormat::Junit => format_qg_as_junit(violations),
-        QualityGateOutputFormat::Summary => format_qg_as_summary(results),
+        QualityGateOutputFormat::Summary => format_qg_as_summary(results, violations),
         QualityGateOutputFormat::Detailed => format_qg_as_detailed(results, violations),
-        QualityGateOutputFormat::Markdown => format_qg_as_markdown(results),
+        QualityGateOutputFormat::Markdown => format_qg_as_markdown(results, violations),
     }
 }
 
@@ -5639,7 +5639,10 @@ fn write_junit_footer(output: &mut String) -> Result<()> {
 }
 
 // Helper: Format as summary
-fn format_qg_as_summary(results: &QualityGateResults) -> Result<String> {
+fn format_qg_as_summary(
+    results: &QualityGateResults,
+    violations: &[QualityViolation],
+) -> Result<String> {
     use std::fmt::Write;
     let mut output = String::new();
     writeln!(
@@ -5652,7 +5655,45 @@ fn format_qg_as_summary(results: &QualityGateResults) -> Result<String> {
         "Total violations: {}",
         results.total_violations
     )?;
+
+    // Show violation summary by type
+    if !violations.is_empty() {
+        writeln!(&mut output)?;
+        write_qg_violations_summary(&mut output, violations)?;
+    }
+
     Ok(output)
+}
+
+// Helper: Write violation summary grouped by type
+fn write_qg_violations_summary(
+    output: &mut String,
+    violations: &[QualityViolation],
+) -> Result<()> {
+    use std::collections::BTreeMap;
+    use std::fmt::Write;
+
+    // Group violations by check type
+    let mut by_type: BTreeMap<&str, Vec<&QualityViolation>> = BTreeMap::new();
+    for v in violations {
+        by_type.entry(&v.check_type).or_default().push(v);
+    }
+
+    for (check_type, type_violations) in by_type {
+        writeln!(output, "## {} ({} violations)", check_type, type_violations.len())?;
+        for v in type_violations.iter().take(5) {
+            // Show first 5 per category
+            if let Some(line) = v.line {
+                writeln!(output, "  - {}:{} - {}", v.file, line, v.message)?;
+            } else {
+                writeln!(output, "  - {} - {}", v.file, v.message)?;
+            }
+        }
+        if type_violations.len() > 5 {
+            writeln!(output, "  ... and {} more", type_violations.len() - 5)?;
+        }
+    }
+    Ok(())
 }
 
 // Helper: Format as detailed
@@ -5738,13 +5779,58 @@ fn write_qg_detailed_violations(
 
 // Helper: Format as Markdown
 /// Toyota Way: Extract Method - Format quality gate as Markdown (complexity ≤8)
-fn format_qg_as_markdown(results: &QualityGateResults) -> Result<String> {
+fn format_qg_as_markdown(
+    results: &QualityGateResults,
+    violations: &[QualityViolation],
+) -> Result<String> {
     let mut output = String::new();
 
     write_qg_markdown_header(&mut output, results)?;
     write_qg_markdown_summary_table(&mut output, results)?;
 
+    // Add violations section if any exist
+    if !violations.is_empty() {
+        write_qg_markdown_violations(&mut output, violations)?;
+    }
+
     Ok(output)
+}
+
+/// Write violations section in Markdown format
+fn write_qg_markdown_violations(
+    output: &mut String,
+    violations: &[QualityViolation],
+) -> Result<()> {
+    use std::collections::BTreeMap;
+    use std::fmt::Write;
+
+    writeln!(output, "\n## Violations\n")?;
+
+    // Group violations by check type
+    let mut by_type: BTreeMap<&str, Vec<&QualityViolation>> = BTreeMap::new();
+    for v in violations {
+        by_type.entry(&v.check_type).or_default().push(v);
+    }
+
+    for (check_type, type_violations) in by_type {
+        writeln!(output, "### {} ({} issues)\n", check_type, type_violations.len())?;
+        writeln!(output, "| Severity | File | Line | Message |")?;
+        writeln!(output, "|----------|------|------|---------|")?;
+
+        for v in &type_violations {
+            let line_str = v.line.map_or(String::from("-"), |l| l.to_string());
+            // Escape pipe characters in message for markdown table
+            let escaped_msg = v.message.replace('|', "\\|");
+            writeln!(
+                output,
+                "| {} | {} | {} | {} |",
+                v.severity, v.file, line_str, escaped_msg
+            )?;
+        }
+        writeln!(output)?;
+    }
+
+    Ok(())
 }
 
 /// Toyota Way: Extract Method - Write QG Markdown header section (complexity ≤5)
@@ -10124,8 +10210,9 @@ mod markdown_formatting_tests {
     #[test]
     fn test_format_qg_as_markdown_integration() {
         let results = create_test_quality_results(false, 33);
+        let violations: Vec<QualityViolation> = Vec::new();
 
-        let output = format_qg_as_markdown(&results);
+        let output = format_qg_as_markdown(&results, &violations);
         assert!(output.is_ok());
 
         let markdown = output.unwrap();
@@ -10153,8 +10240,9 @@ mod markdown_formatting_tests {
     #[test]
     fn test_format_qg_as_markdown_passed_state() {
         let results = create_test_quality_results(true, 0);
+        let violations: Vec<QualityViolation> = Vec::new();
 
-        let output = format_qg_as_markdown(&results);
+        let output = format_qg_as_markdown(&results, &violations);
         assert!(output.is_ok());
 
         let markdown = output.unwrap();
@@ -10177,10 +10265,11 @@ mod markdown_formatting_tests {
     /// Property test: Markdown output should always be valid and complete
     #[test]
     fn test_markdown_output_completeness() {
+        let empty_violations: Vec<QualityViolation> = Vec::new();
         for violations in [0, 1, 10, 50, 100, 999] {
             for passed in [true, false] {
                 let results = create_test_quality_results(passed, violations);
-                let output = format_qg_as_markdown(&results);
+                let output = format_qg_as_markdown(&results, &empty_violations);
 
                 assert!(
                     output.is_ok(),

@@ -78,10 +78,10 @@ impl PageRankComputer {
             });
         }
 
-        // Add edges
+        // Add edges using trueno-graph NodeId
         for (from, to, weight) in &matrices.edges {
-            let from_idx = petgraph::graph::NodeIndex::new(*from);
-            let to_idx = petgraph::graph::NodeIndex::new(*to);
+            let from_idx = trueno_graph::NodeId(*from as u32);
+            let to_idx = trueno_graph::NodeId(*to as u32);
 
             graph.add_edge(
                 from_idx,

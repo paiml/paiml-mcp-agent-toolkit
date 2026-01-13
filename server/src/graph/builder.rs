@@ -5,7 +5,6 @@
 use super::symbol_table::{SymbolEntry, SymbolTable};
 use super::*;
 use anyhow::Result;
-use petgraph::graph::NodeIndex;
 use rustc_hash::FxHashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -13,7 +12,7 @@ use std::path::{Path, PathBuf};
 pub struct DependencyGraphBuilder {
     graph: DependencyGraph,
     symbol_table: SymbolTable,
-    node_map: FxHashMap<PathBuf, NodeIndex>,
+    node_map: FxHashMap<PathBuf, NodeId>,
     /// Track processed files for incremental updates
     processed_hashes: FxHashMap<PathBuf, u64>,
 }
@@ -146,7 +145,7 @@ impl DependencyGraphBuilder {
 
     /// Analyze single file and create node
     /// Complexity: 10 (parsing + node creation)
-    fn analyze_file(&mut self, path: &Path) -> Result<NodeIndex> {
+    fn analyze_file(&mut self, path: &Path) -> Result<NodeId> {
         let content = fs::read_to_string(path)?;
 
         // Calculate hash for incremental updates
@@ -198,7 +197,7 @@ impl DependencyGraphBuilder {
 
     /// Resolve dependencies for a file
     /// Complexity: 9 (import parsing + edge creation)
-    fn resolve_file_dependencies(&mut self, node_id: NodeIndex, path: &Path) -> Result<()> {
+    fn resolve_file_dependencies(&mut self, node_id: NodeId, path: &Path) -> Result<()> {
         let content = fs::read_to_string(path)?;
 
         let imports = match path.extension().and_then(|s| s.to_str()) {
@@ -492,7 +491,7 @@ impl DependencyGraphBuilder {
 
     /// Resolve import string to node
     /// Complexity: 4
-    fn resolve_import_to_node(&self, import: &str) -> Option<NodeIndex> {
+    fn resolve_import_to_node(&self, import: &str) -> Option<NodeId> {
         // Try to find matching module in node_map
         for (path, &node_id) in &self.node_map {
             let module_name = self.path_to_module(path);

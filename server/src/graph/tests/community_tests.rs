@@ -4,11 +4,10 @@
 #[cfg(test)]
 mod tests {
     use super::super::super::*;
-    use petgraph::graph::UnGraph;
 
     /// Create a graph with 2 clear communities
     fn create_two_communities() -> UndirectedGraph {
-        let mut graph = UnGraph::new_undirected();
+        let mut graph = UndirectedGraph::new();
 
         // Community 1: nodes 0,1,2
         let n0 = graph.add_node(NodeData::test_node(0));
@@ -62,7 +61,7 @@ mod tests {
 
     #[test]
     fn test_louvain_single_community() {
-        let mut graph = UnGraph::new_undirected();
+        let mut graph = UndirectedGraph::new();
 
         // Create complete graph (all nodes connected)
         let nodes: Vec<_> = (0..5)
@@ -89,7 +88,7 @@ mod tests {
 
     #[test]
     fn test_louvain_isolated_nodes() {
-        let mut graph = UnGraph::new_undirected();
+        let mut graph = UndirectedGraph::new();
 
         // Add isolated nodes
         for i in 0..5 {
@@ -123,7 +122,7 @@ mod tests {
 
     #[test]
     fn test_louvain_empty_graph() {
-        let graph = UnGraph::new_undirected();
+        let graph = UndirectedGraph::new();
         let mut detector = LouvainDetector::default();
         let communities = detector.detect_communities(&graph);
 

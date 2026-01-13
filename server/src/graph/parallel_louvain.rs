@@ -4,7 +4,6 @@
 // SATD: Zero tolerance
 
 use super::types::UndirectedGraph;
-use petgraph::visit::EdgeRef;
 use rayon::prelude::*;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -322,9 +321,9 @@ impl GraphData {
         let mut edge_weights: HashMap<(usize, usize), f64> = HashMap::new();
 
         for edge in graph.edge_references() {
-            let source = edge.source().index();
-            let target = edge.target().index();
-            let weight = *edge.weight();
+            let source = edge.source().0 as usize;
+            let target = edge.target().0 as usize;
+            let weight = edge.weight();
 
             neighbors[source].push((target, weight));
             neighbors[target].push((source, weight));
@@ -408,7 +407,6 @@ impl CommunityData {
 mod tests {
     use super::*;
     use crate::graph::types::{NodeData, Symbol, SymbolKind, Visibility};
-    use petgraph::graph::UnGraph;
     use std::path::PathBuf;
 
     /// Create a test node for graph construction.
@@ -433,10 +431,12 @@ mod tests {
     /// Community 2: nodes 3, 4, 5 (fully connected)
     /// Single bridge edge between communities
     fn create_two_community_graph() -> UndirectedGraph {
-        let mut graph = UnGraph::new_undirected();
+        let mut graph = UndirectedGraph::new();
 
         // Add 6 nodes
-        let nodes: Vec<_> = (0..6).map(|i| graph.add_node(create_test_node(&format!("node{}", i)))).collect();
+        let nodes: Vec<_> = (0..6)
+            .map(|i| graph.add_node(create_test_node(&format!("node{}", i))))
+            .collect();
 
         // Community 1: fully connected (0, 1, 2)
         graph.add_edge(nodes[0], nodes[1], 1.0);
@@ -456,8 +456,10 @@ mod tests {
 
     /// Create a simple chain graph.
     fn create_chain_graph(n: usize) -> UndirectedGraph {
-        let mut graph = UnGraph::new_undirected();
-        let nodes: Vec<_> = (0..n).map(|i| graph.add_node(create_test_node(&format!("node{}", i)))).collect();
+        let mut graph = UndirectedGraph::new();
+        let nodes: Vec<_> = (0..n)
+            .map(|i| graph.add_node(create_test_node(&format!("node{}", i))))
+            .collect();
 
         for i in 0..n - 1 {
             graph.add_edge(nodes[i], nodes[i + 1], 1.0);
@@ -468,8 +470,10 @@ mod tests {
 
     /// Create a complete graph (all nodes connected to all others).
     fn create_complete_graph(n: usize) -> UndirectedGraph {
-        let mut graph = UnGraph::new_undirected();
-        let nodes: Vec<_> = (0..n).map(|i| graph.add_node(create_test_node(&format!("node{}", i)))).collect();
+        let mut graph = UndirectedGraph::new();
+        let nodes: Vec<_> = (0..n)
+            .map(|i| graph.add_node(create_test_node(&format!("node{}", i))))
+            .collect();
 
         for i in 0..n {
             for j in i + 1..n {
@@ -482,8 +486,10 @@ mod tests {
 
     /// Create a star graph with one central node.
     fn create_star_graph(n: usize) -> UndirectedGraph {
-        let mut graph = UnGraph::new_undirected();
-        let nodes: Vec<_> = (0..n).map(|i| graph.add_node(create_test_node(&format!("node{}", i)))).collect();
+        let mut graph = UndirectedGraph::new();
+        let nodes: Vec<_> = (0..n)
+            .map(|i| graph.add_node(create_test_node(&format!("node{}", i))))
+            .collect();
 
         // Node 0 is the center
         for i in 1..n {
@@ -554,7 +560,7 @@ mod tests {
 
     #[test]
     fn test_detect_empty_graph() {
-        let graph = UnGraph::<NodeData, f64>::new_undirected();
+        let graph = UndirectedGraph::new();
         let louvain = ParallelLouvain::new();
         let communities = louvain.detect(&graph);
         assert!(communities.is_empty());
@@ -562,7 +568,7 @@ mod tests {
 
     #[test]
     fn test_detect_single_node() {
-        let mut graph = UnGraph::new_undirected();
+        let mut graph = UndirectedGraph::new();
         graph.add_node(create_test_node("single"));
 
         let louvain = ParallelLouvain::new();
@@ -574,7 +580,7 @@ mod tests {
 
     #[test]
     fn test_detect_two_disconnected_nodes() {
-        let mut graph = UnGraph::new_undirected();
+        let mut graph = UndirectedGraph::new();
         graph.add_node(create_test_node("node0"));
         graph.add_node(create_test_node("node1"));
         // No edges
@@ -588,7 +594,7 @@ mod tests {
 
     #[test]
     fn test_detect_two_connected_nodes() {
-        let mut graph = UnGraph::new_undirected();
+        let mut graph = UndirectedGraph::new();
         let n0 = graph.add_node(create_test_node("node0"));
         let n1 = graph.add_node(create_test_node("node1"));
         graph.add_edge(n0, n1, 1.0);
@@ -690,7 +696,7 @@ mod tests {
 
     #[test]
     fn test_modularity_empty_graph() {
-        let graph = UnGraph::<NodeData, f64>::new_undirected();
+        let graph = UndirectedGraph::new();
         let louvain = ParallelLouvain::new();
         let communities: Vec<usize> = vec![];
         let modularity = louvain.calculate_modularity(&graph, &communities);
@@ -809,7 +815,7 @@ mod tests {
 
     #[test]
     fn test_graph_data_from_empty() {
-        let graph = UnGraph::<NodeData, f64>::new_undirected();
+        let graph = UndirectedGraph::new();
         let data = GraphData::from_graph(&graph);
 
         assert_eq!(data.n, 0);
@@ -820,7 +826,7 @@ mod tests {
 
     #[test]
     fn test_graph_data_from_two_node_graph() {
-        let mut graph = UnGraph::new_undirected();
+        let mut graph = UndirectedGraph::new();
         let n0 = graph.add_node(create_test_node("a"));
         let n1 = graph.add_node(create_test_node("b"));
         graph.add_edge(n0, n1, 2.5);
@@ -899,7 +905,7 @@ mod tests {
     #[test]
     #[ignore = "Agent-added test with incorrect assertion"]
     fn test_weighted_edges_affect_detection() {
-        let mut graph = UnGraph::new_undirected();
+        let mut graph = UndirectedGraph::new();
         let nodes: Vec<_> = (0..4).map(|i| graph.add_node(create_test_node(&format!("n{}", i)))).collect();
 
         // Create two pairs with different weight relationships
@@ -937,7 +943,7 @@ mod tests {
     #[ignore = "Agent-added test with incorrect assertion"]
     fn test_larger_graph_performance() {
         // Create a graph with 100 nodes and random edges
-        let mut graph = UnGraph::new_undirected();
+        let mut graph = UndirectedGraph::new();
         let nodes: Vec<_> = (0..100)
             .map(|i| graph.add_node(create_test_node(&format!("node{}", i))))
             .collect();
@@ -976,7 +982,7 @@ mod tests {
     fn test_self_loop_handling() {
         // Note: petgraph UnGraph doesn't typically have self-loops,
         // but test our handling anyway
-        let mut graph = UnGraph::new_undirected();
+        let mut graph = UndirectedGraph::new();
         let n0 = graph.add_node(create_test_node("node0"));
         let n1 = graph.add_node(create_test_node("node1"));
         graph.add_edge(n0, n1, 1.0);
@@ -990,7 +996,7 @@ mod tests {
     #[test]
     fn test_negative_weight_handling() {
         // Test behavior with edge weight of 0
-        let mut graph = UnGraph::new_undirected();
+        let mut graph = UndirectedGraph::new();
         let n0 = graph.add_node(create_test_node("node0"));
         let n1 = graph.add_node(create_test_node("node1"));
         graph.add_edge(n0, n1, 0.0);
@@ -1004,7 +1010,7 @@ mod tests {
 
     #[test]
     fn test_very_small_weights() {
-        let mut graph = UnGraph::new_undirected();
+        let mut graph = UndirectedGraph::new();
         let n0 = graph.add_node(create_test_node("node0"));
         let n1 = graph.add_node(create_test_node("node1"));
         graph.add_edge(n0, n1, 1e-10);
@@ -1017,7 +1023,7 @@ mod tests {
 
     #[test]
     fn test_very_large_weights() {
-        let mut graph = UnGraph::new_undirected();
+        let mut graph = UndirectedGraph::new();
         let n0 = graph.add_node(create_test_node("node0"));
         let n1 = graph.add_node(create_test_node("node1"));
         graph.add_edge(n0, n1, 1e10);

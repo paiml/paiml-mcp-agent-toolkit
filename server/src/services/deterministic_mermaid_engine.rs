@@ -2,13 +2,120 @@
 //!
 //! This module implements PageRank-based layout and deterministic Mermaid
 //! diagram generation as specified in deterministic-graphs-mmd-spec.md
+//!
+//! Uses a local SimpleStableGraph implementation (no petgraph dependency)
 
 use crate::models::dag::EdgeType;
 use crate::services::unified_ast_engine::{ModuleNode, ProjectMetrics};
-use petgraph::stable_graph::{NodeIndex, StableGraph};
-use petgraph::visit::{EdgeRef, IntoEdgeReferences};
 use std::collections::BTreeMap;
 use std::fmt::Write;
+
+// ============================================================================
+// Local SimpleStableGraph implementation (replaces petgraph::StableGraph)
+// ============================================================================
+
+/// Node index for the stable graph
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct NodeIndex(usize);
+
+/// Edge representation
+struct Edge<E> {
+    source: NodeIndex,
+    target: NodeIndex,
+    weight: E,
+}
+
+/// Edge reference for iteration
+struct EdgeRef<'a, E> {
+    source: NodeIndex,
+    target: NodeIndex,
+    weight: &'a E,
+}
+
+impl<'a, E> EdgeRef<'a, E> {
+    fn source(&self) -> NodeIndex {
+        self.source
+    }
+
+    fn target(&self) -> NodeIndex {
+        self.target
+    }
+
+    fn weight(&self) -> &E {
+        self.weight
+    }
+}
+
+/// A simple stable graph implementation
+/// Nodes maintain their indices even when other nodes are removed
+pub struct SimpleStableGraph<N, E> {
+    nodes: Vec<Option<N>>,
+    edges: Vec<Edge<E>>,
+}
+
+impl<N: Clone, E: Clone> SimpleStableGraph<N, E> {
+    /// Create a new empty stable graph
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            nodes: Vec::new(),
+            edges: Vec::new(),
+        }
+    }
+
+    /// Add a node to the graph and return its index
+    pub fn add_node(&mut self, node: N) -> NodeIndex {
+        let idx = self.nodes.len();
+        self.nodes.push(Some(node));
+        NodeIndex(idx)
+    }
+
+    /// Add an edge between two nodes
+    pub fn add_edge(&mut self, source: NodeIndex, target: NodeIndex, weight: E) {
+        self.edges.push(Edge {
+            source,
+            target,
+            weight,
+        });
+    }
+
+    fn node_count(&self) -> usize {
+        self.nodes.iter().filter(|n| n.is_some()).count()
+    }
+
+    fn node_indices(&self) -> impl Iterator<Item = NodeIndex> + '_ {
+        self.nodes
+            .iter()
+            .enumerate()
+            .filter_map(|(i, n)| n.as_ref().map(|_| NodeIndex(i)))
+    }
+
+    fn edge_references(&self) -> impl Iterator<Item = EdgeRef<'_, E>> + '_ {
+        self.edges.iter().map(|e| EdgeRef {
+            source: e.source,
+            target: e.target,
+            weight: &e.weight,
+        })
+    }
+
+    fn get_node(&self, idx: NodeIndex) -> Option<&N> {
+        self.nodes.get(idx.0).and_then(|n| n.as_ref())
+    }
+}
+
+impl<N, E> std::ops::Index<NodeIndex> for SimpleStableGraph<N, E> {
+    type Output = N;
+
+    fn index(&self, idx: NodeIndex) -> &Self::Output {
+        self.nodes[idx.0]
+            .as_ref()
+            .expect("node exists at index (stable graph invariant)")
+    }
+}
+
+// ============================================================================
+// Public API
+// ============================================================================
 
 /// Deterministic Mermaid engine with PageRank-based layout
 pub struct DeterministicMermaidEngine {
@@ -37,7 +144,7 @@ impl DeterministicMermaidEngine {
     #[must_use]
     pub fn generate_codebase_modules_mmd(
         &self,
-        graph: &StableGraph<ModuleNode, EdgeType>,
+        graph: &SimpleStableGraph<ModuleNode, EdgeType>,
     ) -> String {
         // Compute PageRank with fixed iterations for deterministic results
         let pagerank = self.compute_pagerank(graph, 0.85, self.pagerank_iterations);
@@ -100,7 +207,7 @@ impl DeterministicMermaidEngine {
     #[must_use]
     pub fn generate_service_interactions_mmd(
         &self,
-        graph: &StableGraph<ModuleNode, EdgeType>,
+        graph: &SimpleStableGraph<ModuleNode, EdgeType>,
         _metrics: &ProjectMetrics,
     ) -> String {
         // Filter to service modules only
@@ -189,7 +296,7 @@ impl DeterministicMermaidEngine {
     /// Compute `PageRank` scores for graph nodes
     fn compute_pagerank(
         &self,
-        graph: &StableGraph<ModuleNode, EdgeType>,
+        graph: &SimpleStableGraph<ModuleNode, EdgeType>,
         damping: f32,
         iterations: usize,
     ) -> BTreeMap<NodeIndex, f32> {
@@ -216,11 +323,11 @@ impl DeterministicMermaidEngine {
         for edge in graph.edge_references() {
             outgoing
                 .get_mut(&edge.source())
-                .expect("node exists in outgoing map (inserted at line 210)")
+                .expect("node exists in outgoing map (inserted above)")
                 .push(edge.target());
             incoming
                 .get_mut(&edge.target())
-                .expect("node exists in incoming map (inserted at line 211)")
+                .expect("node exists in incoming map (inserted above)")
                 .push(edge.source());
         }
 
@@ -228,7 +335,8 @@ impl DeterministicMermaidEngine {
         for _ in 0..iterations {
             let mut new_scores = BTreeMap::new();
 
-            for &node in &graph.node_indices().collect::<Vec<_>>() {
+            let node_indices: Vec<_> = graph.node_indices().collect();
+            for &node in &node_indices {
                 let mut score = (1.0 - damping) / node_count as f32;
 
                 if let Some(incoming_nodes) = incoming.get(&node) {
@@ -256,9 +364,9 @@ impl DeterministicMermaidEngine {
     /// Filter graph to service modules only (heuristic)
     fn filter_to_services(
         &self,
-        graph: &StableGraph<ModuleNode, EdgeType>,
-    ) -> StableGraph<ModuleNode, EdgeType> {
-        let mut service_graph = StableGraph::new();
+        graph: &SimpleStableGraph<ModuleNode, EdgeType>,
+    ) -> SimpleStableGraph<ModuleNode, EdgeType> {
+        let mut service_graph = SimpleStableGraph::new();
         let mut node_mapping = BTreeMap::new();
 
         // Add nodes that look like services
@@ -327,7 +435,7 @@ impl DeterministicMermaidEngine {
         } else if sanitized
             .chars()
             .next()
-            .expect("sanitized is non-empty (checked at line 325)")
+            .expect("sanitized is non-empty (checked above)")
             .is_numeric()
         {
             format!("_{sanitized}")
@@ -371,7 +479,7 @@ mod tests {
     #[test]
     fn test_pagerank_determinism() {
         let engine = DeterministicMermaidEngine::new();
-        let mut graph = StableGraph::new();
+        let mut graph = SimpleStableGraph::new();
 
         // Create a simple 3-node graph
         let node1 = graph.add_node(ModuleNode {
@@ -420,7 +528,7 @@ mod tests {
     #[test]
     fn test_mermaid_output_determinism() {
         let engine = DeterministicMermaidEngine::new();
-        let mut graph = StableGraph::new();
+        let mut graph = SimpleStableGraph::new();
 
         // Add nodes in non-alphabetical order to test sorting
         let node_z = graph.add_node(ModuleNode {
@@ -510,7 +618,7 @@ mod tests {
     #[test]
     fn test_complexity_styling() {
         let engine = DeterministicMermaidEngine::new();
-        let mut graph = StableGraph::new();
+        let mut graph = SimpleStableGraph::new();
 
         // Add service modules with different complexities
         let _low_complexity = graph.add_node(ModuleNode {
@@ -552,7 +660,7 @@ mod tests {
     #[test]
     fn test_empty_graph() {
         let engine = DeterministicMermaidEngine::new();
-        let graph = StableGraph::new();
+        let graph = SimpleStableGraph::new();
 
         let mermaid = engine.generate_codebase_modules_mmd(&graph);
         assert_eq!(mermaid.trim(), "graph TD");
@@ -565,7 +673,7 @@ mod tests {
     #[test]
     fn test_string_write_never_fails() {
         let engine = DeterministicMermaidEngine::new();
-        let mut graph = StableGraph::new();
+        let mut graph = SimpleStableGraph::new();
 
         // Create a node with special characters that might challenge string writing
         let node = graph.add_node(ModuleNode {
@@ -610,7 +718,7 @@ mod tests {
     #[test]
     fn test_pagerank_map_synchronization() {
         let engine = DeterministicMermaidEngine::new();
-        let mut graph = StableGraph::new();
+        let mut graph = SimpleStableGraph::new();
 
         // Create nodes
         let n1 = graph.add_node(ModuleNode {
@@ -653,7 +761,7 @@ mod tests {
     #[test]
     fn test_service_interactions_styling() {
         let engine = DeterministicMermaidEngine::new();
-        let mut graph = StableGraph::new();
+        let mut graph = SimpleStableGraph::new();
 
         // Add a service node with low complexity
         let low_service = graph.add_node(ModuleNode {
@@ -699,7 +807,7 @@ mod tests {
     #[test]
     fn test_complex_module_name_handling() {
         let engine = DeterministicMermaidEngine::new();
-        let mut graph = StableGraph::new();
+        let mut graph = SimpleStableGraph::new();
 
         // Create nodes with challenging names
         let names = vec![

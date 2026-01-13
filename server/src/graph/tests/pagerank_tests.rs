@@ -4,11 +4,10 @@
 #[cfg(test)]
 mod tests {
     use super::super::super::*;
-    use petgraph::graph::DiGraph;
 
     /// Create a simple 3-node cyclic graph for testing
     fn create_cycle_graph() -> DependencyGraph {
-        let mut graph = DiGraph::new();
+        let mut graph = DependencyGraph::new();
 
         let n0 = graph.add_node(NodeData::test_node(0));
         let n1 = graph.add_node(NodeData::test_node(1));
@@ -24,7 +23,7 @@ mod tests {
 
     /// Create star graph (hub and spokes)
     fn create_star_graph() -> DependencyGraph {
-        let mut graph = DiGraph::new();
+        let mut graph = DependencyGraph::new();
 
         let hub = graph.add_node(NodeData::test_node(0));
 

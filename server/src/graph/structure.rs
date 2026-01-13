@@ -1,11 +1,10 @@
-// Graph structural analysis using aprender v0.5.0
+// Graph structural analysis using aprender v0.5.0 + trueno-graph
 // Implements 4 structural statistics (Phase 4: Graph Migration)
 
 use super::aprender_adapter::to_aprender_graph;
 use super::*;
-use petgraph::algo::{connected_components, is_cyclic_directed, kosaraju_scc};
-use petgraph::visit::EdgeRef;
 use serde::Serialize;
+use trueno_graph::{connected_components, is_cyclic, kosaraju_scc};
 
 #[derive(Debug, Clone, Serialize)]
 pub struct StructuralMetrics {
@@ -59,18 +58,18 @@ impl StructuralAnalyzer {
             0.0
         };
 
-        // Compute component counts
+        // Compute component counts using trueno-graph algorithms
         let (components, strongly_connected_components) = if self.directed {
-            let scc_count = kosaraju_scc(graph).len();
+            let scc_count = kosaraju_scc(graph.inner()).len();
             (scc_count, scc_count)
         } else {
-            let comp_count = connected_components(graph);
+            let comp_count = connected_components(graph.inner());
             (comp_count, comp_count)
         };
 
-        // Check for cycles
-        let is_cyclic = if self.directed {
-            is_cyclic_directed(graph)
+        // Check for cycles using trueno-graph
+        let has_cycles = if self.directed {
+            is_cyclic(graph.inner())
         } else {
             // For undirected graphs, any edge is a cycle
             graph.edge_count() > 0
@@ -98,7 +97,7 @@ impl StructuralAnalyzer {
             assortativity,
             components,
             strongly_connected_components,
-            is_cyclic,
+            is_cyclic: has_cycles,
             transitivity,
             reciprocity,
         }

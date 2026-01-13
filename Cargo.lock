@@ -6162,18 +6162,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "petgraph"
-version = "0.8.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8701b58ea97060d5e5b155d383a69952a60943f0e6dfe30b04c287beb0b27455"
-dependencies = [
- "fixedbitset",
- "hashbrown 0.15.5",
- "indexmap",
- "serde",
-]
-
-[[package]]
 name = "phf"
 version = "0.11.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6381,7 +6369,6 @@ dependencies = [
  "parking_lot",
  "pest",
  "pest_derive",
- "petgraph",
  "pmcp",
  "pollster 0.3.0",
  "predicates",
@@ -9457,9 +9444,9 @@ dependencies = [
 
 [[package]]
 name = "trueno-graph"
-version = "0.1.9"
+version = "0.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "77b4d75915f71e3f707e4908032d7d66959ba231bf766e55b5f0926dfac46cd6"
+checksum = "e07e274af11d46f8e671603b99949c8b7081351aac5f64e143c74282d8b1875c"
 dependencies = [
  "anyhow",
  "aprender 0.24.0",

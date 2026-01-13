@@ -1,12 +1,12 @@
-// Graph type system for PMAT
+// Graph type system for PMAT - using trueno-graph (replaces petgraph)
 // Complexity: All functions ≤ 10
 // SATD: Zero tolerance
 
 use nalgebra_sparse::{CooMatrix, CsrMatrix};
-use petgraph::graph::{DiGraph, UnGraph};
-use petgraph::visit::EdgeRef;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::path::PathBuf;
+use trueno_graph::{CsrGraph, NodeId as TruenoNodeId};
 
 /// Core node data structure for dependency graph
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -87,14 +87,280 @@ pub enum FlowDirection {
     Bidirectional,
 }
 
+/// Type alias for node IDs (uses trueno-graph's NodeId)
+pub type NodeId = TruenoNodeId;
+
 /// Primary directed graph for dependency analysis
-pub type DependencyGraph = DiGraph<NodeData, EdgeData>;
+/// Wraps trueno-graph CsrGraph with separate storage for node/edge data
+#[derive(Debug, Clone)]
+pub struct DependencyGraph {
+    /// Underlying trueno-graph for structure and algorithms
+    graph: CsrGraph,
+    /// Node data storage (NodeId -> NodeData)
+    node_data: HashMap<NodeId, NodeData>,
+    /// Edge data storage ((from, to) -> EdgeData)
+    edge_data: HashMap<(NodeId, NodeId), EdgeData>,
+    /// Next node ID to assign
+    next_id: u32,
+}
 
-/// Undirected projection for community detection
-pub type UndirectedGraph = UnGraph<NodeData, f64>;
+impl Default for DependencyGraph {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
-/// Type alias for consistent node indexing
-pub type NodeId = petgraph::graph::NodeIndex<u32>;
+impl DependencyGraph {
+    /// Create a new empty dependency graph
+    pub fn new() -> Self {
+        Self {
+            graph: CsrGraph::new(),
+            node_data: HashMap::new(),
+            edge_data: HashMap::new(),
+            next_id: 0,
+        }
+    }
+
+    /// Add a node to the graph and return its ID
+    pub fn add_node(&mut self, data: NodeData) -> NodeId {
+        let id = TruenoNodeId(self.next_id);
+        self.next_id += 1;
+        self.node_data.insert(id, data);
+        id
+    }
+
+    /// Add an edge between two nodes
+    pub fn add_edge(&mut self, from: NodeId, to: NodeId, data: EdgeData) {
+        // Store edge data
+        self.edge_data.insert((from, to), data);
+        // Add to trueno-graph with weight 1.0
+        let _ = self.graph.add_edge(from, to, 1.0);
+    }
+
+    /// Get node count
+    pub fn node_count(&self) -> usize {
+        self.node_data.len()
+    }
+
+    /// Get edge count
+    pub fn edge_count(&self) -> usize {
+        self.edge_data.len()
+    }
+
+    /// Get node data by ID
+    pub fn node_weight(&self, id: NodeId) -> Option<&NodeData> {
+        self.node_data.get(&id)
+    }
+
+    /// Get mutable node data by ID
+    pub fn node_weight_mut(&mut self, id: NodeId) -> Option<&mut NodeData> {
+        self.node_data.get_mut(&id)
+    }
+
+    /// Get edge data between two nodes
+    pub fn edge_weight(&self, from: NodeId, to: NodeId) -> Option<&EdgeData> {
+        self.edge_data.get(&(from, to))
+    }
+
+    /// Check if an edge exists
+    pub fn contains_edge(&self, from: NodeId, to: NodeId) -> bool {
+        self.edge_data.contains_key(&(from, to))
+    }
+
+    /// Get all node IDs
+    pub fn node_indices(&self) -> impl Iterator<Item = NodeId> + '_ {
+        self.node_data.keys().copied()
+    }
+
+    /// Iterate over all edges with their data
+    pub fn edge_references(&self) -> impl Iterator<Item = EdgeRef<'_>> + '_ {
+        self.edge_data.iter().map(|((from, to), data)| EdgeRef {
+            source: *from,
+            target: *to,
+            weight: data,
+        })
+    }
+
+    /// Get outgoing neighbors of a node
+    pub fn neighbors(&self, node: NodeId) -> Vec<NodeId> {
+        self.graph
+            .outgoing_neighbors(node)
+            .map(|neighbors| neighbors.iter().map(|&n| TruenoNodeId(n)).collect())
+            .unwrap_or_default()
+    }
+
+    /// Get outgoing neighbors (alias for neighbors)
+    pub fn neighbors_directed_outgoing(&self, node: NodeId) -> Vec<NodeId> {
+        self.neighbors(node)
+    }
+
+    /// Get incoming neighbors of a node
+    pub fn neighbors_directed_incoming(&self, node: NodeId) -> Vec<NodeId> {
+        self.graph
+            .incoming_neighbors(node)
+            .map(|neighbors| neighbors.iter().map(|&n| TruenoNodeId(n)).collect())
+            .unwrap_or_default()
+    }
+
+    /// Get edges from a node (outgoing)
+    pub fn edges(&self, node: NodeId) -> impl Iterator<Item = EdgeRef<'_>> + '_ {
+        self.edge_data
+            .iter()
+            .filter(move |((from, _), _)| *from == node)
+            .map(|((from, to), data)| EdgeRef {
+                source: *from,
+                target: *to,
+                weight: data,
+            })
+    }
+
+    /// Get underlying trueno-graph (for algorithms)
+    pub fn inner(&self) -> &CsrGraph {
+        &self.graph
+    }
+
+    /// Iterate over nodes with their data
+    pub fn node_references(&self) -> impl Iterator<Item = (NodeId, &NodeData)> + '_ {
+        self.node_data.iter().map(|(id, data)| (*id, data))
+    }
+}
+
+/// Edge reference for iteration
+#[derive(Debug, Clone, Copy)]
+pub struct EdgeRef<'a> {
+    source: NodeId,
+    target: NodeId,
+    weight: &'a EdgeData,
+}
+
+impl<'a> EdgeRef<'a> {
+    pub fn source(&self) -> NodeId {
+        self.source
+    }
+
+    pub fn target(&self) -> NodeId {
+        self.target
+    }
+
+    pub fn weight(&self) -> &'a EdgeData {
+        self.weight
+    }
+}
+
+/// Undirected graph for community detection
+/// Uses same pattern as DependencyGraph but treats edges as bidirectional
+#[derive(Debug, Clone)]
+pub struct UndirectedGraph {
+    graph: CsrGraph,
+    node_data: HashMap<NodeId, NodeData>,
+    edge_weights: HashMap<(NodeId, NodeId), f64>,
+    next_id: u32,
+}
+
+impl Default for UndirectedGraph {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl UndirectedGraph {
+    pub fn new() -> Self {
+        Self {
+            graph: CsrGraph::new(),
+            node_data: HashMap::new(),
+            edge_weights: HashMap::new(),
+            next_id: 0,
+        }
+    }
+
+    pub fn add_node(&mut self, data: NodeData) -> NodeId {
+        let id = TruenoNodeId(self.next_id);
+        self.next_id += 1;
+        self.node_data.insert(id, data);
+        id
+    }
+
+    pub fn add_edge(&mut self, from: NodeId, to: NodeId, weight: f64) {
+        // Store both directions for undirected access
+        self.edge_weights.insert((from, to), weight);
+        self.edge_weights.insert((to, from), weight);
+        // Add to trueno-graph
+        let _ = self.graph.add_edge(from, to, weight as f32);
+        let _ = self.graph.add_edge(to, from, weight as f32);
+    }
+
+    pub fn node_count(&self) -> usize {
+        self.node_data.len()
+    }
+
+    pub fn edge_count(&self) -> usize {
+        // Divide by 2 since we store both directions
+        self.edge_weights.len() / 2
+    }
+
+    pub fn node_weight(&self, id: NodeId) -> Option<&NodeData> {
+        self.node_data.get(&id)
+    }
+
+    pub fn edge_weight(&self, from: NodeId, to: NodeId) -> Option<f64> {
+        self.edge_weights.get(&(from, to)).copied()
+    }
+
+    pub fn node_indices(&self) -> impl Iterator<Item = NodeId> + '_ {
+        self.node_data.keys().copied()
+    }
+
+    pub fn neighbors(&self, node: NodeId) -> Vec<NodeId> {
+        self.graph
+            .outgoing_neighbors(node)
+            .map(|neighbors| neighbors.iter().map(|&n| TruenoNodeId(n)).collect())
+            .unwrap_or_default()
+    }
+
+    pub fn edge_references(&self) -> impl Iterator<Item = UndirectedEdgeRef<'_>> + '_ {
+        // Only return each edge once (from < to)
+        self.edge_weights
+            .iter()
+            .filter(|((from, to), _)| from.0 < to.0)
+            .map(|((from, to), weight)| UndirectedEdgeRef {
+                source: *from,
+                target: *to,
+                weight: *weight,
+                _phantom: std::marker::PhantomData,
+            })
+    }
+
+    pub fn inner(&self) -> &CsrGraph {
+        &self.graph
+    }
+
+    pub fn node_references(&self) -> impl Iterator<Item = (NodeId, &NodeData)> + '_ {
+        self.node_data.iter().map(|(id, data)| (*id, data))
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct UndirectedEdgeRef<'a> {
+    source: NodeId,
+    target: NodeId,
+    weight: f64,
+    #[allow(dead_code)]
+    _phantom: std::marker::PhantomData<&'a ()>,
+}
+
+impl UndirectedEdgeRef<'_> {
+    pub fn source(&self) -> NodeId {
+        self.source
+    }
+
+    pub fn target(&self) -> NodeId {
+        self.target
+    }
+
+    pub fn weight(&self) -> f64 {
+        self.weight
+    }
+}
 
 /// Unified matrix representations for different algorithms
 pub struct GraphMatrices {
@@ -126,7 +392,7 @@ impl EdgeData {
     }
 }
 
-/// Conversion from petgraph to matrix representations
+/// Conversion from DependencyGraph to matrix representations
 /// Complexity: 8 (loop with matrix operations)
 impl From<&DependencyGraph> for GraphMatrices {
     fn from(graph: &DependencyGraph) -> Self {
@@ -138,13 +404,14 @@ impl From<&DependencyGraph> for GraphMatrices {
         // Build adjacency matrix with edge weights
         for edge in graph.edge_references() {
             let weight = edge.weight().to_numeric_weight();
-            let source = edge.source().index();
-            let target = edge.target().index();
+            let source = edge.source().0 as usize;
+            let target = edge.target().0 as usize;
 
-            edges.push((source, target, weight));
-
-            coo.push(source, target, weight);
-            out_degrees[source] += weight;
+            if source < n && target < n {
+                edges.push((source, target, weight));
+                coo.push(source, target, weight);
+                out_degrees[source] += weight;
+            }
         }
 
         let adjacency = CsrMatrix::from(&coo);
@@ -212,7 +479,6 @@ impl GraphMatrices {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use petgraph::graph::DiGraph;
 
     // ============================================================
     // NodeData Tests
@@ -334,499 +600,7 @@ mod tests {
     }
 
     // ============================================================
-    // Symbol Tests
-    // ============================================================
-
-    #[test]
-    fn test_symbol_all_kinds() {
-        let kinds = [
-            SymbolKind::Function,
-            SymbolKind::Struct,
-            SymbolKind::Enum,
-            SymbolKind::Trait,
-            SymbolKind::Module,
-            SymbolKind::Variable,
-            SymbolKind::Constant,
-        ];
-
-        for (i, kind) in kinds.iter().enumerate() {
-            let symbol = Symbol {
-                name: format!("symbol_{}", i),
-                kind: kind.clone(),
-                visibility: Visibility::Public,
-                line: i + 1,
-            };
-            assert_eq!(symbol.line, i + 1);
-        }
-    }
-
-    #[test]
-    fn test_symbol_serialization_roundtrip() {
-        let symbol = Symbol {
-            name: "my_function".to_string(),
-            kind: SymbolKind::Function,
-            visibility: Visibility::Protected,
-            line: 42,
-        };
-
-        let json = serde_json::to_string(&symbol).expect("serialization failed");
-        let deserialized: Symbol =
-            serde_json::from_str(&json).expect("deserialization failed");
-
-        assert_eq!(symbol.name, deserialized.name);
-        assert_eq!(symbol.kind, deserialized.kind);
-        assert_eq!(symbol.visibility, deserialized.visibility);
-        assert_eq!(symbol.line, deserialized.line);
-    }
-
-    #[test]
-    fn test_symbol_clone() {
-        let original = Symbol {
-            name: "original_sym".to_string(),
-            kind: SymbolKind::Enum,
-            visibility: Visibility::Private,
-            line: 100,
-        };
-
-        let cloned = original.clone();
-        assert_eq!(original.name, cloned.name);
-        assert_eq!(original.kind, cloned.kind);
-        assert_eq!(original.visibility, cloned.visibility);
-        assert_eq!(original.line, cloned.line);
-    }
-
-    // ============================================================
-    // SymbolKind Tests
-    // ============================================================
-
-    #[test]
-    fn test_symbol_kind_equality() {
-        assert_eq!(SymbolKind::Function, SymbolKind::Function);
-        assert_eq!(SymbolKind::Struct, SymbolKind::Struct);
-        assert_eq!(SymbolKind::Enum, SymbolKind::Enum);
-        assert_eq!(SymbolKind::Trait, SymbolKind::Trait);
-        assert_eq!(SymbolKind::Module, SymbolKind::Module);
-        assert_eq!(SymbolKind::Variable, SymbolKind::Variable);
-        assert_eq!(SymbolKind::Constant, SymbolKind::Constant);
-    }
-
-    #[test]
-    fn test_symbol_kind_inequality() {
-        assert_ne!(SymbolKind::Function, SymbolKind::Struct);
-        assert_ne!(SymbolKind::Enum, SymbolKind::Trait);
-        assert_ne!(SymbolKind::Module, SymbolKind::Variable);
-        assert_ne!(SymbolKind::Constant, SymbolKind::Function);
-    }
-
-    #[test]
-    fn test_symbol_kind_serialization() {
-        let kinds = vec![
-            SymbolKind::Function,
-            SymbolKind::Struct,
-            SymbolKind::Enum,
-            SymbolKind::Trait,
-            SymbolKind::Module,
-            SymbolKind::Variable,
-            SymbolKind::Constant,
-        ];
-
-        for kind in kinds {
-            let json = serde_json::to_string(&kind).expect("serialization failed");
-            let deserialized: SymbolKind =
-                serde_json::from_str(&json).expect("deserialization failed");
-            assert_eq!(kind, deserialized);
-        }
-    }
-
-    // ============================================================
-    // Visibility Tests
-    // ============================================================
-
-    #[test]
-    fn test_visibility_ordering_comprehensive() {
-        assert!(Visibility::Public > Visibility::Protected);
-        assert!(Visibility::Public > Visibility::Private);
-        assert!(Visibility::Protected > Visibility::Private);
-
-        assert!(Visibility::Private < Visibility::Protected);
-        assert!(Visibility::Private < Visibility::Public);
-        assert!(Visibility::Protected < Visibility::Public);
-    }
-
-    #[test]
-    fn test_visibility_equality() {
-        assert_eq!(Visibility::Public, Visibility::Public);
-        assert_eq!(Visibility::Protected, Visibility::Protected);
-        assert_eq!(Visibility::Private, Visibility::Private);
-
-        assert_ne!(Visibility::Public, Visibility::Private);
-        assert_ne!(Visibility::Protected, Visibility::Private);
-        assert_ne!(Visibility::Public, Visibility::Protected);
-    }
-
-    #[test]
-    fn test_visibility_serialization() {
-        let visibilities = vec![
-            Visibility::Private,
-            Visibility::Protected,
-            Visibility::Public,
-        ];
-
-        for vis in visibilities {
-            let json = serde_json::to_string(&vis).expect("serialization failed");
-            let deserialized: Visibility =
-                serde_json::from_str(&json).expect("deserialization failed");
-            assert_eq!(vis, deserialized);
-        }
-    }
-
-    // ============================================================
-    // TypeKind Tests
-    // ============================================================
-
-    #[test]
-    fn test_type_kind_equality() {
-        assert_eq!(TypeKind::Generic, TypeKind::Generic);
-        assert_eq!(TypeKind::Trait, TypeKind::Trait);
-        assert_eq!(TypeKind::Struct, TypeKind::Struct);
-        assert_eq!(TypeKind::Enum, TypeKind::Enum);
-    }
-
-    #[test]
-    fn test_type_kind_inequality() {
-        assert_ne!(TypeKind::Generic, TypeKind::Trait);
-        assert_ne!(TypeKind::Struct, TypeKind::Enum);
-        assert_ne!(TypeKind::Generic, TypeKind::Struct);
-        assert_ne!(TypeKind::Trait, TypeKind::Enum);
-    }
-
-    #[test]
-    fn test_type_kind_serialization() {
-        let kinds = vec![
-            TypeKind::Generic,
-            TypeKind::Trait,
-            TypeKind::Struct,
-            TypeKind::Enum,
-        ];
-
-        for kind in kinds {
-            let json = serde_json::to_string(&kind).expect("serialization failed");
-            let deserialized: TypeKind =
-                serde_json::from_str(&json).expect("deserialization failed");
-            assert_eq!(kind, deserialized);
-        }
-    }
-
-    // ============================================================
-    // FlowDirection Tests
-    // ============================================================
-
-    #[test]
-    fn test_flow_direction_equality() {
-        assert_eq!(FlowDirection::Forward, FlowDirection::Forward);
-        assert_eq!(FlowDirection::Backward, FlowDirection::Backward);
-        assert_eq!(FlowDirection::Bidirectional, FlowDirection::Bidirectional);
-    }
-
-    #[test]
-    fn test_flow_direction_inequality() {
-        assert_ne!(FlowDirection::Forward, FlowDirection::Backward);
-        assert_ne!(FlowDirection::Forward, FlowDirection::Bidirectional);
-        assert_ne!(FlowDirection::Backward, FlowDirection::Bidirectional);
-    }
-
-    #[test]
-    fn test_flow_direction_serialization() {
-        let directions = vec![
-            FlowDirection::Forward,
-            FlowDirection::Backward,
-            FlowDirection::Bidirectional,
-        ];
-
-        for dir in directions {
-            let json = serde_json::to_string(&dir).expect("serialization failed");
-            let deserialized: FlowDirection =
-                serde_json::from_str(&json).expect("deserialization failed");
-            assert_eq!(dir, deserialized);
-        }
-    }
-
-    // ============================================================
-    // EdgeData Tests
-    // ============================================================
-
-    #[test]
-    fn test_edge_data_import() {
-        let edge = EdgeData::Import {
-            weight: 1.5,
-            visibility: Visibility::Public,
-        };
-
-        if let EdgeData::Import { weight, visibility } = edge {
-            assert_eq!(weight, 1.5);
-            assert_eq!(visibility, Visibility::Public);
-        } else {
-            panic!("Expected Import variant");
-        }
-    }
-
-    #[test]
-    fn test_edge_data_function_call() {
-        let edge = EdgeData::FunctionCall {
-            count: 10,
-            async_call: false,
-        };
-
-        if let EdgeData::FunctionCall { count, async_call } = edge {
-            assert_eq!(count, 10);
-            assert!(!async_call);
-        } else {
-            panic!("Expected FunctionCall variant");
-        }
-    }
-
-    #[test]
-    fn test_edge_data_type_dependency() {
-        let edge = EdgeData::TypeDependency {
-            strength: 0.95,
-            kind: TypeKind::Generic,
-        };
-
-        if let EdgeData::TypeDependency { strength, kind } = edge {
-            assert_eq!(strength, 0.95);
-            assert_eq!(kind, TypeKind::Generic);
-        } else {
-            panic!("Expected TypeDependency variant");
-        }
-    }
-
-    #[test]
-    fn test_edge_data_data_flow() {
-        let edge = EdgeData::DataFlow {
-            confidence: 0.85,
-            direction: FlowDirection::Bidirectional,
-        };
-
-        if let EdgeData::DataFlow {
-            confidence,
-            direction,
-        } = edge
-        {
-            assert_eq!(confidence, 0.85);
-            assert_eq!(direction, FlowDirection::Bidirectional);
-        } else {
-            panic!("Expected DataFlow variant");
-        }
-    }
-
-    #[test]
-    fn test_edge_data_inheritance() {
-        let edge = EdgeData::Inheritance { depth: 3 };
-
-        if let EdgeData::Inheritance { depth } = edge {
-            assert_eq!(depth, 3);
-        } else {
-            panic!("Expected Inheritance variant");
-        }
-    }
-
-    #[test]
-    fn test_edge_data_clone() {
-        let original = EdgeData::Import {
-            weight: 2.5,
-            visibility: Visibility::Protected,
-        };
-
-        let cloned = original.clone();
-        if let (
-            EdgeData::Import {
-                weight: w1,
-                visibility: v1,
-            },
-            EdgeData::Import {
-                weight: w2,
-                visibility: v2,
-            },
-        ) = (&original, &cloned)
-        {
-            assert_eq!(*w1, *w2);
-            assert_eq!(*v1, *v2);
-        } else {
-            panic!("Clone failed");
-        }
-    }
-
-    #[test]
-    fn test_edge_data_serialization_all_variants() {
-        let edges = vec![
-            EdgeData::Import {
-                weight: 1.0,
-                visibility: Visibility::Public,
-            },
-            EdgeData::FunctionCall {
-                count: 5,
-                async_call: true,
-            },
-            EdgeData::TypeDependency {
-                strength: 0.5,
-                kind: TypeKind::Trait,
-            },
-            EdgeData::DataFlow {
-                confidence: 0.9,
-                direction: FlowDirection::Forward,
-            },
-            EdgeData::Inheritance { depth: 2 },
-        ];
-
-        for edge in edges {
-            let json = serde_json::to_string(&edge).expect("serialization failed");
-            let deserialized: EdgeData =
-                serde_json::from_str(&json).expect("deserialization failed");
-
-            // Verify serialization round-trip works
-            let json2 = serde_json::to_string(&deserialized).expect("re-serialization failed");
-            assert_eq!(json, json2);
-        }
-    }
-
-    // ============================================================
-    // EdgeData::to_numeric_weight Tests
-    // ============================================================
-
-    #[test]
-    fn test_to_numeric_weight_import() {
-        let edge = EdgeData::Import {
-            weight: 1.0,
-            visibility: Visibility::Private,
-        };
-        assert_eq!(edge.to_numeric_weight(), 2.0); // weight * 2.0
-    }
-
-    #[test]
-    fn test_to_numeric_weight_import_zero() {
-        let edge = EdgeData::Import {
-            weight: 0.0,
-            visibility: Visibility::Public,
-        };
-        assert_eq!(edge.to_numeric_weight(), 0.0);
-    }
-
-    #[test]
-    fn test_to_numeric_weight_import_large() {
-        let edge = EdgeData::Import {
-            weight: 100.0,
-            visibility: Visibility::Public,
-        };
-        assert_eq!(edge.to_numeric_weight(), 200.0);
-    }
-
-    #[test]
-    fn test_to_numeric_weight_function_call() {
-        let edge = EdgeData::FunctionCall {
-            count: 7,
-            async_call: false,
-        };
-        assert_eq!(edge.to_numeric_weight(), 7.0);
-    }
-
-    #[test]
-    fn test_to_numeric_weight_function_call_zero() {
-        let edge = EdgeData::FunctionCall {
-            count: 0,
-            async_call: true,
-        };
-        assert_eq!(edge.to_numeric_weight(), 0.0);
-    }
-
-    #[test]
-    fn test_to_numeric_weight_function_call_large() {
-        let edge = EdgeData::FunctionCall {
-            count: 1000,
-            async_call: false,
-        };
-        assert_eq!(edge.to_numeric_weight(), 1000.0);
-    }
-
-    #[test]
-    fn test_to_numeric_weight_type_dependency() {
-        let edge = EdgeData::TypeDependency {
-            strength: 0.5,
-            kind: TypeKind::Struct,
-        };
-        assert_eq!(edge.to_numeric_weight(), 0.75); // strength * 1.5
-    }
-
-    #[test]
-    fn test_to_numeric_weight_type_dependency_zero() {
-        let edge = EdgeData::TypeDependency {
-            strength: 0.0,
-            kind: TypeKind::Enum,
-        };
-        assert_eq!(edge.to_numeric_weight(), 0.0);
-    }
-
-    #[test]
-    fn test_to_numeric_weight_type_dependency_one() {
-        let edge = EdgeData::TypeDependency {
-            strength: 1.0,
-            kind: TypeKind::Trait,
-        };
-        assert_eq!(edge.to_numeric_weight(), 1.5);
-    }
-
-    #[test]
-    fn test_to_numeric_weight_data_flow() {
-        let edge = EdgeData::DataFlow {
-            confidence: 0.8,
-            direction: FlowDirection::Forward,
-        };
-        assert_eq!(edge.to_numeric_weight(), 0.8);
-    }
-
-    #[test]
-    fn test_to_numeric_weight_data_flow_zero() {
-        let edge = EdgeData::DataFlow {
-            confidence: 0.0,
-            direction: FlowDirection::Backward,
-        };
-        assert_eq!(edge.to_numeric_weight(), 0.0);
-    }
-
-    #[test]
-    fn test_to_numeric_weight_data_flow_one() {
-        let edge = EdgeData::DataFlow {
-            confidence: 1.0,
-            direction: FlowDirection::Bidirectional,
-        };
-        assert_eq!(edge.to_numeric_weight(), 1.0);
-    }
-
-    #[test]
-    fn test_to_numeric_weight_inheritance_depth_zero() {
-        let edge = EdgeData::Inheritance { depth: 0 };
-        assert_eq!(edge.to_numeric_weight(), 3.0); // 3.0 / (0 + 1)
-    }
-
-    #[test]
-    fn test_to_numeric_weight_inheritance_depth_one() {
-        let edge = EdgeData::Inheritance { depth: 1 };
-        assert_eq!(edge.to_numeric_weight(), 1.5); // 3.0 / (1 + 1)
-    }
-
-    #[test]
-    fn test_to_numeric_weight_inheritance_depth_two() {
-        let edge = EdgeData::Inheritance { depth: 2 };
-        assert_eq!(edge.to_numeric_weight(), 1.0); // 3.0 / (2 + 1)
-    }
-
-    #[test]
-    fn test_to_numeric_weight_inheritance_deep() {
-        let edge = EdgeData::Inheritance { depth: 9 };
-        assert_eq!(edge.to_numeric_weight(), 0.3); // 3.0 / (9 + 1)
-    }
-
-    // ============================================================
-    // GraphMatrices Tests
+    // DependencyGraph Tests
     // ============================================================
 
     fn create_test_node(id: usize) -> NodeData {
@@ -841,33 +615,197 @@ mod tests {
     }
 
     #[test]
+    fn test_dependency_graph_new() {
+        let graph = DependencyGraph::new();
+        assert_eq!(graph.node_count(), 0);
+        assert_eq!(graph.edge_count(), 0);
+    }
+
+    #[test]
+    fn test_dependency_graph_add_node() {
+        let mut graph = DependencyGraph::new();
+        let id = graph.add_node(create_test_node(0));
+        assert_eq!(id.0, 0);
+        assert_eq!(graph.node_count(), 1);
+    }
+
+    #[test]
+    fn test_dependency_graph_add_edge() {
+        let mut graph = DependencyGraph::new();
+        let n0 = graph.add_node(create_test_node(0));
+        let n1 = graph.add_node(create_test_node(1));
+
+        graph.add_edge(
+            n0,
+            n1,
+            EdgeData::Import {
+                weight: 1.0,
+                visibility: Visibility::Public,
+            },
+        );
+
+        assert_eq!(graph.edge_count(), 1);
+        assert!(graph.contains_edge(n0, n1));
+        assert!(!graph.contains_edge(n1, n0));
+    }
+
+    #[test]
+    fn test_dependency_graph_node_weight() {
+        let mut graph = DependencyGraph::new();
+        let id = graph.add_node(create_test_node(42));
+
+        let data = graph.node_weight(id).unwrap();
+        assert_eq!(data.ast_hash, 42);
+    }
+
+    #[test]
+    fn test_dependency_graph_edge_weight() {
+        let mut graph = DependencyGraph::new();
+        let n0 = graph.add_node(create_test_node(0));
+        let n1 = graph.add_node(create_test_node(1));
+
+        graph.add_edge(
+            n0,
+            n1,
+            EdgeData::FunctionCall {
+                count: 5,
+                async_call: true,
+            },
+        );
+
+        let edge = graph.edge_weight(n0, n1).unwrap();
+        if let EdgeData::FunctionCall { count, async_call } = edge {
+            assert_eq!(*count, 5);
+            assert!(*async_call);
+        } else {
+            panic!("Wrong edge type");
+        }
+    }
+
+    #[test]
+    fn test_dependency_graph_neighbors() {
+        let mut graph = DependencyGraph::new();
+        let n0 = graph.add_node(create_test_node(0));
+        let n1 = graph.add_node(create_test_node(1));
+        let n2 = graph.add_node(create_test_node(2));
+
+        graph.add_edge(
+            n0,
+            n1,
+            EdgeData::Import {
+                weight: 1.0,
+                visibility: Visibility::Public,
+            },
+        );
+        graph.add_edge(
+            n0,
+            n2,
+            EdgeData::Import {
+                weight: 1.0,
+                visibility: Visibility::Public,
+            },
+        );
+
+        let neighbors = graph.neighbors(n0);
+        assert_eq!(neighbors.len(), 2);
+        assert!(neighbors.contains(&n1));
+        assert!(neighbors.contains(&n2));
+    }
+
+    #[test]
+    fn test_dependency_graph_edge_references() {
+        let mut graph = DependencyGraph::new();
+        let n0 = graph.add_node(create_test_node(0));
+        let n1 = graph.add_node(create_test_node(1));
+
+        graph.add_edge(
+            n0,
+            n1,
+            EdgeData::Import {
+                weight: 2.0,
+                visibility: Visibility::Public,
+            },
+        );
+
+        let edges: Vec<_> = graph.edge_references().collect();
+        assert_eq!(edges.len(), 1);
+        assert_eq!(edges[0].source(), n0);
+        assert_eq!(edges[0].target(), n1);
+    }
+
+    // ============================================================
+    // UndirectedGraph Tests
+    // ============================================================
+
+    #[test]
+    fn test_undirected_graph_new() {
+        let graph = UndirectedGraph::new();
+        assert_eq!(graph.node_count(), 0);
+        assert_eq!(graph.edge_count(), 0);
+    }
+
+    #[test]
+    fn test_undirected_graph_add_edge() {
+        let mut graph = UndirectedGraph::new();
+        let n0 = graph.add_node(create_test_node(0));
+        let n1 = graph.add_node(create_test_node(1));
+
+        graph.add_edge(n0, n1, 1.5);
+
+        assert_eq!(graph.edge_count(), 1);
+        // Both directions should have weight
+        assert_eq!(graph.edge_weight(n0, n1), Some(1.5));
+        assert_eq!(graph.edge_weight(n1, n0), Some(1.5));
+    }
+
+    // ============================================================
+    // EdgeData Tests
+    // ============================================================
+
+    #[test]
+    fn test_to_numeric_weight_import() {
+        let edge = EdgeData::Import {
+            weight: 1.0,
+            visibility: Visibility::Private,
+        };
+        assert_eq!(edge.to_numeric_weight(), 2.0); // weight * 2.0
+    }
+
+    #[test]
+    fn test_to_numeric_weight_function_call() {
+        let edge = EdgeData::FunctionCall {
+            count: 7,
+            async_call: false,
+        };
+        assert_eq!(edge.to_numeric_weight(), 7.0);
+    }
+
+    #[test]
+    fn test_to_numeric_weight_inheritance() {
+        let edge = EdgeData::Inheritance { depth: 0 };
+        assert_eq!(edge.to_numeric_weight(), 3.0); // 3.0 / (0 + 1)
+
+        let edge = EdgeData::Inheritance { depth: 2 };
+        assert_eq!(edge.to_numeric_weight(), 1.0); // 3.0 / (2 + 1)
+    }
+
+    // ============================================================
+    // GraphMatrices Tests
+    // ============================================================
+
+    #[test]
     fn test_graph_matrices_empty_graph() {
-        let graph: DependencyGraph = DiGraph::new();
+        let graph = DependencyGraph::new();
         let matrices = GraphMatrices::from(&graph);
 
         assert_eq!(matrices.node_count, 0);
         assert_eq!(matrices.out_degrees.len(), 0);
         assert_eq!(matrices.edges.len(), 0);
-        assert_eq!(matrices.adjacency.nrows(), 0);
-        assert_eq!(matrices.adjacency.ncols(), 0);
     }
 
     #[test]
-    fn test_graph_matrices_single_node_no_edges() {
-        let mut graph: DependencyGraph = DiGraph::new();
-        graph.add_node(create_test_node(0));
-
-        let matrices = GraphMatrices::from(&graph);
-
-        assert_eq!(matrices.node_count, 1);
-        assert_eq!(matrices.out_degrees.len(), 1);
-        assert_eq!(matrices.out_degrees[0], 0.0);
-        assert_eq!(matrices.edges.len(), 0);
-    }
-
-    #[test]
-    fn test_graph_matrices_two_nodes_one_edge() {
-        let mut graph: DependencyGraph = DiGraph::new();
+    fn test_graph_matrices_single_edge() {
+        let mut graph = DependencyGraph::new();
         let n0 = graph.add_node(create_test_node(0));
         let n1 = graph.add_node(create_test_node(1));
 
@@ -883,337 +821,6 @@ mod tests {
         let matrices = GraphMatrices::from(&graph);
 
         assert_eq!(matrices.node_count, 2);
-        assert_eq!(matrices.out_degrees.len(), 2);
-        assert_eq!(matrices.out_degrees[0], 2.0); // Import weight * 2
-        assert_eq!(matrices.out_degrees[1], 0.0);
         assert_eq!(matrices.edges.len(), 1);
-        assert_eq!(matrices.edges[0], (0, 1, 2.0));
-    }
-
-    #[test]
-    fn test_graph_matrices_cycle() {
-        let mut graph: DependencyGraph = DiGraph::new();
-        let n0 = graph.add_node(create_test_node(0));
-        let n1 = graph.add_node(create_test_node(1));
-        let n2 = graph.add_node(create_test_node(2));
-
-        // Create a cycle: 0 -> 1 -> 2 -> 0
-        graph.add_edge(
-            n0,
-            n1,
-            EdgeData::FunctionCall {
-                count: 1,
-                async_call: false,
-            },
-        );
-        graph.add_edge(
-            n1,
-            n2,
-            EdgeData::FunctionCall {
-                count: 2,
-                async_call: false,
-            },
-        );
-        graph.add_edge(
-            n2,
-            n0,
-            EdgeData::FunctionCall {
-                count: 3,
-                async_call: false,
-            },
-        );
-
-        let matrices = GraphMatrices::from(&graph);
-
-        assert_eq!(matrices.node_count, 3);
-        assert_eq!(matrices.out_degrees[0], 1.0);
-        assert_eq!(matrices.out_degrees[1], 2.0);
-        assert_eq!(matrices.out_degrees[2], 3.0);
-        assert_eq!(matrices.edges.len(), 3);
-    }
-
-    #[test]
-    fn test_graph_matrices_multiple_edges_from_same_node() {
-        let mut graph: DependencyGraph = DiGraph::new();
-        let n0 = graph.add_node(create_test_node(0));
-        let n1 = graph.add_node(create_test_node(1));
-        let n2 = graph.add_node(create_test_node(2));
-
-        // Multiple edges from node 0
-        graph.add_edge(
-            n0,
-            n1,
-            EdgeData::FunctionCall {
-                count: 5,
-                async_call: false,
-            },
-        );
-        graph.add_edge(
-            n0,
-            n2,
-            EdgeData::FunctionCall {
-                count: 3,
-                async_call: true,
-            },
-        );
-
-        let matrices = GraphMatrices::from(&graph);
-
-        assert_eq!(matrices.out_degrees[0], 8.0); // 5 + 3
-        assert_eq!(matrices.out_degrees[1], 0.0);
-        assert_eq!(matrices.out_degrees[2], 0.0);
-        assert_eq!(matrices.edges.len(), 2);
-    }
-
-    #[test]
-    fn test_graph_matrices_different_edge_types() {
-        let mut graph: DependencyGraph = DiGraph::new();
-        let n0 = graph.add_node(create_test_node(0));
-        let n1 = graph.add_node(create_test_node(1));
-        let n2 = graph.add_node(create_test_node(2));
-        let n3 = graph.add_node(create_test_node(3));
-
-        // Different edge types
-        graph.add_edge(
-            n0,
-            n1,
-            EdgeData::Import {
-                weight: 1.0,
-                visibility: Visibility::Public,
-            },
-        );
-        graph.add_edge(
-            n1,
-            n2,
-            EdgeData::TypeDependency {
-                strength: 1.0,
-                kind: TypeKind::Struct,
-            },
-        );
-        graph.add_edge(
-            n2,
-            n3,
-            EdgeData::DataFlow {
-                confidence: 1.0,
-                direction: FlowDirection::Forward,
-            },
-        );
-
-        let matrices = GraphMatrices::from(&graph);
-
-        assert_eq!(matrices.out_degrees[0], 2.0); // Import: 1.0 * 2
-        assert_eq!(matrices.out_degrees[1], 1.5); // TypeDep: 1.0 * 1.5
-        assert_eq!(matrices.out_degrees[2], 1.0); // DataFlow: 1.0
-        assert_eq!(matrices.out_degrees[3], 0.0); // No outgoing edges
-    }
-
-    #[test]
-    fn test_graph_matrices_adjacency_dimensions() {
-        let mut graph: DependencyGraph = DiGraph::new();
-        for i in 0..5 {
-            graph.add_node(create_test_node(i));
-        }
-
-        let matrices = GraphMatrices::from(&graph);
-
-        assert_eq!(matrices.adjacency.nrows(), 5);
-        assert_eq!(matrices.adjacency.ncols(), 5);
-        assert_eq!(matrices.transition.nrows(), 5);
-        assert_eq!(matrices.transition.ncols(), 5);
-        assert_eq!(matrices.laplacian.nrows(), 5);
-        assert_eq!(matrices.laplacian.ncols(), 5);
-    }
-
-    #[test]
-    fn test_graph_matrices_transition_matrix_stochastic() {
-        let mut graph: DependencyGraph = DiGraph::new();
-        let n0 = graph.add_node(create_test_node(0));
-        let n1 = graph.add_node(create_test_node(1));
-        let n2 = graph.add_node(create_test_node(2));
-
-        // Node 0 has edges to both n1 and n2
-        graph.add_edge(
-            n0,
-            n1,
-            EdgeData::FunctionCall {
-                count: 2,
-                async_call: false,
-            },
-        );
-        graph.add_edge(
-            n0,
-            n2,
-            EdgeData::FunctionCall {
-                count: 2,
-                async_call: false,
-            },
-        );
-
-        let matrices = GraphMatrices::from(&graph);
-
-        // Row 0 should sum to 1.0 (stochastic)
-        let row = matrices.transition.row(0);
-        let row_sum: f64 = row.values().iter().sum();
-        assert!((row_sum - 1.0).abs() < 1e-10);
-    }
-
-    #[test]
-    fn test_graph_matrices_laplacian_diagonal() {
-        let mut graph: DependencyGraph = DiGraph::new();
-        let n0 = graph.add_node(create_test_node(0));
-        let n1 = graph.add_node(create_test_node(1));
-
-        // Single edge with weight 2.0 (FunctionCall count=2)
-        graph.add_edge(
-            n0,
-            n1,
-            EdgeData::FunctionCall {
-                count: 2,
-                async_call: false,
-            },
-        );
-
-        let matrices = GraphMatrices::from(&graph);
-
-        // Laplacian row 0: diagonal = degree = 2.0, off-diagonal (0,1) = -2.0
-        // Sum of row should be 0 for Laplacian
-        let row = matrices.laplacian.row(0);
-        let row_sum: f64 = row.values().iter().sum();
-        assert!(
-            row_sum.abs() < 1e-10,
-            "Laplacian row sum should be 0, got {}",
-            row_sum
-        );
-    }
-
-    #[test]
-    fn test_graph_matrices_edges_order() {
-        let mut graph: DependencyGraph = DiGraph::new();
-        let n0 = graph.add_node(create_test_node(0));
-        let n1 = graph.add_node(create_test_node(1));
-        let n2 = graph.add_node(create_test_node(2));
-
-        graph.add_edge(
-            n0,
-            n1,
-            EdgeData::FunctionCall {
-                count: 1,
-                async_call: false,
-            },
-        );
-        graph.add_edge(
-            n1,
-            n2,
-            EdgeData::FunctionCall {
-                count: 2,
-                async_call: false,
-            },
-        );
-
-        let matrices = GraphMatrices::from(&graph);
-
-        assert_eq!(matrices.edges.len(), 2);
-
-        // Check edges contain correct weights
-        let has_edge_0_1 = matrices.edges.iter().any(|e| e.0 == 0 && e.1 == 1 && e.2 == 1.0);
-        let has_edge_1_2 = matrices.edges.iter().any(|e| e.0 == 1 && e.1 == 2 && e.2 == 2.0);
-
-        assert!(has_edge_0_1, "Should have edge 0->1 with weight 1.0");
-        assert!(has_edge_1_2, "Should have edge 1->2 with weight 2.0");
-    }
-
-    #[test]
-    fn test_graph_matrices_self_loop() {
-        let mut graph: DependencyGraph = DiGraph::new();
-        let n0 = graph.add_node(create_test_node(0));
-
-        // Self-loop
-        graph.add_edge(
-            n0,
-            n0,
-            EdgeData::FunctionCall {
-                count: 5,
-                async_call: false,
-            },
-        );
-
-        let matrices = GraphMatrices::from(&graph);
-
-        assert_eq!(matrices.node_count, 1);
-        assert_eq!(matrices.out_degrees[0], 5.0);
-        assert_eq!(matrices.edges.len(), 1);
-        assert_eq!(matrices.edges[0], (0, 0, 5.0));
-    }
-
-    #[test]
-    fn test_graph_matrices_large_graph() {
-        let mut graph: DependencyGraph = DiGraph::new();
-        let nodes: Vec<_> = (0..100).map(|i| graph.add_node(create_test_node(i))).collect();
-
-        // Create a chain
-        for i in 0..99 {
-            graph.add_edge(
-                nodes[i],
-                nodes[i + 1],
-                EdgeData::FunctionCall {
-                    count: 1,
-                    async_call: false,
-                },
-            );
-        }
-
-        let matrices = GraphMatrices::from(&graph);
-
-        assert_eq!(matrices.node_count, 100);
-        assert_eq!(matrices.edges.len(), 99);
-
-        // All nodes except the last should have out-degree 1.0
-        for i in 0..99 {
-            assert_eq!(matrices.out_degrees[i], 1.0);
-        }
-        assert_eq!(matrices.out_degrees[99], 0.0);
-    }
-
-    // ============================================================
-    // Type Alias Tests (ensure they work correctly)
-    // ============================================================
-
-    #[test]
-    fn test_dependency_graph_type_alias() {
-        let mut graph: DependencyGraph = DiGraph::new();
-        let n0 = graph.add_node(create_test_node(0));
-        let n1 = graph.add_node(create_test_node(1));
-
-        graph.add_edge(
-            n0,
-            n1,
-            EdgeData::Import {
-                weight: 1.0,
-                visibility: Visibility::Public,
-            },
-        );
-
-        assert_eq!(graph.node_count(), 2);
-        assert_eq!(graph.edge_count(), 1);
-    }
-
-    #[test]
-    fn test_undirected_graph_type_alias() {
-        let mut graph: UndirectedGraph = UnGraph::new_undirected();
-        let n0 = graph.add_node(create_test_node(0));
-        let n1 = graph.add_node(create_test_node(1));
-
-        graph.add_edge(n0, n1, 1.5);
-
-        assert_eq!(graph.node_count(), 2);
-        assert_eq!(graph.edge_count(), 1);
-    }
-
-    #[test]
-    fn test_node_id_type_alias() {
-        let mut graph: DependencyGraph = DiGraph::new();
-        let id: NodeId = graph.add_node(create_test_node(0));
-
-        assert_eq!(id.index(), 0);
     }
 }

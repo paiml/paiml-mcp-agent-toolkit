@@ -5,14 +5,13 @@
 mod tests {
     use super::super::super::*;
     use crate::graph::symbol_table::{SymbolEntry, SymbolTable};
-    use petgraph::graph::DiGraph;
     use proptest::prelude::*;
 
     /// Strategy for generating random graphs
     fn arbitrary_graph() -> impl Strategy<Value = DependencyGraph> {
         (1..20usize, 0..100usize).prop_flat_map(|(nodes, edges)| {
             prop::collection::vec(any::<bool>(), edges).prop_map(move |edge_mask| {
-                let mut graph = DiGraph::new();
+                let mut graph = DependencyGraph::new();
 
                 // Add nodes
                 let node_indices: Vec<_> = (0..nodes)

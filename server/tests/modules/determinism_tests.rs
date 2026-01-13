@@ -5,7 +5,7 @@
 //! determinism as specified in deterministic-graphs-mmd-spec.md
 
 use pmat::services::artifact_writer::ArtifactWriter;
-use pmat::services::deterministic_mermaid_engine::DeterministicMermaidEngine;
+use pmat::services::deterministic_mermaid_engine::{DeterministicMermaidEngine, SimpleStableGraph};
 use pmat::services::dogfooding_engine::DogfoodingEngine;
 use pmat::services::unified_ast_engine::UnifiedAstEngine;
 use std::collections::HashMap;
@@ -288,7 +288,10 @@ fn test_edge_case_determinism() {
     let engine = DeterministicMermaidEngine::new();
 
     // Empty graph
-    let empty_graph = petgraph::stable_graph::StableGraph::new();
+    let empty_graph: SimpleStableGraph<
+        pmat::services::unified_ast_engine::ModuleNode,
+        pmat::models::dag::EdgeType,
+    > = SimpleStableGraph::new();
     let empty_mermaid1 = engine.generate_codebase_modules_mmd(&empty_graph);
     let empty_mermaid2 = engine.generate_codebase_modules_mmd(&empty_graph);
     assert_eq!(empty_mermaid1, empty_mermaid2);
@@ -417,7 +420,7 @@ async fn create_test_project() -> TempDir {
     temp_dir
 }
 
-fn create_test_dependency_graph() -> petgraph::stable_graph::StableGraph<
+fn create_test_dependency_graph() -> SimpleStableGraph<
     pmat::services::unified_ast_engine::ModuleNode,
     pmat::models::dag::EdgeType,
 > {
@@ -425,7 +428,7 @@ fn create_test_dependency_graph() -> petgraph::stable_graph::StableGraph<
     use pmat::services::unified_ast_engine::{ModuleMetrics, ModuleNode};
     use std::path::PathBuf;
 
-    let mut graph = petgraph::stable_graph::StableGraph::new();
+    let mut graph = SimpleStableGraph::new();
 
     // Add test nodes
     let main_node = graph.add_node(ModuleNode {
@@ -471,7 +474,7 @@ fn create_test_dependency_graph() -> petgraph::stable_graph::StableGraph<
     graph
 }
 
-fn create_large_test_graph() -> petgraph::stable_graph::StableGraph<
+fn create_large_test_graph() -> SimpleStableGraph<
     pmat::services::unified_ast_engine::ModuleNode,
     pmat::models::dag::EdgeType,
 > {
@@ -479,7 +482,7 @@ fn create_large_test_graph() -> petgraph::stable_graph::StableGraph<
     use pmat::services::unified_ast_engine::{ModuleMetrics, ModuleNode};
     use std::path::PathBuf;
 
-    let mut graph = petgraph::stable_graph::StableGraph::new();
+    let mut graph = SimpleStableGraph::new();
 
     // Create 20 nodes for more interesting PageRank
     let mut nodes = Vec::new();
@@ -514,14 +517,14 @@ fn create_large_test_graph() -> petgraph::stable_graph::StableGraph<
     graph
 }
 
-fn create_single_node_graph() -> petgraph::stable_graph::StableGraph<
+fn create_single_node_graph() -> SimpleStableGraph<
     pmat::services::unified_ast_engine::ModuleNode,
     pmat::models::dag::EdgeType,
 > {
     use pmat::services::unified_ast_engine::{ModuleMetrics, ModuleNode};
     use std::path::PathBuf;
 
-    let mut graph = petgraph::stable_graph::StableGraph::new();
+    let mut graph = SimpleStableGraph::new();
     graph.add_node(ModuleNode {
         name: "single".to_string(),
         path: PathBuf::from("single.rs"),
@@ -531,7 +534,7 @@ fn create_single_node_graph() -> petgraph::stable_graph::StableGraph<
     graph
 }
 
-fn create_cyclic_graph() -> petgraph::stable_graph::StableGraph<
+fn create_cyclic_graph() -> SimpleStableGraph<
     pmat::services::unified_ast_engine::ModuleNode,
     pmat::models::dag::EdgeType,
 > {
@@ -539,7 +542,7 @@ fn create_cyclic_graph() -> petgraph::stable_graph::StableGraph<
     use pmat::services::unified_ast_engine::{ModuleMetrics, ModuleNode};
     use std::path::PathBuf;
 
-    let mut graph = petgraph::stable_graph::StableGraph::new();
+    let mut graph = SimpleStableGraph::new();
 
     let a = graph.add_node(ModuleNode {
         name: "a".to_string(),
