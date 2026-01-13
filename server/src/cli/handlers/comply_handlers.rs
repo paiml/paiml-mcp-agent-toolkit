@@ -700,12 +700,16 @@ fn detect_cb021_simd_without_target_feature(project_path: &Path) -> Vec<CbPatter
         return violations;
     }
 
-    // Common SIMD intrinsic patterns
-    let simd_patterns = [
+    // Common SIMD intrinsic patterns - must be actual intrinsic calls
+    // x86 SSE/AVX: These are function-like intrinsics (always have underscore prefix)
+    // ARM NEON: These are function-like intrinsics (always have underscore prefix)
+    // Portable SIMD: Require :: to indicate method call (not just type in identifier)
+    let x86_neon_patterns = [
         "_mm_", "_mm256_", "_mm512_", // x86 SSE/AVX
         "vld1q_", "vst1q_", "vmulq_", "vaddq_", // ARM NEON
-        "i8x16", "i16x8", "i32x4", "f32x4",     // portable SIMD
     ];
+    // Portable SIMD - require :: suffix to distinguish from identifiers like "f32x4_verified"
+    let portable_simd_patterns = ["i8x16::", "i16x8::", "i32x4::", "f32x4::", "Simd::<"];
 
     if let Ok(entries) = walkdir_rs_files(&src_dir) {
         for entry in entries {
@@ -745,15 +749,39 @@ fn detect_cb021_simd_without_target_feature(project_path: &Path) -> Vec<CbPatter
                         continue;
                     }
 
-                    for pattern in &simd_patterns {
-                        if line.contains(pattern) && !line.trim().starts_with("//") {
+                    let trimmed = line.trim();
+                    // Skip all comments (// and ///)
+                    if trimmed.starts_with("//") {
+                        continue;
+                    }
+
+                    // Check x86/NEON intrinsics (function-like, always start with _)
+                    for pattern in &x86_neon_patterns {
+                        if line.contains(pattern) {
                             violations.push(CbPatternViolation {
                                 pattern_id: "CB-021".to_string(),
                                 file: entry.display().to_string(),
                                 line: line_num + 1,
                                 description: format!(
                                     "SIMD intrinsic '{}' without #[target_feature]",
-                                    pattern
+                                    pattern.trim_end_matches('_')
+                                ),
+                                severity: Severity::Warning,
+                            });
+                            break;
+                        }
+                    }
+
+                    // Check portable SIMD (require :: to indicate actual usage)
+                    for pattern in &portable_simd_patterns {
+                        if line.contains(pattern) {
+                            violations.push(CbPatternViolation {
+                                pattern_id: "CB-021".to_string(),
+                                file: entry.display().to_string(),
+                                line: line_num + 1,
+                                description: format!(
+                                    "Portable SIMD '{}' without #[target_feature]",
+                                    pattern.trim_end_matches("::")
                                 ),
                                 severity: Severity::Warning,
                             });
@@ -3389,7 +3417,7 @@ fn bad_simd() {
         let violations = detect_cb021_simd_without_target_feature(temp.path());
         assert_eq!(violations.len(), 1);
         assert_eq!(violations[0].pattern_id, "CB-021");
-        assert!(violations[0].description.contains("_mm_"));
+        assert!(violations[0].description.contains("_mm"));
     }
 
     #[test]
@@ -3413,6 +3441,74 @@ fn good_simd() {
 
         let violations = detect_cb021_simd_without_target_feature(temp.path());
         assert_eq!(violations.len(), 0);
+    }
+
+    #[test]
+    fn test_cb021_no_false_positive_on_identifiers() {
+        // Regression test: struct fields like "f32x4_verified" should NOT trigger CB-021
+        let temp = tempfile::tempdir().unwrap();
+        let src_dir = temp.path().join("src");
+        std::fs::create_dir_all(&src_dir).unwrap();
+
+        // Create file with f32x4 in identifier names (NOT intrinsic usage)
+        let rs_file = src_dir.join("verification.rs");
+        std::fs::write(
+            &rs_file,
+            r#"
+/// Verify SIMD f32x4 operations work correctly
+pub struct SimdVerification {
+    /// f32x4 operations verified
+    pub f32x4_verified: bool,
+    /// i32x4 operations verified
+    pub i32x4_verified: bool,
+}
+
+pub fn verify_f32x4_operations() -> bool {
+    let simd_lanes = 4; // f32x4
+    true
+}
+"#,
+        )
+        .unwrap();
+
+        let violations = detect_cb021_simd_without_target_feature(temp.path());
+        // Should be 0 - these are identifiers and comments, not intrinsic calls
+        assert_eq!(
+            violations.len(),
+            0,
+            "False positive: detected {:?}",
+            violations
+        );
+    }
+
+    #[test]
+    fn test_cb021_detects_actual_portable_simd_usage() {
+        let temp = tempfile::tempdir().unwrap();
+        let src_dir = temp.path().join("src");
+        std::fs::create_dir_all(&src_dir).unwrap();
+
+        // Create file with ACTUAL portable SIMD usage (f32x4::splat)
+        let rs_file = src_dir.join("simd_usage.rs");
+        std::fs::write(
+            &rs_file,
+            r#"
+use std::simd::f32x4;
+
+fn use_portable_simd() {
+    let a = f32x4::splat(1.0);
+    let b = f32x4::from_array([1.0, 2.0, 3.0, 4.0]);
+}
+"#,
+        )
+        .unwrap();
+
+        let violations = detect_cb021_simd_without_target_feature(temp.path());
+        // Should detect f32x4:: usage as potential SIMD without target_feature
+        assert!(
+            violations.len() >= 1,
+            "Should detect portable SIMD usage: {:?}",
+            violations
+        );
     }
 
     // ============================================================================
