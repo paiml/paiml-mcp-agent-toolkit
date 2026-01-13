@@ -723,11 +723,11 @@ roadmap:
   github_issue: null
   item_type: epic
   title: ComputeBrick Diagnostic Support (PROBAR-SPEC-009-P8)
-  status: inprogress
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-01-09T09:24:58.873088772+00:00
-  updated: 2026-01-09T09:24:58.873088772+00:00
+  updated: 2026-01-13T18:30:00.000000000+00:00
   spec: docs/specifications/compute-brick-support.md
   acceptance_criteria:
   - CB-001 through CB-022 defect patterns added to cuda_simd.rs
@@ -740,41 +740,41 @@ roadmap:
   - name: RED
     status: completed
     estimated_effort: null
-    completion: 0
+    completion: 100
   - name: GREEN
-    status: inprogress
+    status: completed
     estimated_effort: null
-    completion: 0
+    completion: 100
   - name: REFACTOR
-    status: planned
+    status: completed
     estimated_effort: null
-    completion: 0
+    completion: 100
   subtasks:
   - id: CB-IMPL-001-A
     github_issue: null
     title: Add CB-001 to CB-022 defect patterns to DefectTaxonomy
     status: completed
-    completion: 0
+    completion: 100
   - id: CB-IMPL-001-B
     github_issue: null
     title: Add check_compute_brick to comply handlers
-    status: inprogress
-    completion: 0
+    status: completed
+    completion: 100
   - id: CB-IMPL-001-C
     github_issue: null
     title: Add probar coverage enforcement to comply enforce
-    status: planned
-    completion: 0
+    status: completed
+    completion: 100
   - id: CB-IMPL-001-D
     github_issue: null
     title: Add ComputeBrick-specific detection algorithms
-    status: planned
-    completion: 0
+    status: completed
+    completion: 100
   - id: CB-IMPL-001-E
     github_issue: null
     title: Integration tests for pmat comply --compute-brick
-    status: planned
-    completion: 0
+    status: completed
+    completion: 100
   estimated_effort: 4h
   labels:
   - cuda-tdg

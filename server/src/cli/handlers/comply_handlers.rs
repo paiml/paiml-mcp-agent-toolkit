@@ -768,6 +768,114 @@ fn detect_cb021_simd_without_target_feature(project_path: &Path) -> Vec<CbPatter
     violations
 }
 
+/// Scan for WGSL files and detect CB-001 (missing bounds check on global_invocation_id)
+/// CB-001: WGSL global_invocation_id used without bounds check
+/// Reference: docs/specifications/compute-brick-support.md §4.1
+fn detect_cb001_wgsl_no_bounds_check(project_path: &Path) -> Vec<CbPatternViolation> {
+    let mut violations = Vec::new();
+
+    // Find all .wgsl files in the project
+    for entry in walkdir::WalkDir::new(project_path)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .filter(|e| e.path().extension().is_some_and(|ext| ext == "wgsl"))
+    {
+        if let Ok(content) = fs::read_to_string(entry.path()) {
+            let lines: Vec<&str> = content.lines().collect();
+
+            for (line_num, line) in lines.iter().enumerate() {
+                // Check for global_invocation_id usage
+                if line.contains("global_invocation_id") {
+                    // Look for bounds check pattern: `if (gid >= arrayLength` or similar
+                    // within 5 lines after global_invocation_id usage
+                    let has_bounds_check = lines
+                        .iter()
+                        .skip(line_num)
+                        .take(10)
+                        .any(|l| {
+                            l.contains("arrayLength") ||
+                            l.contains(">= arrayLength") ||
+                            l.contains("< arrayLength") ||
+                            l.contains(".length") ||
+                            (l.contains("if") && (l.contains(">=") || l.contains("<")))
+                        });
+
+                    if !has_bounds_check {
+                        violations.push(CbPatternViolation {
+                            pattern_id: "CB-001".to_string(),
+                            file: entry.path().display().to_string(),
+                            line: line_num + 1,
+                            description: "global_invocation_id used without bounds check - potential OOB access".to_string(),
+                            severity: Severity::Critical,
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    violations
+}
+
+/// Scan for WGSL files and detect CB-002 (barrier divergence)
+/// CB-002: workgroupBarrier() unreachable from some threads (inside conditional)
+/// Reference: docs/specifications/compute-brick-support.md §4.2
+fn detect_cb002_wgsl_barrier_divergence(project_path: &Path) -> Vec<CbPatternViolation> {
+    let mut violations = Vec::new();
+
+    // Find all .wgsl files in the project
+    for entry in walkdir::WalkDir::new(project_path)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .filter(|e| e.path().extension().is_some_and(|ext| ext == "wgsl"))
+    {
+        if let Ok(content) = fs::read_to_string(entry.path()) {
+            let lines: Vec<&str> = content.lines().collect();
+            let mut in_conditional = false;
+            let mut conditional_depth = 0;
+            let mut conditional_start_line = 0;
+
+            for (line_num, line) in lines.iter().enumerate() {
+                let trimmed = line.trim();
+
+                // Track conditional blocks (if, else, for, while)
+                if trimmed.starts_with("if ") || trimmed.starts_with("if(")
+                    || trimmed.contains(" if ") || trimmed.contains("} else")
+                {
+                    in_conditional = true;
+                    conditional_start_line = line_num + 1;
+                }
+
+                // Track brace depth for conditionals
+                if in_conditional {
+                    conditional_depth += line.matches('{').count();
+                    conditional_depth = conditional_depth.saturating_sub(line.matches('}').count());
+
+                    if conditional_depth == 0 && line.contains('}') {
+                        in_conditional = false;
+                    }
+                }
+
+                // Check for workgroupBarrier inside conditional
+                if in_conditional && trimmed.contains("workgroupBarrier()") {
+                    violations.push(CbPatternViolation {
+                        pattern_id: "CB-002".to_string(),
+                        file: entry.path().display().to_string(),
+                        line: line_num + 1,
+                        description: format!(
+                            "workgroupBarrier() inside conditional (started at line {}) - may cause deadlock",
+                            conditional_start_line
+                        ),
+                        severity: Severity::Critical,
+                    });
+                }
+            }
+        }
+    }
+
+    violations
+}
+
 /// Check for bricks without assertions (budget validation)
 fn detect_bricks_without_assertions(project_path: &Path) -> Vec<CbPatternViolation> {
     let mut violations = Vec::new();
@@ -1015,6 +1123,21 @@ fn check_compute_brick(project_path: &Path) -> ComplianceCheck {
     for v in &cb021_violations {
         all_issues.push(format!("{}: {} ({}:{})", v.pattern_id, v.description, v.file, v.line));
         warning_count += 1;
+    }
+
+    // WGSL-specific checks (CB-001 and CB-002 per PROBAR-SPEC-009-P8 §4)
+    let cb001_violations = detect_cb001_wgsl_no_bounds_check(project_path);
+    for v in &cb001_violations {
+        all_issues.push(format!("{}: {} ({}:{})", v.pattern_id, v.description, v.file, v.line));
+        // CB-001 is P0 Critical - counts as critical
+        critical_count += 1;
+    }
+
+    let cb002_violations = detect_cb002_wgsl_barrier_divergence(project_path);
+    for v in &cb002_violations {
+        all_issues.push(format!("{}: {} ({}:{})", v.pattern_id, v.description, v.file, v.line));
+        // CB-002 is P0 Critical - counts as critical
+        critical_count += 1;
     }
 
     let budget_violations = detect_bricks_without_assertions(project_path);
@@ -1375,6 +1498,19 @@ async fn handle_enforce(
                 }
             }
         }
+
+        // Also remove pre-push hook if it's PMAT's
+        let pre_push = hooks_dir.join("pre-push");
+        if pre_push.exists() {
+            if let Ok(content) = fs::read_to_string(&pre_push) {
+                if content.contains("PMAT") || content.contains("ComputeBrick") {
+                    fs::remove_file(&pre_push)?;
+                    println!("✅ Removed PMAT pre-push hook");
+                } else {
+                    println!("⚠️  Pre-push hook exists but is not PMAT - not removed");
+                }
+            }
+        }
         return Ok(());
     }
 
@@ -1425,6 +1561,56 @@ exit 0
     let pre_commit_path = hooks_dir.join("pre-commit");
     fs::write(&pre_commit_path, pre_commit_content)?;
 
+    // Create pre-push hook for ComputeBrick compliance (CB-IMPL-001-C)
+    let pre_push_content = r#"#!/bin/sh
+# PMAT ComputeBrick Pre-Push Enforcement (PROBAR-SPEC-009-P8)
+# This hook validates ComputeBrick compliance before push.
+
+set -e
+
+echo "🔍 Running ComputeBrick compliance checks..."
+
+# Check ComputeBrick compliance via pmat comply
+COMPLY_OUTPUT=$(pmat comply check --failures-only 2>&1) || true
+if echo "$COMPLY_OUTPUT" | grep -q "ComputeBrick Compliance.*critical"; then
+    echo "❌ COMPUTEBRICK COMPLIANCE FAILURE"
+    echo ""
+    echo "$COMPLY_OUTPUT" | grep -A5 "ComputeBrick"
+    echo ""
+    echo "Fix critical violations before pushing."
+    echo "Run 'pmat comply check' for full details."
+    echo ""
+    echo "Bypass (NOT RECOMMENDED):"
+    echo "  git push --no-verify"
+    exit 1
+fi
+
+# Check probar GUI coverage if available (PROBAR-SPEC-009)
+if command -v probador >/dev/null 2>&1; then
+    echo "📊 Checking probar GUI coverage..."
+    if ! probador playbook --validate --min-coverage 80 2>/dev/null; then
+        echo "⚠️  Probar GUI coverage below 80%"
+        echo "   Run 'probador playbook' to generate coverage report."
+    fi
+fi
+
+# Check for .pmat-gates.toml ComputeBrick config
+if [ -f "Cargo.toml" ]; then
+    if grep -q "trueno\|probar\|realizar" Cargo.toml 2>/dev/null; then
+        if [ ! -f ".pmat-gates.toml" ] || ! grep -q "\[compute-brick\]" .pmat-gates.toml 2>/dev/null; then
+            echo "⚠️  ComputeBrick project missing [compute-brick] in .pmat-gates.toml"
+            echo "   Add configuration per docs/specifications/compute-brick-support.md"
+        fi
+    fi
+fi
+
+echo "✅ ComputeBrick compliance: PASSED"
+exit 0
+"#;
+
+    let pre_push_path = hooks_dir.join("pre-push");
+    fs::write(&pre_push_path, pre_push_content)?;
+
     // Make executable (Unix only)
     #[cfg(unix)]
     {
@@ -1432,19 +1618,25 @@ exit 0
         let mut perms = fs::metadata(&pre_commit_path)?.permissions();
         perms.set_mode(0o755);
         fs::set_permissions(&pre_commit_path, perms)?;
+
+        let mut perms = fs::metadata(&pre_push_path)?.permissions();
+        perms.set_mode(0o755);
+        fs::set_permissions(&pre_push_path, perms)?;
     }
 
     match format {
         ComplyOutputFormat::Text => {
             println!("\n✅ PMAT enforcement hooks installed!");
             println!("   Pre-commit hook: {}", pre_commit_path.display());
+            println!("   Pre-push hook:   {}", pre_push_path.display());
             println!("\nCommits will now require an active work ticket.");
+            println!("Pushes will validate ComputeBrick compliance.");
             println!("Use 'pmat comply enforce --disable' to remove hooks.");
         }
         ComplyOutputFormat::Json => {
             let result = serde_json::json!({
                 "status": "success",
-                "hooks_installed": ["pre-commit"],
+                "hooks_installed": ["pre-commit", "pre-push"],
                 "path": hooks_dir.display().to_string(),
             });
             println!("{}", serde_json::to_string_pretty(&result)?);
@@ -1454,6 +1646,7 @@ exit 0
             println!("| Hook | Status |");
             println!("|------|--------|");
             println!("| pre-commit | ✅ Installed |");
+            println!("| pre-push | ✅ Installed |");
         }
     }
 
@@ -3219,6 +3412,104 @@ fn good_simd() {
         .unwrap();
 
         let violations = detect_cb021_simd_without_target_feature(temp.path());
+        assert_eq!(violations.len(), 0);
+    }
+
+    // ============================================================================
+    // CB-001 and CB-002 WGSL Detection Tests (CB-IMPL-001-D)
+    // ============================================================================
+
+    #[test]
+    fn test_cb001_detects_wgsl_without_bounds_check() {
+        let temp = tempfile::tempdir().unwrap();
+
+        // Create WGSL file with global_invocation_id but NO bounds check
+        let wgsl_file = temp.path().join("compute.wgsl");
+        std::fs::write(
+            &wgsl_file,
+            r#"@compute @workgroup_size(64)
+fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
+    let gid = global_id.x;
+    output[gid] = input[gid];  // No bounds check!
+}
+"#,
+        )
+        .unwrap();
+
+        let violations = detect_cb001_wgsl_no_bounds_check(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].pattern_id, "CB-001");
+        assert!(violations[0].description.contains("bounds check"));
+    }
+
+    #[test]
+    fn test_cb001_allows_wgsl_with_bounds_check() {
+        let temp = tempfile::tempdir().unwrap();
+
+        // Create WGSL file with global_invocation_id AND bounds check
+        let wgsl_file = temp.path().join("compute.wgsl");
+        std::fs::write(
+            &wgsl_file,
+            r#"@compute @workgroup_size(64)
+fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
+    let gid = global_id.x;
+    if (gid >= arrayLength(&input)) { return; }
+    output[gid] = input[gid];
+}
+"#,
+        )
+        .unwrap();
+
+        let violations = detect_cb001_wgsl_no_bounds_check(temp.path());
+        assert_eq!(violations.len(), 0);
+    }
+
+    #[test]
+    fn test_cb002_detects_wgsl_barrier_in_conditional() {
+        let temp = tempfile::tempdir().unwrap();
+
+        // Create WGSL file with workgroupBarrier() inside conditional
+        let wgsl_file = temp.path().join("compute.wgsl");
+        std::fs::write(
+            &wgsl_file,
+            r#"@compute @workgroup_size(64)
+fn main(@builtin(local_invocation_id) local_id: vec3<u32>) {
+    if (local_id.x == 0u) {
+        shared_data[0] = compute();
+        workgroupBarrier();  // DANGER: Inside conditional!
+    }
+}
+"#,
+        )
+        .unwrap();
+
+        let violations = detect_cb002_wgsl_barrier_divergence(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].pattern_id, "CB-002");
+        assert!(violations[0].description.contains("workgroupBarrier()"));
+    }
+
+    #[test]
+    fn test_cb002_allows_wgsl_barrier_outside_conditional() {
+        let temp = tempfile::tempdir().unwrap();
+
+        // Create WGSL file with workgroupBarrier() OUTSIDE conditional
+        let wgsl_file = temp.path().join("compute.wgsl");
+        std::fs::write(
+            &wgsl_file,
+            r#"@compute @workgroup_size(64)
+fn main(@builtin(local_invocation_id) local_id: vec3<u32>) {
+    if (local_id.x == 0u) {
+        shared_data[0] = compute();
+    }
+    workgroupBarrier();  // Safe: All threads reach this
+    let val = shared_data[0];
+}
+"#,
+        )
+        .unwrap();
+
+        let violations = detect_cb002_wgsl_barrier_divergence(temp.path());
         assert_eq!(violations.len(), 0);
     }
 
