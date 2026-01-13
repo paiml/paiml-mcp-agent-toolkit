@@ -1508,6 +1508,54 @@ pub enum SpecCommands {
         #[arg(short = 'f', long = "format", value_enum, default_value = "text")]
         format: SpecOutputFormat,
     },
+
+    /// Sync specs with roadmap (bidirectional ticket linking)
+    #[command(visible_aliases = &["sy", "link"])]
+    Sync {
+        /// Specifications directory
+        #[arg(short = 's', long = "specs", default_value = "docs/specifications")]
+        spec_path: PathBuf,
+
+        /// Roadmap file path
+        #[arg(short = 'r', long = "roadmap", default_value = "docs/roadmaps/roadmap.yaml")]
+        roadmap_path: PathBuf,
+
+        /// Dry run (show changes without applying)
+        #[arg(long)]
+        dry_run: bool,
+
+        /// Direction: spec-to-roadmap, roadmap-to-spec, or both
+        #[arg(short = 'd', long = "direction", value_enum, default_value = "both")]
+        direction: SpecSyncDirection,
+    },
+
+    /// Report specs without roadmap links (drift detection)
+    #[command(visible_aliases = &["orphans", "unlinked"])]
+    Drift {
+        /// Specifications directory
+        #[arg(short = 's', long = "specs", default_value = "docs/specifications")]
+        spec_path: PathBuf,
+
+        /// Roadmap file path
+        #[arg(short = 'r', long = "roadmap", default_value = "docs/roadmaps/roadmap.yaml")]
+        roadmap_path: PathBuf,
+
+        /// Output format
+        #[arg(short = 'f', long = "format", value_enum, default_value = "text")]
+        format: SpecOutputFormat,
+    },
+}
+
+/// Direction for spec-roadmap sync
+#[derive(Debug, Clone, Copy, Default, clap::ValueEnum)]
+pub enum SpecSyncDirection {
+    /// Update roadmap from spec tickets
+    SpecToRoadmap,
+    /// Update spec frontmatter from roadmap
+    RoadmapToSpec,
+    /// Bidirectional sync
+    #[default]
+    Both,
 }
 
 /// Output format for spec commands

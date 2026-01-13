@@ -447,6 +447,259 @@ fn format_spec_score_markdown(spec: &ParsedSpec, score: f64) -> String {
     out
 }
 
+/// Handle spec sync command - bidirectional spec-roadmap linking
+pub async fn handle_spec_sync(
+    spec_path: &Path,
+    roadmap_path: &Path,
+    dry_run: bool,
+    direction: crate::cli::commands::SpecSyncDirection,
+) -> anyhow::Result<()> {
+    use crate::cli::commands::SpecSyncDirection;
+    use crate::services::roadmap_service::RoadmapService;
+    use regex::Regex;
+
+    let parser = SpecParser::new();
+    let specs = parser.find_specs(spec_path)?;
+    let roadmap_service = RoadmapService::new(roadmap_path);
+
+    if !roadmap_service.exists() {
+        anyhow::bail!(
+            "No roadmap found at {}. Run 'pmat work init' first.",
+            roadmap_path.display()
+        );
+    }
+
+    let mut roadmap = roadmap_service.load()?;
+
+    // Regex to extract ticket from spec frontmatter: **Ticket**: XXX or Ticket: XXX
+    let ticket_re = Regex::new(r"(?m)^\*?\*?Ticket\*?\*?:\s*(\S+)")?;
+
+    let mut updates = Vec::new();
+
+    // Spec → Roadmap direction
+    if matches!(direction, SpecSyncDirection::SpecToRoadmap | SpecSyncDirection::Both) {
+        for spec_file in &specs {
+            let content = std::fs::read_to_string(spec_file)?;
+
+            if let Some(caps) = ticket_re.captures(&content) {
+                let ticket_id = caps.get(1).map(|m| m.as_str()).unwrap_or("");
+                if ticket_id.is_empty() {
+                    continue;
+                }
+
+                // Find matching roadmap item
+                let rel_spec_path = spec_file
+                    .strip_prefix(std::env::current_dir()?)
+                    .unwrap_or(spec_file);
+
+                for item in &mut roadmap.roadmap {
+                    if item.id.eq_ignore_ascii_case(ticket_id) {
+                        let new_spec = Some(rel_spec_path.to_path_buf());
+                        if item.spec != new_spec {
+                            updates.push(format!(
+                                "  {} → spec: {}",
+                                item.id,
+                                rel_spec_path.display()
+                            ));
+                            if !dry_run {
+                                item.spec = new_spec;
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    // Roadmap → Spec direction (update spec frontmatter with ticket)
+    if matches!(direction, SpecSyncDirection::RoadmapToSpec | SpecSyncDirection::Both) {
+        for item in &roadmap.roadmap {
+            if let Some(ref spec_file) = item.spec {
+                let full_path = if spec_file.is_absolute() {
+                    spec_file.clone()
+                } else {
+                    std::env::current_dir()?.join(spec_file)
+                };
+
+                if full_path.exists() {
+                    let content = std::fs::read_to_string(&full_path)?;
+                    if !ticket_re.is_match(&content) {
+                        updates.push(format!(
+                            "  {} ← needs Ticket: {} in frontmatter",
+                            spec_file.display(),
+                            item.id
+                        ));
+                        // Note: We don't auto-edit spec files - just report
+                    }
+                }
+            }
+        }
+    }
+
+    if updates.is_empty() {
+        println!("✅ Specs and roadmap are in sync. No updates needed.");
+    } else {
+        println!(
+            "{}",
+            if dry_run {
+                "🔍 Dry run - would make these changes:"
+            } else {
+                "✅ Applied changes:"
+            }
+        );
+        for update in &updates {
+            println!("{}", update);
+        }
+
+        if !dry_run {
+            roadmap_service.save(&roadmap)?;
+            println!("\n💾 Saved roadmap to {}", roadmap_path.display());
+        }
+    }
+
+    Ok(())
+}
+
+/// Handle spec drift command - find specs without roadmap links
+pub async fn handle_spec_drift(
+    spec_path: &Path,
+    roadmap_path: &Path,
+    format: SpecOutputFormat,
+) -> anyhow::Result<()> {
+    use crate::services::roadmap_service::RoadmapService;
+    use regex::Regex;
+    use std::collections::HashSet;
+
+    let parser = SpecParser::new();
+    let specs = parser.find_specs(spec_path)?;
+    let roadmap_service = RoadmapService::new(roadmap_path);
+
+    // Collect all spec paths referenced in roadmap
+    let mut linked_specs: HashSet<std::path::PathBuf> = HashSet::new();
+    if roadmap_service.exists() {
+        let roadmap = roadmap_service.load()?;
+        for item in &roadmap.roadmap {
+            if let Some(ref spec) = item.spec {
+                linked_specs.insert(spec.clone());
+            }
+        }
+    }
+
+    // Regex to check for ticket in spec
+    let ticket_re = Regex::new(r"(?m)^\*?\*?Ticket\*?\*?:\s*(\S+)")?;
+
+    #[derive(Debug)]
+    struct DriftInfo {
+        path: std::path::PathBuf,
+        title: String,
+        has_ticket: bool,
+        ticket_id: Option<String>,
+        linked_in_roadmap: bool,
+    }
+
+    let mut orphans = Vec::new();
+
+    for spec_file in &specs {
+        let rel_path = spec_file
+            .strip_prefix(std::env::current_dir()?)
+            .unwrap_or(spec_file)
+            .to_path_buf();
+
+        let content = std::fs::read_to_string(spec_file)?;
+        let ticket_match = ticket_re.captures(&content);
+        let has_ticket = ticket_match.is_some();
+        let ticket_id = ticket_match.and_then(|c| c.get(1).map(|m| m.as_str().to_string()));
+
+        let linked = linked_specs.contains(&rel_path);
+
+        // Parse title from spec
+        let title = if let Ok(spec) = parser.parse_file(spec_file) {
+            spec.title
+        } else {
+            spec_file
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("unknown")
+                .to_string()
+        };
+
+        // Orphan if: no ticket OR not linked in roadmap
+        if !has_ticket || !linked {
+            orphans.push(DriftInfo {
+                path: rel_path,
+                title,
+                has_ticket,
+                ticket_id,
+                linked_in_roadmap: linked,
+            });
+        }
+    }
+
+    match format {
+        SpecOutputFormat::Text => {
+            if orphans.is_empty() {
+                println!("✅ No drift detected. All specs are properly linked.");
+            } else {
+                println!("⚠️  Found {} specs with drift:\n", orphans.len());
+                println!(
+                    "{:<45} {:>10} {:>12}",
+                    "SPEC", "HAS_TICKET", "IN_ROADMAP"
+                );
+                println!("{}", "─".repeat(70));
+
+                for o in &orphans {
+                    let ticket_status = if o.has_ticket {
+                        o.ticket_id.as_deref().unwrap_or("✅")
+                    } else {
+                        "❌ missing"
+                    };
+                    let roadmap_status = if o.linked_in_roadmap { "✅" } else { "❌" };
+                    println!(
+                        "{:<45} {:>10} {:>12}",
+                        o.path.display(),
+                        ticket_status,
+                        roadmap_status
+                    );
+                }
+
+                println!("\n💡 Fix with: pmat spec sync --dry-run");
+            }
+        }
+        SpecOutputFormat::Json => {
+            let json: Vec<_> = orphans
+                .iter()
+                .map(|o| {
+                    serde_json::json!({
+                        "path": o.path.display().to_string(),
+                        "title": o.title,
+                        "has_ticket": o.has_ticket,
+                        "ticket_id": o.ticket_id,
+                        "linked_in_roadmap": o.linked_in_roadmap,
+                    })
+                })
+                .collect();
+            println!("{}", serde_json::to_string_pretty(&json)?);
+        }
+        SpecOutputFormat::Markdown => {
+            println!("# Spec Drift Report\n");
+            if orphans.is_empty() {
+                println!("✅ No drift detected.");
+            } else {
+                println!("| Spec | Has Ticket | In Roadmap |");
+                println!("|------|------------|------------|");
+                for o in &orphans {
+                    let ticket = if o.has_ticket { "✅" } else { "❌" };
+                    let roadmap = if o.linked_in_roadmap { "✅" } else { "❌" };
+                    println!("| {} | {} | {} |", o.path.display(), ticket, roadmap);
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -880,3 +880,45 @@ roadmap:
   - tdg
   - testing
   notes: null
+- id: PMAT-443
+  github_issue: null
+  item_type: task
+  title: Spec-Roadmap Bidirectional Sync
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-01-13T15:54:51Z
+  updated: 2026-01-13T15:54:51Z
+  spec: null
+  acceptance_criteria:
+  - 'Add pmat spec sync (extract tickets from specs, update roadmap.yaml) and pmat spec drift (report orphan specs). Fix: spec **Ticket**: field should auto-update roadmap spec: field bidirectionally.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - spec
+  - roadmap
+  - sync
+  - ux
+  notes: null
+- id: PMAT-444
+  github_issue: null
+  item_type: task
+  title: Citation Validation in Specs
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-01-13T15:54:52Z
+  updated: 2026-01-13T15:54:52Z
+  spec: null
+  acceptance_criteria:
+  - 'Validate peer-reviewed citations in specs: check DOI/URL validity, flag fake citations, score reduction for unverified references. Integrate with pmat spec score.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - spec
+  - citations
+  - validation
+  - popper
+  notes: null

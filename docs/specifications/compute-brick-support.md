@@ -4,7 +4,7 @@
 **Status**: Active
 **Authors**: PAIML Team
 **Date**: 2026-01-09
-**Ticket**: PROBAR-SPEC-009-P8
+**Ticket**: CB-IMPL-001
 
 ## Abstract
 

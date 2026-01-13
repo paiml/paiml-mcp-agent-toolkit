@@ -3724,6 +3724,20 @@ impl CommandDispatcher {
                 failing_only,
                 format,
             } => spec_handlers::handle_spec_list(&path, min_score, failing_only, format).await,
+            SpecCommands::Sync {
+                spec_path,
+                roadmap_path,
+                dry_run,
+                direction,
+            } => {
+                spec_handlers::handle_spec_sync(&spec_path, &roadmap_path, dry_run, direction)
+                    .await
+            }
+            SpecCommands::Drift {
+                spec_path,
+                roadmap_path,
+                format,
+            } => spec_handlers::handle_spec_drift(&spec_path, &roadmap_path, format).await,
         }
     }
 }
