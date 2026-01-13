@@ -9457,12 +9457,12 @@ dependencies = [
 
 [[package]]
 name = "trueno-graph"
-version = "0.1.7"
+version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d851fd9e00d498ec93230f66df189f5428775d71a1e5389d3d8313d6719f05af"
+checksum = "77b4d75915f71e3f707e4908032d7d66959ba231bf766e55b5f0926dfac46cd6"
 dependencies = [
  "anyhow",
- "aprender 0.23.0",
+ "aprender 0.24.0",
  "arrow 54.2.1",
  "parquet",
  "thiserror 2.0.17",

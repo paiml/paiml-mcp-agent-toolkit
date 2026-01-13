@@ -66,7 +66,7 @@ trueno-db = { version = "0.3.10", optional = true, default-features = false }
 
 # Semantic Search Stack (Pure Rust - Zero API Keys)
 # See: docs/specifications/semantic-search-feature.md
-trueno-graph = "0.1.7"  # GPU-first graph database (CSR, PageRank, Louvain)
+trueno-graph = "0.1.9"  # GPU-first graph database (CSR, PageRank, Louvain)
 trueno-rag = "0.1.8"  # Pure-Rust RAG pipeline with VectorStore (replaces TursoVectorDB rusqlite implementation)
 trueno-viz = { version = "0.1.17", optional = true, features = ["terminal", "graph"] }  # Terminal graph visualization
 
