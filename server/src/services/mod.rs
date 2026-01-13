@@ -175,6 +175,7 @@ pub mod parallel_git;
 pub mod parsed_file_cache;
 pub mod pdmt_quality_integration;
 pub mod pdmt_service;
+pub mod brick_score; // ComputeBrick Profiling Score (PMAT-446) - trueno/realizar ecosystem
 pub mod popper_score; // Popper Falsifiability Score v1.1 (Popperian science standards)
 pub mod progress;
 pub mod project_analyzer;

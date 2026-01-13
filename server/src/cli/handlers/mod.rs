@@ -11,6 +11,7 @@ pub mod analyze_defects_handler; // Known Defects: Project-wide defect scanning
 #[cfg(test)]
 pub mod annotation_tdd_tests;
 pub mod big_o_handlers;
+pub mod brick_score_handlers; // PMAT-446: ComputeBrick profiling score
 pub mod bug_report_handler; // Issue #81: Auto GitHub bug reports from errors
 pub mod cache;
 #[cfg(feature = "mutation-testing")]
@@ -120,6 +121,7 @@ pub use configuration_handlers::handle_configuration;
 pub use debug_handlers::{handle_debug_compare, handle_debug_timeline}; // Sprint 77: TIMELINE-004
 pub use defect_prediction_handler::handle_analyze_defect_prediction;
 pub use demo_handlers::{handle_demo, handle_quality_gate};
+pub use brick_score_handlers::handle_brick_score; // PMAT-446: ComputeBrick profiling score
 pub use demo_score_handlers::handle_demo_score; // GH-109/112: Demo Quality scoring
 pub use doc_validate_handlers::ValidateDocsCmd;
 pub use duplication_analysis::handle_analyze_duplicates;

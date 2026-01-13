@@ -543,6 +543,46 @@ pub enum Commands {
         output: Option<PathBuf>,
     },
 
+    /// ComputeBrick profiling score (0-100 scale) for trueno/realizar ecosystem
+    ///
+    /// Reads BrickProfiler JSON output and calculates a comprehensive score:
+    /// - Performance (40 pts): Throughput vs µs budget
+    /// - Efficiency (25 pts): Backend utilization
+    /// - Correctness (20 pts): All bricks executed
+    /// - Stability (15 pts): CV < 15%
+    ///
+    /// Reference: qwen2.5-coder-showcase-demo.md §2.5
+    #[command(name = "brick-score", visible_aliases = &["brick", "computebrick"])]
+    BrickScore {
+        /// Project path (defaults to current directory)
+        #[arg(short = 'p', long, default_value = ".")]
+        path: PathBuf,
+
+        /// BrickProfiler JSON input file (auto-detected if not specified)
+        #[arg(short = 'i', long)]
+        input: Option<PathBuf>,
+
+        /// Output format
+        #[arg(short = 'f', long, value_enum, default_value = "text")]
+        format: RepoScoreOutputFormat,
+
+        /// Enable verbose output (show per-brick timing table)
+        #[arg(short = 'v', long)]
+        verbose: bool,
+
+        /// Show only failures and recommendations
+        #[arg(long)]
+        failures_only: bool,
+
+        /// Minimum score threshold (fail if below)
+        #[arg(short = 't', long, default_value = "0")]
+        threshold: u32,
+
+        /// Output file path
+        #[arg(short = 'o', long)]
+        output: Option<PathBuf>,
+    },
+
     /// Start HTTP API server with WebSocket support
     #[command(visible_aliases = &["server", "api"])]
     Serve {

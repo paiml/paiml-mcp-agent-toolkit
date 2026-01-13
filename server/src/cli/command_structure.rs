@@ -383,6 +383,26 @@ impl CommandExecutor {
                 )
                 .await
             }
+            Commands::BrickScore {
+                path,
+                input,
+                format,
+                verbose,
+                failures_only,
+                threshold,
+                output,
+            } => {
+                crate::cli::handlers::brick_score_handlers::handle_brick_score(
+                    &path,
+                    input.as_deref(),
+                    &format,
+                    verbose,
+                    failures_only,
+                    threshold,
+                    output.as_deref(),
+                )
+                .await
+            }
             Commands::PopperScore {
                 path,
                 format,
