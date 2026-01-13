@@ -51,6 +51,7 @@ impl CpuLimiter {
         Ok(())
     }
 
+    #[allow(unused_variables)]
     fn set_cpu_affinity(&self, cores: f32) -> Result<(), ResourceError> {
         #[cfg(target_os = "linux")]
         {
@@ -169,22 +170,23 @@ impl CpuLimiter {
         }
     }
 
-    fn apply_cgroup_limits(&self, limits: &CpuLimits) -> Result<(), ResourceError> {
+    fn apply_cgroup_limits(&self, _limits: &CpuLimits) -> Result<(), ResourceError> {
         #[cfg(target_os = "linux")]
         {
             // Try cgroups v2 first
             if std::path::Path::new("/sys/fs/cgroup/cgroup.controllers").exists() {
-                self.apply_cgroup_v2_limits(limits)?;
+                self.apply_cgroup_v2_limits(_limits)?;
             }
             // Fall back to cgroups v1
             else if std::path::Path::new("/sys/fs/cgroup/cpu").exists() {
-                self.apply_cgroup_v1_limits(limits)?;
+                self.apply_cgroup_v1_limits(_limits)?;
             }
         }
 
         Ok(())
     }
 
+    #[allow(unused_variables)]
     fn apply_cgroup_v2_limits(&self, limits: &CpuLimits) -> Result<(), ResourceError> {
         #[cfg(target_os = "linux")]
         {
@@ -220,6 +222,7 @@ impl CpuLimiter {
         Ok(())
     }
 
+    #[allow(unused_variables)]
     fn apply_cgroup_v1_limits(&self, limits: &CpuLimits) -> Result<(), ResourceError> {
         #[cfg(target_os = "linux")]
         {
