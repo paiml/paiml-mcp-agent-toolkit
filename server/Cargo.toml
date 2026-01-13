@@ -228,7 +228,7 @@ hyper-util = { version = "0.1", default-features = false, features = ["tokio", "
 http-body-util = "0.1"
 
 # Graph analysis (trueno-graph replaces petgraph)
-nalgebra-sparse = "0.11"
+# nalgebra-sparse removed - using simple Vec-based sparse matrices (Sovereign AI Stack)
 
 # Markdown parsing
 pulldown-cmark = "0.13"

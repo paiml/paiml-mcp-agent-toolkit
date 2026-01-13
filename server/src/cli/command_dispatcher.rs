@@ -3627,6 +3627,61 @@ impl CommandDispatcher {
                 backup,
             } => work_handlers::handle_work_migrate(path.clone(), *dry_run, *backup).await,
             WorkCommands::ListStatuses => work_handlers::handle_work_list_statuses().await,
+            WorkCommands::Add {
+                title,
+                description,
+                priority,
+                tags,
+                path,
+                github,
+            } => {
+                work_handlers::handle_work_add(
+                    title.clone(),
+                    description.clone(),
+                    *priority,
+                    tags.clone(),
+                    path.clone(),
+                    *github,
+                )
+                .await
+            }
+            WorkCommands::List {
+                status,
+                priority,
+                count,
+                path,
+            } => {
+                work_handlers::handle_work_list(
+                    status.clone(),
+                    *priority,
+                    *count,
+                    path.clone(),
+                )
+                .await
+            }
+            WorkCommands::Edit {
+                id,
+                title,
+                description,
+                priority,
+                status,
+                tags,
+                path,
+            } => {
+                work_handlers::handle_work_edit(
+                    id.clone(),
+                    title.clone(),
+                    description.clone(),
+                    *priority,
+                    status.clone(),
+                    tags.clone(),
+                    path.clone(),
+                )
+                .await
+            }
+            WorkCommands::Delete { id, force, path } => {
+                work_handlers::handle_work_delete(id.clone(), *force, path.clone()).await
+            }
         }
     }
 

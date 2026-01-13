@@ -1511,6 +1511,333 @@ pub async fn handle_work_list_statuses() -> Result<()> {
     Ok(())
 }
 
+/// Handle work add command (CRUD: Create)
+///
+/// Creates a new work ticket in roadmap.yaml with optional GitHub issue creation.
+pub async fn handle_work_add(
+    title: String,
+    description: Option<String>,
+    priority: crate::cli::commands::WorkPriority,
+    tags: Option<String>,
+    path: Option<PathBuf>,
+    create_github: bool,
+) -> Result<()> {
+    let project_path = path.unwrap_or_else(|| PathBuf::from("."));
+    let roadmap_path = project_path.join("docs/roadmaps/roadmap.yaml");
+    let service = RoadmapService::new(&roadmap_path);
+
+    // Validate roadmap exists
+    if !service.exists() {
+        anyhow::bail!(
+            "No roadmap found at {}. Run 'pmat work init' first.",
+            roadmap_path.display()
+        );
+    }
+
+    // Load existing roadmap to find next available ID
+    let roadmap = service.load()?;
+    let next_id = generate_next_id(&roadmap);
+
+    // Create new item
+    let now = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string();
+    let item = crate::models::roadmap::RoadmapItem {
+        id: next_id.clone(),
+        github_issue: None,
+        item_type: crate::models::roadmap::ItemType::Task,
+        title: title.clone(),
+        status: crate::models::roadmap::ItemStatus::Planned,
+        priority: priority.to_roadmap_priority(),
+        assigned_to: None,
+        created: now.clone(),
+        updated: now,
+        spec: None,
+        acceptance_criteria: description
+            .as_ref()
+            .map(|d| vec![d.clone()])
+            .unwrap_or_default(),
+        phases: vec![],
+        subtasks: vec![],
+        estimated_effort: None,
+        labels: tags
+            .clone()
+            .map(|t| t.split(',').map(|s| s.trim().to_string()).collect())
+            .unwrap_or_default(),
+        notes: None,
+    };
+
+    // Save to roadmap
+    service.upsert_item(item)?;
+
+    println!("✅ Created ticket: {}", next_id);
+    println!("   Title: {}", title);
+    println!("   Priority: {:?}", priority);
+    if let Some(desc) = description {
+        println!("   Description: {}", desc);
+    }
+    if let Some(t) = tags {
+        println!("   Tags: {}", t);
+    }
+
+    // Create GitHub issue if requested
+    if create_github {
+        println!("\n⚠️  GitHub issue creation not yet implemented. Use 'pmat work sync' after creating the ticket.");
+    }
+
+    Ok(())
+}
+
+/// Handle work list command (CRUD: Read - simple list)
+///
+/// Lists all work tickets with optional filtering.
+pub async fn handle_work_list(
+    status: Option<String>,
+    priority: Option<crate::cli::commands::WorkPriority>,
+    count_only: bool,
+    path: Option<PathBuf>,
+) -> Result<()> {
+    let project_path = path.unwrap_or_else(|| PathBuf::from("."));
+    let roadmap_path = project_path.join("docs/roadmaps/roadmap.yaml");
+    let service = RoadmapService::new(&roadmap_path);
+
+    if !service.exists() {
+        anyhow::bail!(
+            "No roadmap found at {}. Run 'pmat work init' first.",
+            roadmap_path.display()
+        );
+    }
+
+    let roadmap = service.load()?;
+
+    // Filter items
+    let items: Vec<_> = roadmap
+        .roadmap
+        .iter()
+        .filter(|item| {
+            // Filter by status if specified
+            if let Some(ref s) = status {
+                let item_status = format!("{:?}", item.status).to_lowercase();
+                if !item_status.contains(&s.to_lowercase()) {
+                    return false;
+                }
+            }
+            // Filter by priority if specified
+            if let Some(ref p) = priority {
+                let roadmap_priority = p.to_roadmap_priority();
+                if item.priority != roadmap_priority {
+                    return false;
+                }
+            }
+            true
+        })
+        .collect();
+
+    if count_only {
+        println!("{}", items.len());
+        return Ok(());
+    }
+
+    if items.is_empty() {
+        println!("No tickets found matching criteria.");
+        return Ok(());
+    }
+
+    // Print header
+    println!(
+        "{:<12} {:<12} {:<10} {}",
+        "ID", "STATUS", "PRIORITY", "TITLE"
+    );
+    println!("{}", "-".repeat(70));
+
+    // Print items
+    for item in items {
+        let status_str = format!("{:?}", item.status).to_lowercase();
+        let priority_str = format!("{:?}", item.priority).to_lowercase();
+        let title_truncated = if item.title.len() > 40 {
+            format!("{}...", &item.title[..37])
+        } else {
+            item.title.clone()
+        };
+        println!(
+            "{:<12} {:<12} {:<10} {}",
+            item.id, status_str, priority_str, title_truncated
+        );
+    }
+
+    Ok(())
+}
+
+/// Handle work edit command (CRUD: Update)
+///
+/// Edits an existing work ticket.
+pub async fn handle_work_edit(
+    id: String,
+    title: Option<String>,
+    description: Option<String>,
+    priority: Option<crate::cli::commands::WorkPriority>,
+    status: Option<String>,
+    tags: Option<String>,
+    path: Option<PathBuf>,
+) -> Result<()> {
+    let project_path = path.unwrap_or_else(|| PathBuf::from("."));
+    let roadmap_path = project_path.join("docs/roadmaps/roadmap.yaml");
+    let service = RoadmapService::new(&roadmap_path);
+
+    if !service.exists() {
+        anyhow::bail!(
+            "No roadmap found at {}. Run 'pmat work init' first.",
+            roadmap_path.display()
+        );
+    }
+
+    // Find the item (with fuzzy matching)
+    let item = find_item_fuzzy(&service, &id)?;
+    let mut updated_item = item.clone();
+    let mut changes = vec![];
+
+    // Apply changes
+    if let Some(new_title) = title {
+        updated_item.title = new_title.clone();
+        changes.push(format!("title: {}", new_title));
+    }
+
+    if let Some(desc) = description {
+        updated_item.acceptance_criteria = vec![desc.clone()];
+        changes.push(format!("description: {}", desc));
+    }
+
+    if let Some(p) = priority {
+        updated_item.priority = p.to_roadmap_priority();
+        changes.push(format!("priority: {:?}", p));
+    }
+
+    if let Some(s) = status {
+        let new_status = crate::models::roadmap::ItemStatus::from_string(&s)
+            .map_err(|e| anyhow::anyhow!("Invalid status '{}': {}", s, e))?;
+        updated_item.status = new_status;
+        changes.push(format!("status: {}", s));
+    }
+
+    if let Some(t) = tags {
+        updated_item.labels = t.split(',').map(|s| s.trim().to_string()).collect();
+        changes.push(format!("labels: {}", t));
+    }
+
+    if changes.is_empty() {
+        println!("⚠️  No changes specified. Use --title, --description, --priority, --status, or --tags.");
+        return Ok(());
+    }
+
+    // Update timestamp
+    updated_item.updated = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string();
+
+    // Save
+    service.upsert_item(updated_item)?;
+
+    println!("✅ Updated ticket: {}", item.id);
+    for change in changes {
+        println!("   {}", change);
+    }
+
+    Ok(())
+}
+
+/// Handle work delete command (CRUD: Delete)
+///
+/// Deletes a work ticket from roadmap.yaml.
+pub async fn handle_work_delete(id: String, force: bool, path: Option<PathBuf>) -> Result<()> {
+    let project_path = path.unwrap_or_else(|| PathBuf::from("."));
+    let roadmap_path = project_path.join("docs/roadmaps/roadmap.yaml");
+    let service = RoadmapService::new(&roadmap_path);
+
+    if !service.exists() {
+        anyhow::bail!(
+            "No roadmap found at {}. Run 'pmat work init' first.",
+            roadmap_path.display()
+        );
+    }
+
+    // Find the item (with fuzzy matching)
+    let item = find_item_fuzzy(&service, &id)?;
+
+    // Confirm deletion unless --force
+    if !force {
+        println!("About to delete ticket:");
+        println!("  ID: {}", item.id);
+        println!("  Title: {}", item.title);
+        println!("  Status: {:?}", item.status);
+        println!();
+        println!("⚠️  Use --force to skip this confirmation.");
+        return Ok(());
+    }
+
+    // Delete
+    service.remove_item(&item.id)?;
+    println!("🗑️  Deleted ticket: {} - {}", item.id, item.title);
+
+    Ok(())
+}
+
+/// Generate the next available ID for a new ticket
+fn generate_next_id(roadmap: &crate::models::roadmap::Roadmap) -> String {
+    let mut max_num = 0u32;
+
+    for item in &roadmap.roadmap {
+        // Try to extract number from IDs like "PMAT-001", "GH-123", etc.
+        if let Some(num_str) = item.id.split('-').last() {
+            if let Ok(num) = num_str.parse::<u32>() {
+                max_num = max_num.max(num);
+            }
+        }
+    }
+
+    format!("PMAT-{:03}", max_num + 1)
+}
+
+/// Find an item with fuzzy ID matching (case-insensitive, partial match)
+fn find_item_fuzzy(
+    service: &RoadmapService,
+    id: &str,
+) -> Result<crate::models::roadmap::RoadmapItem> {
+    // First try exact match
+    if let Ok(Some(item)) = service.find_item(id) {
+        return Ok(item);
+    }
+
+    // Load all items for fuzzy matching
+    let roadmap = service.load()?;
+
+    // Try case-insensitive exact match
+    let id_lower = id.to_lowercase();
+    for item in &roadmap.roadmap {
+        if item.id.to_lowercase() == id_lower {
+            return Ok(item.clone());
+        }
+    }
+
+    // Try partial match (ID contains the search string)
+    let mut matches: Vec<_> = roadmap
+        .roadmap
+        .iter()
+        .filter(|item| item.id.to_lowercase().contains(&id_lower))
+        .collect();
+
+    match matches.len() {
+        0 => anyhow::bail!(
+            "Ticket '{}' not found. Use 'pmat work list' to see available tickets.",
+            id
+        ),
+        1 => Ok(matches.pop().unwrap().clone()),
+        _ => {
+            let match_ids: Vec<_> = matches.iter().map(|i| i.id.as_str()).collect();
+            anyhow::bail!(
+                "Ambiguous ID '{}'. Multiple matches: {}. Please be more specific.",
+                id,
+                match_ids.join(", ")
+            )
+        }
+    }
+}
+
 /// Extract line number from YAML error message
 fn extract_line_from_yaml_error(error: &str) -> Option<usize> {
     // serde_yaml errors often contain "at line X column Y"

@@ -1,8 +1,9 @@
 // Graph type system for PMAT - using trueno-graph (replaces petgraph)
 // Complexity: All functions ≤ 10
 // SATD: Zero tolerance
+// Sovereign AI Stack: GraphMatrices uses simple Vec-based sparse representation
+// (nalgebra-sparse removed in favor of batuta stack principles)
 
-use nalgebra_sparse::{CooMatrix, CsrMatrix};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -362,14 +363,57 @@ impl UndirectedEdgeRef<'_> {
     }
 }
 
+/// Simple sparse matrix using triplet (COO) format
+/// Sovereign AI Stack: Replaces nalgebra-sparse with simple Vec-based representation
+#[derive(Debug, Clone, Default)]
+pub struct SimpleSparseMatrix {
+    /// Number of rows
+    pub nrows: usize,
+    /// Number of columns
+    pub ncols: usize,
+    /// Triplets (row, col, value)
+    pub triplets: Vec<(usize, usize, f64)>,
+}
+
+impl SimpleSparseMatrix {
+    /// Create a new sparse matrix with given dimensions
+    pub fn new(nrows: usize, ncols: usize) -> Self {
+        Self {
+            nrows,
+            ncols,
+            triplets: Vec::new(),
+        }
+    }
+
+    /// Add a value at (row, col)
+    pub fn push(&mut self, row: usize, col: usize, value: f64) {
+        self.triplets.push((row, col, value));
+    }
+
+    /// Get row values as iterator
+    pub fn row_values(&self, row: usize) -> impl Iterator<Item = (usize, f64)> + '_ {
+        self.triplets
+            .iter()
+            .filter(move |(r, _, _)| *r == row)
+            .map(|(_, c, v)| (*c, *v))
+    }
+
+    /// Get all values in a row as Vec
+    pub fn row_as_vec(&self, row: usize) -> Vec<(usize, f64)> {
+        self.row_values(row).collect()
+    }
+}
+
 /// Unified matrix representations for different algorithms
+/// Sovereign AI Stack: Uses simple Vec-based sparse matrices (no external deps)
+#[derive(Debug, Clone)]
 pub struct GraphMatrices {
-    /// Standard adjacency matrix
-    pub adjacency: CsrMatrix<f64>,
-    /// Column-stochastic for PageRank
-    pub transition: CsrMatrix<f64>,
-    /// For spectral clustering
-    pub laplacian: CsrMatrix<f64>,
+    /// Standard adjacency matrix (triplet format)
+    pub adjacency: SimpleSparseMatrix,
+    /// Column-stochastic for PageRank (triplet format)
+    pub transition: SimpleSparseMatrix,
+    /// For spectral clustering (triplet format)
+    pub laplacian: SimpleSparseMatrix,
     /// Out-degree vector
     pub out_degrees: Vec<f64>,
     /// Number of nodes in the graph
@@ -394,10 +438,11 @@ impl EdgeData {
 
 /// Conversion from DependencyGraph to matrix representations
 /// Complexity: 8 (loop with matrix operations)
+/// Sovereign AI Stack: Uses simple Vec-based sparse matrices
 impl From<&DependencyGraph> for GraphMatrices {
     fn from(graph: &DependencyGraph) -> Self {
         let n = graph.node_count();
-        let mut coo = CooMatrix::new(n, n);
+        let mut adjacency = SimpleSparseMatrix::new(n, n);
         let mut out_degrees = vec![0.0; n];
         let mut edges = Vec::new();
 
@@ -409,12 +454,10 @@ impl From<&DependencyGraph> for GraphMatrices {
 
             if source < n && target < n {
                 edges.push((source, target, weight));
-                coo.push(source, target, weight);
+                adjacency.push(source, target, weight);
                 out_degrees[source] += weight;
             }
         }
-
-        let adjacency = CsrMatrix::from(&coo);
 
         // Create column-stochastic transition matrix
         let transition = Self::normalize_columns(&adjacency, &out_degrees);
@@ -436,43 +479,45 @@ impl From<&DependencyGraph> for GraphMatrices {
 impl GraphMatrices {
     /// Normalize columns for stochastic matrix
     /// Complexity: 6 (nested loop with early exit)
-    fn normalize_columns(adjacency: &CsrMatrix<f64>, out_degrees: &[f64]) -> CsrMatrix<f64> {
-        let n = adjacency.nrows();
-        let mut coo = CooMatrix::new(n, n);
+    fn normalize_columns(
+        adjacency: &SimpleSparseMatrix,
+        out_degrees: &[f64],
+    ) -> SimpleSparseMatrix {
+        let n = adjacency.nrows;
+        let mut result = SimpleSparseMatrix::new(n, n);
 
         for i in 0..n {
-            let row = adjacency.row(i);
             if out_degrees[i] > 0.0 {
-                for (&value, &col) in row.values().iter().zip(row.col_indices()) {
-                    coo.push(i, col, value / out_degrees[i]);
+                for (col, value) in adjacency.row_values(i) {
+                    result.push(i, col, value / out_degrees[i]);
                 }
             }
         }
 
-        CsrMatrix::from(&coo)
+        result
     }
 
     /// Compute graph Laplacian
     /// Complexity: 6 (simplified matrix operations)
-    fn compute_laplacian(adjacency: &CsrMatrix<f64>) -> CsrMatrix<f64> {
-        let n = adjacency.nrows();
-        let mut coo = CooMatrix::new(n, n);
+    fn compute_laplacian(adjacency: &SimpleSparseMatrix) -> SimpleSparseMatrix {
+        let n = adjacency.nrows;
+        let mut result = SimpleSparseMatrix::new(n, n);
 
         // Compute degree matrix D and build Laplacian L = D - A
         for i in 0..n {
-            let row = adjacency.row(i);
-            let degree: f64 = row.values().iter().sum();
+            let row_vals: Vec<_> = adjacency.row_values(i).collect();
+            let degree: f64 = row_vals.iter().map(|(_, v)| v).sum();
 
             // Add diagonal degree
-            coo.push(i, i, degree);
+            result.push(i, i, degree);
 
             // Subtract adjacency values
-            for (&value, &col) in row.values().iter().zip(row.col_indices()) {
-                coo.push(i, col, -value);
+            for (col, value) in row_vals {
+                result.push(i, col, -value);
             }
         }
 
-        CsrMatrix::from(&coo)
+        result
     }
 }
 

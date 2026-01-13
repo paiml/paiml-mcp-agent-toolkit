@@ -5541,8 +5541,102 @@ mod property_tests {
 }
 
 /// Work subcommands for unified GitHub/YAML workflow (Issue #75)
+/// CRUD: Create (add), Read (list/status), Update (edit/start/complete), Delete (delete)
 #[derive(Debug, Clone, Subcommand)]
 pub enum WorkCommands {
+    /// Add a new work ticket (CREATE)
+    #[command(visible_aliases = &["new", "create", "a"])]
+    Add {
+        /// Ticket title (required)
+        title: String,
+
+        /// Description (optional)
+        #[arg(short, long)]
+        description: Option<String>,
+
+        /// Priority level
+        #[arg(short, long, value_enum, default_value = "medium")]
+        priority: WorkPriority,
+
+        /// Tags (comma-separated)
+        #[arg(short, long)]
+        tags: Option<String>,
+
+        /// Project path (default: current directory)
+        #[arg(long)]
+        path: Option<PathBuf>,
+
+        /// Also create GitHub issue
+        #[arg(long)]
+        github: bool,
+    },
+
+    /// List all work tickets (READ)
+    #[command(visible_aliases = &["ls", "l"])]
+    List {
+        /// Filter by status
+        #[arg(short, long)]
+        status: Option<String>,
+
+        /// Filter by priority
+        #[arg(long)]
+        priority: Option<WorkPriority>,
+
+        /// Show only count
+        #[arg(long)]
+        count: bool,
+
+        /// Project path (default: current directory)
+        #[arg(short, long)]
+        path: Option<PathBuf>,
+    },
+
+    /// Edit an existing ticket (UPDATE)
+    #[command(visible_aliases = &["update", "e"])]
+    Edit {
+        /// Ticket ID to edit
+        id: String,
+
+        /// New title
+        #[arg(short, long)]
+        title: Option<String>,
+
+        /// New description
+        #[arg(short, long)]
+        description: Option<String>,
+
+        /// New priority
+        #[arg(long)]
+        priority: Option<WorkPriority>,
+
+        /// New status
+        #[arg(short, long)]
+        status: Option<String>,
+
+        /// New tags (comma-separated, replaces existing)
+        #[arg(long)]
+        tags: Option<String>,
+
+        /// Project path (default: current directory)
+        #[arg(short, long)]
+        path: Option<PathBuf>,
+    },
+
+    /// Delete a work ticket (DELETE)
+    #[command(visible_aliases = &["rm", "remove", "del"])]
+    Delete {
+        /// Ticket ID to delete
+        id: String,
+
+        /// Skip confirmation prompt
+        #[arg(short, long)]
+        force: bool,
+
+        /// Project path (default: current directory)
+        #[arg(short, long)]
+        path: Option<PathBuf>,
+    },
+
     /// Start work on a GitHub issue or YAML ticket
     #[command(visible_aliases = &["begin", "s"])]
     Start {
@@ -5685,6 +5779,32 @@ pub enum SyncDirection {
     GithubToYaml,
     /// Full bidirectional sync
     Full,
+}
+
+/// Work priority for CLI (maps to roadmap::Priority)
+#[derive(Debug, Clone, Copy, clap::ValueEnum, PartialEq, Default)]
+pub enum WorkPriority {
+    /// Low priority
+    Low,
+    /// Medium priority (default)
+    #[default]
+    Medium,
+    /// High priority
+    High,
+    /// Critical priority
+    Critical,
+}
+
+impl WorkPriority {
+    /// Convert to roadmap Priority
+    pub fn to_roadmap_priority(self) -> crate::models::roadmap::Priority {
+        match self {
+            WorkPriority::Low => crate::models::roadmap::Priority::Low,
+            WorkPriority::Medium => crate::models::roadmap::Priority::Medium,
+            WorkPriority::High => crate::models::roadmap::Priority::High,
+            WorkPriority::Critical => crate::models::roadmap::Priority::Critical,
+        }
+    }
 }
 
 /// QA Work subcommands for Toyota Way quality validation (GH-102)

@@ -1,5 +1,80 @@
 # Claude Code Configuration
 
+## CRITICAL: Sovereign AI Dependency Policy (80/20 Batuta Stack)
+
+**MANDATORY: Minimize external dependencies - use batuta stack first**
+
+### The Principle
+
+PMAT follows the Sovereign AI philosophy: **80% batuta stack, 20% external deps maximum**.
+
+Before adding ANY external dependency for math, algorithms, data science, ML, or compute:
+1. **CHECK BATUTA STACK FIRST** - See if sovereign tools already provide the functionality
+2. **BUILD IF CLOSE** - If batuta stack is 70%+ there, extend it rather than adding external dep
+3. **EXTERNAL ONLY AS LAST RESORT** - Document why batuta stack couldn't work
+
+### Batuta Stack (Sovereign AI Tools)
+
+| Crate | Purpose | Use Instead Of |
+|-------|---------|----------------|
+| `aprender` | ML, stats, graph algorithms, text similarity | nalgebra, linfa, smartcore |
+| `trueno` | SIMD/GPU compute, matrix ops | ndarray, nalgebra |
+| `trueno-graph` | Graph database, PageRank, Louvain | petgraph, graph |
+| `trueno-db` | Columnar storage, analytics | polars, datafusion |
+| `trueno-rag` | RAG pipeline, vector search | qdrant, milvus |
+| `trueno-viz` | Terminal visualization | plotters, textplots |
+| `trueno-zram-core` | SIMD compression | lz4, zstd |
+| `renacer` | Golden tracing, chaos testing | proptest chaos |
+| `certeza` | Quality validation | custom scripts |
+| `bashrs` | Bash/Makefile linting | shellcheck |
+| `probar` | Property-based testing | quickcheck |
+| `pmcp` | MCP protocol SDK | custom MCP |
+| `presentar-core` | TUI framework | ratatui |
+
+### Current Batuta Stack in pmat
+
+```toml
+# Already sovereign (GOOD)
+aprender = "0.24.0"        # ML, text similarity, graph algorithms
+trueno = "0.11.0"          # SIMD/GPU compute
+trueno-graph = "0.1.10"    # Graph database (replaced petgraph)
+trueno-db = "0.3.10"       # Columnar storage
+trueno-rag = "0.1.8"       # RAG pipeline
+trueno-viz = "0.1.17"      # Terminal visualization
+trueno-zram-core = "0.3"   # SIMD compression
+pmcp = "1.9.4"             # MCP protocol SDK
+presentar-core = "0.3"     # TUI framework
+```
+
+### Dependencies Requiring Review
+
+When touching these deps, evaluate batuta stack alternatives:
+
+| External Dep | Status | Batuta Alternative |
+|--------------|--------|-------------------|
+| `nalgebra-sparse` | Review | `aprender::primitives` sparse matrices |
+| `roaring` | Keep | Specialized bitmap (no batuta equivalent yet) |
+| `rand` | Keep | Foundational (may add to trueno later) |
+| `rayon` | Keep | Foundational parallel iterator |
+
+### Adding New Dependencies
+
+**Before adding ANY new dependency:**
+
+```bash
+# 1. Check batuta stack first
+ls /home/noah/src/ | grep -E "^(aprender|trueno|renacer|certeza|probar|bashrs|pmcp|presentar)"
+
+# 2. Check if feature exists in aprender
+grep -r "YourFeature" /home/noah/src/aprender/src/
+
+# 3. If must add external: Document in PR why batuta stack didn't work
+```
+
+**Rationale**: Sovereign AI Stack reduces supply chain risk, enables deep optimization, maintains code quality control, and supports the ecosystem.
+
+---
+
 ## CRITICAL: pmat-book Validation Policy (Toyota Way - Jidoka)
 
 **MANDATORY BEFORE ANY RELEASE OR VERSION BUMP:**
