@@ -2710,4 +2710,596 @@ mod tests {
         let debug = format!("{:?}", metrics);
         assert!(debug.contains("PerformanceMetrics"));
     }
+
+    // ============ Additional Coverage Tests ============
+
+    #[test]
+    fn test_benchmark_suite_with_benchmarks() {
+        fn dummy_benchmark(_ctx: &BenchmarkContext) -> Result<BenchmarkResult> {
+            Ok(BenchmarkResult {
+                execution_time: Duration::from_millis(50),
+                memory_used: 512,
+                cpu_time: Duration::from_millis(45),
+                throughput: 150.0,
+                success: true,
+                metrics: HashMap::new(),
+            })
+        }
+
+        let benchmark = Benchmark {
+            name: "test_benchmark".to_string(),
+            benchmark_fn: dummy_benchmark,
+            setup_fn: None,
+            teardown_fn: None,
+            expected: ExpectedPerformance {
+                max_execution_time: Duration::from_secs(1),
+                max_memory_bytes: 1024 * 1024,
+                min_throughput: 100.0,
+                regression_threshold: 0.1,
+            },
+        };
+
+        let suite = BenchmarkSuite {
+            name: "full_suite".to_string(),
+            benchmarks: vec![benchmark],
+            config: BenchmarkConfig::default(),
+        };
+
+        assert_eq!(suite.benchmarks.len(), 1);
+        assert_eq!(suite.name, "full_suite");
+    }
+
+    #[test]
+    fn test_benchmark_with_setup_teardown() {
+        fn setup() -> Result<BenchmarkContext> {
+            Ok(BenchmarkContext {
+                test_data: HashMap::new(),
+                temp_dir: PathBuf::from("/tmp/bench"),
+                config: HashMap::new(),
+            })
+        }
+
+        fn teardown(_ctx: BenchmarkContext) -> Result<()> {
+            Ok(())
+        }
+
+        fn bench_fn(_ctx: &BenchmarkContext) -> Result<BenchmarkResult> {
+            Ok(BenchmarkResult {
+                execution_time: Duration::from_millis(100),
+                memory_used: 1024,
+                cpu_time: Duration::from_millis(90),
+                throughput: 100.0,
+                success: true,
+                metrics: HashMap::new(),
+            })
+        }
+
+        let benchmark = Benchmark {
+            name: "with_lifecycle".to_string(),
+            benchmark_fn: bench_fn,
+            setup_fn: Some(setup),
+            teardown_fn: Some(teardown),
+            expected: ExpectedPerformance {
+                max_execution_time: Duration::from_secs(5),
+                max_memory_bytes: 1024 * 1024 * 10,
+                min_throughput: 50.0,
+                regression_threshold: 0.2,
+            },
+        };
+
+        assert!(benchmark.setup_fn.is_some());
+        assert!(benchmark.teardown_fn.is_some());
+    }
+
+    #[test]
+    fn test_performance_point_with_context() {
+        let mut context = HashMap::new();
+        context.insert("env".to_string(), "production".to_string());
+        context.insert("version".to_string(), "1.0.0".to_string());
+
+        let point = PerformancePoint {
+            timestamp: SystemTime::now(),
+            metric: "latency_p99".to_string(),
+            value: 250.5,
+            context,
+        };
+
+        assert_eq!(point.context.len(), 2);
+        assert_eq!(point.context.get("env"), Some(&"production".to_string()));
+    }
+
+    #[test]
+    fn test_performance_regression_all_severities() {
+        let regressions = vec![
+            PerformanceRegression {
+                benchmark_name: "minor".to_string(),
+                metric_name: "latency".to_string(),
+                current_value: 105.0,
+                baseline_value: 100.0,
+                regression_percent: 5.0,
+                severity: RegressionSeverity::Minor,
+            },
+            PerformanceRegression {
+                benchmark_name: "moderate".to_string(),
+                metric_name: "latency".to_string(),
+                current_value: 120.0,
+                baseline_value: 100.0,
+                regression_percent: 20.0,
+                severity: RegressionSeverity::Moderate,
+            },
+            PerformanceRegression {
+                benchmark_name: "severe".to_string(),
+                metric_name: "latency".to_string(),
+                current_value: 140.0,
+                baseline_value: 100.0,
+                regression_percent: 40.0,
+                severity: RegressionSeverity::Severe,
+            },
+            PerformanceRegression {
+                benchmark_name: "critical".to_string(),
+                metric_name: "latency".to_string(),
+                current_value: 200.0,
+                baseline_value: 100.0,
+                regression_percent: 100.0,
+                severity: RegressionSeverity::Critical,
+            },
+        ];
+
+        assert_eq!(regressions.len(), 4);
+        assert_eq!(regressions[0].regression_percent, 5.0);
+        assert_eq!(regressions[3].regression_percent, 100.0);
+    }
+
+    #[test]
+    fn test_performance_alert_all_types() {
+        let alerts: Vec<PerformanceAlert> = vec![
+            PerformanceAlert {
+                alert_type: AlertType::HighLatency,
+                message: "Latency exceeded".to_string(),
+                severity: AlertSeverity::Warning,
+                metric_name: "p99_latency".to_string(),
+                current_value: 500.0,
+                threshold_value: 200.0,
+                triggered_at: SystemTime::now(),
+            },
+            PerformanceAlert {
+                alert_type: AlertType::HighMemoryUsage,
+                message: "Memory high".to_string(),
+                severity: AlertSeverity::Critical,
+                metric_name: "heap_mb".to_string(),
+                current_value: 8000.0,
+                threshold_value: 4096.0,
+                triggered_at: SystemTime::now(),
+            },
+            PerformanceAlert {
+                alert_type: AlertType::HighCpuUsage,
+                message: "CPU high".to_string(),
+                severity: AlertSeverity::Warning,
+                metric_name: "cpu_percent".to_string(),
+                current_value: 95.0,
+                threshold_value: 80.0,
+                triggered_at: SystemTime::now(),
+            },
+            PerformanceAlert {
+                alert_type: AlertType::LowThroughput,
+                message: "Throughput low".to_string(),
+                severity: AlertSeverity::Info,
+                metric_name: "ops_per_sec".to_string(),
+                current_value: 50.0,
+                threshold_value: 100.0,
+                triggered_at: SystemTime::now(),
+            },
+            PerformanceAlert {
+                alert_type: AlertType::PerformanceRegression,
+                message: "Regression detected".to_string(),
+                severity: AlertSeverity::Critical,
+                metric_name: "benchmark_time".to_string(),
+                current_value: 200.0,
+                threshold_value: 100.0,
+                triggered_at: SystemTime::now(),
+            },
+        ];
+
+        assert_eq!(alerts.len(), 5);
+        for alert in &alerts {
+            assert!(!alert.message.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_optimization_config_all_strategies() {
+        let config = OptimizationConfig {
+            auto_optimize: true,
+            strategies: vec![
+                OptimizationStrategy::CacheOptimization,
+                OptimizationStrategy::ParallelProcessing,
+                OptimizationStrategy::MemoryPooling,
+                OptimizationStrategy::IncrementalParsing,
+                OptimizationStrategy::IoOptimization,
+                OptimizationStrategy::AstReuse,
+            ],
+            min_improvement_percent: 5.0,
+            experimental: true,
+        };
+
+        assert_eq!(config.strategies.len(), 6);
+        assert!(config.auto_optimize);
+        assert!(config.experimental);
+    }
+
+    #[test]
+    fn test_benchmark_report_full() {
+        let result = BenchmarkResult {
+            execution_time: Duration::from_millis(150),
+            memory_used: 2048,
+            cpu_time: Duration::from_millis(140),
+            throughput: 75.0,
+            success: true,
+            metrics: {
+                let mut m = HashMap::new();
+                m.insert("gc_count".to_string(), 5.0);
+                m
+            },
+        };
+
+        let report = BenchmarkReport {
+            suite_name: "full_report".to_string(),
+            executed_at: SystemTime::now(),
+            results: vec![("test1".to_string(), result)],
+            summary: BenchmarkSummary {
+                total_benchmarks: 1,
+                passed_benchmarks: 1,
+                failed_benchmarks: 0,
+                avg_execution_time: Duration::from_millis(150),
+                total_memory_used: 2048,
+                avg_throughput: 75.0,
+            },
+            regressions: vec![],
+            recommendations: vec!["Consider caching".to_string(), "Enable parallel".to_string()],
+        };
+
+        assert_eq!(report.suite_name, "full_report");
+        assert_eq!(report.recommendations.len(), 2);
+    }
+
+    #[test]
+    fn test_baseline_with_measurements() {
+        let mut measurements = HashMap::new();
+        measurements.insert("analysis_time_ms".to_string(), 125.0);
+        measurements.insert("memory_mb".to_string(), 300.0);
+        measurements.insert("throughput_fps".to_string(), 45.0);
+        measurements.insert("cache_hit_ratio".to_string(), 0.85);
+
+        let baseline = Baseline {
+            id: "v2.0.0-baseline".to_string(),
+            measurements: measurements.clone(),
+            measured_at: SystemTime::now(),
+            context: BaselineContext {
+                system_info: SystemInfo {
+                    cpu_model: "Intel Xeon Gold".to_string(),
+                    total_memory_mb: 131072,
+                    os: "linux".to_string(),
+                    rust_version: "1.78.0".to_string(),
+                },
+                codebase_info: CodebaseInfo {
+                    total_loc: 500000,
+                    file_count: 3000,
+                    avg_complexity: 7.5,
+                    primary_language: "rust".to_string(),
+                },
+                config_hash: "sha256:abc123".to_string(),
+            },
+        };
+
+        assert_eq!(baseline.measurements.len(), 4);
+        assert!(baseline.measurements.get("analysis_time_ms").is_some());
+    }
+
+    #[test]
+    fn test_performance_monitor_with_benchmarks() {
+        let config = create_test_config();
+        let mut monitor = PerformanceMonitor::new(config);
+
+        let suite = BenchmarkSuite {
+            name: "test_suite".to_string(),
+            benchmarks: vec![],
+            config: BenchmarkConfig::default(),
+        };
+
+        monitor.benchmarks.insert("test_suite".to_string(), suite);
+        assert!(monitor.benchmarks.contains_key("test_suite"));
+    }
+
+    #[test]
+    fn test_calculate_improvement_with_improvement() {
+        let config = create_test_config();
+        let monitor = PerformanceMonitor::new(config);
+
+        let mut baseline = HashMap::new();
+        baseline.insert("latency".to_string(), 100.0);
+        baseline.insert("memory".to_string(), 500.0);
+
+        let mut optimized = HashMap::new();
+        optimized.insert("latency".to_string(), 75.0);  // 25% improvement
+        optimized.insert("memory".to_string(), 400.0);  // 20% improvement
+
+        let improvement = monitor.calculate_improvement(&baseline, &optimized);
+        assert!(improvement > 20.0); // Average should be around 22.5%
+    }
+
+    #[test]
+    fn test_calculate_improvement_with_regression() {
+        let config = create_test_config();
+        let monitor = PerformanceMonitor::new(config);
+
+        let mut baseline = HashMap::new();
+        baseline.insert("latency".to_string(), 100.0);
+
+        let mut optimized = HashMap::new();
+        optimized.insert("latency".to_string(), 120.0);  // 20% regression (negative improvement)
+
+        let improvement = monitor.calculate_improvement(&baseline, &optimized);
+        assert!(improvement < 0.0); // Should be negative
+    }
+
+    #[test]
+    fn test_calculate_metrics_delta_multiple() {
+        let config = create_test_config();
+        let monitor = PerformanceMonitor::new(config);
+
+        let mut baseline = HashMap::new();
+        baseline.insert("a".to_string(), 100.0);
+        baseline.insert("b".to_string(), 200.0);
+        baseline.insert("c".to_string(), 50.0);
+
+        let mut optimized = HashMap::new();
+        optimized.insert("a".to_string(), 80.0);
+        optimized.insert("b".to_string(), 250.0);
+        // c is missing in optimized
+
+        let delta = monitor.calculate_metrics_delta(&baseline, &optimized);
+        assert_eq!(delta.get("a"), Some(&-20.0));
+        assert_eq!(delta.get("b"), Some(&50.0));
+        assert!(delta.get("c").is_none()); // Not present in both
+    }
+
+    #[tokio::test]
+    async fn test_run_single_benchmark() {
+        fn test_fn(_ctx: &BenchmarkContext) -> Result<BenchmarkResult> {
+            Ok(BenchmarkResult {
+                execution_time: Duration::from_millis(50),
+                memory_used: 1024,
+                cpu_time: Duration::from_millis(45),
+                throughput: 200.0,
+                success: true,
+                metrics: HashMap::new(),
+            })
+        }
+
+        let config = create_test_config();
+        let monitor = PerformanceMonitor::new(config);
+
+        let benchmark = Benchmark {
+            name: "single_test".to_string(),
+            benchmark_fn: test_fn,
+            setup_fn: None,
+            teardown_fn: None,
+            expected: ExpectedPerformance {
+                max_execution_time: Duration::from_secs(1),
+                max_memory_bytes: 1024 * 1024,
+                min_throughput: 100.0,
+                regression_threshold: 0.1,
+            },
+        };
+
+        let result = monitor.run_single_benchmark(&benchmark).await;
+        assert!(result.is_ok());
+        let br = result.unwrap();
+        assert!(br.success);
+    }
+
+    #[tokio::test]
+    async fn test_detect_regressions_empty() {
+        let config = create_test_config();
+        let monitor = PerformanceMonitor::new(config);
+
+        let results = vec![];
+        let regressions = monitor.detect_regressions(&results).await;
+        assert!(regressions.is_ok());
+        assert!(regressions.unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_store_benchmark_results() {
+        let config = create_test_config();
+        let mut monitor = PerformanceMonitor::new(config);
+
+        let report = BenchmarkReport {
+            suite_name: "store_test".to_string(),
+            executed_at: SystemTime::now(),
+            results: vec![],
+            summary: BenchmarkSummary {
+                total_benchmarks: 0,
+                passed_benchmarks: 0,
+                failed_benchmarks: 0,
+                avg_execution_time: Duration::from_millis(0),
+                total_memory_used: 0,
+                avg_throughput: 0.0,
+            },
+            regressions: vec![],
+            recommendations: vec![],
+        };
+
+        let result = monitor.store_benchmark_results(&report).await;
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_retention_config_custom() {
+        let config = RetentionConfig {
+            detailed_retention: Duration::from_secs(3 * 24 * 60 * 60), // 3 days
+            summary_retention: Duration::from_secs(30 * 24 * 60 * 60), // 30 days
+            auto_cleanup: false,
+        };
+
+        assert_eq!(config.detailed_retention, Duration::from_secs(259200));
+        assert!(!config.auto_cleanup);
+    }
+
+    #[test]
+    fn test_performance_config_custom() {
+        let config = PerformanceConfig {
+            continuous_monitoring: true,
+            benchmark_interval: Duration::from_secs(300),
+            thresholds: PerformanceThresholds {
+                max_analysis_time_ms: 10000,
+                max_memory_mb: 2048,
+                max_cpu_percent: 90.0,
+                regression_threshold_percent: 15.0,
+            },
+            optimization: OptimizationConfig {
+                auto_optimize: true,
+                strategies: vec![OptimizationStrategy::CacheOptimization],
+                min_improvement_percent: 10.0,
+                experimental: false,
+            },
+            retention: RetentionConfig::default(),
+        };
+
+        assert!(config.continuous_monitoring);
+        assert_eq!(config.thresholds.max_analysis_time_ms, 10000);
+    }
+
+    #[test]
+    fn test_benchmark_result_with_custom_metrics() {
+        let mut metrics = HashMap::new();
+        metrics.insert("gc_pause_ms".to_string(), 25.0);
+        metrics.insert("allocations".to_string(), 1000.0);
+        metrics.insert("peak_rss_mb".to_string(), 512.0);
+
+        let result = BenchmarkResult {
+            execution_time: Duration::from_millis(200),
+            memory_used: 512 * 1024 * 1024,
+            cpu_time: Duration::from_millis(180),
+            throughput: 50.0,
+            success: true,
+            metrics,
+        };
+
+        assert_eq!(result.metrics.len(), 3);
+        assert_eq!(result.metrics.get("gc_pause_ms"), Some(&25.0));
+    }
+
+    #[test]
+    fn test_active_optimization_all_statuses() {
+        let statuses = vec![
+            (OptimizationStatus::Analyzing, "analyzing"),
+            (OptimizationStatus::Ready, "ready"),
+            (OptimizationStatus::Implementing, "implementing"),
+            (OptimizationStatus::Testing, "testing"),
+            (OptimizationStatus::Applied, "applied"),
+            (OptimizationStatus::Failed("timeout".to_string()), "failed"),
+            (OptimizationStatus::RolledBack("crash".to_string()), "rollback"),
+        ];
+
+        for (status, _name) in statuses {
+            let opt = ActiveOptimization {
+                strategy: OptimizationStrategy::CacheOptimization,
+                target_metric: "latency".to_string(),
+                expected_improvement: 20.0,
+                status,
+            };
+            // Just verify creation works
+            assert_eq!(opt.expected_improvement, 20.0);
+        }
+    }
+
+    #[test]
+    fn test_performance_report_with_all_fields() {
+        let report = PerformanceReport {
+            generated_at: SystemTime::now(),
+            current_statistics: PerformanceStatistics::default(),
+            recent_benchmarks: vec![
+                BenchmarkReport {
+                    suite_name: "suite1".to_string(),
+                    executed_at: SystemTime::now(),
+                    results: vec![],
+                    summary: BenchmarkSummary {
+                        total_benchmarks: 5,
+                        passed_benchmarks: 4,
+                        failed_benchmarks: 1,
+                        avg_execution_time: Duration::from_millis(100),
+                        total_memory_used: 1024 * 1024,
+                        avg_throughput: 100.0,
+                    },
+                    regressions: vec![],
+                    recommendations: vec![],
+                }
+            ],
+            optimization_history: vec![
+                OptimizationResult {
+                    strategy: OptimizationStrategy::CacheOptimization,
+                    improvement_percent: 15.0,
+                    metrics_changed: HashMap::new(),
+                    applied_at: SystemTime::now(),
+                    success: true,
+                }
+            ],
+            recommendations: vec!["Enable caching".to_string()],
+            alerts: vec![
+                PerformanceAlert {
+                    alert_type: AlertType::HighLatency,
+                    message: "Test alert".to_string(),
+                    severity: AlertSeverity::Warning,
+                    metric_name: "latency".to_string(),
+                    current_value: 150.0,
+                    threshold_value: 100.0,
+                    triggered_at: SystemTime::now(),
+                }
+            ],
+        };
+
+        assert_eq!(report.recent_benchmarks.len(), 1);
+        assert_eq!(report.optimization_history.len(), 1);
+        assert_eq!(report.alerts.len(), 1);
+    }
+
+    #[test]
+    fn test_benchmark_clone_comprehensive() {
+        fn dummy(_ctx: &BenchmarkContext) -> Result<BenchmarkResult> {
+            Ok(BenchmarkResult {
+                execution_time: Duration::from_millis(1),
+                memory_used: 0,
+                cpu_time: Duration::from_millis(1),
+                throughput: 0.0,
+                success: true,
+                metrics: HashMap::new(),
+            })
+        }
+
+        let benchmark = Benchmark {
+            name: "clone_test".to_string(),
+            benchmark_fn: dummy,
+            setup_fn: None,
+            teardown_fn: None,
+            expected: ExpectedPerformance {
+                max_execution_time: Duration::from_secs(1),
+                max_memory_bytes: 1024,
+                min_throughput: 1.0,
+                regression_threshold: 0.1,
+            },
+        };
+
+        let cloned = benchmark.clone();
+        assert_eq!(cloned.name, benchmark.name);
+    }
+
+    #[tokio::test]
+    async fn test_run_benchmark_suite_not_found() {
+        let config = create_test_config();
+        let mut monitor = PerformanceMonitor::new(config);
+
+        let result = monitor.run_benchmark("nonexistent_suite").await;
+        assert!(result.is_err());
+    }
 }
