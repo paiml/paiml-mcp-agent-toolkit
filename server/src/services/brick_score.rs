@@ -126,6 +126,31 @@ impl Default for RooflineParams {
     }
 }
 
+/// Byte budget for compression/I/O workloads (PMAT-452)
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+pub struct ByteBudget {
+    /// Latency budget per page (microseconds)
+    pub us_per_page: f64,
+    /// Throughput target (GB/s)
+    pub gb_per_sec: f64,
+    /// Page size in bytes (default 4096)
+    pub page_size: usize,
+}
+
+impl Default for ByteBudget {
+    fn default() -> Self {
+        // Default: 25 GB/s (trueno-zram ZSTD target)
+        let gb_per_sec = 25.0;
+        let bytes_per_sec = gb_per_sec * 1e9;
+        let pages_per_sec = bytes_per_sec / 4096.0;
+        Self {
+            us_per_page: 1_000_000.0 / pages_per_sec,
+            gb_per_sec,
+            page_size: 4096,
+        }
+    }
+}
+
 /// Complete hardware capability profile
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct HardwareCapability {
@@ -134,6 +159,9 @@ pub struct HardwareCapability {
     pub cpu: CpuCapability,
     pub gpu: Option<GpuCapability>,
     pub roofline: RooflineParams,
+    /// PMAT-452: Byte budget for compression/I/O workloads
+    #[serde(default)]
+    pub byte_budget: Option<ByteBudget>,
 }
 
 impl Default for HardwareCapability {
@@ -144,6 +172,7 @@ impl Default for HardwareCapability {
             cpu: CpuCapability::default(),
             gpu: None,
             roofline: RooflineParams::default(),
+            byte_budget: Some(ByteBudget::default()),
         }
     }
 }
@@ -877,6 +906,7 @@ mod tests {
             },
             gpu: None,
             roofline: RooflineParams::default(),
+            byte_budget: Some(ByteBudget::default()),
         };
 
         let base_budgets = default_brick_budgets();
@@ -932,5 +962,66 @@ mod tests {
         assert!(estimate_arithmetic_intensity("FFNGateUp") > 8.0);
         assert!(estimate_arithmetic_intensity("QKVProj") > 8.0);
         assert!(estimate_arithmetic_intensity("MLP") > 8.0);
+    }
+
+    #[test]
+    fn test_byte_budget_default() {
+        let budget = ByteBudget::default();
+        // Default: 25 GB/s from trueno-zram
+        assert!((budget.gb_per_sec - 25.0).abs() < 0.001);
+        assert_eq!(budget.page_size, 4096);
+        // 25 GB/s = 6.1M pages/sec = ~0.164 µs/page
+        assert!(budget.us_per_page > 0.1);
+        assert!(budget.us_per_page < 0.2);
+    }
+
+    #[test]
+    fn test_hardware_includes_byte_budget() {
+        let hw = HardwareCapability::default();
+        assert!(hw.byte_budget.is_some());
+        let budget = hw.byte_budget.unwrap();
+        assert!(budget.gb_per_sec > 0.0);
+    }
+
+    #[test]
+    fn test_byte_budget_toml_roundtrip() {
+        let hw = HardwareCapability::default();
+        let toml_str = toml::to_string_pretty(&hw).unwrap();
+
+        // Should contain byte_budget section
+        assert!(toml_str.contains("[byte_budget]"));
+        assert!(toml_str.contains("gb_per_sec"));
+
+        // Roundtrip should preserve values
+        let parsed: HardwareCapability = toml::from_str(&toml_str).unwrap();
+        assert!(parsed.byte_budget.is_some());
+        let original = hw.byte_budget.unwrap();
+        let parsed_budget = parsed.byte_budget.unwrap();
+        assert!((parsed_budget.gb_per_sec - original.gb_per_sec).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_hardware_toml_backward_compat() {
+        // Old hardware.toml without byte_budget should still parse
+        let old_toml = r#"
+timestamp = "2026-01-13T00:00:00Z"
+hostname = "test"
+
+[cpu]
+vendor = "Intel"
+model = "Test"
+cores = 4
+threads = 8
+simd = "Avx2"
+base_freq_ghz = 3.0
+peak_gflops = 100.0
+memory_bw_gbps = 50.0
+
+[roofline]
+cpu_arithmetic_intensity = 2.0
+"#;
+        let parsed: HardwareCapability = toml::from_str(old_toml).unwrap();
+        // byte_budget should be None (backward compat)
+        assert!(parsed.byte_budget.is_none());
     }
 }

@@ -1045,11 +1045,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'PMAT-451: Extend BrickProfiler with compression_ratio and bound'
-  status: planned
+  status: inprogress
   priority: medium
   assigned_to: null
   created: 2026-01-13T18:00:58Z
-  updated: 2026-01-13T18:00:58Z
+  updated: 2026-01-13T18:22:01.802682268+00:00
   spec: null
   acceptance_criteria: []
   phases: []
