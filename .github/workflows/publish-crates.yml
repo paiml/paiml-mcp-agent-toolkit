@@ -36,8 +36,8 @@ jobs:
           # Extract version from tag
           TAG_VERSION="${GITHUB_REF#refs/tags/v}"
           
-          # Extract version from server/Cargo.toml
-          CARGO_VERSION=$(grep -m1 '^version = ' server/Cargo.toml | cut -d'"' -f2)
+          # Extract version from Cargo.toml
+          CARGO_VERSION=$(grep -m1 '^version = ' Cargo.toml | cut -d'"' -f2)
           
           # Verify they match
           if [ "$TAG_VERSION" != "$CARGO_VERSION" ]; then
@@ -52,7 +52,7 @@ jobs:
 
       - name: Check if version is already published
         run: |
-          CARGO_VERSION=$(grep -m1 '^version = ' server/Cargo.toml | cut -d'"' -f2)
+          CARGO_VERSION=$(grep -m1 '^version = ' Cargo.toml | cut -d'"' -f2)
           
           # Check if this version already exists on crates.io
           if cargo search pmat --limit 1 | grep -q "pmat = \"$CARGO_VERSION\""; then

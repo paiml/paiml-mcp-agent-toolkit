@@ -62,7 +62,7 @@ jobs:
           
           # Update all Cargo.toml files
           sed -i "0,/^version = /s/^version = .*/version = \"$NEW_VERSION\"/" Cargo.toml
-          sed -i "0,/^version = /s/^version = .*/version = \"$NEW_VERSION\"/" server/Cargo.toml
+          sed -i "0,/^version = /s/^version = .*/version = \"$NEW_VERSION\"/" Cargo.toml
       
       - name: Commit and tag
         run: |

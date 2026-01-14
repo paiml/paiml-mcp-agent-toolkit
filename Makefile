@@ -6,7 +6,7 @@
 # 
 # WORKSPACE STRUCTURE:
 # - Root workspace: Cargo.toml (workspace configuration)
-# - Server project: server/Cargo.toml (main binary crate)
+# - Server project: Cargo.toml (main binary crate)
 # - Future projects: client/, shared/ (when implemented)
 #
 # This root Makefile is the SINGLE SOURCE OF TRUTH for all operations:
@@ -60,7 +60,7 @@ validate: check lint test-fast
 # Format code in all projects
 format:
 	@echo "📝 Formatting Rust code..."
-	@cargo fmt --manifest-path server/Cargo.toml
+	@cargo fmt --manifest-path Cargo.toml
 	@echo "✅ Formatting completed successfully!"
 
 # Fix all formatting and linting issues automatically
@@ -74,19 +74,19 @@ fix: format
 # Target: <30 seconds (incremental)
 lint:
 	@echo "🔍 Linting Rust production code..."
-	@PMAT_FAST_BUILD=1 cargo clippy --manifest-path server/Cargo.toml --lib --bins -- -D warnings
+	@PMAT_FAST_BUILD=1 cargo clippy --manifest-path Cargo.toml --lib --bins -- -D warnings
 	@echo "✅ All linting checks passed!"
 
 # Lint only main code (skip tests)
 lint-main:
 	@echo "🔍 Linting Rust library and binaries..."
-	@PMAT_FAST_BUILD=1 cargo clippy --manifest-path server/Cargo.toml --lib --bins -- -D warnings -D clippy::cargo -A clippy::multiple-crate-versions -A clippy::uninlined-format-args
+	@PMAT_FAST_BUILD=1 cargo clippy --manifest-path Cargo.toml --lib --bins -- -D warnings -D clippy::cargo -A clippy::multiple-crate-versions -A clippy::uninlined-format-args
 	@echo "✅ Main code linting passed!"
 
 # Type check all projects
 check:
 	@echo "✅ Type checking Rust code..."
-	@cargo check --manifest-path server/Cargo.toml --all-targets --all-features
+	@cargo check --manifest-path Cargo.toml --all-targets --all-features
 	@echo "✅ All type checks passed!"
 
 # Fast tests without coverage (optimized for speed) - Test execution MUST complete under 5 minutes
@@ -95,7 +95,7 @@ check:
 test-fast:
 	@echo "⚡ Running fast smoke tests (target: <3 min)..."
 	@PMAT_FAST_BUILD=1 PROPTEST_CASES=5 cargo test \
-		--manifest-path server/Cargo.toml \
+		--manifest-path Cargo.toml \
 		--lib \
 		-- --test-threads=$$(nproc) \
 		services::context \
@@ -160,9 +160,9 @@ test-property:
 	echo "  Running all property test modules with $${THREADS} threads..." && \
 	echo "  (Override with PROPTEST_THREADS=n make test-property)" && \
 	echo "  Note: Slow cache tests are skipped. Run 'make test-property-slow' to include them." && \
-	timeout 180 cargo test --manifest-path server/Cargo.toml --lib -- property_tests --test-threads=$${THREADS} || echo "⚠️  Some property tests timed out after 3 minutes" && \
-	timeout 60 cargo test --manifest-path server/Cargo.toml --lib -- prop_ --test-threads=$${THREADS} || echo "⚠️  Some prop tests timed out" && \
-	cargo test --manifest-path server/Cargo.toml --test refactor_auto_property_integration -- --test-threads=$${THREADS}
+	timeout 180 cargo test --manifest-path Cargo.toml --lib -- property_tests --test-threads=$${THREADS} || echo "⚠️  Some property tests timed out after 3 minutes" && \
+	timeout 60 cargo test --manifest-path Cargo.toml --lib -- prop_ --test-threads=$${THREADS} || echo "⚠️  Some prop tests timed out" && \
+	cargo test --manifest-path Cargo.toml --test refactor_auto_property_integration -- --test-threads=$${THREADS}
 	@echo "✅ Property tests completed!"
 
 # Run property tests including slow ones
@@ -174,9 +174,9 @@ test-property-slow:
 		THREADS=$${PROPTEST_THREADS}; \
 	fi && \
 	echo "  Running with $${THREADS} threads..." && \
-	cargo test --manifest-path server/Cargo.toml --lib -- property_tests --test-threads=$${THREADS} --include-ignored && \
-	cargo test --manifest-path server/Cargo.toml --lib -- prop_ --test-threads=$${THREADS} --include-ignored && \
-	cargo test --manifest-path server/Cargo.toml --test refactor_auto_property_integration -- --test-threads=$${THREADS}
+	cargo test --manifest-path Cargo.toml --lib -- property_tests --test-threads=$${THREADS} --include-ignored && \
+	cargo test --manifest-path Cargo.toml --lib -- prop_ --test-threads=$${THREADS} --include-ignored && \
+	cargo test --manifest-path Cargo.toml --test refactor_auto_property_integration -- --test-threads=$${THREADS}
 	@echo "✅ All property tests completed (including slow tests)!"
 
 # ==============================================================================
@@ -199,13 +199,13 @@ test-mutation-pmat-quick:
 	fi
 	@echo "  Testing path_validator.rs (security-critical)..."
 	@./target/release/pmat analyze mutation \
-		--file server/src/utils/path_validator.rs \
+		--file src/utils/path_validator.rs \
 		--timeout 60 \
 		--format json \
 		--output mutation_results/pmat_path_validator.json || true
 	@echo "  Testing calculator.rs (TDG business logic)..."
 	@./target/release/pmat analyze mutation \
-		--file server/src/quality/calculator.rs \
+		--file src/quality/calculator.rs \
 		--timeout 60 \
 		--format json \
 		--output mutation_results/pmat_calculator.json || true
@@ -224,7 +224,7 @@ test-mutation-pmat-full:
 	@WORKERS=$$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4) && \
 	echo "  Using $${WORKERS} workers for distributed execution..." && \
 	./target/release/pmat analyze mutation \
-		--path server/src/ \
+		--path src/ \
 		--workers "$${WORKERS}" \
 		--ml-prioritize \
 		--timeout 300 \
@@ -244,14 +244,14 @@ test-mutation-cargo-quick:
 	@mkdir -p mutation_results
 	@echo "  Testing path_validator.rs..."
 	@cargo mutants \
-		--manifest-path server/Cargo.toml \
-		--file server/src/utils/path_validator.rs \
+		--manifest-path Cargo.toml \
+		--file src/utils/path_validator.rs \
 		--timeout 60 \
 		--output mutation_results/cargo_path_validator.txt || true
 	@echo "  Testing calculator.rs..."
 	@cargo mutants \
-		--manifest-path server/Cargo.toml \
-		--file server/src/quality/calculator.rs \
+		--manifest-path Cargo.toml \
+		--file src/quality/calculator.rs \
 		--timeout 60 \
 		--output mutation_results/cargo_calculator.txt || true
 	@echo "✅ cargo-mutants quick tests completed!"
@@ -269,7 +269,7 @@ test-mutation-cargo-full:
 	@JOBS=$$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4) && \
 	echo "  Using $${JOBS} parallel jobs..." && \
 	cargo mutants \
-		--manifest-path server/Cargo.toml \
+		--manifest-path Cargo.toml \
 		--workspace \
 		--timeout 120 \
 		--jobs "$${JOBS}" \
@@ -306,13 +306,13 @@ test-mutation-ci:
 	fi
 	@echo "  Testing path_validator.rs (30s timeout)..."
 	@timeout 30 ./target/release/pmat analyze mutation \
-		--file server/src/utils/path_validator.rs \
+		--file src/utils/path_validator.rs \
 		--timeout 30 \
 		--format json \
 		--output mutation_results/ci_path_validator.json || echo "⚠️  Timed out"
 	@echo "  Testing calculator.rs (30s timeout)..."
 	@timeout 30 ./target/release/pmat analyze mutation \
-		--file server/src/quality/calculator.rs \
+		--file src/quality/calculator.rs \
 		--timeout 30 \
 		--format json \
 		--output mutation_results/ci_calculator.json || echo "⚠️  Timed out"
@@ -411,7 +411,7 @@ test: test-fast test-doc test-property test-examples
 # Run doctests only
 test-doc:
 	@echo "📚 Running doctests..."
-	@cargo test --doc --manifest-path server/Cargo.toml
+	@cargo test --doc --manifest-path Cargo.toml
 	@echo "✅ Doctests completed!"
 
 # Coverage - ruchy-style FAST coverage (cargo test + exclusions, target: <5 min)
@@ -432,7 +432,7 @@ coverage: ## Generate HTML coverage report (fast: <5 min, target 95%)
 	@env PMAT_FAST_BUILD=1 RUSTC_WRAPPER= PROPTEST_CASES=2 QUICKCHECK_TESTS=2 \
 		cargo llvm-cov test \
 		--lib \
-		--manifest-path server/Cargo.toml \
+		--manifest-path Cargo.toml \
 		--no-report \
 		$(COVERAGE_EXCLUDE) \
 		-- --test-threads=$$(nproc) \
@@ -440,10 +440,10 @@ coverage: ## Generate HTML coverage report (fast: <5 min, target 95%)
 		(test -f ~/.cargo/config.toml.cov-backup && mv ~/.cargo/config.toml.cov-backup ~/.cargo/config.toml; false)
 	@test -f ~/.cargo/config.toml.cov-backup && mv ~/.cargo/config.toml.cov-backup ~/.cargo/config.toml || true
 	@echo "📊 Generating reports..."
-	@cargo llvm-cov report --manifest-path server/Cargo.toml --html --output-dir target/coverage/html $(COVERAGE_EXCLUDE)
-	@cargo llvm-cov report --manifest-path server/Cargo.toml --lcov --output-path target/coverage/lcov.info $(COVERAGE_EXCLUDE)
+	@cargo llvm-cov report --manifest-path Cargo.toml --html --output-dir target/coverage/html $(COVERAGE_EXCLUDE)
+	@cargo llvm-cov report --manifest-path Cargo.toml --lcov --output-path target/coverage/lcov.info $(COVERAGE_EXCLUDE)
 	@echo ""
-	@cargo llvm-cov report --manifest-path server/Cargo.toml --summary-only $(COVERAGE_EXCLUDE)
+	@cargo llvm-cov report --manifest-path Cargo.toml --summary-only $(COVERAGE_EXCLUDE)
 	@echo ""
 	@echo "📁 HTML report: target/coverage/html/index.html"
 	@echo "📁 LCOV report: target/coverage/lcov.info"
@@ -454,7 +454,7 @@ coverage-ci: ## Generate LCOV report for CI (fast mode, --lib only)
 	@env RUSTC_WRAPPER= PROPTEST_CASES=2 QUICKCHECK_TESTS=2 \
 		cargo llvm-cov test \
 		--lib \
-		--manifest-path server/Cargo.toml \
+		--manifest-path Cargo.toml \
 		--lcov --output-path lcov.info \
 		$(COVERAGE_EXCLUDE) \
 		-- --test-threads=$$(nproc) 2>&1 | tail -20
@@ -512,7 +512,7 @@ coverage-quick: ## Quick coverage for fast feedback (~2-3 min, core only)
 	@test -f ~/.cargo/config.toml && mv ~/.cargo/config.toml ~/.cargo/config.toml.cov-backup || true
 	@env PROPTEST_CASES=3 QUICKCHECK_TESTS=3 \
 		cargo llvm-cov nextest \
-		--config-file server/.config/nextest.toml \
+		--config-file .config/nextest.toml \
 		--profile coverage \
 		--no-tests=warn \
 		--lib \
@@ -544,7 +544,7 @@ audit:
 # Generate documentation
 docs:
 	@echo "📚 Generating documentation..."
-	@cargo doc --manifest-path server/Cargo.toml --all-features --no-deps --open
+	@cargo doc --manifest-path Cargo.toml --all-features --no-deps --open
 
 # Dogfood our own tools to keep README.md updated
 dogfood: release
@@ -587,19 +587,19 @@ update-rust-docs: release
 # Run MCP server
 run-mcp:
 	@echo "🚀 Starting MCP server..."
-	@cargo run --release --manifest-path server/Cargo.toml
+	@cargo run --release --manifest-path Cargo.toml
 
 # Run MCP server in test mode
 run-mcp-test:
 	@echo "🧪 Starting MCP server in test mode..."
-	@cargo run --release --manifest-path server/Cargo.toml -- --test
+	@cargo run --release --manifest-path Cargo.toml -- --test
 
 
 
 # Build all projects (binaries only - no Docker)
 build: validate-docs validate-naming validate-book
 	@echo "🔨 Building server binary..."
-	@cargo build --manifest-path server/Cargo.toml
+	@cargo build --manifest-path Cargo.toml
 	@echo ""
 	@echo "📝 Updating documentation with current metrics..."
 	@echo "   - Updating rust-docs..."
@@ -615,14 +615,14 @@ build: validate-docs validate-naming validate-book
 # Clean all projects
 clean:
 	@echo "🧹 Cleaning build artifacts..."
-	@cargo clean --manifest-path server/Cargo.toml
+	@cargo clean --manifest-path Cargo.toml
 	@rm -rf coverage/ artifacts/ target/
 	@echo "✅ Clean completed successfully!"
 
 # Quick clean - just this package and incremental
 clean-quick:
 	@echo "🚀 Quick clean (package and incremental only)..."
-	@cargo clean -p pmat --manifest-path server/Cargo.toml
+	@cargo clean -p pmat --manifest-path Cargo.toml
 	@rm -rf target/debug/incremental
 	@rm -rf target/release/incremental
 	@echo "✅ Quick clean completed!"
@@ -938,12 +938,12 @@ validate-contracts:
 	@echo "  Checking parameter consistency..."
 	@cargo test --package pmat --lib contracts::tests --quiet 2>/dev/null || echo "  ⚠️  Contract tests need implementation"
 	@echo "  Checking for parameter inconsistencies..."
-	@if grep -q "project_path:" server/src/cli/commands.rs 2>/dev/null; then \
+	@if grep -q "project_path:" src/cli/commands.rs 2>/dev/null; then \
 		echo "  ❌ Found 'project_path' - should be 'path' for uniformity"; \
 	else \
 		echo "  ✅ No 'project_path' found - using uniform 'path'"; \
 	fi
-	@if grep -E "file:.*Option<PathBuf>" server/src/cli/commands.rs 2>/dev/null; then \
+	@if grep -E "file:.*Option<PathBuf>" src/cli/commands.rs 2>/dev/null; then \
 		echo "  ⚠️  Found single 'file' parameter - consider 'files: Option<Vec<PathBuf>>'"; \
 	else \
 		echo "  ✅ Using uniform file parameters"; \
@@ -1049,7 +1049,7 @@ uninstall:
 # Server-specific commands (direct cargo execution)
 server-build-binary: ## Build server binary
 	@echo "🔨 Building server binary..."
-	@cargo build --release --manifest-path server/Cargo.toml
+	@cargo build --release --manifest-path Cargo.toml
 
 server-build-docker: ## Build Docker image  
 	@echo "🐳 Building Docker image..."
@@ -1057,31 +1057,31 @@ server-build-docker: ## Build Docker image
 
 server-run-mcp: ## Run MCP server in STDIO mode
 	@echo "🚀 Starting MCP server..."
-	@cargo run --release --manifest-path server/Cargo.toml
+	@cargo run --release --manifest-path Cargo.toml
 
 server-run-mcp-test: ## Run MCP server in test mode
 	@echo "🧪 Starting MCP server in test mode..."
-	@cargo run --release --manifest-path server/Cargo.toml -- --test
+	@cargo run --release --manifest-path Cargo.toml -- --test
 
 server-benchmark: ## Run benchmarks
 	@echo "⚡ Running benchmarks..."
-	@cargo bench --manifest-path server/Cargo.toml
+	@cargo bench --manifest-path Cargo.toml
 
 server-test: ## Run server tests
 	@echo "🧪 Running server tests..."
-	@cargo test --manifest-path server/Cargo.toml
+	@cargo test --manifest-path Cargo.toml
 
 server-test-all: ## Run all server tests with all features
 	@echo "🧪 Running all server tests..."
-	@cargo test --all-features --manifest-path server/Cargo.toml
+	@cargo test --all-features --manifest-path Cargo.toml
 
 server-outdated: ## Check outdated dependencies
 	@echo "📦 Checking outdated dependencies..."
-	@cargo outdated --format json --manifest-path server/Cargo.toml
+	@cargo outdated --format json --manifest-path Cargo.toml
 
 server-tokei: ## Count lines of code for server
 	@echo "📊 Counting lines of code..."
-	@tokei server/src --exclude "*.json"
+	@tokei src --exclude "*.json"
 
 ## Fuzzing targets
 .PHONY: fuzz fuzz-all fuzz-coverage fuzz-corpus
@@ -1121,24 +1121,24 @@ build-target:
 		exit 1; \
 	fi
 	@echo "🔨 Building for target: $(TARGET)"
-	cargo build --release --target $(TARGET) --manifest-path server/Cargo.toml
+	cargo build --release --target $(TARGET) --manifest-path Cargo.toml
 
 
 # Run cargo doc
 cargo-doc:
-	cargo doc --features "default,rust-ast,typescript-ast,c-ast,cpp-ast,kotlin-ast,demo" --no-deps --manifest-path server/Cargo.toml
+	cargo doc --features "default,rust-ast,typescript-ast,c-ast,cpp-ast,kotlin-ast,demo" --no-deps --manifest-path Cargo.toml
 
 # Run cargo geiger for security audit
 cargo-geiger:
-	cargo geiger --features "default,rust-ast,typescript-ast,c-ast,cpp-ast,kotlin-ast,demo" --manifest-path server/Cargo.toml
+	cargo geiger --features "default,rust-ast,typescript-ast,c-ast,cpp-ast,kotlin-ast,demo" --manifest-path Cargo.toml
 
 # Publish crate to crates.io
 crate-release:
 	@echo "📦 Publishing pmat to crates.io..."
-	@echo "Current version: $$(grep '^version' server/Cargo.toml | cut -d'"' -f2)"
+	@echo "Current version: $$(grep '^version' Cargo.toml | cut -d'"' -f2)"
 	@echo ""
 	@echo "Pre-publish checklist:"
-	@echo "  ✓ Version bumped in server/Cargo.toml"
+	@echo "  ✓ Version bumped in Cargo.toml"
 	@echo "  ✓ CHANGELOG updated"
 	@echo "  ✓ Tests passing (make test)"
 	@echo "  ✓ Documentation builds (make crate-docs)"
@@ -1162,7 +1162,7 @@ crate-docs:
 
 # Update dependencies
 update-deps:
-	cargo update --manifest-path server/Cargo.toml
+	cargo update --manifest-path Cargo.toml
 
 # Update dependencies aggressively beyond semver constraints
 update-deps-aggressive:
@@ -1172,9 +1172,9 @@ update-deps-aggressive:
 		cargo install cargo-edit || exit 1; \
 	fi
 	@echo "Step 1: Updating within semver-compatible ranges..."
-	cargo update --aggressive --manifest-path server/Cargo.toml
+	cargo update --aggressive --manifest-path Cargo.toml
 	@echo "Step 2: Upgrading to latest incompatible versions (major bumps)..."
-	cargo upgrade --incompatible --manifest-path server/Cargo.toml
+	cargo upgrade --incompatible --manifest-path Cargo.toml
 
 # Update only security dependencies
 update-deps-security:
@@ -1182,7 +1182,7 @@ update-deps-security:
 
 # Upgrade dependencies
 upgrade-deps:
-	cargo upgrade --manifest-path server/Cargo.toml --workspace --to-lockfile
+	cargo upgrade --manifest-path Cargo.toml --workspace --to-lockfile
 
 # Fix audit issues
 audit-fix:
@@ -1194,23 +1194,23 @@ benchmark:
 
 # Check outdated dependencies
 outdated:
-	cargo outdated --format json --manifest-path server/Cargo.toml
+	cargo outdated --format json --manifest-path Cargo.toml
 
 # Server outdated (alias for CI) - removed duplicate, see line 550
 
 # Run cargo test with all features
 test-all-features:
-	cargo test --all-features --manifest-path server/Cargo.toml
+	cargo test --all-features --manifest-path Cargo.toml
 
 # Server test all (alias for CI) - removed duplicate, see line 546
 
 # Run cargo clippy with warnings as errors
 clippy-strict:
-	cargo clippy --manifest-path server/Cargo.toml -- -D warnings
+	cargo clippy --manifest-path Cargo.toml -- -D warnings
 
 # Server build release (for CI)
 server-build-release:
-	cargo build --release --manifest-path server/Cargo.toml
+	cargo build --release --manifest-path Cargo.toml
 
 # Build optimized release binary (workspace-wide)
 release:
@@ -1219,10 +1219,10 @@ release:
 	@echo "🚀 Building optimized release binary for Rust workspace..."
 	@echo "📁 Workspace structure:"
 	@echo "   - Root workspace: Cargo.toml (workspace configuration)"
-	@echo "   - Server project: server/Cargo.toml (main binary crate)"
+	@echo "   - Server project: Cargo.toml (main binary crate)"
 	@echo ""
 	@echo "🔨 Building release binary with workspace optimizations..."
-	cargo build --release --manifest-path server/Cargo.toml
+	cargo build --release --manifest-path Cargo.toml
 	@echo ""
 	@echo "✅ Release binary built successfully!"
 	@echo "📍 Binary location: ./target/release/pmat"
@@ -1240,9 +1240,9 @@ size-report: release ## Generate comprehensive binary size report
 	@ls -lh target/release/pmat
 	@echo ""
 	@echo "=== Asset Optimization Status ==="
-	@if [ -f "server/assets/vendor/mermaid.min.js.gz" ]; then \
+	@if [ -f "assets/vendor/mermaid.min.js.gz" ]; then \
 		MERMAID_ORIGINAL=$$(curl -sI "https://unpkg.com/mermaid@latest/dist/mermaid.min.js" | grep -i content-length | cut -d' ' -f2 | tr -d '\r'); \
-		MERMAID_COMPRESSED=$$(stat -f%z server/assets/vendor/mermaid.min.js.gz 2>/dev/null || stat -c%s server/assets/vendor/mermaid.min.js.gz); \
+		MERMAID_COMPRESSED=$$(stat -f%z assets/vendor/mermaid.min.js.gz 2>/dev/null || stat -c%s assets/vendor/mermaid.min.js.gz); \
 		if [ -n "$$MERMAID_ORIGINAL" ] && [ "$$MERMAID_ORIGINAL" -gt 0 ]; then \
 			REDUCTION=$$(echo "scale=1; ($$MERMAID_ORIGINAL - $$MERMAID_COMPRESSED) * 100 / $$MERMAID_ORIGINAL" | bc -l 2>/dev/null || echo "N/A"); \
 			echo "Mermaid.js: $$MERMAID_ORIGINAL -> $$MERMAID_COMPRESSED bytes ($$REDUCTION% reduction)"; \
@@ -1252,10 +1252,10 @@ size-report: release ## Generate comprehensive binary size report
 	else \
 		echo "❌ Mermaid.js not compressed (run 'make release' to rebuild)"; \
 	fi
-	@if [ -f "server/assets/demo/app.min.js" ]; then \
+	@if [ -f "assets/demo/app.min.js" ]; then \
 		if [ -f "../assets/demo/app.js" ]; then \
 			DEMO_JS_ORIGINAL=$$(stat -f%z ../assets/demo/app.js 2>/dev/null || stat -c%s ../assets/demo/app.js); \
-			DEMO_JS_MINIFIED=$$(stat -f%z server/assets/demo/app.min.js 2>/dev/null || stat -c%s server/assets/demo/app.min.js); \
+			DEMO_JS_MINIFIED=$$(stat -f%z assets/demo/app.min.js 2>/dev/null || stat -c%s assets/demo/app.min.js); \
 			REDUCTION=$$(echo "scale=1; ($$DEMO_JS_ORIGINAL - $$DEMO_JS_MINIFIED) * 100 / $$DEMO_JS_ORIGINAL" | bc -l 2>/dev/null || echo "N/A"); \
 			echo "Demo JS: $$DEMO_JS_ORIGINAL -> $$DEMO_JS_MINIFIED bytes ($$REDUCTION% reduction)"; \
 		else \
@@ -1267,14 +1267,14 @@ size-report: release ## Generate comprehensive binary size report
 	@echo ""
 	@echo "=== Size by Crate ==="
 	@if command -v cargo-bloat >/dev/null 2>&1; then \
-		cargo bloat --release --crates -n 10 --manifest-path server/Cargo.toml; \
+		cargo bloat --release --crates -n 10 --manifest-path Cargo.toml; \
 	else \
 		echo "Install cargo-bloat for detailed analysis: cargo install cargo-bloat"; \
 	fi
 	@echo ""
 	@echo "=== Largest Functions ==="
 	@if command -v cargo-bloat >/dev/null 2>&1; then \
-		cargo bloat --release -n 10 --manifest-path server/Cargo.toml; \
+		cargo bloat --release -n 10 --manifest-path Cargo.toml; \
 	else \
 		echo "Install cargo-bloat for detailed analysis: cargo install cargo-bloat"; \
 	fi
@@ -1299,7 +1299,7 @@ size-check: release ## Check if binary size exceeds threshold
 
 size-compare: ## Compare binary size with minimal build
 	@echo "=== Building with minimal features ==="
-	@cargo build --release --no-default-features --features rust-only --manifest-path server/Cargo.toml
+	@cargo build --release --no-default-features --features rust-only --manifest-path Cargo.toml
 	@SIZE_MINIMAL=$$(stat -f%z target/release/pmat 2>/dev/null || stat -c%s target/release/pmat); \
 	echo "Minimal build size: $${SIZE_MINIMAL} bytes"
 	@echo ""
@@ -1337,7 +1337,7 @@ pre-release-checks:
 	@echo ""
 	@echo "2️⃣ Version consistency check..."
 	@workspace_version=$$(grep '^version = ' Cargo.toml | cut -d'"' -f2); \
-	 server_uses_workspace=$$(grep '^version.workspace = true' server/Cargo.toml); \
+	 server_uses_workspace=$$(grep '^version.workspace = true' Cargo.toml); \
 	 if [ -n "$$workspace_version" ] && [ -n "$$server_uses_workspace" ]; then \
 		echo "✅ Versions are consistent (workspace: $$workspace_version, server: uses workspace)"; \
 	 else \
@@ -1433,7 +1433,7 @@ test-curl-install:
 
 # Check documentation with rustdoc
 cargo-rustdoc:
-	cargo rustdoc --features "default,rust-ast,typescript-ast,c-ast,cpp-ast,kotlin-ast,demo" --manifest-path server/Cargo.toml -- -D missing_docs || true
+	cargo rustdoc --features "default,rust-ast,typescript-ast,c-ast,cpp-ast,kotlin-ast,demo" --manifest-path Cargo.toml -- -D missing_docs || true
 
 # Install development tools
 install-dev-tools:
@@ -1464,7 +1464,7 @@ install-dev-tools:
 
 # Count lines of code with tokei
 tokei:
-	tokei server/src --exclude "*.json"
+	tokei src --exclude "*.json"
 
 # Count lines of code for server - removed duplicate, see line 554
 
@@ -2124,16 +2124,16 @@ dogfood-enforce: release
 # Context generation optimized for server source
 context-fast: release
 	@echo '📊 Generating context for server source code (fast)...'
-	@cd server/src && ../../target/release/pmat context --format markdown --output ../../deep_context.md
+	@cd src && ../../target/release/pmat context --format markdown --output ../../deep_context.md
 	@echo '✅ Context generated: deep_context.md'
 	@echo '📏 File size:' && ls -lh deep_context.md | awk '{print $$5}'
 
 context-benchmark: release
 	@echo '⚡ Benchmarking context generation...'
 	@mkdir -p artifacts
-	@echo 'Testing on server/src directory:'
+	@echo 'Testing on src directory:'
 	@hyperfine --warmup 2 --min-runs 5 \
-		"cd server/src && ../../target/release/pmat context --format json > /tmp/ctx.json" \
+		"cd src && ../../target/release/pmat context --format json > /tmp/ctx.json" \
 		--export-json artifacts/context-benchmark.json
 	@echo 'Performance results:'
 	@jq -r '.results[0] | "Mean: \(.mean)s, Min: \(.min)s, Max: \(.max)s"' artifacts/context-benchmark.json

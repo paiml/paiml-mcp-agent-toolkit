@@ -51,7 +51,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
-          path: server/coverage/
+          path: coverage/
       
       - name: Comment PR with coverage
         uses: actions/github-script@v7
@@ -124,4 +124,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: documentation
-          path: server/target/doc/
+          path: target/doc/

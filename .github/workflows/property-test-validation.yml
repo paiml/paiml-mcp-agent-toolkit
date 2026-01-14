@@ -4,14 +4,14 @@ on:
   push:
     branches: [ main, master ]
     paths:
-      - 'server/src/**/*.rs'
-      - 'server/Cargo.toml'
+      - 'src/**/*.rs'
+      - 'Cargo.toml'
       - '.github/workflows/property-test-validation.yml'
   pull_request:
     branches: [ main, master ]
     paths:
-      - 'server/src/**/*.rs'
-      - 'server/Cargo.toml'
+      - 'src/**/*.rs'
+      - 'Cargo.toml'
   schedule:
     # Run daily at 2 AM UTC to ensure coverage doesn't regress
     - cron: '0 2 * * *'
@@ -52,7 +52,7 @@ jobs:
     - name: Count total Rust source files
       id: count_files
       run: |
-        total_files=$(find server/src -name "*.rs" -type f | wc -l)
+        total_files=$(find src -name "*.rs" -type f | wc -l)
         echo "total_files=$total_files" >> $GITHUB_OUTPUT
         echo "📊 Total Rust source files: $total_files"
     
@@ -60,13 +60,13 @@ jobs:
       id: count_property_tests
       run: |
         # Count files that contain property test modules or proptest! macros
-        files_with_tests=$(grep -r "proptest!" server/src --include="*.rs" -l 2>/dev/null | wc -l || echo "0")
-        files_with_modules=$(grep -r "mod property_tests" server/src --include="*.rs" -l 2>/dev/null | wc -l || echo "0")
+        files_with_tests=$(grep -r "proptest!" src --include="*.rs" -l 2>/dev/null | wc -l || echo "0")
+        files_with_modules=$(grep -r "mod property_tests" src --include="*.rs" -l 2>/dev/null | wc -l || echo "0")
         
         # Combine unique files (some may have both)
         all_test_files=$(mktemp)
-        grep -r "proptest!" server/src --include="*.rs" -l 2>/dev/null > "$all_test_files" || true
-        grep -r "mod property_tests" server/src --include="*.rs" -l 2>/dev/null >> "$all_test_files" || true
+        grep -r "proptest!" src --include="*.rs" -l 2>/dev/null > "$all_test_files" || true
+        grep -r "mod property_tests" src --include="*.rs" -l 2>/dev/null >> "$all_test_files" || true
         
         unique_test_files=$(sort -u "$all_test_files" | wc -l)
         echo "files_with_property_tests=$unique_test_files" >> $GITHUB_OUTPUT

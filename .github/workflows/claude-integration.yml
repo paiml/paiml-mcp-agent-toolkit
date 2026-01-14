@@ -4,13 +4,13 @@ on:
   push:
     paths:
       - 'bridge/**'
-      - 'server/src/claude_integration/**'
-      - 'server/tests/**/*claude*'
-      - 'server/benches/claude_integration_bench.rs'
+      - 'src/claude_integration/**'
+      - 'tests/**/*claude*'
+      - 'benches/claude_integration_bench.rs'
   pull_request:
     paths:
       - 'bridge/**'
-      - 'server/src/claude_integration/**'
+      - 'src/claude_integration/**'
 
 jobs:
   quality-gates:
@@ -45,7 +45,7 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            server/target
+            target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Quality Gate - Complexity Analysis
@@ -58,7 +58,7 @@ jobs:
       - name: Quality Gate - Zero SATD
         run: |
           # Enforce zero tolerance for SATD in integration layer
-          if grep -r "TODO\|FIXME\|HACK\|XXX" server/src/claude_integration/ bridge/src/; then
+          if grep -r "TODO\|FIXME\|HACK\|XXX" src/claude_integration/ bridge/src/; then
             echo "❌ SATD detected - Zero tolerance policy violated"
             exit 1
           fi

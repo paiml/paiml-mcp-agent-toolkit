@@ -4,14 +4,14 @@ on:
   push:
     branches: [ main, master ]
     paths:
-      - 'server/src/**/*.rs'
-      - 'server/tests/**/*.rs'
-      - 'server/Cargo.toml'
+      - 'src/**/*.rs'
+      - 'tests/**/*.rs'
+      - 'Cargo.toml'
   pull_request:
     branches: [ main, master ]
     paths:
-      - 'server/src/**/*.rs'
-      - 'server/tests/**/*.rs'
+      - 'src/**/*.rs'
+      - 'tests/**/*.rs'
   workflow_dispatch:
     inputs:
       full_coverage:
@@ -75,7 +75,7 @@ jobs:
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4
       with:
-        file: ./server/coverage/lcov.info
+        file: ./coverage/lcov.info
         flags: property-tests
         name: property-test-coverage
     

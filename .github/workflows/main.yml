@@ -89,7 +89,7 @@ jobs:
           make format
           make lint
           make check
-          cargo build --release --manifest-path server/Cargo.toml --bin pmat
+          cargo build --release --manifest-path Cargo.toml --bin pmat
           
           # Validate timeout feature functionality (Toyota Way quality gate)
           echo "🔧 Validating timeout feature as mandatory quality gate..."
@@ -109,7 +109,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
-          path: server/coverage/
+          path: coverage/
         if: always()
 
   # STAGE 2: Additional checks - only run if CI passes
@@ -224,7 +224,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: benchmark-results
-          path: server/target/criterion/
+          path: target/criterion/
         if: always()
 
   dependency-check:

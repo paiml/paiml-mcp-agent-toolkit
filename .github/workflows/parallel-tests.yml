@@ -8,9 +8,9 @@ on:
   push:
     branches: [ master ]
     paths:
-      - 'server/**/*.rs'
-      - 'server/Cargo.toml'
-      - 'server/Cargo.lock'
+      - '**/*.rs'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
 
 env:
   CARGO_TERM_COLOR: always
@@ -58,7 +58,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: test-results-shard-${{ matrix.shard }}
-        path: server/target/nextest/ci/junit.xml
+        path: target/nextest/ci/junit.xml
         retention-days: 7
 
   test-summary:

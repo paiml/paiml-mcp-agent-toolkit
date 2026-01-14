@@ -1,100 +1,638 @@
-[workspace]
-members = ["server", "workspace-hack"]
-exclude = ["fuzz", "crates/pmat-dashboard"]  # pmat-dashboard excluded until presentar crate available
-resolver = "2"
-
-[workspace.package]
+[package]
+name = "pmat"
 version = "2.213.8"
 edition = "2021"
+rust-version = "1.80.0"
 authors = ["Pragmatic AI Labs"]
+description = "PMAT - Zero-config AI context generation and code quality toolkit (CLI, MCP, HTTP)"
 homepage = "https://paiml.com"
 repository = "https://github.com/paiml/paiml-mcp-agent-toolkit"
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+keywords = ["mcp", "code-analysis", "refactoring", "quality", "ai"]
+categories = ["command-line-utilities", "development-tools", "development-tools::testing"]
+exclude = ["*.log", "*.profraw", ".pmat-cache", "proptest-regressions"]
+# PERF: Disable autotest discovery - 193 .rs files = 193 binaries = slow coverage
+# Instead, use explicit [[test]] declarations for unified test binaries
+autotests = false
 
-# Workspace-level lints (v2.0 - Learn from Rust Giants)
+[[bin]]
+name = "pmat-agent"
+path = "src/bin/pmat-agent.rs"
+
+[dependencies]
+# Organizational Intelligence Plugin - Phase 4 integration
+organizational-intelligence-plugin = { version = "0.3.1", optional = true }
+
+# Async runtime
+# Sprint 46 Phase 4: Removed "io-std", "signal", "process" features (saves 180-280 KB)
+# Note: Code refactored to use std::io, platform-specific signal handling, and std::process::Command
+tokio = { version = "1.48", features = ["rt-multi-thread", "macros", "net", "io-util", "fs", "sync", "time"] }
+async-trait = "0.1"
+
+# Actor framework
+actix = "0.13"
+actix-rt = "2.10"
+
+# State management
+# crdt = "0.5" # Too old, will implement our own
+
+# Consensus (opt-in - raft_consensus module currently disabled)
+async-raft = { version = "0.6", optional = true }
+
+# Message passing
+# bytes = "1.10" # Already defined below
+crossbeam = "0.8"
+
+# Resource management
+sysinfo = "0.37"  # Updated for reduced duplicates
+libc = "0.2"
+
+# Property testing
+proptest = "1.6"
+
+# Text similarity - Now using aprender::text::similarity (edit_distance_similarity)
+# levenshtein = "1.0"  # REMOVED: Replaced by aprender sovereign stack
+
+# Machine Learning (Pure Rust - no C++ dependencies)
+# Migration to aprender complete (Sprint 45)
+# Graph algorithms enhanced (Sprint 46) - added 8 new centrality & structural stats
+# See: docs/specifications/aprender-ml-integration.md
+aprender = "0.24.0"  # PAIML next-gen ML (TDG 94.1/100, zero deps, SafeTensors support, text vectorization, LDA topic modeling)
+
+# High-Performance Compute (SIMD/GPU)
+trueno = { version = "0.11.0", optional = true }
+trueno-db = { version = "0.3.10", optional = true, default-features = false }
+
+# Semantic Search Stack (Pure Rust - Zero API Keys)
+# See: docs/specifications/semantic-search-feature.md
+trueno-graph = "0.1.10"  # GPU-first graph database (CSR, PageRank, Louvain)
+trueno-rag = "0.1.8"  # Pure-Rust RAG pipeline with VectorStore (replaces TursoVectorDB rusqlite implementation)
+trueno-viz = { version = "0.1.17", optional = true, features = ["terminal", "graph"] }  # Terminal graph visualization
+
+# Analytics GPU dependencies (optional, gated by analytics-gpu feature)
+# Issue #79: Feature-gated architecture to prevent +3.8 MB binary bloat
+wgpu = { version = "24.0", optional = true, features = ["wgsl"] }
+pollster = { version = "0.3", optional = true }  # Async runtime for wgpu
+bytemuck = { version = "1.14", optional = true }  # Safe cast for GPU buffers
+arrow = { version = "53", optional = true }  # Arrow columnar format (required for direct arrow API usage)
+# Note: parquet is managed by trueno-db dependency
+
+# Serialization (pinned to avoid swc_common issue with serde::__private)
+serde = { version = "1.0", default-features = false, features = ["derive", "std"] }
+serde_json = { version = "1.0", default-features = false, features = ["std"] }
+rmp-serde = { version = "1.3", optional = true }  # MessagePack for .pmat recording format (Sprint 75)
+
+# Template engine
+handlebars = { version = "6.3", default-features = false, features = ["string_helpers"] }
+
+# MCP SDK - now core dependency for MCP server functionality
+# Sprint 46 Phase 4: Switched from "full" to explicit features (saves 150-250 KB)
+pmcp = { version = "1.9.4", features = ["websocket", "http", "sse", "validation"] }
+
+# Caching
+lru = { version = "0.14", features = ["hashbrown"] }
+
+# Error handling
+thiserror = "2.0"
+anyhow = "1.0"
+tempfile = "3.8"
+
+# Logging
+tracing = { version = "0.1", default-features = false, features = ["std"] }
+tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt", "std"] }
+
+# Utilities
+sha2 = "0.10"
+once_cell = "1.21"
+lazy_static = "1.5"
+semver = { version = "1.0", features = ["serde"] }
+regex = { version = "1.11", features = ["perf"] }
+chrono = { version = "=0.4.38", features = ["serde"] }  # Pinned for arrow v53.4 compatibility
+globset = "0.4"
+csv = "1.3"
+hex = "0.4"
+uuid = { version = "1.17", features = ["v4", "serde"] }
+parking_lot = "0.12"
+dirs = "6.0"
+roaring = "0.10"
+rand = "0.9"
+rayon = "1.10"
+# Optional: saves 67 transitive deps when disabled - falls back to shell `git` commands
+git2 = { version = "0.20", default-features = false, features = ["https"], optional = true }
+
+# CLI utilities - REMOVED to save transitive deps
+# dialoguer = "0.12"  # REMOVED: Replaced with simple stdin (saves 14 transitive deps)
+# console = "0.16"  # REMOVED: Replaced with plain text (saves 3 transitive deps)
+# indicatif = "0.18"  # REMOVED: Replaced with simple println (saves 6 transitive deps)
+url = "2.5"
+
+# Storage
+# libsql = "0.9.24"  # REMOVED: Not used directly (migration to rusqlite complete)
+lz4_flex = "0.11"  # Keep for backward compat, trueno-zram-core adapter available
+trueno-zram-core = { version = "0.3", optional = true }  # SIMD compression (sovereign stack)
+rusqlite = { version = "0.32", features = ["bundled"] }  # SQLite with bundled library
+# sled = REMOVED (unmaintained, migrated to libsql/trueno-db)
+# rocksdb = { version = "0.22", default-features = false, features = ["zstd"] }
+bincode = "1.3"
+
+# Async utilities
+futures = "0.3"
+
+# GitHub API client (Issue #75: Unified GitHub/YAML workflow)
+# Optional: saves 255 transitive deps when disabled - falls back to `gh` CLI
+octocrab = { version = "0.48", optional = true }
+
+# File watching for configuration hot-reload
+notify = "8.0"
+
+# CLI support
+clap = { version = "4.5", default-features = false, features = ["std", "derive", "help", "env"] }
+num_cpus = "1.17"
+serde_yaml = "0.9"
+
+# AST parsing (always needed for accurate complexity analysis)
+syn = { version = "2.0", features = ["full", "parsing", "visit", "extra-traits"] }
+quote = { version = "1.0", optional = true }
+proc-macro2 = { version = "1.0", optional = true }
+walkdir = "2.5"
+ignore = "0.4"
+glob = "0.3"
+toml = "0.8.23"
+crossbeam-channel = "0.5"
+which = "6.0"  # Sprint 70: Find cargo-mutants in PATH
+# For TypeScript/JavaScript parsing (conditional) - use compatible versions
+swc_ecma_parser = { version = "24.0", optional = true }
+swc_common = { version = "14.0", optional = true }
+swc_ecma_ast = { version = "15.0", optional = true }
+swc_ecma_visit = { version = "15.0", optional = true }
+# For Python parsing (conditional) - REMOVED: Migrated to tree-sitter-python
+# rustpython-parser = { version = "0.4.0", optional = true }
+# For C/C++ parsing (conditional)
+tree-sitter = { version = "0.23", optional = true }
+tree-sitter-c = { version = "0.23", optional = true }
+tree-sitter-cpp = { version = "0.23", optional = true }
+tree-sitter-go = { version = "0.23", optional = true }
+tree-sitter-javascript = { version = "0.23", optional = true }
+tree-sitter-typescript = { version = "0.23", optional = true }
+tree-sitter-python = { version = "0.23", optional = true }
+tree-sitter-kotlin-ng = { version = "1.1", optional = true }
+tree-sitter-rust = { version = "0.23", optional = true }
+# Sprint 46 Phase 6: Removed unused tree-sitter parsers (0 references - cargo-machete verified)
+# tree-sitter-c-sharp = { version = "0.23", optional = true }  # 0 references
+# tree-sitter-java = { version = "0.23", optional = true }      # 0 references
+# tree-sitter-ruby = { version = "0.23", optional = true }      # 0 references
+# tree-sitter-scala = { version = "0.20.0", optional = true }   # 0 references
+# tree-sitter-swift = { version = "0.7", optional = true }      # 0 references
+# Sprint 46 Phase 5: Removed unused language parsers (1.25 MB release binary savings)
+# tree-sitter-erlang = { version = "0.15", optional = true }
+# tree-sitter-elixir = { version = "0.3", optional = true }
+# tree-sitter-haskell = { version = "0.23", optional = true }
+# tree-sitter-ocaml = { version = "0.23", optional = true }
+# For Ruchy language support (Ruby alternative parser)
+ruchy = { version = "4.1", optional = true }
+logos = { version = "0.14", optional = true }
+# For Kotlin parsing (conditional) - DISABLED due to tree-sitter version conflict
+# tree-sitter-kotlin = { version = "0.3.8", optional = true }
+
+# Language-specific analysis
+cpp_demangle = { version = "0.4", optional = true }
+gimli = { version = "0.32", optional = true }
+goblin = { version = "0.10", optional = true }
+# Analysis infrastructure for C/C++
+fixedbitset = { version = "0.5", optional = true }
+rustc-hash = { version = "2.1" }
+
+# Installer generation
+# installer-macro = { path = "../installer-macro" } # Removed - using simple include_str! instead
+blake3 = { version = "1.8", features = ["serde"] }
+xxhash-rust = { version = "0.8", features = ["xxh64"] }
+
+# Demo/reporting mode dependencies (included by default)
+# webbrowser = "1.0"  # REMOVED: Replaced with platform-specific shell commands (saves 77 transitive deps)
+bytes = "1.10"
+http = "1.3"
+# httparse = "1.10"  # REMOVED: cargo-machete verified unused (hyper handles HTTP parsing)
+dashmap = "6.1"
+flate2 = "1.1"
+# smallvec = "1.15.0"  # REMOVED: cargo-machete verified unused
+
+# Unified protocol support
+axum = { version = "0.8", default-features = false, features = ["json", "tokio", "http1", "query"] }
+# capnp = "0.20" # REMOVED: Unused Cap'n Proto serialization (0 references)
+# capnpc = "0.20" # REMOVED: Unused Cap'n Proto compiler (0 references)
+tower = { version = "0.5", default-features = false, features = ["util", "timeout"] }
+# Sprint 46 Phase 4: Removed "fs" feature (no ServeDir/ServeFile usage, saves 40-70 KB)
+tower-http = { version = "0.6", default-features = false, features = ["trace", "compression-gzip", "timeout", "cors"] }
+# Sprint 46 Phase 4: Removed "client" feature (reqwest provides HTTP client, saves 80-120 KB)
+hyper = { version = "1.6", default-features = false, features = ["http1", "server"] }
+hyper-util = { version = "0.1", default-features = false, features = ["tokio", "server", "client"] }
+http-body-util = "0.1"
+
+# Graph analysis (trueno-graph replaces petgraph)
+# nalgebra-sparse removed - using simple Vec-based sparse matrices (Sovereign AI Stack)
+
+# Markdown parsing
+pulldown-cmark = "0.13"
+
+# HTTP client for GitHub API
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+
+# Prometheus metrics (optional - rarely used)
+prometheus = { version = "0.14", optional = true }
+warp = { version = "0.3", optional = true }
+
+# Table formatting - REMOVED: Using simple println formatting (saves 16 transitive deps)
+# prettytable-rs = "0.10"
+
+# TUI support (presentar-terminal: ratatui-free Brick architecture)
+# presentar-terminal provides: TuiApp, DiffRenderer, BrailleGraph, Meter, Table
+# Benefits: Jidoka verification gates, zero-allocation rendering, 95% coverage
+# presentar-terminal = { version = "0.3.0", path = "../../presentar/crates/presentar-terminal", optional = true }  # Not yet on crates.io
+presentar-core = { version = "0.3", optional = true }
+# crossterm 0.28 matches presentar-terminal's version (ratatui REMOVED)
+crossterm = { version = "0.28", optional = true }
+sys-info = "0.9.1"
+
+# Storage backends (sled/rocksdb REMOVED - migrated to libsql/trueno-db)
+wasmparser = "0.239.0"
+shell-words = "1.1.0"
+crc32fast = "1.5.0"
+pest = "2.8.2"
+pest_derive = { version = "2.8.2", features = ["default"] }
+
+# Deep WASM inspection dependencies
+# wasm-encoder = "0.239.0"  # REMOVED: cargo-machete verified unused
+# walrus = "0.22" # REMOVED: Unused (0 references in codebase)
+# object = "0.37"  # REMOVED: cargo-machete verified unused
+sourcemap = { version = "9.0", optional = true }  # Only needed for deep-wasm source map support
+# ahash = "0.8"  # REMOVED: cargo-machete verified unused
+prettyplease = "0.2.37"
+fs2 = "0.4.3"
+
+[dev-dependencies]
+tokio-test = "0.4"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+pretty_assertions = "1.4"
+tempfile = "3.20"
+assert_cmd = "2.0"      # CLI testing for PMAT-7001
+predicates = "3.1"      # Assertion helpers for PMAT-7001
+criterion = { version = "0.6", features = ["html_reports"] }
+proptest = "1.6"
+quickcheck = "1.0"
+quickcheck_macros = "1.0"
+serial_test = "3.2"
+futures-test = "0.3"
+env_logger = "0.11.8"
+tokio-util = "0.7.18"
+
+[build-dependencies]
+ureq = "3.0"
+flate2 = "1.1"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+hex = "0.4"
+sha2 = "0.10"  # For O(1) build artifact hash caching
+# capnpc = "0.20" # REMOVED: Unused Cap'n Proto compiler
+
+[features]
+# Phase 2 Build Performance (Issue #89): Minimal defaults for fast builds
+# Default: Rust + TypeScript/JavaScript (most common use case)
+# - Opt-in for other languages: --features extended-languages or all-languages
+# - Opt-in for advanced analysis: --features analytics-simd, mutation-testing, demo
+# - Full suite: --features full (equivalent to old defaults)
+default = ["core-languages", "viz"]
+
+# Convenience bundles
+core-languages = ["rust-ast", "typescript-ast", "javascript-ast"]  # Most common: Rust + JS/TS
+extended-languages = ["python-ast", "go-ast", "c-ast", "cpp-ast", "shell-ast", "php-ast", "swift-ast"]  # Additional languages
+advanced-analysis = ["analytics-simd", "mutation-testing", "tdg-explain", "demo"]  # Heavy features
+full = ["all-languages", "polyglot-ast", "advanced-analysis"]  # Equivalent to old defaults
+
+# Phase 1 Build Performance (Issue #89): Removed "org-intelligence" from default
+# - Eliminates octocrab v0.39.0 duplicate (we have v0.40.0)
+# - Eliminates trueno-db v0.1.0 duplicate (we have v0.3.1)
+# - Reduces build time and dependency count
+# - org-intelligence now opt-in via --features org-intelligence
+org-intelligence = ["organizational-intelligence-plugin"]
+all-languages = ["rust-ast", "typescript-ast", "python-ast", "c-ast", "cpp-ast", "ruchy-ast", "go-ast", "wasm-ast", "deep-wasm", "shell-ast", "php-ast", "swift-ast"]
+most-languages = ["rust-ast", "typescript-ast", "python-ast", "c-ast", "cpp-ast", "go-ast", "shell-ast"]
+# Sprint 46 Phase 6: Removed java-ast, csharp-ast, ruby-ast, scala-ast (0 references)
+# Note: go-ast and shell-ast kept in most-languages (unified_go_analyzer.rs now has proper feature gates)
+rust-only = ["rust-ast"]
+# Polyglot AST meta-feature for cross-language analysis
+polyglot-ast = []
+ruchy-ast = ["ruchy", "logos"]
+go-ast = ["tree-sitter", "tree-sitter-go"]
+kotlin-ast = ["tree-sitter", "tree-sitter-kotlin-ng", "polyglot-kotlin"]
+# Sprint 46 Phase 6/7: Empty feature declarations for backward compat (cfg checks)
+# Dependencies removed but feature flags kept to satisfy #[cfg(feature = "...")] guards
+java-ast = []
+csharp-ast = []
+ruby-ast = []
+scala-ast = []
+
+# Polyglot language-specific features
+polyglot-kotlin = ["polyglot-ast"]
+polyglot-typescript = ["polyglot-ast"]
+polyglot-javascript = ["polyglot-ast"]
+# Sprint 46 Phase 6/7: Empty polyglot feature declarations for backward compat (cfg checks)
+polyglot-java = []
+polyglot-scala = []
+polyglot-csharp = []
+polyglot-ruby = []
+# Sprint 46 Phase 5: Removed unused language feature definitions
+# erlang-ast = ["tree-sitter", "tree-sitter-erlang"]
+# elixir-ast = ["tree-sitter", "tree-sitter-elixir"]
+# haskell-ast = ["tree-sitter", "tree-sitter-haskell"]
+# ocaml-ast = ["tree-sitter", "tree-sitter-ocaml"]
+wasm-ast = []
+deep-wasm = ["gimli", "wasm-ast", "sourcemap"]
+shell-ast = []
+php-ast = []
+swift-ast = []
+skip-slow-tests = []
+internal_tests = []
+# Feature flag to disable broken tests during development
+broken-tests = []
+# Feature flag for slow CLI integration tests (assert_cmd spawns binaries)
+# Disabled by default for fast coverage - enable with --features cli-integration
+cli-integration = []
+rust-ast = ["quote", "proc-macro2", "tree-sitter", "tree-sitter-rust"]
+typescript-ast = ["rust-ast", "swc_ecma_parser", "swc_common", "swc_ecma_ast", "swc_ecma_visit", "tree-sitter", "tree-sitter-typescript", "tree-sitter-javascript", "polyglot-typescript"]
+python-ast = ["rust-ast", "tree-sitter", "tree-sitter-python"]
+# ✅ Migration complete! All 5 files migrated from rustpython-parser to tree-sitter-python:
+#   - tdg/analyzer_ast.rs (Phase 4)
+#   - services/mutation/python_adapter.rs (Phase 5a)
+#   - services/ast_python_compat.rs (Phase 5a)
+#   - services/unified_python_analyzer.rs (Phase 5a)
+#   - services/enhanced_python_visitor.rs (Phase 5b)
+c-ast = ["tree-sitter", "tree-sitter-c", "fixedbitset"]
+cpp-ast = ["c-ast", "tree-sitter-cpp", "cpp_demangle", "gimli", "goblin"]
+# Feature to exclude demo/reporting functionality for minimal builds
+demo = []
+# DAP (Debug Adapter Protocol) for time-travel debugging
+# Requires rmp-serde for MessagePack serialization (13 transitive deps)
+dap = ["rmp-serde"]
+# GitHub API via octocrab (saves 255 transitive deps when disabled)
+# Falls back to `gh` CLI when disabled
+github-api = ["octocrab"]
+# Git operations via libgit2 (saves 67 transitive deps when disabled)
+# Falls back to shell `git` commands when disabled
+git-lib = ["git2"]
+# JavaScript AST support
+javascript-ast = ["typescript-ast", "polyglot-javascript"]
+# TUI mode support (presentar-terminal Brick architecture, ratatui-free)
+# Note: presentar-terminal disabled until published to crates.io
+tui = ["presentar-core", "crossterm"]
+# Terminal graph visualization (trueno-viz integration)
+# See: docs/specifications/integrating-graph-visualizations-spec.md
+viz = ["trueno-viz"]
+# Integration tests feature
+integration-tests = []
+# End-to-end tests feature
+e2e-tests = []
+# Performance tests feature
+perf-tests = []
+# Storage backend features (sled/rocksdb REMOVED - migrated to libsql/trueno-db)
+# rocksdb-backend and sled-backend features have been removed
+# High-performance compute features (Trueno)
+simd = ["trueno"]
+gpu = ["trueno", "trueno/gpu"]
+
+# Sovereign Stack compression (SIMD LZ4/ZSTD)
+# Replaces lz4_flex with trueno-zram-core for 2-4x speedup
+sovereign-compression = ["trueno-zram-core"]
+
+# Analytics features (Issue #79: Feature-gated architecture)
+# Default: SIMD-only (7.8 MB, 18s compile, ≤30 transitive deps)
+analytics-simd = ["trueno", "trueno-db", "trueno-db/simd", "arrow"]  # trueno-graph now default (Phase 3)
+# GPU-enabled: +wgpu (11.6 MB, 63s compile, ≤95 transitive deps)
+# Note: arrow/parquet pulled in transitively via trueno-db/gpu
+analytics-gpu = ["analytics-simd", "trueno-db/gpu", "wgpu", "pollster", "bytemuck"]
+
+# TDG explain mode with function-level analysis (Issue #78)
+# Uses tree-sitter-rust for custom function-level complexity analysis
+tdg-explain = ["rust-ast"]
+
+# Mutation testing (Phase 2 - Optional)
+# Enables multi-language mutation testing with tree-sitter parsers
+# Depends on all language ASTs used by mutation generators
+mutation-testing = ["rust-ast", "python-ast", "typescript-ast", "cpp-ast", "go-ast"]
+
+# Raft consensus (Optional - currently disabled)
+# Enables distributed consensus using async-raft
+# Note: raft_consensus module currently commented out due to API compatibility
+raft-consensus = ["async-raft"]
+
+# Prometheus metrics (Optional - rarely used)
+# Enables Prometheus metrics export via warp HTTP server
+# Note: prometheus_exporter module in unified_quality
+prometheus-metrics = ["prometheus", "warp"]
+
+
+[[bin]]
+name = "pmat"
+path = "src/bin/pmat.rs"
+
+# [[bin]]
+# name = "generate-installer"
+# path = "src/bin/generate-installer.rs"
+# required-features = ["installer-gen"]
+
+[[bench]]
+name = "critical_path"
+harness = false
+
+[[bench]]
+name = "performance"
+harness = false
+
+[[bench]]
+name = "dead_code_ops"
+harness = false
+
+[[bench]]
+name = "similarity_ops"
+harness = false
+
+[[bench]]
+name = "tdg_ops"
+harness = false
+
+[[bench]]
+name = "storage_backend_bench"
+harness = false
+
+[[bench]]
+name = "claude_integration_bench"
+harness = false
+
+[[bench]]
+name = "topk_selection"
+harness = false
+
+# PERF: Unified test binary - 192 tests in 1 binary instead of 192 binaries
+# This dramatically reduces llvm-cov report generation time
+[[test]]
+name = "all"
+path = "tests/all.rs"
+
+[[test]]
+name = "unit_core"
+path = "tests/unit/core.rs"
+required-features = []
+
+[[test]]
+name = "services_integration"
+path = "tests/integration/services.rs"
+required-features = ["integration-tests"]
+
+[[test]]
+name = "protocol_adapters"
+path = "tests/integration/protocols.rs"
+required-features = ["integration-tests"]
+
+[[test]]
+name = "e2e_system"
+path = "tests/e2e/system.rs"
+required-features = ["e2e-tests"]
+
+[[test]]
+name = "performance_regression"
+path = "tests/performance/regression.rs"
+required-features = ["perf-tests"]
+
+# Examples for deterministic MCP agents course
+[[example]]
+name = "scaffold_agent_basics"
+path = "examples/scaffold_agent_basics.rs"
+
+[[example]]
+name = "scaffold_agent_interactive"
+path = "examples/scaffold_agent_interactive.rs"
+
+[[example]]
+name = "scaffold_agent_hybrid"
+path = "examples/scaffold_agent_hybrid.rs"
+
+[[example]]
+name = "scaffold_agent_course_project"
+path = "examples/scaffold_agent_course_project.rs"
+
+[[example]]
+name = "similarity_demo"
+path = "examples/similarity_demo.rs"
+
+[[example]]
+name = "context_analysis_demo"
+path = "examples/context_analysis_demo.rs"
+
+[[example]]
+name = "rust_mutation_workflow"
+path = "examples/rust_mutation_workflow.rs"
+required-features = ["mutation-testing"]
+
+[[example]]
+name = "cargo_mutants_backend_demo"
+path = "examples/cargo_mutants_backend_demo.rs"
+required-features = ["mutation-testing"]
+
+[[example]]
+name = "go_mutation_workflow"
+path = "examples/go_mutation_workflow.rs"
+required-features = ["mutation-testing"]
+
+[[example]]
+name = "parse_cargo_mutants_json"
+path = "examples/parse_cargo_mutants_json.rs"
+required-features = ["mutation-testing"]
+
+[[example]]
+name = "dogfood_types"
+path = "examples/dogfood_types.rs"
+required-features = ["mutation-testing"]
+
+[[example]]
+name = "typescript_mutation_workflow_parallel"
+path = "examples/typescript_mutation_workflow_parallel.rs"
+required-features = ["mutation-testing"]
+
+[[example]]
+name = "typescript_mutation_workflow"
+path = "examples/typescript_mutation_workflow.rs"
+required-features = ["mutation-testing"]
+
+[[example]]
+name = "test_typescript_mutations"
+path = "examples/test_typescript_mutations.rs"
+required-features = ["mutation-testing"]
+
+[[example]]
+name = "cargo_mutants_detect"
+path = "examples/cargo_mutants_detect.rs"
+required-features = ["mutation-testing"]
+
+[[example]]
+name = "cpp_mutation_workflow"
+path = "examples/cpp_mutation_workflow.rs"
+required-features = ["mutation-testing"]
+
+[[example]]
+name = "verify_fixtures"
+path = "examples/verify_fixtures.rs"
+required-features = ["mutation-testing"]
+
+[[example]]
+name = "python_mutation_workflow"
+path = "examples/python_mutation_workflow.rs"
+required-features = ["mutation-testing"]
+
+[[example]]
+name = "verus_verification_demo"
+path = "examples/verus_verification_demo.rs"
+
+[[example]]
+name = "viz_demo"
+path = "examples/viz_demo.rs"
+required-features = ["viz"]
+
+# Profile configuration moved to workspace root
+
+[package.metadata.docs.rs]
+# Use default features for documentation (which excludes python-ast due to malachite-bigint build issues)
+features = ["default"]
+# Set DOCS_RS environment variable to skip network operations
+rustdoc-args = ["--cfg", "docsrs"]
+rustc-args = ["--cfg", "docsrs"]
+
+# Lints (v2.0 - Learn from Rust Giants)
 # Source: Elite Rust projects (tokio, serde, clap, syn, regex)
-[workspace.lints.rust]
-unsafe_op_in_unsafe_fn = "warn"     # Require unsafe blocks inside unsafe functions
-unreachable_pub = "warn"             # Warn on pub items not reachable from crate root
-missing_docs = "allow"               # Allow missing docs (too noisy for internal crates)
+[lints.rust]
+unsafe_op_in_unsafe_fn = "warn"
+unreachable_pub = "warn"
+missing_docs = "allow"
 
-[workspace.lints.clippy]
-# Correctness lints (high priority)
+[lints.clippy]
 correctness = { level = "deny", priority = -1 }
-# Suspicious patterns (high priority)
 suspicious = { level = "warn", priority = -1 }
-# Performance improvements
 perf = { level = "warn", priority = -1 }
-# Style preferences
 style = { level = "warn", priority = -1 }
-# Pedantic lints (lower priority)
 pedantic = { level = "allow", priority = -1 }
-# Complexity analysis
 complexity = { level = "warn", priority = -1 }
-# Checked conversions (prevent overflow)
 checked_conversions = "warn"
-# Known Defects v2.1: Ban unwrap() (Cloudflare-class defect - causes production panics)
-# TODO: Upgrade to "deny" after fixing all 3940 unwrap() calls
 unwrap_used = "warn"
 expect_used = "allow"
 
-# Config for cargo-release
-[workspace.metadata.release]
-# Sign commits and tags
-sign-commit = false  # Set to true if you have GPG configured
-sign-tag = false     # Set to true if you have GPG configured
-# Push to remote automatically
-push-remote = "origin"
-# Actually do the release (not just dry-run)
-release = true
-# Consolidate commits
-consolidate-commits = true
-# Disable dev-version bump (we handle this manually)
-# dev-version = false  # This field is not recognized in newer cargo-release
-# Share version for workspace
-shared-version = true
-# Tag prefix
-tag-prefix = "v"
-# Disable automatic publishing to crates.io (we handle it separately)
-publish = false
-# Pre-release replacements
-pre-release-replacements = [
-  {file="README.md", search="pmat = \"[0-9]+\\.[0-9]+\"", replace="pmat = \"{{version}}\""},
-  {file="README.md", search="v[0-9]+\\.[0-9]+\\.[0-9]+ Release", replace="v{{version}} Release"},
-  {file="CHANGELOG.md", search="## \\[Unreleased\\]", replace="## [Unreleased]\n\n## [{{version}}] - {{date}}"},
-]
-# Pre-release hook to run tests (disabled - no Makefile)
-# pre-release-hook = ["make", "pre-release-checks"]
-
-# Config for 'dist'
-[workspace.metadata.dist]
-# The preferred dist version to use in CI (Cargo.toml SemVer syntax)
-cargo-dist-version = "0.28.0"
-# CI backends to support
-ci = "github"
-# The installers to generate for each app
-installers = ["shell"]
-# Target platforms to build apps for (Rust target-triple syntax)
-targets = ["aarch64-apple-darwin", "x86_64-apple-darwin", "x86_64-unknown-linux-gnu"]
-# Which actions to run on pull requests
-pr-run-mode = "plan"
-# Whether to install an updater program
-install-updater = false
-# Path that installers should place binaries in
-install-path = "CARGO_HOME"
-# Skip checking whether the specified configuration files are up to date
-allow-dirty = ["ci"]
-
 [profile.release]
-opt-level = 3            # Maximum performance optimization
-lto = "fat"              # Enable Link Time Optimization
-codegen-units = 1        # Single codegen unit for maximum optimization
-panic = "abort"          # Remove unwinding machinery (~200KB savings)
-strip = "symbols"        # Strip symbols (60-80% reduction)
-overflow-checks = false  # Disable overflow checks in release
-debug = true             # Enable debug symbols for flamegraph profiling
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = "symbols"
+overflow-checks = false
+debug = true
 
-# The profile that 'cargo dist' will build with
-# Workspace-level test optimization
 [profile.test]
 opt-level = 0
 lto = false
@@ -104,7 +642,6 @@ incremental = true
 [profile.test.package."*"]
 opt-level = 0
 
-# The profile that 'cargo dist' will build with
 [profile.dist]
 inherits = "release"
 lto = "thin"

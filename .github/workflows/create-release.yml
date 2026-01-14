@@ -36,7 +36,7 @@ jobs:
           
       - name: Verify version matches Cargo.toml
         run: |
-          CARGO_VERSION=$(grep -E '^version = "' server/Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
+          CARGO_VERSION=$(grep -E '^version = "' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
           INPUT_VERSION="${{ github.event.inputs.version }}"
           
           if [ "$CARGO_VERSION" != "$INPUT_VERSION" ]; then
@@ -44,7 +44,7 @@ jobs:
             echo "   Cargo.toml: $CARGO_VERSION"
             echo "   Input: $INPUT_VERSION"
             echo ""
-            echo "Please update server/Cargo.toml to match the release version."
+            echo "Please update Cargo.toml to match the release version."
             exit 1
           fi
           
