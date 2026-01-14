@@ -3,13 +3,19 @@
 //! This module defines the core types for the 106-point scoring system
 //! with 6 categories following the evidence-based specification.
 //!
+//! All scores are normalized to 0-100 for display (PMAT-454).
+//!
 //! Evidence-based design from 15 peer-reviewed papers (2022-2025)
 
+use crate::services::normalized_score::NormalizedScore;
 use rayon::prelude::*;
 use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::path::{Path, PathBuf};
+
+/// Maximum possible raw points for Rust Project Score
+pub const RUST_PROJECT_MAX_POINTS: f64 = 106.0;
 
 // ============================================================================
 // ScoringMode - Performance vs Accuracy Tradeoff
@@ -335,21 +341,46 @@ impl Default for RustProjectScore {
     }
 }
 
+impl NormalizedScore for RustProjectScore {
+    fn raw(&self) -> f64 {
+        self.total_score
+    }
+
+    fn max_raw(&self) -> f64 {
+        RUST_PROJECT_MAX_POINTS
+    }
+}
+
+impl fmt::Display for RustProjectScore {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "Rust Project Score: {:.1}/100 ({}) [raw: {:.1}/{}]",
+            self.normalized(),
+            self.grade,
+            self.total_score,
+            RUST_PROJECT_MAX_POINTS as u32
+        )
+    }
+}
+
 // ============================================================================
 // Grade - Letter Grade Enum
 // ============================================================================
 
-/// Letter grade based on percentage of total possible points
+/// Letter grade based on NORMALIZED percentage (0-100 scale)
 ///
-/// Thresholds:
-/// - A+ : 95-106 (89.6%+)
-/// - A  : 90-94  (84.9%-89.5%)
-/// - A- : 85-89  (80.2%-84.8%)
-/// - B+ : 80-84  (75.5%-80.1%)
-/// - B  : 70-79  (66.0%-75.4%)
-/// - C  : 60-69
-/// - D  : 50-59
-/// - F  : 0-49
+/// PMAT-454: All grading now uses normalized 0-100 percentages
+///
+/// Thresholds (normalized 0-100):
+/// - A+ : 95-100%
+/// - A  : 90-94%
+/// - A- : 85-89%
+/// - B+ : 80-84%
+/// - B  : 70-79%
+/// - C  : 60-69%
+/// - D  : 50-59%
+/// - F  : 0-49%
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Grade {
     APlus,
@@ -363,25 +394,39 @@ pub enum Grade {
 }
 
 impl Grade {
-    /// Calculate grade from score and max possible points
-    pub fn from_score(score: f64, _max: f64) -> Self {
-        if score >= 95.0 {
+    /// Calculate grade from raw score and max possible points
+    ///
+    /// PMAT-454: Now properly normalizes to 0-100 before grading
+    pub fn from_score(score: f64, max: f64) -> Self {
+        // Normalize to 0-100 percentage
+        let normalized = if max > 0.0 {
+            (score / max * 100.0).clamp(0.0, 100.0)
+        } else {
+            0.0
+        };
+
+        if normalized >= 95.0 {
             Grade::APlus
-        } else if score >= 90.0 {
+        } else if normalized >= 90.0 {
             Grade::A
-        } else if score >= 85.0 {
+        } else if normalized >= 85.0 {
             Grade::AMinus
-        } else if score >= 80.0 {
+        } else if normalized >= 80.0 {
             Grade::BPlus
-        } else if score >= 70.0 {
+        } else if normalized >= 70.0 {
             Grade::B
-        } else if score >= 60.0 {
+        } else if normalized >= 60.0 {
             Grade::C
-        } else if score >= 50.0 {
+        } else if normalized >= 50.0 {
             Grade::D
         } else {
             Grade::F
         }
+    }
+
+    /// Calculate grade from already-normalized percentage (0-100)
+    pub fn from_normalized(normalized: f64) -> Self {
+        Self::from_score(normalized, 100.0)
     }
 }
 
@@ -787,52 +832,95 @@ mod tests {
     // Grade tests
     // ============================================================================
 
+    // PMAT-454: Tests now verify NORMALIZED grading (0-100%)
+    // Raw score 95/106 = 89.6% → A (not A+)
+    // Raw score 100/106 = 94.3% → A (not A+)
+
     #[test]
     fn test_grade_from_score_a_plus() {
-        assert_eq!(Grade::from_score(100.0, 106.0), Grade::APlus);
-        assert_eq!(Grade::from_score(95.0, 106.0), Grade::APlus);
+        // A+ requires 95%+ normalized
+        assert_eq!(Grade::from_score(100.7, 106.0), Grade::APlus); // 95%
+        assert_eq!(Grade::from_score(106.0, 106.0), Grade::APlus); // 100%
+        // Perfect score on 100-point scale
+        assert_eq!(Grade::from_score(95.0, 100.0), Grade::APlus);
+        assert_eq!(Grade::from_score(100.0, 100.0), Grade::APlus);
     }
 
     #[test]
     fn test_grade_from_score_a() {
-        assert_eq!(Grade::from_score(94.0, 106.0), Grade::A);
-        assert_eq!(Grade::from_score(90.0, 106.0), Grade::A);
+        // A requires 90-94% normalized
+        assert_eq!(Grade::from_score(95.4, 106.0), Grade::A); // 90%
+        assert_eq!(Grade::from_score(99.6, 106.0), Grade::A); // 94%
+        assert_eq!(Grade::from_score(90.0, 100.0), Grade::A);
+        assert_eq!(Grade::from_score(94.9, 100.0), Grade::A);
     }
 
     #[test]
     fn test_grade_from_score_a_minus() {
-        assert_eq!(Grade::from_score(89.0, 106.0), Grade::AMinus);
-        assert_eq!(Grade::from_score(85.0, 106.0), Grade::AMinus);
+        // A- requires 85-89% normalized
+        assert_eq!(Grade::from_score(90.1, 106.0), Grade::AMinus); // 85%
+        assert_eq!(Grade::from_score(94.3, 106.0), Grade::AMinus); // 89%
+        assert_eq!(Grade::from_score(85.0, 100.0), Grade::AMinus);
+        assert_eq!(Grade::from_score(89.9, 100.0), Grade::AMinus);
     }
 
     #[test]
     fn test_grade_from_score_b_plus() {
-        assert_eq!(Grade::from_score(84.0, 106.0), Grade::BPlus);
-        assert_eq!(Grade::from_score(80.0, 106.0), Grade::BPlus);
+        // B+ requires 80-84% normalized
+        assert_eq!(Grade::from_score(84.8, 106.0), Grade::BPlus); // 80%
+        assert_eq!(Grade::from_score(89.0, 106.0), Grade::BPlus); // ~84%
+        assert_eq!(Grade::from_score(80.0, 100.0), Grade::BPlus);
+        assert_eq!(Grade::from_score(84.9, 100.0), Grade::BPlus);
     }
 
     #[test]
     fn test_grade_from_score_b() {
-        assert_eq!(Grade::from_score(79.0, 106.0), Grade::B);
-        assert_eq!(Grade::from_score(70.0, 106.0), Grade::B);
+        // B requires 70-79% normalized
+        assert_eq!(Grade::from_score(74.2, 106.0), Grade::B); // 70%
+        assert_eq!(Grade::from_score(83.7, 106.0), Grade::B); // 79%
+        assert_eq!(Grade::from_score(70.0, 100.0), Grade::B);
+        assert_eq!(Grade::from_score(79.9, 100.0), Grade::B);
     }
 
     #[test]
     fn test_grade_from_score_c() {
-        assert_eq!(Grade::from_score(69.0, 106.0), Grade::C);
-        assert_eq!(Grade::from_score(60.0, 106.0), Grade::C);
+        // C requires 60-69% normalized
+        assert_eq!(Grade::from_score(63.6, 106.0), Grade::C); // 60%
+        assert_eq!(Grade::from_score(73.1, 106.0), Grade::C); // 69%
+        assert_eq!(Grade::from_score(60.0, 100.0), Grade::C);
+        assert_eq!(Grade::from_score(69.9, 100.0), Grade::C);
     }
 
     #[test]
     fn test_grade_from_score_d() {
-        assert_eq!(Grade::from_score(59.0, 106.0), Grade::D);
-        assert_eq!(Grade::from_score(50.0, 106.0), Grade::D);
+        // D requires 50-59% normalized
+        assert_eq!(Grade::from_score(53.0, 106.0), Grade::D); // 50%
+        assert_eq!(Grade::from_score(62.5, 106.0), Grade::D); // 59%
+        assert_eq!(Grade::from_score(50.0, 100.0), Grade::D);
+        assert_eq!(Grade::from_score(59.9, 100.0), Grade::D);
     }
 
     #[test]
     fn test_grade_from_score_f() {
-        assert_eq!(Grade::from_score(49.0, 106.0), Grade::F);
-        assert_eq!(Grade::from_score(0.0, 106.0), Grade::F);
+        // F is below 50% normalized
+        assert_eq!(Grade::from_score(52.0, 106.0), Grade::F); // 49%
+        assert_eq!(Grade::from_score(0.0, 106.0), Grade::F); // 0%
+        assert_eq!(Grade::from_score(49.9, 100.0), Grade::F);
+        assert_eq!(Grade::from_score(0.0, 100.0), Grade::F);
+    }
+
+    #[test]
+    fn test_grade_from_normalized() {
+        // Direct normalized percentage input
+        assert_eq!(Grade::from_normalized(100.0), Grade::APlus);
+        assert_eq!(Grade::from_normalized(95.0), Grade::APlus);
+        assert_eq!(Grade::from_normalized(90.0), Grade::A);
+        assert_eq!(Grade::from_normalized(85.0), Grade::AMinus);
+        assert_eq!(Grade::from_normalized(80.0), Grade::BPlus);
+        assert_eq!(Grade::from_normalized(70.0), Grade::B);
+        assert_eq!(Grade::from_normalized(60.0), Grade::C);
+        assert_eq!(Grade::from_normalized(50.0), Grade::D);
+        assert_eq!(Grade::from_normalized(0.0), Grade::F);
     }
 
     #[test]

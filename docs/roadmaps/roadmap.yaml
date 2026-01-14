@@ -1099,3 +1099,23 @@ roadmap:
   - o1
   - performance
   notes: null
+- id: PMAT-454
+  github_issue: null
+  item_type: task
+  title: Normalize all scoring to 0-100 scale
+  status: inprogress
+  priority: high
+  assigned_to: null
+  created: 2026-01-14T12:09:33Z
+  updated: 2026-01-14T12:09:38.058549986+00:00
+  spec: null
+  acceptance_criteria:
+  - Convert all scoring systems (TDG, Repo, Rust, Popper, Brick, Perfection) to use 0-100 normalized scale. Eliminates confusion from different scales (106, 110, 200 points).
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - refactor
+  - scoring
+  - quality
+  notes: null

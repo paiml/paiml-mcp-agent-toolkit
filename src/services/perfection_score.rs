@@ -9,8 +9,11 @@
 //! - Mutation Score (20 pts)
 //! - Documentation (15 pts)
 //! - Performance (15 pts)
+//!
+//! PMAT-454: All output normalized to 0-100 scale
 
 use crate::models::tdg::TDGConfig;
+use crate::services::normalized_score::NormalizedScore;
 use crate::services::popper_score::orchestrator::PopperOrchestrator;
 use crate::services::repo_score::aggregator::ScoreAggregator;
 use crate::services::repo_score::scorers::ScorerConfig;
@@ -18,6 +21,7 @@ use crate::services::rust_project_score::models::ScoringMode;
 use crate::services::rust_project_score::orchestrator::RustProjectScoreOrchestrator;
 use crate::services::tdg_calculator::TDGCalculator;
 use serde::{Deserialize, Serialize};
+use std::fmt;
 use std::path::Path;
 
 /// Maximum possible perfection score
@@ -135,24 +139,45 @@ impl PerfectionScoreResult {
     }
 
     fn calculate_overall_grade(score: f64) -> String {
-        // Standard academic grading scale (F-A) for 200-point scale
-        match score as u16 {
-            194..=200 => "A+".to_string(),
-            186..=193 => "A".to_string(),
-            180..=185 => "A-".to_string(),
-            174..=179 => "B+".to_string(),
-            166..=173 => "B".to_string(),
-            160..=165 => "B-".to_string(),
-            154..=159 => "C+".to_string(),
-            146..=153 => "C".to_string(),
-            140..=145 => "C-".to_string(),
-            134..=139 => "D+".to_string(),
-            126..=133 => "D".to_string(),
-            120..=125 => "D-".to_string(),
+        // PMAT-454: Use normalized percentage (0-100) for grading
+        let normalized = (score / f64::from(MAX_PERFECTION_SCORE)) * 100.0;
+        match normalized as u16 {
+            95..=100 => "A+".to_string(),
+            90..=94 => "A".to_string(),
+            85..=89 => "A-".to_string(),
+            80..=84 => "B+".to_string(),
+            70..=79 => "B".to_string(),
+            60..=69 => "C".to_string(),
+            50..=59 => "D".to_string(),
             _ => "F".to_string(),
         }
     }
+}
 
+impl NormalizedScore for PerfectionScoreResult {
+    fn raw(&self) -> f64 {
+        self.total_score
+    }
+
+    fn max_raw(&self) -> f64 {
+        f64::from(MAX_PERFECTION_SCORE)
+    }
+}
+
+impl fmt::Display for PerfectionScoreResult {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "Perfection Score: {:.1}/100 ({}) [raw: {:.0}/{}]",
+            self.normalized(),
+            self.grade,
+            self.total_score,
+            MAX_PERFECTION_SCORE
+        )
+    }
+}
+
+impl PerfectionScoreResult {
     fn generate_recommendations(categories: &[CategoryScore]) -> Vec<String> {
         let mut recs = Vec::new();
 

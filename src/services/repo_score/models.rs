@@ -1,20 +1,51 @@
-// Data models for pmat repo-score
-// Implements the scoring system defined in docs/specifications/repo-score-spec.md
+//! Data models for pmat repo-score
+//! Implements the scoring system defined in docs/specifications/repo-score-spec.md
+//!
+//! PMAT-454: All scores normalized to 0-100 for display
 
+use crate::services::normalized_score::NormalizedScore;
 use serde::{Deserialize, Serialize};
+use std::fmt;
 use std::path::PathBuf;
+
+/// Maximum possible raw points for Repo Score (base 100 + 10 bonus)
+pub const REPO_SCORE_MAX_POINTS: f64 = 110.0;
 
 /// Overall repository score result
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RepoScore {
-    pub total_score: f64, // 0-100 score
-    pub grade: Grade,     // A+, A, A-, B+, etc.
+    /// Raw score (0-110 with bonuses)
+    pub total_score: f64,
+    pub grade: Grade, // A+, A, A-, B+, etc.
     pub categories: CategoryScores,
     pub recommendations: Vec<Recommendation>,
     pub metadata: ScoreMetadata,
 }
 
-/// Letter grade assignment
+impl NormalizedScore for RepoScore {
+    fn raw(&self) -> f64 {
+        self.total_score
+    }
+
+    fn max_raw(&self) -> f64 {
+        REPO_SCORE_MAX_POINTS
+    }
+}
+
+impl fmt::Display for RepoScore {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "Repo Score: {:.1}/100 ({}) [raw: {:.1}/{}]",
+            self.normalized(),
+            self.grade.as_str(),
+            self.total_score,
+            REPO_SCORE_MAX_POINTS as u32
+        )
+    }
+}
+
+/// Letter grade assignment (PMAT-454: uses normalized 0-100)
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 pub enum Grade {
     APlus,  // 95-100
