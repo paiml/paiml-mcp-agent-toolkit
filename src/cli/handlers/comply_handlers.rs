@@ -811,9 +811,11 @@ fn detect_cb021_simd_without_target_feature(project_path: &Path) -> Vec<CbPatter
     // x86 SSE/AVX: These are function-like intrinsics (always have underscore prefix)
     // ARM NEON: These are function-like intrinsics (always have underscore prefix)
     // Portable SIMD: Require :: to indicate method call (not just type in identifier)
-    let x86_neon_patterns = [
-        "_mm_", "_mm256_", "_mm512_", // x86 SSE/AVX
-        "vld1q_", "vst1q_", "vmulq_", "vaddq_", // ARM NEON
+    // Only check for AVX/AVX-512 which require target_feature
+    // SSE intrinsics (_mm_) and NEON are baseline and don't need target_feature
+    let simd_patterns_needing_target_feature = [
+        "_mm256_", "_mm512_", // x86 AVX/AVX-512 (not SSE which is baseline)
+        // NEON (vld1q_, etc.) is baseline on aarch64, no target_feature needed
     ];
     // Portable SIMD - require :: suffix to distinguish from identifiers like "f32x4_verified"
     let portable_simd_patterns = ["i8x16::", "i16x8::", "i32x4::", "f32x4::", "Simd::<"];
@@ -828,7 +830,10 @@ fn detect_cb021_simd_without_target_feature(project_path: &Path) -> Vec<CbPatter
                 let mut protected_lines: std::collections::HashSet<usize> = std::collections::HashSet::new();
 
                 for (i, line) in lines.iter().enumerate() {
-                    if line.trim().starts_with("#[target_feature") {
+                    // Both #[target_feature] and #[cfg(target_feature = "...")] protect SIMD code
+                    let is_protected = line.trim().starts_with("#[target_feature")
+                        || (line.contains("#[cfg(") && line.contains("target_feature"));
+                    if is_protected {
                         // Mark all lines in this function as protected
                         // Find the fn line (within 15 lines to handle attrs + SAFETY comments)
                         for j in i..std::cmp::min(i + 15, lines.len()) {
@@ -870,7 +875,11 @@ fn detect_cb021_simd_without_target_feature(project_path: &Path) -> Vec<CbPatter
                     }
 
                     // Check x86/NEON intrinsics (function-like, always start with _)
-                    for pattern in &x86_neon_patterns {
+                    // Skip prefetch intrinsics - they're SSE baseline on x86_64
+                    if line.contains("_mm_prefetch") || line.contains("_MM_HINT_") {
+                        continue;
+                    }
+                    for pattern in &simd_patterns_needing_target_feature {
                         if line.contains(pattern) {
                             violations.push(CbPatternViolation {
                                 pattern_id: "CB-021".to_string(),

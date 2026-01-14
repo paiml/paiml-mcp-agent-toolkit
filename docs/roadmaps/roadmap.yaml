@@ -1123,11 +1123,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'Fix trueno CB-021: Add #[target_feature] to 1269 SIMD functions in src/matrix.rs'
-  status: inprogress
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-01-14T12:49:24Z
-  updated: 2026-01-14T12:49:32.013866102+00:00
+  updated: 2026-01-14T13:04:50.107324533+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -1142,11 +1142,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'Fix realizar CB-020: Add // SAFETY: comments to 647 unsafe blocks in src/cuda.rs'
-  status: planned
+  status: inprogress
   priority: high
   assigned_to: null
   created: 2026-01-14T12:49:25Z
-  updated: 2026-01-14T12:49:25Z
+  updated: 2026-01-14T13:05:12.496250813+00:00
   spec: null
   acceptance_criteria: []
   phases: []
